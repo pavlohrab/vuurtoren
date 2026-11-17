@@ -11,8 +11,10 @@ import {
   type LearnerModel,
   type Skill,
   type WordData,
+  type WordForms,
   matchToken,
   normalizeKey,
+  sharesMeaning,
 } from "@app/core";
 import type { KenningRepository, WordInfo } from "@app/db";
 import type { GlossEntry } from "@app/nlp-client";
@@ -67,6 +69,9 @@ const UPOS: Record<string, string> = {
 };
 const FORM_POS = new Set(["VERB", "ADJ", "NOUN"]);
 
+/** Words that practice offers: those being learned or already known. */
+const isPractisable = (w: WordInfo) => w.state === "learning" || w.state === "known";
+
 /** What the texts tell about a word: lemma, part of speech, frequency, usable sentences. */
 interface Occurrence {
   lemma: string;
@@ -75,18 +80,49 @@ interface Occurrence {
   sentences: ExampleSentence[];
 }
 
-/** Find [start, end) of `lemma` (or an inflection sharing its stem) in `sentence`. */
-export function locateWord(sentence: string, lemma: string): [number, number] | null {
-  const lower = sentence.toLowerCase();
-  const target = lemma.toLowerCase();
-  const stem = target.slice(0, Math.max(3, target.length - 2));
-  let loose: [number, number] | null = null;
-  for (const m of lower.matchAll(/\p{L}+/gu)) {
-    const range: [number, number] = [m.index, m.index + m[0].length];
-    if (m[0] === target) return range;
-    if (!loose && m[0].startsWith(stem)) loose = range;
+/** Surface forms a word is known to take: lemma, server forms and regular suffixes. */
+function surfaceForms(lemma: string, pos: string, forms: WordForms | undefined): Set<string> {
+  const out = new Set<string>([lemma]);
+  const add = (x: string | undefined) => x && out.add(x.toLowerCase());
+  if (forms) {
+    add(forms.participle);
+    forms.past?.forEach(add);
+    Object.values(forms.present ?? {}).forEach(add);
+    add(forms.plural);
+    add(forms.diminutive);
+    add(forms.inflected);
+    add(forms.comparative);
+    add(forms.superlative);
   }
-  return loose;
+  if (pos === "NOUN") for (const suf of ["s", "en", "je", "tje"]) out.add(lemma + suf);
+  if (pos === "ADJ") out.add(lemma + "e");
+  if (pos === "VERB" && lemma.endsWith("en") && lemma.length > 4) {
+    // Regular conjugation only; the bare stem is left out on purpose ("werken" vs the noun "werk").
+    const stem = lemma.slice(0, -2);
+    for (const suf of ["t", "te", "ten", "de", "den", "end"]) out.add(stem + suf);
+    out.add(`ge${stem}d`).add(`ge${stem}t`);
+  }
+  return out;
+}
+
+/**
+ * Find [start, end) of `lemma` or one of its known surface forms in `sentence`: whole-word,
+ * case-insensitive, no prefix guessing ("Zij" is not "zijn", "manier" is not "man"). Returns
+ * null when the word does not occur, so the caller can drop the sentence.
+ *
+ * TODO: prefer the note's bold/cloze-marked target (`extractMarked` in @app/anki) once
+ * packages/db can carry a `sentenceTarget` for Anki sentences.
+ */
+export function locateWord(
+  sentence: string,
+  lemma: string,
+  opts: { forms?: WordForms; pos?: string } = {},
+): [number, number] | null {
+  const known = surfaceForms(lemma.toLowerCase(), opts.pos ?? "", opts.forms);
+  for (const m of sentence.matchAll(/\p{L}+/gu)) {
+    if (known.has(m[0].toLowerCase())) return [m.index, m.index + m[0].length];
+  }
+  return null;
 }
 
 /** Usable example sentences of the analysed texts, grouped by the practised keys. */
@@ -130,22 +166,37 @@ export function createLivePractice(deps: LivePracticeDeps) {
   const { repo } = deps;
   const clock = deps.now ?? Date.now;
 
+  /** In-memory copy of practice_items per language (avoids re-reading every answer). */
+  const itemCache = new Map<string, Map<string, ItemState>>();
+  const itemId = (key: string, skill: Skill) => `${key}\u0000${skill}`;
+
+  /** Re-read the items from the database and refresh the cache. */
+  async function loadItems(lang: string): Promise<ItemState[]> {
+    const items = await repo.practiceItems(lang);
+    itemCache.set(lang, new Map(items.map((i) => [itemId(i.key, i.skill), i])));
+    return items;
+  }
+
   async function practiceOverview(): Promise<PracticeOverview> {
     const lang = await deps.lang();
     const now = clock();
-    const [items, learning, log] = await Promise.all([
-      repo.practiceItems(lang),
-      repo.words(lang, { state: "learning" }),
+    const [items, infos, log] = await Promise.all([
+      loadItems(lang),
+      repo.words(lang),
       repo.practiceLog(lang, 1),
     ]);
-    const stats = practiceStats(items, now);
+    // Only words that can be practised today count (ignored / reset / seen words do not).
+    const eligible = new Set(infos.filter(isPractisable).map((w) => w.key));
+    const live = items.filter((i) => eligible.has(i.key));
+    const stats = practiceStats(live, now);
     const practised = new Set(items.map((i) => i.key));
     return {
       due: stats.due,
       learned: stats.learned,
       bySkill: stats.bySkill,
-      newAvailable: learning.filter((w) => !practised.has(w.key)).length,
+      newAvailable: infos.filter((w) => w.state === "learning" && !practised.has(w.key)).length,
       lastSession: log[0]?.at ?? null,
+      degraded: deps.data.degraded(),
     };
   }
 
@@ -158,9 +209,7 @@ export function createLivePractice(deps: LivePracticeDeps) {
     now: number,
     rng: () => number,
   ): WordInfo[] {
-    const eligible = new Map(
-      infos.filter((w) => w.state === "learning" || w.state === "known").map((w) => [w.key, w]),
-    );
+    const eligible = new Map(infos.filter(isPractisable).map((w) => [w.key, w]));
     const due = new Set(
       items.filter((i) => i.due <= now && (!skills || skills.includes(i.skill))).map((i) => i.key),
     );
@@ -206,7 +255,7 @@ export function createLivePractice(deps: LivePracticeDeps) {
     const rng = createRng(now);
     const [infos, items, model] = await Promise.all([
       repo.words(lang),
-      repo.practiceItems(lang),
+      loadItems(lang),
       deps.model(),
     ]);
     const chosen = chooseWords(
@@ -248,7 +297,10 @@ export function createLivePractice(deps: LivePracticeDeps) {
     const words: WordData[] = base.map(({ info, lemma, pos, glosses, article, o }) => {
       const sentences: ExampleSentence[] = [];
       if (info.sentence) {
-        const target = locateWord(info.sentence, lemma);
+        const target = locateWord(info.sentence, lemma, {
+          pos,
+          ...(forms[lemma] ? { forms: forms[lemma] } : {}),
+        });
         if (target) {
           sentences.push({
             text: info.sentence,
@@ -290,7 +342,11 @@ export function createLivePractice(deps: LivePracticeDeps) {
     return padWordChoices(exercises, words, lang);
   }
 
-  /** Give word-choice exercises with few options extra distractors from the server's similar words. */
+  /**
+   * Give word-choice exercises with few options extra distractors from the server's similar
+   * words. A similar word is only used when its dictionary meanings are known and share nothing
+   * with the answer's (otherwise "woning" next to "huis" would be a second correct answer).
+   */
   async function padWordChoices(
     exercises: Exercise[],
     words: WordData[],
@@ -304,12 +360,22 @@ export function createLivePractice(deps: LivePracticeDeps) {
       return w ? [{ lemma: w.lemma, pos: w.pos }] : [];
     });
     const similar = await deps.data.similar(lang, items, 4);
+    const candidates = [...new Set(Object.values(similar).flat())];
+    if (candidates.length === 0) return exercises;
+    const dict = await deps.dictionary(candidates);
+    const glossesOf = (lemma: string, pos: string): string[] => {
+      const entries = dict[lemma];
+      return entries?.length ? deps.composeGlosses(null, entries, pos).glosses : [];
+    };
     return exercises.map((e) => {
       if (!thin.includes(e)) return e;
-      const lemma = byKey.get(e.key)?.lemma;
-      const extra = (lemma ? (similar[lemma] ?? []) : []).filter(
-        (s) => s !== e.answer && !e.choices?.includes(s),
-      );
+      const target = byKey.get(e.key);
+      if (!target) return e;
+      const extra = (similar[target.lemma] ?? []).filter((s) => {
+        if (s === e.answer || e.choices?.includes(s)) return false;
+        const glosses = glossesOf(s, target.pos);
+        return glosses.length > 0 && !sharesMeaning(target.glosses, glosses);
+      });
       const choices = [...(e.choices ?? []), ...extra].slice(0, 4);
       return choices.length > (e.choices?.length ?? 0) ? { ...e, choices } : e;
     });
@@ -321,9 +387,8 @@ export function createLivePractice(deps: LivePracticeDeps) {
     const full = { ...attempt, correct: checked.correct };
     const grade = gradeAttempt(exercise, full);
     const now = clock();
-    const prev = (await repo.practiceItems(lang)).find(
-      (i) => i.key === exercise.key && i.skill === exercise.skill,
-    );
+    if (!itemCache.has(lang)) await loadItems(lang);
+    const prev = itemCache.get(lang)!.get(itemId(exercise.key, exercise.skill));
     const next = review(prev, exercise.key, exercise.skill, grade, now);
     await repo.append({
       type: "ExerciseAnswered",
@@ -337,6 +402,7 @@ export function createLivePractice(deps: LivePracticeDeps) {
       at: now,
       state: next,
     });
+    itemCache.get(lang)!.set(itemId(exercise.key, exercise.skill), next);
     return {
       grade,
       correct: checked.correct,

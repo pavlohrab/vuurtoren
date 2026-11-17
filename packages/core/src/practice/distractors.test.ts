@@ -85,4 +85,25 @@ describe("distractors", () => {
       distractors(target, pool, 3, createRng(9)),
     );
   });
+
+  it("excludes candidates sharing ANY gloss, by lemma and by gloss", () => {
+    const huis = word("huis", { glosses: ["house"] });
+    const pool = [
+      word("pand", { glosses: ["house"] }),
+      word("woonhuis", { glosses: ["house, home"] }),
+      word("woning", { glosses: ["dwelling", "a house"] }),
+      word("verblijf", { glosses: ["to stay (somewhere)", "residence; (the) house"] }),
+      word("tuin", { glosses: ["garden"] }),
+    ];
+    expect(distractors(huis, pool, 5, createRng(1))).toEqual(["tuin"]);
+    expect(distractors(huis, pool, 5, createRng(1), "gloss")).toEqual(["garden"]);
+  });
+
+  it("does not treat partial-word overlaps as synonyms", () => {
+    const pool = [word("bijl", { glosses: ["axe"] }), word("taxi", { glosses: ["taxi"] })];
+    expect(distractors(word("x", { glosses: ["ax"] }), pool, 2, createRng(1)).sort()).toEqual([
+      "bijl",
+      "taxi",
+    ]);
+  });
 });

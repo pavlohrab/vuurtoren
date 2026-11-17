@@ -10,6 +10,7 @@ import {
   type ExerciseFeedback,
   type ExerciseSubmit,
   Skeleton,
+  shortcutBlocked,
 } from "@app/ui";
 import { dutchVoiceAvailable, speakDutch } from "../practice/speech.js";
 import { useServices } from "../services/context.js";
@@ -99,9 +100,17 @@ function StartView({
     queryKey: ["practice", "overview"],
     queryFn: () => services.practiceOverview(),
   });
+  const voice = useQuery({
+    queryKey: ["practice", "voice"],
+    queryFn: () => dutchVoiceAvailable(),
+    staleTime: Infinity,
+  });
   const [skills, setSkills] = useState<Skill[]>(SKILLS.map((s) => s.skill));
   const [size, setSize] = useState(20);
   const o = overview.data;
+  // Listening needs a Dutch voice; while the check runs it stays available.
+  const noVoice = voice.data === false;
+  const effective = skills.filter((s) => !(s === "listening" && noVoice));
 
   const toggle = (s: Skill) =>
     setSkills((cur) =>
@@ -118,22 +127,37 @@ function StartView({
       </p>
 
       {overview.isPending ? <Skeleton style={{ height: 24, width: 160 }} /> : null}
+      {o?.degraded ? (
+        <p className="k-hint practice-note">
+          The language server is unreachable — fewer exercise types today
+        </p>
+      ) : null}
 
       <fieldset className="practice-group">
         <legend className="k-label">Skills</legend>
         <div className="practice-options">
-          {SKILLS.map(({ skill, label }) => (
-            <button
-              key={skill}
-              type="button"
-              className="practice-option"
-              aria-pressed={skills.includes(skill)}
-              onClick={() => toggle(skill)}
-            >
-              {label}
-            </button>
-          ))}
+          {SKILLS.map(({ skill, label }) => {
+            const blocked = skill === "listening" && noVoice;
+            return (
+              <button
+                key={skill}
+                type="button"
+                className="practice-option"
+                aria-pressed={!blocked && skills.includes(skill)}
+                disabled={blocked}
+                title={blocked ? "No Dutch voice is available in this browser" : undefined}
+                onClick={() => toggle(skill)}
+              >
+                {label}
+              </button>
+            );
+          })}
         </div>
+        {noVoice ? (
+          <p className="k-hint practice-note">
+            Listening is off: no Dutch voice is available in this browser.
+          </p>
+        ) : null}
       </fieldset>
 
       <fieldset className="practice-group">
@@ -158,7 +182,11 @@ function StartView({
           {error}
         </p>
       ) : null}
-      <Button variant="primary" disabled={loading} onClick={() => onStart(size, skills)}>
+      <Button
+        variant="primary"
+        disabled={loading || effective.length === 0}
+        onClick={() => onStart(size, effective)}
+      >
         {loading ? "Preparing…" : "Start"}
       </Button>
       <p className="k-hint practice-note">
@@ -179,8 +207,6 @@ function Session({
 }) {
   const services = useServices();
   const [index, setIndex] = useState(0);
-  const [answered, setAnswered] = useState<Answered[]>([]);
-  const [skipped, setSkipped] = useState(0);
   const [feedback, setFeedback] = useState<ExerciseFeedback | null>(null);
   const [submitted, setSubmitted] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -190,11 +216,12 @@ function Session({
   const current = exercises[index];
   const skipDictation = current?.kind === "dictation" && !listening;
 
-  // Keep the latest values reachable from the Escape handler and the skip effect.
-  const latest = useRef({ answered, skipped });
-  useEffect(() => {
-    latest.current = { answered, skipped };
-  });
+  // Synchronously updated mirrors of the state, so Escape and the end button see an answer
+  // that is still being saved.
+  const answeredRef = useRef<Answered[]>([]);
+  const skippedRef = useRef(0);
+  const inflight = useRef<Promise<void> | null>(null);
+  const [confirmEnd, setConfirmEnd] = useState(false);
 
   const advance = useCallback(
     (nextAnswered: Answered[], nextSkipped: number) => {
@@ -213,41 +240,61 @@ function Session({
   useEffect(() => {
     if (!skipDictation || skippedAt.current === index) return;
     skippedAt.current = index;
-    setSkipped((n) => n + 1);
-    advance(latest.current.answered, latest.current.skipped + 1);
+    skippedRef.current += 1;
+    advance(answeredRef.current, skippedRef.current);
   }, [skipDictation, advance, index]);
 
   useEffect(() => {
     shownAt.current = Date.now();
   }, [index]);
 
+  /** End now: wait for an answer that is being saved, so it is part of the summary. */
+  const endSession = useCallback(async () => {
+    await inflight.current;
+    onFinish(answeredRef.current, skippedRef.current);
+  }, [onFinish]);
+
+  /** Esc / End button: ask first when something was answered, else end straight away. */
+  const requestEnd = useCallback(() => {
+    if (answeredRef.current.length > 0 || inflight.current) setConfirmEnd(true);
+    else void endSession();
+  }, [endSession]);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onFinish(latest.current.answered, latest.current.skipped);
+      if (e.key !== "Escape" || shortcutBlocked(e)) return;
+      e.preventDefault();
+      if (confirmEnd) setConfirmEnd(false);
+      else requestEnd();
     };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onFinish]);
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, [confirmEnd, requestEnd]);
 
   const submit = async (s: ExerciseSubmit) => {
     if (!current || busy || feedback) return;
     setBusy(true);
     setError(null);
-    try {
-      const result = await services.answerExercise(current, {
-        exerciseId: current.id,
-        answer: s.answer,
-        hintsUsed: s.hintsUsed,
-        ms: Date.now() - shownAt.current,
-      });
-      setSubmitted(s.answer);
-      setAnswered((a) => [...a, { exercise: current, result }]);
-      setFeedback({ correct: result.correct, ...(result.note ? { note: result.note } : {}) });
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "The answer could not be saved. Try again.");
-    } finally {
-      setBusy(false);
-    }
+    const run = (async () => {
+      try {
+        const result = await services.answerExercise(current, {
+          exerciseId: current.id,
+          answer: s.answer,
+          hintsUsed: s.hintsUsed,
+          ms: Date.now() - shownAt.current,
+        });
+        answeredRef.current = [...answeredRef.current, { exercise: current, result }];
+        setSubmitted(s.answer);
+        setFeedback({ correct: result.correct, ...(result.note ? { note: result.note } : {}) });
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "The answer could not be saved. Try again.");
+      } finally {
+        setBusy(false);
+        inflight.current = null;
+      }
+    })();
+    inflight.current = run;
+    await run;
   };
 
   if (!current || skipDictation) return null;
@@ -258,10 +305,21 @@ function Session({
         <span className="k-hint">
           {index + 1} of {exercises.length}
         </span>
-        <Button variant="ghost" size="sm" onClick={() => onFinish(answered, skipped)}>
+        <Button variant="ghost" size="sm" onClick={requestEnd}>
           End session <kbd className="ex-key">Esc</kbd>
         </Button>
       </div>
+      {confirmEnd ? (
+        <p className="practice-confirm" role="group" aria-label="End the session?">
+          End the session? Your answers so far are saved.{" "}
+          <Button size="sm" variant="primary" onClick={() => void endSession()}>
+            End session
+          </Button>{" "}
+          <Button size="sm" variant="ghost" onClick={() => setConfirmEnd(false)}>
+            Keep going
+          </Button>
+        </p>
+      ) : null}
       <ExerciseProgress done={index + (feedback ? 1 : 0)} total={exercises.length} />
       <div className="practice-card">
         <ExerciseCard
@@ -270,7 +328,7 @@ function Session({
           feedback={feedback}
           submitted={submitted}
           onSubmit={(s) => void submit(s)}
-          onContinue={() => advance(answered, skipped)}
+          onContinue={() => advance(answeredRef.current, skippedRef.current)}
           onSpeak={speakDutch}
           continueLabel={last ? "Finish" : "Continue"}
         />

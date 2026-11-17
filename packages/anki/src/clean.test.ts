@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { cleanField, decodeEntities, extractMarked, firstAlternative } from "./clean.js";
+import {
+  cleanField,
+  decodeEntities,
+  extractMarked,
+  firstAlternative,
+  sentenceUnits,
+} from "./clean.js";
 
 describe("cleanField", () => {
   it.each([
@@ -52,5 +58,16 @@ describe("firstAlternative", () => {
     ["a) alleen", "alleen"],
   ])("%s -> %s", (input, expected) => {
     expect(firstAlternative(input)).toBe(expected);
+  });
+});
+
+describe("sentenceUnits", () => {
+  it("splits lines and sentences in order", () => {
+    expect(sentenceUnits("Wij lopen. Echt waar.<br>Tweede regel.")).toEqual([
+      "Wij lopen.",
+      "Echt waar.",
+      "Tweede regel.",
+    ]);
+    expect(sentenceUnits("")).toEqual([]);
   });
 });

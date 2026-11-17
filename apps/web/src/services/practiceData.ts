@@ -1,7 +1,7 @@
 /**
  * Practice data from the NLP server: word forms, example sentences and similar words.
  * Thin typed wrapper over `fetch` (request shapes match server/nlp; see packages/nlp-client). Every call degrades
- * to empty data on 404 / 503 / network errors, so practice still works with what Anki and the
+ * to empty data on 404 / 503 / network errors (and `degraded()` says so), so practice still works with what Anki and the
  * learner's texts provide.
  *
  * Endpoints (POST JSON, answers keyed by lemma):
@@ -24,33 +24,42 @@ export interface PracticeData {
     opts: { limit: number; maxWords: number },
   ): Promise<Record<string, ExampleSentence[]>>;
   similar(lang: string, items: LemmaPos[], k: number): Promise<Record<string, string[]>>;
+  /** True when the most recent server request failed (network error / non-OK response). */
+  degraded(): boolean;
 }
 
 /** Max lemmas per request. */
 const BATCH = 200;
 
 /**
- * Create the wrapper. `baseUrl` is read per call (the setting can change); results, including
- * empty ones, are cached per (lang, lemma, pos) for the lifetime of the object.
+ * Create the wrapper. `baseUrl` is read per call (the setting can change); successful
+ * responses (including "nothing found") are cached per (baseUrl, lang, lemma, pos); failures are
+ * never cached, so a server that comes up later is used.
  */
 export function createPracticeData(
   baseUrl: () => Promise<string> | string,
   fetchFn: () => typeof fetch = () => globalThis.fetch,
 ): PracticeData {
   const cache = new Map<string, unknown>();
+  let failed = false;
 
-  async function post<T>(path: string, body: unknown): Promise<Record<string, T>> {
+  /** POST JSON; null on any failure (so callers can avoid caching it). */
+  async function post<T>(
+    base: string,
+    path: string,
+    body: unknown,
+  ): Promise<Record<string, T> | null> {
     try {
-      const res = await fetchFn()(`${await baseUrl()}${path}`, {
+      const res = await fetchFn()(`${base}${path}`, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify(body),
       });
-      if (!res.ok) return {};
+      if (!res.ok) return null;
       const data: unknown = await res.json();
-      return data && typeof data === "object" ? (data as Record<string, T>) : {};
+      return data && typeof data === "object" ? (data as Record<string, T>) : null;
     } catch {
-      return {};
+      return null;
     }
   }
 
@@ -64,17 +73,19 @@ export function createPracticeData(
     isEmpty: (v: T) => boolean,
     empty: T,
   ): Promise<Record<string, T>> {
-    const k = (i: LemmaPos) => `${tag}|${lang}|${i.lemma}|${i.pos}`;
+    const base = await baseUrl();
+    const k = (i: LemmaPos) => `${base}|${tag}|${lang}|${i.lemma}|${i.pos}`;
     const todo = items.filter((i) => !cache.has(k(i)));
     for (let n = 0; n < todo.length; n += BATCH) {
       const batch = todo.slice(n, n + BATCH);
-      const got = await post<T>(path, request(batch));
-      for (const i of batch) cache.set(k(i), got[i.lemma] ?? empty);
+      const got = await post<T>(base, path, request(batch));
+      failed = got === null;
+      if (got) for (const i of batch) cache.set(k(i), got[i.lemma] ?? empty);
     }
     const out: Record<string, T> = {};
     for (const i of items) {
-      const v = cache.get(k(i)) as T;
-      if (!isEmpty(v)) out[i.lemma] = v;
+      const v = cache.get(k(i)) as T | undefined;
+      if (v !== undefined && !isEmpty(v)) out[i.lemma] = v;
     }
     return out;
   }
@@ -83,6 +94,7 @@ export function createPracticeData(
   const emptyList = (v: unknown[]) => v.length === 0;
 
   return {
+    degraded: () => failed,
     forms: (lang, items) =>
       cached<WordForms>("/forms", "forms", lang, items, (b) => ({ lang, lemmas: b }), emptyObj, {}),
     sentences: (lang, lemmas, { limit, maxWords }) =>

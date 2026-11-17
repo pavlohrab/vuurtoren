@@ -96,6 +96,8 @@ export interface PracticeOverview {
   bySkill: Record<Skill, number>;
   /** When (ms) the last exercise was answered. */
   lastSession: number | null;
+  /** The language server was unreachable on the last request (fewer exercise types). */
+  degraded?: boolean;
 }
 /** The learner's answer; correctness is decided by the engine, not the caller. */
 export type AttemptInput = Omit<Attempt, "correct">;

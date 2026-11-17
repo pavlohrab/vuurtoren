@@ -158,3 +158,45 @@ describe("robust deck evidence", () => {
     expect(selectCandidates(ranked, 0.5)).toHaveLength(1);
   });
 });
+
+describe("sentence translation field", () => {
+  const nl = new Set([
+    "al",
+    "fiets",
+    "lopen",
+    "Het is al laat. Echt.",
+    "De fiets is rood.",
+    "Wij lopen naar huis. Nu.",
+  ]);
+  const det: DetectFn = async (texts) =>
+    texts.map((t) => ({ lang: nl.has(t) ? "nl" : "en", confidence: 0.9 }));
+  const rows = (en: string[]): NoteSample[] =>
+    [
+      ["al", "Het is al laat. Echt."],
+      ["fiets", "De fiets is rood."],
+      ["lopen", "Wij lopen naar huis. Nu."],
+    ].map(([w, s], i) => ({
+      deck: "Opmaat",
+      deckNoteCount: 200,
+      modelName: "Woord",
+      fields: { Woord: w!, Betekenis: ["already", "bike", "to walk"][i]!, Zin: s!, ZinEN: en[i]! },
+    }));
+
+  it("accepts a translation that pairs with the sentence field", async () => {
+    const [top] = await rankCandidates(
+      rows(["It is late. Really.", "The bike is red.", "We walk home. Now."]),
+      det,
+      "nl",
+    );
+    expect(top!.sentenceTranslationField).toBe("ZinEN");
+  });
+
+  it("rejects a field whose sentence count does not match", async () => {
+    const [top] = await rankCandidates(
+      rows(["It is late really.", "The bike is red now.", "We walk home today."]),
+      det,
+      "nl",
+    );
+    expect(top!.sentenceTranslationField).toBeNull();
+  });
+});

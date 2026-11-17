@@ -2,7 +2,7 @@
  * Auto-detect which deck / note type / field holds target-language vocabulary.
  * Pure ranking logic: the caller supplies sampled notes and a language detector.
  */
-import { cleanField } from "./clean.js";
+import { cleanField, sentenceUnits } from "./clean.js";
 
 export interface NoteSample {
   deck: string;
@@ -143,6 +143,21 @@ export async function rankCandidates(
                 f.samples >= minSamples)),
         )
         .sort((a, b) => glossScore(b) - glossScore(a))[0] ?? null;
+    // Sentence translation: a gloss-language field with sentence-length values that pairs with
+    // the sentence field (same number of sentences per note in most samples).
+    const pairs = (name: string): boolean => {
+      if (!sentence) return false;
+      let both = 0;
+      let equal = 0;
+      for (const s of group) {
+        const a = sentenceUnits(s.fields[sentence.name] ?? "");
+        const b = sentenceUnits(s.fields[name] ?? "");
+        if (a.length === 0 || b.length === 0) continue;
+        both++;
+        if (a.length === b.length) equal++;
+      }
+      return both > 0 && equal / both >= 0.7;
+    };
     // Sentence translation: a gloss-language field with sentence-length values.
     const translation =
       stats
@@ -153,6 +168,7 @@ export async function rankCandidates(
             f.name !== gloss?.name &&
             f.samples >= minSamples &&
             f.avgTokens >= 3 &&
+            pairs(f.name) &&
             f.glossShare >= 0.5 &&
             f.targetShare < 0.3,
         )
