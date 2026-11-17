@@ -1,91 +1,130 @@
 /*
  * Kenning design tokens and component styles (docs/design/design-system.md).
+ * Direction "Night lamp": dark-first and focused, like reading under a lamp. The light theme
+ * is designed on its own (cool, violet-tinted paper), not an inversion.
  *
  * Import from a Tailwind v4 entry stylesheet:
  *   @import "tailwindcss";
  *   @import "@app/ui/styles.css";
  *
- * Fonts are self-hosted via Fontsource (Latin + Cyrillic, no CDN).
+ * Fonts are self-hosted via Fontsource (no CDN). Literata and Inter cover Latin + Cyrillic;
+ * Instrument Sans is Latin only, so Cyrillic headings fall back to Inter glyph by glyph.
  */
 @import "@fontsource-variable/literata";
 @import "@fontsource-variable/inter";
+@import "@fontsource-variable/instrument-sans";
 @import "@fontsource-variable/jetbrains-mono";
 
-/* ---------- Tokens: light (default) ---------- */
+/* ---------- Tokens: theme-independent ---------- */
 :root {
-  color-scheme: light;
-  --bg: #f8f5ef;
-  --surface: #fffdf9;
-  --surface-2: #f1ece3;
-  --ink: #1f1b16;
-  --ink-muted: #6b6259;
-  --line: #e6ded2;
-  --accent: #2f6f6a;
-  --accent-warm: #b5562e;
-  --success: #3f7d4e;
-  --danger: #a63d3d;
-
-  /* Word-state treatments */
-  --state-new-bg: #f3e3c3;
-  --state-new-line: #9a6a12;
-  --state-learning-line: #5e8b6b;
-  --state-gloss-line: #2f6f6a;
-  --state-grammar-line: #8a6d9c;
-
-  --shadow-pop: 0 8px 24px rgb(0 0 0 / 0.08);
-
-  --radius-control: 6px;
-  --radius-card: 10px;
+  --radius-control: 8px;
+  --radius-card: 14px;
   --radius-chip: 999px;
 
   --font-reading: "Literata Variable", Georgia, "Times New Roman", serif;
   --font-ui: "Inter Variable", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: "Instrument Sans Variable", "Inter Variable", system-ui, sans-serif;
   --font-mono: "JetBrains Mono Variable", ui-monospace, "SFMono-Regular", Menlo, monospace;
 
-  --ease: cubic-bezier(0.2, 0, 0, 1);
-  --dur: 160ms;
+  /* Motion budget: CSS only, transform/opacity, 150–300 ms, nothing loops (except the
+     busy spinner), all off under prefers-reduced-motion. */
+  --dur-fast: 150ms;
+  --dur: 200ms;
+  --dur-slow: 300ms;
+  --dur-fill: 700ms; /* progress rings and bars, once on mount */
+  --ease-out: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --ease-in-out: cubic-bezier(0.45, 0, 0.2, 1);
+  --ease-pop: cubic-bezier(0.3, 1.4, 0.5, 1);
+  --ease: var(--ease-out);
 }
 
-/* ---------- Tokens: dark (warm charcoal) ---------- */
+/* ---------- Tokens: light (cool paper, deep violet) ---------- */
+:root {
+  color-scheme: light;
+  --bg: #f4f3f7;
+  --surface: #fcfcfe;
+  --surface-2: #ecebf2;
+  --ink: #1b1d24;
+  --ink-muted: #5d5f6b;
+  --line: #dddbe6;
+  --line-strong: #c9c6d6;
+  --accent: #6a4fd6;
+  --accent-ink: #fcfcfe; /* text on an accent fill */
+  --accent-soft: #ebe6fb;
+  --known: #13896a; /* lines, fills, rings */
+  --known-ink: #0f7a5e; /* text */
+  --known-soft: #e3f0eb;
+  --learn: #b7791f;
+  --learn-ink: #8a5a10;
+  --learn-soft: #f7ebcf;
+  --accent-warm: var(--learn-ink);
+  --success: #0f7a5e;
+  --danger: #b42f3a;
+
+  /* Word-state treatments */
+  --state-new-bg: var(--learn-soft);
+  --state-new-line: var(--learn);
+  --state-learning-line: color-mix(in srgb, var(--known) 80%, var(--ink-muted));
+  --state-gloss-line: var(--accent);
+  --state-grammar-line: #b0437f;
+
+  --scrim: rgb(27 29 36 / 0.36);
+  --shadow-pop: 0 12px 32px -8px rgb(36 30 70 / 0.18), 0 2px 6px rgb(36 30 70 / 0.06);
+  --shadow-lift: 0 10px 24px -14px rgb(36 30 70 / 0.35);
+}
+
+/* ---------- Tokens: dark (night lamp) ---------- */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     color-scheme: dark;
-    --bg: #181512;
-    --surface: #211d19;
-    --surface-2: #2a2520;
-    --ink: #ece6dc;
-    --ink-muted: #a39a8f;
-    --line: #342e28;
-    --accent: #6fb3ac;
-    --accent-warm: #e08a62;
-    --success: #7db88b;
-    --danger: #e08080;
-    --state-new-bg: #4a3a1f;
-    --state-new-line: #d9a441;
-    --state-learning-line: #8db89a;
-    --state-gloss-line: #6fb3ac;
-    --state-grammar-line: #b9a0cc;
-    --shadow-pop: 0 8px 24px rgb(0 0 0 / 0.4);
+    --bg: #14161c;
+    --surface: #1b1e26;
+    --surface-2: #222631;
+    --ink: #ebe8e1;
+    --ink-muted: #9b9aa3;
+    --line: #2c303b;
+    --line-strong: #3a3f4d;
+    --accent: #c9a7ff;
+    --accent-ink: #16121f;
+    --accent-soft: #2a2540;
+    --known: #7dd3b0;
+    --known-ink: #7dd3b0;
+    --known-soft: #1c2f2b;
+    --learn: #f2c26b;
+    --learn-ink: #f2c26b;
+    --learn-soft: #3b3222;
+    --success: #7dd3b0;
+    --danger: #ff8f8f;
+    --state-grammar-line: #e7a3c8;
+    --scrim: rgb(5 6 9 / 0.6);
+    --shadow-pop: 0 16px 40px -8px rgb(0 0 0 / 0.55), 0 2px 6px rgb(0 0 0 / 0.3);
+    --shadow-lift: 0 12px 28px -14px rgb(0 0 0 / 0.7);
   }
 }
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --bg: #181512;
-  --surface: #211d19;
-  --surface-2: #2a2520;
-  --ink: #ece6dc;
-  --ink-muted: #a39a8f;
-  --line: #342e28;
-  --accent: #6fb3ac;
-  --accent-warm: #e08a62;
-  --success: #7db88b;
-  --danger: #e08080;
-  --state-new-bg: #4a3a1f;
-  --state-new-line: #d9a441;
-  --state-learning-line: #8db89a;
-  --state-gloss-line: #6fb3ac;
-  --state-grammar-line: #b9a0cc;
-  --shadow-pop: 0 8px 24px rgb(0 0 0 / 0.4);
+  --bg: #14161c;
+  --surface: #1b1e26;
+  --surface-2: #222631;
+  --ink: #ebe8e1;
+  --ink-muted: #9b9aa3;
+  --line: #2c303b;
+  --line-strong: #3a3f4d;
+  --accent: #c9a7ff;
+  --accent-ink: #16121f;
+  --accent-soft: #2a2540;
+  --known: #7dd3b0;
+  --known-ink: #7dd3b0;
+  --known-soft: #1c2f2b;
+  --learn: #f2c26b;
+  --learn-ink: #f2c26b;
+  --learn-soft: #3b3222;
+  --success: #7dd3b0;
+  --danger: #ff8f8f;
+  --state-grammar-line: #e7a3c8;
+  --scrim: rgb(5 6 9 / 0.6);
+  --shadow-pop: 0 16px 40px -8px rgb(0 0 0 / 0.55), 0 2px 6px rgb(0 0 0 / 0.3);
+  --shadow-lift: 0 12px 28px -14px rgb(0 0 0 / 0.7);
 }
 
 /* ---------- Tailwind v4 theme bridge ---------- */
@@ -98,13 +137,16 @@
   --color-line: var(--line);
   --color-accent: var(--accent);
   --color-accent-warm: var(--accent-warm);
+  --color-known: var(--known);
+  --color-learn: var(--learn);
   --color-success: var(--success);
   --color-danger: var(--danger);
   --font-reading: var(--font-reading);
   --font-sans: var(--font-ui);
   --font-mono: var(--font-mono);
-  --radius-control: 6px;
-  --radius-card: 10px;
+  --font-display: var(--font-display);
+  --radius-control: 8px;
+  --radius-card: 14px;
 }
 
 /* ---------- Base ---------- */
@@ -126,9 +168,13 @@ h1,
 h2,
 h3,
 h4 {
-  font-family: var(--font-ui);
+  font-family: var(--font-display);
   font-weight: 600;
+  letter-spacing: -0.012em;
   margin: 0;
+}
+::selection {
+  background: color-mix(in srgb, var(--accent) 30%, transparent);
 }
 code,
 kbd,
@@ -159,8 +205,37 @@ kbd {
   *::before,
   *::after {
     animation-duration: 0.001ms !important;
+    animation-delay: 0ms !important;
     transition-duration: 0.001ms !important;
   }
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+}
+
+/* ---------- Motion primitives ---------- */
+@keyframes k-fill-x {
+  from {
+    transform: scaleX(0);
+  }
+}
+@keyframes k-pop {
+  0% {
+    transform: scale(0.88);
+    opacity: 0.4;
+  }
+  100% {
+    transform: none;
+    opacity: 1;
+  }
+}
+/* Route cross-fade (View Transitions API, when the browser has it). */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: var(--dur);
+  animation-timing-function: var(--ease-in-out);
 }
 
 /* ---------- Button ---------- */
@@ -178,8 +253,12 @@ kbd {
   cursor: pointer;
   text-decoration: none;
   transition:
-    background var(--dur) var(--ease),
-    border-color var(--dur) var(--ease);
+    background var(--dur-fast) var(--ease),
+    border-color var(--dur-fast) var(--ease),
+    transform var(--dur-fast) var(--ease);
+}
+.k-btn:active:not(:disabled) {
+  transform: translateY(1px);
 }
 .k-btn:disabled,
 .k-btn[aria-disabled="true"] {
@@ -188,7 +267,7 @@ kbd {
 }
 .k-btn--primary {
   background: var(--accent);
-  color: var(--bg);
+  color: var(--accent-ink);
 }
 .k-btn--primary:hover:not(:disabled) {
   background: color-mix(in srgb, var(--accent) 88%, var(--ink));
@@ -210,7 +289,7 @@ kbd {
 }
 .k-btn--danger {
   background: var(--danger);
-  color: var(--bg);
+  color: var(--surface);
 }
 .k-btn--danger:hover:not(:disabled) {
   background: color-mix(in srgb, var(--danger) 88%, var(--ink));
@@ -364,7 +443,9 @@ kbd {
 .k-tabs-trigger[data-state="active"] {
   background: var(--surface);
   color: var(--ink);
-  box-shadow: 0 0 0 1px var(--line);
+  box-shadow:
+    0 0 0 1px var(--line),
+    0 1px 2px rgb(0 0 0 / 0.06);
 }
 .k-tabs-content {
   margin-top: 16px;
@@ -374,8 +455,9 @@ kbd {
 .k-overlay {
   position: fixed;
   inset: 0;
-  background: rgb(20 16 12 / 0.4);
+  background: var(--scrim);
   z-index: 50;
+  animation: k-fade-in var(--dur) var(--ease);
 }
 .k-dialog {
   position: fixed;
@@ -385,9 +467,16 @@ kbd {
   width: min(480px, calc(100vw - 32px));
   padding: 24px;
   z-index: 51;
+  animation: k-dialog-in var(--dur) var(--ease);
+}
+@keyframes k-dialog-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, calc(-50% + 6px)) scale(0.98);
+  }
 }
 .k-dialog-title {
-  font-size: 19px;
+  font-size: 20px;
   margin-bottom: 4px;
 }
 .k-dialog-desc {
@@ -468,7 +557,8 @@ kbd {
 }
 .k-chip--accent {
   color: var(--accent);
-  border-color: color-mix(in srgb, var(--accent) 40%, var(--line));
+  background: var(--accent-soft);
+  border-color: color-mix(in srgb, var(--accent) 30%, var(--line));
 }
 .k-chip--warm {
   color: var(--accent-warm);
@@ -481,17 +571,53 @@ kbd {
 
 /* ---------- Word state / Anki status / lemma (docs/design/naming.md) ---------- */
 .k-state--known {
-  color: var(--accent);
-  border-color: color-mix(in srgb, var(--accent) 40%, var(--line));
+  color: var(--known-ink);
+  background: var(--known-soft);
+  border-color: color-mix(in srgb, var(--known) 35%, var(--line));
 }
 .k-state--learning {
-  color: var(--state-learning-line);
-  border-color: color-mix(in srgb, var(--state-learning-line) 45%, var(--line));
+  color: var(--known-ink);
+  border-color: color-mix(in srgb, var(--known) 45%, var(--line));
+  border-style: dotted;
 }
 .k-state--toLearn {
-  color: var(--state-new-line);
-  background: color-mix(in srgb, var(--state-new-bg) 55%, var(--surface));
-  border-color: color-mix(in srgb, var(--state-new-line) 40%, var(--line));
+  color: var(--learn-ink);
+  background: var(--learn-soft);
+  border-color: color-mix(in srgb, var(--learn) 40%, var(--line));
+}
+/* State-change pop: each state has its own animation name, so switching state restarts it.
+   Only in the inspector, where the learner changes a word; lists stay still. */
+.k-inspector .k-state--known {
+  animation: k-pop-known var(--dur) var(--ease-pop);
+}
+.k-inspector .k-state--learning {
+  animation: k-pop-learning var(--dur) var(--ease-pop);
+}
+.k-inspector .k-state--toLearn {
+  animation: k-pop-tolearn var(--dur) var(--ease-pop);
+}
+.k-inspector .k-state--ignored {
+  animation: k-pop-ignored var(--dur) var(--ease-pop);
+}
+@keyframes k-pop-known {
+  from {
+    transform: scale(0.88);
+  }
+}
+@keyframes k-pop-learning {
+  from {
+    transform: scale(0.88);
+  }
+}
+@keyframes k-pop-tolearn {
+  from {
+    transform: scale(0.88);
+  }
+}
+@keyframes k-pop-ignored {
+  from {
+    transform: scale(0.88);
+  }
 }
 .k-state--ignored {
   border-style: dashed;
@@ -537,8 +663,10 @@ kbd {
 .k-meter-fill {
   position: absolute;
   inset: 0 auto 0 0;
-  background: var(--accent);
+  background: var(--known);
   border-radius: 2px;
+  transform-origin: left;
+  animation: k-fill-x var(--dur-fill) var(--ease-out) both;
 }
 .k-meter-label {
   color: var(--ink-muted);
@@ -591,7 +719,9 @@ kbd {
   color: var(--ink-muted);
 }
 .k-empty-title {
-  font-size: 19px;
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 600;
   color: var(--ink);
 }
 .k-empty-actions {
@@ -676,9 +806,25 @@ kbd {
   background: var(--state-new-bg);
   border-bottom: 1px solid var(--state-new-line);
 }
+/* Words to learn: amber tint plus a 2px line that draws in once when the page appears. */
 .k-tok[data-label="introduce"] {
-  border-bottom-width: 2px;
-  background: color-mix(in srgb, var(--state-new-bg) 80%, var(--state-new-line));
+  position: relative;
+  border-bottom: 0;
+  box-shadow: none;
+  background: var(--state-new-bg);
+}
+.k-tok[data-label="introduce"]::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--state-new-line);
+  transform-origin: left;
+  animation: k-fill-x var(--dur-slow) var(--ease-out) both;
+  pointer-events: none;
 }
 .k-tok[data-label="learning"] {
   text-decoration: underline dotted var(--state-learning-line);
@@ -767,7 +913,7 @@ kbd {
   max-width: 32ch;
   overflow: hidden;
   text-overflow: ellipsis;
-  box-shadow: 0 8px 24px rgb(0 0 0 / 0.08);
+  box-shadow: var(--shadow-pop);
   opacity: 0;
   pointer-events: none;
   transition:
@@ -865,23 +1011,35 @@ kbd {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding: 16px;
+  padding: 18px;
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--radius-card);
-  transition: border-color var(--dur) var(--ease);
+  transition:
+    border-color var(--dur) var(--ease),
+    transform var(--dur) var(--ease),
+    box-shadow var(--dur) var(--ease);
 }
 .k-card:hover,
 .k-card:focus-within {
-  border-color: color-mix(in srgb, var(--accent) 45%, var(--line));
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--line));
+}
+/* Card lift on hover (pointer devices only). */
+@media (hover: hover) {
+  .k-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lift);
+  }
 }
 .k-card-title {
   all: unset;
   box-sizing: border-box;
   cursor: pointer;
+  font-family: var(--font-display);
   font-weight: 600;
-  font-size: 16px;
+  font-size: 17px;
   line-height: 1.3;
+  letter-spacing: -0.01em;
 }
 .k-card-title::after {
   content: "";
@@ -1136,7 +1294,7 @@ svg.lucide {
 .ex-progress-bar {
   height: 100%;
   background: var(--accent);
-  transition: width 200ms var(--ease);
+  transition: width var(--dur) var(--ease);
 }
 @media (max-width: 480px) {
   .ex-card {
@@ -1145,4 +1303,72 @@ svg.lucide {
   .ex-prompt {
     font-size: 20px;
   }
+}
+
+/* ---------- Logo and progress ring (Logo.tsx) ---------- */
+.k-logo {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--k-logo-size, 24px) * 0.34);
+  color: var(--ink);
+  line-height: 1;
+}
+.k-logo-word {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: calc(var(--k-logo-size, 24px) * 0.74);
+  letter-spacing: -0.02em;
+  /* optical: the x-height sits on the ring's centre line */
+  transform: translateY(-0.04em);
+}
+.k-logo-mark {
+  flex: none;
+  display: block;
+}
+.k-logo-ring {
+  stroke: var(--accent);
+}
+.k-logo-k {
+  stroke: currentColor;
+}
+.k-logo-track {
+  stroke: color-mix(in srgb, var(--accent) 16%, transparent);
+}
+.k-logo-mark--live .k-logo-ring,
+.k-ring-value {
+  stroke-dasharray: 1 2;
+  animation: k-ring-draw var(--dur-fill) var(--ease-out) both;
+}
+@keyframes k-ring-draw {
+  from {
+    stroke-dashoffset: 1;
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+}
+.k-ring {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+}
+.k-ring svg {
+  position: absolute;
+  inset: 0;
+}
+.k-ring-track {
+  stroke: var(--line);
+}
+.k-ring--known .k-ring-value {
+  stroke: var(--known);
+}
+.k-ring--accent .k-ring-value {
+  stroke: var(--accent);
+}
+.k-ring-centre {
+  position: relative;
+  text-align: center;
+  line-height: 1.1;
 }
