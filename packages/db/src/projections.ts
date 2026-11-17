@@ -152,9 +152,12 @@ export async function applyEvent(driver: SqlDriver, ctx: EventContext): Promise<
       // Progress for a deleted/unknown text is dropped (keeps replays free of orphans).
       const rows = await driver.exec("SELECT 1 AS x FROM texts WHERE id = ?", [e.textId]);
       if (rows.length === 0) return;
+      // The event records the segment that was just finished; the projection stores the NEXT
+      // segment to read (finished + 1), so resuming never re-reads a finished segment. A text
+      // is finished when last_segment >= its segment count (the UI clamps to the last one).
       await driver.exec(
         "INSERT OR REPLACE INTO reading_progress (text_id, last_segment, updated) VALUES (?,?,?)",
-        [e.textId, e.segment, ctx.createdAt],
+        [e.textId, e.segment + 1, ctx.createdAt],
       );
       return;
     }

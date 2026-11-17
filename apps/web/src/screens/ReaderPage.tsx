@@ -2,7 +2,13 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tansta
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { type HelpLevel, type WordState, glossTargets, helpLevel } from "@app/core";
+import {
+  type HelpLevel,
+  type SegmentPlan,
+  type WordState,
+  glossTargets,
+  helpLevel,
+} from "@app/core";
 import {
   Button,
   EmptyState,
@@ -11,12 +17,13 @@ import {
   Skeleton,
   Slider,
   WordInspector,
+  matchAnswer,
   useToast,
 } from "@app/ui";
 import { useServices } from "../services/context.js";
+import type { InspectorEntry, ReadingView } from "../services/types.js";
+import { writeLastText } from "../lastText.js";
 import { usePageHeader, useShell } from "../shell/ShellContext.js";
-
-const normalize = (s: string) => s.trim().toLocaleLowerCase();
 
 const HELP_LABEL: Record<HelpLevel, string> = {
   off: "Off",
@@ -29,9 +36,38 @@ const NEW_WORD_OPTIONS = [
   ...[0, 1, 2, 3, 4, 5, 6, 8].map((n) => ({ value: String(n), label: `${n} per page` })),
 ];
 
-/** Reader page: one segment at a time, with the word inspector in the shell's right panel. */
-export function ReaderPage() {
+/** Elements whose own keyboard handling the reader's global shortcuts must not steal. */
+const WIDGET_SELECTOR = [
+  "input",
+  "textarea",
+  "select",
+  "button",
+  "[data-tok]",
+  "[role=dialog]",
+  "[role=slider]",
+  "[role=tab]",
+  "[role=listbox]",
+  "[role=option]",
+  "[role=combobox]",
+].join(",");
+/** Overlays that own Esc (closing them must not also clear the selection). */
+const OVERLAY_SELECTOR = "[role=dialog],[role=listbox],[role=option],[role=combobox],[role=menu]";
+
+const errorMessage = (e: unknown): string =>
+  e instanceof Error && e.message ? e.message : "Something went wrong. Try again.";
+
+/**
+ * Route component. Keying the page on the text id makes TanStack's reuse of the mounted
+ * component (only `$textId` changed) start from a clean slate: segment, selection, answers
+ * and counters of the previous text never carry over.
+ */
+export function ReaderRoute() {
   const { textId } = useParams({ from: "/read/$textId" });
+  return <ReaderPage key={textId} textId={textId} />;
+}
+
+/** Reader page: one segment at a time, with the word inspector in the shell's right panel. */
+export function ReaderPage({ textId }: { textId: string }) {
   const services = useServices();
   const qc = useQueryClient();
   const toast = useToast();
@@ -46,17 +82,43 @@ export function ReaderPage() {
   const [segment, setSegment] = useState<number | null>(null);
   const [selected, setSelected] = useState<number | null>(null);
   const [revealed, setRevealed] = useState<ReadonlySet<number>>(new Set());
-  // Per-segment outcome counters; refs because they never drive rendering.
-  // `credit`: 1 per cloze recalled unaided, 0.5 with the letter hint, 0 if wrong or revealed.
-  const stats = useRef({ lookups: 0, answered: 0, credit: 0 });
+  /** Credit per answered cloze token: 1 unaided, 0.5 with the letter hint, 0 wrong or revealed. */
+  const [credits, setCredits] = useState<ReadonlyMap<number, number>>(new Map());
+  const lookups = useRef(0);
+  /** Segments finished in this visit; going back and forward again must not re-submit them. */
+  const finished = useRef(new Set<number>());
   const [finishing, setFinishing] = useState(false);
+  /** Bumped when the plan is deliberately recomputed (new-word budget changed). */
+  const [epoch, setEpoch] = useState(0);
 
   const data = reading.data;
   const plans = data?.plans;
-  // Resume where the learner left off, clamped to the available segments.
-  const current =
-    segment ?? Math.min(data?.text.lastSegment ?? 0, Math.max(0, (plans?.length ?? 1) - 1));
-  const plan = plans?.[current];
+  // Wait for a settled (not refetching) result before starting, so a stale cached plan or
+  // resume point is never used.
+  const settled = data != null && !reading.isFetching;
+  // Resume at the next segment to read, clamped to the available segments.
+  const resume = Math.min(data?.text.lastSegment ?? 0, Math.max(0, (plans?.length ?? 1) - 1));
+  if (segment === null && settled) setSegment(resume);
+  const current = segment ?? resume;
+
+  // The plan of the current segment is frozen when the segment starts: answers are keyed by
+  // token index, so word actions or a window-focus refetch must not move clozes or amber
+  // words under the learner. It is refreshed on segment change or when `epoch` changes.
+  const livePlan = plans?.[current];
+  const [frozen, setFrozen] = useState<{
+    segment: number;
+    epoch: number;
+    plan: SegmentPlan;
+  } | null>(null);
+  if (
+    livePlan &&
+    segment !== null &&
+    (frozen === null || frozen.segment !== current || frozen.epoch !== epoch)
+  ) {
+    setFrozen({ segment: current, epoch, plan: livePlan });
+  }
+  const plan =
+    frozen && frozen.segment === current && frozen.epoch === epoch ? frozen.plan : undefined;
 
   usePageHeader(data?.text.title ?? "Reading", {
     coverage: plan?.coverage ?? null,
@@ -69,24 +131,28 @@ export function ReaderPage() {
     setInspectorAvailable(true);
     return () => setInspectorAvailable(false);
   }, [setInspectorAvailable]);
+  useEffect(() => writeLastText(textId), [textId]);
 
   const resetSegmentState = useCallback(() => {
     setSelected(null);
     setRevealed(new Set());
-    stats.current = { lookups: 0, answered: 0, credit: 0 };
+    setCredits(new Map());
+    lookups.current = 0;
   }, []);
 
-  // Esc closes the inspector; j/k from nowhere moves focus into the text.
+  // Esc closes the inspector; j/k/arrows from nowhere move focus into the text. Keys that
+  // belong to a control (slider, tabs, select, buttons, dialogs) are left alone.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (e.defaultPrevented) return;
+      const t = e.target instanceof Element ? e.target : null;
       if (e.key === "Escape") {
+        if (t?.closest(OVERLAY_SELECTOR)) return;
         setSelected(null);
         setInspectorOpen(false);
         return;
       }
-      const t = e.target as HTMLElement | null;
-      const typing = t?.closest("input, textarea, select, [data-tok], [role=dialog]");
-      if (typing || e.metaKey || e.ctrlKey || e.altKey) return;
+      if (t?.closest(WIDGET_SELECTOR) || e.metaKey || e.ctrlKey || e.altKey) return;
       if (["j", "k", "ArrowRight", "ArrowLeft"].includes(e.key)) {
         const el = document.querySelector<HTMLElement>('[data-tok][tabindex="0"]');
         if (el) {
@@ -99,12 +165,16 @@ export function ReaderPage() {
     return () => window.removeEventListener("keydown", onKey);
   }, [setInspectorOpen]);
 
+  // The query data always belongs to the current key; keepPreviousData only avoids a flash, so
+  // placeholder data (the previously selected word) is treated as "still loading".
   const inspect = useQuery({
     queryKey: ["inspect", textId, selected],
     queryFn: () => services.inspect(textId, selected as number),
     enabled: selected !== null,
     placeholderData: keepPreviousData,
   });
+  const entry: InspectorEntry | null =
+    selected !== null && !inspect.isPlaceholderData ? (inspect.data ?? null) : null;
 
   // Reader settings: the help dial (which words get a translation) and the new-word budget.
   const settingsQ = useQuery({ queryKey: ["settings"], queryFn: () => services.getSettings() });
@@ -116,23 +186,23 @@ export function ReaderPage() {
     onSuccess: async (_r, patch) => {
       await qc.invalidateQueries({ queryKey: ["settings"] });
       if ("newWords" in patch) {
-        await Promise.all(["reading", "texts"].map((k) => qc.invalidateQueries({ queryKey: [k] })));
+        // A new budget re-plans the text: refetch, then start the segment again from the
+        // fresh plan (the old answers were keyed to the old blanks).
+        await qc.invalidateQueries({ queryKey: ["reading", textId] });
+        void qc.invalidateQueries({ queryKey: ["texts"], refetchType: "none" });
+        resetSegmentState();
+        setEpoch((n) => n + 1);
       }
     },
+    onError: (e) => toast("Could not save the reading setting", errorMessage(e)),
+    onSettled: () => setHelpDraft(null),
   });
-  // Persist the dial shortly after the user stops dragging.
-  useEffect(() => {
-    if (helpDraft === null) return;
-    const id = setTimeout(() => saveSettings.mutate({ help: helpDraft }), 400);
-    return () => clearTimeout(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [helpDraft]);
 
   // Translations by mode: Read shows none (clean text; click a word for its meaning), Cloze
   // only the blanks' meanings (the hint), Gloss whatever the dial selects.
   const glossIdx = useMemo(() => {
     if (!plan) return [];
-    // Detached particles ("op" in "bel … op") share their verb's translation: show it once.
+    // Detached particles ("op" in "bel ... op") share their verb's translation: show it once.
     if (mode === "gloss")
       return glossTargets(
         plan.tokens.filter((p) => data?.tokens[p.i]?.particle_of == null),
@@ -161,48 +231,49 @@ export function ReaderPage() {
     setInspectorOpen(true);
     const key = plan?.tokens.find((t) => t.i === i)?.key;
     if (key) {
-      stats.current.lookups += 1;
-      void services.recordLookup(textId, key);
+      lookups.current += 1;
+      // Fire and forget: a failed lookup count is not worth interrupting the reading.
+      services.recordLookup(textId, key).catch((e: unknown) => {
+        console.warn("Could not record the lookup:", e);
+      });
     }
   };
 
   const onClozeAnswer = (i: number, answer: string, hints: number) => {
     const tok = data?.tokens[i];
     if (!tok) return;
-    stats.current.answered += 1;
-    if (hints < 2 && normalize(answer) === normalize(tok.text)) {
-      stats.current.credit += hints === 1 ? 0.5 : 1;
-    }
+    const correct = hints < 2 && matchAnswer(answer, tok.text) !== "incorrect";
+    setCredits((prev) => new Map(prev).set(i, correct ? (hints === 1 ? 0.5 : 1) : 0));
   };
 
   const refreshWords = async () => {
-    await Promise.all(
-      ["reading", "inspect", "texts", "words", "learner"].map((k) =>
-        qc.invalidateQueries({ queryKey: [k] }),
-      ),
-    );
+    // Active views refetch now; the library, word list and summary only when next shown.
+    await Promise.all([
+      qc.invalidateQueries({ queryKey: ["reading", textId] }),
+      qc.invalidateQueries({ queryKey: ["inspect"] }),
+    ]);
+    for (const k of ["texts", "words", "learner"]) {
+      void qc.invalidateQueries({ queryKey: [k], refetchType: "none" });
+    }
   };
 
+  // The mutations take the entry they act on as a variable, never "whatever is loaded now".
   const addToAnki = useMutation({
-    mutationFn: () => {
-      if (!inspect.data) throw new Error("Nothing selected");
-      return services.addToAnki(inspect.data);
-    },
+    mutationFn: (e: InspectorEntry) => services.addToAnki(e),
     onSuccess: async () => {
       toast("Added to Anki");
       await refreshWords();
     },
-    onError: () => toast("Could not add to Anki", "Check the connection in Settings."),
+    onError: (e) => toast("Could not add to Anki", errorMessage(e)),
   });
   const setState = useMutation({
-    mutationFn: (state: WordState) => {
-      if (!inspect.data) throw new Error("Nothing selected");
-      return services.setWordState(inspect.data.key, state);
-    },
-    onSuccess: async (_r, state) => {
+    mutationFn: ({ e, state }: { e: InspectorEntry; state: WordState }) =>
+      services.setWordState(e.key, state),
+    onSuccess: async (_r, { state }) => {
       toast(state === "ignored" ? "Word ignored" : "Marked as known");
       await refreshWords();
     },
+    onError: (e) => toast("Could not update the word", errorMessage(e)),
   });
 
   const isLast = plans ? current >= plans.length - 1 : true;
@@ -211,31 +282,74 @@ export function ReaderPage() {
     setSegment(n);
   };
 
+  /** Move on after a segment; leaves the page after the last one. */
+  const advance = async () => {
+    if (isLast) {
+      toast("Text finished", "Its new words are listed under Words.");
+      await navigate({ to: "/library" });
+    } else {
+      goTo(current + 1);
+    }
+  };
+
   const finish = async () => {
-    if (!plan) return;
+    if (!plan || !data) return;
+    // A segment finished earlier (this visit, or before the resume point) is just navigated:
+    // submitting it again would send a segment with no stats and read as an "easy" signal.
+    if (finished.current.has(current) || current < data.text.lastSegment) {
+      await advance();
+      return;
+    }
     setFinishing(true);
     try {
       const words = plan.tokens.filter(
         (t) => t.label !== "nonword" && t.label !== "ignored",
       ).length;
-      const { lookups, answered, credit } = stats.current;
+      // Blanks shown in Cloze mode count as answered even if left empty or revealed (0 credit).
+      const tested = Math.max(credits.size, mode === "cloze" ? plan.clozes.length : 0);
+      const credit = [...credits.values()].reduce((a, b) => a + b, 0);
       await services.finishSegment(textId, current, {
-        clozeAccuracy: answered > 0 ? credit / answered : null,
-        lookupsPer100: words > 0 ? (lookups / words) * 100 : 0,
+        clozeAccuracy: tested > 0 ? credit / tested : null,
+        lookupsPer100: words > 0 ? (lookups.current / words) * 100 : 0,
       });
-      await qc.invalidateQueries({ queryKey: ["texts"] });
-      if (isLast) {
-        toast("Text finished", "Its new words are listed under Words.");
-        await navigate({ to: "/library" });
-      } else {
-        goTo(current + 1);
-      }
+      finished.current.add(current);
+      // Keep the cached resume point current so reopening the text does not use a stale one.
+      qc.setQueryData<ReadingView | null>(["reading", textId], (d) =>
+        d
+          ? { ...d, text: { ...d.text, lastSegment: Math.max(d.text.lastSegment, current + 1) } }
+          : d,
+      );
+      void qc.invalidateQueries({ queryKey: ["texts"], refetchType: "none" });
+      await advance();
+    } catch (e) {
+      toast("Could not save your progress", errorMessage(e));
     } finally {
       setFinishing(false);
     }
   };
 
-  if (reading.isPending) {
+  // A failed background refetch keeps the text on screen; only a failed first load is an error page.
+  if (reading.isError && !data) {
+    return (
+      <div className="page">
+        <EmptyState
+          title="This text could not be opened"
+          description={errorMessage(reading.error)}
+          action={
+            <div className="row">
+              <Button variant="primary" onClick={() => void reading.refetch()}>
+                Retry
+              </Button>
+              <Link to="/library" className="k-btn">
+                Back to the library
+              </Link>
+            </div>
+          }
+        />
+      </div>
+    );
+  }
+  if (reading.isPending || (data && !plan && plans && plans.length > 0)) {
     return (
       <div className="reader-page">
         <div style={{ maxWidth: "66ch", margin: "0 auto" }} className="stack">
@@ -250,8 +364,8 @@ export function ReaderPage() {
     return (
       <div className="page">
         <EmptyState
-          title="This text was not found"
-          description="It may have been deleted."
+          title={data ? "There is nothing to read here yet" : "This text was not found"}
+          description={data ? "The text has no readable words." : "It may have been deleted."}
           action={
             <Link to="/library" className="k-btn k-btn--primary">
               Back to the library
@@ -261,6 +375,8 @@ export function ReaderPage() {
       </div>
     );
   }
+
+  const allAnswered = plan.clozes.every((i) => credits.has(i) || revealed.has(i));
 
   return (
     <div className="reader-page">
@@ -273,6 +389,7 @@ export function ReaderPage() {
                 aria-label="Translations"
                 value={Math.round(help * 100)}
                 onValueChange={(v) => setHelpDraft(v / 100)}
+                onValueCommit={(v) => saveSettings.mutate({ help: v / 100 })}
               />
             </div>
             <span className="reader-tool-value">{HELP_LABEL[helpLevel(help)]}</span>
@@ -290,7 +407,7 @@ export function ReaderPage() {
         </div>
       </div>
       <Reader
-        key={current}
+        key={`${current}-${epoch}`}
         text={data.text.content}
         tokens={data.tokens}
         plans={[plan]}
@@ -306,7 +423,7 @@ export function ReaderPage() {
           Segment {current + 1} of {plans?.length}
         </span>
         <div className="row">
-          {mode === "cloze" && plan.clozes.length > 0 ? (
+          {mode === "cloze" && plan.clozes.length > 0 && !allAnswered ? (
             <Button variant="ghost" onClick={() => setRevealed(new Set(plan.clozes))}>
               Show answers
             </Button>
@@ -320,10 +437,13 @@ export function ReaderPage() {
       {inspectorEl
         ? createPortal(
             <WordInspector
-              entry={selected === null ? null : (inspect.data ?? null)}
+              entry={entry}
+              loading={selected !== null && !entry && !inspect.isError}
+              error={selected !== null && inspect.isError ? errorMessage(inspect.error) : null}
+              onRetry={() => void inspect.refetch()}
               busy={addToAnki.isPending || setState.isPending}
-              onAddToAnki={() => addToAnki.mutate()}
-              onSetState={(s) => setState.mutate(s)}
+              onAddToAnki={() => entry && addToAnki.mutate(entry)}
+              onSetState={(state) => entry && setState.mutate({ e: entry, state })}
             />,
             inspectorEl,
           )

@@ -11,8 +11,34 @@ initTheme();
 /**
  * Real services by default; `?demo` (or a failure to open the local database) uses mock data.
  */
+const DEMO_KEY = "kenning-demo";
+
+/**
+ * Demo mode is requested with `?demo` and remembered for the browser session, so in-app
+ * navigation (which drops the query string) and reloads stay in demo.
+ */
+function isDemo(): boolean {
+  const asked = new URLSearchParams(location.search).has("demo");
+  try {
+    if (asked) sessionStorage.setItem(DEMO_KEY, "1");
+    return asked || sessionStorage.getItem(DEMO_KEY) === "1";
+  } catch {
+    return asked;
+  }
+}
+
+/** Leave demo mode: forget the flag and reload without `?demo`, which opens the real data. */
+function leaveDemo(): void {
+  try {
+    sessionStorage.removeItem(DEMO_KEY);
+  } catch {
+    /* nothing to forget */
+  }
+  location.assign(location.pathname);
+}
+
 async function createServices(): Promise<{ services: AppServices; notice?: string }> {
-  if (new URLSearchParams(location.search).has("demo")) return { services: createMockServices() };
+  if (isDemo()) return { services: createMockServices() };
   try {
     const [{ createRepository }, { createWebDriver }, { createLiveServices }] = await Promise.all([
       import("@app/db"),
@@ -52,7 +78,7 @@ void createServices().then(({ services, notice }) => {
   if (notice) console.warn(notice);
   createRoot(root).render(
     <StrictMode>
-      <App services={services} />
+      <App services={services} notice={notice} demo={isDemo()} onLeaveDemo={leaveDemo} />
     </StrictMode>,
   );
 });

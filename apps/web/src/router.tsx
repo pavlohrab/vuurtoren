@@ -32,7 +32,7 @@ function screen<P extends string>(
 }
 
 const libraryRoute = screen("/library", () => import("./screens/Library.js"), "Library");
-const readRoute = screen("/read/$textId", () => import("./screens/ReaderPage.js"), "ReaderPage");
+const readRoute = screen("/read/$textId", () => import("./screens/ReaderPage.js"), "ReaderRoute");
 const importRoute = screen("/import", () => import("./screens/Import.js"), "ImportScreen");
 const wordsRoute = screen("/words", () => import("./screens/Words.js"), "Words");
 const practiceRoute = screen("/practice", () => import("./screens/Placeholders.js"), "Practice");

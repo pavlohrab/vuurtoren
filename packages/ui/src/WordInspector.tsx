@@ -9,6 +9,11 @@ export interface WordInspectorProps {
   onSetState?: (state: WordState) => void;
   /** Disables the action buttons while a request is in flight. */
   busy?: boolean;
+  /** The entry is being fetched (e.g. a different word was just selected). */
+  loading?: boolean;
+  /** Message to show when the entry could not be loaded. */
+  error?: string | null;
+  onRetry?: () => void;
 }
 
 const STATE_LABEL: Record<WordState, string> = {
@@ -25,7 +30,25 @@ export function WordInspector({
   onAddToAnki,
   onSetState,
   busy = false,
+  loading = false,
+  error = null,
+  onRetry,
 }: WordInspectorProps) {
+  if (!entry && error) {
+    return (
+      <div className="k-inspector" role="alert">
+        <p style={{ margin: 0, color: "var(--danger)" }}>This word could not be loaded. {error}</p>
+        {onRetry ? <Button onClick={onRetry}>Try again</Button> : null}
+      </div>
+    );
+  }
+  if (!entry && loading) {
+    return (
+      <p role="status" style={{ color: "var(--ink-muted)", margin: 0 }}>
+        Loading the word
+      </p>
+    );
+  }
   if (!entry) {
     return (
       <p style={{ color: "var(--ink-muted)", margin: 0 }}>

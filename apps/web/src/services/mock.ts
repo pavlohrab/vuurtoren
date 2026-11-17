@@ -275,6 +275,10 @@ export function createMockServices(options: { latencyMs?: number } = {}): AppSer
     ranges.push([from, text.content.length]);
     return ranges.map(([charStart, charEnd], index) => {
       const inRange = tokens.filter((t) => t.start >= charStart && t.end <= charEnd);
+      // The new-word budget: only the first N distinct words to introduce keep their amber
+      // treatment on this page; the rest fall back to a plain translated word.
+      const budget = settings.newWords === "auto" ? staircase.newWordBudget : settings.newWords;
+      const introduced = new Set<string>();
       const planned: PlannedToken[] = inRange.map((t) => {
         const e = t.is_word ? entryFor(t, tokens) : undefined;
         if (!e || t.is_num) {
@@ -285,9 +289,14 @@ export function createMockServices(options: { latencyMs?: number } = {}): AppSer
             pKnown: t.is_word ? 1 : 0,
           };
         }
+        let label = labelOf(e);
+        if (label === "introduce") {
+          if (introduced.has(e.key) || introduced.size < budget) introduced.add(e.key);
+          else label = "gloss";
+        }
         return {
           i: t.i,
-          label: labelOf(e),
+          label,
           key: e.key,
           pKnown: e.state === "ignored" ? 1 : e.pKnown,
         };
@@ -431,8 +440,10 @@ export function createMockServices(options: { latencyMs?: number } = {}): AppSer
       await wait();
       const t = texts.get(textId);
       const tokens = t?.tokens ?? [];
-      const tok = tokens[tokenIndex];
-      if (!t || !tok) throw new Error("Unknown token");
+      const clicked = tokens[tokenIndex];
+      if (!t || !clicked) throw new Error("Unknown token");
+      // A detached particle stands for its verb, like in the live services.
+      const tok = clicked.particle_of != null ? (tokens[clicked.particle_of] ?? clicked) : clicked;
       const e = entryFor(tok, tokens) ?? lexicon.get(ensure(tok.text).key);
       if (!e) throw new Error("Unknown word");
       const sentToks = tokens.filter((x) => x.sent === tok.sent);
@@ -441,7 +452,7 @@ export function createMockServices(options: { latencyMs?: number } = {}): AppSer
       const surface = t.content.slice(tok.start, tok.end);
       return {
         textId,
-        tokenIndex,
+        tokenIndex: tok.i,
         surface,
         lemma: e.key,
         key: e.key,
@@ -485,6 +496,7 @@ export function createMockServices(options: { latencyMs?: number } = {}): AppSer
 
     async finishSegment(textId, segment, outcome) {
       await wait();
+      // Same semantic as the database projection: the NEXT segment to read.
       lastSegments.set(textId, segment + 1);
       const struggling = outcome.lookupsPer100 > 8 || (outcome.clozeAccuracy ?? 1) < 0.7;
       const target = staircase.targetCoverage + (struggling ? 0.005 : -0.005);

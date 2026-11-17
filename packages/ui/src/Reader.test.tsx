@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import { Reader, learningOpacity } from "./Reader.js";
+import { Reader, learningOpacity, matchAnswer } from "./Reader.js";
 import { fixture } from "./test-fixtures.js";
 
 const TEXT = "Ik bel je morgen op.\n\nHet huis is groot.";
@@ -105,5 +105,32 @@ describe("Reader", () => {
     render(<Reader {...f} revealed={new Set([1])} />);
     expect(screen.queryByLabelText(/Fill in the missing word/)).toBeNull();
     expect(screen.getByText("bel")).toBeInTheDocument();
+  });
+
+  it("keeps the particle of a cloze verb visible as a normal word", () => {
+    const f = fixture(TEXT, { 1: "cloze" }, { 4: 1 });
+    render(<Reader {...f} />);
+    // One blank for the verb only; the particle is plain text with its own (known) label.
+    expect(screen.getAllByLabelText(/Fill in the missing word/)).toHaveLength(1);
+    const particle = screen.getByText("op");
+    expect(particle).toHaveAttribute("data-label", "known");
+    expect(particle).toHaveClass("k-tok--particle");
+  });
+
+  it("moves focus to the next blank after Enter, then to the answered word", async () => {
+    const f = fixture(TEXT, { 1: "cloze", 3: "cloze" });
+    render(<Reader {...f} />);
+    const [first, second] = screen.getAllByLabelText(/Fill in the missing word/);
+    await userEvent.type(first!, "bel{Enter}");
+    expect(second).toHaveFocus();
+    await userEvent.type(second!, "morgen{Enter}");
+    expect(screen.getByText("morgen")).toHaveFocus();
+  });
+
+  it("accepts missing diacritics and Unicode normalisation", () => {
+    expect(matchAnswer("Bel", "bel")).toBe("exact");
+    expect(matchAnswer("een", "\u00e9\u00e9n")).toBe("accents");
+    expect(matchAnswer("e\u0301e\u0301n", "\u00e9\u00e9n")).toBe("exact");
+    expect(matchAnswer("bal", "bel")).toBe("incorrect");
   });
 });
