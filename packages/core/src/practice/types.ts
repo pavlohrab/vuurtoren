@@ -156,6 +156,8 @@ export interface ItemState {
   /** 0 New, 1 Learning, 2 Review, 3 Relearning (ts-fsrs State). */
   state: 0 | 1 | 2 | 3;
   lastReview?: number;
+  /** ts-fsrs (re)learning step index; needed to graduate cards from short-term steps. Added by the engine. */
+  learningSteps?: number;
 }
 
 export interface SessionOptions {

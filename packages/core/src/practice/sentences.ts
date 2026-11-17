@@ -1,0 +1,44 @@
+import type { ExampleSentence } from "./types.js";
+
+const SOURCE_RANK: Record<ExampleSentence["source"], number> = { anki: 0, text: 1, tatoeba: 2 };
+
+/** Number of whitespace-separated words. */
+export function wordCount(text: string): number {
+  return text.split(/\s+/).filter(Boolean).length;
+}
+
+/** True when `target` is a non-empty, in-range span of `text`. */
+function validSpan(s: ExampleSentence): boolean {
+  const [a, b] = s.target;
+  return Number.isInteger(a) && Number.isInteger(b) && a >= 0 && a < b && b <= s.text.length;
+}
+
+/**
+ * Rank usable sentences, best first: a sentence whose length is within [minWords, maxWords]
+ * always beats one outside it; ties break by source (anki, text, tatoeba) and then input order.
+ */
+export function rankSentences(
+  sentences: readonly ExampleSentence[],
+  minWords = 5,
+  maxWords = 15,
+): ExampleSentence[] {
+  const score = (s: ExampleSentence) => {
+    const n = wordCount(s.text);
+    return (n >= minWords && n <= maxWords ? 0 : 3) + SOURCE_RANK[s.source];
+  };
+  return sentences
+    .filter(validSpan)
+    .map((s, i) => ({ s, i }))
+    .sort((x, y) => score(x.s) - score(y.s) || x.i - y.i)
+    .map((x) => x.s);
+}
+
+/** Best sentence for cloze-style exercises, if any. */
+export function bestSentence(sentences: readonly ExampleSentence[]): ExampleSentence | undefined {
+  return rankSentences(sentences)[0];
+}
+
+/** The text covered by the sentence's target span. */
+export function targetSurface(s: ExampleSentence): string {
+  return s.text.slice(s.target[0], s.target[1]);
+}
