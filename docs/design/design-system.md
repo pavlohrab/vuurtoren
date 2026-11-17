@@ -160,3 +160,12 @@ Domain components:
 ## Voice & copy
 
 Plain, precise and kind. "You know 96% of this text." No exclamation marks or cheerleading.
+
+## Palette update — "Lamp amber" (2026-11-18)
+
+The violet Night lamp accent was replaced by a warmer, dimmer palette at the user's request:
+honey-amber accent on warm charcoal (dark) and warm, slightly dimmed paper (light); known words in
+sage green, words to learn in apricot (kept distinct from the amber accent). Text and accents are
+deliberately softer than pure white/black. All text pairs stay at or above WCAG AA 4.5:1 (ink ≈ 11.8:1,
+muted ≈ 4.6–5.6:1, accent links ≈ 4.6–7.3:1). Tokens live in `packages/ui/src/styles.css`; the logo and
+favicons were regenerated in the same colours. The older violet values above are superseded.
