@@ -43,6 +43,14 @@ export const DEMO_ANKI_DECKS = [
   "Opmaat::Thema 02 - Wonen",
 ];
 
+const HINT: Record<string, string> = {
+  default: "Default",
+  reading: "Reading",
+  converse: "Converse",
+  ai: "AI stories",
+  mcp: "MCP",
+};
+
 export function createMockProfile(wait: () => Promise<void>) {
   let profile: LanguageProfile = defaultProfile(
     "nl",
@@ -81,7 +89,7 @@ export function createMockProfile(wait: () => Promise<void>) {
           ...Object.entries(profile.destinations).map(([k, v]) => ({
             deck: v,
             group: "kenning" as const,
-            hint: k === "default" ? "Default" : k[0]!.toUpperCase() + k.slice(1),
+            hint: HINT[k] ?? k,
           })),
           ...(source === "course" ? [{ deck, group: "course" as const, hint: "This unit" }] : []),
           ...DEMO_ANKI_DECKS.map((d) => ({ deck: d, group: "anki" as const })),
