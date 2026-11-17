@@ -9,6 +9,10 @@
 
 Dutch first, Ukrainian next. Status: **M1 done** (card ↔ text matching at 99.4% on a real 7k-note Dutch collection). See [docs/README.md](docs/README.md) and the [roadmap](docs/roadmap.md).
 
+## How it works (no AI needed)
+
+Your Anki decks are the record of what you know. Kenning finds your Dutch decks and fields, turns each card's interval (SM-2) or stability (FSRS) into a recall probability, and analyses texts with spaCy. Rules for separable verbs, compounds and lemma choice sit on top of spaCy, and an offline Wiktionary dictionary supplies meanings. From this the reader works out, per page, which words to translate, which to introduce and which to blank as clozes. Practice schedules each word and skill with FSRS. Grammar detectors are rule-based. Kenning writes to Anki only when you click. None of this needs an AI provider. [docs/algorithms.md](docs/algorithms.md) explains every algorithm and its thresholds.
+
 ## Layout
 
 ```
