@@ -409,7 +409,9 @@ def _utf16_offsets(text: str) -> list[int] | None:
     return [0, *accumulate(2 if ord(c) > 0xFFFF else 1 for c in text)]
 
 
-def analyze_doc(doc: Doc) -> TextAnalysis:
+def analyze_doc(doc: Doc, original: str | None = None) -> TextAnalysis:
+    """``original``: the text before quote normalisation; token ``text`` is sliced from it."""
+    src = original if original is not None and len(original) == len(doc.text) else doc.text
     lemmas, alts, particle_of = _lemmas(doc)
     to16 = _utf16_offsets(doc.text)
 
@@ -432,7 +434,7 @@ def analyze_doc(doc: Doc) -> TextAnalysis:
     tokens = [
         Token(
             i=t.i,
-            text=t.text,
+            text=src[t.idx : t.idx + len(t.text)],
             lemma=lemmas[t.i],
             alt_lemmas=alts[t.i],
             pos=t.pos_,
@@ -457,7 +459,13 @@ def analyze_texts(lang: str, texts: list[str]) -> list[TextAnalysis]:
     """Analyse texts; raises ``ServiceError(413)`` if one exceeds spaCy's ``max_length`` (E088)."""
     nlp = get_nlp(lang)
     try:
-        return [analyze_doc(doc) for doc in nlp.pipe(texts, batch_size=64)]
+        # Curly apostrophes -> straight before parsing, so clitics lemmatise ('t -> het).
+        # One character for one character: offsets are unchanged.
+        clean = [t.translate(_QUOTES) for t in texts]
+        return [
+            analyze_doc(doc, orig)
+            for doc, orig in zip(nlp.pipe(clean, batch_size=64), texts, strict=True)
+        ]
     except ValueError as e:
         if "E088" in str(e):
             raise ServiceError(
@@ -495,6 +503,10 @@ def _split_slashes(part: str) -> list[str]:
     return out
 
 
+_ENUMERATOR = re.compile(r"^\s*(?:\d{1,3}[.)]|[-•*])\s+")
+_ARTICLE_PAIR = re.compile(r"^\s*(de|het)\s*(?:/|,|\bof\b)\s*(?:de|het)\s+", re.IGNORECASE)
+
+
 def split_term(raw: str) -> tuple[list[str], bool]:
     """Split a vocabulary field into headword alternatives; detect a ``(zich)`` marker.
 
@@ -502,13 +514,18 @@ def split_term(raw: str) -> tuple[list[str], bool]:
     ``"fietsen (fietste, gefietst)"`` -> (["fietsen"], False); ``"en/of"`` -> (["en/of"], False).
     """
     s = raw.translate(_QUOTES)
+    s = _ENUMERATOR.sub("", s)  # "1) lopen", "- lopen"
+    s = _ARTICLE_PAIR.sub(r"\1 ", s)  # "de/het deel", "de, het deel" -> "de deel"
     reflexive = bool(_REFLEXIVE_MARK.search(s))
     s = _BRACKETS.sub(" ", s)
     s = s.replace("…", " ").replace("...", " ")
     s = _GLOSS_SEP.split(s, maxsplit=1)[0]
     parts = [p for chunk in _ALT_SEP.split(s) for p in _split_slashes(chunk)]
     alts = [" ".join(a.split()).strip(" .!?:") for a in parts]
-    return [a for a in alts if a], reflexive
+    alts = [a for a in alts if a]
+    # a bare article is never a headword alternative ("deel, de")
+    kept = [a for a in alts if a.lower() not in {"de", "het", "een"}]
+    return (kept or alts), reflexive
 
 
 def _strip_function_words(alt: str) -> tuple[str, str | None, bool]:
