@@ -16,7 +16,7 @@ There are exactly three situations without -e. They all combine a **singular het
 
 - _een_ + het-word: _een groot huis_;
 - no article + het-word: _koud water_;
-- _geen_, _elk_, _dit_/_dat_ + het-word… of which only the first two lack -e: _geen groot huis_, _elk huis_ (the demonstratives _dit_ and _dat_ do take -e: _dit grote huis_).
+- _geen_, _elk_, _dit_/_dat_ + het-word… of which only the first two lack -e: _geen groot huis_, _elk groot huis_ (the demonstratives _dit_ and _dat_ do take -e: _dit grote huis_).
 
 Everything else takes -e: the definite article (_het grote huis_), all de-words (_een grote tafel_) and all plurals (_grote huizen_).
 

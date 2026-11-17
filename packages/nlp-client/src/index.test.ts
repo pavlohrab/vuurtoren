@@ -156,3 +156,66 @@ describe("NlpClient practice data", () => {
     await expect(client.forms("nl", [{ lemma: "a", pos: "VERB" }])).rejects.toThrow(/503.*Rebuild/);
   });
 });
+
+describe("NlpClient grammar endpoints", () => {
+  const hit = {
+    topic: "inversion",
+    tokens: [1, 2],
+    sent: 0,
+    sentence: "Morgen ga ik naar school.",
+    start: 0,
+    end: 25,
+    note: "«Morgen» comes first.",
+  };
+
+  it("grammar posts lang and texts and returns one hit list per text", async () => {
+    const { client, calls } = mockClient([[hit], []]);
+    const res = await client.grammar("nl", ["Morgen ga ik naar school.", ""]);
+    expect(res).toEqual([[hit], []]);
+    expect(calls[0]?.url).toBe("http://nlp.test/grammar");
+    expect(calls[0]?.init.method).toBe("POST");
+    expect(JSON.parse(String(calls[0]?.init.body))).toEqual({
+      lang: "nl",
+      texts: ["Morgen ga ik naar school.", ""],
+    });
+  });
+
+  it("grammar splits large inputs and keeps the order", async () => {
+    const calls: string[][] = [];
+    const fetchImpl = (async (_url: string | URL | Request, init?: RequestInit) => {
+      const texts = (JSON.parse(String(init?.body)) as { texts: string[] }).texts;
+      calls.push(texts);
+      return new Response(JSON.stringify(texts.map((t) => [{ ...hit, sentence: t }])));
+    }) as typeof fetch;
+    const client = new NlpClient({ url: "http://nlp.test", fetch: fetchImpl, batchSize: 2 });
+    const res = await client.grammar("nl", ["a", "b", "c"]);
+    expect(calls).toEqual([["a", "b"], ["c"]]);
+    expect(res.map((r) => r[0]?.sentence)).toEqual(["a", "b", "c"]);
+    expect(await client.grammar("nl", [])).toEqual([]);
+  });
+
+  it("grammarExamples gets the topic with a clamped limit", async () => {
+    const example = {
+      text: "Morgen ga ik.",
+      translation: "Tomorrow I go.",
+      marks: [[7, 9]],
+      note: "n",
+      source: "tatoeba",
+    };
+    const { client, calls } = mockClient([example]);
+    const res = await client.grammarExamples("relative-pronouns", 50);
+    expect(res[0]?.marks[0]).toEqual([7, 9]);
+    expect(calls[0]?.url).toBe("http://nlp.test/grammar/examples?topic=relative-pronouns&limit=10");
+    expect(calls[0]?.init.method).toBeUndefined();
+    await client.grammarExamples("er", 3);
+    expect(calls[1]?.url).toBe("http://nlp.test/grammar/examples?topic=er&limit=3");
+  });
+
+  it("grammarExamples surfaces a 503 as NlpError", async () => {
+    const { client } = mockClient({ detail: "Sentence database not found" }, 503);
+    await expect(client.grammarExamples("er")).rejects.toMatchObject({
+      name: "NlpError",
+      status: 503,
+    });
+  });
+});

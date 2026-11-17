@@ -1,0 +1,26 @@
+{
+  "name": "@app/content",
+  "version": "0.0.0",
+  "private": true,
+  "license": "MIT OR Apache-2.0",
+  "type": "module",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "generate": "node scripts/generate.ts",
+    "build": "node scripts/generate.ts && tsc -p tsconfig.build.json",
+    "typecheck": "node scripts/generate.ts && tsc -p tsconfig.json --noEmit",
+    "test": "node scripts/generate.ts && vitest run"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "vitest": "^5.1.0"
+  }
+}

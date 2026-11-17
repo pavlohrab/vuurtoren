@@ -95,11 +95,22 @@ export async function applyEvent(driver: SqlDriver, ctx: EventContext): Promise<
           ctx.createdAt,
         ],
       );
-      // Tokens computed for different content are stale.
-      await driver.exec("DELETE FROM text_tokens WHERE text_id = ? AND content_hash <> ?", [
-        e.textId,
-        hash,
-      ]);
+      // Tokens and grammar hits computed for different content are stale.
+      for (const t of ["text_tokens", "text_grammar"]) {
+        await driver.exec(`DELETE FROM ${t} WHERE text_id = ? AND content_hash <> ?`, [
+          e.textId,
+          hash,
+        ]);
+      }
+      return;
+    }
+    case "TextGrammarDetected": {
+      const rows = await driver.exec("SELECT content_hash FROM texts WHERE id = ?", [e.textId]);
+      if (rows[0]?.["content_hash"] !== e.contentHash) return;
+      await driver.exec(
+        "INSERT OR REPLACE INTO text_grammar (text_id, content_hash, version, hits) VALUES (?,?,?,?)",
+        [e.textId, e.contentHash, e.version, JSON.stringify(e.hits)],
+      );
       return;
     }
     case "TextAnalyzed": {
@@ -113,7 +124,7 @@ export async function applyEvent(driver: SqlDriver, ctx: EventContext): Promise<
       return;
     }
     case "TextDeleted":
-      for (const t of ["texts", "text_tokens", "reading_progress"]) {
+      for (const t of ["texts", "text_tokens", "text_grammar", "reading_progress"]) {
         await driver.exec(`DELETE FROM ${t} WHERE ${t === "texts" ? "id" : "text_id"} = ?`, [
           e.textId,
         ]);

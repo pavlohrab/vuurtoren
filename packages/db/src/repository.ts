@@ -1,7 +1,14 @@
 /**
  * Repository over any `SqlDriver`: appends events and keeps projections in sync, answers queries.
  */
-import type { AnalyzedToken, ItemState, LearnerModel, StaircaseState, WordState } from "@app/core";
+import type {
+  AnalyzedToken,
+  GrammarHit,
+  ItemState,
+  LearnerModel,
+  StaircaseState,
+  WordState,
+} from "@app/core";
 import { createHlc, createUlidGenerator, randomDeviceId } from "./ids.js";
 import {
   type EventContext,
@@ -20,6 +27,7 @@ import type {
   SqlValue,
   StoredEvent,
   StoredText,
+  TextGrammar,
   TextSummary,
   WordInfo,
 } from "./types.js";
@@ -83,6 +91,14 @@ const TEXT_COLS = `t.id, t.title, t.lang, t.source_kind, t.created_at, t.word_co
 const TEXT_FROM = `FROM texts t
   LEFT JOIN text_tokens tt ON tt.text_id = t.id
   LEFT JOIN reading_progress rp ON rp.text_id = t.id`;
+
+function textGrammar(r: Row): TextGrammar {
+  return {
+    textId: String(r["text_id"]),
+    version: Number(r["version"]),
+    hits: json<GrammarHit[]>(r["hits"]),
+  };
+}
 
 function ankiEntry(r: Row): AnkiWordEntry {
   const a: AnkiWordEntry = {
@@ -296,6 +312,26 @@ export async function createRepository(
           };
           return entry;
         }),
+      ),
+
+    textGrammar: (textId) =>
+      serial(async () => {
+        const rows = await driver.exec(
+          "SELECT text_id, version, hits FROM text_grammar WHERE text_id = ?",
+          [textId],
+        );
+        return rows[0] ? textGrammar(rows[0]) : null;
+      }),
+
+    allTextGrammar: () =>
+      serial(async () =>
+        (
+          await driver.exec(
+            `SELECT g.text_id, g.version, g.hits FROM text_grammar g
+               JOIN texts t ON t.id = g.text_id
+              ORDER BY t.created_at DESC, t.id DESC`,
+          )
+        ).map(textGrammar),
       ),
 
     setting: <T>(key: string) =>

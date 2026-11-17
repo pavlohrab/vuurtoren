@@ -5,6 +5,7 @@
 import type {
   AnalyzedToken,
   ExerciseKind,
+  GrammarHit,
   Grade,
   ItemState,
   LearnerModel,
@@ -49,6 +50,18 @@ export type AppEvent =
       content: string;
     }
   | { type: "TextAnalyzed"; textId: string; contentHash: string; tokens: AnalyzedToken[] }
+  | {
+      /**
+       * Grammar constructions found in a text (M5; server `/grammar`), indices and offsets
+       * relative to the whole text and its TextAnalyzed tokens. `version` is the client's
+       * GRAMMAR_VERSION: hits of an older version are recomputed.
+       */
+      type: "TextGrammarDetected";
+      textId: string;
+      contentHash: string;
+      version: number;
+      hits: GrammarHit[];
+    }
   | { type: "TextDeleted"; textId: string }
   | { type: "AnkiSnapshotImported"; lang: string; entries: AnkiWordEntry[]; sources: string[] }
   | { type: "WordStateSet"; lang: string; key: string; state: WordState }
@@ -166,6 +179,13 @@ export interface WordInfo {
   overridden?: boolean;
 }
 
+/** Grammar hits stored for one text (TextGrammarDetected). */
+export interface TextGrammar {
+  textId: string;
+  version: number;
+  hits: GrammarHit[];
+}
+
 /** One answered exercise, as listed by `practiceLog`. */
 export interface PracticeLogEntry {
   key: string;
@@ -199,6 +219,10 @@ export interface Repository {
   practiceItems(lang: string): Promise<ItemState[]>;
   /** Newest-first answers (ExerciseAnswered events), at most `limit`. */
   practiceLog(lang: string, limit: number): Promise<PracticeLogEntry[]>;
+  /** Stored grammar hits of a text (null when none are stored for its current content). */
+  textGrammar(textId: string): Promise<TextGrammar | null>;
+  /** Stored grammar hits of every text that has them (for the grammar index). */
+  allTextGrammar(): Promise<TextGrammar[]>;
   setting<T>(key: string): Promise<T | undefined>;
   /** Drop projections and rebuild them from the event log. */
   rebuild(): Promise<void>;
