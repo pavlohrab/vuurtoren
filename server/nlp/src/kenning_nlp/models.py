@@ -1,18 +1,44 @@
 from __future__ import annotations
 
-from typing import Literal
+from typing import Annotated, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, StringConstraints
 
 Lang = Literal["nl"]
 
+MAX_TEXT_CHARS = 200_000
+"""Per-text limit of ``/analyze/text`` (characters). Longer texts are rejected with 422."""
+MAX_TERM_CHARS = 500
+"""Per-item limit of ``/analyze/terms``."""
+MAX_TOTAL_CHARS = 2_000_000
+"""Sum of all string lengths in one request; above it the API answers 413."""
+MAX_ITEMS = 5000
+DETECT_SAMPLE_CHARS = 400
+"""``/detect`` only looks at the first this-many characters of each string (no length limit)."""
+
+TextStr = Annotated[str, StringConstraints(max_length=MAX_TEXT_CHARS)]
+TermStr = Annotated[str, StringConstraints(max_length=MAX_TERM_CHARS)]
+
 
 class AnalyzeRequest(BaseModel):
+    """``POST /analyze/text``: each text at most :data:`MAX_TEXT_CHARS` characters."""
+
     lang: Lang
-    texts: list[str] = Field(max_length=5000)
+    texts: list[TextStr] = Field(max_length=MAX_ITEMS)
+
+
+class AnalyzeTermsRequest(BaseModel):
+    """``POST /analyze/terms``: each term at most :data:`MAX_TERM_CHARS` characters."""
+
+    lang: Lang
+    texts: list[TermStr] = Field(max_length=MAX_ITEMS)
 
 
 class Token(BaseModel):
+    """One token. ``start``/``end`` are offsets in UTF-16 code units (what JavaScript's
+    ``String.slice`` uses), NOT Python code points: they differ for text with characters above
+    U+FFFF (emoji, rare CJK), where each such character counts as 2."""
+
     i: int
     text: str
     lemma: str
@@ -41,7 +67,8 @@ class TextAnalysis(BaseModel):
 class TermAnalysis(BaseModel):
     input: str
     key: str
-    """Normalised headword (citation form, casefolded). Empty if nothing usable."""
+    """Normalised headword (citation form; NFKC, curly quotes -> ', lower, strip — see
+    ``pipeline.normalize_key``). Empty if nothing usable."""
     aliases: list[str] = []
     """Alternative spellings/forms given on the card, e.g. ``ze`` for ``zij, ze``."""
     lemma: str
@@ -53,7 +80,9 @@ class TermAnalysis(BaseModel):
 
 
 class DetectRequest(BaseModel):
-    texts: list[str] = Field(max_length=5000)
+    """``POST /detect``: strings of any length (only the first 400 characters are used)."""
+
+    texts: list[str] = Field(max_length=MAX_ITEMS)
 
 
 class Detection(BaseModel):

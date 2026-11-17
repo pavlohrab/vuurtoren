@@ -5,11 +5,14 @@ from __future__ import annotations
 import re
 import unicodedata
 from functools import lru_cache
+from itertools import accumulate
 from typing import TYPE_CHECKING
 
 from kenning_nlp import nl
-from kenning_nlp.freq import token_zipf
-from kenning_nlp.models import TermAnalysis, TextAnalysis, Token
+from kenning_nlp.errors import ServiceError
+from kenning_nlp.freq import token_zipf, zipf
+from kenning_nlp.lexicon import get_lexicon
+from kenning_nlp.models import MAX_TEXT_CHARS, TermAnalysis, TextAnalysis, Token
 
 if TYPE_CHECKING:
     from spacy.language import Language
@@ -18,17 +21,32 @@ if TYPE_CHECKING:
 
 MODELS = {"nl": "nl_core_news_md"}
 NON_WORD_POS = {"PUNCT", "SPACE", "SYM", "X", "NUM"}
+DIMINUTIVE_SUFFIXES = ("je", "tje", "etje", "pje", "kje")
 
 
 @lru_cache(maxsize=4)
 def get_nlp(lang: str) -> Language:
     import spacy
 
-    return spacy.load(MODELS[lang])
+    nlp = spacy.load(MODELS[lang])
+    # Larger than the API's per-text limit; anything above raises E088 -> HTTP 413.
+    nlp.max_length = MAX_TEXT_CHARS + 1000
+    return nlp
+
+
+_QUOTES = str.maketrans({"‘": "'", "’": "'", "`": "'"})
 
 
 def normalize_key(s: str) -> str:
-    return unicodedata.normalize("NFC", s).casefold().strip()
+    """Canonical lookup key. The TS side implements the SAME rule (``normalizeKey``).
+
+    ``NFKC(s)``, then curly quotes and backtick -> ``'``, then ``.lower()`` (NOT casefold:
+    ``ß`` stays ``ß``), then strip. ``"Straße" -> "straße"``, ``"ﬁets" -> "fiets"``.
+    """
+    return unicodedata.normalize("NFKC", s).translate(_QUOTES).lower().strip()
+
+
+# --------------------------------------------------------------------------- lemma choice
 
 
 def _dictionary_lemma(lang: str, word: str) -> str:
@@ -37,35 +55,166 @@ def _dictionary_lemma(lang: str, word: str) -> str:
     return simplemma.lemmatize(word, lang=lang).replace("_", "")
 
 
-def _is_known(lang: str, word: str) -> bool:
+def _is_known(lang: str, word: str, strict: bool = False) -> bool:
+    """Is ``word`` a real word? Kaikki DB when present, else simplemma (weak: katt is known).
+
+    ``strict`` (used for heuristic alternatives) demands a headword of its own, not just an
+    inflected form, so ``katte`` / ``bote`` are rejected when the DB is present.
+    """
+    lex = get_lexicon()
+    verdict = lex.is_headword(word) if strict else lex.is_word(word)
+    if verdict is not None:
+        return verdict
     import simplemma
 
     return bool(simplemma.is_known(word, lang=lang))
 
 
-def choose_lemma(lang: str, surface: str, model_lemma: str) -> tuple[str, list[str]]:
-    """Combine spaCy's contextual lemma with a dictionary lemma (simplemma).
+def is_inflected(pos: str, morph: str, surface: str) -> bool:
+    """Does spaCy's morphology say ``surface`` differs from its citation form?
+
+    VERB/AUX: participle, past tense, imperative or singular finite (ik werk, hij werkt, wil)
+    are inflected; infinitives and plural-present forms (-en, equal to the infinitive) are
+    not. NOUN: ``Number=Plur``. ADJ: comparative/superlative or an -e ending. PROPN (a
+    sentence-initial capital that is really a common word) is treated as possibly plural.
+    Everything else (pronouns, determiners, adverbs, ...) is never inflected.
+    """
+    low = surface.lower()
+    feats = set(morph.split("|"))
+    if pos in {"VERB", "AUX"}:
+        if feats & {"VerbForm=Part", "Tense=Past", "Mood=Imp"}:
+            return True
+        if "VerbForm=Inf" in feats or ("VerbForm=Fin" in feats and "Number=Plur" in feats):
+            return False
+        # Dutch infinitives / plural presents end in -n (-en, gaan, zijn); no morphology: guess.
+        return "Number=Sing" in feats or not low.endswith("n")
+    if pos == "NOUN":
+        return "Number=Plur" in feats
+    if pos == "PROPN":
+        return low.endswith(("en", "s", "n"))
+    if pos == "ADJ":
+        return bool(feats & {"Degree=Cmp", "Degree=Sup"}) or (low.endswith("e") and len(low) > 3)
+    return False
+
+
+def _sensible(surface: str, candidate: str, pos: str) -> bool:
+    """Reject dictionary lemmas that are obviously derivation noise, not a base form.
+
+    Nouns and adjectives inflect by adding letters, so their lemma can't be longer than the
+    surface (simplemma: ``kat -> kater``, ``boot -> boten``). Verbs may lengthen (bel -> bellen).
+    """
+    if not candidate:
+        return False
+    return not (pos in {"NOUN", "PROPN", "ADJ"} and len(candidate) > len(surface))
+
+
+def _dict_candidates(lang: str, surface: str, pos: str) -> tuple[list[str], bool]:
+    """(dictionary lemmas, came_from_kaikki) for ``surface``; empty list when none is usable.
+
+    The Kaikki forms table (when present) is authoritative and POS-aware. Otherwise
+    simplemma's guess is used if it is a known word and passes :func:`_sensible`.
+    """
+    lex = get_lexicon()
+    if lex.available:
+        found = [w for w in lex.lemmas(surface, pos) if _sensible(surface.lower(), w, pos)]
+        if found:
+            return found, True
+    cand = _dictionary_lemma(lang, surface).lower()
+    if cand and _sensible(surface.lower(), cand, pos) and _is_known(lang, cand):
+        return [cand], False
+    return [], False
+
+
+def choose_lemma(
+    lang: str, surface: str, model_lemma: str, pos: str = "", morph: str = ""
+) -> tuple[str, list[str]]:
+    """Combine spaCy's contextual lemma with a dictionary lemma. Returns (primary, alternatives).
 
     spaCy knows context (staat -> staan as a verb) but its edit-tree lemmatizer invents
-    non-words (betekenissen -> betekeniss) or leaves past tenses untouched (ontdekten).
-    simplemma has a large form table but no context (las -> lassen). Keep spaCy's lemma
-    when it is a real, changed word; otherwise take the dictionary lemma. Returns
-    (primary, alternatives) — the matcher tries all of them.
+    non-words (betekenissen -> betekeniss) or leaves inflected forms untouched (ontdekten).
+    The dictionary (Kaikki forms table, else simplemma) has no context and mangles base forms
+    (kat -> kater, bellen -> bel). The rule, precisely:
+
+    1. spaCy's lemma stays primary when it equals the surface and is a real word, unless
+       :func:`is_inflected` says the token is inflected (infinitives, plural presents and
+       singular nouns therefore always keep spaCy's lemma).
+    2. The dictionary lemma becomes primary only if it is usable (:func:`_dict_candidates`:
+       sensible and known) AND one of: spaCy's lemma is a non-word; spaCy left an inflected
+       token unchanged; or the token is inflected and Kaikki (authoritative, POS-aware) lists
+       lemmas for the surface that exclude spaCy's, or whose best (most frequent) one is more
+       frequent than spaCy's (regeert: regeeren -> regeren).
+    3. Otherwise spaCy's lemma stays primary and the dictionary lemma is an alternative
+       (only when it comes from Kaikki, or the token is inflected).
+
+    The matcher tries the primary and all alternatives; the caller filters junk alternatives.
     """
-    dict_lemma = _dictionary_lemma(lang, surface)
-    if model_lemma == dict_lemma:
-        return model_lemma, []
+    model_lemma = model_lemma or surface
     unchanged = model_lemma.lower() == surface.lower()
-    if not _is_known(lang, model_lemma) or (unchanged and dict_lemma.lower() != surface.lower()):
+    inflected = is_inflected(pos, morph, surface)
+    model_ok = _is_known(lang, model_lemma)
+    if unchanged and model_ok and not inflected:
+        return model_lemma, []  # infinitive, singular noun, ...: the citation form already
+    cands, from_kaikki = _dict_candidates(lang, surface, pos)
+    if not cands:
+        return model_lemma, []
+    dict_lemma = cands[0]
+    if model_lemma.lower() == dict_lemma:
+        return model_lemma, []
+    # Kaikki lists several lemmas (best = most frequent first); spaCy's is a rarer spelling
+    # variant of the best one (regeeren vs regeren) -> prefer the frequent one.
+    variant = (
+        from_kaikki
+        and inflected
+        and (model_lemma.lower() not in cands or zipf(dict_lemma) > zipf(model_lemma.lower()))
+    )
+    take_dict = not model_ok or (unchanged and inflected) or variant
+    if take_dict:
         return dict_lemma, [model_lemma]
-    return model_lemma, [dict_lemma]
+    return model_lemma, [dict_lemma] if (from_kaikki or inflected) else []
 
 
-def _extra_candidates(lang: str, t: Token_) -> list[str]:
-    """Cheap extra lemma candidates for the matcher (recall), never the primary lemma."""
-    text = t.text
+def _initial_capital_lemma(lang: str, text: str, model: str) -> tuple[str, list[str]]:
+    """Lemma for a sentence-initial capitalised word that is really a common word.
+
+    spaCy tags these PROPN ("Katten zijn...", "Nam hij deel...") so its morphology is useless.
+    With the Kaikki DB: a plural-noun reading wins (Katten -> kat); else a verb reading wins
+    (Nam -> nemen, Bel -> bellen: a bare singular noun rarely starts a sentence); else spaCy's
+    lemma. Without the DB, :func:`choose_lemma` is used.
+    """
+    lex = get_lexicon()
+    if not lex.available:
+        primary, alt = choose_lemma(lang, text, model, "PROPN", "")
+        return primary, [*alt, _dictionary_lemma(lang, text.lower())]
     low = text.lower()
-    out: list[str] = []
+    noun = [w for w in lex.lemmas(low, "NOUN") if len(w) < len(low)]  # plural -> shorter
+    verb = [w for w in lex.lemmas(low, "VERB") if w != low]
+    if noun:
+        return noun[0], [model, *verb]
+    if verb:  # a bare singular noun rarely starts a sentence: "Bel/Nam/Trek" are verb forms
+        return verb[0], [model]
+    return model, [*verb, *noun]
+
+
+def _is_diminutive(surface: str, lemma: str) -> bool:
+    low = surface.lower()
+    return (
+        len(low) > 4
+        and low != lemma.lower()
+        and low.endswith(DIMINUTIVE_SUFFIXES)
+        and low.startswith(lemma.lower()[: max(2, len(lemma) - 2)])
+    )
+
+
+def _extra_candidates(lang: str, t: Token_) -> tuple[list[str], list[str]]:
+    """Cheap extra lemma candidates for the matcher (recall), never the primary lemma.
+
+    Returns (guesses, explicit). Guesses are suffix-stripping heuristics that the caller keeps
+    only if they are known words (drops probleme, duurd, daarm). Explicit candidates come from
+    deliberate rules (fused particles, infinitive-looking verbs, diminutives) and are kept.
+    """
+    low = t.text.lower()
+    guesses: list[str] = []
+    explicit: list[str] = []
     # Inflected adjective / participle used as adjective: bepaalde -> bepaald, knappe -> knap.
     if (
         t.pos_ in {"ADJ", "VERB", "ADV", "DET", "NUM", "PRON"}
@@ -73,43 +222,62 @@ def _extra_candidates(lang: str, t: Token_) -> list[str]:
         and len(low) > 3
     ):
         base = low[:-1]
-        out.append(base)
+        guesses.append(base)
         if len(base) > 2 and base[-1] == base[-2] and base[-1] not in "aeiou":
-            out.append(base[:-1])
+            guesses.append(base[:-1])
     # Plural nouns the lemmatizers miss: katten -> kat, individuen -> individu, degenen -> degene.
     if t.pos_ in {"NOUN", "PRON"} and "Number=Plur" in str(t.morph):
         if low.endswith("en") and len(low) > 4:
             stem = low[:-2]
-            out += [low[:-1], stem]
+            guesses += [low[:-1], stem]
             if len(stem) > 2 and stem[-1] == stem[-2] and stem[-1] not in "aeiou":
-                out.append(stem[:-1])
+                guesses.append(stem[:-1])
         elif low.endswith("s") and len(low) > 3:
-            out.append(low[:-1])
+            guesses.append(low[:-1])
     # Fused separable forms: aangelopen -> aanlopen, afdwong -> afdwingen.
     if t.pos_ in {"VERB", "ADJ", "AUX"}:
         for p in nl.SEPARABLE_PARTICLES:
             rest = low[len(p) :]
             if low.startswith(p) and len(rest) >= 3:
-                rest_lemma = _dictionary_lemma(lang, rest)
+                rest_lemma = _dictionary_lemma(lang, rest).lower()
+                joined = p + rest_lemma
                 if rest_lemma != rest or rest.endswith("en"):
-                    out.append(p + rest_lemma)
+                    (explicit if joined.endswith("n") or _is_known(lang, joined) else []).append(
+                        joined
+                    )
                 break
     # Infinitive-looking verb forms are their own lemma candidate (vragen in "vragen zich af").
     if t.pos_ in {"VERB", "AUX"} and low.endswith("en"):
-        out.append(low)
-    return out
+        explicit.append(low)
+    return guesses, explicit
+
+
+def _stranded(doc: Doc, particle: Token_) -> bool:
+    """R-pronoun earlier in the sentence: the preposition is stranded, not a verb particle.
+
+    "Waar wacht je op?", "Ik denk er niet aan", "Daar staat hij bij": no opwachten/aandenken.
+    """
+    sent_start = particle.sent.start
+    return any(nl.is_r_pronoun(w.text) for w in doc[sent_start : particle.i])
 
 
 def _lemmas(doc: Doc, lang: str = "nl") -> tuple[list[str], list[list[str]], dict[int, int]]:
-    """Corrected lemma per token, alternative lemmas, and a map particle index -> verb index."""
+    """Corrected lemma per token, alternative lemmas, and a map particle index -> verb index.
+
+    Alternatives are lowercase and de-junked: kept only if they are known words or came from an
+    explicit rule (particle joining, te-infinitive, fused particle, diminutive, surface form).
+    """
     lemmas: list[str] = []
     alts: list[list[str]] = []
+    explicit: list[set[str]] = []
     for t in doc:
         model = t.lemma_ or t.text
         text = t.text
         # tokenizer keeps a sentence-final period on short words ("vol.") -> drop it
         if text.endswith(".") and len(text) > 2 and text[:-1].isalpha():
             text = text[:-1]
+        if t.pos_ != "PROPN":
+            model = model.lower()  # spaCy keeps the capital of sentence-initial words
         if t.pos_ in {"VERB", "AUX"}:
             model = nl.strip_unattested_particle(model, text)
         word_like = text.isalpha() and t.pos_ not in {"PUNCT", "SYM", "NUM"}
@@ -117,30 +285,53 @@ def _lemmas(doc: Doc, lang: str = "nl") -> tuple[list[str], list[list[str]], dic
             # sentence-initial capitals are often mis-tagged nouns ("Katten zijn ...")
             word_like = t.is_sent_start and _is_known(lang, text.lower())
             text = text.lower() if word_like else text
-        if word_like:
-            primary, alt = choose_lemma(lang, text, model)
-            alt = [*alt, *_extra_candidates(lang, t)]
+        guesses: list[str] = []
+        sure: list[str] = []
+        if word_like and t.pos_ == "PROPN":
+            primary, alt = _initial_capital_lemma(lang, text, model)
+            guesses, sure = _extra_candidates(lang, t)
+        elif word_like:
+            primary, alt = choose_lemma(lang, text, model, t.pos_, str(t.morph))
+            guesses, sure = _extra_candidates(lang, t)
+            if t.pos_ == "NOUN" and _is_diminutive(text, primary):
+                sure.append(text.lower())  # huisje -> primary "huis", alternative "huisje"
         else:
             primary, alt = model, []
         if text != t.text:
-            alt.append(text)
+            sure.append(text.lower())
         lemmas.append(primary)
-        alts.append(alt)
+        explicit.append({s.lower() for s in sure})
+        alts.append([a.lower() for a in [*alt, *guesses]])
+
+    # keep only known words (explicit candidates are exempt), then add the explicit ones
+    for i, xs in enumerate(alts):
+        alts[i] = [
+            a for a in xs if a in explicit[i] or (a.isalpha() and _is_known(lang, a, strict=True))
+        ]
+        alts[i] += sorted(explicit[i])
 
     particle_of: dict[int, int] = {}
 
     def attach(particle: Token_, verb: Token_, primary: bool) -> None:
         bases = [lemmas[verb.i], *alts[verb.i]]
+        if verb.pos_ == "PROPN":  # mis-tagged sentence-initial imperative: prefer a verb reading
+            bases.sort(key=lambda b: not b.endswith("n"))
         joined = [nl.join_particle(particle.text, b, verb.text) for b in bases]
-        new = [j for j in joined if j not in bases]
+        base_set = {b.lower() for b in bases}
+        new = [j for j in joined if j not in base_set]
         if not new:
             return
+        # extra joined forms must look like infinitives (…n): no stems such as "opbel"/"bijstaat"
+        extras = [j for j in new[1:] if j.endswith("n")]
         if primary:
-            alts[verb.i] = [lemmas[verb.i], *alts[verb.i], *new[1:]]
+            alts[verb.i] = [lemmas[verb.i].lower(), *alts[verb.i], *extras]
             lemmas[verb.i] = new[0]
             particle_of[particle.i] = verb.i
         else:
-            alts[verb.i] = [*alts[verb.i], *new]
+            alts[verb.i] = [
+                *alts[verb.i],
+                *(j for j in new if j.endswith("n")),
+            ]
 
     # (a) parser-attached particles: "Ik bel je morgen op."
     for t in doc:
@@ -150,8 +341,29 @@ def _lemmas(doc: Doc, lang: str = "nl") -> tuple[list[str], list[list[str]], dic
             and t.head.i != t.i
             # head may be mis-tagged (sentence-initial imperative "Trek ... aan" -> PROPN)
             and t.head.pos_ in {"VERB", "AUX", "PROPN"}
+            and not _stranded(doc, t)
         ):
             attach(t, t.head, primary=True)
+    # (a2) noun particles the parser leaves as objects: "nam deel" (spaCy proposed deelnemen,
+    # the dictionary says nemen). Promote spaCy's candidate and mark "deel" as its particle,
+    # so it is not counted as an independent noun.
+    for v in doc:
+        if v.pos_ not in {"VERB", "AUX"} or v.i in particle_of.values():
+            continue
+        for p in nl.TE_PARTICLES:
+            near = [w for w in doc[v.i + 1 : v.i + 4] if w.lower_ == p and w.i not in particle_of]
+            if not near:
+                continue
+            joined = p + lemmas[v.i]
+            if lemmas[v.i].startswith(p) and len(lemmas[v.i]) > len(p) + 2:
+                particle_of[near[0].i] = v.i  # spaCy's lemma already is "deelnemen"
+            elif joined in alts[v.i]:
+                alts[v.i] = [lemmas[v.i].lower(), *(a for a in alts[v.i] if a != joined)]
+                lemmas[v.i] = joined
+                particle_of[near[0].i] = v.i
+            else:
+                continue
+            break
     # (b) te-infinitive: "in te stellen", "waar te nemen"
     for t in doc:
         if t.pos_ in {"VERB", "AUX"} and t.i >= 2 and doc[t.i - 1].lower_ == "te":
@@ -166,6 +378,7 @@ def _lemmas(doc: Doc, lang: str = "nl") -> tuple[list[str], list[list[str]], dic
                 t.i in particle_of
                 or t.lower_ not in nl.SEPARABLE_PARTICLES
                 or t.pos_ not in {"ADP", "ADV"}
+                or _stranded(doc, t)
             ):
                 continue
             nxt = doc[t.i + 1] if t.i + 1 < len(doc) else None
@@ -176,12 +389,33 @@ def _lemmas(doc: Doc, lang: str = "nl") -> tuple[list[str], list[list[str]], dic
                 if v.i < t.i:
                     attach(t, v, primary=False)
 
-    alts = [[a for a in dict.fromkeys(xs) if a and a != lemmas[i]] for i, xs in enumerate(alts)]
+    alts = [
+        [a for a in dict.fromkeys(xs) if a and a.lower() != lemmas[i].lower()]
+        for i, xs in enumerate(alts)
+    ]
     return lemmas, alts, particle_of
+
+
+def _utf16_offsets(text: str) -> list[int] | None:
+    """Map code-point offsets to UTF-16 code-unit offsets, or None if they are identical.
+
+    spaCy reports code-point offsets (``Token.idx``); JavaScript slices in UTF-16 code units,
+    where each character above U+FFFF (emoji, rare CJK) takes two. Texts without such
+    characters (the common case) hit the fast path. Otherwise returns a prefix table of length
+    ``len(text) + 1`` so ``table[cp_offset]`` is the UTF-16 offset.
+    """
+    if text.isascii() or len(text.encode("utf-16-le")) == 2 * len(text):
+        return None
+    return [0, *accumulate(2 if ord(c) > 0xFFFF else 1 for c in text)]
 
 
 def analyze_doc(doc: Doc) -> TextAnalysis:
     lemmas, alts, particle_of = _lemmas(doc)
+    to16 = _utf16_offsets(doc.text)
+
+    def off(cp: int) -> int:
+        return cp if to16 is None else to16[cp]
+
     sent_index = {s.start: n for n, s in enumerate(doc.sents)}
     sent_of: list[int] = []
     current = 0
@@ -206,8 +440,8 @@ def analyze_doc(doc: Doc) -> TextAnalysis:
             dep=t.dep_,
             head=t.head.i,
             sent=sent_of[t.i],
-            start=t.idx,
-            end=t.idx + len(t.text),
+            start=off(t.idx),
+            end=off(t.idx + len(t.text)),
             is_word=is_word[t.i],
             is_propn=t.pos_ == "PROPN",
             is_num=t.like_num or t.pos_ == "NUM",
@@ -220,34 +454,69 @@ def analyze_doc(doc: Doc) -> TextAnalysis:
 
 
 def analyze_texts(lang: str, texts: list[str]) -> list[TextAnalysis]:
+    """Analyse texts; raises ``ServiceError(413)`` if one exceeds spaCy's ``max_length`` (E088)."""
     nlp = get_nlp(lang)
-    return [analyze_doc(doc) for doc in nlp.pipe(texts, batch_size=64)]
+    try:
+        return [analyze_doc(doc) for doc in nlp.pipe(texts, batch_size=64)]
+    except ValueError as e:
+        if "E088" in str(e):
+            raise ServiceError(
+                413, f"Text too long to analyse (limit {MAX_TEXT_CHARS} characters per text)."
+            ) from e
+        raise
 
 
-_APOS = str.maketrans({"\u2019": "'", "\u2018": "'", "`": "'"})
+# --------------------------------------------------------------------------- terms
+
 _REFLEXIVE_MARK = re.compile(r"\(\s*zich\s*\)", re.IGNORECASE)
 _BRACKETS = re.compile(r"\([^)]*\)|\[[^\]]*\]")
-_GLOSS_SEP = re.compile(r"\s[-\u2013—]\s|=")
-_ALT_SEP = re.compile(r"\s*[,;/|]\s*")
+_GLOSS_SEP = re.compile(r"\s[-–—]\s|=")
+_ALT_SEP = re.compile(r"\s*[,;|]\s*")
+_SLASH = re.compile(r"\s*/\s*")
+
+
+def _split_slashes(part: str) -> list[str]:
+    """Split ``zij/ze`` into alternatives, but keep ``en/of`` and ``1/2`` whole.
+
+    A slash separates alternatives only when the word before and after it each have >= 2
+    letters and are not both function words (``nl.SLASH_FIXED``: en/of, dan/wel, ...).
+    """
+    pieces = _SLASH.split(part)
+    out = [pieces[0]]
+    for nxt in pieces[1:]:
+        left = out[-1].split()[-1:] or [""]
+        right = nxt.split()[:1] or [""]
+        both_words = all(sum(c.isalpha() for c in w) >= 2 and w.isalpha() for w in (*left, *right))
+        fixed = left[0].lower() in nl.SLASH_FIXED and right[0].lower() in nl.SLASH_FIXED
+        if both_words and not fixed:
+            out.append(nxt)
+        else:
+            out[-1] = f"{out[-1]}/{nxt}"
+    return out
 
 
 def split_term(raw: str) -> tuple[list[str], bool]:
     """Split a vocabulary field into headword alternatives; detect a ``(zich)`` marker.
 
     ``"zij, ze"`` -> (["zij", "ze"], False); ``"richten (zich)"`` -> (["richten"], True);
-    ``"fietsen (fietste, gefietst)"`` -> (["fietsen"], False).
+    ``"fietsen (fietste, gefietst)"`` -> (["fietsen"], False); ``"en/of"`` -> (["en/of"], False).
     """
-    s = raw.translate(_APOS)
+    s = raw.translate(_QUOTES)
     reflexive = bool(_REFLEXIVE_MARK.search(s))
     s = _BRACKETS.sub(" ", s)
-    s = s.replace("\u2026", " ").replace("...", " ")
+    s = s.replace("…", " ").replace("...", " ")
     s = _GLOSS_SEP.split(s, maxsplit=1)[0]
-    alts = [" ".join(a.split()).strip(" .!?:") for a in _ALT_SEP.split(s)]
+    parts = [p for chunk in _ALT_SEP.split(s) for p in _split_slashes(chunk)]
+    alts = [" ".join(a.split()).strip(" .!?:") for a in parts]
     return [a for a in alts if a], reflexive
 
 
 def _strip_function_words(alt: str) -> tuple[str, str | None, bool]:
-    """Remove a leading article / reflexive pronoun. Returns (headword, article, reflexive)."""
+    """Remove a leading article / reflexive pronoun. Returns (headword, article, reflexive).
+
+    Fixed expressions that start with an article (``de facto``, see
+    ``nl.FIXED_ARTICLE_EXPRESSIONS``) are kept intact.
+    """
     words = alt.split()
     article = None
     reflexive = False
@@ -258,7 +527,11 @@ def _strip_function_words(alt: str) -> tuple[str, str | None, bool]:
         and {words[0].lower(), words[2].lower()} <= {"de", "het"}
     ):
         words = words[3:]
-    if len(words) > 1 and words[0].lower() in nl.ARTICLES:
+    if (
+        len(words) > 1
+        and words[0].lower() in nl.ARTICLES
+        and " ".join(words[:2]).lower() not in nl.FIXED_ARTICLE_EXPRESSIONS
+    ):
         article = words[0].lower() if words[0].lower() in {"de", "het"} else None
         words = words[1:]
     if len(words) > 1 and words[0].lower() in nl.REFLEXIVES:
@@ -274,7 +547,7 @@ def analyze_terms(lang: str, terms: list[str]) -> list[TermAnalysis]:
     word is unreliable (spaCy: vragen -> vraag, staat -> staan, geleden -> lijden). So the
     key is the headword itself; alternatives become aliases; spaCy only supplies POS and an
     informational lemma guess. Matching text tokens tries their contextual lemma first,
-    then their surface form (see packages/core).
+    then their surface form (see packages/core). Keys use :func:`normalize_key`.
     """
     nlp = get_nlp(lang)
     parsed = []
@@ -293,9 +566,14 @@ def analyze_terms(lang: str, terms: list[str]) -> list[TermAnalysis]:
             continue
         head, article, reflexive = heads[0]
         words = [t for t in doc if not t.is_punct and not t.is_space]
+        # an article before a lone foreign/symbol-tagged word belongs to the term ("de facto")
+        if article and len(words) == 1 and words[0].pos_ in {"SYM", "X"}:
+            head, article = f"{article} {head}", None
+            doc = nlp(head)
+            words = [t for t in doc if not t.is_punct and not t.is_space]
         lemmas, _, _ = _lemmas(doc)
-        multiword = len(words) > 1
-        if multiword:
+        multiword = len(words) > 1 and " " in head
+        if len(words) > 1:
             root = next((w for w in words if w.dep_ == "ROOT"), words[0])
             pos, lemma = root.pos_, " ".join(lemmas[w.i] for w in words)
         elif words:

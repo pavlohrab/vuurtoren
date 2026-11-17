@@ -16,7 +16,9 @@ from kenning_nlp.dictionary import Dictionary, DictionaryMissingError
 from kenning_nlp.errors import ServiceError, read_upload
 from kenning_nlp.extract_url import extract_from_url
 from kenning_nlp.models import (
+    MAX_TOTAL_CHARS,
     AnalyzeRequest,
+    AnalyzeTermsRequest,
     Detection,
     DetectRequest,
     ExtractUrlRequest,
@@ -32,10 +34,22 @@ from kenning_nlp.ocr import TESSERACT_LANGS, run_ocr
 from kenning_nlp.pdf import extract_pdf
 from kenning_nlp.pipeline import analyze_terms, analyze_texts
 
+
+def parse_origins(raw: str) -> list[str]:
+    """Comma-separated origins -> list; whitespace is stripped and empty entries dropped."""
+    return [o.strip() for o in raw.split(",") if o.strip()]
+
+
+def check_total(texts: list[str]) -> None:
+    """Reject a request whose strings together exceed ``MAX_TOTAL_CHARS`` (HTTP 413)."""
+    if sum(map(len, texts)) > MAX_TOTAL_CHARS:
+        raise ServiceError(413, f"Request too large (limit {MAX_TOTAL_CHARS} characters in total).")
+
+
 app = FastAPI(title="Kenning NLP", version=__version__)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=os.environ.get("KENNING_CORS_ORIGINS", "http://localhost:5173").split(","),
+    allow_origins=parse_origins(os.environ.get("KENNING_CORS_ORIGINS", "http://localhost:5173")),
     allow_methods=["GET", "POST"],
     allow_headers=["Content-Type"],
 )
@@ -53,16 +67,19 @@ def health() -> dict[str, str]:
 
 @app.post("/analyze/text")
 def analyze_text_endpoint(req: AnalyzeRequest) -> list[TextAnalysis]:
+    check_total(req.texts)
     return analyze_texts(req.lang, req.texts)
 
 
 @app.post("/analyze/terms")
-def analyze_terms_endpoint(req: AnalyzeRequest) -> list[TermAnalysis]:
+def analyze_terms_endpoint(req: AnalyzeTermsRequest) -> list[TermAnalysis]:
+    check_total(req.texts)
     return analyze_terms(req.lang, req.texts)
 
 
 @app.post("/detect")
 def detect_endpoint(req: DetectRequest) -> list[Detection]:
+    check_total(req.texts)
     return detect(req.texts)
 
 
