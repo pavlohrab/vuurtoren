@@ -120,3 +120,24 @@ def test_too_many_pages_over_all_files(monkeypatch) -> None:
     client = TestClient(app)
     files = [("file", (f"p{i}.tiff", tiff_pages(1), "image/tiff")) for i in range(3)]
     assert client.post("/course/ocr", files=files).status_code == 413
+
+
+def test_decompression_bomb_is_413_not_500(monkeypatch) -> None:
+    monkeypatch.setattr(app_module, "_course_ocr", CourseOcr(fake_engine, check=False))
+    monkeypatch.setattr(Image, "MAX_IMAGE_PIXELS", 100)  # 40x40 = 1600 px > 2 * 100
+    client = TestClient(app)
+    r = client.post("/course/ocr", files={"file": ("b.tiff", tiff_pages(1), "image/tiff")})
+    assert r.status_code == 413
+    assert "too large" in r.json()["detail"]
+
+
+def test_load_images_rejects_a_decompression_bomb(monkeypatch) -> None:
+    import pytest
+
+    from kenning_nlp.errors import ServiceError
+    from kenning_nlp.ocr import load_images
+
+    monkeypatch.setattr(Image, "MAX_IMAGE_PIXELS", 100)
+    with pytest.raises(ServiceError) as e:
+        load_images(tiff_pages(1))
+    assert e.value.status_code == 413

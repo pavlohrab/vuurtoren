@@ -4,13 +4,15 @@ Safety model: only http/https; the hostname is resolved by us, every resolved ad
 publicly routable (no private/loopback/link-local/multicast/reserved, IPv4 or IPv6), and the
 request is then sent to that *validated IP* (Host header + TLS SNI keep the original name) so a
 DNS answer cannot change between check and connect. Redirects are followed manually, each hop
-going through the same checks (max 5 hops, 10 s timeout, 5 MB body).
+going through the same checks (max 5 hops, 10 s per read, 20 s in total, 5 MB body). The total
+deadline stops a server that drips bytes just fast enough to beat the per-read timeout.
 """
 
 from __future__ import annotations
 
 import ipaddress
 import socket
+import time
 from collections.abc import Callable
 from urllib.parse import urljoin, urlsplit
 
@@ -21,6 +23,7 @@ from kenning_nlp.errors import ServiceError
 
 MAX_REDIRECTS = 5
 TIMEOUT_SECONDS = 10.0
+TOTAL_DEADLINE_SECONDS = 20.0
 MAX_BYTES = 5 * 1024 * 1024
 MIN_TEXT_CHARS = 40
 _REDIRECT_CODES = {301, 302, 303, 307, 308}
@@ -91,9 +94,20 @@ def _make_transport() -> httpx.BaseTransport | None:
 
 
 transport_factory: Callable[[], httpx.BaseTransport | None] = _make_transport
+monotonic: Callable[[], float] = time.monotonic
+"""Clock for the total deadline (tests substitute a fake)."""
+
+_TOO_SLOW = "The page took too long to respond (20 s limit)."
 
 
-def _request_pinned(client: httpx.Client, url: str) -> tuple[httpx.Response, bytes]:
+def _check_deadline(deadline: float) -> None:
+    if monotonic() > deadline:
+        raise ServiceError(422, _TOO_SLOW)
+
+
+def _request_pinned(
+    client: httpx.Client, url: str, deadline: float = float("inf")
+) -> tuple[httpx.Response, bytes]:
     """GET ``url`` against its validated IP; returns the response head and (capped) body."""
     host, port, ip = validate_url(url)
     parts = urlsplit(url)
@@ -114,6 +128,7 @@ def _request_pinned(client: httpx.Client, url: str) -> tuple[httpx.Response, byt
             raise ServiceError(415, f"Unsupported content type '{ctype}' (expected a web page).")
         body = bytearray()
         for chunk in resp.iter_bytes():
+            _check_deadline(deadline)
             body += chunk
             if len(body) > MAX_BYTES:
                 raise ServiceError(413, "Page is too large (limit 5 MB).")
@@ -124,8 +139,10 @@ def fetch_html(url: str) -> tuple[bytes, str]:
     """Fetch ``url`` following redirects manually. Returns ``(body, final_url)``.
 
     Raises:
-        ServiceError: 400 blocked/invalid, 413 too large, 415 wrong type, 422 unfetchable.
+        ServiceError: 400 blocked/invalid, 413 too large, 415 wrong type, 422 unfetchable or
+            slower than ``TOTAL_DEADLINE_SECONDS`` overall.
     """
+    deadline = monotonic() + TOTAL_DEADLINE_SECONDS
     try:
         with httpx.Client(
             transport=transport_factory(),
@@ -135,7 +152,8 @@ def fetch_html(url: str) -> tuple[bytes, str]:
         ) as client:
             current = url
             for _ in range(MAX_REDIRECTS + 1):
-                resp, body = _request_pinned(client, current)
+                _check_deadline(deadline)
+                resp, body = _request_pinned(client, current, deadline)
                 if resp.status_code not in _REDIRECT_CODES:
                     return body, current
                 location = resp.headers.get("location")

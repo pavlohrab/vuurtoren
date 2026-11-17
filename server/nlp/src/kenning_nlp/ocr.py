@@ -139,7 +139,9 @@ def load_images(data: bytes) -> list[Image.Image]:
             img.seek(i)
             frames.append(img.copy())
         return frames
-    except (UnidentifiedImageError, OSError, Image.DecompressionBombError) as e:
+    except Image.DecompressionBombError as e:
+        raise ServiceError(413, "Image too large (too many pixels).") from e
+    except (UnidentifiedImageError, OSError) as e:
         raise ServiceError(415, "Unsupported file: expected PDF, PNG, JPEG, WebP or TIFF.") from e
 
 

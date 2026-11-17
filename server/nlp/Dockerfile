@@ -124,4 +124,9 @@ USER kenning
 EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=40s \
     CMD python -c "import urllib.request as u; u.urlopen('http://127.0.0.1:8000/health', timeout=4)"
-CMD ["uvicorn", "kenning_nlp.app:app", "--host", "0.0.0.0", "--port", "8000"]
+# Exactly ONE worker process (review item A15): course OCR jobs live in this process's memory
+# (`GET /course/ocr/{id}` must reach the process that started the job) and the grammar-example
+# cache is written by one process. Blocking work runs in the threadpool, so one worker still
+# serves requests concurrently. Do not add --workers or WEB_CONCURRENCY; scale with one
+# container per user instead.
+CMD ["uvicorn", "kenning_nlp.app:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]

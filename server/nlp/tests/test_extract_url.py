@@ -220,3 +220,26 @@ def test_page_without_article_text_422(monkeypatch: pytest.MonkeyPatch) -> None:
     r = post("https://x.example/")
     assert r.status_code == 422
     assert "No readable" in r.json()["detail"]
+
+
+def test_slow_drip_hits_the_total_deadline(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Each chunk arrives in time for the per-read timeout, but the whole body takes too long."""
+    now = [0.0]
+
+    def clock() -> float:
+        now[0] += 3.0  # every check sees 3 s more
+        return now[0]
+
+    monkeypatch.setattr(extract_url, "monotonic", clock)
+    Net(
+        monkeypatch,
+        {"x.example": PUBLIC_IP},
+        lambda _: httpx.Response(
+            200,
+            content=iter([b"<p>drip</p>"] * 50),
+            headers={"content-type": "text/html"},
+        ),
+    )
+    r = post("https://x.example/")
+    assert r.status_code == 422
+    assert "too long" in r.json()["detail"]

@@ -23,7 +23,7 @@ from collections.abc import Callable, Iterator
 from dataclasses import dataclass, field
 from typing import Any
 
-from PIL import Image
+from PIL import Image, UnidentifiedImageError
 
 from kenning_nlp.errors import ServiceError
 from kenning_nlp.ocr import MAX_FRAMES, ensure_tesseract, ocr_image_data
@@ -81,6 +81,21 @@ def data_to_blocks(data: dict[str, list[Any]], width: int, height: int) -> list[
     return out
 
 
+def _open_image(data: bytes) -> Image.Image:
+    """Open an image upload lazily.
+
+    Raises:
+        ServiceError: 413 for a decompression bomb (more pixels than ``Image.MAX_IMAGE_PIXELS``
+            allows), 415 for anything that is not a supported image.
+    """
+    try:
+        return Image.open(io.BytesIO(data))
+    except Image.DecompressionBombError as e:
+        raise ServiceError(413, "Image too large (too many pixels).") from e
+    except (UnidentifiedImageError, OSError) as e:
+        raise ServiceError(415, "Unsupported file: expected PDF, PNG, JPEG, WebP or TIFF.") from e
+
+
 def iter_page_images(data: bytes, max_pages: int = MAX_COURSE_PAGES) -> Iterator[Image.Image]:
     """Yield the pages of a PDF (rendered one at a time) or the frames of an image."""
     if is_pdf(data):
@@ -102,11 +117,8 @@ def iter_page_images(data: bytes, max_pages: int = MAX_COURSE_PAGES) -> Iterator
             with PDFIUM_LOCK:
                 pdf.close()
         return
-    try:
-        img = Image.open(io.BytesIO(data))
-        frames = getattr(img, "n_frames", 1)
-    except OSError as e:
-        raise ServiceError(415, "Unsupported file: expected PDF, PNG, JPEG, WebP or TIFF.") from e
+    img = _open_image(data)
+    frames = getattr(img, "n_frames", 1)
     if frames > MAX_FRAMES:
         raise ServiceError(413, f"Too many image frames (limit {MAX_FRAMES}).")
     for i in range(frames):
@@ -126,10 +138,7 @@ def count_pages(data: bytes) -> int:
         if n > MAX_COURSE_PAGES:
             raise ServiceError(413, f"Too many pages (limit {MAX_COURSE_PAGES}).")
         return n
-    try:
-        return int(getattr(Image.open(io.BytesIO(data)), "n_frames", 1))
-    except OSError as e:
-        raise ServiceError(415, "Unsupported file: expected PDF, PNG, JPEG, WebP or TIFF.") from e
+    return int(getattr(_open_image(data), "n_frames", 1))
 
 
 @dataclass

@@ -7,6 +7,9 @@ name: kenning
 services:
   nlp:
     image: ghcr.io/${KENNING_IMAGE_OWNER:-kenning}/kenning-nlp:${KENNING_TAG:-latest}
+    # One replica, one worker: OCR jobs are held in memory (see server/nlp/Dockerfile).
+    deploy:
+      replicas: 1
     build:
       context: ../server/nlp
     restart: unless-stopped

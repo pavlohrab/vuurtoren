@@ -9,6 +9,7 @@ from typing import Annotated
 from fastapi import FastAPI, File, Query, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from starlette.concurrency import run_in_threadpool
 
 from kenning_nlp import __version__
 from kenning_nlp.course import COURSE_MAX_UPLOAD_BYTES, CourseOcr
@@ -114,7 +115,8 @@ def extract_url_endpoint(req: ExtractUrlRequest) -> UrlExtraction:
 async def extract_pdf_endpoint(file: Annotated[UploadFile, File()]) -> PdfExtraction:
     """Extract text from a text-layer PDF; ``needs_ocr`` flags scans."""
     data = await read_upload(file)
-    return PdfExtraction(**extract_pdf(data))
+    # Parsing is blocking: run it in the threadpool so the event loop keeps serving requests.
+    return PdfExtraction(**await run_in_threadpool(extract_pdf, data))
 
 
 @app.post("/ocr")
@@ -124,7 +126,7 @@ async def ocr_endpoint(
 ) -> OcrResult:
     """OCR an image (png/jpg/webp/tiff) or a PDF. 503 if Tesseract is not installed."""
     data = await read_upload(file)
-    return OcrResult(**run_ocr(data, lang))
+    return OcrResult(**await run_in_threadpool(run_ocr, data, lang))
 
 
 @lru_cache(maxsize=1)
@@ -238,7 +240,8 @@ async def course_ocr_start(
             raise
         left -= len(data)
         datas.append(data)
-    job = _course_ocr.start(datas, lang)
+    # Validation opens every file (and checks Tesseract): blocking, so off the event loop.
+    job = await run_in_threadpool(_course_ocr.start, datas, lang)
     return {"id": job.id, "total": job.total}
 
 
