@@ -105,6 +105,51 @@ export const MIGRATIONS: readonly (readonly string[])[] = [
        PRIMARY KEY (lang, key, skill)
      )`,
   ],
+  [
+    `CREATE TABLE courses (
+       id TEXT PRIMARY KEY,
+       data TEXT NOT NULL,
+       created_at INTEGER NOT NULL
+     )`,
+    `CREATE TABLE course_units (
+       course_id TEXT NOT NULL,
+       n INTEGER NOT NULL,
+       data TEXT NOT NULL,
+       PRIMARY KEY (course_id, n)
+     )`,
+    `CREATE TABLE course_blocks (
+       course_id TEXT NOT NULL,
+       idx INTEGER NOT NULL,
+       page INTEGER NOT NULL,
+       data TEXT NOT NULL,
+       PRIMARY KEY (course_id, idx)
+     )`,
+    `CREATE TABLE book_exercises (
+       course_id TEXT NOT NULL,
+       unit_n INTEGER NOT NULL,
+       number INTEGER NOT NULL,
+       idx INTEGER NOT NULL,
+       data TEXT NOT NULL,
+       PRIMARY KEY (course_id, unit_n, number)
+     )`,
+    `CREATE TABLE unit_words (
+       course_id TEXT NOT NULL,
+       unit_n INTEGER NOT NULL,
+       idx INTEGER NOT NULL,
+       data TEXT NOT NULL,
+       PRIMARY KEY (course_id, unit_n, idx)
+     )`,
+    `CREATE TABLE book_answers (
+       course_id TEXT NOT NULL,
+       unit_n INTEGER NOT NULL,
+       number INTEGER NOT NULL,
+       item INTEGER NOT NULL,
+       answer TEXT NOT NULL,
+       correct INTEGER NOT NULL,
+       at INTEGER NOT NULL,
+       PRIMARY KEY (course_id, unit_n, number, item)
+     )`,
+  ],
 ];
 
 /** Latest schema version. */
@@ -123,6 +168,12 @@ export const PROJECTION_TABLES = [
   "reading_progress",
   "staircase",
   "settings",
+  "courses",
+  "course_units",
+  "course_blocks",
+  "book_exercises",
+  "unit_words",
+  "book_answers",
 ] as const;
 
 /** The database file was written by a newer app version than this one understands. */

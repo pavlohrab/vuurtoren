@@ -37,6 +37,7 @@ import {
 import { type KenningRepository, type StoredText, type WordInfo, contentHash } from "@app/db";
 import { absentAnki, ankiFromStatus, unavailableAnki } from "./ankiState.js";
 import { NlpClient } from "@app/nlp-client";
+import { createLiveCourses } from "./liveCourses.js";
 import { createLivePractice } from "./livePractice.js";
 import { createPracticeData } from "./practiceData.js";
 import type {
@@ -570,8 +571,22 @@ export function createLiveServices(repo: KenningRepository): AppServices {
     data: createPracticeData(async () => (await settings()).nlpUrl),
   });
 
-  return {
+  const courses = createLiveCourses({
+    repo,
+    settings,
+    nlp,
+    anki,
+    model,
+    dictionary: dictionaryFor,
+    composeGlosses,
+    data: createPracticeData(async () => (await settings()).nlpUrl),
+    importText: (input) => services.importText(input),
+    changed,
+  });
+
+  const services: AppServices = {
     ...practice,
+    ...courses,
     async listTexts(): Promise<TextListItem[]> {
       const texts = await repo.listTexts();
       const out: TextListItem[] = [];
@@ -601,6 +616,7 @@ export function createLiveServices(repo: KenningRepository): AppServices {
       if (input.kind === "paste") {
         content = input.content;
         title = input.title?.trim() || titleFrom(content);
+        ref = input.ref;
       } else if (input.kind === "url") {
         onProgress?.("Fetching the page…");
         const page = await client.extractUrl(input.url);
@@ -911,4 +927,5 @@ export function createLiveServices(repo: KenningRepository): AppServices {
       return repo.words(lang, opts);
     },
   };
+  return services;
 }

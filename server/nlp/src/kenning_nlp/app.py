@@ -11,6 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from kenning_nlp import __version__
+from kenning_nlp.course import COURSE_MAX_UPLOAD_BYTES, CourseOcr
 from kenning_nlp.detect import detect
 from kenning_nlp.dictionary import Dictionary, DictionaryMissingError
 from kenning_nlp.dictionary import default_db_path as default_dictionary_path
@@ -201,3 +202,32 @@ def similar_endpoint(req: SimilarRequest) -> dict[str, list[str]]:
         return _similar_service().lookup(((w.lemma, w.pos) for w in req.words), req.k)
     except SimilarMissingError as e:
         raise ServiceError(503, str(e)) from e
+
+
+# --------------------------------------------------------------------------- courses (C1)
+
+_course_ocr = CourseOcr()
+
+
+@app.post("/course/ocr")
+async def course_ocr_start(
+    file: Annotated[UploadFile, File()],
+    lang: Annotated[str, Query(pattern=f"^({'|'.join(TESSERACT_LANGS)})$")] = "nl",
+) -> dict[str, object]:
+    """Start a background OCR job over a PDF/image upload; poll ``GET /course/ocr/{id}``."""
+    data = await read_upload(file, COURSE_MAX_UPLOAD_BYTES)
+    job = _course_ocr.start(data, lang)
+    return {"id": job.id, "total": job.total}
+
+
+@app.get("/course/ocr/{job_id}")
+def course_ocr_status(job_id: str, after: Annotated[int, Query(ge=0)] = 0) -> dict[str, object]:
+    """Progress of an OCR job and its pages from index ``after`` (page text + layout blocks)."""
+    return _course_ocr.get(job_id).view(after)
+
+
+@app.post("/course/ocr/{job_id}/cancel")
+def course_ocr_cancel(job_id: str) -> dict[str, str]:
+    """Stop a job and drop its results from memory."""
+    _course_ocr.cancel(job_id)
+    return {"status": "cancelled"}

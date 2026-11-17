@@ -16,6 +16,7 @@ import {
   Sun,
   TrendingUp,
   Dumbbell,
+  GraduationCap,
   Plus,
   X,
 } from "lucide-react";
@@ -42,6 +43,7 @@ const PAGE_TITLES: Record<string, string> = {
   "/import": "Import text",
   "/words": "Words",
   "/practice": "Practice",
+  "/courses": "Courses",
   "/converse": "Converse",
   "/grammar": "Grammar",
   "/progress": "Progress",
@@ -143,6 +145,7 @@ export function AppShell() {
       ["/library", "Library", <Library key="l" size={16} />],
       ["/import", "Import text", <Plus key="i" size={16} />],
       ["/practice", "Practice", <Dumbbell key="p" size={16} />],
+      ["/courses", "Courses", <GraduationCap key="co" size={16} />],
       ["/converse", "Converse", <MessagesSquare key="c" size={16} />],
       ["/words", "Words", <Languages key="w" size={16} />],
       ["/grammar", "Grammar", <BookText key="g" size={16} />],
@@ -205,6 +208,7 @@ export function AppShell() {
             icon={<Dumbbell size={18} />}
             badge={practice.data?.due}
           />
+          <NavLink to="/courses" label="Courses" icon={<GraduationCap size={18} />} />
           <NavLink to="/converse" label="Converse" icon={<MessagesSquare size={18} />} />
           <NavLink to="/words" label="Words" icon={<Languages size={18} />} />
           <NavLink to="/grammar" label="Grammar" icon={<BookText size={18} />} />
@@ -328,7 +332,14 @@ export function AppShell() {
 }
 
 type FixedRoute =
-  "/library" | "/practice" | "/converse" | "/words" | "/grammar" | "/progress" | "/settings";
+  | "/library"
+  | "/practice"
+  | "/courses"
+  | "/converse"
+  | "/words"
+  | "/grammar"
+  | "/progress"
+  | "/settings";
 
 function NavLink({
   to,

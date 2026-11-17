@@ -26,6 +26,11 @@ export const RPC_METHODS = {
   lookedUpKeys: ["string", "string"],
   lastSnapshot: ["string"],
   eventCount: [],
+  courses: [],
+  courseBlocks: ["string"],
+  unitExercises: ["string", "number"],
+  unitWords: ["string", "number"],
+  bookAnswers: ["string", "number?"],
 } as const satisfies Record<string, readonly ArgKind[]>;
 
 export type RpcMethod = keyof typeof RPC_METHODS;

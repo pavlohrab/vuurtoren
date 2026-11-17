@@ -71,6 +71,24 @@ export interface OcrResult {
   pages: number;
 }
 
+/** One OCR'd page of a course job: full text plus layout blocks (box = fractions of the page). */
+export interface CoursePage {
+  n: number;
+  text: string;
+  confidence: number;
+  blocks: { text: string; x: number; y: number; w: number; h: number }[];
+}
+
+/** Progress of a `/course/ocr` job; `pages` holds the pages from the requested index on. */
+export interface CourseOcrStatus {
+  id: string;
+  status: "running" | "done" | "error";
+  error: string | null;
+  done: number;
+  total: number;
+  pages: CoursePage[];
+}
+
 export interface GlossEntry {
   pos: string;
   /** "de" / "het" for nouns ("de/het" if senses disagree), else null. */
@@ -255,6 +273,23 @@ export class NlpClient {
 
   detect(texts: string[]): Promise<Detection[]> {
     return this.batched("/detect", texts, {});
+  }
+
+  /** Start a background OCR job over a whole book (PDF or images). */
+  courseOcrStart(file: Blob, lang: OcrLang = "nl", filename?: string): Promise<{ id: string; total: number }> {
+    const form = new FormData();
+    form.append("file", file, filename);
+    return this.postForm(`/course/ocr?lang=${lang}`, form);
+  }
+
+  /** Progress of an OCR job plus the pages with index >= `after`. */
+  courseOcrStatus(id: string, after = 0): Promise<CourseOcrStatus> {
+    return this.request(`/course/ocr/${encodeURIComponent(id)}?after=${after}`);
+  }
+
+  /** Stop an OCR job and free its memory on the server. */
+  courseOcrCancel(id: string): Promise<{ status: string }> {
+    return this.request(`/course/ocr/${encodeURIComponent(id)}/cancel`, { method: "POST" });
   }
 
   /** Fetch a web page server-side (SSRF-protected) and extract its main text. */
