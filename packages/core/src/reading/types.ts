@@ -78,7 +78,7 @@ export interface SegmentPlan {
 export interface PlannerOptions {
   /** Target coverage T (start 0.98, floor 0.92). */
   targetCoverage: number;
-  /** New-word budget B per 300 word tokens (start 6). */
+  /** New words introduced per page of ~150 words (start 3; 0 = none). */
   newWordBudget: number;
   /** Estimated vocabulary size (word families); bounds which unknown words are worth introducing. */
   vocabEstimate: number;
@@ -101,7 +101,7 @@ export interface ReadingOutcome {
 
 export const DEFAULT_PLANNER: PlannerOptions = {
   targetCoverage: 0.98,
-  newWordBudget: 6,
+  newWordBudget: 3,
   vocabEstimate: 1000,
   clozes: true,
 };

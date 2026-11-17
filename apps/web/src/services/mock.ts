@@ -248,7 +248,7 @@ export function createMockServices(options: { latencyMs?: number } = {}): AppSer
     help: 0.25,
     newWords: "auto",
   };
-  let staircase: StaircaseState = { targetCoverage: 0.98, newWordBudget: 6 };
+  let staircase: StaircaseState = { targetCoverage: 0.98, newWordBudget: 3 };
   let lastSync: number | null = null;
   let nextNoteId = 1_700_000_000_000;
 

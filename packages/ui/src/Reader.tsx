@@ -19,7 +19,7 @@ export interface ReaderProps {
    * `answer` is then "").
    */
   onClozeAnswer?: (i: number, answer: string, hints: number) => void;
-  /** Optional inline glosses keyed by token index (shown as tooltip, and inline in gloss mode). */
+  /** Translations keyed by token index: inline in gloss mode, meaning hints on clozes. */
   glosses?: Readonly<Record<number, string>>;
   /** read: clozes shown as plain words; cloze/undefined: blanks; gloss: glosses shown inline. */
   mode?: ReaderMode;
@@ -212,7 +212,7 @@ export function Reader({
         className={cn("k-tok", t.particle_of != null && "k-tok--particle")}
         role="button"
         tabIndex={t.i === tabStop ? 0 : -1}
-        {...(gloss ? { title: gloss } : {})}
+        {...(gloss && mode === "gloss" ? { title: gloss } : {})}
         {...(shownLabel === "learning"
           ? {
               style: {
@@ -224,7 +224,7 @@ export function Reader({
         onKeyDown={(e) => onKeyDown(e, t.i)}
       >
         {surface}
-        {gloss ? <sup className="k-gloss-mark">{mode === "gloss" ? gloss : "·"}</sup> : null}
+        {gloss && mode === "gloss" ? <sup className="k-gloss-mark">{gloss}</sup> : null}
       </span>
     );
   };

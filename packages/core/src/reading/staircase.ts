@@ -6,14 +6,14 @@ import type { ReadingOutcome, SegmentPlan, StaircaseState } from "./types.js";
 
 export const MIN_TARGET_COVERAGE = 0.92;
 export const MAX_TARGET_COVERAGE = 0.99;
-export const MIN_BUDGET = 2;
-export const MAX_BUDGET = 12;
+export const MIN_BUDGET = 1;
+export const MAX_BUDGET = 8;
 const COVERAGE_STEP = 0.005;
 
 /**
  * Staircase controller. Easy (accuracy >= 0.85 or no clozes, and < 2 lookups/100 words):
  * lower T by 0.005 and raise B by 1. Hard (accuracy < 0.70 or > 6 lookups/100): raise T, lower B.
- * Otherwise unchanged. Bounds: T in [0.92, 0.99], B in [2, 12]; T is rounded to 3 decimals.
+ * Otherwise unchanged. Bounds: T in [0.92, 0.99], B in [1, 8] (per page); T is rounded to 3 decimals.
  */
 export function updateStaircase(state: StaircaseState, outcome: ReadingOutcome): StaircaseState {
   const { clozeAccuracy: acc, lookupsPer100: lookups } = outcome;

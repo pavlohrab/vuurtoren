@@ -42,19 +42,19 @@ describe("updateStaircase", () => {
       { clozeAccuracy: null, lookupsPer100: 6.5 },
       S(0.985, 5),
     ],
-    ["floor T and cap B", S(0.92, 12), { clozeAccuracy: 1, lookupsPer100: 0 }, S(0.92, 12)],
-    ["cap T and floor B", S(0.99, 2), { clozeAccuracy: 0.1, lookupsPer100: 9 }, S(0.99, 2)],
-    ["near floor", S(0.922, 11), { clozeAccuracy: 1, lookupsPer100: 0 }, S(0.92, 12)],
+    ["floor T and cap B", S(0.92, 8), { clozeAccuracy: 1, lookupsPer100: 0 }, S(0.92, 8)],
+    ["cap T and floor B", S(0.99, 1), { clozeAccuracy: 0.1, lookupsPer100: 9 }, S(0.99, 1)],
+    ["near floor", S(0.922, 7), { clozeAccuracy: 1, lookupsPer100: 0 }, S(0.92, 8)],
   ])("%s", (_name, state, outcome, expected) => {
     expect(updateStaircase(state, outcome)).toEqual(expected);
   });
 
   it("does not accumulate float error over many steps", () => {
-    let s = S(0.98, 2);
+    let s = S(0.98, 1);
     for (let i = 0; i < 12; i++) s = updateStaircase(s, { clozeAccuracy: 1, lookupsPer100: 0 });
-    expect(s).toEqual(S(0.92, 12));
+    expect(s).toEqual(S(0.92, 8));
     for (let i = 0; i < 20; i++) s = updateStaircase(s, { clozeAccuracy: 0, lookupsPer100: 0 });
-    expect(s).toEqual(S(0.99, 2));
+    expect(s).toEqual(S(0.99, 1));
   });
 });
 

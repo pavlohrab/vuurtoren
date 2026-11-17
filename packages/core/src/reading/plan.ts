@@ -14,19 +14,20 @@ export const UNKNOWN_THRESHOLD = 0.5;
 export const CLOZE_P_RANGE = [0.7, 0.95] as const;
 export const CLOZE_MIN_SENTENCE_WORDS = 6;
 export const CLOZE_MIN_CHARS = 2;
-/** Segment length the new-word budget is expressed against. */
-const BUDGET_WORDS = 300;
+/** A "page": the new-word budget is per page (segments are ~150 words). */
+export const BUDGET_WORDS = 150;
 
 /**
- * Lowest Zipf frequency worth introducing for a learner with `vocabEstimate` known words.
- * Log-linear in vocabulary size, anchored at 1000 -> 4.5 and 8000 -> 3.3 (about -1.33 Zipf
- * per decade of vocabulary), clamped to [2.5, 5.0]. Rarer words are glossed, not taught.
+ * Lowest Zipf frequency worth introducing for a learner with `vocabEstimate` known words:
+ * words within roughly the next 3000 frequency ranks are worth learning now (docs/research
+ * 03 §3: rank <= vocab + 3000). Zipf ≈ 7.6 − 0.9·log10(rank) approximates Dutch wordfreq
+ * (rank 1000 → 4.9, 3000 → 4.5, 10000 → 4.0), clamped to [2.5, 5.0].
+ * Examples: vocab 300 → 4.43, 1000 → 4.36, 8000 → 3.96. Rarer words are glossed, not taught.
  */
 export function zipfFloor(vocabEstimate: number): number {
-  const v = Math.max(1, vocabEstimate);
-  const slope = (3.3 - 4.5) / (Math.log10(8000) - Math.log10(1000));
-  const floor = 4.5 + slope * (Math.log10(v) - 3);
-  return Math.min(5.0, Math.max(2.5, floor));
+  const rank = Math.max(1, vocabEstimate) + 3000;
+  const floor = 7.6 - 0.9 * Math.log10(rank);
+  return Math.min(5.0, Math.max(2.5, Math.round(floor * 100) / 100));
 }
 
 /** Usefulness of learning a word: its Zipf frequency (frequent words pay off more). */
@@ -118,9 +119,14 @@ function planFromClassified(
     (x, y) => score(y) - score(x) || y.zipf - x.zipf || x.key.localeCompare(y.key),
   );
   const candidates = ranked.filter((u) => u.zipf >= floor);
-  const budget = candidates.length
-    ? Math.max(1, Math.round((opts.newWordBudget * wordCount) / BUDGET_WORDS))
-    : 0;
+  // B words per page; a page longer than BUDGET_WORDS scales up, a shorter one gets B.
+  const budget =
+    candidates.length && opts.newWordBudget > 0
+      ? Math.max(
+          1,
+          Math.round((opts.newWordBudget * Math.max(wordCount, BUDGET_WORDS)) / BUDGET_WORDS),
+        )
+      : 0;
   const introduce = candidates.slice(0, budget).map((u) => u.key);
   const introSet = new Set(introduce);
   const gloss = ranked.map((u) => u.key).filter((k) => !introSet.has(k));

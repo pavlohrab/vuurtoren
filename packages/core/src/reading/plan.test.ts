@@ -26,12 +26,13 @@ function plan(text: string, except: string[], over: Overrides, opts: PlannerOpti
 
 describe("zipfFloor", () => {
   it.each([
-    [1000, 4.5],
-    [8000, 3.3],
-  ])("vocab %i -> %f", (v, f) => expect(zipfFloor(v)).toBeCloseTo(f, 10));
+    [300, 4.43],
+    [1000, 4.36],
+    [8000, 3.96],
+  ])("vocab %i -> %f", (v, f) => expect(zipfFloor(v)).toBeCloseTo(f, 2));
   it("is monotonically non-increasing and clamped", () => {
-    expect(zipfFloor(1)).toBe(5);
-    expect(zipfFloor(100_000_000)).toBe(2.5);
+    expect(zipfFloor(1)).toBeLessThanOrEqual(5);
+    expect(zipfFloor(1e12)).toBe(2.5);
     expect(zipfFloor(2000)).toBeLessThan(zipfFloor(1000));
     expect(zipfFloor(4000)).toBeGreaterThan(zipfFloor(8000));
   });
@@ -55,7 +56,7 @@ describe("planSegment: unknown words", () => {
   });
 
   it("the zipf floor depends on vocabEstimate", () => {
-    const over = { beta: { zipf: 3.5 } };
+    const over = { beta: { zipf: 4.1 } };
     const low = plan(text, ["beta"], over, { ...noClozes, vocabEstimate: 1000 }).plan;
     const high = plan(text, ["beta"], over, { ...noClozes, vocabEstimate: 8000 }).plan;
     expect(low.introduce).toEqual([]);
@@ -79,19 +80,25 @@ describe("planSegment: unknown words", () => {
     expect(p.gloss).toEqual(["freq"]);
   });
 
-  it("scales the budget with segment length (B x words / 300, min 1)", () => {
+  it("budget is B per page of 150 words (exactly B on short pages, scaled on long ones)", () => {
     const unknownWords = Array.from({ length: 12 }, (_, i) => `u${"abcdefghijkl"[i]}`);
     const over: Overrides = Object.fromEntries(unknownWords.map((w) => [w, { zipf: 5 }]));
     const build = (fillerSentences: number) =>
       plan(`${unknownWords.join(" ")}. ${filler(fillerSentences, 10)}`, unknownWords, over, {
         ...noClozes,
-        newWordBudget: 6,
+        newWordBudget: 3,
       }).plan;
-    const full = build(29); // 12 + 290 = 302 words -> 6
-    expect(full.introduce).toHaveLength(6);
-    expect(full.gloss).toHaveLength(6);
+    const long = build(29); // 12 + 290 = 302 words -> 3 x 302/150 = 6
+    expect(long.introduce).toHaveLength(6);
+    expect(long.gloss).toHaveLength(6);
     expect(build(13).introduce).toHaveLength(3); // 152 words -> 3
-    expect(build(0).introduce).toHaveLength(1); // 12 words -> round(0.24)=0 -> min 1
+    expect(build(0).introduce).toHaveLength(3); // 12 words (short page) -> still 3
+    const none = plan(`${unknownWords.join(" ")}.`, unknownWords, over, {
+      ...noClozes,
+      newWordBudget: 0,
+    }).plan;
+    expect(none.introduce).toEqual([]);
+    expect(none.gloss).toHaveLength(12);
   });
 
   it("introduces nothing when no unknown is above the floor, and never when none exist", () => {

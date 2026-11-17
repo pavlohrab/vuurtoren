@@ -26,7 +26,7 @@ const HELP_LABEL: Record<HelpLevel, string> = {
 };
 const NEW_WORD_OPTIONS = [
   { value: "auto", label: "Auto" },
-  ...[0, 2, 4, 6, 8, 10, 12].map((n) => ({ value: String(n), label: `${n} per page` })),
+  ...[0, 1, 2, 3, 4, 5, 6, 8].map((n) => ({ value: String(n), label: `${n} per page` })),
 ];
 
 /** Reader page: one segment at a time, with the word inspector in the shell's right panel. */
@@ -127,11 +127,14 @@ export function ReaderPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [helpDraft]);
 
-  // Translations: words the dial selects, plus every cloze (its meaning is the hint).
+  // Translations by mode: Read shows none (clean text; click a word for its meaning), Cloze
+  // only the blanks' meanings (the hint), Gloss whatever the dial selects.
   const glossIdx = useMemo(() => {
     if (!plan) return [];
-    return [...new Set([...glossTargets(plan.tokens, help), ...plan.clozes])].sort((a, b) => a - b);
-  }, [plan, help]);
+    if (mode === "gloss") return glossTargets(plan.tokens, help);
+    if (mode === "cloze") return [...plan.clozes];
+    return [];
+  }, [plan, help, mode]);
   const glossQ = useQuery({
     queryKey: ["glosses", textId, current, glossIdx.join(",")],
     queryFn: () => services.glosses(textId, glossIdx),
@@ -256,17 +259,19 @@ export function ReaderPage() {
   return (
     <div className="reader-page">
       <div className="reader-tools" role="group" aria-label="Reading help">
-        <div className="reader-tool">
-          <span className="reader-tool-label">Translations</span>
-          <div className="reader-tool-slider">
-            <Slider
-              aria-label="Translations"
-              value={Math.round(help * 100)}
-              onValueChange={(v) => setHelpDraft(v / 100)}
-            />
+        {mode === "gloss" ? (
+          <div className="reader-tool">
+            <span className="reader-tool-label">Translations</span>
+            <div className="reader-tool-slider">
+              <Slider
+                aria-label="Translations"
+                value={Math.round(help * 100)}
+                onValueChange={(v) => setHelpDraft(v / 100)}
+              />
+            </div>
+            <span className="reader-tool-value">{HELP_LABEL[helpLevel(help)]}</span>
           </div>
-          <span className="reader-tool-value">{HELP_LABEL[helpLevel(help)]}</span>
-        </div>
+        ) : null}
         <div className="reader-tool">
           <span className="reader-tool-label">New words</span>
           <Select
