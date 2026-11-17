@@ -22,9 +22,11 @@ How it works
 
 from __future__ import annotations
 
+import json
+import re
 import sqlite3
 import threading
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from pathlib import Path
 from typing import Any
 
@@ -42,6 +44,40 @@ WIDE_SIM_LOW, WIDE_SIM_HIGH = 0.2, 0.8
 POS_KINDS = {"NOUN": "noun", "VERB": "verb", "AUX": "verb", "ADJ": "adj", "ADV": "adv"}
 
 
+GlossFn = Callable[[str, str], list[str]]
+"""``(lemma, kind) -> raw English glosses`` used to drop synonyms of the query."""
+
+_ARTICLES = frozenset({"a", "an", "the", "to"})
+# English synonym groups for glosses that are near-synonyms but share no word ("happy" vs
+# "content, satisfied"). Each word maps to its group's first word before comparing.
+_SYNONYM_GROUPS = (
+    "happy glad content satisfied pleased",
+    "stop cease halt quit",
+    "use employ deploy",
+    "house dwelling residence home",
+    "woman lady girl maid",
+)
+_CANON = {w: g.split()[0] for g in _SYNONYM_GROUPS for w in g.split()}
+
+
+def gloss_token_sets(glosses: Iterable[str]) -> list[frozenset[str]]:
+    """Normalised gloss alternatives: lowercase, no parentheticals/articles/"to", split on , ; /."""
+    out: list[frozenset[str]] = []
+    for gloss in glosses:
+        text = re.sub(r"\([^)]*\)", " ", gloss.lower())
+        for part in re.split(r"[,;/]", text):
+            words = [_CANON.get(w, w) for w in re.findall(r"[a-z'-]+", part) if w not in _ARTICLES]
+            if words:
+                out.append(frozenset(words))
+    return out
+
+
+def glosses_overlap(a: Iterable[str], b: Iterable[str]) -> bool:
+    """True if any normalised gloss of ``a`` equals or contains/is contained in one of ``b``."""
+    sets_b = gloss_token_sets(b)
+    return any(x <= y or y <= x for x in gloss_token_sets(a) for y in sets_b)
+
+
 class SimilarMissingError(RuntimeError):
     """The dictionary DB or the word vectors are not available."""
 
@@ -49,7 +85,9 @@ class SimilarMissingError(RuntimeError):
 class SimilarIndex:
     """Per-POS normalised vector matrices over the frequent dictionary vocabulary."""
 
-    def __init__(self, nlp: Any, lemmas_by_pos: dict[str, list[str]]) -> None:
+    def __init__(
+        self, nlp: Any, lemmas_by_pos: dict[str, list[str]], glosses: GlossFn | None = None
+    ) -> None:
         """Build from a spaCy ``nlp`` (with vectors) and ``{kind: [lemma, ...]}``.
 
         Raises:
@@ -59,6 +97,7 @@ class SimilarIndex:
         if vocab.vectors.shape[0] == 0 or vocab.vectors_length == 0:
             raise SimilarMissingError("The spaCy model has no word vectors (need nl_core_news_md).")
         self._vocab = vocab
+        self._glosses = glosses
         self.words: dict[str, list[str]] = {}
         self.matrix: dict[str, np.ndarray] = {}
         self.zipfs: dict[str, np.ndarray] = {}
@@ -93,6 +132,7 @@ class SimilarIndex:
         sims = self.matrix[kind] @ (vec / norm)
         own_row = self._vocab.vectors.find(key=self._vocab.strings[low])
         target_zipf = zipf(low)
+        query_glosses = self._glosses(low, kind) if self._glosses else []
         out: list[str] = []
         for lo, hi, band in (
             (SIM_LOW, SIM_HIGH, ZIPF_BAND),
@@ -106,8 +146,11 @@ class SimilarIndex:
             )
             for idx in np.flatnonzero(mask)[np.argsort(-sims[mask])]:
                 word = self.words[kind][idx]
-                if word != low and word not in out and low not in word and word not in low:
-                    out.append(word)
+                if word == low or word in out or low in word or word in low:
+                    continue
+                if query_glosses and glosses_overlap(query_glosses, self._glosses(word, kind)):
+                    continue  # synonym (shared English gloss): would make the question ambiguous
+                out.append(word)
                 if len(out) >= k:
                     return out
         return out
@@ -165,8 +208,23 @@ class SimilarService:
                     )
                 from kenning_nlp.pipeline import get_nlp
 
-                self._index = SimilarIndex(get_nlp("nl"), load_vocabulary(self.db_path))
+                self._index = SimilarIndex(
+                    get_nlp("nl"), load_vocabulary(self.db_path), self._db_glosses
+                )
             return self._index
+
+    def _db_glosses(self, lemma: str, kind: str) -> list[str]:
+        """Real (non form-of) glosses of ``lemma`` with POS ``kind`` from the dictionary DB."""
+        from kenning_nlp.compound import real_glosses
+
+        con = sqlite3.connect(f"file:{self.db_path}?mode=ro", uri=True)
+        try:
+            rows = con.execute(
+                "SELECT glosses FROM entries WHERE lower(word)=? AND pos=?", (lemma, kind)
+            ).fetchall()
+        finally:
+            con.close()
+        return real_glosses([g for r in rows for g in json.loads(r[0])])
 
     def lookup(self, words: Iterable[tuple[str, str]], k: int = 8) -> dict[str, list[str]]:
         """``{lemma: [similar lemmas]}`` for ``(lemma, UPOS)`` pairs (first pair per lemma wins)."""

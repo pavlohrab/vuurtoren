@@ -103,3 +103,37 @@ def test_endpoint_with_real_dictionary() -> None:
     assert "hond" not in body["hond"]
     assert "huizen" not in body["hond"]  # inflected forms are not in the vocabulary
     assert body["mooi"]
+
+
+def test_gloss_overlap_normalisation() -> None:
+    from kenning_nlp.similar import glosses_overlap
+
+    assert glosses_overlap(["house"], ["dwelling, house, residence"])
+    assert glosses_overlap(["to stop"], ["(intransitive) to cease; to stop"])
+    assert glosses_overlap(["happy"], ["a happy person"])
+    assert not glosses_overlap(["house"], ["tree"])
+
+
+def test_synonyms_excluded_by_gloss_overlap() -> None:
+    base = SimilarIndex(get_nlp("nl"), VOCAB)
+    candidate = base.similar("hond", "NOUN", k=5)[0]
+    glosses = {"hond": ["dog"], candidate: ["dog, hound"]}
+    filtered = SimilarIndex(get_nlp("nl"), VOCAB, lambda w, k: glosses.get(w, []))
+    assert candidate not in filtered.similar("hond", "NOUN", k=8)
+
+
+@pytest.mark.skipif(not _real_db(), reason="dictionary DB not built")
+def test_real_db_synonyms_excluded() -> None:
+    app_module._similar_service.cache_clear()
+    pairs = [
+        ("huis", "NOUN", "woning"),
+        ("blij", "ADJ", "gelukkig"),
+        ("blij", "ADJ", "tevreden"),
+        ("stoppen", "VERB", "ophouden"),
+        ("gebruiken", "VERB", "inzetten"),
+        ("vrouw", "NOUN", "meid"),
+    ]
+    words = [{"lemma": w, "pos": p} for w, p, _ in pairs]
+    body = client.post("/similar", json={"lang": "nl", "words": words, "k": 20}).json()
+    for lemma, _, synonym in pairs:
+        assert synonym not in body[lemma], (lemma, synonym)

@@ -23,7 +23,12 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-from kenning_nlp.compound import PartEntry, real_glosses, split_compound
+from kenning_nlp.compound import (
+    PartEntry,
+    inflection_candidates,
+    real_glosses,
+    split_compound,
+)
 from kenning_nlp.wordforms import extract_word_forms
 
 MAX_GLOSSES = 5
@@ -277,6 +282,27 @@ class Dictionary:
             "parts": found.part_glosses,
         }
 
+    def _resolve_inflected(
+        self, con: sqlite3.Connection, word: str
+    ) -> tuple[str, list[dict[str, Any]]] | None:
+        """Entries of the noun lemma of a diminutive/plural ``word`` (``via`` marks which)."""
+        candidates = inflection_candidates(word)
+        for via, guess in candidates:
+            rows = con.execute(
+                "SELECT pos, article, glosses FROM entries WHERE lower(word) = ? AND pos='noun'"
+                " ORDER BY id",
+                (guess,),
+            ).fetchall()
+            entries = self._rows_to_entries(rows)
+            if any(real_glosses(e["glosses"]) for e in entries):
+                return via, [{**e, "via": via} for e in entries]
+        for via, guess in candidates:
+            if via == "diminutive":  # diminutive of an out-of-dictionary compound
+                found = self.analyze_compound(guess)
+                if found:
+                    return via, [{**found, "via": via}]
+        return None
+
     def lookup(self, words: Iterable[str]) -> dict[str, list[dict[str, Any]]]:
         """Entries per word (case-insensitive). Unknown words map to ``[]``.
 
@@ -303,9 +329,13 @@ class Dictionary:
                 entries = self._rows_to_entries(rows)
                 # No entry, or only "plural of X" style entries whose lemma is missing.
                 if not any(real_glosses(e["glosses"]) for e in entries):
-                    compound = self.analyze_compound(word.strip())
-                    if compound:
-                        entries = [compound]
+                    resolved = self._resolve_inflected(con, word.strip())
+                    if resolved:
+                        entries = resolved[1]
+                    else:
+                        compound = self.analyze_compound(word.strip())
+                        if compound:
+                            entries = [compound]
                 result[word] = entries
         finally:
             con.close()

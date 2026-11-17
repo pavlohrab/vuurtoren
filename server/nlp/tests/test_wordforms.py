@@ -295,3 +295,20 @@ def test_confirmed_split_inherits_and_lexical_both_wins() -> None:
     assert resolve_aux(None, (7, 0), "zwemmen", None) == "both"
     assert resolve_aux(None, (17, 57), "stoppen", None) == "both"
     assert resolve_aux(None, (14, 3), "overtuigen", None) == "hebben"
+
+
+@real_db
+def test_real_db_aux_validation() -> None:
+    expected = {
+        "overvallen": "hebben", "aanvallen": "hebben", "onderbreken": "hebben",
+        "vallen": "zijn", "lopen": "both", "gaan": "zijn", "komen": "zijn",
+        "opstaan": "zijn", "opbellen": "hebben", "vertrekken": "zijn",
+        "beginnen": "zijn", "blijven": "zijn", "worden": "zijn", "zwemmen": "both",
+        "overkomen": "zijn", "ondernemen": "hebben", "voorkomen": "both",
+        "verhuizen": "zijn", "sterven": "zijn", "groeien": "zijn", "stoppen": "both",
+        "veranderen": "both", "trouwen": "zijn", "slagen": "zijn", "fietsen": "both",
+    }  # fmt: skip
+    db = default_db_path()
+    store = WordFormsStore(db, db.parent / "sentences-nl.sqlite")
+    got = store.lookup([(v, "VERB") for v in expected])
+    assert {v: got[v].get("aux") for v in expected} == expected
