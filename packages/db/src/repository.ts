@@ -44,6 +44,14 @@ export interface KenningRepository extends Repository {
   lookedUpKeys(lang: string, textId: string): Promise<string[]>;
   /** When (ms) and from which sources the current Anki snapshot of `lang` was imported. */
   lastSnapshot(lang: string): Promise<{ at: number; sources: string[] } | null>;
+  /** Number of events in the log. */
+  eventCount(): Promise<number>;
+  /**
+   * Run `fn` while no other repository call is in flight or can start (the repository's own
+   * mutex). Used for operations on the raw file: export while no transaction is open.
+   * `fn` must not call this repository's methods (it would wait for itself).
+   */
+  exclusive<T>(fn: () => Promise<T>): Promise<T>;
   /** This device's id. */
   readonly deviceId: string;
 }
@@ -345,6 +353,11 @@ export async function createRepository(
         ]);
         return rows[0] ? json<{ at: number; sources: string[] }>(rows[0]["value"]) : null;
       }),
+
+    eventCount: () =>
+      serial(async () => Number((await driver.exec("SELECT count(*) AS c FROM events"))[0]?.["c"])),
+
+    exclusive: (fn) => serial(fn),
 
     close: () => serial(() => driver.close()),
   };
