@@ -24,10 +24,14 @@ describe("ReaderPage", () => {
     await userEvent.click(await screen.findByRole("button", { name: "Next segment" }));
     expect(await screen.findByText("Segment 2 of 2")).toBeInTheDocument();
     await userEvent.click(await screen.findByText("trein"));
+    // Let the selected word's inspector finish loading first, so no request of the previous
+    // text is still in flight when the route changes, and wait for (rather than read) the
+    // state after the switch: both used to depend on timing.
+    expect(await screen.findByRole("heading", { name: /trein/ })).toBeInTheDocument();
     await act(async () => history.push("/read/t-markt"));
     expect(await screen.findByText("Segment 1 of 2")).toBeInTheDocument();
-    expect(screen.getByText(/Select a word in the text/)).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Add to Anki" })).toBeNull();
+    expect(await screen.findByText(/Select a word in the text/)).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Add to Anki" })).toBeNull());
   });
 
   it("does not offer actions for the previous word while the next one loads", async () => {
