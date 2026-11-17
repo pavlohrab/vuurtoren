@@ -121,9 +121,22 @@ class GlossRequest(BaseModel):
     words: list[str] = Field(max_length=2000)
 
 
+class GlossPart(BaseModel):
+    part: str
+    """Surface text of the compound part."""
+    gloss: str | None = None
+    """First full gloss of the part's dictionary entry."""
+
+
 class GlossEntry(BaseModel):
     pos: str
     article: str | None = None
     """``de`` / ``het`` for nouns (``de/het`` if senses disagree)."""
     glosses: list[str]
     """Short English senses (at most 5)."""
+    compound: bool = False
+    """True if the word has no entry and was analysed as a compound of ``parts``.
+    ``glosses`` is then one string ``"souvenir shop (souvenir + winkel)"``; ``pos`` and
+    ``article`` are the head's."""
+    parts: list[GlossPart] | None = None
+    """Compound parts in order (only when ``compound``)."""

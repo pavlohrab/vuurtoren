@@ -45,6 +45,28 @@ describe("NlpClient import + gloss endpoints", () => {
     expect(JSON.parse(String(calls[0]?.init.body))).toEqual({ lang: "nl", words: ["fiets"] });
   });
 
+  it("gloss passes compound entries with parts through", async () => {
+    const compound = {
+      pos: "noun",
+      article: "de",
+      glosses: ["souvenir shop (souvenir + winkel)"],
+      compound: true,
+      parts: [
+        { part: "souvenir", gloss: "souvenir" },
+        { part: "winkel", gloss: "shop, store" },
+      ],
+    };
+    const { client } = mockClient({
+      souvenirwinkel: [compound],
+      fiets: [{ pos: "noun", article: "de", glosses: ["bicycle"] }],
+    });
+    const res = await client.gloss("nl", ["souvenirwinkel", "fiets"]);
+    const entry = res["souvenirwinkel"]?.[0];
+    expect(entry?.compound).toBe(true);
+    expect(entry?.parts?.map((p) => p.part)).toEqual(["souvenir", "winkel"]);
+    expect(res["fiets"]?.[0]?.compound).toBeUndefined();
+  });
+
   it("surfaces HTTP errors with the server detail", async () => {
     const { client } = mockClient({ detail: "Tesseract OCR is not available" }, 503);
     await expect(client.ocr(new Blob(["x"]))).rejects.toThrow(/503.*Tesseract/);

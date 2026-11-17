@@ -77,6 +77,14 @@ export interface GlossEntry {
   article: string | null;
   /** Short English senses (at most 5). */
   glosses: string[];
+  /**
+   * True when the word has no dictionary entry and was analysed as a Dutch compound. Then
+   * `glosses` is a single readable string like "souvenir shop (souvenir + winkel)", and `pos` /
+   * `article` are the head's (last part). Absent for ordinary entries.
+   */
+  compound?: boolean;
+  /** Compound parts in order (only when `compound`); `gloss` is the part's first full sense. */
+  parts?: { part: string; gloss: string | null }[];
 }
 
 /** Gloss lookup result: every requested word maps to its entries (empty if unknown). */
@@ -212,8 +220,11 @@ export class NlpClient {
     return this.postForm(`/ocr?lang=${encodeURIComponent(lang)}`, form);
   }
 
-  /** Short English glosses for words. Rejects with HTTP 503 if the dictionary is not built. */
-  /** Dictionary lookup; split into requests of at most 1000 words (server limit 2000). */
+  /**
+   * Dictionary lookup (short English glosses); unknown Dutch compounds get a `compound` entry.
+   * Split into requests of at most 1000 words (server limit 2000). Rejects with HTTP 503 if the
+   * dictionary is not built.
+   */
   async gloss(lang: NlpLang, words: string[]): Promise<GlossResult> {
     const out: GlossResult = {};
     for (let i = 0; i < words.length; i += 1000) {
