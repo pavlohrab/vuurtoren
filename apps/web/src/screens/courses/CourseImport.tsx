@@ -2,6 +2,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { UploadCloud } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { validateOutline } from "@app/core";
 import { Button, Chip, Input, Select, Spinner } from "@app/ui";
 import { useServices } from "../../services/context.js";
 import type { DeckMapping, ImportProgress, OutlineRow } from "../../services/courseTypes.js";
@@ -74,7 +75,7 @@ export function CourseImportScreen({ courseId: existing }: { courseId?: string }
 
   const [step, setStep] = useState<Step>(existing ? "outline" : "upload");
   const [courseId, setCourseId] = useState<string | null>(existing ?? null);
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const [title, setTitle] = useState("");
   const [progress, setProgress] = useState<ImportProgress | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -94,15 +95,21 @@ export function CourseImportScreen({ courseId: existing }: { courseId?: string }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [existing]);
 
+  const isPdf = (f: File) => f.type === "application/pdf" || /\.pdf$/i.test(f.name);
   const start = async () => {
-    if (!file) return;
+    if (files.length === 0) return;
+    if (files.length > 1 && files.some(isPdf)) {
+      setError("Choose one PDF, or several photos of pages, not both.");
+      return;
+    }
     setError(null);
+    setProgress(null);
     setStep("ocr");
     try {
       const id = await services.importCourse(
         {
-          kind: file.type === "application/pdf" || /\.pdf$/i.test(file.name) ? "pdf" : "images",
-          file,
+          kind: files.some(isPdf) ? "pdf" : "images",
+          files,
           ...(title.trim() ? { title: title.trim() } : {}),
         },
         (p) => mounted.current && setProgress(p),
@@ -153,6 +160,9 @@ export function CourseImportScreen({ courseId: existing }: { courseId?: string }
     }
   };
 
+  // The page count is checked by the service; here only the shape of the outline.
+  const outlineProblem = validateOutline(rows, 0);
+
   const update = (i: number, patch: Partial<OutlineRow>) =>
     setRows((rs) => rs.map((r, j) => (j === i ? { ...r, ...patch } : r)));
 
@@ -185,14 +195,27 @@ export function CourseImportScreen({ courseId: existing }: { courseId?: string }
             }}
           >
             <UploadCloud size={24} aria-hidden />
-            <span>{file ? file.name : "Choose a PDF or page images"}</span>
+            <span>
+              {files.length === 0
+                ? "Choose a PDF, or photos of the pages"
+                : files.length === 1
+                  ? files[0]?.name
+                  : `${files.length} photos, read in name order`}
+            </span>
             <input
               ref={fileInput}
               type="file"
               accept="application/pdf,image/*"
+              multiple
               hidden
               aria-label="Book file"
-              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+              onChange={(e) =>
+                setFiles(
+                  [...(e.target.files ?? [])].sort((a, b) =>
+                    a.name.localeCompare(b.name, undefined, { numeric: true }),
+                  ),
+                )
+              }
             />
           </div>
           <Input
@@ -205,7 +228,7 @@ export function CourseImportScreen({ courseId: existing }: { courseId?: string }
             A scanned book of about 300 pages needs a few minutes of reading. You can leave this
             page open and come back to it.
           </p>
-          <Button variant="primary" disabled={!file} onClick={() => void start()}>
+          <Button variant="primary" disabled={files.length === 0} onClick={() => void start()}>
             Start reading the book
           </Button>
         </>
@@ -264,6 +287,11 @@ export function CourseImportScreen({ courseId: existing }: { courseId?: string }
               </Button>
             </div>
           ))}
+          {outlineProblem && rows.length > 0 ? (
+            <p className="cs-bad" role="status">
+              {outlineProblem}
+            </p>
+          ) : null}
           <div className="row" style={{ marginTop: 12 }}>
             <Button
               onClick={() =>
@@ -284,7 +312,7 @@ export function CourseImportScreen({ courseId: existing }: { courseId?: string }
             </Button>
             <Button
               variant="primary"
-              disabled={rows.length === 0}
+              disabled={outlineProblem !== null}
               onClick={() => void saveOutline()}
             >
               Continue

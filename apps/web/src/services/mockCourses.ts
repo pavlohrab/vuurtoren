@@ -12,6 +12,7 @@ import {
   checkBookItem,
   suggestDecks,
   unitStatus,
+  validateOutline,
 } from "@app/core";
 import type {
   AddMissingResult,
@@ -352,6 +353,8 @@ export function createMockCourses(opts: { latencyMs?: number } = {}): CourseServ
     },
     async editOutline(_id, rows) {
       await wait(latency);
+      const problem = validateOutline(rows, course?.pageCount ?? 0);
+      if (problem) throw new Error(problem);
       units = rows.map((r, i) => ({
         courseId: COURSE_ID,
         n: i + 1,

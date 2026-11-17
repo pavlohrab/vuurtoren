@@ -27,7 +27,8 @@ export interface ImportProgress {
 
 /** What can be imported as a course. */
 export type CourseSourceInput =
-  | { kind: "pdf" | "images"; file: File; title?: string }
+  /** One PDF, or photos of pages (read in the given order). */
+  | { kind: "pdf" | "images"; files: File[]; title?: string }
   | { kind: "text"; title: string; text: string };
 
 export interface CourseListItem {

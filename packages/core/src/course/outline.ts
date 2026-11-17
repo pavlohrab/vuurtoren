@@ -230,3 +230,39 @@ export function detectOutline(pages: readonly OcrPage[], courseId: string): Unit
     kind: d.kind,
   }));
 }
+
+/**
+ * Check an edited outline before it is saved: every unit needs whole page numbers within the
+ * book, the first page not after the last, and no two units may share a page.
+ *
+ * @param rows units as edited (titles and inclusive page ranges)
+ * @param pageCount pages in the source (0 or less: unknown, no upper bound)
+ * @returns a message for the user, or null when the outline is valid
+ */
+export function validateOutline(
+  rows: readonly { title: string; pages: readonly [number, number] }[],
+  pageCount: number,
+): string | null {
+  if (rows.length === 0) return "Add at least one unit.";
+  const named = (i: number) => rows[i]?.title.trim() || `Unit ${i + 1}`;
+  for (const [i, r] of rows.entries()) {
+    const [from, to] = r.pages;
+    if (!Number.isInteger(from) || !Number.isInteger(to) || from < 1 || to < 1) {
+      return `${named(i)}: page numbers must be whole numbers from 1.`;
+    }
+    if (from > to) return `${named(i)}: the first page comes after the last page.`;
+    if (pageCount > 0 && to > pageCount) {
+      return `${named(i)}: the book has only ${pageCount} pages.`;
+    }
+  }
+  const order = rows.map((r, i) => ({ i, from: r.pages[0], to: r.pages[1] }));
+  order.sort((a, b) => a.from - b.from);
+  for (let k = 1; k < order.length; k++) {
+    const prev = order[k - 1];
+    const cur = order[k];
+    if (prev && cur && cur.from <= prev.to) {
+      return `${named(prev.i)} and ${named(cur.i)} share page ${cur.from}.`;
+    }
+  }
+  return null;
+}

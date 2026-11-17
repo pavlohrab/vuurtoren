@@ -29,6 +29,7 @@ import {
   suggestDecks,
   unitStatus,
   unitWordLists,
+  validateOutline,
 } from "@app/core";
 import type { KenningRepository, WordInfo } from "@app/db";
 import type { NlpClient } from "@app/nlp-client";
@@ -114,11 +115,11 @@ export function createLiveCourses(deps: LiveCoursesDeps): CourseServices {
 
   /** Run the server OCR job; resolves with all pages. */
   async function ocrPages(
-    file: File,
+    files: readonly File[],
     onProgress?: (p: ImportProgress) => void,
   ): Promise<OcrPage[]> {
     const client = await deps.nlp();
-    const job = await client.courseOcrStart(file, "nl", file.name);
+    const job = await client.courseOcrStart(files, "nl");
     const pages: OcrPage[] = [];
     for (;;) {
       const st = await client.courseOcrStatus(job.id, pages.length);
@@ -147,9 +148,11 @@ export function createLiveCourses(deps: LiveCoursesDeps): CourseServices {
       source = { kind: "text" };
       title = input.title;
     } else {
-      pages = await ocrPages(input.file, onProgress);
-      source = { kind: input.kind, filename: input.file.name };
-      title = input.title?.trim() || fileTitle(input.file.name);
+      const first = input.files[0];
+      if (!first) throw new Error("Choose a file first.");
+      pages = await ocrPages(input.files, onProgress);
+      source = { kind: input.kind, filename: first.name };
+      title = input.title?.trim() || fileTitle(first.name);
     }
     if (pages.every((p) => !p.text.trim())) throw new Error("No text was found in this file.");
     onProgress?.({ stage: "outline", done: 0, total: 1, message: "Finding units and exercises" });
@@ -173,6 +176,8 @@ export function createLiveCourses(deps: LiveCoursesDeps): CourseServices {
 
   async function editOutline(courseId: string, rows: OutlineRow[]): Promise<void> {
     const course = await courseOrThrow(courseId);
+    const problem = validateOutline(rows, course.pageCount);
+    if (problem) throw new Error(problem);
     const units: Unit[] = rows.map((r, i) => ({
       courseId,
       n: i + 1,
@@ -438,10 +443,12 @@ export function createLiveCourses(deps: LiveCoursesDeps): CourseServices {
   async function learnNextForUnit(courseId: string, n: number): Promise<LearnNextResult> {
     const lang = (await deps.settings()).lang;
     const infos = await wordMap();
-    const words = (await repo.unitWords(courseId, n)).flatMap((w) => infos.get(keyOf(w)) ?? []);
-    const withNotes = words.filter((w) => w.noteIds.length > 0 && w.state !== "known");
-    if (withNotes.length === 0)
-      return { moved: 0, skipped: (await repo.unitWords(courseId, n)).length };
+    const keys = [...new Set((await repo.unitWords(courseId, n)).map(keyOf))];
+    const total = keys.length;
+    const withNotes = keys
+      .flatMap((k) => infos.get(k) ?? [])
+      .filter((w) => w.noteIds.length > 0 && w.state !== "known");
+    if (withNotes.length === 0) return { moved: 0, skipped: total };
     const anki = await deps.anki();
     const { notes } = await cardStatus(anki, [...new Set(withNotes.flatMap((w) => w.noteIds))]);
     const newCards = new Map<number, number[]>(); // noteId -> new card ids
@@ -449,8 +456,11 @@ export function createLiveCourses(deps: LiveCoursesDeps): CourseServices {
       const fresh = note.cards.filter((c) => c.type === "new").map((c) => c.cardId);
       if (fresh.length > 0) newCards.set(note.noteId, fresh);
     }
-    const cardIds = [...newCards.values()].flat();
-    if (cardIds.length === 0) return { moved: 0, skipped: withNotes.length };
+    // In the unit's word order, so Anki introduces the words as the book does.
+    const cardIds = [
+      ...new Set(withNotes.flatMap((w) => w.noteIds.flatMap((id) => newCards.get(id) ?? []))),
+    ];
+    if (cardIds.length === 0) return { moved: 0, skipped: total };
     const { repositioned, unsuspended } = await learnNext(anki, cardIds);
     const moved = new Set(repositioned);
     let count = 0;
@@ -469,7 +479,7 @@ export function createLiveCourses(deps: LiveCoursesDeps): CourseServices {
       count++;
     }
     deps.changed();
-    return { moved: count, skipped: (await repo.unitWords(courseId, n)).length - count };
+    return { moved: count, skipped: total - count };
   }
 
   async function addMissingUnitWords(courseId: string, n: number): Promise<AddMissingResult> {
