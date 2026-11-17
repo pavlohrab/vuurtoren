@@ -713,7 +713,12 @@ export function createMockServices(options: { latencyMs?: number } = {}): AppSer
 
     async ankiStatus(): Promise<AnkiStatus> {
       await delay(latency * 4);
-      return { connected: true, version: 6 };
+      return { connected: true, state: "connected", version: 6 };
+    },
+
+    async connectAnki() {
+      await delay(latency * 4);
+      return { denied: false, status: { connected: true, state: "connected", version: 6 } };
     },
 
     async syncAnki(onProgress) {

@@ -64,8 +64,16 @@ export type ImportInput =
   | { kind: "pdf" | "image"; file: File; title?: string };
 export interface AnkiStatus {
   connected: boolean;
+  /** Detailed state: see AnkiConnectionState in @app/anki. */
+  state: "connected" | "not-running" | "not-allowed" | "needs-key" | "busy";
   version?: number;
   error?: string;
+}
+/** Outcome of "Connect to Anki" (asks Anki to allow this site, then re-tests). */
+export interface AnkiConnectResult {
+  /** True if the user answered No in Anki's dialog. */
+  denied: boolean;
+  status: AnkiStatus;
 }
 export interface LearnerSummary {
   known: number;
@@ -137,6 +145,8 @@ export interface AppServices {
   getSettings(): Promise<Settings>;
   saveSettings(patch: Partial<Settings>): Promise<void>;
   ankiStatus(): Promise<AnkiStatus>;
+  /** Show Anki's "allow this site?" dialog (user action only), then re-test the connection. */
+  connectAnki(): Promise<AnkiConnectResult>;
   syncAnki(onProgress?: (msg: string) => void): Promise<LearnerSummary>;
   learnerSummary(): Promise<LearnerSummary>;
   /** Counts for the Practice start screen, the sidebar badge and Progress. */

@@ -12,10 +12,18 @@ export interface AnkiConnectOptions {
   timeoutMs?: number;
 }
 
+/**
+ * What went wrong: `network` (fetch threw: Anki is down, or the browser blocked the response
+ * because the origin is not allowed), `timeout`, `forbidden` (HTTP 403), `api` (AnkiConnect
+ * returned an error string) or `parse` (not JSON).
+ */
+export type AnkiErrorKind = "network" | "timeout" | "forbidden" | "api" | "parse";
+
 export class AnkiConnectError extends Error {
   constructor(
     message: string,
     readonly action: string,
+    readonly kind: AnkiErrorKind = "api",
   ) {
     super(`AnkiConnect ${action}: ${message}`);
     this.name = "AnkiConnectError";
@@ -72,6 +80,7 @@ export class AnkiConnectClient {
           ? `no answer within ${this.timeoutMs / 1000}s (is a dialog open in Anki?)`
           : `cannot reach ${this.url} (is Anki running with AnkiConnect?) ${String(e)}`,
         action,
+        timedOut ? "timeout" : "network",
       );
     }
   }
@@ -81,7 +90,11 @@ export class AnkiConnectClient {
     try {
       return JSON.parse(text) as T;
     } catch {
-      throw new AnkiConnectError(`HTTP ${res.status}, not JSON: ${text.slice(0, 120)}`, action);
+      throw new AnkiConnectError(
+        `HTTP ${res.status}, not JSON: ${text.slice(0, 120)}`,
+        action,
+        "parse",
+      );
     }
   }
 
@@ -91,7 +104,11 @@ export class AnkiConnectClient {
     if (this.apiKey) body["key"] = this.apiKey;
     const res = await this.send(this.url, { method: "POST", body: JSON.stringify(body) }, action);
     if (res.status === 403)
-      throw new AnkiConnectError("origin not allowed (webCorsOriginList / apiKey)", action);
+      throw new AnkiConnectError(
+        "origin not allowed (webCorsOriginList / apiKey)",
+        action,
+        "forbidden",
+      );
     const json = await AnkiConnectClient.json<{ result: T; error: string | null }>(res, action);
     if (json.error) throw new AnkiConnectError(json.error, action);
     return json.result;

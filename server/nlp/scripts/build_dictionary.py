@@ -13,27 +13,18 @@ from __future__ import annotations
 import argparse
 import sys
 import time
-import urllib.request
 from pathlib import Path
+
+from pinned_download import PinMismatchError, download_verified
 
 from kenning_nlp.dictionary import build_dictionary
 
 KAIKKI_URL = "https://kaikki.org/dictionary/Dutch/kaikki.org-dictionary-Dutch.jsonl"
+# Kaikki only publishes a rolling "latest" file, so we pin the snapshot the data was built from
+# (file last modified 2026-10-30). A mismatch stops the build; see pinned_download.py.
+KAIKKI_SHA256 = "6e3335a4bcf9739cae0a7490beb1f31d8e8dcec61475fc701a6cfe63cdd65438"
+KAIKKI_SIZE = 257_235_436
 DATA_DIR = Path(__file__).resolve().parents[1] / "data"
-
-
-def download(url: str, dest: Path) -> None:
-    """Stream ``url`` to ``dest`` (via a .part file), printing the size up front."""
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    req = urllib.request.Request(url, headers={"User-Agent": "kenning-build-dictionary"})
-    with urllib.request.urlopen(req, timeout=60) as resp:  # noqa: S310 (fixed https URL)
-        total = int(resp.headers.get("Content-Length", 0))
-        print(f"Downloading {url} ({total / 1e6:.0f} MB)")
-        part = dest.with_name(dest.name + ".part")
-        with part.open("wb") as fh:
-            while chunk := resp.read(1 << 20):
-                fh.write(chunk)
-    part.replace(dest)
 
 
 def main() -> int:
@@ -41,6 +32,13 @@ def main() -> int:
     ap.add_argument("--input", type=Path, help="existing Kaikki JSONL (skips the download)")
     ap.add_argument("--output", type=Path, default=DATA_DIR / "dictionary-nl.sqlite")
     ap.add_argument("--url", default=KAIKKI_URL)
+    ap.add_argument("--sha256", default=KAIKKI_SHA256, help="expected SHA-256 ('' = no check)")
+    ap.add_argument("--size", type=int, default=KAIKKI_SIZE, help="expected bytes (0 = no check)")
+    ap.add_argument(
+        "--accept-new-upstream",
+        action="store_true",
+        help="build from the downloaded file even if it differs from the pinned snapshot",
+    )
     ap.add_argument("--keep-jsonl", action="store_true", help="keep the downloaded JSONL")
     args = ap.parse_args()
 
@@ -49,7 +47,19 @@ def main() -> int:
     if src is None:
         src = DATA_DIR / "kaikki-nl.jsonl"
         if not src.exists():
-            download(args.url, src)
+            try:
+                download_verified(
+                    args.url,
+                    src,
+                    "Kaikki Dutch dump",
+                    args.sha256 or None,
+                    args.size or None,
+                    args.accept_new_upstream,
+                    "kenning-build-dictionary",
+                )
+            except PinMismatchError as e:
+                print(f"error: {e}", file=sys.stderr)
+                return 2
             downloaded = True
     t0 = time.perf_counter()
     stats = build_dictionary(src, args.output)

@@ -4,6 +4,9 @@
  */
 import {
   AnkiConnectClient,
+  probeAnki,
+  requestAnkiPermission,
+  type AnkiConnectionState,
   addNoteAsKnown,
   addWordNote,
   buildSnapshot,
@@ -37,6 +40,7 @@ import { NlpClient } from "@app/nlp-client";
 import { createLivePractice } from "./livePractice.js";
 import { createPracticeData } from "./practiceData.js";
 import type {
+  AnkiConnectResult,
   AnkiStatus,
   AppServices,
   ImportInput,
@@ -213,6 +217,39 @@ const PLACE_SENSE =
 /** Where a word may enter the review, strongest reason first. */
 const SOURCE_RANK = { introduce: 0, lookup: 1, gloss: 2 } as const;
 
+/** Map the client's connection state to what the Settings screen shows. */
+export function toAnkiStatus(c: AnkiConnectionState): AnkiStatus {
+  switch (c.state) {
+    case "connected":
+      return { connected: true, state: "connected", version: c.version };
+    case "needs-key":
+      return {
+        connected: false,
+        state: "needs-key",
+        version: c.version,
+        error: "Anki allows this site but wants an API key. Enter it above.",
+      };
+    case "not-allowed":
+      return {
+        connected: false,
+        state: "not-allowed",
+        error: "Anki does not allow this site yet.",
+      };
+    case "busy":
+      return {
+        connected: false,
+        state: "busy",
+        error: "Anki did not answer in time. Is a dialog open in Anki?",
+      };
+    default:
+      return {
+        connected: false,
+        state: "not-running",
+        error: "Cannot reach Anki. Is Anki running with the AnkiConnect add-on installed?",
+      };
+  }
+}
+
 export function createLiveServices(repo: KenningRepository): AppServices {
   let settingsCache: Settings | null = null;
   // Bumped whenever the learner model changes, so cached plans are recomputed.
@@ -289,14 +326,15 @@ export function createLiveServices(repo: KenningRepository): AppServices {
     return settingsCache;
   }
   const nlp = async () => new NlpClient({ url: (await settings()).nlpUrl });
-  const anki = async (timeoutMs?: number) => {
+  const ankiOptions = async (timeoutMs?: number) => {
     const s = await settings();
-    return new AnkiConnectClient({
+    return {
       url: s.ankiUrl,
       ...(s.ankiKey ? { apiKey: s.ankiKey } : {}),
       ...(timeoutMs ? { timeoutMs } : {}),
-    });
+    };
   };
+  const anki = async (timeoutMs?: number) => new AnkiConnectClient(await ankiOptions(timeoutMs));
   /** The note Kenning would create for a word (used by Add to Anki and Mark known). */
   const newNote = async (entry: InspectorEntry) => {
     const s = await settings();
@@ -833,11 +871,13 @@ export function createLiveServices(repo: KenningRepository): AppServices {
     },
 
     async ankiStatus(): Promise<AnkiStatus> {
-      try {
-        return { connected: true, version: await (await anki()).version() };
-      } catch (e) {
-        return { connected: false, error: e instanceof Error ? e.message : String(e) };
-      }
+      return toAnkiStatus(await probeAnki(await ankiOptions()));
+    },
+
+    async connectAnki(): Promise<AnkiConnectResult> {
+      const outcome = await requestAnkiPermission(await ankiOptions());
+      const status = toAnkiStatus(await probeAnki(await ankiOptions()));
+      return { denied: outcome.outcome === "denied", status };
     },
 
     async syncAnki(onProgress?: (msg: string) => void): Promise<LearnerSummary> {
