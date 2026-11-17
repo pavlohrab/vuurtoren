@@ -14,9 +14,9 @@ let store: Store;
 let server: ReturnType<typeof createApiServer>;
 let base: string;
 
-async function start(token?: string): Promise<void> {
+async function start(token?: string, caps: { maxBodyBytes?: number; maxRpcBytes?: number } = {}) {
   store = await openStore(join(dir, "kenning.sqlite"));
-  server = createApiServer({ store, token, maxBodyBytes: 50 * 1024 * 1024 });
+  server = createApiServer({ store, token, maxBodyBytes: 50 * 1024 * 1024, ...caps });
   await new Promise<void>((r) => server.listen(0, "127.0.0.1", r));
   base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
 }
@@ -52,6 +52,11 @@ describe("rpc allow-list", () => {
       expect(res.status).toBe(400);
     },
   );
+
+  it("rejects unknown event types and does not expose rebuild", async () => {
+    expect((await rpc("append", [{ type: "Bogus" }])).status).toBe(400);
+    expect((await rpc("rebuild")).status).toBe(400);
+  });
 
   it("validates argument shapes", async () => {
     expect((await rpc("word", ["nl"])).status).toBe(400);
@@ -155,7 +160,9 @@ describe("http repository", () => {
           page: 2,
           instruction: "Vul in.",
           type: "gapfill",
-          items: [{ prompt: "Ik ____ hier.", answer: "woon", answerSource: "derived", confidence: 0.9 }],
+          items: [
+            { prompt: "Ik ____ hier.", answer: "woon", answerSource: "derived", confidence: 0.9 },
+          ],
           raw: "Vul in.",
         },
       ],
@@ -309,3 +316,20 @@ describe("database newer than the app", () => {
 
 import { readFileSync } from "node:fs";
 const readFileSyncBytes = (f: string): Buffer => readFileSync(f);
+
+describe("body caps", () => {
+  it("caps rpc bodies and streams imports to disk under their own cap", async () => {
+    await start(undefined, { maxBodyBytes: 4096, maxRpcBytes: 1024 });
+    const big = { type: "SettingChanged", key: "k", value: "x".repeat(2000) };
+    expect((await rpc("append", [big])).status).toBe(413);
+    const res = await fetch(`${base}/api/import`, {
+      method: "POST",
+      headers: { "x-kenning": "1" },
+      body: Buffer.alloc(8192, 1),
+    });
+    expect(res.status).toBe(413);
+    // The partial upload is gone.
+    expect(readdirSync(dir).filter((f) => f.endsWith(".tmp"))).toEqual([]);
+    expect((await rpc("listTexts")).status).toBe(200);
+  });
+});

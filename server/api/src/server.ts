@@ -12,7 +12,7 @@
  * sign-in routes needs a session cookie or `Authorization: Bearer <token>`. State-changing
  * requests are CSRF-checked in every mode.
  */
-import { createReadStream, statSync } from "node:fs";
+import { createReadStream, rmSync, statSync } from "node:fs";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import {
   BackupError,
@@ -24,7 +24,7 @@ import {
   validateRpcArgs,
 } from "@app/db";
 import { type Auth, createAuth } from "./auth/index.js";
-import { HttpFail, json, readBody } from "./http-util.js";
+import { HttpFail, json, readBody, streamBodyToFile } from "./http-util.js";
 import type { Store } from "./store.js";
 
 export interface ApiOptions {
@@ -33,15 +33,23 @@ export interface ApiOptions {
   auth?: Auth;
   /** Bearer token when `auth` is not given; empty or undefined disables authentication. */
   token?: string | undefined;
-  /** Largest accepted import / rpc body in bytes (default 512 MiB). */
+  /** Largest accepted import (backup) body in bytes (default 512 MiB); streamed to disk. */
   maxBodyBytes?: number;
+  /** Largest accepted `/api/rpc` body in bytes (default 32 MiB); held in memory. */
+  maxRpcBytes?: number;
 }
+
+/** Default cap of an import body (a whole database backup). */
+export const DEFAULT_MAX_IMPORT_BYTES = 512 * 1024 * 1024;
+/** Default cap of one RPC body: the largest event is an analysed book (tokens), well below this. */
+export const DEFAULT_MAX_RPC_BYTES = 32 * 1024 * 1024;
 
 /** Create (not yet listening) the API server. */
 export function createApiServer(opts: ApiOptions): Server {
   const { store } = opts;
   const auth = opts.auth ?? createAuth({ token: opts.token });
-  const maxBody = opts.maxBodyBytes ?? 512 * 1024 * 1024;
+  const maxBody = opts.maxBodyBytes ?? DEFAULT_MAX_IMPORT_BYTES;
+  const maxRpc = Math.min(opts.maxRpcBytes ?? DEFAULT_MAX_RPC_BYTES, maxBody);
 
   async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> {
     const path = new URL(req.url ?? "/", "http://x").pathname;
@@ -72,7 +80,7 @@ export function createApiServer(opts: ApiOptions): Server {
     if (path === "/api/rpc" && method === "POST") {
       let body: { method?: unknown; args?: unknown };
       try {
-        body = JSON.parse((await readBody(req, maxBody)).toString("utf8")) as typeof body;
+        body = JSON.parse((await readBody(req, maxRpc)).toString("utf8")) as typeof body;
       } catch (err) {
         if (err instanceof HttpFail) throw err;
         throw new HttpFail(400, "Body must be JSON.");
@@ -112,8 +120,14 @@ export function createApiServer(opts: ApiOptions): Server {
     }
 
     if (path === "/api/import" && method === "POST") {
-      const bytes = await readBody(req, maxBody);
-      await store.importBackup(new Uint8Array(bytes.buffer, bytes.byteOffset, bytes.length));
+      // Streamed to a file next to the database, so a large backup never sits in memory.
+      const file = store.uploadPath();
+      try {
+        await streamBodyToFile(req, file, maxBody);
+        await store.importBackupFile(file);
+      } finally {
+        rmSync(file, { force: true });
+      }
       return json(res, 200, { ok: true }, extra);
     }
 

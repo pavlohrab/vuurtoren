@@ -3,7 +3,15 @@
  * (rpc, info, export, import) runs through one queue, so an import can swap the file
  * atomically while no request is in flight.
  */
-import { copyFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import {
+  closeSync,
+  copyFileSync,
+  openSync,
+  readSync,
+  renameSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { dirname, join } from "node:path";
 import { randomBytes } from "node:crypto";
 import {
@@ -21,6 +29,18 @@ import {
 } from "@app/db";
 import { createNodeDriver, createNodeSyncDb } from "@app/db/node";
 
+/** The first bytes of a file (the SQLite header), for a cheap check before opening it. */
+function readHeader(file: string, n = 100): Uint8Array {
+  const fd = openSync(file, "r");
+  try {
+    const buf = Buffer.alloc(n);
+    const got = readSync(fd, buf, 0, n, 0);
+    return new Uint8Array(buf.buffer, buf.byteOffset, got);
+  } finally {
+    closeSync(fd);
+  }
+}
+
 export interface Store {
   readonly path: string;
   /** "ready", or "schema-too-new" when the file needs a newer app (repository unavailable). */
@@ -33,6 +53,10 @@ export interface Store {
   snapshot(): Promise<{ file: string; cleanup: () => void }>;
   /** Replace the database with `bytes` (validated; new device id). */
   importBackup(bytes: Uint8Array): Promise<void>;
+  /** A fresh temporary path next to the database, for streaming an upload into. */
+  uploadPath(): string;
+  /** Replace the database with the backup in `file` (from `uploadPath`; consumed). */
+  importBackupFile(file: string): Promise<void>;
   close(): Promise<void>;
 }
 
@@ -70,6 +94,29 @@ export async function openStore(path: string): Promise<Store> {
   }
   await open();
 
+  /** Validate the candidate file `tmp` (next to the database) and atomically swap it in. */
+  async function swapIn(tmp: string): Promise<void> {
+    try {
+      const db = createNodeSyncDb(tmp);
+      try {
+        inspectBackup(db);
+        prepareImported(db);
+      } finally {
+        db.close();
+      }
+      await driver?.close();
+      driver = null;
+      repo = null;
+      // Rename is atomic on one filesystem (tmp lives next to the target).
+      renameSync(tmp, path);
+      for (const ext of ["-wal", "-shm", "-journal"]) rmSync(path + ext, { force: true });
+    } finally {
+      rmSync(tmp, { force: true });
+      // Also reopens the old file when validation failed before the swap.
+      if (!driver) await open();
+    }
+  }
+
   return {
     path,
     get state() {
@@ -89,11 +136,11 @@ export async function openStore(path: string): Promise<Store> {
         // Too-new file: read the counters directly.
         const raw = createNodeSyncDb(path);
         try {
-          const num = (sql: string, col: string): number =>
-            Number(raw.exec(sql)[0]?.[col] ?? 0);
+          const num = (sql: string, col: string): number => Number(raw.exec(sql)[0]?.[col] ?? 0);
           const row = raw.exec("SELECT value FROM meta WHERE key = 'device_id'")[0];
           return {
-            sizeBytes: num("PRAGMA page_count", "page_count") * num("PRAGMA page_size", "page_size"),
+            sizeBytes:
+              num("PRAGMA page_count", "page_count") * num("PRAGMA page_size", "page_size"),
             eventCount: num("SELECT count(*) AS c FROM events", "c"),
             deviceId: row ? (JSON.parse(String(row["value"])) as string) : null,
           };
@@ -119,26 +166,19 @@ export async function openStore(path: string): Promise<Store> {
       queue(async () => {
         checkBackupHeader(bytes);
         const tmp = tmpName("import");
+        writeFileSync(tmp, bytes);
+        await swapIn(tmp);
+      }),
+    uploadPath: () => tmpName("upload"),
+    importBackupFile: (file) =>
+      queue(async () => {
         try {
-          writeFileSync(tmp, bytes);
-          const db = createNodeSyncDb(tmp);
-          try {
-            inspectBackup(db);
-            prepareImported(db);
-          } finally {
-            db.close();
-          }
-          await driver?.close();
-          driver = null;
-          repo = null;
-          // Rename is atomic on one filesystem (tmp lives next to the target).
-          renameSync(tmp, path);
-          for (const ext of ["-wal", "-shm", "-journal"]) rmSync(path + ext, { force: true });
-        } finally {
-          rmSync(tmp, { force: true });
-          // Also reopens the old file when validation failed before the swap.
-          if (!driver) await open();
+          checkBackupHeader(readHeader(file));
+        } catch (err) {
+          rmSync(file, { force: true });
+          throw err;
         }
+        await swapIn(file);
       }),
     close: () =>
       queue(async () => {
