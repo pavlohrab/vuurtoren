@@ -74,7 +74,7 @@ pnpm dev            # web app on http://localhost:5173 (proxies /nlp and /anki)
   - Size limits and timeouts.
   - Docker images and compose file.
 - **Quality:**
-  - About 230 TypeScript and about 240 Python tests.
+  - 214 TypeScript and 242 Python tests (3 OCR tests skip without Tesseract).
   - Three independent reviews; all confirmed High/Critical findings fixed. See below.
 
 ### Review fixes applied
@@ -89,7 +89,22 @@ pnpm dev            # web app on http://localhost:5173 (proxies /nlp and /anki)
   - Your own deck is always included in the sync.
   - A word you added isn't demoted by the next sync.
   - Glosses are matched by part of speech.
-- **UI:** see the M3 UI fixes list (state leaks between texts, stale inspector actions, notices for unsaved data, error handling, mobile header, …). <!-- UI_FIXES -->
+- **UI:**
+  - Reader state no longer leaks between texts.
+  - Inspector actions can't hit the previously selected word.
+  - Banners for unsaved data (private window / second tab) and for demo mode.
+  - Errors shown with Retry instead of failing silently.
+  - Resume continues at the next unread page.
+  - Accurate cloze credit: unanswered or revealed blanks = 0, finished pages aren't resubmitted.
+  - Particles are no longer double-clozed.
+  - Keyboard handling respects sliders, tabs and dialogs; Esc respects overlays.
+  - The Translations dial saves reliably.
+  - Mobile header fits at 390 px.
+  - The current page's plan is frozen while you read it.
+  - Import: separate PDF and photo inputs.
+  - Settings test the address you typed.
+  - Consistent numbers: "N unknown" in the Library, "N to learn" = amber words in the reader.
+  - Database projections are versioned and rebuilt once after an upgrade.
 
 ## To do next
 

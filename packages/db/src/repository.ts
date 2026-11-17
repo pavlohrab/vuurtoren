@@ -42,6 +42,11 @@ export interface KenningRepository extends Repository {
   readonly deviceId: string;
 }
 
+/**
+ * Bump when a projection's meaning changes. 2: reading_progress.last_segment = next segment to read.
+ */
+export const PROJECTION_VERSION = 2;
+
 const json = <T>(v: SqlValue | undefined): T => JSON.parse(String(v)) as T;
 
 function textSummary(r: Row): TextSummary {
@@ -279,5 +284,17 @@ export async function createRepository(
 
     close: () => serial(() => driver.close()),
   };
+
+  // Projections are derived data: when their semantics change (PROJECTION_VERSION), rebuild them
+  // once from the event log so existing databases pick up the new meaning.
+  const pv = (await driver.exec("SELECT value FROM meta WHERE key = 'projection_version'"))[0];
+  if (!pv || json<number>(pv["value"]) !== PROJECTION_VERSION) {
+    const hasEvents = (await driver.exec("SELECT 1 AS x FROM events LIMIT 1")).length > 0;
+    if (hasEvents) await repo.rebuild();
+    await driver.exec(
+      "INSERT INTO meta (key, value) VALUES ('projection_version', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+      [JSON.stringify(PROJECTION_VERSION)],
+    );
+  }
   return repo;
 }

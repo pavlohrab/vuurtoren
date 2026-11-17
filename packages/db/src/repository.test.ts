@@ -300,6 +300,40 @@ describe("projections", () => {
     expect((await repo.learnerModel("nl")).get("kaas")).toEqual({ state: "learning", pKnown: 0.2 });
   });
 
+  it("rebuilds projections once when the projection version changes", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "kenning-pv-"));
+    try {
+      const path = join(dir, "db.sqlite");
+      let repo = await createRepository(await createNodeDriver(path));
+      await repo.append({
+        type: "TextImported",
+        textId: "t",
+        title: "T",
+        lang: "nl",
+        source: { kind: "paste" },
+        content: "a b c",
+      });
+      await repo.append({
+        type: "ReadingProgress",
+        textId: "t",
+        segment: 0,
+        clozeAccuracy: null,
+        lookupsPer100: 0,
+      });
+      // simulate an old database: stale projection value + old version marker
+      const d = await createNodeDriver(path);
+      await repo.close();
+      await d.exec("UPDATE reading_progress SET last_segment = 0");
+      await d.exec("UPDATE meta SET value = '1' WHERE key = 'projection_version'");
+      await d.close();
+      repo = await createRepository(await createNodeDriver(path));
+      expect((await repo.listTexts())[0]?.lastSegment).toBe(1);
+      await repo.close();
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   it("StaircaseUpdated and SettingChanged are stored", async () => {
     const { repo } = await newRepo();
     expect(await repo.staircase("nl")).toBeNull();
