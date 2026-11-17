@@ -125,6 +125,26 @@ export const PROJECTION_TABLES = [
   "settings",
 ] as const;
 
+/** The database file was written by a newer app version than this one understands. */
+export class SchemaTooNewError extends Error {
+  override readonly name = "SchemaTooNewError";
+  constructor(
+    /** The file's `PRAGMA user_version`. */
+    readonly found: number,
+    /** The newest version this build supports. */
+    readonly supported: number = SCHEMA_VERSION,
+  ) {
+    super(
+      `Database schema v${found} is newer than supported v${supported}. Update Kenning to open it.`,
+    );
+  }
+}
+
+/** True for `SchemaTooNewError` (also across duplicated module copies). */
+export function isSchemaTooNew(err: unknown): err is SchemaTooNewError {
+  return err instanceof Error && err.name === "SchemaTooNewError";
+}
+
 /**
  * Bring the database to the latest schema. Idempotent: already-applied migrations are
  * skipped, so it is safe to call on every open. Throws if the DB is from a newer version.
@@ -133,7 +153,7 @@ export async function migrate(driver: SqlDriver): Promise<void> {
   const rows = await driver.exec("PRAGMA user_version");
   const current = Number(rows[0]?.["user_version"] ?? 0);
   if (current > SCHEMA_VERSION) {
-    throw new Error(`Database schema v${current} is newer than supported v${SCHEMA_VERSION}`);
+    throw new SchemaTooNewError(current);
   }
   for (let v = current; v < SCHEMA_VERSION; v++) {
     await driver.transaction(async () => {
