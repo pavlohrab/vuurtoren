@@ -10,6 +10,7 @@ Schema::
 
     entries(id, word, pos, article, gender, glosses JSON, forms JSON, ipa)   -- index lower(word)
     forms(form, lemma, pos)                                                  -- index lower(form)
+    wordforms(lemma, pos, data JSON)                                         -- index lower(lemma)
 """
 
 from __future__ import annotations
@@ -23,6 +24,7 @@ from pathlib import Path
 from typing import Any
 
 from kenning_nlp.compound import PartEntry, real_glosses, split_compound
+from kenning_nlp.wordforms import extract_word_forms
 
 MAX_GLOSSES = 5
 MAX_GLOSS_CHARS = 160
@@ -43,10 +45,12 @@ CREATE TABLE entries (
     ipa TEXT
 );
 CREATE TABLE forms (form TEXT NOT NULL, lemma TEXT NOT NULL, pos TEXT NOT NULL);
+CREATE TABLE wordforms (lemma TEXT NOT NULL, pos TEXT NOT NULL, data TEXT NOT NULL);
 """
 INDEXES = """
 CREATE INDEX idx_entries_word ON entries(lower(word));
 CREATE INDEX idx_forms_form ON forms(lower(form));
+CREATE INDEX idx_wordforms_lemma ON wordforms(lower(lemma));
 """
 
 
@@ -185,6 +189,12 @@ def build_dictionary(jsonl_path: Path, db_path: Path) -> dict[str, int]:
                 ),
             )
             n_entries += 1
+            morph = extract_word_forms(entry)
+            if morph:
+                con.execute(
+                    "INSERT INTO wordforms(lemma, pos, data) VALUES (?,?,?)",
+                    (word, pos, json.dumps(morph, ensure_ascii=False)),
+                )
             pairs: set[tuple[str, str]] = {(f, word) for f in forms}
             pairs |= {(word, lemma) for lemma in _form_of_targets(entry)}
             con.executemany(

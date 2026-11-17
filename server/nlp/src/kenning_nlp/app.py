@@ -13,6 +13,7 @@ from fastapi.responses import JSONResponse
 from kenning_nlp import __version__
 from kenning_nlp.detect import detect
 from kenning_nlp.dictionary import Dictionary, DictionaryMissingError
+from kenning_nlp.dictionary import default_db_path as default_dictionary_path
 from kenning_nlp.errors import ServiceError, read_upload
 from kenning_nlp.extract_url import extract_from_url
 from kenning_nlp.models import (
@@ -22,21 +23,30 @@ from kenning_nlp.models import (
     AnalyzeTermsRequest,
     Detection,
     DetectRequest,
+    ExampleSentence,
     ExtractUrlRequest,
+    FormsRequest,
     GlossEntry,
     GlossRequest,
     OcrResult,
     PdfExtraction,
+    SentencesRequest,
+    SimilarRequest,
     TermAnalysis,
     TextAnalysis,
     TranslateRequest,
     Translation,
     UrlExtraction,
+    WordForms,
 )
 from kenning_nlp.ocr import TESSERACT_LANGS, run_ocr
 from kenning_nlp.pdf import extract_pdf
 from kenning_nlp.pipeline import analyze_terms, analyze_texts
+from kenning_nlp.sentences import SentencesMissingError, SentenceStore
+from kenning_nlp.sentences import default_db_path as default_sentences_path
+from kenning_nlp.similar import SimilarMissingError, SimilarService
 from kenning_nlp.translate import translate_texts
+from kenning_nlp.wordforms import WordFormsMissingError, WordFormsStore
 
 
 def parse_origins(raw: str) -> list[str]:
@@ -138,3 +148,56 @@ def translate_endpoint(req: TranslateRequest) -> list[Translation]:
     """
     check_total(req.texts, MT_MAX_TOTAL_CHARS)
     return [Translation(**t) for t in translate_texts(req.source, req.target, req.texts)]
+
+
+# --------------------------------------------------------------------------- practice data (M4)
+# Stores are created per request (cheap: they only check the files) and the expensive parts are
+# cached inside them / below, so that a data file built after startup is picked up without a
+# restart and a missing file gives a 503 with build instructions rather than a crash.
+
+
+@lru_cache(maxsize=1)
+def _similar_service() -> SimilarService:
+    return SimilarService(default_dictionary_path())
+
+
+@app.post("/forms", response_model_exclude_none=True)
+def forms_endpoint(req: FormsRequest) -> dict[str, WordForms]:
+    """Morphology (Wiktionary) for form exercises: ``{lemma: WordForms}``.
+
+    Unknown lemmas and POS without morphology map to ``{}``. 503 if the dictionary DB is missing
+    or too old (rebuild it with ``scripts/build_dictionary.py``).
+    """
+    try:
+        store = WordFormsStore(default_dictionary_path(), default_sentences_path())
+    except WordFormsMissingError as e:
+        raise ServiceError(503, str(e)) from e
+    found = store.lookup((p.lemma, p.pos) for p in req.lemmas)
+    return {lemma: WordForms(**data) for lemma, data in found.items()}
+
+
+@app.post("/sentences")
+def sentences_endpoint(req: SentencesRequest) -> dict[str, list[ExampleSentence]]:
+    """Tatoeba example sentences with English translations: ``{lemma: [ExampleSentence]}``.
+
+    Shortest / commonest-vocabulary sentences first. 503 if the sentence DB has not been built
+    (``scripts/build_sentences.py``).
+    """
+    try:
+        found = SentenceStore(default_sentences_path()).lookup(req.lemmas, req.limit, req.maxWords)
+    except SentencesMissingError as e:
+        raise ServiceError(503, str(e)) from e
+    return {lemma: [ExampleSentence(**s) for s in sents] for lemma, sents in found.items()}
+
+
+@app.post("/similar")
+def similar_endpoint(req: SimilarRequest) -> dict[str, list[str]]:
+    """Distractor lemmas (same POS, similar frequency, related but not synonyms).
+
+    The first request builds the similarity index (a few seconds). 503 if the dictionary DB is
+    missing. Words without a vector map to ``[]``.
+    """
+    try:
+        return _similar_service().lookup(((w.lemma, w.pos) for w in req.words), req.k)
+    except SimilarMissingError as e:
+        raise ServiceError(503, str(e)) from e

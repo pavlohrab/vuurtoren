@@ -6,6 +6,9 @@ Share-alike terms apply to the data, not to the application code.
 | Data / model | Used for | Licence | Notes |
 | --- | --- | --- | --- |
 | Kaikki.org Dutch dictionary (Wiktextract of English Wiktionary) | `POST /gloss`, `data/dictionary-nl.sqlite` | CC BY-SA 4.0 and GFDL (Wiktionary content; Wiktextract code is MIT) | Attribution below. The generated SQLite file is a derivative: if you redistribute it, keep it under CC BY-SA. It is built locally / at Docker build time and is not committed. |
+| Kaikki.org Dutch dictionary, morphology | `POST /forms`, the `wordforms` table of `data/dictionary-nl.sqlite` | CC BY-SA 4.0 and GFDL | Verb conjugations, noun plurals / diminutives, adjective forms and separable-verb particles extracted from the same Wiktionary data. |
+| Tatoeba sentences (Dutch + English translations) | `POST /sentences`, `data/sentences-nl.sqlite` | CC BY 2.0 FR (some sentences CC0) | Attribution below. Weekly per-language exports from <https://tatoeba.org/downloads>. The generated SQLite file keeps the sentence texts, so redistribute it with the attribution. Built by `scripts/build_sentences.py` / at Docker build time; not committed. |
+| spaCy `nl_core_news_md` word vectors | `POST /similar` | CC BY-SA 4.0 | Same model as above; vectors of the most frequent dictionary lemmas, computed in memory, nothing stored. |
 | wordfreq | `zipf` token frequency | Data CC BY-SA 4.0, code Apache-2.0 | Wordfreq bundles data from Wikipedia, subtitles, news, books, Twitter, Reddit and others. |
 | spaCy `nl_core_news_md` | tagging, parsing, lemmas | CC BY-SA 4.0 (trained on Dutch UD treebanks) | Downloaded from the explosion/spacy-models release as a locked dependency. |
 | simplemma | dictionary lemmas | MIT | |
@@ -32,11 +35,28 @@ translation services for the World"), model `Helsinki-NLP/opus-mt-nl-en`, traine
 released by the Language Technology Research Group at the University of Helsinki. A client UI that
 shows machine translations should say "Machine translation: OPUS-MT (Helsinki-NLP)".
 
+Example sentences come from [Tatoeba](https://tatoeba.org), a collaborative sentence database
+whose contributors license their sentences under
+[CC BY 2.0 FR](https://creativecommons.org/licenses/by/2.0/fr/) (a subset under CC0). Sentences and
+translations are unmodified; only sentences that have an English translation are kept. A client UI
+that shows them should credit "Tatoeba.org (CC BY 2.0 FR)". Per-sentence authorship is on
+tatoeba.org/sentences/show/<id>; the SQLite file's `sentences.id` is the Tatoeba sentence id.
+
 ## Rebuilding the dictionary
 
 ```sh
 cd server/nlp
 uv run python scripts/build_dictionary.py      # downloads ~250 MB once, writes data/dictionary-nl.sqlite
+```
+
+After changing the dictionary build (for example `/forms` morphology) rebuild it with the same
+command: The old file is replaced atomically.
+
+## Rebuilding the sentences
+
+```sh
+cd server/nlp
+uv run python scripts/build_sentences.py       # downloads ~30 MB once, ~4 min with --processes 4
 ```
 
 ## Fetching the translation model

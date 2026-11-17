@@ -98,3 +98,61 @@ describe("NlpClient translate", () => {
     expect(calls.length).toBe(5);
   });
 });
+
+describe("NlpClient practice data", () => {
+  it("forms posts {lemma,pos} pairs and returns WordForms", async () => {
+    const { client, calls } = mockClient({
+      lopen: { participle: "gelopen", aux: "both", past: ["liep", "liepen"] },
+    });
+    const res = await client.forms("nl", [{ lemma: "lopen", pos: "VERB" }]);
+    expect(res["lopen"]?.past).toEqual(["liep", "liepen"]);
+    expect(calls[0]?.url).toBe("http://nlp.test/forms");
+    expect(JSON.parse(String(calls[0]?.init.body))).toEqual({
+      lang: "nl",
+      lemmas: [{ lemma: "lopen", pos: "VERB" }],
+    });
+  });
+
+  it("sentences sends only the options that were given", async () => {
+    const sentence = {
+      text: "Ik loop.",
+      translation: "I walk.",
+      target: [3, 7],
+      source: "tatoeba",
+    };
+    const { client, calls } = mockClient({ lopen: [sentence] });
+    const res = await client.sentences("nl", ["lopen"], { limit: 2 });
+    expect(res["lopen"]?.[0]?.target).toEqual([3, 7]);
+    expect(JSON.parse(String(calls[0]?.init.body))).toEqual({
+      lang: "nl",
+      lemmas: ["lopen"],
+      limit: 2,
+    });
+  });
+
+  it("similar posts words and k", async () => {
+    const { client, calls } = mockClient({ hond: ["kat", "paard"] });
+    const res = await client.similar("nl", [{ lemma: "hond", pos: "NOUN" }], 2);
+    expect(res["hond"]).toEqual(["kat", "paard"]);
+    expect(calls[0]?.url).toBe("http://nlp.test/similar");
+    expect(JSON.parse(String(calls[0]?.init.body))).toEqual({
+      lang: "nl",
+      words: [{ lemma: "hond", pos: "NOUN" }],
+      k: 2,
+    });
+  });
+
+  it("splits more than 500 lemmas into several requests and merges the results", async () => {
+    const { client, calls } = mockClient({});
+    await client.sentences(
+      "nl",
+      Array.from({ length: 1001 }, (_, i) => `w${i}`),
+    );
+    expect(calls).toHaveLength(3);
+  });
+
+  it("forms surfaces the 503 guidance", async () => {
+    const { client } = mockClient({ detail: "Rebuild it with: build_dictionary.py" }, 503);
+    await expect(client.forms("nl", [{ lemma: "a", pos: "VERB" }])).rejects.toThrow(/503.*Rebuild/);
+  });
+});
