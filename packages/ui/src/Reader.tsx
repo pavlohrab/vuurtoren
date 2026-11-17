@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { KeyboardEvent, ReactNode } from "react";
 import type { AnalyzedToken, PlannedToken, SegmentPlan, TokenLabel } from "@app/core";
 import { cn } from "./cn.js";
@@ -36,7 +36,24 @@ export function learningOpacity(pKnown: number): number {
   return Math.max(0.25, Math.min(1, 1 - pKnown));
 }
 
-const normalize = (s: string) => s.trim().toLocaleLowerCase();
+/** Lower-case, NFC-normalised, trimmed form used to compare an answer with the word. */
+const normalize = (s: string) => s.normalize("NFC").trim().toLocaleLowerCase();
+/** Same, with diacritics removed ("een" matches "één"). */
+const stripAccents = (s: string) =>
+  normalize(s)
+    .normalize("NFD")
+    .replace(/\p{M}+/gu, "");
+
+/**
+ * How an answer compares with the target word. Matching is case-insensitive and
+ * Unicode-normalised (NFC). Missing diacritics ("een" for "één", "cafe" for "café") count as
+ * correct, because learners often type without them; the result is then "accents" so the UI
+ * can add a quiet note. Anything else is "incorrect".
+ */
+export function matchAnswer(answer: string, target: string): "exact" | "accents" | "incorrect" {
+  if (normalize(answer) === normalize(target)) return "exact";
+  return stripAccents(answer) === stripAccents(target) ? "accents" : "incorrect";
+}
 
 /** Renders analysed text with word-state treatments, cloze blanks and keyboard navigation. */
 export function Reader({
@@ -53,6 +70,14 @@ export function Reader({
   const [answers, setAnswers] = useState<Record<number, string>>({});
   const [hints, setHints] = useState<Record<number, number>>({});
   const rootRef = useRef<HTMLDivElement>(null);
+  // Token to focus after the next render (the answered word, when no blank follows).
+  const focusAfterRender = useRef<number | null>(null);
+  useEffect(() => {
+    const i = focusAfterRender.current;
+    if (i === null) return;
+    focusAfterRender.current = null;
+    rootRef.current?.querySelector<HTMLElement>(`[data-i="${i}"]`)?.focus();
+  }, [answers]);
 
   const planned = useMemo(() => {
     const m = new Map<number, PlannedToken>();
@@ -65,11 +90,17 @@ export function Reader({
     return p !== undefined && p.label !== "nonword" && t.is_word;
   };
 
-  /** Label to style a token with: detached particles borrow their verb's. */
+  /**
+   * Label to style a token with: detached particles borrow their verb's, except that a cloze
+   * verb must not turn its particle into a second blank; the particle then keeps its own
+   * planned label (a cloze one degrades to a plain known word).
+   */
   const labelOf = (t: AnalyzedToken): TokenLabel => {
     const own = planned.get(t.i)?.label ?? "nonword";
-    if (t.particle_of != null) return planned.get(t.particle_of)?.label ?? own;
-    return own;
+    if (t.particle_of == null) return own;
+    const verb = planned.get(t.particle_of)?.label ?? own;
+    if (verb !== "cloze") return verb;
+    return own === "cloze" ? "known" : own;
   };
 
   // The roving-tabindex anchor: the selected token, else the first clickable one.
@@ -131,7 +162,7 @@ export function Reader({
         return (
           <span key={t.i} className="k-cloze-wrap">
             {gloss ? (
-              <span id={hintId} className="k-cloze-hint" role="tooltip">
+              <span id={hintId} className="k-cloze-hint" role="tooltip" title={gloss}>
                 {gloss}
               </span>
             ) : null}
@@ -153,6 +184,13 @@ export function Reader({
                   advanceHint();
                 } else if (e.key === "Enter" && e.currentTarget.value.trim() !== "") {
                   const value = e.currentTarget.value.trim();
+                  // Move on: the next blank if there is one, else the answered word.
+                  const blanks = Array.from(
+                    rootRef.current?.querySelectorAll<HTMLInputElement>("input.k-cloze") ?? [],
+                  );
+                  const next = blanks[blanks.indexOf(e.currentTarget) + 1];
+                  if (next) next.focus();
+                  else focusAfterRender.current = t.i;
                   setAnswers((a) => ({ ...a, [t.i]: value }));
                   onClozeAnswer?.(t.i, value, hint);
                 }
@@ -171,14 +209,15 @@ export function Reader({
           </span>
         );
       }
+      const match = answer ? matchAnswer(answer, surface) : null;
       const result =
         answer === undefined
           ? undefined
           : answer === ""
             ? "revealed"
-            : normalize(answer) === normalize(surface)
-              ? "correct"
-              : "incorrect";
+            : match === "incorrect"
+              ? "incorrect"
+              : "correct";
       return (
         <span
           key={t.i}
@@ -190,7 +229,11 @@ export function Reader({
           className="k-tok"
           role="button"
           tabIndex={t.i === tabStop ? 0 : -1}
-          {...(gloss ? { title: gloss } : {})}
+          {...(match === "accents"
+            ? { "data-note": "accents", title: "Correct, but check the accents" }
+            : gloss
+              ? { title: gloss }
+              : {})}
           onClick={() => onTokenClick?.(t.i)}
           onKeyDown={(e) => onKeyDown(e, t.i)}
         >

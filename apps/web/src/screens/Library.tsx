@@ -23,6 +23,8 @@ export function Library() {
       await qc.invalidateQueries({ queryKey: ["texts"] });
       toast("Text deleted");
     },
+    onError: (e) =>
+      toast("Could not delete the text", e instanceof Error ? e.message : "Try again."),
   });
 
   const needsAnki = summary.data != null && summary.data.lastSync === null;

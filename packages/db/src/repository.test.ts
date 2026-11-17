@@ -109,7 +109,8 @@ describe("projections", () => {
       clozeAccuracy: null,
       lookupsPer100: 3,
     });
-    expect((await repo.listTexts())[0]?.lastSegment).toBe(2);
+    // The projection stores the next segment to read: finished segment 2 -> resume at 3.
+    expect((await repo.listTexts())[0]?.lastSegment).toBe(3);
     await repo.append({ type: "TextDeleted", textId: "t1" });
     expect(await repo.listTexts()).toEqual([]);
     for (const t of ["texts", "text_tokens", "reading_progress"]) {

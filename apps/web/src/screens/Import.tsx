@@ -1,9 +1,9 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { UploadCloud } from "lucide-react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { DragEvent } from "react";
-import { Button, Input, Spinner, Tabs, Textarea } from "@app/ui";
+import { Button, Input, Spinner, Tabs, Textarea, useToast } from "@app/ui";
 import { useServices } from "../services/context.js";
 import type { ImportInput } from "../services/types.js";
 
@@ -64,12 +64,23 @@ export function ImportScreen() {
   const services = useServices();
   const navigate = useNavigate();
   const qc = useQueryClient();
+  const toast = useToast();
+  // False once the learner has left this page; a finished import then must not pull them back.
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
 
   const [kind, setKind] = useState<Kind>("paste");
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [url, setUrl] = useState("");
-  const [file, setFile] = useState<File | null>(null);
+  // One file per tab, so a PDF can never be submitted as a photo (or the other way round).
+  const [pdfFile, setPdfFile] = useState<File | null>(null);
+  const [imageFile, setImageFile] = useState<File | null>(null);
   const [progress, setProgress] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -80,6 +91,7 @@ export function ImportScreen() {
         ? { kind, content, ...(title.trim() ? { title: title.trim() } : {}) }
         : null;
     if (kind === "url") return url.trim() ? { kind, url: url.trim() } : null;
+    const file = kind === "pdf" ? pdfFile : imageFile;
     return file ? { kind, file, ...(title.trim() ? { title: title.trim() } : {}) } : null;
   };
   const ready = input() !== null;
@@ -91,12 +103,20 @@ export function ImportScreen() {
     setError(null);
     setProgress([]);
     try {
-      const id = await services.importText(payload, (m) => setProgress((p) => [...p, m]));
+      const id = await services.importText(payload, (m) => {
+        if (mounted.current) setProgress((p) => [...p, m]);
+      });
       await qc.invalidateQueries({ queryKey: ["texts"] });
-      await navigate({ to: "/read/$textId", params: { textId: id } });
+      if (mounted.current) await navigate({ to: "/read/$textId", params: { textId: id } });
+      else toast("Text imported", "It is in your library.");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "The import did not work. Try again.");
-      setBusy(false);
+      // A failed live import may still have changed the library (e.g. saved before analysis).
+      void qc.invalidateQueries({ queryKey: ["texts"] });
+      const message = e instanceof Error ? e.message : "The import did not work. Try again.";
+      if (mounted.current) {
+        setError(message);
+        setBusy(false);
+      } else toast("The import did not work", message);
     }
   };
 
@@ -164,8 +184,8 @@ export function ImportScreen() {
                   <FileDrop
                     accept="application/pdf"
                     label="Choose a PDF or drop it here"
-                    file={file}
-                    onFile={setFile}
+                    file={pdfFile}
+                    onFile={setPdfFile}
                   />
                 </div>
               ),
@@ -179,8 +199,8 @@ export function ImportScreen() {
                   <FileDrop
                     accept="image/*"
                     label="Choose a photo or drop it here"
-                    file={file}
-                    onFile={setFile}
+                    file={imageFile}
+                    onFile={setImageFile}
                   />
                 </div>
               ),

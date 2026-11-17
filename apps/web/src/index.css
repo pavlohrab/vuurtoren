@@ -185,9 +185,61 @@
     gap: 8px;
     padding: 0 8px;
   }
+  /* The sidebar is icon-only here, so its toggle has nothing to do. */
+  .topbar-sidebar-toggle,
+  .topbar-kbd {
+    display: none;
+  }
+  .topbar-title {
+    flex: 0 1 auto;
+    min-width: 0;
+  }
+  .topbar-group {
+    gap: 4px;
+    flex: none;
+  }
+  .topbar .k-tabs-trigger {
+    padding: 4px 8px;
+    font-size: 12px;
+  }
   .page {
     padding: 24px 16px 48px;
   }
+  /* Keep the end of the reader page clear of the open bottom sheet. */
+  .shell[data-inspector="open"] .content {
+    padding-bottom: 62vh;
+  }
+}
+/* Coverage and the to-learn count are on the page itself at phone width. */
+@media (max-width: 699px) {
+  .topbar-coverage {
+    display: none;
+  }
+}
+
+/* Demo / storage notices above the top bar */
+.shell-notices {
+  flex: none;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface-2);
+  font-size: 13px;
+  color: var(--ink-muted);
+}
+.shell-notice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  padding: 6px 16px;
+}
+.link-button {
+  font: inherit;
+  color: var(--accent);
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  text-decoration: underline;
 }
 
 /* ---------- Screen bits ---------- */

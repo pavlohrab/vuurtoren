@@ -1,8 +1,9 @@
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import type { WordState } from "@app/core";
 import { Button, Chip, EmptyState, Input, Select, Skeleton } from "@app/ui";
 import { useServices } from "../services/context.js";
+import { useDebounced } from "../useDebounced.js";
 
 const PAGE_SIZE = 50;
 const STATE_OPTIONS = [
@@ -28,14 +29,18 @@ export function Words() {
   const [query, setQuery] = useState("");
   const [limit, setLimit] = useState(PAGE_SIZE);
 
+  // Search as the learner pauses typing, and keep the old rows on screen while new ones load.
+  const search = useDebounced(query.trim(), 250);
+
   const q = useQuery({
-    queryKey: ["words", state, query, limit],
+    queryKey: ["words", state, search, limit],
     queryFn: () =>
       services.words({
         limit,
         ...(state !== "all" ? { state: state as WordState } : {}),
-        ...(query.trim() ? { query: query.trim() } : {}),
+        ...(search ? { query: search } : {}),
       }),
+    placeholderData: keepPreviousData,
   });
 
   return (

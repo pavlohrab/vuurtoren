@@ -47,7 +47,10 @@ export function CommandPalette({
                   {g.entries.map((e) => (
                     <Command.Item
                       key={e.id}
-                      value={`${e.label} ${e.keywords?.join(" ") ?? ""}`}
+                      // cmdk identifies items by `value`: use the unique id so two entries with
+                      // the same label (e.g. two texts titled alike) never collide.
+                      value={e.id}
+                      keywords={[e.label, ...(e.keywords ?? [])]}
                       className="k-command-item"
                       onSelect={() => {
                         onOpenChange(false);

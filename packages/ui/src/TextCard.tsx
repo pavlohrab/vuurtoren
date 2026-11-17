@@ -72,7 +72,9 @@ export function TextCard({
             {BAND_LABEL[difficultyBand(coverage)]}
           </Chip>
         ) : null}
-        {newTypes !== null ? <span>{newTypes} new</span> : null}
+        {newTypes !== null ? (
+          <span title="Words in the whole text that you do not know yet">{newTypes} unknown</span>
+        ) : null}
       </div>
     </article>
   );

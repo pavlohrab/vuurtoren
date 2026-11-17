@@ -335,7 +335,8 @@ export function createLiveServices(repo: KenningRepository): AppServices {
     return {
       known: counts.known,
       learning: counts.learning,
-      unknown: counts.unknown + counts.seen,
+      // "Seen" words have been met in a text, so they are not part of "not yet met".
+      unknown: counts.unknown,
       vocabEstimate: estimateVocabulary(m),
       lastSync: snap?.at ?? null,
       sources: snap?.sources ?? [],

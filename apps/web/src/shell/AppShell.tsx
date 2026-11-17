@@ -33,6 +33,8 @@ import {
 } from "@app/ui";
 import { useServices } from "../services/context.js";
 import { useTheme, type ThemeChoice } from "../theme.js";
+import { readLastText } from "../lastText.js";
+import { useAppInfo } from "./AppInfo.js";
 import { ShellContext, type PageHeader, type ShellState } from "./ShellContext.js";
 
 const PAGE_TITLES: Record<string, string> = {
@@ -71,12 +73,17 @@ export function AppShell() {
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [theme, setTheme] = useTheme();
+  const { notice, demo, onLeaveDemo } = useAppInfo();
 
   const [header, setHeader] = useState<PageHeader | null>(null);
   const [mode, setMode] = useState<ReaderMode>("read");
   const [inspectorEl, setInspectorEl] = useState<HTMLElement | null>(null);
   const [inspectorAvailable, setInspectorAvailable] = useState(false);
-  const [inspectorOpen, setInspectorOpen] = useState(true);
+  // On small screens the inspector is a bottom sheet that covers the text: closed until a word
+  // is selected.
+  const [inspectorOpen, setInspectorOpen] = useState(
+    () => !window.matchMedia("(max-width: 899px)").matches,
+  );
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
 
@@ -107,10 +114,15 @@ export function AppShell() {
     [mode, inspectorEl, inspectorOpen],
   );
 
+  // The sidebar "Read" link: the text opened last, else the first one with progress
+  // (lastSegment is the next segment to read, so > 0 means at least one was finished).
+  // Re-read on navigation, because the reader records the text it opens.
   const readTarget = useMemo(() => {
     const list = texts.data ?? [];
-    return list.find((t) => t.lastSegment > 0) ?? list[0];
-  }, [texts.data]);
+    const open = /^\/read\/([^/]+)/.exec(pathname)?.[1];
+    const last = open ? decodeURIComponent(open) : readLastText();
+    return list.find((t) => t.id === last) ?? list.find((t) => t.lastSegment > 0) ?? list[0];
+  }, [texts.data, pathname]);
 
   const title = header?.title ?? PAGE_TITLES[pathname] ?? "Kenning";
   const showInspector = inspectorAvailable && inspectorOpen;
@@ -191,11 +203,32 @@ export function AppShell() {
         </nav>
 
         <div className="main">
+          {notice || demo ? (
+            <div className="shell-notices">
+              {demo ? (
+                <div className="shell-notice" role="note">
+                  <Chip tone="accent">Demo data</Chip>
+                  <span>Nothing here is saved to your account.</span>
+                  {onLeaveDemo ? (
+                    <button type="button" className="link-button" onClick={onLeaveDemo}>
+                      Use my data
+                    </button>
+                  ) : null}
+                </div>
+              ) : null}
+              {notice ? (
+                <div className="shell-notice" role="status">
+                  <span>{notice}</span>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
           <header className="topbar">
             <Button
               variant="ghost"
               size="sm"
               icon
+              className="topbar-sidebar-toggle"
               aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
               onClick={() => setSidebarCollapsed((c) => !c)}
             >
@@ -203,7 +236,10 @@ export function AppShell() {
             </Button>
             <h1 className="topbar-title">{title}</h1>
             {header?.coverage != null ? (
-              <div className="topbar-group">
+              <div
+                className="topbar-group topbar-coverage"
+                title="Coverage and words to learn for the page you are reading"
+              >
                 <CoverageMeter value={header.coverage} />
                 {header.newCount != null ? (
                   <Chip tone="warm">{header.newCount} to learn</Chip>
@@ -227,7 +263,7 @@ export function AppShell() {
                 onClick={() => setPaletteOpen(true)}
               >
                 <CommandIcon size={14} />
-                <kbd>{isMac ? "⌘K" : "Ctrl K"}</kbd>
+                <kbd className="topbar-kbd">{isMac ? "⌘K" : "Ctrl K"}</kbd>
               </Button>
               <Tooltip content={`Theme: ${theme}`}>
                 <Button

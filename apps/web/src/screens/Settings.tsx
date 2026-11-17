@@ -27,17 +27,27 @@ export function SettingsScreen() {
   const [syncLog, setSyncLog] = useState<string[]>([]);
   const [result, setResult] = useState<LearnerSummary | null>(null);
 
+  const message = (e: unknown) => (e instanceof Error && e.message ? e.message : "Try again.");
+  const persist = async (s: SettingsData) => {
+    await services.saveSettings({ ...s, theme });
+    await qc.invalidateQueries({ queryKey: ["settings"] });
+  };
   const save = useMutation({
-    mutationFn: (s: SettingsData) => services.saveSettings({ ...s, theme }),
-    onSuccess: async () => {
-      await qc.invalidateQueries({ queryKey: ["settings"] });
-      toast("Settings saved");
+    mutationFn: persist,
+    onSuccess: () => toast("Settings saved"),
+    onError: (e) => toast("Could not save the settings", message(e)),
+  });
+  // Testing and syncing use the address and key on screen, so they are saved first.
+  const test = useMutation({
+    mutationFn: async (s: SettingsData) => {
+      await persist(s);
+      return services.ankiStatus();
     },
   });
-  const test = useMutation({ mutationFn: () => services.ankiStatus() });
   const sync = useMutation({
-    mutationFn: () => {
+    mutationFn: async (s: SettingsData) => {
       setSyncLog([]);
+      await persist(s);
       return services.syncAnki((m) => setSyncLog((l) => [...l, m]));
     },
     onSuccess: async (s) => {
@@ -95,11 +105,16 @@ export function SettingsScreen() {
           onChange={(e) => set("targetDeck", e.target.value)}
         />
         <div className="row">
-          <Button onClick={() => test.mutate()} disabled={test.isPending}>
+          <Button onClick={() => test.mutate(form)} disabled={test.isPending}>
             {test.isPending ? <Spinner label="Testing" /> : null}
             Test connection
           </Button>
-          {test.data ? (
+          <span className="k-hint">Saves your changes first.</span>
+          {test.isError ? (
+            <span role="alert" className="error-text">
+              {message(test.error)}
+            </span>
+          ) : test.data ? (
             <span role="status" className={test.data.connected ? undefined : "error-text"}>
               {test.data.connected
                 ? `Connected${test.data.version ? `, AnkiConnect version ${test.data.version}` : ""}.`
@@ -138,10 +153,11 @@ export function SettingsScreen() {
           Read your decks to learn which words you know.
         </p>
         <div className="row">
-          <Button variant="primary" onClick={() => sync.mutate()} disabled={sync.isPending}>
+          <Button variant="primary" onClick={() => sync.mutate(form)} disabled={sync.isPending}>
             {sync.isPending ? <Spinner label="Syncing" /> : null}
             Sync from Anki
           </Button>
+          <span className="k-hint">Uses the addresses above and saves them first.</span>
         </div>
         {sync.isPending || syncLog.length > 0 ? (
           <ul className="progress-log" aria-live="polite">
@@ -152,7 +168,7 @@ export function SettingsScreen() {
         ) : null}
         {sync.isError ? (
           <p className="error-text" role="alert">
-            The sync did not finish. Check the connection and try again.
+            The sync did not finish. {message(sync.error)}
           </p>
         ) : null}
         {result ? (
