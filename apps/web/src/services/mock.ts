@@ -12,6 +12,7 @@ import type {
   WordState,
 } from "@app/core";
 import type { StoredText, WordInfo } from "@app/db";
+import { createMockPractice } from "./mockPractice.js";
 import type {
   AnkiStatus,
   AppServices,
@@ -454,7 +455,10 @@ export function createMockServices(options: { latencyMs?: number } = {}): AppSer
     };
   };
 
+  const practice = createMockPractice(wait);
+
   return {
+    ...practice,
     async listTexts() {
       await wait();
       return [...texts.values()].sort((a, b) => b.createdAt - a.createdAt).map(listItem);

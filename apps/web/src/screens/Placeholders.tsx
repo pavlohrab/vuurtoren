@@ -1,4 +1,4 @@
-import { BookText, Dumbbell, MessagesSquare } from "lucide-react";
+import { BookText, MessagesSquare } from "lucide-react";
 import type { ReactNode } from "react";
 import { EmptyState } from "@app/ui";
 
@@ -21,17 +21,6 @@ function Placeholder({
         description={`${description} Planned for ${milestone}.`}
       />
     </div>
-  );
-}
-
-export function Practice() {
-  return (
-    <Placeholder
-      icon={<Dumbbell size={28} />}
-      title="Practice"
-      description="One exercise at a time, drawn from the words in your texts: cloze, de or het, and separable verbs."
-      milestone="M4"
-    />
   );
 }
 

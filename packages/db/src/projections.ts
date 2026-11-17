@@ -123,8 +123,8 @@ export async function applyEvent(driver: SqlDriver, ctx: EventContext): Promise<
       await driver.exec("DELETE FROM anki_words WHERE lang = ?", [e.lang]);
       await insertMany(
         driver,
-        "INSERT OR REPLACE INTO anki_words (lang, key, state, p_known, note_ids, decks, gloss, article)",
-        8,
+        "INSERT OR REPLACE INTO anki_words (lang, key, state, p_known, note_ids, decks, gloss, article, sentence, sentence_translation)",
+        10,
         e.entries.map((a) => [
           e.lang,
           a.key,
@@ -134,12 +134,27 @@ export async function applyEvent(driver: SqlDriver, ctx: EventContext): Promise<
           JSON.stringify(a.decks),
           a.gloss ?? null,
           a.article ?? null,
+          a.sentence ?? null,
+          a.sentenceTranslation ?? null,
         ]),
       );
       await driver.exec("INSERT OR REPLACE INTO meta (key, value) VALUES (?,?)", [
         `snapshot:${e.lang}`,
         JSON.stringify({ at: ctx.createdAt, sources: e.sources }),
       ]);
+      return;
+    }
+    case "ExerciseAnswered": {
+      // Keep the newest answer per (key, skill), independent of arrival order.
+      const rows = await driver.exec(
+        "SELECT at FROM practice_items WHERE lang = ? AND key = ? AND skill = ?",
+        [e.lang, e.key, e.skill],
+      );
+      if (rows[0] && Number(rows[0]["at"]) > e.at) return;
+      await driver.exec(
+        "INSERT OR REPLACE INTO practice_items (lang, key, skill, state, at) VALUES (?,?,?,?,?)",
+        [e.lang, e.key, e.skill, JSON.stringify(e.state), e.at],
+      );
       return;
     }
     case "WordStateSet":
@@ -274,6 +289,8 @@ export function composeWord(key: string, f: WordFacts): WordInfo | null {
   const info: WordInfo = { key, state, pKnown, source, decks, lookups, noteIds: [] };
   if (anki?.gloss) info.gloss = anki.gloss;
   if (anki?.article) info.article = anki.article;
+  if (anki?.sentence) info.sentence = anki.sentence;
+  if (anki?.sentenceTranslation) info.sentenceTranslation = anki.sentenceTranslation;
   if (note) info.addedNoteId = note.noteId;
   const noteIds = [...(anki?.noteIds ?? [])];
   for (const id of [note?.noteId, f.prioritizedNoteId]) {

@@ -1,7 +1,7 @@
 /**
  * Repository over any `SqlDriver`: appends events and keeps projections in sync, answers queries.
  */
-import type { AnalyzedToken, LearnerModel, StaircaseState, WordState } from "@app/core";
+import type { AnalyzedToken, ItemState, LearnerModel, StaircaseState, WordState } from "@app/core";
 import { createHlc, createUlidGenerator, randomDeviceId } from "./ids.js";
 import {
   type EventContext,
@@ -14,6 +14,7 @@ import { PROJECTION_TABLES, migrate } from "./schema.js";
 import type {
   AnkiWordEntry,
   AppEvent,
+  PracticeLogEntry,
   Repository,
   SqlDriver,
   SqlValue,
@@ -48,9 +49,9 @@ export interface KenningRepository extends Repository {
 }
 
 /**
- * Bump when a projection's meaning changes. 2: reading_progress.last_segment = next segment to read. 3: write-action events (ADR 0007).
+ * Bump when a projection's meaning changes. 2: reading_progress.last_segment = next segment to read. 3: write-action events (ADR 0007). 4: anki_words sentences, practice_items.
  */
-export const PROJECTION_VERSION = 3;
+export const PROJECTION_VERSION = 4;
 
 const json = <T>(v: SqlValue | undefined): T => JSON.parse(String(v)) as T;
 
@@ -83,6 +84,10 @@ function ankiEntry(r: Row): AnkiWordEntry {
   };
   if (r["gloss"] !== null && r["gloss"] !== undefined) a.gloss = String(r["gloss"]);
   if (r["article"] !== null && r["article"] !== undefined) a.article = String(r["article"]);
+  if (r["sentence"] !== null && r["sentence"] !== undefined) a.sentence = String(r["sentence"]);
+  if (r["sentence_translation"] !== null && r["sentence_translation"] !== undefined) {
+    a.sentenceTranslation = String(r["sentence_translation"]);
+  }
   return a;
 }
 
@@ -249,6 +254,39 @@ export async function createRepository(
         const rows = await driver.exec("SELECT state FROM staircase WHERE lang = ?", [lang]);
         return rows[0] ? json<StaircaseState>(rows[0]["state"]) : null;
       }),
+
+    practiceItems: (lang) =>
+      serial(async () =>
+        (
+          await driver.exec("SELECT state FROM practice_items WHERE lang = ? ORDER BY key, skill", [
+            lang,
+          ])
+        ).map((r) => json<ItemState>(r["state"])),
+      ),
+
+    practiceLog: (lang, limit) =>
+      serial(async () =>
+        (
+          await driver.exec(
+            `SELECT payload FROM events
+              WHERE type = 'ExerciseAnswered' AND json_extract(payload, '$.lang') = ?
+              ORDER BY id DESC LIMIT ?`,
+            [lang, Math.max(0, Math.floor(limit))],
+          )
+        ).map((r) => {
+          const e = json<Extract<AppEvent, { type: "ExerciseAnswered" }>>(r["payload"]);
+          const entry: PracticeLogEntry = {
+            key: e.key,
+            skill: e.skill,
+            kind: e.kind,
+            grade: e.grade,
+            correct: e.correct,
+            ms: e.ms,
+            at: e.at,
+          };
+          return entry;
+        }),
+      ),
 
     setting: <T>(key: string) =>
       serial(async () => {

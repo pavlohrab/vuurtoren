@@ -34,6 +34,8 @@ import {
 import { type KenningRepository, type StoredText, type WordInfo, contentHash } from "@app/db";
 import { absentAnki, ankiFromStatus, unavailableAnki } from "./ankiState.js";
 import { NlpClient } from "@app/nlp-client";
+import { createLivePractice } from "./livePractice.js";
+import { createPracticeData } from "./practiceData.js";
 import type {
   AnkiStatus,
   AppServices,
@@ -521,7 +523,17 @@ export function createLiveServices(repo: KenningRepository): AppServices {
     };
   }
 
+  const practice = createLivePractice({
+    repo,
+    lang: async () => (await settings()).lang,
+    model,
+    dictionary: dictionaryFor,
+    composeGlosses,
+    data: createPracticeData(async () => (await settings()).nlpUrl),
+  });
+
   return {
+    ...practice,
     async listTexts(): Promise<TextListItem[]> {
       const texts = await repo.listTexts();
       const out: TextListItem[] = [];

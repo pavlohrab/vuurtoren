@@ -1,4 +1,14 @@
-import type { AnalyzedToken, SegmentPlan, StaircaseState, WordState } from "@app/core";
+import type {
+  AnalyzedToken,
+  Attempt,
+  Exercise,
+  Grade,
+  ItemState,
+  SegmentPlan,
+  Skill,
+  StaircaseState,
+  WordState,
+} from "@app/core";
 import type { StoredText, TextSummary, WordInfo } from "@app/db";
 import type { InspectorEntry } from "@app/ui";
 
@@ -66,6 +76,30 @@ export interface LearnerSummary {
   sources: string[];
 }
 
+/** What the Practice start screen and the sidebar badge show. */
+export interface PracticeOverview {
+  /** (word, skill) items whose review is due now. */
+  due: number;
+  /** Words you are learning that have not been practised yet. */
+  newAvailable: number;
+  /** Items in long-term review, over all skills. */
+  learned: number;
+  /** Learned items per skill. */
+  bySkill: Record<Skill, number>;
+  /** When (ms) the last exercise was answered. */
+  lastSession: number | null;
+}
+/** The learner's answer; correctness is decided by the engine, not the caller. */
+export type AttemptInput = Omit<Attempt, "correct">;
+export interface AnswerResult {
+  grade: Grade;
+  correct: boolean;
+  /** Extra line from the checker, e.g. an accent reminder. */
+  note?: string;
+  /** New scheduling state of the (word, skill) pair. */
+  next: ItemState;
+}
+
 /**
  * Everything the UI needs from the outside world. The app never talks to the database,
  * AnkiConnect or the NLP server directly; swap the implementation passed to <ServicesProvider>.
@@ -105,6 +139,15 @@ export interface AppServices {
   ankiStatus(): Promise<AnkiStatus>;
   syncAnki(onProgress?: (msg: string) => void): Promise<LearnerSummary>;
   learnerSummary(): Promise<LearnerSummary>;
+  /** Counts for the Practice start screen, the sidebar badge and Progress. */
+  practiceOverview(): Promise<PracticeOverview>;
+  /**
+   * Build a session: due items first, then new ones, from words you are learning or know.
+   * Never writes to Anki (ADR 0003).
+   */
+  startPractice(opts?: { size?: number; skills?: Skill[] }): Promise<Exercise[]>;
+  /** Grade an answer, schedule the (word, skill) pair and record it. */
+  answerExercise(exercise: Exercise, attempt: AttemptInput): Promise<AnswerResult>;
   words(opts?: {
     state?: WordState;
     query?: string;

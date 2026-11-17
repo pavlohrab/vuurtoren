@@ -554,6 +554,82 @@ describe("event log", () => {
   });
 });
 
+function answered(
+  lang: string,
+  key: string,
+  skill: "recognition" | "recall" | "form",
+  at: number,
+  grade: "again" | "good" = "good",
+): AppEvent {
+  return {
+    type: "ExerciseAnswered",
+    lang,
+    key,
+    skill,
+    kind: "meaning-choice",
+    grade,
+    correct: grade === "good",
+    ms: 1200,
+    at,
+    state: {
+      key,
+      skill,
+      due: at + 1000,
+      stability: 2,
+      difficulty: 5,
+      elapsedDays: 0,
+      scheduledDays: 1,
+      reps: 1,
+      lapses: 0,
+      state: 1,
+      lastReview: at,
+    },
+  };
+}
+
+describe("practice events", () => {
+  it("projects the newest state per (key, skill) and lists the log newest first", async () => {
+    const { repo } = await newRepo();
+    await repo.append(answered("nl", "huis", "recognition", 100));
+    await repo.append(answered("nl", "huis", "recall", 110));
+    await repo.append(answered("nl", "huis", "recognition", 200, "again"));
+    await repo.append(answered("nl", "huis", "recognition", 150)); // late arrival, older
+    await repo.append(answered("de", "haus", "recognition", 120));
+    const items = await repo.practiceItems("nl");
+    expect(items.map((i) => [i.skill, i.lastReview])).toEqual([
+      ["recall", 110],
+      ["recognition", 200],
+    ]);
+    const log = await repo.practiceLog("nl", 2);
+    expect(log.map((l) => l.at)).toEqual([150, 200]);
+    expect(log[1]).toMatchObject({
+      key: "huis",
+      grade: "again",
+      correct: false,
+      kind: "meaning-choice",
+    });
+    expect(await repo.practiceItems("fr")).toEqual([]);
+  });
+
+  it("stores Anki sentences in the word projection", async () => {
+    const { repo } = await newRepo();
+    await repo.append({
+      type: "AnkiSnapshotImported",
+      lang: "nl",
+      entries: [
+        anki("huis", { sentence: "Het huis is groot.", sentenceTranslation: "The house is big." }),
+      ],
+      sources: ["s"],
+    });
+    expect(await repo.word("nl", "huis")).toMatchObject({
+      sentence: "Het huis is groot.",
+      sentenceTranslation: "The house is big.",
+    });
+    await repo.rebuild();
+    expect((await repo.word("nl", "huis"))?.sentence).toBe("Het huis is groot.");
+  });
+});
+
 describe("rebuild equivalence", () => {
   /** Seeded PRNG (mulberry32). */
   function rng(seed: number): () => number {
@@ -577,6 +653,8 @@ describe("rebuild equivalence", () => {
         ["nl", "de"].map(async (l) => [...(await repo.learnerModel(l))].sort()),
       ),
       staircase: await Promise.all(["nl", "de"].map((l) => repo.staircase(l))),
+      practice: await Promise.all(["nl", "de"].map((l) => repo.practiceItems(l))),
+      log: await Promise.all(["nl", "de"].map((l) => repo.practiceLog(l, 1000))),
       settings: await Promise.all(["a", "b", "c"].map((k) => repo.setting(k))),
       snaps: await Promise.all(["nl", "de"].map((l) => repo.lastSnapshot(l))),
     };
@@ -648,6 +726,10 @@ describe("rebuild equivalence", () => {
           clozeAccuracy: null,
           lookupsPer100: 1,
         };
+      } else if (r < 0.86) {
+        const skill = pick(["recognition", "recall", "form"] as const);
+        const key = pick(keys);
+        event = answered(pick(langs), key, skill, Math.floor(rand() * 1000));
       } else if (r < 0.9) {
         event = { type: "StaircaseUpdated", lang: pick(langs), state: { n } as never };
       } else {

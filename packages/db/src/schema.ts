@@ -93,6 +93,18 @@ export const MIGRATIONS: readonly (readonly string[])[] = [
        PRIMARY KEY (lang, key)
      )`,
   ],
+  [
+    `ALTER TABLE anki_words ADD COLUMN sentence TEXT`,
+    `ALTER TABLE anki_words ADD COLUMN sentence_translation TEXT`,
+    `CREATE TABLE practice_items (
+       lang TEXT NOT NULL,
+       key TEXT NOT NULL,
+       skill TEXT NOT NULL,
+       state TEXT NOT NULL,
+       at INTEGER NOT NULL,
+       PRIMARY KEY (lang, key, skill)
+     )`,
+  ],
 ];
 
 /** Latest schema version. */
@@ -107,6 +119,7 @@ export const PROJECTION_TABLES = [
   "word_lookups",
   "notes_added",
   "prioritized",
+  "practice_items",
   "reading_progress",
   "staircase",
   "settings",

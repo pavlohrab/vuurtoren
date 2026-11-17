@@ -4,7 +4,7 @@
  * analyzer, and merge per key. Read-only. Shared by the web app and tools/anki-report.
  */
 import { type WordKnowledge, type WordState, classifyCard, mergeKnowledge } from "@app/core";
-import { cleanField } from "./clean.js";
+import { cleanField, firstSentence } from "./clean.js";
 import {
   type AnkiConnectClient,
   type CardInfo,
@@ -55,6 +55,10 @@ export interface SnapshotEntry {
   decks: string[];
   gloss?: string;
   article?: string;
+  /** Example sentence from the note's sentence field (first sentence/line). */
+  sentence?: string;
+  /** English translation of that sentence, when the note type has one. */
+  sentenceTranslation?: string;
 }
 
 /** Per-note detail, useful for reports and checks. */
@@ -184,6 +188,13 @@ export async function buildSnapshot(deps: SnapshotDeps, chosen?: Candidate[]): P
     const gloss = n.source.glossField
       ? cleanField(n.note.fields[n.source.glossField]?.value ?? "")
       : "";
+    const sentence = n.source.sentenceField
+      ? firstSentence(n.note.fields[n.source.sentenceField]?.value ?? "")
+      : "";
+    const sentenceTranslation =
+      sentence && n.source.sentenceTranslationField
+        ? firstSentence(n.note.fields[n.source.sentenceTranslationField]?.value ?? "")
+        : "";
     for (const key of [n.term.key, ...n.term.aliases]) {
       if (!key) continue;
       const prev = byKey.get(key);
@@ -200,6 +211,12 @@ export async function buildSnapshot(deps: SnapshotDeps, chosen?: Candidate[]): P
       if (g) entry.gloss = g;
       const article = prev?.article ?? n.term.article ?? undefined;
       if (article) entry.article = article;
+      const sen = prev?.sentence ?? (sentence || undefined);
+      if (sen) {
+        entry.sentence = sen;
+        const tr = prev?.sentence ? prev.sentenceTranslation : sentenceTranslation || undefined;
+        if (tr) entry.sentenceTranslation = tr;
+      }
       byKey.set(key, entry);
     }
   }

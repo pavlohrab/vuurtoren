@@ -40,7 +40,7 @@ const wordsOfTextRoute = screen(
 );
 const importRoute = screen("/import", () => import("./screens/Import.js"), "ImportScreen");
 const wordsRoute = screen("/words", () => import("./screens/Words.js"), "Words");
-const practiceRoute = screen("/practice", () => import("./screens/Placeholders.js"), "Practice");
+const practiceRoute = screen("/practice", () => import("./screens/Practice.js"), "Practice");
 const converseRoute = screen("/converse", () => import("./screens/Placeholders.js"), "Converse");
 const grammarRoute = screen("/grammar", () => import("./screens/Placeholders.js"), "Grammar");
 const progressRoute = screen("/progress", () => import("./screens/Progress.js"), "Progress");
