@@ -6,17 +6,25 @@ license = "MIT OR Apache-2.0"
 requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.163.1",
+    "httpx>=0.28.1",
     "lingua-language-detector>=2.2.0",
     "nl-core-news-md",
+    "pillow>=13.0.0",
+    "pypdfium2>=5.15.2",
+    "pytesseract>=0.3.13",
+    "python-multipart>=0.0.34",
     "simplemma>=2.0.0",
     "spacy>=3.8.18",
+    "trafilatura>=2.3.1",
     "uvicorn[standard]>=0.54.0",
+    "wordfreq>=3.1.1",
 ]
 
 [dependency-groups]
 dev = [
     "httpx2>=2.16.2",
     "pytest>=9.2.0",
+    "reportlab>=5.1.0",
     "ruff>=0.17.5",
 ]
 

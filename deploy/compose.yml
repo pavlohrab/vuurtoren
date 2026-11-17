@@ -1,0 +1,30 @@
+# Kenning self-host stack.   docker compose -f deploy/compose.yml up --build
+name: kenning
+
+services:
+  nlp:
+    build:
+      context: ../server/nlp
+    restart: unless-stopped
+    environment:
+      # Browser origins allowed to call the service directly (comma separated).
+      # Not needed when the web app uses the same-origin /nlp/ proxy.
+      KENNING_CORS_ORIGINS: ${KENNING_CORS_ORIGINS:-http://localhost:8080}
+    networks: [internal]
+    ports:
+      # Dev convenience (curl, running the web app with `pnpm dev`). Remove for production,
+      # or bind to loopback as below.
+      - "127.0.0.1:8000:8000"
+
+  web:
+    build:
+      context: ..
+      dockerfile: deploy/web.Dockerfile
+    restart: unless-stopped
+    depends_on: [nlp]
+    networks: [internal]
+    ports:
+      - "8080:80"
+
+networks:
+  internal: {}

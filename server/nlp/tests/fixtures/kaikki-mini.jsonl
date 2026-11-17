@@ -1,0 +1,10 @@
+{"word": "fiets", "pos": "noun", "forms": [{"form": "fietsen", "tags": ["plural"]}, {"form": "fietsje", "tags": ["diminutive", "neuter"]}, {"form": "nl-noun", "tags": ["inflection-template"]}], "sounds": [{"ipa": "/fits/"}], "senses": [{"glosses": ["bicycle"], "tags": ["feminine"]}, {"glosses": ["motorbike"], "tags": ["feminine"]}]}
+{"word": "huis", "pos": "noun", "forms": [{"form": "huizen", "tags": ["plural"]}], "senses": [{"glosses": ["house", "dwelling"], "tags": ["neuter"]}, {"glosses": ["building", "a specific kind of building"], "tags": ["neuter"]}]}
+{"word": "fietsen", "pos": "verb", "forms": [{"form": "fietste", "tags": ["past"]}, {"form": "gefietst", "tags": ["participle", "past"]}], "senses": [{"glosses": ["to cycle"]}]}
+{"word": "fietsen", "pos": "noun", "senses": [{"glosses": ["plural of fiets"], "form_of": [{"word": "fiets"}], "tags": ["form-of", "plural"]}]}
+{"word": "liep", "pos": "verb", "senses": [{"glosses": ["first/third-person singular past indicative of lopen"], "form_of": [{"word": "lopen"}]}]}
+{"word": "lopen", "pos": "verb", "forms": [{"form": "loopt"}], "senses": [{"glosses": ["to walk"]}, {"glosses": ["to run"]}, {"glosses": ["to go"]}, {"glosses": ["to flow"]}, {"glosses": ["to extend"]}, {"glosses": ["sixth sense that must be dropped"]}]}
+{"word": "leeg", "pos": "adj", "senses": [{"glosses": []}]}
+{"word": "boek", "pos": "noun", "senses": [{"glosses": ["book"], "tags": ["neuter", "masculine"]}]}
+not json at all
+{"pos": "noun", "senses": [{"glosses": ["no word"]}]}

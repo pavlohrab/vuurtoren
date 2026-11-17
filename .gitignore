@@ -18,3 +18,6 @@ __pycache__/
 .vscode/*
 !.vscode/extensions.json
 reports/
+
+# nlp service data (generated dictionary, downloads)
+server/nlp/data/
