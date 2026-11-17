@@ -86,6 +86,18 @@ BOTH_VERBS = _words(
     "klimmen kruipen rennen schaatsen trekken breken barsten"
 )
 
+# Verbs that only ever take "hebben" although a prefix/particle split or passive-heavy corpus
+# evidence ("is aangevallen", "is onderbroken" are perfect PASSIVES) suggests "zijn".
+HEBBEN_VERBS = _words("aanvallen overvallen onderbreken ondernemen onderhouden onderscheiden")
+# Lexical entries whose two auxiliaries are both real; wins over one-sided corpus evidence
+# ("zwemmen" is "hebben" in 7/7 sentences only because few of them name a destination).
+# ``voorkomen``: zijn "to occur" / hebben "to prevent"; ``stoppen``: zijn "to halt".
+BOTH_LEXICAL = _words("zwemmen voorkomen stoppen")
+# Particles that are also inseparable verb prefixes (over+vallen = "overvallen", stressed on the
+# stem, NOT "over" + "vallen"). A curated auxiliary is inherited through such a particle only
+# when the split is confirmed by Wiktionary (``data["separable"]``), never by a guess.
+AMBIGUOUS_PARTICLES = _words("over onder door om achter voor")
+
 _AUX_VALUES = {"hebben", "zijn"}
 
 
@@ -241,48 +253,82 @@ def extract_word_forms(entry: dict[str, Any]) -> dict[str, Any]:
     return {}
 
 
-def curated_aux(lemma: str, particle: str | None = None) -> str | None:
-    """Auxiliary from the curated lists; prefixed/separable verbs inherit from their base.
+def _listed(base: str) -> str | None:
+    """``both`` / ``zijn`` when ``base`` itself is in the curated lists, else None."""
+    if base in BOTH_VERBS or base in BOTH_LEXICAL:
+        return "both"
+    if base in ZIJN_VERBS:
+        return "zijn"
+    return None
 
-    ``opstaan`` -> ``staan`` is not listed but ``opstaan`` itself is; ``terugkomen`` -> ``komen``.
+
+def curated_aux(lemma: str, particle: str | None = None) -> str | None:
+    """Auxiliary from the curated lists; separable verbs inherit from their stem.
+
+    ``opstaan`` is listed itself; ``terugkomen`` inherits ``komen`` through the particle.
+    ``particle`` must be a CONFIRMED separable particle (Wiktionary data); without it only
+    unambiguous particles are tried. Inseparable prefixes (over-, onder-, door-, om-, achter-,
+    voor-) never inherit by guesswork: ``overvallen`` is not ``over`` + ``vallen``.
     """
     low = lemma.lower()
-    for base in (low, low.removeprefix(particle) if particle else None):
-        if not base:
-            continue
-        if base in BOTH_VERBS:
-            return "both"
-        if base in ZIJN_VERBS:
-            return "zijn"
-    # Separable verbs of a listed stem whose particle is unknown: "terugkomen".
-    for p in SEPARABLE_PARTICLES:
-        if low.startswith(p) and len(low) > len(p) + 2:
-            stem = low[len(p) :]
-            if stem in ZIJN_VERBS:
-                return "zijn"
-            if stem in BOTH_VERBS:
-                return "both"
+    if low in HEBBEN_VERBS:
+        return "hebben"
+    direct = _listed(low)
+    if direct:
+        return direct
+    if particle and low.startswith(particle):
+        return _listed(low[len(particle) :])
+    if particle is None:
+        for p in SEPARABLE_PARTICLES:
+            if p in AMBIGUOUS_PARTICLES or not low.startswith(p) or len(low) <= len(p) + 2:
+                continue
+            inherited = _listed(low[len(p) :])
+            if inherited:
+                return inherited
     return None
 
 
 def resolve_aux(
     template_aux: str | None, evidence: tuple[int, int] | None, lemma: str, particle: str | None
 ) -> str:
-    """Final auxiliary: template > corpus evidence ``(hebben, zijn)`` counts > curated > hebben."""
+    """Final auxiliary: template > curated hebben/both > evidence ``(hebben, zijn)`` > curated.
+
+    Corpus ``zijn`` counts include perfect passives ("is aangevallen"), so for a verb not
+    curated as zijn/both a hebben-majority of at least 2:1 means "hebben", not "both". A curated
+    "both" that was merely INHERITED never overrides hebben-only evidence.
+    """
     if template_aux:
         return template_aux
-    curated = curated_aux(lemma, particle)
+    low = lemma.lower()
+    curated = curated_aux(low, particle)
+    if curated == "hebben" or (curated == "both" and _listed(low) == "both"):
+        return curated
     if evidence and sum(evidence) >= 2:
         heb, zij = evidence
         total = heb + zij
         if min(heb, zij) >= 2 and min(heb, zij) / total >= 0.25:
+            if curated is None and heb >= 2 * zij:
+                return "hebben"  # zijn count is mostly passives
             return "both"
-        # A clear majority in the parse wins, but a curated "both" overrides weak evidence.
-        winner = "zijn" if zij > heb else "hebben"
-        if curated == "both" and min(heb, zij) >= 1:
+        if curated == "both" and zij >= 1 and heb >= 1:
             return "both"
-        return winner
+        return "zijn" if zij > heb else "hebben"
     return curated or "hebben"
+
+
+def _merge_homograph_aux(best: dict[str, Any], datas: list[dict[str, Any]]) -> dict[str, Any]:
+    """``both`` when homograph verb entries (different participles) disagree on the auxiliary.
+
+    ``voorkomen`` has a separable entry (``voorgekomen``, zijn: "to occur") and an inseparable
+    one (``voorkomen``, no template aux: "to prevent", hebben).
+    """
+    entries = [d for d in datas if d.get("participle")]
+    if len({d["participle"] for d in entries}) < 2:
+        return best
+    auxes = {d.get("aux") for d in entries}
+    if len(auxes) > 1 and auxes - {None}:
+        return {**best, "aux": "both"}
+    return best
 
 
 class WordFormsMissingError(RuntimeError):
@@ -367,6 +413,7 @@ class WordFormsStore:
                 datas = [json.loads(r[0]) for r in row]
                 data = max(datas, key=len, default={})
                 if kind == "verb":
+                    data = _merge_homograph_aux(data, datas)
                     data = self._finish_verb(con, lemma, data, evidence)
                 result[lemma] = data
         finally:
@@ -386,6 +433,8 @@ class WordFormsStore:
             # No conjugation data: guess "particle + known verb stem" ("terugbellen").
             for p in SEPARABLE_PARTICLES:
                 stem = low[len(p) :]
+                if p in AMBIGUOUS_PARTICLES:
+                    continue  # over-/onder-/... may be inseparable: needs Wiktionary evidence
                 if low.startswith(p) and len(stem) > 2 and self._stem_known(con, stem):
                     data = {**data, "separable": {"particle": p, "stem": stem}}
                     break

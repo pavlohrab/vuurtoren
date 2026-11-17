@@ -156,7 +156,7 @@ def test_evidence_from_sentence_db_overrides_default(fixture_db: Path, tmp_path:
         [("werken", "VERB"), ("kopen", "VERB"), ("eten", "VERB")]
     )
     assert got["werken"]["aux"] == "zijn"
-    assert got["kopen"]["aux"] == "both"
+    assert got["kopen"]["aux"] == "hebben"  # 7:3 = passives ("is gekocht")
     assert got["eten"]["aux"] == "hebben"
 
 
@@ -279,3 +279,19 @@ def test_real_db_json_roundtrip() -> None:
     store = WordFormsStore(default_db_path())
     got = store.lookup([("lopen", "VERB")])
     assert json.loads(json.dumps(got))["lopen"]["past"] == ["liep", "liepen"]
+
+
+# ---- H5 auxiliaries
+def test_inseparable_prefix_does_not_inherit_stem_aux() -> None:
+    """overvallen is not over+vallen; aanvallen/onderbreken are hebben-only."""
+    assert curated_aux("overvallen") == "hebben"
+    assert resolve_aux(None, None, "overvallen", None) == "hebben"
+    assert resolve_aux(None, (7, 3), "aanvallen", "aan") == "hebben"
+    assert resolve_aux(None, None, "onderbreken", None) == "hebben"
+
+
+def test_confirmed_split_inherits_and_lexical_both_wins() -> None:
+    assert resolve_aux(None, None, "overkomen", "over") == "zijn"
+    assert resolve_aux(None, (7, 0), "zwemmen", None) == "both"
+    assert resolve_aux(None, (17, 57), "stoppen", None) == "both"
+    assert resolve_aux(None, (14, 3), "overtuigen", None) == "hebben"
