@@ -43,7 +43,9 @@ describe("practice data wrapper", () => {
 
   it("keys the cache by server URL and sends the client's request shape", async () => {
     let base = "/a";
-    const fetchFn = vi.fn(async (_url: string, _init?: RequestInit) => Response.json({}));
+    const fetchFn = vi.fn<(url: string, init?: RequestInit) => Promise<Response>>(async () =>
+      Response.json({}),
+    );
     const data = createPracticeData(client(() => base, fetchFn as never));
     await data.sentences("nl", ["lopen"], { limit: 2, maxWords: 9 });
     base = "/b";
