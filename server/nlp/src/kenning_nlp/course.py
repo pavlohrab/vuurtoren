@@ -168,22 +168,28 @@ class CourseOcr:
         self.cache: OrderedDict[str, tuple[list[dict[str, Any]], float]] = OrderedDict()
         self.lock = threading.Lock()
 
-    def start(self, data: bytes, lang: str) -> Job:
-        """Validate the upload and start a background job.
+    def start(self, data: bytes | list[bytes], lang: str) -> Job:
+        """Validate the upload(s) and start a background job.
+
+        Several files (photos of pages) are read in order as one book: their pages are numbered
+        consecutively.
 
         Raises:
             ServiceError: 503 without Tesseract, 415/413/422 for bad uploads, 429 if too many
                 jobs are running.
         """
         code = ensure_tesseract(lang) if self.check else "nld"
-        total = count_pages(data)
+        files = data if isinstance(data, list) else [data]
+        total = sum(count_pages(d) for d in files)
+        if total > MAX_COURSE_PAGES:
+            raise ServiceError(413, f"Too many pages (limit {MAX_COURSE_PAGES}).")
         self._purge()
         with self.lock:
             if sum(j.status == "running" for j in self.jobs.values()) >= MAX_JOBS:
                 raise ServiceError(429, "Too many OCR jobs are running; wait for one to finish.")
             job = Job(id=uuid.uuid4().hex, total=total)
             self.jobs[job.id] = job
-        threading.Thread(target=self._run, args=(job, data, code), daemon=True).start()
+        threading.Thread(target=self._run, args=(job, files, code), daemon=True).start()
         return job
 
     def get(self, job_id: str) -> Job:
@@ -227,9 +233,10 @@ class CourseOcr:
                 self.cache.popitem(last=False)
         return result
 
-    def _run(self, job: Job, data: bytes, code: str) -> None:
+    def _run(self, job: Job, files: list[bytes], code: str) -> None:
+        images = (img for data in files for img in iter_page_images(data))
         try:
-            for n, img in enumerate(iter_page_images(data), start=1):
+            for n, img in enumerate(images, start=1):
                 if job.cancelled:
                     return
                 blocks, conf = self._page(img, code)

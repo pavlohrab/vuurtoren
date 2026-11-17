@@ -217,12 +217,28 @@ _course_ocr = CourseOcr()
 
 @app.post("/course/ocr")
 async def course_ocr_start(
-    file: Annotated[UploadFile, File()],
+    file: Annotated[list[UploadFile], File()],
     lang: Annotated[str, Query(pattern=f"^({'|'.join(TESSERACT_LANGS)})$")] = "nl",
 ) -> dict[str, object]:
-    """Start a background OCR job over a PDF/image upload; poll ``GET /course/ocr/{id}``."""
-    data = await read_upload(file, COURSE_MAX_UPLOAD_BYTES)
-    job = _course_ocr.start(data, lang)
+    """Start a background OCR job over a PDF or page photos; poll ``GET /course/ocr/{id}``.
+
+    Several ``file`` fields (photos of pages) are read in order as one book. The size limit
+    applies to all files together.
+    """
+    datas: list[bytes] = []
+    left = COURSE_MAX_UPLOAD_BYTES
+    for f in file:
+        try:
+            data = await read_upload(f, left)
+        except ServiceError as e:
+            if e.status_code == 413:
+                raise ServiceError(
+                    413, f"Files too large (limit {COURSE_MAX_UPLOAD_BYTES // (1024 * 1024)} MB)."
+                ) from e
+            raise
+        left -= len(data)
+        datas.append(data)
+    job = _course_ocr.start(datas, lang)
     return {"id": job.id, "total": job.total}
 
 

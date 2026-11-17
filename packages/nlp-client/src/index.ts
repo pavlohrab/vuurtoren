@@ -275,10 +275,17 @@ export class NlpClient {
     return this.batched("/detect", texts, {});
   }
 
-  /** Start a background OCR job over a whole book (PDF or images). */
-  courseOcrStart(file: Blob, lang: OcrLang = "nl", filename?: string): Promise<{ id: string; total: number }> {
+  /**
+   * Start a background OCR job over a whole book: one PDF, or photos of its pages (read in the
+   * given order as consecutive pages).
+   */
+  courseOcrStart(
+    files: File | readonly File[],
+    lang: OcrLang = "nl",
+  ): Promise<{ id: string; total: number }> {
     const form = new FormData();
-    form.append("file", file, filename);
+    const list: readonly File[] = files instanceof Blob ? [files] : files;
+    for (const f of list) form.append("file", f, f.name);
     return this.postForm(`/course/ocr?lang=${lang}`, form);
   }
 

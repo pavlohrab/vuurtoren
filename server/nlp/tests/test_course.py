@@ -67,8 +67,8 @@ def test_job_runs_pages_with_progress_and_cache(monkeypatch) -> None:
     after = client.get(f"/course/ocr/{r.json()['id']}?after=2").json()
     assert [p["n"] for p in after["pages"]] == [3]
     # Same upload again: every page comes from the cache.
-    client.post("/course/ocr", files={"file": ("b.tiff", data, "image/tiff")})
-    time.sleep(0.2)
+    again = client.post("/course/ocr", files={"file": ("b.tiff", data, "image/tiff")})
+    assert wait_done(client, again.json()["id"])["done"] == 3
     assert len(calls) == 3
 
 
@@ -97,3 +97,26 @@ def test_cancel_drops_job(monkeypatch) -> None:
     r = client.post("/course/ocr", files={"file": ("b.tiff", tiff_pages(2), "image/tiff")})
     assert client.post(f"/course/ocr/{r.json()['id']}/cancel").status_code == 200
     assert client.get(f"/course/ocr/{r.json()['id']}").status_code == 404
+
+
+def test_several_photos_are_one_book(monkeypatch) -> None:
+    monkeypatch.setattr(app_module, "_course_ocr", CourseOcr(fake_engine, check=False))
+    client = TestClient(app)
+    files = [
+        ("file", ("p1.tiff", tiff_pages(2), "image/tiff")),
+        ("file", ("p2.tiff", tiff_pages(1), "image/tiff")),
+    ]
+    r = client.post("/course/ocr", files=files)
+    assert r.status_code == 200 and r.json()["total"] == 3
+    body = wait_done(client, r.json()["id"])
+    assert [p["n"] for p in body["pages"]] == [1, 2, 3]
+    # The second file's single frame (40 px wide) follows the first file's two frames.
+    assert [p["text"] for p in body["pages"]] == ["page 40", "page 41", "page 40"]
+
+
+def test_too_many_pages_over_all_files(monkeypatch) -> None:
+    monkeypatch.setattr(app_module, "_course_ocr", CourseOcr(fake_engine, check=False))
+    monkeypatch.setattr("kenning_nlp.course.MAX_COURSE_PAGES", 2)
+    client = TestClient(app)
+    files = [("file", (f"p{i}.tiff", tiff_pages(1), "image/tiff")) for i in range(3)]
+    assert client.post("/course/ocr", files=files).status_code == 413
