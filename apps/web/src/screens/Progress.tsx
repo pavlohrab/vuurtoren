@@ -30,6 +30,7 @@ export function Progress() {
       ) : (
         <p className="error-text">The summary could not be loaded.</p>
       )}
+      <PracticeSection />
       {s && s.sources.length > 0 ? (
         <p className="k-hint" style={{ marginTop: 16 }}>
           Sources: {s.sources.join(", ")}
@@ -45,5 +46,36 @@ function Stat({ value, label }: { value: string; label: string }) {
       <div className="stat-value">{value}</div>
       <div className="stat-label">{label}</div>
     </div>
+  );
+}
+
+const SKILL_LABEL = {
+  recognition: "Recognition",
+  recall: "Recall",
+  form: "Forms",
+  gender: "Gender",
+  listening: "Listening",
+} as const;
+
+/** Small practice summary: items due and items learned per skill. */
+function PracticeSection() {
+  const services = useServices();
+  const q = useQuery({
+    queryKey: ["practice", "overview"],
+    queryFn: () => services.practiceOverview(),
+  });
+  const p = q.data;
+  if (!p) return null;
+  return (
+    <section style={{ marginTop: 32 }} aria-label="Practice">
+      <h2 className="practice-h2">Practice</h2>
+      <div className="stat-grid">
+        <Stat value={fmt(p.due)} label="Due now" />
+        <Stat value={fmt(p.learned)} label="Items learned" />
+        {(Object.keys(SKILL_LABEL) as (keyof typeof SKILL_LABEL)[]).map((k) => (
+          <Stat key={k} value={fmt(p.bySkill[k])} label={`${SKILL_LABEL[k]} learned`} />
+        ))}
+      </div>
+    </section>
   );
 }

@@ -33,6 +33,8 @@ export interface Candidate {
   wordField: string;
   sentenceField: string | null;
   glossField: string | null;
+  /** English translation of the sentence field (sentence-length values, e.g. "ZinEN"). */
+  sentenceTranslationField?: string | null;
   /** Target-language share of the word field. */
   targetShare: number;
   /**
@@ -141,6 +143,20 @@ export async function rankCandidates(
                 f.samples >= minSamples)),
         )
         .sort((a, b) => glossScore(b) - glossScore(a))[0] ?? null;
+    // Sentence translation: a gloss-language field with sentence-length values.
+    const translation =
+      stats
+        .filter(
+          (f) =>
+            f.name !== word.name &&
+            f.name !== sentence?.name &&
+            f.name !== gloss?.name &&
+            f.samples >= minSamples &&
+            f.avgTokens >= 3 &&
+            f.glossShare >= 0.5 &&
+            f.targetShare < 0.3,
+        )
+        .sort((a, b) => b.glossShare - a.glossShare)[0] ?? null;
     const confidence = Math.max(
       word.targetShare,
       sentence && sentence.targetShare >= 0.8 ? sentence.targetShare : 0,
@@ -153,6 +169,7 @@ export async function rankCandidates(
       wordField: word.name,
       sentenceField: sentence?.name ?? null,
       glossField: gloss?.name ?? null,
+      sentenceTranslationField: translation?.name ?? null,
       targetShare: word.targetShare,
       confidence,
       score: confidence * Math.log10(1 + first.deckNoteCount),

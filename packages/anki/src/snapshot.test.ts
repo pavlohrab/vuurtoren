@@ -32,7 +32,12 @@ const notes: FakeNote[] = [
     id: 1,
     deck: "NL",
     model: "Woord",
-    fields: { Woord: "de fiets", Betekenis: "bike", Zin: "De fiets is rood." },
+    fields: {
+      Woord: "de fiets",
+      Betekenis: "bike",
+      Zin: "De <b>fiets</b> is rood.<br>Tweede regel.",
+      ZinEN: "The bike is red.<br>Second.",
+    },
     cards: [30, 5],
     lastReview: NOW - 10 * DAY,
   },
@@ -40,7 +45,12 @@ const notes: FakeNote[] = [
     id: 2,
     deck: "NL",
     model: "Woord",
-    fields: { Woord: "lopen", Betekenis: "to walk", Zin: "Wij lopen." },
+    fields: {
+      Woord: "lopen",
+      Betekenis: "to walk",
+      Zin: "Wij lopen. Echt waar.",
+      ZinEN: "We walk. Really.",
+    },
     cards: [3],
     lastReview: NOW - 3 * DAY,
   },
@@ -48,7 +58,12 @@ const notes: FakeNote[] = [
     id: 3,
     deck: "NL",
     model: "Woord",
-    fields: { Woord: "het huis", Betekenis: "house", Zin: "Het huis is groot." },
+    fields: {
+      Woord: "het huis",
+      Betekenis: "house",
+      Zin: "Het huis is groot.",
+      ZinEN: "The house is big.",
+    },
     cards: [0],
   },
   {
@@ -100,7 +115,13 @@ describe("buildSnapshot", () => {
     expect(fiets.decks.sort()).toEqual(["Freq", "NL"]);
     expect(fiets.noteIds.sort()).toEqual([1, 4]);
     expect(fiets.article).toBe("de");
-    expect(fiets.gloss).toBeDefined();
+    expect(fiets.gloss).toBe("bike");
+    expect(fiets.sentence).toBe("De fiets is rood.");
+    expect(fiets.sentenceTranslation).toBe("The bike is red.");
+    expect(byKey.get("lopen")!.sentence).toBe("Wij lopen.");
+    expect(byKey.get("lopen")!.sentenceTranslation).toBe("We walk.");
+    expect(byKey.get("gezellig")!.sentence).toBeUndefined();
+    expect(snap.sources.find((x) => x.deck === "NL")!.sentenceTranslationField).toBe("ZinEN");
     expect(byKey.get("lopen")!.state).toBe("learning");
     expect(byKey.get("huis")!.state).toBe("unknown");
     expect(byKey.get("ze")?.state).toBe("unknown"); // alias

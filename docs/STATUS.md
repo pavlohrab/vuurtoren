@@ -132,6 +132,7 @@ pnpm dev            # web app on http://localhost:5173 (proxies /nlp and /anki)
 - **M3 leftovers:**
   - Weave reading (English base text with Dutch islands, [research/06](research/06-weave-reading.md)).
 - **M4 Practice:** exercises without AI (cloze, meaning, de/het, separable verbs, perfect tense with hebben/zijn, dictation) with their own FSRS scheduler.
+  - App side built: Anki example sentences in the snapshot, `ExerciseAnswered` events and `practice_items` projection, practice services (live + mock), Practice screen (start, session with keyboard shortcuts, summary), sidebar due badge and a Progress section. It runs on a temporary engine shim (`apps/web/src/practice/engineShim.ts`); switch `engine.ts` to `@app/core` after merging the real engine.
 - **M5 Grammar:** about 25 Dutch topics, detectors on the analysis, highlighted examples in the reader.
 - **M6 AI** (bring your own key): conversation kept to your vocabulary, simplification, MCP server for Claude/ChatGPT subscribers.
 - **M7 Sync** (folder / WebDAV / GitHub, encrypted). **M8 Desktop** (Tauri). Then the browser extension, Ukrainian, mobile.

@@ -2,7 +2,16 @@
  * Contracts for local persistence (ADR 0002): an append-only event log is the source of
  * truth; tables are rebuildable projections. Implemented by packages/db.
  */
-import type { AnalyzedToken, LearnerModel, StaircaseState, WordState } from "@app/core";
+import type {
+  AnalyzedToken,
+  ExerciseKind,
+  Grade,
+  ItemState,
+  LearnerModel,
+  Skill,
+  StaircaseState,
+  WordState,
+} from "@app/core";
 
 /** Minimal SQL driver so the same schema runs on sqlite-wasm (web), node:sqlite (tests), Tauri (later). */
 export interface SqlDriver {
@@ -24,6 +33,10 @@ export interface AnkiWordEntry {
   gloss?: string;
   /** de/het for nouns when the card shows it. */
   article?: string;
+  /** Example sentence from the deck's sentence field (first sentence, cleaned). */
+  sentence?: string;
+  /** English translation of `sentence`, when the note type has one. */
+  sentenceTranslation?: string;
 }
 
 export type AppEvent =
@@ -68,6 +81,24 @@ export type AppEvent =
       lookupsPer100: number;
     }
   | { type: "StaircaseUpdated"; lang: string; state: StaircaseState }
+  | {
+      /**
+       * One practice exercise was answered (ADR 0003: never written to Anki). `state` is the
+       * new FSRS state of (key, skill), computed by the engine at answer time and stored here so
+       * replays are deterministic without the engine.
+       */
+      type: "ExerciseAnswered";
+      lang: string;
+      key: string;
+      skill: Skill;
+      kind: ExerciseKind;
+      grade: Grade;
+      correct: boolean;
+      ms: number;
+      /** Answer time, ms since epoch. */
+      at: number;
+      state: ItemState;
+    }
   | { type: "SettingChanged"; key: string; value: unknown };
 
 export interface StoredEvent {
@@ -102,6 +133,9 @@ export interface WordInfo {
   source: "anki" | "app";
   gloss?: string;
   article?: string;
+  /** Example sentence from Anki (and its English translation). */
+  sentence?: string;
+  sentenceTranslation?: string;
   decks: string[];
   lookups: number;
   addedNoteId?: number;
@@ -113,6 +147,17 @@ export interface WordInfo {
   markedKnownInAnki?: boolean;
   /** A manual state (set in the app) currently overrides Anki's. */
   overridden?: boolean;
+}
+
+/** One answered exercise, as listed by `practiceLog`. */
+export interface PracticeLogEntry {
+  key: string;
+  skill: Skill;
+  kind: ExerciseKind;
+  grade: Grade;
+  correct: boolean;
+  ms: number;
+  at: number;
 }
 
 /** Repository API used by apps (web/desktop/extension). */
@@ -133,6 +178,10 @@ export interface Repository {
     },
   ): Promise<WordInfo[]>;
   staircase(lang: string): Promise<StaircaseState | null>;
+  /** FSRS state of every practised (key, skill) pair of a language. */
+  practiceItems(lang: string): Promise<ItemState[]>;
+  /** Newest-first answers (ExerciseAnswered events), at most `limit`. */
+  practiceLog(lang: string, limit: number): Promise<PracticeLogEntry[]>;
   setting<T>(key: string): Promise<T | undefined>;
   /** Drop projections and rebuild them from the event log. */
   rebuild(): Promise<void>;

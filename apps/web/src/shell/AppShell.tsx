@@ -88,6 +88,12 @@ export function AppShell() {
   const [paletteOpen, setPaletteOpen] = useState(false);
 
   const texts = useQuery({ queryKey: ["texts"], queryFn: () => services.listTexts() });
+  // Due count for the sidebar badge; failures just hide the badge.
+  const practice = useQuery({
+    queryKey: ["practice", "overview"],
+    queryFn: () => services.practiceOverview(),
+    staleTime: 60_000,
+  });
 
   // ⌘K / Ctrl+K opens the palette from anywhere.
   useEffect(() => {
@@ -193,7 +199,12 @@ export function AppShell() {
           ) : (
             <NavLink to="/library" label="Read" icon={<BookOpen size={18} />} />
           )}
-          <NavLink to="/practice" label="Practice" icon={<Dumbbell size={18} />} />
+          <NavLink
+            to="/practice"
+            label="Practice"
+            icon={<Dumbbell size={18} />}
+            badge={practice.data?.due}
+          />
           <NavLink to="/converse" label="Converse" icon={<MessagesSquare size={18} />} />
           <NavLink to="/words" label="Words" icon={<Languages size={18} />} />
           <NavLink to="/grammar" label="Grammar" icon={<BookText size={18} />} />
@@ -319,11 +330,26 @@ export function AppShell() {
 type FixedRoute =
   "/library" | "/practice" | "/converse" | "/words" | "/grammar" | "/progress" | "/settings";
 
-function NavLink({ to, label, icon }: { to: FixedRoute; label: string; icon: ReactNode }) {
+function NavLink({
+  to,
+  label,
+  icon,
+  badge,
+}: {
+  to: FixedRoute;
+  label: string;
+  icon: ReactNode;
+  badge?: number | undefined;
+}) {
   return (
     <Link to={to} className="nav-link" title={label}>
       {icon}
       <span className="nav-label">{label}</span>
+      {badge ? (
+        <span className="nav-badge" aria-label={`${badge} due`}>
+          {badge}
+        </span>
+      ) : null}
     </Link>
   );
 }
