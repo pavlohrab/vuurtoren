@@ -16,7 +16,10 @@ from kenning_nlp.dictionary import Dictionary, DictionaryMissingError
 from kenning_nlp.dictionary import default_db_path as default_dictionary_path
 from kenning_nlp.errors import ServiceError, read_upload
 from kenning_nlp.extract_url import extract_from_url
+from kenning_nlp.grammar import detect_grammar
+from kenning_nlp.grammar_examples import GrammarExamples
 from kenning_nlp.models import (
+    GRAMMAR_EXAMPLE_LIMIT,
     MAX_TOTAL_CHARS,
     MT_MAX_TOTAL_CHARS,
     AnalyzeRequest,
@@ -28,6 +31,9 @@ from kenning_nlp.models import (
     FormsRequest,
     GlossEntry,
     GlossRequest,
+    GrammarExample,
+    GrammarHit,
+    GrammarRequest,
     OcrResult,
     PdfExtraction,
     SentencesRequest,
@@ -201,3 +207,42 @@ def similar_endpoint(req: SimilarRequest) -> dict[str, list[str]]:
         return _similar_service().lookup(((w.lemma, w.pos) for w in req.words), req.k)
     except SimilarMissingError as e:
         raise ServiceError(503, str(e)) from e
+
+
+# --------------------------------------------------------------------------------- grammar (M5)
+
+
+@app.post("/grammar")
+def grammar_endpoint(req: GrammarRequest) -> list[list[GrammarHit]]:
+    """Grammar constructions found in each text (rule-based, see :mod:`kenning_nlp.grammar`).
+
+    One list of hits per input text, in text order. ``tokens`` index the tokens that
+    ``/analyze/text`` returns for the same text; ``start``/``end`` give the sentence span, so
+    the hits can also be mapped onto an analysis made elsewhere.
+    """
+    check_total(req.texts)
+    return [
+        detect_grammar(t, a)
+        for t, a in zip(req.texts, analyze_texts(req.lang, req.texts), strict=True)
+    ]
+
+
+@app.get("/grammar/examples")
+def grammar_examples_endpoint(
+    topic: Annotated[str, Query(pattern="^[a-z][a-z0-9-]{0,60}$")],
+    limit: Annotated[int, Query(ge=1, le=GRAMMAR_EXAMPLE_LIMIT)] = GRAMMAR_EXAMPLE_LIMIT,
+) -> list[GrammarExample]:
+    """Tatoeba sentences in which the detector for ``topic`` fired (scanned lazily and cached).
+
+    Topics without a detector give ``[]``. A rare topic may return fewer than ``limit`` on the
+    first request (the scan has a time budget); asking again continues the scan. 503 if the
+    sentence DB has not been built.
+    """
+    path = default_sentences_path()
+    if not path.is_file():
+        raise ServiceError(
+            503,
+            f"Sentence database not found at {path}. "
+            "Build it once with: uv run python scripts/build_sentences.py",
+        )
+    return [GrammarExample(**e) for e in GrammarExamples(path).examples(topic, limit)]
