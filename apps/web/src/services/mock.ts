@@ -21,6 +21,7 @@ import type {
   ReadingView,
   Settings,
   TextListItem,
+  TextWordItem,
 } from "./types.js";
 
 interface LexEntry {
@@ -293,6 +294,11 @@ export function createMockServices(options: { latencyMs?: number } = {}): AppSer
     });
   }
 
+  // Words looked up per text. Seeded so the review shows every Anki state in ?demo.
+  const lookedUp = new Map<string, Set<string>>([
+    ["t-utrecht", new Set(["meenemen", "reis", "boek", "opbellen", "trein"])],
+  ]);
+
   const settings: Settings = {
     ankiUrl: "http://127.0.0.1:8765",
     nlpUrl: "http://127.0.0.1:8000",
@@ -409,6 +415,45 @@ export function createMockServices(options: { latencyMs?: number } = {}): AppSer
     };
   };
 
+  /** The inspector entry of one occurrence of a word (shared by inspect and textWords). */
+  const entryOf = (
+    t: StoredText,
+    tokens: AnalyzedToken[],
+    tok: AnalyzedToken,
+    e: LexEntry,
+  ): InspectorEntry => {
+    const sentToks = tokens.filter((x) => x.sent === tok.sent);
+    const first = sentToks[0]?.start ?? 0;
+    const last = sentToks[sentToks.length - 1]?.end ?? t.content.length;
+    return {
+      textId: t.id,
+      tokenIndex: tok.i,
+      surface: t.content.slice(tok.start, tok.end),
+      lemma: e.key,
+      key: e.key,
+      label: labelOf(e),
+      state: e.state,
+      pKnown: e.pKnown,
+      pos: e.pos,
+      ...(e.article ? { article: e.article } : {}),
+      glosses: e.gloss ? [e.gloss] : [],
+      decks: e.decks,
+      inAnki: e.inAnki,
+      anki: {
+        status: e.anki.status,
+        ...(e.anki.detail ? { detail: e.anki.detail } : {}),
+        ...(e.anki.deck ? { deck: e.anki.deck } : {}),
+        noteIds: e.anki.status === "absent" ? [] : [1],
+        cardIds: e.anki.status === "absent" ? [] : [10],
+        prioritized: e.anki.prioritized,
+        markedKnown: e.anki.markedKnown,
+        overridden: e.overridden,
+      },
+      sentence: t.content.slice(first, last),
+      sentenceHighlight: [tok.start - first, tok.end - first],
+    };
+  };
+
   return {
     async listTexts() {
       await wait();
@@ -501,37 +546,57 @@ export function createMockServices(options: { latencyMs?: number } = {}): AppSer
       const tok = clicked.particle_of != null ? (tokens[clicked.particle_of] ?? clicked) : clicked;
       const e = entryFor(tok, tokens) ?? lexicon.get(ensure(tok.text).key);
       if (!e) throw new Error("Unknown word");
-      const sentToks = tokens.filter((x) => x.sent === tok.sent);
-      const first = sentToks[0]?.start ?? 0;
-      const last = sentToks[sentToks.length - 1]?.end ?? t.content.length;
-      const surface = t.content.slice(tok.start, tok.end);
-      return {
-        textId,
-        tokenIndex: tok.i,
-        surface,
-        lemma: e.key,
-        key: e.key,
-        label: labelOf(e),
-        state: e.state,
-        pKnown: e.pKnown,
-        pos: e.pos,
-        ...(e.article ? { article: e.article } : {}),
-        glosses: e.gloss ? [e.gloss] : [],
-        decks: e.decks,
-        inAnki: e.inAnki,
-        anki: {
-          status: e.anki.status,
-          ...(e.anki.detail ? { detail: e.anki.detail } : {}),
-          ...(e.anki.deck ? { deck: e.anki.deck } : {}),
-          noteIds: e.anki.status === "absent" ? [] : [1],
-          cardIds: e.anki.status === "absent" ? [] : [10],
-          prioritized: e.anki.prioritized,
-          markedKnown: e.anki.markedKnown,
-          overridden: e.overridden,
-        },
-        sentence: t.content.slice(first, last),
-        sentenceHighlight: [tok.start - first, tok.end - first],
-      };
+      return entryOf(t, tokens, tok, e);
+    },
+
+    async textWords(textId, opts = {}): Promise<TextWordItem[]> {
+      await wait();
+      const t = texts.get(textId);
+      if (!t) throw new Error("Text not found");
+      const tokens = t.tokens ?? [];
+      const looked = lookedUp.get(textId) ?? new Set<string>();
+      const picked = new Map<string, { tok: AnalyzedToken; source: TextWordItem["source"] }>();
+      const rank = { introduce: 0, lookup: 1, gloss: 2 };
+      for (const p of buildPlans(t).flatMap((plan) => plan.tokens)) {
+        const tok = tokens[p.i];
+        if (!tok || !p.key || p.label === "nonword" || p.label === "ignored") continue;
+        if (tok.particle_of != null) continue;
+        const source =
+          p.label === "introduce"
+            ? "introduce"
+            : p.label === "gloss" && opts.includeGlossed
+              ? "gloss"
+              : looked.has(p.key) &&
+                  (p.label !== "known" || lexicon.get(p.key)?.anki.status === "unavailable")
+                ? "lookup"
+                : null;
+        if (!source) continue;
+        const have = picked.get(p.key);
+        if (!have) picked.set(p.key, { tok, source });
+        else if (rank[source] < rank[have.source]) have.source = source;
+      }
+      const out: TextWordItem[] = [];
+      for (const [key, { tok, source }] of picked) {
+        const e = lexicon.get(key);
+        // Known words are left out, except the demo word whose Anki state is "unavailable":
+        // it is kept so the review shows that state too.
+        const skipKnown = e?.state === "known" && e.anki.status !== "unavailable";
+        if (!e || skipKnown || e.state === "ignored") continue;
+        const entry = entryOf(t, tokens, tok, e);
+        out.push({
+          key,
+          lemma: entry.lemma,
+          ...(entry.article ? { article: entry.article } : {}),
+          pos: entry.pos,
+          glosses: entry.glosses,
+          sentence: entry.sentence,
+          sentenceHighlight: entry.sentenceHighlight,
+          tokenIndex: entry.tokenIndex,
+          source,
+          entry,
+        });
+      }
+      return out;
     },
 
     async addToAnki(entry) {
@@ -613,7 +678,8 @@ export function createMockServices(options: { latencyMs?: number } = {}): AppSer
       delete e.planLabel;
     },
 
-    async recordLookup(_textId, key) {
+    async recordLookup(textId, key) {
+      lookedUp.set(textId, (lookedUp.get(textId) ?? new Set()).add(key));
       const e = lexicon.get(key);
       if (e) e.lookups += 1;
     },

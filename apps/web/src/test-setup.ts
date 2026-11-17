@@ -21,3 +21,7 @@ window.matchMedia ??= ((query: string) => ({
   onchange: null,
   dispatchEvent: () => false,
 })) as typeof window.matchMedia;
+// Radix Select uses pointer capture, which jsdom lacks.
+Element.prototype.hasPointerCapture ??= () => false;
+Element.prototype.setPointerCapture ??= () => {};
+Element.prototype.releasePointerCapture ??= () => {};

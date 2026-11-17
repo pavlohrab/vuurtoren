@@ -11,6 +11,7 @@ import {
   highlightSentence,
   learnNext,
   markKnownInAnki,
+  type NoteCardStatus,
 } from "@app/anki";
 import {
   type AnalyzedToken,
@@ -19,6 +20,7 @@ import {
   type PlannerOptions,
   type SegmentPlan,
   type StaircaseState,
+  type TokenLabel,
   type WordState,
   classifyTokens,
   estimateVocabulary,
@@ -41,10 +43,13 @@ import type {
   ReadingView,
   Settings,
   TextListItem,
+  TextWordItem,
 } from "./types.js";
 
 /** How long opening a word waits for Anki before showing "Anki not reachable". */
 const INSPECT_TIMEOUT_MS = 3000;
+/** The review asks for many notes at once, so it waits a little longer than one word does. */
+const REVIEW_TIMEOUT_MS = 5000;
 const ANKI_KEY_STORAGE = "kenning.ankiKey";
 function readSecret(name: string): string | undefined {
   try {
@@ -164,6 +169,40 @@ function titleFrom(content: string): string {
   return first.length > 60 ? `${first.slice(0, 57).trimEnd()}…` : first || "Untitled";
 }
 
+type Dictionary = Awaited<ReturnType<NlpClient["gloss"]>>;
+
+/** Character range [start, end) of every sentence, by sentence number. */
+function sentenceSpans(tokens: AnalyzedToken[]): Map<number, [number, number]> {
+  const spans = new Map<number, [number, number]>();
+  for (const t of tokens) {
+    const s = spans.get(t.sent);
+    if (s) s[1] = t.end;
+    else spans.set(t.sent, [t.start, t.end]);
+  }
+  return spans;
+}
+
+/** Meanings of a word: the card's gloss first, then dictionary senses (form-of noise removed). */
+function composeGlosses(
+  info: WordInfo | null,
+  entries: Dictionary[string] | undefined,
+  pos: string,
+): { glosses: string[]; article: string | undefined } {
+  const glosses: string[] = [];
+  if (info?.gloss) glosses.push(info.gloss);
+  const ordered = orderByPos(entries ?? [], pos);
+  for (const e of ordered)
+    for (const g of e.glosses) if (!FORM_OF.test(g) && !glosses.includes(g)) glosses.push(g);
+  const article =
+    info?.article ??
+    ordered.find((e) => e.article === "de" || e.article === "het")?.article ??
+    undefined;
+  return { glosses: glosses.slice(0, 6), article };
+}
+
+/** Where a word may enter the review, strongest reason first. */
+const SOURCE_RANK = { introduce: 0, lookup: 1, gloss: 2 } as const;
+
 export function createLiveServices(repo: KenningRepository): AppServices {
   let settingsCache: Settings | null = null;
   // Bumped whenever the learner model changes, so cached plans are recomputed.
@@ -271,6 +310,76 @@ export function createLiveServices(repo: KenningRepository): AppServices {
     } catch (e) {
       return unavailableAnki(info, e instanceof Error ? e.message : String(e));
     }
+  }
+  /**
+   * Live Anki state for many words with ONE request; if Anki cannot answer in time every word is
+   * "unavailable" (with the reason), so no action is offered that would fail.
+   */
+  async function liveAnkiBatch(infos: (WordInfo | null)[]): Promise<InspectorEntry["anki"][]> {
+    const ids = [...new Set(infos.flatMap((i) => i?.noteIds ?? []))];
+    let notes: NoteCardStatus[] = [];
+    try {
+      const client = await anki(REVIEW_TIMEOUT_MS);
+      // With no notes to ask about, a version call still tells whether Anki is reachable.
+      if (ids.length) notes = (await cardStatus(client, ids)).notes;
+      else if (infos.length) await client.version();
+    } catch (e) {
+      const reason = e instanceof Error ? e.message : String(e);
+      return infos.map((i) => unavailableAnki(i, reason));
+    }
+    const byId = new Map(notes.map((n) => [n.noteId, n]));
+    return infos.map((info) =>
+      info && info.noteIds.length
+        ? ankiFromStatus(
+            info,
+            info.noteIds.flatMap((id) => byId.get(id) ?? []),
+          )
+        : absentAnki(info),
+    );
+  }
+  /** Dictionary entries for lemmas in one request; empty when the dictionary is unavailable. */
+  async function dictionaryFor(lemmas: string[]): Promise<Dictionary> {
+    if (lemmas.length === 0) return {};
+    try {
+      return await (await nlp()).gloss("nl", lemmas);
+    } catch {
+      return {}; // dictionary optional (503 when not built)
+    }
+  }
+  /** The inspector entry of one word occurrence; shared by `inspect` and `textWords`. */
+  function describeWord(
+    v: ReadingView,
+    t: AnalyzedToken,
+    spans: Map<number, [number, number]>,
+    w: {
+      key: string;
+      info: WordInfo | null;
+      label: InspectorEntry["label"];
+      dict: Dictionary;
+      anki: InspectorEntry["anki"];
+    },
+  ): InspectorEntry {
+    const [s0, s1] = spans.get(t.sent) ?? [t.start, t.end];
+    const { glosses, article } = composeGlosses(w.info, w.dict[t.lemma], t.pos);
+    const entry: InspectorEntry = {
+      textId: v.text.id,
+      tokenIndex: t.i,
+      surface: t.text,
+      lemma: t.lemma,
+      key: w.key,
+      label: w.label,
+      state: w.info?.state ?? "unknown",
+      pKnown: w.info?.pKnown ?? 0,
+      pos: t.pos,
+      glosses,
+      decks: w.info?.decks ?? [],
+      inAnki: w.info?.source === "anki" || w.info?.addedNoteId !== undefined,
+      anki: w.anki,
+      sentence: v.text.content.slice(s0, s1),
+      sentenceHighlight: [t.start - s0, t.end - s0],
+    };
+    if (article) entry.article = article;
+    return entry;
   }
   const changed = () => {
     modelVersion++;
@@ -475,45 +584,75 @@ export function createLiveServices(repo: KenningRepository): AppServices {
       const key = matchToken(t, m) ?? normalizeKey(t.lemma);
       const info = await repo.word(lang, key);
       const planned = v.plans.flatMap((p) => p.tokens).find((p) => p.i === t.i);
-
-      const sentTokens = v.tokens.filter((x) => x.sent === t.sent);
-      const s0 = sentTokens[0]?.start ?? t.start;
-      const s1 = sentTokens[sentTokens.length - 1]?.end ?? t.end;
-      const sentence = v.text.content.slice(s0, s1);
-
-      const glosses: string[] = [];
-      let article = info?.article;
-      if (info?.gloss) glosses.push(info.gloss);
-      try {
-        const dict = await (await nlp()).gloss("nl", [t.lemma]);
-        const entries = orderByPos(dict[t.lemma] ?? [], t.pos);
-        for (const e of entries)
-          for (const g of e.glosses) if (!FORM_OF.test(g) && !glosses.includes(g)) glosses.push(g);
-        article ??=
-          entries.find((e) => e.article === "de" || e.article === "het")?.article ?? undefined;
-      } catch {
-        // dictionary optional (503 when not built)
-      }
-
-      const entry: InspectorEntry = {
-        textId,
-        tokenIndex: t.i,
-        surface: t.text,
-        lemma: t.lemma,
+      return describeWord(v, t, sentenceSpans(v.tokens), {
         key,
+        info,
         label: planned?.label ?? "new",
-        state: info?.state ?? "unknown",
-        pKnown: info?.pKnown ?? 0,
-        pos: t.pos,
-        glosses: glosses.slice(0, 6),
-        decks: info?.decks ?? [],
-        inAnki: info?.source === "anki" || info?.addedNoteId !== undefined,
+        dict: await dictionaryFor([t.lemma]),
         anki: await liveAnki(info),
-        sentence,
-        sentenceHighlight: [t.start - s0, t.end - s0],
-      };
-      if (article) entry.article = article;
-      return entry;
+      });
+    },
+
+    async textWords(textId, opts = {}): Promise<TextWordItem[]> {
+      const v = await view(textId);
+      if (!v) throw new Error("Text not found");
+      const { lang } = await settings();
+      const looked = new Set(await repo.lookedUpKeys(lang, textId));
+      // Union in text order: first qualifying occurrence of each key, strongest source wins.
+      const picked = new Map<
+        string,
+        { t: AnalyzedToken; label: TokenLabel; source: TextWordItem["source"] }
+      >();
+      for (const p of v.plans.flatMap((plan) => plan.tokens)) {
+        const t = v.tokens[p.i];
+        if (!t || !p.key || p.label === "nonword" || p.label === "ignored") continue;
+        // A detached particle stands for its verb, which has its own token.
+        if (t.particle_of !== null) continue;
+        const source: TextWordItem["source"] | null =
+          p.label === "introduce"
+            ? "introduce"
+            : p.label === "gloss" && opts.includeGlossed
+              ? "gloss"
+              : looked.has(p.key) && p.label !== "known"
+                ? "lookup"
+                : null;
+        if (!source) continue;
+        const have = picked.get(p.key);
+        if (!have) picked.set(p.key, { t, label: p.label, source });
+        else if (SOURCE_RANK[source] < SOURCE_RANK[have.source]) have.source = source;
+      }
+      if (picked.size === 0) return [];
+      // One read of the learner's words, one dictionary request, one Anki request.
+      const infoByKey = new Map((await repo.words(lang)).map((w) => [w.key, w]));
+      const chosen = [...picked.entries()].filter(([key]) => {
+        const state = infoByKey.get(key)?.state;
+        return state !== "known" && state !== "ignored";
+      });
+      const infos = chosen.map(([key]) => infoByKey.get(key) ?? null);
+      const dict = await dictionaryFor([...new Set(chosen.map(([, c]) => c.t.lemma))]);
+      const ankis = await liveAnkiBatch(infos);
+      const spans = sentenceSpans(v.tokens);
+      return chosen.map(([key, c], n) => {
+        const entry = describeWord(v, c.t, spans, {
+          key,
+          info: infos[n] ?? null,
+          label: c.label,
+          dict,
+          anki: ankis[n]!,
+        });
+        return {
+          key,
+          lemma: entry.lemma,
+          ...(entry.article ? { article: entry.article } : {}),
+          pos: entry.pos,
+          glosses: entry.glosses,
+          sentence: entry.sentence,
+          sentenceHighlight: entry.sentenceHighlight,
+          tokenIndex: entry.tokenIndex,
+          source: c.source,
+          entry,
+        };
+      });
     },
 
     async glosses(textId: string, tokenIndices: number[]): Promise<Record<number, string>> {

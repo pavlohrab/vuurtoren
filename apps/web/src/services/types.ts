@@ -11,6 +11,25 @@ export interface ReadingView {
   plans: SegmentPlan[];
   staircase: StaircaseState;
 }
+/** One word of the end-of-text review ("Words from this text"). */
+export interface TextWordItem {
+  key: string;
+  lemma: string;
+  /** de / het for nouns. */
+  article?: string;
+  pos: string;
+  /** Meanings, best first: Anki gloss, then the dictionary sense for the part of speech. */
+  glosses: string[];
+  /** The sentence of the first occurrence in the text. */
+  sentence: string;
+  /** [start, end) character range of the word inside `sentence`. */
+  sentenceHighlight: [number, number];
+  tokenIndex: number;
+  /** Why it is listed: highlighted as new, looked up while reading, or only translated. */
+  source: "introduce" | "lookup" | "gloss";
+  /** Same entry the word inspector uses, so addToAnki / learnNext / markKnown work unchanged. */
+  entry: InspectorEntry;
+}
 export interface TextListItem extends TextSummary {
   coverage: number | null;
   newTypes: number | null;
@@ -57,6 +76,13 @@ export interface AppServices {
   importText(input: ImportInput, onProgress?: (msg: string) => void): Promise<string>;
   deleteText(textId: string): Promise<void>;
   inspect(textId: string, tokenIndex: number): Promise<InspectorEntry>;
+  /**
+   * Words worth reviewing after reading a text, in text order: every highlighted ("introduce")
+   * word of any page plus the words looked up in this text, optionally also the translated-only
+   * ("gloss") words. Known, ignored and non-words are left out. Each item carries the live
+   * Anki state (one batched lookup; "unavailable" when Anki cannot be reached).
+   */
+  textWords(textId: string, opts?: { includeGlossed?: boolean }): Promise<TextWordItem[]>;
   /** Short translations for many tokens at once (missing keys = no translation found). */
   glosses(textId: string, tokenIndices: number[]): Promise<Record<number, string>>;
   addToAnki(entry: InspectorEntry): Promise<{ noteId: number; deck: string }>;

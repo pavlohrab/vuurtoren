@@ -70,6 +70,7 @@ pnpm dev            # web app on http://localhost:5173 (proxies /nlp and /anki)
   - Shows the word's live state in Anki, read when it opens (new, suspended, learning, review, or "Anki not reachable").
   - Explicit write actions, per [ADR 0007](adr/0007-anki-write-actions.md): **Add to Anki** (a _Kenning Word_ note with the sentence, in _Kenning::Nederlands_), **Learn next** (moves the new card to the front of its deck, unsuspending it; needs AnkiConnect API v1), **Mark known** (written to Anki as a 21–35 day interval, also for words not in Anki), **Use Anki's state** (drops a manual mark). Every write is logged as an event and tagged `kenning::reading` / `kenning::known`.
   - Ignore (app-only).
+- **Words from this text** (`/read/:id/words`, opened by finishing a text, the reader footer or the Library card): highlighted words, looked-up words and optionally translated ones, each with its sentence and live Anki state, one action per row (Add / Learn next / Mark known / Skip) and a single Apply that never stops on a failure.
 - **Server:**
   - Analysis, language detection, gloss, URL/PDF/OCR endpoints.
   - Size limits and timeouts.
@@ -127,7 +128,6 @@ pnpm dev            # web app on http://localhost:5173 (proxies /nlp and /anki)
 ### Next milestones
 
 - **M3 leftovers:**
-  - End-of-text **"Words from this text"** list → add several to Anki at once.
   - Weave reading (English base text with Dutch islands, [research/06](research/06-weave-reading.md)).
 - **M4 Practice:** exercises without AI (cloze, meaning, de/het, separable verbs, perfect tense with hebben/zijn, dictation) with their own FSRS scheduler.
 - **M5 Grammar:** about 25 Dutch topics, detectors on the analysis, highlighted examples in the reader.

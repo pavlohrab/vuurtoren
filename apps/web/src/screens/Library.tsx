@@ -78,6 +78,7 @@ export function Library() {
               coverage={t.coverage}
               newTypes={t.newTypes}
               onOpen={() => void navigate({ to: "/read/$textId", params: { textId: t.id } })}
+              onWords={() => void navigate({ to: "/read/$textId/words", params: { textId: t.id } })}
               onDelete={() => setPendingDelete(t)}
             />
           ))}

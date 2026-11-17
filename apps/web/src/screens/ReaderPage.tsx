@@ -315,8 +315,7 @@ export function ReaderPage({ textId }: { textId: string }) {
   /** Move on after a segment; leaves the page after the last one. */
   const advance = async () => {
     if (isLast) {
-      toast("Text finished", "Its new words are listed under Words.");
-      await navigate({ to: "/library" });
+      await navigate({ to: "/read/$textId/words", params: { textId } });
     } else {
       goTo(current + 1);
     }
@@ -470,6 +469,9 @@ export function ReaderPage({ textId }: { textId: string }) {
               Show answers
             </Button>
           ) : null}
+          <Link to="/read/$textId/words" params={{ textId }} className="k-btn k-btn--ghost">
+            Words from this text
+          </Link>
           {current > 0 ? <Button onClick={() => goTo(current - 1)}>Previous</Button> : null}
           <Button variant="primary" disabled={finishing} onClick={() => void finish()}>
             {isLast ? "Finish text" : "Next segment"}

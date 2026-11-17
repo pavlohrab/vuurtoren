@@ -1,4 +1,4 @@
-import { FileText, Globe, Image, Trash2, ClipboardPaste } from "lucide-react";
+import { ClipboardPaste, FileText, Globe, Image, ListChecks, Trash2 } from "lucide-react";
 import type { ReactNode } from "react";
 import { Button } from "./Button.js";
 import { Chip } from "./Chip.js";
@@ -14,6 +14,8 @@ export interface TextCardProps {
   coverage: number | null;
   newTypes: number | null;
   onOpen?: () => void;
+  /** Open the end-of-text word review. */
+  onWords?: () => void;
   onDelete?: () => void;
 }
 
@@ -39,6 +41,7 @@ export function TextCard({
   coverage,
   newTypes,
   onOpen,
+  onWords,
   onDelete,
 }: TextCardProps) {
   return (
@@ -48,6 +51,19 @@ export function TextCard({
           {SOURCE_ICON[sourceKind]}
         </span>
         <span>{wordCount.toLocaleString("en")} words</span>
+        {onWords ? (
+          <Button
+            variant="ghost"
+            size="sm"
+            icon
+            aria-label={`Words from ${title}`}
+            title="Words from this text"
+            style={{ marginLeft: "auto" }}
+            onClick={onWords}
+          >
+            <ListChecks size={16} />
+          </Button>
+        ) : null}
         {onDelete ? (
           <Button
             variant="ghost"
@@ -55,7 +71,7 @@ export function TextCard({
             icon
             className="k-card-delete"
             aria-label={`Delete ${title}`}
-            style={{ marginLeft: "auto" }}
+            style={onWords ? {} : { marginLeft: "auto" }}
             onClick={onDelete}
           >
             <Trash2 size={16} />

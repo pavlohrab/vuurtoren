@@ -698,4 +698,18 @@ describe("file database", () => {
     await d.exec(`PRAGMA user_version = ${SCHEMA_VERSION + 1}`);
     await expect(createRepository(d)).rejects.toThrow(/newer/);
   });
+
+  it("lists the keys looked up in one text, in order of first lookup", async () => {
+    const { repo } = await newRepo();
+    const look = (key: string, textId: string, lang = "nl") =>
+      repo.append({ type: "WordLookedUp", lang, key, textId });
+    await look("beta", "t1");
+    await look("alfa", "t1");
+    await look("beta", "t1");
+    await look("gamma", "t2");
+    await look("delta", "t1", "uk");
+    expect(await repo.lookedUpKeys("nl", "t1")).toEqual(["beta", "alfa"]);
+    expect(await repo.lookedUpKeys("nl", "t2")).toEqual(["gamma"]);
+    expect(await repo.lookedUpKeys("nl", "missing")).toEqual([]);
+  });
 });

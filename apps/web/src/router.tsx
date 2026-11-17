@@ -33,6 +33,11 @@ function screen<P extends string>(
 
 const libraryRoute = screen("/library", () => import("./screens/Library.js"), "Library");
 const readRoute = screen("/read/$textId", () => import("./screens/ReaderPage.js"), "ReaderRoute");
+const wordsOfTextRoute = screen(
+  "/read/$textId/words",
+  () => import("./screens/TextWords.js"),
+  "TextWordsRoute",
+);
 const importRoute = screen("/import", () => import("./screens/Import.js"), "ImportScreen");
 const wordsRoute = screen("/words", () => import("./screens/Words.js"), "Words");
 const practiceRoute = screen("/practice", () => import("./screens/Placeholders.js"), "Practice");
@@ -45,6 +50,7 @@ const routeTree = rootRoute.addChildren([
   indexRoute,
   libraryRoute,
   readRoute,
+  wordsOfTextRoute,
   importRoute,
   wordsRoute,
   practiceRoute,

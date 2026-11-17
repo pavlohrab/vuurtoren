@@ -1,0 +1,270 @@
+import type { AnalyzedToken } from "@app/core";
+import { type KenningRepository, contentHash, createRepository } from "@app/db";
+import { createNodeDriver } from "@app/db/node";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { createLiveServices } from "./live.js";
+import type { AppServices } from "./types.js";
+
+/** Common words the learner already knows; the rest of the text is new to them. */
+const KNOWN = ["de", "een", "in", "en", "ik", "zie", "het", "is", "mooi", "huis"];
+const TEXT =
+  "Ik zie een gracht in het huis. De schuur is mooi.\n\nDe brug en de tuin zijn mooi. Ik zie de gracht.";
+
+/** Naive tokenizer: one token per word, lemma = lowercased surface, sentences end at a full stop. */
+function tokenize(text: string): AnalyzedToken[] {
+  const out: AnalyzedToken[] = [];
+  let sent = 0;
+  for (const m of text.matchAll(/\p{L}+|[.]/gu)) {
+    const word = m[0] !== ".";
+    const i = out.length;
+    out.push({
+      i,
+      text: m[0],
+      lemma: m[0].toLowerCase(),
+      alt_lemmas: [],
+      pos: word ? "NOUN" : "PUNCT",
+      morph: "",
+      dep: "",
+      head: i,
+      sent,
+      start: m.index,
+      end: m.index + m[0].length,
+      is_word: word,
+      is_propn: false,
+      is_num: false,
+      particle_of: null,
+      zipf: KNOWN.includes(m[0].toLowerCase()) ? 6 : 3.2,
+    });
+    if (!word) sent += 1;
+  }
+  return out;
+}
+
+type Handler = (action: string, params: Record<string, unknown>) => unknown;
+
+/**
+ * Fake NLP + AnkiConnect behind one fetch. Nothing reaches a real Anki: every request is
+ * answered here, and writes are recorded.
+ */
+function fakeBackend(opts: {
+  ankiDown?: boolean;
+  notes?: Record<number, { deck: string; type: number; queue: number }>;
+}) {
+  const calls: string[] = [];
+  const glossRequests: string[][] = [];
+  const fetchFn = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
+    const u = String(url);
+    const body = JSON.parse(String(init?.body ?? "{}")) as Record<string, unknown>;
+    if (u.includes("/nlp/gloss")) {
+      const words = body["words"] as string[];
+      glossRequests.push(words);
+      const result = Object.fromEntries(
+        words.map((w) => [w, [{ pos: "noun", glosses: [`${w} (dictionary)`], article: "de" }]]),
+      );
+      return Response.json(result);
+    }
+    if (opts.ankiDown) throw new TypeError("connection refused");
+    const action = String(body["action"]);
+    calls.push(action);
+    const params = (body["params"] ?? {}) as Record<string, unknown>;
+    const answer: Handler = (a, p) => {
+      if (a === "version") return 6;
+      if (a === "notesInfo") {
+        return (p["notes"] as number[]).map((id) => ({
+          noteId: id,
+          modelName: "x",
+          tags: [],
+          fields: {},
+          cards: [id * 10],
+        }));
+      }
+      if (a === "cardsInfo") {
+        return (p["cards"] as number[]).map((cardId) => {
+          const n = opts.notes?.[cardId / 10];
+          return {
+            cardId,
+            note: cardId / 10,
+            deckName: n?.deck ?? "Deck",
+            modelName: "x",
+            interval: 0,
+            type: n?.type ?? 0,
+            queue: n?.queue ?? 0,
+            reps: 0,
+            lapses: 0,
+          };
+        });
+      }
+      throw new Error(`unexpected AnkiConnect action ${a}`);
+    };
+    return Response.json({ result: answer(action, params), error: null });
+  });
+  return { fetchFn, calls, glossRequests };
+}
+
+async function setup(
+  backend: ReturnType<typeof fakeBackend>,
+  known: string[] = KNOWN,
+  ankiNotes: { key: string; noteIds: number[]; state?: "learning" | "unknown" }[] = [],
+): Promise<{ repo: KenningRepository; services: AppServices; textId: string }> {
+  vi.stubGlobal("fetch", backend.fetchFn);
+  const repo = await createRepository(await createNodeDriver());
+  const tokens = tokenize(TEXT);
+  await repo.append({
+    type: "TextImported",
+    textId: "t1",
+    title: "Gracht",
+    lang: "nl",
+    source: { kind: "paste" },
+    content: TEXT,
+  });
+  await repo.append({
+    type: "TextAnalyzed",
+    textId: "t1",
+    contentHash: contentHash(TEXT),
+    tokens,
+  });
+  await repo.append({
+    type: "AnkiSnapshotImported",
+    lang: "nl",
+    sources: ["Deck"],
+    entries: [
+      ...known.map((key) => ({
+        key,
+        state: "known" as const,
+        pKnown: 0.95,
+        noteIds: [],
+        decks: ["Deck"],
+      })),
+      ...ankiNotes.map((n) => ({
+        key: n.key,
+        state: n.state ?? ("unknown" as const),
+        pKnown: 0,
+        noteIds: n.noteIds,
+        decks: ["Deck"],
+      })),
+    ],
+  });
+  return { repo, services: createLiveServices(repo), textId: "t1" };
+}
+
+let repoToClose: KenningRepository | null = null;
+beforeEach(() => {
+  repoToClose = null;
+});
+afterEach(async () => {
+  vi.unstubAllGlobals();
+  await repoToClose?.close();
+});
+
+/** Anki notes: gracht = new card, schuur = suspended, tuin = studied (review). */
+const NOTES = {
+  7: { deck: "Deck", type: 0, queue: 0 },
+  8: { deck: "Deck", type: 0, queue: -1 },
+  9: { deck: "Deck", type: 2, queue: 2 },
+};
+const ANKI_WORDS = [
+  { key: "gracht", noteIds: [7] },
+  { key: "schuur", noteIds: [8] },
+  { key: "tuin", noteIds: [9], state: "learning" as const },
+];
+
+describe("live textWords", () => {
+  it("lists introduce words in text order, with sentence, meaning and article", async () => {
+    const backend = fakeBackend({});
+    const { repo, services, textId } = await setup(backend);
+    repoToClose = repo;
+    await services.getReading(textId); // planning asks the dictionary about blanks
+    backend.glossRequests.length = 0;
+
+    const words = await services.textWords(textId);
+    // gracht occurs twice but is listed once, at its first occurrence
+    expect(words.map((w) => w.key)).toEqual(["gracht", "schuur", "brug"]);
+    const first = words[0]!;
+    expect(first.source).toBe("introduce");
+    expect(first.glosses[0]).toBe("gracht (dictionary)");
+    expect(first.article).toBe("de");
+    expect(first.sentence).toBe("Ik zie een gracht in het huis.");
+    const [from, to] = first.sentenceHighlight;
+    expect(first.sentence.slice(from, to)).toBe("gracht");
+    expect(first.entry.key).toBe("gracht");
+    expect(first.tokenIndex).toBe(3);
+    // nothing in Anki: every word is "absent"; Anki is only probed once
+    expect(words.every((w) => w.entry.anki.status === "absent")).toBe(true);
+    expect(backend.calls).toEqual(["version"]);
+    // one batched dictionary request for all words
+    expect(backend.glossRequests).toHaveLength(1);
+    expect(backend.glossRequests[0]).toEqual(["gracht", "schuur", "brug"]);
+  });
+
+  it("adds looked-up words, skips known ones and honours the translated-words toggle", async () => {
+    const backend = fakeBackend({ notes: NOTES });
+    const { repo, services, textId } = await setup(backend, KNOWN, ANKI_WORDS);
+    repoToClose = repo;
+    await services.recordLookup(textId, "tuin");
+    await services.recordLookup(textId, "huis"); // known: never listed
+    await services.recordLookup(textId, "de"); // known (a blank in Cloze mode): never listed
+    await services.recordLookup(textId, "brug"); // already highlighted: stays "introduce"
+
+    const words = await services.textWords(textId);
+    expect(words.map((w) => [w.key, w.source])).toEqual([
+      ["gracht", "introduce"],
+      ["schuur", "introduce"],
+      ["brug", "introduce"],
+      ["tuin", "lookup"],
+    ]);
+    const glossed = await services.textWords(textId, { includeGlossed: true });
+    // "zijn" is only translated; it comes after "tuin" in the text
+    expect(glossed.map((w) => [w.key, w.source])).toEqual([
+      ["gracht", "introduce"],
+      ["schuur", "introduce"],
+      ["brug", "introduce"],
+      ["tuin", "lookup"],
+      ["zijn", "gloss"],
+    ]);
+  });
+
+  it("reads the Anki state of all rows with one request", async () => {
+    const backend = fakeBackend({ notes: NOTES });
+    const { repo, services, textId } = await setup(backend, KNOWN, ANKI_WORDS);
+    repoToClose = repo;
+    await services.recordLookup(textId, "tuin");
+    const words = await services.textWords(textId);
+    const status = Object.fromEntries(words.map((w) => [w.key, w.entry.anki.status]));
+    expect(status).toEqual({
+      gracht: "new",
+      schuur: "suspended",
+      brug: "absent",
+      tuin: "review",
+    });
+    expect(words[0]?.entry.anki.cardIds).toEqual([70]);
+    expect(backend.calls.filter((c) => c === "notesInfo")).toHaveLength(1);
+    expect(backend.calls.filter((c) => c === "cardsInfo")).toHaveLength(1);
+  });
+
+  it("marks every row unavailable, with the reason, when Anki cannot be reached", async () => {
+    const backend = fakeBackend({ ankiDown: true });
+    const { repo, services, textId } = await setup(backend);
+    repoToClose = repo;
+    const words = await services.textWords(textId);
+    expect(words).toHaveLength(3);
+    for (const w of words) {
+      expect(w.entry.anki.status).toBe("unavailable");
+      expect(w.entry.anki.detail).toMatch(/cannot reach/);
+    }
+  });
+
+  it("is empty when everything is known", async () => {
+    const backend = fakeBackend({});
+    const all = [...new Set(tokenize(TEXT).map((t) => t.lemma))];
+    const { repo, services, textId } = await setup(backend, all);
+    repoToClose = repo;
+    expect(await services.textWords(textId)).toEqual([]);
+  });
+
+  it("rejects an unknown text", async () => {
+    const backend = fakeBackend({});
+    const { repo, services } = await setup(backend);
+    repoToClose = repo;
+    await expect(services.textWords("nope")).rejects.toThrow(/not found/);
+  });
+});
