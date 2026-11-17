@@ -118,7 +118,7 @@ pnpm dev            # web app on http://localhost:5173 (proxies /nlp and /anki)
 - [x] **Gloss mode: optional blanks.** Off by default; the "Blanks off/on" button in the Gloss toolbar is saved.
 - [x] **More cloze help.** Meaning tooltip on focus (it stays visible once you ask for help) → first letter → first half of the word → reveal. Credit 1 / 0.5 / 0.25 / 0.
 - [x] **No clozes on function words** (_met, de, hij, …_). Only content words are blanked.
-- [ ] **Every word should have a meaning, also when it is not in Anki.**
+- [x] **Every word should have a meaning, also when it is not in Anki.** Compounds are now translated from their parts (100% coverage on a 5-paragraph news text). Still open: a context-aware fallback.
   - The dictionary already covers about 99% of word tokens in news text.
   - **Compounds** (_souvenirwinkel_) get nothing at the moment. In progress: translation from their parts (souvenir · shop).
   - Next: a context-aware sentence translation for the few remaining words, and for choosing the right sense. Options: an offline MT model on the server, or the user's own AI key (M6).
