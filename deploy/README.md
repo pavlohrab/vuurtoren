@@ -1,105 +1,102 @@
-# Self-hosting Kenning
+# Running Kenning on your own computer
 
-Two containers: `web` (static app behind nginx, port 8080) and `nlp` (FastAPI: analysis, URL/PDF
-import, OCR, glosses). The web container also proxies `/nlp/*` to the NLP service, so the browser
-only ever talks to one origin.
+Kenning is a Dutch reading and vocabulary app. Everything runs on your machine; nothing is sent
+to a third party.
 
-## Quick start
+## Quick start (3 steps)
 
-```sh
-git clone <repo> && cd <repo>
-docker compose -f deploy/compose.yml up --build -d
-```
+1. **Install Docker** (Docker Desktop on Windows/macOS, or Docker Engine on Linux).
+2. **Start Kenning.** In a terminal, from this repository:
 
-- App: <http://localhost:8080>
-- NLP service (dev, loopback only): <http://127.0.0.1:8000/health>
+   ```sh
+   docker compose -f deploy/compose.yml up -d
+   ```
 
-The first build is slow (it downloads the spaCy model, installs Tesseract, and downloads the
-~250 MB Kaikki Dutch dictionary to build a ~35 MB SQLite file; the download is discarded and only
-the SQLite file ends up in the image). Later builds reuse cached layers. To refresh the
-dictionary, run `docker compose -f deploy/compose.yml build --no-cache nlp`.
+   This downloads the ready-made images. To build them yourself instead, add `--build`
+   (the first build downloads about 300 MB of dictionary data and takes several minutes).
 
-The same build also fetches the offline Dutch to English translation model (OPUS-MT, ~160 MB,
-checksum-verified) in its own throwaway stage, so `POST /translate` works without internet or API
-keys. It adds ~160 MB to the image and ~0.7 GB RAM once loaded (lazily, on the first request);
-about 0.1 s per sentence on one CPU core set. Outside Docker run
-`uv run python scripts/fetch_mt_model.py` in `server/nlp`.
+3. **Open <http://localhost:8080>**, go to Settings, Anki, and click **Connect to Anki**.
+   Anki must be open with the [AnkiConnect](https://ankiweb.net/shared/info/2055492159) add-on
+   installed (code `2055492159`). Anki asks whether to allow this site: click **Yes**.
 
-Practice data (M4) is built the same way: the Tatoeba sentence DB (`POST /sentences`, ~50 MB, from
-~30 MB of exports) is built in a throwaway stage that reuses the Python dependency layer and spends
-about 4 extra minutes on the first build (spaCy analyses ~150k sentences). `POST /forms` reads the
-morphology the dictionary stage extracts, and `POST /similar` builds a word-vector index in memory on
-its first request (a few seconds, ~40 MB). Run `build --no-cache nlp` to pick up newer Tatoeba
-exports.
+## What runs
 
-Smoke test:
+| Service | What it does                                                          | Port                  |
+| ------- | --------------------------------------------------------------------- | --------------------- |
+| `web`   | The app (static files) and a same-origin proxy to the language server | `127.0.0.1:8080`      |
+| `nlp`   | Dutch analysis, dictionary, example sentences, OCR, translation       | none (only via `web`) |
+| `caddy` | Optional HTTPS front (profile `https`)                                | 80 and 443            |
 
-```sh
-curl -s localhost:8000/health
-curl -s localhost:8000/gloss -H 'content-type: application/json' \
-  -d '{"lang":"nl","words":["fiets"]}'
-curl -s localhost:8080/nlp/health          # same service through the web container
-```
+A storage service for syncing your data between devices is documented separately when enabled.
+Change the web port with `KENNING_WEB_PORT=9000` in `deploy/.env`.
 
-## Configuration
+## Why HTTPS matters
 
-| Variable                 | Where         | Meaning                                                                                                                                                                                             |
-| ------------------------ | ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `KENNING_CORS_ORIGINS`   | `nlp`         | Comma-separated browser origins allowed to call the NLP service directly (default `http://localhost:8080`). Not needed for the `/nlp/` proxy. Set it to your public origin if you expose port 8000. |
-| `KENNING_DICT_PATH`      | `nlp`         | Dictionary file (default `/data/dictionary-nl.sqlite` in the image).                                                                                                                                |
-| `KENNING_SENTENCES_PATH` | `nlp`         | Tatoeba sentence database (default `/data/sentences-nl.sqlite` in the image).                                                                                                                       |
-| `KENNING_MT_DIR`         | `nlp`         | Translation model directory (default `/data/mt-nl-en` in the image).                                                                                                                                |
-| `KENNING_OCR_PSM`        | `nlp`         | Tesseract page segmentation mode (default `3`, automatic with column detection).                                                                                                                    |
-| `VITE_NLP_URL`           | web build arg | NLP base URL baked into the bundle (default `/nlp`).                                                                                                                                                |
+Browsers only give a page persistent storage, encryption APIs and permission to talk to local
+programs such as AnkiConnect in a _secure context_: `https://...` or `http://localhost`. That is
+why the app listens on localhost only by default. If you open it from another device over plain
+`http://192.168.x.x:8080`, your data may be erased by the browser and Anki will not connect.
 
-Example: `KENNING_CORS_ORIGINS=https://kenning.example.com docker compose -f deploy/compose.yml up -d`.
+### Option A: Caddy (LAN or public server)
 
-For production, remove the `ports:` entry of the `nlp` service in `deploy/compose.yml` so only the
-web container is reachable. The NLP service has no authentication; its URL import fetches
-arbitrary public web pages (private and reserved addresses are blocked), so do not expose it
-publicly unless you accept that.
-
-## HTTPS with Caddy
-
-Put Caddy in front of the web container (it obtains certificates automatically):
-
-```caddyfile
-kenning.example.com {
-    reverse_proxy 127.0.0.1:8080
-}
-```
-
-Run it on the host (`caddy run --config Caddyfile`) or as another compose service on the same
-network pointing at `web:80`. Large PDF uploads work out of the box: nginx allows 32 MB bodies
-and Caddy has no body limit by default.
-
-## AnkiConnect
-
-The browser app talks to AnkiConnect directly (`http://127.0.0.1:8765`), so Anki's add-on must
-allow your site's origin. In Anki: Tools > Add-ons > AnkiConnect > Config, then add the origin
-(scheme + host + port, no path or trailing slash) to `webCorsOriginList` and restart Anki:
-
-```json
-{
-  "webCorsOriginList": ["http://localhost", "http://localhost:8080", "https://kenning.example.com"]
-}
-```
-
-Notes:
-
-- An HTTPS page calling `http://127.0.0.1:8765` is allowed by Chrome, Edge and Firefox (loopback is
-  treated as secure) but blocked by Safari as mixed content; use a Chromium/Firefox browser, or run
-  the app on `http://localhost:8080`.
-- Anki must be running on the same machine as the browser, not on the server.
-- Chrome may ask for "local network access" permission the first time.
-
-## Operations
+Create `deploy/.env`:
 
 ```sh
-docker compose -f deploy/compose.yml logs -f nlp
-docker compose -f deploy/compose.yml pull && docker compose -f deploy/compose.yml up --build -d
-docker compose -f deploy/compose.yml down
+# Public server with a real domain pointing at it (certificate is automatic):
+KENNING_DOMAIN=kenning.example.com
+# Or on a home network (local certificate authority; trust it once on each device):
+# KENNING_DOMAIN=kenning.lan
+# KENNING_TLS=internal
 ```
 
-Both services are stateless; user data lives in the browser (and in Anki). Nothing needs backing
-up on the server.
+Then:
+
+```sh
+docker compose -f deploy/compose.yml --profile https up -d
+```
+
+On a LAN, make the name resolve (router DNS or each device's hosts file). When you use another
+origin, click **Connect to Anki** again from that address: Anki allows each origin separately.
+
+### Option B: Tailscale (no configuration)
+
+With [Tailscale](https://tailscale.com) installed on this machine and your other devices:
+
+```sh
+tailscale serve --bg 8080
+```
+
+Tailscale prints an `https://<machine>.<tailnet>.ts.net` address with a valid certificate that
+works on every device in your tailnet.
+
+## Updating
+
+```sh
+git pull
+docker compose -f deploy/compose.yml pull     # or: up -d --build
+docker compose -f deploy/compose.yml up -d
+```
+
+Dictionary data is pinned to a known snapshot so builds are reproducible. If the upstream sources
+have moved on, a self-build stops with a message; see `server/nlp/Dockerfile` for the
+`KAIKKI_ACCEPT_NEW` and `TATOEBA_ACCEPT_NEW` build-args.
+
+## Troubleshooting
+
+| Symptom                                        | Cause and fix                                                                                                                                                                                       |
+| ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| "Anki is not running" in Settings              | Anki is closed or AnkiConnect is not installed. Open Anki, install add-on `2055492159`, restart Anki.                                                                                               |
+| "This site is not allowed yet"                 | Anki is running but does not know this address. Click **Connect to Anki** and answer Yes. Or in Anki: Tools, Add-ons, AnkiConnect, Config, add the shown line to `webCorsOriginList`, restart Anki. |
+| "Needs an API key"                             | You set a key in AnkiConnect. Enter it in the key field in Settings.                                                                                                                                |
+| Storage not persistent / data lost, Anki fails | You are on plain `http://` with a non-localhost address. Use `http://localhost:8080` or the HTTPS profile.                                                                                          |
+| First word or text is slow                     | The language server loads its models on the first request (up to a minute). Later requests are fast.                                                                                                |
+| Page does not load                             | `docker compose -f deploy/compose.yml ps` and `logs web nlp`. The web container shows `healthy` when ready.                                                                                         |
+| Build stops with "does not match the pinned"   | Upstream data changed. Use the published images, or rebuild with `--build-arg KAIKKI_ACCEPT_NEW=1 --build-arg TATOEBA_ACCEPT_NEW=1`.                                                                |
+
+## For developers
+
+`deploy/compose.dev.yml` publishes the language server on `127.0.0.1:8000`:
+
+```sh
+docker compose -f deploy/compose.yml -f deploy/compose.dev.yml up --build
+```

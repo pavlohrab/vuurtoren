@@ -1,0 +1,107 @@
+name: images
+
+# Publishes ghcr.io/<owner>/kenning-{web,nlp,api} on version tags and manual runs.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/kenning-web
+          tags: |
+            type=semver,pattern={{version}}
+            type=raw,value=latest
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: deploy/web.Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=web
+          cache-to: type=gha,mode=max,scope=web
+
+  nlp:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/kenning-nlp
+          tags: |
+            type=semver,pattern={{version}}
+            type=raw,value=latest
+      # Data builds are pinned (see server/nlp/scripts/pinned_download.py). If upstream moved on
+      # the build fails on purpose; re-run manually after updating the pins.
+      - uses: docker/build-push-action@v6
+        with:
+          context: server/nlp
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=nlp
+          cache-to: type=gha,mode=max,scope=nlp
+
+  # The api image is built only if server/api/Dockerfile exists in this checkout.
+  api:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - id: has
+        run: |
+          if [ -f server/api/Dockerfile ]; then echo "present=true" >> "$GITHUB_OUTPUT"; fi
+      - if: steps.has.outputs.present == 'true'
+        uses: docker/setup-qemu-action@v3
+      - if: steps.has.outputs.present == 'true'
+        uses: docker/setup-buildx-action@v3
+      - if: steps.has.outputs.present == 'true'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: meta
+        if: steps.has.outputs.present == 'true'
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/kenning-api
+          tags: |
+            type=semver,pattern={{version}}
+            type=raw,value=latest
+      - if: steps.has.outputs.present == 'true'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: server/api/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}

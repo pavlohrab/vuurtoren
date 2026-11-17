@@ -1,0 +1,8 @@
+# HTTPS front for Kenning (compose profile "https").
+#   Public domain:  KENNING_DOMAIN=kenning.example.com              -> Let's Encrypt, automatic
+#   LAN:            KENNING_DOMAIN=kenning.lan KENNING_TLS=internal -> local CA (trust it once)
+{$KENNING_DOMAIN:localhost} {
+	tls {$KENNING_TLS:}
+	encode gzip
+	reverse_proxy web:80
+}

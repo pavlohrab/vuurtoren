@@ -1,0 +1,8 @@
+# Development override: expose the NLP service on loopback for curl / `pnpm dev`.
+#   docker compose -f deploy/compose.yml -f deploy/compose.dev.yml up --build
+services:
+  nlp:
+    environment:
+      KENNING_CORS_ORIGINS: http://localhost:5173,http://localhost:8080
+    ports:
+      - "127.0.0.1:8000:8000"

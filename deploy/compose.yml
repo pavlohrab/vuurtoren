@@ -1,22 +1,26 @@
-# Kenning self-host stack.   docker compose -f deploy/compose.yml up --build
+# Kenning self-host stack.
+#   docker compose -f deploy/compose.yml up -d        (pulls published images; add --build to build)
+#   open http://localhost:8080
+# HTTPS for LAN/VPS:  docker compose -f deploy/compose.yml --profile https up -d   (see README)
 name: kenning
 
 services:
   nlp:
+    image: ghcr.io/${KENNING_IMAGE_OWNER:-kenning}/kenning-nlp:${KENNING_TAG:-latest}
     build:
       context: ../server/nlp
     restart: unless-stopped
+    # Reached only through the web container's same-origin /nlp/ proxy, so no ports and no CORS.
+    # (Direct access for development: see compose.dev.yml.)
     environment:
-      # Browser origins allowed to call the service directly (comma separated).
-      # Not needed when the web app uses the same-origin /nlp/ proxy.
-      KENNING_CORS_ORIGINS: ${KENNING_CORS_ORIGINS:-http://localhost:8080}
+      # Server-side support is kept; leave unset unless you call the service from another origin.
+      KENNING_CORS_ORIGINS: ${KENNING_CORS_ORIGINS:-}
     networks: [internal]
-    ports:
-      # Dev convenience (curl, running the web app with `pnpm dev`). Remove for production,
-      # or bind to loopback as below.
-      - "127.0.0.1:8000:8000"
+
+  # ---- storage `api` service + `kenning-data` volume: added by the storage change (keep gap) ----
 
   web:
+    image: ghcr.io/${KENNING_IMAGE_OWNER:-kenning}/kenning-web:${KENNING_TAG:-latest}
     build:
       context: ..
       dockerfile: deploy/web.Dockerfile
@@ -24,7 +28,36 @@ services:
     depends_on: [nlp]
     networks: [internal]
     ports:
-      - "8080:80"
+      # Loopback only: http://localhost is a secure context, so everything works for one user.
+      # To share on your LAN use the https profile below (plain http on a LAN address is not a
+      # secure context: no persistent storage, no AnkiConnect permission).
+      - "127.0.0.1:${KENNING_WEB_PORT:-8080}:80"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # Optional HTTPS front (profile "https"): automatic certificates for a public domain, or a
+  # local CA with `tls internal` for LAN use. Set KENNING_DOMAIN in deploy/.env.
+  caddy:
+    image: caddy:2-alpine
+    profiles: [https]
+    restart: unless-stopped
+    depends_on: [web]
+    networks: [internal]
+    environment:
+      KENNING_DOMAIN: ${KENNING_DOMAIN:-localhost}
+      KENNING_TLS: ${KENNING_TLS:-}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+    ports:
+      - "80:80"
+      - "443:443"
 
 networks:
   internal: {}
+
+volumes:
+  caddy-data: {}
