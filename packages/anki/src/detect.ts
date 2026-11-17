@@ -42,6 +42,8 @@ export interface Candidate {
 const WORD_NAME =
   /^(word|woord|front|voorkant|expression|vocab|vocabulary|target|term|dutch|nederlands|nl|lemma|headword)$/i;
 const SENTENCE_NAME = /(sentence|zin|example|voorbeeld|context)/i;
+const GLOSS_NAME =
+  /^(betekenis|definition|meaning|translation|vertaling|gloss|english|back|achterkant)$/i;
 
 function tokens(s: string): number {
   return s ? s.split(/\s+/).length : 0;
@@ -113,10 +115,14 @@ export async function rankCandidates(
             (SENTENCE_NAME.test(b.name) ? 0.25 : 0) -
             (a.targetShare + (SENTENCE_NAME.test(a.name) ? 0.25 : 0)),
         )[0] ?? null;
+    // A word gloss is short; sentence translations (ZinEN, English) detect as English more
+    // confidently, so penalise length and prefer gloss-like field names.
+    const glossScore = (f: FieldStats) =>
+      f.glossShare + (GLOSS_NAME.test(f.name) ? 0.3 : 0) - Math.max(0, f.avgTokens - 4) * 0.15;
     const gloss =
       stats
-        .filter((f) => f.name !== word.name && f.glossShare >= 0.4)
-        .sort((a, b) => b.glossShare - a.glossShare)[0] ?? null;
+        .filter((f) => f.name !== word.name && f.glossShare >= 0.3)
+        .sort((a, b) => glossScore(b) - glossScore(a))[0] ?? null;
 
     candidates.push({
       deck: first.deck,

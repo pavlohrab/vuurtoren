@@ -210,3 +210,8 @@ export function exactDeckQuery(deck: string): string {
   const d = ankiEscape(deck);
   return `"deck:${d}" -"deck:${d}::*"`;
 }
+
+/** Ask Anki desktop to sync with AnkiWeb (Anki's own sync; the app never talks to AnkiWeb). */
+export async function syncWithAnkiWeb(anki: AnkiConnectClient): Promise<void> {
+  await anki.invoke("sync");
+}

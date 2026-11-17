@@ -2,3 +2,5 @@ export * from "./clean.js";
 export * from "./client.js";
 export * from "./detect.js";
 export * from "./memory.js";
+export * from "./note.js";
+export * from "./snapshot.js";

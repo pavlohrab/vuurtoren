@@ -1,6 +1,6 @@
 /**
- * M1 gate report: detect ALL target-language decks, map cards to headword keys, build the
- * merged learner model and write a review sample.
+ * M1 gate report: build the Anki snapshot (all target-language decks), check that each
+ * card's headword is found in its own example sentence, and write a review sample.
  *   pnpm anki-report [--deck NAME ...] [--min-share 0.5] [--lang nl] [--sample 100]
  *                    [--anki URL] [--key APIKEY] [--nlp URL] [--seed 42]
  * Read-only: it never modifies or syncs your collection.
@@ -8,28 +8,9 @@
  */
 import { mkdir, writeFile } from "node:fs/promises";
 import { parseArgs } from "node:util";
-import {
-  AnkiConnectClient,
-  type Candidate,
-  type CardExtras,
-  type CardInfo,
-  type NoteInfo,
-  type NoteSample,
-  ankiEscape,
-  cleanField,
-  exactDeckQuery,
-  noteMemory,
-  rankCandidates,
-  selectCandidates,
-} from "@app/anki";
-import {
-  type WordKnowledge,
-  buildLearnerModel,
-  classifyCard,
-  containsTerm,
-  summarizeModel,
-} from "@app/core";
-import { NlpClient, type NlpLang, type TermAnalysis } from "@app/nlp-client";
+import { AnkiConnectClient, type SnapshotNote, buildSnapshot, cleanField } from "@app/anki";
+import { containsTerm } from "@app/core";
+import { NlpClient, type NlpLang } from "@app/nlp-client";
 
 const { values: args } = parseArgs({
   options: {
@@ -45,8 +26,6 @@ const { values: args } = parseArgs({
 });
 
 const lang = args.lang as NlpLang;
-const SAMPLE_PER_DECK = 30;
-const MIN_DECK_NOTES = 10;
 const reportsDir = new URL("../../../reports/", import.meta.url);
 
 function mulberry32(seed: number): () => number {
@@ -70,148 +49,58 @@ function sample<T>(xs: T[], n: number): T[] {
 }
 const csv = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
 const pct = (x: number) => `${(x * 100).toFixed(0)}%`;
-const fieldValues = (n: NoteInfo) =>
-  Object.fromEntries(Object.entries(n.fields).map(([k, v]) => [k, v.value]));
-
-interface Row {
-  source: Candidate;
-  note: NoteInfo;
-  raw: string;
-  cleaned: string;
-  term: TermAnalysis;
-  studied: boolean;
-  knowledge: WordKnowledge;
-}
 
 async function main(): Promise<void> {
   const anki = new AnkiConnectClient(
     args.key ? { url: args.anki, apiKey: args.key } : { url: args.anki },
   );
   const nlp = new NlpClient({ url: args.nlp });
-
   const version = await anki.version();
   const v1 = await anki.hasV1();
-  const health = await nlp.health();
-  console.log(`AnkiConnect v${version}${v1 ? " (+ API v1)" : ""} · NLP ${health.version}`);
-
-  // 1. Detect every deck/note type whose word field is in the target language.
-  const samples: NoteSample[] = [];
-  const decks = (await anki.deckNames()).filter((d) => !args.deck || args.deck.includes(d));
-  for (const d of decks) {
-    const ids = await anki.findNotes(exactDeckQuery(d));
-    if (ids.length < MIN_DECK_NOTES && !args.deck) continue;
-    for (const n of await anki.notesInfo(sample(ids, SAMPLE_PER_DECK))) {
-      samples.push({
-        deck: d,
-        deckNoteCount: ids.length,
-        modelName: n.modelName,
-        fields: fieldValues(n),
-      });
-    }
-  }
-  console.log(`Sampled ${samples.length} notes from ${decks.length} decks; detecting language…`);
-  const candidates = await rankCandidates(samples, (t) => nlp.detect(t), lang);
-  const minShare = Number(args["min-share"]);
-  const selected = selectCandidates(candidates, minShare);
-  if (!selected.length)
-    throw new Error(`No ${lang} vocabulary decks found (min share ${minShare}).`);
-  console.log(`Selected ${selected.length} deck/note-type pairs:`);
-  for (const c of selected) {
-    console.log(`  ${c.deck} [${c.modelName}] word=${c.wordField} ${lang}=${pct(c.targetShare)}`);
-  }
-
-  // 2. Load notes + cards for each selection.
-  const loaded: { source: Candidate; notes: NoteInfo[]; cards: CardInfo[] }[] = [];
-  for (const c of selected) {
-    const ids = await anki.findNotes(`${exactDeckQuery(c.deck)} "note:${ankiEscape(c.modelName)}"`);
-    const notes = await anki.notesInfo(ids);
-    const cards = await anki.cardsInfo(notes.flatMap((n) => n.cards));
-    loaded.push({ source: c, notes, cards });
-  }
-  const allCards = loaded.flatMap((l) => l.cards);
-  const reviewed = allCards.filter((c) => c.type !== 0).map((c) => c.cardId);
-
-  // 3. Memory signals: last review (all versions) + FSRS memory (v1, if FSRS is on).
-  const extras: CardExtras = { lastReviewMs: await anki.lastReviews(reviewed) };
-  let fsrsCards = 0;
-  if (v1 && reviewed.length) {
-    extras.fsrs = await anki.fsrsMemory(reviewed);
-    fsrsCards = [...extras.fsrs.values()].filter(Boolean).length;
-  }
   console.log(
-    `${allCards.length} cards, ${reviewed.length} reviewed; FSRS memory on ${fsrsCards} cards` +
-      (fsrsCards ? "" : " (FSRS off → SM-2 interval decay)"),
+    `AnkiConnect v${version}${v1 ? " (+ API v1)" : ""} · NLP ${(await nlp.health()).version}`,
   );
 
-  // 4. Same analyzer as for texts.
-  const now = Date.now();
-  const pending = loaded.flatMap(({ source, notes, cards }) => {
-    const byNote = new Map<number, CardInfo[]>();
-    for (const c of cards) byNote.set(c.note, [...(byNote.get(c.note) ?? []), c]);
-    return notes.map((note) => {
-      const raw = note.fields[source.wordField]?.value ?? "";
-      const memory = noteMemory(byNote.get(note.noteId) ?? [], extras);
-      return { source, note, raw, cleaned: cleanField(raw), memory };
-    });
-  });
-  const terms = await nlp.analyzeTerms(
+  const minShare = Number(args["min-share"]);
+  const snap = await buildSnapshot({
+    anki,
     lang,
-    pending.map((p) => p.cleaned),
-  );
-  const rows: Row[] = pending.map((p, i) => ({
-    source: p.source,
-    note: p.note,
-    raw: p.raw,
-    cleaned: p.cleaned,
-    term: terms[i]!,
-    studied: !p.memory.isNew,
-    knowledge: classifyCard(p.memory, now),
-  }));
-  const memories = new Map(pending.map((p, i) => [rows[i]!, p.memory]));
+    detect: (t) => nlp.detect(t),
+    analyzeTerms: (t) => nlp.analyzeTerms(lang, t),
+    minShare,
+    random: rand,
+    onProgress: (m) => console.log(`  ${m}`),
+    ...(args.deck ? { decks: args.deck } : {}),
+  });
+  const rows = snap.notes;
+  const counts = { known: 0, learning: 0, unknown: 0 };
+  for (const e of snap.entries) if (e.state in counts) counts[e.state as keyof typeof counts]++;
 
-  // 4b. Text-side check: the card's own example sentence must contain its headword
-  // (contextual lemma or surface). This measures card <-> text matching on real data.
-  const sentenceOf = (r: Row) =>
+  // Text-side check: the card's own example sentence must contain its headword.
+  const sentenceOf = (r: SnapshotNote) =>
     r.source.sentenceField ? cleanField(r.note.fields[r.source.sentenceField]?.value ?? "") : "";
-  // Skip sentences where the deck already blanked the word out ("Waar kom jij ____ ?").
   const withSentence = rows.filter(
     (r) => r.term.key && sentenceOf(r) && !/_{2,}/.test(sentenceOf(r)),
   );
-  const sentences = withSentence.map(sentenceOf);
-  console.log(`Checking ${sentences.length} example sentences…`);
-  const analyses = await nlp.analyzeText(lang, sentences);
+  console.log(`Checking ${withSentence.length} example sentences…`);
+  const analyses = await nlp.analyzeText(lang, withSentence.map(sentenceOf));
   const misses = withSentence
-    .map((r, i) => ({ r, sentence: sentences[i]!, tokens: analyses[i]!.tokens }))
+    .map((r, i) => ({ r, sentence: sentenceOf(r), tokens: analyses[i]!.tokens }))
     .filter(
       ({ r, tokens }) => ![r.term.key, ...r.term.aliases].some((k) => containsTerm(tokens, k)),
     );
   const hitRate = withSentence.length ? 1 - misses.length / withSentence.length : 0;
-  const studiedWithSentence = withSentence.filter((r) => r.studied).length;
+  const studiedChecked = withSentence.filter((r) => r.studied).length;
   const studiedMisses = misses.filter((m) => m.r.studied).length;
 
-  // 5. Merged learner model (headword + aliases).
-  const model = buildLearnerModel(
-    rows.flatMap((r) =>
-      [r.term.key, ...r.term.aliases].map((key) => ({ key, memory: memories.get(r)! })),
-    ),
-    now,
-  );
-  const counts = summarizeModel(model);
-
   const decksOfKey = new Map<string, Set<string>>();
-  const perDeckKey = new Map<string, number>();
   for (const r of rows) {
-    if (!r.term.key) continue;
-    decksOfKey.set(r.term.key, (decksOfKey.get(r.term.key) ?? new Set()).add(r.source.deck));
-    const dk = `${r.source.deck}\u0000${r.term.key}`;
-    perDeckKey.set(dk, (perDeckKey.get(dk) ?? 0) + 1);
+    if (r.term.key)
+      decksOfKey.set(r.term.key, (decksOfKey.get(r.term.key) ?? new Set()).add(r.source.deck));
   }
   const overlap = [...decksOfKey].filter(([, d]) => d.size > 1).length;
-  const homographs = [...perDeckKey].filter(([, n]) => n > 1).length;
   const empty = rows.filter((r) => !r.term.key);
-  const studiedRows = rows.filter((r) => r.studied);
-
-  const perDeck = loaded.map(({ source }) => {
+  const perDeck = snap.sources.map((source) => {
     const rs = rows.filter((r) => r.source === source);
     const by = (s: string) => rs.filter((r) => r.knowledge.state === s).length;
     return {
@@ -223,7 +112,6 @@ async function main(): Promise<void> {
     };
   });
 
-  // 6. Review sample: half from studied notes (they drive "known"), half from the rest.
   await mkdir(reportsDir, { recursive: true });
   const n = Number(args.sample);
   const usable = rows.filter((r) => r.term.key);
@@ -240,9 +128,7 @@ async function main(): Promise<void> {
   ];
   await writeFile(
     new URL("m1-mapping-sample.csv", reportsDir),
-    [
-      "#,deck,raw,cleaned,key,aliases,pos,article,reflexive,spacy_lemma,state,p_known,correct (y/n),note",
-    ]
+    ["#,deck,raw,cleaned,key,aliases,state,p_known,correct (y/n),note"]
       .concat(
         picked.map((r, i) =>
           [
@@ -252,10 +138,6 @@ async function main(): Promise<void> {
             r.cleaned,
             r.term.key,
             r.term.aliases.join(" | "),
-            r.term.pos,
-            r.term.article,
-            r.term.reflexive,
-            r.term.lemma,
             r.knowledge.state,
             r.knowledge.pKnown.toFixed(2),
             "",
@@ -269,14 +151,16 @@ async function main(): Promise<void> {
   );
 
   const summary = {
-    generated: new Date(now).toISOString(),
+    generated: new Date().toISOString(),
     ankiconnect: { version, v1 },
     lang,
-    fsrsCards,
+    fsrsCards: snap.fsrsCards,
     sources: perDeck.map((d) => ({
       deck: d.source.deck,
       model: d.source.modelName,
-      field: d.source.wordField,
+      word: d.source.wordField,
+      gloss: d.source.glossField,
+      sentence: d.source.sentenceField,
       share: d.source.targetShare,
       notes: d.notes,
       known: d.known,
@@ -284,29 +168,28 @@ async function main(): Promise<void> {
       unknown: d.unknown,
     })),
     notes: rows.length,
-    cards: allCards.length,
-    reviewedCards: reviewed.length,
-    uniqueKeys: model.size,
+    cards: snap.cards,
+    reviewedCards: snap.reviewedCards,
+    keys: snap.entries.length,
     states: counts,
     emptyKeys: empty.length,
-    sentenceCheck: { checked: withSentence.length, misses: misses.length, hitRate },
     crossDeckOverlap: overlap,
-    withinDeckHomographs: homographs,
+    sentenceCheck: { checked: withSentence.length, misses: misses.length, hitRate },
   };
   await writeFile(new URL("m1-summary.json", reportsDir), JSON.stringify(summary, null, 2));
 
   const md = `# M1 mapping report — ${summary.generated}
 
-AnkiConnect v${version}${v1 ? " + API v1" : ""} · FSRS memory on ${fsrsCards} cards${fsrsCards ? "" : " (FSRS off: recall estimated as 0.9^(days since review / interval))"}
+AnkiConnect v${version}${v1 ? " + API v1" : ""} · FSRS memory on ${snap.fsrsCards} cards${snap.fsrsCards ? "" : " (FSRS off: recall estimated as 0.9^(days since review / interval))"}
 
 ## Sources (all ${lang} decks, merged)
-| deck | note type | word field | ${lang} share | notes | known | learning | unknown |
-|---|---|---|---|---|---|---|---|
-${perDeck.map((d) => `| ${d.source.deck} | ${d.source.modelName} | ${d.source.wordField} | ${pct(d.source.targetShare)} | ${d.notes} | ${d.known} | ${d.learning} | ${d.unknown} |`).join("\n")}
+| deck | note type | word | gloss | sentence | ${lang} share | notes | known | learning | unknown |
+|---|---|---|---|---|---|---|---|---|---|
+${perDeck.map((d) => `| ${d.source.deck} | ${d.source.modelName} | ${d.source.wordField} | ${d.source.glossField ?? "-"} | ${d.source.sentenceField ?? "-"} | ${pct(d.source.targetShare)} | ${d.notes} | ${d.known} | ${d.learning} | ${d.unknown} |`).join("\n")}
 
-Other detected candidates not selected: ${
-    candidates
-      .filter((c) => !selected.includes(c))
+Not selected: ${
+    snap.candidates
+      .filter((c) => !snap.sources.includes(c))
       .map((c) => `${c.deck} (${pct(c.targetShare)})`)
       .join(", ") || "none"
   }
@@ -314,17 +197,14 @@ Other detected candidates not selected: ${
 ## Merged learner model
 | | |
 |---|---|
-| notes / cards / reviewed cards | ${rows.length} / ${allCards.length} / ${reviewed.length} |
-| unique keys (headwords + aliases) | ${model.size} |
+| notes / cards / reviewed cards | ${rows.length} / ${snap.cards} / ${snap.reviewedCards} |
+| unique keys (headwords + aliases) | ${snap.entries.length} |
 | known / learning / unknown | ${counts.known} / ${counts.learning} / ${counts.unknown} |
-| studied notes | ${studiedRows.length} |
 | empty keys (unusable field) | ${empty.length} |
 | words in more than one deck (merged) | ${overlap} |
-| homographs within a deck (e.g. adj + adv) | ${homographs} |
 
 ## Text-side check: headword found in its own example sentence
-**${pct(hitRate)}** of ${withSentence.length} sentences (studied notes: ${studiedWithSentence - studiedMisses}/${studiedWithSentence}).
-A miss means the analyzer would not connect this card to the word in running text.
+**${(hitRate * 100).toFixed(1)}%** of ${withSentence.length} sentences (studied notes: ${studiedChecked - studiedMisses}/${studiedChecked}).
 
 | key | sentence | analyzer tokens (text/lemma) |
 |---|---|---|
@@ -346,17 +226,12 @@ ${
     .map((r) => `- ${r.source.deck}: \`${r.raw.slice(0, 80)}\``)
     .join("\n") || "none"
 }
-
-## Your task (the M1 gate)
-Open \`m1-mapping-sample.csv\` (${fromStudied.length} studied + ${picked.length - fromStudied.length} unstudied rows) and fill **correct (y/n)**:
-is \`key\` the right dictionary word for that card? Target: ≥ 95% correct.
 `;
   await writeFile(new URL("m1-report.md", reportsDir), md);
-
   console.log(
-    `\n${rows.length} notes → ${model.size} keys · known ${counts.known} · learning ${counts.learning} · unknown ${counts.unknown}` +
-      `\nempty ${empty.length} · cross-deck overlap ${overlap} · homographs ${homographs}` +
-      `\nheadword found in own sentence: ${pct(hitRate)} of ${withSentence.length} (${misses.length} misses)` +
+    `\n${rows.length} notes → ${snap.entries.length} keys · known ${counts.known} · learning ${counts.learning} · unknown ${counts.unknown}` +
+      `\nheadword found in own sentence: ${(hitRate * 100).toFixed(1)}% of ${withSentence.length} (${misses.length} misses)` +
+      `\nglosses from: ${[...new Set(snap.sources.map((s) => s.glossField ?? "-"))].join(", ")}` +
       `\nWrote ${reportsDir.pathname}{m1-report.md, m1-mapping-sample.csv, m1-summary.json}`,
   );
 }

@@ -89,3 +89,34 @@ describe("selectCandidates", () => {
     expect(picked).toEqual(["Thema 01", "Thema 02", "Thema 03"]);
   });
 });
+
+describe("gloss field choice", () => {
+  it("prefers a short word gloss over a sentence translation", async () => {
+    const notes: NoteSample[] = [
+      ["al", "already", "Het is al laat.", "It is already late."],
+      ["fiets", "bike", "De fiets is rood.", "The bike is red."],
+      ["lopen", "to walk", "Wij lopen naar huis.", "We walk home."],
+    ].map(([w, g, s, t]) => ({
+      deck: "Opmaat",
+      deckNoteCount: 200,
+      modelName: "Woord",
+      fields: { Woord: w!, Betekenis: g!, Zin: s!, ZinEN: t! },
+    }));
+    const nl = new Set([
+      "al",
+      "fiets",
+      "lopen",
+      "Het is al laat.",
+      "De fiets is rood.",
+      "Wij lopen naar huis.",
+    ]);
+    const det: DetectFn = async (texts) =>
+      texts.map((t) => ({ lang: nl.has(t) ? "nl" : "en", confidence: 0.9 }));
+    const [top] = await rankCandidates(notes, det, "nl");
+    expect(top).toMatchObject({
+      wordField: "Woord",
+      sentenceField: "Zin",
+      glossField: "Betekenis",
+    });
+  });
+});
