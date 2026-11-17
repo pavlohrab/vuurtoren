@@ -1,15 +1,33 @@
-import { retrievability } from "@app/core";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { RouterProvider } from "@tanstack/react-router";
+import { useState } from "react";
+import { ToastProvider, TooltipProvider } from "@app/ui";
+import { createAppRouter } from "./router.js";
+import { ServicesProvider } from "./services/context.js";
+import type { AppServices } from "./services/types.js";
+import type { RouterHistory } from "@tanstack/react-router";
 
-/** Placeholder until the M2 app shell; proves the core package is wired in. */
-export function App() {
-  const r = retrievability(10, 10);
+export interface AppProps {
+  services: AppServices;
+  /** Override the router history (tests use an in-memory one). */
+  history?: RouterHistory;
+}
+
+/** Root component: wires services, async state, toasts and the router. */
+export function App({ services, history }: AppProps) {
+  const [queryClient] = useState(
+    () => new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: 5_000 } } }),
+  );
+  const [router] = useState(() => createAppRouter(history));
   return (
-    <main
-      style={{ fontFamily: "system-ui", maxWidth: "66ch", margin: "4rem auto", padding: "0 16px" }}
-    >
-      <h1>Kenning</h1>
-      <p>Your Anki deck, turned into a reading and speaking coach.</p>
-      <p style={{ color: "#6B6259" }}>Core wired: R(S) = {r.toFixed(2)}</p>
-    </main>
+    <ServicesProvider services={services}>
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
+          <ToastProvider>
+            <RouterProvider router={router} />
+          </ToastProvider>
+        </TooltipProvider>
+      </QueryClientProvider>
+    </ServicesProvider>
   );
 }
