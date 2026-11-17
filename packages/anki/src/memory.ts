@@ -10,8 +10,14 @@ export interface CardExtras {
 /** Convert an AnkiConnect card into the platform-neutral CardMemory. */
 export function cardMemory(card: CardInfo, extras: CardExtras = {}): CardMemory {
   if (card.type === 0) return { intervalDays: 0, isNew: true };
-  // Negative interval = seconds in (re)learning steps: reviewed, but well below a day.
-  const intervalDays = card.interval < 0 ? Math.max(0.01, -card.interval / 86_400) : card.interval;
+  // Negative interval = seconds in (re)learning steps. Cards in learning (type 1/3) often have
+  // interval 0: they are reviewed, but well below a day — never "new".
+  const intervalDays =
+    card.interval < 0
+      ? Math.max(0.01, -card.interval / 86_400)
+      : card.interval === 0
+        ? 0.01
+        : card.interval;
   const memory: CardMemory = { intervalDays };
   const last = extras.lastReviewMs?.get(card.cardId);
   if (last !== undefined) memory.lastReviewMs = last;

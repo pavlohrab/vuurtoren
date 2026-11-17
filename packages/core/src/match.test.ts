@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { containsTerm, matchToken, normalizeKey } from "./match.js";
+import { containsTerm, matchToken, matchTokenDetailed, normalizeKey } from "./match.js";
 
 const toks = (pairs: [string, string][]) => pairs.map(([text, lemma]) => ({ text, lemma }));
 
@@ -34,5 +34,40 @@ describe("matching", () => {
     expect(containsTerm(s, "koop te")).toBe(false);
     expect(containsTerm(s, "fiets")).toBe(false);
     expect(containsTerm(s, "")).toBe(false);
+  });
+});
+
+describe("review fixes", () => {
+  it("normalises like the Python side (NFKC, quotes, lower, no casefold)", () => {
+    expect(normalizeKey("Straße")).toBe("straße");
+    expect(normalizeKey("ﬁets")).toBe("fiets");
+    expect(normalizeKey("zo’n")).toBe("zo'n");
+  });
+
+  it("prefers lemma and surface over alternative lemmas", () => {
+    const t = { text: "bellen", lemma: "bellen", alt_lemmas: ["bel"] };
+    expect(matchTokenDetailed(t, new Set(["bel", "bellen"]))).toEqual({
+      key: "bellen",
+      via: "lemma",
+    });
+    expect(matchTokenDetailed(t, new Set(["bel"]))).toEqual({ key: "bel", via: "alt" });
+    const liep = { text: "liep", lemma: "lopen" };
+    expect(matchTokenDetailed(liep, new Set(["liep", "lopen"]))?.via).toBe("lemma");
+  });
+
+  it("backtracks for multiword terms", () => {
+    const s = toks([
+      ["a", "a"],
+      ["b", "b"],
+      ["x", "x"],
+      ["x", "x"],
+      ["b", "b"],
+      ["x", "x"],
+      ["x", "x"],
+      ["x", "x"],
+      ["c", "c"],
+    ]);
+    expect(containsTerm(s, "a b c")).toBe(true);
+    expect(containsTerm(s, "a c")).toBe(false);
   });
 });

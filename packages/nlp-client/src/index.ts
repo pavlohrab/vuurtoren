@@ -87,43 +87,82 @@ export interface NlpClientOptions {
   fetch?: typeof fetch;
   /** Max items per request; larger inputs are split. */
   batchSize?: number;
+  /** Per-request timeout in ms (default 120 s; OCR of a multi-page PDF is slow). */
+  timeoutMs?: number;
+}
+
+/** Error from the NLP service, carrying its HTTP status and `detail` message. */
+export class NlpError extends Error {
+  constructor(
+    message: string,
+    readonly status: number | null,
+  ) {
+    super(message);
+    this.name = "NlpError";
+  }
 }
 
 export class NlpClient {
   readonly url: string;
   private readonly fetchImpl: typeof fetch;
   private readonly batchSize: number;
+  private readonly timeoutMs: number;
 
   constructor(opts: NlpClientOptions = {}) {
     this.url = (opts.url ?? "http://localhost:8000").replace(/\/$/, "");
     this.fetchImpl = opts.fetch ?? globalThis.fetch.bind(globalThis);
     this.batchSize = opts.batchSize ?? 1000;
+    this.timeoutMs = opts.timeoutMs ?? 120_000;
   }
 
-  private async post<T>(path: string, body: unknown): Promise<T> {
+  private async request<T>(path: string, init: RequestInit = {}): Promise<T> {
     let res: Response;
     try {
       res = await this.fetchImpl(`${this.url}${path}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
+        ...init,
+        signal: AbortSignal.timeout(this.timeoutMs),
       });
     } catch (e) {
-      throw new Error(`NLP service unreachable at ${this.url} (${String(e)})`, { cause: e });
+      const timedOut = e instanceof DOMException && e.name === "TimeoutError";
+      throw new NlpError(
+        timedOut
+          ? `NLP ${path}: no answer within ${this.timeoutMs / 1000}s`
+          : `NLP service unreachable at ${this.url} (${String(e)})`,
+        null,
+      );
     }
-    if (!res.ok) throw new Error(`NLP ${path}: HTTP ${res.status} ${await res.text()}`);
-    return (await res.json()) as T;
+    const text = await res.text();
+    let json: unknown;
+    try {
+      json = JSON.parse(text);
+    } catch {
+      throw new NlpError(
+        `NLP ${path}: HTTP ${res.status}, not JSON: ${text.slice(0, 120)}`,
+        res.status,
+      );
+    }
+    if (!res.ok) {
+      const detail = (json as { detail?: unknown }).detail;
+      throw new NlpError(
+        typeof detail === "string"
+          ? detail
+          : `NLP ${path}: HTTP ${res.status} ${text.slice(0, 200)}`,
+        res.status,
+      );
+    }
+    return json as T;
   }
 
-  private async postForm<T>(path: string, form: FormData): Promise<T> {
-    let res: Response;
-    try {
-      res = await this.fetchImpl(`${this.url}${path}`, { method: "POST", body: form });
-    } catch (e) {
-      throw new Error(`NLP service unreachable at ${this.url} (${String(e)})`, { cause: e });
-    }
-    if (!res.ok) throw new Error(`NLP ${path}: HTTP ${res.status} ${await res.text()}`);
-    return (await res.json()) as T;
+  private post<T>(path: string, body: unknown): Promise<T> {
+    return this.request<T>(path, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+  }
+
+  private postForm<T>(path: string, form: FormData): Promise<T> {
+    return this.request<T>(path, { method: "POST", body: form });
   }
 
   private async batched<T>(
@@ -140,9 +179,8 @@ export class NlpClient {
     return out;
   }
 
-  async health(): Promise<{ status: string; version: string }> {
-    const res = await this.fetchImpl(`${this.url}/health`);
-    return (await res.json()) as { status: string; version: string };
+  health(): Promise<{ status: string; version: string }> {
+    return this.request("/health");
   }
 
   analyzeText(lang: NlpLang, texts: string[]): Promise<TextAnalysis[]> {

@@ -21,3 +21,6 @@ reports/
 
 # nlp service data (generated dictionary, downloads)
 server/nlp/data/
+
+# local agent worktrees
+.claude/

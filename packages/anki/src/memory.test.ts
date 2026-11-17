@@ -20,6 +20,7 @@ describe("cardMemory", () => {
     expect(cardMemory(card({ type: 0 }))).toEqual({ intervalDays: 0, isNew: true });
     expect(cardMemory(card({ type: 1, interval: -600 })).intervalDays).toBeCloseTo(600 / 86400);
     expect(cardMemory(card({ interval: 30 }))).toEqual({ intervalDays: 30 });
+    expect(cardMemory(card({ type: 1, interval: 0 })).intervalDays).toBe(0.01);
   });
 
   it("attaches last review time and FSRS stability", () => {

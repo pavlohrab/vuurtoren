@@ -46,6 +46,9 @@ describe("classifyCard", () => {
     const overdue = classifyCard({ intervalDays: 30, lastReviewMs: now - 90 * DAY }, now);
     expect(overdue.state).toBe("known");
     expect(overdue.pKnown).toBeCloseTo(0.729);
+    const forgotten = classifyCard({ intervalDays: 30, lastReviewMs: now - 400 * DAY }, now);
+    expect(forgotten.state).toBe("learning");
+    expect(forgotten.pKnown).toBeLessThan(0.3);
     expect(classifyCard({ intervalDays: 30, lastReviewMs: now }, now).pKnown).toBe(1);
   });
 

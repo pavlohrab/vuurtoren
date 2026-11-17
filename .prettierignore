@@ -3,3 +3,4 @@ dist
 coverage
 server/
 docs/roadmap.md
+.claude

@@ -8,6 +8,8 @@ export interface AnkiConnectOptions {
   url?: string;
   apiKey?: string;
   fetch?: typeof fetch;
+  /** Per-request timeout in ms (default 30 s; Anki can block on a modal dialog). */
+  timeoutMs?: number;
 }
 
 export class AnkiConnectError extends Error {
@@ -50,29 +52,47 @@ export class AnkiConnectClient {
   readonly url: string;
   private readonly apiKey: string | undefined;
   private readonly fetchImpl: typeof fetch;
+  private readonly timeoutMs: number;
 
   constructor(opts: AnkiConnectOptions = {}) {
     this.url = (opts.url ?? "http://127.0.0.1:8765").replace(/\/$/, "");
     this.apiKey = opts.apiKey;
     this.fetchImpl = opts.fetch ?? globalThis.fetch.bind(globalThis);
+    this.timeoutMs = opts.timeoutMs ?? 30_000;
+  }
+
+  /** fetch with timeout; network errors and timeouts become AnkiConnectError. */
+  private async send(url: string, init: RequestInit, action: string): Promise<Response> {
+    try {
+      return await this.fetchImpl(url, { ...init, signal: AbortSignal.timeout(this.timeoutMs) });
+    } catch (e) {
+      const timedOut = e instanceof DOMException && e.name === "TimeoutError";
+      throw new AnkiConnectError(
+        timedOut
+          ? `no answer within ${this.timeoutMs / 1000}s (is a dialog open in Anki?)`
+          : `cannot reach ${this.url} (is Anki running with AnkiConnect?) ${String(e)}`,
+        action,
+      );
+    }
+  }
+
+  private static async json<T>(res: Response, action: string): Promise<T> {
+    const text = await res.text();
+    try {
+      return JSON.parse(text) as T;
+    } catch {
+      throw new AnkiConnectError(`HTTP ${res.status}, not JSON: ${text.slice(0, 120)}`, action);
+    }
   }
 
   /** Call a legacy (version 6) action. */
   async invoke<T>(action: string, params: Record<string, unknown> = {}): Promise<T> {
     const body: Record<string, unknown> = { action, version: 6, params };
     if (this.apiKey) body["key"] = this.apiKey;
-    let res: Response;
-    try {
-      res = await this.fetchImpl(this.url, { method: "POST", body: JSON.stringify(body) });
-    } catch (e) {
-      throw new AnkiConnectError(
-        `cannot reach ${this.url} (is Anki running with AnkiConnect?) ${String(e)}`,
-        action,
-      );
-    }
+    const res = await this.send(this.url, { method: "POST", body: JSON.stringify(body) }, action);
     if (res.status === 403)
       throw new AnkiConnectError("origin not allowed (webCorsOriginList / apiKey)", action);
-    const json = (await res.json()) as { result: T; error: string | null };
+    const json = await AnkiConnectClient.json<{ result: T; error: string | null }>(res, action);
     if (json.error) throw new AnkiConnectError(json.error, action);
     return json.result;
   }
@@ -81,13 +101,16 @@ export class AnkiConnectClient {
   async rpc<T>(method: string, params: unknown = {}): Promise<T> {
     const headers: Record<string, string> = { "Content-Type": "application/json" };
     if (this.apiKey) headers["Authorization"] = `Bearer ${this.apiKey}`;
-    const res = await this.fetchImpl(`${this.url}/api/v1`, {
-      method: "POST",
-      headers,
-      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
-    });
+    const res = await this.send(
+      `${this.url}/api/v1`,
+      { method: "POST", headers, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }) },
+      method,
+    );
     if (!res.ok) throw new AnkiConnectError(`HTTP ${res.status}`, method);
-    const json = (await res.json()) as { result?: T; error?: { message: string } };
+    const json = await AnkiConnectClient.json<{ result?: T; error?: { message: string } }>(
+      res,
+      method,
+    );
     if (json.error) throw new AnkiConnectError(json.error.message, method);
     return json.result as T;
   }
@@ -154,15 +177,25 @@ export class AnkiConnectClient {
   async rpcBatch<T>(calls: { method: string; params: unknown }[]): Promise<(T | null)[]> {
     const headers: Record<string, string> = { "Content-Type": "application/json" };
     if (this.apiKey) headers["Authorization"] = `Bearer ${this.apiKey}`;
-    const res = await this.fetchImpl(`${this.url}/api/v1`, {
-      method: "POST",
-      headers,
-      body: JSON.stringify(calls.map((c, id) => ({ jsonrpc: "2.0", id, ...c }))),
-    });
+    const res = await this.send(
+      `${this.url}/api/v1`,
+      {
+        method: "POST",
+        headers,
+        body: JSON.stringify(calls.map((c, id) => ({ jsonrpc: "2.0", id, ...c }))),
+      },
+      "batch",
+    );
     if (!res.ok) throw new AnkiConnectError(`HTTP ${res.status}`, "batch");
-    const json = (await res.json()) as { id: number; result?: T; error?: unknown }[];
+    const json = await AnkiConnectClient.json<unknown>(res, "batch");
+    if (!Array.isArray(json)) {
+      const msg =
+        (json as { error?: { message?: string } } | null)?.error?.message ?? "not a batch response";
+      throw new AnkiConnectError(msg, "batch");
+    }
     const out: (T | null)[] = calls.map(() => null);
-    for (const r of json) if (r.error === undefined && r.result !== undefined) out[r.id] = r.result;
+    for (const r of json as { id: number; result?: T; error?: unknown }[])
+      if (r.error === undefined && r.result !== undefined) out[r.id] = r.result;
     return out;
   }
 

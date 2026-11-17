@@ -26,3 +26,19 @@ describe("extractMarked", () => {
     expect(extractMarked("Ik <b>bel</b> je {{c1::op}}.")).toEqual(["bel", "op"]);
   });
 });
+
+describe("review fixes", () => {
+  it.each([
+    ["lopen<div>liep</div>", "lopen liep"],
+    ["caf&eacute; ide&euml;n &Eacute;&eacute;n", "café ideën Één"],
+    ["&#99999999; &#xD800; ok", "&#99999999; &#xD800; ok"],
+    ["{{c1::op\nbellen}}", "op bellen"],
+    ["&euro;5 &ldquo;ja&rdquo;", "€5 “ja”"],
+  ])("%s -> %s", (input, expected) => {
+    expect(cleanField(input)).toBe(expected);
+  });
+
+  it("extracts bold with attributes", () => {
+    expect(extractMarked('Ik <b style="color:red">bel</b> je.')).toEqual(["bel"]);
+  });
+});

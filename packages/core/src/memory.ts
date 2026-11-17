@@ -50,10 +50,12 @@ export interface WordKnowledge {
 
 /** Interval (or stability) in days from which a card counts as "known" (Anki's "mature"). */
 export const KNOWN_THRESHOLD_DAYS = 21;
+/** Minimum current recall probability for a mature card to count as "known". */
+export const KNOWN_MIN_RECALL = 0.6;
 
 /**
  * Classify a card into a word state with a probability of knowing it.
- * Known: interval ≥ 21d, or FSRS S ≥ 21d with R ≥ 0.9. Learning: anything else that has been reviewed.
+ * Known: mature (interval or FSRS S ≥ 21 d) with current recall ≥ 0.6. Learning: anything else reviewed.
  */
 export function classifyCard(card: CardMemory, nowMs: number = Date.now()): WordKnowledge {
   if (card.isNew || card.intervalDays <= 0) return { state: "unknown", pKnown: 0 };
@@ -73,9 +75,12 @@ export function classifyCard(card: CardMemory, nowMs: number = Date.now()): Word
         : Math.min(0.9, card.intervalDays / KNOWN_THRESHOLD_DAYS);
   }
 
-  const known =
+  // Mature (interval or stability ≥ 21 d) AND still likely recalled: a mature card left
+  // unreviewed for a year has decayed and is "learning" again.
+  const mature =
     card.intervalDays >= KNOWN_THRESHOLD_DAYS ||
-    (card.stabilityDays !== undefined && card.stabilityDays >= KNOWN_THRESHOLD_DAYS && p >= 0.9);
+    (card.stabilityDays !== undefined && card.stabilityDays >= KNOWN_THRESHOLD_DAYS);
+  const known = mature && p >= KNOWN_MIN_RECALL;
 
   return { state: known ? "known" : "learning", pKnown: p };
 }

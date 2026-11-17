@@ -48,6 +48,10 @@ function sample<T>(xs: T[], n: number): T[] {
   return a.slice(0, n);
 }
 const csv = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+const cell = (v: unknown) =>
+  String(v ?? "")
+    .replace(/\|/g, "\\|")
+    .replace(/\n/g, " ");
 const pct = (x: number) => `${(x * 100).toFixed(0)}%`;
 
 async function main(): Promise<void> {
@@ -185,7 +189,7 @@ AnkiConnect v${version}${v1 ? " + API v1" : ""} · FSRS memory on ${snap.fsrsCar
 ## Sources (all ${lang} decks, merged)
 | deck | note type | word | gloss | sentence | ${lang} share | notes | known | learning | unknown |
 |---|---|---|---|---|---|---|---|---|---|
-${perDeck.map((d) => `| ${d.source.deck} | ${d.source.modelName} | ${d.source.wordField} | ${d.source.glossField ?? "-"} | ${d.source.sentenceField ?? "-"} | ${pct(d.source.targetShare)} | ${d.notes} | ${d.known} | ${d.learning} | ${d.unknown} |`).join("\n")}
+${perDeck.map((d) => `| ${cell(d.source.deck)} | ${cell(d.source.modelName)} | ${cell(d.source.wordField)} | ${cell(d.source.glossField ?? "-")} | ${cell(d.source.sentenceField ?? "-")} | ${pct(d.source.targetShare)} | ${d.notes} | ${d.known} | ${d.learning} | ${d.unknown} |`).join("\n")}
 
 Not selected: ${
     snap.candidates
@@ -211,7 +215,7 @@ Not selected: ${
 ${sample(misses, 60)
   .map(
     ({ r, sentence, tokens }) =>
-      `| ${r.term.key} | ${sentence.slice(0, 90)} | ${tokens
+      `| ${cell(r.term.key)} | ${cell(sentence.slice(0, 90))} | ${tokens
         .filter((t) => t.is_word)
         .map((t) => (t.text.toLowerCase() === t.lemma ? t.text : `${t.text}/${t.lemma}`))
         .join(" ")
