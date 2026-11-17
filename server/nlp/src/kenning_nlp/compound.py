@@ -70,6 +70,51 @@ _FORM_OF = re.compile(
 )
 
 
+_DIM_SUFFIXES = ("etje", "tje", "pje", "kje", "je")
+_PLURAL_SUFFIXES = ("eren", "en", "s")
+
+
+def _undouble(stem: str) -> str:
+    """``vriendinn`` -> ``vriendin`` (Dutch doubles a final consonant before -etje/-en)."""
+    if len(stem) >= 3 and stem[-1] == stem[-2] and stem[-1] not in "aeiou":
+        return stem[:-1]
+    return stem
+
+
+def inflection_candidates(word: str) -> list[tuple[str, str]]:
+    """``[(via, lemma_guess)]`` for diminutive and plural readings of ``word``.
+
+    Pure guesses (``vriendinnetje`` -> ``vriendin``; ``pannenkoeken`` -> ``pannenkoek``); the
+    caller validates them against the dictionary. ``via`` is ``"diminutive"`` or ``"plural"``.
+    """
+    low = word.lower()
+    out: list[tuple[str, str]] = []
+
+    def add(via: str, guess: str) -> None:
+        if len(guess) >= 3 and (via, guess) not in out:
+            out.append((via, guess))
+
+    # "-etje" is unambiguous: never also try the shorter "-tje"/"-je" cuts (vriendinn|etje).
+    dim_suffixes = ("etje",) if low.endswith("etje") else _DIM_SUFFIXES
+    for suf in dim_suffixes:
+        if low.endswith(suf) and len(low) > len(suf) + 2:
+            stem = low[: -len(suf)]
+            add("diminutive", _undouble(stem))
+            add("diminutive", stem)
+    for suf in _PLURAL_SUFFIXES:
+        if low.endswith(suf) and len(low) > len(suf) + 2:
+            stem = low[: -len(suf)]
+            add("plural", _undouble(stem))
+            add("plural", stem)
+            if suf == "en":
+                for plain, voiced in (("f", "v"), ("s", "z")):
+                    if stem.endswith(voiced):
+                        add("plural", stem[:-1] + plain)
+    if low.endswith("'s"):
+        add("plural", low[:-2])
+    return sorted(out, key=lambda c: -len(c[1]))
+
+
 @dataclass(frozen=True)
 class PartEntry:
     """One reading of a candidate part (a lemma entry, directly or via the forms table)."""
@@ -298,6 +343,8 @@ def split_compound(
     """
     if len(word) < MIN_WORD_LEN or not word.isalpha() or word.isupper():
         return None
+    if word.lower().endswith(_DIM_SUFFIXES):
+        return None  # diminutive of a (compound) noun: resolved by the dictionary, never split
     cautious = word[0].isupper()
     if cautious and len(word) < 9:
         return None

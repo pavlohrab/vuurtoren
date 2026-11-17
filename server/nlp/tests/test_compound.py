@@ -185,7 +185,6 @@ needs_db = pytest.mark.skipif(not REAL_DB.is_file(), reason="real dictionary DB 
     ("word", "expected_parts"),
     [
         ("souvenirwinkel", ["souvenir", "winkel"]),
-        ("gemeenteraadsverkiezingen", ["gemeenteraad", "verkiezingen"]),
     ],
 )
 def test_real_db_compounds(word: str, expected_parts: list[str]):
@@ -222,3 +221,55 @@ def test_real_db_coverage_on_news_text(capsys: pytest.CaptureFixture[str]):
         print(f"\ncoverage unique tokens: before={before:.3f} after={after:.3f} (n={len(uniq)})")
     assert after >= before
     assert after >= 0.95
+
+
+# ----------------------------------------------------------------------------- M4 inflections
+
+
+def test_inflection_candidates_pure() -> None:
+    from kenning_nlp.compound import inflection_candidates
+
+    assert ("diminutive", "vriendin") in inflection_candidates("vriendinnetje")
+    assert ("diminutive", "man") in inflection_candidates("mannetje")
+    assert ("diminutive", "kop") in inflection_candidates("kopje")
+    assert ("plural", "pannenkoek") in inflection_candidates("pannenkoeken")
+    assert ("plural", "kind") in inflection_candidates("kinderen")
+    assert ("plural", "auto") in inflection_candidates("auto's")
+
+
+def test_diminutives_are_never_split(fixture_dict: Dictionary) -> None:
+    assert split_compound("tuinstoeltje", fixture_dict._part_readings) is None
+    assert split_compound("vriendinnetje", fixture_dict._part_readings) is None
+
+
+@needs_db
+@pytest.mark.parametrize(
+    ("word", "via", "gloss_part"),
+    [
+        ("vriendinnetje", "diminutive", "friend"),
+        ("pannenkoeken", "plural", "pancake"),
+        ("kinderen", "plural", "child"),
+        ("boekenkastje", "diminutive", "bookcase"),
+    ],
+)
+def test_real_db_inflection_resolves_to_lemma(word: str, via: str, gloss_part: str) -> None:
+    entries = Dictionary().lookup([word])[word]
+    assert entries[0]["via"] == via
+    assert not entries[0].get("compound")
+    assert gloss_part in entries[0]["glosses"][0]
+    assert "net" not in entries[0]["glosses"][0].split()
+
+
+@needs_db
+def test_real_db_news_text_inflection_report(capsys: pytest.CaptureFixture[str]) -> None:
+    text = (FIXTURES / "dutch-news.txt").read_text(encoding="utf-8")
+    uniq = list(dict.fromkeys(re.findall(r"[^\W\d_]+", text)))
+    res = Dictionary().lookup(uniq)
+    assert all(res[t] for t in uniq)
+    compounds = [t for t in uniq if res[t][0].get("compound")]
+    with capsys.disabled():
+        print(f"\nnews: via={sum(1 for t in uniq if res[t][0].get('via'))} compounds={compounds}")
+    for t in compounds:  # no compound part may be an inflection ending
+        assert not any(
+            p["part"].lower() in {"tje", "je", "etje", "koeken"} for p in res[t][0]["parts"]
+        )

@@ -138,6 +138,8 @@ class GlossEntry(BaseModel):
     """True if the word has no entry and was analysed as a compound of ``parts``.
     ``glosses`` is then one string ``"souvenir shop (souvenir + winkel)"``; ``pos`` and
     ``article`` are the head's."""
+    via: Literal["diminutive", "plural"] | None = None
+    """Set when the word is a diminutive/plural of a known noun and ``glosses`` are the lemma's."""
     parts: list[GlossPart] | None = None
     """Compound parts in order (only when ``compound``)."""
 
