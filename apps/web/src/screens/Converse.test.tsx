@@ -7,9 +7,9 @@ import { createMockAI, MOCK_NEW_WORD } from "../services/mockAI.js";
 import { createMockServices } from "../services/mock.js";
 import type { AppServices } from "../services/types.js";
 
-function setup(path: string, configured = true) {
+function setup(path: string, configured = true, patch: Partial<AppServices> = {}) {
   const ai = createMockAI(() => Promise.resolve(), { configured });
-  const services: AppServices = { ...createMockServices({ latencyMs: 0 }), ...ai };
+  const services: AppServices = { ...createMockServices({ latencyMs: 0 }), ...ai, ...patch };
   const history = createMemoryHistory({ initialEntries: [path] });
   render(<App services={services} history={history} />);
   return { ai, user: userEvent.setup() };
@@ -48,6 +48,33 @@ describe("Converse", () => {
     expect(screen.getByText(/Simplified once/)).toBeInTheDocument();
     expect(screen.getByText("coffee shop", { exact: false })).toBeInTheDocument();
     expect(screen.getByText("93% known")).toBeInTheDocument();
+  });
+});
+
+describe("Talk entry points and the Library", () => {
+  it("is seeded with words and a topic from the URL, titles the topic in sentence case and saves the chat to the Library", async () => {
+    const imported: unknown[] = [];
+    const { user } = setup("/talk?words=gracht,brug&topic=een%20dag%20in%20utrecht", true, {
+      importText: async (input) => {
+        imported.push(input);
+        return "t-saved";
+      },
+    });
+    expect(await screen.findByLabelText("Topic")).toHaveValue("een dag in utrecht");
+    expect(screen.getByLabelText("Words to practise")).toHaveValue("gracht, brug");
+    await user.click(screen.getByRole("button", { name: "Start conversation" }));
+    expect(
+      await screen.findByRole("heading", { level: 1, name: "Een dag in utrecht" }),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /Save to Library/ }));
+    await waitFor(() => expect(imported).toHaveLength(1));
+    expect(imported[0]).toMatchObject({
+      kind: "talk",
+      title: "Talk: Een dag in utrecht",
+      ref: expect.stringMatching(/^talk:/),
+      content: expect.stringMatching(/^— /),
+    });
+    expect(await screen.findByRole("button", { name: "Read in Library" })).toBeInTheDocument();
   });
 });
 

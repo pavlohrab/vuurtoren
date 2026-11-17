@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
-import { MessagesSquare } from "lucide-react";
+import { Link, useNavigate, useSearch } from "@tanstack/react-router";
+import { BookmarkPlus, MessagesSquare, Plus } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import {
   type AddDeckChoice,
@@ -17,6 +17,7 @@ import {
 import { useServices } from "../services/context.js";
 import type { ChatMessageView, ConversationView, NewWord } from "../services/aiTypes.js";
 import { useDeckChoice } from "./useDeckChoice.js";
+import { PageHeader } from "../shell/PageHeader.js";
 import "./converse.css";
 
 const message = (e: unknown) => (e instanceof Error && e.message ? e.message : "Try again.");
@@ -113,9 +114,27 @@ function UserMessage({ m }: { m: ChatMessageView }) {
   );
 }
 
+/** A topic as a title: sentence case ("ordering coffee" → "Ordering coffee"). */
+export function topicTitle(topic: string): string {
+  const t = topic.trim();
+  return t ? t[0]!.toLocaleUpperCase() + t.slice(1) : "Conversation";
+}
+
+/** A conversation as a reading text: one paragraph per turn, as a Dutch dialogue (— …). */
+export function conversationText(c: ConversationView): string {
+  return c.messages
+    .map((m) => m.text.trim())
+    .filter(Boolean)
+    .map((t) => `— ${t}`)
+    .join("\n\n");
+}
+
 /** Talk (route /talk, formerly Converse): talk with a partner who keeps to words you know (needs an AI provider in Settings). */
 export function Converse() {
   const services = useServices();
+  const navigate = useNavigate();
+  // Seeds from Practice, Words, a course unit or a text: /talk?words=a,b&topic=…
+  const seed: { words?: string; topic?: string } = useSearch({ from: "/talk" });
   const qc = useQueryClient();
   const toast = useToast();
   const status = useQuery({ queryKey: ["ai-status"], queryFn: () => services.aiStatus() });
@@ -128,8 +147,17 @@ export function Converse() {
     queryFn: () => services.suggestTargetWords(),
   });
   const [conv, setConv] = useState<ConversationView | null>(null);
-  const [topic, setTopic] = useState("");
-  const [targets, setTargets] = useState<string | null>(null);
+  const [topic, setTopic] = useState(seed.topic ?? "");
+  const [targets, setTargets] = useState<string | null>(
+    seed.words
+      ? seed.words
+          .split(",")
+          .map((w) => w.trim())
+          .filter(Boolean)
+          .join(", ")
+      : null,
+  );
+  const [savedAs, setSavedAs] = useState<{ conv: string; textId: string } | null>(null);
   const [draft, setDraft] = useState("");
   const [pending, setPending] = useState<string | null>(null);
   const [added, setAdded] = useState<Set<string>>(new Set());
@@ -164,6 +192,21 @@ export function Converse() {
     },
     onSettled: () => setPending(null),
   });
+  const save = useMutation({
+    mutationFn: (c: ConversationView) =>
+      services.importText({
+        kind: "talk",
+        title: `Talk: ${topicTitle(c.topic)}`,
+        content: conversationText(c),
+        ref: `talk:${c.id}`,
+      }),
+    onSuccess: async (textId, c) => {
+      setSavedAs({ conv: c.id, textId });
+      toast("Saved to your Library", "Read it again later, with its new words highlighted.");
+      await qc.invalidateQueries({ queryKey: ["texts"] });
+    },
+    onError: (e) => toast("Could not save the conversation", message(e)),
+  });
   const deckChoice = useDeckChoice("converse");
   const add = useMutation({
     mutationFn: (w: NewWord) =>
@@ -187,7 +230,7 @@ export function Converse() {
       <div className="page page--narrow">
         <EmptyState
           icon={<MessagesSquare size={28} />}
-          title="Talk"
+          title="Talk in Dutch"
           description={
             status.data.locked
               ? "Your API key is locked. Unlock it in Settings to start talking."
@@ -206,11 +249,10 @@ export function Converse() {
   if (!conv) {
     return (
       <div className="page page--narrow">
-        <h1>Talk</h1>
-        <p className="page-lede">
-          A short chat in Dutch that stays within the words you know, with corrections of your own
-          messages.
-        </p>
+        <PageHeader
+          title="Talk"
+          lede="A short chat in Dutch that stays within the words you know, with corrections of your own messages."
+        />
         <form
           className="stack"
           onSubmit={(e) => {
@@ -254,7 +296,8 @@ export function Converse() {
                       if (v) setConv(v);
                     }}
                   >
-                    <b>{c.topic}</b> <span className="k-hint">{c.messages} messages</span>
+                    <b>{topicTitle(c.topic)}</b>{" "}
+                    <span className="k-hint">{c.messages} messages</span>
                     <br />
                     <span className="k-hint">{c.preview}</span>
                   </button>
@@ -273,12 +316,44 @@ export function Converse() {
 
   return (
     <div className="page page--narrow">
-      <div className="row" style={{ justifyContent: "space-between" }}>
-        <h1 style={{ margin: 0 }}>{conv.topic}</h1>
-        <Button variant="ghost" onClick={() => setConv(null)}>
-          New conversation
-        </Button>
-      </div>
+      <PageHeader
+        title={topicTitle(conv.topic)}
+        lede={
+          conv.targetWords.length ? (
+            <>
+              Practising <span lang="nl">{conv.targetWords.join(", ")}</span>
+            </>
+          ) : (
+            "A short chat within the words you know."
+          )
+        }
+        actions={
+          <>
+            <Button variant="ghost" onClick={() => setConv(null)}>
+              <Plus size={16} aria-hidden /> New
+            </Button>
+            {savedAs?.conv === conv.id ? (
+              <Button
+                variant="secondary"
+                onClick={() =>
+                  void navigate({ to: "/read/$textId", params: { textId: savedAs.textId } })
+                }
+              >
+                Read in Library
+              </Button>
+            ) : (
+              <Button
+                variant="secondary"
+                disabled={save.isPending || conv.messages.length === 0}
+                onClick={() => save.mutate(conv)}
+              >
+                <BookmarkPlus size={16} aria-hidden />{" "}
+                {save.isPending ? "Saving…" : "Save to Library"}
+              </Button>
+            )}
+          </>
+        }
+      />
       <div className="cv-list" aria-live="polite">
         {conv.messages.map((m) =>
           m.role === "assistant" ? (

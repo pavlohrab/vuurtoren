@@ -158,7 +158,7 @@ const COURSE_MODES: { value: CourseDeckMode; label: string }[] = [
 
 const DEST_FIELDS: { key: Exclude<keyof ProfileDestinations, "default">; label: string }[] = [
   { key: "reading", label: "Reader and Words from this text" },
-  { key: "converse", label: "Converse" },
+  { key: "converse", label: "Talk" },
   { key: "ai", label: "AI stories" },
   { key: "mcp", label: "Claude (MCP)" },
 ];
@@ -209,7 +209,7 @@ export function DestinationFields({
             }}
           />
           <span>
-            Separate subdecks for reading, Converse and AI stories
+            Separate subdecks for reading, Talk and AI stories
             <span className="ob-choice-sub">
               {split
                 ? [d.reading, d.converse, d.ai].filter(Boolean).join(", ")

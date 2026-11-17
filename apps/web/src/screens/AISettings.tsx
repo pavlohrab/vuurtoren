@@ -72,9 +72,9 @@ export function AISettings() {
         AI
       </h2>
       <p style={{ margin: 0, color: "var(--ink-muted)" }}>
-        Optional. Conversation, sentence explanations and page simplification use your own account
-        with a provider. Your key stays on this device (also when you use a server) and is never
-        saved in your data, backups or sync.
+        Optional. Talk, sentence explanations and page simplification use your own account with a
+        provider. Your key stays on this device (also when you use a server) and is never saved in
+        your data, backups or sync.
       </p>
       <div style={{ maxWidth: 320 }}>
         <Select

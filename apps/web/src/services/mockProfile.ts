@@ -46,7 +46,7 @@ export const DEMO_ANKI_DECKS = [
 const HINT: Record<string, string> = {
   default: "Default",
   reading: "Reading",
-  converse: "Converse",
+  converse: "Talk",
   ai: "AI stories",
   mcp: "MCP",
 };

@@ -48,7 +48,7 @@ const DECKS_TIMEOUT_MS = 3000;
 const DEST_HINT: Record<string, string> = {
   default: "Default",
   reading: "Reading",
-  converse: "Converse",
+  converse: "Talk",
   ai: "AI stories",
   mcp: "MCP",
 };
