@@ -92,6 +92,14 @@ pnpm dev            # web app on http://localhost:5173 (proxies /nlp and /anki)
 - Hits are detected once per text by `POST /grammar` and stored as `TextGrammarDetected` events (projection `text_grammar`, schema v4, allow-listed for server storage mode).
 - The NLP Docker image precomputes the Tatoeba example cache; at runtime it is read-only.
 
+### Language profile and onboarding ([ADR 0010](adr/0010-language-profile.md))
+
+- **Language profile** per language (`LanguageProfileSet` event, both storage modes): the decks Kenning reads are confirmed by you (detection only suggests), and new words go to per-source decks (`Kenning::Nederlands::Reading`, `::Converse`, `::Stories`; course words per unit or per course). Existing setups are migrated unchanged (old target deck + last synced decks).
+- **Sync** reads only the confirmed decks plus Kenning's own and course-mapped decks; with no decks it gives an empty snapshot and a helpful note, not an error.
+- **One Add to Anki path** (`addWordToAnki`) for reader, Words from this text, Converse, courses and MCP: one key rule, deck and note type created on first write, tags `kenning`, `nl`, `kenning::from::<source>`. Every Add button names the deck and has a picker.
+- **Settings → Language & decks** and a **first-run wizard** (`/welcome`): language, connect Anki, confirm decks or start fresh, where new words go, a quick placement check (app-only), first text.
+- MCP `add_to_anki` uses the profile; `KENNING_DECK` is now only an override.
+
 ### Review fixes applied
 
 - **NLP:** lemma precision, UTF-16 offsets, request size limits, one shared key-normalisation rule (Python = TypeScript), particle and R-pronoun false positives.

@@ -38,4 +38,4 @@ An open-source app that turns **your Anki deck into a reading and speaking coach
   - [Naming](design/naming.md)
   - [Courses: study along a textbook](design/courses.md)
   - [Words already in Anki](design/anki-existing-words.md)
-- ADRs: [0001](adr/0001-ts-core-react.md) · [0002](adr/0002-event-log-sync.md) · [0003](adr/0003-anki-read-only.md) · [0004](adr/0004-python-nlp-service.md) · [0005](adr/0005-no-claude-oauth-mcp-instead.md) · [0007](adr/0007-anki-write-actions.md) · [0006 (proposed)](adr/0006-prioritise-existing-cards.md)
+- ADRs: [0001](adr/0001-ts-core-react.md) · [0002](adr/0002-event-log-sync.md) · [0003](adr/0003-anki-read-only.md) · [0004](adr/0004-python-nlp-service.md) · [0005](adr/0005-no-claude-oauth-mcp-instead.md) · [0007](adr/0007-anki-write-actions.md) · [0010](adr/0010-language-profile.md) · [0006 (proposed)](adr/0006-prioritise-existing-cards.md)
