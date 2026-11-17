@@ -4,7 +4,7 @@
  * analyzer, and merge per key. Read-only. Shared by the web app and tools/anki-report.
  */
 import { type WordKnowledge, type WordState, classifyCard, mergeKnowledge } from "@app/core";
-import { cleanField, firstSentence } from "./clean.js";
+import { cleanField, firstAlternative, firstSentence } from "./clean.js";
 import {
   type AnkiConnectClient,
   type CardInfo,
@@ -186,7 +186,7 @@ export async function buildSnapshot(deps: SnapshotDeps, chosen?: Candidate[]): P
   const knowledgeOf = new Map<string, WordKnowledge>();
   for (const n of notes) {
     const gloss = n.source.glossField
-      ? cleanField(n.note.fields[n.source.glossField]?.value ?? "")
+      ? firstAlternative(cleanField(n.note.fields[n.source.glossField]?.value ?? ""))
       : "";
     const sentence = n.source.sentenceField
       ? firstSentence(n.note.fields[n.source.sentenceField]?.value ?? "")

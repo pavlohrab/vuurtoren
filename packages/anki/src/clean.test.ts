@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cleanField, decodeEntities, extractMarked } from "./clean.js";
+import { cleanField, decodeEntities, extractMarked, firstAlternative } from "./clean.js";
 
 describe("cleanField", () => {
   it.each([
@@ -40,5 +40,17 @@ describe("review fixes", () => {
 
   it("extracts bold with attributes", () => {
     expect(extractMarked('Ik <b style="color:red">bel</b> je.')).toEqual(["bel"]);
+  });
+});
+
+describe("firstAlternative", () => {
+  it.each([
+    ["a) bank b) bench, sofa", "bank"],
+    ["1. lopen 2. wandelen", "lopen"],
+    ["a) De bank verhoogt de rente. b) Ik zit op de bank.", "De bank verhoogt de rente."],
+    ["gewoon een zin", "gewoon een zin"],
+    ["a) alleen", "alleen"],
+  ])("%s -> %s", (input, expected) => {
+    expect(firstAlternative(input)).toBe(expected);
   });
 });

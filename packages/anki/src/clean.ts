@@ -102,10 +102,19 @@ export function extractMarked(html: string): string[] {
  * The first sentence of an example field: first non-empty line (br / block tags separate
  * lines), then cut at the first sentence end followed by a capital. Returns "" when empty.
  */
+/**
+ * Keep only the first of numbered alternatives: "a) bank b) bench, sofa" → "bank",
+ * "1. lopen 2. wandelen" → "lopen". Text without such markers is returned unchanged.
+ */
+export function firstAlternative(text: string): string {
+  const m = /^\s*(?:[a-h]\)|\(?1[.)])\s*(.+?)(?:\s+(?:[b-h]\)|\(?[2-9][.)])\s.*)?$/su.exec(text);
+  return m ? m[1]!.trim() : text;
+}
+
 export function firstSentence(html: string): string {
   const lines = html.split(/<br\s*\/?>|<\/?(?:div|p|li)\b[^>]*>/i);
   for (const line of lines) {
-    const text = cleanField(line);
+    const text = firstAlternative(cleanField(line));
     if (!text) continue;
     const m = /^(.*?[.!?\u2026])\s+(?=[\p{Lu}"'\u201c\u2018\u00bf\u00a1])/su.exec(text);
     return (m?.[1] ?? text).trim();

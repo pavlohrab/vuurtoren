@@ -279,6 +279,10 @@ export function ExerciseCard({
               if (ev.key === "?") {
                 ev.preventDefault();
                 revealHint();
+              } else if (ev.key === "Enter" && !ev.nativeEvent.isComposing && !answered) {
+                // Submit explicitly rather than relying on implicit form submission.
+                ev.preventDefault();
+                ev.currentTarget.form?.requestSubmit();
               }
             }}
           />

@@ -173,7 +173,11 @@ export function createLivePractice(deps: LivePracticeDeps) {
         .map(([, w]) => w);
     const ordered = [
       ...[...due].flatMap((k) => eligible.get(k) ?? []),
-      ...learning.filter((w) => !practised.has(w.key)),
+      // never practised: shakiest first (recall in 0.1 bands), random within a band — the
+      // database order is alphabetical and would always start at "a…"
+      ...shuffled(learning.filter((w) => !practised.has(w.key))).sort(
+        (a, b) => Math.floor(a.pKnown * 10) - Math.floor(b.pKnown * 10),
+      ),
       ...shuffled(learning.filter((w) => practised.has(w.key))),
       ...shuffled([...eligible.values()].filter((w) => w.state === "known")),
     ];

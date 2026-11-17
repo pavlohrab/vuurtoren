@@ -119,19 +119,44 @@ export function buildSession(
 
   const newEx: Exercise[] = [];
   const newCap = Math.min(opts.newItems, opts.size - dueEx.length);
+  // Ties (many words share a state and recall) go to more frequent words, not the alphabet.
   const candidates = words
     .filter((w) => w.state !== "ignored")
+    .map((w) => ({ w, tie: rng() }))
     .sort(
-      (a, b) =>
-        (NEW_STATE_RANK[a.state] ?? 9) - (NEW_STATE_RANK[b.state] ?? 9) || a.pKnown - b.pKnown,
-    );
-  for (const w of candidates) {
-    for (const skill of ALL_SKILLS) {
+      (x, y) =>
+        (NEW_STATE_RANK[x.w.state] ?? 9) - (NEW_STATE_RANK[y.w.state] ?? 9) ||
+        x.w.pKnown - y.w.pKnown ||
+        y.w.zipf - x.w.zipf ||
+        x.tie - y.tie,
+    )
+    .map((c) => c.w);
+  // Round-robin: every word gets its first new skill before any word gets a second one, so a
+  // session spreads over many words instead of drilling one word in every skill.
+  // Each word starts at a different skill, so the session also spreads over skills.
+  const pending = new Map(
+    candidates.map((w, n) => {
+      const open = ALL_SKILLS.filter((sk) => allowed.has(sk) && !tracked.has(pairId(w.key, sk)));
+      const k = open.length ? n % open.length : 0;
+      return [w.key, [...open.slice(k), ...open.slice(0, k)]];
+    }),
+  );
+  while (newEx.length < newCap) {
+    let progressed = false;
+    for (const w of candidates) {
       if (newEx.length >= newCap) break;
-      if (!allowed.has(skill) || tracked.has(pairId(w.key, skill))) continue;
-      const ex = make({ key: w.key, skill });
-      if (ex) newEx.push(ex);
+      const skills = pending.get(w.key)!;
+      while (skills.length) {
+        const skill = skills.shift()!;
+        const ex = make({ key: w.key, skill });
+        if (ex) {
+          newEx.push(ex);
+          progressed = true;
+          break;
+        }
+      }
     }
+    if (!progressed) break;
   }
 
   const fillEx = collect(upcoming, opts.size - dueEx.length - newEx.length, make);

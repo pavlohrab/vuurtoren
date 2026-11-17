@@ -157,3 +157,13 @@ describe("buildSession", () => {
     expect(buildSession([], [], opts(), createRng(1))).toEqual([]);
   });
 });
+
+describe("new items spread over words", () => {
+  it("gives each word one new skill before any word gets a second", () => {
+    const ws = ["appel", "boek", "fiets", "huis", "kaas"].map((l, n) =>
+      word(l, { zipf: 5 - n * 0.1 }),
+    );
+    const ex = buildSession(ws, [], { size: 5, newItems: 5, now: NOW }, createRng(3));
+    expect(new Set(ex.map((e) => e.key)).size).toBe(5);
+  });
+});
