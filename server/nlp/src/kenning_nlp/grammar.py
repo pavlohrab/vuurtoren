@@ -298,6 +298,8 @@ def detect_inversion(s: Sentence) -> Iterable[Hit]:
         content = [t for t in before if t.pos not in {"PUNCT", "CCONJ", "INTJ"} and t.lemma != "er"]
         if not content or any(t.text in QUOTES for t in before):
             continue
+        if before[0].text.lower() in WH_WORDS or before[0].pos == "INTJ":
+            continue  # questions and exclamations ("Wat is de wereld toch klein!")
         if any(t.dep in {"nsubj", "nsubj:pass", "csubj"} for t in content):
             continue  # a subject already stands in front: parse noise, not an inversion
         first = next(t for t in before if t.pos != "PUNCT")
@@ -481,7 +483,12 @@ def detect_reflexive(s: Sentence) -> Iterable[Hit]:
             ok = True
         elif low in {"me", "ons", "je"} and t.dep in {"expl:pv", "obj", "iobj"}:
             subject = _subject_lemma(s, verb)
-            ok = subject is not None and low in REFLEXIVE_FOR.get(subject, set())
+            other_objects = [c for c in s.children(verb, "obj", "iobj") if c.i != t.i]
+            ok = (
+                subject is not None
+                and low in REFLEXIVE_FOR.get(subject, set())
+                and not other_objects
+            )
         else:
             ok = False
         if ok:

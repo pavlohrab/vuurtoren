@@ -20,6 +20,7 @@ CASES: dict[str, tuple[list[str], list[str]]] = {
             "Ik bel je morgen op.",
             "Er staat een kat op het dak.",
             "Dit is Toms fiets.",
+            "Wat is de wereld toch klein!",
         ],
     ),
     "questions": (
@@ -139,6 +140,7 @@ CASES: dict[str, tuple[list[str], list[str]]] = {
             "Ik zie je morgen.",
             "Hij geeft ons een boek.",
             "Jij kent mijn vader.",
+            "Je zult je bananen eten.",
         ],
     ),
     "om-te-infinitive": (

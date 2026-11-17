@@ -4,7 +4,8 @@ The sentence database (:mod:`kenning_nlp.sentences`) is indexed by lemma, not by
 finding "sentences with an inversion" means running the detectors over the sentences. That costs a
 few milliseconds per sentence, so the scan is **incremental and cached**:
 
-* sentences are visited best first (short, common vocabulary: the order of ``score``) in batches;
+* sentences are visited in a fixed pseudo-random order (so rare constructions turn up as early as
+  common ones; the shortest sentences alone would hardly contain a subordinate clause) in batches;
 * every detector hit of every visited sentence is stored (at most :data:`MAX_PER_TOPIC` per topic)
   in a small side database, together with the scan position;
 * a request scans on until its topic has enough examples or its time budget is spent, so the
@@ -34,9 +35,10 @@ BATCH = 128
 """Sentences analysed per step."""
 MAX_PER_TOPIC = 40
 """Examples kept per topic."""
-MIN_WORDS = 4
+MIN_WORDS = 5
 MAX_WORDS = 14
-"""Only sentences of this many words are scanned (good examples are short and not trivial)."""
+"""Only sentences of this many words are scanned (good examples are short and not trivial).
+The best of the cached examples (lowest ``score``) are returned."""
 DEFAULT_BUDGET_S = 4.0
 
 SCHEMA = """
@@ -103,8 +105,8 @@ class GrammarExamples:
         """Scan the next batch; False when the sentence list is exhausted."""
         cursor = self._meta(con, "cursor")
         rows = sdb.execute(
-            "SELECT id, text, translation, score FROM sentences"
-            " WHERE n_words BETWEEN ? AND ? ORDER BY score, id LIMIT ? OFFSET ?",
+            "SELECT id, text, translation, score FROM sentences WHERE n_words BETWEEN ? AND ?"
+            " ORDER BY (id * 2654435761) % 4294967296, id LIMIT ? OFFSET ?",
             (MIN_WORDS, MAX_WORDS, BATCH, cursor),
         ).fetchall()
         if not rows:
