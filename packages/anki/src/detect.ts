@@ -33,7 +33,14 @@ export interface Candidate {
   wordField: string;
   sentenceField: string | null;
   glossField: string | null;
+  /** Target-language share of the word field. */
   targetShare: number;
+  /**
+   * Evidence that this deck is target-language vocabulary: the word-field share, or the
+   * sentence-field share when that is strong (single headwords are hard to identify;
+   * whole example sentences are not).
+   */
+  confidence: number;
   score: number;
   fields: FieldStats[];
   examples: string[];
@@ -98,7 +105,7 @@ export async function rankCandidates(
     });
 
     const minSamples = Math.max(1, Math.floor(group.length / 2));
-    const targetFields = stats.filter((f) => f.samples >= minSamples && f.targetShare >= 0.4);
+    const targetFields = stats.filter((f) => f.samples >= minSamples && f.targetShare >= 0.3);
     const wordScore = (f: FieldStats) =>
       f.targetShare + (WORD_NAME.test(f.name) ? 0.25 : 0) - Math.max(0, f.avgTokens - 3) * 0.1;
     const word = targetFields
@@ -119,10 +126,25 @@ export async function rankCandidates(
     // confidently, so penalise length and prefer gloss-like field names.
     const glossScore = (f: FieldStats) =>
       f.glossShare + (GLOSS_NAME.test(f.name) ? 0.3 : 0) - Math.max(0, f.avgTokens - 4) * 0.15;
+    // Single English words are also hard to identify, so a short, non-target field with a
+    // gloss-like name qualifies even when language ID is unsure.
     const gloss =
       stats
-        .filter((f) => f.name !== word.name && f.glossShare >= 0.3)
+        .filter(
+          (f) =>
+            f.name !== word.name &&
+            f.name !== sentence?.name &&
+            (f.glossShare >= 0.3 ||
+              (GLOSS_NAME.test(f.name) &&
+                f.targetShare < 0.3 &&
+                f.avgTokens <= 6 &&
+                f.samples >= minSamples)),
+        )
         .sort((a, b) => glossScore(b) - glossScore(a))[0] ?? null;
+    const confidence = Math.max(
+      word.targetShare,
+      sentence && sentence.targetShare >= 0.8 ? sentence.targetShare : 0,
+    );
 
     candidates.push({
       deck: first.deck,
@@ -132,7 +154,8 @@ export async function rankCandidates(
       sentenceField: sentence?.name ?? null,
       glossField: gloss?.name ?? null,
       targetShare: word.targetShare,
-      score: word.targetShare * Math.log10(1 + first.deckNoteCount),
+      confidence,
+      score: confidence * Math.log10(1 + first.deckNoteCount),
       fields: stats,
       examples: group.slice(0, 5).map((s) => cleanField(s.fields[word.name] ?? "")),
     });
@@ -151,11 +174,11 @@ export function selectCandidates(candidates: Candidate[], minShare = 0.5): Candi
     const k = `${c.modelName}\u0000${c.wordField}`;
     const w = c.fields.find((f) => f.name === c.wordField)?.samples ?? 0;
     const p = pooled.get(k) ?? { share: 0, weight: 0 };
-    pooled.set(k, { share: p.share + c.targetShare * w, weight: p.weight + w });
+    pooled.set(k, { share: p.share + c.confidence * w, weight: p.weight + w });
   }
   return candidates.filter((c) => {
     const p = pooled.get(`${c.modelName}\u0000${c.wordField}`);
     const pooledShare = p && p.weight ? p.share / p.weight : 0;
-    return c.targetShare >= minShare || pooledShare >= minShare;
+    return c.confidence >= minShare || pooledShare >= minShare;
   });
 }

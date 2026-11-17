@@ -71,6 +71,7 @@ describe("selectCandidates", () => {
     sentenceField: null,
     glossField: null,
     targetShare: share,
+    confidence: share,
     score: share,
     fields: [{ name: "Woord", samples, targetShare: share, glossShare: 0, avgTokens: 1 }],
     examples: [],
@@ -118,5 +119,42 @@ describe("gloss field choice", () => {
       sentenceField: "Zin",
       glossField: "Betekenis",
     });
+  });
+});
+
+describe("robust deck evidence", () => {
+  it("selects a deck whose headwords look ambiguous but whose sentences are clearly Dutch", async () => {
+    const words = [
+      "station",
+      "hotel",
+      "restaurant",
+      "fiets",
+      "lopen",
+      "auto",
+      "radio",
+      "huis",
+      "film",
+      "taxi",
+    ];
+    const notes: NoteSample[] = words.map((w) => ({
+      deck: "Freq",
+      deckNoteCount: 5000,
+      modelName: "Freq",
+      fields: { Word: w, Definition: "x", Dutch: `Ik zie de ${w} vandaag.` },
+    }));
+    const dutchWords = new Set(["fiets", "lopen", "huis", "auto"]);
+    const det: DetectFn = async (texts) =>
+      texts.map((t) => ({
+        lang: t.startsWith("Ik zie") || dutchWords.has(t) ? "nl" : t === "x" ? null : "fr",
+        confidence: 0.5,
+      }));
+    const ranked = await rankCandidates(notes, det, "nl");
+    expect(ranked[0]).toMatchObject({
+      wordField: "Word",
+      sentenceField: "Dutch",
+      glossField: "Definition",
+    });
+    expect(ranked[0]!.targetShare).toBeCloseTo(0.4);
+    expect(selectCandidates(ranked, 0.5)).toHaveLength(1);
   });
 });

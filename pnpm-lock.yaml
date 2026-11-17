@@ -205,12 +205,18 @@ importers:
 
   apps/web:
     dependencies:
+      '@app/anki':
+        specifier: workspace:*
+        version: link:../../packages/anki
       '@app/core':
         specifier: workspace:*
         version: link:../../packages/core
       '@app/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@app/nlp-client':
+        specifier: workspace:*
+        version: link:../../packages/nlp-client
       '@app/ui':
         specifier: workspace:*
         version: link:../../packages/ui
