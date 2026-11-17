@@ -25,6 +25,12 @@ export interface ReaderProps {
   mode?: ReaderMode;
   /** Show cloze blanks. Default: only in cloze mode (or when no mode is given). */
   blanks?: boolean;
+  /**
+   * Grammar spotlights: token index -> short description of the constructions it belongs to
+   * (e.g. "Inversion · Separable verbs"). Those words get a quiet underline; clicking them still
+   * calls `onTokenClick`.
+   */
+  spotlights?: ReadonlyMap<number, string>;
 }
 
 /** Letter hint: the first `shown` letters, then one underscore per remaining letter. */
@@ -76,6 +82,7 @@ export function Reader({
   glosses,
   mode,
   blanks,
+  spotlights,
 }: ReaderProps) {
   const [answers, setAnswers] = useState<Record<number, string>>({});
   const [hints, setHints] = useState<Record<number, number>>({});
@@ -257,6 +264,8 @@ export function Reader({
 
     // In read mode a cloze degrades to a plain (known/learning-style) word.
     const shownLabel: TokenLabel = label === "cloze" ? "known" : label;
+    const spot = spotlights?.get(t.i);
+    const title = gloss && mode === "gloss" ? (spot ? `${gloss} · ${spot}` : gloss) : spot;
     return (
       <span
         key={t.i}
@@ -264,10 +273,15 @@ export function Reader({
         data-i={t.i}
         data-label={shownLabel}
         data-selected={isSelected}
-        className={cn("k-tok", t.particle_of != null && "k-tok--particle")}
+        className={cn(
+          "k-tok",
+          t.particle_of != null && "k-tok--particle",
+          spot !== undefined && "k-tok--spot",
+        )}
         role="button"
         tabIndex={t.i === tabStop ? 0 : -1}
-        {...(gloss && mode === "gloss" ? { title: gloss } : {})}
+        {...(title ? { title } : {})}
+        {...(spot ? { "aria-description": `Grammar: ${spot}` } : {})}
         {...(shownLabel === "learning"
           ? {
               style: {

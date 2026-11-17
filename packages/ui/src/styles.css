@@ -30,6 +30,7 @@
   --state-new-line: #9a6a12;
   --state-learning-line: #5e8b6b;
   --state-gloss-line: #2f6f6a;
+  --state-grammar-line: #8a6d9c;
 
   --shadow-pop: 0 8px 24px rgb(0 0 0 / 0.08);
 
@@ -63,6 +64,7 @@
     --state-new-line: #d9a441;
     --state-learning-line: #8db89a;
     --state-gloss-line: #6fb3ac;
+    --state-grammar-line: #b9a0cc;
     --shadow-pop: 0 8px 24px rgb(0 0 0 / 0.4);
   }
 }
@@ -82,6 +84,7 @@
   --state-new-line: #d9a441;
   --state-learning-line: #8db89a;
   --state-gloss-line: #6fb3ac;
+  --state-grammar-line: #b9a0cc;
   --shadow-pop: 0 8px 24px rgb(0 0 0 / 0.4);
 }
 
@@ -642,6 +645,11 @@ kbd {
   text-decoration: underline dotted var(--state-gloss-line);
   text-decoration-thickness: 1px;
   text-underline-offset: 4px;
+}
+/* Grammar spotlight: a quiet line under the words of a construction. An inset shadow, so it
+   combines with the word-state underlines and borders and survives the hover background. */
+.k-tok--spot {
+  box-shadow: inset 0 -2px 0 color-mix(in srgb, var(--state-grammar-line) 75%, transparent);
 }
 .k-tok[data-selected="true"] {
   outline: 1.5px solid var(--accent);

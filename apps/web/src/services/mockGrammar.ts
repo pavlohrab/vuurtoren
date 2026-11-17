@@ -288,7 +288,14 @@ export function createMockGrammar(
       return {
         library: library(set)
           .slice(0, limit)
-          .map(({ hit: _hit, ...e }) => e),
+          .map(({ textId, title, topic, sentence, marks, note }) => ({
+            textId,
+            title,
+            topic,
+            sentence,
+            marks,
+            note,
+          })),
         tatoeba: tatoeba(set).slice(0, limit),
         tatoebaUnavailable: false,
       };
