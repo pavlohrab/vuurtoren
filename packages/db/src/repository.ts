@@ -36,6 +36,11 @@ export interface KenningRepository extends Repository {
   close(): Promise<void>;
   /** Events with id > `sinceId` (all if omitted), in id order. */
   events(sinceId?: string): Promise<StoredEvent[]>;
+  /**
+   * Distinct keys the user looked up (clicked) while reading `textId`, in order of first
+   * lookup. Reads only WordLookedUp events of that text, not the whole log.
+   */
+  lookedUpKeys(lang: string, textId: string): Promise<string[]>;
   /** When (ms) and from which sources the current Anki snapshot of `lang` was imported. */
   lastSnapshot(lang: string): Promise<{ at: number; sources: string[] } | null>;
   /** This device's id. */
@@ -280,6 +285,20 @@ export async function createRepository(
           )
         ).map(toStored),
       ),
+
+    lookedUpKeys: (lang, textId) =>
+      serial(async () => {
+        const rows = await driver.exec(
+          `SELECT DISTINCT json_extract(payload, '$.key') AS key, MIN(id) AS first
+             FROM events
+            WHERE type = 'WordLookedUp'
+              AND json_extract(payload, '$.textId') = ?
+              AND json_extract(payload, '$.lang') = ?
+            GROUP BY key ORDER BY first`,
+          [textId, lang],
+        );
+        return rows.map((r) => String(r["key"]));
+      }),
 
     lastSnapshot: (lang) =>
       serial(async () => {
