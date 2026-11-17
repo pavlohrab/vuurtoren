@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Exercise } from "@app/core";
 import { Button, ExerciseCard, type ExerciseFeedback, type ExerciseSubmit } from "@app/ui";
 import { useServices } from "../../services/context.js";
@@ -22,7 +22,11 @@ export function GeneratedSession({
   const [submitted, setSubmitted] = useState<string | null>(null);
   const [correct, setCorrect] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  const shownAt = useRef(Date.now());
+  // When the current card was shown (set after render; Date.now() is impure during render).
+  const shownAt = useRef(0);
+  useEffect(() => {
+    shownAt.current = Date.now();
+  }, [index]);
   const current = exercises[index];
   if (!current) return null;
 
@@ -52,7 +56,6 @@ export function GeneratedSession({
     setIndex(index + 1);
     setFeedback(null);
     setSubmitted(null);
-    shownAt.current = Date.now();
   };
 
   return (
