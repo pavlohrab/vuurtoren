@@ -6,12 +6,20 @@
 # self-hoster gets working /gloss with a plain `docker compose up --build`. The builder uses
 # only the standard library, so it does not depend on the (slow) Python dependency layer.
 # Re-run with `--build-arg KAIKKI_URL=...` or `--no-cache` to refresh the dictionary.
+#
+# The Tatoeba sentence DB (/sentences, and the perfect-tense evidence behind /forms `aux`) is built
+# the same way, in a throwaway stage, but that stage needs the Python dependencies (the spaCy
+# pipeline analyses ~150k sentences, ~4 min): it therefore starts from the shared `venv` stage, which
+# the runtime image copies as well, so the dependencies are installed (and cached) only once. The
+# ~30 MB of Tatoeba exports never reach the final image, only the ~50 MB SQLite file. Rebuild with
+# `--no-cache` (or `--build-arg TATOEBA_DATE=...`) to pick up newer weekly exports.
 
 # ---- Stage 1: dictionary ---------------------------------------------------------------
 FROM python:3.12-slim AS dictionary
 ARG KAIKKI_URL=https://kaikki.org/dictionary/Dutch/kaikki.org-dictionary-Dutch.jsonl
 WORKDIR /build
-COPY src/kenning_nlp/__init__.py src/kenning_nlp/dictionary.py src/kenning_nlp/
+COPY src/kenning_nlp/__init__.py src/kenning_nlp/dictionary.py src/kenning_nlp/compound.py \
+    src/kenning_nlp/wordforms.py src/kenning_nlp/nl.py src/kenning_nlp/
 COPY scripts/build_dictionary.py scripts/
 RUN PYTHONPATH=src python scripts/build_dictionary.py --url "$KAIKKI_URL" \
     --output /out/dictionary-nl.sqlite
@@ -25,23 +33,14 @@ WORKDIR /build
 COPY scripts/fetch_mt_model.py scripts/
 RUN python scripts/fetch_mt_model.py --output /out/mt-nl-en
 
-# ---- Stage 3: runtime ------------------------------------------------------------------
-FROM python:3.12-slim
-
-# Tesseract + Dutch/Ukrainian (English is a dependency of the base package) traineddata.
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends \
-        tesseract-ocr tesseract-ocr-nld tesseract-ocr-ukr \
-    && rm -rf /var/lib/apt/lists/*
-
+# ---- Stage 3: Python environment ---------------------------------------------------------
+FROM python:3.12-slim AS venv
 RUN pip install --no-cache-dir uv
 ENV UV_COMPILE_BYTECODE=1 \
     UV_LINK_MODE=copy \
     UV_PROJECT_ENVIRONMENT=/opt/venv \
     PATH="/opt/venv/bin:$PATH" \
-    PYTHONUNBUFFERED=1 \
-    KENNING_DICT_PATH=/data/dictionary-nl.sqlite \
-    KENNING_MT_DIR=/data/mt-nl-en
+    PYTHONUNBUFFERED=1
 
 WORKDIR /app
 # Dependencies first (cached unless pyproject/uv.lock change). The spaCy model is a locked
@@ -51,7 +50,38 @@ RUN uv sync --locked --no-dev --no-install-project
 COPY src ./src
 RUN uv sync --locked --no-dev
 
+# ---- Stage 4: sentences ------------------------------------------------------------------
+# Needs the dictionary (the pipeline's lemma logic reads it) and the spaCy model.
+FROM venv AS sentences
+ARG TATOEBA_DATE=latest
+ENV KENNING_DICT_PATH=/in/dictionary-nl.sqlite
+COPY --from=dictionary /out/dictionary-nl.sqlite /in/dictionary-nl.sqlite
+COPY scripts/build_sentences.py scripts/
+RUN python scripts/build_sentences.py --processes 4 --download-dir /tmp/tatoeba \
+    --output /out/sentences-nl.sqlite
+
+# ---- Stage 5: runtime ------------------------------------------------------------------
+FROM python:3.12-slim
+
+# Tesseract + Dutch/Ukrainian (English is a dependency of the base package) traineddata.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        tesseract-ocr tesseract-ocr-nld tesseract-ocr-ukr \
+    && rm -rf /var/lib/apt/lists/*
+
+ENV PATH="/opt/venv/bin:$PATH" \
+    PYTHONUNBUFFERED=1 \
+    KENNING_DICT_PATH=/data/dictionary-nl.sqlite \
+    KENNING_SENTENCES_PATH=/data/sentences-nl.sqlite \
+    KENNING_MT_DIR=/data/mt-nl-en
+
+WORKDIR /app
+# The project is installed in editable mode, so /app (src) must sit next to /opt/venv.
+COPY --from=venv /opt/venv /opt/venv
+COPY --from=venv /app /app
+
 COPY --from=dictionary /out/dictionary-nl.sqlite /data/dictionary-nl.sqlite
+COPY --from=sentences /out/sentences-nl.sqlite /data/sentences-nl.sqlite
 COPY --from=mtmodel /out/mt-nl-en /data/mt-nl-en
 
 RUN useradd --system --uid 10001 kenning

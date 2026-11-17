@@ -25,6 +25,13 @@ keys. It adds ~160 MB to the image and ~0.7 GB RAM once loaded (lazily, on the f
 about 0.1 s per sentence on one CPU core set. Outside Docker run
 `uv run python scripts/fetch_mt_model.py` in `server/nlp`.
 
+Practice data (M4) is built the same way: the Tatoeba sentence DB (`POST /sentences`, ~50 MB, from
+~30 MB of exports) is built in a throwaway stage that reuses the Python dependency layer and spends
+about 4 extra minutes on the first build (spaCy analyses ~150k sentences). `POST /forms` reads the
+morphology the dictionary stage extracts, and `POST /similar` builds a word-vector index in memory on
+its first request (a few seconds, ~40 MB). Run `build --no-cache nlp` to pick up newer Tatoeba
+exports.
+
 Smoke test:
 
 ```sh
@@ -36,13 +43,14 @@ curl -s localhost:8080/nlp/health          # same service through the web contai
 
 ## Configuration
 
-| Variable               | Where         | Meaning                                                                                                                                                                                             |
-| ---------------------- | ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `KENNING_CORS_ORIGINS` | `nlp`         | Comma-separated browser origins allowed to call the NLP service directly (default `http://localhost:8080`). Not needed for the `/nlp/` proxy. Set it to your public origin if you expose port 8000. |
-| `KENNING_DICT_PATH`    | `nlp`         | Dictionary file (default `/data/dictionary-nl.sqlite` in the image).                                                                                                                                |
-| `KENNING_MT_DIR`       | `nlp`         | Translation model directory (default `/data/mt-nl-en` in the image).                                                                                                                                |
-| `KENNING_OCR_PSM`      | `nlp`         | Tesseract page segmentation mode (default `3`, automatic with column detection).                                                                                                                    |
-| `VITE_NLP_URL`         | web build arg | NLP base URL baked into the bundle (default `/nlp`).                                                                                                                                                |
+| Variable                 | Where         | Meaning                                                                                                                                                                                             |
+| ------------------------ | ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `KENNING_CORS_ORIGINS`   | `nlp`         | Comma-separated browser origins allowed to call the NLP service directly (default `http://localhost:8080`). Not needed for the `/nlp/` proxy. Set it to your public origin if you expose port 8000. |
+| `KENNING_DICT_PATH`      | `nlp`         | Dictionary file (default `/data/dictionary-nl.sqlite` in the image).                                                                                                                                |
+| `KENNING_SENTENCES_PATH` | `nlp`         | Tatoeba sentence database (default `/data/sentences-nl.sqlite` in the image).                                                                                                                       |
+| `KENNING_MT_DIR`         | `nlp`         | Translation model directory (default `/data/mt-nl-en` in the image).                                                                                                                                |
+| `KENNING_OCR_PSM`        | `nlp`         | Tesseract page segmentation mode (default `3`, automatic with column detection).                                                                                                                    |
+| `VITE_NLP_URL`           | web build arg | NLP base URL baked into the bundle (default `/nlp`).                                                                                                                                                |
 
 Example: `KENNING_CORS_ORIGINS=https://kenning.example.com docker compose -f deploy/compose.yml up -d`.
 

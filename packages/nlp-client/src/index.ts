@@ -104,6 +104,48 @@ export interface Translation {
   translation: string;
 }
 
+/** A lemma with its spaCy universal POS (`VERB`, `NOUN`, `ADJ`, ...). */
+export interface LemmaPos {
+  lemma: string;
+  pos: string;
+}
+
+/**
+ * Morphology for form exercises (`/forms`). Mirrors `WordForms` in `@app/core`
+ * (packages/core/src/practice/types.ts); every field is omitted when unknown. For separable
+ * verbs `past` / `present` are the main-clause forms with the particle ("belde op", "bel op").
+ */
+export interface WordForms {
+  participle?: string;
+  aux?: "hebben" | "zijn" | "both";
+  past?: [string, string];
+  present?: Partial<Record<"ik" | "jij" | "hij" | "wij" | "jullie" | "zij", string>>;
+  separable?: { particle: string; stem: string };
+  plural?: string;
+  diminutive?: string;
+  inflected?: string;
+  comparative?: string;
+  superlative?: string;
+}
+
+/** Tatoeba example sentence (`/sentences`); `target` = [start, end) of the word, UTF-16 offsets. */
+export interface ExampleSentence {
+  text: string;
+  translation?: string;
+  target: [number, number];
+  source: "anki" | "text" | "tatoeba";
+}
+
+export interface SentencesOptions {
+  /** Sentences per lemma (server: 1-10, default 3). */
+  limit?: number;
+  /** Maximum words per sentence (server: 3-40, default 15). */
+  maxWords?: number;
+}
+
+/** Max items per `/forms`, `/sentences` and `/similar` request (server limit). */
+const PRACTICE_BATCH = 500;
+
 export interface NlpClientOptions {
   url?: string;
   fetch?: typeof fetch;
@@ -277,5 +319,60 @@ export class NlpClient {
     }
     await flush();
     return out;
+  }
+
+  /** POST `path` in chunks of 500 items and merge the per-lemma result objects. */
+  private async practiceBatched<T>(
+    path: string,
+    key: "lemmas" | "words",
+    items: unknown[],
+    extra: Record<string, unknown>,
+  ): Promise<Record<string, T>> {
+    const out: Record<string, T> = {};
+    for (let i = 0; i < items.length; i += PRACTICE_BATCH) {
+      Object.assign(
+        out,
+        await this.post<Record<string, T>>(path, {
+          ...extra,
+          [key]: items.slice(i, i + PRACTICE_BATCH),
+        }),
+      );
+    }
+    return out;
+  }
+
+  /**
+   * Morphology (Wiktionary) per lemma for form exercises: `{ [lemma]: WordForms }` (`{}` when
+   * unknown). Rejects with HTTP 503 if the dictionary is missing or built by an older version.
+   */
+  forms(lang: NlpLang, lemmas: LemmaPos[]): Promise<Record<string, WordForms>> {
+    return this.practiceBatched("/forms", "lemmas", lemmas, { lang });
+  }
+
+  /**
+   * Tatoeba example sentences with English translations, shortest / commonest vocabulary first:
+   * `{ [lemma]: ExampleSentence[] }`. Rejects with HTTP 503 if the sentence DB is not built.
+   */
+  sentences(
+    lang: NlpLang,
+    lemmas: string[],
+    opts: SentencesOptions = {},
+  ): Promise<Record<string, ExampleSentence[]>> {
+    return this.practiceBatched("/sentences", "lemmas", lemmas, {
+      lang,
+      ...(opts.limit !== undefined && { limit: opts.limit }),
+      ...(opts.maxWords !== undefined && { maxWords: opts.maxWords }),
+    });
+  }
+
+  /**
+   * Distractor lemmas per word (same POS and frequency band, related but not synonyms):
+   * `{ [lemma]: string[] }`. The first call after a server start takes a few seconds.
+   */
+  similar(lang: NlpLang, words: LemmaPos[], k?: number): Promise<Record<string, string[]>> {
+    return this.practiceBatched("/similar", "words", words, {
+      lang,
+      ...(k !== undefined && { k }),
+    });
   }
 }

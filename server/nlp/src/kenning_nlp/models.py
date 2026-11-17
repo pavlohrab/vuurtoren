@@ -167,3 +167,75 @@ class Translation(BaseModel):
     """The input text, echoed."""
     translation: str
     """English translation (empty for a blank input)."""
+
+
+# --------------------------------------------------------------------------- practice data (M4)
+
+PRACTICE_MAX_LEMMAS = 500
+"""Items per ``/forms``, ``/sentences`` and ``/similar`` request (422 above)."""
+LemmaStr = Annotated[str, StringConstraints(min_length=1, max_length=100)]
+
+
+class LemmaPos(BaseModel):
+    """A lemma with its spaCy universal POS (``VERB``, ``NOUN``, ``ADJ``, ...)."""
+
+    lemma: LemmaStr
+    pos: Annotated[str, StringConstraints(max_length=10)]
+
+
+class FormsRequest(BaseModel):
+    """``POST /forms``: up to 500 ``{lemma, pos}`` pairs."""
+
+    lang: Lang
+    lemmas: list[LemmaPos] = Field(max_length=PRACTICE_MAX_LEMMAS)
+
+
+class SeparableForms(BaseModel):
+    particle: str
+    stem: str
+
+
+class WordForms(BaseModel):
+    """Mirror of the TypeScript ``WordForms`` (``packages/core/src/practice/types.ts``).
+
+    Every field is optional and omitted when unknown (the endpoint uses
+    ``response_model_exclude_none``). For separable verbs ``past`` and ``present`` are the
+    main-clause forms with the particle ("belde op", "bel op").
+    """
+
+    participle: str | None = None
+    aux: Literal["hebben", "zijn", "both"] | None = None
+    past: tuple[str, str] | None = None
+    present: dict[Literal["ik", "jij", "hij", "wij", "jullie", "zij"], str] | None = None
+    separable: SeparableForms | None = None
+    plural: str | None = None
+    diminutive: str | None = None
+    inflected: str | None = None
+    comparative: str | None = None
+    superlative: str | None = None
+
+
+class SentencesRequest(BaseModel):
+    """``POST /sentences``: up to 500 lemmas; ``limit`` 1-10 (default 3), ``maxWords`` 3-40 (15)."""
+
+    lang: Lang
+    lemmas: list[LemmaStr] = Field(max_length=PRACTICE_MAX_LEMMAS)
+    limit: int = Field(default=3, ge=1, le=10)
+    maxWords: int = Field(default=15, ge=3, le=40)  # noqa: N815 (camelCase wire format)
+
+
+class ExampleSentence(BaseModel):
+    """Mirror of the TypeScript ``ExampleSentence``; ``target`` is [start, end) in UTF-16."""
+
+    text: str
+    translation: str
+    target: tuple[int, int]
+    source: Literal["tatoeba"]
+
+
+class SimilarRequest(BaseModel):
+    """``POST /similar``: up to 500 ``{lemma, pos}`` pairs; ``k`` 1-20 (default 8)."""
+
+    lang: Lang
+    words: list[LemmaPos] = Field(max_length=PRACTICE_MAX_LEMMAS)
+    k: int = Field(default=8, ge=1, le=20)
