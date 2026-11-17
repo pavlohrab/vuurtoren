@@ -13,6 +13,7 @@ import {
   WordStateChip,
   useToast,
 } from "@app/ui";
+import { CreateStoryButton } from "../StoryDialog.js";
 import { useServices } from "../../services/context.js";
 import { errorText } from "../../services/errors.js";
 import { usePageHeader } from "../../shell/ShellContext.js";
@@ -232,6 +233,7 @@ export function UnitRoute({ courseId, n }: { courseId: string; n: number }) {
                 : `Add ${s.missing} missing ${s.missing === 1 ? "word" : "words"}`}
             </Button>
           ) : null}
+          <CreateStoryButton preset={{ topic: u.unit.title, unit: { courseId, unitN: n } }} />
         </div>
       ) : null}
       <Tabs

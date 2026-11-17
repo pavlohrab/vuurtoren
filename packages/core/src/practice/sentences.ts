@@ -1,6 +1,12 @@
 import type { ExampleSentence } from "./types.js";
 
-const SOURCE_RANK: Record<ExampleSentence["source"], number> = { anki: 0, text: 1, tatoeba: 2 };
+/** AI sentences rank alongside Tatoeba (same score; callers list them first, input order breaks the tie). */
+const SOURCE_RANK: Record<ExampleSentence["source"], number> = {
+  anki: 0,
+  text: 1,
+  ai: 2,
+  tatoeba: 2,
+};
 
 /** Number of whitespace-separated words. */
 export function wordCount(text: string): number {
@@ -15,7 +21,7 @@ function validSpan(s: ExampleSentence): boolean {
 
 /**
  * Rank usable sentences, best first: a sentence whose length is within [minWords, maxWords]
- * always beats one outside it; ties break by source (anki, text, tatoeba) and then input order.
+ * always beats one outside it; ties break by source (anki, text, then ai and tatoeba alike) and then input order.
  */
 export function rankSentences(
   sentences: readonly ExampleSentence[],

@@ -89,7 +89,7 @@ export async function applyEvent(driver: SqlDriver, ctx: EventContext): Promise<
           e.title,
           e.lang,
           e.source.kind,
-          e.source.ref ?? null,
+          e.source.ref ?? (e.source.kind === "ai" ? e.source.topic : null),
           e.content,
           hash,
           countWords(e.content),
@@ -218,6 +218,9 @@ export async function applyEvent(driver: SqlDriver, ctx: EventContext): Promise<
         e.lang,
         JSON.stringify(e.state satisfies StaircaseState),
       ]);
+      return;
+    case "SentencesGenerated":
+      // Read straight from the event log (see generated.ts): no table.
       return;
     case "ConversationStarted":
     case "MessageAdded":

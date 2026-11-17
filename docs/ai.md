@@ -5,6 +5,8 @@ AI is optional. Without it the reader, practice and Anki integration work as bef
 - **Converse** (`/converse`): a short chat in Dutch with a partner that stays within the words you know, corrects your messages and offers new words for Anki.
 - **Explain this sentence** (under the word inspector in the reader).
 - **Simplify this page** (in the reader): a rewrite at your coverage target, shown beside the original with both coverage scores. It never replaces the text.
+- **Create a story** (Library, a grammar topic page, a course unit): a new text at your level with a few words to learn, saved to your Library ([Stories](#stories)).
+- **Fill gaps with AI sentences** (Practice): checked example sentences for words that have too few ([AI example sentences](#ai-example-sentences)).
 
 These buttons are hidden until a provider is configured.
 
@@ -56,6 +58,49 @@ Settings shows a **local tally** for the month (requests and tokens on this devi
 5. If the model answers with invalid JSON, its raw text is shown and no rewrite is attempted.
 
 The coverage chip on each reply shows the final score.
+
+## Stories
+
+**Create a story** opens a dialog: topic, length (short ~150, medium ~300, long ~600 words), kind of text (story, dialogue, news, letter) and a focus:
+
+- **Words to learn now**: words you put first with Learn next, words you looked up while reading, then the shakiest words you are learning (up to 6).
+- **This unit's new words** (from a course unit): the unit's words you do not know yet.
+- **A grammar topic**: the story features that construction (from a topic page it is preselected).
+- **My own words**: type them. The word field is always editable; at most 10 are sent.
+
+How it works (`generateStory` in `packages/ai/src/story.ts`):
+
+1. One request: level (vocabulary estimate), 300 relevant known lemmas (topic and target words first, then words you are learning, then an even sample), the target words, the grammar point and style. JSON answer `{title, text, used_targets}`.
+2. The text is analysed by the language server and scored with the reader's matcher (target words count as known; they are meant to be new).
+3. Below your coverage target minus 3 points (at least 90%): **one** rewrite request that names the offending words (and any missing target words). The rewrite is kept only if coverage does not drop.
+4. Target words are checked in the analysed text (lemma match, separable verbs included), not taken from the model's `used_targets`. The toast after saving names any that are missing.
+5. Invalid JSON: the raw answer is saved as the text (you paid for it), with the topic as title, and no rewrite is attempted. Language server down: the story is saved without the checks.
+
+The story is saved as a Library text (`TextImported` with `source: {kind: "ai", provider, model, targets, topic, grammarTopic?}`; older source kinds are unchanged) and opens in the reader. The Library card shows an **AI story** chip. Words from a story go to Anki through the reader's normal Add to Anki.
+
+**Cost.** About 1-2K tokens in and 300-1,200 out per story, roughly double with the rewrite. The dialog shows the estimate for the chosen length. Small models: well under a cent; mid-size: a few cents.
+
+## AI example sentences
+
+Practice exercises need example sentences. Anki notes, your own texts and Tatoeba cover most words; for the rest, the Practice start screen has **Fill gaps with AI sentences** (on by default when a provider is configured).
+
+- For up to **8 words per session** with fewer than 3 usable sentences (and no earlier AI attempt), the app asks for 5 short sentences each (4-14 words) using your vocabulary (`generateSentences` in `packages/ai/src/examples.ts`). The vocabulary list is in a static, cacheable system prompt; the target word goes in the user message.
+- Every sentence is **validated by the language server** before use, and dropped otherwise:
+  - the target lemma is present (same matcher as the reader; separable verbs count);
+  - the other words are known: coverage at least 90% and at most one unknown word;
+  - no other target word of the request leaks in;
+  - 4-14 words;
+  - for a grammar topic, the server's rule-based detector fires for that topic (its marks and note are kept for the exercise).
+- Accepted sentences are stored as `SentencesGenerated {lang, key, topic?, sentences:[{text, translation?, target?, marks?, note?}], rejected, provider, model}` events (no table; folded by `generatedSentences(lang)`, also over `/api/rpc`), so they are not generated again. An attempt with nothing accepted is stored too, so a hard word is not retried every session.
+- They join the sentence pipeline as `source: "ai"`: after Anki and text sentences, alongside Tatoeba (listed first, so they win a tie). The existing non-AI generators build and grade the exercises; the AI never grades.
+- **Grammar topic practice**: a topic with fewer than 6 hit sentences in your texts and Tatoeba gets one request for 5 sentences showing the construction (when a provider is configured). They feed the sentence exercises (scramble); word exercises (gender, perfect...) still need words from real hits.
+- The session shows a line such as "5 new AI sentences for 2 items · 1 rejected by the checks". A provider error stops the fill and is shown there; practice continues without it.
+
+**Cost.** One request per word: about 1K tokens in (mostly cacheable) and 200-300 out. A full fill of 8 words is roughly 10K in, 2K out: under a cent on small models.
+
+## What is sent (stories and sentences)
+
+To your provider only: the topic, the target words, the grammar topic's title and one-line summary, your vocabulary estimate and a list of 200-300 known lemmas. No texts from your Library, no Anki content, no keys or identifiers. The generated text and sentences are stored in your data (events), so they are included in backups and sync.
 
 ## Claude subscription (Pro / Max): use MCP
 

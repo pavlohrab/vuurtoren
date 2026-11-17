@@ -72,8 +72,34 @@ describe("Practice start view", () => {
       expect(services.startPractice).toHaveBeenCalledWith({
         size: 10,
         skills: ["recognition", "gender"],
+        aiSentences: true,
+        onAISentences: expect.any(Function),
       }),
     );
+  });
+
+  it("fills gaps with AI sentences when a provider is set, shows the count, and can be turned off", async () => {
+    stubSpeech([{ lang: "nl-NL" }]);
+    const { services, user } = setup();
+    vi.mocked(services.startPractice).mockImplementationOnce(async (opts) => {
+      opts?.onAISentences?.({ requested: 2, accepted: 5, rejected: 1, reused: 0 });
+      return MOCK_EXERCISES;
+    });
+    const box = await screen.findByRole("checkbox", { name: /Fill gaps with AI sentences/ });
+    expect(box).toBeChecked();
+    await begin(user);
+    expect(
+      await screen.findByText("5 new AI sentences for 2 items · 1 rejected by the checks"),
+    ).toBeInTheDocument();
+  });
+
+  it("starts without AI sentences when the option is off", async () => {
+    stubSpeech([{ lang: "nl-NL" }]);
+    const { services, user } = setup();
+    await user.click(await screen.findByRole("checkbox", { name: /Fill gaps with AI sentences/ }));
+    await begin(user);
+    await waitFor(() => expect(services.startPractice).toHaveBeenCalled());
+    expect(vi.mocked(services.startPractice).mock.calls[0]![0]).not.toHaveProperty("aiSentences");
   });
 
   it("disables Listening without a Dutch voice and never asks for it", async () => {

@@ -1,11 +1,11 @@
-import { ClipboardPaste, FileText, Globe, Image, ListChecks, Trash2 } from "lucide-react";
+import { ClipboardPaste, FileText, Globe, Image, ListChecks, Sparkles, Trash2 } from "lucide-react";
 import type { ReactNode } from "react";
 import { Button } from "./Button.js";
 import { Chip } from "./Chip.js";
 import { BAND_LABEL, CoverageMeter, difficultyBand } from "./CoverageMeter.js";
 import { WordStateChip } from "./WordState.js";
 
-export type TextSourceKind = "paste" | "url" | "pdf" | "image";
+export type TextSourceKind = "paste" | "url" | "pdf" | "image" | "ai";
 
 export interface TextCardProps {
   title: string;
@@ -25,6 +25,7 @@ const SOURCE_ICON: Record<TextSourceKind, ReactNode> = {
   url: <Globe size={16} aria-hidden />,
   pdf: <FileText size={16} aria-hidden />,
   image: <Image size={16} aria-hidden />,
+  ai: <Sparkles size={16} aria-hidden />,
 };
 
 const SOURCE_LABEL: Record<TextSourceKind, string> = {
@@ -32,6 +33,7 @@ const SOURCE_LABEL: Record<TextSourceKind, string> = {
   url: "Web page",
   pdf: "PDF",
   image: "Photo",
+  ai: "Written by AI for you",
 };
 
 /** Library card: title, source, size, coverage, new-word count and difficulty band. */
@@ -52,6 +54,7 @@ export function TextCard({
           {SOURCE_ICON[sourceKind]}
         </span>
         <span>{wordCount.toLocaleString("en")} words</span>
+        {sourceKind === "ai" ? <Chip tone="accent">AI story</Chip> : null}
         {onWords ? (
           <Button
             variant="ghost"
