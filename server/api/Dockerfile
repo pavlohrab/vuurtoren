@@ -17,6 +17,7 @@ RUN pnpm --filter @app/api deploy --prod /out
 FROM node:26-slim
 ENV NODE_ENV=production \
     KENNING_DB=/data/kenning.sqlite \
+    KENNING_AUTH_DB=/data/auth.sqlite \
     KENNING_HOST=0.0.0.0 \
     KENNING_PORT=8787
 WORKDIR /app
@@ -28,4 +29,6 @@ VOLUME /data
 EXPOSE 8787
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s \
     CMD node -e "fetch('http://127.0.0.1:8787/api/health').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"
-CMD ["node", "dist/main.js"]
+# ENTRYPOINT (not CMD) so commands can be appended:
+#   docker compose run --rm -it api hash-password
+ENTRYPOINT ["node", "dist/main.js"]

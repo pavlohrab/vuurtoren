@@ -19,6 +19,12 @@ RUN pnpm --filter @app/web... build
 
 # ---- Stage 2: serve --------------------------------------------------------------------
 FROM nginx:1.27-alpine
-COPY deploy/nginx.conf /etc/nginx/conf.d/default.conf
+# The config is a template: the image's entrypoint renders it to conf.d/default.conf,
+# substituting only KENNING_* variables (see the top of deploy/nginx.conf.template).
+ENV NGINX_ENVSUBST_FILTER=^KENNING_ \
+    KENNING_NLP_AUTH=on
+COPY deploy/nginx.conf.template /etc/nginx/templates/default.conf.template
 COPY --from=build /repo/apps/web/dist /usr/share/nginx/html
 EXPOSE 80
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD wget -qO /dev/null http://127.0.0.1/ || exit 1

@@ -232,7 +232,11 @@ describe("export / import", () => {
     const repo = await createHttpRepository(base);
     await repo.append({ type: "SettingChanged", key: "k", value: 1 });
     const post = (body: Uint8Array) =>
-      fetch(`${base}/api/import`, { method: "POST", body: Buffer.from(body) });
+      fetch(`${base}/api/import`, {
+        method: "POST",
+        headers: { "x-kenning": "1" },
+        body: Buffer.from(body),
+      });
 
     expect((await post(new TextEncoder().encode("hello, not a database"))).status).toBe(422);
 

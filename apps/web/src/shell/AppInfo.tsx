@@ -13,6 +13,17 @@ export interface DataControls {
   admin: DataAdmin;
 }
 
+/** Settings > Account in server mode (ADR 0009). */
+export interface AccountControls {
+  /** False when the server runs without sign-in. */
+  authEnabled: boolean;
+  /** The signed-in username (null with the access token or auth off). */
+  user: string | null;
+  via: "session" | "token" | "open";
+  signOut: () => Promise<void>;
+  signOutAll: () => Promise<void>;
+}
+
 /** App-level facts the shell shows: storage problems and demo mode. */
 export interface AppInfo {
   /** Persistent, quiet message shown at the top of the shell (e.g. data will not be saved). */
@@ -23,6 +34,8 @@ export interface AppInfo {
   onLeaveDemo?: (() => void) | undefined;
   /** Backup/restore and storage facts; absent in demo mode. */
   data?: DataControls | undefined;
+  /** Who is signed in; absent in browser and demo mode. */
+  account?: AccountControls | undefined;
 }
 
 const AppInfoContext = createContext<AppInfo>({});

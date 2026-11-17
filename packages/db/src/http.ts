@@ -17,14 +17,16 @@ export interface ServerHealth {
   service: "kenning-api";
   /** "ready", or "schema-too-new" when the stored database needs a newer app. */
   state: "ready" | "schema-too-new";
-  /** True when requests must carry `Authorization: Bearer <token>`. */
+  /** True when requests need a sign-in session (cookie) or `Authorization: Bearer <token>`. */
   authRequired: boolean;
+  /** How one can sign in (absent on servers older than ADR 0009: token only). */
+  authMethods?: ("password" | "token")[];
   schemaVersion: number;
   /** Schema version found in the file when `state` is "schema-too-new". */
   foundVersion?: number;
 }
 
-/** A failed API call. `status` is the HTTP status (401 = token needed or wrong). */
+/** A failed API call. `status` is the HTTP status (401 = sign-in needed or token wrong). */
 export class HttpError extends Error {
   override readonly name = "HttpError";
   constructor(
@@ -108,7 +110,8 @@ export function createHttpAdmin(
       checkBackupHeader(bytes); // fail fast, before uploading a large wrong file
       const res = await fetchImpl(`${baseUrl}/api/import`, {
         method: "POST",
-        headers: headers({ "content-type": "application/octet-stream" }),
+        // X-Kenning marks a deliberate request from the app (the server's CSRF guard).
+        headers: headers({ "content-type": "application/octet-stream", "x-kenning": "1" }),
         body: bytes as BodyInit,
       });
       if (!res.ok) throw await failure(res);

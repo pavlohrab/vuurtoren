@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Button, Input, Select, Skeleton, Spinner, useToast } from "@app/ui";
 import { useServices } from "../services/context.js";
 import type { LearnerSummary, Settings as SettingsData } from "../services/types.js";
+import { AccountSettings } from "./AccountSettings.js";
 import { AISettings } from "./AISettings.js";
 import { AnkiSettings } from "./AnkiSettings.js";
 import { DataSettings } from "./DataSettings.js";
@@ -140,6 +141,7 @@ export function SettingsScreen() {
       </section>
       <AISettings />
       <DataSettings />
+      <AccountSettings />
     </div>
   );
 }

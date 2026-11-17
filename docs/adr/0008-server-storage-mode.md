@@ -10,7 +10,7 @@
 - The browser talks to it with `createHttpRepository` (`@app/db/http`), which implements `KenningRepository` over `POST /api/rpc {method, args}`. Only an allow-list of repository methods is callable (`packages/db/src/rpc.ts`); there is no raw SQL endpoint. The learner model's `Map` travels as entries.
 - Mode selection at startup: `?demo` wins; else a Kenning `GET /api/health` on the same origin means server mode; else browser OPFS mode (desktop, dev, static hosting).
 - Backup/restore exists in both modes: `GET /api/export` (`VACUUM INTO`, consistent), `POST /api/import` (SQLite header, `user_version <= SCHEMA_VERSION`, required tables; temp file then atomic rename under the queue; the old data is kept if validation fails); in the browser, worker ops `export`/`import` (pool `exportFile`/`importDb`, old file restored on rejection). An import always assigns a new `device_id`, keeps events as they are and rebuilds projections (the stored `projection_version` is dropped).
-- Auth: optional `KENNING_TOKEN` (bearer). Off by default, the API binds to localhost outside Docker, and in compose only nginx can reach it.
+- Auth: optional `KENNING_TOKEN` (bearer). Superseded by [ADR 0009](0009-login-for-public-deployments.md) (password sign-in, sessions, CSRF guard). Off by default, the API binds to localhost outside Docker, and in compose only nginx can reach it.
 - A database newer than the app (`SchemaTooNewError`) never falls back to demo data: a blocking screen offers a backup download and tells the user to update. Browser mode requests `navigator.storage.persist()`, shows a banner on insecure contexts, and guards against a second tab with Web Locks.
 
 **Consequences:**

@@ -3,21 +3,36 @@ import { createRoot } from "react-dom/client";
 import "./index.css";
 import type { ServerHealth } from "@app/db/http";
 import { App } from "./App.js";
+import { type Account, type AuthClient, createAuthClient } from "./auth/client.js";
+import { installFetchWatch } from "./auth/watch.js";
 import { createMockServices } from "./services/mock.js";
 import type { AppServices } from "./services/types.js";
-import type { DataControls } from "./shell/AppInfo.js";
+import type { AccountControls, DataControls } from "./shell/AppInfo.js";
+import { SessionGate } from "./shell/SessionGate.js";
+import { SignInScreen } from "./shell/SignIn.js";
 import {
   BlockedScreen,
   BusyTabScreen,
   ElsewhereScreen,
-  LoginScreen,
+  UnreachableScreen,
 } from "./shell/StorageScreens.js";
 import { createBrowserAdmin } from "./storage/browserAdmin.js";
-import { loadToken, saveToken, selectStorageMode } from "./storage/mode.js";
+import {
+  decideStartup,
+  forgetLegacyToken,
+  forgetServer,
+  rememberServer,
+  serverSeen,
+} from "./storage/startup.js";
 import { acquireTabLock, type HeldLock } from "./storage/tabLock.js";
 import { initTheme } from "./theme.js";
 
 initTheme();
+// Before any service exists (the NLP client binds fetch when created): a 401 from /api or
+// /nlp later on means the session ended, and the sign-in screen comes back (ADR 0009).
+installFetchWatch();
+forgetLegacyToken();
+const auth: AuthClient = createAuthClient();
 
 /**
  * Real services by default; `?demo` (or a failure to open the database) uses mock data.
@@ -52,8 +67,17 @@ function leaveDemo(): void {
 
 /** What to show after trying to open the user's data. */
 type Boot =
-  | { kind: "app"; services: AppServices; notice?: string; data?: DataControls }
-  | { kind: "login"; error?: string }
+  | {
+      kind: "app";
+      services: AppServices;
+      notice?: string;
+      data?: DataControls;
+      account?: AccountControls;
+      /** Server mode with sign-in: watch for the session ending. */
+      session?: { methods: ServerHealth["authMethods"]; user: string | null };
+    }
+  | { kind: "signin"; health: ServerHealth }
+  | { kind: "unreachable"; reason: string }
   | { kind: "blocked"; message: string; download: () => Promise<Uint8Array> }
   | { kind: "busy"; takeOver: () => Promise<void> }
   | { kind: "elsewhere" };
@@ -61,13 +85,12 @@ type Boot =
 const INSECURE_NOTICE =
   "Kenning needs https or http://localhost to store data (you opened it over plain http from another device). Use https (see deploy/README.md) or run in server mode.";
 
-/** Server mode: one SQLite file on the server, reached through /api. */
-async function bootServer(health: ServerHealth, token: string | null): Promise<Boot> {
+/** Server mode: one SQLite file on the server, reached through /api (cookie session). */
+async function bootServer(health: ServerHealth, account: Account): Promise<Boot> {
   const [{ createHttpAdmin, createHttpRepository, HttpError }, { createLiveServices }] =
     await Promise.all([import("@app/db/http"), import("./services/live.js")]);
-  const admin = createHttpAdmin("", token ?? undefined);
+  const admin = createHttpAdmin("");
   try {
-    if (health.authRequired) await admin.info(); // verifies the token
     if (health.state === "schema-too-new") {
       return {
         kind: "blocked",
@@ -75,17 +98,30 @@ async function bootServer(health: ServerHealth, token: string | null): Promise<B
         download: () => admin.exportBackup(),
       };
     }
-    const repo = await createHttpRepository("", token ?? undefined);
+    const repo = await createHttpRepository("");
     return {
       kind: "app",
       services: createLiveServices(repo),
       data: { mode: "server", persisted: null, persistent: true, secure: isSecureContext, admin },
+      account: {
+        authEnabled: account.authEnabled,
+        user: account.user,
+        via: account.via,
+        signOut: () => auth.signOut(),
+        signOutAll: () => auth.signOutAll(),
+      },
+      ...(account.authEnabled
+        ? { session: { methods: health.authMethods, user: account.user } }
+        : {}),
     };
   } catch (e) {
-    if (e instanceof HttpError && e.status === 401) {
-      return { kind: "login", ...(token ? { error: "That token was not accepted." } : {}) };
-    }
-    throw e;
+    // Signed out between the check and here: sign in again. Anything else is a server
+    // problem; never fall back to browser storage or demo data in server mode.
+    if (e instanceof HttpError && e.status === 401) return { kind: "signin", health };
+    return {
+      kind: "unreachable",
+      reason: `The server could not open your data: ${e instanceof Error ? e.message : String(e)}`,
+    };
   }
 }
 
@@ -155,10 +191,26 @@ async function openBrowser(lock: HeldLock): Promise<Boot> {
 async function boot(): Promise<Boot> {
   const demo = isDemo();
   if (demo) return { kind: "app", services: createMockServices() };
+  const { fetchServerHealth } = await import("@app/db/http");
+  const start = await decideStartup({
+    demo,
+    probe: () => fetchServerHealth(),
+    me: () => auth.me(),
+    serverSeen,
+    rememberServer,
+  });
+  switch (start.kind) {
+    case "server":
+      return bootServer(start.health, start.account);
+    case "signin":
+      return { kind: "signin", health: start.health };
+    case "unreachable":
+      return { kind: "unreachable", reason: start.reason };
+    default:
+      break;
+  }
+  // Browser mode (no Kenning API on this origin). Only here can a failure fall back to demo.
   try {
-    const { fetchServerHealth } = await import("@app/db/http");
-    const mode = selectStorageMode({ demo, health: await fetchServerHealth() });
-    if (mode.kind === "server") return await bootServer(mode.health, loadToken());
     return await bootBrowser();
   } catch (e) {
     console.error("Falling back to demo data:", e);
@@ -178,25 +230,47 @@ const reactRoot = createRoot(root);
 function show(b: Boot): Promise<void> {
   let node: ReactNode;
   switch (b.kind) {
-    case "app":
+    case "app": {
       if (b.notice) console.warn(b.notice);
-      node = (
+      const app = (
         <App
           services={b.services}
           notice={b.notice}
           demo={isDemo()}
           onLeaveDemo={leaveDemo}
           data={b.data}
+          account={b.account}
+        />
+      );
+      node = b.session ? (
+        <SessionGate
+          methods={b.session.methods}
+          user={b.session.user}
+          signIn={(c) => auth.signIn(c)}
+        >
+          {app}
+        </SessionGate>
+      ) : (
+        app
+      );
+      break;
+    }
+    case "signin":
+      node = (
+        <SignInScreen
+          methods={b.health.authMethods ?? ["token"]}
+          signIn={(c) => auth.signIn(c)}
+          onSignedIn={() => void boot().then(show)}
         />
       );
       break;
-    case "login":
+    case "unreachable":
       node = (
-        <LoginScreen
-          error={b.error}
-          onSubmit={(token) => {
-            saveToken(token);
-            void boot().then(show);
+        <UnreachableScreen
+          reason={b.reason}
+          onForget={() => {
+            forgetServer();
+            location.reload();
           }}
         />
       );
