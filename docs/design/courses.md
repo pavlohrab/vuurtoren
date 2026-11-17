@@ -1,6 +1,6 @@
 # Courses: study along a textbook, with your own private resources
 
-**Status:** design (2026-11-17). Motivated by learning Dutch with _De Opmaat (NT2 A2)_. The design is generic: any book, course PDF, set of photos or web pages.
+**Status:** C1 built (2026-11-17): import (PDF or page photos) → background OCR job (`/course/ocr`) → outline detection and editor → texts into the Library → unit word lists → Anki deck mapping → unit status → Learn next / Add missing words per unit. Book exercises (C2) and unit practice are built too, as a first version. Not yet tried on the real book with Tesseract. Motivated by learning Dutch with _De Opmaat (NT2 A2)_. The design is generic: any book, course PDF, set of photos or web pages.
 
 ## Principles
 

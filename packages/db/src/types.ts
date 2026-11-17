@@ -4,12 +4,18 @@
  */
 import type {
   AnalyzedToken,
+  Block,
+  BookExercise,
+  Course,
+  ExerciseItem,
   ExerciseKind,
   Grade,
   ItemState,
   LearnerModel,
   Skill,
   StaircaseState,
+  Unit,
+  UnitWord,
   WordState,
 } from "@app/core";
 
@@ -116,7 +122,57 @@ export type AppEvent =
       /** Assistant messages: coverage, corrections, new words (see conversations.ts). */
       meta?: Record<string, unknown>;
     }
-  | { type: "SettingChanged"; key: string; value: unknown };
+  | { type: "SettingChanged"; key: string; value: unknown }
+  | { type: "CourseImported"; course: Course }
+  | { type: "CourseDeleted"; courseId: string }
+  /** The full outline of a course (replaces all its units). */
+  | { type: "UnitDefined"; courseId: string; units: Unit[] }
+  | {
+      type: "UnitEdited";
+      courseId: string;
+      n: number;
+      patch: Partial<Pick<Unit, "title" | "pages" | "ankiDecks">>;
+    }
+  /** All blocks of a course in page order (replaces them); units own the pages they cover. */
+  | { type: "BlocksExtracted"; courseId: string; blocks: Block[] }
+  /** Recognised exercises of one unit (replaces that unit's exercises). */
+  | { type: "BookExerciseExtracted"; courseId: string; unitN: number; exercises: BookExercise[] }
+  | {
+      type: "BookExerciseEdited";
+      courseId: string;
+      unitN: number;
+      number: number;
+      patch: Partial<Pick<BookExercise, "type" | "instruction" | "items">>;
+    }
+  | { type: "UnitWordsSet"; courseId: string; unitN: number; words: UnitWord[] }
+  | {
+      type: "BookExerciseAnswered";
+      courseId: string;
+      unitN: number;
+      number: number;
+      item: number;
+      answer: string;
+      correct: boolean;
+      at: number;
+    };
+
+/** Stored course with its outline. */
+export interface CourseRecord extends Course {
+  units: Unit[];
+}
+
+/** The latest answer to one item of a book exercise. */
+export interface BookAnswerRecord {
+  unitN: number;
+  number: number;
+  item: number;
+  answer: string;
+  correct: boolean;
+  at: number;
+}
+
+/** Item-level helper type re-exported for consumers that edit items. */
+export type { ExerciseItem as BookExerciseItem };
 
 export interface StoredEvent {
   /** ULID: time-sortable, unique across devices. */
@@ -200,6 +256,15 @@ export interface Repository {
   /** Newest-first answers (ExerciseAnswered events), at most `limit`. */
   practiceLog(lang: string, limit: number): Promise<PracticeLogEntry[]>;
   setting<T>(key: string): Promise<T | undefined>;
+  /** Courses with their outlines, newest first. */
+  courses(): Promise<CourseRecord[]>;
+  /** All blocks of a course in page order. */
+  courseBlocks(courseId: string): Promise<Block[]>;
+  /** Exercises of a unit in book order, with user edits applied. */
+  unitExercises(courseId: string, unitN: number): Promise<BookExercise[]>;
+  unitWords(courseId: string, unitN: number): Promise<UnitWord[]>;
+  /** Latest answers of the exercises of a unit (all units when `unitN` is omitted). */
+  bookAnswers(courseId: string, unitN?: number): Promise<BookAnswerRecord[]>;
   /** Drop projections and rebuild them from the event log. */
   rebuild(): Promise<void>;
 }

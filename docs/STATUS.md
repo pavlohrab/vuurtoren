@@ -141,6 +141,13 @@ pnpm dev            # web app on http://localhost:5173 (proxies /nlp and /anki)
   - Reader: Explain this sentence, Simplify this page (side by side, re-scored). Hidden without a provider.
   - `apps/mcp`: stdio MCP server (`get_known_words`, `check_coverage`, `list_texts`, `get_text`, `add_to_anki`) for Claude Desktop / Claude Code.
   - Not yet tried against a real provider (tests use fake providers and a local mock server); model defaults need a first live check. No streaming.
+- **Courses** ([design](design/courses.md)): study along a textbook you own. C1 built:
+  - Import one PDF or several page photos; the NLP server OCRs it in a background job (`POST /course/ocr`, polled with progress, cached per page, up to 400 pages / 200 MB).
+  - Outline detection from the contents page and the theme footers (printed-page offset), with an outline editor that checks page ranges.
+  - Reading texts and transcripts go to the Library (tagged `course:<id>:<unit>`); the word list becomes each unit's words; units are matched to Anki decks (fuzzy, confirmed once; a mapped deck supplies the words when there is no word list).
+  - Unit status (known / learning / new / not in Anki) from the snapshot, and per unit **Learn next** (ADR 0007: new cards only, repositioned in book order, unsuspended, logged per word) and **Add missing words** (tagged `kenning::course::<book>::<unit>`).
+  - Also present, as a first version of C2: book exercises (gap-fill with derived answers, conjugation tables, sentence building, choice) with Check / Fix answer, and unit practice. Events and queries work in both storage modes (`/api/rpc` allow-list).
+  - Not yet: a run on the real 289-page book with Tesseract; course packs, "more like this" quality and grammar linkage (C3).
 - **M7 Sync** (folder / WebDAV / GitHub, encrypted). **M8 Desktop** (Tauri). Then the browser extension, Ukrainian, mobile.
 
 ### Known issues / technical debt

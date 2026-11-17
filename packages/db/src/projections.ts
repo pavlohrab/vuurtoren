@@ -4,6 +4,7 @@
  * `composeWord` is the pure rule for the effective state of a word.
  */
 import type { StaircaseState, WordState } from "@app/core";
+import { applyCourseEvent } from "./course.js";
 import { contentHash } from "./hash.js";
 import { compareHlc } from "./ids.js";
 import type { AnkiWordEntry, AppEvent, SqlDriver, SqlValue, WordInfo } from "./types.js";
@@ -216,6 +217,17 @@ export async function applyEvent(driver: SqlDriver, ctx: EventContext): Promise<
         e.key,
         JSON.stringify(e.value ?? null),
       ]);
+      return;
+    case "CourseImported":
+    case "CourseDeleted":
+    case "UnitDefined":
+    case "UnitEdited":
+    case "BlocksExtracted":
+    case "BookExerciseExtracted":
+    case "BookExerciseEdited":
+    case "UnitWordsSet":
+    case "BookExerciseAnswered":
+      await applyCourseEvent(driver, ctx.createdAt, e);
       return;
     default: {
       const never: never = e;

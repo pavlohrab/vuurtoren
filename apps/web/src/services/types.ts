@@ -11,6 +11,7 @@ import type {
 } from "@app/core";
 import type { StoredText, TextSummary, WordInfo } from "@app/db";
 import type { InspectorEntry } from "@app/ui";
+import type { CourseServices } from "./courseTypes.js";
 import type { AIServices } from "./aiTypes.js";
 
 /** Defined in @app/ui (the WordInspector consumes it); re-exported here as part of the contract. */
@@ -60,7 +61,12 @@ export interface Settings {
   glossClozes: boolean;
 }
 export type ImportInput =
-  | { kind: "paste"; title?: string; content: string }
+  | {
+      kind: "paste";
+      title?: string;
+      content: string;
+      /** e.g. "course:<id>:<unit>" */ ref?: string;
+    }
   | { kind: "url"; url: string }
   | { kind: "pdf" | "image"; file: File; title?: string };
 export interface AnkiStatus {
@@ -115,7 +121,7 @@ export interface AnswerResult {
  * Everything the UI needs from the outside world. The app never talks to the database,
  * AnkiConnect or the NLP server directly; swap the implementation passed to <ServicesProvider>.
  */
-export interface AppServices extends AIServices {
+export interface AppServices extends CourseServices, AIServices {
   listTexts(): Promise<TextListItem[]>;
   getReading(textId: string): Promise<ReadingView | null>;
   importText(input: ImportInput, onProgress?: (msg: string) => void): Promise<string>;

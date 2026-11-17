@@ -10,6 +10,7 @@ import {
   applyEvent,
   composeWord,
 } from "./projections.js";
+import { courseQueries } from "./course.js";
 import { PROJECTION_TABLES, migrate } from "./schema.js";
 import type {
   AnkiWordEntry,
@@ -59,9 +60,19 @@ export interface KenningRepository extends Repository {
 }
 
 /**
- * Bump when a projection's meaning changes. 2: reading_progress.last_segment = next segment to read. 3: write-action events (ADR 0007). 4: anki_words sentences, practice_items.
+ * Bump when a projection's meaning changes. 2: reading_progress.last_segment = next segment to read. 3: write-action events (ADR 0007). 4: anki_words sentences, practice_items. 5: course tables.
  */
-export const PROJECTION_VERSION = 4;
+export const PROJECTION_VERSION = 5;
+
+/** Wrap every query function in the repository's mutex. */
+function serialised<T extends Record<string, (...a: never[]) => Promise<unknown>>>(
+  fns: T,
+  serial: <R>(fn: () => Promise<R>) => Promise<R>,
+): T {
+  return Object.fromEntries(
+    Object.entries(fns).map(([k, f]) => [k, (...args: never[]) => serial(() => f(...args))]),
+  ) as T;
+}
 
 const json = <T>(v: SqlValue | undefined): T => JSON.parse(String(v)) as T;
 
@@ -297,6 +308,8 @@ export async function createRepository(
           return entry;
         }),
       ),
+
+    ...serialised(courseQueries(driver), serial),
 
     setting: <T>(key: string) =>
       serial(async () => {

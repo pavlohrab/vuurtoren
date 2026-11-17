@@ -12,6 +12,7 @@ import type {
   WordState,
 } from "@app/core";
 import type { StoredText, WordInfo } from "@app/db";
+import { createMockCourses } from "./mockCourses.js";
 import { createMockAI } from "./mockAI.js";
 import { createMockPractice } from "./mockPractice.js";
 import type {
@@ -461,6 +462,7 @@ export function createMockServices(options: { latencyMs?: number } = {}): AppSer
 
   return {
     ...practice,
+    ...createMockCourses({ latencyMs: latency }),
     ...ai,
     async listTexts() {
       await wait();

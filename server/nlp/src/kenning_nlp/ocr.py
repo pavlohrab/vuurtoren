@@ -102,6 +102,25 @@ def ocr_image(img: Image.Image, code: str) -> tuple[str, list[float]]:
     return words_to_text(data)
 
 
+def ocr_image_data(img: Image.Image, code: str) -> tuple[list[dict[str, object]], list[float]]:
+    """OCR one image into layout blocks (text + normalised bounding box) and word confidences."""
+    import pytesseract
+
+    from kenning_nlp.course import data_to_blocks
+
+    psm = int(os.environ.get("KENNING_OCR_PSM", "3"))
+    prepared = preprocess(img)
+    data = pytesseract.image_to_data(
+        prepared, lang=code, config=f"--psm {psm}", output_type=pytesseract.Output.DICT
+    )
+    confs = [
+        float(c)
+        for t, c in zip(data["text"], data["conf"], strict=True)
+        if str(t).strip() and float(c) >= 0
+    ]
+    return data_to_blocks(data, *prepared.size), confs
+
+
 def load_images(data: bytes) -> list[Image.Image]:
     """Decode an upload (PDF pages or image frames) into PIL images.
 

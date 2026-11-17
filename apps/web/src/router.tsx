@@ -46,6 +46,28 @@ const grammarRoute = screen("/grammar", () => import("./screens/Placeholders.js"
 const progressRoute = screen("/progress", () => import("./screens/Progress.js"), "Progress");
 const settingsRoute = screen("/settings", () => import("./screens/Settings.js"), "SettingsScreen");
 
+const coursesRoute = screen("/courses", () => import("./screens/courses/Courses.js"), "Courses");
+const courseImportRoute = screen(
+  "/courses/import",
+  () => import("./screens/courses/routes.js"),
+  "CourseImportRoute",
+);
+const courseEditRoute = screen(
+  "/courses/$courseId/edit",
+  () => import("./screens/courses/routes.js"),
+  "CourseEditRoute",
+);
+const courseRoute = screen(
+  "/courses/$courseId",
+  () => import("./screens/courses/routes.js"),
+  "CourseRouteScreen",
+);
+const unitRoute = screen(
+  "/courses/$courseId/$unit",
+  () => import("./screens/courses/routes.js"),
+  "UnitRouteScreen",
+);
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   libraryRoute,
@@ -58,6 +80,11 @@ const routeTree = rootRoute.addChildren([
   grammarRoute,
   progressRoute,
   settingsRoute,
+  coursesRoute,
+  courseImportRoute,
+  courseEditRoute,
+  courseRoute,
+  unitRoute,
 ]);
 
 /** Build the app router; pass a memory history in tests. */

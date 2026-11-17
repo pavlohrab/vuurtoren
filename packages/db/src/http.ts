@@ -173,6 +173,11 @@ export async function createHttpRepository(
     lookedUpKeys: (lang, textId) => call("lookedUpKeys", lang, textId),
     lastSnapshot: (lang) => call("lastSnapshot", lang),
     eventCount: () => call("eventCount"),
+    courses: () => call("courses"),
+    courseBlocks: (courseId) => call("courseBlocks", courseId),
+    unitExercises: (courseId, unitN) => call("unitExercises", courseId, unitN),
+    unitWords: (courseId, unitN) => call("unitWords", courseId, unitN),
+    bookAnswers: (courseId, unitN) => call("bookAnswers", courseId, unitN),
     conversationEvents: () => call("conversationEvents"),
     // The server serialises every call already; nothing to lock on this side.
     exclusive: (fn) => fn(),
