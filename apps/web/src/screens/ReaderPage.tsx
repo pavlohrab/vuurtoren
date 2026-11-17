@@ -131,10 +131,15 @@ export function ReaderPage() {
   // only the blanks' meanings (the hint), Gloss whatever the dial selects.
   const glossIdx = useMemo(() => {
     if (!plan) return [];
-    if (mode === "gloss") return glossTargets(plan.tokens, help);
+    // Detached particles ("op" in "bel … op") share their verb's translation: show it once.
+    if (mode === "gloss")
+      return glossTargets(
+        plan.tokens.filter((p) => data?.tokens[p.i]?.particle_of == null),
+        help,
+      );
     if (mode === "cloze") return [...plan.clozes];
     return [];
-  }, [plan, help, mode]);
+  }, [plan, help, mode, data]);
   const glossQ = useQuery({
     queryKey: ["glosses", textId, current, glossIdx.join(",")],
     queryFn: () => services.glosses(textId, glossIdx),

@@ -44,6 +44,23 @@ export const DEFAULT_SETTINGS: Settings = {
   newWords: "auto",
 };
 
+// spaCy universal POS -> Wiktionary (kaikki) part of speech, to pick the sense that fits.
+const KAIKKI_POS: Record<string, string[]> = {
+  NOUN: ["noun"],
+  PROPN: ["name", "noun"],
+  VERB: ["verb"],
+  AUX: ["verb"],
+  ADJ: ["adj"],
+  ADV: ["adv"],
+  PRON: ["pron"],
+  DET: ["det", "article", "pron"],
+  ADP: ["prep", "postp"],
+  NUM: ["num"],
+  CCONJ: ["conj"],
+  SCONJ: ["conj"],
+  INTJ: ["intj"],
+};
+
 // Wiktionary form-of senses ("inflection of fietsen: …", "plural of …") are noise as glosses.
 const FORM_OF =
   /^(inflection|plural|diminutive|singular|past|present|feminine|comparative|superlative)[^:]* of /i;
@@ -116,13 +133,13 @@ export function createLiveServices(repo: KenningRepository): AppServices {
 
   /** Translations for (key, lemma) pairs, batched: one dictionary request for all misses. */
   async function lookupGlosses(
-    items: { key: string; lemma: string }[],
+    items: { key: string; lemma: string; pos?: string }[],
   ): Promise<Map<string, string>> {
     const { lang } = await settings();
     const missing = items.filter(
       (it, idx) => !glossCache.has(it.key) && items.findIndex((x) => x.key === it.key) === idx,
     );
-    const needDict: { key: string; lemma: string }[] = [];
+    const needDict: { key: string; lemma: string; pos?: string }[] = [];
     for (const it of missing) {
       const info = await repo.word(lang, it.key);
       if (info?.gloss) glossCache.set(it.key, info.gloss);
@@ -132,7 +149,14 @@ export function createLiveServices(repo: KenningRepository): AppServices {
       try {
         const dict = await (await nlp()).gloss("nl", [...new Set(needDict.map((it) => it.lemma))]);
         for (const it of needDict) {
-          const g = (dict[it.lemma] ?? []).flatMap((e) => e.glosses).find((x) => !FORM_OF.test(x));
+          const entries = dict[it.lemma] ?? [];
+          const wanted = it.pos ? (KAIKKI_POS[it.pos] ?? []) : [];
+          // Prefer senses of the token's part of speech; fall back to any sense.
+          const ordered = [
+            ...entries.filter((e) => wanted.includes(e.pos)),
+            ...entries.filter((e) => !wanted.includes(e.pos)),
+          ];
+          const g = ordered.flatMap((e) => e.glosses).find((x) => !FORM_OF.test(x));
           glossCache.set(it.key, g ?? null);
         }
       } catch {
@@ -232,7 +256,9 @@ export function createLiveServices(repo: KenningRepository): AppServices {
     const clozeTokens = plans.flatMap((p) => p.clozes).map((i) => tokens[i]!);
     if (!clozeTokens.length) return;
     const keyOf = (t: AnalyzedToken) => matchToken(t, m) ?? normalizeKey(t.lemma);
-    const found = await lookupGlosses(clozeTokens.map((t) => ({ key: keyOf(t), lemma: t.lemma })));
+    const found = await lookupGlosses(
+      clozeTokens.map((t) => ({ key: keyOf(t), lemma: t.lemma, pos: t.pos })),
+    );
     const base = classifyTokens(tokens, m);
     for (const plan of plans) {
       const drop = new Set(plan.clozes.filter((i) => !found.has(keyOf(tokens[i]!))));
@@ -390,7 +416,7 @@ export function createLiveServices(repo: KenningRepository): AppServices {
         if (!clicked) return [];
         const t =
           clicked.particle_of !== null ? (v.tokens[clicked.particle_of] ?? clicked) : clicked;
-        return [{ i, key: matchToken(t, m) ?? normalizeKey(t.lemma), lemma: t.lemma }];
+        return [{ i, key: matchToken(t, m) ?? normalizeKey(t.lemma), lemma: t.lemma, pos: t.pos }];
       });
       const found = await lookupGlosses(items);
       const out: Record<number, string> = {};
