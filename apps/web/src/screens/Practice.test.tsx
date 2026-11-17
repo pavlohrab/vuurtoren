@@ -72,15 +72,41 @@ describe("Practice start view", () => {
       expect(services.startPractice).toHaveBeenCalledWith({
         size: 10,
         skills: ["recognition", "gender"],
+        aiSentences: true,
+        onAISentences: expect.any(Function),
       }),
     );
+  });
+
+  it("fills gaps with AI sentences when a provider is set, shows the count, and can be turned off", async () => {
+    stubSpeech([{ lang: "nl-NL" }]);
+    const { services, user } = setup();
+    vi.mocked(services.startPractice).mockImplementationOnce(async (opts) => {
+      opts?.onAISentences?.({ requested: 2, accepted: 5, rejected: 1, reused: 0 });
+      return MOCK_EXERCISES;
+    });
+    const box = await screen.findByRole("checkbox", { name: /Fill gaps with AI sentences/ });
+    expect(box).toBeChecked();
+    await begin(user);
+    expect(
+      await screen.findByText("5 new AI sentences for 2 items · 1 rejected by the checks"),
+    ).toBeInTheDocument();
+  });
+
+  it("starts without AI sentences when the option is off", async () => {
+    stubSpeech([{ lang: "nl-NL" }]);
+    const { services, user } = setup();
+    await user.click(await screen.findByRole("checkbox", { name: /Fill gaps with AI sentences/ }));
+    await begin(user);
+    await waitFor(() => expect(services.startPractice).toHaveBeenCalled());
+    expect(vi.mocked(services.startPractice).mock.calls[0]![0]).not.toHaveProperty("aiSentences");
   });
 
   it("disables Listening without a Dutch voice and never asks for it", async () => {
     stubSpeech([{ lang: "en-US" }]);
     const { services, user } = setup();
     const chip = await screen.findByRole("button", { name: "Listening" });
-    await waitFor(() => expect(chip).toBeDisabled());
+    await waitFor(() => expect(chip).toHaveAttribute("aria-disabled", "true"));
     expect(chip).toHaveAttribute("aria-pressed", "false");
     expect(screen.getByText(/no Dutch voice is available/)).toBeInTheDocument();
     await begin(user);
@@ -148,7 +174,32 @@ describe("Practice session", () => {
     expect(answers).toHaveLength(MOCK_EXERCISES.length);
     expect(screen.queryByText(/Words to look at again/)).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Practice again" }));
-    expect(await screen.findByRole("button", { name: "Start" })).toBeInTheDocument();
+    // Everything was just practised: nothing is due or new, so there is no Start button.
+    expect(await screen.findByRole("heading", { name: "All caught up" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Start" })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Go to the library" })).toBeInTheDocument();
+  });
+
+  it("shows an empty state with one next step when there is nothing to practise", async () => {
+    const base = createMockServices({ latencyMs: 0 });
+    const services: AppServices = {
+      ...base,
+      practiceOverview: async () => ({
+        due: 0,
+        newAvailable: 0,
+        learned: 0,
+        bySkill: { recognition: 0, recall: 0, form: 0, gender: 0, listening: 0 },
+        lastSession: null,
+      }),
+    };
+    render(
+      <App services={services} history={createMemoryHistory({ initialEntries: ["/practice"] })} />,
+    );
+    expect(
+      await screen.findByRole("heading", { name: "Nothing to practise yet" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Start" })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Go to the library" })).toBeInTheDocument();
   });
 
   it("uses 1-4 for choices, shows the right answer after a miss and lists words to review", async () => {

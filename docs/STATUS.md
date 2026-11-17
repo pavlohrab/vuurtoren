@@ -157,6 +157,7 @@ pnpm dev            # web app on http://localhost:5173 (proxies /nlp and /anki)
   - `packages/ai`: OpenAI-compatible and native Anthropic adapters (plain `fetch`, prompt caching on the static prompt), presets (OpenAI, Anthropic, Gemini, OpenRouter, Groq, DeepSeek, Mistral, Ollama, LM Studio), per-device key storage with optional passphrase encryption (never in the event log or backups).
   - Converse screen: vocabulary-constrained conversation (coverage check, one rewrite, inline glosses), corrections of your messages, new-word chips with Add to Anki; history as `ConversationStarted` / `MessageAdded` events (no new table; works in local and server mode).
   - Reader: Explain this sentence, Simplify this page (side by side, re-scored). Hidden without a provider.
+  - **AI stories** (Library, grammar topic page, course unit: "Create a story") saved as Library texts with provenance (`source.kind: "ai"`), coverage check with one rewrite and a target-word check; **AI example sentences** for practice ("Fill gaps with AI sentences", max 8 words per session; grammar topics with few hits), each validated by the NLP server before use and stored as `SentencesGenerated` events.
   - `apps/mcp`: stdio MCP server (`get_known_words`, `check_coverage`, `list_texts`, `get_text`, `add_to_anki`) for Claude Desktop / Claude Code.
   - Not yet tried against a real provider (tests use fake providers and a local mock server); model defaults need a first live check. No streaming.
 - **Courses** ([design](design/courses.md)): study along a textbook you own. C1 built:

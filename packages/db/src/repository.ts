@@ -19,10 +19,12 @@ import {
   composeWord,
 } from "./projections.js";
 import { courseQueries } from "./course.js";
+import { projectGeneratedSentences } from "./generated.js";
 import { PROJECTION_TABLES, migrate } from "./schema.js";
 import type {
   AnkiWordEntry,
   AppEvent,
+  GeneratedSentenceSet,
   PracticeLogEntry,
   Repository,
   SqlDriver,
@@ -58,6 +60,8 @@ export interface KenningRepository extends Repository {
   eventCount(): Promise<number>;
   /** ConversationStarted / MessageAdded events in id order (fold with `projectConversations`). */
   conversationEvents(): Promise<StoredEvent[]>;
+  /** Accepted AI example sentences of a language, one set per (key, topic) (see generated.ts). */
+  generatedSentences(lang: string): Promise<GeneratedSentenceSet[]>;
   /**
    * Run `fn` while no other repository call is in flight or can start (the repository's own
    * mutex). Used for operations on the raw file: export while no transaction is open.
@@ -69,9 +73,9 @@ export interface KenningRepository extends Repository {
 }
 
 /**
- * Bump when a projection's meaning changes. 2: reading_progress.last_segment = next segment to read. 3: write-action events (ADR 0007). 4: anki_words sentences, practice_items. 5: course tables. 6: text_grammar.
+ * Bump when a projection's meaning changes. 2: reading_progress.last_segment = next segment to read. 3: write-action events (ADR 0007). 4: anki_words sentences, practice_items. 5: course tables. 6: text_grammar. 7: language_profiles (ADR 0010).
  */
-export const PROJECTION_VERSION = 6;
+export const PROJECTION_VERSION = 7;
 
 /** Wrap every query function in the repository's mutex. */
 function serialised<T extends Record<string, (...a: never[]) => Promise<unknown>>>(
@@ -424,6 +428,18 @@ export async function createRepository(
             "SELECT * FROM events WHERE type IN ('ConversationStarted','MessageAdded') ORDER BY id",
           )
         ).map(toStored),
+      ),
+
+    generatedSentences: (lang) =>
+      serial(async () =>
+        projectGeneratedSentences(
+          (
+            await driver.exec(
+              "SELECT * FROM events WHERE type = 'SentencesGenerated' AND json_extract(payload, '$.lang') = ? ORDER BY id",
+              [lang],
+            )
+          ).map(toStored),
+        ),
       ),
 
     exclusive: (fn) => serial(fn),

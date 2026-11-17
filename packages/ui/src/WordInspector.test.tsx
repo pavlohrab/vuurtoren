@@ -81,7 +81,7 @@ describe("WordInspector Anki states", () => {
     expect(screen.getByText("Adds it to Anki as known")).toBeInTheDocument();
   });
 
-  it("new: Learn next with the deck hint", async () => {
+  it("new: Study first in Anki with the deck hint", async () => {
     const onLearn = vi.fn();
     render(
       <WordInspector
@@ -95,22 +95,22 @@ describe("WordInspector Anki states", () => {
         onLearnNext={onLearn}
       />,
     );
-    expect(names()).toEqual(["Learn next", "Mark known", "Ignore"]);
+    expect(names()).toEqual(["Study first in Anki", "Mark known", "Ignore"]);
     expect(
       screen.getByText("Moves its card to the front of ‘A Frequency Dictionary of Dutch’"),
     ).toBeInTheDocument();
     expect(screen.getByText("New card · in A Frequency Dictionary of Dutch")).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "Learn next" }));
+    await userEvent.click(screen.getByRole("button", { name: "Study first in Anki" }));
     expect(onLearn).toHaveBeenCalledOnce();
   });
 
-  it("suspended: Unsuspend & learn next", () => {
+  it("suspended: Unsuspend & study first", () => {
     render(
       <WordInspector
         entry={withAnki({ status: "suspended", detail: "Suspended", noteIds: [1] })}
       />,
     );
-    expect(names()).toEqual(["Unsuspend & learn next", "Mark known", "Ignore"]);
+    expect(names()).toEqual(["Unsuspend & study first", "Mark known", "Ignore"]);
   });
 
   it("learning and young review: status line and Mark known; mature or known: no Mark known", () => {
@@ -165,7 +165,7 @@ describe("WordInspector Anki states", () => {
     expect(screen.getByRole("alert")).toHaveTextContent(
       "Anki not reachable. cannot reach http://127.0.0.1:8765",
     );
-    expect(screen.getByRole("button", { name: "Learn next" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Study first in Anki" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Mark known" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Ignore" })).toBeEnabled();
   });
@@ -182,6 +182,6 @@ describe("difficultyBand", () => {
     expect(BAND_LABEL[difficultyBand(0.99)]).toBe("Comfortable");
     expect(BAND_LABEL[difficultyBand(0.96)]).toBe("Stretch");
     expect(BAND_LABEL[difficultyBand(0.92)]).toBe("Challenging");
-    expect(BAND_LABEL[difficultyBand(0.85)]).toBe("Weave suggested");
+    expect(BAND_LABEL[difficultyBand(0.85)]).toBe("Very challenging");
   });
 });

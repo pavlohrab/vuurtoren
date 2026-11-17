@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { Skeleton } from "@app/ui";
+import { CoverageMeter, Skeleton } from "@app/ui";
 import { useServices } from "../../services/context.js";
 import type { UnitRow } from "../../services/courseTypes.js";
 import "./courses.css";
@@ -30,13 +30,7 @@ function UnitLine({ courseId, row }: { courseId: string; row: UnitRow }) {
       <div>
         {hasWords ? (
           <>
-            <div
-              className="cs-bar"
-              role="img"
-              aria-label={`${pct(status.knownRatio)} of the words known`}
-            >
-              <span style={{ width: pct(status.knownRatio) }} />
-            </div>
+            <CoverageMeter value={status.knownRatio} block hideValue label="Words known" />
             <p className="cs-meta">
               {pct(status.knownRatio)} known · {status.learning} learning ·{" "}
               {status.newInAnki + status.missing} new

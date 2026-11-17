@@ -13,6 +13,7 @@ export * from "./CommandPalette.js";
 export * from "./Reader.js";
 export * from "./WordInspector.js";
 export * from "./TextCard.js";
+export * from "./WordState.js";
 export * from "./types.js";
 export * from "./ExerciseCard.js";
 export * from "./AddToAnki.js";

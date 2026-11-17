@@ -29,6 +29,7 @@ import { GrammarNotes, notesFor, spotlightLabel } from "./GrammarNotes.js";
 import { ExplainSentence, SimplifyPage } from "./ReaderAI.js";
 import { writeLastText } from "../lastText.js";
 import { useDeckChoice } from "./useDeckChoice.js";
+import { errorText } from "../services/errors.js";
 import { usePageHeader, useShell } from "../shell/ShellContext.js";
 
 const HELP_LABEL: Record<HelpLevel, string> = {
@@ -39,7 +40,7 @@ const HELP_LABEL: Record<HelpLevel, string> = {
 };
 const NEW_WORD_OPTIONS = [
   { value: "auto", label: "Auto" },
-  ...[0, 1, 2, 3, 4, 5, 6, 8].map((n) => ({ value: String(n), label: `${n} per page` })),
+  ...[0, 1, 2, 3, 4, 5, 6, 8].map((n) => ({ value: String(n), label: String(n) })),
 ];
 
 /** Elements whose own keyboard handling the reader's global shortcuts must not steal. */
@@ -59,8 +60,7 @@ const WIDGET_SELECTOR = [
 /** Overlays that own Esc (closing them must not also clear the selection). */
 const OVERLAY_SELECTOR = "[role=dialog],[role=listbox],[role=option],[role=combobox],[role=menu]";
 
-const errorMessage = (e: unknown): string =>
-  e instanceof Error && e.message ? e.message : "Something went wrong. Try again.";
+const errorMessage = (e: unknown): string => errorText(e);
 
 /**
  * Route component. Keying the page on the text id makes TanStack's reuse of the mounted
@@ -131,6 +131,8 @@ export function ReaderPage({ textId }: { textId: string }) {
     // The badge counts the highlighted (amber) words to learn, not every unknown word.
     newCount: plan?.introduce.length ?? null,
     reader: true,
+    // The reader has no in-page heading, so the text title in the top bar is the page's h1.
+    heading: true,
   });
 
   useEffect(() => {
@@ -298,7 +300,7 @@ export function ReaderPage({ textId }: { textId: string }) {
     }
   };
 
-  const deckChoice = useDeckChoice("reading");
+  const deckChoice = useDeckChoice(reading.data?.text.sourceKind === "ai" ? "ai" : "reading");
   const deckOpts = deckChoice.chosen ? { deck: deckChoice.chosen } : undefined;
   // The mutations take the entry they act on as a variable, never "whatever is loaded now".
   const addToAnki = useMutation({
@@ -488,7 +490,7 @@ export function ReaderPage({ textId }: { textId: string }) {
           ) : null}
         </div>
         <div className="reader-tool">
-          <span className="reader-tool-label">New words</span>
+          <span className="reader-tool-label">Words to learn per page</span>
           <Select
             value={String(settingsQ.data?.newWords ?? "auto")}
             onValueChange={(v) =>

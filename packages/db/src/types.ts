@@ -47,13 +47,57 @@ export interface AnkiWordEntry {
   sentenceTranslation?: string;
 }
 
+/** Where an imported text came from. */
+export type TextSource =
+  | { kind: "paste" | "url" | "pdf" | "image"; ref?: string }
+  | {
+      /** Written by the learner's AI provider (docs/ai.md, Stories). Never contains keys. */
+      kind: "ai";
+      provider: string;
+      model: string;
+      /** Target words the story was asked to use. */
+      targets: string[];
+      topic: string;
+      /** Grammar topic page id the story features. */
+      grammarTopic?: string;
+      ref?: string;
+    };
+
+export type TextSourceKind = TextSource["kind"];
+
+/** One AI example sentence that passed validation (see SentencesGenerated). */
+export interface GeneratedSentence {
+  text: string;
+  translation?: string;
+  /** [start, end) of the target word in `text`, when there is a target lemma. */
+  target?: [number, number];
+  /** [start, end) spans of the grammar construction (grammar-topic sentences). */
+  marks?: [number, number][];
+  /** The grammar detector's note (grammar-topic sentences). */
+  note?: string;
+}
+
+/** Accepted AI sentences for one (key, topic), folded from SentencesGenerated events. */
+export interface GeneratedSentenceSet {
+  lang: string;
+  /** Practice key of the target lemma; "" for grammar-topic-only requests. */
+  key: string;
+  /** Grammar topic page id, when the sentences were asked to feature one. */
+  topic?: string;
+  sentences: GeneratedSentence[];
+  /** Sentences the validator rejected (summed over requests). */
+  rejected: number;
+  provider: string;
+  model: string;
+}
+
 export type AppEvent =
   | {
       type: "TextImported";
       textId: string;
       title: string;
       lang: string;
-      source: { kind: "paste" | "url" | "pdf" | "image"; ref?: string };
+      source: TextSource;
       content: string;
     }
   | { type: "TextAnalyzed"; textId: string; contentHash: string; tokens: AnalyzedToken[] }
@@ -136,6 +180,20 @@ export type AppEvent =
       /** Assistant messages: coverage, corrections, new words (see conversations.ts). */
       meta?: Record<string, unknown>;
     }
+  | {
+      /**
+       * AI example sentences for practice (docs/ai.md). Only validated sentences are stored;
+       * an empty list records that generation was tried (so it is not repeated every session).
+       */
+      type: "SentencesGenerated";
+      lang: string;
+      key: string;
+      topic?: string;
+      sentences: GeneratedSentence[];
+      rejected?: number;
+      provider: string;
+      model: string;
+    }
   | { type: "SettingChanged"; key: string; value: unknown }
   /**
    * The language profile (ADR 0010): confirmed source decks and destination decks of one
@@ -206,7 +264,7 @@ export interface TextSummary {
   id: string;
   title: string;
   lang: string;
-  sourceKind: "paste" | "url" | "pdf" | "image";
+  sourceKind: TextSourceKind;
   createdAt: number;
   wordCount: number;
   analyzed: boolean;

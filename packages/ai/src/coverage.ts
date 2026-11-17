@@ -2,8 +2,10 @@ import {
   type AnalyzedToken,
   type LearnerModel,
   classifyTokens,
+  containsTerm,
   coverageOf,
   isCounted,
+  matchToken,
   normalizeKey,
 } from "@app/core";
 
@@ -46,4 +48,32 @@ export function coverageReport(
     }
   });
   return { coverage: coverageOf(planned, tokens), unknown, words };
+}
+
+/**
+ * Which of `targets` occur in the analysed text, with the reader's matcher (lemma, surface form,
+ * alternative lemmas; a separable verb matches on its verb token, whose lemma is the whole verb).
+ * Multiword targets must appear in order (`containsTerm`).
+ * @returns normalised target key -> the first token that carries it (multiword: its first part)
+ */
+export function findTargets(
+  tokens: readonly AnalyzedToken[],
+  targets: readonly string[],
+): Map<string, AnalyzedToken> {
+  const keys = new Set(targets.map(normalizeKey).filter(Boolean));
+  const out = new Map<string, AnalyzedToken>();
+  for (const t of tokens) {
+    if (!t.is_word || t.particle_of !== null) continue;
+    const k = matchToken(t, keys);
+    if (k && !out.has(k)) out.set(k, t);
+  }
+  for (const k of keys) {
+    if (out.has(k) || !/\s/.test(k)) continue;
+    if (containsTerm([...tokens], k)) {
+      const first = normalizeKey(k.split(/\s+/)[0] ?? "");
+      const tok = tokens.find((t) => t.is_word && normalizeKey(t.lemma) === first);
+      if (tok) out.set(k, tok);
+    }
+  }
+  return out;
 }

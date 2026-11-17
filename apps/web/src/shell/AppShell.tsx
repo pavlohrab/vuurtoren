@@ -29,6 +29,7 @@ import {
   CoverageMeter,
   Tabs,
   Tooltip,
+  WordStateChip,
   type CommandGroup,
   type ReaderMode,
 } from "@app/ui";
@@ -203,7 +204,16 @@ export function AppShell() {
               <span className="nav-label">Read</span>
             </Link>
           ) : (
-            <NavLink to="/library" label="Read" icon={<BookOpen size={18} />} />
+            // Nothing to read yet: a disabled entry, so Library is the only highlighted item.
+            <span
+              className="nav-link nav-link--disabled"
+              role="link"
+              aria-disabled="true"
+              title="Read: import a text first"
+            >
+              <BookOpen size={18} />
+              <span className="nav-label">Read</span>
+            </span>
           )}
           <NavLink
             to="/practice"
@@ -224,9 +234,9 @@ export function AppShell() {
           {notice || demo ? (
             <div className="shell-notices">
               {demo ? (
-                <div className="shell-notice" role="note">
+                <div className="shell-notice shell-notice--demo" role="note">
                   <Chip tone="accent">Demo data</Chip>
-                  <span>Nothing here is saved to your account.</span>
+                  <span className="shell-notice-text">Nothing here is saved to your account.</span>
                   {onLeaveDemo ? (
                     <button type="button" className="link-button" onClick={onLeaveDemo}>
                       Use my data
@@ -252,15 +262,39 @@ export function AppShell() {
             >
               <PanelLeft size={16} />
             </Button>
-            <h1 className="topbar-title">{title}</h1>
+            <div className="topbar-heading">
+              {header?.parent ? (
+                <>
+                  <a
+                    className="topbar-crumb"
+                    href={header.parent.to}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      goto(header.parent!.to);
+                    }}
+                  >
+                    {header.parent.label}
+                  </a>
+                  <span className="topbar-crumb-sep" aria-hidden>
+                    /
+                  </span>
+                </>
+              ) : null}
+              {/* One h1 per page: the page's own heading, unless it asks the top bar for it. */}
+              {header?.heading ? (
+                <h1 className="topbar-title">{title}</h1>
+              ) : (
+                <span className="topbar-title">{title}</span>
+              )}
+            </div>
             {header?.coverage != null ? (
               <div
                 className="topbar-group topbar-coverage"
                 title="Coverage and words to learn for the page you are reading"
               >
-                <CoverageMeter value={header.coverage} />
+                <CoverageMeter value={header.coverage} label="This page" />
                 {header.newCount != null ? (
-                  <Chip tone="warm">{header.newCount} to learn</Chip>
+                  <WordStateChip state="toLearn" count={header.newCount} />
                 ) : null}
               </div>
             ) : null}
@@ -277,6 +311,7 @@ export function AppShell() {
               <Button
                 variant="secondary"
                 size="sm"
+                className="topbar-palette"
                 aria-label="Open command palette"
                 onClick={() => setPaletteOpen(true)}
               >

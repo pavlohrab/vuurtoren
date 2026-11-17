@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { GraduationCap, Plus } from "lucide-react";
 import { useState } from "react";
-import { Button, Dialog, EmptyState, Skeleton, useToast } from "@app/ui";
+import { Button, CoverageMeter, Dialog, EmptyState, Skeleton, useToast } from "@app/ui";
 import { useServices } from "../../services/context.js";
 import type { CourseListItem } from "../../services/courseTypes.js";
 import "./courses.css";
@@ -67,9 +67,7 @@ export function Courses() {
                   {c.knownRatio !== null ? ` · ${percent(c.knownRatio)} of the words known` : ""}
                 </p>
                 {c.knownRatio !== null ? (
-                  <div className="cs-bar" role="img" aria-label={`${percent(c.knownRatio)} known`}>
-                    <span style={{ width: percent(c.knownRatio) }} />
-                  </div>
+                  <CoverageMeter value={c.knownRatio} block hideValue label="Words known" />
                 ) : null}
               </div>
               <div className="cs-actions">
@@ -105,7 +103,7 @@ export function Courses() {
         <div className="row" style={{ justifyContent: "flex-end" }}>
           <Button onClick={() => setPendingDelete(null)}>Cancel</Button>
           <Button
-            variant="primary"
+            variant="danger"
             onClick={() => {
               if (pendingDelete) remove.mutate(pendingDelete.course.id);
               setPendingDelete(null);

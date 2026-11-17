@@ -3,6 +3,7 @@ import { AddToAnki, type DeckOption } from "./AddToAnki.js";
 import { Button } from "./Button.js";
 import { Chip } from "./Chip.js";
 import type { InspectorAnki, InspectorEntry } from "./types.js";
+import { WordStateChip } from "./WordState.js";
 
 export interface WordInspectorProps {
   entry: InspectorEntry | null;
@@ -35,14 +36,6 @@ export interface AddDeckChoice {
   options: readonly DeckOption[];
   onDeckChange: (deck: string) => void;
 }
-
-const STATE_LABEL: Record<WordState, string> = {
-  unknown: "Not yet known",
-  seen: "Seen",
-  learning: "Learning",
-  known: "Known",
-  ignored: "Ignored",
-};
 
 /** Detail panel for the selected word: forms, glosses, state, source decks and context sentence. */
 export function WordInspector({
@@ -104,13 +97,7 @@ export function WordInspector({
 
       <div className="k-inspector-row">
         <Chip>{entry.pos}</Chip>
-        <Chip
-          tone={
-            entry.state === "known" ? "success" : entry.state === "learning" ? "accent" : "warm"
-          }
-        >
-          {STATE_LABEL[entry.state]}
-        </Chip>
+        <WordStateChip state={entry.state} />
         <span className="k-recall" style={{ color: "var(--ink-muted)", fontSize: 13 }}>
           Recall {recall}%
         </span>
@@ -211,7 +198,7 @@ function AnkiActions({
     };
   } else if (status === "new" || status === "suspended" || (unavailable && anki.noteIds.length)) {
     primary = {
-      label: status === "suspended" ? "Unsuspend & learn next" : "Learn next",
+      label: status === "suspended" ? "Unsuspend & study first" : "Study first in Anki",
       hint: deck ? `Moves its card to the front of ‘${deck}’` : "Moves its card to the front",
       onClick: onLearnNext,
     };

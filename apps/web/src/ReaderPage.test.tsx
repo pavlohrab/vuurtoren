@@ -164,7 +164,7 @@ describe("Anki write actions in the inspector", () => {
     await userEvent.click(await screen.findByText("grachten"));
     await userEvent.click(await screen.findByRole("button", { name: ADD }));
     expect(await screen.findByText("Added to Kenning::Nederlands::Reading")).toBeInTheDocument();
-    expect(await screen.findByRole("button", { name: "Learn next" })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Study first in Anki" })).toBeInTheDocument();
   });
 
   it("absent word: the deck picker sends the word to another deck", async () => {
@@ -176,7 +176,7 @@ describe("Anki write actions in the inspector", () => {
     expect(await screen.findByText("Added to Dutch::Core 2k")).toBeInTheDocument();
   });
 
-  it("new card: Learn next moves it and says where", async () => {
+  it("new card: Study first in Anki moves it and says where", async () => {
     const learn = vi.fn();
     setup("/read/t-utrecht", (s) => ({
       ...s,
@@ -192,8 +192,8 @@ describe("Anki write actions in the inspector", () => {
         "Moves its card to the front of \u2018A Frequency Dictionary of Dutch\u2019",
       ),
     ).toBeInTheDocument();
-    expect(buttons()).toContain("Learn next");
-    await userEvent.click(screen.getByRole("button", { name: "Learn next" }));
+    expect(buttons()).toContain("Study first in Anki");
+    await userEvent.click(screen.getByRole("button", { name: "Study first in Anki" }));
     expect(
       await screen.findByText("Moved to the front of \u2018A Frequency Dictionary of Dutch\u2019"),
     ).toBeInTheDocument();
@@ -203,11 +203,11 @@ describe("Anki write actions in the inspector", () => {
     ).toBeInTheDocument();
   });
 
-  it("suspended card: Unsuspend & learn next", async () => {
+  it("suspended card: Unsuspend & study first", async () => {
     setup("/read/t-utrecht");
     await openSecondSegment();
     await userEvent.click(await screen.findByText("reis"));
-    inspectorButtons("Unsuspend & learn next", "Mark known");
+    inspectorButtons("Unsuspend & study first", "Mark known");
     expect(screen.getByText("Suspended")).toBeInTheDocument();
   });
 
@@ -230,7 +230,7 @@ describe("Anki write actions in the inspector", () => {
     expect(screen.getByRole("button", { name: "Mark known" })).toBeDisabled();
   });
 
-  it("shows the real error when Learn next fails", async () => {
+  it("explains a failed Study first in Anki in plain words", async () => {
     setup("/read/t-utrecht", (s) => ({
       ...s,
       learnNext: async () => {
@@ -239,9 +239,9 @@ describe("Anki write actions in the inspector", () => {
     }));
     await openSecondSegment();
     await userEvent.click(await screen.findByText("neemt"));
-    await userEvent.click(await screen.findByRole("button", { name: "Learn next" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Study first in Anki" }));
     expect(
-      await screen.findByText("Learn next needs AnkiConnect with API v1 (Anki ≥ 26.08)"),
+      await screen.findByText(/This needs a newer Anki and AnkiConnect\. Update Anki/),
     ).toBeInTheDocument();
   });
 

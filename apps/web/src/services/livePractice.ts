@@ -10,13 +10,14 @@ import {
   type ItemState,
   type LearnerModel,
   type Skill,
+  type TopicSentence,
   type WordData,
   type WordForms,
   matchToken,
   normalizeKey,
   sharesMeaning,
 } from "@app/core";
-import type { KenningRepository, WordInfo } from "@app/db";
+import type { GeneratedSentence, GeneratedSentenceSet, KenningRepository, WordInfo } from "@app/db";
 import type { GlossEntry } from "@app/nlp-client";
 import { buildTopicSession } from "@app/core";
 import {
@@ -27,11 +28,14 @@ import {
   practiceStats,
   review,
 } from "../practice/engine.js";
+import type { AISentenceReport } from "./aiTypes.js";
+import type { SentenceFill, SentenceNeed } from "./liveAI.js";
 import type { TopicMaterial } from "./liveGrammar.js";
 import type { PracticeData } from "./practiceData.js";
 import type {
   AnswerResult,
   AttemptInput,
+  PracticeOptions,
   PracticeOverview,
   TopicPracticeOptions,
 } from "./types.js";
@@ -53,8 +57,49 @@ export interface LivePracticeDeps {
   data: PracticeData;
   /** Hit sentences and words of a grammar topic (M5 topic exercises). */
   topicMaterial?: (detects: string[]) => Promise<TopicMaterial>;
+  /** AI example sentences (docs/ai.md); absent or not ready = no generation. */
+  aiSentences?: {
+    ready: () => boolean;
+    fill: (lang: string, needs: SentenceNeed[], avoid: string[]) => Promise<SentenceFill>;
+  };
   now?: () => number;
 }
+/** Most words per session that get AI sentences. */
+export const AI_WORDS_PER_SESSION = 8;
+/** A word with fewer good sentences than this gets AI sentences. */
+const AI_GOOD_SENTENCES = 3;
+/** A grammar topic with fewer hit sentences than this gets AI sentences. */
+const AI_TOPIC_FEW = 6;
+
+/** A stored AI sentence as an example sentence (needs its target span). */
+function aiExample(g: GeneratedSentence): ExampleSentence[] {
+  if (!g.target) return [];
+  const e: ExampleSentence = { text: g.text, target: g.target, source: "ai" };
+  if (g.translation) e.translation = g.translation;
+  return [e];
+}
+
+/** A stored AI grammar sentence as a topic sentence (needs its marks). */
+function aiTopicSentence(g: GeneratedSentence): TopicSentence[] {
+  const marks = g.marks?.filter(([a, b]) => a >= 0 && a < b && b <= g.text.length);
+  if (!marks?.length) return [];
+  const [a, b] = marks[0]!;
+  const t: TopicSentence = {
+    text: g.text,
+    marks,
+    source: "ai",
+    key: normalizeKey(g.text.slice(a, b)),
+  };
+  if (g.translation) t.translation = g.translation;
+  if (g.note) t.note = g.note;
+  return [t];
+}
+
+const goodSentences = (xs: readonly ExampleSentence[]) =>
+  xs.filter((x) => {
+    const n = x.text.split(/\s+/).filter(Boolean).length;
+    return n >= MIN_SENTENCE_WORDS && n <= MAX_SENTENCE_WORDS;
+  }).length;
 /** Distinct words a topic session looks up (forms, dictionary). */
 const TOPIC_WORDS = 40;
 
@@ -257,9 +302,7 @@ export function createLivePractice(deps: LivePracticeDeps) {
     return out;
   }
 
-  async function startPractice(
-    opts: { size?: number; skills?: Skill[] } = {},
-  ): Promise<Exercise[]> {
+  async function startPractice(opts: PracticeOptions = {}): Promise<Exercise[]> {
     const lang = await deps.lang();
     const now = clock();
     const size = Math.max(1, opts.size ?? DEFAULT_SIZE);
@@ -293,7 +336,7 @@ export function createLivePractice(deps: LivePracticeDeps) {
       return { info, lemma, pos, glosses, article, o };
     });
 
-    const [forms, serverSentences] = await Promise.all([
+    const [forms, serverSentences, aiSets] = await Promise.all([
       deps.data.forms(
         lang,
         base.filter((b) => FORM_POS.has(b.pos)).map((b) => ({ lemma: b.lemma, pos: b.pos })),
@@ -303,7 +346,11 @@ export function createLivePractice(deps: LivePracticeDeps) {
         base.filter((b) => (b.o?.sentences.length ?? 0) < 2).map((b) => b.lemma),
         { limit: 2, maxWords: 14 },
       ),
+      repo.generatedSentences(lang),
     ]);
+    const aiByKey = new Map<string, GeneratedSentenceSet>(
+      aiSets.filter((x) => !x.topic && x.key).map((x) => [x.key, x]),
+    );
 
     const words: WordData[] = base.map(({ info, lemma, pos, glosses, article, o }) => {
       const sentences: ExampleSentence[] = [];
@@ -321,7 +368,12 @@ export function createLivePractice(deps: LivePracticeDeps) {
           });
         }
       }
-      sentences.push(...(o?.sentences ?? []), ...(serverSentences[lemma] ?? []));
+      // Anki, then the learner's texts, then earlier AI sentences, then Tatoeba (server).
+      sentences.push(
+        ...(o?.sentences ?? []),
+        ...(aiByKey.get(info.key)?.sentences.flatMap(aiExample) ?? []),
+        ...(serverSentences[lemma] ?? []),
+      );
       const word: WordData = {
         key: info.key,
         lemma,
@@ -339,6 +391,11 @@ export function createLivePractice(deps: LivePracticeDeps) {
       return word;
     });
 
+    if (opts.aiSentences) {
+      const report = await fillWithAI(lang, words, aiByKey, size);
+      opts.onAISentences?.(report);
+    }
+
     const skills = opts.skills;
     // New items: normally at most 40% of a session, but when few reviews are due (e.g. the first
     // sessions) let new items fill the rest, so the session has the length the learner chose.
@@ -351,6 +408,50 @@ export function createLivePractice(deps: LivePracticeDeps) {
       rng,
     );
     return padWordChoices(exercises, words, lang);
+  }
+
+  /**
+   * "Fill gaps with AI sentences": words near the front of the session with fewer than
+   * AI_GOOD_SENTENCES usable sentences and no earlier AI attempt get validated AI sentences
+   * (at most AI_WORDS_PER_SESSION words). They go after Anki and text sentences, before Tatoeba.
+   */
+  async function fillWithAI(
+    lang: string,
+    words: WordData[],
+    aiByKey: Map<string, GeneratedSentenceSet>,
+    size: number,
+  ): Promise<AISentenceReport> {
+    const reused = words.filter((w) => w.sentences.some((x) => x.source === "ai")).length;
+    const report: AISentenceReport = { requested: 0, accepted: 0, rejected: 0, reused };
+    if (!deps.aiSentences?.ready()) return report;
+    const needy = words
+      .slice(0, Math.max(size, 20))
+      .filter(
+        (w) =>
+          !aiByKey.has(w.key) &&
+          !/\s/.test(w.key) &&
+          goodSentences(w.sentences) < AI_GOOD_SENTENCES,
+      )
+      .slice(0, AI_WORDS_PER_SESSION);
+    if (needy.length === 0) return report;
+    const fill = await deps.aiSentences.fill(
+      lang,
+      needy.map((w) => ({ key: w.key, lemma: w.lemma, existing: w.sentences.map((x) => x.text) })),
+      needy.map((w) => w.key),
+    );
+    needy.forEach((w, k) => {
+      const add = (fill.sentences[k] ?? []).flatMap(aiExample);
+      if (!add.length) return;
+      const tatoeba = w.sentences.filter((x) => x.source === "tatoeba");
+      w.sentences = [...w.sentences.filter((x) => x.source !== "tatoeba"), ...add, ...tatoeba];
+    });
+    return {
+      ...report,
+      requested: fill.requested,
+      accepted: fill.accepted,
+      rejected: fill.rejected,
+      ...(fill.error ? { error: fill.error } : {}),
+    };
   }
 
   /**
@@ -400,6 +501,7 @@ export function createLivePractice(deps: LivePracticeDeps) {
     if (!deps.topicMaterial || opts.detects.length === 0) return [];
     const lang = await deps.lang();
     const material = await deps.topicMaterial(opts.detects);
+    if (opts.topicId) await addTopicAI(lang, opts, material);
     const needWords = opts.kinds.some((k) => k !== "scramble");
     const byKey = new Map<
       string,
@@ -454,6 +556,51 @@ export function createLivePractice(deps: LivePracticeDeps) {
       { kinds: opts.kinds, sentences: material.sentences, words, size: opts.size ?? 10 },
       createRng(clock()),
     );
+  }
+
+  /** Earlier AI sentences of the topic, and new ones when the topic has few hits (scramble kinds). */
+  async function addTopicAI(
+    lang: string,
+    opts: TopicPracticeOptions,
+    material: TopicMaterial,
+  ): Promise<void> {
+    const sets = (await repo.generatedSentences(lang)).filter((x) => x.topic === opts.topicId);
+    const have = new Set(material.sentences.map((x) => x.text));
+    const add = (gs: GeneratedSentence[]) => {
+      for (const t of gs.flatMap(aiTopicSentence)) {
+        if (!have.has(t.text)) {
+          have.add(t.text);
+          material.sentences.push(t);
+        }
+      }
+    };
+    for (const set of sets) add(set.sentences);
+    if (!opts.aiSentences) return;
+    const report: AISentenceReport = {
+      requested: 0,
+      accepted: 0,
+      rejected: 0,
+      reused: sets.reduce((n, x) => n + x.sentences.length, 0),
+    };
+    if (
+      sets.length === 0 &&
+      material.sentences.length < AI_TOPIC_FEW &&
+      deps.aiSentences?.ready()
+    ) {
+      const fill = await deps.aiSentences.fill(
+        lang,
+        [{ key: "", topicId: opts.topicId!, existing: [...have] }],
+        [],
+      );
+      add(fill.sentences[0] ?? []);
+      Object.assign(report, {
+        requested: fill.requested,
+        accepted: fill.accepted,
+        rejected: fill.rejected,
+        ...(fill.error ? { error: fill.error } : {}),
+      });
+    }
+    opts.onAISentences?.(report);
   }
 
   async function answerExercise(exercise: Exercise, attempt: AttemptInput): Promise<AnswerResult> {

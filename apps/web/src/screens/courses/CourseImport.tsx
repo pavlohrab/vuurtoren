@@ -1,10 +1,11 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { UploadCloud } from "lucide-react";
+import { Check, UploadCloud } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { validateOutline } from "@app/core";
 import { Button, Chip, Input, Select, Spinner } from "@app/ui";
 import { useServices } from "../../services/context.js";
+import { useAppInfo } from "../../shell/AppInfo.js";
 import type { DeckMapping, ImportProgress, OutlineRow } from "../../services/courseTypes.js";
 import "./courses.css";
 
@@ -25,15 +26,32 @@ const KINDS: { value: OutlineRow["kind"]; label: string }[] = [
 ];
 
 function Steps({ step }: { step: Step }) {
+  const current = STEPS.findIndex(([s]) => s === step);
   return (
     <ol className="cs-steps" aria-label="Import steps">
-      {STEPS.map(([s, label]) => (
-        <li key={s} aria-current={s === step ? "step" : undefined}>
+      {STEPS.map(([s, label], i) => (
+        <li
+          key={s}
+          aria-current={i === current ? "step" : undefined}
+          data-done={i < current || undefined}
+        >
+          <span className="cs-step-n" aria-hidden>
+            {i < current ? <Check size={12} /> : i + 1}
+          </span>
           {label}
         </li>
       ))}
     </ol>
   );
+}
+
+/** Where the book ends up, by storage mode (server, this browser, or the demo). */
+function privacyCopy(mode: "server" | "browser" | undefined): string {
+  if (mode === "server")
+    return "It is read on your own Kenning server and kept only in its storage. Nothing is shared.";
+  if (mode === "browser")
+    return "Its pages are read by your language server, and the course is kept only in this browser. Nothing is shared.";
+  return "This is the demo: nothing you upload is kept.";
 }
 
 function ProgressBar({ p }: { p: ImportProgress | null }) {
@@ -64,6 +82,7 @@ function ProgressBar({ p }: { p: ImportProgress | null }) {
  */
 export function CourseImportScreen({ courseId: existing }: { courseId?: string }) {
   const services = useServices();
+  const storageMode = useAppInfo().data?.mode;
   const qc = useQueryClient();
   const mounted = useRef(true);
   useEffect(() => {
@@ -179,8 +198,8 @@ export function CourseImportScreen({ courseId: existing }: { courseId?: string }
       {step === "upload" ? (
         <div className="stack">
           <p className="page-lede">
-            Upload your own copy of a textbook, as a PDF or as photos of the pages. It is read on
-            your own server and kept only in your own storage. Nothing is shared.
+            Upload your own copy of a textbook, as a PDF or as photos of the pages.{" "}
+            {privacyCopy(storageMode)}
           </p>
           <div
             className="dropzone"

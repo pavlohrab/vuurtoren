@@ -1,7 +1,8 @@
 import { useState } from "react";
 import type { Exercise, ExerciseItem } from "@app/core";
 import { LOW_CONFIDENCE } from "@app/core";
-import { Button, Chip, Textarea } from "@app/ui";
+import { Info } from "lucide-react";
+import { Button, Chip, Textarea, Tooltip } from "@app/ui";
 import { useServices } from "../../services/context.js";
 import type { BookCheckResult, BookExerciseView } from "../../services/courseTypes.js";
 import { GeneratedSession } from "./GeneratedSession.js";
@@ -49,13 +50,20 @@ function useNotes(key: string): [string, (v: string) => void] {
 
 /** Who gave the stored answer, as a quiet label next to the result. */
 function SourceNote({ item }: { item: ExerciseItem }) {
-  if (item.answer === undefined) return <span className="cs-hint">no answer stored</span>;
-  if (item.answerSource === "user") return <span className="cs-hint">your answer</span>;
+  if (item.answer === undefined) return <span className="cs-hint">No answer stored</span>;
+  if (item.answerSource === "user") return <span className="cs-hint">Your answer</span>;
   if (item.answerSource === "derived") {
+    // How the answer was found is an internal detail: one small info icon, explained on hover.
+    const text =
+      item.confidence < LOW_CONFIDENCE
+        ? "This answer was worked out from the book and may be wrong. Fix it if it is."
+        : "This answer was worked out from the book, not printed in it.";
     return (
-      <span className="cs-hint">
-        {item.confidence < LOW_CONFIDENCE ? "derived, low confidence" : "derived"}
-      </span>
+      <Tooltip content={text}>
+        <button type="button" className="cs-info" aria-label={text}>
+          <Info size={14} aria-hidden />
+        </button>
+      </Tooltip>
     );
   }
   return null;
@@ -201,16 +209,17 @@ function Item({
         </span>
       ) : null}
       <SourceNote item={item} />
-      <button
-        type="button"
-        className="link-button"
+      <Button
+        size="sm"
+        variant="ghost"
+        aria-expanded={fixing}
         onClick={() => {
           setFix(item.answer ?? "");
           setFixing((f) => !f);
         }}
       >
         Fix answer
-      </button>
+      </Button>
       {fixing ? (
         <span className="row">
           <input

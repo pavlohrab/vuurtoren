@@ -19,14 +19,9 @@ export interface RowResult {
   deck?: string;
 }
 
-export const STATUS_LABEL: Record<AnkiStatus, string> = {
-  absent: "Not in Anki",
-  new: "New card",
-  suspended: "Suspended",
-  learning: "Learning",
-  review: "In review",
-  unavailable: "Anki not reachable",
-};
+/** Tooltip for "Study first in Anki" (formerly "Learn next"; the service keeps `learnNext`). */
+export const STUDY_FIRST_HINT =
+  "Moves the new card to the front of Anki's queue, so Anki shows it next.";
 
 /** The action a row starts with, by the word's state in Anki. */
 export function defaultAction(status: AnkiStatus): WordAction {
@@ -37,7 +32,7 @@ export function defaultAction(status: AnkiStatus): WordAction {
 
 const LABEL: Record<WordAction, string> = {
   add: "Add to Anki",
-  learn: "Learn next",
+  learn: "Study first in Anki",
   known: "Mark known",
   skip: "Skip",
 };
@@ -48,7 +43,7 @@ export function actionOptions(status: AnkiStatus): { value: WordAction; label: s
   const order: WordAction[] = first === "skip" ? ["skip", "known"] : [first, "known", "skip"];
   return order.map((value) => ({
     value,
-    label: value === "learn" && status === "suspended" ? "Unsuspend & learn next" : LABEL[value],
+    label: value === "learn" && status === "suspended" ? "Unsuspend & study first" : LABEL[value],
   }));
 }
 

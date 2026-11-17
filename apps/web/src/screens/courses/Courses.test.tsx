@@ -28,20 +28,24 @@ describe("Courses", () => {
     );
   });
 
-  it("shows unit status and runs Learn next for the unit's new cards", async () => {
+  it("shows unit status and runs Study first in Anki for the unit's new cards", async () => {
     const learnNextForUnit = vi.fn(async () => ({ moved: 2, skipped: 4 }));
     const { user } = setup("/courses/demo-course/1", { learnNextForUnit });
     expect(
       await screen.findByRole("heading", { level: 1, name: "Thema 1 Kennismaken" }),
     ).toBeVisible();
+    // The top bar names the unit (not "Courses") but is not a second h1.
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+    expect(document.querySelector(".topbar-title")).toHaveTextContent("Thema 1 Kennismaken");
+    expect(document.querySelector(".topbar-crumb")).toHaveAttribute("href", "/courses/demo-course");
     expect(screen.getByText("33% of the words known, 1 learning, 3 new.")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Learn next (2)" }));
+    await user.click(screen.getByRole("button", { name: "Study first in Anki (2)" }));
     expect(learnNextForUnit).toHaveBeenCalledWith("demo-course", 1);
     expect(await screen.findByText("2 words moved to the front in Anki")).toBeInTheDocument();
     expect(await screen.findByRole("button", { name: /^Add 1 missing word to/ })).toBeEnabled();
     // Words tab: each word with its Anki state
     await user.click(screen.getByRole("tab", { name: /Words/ }));
-    expect(await screen.findByText("not in Anki")).toBeInTheDocument();
+    expect(await screen.findByText("Not in Anki")).toBeInTheDocument();
   });
 
   it("imports a book: upload, reading progress, outline editor with checks, decks, done", async () => {

@@ -1,7 +1,7 @@
 /** Contract of the AI services (M6). Keys never appear here except as write-only arguments. */
-import type { Correction, NewWord, ProviderId } from "@app/ai";
+import type { Correction, NewWord, ProviderId, StoryLength, StoryStyle } from "@app/ai";
 
-export type { Correction, NewWord, ProviderId };
+export type { Correction, NewWord, ProviderId, StoryLength, StoryStyle };
 
 /** Provider choice, stored per device (never in the database or backups). */
 export interface AISettings {
@@ -97,6 +97,55 @@ export interface AIServices {
    */
   aiExplainSentence(sentence: string, grammar?: ExplainGrammar[]): Promise<string>;
   aiSimplify(text: string): Promise<SimplifyView>;
+  /** Suggested target words for a story (empty for a grammar topic: it features the topic). */
+  storyTargets(source: StoryTargetSource): Promise<string[]>;
+  /**
+   * Write a story with the provider, check it against your vocabulary (one rewrite at most) and
+   * save it to the Library as an AI text. `onProgress` gets short status lines.
+   */
+  createStory(input: StoryInput, onProgress?: (msg: string) => void): Promise<StoryView>;
+}
+
+/** Where a story's target words come from. */
+export type StoryTargetSource =
+  | { kind: "learn-now" }
+  | { kind: "unit"; courseId: string; unitN: number }
+  | { kind: "grammar"; topicId: string };
+
+export interface StoryInput {
+  topic: string;
+  length: StoryLength;
+  style?: StoryStyle;
+  /** Words the story should use (at most 10 are sent). */
+  targetWords: string[];
+  /** Grammar topic page id to feature. */
+  grammarTopic?: string;
+}
+
+export interface StoryView {
+  textId: string;
+  title: string;
+  /** Coverage of the saved text, null when the language server was unavailable. */
+  coverage: number | null;
+  rewritten: boolean;
+  /** Target words that the text does not contain (checked by the language server). */
+  missingTargets: string[];
+  /** The model did not answer in the expected format; its raw text was saved. */
+  parseFailed: boolean;
+}
+
+/** What "Fill gaps with AI sentences" did for one practice session. */
+export interface AISentenceReport {
+  /** Words (or topics) a request was made for. */
+  requested: number;
+  /** Sentences that passed validation and were saved. */
+  accepted: number;
+  /** Sentences the validator dropped. */
+  rejected: number;
+  /** Earlier AI sentences reused from your data. */
+  reused: number;
+  /** Set when the provider failed (generation stopped; practice continues without it). */
+  error?: string;
 }
 
 /** A grammar construction detected in the sentence to explain. */

@@ -19,7 +19,7 @@ export interface TopicSentence {
   marks: [number, number][];
   /** The detector's note, shown after answering. */
   note?: string;
-  source: "text" | "tatoeba";
+  source: "text" | "ai" | "tatoeba";
   /** Practice key the answer is scheduled under (normally the lemma of the first marked word). */
   key: string;
 }
