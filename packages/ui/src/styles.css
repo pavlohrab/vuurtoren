@@ -676,8 +676,78 @@ kbd {
 }
 .k-tok[data-label="cloze"][data-result="incorrect"] {
   color: var(--danger);
-  text-decoration: line-through;
+}
+.k-cloze-attempt {
+  color: var(--ink-muted);
   text-decoration-thickness: 1px;
+  margin-right: 0.3em;
+  font-size: 0.9em;
+}
+.k-tok[data-label="cloze"][data-result="revealed"] {
+  color: var(--ink-muted);
+  text-decoration: underline dotted var(--line);
+  text-underline-offset: 4px;
+}
+.k-cloze-wrap {
+  position: relative;
+  display: inline-block;
+  white-space: nowrap;
+}
+.k-cloze::placeholder {
+  color: var(--ink-muted);
+  letter-spacing: 0.04em;
+  opacity: 0.8;
+}
+.k-cloze-hint {
+  position: absolute;
+  bottom: calc(100% + 2px);
+  left: 50%;
+  transform: translateX(-50%) translateY(2px);
+  font-family: var(--font-ui);
+  font-size: 13px;
+  line-height: 1.35;
+  color: var(--ink-muted);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 2px 8px;
+  white-space: nowrap;
+  max-width: 28ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.08);
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity 150ms ease-out,
+    transform 150ms ease-out;
+  z-index: 5;
+}
+.k-cloze-wrap:hover .k-cloze-hint,
+.k-cloze-wrap:focus-within .k-cloze-hint {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+.k-cloze-hintbtn {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  line-height: 1;
+  color: var(--ink-muted);
+  background: none;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  margin-left: 2px;
+  vertical-align: super;
+  cursor: pointer;
+  opacity: 0.6;
+}
+.k-cloze-hintbtn:hover {
+  opacity: 1;
+  color: var(--accent);
+  border-color: var(--accent);
 }
 
 /* ---------- Word inspector ---------- */

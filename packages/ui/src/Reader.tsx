@@ -14,11 +14,21 @@ export interface ReaderProps {
   /** Cloze tokens whose answer is shown. */
   revealed?: ReadonlySet<number>;
   onTokenClick?: (i: number) => void;
-  onClozeAnswer?: (i: number, answer: string) => void;
+  /**
+   * A cloze was answered. `hints`: 0 none, 1 first letter + length shown, 2 revealed (gave up;
+   * `answer` is then "").
+   */
+  onClozeAnswer?: (i: number, answer: string, hints: number) => void;
   /** Optional inline glosses keyed by token index (shown as tooltip, and inline in gloss mode). */
   glosses?: Readonly<Record<number, string>>;
   /** read: clozes shown as plain words; cloze/undefined: blanks; gloss: glosses shown inline. */
   mode?: ReaderMode;
+}
+
+/** Placeholder for hint level 1: first letter, then one underscore per remaining letter. */
+export function letterHint(word: string): string {
+  const chars = [...word];
+  return [chars[0] ?? "", ...chars.slice(1).map((c) => (/\p{L}/u.test(c) ? "_" : c))].join(" ");
 }
 
 /** Opacity of the "learning" underline: fades as recall grows, clamped to 0.25..1. */
@@ -41,6 +51,7 @@ export function Reader({
   mode,
 }: ReaderProps) {
   const [answers, setAnswers] = useState<Record<number, string>>({});
+  const [hints, setHints] = useState<Record<number, number>>({});
   const rootRef = useRef<HTMLDivElement>(null);
 
   const planned = useMemo(() => {
@@ -105,36 +116,69 @@ export function Reader({
 
     if (label === "cloze" && mode !== "read") {
       const answer = answers[t.i];
+      const hint = hints[t.i] ?? 0;
       const show = revealed?.has(t.i) === true || answer !== undefined;
       if (!show) {
+        const advanceHint = () => {
+          if (hint >= 1) {
+            // second hint = reveal (counts as not recalled)
+            setAnswers((a) => ({ ...a, [t.i]: "" }));
+            setHints((h) => ({ ...h, [t.i]: 2 }));
+            onClozeAnswer?.(t.i, "", 2);
+          } else setHints((h) => ({ ...h, [t.i]: 1 }));
+        };
+        const hintId = `k-cloze-hint-${t.i}`;
         return (
-          <input
-            key={t.i}
-            data-tok=""
-            className="k-cloze"
-            type="text"
-            size={Math.max(3, surface.length + 1)}
-            aria-label="Fill in the missing word"
-            autoComplete="off"
-            autoCapitalize="off"
-            spellCheck={false}
-            onKeyDown={(e) => {
-              e.stopPropagation();
-              if (e.key === "Enter" && e.currentTarget.value.trim() !== "") {
-                const value = e.currentTarget.value.trim();
-                setAnswers((a) => ({ ...a, [t.i]: value }));
-                onClozeAnswer?.(t.i, value);
-              }
-            }}
-          />
+          <span key={t.i} className="k-cloze-wrap">
+            {gloss ? (
+              <span id={hintId} className="k-cloze-hint" role="tooltip">
+                {gloss}
+              </span>
+            ) : null}
+            <input
+              data-tok=""
+              className="k-cloze"
+              type="text"
+              size={Math.max(3, surface.length + 1)}
+              aria-label="Fill in the missing word (press ? for a hint)"
+              {...(gloss ? { "aria-describedby": hintId } : {})}
+              {...(hint >= 1 ? { placeholder: letterHint(surface) } : {})}
+              autoComplete="off"
+              autoCapitalize="off"
+              spellCheck={false}
+              onKeyDown={(e) => {
+                e.stopPropagation();
+                if (e.key === "?") {
+                  e.preventDefault();
+                  advanceHint();
+                } else if (e.key === "Enter" && e.currentTarget.value.trim() !== "") {
+                  const value = e.currentTarget.value.trim();
+                  setAnswers((a) => ({ ...a, [t.i]: value }));
+                  onClozeAnswer?.(t.i, value, hint);
+                }
+              }}
+            />
+            <button
+              type="button"
+              className="k-cloze-hintbtn"
+              tabIndex={-1}
+              aria-label={hint >= 1 ? "Show the word" : "Show the first letter"}
+              title={hint >= 1 ? "Show the word" : "Show the first letter (?)"}
+              onClick={advanceHint}
+            >
+              ?
+            </button>
+          </span>
         );
       }
       const result =
         answer === undefined
           ? undefined
-          : normalize(answer) === normalize(surface)
-            ? "correct"
-            : "incorrect";
+          : answer === ""
+            ? "revealed"
+            : normalize(answer) === normalize(surface)
+              ? "correct"
+              : "incorrect";
       return (
         <span
           key={t.i}
@@ -146,9 +190,11 @@ export function Reader({
           className="k-tok"
           role="button"
           tabIndex={t.i === tabStop ? 0 : -1}
+          {...(gloss ? { title: gloss } : {})}
           onClick={() => onTokenClick?.(t.i)}
           onKeyDown={(e) => onKeyDown(e, t.i)}
         >
+          {result === "incorrect" ? <s className="k-cloze-attempt">{answer}</s> : null}
           {surface}
         </span>
       );
@@ -178,9 +224,7 @@ export function Reader({
         onKeyDown={(e) => onKeyDown(e, t.i)}
       >
         {surface}
-        {gloss && (shownLabel === "gloss" || mode === "gloss") ? (
-          <sup className="k-gloss-mark">{mode === "gloss" ? gloss : "·"}</sup>
-        ) : null}
+        {gloss ? <sup className="k-gloss-mark">{mode === "gloss" ? gloss : "·"}</sup> : null}
       </span>
     );
   };

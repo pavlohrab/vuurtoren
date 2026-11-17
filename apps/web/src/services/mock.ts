@@ -245,6 +245,8 @@ export function createMockServices(options: { latencyMs?: number } = {}): AppSer
     lang: "nl",
     targetDeck: "Kenning::Reading",
     theme: "system",
+    help: 0.25,
+    newWords: "auto",
   };
   let staircase: StaircaseState = { targetCoverage: 0.98, newWordBudget: 6 };
   let lastSync: number | null = null;
@@ -409,6 +411,20 @@ export function createMockServices(options: { latencyMs?: number } = {}): AppSer
     async deleteText(textId) {
       await wait();
       texts.delete(textId);
+    },
+
+    async glosses(textId, tokenIndices) {
+      await wait();
+      const t = texts.get(textId);
+      const tokens = t?.tokens ?? [];
+      const out: Record<number, string> = {};
+      for (const i of tokenIndices) {
+        const tok = tokens[i];
+        if (!tok) continue;
+        const e = entryFor(tok, tokens) ?? lexicon.get(ensure(tok.text).key);
+        if (e?.gloss) out[i] = e.gloss;
+      }
+      return out;
     },
 
     async inspect(textId, tokenIndex): Promise<InspectorEntry> {

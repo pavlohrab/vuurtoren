@@ -11,6 +11,7 @@ import {
   type SegmentPlan,
   type StaircaseState,
   type WordState,
+  classifyTokens,
   estimateVocabulary,
   matchToken,
   normalizeKey,
@@ -39,7 +40,13 @@ export const DEFAULT_SETTINGS: Settings = {
   lang: "nl",
   targetDeck: "Kenning::Nederlands",
   theme: "system",
+  help: 0.25,
+  newWords: "auto",
 };
+
+// Wiktionary form-of senses ("inflection of fietsen: …", "plural of …") are noise as glosses.
+const FORM_OF =
+  /^(inflection|plural|diminutive|singular|past|present|feminine|comparative|superlative)[^:]* of /i;
 
 const DEFAULT_STAIRCASE: StaircaseState = {
   targetCoverage: DEFAULT_PLANNER.targetCoverage,
@@ -104,6 +111,41 @@ export function createLiveServices(repo: KenningRepository): AppServices {
   let modelVersion = 0;
   let modelCache: { version: number; lang: string; model: LearnerModel } | null = null;
   const planCache = new Map<string, { version: number; hash: string; view: ReadingView }>();
+  // Translation per lemma key: Anki gloss first, then the Wiktionary dictionary; null = none.
+  const glossCache = new Map<string, string | null>();
+
+  /** Translations for (key, lemma) pairs, batched: one dictionary request for all misses. */
+  async function lookupGlosses(
+    items: { key: string; lemma: string }[],
+  ): Promise<Map<string, string>> {
+    const { lang } = await settings();
+    const missing = items.filter(
+      (it, idx) => !glossCache.has(it.key) && items.findIndex((x) => x.key === it.key) === idx,
+    );
+    const needDict: { key: string; lemma: string }[] = [];
+    for (const it of missing) {
+      const info = await repo.word(lang, it.key);
+      if (info?.gloss) glossCache.set(it.key, info.gloss);
+      else needDict.push(it);
+    }
+    if (needDict.length) {
+      try {
+        const dict = await (await nlp()).gloss("nl", [...new Set(needDict.map((it) => it.lemma))]);
+        for (const it of needDict) {
+          const g = (dict[it.lemma] ?? []).flatMap((e) => e.glosses).find((x) => !FORM_OF.test(x));
+          glossCache.set(it.key, g ?? null);
+        }
+      } catch {
+        // dictionary unavailable (503 when not built): leave uncached so it is retried later
+      }
+    }
+    const out = new Map<string, string>();
+    for (const it of items) {
+      const g = glossCache.get(it.key);
+      if (g) out.set(it.key, g);
+    }
+    return out;
+  }
 
   async function settings(): Promise<Settings> {
     if (!settingsCache) {
@@ -132,11 +174,12 @@ export function createLiveServices(repo: KenningRepository): AppServices {
   }
 
   async function plannerOptions(m: LearnerModel): Promise<PlannerOptions> {
-    const st = (await repo.staircase((await settings()).lang)) ?? DEFAULT_STAIRCASE;
+    const s = await settings();
+    const st = (await repo.staircase(s.lang)) ?? DEFAULT_STAIRCASE;
     return {
       ...DEFAULT_PLANNER,
       targetCoverage: st.targetCoverage,
-      newWordBudget: st.newWordBudget,
+      newWordBudget: s.newWords === "auto" ? st.newWordBudget : s.newWords,
       vocabEstimate: estimateVocabulary(m),
     };
   }
@@ -170,10 +213,33 @@ export function createLiveServices(repo: KenningRepository): AppServices {
     const m = await model();
     const opts = await plannerOptions(m);
     const plans: SegmentPlan[] = planText(tokens, m, opts, text.content);
+    await dropUnhintableClozes(tokens, plans, m);
     const staircase = { targetCoverage: opts.targetCoverage, newWordBudget: opts.newWordBudget };
     const v: ReadingView = { text: { ...text, tokens }, tokens, plans, staircase };
     planCache.set(textId, { version: modelVersion, hash, view: v });
     return v;
+  }
+
+  /**
+   * A cloze needs a meaning hint to be fair (one sentence often fits several words), so clozes
+   * whose word has no translation are turned back into normal words.
+   */
+  async function dropUnhintableClozes(
+    tokens: AnalyzedToken[],
+    plans: SegmentPlan[],
+    m: LearnerModel,
+  ): Promise<void> {
+    const clozeTokens = plans.flatMap((p) => p.clozes).map((i) => tokens[i]!);
+    if (!clozeTokens.length) return;
+    const keyOf = (t: AnalyzedToken) => matchToken(t, m) ?? normalizeKey(t.lemma);
+    const found = await lookupGlosses(clozeTokens.map((t) => ({ key: keyOf(t), lemma: t.lemma })));
+    const base = classifyTokens(tokens, m);
+    for (const plan of plans) {
+      const drop = new Set(plan.clozes.filter((i) => !found.has(keyOf(tokens[i]!))));
+      if (!drop.size) continue;
+      plan.clozes = plan.clozes.filter((i) => !drop.has(i));
+      for (const p of plan.tokens) if (drop.has(p.i)) p.label = base[p.i]?.label ?? "known";
+    }
   }
 
   async function summary(): Promise<LearnerSummary> {
@@ -287,11 +353,8 @@ export function createLiveServices(repo: KenningRepository): AppServices {
       try {
         const dict = await (await nlp()).gloss("nl", [t.lemma]);
         const entries = dict[t.lemma] ?? [];
-        // Skip Wiktionary form-of senses ("inflection of fietsen: …", "plural of …").
-        const formOf =
-          /^(inflection|plural|diminutive|singular|past|present|feminine|comparative|superlative)[^:]* of /i;
         for (const e of entries)
-          for (const g of e.glosses) if (!formOf.test(g) && !glosses.includes(g)) glosses.push(g);
+          for (const g of e.glosses) if (!FORM_OF.test(g) && !glosses.includes(g)) glosses.push(g);
         article ??=
           entries.find((e) => e.article === "de" || e.article === "het")?.article ?? undefined;
       } catch {
@@ -316,6 +379,26 @@ export function createLiveServices(repo: KenningRepository): AppServices {
       };
       if (article) entry.article = article;
       return entry;
+    },
+
+    async glosses(textId: string, tokenIndices: number[]): Promise<Record<number, string>> {
+      const v = await view(textId);
+      if (!v) return {};
+      const m = await model();
+      const items = tokenIndices.flatMap((i) => {
+        const clicked = v.tokens[i];
+        if (!clicked) return [];
+        const t =
+          clicked.particle_of !== null ? (v.tokens[clicked.particle_of] ?? clicked) : clicked;
+        return [{ i, key: matchToken(t, m) ?? normalizeKey(t.lemma), lemma: t.lemma }];
+      });
+      const found = await lookupGlosses(items);
+      const out: Record<number, string> = {};
+      for (const it of items) {
+        const g = found.get(it.key);
+        if (g) out[it.i] = g;
+      }
+      return out;
     },
 
     async addToAnki(entry: InspectorEntry): Promise<{ noteId: number }> {
@@ -368,6 +451,7 @@ export function createLiveServices(repo: KenningRepository): AppServices {
       const next = { ...(await settings()), ...patch };
       await repo.append({ type: "SettingChanged", key: "settings", value: next });
       settingsCache = next;
+      if ("newWords" in patch) changed();
     },
 
     async ankiStatus(): Promise<AnkiStatus> {

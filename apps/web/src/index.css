@@ -295,3 +295,36 @@
   justify-content: space-between;
   gap: 12px;
 }
+
+/* Reader toolbar: translations dial + new-word budget */
+.reader-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 28px;
+  max-width: 66ch;
+  margin: 0 auto 28px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--line);
+  font-size: 13px;
+  color: var(--ink-muted);
+}
+.reader-tool {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.reader-tool .k-field {
+  gap: 0;
+}
+.reader-tool-label {
+  font-weight: 500;
+  color: var(--ink);
+}
+.reader-tool-slider {
+  width: 150px;
+}
+.reader-tool-value {
+  min-width: 12ch;
+  font-variant-numeric: tabular-nums;
+}

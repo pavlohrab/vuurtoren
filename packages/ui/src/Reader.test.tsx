@@ -60,24 +60,50 @@ describe("Reader", () => {
     const f = fixture(TEXT, { 1: "cloze" });
     const onClozeAnswer = vi.fn();
     render(<Reader {...f} onClozeAnswer={onClozeAnswer} />);
-    const input = screen.getByLabelText("Fill in the missing word");
+    const input = screen.getByLabelText(/Fill in the missing word/);
     await userEvent.type(input, "bel{Enter}");
-    expect(onClozeAnswer).toHaveBeenCalledWith(1, "bel");
+    expect(onClozeAnswer).toHaveBeenCalledWith(1, "bel", 0);
     const shown = screen.getByText("bel");
     expect(shown).toHaveAttribute("data-result", "correct");
   });
 
   it("flags a wrong cloze answer", async () => {
     const f = fixture(TEXT, { 1: "cloze" });
-    render(<Reader {...f} onClozeAnswer={() => {}} />);
-    await userEvent.type(screen.getByLabelText("Fill in the missing word"), "bal{Enter}");
-    expect(screen.getByText("bel")).toHaveAttribute("data-result", "incorrect");
+    const { container } = render(<Reader {...f} onClozeAnswer={() => {}} />);
+    await userEvent.type(screen.getByLabelText(/Fill in the missing word/), "bal{Enter}");
+    const shown = container.querySelector('[data-result="incorrect"]');
+    expect(shown?.textContent).toBe("balbel");
+    expect(shown?.querySelector("s")?.textContent).toBe("bal");
+  });
+
+  it("shows the meaning as a hint, then the first letter, then the word", async () => {
+    const f = fixture(TEXT, { 1: "cloze" });
+    const onClozeAnswer = vi.fn();
+    const { container } = render(
+      <Reader {...f} glosses={{ 1: "to call" }} onClozeAnswer={onClozeAnswer} />,
+    );
+    expect(screen.getByRole("tooltip")).toHaveTextContent("to call");
+    const input = screen.getByLabelText(/Fill in the missing word/);
+    expect(input).toHaveAccessibleDescription("to call");
+    await userEvent.type(input, "?");
+    expect(input).toHaveAttribute("placeholder", "b _ _");
+    await userEvent.type(input, "bel{Enter}");
+    expect(onClozeAnswer).toHaveBeenLastCalledWith(1, "bel", 1);
+
+    const f2 = fixture(TEXT, { 1: "cloze" });
+    const { container: c2 } = render(<Reader {...f2} onClozeAnswer={onClozeAnswer} />);
+    const hintBtn = c2.querySelector<HTMLButtonElement>(".k-cloze-hintbtn")!;
+    await userEvent.click(hintBtn);
+    await userEvent.click(c2.querySelector<HTMLButtonElement>(".k-cloze-hintbtn")!);
+    expect(onClozeAnswer).toHaveBeenLastCalledWith(1, "", 2);
+    expect(c2.querySelector('[data-result="revealed"]')?.textContent).toBe("bel");
+    expect(container).toBeTruthy();
   });
 
   it("shows the word for revealed clozes", () => {
     const f = fixture(TEXT, { 1: "cloze" });
     render(<Reader {...f} revealed={new Set([1])} />);
-    expect(screen.queryByLabelText("Fill in the missing word")).toBeNull();
+    expect(screen.queryByLabelText(/Fill in the missing word/)).toBeNull();
     expect(screen.getByText("bel")).toBeInTheDocument();
   });
 });

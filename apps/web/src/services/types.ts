@@ -22,6 +22,10 @@ export interface Settings {
   lang: "nl";
   targetDeck: string;
   theme: "system" | "light" | "dark";
+  /** Reader help dial in [0, 1]: which words get an inline translation (see core help.ts). */
+  help: number;
+  /** New words introduced per 300 words: "auto" follows the adaptive staircase. */
+  newWords: number | "auto";
 }
 export type ImportInput =
   | { kind: "paste"; title?: string; content: string }
@@ -51,6 +55,8 @@ export interface AppServices {
   importText(input: ImportInput, onProgress?: (msg: string) => void): Promise<string>;
   deleteText(textId: string): Promise<void>;
   inspect(textId: string, tokenIndex: number): Promise<InspectorEntry>;
+  /** Short translations for many tokens at once (missing keys = no translation found). */
+  glosses(textId: string, tokenIndices: number[]): Promise<Record<number, string>>;
   addToAnki(entry: InspectorEntry): Promise<{ noteId: number }>;
   setWordState(key: string, state: WordState): Promise<void>;
   recordLookup(textId: string, key: string): Promise<void>;

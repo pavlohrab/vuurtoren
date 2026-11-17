@@ -1,19 +1,33 @@
-import {
-  keepPreviousData,
-  useMutation,
-  useQueries,
-  useQuery,
-  useQueryClient,
-} from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import type { WordState } from "@app/core";
-import { Button, EmptyState, Reader, Skeleton, WordInspector, useToast } from "@app/ui";
+import { type HelpLevel, type WordState, glossTargets, helpLevel } from "@app/core";
+import {
+  Button,
+  EmptyState,
+  Reader,
+  Select,
+  Skeleton,
+  Slider,
+  WordInspector,
+  useToast,
+} from "@app/ui";
 import { useServices } from "../services/context.js";
 import { usePageHeader, useShell } from "../shell/ShellContext.js";
 
 const normalize = (s: string) => s.trim().toLocaleLowerCase();
+
+const HELP_LABEL: Record<HelpLevel, string> = {
+  off: "Off",
+  new: "New words",
+  shaky: "New + shaky words",
+  most: "Most words",
+};
+const NEW_WORD_OPTIONS = [
+  { value: "auto", label: "Auto" },
+  ...[0, 2, 4, 6, 8, 10, 12].map((n) => ({ value: String(n), label: `${n} per page` })),
+];
 
 /** Reader page: one segment at a time, with the word inspector in the shell's right panel. */
 export function ReaderPage() {
@@ -33,7 +47,8 @@ export function ReaderPage() {
   const [selected, setSelected] = useState<number | null>(null);
   const [revealed, setRevealed] = useState<ReadonlySet<number>>(new Set());
   // Per-segment outcome counters; refs because they never drive rendering.
-  const stats = useRef({ lookups: 0, answered: 0, correct: 0 });
+  // `credit`: 1 per cloze recalled unaided, 0.5 with the letter hint, 0 if wrong or revealed.
+  const stats = useRef({ lookups: 0, answered: 0, credit: 0 });
   const [finishing, setFinishing] = useState(false);
 
   const data = reading.data;
@@ -57,7 +72,7 @@ export function ReaderPage() {
   const resetSegmentState = useCallback(() => {
     setSelected(null);
     setRevealed(new Set());
-    stats.current = { lookups: 0, answered: 0, correct: 0 };
+    stats.current = { lookups: 0, answered: 0, credit: 0 };
   }, []);
 
   // Esc closes the inspector; j/k from nowhere moves focus into the text.
@@ -90,22 +105,47 @@ export function ReaderPage() {
     placeholderData: keepPreviousData,
   });
 
-  // Gloss text for gloss/introduce tokens, so the reader can show it inline.
-  const glossTokens = useMemo(
-    () => (plan?.tokens ?? []).filter((t) => t.label === "gloss" || t.label === "introduce"),
-    [plan],
-  );
-  const glossResults = useQueries({
-    queries: glossTokens.map((t) => ({
-      queryKey: ["inspect", textId, t.i],
-      queryFn: () => services.inspect(textId, t.i),
-    })),
+  // Reader settings: the help dial (which words get a translation) and the new-word budget.
+  const settingsQ = useQuery({ queryKey: ["settings"], queryFn: () => services.getSettings() });
+  const [helpDraft, setHelpDraft] = useState<number | null>(null);
+  const help = helpDraft ?? settingsQ.data?.help ?? 0.25;
+  const saveSettings = useMutation({
+    mutationFn: (patch: Parameters<typeof services.saveSettings>[0]) =>
+      services.saveSettings(patch),
+    onSuccess: async (_r, patch) => {
+      await qc.invalidateQueries({ queryKey: ["settings"] });
+      if ("newWords" in patch) {
+        await Promise.all(["reading", "texts"].map((k) => qc.invalidateQueries({ queryKey: [k] })));
+      }
+    },
   });
-  const glosses: Record<number, string> = {};
-  glossTokens.forEach((t, idx) => {
-    const g = glossResults[idx]?.data?.glosses[0];
-    if (g) glosses[t.i] = g;
+  // Persist the dial shortly after the user stops dragging.
+  useEffect(() => {
+    if (helpDraft === null) return;
+    const id = setTimeout(() => saveSettings.mutate({ help: helpDraft }), 400);
+    return () => clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [helpDraft]);
+
+  // Translations: words the dial selects, plus every cloze (its meaning is the hint).
+  const glossIdx = useMemo(() => {
+    if (!plan) return [];
+    return [...new Set([...glossTargets(plan.tokens, help), ...plan.clozes])].sort((a, b) => a - b);
+  }, [plan, help]);
+  const glossQ = useQuery({
+    queryKey: ["glosses", textId, current, glossIdx.join(",")],
+    queryFn: () => services.glosses(textId, glossIdx),
+    enabled: glossIdx.length > 0,
+    placeholderData: keepPreviousData,
   });
+  const glosses = useMemo(() => {
+    const out: Record<number, string> = {};
+    for (const i of glossIdx) {
+      const g = glossQ.data?.[i];
+      if (g) out[i] = g;
+    }
+    return out;
+  }, [glossIdx, glossQ.data]);
 
   const onTokenClick = (i: number) => {
     setSelected(i);
@@ -117,11 +157,13 @@ export function ReaderPage() {
     }
   };
 
-  const onClozeAnswer = (i: number, answer: string) => {
+  const onClozeAnswer = (i: number, answer: string, hints: number) => {
     const tok = data?.tokens[i];
     if (!tok) return;
     stats.current.answered += 1;
-    if (normalize(answer) === normalize(tok.text)) stats.current.correct += 1;
+    if (hints < 2 && normalize(answer) === normalize(tok.text)) {
+      stats.current.credit += hints === 1 ? 0.5 : 1;
+    }
   };
 
   const refreshWords = async () => {
@@ -167,9 +209,9 @@ export function ReaderPage() {
       const words = plan.tokens.filter(
         (t) => t.label !== "nonword" && t.label !== "ignored",
       ).length;
-      const { lookups, answered, correct } = stats.current;
+      const { lookups, answered, credit } = stats.current;
       await services.finishSegment(textId, current, {
-        clozeAccuracy: answered > 0 ? correct / answered : null,
+        clozeAccuracy: answered > 0 ? credit / answered : null,
         lookupsPer100: words > 0 ? (lookups / words) * 100 : 0,
       });
       await qc.invalidateQueries({ queryKey: ["texts"] });
@@ -213,6 +255,29 @@ export function ReaderPage() {
 
   return (
     <div className="reader-page">
+      <div className="reader-tools" role="group" aria-label="Reading help">
+        <div className="reader-tool">
+          <span className="reader-tool-label">Translations</span>
+          <div className="reader-tool-slider">
+            <Slider
+              aria-label="Translations"
+              value={Math.round(help * 100)}
+              onValueChange={(v) => setHelpDraft(v / 100)}
+            />
+          </div>
+          <span className="reader-tool-value">{HELP_LABEL[helpLevel(help)]}</span>
+        </div>
+        <div className="reader-tool">
+          <span className="reader-tool-label">New words</span>
+          <Select
+            value={String(settingsQ.data?.newWords ?? "auto")}
+            onValueChange={(v) =>
+              saveSettings.mutate({ newWords: v === "auto" ? "auto" : Number(v) })
+            }
+            options={NEW_WORD_OPTIONS}
+          />
+        </div>
+      </div>
       <Reader
         key={current}
         text={data.text.content}
