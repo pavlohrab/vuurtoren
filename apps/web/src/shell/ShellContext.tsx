@@ -9,6 +9,10 @@ export interface PageHeader {
   newCount?: number | null;
   /** Show the Read | Cloze | Gloss mode tabs. */
   reader?: boolean;
+  /** Render the title as the page's h1 (only for pages without an in-page heading). */
+  heading?: boolean;
+  /** Breadcrumb before the title, e.g. the course of a unit. */
+  parent?: { label: string; to: string } | null;
 }
 
 export interface ShellState {
@@ -35,9 +39,12 @@ export function useShell(): ShellState {
 /** Publish the top-bar content for the current screen; cleared on unmount. */
 export function usePageHeader(title: string, extra: Omit<PageHeader, "title"> = {}): void {
   const { setHeader } = useShell();
-  const { coverage = null, newCount = null, reader = false } = extra;
+  const { coverage = null, newCount = null, reader = false, heading = false } = extra;
+  const parentLabel = extra.parent?.label;
+  const parentTo = extra.parent?.to;
   useEffect(() => {
-    setHeader({ title, coverage, newCount, reader });
+    const parent = parentLabel && parentTo ? { label: parentLabel, to: parentTo } : null;
+    setHeader({ title, coverage, newCount, reader, heading, parent });
     return () => setHeader(null);
-  }, [setHeader, title, coverage, newCount, reader]);
+  }, [setHeader, title, coverage, newCount, reader, heading, parentLabel, parentTo]);
 }

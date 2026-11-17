@@ -36,7 +36,7 @@ describe("textWordsActions", () => {
       "Mark known",
       "Skip",
     ]);
-    expect(actionOptions("suspended")[0]?.label).toBe("Unsuspend & learn next");
+    expect(actionOptions("suspended")[0]?.label).toBe("Unsuspend & study first");
     expect(actionOptions("review").map((o) => o.label)).toEqual(["Skip", "Mark known"]);
   });
 
@@ -97,8 +97,8 @@ describe("TextWords page", () => {
     expect(await screen.findByRole("heading", { name: "Words from this text" })).toBeVisible();
     await screen.findByText("vertrekken");
     expect(row("vertrekken")).toHaveTextContent("Add to Anki");
-    expect(row("meenemen")).toHaveTextContent("Learn next");
-    expect(row("reis")).toHaveTextContent("Unsuspend & learn next");
+    expect(row("meenemen")).toHaveTextContent("Study first in Anki");
+    expect(row("reis")).toHaveTextContent("Unsuspend & study first");
     expect(row("opbellen")).toHaveTextContent("Skip");
     expect(row("trein")).toHaveTextContent("Skip");
     // article for nouns, meaning and the sentence with the word marked

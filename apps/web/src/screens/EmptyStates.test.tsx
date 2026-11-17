@@ -1,0 +1,83 @@
+import { createMemoryHistory } from "@tanstack/react-router";
+import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { describe, expect, it } from "vitest";
+import { App } from "../App.js";
+import { createMockServices } from "../services/mock.js";
+import type { AppServices } from "../services/types.js";
+
+function setup(path: string, patch: Partial<AppServices> = {}, synced = false) {
+  const services: AppServices = { ...createMockServices({ latencyMs: 0, synced }), ...patch };
+  render(<App services={services} history={createMemoryHistory({ initialEntries: [path] })} />);
+  return userEvent.setup();
+}
+
+const emptySummary = {
+  known: 0,
+  learning: 0,
+  unknown: 0,
+  vocabEstimate: 200,
+  lastSync: null,
+  sources: [],
+};
+
+describe("empty states", () => {
+  it("Progress: one next step and no made-up estimate before a first sync", async () => {
+    setup("/progress", { learnerSummary: async () => emptySummary });
+    expect(await screen.findByRole("heading", { name: "Nothing to measure yet" })).toBeVisible();
+    expect(screen.getByRole("link", { name: "Connect Anki" })).toBeInTheDocument();
+    expect(screen.queryByText("Estimated vocabulary")).toBeNull();
+  });
+
+  it("Progress: the estimate appears once Anki was synced", async () => {
+    setup("/progress", {}, true);
+    expect(await screen.findByText("Estimated vocabulary")).toBeInTheDocument();
+    expect(screen.getByText(/last synced/)).toBeInTheDocument();
+  });
+
+  it("Words: a real empty state when there are no words at all", async () => {
+    setup("/words", { words: async () => [] });
+    expect(await screen.findByRole("heading", { name: "No words yet" })).toBeVisible();
+    expect(screen.getByRole("link", { name: "Import a text" })).toBeInTheDocument();
+  });
+
+  it("Read is disabled while the library is empty, so only Library is highlighted", async () => {
+    setup("/library", { listTexts: async () => [] });
+    await screen.findByRole("heading", { name: "Your library is empty" });
+    const nav = screen.getByRole("navigation", { name: "Main" });
+    const read = within(nav).getByRole("link", { name: "Read" });
+    expect(read).toHaveAttribute("aria-disabled", "true");
+    expect(read).not.toHaveAttribute("href");
+  });
+
+  it("the demo (synced) shows no Connect Anki banner", async () => {
+    setup("/library", {}, true);
+    await screen.findAllByRole("meter");
+    expect(screen.queryByRole("button", { name: "Connect Anki" })).toBeNull();
+  });
+
+  it("one h1 per page: the top-bar title is not a heading", async () => {
+    setup("/library");
+    await screen.findByRole("heading", { level: 1, name: "Library" });
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+  });
+});
+
+describe("plain errors", () => {
+  it("Import: plain cause, Retry and details; no stale progress", async () => {
+    const user = setup("/import", {
+      importText: async (_input, onProgress) => {
+        onProgress?.("Analysing the text…");
+        throw new Error("NLP /analyze/text: HTTP 502, not JSON: ");
+      },
+    });
+    await user.type(await screen.findByLabelText("Text"), "Ik bel mijn zus op.");
+    await user.click(screen.getByRole("button", { name: "Import" }));
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("The import did not work.");
+    expect(alert).toHaveTextContent(/language server is not reachable/);
+    expect(within(alert).getByRole("button", { name: "Retry" })).toBeInTheDocument();
+    expect(within(alert).getByText("Technical details")).toBeInTheDocument();
+    expect(screen.queryByText("Analysing the text…")).toBeNull();
+  });
+});

@@ -149,7 +149,7 @@ export function DataSettings() {
         description={`This replaces everything stored ${data.mode === "server" ? "on the server" : "in this browser"} with the contents of ${pending?.name ?? "the file"}. The current data is gone unless you downloaded a backup first.`}
       >
         <div className="row">
-          <Button variant="primary" onClick={() => void restore()} disabled={busy}>
+          <Button variant="danger" onClick={() => void restore()} disabled={busy}>
             Replace my data
           </Button>
           <Button onClick={() => setPending(null)}>Cancel</Button>

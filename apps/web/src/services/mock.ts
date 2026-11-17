@@ -209,7 +209,13 @@ function tokenize(
 const STATE_COUNT_BASE = { known: 1840, learning: 412, unknown: 5120 };
 
 /** Create a mock services implementation with fresh in-memory state. */
-export function createMockServices(options: { latencyMs?: number } = {}): AppServices {
+export function createMockServices(
+  options: {
+    latencyMs?: number;
+    /** Start as if Anki was synced an hour ago (the ?demo app). */
+    synced?: boolean;
+  } = {},
+): AppServices {
   const latency = options.latencyMs ?? 40;
   const wait = () => (latency > 0 ? delay(latency) : Promise.resolve());
 
@@ -315,7 +321,7 @@ export function createMockServices(options: { latencyMs?: number } = {}): AppSer
     grammarSpotlights: true,
   };
   let staircase: StaircaseState = { targetCoverage: 0.98, newWordBudget: 3 };
-  let lastSync: number | null = null;
+  let lastSync: number | null = options.synced ? Date.now() - 60 * 60 * 1000 : null;
   let nextNoteId = 1_700_000_000_000;
 
   const entryFor = (tok: AnalyzedToken, tokens: AnalyzedToken[]): LexEntry | undefined => {

@@ -52,10 +52,6 @@
   font-size: 20px;
   font-weight: 500;
 }
-.tw-article {
-  color: var(--ink-muted);
-  font-weight: 400;
-}
 .tw-source {
   color: var(--ink-muted);
   font-size: 13px;
@@ -80,6 +76,7 @@
   padding: 0 2px;
 }
 .tw-action {
+  position: relative;
   grid-area: action;
   align-self: start;
 }

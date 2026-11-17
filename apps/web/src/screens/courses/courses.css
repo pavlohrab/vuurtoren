@@ -18,8 +18,8 @@
 }
 .cs-card h2 {
   margin: 0;
-  font-size: 18px;
-  font-family: var(--font-reading);
+  font-size: 16px;
+  font-weight: 600;
 }
 .cs-meta {
   color: var(--ink-muted);
@@ -31,6 +31,7 @@
   gap: 8px;
   align-items: center;
 }
+/* Import job progress (coverage uses the shared CoverageMeter). */
 .cs-bar {
   height: 6px;
   border-radius: 3px;
@@ -43,6 +44,15 @@
   height: 100%;
   background: var(--accent);
 }
+/* Breadcrumb inside the page only where the top bar hides it. */
+.cs-crumb {
+  display: none;
+}
+@media (max-width: 699px) {
+  .cs-crumb {
+    display: block;
+  }
+}
 .cs-unit {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 12rem auto;
@@ -52,8 +62,8 @@
   border-bottom: 1px solid var(--line);
 }
 .cs-unit a.cs-unit-title {
-  font-family: var(--font-reading);
-  font-size: 17px;
+  font-size: 16px;
+  font-weight: 600;
   color: var(--ink);
   text-decoration: none;
 }
@@ -70,9 +80,33 @@
   color: var(--ink-muted);
   font-size: 14px;
 }
+.cs-steps li {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.cs-step-n {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
 .cs-steps [aria-current="step"] {
   color: var(--ink);
   font-weight: 600;
+}
+.cs-steps [aria-current="step"] .cs-step-n {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--bg);
+}
+.cs-steps [data-done] .cs-step-n {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--line));
 }
 .cs-outline-row {
   display: grid;
@@ -133,6 +167,32 @@
 .cs-item input.k-input {
   width: 9rem;
   font-family: var(--font-reading);
+}
+/* Controls inside a (serif) exercise line use the UI font. */
+.cs-item .k-btn,
+.cs-item .link-button,
+.cs-item .cs-hint,
+.cs-item .cs-ok,
+.cs-item .cs-bad,
+.cs-item .error-text {
+  font-family: var(--font-ui);
+}
+.cs-info {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--ink-muted);
+  cursor: help;
+  align-self: center;
+}
+.cs-info:hover {
+  color: var(--ink);
+  background: var(--surface-2);
 }
 .cs-hint {
   color: var(--ink-muted);

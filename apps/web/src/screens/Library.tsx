@@ -98,7 +98,7 @@ export function Library() {
         <div className="row" style={{ justifyContent: "flex-end" }}>
           <Button onClick={() => setPendingDelete(null)}>Cancel</Button>
           <Button
-            variant="primary"
+            variant="danger"
             onClick={() => {
               if (pendingDelete) remove.mutate(pendingDelete.id);
               setPendingDelete(null);

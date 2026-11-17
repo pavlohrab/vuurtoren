@@ -244,6 +244,10 @@ export function Converse() {
               ))}
             </ul>
           </section>
+        ) : past.data ? (
+          <p className="k-hint" style={{ marginTop: 32 }}>
+            No conversations yet. Pick a topic above; your chats are kept here to come back to.
+          </p>
         ) : null}
       </div>
     );

@@ -62,6 +62,13 @@
 .nav-link svg {
   flex: none;
 }
+.nav-link--disabled,
+.nav-link--disabled:hover {
+  opacity: 0.45;
+  background: none;
+  color: var(--ink-muted);
+  cursor: default;
+}
 .shell[data-sidebar="collapsed"] .nav-label,
 .shell[data-sidebar="collapsed"] .brand-label {
   display: none;
@@ -86,23 +93,58 @@
   background: var(--bg);
   flex: none;
 }
+.topbar-heading {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+  font-size: 15px;
+}
 .topbar-title {
   font-size: 15px;
   font-weight: 600;
+  margin: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   min-width: 0;
 }
+.topbar-crumb {
+  color: var(--ink-muted);
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 24ch;
+  flex: 0 1 auto;
+}
+.topbar-crumb:hover {
+  color: var(--accent);
+  text-decoration: underline;
+}
+.topbar-crumb-sep {
+  color: var(--line);
+}
 .topbar-group {
   display: flex;
   align-items: center;
   gap: 12px;
+  flex: none;
+}
+.topbar-heading {
+  flex: 0 1 auto;
+}
+/* With the inspector open the top bar is narrow: the palette button keeps only its icon. */
+.shell[data-inspector="open"] .topbar-kbd {
+  display: none;
 }
 .topbar-spacer {
   flex: 1;
 }
 .content {
+  /* Positioned, so absolutely placed descendants (e.g. visually hidden labels) stay inside the
+     scroll area instead of stretching the document (U7). */
+  position: relative;
   flex: 1;
   min-height: 0;
   overflow: auto;
@@ -210,10 +252,91 @@
     padding-bottom: 62vh;
   }
 }
-/* Coverage and the to-learn count are on the page itself at phone width. */
+/* Phone width: a bottom tab bar replaces the icon rail (U20). */
 @media (max-width: 699px) {
-  .topbar-coverage {
+  /* Coverage and the to-learn count are on the page itself. */
+  .topbar-coverage,
+  .topbar-palette,
+  .topbar-spacer,
+  .topbar-crumb-sep,
+  .topbar-crumb {
     display: none;
+  }
+  .topbar-heading {
+    flex: 1 1 auto;
+    min-width: 5rem;
+  }
+  .shell,
+  .shell[data-sidebar="collapsed"],
+  .shell[data-inspector="open"] {
+    grid-template-columns: minmax(0, 1fr);
+    height: 100dvh;
+    grid-template-rows: 100dvh;
+  }
+  .main {
+    padding-bottom: calc(56px + env(safe-area-inset-bottom, 0px));
+  }
+  .sidebar {
+    position: fixed;
+    inset: auto 0 0 0;
+    z-index: 30;
+    flex-direction: row;
+    justify-content: space-around;
+    align-items: center;
+    height: calc(56px + env(safe-area-inset-bottom, 0px));
+    padding: 4px 4px env(safe-area-inset-bottom, 0px);
+    gap: 0;
+    border-right: 0;
+    border-top: 1px solid var(--line);
+  }
+  .sidebar-brand,
+  .nav-spacer {
+    display: none;
+  }
+  .nav-link {
+    position: relative;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+  }
+  .nav-link .nav-badge,
+  .shell[data-sidebar="collapsed"] .nav-badge {
+    display: block;
+    position: absolute;
+    top: 3px;
+    right: 3px;
+    min-width: 0;
+    width: 7px;
+    height: 7px;
+    padding: 0;
+    font-size: 0;
+    background: var(--accent);
+    border: 0;
+  }
+  .inspector-panel {
+    bottom: calc(56px + env(safe-area-inset-bottom, 0px));
+  }
+  /* The demo notice stays on one line. */
+  .shell-notice.shell-notice--demo {
+    flex-wrap: nowrap;
+    white-space: nowrap;
+  }
+  .shell-notice-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+  }
+  /* Long tab rows (unit sections) scroll sideways instead of overflowing the page. */
+  .content .k-tabs-list {
+    display: flex;
+    max-width: 100%;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .content .k-tabs-trigger {
+    flex: none;
+    white-space: nowrap;
   }
 }
 
@@ -339,6 +462,36 @@
 .error-text {
   color: var(--danger);
 }
+.error-notice {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 14px;
+  border-left: 2px solid var(--danger);
+  background: color-mix(in srgb, var(--danger) 6%, transparent);
+  border-radius: 0 var(--radius-control) var(--radius-control) 0;
+  font-size: 14px;
+}
+.error-notice p {
+  margin: 0;
+}
+.error-notice-next {
+  color: var(--ink-muted);
+}
+.error-notice-details {
+  color: var(--ink-muted);
+  font-size: 12px;
+}
+.error-notice-details summary {
+  cursor: pointer;
+}
+.error-notice-details code {
+  display: block;
+  margin-top: 4px;
+  font-family: var(--font-mono);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
 .reader-footer {
   max-width: 66ch;
   margin: 32px auto 0;
@@ -438,6 +591,9 @@
   gap: 8px;
 }
 .practice-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   font: inherit;
   font-size: 14px;
   padding: 6px 14px;
@@ -446,11 +602,26 @@
   border: 1px solid var(--line);
   border-radius: 999px;
   cursor: pointer;
+  transition:
+    background var(--dur) var(--ease),
+    border-color var(--dur) var(--ease);
 }
+.practice-option:hover:not([aria-disabled="true"]) {
+  border-color: color-mix(in srgb, var(--accent) 50%, var(--line));
+}
+/* Selected: filled accent with a check icon. */
 .practice-option[aria-pressed="true"] {
-  color: var(--accent);
+  color: var(--bg);
   border-color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 10%, var(--surface));
+  background: var(--accent);
+}
+/* Unavailable: muted, clearly not selected. */
+.practice-option[aria-disabled="true"] {
+  color: var(--ink-muted);
+  background: transparent;
+  border-style: dashed;
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 .practice-note {
   margin: 0;

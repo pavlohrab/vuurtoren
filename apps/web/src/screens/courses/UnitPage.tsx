@@ -2,29 +2,32 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 import type { Exercise } from "@app/core";
-import { Button, Chip, Skeleton, Tabs, useToast } from "@app/ui";
+import {
+  AnkiStatusChip,
+  Button,
+  Chip,
+  Lemma,
+  Skeleton,
+  Tabs,
+  Tooltip,
+  WordStateChip,
+  useToast,
+} from "@app/ui";
 import { useServices } from "../../services/context.js";
+import { errorText } from "../../services/errors.js";
+import { usePageHeader } from "../../shell/ShellContext.js";
 import type { UnitView, UnitWordView } from "../../services/courseTypes.js";
 import { BookExercise } from "./BookExercise.js";
 import { GeneratedSession } from "./GeneratedSession.js";
 import "./courses.css";
 
-const STATE_LABEL: Record<UnitWordView["state"], string> = {
-  known: "known",
-  learning: "learning",
-  unknown: "new",
-  seen: "seen",
-  ignored: "ignored",
-  absent: "not in Anki",
-};
-const STATE_TONE: Record<UnitWordView["state"], "success" | "accent" | "warm" | "neutral"> = {
-  known: "success",
-  learning: "accent",
-  unknown: "neutral",
-  seen: "neutral",
-  ignored: "neutral",
-  absent: "warm",
-};
+/** Word state, or the Anki status for unit words that are not in Anki at all. */
+function UnitWordState({ state }: { state: UnitWordView["state"] }) {
+  return state === "absent" ? <AnkiStatusChip status="absent" /> : <WordStateChip state={state} />;
+}
+
+const STUDY_FIRST_HINT =
+  "Moves the unit's new cards to the front of Anki's queue, so Anki shows them next.";
 
 function ReadTab({ unit }: { unit: UnitView }) {
   if (unit.texts.length === 0) {
@@ -70,11 +73,8 @@ function WordsTab({ unit }: { unit: UnitView }) {
     <ul className="cs-words">
       {unit.words.map((w) => (
         <li key={w.key}>
-          <span className="tw-word" lang="nl">
-            {w.article ? <span className="tw-article">{w.article} </span> : null}
-            {w.lemma}
-          </span>
-          <Chip tone={STATE_TONE[w.state]}>{STATE_LABEL[w.state]}</Chip>
+          <Lemma lemma={w.lemma} article={w.article} />
+          <UnitWordState state={w.state} />
           {w.gloss ? <span className="cs-gloss">{w.gloss}</span> : null}
         </li>
       ))}
@@ -144,6 +144,9 @@ export function UnitRoute({ courseId, n }: { courseId: string; n: number }) {
   const [tab, setTab] = useState("exercises");
   const key = ["unit", courseId, n];
   const unit = useQuery({ queryKey: key, queryFn: () => services.unit(courseId, n) });
+  usePageHeader(unit.data?.unit.title ?? "Unit", {
+    parent: { label: unit.data?.course.title ?? "Courses", to: `/courses/${courseId}` },
+  });
   const refresh = () => {
     void qc.invalidateQueries({ queryKey: key });
     void qc.invalidateQueries({ queryKey: ["course", courseId] });
@@ -158,7 +161,7 @@ export function UnitRoute({ courseId, n }: { courseId: string; n: number }) {
       );
       refresh();
     },
-    onError: (e) => toast("Learn next did not work", e instanceof Error ? e.message : ""),
+    onError: (e) => toast("Could not move the cards in Anki", errorText(e)),
   });
   const add = useMutation({
     mutationFn: () => services.addMissingUnitWords(courseId, n),
@@ -169,7 +172,7 @@ export function UnitRoute({ courseId, n }: { courseId: string; n: number }) {
       );
       refresh();
     },
-    onError: (e) => toast("Adding words did not work", e instanceof Error ? e.message : ""),
+    onError: (e) => toast("Adding words did not work", errorText(e)),
   });
 
   if (unit.isPending) {
@@ -194,7 +197,8 @@ export function UnitRoute({ courseId, n }: { courseId: string; n: number }) {
   const fresh = s.newInAnki + s.missing;
   return (
     <div className="page">
-      <p className="cs-meta">
+      {/* The top bar shows this breadcrumb on wider screens. */}
+      <p className="cs-meta cs-crumb">
         <Link to="/courses/$courseId" params={{ courseId }}>
           {u.course.title}
         </Link>
@@ -211,13 +215,16 @@ export function UnitRoute({ courseId, n }: { courseId: string; n: number }) {
       )}
       {s.total > 0 ? (
         <div className="cs-actions" style={{ marginBottom: 12 }}>
-          <Button
-            variant="primary"
-            disabled={learn.isPending || s.newInAnki === 0}
-            onClick={() => learn.mutate()}
-          >
-            {learn.isPending ? "Working…" : `Learn next (${s.newInAnki})`}
-          </Button>
+          <Tooltip content={STUDY_FIRST_HINT}>
+            <Button
+              variant="primary"
+              disabled={learn.isPending || s.newInAnki === 0}
+              title={STUDY_FIRST_HINT}
+              onClick={() => learn.mutate()}
+            >
+              {learn.isPending ? "Working…" : `Study first in Anki (${s.newInAnki})`}
+            </Button>
+          </Tooltip>
           {s.missing > 0 ? (
             <Button disabled={add.isPending} onClick={() => add.mutate()}>
               {add.isPending

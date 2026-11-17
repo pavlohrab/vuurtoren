@@ -31,7 +31,7 @@ export function ExplainSentence({
   if (!ready || !sentence) return null;
   return (
     // Keyed by sentence so a new selection starts clean.
-    <div key={sentence} className="stack" style={{ padding: "12px 16px" }}>
+    <div key={sentence} className="stack" style={{ paddingTop: 12 }}>
       <Button
         onClick={() => explain.mutate(sentence)}
         disabled={explain.isPending}

@@ -1,26 +1,27 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import type { WordState } from "@app/core";
-import { Button, Chip, EmptyState, Input, Select, Skeleton } from "@app/ui";
+import { Link } from "@tanstack/react-router";
+import { Languages } from "lucide-react";
+import {
+  Button,
+  EmptyState,
+  Input,
+  Lemma,
+  Select,
+  Skeleton,
+  WORD_STATE_LABEL,
+  WordStateChip,
+} from "@app/ui";
 import { useServices } from "../services/context.js";
 import { useDebounced } from "../useDebounced.js";
 
 const PAGE_SIZE = 50;
+const STATES: WordState[] = ["known", "learning", "seen", "unknown", "ignored"];
 const STATE_OPTIONS = [
   { value: "all", label: "All states" },
-  { value: "known", label: "Known" },
-  { value: "learning", label: "Learning" },
-  { value: "seen", label: "Seen" },
-  { value: "unknown", label: "Not yet known" },
-  { value: "ignored", label: "Ignored" },
+  ...STATES.map((value) => ({ value, label: WORD_STATE_LABEL[value] })),
 ];
-const TONE: Record<WordState, "success" | "accent" | "warm" | "neutral"> = {
-  known: "success",
-  learning: "accent",
-  seen: "neutral",
-  unknown: "warm",
-  ignored: "neutral",
-};
 
 /** Words: filterable table of lemmas with state, recall and source decks. */
 export function Words() {
@@ -77,6 +78,17 @@ export function Words() {
         <Skeleton style={{ height: 160, borderRadius: 10 }} />
       ) : q.isError ? (
         <p className="error-text">Words could not be loaded.</p>
+      ) : q.data.length === 0 && state === "all" && !search ? (
+        <EmptyState
+          icon={<Languages size={28} />}
+          title="No words yet"
+          description="Words arrive when you sync your Anki decks or read a text. Start with a text you want to read."
+          action={
+            <Link to="/import" className="k-btn k-btn--primary">
+              Import a text
+            </Link>
+          }
+        />
       ) : q.data.length === 0 ? (
         <EmptyState title="No words match" description="Try a different state or search." />
       ) : (
@@ -94,14 +106,11 @@ export function Words() {
             <tbody>
               {q.data.map((w) => (
                 <tr key={w.key}>
-                  <td lang="nl" style={{ fontFamily: "var(--font-reading)", fontSize: 16 }}>
-                    {w.article ? (
-                      <span style={{ color: "var(--ink-muted)" }}>{w.article} </span>
-                    ) : null}
-                    {w.key}
+                  <td>
+                    <Lemma lemma={w.key} article={w.article} />
                   </td>
                   <td>
-                    <Chip tone={TONE[w.state]}>{w.state}</Chip>
+                    <WordStateChip state={w.state} />
                   </td>
                   <td className="k-mono">{Math.round(w.pKnown * 100)}%</td>
                   <td>{w.gloss ?? ""}</td>

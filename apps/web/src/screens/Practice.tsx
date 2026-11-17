@@ -1,11 +1,13 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "@tanstack/react-router";
+import { Check, Dumbbell } from "lucide-react";
 import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import type { Exercise, ExerciseKind, Skill } from "@app/core";
 import { grammarTopic } from "@app/content";
 import {
   Button,
   Chip,
+  EmptyState,
   ExerciseCard,
   ExerciseProgress,
   type ExerciseFeedback,
@@ -17,6 +19,8 @@ import { dutchVoiceAvailable, speakDutch } from "../practice/speech.js";
 import { useServices } from "../services/context.js";
 import type { AnswerResult } from "../services/types.js";
 import { usePageHeader } from "../shell/ShellContext.js";
+import { ErrorNotice } from "../shell/ErrorNotice.js";
+import { errorText } from "../services/errors.js";
 
 export const SKILLS: { skill: Skill; label: string }[] = [
   { skill: "recognition", label: "Recognition" },
@@ -42,7 +46,7 @@ type Phase =
 /** Practice: start view, one exercise per screen, then a quiet summary. */
 export function Practice() {
   const [phase, setPhase] = useState<Phase>({ name: "start" });
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<unknown>(null);
   const services = useServices();
   const client = useQueryClient();
 
@@ -60,7 +64,7 @@ export function Practice() {
         : true;
       setPhase({ name: "session", exercises, listening });
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(e ?? new Error("The session could not be prepared."));
       setPhase({ name: "start" });
     }
   };
@@ -88,13 +92,42 @@ export function Practice() {
   );
 }
 
+/** A toggle chip: selected is filled with a check, disabled is muted and announced as such. */
+function OptionChip({
+  pressed,
+  disabled = false,
+  title,
+  onClick,
+  children,
+}: {
+  pressed: boolean;
+  disabled?: boolean;
+  title?: string | undefined;
+  onClick: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      className="practice-option"
+      aria-pressed={pressed}
+      aria-disabled={disabled || undefined}
+      title={title}
+      onClick={disabled ? undefined : onClick}
+    >
+      {pressed ? <Check size={14} aria-hidden /> : null}
+      {children}
+    </button>
+  );
+}
+
 function StartView({
   loading,
   error,
   onStart,
 }: {
   loading: boolean;
-  error: string | null;
+  error: unknown;
   onStart: (size: number, skills: Skill[]) => void;
 }) {
   const services = useServices();
@@ -119,6 +152,30 @@ function StartView({
       cur.includes(s) ? (cur.length > 1 ? cur.filter((x) => x !== s) : cur) : [...cur, s],
     );
 
+  // Nothing due and nothing new: no Start button, one next step instead.
+  if (o && o.due === 0 && o.newAvailable === 0) {
+    const fresh = o.learned === 0 && o.lastSession === null;
+    return (
+      <>
+        <h1>Practice</h1>
+        <EmptyState
+          icon={<Dumbbell size={28} />}
+          title={fresh ? "Nothing to practise yet" : "All caught up"}
+          description={
+            fresh
+              ? "Exercises come from words you are learning. Read a text and add the words you want to keep."
+              : "No exercises are due right now. Read something new and come back later."
+          }
+          action={
+            <Link to="/library" className="k-btn k-btn--primary">
+              Go to the library
+            </Link>
+          }
+        />
+      </>
+    );
+  }
+
   return (
     <>
       <h1>Practice</h1>
@@ -141,17 +198,15 @@ function StartView({
           {SKILLS.map(({ skill, label }) => {
             const blocked = skill === "listening" && noVoice;
             return (
-              <button
+              <OptionChip
                 key={skill}
-                type="button"
-                className="practice-option"
-                aria-pressed={!blocked && skills.includes(skill)}
+                pressed={!blocked && skills.includes(skill)}
                 disabled={blocked}
                 title={blocked ? "No Dutch voice is available in this browser" : undefined}
                 onClick={() => toggle(skill)}
               >
                 {label}
-              </button>
+              </OptionChip>
             );
           })}
         </div>
@@ -166,23 +221,19 @@ function StartView({
         <legend className="k-label">Session length</legend>
         <div className="practice-options">
           {SIZES.map((n) => (
-            <button
-              key={n}
-              type="button"
-              className="practice-option"
-              aria-pressed={size === n}
-              onClick={() => setSize(n)}
-            >
+            <OptionChip key={n} pressed={size === n} onClick={() => setSize(n)}>
               {n} exercises
-            </button>
+            </OptionChip>
           ))}
         </div>
       </fieldset>
 
       {error ? (
-        <p className="error-text" role="alert">
-          {error}
-        </p>
+        <ErrorNotice
+          error={error}
+          title="The session could not be prepared."
+          onRetry={() => onStart(size, effective)}
+        />
       ) : null}
       <Button
         variant="primary"
@@ -289,7 +340,7 @@ function Session({
         setSubmitted(s.answer);
         setFeedback({ correct: result.correct, ...(result.note ? { note: result.note } : {}) });
       } catch (e) {
-        setError(e instanceof Error ? e.message : "The answer could not be saved. Try again.");
+        setError(errorText(e, "The answer could not be saved."));
       } finally {
         setBusy(false);
         inflight.current = null;

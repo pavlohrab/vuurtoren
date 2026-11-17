@@ -2,14 +2,14 @@ import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-quer
 import { Link, useParams } from "@tanstack/react-router";
 import { ListChecks } from "lucide-react";
 import { useMemo, useState } from "react";
-import { Button, Chip, EmptyState, Select, Skeleton } from "@app/ui";
+import { AnkiStatusChip, Button, EmptyState, Lemma, Select, Skeleton } from "@app/ui";
 import { useServices } from "../services/context.js";
 import type { TextWordItem } from "../services/types.js";
 import { usePageHeader } from "../shell/ShellContext.js";
 import {
   type Job,
   type RowResult,
-  STATUS_LABEL,
+  STUDY_FIRST_HINT,
   type WordAction,
   actionOptions,
   applyActions,
@@ -214,13 +214,8 @@ function WordRow({ item, action, result, done, disabled, onAction }: WordRowProp
   return (
     <li className="tw-row">
       <div className="tw-head">
-        <span className="tw-word" lang="nl">
-          {withArticle ? <span className="tw-article">{item.article} </span> : null}
-          {item.lemma}
-        </span>
-        <Chip tone={unavailable ? "warm" : anki.status === "absent" ? "neutral" : "accent"}>
-          {STATUS_LABEL[anki.status]}
-        </Chip>
+        <Lemma className="tw-word" lemma={item.lemma} article={withArticle ? item.article : null} />
+        <AnkiStatusChip status={anki.status} />
         {source ? <span className="tw-source">{source}</span> : null}
       </div>
       <p className="tw-meaning">{item.glosses[0] ?? "No meaning found"}</p>
@@ -234,7 +229,7 @@ function WordRow({ item, action, result, done, disabled, onAction }: WordRowProp
           {item.entry.sentenceTranslation}
         </p>
       ) : null}
-      <div className="tw-action">
+      <div className="tw-action" title={action === "learn" ? STUDY_FIRST_HINT : undefined}>
         <Select
           label={`Action for ${item.lemma}`}
           value={unavailable ? "skip" : action}

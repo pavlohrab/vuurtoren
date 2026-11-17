@@ -190,7 +190,8 @@ async function openBrowser(lock: HeldLock): Promise<Boot> {
 
 async function boot(): Promise<Boot> {
   const demo = isDemo();
-  if (demo) return { kind: "app", services: createMockServices() };
+  // The demo looks like a set-up app: a recent sync, so no "Connect Anki" prompts.
+  if (demo) return { kind: "app", services: createMockServices({ synced: true }) };
   const { fetchServerHealth } = await import("@app/db/http");
   const start = await decideStartup({
     demo,
