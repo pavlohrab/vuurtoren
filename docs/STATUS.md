@@ -50,8 +50,9 @@ pnpm dev            # web app on http://localhost:5173 (proxies /nlp and /anki)
   - Literata (reading) and Inter (interface), both with Cyrillic.
   - Warm paper theme, plus a charcoal dark theme.
   - Calm components, keyboard-first, ⌘K palette.
+- **Server storage mode ([ADR 0008](adr/0008-server-storage-mode.md)):** the compose stack's `api` service keeps all data in one SQLite file on a volume, shared by every device (`/api/rpc` allow-list, `/api/export`, `/api/import`, optional `KENNING_TOKEN`). Settings > Your data downloads and restores a backup in both modes. Not yet run in a Docker image here (no daemon access); the pruned `pnpm deploy` layout was run with node and checked in headless Chromium through the Vite proxy.
 - **Local-first storage:**
-  - SQLite in the browser (OPFS), on an append-only event log built for sync.
+  - SQLite in the browser (OPFS), on an append-only event log built for sync (desktop and dev; asks for persistent storage, banner on plain http).
   - Survives reloads and the browser's back/forward cache.
 - **Import:**
   - Paste.
@@ -140,7 +141,7 @@ pnpm dev            # web app on http://localhost:5173 (proxies /nlp and /anki)
 ### Known issues / technical debt
 
 - **Staircase:** its _target coverage_ is tracked but not used by the planner yet. Only the new-word budget adapts. Planned use: recommending texts and pages of the right difficulty in the Library.
-- **One tab only:** a second tab or a private window falls back to an in-memory database. A banner now says so.
+- **One tab only (browser mode):** a second tab now sees "Kenning is open in another tab" with "Use here instead" (Web Locks + BroadcastChannel). A private window still falls back to an in-memory database, with a banner. In server mode (compose) there is no such limit.
 - **Language is hard-coded to Dutch** in several places. Ukrainian needs language-aware caches, analysis and dictionaries.
 - **Analysis gaps** (recall misses):
   - Some past tenses left unchanged by spaCy (_pleegden_, _wierpen_).

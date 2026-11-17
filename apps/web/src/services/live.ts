@@ -34,7 +34,13 @@ import {
   textDifficulty,
   updateStaircase,
 } from "@app/core";
-import { type KenningRepository, type StoredText, type WordInfo, contentHash } from "@app/db";
+import {
+  type KenningRepository,
+  type StoredText,
+  type WordInfo,
+  contentHash,
+  createUlidGenerator,
+} from "@app/db";
 import { absentAnki, ankiFromStatus, unavailableAnki } from "./ankiState.js";
 import { NlpClient } from "@app/nlp-client";
 import { createLivePractice } from "./livePractice.js";
@@ -206,6 +212,9 @@ function composeGlosses(
     undefined;
   return { glosses: glosses.slice(0, 6), article };
 }
+
+/** Text ids: ULIDs (`crypto.randomUUID` does not exist in insecure http contexts). */
+const nextUlid = createUlidGenerator();
 
 /**
  * Wiktionary place-name senses ("a hamlet in Weststellingwerf, Friesland, Netherlands") are
@@ -625,7 +634,7 @@ export function createLiveServices(repo: KenningRepository): AppServices {
       // Normalise line endings so paragraph detection ("\n\n") works for Windows text too.
       content = content.replace(/\r\n?/g, "\n");
       if (!content.trim()) throw new Error("No text found to import.");
-      const textId = crypto.randomUUID();
+      const textId = nextUlid();
       await repo.append({
         type: "TextImported",
         textId,
