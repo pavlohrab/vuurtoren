@@ -39,6 +39,24 @@ export interface ExerciseCardProps {
   continueLabel?: string;
 }
 
+/** Elements that mean another layer (dialog, command palette) owns the keyboard. */
+const OVERLAY = '[role="dialog"],[role="alertdialog"],[cmdk-root],[data-shortcuts-blocked]';
+
+/**
+ * True when a window-level shortcut must not fire for `ev`: it was already handled, it comes
+ * from an editable element outside `scope` (e.g. the command palette's search box), or a dialog
+ * or palette is open. Register shortcut listeners in the capture phase so a dialog that closes
+ * on this very key press is still seen as open.
+ */
+export function shortcutBlocked(ev: KeyboardEvent, scope?: Element | null): boolean {
+  if (ev.defaultPrevented) return true;
+  const t = ev.target instanceof Element ? ev.target : null;
+  if (t?.closest('input,textarea,select,[contenteditable]:not([contenteditable="false"])')) {
+    if (!scope || !scope.contains(t)) return true;
+  }
+  return document.querySelector(OVERLAY) !== null;
+}
+
 /** Kinds whose prompt text is English (the rest show Dutch in the reading face). */
 const ENGLISH_PROMPT = new Set(["word-choice", "scramble"]);
 
@@ -84,6 +102,7 @@ export function ExerciseCard({
   const [hints, setHints] = useState(0);
   const [picked, setPicked] = useState<number[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
+  const cardRef = useRef<HTMLElement>(null);
 
   const choices = mode === "gender" ? (e.choices ?? ["de", "het"]) : (e.choices ?? []);
   const pieces = e.pieces ?? [];
@@ -93,9 +112,14 @@ export function ExerciseCard({
     onSubmit({ answer, hintsUsed: hints });
   };
   const scrambleAnswer = () => picked.map((i) => pieces[i]).join(" ");
+  // Letters can be revealed up to one short of the whole word; the last step gives up
+  // (submitted empty, so it counts as not recalled and the answer is shown).
+  const maxHints = Math.max(0, e.answer.length - 1);
+  const lastStep = hints >= maxHints;
   const revealHint = () => {
-    if (answered || hints >= e.answer.length) return;
-    setHints((h) => h + 1);
+    if (answered) return;
+    if (lastStep) onSubmit({ answer: "", hintsUsed: hints });
+    else setHints((h) => h + 1);
   };
 
   // Speak a dictation once when it appears (the browser may block it; the button always works).
@@ -111,6 +135,7 @@ export function ExerciseCard({
   useEffect(() => {
     const onKey = (ev: KeyboardEvent) => {
       if (ev.metaKey || ev.ctrlKey || ev.altKey || ev.repeat) return;
+      if (shortcutBlocked(ev, cardRef.current)) return;
       if (answered) {
         // A focused button handles Enter itself (its click would otherwise fire a second time).
         if (ev.key === "Enter" && !(ev.target instanceof HTMLButtonElement)) {
@@ -139,8 +164,8 @@ export function ExerciseCard({
         }
       }
     };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
   });
 
   const onTypedSubmit = (ev: FormEvent) => {
@@ -151,9 +176,10 @@ export function ExerciseCard({
   const dutchPrompt = !ENGLISH_PROMPT.has(e.kind);
   const hintText =
     hints > 0 ? `${e.answer.slice(0, hints)}${hints < e.answer.length ? "…" : ""}` : "";
+  const hintLabel = lastStep ? "Show answer" : "Hint";
 
   return (
-    <section className="ex-card" aria-label="Exercise">
+    <section className="ex-card" aria-label="Exercise" ref={cardRef}>
       <p className="ex-instruction k-overline">{e.instruction}</p>
       {mode !== "dictation" ? <PromptText text={e.prompt.text} dutch={dutchPrompt} /> : null}
       {e.prompt.hint ? <p className="ex-hint">{e.prompt.hint}</p> : null}
@@ -291,8 +317,12 @@ export function ExerciseCard({
               <Button variant="primary" type="submit" disabled={!text.trim()}>
                 Check
               </Button>
-              <Button variant="ghost" onClick={revealHint} aria-label="Reveal a letter">
-                Hint <kbd className="ex-key">?</kbd>
+              <Button
+                variant="ghost"
+                onClick={revealHint}
+                aria-label={lastStep ? "Show the answer" : "Reveal a letter"}
+              >
+                {hintLabel} <kbd className="ex-key">?</kbd>
               </Button>
             </div>
           ) : null}

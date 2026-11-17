@@ -10,15 +10,31 @@ export function stripAccents(s: string): string {
   return s.normalize("NFD").replace(/\p{M}/gu, "").normalize("NFC");
 }
 
-/** Drop trailing sentence punctuation (used for sentence-level answers). */
-function stripFinalPunctuation(s: string): string {
-  return s.replace(/[\s.!?…]+$/u, "");
+/** Curly apostrophes / quotes to their ASCII forms. */
+function normalizeQuotes(s: string): string {
+  return s
+    .replace(/[\u2018\u2019\u02bc`´]/g, "'")
+    .replace(/[\u201c\u201d\u201e\u00ab\u00bb]/g, '"');
+}
+
+/** Word answers: drop leading/trailing punctuation ("loopt." -> "loopt"). */
+function stripEdgePunctuation(s: string): string {
+  return s.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, "");
+}
+
+/** Sentence answers: drop all punctuation except in-word apostrophes and hyphens. */
+function stripSentencePunctuation(s: string): string {
+  return s
+    .replace(/[^\p{L}\p{N}\s'-]/gu, " ")
+    .replace(/(^|\s)['-]+|['-]+(?=\s|$)/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 /**
  * Check a learner's answer.
  * - Choice exercises (`choices`): exact match with the answer (after NFC + trim).
- * - Scramble (`pieces`) and dictation: case-insensitive, final punctuation ignored.
+ * - Scramble (`pieces`) and dictation: case-insensitive, all punctuation ignored (in-word apostrophes and hyphens kept).
  * - Other typed exercises: case-insensitive; `answer` and `accept` are valid;
  *   a missing diacritic is still correct but comes with a note ("Mind the accents: één").
  */
@@ -31,8 +47,8 @@ export function checkAnswer(
   }
   const sentenceLevel = exercise.pieces !== undefined || exercise.kind === "dictation";
   const norm = (s: string) => {
-    const n = normalizeAnswer(s);
-    return sentenceLevel ? stripFinalPunctuation(n) : n;
+    const n = normalizeAnswer(normalizeQuotes(s));
+    return sentenceLevel ? stripSentencePunctuation(n) : stripEdgePunctuation(n);
   };
   const given = norm(answer);
   if (given === "") return { correct: false };

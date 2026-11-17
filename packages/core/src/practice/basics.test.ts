@@ -81,6 +81,30 @@ describe("checkAnswer", () => {
     expect(checkAnswer(e, "Ik bel morgen hem op.").correct).toBe(false);
   });
 
+  it("treats curly and straight apostrophes alike", () => {
+    expect(checkAnswer(ex({ answer: "zo'n" }), "zo\u2019n").correct).toBe(true);
+    expect(checkAnswer(ex({ answer: "zo\u2019n" }), "zo'n").correct).toBe(true);
+  });
+
+  it("word answers ignore edge punctuation", () => {
+    expect(checkAnswer(ex({ answer: "loopt" }), "loopt.").correct).toBe(true);
+    expect(checkAnswer(ex({ answer: "loopt" }), " \u201cloopt\u201d ").correct).toBe(true);
+  });
+
+  it("dictation ignores commas, quotes and case", () => {
+    const e = ex({ kind: "dictation", skill: "listening", answer: "Ja, ik kom morgen." });
+    expect(checkAnswer(e, "ja ik kom morgen").correct).toBe(true);
+    expect(
+      checkAnswer(ex({ kind: "dictation", answer: "\u201cZo'n huis!\u201d" }), "zo\u2019n huis")
+        .correct,
+    ).toBe(true);
+    expect(
+      checkAnswer(ex({ kind: "dictation", answer: "Een zwart-wit foto." }), "een zwart-wit foto")
+        .correct,
+    ).toBe(true);
+    expect(checkAnswer(e, "ja ik kom gisteren").correct).toBe(false);
+  });
+
   it("dictation ignores final punctuation", () => {
     const e = ex({ kind: "dictation", skill: "listening", answer: "Goedemorgen." });
     expect(checkAnswer(e, "goedemorgen").correct).toBe(true);
@@ -106,7 +130,13 @@ describe("gradeAttempt", () => {
   });
   it("hints -> hard", () => {
     expect(gradeAttempt(typed, attempt({ hintsUsed: 1, ms: 500 }))).toBe("hard");
-    expect(gradeAttempt(choice, attempt({ hintsUsed: 2 }))).toBe("hard");
+    expect(gradeAttempt(choice, attempt({ hintsUsed: 1 }))).toBe("hard");
+  });
+  it("hints revealing half the letters or more -> again", () => {
+    const long = ex({ answer: "wandelen" });
+    expect(gradeAttempt(long, attempt({ hintsUsed: 3 }))).toBe("hard");
+    expect(gradeAttempt(long, attempt({ hintsUsed: 4 }))).toBe("again");
+    expect(gradeAttempt(long, attempt({ hintsUsed: 8 }))).toBe("again");
   });
   it("choice correct -> good, even when fast", () => {
     expect(gradeAttempt(choice, attempt({}))).toBe("good");

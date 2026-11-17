@@ -121,3 +121,23 @@ export function firstSentence(html: string): string {
   }
   return "";
 }
+
+/**
+ * All sentences of an example field, in order: every non-empty line (br / block tags separate
+ * lines), each cut at sentence ends followed by a capital. Used to pair a sentence field with
+ * its translation: both sides must have the same number of units before index i is trusted.
+ */
+export function sentenceUnits(html: string): string[] {
+  const out: string[] = [];
+  for (const line of html.split(/<br\s*\/?>|<\/?(?:div|p|li)\b[^>]*>/i)) {
+    let text = firstAlternative(cleanField(line));
+    while (text) {
+      const m = /^(.*?[.!?\u2026])\s+(?=[\p{Lu}"'\u201c\u2018\u00bf\u00a1])/su.exec(text);
+      if (!m) break;
+      out.push(m[1]!.trim());
+      text = text.slice(m[0].length).trim();
+    }
+    if (text) out.push(text);
+  }
+  return out;
+}

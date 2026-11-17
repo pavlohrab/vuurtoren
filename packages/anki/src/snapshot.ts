@@ -4,7 +4,7 @@
  * analyzer, and merge per key. Read-only. Shared by the web app and tools/anki-report.
  */
 import { type WordKnowledge, type WordState, classifyCard, mergeKnowledge } from "@app/core";
-import { cleanField, firstAlternative, firstSentence } from "./clean.js";
+import { cleanField, firstAlternative, firstSentence, sentenceUnits } from "./clean.js";
 import {
   type AnkiConnectClient,
   type CardInfo,
@@ -191,10 +191,16 @@ export async function buildSnapshot(deps: SnapshotDeps, chosen?: Candidate[]): P
     const sentence = n.source.sentenceField
       ? firstSentence(n.note.fields[n.source.sentenceField]?.value ?? "")
       : "";
-    const sentenceTranslation =
-      sentence && n.source.sentenceTranslationField
-        ? firstSentence(n.note.fields[n.source.sentenceTranslationField]?.value ?? "")
-        : "";
+    // Cut both sides at the same index: only trust the translation when both fields have the
+    // same number of sentences/lines, otherwise a mismatched half-translation would mislead.
+    let sentenceTranslation = "";
+    if (sentence && n.source.sentenceTranslationField) {
+      const sRaw = n.note.fields[n.source.sentenceField!]?.value ?? "";
+      const tRaw = n.note.fields[n.source.sentenceTranslationField]?.value ?? "";
+      if (sentenceUnits(sRaw).length === sentenceUnits(tRaw).length) {
+        sentenceTranslation = firstSentence(tRaw);
+      }
+    }
     for (const key of [n.term.key, ...n.term.aliases]) {
       if (!key) continue;
       const prev = byKey.get(key);

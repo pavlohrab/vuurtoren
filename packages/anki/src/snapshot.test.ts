@@ -136,3 +136,44 @@ describe("buildSnapshot", () => {
     );
   });
 });
+
+describe("sentence translation pairing", () => {
+  const mk = (id: number, word: string, zin: string, en: string): FakeNote => ({
+    id,
+    deck: "NL2",
+    model: "Woord",
+    fields: { Woord: word, Zin: zin, ZinEN: en },
+    cards: [3],
+    lastReview: NOW - DAY,
+  });
+  const source = {
+    deck: "NL2",
+    modelName: "Woord",
+    noteCount: 2,
+    wordField: "Woord",
+    sentenceField: "Zin",
+    glossField: null,
+    sentenceTranslationField: "ZinEN",
+    targetShare: 1,
+    confidence: 1,
+    score: 1,
+    fields: [],
+    examples: [],
+  };
+
+  it("drops the translation when sentence and translation do not line up", async () => {
+    const anki = new AnkiConnectClient({
+      fetch: fakeAnki([
+        mk(1, "lopen", "Wij lopen. Echt waar.", "We walk."),
+        mk(2, "fiets", "De fiets is rood.<br>Tweede.", "The bike is red.<br>Second."),
+      ]),
+    });
+    const snap = await buildSnapshot({ anki, lang: "nl", detect, analyzeTerms, now: NOW }, [
+      source,
+    ]);
+    const byKey = new Map(snap.entries.map((e) => [e.key, e]));
+    expect(byKey.get("lopen")!.sentence).toBe("Wij lopen.");
+    expect(byKey.get("lopen")!.sentenceTranslation).toBeUndefined();
+    expect(byKey.get("fiets")!.sentenceTranslation).toBe("The bike is red.");
+  });
+});
