@@ -164,3 +164,106 @@ describe("live AI services", () => {
     expect((await ai.aiStatus()).configured).toBe(true); // keyless
   });
 });
+
+describe("AI stories and sentences (live)", () => {
+  it("writes a story, saves it as an AI text with provenance and no key", async () => {
+    const bodies = stubNetwork([
+      JSON.stringify({
+        title: "Koffie",
+        text: "Ik drink graag koffie. Jij drink koffie.",
+        used_targets: ["graag"],
+      }),
+    ]);
+    const { repo, ai } = await setup();
+    await ai.saveAIKey("sk-story");
+    const steps: string[] = [];
+    const r = await ai.createStory(
+      { topic: "koffie", length: "short", style: "story", targetWords: ["graag", " "] },
+      (m) => steps.push(m),
+    );
+    expect(bodies).toHaveLength(1);
+    expect(bodies[0]).toContain("Target words: graag");
+    expect(r).toMatchObject({ title: "Koffie", coverage: 1, missingTargets: [], rewritten: false });
+    const text = await repo.getText(r.textId);
+    expect(text).toMatchObject({ title: "Koffie", sourceKind: "ai" });
+    const ev = (await repo.events()).find((e) => e.event.type === "TextImported")!.event;
+    expect(ev).toMatchObject({
+      source: { kind: "ai", provider: "anthropic", targets: ["graag"], topic: "koffie" },
+    });
+    expect(JSON.stringify(await repo.events())).not.toContain("sk-story");
+    expect(steps.at(-1)).toMatch(/Saving/);
+  });
+
+  it("suggests story targets from a course unit (words not known yet)", async () => {
+    stubNetwork([]);
+    const { repo, ai } = await setup();
+    await repo.append({
+      type: "CourseImported",
+      course: {
+        id: "c",
+        title: "Cursus",
+        lang: "nl",
+        source: { kind: "pdf", filename: "c.pdf" },
+        pageCount: 2,
+        created: 1,
+      },
+    });
+    await repo.append({
+      type: "UnitDefined",
+      courseId: "c",
+      units: [
+        { courseId: "c", n: 1, title: "Thema 1", pages: [1, 2], ankiDecks: [], kind: "theme" },
+      ],
+    });
+    await repo.append({
+      type: "UnitWordsSet",
+      courseId: "c",
+      unitN: 1,
+      words: [
+        { lemma: "koffie", source: "wordlist" },
+        { lemma: "markt", source: "wordlist" },
+      ],
+    });
+    expect(await ai.storyTargets({ kind: "unit", courseId: "c", unitN: 1 })).toEqual(["markt"]);
+    expect(await ai.storyTargets({ kind: "grammar", topicId: "inversion" })).toEqual([]);
+  });
+
+  it("fills sentences: validates, stores accepted ones, counts rejected", async () => {
+    stubNetwork([
+      JSON.stringify({
+        sentences: [
+          { text: "Ik drink graag koffie", translation: "I like coffee" },
+          { text: "Ik drink thee", translation: "too short and no target" },
+        ],
+      }),
+    ]);
+    const { repo, ai } = await setup();
+    await ai.saveAIKey("sk-x");
+    const fill = await ai.fillSentences(
+      "nl",
+      [{ key: "koffie", lemma: "koffie", existing: [] }],
+      ["koffie"],
+    );
+    expect(fill).toMatchObject({ accepted: 1, rejected: 1, requested: 1 });
+    expect(fill.sentences[0]![0]).toMatchObject({
+      text: "Ik drink graag koffie",
+      target: [15, 21],
+    });
+    const sets = await repo.generatedSentences("nl");
+    expect(sets).toEqual([
+      expect.objectContaining({ key: "koffie", rejected: 1, provider: "anthropic" }),
+    ]);
+  });
+
+  it("reports a provider failure instead of throwing (practice goes on)", async () => {
+    stubNetwork([]);
+    const { ai } = await setup();
+    const fill = await ai.fillSentences(
+      "nl",
+      [{ key: "koffie", lemma: "koffie", existing: [] }],
+      [],
+    );
+    expect(fill.error).toMatch(/key/i);
+    expect(fill.sentences).toEqual([[]]);
+  });
+});

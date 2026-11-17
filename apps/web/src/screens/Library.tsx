@@ -5,6 +5,7 @@ import { useState } from "react";
 import { Button, Dialog, EmptyState, Skeleton, TextCard, useToast } from "@app/ui";
 import { useServices } from "../services/context.js";
 import type { TextListItem } from "../services/types.js";
+import { CreateStoryButton } from "./StoryDialog.js";
 
 /** Library: a grid of texts with coverage, new-word count and difficulty band. */
 export function Library() {
@@ -33,9 +34,12 @@ export function Library() {
     <div className="page">
       <div className="row" style={{ justifyContent: "space-between", marginBottom: 8 }}>
         <h1>Library</h1>
-        <Link to="/import" className="k-btn k-btn--primary">
-          <Plus size={16} aria-hidden /> Import text
-        </Link>
+        <div className="row">
+          <CreateStoryButton />
+          <Link to="/import" className="k-btn k-btn--primary">
+            <Plus size={16} aria-hidden /> Import text
+          </Link>
+        </div>
       </div>
       <p className="page-lede">Texts you have added, with how much of each you already know.</p>
 

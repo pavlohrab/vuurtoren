@@ -4,6 +4,7 @@ import { ArrowLeft, ChevronRight } from "lucide-react";
 import type { ReactNode } from "react";
 import { type CefrLevel, type GrammarTopic, grammarTopic, topicsByLevel } from "@app/content";
 import { Chip, EmptyState, Skeleton } from "@app/ui";
+import { CreateStoryButton } from "./StoryDialog.js";
 import { useServices } from "../services/context.js";
 import type { GrammarOverview, TopicExamples } from "../services/types.js";
 import { usePageHeader } from "../shell/ShellContext.js";
@@ -190,6 +191,7 @@ export function GrammarTopicPage({ topicId }: { topicId: string }) {
             Practise
           </Link>
         ) : null}
+        <CreateStoryButton preset={{ grammarTopic: topic.id }} />
         {count && count.hits > 0 ? (
           <span className="k-hint">
             Seen {plural(count.hits, "time")} in {plural(count.texts, "text")} of your Library

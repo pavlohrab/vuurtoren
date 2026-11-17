@@ -6,12 +6,25 @@ import type {
   ConversationView,
   NewWord,
   SimplifyView,
+  StoryInput,
+  StoryView,
 } from "./aiTypes.js";
 
 export interface MockAIOptions {
   /** Start with a provider configured (default true). */
   configured?: boolean;
+  /** Store a story in the (mock) library; returns its id. */
+  saveText?: (title: string, content: string) => string;
 }
+
+/** The demo's story (uses only common words plus the target words). */
+export const MOCK_STORY = {
+  title: "Een dag op de markt",
+  text:
+    "Op zaterdag ga ik naar de markt. Het is druk en gezellig. Bij een kraam koop ik brood en kaas.\n\n" +
+    'De man achter de kraam is vriendelijk. Hij vraagt: "Wilt u nog iets?" Ik zeg: "Nee, dank u." ' +
+    "Dan drink ik koffie met een vriendin. We praten over het weer.",
+};
 
 export const MOCK_NEW_WORD: NewWord = {
   lemma: "gezellig",
@@ -22,7 +35,7 @@ export const MOCK_NEW_WORD: NewWord = {
 export function createMockAI(
   wait: () => Promise<void>,
   opts: MockAIOptions = {},
-): AIServices & { added: NewWord[] } {
+): AIServices & { added: NewWord[]; stories: StoryInput[] } {
   let keySaved = opts.configured ?? true;
   let encrypted = false;
   let unlocked = true;
@@ -34,6 +47,7 @@ export function createMockAI(
   };
   const convs = new Map<string, ConversationView>();
   const added: NewWord[] = [];
+  const stories: StoryInput[] = [];
 
   const reply = (n: number): ChatMessageView => ({
     id: `a${n}`,
@@ -48,6 +62,33 @@ export function createMockAI(
 
   return {
     added,
+    stories,
+    async storyTargets(source) {
+      await wait();
+      if (source.kind === "grammar") return [];
+      if (source.kind === "unit") return ["kraam", "vriendelijk"];
+      return ["gezellig", "kraam", "afspraak"];
+    },
+    async createStory(input, onProgress): Promise<StoryView> {
+      onProgress?.("Writing the story…");
+      await wait();
+      onProgress?.("Checking it against your words…");
+      await wait();
+      stories.push(input);
+      const missing = input.targetWords.filter(
+        (w) => !MOCK_STORY.text.toLowerCase().includes(w.toLowerCase()),
+      );
+      const title = input.topic.trim() ? `${MOCK_STORY.title}` : MOCK_STORY.title;
+      const textId = opts.saveText?.(title, MOCK_STORY.text) ?? `story-${stories.length}`;
+      return {
+        textId,
+        title,
+        coverage: 0.97,
+        rewritten: false,
+        missingTargets: missing,
+        parseFailed: false,
+      };
+    },
     async getAISettings() {
       return settings;
     },

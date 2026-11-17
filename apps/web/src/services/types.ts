@@ -14,7 +14,7 @@ import type {
 import type { StoredText, TextSummary, WordInfo } from "@app/db";
 import type { InspectorEntry } from "@app/ui";
 import type { CourseServices } from "./courseTypes.js";
-import type { AIServices } from "./aiTypes.js";
+import type { AIServices, AISentenceReport } from "./aiTypes.js";
 
 /** Defined in @app/ui (the WordInspector consumes it); re-exported here as part of the contract. */
 export type { InspectorEntry };
@@ -163,6 +163,21 @@ export interface TopicPracticeOptions {
   kinds: ExerciseKind[];
   /** Number of exercises (default 10). */
   size?: number;
+  /** Grammar topic page id (needed for AI sentences). */
+  topicId?: string;
+  /** Ask the AI provider for sentences when the topic has few hits (see docs/ai.md). */
+  aiSentences?: boolean;
+  onAISentences?: (report: AISentenceReport) => void;
+}
+
+/** Options of a vocabulary practice session. */
+export interface PracticeOptions {
+  size?: number;
+  skills?: Skill[];
+  /** Fill words with fewer than 3 good sentences with validated AI sentences (capped). */
+  aiSentences?: boolean;
+  /** Called once with what the AI fill did (only when `aiSentences` was asked for). */
+  onAISentences?: (report: AISentenceReport) => void;
 }
 
 /**
@@ -212,7 +227,7 @@ export interface AppServices extends CourseServices, AIServices {
    * Build a session: due items first, then new ones, from words you are learning or know.
    * Never writes to Anki (ADR 0003).
    */
-  startPractice(opts?: { size?: number; skills?: Skill[] }): Promise<Exercise[]>;
+  startPractice(opts?: PracticeOptions): Promise<Exercise[]>;
   /** Grade an answer, schedule the (word, skill) pair and record it. */
   answerExercise(exercise: Exercise, attempt: AttemptInput): Promise<AnswerResult>;
   /**

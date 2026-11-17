@@ -4,7 +4,7 @@
  */
 import { type Exercise, type ExerciseKind, type ItemState, type Skill, SKILL_OF } from "@app/core";
 import { checkAnswer, gradeAttempt, practiceStats, review } from "../practice/engine.js";
-import type { AnswerResult, AttemptInput, PracticeOverview } from "./types.js";
+import type { AnswerResult, AttemptInput, PracticeOptions, PracticeOverview } from "./types.js";
 
 const DAY = 86_400_000;
 
@@ -147,8 +147,11 @@ export function createMockPractice(wait: () => Promise<void>) {
       return { ...stats, newAvailable: fresh.size, lastSession: lastAnswer };
     },
 
-    async startPractice(opts: { size?: number; skills?: Skill[] } = {}): Promise<Exercise[]> {
+    async startPractice(opts: PracticeOptions = {}): Promise<Exercise[]> {
       await wait();
+      // Demo: pretend three words got validated AI sentences (one was rejected).
+      if (opts.aiSentences)
+        opts.onAISentences?.({ requested: 3, accepted: 7, rejected: 1, reused: 0 });
       const now = Date.now();
       const pool = MOCK_EXERCISES.filter((e) => !opts.skills || opts.skills.includes(e.skill));
       const isDue = (e: Exercise) => (items.get(`${e.key}|${e.skill}`)?.due ?? -1) <= now;

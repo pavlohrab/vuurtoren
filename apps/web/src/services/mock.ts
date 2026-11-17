@@ -459,8 +459,26 @@ export function createMockServices(options: { latencyMs?: number } = {}): AppSer
     };
   };
 
+  const addText = (title: string, content: string, kind: StoredText["sourceKind"]): string => {
+    const id = `t-${Date.now().toString(36)}-${texts.size}`;
+    const tokens = tokenize(content, (s) => ensure(s, true), []);
+    texts.set(id, {
+      id,
+      title,
+      lang: "nl",
+      sourceKind: kind,
+      createdAt: Date.now(),
+      wordCount: tokens.filter((x) => x.is_word && !x.is_num).length,
+      analyzed: true,
+      lastSegment: 0,
+      content,
+      tokens,
+    });
+    return id;
+  };
+
   const practice = createMockPractice(wait);
-  const ai = createMockAI(wait);
+  const ai = createMockAI(wait, { saveText: (title, content) => addText(title, content, "ai") });
   const grammar = createMockGrammar(
     wait,
     () => [...texts.values()],
@@ -515,20 +533,7 @@ export function createMockServices(options: { latencyMs?: number } = {}): AppSer
       if (!content) throw new Error("There is no text to import.");
       onProgress?.("Analysing words");
       await delay(latency * 3);
-      const id = `t-${Date.now().toString(36)}`;
-      const tokens = tokenize(content, (s) => ensure(s, true), []);
-      texts.set(id, {
-        id,
-        title,
-        lang: "nl",
-        sourceKind: kind,
-        createdAt: Date.now(),
-        wordCount: tokens.filter((x) => x.is_word && !x.is_num).length,
-        analyzed: true,
-        lastSegment: 0,
-        content,
-        tokens,
-      });
+      const id = addText(title, content, kind);
       onProgress?.("Planning the reading");
       await delay(latency);
       return id;

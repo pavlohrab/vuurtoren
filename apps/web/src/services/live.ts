@@ -583,16 +583,6 @@ export function createLiveServices(repo: KenningRepository): AppServices {
     translate: translateSentences,
   });
 
-  const practice = createLivePractice({
-    repo,
-    lang: async () => (await settings()).lang,
-    model,
-    dictionary: dictionaryFor,
-    composeGlosses,
-    data: createPracticeData(async () => (await settings()).nlpUrl),
-    topicMaterial: grammar.topicMaterial,
-  });
-
   const ai = createLiveAI({
     repo,
     settings,
@@ -602,6 +592,33 @@ export function createLiveServices(repo: KenningRepository): AppServices {
     glossLemmas: async (lemmas) =>
       Object.fromEntries((await lookupGlosses(lemmas.map((l) => ({ key: l, lemma: l })))).found),
     changed,
+    saveText: async ({ title, content, source }) => {
+      const textId = nextUlid();
+      await repo.append({
+        type: "TextImported",
+        textId,
+        title,
+        lang: (await settings()).lang,
+        source,
+        content,
+      });
+      // Analyse now when the server is up; the reader analyses on open otherwise. A paid story
+      // is never dropped because the language server is down.
+      const stored = await repo.getText(textId);
+      if (stored) await analyze(stored).catch(() => undefined);
+      return textId;
+    },
+  });
+
+  const practice = createLivePractice({
+    repo,
+    lang: async () => (await settings()).lang,
+    model,
+    dictionary: dictionaryFor,
+    composeGlosses,
+    data: createPracticeData(async () => (await settings()).nlpUrl),
+    topicMaterial: grammar.topicMaterial,
+    aiSentences: { ready: ai.aiReady, fill: ai.fillSentences },
   });
 
   const courses = createLiveCourses({

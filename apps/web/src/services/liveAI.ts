@@ -16,6 +16,8 @@ import {
   clearKey,
   createProvider,
   explainSentence,
+  generateSentences,
+  generateStory,
   keyStatus,
   loadKey,
   presetFor,
@@ -25,8 +27,14 @@ import {
   simplifyText,
 } from "@app/ai";
 import { AnkiConnectClient, addWordNote, highlightSentence } from "@app/anki";
-import { DEFAULT_PLANNER, type AnalyzedToken, type LearnerModel } from "@app/core";
-import { type KenningRepository, projectConversations } from "@app/db";
+import { grammarTopic } from "@app/content";
+import { DEFAULT_PLANNER, type AnalyzedToken, type LearnerModel, normalizeKey } from "@app/core";
+import {
+  type GeneratedSentence,
+  type KenningRepository,
+  type TextSource,
+  projectConversations,
+} from "@app/db";
 import { NlpClient } from "@app/nlp-client";
 import type {
   AIServices,
@@ -35,6 +43,7 @@ import type {
   AIUsage,
   ConversationView,
   NewWord,
+  StoryView,
 } from "./aiTypes.js";
 import { toConversationView } from "./conversationView.js";
 import type { Settings } from "./types.js";
@@ -49,6 +58,11 @@ export interface LiveAIDeps {
   glossLemmas: (lemmas: string[]) => Promise<Record<string, string>>;
   /** Called after the learner model changed (e.g. a note was added). */
   changed: () => void;
+  /**
+   * Save a generated story as a Library text (and analyse it); returns its id. Defaults to a
+   * plain TextImported append.
+   */
+  saveText?: (t: { title: string; content: string; source: TextSource }) => Promise<string>;
   /** Injectable for tests; defaults to localStorage (or memory when unavailable). */
   storage?: KeyValueStorage;
   fetch?: typeof fetch;
@@ -58,6 +72,38 @@ const CONFIG_KEY = "kenning.ai.config";
 const USAGE_KEY = "kenning.ai.usage";
 /** Earlier messages sent to the model (older ones are dropped to bound the cost). */
 const HISTORY_LIMIT = 16;
+
+/** Target words sent with a story request. */
+const MAX_STORY_TARGETS = 10;
+/** Sentences asked for per word / topic. */
+const SENTENCES_PER_REQUEST = 5;
+
+const STORY_STEP: Record<"writing" | "checking" | "rewriting", string> = {
+  writing: "Writing the story…",
+  checking: "Checking it against your words…",
+  rewriting: "Rewriting a few hard words…",
+};
+
+/** One word or grammar topic that needs AI example sentences. */
+export interface SentenceNeed {
+  /** Practice key ("" for a grammar topic without a target word). */
+  key: string;
+  /** Lemma to ask for (omit for a grammar topic). */
+  lemma?: string;
+  /** Grammar topic page id. */
+  topicId?: string;
+  /** Sentences already available (duplicates are dropped). */
+  existing: string[];
+}
+
+/** Result of `fillSentences`: accepted sentences per need, in input order. */
+export interface SentenceFill {
+  sentences: GeneratedSentence[][];
+  accepted: number;
+  rejected: number;
+  requested: number;
+  error?: string;
+}
 
 /** The key is encrypted and not unlocked yet. */
 export class AILockedError extends Error {
@@ -90,7 +136,11 @@ const DEFAULT_AI: AISettings = (() => {
 
 const monthOf = (d = new Date()) => d.toISOString().slice(0, 7);
 
-export function createLiveAI(deps: LiveAIDeps): AIServices {
+export function createLiveAI(deps: LiveAIDeps): AIServices & {
+  /** Generate, validate and store AI example sentences (practice). */
+  fillSentences: (lang: string, needs: SentenceNeed[], avoid: string[]) => Promise<SentenceFill>;
+  aiReady: () => boolean;
+} {
   const { repo } = deps;
   const storage = deps.storage ?? defaultStorage();
   /** Decrypted keys of this session only. */
@@ -166,6 +216,92 @@ export function createLiveAI(deps: LiveAIDeps): AIServices {
   async function analyze(text: string): Promise<AnalyzedToken[]> {
     const client = new NlpClient({ url: (await deps.settings()).nlpUrl });
     return (await client.analyzeText("nl", [text]))[0]?.tokens ?? [];
+  }
+
+  async function detectGrammar(text: string) {
+    const client = new NlpClient({ url: (await deps.settings()).nlpUrl });
+    return (await client.grammar("nl", [text]))[0] ?? [];
+  }
+
+  const saveText =
+    deps.saveText ??
+    (async (t: { title: string; content: string; source: TextSource }) => {
+      const textId = crypto.randomUUID();
+      await repo.append({ type: "TextImported", textId, lang: (await deps.settings()).lang, ...t });
+      return textId;
+    });
+
+  async function threshold(lang: string): Promise<number> {
+    const stair = await repo.staircase(lang);
+    return Math.max(0.9, (stair?.targetCoverage ?? DEFAULT_PLANNER.targetCoverage) - 0.03);
+  }
+
+  async function fillSentences(
+    lang: string,
+    needs: SentenceNeed[],
+    avoid: string[],
+  ): Promise<SentenceFill> {
+    const out: SentenceFill = { sentences: [], accepted: 0, rejected: 0, requested: 0 };
+    if (needs.length === 0) return out;
+    let p: AIProvider;
+    try {
+      p = await provider();
+    } catch (e) {
+      return { ...out, sentences: needs.map(() => []), error: String((e as Error).message ?? e) };
+    }
+    const [model, vocab, words] = await Promise.all([
+      deps.model(),
+      deps.vocabEstimate(),
+      repo.words(lang),
+    ]);
+    for (const need of needs) {
+      if (out.error) {
+        out.sentences.push([]);
+        continue;
+      }
+      const topic = need.topicId ? grammarTopic(need.topicId) : undefined;
+      try {
+        out.requested++;
+        const r = await generateSentences(
+          {
+            provider: p,
+            analyze,
+            model,
+            detectGrammar,
+            avoid,
+            existing: need.existing,
+          },
+          {
+            ...(need.lemma ? { lemma: need.lemma } : {}),
+            ...(topic
+              ? { grammar: { title: topic.title, summary: topic.summary, detects: topic.detects } }
+              : {}),
+            count: SENTENCES_PER_REQUEST,
+            vocabEstimate: vocab,
+            knownLemmas: selectKnownLemmas(words, need.lemma ?? topic?.title ?? "", 200),
+          },
+        );
+        const sentences: GeneratedSentence[] = r.accepted.map((a) => ({ ...a }));
+        out.accepted += sentences.length;
+        out.rejected += r.rejected.length;
+        out.sentences.push(sentences);
+        await repo.append({
+          type: "SentencesGenerated",
+          lang,
+          key: need.lemma ? normalizeKey(need.key) : "",
+          ...(need.topicId ? { topic: need.topicId } : {}),
+          sentences,
+          rejected: r.rejected.length,
+          provider: p.config.provider,
+          model: p.config.model,
+        });
+      } catch (e) {
+        // One provider failure (key, rate limit, network) stops the fill; practice goes on.
+        out.error = e instanceof Error ? e.message : String(e);
+        out.sentences.push([]);
+      }
+    }
+    return out;
   }
 
   async function loadConversation(id: string) {
@@ -246,6 +382,89 @@ export function createLiveAI(deps: LiveAIDeps): AIServices {
   }
 
   return {
+    fillSentences,
+    aiReady: () => status().configured,
+    async storyTargets(source) {
+      const { lang } = await deps.settings();
+      if (source.kind === "grammar") return [];
+      if (source.kind === "unit") {
+        const model = await deps.model();
+        const words = await repo.unitWords(source.courseId, source.unitN);
+        return words
+          .map((w) => normalizeKey(w.lemma))
+          .filter((k) => {
+            const st = model.get(k)?.state;
+            return st !== "known" && st !== "ignored";
+          })
+          .slice(0, MAX_STORY_TARGETS);
+      }
+      // "Words to learn now": words put first with Learn next, words looked up while reading,
+      // then the shakiest words being learned.
+      const all = (await repo.words(lang)).filter((w) => !/\s/.test(w.key));
+      const prioritized = all.filter((w) => w.prioritized && w.state === "learning");
+      const seen = all.filter((w) => w.state === "seen").sort((a, b) => b.lookups - a.lookups);
+      const learning = all
+        .filter((w) => w.state === "learning" && !w.prioritized)
+        .sort((a, b) => a.pKnown - b.pKnown);
+      return [...new Set([...prioritized, ...seen, ...learning].map((w) => w.key))].slice(0, 6);
+    },
+    async createStory(input, onProgress) {
+      const { lang } = await deps.settings();
+      const [p, model, vocab, words, thr] = await Promise.all([
+        provider(),
+        deps.model(),
+        deps.vocabEstimate(),
+        repo.words(lang),
+        threshold(lang),
+      ]);
+      const topic = input.topic.trim() || "everyday life";
+      const targets = [...new Set(input.targetWords.map((w) => w.trim()).filter(Boolean))].slice(
+        0,
+        MAX_STORY_TARGETS,
+      );
+      const grammar = input.grammarTopic ? grammarTopic(input.grammarTopic) : undefined;
+      const result = await generateStory(
+        {
+          provider: p,
+          analyze,
+          model,
+          threshold: thr,
+          onProgress: (step) => onProgress?.(STORY_STEP[step]),
+        },
+        {
+          topic,
+          length: input.length,
+          ...(input.style ? { style: input.style } : {}),
+          vocabEstimate: vocab,
+          knownLemmas: selectKnownLemmas(words, `${topic} ${targets.join(" ")}`, 300),
+          targetWords: targets,
+          ...(grammar ? { grammar: { title: grammar.title, summary: grammar.summary } } : {}),
+        },
+      );
+      if (!result.text.trim()) throw new AIError("The provider returned an empty text.", "server");
+      onProgress?.("Saving it to your library…");
+      const textId = await saveText({
+        title: result.title,
+        content: result.text,
+        source: {
+          kind: "ai",
+          provider: p.config.provider,
+          model: p.config.model,
+          targets,
+          topic,
+          ...(grammar ? { grammarTopic: grammar.id } : {}),
+        },
+      });
+      const view: StoryView = {
+        textId,
+        title: result.title,
+        coverage: result.coverage,
+        rewritten: result.rewritten,
+        missingTargets: result.missingTargets,
+        parseFailed: result.parseFailed,
+      };
+      return view;
+    },
     async getAISettings() {
       return getSettings();
     },
