@@ -111,9 +111,13 @@ def _dictionary() -> Dictionary:
     return Dictionary()
 
 
-@app.post("/gloss")
+@app.post("/gloss", response_model_exclude_unset=True)
 def gloss_endpoint(req: GlossRequest) -> dict[str, list[GlossEntry]]:
-    """Short English glosses (Wiktionary/Kaikki) for Dutch words."""
+    """Short English glosses (Wiktionary/Kaikki) for Dutch words.
+
+    Words without an entry are analysed as compounds: the entry then has ``compound: true`` and
+    ``parts``. ``compound``/``parts`` are omitted for ordinary entries.
+    """
     try:
         entries = _dictionary().lookup(req.words)
     except DictionaryMissingError as e:

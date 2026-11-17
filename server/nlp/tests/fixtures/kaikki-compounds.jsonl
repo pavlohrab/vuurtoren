@@ -1,0 +1,57 @@
+{"word": "souvenir", "pos": "noun", "senses": [{"glosses": ["souvenir"], "tags": ["neuter"]}]}
+{"word": "winkel", "pos": "noun", "senses": [{"glosses": ["shop, store (establishment that sells goods)"], "tags": ["masculine"]}]}
+{"word": "fiets", "pos": "noun", "senses": [{"glosses": ["bicycle"], "tags": ["masculine"]}]}
+{"word": "stalling", "pos": "noun", "senses": [{"glosses": ["a place where vehicles can be parked"], "tags": ["masculine"]}]}
+{"word": "ziekte", "pos": "noun", "senses": [{"glosses": ["the state of sickness"], "tags": ["masculine"]}]}
+{"word": "kost", "pos": "noun", "senses": [{"glosses": ["cost, expenses"], "tags": ["masculine"]}]}
+{"word": "verzekering", "pos": "noun", "senses": [{"glosses": ["insurance"], "tags": ["masculine"]}]}
+{"word": "gemeente", "pos": "noun", "senses": [{"glosses": ["municipality, commune"], "tags": ["masculine"]}]}
+{"word": "raad", "pos": "noun", "senses": [{"glosses": ["council, board"], "tags": ["masculine"]}]}
+{"word": "verkiezing", "pos": "noun", "senses": [{"glosses": ["election"], "tags": ["masculine"]}]}
+{"word": "huis", "pos": "noun", "senses": [{"glosses": ["house, home"], "tags": ["neuter"]}]}
+{"word": "deur", "pos": "noun", "senses": [{"glosses": ["door"], "tags": ["masculine"]}]}
+{"word": "school", "pos": "noun", "senses": [{"glosses": ["school"], "tags": ["masculine"]}]}
+{"word": "bus", "pos": "noun", "senses": [{"glosses": ["bus"], "tags": ["masculine"]}]}
+{"word": "boek", "pos": "noun", "senses": [{"glosses": ["book"], "tags": ["neuter"]}]}
+{"word": "kast", "pos": "noun", "senses": [{"glosses": ["cupboard"], "tags": ["masculine"]}]}
+{"word": "vakantie", "pos": "noun", "senses": [{"glosses": ["holiday"], "tags": ["masculine"]}]}
+{"word": "tuin", "pos": "noun", "senses": [{"glosses": ["garden"], "tags": ["masculine"]}]}
+{"word": "stoel", "pos": "noun", "senses": [{"glosses": ["chair"], "tags": ["masculine"]}]}
+{"word": "werk", "pos": "noun", "senses": [{"glosses": ["work"], "tags": ["neuter"]}]}
+{"word": "dag", "pos": "noun", "senses": [{"glosses": ["day"], "tags": ["masculine"]}]}
+{"word": "kind", "pos": "noun", "senses": [{"glosses": ["child"], "tags": ["neuter"]}]}
+{"word": "feest", "pos": "noun", "senses": [{"glosses": ["party"], "tags": ["neuter"]}]}
+{"word": "stad", "pos": "noun", "senses": [{"glosses": ["city"], "tags": ["masculine"]}]}
+{"word": "plein", "pos": "noun", "senses": [{"glosses": ["square"], "tags": ["neuter"]}]}
+{"word": "koning", "pos": "noun", "senses": [{"glosses": ["king"], "tags": ["masculine"]}]}
+{"word": "regen", "pos": "noun", "senses": [{"glosses": ["rain"], "tags": ["masculine"]}]}
+{"word": "jas", "pos": "noun", "senses": [{"glosses": ["coat"], "tags": ["masculine"]}]}
+{"word": "aardbei", "pos": "noun", "senses": [{"glosses": ["strawberry"], "tags": ["masculine"]}]}
+{"word": "jam", "pos": "noun", "senses": [{"glosses": ["jam"], "tags": ["masculine"]}]}
+{"word": "koper", "pos": "noun", "senses": [{"glosses": ["buyer"], "tags": ["masculine"]}]}
+{"word": "stem", "pos": "noun", "senses": [{"glosses": ["voice, vote"], "tags": ["masculine"]}]}
+{"word": "gezel", "pos": "noun", "senses": [{"glosses": ["companion"], "tags": ["masculine"]}]}
+{"word": "tafel", "pos": "noun", "senses": [{"glosses": ["table"], "tags": ["masculine"]}]}
+{"word": "kamer", "pos": "noun", "senses": [{"glosses": ["room"], "tags": ["masculine"]}]}
+{"word": "zorg", "pos": "noun", "senses": [{"glosses": ["care"], "tags": ["masculine"]}]}
+{"word": "premie", "pos": "noun", "senses": [{"glosses": ["premium"], "tags": ["masculine"]}]}
+{"word": "ziekenhuis", "pos": "noun", "senses": [{"glosses": ["hospital"], "tags": ["neuter"]}]}
+{"word": "verkeer", "pos": "noun", "senses": [{"glosses": ["traffic"], "tags": ["neuter"]}]}
+{"word": "licht", "pos": "noun", "senses": [{"glosses": ["light"], "tags": ["neuter"]}]}
+{"word": "boot", "pos": "noun", "senses": [{"glosses": ["boat"], "tags": ["masculine"]}]}
+{"word": "water", "pos": "noun", "senses": [{"glosses": ["water"], "tags": ["neuter"]}]}
+{"word": "park", "pos": "noun", "senses": [{"glosses": ["park"], "tags": ["neuter"]}]}
+{"word": "fietsen", "pos": "noun", "senses": [{"glosses": ["plural of fiets"], "form_of": [{"word": "fiets"}], "tags": ["form-of", "plural"]}]}
+{"word": "kosten", "pos": "noun", "senses": [{"glosses": ["plural of kost"], "form_of": [{"word": "kost"}], "tags": ["form-of", "plural"]}]}
+{"word": "verkiezingen", "pos": "noun", "senses": [{"glosses": ["plural of verkiezing"], "form_of": [{"word": "verkiezing"}], "tags": ["form-of", "plural"]}]}
+{"word": "boeken", "pos": "noun", "senses": [{"glosses": ["plural of boek"], "form_of": [{"word": "boek"}], "tags": ["form-of", "plural"]}]}
+{"word": "aardbeien", "pos": "noun", "senses": [{"glosses": ["plural of aardbei"], "form_of": [{"word": "aardbei"}], "tags": ["form-of", "plural"]}]}
+{"word": "waterpark", "pos": "noun", "senses": [{"glosses": ["plural of waterparken"], "form_of": [{"word": "waterparken"}], "tags": ["form-of", "plural"]}]}
+{"word": "winkel", "pos": "verb", "senses": [{"glosses": ["inflection of winkelen: first-person singular present indicative"], "form_of": [{"word": "winkelen"}]}]}
+{"word": "winkelen", "pos": "verb", "forms": [{"form": "winkel"}], "senses": [{"glosses": ["to shop"]}]}
+{"word": "ziek", "pos": "adj", "forms": [{"form": "zieke"}], "senses": [{"glosses": ["sick, ill"]}]}
+{"word": "lig", "pos": "verb", "senses": [{"glosses": ["inflection of liggen: first-person singular present indicative"], "form_of": [{"word": "liggen"}]}]}
+{"word": "liggen", "pos": "verb", "forms": [{"form": "lig"}], "senses": [{"glosses": ["to lie"]}]}
+{"word": "Amsterdam", "pos": "name", "senses": [{"glosses": ["capital of the Netherlands"]}]}
+{"word": "Winkel", "pos": "name", "senses": [{"glosses": ["a surname"]}]}
+{"word": "huisdeur", "pos": "noun", "senses": [{"glosses": ["front door of a house"], "tags": ["masculine"]}]}
