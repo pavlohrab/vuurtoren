@@ -13,6 +13,17 @@ export const UNKNOWN_THRESHOLD = 0.5;
 /** Cloze candidates must have pKnown within this range. */
 /** Recall range of words chosen as clozes (shakier words preferred within it). */
 export const CLOZE_P_RANGE = [0.6, 0.99] as const;
+/** Function words make poor clozes ("met", "de", "hij"): only content words are blanked. */
+export const CLOZE_EXCLUDED_POS: ReadonlySet<string> = new Set([
+  "ADP",
+  "DET",
+  "PRON",
+  "CCONJ",
+  "SCONJ",
+  "AUX",
+  "PART",
+  "INTJ",
+]);
 export const CLOZE_MIN_SENTENCE_WORDS = 6;
 export const CLOZE_MIN_CHARS = 2;
 /** A "page": the new-word budget is per page (segments are ~150 words). */
@@ -75,6 +86,7 @@ function pickClozes(toks: readonly AnalyzedToken[], base: readonly PlannedToken[
         t.particle_of === null &&
         !t.is_propn &&
         !t.is_num &&
+        !CLOZE_EXCLUDED_POS.has(t.pos) &&
         t.text.length >= CLOZE_MIN_CHARS &&
         p.pKnown >= CLOZE_P_RANGE[0] &&
         p.pKnown <= CLOZE_P_RANGE[1];

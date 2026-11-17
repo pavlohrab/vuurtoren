@@ -71,6 +71,7 @@ export const DEFAULT_SETTINGS: Settings = {
   theme: "system",
   help: 0.25,
   newWords: "auto",
+  glossClozes: false,
 };
 
 // spaCy universal POS -> Wiktionary (kaikki) part of speech, to pick the sense that fits.

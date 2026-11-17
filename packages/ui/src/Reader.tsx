@@ -23,13 +23,22 @@ export interface ReaderProps {
   glosses?: Readonly<Record<number, string>>;
   /** read: clozes shown as plain words; cloze/undefined: blanks; gloss: glosses shown inline. */
   mode?: ReaderMode;
+  /** Show cloze blanks. Default: only in cloze mode (or when no mode is given). */
+  blanks?: boolean;
 }
 
-/** Placeholder for hint level 1: first letter, then one underscore per remaining letter. */
-export function letterHint(word: string): string {
+/** Letter hint: the first `shown` letters, then one underscore per remaining letter. */
+export function letterHint(word: string, shown = 1): string {
   const chars = [...word];
-  return [chars[0] ?? "", ...chars.slice(1).map((c) => (/\p{L}/u.test(c) ? "_" : c))].join(" ");
+  return chars.map((c, k) => (k < shown || !/\p{L}/u.test(c) ? c : "_")).join(" ");
 }
+
+/**
+ * Cloze help ladder: 0 meaning (tooltip on focus) → 1 first letter → 2 first half → reveal.
+ * `onClozeAnswer` receives the level used; a reveal is reported as answer "" with level 3.
+ */
+export const CLOZE_REVEAL_LEVEL = 3;
+const HINT_TITLES = ["Show the first letter (?)", "Show half of the word (?)", "Show the word (?)"];
 
 /** Opacity of the "learning" underline: fades as recall grows, clamped to 0.25..1. */
 export function learningOpacity(pKnown: number): number {
@@ -66,6 +75,7 @@ export function Reader({
   onClozeAnswer,
   glosses,
   mode,
+  blanks,
 }: ReaderProps) {
   const [answers, setAnswers] = useState<Record<number, string>>({});
   const [hints, setHints] = useState<Record<number, number>>({});
@@ -145,22 +155,24 @@ export function Reader({
     const gloss = glosses?.[t.i];
     const isSelected = selectedGroup.has(t.i);
 
-    if (label === "cloze" && mode !== "read") {
+    const showBlanks = blanks ?? (mode === undefined || mode === "cloze");
+    if (label === "cloze" && showBlanks) {
       const answer = answers[t.i];
       const hint = hints[t.i] ?? 0;
       const show = revealed?.has(t.i) === true || answer !== undefined;
       if (!show) {
         const advanceHint = () => {
-          if (hint >= 1) {
-            // second hint = reveal (counts as not recalled)
+          if (hint >= CLOZE_REVEAL_LEVEL - 1) {
+            // last step = reveal (counts as not recalled)
             setAnswers((a) => ({ ...a, [t.i]: "" }));
-            setHints((h) => ({ ...h, [t.i]: 2 }));
-            onClozeAnswer?.(t.i, "", 2);
-          } else setHints((h) => ({ ...h, [t.i]: 1 }));
+            setHints((h) => ({ ...h, [t.i]: CLOZE_REVEAL_LEVEL }));
+            onClozeAnswer?.(t.i, "", CLOZE_REVEAL_LEVEL);
+          } else setHints((h) => ({ ...h, [t.i]: hint + 1 }));
         };
+        const shownLetters = hint >= 2 ? Math.ceil([...surface].length / 2) : 1;
         const hintId = `k-cloze-hint-${t.i}`;
         return (
-          <span key={t.i} className="k-cloze-wrap">
+          <span key={t.i} className={cn("k-cloze-wrap", hint >= 1 && "k-cloze-wrap--pinned")}>
             {gloss ? (
               <span id={hintId} className="k-cloze-hint" role="tooltip" title={gloss}>
                 {gloss}
@@ -173,7 +185,7 @@ export function Reader({
               size={Math.max(3, surface.length + 1)}
               aria-label="Fill in the missing word (press ? for a hint)"
               {...(gloss ? { "aria-describedby": hintId } : {})}
-              {...(hint >= 1 ? { placeholder: letterHint(surface) } : {})}
+              {...(hint >= 1 ? { placeholder: letterHint(surface, shownLetters) } : {})}
               autoComplete="off"
               autoCapitalize="off"
               spellCheck={false}
@@ -200,8 +212,8 @@ export function Reader({
               type="button"
               className="k-cloze-hintbtn"
               tabIndex={-1}
-              aria-label={hint >= 1 ? "Show the word" : "Show the first letter"}
-              title={hint >= 1 ? "Show the word" : "Show the first letter (?)"}
+              aria-label={(HINT_TITLES[hint] ?? "Show the word").replace(" (?)", "")}
+              title={HINT_TITLES[hint] ?? "Show the word"}
               onClick={advanceHint}
             >
               ?

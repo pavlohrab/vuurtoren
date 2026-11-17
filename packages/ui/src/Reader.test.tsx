@@ -95,9 +95,22 @@ describe("Reader", () => {
     const hintBtn = c2.querySelector<HTMLButtonElement>(".k-cloze-hintbtn")!;
     await userEvent.click(hintBtn);
     await userEvent.click(c2.querySelector<HTMLButtonElement>(".k-cloze-hintbtn")!);
-    expect(onClozeAnswer).toHaveBeenLastCalledWith(1, "", 2);
+    // second step: half of the word ("bel" -> 2 letters)
+    expect(c2.querySelector("input.k-cloze")).toHaveAttribute("placeholder", "b e _");
+    await userEvent.click(c2.querySelector<HTMLButtonElement>(".k-cloze-hintbtn")!);
+    expect(onClozeAnswer).toHaveBeenLastCalledWith(1, "", 3);
     expect(c2.querySelector('[data-result="revealed"]')?.textContent).toBe("bel");
     expect(container).toBeTruthy();
+  });
+
+  it("shows blanks only where asked: cloze mode by default, gloss mode only with blanks on", () => {
+    const f = fixture(TEXT, { 1: "cloze" });
+    const { rerender } = render(<Reader {...f} mode="gloss" />);
+    expect(screen.queryByLabelText(/Fill in the missing word/)).toBeNull();
+    rerender(<Reader {...f} mode="gloss" blanks />);
+    expect(screen.getByLabelText(/Fill in the missing word/)).toBeInTheDocument();
+    rerender(<Reader {...f} mode="cloze" />);
+    expect(screen.getByLabelText(/Fill in the missing word/)).toBeInTheDocument();
   });
 
   it("shows the word for revealed clozes", () => {

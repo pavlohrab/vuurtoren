@@ -301,6 +301,7 @@ export function createMockServices(options: { latencyMs?: number } = {}): AppSer
     theme: "system",
     help: 0.25,
     newWords: "auto",
+    glossClozes: false,
   };
   let staircase: StaircaseState = { targetCoverage: 0.98, newWordBudget: 3 };
   let lastSync: number | null = null;

@@ -200,17 +200,21 @@ export function ReaderPage({ textId }: { textId: string }) {
 
   // Translations by mode: Read shows none (clean text; click a word for its meaning), Cloze
   // only the blanks' meanings (the hint), Gloss whatever the dial selects.
+  // Blanks: always in Cloze mode; in Gloss mode only when the user turns them on.
+  const blanks = mode === "cloze" || (mode === "gloss" && (settingsQ.data?.glossClozes ?? false));
   const glossIdx = useMemo(() => {
     if (!plan) return [];
     // Detached particles ("op" in "bel ... op") share their verb's translation: show it once.
-    if (mode === "gloss")
-      return glossTargets(
+    if (mode === "gloss") {
+      const dial = glossTargets(
         plan.tokens.filter((p) => data?.tokens[p.i]?.particle_of == null),
         help,
       );
+      return blanks ? [...new Set([...dial, ...plan.clozes])].sort((a, b) => a - b) : dial;
+    }
     if (mode === "cloze") return [...plan.clozes];
     return [];
-  }, [plan, help, mode, data]);
+  }, [plan, help, mode, data, blanks]);
   const glossQ = useQuery({
     queryKey: ["glosses", textId, current, glossIdx.join(",")],
     queryFn: () => services.glosses(textId, glossIdx),
@@ -242,8 +246,10 @@ export function ReaderPage({ textId }: { textId: string }) {
   const onClozeAnswer = (i: number, answer: string, hints: number) => {
     const tok = data?.tokens[i];
     if (!tok) return;
-    const correct = hints < 2 && matchAnswer(answer, tok.text) !== "incorrect";
-    setCredits((prev) => new Map(prev).set(i, correct ? (hints === 1 ? 0.5 : 1) : 0));
+    // Credit by help used: unaided 1, first letter 0.5, half the word 0.25, revealed 0.
+    const correct = answer !== "" && matchAnswer(answer, tok.text) !== "incorrect";
+    const credit = !correct ? 0 : hints === 0 ? 1 : hints === 1 ? 0.5 : hints === 2 ? 0.25 : 0;
+    setCredits((prev) => new Map(prev).set(i, credit));
   };
 
   const refreshWords = async () => {
@@ -330,7 +336,7 @@ export function ReaderPage({ textId }: { textId: string }) {
         (t) => t.label !== "nonword" && t.label !== "ignored",
       ).length;
       // Blanks shown in Cloze mode count as answered even if left empty or revealed (0 credit).
-      const tested = Math.max(credits.size, mode === "cloze" ? plan.clozes.length : 0);
+      const tested = Math.max(credits.size, blanks ? plan.clozes.length : 0);
       const credit = [...credits.values()].reduce((a, b) => a + b, 0);
       await services.finishSegment(textId, current, {
         clozeAccuracy: tested > 0 ? credit / tested : null,
@@ -419,6 +425,17 @@ export function ReaderPage({ textId }: { textId: string }) {
             <span className="reader-tool-value">{HELP_LABEL[helpLevel(help)]}</span>
           </div>
         ) : null}
+        {mode === "gloss" && plan.clozes.length > 0 ? (
+          <div className="reader-tool">
+            <Button
+              variant={blanks ? "primary" : "secondary"}
+              aria-pressed={blanks}
+              onClick={() => saveSettings.mutate({ glossClozes: !blanks })}
+            >
+              {blanks ? "Blanks on" : "Blanks off"}
+            </Button>
+          </div>
+        ) : null}
         <div className="reader-tool">
           <span className="reader-tool-label">New words</span>
           <Select
@@ -438,6 +455,7 @@ export function ReaderPage({ textId }: { textId: string }) {
         selectedToken={selected}
         revealed={revealed}
         mode={mode}
+        blanks={blanks}
         glosses={glosses}
         onTokenClick={onTokenClick}
         onClozeAnswer={onClozeAnswer}
@@ -447,7 +465,7 @@ export function ReaderPage({ textId }: { textId: string }) {
           Segment {current + 1} of {plans?.length}
         </span>
         <div className="row">
-          {mode === "cloze" && plan.clozes.length > 0 && !allAnswered ? (
+          {blanks && plan.clozes.length > 0 && !allAnswered ? (
             <Button variant="ghost" onClick={() => setRevealed(new Set(plan.clozes))}>
               Show answers
             </Button>

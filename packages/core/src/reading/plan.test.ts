@@ -315,3 +315,27 @@ describe("planSegment: budget fill", () => {
     expect(at(8).gloss).toEqual(["dd"]);
   });
 });
+
+describe("clozes skip function words", () => {
+  it("never blanks prepositions, articles, pronouns or auxiliaries", () => {
+    const text = "Ik zie de man. Wij lopen met de hond naar het park vandaag.";
+    const fn = {
+      met: { pos: "ADP" },
+      de: { pos: "DET" },
+      het: { pos: "DET" },
+      wij: { pos: "PRON" },
+      naar: { pos: "ADP" },
+    };
+    const toks = tokenize(text, fn);
+    const learningAll: Record<string, ReturnType<typeof learning>> = {};
+    for (const t of toks) if (t.is_word) learningAll[t.lemma] = learning(0.8);
+    const p = planSegment(
+      toks,
+      segmentTokens(toks, 100_000)[0]!,
+      model(learningAll),
+      DEFAULT_PLANNER,
+    );
+    for (const i of p.clozes) expect(["ADP", "DET", "PRON"]).not.toContain(toks[i]!.pos);
+    expect(p.clozes.length).toBeGreaterThan(0);
+  });
+});

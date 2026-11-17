@@ -26,6 +26,8 @@ export interface Settings {
   help: number;
   /** New words introduced per 300 words: "auto" follows the adaptive staircase. */
   newWords: number | "auto";
+  /** Gloss mode: also show cloze blanks (off by default). */
+  glossClozes: boolean;
 }
 export type ImportInput =
   | { kind: "paste"; title?: string; content: string }

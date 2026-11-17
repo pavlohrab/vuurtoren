@@ -113,6 +113,17 @@ pnpm dev            # web app on http://localhost:5173 (proxies /nlp and /anki)
 
 1. **Cloze range.** Clozes use words with recall 0.70–0.95. With your decks (SM-2) this rarely triggers. Suggested: 0.60–0.99, preferring the shakier words.
 
+### Your requests (2026-11-17)
+
+- [x] **Gloss mode: optional blanks.** Off by default; the "Blanks off/on" button in the Gloss toolbar is saved.
+- [x] **More cloze help.** Meaning tooltip on focus (it stays visible once you ask for help) → first letter → first half of the word → reveal. Credit 1 / 0.5 / 0.25 / 0.
+- [x] **No clozes on function words** (_met, de, hij, …_). Only content words are blanked.
+- [ ] **Every word should have a meaning, also when it is not in Anki.**
+  - The dictionary already covers about 99% of word tokens in news text.
+  - **Compounds** (_souvenirwinkel_) get nothing at the moment. In progress: translation from their parts (souvenir · shop).
+  - Next: a context-aware sentence translation for the few remaining words, and for choosing the right sense. Options: an offline MT model on the server, or the user's own AI key (M6).
+- [ ] **Learn next / Mark known on the real Anki.** Built and tested against a fake Anki; your first real click is the first live test.
+
 ### Next milestones
 
 - **M3 leftovers:**
