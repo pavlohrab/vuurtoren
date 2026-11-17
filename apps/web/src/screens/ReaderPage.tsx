@@ -1,5 +1,5 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link, useNavigate, useParams } from "@tanstack/react-router";
+import { Link, useParams } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
@@ -28,6 +28,7 @@ import { GrammarNotes, notesFor, spotlightLabel } from "./GrammarNotes.js";
 import { ExplainSentence, SimplifyPage } from "./ReaderAI.js";
 import { writeLastText } from "../lastText.js";
 import { useWordActions } from "./useWordActions.js";
+import { TextComplete } from "./TextComplete.js";
 import { errorText } from "../services/errors.js";
 import { usePageHeader, useShell } from "../shell/ShellContext.js";
 import { revealAboveSheet } from "../shell/revealAboveSheet.js";
@@ -77,7 +78,6 @@ export function ReaderPage({ textId }: { textId: string }) {
   const services = useServices();
   const qc = useQueryClient();
   const toast = useToast();
-  const navigate = useNavigate();
   const { mode, inspectorEl, setInspectorAvailable, setInspectorOpen } = useShell();
 
   const reading = useQuery({
@@ -94,6 +94,8 @@ export function ReaderPage({ textId }: { textId: string }) {
   /** Segments finished in this visit; going back and forward again must not re-submit them. */
   const finished = useRef(new Set<number>());
   const [finishing, setFinishing] = useState(false);
+  /** The last page was finished: show the calm completion panel with the next steps. */
+  const [complete, setComplete] = useState(false);
   /** Bumped when the plan is deliberately recomputed (new-word budget changed). */
   const [epoch, setEpoch] = useState(0);
 
@@ -127,10 +129,10 @@ export function ReaderPage({ textId }: { textId: string }) {
     frozen && frozen.segment === current && frozen.epoch === epoch ? frozen.plan : undefined;
 
   usePageHeader(data?.text.title ?? "Reading", {
-    coverage: plan?.coverage ?? null,
+    coverage: complete ? null : (plan?.coverage ?? null),
     // The badge counts the highlighted (amber) words to learn, not every unknown word.
-    newCount: plan?.introduce.length ?? null,
-    reader: true,
+    newCount: complete ? null : (plan?.introduce.length ?? null),
+    reader: !complete,
     // The reader has no in-page heading, so the text title in the top bar is the page's h1.
     heading: true,
   });
@@ -308,10 +310,14 @@ export function ReaderPage({ textId }: { textId: string }) {
     setSegment(n);
   };
 
-  /** Move on after a segment; leaves the page after the last one. */
+  /** Move on after a segment; after the last one the completion panel takes over. */
   const advance = async () => {
     if (isLast) {
-      await navigate({ to: "/read/$textId/words", params: { textId } });
+      resetSegmentState();
+      setInspectorOpen(false);
+      setComplete(true);
+      void qc.invalidateQueries({ queryKey: ["activity"] });
+      document.getElementById("content")?.scrollTo?.({ top: 0 });
     } else {
       goTo(current + 1);
     }
@@ -402,6 +408,22 @@ export function ReaderPage({ textId }: { textId: string }) {
   }
 
   const allAnswered = plan.clozes.every((i) => credits.has(i) || revealed.has(i));
+
+  if (complete) {
+    return (
+      <div className="reader-page">
+        <TextComplete
+          textId={textId}
+          title={data.text.title}
+          wordCount={data.text.wordCount}
+          onReadAgain={() => {
+            setComplete(false);
+            goTo(0);
+          }}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="reader-page">

@@ -219,10 +219,27 @@ describe("TextWords page", () => {
 });
 
 describe("routing to the review", () => {
-  it("finishing the last segment opens the review, not the library", async () => {
+  it("finishing the last segment shows the completion panel, which leads on to the review", async () => {
     const { history } = setup("/read/t-utrecht");
     await userEvent.click(await screen.findByRole("button", { name: "Next segment" }));
     await userEvent.click(await screen.findByRole("button", { name: "Finish text" }));
+    const done = await screen.findByRole("region", { name: "Een dag in Utrecht" });
+    expect(within(done).getByText("Finished")).toBeInTheDocument();
+    expect(await within(done).findByText("New words met")).toBeInTheDocument();
+    const next = within(done).getByRole("navigation", { name: "Next steps" });
+    expect(within(next).getByRole("link", { name: /Practise these words/ })).toHaveAttribute(
+      "href",
+      expect.stringMatching(/^\/practice\?words=/),
+    );
+    expect(within(next).getByRole("link", { name: /Talk about this text/ })).toHaveAttribute(
+      "href",
+      expect.stringMatching(/^\/talk\?.*topic=/),
+    );
+    expect(within(next).getByRole("link", { name: /Next text/ })).toHaveAttribute(
+      "href",
+      expect.stringMatching(/^\/read\/t-/),
+    );
+    await userEvent.click(within(next).getByRole("link", { name: /Words from this text/ }));
     expect(await screen.findByRole("heading", { name: "Words from this text" })).toBeVisible();
     expect(history.location.pathname).toBe(URL);
   });
