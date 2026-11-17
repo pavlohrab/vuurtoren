@@ -241,3 +241,44 @@ class SimilarRequest(BaseModel):
     lang: Lang
     words: list[LemmaPos] = Field(max_length=PRACTICE_MAX_LEMMAS)
     k: int = Field(default=8, ge=1, le=20)
+
+
+# ----------------------------------------------------------------------------- grammar (M5)
+
+GRAMMAR_EXAMPLE_LIMIT = 10
+"""Maximum examples per ``GET /grammar/examples`` request."""
+
+
+class GrammarRequest(BaseModel):
+    """``POST /grammar``: each text at most :data:`MAX_TEXT_CHARS` characters."""
+
+    lang: Lang
+    texts: list[TextStr] = Field(max_length=MAX_ITEMS)
+
+
+class GrammarHit(BaseModel):
+    """One detected grammar construction (see :mod:`kenning_nlp.grammar`)."""
+
+    topic: str
+    """Grammar topic id (the file name of the topic page, e.g. ``inversion``)."""
+    tokens: list[int]
+    """Indices (``Token.i`` of ``/analyze/text`` for the same text) of the construction's words."""
+    sent: int
+    """Sentence number (``Token.sent``)."""
+    sentence: str
+    """The sentence text."""
+    start: int
+    end: int
+    """[start, end) of the sentence in the text, UTF-16 code units."""
+    note: str
+    """One short plain-English line explaining the hit."""
+
+
+class GrammarExample(BaseModel):
+    """A Tatoeba sentence in which a detector fired; ``marks`` are [start, end) UTF-16 spans."""
+
+    text: str
+    translation: str
+    marks: list[tuple[int, int]]
+    note: str
+    source: Literal["tatoeba"] = "tatoeba"
