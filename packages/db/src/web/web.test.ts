@@ -76,6 +76,19 @@ describe("web driver message protocol", () => {
     await expect(driver.exec("SELECT 1")).rejects.toThrow(/closed/);
   });
 
+  it("terminates synchronously and fails later calls", async () => {
+    const w = fakeWorker(true);
+    let killed = 0;
+    w.terminate = () => {
+      killed++;
+    };
+    const driver = await createWorkerDriver(w, "t");
+    driver.terminate();
+    driver.terminate();
+    expect(killed).toBe(1);
+    await expect(driver.exec("SELECT 1")).rejects.toThrow(/terminated/);
+  });
+
   it("runs the full repository over the protocol", async () => {
     const driver = await createWorkerDriver(fakeWorker(true), "t");
     const repo = await createRepository(driver);

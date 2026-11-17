@@ -24,7 +24,7 @@ async function createServices(): Promise<{ services: AppServices; notice?: strin
     // OPFS access handles are exclusive. Release them when the page is hidden (including the
     // back/forward cache, which keeps frozen pages alive), and reopen by reloading if a frozen
     // page is restored — otherwise the next page load could not open the database.
-    addEventListener("pagehide", () => void repo.close());
+    addEventListener("pagehide", () => driver.terminate());
     addEventListener("pageshow", (e) => {
       if (e.persisted) location.reload();
     });

@@ -15,7 +15,15 @@ export interface WorkerLike {
 }
 
 /** A driver plus whether data survives a reload. */
-export type WebDriver = SqlDriver & { readonly persistent: boolean };
+export type WebDriver = SqlDriver & {
+  readonly persistent: boolean;
+  /**
+   * Synchronously kill the worker, releasing OPFS access handles immediately. For `pagehide`:
+   * an async close may not finish before the page is torn down or frozen. Committed writes
+   * are already durable; an in-flight transaction is lost (as on a crash).
+   */
+  terminate(): void;
+};
 
 /**
  * Drive a SQLite worker over the request/response protocol.
@@ -69,7 +77,12 @@ export async function createWorkerDriver(worker: WorkerLike, name: string): Prom
     },
     { persistent: opened.persistent },
   );
-  return driver as WebDriver;
+  const terminate = (): void => {
+    if (dead) return;
+    worker.terminate();
+    failAll(new Error("Driver terminated"));
+  };
+  return Object.assign(driver, { terminate }) as WebDriver;
 }
 
 type DistributiveOmitId<T> = T extends unknown ? Omit<T, "id"> : never;
