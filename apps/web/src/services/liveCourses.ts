@@ -55,9 +55,7 @@ import type {
   UnitView,
   UnitWordView,
 } from "./courseTypes.js";
-import type { PracticeData } from "./practiceData.js";
 import type { ImportInput, Settings } from "./types.js";
-import { locateWord } from "./livePractice.js";
 
 export interface LiveCoursesDeps {
   repo: KenningRepository;
@@ -69,15 +67,11 @@ export interface LiveCoursesDeps {
   /** Adds a text to the Library (analysing it); returns its id. */
   importText: (input: ImportInput) => Promise<string>;
   model: () => Promise<LearnerModel>;
-  dictionary: (
-    lemmas: string[],
-  ) => Promise<Record<string, { pos: string; glosses: string[]; article: string | null }[]>>;
-  composeGlosses: (
-    info: WordInfo | null,
-    entries: { pos: string; glosses: string[]; article: string | null }[] | undefined,
-    pos: string,
-  ) => { glosses: string[]; article: string | undefined };
-  data: PracticeData;
+  /** The engine's WordData for some words (shared with practice: `buildWordData`). */
+  wordData: (
+    lang: string,
+    entries: readonly { key: string; info: WordInfo | null }[],
+  ) => Promise<WordData[]>;
   /** Called after changes that make cached learner data stale. */
   changed: () => void;
   now?: () => number;
@@ -90,7 +84,6 @@ export const courseRef = (courseId: string, unitN: number) => `course:${courseId
 
 const POLL_MS = 1500;
 const MAX_PRACTICE_WORDS = 60;
-const FORM_POS = new Set(["VERB", "ADJ", "NOUN"]);
 
 /** Kinds of the practice engine that imitate each book exercise type ("more like this"). */
 const KINDS_FOR_TYPE: Partial<Record<BookExercise["type"], ExerciseKind[]>> = {
@@ -513,65 +506,6 @@ export function createLiveCourses(deps: LiveCoursesDeps): CourseServices {
 
   // ------------------------------------------------------------------ practice
 
-  /** WordData for the engine: glosses, forms and sentences of unit words. */
-  async function wordData(keys: string[], infos: Map<string, WordInfo>): Promise<WordData[]> {
-    const lang = (await deps.settings()).lang;
-    const lemmas = [...new Set(keys)];
-    const dict = await deps.dictionary(lemmas);
-    const base = lemmas.map((lemma) => {
-      const info = infos.get(lemma) ?? null;
-      const entries = dict[lemma];
-      const pos =
-        entries?.[0]?.pos === "verb"
-          ? "VERB"
-          : entries?.[0]?.pos === "adj"
-            ? "ADJ"
-            : entries?.[0]?.pos === "noun"
-              ? "NOUN"
-              : entries?.[0]
-                ? "X"
-                : "NOUN";
-      const { glosses, article } = deps.composeGlosses(info, entries, pos);
-      return { lemma, info, pos, glosses, article };
-    });
-    const [forms, sentences] = await Promise.all([
-      deps.data.forms(
-        lang,
-        base.filter((b) => FORM_POS.has(b.pos)).map((b) => ({ lemma: b.lemma, pos: b.pos })),
-      ),
-      deps.data.sentences(lang, lemmas, { limit: 3, maxWords: 14 }),
-    ]);
-    return base.map(({ lemma, info, pos, glosses, article }) => {
-      const own = info?.sentence ? locateWord(info.sentence, lemma) : null;
-      const word: WordData = {
-        key: lemma,
-        lemma,
-        pos,
-        glosses,
-        zipf: 4,
-        state: info?.state ?? "unknown",
-        pKnown: info?.pKnown ?? 0,
-        sentences: [
-          ...(info?.sentence && own
-            ? [
-                {
-                  text: info.sentence,
-                  target: own,
-                  source: "anki" as const,
-                  ...(info.sentenceTranslation ? { translation: info.sentenceTranslation } : {}),
-                },
-              ]
-            : []),
-          ...(sentences[lemma] ?? []),
-        ],
-      };
-      if (article === "de" || article === "het") word.article = article;
-      const f = forms[lemma];
-      if (f) word.forms = f;
-      return word;
-    });
-  }
-
   /** Keys of the unit's words plus the words of earlier units (for review), unit words first. */
   async function practiceKeys(
     courseId: string,
@@ -599,7 +533,10 @@ export function createLiveCourses(deps: LiveCoursesDeps): CourseServices {
     const reviewKeys = earlier.slice(-Math.ceil(MAX_PRACTICE_WORDS / 3));
     const keys = [...unit.slice(0, MAX_PRACTICE_WORDS), ...reviewKeys];
     if (keys.length === 0) return [];
-    const words = await wordData(keys, infos);
+    const words = await deps.wordData(
+      (await deps.settings()).lang,
+      keys.map((key) => ({ key, info: infos.get(key) ?? null })),
+    );
     const rng = createRng(clock());
     const out: Exercise[] = [];
     // Round-robin over words and kinds so a session spreads out.

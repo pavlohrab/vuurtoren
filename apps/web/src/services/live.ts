@@ -42,14 +42,13 @@ import {
   createUlidGenerator,
 } from "@app/db";
 import { absentAnki, ankiFromStatus, unavailableAnki } from "./ankiState.js";
-import { NlpClient } from "@app/nlp-client";
+import { NlpClient, createPracticeData } from "@app/nlp-client";
 import { createLiveCourses } from "./liveCourses.js";
 import { createLiveAI } from "./liveAI.js";
 import { createLiveProfile } from "./liveProfile.js";
 import type { AddOptions } from "./profileTypes.js";
 import { createLiveGrammar } from "./liveGrammar.js";
 import { createLivePractice } from "./livePractice.js";
-import { createPracticeData } from "./practiceData.js";
 import type {
   AnkiConnectResult,
   AnkiStatus,
@@ -621,13 +620,16 @@ export function createLiveServices(repo: KenningRepository): AppServices {
     },
   });
 
-  const practice = createLivePractice({
+  // One cached practice-data source for practice and courses (review item A9).
+  const practiceData = createPracticeData(nlp);
+
+  const { buildWordData, ...practice } = createLivePractice({
     repo,
     lang: async () => (await settings()).lang,
     model,
     dictionary: dictionaryFor,
     composeGlosses,
-    data: createPracticeData(async () => (await settings()).nlpUrl),
+    data: practiceData,
     topicMaterial: grammar.topicMaterial,
     aiSentences: { ready: ai.aiReady, fill: ai.fillSentences },
   });
@@ -639,9 +641,7 @@ export function createLiveServices(repo: KenningRepository): AppServices {
     nlp,
     anki,
     model,
-    dictionary: dictionaryFor,
-    composeGlosses,
-    data: createPracticeData(async () => (await settings()).nlpUrl),
+    wordData: async (lang, entries) => (await buildWordData(lang, entries)).words,
     importText: (input) => services.importText(input),
     changed,
   });

@@ -4,7 +4,6 @@ import { createNodeDriver } from "@app/db/node";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createLiveServices } from "./live.js";
 import { locateWord } from "./livePractice.js";
-import { createPracticeData } from "./practiceData.js";
 
 const WORDS: [string, string, string, WordState][] = [
   ["huis", "house", "het", "known"],
@@ -269,61 +268,5 @@ describe("live practice: regressions", () => {
     const { services } = await setup();
     await services.startPractice({ size: 5 });
     expect((await services.practiceOverview()).degraded).toBe(true);
-  });
-});
-
-describe("practice data wrapper", () => {
-  it("degrades to empty data on errors and does not cache them", async () => {
-    const fetchFn = vi.fn(async () => new Response("", { status: 404 }));
-    const data = createPracticeData(
-      () => "/nlp",
-      () => fetchFn as unknown as typeof fetch,
-    );
-    expect(await data.forms("nl", [{ lemma: "lopen", pos: "VERB" }])).toEqual({});
-    expect(await data.forms("nl", [{ lemma: "lopen", pos: "VERB" }])).toEqual({});
-    expect(fetchFn).toHaveBeenCalledTimes(2);
-    const failing = createPracticeData(
-      () => "/nlp",
-      () =>
-        (async () => {
-          throw new TypeError("offline");
-        }) as unknown as typeof fetch,
-    );
-    expect(await failing.similar("nl", [{ lemma: "huis", pos: "NOUN" }], 3)).toEqual({});
-  });
-});
-
-describe("practice data wrapper: failures", () => {
-  const item = [{ lemma: "lopen", pos: "VERB" }];
-  it("does not cache failures, reports degraded, and recovers", async () => {
-    let up = false;
-    const fetchFn = vi.fn(async () =>
-      up ? Response.json({ lopen: { participle: "gelopen" } }) : new Response("", { status: 503 }),
-    );
-    const data = createPracticeData(
-      () => "/nlp",
-      () => fetchFn as unknown as typeof fetch,
-    );
-    expect(await data.forms("nl", item)).toEqual({});
-    expect(data.degraded()).toBe(true);
-    up = true;
-    expect(await data.forms("nl", item)).toEqual({ lopen: { participle: "gelopen" } });
-    expect(data.degraded()).toBe(false);
-    expect(fetchFn).toHaveBeenCalledTimes(2);
-    await data.forms("nl", item);
-    expect(fetchFn).toHaveBeenCalledTimes(2); // successes are cached
-  });
-
-  it("keys the cache by base URL", async () => {
-    let base = "/a";
-    const fetchFn = vi.fn(async () => Response.json({}));
-    const data = createPracticeData(
-      () => base,
-      () => fetchFn as unknown as typeof fetch,
-    );
-    await data.forms("nl", item);
-    base = "/b";
-    await data.forms("nl", item);
-    expect(fetchFn).toHaveBeenCalledTimes(2);
   });
 });

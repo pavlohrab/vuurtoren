@@ -31,7 +31,7 @@ import {
 import type { AISentenceReport } from "./aiTypes.js";
 import type { SentenceFill, SentenceNeed } from "./liveAI.js";
 import type { TopicMaterial } from "./liveGrammar.js";
-import type { PracticeData } from "./practiceData.js";
+import type { PracticeData } from "@app/nlp-client";
 import type {
   AnswerResult,
   AttemptInput,
@@ -302,6 +302,92 @@ export function createLivePractice(deps: LivePracticeDeps) {
     return out;
   }
 
+  /**
+   * The engine's WordData for some words, the one assembly used by practice and courses
+   * (review item A10): lemma, part of speech and frequency (zipf) from the learner's texts,
+   * dictionary glosses and article, server forms, and example sentences in the order Anki, the
+   * learner's texts, earlier AI sentences, Tatoeba. A word absent from every text gets zipf 0
+   * (unknown frequency) and its dictionary part of speech.
+   */
+  async function buildWordData(
+    lang: string,
+    entries: readonly { key: string; info: WordInfo | null }[],
+    model?: LearnerModel,
+  ): Promise<{ words: WordData[]; aiByKey: Map<string, GeneratedSentenceSet> }> {
+    const occ = await occurrences(
+      new Set(entries.map((e) => e.key)),
+      model ?? (await deps.model()),
+    );
+    const dict = await deps.dictionary([
+      ...new Set(entries.map((e) => occ.get(e.key)?.lemma ?? e.key)),
+    ]);
+
+    const base = entries.map(({ key, info }) => {
+      const o = occ.get(key);
+      const lemma = o?.lemma ?? key;
+      const dictEntries = dict[lemma];
+      const pos = o?.pos ?? UPOS[dictEntries?.[0]?.pos ?? ""] ?? "X";
+      const { glosses, article } = deps.composeGlosses(info, dictEntries, pos);
+      return { key, info, lemma, pos, glosses, article, o };
+    });
+
+    const [forms, serverSentences, aiSets] = await Promise.all([
+      deps.data.forms(
+        lang,
+        base.filter((b) => FORM_POS.has(b.pos)).map((b) => ({ lemma: b.lemma, pos: b.pos })),
+      ),
+      deps.data.sentences(
+        lang,
+        base.filter((b) => (b.o?.sentences.length ?? 0) < 2).map((b) => b.lemma),
+        { limit: 2, maxWords: 14 },
+      ),
+      repo.generatedSentences(lang),
+    ]);
+    const aiByKey = new Map<string, GeneratedSentenceSet>(
+      aiSets.filter((x) => !x.topic && x.key).map((x) => [x.key, x]),
+    );
+
+    const words: WordData[] = base.map(({ key, info, lemma, pos, glosses, article, o }) => {
+      const sentences: ExampleSentence[] = [];
+      if (info?.sentence) {
+        const target = locateWord(info.sentence, lemma, {
+          pos,
+          ...(forms[lemma] ? { forms: forms[lemma] } : {}),
+        });
+        if (target) {
+          sentences.push({
+            text: info.sentence,
+            target,
+            source: "anki",
+            ...(info.sentenceTranslation ? { translation: info.sentenceTranslation } : {}),
+          });
+        }
+      }
+      // Anki, then the learner's texts, then earlier AI sentences, then Tatoeba (server).
+      sentences.push(
+        ...(o?.sentences ?? []),
+        ...(aiByKey.get(key)?.sentences.flatMap(aiExample) ?? []),
+        ...(serverSentences[lemma] ?? []),
+      );
+      const word: WordData = {
+        key,
+        lemma,
+        pos,
+        glosses,
+        zipf: o?.zipf ?? 0,
+        state: info?.state ?? "unknown",
+        pKnown: info?.pKnown ?? 0,
+        sentences,
+      };
+      if (article && pos === "NOUN" && (article === "de" || article === "het"))
+        word.article = article;
+      const f = forms[lemma];
+      if (f) word.forms = f;
+      return word;
+    });
+    return { words, aiByKey };
+  }
+
   async function startPractice(opts: PracticeOptions = {}): Promise<Exercise[]> {
     const lang = await deps.lang();
     const now = clock();
@@ -322,74 +408,11 @@ export function createLivePractice(deps: LivePracticeDeps) {
     );
     if (chosen.length === 0) return [];
 
-    const occ = await occurrences(new Set(chosen.map((w) => w.key)), model);
-    const dict = await deps.dictionary([
-      ...new Set(chosen.map((w) => occ.get(w.key)?.lemma ?? w.key)),
-    ]);
-
-    const base = chosen.map((info) => {
-      const o = occ.get(info.key);
-      const lemma = o?.lemma ?? info.key;
-      const entries = dict[lemma];
-      const pos = o?.pos ?? UPOS[entries?.[0]?.pos ?? ""] ?? "X";
-      const { glosses, article } = deps.composeGlosses(info, entries, pos);
-      return { info, lemma, pos, glosses, article, o };
-    });
-
-    const [forms, serverSentences, aiSets] = await Promise.all([
-      deps.data.forms(
-        lang,
-        base.filter((b) => FORM_POS.has(b.pos)).map((b) => ({ lemma: b.lemma, pos: b.pos })),
-      ),
-      deps.data.sentences(
-        lang,
-        base.filter((b) => (b.o?.sentences.length ?? 0) < 2).map((b) => b.lemma),
-        { limit: 2, maxWords: 14 },
-      ),
-      repo.generatedSentences(lang),
-    ]);
-    const aiByKey = new Map<string, GeneratedSentenceSet>(
-      aiSets.filter((x) => !x.topic && x.key).map((x) => [x.key, x]),
+    const { words, aiByKey } = await buildWordData(
+      lang,
+      chosen.map((info) => ({ key: info.key, info })),
+      model,
     );
-
-    const words: WordData[] = base.map(({ info, lemma, pos, glosses, article, o }) => {
-      const sentences: ExampleSentence[] = [];
-      if (info.sentence) {
-        const target = locateWord(info.sentence, lemma, {
-          pos,
-          ...(forms[lemma] ? { forms: forms[lemma] } : {}),
-        });
-        if (target) {
-          sentences.push({
-            text: info.sentence,
-            target,
-            source: "anki",
-            ...(info.sentenceTranslation ? { translation: info.sentenceTranslation } : {}),
-          });
-        }
-      }
-      // Anki, then the learner's texts, then earlier AI sentences, then Tatoeba (server).
-      sentences.push(
-        ...(o?.sentences ?? []),
-        ...(aiByKey.get(info.key)?.sentences.flatMap(aiExample) ?? []),
-        ...(serverSentences[lemma] ?? []),
-      );
-      const word: WordData = {
-        key: info.key,
-        lemma,
-        pos,
-        glosses,
-        zipf: o?.zipf ?? 0,
-        state: info.state,
-        pKnown: info.pKnown,
-        sentences,
-      };
-      if (article && pos === "NOUN" && (article === "de" || article === "het"))
-        word.article = article;
-      const f = forms[lemma];
-      if (f) word.forms = f;
-      return word;
-    });
 
     if (opts.aiSentences) {
       const report = await fillWithAI(lang, words, aiByKey, size);
@@ -633,5 +656,5 @@ export function createLivePractice(deps: LivePracticeDeps) {
     };
   }
 
-  return { practiceOverview, startPractice, startTopicPractice, answerExercise };
+  return { practiceOverview, startPractice, startTopicPractice, answerExercise, buildWordData };
 }

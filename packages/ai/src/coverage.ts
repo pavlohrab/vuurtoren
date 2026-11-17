@@ -7,6 +7,7 @@ import {
   isCounted,
   matchToken,
   normalizeKey,
+  UNKNOWN_THRESHOLD,
 } from "@app/core";
 
 export interface CoverageReport {
@@ -18,8 +19,8 @@ export interface CoverageReport {
   words: number;
 }
 
-/** A word counts as unknown for rewrite purposes below this pKnown. */
-const KNOWN_P = 0.5;
+/** A word counts as unknown for rewrite purposes below this pKnown (the reader's own rule). */
+const KNOWN_P = UNKNOWN_THRESHOLD;
 
 /**
  * Coverage of analysed text against the learner model, using the reader's own matcher and

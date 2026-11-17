@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { AISentenceReport } from "./aiTypes.js";
 import type { SentenceFill, SentenceNeed } from "./liveAI.js";
 import { AI_WORDS_PER_SESSION, createLivePractice } from "./livePractice.js";
-import type { PracticeData } from "./practiceData.js";
+import type { PracticeData } from "@app/nlp-client";
 
 const data: PracticeData = {
   forms: async () => ({}),

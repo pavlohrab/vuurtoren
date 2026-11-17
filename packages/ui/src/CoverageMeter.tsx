@@ -1,14 +1,10 @@
+import { type DifficultyBand, bandOf } from "@app/core";
 import { cn } from "./cn.js";
 
-export type DifficultyBand = "comfortable" | "stretch" | "challenging" | "weave";
+export type { DifficultyBand };
 
-/** Map a coverage fraction (0..1) to its difficulty band. */
-export function difficultyBand(coverage: number): DifficultyBand {
-  if (coverage >= 0.98) return "comfortable";
-  if (coverage >= 0.95) return "stretch";
-  if (coverage >= 0.9) return "challenging";
-  return "weave";
-}
+/** Map a coverage fraction (0..1) to its difficulty band (thresholds: @app/core `bandOf`). */
+export const difficultyBand: (coverage: number) => DifficultyBand = bandOf;
 
 export const BAND_LABEL: Record<DifficultyBand, string> = {
   comfortable: "Comfortable",
