@@ -98,7 +98,12 @@ export interface Repository {
   word(lang: string, key: string): Promise<WordInfo | null>;
   words(
     lang: string,
-    opts?: { state?: WordState; limit?: number; offset?: number },
+    opts?: {
+      state?: WordState;
+      limit?: number;
+      offset?: number;
+      /** case-insensitive key prefix */ query?: string;
+    },
   ): Promise<WordInfo[]>;
   staircase(lang: string): Promise<StaircaseState | null>;
   setting<T>(key: string): Promise<T | undefined>;
