@@ -44,6 +44,7 @@ import {
 import { absentAnki, ankiFromStatus, unavailableAnki } from "./ankiState.js";
 import { NlpClient } from "@app/nlp-client";
 import { createLiveAI } from "./liveAI.js";
+import { createLiveGrammar } from "./liveGrammar.js";
 import { createLivePractice } from "./livePractice.js";
 import { createPracticeData } from "./practiceData.js";
 import type {
@@ -90,6 +91,7 @@ export const DEFAULT_SETTINGS: Settings = {
   help: 0.25,
   newWords: "auto",
   glossClozes: false,
+  grammarSpotlights: false,
 };
 
 // spaCy universal POS -> Wiktionary (kaikki) part of speech, to pick the sense that fits.
@@ -571,6 +573,15 @@ export function createLiveServices(repo: KenningRepository): AppServices {
     };
   }
 
+  const grammar = createLiveGrammar({
+    repo,
+    nlp,
+    view,
+    model,
+    chunkText,
+    translate: translateSentences,
+  });
+
   const practice = createLivePractice({
     repo,
     lang: async () => (await settings()).lang,
@@ -578,6 +589,7 @@ export function createLiveServices(repo: KenningRepository): AppServices {
     dictionary: dictionaryFor,
     composeGlosses,
     data: createPracticeData(async () => (await settings()).nlpUrl),
+    topicMaterial: grammar.topicMaterial,
   });
 
   const ai = createLiveAI({
@@ -594,6 +606,9 @@ export function createLiveServices(repo: KenningRepository): AppServices {
   return {
     ...practice,
     ...ai,
+    textGrammar: grammar.textGrammar,
+    grammarOverview: grammar.grammarOverview,
+    grammarExamples: grammar.grammarExamples,
     async listTexts(): Promise<TextListItem[]> {
       const texts = await repo.listTexts();
       const out: TextListItem[] = [];

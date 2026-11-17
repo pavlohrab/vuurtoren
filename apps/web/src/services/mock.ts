@@ -13,6 +13,7 @@ import type {
 } from "@app/core";
 import type { StoredText, WordInfo } from "@app/db";
 import { createMockAI } from "./mockAI.js";
+import { createMockGrammar } from "./mockGrammar.js";
 import { createMockPractice } from "./mockPractice.js";
 import type {
   AnkiStatus,
@@ -310,6 +311,7 @@ export function createMockServices(options: { latencyMs?: number } = {}): AppSer
     help: 0.25,
     newWords: "auto",
     glossClozes: false,
+    grammarSpotlights: true,
   };
   let staircase: StaircaseState = { targetCoverage: 0.98, newWordBudget: 3 };
   let lastSync: number | null = null;
@@ -458,10 +460,16 @@ export function createMockServices(options: { latencyMs?: number } = {}): AppSer
 
   const practice = createMockPractice(wait);
   const ai = createMockAI(wait);
+  const grammar = createMockGrammar(
+    wait,
+    () => [...texts.values()],
+    (lemma) => lexicon.get(lemma)?.article,
+  );
 
   return {
     ...practice,
     ...ai,
+    ...grammar,
     async listTexts() {
       await wait();
       return [...texts.values()].sort((a, b) => b.createdAt - a.createdAt).map(listItem);

@@ -27,6 +27,7 @@
   "dependencies": {
     "@app/ai": "workspace:*",
     "@app/anki": "workspace:*",
+    "@app/content": "workspace:*",
     "@app/core": "workspace:*",
     "@app/db": "workspace:*",
     "@app/nlp-client": "workspace:*",

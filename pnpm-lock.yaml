@@ -242,6 +242,9 @@ importers:
       '@app/anki':
         specifier: workspace:*
         version: link:../../packages/anki
+      '@app/content':
+        specifier: workspace:*
+        version: link:../../packages/content
       '@app/core':
         specifier: workspace:*
         version: link:../../packages/core

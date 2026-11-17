@@ -2,7 +2,9 @@ import type {
   AnalyzedToken,
   Attempt,
   Exercise,
+  ExerciseKind,
   Grade,
+  GrammarHit,
   ItemState,
   SegmentPlan,
   Skill,
@@ -58,6 +60,8 @@ export interface Settings {
   newWords: number | "auto";
   /** Gloss mode: also show cloze blanks (off by default). */
   glossClozes: boolean;
+  /** Reader: underline grammar constructions (spotlights). Off by default. */
+  grammarSpotlights: boolean;
 }
 export type ImportInput =
   | { kind: "paste"; title?: string; content: string }
@@ -111,6 +115,50 @@ export interface AnswerResult {
   next: ItemState;
 }
 
+/** Grammar hits over the Library (the grammar index). */
+export interface GrammarOverview {
+  /** Hits per detector topic id, over all analysed texts. */
+  counts: Record<string, number>;
+  /** Texts per detector topic id (how many texts contain it at least once). */
+  textCounts: Record<string, number>;
+  /** Analysed texts that were scanned. */
+  texts: number;
+  /** Analysed texts whose grammar could not be computed (the language server is unreachable). */
+  missing: number;
+}
+/** A sentence from the learner's own texts in which a topic was detected. */
+export interface LibraryGrammarExample {
+  textId: string;
+  title: string;
+  /** Detector topic id. */
+  topic: string;
+  sentence: string;
+  /** [start, end) spans of the construction's words in `sentence`. */
+  marks: [number, number][];
+  note: string;
+}
+/** A Tatoeba sentence in which a topic was detected (server `/grammar/examples`). */
+export interface TatoebaGrammarExample {
+  topic: string;
+  text: string;
+  translation: string;
+  marks: [number, number][];
+  note: string;
+}
+export interface TopicExamples {
+  library: LibraryGrammarExample[];
+  tatoeba: TatoebaGrammarExample[];
+  /** Tatoeba examples could not be loaded (server unreachable or sentence DB not built). */
+  tatoebaUnavailable: boolean;
+}
+/** What a topic exercise session trains: the page's detectors and exercise kinds. */
+export interface TopicPracticeOptions {
+  detects: string[];
+  kinds: ExerciseKind[];
+  /** Number of exercises (default 10). */
+  size?: number;
+}
+
 /**
  * Everything the UI needs from the outside world. The app never talks to the database,
  * AnkiConnect or the NLP server directly; swap the implementation passed to <ServicesProvider>.
@@ -161,6 +209,17 @@ export interface AppServices extends AIServices {
   startPractice(opts?: { size?: number; skills?: Skill[] }): Promise<Exercise[]>;
   /** Grade an answer, schedule the (word, skill) pair and record it. */
   answerExercise(exercise: Exercise, attempt: AttemptInput): Promise<AnswerResult>;
+  /**
+   * Grammar constructions in a text (M5): detected once by the language server, then stored
+   * with the analysis. Rejects when they are not stored and the server cannot be reached.
+   */
+  textGrammar(textId: string): Promise<GrammarHit[]>;
+  /** Hit counts per topic over the Library's analysed texts. */
+  grammarOverview(): Promise<GrammarOverview>;
+  /** Examples for a topic page: the learner's own texts first, then Tatoeba. */
+  grammarExamples(detects: string[], opts?: { limit?: number }): Promise<TopicExamples>;
+  /** A practice session for one grammar topic, from sentences in which it was detected. */
+  startTopicPractice(opts: TopicPracticeOptions): Promise<Exercise[]>;
   words(opts?: {
     state?: WordState;
     query?: string;

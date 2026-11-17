@@ -18,6 +18,7 @@ import {
 } from "@app/core";
 import type { KenningRepository, WordInfo } from "@app/db";
 import type { GlossEntry } from "@app/nlp-client";
+import { buildTopicSession } from "@app/core";
 import {
   buildSession,
   checkAnswer,
@@ -26,8 +27,14 @@ import {
   practiceStats,
   review,
 } from "../practice/engine.js";
+import type { TopicMaterial } from "./liveGrammar.js";
 import type { PracticeData } from "./practiceData.js";
-import type { AnswerResult, AttemptInput, PracticeOverview } from "./types.js";
+import type {
+  AnswerResult,
+  AttemptInput,
+  PracticeOverview,
+  TopicPracticeOptions,
+} from "./types.js";
 
 type DictEntries = GlossEntry[];
 
@@ -44,8 +51,12 @@ export interface LivePracticeDeps {
     pos: string,
   ) => { glosses: string[]; article: string | undefined };
   data: PracticeData;
+  /** Hit sentences and words of a grammar topic (M5 topic exercises). */
+  topicMaterial?: (detects: string[]) => Promise<TopicMaterial>;
   now?: () => number;
 }
+/** Distinct words a topic session looks up (forms, dictionary). */
+const TOPIC_WORDS = 40;
 
 const DEFAULT_SIZE = 20;
 /** Texts scanned for example sentences (most recent first). */
@@ -381,6 +392,70 @@ export function createLivePractice(deps: LivePracticeDeps) {
     });
   }
 
+  /**
+   * A session for one grammar topic: the topic's exercise kinds, built only from sentences in
+   * which the topic was detected (the learner's texts first, then Tatoeba).
+   */
+  async function startTopicPractice(opts: TopicPracticeOptions): Promise<Exercise[]> {
+    if (!deps.topicMaterial || opts.detects.length === 0) return [];
+    const lang = await deps.lang();
+    const material = await deps.topicMaterial(opts.detects);
+    const needWords = opts.kinds.some((k) => k !== "scramble");
+    const byKey = new Map<
+      string,
+      { lemma: string; pos: string; zipf: number; sentences: ExampleSentence[] }
+    >();
+    if (needWords) {
+      for (const w of material.words) {
+        const cur = byKey.get(w.key);
+        if (cur) {
+          if (!cur.sentences.some((s) => s.text === w.sentence.text))
+            cur.sentences.push(w.sentence);
+        } else if (byKey.size < TOPIC_WORDS) {
+          byKey.set(w.key, { lemma: w.lemma, pos: w.pos, zipf: w.zipf, sentences: [w.sentence] });
+        }
+      }
+    }
+    const entries = [...byKey.entries()];
+    const none = <T>(): Record<string, T> => ({});
+    const [dict, forms, infos] = await Promise.all([
+      entries.length
+        ? deps.dictionary([...new Set(entries.map(([, w]) => w.lemma))])
+        : none<DictEntries>(),
+      entries.length
+        ? deps.data.forms(
+            lang,
+            entries
+              .filter(([, w]) => FORM_POS.has(w.pos))
+              .map(([, w]) => ({ lemma: w.lemma, pos: w.pos })),
+          )
+        : none<WordForms>(),
+      Promise.all(entries.map(([key]) => repo.word(lang, key))),
+    ]);
+    const words: WordData[] = entries.map(([key, w], k) => {
+      const info = infos[k] ?? null;
+      const { glosses, article } = deps.composeGlosses(info, dict[w.lemma], w.pos);
+      const word: WordData = {
+        key,
+        lemma: w.lemma,
+        pos: w.pos,
+        glosses,
+        zipf: w.zipf,
+        state: info?.state ?? "unknown",
+        pKnown: info?.pKnown ?? 0,
+        sentences: w.sentences,
+      };
+      if (w.pos === "NOUN" && (article === "de" || article === "het")) word.article = article;
+      const f = forms[w.lemma];
+      if (f) word.forms = f;
+      return word;
+    });
+    return buildTopicSession(
+      { kinds: opts.kinds, sentences: material.sentences, words, size: opts.size ?? 10 },
+      createRng(clock()),
+    );
+  }
+
   async function answerExercise(exercise: Exercise, attempt: AttemptInput): Promise<AnswerResult> {
     const lang = await deps.lang();
     const checked = checkAnswer(exercise, attempt.answer);
@@ -411,5 +486,5 @@ export function createLivePractice(deps: LivePracticeDeps) {
     };
   }
 
-  return { practiceOverview, startPractice, answerExercise };
+  return { practiceOverview, startPractice, startTopicPractice, answerExercise };
 }
