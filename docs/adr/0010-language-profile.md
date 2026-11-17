@@ -22,5 +22,5 @@
 
 - A schema migration adds the `language_profiles` table (rebuilt from the log like every projection). Older apps skip the unknown event (review item A1).
 - `Settings.targetDeck` is deprecated and only used for migration; the Target deck field left Settings.
-- The domain commands for learn next / mark known still live in the web services (rest of A5).
+- The domain commands for learn next / mark known still live in the web services (rest of A5). _(Since moved to `@app/anki` `commands.ts`, see ADR 0011.)_
 - Ukrainian is listed but disabled until the NLP side supports it (A16).

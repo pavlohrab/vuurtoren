@@ -28,7 +28,7 @@ await repo.staircase("nl");
 await repo.setting<T>("key");
 await repo.lastSnapshot("nl");         // { at, sources } | null
 await repo.events(sinceId?);           // StoredEvent[] in id order (for sync)
-await repo.rebuild();                  // truncate projections, replay all events
+await repo.rebuild();                  // truncate projections, replay all events (local only)
 await repo.close();
 repo.deviceId;
 ```
@@ -53,7 +53,15 @@ Helpers: `contentHash(text)` (SHA-256 hex of UTF-8, synchronous, pure) is the ha
   2. Anki entry as imported
   3. app-created note (`NoteAddedToAnki`) -> `learning`, 0.2
   4. looked up only (`WordLookedUp`) -> `seen`, 0.1
-  5. otherwise absent
+  5. answered in Kenning only (practice, cloze, book) -> `seen`
+  6. otherwise absent
+
+  Below the override, app evidence (`word_evidence`, from `ExerciseAnswered`, `ClozeAnswered`
+  and `BookExerciseAnswered` with `keys`) is overlaid with `withAppEvidence` from `@app/core`:
+  it can raise pKnown and make a word `learning` (`appLearning: true`), never demotes `known` /
+  `ignored`, and fades with the repository clock (ADR 0011).
+- **RPC** (`rpc.ts`): only allow-listed methods; `append` accepts known event types up to
+  `MAX_RPC_EVENT_CHARS`; `rebuild` is not remotely callable.
 - "seen" words **are included** in `learnerModel` (state `seen`, pKnown 0.1); consumers that want
   only known/learning words filter by state.
 
