@@ -132,7 +132,10 @@ export function AppShell() {
     return list.find((t) => t.id === last) ?? list.find((t) => t.lastSegment > 0) ?? list[0];
   }, [texts.data, pathname]);
 
-  const title = header?.title ?? PAGE_TITLES[pathname] ?? "Kenning";
+  const title =
+    header?.title ??
+    PAGE_TITLES[pathname] ??
+    (pathname.startsWith("/courses/") ? "Courses" : "Kenning");
   const showInspector = inspectorAvailable && inspectorOpen;
 
   const goto = useCallback(

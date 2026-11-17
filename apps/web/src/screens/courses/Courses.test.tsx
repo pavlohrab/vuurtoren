@@ -38,7 +38,7 @@ describe("Courses", () => {
     await user.click(screen.getByRole("button", { name: "Learn next (2)" }));
     expect(learnNextForUnit).toHaveBeenCalledWith("demo-course", 1);
     expect(await screen.findByText("2 words moved to the front in Anki")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Add 1 missing words" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Add 1 missing word" })).toBeEnabled();
     // Words tab: each word with its Anki state
     await user.click(screen.getByRole("tab", { name: /Words/ }));
     expect(await screen.findByText("not in Anki")).toBeInTheDocument();

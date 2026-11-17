@@ -177,7 +177,7 @@ export function CourseImportScreen({ courseId: existing }: { courseId?: string }
       ) : null}
 
       {step === "upload" ? (
-        <>
+        <div className="stack">
           <p className="page-lede">
             Upload your own copy of a textbook, as a PDF or as photos of the pages. It is read on
             your own server and kept only in your own storage. Nothing is shared.
@@ -228,10 +228,12 @@ export function CourseImportScreen({ courseId: existing }: { courseId?: string }
             A scanned book of about 300 pages needs a few minutes of reading. You can leave this
             page open and come back to it.
           </p>
-          <Button variant="primary" disabled={files.length === 0} onClick={() => void start()}>
-            Start reading the book
-          </Button>
-        </>
+          <div className="row">
+            <Button variant="primary" disabled={files.length === 0} onClick={() => void start()}>
+              Start reading the book
+            </Button>
+          </div>
+        </div>
       ) : null}
 
       {step === "ocr" ? (

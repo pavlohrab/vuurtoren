@@ -220,7 +220,9 @@ export function UnitRoute({ courseId, n }: { courseId: string; n: number }) {
           </Button>
           {s.missing > 0 ? (
             <Button disabled={add.isPending} onClick={() => add.mutate()}>
-              {add.isPending ? "Adding…" : `Add ${s.missing} missing words`}
+              {add.isPending
+                ? "Adding…"
+                : `Add ${s.missing} missing ${s.missing === 1 ? "word" : "words"}`}
             </Button>
           ) : null}
         </div>
