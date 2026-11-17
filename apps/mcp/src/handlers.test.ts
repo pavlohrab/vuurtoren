@@ -1,4 +1,5 @@
-import type { AnalyzedToken } from "@app/core";
+import { AnkiConnectClient } from "@app/anki";
+import { type AnalyzedToken, defaultProfile } from "@app/core";
 import { createRepository, type KenningRepository } from "@app/db";
 import { createNodeDriver } from "@app/db/node";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
@@ -30,10 +31,35 @@ const tokenize = (text: string): Promise<AnalyzedToken[]> =>
   );
 
 let repo: KenningRepository;
-const notes: { deck: string; word: string; gloss: string; sentence: string }[] = [];
+const notes: { deck: string; fields: Record<string, string>; tags: string[] }[] = [];
+const decks: string[] = [];
+
+/** AnkiConnect fake for the add path: note type, deck and note creation are recorded. */
+const anki = new AnkiConnectClient({
+  fetch: (async (_url: string | URL | Request, init?: RequestInit) => {
+    const { action, params } = JSON.parse(String(init?.body)) as {
+      action: string;
+      params: Record<string, unknown>;
+    };
+    let result: unknown = null;
+    if (action === "modelNames") result = [];
+    if (action === "createDeck") decks.push(String(params["deck"]));
+    if (action === "addNote") {
+      const n = params["note"] as {
+        deckName: string;
+        fields: Record<string, string>;
+        tags: string[];
+      };
+      notes.push({ deck: n.deckName, fields: n.fields, tags: n.tags });
+      result = 42;
+    }
+    return new Response(JSON.stringify({ result, error: null }));
+  }) as typeof fetch,
+});
 
 beforeEach(async () => {
   notes.length = 0;
+  decks.length = 0;
   repo = await createRepository(await createNodeDriver());
   await repo.append({
     type: "AnkiSnapshotImported",
@@ -58,16 +84,7 @@ beforeEach(async () => {
   });
 });
 
-const handlers = () =>
-  createHandlers({
-    repo,
-    analyze: tokenize,
-    addNote: (n) => {
-      notes.push(n);
-      return Promise.resolve(42);
-    },
-    deck: "Deck",
-  });
+const handlers = (deck?: string) => createHandlers({ repo, analyze: tokenize, anki, deck });
 
 describe("handlers", () => {
   it("get_known_words filters by state, prefix and limit", async () => {
@@ -110,15 +127,38 @@ describe("handlers", () => {
     expect(big.content).toHaveLength(MAX_TEXT_CHARS);
   });
 
-  it("add_to_anki creates the note and records it", async () => {
-    const r = await handlers().addToAnki({
-      word: "Gezellig",
-      gloss: "cosy",
-      sentence: "Het is gezellig.",
+  it("add_to_anki uses the language profile's deck and the shared key rule", async () => {
+    await repo.append({
+      type: "LanguageProfileSet",
+      profile: {
+        ...defaultProfile("nl"),
+        destinations: { default: "Kenning::Nederlands", mcp: "Kenning::Nederlands::Claude" },
+      },
     });
-    expect(r).toEqual({ noteId: 42, deck: "Deck" });
-    expect(notes[0]?.word).toBe("Gezellig");
+    const r = await handlers().addToAnki({
+      word: "de Fiets",
+      gloss: "bike",
+      sentence: "De <b>fiets</b> is <i>rood</i>.",
+    });
+    expect(r).toEqual({ noteId: 42, deck: "Kenning::Nederlands::Claude" });
+    expect(decks).toEqual(["Kenning::Nederlands::Claude"]);
+    expect(notes[0]?.fields["Word"]).toBe("de Fiets");
+    expect(notes[0]?.fields["Sentence"]).toBe("De <b>fiets</b> is &lt;i>rood&lt;/i>.");
+    expect(notes[0]?.tags).toEqual(["kenning", "nl", "kenning::from::mcp"]);
+    expect((await repo.word("nl", "fiets"))?.addedNoteId).toBe(42);
+  });
+
+  it("add_to_anki: default deck without a profile, KENNING_DECK overrides", async () => {
+    expect(await handlers().addToAnki({ word: "Gezellig", gloss: "", sentence: "" })).toEqual({
+      noteId: 42,
+      deck: "Kenning::Nederlands",
+    });
     expect((await repo.word("nl", "gezellig"))?.addedNoteId).toBe(42);
+    const o = await handlers("Mine").addToAnki({ word: "thee", gloss: "tea", sentence: "" });
+    expect(o.deck).toBe("Mine");
+    await expect(handlers().addToAnki({ word: " ", gloss: "", sentence: "" })).rejects.toThrow(
+      /empty/,
+    );
   });
 });
 

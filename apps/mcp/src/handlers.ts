@@ -4,17 +4,25 @@
  * (`@app/db/http`), analysis from the NLP server, cards go to AnkiConnect.
  */
 import { coverageReport } from "@app/ai";
-import { normalizeKey, type AnalyzedToken } from "@app/core";
+import { type AnkiConnectClient, addWordToAnki } from "@app/anki";
+import { type AnalyzedToken, defaultProfile, wordKey } from "@app/core";
 import type { KenningRepository } from "@app/db";
 
 export interface McpDeps {
-  /** The user's data (HTTP repository against /api/rpc). */
-  repo: Pick<KenningRepository, "words" | "learnerModel" | "listTexts" | "getText" | "append">;
+  /** The user's data (HTTP repository against /api/rpc), including the language profile. */
+  repo: Pick<
+    KenningRepository,
+    "words" | "learnerModel" | "listTexts" | "getText" | "append" | "languageProfile"
+  >;
   /** Tokenise Dutch text with the NLP server. */
   analyze(text: string): Promise<AnalyzedToken[]>;
-  /** Create an Anki note, return its id. */
-  addNote(note: { deck: string; word: string; gloss: string; sentence: string }): Promise<number>;
-  deck: string;
+  /** AnkiConnect: new notes go through the shared add command (ADR 0010). */
+  anki: AnkiConnectClient;
+  /**
+   * Deck override (KENNING_DECK). Without it the deck comes from the language profile's MCP
+   * destination, or its default deck.
+   */
+  deck?: string | undefined;
   lang?: string;
 }
 
@@ -80,37 +88,27 @@ export function createHandlers(deps: McpDeps) {
       };
     },
 
-    /** Create a card in the target deck and record it in the learner's data. */
+    /** Create a card (deck from the language profile) and record it in the learner's data. */
     async addToAnki(args: { word: string; gloss: string; sentence: string }) {
       const word = args.word.trim();
       if (!word) throw new Error("word is empty");
-      const noteId = await deps.addNote({
-        deck: deps.deck,
+      const profile = (await deps.repo.languageProfile(defaultLang)) ?? defaultProfile(defaultLang);
+      const { noteId, deck } = await addWordToAnki(deps.anki, (e) => deps.repo.append(e), {
+        profile,
+        context: { source: "mcp", ...(deps.deck ? { deck: deps.deck } : {}) },
         word,
-        gloss: args.gloss.trim(),
-        sentence: args.sentence.trim(),
+        gloss: args.gloss,
+        sentence: args.sentence,
+        source: "Kenning MCP",
       });
-      await deps.repo.append({
-        type: "NoteAddedToAnki",
-        lang: defaultLang,
-        key: headwordKey(word),
-        noteId,
-        deck: deps.deck,
-      });
-      return { noteId, deck: deps.deck };
+      return { noteId, deck };
     },
   };
 }
 
 export type Handlers = ReturnType<typeof createHandlers>;
 
-/**
- * The learner-model key for a headword the model passed ("de fiets" -> "fiets", "zich
- * vergissen" -> "vergissen"), so the new card matches in the reader and Words list.
- */
-export function headwordKey(word: string): string {
-  const words = word.trim().split(/\s+/);
-  if (words.length > 1 && /^(de|het|een|'t)$/i.test(words[0] ?? "")) words.shift();
-  if (words.length > 1 && /^(zich|me|je|ons|jullie)$/i.test(words[0] ?? "")) words.shift();
-  return normalizeKey(words.join(" "));
+/** The learner-model key for a headword the model passed (the shared rule, `wordKey`). */
+export function headwordKey(word: string, lang = "nl"): string {
+  return wordKey(lang, word);
 }

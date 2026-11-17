@@ -8,10 +8,11 @@
  *   KENNING_TOKEN      bearer token if the server requires one (also sent to $KENNING_URL/nlp)
  *   KENNING_NLP_URL    NLP server (default: $KENNING_URL/nlp)
  *   KENNING_ANKI_URL   AnkiConnect (default http://127.0.0.1:8765); KENNING_ANKI_KEY if set
- *   KENNING_DECK       target deck (default Kenning::Nederlands)
+ *   KENNING_DECK       deck override; by default the language profile decides (its MCP
+ *                      destination, else its default deck)
  */
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { AnkiConnectClient, addWordNote } from "@app/anki";
+import { AnkiConnectClient } from "@app/anki";
 import { createHttpRepository } from "@app/db/http";
 import { NlpClient } from "@app/nlp-client";
 import { createHandlers } from "./handlers.js";
@@ -44,17 +45,9 @@ async function main(): Promise<void> {
   });
   const handlers = createHandlers({
     repo,
-    deck: env["KENNING_DECK"] ?? "Kenning::Nederlands",
+    deck: env["KENNING_DECK"],
     analyze: async (text) => (await nlp.analyzeText("nl", [text]))[0]?.tokens ?? [],
-    addNote: (n) =>
-      addWordNote(anki, {
-        deck: n.deck,
-        word: n.word,
-        ...(n.gloss ? { gloss: n.gloss } : {}),
-        ...(n.sentence ? { sentence: n.sentence } : {}),
-        tags: ["nl", "mcp"],
-        source: "Kenning MCP",
-      }),
+    anki,
   });
   await buildServer(handlers).connect(new StdioServerTransport());
   // stdout carries the protocol; log to stderr only.
