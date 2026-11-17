@@ -36,3 +36,11 @@ uv run pytest
 ## License
 
 Dual-licensed under [MIT](LICENSE-MIT) or [Apache-2.0](LICENSE-APACHE), at your option.
+
+## M1: check the card → lemma mapping on your own deck
+
+1. Start Anki desktop with [AnkiConnect](https://ankiweb.net/shared/info/2055492159) (add-on code `2055492159`).
+2. `pnpm nlp`: start the NLP service at http://localhost:8000.
+3. `pnpm build && pnpm anki-report`: detects your Dutch deck, note type and word field, then writes `reports/` (git-ignored).
+   Override with `--deck "…" --model "…" --field "…"`.
+4. Fill in the `correct (y/n)` column in `reports/m1-mapping-sample.csv`. Target: ≥ 95% correct.
