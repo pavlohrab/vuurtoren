@@ -49,7 +49,11 @@ export interface AnkiWordEntry {
 
 /** Where an imported text came from. */
 export type TextSource =
-  | { kind: "paste" | "url" | "pdf" | "image"; ref?: string }
+  | {
+      /** "talk": a Talk conversation saved to the Library (ref "talk:<conversation id>"). */
+      kind: "paste" | "url" | "pdf" | "image" | "talk";
+      ref?: string;
+    }
   | {
       /** Written by the learner's AI provider (docs/ai.md, Stories). Never contains keys. */
       kind: "ai";
@@ -317,6 +321,8 @@ export interface TextSummary {
   title: string;
   lang: string;
   sourceKind: TextSourceKind;
+  /** Where the text came from: URL, file name, "course:<id>:<unit>", "talk:<id>"… */
+  sourceRef?: string;
   createdAt: number;
   wordCount: number;
   analyzed: boolean;
@@ -362,6 +368,13 @@ export interface TextGrammar {
   hits: GrammarHit[];
 }
 
+/** One learning event, as listed by `activity` (Home's week strip). */
+export interface ActivityEntry {
+  /** Pages read, exercises answered (in Practice or as a reader cloze) and words added to Anki. */
+  kind: "page" | "exercise" | "added";
+  at: number;
+}
+
 /** One answered exercise, as listed by `practiceLog`. */
 export interface PracticeLogEntry {
   key: string;
@@ -395,6 +408,8 @@ export interface Repository {
   practiceItems(lang: string): Promise<ItemState[]>;
   /** Newest-first answers (ExerciseAnswered events), at most `limit`. */
   practiceLog(lang: string, limit: number): Promise<PracticeLogEntry[]>;
+  /** Pages read, exercises answered and words added since `sinceMs` (any language), oldest first. */
+  activity(sinceMs: number): Promise<ActivityEntry[]>;
   /** Stored grammar hits of a text (null when none are stored for its current content). */
   textGrammar(textId: string): Promise<TextGrammar | null>;
   /** Stored grammar hits of every text that has them (for the grammar index). */

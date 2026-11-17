@@ -26,6 +26,7 @@ import type {
   AppEvent,
   GeneratedSentenceSet,
   PracticeLogEntry,
+  ActivityEntry,
   Repository,
   SqlDriver,
   SqlValue,
@@ -95,6 +96,7 @@ function textSummary(r: Row): TextSummary {
     title: String(r["title"]),
     lang: String(r["lang"]),
     sourceKind: String(r["source_kind"]) as TextSummary["sourceKind"],
+    ...(r["source_ref"] != null ? { sourceRef: String(r["source_ref"]) } : {}),
     createdAt: Number(r["created_at"]),
     wordCount: Number(r["word_count"]),
     analyzed: r["analyzed"] !== null,
@@ -102,7 +104,7 @@ function textSummary(r: Row): TextSummary {
   };
 }
 
-const TEXT_COLS = `t.id, t.title, t.lang, t.source_kind, t.created_at, t.word_count,
+const TEXT_COLS = `t.id, t.title, t.lang, t.source_kind, t.source_ref, t.created_at, t.word_count,
     tt.text_id AS analyzed, rp.last_segment`;
 const TEXT_FROM = `FROM texts t
   LEFT JOIN text_tokens tt ON tt.text_id = t.id
@@ -313,6 +315,27 @@ export async function createRepository(
             lang,
           ])
         ).map((r) => json<ItemState>(r["state"])),
+      ),
+
+    activity: (sinceMs) =>
+      serial(async () =>
+        (
+          await driver.exec(
+            `SELECT type, created_at FROM events
+              WHERE created_at >= ? AND type IN
+                ('ReadingProgress', 'ExerciseAnswered', 'ClozeAnswered', 'NoteAddedToAnki')
+              ORDER BY created_at`,
+            [Math.max(0, Math.floor(sinceMs))],
+          )
+        ).map((r): ActivityEntry => ({
+          kind:
+            r["type"] === "ReadingProgress"
+              ? "page"
+              : r["type"] === "NoteAddedToAnki"
+                ? "added"
+                : "exercise",
+          at: Number(r["created_at"]),
+        })),
       ),
 
     practiceLog: (lang, limit) =>

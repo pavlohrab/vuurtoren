@@ -11,7 +11,8 @@ import type {
   TokenLabel,
   WordState,
 } from "@app/core";
-import type { StoredText, WordInfo } from "@app/db";
+import type { ActivityEntry, StoredText, WordInfo } from "@app/db";
+import { groupActivity } from "./activity.js";
 import { createMockCourses } from "./mockCourses.js";
 import { createMockAI } from "./mockAI.js";
 import { createMockProfile } from "./mockProfile.js";
@@ -466,7 +467,12 @@ export function createMockServices(
     };
   };
 
-  const addText = (title: string, content: string, kind: StoredText["sourceKind"]): string => {
+  const addText = (
+    title: string,
+    content: string,
+    kind: StoredText["sourceKind"],
+    ref?: string,
+  ): string => {
     const id = `t-${Date.now().toString(36)}-${texts.size}`;
     const tokens = tokenize(content, (s) => ensure(s, true), []);
     texts.set(id, {
@@ -474,6 +480,7 @@ export function createMockServices(
       title,
       lang: "nl",
       sourceKind: kind,
+      ...(ref ? { sourceRef: ref } : {}),
       createdAt: Date.now(),
       wordCount: tokens.filter((x) => x.is_word && !x.is_num).length,
       analyzed: true,
@@ -485,6 +492,8 @@ export function createMockServices(
   };
 
   const practice = createMockPractice(wait);
+  /** What was done in this demo session, for the Home week strip. */
+  const sessionActivity: ActivityEntry[] = [];
   const ai = createMockAI(wait, { saveText: (title, content) => addText(title, content, "ai") });
   const profile = createMockProfile(wait);
   const grammar = createMockGrammar(
@@ -522,7 +531,7 @@ export function createMockServices(
       let title: string;
       let content: string;
       let kind: StoredText["sourceKind"] = input.kind;
-      if (input.kind === "paste") {
+      if (input.kind === "paste" || input.kind === "talk") {
         content = input.content.trim();
         title = input.title?.trim() || content.split(/\s+/).slice(0, 5).join(" ");
       } else if (input.kind === "url") {
@@ -542,7 +551,12 @@ export function createMockServices(
       if (!content) throw new Error("There is no text to import.");
       onProgress?.("Analysing words");
       await delay(latency * 3);
-      const id = addText(title, content, kind);
+      const id = addText(
+        title,
+        content,
+        kind,
+        input.kind === "paste" || input.kind === "talk" ? input.ref : undefined,
+      );
       onProgress?.("Planning the reading");
       await delay(latency);
       return id;
@@ -632,6 +646,7 @@ export function createMockServices(
 
     async addToAnki(entry, opts) {
       await wait();
+      sessionActivity.push({ kind: "added", at: Date.now() });
       const e = lexicon.get(entry.key);
       const noteId = nextNoteId++;
       const deck = profile.deckFor("reading", opts?.deck);
@@ -723,6 +738,7 @@ export function createMockServices(
 
     async finishSegment(textId, segment, outcome) {
       await wait();
+      sessionActivity.push({ kind: "page", at: Date.now() });
       // Same semantic as the database projection: the NEXT segment to read.
       lastSegments.set(textId, segment + 1);
       const struggling = outcome.lookupsPer100 > 8 || (outcome.clozeAccuracy ?? 1) < 0.7;
@@ -768,10 +784,60 @@ export function createMockServices(
       return summaryOf();
     },
 
+    async activity(days = 7) {
+      await wait();
+      // Demo: a calm, plausible week (nothing yesterday), plus what was done in this session.
+      const now = Date.now();
+      const day = 86_400_000;
+      const plan = [
+        [2, 12, 3],
+        [1, 0, 0],
+        [0, 0, 0],
+        [3, 20, 5],
+        [1, 8, 2],
+        [0, 0, 0],
+      ];
+      const entries: ActivityEntry[] = [];
+      plan.forEach(([pages, exercises, added], k) => {
+        const at = now - (plan.length - k) * day;
+        for (let i = 0; i < pages!; i++) entries.push({ kind: "page", at });
+        for (let i = 0; i < exercises!; i++) entries.push({ kind: "exercise", at });
+        for (let i = 0; i < added!; i++) entries.push({ kind: "added", at });
+      });
+      return groupActivity([...entries, ...sessionActivity], now, days);
+    },
+
+    async inspectWord(key: string): Promise<InspectorEntry> {
+      await wait();
+      const e = lexicon.get(key);
+      if (!e) throw new Error("Unknown word");
+      for (const t of texts.values()) {
+        const tokens = t.tokens ?? [];
+        const tok = tokens.find((x) => x.is_word && lexicon.get(ensure(x.text).key) === e);
+        if (tok) return entryOf(t, tokens, tok, e);
+      }
+      const empty = {
+        id: "",
+        title: "",
+        lang: "nl",
+        sourceKind: "paste",
+        createdAt: 0,
+        wordCount: 0,
+        analyzed: true,
+        lastSegment: 0,
+        content: "",
+        tokens: [],
+      } satisfies StoredText;
+      const fake = { i: -1, start: 0, end: 0, sent: -1 } as unknown as AnalyzedToken;
+      return { ...entryOf(empty, [], fake, e), surface: key, tokenIndex: -1 };
+    },
+
     async words(opts = {}) {
       await wait();
       const q = opts.query?.trim().toLowerCase();
+      const only = opts.keys ? new Set(opts.keys) : null;
       const rows: WordInfo[] = [...lexicon.values()]
+        .filter((e) => (only ? only.has(e.key) : true))
         .filter((e) => (opts.state ? e.state === opts.state : true))
         .filter((e) => (q ? e.key.includes(q) || e.gloss.toLowerCase().includes(q) : true))
         .sort((a, b) => a.key.localeCompare(b.key))

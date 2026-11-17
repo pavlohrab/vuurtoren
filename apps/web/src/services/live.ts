@@ -49,6 +49,7 @@ import { createLiveProfile } from "./liveProfile.js";
 import type { AddOptions } from "./profileTypes.js";
 import { createLiveGrammar } from "./liveGrammar.js";
 import { createLivePractice } from "./livePractice.js";
+import { activitySince, groupActivity } from "./activity.js";
 import type {
   AnkiConnectResult,
   AnkiStatus,
@@ -680,7 +681,7 @@ export function createLiveServices(repo: KenningRepository): AppServices {
       let title: string;
       let content: string;
       let ref: string | undefined;
-      if (input.kind === "paste") {
+      if (input.kind === "paste" || input.kind === "talk") {
         content = input.content;
         title = input.title?.trim() || titleFrom(content);
         ref = input.ref;
@@ -962,7 +963,47 @@ export function createLiveServices(repo: KenningRepository): AppServices {
 
     async words(opts = {}) {
       const { lang } = await settings();
-      return repo.words(lang, opts);
+      if (!opts.keys) return repo.words(lang, opts);
+      const { keys, limit, offset = 0, ...rest } = opts;
+      const wanted = new Set(keys);
+      const rows = (await repo.words(lang, rest)).filter((w) => wanted.has(w.key));
+      return rows.slice(offset, limit === undefined ? undefined : offset + limit);
+    },
+
+    async activity(days = 7) {
+      const now = Date.now();
+      return groupActivity(await repo.activity(activitySince(now, days)), now, days);
+    },
+
+    async inspectWord(key: string): Promise<InspectorEntry> {
+      const { lang } = await settings();
+      const info = await repo.word(lang, key);
+      const [dict, ankiState] = await Promise.all([dictionaryFor([key]), liveAnki(info)]);
+      const pos = info?.article ? "NOUN" : (dict[key]?.[0]?.pos ?? "");
+      const { glosses, article } = composeGlosses(info, dict[key], pos);
+      const sentence = info?.sentence ?? "";
+      const at = sentence.toLocaleLowerCase().indexOf(key.toLocaleLowerCase());
+      const entry: InspectorEntry = {
+        textId: "",
+        tokenIndex: -1,
+        surface: key,
+        lemma: key,
+        key,
+        label: "new",
+        state: info?.state ?? "unknown",
+        pKnown: info?.pKnown ?? 0,
+        pos,
+        glosses,
+        decks: info?.decks ?? [],
+        inAnki: info?.source === "anki" || info?.addedNoteId !== undefined,
+        anki: ankiState,
+        sentence,
+        sentenceHighlight: at >= 0 ? [at, at + key.length] : [0, 0],
+      };
+      if (article) entry.article = article;
+      if (info?.appLearning) entry.appLearning = true;
+      if (info?.sentenceTranslation) entry.sentenceTranslation = info.sentenceTranslation;
+      return entry;
     },
   };
   return services;

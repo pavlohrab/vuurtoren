@@ -16,6 +16,9 @@ import type { InspectorEntry } from "@app/ui";
 import type { CourseServices } from "./courseTypes.js";
 import type { AIServices, AISentenceReport } from "./aiTypes.js";
 import type { AddOptions, ProfileServices } from "./profileTypes.js";
+import type { ActivityDay } from "./activity.js";
+
+export type { ActivityDay };
 
 /** Defined in @app/ui (the WordInspector consumes it); re-exported here as part of the contract. */
 export type { InspectorEntry };
@@ -75,6 +78,13 @@ export type ImportInput =
       title?: string;
       content: string;
       /** e.g. "course:<id>:<unit>" */ ref?: string;
+    }
+  | {
+      /** A Talk conversation saved to the Library (ref "talk:<conversation id>"). */
+      kind: "talk";
+      title: string;
+      content: string;
+      ref?: string;
     }
   | { kind: "url"; url: string }
   | { kind: "pdf" | "image"; file: File; title?: string };
@@ -183,6 +193,11 @@ export interface PracticeOptions {
   aiSentences?: boolean;
   /** Called once with what the AI fill did (only when `aiSentences` was asked for). */
   onAISentences?: (report: AISentenceReport) => void;
+  /**
+   * Practise only these words (lemma keys), due or not: "Practise these words" from Words,
+   * Words from this text and the Practice summary. Scheduling still uses each item's own state.
+   */
+  keys?: string[];
 }
 
 /**
@@ -195,6 +210,11 @@ export interface AppServices extends CourseServices, AIServices, ProfileServices
   importText(input: ImportInput, onProgress?: (msg: string) => void): Promise<string>;
   deleteText(textId: string): Promise<void>;
   inspect(textId: string, tokenIndex: number): Promise<InspectorEntry>;
+  /**
+   * The inspector entry of a word outside any text (Words): its Anki example sentence as the
+   * context (empty when it has none), `textId` "" and `tokenIndex` -1.
+   */
+  inspectWord(key: string): Promise<InspectorEntry>;
   /**
    * Words worth reviewing after reading a text, in text order: every highlighted ("introduce")
    * word of any page plus the words looked up in this text, optionally also the translated-only
@@ -229,6 +249,8 @@ export interface AppServices extends CourseServices, AIServices, ProfileServices
   connectAnki(): Promise<AnkiConnectResult>;
   syncAnki(onProgress?: (msg: string) => void): Promise<LearnerSummary>;
   learnerSummary(): Promise<LearnerSummary>;
+  /** The last `days` (default 7) local days of pages read, exercises answered and words added. */
+  activity(days?: number): Promise<ActivityDay[]>;
   /** Counts for the Practice start screen, the sidebar badge and Progress. */
   practiceOverview(): Promise<PracticeOverview>;
   /**
@@ -251,6 +273,8 @@ export interface AppServices extends CourseServices, AIServices, ProfileServices
   startTopicPractice(opts: TopicPracticeOptions): Promise<Exercise[]>;
   words(opts?: {
     state?: WordState;
+    /** Only these lemma keys (Words filtered by a text, a course unit or a practice session). */
+    keys?: string[];
     query?: string;
     limit?: number;
     offset?: number;

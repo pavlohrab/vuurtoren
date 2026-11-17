@@ -34,6 +34,37 @@ function screen<P extends string>(
   });
 }
 
+/**
+ * Optional string search params of a screen (filters, seeds). Numbers the router parsed from
+ * the URL (`?q=12`) come back as strings; anything else is dropped.
+ */
+function stringParams<K extends string>(...keys: K[]) {
+  return (raw: Record<string, unknown>): { [P in K]?: string } => {
+    const out: { [P in K]?: string } = {};
+    for (const k of keys) {
+      const v = raw[k];
+      if (typeof v === "string" && v !== "") out[k] = v;
+      else if (typeof v === "number") out[k] = String(v);
+    }
+    return out;
+  };
+}
+
+/** A code-split screen whose URL carries optional string search params. */
+function searchScreen<P extends string, K extends string>(
+  path: P,
+  file: () => Promise<Record<string, unknown>>,
+  name: string,
+  keys: K[],
+) {
+  return createRoute({
+    getParentRoute: () => rootRoute,
+    path,
+    validateSearch: stringParams(...keys),
+    component: lazyRouteComponent(file as never, name),
+  });
+}
+
 const homeRoute = screen("/", () => import("./screens/Home.js"), "Home");
 const homeAlias = alias("/home", "/");
 const libraryRoute = screen("/library", () => import("./screens/Library.js"), "Library");
@@ -44,9 +75,22 @@ const wordsOfTextRoute = screen(
   "TextWordsRoute",
 );
 const importRoute = screen("/import", () => import("./screens/Import.js"), "ImportScreen");
-const wordsRoute = screen("/words", () => import("./screens/Words.js"), "Words");
-const practiceRoute = screen("/practice", () => import("./screens/Practice.js"), "Practice");
-const talkRoute = screen("/talk", () => import("./screens/Converse.js"), "Converse");
+/** /words?state=&source=text:<id>|unit:<course>/<n>|practice-again&q=&word=<key> */
+const wordsRoute = searchScreen("/words", () => import("./screens/Words.js"), "Words", [
+  "state",
+  "source",
+  "q",
+  "word",
+]);
+/** /practice?words=a,b,c (practise these words) */
+const practiceRoute = searchScreen("/practice", () => import("./screens/Practice.js"), "Practice", [
+  "words",
+]);
+/** /talk?words=a,b&topic=… (seeded from Practice, Words, a unit or a text) */
+const talkRoute = searchScreen("/talk", () => import("./screens/Converse.js"), "Converse", [
+  "words",
+  "topic",
+]);
 const converseAlias = alias("/converse", "/talk");
 const grammarRoute = screen("/grammar", () => import("./screens/Grammar.js"), "Grammar");
 const grammarTopicRoute = screen(
@@ -60,7 +104,13 @@ const topicPracticeRoute = screen(
   "TopicPracticeRoute",
 );
 const progressRoute = screen("/progress", () => import("./screens/Progress.js"), "Progress");
-const settingsRoute = screen("/settings", () => import("./screens/Settings.js"), "SettingsScreen");
+/** /settings?section=account|language|reading|ai|data|advanced */
+const settingsRoute = searchScreen(
+  "/settings",
+  () => import("./screens/Settings.js"),
+  "SettingsScreen",
+  ["section"],
+);
 const welcomeRoute = screen("/welcome", () => import("./screens/onboarding/Welcome.js"), "Welcome");
 
 const coursesRoute = screen("/courses", () => import("./screens/courses/Courses.js"), "Courses");

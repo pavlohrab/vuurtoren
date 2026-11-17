@@ -64,18 +64,46 @@ describe("Home", () => {
     const plan = await screen.findByRole("region", { name: "Today" });
     const practise = await within(plan).findByRole("link", { name: /Practise/ });
     expect(practise).toHaveAttribute("href", "/practice");
-    expect(within(plan).getByRole("link", { name: /Read one page/ })).toHaveAttribute(
+    const reading = screen.getByRole("region", { name: /reading/i });
+    expect(
+      within(reading).getAllByRole("link", {
+        name: /Op de markt|Een dag|Het weer|Start|Continue/,
+      })[0],
+    ).toHaveAttribute("href", expect.stringMatching(/^\/read\//));
+    expect(within(reading).getByRole("link", { name: /Not this one\? Library/ })).toHaveAttribute(
       "href",
-      expect.stringMatching(/^\/read\//),
+      "/library",
     );
-    const ring = await screen.findByRole("meter", { name: /library you already know/ });
+    const ring = await screen.findByRole("meter", { name: /words in your texts you already know/ });
     await waitFor(() => expect(Number(ring.getAttribute("aria-valuenow"))).toBeGreaterThan(0));
     const words = screen.getByRole("region", { name: "Your words" });
     expect(within(words).getByText("Known")).toBeInTheDocument();
-    expect(within(words).getByRole("link", { name: /Progress/ })).toHaveAttribute(
+    expect(within(words).getByRole("link", { name: /View progress/ })).toHaveAttribute(
       "href",
       "/progress",
     );
+    expect(within(words).getByRole("link", { name: "1,892" })).toHaveAttribute(
+      "href",
+      "/words?state=known",
+    );
+  });
+
+  it("fills the dashboard: words to learn, the week, recent texts, grammar and Talk", async () => {
+    setup();
+    const learn = await screen.findByRole("region", { name: "Words to learn now" });
+    const chips = await within(learn).findAllByRole("link", { name: /\w/ });
+    expect(chips.some((a) => /^\/words\?/.test(a.getAttribute("href") ?? ""))).toBe(true);
+    const week = screen.getByRole("region", { name: "This week" });
+    expect(await within(week).findByText("Days active")).toBeInTheDocument();
+    expect(within(week).getAllByRole("listitem")).toHaveLength(7);
+    expect(screen.getByRole("region", { name: "Recent texts" })).toBeInTheDocument();
+    const grammar = screen.getByRole("region", { name: "Grammar in your texts" });
+    expect(
+      await within(grammar).findByRole("link", { name: /Open topic|Browse grammar/ }),
+    ).toBeInTheDocument();
+    const talk = screen.getByRole("region", { name: "Talk about it" });
+    const go = await within(talk).findByRole("link", { name: /Start talking|Set up AI/ });
+    expect(go.getAttribute("href")).toMatch(/^\/(talk|settings)/);
   });
 
   it("links the current course unit", async () => {

@@ -1375,3 +1375,173 @@ svg.lucide {
   text-align: center;
   line-height: 1.1;
 }
+
+/* ---------- Text covers (Library shelf, Home recent texts) ---------- */
+.k-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.k-cover {
+  --cover-hue: var(--accent);
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  border-radius: calc(var(--radius-card) - 4px);
+  background: color-mix(in srgb, var(--cover-hue) 9%, var(--surface-2));
+  color: color-mix(in srgb, var(--cover-hue) 70%, var(--ink));
+}
+.k-cover--md {
+  aspect-ratio: 16 / 7;
+}
+.k-cover--sm {
+  aspect-ratio: 4 / 3;
+}
+.k-cover[data-kind="url"],
+.k-cover[data-kind="image"] {
+  --cover-hue: var(--known);
+}
+.k-cover[data-kind="pdf"],
+.k-cover[data-kind="course"] {
+  --cover-hue: var(--learn);
+}
+.k-cover-pattern {
+  --cover-line: color-mix(in srgb, var(--cover-hue) 26%, transparent);
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background-position: var(--cover-shift) var(--cover-shift);
+  /* Pasted text: fine stripes at an angle taken from the title. */
+  background-image: repeating-linear-gradient(
+    var(--cover-angle),
+    var(--cover-line) 0 1px,
+    transparent 1px 9px
+  );
+  mask-image: linear-gradient(115deg, transparent 18%, black 75%);
+}
+.k-cover[data-kind="url"] .k-cover-pattern {
+  background-image: radial-gradient(var(--cover-line) 1.2px, transparent 1.6px);
+  background-size: 12px 12px;
+}
+.k-cover[data-kind="pdf"] .k-cover-pattern {
+  background-image:
+    linear-gradient(var(--cover-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--cover-line) 1px, transparent 1px);
+  background-size: 16px 16px;
+}
+.k-cover[data-kind="image"] .k-cover-pattern {
+  background-image: repeating-radial-gradient(
+    circle at 85% 30%,
+    var(--cover-line) 0 1px,
+    transparent 1px 10px
+  );
+}
+.k-cover[data-kind="ai"] .k-cover-pattern {
+  background-image:
+    repeating-linear-gradient(var(--cover-angle), var(--cover-line) 0 1px, transparent 1px 12px),
+    repeating-linear-gradient(
+      calc(var(--cover-angle) + 90deg),
+      var(--cover-line) 0 1px,
+      transparent 1px 12px
+    );
+}
+.k-cover[data-kind="course"] .k-cover-pattern {
+  background-image: repeating-linear-gradient(
+    180deg,
+    transparent 0 13px,
+    var(--cover-line) 13px 14px
+  );
+}
+.k-cover[data-kind="talk"] .k-cover-pattern {
+  background-image:
+    radial-gradient(
+      circle at 78% 38%,
+      transparent 22px,
+      var(--cover-line) 23px 24px,
+      transparent 25px
+    ),
+    radial-gradient(
+      circle at 62% 62%,
+      transparent 30px,
+      var(--cover-line) 31px 32px,
+      transparent 33px
+    );
+}
+.k-cover-kind {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
+  background: color-mix(in srgb, var(--surface) 82%, transparent);
+  color: var(--ink-muted);
+}
+.k-cover--sm .k-cover-kind {
+  top: 8px;
+  left: 8px;
+  padding: 4px;
+}
+.k-cover-kind svg {
+  color: color-mix(in srgb, var(--cover-hue) 80%, var(--ink));
+}
+.k-cover-meter {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  background: color-mix(in srgb, var(--ink) 8%, transparent);
+}
+.k-cover-meter > span {
+  display: block;
+  height: 100%;
+  background: var(--known);
+  transform-origin: left;
+  animation: k-fill-x var(--dur-fill) var(--ease-out) both;
+}
+
+/* Library shelf card */
+.k-shelf-card {
+  padding: 12px 12px 14px;
+  gap: 10px;
+}
+.k-shelf-card > :not(.k-cover) {
+  margin-inline: 4px;
+}
+.k-shelf-title {
+  font-family: var(--font-reading);
+  font-weight: 500;
+  font-size: 19px;
+  line-height: 1.3;
+  letter-spacing: 0;
+  text-wrap: balance;
+}
+.k-shelf-card .k-card-meta {
+  flex-wrap: wrap;
+  min-height: 24px;
+}
+.k-shelf-foot {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 2px;
+}
+.k-shelf-tools {
+  display: inline-flex;
+  gap: 2px;
+}
+.k-shelf-continue {
+  gap: 6px;
+}

@@ -154,6 +154,10 @@ export function createMockPractice(wait: () => Promise<void>) {
         opts.onAISentences?.({ requested: 3, accepted: 7, rejected: 1, reused: 0 });
       const now = Date.now();
       const pool = MOCK_EXERCISES.filter((e) => !opts.skills || opts.skills.includes(e.skill));
+      if (opts.keys) {
+        const focus = new Set(opts.keys);
+        return pool.filter((e) => focus.has(e.key)).slice(0, opts.size ?? 20);
+      }
       const isDue = (e: Exercise) => (items.get(`${e.key}|${e.skill}`)?.due ?? -1) <= now;
       return pool.filter(isDue).slice(0, opts.size ?? 20);
     },

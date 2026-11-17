@@ -25,6 +25,7 @@ export const RPC_METHODS = {
   staircase: ["string"],
   practiceItems: ["string"],
   practiceLog: ["string", "number"],
+  activity: ["number"],
   textGrammar: ["string"],
   allTextGrammar: [],
   setting: ["string"],

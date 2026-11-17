@@ -170,6 +170,7 @@ export async function createHttpRepository(
     staircase: (lang) => call("staircase", lang),
     practiceItems: (lang) => call("practiceItems", lang),
     practiceLog: (lang, limit) => call("practiceLog", lang, limit),
+    activity: (sinceMs) => call("activity", sinceMs),
     textGrammar: (textId) => call("textGrammar", textId),
     allTextGrammar: () => call("allTextGrammar"),
     setting: <T>(key: string) => call<T | undefined>("setting", key),

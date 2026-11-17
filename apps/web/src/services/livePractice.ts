@@ -398,15 +398,16 @@ export function createLivePractice(deps: LivePracticeDeps) {
       loadItems(lang),
       deps.model(),
     ]);
-    const chosen = chooseWords(
-      infos,
-      items,
-      opts.skills,
-      Math.min(120, Math.max(60, size * 3)),
-      now,
-      rng,
-    );
+    // "Practise these words": only the given words, due or not (scheduling is unchanged: the
+    // copies below are only marked due so the session builder offers them).
+    const focus = opts.keys ? new Set(opts.keys) : null;
+    const chosen = focus
+      ? infos.filter((w) => focus.has(w.key) && w.state !== "ignored")
+      : chooseWords(infos, items, opts.skills, Math.min(120, Math.max(60, size * 3)), now, rng);
     if (chosen.length === 0) return [];
+    const sessionItems = focus
+      ? items.filter((it) => focus.has(it.key)).map((it) => ({ ...it, due: Math.min(it.due, now) }))
+      : items;
 
     const { words, aiByKey } = await buildWordData(
       lang,
@@ -422,11 +423,11 @@ export function createLivePractice(deps: LivePracticeDeps) {
     const skills = opts.skills;
     // New items: normally at most 40% of a session, but when few reviews are due (e.g. the first
     // sessions) let new items fill the rest, so the session has the length the learner chose.
-    const due = items.filter((it) => it.due <= now).length;
-    const newItems = Math.max(Math.ceil(size * 0.4), size - due);
+    const due = sessionItems.filter((it) => it.due <= now).length;
+    const newItems = focus ? size : Math.max(Math.ceil(size * 0.4), size - due);
     const exercises = buildSession(
       words,
-      items,
+      sessionItems,
       { size, newItems, now, ...(skills ? { skills } : {}) },
       rng,
     );

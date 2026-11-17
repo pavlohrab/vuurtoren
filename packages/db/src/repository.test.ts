@@ -627,6 +627,25 @@ function answered(
   };
 }
 
+describe("activity", () => {
+  it("lists pages read, exercises answered and words added since a time", async () => {
+    const { repo } = await newRepo();
+    await repo.append(answered("nl", "huis", "recognition", 100));
+    await repo.append({
+      type: "ReadingProgress",
+      textId: "t",
+      segment: 0,
+      clozeAccuracy: null,
+      lookupsPer100: 0,
+    });
+    await repo.append({ type: "WordLookedUp", lang: "nl", key: "huis", textId: "t" });
+    const all = await repo.activity(0);
+    expect(all.map((a) => a.kind).sort()).toEqual(["exercise", "page"]);
+    expect(all.every((a) => typeof a.at === "number")).toBe(true);
+    expect(await repo.activity(Date.now() + 60_000)).toEqual([]);
+  });
+});
+
 describe("practice events", () => {
   it("projects the newest state per (key, skill) and lists the log newest first", async () => {
     const { repo } = await newRepo();
