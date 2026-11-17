@@ -1,0 +1,183 @@
+/**
+ * Contracts for practice (M4). Implemented in packages/core/src/practice/*.ts (engine),
+ * fed by server/nlp (/forms, /sentences, /similar) and the app (apps/web), persisted by
+ * packages/db (ExerciseAnswered events). See docs/roadmap.md M4 and docs/research/03 §4–5.
+ *
+ * Practice results never go to Anki (ADR 0003): each (word, skill) has its own FSRS state.
+ */
+import type { WordState } from "../memory.js";
+
+/** What an exercise trains; each (key, skill) pair is scheduled separately. */
+export type Skill = "recognition" | "recall" | "form" | "gender" | "listening";
+
+export type ExerciseKind =
+  /** Dutch word → choose its meaning (recognition). */
+  | "meaning-choice"
+  /** English meaning → choose the Dutch word (recognition, reverse). */
+  | "word-choice"
+  /** Sentence with a blank → choose the word (recognition in context). */
+  | "cloze-choice"
+  /** Sentence with a blank + meaning hint → type the word (recall). */
+  | "cloze-typed"
+  /** de or het? (gender). */
+  | "gender"
+  /** Separable verb: choose the correctly built sentence / place the particle (form). */
+  | "separable"
+  /** Perfect tense: heeft/is + participle (form). */
+  | "perfect"
+  /** Inflection: lemma + slot (e.g. "past, plural") → form (form). */
+  | "verb-form"
+  /** Adjective inflection: mooi / mooie in a sentence (form). */
+  | "adjective-e"
+  /** Reorder the words of a sentence (form / word order). */
+  | "scramble"
+  /** Hear a word or sentence (text-to-speech), type it (listening). */
+  | "dictation";
+
+export const SKILL_OF: Readonly<Record<ExerciseKind, Skill>> = {
+  "meaning-choice": "recognition",
+  "word-choice": "recognition",
+  "cloze-choice": "recognition",
+  "cloze-typed": "recall",
+  gender: "gender",
+  separable: "form",
+  perfect: "form",
+  "verb-form": "form",
+  "adjective-e": "form",
+  scramble: "form",
+  dictation: "listening",
+};
+
+/** An example sentence containing the word. `target` = [start, end) of the word in `text` (UTF-16). */
+export interface ExampleSentence {
+  text: string;
+  translation?: string;
+  target: [number, number];
+  source: "anki" | "text" | "tatoeba";
+}
+
+/** Morphology for form exercises (from server /forms, Wiktionary-derived). All optional. */
+export interface WordForms {
+  /** Verbs */
+  participle?: string;
+  /** Auxiliary of the perfect tense. */
+  aux?: "hebben" | "zijn" | "both";
+  /** Past tense singular / plural, e.g. ["liep", "liepen"]. */
+  past?: [string, string];
+  /** Present tense by person: ik, jij, hij, wij, jullie, zij. */
+  present?: Partial<Record<"ik" | "jij" | "hij" | "wij" | "jullie" | "zij", string>>;
+  /** Separable verbs: "opbellen" → { particle: "op", stem: "bellen" }. */
+  separable?: { particle: string; stem: string };
+  /** Nouns */
+  plural?: string;
+  diminutive?: string;
+  /** Adjectives: inflected form ("mooi" → "mooie"). */
+  inflected?: string;
+  comparative?: string;
+  superlative?: string;
+}
+
+/** Everything the engine knows about one practisable word. */
+export interface WordData {
+  key: string;
+  lemma: string;
+  /** spaCy universal POS (NOUN, VERB, ADJ, ADV, …). */
+  pos: string;
+  article?: "de" | "het";
+  /** English meanings, best first. */
+  glosses: string[];
+  /** wordfreq Zipf frequency (0 unknown). */
+  zipf: number;
+  /** Learner state from Anki / the app. */
+  state: WordState;
+  pKnown: number;
+  forms?: WordForms;
+  sentences: ExampleSentence[];
+}
+
+/** A ready-to-show exercise. Pure data: the UI renders it, the engine grades it. */
+export interface Exercise {
+  id: string;
+  kind: ExerciseKind;
+  skill: Skill;
+  key: string;
+  /** Instruction line, e.g. "Choose the meaning", "de or het?". */
+  instruction: string;
+  prompt: {
+    /** Main prompt text (a word, a meaning, or a sentence with the blank already replaced by "____"). */
+    text: string;
+    /** For sentence exercises: the original sentence and the blank's span in it. */
+    sentence?: string;
+    blank?: [number, number];
+    /** Translation of the sentence (context help). */
+    translation?: string;
+    /** Meaning hint for recall exercises. */
+    hint?: string;
+    /** Text to speak (dictation) — the UI uses text-to-speech. */
+    speak?: string;
+  };
+  /** Multiple choice options (shuffled, include the answer); absent for typed exercises. */
+  choices?: string[];
+  /** For scramble: the shuffled tokens to reorder. */
+  pieces?: string[];
+  /** The canonical correct answer. */
+  answer: string;
+  /** Other accepted answers (typed exercises). */
+  accept?: string[];
+  /** Short explanation shown after answering (e.g. "het: neuter nouns…", "zijn: verb of motion"). */
+  explanation?: string;
+}
+
+export type Grade = "again" | "hard" | "good" | "easy";
+
+/** What the learner did. */
+export interface Attempt {
+  exerciseId: string;
+  answer: string;
+  correct: boolean;
+  /** 0 none; typed exercises may offer letter hints. */
+  hintsUsed: number;
+  /** Time to answer in milliseconds. */
+  ms: number;
+}
+
+/** FSRS scheduling state of one (key, skill) pair (serialisable). */
+export interface ItemState {
+  key: string;
+  skill: Skill;
+  /** ts-fsrs Card fields, dates as ms since epoch. */
+  due: number;
+  stability: number;
+  difficulty: number;
+  elapsedDays: number;
+  scheduledDays: number;
+  reps: number;
+  lapses: number;
+  /** 0 New, 1 Learning, 2 Review, 3 Relearning (ts-fsrs State). */
+  state: 0 | 1 | 2 | 3;
+  lastReview?: number;
+}
+
+export interface SessionOptions {
+  /** Number of exercises (default 20). */
+  size: number;
+  /** Max (key, skill) pairs never practised before (default 8). */
+  newItems: number;
+  now: number;
+  /** Restrict to these skills (default all available). */
+  skills?: Skill[];
+}
+
+export const DEFAULT_SESSION: SessionOptions = { size: 20, newItems: 8, now: 0 };
+
+/*
+ * Engine API (implemented in packages/core/src/practice/*.ts):
+ *   generate(kind, word, pool, rng): Exercise | null       — one exercise, null if the word lacks data
+ *   distractors(word, pool, n, rng, by?): string[]          — same POS + Zipf band, prefer known words
+ *   buildSession(words, states, opts, rng): Exercise[]      — due first, then new, mixed kinds
+ *   gradeAttempt(exercise, attempt): Grade                  — correct/time/hints → FSRS grade
+ *   checkAnswer(exercise, answer): { correct: boolean; note?: string }  — normalisation, accents
+ *   review(state | undefined, key, skill, grade, now): ItemState         — ts-fsrs step
+ *   practiceStats(states, now): { due: number; learned: number; bySkill: Record<Skill, number> }
+ *   createRng(seed): () => number                           — deterministic sessions in tests
+ */
