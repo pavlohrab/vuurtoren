@@ -102,7 +102,7 @@ The **coverage ring**: a lowercase k inside a ring that is three-quarters comple
   - 16 grid (favicons): full-bleed ring r 7, stroke 2; k stroke 2, stem on the pixel grid (x 5–7).
 - Clear space: one ring stroke on every side. Minimum size 16px. Wordmark size is 0.74 × the mark, gap 0.34 × the mark.
 - Don't: recolour the k, close the ring, rotate the gap, put the mark on the accent colour, or add effects.
-- Files in `apps/web/public`: `favicon.svg` (16 grid, light/dark through `prefers-color-scheme` inside the SVG), `favicon-16.png` / `favicon-32.png` (light colours, transparent), `apple-touch-icon.png` (180, mark on the dark lamp tile), `icon-192.png` / `icon-512.png` (rounded tile), `icon-maskable-512.png`, `logo-mark.svg`, `manifest.webmanifest`.
+- Files in `apps/web/public`: `favicon.svg` (16 grid, light/dark through `prefers-color-scheme` inside the SVG), `favicon-16.png` / `favicon-32.png` (the mark on the dark rounded lamp tile, so it reads on light and dark tab bars), `apple-touch-icon.png` (180, mark on the dark lamp tile), `icon-192.png` / `icon-512.png` (rounded tile), `icon-maskable-512.png`, `logo-mark.svg`, `manifest.webmanifest`.
 
 ## Components
 
