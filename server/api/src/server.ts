@@ -1,17 +1,19 @@
 /**
  * HTTP surface of the Kenning API (node:http, no framework).
  *
- *   GET  /api/health   open; { ok, service, state, authRequired, schemaVersion }
+ *   GET  /api/health   open; { ok, service, state, authRequired, authMethods, schemaVersion }
+ *   *    /api/auth/*   sign-in, sign-out, session check (see auth/index.ts)
  *   GET  /api/info     size, event count, device id
  *   POST /api/rpc      { method, args } -> { ok, result } (allow-listed repository methods)
  *   GET  /api/export   consistent snapshot, kenning-YYYY-MM-DD.sqlite
  *   POST /api/import   raw SQLite body replaces the database
  *
- * When `token` is set every endpoint except health needs `Authorization: Bearer <token>`.
+ * When auth is on (password and/or token, ADR 0009) every endpoint except health and the
+ * sign-in routes needs a session cookie or `Authorization: Bearer <token>`. State-changing
+ * requests are CSRF-checked in every mode.
  */
 import { createReadStream, statSync } from "node:fs";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
-import { timingSafeEqual } from "node:crypto";
 import {
   BackupError,
   SCHEMA_VERSION,
@@ -21,56 +23,24 @@ import {
   isSchemaTooNew,
   validateRpcArgs,
 } from "@app/db";
+import { type Auth, createAuth } from "./auth/index.js";
+import { HttpFail, json, readBody } from "./http-util.js";
 import type { Store } from "./store.js";
 
 export interface ApiOptions {
   store: Store;
-  /** Bearer token; empty or undefined disables authentication. */
+  /** Sign-in layer; defaults to bearer-only auth from `token` (or none). */
+  auth?: Auth;
+  /** Bearer token when `auth` is not given; empty or undefined disables authentication. */
   token?: string | undefined;
   /** Largest accepted import / rpc body in bytes (default 512 MiB). */
   maxBodyBytes?: number;
 }
 
-class HttpFail extends Error {
-  constructor(
-    readonly status: number,
-    message: string,
-  ) {
-    super(message);
-  }
-}
-
-const json = (res: ServerResponse, status: number, body: unknown): void => {
-  const text = JSON.stringify(body);
-  res.writeHead(status, {
-    "content-type": "application/json; charset=utf-8",
-    "cache-control": "no-store",
-  });
-  res.end(text);
-};
-
-/** Constant-time string comparison. */
-function safeEqual(a: string, b: string): boolean {
-  const x = Buffer.from(a);
-  const y = Buffer.from(b);
-  return x.length === y.length && timingSafeEqual(x, y);
-}
-
-async function readBody(req: IncomingMessage, limit: number): Promise<Buffer> {
-  const chunks: Buffer[] = [];
-  let size = 0;
-  for await (const chunk of req) {
-    size += (chunk as Buffer).length;
-    if (size > limit) throw new HttpFail(413, "Request body is too large.");
-    chunks.push(chunk as Buffer);
-  }
-  return Buffer.concat(chunks);
-}
-
 /** Create (not yet listening) the API server. */
 export function createApiServer(opts: ApiOptions): Server {
   const { store } = opts;
-  const token = opts.token || undefined;
+  const auth = opts.auth ?? createAuth({ token: opts.token });
   const maxBody = opts.maxBodyBytes ?? 512 * 1024 * 1024;
 
   async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> {
@@ -82,19 +52,22 @@ export function createApiServer(opts: ApiOptions): Server {
         ok: true,
         service: "kenning-api",
         state: store.state,
-        authRequired: token !== undefined,
+        authRequired: auth.enabled,
+        authMethods: auth.methods,
         schemaVersion: SCHEMA_VERSION,
         ...(store.foundVersion === undefined ? {} : { foundVersion: store.foundVersion }),
       });
     }
     if (!path.startsWith("/api/")) throw new HttpFail(404, "Not found.");
 
-    if (token !== undefined) {
-      const given = /^Bearer (.+)$/.exec(req.headers.authorization ?? "")?.[1] ?? "";
-      if (!safeEqual(given, token)) throw new HttpFail(401, "A valid access token is required.");
-    }
+    const csrf = auth.csrf(req);
+    if (csrf) throw new HttpFail(403, `Request refused (${csrf}).`);
+    if (await auth.route(req, res, path)) return;
 
-    if (path === "/api/info" && method === "GET") return json(res, 200, await store.info());
+    const id = auth.require(req);
+    const extra = auth.responseHeaders(id);
+
+    if (path === "/api/info" && method === "GET") return json(res, 200, await store.info(), extra);
 
     if (path === "/api/rpc" && method === "POST") {
       let body: { method?: unknown; args?: unknown };
@@ -114,7 +87,12 @@ export function createApiServer(opts: ApiOptions): Server {
         return fn.apply(repo, args as unknown[]);
       });
       const value = encodeRpcResult(result);
-      return json(res, 200, value === undefined ? { ok: true } : { ok: true, result: value });
+      return json(
+        res,
+        200,
+        value === undefined ? { ok: true } : { ok: true, result: value },
+        extra,
+      );
     }
 
     if (path === "/api/export" && method === "GET") {
@@ -124,6 +102,7 @@ export function createApiServer(opts: ApiOptions): Server {
         "content-length": statSync(file).size,
         "content-disposition": `attachment; filename="${backupFilename()}"`,
         "cache-control": "no-store",
+        ...extra,
       });
       const stream = createReadStream(file);
       stream.on("close", cleanup);
@@ -135,7 +114,7 @@ export function createApiServer(opts: ApiOptions): Server {
     if (path === "/api/import" && method === "POST") {
       const bytes = await readBody(req, maxBody);
       await store.importBackup(new Uint8Array(bytes.buffer, bytes.byteOffset, bytes.length));
-      return json(res, 200, { ok: true });
+      return json(res, 200, { ok: true }, extra);
     }
 
     throw new HttpFail(path.startsWith("/api/") ? 404 : 405, "Not found.");
@@ -144,7 +123,9 @@ export function createApiServer(opts: ApiOptions): Server {
   return createServer((req, res) => {
     handle(req, res).catch((err: unknown) => {
       if (res.headersSent) return void res.destroy();
-      if (err instanceof HttpFail) return json(res, err.status, { ok: false, error: err.message });
+      if (err instanceof HttpFail) {
+        return json(res, err.status, { ok: false, error: err.message }, err.headers);
+      }
       if (err instanceof BackupError || isSchemaTooNew(err)) {
         return json(res, 422, { ok: false, error: (err as Error).message });
       }
