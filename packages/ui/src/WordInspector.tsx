@@ -97,7 +97,7 @@ export function WordInspector({
 
       <div className="k-inspector-row">
         <Chip>{entry.pos}</Chip>
-        <WordStateChip state={entry.state} />
+        <WordStateChip state={entry.state} inKenning={entry.appLearning} />
         <span className="k-recall" style={{ color: "var(--ink-muted)", fontSize: 13 }}>
           Recall {recall}%
         </span>

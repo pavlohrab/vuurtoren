@@ -230,6 +230,18 @@ describe("live textWords", () => {
     ]);
   });
 
+  it("lets reader cloze answers teach the learner model (ADR 0011)", async () => {
+    const backend = fakeBackend({ notes: NOTES });
+    const { repo, services, textId } = await setup(backend, KNOWN, ANKI_WORDS);
+    repoToClose = repo;
+    const before = (await services.textWords(textId)).find((x) => x.key === "gracht")!;
+    for (let i = 0; i < 3; i++) await services.recordClozeAnswer("gracht", true, false);
+    const [w] = await services.words({ query: "gracht" });
+    expect(w).toMatchObject({ key: "gracht", state: "learning", appLearning: true });
+    const entry = await services.inspect(textId, before.entry.tokenIndex);
+    expect(entry).toMatchObject({ key: "gracht", appLearning: true });
+  });
+
   it("reads the Anki state of all rows with one request", async () => {
     const backend = fakeBackend({ notes: NOTES });
     const { repo, services, textId } = await setup(backend, KNOWN, ANKI_WORDS);

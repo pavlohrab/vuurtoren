@@ -19,6 +19,7 @@ import {
   type UnitWord,
   type WordData,
   assignKinds,
+  bookItemKeys,
   checkBookItem,
   detectOutline,
   isVerbSecond,
@@ -681,6 +682,14 @@ export function createLiveCourses(deps: LiveCoursesDeps): CourseServices {
       }
     }
     const result: ItemCheck = checkBookItem(ex.type, it, answer, orderOk);
+    // The words the item tests, so a marked answer teaches the learner model (ADR 0011).
+    const course = await courseOrThrow(courseId);
+    const unitKeys = new Set((await repo.unitWords(courseId, n)).map(keyOf));
+    const infos: Map<string, WordInfo> = result.correct === null ? new Map() : await wordMap();
+    const keys =
+      result.correct === null
+        ? []
+        : bookItemKeys(ex.type, it, (k) => unitKeys.has(k) || infos.has(k));
     // An item without a stored answer cannot be marked; the answer is still remembered.
     await repo.append({
       type: "BookExerciseAnswered",
@@ -691,6 +700,7 @@ export function createLiveCourses(deps: LiveCoursesDeps): CourseServices {
       answer,
       correct: result.correct === true,
       at: clock(),
+      ...(keys.length > 0 ? { lang: course.lang, keys } : {}),
     });
     deps.changed();
     return { ...result, ...(it.answer && result.correct !== true ? { expected: it.answer } : {}) };

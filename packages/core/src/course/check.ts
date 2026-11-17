@@ -1,6 +1,7 @@
 /** Checking answers to book-exercise items (pure). */
 import { normalizeAnswer, stripAccents } from "../practice/check.js";
 import type { ParseToken } from "./derive.js";
+import { normalizeKey } from "../match.js";
 import type { ExerciseItem, ExerciseType } from "./types.js";
 
 /** Result of checking one item; `correct` is null when the book gave no answer to compare with. */
@@ -94,4 +95,36 @@ export function checkBookItem(
   return lenient
     ? { correct: true, note: `Mind the accents: ${lenient.join(", ")}` }
     : { correct: false };
+}
+
+/** Exercise types whose items test vocabulary (sentence building tests word order). */
+const WORD_TYPES: ReadonlySet<ExerciseType> = new Set([
+  "gapfill",
+  "conjugation-table",
+  "choice",
+  "matching",
+]);
+
+/**
+ * The learner-model keys a book exercise item tests, so its answer can feed those words' app
+ * evidence (ADR 0011). The bracketed hint (usually the lemma, "(lopen)") wins; otherwise the
+ * words of the expected answer that `isWord` recognises (unit words or the learner model).
+ * At most three keys; none for sentence building, open tasks and listening.
+ */
+export function bookItemKeys(
+  type: ExerciseType,
+  item: ExerciseItem,
+  isWord: (key: string) => boolean,
+): string[] {
+  if (!WORD_TYPES.has(type)) return [];
+  const words = (s: string | undefined) =>
+    (s ?? "")
+      .split(/[^\p{L}'-]+/u)
+      .map((w) => normalizeKey(w))
+      .filter(Boolean);
+  const hint = item.hint ? normalizeKey(item.hint.replace(/[()[\]]/g, "")) : "";
+  if (hint && (isWord(hint) || words(hint).length === 1)) return [hint];
+  const out: string[] = [];
+  for (const w of words(item.answer)) if (isWord(w) && !out.includes(w)) out.push(w);
+  return out.slice(0, 3);
 }

@@ -174,7 +174,8 @@ export async function createHttpRepository(
     allTextGrammar: () => call("allTextGrammar"),
     setting: <T>(key: string) => call<T | undefined>("setting", key),
     languageProfile: (lang) => call("languageProfile", lang),
-    rebuild: () => call("rebuild"),
+    // Not on the RPC allow-list: the server rebuilds its projections itself on open.
+    rebuild: () => Promise.reject(new Error("rebuild is not available in server mode")),
     events: (sinceId) => call("events", sinceId),
     lookedUpKeys: (lang, textId) => call("lookedUpKeys", lang, textId),
     lastSnapshot: (lang) => call("lastSnapshot", lang),

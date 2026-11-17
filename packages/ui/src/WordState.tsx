@@ -26,21 +26,31 @@ const WORD_STATE_HINT: Record<WordStateKind, string> = {
   ignored: "Left out of coverage and suggestions",
 };
 
+/** Label of a word that is "learning" only because of answers given in Kenning (ADR 0011). */
+export const IN_KENNING_LABEL = "Learning (in Kenning)";
+
 export interface WordStateChipProps {
   state: WordStateKind;
+  /** The state comes from answers in Kenning, not from Anki: "Learning (in Kenning)". */
+  inKenning?: boolean | undefined;
   /** Show a count instead of the bare label, e.g. "3 to learn". */
   count?: number;
   className?: string;
 }
 
 /** The one chip for a word's state, used everywhere a state is shown. */
-export function WordStateChip({ state, count, className }: WordStateChipProps) {
-  const label = WORD_STATE_LABEL[state];
+export function WordStateChip({ state, count, className, inKenning }: WordStateChipProps) {
+  const appOnly = inKenning === true && state === "learning";
+  const label = appOnly ? IN_KENNING_LABEL : WORD_STATE_LABEL[state];
   return (
     <span
       className={cn("k-chip", "k-state", `k-state--${state}`, className)}
       data-state={state}
-      title={WORD_STATE_HINT[state]}
+      title={
+        appOnly
+          ? "You answered this word correctly in Kenning; it is not learned in Anki yet"
+          : WORD_STATE_HINT[state]
+      }
     >
       {count === undefined ? label : `${count.toLocaleString("en")} ${label.toLowerCase()}`}
     </span>

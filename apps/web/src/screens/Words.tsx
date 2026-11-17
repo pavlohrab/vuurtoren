@@ -110,7 +110,7 @@ export function Words() {
                     <Lemma lemma={w.key} article={w.article} />
                   </td>
                   <td>
-                    <WordStateChip state={w.state} />
+                    <WordStateChip state={w.state} inKenning={w.appLearning} />
                   </td>
                   <td className="k-mono">{Math.round(w.pKnown * 100)}%</td>
                   <td>{w.gloss ?? ""}</td>

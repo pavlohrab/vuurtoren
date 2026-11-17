@@ -136,6 +136,19 @@ export type AppEvent =
     }
   | { type: "WordStateCleared"; lang: string; key: string }
   | { type: "WordLookedUp"; lang: string; key: string; textId: string }
+  | {
+      /**
+       * One reader cloze blank was answered (first answer per blank and page visit). Feeds the
+       * word's app evidence (ADR 0011); `hinted` = a letter hint was taken first.
+       */
+      type: "ClozeAnswered";
+      lang: string;
+      key: string;
+      correct: boolean;
+      hinted: boolean;
+      /** Answer time, ms since epoch. */
+      at: number;
+    }
   | { type: "NoteAddedToAnki"; lang: string; key: string; noteId: number; deck: string }
   | {
       type: "ReadingProgress";
@@ -231,7 +244,46 @@ export type AppEvent =
       answer: string;
       correct: boolean;
       at: number;
+      /** Course language; with `keys`, the answer feeds those words' app evidence (ADR 0011). */
+      lang?: string;
+      /** Learner-model keys of the word(s) the item tests (empty or absent: none). */
+      keys?: string[];
     };
+
+/** Every event type this app version understands (checked against `AppEvent` at compile time). */
+const EVENT_TYPE_MAP = {
+  TextImported: 1,
+  TextAnalyzed: 1,
+  TextGrammarDetected: 1,
+  TextDeleted: 1,
+  AnkiSnapshotImported: 1,
+  WordStateSet: 1,
+  CardsPrioritized: 1,
+  MarkedKnownInAnki: 1,
+  WordStateCleared: 1,
+  WordLookedUp: 1,
+  ClozeAnswered: 1,
+  NoteAddedToAnki: 1,
+  ReadingProgress: 1,
+  StaircaseUpdated: 1,
+  ExerciseAnswered: 1,
+  ConversationStarted: 1,
+  MessageAdded: 1,
+  SentencesGenerated: 1,
+  SettingChanged: 1,
+  LanguageProfileSet: 1,
+  CourseImported: 1,
+  CourseDeleted: 1,
+  UnitDefined: 1,
+  UnitEdited: 1,
+  BlocksExtracted: 1,
+  BookExerciseExtracted: 1,
+  BookExerciseEdited: 1,
+  UnitWordsSet: 1,
+  BookExerciseAnswered: 1,
+} as const satisfies Record<AppEvent["type"], 1>;
+
+export const EVENT_TYPES: ReadonlySet<string> = new Set(Object.keys(EVENT_TYPE_MAP));
 
 /** Stored course with its outline. */
 export interface CourseRecord extends Course {
@@ -297,6 +349,10 @@ export interface WordInfo {
   markedKnownInAnki?: boolean;
   /** A manual state (set in the app) currently overrides Anki's. */
   overridden?: boolean;
+  /** Answers given in Kenning (practice, reader clozes, book exercises; ADR 0011). */
+  evidence?: { correct: number; wrong: number; lastAt: number };
+  /** App evidence alone made this word "learning": shown as "Learning (in Kenning)". */
+  appLearning?: boolean;
 }
 
 /** Grammar hits stored for one text (TextGrammarDetected). */

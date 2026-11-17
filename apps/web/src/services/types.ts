@@ -215,6 +215,8 @@ export interface AppServices extends CourseServices, AIServices, ProfileServices
   /** App-only state changes (Ignore). Marking known goes through `markKnown`. */
   setWordState(key: string, state: WordState): Promise<void>;
   recordLookup(textId: string, key: string): Promise<void>;
+  /** One answered reader cloze (first answer per blank): feeds the word's app evidence (ADR 0011). */
+  recordClozeAnswer(key: string, correct: boolean, hinted: boolean): Promise<void>;
   finishSegment(
     textId: string,
     segment: number,

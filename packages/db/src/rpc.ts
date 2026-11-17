@@ -4,7 +4,12 @@
  * made JSON-safe. Pure and engine-free; imported by both sides.
  *
  * Only the methods listed here are callable. There is deliberately no way to send SQL.
+ * `rebuild` is not remotely callable (the server rebuilds on its own when projections change).
  */
+import { EVENT_TYPES } from "./types.js";
+
+/** Largest event `append` accepts over RPC (serialised JSON, in UTF-16 code units). */
+export const MAX_RPC_EVENT_CHARS = 24 * 1024 * 1024;
 
 /** Argument kinds; a trailing "?" marks an optional argument. */
 type ArgKind = "string" | "number" | "object" | "string?" | "number?" | "object?";
@@ -24,7 +29,6 @@ export const RPC_METHODS = {
   allTextGrammar: [],
   setting: ["string"],
   languageProfile: ["string"],
-  rebuild: [],
   events: ["string?"],
   lookedUpKeys: ["string", "string"],
   lastSnapshot: ["string"],
@@ -74,6 +78,21 @@ export function validateRpcArgs(method: RpcMethod, args: unknown): string | null
     const ok = base === "object" ? typeof v === "object" && !Array.isArray(v) : typeof v === base;
     if (!ok) return `${method}: argument ${i + 1} must be a ${base}`;
   }
+  if (method === "append") return validateEvent(args[0]);
+  return null;
+}
+
+/** Shape check for an appended event: a known type and a bounded size. */
+function validateEvent(event: unknown): string | null {
+  const type = (event as { type?: unknown }).type;
+  if (typeof type !== "string" || !EVENT_TYPES.has(type)) return "append: unknown event type";
+  let size: number;
+  try {
+    size = JSON.stringify(event).length;
+  } catch {
+    return "append: event is not JSON";
+  }
+  if (size > MAX_RPC_EVENT_CHARS) return "append: event is too large";
   return null;
 }
 

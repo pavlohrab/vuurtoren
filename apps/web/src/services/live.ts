@@ -466,6 +466,7 @@ export function createLiveServices(repo: KenningRepository): AppServices {
       sentenceHighlight: [t.start - s0, t.end - s0],
     };
     if (article) entry.article = article;
+    if (w.info?.appLearning) entry.appLearning = true;
     return entry;
   }
   const changed = () => {
@@ -916,6 +917,13 @@ export function createLiveServices(repo: KenningRepository): AppServices {
     async recordLookup(textId: string, key: string): Promise<void> {
       await repo.append({ type: "WordLookedUp", lang: (await settings()).lang, key, textId });
       // The word becomes "seen": refresh counts, but keep the current page's plan stable.
+      modelCache = null;
+    },
+
+    async recordClozeAnswer(key: string, correct: boolean, hinted: boolean): Promise<void> {
+      const { lang } = await settings();
+      await repo.append({ type: "ClozeAnswered", lang, key, correct, hinted, at: Date.now() });
+      // Like a lookup: refresh counts later, keep the current page's plan stable.
       modelCache = null;
     },
 

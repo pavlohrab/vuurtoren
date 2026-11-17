@@ -30,6 +30,8 @@ export interface InspectorEntry {
   key: string;
   label: TokenLabel;
   state: WordState;
+  /** "learning" only because of answers in Kenning (ADR 0011). */
+  appLearning?: boolean;
   pKnown: number;
   pos: string;
   /** de / het for nouns. */

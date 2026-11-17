@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   assignKinds,
+  bookItemKeys,
   checkBookItem,
   deckScore,
   detectOutline,
@@ -19,6 +20,7 @@ import {
   unitStatus,
   unitWordLists,
   validateOutline,
+  type ExerciseItem,
   type OcrPage,
   type Unit,
 } from "../index.js";
@@ -348,8 +350,31 @@ describe("book exercises", () => {
     const item = { ...ex.items[0]!, answer: "woont", answerSource: "derived" as const };
     expect(checkBookItem("gapfill", item, "woont").correct).toBe(true);
     expect(checkBookItem("gapfill", item, "wonen").correct).toBe(false);
-    const noAnswer: typeof ex.items[number] = { ...item };
+    const noAnswer: (typeof ex.items)[number] = { ...item };
     delete noAnswer.answer;
     expect(checkBookItem("gapfill", noAnswer, "woont").correct).toBeNull();
+  });
+});
+
+describe("bookItemKeys", () => {
+  const item = (o: Partial<ExerciseItem>): ExerciseItem => ({
+    prompt: "Ik ____ naar huis.",
+    answerSource: "book",
+    confidence: 1,
+    ...o,
+  });
+  const vocab = new Set(["fiets", "rood", "lopen"]);
+  const isWord = (k: string) => vocab.has(k);
+  it("uses the bracketed lemma hint", () => {
+    expect(bookItemKeys("gapfill", item({ hint: "(Lopen)", answer: "loop" }), isWord)).toEqual([
+      "lopen",
+    ]);
+  });
+  it("falls back to the known words of the answer", () => {
+    expect(bookItemKeys("choice", item({ answer: "de rode fiets" }), isWord)).toEqual(["fiets"]);
+  });
+  it("ignores word-order and open exercises", () => {
+    expect(bookItemKeys("sentence-building", item({ answer: "fiets" }), isWord)).toEqual([]);
+    expect(bookItemKeys("open-task", item({ hint: "fiets" }), isWord)).toEqual([]);
   });
 });

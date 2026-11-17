@@ -18,6 +18,11 @@ describe("WordStateChip", () => {
     expect(screen.getByText("New")).toHaveAttribute("data-state", "unknown");
   });
 
+  it("names words learned only in Kenning", () => {
+    render(<WordStateChip state="learning" inKenning />);
+    expect(screen.getByText("Learning (in Kenning)")).toHaveAttribute("data-state", "learning");
+  });
+
   it("shows a count with the lowercased label", () => {
     render(<WordStateChip state="toLearn" count={3} />);
     expect(screen.getByText("3 to learn")).toHaveClass("k-state--toLearn");

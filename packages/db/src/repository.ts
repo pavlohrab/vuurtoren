@@ -73,9 +73,9 @@ export interface KenningRepository extends Repository {
 }
 
 /**
- * Bump when a projection's meaning changes. 2: reading_progress.last_segment = next segment to read. 3: write-action events (ADR 0007). 4: anki_words sentences, practice_items. 5: course tables. 6: text_grammar. 7: language_profiles (ADR 0010).
+ * Bump when a projection's meaning changes. 2: reading_progress.last_segment = next segment to read. 3: write-action events (ADR 0007). 4: anki_words sentences, practice_items. 5: course tables. 6: text_grammar. 7: language_profiles (ADR 0010). 8: word_evidence (ADR 0011).
  */
-export const PROJECTION_VERSION = 7;
+export const PROJECTION_VERSION = 8;
 
 /** Wrap every query function in the repository's mutex. */
 function serialised<T extends Record<string, (...a: never[]) => Promise<unknown>>>(
@@ -218,9 +218,18 @@ export async function createRepository(
     for (const r of await driver.exec(`SELECT * FROM prioritized WHERE lang = ?${k}`, p)) {
       get(String(r["key"])).prioritizedNoteId = Number(r["note_id"]);
     }
+    for (const r of await driver.exec(`SELECT * FROM word_evidence WHERE lang = ?${k}`, p)) {
+      get(String(r["key"])).evidence = {
+        correct: Number(r["correct"]),
+        wrong: Number(r["wrong"]),
+        lastAt: Number(r["last_at"]),
+        lastCorrect: r["last_correct"] === 1,
+      };
+    }
+    const nowMs = now();
     const out = new Map<string, WordInfo>();
     for (const [key, f] of [...facts].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))) {
-      const info = composeWord(key, f);
+      const info = composeWord(key, f, nowMs);
       if (info) out.set(key, info);
     }
     return out;

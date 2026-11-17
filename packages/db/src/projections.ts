@@ -3,7 +3,13 @@
  * it is used both for live appends and for `rebuild()` replays, so the two cannot diverge.
  * `composeWord` is the pure rule for the effective state of a word.
  */
-import type { StaircaseState, WordState } from "@app/core";
+import {
+  type AppEvidence,
+  type StaircaseState,
+  type WordState,
+  answerEvidence,
+  withAppEvidence,
+} from "@app/core";
 import { applyCourseEvent } from "./course.js";
 import { contentHash } from "./hash.js";
 import { compareHlc } from "./ids.js";
@@ -68,6 +74,31 @@ async function setOverride(
   await driver.exec(
     "INSERT OR REPLACE INTO word_overrides (lang, key, state, updated_hlc, marked_anki) VALUES (?,?,?,?,?)",
     [lang, key, state, hlc, markedInAnki ? 1 : 0],
+  );
+}
+
+/**
+ * Add one answer to a word's app evidence (ADR 0011). Sums and "newest answer" are combined in
+ * SQL so the result is the same whatever order the events are applied in.
+ */
+async function addEvidence(
+  driver: SqlDriver,
+  lang: string,
+  key: string,
+  ev: AppEvidence,
+): Promise<void> {
+  if (!key) return;
+  await driver.exec(
+    `INSERT INTO word_evidence (lang, key, correct, wrong, last_at, last_correct) VALUES (?,?,?,?,?,?)
+     ON CONFLICT(lang, key) DO UPDATE SET
+       correct = correct + excluded.correct,
+       wrong = wrong + excluded.wrong,
+       last_correct = CASE
+         WHEN excluded.last_at > last_at THEN excluded.last_correct
+         WHEN excluded.last_at < last_at THEN last_correct
+         ELSE min(last_correct, excluded.last_correct) END,
+       last_at = max(last_at, excluded.last_at)`,
+    [lang, key, ev.correct, ev.wrong, ev.lastAt, ev.lastCorrect ? 1 : 0],
   );
 }
 
@@ -157,6 +188,7 @@ export async function applyEvent(driver: SqlDriver, ctx: EventContext): Promise<
       return;
     }
     case "ExerciseAnswered": {
+      await addEvidence(driver, e.lang, e.key, answerEvidence("practice", e.correct, e.at));
       // Keep the newest answer per (key, skill), independent of arrival order.
       const rows = await driver.exec(
         "SELECT at FROM practice_items WHERE lang = ? AND key = ? AND skill = ?",
@@ -193,6 +225,9 @@ export async function applyEvent(driver: SqlDriver, ctx: EventContext): Promise<
          ON CONFLICT(lang, key) DO UPDATE SET count = count + 1`,
         [e.lang, e.key],
       );
+      return;
+    case "ClozeAnswered":
+      await addEvidence(driver, e.lang, e.key, answerEvidence("cloze", e.correct, e.at, e.hinted));
       return;
     case "NoteAddedToAnki":
       await driver.exec(
@@ -253,8 +288,15 @@ export async function applyEvent(driver: SqlDriver, ctx: EventContext): Promise<
     case "BookExerciseExtracted":
     case "BookExerciseEdited":
     case "UnitWordsSet":
+      await applyCourseEvent(driver, ctx.createdAt, e);
+      return;
     case "BookExerciseAnswered":
       await applyCourseEvent(driver, ctx.createdAt, e);
+      if (e.lang) {
+        for (const key of new Set(e.keys ?? [])) {
+          await addEvidence(driver, e.lang, key, answerEvidence("book", e.correct, e.at));
+        }
+      }
       return;
     default: {
       // An event written by a newer app version (or a future sync peer). It stays in the log
@@ -279,6 +321,8 @@ export interface WordFacts {
   prioritizedNoteId?: number;
   /** The override was set by "Mark known" (written to Anki too). */
   markedKnownInAnki?: boolean;
+  /** Answers given in Kenning (ADR 0011). */
+  evidence?: AppEvidence;
 }
 
 /**
@@ -288,8 +332,17 @@ export interface WordFacts {
  * looked-up only ("seen", 0.1).
  * - known: pKnown = max(anki pKnown, 0.95); ignored: 1; unknown: 0; seen: 0.1
  * - learning: keep the Anki pKnown if Anki also says "learning", otherwise 0.3
+ *
+ * App evidence (ADR 0011, `withAppEvidence`) is overlaid on everything below a manual override:
+ * it can raise pKnown and turn an unknown / seen / absent word into "learning" ("Learning (in
+ * Kenning)"), but never touches known or ignored words and never makes a word known.
+ * `nowMs` only affects how much old evidence has faded.
  */
-export function composeWord(key: string, f: WordFacts): WordInfo | null {
+export function composeWord(
+  key: string,
+  f: WordFacts,
+  nowMs: number = Date.now(),
+): WordInfo | null {
   const { anki, override, note, lookups } = f;
   const prioritized = f.prioritizedNoteId !== undefined;
   // Anki changes the app caused (added note, moved card) that its snapshot cannot show yet.
@@ -330,8 +383,21 @@ export function composeWord(key: string, f: WordFacts): WordInfo | null {
     source = "app";
     state = "seen";
     pKnown = SEEN_P_KNOWN;
+  } else if (f.evidence) {
+    source = "app";
+    state = "unknown";
+    pKnown = 0;
   } else {
     return null;
+  }
+  let appLearning = false;
+  if (f.evidence && !override) {
+    // A word that only has evidence starts from "nothing known" (withAppEvidence makes it seen).
+    const base = source === "app" && state === "unknown" ? undefined : { state, pKnown };
+    const r = withAppEvidence(base, f.evidence, nowMs);
+    state = r.state;
+    pKnown = r.pKnown;
+    appLearning = r.appLearning;
   }
   const decks = [...(anki?.decks ?? [])];
   if (note && !decks.includes(note.deck)) decks.push(note.deck);
@@ -351,5 +417,10 @@ export function composeWord(key: string, f: WordFacts): WordInfo | null {
     info.overridden = true;
     if (override === "known" && f.markedKnownInAnki) info.markedKnownInAnki = true;
   }
+  if (f.evidence) {
+    const { correct, wrong, lastAt } = f.evidence;
+    info.evidence = { correct, wrong, lastAt };
+  }
+  if (appLearning) info.appLearning = true;
   return info;
 }

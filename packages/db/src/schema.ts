@@ -165,6 +165,18 @@ export const MIGRATIONS: readonly (readonly string[])[] = [
        updated_hlc TEXT NOT NULL
      )`,
   ],
+  [
+    // App evidence per word (ADR 0011): additive sums, so independent of event order.
+    `CREATE TABLE word_evidence (
+       lang TEXT NOT NULL,
+       key TEXT NOT NULL,
+       correct REAL NOT NULL,
+       wrong REAL NOT NULL,
+       last_at INTEGER NOT NULL,
+       last_correct INTEGER NOT NULL,
+       PRIMARY KEY (lang, key)
+     )`,
+  ],
 ];
 
 /** Latest schema version. */
@@ -181,6 +193,7 @@ export const PROJECTION_TABLES = [
   "notes_added",
   "prioritized",
   "practice_items",
+  "word_evidence",
   "reading_progress",
   "staircase",
   "settings",

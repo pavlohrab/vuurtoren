@@ -19,10 +19,13 @@ afterEach(async () => {
 async function newRepo(
   driver?: SqlDriver,
   start = 1_000_000,
+  clock: { t: number; frozen?: boolean } = { t: start },
 ): Promise<{ repo: KenningRepository; driver: SqlDriver }> {
-  let t = start;
   const d = driver ?? (await createNodeDriver());
-  const repo = await createRepository(d, { deviceId: "dev1", now: () => t++ });
+  const repo = await createRepository(d, {
+    deviceId: "dev1",
+    now: () => (clock.frozen ? clock.t : clock.t++),
+  });
   open.push(repo);
   return { repo, driver: d };
 }
@@ -703,7 +706,9 @@ describe("rebuild equivalence", () => {
     const langs = ["nl", "de"];
     const keys = ["aap", "boom", "huis", "kat", "dak", "eend"];
     const texts = new Map<string, string>();
-    const { repo } = await newRepo();
+    // Composed pKnown fades app evidence with the clock: compare both snapshots at one instant.
+    const clock = { t: 1_000_000, frozen: false };
+    const { repo } = await newRepo(undefined, clock.t, clock);
     const states = ["unknown", "seen", "learning", "known", "ignored"] as const;
 
     for (let n = 0; n < 200; n++) {
@@ -767,6 +772,15 @@ describe("rebuild equivalence", () => {
         const skill = pick(["recognition", "recall", "form"] as const);
         const key = pick(keys);
         event = answered(pick(langs), key, skill, Math.floor(rand() * 1000));
+      } else if (r < 0.88) {
+        event = {
+          type: "ClozeAnswered",
+          lang: pick(langs),
+          key: pick(keys),
+          correct: rand() < 0.7,
+          hinted: rand() < 0.3,
+          at: Math.floor(rand() * 1000),
+        };
       } else if (r < 0.9) {
         event = { type: "StaircaseUpdated", lang: pick(langs), state: { n } as never };
       } else {
@@ -775,6 +789,7 @@ describe("rebuild equivalence", () => {
       await repo.append(event);
     }
 
+    clock.frozen = true;
     const before = await snapshot(repo);
     await repo.rebuild();
     expect(await snapshot(repo)).toEqual(before);

@@ -717,6 +717,10 @@ export function createMockServices(
       if (e) e.lookups += 1;
     },
 
+    async recordClozeAnswer() {
+      // The demo keeps no per-word evidence.
+    },
+
     async finishSegment(textId, segment, outcome) {
       await wait();
       // Same semantic as the database projection: the NEXT segment to read.
