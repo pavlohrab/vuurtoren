@@ -348,6 +348,7 @@ describe("book exercises", () => {
     const item = { ...ex.items[0]!, answer: "woont", answerSource: "derived" as const };
     expect(checkBookItem("gapfill", item, "woont").correct).toBe(true);
     expect(checkBookItem("gapfill", item, "wonen").correct).toBe(false);
-    expect(checkBookItem("gapfill", { ...item, answer: undefined }, "woont").correct).toBeNull();
+    const { answer: _answer, ...noAnswer } = item;
+    expect(checkBookItem("gapfill", noAnswer, "woont").correct).toBeNull();
   });
 });
