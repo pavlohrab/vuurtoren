@@ -20,6 +20,9 @@
   --radius-control: 8px;
   --radius-card: 14px;
   --radius-chip: 999px;
+  /* Reading measure: ~66 characters of Literata at 19.5px. Shared by the reading column and
+     everything aligned to it (tools, footer, AI panel), whatever their font size. */
+  --measure: 44rem;
 
   --font-reading: "Literata Variable", Georgia, "Times New Roman", serif;
   --font-ui: "Inter Variable", system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -784,7 +787,7 @@ kbd {
   font-family: var(--font-reading);
   font-size: 19.5px;
   line-height: 1.7;
-  max-width: 66ch;
+  max-width: var(--measure);
   margin-inline: auto;
   color: var(--ink);
   font-feature-settings: normal;

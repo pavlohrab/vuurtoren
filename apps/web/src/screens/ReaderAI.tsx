@@ -62,7 +62,7 @@ export function SimplifyPage({ text }: { text: string }) {
   const simplify = useMutation({ mutationFn: () => services.aiSimplify(text) });
   if (!ready) return null;
   return (
-    <section className="stack" style={{ maxWidth: "66ch", margin: "16px auto 0" }}>
+    <section className="stack" style={{ maxWidth: "var(--measure)", margin: "16px auto 0" }}>
       <div className="row">
         <Button
           onClick={() => {

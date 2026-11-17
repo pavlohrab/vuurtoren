@@ -420,7 +420,7 @@ export function ReaderPage({ textId }: { textId: string }) {
   if (reading.isPending || (data && !plan && plans && plans.length > 0)) {
     return (
       <div className="reader-page">
-        <div style={{ maxWidth: "66ch", margin: "0 auto" }} className="stack">
+        <div style={{ maxWidth: "var(--measure)", margin: "0 auto" }} className="stack">
           <Skeleton style={{ height: 24 }} />
           <Skeleton style={{ height: 24 }} />
           <Skeleton style={{ height: 24, width: "70%" }} />

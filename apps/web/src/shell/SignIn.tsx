@@ -113,8 +113,8 @@ export function SignInScreen({ methods, signIn, onSignedIn, reason, defaultUser 
             kenning
           </p>
           <p className="signin-pitch">
-            Read Dutch with the words you already know. Your Anki decks are the record of your
-            vocabulary; Kenning finds texts you can read and the next words worth learning.
+            Read Dutch with the words you already know: Kenning uses your Anki decks to find texts
+            you can read and the next words worth learning.
           </p>
         </header>
         <section className="signin-card">

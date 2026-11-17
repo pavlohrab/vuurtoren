@@ -7,7 +7,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { type LanguageProfile, type ProfileSource, defaultProfile, rootDeck } from "@app/core";
-import { Button, Spinner } from "@app/ui";
+import { Button, Spinner, Logo } from "@app/ui";
 import { useServices } from "../../services/context.js";
 import type { AnkiStatus } from "../../services/types.js";
 import { AnkiConnectionHelp } from "../AnkiSettings.js";
@@ -204,7 +204,7 @@ export function Welcome() {
   return (
     <div className="ob-shell">
       <main className="ob-card">
-        <p className="ob-brand">Kenning</p>
+        <Logo size={28} className="ob-brand" />
         <ol className="ob-steps" aria-label="Setup steps">
           {steps.map((s, i) => (
             <li
