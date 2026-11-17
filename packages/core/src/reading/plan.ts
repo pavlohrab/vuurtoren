@@ -102,7 +102,9 @@ function planFromClassified(
   const unknown = new Map<string, UnknownKey>();
   toks.forEach((t, k) => {
     const p = base[k]!;
-    if (!isCounted(t, p) || p.key === null || p.pKnown >= UNKNOWN_THRESHOLD) return;
+    // Only words not yet studied: an overdue Anki "learning" word stays "learning".
+    if (!isCounted(t, p) || p.key === null || p.label !== "new" || p.pKnown >= UNKNOWN_THRESHOLD)
+      return;
     const u = unknown.get(p.key);
     if (u) {
       u.repeats++;
@@ -125,7 +127,7 @@ function planFromClassified(
   const glossSet = new Set(gloss);
 
   planned.forEach((p, k) => {
-    if (!isCounted(toks[k]!, p) || p.key === null || p.pKnown >= UNKNOWN_THRESHOLD) return;
+    if (!isCounted(toks[k]!, p) || p.key === null || p.label !== "new") return;
     if (introSet.has(p.key)) p.label = "introduce";
     else if (glossSet.has(p.key)) p.label = "gloss";
   });

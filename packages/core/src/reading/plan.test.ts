@@ -270,3 +270,15 @@ describe("planText", () => {
     expect(planText([], new Map(), DEFAULT_PLANNER)).toEqual([]);
   });
 });
+
+describe("planSegment: words already in Anki", () => {
+  it("never introduces or glosses an overdue learning word", () => {
+    const toks = tokenize("Ik zie de fiets bij het huis.");
+    const m = knownExcept(toks, ["fiets"], { fiets: learning(0.2) });
+    const p = planSegment(toks, segmentTokens(toks, 100_000)[0]!, m, noClozes);
+    const fiets = p.tokens.find((t) => toks[t.i]!.text === "fiets")!;
+    expect(fiets.label).toBe("learning");
+    expect(p.introduce).not.toContain("fiets");
+    expect(p.gloss).not.toContain("fiets");
+  });
+});
