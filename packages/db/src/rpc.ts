@@ -23,6 +23,7 @@ export const RPC_METHODS = {
   textGrammar: ["string"],
   allTextGrammar: [],
   setting: ["string"],
+  languageProfile: ["string"],
   rebuild: [],
   events: ["string?"],
   lookedUpKeys: ["string", "string"],

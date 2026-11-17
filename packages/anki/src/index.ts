@@ -6,3 +6,4 @@ export * from "./detect.js";
 export * from "./memory.js";
 export * from "./note.js";
 export * from "./snapshot.js";
+export * from "./profile.js";

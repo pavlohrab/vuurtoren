@@ -173,6 +173,7 @@ export async function createHttpRepository(
     textGrammar: (textId) => call("textGrammar", textId),
     allTextGrammar: () => call("allTextGrammar"),
     setting: <T>(key: string) => call<T | undefined>("setting", key),
+    languageProfile: (lang) => call("languageProfile", lang),
     rebuild: () => call("rebuild"),
     events: (sinceId) => call("events", sinceId),
     lookedUpKeys: (lang, textId) => call("lookedUpKeys", lang, textId),

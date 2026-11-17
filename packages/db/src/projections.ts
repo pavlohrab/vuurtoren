@@ -229,6 +229,19 @@ export async function applyEvent(driver: SqlDriver, ctx: EventContext): Promise<
         JSON.stringify(e.value ?? null),
       ]);
       return;
+    case "LanguageProfileSet": {
+      // Last write wins by HLC, independent of arrival order.
+      const rows = await driver.exec("SELECT updated_hlc FROM language_profiles WHERE lang = ?", [
+        e.profile.lang,
+      ]);
+      const prev = rows[0]?.["updated_hlc"];
+      if (typeof prev === "string" && compareHlc(prev, ctx.hlc) >= 0) return;
+      await driver.exec(
+        "INSERT OR REPLACE INTO language_profiles (lang, profile, updated_hlc) VALUES (?,?,?)",
+        [e.profile.lang, JSON.stringify(e.profile), ctx.hlc],
+      );
+      return;
+    }
     case "CourseImported":
     case "CourseDeleted":
     case "UnitDefined":

@@ -85,6 +85,14 @@ export interface Snapshot {
 
 const MIN_DECK_NOTES = 10;
 
+/** Detection found no target-language vocabulary deck. */
+export class NoSourceDecksError extends Error {
+  override readonly name = "NoSourceDecksError";
+  constructor(readonly lang: string) {
+    super(`No ${lang} vocabulary decks found in Anki.`);
+  }
+}
+
 function sampleOf<T>(xs: T[], n: number, random: () => number): T[] {
   const a = [...xs];
   for (let i = a.length - 1; i > 0; i--) {
@@ -130,7 +138,9 @@ export async function buildSnapshot(deps: SnapshotDeps, chosen?: Candidate[]): P
   const { candidates, selected } = chosen
     ? { candidates: chosen, selected: chosen }
     : await detectSources(deps);
-  if (!selected.length) throw new Error(`No ${deps.lang} vocabulary decks found in Anki.`);
+  // With chosen sources (the language profile) an empty list is fine: a "start fresh" user has
+  // no decks yet. Only blind detection that finds nothing is an error.
+  if (!selected.length && !chosen) throw new NoSourceDecksError(deps.lang);
   deps.onProgress?.(
     `Reading ${selected.length} deck(s): ${selected.map((s) => s.deck).join(", ")}`,
   );

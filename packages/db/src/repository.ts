@@ -5,6 +5,7 @@ import type {
   AnalyzedToken,
   GrammarHit,
   ItemState,
+  LanguageProfile,
   LearnerModel,
   StaircaseState,
   WordState,
@@ -351,6 +352,14 @@ export async function createRepository(
       serial(async () => {
         const rows = await driver.exec("SELECT value FROM settings WHERE key = ?", [key]);
         return rows[0] ? json<T>(rows[0]["value"]) : undefined;
+      }),
+
+    languageProfile: (lang) =>
+      serial(async () => {
+        const rows = await driver.exec("SELECT profile FROM language_profiles WHERE lang = ?", [
+          lang,
+        ]);
+        return rows[0] ? json<LanguageProfile>(rows[0]["profile"]) : null;
       }),
 
     rebuild: () =>

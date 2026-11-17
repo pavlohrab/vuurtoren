@@ -158,6 +158,13 @@ export const MIGRATIONS: readonly (readonly string[])[] = [
        hits TEXT NOT NULL
      )`,
   ],
+  [
+    `CREATE TABLE language_profiles (
+       lang TEXT PRIMARY KEY,
+       profile TEXT NOT NULL,
+       updated_hlc TEXT NOT NULL
+     )`,
+  ],
 ];
 
 /** Latest schema version. */
@@ -177,6 +184,7 @@ export const PROJECTION_TABLES = [
   "reading_progress",
   "staircase",
   "settings",
+  "language_profiles",
   "courses",
   "course_units",
   "course_blocks",

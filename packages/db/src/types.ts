@@ -12,6 +12,7 @@ import type {
   GrammarHit,
   Grade,
   ItemState,
+  LanguageProfile,
   LearnerModel,
   Skill,
   StaircaseState,
@@ -136,6 +137,11 @@ export type AppEvent =
       meta?: Record<string, unknown>;
     }
   | { type: "SettingChanged"; key: string; value: unknown }
+  /**
+   * The language profile (ADR 0010): confirmed source decks and destination decks of one
+   * language. Replaces the whole profile; last write wins by HLC.
+   */
+  | { type: "LanguageProfileSet"; profile: LanguageProfile }
   | { type: "CourseImported"; course: Course }
   | { type: "CourseDeleted"; courseId: string }
   /** The full outline of a course (replaces all its units). */
@@ -280,6 +286,8 @@ export interface Repository {
   /** Stored grammar hits of every text that has them (for the grammar index). */
   allTextGrammar(): Promise<TextGrammar[]>;
   setting<T>(key: string): Promise<T | undefined>;
+  /** The language profile of `lang` (ADR 0010), or null if none was saved. */
+  languageProfile(lang: string): Promise<LanguageProfile | null>;
   /** Courses with their outlines, newest first. */
   courses(): Promise<CourseRecord[]>;
   /** All blocks of a course in page order. */
