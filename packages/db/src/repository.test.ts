@@ -280,6 +280,25 @@ describe("projections", () => {
     });
   });
 
+  it("a snapshot listing the added card as still new does not demote the word", async () => {
+    const { repo } = await newRepo();
+    await repo.append({
+      type: "NoteAddedToAnki",
+      lang: "nl",
+      key: "kaas",
+      noteId: 77,
+      deck: "New",
+    });
+    await repo.append({
+      type: "AnkiSnapshotImported",
+      lang: "nl",
+      entries: [anki("kaas", { state: "unknown", pKnown: 0 })],
+      sources: [],
+    });
+    expect(await repo.word("nl", "kaas")).toMatchObject({ state: "learning", pKnown: 0.2 });
+    expect((await repo.learnerModel("nl")).get("kaas")).toEqual({ state: "learning", pKnown: 0.2 });
+  });
+
   it("StaircaseUpdated and SettingChanged are stored", async () => {
     const { repo } = await newRepo();
     expect(await repo.staircase("nl")).toBeNull();

@@ -39,6 +39,8 @@ export interface SnapshotDeps {
   samplePerDeck?: number;
   /** Restrict to these deck names. */
   decks?: string[];
+  /** Decks read even when they are small (e.g. the app's own target deck). */
+  alwaysInclude?: string[];
   random?: () => number;
   onProgress?: (message: string) => void;
   now?: number;
@@ -102,7 +104,8 @@ export async function detectSources(
   );
   for (const d of deckNames) {
     const ids = await deps.anki.findNotes(exactDeckQuery(d));
-    if (ids.length < MIN_DECK_NOTES && !deps.decks) continue;
+    const forced = deps.alwaysInclude?.includes(d) ?? false;
+    if (ids.length === 0 || (ids.length < MIN_DECK_NOTES && !deps.decks && !forced)) continue;
     for (const n of await deps.anki.notesInfo(sampleOf(ids, deps.samplePerDeck ?? 30, random))) {
       samples.push({
         deck: d,
@@ -158,7 +161,12 @@ export async function buildSnapshot(deps: SnapshotDeps, chosen?: Candidate[]): P
     });
   });
   deps.onProgress?.(`Analysing ${pending.length} headwords`);
-  const terms = await deps.analyzeTerms(pending.map((p) => p.cleaned));
+  // A headword field longer than this is not a word (e.g. a pasted paragraph): skip it rather
+  // than letting the server reject the whole batch (its per-term limit is 500 characters).
+  const MAX_TERM = 200;
+  const terms = await deps.analyzeTerms(
+    pending.map((p) => (p.cleaned.length > MAX_TERM ? "" : p.cleaned)),
+  );
 
   const notes: SnapshotNote[] = pending.map((p, i) => ({
     source: p.source,

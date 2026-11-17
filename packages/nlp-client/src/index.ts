@@ -213,7 +213,15 @@ export class NlpClient {
   }
 
   /** Short English glosses for words. Rejects with HTTP 503 if the dictionary is not built. */
-  gloss(lang: NlpLang, words: string[]): Promise<GlossResult> {
-    return this.post("/gloss", { lang, words });
+  /** Dictionary lookup; split into requests of at most 1000 words (server limit 2000). */
+  async gloss(lang: NlpLang, words: string[]): Promise<GlossResult> {
+    const out: GlossResult = {};
+    for (let i = 0; i < words.length; i += 1000) {
+      Object.assign(
+        out,
+        await this.post<GlossResult>("/gloss", { lang, words: words.slice(i, i + 1000) }),
+      );
+    }
+    return out;
   }
 }

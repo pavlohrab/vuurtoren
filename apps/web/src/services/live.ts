@@ -33,6 +33,23 @@ import type {
   TextListItem,
 } from "./types.js";
 
+const ANKI_KEY_STORAGE = "kenning.ankiKey";
+function readSecret(name: string): string | undefined {
+  try {
+    return localStorage.getItem(name) ?? undefined;
+  } catch {
+    return undefined;
+  }
+}
+function writeSecret(name: string, value: string): void {
+  try {
+    if (value) localStorage.setItem(name, value);
+    else localStorage.removeItem(name);
+  } catch {
+    // storage unavailable (private mode): the key lasts for this session only
+  }
+}
+
 export const DEFAULT_SETTINGS: Settings = {
   // Dev server proxies /anki and /nlp (vite.config.ts); nginx proxies /nlp in production.
   ankiUrl: import.meta.env.DEV ? "/anki" : "http://127.0.0.1:8765",
@@ -60,6 +77,18 @@ const KAIKKI_POS: Record<string, string[]> = {
   SCONJ: ["conj"],
   INTJ: ["intj"],
 };
+
+/** Max words per /gloss request (server limit 2000). */
+const GLOSS_BATCH = 500;
+
+/** Dictionary entries with senses of the token's part of speech first. */
+function orderByPos<T extends { pos: string }>(entries: T[], pos?: string): T[] {
+  const wanted = pos ? (KAIKKI_POS[pos] ?? []) : [];
+  return [
+    ...entries.filter((e) => wanted.includes(e.pos)),
+    ...entries.filter((e) => !wanted.includes(e.pos)),
+  ];
+}
 
 // Wiktionary form-of senses ("inflection of fietsen: …", "plural of …") are noise as glosses.
 const FORM_OF =
@@ -130,51 +159,69 @@ export function createLiveServices(repo: KenningRepository): AppServices {
   const planCache = new Map<string, { version: number; hash: string; view: ReadingView }>();
   // Translation per lemma key: Anki gloss first, then the Wiktionary dictionary; null = none.
   const glossCache = new Map<string, string | null>();
+  const inFlight = new Map<string, Promise<ReadingView | null>>();
 
   /** Translations for (key, lemma) pairs, batched: one dictionary request for all misses. */
+  /**
+   * Translations for (key, lemma, pos) items: the Anki card's gloss first, then the Wiktionary
+   * dictionary (sense matching the part of speech preferred). `complete` is false when the
+   * dictionary could not be reached — callers must not treat missing entries as "no translation".
+   */
   async function lookupGlosses(
     items: { key: string; lemma: string; pos?: string }[],
-  ): Promise<Map<string, string>> {
+  ): Promise<{ found: Map<string, string>; complete: boolean }> {
     const { lang } = await settings();
-    const missing = items.filter(
-      (it, idx) => !glossCache.has(it.key) && items.findIndex((x) => x.key === it.key) === idx,
-    );
+    const cacheKey = (it: { key: string; pos?: string }) => `${it.key}|${it.pos ?? ""}`;
+    const seen = new Set<string>();
+    const missing = items.filter((it) => {
+      const k = cacheKey(it);
+      if (glossCache.has(k) || seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    });
     const needDict: { key: string; lemma: string; pos?: string }[] = [];
     for (const it of missing) {
       const info = await repo.word(lang, it.key);
-      if (info?.gloss) glossCache.set(it.key, info.gloss);
+      if (info?.gloss) glossCache.set(cacheKey(it), info.gloss);
       else needDict.push(it);
     }
+    let complete = true;
     if (needDict.length) {
       try {
-        const dict = await (await nlp()).gloss("nl", [...new Set(needDict.map((it) => it.lemma))]);
-        for (const it of needDict) {
-          const entries = dict[it.lemma] ?? [];
-          const wanted = it.pos ? (KAIKKI_POS[it.pos] ?? []) : [];
-          // Prefer senses of the token's part of speech; fall back to any sense.
-          const ordered = [
-            ...entries.filter((e) => wanted.includes(e.pos)),
-            ...entries.filter((e) => !wanted.includes(e.pos)),
-          ];
-          const g = ordered.flatMap((e) => e.glosses).find((x) => !FORM_OF.test(x));
-          glossCache.set(it.key, g ?? null);
+        const lemmas = [...new Set(needDict.map((it) => it.lemma))];
+        const dict: Record<string, { pos: string; glosses: string[] }[]> = {};
+        for (let i = 0; i < lemmas.length; i += GLOSS_BATCH) {
+          Object.assign(dict, await (await nlp()).gloss("nl", lemmas.slice(i, i + GLOSS_BATCH)));
         }
-      } catch {
-        // dictionary unavailable (503 when not built): leave uncached so it is retried later
+        for (const it of needDict) {
+          const g = orderByPos(dict[it.lemma] ?? [], it.pos)
+            .flatMap((e) => e.glosses)
+            .find((x) => !FORM_OF.test(x));
+          glossCache.set(cacheKey(it), g ?? null);
+        }
+      } catch (e) {
+        // dictionary unavailable (503 when not built, or the server is down): retry next time
+        complete = false;
+        console.warn("[kenning] dictionary lookup failed:", e);
       }
     }
-    const out = new Map<string, string>();
+    const found = new Map<string, string>();
     for (const it of items) {
-      const g = glossCache.get(it.key);
-      if (g) out.set(it.key, g);
+      const g = glossCache.get(cacheKey(it));
+      if (g) found.set(it.key, g);
     }
-    return out;
+    return { found, complete };
   }
 
   async function settings(): Promise<Settings> {
     if (!settingsCache) {
       const saved = await repo.setting<Partial<Settings>>("settings");
-      settingsCache = { ...DEFAULT_SETTINGS, ...saved };
+      // Older versions stored the key in the event log; ignore it there.
+      const rest: Partial<Settings> = { ...saved };
+      delete rest.ankiKey;
+      settingsCache = { ...DEFAULT_SETTINGS, ...rest };
+      const key = readSecret(ANKI_KEY_STORAGE);
+      if (key) settingsCache.ankiKey = key;
     }
     return settingsCache;
   }
@@ -227,7 +274,16 @@ export function createLiveServices(repo: KenningRepository): AppServices {
     return tokens;
   }
 
-  async function view(textId: string): Promise<ReadingView | null> {
+  /** Concurrent callers for the same text share one computation (and one analysis). */
+  function view(textId: string): Promise<ReadingView | null> {
+    const running = inFlight.get(textId);
+    if (running) return running;
+    const p = computeView(textId).finally(() => inFlight.delete(textId));
+    inFlight.set(textId, p);
+    return p;
+  }
+
+  async function computeView(textId: string): Promise<ReadingView | null> {
     const text = await repo.getText(textId);
     if (!text) return null;
     const hash = contentHash(text.content);
@@ -237,10 +293,10 @@ export function createLiveServices(repo: KenningRepository): AppServices {
     const m = await model();
     const opts = await plannerOptions(m);
     const plans: SegmentPlan[] = planText(tokens, m, opts, text.content);
-    await dropUnhintableClozes(tokens, plans, m);
+    const cacheable = await dropUnhintableClozes(tokens, plans, m);
     const staircase = { targetCoverage: opts.targetCoverage, newWordBudget: opts.newWordBudget };
     const v: ReadingView = { text: { ...text, tokens }, tokens, plans, staircase };
-    planCache.set(textId, { version: modelVersion, hash, view: v });
+    if (cacheable) planCache.set(textId, { version: modelVersion, hash, view: v });
     return v;
   }
 
@@ -252,13 +308,15 @@ export function createLiveServices(repo: KenningRepository): AppServices {
     tokens: AnalyzedToken[],
     plans: SegmentPlan[],
     m: LearnerModel,
-  ): Promise<void> {
+  ): Promise<boolean> {
     const clozeTokens = plans.flatMap((p) => p.clozes).map((i) => tokens[i]!);
-    if (!clozeTokens.length) return;
+    if (!clozeTokens.length) return true;
     const keyOf = (t: AnalyzedToken) => matchToken(t, m) ?? normalizeKey(t.lemma);
-    const found = await lookupGlosses(
+    const { found, complete } = await lookupGlosses(
       clozeTokens.map((t) => ({ key: keyOf(t), lemma: t.lemma, pos: t.pos })),
     );
+    // Dictionary unreachable: keep the clozes rather than silently removing them all.
+    if (!complete) return false;
     const base = classifyTokens(tokens, m);
     for (const plan of plans) {
       const drop = new Set(plan.clozes.filter((i) => !found.has(keyOf(tokens[i]!))));
@@ -266,6 +324,7 @@ export function createLiveServices(repo: KenningRepository): AppServices {
       plan.clozes = plan.clozes.filter((i) => !drop.has(i));
       for (const p of plan.tokens) if (drop.has(p.i)) p.label = base[p.i]?.label ?? "known";
     }
+    return true;
   }
 
   async function summary(): Promise<LearnerSummary> {
@@ -334,6 +393,8 @@ export function createLiveServices(repo: KenningRepository): AppServices {
         title = input.title?.trim() || titleFrom(content);
         ref = input.file.name;
       }
+      // Normalise line endings so paragraph detection ("\n\n") works for Windows text too.
+      content = content.replace(/\r\n?/g, "\n");
       if (!content.trim()) throw new Error("No text found to import.");
       const textId = crypto.randomUUID();
       await repo.append({
@@ -346,7 +407,13 @@ export function createLiveServices(repo: KenningRepository): AppServices {
       });
       onProgress?.("Analysing the text…");
       const stored = await repo.getText(textId);
-      if (stored) await analyze(stored);
+      try {
+        if (stored) await analyze(stored);
+      } catch (e) {
+        // Don't leave a half-imported text behind (a retry would create a duplicate).
+        await repo.append({ type: "TextDeleted", textId });
+        throw e;
+      }
       return textId;
     },
 
@@ -378,7 +445,7 @@ export function createLiveServices(repo: KenningRepository): AppServices {
       if (info?.gloss) glosses.push(info.gloss);
       try {
         const dict = await (await nlp()).gloss("nl", [t.lemma]);
-        const entries = dict[t.lemma] ?? [];
+        const entries = orderByPos(dict[t.lemma] ?? [], t.pos);
         for (const e of entries)
           for (const g of e.glosses) if (!FORM_OF.test(g) && !glosses.includes(g)) glosses.push(g);
         article ??=
@@ -418,7 +485,7 @@ export function createLiveServices(repo: KenningRepository): AppServices {
           clicked.particle_of !== null ? (v.tokens[clicked.particle_of] ?? clicked) : clicked;
         return [{ i, key: matchToken(t, m) ?? normalizeKey(t.lemma), lemma: t.lemma, pos: t.pos }];
       });
-      const found = await lookupGlosses(items);
+      const { found } = await lookupGlosses(items);
       const out: Record<number, string> = {};
       for (const it of items) {
         const g = found.get(it.key);
@@ -459,6 +526,8 @@ export function createLiveServices(repo: KenningRepository): AppServices {
 
     async recordLookup(textId: string, key: string): Promise<void> {
       await repo.append({ type: "WordLookedUp", lang: (await settings()).lang, key, textId });
+      // The word becomes "seen": refresh counts, but keep the current page's plan stable.
+      modelCache = null;
     },
 
     async finishSegment(textId, segment, outcome): Promise<StaircaseState> {
@@ -475,9 +544,13 @@ export function createLiveServices(repo: KenningRepository): AppServices {
 
     async saveSettings(patch: Partial<Settings>): Promise<void> {
       const next = { ...(await settings()), ...patch };
-      await repo.append({ type: "SettingChanged", key: "settings", value: next });
+      // Secrets never go into the append-only (later: synced) event log.
+      if ("ankiKey" in patch) writeSecret(ANKI_KEY_STORAGE, patch.ankiKey ?? "");
+      const persisted: Partial<Settings> = { ...next };
+      delete persisted.ankiKey;
+      await repo.append({ type: "SettingChanged", key: "settings", value: persisted });
       settingsCache = next;
-      if ("newWords" in patch) changed();
+      if ("newWords" in patch || "lang" in patch) changed();
     },
 
     async ankiStatus(): Promise<AnkiStatus> {
@@ -496,6 +569,8 @@ export function createLiveServices(repo: KenningRepository): AppServices {
         lang,
         detect: (texts) => client.detect(texts),
         analyzeTerms: (terms) => client.analyzeTerms("nl", terms),
+        // Our own deck is always read, even while it is still small.
+        alwaysInclude: [(await settings()).targetDeck],
         ...(onProgress ? { onProgress } : {}),
       });
       await repo.append({
@@ -506,6 +581,7 @@ export function createLiveServices(repo: KenningRepository): AppServices {
       });
       changed();
       planCache.clear();
+      glossCache.clear();
       return summary();
     },
 

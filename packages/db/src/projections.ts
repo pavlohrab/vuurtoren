@@ -217,7 +217,9 @@ export function composeWord(key: string, f: WordFacts): WordInfo | null {
       default:
         pKnown = 0;
     }
-  } else if (anki) {
+  } else if (anki && !(note && anki.state === "unknown")) {
+    // (A note the user added from the app stays "learning" until Anki has real evidence:
+    // the next snapshot still lists the card as new, which must not demote the word.)
     source = "anki";
     state = anki.state;
     pKnown = anki.pKnown;
