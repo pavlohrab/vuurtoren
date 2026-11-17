@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react";
-import { Button, Input } from "@app/ui";
+import { Button } from "@app/ui";
 import { downloadBytes } from "../screens/DataSettings.js";
 import { backupFilename } from "@app/db";
 
@@ -60,45 +60,45 @@ export function BlockedScreen({
   );
 }
 
-/** The server needs an access token. */
-export function LoginScreen({
-  error,
-  onSubmit,
+/**
+ * Server mode, but the server did not answer (or failed). Never falls back to browser
+ * storage on its own: that would start a second, empty copy of the user's data.
+ */
+export function UnreachableScreen({
+  reason,
+  onForget,
 }: {
-  error?: string | undefined;
-  onSubmit: (token: string) => void;
+  reason: string;
+  /** Explicitly switch this address to browser storage (it no longer runs a server). */
+  onForget: () => void;
 }) {
-  const [token, setToken] = useState("");
   return (
-    <Page title="Sign in to your Kenning server">
-      <form
-        className="stack"
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (token.trim()) onSubmit(token.trim());
-        }}
-      >
-        <Input
-          label="Access token"
-          type="password"
-          autoComplete="current-password"
-          value={token}
-          onChange={(e) => setToken(e.target.value)}
-        />
-        {error ? (
-          <p className="error-text" role="alert">
-            {error}
-          </p>
-        ) : null}
-        <div className="row">
-          <Button type="submit" variant="primary">
-            Continue
-          </Button>
-        </div>
-        <span className="k-hint">
-          It is the KENNING_TOKEN of the server. It is remembered in this browser.
-        </span>
-      </form>
+    <Page title="Can't reach your Kenning server">
+      <p role="alert" style={{ margin: 0 }}>
+        {reason}
+      </p>
+      <p style={{ margin: 0, color: "var(--ink-muted)" }}>
+        Your data is on the server and nothing was changed. It may be restarting; try again in a
+        moment. If it keeps failing, check the containers (docker compose ps, docker compose logs
+        api).
+      </p>
+      <div className="row">
+        <Button variant="primary" onClick={() => location.reload()}>
+          Try again
+        </Button>
+      </div>
+      <details style={{ color: "var(--ink-muted)", fontSize: 13 }}>
+        <summary style={{ cursor: "pointer" }}>
+          This address no longer runs a Kenning server
+        </summary>
+        <p style={{ margin: "8px 0" }}>
+          Then Kenning can keep data in this browser instead. That is a separate, empty collection;
+          your server data is not copied.
+        </p>
+        <Button size="sm" onClick={onForget}>
+          Use this browser's storage
+        </Button>
+      </details>
     </Page>
   );
 }

@@ -5,7 +5,7 @@
  *
  * Environment:
  *   KENNING_URL        base URL of the Kenning server (required), e.g. http://localhost:8080
- *   KENNING_TOKEN      bearer token if the server requires one
+ *   KENNING_TOKEN      bearer token if the server requires one (also sent to $KENNING_URL/nlp)
  *   KENNING_NLP_URL    NLP server (default: $KENNING_URL/nlp)
  *   KENNING_ANKI_URL   AnkiConnect (default http://127.0.0.1:8765); KENNING_ANKI_KEY if set
  *   KENNING_DECK       target deck (default Kenning::Nederlands)
@@ -24,8 +24,19 @@ async function main(): Promise<void> {
     console.error("KENNING_URL is not set (the address of your Kenning server, server mode).");
     process.exit(1);
   }
-  const repo = await createHttpRepository(url, env["KENNING_TOKEN"]);
-  const nlp = new NlpClient({ url: env["KENNING_NLP_URL"] ?? `${url}/nlp` });
+  const token = env["KENNING_TOKEN"];
+  const repo = await createHttpRepository(url, token);
+  // The web container gates /nlp behind the same sign-in (ADR 0009): send the token there too,
+  // but never to another host.
+  const nlpUrl = env["KENNING_NLP_URL"] ?? `${url}/nlp`;
+  const nlpFetch: typeof fetch = (input, init) => {
+    const target = input instanceof Request ? input.url : String(input);
+    if (!token || !target.startsWith(`${url}/`)) return fetch(input, init);
+    const headers = new Headers(init?.headers);
+    headers.set("authorization", `Bearer ${token}`);
+    return fetch(input, { ...init, headers });
+  };
+  const nlp = new NlpClient({ url: nlpUrl, fetch: nlpFetch });
   const ankiKey = env["KENNING_ANKI_KEY"];
   const anki = new AnkiConnectClient({
     url: env["KENNING_ANKI_URL"] ?? "http://127.0.0.1:8765",
