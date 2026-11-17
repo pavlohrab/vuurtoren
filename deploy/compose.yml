@@ -16,6 +16,30 @@ services:
       # or bind to loopback as below.
       - "127.0.0.1:8000:8000"
 
+  # Your data: ONE SQLite file on the kenning-data volume, shared by every device (ADR 0008).
+  api:
+    build:
+      context: ..
+      dockerfile: server/api/Dockerfile
+    restart: unless-stopped
+    environment:
+      # Optional access token; when set, every device asks for it once. Leave empty on a
+      # trusted network. Set it if the app is reachable from the internet.
+      KENNING_TOKEN: ${KENNING_TOKEN:-}
+    volumes:
+      - kenning-data:/data
+    networks: [internal]
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:8787/api/health').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+
   web:
     build:
       context: ..
@@ -28,3 +52,6 @@ services:
 
 networks:
   internal: {}
+
+volumes:
+  kenning-data: {}

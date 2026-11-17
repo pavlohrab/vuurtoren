@@ -101,5 +101,37 @@ docker compose -f deploy/compose.yml pull && docker compose -f deploy/compose.ym
 docker compose -f deploy/compose.yml down
 ```
 
-Both services are stateless; user data lives in the browser (and in Anki). Nothing needs backing
-up on the server.
+`nlp` and `web` are stateless. Your data lives in the `api` service's volume, see below.
+
+## Where your data lives
+
+The compose stack has a third service, `api` (`server/api`), which keeps **all your data in one
+SQLite file**, `/data/kenning.sqlite`, on the named volume `kenning-data`. Every device that opens
+the site shares it (nginx proxies `/api/` to it; the browser finds it through `GET /api/health`).
+Without the `api` service (for example `pnpm dev`, or opening the static files), the app stores
+data in the browser (OPFS) instead. Settings > Your data shows which mode is active.
+
+| Variable        | Where | Meaning                                                                                                                                                       |
+| --------------- | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `KENNING_TOKEN` | `api` | Optional access token. When set, every request needs `Authorization: Bearer <token>`; the app asks for it once and keeps it in the browser. Default: no auth. |
+| `KENNING_DB`    | `api` | Database file (default `/data/kenning.sqlite`).                                                                                                               |
+| `KENNING_HOST`  | `api` | Bind address. Default `127.0.0.1` outside Docker (so no auth is fine); the image sets `0.0.0.0` and the port is not published, only nginx reaches it.         |
+| `KENNING_PORT`  | `api` | Port (default `8787`).                                                                                                                                        |
+
+Set a token if the site is reachable from the internet: `KENNING_TOKEN=long-random-string docker compose -f deploy/compose.yml up -d`.
+The token is sent over the connection, so use HTTPS (see above). Browsers also need HTTPS (or
+`http://localhost`) for some features; in server mode data storage itself does not depend on it.
+
+### Backup and restore
+
+- In the app: Settings > Your data > **Download backup (.sqlite)** and **Restore from backup...**.
+  This works in both modes. A restore replaces all current data, gives this installation a new
+  device id and rebuilds the derived tables from the event log.
+- From the shell (server mode): `curl -H "Authorization: Bearer $KENNING_TOKEN" -o kenning.sqlite http://localhost:8080/api/export`
+  (a consistent snapshot, safe while the app is in use). Restore with
+  `curl -X POST --data-binary @kenning.sqlite http://localhost:8080/api/import`.
+- Or copy the volume: `docker run --rm -v kenning_kenning-data:/data -v "$PWD":/b alpine cp /data/kenning.sqlite /b/` (stop `api` first for a plain file copy).
+
+A backup made by a newer Kenning than the running one is refused, and a database that is newer
+than the app is never replaced by demo data: the app shows a blocking screen with a backup
+download and asks you to update.

@@ -15,12 +15,12 @@ export interface AppProps extends AppInfo {
 }
 
 /** Root component: wires services, async state, toasts and the router. */
-export function App({ services, history, notice, demo, onLeaveDemo }: AppProps) {
+export function App({ services, history, notice, demo, onLeaveDemo, data }: AppProps) {
   const [queryClient] = useState(
     () => new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: 5_000 } } }),
   );
   const [router] = useState(() => createAppRouter(history));
-  const info: AppInfo = { notice, demo, onLeaveDemo };
+  const info: AppInfo = { notice, demo, onLeaveDemo, data };
   return (
     <AppInfoProvider value={info}>
       <ServicesProvider services={services}>

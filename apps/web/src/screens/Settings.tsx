@@ -4,6 +4,7 @@ import { Button, Input, Select, Skeleton, Spinner, useToast } from "@app/ui";
 import { useServices } from "../services/context.js";
 import type { LearnerSummary, Settings as SettingsData } from "../services/types.js";
 import { AnkiSettings } from "./AnkiSettings.js";
+import { DataSettings } from "./DataSettings.js";
 import { useTheme, type ThemeChoice } from "../theme.js";
 
 const THEMES = [
@@ -136,6 +137,7 @@ export function SettingsScreen() {
           </p>
         ) : null}
       </section>
+      <DataSettings />
     </div>
   );
 }
