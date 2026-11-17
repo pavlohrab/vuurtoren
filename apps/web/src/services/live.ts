@@ -34,10 +34,17 @@ import {
   textDifficulty,
   updateStaircase,
 } from "@app/core";
-import { type KenningRepository, type StoredText, type WordInfo, contentHash } from "@app/db";
+import {
+  type KenningRepository,
+  type StoredText,
+  type WordInfo,
+  contentHash,
+  createUlidGenerator,
+} from "@app/db";
 import { absentAnki, ankiFromStatus, unavailableAnki } from "./ankiState.js";
 import { NlpClient } from "@app/nlp-client";
 import { createLiveCourses } from "./liveCourses.js";
+import { createLiveAI } from "./liveAI.js";
 import { createLivePractice } from "./livePractice.js";
 import { createPracticeData } from "./practiceData.js";
 import type {
@@ -207,6 +214,9 @@ function composeGlosses(
     undefined;
   return { glosses: glosses.slice(0, 6), article };
 }
+
+/** Text ids: ULIDs (`crypto.randomUUID` does not exist in insecure http contexts). */
+const nextUlid = createUlidGenerator();
 
 /**
  * Wiktionary place-name senses ("a hamlet in Weststellingwerf, Friesland, Netherlands") are
@@ -571,6 +581,17 @@ export function createLiveServices(repo: KenningRepository): AppServices {
     data: createPracticeData(async () => (await settings()).nlpUrl),
   });
 
+  const ai = createLiveAI({
+    repo,
+    settings,
+    model,
+    vocabEstimate: async () => (await summary()).vocabEstimate,
+    anki: () => anki(),
+    glossLemmas: async (lemmas) =>
+      Object.fromEntries((await lookupGlosses(lemmas.map((l) => ({ key: l, lemma: l })))).found),
+    changed,
+  });
+
   const courses = createLiveCourses({
     repo,
     settings,
@@ -586,6 +607,7 @@ export function createLiveServices(repo: KenningRepository): AppServices {
 
   const services: AppServices = {
     ...practice,
+    ...ai,
     ...courses,
     async listTexts(): Promise<TextListItem[]> {
       const texts = await repo.listTexts();
@@ -641,7 +663,7 @@ export function createLiveServices(repo: KenningRepository): AppServices {
       // Normalise line endings so paragraph detection ("\n\n") works for Windows text too.
       content = content.replace(/\r\n?/g, "\n");
       if (!content.trim()) throw new Error("No text found to import.");
-      const textId = crypto.randomUUID();
+      const textId = nextUlid();
       await repo.append({
         type: "TextImported",
         textId,

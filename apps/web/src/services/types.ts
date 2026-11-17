@@ -12,6 +12,7 @@ import type {
 import type { StoredText, TextSummary, WordInfo } from "@app/db";
 import type { InspectorEntry } from "@app/ui";
 import type { CourseServices } from "./courseTypes.js";
+import type { AIServices } from "./aiTypes.js";
 
 /** Defined in @app/ui (the WordInspector consumes it); re-exported here as part of the contract. */
 export type { InspectorEntry };
@@ -102,6 +103,8 @@ export interface PracticeOverview {
   bySkill: Record<Skill, number>;
   /** When (ms) the last exercise was answered. */
   lastSession: number | null;
+  /** The language server was unreachable on the last request (fewer exercise types). */
+  degraded?: boolean;
 }
 /** The learner's answer; correctness is decided by the engine, not the caller. */
 export type AttemptInput = Omit<Attempt, "correct">;
@@ -118,7 +121,7 @@ export interface AnswerResult {
  * Everything the UI needs from the outside world. The app never talks to the database,
  * AnkiConnect or the NLP server directly; swap the implementation passed to <ServicesProvider>.
  */
-export interface AppServices extends CourseServices {
+export interface AppServices extends CourseServices, AIServices {
   listTexts(): Promise<TextListItem[]>;
   getReading(textId: string): Promise<ReadingView | null>;
   importText(input: ImportInput, onProgress?: (msg: string) => void): Promise<string>;

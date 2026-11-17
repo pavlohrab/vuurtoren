@@ -1,0 +1,21 @@
+{
+  "name": "@app/api",
+  "version": "0.0.0",
+  "private": true,
+  "license": "MIT OR Apache-2.0",
+  "type": "module",
+  "description": "Kenning API: one SQLite file on the server, JSON RPC over HTTP, backup export/import.",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "start": "node dist/main.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@app/core": "workspace:*",
+    "@app/db": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6"
+  }
+}

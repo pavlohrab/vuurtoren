@@ -30,6 +30,28 @@ function wrap(db: Database): SyncDb {
   };
 }
 
+/** Open an in-memory database from serialized bytes (or empty). */
+function memoryDb(sqlite3: Sqlite3, bytes?: Uint8Array): Database {
+  const db = new sqlite3.oo1.DB(":memory:", "c");
+  if (bytes) {
+    const p = sqlite3.wasm.allocFromTypedArray(bytes);
+    const flags =
+      sqlite3.capi.SQLITE_DESERIALIZE_FREEONCLOSE | sqlite3.capi.SQLITE_DESERIALIZE_RESIZEABLE;
+    const rc = sqlite3.capi.sqlite3_deserialize(
+      db.pointer as number,
+      "main",
+      p,
+      bytes.length,
+      bytes.length,
+      flags,
+    );
+    if (rc !== 0) throw new Error(`Could not load the backup (SQLite error ${rc}).`);
+  }
+  return db;
+}
+
+type Sqlite3 = Awaited<ReturnType<typeof sqlite3InitModule>>;
+
 async function open(name: string): Promise<OpenedDb> {
   const sqlite3 = await sqlite3InitModule();
   const opfsSupported =
@@ -41,14 +63,33 @@ async function open(name: string): Promise<OpenedDb> {
   for (let i = 0; i < attempts; i++) {
     try {
       const pool = await sqlite3.installOpfsSAHPoolVfs({ name: `opfs-sahpool-${name}` });
-      return { db: wrap(new pool.OpfsSAHPoolDb(`/${name}.sqlite3`)), persistent: true };
+      const path = `/${name}.sqlite3`;
+      const openDb = (): SyncDb => wrap(new pool.OpfsSAHPoolDb(path));
+      return {
+        db: openDb(),
+        persistent: true,
+        exportFile: () => pool.exportFile(path),
+        importFile: async (bytes) => {
+          await pool.importDb(path, bytes);
+          return openDb();
+        },
+      };
     } catch (err) {
       lastErr = err;
       if (i < attempts - 1) await new Promise((r) => setTimeout(r, 250));
     }
   }
   console.warn("[@app/db] OPFS unavailable, using in-memory database:", lastErr);
-  return { db: wrap(new sqlite3.oo1.DB(":memory:", "c")), persistent: false };
+  let current = memoryDb(sqlite3);
+  return {
+    db: wrap(current),
+    persistent: false,
+    exportFile: () => sqlite3.capi.sqlite3_js_db_export(current.pointer as number),
+    importFile: (bytes) => {
+      current = memoryDb(sqlite3, bytes);
+      return Promise.resolve(wrap(current));
+    },
+  };
 }
 
 const handle = createRequestHandler(open);

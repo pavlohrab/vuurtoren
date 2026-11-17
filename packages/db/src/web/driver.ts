@@ -23,6 +23,13 @@ export type WebDriver = SqlDriver & {
    * are already durable; an in-flight transaction is lost (as on a crash).
    */
   terminate(): void;
+  /** The database file as bytes. Call through `repo.exclusive` so no transaction is open. */
+  exportFile(): Promise<Uint8Array>;
+  /**
+   * Replace the database with a backup (validated in the worker; the old data is restored if
+   * the file is rejected). Assigns a new device id. Reload the app afterwards.
+   */
+  importFile(bytes: Uint8Array): Promise<void>;
 };
 
 /**
@@ -82,7 +89,15 @@ export async function createWorkerDriver(worker: WorkerLike, name: string): Prom
     worker.terminate();
     failAll(new Error("Driver terminated"));
   };
-  return Object.assign(driver, { terminate }) as WebDriver;
+  const exportFile = async (): Promise<Uint8Array> => {
+    const r = await call({ op: "export" });
+    if (!(r instanceof Uint8Array)) throw new Error("Export failed");
+    return r;
+  };
+  const importFile = async (bytes: Uint8Array): Promise<void> => {
+    await call({ op: "import", bytes });
+  };
+  return Object.assign(driver, { terminate, exportFile, importFile }) as WebDriver;
 }
 
 type DistributiveOmitId<T> = T extends unknown ? Omit<T, "id"> : never;

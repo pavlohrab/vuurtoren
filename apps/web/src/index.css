@@ -455,6 +455,13 @@
 .practice-note {
   margin: 0;
 }
+.practice-confirm {
+  margin: 0;
+  padding: 8px 12px;
+  border: 1px solid var(--border, currentColor);
+  border-radius: 8px;
+  font-size: 14px;
+}
 .practice-h2 {
   font-size: 19px;
   margin: 0 0 12px;

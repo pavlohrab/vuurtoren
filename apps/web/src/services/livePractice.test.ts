@@ -25,7 +25,13 @@ interface Backend {
 }
 
 /** Fake NLP server; `down` answers the practice endpoints with 503. */
-function backend(opts: { down?: boolean } = {}): Backend {
+function backend(
+  opts: {
+    down?: boolean;
+    glosses?: Record<string, string>;
+    similar?: Record<string, string[]>;
+  } = {},
+): Backend {
   const paths: string[] = [];
   const fetchFn = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
     const path = new URL(String(url), "http://x").pathname.replace(/^\/nlp/, "");
@@ -35,7 +41,10 @@ function backend(opts: { down?: boolean } = {}): Backend {
       const w = body["words"] as string[];
       return Response.json(
         Object.fromEntries(
-          w.map((x) => [x, [{ pos: "noun", glosses: [`${x} (dict)`], article: "de" }]]),
+          w.map((x) => [
+            x,
+            [{ pos: "noun", glosses: [opts.glosses?.[x] ?? `${x} (dict)`], article: "de" }],
+          ]),
         ),
       );
     }
@@ -53,7 +62,7 @@ function backend(opts: { down?: boolean } = {}): Backend {
         ],
       });
     }
-    if (path === "/similar") return Response.json({ huis: ["hut", "huur"] });
+    if (path === "/similar") return Response.json(opts.similar ?? { huis: ["hut", "huur"] });
     return new Response("not found", { status: 404 });
   });
   vi.stubGlobal("fetch", fetchFn);
@@ -91,10 +100,24 @@ async function setup(entries = WORDS) {
 }
 
 describe("locateWord", () => {
-  it("finds the exact word, then an inflection with the same stem", () => {
+  it("finds the exact word and known forms only", () => {
     expect(locateWord("Het huis is groot.", "huis")).toEqual([4, 8]);
-    expect(locateWord("Zij fietsen naar huis.", "fiets")).toEqual([4, 11]);
+    expect(locateWord("Zij fietsen naar huis.", "fiets", { pos: "NOUN" })).toEqual([4, 11]);
     expect(locateWord("Niets te zien.", "boom")).toBeNull();
+  });
+
+  it("does not blank a different word that shares a prefix", () => {
+    expect(locateWord("Zij is blij dat het kan.", "zijn", { pos: "VERB" })).toBeNull();
+    expect(locateWord("Op een manier die kan.", "man", { pos: "NOUN" })).toBeNull();
+    expect(locateWord("Dat werk is zwaar.", "werken", { pos: "VERB" })).toBeNull();
+  });
+
+  it("matches irregular and regular forms of the word", () => {
+    const forms = { past: ["liep", "liepen"] as [string, string], participle: "gelopen" };
+    expect(locateWord("Hij liep naar huis.", "lopen", { pos: "VERB", forms })).toEqual([4, 8]);
+    expect(locateWord("Zij is gelopen.", "lopen", { pos: "VERB", forms })).toEqual([7, 14]);
+    expect(locateWord("Hij werkt hard.", "werken", { pos: "VERB" })).toEqual([4, 9]);
+    expect(locateWord("Hij liep naar huis.", "lopen", { pos: "VERB" })).toBeNull();
   });
 });
 
@@ -177,8 +200,80 @@ describe("live practice", () => {
   });
 });
 
+describe("live practice: regressions", () => {
+  const small: [string, string, string, WordState][] = [
+    ["huis", "house", "het", "learning"],
+    ["boom", "tree", "de", "learning"],
+    ["tuin", "garden", "de", "learning"],
+  ];
+
+  it("never pads word-choice with synonyms or words of unknown meaning", async () => {
+    backend({
+      glosses: { woning: "dwelling, house", hut: "shack", onbekend: "" },
+      similar: { huis: ["woning", "hut", "onbekend", "nergens"] },
+    });
+    const { services } = await setup(small);
+    let seen = 0;
+    for (let n = 0; n < 40 && seen < 3; n++) {
+      const session = await services.startPractice({ size: 20, skills: ["recognition"] });
+      for (const e of session.filter((x) => x.kind === "word-choice" && x.key === "huis")) {
+        seen++;
+        expect(e.choices).not.toContain("woning");
+        expect(e.choices).not.toContain("nergens"); // no dictionary entry: unvetted
+        expect(e.choices).not.toContain("onbekend");
+      }
+    }
+    expect(seen).toBeGreaterThan(0);
+  });
+
+  it("counts only practisable words in the overview", async () => {
+    backend();
+    const { repo, services } = await setup();
+    const [first] = await services.startPractice({ size: 5, skills: ["gender"] });
+    await services.answerExercise(first!, {
+      exerciseId: first!.id,
+      answer: "x",
+      hintsUsed: 0,
+      ms: 100,
+    });
+    expect((await services.practiceOverview()).bySkill.gender).toBe(1);
+    await repo.append({ type: "WordStateSet", lang: "nl", key: first!.key, state: "ignored" });
+    const o = await services.practiceOverview();
+    expect(o.bySkill.gender).toBe(0);
+    expect(o.due).toBe(0);
+  });
+
+  it("reads practice items once per session, not once per answer", async () => {
+    backend();
+    const { repo, services } = await setup();
+    const spy = vi.spyOn(repo, "practiceItems");
+    const session = await services.startPractice({ size: 6, skills: ["gender"] });
+    const reads = spy.mock.calls.length;
+    for (const e of session.slice(0, 3)) {
+      await services.answerExercise(e, { exerciseId: e.id, answer: e.answer, hintsUsed: 0, ms: 1 });
+    }
+    expect(spy.mock.calls.length).toBe(reads);
+    // the cache is updated: answering the same pair again continues its schedule
+    const e = session[0]!;
+    const again = await services.answerExercise(e, {
+      exerciseId: e.id,
+      answer: e.answer,
+      hintsUsed: 0,
+      ms: 1,
+    });
+    expect(again.next.reps).toBe(2);
+  });
+
+  it("reports a degraded language server in the overview", async () => {
+    backend({ down: true });
+    const { services } = await setup();
+    await services.startPractice({ size: 5 });
+    expect((await services.practiceOverview()).degraded).toBe(true);
+  });
+});
+
 describe("practice data wrapper", () => {
-  it("degrades to empty data on errors and caches misses", async () => {
+  it("degrades to empty data on errors and does not cache them", async () => {
     const fetchFn = vi.fn(async () => new Response("", { status: 404 }));
     const data = createPracticeData(
       () => "/nlp",
@@ -186,7 +281,7 @@ describe("practice data wrapper", () => {
     );
     expect(await data.forms("nl", [{ lemma: "lopen", pos: "VERB" }])).toEqual({});
     expect(await data.forms("nl", [{ lemma: "lopen", pos: "VERB" }])).toEqual({});
-    expect(fetchFn).toHaveBeenCalledTimes(1);
+    expect(fetchFn).toHaveBeenCalledTimes(2);
     const failing = createPracticeData(
       () => "/nlp",
       () =>
@@ -195,5 +290,40 @@ describe("practice data wrapper", () => {
         }) as unknown as typeof fetch,
     );
     expect(await failing.similar("nl", [{ lemma: "huis", pos: "NOUN" }], 3)).toEqual({});
+  });
+});
+
+describe("practice data wrapper: failures", () => {
+  const item = [{ lemma: "lopen", pos: "VERB" }];
+  it("does not cache failures, reports degraded, and recovers", async () => {
+    let up = false;
+    const fetchFn = vi.fn(async () =>
+      up ? Response.json({ lopen: { participle: "gelopen" } }) : new Response("", { status: 503 }),
+    );
+    const data = createPracticeData(
+      () => "/nlp",
+      () => fetchFn as unknown as typeof fetch,
+    );
+    expect(await data.forms("nl", item)).toEqual({});
+    expect(data.degraded()).toBe(true);
+    up = true;
+    expect(await data.forms("nl", item)).toEqual({ lopen: { participle: "gelopen" } });
+    expect(data.degraded()).toBe(false);
+    expect(fetchFn).toHaveBeenCalledTimes(2);
+    await data.forms("nl", item);
+    expect(fetchFn).toHaveBeenCalledTimes(2); // successes are cached
+  });
+
+  it("keys the cache by base URL", async () => {
+    let base = "/a";
+    const fetchFn = vi.fn(async () => Response.json({}));
+    const data = createPracticeData(
+      () => base,
+      () => fetchFn as unknown as typeof fetch,
+    );
+    await data.forms("nl", item);
+    base = "/b";
+    await data.forms("nl", item);
+    expect(fetchFn).toHaveBeenCalledTimes(2);
   });
 });

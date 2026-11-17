@@ -51,7 +51,9 @@ afterEach(() => {
 
 describe("Practice start view", () => {
   it("shows the overview, keeps one skill selected and starts with the chosen options", async () => {
+    stubSpeech([{ lang: "nl-NL" }]);
     const { services, user } = setup();
+    await waitFor(() => expect(screen.getByRole("button", { name: "Listening" })).toBeEnabled());
     expect(await screen.findByText(/\d+ due · \d+ new/)).toBeInTheDocument();
     const chips = ["Recognition", "Recall", "Forms", "Gender", "Listening"];
     for (const c of chips)
@@ -72,6 +74,34 @@ describe("Practice start view", () => {
         skills: ["recognition", "gender"],
       }),
     );
+  });
+
+  it("disables Listening without a Dutch voice and never asks for it", async () => {
+    stubSpeech([{ lang: "en-US" }]);
+    const { services, user } = setup();
+    const chip = await screen.findByRole("button", { name: "Listening" });
+    await waitFor(() => expect(chip).toBeDisabled());
+    expect(chip).toHaveAttribute("aria-pressed", "false");
+    expect(screen.getByText(/no Dutch voice is available/)).toBeInTheDocument();
+    await begin(user);
+    await waitFor(() => expect(services.startPractice).toHaveBeenCalled());
+    const call = vi.mocked(services.startPractice).mock.calls[0]![0]!;
+    expect(call.skills).not.toContain("listening");
+    expect(call.skills).toContain("recognition");
+  });
+
+  it("says so when the language server is unreachable", async () => {
+    const base = createMockServices({ latencyMs: 0 });
+    const services: AppServices = {
+      ...base,
+      practiceOverview: async () => ({ ...(await base.practiceOverview()), degraded: true }),
+    };
+    render(
+      <App services={services} history={createMemoryHistory({ initialEntries: ["/practice"] })} />,
+    );
+    expect(
+      await screen.findByText("The language server is unreachable — fewer exercise types today"),
+    ).toBeInTheDocument();
   });
 
   it("says so when there is nothing to practise", async () => {
@@ -171,14 +201,102 @@ describe("Practice session", () => {
     expect(within(words).getByRole("button", { name: "rood" })).toBeDisabled();
   });
 
-  it("ends early with Escape and shows what was answered", async () => {
+  it("asks before ending with Escape once something was answered", async () => {
+    const list = MOCK_EXERCISES.filter((e) => e.kind === "gender");
+    const { user } = setup(list);
+    await begin(user);
+    await user.keyboard("{Escape}"); // nothing answered yet: ends straight away
+    expect(await screen.findByText("No exercises were answered.")).toBeInTheDocument();
+  });
+
+  it("confirms Escape after an answer, then ends with the answer in the summary", async () => {
     const list = MOCK_EXERCISES.filter((e) => e.kind === "gender");
     const { user } = setup(list);
     await begin(user);
     await user.keyboard("d");
     expect(await fed(/Correct\./)).toBeInTheDocument();
     await user.keyboard("{Escape}");
+    expect(screen.getByRole("group", { name: "End the session?" })).toBeInTheDocument();
+    expect(screen.queryByText("Session complete")).not.toBeInTheDocument();
+    await user.keyboard("{Escape}"); // dismisses the question
+    expect(screen.queryByRole("group", { name: "End the session?" })).not.toBeInTheDocument();
+    await user.keyboard("{Escape}");
+    await user.click(
+      within(screen.getByRole("group", { name: "End the session?" })).getByRole("button", {
+        name: "End session",
+      }),
+    );
     expect(await screen.findByText("1 of 1 correct.")).toBeInTheDocument();
+  });
+
+  it("waits for an answer that is still being saved before ending", async () => {
+    const list = MOCK_EXERCISES.filter((e) => e.kind === "gender");
+    const base = createMockServices({ latencyMs: 0 });
+    let release!: () => void;
+    const gate = new Promise<void>((r) => (release = r));
+    const services: AppServices = {
+      ...base,
+      startPractice: async () => list,
+      answerExercise: async (e, a) => {
+        await gate;
+        return base.answerExercise(e, a);
+      },
+    };
+    render(
+      <App services={services} history={createMemoryHistory({ initialEntries: ["/practice"] })} />,
+    );
+    const user = userEvent.setup();
+    await begin(user);
+    await user.keyboard("d");
+    await user.keyboard("{Escape}");
+    await user.click(
+      within(screen.getByRole("group", { name: "End the session?" })).getByRole("button", {
+        name: "End session",
+      }),
+    );
+    expect(screen.queryByText("Session complete")).not.toBeInTheDocument();
+    release();
+    expect(await screen.findByText("1 of 1 correct.")).toBeInTheDocument();
+  });
+
+  it("ignores shortcuts while a dialog is open or another input has focus", async () => {
+    const list = MOCK_EXERCISES.filter((e) => e.kind === "meaning-choice").slice(0, 1);
+    const { answers, user } = setup(list);
+    await begin(user);
+    await screen.findByText("1 of 1");
+    // a palette-like dialog with its own search input
+    const dialog = document.createElement("div");
+    dialog.setAttribute("role", "dialog");
+    const input = document.createElement("input");
+    dialog.append(input);
+    document.body.append(dialog);
+    input.focus();
+    await user.keyboard("1{Escape}");
+    expect(answers).toHaveLength(0);
+    expect(screen.queryByText("Session complete")).not.toBeInTheDocument();
+    dialog.remove();
+    // an editable element outside the card, no dialog role
+    const search = document.createElement("input");
+    document.body.append(search);
+    search.focus();
+    await user.keyboard("1");
+    expect(answers).toHaveLength(0);
+    search.remove();
+    (document.activeElement as HTMLElement | null)?.blur();
+    await user.keyboard("1");
+    await waitFor(() => expect(answers).toHaveLength(1));
+  });
+
+  it("hints stop before the whole word; the last step gives up and counts as wrong", async () => {
+    const typed = MOCK_EXERCISES.find((e) => e.kind === "cloze-typed")!; // answer "brug"
+    const { user } = setup([typed]);
+    await begin(user);
+    const input = await screen.findByLabelText("Your answer");
+    await user.type(input, "???");
+    expect(screen.getByText("bru…")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Show the answer" })).toBeInTheDocument();
+    await user.type(input, "?");
+    expect(await fed(/Not quite\./)).toBeInTheDocument();
   });
 
   it("plays dictation with a Dutch voice", async () => {
@@ -198,6 +316,8 @@ describe("Practice session", () => {
     ];
     const { answers, user } = setup(list);
     await begin(user);
+    // the dictation is skipped asynchronously: wait for the gender exercise before typing
+    await screen.findByText("de or het?");
     await user.keyboard("d");
     expect(await fed(/Correct\./)).toBeInTheDocument();
     await user.keyboard("{Enter}");

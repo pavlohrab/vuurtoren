@@ -208,6 +208,10 @@ export async function applyEvent(driver: SqlDriver, ctx: EventContext): Promise<
         JSON.stringify(e.state satisfies StaircaseState),
       ]);
       return;
+    case "ConversationStarted":
+    case "MessageAdded":
+      // Conversations are read straight from the event log (see conversations.ts): no table.
+      return;
     case "SettingChanged":
       await driver.exec("INSERT OR REPLACE INTO settings (key, value) VALUES (?,?)", [
         e.key,

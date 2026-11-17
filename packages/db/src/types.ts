@@ -105,6 +105,23 @@ export type AppEvent =
       at: number;
       state: ItemState;
     }
+  | {
+      /** A conversation with the AI partner began (M6). Never contains API keys. */
+      type: "ConversationStarted";
+      conversationId: string;
+      lang: string;
+      topic: string;
+      targetWords: string[];
+    }
+  | {
+      type: "MessageAdded";
+      conversationId: string;
+      messageId: string;
+      role: "user" | "assistant";
+      text: string;
+      /** Assistant messages: coverage, corrections, new words (see conversations.ts). */
+      meta?: Record<string, unknown>;
+    }
   | { type: "SettingChanged"; key: string; value: unknown }
   | { type: "CourseImported"; course: Course }
   | { type: "CourseDeleted"; courseId: string }

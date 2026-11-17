@@ -1,4 +1,4 @@
-import { BookText, MessagesSquare } from "lucide-react";
+import { BookText } from "lucide-react";
 import type { ReactNode } from "react";
 import { EmptyState } from "@app/ui";
 
@@ -21,17 +21,6 @@ function Placeholder({
         description={`${description} Planned for ${milestone}.`}
       />
     </div>
-  );
-}
-
-export function Converse() {
-  return (
-    <Placeholder
-      icon={<MessagesSquare size={28} />}
-      title="Converse"
-      description="Talk with a partner who keeps to words you know, with gentle corrections."
-      milestone="M6"
-    />
   );
 }
 

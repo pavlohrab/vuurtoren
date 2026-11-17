@@ -178,6 +178,7 @@ export async function createHttpRepository(
     unitExercises: (courseId, unitN) => call("unitExercises", courseId, unitN),
     unitWords: (courseId, unitN) => call("unitWords", courseId, unitN),
     bookAnswers: (courseId, unitN) => call("bookAnswers", courseId, unitN),
+    conversationEvents: () => call("conversationEvents"),
     // The server serialises every call already; nothing to lock on this side.
     exclusive: (fn) => fn(),
     close: () => Promise.resolve(),

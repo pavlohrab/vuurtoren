@@ -306,6 +306,25 @@ describe("adjective-e", () => {
   });
 });
 
+describe("cloze with a repeated target", () => {
+  it("skips sentences where the surface occurs twice, case-insensitively", () => {
+    const w = word("huis", {
+      sentences: [
+        sentence("Het huis naast ons huis is heel erg groot.", "huis"),
+        sentence("Wij kopen een nieuw huis in de stad.", "huis"),
+      ],
+    });
+    for (const kind of ["cloze-typed", "cloze-choice"] as const) {
+      const e = generate(kind, w, pool, rng())!;
+      expect(e.prompt.sentence).toBe("Wij kopen een nieuw huis in de stad.");
+    }
+    const only = word("huis", {
+      sentences: [sentence("Huis, huis en nog eens huis zijn woorden.", "Huis")],
+    });
+    expect(generate("cloze-typed", only, pool, rng())).toBeNull();
+  });
+});
+
 describe("scramble", () => {
   const text = "Ik bel hem morgen op.";
   const w = word("bellen", {
@@ -317,13 +336,25 @@ describe("scramble", () => {
       const e = generate("scramble", w, pool, createRng(seed))!;
       expect(e.skill).toBe("form");
       expect(e.instruction).toBe("Put the words in order");
-      expect([...e.pieces!].sort()).toEqual(["Ik", "bel", "hem", "morgen", "op"].sort());
-      expect(e.pieces!.join(" ")).not.toBe("Ik bel hem morgen op");
+      expect([...e.pieces!].sort()).toEqual(["ik", "bel", "hem", "morgen", "op"].sort());
+      expect(e.pieces!.join(" ")).not.toBe("ik bel hem morgen op");
       expect(e.answer).toBe(text);
       expect(e.prompt.text).toBe("I call him tomorrow.");
       expect(checkAnswer(e, "ik bel hem morgen op").correct).toBe(true);
       expect(checkAnswer(e, e.pieces!.join(" ")).correct).toBe(false);
     }
+  });
+
+  it("keeps the capital of a proper noun and falls back to the gloss without translation", () => {
+    const name = word("Amsterdam", {
+      pos: "PROPN",
+      glosses: ["Amsterdam"],
+      sentences: [sentence("Amsterdam is een mooie stad.", "Amsterdam")],
+    });
+    const e = generate("scramble", name, pool, rng())!;
+    expect(e.pieces).toContain("Amsterdam");
+    expect(e.prompt.text).toBe("");
+    expect(e.prompt.hint).toBe("Amsterdam");
   });
 
   it("needs 4-9 words", () => {

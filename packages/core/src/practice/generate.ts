@@ -4,7 +4,7 @@
  */
 import { distractors } from "./distractors.js";
 import { pick, shuffle, type Rng } from "./rng.js";
-import { bestSentence, rankSentences, targetSurface, wordCount } from "./sentences.js";
+import { rankSentences, targetSurface, wordCount } from "./sentences.js";
 import {
   SKILL_OF,
   type Exercise,
@@ -46,6 +46,21 @@ function clozePrompt(s: ExampleSentence): Exercise["prompt"] {
   return prompt;
 }
 
+/** Case-insensitive whole-word occurrences of `surface` in `text`. */
+function occurrences(text: string, surface: string): number {
+  const esc = surface.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return [...text.matchAll(new RegExp(`(?<![\\p{L}\\p{N}])${esc}(?![\\p{L}\\p{N}])`, "giu"))]
+    .length;
+}
+
+/**
+ * Best sentence for a cloze: ranked like bestSentence, but sentences where the target surface
+ * occurs more than once are skipped (the other copy would give the answer away).
+ */
+function clozeSentence(word: WordData): ExampleSentence | undefined {
+  return rankSentences(word.sentences).find((s) => occurrences(s.text, targetSurface(s)) === 1);
+}
+
 /** meaning-choice: "de hond" -> four English glosses (answer = first gloss). */
 const meaningChoice: Generator = (word, pool, rng) => {
   const gloss = word.glosses[0];
@@ -80,7 +95,7 @@ const wordChoice: Generator = (word, pool, rng) => {
  * distractor is capitalised when the blank starts a sentence).
  */
 const clozeChoice: Generator = (word, pool, rng) => {
-  const s = bestSentence(word.sentences);
+  const s = clozeSentence(word);
   if (!s) return null;
   const surface = targetSurface(s);
   const wrong = distractors(word, pool, 3, rng, "lemma");
@@ -97,7 +112,7 @@ const clozeChoice: Generator = (word, pool, rng) => {
 
 /** cloze-typed: type the surface form; the English gloss is the hint. */
 const clozeTyped: Generator = (word, _pool, rng) => {
-  const s = bestSentence(word.sentences);
+  const s = clozeSentence(word);
   if (!s) return null;
   const prompt = clozePrompt(s);
   if (word.glosses[0]) prompt.hint = word.glosses[0];
@@ -306,12 +321,18 @@ const scramble: Generator = (word, _pool, rng) => {
   const text = s.text.trim().replace(/\s+/g, " ");
   const words = text.split(" ");
   const pieces = words.map((w, i) => (i === words.length - 1 ? w.replace(FINAL_PUNCT, "") : w));
+  // The sentence-initial capital would identify the first piece; lowercase it unless the
+  // word is a proper noun (or has inner capitals, e.g. an acronym).
+  const first = pieces[0]!;
+  const keepCase = word.pos === "PROPN" || /\p{Lu}/u.test(first.slice(1));
+  if (!keepCase) pieces[0] = lowerFirst(first);
   if (new Set(pieces.map((p) => p.toLowerCase())).size < 2) return null;
   let order = shuffle(pieces, rng);
   for (let i = 0; i < 10 && order.join(" ") === pieces.join(" "); i++) order = shuffle(pieces, rng);
   if (order.join(" ") === pieces.join(" ")) order = [...pieces.slice(1), pieces[0]!];
   const prompt: Exercise["prompt"] = { text: s.translation ?? "" };
   if (s.translation) prompt.translation = s.translation;
+  else if (word.glosses[0]) prompt.hint = word.glosses[0];
   return base("scramble", word, rng, {
     instruction: "Put the words in order",
     prompt,

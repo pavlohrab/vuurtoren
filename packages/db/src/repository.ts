@@ -47,6 +47,8 @@ export interface KenningRepository extends Repository {
   lastSnapshot(lang: string): Promise<{ at: number; sources: string[] } | null>;
   /** Number of events in the log. */
   eventCount(): Promise<number>;
+  /** ConversationStarted / MessageAdded events in id order (fold with `projectConversations`). */
+  conversationEvents(): Promise<StoredEvent[]>;
   /**
    * Run `fn` while no other repository call is in flight or can start (the repository's own
    * mutex). Used for operations on the raw file: export while no transaction is open.
@@ -369,6 +371,15 @@ export async function createRepository(
 
     eventCount: () =>
       serial(async () => Number((await driver.exec("SELECT count(*) AS c FROM events"))[0]?.["c"])),
+
+    conversationEvents: () =>
+      serial(async () =>
+        (
+          await driver.exec(
+            "SELECT * FROM events WHERE type IN ('ConversationStarted','MessageAdded') ORDER BY id",
+          )
+        ).map(toStored),
+      ),
 
     exclusive: (fn) => serial(fn),
 

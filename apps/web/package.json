@@ -25,6 +25,7 @@
     "vitest": "^5.1.0"
   },
   "dependencies": {
+    "@app/ai": "workspace:*",
     "@app/anki": "workspace:*",
     "@app/core": "workspace:*",
     "@app/db": "workspace:*",
