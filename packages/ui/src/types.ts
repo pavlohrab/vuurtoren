@@ -1,5 +1,26 @@
 import type { TokenLabel, WordState } from "@app/core";
 
+/** Live state of a word in Anki, read when the word is opened (ADR 0007). */
+export interface InspectorAnki {
+  /**
+   * absent: not in Anki; new / suspended: the matched card has never been studied;
+   * learning / review: in progress; unavailable: Anki could not be asked (see `detail`).
+   */
+  status: "absent" | "new" | "suspended" | "learning" | "review" | "unavailable";
+  /** Status line, e.g. "In review · due in 6 days", or the reason when unavailable. */
+  detail?: string;
+  /** Deck of the matched note (for "Moves its card to the front of ‘<deck>’"). */
+  deck?: string;
+  noteIds: number[];
+  cardIds: number[];
+  /** "Learn next" was already used on this word. */
+  prioritized: boolean;
+  /** The word was marked known in Anki from the app. */
+  markedKnown: boolean;
+  /** A manual state overrides Anki's (offer "Use Anki's state"). */
+  overridden: boolean;
+}
+
 /** Everything the word inspector shows about one token. Built by the app's services layer. */
 export interface InspectorEntry {
   textId: string;
@@ -17,6 +38,7 @@ export interface InspectorEntry {
   /** Anki decks this word comes from. */
   decks: string[];
   inAnki: boolean;
+  anki: InspectorAnki;
   /** The sentence containing the token. */
   sentence: string;
   /** [start, end) character range of the token inside `sentence`. */

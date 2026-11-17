@@ -221,7 +221,10 @@ describe("projections", () => {
     expect((await repo.word("nl", "x"))?.state).toBe("ignored");
     // Replaying the older event after the newer one must not win.
     await driver.exec("DELETE FROM word_overrides");
-    await driver.exec("INSERT INTO word_overrides VALUES ('nl','x','ignored',?)", [b.hlc]);
+    await driver.exec(
+      "INSERT INTO word_overrides (lang, key, state, updated_hlc) VALUES ('nl','x','ignored',?)",
+      [b.hlc],
+    );
     const { applyEvent } = await import("./projections.js");
     await applyEvent(driver, { id: a.id, hlc: a.hlc, createdAt: 0, event: a.event });
     expect((await repo.word("nl", "x"))?.state).toBe("ignored");
@@ -298,6 +301,128 @@ describe("projections", () => {
     });
     expect(await repo.word("nl", "kaas")).toMatchObject({ state: "learning", pKnown: 0.2 });
     expect((await repo.learnerModel("nl")).get("kaas")).toEqual({ state: "learning", pKnown: 0.2 });
+  });
+
+  it("CardsPrioritized makes a word 'learning' (0.2) until Anki has real reviews", async () => {
+    const { repo } = await newRepo();
+    await repo.append({
+      type: "AnkiSnapshotImported",
+      lang: "nl",
+      entries: [anki("kaas", { state: "unknown", pKnown: 0, noteIds: [5, 6] })],
+      sources: [],
+    });
+    expect(await repo.word("nl", "kaas")).toMatchObject({ state: "unknown", noteIds: [5, 6] });
+    await repo.append({
+      type: "CardsPrioritized",
+      lang: "nl",
+      key: "kaas",
+      noteId: 5,
+      cardIds: [50],
+      unsuspended: [],
+    });
+    expect(await repo.word("nl", "kaas")).toMatchObject({
+      state: "learning",
+      pKnown: 0.2,
+      prioritized: true,
+      source: "app",
+    });
+    // The next snapshot still lists the card as new: must not demote.
+    await repo.append({
+      type: "AnkiSnapshotImported",
+      lang: "nl",
+      entries: [anki("kaas", { state: "unknown", pKnown: 0 })],
+      sources: [],
+    });
+    expect((await repo.learnerModel("nl")).get("kaas")).toEqual({ state: "learning", pKnown: 0.2 });
+    // Real evidence wins, and the flag stays.
+    await repo.append({
+      type: "AnkiSnapshotImported",
+      lang: "nl",
+      entries: [anki("kaas", { state: "learning", pKnown: 0.5 })],
+      sources: [],
+    });
+    expect(await repo.word("nl", "kaas")).toMatchObject({
+      state: "learning",
+      pKnown: 0.5,
+      source: "anki",
+      prioritized: true,
+    });
+  });
+
+  it("MarkedKnownInAnki acts like a known override and is recorded", async () => {
+    const { repo } = await newRepo();
+    await repo.append({
+      type: "AnkiSnapshotImported",
+      lang: "nl",
+      entries: [anki("kaas", { state: "unknown", pKnown: 0 })],
+      sources: [],
+    });
+    await repo.append({
+      type: "MarkedKnownInAnki",
+      lang: "nl",
+      key: "kaas",
+      noteIds: [1],
+      cardIds: [10],
+    });
+    expect(await repo.word("nl", "kaas")).toMatchObject({
+      state: "known",
+      pKnown: 0.95,
+      source: "app",
+      markedKnownInAnki: true,
+      overridden: true,
+    });
+    // A later plain state change replaces the mark.
+    await repo.append({ type: "WordStateSet", lang: "nl", key: "kaas", state: "ignored" });
+    const w = await repo.word("nl", "kaas");
+    expect(w?.state).toBe("ignored");
+    expect(w?.markedKnownInAnki).toBeUndefined();
+  });
+
+  it("WordStateCleared removes the override so Anki's state applies again", async () => {
+    const { repo } = await newRepo();
+    await repo.append({
+      type: "AnkiSnapshotImported",
+      lang: "nl",
+      entries: [anki("kaas", { state: "learning", pKnown: 0.4 })],
+      sources: [],
+    });
+    await repo.append({
+      type: "MarkedKnownInAnki",
+      lang: "nl",
+      key: "kaas",
+      noteIds: [1],
+      cardIds: [10],
+    });
+    await repo.append({ type: "WordStateCleared", lang: "nl", key: "kaas" });
+    const w = await repo.word("nl", "kaas");
+    expect(w).toMatchObject({ state: "learning", pKnown: 0.4, source: "anki" });
+    expect(w?.overridden).toBeUndefined();
+    expect(w?.markedKnownInAnki).toBeUndefined();
+    // Clearing a word that has no override is harmless, and a looked-up word stays "seen".
+    await repo.append({ type: "WordStateCleared", lang: "nl", key: "nieuw" });
+    expect(await repo.word("nl", "nieuw")).toBeNull();
+  });
+
+  it("WordStateCleared respects HLC order when replayed late", async () => {
+    const { repo, driver } = await newRepo();
+    const a = await repo.append({ type: "WordStateSet", lang: "nl", key: "x", state: "known" });
+    const b = await repo.append({ type: "WordStateCleared", lang: "nl", key: "x" });
+    const { applyEvent } = await import("./projections.js");
+    await applyEvent(driver, { id: a.id, hlc: a.hlc, createdAt: 0, event: a.event });
+    expect(await repo.word("nl", "x")).toBeNull();
+    expect(b.hlc > a.hlc).toBe(true);
+  });
+
+  it("noteIds include the note the app added", async () => {
+    const { repo } = await newRepo();
+    await repo.append({
+      type: "NoteAddedToAnki",
+      lang: "nl",
+      key: "kaas",
+      noteId: 77,
+      deck: "New",
+    });
+    expect((await repo.word("nl", "kaas"))?.noteIds).toEqual([77]);
   });
 
   it("rebuilds projections once when the projection version changes", async () => {
@@ -506,6 +631,15 @@ describe("rebuild equivalence", () => {
           noteId: n,
           deck: pick(["D1", "D2"]),
         };
+      } else if (r < 0.77) {
+        const [lang, key] = [pick(langs), pick(keys)];
+        const k = rand();
+        event =
+          k < 0.4
+            ? { type: "CardsPrioritized", lang, key, noteId: n, cardIds: [n], unsuspended: [] }
+            : k < 0.7
+              ? { type: "MarkedKnownInAnki", lang, key, noteIds: [n], cardIds: [n] }
+              : { type: "WordStateCleared", lang, key };
       } else if (r < 0.82) {
         event = {
           type: "ReadingProgress",

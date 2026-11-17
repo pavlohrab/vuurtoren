@@ -1,14 +1,21 @@
 import type { WordState } from "@app/core";
 import { Button } from "./Button.js";
 import { Chip } from "./Chip.js";
-import type { InspectorEntry } from "./types.js";
+import type { InspectorAnki, InspectorEntry } from "./types.js";
 
 export interface WordInspectorProps {
   entry: InspectorEntry | null;
-  onAddToAnki?: () => void;
-  onSetState?: (state: WordState) => void;
+  onAddToAnki?: (() => void) | undefined;
+  /** Move the word's new card to the front of its deck (unsuspends it if needed). */
+  onLearnNext?: (() => void) | undefined;
+  /** Mark the word known in Anki. */
+  onMarkKnown?: (() => void) | undefined;
+  /** Drop a manual state so Anki's applies again. */
+  onReset?: (() => void) | undefined;
+  /** App-only states (Ignore). */
+  onSetState?: ((state: WordState) => void) | undefined;
   /** Disables the action buttons while a request is in flight. */
-  busy?: boolean;
+  busy?: boolean | undefined;
   /** The entry is being fetched (e.g. a different word was just selected). */
   loading?: boolean;
   /** Message to show when the entry could not be loaded. */
@@ -28,6 +35,9 @@ const STATE_LABEL: Record<WordState, string> = {
 export function WordInspector({
   entry,
   onAddToAnki,
+  onLearnNext,
+  onMarkKnown,
+  onReset,
   onSetState,
   busy = false,
   loading = false,
@@ -123,13 +133,99 @@ export function WordInspector({
         </p>
       </section>
 
+      <AnkiActions
+        entry={entry}
+        busy={busy}
+        onAddToAnki={onAddToAnki}
+        onLearnNext={onLearnNext}
+        onMarkKnown={onMarkKnown}
+        onReset={onReset}
+        onSetState={onSetState}
+      />
+    </div>
+  );
+}
+
+const hintStyle = { margin: 0, color: "var(--ink-muted)", fontSize: 13 } as const;
+
+const STATUS_TEXT: Record<InspectorAnki["status"], string> = {
+  absent: "Not in Anki",
+  new: "New card",
+  suspended: "Suspended",
+  learning: "Learning",
+  review: "In review",
+  unavailable: "Anki not reachable",
+};
+
+/** Status line and action buttons for the word's state in Anki (ADR 0007). */
+function AnkiActions({
+  entry,
+  busy = false,
+  onAddToAnki,
+  onLearnNext,
+  onMarkKnown,
+  onReset,
+  onSetState,
+}: Pick<
+  WordInspectorProps,
+  "busy" | "onAddToAnki" | "onLearnNext" | "onMarkKnown" | "onReset" | "onSetState"
+> & { entry: InspectorEntry }) {
+  const { anki } = entry;
+  const { status } = anki;
+  const unavailable = status === "unavailable";
+  const reason = anki.detail ?? "";
+  const inProgress = status === "learning" || status === "review";
+  // Words already known (mature in Anki, or marked) need no "Mark known"; words not studied
+  // yet always get it, because it also writes to Anki.
+  const canMarkKnown = !anki.markedKnown && !(inProgress && entry.state === "known");
+  const disabled = busy || unavailable;
+  const deck = anki.deck ?? entry.decks[0];
+
+  let primary: { label: string; hint?: string; onClick?: (() => void) | undefined } | null = null;
+  if (status === "absent") {
+    primary = { label: "Add to Anki", hint: "Adds it to the Kenning deck", onClick: onAddToAnki };
+  } else if (status === "new" || status === "suspended" || (unavailable && anki.noteIds.length)) {
+    primary = {
+      label: status === "suspended" ? "Unsuspend & learn next" : "Learn next",
+      hint: deck ? `Moves its card to the front of ‘${deck}’` : "Moves its card to the front",
+      onClick: onLearnNext,
+    };
+  } else if (unavailable) {
+    primary = { label: "Add to Anki", onClick: onAddToAnki };
+  }
+
+  return (
+    <>
+      {status !== "absent" ? (
+        <section>
+          <div className="k-overline">In Anki</div>
+          <p
+            role={unavailable ? "alert" : "status"}
+            style={unavailable ? { ...hintStyle, color: "var(--danger)" } : { margin: 0 }}
+          >
+            {unavailable
+              ? `Anki not reachable${reason ? `. ${reason}` : ""}`
+              : (anki.detail ?? STATUS_TEXT[status])}
+          </p>
+        </section>
+      ) : null}
       <div className="k-inspector-actions">
-        <Button variant="primary" disabled={busy || entry.inAnki} onClick={() => onAddToAnki?.()}>
-          {entry.inAnki ? "In Anki" : "Add to Anki"}
-        </Button>
-        <Button disabled={busy || entry.state === "known"} onClick={() => onSetState?.("known")}>
-          Mark known
-        </Button>
+        {primary ? (
+          <>
+            <Button variant="primary" disabled={disabled} onClick={() => primary.onClick?.()}>
+              {primary.label}
+            </Button>
+            {primary.hint && !unavailable ? <p style={hintStyle}>{primary.hint}</p> : null}
+          </>
+        ) : null}
+        {canMarkKnown ? (
+          <>
+            <Button disabled={disabled} onClick={() => onMarkKnown?.()}>
+              Mark known
+            </Button>
+            {status === "absent" ? <p style={hintStyle}>Adds it to Anki as known</p> : null}
+          </>
+        ) : null}
         <Button
           variant="ghost"
           disabled={busy || entry.state === "ignored"}
@@ -137,7 +233,12 @@ export function WordInspector({
         >
           Ignore
         </Button>
+        {anki.overridden ? (
+          <Button variant="ghost" disabled={busy} onClick={() => onReset?.()}>
+            Use Anki&rsquo;s state
+          </Button>
+        ) : null}
       </div>
-    </div>
+    </>
   );
 }

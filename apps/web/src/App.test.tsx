@@ -24,7 +24,7 @@ describe("App with mock services", () => {
     renderApp("/read/t-utrecht");
     const word = await screen.findByText("zus");
     await userEvent.click(word);
-    expect(await screen.findByRole("button", { name: "In Anki" })).toBeInTheDocument();
+    expect(await screen.findByText("In review · due in 41 days")).toBeInTheDocument();
     expect(screen.getByText("sister")).toBeInTheDocument();
   });
 

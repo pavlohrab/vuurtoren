@@ -39,6 +39,25 @@ export type AppEvent =
   | { type: "TextDeleted"; textId: string }
   | { type: "AnkiSnapshotImported"; lang: string; entries: AnkiWordEntry[]; sources: string[] }
   | { type: "WordStateSet"; lang: string; key: string; state: WordState }
+  | {
+      /** The user clicked "Learn next": the word's new card(s) went to the front of the queue. */
+      type: "CardsPrioritized";
+      lang: string;
+      key: string;
+      noteId: number;
+      cardIds: number[];
+      /** Cards that were suspended and have been unsuspended by this action. */
+      unsuspended: number[];
+    }
+  | {
+      /** The user clicked "Mark known": the cards were rescheduled as known in Anki. */
+      type: "MarkedKnownInAnki";
+      lang: string;
+      key: string;
+      noteIds: number[];
+      cardIds: number[];
+    }
+  | { type: "WordStateCleared"; lang: string; key: string }
   | { type: "WordLookedUp"; lang: string; key: string; textId: string }
   | { type: "NoteAddedToAnki"; lang: string; key: string; noteId: number; deck: string }
   | {
@@ -86,6 +105,14 @@ export interface WordInfo {
   decks: string[];
   lookups: number;
   addedNoteId?: number;
+  /** Anki notes behind this word (snapshot notes, plus a note the app added). */
+  noteIds: number[];
+  /** "Learn next" was used on this word. */
+  prioritized?: boolean;
+  /** The word was marked known in Anki from the app (a manual override). */
+  markedKnownInAnki?: boolean;
+  /** A manual state (set in the app) currently overrides Anki's. */
+  overridden?: boolean;
 }
 
 /** Repository API used by apps (web/desktop/extension). */

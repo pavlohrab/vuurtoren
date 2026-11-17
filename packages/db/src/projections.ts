@@ -49,6 +49,27 @@ async function insertMany(
   }
 }
 
+/** Last-write-wins (by HLC, independent of arrival order) write of a word's manual state. */
+async function setOverride(
+  driver: SqlDriver,
+  hlc: string,
+  lang: string,
+  key: string,
+  state: WordState | "",
+  markedInAnki: boolean,
+): Promise<void> {
+  const rows = await driver.exec(
+    "SELECT updated_hlc FROM word_overrides WHERE lang = ? AND key = ?",
+    [lang, key],
+  );
+  const prev = rows[0]?.["updated_hlc"];
+  if (typeof prev === "string" && compareHlc(prev, hlc) >= 0) return;
+  await driver.exec(
+    "INSERT OR REPLACE INTO word_overrides (lang, key, state, updated_hlc, marked_anki) VALUES (?,?,?,?,?)",
+    [lang, key, state, hlc, markedInAnki ? 1 : 0],
+  );
+}
+
 /** Apply one event to the projection tables. Must run inside a transaction. */
 export async function applyEvent(driver: SqlDriver, ctx: EventContext): Promise<void> {
   const e = ctx.event;
@@ -121,20 +142,24 @@ export async function applyEvent(driver: SqlDriver, ctx: EventContext): Promise<
       ]);
       return;
     }
-    case "WordStateSet": {
-      // Last-write-wins by HLC, independent of arrival order (sync-safe).
-      const rows = await driver.exec(
-        "SELECT updated_hlc FROM word_overrides WHERE lang = ? AND key = ?",
-        [e.lang, e.key],
-      );
-      const prev = rows[0]?.["updated_hlc"];
-      if (typeof prev === "string" && compareHlc(prev, ctx.hlc) >= 0) return;
-      await driver.exec(
-        "INSERT OR REPLACE INTO word_overrides (lang, key, state, updated_hlc) VALUES (?,?,?,?)",
-        [e.lang, e.key, e.state, ctx.hlc],
-      );
+    case "WordStateSet":
+      await setOverride(driver, ctx.hlc, e.lang, e.key, e.state, false);
       return;
-    }
+    case "MarkedKnownInAnki":
+      await setOverride(driver, ctx.hlc, e.lang, e.key, "known", true);
+      return;
+    case "WordStateCleared":
+      // A tombstone (empty state) rather than a DELETE, so last-write-wins still holds when
+      // events arrive out of order.
+      await setOverride(driver, ctx.hlc, e.lang, e.key, "", false);
+      return;
+    case "CardsPrioritized":
+      await driver.exec("INSERT OR REPLACE INTO prioritized (lang, key, note_id) VALUES (?,?,?)", [
+        e.lang,
+        e.key,
+        e.noteId,
+      ]);
+      return;
     case "WordLookedUp":
       await driver.exec(
         `INSERT INTO word_lookups (lang, key, count) VALUES (?,?,1)
@@ -186,18 +211,25 @@ export interface WordFacts {
   override?: WordState;
   lookups: number;
   note?: { noteId: number; deck: string };
+  /** Note whose card(s) "Learn next" moved to the front. */
+  prioritizedNoteId?: number;
+  /** The override was set by "Mark known" (written to Anki too). */
+  markedKnownInAnki?: boolean;
 }
 
 /**
  * Effective word info, or null if nothing is known about the word.
  *
- * Precedence: manual override > Anki snapshot > app-created note ("learning", 0.2) >
+ * Precedence: manual override > Anki snapshot > app-created or prioritised note ("learning", 0.2) >
  * looked-up only ("seen", 0.1).
  * - known: pKnown = max(anki pKnown, 0.95); ignored: 1; unknown: 0; seen: 0.1
  * - learning: keep the Anki pKnown if Anki also says "learning", otherwise 0.3
  */
 export function composeWord(key: string, f: WordFacts): WordInfo | null {
   const { anki, override, note, lookups } = f;
+  const prioritized = f.prioritizedNoteId !== undefined;
+  // Anki changes the app caused (added note, moved card) that its snapshot cannot show yet.
+  const pending = note !== undefined || prioritized;
   let state: WordState;
   let pKnown: number;
   let source: "anki" | "app";
@@ -220,13 +252,13 @@ export function composeWord(key: string, f: WordFacts): WordInfo | null {
       default:
         pKnown = 0;
     }
-  } else if (anki && !(note && anki.state === "unknown")) {
-    // (A note the user added from the app stays "learning" until Anki has real evidence:
+  } else if (anki && !(pending && anki.state === "unknown")) {
+    // (A note added or prioritised from the app stays "learning" until Anki has real evidence:
     // the next snapshot still lists the card as new, which must not demote the word.)
     source = "anki";
     state = anki.state;
     pKnown = anki.pKnown;
-  } else if (note) {
+  } else if (pending) {
     source = "app";
     state = "learning";
     pKnown = NOTE_ADDED_P_KNOWN;
@@ -239,9 +271,19 @@ export function composeWord(key: string, f: WordFacts): WordInfo | null {
   }
   const decks = [...(anki?.decks ?? [])];
   if (note && !decks.includes(note.deck)) decks.push(note.deck);
-  const info: WordInfo = { key, state, pKnown, source, decks, lookups };
+  const info: WordInfo = { key, state, pKnown, source, decks, lookups, noteIds: [] };
   if (anki?.gloss) info.gloss = anki.gloss;
   if (anki?.article) info.article = anki.article;
   if (note) info.addedNoteId = note.noteId;
+  const noteIds = [...(anki?.noteIds ?? [])];
+  for (const id of [note?.noteId, f.prioritizedNoteId]) {
+    if (id !== undefined && !noteIds.includes(id)) noteIds.push(id);
+  }
+  info.noteIds = noteIds;
+  if (prioritized) info.prioritized = true;
+  if (override) {
+    info.overridden = true;
+    if (override === "known" && f.markedKnownInAnki) info.markedKnownInAnki = true;
+  }
   return info;
 }

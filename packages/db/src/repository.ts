@@ -43,9 +43,9 @@ export interface KenningRepository extends Repository {
 }
 
 /**
- * Bump when a projection's meaning changes. 2: reading_progress.last_segment = next segment to read.
+ * Bump when a projection's meaning changes. 2: reading_progress.last_segment = next segment to read. 3: write-action events (ADR 0007).
  */
-export const PROJECTION_VERSION = 2;
+export const PROJECTION_VERSION = 3;
 
 const json = <T>(v: SqlValue | undefined): T => JSON.parse(String(v)) as T;
 
@@ -151,13 +151,20 @@ export async function createRepository(
       get(String(r["key"])).anki = ankiEntry(r);
     }
     for (const r of await driver.exec(`SELECT * FROM word_overrides WHERE lang = ?${k}`, p)) {
-      get(String(r["key"])).override = String(r["state"]) as WordState;
+      // An empty state is the tombstone left by WordStateCleared.
+      if (r["state"] === "") continue;
+      const f = get(String(r["key"]));
+      f.override = String(r["state"]) as WordState;
+      f.markedKnownInAnki = r["marked_anki"] === 1;
     }
     for (const r of await driver.exec(`SELECT * FROM word_lookups WHERE lang = ?${k}`, p)) {
       get(String(r["key"])).lookups = Number(r["count"]);
     }
     for (const r of await driver.exec(`SELECT * FROM notes_added WHERE lang = ?${k}`, p)) {
       get(String(r["key"])).note = { noteId: Number(r["note_id"]), deck: String(r["deck"]) };
+    }
+    for (const r of await driver.exec(`SELECT * FROM prioritized WHERE lang = ?${k}`, p)) {
+      get(String(r["key"])).prioritizedNoteId = Number(r["note_id"]);
     }
     const out = new Map<string, WordInfo>();
     for (const [key, f] of [...facts].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))) {

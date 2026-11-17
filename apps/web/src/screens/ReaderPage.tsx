@@ -260,17 +260,41 @@ export function ReaderPage({ textId }: { textId: string }) {
   // The mutations take the entry they act on as a variable, never "whatever is loaded now".
   const addToAnki = useMutation({
     mutationFn: (e: InspectorEntry) => services.addToAnki(e),
-    onSuccess: async () => {
-      toast("Added to Anki");
+    onSuccess: async ({ deck }) => {
+      toast(`Added to ${deck}`);
       await refreshWords();
     },
     onError: (e) => toast("Could not add to Anki", errorMessage(e)),
+  });
+  const learnNext = useMutation({
+    mutationFn: (e: InspectorEntry) => services.learnNext(e),
+    onSuccess: async ({ deck }) => {
+      toast(deck ? `Moved to the front of \u2018${deck}\u2019` : "Moved to the front");
+      await refreshWords();
+    },
+    onError: (e) => toast("Could not move the card", errorMessage(e)),
+  });
+  const markKnown = useMutation({
+    mutationFn: (e: InspectorEntry) => services.markKnown(e),
+    onSuccess: async ({ addedToDeck }) => {
+      toast(addedToDeck ? `Added to ${addedToDeck} as known` : "Marked as known in Anki");
+      await refreshWords();
+    },
+    onError: (e) => toast("Could not mark the word as known", errorMessage(e)),
+  });
+  const resetState = useMutation({
+    mutationFn: (e: InspectorEntry) => services.resetWordState(e.key),
+    onSuccess: async () => {
+      toast("Using Anki\u2019s state");
+      await refreshWords();
+    },
+    onError: (e) => toast("Could not reset the word", errorMessage(e)),
   });
   const setState = useMutation({
     mutationFn: ({ e, state }: { e: InspectorEntry; state: WordState }) =>
       services.setWordState(e.key, state),
     onSuccess: async (_r, { state }) => {
-      toast(state === "ignored" ? "Word ignored" : "Marked as known");
+      toast(state === "ignored" ? "Word ignored" : "Word updated");
       await refreshWords();
     },
     onError: (e) => toast("Could not update the word", errorMessage(e)),
@@ -441,8 +465,17 @@ export function ReaderPage({ textId }: { textId: string }) {
               loading={selected !== null && !entry && !inspect.isError}
               error={selected !== null && inspect.isError ? errorMessage(inspect.error) : null}
               onRetry={() => void inspect.refetch()}
-              busy={addToAnki.isPending || setState.isPending}
+              busy={
+                addToAnki.isPending ||
+                learnNext.isPending ||
+                markKnown.isPending ||
+                resetState.isPending ||
+                setState.isPending
+              }
               onAddToAnki={() => entry && addToAnki.mutate(entry)}
+              onLearnNext={() => entry && learnNext.mutate(entry)}
+              onMarkKnown={() => entry && markKnown.mutate(entry)}
+              onReset={() => entry && resetState.mutate(entry)}
               onSetState={(state) => entry && setState.mutate({ e: entry, state })}
             />,
             inspectorEl,

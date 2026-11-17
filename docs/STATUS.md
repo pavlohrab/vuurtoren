@@ -23,7 +23,7 @@ pnpm dev            # web app on http://localhost:5173 (proxies /nlp and /anki)
 - Monorepo: pnpm + Turborepo, TypeScript (strict), ESLint, Prettier, Vitest, CI.
 - Python side: uv, ruff, pytest.
 - Licence: MIT OR Apache-2.0.
-- Docs: research notes 01–07, design system, naming, ADRs 0001–0006.
+- Docs: research notes 01–07, design system, naming, ADRs 0001–0007.
 
 ### Anki ↔ words (M1)
 
@@ -67,8 +67,9 @@ pnpm dev            # web app on http://localhost:5173 (proxies /nlp and /anki)
   - An adaptive difficulty controller (staircase).
 - **Word inspector:**
   - Dictionary form, meaning (your card's gloss first, then Wiktionary in the right part of speech), article, decks, sentence.
-  - Add to Anki: creates a _Kenning Word_ note with the sentence, in _Kenning::Nederlands_.
-  - Mark known, Ignore.
+  - Shows the word's live state in Anki, read when it opens (new, suspended, learning, review, or "Anki not reachable").
+  - Explicit write actions, per [ADR 0007](adr/0007-anki-write-actions.md): **Add to Anki** (a _Kenning Word_ note with the sentence, in _Kenning::Nederlands_), **Learn next** (moves the new card to the front of its deck, unsuspending it; needs AnkiConnect API v1), **Mark known** (written to Anki as a 21–35 day interval, also for words not in Anki), **Use Anki's state** (drops a manual mark). Every write is logged as an event and tagged `kenning::reading` / `kenning::known`.
+  - Ignore (app-only).
 - **Server:**
   - Analysis, language detection, gloss, URL/PDF/OCR endpoints.
   - Size limits and timeouts.
@@ -110,21 +111,12 @@ pnpm dev            # web app on http://localhost:5173 (proxies /nlp and /anki)
 
 ### Decisions needed from you
 
-1. **Words already in your decks ("Learn next")**, from [design/anki-existing-words.md](design/anki-existing-words.md) and [ADR 0006 (proposed)](adr/0006-prioritise-existing-cards.md).
-   - Recommended: move the existing new card to the front of its deck's new queue, unsuspending it if needed, and tag it `kenning::reading`. This is logged and can be undone.
-   - Open questions:
-     - (a) Should a "move to the Kenning deck" option exist at all?
-     - (b) Warn when the card's deck hasn't been studied for 30+ days?
-     - (c) Does a once-mature but suspended card count as known?
-     - (d) Should a prioritised word be treated as "learning soon" by the planner?
-2. **Cloze range.** Clozes use words with recall 0.70–0.95. With your decks (SM-2) this rarely triggers. Suggested: 0.60–0.99, preferring the shakier words.
-3. **Manual word states vs Anki.** "Mark known" currently wins over later Anki evidence forever. Suggested: add a "Use Anki's state" reset, or let newer Anki reviews override.
+1. **Cloze range.** Clozes use words with recall 0.70–0.95. With your decks (SM-2) this rarely triggers. Suggested: 0.60–0.99, preferring the shakier words.
 
 ### Next milestones
 
 - **M3 leftovers:**
   - End-of-text **"Words from this text"** list → add several to Anki at once.
-  - The Learn-next button (after decision 1).
   - Weave reading (English base text with Dutch islands, [research/06](research/06-weave-reading.md)).
 - **M4 Practice:** exercises without AI (cloze, meaning, de/het, separable verbs, perfect tense with hebben/zijn, dictation) with their own FSRS scheduler.
 - **M5 Grammar:** about 25 Dutch topics, detectors on the analysis, highlighted examples in the reader.

@@ -35,7 +35,35 @@ interface LexEntry {
   decks: string[];
   inAnki: boolean;
   lookups: number;
+  /** Simulated live Anki state (what `cardStatus` would report). */
+  anki: SimAnki;
+  /** State Anki itself reports (what applies again after a reset). */
+  ankiState: { state: WordState; pKnown: number };
+  /** A manual state (Ignore, Mark known) overrides it. */
+  overridden: boolean;
 }
+
+interface SimAnki {
+  status: InspectorEntry["anki"]["status"];
+  detail?: string;
+  deck?: string;
+  prioritized: boolean;
+  markedKnown: boolean;
+}
+
+const FREQ_DECK = "A Frequency Dictionary of Dutch";
+/** Demo words that show each inspector state: key -> simulated Anki state. */
+const DEMO_ANKI: Record<string, Partial<SimAnki>> = {
+  neemt: { status: "new", deck: FREQ_DECK, detail: `New card · in ${FREQ_DECK}` },
+  meenemen: { status: "new", deck: FREQ_DECK, detail: `New card · in ${FREQ_DECK}` },
+  reis: { status: "suspended", deck: FREQ_DECK, detail: "Suspended" },
+  boek: {
+    status: "unavailable",
+    detail: "cannot reach http://127.0.0.1:8765 (is Anki running with AnkiConnect?)",
+  },
+  bel: { status: "learning", detail: "Learning" },
+  opbellen: { status: "learning", detail: "Learning" },
+};
 
 /** [surface, key, pos, gloss, state, pKnown, planLabel?, article?] */
 type Spec = [string, string, string, string, WordState, number, (TokenLabel | undefined)?, string?];
@@ -183,15 +211,31 @@ export function createMockServices(options: { latencyMs?: number } = {}): AppSer
   const lexicon = new Map<string, LexEntry>();
   const bySurface = new Map<string, string>();
   for (const [surface, key, pos, gloss, state, pKnown, planLabel, article] of SPECS) {
+    const demo = DEMO_ANKI[key];
+    const inDeck = state === "known" || state === "learning" || demo?.status === "new";
     const entry: LexEntry = {
       key,
       pos,
       gloss,
       state,
       pKnown,
-      decks: state === "unknown" || state === "ignored" ? [] : [DECK],
-      inAnki: state === "known" || state === "learning",
+      decks: demo?.deck ? [demo.deck] : inDeck || demo ? [DECK] : [],
+      inAnki: inDeck || demo !== undefined,
       lookups: 0,
+      anki: {
+        status: inDeck ? "review" : "absent",
+        ...(inDeck
+          ? {
+              detail:
+                state === "known" ? "In review · due in 41 days" : "In review · due in 6 days",
+            }
+          : {}),
+        prioritized: false,
+        markedKnown: false,
+        ...demo,
+      },
+      ankiState: { state, pKnown },
+      overridden: false,
     };
     if (planLabel) entry.planLabel = planLabel;
     if (article) entry.article = article;
@@ -215,6 +259,16 @@ export function createMockServices(options: { latencyMs?: number } = {}): AppSer
       decks: unknownWord ? [] : [DECK],
       inAnki: !unknownWord,
       lookups: 0,
+      anki: unknownWord
+        ? { status: "absent", prioritized: false, markedKnown: false }
+        : {
+            status: "review",
+            detail: "In review · due in 41 days",
+            prioritized: false,
+            markedKnown: false,
+          },
+      ankiState: { state: unknownWord ? "unknown" : "known", pKnown: unknownWord ? 0 : 0.96 },
+      overridden: false,
     });
     bySurface.set(s, s);
     return { key: s, pos: "X" };
@@ -464,6 +518,16 @@ export function createMockServices(options: { latencyMs?: number } = {}): AppSer
         glosses: e.gloss ? [e.gloss] : [],
         decks: e.decks,
         inAnki: e.inAnki,
+        anki: {
+          status: e.anki.status,
+          ...(e.anki.detail ? { detail: e.anki.detail } : {}),
+          ...(e.anki.deck ? { deck: e.anki.deck } : {}),
+          noteIds: e.anki.status === "absent" ? [] : [1],
+          cardIds: e.anki.status === "absent" ? [] : [10],
+          prioritized: e.anki.prioritized,
+          markedKnown: e.anki.markedKnown,
+          overridden: e.overridden,
+        },
         sentence: t.content.slice(first, last),
         sentenceHighlight: [tok.start - first, tok.end - first],
       };
@@ -476,8 +540,66 @@ export function createMockServices(options: { latencyMs?: number } = {}): AppSer
       if (e) {
         e.inAnki = true;
         e.decks = [...new Set([...e.decks, settings.targetDeck])];
+        e.anki = {
+          ...e.anki,
+          status: "new",
+          deck: settings.targetDeck,
+          detail: `New card · in ${settings.targetDeck}`,
+        };
+        e.state = "learning";
+        e.pKnown = 0.2;
+        e.ankiState = { state: "learning", pKnown: 0.2 };
       }
-      return { noteId };
+      return { noteId, deck: settings.targetDeck };
+    },
+
+    async learnNext(entry) {
+      await wait();
+      const e = lexicon.get(entry.key);
+      if (!e) throw new Error("Unknown word");
+      e.anki = {
+        ...e.anki,
+        status: "new",
+        prioritized: true,
+        detail: `New card · next in ${e.anki.deck ?? ""}`,
+      };
+      e.state = "learning";
+      e.pKnown = 0.2;
+      e.ankiState = { state: "learning", pKnown: 0.2 };
+      return { deck: e.anki.deck ?? "" };
+    },
+
+    async markKnown(entry) {
+      await wait();
+      const e = lexicon.get(entry.key);
+      if (!e) throw new Error("Unknown word");
+      const added = e.anki.status === "absent";
+      e.state = "known";
+      e.pKnown = 0.95;
+      e.overridden = true;
+      e.ankiState = { state: "known", pKnown: 0.95 };
+      e.anki = {
+        ...e.anki,
+        status: "review",
+        markedKnown: true,
+        detail: "In review · due in 28 days",
+      };
+      if (added) {
+        e.inAnki = true;
+        e.decks = [...new Set([...e.decks, settings.targetDeck])];
+      }
+      delete e.planLabel;
+      return added ? { addedToDeck: settings.targetDeck } : {};
+    },
+
+    async resetWordState(key) {
+      await wait();
+      const e = lexicon.get(key);
+      if (!e) return;
+      e.state = e.ankiState.state;
+      e.pKnown = e.ankiState.pKnown;
+      e.overridden = false;
+      e.anki = { ...e.anki, markedKnown: false };
     },
 
     async setWordState(key, state) {
@@ -485,6 +607,7 @@ export function createMockServices(options: { latencyMs?: number } = {}): AppSer
       const e = lexicon.get(key);
       if (!e) return;
       e.state = state;
+      e.overridden = true;
       e.pKnown = state === "known" ? 0.95 : state === "ignored" ? 1 : e.pKnown;
       delete e.planLabel;
     },
@@ -552,6 +675,7 @@ export function createMockServices(options: { latencyMs?: number } = {}): AppSer
           ...(e.article ? { article: e.article } : {}),
           decks: e.decks,
           lookups: e.lookups,
+          noteIds: e.anki.status === "absent" ? [] : [1],
         }));
       const offset = opts.offset ?? 0;
       return rows.slice(offset, offset + (opts.limit ?? 100));

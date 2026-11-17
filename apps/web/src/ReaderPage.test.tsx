@@ -42,7 +42,7 @@ describe("ReaderPage", () => {
       },
     }));
     await userEvent.click(await screen.findByText("zus"));
-    expect(await screen.findByRole("button", { name: "In Anki" })).toBeInTheDocument();
+    expect(await screen.findByText("In review · due in 41 days")).toBeInTheDocument();
     await userEvent.click(screen.getByText("stad"));
     expect(await screen.findByText("Loading the word")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Mark known" })).toBeNull();
@@ -124,6 +124,126 @@ describe("ReaderPage", () => {
     next.focus();
     await userEvent.keyboard("{ArrowRight}");
     expect(next).toHaveFocus();
+  });
+});
+
+describe("Anki write actions in the inspector", () => {
+  const buttons = () => screen.getAllByRole("button").map((b) => b.textContent);
+  const inspectorButtons = (...names: string[]) =>
+    names.forEach((n) => expect(screen.getByRole("button", { name: n })).toBeInTheDocument());
+
+  async function openSecondSegment() {
+    await userEvent.click(await screen.findByRole("button", { name: "Next segment" }));
+    await screen.findByText("Segment 2 of 2");
+  }
+
+  it("absent word: Mark known adds it as known, then offers Use Anki's state", async () => {
+    setup("/read/t-utrecht");
+    await userEvent.click(await screen.findByText("grachten"));
+    inspectorButtons("Add to Anki", "Mark known", "Ignore");
+    expect(screen.getByText("Adds it to Anki as known")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Mark known" }));
+    expect(await screen.findByText("Added to Kenning::Reading as known")).toBeInTheDocument();
+    expect(await screen.findByText("In review · due in 28 days")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Mark known" })).toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: /Use Anki.s state/ }));
+    expect(await screen.findByText(/Using Anki.s state/)).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.queryByRole("button", { name: /Use Anki.s state/ })).toBeNull(),
+    );
+  });
+
+  it("absent word: Add to Anki toasts the deck", async () => {
+    setup("/read/t-utrecht");
+    await userEvent.click(await screen.findByText("grachten"));
+    await userEvent.click(screen.getByRole("button", { name: "Add to Anki" }));
+    expect(await screen.findByText("Added to Kenning::Reading")).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Learn next" })).toBeInTheDocument();
+  });
+
+  it("new card: Learn next moves it and says where", async () => {
+    const learn = vi.fn();
+    setup("/read/t-utrecht", (s) => ({
+      ...s,
+      learnNext: async (e) => {
+        learn(e.anki.status);
+        return s.learnNext(e);
+      },
+    }));
+    await openSecondSegment();
+    await userEvent.click(await screen.findByText("neemt"));
+    expect(
+      await screen.findByText(
+        "Moves its card to the front of \u2018A Frequency Dictionary of Dutch\u2019",
+      ),
+    ).toBeInTheDocument();
+    expect(buttons()).toContain("Learn next");
+    await userEvent.click(screen.getByRole("button", { name: "Learn next" }));
+    expect(
+      await screen.findByText("Moved to the front of \u2018A Frequency Dictionary of Dutch\u2019"),
+    ).toBeInTheDocument();
+    expect(learn).toHaveBeenCalledWith("new");
+    expect(
+      await screen.findByText("New card · next in A Frequency Dictionary of Dutch"),
+    ).toBeInTheDocument();
+  });
+
+  it("suspended card: Unsuspend & learn next", async () => {
+    setup("/read/t-utrecht");
+    await openSecondSegment();
+    await userEvent.click(await screen.findByText("reis"));
+    inspectorButtons("Unsuspend & learn next", "Mark known");
+    expect(screen.getByText("Suspended")).toBeInTheDocument();
+  });
+
+  it("in progress: status line, Mark known marks it", async () => {
+    setup("/read/t-utrecht");
+    await openSecondSegment();
+    await userEvent.click(await screen.findByText("trein"));
+    expect(await screen.findByText("In review · due in 6 days")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Mark known" }));
+    expect(await screen.findByText("Marked as known in Anki")).toBeInTheDocument();
+  });
+
+  it("Anki unreachable: shows the reason and disables the actions", async () => {
+    setup("/read/t-utrecht");
+    await openSecondSegment();
+    await userEvent.click(await screen.findByText("boek"));
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Anki not reachable. cannot reach http://127.0.0.1:8765",
+    );
+    expect(screen.getByRole("button", { name: "Mark known" })).toBeDisabled();
+  });
+
+  it("shows the real error when Learn next fails", async () => {
+    setup("/read/t-utrecht", (s) => ({
+      ...s,
+      learnNext: async () => {
+        throw new Error("Learn next needs AnkiConnect with API v1 (Anki ≥ 26.08)");
+      },
+    }));
+    await openSecondSegment();
+    await userEvent.click(await screen.findByText("neemt"));
+    await userEvent.click(await screen.findByRole("button", { name: "Learn next" }));
+    expect(
+      await screen.findByText("Learn next needs AnkiConnect with API v1 (Anki ≥ 26.08)"),
+    ).toBeInTheDocument();
+  });
+
+  it("Ignore stays app-only and can be reset", async () => {
+    const setWordState = vi.fn();
+    setup("/read/t-utrecht", (s) => ({
+      ...s,
+      setWordState: async (...a) => {
+        setWordState(...a);
+        return s.setWordState(...a);
+      },
+    }));
+    await userEvent.click(await screen.findByText("grachten"));
+    await userEvent.click(screen.getByRole("button", { name: "Ignore" }));
+    expect(await screen.findByText("Word ignored")).toBeInTheDocument();
+    expect(setWordState).toHaveBeenCalledWith("gracht", "ignored");
+    expect(await screen.findByRole("button", { name: /Use Anki.s state/ })).toBeInTheDocument();
   });
 });
 

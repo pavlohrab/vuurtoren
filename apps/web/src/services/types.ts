@@ -57,7 +57,14 @@ export interface AppServices {
   inspect(textId: string, tokenIndex: number): Promise<InspectorEntry>;
   /** Short translations for many tokens at once (missing keys = no translation found). */
   glosses(textId: string, tokenIndices: number[]): Promise<Record<number, string>>;
-  addToAnki(entry: InspectorEntry): Promise<{ noteId: number }>;
+  addToAnki(entry: InspectorEntry): Promise<{ noteId: number; deck: string }>;
+  /** Move the word's new card to the front of its deck, unsuspending it (ADR 0007). */
+  learnNext(entry: InspectorEntry): Promise<{ deck: string }>;
+  /** Mark the word known in Anki (adding the note first if needed), then record it (ADR 0007). */
+  markKnown(entry: InspectorEntry): Promise<{ addedToDeck?: string }>;
+  /** Drop a manual state so Anki's applies again. */
+  resetWordState(key: string): Promise<void>;
+  /** App-only state changes (Ignore). Marking known goes through `markKnown`. */
   setWordState(key: string, state: WordState): Promise<void>;
   recordLookup(textId: string, key: string): Promise<void>;
   finishSegment(

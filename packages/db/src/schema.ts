@@ -84,6 +84,15 @@ export const MIGRATIONS: readonly (readonly string[])[] = [
        value TEXT NOT NULL
      )`,
   ],
+  [
+    `ALTER TABLE word_overrides ADD COLUMN marked_anki INTEGER NOT NULL DEFAULT 0`,
+    `CREATE TABLE prioritized (
+       lang TEXT NOT NULL,
+       key TEXT NOT NULL,
+       note_id INTEGER NOT NULL,
+       PRIMARY KEY (lang, key)
+     )`,
+  ],
 ];
 
 /** Latest schema version. */
@@ -97,6 +106,7 @@ export const PROJECTION_TABLES = [
   "word_overrides",
   "word_lookups",
   "notes_added",
+  "prioritized",
   "reading_progress",
   "staircase",
   "settings",

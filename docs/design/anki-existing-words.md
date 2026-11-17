@@ -1,6 +1,6 @@
 # Words that are already in Anki
 
-Status: proposal (see [ADR 0006](../adr/0006-prioritise-existing-cards.md)). Verified against AnkiConnect v1 on Anki 26.08.1 (`api.describe`, read-only calls only).
+Status: **implemented per [ADR 0007](../adr/0007-anki-write-actions.md)** (this document is the analysis behind it; the options not chosen there, such as moving cards to the Kenning deck, are not built). Verified against AnkiConnect v1 on Anki 26.08.1 (`api.describe`, read-only calls only).
 
 ## 1. Problem
 

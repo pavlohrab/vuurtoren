@@ -2,7 +2,16 @@
  * Real services: local database (@app/db), planner (@app/core), NLP service (@app/nlp-client)
  * and AnkiConnect (@app/anki). The UI only sees the AppServices interface.
  */
-import { AnkiConnectClient, addWordNote, buildSnapshot, highlightSentence } from "@app/anki";
+import {
+  AnkiConnectClient,
+  addNoteAsKnown,
+  addWordNote,
+  buildSnapshot,
+  cardStatus,
+  highlightSentence,
+  learnNext,
+  markKnownInAnki,
+} from "@app/anki";
 import {
   type AnalyzedToken,
   DEFAULT_PLANNER,
@@ -20,7 +29,8 @@ import {
   textDifficulty,
   updateStaircase,
 } from "@app/core";
-import { type KenningRepository, type StoredText, contentHash } from "@app/db";
+import { type KenningRepository, type StoredText, type WordInfo, contentHash } from "@app/db";
+import { absentAnki, ankiFromStatus, unavailableAnki } from "./ankiState.js";
 import { NlpClient } from "@app/nlp-client";
 import type {
   AnkiStatus,
@@ -33,6 +43,8 @@ import type {
   TextListItem,
 } from "./types.js";
 
+/** How long opening a word waits for Anki before showing "Anki not reachable". */
+const INSPECT_TIMEOUT_MS = 3000;
 const ANKI_KEY_STORAGE = "kenning.ankiKey";
 function readSecret(name: string): string | undefined {
   try {
@@ -226,12 +238,39 @@ export function createLiveServices(repo: KenningRepository): AppServices {
     return settingsCache;
   }
   const nlp = async () => new NlpClient({ url: (await settings()).nlpUrl });
-  const anki = async () => {
+  const anki = async (timeoutMs?: number) => {
     const s = await settings();
-    return new AnkiConnectClient(
-      s.ankiKey ? { url: s.ankiUrl, apiKey: s.ankiKey } : { url: s.ankiUrl },
-    );
+    return new AnkiConnectClient({
+      url: s.ankiUrl,
+      ...(s.ankiKey ? { apiKey: s.ankiKey } : {}),
+      ...(timeoutMs ? { timeoutMs } : {}),
+    });
   };
+  /** The note Kenning would create for a word (used by Add to Anki and Mark known). */
+  const newNote = async (entry: InspectorEntry) => {
+    const s = await settings();
+    const v = await view(entry.textId);
+    const word =
+      entry.article && entry.pos === "NOUN" ? `${entry.article} ${entry.lemma}` : entry.lemma;
+    return {
+      deck: s.targetDeck,
+      word,
+      sentence: highlightSentence(entry.sentence, ...entry.sentenceHighlight),
+      tags: ["nl"],
+      ...(entry.glosses[0] ? { gloss: entry.glosses[0] } : {}),
+      ...(v ? { source: v.text.title } : {}),
+    };
+  };
+  /** Live Anki state of a word; "unavailable" (with the reason) if Anki cannot answer in time. */
+  async function liveAnki(info: WordInfo | null): Promise<InspectorEntry["anki"]> {
+    if (!info || info.noteIds.length === 0) return absentAnki(info);
+    try {
+      const { notes } = await cardStatus(await anki(INSPECT_TIMEOUT_MS), info.noteIds);
+      return ankiFromStatus(info, notes);
+    } catch (e) {
+      return unavailableAnki(info, e instanceof Error ? e.message : String(e));
+    }
+  }
   const changed = () => {
     modelVersion++;
   };
@@ -468,6 +507,7 @@ export function createLiveServices(repo: KenningRepository): AppServices {
         glosses: glosses.slice(0, 6),
         decks: info?.decks ?? [],
         inAnki: info?.source === "anki" || info?.addedNoteId !== undefined,
+        anki: await liveAnki(info),
         sentence,
         sentenceHighlight: [t.start - s0, t.end - s0],
       };
@@ -495,20 +535,9 @@ export function createLiveServices(repo: KenningRepository): AppServices {
       return out;
     },
 
-    async addToAnki(entry: InspectorEntry): Promise<{ noteId: number }> {
+    async addToAnki(entry: InspectorEntry): Promise<{ noteId: number; deck: string }> {
       const s = await settings();
-      const v = await view(entry.textId);
-      const word =
-        entry.article && entry.pos === "NOUN" ? `${entry.article} ${entry.lemma}` : entry.lemma;
-      const note = {
-        deck: s.targetDeck,
-        word,
-        sentence: highlightSentence(entry.sentence, ...entry.sentenceHighlight),
-        tags: ["nl"],
-        ...(entry.glosses[0] ? { gloss: entry.glosses[0] } : {}),
-        ...(v ? { source: v.text.title } : {}),
-      };
-      const noteId = await addWordNote(await anki(), note);
+      const noteId = await addWordNote(await anki(), await newNote(entry));
       await repo.append({
         type: "NoteAddedToAnki",
         lang: s.lang,
@@ -517,7 +546,64 @@ export function createLiveServices(repo: KenningRepository): AppServices {
         deck: s.targetDeck,
       });
       changed();
-      return { noteId };
+      return { noteId, deck: s.targetDeck };
+    },
+
+    async learnNext(entry: InspectorEntry): Promise<{ deck: string }> {
+      const noteId = entry.anki.noteIds[0];
+      if (noteId === undefined) throw new Error("This word has no card in Anki");
+      const { repositioned, unsuspended } = await learnNext(await anki(), entry.anki.cardIds);
+      if (repositioned.length === 0) throw new Error("Its card is no longer new in Anki");
+      await repo.append({
+        type: "CardsPrioritized",
+        lang: (await settings()).lang,
+        key: entry.key,
+        noteId,
+        cardIds: repositioned,
+        unsuspended,
+      });
+      changed();
+      return { deck: entry.anki.deck ?? "" };
+    },
+
+    async markKnown(entry: InspectorEntry): Promise<{ addedToDeck?: string }> {
+      if (entry.anki.status === "unavailable") {
+        throw new Error(entry.anki.detail ?? "Anki is not reachable");
+      }
+      const s = await settings();
+      let noteIds = entry.anki.noteIds;
+      let cardIds = entry.anki.cardIds;
+      let addedToDeck: string | undefined;
+      if (cardIds.length > 0) {
+        await markKnownInAnki(await anki(), cardIds);
+      } else {
+        // Not in Anki: add the note, then mark it known.
+        const added = await addNoteAsKnown(await anki(), await newNote(entry));
+        noteIds = [added.noteId];
+        cardIds = added.cardIds;
+        addedToDeck = s.targetDeck;
+        await repo.append({
+          type: "NoteAddedToAnki",
+          lang: s.lang,
+          key: entry.key,
+          noteId: added.noteId,
+          deck: s.targetDeck,
+        });
+      }
+      await repo.append({
+        type: "MarkedKnownInAnki",
+        lang: s.lang,
+        key: entry.key,
+        noteIds,
+        cardIds,
+      });
+      changed();
+      return addedToDeck ? { addedToDeck } : {};
+    },
+
+    async resetWordState(key: string): Promise<void> {
+      await repo.append({ type: "WordStateCleared", lang: (await settings()).lang, key });
+      changed();
     },
 
     async setWordState(key: string, state: WordState): Promise<void> {

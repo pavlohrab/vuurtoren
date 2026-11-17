@@ -1,3 +1,4 @@
+export * from "./actions.js";
 export * from "./clean.js";
 export * from "./client.js";
 export * from "./detect.js";
