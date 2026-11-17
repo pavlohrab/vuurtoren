@@ -11,7 +11,8 @@ import type { AnalyzedToken, PlannedToken, PlannerOptions, Segment } from "./typ
 /** Words with pKnown below this are "unknown" for planning. */
 export const UNKNOWN_THRESHOLD = 0.5;
 /** Cloze candidates must have pKnown within this range. */
-export const CLOZE_P_RANGE = [0.7, 0.95] as const;
+/** Recall range of words chosen as clozes (shakier words preferred within it). */
+export const CLOZE_P_RANGE = [0.6, 0.99] as const;
 export const CLOZE_MIN_SENTENCE_WORDS = 6;
 export const CLOZE_MIN_CHARS = 2;
 /** A "page": the new-word budget is per page (segments are ~150 words). */

@@ -40,6 +40,8 @@ export interface CardMemory {
   lastReviewMs?: number;
   /** True for new (never reviewed) cards. */
   isNew?: boolean;
+  /** Suspended in Anki: a mature suspended card still counts as known (the user set it aside). */
+  suspended?: boolean;
 }
 
 export interface WordKnowledge {
@@ -80,6 +82,11 @@ export function classifyCard(card: CardMemory, nowMs: number = Date.now()): Word
   const mature =
     card.intervalDays >= KNOWN_THRESHOLD_DAYS ||
     (card.stabilityDays !== undefined && card.stabilityDays >= KNOWN_THRESHOLD_DAYS);
+  if (mature && card.suspended) {
+    // Suspended mature cards are typically "I know this, stop showing it": known, whatever
+    // the time since the last review.
+    return { state: "known", pKnown: Math.max(p, KNOWN_MIN_RECALL) };
+  }
   const known = mature && p >= KNOWN_MIN_RECALL;
 
   return { state: known ? "known" : "learning", pKnown: p };

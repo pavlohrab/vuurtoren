@@ -198,16 +198,16 @@ describe("planSegment: clozes", () => {
   });
 
   it.each([
-    ["too certain", 0.99],
-    ["too uncertain", 0.6],
-    ["just below range", 0.69],
-    ["just above range", 0.96],
-  ])("excludes words with pKnown out of [0.7, 0.95]: %s", (_n, p) => {
+    ["too certain", 0.995],
+    ["too uncertain", 0.5],
+    ["just below range", 0.59],
+    ["just above range", 1],
+  ])("excludes words with pKnown out of [0.6, 0.99]: %s", (_n, p) => {
     const toks = tokenize(text);
     expect(run(toks, allLearning(toks, p)).clozes).toEqual([]);
   });
 
-  it.each([0.7, 0.95])("includes pKnown at the boundary %f", (p) => {
+  it.each([0.6, 0.99])("includes pKnown at the boundary %f", (p) => {
     const toks = tokenize(text);
     expect(run(toks, allLearning(toks, p)).clozes).toHaveLength(3);
   });

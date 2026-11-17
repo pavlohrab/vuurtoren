@@ -52,6 +52,18 @@ describe("classifyCard", () => {
     expect(classifyCard({ intervalDays: 30, lastReviewMs: now }, now).pKnown).toBe(1);
   });
 
+  it("counts a mature suspended card as known even when long unreviewed", () => {
+    const k = classifyCard(
+      { intervalDays: 40, lastReviewMs: now - 900 * DAY, suspended: true },
+      now,
+    );
+    expect(k.state).toBe("known");
+    expect(k.pKnown).toBeGreaterThanOrEqual(0.6);
+    expect(classifyCard({ intervalDays: 5, lastReviewMs: now, suspended: true }, now).state).toBe(
+      "learning",
+    );
+  });
+
   it("uses FSRS retrievability when available", () => {
     const k = classifyCard({ intervalDays: 5, stabilityDays: 5, lastReviewMs: now - 5 * DAY }, now);
     expect(k.state).toBe("learning");

@@ -1,6 +1,6 @@
 # ADR 0003 — Anki is the read-only source of knowledge; writes are new notes only
 
-**Status:** accepted
+**Status:** accepted, amended by [0007](0007-anki-write-actions.md): explicit per-word write actions (add, learn next, mark known)
 
 **Decision:**
 

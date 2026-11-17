@@ -34,6 +34,13 @@ describe("cardMemory", () => {
     });
   });
 
+  it("marks suspended cards", () => {
+    expect(cardMemory(card({ interval: 40, queue: -1 }))).toEqual({
+      intervalDays: 40,
+      suspended: true,
+    });
+  });
+
   it("takes the strongest card of a note", () => {
     expect(noteMemory([card({ interval: 4 }), card({ interval: 25 }), card({ type: 0 })])).toEqual({
       intervalDays: 25,

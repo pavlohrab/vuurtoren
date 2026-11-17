@@ -19,6 +19,7 @@ export function cardMemory(card: CardInfo, extras: CardExtras = {}): CardMemory 
         ? 0.01
         : card.interval;
   const memory: CardMemory = { intervalDays };
+  if (card.queue === -1) memory.suspended = true;
   const last = extras.lastReviewMs?.get(card.cardId);
   if (last !== undefined) memory.lastReviewMs = last;
   const fsrs = extras.fsrs?.get(card.cardId);
