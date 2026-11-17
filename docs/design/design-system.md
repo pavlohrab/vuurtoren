@@ -143,18 +143,19 @@ Domain components:
 
 ## Screens
 
-- **Home** (`/`, first screen): Dutch greeting for the time of day (Goedemorgen / Goedemiddag / Goedenavond) and quick actions (Import, Create a story when an AI provider is set, Talk); Continue reading (last text, page, progress, coverage); Today (read one page ~N min · practise X due · Y new words waiting to go to Anki · current course unit), each step a link; Your words (ring = share of the library you know, known / learning / vocabulary, link to Progress). A brand-new learner sees two first steps (Connect Anki, Import a text) instead.
+- **Home** (`/`, first screen): a 12-column dashboard (max 1200px, 24px gutters, every tile with an eyebrow header and an optional action on the right). Dutch greeting with quick actions on the title row (Import, Create a story, Talk); the top bar shows the date. Tiles: Continue reading (cover, excerpt in Literata, pages read, coverage chip, "Not this one? Library"), Your words (ring = share of the words in your texts you know, known / learning / vocabulary linking to Words), Today (practise, words waiting for Anki, course unit; done steps get a check), Words to learn now (amber chips that open the inspector in Words), This week (activity per day, no streak guilt), Recent texts, Grammar in your texts, Talk about it. A brand-new learner sees two first steps (Connect Anki, Import a text) instead.
 - **Sign-in**: a small landing: the mark, the wordmark, one sentence on what Kenning does, then the form.
 - **Onboarding** (`/welcome`): connect AnkiConnect, choose decks and fields, language profile.
-- **Library:** cards per text with coverage, new-word count and difficulty band.
+- **Library:** a shelf of cards with a generated cover per source kind (paste, web page, PDF, photo, AI story, course text, conversation), coverage on the cover edge, new-word count, difficulty band and Continue · page N of M for texts in progress.
 - **Import:** paste, URL, PDF, photo; editable OCR preview.
-- **Reader:** read / cloze / gloss modes; end-of-text "Words from this text" list.
+- **Reader:** read / cloze / gloss modes; the end of a text shows a calm completion panel (new words met, in Anki, still to decide) leading to Words from this text, Practise these words, Talk about this text and Next text.
 - **Practice:** one exercise per screen; keys 1–4, Enter, Esc.
 - **Talk** (`/talk`, formerly Converse; `/converse` redirects): chat with coverage chips, inline corrections and new-word chips.
-- **Words:** filterable lemma table.
+- **Words:** the hub. State / source / search filters live in the URL with removable chips; rows open the shared inspector; a selection goes to Anki, Practice or Talk.
 - **Grammar:** topics with "seen in your texts" examples.
 - **Progress:** vocabulary estimate and practice numbers (from Home).
-- **Settings:** Anki, AI providers, translation engine, sync, data export.
+- **Settings:** sections with a sub-nav (a list on phones): Account, Language & decks (Anki connection first), Reading, AI, Data & backup, Advanced. Changes save themselves with a quiet "Saved" note; the theme is only in the top bar.
+- **Page header:** every top-level screen opens with the same header: title (h1), one line on what the page is for, the primary action on the right.
 
 ## Voice & copy
 

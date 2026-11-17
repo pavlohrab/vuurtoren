@@ -110,6 +110,16 @@ pnpm dev            # web app on http://localhost:5173 (proxies /nlp and /anki)
 - Practice answers, reader cloze answers (new `ClozeAnswered` event) and book exercise answers feed the learner model as **app evidence**: they raise `pKnown` of words Anki does not call known, fade with a 30-day half-life, never demote and never make a word known. Strong evidence shows as **Learning (in Kenning)** in Words and the inspector. Rule and numbers: [algorithms.md §1.7](algorithms.md#17-learning-in-kenning-app-evidence).
 - Add, Study first in Anki, Mark known, Use Anki's state and app-only states are one command layer in `@app/anki` (`profile.ts`, `commands.ts`) with one key rule, used by the reader, Words from this text, course units, the placement check and MCP.
 
+### One learning loop (branch `loop`, 2026-11-17)
+
+- **Home** is a 12-column dashboard: Continue reading (cover, excerpt from where you left off, pages read, coverage), Today steps with done states (practise N due, words waiting for Anki, the course unit), Words to learn now, This week (pages, exercises and words added per day from the event log: repository `activity`), Recent texts, the grammar topic seen most in your texts and a Talk prompt. The top bar shows the date.
+- **Reader finish** shows a completion panel (new words met, in Anki, still to decide) with Words from this text, Practise these words, Talk about this text and Next text.
+- **Words is the hub**: filters in the URL (`/words?state=&source=text:<id>|unit:<course>/<n>|practice-again&q=&word=`) with chips; rows open the shared inspector (same actions as the reader, `useWordActions`); bulk select → Add to Anki (deck picker), Practise these, Talk about these. Linked from Home, Progress, Words from this text, course units and the Practice summary.
+- **Practice**: one note on Practice vs Anki, "N exercises due", `/practice?words=` focus sessions, and a summary that leads on (Practise again, Review these words, Talk about these words, Next text).
+- **Talk**: seeded with `?words=&topic=`, sentence-case titles, Save to Library (text source kind `talk`); "Converse" labels say Talk.
+- **Settings**: sections (Account, Language & decks, Reading, AI, Data & backup, Advanced) with a sub-nav, autosave and a quiet Saved note; Anki connection and Sync at the top of Language & decks.
+- **Library** is a shelf with generated covers per source kind and Continue · page N of M; one page header (title, purpose, primary action) on Library, Practice, Words, Courses, Grammar, Talk, Settings and Progress. Favicon PNGs use the dark tile.
+
 ### Review fixes applied
 
 - **NLP:** lemma precision, UTF-16 offsets, request size limits, one shared key-normalisation rule (Python = TypeScript), particle and R-pronoun false positives.

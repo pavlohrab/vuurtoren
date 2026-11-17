@@ -513,8 +513,9 @@ kbd {
   z-index: 80;
 }
 .k-toast {
-  background: var(--surface);
-  border: 1px solid var(--line);
+  /* Lifted one step above the page in both themes, with a stronger edge than a card. */
+  background: color-mix(in srgb, var(--surface) 96%, var(--ink));
+  border: 1px solid var(--line-strong);
   border-radius: var(--radius-card);
   box-shadow: var(--shadow-pop);
   padding: 10px 14px;

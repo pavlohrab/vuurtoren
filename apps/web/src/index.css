@@ -1599,7 +1599,7 @@ a.home-step:hover {
 }
 .practice-next {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: 8px;
   width: 100%;
   margin-top: 8px;

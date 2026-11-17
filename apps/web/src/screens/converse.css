@@ -84,3 +84,17 @@
 .cv-past li button:focus-visible {
   outline: 2px solid var(--accent);
 }
+/* Message box and Send on one line. */
+.cv-compose.stack {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px;
+}
+.cv-compose > :first-child {
+  flex: 1 1 240px;
+  min-width: 0;
+}
+.cv-compose > p {
+  flex-basis: 100%;
+}
