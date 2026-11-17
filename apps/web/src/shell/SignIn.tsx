@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
-import { Button, Spinner } from "@app/ui";
+import { Button, LogoMark, Spinner } from "@app/ui";
 import type { AuthMethod, Credentials, SignInResult } from "../auth/client.js";
 
 export interface SignInProps {
@@ -107,9 +107,16 @@ export function SignInScreen({ methods, signIn, onSignedIn, reason, defaultUser 
   return (
     <div className={reason === "expired" ? "signin signin--overlay" : "signin"}>
       <main className="signin-main" aria-labelledby={`${ids.lede}-title`}>
-        <div className="signin-brand" aria-hidden="true">
-          Kenning
-        </div>
+        <header className="signin-brand">
+          <LogoMark size={56} coverage={0.75} />
+          <p className="signin-name" aria-hidden="true">
+            kenning
+          </p>
+          <p className="signin-pitch">
+            Read Dutch with the words you already know. Your Anki decks are the record of your
+            vocabulary; Kenning finds texts you can read and the next words worth learning.
+          </p>
+        </header>
         <section className="signin-card">
           <h1 id={`${ids.lede}-title`} className="signin-title">
             {reason === "expired" ? "Sign in again" : "Sign in"}

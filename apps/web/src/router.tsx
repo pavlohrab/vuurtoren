@@ -10,13 +10,16 @@ import { Root } from "./shell/Root.js";
 
 const rootRoute = createRootRoute({ component: Root });
 
-const indexRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: "/",
-  beforeLoad: () => {
-    throw redirect({ to: "/library" });
-  },
-});
+/** A path kept for old links and bookmarks that redirects to its new home. */
+function alias(path: string, to: "/" | "/talk") {
+  return createRoute({
+    getParentRoute: () => rootRoute,
+    path,
+    beforeLoad: () => {
+      throw redirect({ to, replace: true });
+    },
+  });
+}
 
 /** Declare a code-split screen route. */
 function screen<P extends string>(
@@ -31,6 +34,8 @@ function screen<P extends string>(
   });
 }
 
+const homeRoute = screen("/", () => import("./screens/Home.js"), "Home");
+const homeAlias = alias("/home", "/");
 const libraryRoute = screen("/library", () => import("./screens/Library.js"), "Library");
 const readRoute = screen("/read/$textId", () => import("./screens/ReaderPage.js"), "ReaderRoute");
 const wordsOfTextRoute = screen(
@@ -41,7 +46,8 @@ const wordsOfTextRoute = screen(
 const importRoute = screen("/import", () => import("./screens/Import.js"), "ImportScreen");
 const wordsRoute = screen("/words", () => import("./screens/Words.js"), "Words");
 const practiceRoute = screen("/practice", () => import("./screens/Practice.js"), "Practice");
-const converseRoute = screen("/converse", () => import("./screens/Converse.js"), "Converse");
+const talkRoute = screen("/talk", () => import("./screens/Converse.js"), "Converse");
+const converseAlias = alias("/converse", "/talk");
 const grammarRoute = screen("/grammar", () => import("./screens/Grammar.js"), "Grammar");
 const grammarTopicRoute = screen(
   "/grammar/$topic",
@@ -80,14 +86,16 @@ const unitRoute = screen(
 );
 
 const routeTree = rootRoute.addChildren([
-  indexRoute,
+  homeRoute,
+  homeAlias,
   libraryRoute,
   readRoute,
   wordsOfTextRoute,
   importRoute,
   wordsRoute,
   practiceRoute,
-  converseRoute,
+  talkRoute,
+  converseAlias,
   grammarRoute,
   grammarTopicRoute,
   topicPracticeRoute,
@@ -103,7 +111,13 @@ const routeTree = rootRoute.addChildren([
 
 /** Build the app router; pass a memory history in tests. */
 export function createAppRouter(history?: RouterHistory) {
-  return createRouter({ routeTree, ...(history ? { history } : {}) });
+  // Route cross-fade through the View Transitions API; the router feature-detects it and
+  // styles.css turns it off under reduced motion.
+  return createRouter({
+    routeTree,
+    defaultViewTransition: true,
+    ...(history ? { history } : {}),
+  });
 }
 
 declare module "@tanstack/react-router" {

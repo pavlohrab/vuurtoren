@@ -1,8 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
-  BookOpen,
   BookText,
+  Ellipsis,
+  House,
   Command as CommandIcon,
   FileText,
   Languages,
@@ -25,6 +26,7 @@ import type { ReactNode } from "react";
 import {
   Button,
   Chip,
+  Logo,
   CommandPalette,
   CoverageMeter,
   Tabs,
@@ -35,17 +37,17 @@ import {
 } from "@app/ui";
 import { useServices } from "../services/context.js";
 import { useTheme, type ThemeChoice } from "../theme.js";
-import { readLastText } from "../lastText.js";
 import { useAppInfo } from "./AppInfo.js";
 import { ShellContext, type PageHeader, type ShellState } from "./ShellContext.js";
 
 const PAGE_TITLES: Record<string, string> = {
+  "/": "Home",
   "/library": "Library",
   "/import": "Import text",
   "/words": "Words",
   "/practice": "Practice",
   "/courses": "Courses",
-  "/converse": "Converse",
+  "/talk": "Talk",
   "/grammar": "Grammar",
   "/progress": "Progress",
   "/settings": "Settings",
@@ -89,6 +91,19 @@ export function AppShell() {
   );
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
+  // Phone tab bar: the "More" sheet with the secondary destinations.
+  // Remembered with the path it was opened on, so navigating closes it.
+  const [moreAt, setMoreAt] = useState<string | null>(null);
+  const moreOpen = moreAt === pathname;
+  const setMoreOpen = useCallback((open: boolean) => setMoreAt(open ? pathname : null), [pathname]);
+  useEffect(() => {
+    if (!moreOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMoreOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [moreOpen, setMoreOpen]);
 
   const texts = useQuery({ queryKey: ["texts"], queryFn: () => services.listTexts() });
   // Due count for the sidebar badge; failures just hide the badge.
@@ -123,16 +138,6 @@ export function AppShell() {
     [mode, inspectorEl, inspectorOpen],
   );
 
-  // The sidebar "Read" link: the text opened last, else the first one with progress
-  // (lastSegment is the next segment to read, so > 0 means at least one was finished).
-  // Re-read on navigation, because the reader records the text it opens.
-  const readTarget = useMemo(() => {
-    const list = texts.data ?? [];
-    const open = /^\/read\/([^/]+)/.exec(pathname)?.[1];
-    const last = open ? decodeURIComponent(open) : readLastText();
-    return list.find((t) => t.id === last) ?? list.find((t) => t.lastSegment > 0) ?? list[0];
-  }, [texts.data, pathname]);
-
   const title =
     header?.title ??
     PAGE_TITLES[pathname] ??
@@ -146,11 +151,12 @@ export function AppShell() {
 
   const groups: CommandGroup[] = useMemo(() => {
     const pages: [string, string, ReactNode][] = [
+      ["/", "Home", <House key="h" size={16} />],
       ["/library", "Library", <Library key="l" size={16} />],
       ["/import", "Import text", <Plus key="i" size={16} />],
       ["/practice", "Practice", <Dumbbell key="p" size={16} />],
       ["/courses", "Courses", <GraduationCap key="co" size={16} />],
-      ["/converse", "Converse", <MessagesSquare key="c" size={16} />],
+      ["/talk", "Talk", <MessagesSquare key="c" size={16} />],
       ["/words", "Words", <Languages key="w" size={16} />],
       ["/grammar", "Grammar", <BookText key="g" size={16} />],
       ["/progress", "Progress", <TrendingUp key="pr" size={16} />],
@@ -187,48 +193,46 @@ export function AppShell() {
         data-inspector={showInspector ? "open" : "closed"}
       >
         <nav className="sidebar" aria-label="Main">
-          <div className="sidebar-brand">
-            <BookOpen size={20} aria-hidden />
-            <span className="brand-label">Kenning</span>
-          </div>
+          <Link to="/" className="sidebar-brand" aria-label="Kenning, home">
+            <Logo size={26} className="brand-logo" title="Kenning" />
+          </Link>
+          <NavLink to="/" label="Home" icon={<House size={18} />} exact />
           <NavLink to="/library" label="Library" icon={<Library size={18} />} />
-          {readTarget ? (
-            <Link
-              to="/read/$textId"
-              params={{ textId: readTarget.id }}
-              className="nav-link"
-              title="Read"
-              activeOptions={{ exact: false }}
-            >
-              <BookOpen size={18} />
-              <span className="nav-label">Read</span>
-            </Link>
-          ) : (
-            // Nothing to read yet: a disabled entry, so Library is the only highlighted item.
-            <span
-              className="nav-link nav-link--disabled"
-              role="link"
-              aria-disabled="true"
-              title="Read: import a text first"
-            >
-              <BookOpen size={18} />
-              <span className="nav-label">Read</span>
-            </span>
-          )}
           <NavLink
             to="/practice"
             label="Practice"
             icon={<Dumbbell size={18} />}
             badge={practice.data?.due}
           />
-          <NavLink to="/courses" label="Courses" icon={<GraduationCap size={18} />} />
-          <NavLink to="/converse" label="Converse" icon={<MessagesSquare size={18} />} />
           <NavLink to="/words" label="Words" icon={<Languages size={18} />} />
-          <NavLink to="/grammar" label="Grammar" icon={<BookText size={18} />} />
-          <NavLink to="/progress" label="Progress" icon={<TrendingUp size={18} />} />
+          <NavLink to="/courses" label="Courses" icon={<GraduationCap size={18} />} secondary />
+          <NavLink to="/grammar" label="Grammar" icon={<BookText size={18} />} secondary />
+          <NavLink to="/talk" label="Talk" icon={<MessagesSquare size={18} />} secondary />
           <div className="nav-spacer" />
-          <NavLink to="/settings" label="Settings" icon={<SettingsIcon size={18} />} />
+          <NavLink to="/settings" label="Settings" icon={<SettingsIcon size={18} />} secondary />
+          <button
+            type="button"
+            className="nav-link nav-more"
+            aria-expanded={moreOpen}
+            aria-controls="nav-more-sheet"
+            onClick={() => setMoreOpen(!moreOpen)}
+          >
+            <Ellipsis size={18} />
+            <span className="nav-label">More</span>
+          </button>
         </nav>
+        {moreOpen ? (
+          <>
+            <div className="nav-more-scrim" onClick={() => setMoreOpen(false)} aria-hidden />
+            <div className="nav-more-sheet" id="nav-more-sheet" role="menu" aria-label="More">
+              <MoreLink to="/courses" label="Courses" icon={<GraduationCap size={18} />} />
+              <MoreLink to="/grammar" label="Grammar" icon={<BookText size={18} />} />
+              <MoreLink to="/talk" label="Talk" icon={<MessagesSquare size={18} />} />
+              <MoreLink to="/progress" label="Progress" icon={<TrendingUp size={18} />} />
+              <MoreLink to="/settings" label="Settings" icon={<SettingsIcon size={18} />} />
+            </div>
+          </>
+        ) : null}
 
         <div className="main">
           {notice || demo ? (
@@ -370,10 +374,11 @@ export function AppShell() {
 }
 
 type FixedRoute =
+  | "/"
   | "/library"
   | "/practice"
   | "/courses"
-  | "/converse"
+  | "/talk"
   | "/words"
   | "/grammar"
   | "/progress"
@@ -384,14 +389,24 @@ function NavLink({
   label,
   icon,
   badge,
+  exact,
+  secondary,
 }: {
   to: FixedRoute;
   label: string;
   icon: ReactNode;
   badge?: number | undefined;
+  exact?: boolean;
+  /** Folded into the phone tab bar's More sheet. */
+  secondary?: boolean;
 }) {
   return (
-    <Link to={to} className="nav-link" title={label}>
+    <Link
+      to={to}
+      className={secondary ? "nav-link nav-link--secondary" : "nav-link"}
+      title={label}
+      activeOptions={{ exact: exact ?? false, includeSearch: false }}
+    >
       {icon}
       <span className="nav-label">{label}</span>
       {badge ? (
@@ -399,6 +414,15 @@ function NavLink({
           {badge}
         </span>
       ) : null}
+    </Link>
+  );
+}
+
+function MoreLink({ to, label, icon }: { to: FixedRoute; label: string; icon: ReactNode }) {
+  return (
+    <Link to={to} className="nav-more-item" role="menuitem">
+      {icon}
+      <span>{label}</span>
     </Link>
   );
 }

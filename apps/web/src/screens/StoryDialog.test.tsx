@@ -17,7 +17,7 @@ function setup(path = "/", patch: Partial<AppServices> = {}) {
 
 describe("Create a story", () => {
   it("creates a story from the Library, opens it in the reader, and marks it as an AI story", async () => {
-    const { services, history, user } = setup("/");
+    const { services, history, user } = setup("/library");
     await user.click(await screen.findByRole("button", { name: /Create a story/ }));
     const dialog = await screen.findByRole("dialog");
     expect(within(dialog).getByText(/tokens in/)).toBeInTheDocument();
@@ -40,7 +40,7 @@ describe("Create a story", () => {
     );
     expect(await screen.findByText(/does not use: afspraak/)).toBeInTheDocument();
 
-    await history.push("/");
+    await history.push("/library");
     await waitFor(() => {
       const card = screen
         .getAllByRole("article")
@@ -66,7 +66,7 @@ describe("Create a story", () => {
   });
 
   it("is hidden when no AI provider is configured", async () => {
-    setup("/", {
+    setup("/library", {
       aiStatus: async () => ({
         configured: false,
         locked: false,
