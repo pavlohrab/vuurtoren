@@ -11,6 +11,8 @@ Share-alike terms apply to the data, not to the application code.
 | simplemma | dictionary lemmas | MIT | |
 | lingua-language-detector | `/detect` | Apache-2.0 | |
 | Tesseract and `nld` / `ukr` / `eng` traineddata | `POST /ocr` | Apache-2.0 | Installed from Debian packages in the Docker image. |
+| Helsinki-NLP OPUS-MT `opus-mt-nl-en` (CTranslate2 conversion `gaudi/opus-mt-nl-en-ctranslate2`) | `POST /translate`, `data/mt-nl-en/` | Apache-2.0 on the Hugging Face model card; OPUS-MT training data and recipes are CC BY 4.0 | Attribution below. Downloaded by `scripts/fetch_mt_model.py` (pinned commit, SHA-256 verified) or at Docker build time; not committed. |
+| ctranslate2 / sentencepiece | MT inference | MIT / Apache-2.0 | |
 | trafilatura | `POST /extract/url` | Apache-2.0 | |
 | pypdfium2 / PDFium | `POST /extract/pdf`, PDF rasterising | BSD-3-Clause / Apache-2.0 | |
 
@@ -25,9 +27,21 @@ Dictionary glosses, parts of speech, genders and pronunciations come from
 reorganised into a SQLite database. Per-entry authorship is in the Wiktionary page histories.
 Any client UI that shows glosses should credit "Wiktionary (CC BY-SA)".
 
+Translations come from OPUS-MT (Tiedemann & Thottingal, 2020, "OPUS-MT - Building open
+translation services for the World"), model `Helsinki-NLP/opus-mt-nl-en`, trained on OPUS data and
+released by the Language Technology Research Group at the University of Helsinki. A client UI that
+shows machine translations should say "Machine translation: OPUS-MT (Helsinki-NLP)".
+
 ## Rebuilding the dictionary
 
 ```sh
 cd server/nlp
 uv run python scripts/build_dictionary.py      # downloads ~250 MB once, writes data/dictionary-nl.sqlite
+```
+
+## Fetching the translation model
+
+```sh
+cd server/nlp
+uv run python scripts/fetch_mt_model.py        # ~160 MB once, writes data/mt-nl-en/
 ```

@@ -19,6 +19,12 @@ The first build is slow (it downloads the spaCy model, installs Tesseract, and d
 the SQLite file ends up in the image). Later builds reuse cached layers. To refresh the
 dictionary, run `docker compose -f deploy/compose.yml build --no-cache nlp`.
 
+The same build also fetches the offline Dutch to English translation model (OPUS-MT, ~160 MB,
+checksum-verified) in its own throwaway stage, so `POST /translate` works without internet or API
+keys. It adds ~160 MB to the image and ~0.7 GB RAM once loaded (lazily, on the first request);
+about 0.1 s per sentence on one CPU core set. Outside Docker run
+`uv run python scripts/fetch_mt_model.py` in `server/nlp`.
+
 Smoke test:
 
 ```sh
@@ -34,6 +40,7 @@ curl -s localhost:8080/nlp/health          # same service through the web contai
 | ---------------------- | ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `KENNING_CORS_ORIGINS` | `nlp`         | Comma-separated browser origins allowed to call the NLP service directly (default `http://localhost:8080`). Not needed for the `/nlp/` proxy. Set it to your public origin if you expose port 8000. |
 | `KENNING_DICT_PATH`    | `nlp`         | Dictionary file (default `/data/dictionary-nl.sqlite` in the image).                                                                                                                                |
+| `KENNING_MT_DIR`       | `nlp`         | Translation model directory (default `/data/mt-nl-en` in the image).                                                                                                                                |
 | `KENNING_OCR_PSM`      | `nlp`         | Tesseract page segmentation mode (default `3`, automatic with column detection).                                                                                                                    |
 | `VITE_NLP_URL`         | web build arg | NLP base URL baked into the bundle (default `/nlp`).                                                                                                                                                |
 

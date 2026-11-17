@@ -90,6 +90,20 @@ export interface GlossEntry {
 /** Gloss lookup result: every requested word maps to its entries (empty if unknown). */
 export type GlossResult = Record<string, GlossEntry[]>;
 
+/** Languages `/translate` supports (offline OPUS-MT): Dutch to English only for now. */
+export interface TranslateOptions {
+  source?: "nl";
+  target?: "en";
+  /** The texts are consecutive sentences of one document (accepted; no effect yet). */
+  context?: boolean;
+}
+
+export interface Translation {
+  /** The input text, echoed. */
+  text: string;
+  translation: string;
+}
+
 export interface NlpClientOptions {
   url?: string;
   fetch?: typeof fetch;
@@ -233,6 +247,35 @@ export class NlpClient {
         await this.post<GlossResult>("/gloss", { lang, words: words.slice(i, i + 1000) }),
       );
     }
+    return out;
+  }
+
+  /**
+   * Offline machine translation (default nl to en). Server limits are 64 texts of at most 2000
+   * characters (20,000 in total), so larger inputs are split into requests of at most 64 texts
+   * and 20,000 characters. Rejects with HTTP 503 if the model is not installed.
+   */
+  async translate(texts: string[], opts: TranslateOptions = {}): Promise<Translation[]> {
+    const body = {
+      source: opts.source ?? "nl",
+      target: opts.target ?? "en",
+      context: !!opts.context,
+    };
+    const out: Translation[] = [];
+    let chunk: string[] = [];
+    let chars = 0;
+    const flush = async () => {
+      if (chunk.length)
+        out.push(...(await this.post<Translation[]>("/translate", { ...body, texts: chunk })));
+      chunk = [];
+      chars = 0;
+    };
+    for (const t of texts) {
+      if (chunk.length >= 64 || chars + t.length > 20_000) await flush();
+      chunk.push(t);
+      chars += t.length;
+    }
+    await flush();
     return out;
   }
 }

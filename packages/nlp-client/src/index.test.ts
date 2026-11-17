@@ -72,3 +72,29 @@ describe("NlpClient import + gloss endpoints", () => {
     await expect(client.ocr(new Blob(["x"]))).rejects.toThrow(/503.*Tesseract/);
   });
 });
+
+describe("NlpClient translate", () => {
+  it("posts source/target/texts and returns pairs", async () => {
+    const { client, calls } = mockClient([{ text: "Hallo", translation: "Hello" }]);
+    const res = await client.translate(["Hallo"]);
+    expect(res[0]?.translation).toBe("Hello");
+    expect(calls[0]?.url).toBe("http://nlp.test/translate");
+    expect(JSON.parse(String(calls[0]?.init.body))).toEqual({
+      source: "nl",
+      target: "en",
+      context: false,
+      texts: ["Hallo"],
+    });
+  });
+
+  it("splits large inputs by text count and total characters", async () => {
+    const { client, calls } = mockClient([]);
+    await client.translate(Array.from({ length: 130 }, () => "a"));
+    expect(calls).toHaveLength(3);
+    await client.translate([
+      "x".repeat(2000),
+      ...Array.from({ length: 10 }, () => "y".repeat(2000)),
+    ]);
+    expect(calls.length).toBe(5);
+  });
+});

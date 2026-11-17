@@ -140,3 +140,30 @@ class GlossEntry(BaseModel):
     ``article`` are the head's."""
     parts: list[GlossPart] | None = None
     """Compound parts in order (only when ``compound``)."""
+
+
+MT_MAX_TEXT_CHARS = 2000
+"""Per-text limit of ``/translate`` (422 above)."""
+MT_MAX_TEXTS = 64
+MT_MAX_TOTAL_CHARS = 20_000
+"""Sum of all text lengths in one ``/translate`` request (413 above)."""
+
+
+class TranslateRequest(BaseModel):
+    """``POST /translate``: up to 64 texts of at most 2,000 characters (20,000 in total)."""
+
+    source: Literal["nl"]
+    target: Literal["en"]
+    texts: list[Annotated[str, StringConstraints(max_length=MT_MAX_TEXT_CHARS)]] = Field(
+        max_length=MT_MAX_TEXTS
+    )
+    context: bool = False
+    """True: the texts are consecutive sentences of one document. Accepted for forward
+    compatibility (context-aware engines); the offline engine translates each text on its own."""
+
+
+class Translation(BaseModel):
+    text: str
+    """The input text, echoed."""
+    translation: str
+    """English translation (empty for a blank input)."""

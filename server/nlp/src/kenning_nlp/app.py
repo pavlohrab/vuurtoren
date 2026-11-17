@@ -17,6 +17,7 @@ from kenning_nlp.errors import ServiceError, read_upload
 from kenning_nlp.extract_url import extract_from_url
 from kenning_nlp.models import (
     MAX_TOTAL_CHARS,
+    MT_MAX_TOTAL_CHARS,
     AnalyzeRequest,
     AnalyzeTermsRequest,
     Detection,
@@ -28,11 +29,14 @@ from kenning_nlp.models import (
     PdfExtraction,
     TermAnalysis,
     TextAnalysis,
+    TranslateRequest,
+    Translation,
     UrlExtraction,
 )
 from kenning_nlp.ocr import TESSERACT_LANGS, run_ocr
 from kenning_nlp.pdf import extract_pdf
 from kenning_nlp.pipeline import analyze_terms, analyze_texts
+from kenning_nlp.translate import translate_texts
 
 
 def parse_origins(raw: str) -> list[str]:
@@ -40,10 +44,10 @@ def parse_origins(raw: str) -> list[str]:
     return [o.strip() for o in raw.split(",") if o.strip()]
 
 
-def check_total(texts: list[str]) -> None:
-    """Reject a request whose strings together exceed ``MAX_TOTAL_CHARS`` (HTTP 413)."""
-    if sum(map(len, texts)) > MAX_TOTAL_CHARS:
-        raise ServiceError(413, f"Request too large (limit {MAX_TOTAL_CHARS} characters in total).")
+def check_total(texts: list[str], limit: int = MAX_TOTAL_CHARS) -> None:
+    """Reject a request whose strings together exceed ``limit`` characters (HTTP 413)."""
+    if sum(map(len, texts)) > limit:
+        raise ServiceError(413, f"Request too large (limit {limit} characters in total).")
 
 
 app = FastAPI(title="Kenning NLP", version=__version__)
@@ -123,3 +127,14 @@ def gloss_endpoint(req: GlossRequest) -> dict[str, list[GlossEntry]]:
     except DictionaryMissingError as e:
         raise ServiceError(503, str(e)) from e
     return {w: [GlossEntry(**e) for e in es] for w, es in entries.items()}
+
+
+@app.post("/translate")
+def translate_endpoint(req: TranslateRequest) -> list[Translation]:
+    """Offline Dutch -> English machine translation (OPUS-MT on CTranslate2).
+
+    Texts should be sentences or short paragraphs. ``context`` is accepted but currently has no
+    effect. 503 if the model has not been fetched (``scripts/fetch_mt_model.py``).
+    """
+    check_total(req.texts, MT_MAX_TOTAL_CHARS)
+    return [Translation(**t) for t in translate_texts(req.source, req.target, req.texts)]
