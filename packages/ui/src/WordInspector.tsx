@@ -131,6 +131,11 @@ export function WordInspector({
           <mark>{s.slice(from, to)}</mark>
           {s.slice(to)}
         </p>
+        {entry.sentenceTranslation ? (
+          <p className="k-inspector-translation" lang="en">
+            {entry.sentenceTranslation}
+          </p>
+        ) : null}
       </section>
 
       <AnkiActions

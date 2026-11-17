@@ -229,6 +229,11 @@ function WordRow({ item, action, result, done, disabled, onAction }: WordRowProp
         <mark>{s.slice(from, to)}</mark>
         {s.slice(to)}
       </p>
+      {item.entry.sentenceTranslation ? (
+        <p className="tw-translation" lang="en">
+          {item.entry.sentenceTranslation}
+        </p>
+      ) : null}
       <div className="tw-action">
         <Select
           label={`Action for ${item.lemma}`}

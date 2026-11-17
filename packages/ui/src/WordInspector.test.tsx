@@ -46,6 +46,11 @@ describe("WordInspector", () => {
     expect(container.querySelector("mark")?.textContent).toBe("huizen");
   });
 
+  it("shows the sentence translation when present", () => {
+    render(<WordInspector entry={{ ...entry, sentenceTranslation: "I call my sister." }} />);
+    expect(screen.getByText("I call my sister.")).toBeInTheDocument();
+  });
+
   it("fires actions", async () => {
     const onAdd = vi.fn();
     const onMark = vi.fn();

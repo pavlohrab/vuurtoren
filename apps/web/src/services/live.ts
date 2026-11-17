@@ -192,13 +192,21 @@ function composeGlosses(
   if (info?.gloss) glosses.push(info.gloss);
   const ordered = orderByPos(entries ?? [], pos);
   for (const e of ordered)
-    for (const g of e.glosses) if (!FORM_OF.test(g) && !glosses.includes(g)) glosses.push(g);
+    for (const g of e.glosses)
+      if (!FORM_OF.test(g) && !PLACE_SENSE.test(g) && !glosses.includes(g)) glosses.push(g);
   const article =
     info?.article ??
     ordered.find((e) => e.article === "de" || e.article === "het")?.article ??
     undefined;
   return { glosses: glosses.slice(0, 6), article };
 }
+
+/**
+ * Wiktionary place-name senses ("a hamlet in Weststellingwerf, Friesland, Netherlands") are
+ * noise for a learner looking up a common noun; proper nouns are not glossed this way anyway.
+ */
+const PLACE_SENSE =
+  /^an? (hamlet|village|town|city|neighbourhood|neighborhood|municipality|river|surname|placename|place)\b.*\b(in|of)\b/i;
 
 /** Where a word may enter the review, strongest reason first. */
 const SOURCE_RANK = { introduce: 0, lookup: 1, gloss: 2 } as const;
@@ -211,6 +219,7 @@ export function createLiveServices(repo: KenningRepository): AppServices {
   const planCache = new Map<string, { version: number; hash: string; view: ReadingView }>();
   // Translation per lemma key: Anki gloss first, then the Wiktionary dictionary; null = none.
   const glossCache = new Map<string, string | null>();
+  const translationCache = new Map<string, string>();
   const inFlight = new Map<string, Promise<ReadingView | null>>();
 
   /** Translations for (key, lemma) pairs, batched: one dictionary request for all misses. */
@@ -298,6 +307,7 @@ export function createLiveServices(repo: KenningRepository): AppServices {
       sentence: highlightSentence(entry.sentence, ...entry.sentenceHighlight),
       tags: ["nl"],
       ...(entry.glosses[0] ? { gloss: entry.glosses[0] } : {}),
+      ...(entry.sentenceTranslation ? { sentenceTranslation: entry.sentenceTranslation } : {}),
       ...(v ? { source: v.text.title } : {}),
     };
   };
@@ -336,6 +346,25 @@ export function createLiveServices(repo: KenningRepository): AppServices {
           )
         : absentAnki(info),
     );
+  }
+  /** Sentence translations (offline MT), cached; missing entries when the model is unavailable. */
+  async function translateSentences(sentences: string[]): Promise<Map<string, string>> {
+    const todo = [...new Set(sentences.filter((s) => s.trim() && !translationCache.has(s)))];
+    if (todo.length) {
+      try {
+        const res = await (await nlp()).translate(todo, { source: "nl", target: "en" });
+        for (const r of res) translationCache.set(r.text, r.translation);
+      } catch (e) {
+        // optional: model not fetched (503) or server down
+        console.warn("[kenning] sentence translation unavailable:", e);
+      }
+    }
+    const out = new Map<string, string>();
+    for (const s of sentences) {
+      const t = translationCache.get(s);
+      if (t) out.set(s, t);
+    }
+    return out;
   }
   /** Dictionary entries for lemmas in one request; empty when the dictionary is unavailable. */
   async function dictionaryFor(lemmas: string[]): Promise<Dictionary> {
@@ -584,13 +613,17 @@ export function createLiveServices(repo: KenningRepository): AppServices {
       const key = matchToken(t, m) ?? normalizeKey(t.lemma);
       const info = await repo.word(lang, key);
       const planned = v.plans.flatMap((p) => p.tokens).find((p) => p.i === t.i);
-      return describeWord(v, t, sentenceSpans(v.tokens), {
+      const [dict, anki] = await Promise.all([dictionaryFor([t.lemma]), liveAnki(info)]);
+      const entry = describeWord(v, t, sentenceSpans(v.tokens), {
         key,
         info,
         label: planned?.label ?? "new",
-        dict: await dictionaryFor([t.lemma]),
-        anki: await liveAnki(info),
+        dict,
+        anki,
       });
+      const tr = (await translateSentences([entry.sentence])).get(entry.sentence);
+      if (tr) entry.sentenceTranslation = tr;
+      return entry;
     },
 
     async textWords(textId, opts = {}): Promise<TextWordItem[]> {
@@ -632,7 +665,7 @@ export function createLiveServices(repo: KenningRepository): AppServices {
       const dict = await dictionaryFor([...new Set(chosen.map(([, c]) => c.t.lemma))]);
       const ankis = await liveAnkiBatch(infos);
       const spans = sentenceSpans(v.tokens);
-      return chosen.map(([key, c], n) => {
+      const rows = chosen.map(([key, c], n) => {
         const entry = describeWord(v, c.t, spans, {
           key,
           info: infos[n] ?? null,
@@ -653,6 +686,13 @@ export function createLiveServices(repo: KenningRepository): AppServices {
           entry,
         };
       });
+      // One translation request for all row sentences.
+      const translations = await translateSentences(rows.map((r) => r.sentence));
+      for (const r of rows) {
+        const tr = translations.get(r.sentence);
+        if (tr) r.entry.sentenceTranslation = tr;
+      }
+      return rows;
     },
 
     async glosses(textId: string, tokenIndices: number[]): Promise<Record<number, string>> {

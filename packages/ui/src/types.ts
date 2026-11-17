@@ -43,6 +43,8 @@ export interface InspectorEntry {
   sentence: string;
   /** [start, end) character range of the token inside `sentence`. */
   sentenceHighlight: [number, number];
+  /** Machine translation of `sentence` (offline model on the NLP server), when available. */
+  sentenceTranslation?: string;
 }
 
 /** Reader presentation mode. Undefined honours the plan as-is. */

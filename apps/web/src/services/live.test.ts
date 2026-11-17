@@ -55,6 +55,12 @@ function fakeBackend(opts: {
   const fetchFn = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
     const u = String(url);
     const body = JSON.parse(String(init?.body ?? "{}")) as Record<string, unknown>;
+    if (u.includes("/nlp/translate")) {
+      const { texts } = JSON.parse(String(init?.body)) as { texts: string[] };
+      return Promise.resolve(
+        new Response(JSON.stringify(texts.map((text) => ({ text, translation: `EN: ${text}` })))),
+      );
+    }
     if (u.includes("/nlp/gloss")) {
       const words = body["words"] as string[];
       glossRequests.push(words);
@@ -183,6 +189,7 @@ describe("live textWords", () => {
     expect(first.source).toBe("introduce");
     expect(first.glosses[0]).toBe("gracht (dictionary)");
     expect(first.article).toBe("de");
+    expect(first.entry.sentenceTranslation).toBe(`EN: ${first.sentence}`);
     expect(first.sentence).toBe("Ik zie een gracht in het huis.");
     const [from, to] = first.sentenceHighlight;
     expect(first.sentence.slice(from, to)).toBe("gracht");

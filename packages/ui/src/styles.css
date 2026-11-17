@@ -853,3 +853,13 @@ kbd {
 svg.lucide {
   stroke-width: 1.5;
 }
+
+/* Machine translation of the context sentence: quiet, secondary */
+.k-inspector-translation,
+.tw-translation {
+  margin: 4px 0 0;
+  font-family: var(--font-ui);
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ink-muted);
+}

@@ -4,6 +4,8 @@ Working name **Kenning**: an open-source reader that uses your Anki decks as the
 
 ## How to run (dev)
 
+One-time data downloads (git-ignored): `cd server/nlp && uv run python scripts/build_dictionary.py && uv run python scripts/fetch_mt_model.py` (34 MB dictionary + 154 MB translation model).
+
 ```sh
 pnpm install && pnpm build
 pnpm nlp            # NLP service on :8000 (spaCy nl, dictionary, OCR*)
@@ -119,7 +121,7 @@ pnpm dev            # web app on http://localhost:5173 (proxies /nlp and /anki)
 - [x] **Gloss mode: optional blanks.** Off by default; the "Blanks off/on" button in the Gloss toolbar is saved.
 - [x] **More cloze help.** Meaning tooltip on focus (it stays visible once you ask for help) → first letter → first half of the word → reveal. Credit 1 / 0.5 / 0.25 / 0.
 - [x] **No clozes on function words** (_met, de, hij, …_). Only content words are blanked.
-- [x] **Every word should have a meaning, also when it is not in Anki.** Compounds are now translated from their parts (100% coverage on a 5-paragraph news text). Still open: a context-aware fallback.
+- [x] **Every word should have a meaning, also when it is not in Anki.** Compounds are translated from their parts (100% coverage on a 5-paragraph news text), and the inspector and the end-of-text list show the **sentence translated** by an offline model (OPUS-MT nl→en, on your own server, no key). New Anki cards get it on their back.
   - The dictionary already covers about 99% of word tokens in news text.
   - **Compounds** (_souvenirwinkel_) get nothing at the moment. In progress: translation from their parts (souvenir · shop).
   - Next: a context-aware sentence translation for the few remaining words, and for choosing the right sense. Options: an offline MT model on the server, or the user's own AI key (M6).
