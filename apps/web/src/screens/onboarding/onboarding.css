@@ -1,0 +1,220 @@
+/* Onboarding wizard and Settings → Language & decks (ADR 0010). */
+.ob-shell {
+  min-height: 100dvh;
+  background: var(--bg);
+  color: var(--ink);
+  display: flex;
+  justify-content: center;
+  padding: 48px 16px 64px;
+}
+.ob-card {
+  width: 100%;
+  max-width: 640px;
+}
+.ob-brand {
+  font-family: "Literata Variable", Georgia, serif;
+  font-size: 23px;
+  margin: 0 0 24px;
+  color: var(--ink);
+}
+.ob-steps {
+  display: flex;
+  gap: 6px;
+  list-style: none;
+  padding: 0;
+  margin: 0 0 28px;
+  flex-wrap: wrap;
+}
+.ob-steps li {
+  font-size: 12px;
+  color: var(--ink-muted);
+  padding: 3px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+}
+.ob-steps li[aria-current="step"] {
+  color: var(--bg);
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.ob-steps li[data-done] {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--line));
+}
+.ob-card h1 {
+  font-size: 28px;
+  margin: 0 0 8px;
+}
+.ob-lede {
+  color: var(--ink-muted);
+  margin: 0 0 24px;
+  max-width: 60ch;
+}
+.ob-nav {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 32px;
+  flex-wrap: wrap;
+}
+.ob-nav-spacer {
+  flex: 1;
+}
+.ob-skip {
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  font-size: 14px;
+  color: var(--ink-muted);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.ob-choices {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 8px;
+}
+.ob-choices--row {
+  gap: 6px;
+}
+.ob-choice,
+.ob-check,
+.ob-deck {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control, 6px);
+  background: var(--surface);
+  cursor: pointer;
+}
+.ob-choices--row .ob-choice {
+  padding: 6px 10px;
+}
+.ob-choice input,
+.ob-check input,
+.ob-deck input {
+  margin-top: 3px;
+  accent-color: var(--accent);
+}
+.ob-choice[data-disabled] {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+.ob-choice-title {
+  display: block;
+  font-weight: 500;
+}
+.ob-choice-sub {
+  display: block;
+  font-size: 13px;
+  color: var(--ink-muted);
+}
+.ob-decks {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 8px;
+}
+.ob-deck-body {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.ob-deck-name {
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+.ob-deck-meta {
+  font-size: 13px;
+  color: var(--ink-muted);
+}
+.ob-deck-examples {
+  font-family: "Literata Variable", Georgia, serif;
+  font-size: 15px;
+}
+.ob-note {
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: var(--surface-2);
+  margin: 0;
+}
+.ob-bands {
+  display: grid;
+  gap: 20px;
+}
+.ob-band h2 {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0 0 8px;
+}
+.ob-words {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.ob-word {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  cursor: pointer;
+  font-size: 14px;
+}
+.ob-word:has(input:checked) {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface));
+}
+.ob-word:has(input:focus-visible) {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.ob-word input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+}
+.ob-word-gloss {
+  color: var(--ink-muted);
+  font-size: 12px;
+}
+.ob-first {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+.ob-first-card {
+  display: grid;
+  gap: 8px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+}
+.ob-first-card h2 {
+  font-size: 16px;
+  margin: 0;
+}
+.ob-first-card p {
+  margin: 0;
+  color: var(--ink-muted);
+  font-size: 14px;
+}
+@media (max-width: 480px) {
+  .ob-shell {
+    padding-top: 24px;
+  }
+  .ob-card h1 {
+    font-size: 23px;
+  }
+}

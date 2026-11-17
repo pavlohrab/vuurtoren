@@ -14,8 +14,8 @@ interface Props {
   clearKey: () => void;
 }
 
-/** Advice for each state that is not "connected". */
-function Help({ status, denied }: { status: AnkiStatus; denied: boolean }) {
+/** Advice for each state that is not "connected" (also used by onboarding). */
+export function AnkiConnectionHelp({ status, denied }: { status: AnkiStatus; denied: boolean }) {
   const origin = window.location.origin;
   if (status.state === "connected") {
     return (
@@ -61,7 +61,7 @@ function Help({ status, denied }: { status: AnkiStatus; denied: boolean }) {
   );
 }
 
-/** Settings: the Anki section (address, key, deck, connect and test). */
+/** Settings: the Anki section (address, key, connect and test). Decks: LanguageDecksSettings. */
 export function AnkiSettings({ form, set, persist, clearKey }: Props) {
   const services = useServices();
   const [denied, setDenied] = useState(false);
@@ -110,12 +110,6 @@ export function AnkiSettings({ form, set, persist, clearKey }: Props) {
           else clearKey();
         }}
       />
-      <Input
-        label="Target deck"
-        value={form.targetDeck}
-        hint="New cards from the reader are added here."
-        onChange={(e) => set("targetDeck", e.target.value)}
-      />
       <div className="row">
         <Button variant="primary" onClick={() => connect.mutate()} disabled={busy}>
           {connect.isPending ? <Spinner label="Waiting for Anki" /> : null}
@@ -136,7 +130,7 @@ export function AnkiSettings({ form, set, persist, clearKey }: Props) {
           {message(error)}
         </span>
       ) : status ? (
-        <Help status={status} denied={denied} />
+        <AnkiConnectionHelp status={status} denied={denied} />
       ) : null}
     </>
   );

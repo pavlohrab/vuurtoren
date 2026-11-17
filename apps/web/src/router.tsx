@@ -6,9 +6,9 @@ import {
   redirect,
 } from "@tanstack/react-router";
 import type { RouterHistory } from "@tanstack/react-router";
-import { AppShell } from "./shell/AppShell.js";
+import { Root } from "./shell/Root.js";
 
-const rootRoute = createRootRoute({ component: AppShell });
+const rootRoute = createRootRoute({ component: Root });
 
 const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -55,6 +55,7 @@ const topicPracticeRoute = screen(
 );
 const progressRoute = screen("/progress", () => import("./screens/Progress.js"), "Progress");
 const settingsRoute = screen("/settings", () => import("./screens/Settings.js"), "SettingsScreen");
+const welcomeRoute = screen("/welcome", () => import("./screens/onboarding/Welcome.js"), "Welcome");
 
 const coursesRoute = screen("/courses", () => import("./screens/courses/Courses.js"), "Courses");
 const courseImportRoute = screen(
@@ -92,6 +93,7 @@ const routeTree = rootRoute.addChildren([
   topicPracticeRoute,
   progressRoute,
   settingsRoute,
+  welcomeRoute,
   coursesRoute,
   courseImportRoute,
   courseEditRoute,

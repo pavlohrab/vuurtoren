@@ -7,6 +7,9 @@ import { AccountSettings } from "./AccountSettings.js";
 import { AISettings } from "./AISettings.js";
 import { AnkiSettings } from "./AnkiSettings.js";
 import { DataSettings } from "./DataSettings.js";
+import { LanguageDecksSettings } from "./LanguageDecksSettings.js";
+import { NoDecksHelp } from "./onboarding/NoDecksHelp.js";
+import { isNoDecksError } from "../services/profileErrors.js";
 import { useTheme, type ThemeChoice } from "../theme.js";
 
 const THEMES = [
@@ -15,7 +18,7 @@ const THEMES = [
   { value: "dark", label: "Dark" },
 ];
 
-/** Settings: Anki and NLP endpoints, target deck, theme and sync. */
+/** Settings: Anki and NLP endpoints, language & decks, theme and sync. */
 export function SettingsScreen() {
   const services = useServices();
   const qc = useQueryClient();
@@ -107,6 +110,8 @@ export function SettingsScreen() {
         </div>
       </form>
 
+      <LanguageDecksSettings />
+
       <section className="stack" style={{ marginTop: 40 }}>
         <h2 style={{ fontSize: 19 }}>Sync</h2>
         <p style={{ margin: 0, color: "var(--ink-muted)" }}>
@@ -126,7 +131,9 @@ export function SettingsScreen() {
             ))}
           </ul>
         ) : null}
-        {sync.isError ? (
+        {sync.isError && isNoDecksError(sync.error) ? (
+          <NoDecksHelp />
+        ) : sync.isError ? (
           <p className="error-text" role="alert">
             The sync did not finish. {message(sync.error)}
           </p>
