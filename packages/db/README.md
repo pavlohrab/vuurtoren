@@ -60,6 +60,7 @@ Helpers: `contentHash(text)` (SHA-256 hex of UTF-8, synchronous, pure) is the ha
   and `BookExerciseAnswered` with `keys`) is overlaid with `withAppEvidence` from `@app/core`:
   it can raise pKnown and make a word `learning` (`appLearning: true`), never demotes `known` /
   `ignored`, and fades with the repository clock (ADR 0011).
+
 - **RPC** (`rpc.ts`): only allow-listed methods; `append` accepts known event types up to
   `MAX_RPC_EVENT_CHARS`; `rebuild` is not remotely callable.
 - "seen" words **are included** in `learnerModel` (state `seen`, pKnown 0.1); consumers that want
