@@ -4,47 +4,50 @@ Status: proposal (see [ADR 0006](../adr/0006-prioritise-existing-cards.md)). Ver
 
 ## 1. Problem
 
-> I meet *boodschap* while reading. It is already in "A Frequency Dictionary of Dutch", but as a new card at position ~2,950 of 4,603. I want to learn it **now**.
+> I meet _boodschap_ while reading. It is already in "A Frequency Dictionary of Dutch", but as a new card at position ~2,950 of 4,603. I want to learn it **now**.
 
-Today the inspector shows a disabled "In Anki" button. In the real collection, both source decks are mostly new: Frequency has 4,603 new and 565 review cards, and Opmaat has 4,452 new and 56 learning or review cards. All decks share the *Default* preset (30 new/day, gather order *Deck*). So for most words a reader clicks, "In Anki" means "unlikely to be seen for months".
+Today the inspector shows a disabled "In Anki" button. In the real collection, both source decks are mostly new: Frequency has 4,603 new and 565 review cards, and Opmaat has 4,452 new and 56 learning or review cards. All decks share the _Default_ preset (30 new/day, gather order _Deck_). So for most words a reader clicks, "In Anki" means "unlikely to be seen for months".
 
-| State of matched card(s)          | Inspector offers                                                      |
-| --------------------------------- | --------------------------------------------------------------------- |
-| not in Anki                       | **Add to Anki** (unchanged)                                           |
-| new, active                       | **Learn next** (primary) · Open in Anki                               |
-| new, suspended                    | **Unsuspend & learn next** · Open in Anki                             |
-| new, buried                       | info only: "Buried until tomorrow" (no unbury method in either API)   |
-| new, in a filtered deck           | info only: "In filtered deck X" (reposition is refused there)         |
-| learning / relearning             | info: "Learning in Anki". No action                                   |
-| review young (< 21 d) / mature    | info: "In review, next due …". No action (reading *is* a review)      |
-| suspended, already studied        | info: "Suspended in Anki". Treated as known (research 02)             |
-| several notes                     | one action on the **chosen** note, with a deck picker (see §3)        |
-| matched only via alias/lemma      | show the Anki headword. Actions + **Add as separate card**            |
+| State of matched card(s)       | Inspector offers                                                    |
+| ------------------------------ | ------------------------------------------------------------------- |
+| not in Anki                    | **Add to Anki** (unchanged)                                         |
+| new, active                    | **Learn next** (primary) · Open in Anki                             |
+| new, suspended                 | **Unsuspend & learn next** · Open in Anki                           |
+| new, buried                    | info only: "Buried until tomorrow" (no unbury method in either API) |
+| new, in a filtered deck        | info only: "In filtered deck X" (reposition is refused there)       |
+| learning / relearning          | info: "Learning in Anki". No action                                 |
+| review young (< 21 d) / mature | info: "In review, next due …". No action (reading _is_ a review)    |
+| suspended, already studied     | info: "Suspended in Anki". Treated as known (research 02)           |
+| several notes                  | one action on the **chosen** note, with a deck picker (see §3)      |
+| matched only via alias/lemma   | show the Anki headword. Actions + **Add as separate card**          |
 
-Rule: if *any* matched card is learning or review, the word is "in progress" and we offer nothing that touches scheduling.
+Rule: if _any_ matched card is learning or review, the word is "in progress" and we offer nothing that touches scheduling.
 
 ## 2. Options
 
-**A. Reposition to the front of the new queue ("Learn next").** v1 `scheduling.repositionNewCards` with `startingFrom: 0`, `shiftExisting: false`. New-card positions are collection-wide (Frequency 566–5838, Opmaat 26–2254). Position 0 puts the card first in *its own deck's* new queue when gather order is *Deck* or *Lowest position*. *Random* gather orders ignore it.
-+ No duplicate, no change to the user's deck organisation. The card's own deck/template and FSRS stay intact.
-+ Same as Anki's Browse → Reposition. It is also exactly what AnkiMorphs "Learn Card Now" does (`reposition_new_cards(start=0, shift_existing=False)` + a `learn-now` tag). AnkiMorphs notes that `shift_existing` forces a **full sync**, so we never set it.
-+ Exact undo: write back the recorded old position.
-− It only shows up if the user studies that deck (or a parent). The per-deck daily limit still applies: if the user has used up today's 30 new cards in Frequency, the card comes tomorrow. Parent limits apply on top (v3 scheduler).
-− Legacy v6 has no reposition action. The only fallback is `setSpecificValueOfCard` on `due` (raw, needs `warning_check`), which we reject. Without v1 the button is unavailable.
+**A. Reposition to the front of the new queue ("Learn next").** v1 `scheduling.repositionNewCards` with `startingFrom: 0`, `shiftExisting: false`. New-card positions are collection-wide (Frequency 566–5838, Opmaat 26–2254). Position 0 puts the card first in _its own deck's_ new queue when gather order is _Deck_ or _Lowest position_. _Random_ gather orders ignore it.
+
+- No duplicate, no change to the user's deck organisation. The card's own deck/template and FSRS stay intact.
+- Same as Anki's Browse → Reposition. It is also exactly what AnkiMorphs "Learn Card Now" does (`reposition_new_cards(start=0, shift_existing=False)` + a `learn-now` tag). AnkiMorphs notes that `shift_existing` forces a **full sync**, so we never set it.
+- Exact undo: write back the recorded old position.
+  − It only shows up if the user studies that deck (or a parent). The per-deck daily limit still applies: if the user has used up today's 30 new cards in Frequency, the card comes tomorrow. Parent limits apply on top (v3 scheduler).
+  − Legacy v6 has no reposition action. The only fallback is `setSpecificValueOfCard` on `due` (raw, needs `warning_check`), which we reject. Without v1 the button is unavailable.
 
 **B. Move the card(s) to the Kenning deck** (`cards.move`, legacy `changeDeck`). Answers "sync to the new deck".
-+ All reading words in one place, with that deck's own new/day limit.
-− Changes the user's deck organisation. Anki keeps no "original deck" for normal decks (`odid` exists only for filtered decks), so we must remember it. A shared-deck update (AnkiHub/CrowdAnki) may move cards back or fight us.
-− Breaks the current snapshot: sources are (deck, note type) pairs, so a moved Frequency note disappears until the Kenning deck is added as a source for that note type.
-− Still needs A, because the card keeps its position 2,950.
-→ Opt-in setting only, never the default.
+
+- All reading words in one place, with that deck's own new/day limit.
+  − Changes the user's deck organisation. Anki keeps no "original deck" for normal decks (`odid` exists only for filtered decks), so we must remember it. A shared-deck update (AnkiHub/CrowdAnki) may move cards back or fight us.
+  − Breaks the current snapshot: sources are (deck, note type) pairs, so a moved Frequency note disappears until the Kenning deck is added as a source for that note type.
+  − Still needs A, because the card keeps its position 2,950.
+  → Opt-in setting only, never the default.
 
 **C. Tag `kenning::reading` (+ optional filtered deck).** `tags.add` on the note.
-+ Harmless metadata that syncs. It lets the user build their own filtered deck `tag:kenning::reading is:new`. Filtered decks step outside normal daily limits, and cards return home when learning completes.
-− Neither API can create or rebuild filtered decks (`createFilteredDeck` is absent from this AnkiConnect, and v1 `decks.create` takes only a name). So the filtered deck stays a documented manual recipe.
-→ Always done together with A, as a marker and for the user's own searches.
 
-**D. Add a separate Kenning note.** Acceptable only when the match is not the same word: an alias/lemma match (*boodschappen* vs *boodschap*, particle verbs), a different sense or POS, or the user explicitly wants a sentence card from this text. Otherwise it creates duplicate learning, and sibling burying does not work across notes. Offer as secondary "Add as separate card", not default. (Yomitan offers the same choice: prevent / allow duplicate / view existing note.)
+- Harmless metadata that syncs. It lets the user build their own filtered deck `tag:kenning::reading is:new`. Filtered decks step outside normal daily limits, and cards return home when learning completes.
+  − Neither API can create or rebuild filtered decks (`createFilteredDeck` is absent from this AnkiConnect, and v1 `decks.create` takes only a name). So the filtered deck stays a documented manual recipe.
+  → Always done together with A, as a marker and for the user's own searches.
+
+**D. Add a separate Kenning note.** Acceptable only when the match is not the same word: an alias/lemma match (_boodschappen_ vs _boodschap_, particle verbs), a different sense or POS, or the user explicitly wants a sentence card from this text. Otherwise it creates duplicate learning, and sibling burying does not work across notes. Offer as secondary "Add as separate card", not default. (Yomitan offers the same choice: prevent / allow duplicate / view existing note.)
 
 **E. Unsuspend** (`cards.setSuspended {suspended:false}`, legacy `unsuspend`). A suspension may be deliberate, so this only happens on explicit click, combined with A for new cards. For suspended studied cards: no action.
 
@@ -56,7 +59,7 @@ Rule: if *any* matched card is learning or review, the word is "in progress" and
 
 **Default: "Learn next" = C + A (+E when suspended), on explicit click, for new cards only.** B is a setting, "Prioritised words: keep in their deck (default) / move to Kenning deck". D is a secondary button for alias matches.
 
-**Choosing the note** when several match: exact headword before alias; then the deck with the most recent review activity (the one the user actually studies); then the earliest position. The inspector shows "in *A Frequency Dictionary of Dutch* ▾" so the user can switch. Only one note is prioritised. Learning the same word twice wastes reviews.
+**Choosing the note** when several match: exact headword before alias; then the deck with the most recent review activity (the one the user actually studies); then the earliest position. The inspector shows "in _A Frequency Dictionary of Dutch_ ▾" so the user can switch. Only one note is prioritised. Learning the same word twice wastes reviews.
 
 **Calls** (v1 JSON-RPC; ids are decimal strings; batched in one request):
 
@@ -82,12 +85,12 @@ The projection sets `word.prioritizedAt`, and the word counts as "learning soon"
 
 **UI copy**
 
-- new: **Learn next** · *Moves "boodschap" to the front of new cards in A Frequency Dictionary of Dutch. 10 new left today.*
-- after: **Next in Anki ✓** · *Undo*
+- new: **Learn next** · _Moves "boodschap" to the front of new cards in A Frequency Dictionary of Dutch. 10 new left today._
+- after: **Next in Anki ✓** · _Undo_
 - suspended new: **Unsuspend & learn next**
-- alias: *Anki has "de boodschap" (matched via lemma).* **Learn next** · **Add as separate card**
-- learning/review: chip *In review · due in 6 days* (no button); buried: *Buried until tomorrow*
-- no v1: *Needs AnkiConnect with API v1 to reorder cards.* **Open in Anki** (`browser.open {query:"nid:…"}` / legacy `guiBrowse`)
+- alias: _Anki has "de boodschap" (matched via lemma)._ **Learn next** · **Add as separate card**
+- learning/review: chip _In review · due in 6 days_ (no button); buried: _Buried until tomorrow_
+- no v1: _Needs AnkiConnect with API v1 to reorder cards._ **Open in Anki** (`browser.open {query:"nid:…"}` / legacy `guiBrowse`)
 
 **Edge cases.** The note is open in Anki's editor (`editorConflict`): show retry. Random gather order: warn "your deck shows new cards in random order". Card in a filtered deck: reposition refused, show info. Several cards per note (Opmaat has 2 templates): reposition all new cards of the note; sibling burying spaces them. The snapshot is stale relative to Anki: always re-read before writing. Same word prioritised on two devices: idempotent (position 0 again). The user studies a different deck than the one the card lives in: the copy names the deck explicitly.
 

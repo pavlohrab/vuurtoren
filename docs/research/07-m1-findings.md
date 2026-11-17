@@ -29,3 +29,9 @@ The sentence check is the automatic gate. Each note's example sentence must cont
 - 1st-person verb stems (ik droom → dromen).
 - Rare spaCy mis-tags.
 - Deck data errors (random/rondom, west/westen).
+
+## Update after the precision review (same day)
+
+- An independent review showed the gate above measured **recall only**: lemma, alternative and surface matches can only add hits. Precision is now covered by `server/nlp/tests/test_precision.py` (58 labelled sentences).
+- Lemma choice is now precision-first. spaCy's unchanged lemma is kept unless the morphology says the word is inflected, and the Wiktionary forms table is used as a lemma oracle. Result: **99.1%** (64 misses of 7,039), with studied words at 570/571.
+- The new misses are mostly past tenses spaCy leaves unchanged, and stranded particles after _hier/daar_. These are the cost of no longer producing false matches such as _bellen → bel_ and _kat → kater_.

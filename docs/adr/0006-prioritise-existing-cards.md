@@ -2,7 +2,7 @@
 
 **Status:** proposed (amends [0003](0003-anki-read-only.md))
 
-**Context:** Many words a reader meets are already in Anki as *new* cards deep in a large deck, for example "A Frequency Dictionary of Dutch" (4,603 of 5,168 cards new). ADR 0003 allows only new notes, so the app can neither help nor add a duplicate cleanly. See [design/anki-existing-words.md](../design/anki-existing-words.md).
+**Context:** Many words a reader meets are already in Anki as _new_ cards deep in a large deck, for example "A Frequency Dictionary of Dutch" (4,603 of 5,168 cards new). ADR 0003 allows only new notes, so the app can neither help nor add a duplicate cleanly. See [design/anki-existing-words.md](../design/anki-existing-words.md).
 
 **Decision:**
 
