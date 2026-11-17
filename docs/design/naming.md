@@ -20,10 +20,10 @@ One vocabulary for word states on every screen (Library, Reader, inspector, Word
 
 | Term                      | Internal value             | Meaning                                                                                                 | Look                   |
 | ------------------------- | -------------------------- | ------------------------------------------------------------------------------------------------------- | ---------------------- |
-| **Known**                 | `known`                    | You know the word (mature in Anki, or marked known).                                                    | Teal (accent)          |
-| **Learning**              | `learning`                 | In progress in Anki or in practice.                                                                     | Green (learning line)  |
+| **Known**                 | `known`                    | You know the word (mature in Anki, or marked known).                                                    | Teal-green (`--known`) |
+| **Learning**              | `learning`                 | In progress in Anki or in practice.                                                                     | Dotted teal-green line |
 | **Learning (in Kenning)** | `learning` + `appLearning` | Learning only from answers given in Kenning (practice, clozes, book exercises), not in Anki (ADR 0011). | Same as Learning       |
-| **To learn**              | planner `introduce` (none) | A new word worth learning now: the amber highlight in the reader, counted as "3 to learn".              | Amber fill             |
+| **To learn**              | planner `introduce` (none) | A new word worth learning now: the amber highlight in the reader, counted as "3 to learn".              | Amber (`--learn`) fill |
 | **New**                   | `unknown`                  | A word you have not learned yet. Counts read "120 new".                                                 | Neutral                |
 | **Seen**                  | `seen`                     | Met while reading, not learned yet.                                                                     | Neutral                |
 | **Ignored**               | `ignored`                  | Left out of coverage and suggestions (names, English words).                                            | Neutral, dashed border |
@@ -43,5 +43,5 @@ Related wording:
 
 - **Study first in Anki** (was "Learn next"): moves a word's new card to the front of Anki's queue. The service method stays `learnNext`; the shared commands are `studyWordFirst` / `studyWordsFirst` in `@app/anki`.
 - **Words to learn per page** (reader): the planner's budget of new words highlighted per page. "New words" on the Gloss slider means words in the _New_ state.
-- **Coverage** is always labelled with its scope: "This page" (reader top bar) or "Whole text" (Library). The bar is teal: the share of words you know.
+- **Coverage** is always labelled with its scope: "This page" (reader top bar) or "Whole text" (Library). The bar is teal-green (`--known`): the share of words you know.
 - Avoid: "unknown", "Not yet known", "New card", "not in Anki" (lowercase), "Learn next".

@@ -41,13 +41,30 @@ describe("empty states", () => {
     expect(screen.getByRole("link", { name: "Import a text" })).toBeInTheDocument();
   });
 
-  it("Read is disabled while the library is empty, so only Library is highlighted", async () => {
+  it("the main nav: Home first, no Read entry, Talk instead of Converse", async () => {
     setup("/library", { listTexts: async () => [] });
     await screen.findByRole("heading", { name: "Your library is empty" });
     const nav = screen.getByRole("navigation", { name: "Main" });
-    const read = within(nav).getByRole("link", { name: "Read" });
-    expect(read).toHaveAttribute("aria-disabled", "true");
-    expect(read).not.toHaveAttribute("href");
+    const names = within(nav)
+      .getAllByRole("link")
+      .map((l) => l.getAttribute("title"))
+      .filter(Boolean);
+    expect(names).toEqual([
+      "Home",
+      "Library",
+      "Practice",
+      "Words",
+      "Courses",
+      "Grammar",
+      "Talk",
+      "Settings",
+    ]);
+    expect(within(nav).getByRole("link", { name: "Library" })).toHaveAttribute(
+      "data-status",
+      "active",
+    );
+    expect(within(nav).queryByRole("link", { name: "Read" })).toBeNull();
+    expect(within(nav).queryByRole("link", { name: "Progress" })).toBeNull();
   });
 
   it("the demo (synced) shows no Connect Anki banner", async () => {

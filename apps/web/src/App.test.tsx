@@ -1,5 +1,5 @@
 import { createMemoryHistory } from "@tanstack/react-router";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { App } from "./App.js";
@@ -11,8 +11,14 @@ function renderApp(path: string) {
 }
 
 describe("App with mock services", () => {
-  it("redirects / to the library and lists texts", async () => {
+  it("opens Home at /, and the library lists texts", async () => {
     renderApp("/");
+    expect(await screen.findByRole("heading", { level: 1, name: /^Goede/ })).toBeInTheDocument();
+    await userEvent.click(
+      within(screen.getByRole("navigation", { name: "Main" })).getByRole("link", {
+        name: "Library",
+      }),
+    );
     expect(await screen.findByText("Een dag in Utrecht")).toBeInTheDocument();
     expect(screen.getByText("Op de markt")).toBeInTheDocument();
     // Anki has not been synced in the mock, so the onboarding hint shows.

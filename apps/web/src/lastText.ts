@@ -1,6 +1,6 @@
 const KEY = "kenning-last-text";
 
-/** Remember the text the learner opened last (the sidebar "Read" link returns to it). */
+/** Remember the text the learner opened last (Home's "Continue reading" returns to it). */
 export function writeLastText(id: string): void {
   try {
     localStorage.setItem(KEY, id);

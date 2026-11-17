@@ -113,7 +113,7 @@ function UserMessage({ m }: { m: ChatMessageView }) {
   );
 }
 
-/** Converse: talk with a partner who keeps to words you know (needs an AI provider in Settings). */
+/** Talk (route /talk, formerly Converse): talk with a partner who keeps to words you know (needs an AI provider in Settings). */
 export function Converse() {
   const services = useServices();
   const qc = useQueryClient();
@@ -187,7 +187,7 @@ export function Converse() {
       <div className="page page--narrow">
         <EmptyState
           icon={<MessagesSquare size={28} />}
-          title="Converse"
+          title="Talk"
           description={
             status.data.locked
               ? "Your API key is locked. Unlock it in Settings to start talking."
@@ -206,7 +206,7 @@ export function Converse() {
   if (!conv) {
     return (
       <div className="page page--narrow">
-        <h1>Converse</h1>
+        <h1>Talk</h1>
         <p className="page-lede">
           A short chat in Dutch that stays within the words you know, with corrections of your own
           messages.
