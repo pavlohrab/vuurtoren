@@ -2,11 +2,12 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 import type { Exercise } from "@app/core";
-import { Button, Chip, Skeleton, Tabs, useToast } from "@app/ui";
+import { AddToAnki, Button, Chip, Skeleton, Tabs, useToast } from "@app/ui";
 import { useServices } from "../../services/context.js";
 import type { UnitView, UnitWordView } from "../../services/courseTypes.js";
 import { BookExercise } from "./BookExercise.js";
 import { GeneratedSession } from "./GeneratedSession.js";
+import { useDeckChoice } from "../useDeckChoice.js";
 import "./courses.css";
 
 const STATE_LABEL: Record<UnitWordView["state"], string> = {
@@ -160,8 +161,14 @@ export function UnitRoute({ courseId, n }: { courseId: string; n: number }) {
     },
     onError: (e) => toast("Learn next did not work", e instanceof Error ? e.message : ""),
   });
+  const deckChoice = useDeckChoice("course", { courseId, unitN: n });
   const add = useMutation({
-    mutationFn: () => services.addMissingUnitWords(courseId, n),
+    mutationFn: () =>
+      services.addMissingUnitWords(
+        courseId,
+        n,
+        deckChoice.chosen ? { deck: deckChoice.chosen } : undefined,
+      ),
     onSuccess: (r) => {
       toast(
         `${r.added} words added to ${r.deck}`,
@@ -218,7 +225,19 @@ export function UnitRoute({ courseId, n }: { courseId: string; n: number }) {
           >
             {learn.isPending ? "Working…" : `Learn next (${s.newInAnki})`}
           </Button>
-          {s.missing > 0 ? (
+          {s.missing > 0 && deckChoice.addDeck ? (
+            <AddToAnki
+              {...deckChoice.addDeck}
+              variant="secondary"
+              label={
+                add.isPending
+                  ? "Adding to"
+                  : `Add ${s.missing} missing ${s.missing === 1 ? "word" : "words"} to`
+              }
+              disabled={add.isPending}
+              onAdd={() => add.mutate()}
+            />
+          ) : s.missing > 0 ? (
             <Button disabled={add.isPending} onClick={() => add.mutate()}>
               {add.isPending
                 ? "Adding…"

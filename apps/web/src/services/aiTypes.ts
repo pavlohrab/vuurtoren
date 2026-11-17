@@ -89,8 +89,8 @@ export interface AIServices {
   sendConversationMessage(id: string, text: string): Promise<ConversationView>;
   /** Words you are learning, as default practice targets. */
   suggestTargetWords(): Promise<string[]>;
-  /** Make a card for a word the partner introduced (uses the Anki target deck). */
-  addConversationWord(word: NewWord): Promise<{ deck: string }>;
+  /** Make a card for a word the partner introduced (Converse deck of the profile, or `opts.deck`). */
+  addConversationWord(word: NewWord, opts?: { deck?: string }): Promise<{ deck: string }>;
   /**
    * Explain a sentence. `grammar`: constructions detected in it (topic title + note), passed to
    * the model as context.

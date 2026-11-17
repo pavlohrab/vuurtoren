@@ -14,6 +14,7 @@ import type {
 import type { StoredText, WordInfo } from "@app/db";
 import { createMockCourses } from "./mockCourses.js";
 import { createMockAI } from "./mockAI.js";
+import { createMockProfile } from "./mockProfile.js";
 import { createMockGrammar } from "./mockGrammar.js";
 import { createMockPractice } from "./mockPractice.js";
 import type {
@@ -461,6 +462,7 @@ export function createMockServices(options: { latencyMs?: number } = {}): AppSer
 
   const practice = createMockPractice(wait);
   const ai = createMockAI(wait);
+  const profile = createMockProfile(wait);
   const grammar = createMockGrammar(
     wait,
     () => [...texts.values()],
@@ -468,6 +470,7 @@ export function createMockServices(options: { latencyMs?: number } = {}): AppSer
   );
 
   return {
+    ...profile.services,
     ...practice,
     ...createMockCourses({ latencyMs: latency }),
     ...ai,
@@ -616,24 +619,25 @@ export function createMockServices(options: { latencyMs?: number } = {}): AppSer
       return out;
     },
 
-    async addToAnki(entry) {
+    async addToAnki(entry, opts) {
       await wait();
       const e = lexicon.get(entry.key);
       const noteId = nextNoteId++;
+      const deck = profile.deckFor("reading", opts?.deck);
       if (e) {
         e.inAnki = true;
-        e.decks = [...new Set([...e.decks, settings.targetDeck])];
+        e.decks = [...new Set([...e.decks, deck])];
         e.anki = {
           ...e.anki,
           status: "new",
-          deck: settings.targetDeck,
-          detail: `New card · in ${settings.targetDeck}`,
+          deck,
+          detail: `New card · in ${deck}`,
         };
         e.state = "learning";
         e.pKnown = 0.2;
         e.ankiState = { state: "learning", pKnown: 0.2 };
       }
-      return { noteId, deck: settings.targetDeck };
+      return { noteId, deck };
     },
 
     async learnNext(entry) {
@@ -652,8 +656,9 @@ export function createMockServices(options: { latencyMs?: number } = {}): AppSer
       return { deck: e.anki.deck ?? "" };
     },
 
-    async markKnown(entry) {
+    async markKnown(entry, opts) {
       await wait();
+      const deck = profile.deckFor("reading", opts?.deck);
       const e = lexicon.get(entry.key);
       if (!e) throw new Error("Unknown word");
       const added = e.anki.status === "absent";
@@ -669,10 +674,10 @@ export function createMockServices(options: { latencyMs?: number } = {}): AppSer
       };
       if (added) {
         e.inAnki = true;
-        e.decks = [...new Set([...e.decks, settings.targetDeck])];
+        e.decks = [...new Set([...e.decks, deck])];
       }
       delete e.planLabel;
-      return added ? { addedToDeck: settings.targetDeck } : {};
+      return added ? { addedToDeck: deck } : {};
     },
 
     async resetWordState(key) {

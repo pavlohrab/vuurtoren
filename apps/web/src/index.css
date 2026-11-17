@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "@app/ui/styles.css";
+@import "@app/ui/add-to-anki.css";
 
 /* ---------- App shell layout (docs/design/design-system.md, Layout) ---------- */
 .shell {

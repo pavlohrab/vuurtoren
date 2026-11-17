@@ -24,8 +24,14 @@ import {
   selectKnownLemmas,
   simplifyText,
 } from "@app/ai";
-import { AnkiConnectClient, addWordNote, highlightSentence } from "@app/anki";
-import { DEFAULT_PLANNER, type AnalyzedToken, type LearnerModel } from "@app/core";
+import { AnkiConnectClient, addWordToAnki, highlightSentence } from "@app/anki";
+import {
+  DEFAULT_PLANNER,
+  type AnalyzedToken,
+  type LanguageProfile,
+  type LearnerModel,
+  migratedProfile,
+} from "@app/core";
 import { type KenningRepository, projectConversations } from "@app/db";
 import { NlpClient } from "@app/nlp-client";
 import type {
@@ -42,6 +48,8 @@ import type { Settings } from "./types.js";
 export interface LiveAIDeps {
   repo: KenningRepository;
   settings: () => Promise<Settings>;
+  /** The language profile (deck routing); defaults to the old target deck for everything. */
+  profile?: () => Promise<LanguageProfile>;
   model: () => Promise<LearnerModel>;
   vocabEstimate: () => Promise<number>;
   anki: () => Promise<AnkiConnectClient>;
@@ -340,12 +348,13 @@ export function createLiveAI(deps: LiveAIDeps): AIServices {
         .slice(0, 5)
         .map((w) => w.key);
     },
-    async addConversationWord(word) {
+    async addConversationWord(word, opts) {
       const s = await deps.settings();
       const example = word.example.trim();
       const at = example.toLowerCase().indexOf(word.lemma.toLowerCase());
-      const noteId = await addWordNote(await deps.anki(), {
-        deck: s.targetDeck,
+      const { deck } = await addWordToAnki(await deps.anki(), (e) => repo.append(e), {
+        profile: deps.profile ? await deps.profile() : migratedProfile(s.lang, s.targetDeck, []),
+        context: { source: "converse", ...(opts?.deck ? { deck: opts.deck } : {}) },
         word: word.lemma,
         ...(word.gloss ? { gloss: word.gloss } : {}),
         ...(example
@@ -353,18 +362,10 @@ export function createLiveAI(deps: LiveAIDeps): AIServices {
               sentence: at >= 0 ? highlightSentence(example, at, at + word.lemma.length) : example,
             }
           : {}),
-        tags: ["nl", "converse"],
         source: "Kenning conversation",
       });
-      await repo.append({
-        type: "NoteAddedToAnki",
-        lang: s.lang,
-        key: word.lemma.toLowerCase(),
-        noteId,
-        deck: s.targetDeck,
-      });
       deps.changed();
-      return { deck: s.targetDeck };
+      return { deck };
     },
     async aiExplainSentence(sentence, grammar) {
       return explainSentence(await provider(), sentence, {

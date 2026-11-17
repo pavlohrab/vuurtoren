@@ -4,7 +4,7 @@
  * the user's own NLP server. Anki writes are the explicit actions of ADR 0007 (Learn next, add
  * notes), each logged as an event.
  */
-import { AnkiConnectClient, type NewWordNote, addWordNote, cardStatus, learnNext } from "@app/anki";
+import { AnkiConnectClient, addWordToAnki, cardStatus, learnNext } from "@app/anki";
 import {
   type Block,
   type BookExercise,
@@ -12,6 +12,7 @@ import {
   type Exercise,
   type ExerciseKind,
   type ItemCheck,
+  type LanguageProfile,
   type LearnerModel,
   type OcrPage,
   type Unit,
@@ -21,9 +22,11 @@ import {
   checkBookItem,
   detectOutline,
   isVerbSecond,
+  migratedProfile,
   normalizeKey,
   readingTexts,
   recognizeExercises,
+  resolveDeck,
   segmentPages,
   stripRunningText,
   suggestDecks,
@@ -58,6 +61,8 @@ import { locateWord } from "./livePractice.js";
 export interface LiveCoursesDeps {
   repo: KenningRepository;
   settings: () => Promise<Settings>;
+  /** The language profile (deck routing); defaults to the old target deck for everything. */
+  profile?: () => Promise<LanguageProfile>;
   nlp: () => Promise<NlpClient>;
   anki: () => Promise<AnkiConnectClient>;
   /** Adds a text to the Library (analysing it); returns its id. */
@@ -482,9 +487,20 @@ export function createLiveCourses(deps: LiveCoursesDeps): CourseServices {
     return { moved: count, skipped: total - count };
   }
 
-  async function addMissingUnitWords(courseId: string, n: number): Promise<AddMissingResult> {
+  async function addMissingUnitWords(
+    courseId: string,
+    n: number,
+    opts?: { deck?: string },
+  ): Promise<AddMissingResult> {
     const s = await deps.settings();
+    const profile = deps.profile ? await deps.profile() : migratedProfile(s.lang, s.targetDeck, []);
     const course = await courseOrThrow(courseId);
+    const unit = course.units.find((u) => u.n === n);
+    const context = {
+      source: "course" as const,
+      course: { title: course.title, ...(unit ? { unitTitle: unit.title } : {}) },
+      ...(opts?.deck ? { deck: opts.deck } : {}),
+    };
     const infos = await wordMap();
     const missing = (await repo.unitWords(courseId, n)).filter(
       (w) => !infos.get(keyOf(w))?.noteIds.length,
@@ -497,21 +513,15 @@ export function createLiveCourses(deps: LiveCoursesDeps): CourseServices {
     let added = 0;
     let failed = 0;
     for (const w of missing) {
-      const note: NewWordNote = {
-        deck: s.targetDeck,
-        word: w.article ? `${w.article} ${w.lemma}` : w.lemma,
-        source: course.title,
-        tags: ["nl", `kenning::course::${slug}::${n}`],
-        ...(w.gloss ? { gloss: w.gloss } : {}),
-      };
       try {
-        const noteId = await addWordNote(anki, note);
-        await repo.append({
-          type: "NoteAddedToAnki",
-          lang: s.lang,
+        await addWordToAnki(anki, (e) => repo.append(e), {
+          profile,
+          context,
+          word: w.article ? `${w.article} ${w.lemma}` : w.lemma,
           key: keyOf(w),
-          noteId,
-          deck: s.targetDeck,
+          source: course.title,
+          extraTags: [`kenning::course::${slug}::${n}`],
+          ...(w.gloss ? { gloss: w.gloss } : {}),
         });
         added++;
       } catch {
@@ -519,7 +529,7 @@ export function createLiveCourses(deps: LiveCoursesDeps): CourseServices {
       }
     }
     deps.changed();
-    return { added, failed, deck: s.targetDeck };
+    return { added, failed, deck: resolveDeck(profile, context) };
   }
 
   // ------------------------------------------------------------------ practice

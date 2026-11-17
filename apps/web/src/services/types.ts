@@ -15,6 +15,7 @@ import type { StoredText, TextSummary, WordInfo } from "@app/db";
 import type { InspectorEntry } from "@app/ui";
 import type { CourseServices } from "./courseTypes.js";
 import type { AIServices } from "./aiTypes.js";
+import type { AddOptions, ProfileServices } from "./profileTypes.js";
 
 /** Defined in @app/ui (the WordInspector consumes it); re-exported here as part of the contract. */
 export type { InspectorEntry };
@@ -53,6 +54,10 @@ export interface Settings {
   ankiKey?: string;
   nlpUrl: string;
   lang: "nl";
+  /**
+   * @deprecated Kept to migrate older users: the language profile's destinations decide where
+   * new words go (ADR 0010).
+   */
   targetDeck: string;
   theme: "system" | "light" | "dark";
   /** Reader help dial in [0, 1]: which words get an inline translation (see core help.ts). */
@@ -169,7 +174,7 @@ export interface TopicPracticeOptions {
  * Everything the UI needs from the outside world. The app never talks to the database,
  * AnkiConnect or the NLP server directly; swap the implementation passed to <ServicesProvider>.
  */
-export interface AppServices extends CourseServices, AIServices {
+export interface AppServices extends CourseServices, AIServices, ProfileServices {
   listTexts(): Promise<TextListItem[]>;
   getReading(textId: string): Promise<ReadingView | null>;
   importText(input: ImportInput, onProgress?: (msg: string) => void): Promise<string>;
@@ -184,11 +189,12 @@ export interface AppServices extends CourseServices, AIServices {
   textWords(textId: string, opts?: { includeGlossed?: boolean }): Promise<TextWordItem[]>;
   /** Short translations for many tokens at once (missing keys = no translation found). */
   glosses(textId: string, tokenIndices: number[]): Promise<Record<number, string>>;
-  addToAnki(entry: InspectorEntry): Promise<{ noteId: number; deck: string }>;
+  /** Add the word to Anki: the deck from the language profile, or `opts.deck` (the picker). */
+  addToAnki(entry: InspectorEntry, opts?: AddOptions): Promise<{ noteId: number; deck: string }>;
   /** Move the word's new card to the front of its deck, unsuspending it (ADR 0007). */
   learnNext(entry: InspectorEntry): Promise<{ deck: string }>;
   /** Mark the word known in Anki (adding the note first if needed), then record it (ADR 0007). */
-  markKnown(entry: InspectorEntry): Promise<{ addedToDeck?: string }>;
+  markKnown(entry: InspectorEntry, opts?: AddOptions): Promise<{ addedToDeck?: string }>;
   /** Drop a manual state so Anki's applies again. */
   resetWordState(key: string): Promise<void>;
   /** App-only state changes (Ignore). Marking known goes through `markKnown`. */

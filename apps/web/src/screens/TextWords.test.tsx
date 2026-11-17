@@ -148,12 +148,12 @@ describe("TextWords page", () => {
     await screen.findByText("vertrekken");
     await userEvent.click(screen.getByRole("button", { name: "Apply 3 actions" }));
 
-    expect(await screen.findByText(/1 added to Kenning::Reading/)).toBeVisible();
+    expect(await screen.findByText(/1 added to Kenning::Nederlands::Reading/)).toBeVisible();
     expect(screen.getByText(/1 moved to the front of its deck/)).toBeVisible();
     expect(screen.getByText(/1 word could not be updated/)).toBeVisible();
     expect(calls).toEqual(["add:vertrekken", "learn:meenemen", "learn:reis"]);
     expect(screen.getByText("Failed. Its card is no longer new in Anki")).toBeVisible();
-    expect(screen.getByText("Done. Added to Kenning::Reading")).toBeVisible();
+    expect(screen.getByText("Done. Added to Kenning::Nederlands::Reading")).toBeVisible();
     // finished rows are locked; only the failed one is left to retry
     expect(row("vertrekken")).toBeDisabled();
     expect(row("meenemen")).toBeEnabled();

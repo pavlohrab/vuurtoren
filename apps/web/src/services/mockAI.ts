@@ -123,10 +123,10 @@ export function createMockAI(
     async suggestTargetWords() {
       return ["gezellig", "afspraak"];
     },
-    async addConversationWord(word) {
+    async addConversationWord(word, opts) {
       await wait();
       added.push(word);
-      return { deck: "Kenning::Nederlands" };
+      return { deck: opts?.deck ?? "Kenning::Nederlands::Converse" };
     },
     async aiExplainSentence(sentence, grammar) {
       await wait();

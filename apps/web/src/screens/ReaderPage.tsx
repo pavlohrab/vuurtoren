@@ -28,6 +28,7 @@ import type { InspectorEntry, ReadingView } from "../services/types.js";
 import { GrammarNotes, notesFor, spotlightLabel } from "./GrammarNotes.js";
 import { ExplainSentence, SimplifyPage } from "./ReaderAI.js";
 import { writeLastText } from "../lastText.js";
+import { useDeckChoice } from "./useDeckChoice.js";
 import { usePageHeader, useShell } from "../shell/ShellContext.js";
 
 const HELP_LABEL: Record<HelpLevel, string> = {
@@ -297,9 +298,11 @@ export function ReaderPage({ textId }: { textId: string }) {
     }
   };
 
+  const deckChoice = useDeckChoice("reading");
+  const deckOpts = deckChoice.chosen ? { deck: deckChoice.chosen } : undefined;
   // The mutations take the entry they act on as a variable, never "whatever is loaded now".
   const addToAnki = useMutation({
-    mutationFn: (e: InspectorEntry) => services.addToAnki(e),
+    mutationFn: (e: InspectorEntry) => services.addToAnki(e, deckOpts),
     onSuccess: async ({ deck }) => {
       toast(`Added to ${deck}`);
       await refreshWords();
@@ -315,7 +318,7 @@ export function ReaderPage({ textId }: { textId: string }) {
     onError: (e) => toast("Could not move the card", errorMessage(e)),
   });
   const markKnown = useMutation({
-    mutationFn: (e: InspectorEntry) => services.markKnown(e),
+    mutationFn: (e: InspectorEntry) => services.markKnown(e, deckOpts),
     onSuccess: async ({ addedToDeck }) => {
       toast(addedToDeck ? `Added to ${addedToDeck} as known` : "Marked as known in Anki");
       await refreshWords();
@@ -548,6 +551,7 @@ export function ReaderPage({ textId }: { textId: string }) {
                   setState.isPending
                 }
                 onAddToAnki={() => entry && addToAnki.mutate(entry)}
+                addDeck={deckChoice.addDeck}
                 onLearnNext={() => entry && learnNext.mutate(entry)}
                 onMarkKnown={() => entry && markKnown.mutate(entry)}
                 onReset={() => entry && resetState.mutate(entry)}

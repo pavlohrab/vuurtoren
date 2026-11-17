@@ -426,7 +426,7 @@ export function createMockCourses(opts: { latencyMs?: number } = {}): CourseServ
       }
       return { moved, skipped };
     },
-    async addMissingUnitWords(_id, n): Promise<AddMissingResult> {
+    async addMissingUnitWords(_id, n, opts): Promise<AddMissingResult> {
       await wait(latency);
       let added = 0;
       for (const wd of words.get(n) ?? []) {
@@ -436,7 +436,7 @@ export function createMockCourses(opts: { latencyMs?: number } = {}): CourseServ
           added++;
         }
       }
-      return { added, failed: 0, deck: "Kenning::Nederlands" };
+      return { added, failed: 0, deck: opts?.deck ?? `Kenning::Nederlands::Opmaat::Thema ${n}` };
     },
     async unitPractice(): Promise<Exercise[]> {
       await wait(latency);

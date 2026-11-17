@@ -32,7 +32,9 @@ describe("Converse", () => {
     expect(await screen.findByText("Hoi! Drink je graag koffie?")).toBeInTheDocument();
     expect(screen.getByText("98% known")).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Add gezellig to Anki" }));
+    await user.click(
+      await screen.findByRole("button", { name: "Add gezellig to Kenning::Nederlands::Converse" }),
+    );
     await waitFor(() => expect(ai.added).toEqual([MOCK_NEW_WORD]));
     expect(screen.getByRole("button", { name: "Add gezellig to Anki" })).toBeDisabled();
 

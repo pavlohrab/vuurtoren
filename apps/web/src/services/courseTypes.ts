@@ -146,8 +146,12 @@ export interface CourseServices {
   unitStatus(courseId: string, n: number): Promise<UnitStatus>;
   /** "Learn next" for the unit's new cards (ADR 0007: explicit, logged). */
   learnNextForUnit(courseId: string, n: number): Promise<LearnNextResult>;
-  /** Add the unit words that are not in Anki (Kenning deck, tagged for the unit). */
-  addMissingUnitWords(courseId: string, n: number): Promise<AddMissingResult>;
+  /** Add the unit words that are not in Anki (the profile's course deck or `opts.deck`, tagged for the unit). */
+  addMissingUnitWords(
+    courseId: string,
+    n: number,
+    opts?: { deck?: string },
+  ): Promise<AddMissingResult>;
   /** Engine session restricted to the unit's words (+ earlier units for review). */
   unitPractice(courseId: string, n: number, opts?: { size?: number }): Promise<Exercise[]>;
   /** "More like this": generated items in the style of one book exercise. */

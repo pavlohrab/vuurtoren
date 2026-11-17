@@ -3,6 +3,8 @@ import { Link } from "@tanstack/react-router";
 import { MessagesSquare } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import {
+  type AddDeckChoice,
+  AddToAnki,
   Button,
   Chip,
   EmptyState,
@@ -14,6 +16,7 @@ import {
 } from "@app/ui";
 import { useServices } from "../services/context.js";
 import type { ChatMessageView, ConversationView, NewWord } from "../services/aiTypes.js";
+import { useDeckChoice } from "./useDeckChoice.js";
 import "./converse.css";
 
 const message = (e: unknown) => (e instanceof Error && e.message ? e.message : "Try again.");
@@ -29,10 +32,13 @@ function PartnerMessage({
   m,
   added,
   onAdd,
+  addDeck,
 }: {
   m: ChatMessageView;
   added: Set<string>;
   onAdd: (w: NewWord) => void;
+  /** Destination deck and picker (absent while loading: a plain button). */
+  addDeck?: AddDeckChoice | undefined;
 }) {
   const glosses = Object.entries(m.glosses ?? {});
   const unknownWithout = (m.unknown ?? []).filter((u) => !(m.glosses ?? {})[u]);
@@ -65,14 +71,24 @@ function PartnerMessage({
             {w.lemma} · {w.gloss}
           </Chip>
           {w.example ? <span lang="nl">{w.example}</span> : null}
-          <Button
-            size="sm"
-            disabled={added.has(w.lemma)}
-            onClick={() => onAdd(w)}
-            aria-label={`Add ${w.lemma} to Anki`}
-          >
-            {added.has(w.lemma) ? "Added" : "Add to Anki"}
-          </Button>
+          {addDeck && !added.has(w.lemma) ? (
+            <AddToAnki
+              {...addDeck}
+              size="sm"
+              variant="secondary"
+              subject={w.lemma}
+              onAdd={() => onAdd(w)}
+            />
+          ) : (
+            <Button
+              size="sm"
+              disabled={added.has(w.lemma)}
+              onClick={() => onAdd(w)}
+              aria-label={`Add ${w.lemma} to Anki`}
+            >
+              {added.has(w.lemma) ? "Added" : "Add to Anki"}
+            </Button>
+          )}
         </div>
       ))}
     </div>
@@ -148,8 +164,10 @@ export function Converse() {
     },
     onSettled: () => setPending(null),
   });
+  const deckChoice = useDeckChoice("converse");
   const add = useMutation({
-    mutationFn: (w: NewWord) => services.addConversationWord(w),
+    mutationFn: (w: NewWord) =>
+      services.addConversationWord(w, deckChoice.chosen ? { deck: deckChoice.chosen } : undefined),
     onSuccess: (r, w) => {
       setAdded((s) => new Set(s).add(w.lemma));
       toast(`Added “${w.lemma}” to ${r.deck}`);
@@ -260,7 +278,13 @@ export function Converse() {
       <div className="cv-list" aria-live="polite">
         {conv.messages.map((m) =>
           m.role === "assistant" ? (
-            <PartnerMessage key={m.id} m={m} added={added} onAdd={(w) => add.mutate(w)} />
+            <PartnerMessage
+              key={m.id}
+              m={m}
+              added={added}
+              onAdd={(w) => add.mutate(w)}
+              addDeck={deckChoice.addDeck}
+            />
           ) : (
             <UserMessage key={m.id} m={m} />
           ),

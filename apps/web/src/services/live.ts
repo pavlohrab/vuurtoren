@@ -7,9 +7,7 @@ import {
   probeAnki,
   requestAnkiPermission,
   type AnkiConnectionState,
-  addNoteAsKnown,
-  addWordNote,
-  buildSnapshot,
+  addWordToAnki,
   cardStatus,
   highlightSentence,
   learnNext,
@@ -45,6 +43,8 @@ import { absentAnki, ankiFromStatus, unavailableAnki } from "./ankiState.js";
 import { NlpClient } from "@app/nlp-client";
 import { createLiveCourses } from "./liveCourses.js";
 import { createLiveAI } from "./liveAI.js";
+import { createLiveProfile } from "./liveProfile.js";
+import type { AddOptions } from "./profileTypes.js";
 import { createLiveGrammar } from "./liveGrammar.js";
 import { createLivePractice } from "./livePractice.js";
 import { createPracticeData } from "./practiceData.js";
@@ -348,22 +348,23 @@ export function createLiveServices(repo: KenningRepository): AppServices {
     };
   };
   const anki = async (timeoutMs?: number) => new AnkiConnectClient(await ankiOptions(timeoutMs));
-  /** The note Kenning would create for a word (used by Add to Anki and Mark known). */
-  const newNote = async (entry: InspectorEntry) => {
-    const s = await settings();
+  /** The add request for a reader word (used by Add to Anki and Mark known). */
+  const addRequest = async (entry: InspectorEntry, opts?: AddOptions) => {
     const v = await view(entry.textId);
     const word =
       entry.article && entry.pos === "NOUN" ? `${entry.article} ${entry.lemma}` : entry.lemma;
     return {
-      deck: s.targetDeck,
+      profile: await profile.current(),
+      context: { source: "reading" as const, ...(opts?.deck ? { deck: opts.deck } : {}) },
       word,
+      key: entry.key,
       sentence: highlightSentence(entry.sentence, ...entry.sentenceHighlight),
-      tags: ["nl"],
       ...(entry.glosses[0] ? { gloss: entry.glosses[0] } : {}),
       ...(entry.sentenceTranslation ? { sentenceTranslation: entry.sentenceTranslation } : {}),
       ...(v ? { source: v.text.title } : {}),
     };
   };
+  const record = (e: Parameters<typeof repo.append>[0]) => repo.append(e);
   /** Live Anki state of a word; "unavailable" (with the reason) if Anki cannot answer in time. */
   async function liveAnki(info: WordInfo | null): Promise<InspectorEntry["anki"]> {
     if (!info || info.noteIds.length === 0) return absentAnki(info);
@@ -593,9 +594,12 @@ export function createLiveServices(repo: KenningRepository): AppServices {
     topicMaterial: grammar.topicMaterial,
   });
 
+  const profile = createLiveProfile({ repo, settings, anki, nlp, changed });
+
   const ai = createLiveAI({
     repo,
     settings,
+    profile: profile.current,
     model,
     vocabEstimate: async () => (await summary()).vocabEstimate,
     anki: () => anki(),
@@ -607,6 +611,7 @@ export function createLiveServices(repo: KenningRepository): AppServices {
   const courses = createLiveCourses({
     repo,
     settings,
+    profile: profile.current,
     nlp,
     anki,
     model,
@@ -618,6 +623,7 @@ export function createLiveServices(repo: KenningRepository): AppServices {
   });
 
   const services: AppServices = {
+    ...profile.services,
     ...practice,
     ...ai,
     ...courses,
@@ -818,18 +824,14 @@ export function createLiveServices(repo: KenningRepository): AppServices {
       return out;
     },
 
-    async addToAnki(entry: InspectorEntry): Promise<{ noteId: number; deck: string }> {
-      const s = await settings();
-      const noteId = await addWordNote(await anki(), await newNote(entry));
-      await repo.append({
-        type: "NoteAddedToAnki",
-        lang: s.lang,
-        key: entry.key,
-        noteId,
-        deck: s.targetDeck,
-      });
+    async addToAnki(entry: InspectorEntry, opts?: AddOptions) {
+      const { noteId, deck } = await addWordToAnki(
+        await anki(),
+        record,
+        await addRequest(entry, opts),
+      );
       changed();
-      return { noteId, deck: s.targetDeck };
+      return { noteId, deck };
     },
 
     async learnNext(entry: InspectorEntry): Promise<{ deck: string }> {
@@ -849,7 +851,7 @@ export function createLiveServices(repo: KenningRepository): AppServices {
       return { deck: entry.anki.deck ?? "" };
     },
 
-    async markKnown(entry: InspectorEntry): Promise<{ addedToDeck?: string }> {
+    async markKnown(entry: InspectorEntry, opts?: AddOptions): Promise<{ addedToDeck?: string }> {
       if (entry.anki.status === "unavailable") {
         throw new Error(entry.anki.detail ?? "Anki is not reachable");
       }
@@ -861,17 +863,13 @@ export function createLiveServices(repo: KenningRepository): AppServices {
         await markKnownInAnki(await anki(), cardIds);
       } else {
         // Not in Anki: add the note, then mark it known.
-        const added = await addNoteAsKnown(await anki(), await newNote(entry));
+        const added = await addWordToAnki(await anki(), record, {
+          ...(await addRequest(entry, opts)),
+          asKnown: true,
+        });
         noteIds = [added.noteId];
         cardIds = added.cardIds;
-        addedToDeck = s.targetDeck;
-        await repo.append({
-          type: "NoteAddedToAnki",
-          lang: s.lang,
-          key: entry.key,
-          noteId: added.noteId,
-          deck: s.targetDeck,
-        });
+        addedToDeck = added.deck;
       }
       await repo.append({
         type: "MarkedKnownInAnki",
@@ -935,16 +933,8 @@ export function createLiveServices(repo: KenningRepository): AppServices {
 
     async syncAnki(onProgress?: (msg: string) => void): Promise<LearnerSummary> {
       const { lang } = await settings();
-      const client = await nlp();
-      const snap = await buildSnapshot({
-        anki: await anki(),
-        lang,
-        detect: (texts) => client.detect(texts),
-        analyzeTerms: (terms) => client.analyzeTerms("nl", terms),
-        // Our own deck is always read, even while it is still small.
-        alwaysInclude: [(await settings()).targetDeck],
-        ...(onProgress ? { onProgress } : {}),
-      });
+      // The confirmed sources of the language profile, plus destination and course decks.
+      const snap = await profile.snapshot(onProgress);
       await repo.append({
         type: "AnkiSnapshotImported",
         lang,

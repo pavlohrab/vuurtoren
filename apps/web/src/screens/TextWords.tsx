@@ -2,9 +2,10 @@ import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-quer
 import { Link, useParams } from "@tanstack/react-router";
 import { ListChecks } from "lucide-react";
 import { useMemo, useState } from "react";
-import { Button, Chip, EmptyState, Select, Skeleton } from "@app/ui";
+import { AddToAnki, Button, Chip, EmptyState, Select, Skeleton } from "@app/ui";
 import { useServices } from "../services/context.js";
-import type { TextWordItem } from "../services/types.js";
+import type { InspectorEntry, TextWordItem } from "../services/types.js";
+import { useDeckChoice } from "./useDeckChoice.js";
 import { usePageHeader } from "../shell/ShellContext.js";
 import {
   type Job,
@@ -64,6 +65,7 @@ export function TextWords({ textId }: { textId: string }) {
     refetchOnReconnect: false,
   });
 
+  const deckChoice = useDeckChoice("reading");
   const actionOf = (w: TextWordItem): WordAction =>
     choices.get(w.key) ?? defaultAction(w.entry.anki.status);
   const isDone = (w: TextWordItem) => results.get(w.key)?.ok === true;
@@ -85,7 +87,14 @@ export function TextWords({ textId }: { textId: string }) {
     setSummary(null);
     const batch = new Map<string, RowResult>();
     try {
-      await applyActions(jobs, services, {
+      // New notes go to the deck shown in the apply bar (the picker's choice, if any).
+      const opts = deckChoice.chosen ? { deck: deckChoice.chosen } : undefined;
+      const writes = {
+        addToAnki: (e: InspectorEntry) => services.addToAnki(e, opts),
+        learnNext: (e: InspectorEntry) => services.learnNext(e),
+        markKnown: (e: InspectorEntry) => services.markKnown(e, opts),
+      };
+      await applyActions(jobs, writes, {
         onProgress: (done, total, item) =>
           setProgress(`Applying ${done + 1} of ${total}: ${item.lemma}`),
         onResult: (key, result) => {
@@ -176,6 +185,14 @@ export function TextWords({ textId }: { textId: string }) {
             <p className="tw-apply-text" role="status" aria-live="polite">
               {progress ?? summary ?? ""}
             </p>
+            {deckChoice.addDeck && jobs.some((j) => j.item.entry.anki.status === "absent") ? (
+              <AddToAnki
+                {...deckChoice.addDeck}
+                label="New cards to"
+                size="md"
+                disabled={running}
+              />
+            ) : null}
             <Button
               variant="primary"
               disabled={running || jobs.length === 0}

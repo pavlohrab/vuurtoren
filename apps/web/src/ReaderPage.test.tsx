@@ -129,6 +129,7 @@ describe("ReaderPage", () => {
 
 describe("Anki write actions in the inspector", () => {
   const buttons = () => screen.getAllByRole("button").map((b) => b.textContent);
+  const ADD = "Add to …::Nederlands::Reading";
   const inspectorButtons = (...names: string[]) =>
     names.forEach((n) => expect(screen.getByRole("button", { name: n })).toBeInTheDocument());
 
@@ -140,10 +141,15 @@ describe("Anki write actions in the inspector", () => {
   it("absent word: Mark known adds it as known, then offers Use Anki's state", async () => {
     setup("/read/t-utrecht");
     await userEvent.click(await screen.findByText("grachten"));
-    inspectorButtons("Add to Anki", "Mark known", "Ignore");
-    expect(screen.getByText("Adds it to Anki as known")).toBeInTheDocument();
+    await screen.findByRole("button", { name: ADD });
+    inspectorButtons("Mark known", "Ignore");
+    expect(
+      screen.getByText("Adds it to ‘Kenning::Nederlands::Reading’ as known"),
+    ).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Mark known" }));
-    expect(await screen.findByText("Added to Kenning::Reading as known")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Added to Kenning::Nederlands::Reading as known"),
+    ).toBeInTheDocument();
     expect(await screen.findByText("In review · due in 28 days")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Mark known" })).toBeNull();
     await userEvent.click(screen.getByRole("button", { name: /Use Anki.s state/ }));
@@ -153,12 +159,21 @@ describe("Anki write actions in the inspector", () => {
     );
   });
 
-  it("absent word: Add to Anki toasts the deck", async () => {
+  it("absent word: Add to Anki names the deck and toasts it", async () => {
     setup("/read/t-utrecht");
     await userEvent.click(await screen.findByText("grachten"));
-    await userEvent.click(screen.getByRole("button", { name: "Add to Anki" }));
-    expect(await screen.findByText("Added to Kenning::Reading")).toBeInTheDocument();
+    await userEvent.click(await screen.findByRole("button", { name: ADD }));
+    expect(await screen.findByText("Added to Kenning::Nederlands::Reading")).toBeInTheDocument();
     expect(await screen.findByRole("button", { name: "Learn next" })).toBeInTheDocument();
+  });
+
+  it("absent word: the deck picker sends the word to another deck", async () => {
+    setup("/read/t-utrecht");
+    await userEvent.click(await screen.findByText("grachten"));
+    await userEvent.click(await screen.findByRole("button", { name: /Choose the deck/ }));
+    await userEvent.click(screen.getByRole("option", { name: /Dutch::Core 2k/ }));
+    await userEvent.click(await screen.findByRole("button", { name: "Add to Dutch::Core 2k" }));
+    expect(await screen.findByText("Added to Dutch::Core 2k")).toBeInTheDocument();
   });
 
   it("new card: Learn next moves it and says where", async () => {
