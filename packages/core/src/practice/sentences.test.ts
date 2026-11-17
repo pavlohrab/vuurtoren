@@ -11,12 +11,9 @@ const s = (text: string, source: ExampleSentence["source"]): ExampleSentence => 
 describe("rankSentences", () => {
   it("ranks AI sentences after Anki and text sentences, alongside Tatoeba", () => {
     const ok = "ik zie de grote hond vandaag";
-    const ranked = rankSentences([
-      s(ok, "tatoeba"),
-      s(ok, "ai"),
-      s(ok, "text"),
-      s(ok, "anki"),
-    ]).map((x) => x.source);
+    const ranked = rankSentences([s(ok, "tatoeba"), s(ok, "ai"), s(ok, "text"), s(ok, "anki")]).map(
+      (x) => x.source,
+    );
     expect(ranked).toEqual(["anki", "text", "tatoeba", "ai"]);
   });
   it("keeps input order between ai and tatoeba and prefers good length over source", () => {
