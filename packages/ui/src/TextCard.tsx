@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { Button } from "./Button.js";
 import { Chip } from "./Chip.js";
 import { BAND_LABEL, CoverageMeter, difficultyBand } from "./CoverageMeter.js";
+import { WordStateChip } from "./WordState.js";
 
 export type TextSourceKind = "paste" | "url" | "pdf" | "image";
 
@@ -81,16 +82,15 @@ export function TextCard({
       <button type="button" className="k-card-title" onClick={() => onOpen?.()}>
         {title}
       </button>
-      <CoverageMeter value={coverage} block />
+      <CoverageMeter value={coverage} block label="Whole text" />
       <div className="k-card-meta">
-        {coverage !== null ? (
+        {/* No band chip below "challenging": there is no weave mode to suggest yet. */}
+        {coverage !== null && difficultyBand(coverage) !== "weave" ? (
           <Chip tone={difficultyBand(coverage) === "comfortable" ? "success" : "warm"}>
             {BAND_LABEL[difficultyBand(coverage)]}
           </Chip>
         ) : null}
-        {newTypes !== null ? (
-          <span title="Words in the whole text that you do not know yet">{newTypes} unknown</span>
-        ) : null}
+        {newTypes !== null ? <WordStateChip state="unknown" count={newTypes} /> : null}
       </div>
     </article>
   );

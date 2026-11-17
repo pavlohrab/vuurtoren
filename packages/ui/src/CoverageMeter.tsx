@@ -14,7 +14,7 @@ export const BAND_LABEL: Record<DifficultyBand, string> = {
   comfortable: "Comfortable",
   stretch: "Stretch",
   challenging: "Challenging",
-  weave: "Weave suggested",
+  weave: "Very challenging",
 };
 
 export interface CoverageMeterProps {
@@ -24,14 +24,21 @@ export interface CoverageMeterProps {
   block?: boolean;
   /** Hide the numeric label. */
   hideValue?: boolean;
+  /** What the number covers, shown before the bar, e.g. "This page" or "Whole text". */
+  label?: string;
   className?: string;
 }
 
-/** Thin progress bar plus percentage showing how much of a text the learner knows. */
-export function CoverageMeter({ value, block, hideValue, className }: CoverageMeterProps) {
+/**
+ * Thin progress bar plus percentage showing how much of a text the learner knows.
+ * The fill is always the accent (teal = known); the band is only exposed as `data-band`.
+ */
+export function CoverageMeter({ value, block, hideValue, label, className }: CoverageMeterProps) {
+  const labelEl = label ? <span className="k-meter-label">{label}</span> : null;
   if (value === null) {
     return (
       <span className={cn("k-meter", block && "k-meter--block", className)}>
+        {labelEl}
         <span className="k-meter-value" style={{ color: "var(--ink-muted)" }}>
           Not analysed
         </span>
@@ -44,11 +51,12 @@ export function CoverageMeter({ value, block, hideValue, className }: CoverageMe
       className={cn("k-meter", block && "k-meter--block", className)}
       data-band={difficultyBand(value)}
       role="meter"
-      aria-label="Coverage"
+      aria-label={label ? `Coverage, ${label.toLowerCase()}` : "Coverage"}
       aria-valuemin={0}
       aria-valuemax={100}
       aria-valuenow={Math.round(pct * 10) / 10}
     >
+      {labelEl}
       <span className="k-meter-track">
         <span className="k-meter-fill" style={{ width: `${pct}%` }} />
       </span>

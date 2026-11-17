@@ -208,6 +208,13 @@ kbd {
 .k-btn--ghost:hover:not(:disabled) {
   background: var(--surface-2);
 }
+.k-btn--danger {
+  background: var(--danger);
+  color: var(--bg);
+}
+.k-btn--danger:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--danger) 88%, var(--ink));
+}
 .k-btn--sm {
   height: 28px;
   padding: 0 10px;
@@ -472,6 +479,43 @@ kbd {
   border-color: color-mix(in srgb, var(--success) 40%, var(--line));
 }
 
+/* ---------- Word state / Anki status / lemma (docs/design/naming.md) ---------- */
+.k-state--known {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--line));
+}
+.k-state--learning {
+  color: var(--state-learning-line);
+  border-color: color-mix(in srgb, var(--state-learning-line) 45%, var(--line));
+}
+.k-state--toLearn {
+  color: var(--state-new-line);
+  background: color-mix(in srgb, var(--state-new-bg) 55%, var(--surface));
+  border-color: color-mix(in srgb, var(--state-new-line) 40%, var(--line));
+}
+.k-state--ignored {
+  border-style: dashed;
+}
+.k-anki--new,
+.k-anki--learning,
+.k-anki--review,
+.k-anki--suspended {
+  color: var(--ink);
+}
+.k-anki--unavailable {
+  color: var(--danger);
+  border-color: color-mix(in srgb, var(--danger) 40%, var(--line));
+}
+.k-lemma {
+  font-family: var(--font-reading);
+  font-size: 17px;
+  font-weight: 500;
+}
+.k-lemma-article {
+  color: var(--ink-muted);
+  font-weight: 400;
+}
+
 /* ---------- Coverage meter ---------- */
 .k-meter {
   display: inline-flex;
@@ -496,9 +540,9 @@ kbd {
   background: var(--accent);
   border-radius: 2px;
 }
-.k-meter[data-band="challenging"] .k-meter-fill,
-.k-meter[data-band="weave"] .k-meter-fill {
-  background: var(--accent-warm);
+.k-meter-label {
+  color: var(--ink-muted);
+  white-space: nowrap;
 }
 .k-meter-value {
   font-variant-numeric: tabular-nums;
@@ -803,6 +847,13 @@ kbd {
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+/* Tertiary actions (Ignore, Use Anki's state) read as quieter rows of the same stack. */
+.k-inspector-actions .k-btn--ghost {
+  color: var(--ink-muted);
+}
+.k-inspector-actions .k-btn--ghost:hover:not(:disabled) {
+  color: var(--ink);
 }
 .k-recall {
   font-variant-numeric: tabular-nums;
