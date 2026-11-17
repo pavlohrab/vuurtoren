@@ -19,6 +19,8 @@ export interface Token {
   is_propn: boolean;
   is_num: boolean;
   particle_of: number | null;
+  /** wordfreq Zipf frequency of the lemma: ~7 very common, ~1 rare, 0 unknown. */
+  zipf: number;
 }
 
 export interface TextAnalysis {
