@@ -1,6 +1,14 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link, useParams } from "@tanstack/react-router";
-import { Check, Dumbbell } from "lucide-react";
+import { Link, useParams, useSearch } from "@tanstack/react-router";
+import {
+  ArrowRight,
+  BookOpen,
+  Check,
+  Dumbbell,
+  Info,
+  ListChecks,
+  MessagesSquare,
+} from "lucide-react";
 import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import type { Exercise, ExerciseKind, Skill } from "@app/core";
 import { grammarTopic } from "@app/content";
@@ -23,6 +31,10 @@ import { usePageHeader } from "../shell/ShellContext.js";
 import { ErrorNotice } from "../shell/ErrorNotice.js";
 import { errorText } from "../services/errors.js";
 import { useAIReady } from "./StoryDialog.js";
+import { PageHeader } from "../shell/PageHeader.js";
+import { writePracticeAgain } from "../lastPractice.js";
+import { readLastText } from "../lastText.js";
+import { pickContinue } from "./Home.js";
 
 export const SKILLS: { skill: Skill; label: string }[] = [
   { skill: "recognition", label: "Recognition" },
@@ -62,6 +74,22 @@ type Phase =
 
 /** Practice: start view, one exercise per screen, then a quiet summary. */
 export function Practice() {
+  const params: { words?: string } = useSearch({ from: "/practice" });
+  // "Practise these words" from Words, Words from this text or a summary: only these words.
+  const focus = params.words
+    ? [
+        ...new Set(
+          params.words
+            .split(",")
+            .map((w) => w.trim())
+            .filter(Boolean),
+        ),
+      ]
+    : null;
+  return <PracticeSession key={params.words ?? ""} focus={focus} />;
+}
+
+function PracticeSession({ focus }: { focus: string[] | null }) {
   const [phase, setPhase] = useState<Phase>({ name: "start" });
   const [error, setError] = useState<unknown>(null);
   const services = useServices();
@@ -77,6 +105,7 @@ export function Practice() {
       const exercises = await services.startPractice({
         size,
         skills,
+        ...(focus ? { keys: focus } : {}),
         ...(aiSentences ? { aiSentences, onAISentences: setAIReport } : {}),
       });
       if (exercises.length === 0) {
@@ -95,13 +124,15 @@ export function Practice() {
 
   const finish = (answered: Answered[], skipped: number) => {
     void client.invalidateQueries({ queryKey: ["practice"] });
+    void client.invalidateQueries({ queryKey: ["activity"] });
+    writePracticeAgain(answered.filter((a) => !a.result.correct).map((a) => a.exercise.key));
     setPhase({ name: "summary", answered, skipped, empty: false });
   };
 
   return (
     <div className="page page--narrow practice">
       {phase.name === "start" || phase.name === "loading" ? (
-        <StartView loading={phase.name === "loading"} error={error} onStart={start} />
+        <StartView loading={phase.name === "loading"} error={error} onStart={start} focus={focus} />
       ) : phase.name === "session" ? (
         <>
           {aiReportText(aiReport) ? (
@@ -117,6 +148,13 @@ export function Practice() {
           skipped={phase.skipped}
           empty={phase.empty}
           onAgain={() => setPhase({ name: "start" })}
+          {...(focus
+            ? {
+                emptyTitle: "Nothing to practise for these words",
+                emptyText:
+                  "Kenning has no example sentences for them yet. Read a text that uses them, or practise the words that are due.",
+              }
+            : {})}
         />
       )}
     </div>
@@ -152,14 +190,31 @@ function OptionChip({
   );
 }
 
+/** Practice vs Anki, said once (U4). */
+function TwoSchedules() {
+  return (
+    <aside className="practice-explain" aria-label="Practice and Anki">
+      <Info size={16} aria-hidden />
+      <p>
+        Practice trains what Anki doesn&rsquo;t — forms, gender, word order, listening. Your Anki
+        reviews stay in Anki; results here also count toward how well Kenning thinks you know a
+        word.
+      </p>
+    </aside>
+  );
+}
+
 function StartView({
   loading,
   error,
   onStart,
+  focus,
 }: {
   loading: boolean;
   error: unknown;
   onStart: (size: number, skills: Skill[], aiSentences: boolean) => void;
+  /** Practise only these words. */
+  focus: string[] | null;
 }) {
   const services = useServices();
   const aiReady = useAIReady();
@@ -186,11 +241,11 @@ function StartView({
     );
 
   // Nothing due and nothing new: no Start button, one next step instead.
-  if (o && o.due === 0 && o.newAvailable === 0) {
+  if (o && o.due === 0 && o.newAvailable === 0 && !focus) {
     const fresh = o.learned === 0 && o.lastSession === null;
     return (
       <>
-        <h1>Practice</h1>
+        <PageHeader title="Practice" />
         <EmptyState
           icon={<Dumbbell size={28} />}
           title={fresh ? "Nothing to practise yet" : "All caught up"}
@@ -211,13 +266,30 @@ function StartView({
 
   return (
     <>
-      <h1>Practice</h1>
-      <p className="page-lede">
-        {o
-          ? `${o.due} due · ${o.newAvailable} new`
-          : "Short exercises from words you are learning."}
-      </p>
-
+      <PageHeader
+        title={focus ? "Practise these words" : "Practice"}
+        lede={
+          focus ? (
+            <>
+              {focus.length} {focus.length === 1 ? "word" : "words"}:{" "}
+              <span lang="nl">{focus.slice(0, 8).join(", ")}</span>
+              {focus.length > 8 ? "…" : ""}
+            </>
+          ) : o ? (
+            `${o.due} ${o.due === 1 ? "exercise" : "exercises"} due · ${o.newAvailable} new`
+          ) : (
+            "Short exercises from words you are learning."
+          )
+        }
+        actions={
+          focus ? (
+            <Link to="/practice" className="k-btn k-btn--ghost">
+              All due exercises
+            </Link>
+          ) : null
+        }
+      />
+      <TwoSchedules />
       {overview.isPending ? <Skeleton style={{ height: 24, width: 160 }} /> : null}
       {o?.degraded ? (
         <p className="k-hint practice-note">
@@ -289,9 +361,6 @@ function StartView({
       >
         {loading ? "Preparing…" : "Start"}
       </Button>
-      <p className="k-hint practice-note">
-        Practice keeps its own schedule. Nothing here changes your Anki cards.
-      </p>
     </>
   );
 }
@@ -457,14 +526,13 @@ function Summary({
   onAgain: () => void;
   emptyTitle?: string;
   emptyText?: string;
-  /** Replaces the default buttons (Practice again, Words). */
+  /** Replaces the default next steps (Practise again, Review, Talk, Next text). */
   actions?: ReactNode;
 }) {
   if (empty) {
     return (
       <>
-        <h1>{emptyTitle}</h1>
-        <p className="page-lede">{emptyText}</p>
+        <PageHeader title={emptyTitle} lede={emptyText} />
         {actions ?? <Button onClick={onAgain}>Back</Button>}
       </>
     );
@@ -475,14 +543,17 @@ function Summary({
     (a) => a.result.grade === "again" && a.result.next.reps > 1,
   ).length;
   const again = [...new Set(answered.filter((a) => !a.result.correct).map((a) => a.exercise.key))];
+  const practised = [...new Set(answered.map((a) => a.exercise.key))];
   return (
     <>
-      <h1>Session complete</h1>
-      <p className="page-lede">
-        {answered.length === 0
-          ? "No exercises were answered."
-          : `${correct} of ${answered.length} correct.`}
-      </p>
+      <PageHeader
+        title="Session complete"
+        lede={
+          answered.length === 0
+            ? "No exercises were answered."
+            : `${correct} of ${answered.length} correct.`
+        }
+      />
       <div className="stat-grid">
         <div className="stat">
           <div className="stat-value">{started}</div>
@@ -504,24 +575,90 @@ function Summary({
           <h2 className="practice-h2">Words to look at again</h2>
           <div className="practice-options">
             {again.map((k) => (
-              <Link key={k} to="/words" className="practice-word">
+              <Link
+                key={k}
+                to="/words"
+                search={{ source: "practice-again", word: k }}
+                className="practice-word"
+              >
                 <Chip tone="warm">{k}</Chip>
               </Link>
             ))}
           </div>
         </section>
       ) : null}
-      {actions ?? (
-        <div className="practice-actions">
-          <Button variant="primary" onClick={onAgain}>
-            Practice again
-          </Button>
-          <Link to="/words" className="k-btn k-btn--secondary">
-            Words
-          </Link>
-        </div>
-      )}
+      {actions ?? <NextSteps onAgain={onAgain} again={again} practised={practised} />}
     </>
+  );
+}
+
+/** Where to go after a session: every summary leads on (no dead ends). */
+function NextSteps({
+  onAgain,
+  again,
+  practised,
+}: {
+  onAgain: () => void;
+  again: string[];
+  practised: string[];
+}) {
+  const services = useServices();
+  const texts = useQuery({ queryKey: ["texts"], queryFn: () => services.listTexts() });
+  const next = texts.data ? pickContinue(texts.data, readLastText()) : null;
+  const talkWords = (again.length ? again : practised).slice(0, 6);
+  return (
+    <nav className="practice-next" aria-label="Next steps">
+      <Button variant="primary" onClick={onAgain}>
+        Practise again
+      </Button>
+      <Link
+        to="/words"
+        search={again.length ? { source: "practice-again" } : { state: "learning" }}
+        className="practice-next-link"
+      >
+        <ListChecks size={18} aria-hidden />
+        <span>
+          Review these words
+          <small>
+            {again.length
+              ? `${again.length} to look at again, in Words`
+              : "The words you are learning, in Words"}
+          </small>
+        </span>
+        <ArrowRight size={16} aria-hidden />
+      </Link>
+      <Link
+        to="/talk"
+        search={talkWords.length ? { words: talkWords.join(",") } : {}}
+        className="practice-next-link"
+      >
+        <MessagesSquare size={18} aria-hidden />
+        <span>
+          Talk about these words
+          <small>A short chat that uses them</small>
+        </span>
+        <ArrowRight size={16} aria-hidden />
+      </Link>
+      {next ? (
+        <Link to="/read/$textId" params={{ textId: next.text.id }} className="practice-next-link">
+          <BookOpen size={18} aria-hidden />
+          <span>
+            {next.started ? "Continue reading" : "Next text"}
+            <small>{next.text.title}</small>
+          </span>
+          <ArrowRight size={16} aria-hidden />
+        </Link>
+      ) : (
+        <Link to="/library" className="practice-next-link">
+          <BookOpen size={18} aria-hidden />
+          <span>
+            Next text
+            <small>Pick something from the Library</small>
+          </span>
+          <ArrowRight size={16} aria-hidden />
+        </Link>
+      )}
+    </nav>
   );
 }
 

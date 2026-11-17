@@ -410,7 +410,11 @@ function NavLink({
       {icon}
       <span className="nav-label">{label}</span>
       {badge ? (
-        <span className="nav-badge" aria-label={`${badge} due`}>
+        <span
+          className="nav-badge"
+          aria-label={`${badge} ${badge === 1 ? "exercise" : "exercises"} due`}
+          title={`${badge} ${badge === 1 ? "exercise" : "exercises"} due in Practice`}
+        >
           {badge}
         </span>
       ) : null}

@@ -63,7 +63,7 @@ function ReadTab({ unit }: { unit: UnitView }) {
   );
 }
 
-function WordsTab({ unit }: { unit: UnitView }) {
+function WordsTab({ unit, courseId, n }: { unit: UnitView; courseId: string; n: number }) {
   if (unit.words.length === 0) {
     return (
       <p className="cs-note">
@@ -72,16 +72,42 @@ function WordsTab({ unit }: { unit: UnitView }) {
       </p>
     );
   }
+  const keys = unit.words.map((w) => w.key);
   return (
-    <ul className="cs-words">
-      {unit.words.map((w) => (
-        <li key={w.key}>
-          <Lemma lemma={w.lemma} article={w.article} />
-          <UnitWordState state={w.state} />
-          {w.gloss ? <span className="cs-gloss">{w.gloss}</span> : null}
-        </li>
-      ))}
-    </ul>
+    <>
+      <div className="cs-actions" style={{ marginBottom: 12 }}>
+        <Link
+          to="/words"
+          search={{ source: `unit:${courseId}/${n}` }}
+          className="k-btn k-btn--secondary k-btn--sm"
+        >
+          Open in Words
+        </Link>
+        <Link
+          to="/practice"
+          search={{ words: keys.join(",") }}
+          className="k-btn k-btn--secondary k-btn--sm"
+        >
+          Practise these words
+        </Link>
+        <Link
+          to="/talk"
+          search={{ words: keys.slice(0, 6).join(","), topic: unit.unit.title }}
+          className="k-btn k-btn--ghost k-btn--sm"
+        >
+          Talk about this unit
+        </Link>
+      </div>
+      <ul className="cs-words">
+        {unit.words.map((w) => (
+          <li key={w.key}>
+            <Lemma lemma={w.lemma} article={w.article} />
+            <UnitWordState state={w.state} />
+            {w.gloss ? <span className="cs-gloss">{w.gloss}</span> : null}
+          </li>
+        ))}
+      </ul>
+    </>
   );
 }
 
@@ -296,7 +322,7 @@ export function UnitRoute({ courseId, n }: { courseId: string; n: number }) {
             label: `Words (${u.words.length})`,
             content: (
               <div className="cs-tabpanel">
-                <WordsTab unit={u} />
+                <WordsTab unit={u} courseId={courseId} n={n} />
               </div>
             ),
           },

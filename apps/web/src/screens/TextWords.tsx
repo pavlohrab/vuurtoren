@@ -1,12 +1,13 @@
 import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "@tanstack/react-router";
-import { ListChecks } from "lucide-react";
+import { Dumbbell, ListChecks, MessagesSquare } from "lucide-react";
 import { useMemo, useState } from "react";
 import { AddToAnki, AnkiStatusChip, Button, EmptyState, Lemma, Select, Skeleton } from "@app/ui";
 import { useServices } from "../services/context.js";
 import type { InspectorEntry, TextWordItem } from "../services/types.js";
 import { useDeckChoice } from "./useDeckChoice.js";
 import { usePageHeader } from "../shell/ShellContext.js";
+import { PageHeader } from "../shell/PageHeader.js";
 import {
   type Job,
   type RowResult,
@@ -119,11 +120,41 @@ export function TextWords({ textId }: { textId: string }) {
 
   return (
     <div className="page page--narrow">
-      <h1>Words from this text</h1>
-      <p className="page-lede">
-        {title ? `From “${title}”. ` : ""}
-        Choose what to do with each word, then apply. Nothing changes in Anki until you do.
-      </p>
+      <PageHeader
+        title="Words from this text"
+        lede={
+          <>
+            {title ? `From “${title}”. ` : ""}
+            Choose what to do with each word, then apply. Nothing changes in Anki until you do.
+          </>
+        }
+        actions={
+          list && list.length > 0 ? (
+            <>
+              <Link
+                to="/talk"
+                search={{
+                  words: list
+                    .slice(0, 6)
+                    .map((w) => w.lemma)
+                    .join(","),
+                  ...(title ? { topic: title } : {}),
+                }}
+                className="k-btn k-btn--ghost"
+              >
+                <MessagesSquare size={16} aria-hidden /> Talk about it
+              </Link>
+              <Link
+                to="/practice"
+                search={{ words: list.map((w) => w.key).join(",") }}
+                className="k-btn k-btn--secondary"
+              >
+                <Dumbbell size={16} aria-hidden /> Practise these words
+              </Link>
+            </>
+          ) : null
+        }
+      />
 
       <div className="tw-toolbar">
         <label className="tw-check">
@@ -138,7 +169,9 @@ export function TextWords({ textId }: { textId: string }) {
           <Link to="/read/$textId" params={{ textId }}>
             Back to the text
           </Link>
-          <Link to="/library">Library</Link>
+          <Link to="/words" search={{ source: `text:${textId}` }}>
+            Open in Words
+          </Link>
         </span>
       </div>
 

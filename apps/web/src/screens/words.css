@@ -1,0 +1,192 @@
+/* Words: filters in the URL, rows open the inspector, a bulk bar for selections. */
+.words-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px 24px;
+  margin-bottom: 12px;
+}
+.words-states {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+}
+.words-state {
+  all: unset;
+  box-sizing: border-box;
+  cursor: pointer;
+  padding: 5px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink-muted);
+}
+.words-state:hover {
+  color: var(--ink);
+}
+.words-state[aria-checked="true"] {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.words-state:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.words-filter-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.words-source {
+  width: 240px;
+}
+.words-search {
+  width: 240px;
+}
+.words-chips {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 16px;
+  padding: 0;
+}
+.words-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+  padding: 3px 4px 3px 12px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--ink);
+  font-size: 13px;
+}
+.words-chip span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.words-chip button {
+  all: unset;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  cursor: pointer;
+  color: var(--ink-muted);
+}
+.words-chip button:hover,
+.words-chip button:focus-visible {
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  color: var(--ink);
+}
+.words-clear {
+  font-size: 13px;
+}
+.words-table-wrap {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  overflow: hidden;
+}
+.words-table {
+  margin: 0;
+}
+.words-table th:first-child,
+.words-table td:first-child {
+  padding-left: 16px;
+}
+.words-check {
+  width: 36px;
+}
+.words-check input {
+  accent-color: var(--accent);
+  width: 16px;
+  height: 16px;
+  vertical-align: middle;
+}
+.words-row {
+  cursor: pointer;
+}
+.words-row[aria-selected="true"] td {
+  background: var(--accent-soft);
+}
+.words-open {
+  all: unset;
+  cursor: pointer;
+  border-radius: 4px;
+}
+.words-open:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.words-gloss {
+  color: var(--ink);
+}
+.words-col-decks {
+  color: var(--ink-muted);
+  font-size: 13px;
+}
+.words-bulk {
+  position: sticky;
+  bottom: 16px;
+  z-index: 5;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
+  max-width: 100%;
+  margin: 16px auto 0;
+  padding: 8px 8px 8px 16px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  box-shadow: var(--shadow-pop);
+  animation: k-fade-in var(--dur) var(--ease);
+}
+.words-bulk-count {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  margin-right: 4px;
+}
+@media (max-width: 899px) {
+  .words-col-decks,
+  .words-col-recall {
+    display: none;
+  }
+}
+@media (max-width: 699px) {
+  .words-filter-fields,
+  .words-source,
+  .words-search {
+    width: 100%;
+  }
+  .words-states {
+    width: 100%;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+  }
+  .words-bulk {
+    position: fixed;
+    left: 8px;
+    right: 8px;
+    bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+    margin: 0;
+    width: auto;
+  }
+}
+/* The phone/tablet inspector sheet takes the bottom of the screen: the bulk bar waits. */
+@media (max-width: 899px) {
+  .shell[data-inspector="open"] .words-bulk {
+    display: none;
+  }
+}

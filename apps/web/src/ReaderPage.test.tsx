@@ -148,7 +148,7 @@ describe("Anki write actions in the inspector", () => {
     await screen.findByRole("button", { name: ADD });
     inspectorButtons("Mark known", "Ignore");
     expect(
-      screen.getByText("Adds it to ‘Kenning::Nederlands::Reading’ as known"),
+      screen.getByText(/Mark known adds it to ‘Kenning::Nederlands::Reading’ as known/),
     ).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Mark known" }));
     expect(

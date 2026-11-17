@@ -1,8 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { TrendingUp } from "lucide-react";
+import { ArrowRight, TrendingUp } from "lucide-react";
 import { EmptyState, Skeleton } from "@app/ui";
 import { useServices } from "../services/context.js";
+import { PageHeader } from "../shell/PageHeader.js";
 
 const fmt = (n: number) => n.toLocaleString("en");
 
@@ -17,7 +18,7 @@ export function Progress() {
   if (s && !synced && s.known + s.learning === 0) {
     return (
       <div className="page">
-        <h1>Progress</h1>
+        <PageHeader title="Progress" />
         <EmptyState
           icon={<TrendingUp size={28} />}
           title="Nothing to measure yet"
@@ -34,21 +35,28 @@ export function Progress() {
 
   return (
     <div className="page">
-      <h1>Progress</h1>
-      <p className="page-lede">
-        {s?.lastSync
-          ? `Based on your Anki collection, last synced ${new Date(s.lastSync).toLocaleString("en")}.`
-          : "Based on your reading so far. Sync Anki in Settings to include your decks and an estimate of your vocabulary."}
-      </p>
+      <PageHeader
+        title="Progress"
+        lede={
+          s?.lastSync
+            ? `Based on your Anki collection, last synced ${new Date(s.lastSync).toLocaleString("en")}.`
+            : "Based on your reading so far. Sync Anki in Settings to include your decks and an estimate of your vocabulary."
+        }
+        actions={
+          <Link to="/words" className="k-btn k-btn--secondary">
+            All words
+          </Link>
+        }
+      />
       {q.isPending ? (
         <Skeleton style={{ height: 110, borderRadius: 10 }} />
       ) : s ? (
         <div className="stat-grid">
           {/* The estimate is only meaningful once Anki has been read. */}
           {synced ? <Stat value={fmt(s.vocabEstimate)} label="Estimated vocabulary" /> : null}
-          <Stat value={fmt(s.known)} label="Known words" />
-          <Stat value={fmt(s.learning)} label="Learning" />
-          <Stat value={fmt(s.unknown)} label="New words" />
+          <Stat value={fmt(s.known)} label="Known words" state="known" />
+          <Stat value={fmt(s.learning)} label="Learning" state="learning" />
+          <Stat value={fmt(s.unknown)} label="New words" state="unknown" />
         </div>
       ) : (
         <p className="error-text">The summary could not be loaded.</p>
@@ -63,7 +71,26 @@ export function Progress() {
   );
 }
 
-function Stat({ value, label }: { value: string; label: string }) {
+/** A number; with `state` it opens Words filtered to that state. */
+function Stat({
+  value,
+  label,
+  state,
+}: {
+  value: string;
+  label: string;
+  state?: "known" | "learning" | "unknown";
+}) {
+  if (state) {
+    return (
+      <Link to="/words" search={{ state }} className="stat stat--link">
+        <div className="stat-value">{value}</div>
+        <div className="stat-label">
+          {label} <ArrowRight size={12} aria-hidden />
+        </div>
+      </Link>
+    );
+  }
   return (
     <div className="stat">
       <div className="stat-value">{value}</div>
@@ -93,7 +120,12 @@ function PracticeSection() {
     <section style={{ marginTop: 32 }} aria-label="Practice">
       <h2 className="practice-h2">Practice</h2>
       <div className="stat-grid">
-        <Stat value={fmt(p.due)} label="Due now" />
+        <Link to="/practice" className="stat stat--link">
+          <div className="stat-value">{fmt(p.due)}</div>
+          <div className="stat-label">
+            Exercises due <ArrowRight size={12} aria-hidden />
+          </div>
+        </Link>
         <Stat value={fmt(p.learned)} label="Items learned" />
         {(Object.keys(SKILL_LABEL) as (keyof typeof SKILL_LABEL)[]).map((k) => (
           <Stat key={k} value={fmt(p.bySkill[k])} label={`${SKILL_LABEL[k]} learned`} />

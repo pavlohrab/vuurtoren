@@ -78,7 +78,7 @@ describe("WordInspector Anki states", () => {
   it("absent: Add to Anki, Mark known (with its hint), Ignore", () => {
     render(<WordInspector entry={entry} />);
     expect(names()).toEqual(["Add to Anki", "Mark known", "Ignore"]);
-    expect(screen.getByText("Adds it to Anki as known")).toBeInTheDocument();
+    expect(screen.getByText(/Mark known adds it to Anki as known/)).toBeInTheDocument();
   });
 
   it("new: Study first in Anki with the deck hint", async () => {

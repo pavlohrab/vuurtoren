@@ -28,6 +28,8 @@ export interface WordInspectorProps {
    * deck and lets the learner choose another one (AddToAnki).
    */
   addDeck?: AddDeckChoice | undefined;
+  /** What to say when no word is selected. */
+  emptyText?: string;
 }
 
 /** Destination deck of Add to Anki with the picker's options. */
@@ -50,6 +52,7 @@ export function WordInspector({
   error = null,
   onRetry,
   addDeck,
+  emptyText = "Select a word in the text to see its details.",
 }: WordInspectorProps) {
   if (!entry && error) {
     return (
@@ -67,11 +70,7 @@ export function WordInspector({
     );
   }
   if (!entry) {
-    return (
-      <p style={{ color: "var(--ink-muted)", margin: 0 }}>
-        Select a word in the text to see its details.
-      </p>
-    );
+    return <p style={{ color: "var(--ink-muted)", margin: 0 }}>{emptyText}</p>;
   }
   const [from, to] = entry.sentenceHighlight;
   const s = entry.sentence;
@@ -96,7 +95,7 @@ export function WordInspector({
       </header>
 
       <div className="k-inspector-row">
-        <Chip>{entry.pos}</Chip>
+        {entry.pos ? <Chip>{entry.pos}</Chip> : null}
         <WordStateChip state={entry.state} inKenning={entry.appLearning} />
         <span className="k-recall" style={{ color: "var(--ink-muted)", fontSize: 13 }}>
           Recall {recall}%
@@ -125,19 +124,21 @@ export function WordInspector({
         </section>
       ) : null}
 
-      <section>
-        <div className="k-overline">In context</div>
-        <p className="k-inspector-sentence" lang="nl">
-          {s.slice(0, from)}
-          <mark>{s.slice(from, to)}</mark>
-          {s.slice(to)}
-        </p>
-        {entry.sentenceTranslation ? (
-          <p className="k-inspector-translation" lang="en">
-            {entry.sentenceTranslation}
+      {s ? (
+        <section>
+          <div className="k-overline">In context</div>
+          <p className="k-inspector-sentence" lang="nl">
+            {s.slice(0, from)}
+            <mark>{s.slice(from, to)}</mark>
+            {s.slice(to)}
           </p>
-        ) : null}
-      </section>
+          {entry.sentenceTranslation ? (
+            <p className="k-inspector-translation" lang="en">
+              {entry.sentenceTranslation}
+            </p>
+          ) : null}
+        </section>
+      ) : null}
 
       <AnkiActions
         entry={entry}
@@ -238,25 +239,26 @@ function AnkiActions({
             {primary.hint && !unavailable ? <p style={hintStyle}>{primary.hint}</p> : null}
           </>
         ) : null}
-        {canMarkKnown ? (
-          <>
+        <div className="k-inspector-secondary">
+          {canMarkKnown ? (
             <Button disabled={disabled} onClick={() => onMarkKnown?.()}>
               Mark known
             </Button>
-            {status === "absent" ? (
-              <p style={hintStyle}>
-                {addDeck ? `Adds it to ‘${addDeck.deck}’ as known` : "Adds it to Anki as known"}
-              </p>
-            ) : null}
-          </>
+          ) : null}
+          <Button
+            disabled={busy || entry.state === "ignored"}
+            onClick={() => onSetState?.("ignored")}
+          >
+            {entry.state === "ignored" ? "Ignored" : "Ignore"}
+          </Button>
+        </div>
+        {canMarkKnown && status === "absent" ? (
+          <p style={hintStyle}>
+            Mark known{" "}
+            {addDeck ? `adds it to ‘${addDeck.deck}’ as known` : "adds it to Anki as known"}. Ignore
+            leaves it out of coverage and suggestions.
+          </p>
         ) : null}
-        <Button
-          variant="ghost"
-          disabled={busy || entry.state === "ignored"}
-          onClick={() => onSetState?.("ignored")}
-        >
-          Ignore
-        </Button>
         {anki.overridden ? (
           <Button variant="ghost" disabled={busy} onClick={() => onReset?.()}>
             Use Anki&rsquo;s state

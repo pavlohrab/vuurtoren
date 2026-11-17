@@ -54,7 +54,10 @@ describe("Practice start view", () => {
     stubSpeech([{ lang: "nl-NL" }]);
     const { services, user } = setup();
     await waitFor(() => expect(screen.getByRole("button", { name: "Listening" })).toBeEnabled());
-    expect(await screen.findByText(/\d+ due · \d+ new/)).toBeInTheDocument();
+    expect(await screen.findByText(/\d+ exercises? due · \d+ new/)).toBeInTheDocument();
+    expect(screen.getByRole("complementary", { name: "Practice and Anki" })).toHaveTextContent(
+      /Practice trains what Anki doesn.t/,
+    );
     const chips = ["Recognition", "Recall", "Forms", "Gender", "Listening"];
     for (const c of chips)
       expect(screen.getByRole("button", { name: c })).toHaveAttribute("aria-pressed", "true");
@@ -173,7 +176,7 @@ describe("Practice session", () => {
     ).toBeInTheDocument();
     expect(answers).toHaveLength(MOCK_EXERCISES.length);
     expect(screen.queryByText(/Words to look at again/)).not.toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Practice again" }));
+    await user.click(screen.getByRole("button", { name: "Practise again" }));
     // Everything was just practised: nothing is due or new, so there is no Start button.
     expect(await screen.findByRole("heading", { name: "All caught up" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Start" })).not.toBeInTheDocument();
@@ -217,7 +220,48 @@ describe("Practice session", () => {
     await user.keyboard("{Enter}");
     expect(await screen.findByText("0 of 1 correct.")).toBeInTheDocument();
     expect(screen.getByText("Words to look at again")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "gracht" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "gracht" })).toHaveAttribute(
+      "href",
+      "/words?source=practice-again&word=gracht",
+    );
+    // Every next step leads somewhere: Words filtered to the misses, Talk seeded, a next text.
+    const next = screen.getByRole("navigation", { name: "Next steps" });
+    expect(within(next).getByRole("link", { name: /Review these words/ })).toHaveAttribute(
+      "href",
+      "/words?source=practice-again",
+    );
+    expect(within(next).getByRole("link", { name: /Talk about these words/ })).toHaveAttribute(
+      "href",
+      "/talk?words=gracht",
+    );
+    expect(
+      await within(next).findByRole("link", { name: /Next text|Continue reading/ }),
+    ).toHaveAttribute("href", expect.stringMatching(/^\/read\//));
+    expect(JSON.parse(localStorage.getItem("kenning-practice-again") ?? "[]")).toEqual(["gracht"]);
+  });
+
+  it("practises only the words given in the URL", async () => {
+    const base = createMockServices({ latencyMs: 0 });
+    const calls: unknown[] = [];
+    const services: AppServices = {
+      ...base,
+      startPractice: async (opts) => {
+        calls.push(opts);
+        return base.startPractice(opts);
+      },
+    };
+    const user = userEvent.setup();
+    render(
+      <App
+        services={services}
+        history={createMemoryHistory({ initialEntries: ["/practice?words=gracht,brug"] })}
+      />,
+    );
+    expect(await screen.findByRole("heading", { name: "Practise these words" })).toBeVisible();
+    expect(screen.getByText("gracht, brug")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Start" }));
+    await waitFor(() => expect(calls).toHaveLength(1));
+    expect(calls[0]).toMatchObject({ keys: ["gracht", "brug"] });
   });
 
   it("answers de or het with the keyboard", async () => {
