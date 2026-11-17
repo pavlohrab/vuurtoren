@@ -17,3 +17,4 @@ export * from "./WordState.js";
 export * from "./types.js";
 export * from "./ExerciseCard.js";
 export * from "./AddToAnki.js";
+export * from "./Logo.js";
