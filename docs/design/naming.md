@@ -18,14 +18,15 @@ Recommendation: **Kenning**, with Wordhoard as runner-up. Code uses the neutral 
 
 One vocabulary for word states on every screen (Library, Reader, inspector, Words, Words from this text, course units). Sentence case everywhere. In code, `<WordStateChip>` and `<AnkiStatusChip>` (`packages/ui/src/WordState.tsx`) are the only way to show them; `WORD_STATE_LABEL` and `ANKI_STATUS_LABEL` hold the words.
 
-| Term         | Internal value             | Meaning                                                                                    | Look                   |
-| ------------ | -------------------------- | ------------------------------------------------------------------------------------------ | ---------------------- |
-| **Known**    | `known`                    | You know the word (mature in Anki, or marked known).                                       | Teal (accent)          |
-| **Learning** | `learning`                 | In progress in Anki or in practice.                                                        | Green (learning line)  |
-| **To learn** | planner `introduce` (none) | A new word worth learning now: the amber highlight in the reader, counted as "3 to learn". | Amber fill             |
-| **New**      | `unknown`                  | A word you have not learned yet. Counts read "120 new".                                    | Neutral                |
-| **Seen**     | `seen`                     | Met while reading, not learned yet.                                                        | Neutral                |
-| **Ignored**  | `ignored`                  | Left out of coverage and suggestions (names, English words).                               | Neutral, dashed border |
+| Term                      | Internal value             | Meaning                                                                                                 | Look                   |
+| ------------------------- | -------------------------- | ------------------------------------------------------------------------------------------------------- | ---------------------- |
+| **Known**                 | `known`                    | You know the word (mature in Anki, or marked known).                                                    | Teal (accent)          |
+| **Learning**              | `learning`                 | In progress in Anki or in practice.                                                                     | Green (learning line)  |
+| **Learning (in Kenning)** | `learning` + `appLearning` | Learning only from answers given in Kenning (practice, clozes, book exercises), not in Anki (ADR 0011). | Same as Learning       |
+| **To learn**              | planner `introduce` (none) | A new word worth learning now: the amber highlight in the reader, counted as "3 to learn".              | Amber fill             |
+| **New**                   | `unknown`                  | A word you have not learned yet. Counts read "120 new".                                                 | Neutral                |
+| **Seen**                  | `seen`                     | Met while reading, not learned yet.                                                                     | Neutral                |
+| **Ignored**               | `ignored`                  | Left out of coverage and suggestions (names, English words).                                            | Neutral, dashed border |
 
 Anki status is a separate axis, always prefixed so it is never mistaken for a word state:
 
@@ -40,7 +41,7 @@ Anki status is a separate axis, always prefixed so it is never mistaken for a wo
 
 Related wording:
 
-- **Study first in Anki** (was "Learn next"): moves a word's new card to the front of Anki's queue. The service method stays `learnNext`.
+- **Study first in Anki** (was "Learn next"): moves a word's new card to the front of Anki's queue. The service method stays `learnNext`; the shared commands are `studyWordFirst` / `studyWordsFirst` in `@app/anki`.
 - **Words to learn per page** (reader): the planner's budget of new words highlighted per page. "New words" on the Gloss slider means words in the _New_ state.
 - **Coverage** is always labelled with its scope: "This page" (reader top bar) or "Whole text" (Library). The bar is teal: the share of words you know.
 - Avoid: "unknown", "Not yet known", "New card", "not in Anki" (lowercase), "Learn next".

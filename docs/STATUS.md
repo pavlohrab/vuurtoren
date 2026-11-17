@@ -25,7 +25,7 @@ pnpm dev            # web app on http://localhost:5173 (proxies /nlp and /anki)
 - Monorepo: pnpm + Turborepo, TypeScript (strict), ESLint, Prettier, Vitest, CI.
 - Python side: uv, ruff, pytest.
 - Licence: MIT OR Apache-2.0.
-- Docs: research notes 01–07, design system, naming, ADRs 0001–0007.
+- Docs: research notes 01–07, design system, naming, ADRs 0001–0011.
 
 ### Anki ↔ words (M1)
 
@@ -72,16 +72,21 @@ pnpm dev            # web app on http://localhost:5173 (proxies /nlp and /anki)
 - **Word inspector:**
   - Dictionary form, meaning (your card's gloss first, then Wiktionary in the right part of speech), article, decks, sentence.
   - Shows the word's live state in Anki, read when it opens (new, suspended, learning, review, or "Anki not reachable").
-  - Explicit write actions, per [ADR 0007](adr/0007-anki-write-actions.md): **Add to Anki** (a _Kenning Word_ note with the sentence, in _Kenning::Nederlands_), **Learn next** (moves the new card to the front of its deck, unsuspending it; needs AnkiConnect API v1), **Mark known** (written to Anki as a 21–35 day interval, also for words not in Anki), **Use Anki's state** (drops a manual mark). Every write is logged as an event and tagged `kenning::reading` / `kenning::known`.
+  - Explicit write actions, per [ADR 0007](adr/0007-anki-write-actions.md): **Add to Anki** (a _Kenning Word_ note with the sentence, in the profile's deck), **Study first in Anki** (learn next: moves the new card to the front of its deck, unsuspending it; needs AnkiConnect API v1), **Mark known** (written to Anki as a 21–35 day interval, also for words not in Anki), **Use Anki's state** (drops a manual mark). Every write is logged as an event and tagged `kenning::reading` / `kenning::known`.
   - Ignore (app-only).
-- **Words from this text** (`/read/:id/words`, opened by finishing a text, the reader footer or the Library card): highlighted words, looked-up words and optionally translated ones, each with its sentence and live Anki state, one action per row (Add / Learn next / Mark known / Skip) and a single Apply that never stops on a failure.
+- **Words from this text** (`/read/:id/words`, opened by finishing a text, the reader footer or the Library card): highlighted words, looked-up words and optionally translated ones, each with its sentence and live Anki state, one action per row (Add / Study first / Mark known / Skip) and a single Apply that never stops on a failure.
 - **Server:**
   - Analysis, language detection, gloss, URL/PDF/OCR endpoints.
-  - Size limits and timeouts.
-  - Docker images and compose file.
+  - Size limits and timeouts (URL fetch: 10 s per read, 20 s in total; upload bodies streamed; decompression bombs rejected).
+  - Dockerfiles and compose files (one NLP worker, see ADR 0004). The images have not been built or run here yet (no Docker daemon).
 - **Quality:**
-  - 214 TypeScript and 242 Python tests (3 OCR tests skip without Tesseract).
-  - Three independent reviews; all confirmed High/Critical findings fixed. See below.
+  - 728 TypeScript and 629 Python tests (56 Python tests skip without the downloaded data or Tesseract).
+  - Four reviews; the 2026-11 review and its status: [review-2026-11.md](review-2026-11.md).
+
+### Practice (M4)
+
+- Exercises without AI (meaning, cloze, de/het, separable verbs, perfect tense with hebben/zijn, forms, scramble, dictation) on the `@app/core` engine, with their own FSRS schedule per (word, skill); never written to Anki.
+- Sentences from Anki, your texts, validated AI sentences and Tatoeba ([algorithms.md §4](algorithms.md#4-practice)).
 
 ### Grammar (M5)
 
@@ -99,6 +104,11 @@ pnpm dev            # web app on http://localhost:5173 (proxies /nlp and /anki)
 - **One Add to Anki path** (`addWordToAnki`) for reader, Words from this text, Converse, courses and MCP: one key rule, deck and note type created on first write, tags `kenning`, `nl`, `kenning::from::<source>`. Every Add button names the deck and has a picker.
 - **Settings → Language & decks** and a **first-run wizard** (`/welcome`): language, connect Anki, confirm decks or start fresh, where new words go, a quick placement check (app-only), first text.
 - MCP `add_to_anki` uses the profile; `KENNING_DECK` is now only an override.
+
+### Learning signals and one command layer ([ADR 0011](adr/0011-learning-signals.md))
+
+- Practice answers, reader cloze answers (new `ClozeAnswered` event) and book exercise answers feed the learner model as **app evidence**: they raise `pKnown` of words Anki does not call known, fade with a 30-day half-life, never demote and never make a word known. Strong evidence shows as **Learning (in Kenning)** in Words and the inspector. Rule and numbers: [algorithms.md §1.7](algorithms.md#17-learning-in-kenning-app-evidence).
+- Add, Study first in Anki, Mark known, Use Anki's state and app-only states are one command layer in `@app/anki` (`profile.ts`, `commands.ts`) with one key rule, used by the reader, Words from this text, course units, the placement check and MCP.
 
 ### Review fixes applied
 
@@ -133,7 +143,7 @@ pnpm dev            # web app on http://localhost:5173 (proxies /nlp and /anki)
 
 ### Decisions needed from you
 
-1. **Cloze range.** Clozes use words with recall 0.70–0.95. With your decks (SM-2) this rarely triggers. Suggested: 0.60–0.99, preferring the shakier words.
+None open. (The cloze range was settled at recall 0.60–0.99.)
 
 ### Your requests (2026-11-17)
 
@@ -141,18 +151,13 @@ pnpm dev            # web app on http://localhost:5173 (proxies /nlp and /anki)
 - [x] **More cloze help.** Meaning tooltip on focus (it stays visible once you ask for help) → first letter → first half of the word → reveal. Credit 1 / 0.5 / 0.25 / 0.
 - [x] **No clozes on function words** (_met, de, hij, …_). Only content words are blanked.
 - [x] **Every word should have a meaning, also when it is not in Anki.** Compounds are translated from their parts (100% coverage on a 5-paragraph news text), and the inspector and the end-of-text list show the **sentence translated** by an offline model (OPUS-MT nl→en, on your own server, no key). New Anki cards get it on their back.
-  - The dictionary already covers about 99% of word tokens in news text.
-  - **Compounds** (_souvenirwinkel_) get nothing at the moment. In progress: translation from their parts (souvenir · shop).
-  - Next: a context-aware sentence translation for the few remaining words, and for choosing the right sense. Options: an offline MT model on the server, or the user's own AI key (M6).
-- [ ] **Learn next / Mark known on the real Anki.** Built and tested against a fake Anki; your first real click is the first live test.
+  - The dictionary covers about 99% of word tokens in news text; compounds are glossed from their parts (souvenir · shop).
+- [ ] **Study first / Mark known on the real Anki.** Built and tested against a fake Anki; your first real click is the first live test.
 
 ### Next milestones
 
-- **M3 leftovers:**
-  - Weave reading (English base text with Dutch islands, [research/06](research/06-weave-reading.md)).
-- **M4 Practice:** exercises without AI (cloze, meaning, de/het, separable verbs, perfect tense with hebben/zijn, dictation) with their own FSRS scheduler.
-  - App side built: Anki example sentences in the snapshot, `ExerciseAnswered` events and `practice_items` projection, practice services (live + mock), Practice screen (start, session with keyboard shortcuts, summary), sidebar due badge and a Progress section. It runs on a temporary engine shim (`apps/web/src/practice/engineShim.ts`); switch `engine.ts` to `@app/core` after merging the real engine.
-- **M5 Grammar:** about 25 Dutch topics, detectors on the analysis, highlighted examples in the reader.
+- **M6b Weave reading** (not started): English base text with Dutch islands, planner labels, translation port, density slider ([research/06](research/06-weave-reading.md)).
+- **Review follow-ups** (event versions, analyzer version and snapshot compaction, server-mode cache invalidation, demo on live services, sync-safe replay, LanguagePack split): [review-2026-11.md §2](review-2026-11.md#2-the-one-product-plan-priority-order).
 - **M6 AI** (bring your own key): built, see [ai.md](ai.md).
   - `packages/ai`: OpenAI-compatible and native Anthropic adapters (plain `fetch`, prompt caching on the static prompt), presets (OpenAI, Anthropic, Gemini, OpenRouter, Groq, DeepSeek, Mistral, Ollama, LM Studio), per-device key storage with optional passphrase encryption (never in the event log or backups).
   - Converse screen: vocabulary-constrained conversation (coverage check, one rewrite, inline glosses), corrections of your messages, new-word chips with Add to Anki; history as `ConversationStarted` / `MessageAdded` events (no new table; works in local and server mode).
@@ -164,8 +169,8 @@ pnpm dev            # web app on http://localhost:5173 (proxies /nlp and /anki)
   - Import one PDF or several page photos; the NLP server OCRs it in a background job (`POST /course/ocr`, polled with progress, cached per page, up to 400 pages / 200 MB).
   - Outline detection from the contents page and the theme footers (printed-page offset), with an outline editor that checks page ranges.
   - Reading texts and transcripts go to the Library (tagged `course:<id>:<unit>`); the word list becomes each unit's words; units are matched to Anki decks (fuzzy, confirmed once; a mapped deck supplies the words when there is no word list).
-  - Unit status (known / learning / new / not in Anki) from the snapshot, and per unit **Learn next** (ADR 0007: new cards only, repositioned in book order, unsuspended, logged per word) and **Add missing words** (tagged `kenning::course::<book>::<unit>`).
-  - Also present, as a first version of C2: book exercises (gap-fill with derived answers, conjugation tables, sentence building, choice) with Check / Fix answer, and unit practice. Events and queries work in both storage modes (`/api/rpc` allow-list).
+  - Unit status (known / learning / new / not in Anki) from the snapshot, and per unit **Study first in Anki** (ADR 0007: new cards only, repositioned in book order, unsuspended, logged per word) and **Add missing words** (tagged `kenning::course::<book>::<unit>`).
+  - Also present, as a first version of C2: book exercises (gap-fill with derived answers, conjugation tables, sentence building, choice) with Check / Fix answer, and unit practice. Marked book answers feed the tested words' app evidence (ADR 0011), not the practice FSRS items. Events and queries work in both storage modes (`/api/rpc` allow-list).
   - Not yet: a run on the real 289-page book with Tesseract; course packs, "more like this" quality and grammar linkage (C3).
 - **M7 Sync** (folder / WebDAV / GitHub, encrypted). **M8 Desktop** (Tauri). Then the browser extension, Ukrainian, mobile.
 
@@ -186,4 +191,4 @@ pnpm dev            # web app on http://localhost:5173 (proxies /nlp and /anki)
 - **Concurrent finishes:** `finishSegment` is read-modify-write on the staircase. Not atomic, but harmless with one tab.
 - **FSRS-6 decay** per preset isn't read yet; 0.5 is assumed (FSRS is off in your collection).
 - **The demo (mock) data** only approximates the real behaviour.
-- **Not yet built:** Docker images (compose validated only), Tesseract OCR end-to-end on this machine, the GitHub/CI run itself (local gates pass).
+- **Not yet run here:** the Docker images (Dockerfiles and compose exist; no daemon on this machine), Tesseract OCR end-to-end on this machine, the GitHub/CI run itself (local gates pass).

@@ -63,6 +63,9 @@ Recommendation: **Kenning**, with Wordhoard as runner-up. Code uses a neutral pa
 ---
 
 ## Architecture (web first, nothing mobile-hostile)
+
+> **As built (2026-11-17).** This is the original plan; [STATUS.md](STATUS.md) says what exists. Differences: there is no `packages/sync` (M7 not started) and no `packages/translate` (M6b not started); `packages/content` holds the grammar pages only. `packages/ai` uses plain `fetch` adapters, not the Vercel AI SDK, and API keys are stored per device (localStorage, optional passphrase encryption), not in IndexedDB. `packages/db` uses plain SQL, not Kysely. The NLP client has no lite fallback (review item A14). A **server storage mode** (`server/api`, one SQLite file on your server, ADR 0008) and sign-in (ADR 0009) were added; **Courses** ([design/courses.md](design/courses.md)) and the **language profile** (ADR 0010) are new features; app answers feed the learner model (ADR 0011).
+
 ```
 packages/core (TS, pure)  ── learner model, graded-reading planner, exercise generators,
                              FSRS scheduler (ts-fsrs), event log + projections, ports
@@ -85,9 +88,9 @@ deploy/compose.yml         ── web + nlp (+ optional WebDAV) — the self-hos
 ```
 
 **Key decisions**
-- **Local-first.** Learner data lives in the browser (SQLite WASM on OPFS) or desktop SQLite. The server is **stateless analysis only**, so self-hosting stays simple and private.
+- **Local-first.** Learner data lives in the browser (SQLite WASM on OPFS) or desktop SQLite. The server is **stateless analysis only**, so self-hosting stays simple and private. _(Superseded in part: ADR 0008 adds an optional server storage mode; the NLP service holds OCR jobs in memory, ADR 0004 amendment.)_
 - **NLP runs in Python (spaCy `nl_core_news_md`).** Dutch needs a dependency parse for separable verbs ("Ik bel je morgen **op**" → *opbellen*, via the `compound:prt` relation), for the perfect tense and for word order. **Anki card fields and texts go through the same analyzer**, which is what makes lemma matching reliable. Results are cached by content hash. A lite TS fallback keeps the app usable without the server.
-- **Anki is read-only for knowledge.** In-app exercises use the app's own FSRS scheduler. Anki gets writes only for new notes. Never use AnkiWeb sync, and never link rslib (AGPL).
+- **Anki is read-only for knowledge.** In-app exercises use the app's own FSRS scheduler. Anki gets writes only for new notes. _(Amended: ADR 0007 adds Study first in Anki and Mark known on explicit clicks; ADR 0011 lets app answers raise the app's own learner model.)_ Never use AnkiWeb sync, and never link rslib (AGPL).
 - **Event-sourced data from day one.** `events` (ULID, device, hybrid logical clock, type, payload) is the source of truth; tables are rebuildable projections. Sync adapters arrive in M7 without changing the schema.
 - **AI comes from the browser with the user's own key.** No proxy. For Claude subscribers: the MCP server, never OAuth.
 
@@ -246,9 +249,9 @@ Word states use **underlines and soft tints, never bright highlighter blocks** a
 - Rule detectors on spaCy morph/dep produce grammar hits, which show as reader "spotlights" and link to topic pages and topic exercises.
 - Optional "Explain this sentence" (AI).
 
-**M6, weeks 12–14: AI layer**
+**M6, weeks 12–14: AI layer** _(built, plus AI stories and validated AI example sentences; not yet run against a real provider)_
 - Provider settings and presets: OpenRouter, OpenAI, Anthropic, Gemini, Ollama.
-- Key storage: web keeps it passphrase-encrypted in IndexedDB; desktop uses the OS keychain.
+- Key storage: web keeps it passphrase-encrypted in IndexedDB; desktop uses the OS keychain. _(Built as per-device localStorage with optional passphrase encryption; see ai.md.)_
 - Conversation:
   - prompt carries the frequency band, 200–400 relevant known lemmas and N target words;
   - reply analyzed by `/analyze` → coverage check;
@@ -257,7 +260,9 @@ Word states use **underlines and soft tints, never bright highlighter blocks** a
 - Text simplification with re-scoring.
 - `apps/mcp`: tools `get_known_words`, `check_coverage`, `add_to_anki`, `get_text`.
 
-**M6b, weeks 14–16: Weave reading (immersion dial)**
+**Courses (added 2026-11):** study along a textbook you own. C1 (import, OCR, outline, unit words, deck mapping) is built, with a first version of C2 (book exercises, unit practice); see [design/courses.md](design/courses.md).
+
+**M6b, weeks 14–16: Weave reading (immersion dial)** _(not started as of 2026-11-17)_
 - Planner labels (`keep-known`/`keep-target`/`translate`) in `packages/core/planner`, unit-tested against fixtures.
 - `packages/translate`:
   - LLM engine (JSON: woven text + islands alignment);
@@ -276,12 +281,12 @@ Word states use **underlines and soft tints, never bright highlighter blocks** a
   - jargon is translated;
   - checked words appear in Anki.
 
-**M7, weeks 16–19: Sync**
+**M7, weeks 16–19: Sync** _(not started; needs review items A1–A4 first)_
 - Encrypted event-log files (age/libsodium, Argon2id passphrase): `log/<device>/<seq>.evt`, `snapshots/`, `blobs/`.
 - Adapters: folder (File System Access API / Tauri fs), WebDAV, GitHub (one commit per sync, ≥ 5 min interval, compaction).
 - Property tests replay shuffled logs.
 
-**M8, weeks 19–21: Desktop (Tauri v2)**
+**M8, weeks 19–21: Desktop (Tauri v2)** _(not started)_
 - Install rustup.
 - Wrap `apps/web` build; native SQLite driver; keychain; AnkiConnect through the Tauri HTTP plugin (no CORS).
 - NLP: connect to a server URL, or a bundled PyInstaller sidecar with `nl_core_news_sm`.

@@ -109,6 +109,44 @@ What you do in the app is stored as events in Kenning's local database, never as
 
 "Use Anki's state" removes the manual mark (it is stored as an empty mark, so the latest-wins rule still works when events sync out of order).
 
+Below the manual mark, **app evidence** (section 1.7) is laid over rows 2–4 and over words Kenning only knows from your answers.
+
+### 1.7 Learning in Kenning (app evidence)
+
+**What.** What you show inside Kenning teaches the same learner model the reader and the Words list use (ADR 0011). Mastering a word in Practice, filling it into reader clozes or answering it in a book exercise raises it, even before Anki has seen it. Anki stays the record of known words: app evidence never makes a word `known` and never lowers what Anki says.
+
+**Signals** (`packages/core/src/evidence.ts`, `packages/db/src/projections.ts`):
+
+| Event                  | Where                                            | Counts as                                                                                                                                                        |
+| ---------------------- | ------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ExerciseAnswered`     | every practice exercise                          | 1 correct or 1 wrong for the word's key                                                                                                                          |
+| `ClozeAnswered`        | the first answer per reader blank and page visit | 1 correct (0.5 after a letter hint), or 1 wrong (also when the hints revealed the whole word)                                                                    |
+| `BookExerciseAnswered` | a marked book item, with the word keys it tests  | 1 correct or 1 wrong per key (the bracketed lemma hint, else the answer's words that are unit or learner-model words; none for sentence building and open tasks) |
+
+**How.** The projection `word_evidence` keeps, per (language, key), the weighted correct count `c`, the wrong count `w`, the time of the newest answer and whether it was correct (a tie goes to "wrong"). Sums and maxima do not depend on the order events arrive in, so replays and late arrivals give the same table. At read time, with the current clock:
+
+```
+pApp = 0.8 · c / (c + w + 1) · 0.5^(days since the newest answer / 30)     (× 0.5 if the newest answer was wrong)
+```
+
+| Base state (after the manual mark, Anki, pending note, lookups) | Effect of app evidence                                                                                                                                                                                         |
+| --------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| manual mark (any)                                               | none: your explicit choice wins                                                                                                                                                                                |
+| `known`, `ignored`                                              | none: app evidence never demotes                                                                                                                                                                               |
+| `learning`                                                      | `pKnown = max(base, pApp)`                                                                                                                                                                                     |
+| `unknown`, `seen`, or nothing                                   | `pKnown = max(base, pApp)`; the state becomes **`learning`, shown as "Learning (in Kenning)"**, when `c ≥ 3`, the newest answer was correct and `pApp ≥ 0.5`. A word met only in exercises is otherwise `seen` |
+
+| Constant                   | Value | Why                                                                                            |
+| -------------------------- | ----- | ---------------------------------------------------------------------------------------------- |
+| `APP_MAX_P`                | 0.8   | below "known" (mature Anki cards and manual marks reach 0.9+), inside the cloze range 0.6–0.99 |
+| `APP_HALF_LIFE_DAYS`       | 30    | evidence fades if you stop answering; Anki's own schedule takes over                           |
+| `APP_LEARNING_MIN_CORRECT` | 3     | one lucky answer is not learning; one pseudo-miss caps a single correct answer at 0.4          |
+| hinted cloze weight        | 0.5   | same as the cloze credit (section 3.5)                                                         |
+
+So three unaided correct answers today give `pKnown = 0.6`: the word counts as "Learning (in Kenning)", adds 0.6 to coverage and can become a cloze. Two months later, with no new answers, it is back to Anki's state with `pKnown ≈ 0.15`. Nothing is written to Anki: to make the word a card, use Add to Anki or Study first in Anki.
+
+**Limits.** Exposure while reading (a word read without a lookup) is not evidence yet. Practice FSRS states are kept separately for scheduling exercises (section 4.1); only right/wrong feeds the learner model.
+
 ---
 
 ## 2. Dutch analysis (NLP service)
@@ -322,7 +360,7 @@ Clozes never get a translation from the dial; they show their meaning as a hint 
 
 ## 4. Practice
 
-Practice trains words you already study (Anki state `learning` or `known`) in context, and **never writes to Anki**. Results go to Kenning's own schedule.
+Practice trains words you already study (Anki state `learning` or `known`) in context, and **never writes to Anki**. Results go to Kenning's own schedule, and every answer also counts as app evidence for the word (section 1.7).
 
 ### 4.1 Scheduling: FSRS per (word, skill)
 
@@ -444,14 +482,14 @@ The app checks the synonym rule again with its own dictionary before using a nei
 
 Kenning reads Anki freely but **writes only when you click** a button for one word (ADR 0007, `packages/anki/src/actions.ts`, `packages/anki/src/note.ts`). Every write is tagged, so you can find and undo it in Anki's browser.
 
-| Button               | Shown when                          | What happens in Anki                                                                                                                                                                                    | Tag                |
-| -------------------- | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------ |
-| **Add to Anki**      | the word is not in your decks       | A note of type **Kenning Word** (fields: Word, Gloss, Sentence with the word in bold, SentenceTranslation, Source) in the target deck, `Kenning::Nederlands` by default. No duplicate within that deck. | `kenning` (+ `nl`) |
-| **Learn next**       | the card is new (even if suspended) | The card is unsuspended and moved to the front of its deck's new queue. Other cards are not shifted, which would force a full sync. Needs AnkiConnect's v1 API.                                         | `kenning::reading` |
-| **Mark known**       | any state, or not in Anki           | (Adds the note first if needed.) Unsuspends the card and sets its interval to a random 21–35 days (`setDueDate "21-35!"`), so it reads back as mature, and therefore known.                             | `kenning::known`   |
-| **Use Anki's state** | after a manual mark                 | Nothing in Anki. Only the app-side mark is removed.                                                                                                                                                     | —                  |
+| Button                               | Shown when                          | What happens in Anki                                                                                                                                                                                    | Tag                |
+| ------------------------------------ | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------ |
+| **Add to Anki**                      | the word is not in your decks       | A note of type **Kenning Word** (fields: Word, Gloss, Sentence with the word in bold, SentenceTranslation, Source) in the target deck, `Kenning::Nederlands` by default. No duplicate within that deck. | `kenning` (+ `nl`) |
+| **Study first in Anki** (learn next) | the card is new (even if suspended) | The card is unsuspended and moved to the front of its deck's new queue. Other cards are not shifted, which would force a full sync. Needs AnkiConnect's v1 API.                                         | `kenning::reading` |
+| **Mark known**                       | any state, or not in Anki           | (Adds the note first if needed.) Unsuspends the card and sets its interval to a random 21–35 days (`setDueDate "21-35!"`), so it reads back as mature, and therefore known.                             | `kenning::known`   |
+| **Use Anki's state**                 | after a manual mark                 | Nothing in Anki. Only the app-side mark is removed.                                                                                                                                                     | —                  |
 
-Kenning **never** answers cards, writes review history, changes FSRS parameters, or touches cards you study in any way other than through Mark known. Practice results stay in Kenning. Until Anki has reviews for an added or moved card, the reader treats the word as `learning` with `pKnown = 0.2` (section 1.6).
+Kenning **never** answers cards, writes review history, changes FSRS parameters, or touches cards you study in any way other than through Mark known. Practice, cloze and book-exercise results stay in Kenning (they feed the learner model, section 1.7). All four buttons are one shared command layer (`packages/anki/src/profile.ts` `addWordToAnki`, `packages/anki/src/commands.ts`: `studyWordFirst`, `studyWordsFirst`, `markWordKnown`, `resetToAnkiState`, `setAppWordState`) with one key rule (`wordKey`). In the app, Learn next is labelled **Study first in Anki**. Until Anki has reviews for an added or moved card, the reader treats the word as `learning` with `pKnown = 0.2` (section 1.6).
 
 ---
 

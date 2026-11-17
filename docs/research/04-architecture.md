@@ -42,6 +42,8 @@ events(id ULID, device_id, hlc, type, entity, payload JSON)   -- source of truth
 projections (rebuildable): lexeme, word_state, text, segment, token_occurrence, ...
 ```
 
+> **Note (2026-11-17):** this was the research sketch. The event types actually built are the `AppEvent` union in `packages/db/src/types.ts` (`EVENT_TYPES` lists them): text events (`TextImported`, `TextAnalyzed`, `TextGrammarDetected`, `TextDeleted`, `ReadingProgress`, `StaircaseUpdated`), Anki and word events (`AnkiSnapshotImported`, `WordStateSet`, `WordStateCleared`, `WordLookedUp`, `NoteAddedToAnki`, `CardsPrioritized`, `MarkedKnownInAnki`, `LanguageProfileSet`), answers (`ExerciseAnswered`, `ClozeAnswered`, `BookExerciseAnswered`), AI (`ConversationStarted`, `MessageAdded`, `SentencesGenerated`), courses (`CourseImported`, `CourseDeleted`, `UnitDefined`, `UnitEdited`, `BlocksExtracted`, `BookExerciseExtracted`, `BookExerciseEdited`, `UnitWordsSet`) and `SettingChanged`. There is no `ReviewLogged` (Kenning never reads or writes Anki's review log) and no generic `Tombstone` yet. Merging rules as built: ADR 0002 amendment.
+
 - **Merging:**
   - Review and exercise events are a set union; the learner model is a deterministic replay.
   - Mutable fields use last-write-wins per field, ordered by HLC.

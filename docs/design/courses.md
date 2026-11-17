@@ -30,7 +30,7 @@ BookExercise {
 UnitWord { unitId, lemma, article?, pos?, gloss?, source: wordlist | anki | text }
 ```
 
-Events: `CourseImported`, `UnitDefined`/`UnitEdited`, `BlocksExtracted`, `BookExerciseExtracted`/`Edited`, `UnitWordsSet`, `BookExerciseAnswered` (feeds the same practice FSRS items).
+Events: `CourseImported`, `UnitDefined`/`UnitEdited`, `BlocksExtracted`, `BookExerciseExtracted`/`Edited`, `UnitWordsSet`, `BookExerciseAnswered`. As built, a marked book answer carries the word keys the item tests and feeds those words' app evidence in the learner model ([ADR 0011](../adr/0011-learning-signals.md)); it does not create practice FSRS items.
 
 ## Import pipeline (server: existing /ocr, /extract/pdf, /analyze)
 
@@ -53,7 +53,7 @@ Events: `CourseImported`, `UnitDefined`/`UnitEdited`, `BlocksExtracted`, `BookEx
 - **Deck mapping:** match unit titles to deck names automatically (fuzzy: "Thema 3 Boodschappen doen en winkelen" ↔ "De Opmaat A2::Thema 03 – Winkelen"). You confirm once.
 - **Unit status:** words known / learning / new from the snapshot. "Unit 3: 41 % known, 12 learning, 160 new."
 - **Study a unit:** one button runs **Learn next** for the unit's new cards (ADR 0007, logged and undoable), so your Anki sessions follow the book. Unit words that aren't in Anki at all → "Add 18 missing words" (Kenning deck, tagged `kenning::course::<unit>`).
-- **Practice:** a unit session = book exercises of that unit (interactive) + generated exercises on the unit's words and grammar ("more like this": same types, with Tatoeba sentences and your own texts). Results go into the same per-word, per-skill FSRS items as normal practice. Anki reviews are never written.
+- **Practice:** a unit session = book exercises of that unit (interactive) + generated exercises on the unit's words and grammar ("more like this": same types, with Tatoeba sentences and your own texts). Generated exercises go into the same per-word, per-skill FSRS items as normal practice; book exercise answers feed the learner model as app evidence (ADR 0011). Anki reviews are never written.
 
 ## UI
 

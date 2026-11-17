@@ -15,3 +15,9 @@
 
 - Self-hosting means Docker compose (web + nlp).
 - Desktop either points to a server URL or bundles a PyInstaller sidecar.
+
+**Amendment (2026-11-17, after the 2026-11 review):**
+
+- The service keeps no user data but is **not stateless**: course OCR jobs live in process memory and the grammar-example cache is written to disk. It therefore runs as **one process with one worker** (`--workers 1` in the Dockerfile, one replica in compose); blocking work runs in a threadpool (review items A15, B5).
+- The TypeScript **lite fallback does not exist**. Without the server the app cannot import or analyse texts (review item A14; planned with the LanguagePack split, #10).
+- Endpoints today: `/analyze/text`, `/analyze/terms`, `/detect`, `/gloss`, `/translate`, `/forms`, `/sentences`, `/similar`, `/grammar`, `/grammar/examples`, `/extract/url`, `/extract/pdf`, `/ocr`, `/course/ocr`. `/align` is not built (M6b).

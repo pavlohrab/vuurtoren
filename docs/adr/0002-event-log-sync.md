@@ -11,3 +11,9 @@
 
 - No developer-run servers, no general CRDT, zero-knowledge storage.
 - The sync engine is ours to test (property tests with shuffled replays).
+
+**Amendment (2026-11-17, after the 2026-11 review):**
+
+- Sync (M7) is not built yet. The log also lives in one file on the user's own server in server mode (ADR 0008).
+- Conflict rules are per projection, not a set union of events: last write wins by HLC for word marks, language profiles and settings; additive sums for app evidence (ADR 0011); "newest `at`" for practice and book answers. Replay is still ordered by ULID, and texts and courses have no tombstones yet; both must change before M7 (review items A2, A3, #9).
+- Unknown event types are skipped on replay and rejected on the RPC (review item A1, A13); events carry no version yet.
