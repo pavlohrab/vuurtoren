@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { PageHeader } from "../../shell/PageHeader.js";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { GraduationCap, Plus } from "lucide-react";
 import { useState } from "react";
@@ -28,15 +29,15 @@ export function Courses() {
 
   return (
     <div className="page">
-      <div className="row" style={{ justifyContent: "space-between", marginBottom: 8 }}>
-        <h1>Courses</h1>
-        <Link to="/courses/import" className="k-btn k-btn--primary">
-          <Plus size={16} aria-hidden /> Add a course
-        </Link>
-      </div>
-      <p className="page-lede">
-        Study along a textbook you own. The book stays on your device or your own server.
-      </p>
+      <PageHeader
+        title="Courses"
+        lede="Study along a textbook you own. The book stays on your device or your own server."
+        actions={
+          <Link to="/courses/import" className="k-btn k-btn--primary">
+            <Plus size={16} aria-hidden /> Add a course
+          </Link>
+        }
+      />
       {courses.isPending ? (
         <Skeleton style={{ height: 90, borderRadius: 10 }} />
       ) : courses.isError ? (

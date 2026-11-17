@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { type CefrLevel, type GrammarTopic, grammarTopic, topicsByLevel } from "@app/content";
 import { Chip, EmptyState, Skeleton } from "@app/ui";
 import { CreateStoryButton } from "./StoryDialog.js";
+import { PageHeader } from "../shell/PageHeader.js";
 import { useServices } from "../services/context.js";
 import type { GrammarOverview, TopicExamples } from "../services/types.js";
 import { usePageHeader } from "../shell/ShellContext.js";
@@ -72,11 +73,15 @@ export function Grammar() {
   const groups = topicsByLevel();
   return (
     <div className="page page--narrow grammar">
-      <h1>Grammar</h1>
-      <p className="page-lede">
-        Short topics with examples from what you read. The numbers show how often each one occurs in
-        your Library.
-      </p>
+      <PageHeader
+        title="Grammar"
+        lede="Short topics with examples from what you read. The numbers show how often each one occurs in your Library."
+        actions={
+          <Link to="/practice" className="k-btn k-btn--secondary">
+            Practice
+          </Link>
+        }
+      />
       {o && o.missing > 0 ? (
         <p className="k-hint grammar-note" role="status">
           {plural(o.missing, "text")} could not be checked: the language server is unreachable.

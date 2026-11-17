@@ -6,6 +6,14 @@ import { Button, Dialog, EmptyState, Skeleton, TextCard, useToast } from "@app/u
 import { useServices } from "../services/context.js";
 import type { TextListItem } from "../services/types.js";
 import { CreateStoryButton } from "./StoryDialog.js";
+import { PageHeader } from "../shell/PageHeader.js";
+import { pagesOf } from "../textPages.js";
+
+/** Page to continue on for a text that is started and not finished; null otherwise. */
+function inProgress(t: TextListItem): { page: number; pages: number } | null {
+  const { page, pages } = pagesOf(t);
+  return t.lastSegment > 0 && t.lastSegment < pages ? { page, pages } : null;
+}
 
 /** Library: a grid of texts with coverage, new-word count and difficulty band. */
 export function Library() {
@@ -32,16 +40,18 @@ export function Library() {
 
   return (
     <div className="page">
-      <div className="row" style={{ justifyContent: "space-between", marginBottom: 8 }}>
-        <h1>Library</h1>
-        <div className="row">
-          <CreateStoryButton />
-          <Link to="/import" className="k-btn k-btn--primary">
-            <Plus size={16} aria-hidden /> Import text
-          </Link>
-        </div>
-      </div>
-      <p className="page-lede">Texts you have added, with how much of each you already know.</p>
+      <PageHeader
+        title="Library"
+        lede="Your shelf of texts, with how much of each you already know. Pick up where you left off."
+        actions={
+          <>
+            <CreateStoryButton />
+            <Link to="/import" className="k-btn k-btn--primary">
+              <Plus size={16} aria-hidden /> Import text
+            </Link>
+          </>
+        }
+      />
 
       {needsAnki ? (
         <div className="banner" role="note">
@@ -55,7 +65,7 @@ export function Library() {
       {texts.isPending ? (
         <div className="card-grid" aria-busy>
           {[0, 1, 2].map((i) => (
-            <Skeleton key={i} style={{ height: 150, borderRadius: 10 }} />
+            <Skeleton key={i} style={{ height: 260, borderRadius: 14 }} />
           ))}
         </div>
       ) : texts.isError ? (
@@ -78,6 +88,8 @@ export function Library() {
               key={t.id}
               title={t.title}
               sourceKind={t.sourceKind}
+              sourceRef={t.sourceRef}
+              progress={inProgress(t)}
               wordCount={t.wordCount}
               coverage={t.coverage}
               newTypes={t.newTypes}
