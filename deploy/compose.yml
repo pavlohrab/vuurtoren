@@ -17,18 +17,28 @@ services:
       KENNING_CORS_ORIGINS: ${KENNING_CORS_ORIGINS:-}
     networks: [internal]
 
-  # ---- storage `api` service + `kenning-data` volume: added by the storage change (keep gap) ----
-
   # Your data: ONE SQLite file on the kenning-data volume, shared by every device (ADR 0008).
+  # Sign-in (ADR 0009) is off unless a password or token is set; set one before the app is
+  # reachable from anywhere but this computer. Create the hash with:
+  #   docker compose -f deploy/compose.yml run --rm -it api hash-password
   api:
+    image: ghcr.io/${KENNING_IMAGE_OWNER:-kenning}/kenning-api:${KENNING_TAG:-latest}
     build:
       context: ..
       dockerfile: server/api/Dockerfile
     restart: unless-stopped
     environment:
-      # Optional access token; when set, every device asks for it once. Leave empty on a
-      # trusted network. Set it if the app is reachable from the internet.
+      KENNING_USER: ${KENNING_USER:-}
+      KENNING_PASSWORD_HASH: ${KENNING_PASSWORD_HASH:-}
+      # Plain password: accepted, but prefer the hash (it is logged as a warning).
+      KENNING_PASSWORD: ${KENNING_PASSWORD:-}
+      # Bearer token for scripts and the MCP server (optional).
       KENNING_TOKEN: ${KENNING_TOKEN:-}
+      # 0 only when you open the app over plain http from another device (LAN).
+      KENNING_COOKIE_SECURE: ${KENNING_COOKIE_SECURE:-1}
+      # 1 only behind a Cloudflare Tunnel (client IP from CF-Connecting-IP).
+      KENNING_TRUST_CF: ${KENNING_TRUST_CF:-0}
+      KENNING_ALLOWED_ORIGINS: ${KENNING_ALLOWED_ORIGINS:-}
     volumes:
       - kenning-data:/data
     networks: [internal]
@@ -49,7 +59,10 @@ services:
       context: ..
       dockerfile: deploy/web.Dockerfile
     restart: unless-stopped
-    depends_on: [nlp]
+    depends_on: [nlp, api]
+    environment:
+      # /nlp/ needs a sign-in when auth is on (checked by api). "off" only without the api.
+      KENNING_NLP_AUTH: ${KENNING_NLP_AUTH:-on}
     networks: [internal]
     ports:
       # Loopback only: http://localhost is a secure context, so everything works for one user.
@@ -57,7 +70,7 @@ services:
       # secure context: no persistent storage, no AnkiConnect permission).
       - "127.0.0.1:${KENNING_WEB_PORT:-8080}:80"
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://127.0.0.1/"]
+      test: ["CMD", "wget", "-qO", "/dev/null", "http://127.0.0.1/"]
       interval: 30s
       timeout: 5s
       retries: 3

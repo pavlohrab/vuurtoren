@@ -1,0 +1,100 @@
+# Kenning for Dockge (or any `docker compose`): published images only, no build, no files
+# next to it. Paste this into a new Dockge stack and the contents of .env.example into the
+# stack's .env, then fill in at least KENNING_IMAGE_OWNER, KENNING_USER and
+# KENNING_PASSWORD_HASH. Guide: deploy/README.md, "Dockge and Cloudflare Tunnel".
+#
+#   web          the app + sign-in gate (nginx); the only service with a published port
+#   api          your data in ONE SQLite file on the kenning-data volume, and sign-in
+#   nlp          Dutch analysis, dictionary, OCR, translation
+#   cloudflared  optional (profile "tunnel"): public https address without opening ports
+#
+# Networks: `backend` is internal (no internet); the api lives only there. `edge` has
+# internet access for the NLP service (URL import), the tunnel and the published port.
+name: kenning
+
+services:
+  web:
+    image: ghcr.io/${KENNING_IMAGE_OWNER:?set KENNING_IMAGE_OWNER}/kenning-web:${KENNING_TAG:-latest}
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+      nlp:
+        condition: service_started
+    environment:
+      # /nlp/ requires a sign-in (checked by api) whenever sign-in is on.
+      KENNING_NLP_AUTH: "on"
+    ports:
+      # Loopback by default: reach it through the tunnel (or a reverse proxy on this host).
+      # KENNING_BIND=0.0.0.0 publishes it on the LAN as plain http (see README first).
+      - "${KENNING_BIND:-127.0.0.1}:${KENNING_WEB_PORT:-8080}:80"
+    networks: [edge, backend]
+    healthcheck:
+      test: ["CMD", "wget", "-qO", "/dev/null", "http://127.0.0.1/"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+
+  api:
+    image: ghcr.io/${KENNING_IMAGE_OWNER:?set KENNING_IMAGE_OWNER}/kenning-api:${KENNING_TAG:-latest}
+    restart: unless-stopped
+    environment:
+      KENNING_USER: ${KENNING_USER:-}
+      KENNING_PASSWORD_HASH: ${KENNING_PASSWORD_HASH:-}
+      KENNING_PASSWORD: ${KENNING_PASSWORD:-}
+      KENNING_TOKEN: ${KENNING_TOKEN:-}
+      KENNING_COOKIE_SECURE: ${KENNING_COOKIE_SECURE:-1}
+      KENNING_TRUST_CF: ${KENNING_TRUST_CF:-0}
+      KENNING_ALLOWED_ORIGINS: ${KENNING_ALLOWED_ORIGINS:-}
+    volumes:
+      # kenning.sqlite (your data) and auth.sqlite (sign-in sessions, never in backups)
+      - kenning-data:/data
+    networks: [backend]
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:8787/api/health').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+
+  nlp:
+    image: ghcr.io/${KENNING_IMAGE_OWNER:?set KENNING_IMAGE_OWNER}/kenning-nlp:${KENNING_TAG:-latest}
+    restart: unless-stopped
+    networks: [edge, backend]
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request as u; u.urlopen('http://127.0.0.1:8000/health', timeout=4)"
+      interval: 30s
+      timeout: 5s
+      # loads dictionaries and models on start
+      start_period: 60s
+      retries: 3
+
+  # Cloudflare Tunnel (optional): enable the "tunnel" profile and set TUNNEL_TOKEN. In the
+  # Cloudflare dashboard, give the tunnel a public hostname whose service is http://web:80.
+  # (No healthcheck: the image is distroless; Cloudflare's dashboard shows the tunnel state.)
+  cloudflared:
+    image: cloudflare/cloudflared:${CLOUDFLARED_TAG:-2026.11.0}
+    profiles: [tunnel]
+    restart: unless-stopped
+    command: ["tunnel", "--no-autoupdate", "run"]
+    environment:
+      TUNNEL_TOKEN: ${TUNNEL_TOKEN:-}
+    depends_on: [web]
+    networks: [edge]
+
+networks:
+  edge: {}
+  backend:
+    internal: true
+
+volumes:
+  kenning-data: {}

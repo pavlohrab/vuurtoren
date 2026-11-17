@@ -1,0 +1,171 @@
+# Kenning web container: static SPA, same-origin proxies to the NLP service and the API, and
+# the sign-in gate (ADR 0009).
+#
+# This is an nginx *template*: the official image's entrypoint copies it to
+# /etc/nginx/conf.d/default.conf and substitutes ${KENNING_...} environment variables
+# (NGINX_ENVSUBST_FILTER=^KENNING_ in web.Dockerfile; nginx's own lower-case $variables are
+# left alone). Variables:
+#   KENNING_NLP_AUTH  "on" (default): /nlp/ needs a valid sign-in, checked by the api service.
+#                     "off": /nlp/ is open. Only for setups WITHOUT the api service (browser
+#                     storage mode), where there is nothing to check against.
+
+# Cache policy by path; an empty value adds no header (so API answers keep their own).
+map $uri $kenning_cache_control {
+    default        "";
+    ~^/assets/     "public, max-age=31536000, immutable";
+    /index.html    "no-cache";
+}
+
+server {
+    listen 80;
+    server_name _;
+    root /usr/share/nginx/html;
+    index index.html;
+    server_tokens off;
+
+    gzip on;
+    gzip_types text/css application/javascript application/json application/wasm image/svg+xml;
+
+    # .wasm must be served as application/wasm for streaming compilation.
+    types {
+        application/wasm wasm;
+    }
+    include /etc/nginx/mime.types;
+
+    # ---- Security headers ------------------------------------------------------------------
+    # Set here only (no add_header inside locations, which would drop these): the cache policy
+    # comes from the map above.
+    #  - script-src 'self': no inline or third-party script; 'wasm-unsafe-eval' lets the
+    #    browser compile SQLite's WebAssembly (browser storage mode).
+    #  - style-src 'unsafe-inline': React style attributes. Styles cannot run code.
+    #  - connect-src *: the app talks to addresses the user chooses (AnkiConnect on their own
+    #    computer, AI providers, a custom NLP server), so it cannot be a fixed list.
+    #  - frame-ancestors 'none' + X-Frame-Options: no framing (clickjacking on sign-in).
+    add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src * data: blob:; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-Frame-Options "DENY" always;
+    add_header Referrer-Policy "same-origin" always;
+    add_header Cross-Origin-Opener-Policy "same-origin" always;
+    add_header Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=()" always;
+    add_header Cache-Control $kenning_cache_control;
+
+    # ---- Sign-in gate ----------------------------------------------------------------------
+    # nginx asks the api service (GET /api/auth/check: 204 or 401) before proxying /api/ and
+    # /nlp/. The browser's cookie and a script's Authorization header pass through unchanged.
+    # The api checks again itself, so /api/ stays protected even without this gate.
+    location = /_kenning_auth {
+        internal;
+        resolver 127.0.0.11 valid=10s;
+        set $kenning_api http://api:8787;
+        proxy_pass $kenning_api/api/auth/check;
+        proxy_method GET;
+        proxy_pass_request_body off;
+        proxy_set_header Content-Length "";
+        proxy_set_header Host $http_host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Original-URI $request_uri;
+    }
+
+    # Same check for the NLP service, which can be switched off for api-less setups (see top).
+    # Without the api service the check cannot answer, so /nlp/ would fail closed (500).
+    location = /_kenning_auth_nlp {
+        internal;
+        set $kenning_nlp_auth "${KENNING_NLP_AUTH}";
+        if ($kenning_nlp_auth = "off") {
+            return 204;
+        }
+        resolver 127.0.0.11 valid=10s;
+        set $kenning_api http://api:8787;
+        proxy_pass $kenning_api/api/auth/check;
+        proxy_method GET;
+        proxy_pass_request_body off;
+        proxy_set_header Content-Length "";
+        proxy_set_header Host $http_host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Original-URI $request_uri;
+    }
+
+    # A refused check answers JSON (like the api), which the app turns into its sign-in screen.
+    # (No add_header here: it would replace the security headers above for this response.)
+    location @kenning_signin_required {
+        default_type application/json;
+        return 401 '{"ok":false,"error":"Sign-in required."}';
+    }
+
+    # ---- NLP service -----------------------------------------------------------------------
+    # Same-origin access to the NLP service (avoids CORS and HTTPS mixed content):
+    #   fetch("/nlp/analyze/text") -> http://nlp:8000/analyze/text
+    # The `set` + variable form makes nginx resolve `nlp` lazily via Docker's DNS, so the web
+    # container still starts if the NLP container is not up yet.
+    location /nlp/ {
+        auth_request /_kenning_auth_nlp;
+        error_page 401 = @kenning_signin_required;
+        resolver 127.0.0.11 valid=10s;
+        set $nlp_upstream http://nlp:8000;
+        rewrite ^/nlp/(.*)$ /$1 break;
+        proxy_pass $nlp_upstream;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        # The NLP service needs neither the session cookie nor the token.
+        proxy_set_header Cookie "";
+        proxy_set_header Authorization "";
+        proxy_read_timeout 120s;      # OCR of multi-page scans is slow
+        client_max_body_size 32m;     # PDF/image uploads (service limit is 30 MB)
+    }
+
+    # ---- API (user data, sign-in) ----------------------------------------------------------
+    # Lazy DNS as above, so the web container starts without the api service; the app then
+    # uses browser storage, because /api/health does not answer.
+    #
+    # Host keeps the port ($http_host) so the api's CSRF check can compare it with Origin.
+    # X-Real-IP is the client address the api's rate limit uses (behind Cloudflare it reads
+    # CF-Connecting-IP instead when KENNING_TRUST_CF=1).
+
+    # Open: tells the app whether a server is here and whether it needs a sign-in.
+    location = /api/health {
+        resolver 127.0.0.11 valid=10s;
+        set $api_upstream http://api:8787;
+        proxy_pass $api_upstream;
+        proxy_set_header Host $http_host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # Sign-in endpoints: reachable without a session (the api rate-limits and checks them).
+    location ^~ /api/auth/ {
+        resolver 127.0.0.11 valid=10s;
+        set $api_upstream http://api:8787;
+        proxy_pass $api_upstream;
+        proxy_set_header Host $http_host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        client_max_body_size 16k;
+    }
+
+    location /api/ {
+        auth_request /_kenning_auth;
+        error_page 401 = @kenning_signin_required;
+        resolver 127.0.0.11 valid=10s;
+        set $api_upstream http://api:8787;
+        proxy_pass $api_upstream;
+        proxy_set_header Host $http_host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 300s;
+        client_max_body_size 200m;    # backup restore uploads
+        proxy_request_buffering off;
+    }
+
+    # ---- Static app ------------------------------------------------------------------------
+    # Hashed build assets are immutable (Cache-Control from the map above).
+    location /assets/ {
+        try_files $uri =404;
+    }
+
+    # SPA fallback: unknown paths are client-side routes (served as /index.html: no-cache).
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}
