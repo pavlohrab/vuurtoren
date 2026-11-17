@@ -188,7 +188,7 @@ function planFromClassified(
 
 /**
  * Plan one segment: rank unknown words, pick those to introduce (budget scaled by segment
- * length: B x words / 300, at least 1 when any candidate exists), gloss the rest, and
+ * length: B x words / 150, at least 1 when any candidate exists), gloss the rest, and
  * choose clozes. Unknown words rarer than `zipfFloor(opts.vocabEstimate)` are never introduced.
  *
  * @param tokens all analysed tokens (segment indexes into this array)
