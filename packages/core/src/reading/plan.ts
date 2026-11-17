@@ -16,6 +16,8 @@ export const CLOZE_MIN_SENTENCE_WORDS = 6;
 export const CLOZE_MIN_CHARS = 2;
 /** A "page": the new-word budget is per page (segments are ~150 words). */
 export const BUDGET_WORDS = 150;
+/** Words rarer than this (Zipf < 3, about rank 20,000+) are never introduced, only glossed. */
+export const ABSOLUTE_MIN_ZIPF = 3.0;
 
 /**
  * Lowest Zipf frequency worth introducing for a learner with `vocabEstimate` known words:
@@ -118,7 +120,11 @@ function planFromClassified(
   const ranked = [...unknown.values()].sort(
     (x, y) => score(y) - score(x) || y.zipf - x.zipf || x.key.localeCompare(y.key),
   );
-  const candidates = ranked.filter((u) => u.zipf >= floor);
+  // Words worth learning now come first; if the user's budget is larger than that, fill it with
+  // the next most useful words, but never rare ones (below ABSOLUTE_MIN_ZIPF = jargon).
+  const preferred = ranked.filter((u) => u.zipf >= floor);
+  const fill = ranked.filter((u) => u.zipf < floor && u.zipf >= ABSOLUTE_MIN_ZIPF);
+  const candidates = [...preferred, ...fill];
   // B words per page; a page longer than BUDGET_WORDS scales up, a shorter one gets B.
   const budget =
     candidates.length && opts.newWordBudget > 0

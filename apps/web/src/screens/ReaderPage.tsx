@@ -60,7 +60,8 @@ export function ReaderPage() {
 
   usePageHeader(data?.text.title ?? "Reading", {
     coverage: plan?.coverage ?? null,
-    newCount: plan?.newTypes.length ?? null,
+    // The badge counts the highlighted (amber) words to learn, not every unknown word.
+    newCount: plan?.introduce.length ?? null,
     reader: true,
   });
 

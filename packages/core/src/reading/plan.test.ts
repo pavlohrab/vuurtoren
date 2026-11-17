@@ -41,27 +41,33 @@ describe("zipfFloor", () => {
 describe("planSegment: unknown words", () => {
   const text = `${filler(1, 6)} Alpha beta alpha ${filler(1, 4)}`;
 
-  it("introduces frequent unknown words and glosses ones below the zipf floor", () => {
+  it("introduces frequent unknown words and glosses rare ones", () => {
     const { plan: p } = plan(
       text,
       ["alpha", "beta"],
-      { alpha: { zipf: 5 }, beta: { zipf: 3 } },
+      { alpha: { zipf: 5 }, beta: { zipf: 2.8 } },
       noClozes,
     );
     expect(p.introduce).toEqual(["alpha"]);
     expect(p.gloss).toEqual(["beta"]);
-    expect(p.newTypes).toEqual(["alpha", "beta"]); // sorted by usefulness (2x5 vs 1x3)
+    expect(p.newTypes).toEqual(["alpha", "beta"]); // sorted by usefulness (2x5 vs 1x2.8)
     expect(p.tokens.filter((t) => t.label === "introduce")).toHaveLength(2); // ALL occurrences
     expect(p.tokens.filter((t) => t.label === "gloss")).toHaveLength(1);
   });
 
-  it("the zipf floor depends on vocabEstimate", () => {
-    const over = { beta: { zipf: 4.1 } };
-    const low = plan(text, ["beta"], over, { ...noClozes, vocabEstimate: 1000 }).plan;
-    const high = plan(text, ["beta"], over, { ...noClozes, vocabEstimate: 8000 }).plan;
-    expect(low.introduce).toEqual([]);
-    expect(low.gloss).toEqual(["beta"]);
-    expect(high.introduce).toEqual(["beta"]);
+  it("the zipf floor (from vocabEstimate) decides which words come first", () => {
+    // beta: once, zipf 4.1; gamma: twice, zipf 3.2 (higher repeats x zipf score)
+    const t = `${filler(1, 6)} Beta gamma gamma ${filler(1, 4)}`;
+    const over = { beta: { zipf: 4.1 }, gamma: { zipf: 3.2 } };
+    const opts = { ...noClozes, newWordBudget: 1 };
+    // vocab 8000 -> floor 3.96: beta is "worth learning now", preferred over gamma
+    expect(
+      plan(t, ["beta", "gamma"], over, { ...opts, vocabEstimate: 8000 }).plan.introduce,
+    ).toEqual(["beta"]);
+    // vocab 1000 -> floor 4.36: neither passes; the budget is filled by score -> gamma
+    expect(
+      plan(t, ["beta", "gamma"], over, { ...opts, vocabEstimate: 1000 }).plan.introduce,
+    ).toEqual(["gamma"]);
   });
 
   it("ranks by repeats x zipf", () => {
@@ -287,5 +293,25 @@ describe("planSegment: words already in Anki", () => {
     expect(fiets.label).toBe("learning");
     expect(p.introduce).not.toContain("fiets");
     expect(p.gloss).not.toContain("fiets");
+  });
+});
+
+describe("planSegment: budget fill", () => {
+  it("fills the budget below the zipf floor, but never with rare words", () => {
+    const text = "Ik zie aa bb cc dd ee vandaag.";
+    const over = {
+      aa: { zipf: 5.0 }, // above floor
+      bb: { zipf: 4.0 }, // below floor (vocab 300 -> 4.43), fill
+      cc: { zipf: 3.5 }, // fill
+      dd: { zipf: 2.5 }, // rare: never introduced
+      ee: { zipf: 3.1 }, // fill
+    };
+    const unknown = ["aa", "bb", "cc", "dd", "ee"];
+    const at = (B: number) =>
+      plan(text, unknown, over, { ...noClozes, vocabEstimate: 300, newWordBudget: B }).plan;
+    expect(at(1).introduce).toEqual(["aa"]);
+    expect(at(3).introduce).toEqual(["aa", "bb", "cc"]);
+    expect(at(8).introduce).toEqual(["aa", "bb", "cc", "ee"]);
+    expect(at(8).gloss).toEqual(["dd"]);
   });
 });

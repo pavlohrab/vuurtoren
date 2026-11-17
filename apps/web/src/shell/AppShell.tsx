@@ -205,7 +205,9 @@ export function AppShell() {
             {header?.coverage != null ? (
               <div className="topbar-group">
                 <CoverageMeter value={header.coverage} />
-                {header.newCount != null ? <Chip tone="warm">{header.newCount} new</Chip> : null}
+                {header.newCount != null ? (
+                  <Chip tone="warm">{header.newCount} to learn</Chip>
+                ) : null}
               </div>
             ) : null}
             <div className="topbar-spacer" />
