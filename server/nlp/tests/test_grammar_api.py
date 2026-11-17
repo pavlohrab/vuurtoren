@@ -116,6 +116,31 @@ def test_examples_cache_resets_when_detectors_change(
     con.close()
 
 
+def test_examples_read_only_cache(
+    sentence_db: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A precomputed cache in a read-only directory (the Docker /data) is read, never written."""
+    from kenning_nlp import grammar_examples
+
+    cache = tmp_path / "ro" / "cache.sqlite"
+    cache.parent.mkdir()
+    full = GrammarExamples(sentence_db, cache).examples("inversion", 5)
+    assert full
+    scanned = GrammarExamples(sentence_db, cache).progress()[0]
+    monkeypatch.setattr(grammar_examples.os, "access", lambda *_a, **_k: False)
+    ro = GrammarExamples(sentence_db, cache)
+    assert not ro.writable()
+    assert ro.examples("inversion", 5) == full
+    # No scanning: a topic missing from the cache simply has fewer (or no) examples.
+    ro.examples("perfect-tense", 5)
+    assert ro.progress()[0] == scanned
+    # A cache built by other detectors is not trusted.
+    monkeypatch.setattr(grammar_examples, "detector_version", lambda: "changed")
+    assert ro.examples("inversion", 5) == []
+    # No cache at all: empty, no error.
+    assert GrammarExamples(sentence_db, tmp_path / "none" / "c.sqlite").examples("er", 3) == []
+
+
 def test_app_module_exposes_routes() -> None:
     paths = {r.path for r in app_module.app.routes}
     assert {"/grammar", "/grammar/examples"} <= paths
