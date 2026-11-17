@@ -12,7 +12,8 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
-    "./styles.css": "./src/styles.css"
+    "./styles.css": "./src/styles.css",
+    "./add-to-anki.css": "./src/add-to-anki.css"
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",

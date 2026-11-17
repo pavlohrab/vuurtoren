@@ -1,0 +1,88 @@
+/* ---------- AddToAnki (shared deck-aware add control) ---------- */
+.k-add-anki {
+  display: inline-flex;
+  max-width: 100%;
+  min-width: 0;
+}
+.k-add-anki-main {
+  min-width: 0;
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+.k-add-anki-caret {
+  padding: 0 8px;
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  border-left: 1px solid color-mix(in srgb, var(--bg) 35%, transparent);
+}
+.k-add-anki-deck {
+  min-width: 0;
+  max-width: 100%;
+}
+.k-add-anki-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.k-add-anki-menu {
+  width: min(360px, calc(100vw - 32px));
+  max-height: min(420px, 70vh);
+  overflow-y: auto;
+  padding: 6px;
+}
+.k-add-anki-group {
+  padding: 8px 8px 4px;
+}
+.k-add-anki-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+.k-add-anki-option:hover,
+.k-add-anki-option:focus-visible {
+  background: var(--surface-2);
+}
+.k-add-anki-option[aria-selected="true"] {
+  font-weight: 600;
+}
+.k-add-anki-check {
+  display: inline-flex;
+  width: 14px;
+  flex: none;
+  color: var(--accent);
+}
+.k-add-anki-option-name {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.k-add-anki-hint {
+  flex: none;
+  font-size: 12px;
+  color: var(--ink-muted);
+}
+.k-add-anki-new {
+  display: flex;
+  gap: 6px;
+  padding: 6px 8px;
+}
+.k-add-anki-new .k-input {
+  flex: 1;
+  min-width: 0;
+  height: 28px;
+}
+.k-add-anki-foot {
+  margin: 4px 8px 2px;
+  font-size: 12px;
+  color: var(--ink-muted);
+}

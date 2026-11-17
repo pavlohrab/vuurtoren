@@ -1,4 +1,5 @@
 import type { WordState } from "@app/core";
+import { AddToAnki, type DeckOption } from "./AddToAnki.js";
 import { Button } from "./Button.js";
 import { Chip } from "./Chip.js";
 import type { InspectorAnki, InspectorEntry } from "./types.js";
@@ -21,6 +22,18 @@ export interface WordInspectorProps {
   /** Message to show when the entry could not be loaded. */
   error?: string | null;
   onRetry?: () => void;
+  /**
+   * The deck a new word goes to and the picker's choices. When given, Add to Anki names the
+   * deck and lets the learner choose another one (AddToAnki).
+   */
+  addDeck?: AddDeckChoice | undefined;
+}
+
+/** Destination deck of Add to Anki with the picker's options. */
+export interface AddDeckChoice {
+  deck: string;
+  options: readonly DeckOption[];
+  onDeckChange: (deck: string) => void;
 }
 
 const STATE_LABEL: Record<WordState, string> = {
@@ -43,6 +56,7 @@ export function WordInspector({
   loading = false,
   error = null,
   onRetry,
+  addDeck,
 }: WordInspectorProps) {
   if (!entry && error) {
     return (
@@ -146,6 +160,7 @@ export function WordInspector({
         onMarkKnown={onMarkKnown}
         onReset={onReset}
         onSetState={onSetState}
+        addDeck={addDeck}
       />
     </div>
   );
@@ -171,9 +186,10 @@ function AnkiActions({
   onMarkKnown,
   onReset,
   onSetState,
+  addDeck,
 }: Pick<
   WordInspectorProps,
-  "busy" | "onAddToAnki" | "onLearnNext" | "onMarkKnown" | "onReset" | "onSetState"
+  "busy" | "onAddToAnki" | "onLearnNext" | "onMarkKnown" | "onReset" | "onSetState" | "addDeck"
 > & { entry: InspectorEntry }) {
   const { anki } = entry;
   const { status } = anki;
@@ -188,7 +204,11 @@ function AnkiActions({
 
   let primary: { label: string; hint?: string; onClick?: (() => void) | undefined } | null = null;
   if (status === "absent") {
-    primary = { label: "Add to Anki", hint: "Adds it to the Kenning deck", onClick: onAddToAnki };
+    primary = {
+      label: "Add to Anki",
+      hint: addDeck ? `Adds it to ‘${addDeck.deck}’` : "Adds it to your Kenning deck",
+      onClick: onAddToAnki,
+    };
   } else if (status === "new" || status === "suspended" || (unavailable && anki.noteIds.length)) {
     primary = {
       label: status === "suspended" ? "Unsuspend & learn next" : "Learn next",
@@ -215,7 +235,15 @@ function AnkiActions({
         </section>
       ) : null}
       <div className="k-inspector-actions">
-        {primary ? (
+        {primary && addDeck && primary.label === "Add to Anki" ? (
+          <AddToAnki
+            deck={addDeck.deck}
+            options={addDeck.options}
+            onDeckChange={addDeck.onDeckChange}
+            onAdd={() => primary.onClick?.()}
+            disabled={disabled}
+          />
+        ) : primary ? (
           <>
             <Button variant="primary" disabled={disabled} onClick={() => primary.onClick?.()}>
               {primary.label}
@@ -228,7 +256,11 @@ function AnkiActions({
             <Button disabled={disabled} onClick={() => onMarkKnown?.()}>
               Mark known
             </Button>
-            {status === "absent" ? <p style={hintStyle}>Adds it to Anki as known</p> : null}
+            {status === "absent" ? (
+              <p style={hintStyle}>
+                {addDeck ? `Adds it to ‘${addDeck.deck}’ as known` : "Adds it to Anki as known"}
+              </p>
+            ) : null}
           </>
         ) : null}
         <Button
