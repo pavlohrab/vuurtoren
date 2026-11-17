@@ -43,6 +43,7 @@ import {
 } from "@app/db";
 import { absentAnki, ankiFromStatus, unavailableAnki } from "./ankiState.js";
 import { NlpClient } from "@app/nlp-client";
+import { createLiveAI } from "./liveAI.js";
 import { createLivePractice } from "./livePractice.js";
 import { createPracticeData } from "./practiceData.js";
 import type {
@@ -579,8 +580,20 @@ export function createLiveServices(repo: KenningRepository): AppServices {
     data: createPracticeData(async () => (await settings()).nlpUrl),
   });
 
+  const ai = createLiveAI({
+    repo,
+    settings,
+    model,
+    vocabEstimate: async () => (await summary()).vocabEstimate,
+    anki: () => anki(),
+    glossLemmas: async (lemmas) =>
+      Object.fromEntries((await lookupGlosses(lemmas.map((l) => ({ key: l, lemma: l })))).found),
+    changed,
+  });
+
   return {
     ...practice,
+    ...ai,
     async listTexts(): Promise<TextListItem[]> {
       const texts = await repo.listTexts();
       const out: TextListItem[] = [];

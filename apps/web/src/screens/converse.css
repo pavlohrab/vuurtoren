@@ -1,0 +1,86 @@
+/* Converse: a quiet chat. Bubbles use surfaces, not colour fills. */
+.cv-list {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  margin: 24px 0;
+}
+.cv-msg {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 85%;
+}
+.cv-msg--user {
+  align-self: flex-end;
+  align-items: flex-end;
+}
+.cv-bubble {
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card, 12px);
+  padding: 10px 14px;
+  font-family: var(--font-reading);
+  font-size: 18px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+.cv-msg--user .cv-bubble {
+  background: var(--surface);
+}
+.cv-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  font-size: 13px;
+  color: var(--ink-muted);
+}
+.cv-fix {
+  font-size: 14px;
+  color: var(--ink-muted);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.cv-fix del {
+  text-decoration-color: var(--danger, #b3402e);
+}
+.cv-fix ins {
+  text-decoration: none;
+  color: var(--ink);
+  font-weight: 600;
+}
+.cv-new {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 14px;
+}
+.cv-compose {
+  position: sticky;
+  bottom: 0;
+  background: var(--bg, var(--surface));
+  padding: 12px 0 4px;
+  border-top: 1px solid var(--line);
+}
+.cv-past {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+}
+.cv-past li button {
+  all: unset;
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  cursor: pointer;
+  padding: 10px 4px;
+  border-bottom: 1px solid var(--line);
+}
+.cv-past li button:focus-visible {
+  outline: 2px solid var(--accent);
+}

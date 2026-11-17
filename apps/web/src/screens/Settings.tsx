@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Button, Input, Select, Skeleton, Spinner, useToast } from "@app/ui";
 import { useServices } from "../services/context.js";
 import type { LearnerSummary, Settings as SettingsData } from "../services/types.js";
+import { AISettings } from "./AISettings.js";
 import { AnkiSettings } from "./AnkiSettings.js";
 import { DataSettings } from "./DataSettings.js";
 import { useTheme, type ThemeChoice } from "../theme.js";
@@ -137,6 +138,7 @@ export function SettingsScreen() {
           </p>
         ) : null}
       </section>
+      <AISettings />
       <DataSettings />
     </div>
   );

@@ -11,6 +11,7 @@ import type {
 } from "@app/core";
 import type { StoredText, TextSummary, WordInfo } from "@app/db";
 import type { InspectorEntry } from "@app/ui";
+import type { AIServices } from "./aiTypes.js";
 
 /** Defined in @app/ui (the WordInspector consumes it); re-exported here as part of the contract. */
 export type { InspectorEntry };
@@ -114,7 +115,7 @@ export interface AnswerResult {
  * Everything the UI needs from the outside world. The app never talks to the database,
  * AnkiConnect or the NLP server directly; swap the implementation passed to <ServicesProvider>.
  */
-export interface AppServices {
+export interface AppServices extends AIServices {
   listTexts(): Promise<TextListItem[]>;
   getReading(textId: string): Promise<ReadingView | null>;
   importText(input: ImportInput, onProgress?: (msg: string) => void): Promise<string>;

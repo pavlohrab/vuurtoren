@@ -22,6 +22,7 @@ import {
 } from "@app/ui";
 import { useServices } from "../services/context.js";
 import type { InspectorEntry, ReadingView } from "../services/types.js";
+import { ExplainSentence, SimplifyPage } from "./ReaderAI.js";
 import { writeLastText } from "../lastText.js";
 import { usePageHeader, useShell } from "../shell/ShellContext.js";
 
@@ -459,6 +460,10 @@ export function ReaderPage({ textId }: { textId: string }) {
         onTokenClick={onTokenClick}
         onClozeAnswer={onClozeAnswer}
       />
+      <SimplifyPage
+        key={current}
+        text={data.text.content.slice(plan.segment.charStart, plan.segment.charEnd)}
+      />
       <div className="reader-footer">
         <span className="k-hint">
           Segment {current + 1} of {plans?.length}
@@ -480,24 +485,27 @@ export function ReaderPage({ textId }: { textId: string }) {
       </div>
       {inspectorEl
         ? createPortal(
-            <WordInspector
-              entry={entry}
-              loading={selected !== null && !entry && !inspect.isError}
-              error={selected !== null && inspect.isError ? errorMessage(inspect.error) : null}
-              onRetry={() => void inspect.refetch()}
-              busy={
-                addToAnki.isPending ||
-                learnNext.isPending ||
-                markKnown.isPending ||
-                resetState.isPending ||
-                setState.isPending
-              }
-              onAddToAnki={() => entry && addToAnki.mutate(entry)}
-              onLearnNext={() => entry && learnNext.mutate(entry)}
-              onMarkKnown={() => entry && markKnown.mutate(entry)}
-              onReset={() => entry && resetState.mutate(entry)}
-              onSetState={(state) => entry && setState.mutate({ e: entry, state })}
-            />,
+            <>
+              <WordInspector
+                entry={entry}
+                loading={selected !== null && !entry && !inspect.isError}
+                error={selected !== null && inspect.isError ? errorMessage(inspect.error) : null}
+                onRetry={() => void inspect.refetch()}
+                busy={
+                  addToAnki.isPending ||
+                  learnNext.isPending ||
+                  markKnown.isPending ||
+                  resetState.isPending ||
+                  setState.isPending
+                }
+                onAddToAnki={() => entry && addToAnki.mutate(entry)}
+                onLearnNext={() => entry && learnNext.mutate(entry)}
+                onMarkKnown={() => entry && markKnown.mutate(entry)}
+                onReset={() => entry && resetState.mutate(entry)}
+                onSetState={(state) => entry && setState.mutate({ e: entry, state })}
+              />
+              <ExplainSentence sentence={entry?.sentence} />
+            </>,
             inspectorEl,
           )
         : null}

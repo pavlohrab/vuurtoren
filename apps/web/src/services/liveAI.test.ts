@@ -1,0 +1,165 @@
+import type { AnalyzedToken } from "@app/core";
+import { createRepository } from "@app/db";
+import { createNodeDriver } from "@app/db/node";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import type { KeyValueStorage } from "@app/ai";
+import { createLiveAI } from "./liveAI.js";
+import type { Settings } from "./types.js";
+
+const KNOWN = ["ik", "drink", "koffie", "jij", "graag"];
+
+function tokenize(text: string): AnalyzedToken[] {
+  return [...text.matchAll(/\p{L}+/gu)].map((m, i) => ({
+    i,
+    text: m[0],
+    lemma: m[0].toLowerCase(),
+    alt_lemmas: [],
+    pos: "NOUN",
+    morph: "",
+    dep: "",
+    head: i,
+    sent: 0,
+    start: m.index,
+    end: m.index + m[0].length,
+    is_word: true,
+    is_propn: false,
+    is_num: false,
+    particle_of: null,
+    zipf: 4,
+  }));
+}
+
+/** One fetch for the NLP server and the provider; the provider answers from a script. */
+function stubNetwork(replies: string[]) {
+  const providerBodies: string[] = [];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (url: string, init: RequestInit) => {
+      if (url.includes("/analyze/text")) {
+        const { texts } = JSON.parse(init.body as string) as { texts: string[] };
+        return new Response(JSON.stringify(texts.map((t) => ({ tokens: tokenize(t) }))));
+      }
+      providerBodies.push(init.body as string);
+      const text = replies.shift() ?? "{}";
+      return new Response(
+        JSON.stringify({
+          content: [{ type: "text", text }],
+          usage: { input_tokens: 100, output_tokens: 20 },
+        }),
+      );
+    }),
+  );
+  return providerBodies;
+}
+
+function memStorage(): KeyValueStorage & { all(): string } {
+  const m = new Map<string, string>();
+  return {
+    getItem: (k) => m.get(k) ?? null,
+    setItem: (k, v) => void m.set(k, v),
+    removeItem: (k) => void m.delete(k),
+    all: () => JSON.stringify([...m]),
+  };
+}
+
+async function setup() {
+  const repo = await createRepository(await createNodeDriver());
+  const storage = memStorage();
+  const settings: Settings = {
+    ankiUrl: "x",
+    nlpUrl: "http://nlp",
+    lang: "nl",
+    targetDeck: "Deck",
+    theme: "system",
+    help: 0.25,
+    newWords: "auto",
+    glossClozes: false,
+  };
+  const ai = createLiveAI({
+    repo,
+    storage,
+    settings: () => Promise.resolve(settings),
+    model: () => Promise.resolve(new Map(KNOWN.map((k) => [k, { state: "known", pKnown: 1 }]))),
+    vocabEstimate: () => Promise.resolve(500),
+    anki: () => Promise.reject(new Error("no anki")),
+    glossLemmas: () => Promise.resolve({}),
+    changed: () => undefined,
+  });
+  return { repo, storage, ai };
+}
+
+afterEach(() => vi.unstubAllGlobals());
+
+const turn = (reply: string) => JSON.stringify({ reply, corrections: [], new_words: [] });
+
+describe("live AI services", () => {
+  it("refuses to start without a key, and stores the key outside the database", async () => {
+    const { repo, storage, ai } = await setup();
+    expect((await ai.aiStatus()).configured).toBe(false);
+    await expect(ai.startConversation({ topic: "koffie" })).rejects.toThrow(/key/i);
+    expect(await repo.conversationEvents()).toHaveLength(0);
+
+    await ai.saveAIKey("sk-ant-SECRET");
+    expect((await ai.aiStatus()).configured).toBe(true);
+    expect(storage.all()).toContain("sk-ant-SECRET");
+    expect(JSON.stringify(await repo.events())).not.toContain("SECRET");
+  });
+
+  it("runs a conversation: sends the key header, stores events, rewrites once, survives reload", async () => {
+    const bodies = stubNetwork([
+      turn("Ik drink koffie"), // opening
+      turn("Ik drink zonnebloem"), // too hard
+      turn("Jij drink graag koffie"), // the single rewrite
+    ]);
+    const { repo, ai } = await setup();
+    await ai.saveAIKey("sk-x");
+    const started = await ai.startConversation({ topic: "koffie", targetWords: ["gezellig"] });
+    expect(started.messages).toHaveLength(1);
+    expect(started.messages[0]!.coverage).toBe(1);
+
+    const after = await ai.sendConversationMessage(started.id, "Ik is blij");
+    expect(bodies).toHaveLength(3); // opening + answer + one rewrite
+    const reply = after.messages.at(-1)!;
+    expect(after.messages).toHaveLength(3);
+    expect(reply.rewritten).toBe(true);
+    expect(reply.text).toBe("Jij drink graag koffie");
+
+    // events only: no key anywhere in them, and the list/reload works from the log
+    const events = JSON.stringify(await repo.events());
+    expect(events).toContain("ConversationStarted");
+    expect(events).not.toContain("sk-x");
+    expect((await ai.listConversations())[0]!.topic).toBe("koffie");
+    expect((await ai.getConversation(started.id))!.messages).toHaveLength(3);
+    expect((await ai.aiUsage()).calls).toBe(3);
+  });
+
+  it("encrypts with a passphrase and needs unlock after a restart", async () => {
+    const { storage, ai } = await setup();
+    await ai.saveAIKey("sk-secret", "pass");
+    expect(storage.all()).not.toContain("sk-secret");
+    // a fresh session has no decrypted key
+    const repo2 = await createRepository(await createNodeDriver());
+    const ai2 = createLiveAI({
+      repo: repo2,
+      storage,
+      settings: () => Promise.reject(new Error("unused")),
+      model: () => Promise.resolve(new Map()),
+      vocabEstimate: () => Promise.resolve(0),
+      anki: () => Promise.reject(new Error("unused")),
+      glossLemmas: () => Promise.resolve({}),
+      changed: () => undefined,
+    });
+    expect((await ai2.aiStatus()).locked).toBe(true);
+    await expect(ai2.unlockAI("wrong")).rejects.toThrow(/passphrase/i);
+    await ai2.unlockAI("pass");
+    expect((await ai2.aiStatus()).configured).toBe(true);
+  });
+
+  it("switching provider takes the preset's address and model", async () => {
+    const { ai } = await setup();
+    await ai.saveAISettings({ provider: "ollama" });
+    const s = await ai.getAISettings();
+    expect(s.baseUrl).toBe("http://localhost:11434/v1");
+    expect((await ai.aiStatus()).configured).toBe(true); // keyless
+  });
+});
