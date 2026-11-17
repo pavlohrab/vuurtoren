@@ -32,13 +32,23 @@ function wrap(db: Database): SyncDb {
 
 async function open(name: string): Promise<OpenedDb> {
   const sqlite3 = await sqlite3InitModule();
-  try {
-    const pool = await sqlite3.installOpfsSAHPoolVfs({ name: `opfs-sahpool-${name}` });
-    return { db: wrap(new pool.OpfsSAHPoolDb(`/${name}.sqlite3`)), persistent: true };
-  } catch (err) {
-    console.warn("[@app/db] OPFS unavailable, using in-memory database:", err);
-    return { db: wrap(new sqlite3.oo1.DB(":memory:", "c")), persistent: false };
+  const opfsSupported =
+    typeof navigator !== "undefined" && typeof navigator.storage?.getDirectory === "function";
+  // On a page reload the previous page's worker may still hold the pool's access handles for a
+  // moment; retry before falling back, otherwise every reload would silently lose persistence.
+  const attempts = opfsSupported ? 8 : 1;
+  let lastErr: unknown;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      const pool = await sqlite3.installOpfsSAHPoolVfs({ name: `opfs-sahpool-${name}` });
+      return { db: wrap(new pool.OpfsSAHPoolDb(`/${name}.sqlite3`)), persistent: true };
+    } catch (err) {
+      lastErr = err;
+      if (i < attempts - 1) await new Promise((r) => setTimeout(r, 250));
+    }
   }
+  console.warn("[@app/db] OPFS unavailable, using in-memory database:", lastErr);
+  return { db: wrap(new sqlite3.oo1.DB(":memory:", "c")), persistent: false };
 }
 
 const handle = createRequestHandler(open);

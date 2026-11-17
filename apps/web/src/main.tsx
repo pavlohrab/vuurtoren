@@ -21,6 +21,13 @@ async function createServices(): Promise<{ services: AppServices; notice?: strin
     ]);
     const driver = await createWebDriver("kenning");
     const repo = await createRepository(driver);
+    // OPFS access handles are exclusive. Release them when the page is hidden (including the
+    // back/forward cache, which keeps frozen pages alive), and reopen by reloading if a frozen
+    // page is restored — otherwise the next page load could not open the database.
+    addEventListener("pagehide", () => void repo.close());
+    addEventListener("pageshow", (e) => {
+      if (e.persisted) location.reload();
+    });
     const services = createLiveServices(repo);
     return driver.persistent
       ? { services }
