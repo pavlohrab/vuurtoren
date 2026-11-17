@@ -161,6 +161,39 @@ export interface SentencesOptions {
   maxWords?: number;
 }
 
+/**
+ * One grammar construction found by `/grammar` (mirrors `GrammarHit` in models.py). `tokens` index
+ * the tokens `/analyze/text` returns for the same text; `start`/`end` are the sentence's
+ * UTF-16 offsets in that text.
+ */
+export interface GrammarHit {
+  /** Grammar topic id (a page in packages/content/grammar, e.g. "inversion"). */
+  topic: string;
+  tokens: number[];
+  /** Sentence number (`Token.sent`). */
+  sent: number;
+  sentence: string;
+  start: number;
+  end: number;
+  /** One short plain-English line about this occurrence. */
+  note: string;
+}
+
+/** A Tatoeba sentence in which a topic's detector fired (`/grammar/examples`). */
+export interface GrammarExample {
+  text: string;
+  translation: string;
+  /** [start, end) UTF-16 spans of the construction's words in `text`. */
+  marks: [number, number][];
+  note: string;
+  source: "tatoeba";
+}
+
+/** Server limit for `/grammar/examples?limit=`. */
+export const GRAMMAR_EXAMPLES_MAX = 10;
+/** Characters per `/grammar` request (server: 2,000,000 in total). */
+const GRAMMAR_CHARS = 1_000_000;
+
 /** Max items per `/forms`, `/sentences` and `/similar` request (server limit). */
 const PRACTICE_BATCH = 500;
 
@@ -361,6 +394,41 @@ export class NlpClient {
     }
     await flush();
     return out;
+  }
+
+  /**
+   * Grammar constructions in each text (rule-based detectors), one list per text in input
+   * order. Texts are sent in requests of at most 1,000,000 characters.
+   */
+  async grammar(lang: NlpLang, texts: string[]): Promise<GrammarHit[][]> {
+    const out: GrammarHit[][] = [];
+    let chunk: string[] = [];
+    let chars = 0;
+    const flush = async () => {
+      if (chunk.length)
+        out.push(...(await this.post<GrammarHit[][]>("/grammar", { lang, texts: chunk })));
+      chunk = [];
+      chars = 0;
+    };
+    for (const t of texts) {
+      if (chunk.length && (chunk.length >= this.batchSize || chars + t.length > GRAMMAR_CHARS)) {
+        await flush();
+      }
+      chunk.push(t);
+      chars += t.length;
+    }
+    await flush();
+    return out;
+  }
+
+  /**
+   * Tatoeba example sentences for a grammar topic, best first (at most 10). Topics without a
+   * detector give []. The server scans lazily, so a rare topic may return fewer at first.
+   * Rejects with HTTP 503 if the sentence DB is not built.
+   */
+  grammarExamples(topic: string, limit = GRAMMAR_EXAMPLES_MAX): Promise<GrammarExample[]> {
+    const n = Math.max(1, Math.min(GRAMMAR_EXAMPLES_MAX, Math.floor(limit)));
+    return this.request(`/grammar/examples?topic=${encodeURIComponent(topic)}&limit=${n}`);
   }
 
   /** POST `path` in chunks of 500 items and merge the per-lemma result objects. */

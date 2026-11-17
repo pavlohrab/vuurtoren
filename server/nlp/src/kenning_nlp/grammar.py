@@ -667,7 +667,7 @@ def detect_diminutive(s: Sentence) -> Iterable[Hit]:
             continue
         if low.endswith(DIMINUTIVE_ENDINGS) and ("Gender=Neut" in _morph(t) or low != t.lemma):
             yield Hit(
-                "de-het",
+                "diminutives",
                 (t.i,),
                 f"«{t.text}» is a diminutive (-je), so it is a het-word.",
             )
@@ -800,7 +800,7 @@ TOPICS: frozenset[str] = frozenset(
         "demonstratives",
         "er",
         "relative-pronouns",
-        "de-het",
+        "diminutives",
         "plural-nouns",
         "imperative",
         "indirect-speech",

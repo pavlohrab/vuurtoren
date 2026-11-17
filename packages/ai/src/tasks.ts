@@ -3,19 +3,40 @@ import type { AnalyzedToken, LearnerModel } from "@app/core";
 import { coverageReport } from "./coverage.js";
 import type { AIProvider } from "./types.js";
 
-/** Short grammar + meaning explanation of one Dutch sentence, in plain text. */
+/** A construction the app's grammar detectors found in the sentence (M5). */
+export interface DetectedGrammar {
+  /** Topic title, e.g. "Inversion". */
+  title: string;
+  /** The detector's note for this occurrence. */
+  note: string;
+}
+
+/**
+ * Short grammar + meaning explanation of one Dutch sentence, in plain text. `grammar` lists the
+ * constructions the rule-based detectors found; the model is asked to cover those first (they
+ * match the topic pages the learner can open), without inventing others.
+ */
 export async function explainSentence(
   provider: AIProvider,
   sentence: string,
-  opts: { vocabEstimate: number; explainIn?: string } = { vocabEstimate: 1000 },
+  opts: { vocabEstimate: number; explainIn?: string; grammar?: DetectedGrammar[] } = {
+    vocabEstimate: 1000,
+  },
 ): Promise<string> {
   const lang = opts.explainIn ?? "English";
+  const grammar = (opts.grammar ?? []).slice(0, 8);
+  const content = grammar.length
+    ? `${sentence}\n\nGrammar found in this sentence:\n${grammar.map((g) => `- ${g.title}: ${g.note}`).join("\n")}`
+    : sentence;
   const res = await provider.chat({
     system:
       `You are a concise Dutch tutor. The learner knows about ${opts.vocabEstimate} Dutch words. ` +
       `Explain the sentence in ${lang}: first its meaning in one line, then the grammar that matters ` +
-      "(word order, separable verbs, tenses) in at most 4 short bullet points. No introduction, under 120 words.",
-    messages: [{ role: "user", content: sentence }],
+      "(word order, separable verbs, tenses) in at most 4 short bullet points. No introduction, under 120 words." +
+      (grammar.length
+        ? " The message lists grammar the app detected in the sentence; cover those points first, using their names."
+        : ""),
+    messages: [{ role: "user", content }],
     maxTokens: 1024,
   });
   return res.text.trim();

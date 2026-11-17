@@ -152,6 +152,17 @@ describe("reader helpers", () => {
     expect(await explainSentence(p, "Ik bel je op.")).toBe("Meaning.");
     expect(p.calls[0]!.messages[0]!.content).toBe("Ik bel je op.");
   });
+  it("explainSentence passes detected grammar as context", async () => {
+    const p = fakeProvider(["Meaning."]);
+    await explainSentence(p, "Morgen ga ik.", {
+      vocabEstimate: 900,
+      grammar: [{ title: "Inversion", note: "«Morgen» comes first." }],
+    });
+    const msg = p.calls[0]!.messages[0]!.content;
+    expect(msg.startsWith("Morgen ga ik.")).toBe(true);
+    expect(msg).toContain("- Inversion: «Morgen» comes first.");
+    expect(p.calls[0]!.system).toContain("cover those points first");
+  });
   it("simplifyText names offending words and re-scores", async () => {
     const p = fakeProvider(["Ik drink koffie"]);
     const r = await simplifyText(

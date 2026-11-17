@@ -10,7 +10,9 @@ few milliseconds per sentence, so the scan is **incremental and cached**:
   in a small side database, together with the scan position;
 * a request scans on until its topic has enough examples or its time budget is spent, so the
   first request for a rare topic may return fewer than asked and a later one finds more;
-* the cache is thrown away when the detectors change (hash of ``grammar.py``).
+* the cache is thrown away when the detectors change (hash of ``grammar.py``);
+* when the cache cannot be written (the Docker image ships it precomputed in a read-only
+  ``/data``), it is only read: no scanning, and a cache built by other detectors counts as empty.
 
 Schema::
 
@@ -22,6 +24,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import os
 import sqlite3
 import threading
@@ -40,6 +43,8 @@ MAX_WORDS = 14
 """Only sentences of this many words are scanned (good examples are short and not trivial).
 The best of the cached examples (lowest ``score``) are returned."""
 DEFAULT_BUDGET_S = 4.0
+
+log = logging.getLogger(__name__)
 
 SCHEMA = """
 CREATE TABLE examples (
@@ -73,6 +78,38 @@ class GrammarExamples:
         self._lock = threading.Lock()
 
     # ------------------------------------------------------------------ cache housekeeping
+
+    def writable(self) -> bool:
+        """True when the cache file (or, before it exists, its directory) can be written."""
+        if self.cache_db.exists():
+            return os.access(self.cache_db, os.W_OK) and os.access(self.cache_db.parent, os.W_OK)
+        parent = self.cache_db.parent
+        while not parent.exists() and parent != parent.parent:
+            parent = parent.parent
+        return os.access(parent, os.W_OK)
+
+    def _read_only(self, topic: str, limit: int) -> list[tuple[str, str, str, str]]:
+        """Best cached examples without scanning; [] when there is no usable cache."""
+        if not self.cache_db.is_file():
+            return []
+        try:
+            con = sqlite3.connect(f"file:{self.cache_db}?mode=ro", uri=True)
+        except sqlite3.Error:
+            return []
+        try:
+            row = con.execute("SELECT value FROM meta WHERE key='version'").fetchone()
+            if not row or row[0] != detector_version():
+                log.warning("grammar example cache %s is stale and read-only", self.cache_db)
+                return []
+            return con.execute(
+                "SELECT text, translation, marks, note FROM examples WHERE topic=?"
+                " ORDER BY score, sid LIMIT ?",
+                (topic, limit),
+            ).fetchall()
+        except sqlite3.Error:
+            return []
+        finally:
+            con.close()
 
     def _open_cache(self) -> sqlite3.Connection:
         self.cache_db.parent.mkdir(parents=True, exist_ok=True)
@@ -141,6 +178,9 @@ class GrammarExamples:
         """
         if topic not in grammar.TOPICS:
             return []
+        if not self.writable():
+            rows = self._read_only(topic, limit)
+            return [self._row(r) for r in rows]
         with self._lock:
             con = self._open_cache()
             sdb = sqlite3.connect(f"file:{self.sentences_db}?mode=ro", uri=True)
@@ -161,13 +201,27 @@ class GrammarExamples:
             finally:
                 sdb.close()
                 con.close()
-        return [
-            {
-                "text": r[0],
-                "translation": r[1],
-                "marks": [tuple(m) for m in json.loads(r[2])],
-                "note": r[3],
-                "source": "tatoeba",
-            }
-            for r in rows
-        ]
+        return [self._row(r) for r in rows]
+
+    @staticmethod
+    def _row(r: tuple[str, str, str, str]) -> dict[str, object]:
+        return {
+            "text": r[0],
+            "translation": r[1],
+            "marks": [tuple(m) for m in json.loads(r[2])],
+            "note": r[3],
+            "source": "tatoeba",
+        }
+
+    def progress(self) -> tuple[int, bool]:
+        """(sentences scanned so far, whole sentence list scanned) of the cache."""
+        if not self.cache_db.is_file():
+            return 0, False
+        con = sqlite3.connect(f"file:{self.cache_db}?mode=ro", uri=True)
+        try:
+            meta = dict(con.execute("SELECT key, value FROM meta").fetchall())
+            return int(meta.get("cursor", 0)), meta.get("finished") == "1"
+        except sqlite3.Error:
+            return 0, False
+        finally:
+            con.close()

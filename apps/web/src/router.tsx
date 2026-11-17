@@ -42,7 +42,17 @@ const importRoute = screen("/import", () => import("./screens/Import.js"), "Impo
 const wordsRoute = screen("/words", () => import("./screens/Words.js"), "Words");
 const practiceRoute = screen("/practice", () => import("./screens/Practice.js"), "Practice");
 const converseRoute = screen("/converse", () => import("./screens/Converse.js"), "Converse");
-const grammarRoute = screen("/grammar", () => import("./screens/Placeholders.js"), "Grammar");
+const grammarRoute = screen("/grammar", () => import("./screens/Grammar.js"), "Grammar");
+const grammarTopicRoute = screen(
+  "/grammar/$topic",
+  () => import("./screens/Grammar.js"),
+  "GrammarTopicRoute",
+);
+const topicPracticeRoute = screen(
+  "/grammar/$topic/practice",
+  () => import("./screens/Practice.js"),
+  "TopicPracticeRoute",
+);
 const progressRoute = screen("/progress", () => import("./screens/Progress.js"), "Progress");
 const settingsRoute = screen("/settings", () => import("./screens/Settings.js"), "SettingsScreen");
 
@@ -78,6 +88,8 @@ const routeTree = rootRoute.addChildren([
   practiceRoute,
   converseRoute,
   grammarRoute,
+  grammarTopicRoute,
+  topicPracticeRoute,
   progressRoute,
   settingsRoute,
   coursesRoute,

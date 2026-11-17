@@ -78,7 +78,21 @@ RUN set -eu; \
     python scripts/build_sentences.py --processes 4 --download-dir /tmp/tatoeba \
     --base-url "$TATOEBA_BASE_URL" $args --output /out/sentences-nl.sqlite
 
-# ---- Stage 5: runtime ------------------------------------------------------------------
+# ---- Stage 5: grammar examples -------------------------------------------------------------
+# GET /grammar/examples scans the sentence DB with the grammar detectors and caches what it finds.
+# The runtime /data is read-only (the service runs as an unprivileged user), so the cache is
+# precomputed here (well under a minute: the scan stops once every topic has 40 examples) and
+# shipped as a ~0.2 MB SQLite file. At runtime it is only read (see kenning_nlp.grammar_examples).
+FROM venv AS grammar
+ENV KENNING_DICT_PATH=/in/dictionary-nl.sqlite \
+    KENNING_SENTENCES_PATH=/in/sentences-nl.sqlite \
+    KENNING_GRAMMAR_CACHE_PATH=/out/grammar-examples-nl.sqlite
+COPY --from=dictionary /out/dictionary-nl.sqlite /in/dictionary-nl.sqlite
+COPY --from=sentences /out/sentences-nl.sqlite /in/sentences-nl.sqlite
+COPY scripts/build_grammar_examples.py scripts/
+RUN python scripts/build_grammar_examples.py
+
+# ---- Stage 6: runtime ------------------------------------------------------------------
 FROM python:3.12-slim
 
 # Tesseract + Dutch/Ukrainian (English is a dependency of the base package) traineddata.
@@ -91,7 +105,8 @@ ENV PATH="/opt/venv/bin:$PATH" \
     PYTHONUNBUFFERED=1 \
     KENNING_DICT_PATH=/data/dictionary-nl.sqlite \
     KENNING_SENTENCES_PATH=/data/sentences-nl.sqlite \
-    KENNING_MT_DIR=/data/mt-nl-en
+    KENNING_MT_DIR=/data/mt-nl-en \
+    KENNING_GRAMMAR_CACHE_PATH=/data/grammar-examples-nl.sqlite
 
 WORKDIR /app
 # The project is installed in editable mode, so /app (src) must sit next to /opt/venv.
@@ -101,6 +116,7 @@ COPY --from=venv /app /app
 COPY --from=dictionary /out/dictionary-nl.sqlite /data/dictionary-nl.sqlite
 COPY --from=sentences /out/sentences-nl.sqlite /data/sentences-nl.sqlite
 COPY --from=mtmodel /out/mt-nl-en /data/mt-nl-en
+COPY --from=grammar /out/grammar-examples-nl.sqlite /data/grammar-examples-nl.sqlite
 
 RUN useradd --system --uid 10001 kenning
 USER kenning

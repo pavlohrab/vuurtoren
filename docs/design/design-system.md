@@ -39,14 +39,15 @@ CSS custom properties are exposed to Tailwind v4 via `@theme`. Dark mode is a wa
 
 ### Word-state semantics (the heart of the reader)
 
-| State                                            | Treatment                                                                             |
-| ------------------------------------------------ | ------------------------------------------------------------------------------------- |
-| new / target                                     | soft amber tint `#F3E3C3` (dark `#4A3A1F`) + 1px underline `#9A6A12`                  |
-| learning                                         | dotted underline sage `#5E8B6B`; opacity = 1 − recall (fades as you master it)        |
-| known                                            | no decoration                                                                         |
-| ignored / proper noun                            | no decoration, never clickable-highlighted                                            |
-| weave island (target-language word in base text) | small-caps-free, 1px teal underline; hover shows the gloss                            |
-| cloze                                            | hairline-bordered blank sized to the word length; focused blank gets an accent border |
+| State                                            | Treatment                                                                                                                                   |
+| ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| new / target                                     | soft amber tint `#F3E3C3` (dark `#4A3A1F`) + 1px underline `#9A6A12`                                                                        |
+| learning                                         | dotted underline sage `#5E8B6B`; opacity = 1 − recall (fades as you master it)                                                              |
+| known                                            | no decoration                                                                                                                               |
+| ignored / proper noun                            | no decoration, never clickable-highlighted                                                                                                  |
+| weave island (target-language word in base text) | small-caps-free, 1px teal underline; hover shows the gloss                                                                                  |
+| cloze                                            | hairline-bordered blank sized to the word length; focused blank gets an accent border                                                       |
+| grammar spotlight (toggle)                       | 2px inset line `--state-grammar-line` (muted plum `#8A6D9C`, dark `#B9A0CC`) under the construction's words; combines with the states above |
 
 Never use bright highlighter blocks.
 

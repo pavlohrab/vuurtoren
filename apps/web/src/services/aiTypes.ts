@@ -91,6 +91,16 @@ export interface AIServices {
   suggestTargetWords(): Promise<string[]>;
   /** Make a card for a word the partner introduced (uses the Anki target deck). */
   addConversationWord(word: NewWord): Promise<{ deck: string }>;
-  aiExplainSentence(sentence: string): Promise<string>;
+  /**
+   * Explain a sentence. `grammar`: constructions detected in it (topic title + note), passed to
+   * the model as context.
+   */
+  aiExplainSentence(sentence: string, grammar?: ExplainGrammar[]): Promise<string>;
   aiSimplify(text: string): Promise<SimplifyView>;
+}
+
+/** A grammar construction detected in the sentence to explain. */
+export interface ExplainGrammar {
+  title: string;
+  note: string;
 }

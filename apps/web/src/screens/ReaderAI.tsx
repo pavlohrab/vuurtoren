@@ -1,6 +1,7 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { Button, Spinner } from "@app/ui";
+import type { ExplainGrammar } from "../services/aiTypes.js";
 import { useServices } from "../services/context.js";
 
 const message = (e: unknown) => (e instanceof Error && e.message ? e.message : "Try again.");
@@ -14,10 +15,19 @@ function useAIReady(): boolean {
 }
 
 /** "Explain this sentence" for the sentence of the selected word (shown under the inspector). */
-export function ExplainSentence({ sentence }: { sentence: string | null | undefined }) {
+export function ExplainSentence({
+  sentence,
+  grammar,
+}: {
+  sentence: string | null | undefined;
+  /** Grammar detected in the sentence, sent along as context. */
+  grammar?: ExplainGrammar[];
+}) {
   const services = useServices();
   const ready = useAIReady();
-  const explain = useMutation({ mutationFn: (s: string) => services.aiExplainSentence(s) });
+  const explain = useMutation({
+    mutationFn: (s: string) => services.aiExplainSentence(s, grammar),
+  });
   if (!ready || !sentence) return null;
   return (
     // Keyed by sentence so a new selection starts clean.

@@ -8,6 +8,9 @@ import {
   type WordState,
   glossTargets,
   helpLevel,
+  hitsAtToken,
+  hitsInSentence,
+  spotlightTokens,
 } from "@app/core";
 import {
   Button,
@@ -22,6 +25,7 @@ import {
 } from "@app/ui";
 import { useServices } from "../services/context.js";
 import type { InspectorEntry, ReadingView } from "../services/types.js";
+import { GrammarNotes, notesFor, spotlightLabel } from "./GrammarNotes.js";
 import { ExplainSentence, SimplifyPage } from "./ReaderAI.js";
 import { writeLastText } from "../lastText.js";
 import { usePageHeader, useShell } from "../shell/ShellContext.js";
@@ -198,6 +202,35 @@ export function ReaderPage({ textId }: { textId: string }) {
     onError: (e) => toast("Could not save the reading setting", errorMessage(e)),
     onSettled: () => setHelpDraft(null),
   });
+
+  // Grammar spotlights (M5): hits are detected once per text and stored. They are also loaded
+  // when a word is selected, as context for "Explain this sentence".
+  const spotlightsOn = settingsQ.data?.grammarSpotlights ?? false;
+  const grammarQ = useQuery({
+    queryKey: ["grammar", "text", textId],
+    queryFn: () => services.textGrammar(textId),
+    enabled: data != null && (spotlightsOn || selected !== null),
+    staleTime: Infinity,
+    retry: 1,
+  });
+  const hits = useMemo(() => grammarQ.data ?? [], [grammarQ.data]);
+  const spotlights = useMemo(() => {
+    if (!spotlightsOn || hits.length === 0) return undefined;
+    const out = new Map<number, string>();
+    for (const [i, topics] of spotlightTokens(hits)) out.set(i, spotlightLabel(topics));
+    return out;
+  }, [hits, spotlightsOn]);
+  const selectedSent = selected !== null ? data?.tokens[selected]?.sent : undefined;
+  const sentenceGrammar = useMemo(
+    () =>
+      selectedSent === undefined
+        ? []
+        : notesFor(hitsInSentence(hits, selectedSent)).map(({ topic, note }) => ({
+            title: topic.title,
+            note,
+          })),
+    [hits, selectedSent],
+  );
 
   // Translations by mode: Read shows none (clean text; click a word for its meaning), Cloze
   // only the blanks' meanings (the hint), Gloss whatever the dial selects.
@@ -437,6 +470,21 @@ export function ReaderPage({ textId }: { textId: string }) {
           </div>
         ) : null}
         <div className="reader-tool">
+          <Button
+            variant={spotlightsOn ? "primary" : "secondary"}
+            aria-pressed={spotlightsOn}
+            title="Underline grammar constructions; click a word to see its grammar"
+            onClick={() => saveSettings.mutate({ grammarSpotlights: !spotlightsOn })}
+          >
+            Grammar
+          </Button>
+          {spotlightsOn && grammarQ.isError ? (
+            <span className="k-hint" role="status">
+              Unavailable: the language server is unreachable
+            </span>
+          ) : null}
+        </div>
+        <div className="reader-tool">
           <span className="reader-tool-label">New words</span>
           <Select
             value={String(settingsQ.data?.newWords ?? "auto")}
@@ -457,6 +505,7 @@ export function ReaderPage({ textId }: { textId: string }) {
         mode={mode}
         blanks={blanks}
         glosses={glosses}
+        {...(spotlights ? { spotlights } : {})}
         onTokenClick={onTokenClick}
         onClozeAnswer={onClozeAnswer}
       />
@@ -504,7 +553,10 @@ export function ReaderPage({ textId }: { textId: string }) {
                 onReset={() => entry && resetState.mutate(entry)}
                 onSetState={(state) => entry && setState.mutate({ e: entry, state })}
               />
-              <ExplainSentence sentence={entry?.sentence} />
+              {spotlightsOn && entry ? (
+                <GrammarNotes hits={hitsAtToken(hits, entry.tokenIndex)} />
+              ) : null}
+              <ExplainSentence sentence={entry?.sentence} grammar={sentenceGrammar} />
             </>,
             inspectorEl,
           )

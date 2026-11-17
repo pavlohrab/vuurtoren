@@ -366,9 +366,10 @@ export function createLiveAI(deps: LiveAIDeps): AIServices {
       deps.changed();
       return { deck: s.targetDeck };
     },
-    async aiExplainSentence(sentence) {
+    async aiExplainSentence(sentence, grammar) {
       return explainSentence(await provider(), sentence, {
         vocabEstimate: await deps.vocabEstimate(),
+        ...(grammar?.length ? { grammar } : {}),
       });
     },
     async aiSimplify(text) {

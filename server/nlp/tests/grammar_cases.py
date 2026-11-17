@@ -250,7 +250,7 @@ CASES: dict[str, tuple[list[str], list[str]]] = {
             "We boffen dat het weer zo mooi is.",
         ],
     ),
-    "de-het": (
+    "diminutives": (
         [
             "Het meisje heeft een hondje.",
             "Ik wil een koekje en een kopje thee.",

@@ -34,6 +34,33 @@ describe("Reader", () => {
     expect(particle).toHaveClass("k-tok--particle");
   });
 
+  it("underlines grammar spotlights and keeps them clickable", async () => {
+    const f = fixture(TEXT, { 1: "introduce" }, { 4: 1 });
+    const bel = f.tokens.find((t) => t.text === "bel")!.i;
+    const op = f.tokens.find((t) => t.text === "op")!.i;
+    const spotlights = new Map([
+      [bel, "Separable verbs"],
+      [op, "Separable verbs"],
+    ]);
+    const onTokenClick = vi.fn();
+    render(<Reader {...f} spotlights={spotlights} onTokenClick={onTokenClick} />);
+    const verb = screen.getByText("bel");
+    expect(verb).toHaveClass("k-tok--spot");
+    // The word state is kept; the spotlight is an extra treatment.
+    expect(verb).toHaveAttribute("data-label", "introduce");
+    expect(verb).toHaveAttribute("title", "Separable verbs");
+    expect(verb).toHaveAttribute("aria-description", "Grammar: Separable verbs");
+    expect(screen.getByText("op")).toHaveClass("k-tok--spot");
+    expect(screen.getByText("morgen")).not.toHaveClass("k-tok--spot");
+    await userEvent.click(verb);
+    expect(onTokenClick).toHaveBeenCalledWith(bel);
+  });
+
+  it("renders no spotlights without the prop", () => {
+    const { container } = render(<Reader {...fixture(TEXT)} />);
+    expect(container.querySelector(".k-tok--spot")).toBeNull();
+  });
+
   it("clamps learning opacity to 0.25..1", () => {
     expect(learningOpacity(0.99)).toBe(0.25);
     expect(learningOpacity(0)).toBe(1);

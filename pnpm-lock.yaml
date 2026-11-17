@@ -242,6 +242,9 @@ importers:
       '@app/anki':
         specifier: workspace:*
         version: link:../../packages/anki
+      '@app/content':
+        specifier: workspace:*
+        version: link:../../packages/content
       '@app/core':
         specifier: workspace:*
         version: link:../../packages/core
@@ -323,6 +326,15 @@ importers:
         specifier: workspace:*
         version: link:../core
     devDependencies:
+      vitest:
+        specifier: ^5.1.0
+        version: 5.1.0(@types/node@26.6.6)(jsdom@31.0.1)(vite@8.3.8(@types/node@26.6.6)(jiti@2.7.0))
+
+  packages/content:
+    devDependencies:
+      '@types/node':
+        specifier: ^26.6.6
+        version: 26.6.6
       vitest:
         specifier: ^5.1.0
         version: 5.1.0(@types/node@26.6.6)(jsdom@31.0.1)(vite@8.3.8(@types/node@26.6.6)(jiti@2.7.0))

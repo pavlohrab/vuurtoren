@@ -20,7 +20,10 @@ __pycache__/
 reports/
 
 # nlp service data (generated dictionary, downloads)
-server/nlp/data/
+server/nlp/data
 
 # local agent worktrees
 .claude/
+
+# generated from packages/content/grammar (pnpm --filter @app/content generate)
+packages/content/src/generated/

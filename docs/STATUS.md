@@ -83,6 +83,15 @@ pnpm dev            # web app on http://localhost:5173 (proxies /nlp and /anki)
   - 214 TypeScript and 242 Python tests (3 OCR tests skip without Tesseract).
   - Three independent reviews; all confirmed High/Critical findings fixed. See below.
 
+### Grammar (M5)
+
+- 24 Dutch topic pages (`packages/content`, built into `@app/content`); every detector topic has a page.
+- `/grammar`: topics by level with hit counts from your Library; `/grammar/:topic`: explanation, examples from your texts, then Tatoeba, common mistakes, related topics, **Practise**.
+- Reader **Grammar** toggle (saved setting): a quiet line under detected constructions; clicking a word shows its topics in the inspector with a link to the page. "Explain this sentence" gets the detected grammar as context.
+- Topic exercises reuse the M4 generators (scramble, separable, perfect, de/het, adjective -e) on sentences where the topic was detected.
+- Hits are detected once per text by `POST /grammar` and stored as `TextGrammarDetected` events (projection `text_grammar`, schema v4, allow-listed for server storage mode).
+- The NLP Docker image precomputes the Tatoeba example cache; at runtime it is read-only.
+
 ### Review fixes applied
 
 - **NLP:** lemma precision, UTF-16 offsets, request size limits, one shared key-normalisation rule (Python = TypeScript), particle and R-pronoun false positives.

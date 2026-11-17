@@ -1,7 +1,8 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
-import { useCallback, useEffect, useRef, useState } from "react";
-import type { Exercise, Skill } from "@app/core";
+import { Link, useParams } from "@tanstack/react-router";
+import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
+import type { Exercise, ExerciseKind, Skill } from "@app/core";
+import { grammarTopic } from "@app/content";
 import {
   Button,
   Chip,
@@ -15,6 +16,7 @@ import {
 import { dutchVoiceAvailable, speakDutch } from "../practice/speech.js";
 import { useServices } from "../services/context.js";
 import type { AnswerResult } from "../services/types.js";
+import { usePageHeader } from "../shell/ShellContext.js";
 
 export const SKILLS: { skill: Skill; label: string }[] = [
   { skill: "recognition", label: "Recognition" },
@@ -347,21 +349,25 @@ function Summary({
   skipped,
   empty,
   onAgain,
+  emptyTitle = "Practice",
+  emptyText = "Nothing to practise yet. Sync Anki in Settings, or read a text and start learning a few words.",
+  actions,
 }: {
   answered: Answered[];
   skipped: number;
   empty: boolean;
   onAgain: () => void;
+  emptyTitle?: string;
+  emptyText?: string;
+  /** Replaces the default buttons (Practice again, Words). */
+  actions?: ReactNode;
 }) {
   if (empty) {
     return (
       <>
-        <h1>Practice</h1>
-        <p className="page-lede">
-          Nothing to practise yet. Sync Anki in Settings, or read a text and start learning a few
-          words.
-        </p>
-        <Button onClick={onAgain}>Back</Button>
+        <h1>{emptyTitle}</h1>
+        <p className="page-lede">{emptyText}</p>
+        {actions ?? <Button onClick={onAgain}>Back</Button>}
       </>
     );
   }
@@ -407,14 +413,132 @@ function Summary({
           </div>
         </section>
       ) : null}
-      <div className="practice-actions">
-        <Button variant="primary" onClick={onAgain}>
-          Practice again
-        </Button>
-        <Link to="/words" className="k-btn k-btn--secondary">
-          Words
+      {actions ?? (
+        <div className="practice-actions">
+          <Button variant="primary" onClick={onAgain}>
+            Practice again
+          </Button>
+          <Link to="/words" className="k-btn k-btn--secondary">
+            Words
+          </Link>
+        </div>
+      )}
+    </>
+  );
+}
+
+/** Route component for /grammar/$topic/practice. */
+export function TopicPracticeRoute() {
+  const { topic } = useParams({ from: "/grammar/$topic/practice" });
+  return <TopicPractice key={topic} topicId={topic} />;
+}
+
+const TOPIC_SESSION = 10;
+
+/**
+ * Topic exercises: starts straight away with exercises of the topic's kinds, built only from
+ * sentences in which the topic was detected (your texts first, then Tatoeba).
+ */
+export function TopicPractice({ topicId }: { topicId: string }) {
+  const services = useServices();
+  const client = useQueryClient();
+  const topic = grammarTopic(topicId);
+  usePageHeader(topic ? `Practise: ${topic.title}` : "Practice");
+  const [phase, setPhase] = useState<Phase>({ name: "loading" });
+  const [error, setError] = useState<string | null>(null);
+  const [run, setRun] = useState(0);
+  const again = () => {
+    setError(null);
+    setPhase({ name: "loading" });
+    setRun((n) => n + 1);
+  };
+
+  useEffect(() => {
+    if (!topic) return;
+    let cancelled = false;
+    services
+      .startTopicPractice({
+        detects: topic.detects,
+        kinds: topic.practice as ExerciseKind[],
+        size: TOPIC_SESSION,
+      })
+      .then((exercises) => {
+        if (cancelled) return;
+        setPhase(
+          exercises.length
+            ? { name: "session", exercises, listening: true }
+            : { name: "summary", answered: [], skipped: 0, empty: true },
+        );
+      })
+      .catch((e: unknown) => {
+        if (cancelled) return;
+        setError(e instanceof Error ? e.message : String(e));
+        setPhase({ name: "start" });
+      });
+    return () => {
+      cancelled = true;
+    };
+    // Bumping `run` starts a fresh session.
+  }, [services, topic, run]);
+
+  if (!topic) {
+    return (
+      <div className="page page--narrow practice">
+        <h1>Practice</h1>
+        <p className="page-lede">This grammar topic was not found.</p>
+        <Link to="/grammar" className="k-btn k-btn--secondary">
+          All grammar topics
         </Link>
       </div>
-    </>
+    );
+  }
+  const back = (
+    <div className="practice-actions">
+      <Button variant="primary" onClick={again}>
+        Practise again
+      </Button>
+      <Link to="/grammar/$topic" params={{ topic: topic.id }} className="k-btn k-btn--secondary">
+        Back to {topic.title}
+      </Link>
+    </div>
+  );
+  return (
+    <div className="page page--narrow practice">
+      {phase.name === "loading" || phase.name === "start" ? (
+        <>
+          <h1>Practise: {topic.title}</h1>
+          <p className="page-lede">{error ? "The session could not be prepared." : "Preparing…"}</p>
+          {error ? (
+            <>
+              <p className="error-text" role="alert">
+                {error}
+              </p>
+              {back}
+            </>
+          ) : (
+            <Skeleton style={{ height: 160, width: "100%", borderRadius: 10 }} />
+          )}
+        </>
+      ) : phase.name === "session" ? (
+        <Session
+          exercises={phase.exercises}
+          listening={phase.listening}
+          onFinish={(answered, skipped) => {
+            void client.invalidateQueries({ queryKey: ["practice"] });
+            setPhase({ name: "summary", answered, skipped, empty: false });
+          }}
+        />
+      ) : (
+        <Summary
+          answered={phase.answered}
+          skipped={phase.skipped}
+          empty={phase.empty}
+          onAgain={again}
+          emptyTitle={`Practise: ${topic.title}`}
+          emptyText="There are no sentences with this topic to practise yet. Read a text that uses it, or try again when the language server is reachable."
+          actions={back}
+        />
+      )}
+    </div>
   );
 }

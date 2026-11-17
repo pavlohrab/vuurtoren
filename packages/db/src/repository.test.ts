@@ -127,6 +127,43 @@ describe("projections", () => {
     expect(await driver.exec("SELECT count(*) AS c FROM reading_progress")).toEqual([{ c: 0 }]);
   });
 
+  it("TextGrammarDetected stores hits for the current content only", async () => {
+    const { repo, driver } = await newRepo();
+    const content = "Morgen ga ik naar school.";
+    const hits = [
+      { topic: "inversion", tokens: [1, 2], sent: 0, start: 0, end: 25, note: "verb first" },
+    ];
+    const detected = (textId: string, hash = contentHash(content)): AppEvent => ({
+      type: "TextGrammarDetected",
+      textId,
+      contentHash: hash,
+      version: 1,
+      hits,
+    });
+    expect(await repo.textGrammar("t1")).toBeNull();
+    await repo.append(detected("t1")); // unknown text: ignored
+    await repo.append(importText("t1", content));
+    await repo.append(detected("t1", contentHash("something else"))); // stale: ignored
+    expect(await repo.textGrammar("t1")).toBeNull();
+    await repo.append(detected("t1"));
+    expect(await repo.textGrammar("t1")).toEqual({ textId: "t1", version: 1, hits });
+    await repo.append(importText("t2", "Ik werk niet."));
+    expect((await repo.allTextGrammar()).map((g) => g.textId)).toEqual(["t1"]);
+
+    // Replays give the same projection.
+    await repo.rebuild();
+    expect(await repo.textGrammar("t1")).toEqual({ textId: "t1", version: 1, hits });
+
+    // New content makes the hits stale; deleting the text removes them.
+    await repo.append(importText("t1", "Andere tekst."));
+    expect(await repo.textGrammar("t1")).toBeNull();
+    await repo.append(importText("t1", content));
+    await repo.append(detected("t1"));
+    await repo.append({ type: "TextDeleted", textId: "t1" });
+    expect(await repo.allTextGrammar()).toEqual([]);
+    expect(await driver.exec("SELECT count(*) AS c FROM text_grammar")).toEqual([{ c: 0 }]);
+  });
+
   it("AnkiSnapshotImported replaces the whole language and records the source", async () => {
     const { repo } = await newRepo();
     await repo.append({

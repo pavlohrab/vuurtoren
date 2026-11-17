@@ -150,6 +150,14 @@ export const MIGRATIONS: readonly (readonly string[])[] = [
        PRIMARY KEY (course_id, unit_n, number, item)
      )`,
   ],
+  [
+    `CREATE TABLE text_grammar (
+       text_id TEXT PRIMARY KEY,
+       content_hash TEXT NOT NULL,
+       version INTEGER NOT NULL,
+       hits TEXT NOT NULL
+     )`,
+  ],
 ];
 
 /** Latest schema version. */
@@ -159,6 +167,7 @@ export const SCHEMA_VERSION = MIGRATIONS.length;
 export const PROJECTION_TABLES = [
   "texts",
   "text_tokens",
+  "text_grammar",
   "anki_words",
   "word_overrides",
   "word_lookups",

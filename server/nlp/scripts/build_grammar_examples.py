@@ -6,7 +6,8 @@ Usage (from server/nlp)::
     uv run python scripts/build_grammar_examples.py --max 20000
 
 Scans the Tatoeba sentence DB with the grammar detectors and keeps the best examples per topic
-in ``data/grammar-examples-nl.sqlite`` (see ``kenning_nlp.grammar_examples``). Resumes where an
+in ``data/grammar-examples-nl.sqlite`` (or ``$KENNING_GRAMMAR_CACHE_PATH``; see
+``kenning_nlp.grammar_examples``). The Docker image runs this at build time. Resumes where an
 earlier run stopped; the cache is rebuilt automatically when the detectors change.
 """
 
@@ -30,15 +31,21 @@ def main() -> int:
         print(f"No sentence database at {path}; run scripts/build_sentences.py first.")
         return 1
     scanner = GrammarExamples(path)
+    if not scanner.writable():
+        print(f"Cannot write the cache at {scanner.cache_db}.")
+        return 1
     start = time.monotonic()
-    scanned = 0
-    while scanned < args.max:
+    while True:
         # One request per topic with a tiny budget advances the shared scan.
         counts = {t: len(scanner.examples(t, MAX_PER_TOPIC, budget_s=0.5)) for t in sorted(TOPICS)}
-        scanned += 128
-        if all(n >= MAX_PER_TOPIC for n in counts.values()):
+        scanned, finished = scanner.progress()
+        if all(n >= MAX_PER_TOPIC for n in counts.values()) or finished or scanned >= args.max:
             break
-        print(f"{time.monotonic() - start:6.0f}s  min {min(counts.values())}/{MAX_PER_TOPIC}")
+        print(
+            f"{time.monotonic() - start:6.0f}s  {scanned} sentences"
+            f"  min {min(counts.values())}/{MAX_PER_TOPIC}",
+            flush=True,
+        )
     for topic, n in counts.items():
         print(f"{topic:22} {n}")
     return 0

@@ -128,9 +128,12 @@ export function createMockAI(
       added.push(word);
       return { deck: "Kenning::Nederlands" };
     },
-    async aiExplainSentence(sentence) {
+    async aiExplainSentence(sentence, grammar) {
       await wait();
-      return `Meaning of "${sentence}": a mock explanation.\n- Word order: verb second.`;
+      const points = grammar?.length
+        ? grammar.map((g) => `- ${g.title}: ${g.note}`).join("\n")
+        : "- Word order: verb second.";
+      return `Meaning of "${sentence}": a mock explanation.\n${points}`;
     },
     async aiSimplify(text): Promise<SimplifyView> {
       await wait();
