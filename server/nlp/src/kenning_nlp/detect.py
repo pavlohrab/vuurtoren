@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from functools import lru_cache
 
-from kenning_nlp.models import Detection
+from kenning_nlp.models import DETECT_SAMPLE_CHARS, Detection
 
 ISO = {
     "DUTCH": "nl",
@@ -36,11 +36,13 @@ def detect(texts: list[str]) -> list[Detection]:
     """Best language per text, or ``None`` for letterless / undecidable input.
 
     lingua returns an all-zero confidence list for e.g. "17.31", whose first entry is
-    arbitrary — so low-confidence results are reported as unknown.
+    arbitrary — so low-confidence results are reported as unknown. Only the first
+    ``DETECT_SAMPLE_CHARS`` characters are examined (bounds the cost of huge inputs).
     """
     det = _detector()
     out: list[Detection] = []
-    for text in texts:
+    for full_text in texts:
+        text = full_text[:DETECT_SAMPLE_CHARS]
         if not any(c.isalpha() for c in text):
             out.append(Detection(lang=None, confidence=0.0))
             continue
