@@ -30,6 +30,8 @@ class Token(BaseModel):
     is_num: bool
     particle_of: int | None = None
     """For a detached separable particle: index of its verb."""
+    zipf: float = 0.0
+    """wordfreq Zipf frequency of the lemma (surface fallback): ~7 common, ~1 rare, 0 unknown."""
 
 
 class TextAnalysis(BaseModel):
@@ -57,3 +59,42 @@ class DetectRequest(BaseModel):
 class Detection(BaseModel):
     lang: str | None
     confidence: float
+
+
+class ExtractUrlRequest(BaseModel):
+    url: str = Field(max_length=2048)
+
+
+class UrlExtraction(BaseModel):
+    title: str
+    text: str
+    url: str
+    """Final URL after redirects."""
+
+
+class PdfExtraction(BaseModel):
+    title: str
+    text: str
+    pages: int
+    needs_ocr: bool
+    """True when the PDF has (almost) no text layer: send it to /ocr instead."""
+
+
+class OcrResult(BaseModel):
+    text: str
+    confidence: float
+    """Mean word confidence, 0..1."""
+    pages: int
+
+
+class GlossRequest(BaseModel):
+    lang: Lang
+    words: list[str] = Field(max_length=2000)
+
+
+class GlossEntry(BaseModel):
+    pos: str
+    article: str | None = None
+    """``de`` / ``het`` for nouns (``de/het`` if senses disagree)."""
+    glosses: list[str]
+    """Short English senses (at most 5)."""

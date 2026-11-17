@@ -8,6 +8,7 @@ from functools import lru_cache
 from typing import TYPE_CHECKING
 
 from kenning_nlp import nl
+from kenning_nlp.freq import token_zipf
 from kenning_nlp.models import TermAnalysis, TextAnalysis, Token
 
 if TYPE_CHECKING:
@@ -187,6 +188,13 @@ def analyze_doc(doc: Doc) -> TextAnalysis:
     for t in doc:
         current = sent_index.get(t.i, current)
         sent_of.append(current)
+    is_word = [
+        t.pos_ not in NON_WORD_POS
+        and not t.like_num
+        and not t.is_space
+        and any(c.isalpha() for c in t.text)
+        for t in doc
+    ]
     tokens = [
         Token(
             i=t.i,
@@ -200,13 +208,11 @@ def analyze_doc(doc: Doc) -> TextAnalysis:
             sent=sent_of[t.i],
             start=t.idx,
             end=t.idx + len(t.text),
-            is_word=t.pos_ not in NON_WORD_POS
-            and not t.like_num
-            and not t.is_space
-            and any(c.isalpha() for c in t.text),
+            is_word=is_word[t.i],
             is_propn=t.pos_ == "PROPN",
             is_num=t.like_num or t.pos_ == "NUM",
             particle_of=particle_of.get(t.i),
+            zipf=token_zipf(lemmas[t.i], t.text, is_word[t.i]),
         )
         for t in doc
     ]
@@ -221,7 +227,7 @@ def analyze_texts(lang: str, texts: list[str]) -> list[TextAnalysis]:
 _APOS = str.maketrans({"\u2019": "'", "\u2018": "'", "`": "'"})
 _REFLEXIVE_MARK = re.compile(r"\(\s*zich\s*\)", re.IGNORECASE)
 _BRACKETS = re.compile(r"\([^)]*\)|\[[^\]]*\]")
-_GLOSS_SEP = re.compile(r"\s[-\u2013\u2014]\s|=")
+_GLOSS_SEP = re.compile(r"\s[-\u2013—]\s|=")
 _ALT_SEP = re.compile(r"\s*[,;/|]\s*")
 
 
