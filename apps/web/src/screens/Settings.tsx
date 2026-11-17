@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Button, Input, Select, Skeleton, Spinner, useToast } from "@app/ui";
 import { useServices } from "../services/context.js";
 import type { LearnerSummary, Settings as SettingsData } from "../services/types.js";
+import { AnkiSettings } from "./AnkiSettings.js";
 import { useTheme, type ThemeChoice } from "../theme.js";
 
 const THEMES = [
@@ -37,13 +38,7 @@ export function SettingsScreen() {
     onSuccess: () => toast("Settings saved"),
     onError: (e) => toast("Could not save the settings", message(e)),
   });
-  // Testing and syncing use the address and key on screen, so they are saved first.
-  const test = useMutation({
-    mutationFn: async (s: SettingsData) => {
-      await persist(s);
-      return services.ankiStatus();
-    },
-  });
+  // Syncing uses the address and key on screen, so they are saved first.
   const sync = useMutation({
     mutationFn: async (s: SettingsData) => {
       setSyncLog([]);
@@ -65,6 +60,11 @@ export function SettingsScreen() {
     );
   const set = <K extends keyof SettingsData>(k: K, v: SettingsData[K]) =>
     setForm({ ...form, [k]: v });
+  const clearAnkiKey = () => {
+    const { ankiKey: _drop, ...rest } = form;
+    void _drop;
+    setForm(rest);
+  };
 
   return (
     <div className="page page--narrow">
@@ -78,50 +78,7 @@ export function SettingsScreen() {
           save.mutate(form);
         }}
       >
-        <h2 style={{ fontSize: 19 }}>Anki</h2>
-        <Input
-          label="AnkiConnect address"
-          value={form.ankiUrl}
-          onChange={(e) => set("ankiUrl", e.target.value)}
-        />
-        <Input
-          label="AnkiConnect key"
-          type="password"
-          value={form.ankiKey ?? ""}
-          hint="Only needed if you set an API key in the AnkiConnect add-on."
-          onChange={(e) => {
-            if (e.target.value) set("ankiKey", e.target.value);
-            else {
-              const { ankiKey: _drop, ...rest } = form;
-              void _drop;
-              setForm(rest);
-            }
-          }}
-        />
-        <Input
-          label="Target deck"
-          value={form.targetDeck}
-          hint="New cards from the reader are added here."
-          onChange={(e) => set("targetDeck", e.target.value)}
-        />
-        <div className="row">
-          <Button onClick={() => test.mutate(form)} disabled={test.isPending}>
-            {test.isPending ? <Spinner label="Testing" /> : null}
-            Test connection
-          </Button>
-          <span className="k-hint">Saves your changes first.</span>
-          {test.isError ? (
-            <span role="alert" className="error-text">
-              {message(test.error)}
-            </span>
-          ) : test.data ? (
-            <span role="status" className={test.data.connected ? undefined : "error-text"}>
-              {test.data.connected
-                ? `Connected${test.data.version ? `, AnkiConnect version ${test.data.version}` : ""}.`
-                : `Not connected. ${test.data.error ?? ""}`}
-            </span>
-          ) : null}
-        </div>
+        <AnkiSettings form={form} set={set} persist={persist} clearKey={clearAnkiKey} />
 
         <h2 style={{ fontSize: 19, marginTop: 16 }}>Language server</h2>
         <Input

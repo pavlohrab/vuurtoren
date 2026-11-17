@@ -22,35 +22,37 @@ import argparse
 import bz2
 import sys
 import time
-import urllib.request
 from collections.abc import Iterator
 from pathlib import Path
+
+from pinned_download import PinMismatchError, download_verified
 
 from kenning_nlp.models import TextAnalysis
 from kenning_nlp.pipeline import analyze_doc, get_nlp
 from kenning_nlp.sentences import Analyzer, build_sentence_db
 
 BASE_URL = "https://downloads.tatoeba.org/exports/per_language"
+# Tatoeba publishes only the current weekly export (no dated archive), so we pin the SHA-256 of
+# the exports the shipped data was built from (all last modified 2026-11-14):
+# file name -> (path under the base URL, sha256, size in bytes).
 FILES = {
-    "nld_sentences.tsv.bz2": f"{BASE_URL}/nld/nld_sentences.tsv.bz2",
-    "nld-eng_links.tsv.bz2": f"{BASE_URL}/nld/nld-eng_links.tsv.bz2",
-    "eng_sentences.tsv.bz2": f"{BASE_URL}/eng/eng_sentences.tsv.bz2",
+    "nld_sentences.tsv.bz2": (
+        "nld/nld_sentences.tsv.bz2",
+        "822bb83c9a5be3b2d0f40c3aa7fb9acfb9d30e810611a6546d50c046b37c94cb",
+        2_503_155,
+    ),
+    "nld-eng_links.tsv.bz2": (
+        "nld/nld-eng_links.tsv.bz2",
+        "5bba968054525cc0d224c4b559016ed7cb8eb2dcfa44e1a81244ebfb094d0c39",
+        1_071_856,
+    ),
+    "eng_sentences.tsv.bz2": (
+        "eng/eng_sentences.tsv.bz2",
+        "3b5b3ecfcac5037b09f81ef048fa16fedc4d24838db5b6fbeedca1dfab374cbf",
+        24_947_715,
+    ),
 }
 DATA_DIR = Path(__file__).resolve().parents[1] / "data"
-
-
-def download(url: str, dest: Path) -> None:
-    """Stream ``url`` to ``dest`` (via a .part file), printing the size up front."""
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    req = urllib.request.Request(url, headers={"User-Agent": "kenning-build-sentences"})
-    with urllib.request.urlopen(req, timeout=60) as resp:  # noqa: S310 (fixed https URL)
-        total = int(resp.headers.get("Content-Length", 0))
-        print(f"Downloading {url} ({total / 1e6:.1f} MB)")
-        part = dest.with_name(dest.name + ".part")
-        with part.open("wb") as fh:
-            while chunk := resp.read(1 << 20):
-                fh.write(chunk)
-    part.replace(dest)
 
 
 def read_tsv(path: Path) -> Iterator[list[str]]:
@@ -99,14 +101,36 @@ def main() -> int:
     ap.add_argument("--download-dir", type=Path, default=DATA_DIR / "tatoeba")
     ap.add_argument("--limit", type=int, default=0, help="only the first N sentence pairs (test)")
     ap.add_argument("--processes", type=int, default=1, help="spaCy worker processes")
+    ap.add_argument(
+        "--base-url",
+        default=BASE_URL,
+        help="where the exports live (e.g. a mirror or your own dated snapshot)",
+    )
+    ap.add_argument(
+        "--accept-new-upstream",
+        action="store_true",
+        help="build from the downloaded exports even if they differ from the pinned snapshot",
+    )
     ap.add_argument("--keep-downloads", action="store_true", help="keep the downloaded exports")
     args = ap.parse_args()
 
     downloaded = []
-    for name, url in FILES.items():
+    for name, (path, sha256, size) in FILES.items():
         dest = args.download_dir / name
         if not dest.exists():
-            download(url, dest)
+            try:
+                download_verified(
+                    f"{args.base_url.rstrip('/')}/{path}",
+                    dest,
+                    f"Tatoeba {name}",
+                    sha256,
+                    size,
+                    args.accept_new_upstream,
+                    "kenning-build-sentences",
+                )
+            except PinMismatchError as e:
+                print(f"error: {e}", file=sys.stderr)
+                return 2
             downloaded.append(dest)
 
     t0 = time.perf_counter()

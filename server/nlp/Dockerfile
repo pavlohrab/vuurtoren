@@ -5,23 +5,37 @@
 # Kaikki download never reaches the final image, only the ~35 MB SQLite file does, and a
 # self-hoster gets working /gloss with a plain `docker compose up --build`. The builder uses
 # only the standard library, so it does not depend on the (slow) Python dependency layer.
-# Re-run with `--build-arg KAIKKI_URL=...` or `--no-cache` to refresh the dictionary.
+# Reproducibility: Kaikki and Tatoeba only publish a rolling "latest" export, so scripts/ pin the
+# SHA-256 + size of the snapshot the data was built from (scripts/pinned_download.py). When
+# upstream refreshes, the build stops with a clear message. To build from the new data anyway:
+#   docker build --build-arg KAIKKI_ACCEPT_NEW=1 --build-arg TATOEBA_ACCEPT_NEW=1 ...
+# (then record the printed digests in the scripts). To use your own copy or mirror:
+#   --build-arg KAIKKI_URL=... KAIKKI_SHA256=<hex> (empty = no check) KAIKKI_SIZE=<bytes> (0 = none)
+#   --build-arg TATOEBA_BASE_URL=...
 #
 # The Tatoeba sentence DB (/sentences, and the perfect-tense evidence behind /forms `aux`) is built
 # the same way, in a throwaway stage, but that stage needs the Python dependencies (the spaCy
 # pipeline analyses ~150k sentences, ~4 min): it therefore starts from the shared `venv` stage, which
 # the runtime image copies as well, so the dependencies are installed (and cached) only once. The
-# ~30 MB of Tatoeba exports never reach the final image, only the ~50 MB SQLite file. Rebuild with
-# `--no-cache` (or `--build-arg TATOEBA_DATE=...`) to pick up newer weekly exports.
+# ~30 MB of Tatoeba exports never reach the final image, only the ~50 MB SQLite file.
 
 # ---- Stage 1: dictionary ---------------------------------------------------------------
 FROM python:3.12-slim AS dictionary
 ARG KAIKKI_URL=https://kaikki.org/dictionary/Dutch/kaikki.org-dictionary-Dutch.jsonl
+# Defaults ("-") mean: use the digest and size pinned in scripts/build_dictionary.py.
+ARG KAIKKI_SHA256=-
+ARG KAIKKI_SIZE=-
+ARG KAIKKI_ACCEPT_NEW=0
 WORKDIR /build
 COPY src/kenning_nlp/__init__.py src/kenning_nlp/dictionary.py src/kenning_nlp/compound.py \
     src/kenning_nlp/wordforms.py src/kenning_nlp/nl.py src/kenning_nlp/
-COPY scripts/build_dictionary.py scripts/
-RUN PYTHONPATH=src python scripts/build_dictionary.py --url "$KAIKKI_URL" \
+COPY scripts/build_dictionary.py scripts/pinned_download.py scripts/
+RUN set -eu; \
+    args=""; \
+    [ "$KAIKKI_SHA256" = "-" ] || args="$args --sha256=$KAIKKI_SHA256"; \
+    [ "$KAIKKI_SIZE" = "-" ] || args="$args --size=$KAIKKI_SIZE"; \
+    [ "$KAIKKI_ACCEPT_NEW" = "0" ] || args="$args --accept-new-upstream"; \
+    PYTHONPATH=src python scripts/build_dictionary.py --url "$KAIKKI_URL" $args \
     --output /out/dictionary-nl.sqlite
 
 # ---- Stage 2: translation model --------------------------------------------------------
@@ -53,12 +67,16 @@ RUN uv sync --locked --no-dev
 # ---- Stage 4: sentences ------------------------------------------------------------------
 # Needs the dictionary (the pipeline's lemma logic reads it) and the spaCy model.
 FROM venv AS sentences
-ARG TATOEBA_DATE=latest
+ARG TATOEBA_BASE_URL=https://downloads.tatoeba.org/exports/per_language
+ARG TATOEBA_ACCEPT_NEW=0
 ENV KENNING_DICT_PATH=/in/dictionary-nl.sqlite
 COPY --from=dictionary /out/dictionary-nl.sqlite /in/dictionary-nl.sqlite
-COPY scripts/build_sentences.py scripts/
-RUN python scripts/build_sentences.py --processes 4 --download-dir /tmp/tatoeba \
-    --output /out/sentences-nl.sqlite
+COPY scripts/build_sentences.py scripts/pinned_download.py scripts/
+RUN set -eu; \
+    args=""; \
+    [ "$TATOEBA_ACCEPT_NEW" = "0" ] || args="--accept-new-upstream"; \
+    python scripts/build_sentences.py --processes 4 --download-dir /tmp/tatoeba \
+    --base-url "$TATOEBA_BASE_URL" $args --output /out/sentences-nl.sqlite
 
 # ---- Stage 5: runtime ------------------------------------------------------------------
 FROM python:3.12-slim
