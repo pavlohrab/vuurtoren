@@ -51,6 +51,7 @@ pnpm dev            # web app on http://localhost:5173 (proxies /nlp and /anki)
   - Warm paper theme, plus a charcoal dark theme.
   - Calm components, keyboard-first, ⌘K palette.
 - **Server storage mode ([ADR 0008](adr/0008-server-storage-mode.md)):** the compose stack's `api` service keeps all data in one SQLite file on a volume, shared by every device (`/api/rpc` allow-list, `/api/export`, `/api/import`, optional `KENNING_TOKEN`). Settings > Your data downloads and restores a backup in both modes. Not yet run in a Docker image here (no daemon access); the pruned `pnpm deploy` layout was run with node and checked in headless Chromium through the Vite proxy.
+- **Sign-in ([ADR 0009](adr/0009-login-for-public-deployments.md)):** single-user password (scrypt) with cookie sessions in a separate `auth.sqlite`, rate limit, CSRF guard, nginx `auth_request` on `/api` and `/nlp`, security headers, sign-in screen and Settings > Account; Dockge stack with optional Cloudflare Tunnel (`deploy/dockge/`). Checked with node + Vite proxy in headless Chromium; nginx config and images not run here (no Docker daemon).
 - **Local-first storage:**
   - SQLite in the browser (OPFS), on an append-only event log built for sync (desktop and dev; asks for persistent storage, banner on plain http).
   - Survives reloads and the browser's back/forward cache.

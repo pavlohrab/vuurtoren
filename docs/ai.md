@@ -80,13 +80,13 @@ Tools:
 
 Build it once: `pnpm install && pnpm build`. Environment:
 
-| Variable           | Meaning                                                                   |
-| ------------------ | ------------------------------------------------------------------------- |
-| `KENNING_URL`      | Address of your Kenning server, e.g. `http://localhost:8080`. Required.   |
-| `KENNING_TOKEN`    | Bearer token, if the server has one.                                      |
-| `KENNING_NLP_URL`  | Language server (default `$KENNING_URL/nlp`).                             |
-| `KENNING_ANKI_URL` | AnkiConnect (default `http://127.0.0.1:8765`); `KENNING_ANKI_KEY` if set. |
-| `KENNING_DECK`     | Target deck (default `Kenning::Nederlands`).                              |
+| Variable           | Meaning                                                                    |
+| ------------------ | -------------------------------------------------------------------------- |
+| `KENNING_URL`      | Address of your Kenning server, e.g. `http://localhost:8080`. Required.    |
+| `KENNING_TOKEN`    | Bearer token, needed when the server has sign-in on (also sent to `/nlp`). |
+| `KENNING_NLP_URL`  | Language server (default `$KENNING_URL/nlp`).                              |
+| `KENNING_ANKI_URL` | AnkiConnect (default `http://127.0.0.1:8765`); `KENNING_ANKI_KEY` if set.  |
+| `KENNING_DECK`     | Target deck (default `Kenning::Nederlands`).                               |
 
 **Claude Code:**
 

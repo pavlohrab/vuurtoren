@@ -25,9 +25,9 @@ to a third party.
 | ------- | --------------------------------------------------------------------- | --------------------- |
 | `web`   | The app (static files) and a same-origin proxy to the language server | `127.0.0.1:8080`      |
 | `nlp`   | Dutch analysis, dictionary, example sentences, OCR, translation       | none (only via `web`) |
+| `api`   | Your data (one SQLite file) and sign-in                               | none (only via `web`) |
 | `caddy` | Optional HTTPS front (profile `https`)                                | 80 and 443            |
 
-A storage service for syncing your data between devices is documented separately when enabled.
 Change the web port with `KENNING_WEB_PORT=9000` in `deploy/.env`.
 
 ## Why HTTPS matters
@@ -69,6 +69,111 @@ tailscale serve --bg 8080
 Tailscale prints an `https://<machine>.<tailnet>.ts.net` address with a valid certificate that
 works on every device in your tailnet.
 
+### Option C: Cloudflare Tunnel (public address, no open ports)
+
+See [Dockge and Cloudflare Tunnel](#dockge-and-cloudflare-tunnel) below. Turn on sign-in first.
+
+## Sign-in
+
+Anyone who can open the app can read and change all of your data, so **set a password before
+the app is reachable from anywhere but your own computer** (a LAN, a VPS, a tunnel). There is
+one user; sign-in is off when neither a password nor a token is set (fine on `localhost`), and
+the `api` log says so at startup.
+
+1. Create a password hash (you type the password twice; nothing is echoed or stored):
+
+   ```sh
+   docker compose -f deploy/compose.yml run --rm -it api hash-password
+   # or without a checkout:  docker run --rm -it ghcr.io/<owner>/kenning-api:latest hash-password
+   ```
+
+   It prints one line such as `scrypt:65536:8:1:AbC...:XyZ...`. It contains no `$`, so it can be
+   pasted into `.env` as it is.
+
+2. Put it in `deploy/.env` (or Dockge's `.env`) and restart (`up -d`):
+
+   ```sh
+   KENNING_USER=anna
+   KENNING_PASSWORD_HASH=scrypt:65536:8:1:AbC...:XyZ...
+   ```
+
+The app then opens on a sign-in screen. A session lasts 30 days from the last use (at most 180
+days), in an `HttpOnly`, `Secure`, `SameSite=Lax` cookie. **Settings > Account** shows who is
+signed in and has **Sign out** and **Sign out all devices**. Changing the password signs out
+every device.
+
+| Variable                  | Default             | Meaning                                                                                                                                             |
+| ------------------------- | ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `KENNING_USER`            |                     | Username on the sign-in screen.                                                                                                                     |
+| `KENNING_PASSWORD_HASH`   |                     | scrypt hash from `hash-password`.                                                                                                                   |
+| `KENNING_PASSWORD`        |                     | Plain password instead of the hash. Works, logs a warning; prefer the hash.                                                                         |
+| `KENNING_TOKEN`           |                     | Optional bearer token for scripts and the MCP server (`Authorization: Bearer ...`). Generate with `openssl rand -hex 32`.                           |
+| `KENNING_COOKIE_SECURE`   | `1`                 | Set `0` only if you open the app over plain `http://` from another device (LAN). `http://localhost` works with `1` in Chrome and Firefox.           |
+| `KENNING_TRUST_CF`        | `0`                 | `1` behind a Cloudflare Tunnel: the sign-in rate limit uses the visitor's IP from `CF-Connecting-IP`. Keep `0` otherwise (the header is forgeable). |
+| `KENNING_ALLOWED_ORIGINS` |                     | Extra origins allowed to change data, comma-separated. Only needed if a proxy in front rewrites the `Host` header.                                  |
+| `KENNING_AUTH_DB`         | `/data/auth.sqlite` | Session database, separate from your data: backups never contain or replace it.                                                                     |
+| `KENNING_NLP_AUTH` (web)  | `on`                | The web container lets `/nlp/` through only for signed-in requests. Set `off` only when you run **without** the `api` service.                      |
+
+Protection in short: wrong attempts from one address wait 1 s, 2 s, 4 s, ... (up to 15 minutes)
+after three free tries, and at most 100 failures per 15 minutes are accepted from everyone
+together. Requests that change data must come from the app itself (same origin, JSON or an
+`X-Kenning: 1` header), which stops cross-site forgery. nginx sends a strict Content Security
+Policy and refuses to be framed. Forgot the password? Make a new hash and restart.
+
+## Dockge and Cloudflare Tunnel
+
+[Dockge](https://github.com/louislam/dockge) runs compose stacks from a web UI. Kenning has a
+self-contained stack for it, `deploy/dockge/compose.yaml`: published images only, no build, no
+files next to it. A [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/)
+gives it a public `https://` address without opening a port on your router.
+
+1. **Images.** The stack pulls `ghcr.io/<owner>/kenning-web`, `-nlp` and `-api`, published by
+   `.github/workflows/images.yml` (amd64 and arm64) when a `v*` tag is pushed or the workflow is
+   run by hand. If the packages are private, log the Docker host in once:
+   `docker login ghcr.io -u <github-user>` with a token that has `read:packages`. (Or make the
+   packages public in GitHub, Packages, Package settings.)
+2. **Password hash.** On the Docker host: `docker run --rm -it ghcr.io/<owner>/kenning-api:latest hash-password`.
+3. **Stack.** In Dockge, **+ Compose**, name it `kenning`, paste `deploy/dockge/compose.yaml`
+   into the compose editor and `deploy/dockge/.env.example` into the `.env` editor. Fill in:
+
+   ```sh
+   KENNING_IMAGE_OWNER=<github-user-or-org>
+   KENNING_USER=anna
+   KENNING_PASSWORD_HASH=scrypt:65536:8:1:...
+   KENNING_TRUST_CF=1
+   TUNNEL_TOKEN=<token from step 4>
+   COMPOSE_PROFILES=tunnel
+   ```
+
+4. **Tunnel.** In the Cloudflare dashboard: Zero Trust, Networks, Tunnels, **Create a tunnel**
+   (Cloudflared). Copy the token from the shown install command (the long string after
+   `--token`) into `TUNNEL_TOKEN`. Under **Public hostname** add e.g. `kenning.example.com`
+   with service **HTTP** and URL **`web:80`** (that is, `http://web:80`: the tunnel container
+   reaches the web container by its service name on the stack's network).
+5. **Deploy** in Dockge, wait until `api`, `nlp` and `web` show healthy (the language server
+   needs up to a minute), and open `https://kenning.example.com`. You see the sign-in screen.
+
+Notes:
+
+- `KENNING_TRUST_CF=1` matters: behind the tunnel every request comes from the `cloudflared`
+  container, so without it all visitors would share one rate-limit bucket. Set it only when the
+  app is reached through Cloudflare.
+- The web port is published on `127.0.0.1:8080` only (`KENNING_BIND`, `KENNING_WEB_PORT`). The
+  tunnel does not need it; it is there for a quick look from the host.
+- **Anki keeps working.** AnkiConnect runs on your own computer and the app talks to it from
+  your browser, not from the server. Allow the new address once: in the app, Settings, Anki,
+  **Connect to Anki** and click **Yes** in Anki, or in Anki, Tools, Add-ons, AnkiConnect,
+  Config, add `"https://kenning.example.com"` to `webCorsOriginList` and restart Anki. Chrome
+  may also ask whether the site may access devices on your local network: allow it.
+- **Optional extra layer: Cloudflare Access.** Zero Trust, Access, Applications, add a
+  self-hosted application for `kenning.example.com` with a policy such as "emails ending in
+  ...". Visitors then prove their identity to Cloudflare before they even reach the Kenning
+  sign-in. Keep the Kenning password anyway. Scripts and the MCP server then also need an
+  Access service token (`CF-Access-Client-Id` / `CF-Access-Client-Secret` headers).
+- Your data is the `kenning-data` volume (`kenning.sqlite` plus `auth.sqlite` for sessions).
+  Back it up as described below.
+- Updates: in Dockge, **Update** (pulls the images) or set `KENNING_TAG` to a release.
+
 ## Updating
 
 ```sh
@@ -83,15 +188,19 @@ have moved on, a self-build stops with a message; see `server/nlp/Dockerfile` fo
 
 ## Troubleshooting
 
-| Symptom                                        | Cause and fix                                                                                                                                                                                       |
-| ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| "Anki is not running" in Settings              | Anki is closed or AnkiConnect is not installed. Open Anki, install add-on `2055492159`, restart Anki.                                                                                               |
-| "This site is not allowed yet"                 | Anki is running but does not know this address. Click **Connect to Anki** and answer Yes. Or in Anki: Tools, Add-ons, AnkiConnect, Config, add the shown line to `webCorsOriginList`, restart Anki. |
-| "Needs an API key"                             | You set a key in AnkiConnect. Enter it in the key field in Settings.                                                                                                                                |
-| Storage not persistent / data lost, Anki fails | You are on plain `http://` with a non-localhost address. Use `http://localhost:8080` or the HTTPS profile.                                                                                          |
-| First word or text is slow                     | The language server loads its models on the first request (up to a minute). Later requests are fast.                                                                                                |
-| Page does not load                             | `docker compose -f deploy/compose.yml ps` and `logs web nlp`. The web container shows `healthy` when ready.                                                                                         |
-| Build stops with "does not match the pinned"   | Upstream data changed. Use the published images, or rebuild with `--build-arg KAIKKI_ACCEPT_NEW=1 --build-arg TATOEBA_ACCEPT_NEW=1`.                                                                |
+| Symptom                                                       | Cause and fix                                                                                                                                                                                       |
+| ------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| "Anki is not running" in Settings                             | Anki is closed or AnkiConnect is not installed. Open Anki, install add-on `2055492159`, restart Anki.                                                                                               |
+| "This site is not allowed yet"                                | Anki is running but does not know this address. Click **Connect to Anki** and answer Yes. Or in Anki: Tools, Add-ons, AnkiConnect, Config, add the shown line to `webCorsOriginList`, restart Anki. |
+| "Needs an API key"                                            | You set a key in AnkiConnect. Enter it in the key field in Settings.                                                                                                                                |
+| Storage not persistent / data lost, Anki fails                | You are on plain `http://` with a non-localhost address. Use `http://localhost:8080` or the HTTPS profile.                                                                                          |
+| First word or text is slow                                    | The language server loads its models on the first request (up to a minute). Later requests are fast.                                                                                                |
+| Sign-in screen says "Request refused (origin does not match)" | A proxy in front changes the `Host` header. Set `KENNING_ALLOWED_ORIGINS=https://your.address`, or make the proxy keep the original host.                                                           |
+| "Too many attempts"                                           | Wait for the shown time. Behind Cloudflare without `KENNING_TRUST_CF=1` everyone shares one limit.                                                                                                  |
+| Signed in, then signed out again at once                      | Plain `http://` from another device with `KENNING_COOKIE_SECURE=1`: the browser drops the cookie. Use https, or set it to `0` on a trusted LAN.                                                     |
+| "Can't reach your Kenning server"                             | The `api` container is down or restarting. `docker compose ps`, `logs api`. The app never switches to an empty browser database by itself.                                                          |
+| Page does not load                                            | `docker compose -f deploy/compose.yml ps` and `logs web nlp`. The web container shows `healthy` when ready.                                                                                         |
+| Build stops with "does not match the pinned"                  | Upstream data changed. Use the published images, or rebuild with `--build-arg KAIKKI_ACCEPT_NEW=1 --build-arg TATOEBA_ACCEPT_NEW=1`.                                                                |
 
 ## For developers
 
@@ -111,16 +220,15 @@ the site shares it (nginx proxies `/api/` to it; the browser finds it through `G
 Without the `api` service (for example `pnpm dev`, or opening the static files), the app stores
 data in the browser (OPFS) instead. Settings > Your data shows which mode is active.
 
-| Variable        | Where | Meaning                                                                                                                                                       |
-| --------------- | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `KENNING_TOKEN` | `api` | Optional access token. When set, every request needs `Authorization: Bearer <token>`; the app asks for it once and keeps it in the browser. Default: no auth. |
-| `KENNING_DB`    | `api` | Database file (default `/data/kenning.sqlite`).                                                                                                               |
-| `KENNING_HOST`  | `api` | Bind address. Default `127.0.0.1` outside Docker (so no auth is fine); the image sets `0.0.0.0` and the port is not published, only nginx reaches it.         |
-| `KENNING_PORT`  | `api` | Port (default `8787`).                                                                                                                                        |
+| Variable       | Where | Meaning                                                                                                                                               |
+| -------------- | ----- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `KENNING_DB`   | `api` | Database file (default `/data/kenning.sqlite`).                                                                                                       |
+| `KENNING_HOST` | `api` | Bind address. Default `127.0.0.1` outside Docker (so no auth is fine); the image sets `0.0.0.0` and the port is not published, only nginx reaches it. |
+| `KENNING_PORT` | `api` | Port (default `8787`).                                                                                                                                |
 
-Set a token if the site is reachable from the internet: `KENNING_TOKEN=long-random-string docker compose -f deploy/compose.yml up -d`.
-The token is sent over the connection, so use HTTPS (see above). Browsers also need HTTPS (or
-`http://localhost`) for some features; in server mode data storage itself does not depend on it.
+Sign-in variables are listed under [Sign-in](#sign-in). Turn it on if the site is reachable
+from anywhere but this computer, and use HTTPS (see above): the session cookie is only sent
+over https by default.
 
 ### Backup and restore
 
@@ -128,8 +236,12 @@ The token is sent over the connection, so use HTTPS (see above). Browsers also n
   This works in both modes. A restore replaces all current data, gives this installation a new
   device id and rebuilds the derived tables from the event log.
 - From the shell (server mode): `curl -H "Authorization: Bearer $KENNING_TOKEN" -o kenning.sqlite http://localhost:8080/api/export`
-  (a consistent snapshot, safe while the app is in use). Restore with
-  `curl -X POST --data-binary @kenning.sqlite http://localhost:8080/api/import`.
+  (a consistent snapshot, safe while the app is in use; drop the header when sign-in is off).
+  Restore with
+  `curl -X POST -H "Authorization: Bearer $KENNING_TOKEN" --data-binary @kenning.sqlite http://localhost:8080/api/import`
+  (with sign-in off, send `-H "X-Kenning: 1"` instead: the server refuses requests that a web
+  page on another site could forge).
+- Backups contain your data only, never sign-in sessions (those are in `auth.sqlite`).
 - Or copy the volume: `docker run --rm -v kenning_kenning-data:/data -v "$PWD":/b alpine cp /data/kenning.sqlite /b/` (stop `api` first for a plain file copy).
 
 A backup made by a newer Kenning than the running one is refused, and a database that is newer
