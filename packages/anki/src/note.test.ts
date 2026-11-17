@@ -70,3 +70,11 @@ describe("highlightSentence", () => {
     expect(highlightSentence("Ik bel <je> op", 3, 6)).toBe("Ik <b>bel</b> &lt;je&gt; op");
   });
 });
+
+describe("onlyBoldTags", () => {
+  it("keeps <b> and neutralises other markup", async () => {
+    const { onlyBoldTags } = await import("./note.js");
+    expect(onlyBoldTags("Ik <b>fiets</b> &amp; jij")).toBe("Ik <b>fiets</b> &amp; jij");
+    expect(onlyBoldTags('<img src=x onerror="a()">')).toBe('&lt;img src=x onerror="a()">');
+  });
+});

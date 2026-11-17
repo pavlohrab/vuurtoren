@@ -4,7 +4,7 @@
  * (`@app/db/http`), analysis from the NLP server, cards go to AnkiConnect.
  */
 import { coverageReport } from "@app/ai";
-import type { AnalyzedToken } from "@app/core";
+import { normalizeKey, type AnalyzedToken } from "@app/core";
 import type { KenningRepository } from "@app/db";
 
 export interface McpDeps {
@@ -93,7 +93,7 @@ export function createHandlers(deps: McpDeps) {
       await deps.repo.append({
         type: "NoteAddedToAnki",
         lang: defaultLang,
-        key: word.toLowerCase(),
+        key: headwordKey(word),
         noteId,
         deck: deps.deck,
       });
@@ -103,3 +103,14 @@ export function createHandlers(deps: McpDeps) {
 }
 
 export type Handlers = ReturnType<typeof createHandlers>;
+
+/**
+ * The learner-model key for a headword the model passed ("de fiets" -> "fiets", "zich
+ * vergissen" -> "vergissen"), so the new card matches in the reader and Words list.
+ */
+export function headwordKey(word: string): string {
+  const words = word.trim().split(/\s+/);
+  if (words.length > 1 && /^(de|het|een|'t)$/i.test(words[0] ?? "")) words.shift();
+  if (words.length > 1 && /^(zich|me|je|ons|jullie)$/i.test(words[0] ?? "")) words.shift();
+  return normalizeKey(words.join(" "));
+}

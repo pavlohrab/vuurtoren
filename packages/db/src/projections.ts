@@ -241,8 +241,14 @@ export async function applyEvent(driver: SqlDriver, ctx: EventContext): Promise<
       await applyCourseEvent(driver, ctx.createdAt, e);
       return;
     default: {
-      const never: never = e;
-      throw new Error(`Unknown event type: ${JSON.stringify(never)}`);
+      // An event written by a newer app version (or a future sync peer). It stays in the log
+      // untouched and is skipped here, so an older app can still open the database instead of
+      // failing the whole rebuild. Appends of unknown types are rejected earlier (rpc.ts).
+      const unknown: never = e;
+      console.warn(
+        `[kenning-db] skipping unknown event type ${(unknown as { type?: unknown }).type}`,
+      );
+      return;
     }
   }
 }

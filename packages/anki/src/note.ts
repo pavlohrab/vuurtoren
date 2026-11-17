@@ -46,6 +46,14 @@ const escapeHtml = (s: string) =>
   s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
 
 /** Bold the first occurrence of `surface` in `sentence` (HTML-escaped). */
+/**
+ * The Sentence field may carry `<b>…</b>` from {@link highlightSentence} (already escaped
+ * around it). Any other markup, e.g. raw model text from the MCP server, is neutralised.
+ */
+export function onlyBoldTags(s: string): string {
+  return s.replace(/<(?!\/?b>)/g, "&lt;");
+}
+
 export function highlightSentence(sentence: string, start: number, end: number): string {
   return `${escapeHtml(sentence.slice(0, start))}<b>${escapeHtml(sentence.slice(start, end))}</b>${escapeHtml(sentence.slice(end))}`;
 }
@@ -60,7 +68,7 @@ export async function addWordNote(anki: AnkiConnectClient, note: NewWordNote): P
   const fields = {
     Word: escapeHtml(note.word),
     Gloss: escapeHtml(note.gloss ?? ""),
-    Sentence: note.sentence ?? "",
+    Sentence: onlyBoldTags(note.sentence ?? ""),
     SentenceTranslation: escapeHtml(note.sentenceTranslation ?? ""),
     Source: escapeHtml(note.source ?? ""),
   };

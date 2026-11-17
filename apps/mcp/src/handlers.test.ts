@@ -148,3 +148,12 @@ describe("MCP server", () => {
     await client.close();
   });
 });
+
+describe("headwordKey", () => {
+  it("strips articles and reflexives and normalises", async () => {
+    const { headwordKey } = await import("./handlers.js");
+    expect(headwordKey("de fiets")).toBe("fiets");
+    expect(headwordKey("Het Huis")).toBe("huis");
+    expect(headwordKey("zich vergissen")).toBe("vergissen");
+  });
+});
