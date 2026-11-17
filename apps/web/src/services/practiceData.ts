@@ -1,13 +1,13 @@
 /**
  * Practice data from the NLP server: word forms, example sentences and similar words.
- * Thin typed wrapper over `fetch` (the nlp-client methods do not exist yet). Every call degrades
+ * Thin typed wrapper over `fetch` (request shapes match server/nlp; see packages/nlp-client). Every call degrades
  * to empty data on 404 / 503 / network errors, so practice still works with what Anki and the
  * learner's texts provide.
  *
  * Endpoints (POST JSON, answers keyed by lemma):
- *   /forms     { lang, items: [{lemma, pos}] }              -> Record<lemma, WordForms>
+ *   /forms     { lang, lemmas: [{lemma, pos}] }             -> Record<lemma, WordForms>
  *   /sentences { lang, lemmas, limit, maxWords }            -> Record<lemma, ExampleSentence[]>
- *   /similar   { lang, items: [{lemma, pos}], k }           -> Record<lemma, string[]>
+ *   /similar   { lang, words: [{lemma, pos}], k }           -> Record<lemma, string[]>
  */
 import type { ExampleSentence, WordForms } from "@app/core";
 
@@ -84,7 +84,7 @@ export function createPracticeData(
 
   return {
     forms: (lang, items) =>
-      cached<WordForms>("/forms", "forms", lang, items, (b) => ({ lang, items: b }), emptyObj, {}),
+      cached<WordForms>("/forms", "forms", lang, items, (b) => ({ lang, lemmas: b }), emptyObj, {}),
     sentences: (lang, lemmas, { limit, maxWords }) =>
       cached<ExampleSentence[]>(
         "/sentences",
@@ -101,7 +101,7 @@ export function createPracticeData(
         `sim${k}`,
         lang,
         items,
-        (b) => ({ lang, items: b, k }),
+        (b) => ({ lang, words: b, k }),
         emptyList,
         [],
       ),

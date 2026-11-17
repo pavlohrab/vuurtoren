@@ -273,10 +273,14 @@ export function createLivePractice(deps: LivePracticeDeps) {
     });
 
     const skills = opts.skills;
+    // New items: normally at most 40% of a session, but when few reviews are due (e.g. the first
+    // sessions) let new items fill the rest, so the session has the length the learner chose.
+    const due = items.filter((it) => it.due <= now).length;
+    const newItems = Math.max(Math.ceil(size * 0.4), size - due);
     const exercises = buildSession(
       words,
       items,
-      { size, newItems: Math.min(8, Math.ceil(size * 0.4)), now, ...(skills ? { skills } : {}) },
+      { size, newItems, now, ...(skills ? { skills } : {}) },
       rng,
     );
     return padWordChoices(exercises, words, lang);
