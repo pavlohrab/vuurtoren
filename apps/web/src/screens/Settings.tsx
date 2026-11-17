@@ -8,6 +8,8 @@ import { AISettings } from "./AISettings.js";
 import { AnkiSettings } from "./AnkiSettings.js";
 import { DataSettings } from "./DataSettings.js";
 import { useTheme, type ThemeChoice } from "../theme.js";
+import { errorText } from "../services/errors.js";
+import { ErrorNotice } from "../shell/ErrorNotice.js";
 
 const THEMES = [
   { value: "system", label: "Match system" },
@@ -31,7 +33,7 @@ export function SettingsScreen() {
   const [syncLog, setSyncLog] = useState<string[]>([]);
   const [result, setResult] = useState<LearnerSummary | null>(null);
 
-  const message = (e: unknown) => (e instanceof Error && e.message ? e.message : "Try again.");
+  const message = (e: unknown) => errorText(e);
   const persist = async (s: SettingsData) => {
     await services.saveSettings({ ...s, theme });
     await qc.invalidateQueries({ queryKey: ["settings"] });
@@ -119,7 +121,7 @@ export function SettingsScreen() {
           </Button>
           <span className="k-hint">Uses the addresses above and saves them first.</span>
         </div>
-        {sync.isPending || syncLog.length > 0 ? (
+        {sync.isPending || (syncLog.length > 0 && !sync.isError) ? (
           <ul className="progress-log" aria-live="polite">
             {syncLog.map((m, i) => (
               <li key={i}>{m}</li>
@@ -127,9 +129,12 @@ export function SettingsScreen() {
           </ul>
         ) : null}
         {sync.isError ? (
-          <p className="error-text" role="alert">
-            The sync did not finish. {message(sync.error)}
-          </p>
+          <ErrorNotice
+            error={sync.error}
+            title="The sync did not finish."
+            settingsLink={false}
+            onRetry={() => sync.mutate(form)}
+          />
         ) : null}
         {result ? (
           <p role="status" style={{ margin: 0 }}>

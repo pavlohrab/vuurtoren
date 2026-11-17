@@ -1,0 +1,107 @@
+/**
+ * Plain-language errors (review U6). Transport errors from the language server (NLP) and
+ * AnkiConnect arrive as technical strings, often through the server's RPC, so they are
+ * recognised by their message rather than their class. Each becomes a cause the learner can
+ * understand, one next step, and the original text as details.
+ */
+
+export type ErrorSource = "nlp" | "anki" | "network" | "other";
+
+export interface FriendlyError {
+  /** What went wrong, in plain words. */
+  message: string;
+  /** The one thing to do next. */
+  next?: string;
+  /** Which part of the app failed; "nlp" and "anki" are fixed in Settings. */
+  source: ErrorSource;
+  /** The original technical message, for a details disclosure. */
+  details?: string;
+}
+
+const rawMessage = (e: unknown): string =>
+  e instanceof Error ? e.message : typeof e === "string" ? e : e == null ? "" : String(e);
+
+/** True for messages that only make sense to a developer. */
+const technical = (m: string) =>
+  /HTTP \d{3}|not JSON|ECONN|fetch|TypeError|Error:|\/[a-z]+\/|\bat \w+ \(|[{}[\]]/i.test(m) ||
+  m.length > 160;
+
+/** Map any thrown value to a plain message, a next step and the technical details. */
+export function describeError(e: unknown, fallback = "Something went wrong."): FriendlyError {
+  const raw = rawMessage(e).trim();
+  const details = raw || undefined;
+  const withDetails = (f: Omit<FriendlyError, "details">): FriendlyError =>
+    details ? { ...f, details } : f;
+
+  if (/^NLP\b/.test(raw) || /NLP service/.test(raw)) {
+    if (/no answer within/.test(raw)) {
+      return withDetails({
+        source: "nlp",
+        message: "The language server took too long to answer.",
+        next: "Long texts take a while; try again, or import a shorter part.",
+      });
+    }
+    if (/unreachable|HTTP 50[234]/.test(raw)) {
+      return withDetails({
+        source: "nlp",
+        message: "The language server is not reachable, so the text could not be analysed.",
+        next: "Check that it is running and its address in Settings is right, then try again.",
+      });
+    }
+    return withDetails({
+      source: "nlp",
+      message: "The language server could not process this.",
+      next: "Try again. If it keeps failing, the details below help when reporting it.",
+    });
+  }
+  if (/AnkiConnect|Anki is not reachable|Anki not reachable/.test(raw)) {
+    if (/no answer within/.test(raw)) {
+      return withDetails({
+        source: "anki",
+        message: "Anki did not answer in time.",
+        next: "Close any open dialog in Anki, then try again.",
+      });
+    }
+    if (/origin not allowed|forbidden|403/.test(raw)) {
+      return withDetails({
+        source: "anki",
+        message: "Anki refused the connection from Kenning.",
+        next: "Allow this site in AnkiConnect's settings (webCorsOriginList) or set the API key in Settings.",
+      });
+    }
+    if (/cannot reach|not reachable|HTTP 5\d\d|not JSON/.test(raw)) {
+      return withDetails({
+        source: "anki",
+        message: "Anki is not reachable.",
+        next: "Open Anki with the AnkiConnect add-on installed, then try again.",
+      });
+    }
+    if (/API v1|Anki ≥/.test(raw)) {
+      return withDetails({
+        source: "anki",
+        message: "This needs a newer Anki and AnkiConnect.",
+        next: "Update Anki and the AnkiConnect add-on, then try again.",
+      });
+    }
+    return withDetails({
+      source: "anki",
+      message: "Anki could not do this.",
+      next: "Check Anki for a message, then try again.",
+    });
+  }
+  if (/Failed to fetch|NetworkError|Load failed|network error/i.test(raw)) {
+    return withDetails({
+      source: "network",
+      message: "Kenning could not reach its server.",
+      next: "Check your connection, then try again.",
+    });
+  }
+  if (raw && !technical(raw)) return { source: "other", message: raw };
+  return withDetails({ source: "other", message: fallback, next: "Try again." });
+}
+
+/** One line for a toast: the message and the next step. */
+export function errorText(e: unknown, fallback?: string): string {
+  const f = describeError(e, fallback);
+  return f.next ? `${f.message} ${f.next}` : f.message;
+}

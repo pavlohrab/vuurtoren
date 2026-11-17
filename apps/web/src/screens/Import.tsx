@@ -6,6 +6,8 @@ import type { DragEvent } from "react";
 import { Button, Input, Spinner, Tabs, Textarea, useToast } from "@app/ui";
 import { useServices } from "../services/context.js";
 import type { ImportInput } from "../services/types.js";
+import { errorText } from "../services/errors.js";
+import { ErrorNotice } from "../shell/ErrorNotice.js";
 
 type Kind = "paste" | "url" | "pdf" | "image";
 
@@ -83,7 +85,7 @@ export function ImportScreen() {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [progress, setProgress] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<unknown>(null);
 
   const input = (): ImportInput | null => {
     if (kind === "paste")
@@ -112,11 +114,12 @@ export function ImportScreen() {
     } catch (e) {
       // A failed live import may still have changed the library (e.g. saved before analysis).
       void qc.invalidateQueries({ queryKey: ["texts"] });
-      const message = e instanceof Error ? e.message : "The import did not work. Try again.";
       if (mounted.current) {
-        setError(message);
+        // The progress lines ("Analysing the text…") are stale once the import failed.
+        setProgress([]);
+        setError(e ?? new Error("The import did not work."));
         setBusy(false);
-      } else toast("The import did not work", message);
+      } else toast("The import did not work", errorText(e));
     }
   };
 
@@ -216,9 +219,11 @@ export function ImportScreen() {
           </ul>
         ) : null}
         {error ? (
-          <p className="error-text" role="alert">
-            {error}
-          </p>
+          <ErrorNotice
+            error={error}
+            title="The import did not work."
+            onRetry={ready ? () => void submit() : undefined}
+          />
         ) : null}
 
         <div className="row">
