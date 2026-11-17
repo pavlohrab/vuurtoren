@@ -52,6 +52,8 @@ SEPARABLE_PARTICLES: tuple[str, ...] = tuple(
 )
 
 ARTICLES = {"de", "het", "een", "'t"}
+# Non-particle first parts of separable verbs seen in te-infinitives: "waar te nemen".
+TE_PARTICLES = {"waar", "plaats", "deel", "teleur", "gade", "kennis"}
 REFLEXIVES = {"zich", "z'n"}
 
 
@@ -68,7 +70,16 @@ def strip_unattested_particle(lemma: str, surface: str) -> str:
     return lemma
 
 
-def join_particle(particle: str, base: str) -> str:
-    """Combine a detached particle with its verb lemma: ``op`` + ``bellen`` -> ``opbellen``."""
+def join_particle(particle: str, base: str, surface: str = "") -> str:
+    """Combine a detached particle with its verb lemma: ``op`` + ``bellen`` -> ``opbellen``.
+
+    If the verb already carries a fused particle visible in its surface form
+    ("van de grond af opgebouwd": base ``opbouwen``), the detached word is not joined.
+    """
     p = particle.lower()
-    return base if base.lower().startswith(p) else p + base
+    low = base.lower()
+    if low.startswith(p):
+        return base
+    if any(low.startswith(q) and q in surface.lower() for q in SEPARABLE_PARTICLES):
+        return base
+    return p + base

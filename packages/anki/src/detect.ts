@@ -81,7 +81,10 @@ export async function rankCandidates(
     if (!first) continue;
     const fieldNames = Object.keys(first.fields);
     const stats: FieldStats[] = fieldNames.map((name) => {
-      const vals = group.map((s) => cleanField(s.fields[name] ?? "")).filter(Boolean);
+      // Only values with letters can be vocabulary (skips rank/frequency/number fields).
+      const vals = group
+        .map((s) => cleanField(s.fields[name] ?? ""))
+        .filter((v) => /\p{L}/u.test(v));
       const n = vals.length;
       return {
         name,
@@ -129,4 +132,24 @@ export async function rankCandidates(
     });
   }
   return candidates.sort((a, b) => b.score - a.score);
+}
+
+/**
+ * Pick every candidate that holds target-language vocabulary. A deck passes on its own share,
+ * or when its note type + word field pass on the share pooled across all decks using it
+ * (single loanwords like "de supermarkt" can push one themed deck under the threshold).
+ */
+export function selectCandidates(candidates: Candidate[], minShare = 0.5): Candidate[] {
+  const pooled = new Map<string, { share: number; weight: number }>();
+  for (const c of candidates) {
+    const k = `${c.modelName}\u0000${c.wordField}`;
+    const w = c.fields.find((f) => f.name === c.wordField)?.samples ?? 0;
+    const p = pooled.get(k) ?? { share: 0, weight: 0 };
+    pooled.set(k, { share: p.share + c.targetShare * w, weight: p.weight + w });
+  }
+  return candidates.filter((c) => {
+    const p = pooled.get(`${c.modelName}\u0000${c.wordField}`);
+    const pooledShare = p && p.weight ? p.share / p.weight : 0;
+    return c.targetShare >= minShare || pooledShare >= minShare;
+  });
 }

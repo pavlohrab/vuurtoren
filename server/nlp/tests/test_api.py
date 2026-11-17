@@ -22,6 +22,6 @@ def test_unsupported_language() -> None:
 
 
 def test_detect_endpoint() -> None:
-    r = client.post("/detect", json={"texts": ["gezellig", "the house is big", ""]})
+    r = client.post("/detect", json={"texts": ["gezellig", "the house is big", "", "17.31"]})
     langs = [d["lang"] for d in r.json()]
-    assert langs == ["nl", "en", None]
+    assert langs == ["nl", "en", None, None]

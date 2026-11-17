@@ -16,6 +16,8 @@ class Token(BaseModel):
     i: int
     text: str
     lemma: str
+    alt_lemmas: list[str] = []
+    """Other plausible lemmas (model vs dictionary); the matcher tries all of them."""
     pos: str
     morph: str
     dep: str
@@ -37,8 +39,11 @@ class TextAnalysis(BaseModel):
 class TermAnalysis(BaseModel):
     input: str
     key: str
-    """Normalised lookup key (casefolded lemma or lemma phrase). Empty if nothing usable."""
+    """Normalised headword (citation form, casefolded). Empty if nothing usable."""
+    aliases: list[str] = []
+    """Alternative spellings/forms given on the card, e.g. ``ze`` for ``zij, ze``."""
     lemma: str
+    """spaCy's lemma guess for the headword (informational; not used as key)."""
     pos: str
     article: str | None = None
     reflexive: bool = False

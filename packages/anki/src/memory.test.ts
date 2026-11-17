@@ -22,6 +22,17 @@ describe("cardMemory", () => {
     expect(cardMemory(card({ interval: 30 }))).toEqual({ intervalDays: 30 });
   });
 
+  it("attaches last review time and FSRS stability", () => {
+    const m = cardMemory(card({ cardId: 7, interval: 10 }), {
+      lastReviewMs: new Map([[7, 1234]]),
+      fsrs: new Map([[7, { difficulty: 4, stabilityDays: 15 }]]),
+    });
+    expect(m).toEqual({ intervalDays: 10, lastReviewMs: 1234, stabilityDays: 15 });
+    expect(cardMemory(card({ cardId: 8, interval: 10 }), { fsrs: new Map([[8, null]]) })).toEqual({
+      intervalDays: 10,
+    });
+  });
+
   it("takes the strongest card of a note", () => {
     expect(noteMemory([card({ interval: 4 }), card({ interval: 25 }), card({ type: 0 })])).toEqual({
       intervalDays: 25,

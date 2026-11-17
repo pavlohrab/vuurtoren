@@ -28,6 +28,7 @@ An open-source app that turns **your Anki deck into a reading and speaking coach
   - [04 Architecture & sync](research/04-architecture.md)
   - [05 AI / BYOK / Claude policy](research/05-ai-byok.md)
   - [06 Weave reading](research/06-weave-reading.md)
+  - [07 M1 findings on a real collection](research/07-m1-findings.md)
 - Design
   - [Design system](design/design-system.md)
   - [Naming](design/naming.md)

@@ -7,7 +7,7 @@
 - AI conversation with your own key, kept to the words you know;
 - new words pushed back to Anki.
 
-Dutch first, Ukrainian next. Status: **M0 foundation**. See [docs/README.md](docs/README.md) and the [roadmap](docs/roadmap.md).
+Dutch first, Ukrainian next. Status: **M1 done** (card ↔ text matching at 99.4% on a real 7k-note Dutch collection). See [docs/README.md](docs/README.md) and the [roadmap](docs/roadmap.md).
 
 ## Layout
 
@@ -41,6 +41,7 @@ Dual-licensed under [MIT](LICENSE-MIT) or [Apache-2.0](LICENSE-APACHE), at your 
 
 1. Start Anki desktop with [AnkiConnect](https://ankiweb.net/shared/info/2055492159) (add-on code `2055492159`).
 2. `pnpm nlp`: start the NLP service at http://localhost:8000.
-3. `pnpm build && pnpm anki-report`: detects your Dutch deck, note type and word field, then writes `reports/` (git-ignored).
-   Override with `--deck "…" --model "…" --field "…"`.
-4. Fill in the `correct (y/n)` column in `reports/m1-mapping-sample.csv`. Target: ≥ 95% correct.
+3. `pnpm build && pnpm anki-report`: detects **all** your Dutch decks and their word fields, builds the merged learner model,
+   and checks that each card's headword is found in its own example sentence. Writes `reports/` (git-ignored).
+   Read-only: it never modifies or syncs your collection. Restrict with `--deck "…"` (repeatable).
+4. Optional manual check: fill in `correct (y/n)` in `reports/m1-mapping-sample.csv`.

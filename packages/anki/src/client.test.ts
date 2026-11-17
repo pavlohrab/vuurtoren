@@ -56,6 +56,51 @@ describe("AnkiConnectClient", () => {
   });
 });
 
+describe("review log and FSRS", () => {
+  it("returns the latest review timestamp per card", async () => {
+    const c = new AnkiConnectClient({
+      fetch: fakeFetch(() => ({
+        result: { "1": [{ id: 100 }, { id: 300 }, { id: 200 }], "2": [] },
+        error: null,
+      })),
+    });
+    const last = await c.lastReviews([1, 2]);
+    expect(last.get(1)).toBe(300);
+    expect(last.has(2)).toBe(false);
+  });
+
+  it("batches scheduling.get and tolerates FSRS-off and errors", async () => {
+    const batches: number[] = [];
+    const c = new AnkiConnectClient({
+      fetch: (async (_url: string | URL | Request, init?: RequestInit) => {
+        const reqs = JSON.parse(String(init?.body)) as { id: number; params: { cardId: string } }[];
+        batches.push(reqs.length);
+        const body = reqs.map((r) =>
+          r.params.cardId === "3"
+            ? { jsonrpc: "2.0", id: r.id, error: { code: 1, message: "notFound" } }
+            : {
+                jsonrpc: "2.0",
+                id: r.id,
+                result: {
+                  type: "review",
+                  intervalDays: 5,
+                  desiredRetention: null,
+                  fsrsMemory: r.params.cardId === "1" ? { difficulty: 5, stabilityDays: 12 } : null,
+                },
+              },
+        );
+        return new Response(JSON.stringify(body));
+      }) as typeof fetch,
+    });
+    const ids = Array.from({ length: 150 }, (_, i) => i + 1);
+    const mem = await c.fsrsMemory(ids);
+    expect(batches).toEqual([100, 50]);
+    expect(mem.get(1)).toEqual({ difficulty: 5, stabilityDays: 12 });
+    expect(mem.get(2)).toBeNull();
+    expect(mem.get(3)).toBeNull();
+  });
+});
+
 describe("exactDeckQuery", () => {
   it("escapes and excludes subdecks", () => {
     expect(exactDeckQuery('Dutch*"A"')).toBe('"deck:Dutch\\*\\"A\\"" -"deck:Dutch\\*\\"A\\"::*"');

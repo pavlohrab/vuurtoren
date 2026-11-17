@@ -133,6 +133,66 @@ export class AnkiConnectClient {
     }
     return out;
   }
+
+  /** Last review time (ms since epoch) per card, from the review log (legacy getReviewsOfCards). */
+  async lastReviews(cards: number[]): Promise<Map<number, number>> {
+    const out = new Map<number, number>();
+    for (let i = 0; i < cards.length; i += CHUNK) {
+      const res = await this.invoke<Record<string, { id: number }[]>>("getReviewsOfCards", {
+        cards: cards.slice(i, i + CHUNK).map(String),
+      });
+      for (const [cardId, reviews] of Object.entries(res)) {
+        // Review ids are millisecond timestamps.
+        const last = reviews.reduce((m, r) => Math.max(m, r.id), 0);
+        if (last > 0) out.set(Number(cardId), last);
+      }
+    }
+    return out;
+  }
+
+  /** Send up to 100 v1 calls in one JSON-RPC batch request. */
+  async rpcBatch<T>(calls: { method: string; params: unknown }[]): Promise<(T | null)[]> {
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (this.apiKey) headers["Authorization"] = `Bearer ${this.apiKey}`;
+    const res = await this.fetchImpl(`${this.url}/api/v1`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(calls.map((c, id) => ({ jsonrpc: "2.0", id, ...c }))),
+    });
+    if (!res.ok) throw new AnkiConnectError(`HTTP ${res.status}`, "batch");
+    const json = (await res.json()) as { id: number; result?: T; error?: unknown }[];
+    const out: (T | null)[] = calls.map(() => null);
+    for (const r of json) if (r.error === undefined && r.result !== undefined) out[r.id] = r.result;
+    return out;
+  }
+
+  /** FSRS memory per card via v1 scheduling.get (null where FSRS is off or the call failed). */
+  async fsrsMemory(cards: number[]): Promise<Map<number, FsrsMemory | null>> {
+    const out = new Map<number, FsrsMemory | null>();
+    for (let i = 0; i < cards.length; i += RPC_BATCH) {
+      const chunk = cards.slice(i, i + RPC_BATCH);
+      const states = await this.rpcBatch<SchedulingState>(
+        chunk.map((id) => ({ method: "scheduling.get", params: { cardId: String(id) } })),
+      );
+      chunk.forEach((id, j) => out.set(id, states[j]?.fsrsMemory ?? null));
+    }
+    return out;
+  }
+}
+
+const RPC_BATCH = 100;
+
+export interface FsrsMemory {
+  difficulty: number;
+  stabilityDays: number;
+}
+
+/** Subset of the v1 SchedulingState schema (AnkiConnect api.describe). */
+export interface SchedulingState {
+  type: "new" | "learning" | "review" | "relearning";
+  intervalDays: number;
+  fsrsMemory: FsrsMemory | null;
+  desiredRetention: number | null;
 }
 
 /** Escape quotes, backslashes and wildcards for Anki's search syntax. */

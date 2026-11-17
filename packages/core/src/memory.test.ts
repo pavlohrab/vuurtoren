@@ -40,6 +40,15 @@ describe("classifyCard", () => {
     expect(k.pKnown).toBeCloseTo(7 / 21);
   });
 
+  it("uses SM-2 decay since last review when there is no FSRS state", () => {
+    const due = classifyCard({ intervalDays: 10, lastReviewMs: now - 10 * DAY }, now);
+    expect(due.pKnown).toBeCloseTo(0.9);
+    const overdue = classifyCard({ intervalDays: 30, lastReviewMs: now - 90 * DAY }, now);
+    expect(overdue.state).toBe("known");
+    expect(overdue.pKnown).toBeCloseTo(0.729);
+    expect(classifyCard({ intervalDays: 30, lastReviewMs: now }, now).pKnown).toBe(1);
+  });
+
   it("uses FSRS retrievability when available", () => {
     const k = classifyCard({ intervalDays: 5, stabilityDays: 5, lastReviewMs: now - 5 * DAY }, now);
     expect(k.state).toBe("learning");

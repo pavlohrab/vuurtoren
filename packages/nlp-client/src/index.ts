@@ -6,6 +6,8 @@ export interface Token {
   i: number;
   text: string;
   lemma: string;
+  /** Other plausible lemmas (model vs dictionary); the matcher tries all of them. */
+  alt_lemmas: string[];
   pos: string;
   morph: string;
   dep: string;
@@ -25,7 +27,11 @@ export interface TextAnalysis {
 
 export interface TermAnalysis {
   input: string;
+  /** Normalised headword (citation form). Empty if the field had nothing usable. */
   key: string;
+  /** Alternative forms given on the card (e.g. "ze" for "zij, ze"). */
+  aliases: string[];
+  /** spaCy's lemma guess, informational only. */
   lemma: string;
   pos: string;
   article: string | null;

@@ -62,6 +62,10 @@ export function classifyCard(card: CardMemory, nowMs: number = Date.now()): Word
   if (card.stabilityDays !== undefined && card.lastReviewMs !== undefined) {
     const elapsed = (nowMs - card.lastReviewMs) / DAY_MS;
     p = retrievability(elapsed, card.stabilityDays, card.decay ?? DEFAULT_DECAY);
+  } else if (card.lastReviewMs !== undefined) {
+    // SM-2: the interval targets ~90% recall at the due date, so R ≈ 0.9^(elapsed / interval).
+    const elapsed = Math.max(0, (nowMs - card.lastReviewMs) / DAY_MS);
+    p = Math.pow(0.9, elapsed / card.intervalDays);
   } else {
     p =
       card.intervalDays >= KNOWN_THRESHOLD_DAYS

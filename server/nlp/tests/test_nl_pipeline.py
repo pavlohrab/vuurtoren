@@ -1,7 +1,7 @@
 import pytest
 
 from kenning_nlp.nl import join_particle, strip_unattested_particle
-from kenning_nlp.pipeline import analyze_terms, analyze_texts, clean_term
+from kenning_nlp.pipeline import analyze_terms, analyze_texts, split_term
 
 
 def lemmas(text: str) -> dict[str, str]:
@@ -60,29 +60,120 @@ def test_sentence_ids() -> None:
 
 
 @pytest.mark.parametrize(
-    ("raw", "cleaned"),
+    ("raw", "alts", "reflexive"),
     [
-        ("fietsen (fietste, gefietst)", "fietsen"),
-        ("de fiets, de fietsen", "de fiets"),
-        ("lopen / wandelen", "lopen"),
-        ("huis [n]", "huis"),
+        ("fietsen (fietste, gefietst)", ["fietsen"], False),
+        ("de fiets, de fietsen", ["de fiets", "de fietsen"], False),
+        ("zij, ze", ["zij", "ze"], False),
+        ("richten (zich)", ["richten"], True),
+        ("huis [n]", ["huis"], False),
+        ("zo\u2019n", ["zo'n"], False),
+        ("lopen - to walk", ["lopen"], False),
     ],
 )
-def test_clean_term(raw: str, cleaned: str) -> None:
-    assert clean_term(raw) == cleaned
+def test_split_term(raw: str, alts: list[str], reflexive: bool) -> None:
+    assert split_term(raw) == (alts, reflexive)
 
 
-def test_analyze_terms() -> None:
-    res = {
-        r.input: r
-        for r in analyze_terms(
-            "nl", ["de fiets", "het huis", "zich vergissen", "kinderen", "opgebeld", "te koop", ""]
-        )
-    }
+def test_analyze_terms_keeps_citation_forms() -> None:
+    raws = [
+        "de fiets",
+        "het huis",
+        "zich vergissen",
+        "richten (zich)",
+        "zij, ze",
+        "vragen",
+        "geleden",
+        "staat",
+        "opgebeld",
+        "te koop",
+        "",
+    ]
+    res = {r.input: r for r in analyze_terms("nl", raws)}
     assert res["de fiets"].key == "fiets" and res["de fiets"].article == "de"
     assert res["het huis"].article == "het"
     assert res["zich vergissen"].key == "vergissen" and res["zich vergissen"].reflexive
-    assert res["kinderen"].key == "kind"
-    assert res["opgebeld"].key == "opbellen"
+    assert res["richten (zich)"].key == "richten" and res["richten (zich)"].reflexive
+    assert res["zij, ze"].key == "zij" and res["zij, ze"].aliases == ["ze"]
+    # headwords are not re-lemmatised out of context
+    assert res["vragen"].key == "vragen"
+    assert res["geleden"].key == "geleden"
+    assert res["staat"].key == "staat"
+    assert res["opgebeld"].key == "opgebeld" and res["opgebeld"].lemma == "opbellen"
     assert res["te koop"].multiword
     assert res[""].key == ""
+
+
+@pytest.mark.parametrize(
+    ("sentence", "surface", "lemma"),
+    [
+        ("Onze woorden hadden andere betekenissen gekregen.", "betekenissen", "betekenis"),
+        ("Wij ontdekten dat het dak lekte.", "ontdekten", "ontdekken"),
+        ("Ze sneed dikke sneden brood.", "sneed", "snijden"),
+        ("De kapper heeft mijn haar geknipt.", "geknipt", "knippen"),
+        ("Hij regeert pas een paar maanden.", "regeert", "regeren"),
+        ("Het huis staat in Amsterdam.", "staat", "staan"),
+    ],
+)
+def test_lemma_repair(sentence: str, surface: str, lemma: str) -> None:
+    assert lemmas(sentence)[surface] == lemma
+
+
+def test_fused_particle_not_doubled() -> None:
+    lem = lemmas("Het huis werd van de grond af opgebouwd.")
+    assert lem["opgebouwd"] == "opbouwen"
+
+
+def test_particle_join_keeps_bare_verb_as_alternative() -> None:
+    (a,) = analyze_texts("nl", ["Ik trof mijn vader in de keuken aan."])
+    verb = next(t for t in a.tokens if t.text == "trof")
+    assert verb.lemma == "aantreffen"
+    assert "treffen" in verb.alt_lemmas
+
+
+def test_blanks_are_not_words() -> None:
+    (a,) = analyze_texts("nl", ["Waar kom jij ____ ?"])
+    blank = next(t for t in a.tokens if "_" in t.text)
+    assert not blank.is_word
+    assert next(t for t in a.tokens if t.text == "kom").lemma == "komen"
+
+
+def test_ellipsis_gap_marker() -> None:
+    (r,) = analyze_terms("nl", ["door ... gaan"])
+    assert r.key == "door gaan" and r.multiword
+
+
+def alts_of(sentence: str, surface: str) -> set[str]:
+    (a,) = analyze_texts("nl", [sentence])
+    t = next(t for t in a.tokens if t.text == surface)
+    return {t.lemma, *t.alt_lemmas}
+
+
+@pytest.mark.parametrize(
+    ("sentence", "surface", "expected"),
+    [
+        ("Op bepaalde momenten weet je het niet.", "bepaalde", "bepaald"),
+        ("Hij is een knappe man.", "knappe", "knap"),
+        ("De volgende avond was ik daar.", "volgende", "volgend"),
+        ("Van alle kanten kwamen buren aangelopen.", "aangelopen", "aanlopen"),
+        ("Een prestatie die alom respect afdwong.", "afdwong", "afdwingen"),
+        ("Hij begon het apparaat in te stellen.", "stellen", "instellen"),
+        ("Trek een warme trui aan.", "Trek", "aantrekken"),
+        ("De tabel geeft de groei van de economie weer.", "geeft", "weergeven"),
+        ("Ze vragen zich af wat er zal volgen.", "vragen", "afvragen"),
+        ("Katten zijn ook goed om muizen te vangen.", "Katten", "kat"),
+        ("Mijn agenda is deze week vol.", "vol.", "vol"),
+    ],
+)
+def test_matcher_candidates(sentence: str, surface: str, expected: str) -> None:
+    assert expected in alts_of(sentence, surface)
+
+
+def test_preposition_is_not_a_particle() -> None:
+    # "naar" introduces a noun phrase; no "naarlopen" candidate
+    assert not any(c.startswith("naar") for c in alts_of("Wij lopen naar het huis.", "lopen"))
+
+
+def test_both_genders_headword() -> None:
+    (r,) = analyze_terms("nl", ["het of de cement"])
+    assert r.key == "cement"
