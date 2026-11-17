@@ -4,7 +4,7 @@
  * the user's own NLP server. Anki writes are the explicit actions of ADR 0007 (Learn next, add
  * notes), each logged as an event.
  */
-import { AnkiConnectClient, addWordToAnki, cardStatus, learnNext } from "@app/anki";
+import { AnkiConnectClient, addWordToAnki, studyWordsFirst } from "@app/anki";
 import {
   type Block,
   type BookExercise,
@@ -455,37 +455,15 @@ export function createLiveCourses(deps: LiveCoursesDeps): CourseServices {
       .flatMap((k) => infos.get(k) ?? [])
       .filter((w) => w.noteIds.length > 0 && w.state !== "known");
     if (withNotes.length === 0) return { moved: 0, skipped: total };
-    const anki = await deps.anki();
-    const { notes } = await cardStatus(anki, [...new Set(withNotes.flatMap((w) => w.noteIds))]);
-    const newCards = new Map<number, number[]>(); // noteId -> new card ids
-    for (const note of notes) {
-      const fresh = note.cards.filter((c) => c.type === "new").map((c) => c.cardId);
-      if (fresh.length > 0) newCards.set(note.noteId, fresh);
-    }
     // In the unit's word order, so Anki introduces the words as the book does.
-    const cardIds = [
-      ...new Set(withNotes.flatMap((w) => w.noteIds.flatMap((id) => newCards.get(id) ?? []))),
-    ];
-    if (cardIds.length === 0) return { moved: 0, skipped: total };
-    const { repositioned, unsuspended } = await learnNext(anki, cardIds);
-    const moved = new Set(repositioned);
-    let count = 0;
-    for (const w of withNotes) {
-      const noteId = w.noteIds.find((id) => (newCards.get(id) ?? []).some((c) => moved.has(c)));
-      if (noteId === undefined) continue;
-      const ids = (newCards.get(noteId) ?? []).filter((c) => moved.has(c));
-      await repo.append({
-        type: "CardsPrioritized",
-        lang,
-        key: w.key,
-        noteId,
-        cardIds: ids,
-        unsuspended: ids.filter((c) => unsuspended.includes(c)),
-      });
-      count++;
-    }
+    const { moved } = await studyWordsFirst(
+      await deps.anki(),
+      (e) => repo.append(e),
+      lang,
+      withNotes,
+    );
     deps.changed();
-    return { moved: count, skipped: total - count };
+    return { moved, skipped: total - moved };
   }
 
   async function addMissingUnitWords(

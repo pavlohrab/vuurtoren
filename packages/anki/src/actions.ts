@@ -150,7 +150,11 @@ export async function learnNext(
   anki: AnkiConnectClient,
   cardIds: number[],
 ): Promise<{ repositioned: number[]; unsuspended: number[] }> {
-  const fresh = (await anki.cardsInfo(cardIds)).filter((c) => c.type === 0);
+  // Keep the caller's order (a course unit's word order), whatever order Anki answers in.
+  const order = new Map(cardIds.map((id, i) => [id, i]));
+  const fresh = (await anki.cardsInfo(cardIds))
+    .filter((c) => c.type === 0)
+    .sort((a, b) => (order.get(a.cardId) ?? 0) - (order.get(b.cardId) ?? 0));
   if (fresh.length === 0) return { repositioned: [], unsuspended: [] };
   if (!(await anki.hasV1())) {
     throw new AnkiActionError("Learn next needs AnkiConnect with API v1 (Anki ≥ 26.08)");

@@ -10,8 +10,10 @@ import {
   addWordToAnki,
   cardStatus,
   highlightSentence,
-  learnNext,
-  markKnownInAnki,
+  markWordKnown,
+  setAppWordState,
+  studyWordFirst,
+  resetToAnkiState,
   type NoteCardStatus,
 } from "@app/anki";
 import {
@@ -859,15 +861,11 @@ export function createLiveServices(repo: KenningRepository): AppServices {
     async learnNext(entry: InspectorEntry): Promise<{ deck: string }> {
       const noteId = entry.anki.noteIds[0];
       if (noteId === undefined) throw new Error("This word has no card in Anki");
-      const { repositioned, unsuspended } = await learnNext(await anki(), entry.anki.cardIds);
-      if (repositioned.length === 0) throw new Error("Its card is no longer new in Anki");
-      await repo.append({
-        type: "CardsPrioritized",
+      await studyWordFirst(await anki(), record, {
         lang: (await settings()).lang,
         key: entry.key,
         noteId,
-        cardIds: repositioned,
-        unsuspended,
+        cardIds: entry.anki.cardIds,
       });
       changed();
       return { deck: entry.anki.deck ?? "" };
@@ -877,40 +875,24 @@ export function createLiveServices(repo: KenningRepository): AppServices {
       if (entry.anki.status === "unavailable") {
         throw new Error(entry.anki.detail ?? "Anki is not reachable");
       }
-      const s = await settings();
-      let noteIds = entry.anki.noteIds;
-      let cardIds = entry.anki.cardIds;
-      let addedToDeck: string | undefined;
-      if (cardIds.length > 0) {
-        await markKnownInAnki(await anki(), cardIds);
-      } else {
-        // Not in Anki: add the note, then mark it known.
-        const added = await addWordToAnki(await anki(), record, {
-          ...(await addRequest(entry, opts)),
-          asKnown: true,
-        });
-        noteIds = [added.noteId];
-        cardIds = added.cardIds;
-        addedToDeck = added.deck;
-      }
-      await repo.append({
-        type: "MarkedKnownInAnki",
-        lang: s.lang,
+      const { addedToDeck } = await markWordKnown(await anki(), record, {
+        lang: (await settings()).lang,
         key: entry.key,
-        noteIds,
-        cardIds,
+        noteIds: entry.anki.noteIds,
+        cardIds: entry.anki.cardIds,
+        add: await addRequest(entry, opts),
       });
       changed();
       return addedToDeck ? { addedToDeck } : {};
     },
 
     async resetWordState(key: string): Promise<void> {
-      await repo.append({ type: "WordStateCleared", lang: (await settings()).lang, key });
+      await resetToAnkiState(record, (await settings()).lang, key);
       changed();
     },
 
     async setWordState(key: string, state: WordState): Promise<void> {
-      await repo.append({ type: "WordStateSet", lang: (await settings()).lang, key, state });
+      await setAppWordState(record, (await settings()).lang, key, state);
       changed();
     },
 

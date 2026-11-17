@@ -10,6 +10,7 @@ import {
   buildSnapshot,
   detectSources,
   profileSources,
+  setAppWordState,
 } from "@app/anki";
 import {
   type AddContext,
@@ -161,7 +162,7 @@ export function createLiveProfile(deps: LiveProfileDeps) {
     async savePlacement(knownKeys) {
       const { lang } = await deps.settings();
       for (const key of new Set(knownKeys)) {
-        await repo.append({ type: "WordStateSet", lang, key, state: "known" });
+        await setAppWordState((e) => repo.append(e), lang, key, "known");
       }
       deps.changed();
     },
