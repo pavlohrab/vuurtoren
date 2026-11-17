@@ -120,6 +120,71 @@ describe("http repository", () => {
     expect((await repo.info()).eventCount).toBe(3);
   });
 
+  it("serves the course queries (Courses in server storage mode)", async () => {
+    const repo = await createHttpRepository(base);
+    const course = {
+      id: "c1",
+      title: "Boek",
+      lang: "nl",
+      source: { kind: "pdf" as const, filename: "boek.pdf" },
+      pageCount: 20,
+      created: 1,
+    };
+    const unit = {
+      courseId: "c1",
+      n: 1,
+      title: "Thema 1 Wonen",
+      pages: [1, 20] as [number, number],
+      ankiDecks: [],
+      kind: "theme" as const,
+    };
+    await repo.append({ type: "CourseImported", course });
+    await repo.append({ type: "UnitDefined", courseId: "c1", units: [unit] });
+    await repo.append({
+      type: "BlocksExtracted",
+      courseId: "c1",
+      blocks: [{ page: 2, kind: "exercise", number: 1, label: "Oefening 1", text: "Vul in." }],
+    });
+    await repo.append({
+      type: "BookExerciseExtracted",
+      courseId: "c1",
+      unitN: 1,
+      exercises: [
+        {
+          number: 1,
+          page: 2,
+          instruction: "Vul in.",
+          type: "gapfill",
+          items: [{ prompt: "Ik ____ hier.", answer: "woon", answerSource: "derived", confidence: 0.9 }],
+          raw: "Vul in.",
+        },
+      ],
+    });
+    await repo.append({
+      type: "UnitWordsSet",
+      courseId: "c1",
+      unitN: 1,
+      words: [{ lemma: "wonen", source: "wordlist" }],
+    });
+    await repo.append({
+      type: "BookExerciseAnswered",
+      courseId: "c1",
+      unitN: 1,
+      number: 1,
+      item: 0,
+      answer: "woon",
+      correct: true,
+      at: 5,
+    });
+    expect(await repo.courses()).toEqual([{ ...course, units: [unit] }]);
+    expect((await repo.courseBlocks("c1")).map((b) => b.label)).toEqual(["Oefening 1"]);
+    expect((await repo.unitExercises("c1", 1)).map((e) => e.number)).toEqual([1]);
+    expect((await repo.unitWords("c1", 1)).map((w) => w.lemma)).toEqual(["wonen"]);
+    expect(await repo.bookAnswers("c1")).toEqual(await repo.bookAnswers("c1", 1));
+    expect((await repo.bookAnswers("c1", 1))[0]).toMatchObject({ answer: "woon", correct: true });
+    expect((await rpc("unitWords", ["c1", "1"])).status).toBe(400);
+  });
+
   it("reports server errors as HttpError", async () => {
     const repo = await createHttpRepository(base);
     await expect(repo.practiceLog("nl", Number.NaN as number)).rejects.toBeInstanceOf(HttpError);
