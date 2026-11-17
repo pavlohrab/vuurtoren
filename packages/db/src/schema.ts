@@ -1,0 +1,122 @@
+/**
+ * Schema and versioned migrations (tracked with `PRAGMA user_version`).
+ * `events` is the append-only source of truth; every other table is a rebuildable projection.
+ */
+import type { SqlDriver } from "./types.js";
+
+/** Each migration is a list of single statements; index + 1 is the schema version it produces. */
+export const MIGRATIONS: readonly (readonly string[])[] = [
+  [
+    `CREATE TABLE meta (
+       key TEXT PRIMARY KEY,
+       value TEXT NOT NULL
+     )`,
+    `CREATE TABLE events (
+       id TEXT PRIMARY KEY,
+       device_id TEXT NOT NULL,
+       hlc TEXT NOT NULL,
+       type TEXT NOT NULL,
+       payload TEXT NOT NULL CHECK (json_valid(payload)),
+       created_at INTEGER NOT NULL
+     )`,
+    `CREATE INDEX events_hlc ON events (hlc)`,
+    // Append-only: the log can never be edited in place.
+    `CREATE TRIGGER events_no_update BEFORE UPDATE ON events
+       BEGIN SELECT RAISE(ABORT, 'events is append-only'); END`,
+    `CREATE TABLE texts (
+       id TEXT PRIMARY KEY,
+       title TEXT NOT NULL,
+       lang TEXT NOT NULL,
+       source_kind TEXT NOT NULL,
+       source_ref TEXT,
+       content TEXT NOT NULL,
+       content_hash TEXT NOT NULL,
+       word_count INTEGER NOT NULL,
+       created_at INTEGER NOT NULL
+     )`,
+    `CREATE TABLE text_tokens (
+       text_id TEXT PRIMARY KEY,
+       content_hash TEXT NOT NULL,
+       tokens TEXT NOT NULL
+     )`,
+    `CREATE TABLE anki_words (
+       lang TEXT NOT NULL,
+       key TEXT NOT NULL,
+       state TEXT NOT NULL,
+       p_known REAL NOT NULL,
+       note_ids TEXT NOT NULL,
+       decks TEXT NOT NULL,
+       gloss TEXT,
+       article TEXT,
+       PRIMARY KEY (lang, key)
+     )`,
+    `CREATE TABLE word_overrides (
+       lang TEXT NOT NULL,
+       key TEXT NOT NULL,
+       state TEXT NOT NULL,
+       updated_hlc TEXT NOT NULL,
+       PRIMARY KEY (lang, key)
+     )`,
+    `CREATE TABLE word_lookups (
+       lang TEXT NOT NULL,
+       key TEXT NOT NULL,
+       count INTEGER NOT NULL,
+       PRIMARY KEY (lang, key)
+     )`,
+    `CREATE TABLE notes_added (
+       lang TEXT NOT NULL,
+       key TEXT NOT NULL,
+       note_id INTEGER NOT NULL,
+       deck TEXT NOT NULL,
+       PRIMARY KEY (lang, key)
+     )`,
+    `CREATE TABLE reading_progress (
+       text_id TEXT PRIMARY KEY,
+       last_segment INTEGER NOT NULL,
+       updated INTEGER NOT NULL
+     )`,
+    `CREATE TABLE staircase (
+       lang TEXT PRIMARY KEY,
+       state TEXT NOT NULL
+     )`,
+    `CREATE TABLE settings (
+       key TEXT PRIMARY KEY,
+       value TEXT NOT NULL
+     )`,
+  ],
+];
+
+/** Latest schema version. */
+export const SCHEMA_VERSION = MIGRATIONS.length;
+
+/** Projection tables, cleared (in this order) by `rebuild()`. `meta` and `events` are kept. */
+export const PROJECTION_TABLES = [
+  "texts",
+  "text_tokens",
+  "anki_words",
+  "word_overrides",
+  "word_lookups",
+  "notes_added",
+  "reading_progress",
+  "staircase",
+  "settings",
+] as const;
+
+/**
+ * Bring the database to the latest schema. Idempotent: already-applied migrations are
+ * skipped, so it is safe to call on every open. Throws if the DB is from a newer version.
+ */
+export async function migrate(driver: SqlDriver): Promise<void> {
+  const rows = await driver.exec("PRAGMA user_version");
+  const current = Number(rows[0]?.["user_version"] ?? 0);
+  if (current > SCHEMA_VERSION) {
+    throw new Error(`Database schema v${current} is newer than supported v${SCHEMA_VERSION}`);
+  }
+  for (let v = current; v < SCHEMA_VERSION; v++) {
+    await driver.transaction(async () => {
+      for (const stmt of MIGRATIONS[v] ?? []) await driver.exec(stmt);
+      // PRAGMA cannot be parameterised; v is an integer we control.
+      await driver.exec(`PRAGMA user_version = ${v + 1}`);
+    });
+  }
+}
