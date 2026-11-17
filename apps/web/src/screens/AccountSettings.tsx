@@ -8,7 +8,14 @@ export function AccountSettings() {
   const [confirmAll, setConfirmAll] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  if (!account) return null;
+  if (!account) {
+    return (
+      <p className="k-hint" style={{ margin: 0 }}>
+        Kenning runs on this device here, so there is no account to sign in to. On a server of your
+        own, sign-in and sign-out live here.
+      </p>
+    );
+  }
 
   const run = async (fn: () => Promise<void>): Promise<void> => {
     setBusy(true);
@@ -24,10 +31,7 @@ export function AccountSettings() {
   };
 
   return (
-    <section className="stack" style={{ marginTop: 40 }} aria-labelledby="account">
-      <h2 id="account" style={{ fontSize: 19 }}>
-        Account
-      </h2>
+    <section className="stack" aria-label="Account">
       {!account.authEnabled ? (
         <p style={{ margin: 0, color: "var(--ink-muted)" }}>
           Sign-in is off on this server: anyone who can open this address can read and change your

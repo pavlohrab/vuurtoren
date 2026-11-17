@@ -855,7 +855,7 @@ function Welcome({ hello }: { hello: string }) {
       </p>
       <ol className="home-steps home-steps--welcome">
         <li>
-          <Link to="/settings" className="home-step">
+          <Link to="/settings" search={{ section: "language" }} className="home-step">
             <span className="home-step-icon" aria-hidden>
               <SettingsIcon size={18} />
             </span>

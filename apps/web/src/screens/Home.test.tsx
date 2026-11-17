@@ -130,7 +130,7 @@ describe("Home", () => {
     );
     expect(await screen.findByRole("link", { name: /Connect Anki/ })).toHaveAttribute(
       "href",
-      "/settings",
+      "/settings?section=language",
     );
     expect(screen.getByRole("link", { name: /Import a text/ })).toHaveAttribute("href", "/import");
     expect(screen.queryByRole("region", { name: "Today" })).toBeNull();

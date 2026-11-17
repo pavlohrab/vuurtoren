@@ -4,6 +4,8 @@ import { PRESETS, presetFor, type ProviderId } from "@app/ai";
 import { Button, Input, Select, Spinner } from "@app/ui";
 import { useServices } from "../services/context.js";
 import type { AISettings as AISettingsData } from "../services/aiTypes.js";
+import { SavedNote } from "./SavedNote.js";
+import { useAutosave } from "./useAutosave.js";
 
 const message = (e: unknown) => (e instanceof Error && e.message ? e.message : "Try again.");
 
@@ -35,7 +37,12 @@ export function AISettings() {
     }
     await refresh();
   };
-  const save = useMutation({ mutationFn: persist });
+  // Provider, address, model and note save themselves; the key is saved with its own button.
+  const autosave = useAutosave(draft, async (d) => {
+    await services.saveAISettings(d);
+    await refresh();
+  });
+  const saveKey = useMutation({ mutationFn: persist });
   const test = useMutation({
     mutationFn: async () => {
       await persist();
@@ -67,10 +74,8 @@ export function AISettings() {
   };
 
   return (
-    <section className="stack" style={{ marginTop: 40 }} aria-labelledby="ai-h">
-      <h2 id="ai-h" style={{ fontSize: 19 }}>
-        AI
-      </h2>
+    <section className="stack" aria-label="AI">
+      <SavedNote status={autosave.status} error={autosave.error} />
       <p style={{ margin: 0, color: "var(--ink-muted)" }}>
         Optional. Talk, sentence explanations and page simplification use your own account with a
         provider. Your key stays on this device (also when you use a server) and is never saved in
@@ -143,9 +148,11 @@ export function AISettings() {
         onChange={(e) => set({ budgetNote: e.target.value })}
       />
       <div className="row">
-        <Button variant="primary" onClick={() => save.mutate()} disabled={save.isPending}>
-          Save AI settings
-        </Button>
+        {key.trim() ? (
+          <Button variant="primary" onClick={() => saveKey.mutate()} disabled={saveKey.isPending}>
+            Save key
+          </Button>
+        ) : null}
         <Button onClick={() => test.mutate()} disabled={test.isPending}>
           {test.isPending ? <Spinner label="Testing" /> : null}
           Test
@@ -156,15 +163,19 @@ export function AISettings() {
           </Button>
         ) : null}
       </div>
-      {save.isSuccess && !save.isPending ? <p role="status">AI settings saved.</p> : null}
+      {saveKey.isSuccess && !saveKey.isPending ? (
+        <p role="status" style={{ margin: 0 }}>
+          Key saved on this device.
+        </p>
+      ) : null}
       {test.isSuccess ? (
         <p role="status" style={{ margin: 0 }}>
           Works: the model answered “{test.data.text}” in {test.data.ms} ms.
         </p>
       ) : null}
-      {test.isError || save.isError ? (
+      {test.isError || saveKey.isError ? (
         <p role="alert" className="error-text" style={{ margin: 0 }}>
-          {message(test.error ?? save.error)}
+          {message(test.error ?? saveKey.error)}
         </p>
       ) : null}
       {usage.data ? (

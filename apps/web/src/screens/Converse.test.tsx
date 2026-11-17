@@ -80,7 +80,7 @@ describe("Talk entry points and the Library", () => {
 
 describe("AI settings and reader helpers", () => {
   it("saves a key and tests the connection", async () => {
-    const { user } = setup("/settings", false);
+    const { user } = setup("/settings?section=ai", false);
     await user.type(await screen.findByLabelText("API key"), "sk-test");
     await user.click(screen.getByRole("button", { name: "Test" }));
     expect(await screen.findByText(/Works: the model answered/)).toBeInTheDocument();

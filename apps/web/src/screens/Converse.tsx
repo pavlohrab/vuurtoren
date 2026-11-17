@@ -237,7 +237,7 @@ export function Converse() {
               : "Talk with a partner who keeps to words you know, with gentle corrections. Add an AI provider and your own key in Settings first."
           }
           action={
-            <Link to="/settings" className="k-btn k-btn--primary">
+            <Link to="/settings" search={{ section: "ai" }} className="k-btn k-btn--primary">
               Open Settings
             </Link>
           }

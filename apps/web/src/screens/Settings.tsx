@@ -1,159 +1,252 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
-import { Button, Input, Select, Skeleton, Spinner, useToast } from "@app/ui";
+/**
+ * Settings (U17): sections with a sub-nav on the left (a list on phones), each saving itself a
+ * moment after a change. Account · Language & decks · Reading · AI · Data & backup · Advanced.
+ * The theme lives only in the top bar.
+ */
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Link, useSearch } from "@tanstack/react-router";
+import {
+  ArrowLeft,
+  BookOpen,
+  ChevronRight,
+  Database,
+  Languages,
+  SlidersHorizontal,
+  Sparkles,
+  UserRound,
+} from "lucide-react";
+import { useState, type ReactNode } from "react";
+import { Input, Select, Skeleton, Slider } from "@app/ui";
 import { useServices } from "../services/context.js";
-import type { LearnerSummary, Settings as SettingsData } from "../services/types.js";
+import type { Settings as SettingsData } from "../services/types.js";
+import { PageHeader } from "../shell/PageHeader.js";
+import { useTheme } from "../theme.js";
 import { AccountSettings } from "./AccountSettings.js";
 import { AISettings } from "./AISettings.js";
-import { AnkiSettings } from "./AnkiSettings.js";
+import { AnkiConnection } from "./AnkiSettings.js";
 import { DataSettings } from "./DataSettings.js";
 import { LanguageDecksSettings } from "./LanguageDecksSettings.js";
-import { NoDecksHelp } from "./onboarding/NoDecksHelp.js";
-import { isNoDecksError } from "../services/profileErrors.js";
-import { useTheme, type ThemeChoice } from "../theme.js";
-import { errorText } from "../services/errors.js";
-import { ErrorNotice } from "../shell/ErrorNotice.js";
+import { SavedNote } from "./SavedNote.js";
+import { useAutosave } from "./useAutosave.js";
+import "./settings.css";
 
-const THEMES = [
-  { value: "system", label: "Match system" },
-  { value: "light", label: "Light" },
-  { value: "dark", label: "Dark" },
+export type SectionId = "language" | "reading" | "ai" | "data" | "account" | "advanced";
+
+const SECTIONS: { id: SectionId; label: string; hint: string; icon: ReactNode }[] = [
+  {
+    id: "account",
+    label: "Account",
+    hint: "Who is signed in on this server.",
+    icon: <UserRound size={18} />,
+  },
+  {
+    id: "language",
+    label: "Language & decks",
+    hint: "Anki, the decks Kenning reads and where new words go.",
+    icon: <Languages size={18} />,
+  },
+  {
+    id: "reading",
+    label: "Reading",
+    hint: "Translations, words to learn per page, blanks and grammar.",
+    icon: <BookOpen size={18} />,
+  },
+  {
+    id: "ai",
+    label: "AI",
+    hint: "Your own provider for Talk, stories and explanations.",
+    icon: <Sparkles size={18} />,
+  },
+  {
+    id: "data",
+    label: "Data & backup",
+    hint: "Where your data lives; download and restore a backup.",
+    icon: <Database size={18} />,
+  },
+  {
+    id: "advanced",
+    label: "Advanced",
+    hint: "Language server and AnkiConnect addresses.",
+    icon: <SlidersHorizontal size={18} />,
+  },
 ];
 
-/** Settings: Anki and NLP endpoints, language & decks, theme and sync. */
+const isSection = (v: string | undefined): v is SectionId => SECTIONS.some((s) => s.id === v);
+
+/** Settings: a section list and the chosen section. */
 export function SettingsScreen() {
+  const { section: raw }: { section?: string } = useSearch({ from: "/settings" });
+  const chosen = isSection(raw) ? raw : null;
+  // Wide screens always show a section; phones show the list until one is picked.
+  const section = chosen ?? "language";
+  const meta = SECTIONS.find((s) => s.id === section)!;
+  return (
+    <div className="page settings-page" data-picked={chosen ? "" : undefined}>
+      <PageHeader
+        title="Settings"
+        lede="Everything stays on your device unless you point it elsewhere. Changes save themselves."
+      />
+      <div className="settings-layout">
+        <nav className="settings-nav" aria-label="Settings sections">
+          {SECTIONS.map((s) => (
+            <Link
+              key={s.id}
+              to="/settings"
+              search={{ section: s.id }}
+              className="settings-nav-item"
+              aria-current={s.id === section ? "page" : undefined}
+            >
+              <span className="settings-nav-icon" aria-hidden>
+                {s.icon}
+              </span>
+              <span className="settings-nav-text">
+                {s.label}
+                <small>{s.hint}</small>
+              </span>
+              <ChevronRight size={16} className="settings-nav-go" aria-hidden />
+            </Link>
+          ))}
+        </nav>
+        <section className="settings-panel" aria-labelledby="settings-section-h">
+          <Link to="/settings" className="settings-back">
+            <ArrowLeft size={16} aria-hidden /> All settings
+          </Link>
+          <header className="settings-panel-head">
+            <h2 id="settings-section-h">{meta.label}</h2>
+            <p className="k-hint">{meta.hint}</p>
+          </header>
+          {section === "language" ? (
+            <div className="stack settings-stack">
+              <AnkiConnection />
+              <LanguageDecksSettings />
+            </div>
+          ) : section === "reading" ? (
+            <ReadingSettings />
+          ) : section === "ai" ? (
+            <AISettings />
+          ) : section === "data" ? (
+            <DataSettings />
+          ) : section === "account" ? (
+            <AccountSettings />
+          ) : (
+            <AdvancedSettings />
+          )}
+        </section>
+      </div>
+    </div>
+  );
+}
+
+/** The app settings (addresses, reading) as an autosaved draft. */
+function useSettingsDraft() {
   const services = useServices();
   const qc = useQueryClient();
-  const toast = useToast();
-  const [theme, setTheme] = useTheme();
-
+  const [theme] = useTheme();
   const saved = useQuery({ queryKey: ["settings"], queryFn: () => services.getSettings() });
-  // Edits live in `draft`; until the first edit the saved values are shown.
   const [draft, setDraft] = useState<SettingsData | null>(null);
   const form = draft ?? saved.data ?? null;
-  const setForm = setDraft;
-
-  const [syncLog, setSyncLog] = useState<string[]>([]);
-  const [result, setResult] = useState<LearnerSummary | null>(null);
-
-  const message = (e: unknown) => errorText(e);
-  const persist = async (s: SettingsData) => {
+  const save = useAutosave(draft, async (s) => {
     await services.saveSettings({ ...s, theme });
     await qc.invalidateQueries({ queryKey: ["settings"] });
-  };
-  const save = useMutation({
-    mutationFn: persist,
-    onSuccess: () => toast("Settings saved"),
-    onError: (e) => toast("Could not save the settings", message(e)),
+    // A changed address may connect (or disconnect) Anki.
+    void qc.invalidateQueries({ queryKey: ["anki-status"] });
   });
-  // Syncing uses the address and key on screen, so they are saved first.
-  const sync = useMutation({
-    mutationFn: async (s: SettingsData) => {
-      setSyncLog([]);
-      await persist(s);
-      return services.syncAnki((m) => setSyncLog((l) => [...l, m]));
-    },
-    onSuccess: async (s) => {
-      setResult(s);
-      await qc.invalidateQueries({ queryKey: ["learner"] });
-      await qc.invalidateQueries({ queryKey: ["texts"] });
-    },
-  });
-
-  if (!form)
-    return (
-      <div className="page page--narrow">
-        <Skeleton style={{ height: 200 }} />
-      </div>
-    );
-  const set = <K extends keyof SettingsData>(k: K, v: SettingsData[K]) =>
-    setForm({ ...form, [k]: v });
-  const clearAnkiKey = () => {
-    const { ankiKey: _drop, ...rest } = form;
-    void _drop;
-    setForm(rest);
+  const set = (patch: Partial<SettingsData>) => {
+    if (form) setDraft({ ...form, ...patch });
   };
+  return { form, set, setDraft, save };
+}
 
+const NEW_WORD_OPTIONS = [
+  { value: "auto", label: "Auto (adapts to how you read)" },
+  ...[0, 1, 2, 3, 4, 5, 6, 8].map((n) => ({ value: String(n), label: String(n) })),
+];
+
+function ReadingSettings() {
+  const { form, set, save } = useSettingsDraft();
+  if (!form) return <Skeleton style={{ height: 160 }} />;
   return (
-    <div className="page page--narrow">
-      <h1>Settings</h1>
-      <p className="page-lede">Everything stays on your device unless you point it elsewhere.</p>
-
-      <form
-        className="stack"
-        onSubmit={(e) => {
-          e.preventDefault();
-          save.mutate(form);
-        }}
-      >
-        <AnkiSettings form={form} set={set} persist={persist} clearKey={clearAnkiKey} />
-
-        <h2 style={{ fontSize: 19, marginTop: 16 }}>Language server</h2>
-        <Input
-          label="NLP server address"
-          value={form.nlpUrl}
-          onChange={(e) => set("nlpUrl", e.target.value)}
+    <div className="stack settings-stack">
+      <SavedNote status={save.status} error={save.error} />
+      <div className="settings-field">
+        <span className="k-label" id="help-dial">
+          Translations in Gloss mode
+        </span>
+        <Slider
+          aria-label="Translations in Gloss mode"
+          value={Math.round(form.help * 100)}
+          onValueChange={(v) => set({ help: v / 100 })}
         />
-
-        <h2 style={{ fontSize: 19, marginTop: 16 }}>Appearance</h2>
-        <div style={{ maxWidth: 240 }}>
-          <Select
-            label="Theme"
-            value={theme}
-            options={THEMES}
-            onValueChange={(v) => setTheme(v as ThemeChoice)}
-          />
-        </div>
-
-        <div className="row" style={{ marginTop: 8 }}>
-          <Button type="submit" variant="primary" disabled={save.isPending}>
-            Save settings
-          </Button>
-        </div>
-      </form>
-
-      <LanguageDecksSettings />
-
-      <section className="stack" style={{ marginTop: 40 }}>
-        <h2 style={{ fontSize: 19 }}>Sync</h2>
-        <p style={{ margin: 0, color: "var(--ink-muted)" }}>
-          Read your decks to learn which words you know.
+        <p className="k-hint">
+          Left: only new words get a translation. Right: most words do. The reader has the same
+          dial.
         </p>
-        <div className="row">
-          <Button variant="primary" onClick={() => sync.mutate(form)} disabled={sync.isPending}>
-            {sync.isPending ? <Spinner label="Syncing" /> : null}
-            Sync from Anki
-          </Button>
-          <span className="k-hint">Uses the addresses above and saves them first.</span>
-        </div>
-        {sync.isPending || (syncLog.length > 0 && !sync.isError) ? (
-          <ul className="progress-log" aria-live="polite">
-            {syncLog.map((m, i) => (
-              <li key={i}>{m}</li>
-            ))}
-          </ul>
-        ) : null}
-        {sync.isError && isNoDecksError(sync.error) ? (
-          <NoDecksHelp />
-        ) : sync.isError ? (
-          <ErrorNotice
-            error={sync.error}
-            title="The sync did not finish."
-            settingsLink={false}
-            onRetry={() => sync.mutate(form)}
-          />
-        ) : null}
-        {result ? (
-          <p role="status" style={{ margin: 0 }}>
-            Synced. {result.known.toLocaleString("en")} words known,{" "}
-            {result.learning.toLocaleString("en")} in progress, about{" "}
-            {result.vocabEstimate.toLocaleString("en")} in your vocabulary.
-          </p>
-        ) : null}
-      </section>
-      <AISettings />
-      <DataSettings />
-      <AccountSettings />
+      </div>
+      <div style={{ maxWidth: 320 }}>
+        <Select
+          label="Words to learn per page"
+          value={String(form.newWords)}
+          options={NEW_WORD_OPTIONS}
+          onValueChange={(v) => set({ newWords: v === "auto" ? "auto" : Number(v) })}
+        />
+      </div>
+      <label className="settings-check">
+        <input
+          type="checkbox"
+          checked={form.glossClozes}
+          onChange={(e) => set({ glossClozes: e.target.checked })}
+        />
+        <span>
+          Blanks in Gloss mode
+          <small>Also ask for a few words while translations are shown.</small>
+        </span>
+      </label>
+      <label className="settings-check">
+        <input
+          type="checkbox"
+          checked={form.grammarSpotlights}
+          onChange={(e) => set({ grammarSpotlights: e.target.checked })}
+        />
+        <span>
+          Grammar spotlights
+          <small>Underline grammar constructions while reading.</small>
+        </span>
+      </label>
+    </div>
+  );
+}
+
+function AdvancedSettings() {
+  const { form, set, setDraft, save } = useSettingsDraft();
+  if (!form) return <Skeleton style={{ height: 160 }} />;
+  return (
+    <div className="stack settings-stack">
+      <SavedNote status={save.status} error={save.error} />
+      <Input
+        label="Language server address"
+        value={form.nlpUrl}
+        hint="The Dutch analysis, dictionary and translation server."
+        onChange={(e) => set({ nlpUrl: e.target.value })}
+      />
+      <Input
+        label="AnkiConnect address"
+        value={form.ankiUrl}
+        onChange={(e) => set({ ankiUrl: e.target.value })}
+      />
+      <Input
+        label="AnkiConnect key"
+        type="password"
+        value={form.ankiKey ?? ""}
+        hint="Only needed if you set an API key in the AnkiConnect add-on."
+        onChange={(e) => {
+          if (e.target.value) set({ ankiKey: e.target.value });
+          else {
+            const { ankiKey: _drop, ...rest } = form;
+            void _drop;
+            setDraft(rest);
+          }
+        }}
+      />
     </div>
   );
 }

@@ -1,0 +1,214 @@
+/* Settings: sub-nav on the left, one section at a time, autosave. */
+.settings-layout {
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr);
+  gap: 32px;
+  align-items: start;
+}
+.settings-nav {
+  position: sticky;
+  top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.settings-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: var(--radius-control);
+  color: var(--ink);
+  text-decoration: none;
+  font-weight: 500;
+}
+.settings-nav-item:hover {
+  background: var(--surface-2);
+}
+.settings-nav-item[aria-current="page"] {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.settings-nav-icon {
+  display: grid;
+  place-items: center;
+  color: var(--ink-muted);
+}
+.settings-nav-item[aria-current="page"] .settings-nav-icon {
+  color: var(--accent);
+}
+.settings-nav-text {
+  flex: 1;
+  min-width: 0;
+}
+.settings-nav-text small,
+.settings-nav-go {
+  display: none;
+}
+.settings-panel {
+  min-width: 0;
+  max-width: 44rem;
+  padding: 24px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+}
+.settings-panel-head {
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--line);
+}
+.settings-panel-head h2 {
+  margin: 0 0 4px;
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 600;
+}
+.settings-panel-head p {
+  margin: 0;
+}
+.settings-back {
+  display: none;
+}
+.settings-stack {
+  gap: 16px;
+}
+.settings-stack > section {
+  margin: 0;
+}
+.settings-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 420px;
+}
+.settings-field .k-hint {
+  margin: 0;
+}
+.settings-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  cursor: pointer;
+}
+.settings-check input {
+  margin-top: 3px;
+  accent-color: var(--accent);
+}
+.settings-check small {
+  display: block;
+  color: var(--ink-muted);
+  font-size: 13px;
+}
+/* Autosave note: quiet, top right of the section, takes no room when idle. */
+.saved-note {
+  align-self: flex-end;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 18px;
+  margin-bottom: -12px;
+  font-size: 13px;
+  color: var(--ink-muted);
+}
+.saved-note[data-status="saved"] {
+  color: var(--known-ink);
+}
+.saved-note[data-status="error"] {
+  color: var(--danger);
+}
+/* Anki connection card at the top of Language & decks */
+.anki-conn {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  background: var(--bg);
+}
+.anki-conn-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.anki-conn-dot {
+  width: 10px;
+  height: 10px;
+  flex: none;
+  border-radius: 999px;
+  background: var(--danger);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--danger) 18%, transparent);
+}
+.anki-conn-dot[data-ok] {
+  background: var(--known);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--known) 20%, transparent);
+}
+.anki-conn-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1 1 220px;
+  min-width: 0;
+}
+.anki-conn-text .k-hint {
+  margin: 0;
+}
+.anki-conn-actions {
+  display: flex;
+  gap: 8px;
+}
+@media (max-width: 899px) {
+  .settings-layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+  }
+  .settings-nav {
+    position: static;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-card);
+    background: var(--surface);
+    padding: 4px;
+  }
+  .settings-nav-item {
+    padding: 12px;
+  }
+  .settings-nav-text small {
+    display: block;
+    font-weight: 400;
+    font-size: 13px;
+    color: var(--ink-muted);
+  }
+  .settings-nav-go {
+    display: block;
+    color: var(--ink-muted);
+  }
+  .settings-nav-item[aria-current="page"] {
+    background: none;
+    color: var(--ink);
+  }
+  .settings-nav-item[aria-current="page"] .settings-nav-icon {
+    color: var(--ink-muted);
+  }
+  /* Phones: the list until a section is picked, then the section with a way back. */
+  .settings-page:not([data-picked]) .settings-panel,
+  .settings-page[data-picked] .settings-nav {
+    display: none;
+  }
+  .settings-page[data-picked] .page-head {
+    display: none;
+  }
+  .settings-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 12px;
+    color: var(--accent);
+    text-decoration: none;
+    font-size: 14px;
+  }
+  .settings-panel {
+    padding: 16px;
+  }
+}

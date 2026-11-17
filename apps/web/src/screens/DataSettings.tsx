@@ -48,8 +48,7 @@ export function DataSettings() {
 
   if (!data) {
     return (
-      <section className="stack" style={{ marginTop: 40 }}>
-        <h2 style={{ fontSize: 19 }}>Your data</h2>
+      <section className="stack" aria-label="Your data">
         <p style={{ margin: 0, color: "var(--ink-muted)" }}>
           This is demo data. Nothing is stored and there is nothing to back up.
         </p>
@@ -83,10 +82,7 @@ export function DataSettings() {
 
   const where = data.mode === "server" ? "Stored on your server" : "Stored in this browser";
   return (
-    <section className="stack" style={{ marginTop: 40 }} aria-labelledby="your-data">
-      <h2 id="your-data" style={{ fontSize: 19 }}>
-        Your data
-      </h2>
+    <section className="stack" aria-label="Your data">
       <p style={{ margin: 0 }}>
         <strong>{where}.</strong>{" "}
         {data.mode === "server"

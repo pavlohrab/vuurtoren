@@ -1,18 +1,13 @@
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { corsConfigLine } from "@app/anki";
-import { Button, Input, Spinner } from "@app/ui";
+import { Button, Spinner } from "@app/ui";
 import { useServices } from "../services/context.js";
-import type { AnkiStatus, Settings as SettingsData } from "../services/types.js";
-
-interface Props {
-  form: SettingsData;
-  set: <K extends keyof SettingsData>(k: K, v: SettingsData[K]) => void;
-  /** Persist the on-screen settings (the address and key) before testing. */
-  persist: (s: SettingsData) => Promise<void>;
-  /** Clear the optional API key from the form. */
-  clearKey: () => void;
-}
+import { errorText } from "../services/errors.js";
+import { isNoDecksError } from "../services/profileErrors.js";
+import type { AnkiStatus } from "../services/types.js";
+import { ErrorNotice } from "../shell/ErrorNotice.js";
+import { NoDecksHelp } from "./onboarding/NoDecksHelp.js";
 
 /** Advice for each state that is not "connected" (also used by onboarding). */
 export function AnkiConnectionHelp({ status, denied }: { status: AnkiStatus; denied: boolean }) {
@@ -36,7 +31,7 @@ export function AnkiConnectionHelp({ status, denied }: { status: AnkiStatus; den
   if (status.state === "needs-key") {
     return (
       <p role="alert" className="error-text" style={{ margin: 0 }}>
-        This site is allowed, but AnkiConnect has an API key set. Enter it in the key field above.
+        This site is allowed, but AnkiConnect has an API key set. Enter it under Settings, Advanced.
       </p>
     );
   }
@@ -61,77 +56,114 @@ export function AnkiConnectionHelp({ status, denied }: { status: AnkiStatus; den
   );
 }
 
-/** Settings: the Anki section (address, key, connect and test). Decks: LanguageDecksSettings. */
-export function AnkiSettings({ form, set, persist, clearKey }: Props) {
+/**
+ * Settings > Language & decks, top: is Anki reachable? Connect (Anki asks to allow this site),
+ * check again, and sync the decks. The address and key are under Advanced.
+ */
+export function AnkiConnection() {
   const services = useServices();
+  const qc = useQueryClient();
   const [denied, setDenied] = useState(false);
-  const [status, setStatus] = useState<AnkiStatus | null>(null);
-  const message = (e: unknown) => (e instanceof Error && e.message ? e.message : "Try again.");
-
-  // Testing and connecting use the address and key on screen, so they are saved first.
-  const test = useMutation({
-    mutationFn: async () => {
-      await persist(form);
-      return services.ankiStatus();
-    },
-    onSuccess: (s) => {
-      setDenied(false);
-      setStatus(s);
-    },
+  const status = useQuery({
+    queryKey: ["anki-status"],
+    queryFn: () => services.ankiStatus(),
+    retry: false,
   });
+  const summary = useQuery({ queryKey: ["learner"], queryFn: () => services.learnerSummary() });
   const connect = useMutation({
-    mutationFn: async () => {
-      await persist(form);
-      return services.connectAnki();
-    },
+    mutationFn: () => services.connectAnki(),
     onSuccess: (r) => {
       setDenied(r.denied);
-      setStatus(r.status);
+      qc.setQueryData(["anki-status"], r.status);
     },
   });
-  const busy = test.isPending || connect.isPending;
-  const error = test.error ?? connect.error;
-
+  const [syncLog, setSyncLog] = useState<string[]>([]);
+  const sync = useMutation({
+    mutationFn: () => {
+      setSyncLog([]);
+      return services.syncAnki((m) => setSyncLog((l) => [...l, m]));
+    },
+    onSuccess: async () => {
+      for (const k of ["learner", "texts", "words", "home"])
+        await qc.invalidateQueries({ queryKey: [k] });
+    },
+  });
+  const st = status.data;
+  const connected = st?.state === "connected";
+  const s = summary.data;
   return (
-    <>
-      <h2 style={{ fontSize: 19 }}>Anki</h2>
-      <Input
-        label="AnkiConnect address"
-        value={form.ankiUrl}
-        onChange={(e) => set("ankiUrl", e.target.value)}
-      />
-      <Input
-        label="AnkiConnect key"
-        type="password"
-        value={form.ankiKey ?? ""}
-        hint="Only needed if you set an API key in the AnkiConnect add-on."
-        onChange={(e) => {
-          if (e.target.value) set("ankiKey", e.target.value);
-          else clearKey();
-        }}
-      />
-      <div className="row">
-        <Button variant="primary" onClick={() => connect.mutate()} disabled={busy}>
-          {connect.isPending ? <Spinner label="Waiting for Anki" /> : null}
-          Connect to Anki
-        </Button>
-        <Button onClick={() => test.mutate()} disabled={busy}>
-          {test.isPending ? <Spinner label="Testing" /> : null}
-          Test connection
-        </Button>
+    <div className="anki-conn" aria-label="Anki connection" role="group">
+      <div className="anki-conn-head">
+        <span className="anki-conn-dot" data-ok={connected || undefined} aria-hidden />
+        <div className="anki-conn-text">
+          <strong>
+            {status.isPending
+              ? "Checking Anki…"
+              : connected
+                ? `Anki is connected${st?.version ? ` (AnkiConnect ${st.version})` : ""}`
+                : "Anki is not connected"}
+          </strong>
+          <span className="k-hint">
+            {s?.lastSync
+              ? `Last synced ${new Date(s.lastSync).toLocaleString("en")}: ${s.known.toLocaleString("en")} known, ${s.learning.toLocaleString("en")} learning.`
+              : "Not synced yet. Sync to read which words you know."}
+          </span>
+        </div>
+        <div className="anki-conn-actions">
+          {connected ? (
+            <Button variant="primary" onClick={() => sync.mutate()} disabled={sync.isPending}>
+              {sync.isPending ? <Spinner label="Syncing" /> : null}
+              Sync from Anki
+            </Button>
+          ) : (
+            <Button variant="primary" onClick={() => connect.mutate()} disabled={connect.isPending}>
+              {connect.isPending ? <Spinner label="Waiting for Anki" /> : null}
+              Connect to Anki
+            </Button>
+          )}
+          <Button
+            variant="ghost"
+            onClick={() => void status.refetch()}
+            disabled={status.isFetching}
+          >
+            Check again
+          </Button>
+        </div>
       </div>
-      <p className="k-hint" style={{ margin: 0 }}>
-        {connect.isPending
-          ? "Switch to Anki: it asks whether to allow this site. Click Yes."
-          : "Anki will ask whether to allow this site. Click Yes. Both buttons save your changes first."}
-      </p>
-      {error ? (
-        <span role="alert" className="error-text">
-          {message(error)}
-        </span>
-      ) : status ? (
-        <AnkiConnectionHelp status={status} denied={denied} />
+      {connect.isPending ? (
+        <p className="k-hint" style={{ margin: 0 }}>
+          Switch to Anki: it asks whether to allow this site. Click Yes.
+        </p>
       ) : null}
-    </>
+      {st && !connected ? <AnkiConnectionHelp status={st} denied={denied} /> : null}
+      {status.isError ? (
+        <span role="alert" className="error-text">
+          {errorText(status.error)}
+        </span>
+      ) : null}
+      {sync.isPending || (syncLog.length > 0 && !sync.isError && !sync.isSuccess) ? (
+        <ul className="progress-log" aria-live="polite">
+          {syncLog.map((m, i) => (
+            <li key={i}>{m}</li>
+          ))}
+        </ul>
+      ) : null}
+      {sync.isError && isNoDecksError(sync.error) ? (
+        <NoDecksHelp />
+      ) : sync.isError ? (
+        <ErrorNotice
+          error={sync.error}
+          title="The sync did not finish."
+          settingsLink={false}
+          onRetry={() => sync.mutate()}
+        />
+      ) : sync.isSuccess ? (
+        <p role="status" style={{ margin: 0 }}>
+          Synced. {sync.data.known.toLocaleString("en")} words known,{" "}
+          {sync.data.learning.toLocaleString("en")} in progress, about{" "}
+          {sync.data.vocabEstimate.toLocaleString("en")} in your vocabulary.
+        </p>
+      ) : null}
+    </div>
   );
 }

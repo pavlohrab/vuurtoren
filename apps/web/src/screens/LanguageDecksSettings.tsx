@@ -11,6 +11,9 @@ import {
   deckRows,
 } from "./onboarding/deckParts.js";
 
+import { SavedNote } from "./SavedNote.js";
+import { useAutosave } from "./useAutosave.js";
+
 const message = (e: unknown) => (e instanceof Error && e.message ? e.message : "Try again.");
 
 /** Settings → Language & decks: the language profile (ADR 0010). */
@@ -25,25 +28,26 @@ export function LanguageDecksSettings() {
   const [draft, setDraft] = useState<LanguageProfile | null>(null);
   const profile = draft ?? saved.data ?? (saved.isSuccess ? defaultProfile("nl") : null);
   const detect = useMutation({ mutationFn: () => services.suggestDecks() });
-  const save = useMutation({
-    mutationFn: (p: LanguageProfile) => services.saveLanguageProfile(p),
-    onSuccess: async () => {
-      toast("Decks saved", "Sync from Anki to read the chosen decks.");
-      setDraft(null);
+  // Saved a moment after each change; an empty default deck is not saved.
+  const save = useAutosave(
+    draft,
+    async (p) => {
+      const sourcesChanged =
+        JSON.stringify(p.sources) !== JSON.stringify(saved.data?.sources ?? []);
+      await services.saveLanguageProfile(p);
       await qc.invalidateQueries({ queryKey: ["languageProfile"] });
       await qc.invalidateQueries({ queryKey: ["deckChoices"] });
+      if (sourcesChanged) toast("Decks saved", "Sync from Anki to read the chosen decks.");
     },
-    onError: (e) => toast("Could not save the decks", message(e)),
-  });
+    { valid: Boolean(draft?.destinations.default.trim()) },
+  );
 
   if (!profile) return <Skeleton style={{ height: 160 }} />;
   const rows = deckRows(detect.data ?? [], profile.sources);
 
   return (
-    <section className="stack" aria-labelledby="lang-decks" style={{ marginTop: 40 }}>
-      <h2 id="lang-decks" style={{ fontSize: 19 }}>
-        Language &amp; decks
-      </h2>
+    <section className="stack" aria-label="Language and decks">
+      <SavedNote status={save.status} error={save.error} />
       {saved.data === null ? (
         <p className="ob-note">
           Kenning does not know your decks yet. <Link to="/welcome">Set up step by step</Link>, or
@@ -82,20 +86,11 @@ export function LanguageDecksSettings() {
 
       <h3 style={{ fontSize: 16, margin: "8px 0 0" }}>Where new words go</h3>
       <DestinationFields profile={profile} onChange={setDraft} />
-      <div className="row">
-        <Button
-          variant="primary"
-          disabled={save.isPending || !draft || !profile.destinations.default.trim()}
-          onClick={() => save.mutate(profile)}
-        >
-          Save decks
-        </Button>
-        {draft ? (
-          <Button variant="ghost" onClick={() => setDraft(null)}>
-            Discard changes
-          </Button>
-        ) : null}
-      </div>
+      {draft && !profile.destinations.default.trim() ? (
+        <p className="error-text" role="alert" style={{ margin: 0 }}>
+          Name a default deck to save.
+        </p>
+      ) : null}
     </section>
   );
 }
