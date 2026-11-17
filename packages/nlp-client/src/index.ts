@@ -144,9 +144,7 @@ export class NlpClient {
     if (!res.ok) {
       const detail = (json as { detail?: unknown }).detail;
       throw new NlpError(
-        typeof detail === "string"
-          ? detail
-          : `NLP ${path}: HTTP ${res.status} ${text.slice(0, 200)}`,
+        `NLP ${path}: HTTP ${res.status} ${typeof detail === "string" ? detail : text.slice(0, 200)}`,
         res.status,
       );
     }
