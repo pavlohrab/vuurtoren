@@ -15,7 +15,9 @@ import {
   assistantHistoryMessage,
   clearKey,
   createProvider,
+  examFeedback,
   explainSentence,
+  generateExamItem,
   generateSentences,
   generateStory,
   keyStatus,
@@ -53,6 +55,7 @@ import type {
   StoryView,
 } from "./aiTypes.js";
 import { toConversationView } from "./conversationView.js";
+import type { ExamServices } from "./examTypes.js";
 import type { Settings } from "./types.js";
 
 export interface LiveAIDeps {
@@ -145,11 +148,12 @@ const DEFAULT_AI: AISettings = (() => {
 
 const monthOf = (d = new Date()) => d.toISOString().slice(0, 7);
 
-export function createLiveAI(deps: LiveAIDeps): AIServices & {
-  /** Generate, validate and store AI example sentences (practice). */
-  fillSentences: (lang: string, needs: SentenceNeed[], avoid: string[]) => Promise<SentenceFill>;
-  aiReady: () => boolean;
-} {
+export function createLiveAI(deps: LiveAIDeps): AIServices &
+  Pick<ExamServices, "generateExamItem" | "examFeedback"> & {
+    /** Generate, validate and store AI example sentences (practice). */
+    fillSentences: (lang: string, needs: SentenceNeed[], avoid: string[]) => Promise<SentenceFill>;
+    aiReady: () => boolean;
+  } {
   const { repo } = deps;
   const storage = deps.storage ?? defaultStorage();
   /** Decrypted keys of this session only. */
@@ -473,6 +477,35 @@ export function createLiveAI(deps: LiveAIDeps): AIServices & {
         parseFailed: result.parseFailed,
       };
       return view;
+    },
+    async generateExamItem(part, topic) {
+      const { lang } = await deps.settings();
+      const [p, model, vocab, words, thr] = await Promise.all([
+        provider(),
+        deps.model(),
+        deps.vocabEstimate(),
+        repo.words(lang),
+        threshold(lang),
+      ]);
+      const r = await generateExamItem(
+        { provider: p, analyze, model, threshold: thr },
+        {
+          part,
+          ...(topic ? { topic } : {}),
+          vocabEstimate: vocab,
+          knownLemmas: selectKnownLemmas(words, topic ?? "", 300),
+        },
+      );
+      if (!r.item) {
+        throw new AIError(
+          "The provider did not return a usable practice item. Try again.",
+          "server",
+        );
+      }
+      return { item: r.item, coverage: r.coverage, rewritten: r.rewritten };
+    },
+    async examFeedback(input) {
+      return examFeedback(await provider(), input);
     },
     async getAISettings() {
       return getSettings();

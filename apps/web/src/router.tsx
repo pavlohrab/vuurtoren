@@ -111,6 +111,14 @@ const settingsRoute = searchScreen(
   "SettingsScreen",
   ["section"],
 );
+/** /exam: the A2 inburgeringsexamen overview; /exam/<part>?mode=practice|exam&set=1&theme=… */
+const examRoute = screen("/exam", () => import("./screens/exam/Exam.js"), "Exam");
+const examPartRoute = searchScreen(
+  "/exam/$part",
+  () => import("./screens/exam/ExamPart.js"),
+  "ExamPartRoute",
+  ["mode", "set", "theme"],
+);
 const welcomeRoute = screen("/welcome", () => import("./screens/onboarding/Welcome.js"), "Welcome");
 
 const coursesRoute = screen("/courses", () => import("./screens/courses/Courses.js"), "Courses");
@@ -151,6 +159,8 @@ const routeTree = rootRoute.addChildren([
   topicPracticeRoute,
   progressRoute,
   settingsRoute,
+  examRoute,
+  examPartRoute,
   welcomeRoute,
   coursesRoute,
   courseImportRoute,

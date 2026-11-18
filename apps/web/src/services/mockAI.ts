@@ -9,6 +9,7 @@ import type {
   StoryInput,
   StoryView,
 } from "./aiTypes.js";
+import type { ExamItemPart, ExamServices, GeneratedExamItem } from "./examTypes.js";
 
 export interface MockAIOptions {
   /** Start with a provider configured (default true). */
@@ -32,10 +33,61 @@ export const MOCK_NEW_WORD: NewWord = {
   example: "Het is hier gezellig.",
 };
 
+/** The demo's generated exam items. */
+export const MOCK_EXAM_ITEM: Record<ExamItemPart, GeneratedExamItem> = {
+  lezen: {
+    title: "Nieuwe openingstijden",
+    text: "Supermarkt De Hoek\n\nVanaf 1 mei zijn we op zondag open van 12.00 tot 18.00 uur.\nOp maandag t/m zaterdag blijven we open van 8.00 tot 21.00 uur.\n\nTot ziens in de winkel!",
+    lines: [],
+    questions: [
+      {
+        q: "Wat is er nieuw?",
+        options: [
+          "De winkel is op zondag open.",
+          "De winkel gaat eerder dicht.",
+          "De winkel verhuist.",
+        ],
+        answer: 0,
+        explain: "From 1 May the shop opens on Sundays.",
+      },
+      {
+        q: "Hoe laat gaat de winkel op zaterdag dicht?",
+        options: ["Om 18.00 uur.", "Om 12.00 uur.", "Om 21.00 uur."],
+        answer: 2,
+        explain: "Monday to Saturday 8.00–21.00.",
+      },
+    ],
+    vocab: { openingstijden: "opening hours", blijven: "to stay" },
+  },
+  luisteren: {
+    title: "Bij de kapper",
+    text: "Een vrouw belt de kapper.",
+    lines: [
+      { who: "Kapper", voice: "m", text: "Kapsalon Knip, goedemiddag." },
+      { who: "Vrouw", voice: "f", text: "Hallo, kan ik morgen om tien uur komen?" },
+      { who: "Kapper", voice: "m", text: "Om tien uur niet, maar om elf uur wel." },
+      { who: "Vrouw", voice: "f", text: "Elf uur is goed. Tot morgen!" },
+    ],
+    questions: [
+      {
+        q: "Hoe laat gaat de vrouw morgen naar de kapper?",
+        options: ["Om 10.00 uur.", "Om 11.00 uur.", "Om 12.00 uur."],
+        answer: 1,
+        explain: "Ten is full; she takes eleven.",
+      },
+    ],
+    vocab: { kapper: "hairdresser" },
+  },
+};
+
 export function createMockAI(
   wait: () => Promise<void>,
   opts: MockAIOptions = {},
-): AIServices & { added: NewWord[]; stories: StoryInput[] } {
+): AIServices &
+  Pick<ExamServices, "generateExamItem" | "examFeedback"> & {
+    added: NewWord[];
+    stories: StoryInput[];
+  } {
   let keySaved = opts.configured ?? true;
   let encrypted = false;
   let unlocked = true;
@@ -63,6 +115,24 @@ export function createMockAI(
   return {
     added,
     stories,
+    async generateExamItem(part) {
+      await wait();
+      return { item: MOCK_EXAM_ITEM[part], coverage: 0.97, rewritten: false };
+    },
+    async examFeedback(input) {
+      await wait();
+      return {
+        summary: "Your message is clear and polite. Two small verb errors.",
+        points: input.points.map((point, i) => ({
+          point,
+          ok: i !== input.points.length - 1,
+          note: i !== input.points.length - 1 ? "Done." : "Add this to get the full mark.",
+        })),
+        corrections: [{ wrong: "ik komen", right: "ik kom", why: "The verb agrees with ik." }],
+        improved: input.answer.replace(/\bik komen\b/gi, "ik kom"),
+        parseFailed: false,
+      };
+    },
     async storyTargets(source) {
       await wait();
       if (source.kind === "grammar") return [];
