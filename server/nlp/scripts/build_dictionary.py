@@ -45,7 +45,8 @@ def main() -> int:
     src = args.input
     downloaded = False
     if src is None:
-        src = DATA_DIR / "kaikki-nl.jsonl"
+        # Next to the output (writable wherever the output is; the server's local pack build).
+        src = args.output.parent / "kaikki-nl.jsonl"
         if not src.exists():
             try:
                 download_verified(

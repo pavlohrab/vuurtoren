@@ -16,7 +16,6 @@ Schema::
 from __future__ import annotations
 
 import json
-import os
 import sqlite3
 from collections.abc import Iterable, Iterator
 from functools import lru_cache
@@ -29,6 +28,7 @@ from kenning_nlp.compound import (
     real_glosses,
     split_compound,
 )
+from kenning_nlp.datadir import data_path
 from kenning_nlp.wordforms import extract_word_forms
 
 MAX_GLOSSES = 5
@@ -61,10 +61,7 @@ CREATE INDEX idx_wordforms_lemma ON wordforms(lower(lemma));
 
 def default_db_path() -> Path:
     """Database location: ``$KENNING_DICT_PATH`` or ``server/nlp/data/dictionary-nl.sqlite``."""
-    env = os.environ.get("KENNING_DICT_PATH")
-    if env:
-        return Path(env)
-    return Path(__file__).resolve().parents[2] / "data" / "dictionary-nl.sqlite"
+    return data_path("KENNING_DICT_PATH", "dictionary-nl.sqlite")
 
 
 def _gloss_text(sense: dict[str, Any]) -> str | None:

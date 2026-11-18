@@ -21,7 +21,6 @@ Sentences are stored once; the target span is per (lemma, sentence).
 
 from __future__ import annotations
 
-import os
 import re
 import sqlite3
 from collections import Counter
@@ -29,6 +28,7 @@ from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from pathlib import Path
 
+from kenning_nlp.datadir import data_path
 from kenning_nlp.models import TextAnalysis
 
 MIN_WORDS = 3
@@ -62,10 +62,7 @@ Analyzer = Callable[[list[str]], list[TextAnalysis]]
 
 def default_db_path() -> Path:
     """``$KENNING_SENTENCES_PATH`` or ``server/nlp/data/sentences-nl.sqlite``."""
-    env = os.environ.get("KENNING_SENTENCES_PATH")
-    if env:
-        return Path(env)
-    return Path(__file__).resolve().parents[2] / "data" / "sentences-nl.sqlite"
+    return data_path("KENNING_SENTENCES_PATH", "sentences-nl.sqlite")
 
 
 def is_usable(text: str) -> bool:

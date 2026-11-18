@@ -1,0 +1,20 @@
+{
+ "format": 1,
+ "packs": {
+  "dictionary-nl": {
+   "version": "2026.11.1",
+   "sha256": "0d186ed96f14567667619d1adabc3953591f47320db30acfb50e220cb46fda0c",
+   "size": 14073216
+  },
+  "sentences-nl": {
+   "version": "2026.11.1",
+   "sha256": "3fcecde78bd3b0c040b1b87cb035ea468ae01617405d5b693d494a3d3f6c17cf",
+   "size": 20013862
+  },
+  "mt-nl-en": {
+   "version": "2026.11.1",
+   "sha256": "7406706d390fa8dbb54e536c4a48c8f5048a4e7daccd782978fd9f09f637807f",
+   "size": 69717438
+  }
+ }
+}

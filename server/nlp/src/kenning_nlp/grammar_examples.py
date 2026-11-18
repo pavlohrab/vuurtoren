@@ -32,6 +32,7 @@ import time
 from pathlib import Path
 
 from kenning_nlp import grammar
+from kenning_nlp.datadir import data_path
 from kenning_nlp.pipeline import analyze_texts
 
 BATCH = 128
@@ -58,10 +59,7 @@ CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 
 def default_cache_path() -> Path:
     """``$KENNING_GRAMMAR_CACHE_PATH`` or ``server/nlp/data/grammar-examples-nl.sqlite``."""
-    env = os.environ.get("KENNING_GRAMMAR_CACHE_PATH")
-    if env:
-        return Path(env)
-    return Path(__file__).resolve().parents[2] / "data" / "grammar-examples-nl.sqlite"
+    return data_path("KENNING_GRAMMAR_CACHE_PATH", "grammar-examples-nl.sqlite")
 
 
 def detector_version() -> str:
@@ -87,6 +85,20 @@ class GrammarExamples:
         while not parent.exists() and parent != parent.parent:
             parent = parent.parent
         return os.access(parent, os.W_OK)
+
+    def cache_version_ok(self) -> bool:
+        """True when the cache exists and was built by the current detectors."""
+        try:
+            con = sqlite3.connect(f"file:{self.cache_db}?mode=ro", uri=True)
+        except sqlite3.Error:
+            return False
+        try:
+            row = con.execute("SELECT value FROM meta WHERE key='version'").fetchone()
+            return bool(row) and row[0] == detector_version()
+        except sqlite3.Error:
+            return False
+        finally:
+            con.close()
 
     def _read_only(self, topic: str, limit: int) -> list[tuple[str, str, str, str]]:
         """Best cached examples without scanning; [] when there is no usable cache."""
