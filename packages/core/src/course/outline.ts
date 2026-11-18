@@ -457,3 +457,55 @@ export function validateOutline(
   }
   return null;
 }
+
+/** An outline row as the editor holds it. */
+export interface OutlineEditRow {
+  title: string;
+  pages: [number, number];
+  kind: UnitKind;
+}
+
+/**
+ * Start a new unit at `page` (the outline editor's "New unit from here"): the unit that holds
+ * the page ends just before it, and the new one runs to that unit's old end. A page before
+ * every unit opens a unit up to the first one. Pure; returns the rows sorted by page.
+ */
+export function splitOutlineAt(
+  rows: readonly OutlineEditRow[],
+  page: number,
+  title: string,
+  kind: UnitKind = "theme",
+): OutlineEditRow[] {
+  const sorted = [...rows].sort((a, b) => a.pages[0] - b.pages[0]);
+  const i = sorted.findIndex((r) => page >= r.pages[0] && page <= r.pages[1]);
+  if (i >= 0) {
+    const r = sorted[i]!;
+    if (r.pages[0] === page) return sorted;
+    const out = [...sorted];
+    out.splice(
+      i,
+      1,
+      { ...r, pages: [r.pages[0], page - 1] },
+      { title, kind, pages: [page, r.pages[1]] },
+    );
+    return out;
+  }
+  const next = sorted.find((r) => r.pages[0] > page);
+  const end = next ? next.pages[0] - 1 : page;
+  return [...sorted, { title, kind, pages: [page, end] as [number, number] }].sort(
+    (a, b) => a.pages[0] - b.pages[0],
+  );
+}
+
+/** Merge row `i` into the row before it (its pages join the previous unit). Pure. */
+export function mergeOutlineRow(rows: readonly OutlineEditRow[], i: number): OutlineEditRow[] {
+  if (i <= 0 || i >= rows.length) return [...rows];
+  const prev = rows[i - 1]!;
+  const cur = rows[i]!;
+  const out = [...rows];
+  out.splice(i - 1, 2, {
+    ...prev,
+    pages: [Math.min(prev.pages[0], cur.pages[0]), Math.max(prev.pages[1], cur.pages[1])],
+  });
+  return out;
+}

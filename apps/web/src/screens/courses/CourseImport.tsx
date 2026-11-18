@@ -3,10 +3,17 @@ import { Link } from "@tanstack/react-router";
 import { Check, UploadCloud } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { validateOutline } from "@app/core";
-import { Button, Chip, Input, Select, Spinner } from "@app/ui";
+import { Button, Chip, Input, Select, Spinner, Textarea } from "@app/ui";
 import { useServices } from "../../services/context.js";
 import { useAppInfo } from "../../shell/AppInfo.js";
-import type { DeckMapping, ImportProgress, OutlineRow } from "../../services/courseTypes.js";
+import type {
+  DeckMapping,
+  ImportProgress,
+  OutlineRow,
+  PagePreview,
+  PendingImport,
+} from "../../services/courseTypes.js";
+import { OutlineEditor } from "./OutlineEditor.js";
 import "./courses.css";
 
 type Step = "upload" | "ocr" | "outline" | "decks" | "analyze" | "done";
@@ -16,13 +23,6 @@ const STEPS: [Step, string][] = [
   ["outline", "Outline"],
   ["decks", "Anki decks"],
   ["analyze", "Exercises"],
-];
-const KINDS: { value: OutlineRow["kind"]; label: string }[] = [
-  { value: "theme", label: "Unit" },
-  { value: "grammar", label: "Grammar" },
-  { value: "transcripts", label: "Transcripts" },
-  { value: "wordlist", label: "Word list" },
-  { value: "other", label: "Other" },
 ];
 
 function Steps({ step }: { step: Step }) {
@@ -101,6 +101,10 @@ export function CourseImportScreen({ courseId: existing }: { courseId?: string }
   const [rows, setRows] = useState<OutlineRow[]>([]);
   const [mapping, setMapping] = useState<DeckMapping | null>(null);
   const [chosen, setChosen] = useState<Record<number, string[]>>({});
+  const [pages, setPages] = useState<PagePreview[] | undefined>(undefined);
+  const [pending, setPending] = useState<PendingImport | null>(null);
+  const [source, setSource] = useState<"file" | "web">("file");
+  const [urls, setUrls] = useState("");
   const fileInput = useRef<HTMLInputElement>(null);
 
   const fail = (e: unknown) => {
@@ -111,8 +115,61 @@ export function CourseImportScreen({ courseId: existing }: { courseId?: string }
   useEffect(() => {
     if (!existing) return;
     void services.outline(existing).then(setRows, fail);
+    void services.pagePreviews(existing).then(setPages, () => setPages(undefined));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [existing]);
+
+  // A book whose reading was started earlier (the wizard was left): offer to continue it.
+  useEffect(() => {
+    if (existing) return;
+    void services.pendingImport().then((p) => mounted.current && setPending(p));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [existing]);
+
+  const toOutline = async (id: string) => {
+    setCourseId(id);
+    setRows(await services.outline(id));
+    setPages(await services.pagePreviews(id).catch(() => undefined));
+    setStep("outline");
+  };
+
+  const resume = async () => {
+    setError(null);
+    setProgress(null);
+    setStep("ocr");
+    try {
+      const id = await services.resumeImport((p) => mounted.current && setProgress(p));
+      if (mounted.current) await toOutline(id);
+    } catch (e) {
+      fail(e);
+      setPending(await services.pendingImport());
+      setStep("upload");
+    }
+  };
+
+  const startWeb = async () => {
+    const list = urls
+      .split(/\s+/)
+      .map((u) => u.trim())
+      .filter((u) => /^https?:\/\//i.test(u));
+    if (list.length === 0) {
+      setError("Paste the addresses of the web pages, one per line.");
+      return;
+    }
+    setError(null);
+    setProgress(null);
+    setStep("ocr");
+    try {
+      const id = await services.importCourse(
+        { kind: "url", urls: list, title: title.trim() || "Web course" },
+        (p) => mounted.current && setProgress(p),
+      );
+      if (mounted.current) await toOutline(id);
+    } catch (e) {
+      fail(e);
+      setStep("upload");
+    }
+  };
 
   const isPdf = (f: File) => f.type === "application/pdf" || /\.pdf$/i.test(f.name);
   const start = async () => {
@@ -134,9 +191,7 @@ export function CourseImportScreen({ courseId: existing }: { courseId?: string }
         (p) => mounted.current && setProgress(p),
       );
       if (!mounted.current) return;
-      setCourseId(id);
-      setRows(await services.outline(id));
-      setStep("outline");
+      await toOutline(id);
     } catch (e) {
       fail(e);
       setStep("upload");
@@ -180,13 +235,10 @@ export function CourseImportScreen({ courseId: existing }: { courseId?: string }
   };
 
   // The page count is checked by the service; here only the shape of the outline.
-  const outlineProblem = validateOutline(rows, 0);
-
-  const update = (i: number, patch: Partial<OutlineRow>) =>
-    setRows((rs) => rs.map((r, j) => (j === i ? { ...r, ...patch } : r)));
+  const outlineProblem = validateOutline(rows, pages?.length ?? 0);
 
   return (
-    <div className="page page--narrow">
+    <div className={step === "outline" ? "page" : "page page--narrow"}>
       <h1>{existing ? "Edit course" : "Add a course"}</h1>
       <Steps step={step === "done" ? "analyze" : step} />
       {error ? (
@@ -197,67 +249,130 @@ export function CourseImportScreen({ courseId: existing }: { courseId?: string }
 
       {step === "upload" ? (
         <div className="stack">
+          {pending ? (
+            <div className="banner cs-resume" role="note">
+              <span>
+                You started reading <strong>{pending.title}</strong> ({pending.total} pages).
+                Kenning can pick it up where it is.
+              </span>
+              <span className="cs-actions">
+                <Button variant="primary" size="sm" onClick={() => void resume()}>
+                  Continue
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    void services.discardPendingImport();
+                    setPending(null);
+                  }}
+                >
+                  Start over
+                </Button>
+              </span>
+            </div>
+          ) : null}
           <p className="page-lede">
-            Upload your own copy of a textbook, as a PDF or as photos of the pages.{" "}
+            Upload your own copy of a textbook: a PDF (scanned or not), an EPUB, or photos of the
+            pages. Any textbook works; Kenning finds its units and you can correct them.{" "}
             {privacyCopy(storageMode)}
           </p>
-          <div
-            className="dropzone"
-            role="button"
-            tabIndex={0}
-            onClick={() => fileInput.current?.click()}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                fileInput.current?.click();
-              }
-            }}
-          >
-            <UploadCloud size={24} aria-hidden />
-            <span>
-              {files.length === 0
-                ? "Choose a PDF, or photos of the pages"
-                : files.length === 1
-                  ? files[0]?.name
-                  : `${files.length} photos, read in name order`}
-            </span>
-            <input
-              ref={fileInput}
-              type="file"
-              accept="application/pdf,image/*"
-              multiple
-              hidden
-              aria-label="Book file"
-              onChange={(e) =>
-                setFiles(
-                  [...(e.target.files ?? [])].sort((a, b) =>
-                    a.name.localeCompare(b.name, undefined, { numeric: true }),
-                  ),
-                )
-              }
-            />
+          <div className="cs-source" role="group" aria-label="What to import">
+            <Button
+              size="sm"
+              variant={source === "file" ? "secondary" : "ghost"}
+              aria-pressed={source === "file"}
+              onClick={() => setSource("file")}
+            >
+              A book file or photos
+            </Button>
+            <Button
+              size="sm"
+              variant={source === "web" ? "secondary" : "ghost"}
+              aria-pressed={source === "web"}
+              onClick={() => setSource("web")}
+            >
+              Web pages
+            </Button>
           </div>
+          {source === "file" ? (
+            <div
+              className="dropzone"
+              role="button"
+              tabIndex={0}
+              onClick={() => fileInput.current?.click()}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  fileInput.current?.click();
+                }
+              }}
+            >
+              <UploadCloud size={24} aria-hidden />
+              <span>
+                {files.length === 0
+                  ? "Choose a PDF or EPUB, or photos of the pages"
+                  : files.length === 1
+                    ? files[0]?.name
+                    : `${files.length} photos, read in name order`}
+              </span>
+              <input
+                ref={fileInput}
+                type="file"
+                accept="application/pdf,application/epub+zip,.epub,image/*"
+                multiple
+                hidden
+                aria-label="Book file"
+                onChange={(e) =>
+                  setFiles(
+                    [...(e.target.files ?? [])].sort((a, b) =>
+                      a.name.localeCompare(b.name, undefined, { numeric: true }),
+                    ),
+                  )
+                }
+              />
+            </div>
+          ) : (
+            <Textarea
+              label="Web pages, one address per line"
+              value={urls}
+              onChange={(e) => setUrls(e.target.value)}
+              hint="Each page becomes one unit, in this order."
+              rows={5}
+            />
+          )}
           <Input
-            label="Title (optional)"
+            label={source === "file" ? "Title (optional)" : "Title"}
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            hint="Taken from the file name when left empty."
+            {...(source === "file" ? { hint: "Taken from the file name when left empty." } : {})}
           />
-          <p className="cs-note">
-            A scanned book of about 300 pages needs a few minutes of reading. You can leave this
-            page open and come back to it.
-          </p>
+          {source === "file" ? (
+            <p className="cs-note">
+              A scanned book of about 300 pages takes a few minutes to read. You can leave this
+              page: the reading goes on, and you can continue here later.
+            </p>
+          ) : null}
           <div className="row">
-            <Button variant="primary" disabled={files.length === 0} onClick={() => void start()}>
-              Start reading the book
-            </Button>
+            {source === "file" ? (
+              <Button variant="primary" disabled={files.length === 0} onClick={() => void start()}>
+                Start reading the book
+              </Button>
+            ) : (
+              <Button variant="primary" disabled={!urls.trim()} onClick={() => void startWeb()}>
+                Read the pages
+              </Button>
+            )}
           </div>
         </div>
       ) : null}
 
       {step === "ocr" ? (
         <>
-          <p className="page-lede">Reading the pages. This happens once per book.</p>
+          <p className="page-lede">
+            Reading the pages. This happens once per book; you can leave this page and continue
+            later.
+          </p>
           <ProgressBar p={progress} />
         </>
       ) : null}
@@ -265,49 +380,10 @@ export function CourseImportScreen({ courseId: existing }: { courseId?: string }
       {step === "outline" ? (
         <>
           <p className="page-lede">
-            Kenning guessed the units from the table of contents and the page footers. Correct the
-            titles and page ranges where needed.
+            Kenning guessed the units from the table of contents, page footers and headings. Correct
+            titles and boundaries where needed: click the page where a unit starts.
           </p>
-          {rows.map((r, i) => (
-            <div className="cs-outline-row" key={i}>
-              <Input
-                {...(i === 0 ? { label: "Title" } : {})}
-                aria-label={`Title of unit ${i + 1}`}
-                value={r.title}
-                onChange={(e) => update(i, { title: e.target.value })}
-              />
-              <Input
-                {...(i === 0 ? { label: "From page" } : {})}
-                aria-label={`First page of unit ${i + 1}`}
-                type="number"
-                min={1}
-                value={r.pages[0]}
-                onChange={(e) => update(i, { pages: [Number(e.target.value), r.pages[1]] })}
-              />
-              <Input
-                {...(i === 0 ? { label: "To page" } : {})}
-                aria-label={`Last page of unit ${i + 1}`}
-                type="number"
-                min={1}
-                value={r.pages[1]}
-                onChange={(e) => update(i, { pages: [r.pages[0], Number(e.target.value)] })}
-              />
-              <Select
-                {...(i === 0 ? { label: "Kind" } : {})}
-                value={r.kind}
-                onValueChange={(v) => update(i, { kind: v as OutlineRow["kind"] })}
-                options={KINDS}
-              />
-              <Button
-                variant="ghost"
-                size="sm"
-                aria-label={`Remove unit ${i + 1}`}
-                onClick={() => setRows((rs) => rs.filter((_, j) => j !== i))}
-              >
-                Remove
-              </Button>
-            </div>
-          ))}
+          <OutlineEditor rows={rows} onChange={setRows} pages={pages} />
           {outlineProblem && rows.length > 0 ? (
             <p className="cs-bad" role="status">
               {outlineProblem}

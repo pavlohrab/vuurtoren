@@ -42,10 +42,70 @@ describe("Courses", () => {
     await user.click(screen.getByRole("button", { name: "Study first in Anki (2)" }));
     expect(learnNextForUnit).toHaveBeenCalledWith("demo-course", 1);
     expect(await screen.findByText("2 words moved to the front in Anki")).toBeInTheDocument();
-    expect(await screen.findByRole("button", { name: /^Add 1 missing word to/ })).toBeEnabled();
-    // Words tab: each word with its Anki state
+    // Words tab: each word with its Anki state, linked to the shared Words hub inspector
     await user.click(screen.getByRole("tab", { name: /Words/ }));
     expect(await screen.findByText("Not in Anki")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /stad/ }).getAttribute("href")).toContain("word=stad");
+  });
+
+  it("adds a unit's words to Anki from a preview with the book's sentence", async () => {
+    const addUnitWords = vi.fn(async () => ({ added: 1, failed: 0, deck: "Kenning::Dutch" }));
+    const { user } = setup("/courses/demo-course/1", { addUnitWords });
+    await user.click(await screen.findByRole("button", { name: "Add 1 word to Anki…" }));
+    const dialog = await screen.findByRole("dialog", { name: "Add this unit's words to Anki" });
+    expect(await within(dialog).findByText("Anne woont in een kleine stad.")).toBeVisible();
+    expect(within(dialog).getByText(/^1 new word · \d+ already in Anki · \d+ known$/)).toBeVisible();
+    await user.click(within(dialog).getByRole("button", { name: /^Add 1 to/ }));
+    expect(addUnitWords).toHaveBeenCalledWith("demo-course", 1, { keys: ["stad"] });
+    expect(await screen.findByText(/1 word added to/)).toBeInTheDocument();
+  });
+
+  it("links the unit's grammar to topic pages, practice to the shared screen, and shows exercises made for it", async () => {
+    const { user } = setup("/courses/demo-course/1");
+    expect(
+      await screen.findByRole("heading", { name: "Made for this unit", level: 2 }),
+    ).toBeVisible();
+    await user.click(screen.getByRole("tab", { name: "Grammar" }));
+    expect(await screen.findByRole("link", { name: "Inversion" })).toHaveAttribute(
+      "href",
+      "/grammar/inversion",
+    );
+    await user.click(screen.getByRole("tab", { name: "Practice" }));
+    const practise = await screen.findByRole("link", { name: "Practise this unit’s words" });
+    expect(practise.getAttribute("href")).toMatch(/^\/practice\?words=/);
+  });
+
+  it("sets a unit boundary by clicking a page in the outline editor", async () => {
+    const { user } = setup("/courses/demo-course/edit");
+    const strip = await screen.findByRole("region", { name: "Pages of the book" });
+    expect(screen.getAllByLabelText(/^Title of unit/)).toHaveLength(4);
+    const page = within(strip).getAllByRole("listitem")[9]!;
+    await user.click(within(page).getByRole("button", { name: "Start a unit here" }));
+    expect(screen.getAllByLabelText(/^Title of unit/)).toHaveLength(5);
+    expect(screen.getByLabelText("Last page of unit 1")).toHaveValue(9);
+    expect(screen.getByLabelText("First page of unit 2")).toHaveValue(10);
+    await user.click(screen.getByRole("button", { name: "Merge unit 2 into the one above" }));
+    expect(screen.getAllByLabelText(/^Title of unit/)).toHaveLength(4);
+  });
+
+  it("offers to continue an import that was left", async () => {
+    const resumeImport = vi.fn(async () => "demo-course");
+    const { user } = setup("/courses/import", {
+      pendingImport: async () => ({
+        jobId: "j",
+        title: "De Opmaat A2",
+        filename: "opmaat.pdf",
+        kind: "pdf" as const,
+        lang: "nl",
+        total: 289,
+        startedAt: 0,
+      }),
+      resumeImport,
+    });
+    expect(await screen.findByText(/You started reading/)).toHaveTextContent("De Opmaat A2");
+    await user.click(screen.getByRole("button", { name: "Continue" }));
+    expect(resumeImport).toHaveBeenCalled();
+    expect(await screen.findByRole("region", { name: "Pages of the book" })).toBeVisible();
   });
 
   it("imports a book: upload, reading progress, outline editor with checks, decks, done", async () => {

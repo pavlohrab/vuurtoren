@@ -7,6 +7,8 @@ import {
   assignKinds,
   detectOutline,
   extractNumber,
+  mergeOutlineRow,
+  splitOutlineAt,
   readingTexts,
   recognizeExercises,
   segmentPages,
@@ -158,5 +160,28 @@ describe("any book: German, no contents page, headings on top of pages", () => {
       ["Mein Deutsch::Lektion 02::Wörter"],
       ["Mein Deutsch::Lektion 03 Wohnen"],
     ]);
+  });
+});
+
+describe("outline editor helpers", () => {
+  const rows = [
+    { title: "Unit 1", pages: [3, 10] as [number, number], kind: "theme" as const },
+    { title: "Unit 2", pages: [11, 20] as [number, number], kind: "theme" as const },
+  ];
+  it("starts a new unit at a page inside a unit, or before the first", () => {
+    expect(splitOutlineAt(rows, 7, "New").map((r) => [r.title, r.pages])).toEqual([
+      ["Unit 1", [3, 6]],
+      ["New", [7, 10]],
+      ["Unit 2", [11, 20]],
+    ]);
+    expect(splitOutlineAt(rows, 1, "Intro").map((r) => [r.title, r.pages])[0]).toEqual([
+      "Intro",
+      [1, 2],
+    ]);
+    expect(splitOutlineAt(rows, 11, "Same")).toHaveLength(2);
+  });
+  it("merges a unit into the previous one", () => {
+    expect(mergeOutlineRow(rows, 1)).toEqual([{ ...rows[0], pages: [3, 20] }]);
+    expect(mergeOutlineRow(rows, 0)).toEqual(rows);
   });
 });

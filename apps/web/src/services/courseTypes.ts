@@ -95,6 +95,9 @@ export interface CourseListItem {
   knownRatio: number | null;
   /** The unit to continue with (first theme with open exercises or unknown words). */
   continueUnit: number | null;
+  /** Its title, and how much of its words are known (0..1, null without words). */
+  continueTitle?: string;
+  continueKnown?: number | null;
 }
 
 /** One row of the course page. */

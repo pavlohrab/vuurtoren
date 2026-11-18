@@ -376,6 +376,12 @@ export function createMockCourses(opts: { latencyMs?: number } = {}): CourseServ
           unitCount: units.length,
           knownRatio: total ? known / total : null,
           continueUnit: open?.n ?? null,
+          ...(open
+            ? {
+                continueTitle: open.title,
+                continueKnown: statusOf(open.n).total > 0 ? statusOf(open.n).knownRatio : null,
+              }
+            : {}),
         },
       ];
     },

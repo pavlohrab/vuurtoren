@@ -492,7 +492,14 @@ function PracticeStep({
 function CourseStep({
   course,
 }: {
-  course: { course: { id: string; title: string }; continueUnit: number | null } | undefined;
+  course:
+    | {
+        course: { id: string; title: string };
+        continueUnit: number | null;
+        continueTitle?: string;
+        continueKnown?: number | null;
+      }
+    | undefined;
 }) {
   if (!course || course.continueUnit === null) return null;
   return (
@@ -503,7 +510,12 @@ function CourseStep({
         params: { courseId: course.course.id, unit: String(course.continueUnit) },
       }}
       label={course.course.title}
-      value={`Unit ${course.continueUnit}`}
+      value={
+        (course.continueTitle ?? `Unit ${course.continueUnit}`) +
+        (course.continueKnown != null
+          ? ` · ${Math.round(course.continueKnown * 100)}% of its words known`
+          : "")
+      }
     />
   );
 }

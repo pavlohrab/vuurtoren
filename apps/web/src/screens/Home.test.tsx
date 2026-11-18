@@ -109,7 +109,7 @@ describe("Home", () => {
   it("links the current course unit", async () => {
     setup();
     const plan = await screen.findByRole("region", { name: "Today" });
-    const unit = await within(plan).findByRole("link", { name: /Unit \d+/ });
+    const unit = await within(plan).findByRole("link", { name: /Thema \d+|Unit \d+/ });
     expect(unit.getAttribute("href")).toMatch(/^\/courses\/[^/]+\/\d+$/);
   });
 

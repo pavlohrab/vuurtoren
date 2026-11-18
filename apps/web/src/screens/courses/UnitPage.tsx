@@ -1,9 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
+import { Sparkles } from "lucide-react";
 import { useState } from "react";
-import type { Exercise } from "@app/core";
 import {
-  AddToAnki,
   AnkiStatusChip,
   Button,
   Chip,
@@ -14,14 +13,13 @@ import {
   WordStateChip,
   useToast,
 } from "@app/ui";
-import { CreateStoryButton } from "../StoryDialog.js";
+import { CreateStoryButton, useAIReady } from "../StoryDialog.js";
 import { useServices } from "../../services/context.js";
 import { errorText } from "../../services/errors.js";
 import { usePageHeader } from "../../shell/ShellContext.js";
-import type { UnitView, UnitWordView } from "../../services/courseTypes.js";
+import type { UnitGrammarTopic, UnitView, UnitWordView } from "../../services/courseTypes.js";
+import { AddWordsDialog } from "./AddWordsDialog.js";
 import { BookExercise } from "./BookExercise.js";
-import { GeneratedSession } from "./GeneratedSession.js";
-import { useDeckChoice } from "../useDeckChoice.js";
 import "./courses.css";
 
 /** Word state, or the Anki status for unit words that are not in Anki at all. */
@@ -101,7 +99,14 @@ function WordsTab({ unit, courseId, n }: { unit: UnitView; courseId: string; n: 
       <ul className="cs-words">
         {unit.words.map((w) => (
           <li key={w.key}>
-            <Lemma lemma={w.lemma} article={w.article} />
+            {/* The shared Words hub opens the word in its inspector (forms, decks, actions). */}
+            <Link
+              to="/words"
+              search={{ source: `unit:${courseId}/${n}`, word: w.key }}
+              className="cs-word-link"
+            >
+              <Lemma lemma={w.lemma} article={w.article} />
+            </Link>
             <UnitWordState state={w.state} />
             {w.gloss ? <span className="cs-gloss">{w.gloss}</span> : null}
           </li>
@@ -111,57 +116,139 @@ function WordsTab({ unit, courseId, n }: { unit: UnitView; courseId: string; n: 
   );
 }
 
-function PracticeTab({ courseId, n }: { courseId: string; n: number }) {
-  const services = useServices();
-  const [session, setSession] = useState<Exercise[] | null>(null);
-  const [summary, setSummary] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-  const start = async () => {
-    setBusy(true);
-    setError(null);
-    setSummary(null);
-    try {
-      const list = await services.unitPractice(courseId, n, { size: 12 });
-      if (list.length === 0) setError("This unit has no words to practise yet.");
-      else setSession(list);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not prepare the session.");
-    } finally {
-      setBusy(false);
-    }
-  };
-  if (session) {
-    return (
-      <GeneratedSession
-        exercises={session}
-        onDone={(c, t) => {
-          setSession(null);
-          setSummary(`Session finished: ${c} of ${t} correct.`);
-        }}
-      />
-    );
+/** Practice uses the app's one Practice screen, restricted to the unit's words. */
+function PracticeTab({ unit, onBook }: { unit: UnitView; onBook: () => void }) {
+  const keys = unit.words.filter((w) => w.state !== "known").map((w) => w.key);
+  const all = unit.words.map((w) => w.key);
+  if (all.length === 0) {
+    return <p className="cs-note">This unit has no words to practise yet.</p>;
   }
   return (
     <>
       <p className="cs-note">
-        A session on this unit&rsquo;s words, with some review of earlier units. Practice keeps its
-        own schedule; nothing here changes your Anki cards.
+        Practice keeps its own schedule per word and skill; nothing here changes your Anki cards.
       </p>
-      <Button variant="primary" disabled={busy} onClick={() => void start()}>
-        {busy ? "Preparing…" : "Start practice"}
-      </Button>
-      {summary ? (
-        <p className="cs-hint" role="status">
-          {summary}
-        </p>
-      ) : null}
-      {error ? (
-        <p className="error-text" role="alert">
-          {error}
-        </p>
+      <div className="cs-actions">
+        <Link
+          to="/practice"
+          search={{ words: (keys.length ? keys : all).slice(0, 60).join(",") }}
+          className="k-btn k-btn--primary"
+        >
+          Practise this unit&rsquo;s words
+        </Link>
+        <Button onClick={onBook}>Do the book&rsquo;s exercises</Button>
+      </div>
+    </>
+  );
+}
+
+/** Grammar the unit's texts show (linked to the topic pages), then the book's own notes. */
+function GrammarTab({ unit, topics }: { unit: UnitView; topics: UnitGrammarTopic[] | undefined }) {
+  return (
+    <>
+      {topics === undefined ? (
+        <Skeleton style={{ height: 60, borderRadius: 8 }} />
+      ) : topics.length > 0 ? (
+        <section aria-label="Grammar in this unit">
+          <p className="cs-note">
+            Grammar this unit&rsquo;s texts use most. Each topic page explains it with examples and
+            has its own practice.
+          </p>
+          <ul className="cs-grammar-list">
+            {topics.map((t) => (
+              <li key={t.topicId}>
+                <div>
+                  <Link
+                    to="/grammar/$topic"
+                    params={{ topic: t.topicId }}
+                    className="cs-unit-title"
+                  >
+                    {t.title}
+                  </Link>{" "}
+                  <Chip>{t.level}</Chip>
+                  <p className="cs-meta">{t.summary}</p>
+                  {t.example ? (
+                    <p className="cs-example" lang="nl">
+                      {t.example}
+                    </p>
+                  ) : null}
+                </div>
+                <span className="cs-meta">
+                  {t.count} {t.count === 1 ? "sentence" : "sentences"}
+                </span>
+                <Link
+                  to="/grammar/$topic/practice"
+                  params={{ topic: t.topicId }}
+                  className="k-btn k-btn--secondary k-btn--sm"
+                >
+                  Practise
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : (
+        <p className="cs-note">No grammar topics were found in this unit&rsquo;s texts.</p>
+      )}
+      {unit.grammar.length > 0 ? (
+        <details className="cs-booknotes">
+          <summary>Grammar notes from your book</summary>
+          {unit.grammar.map((g) => (
+            <section key={g.title}>
+              <h3>{g.title}</h3>
+              <pre className="cs-raw" lang="nl">
+                {g.text}
+              </pre>
+            </section>
+          ))}
+        </details>
       ) : null}
     </>
+  );
+}
+
+/** "Generate exercises like this unit" (only with a configured AI provider). */
+function GenerateButton({
+  courseId,
+  n,
+  onDone,
+}: {
+  courseId: string;
+  n: number;
+  onDone: () => void;
+}) {
+  const services = useServices();
+  const toast = useToast();
+  const ready = useAIReady();
+  const [progress, setProgress] = useState<string | null>(null);
+  const gen = useMutation({
+    mutationFn: () => services.generateUnitExercises(courseId, n, setProgress),
+    onSuccess: (r) => {
+      setProgress(null);
+      toast(
+        r.added > 0 ? `${r.added} new items for this unit` : "No new items passed the checks",
+        [
+          r.grammarTopic ? `With ${r.grammarTopic}.` : "",
+          r.rejected ? `${r.rejected} sentences were dropped by the checks.` : "",
+        ]
+          .filter(Boolean)
+          .join(" ") || undefined,
+      );
+      onDone();
+    },
+    onError: (e) => {
+      setProgress(null);
+      toast("Could not make exercises", errorText(e));
+    },
+  });
+  if (!ready) return null;
+  return (
+    <div className="cs-actions">
+      <Button disabled={gen.isPending} onClick={() => gen.mutate()}>
+        <Sparkles size={16} aria-hidden />
+        {gen.isPending ? (progress ?? "Working…") : "Generate exercises like this unit"}
+      </Button>
+    </div>
   );
 }
 
@@ -171,8 +258,13 @@ export function UnitRoute({ courseId, n }: { courseId: string; n: number }) {
   const qc = useQueryClient();
   const toast = useToast();
   const [tab, setTab] = useState("exercises");
+  const [adding, setAdding] = useState(false);
   const key = ["unit", courseId, n];
   const unit = useQuery({ queryKey: key, queryFn: () => services.unit(courseId, n) });
+  const grammar = useQuery({
+    queryKey: ["unit-grammar", courseId, n],
+    queryFn: () => services.unitGrammar(courseId, n),
+  });
   usePageHeader(unit.data?.unit.title ?? "Unit", {
     parent: { label: unit.data?.course.title ?? "Courses", to: `/courses/${courseId}` },
   });
@@ -192,24 +284,6 @@ export function UnitRoute({ courseId, n }: { courseId: string; n: number }) {
     },
     onError: (e) => toast("Could not move the cards in Anki", errorText(e)),
   });
-  const deckChoice = useDeckChoice("course", { courseId, unitN: n });
-  const add = useMutation({
-    mutationFn: () =>
-      services.addMissingUnitWords(
-        courseId,
-        n,
-        deckChoice.chosen ? { deck: deckChoice.chosen } : undefined,
-      ),
-    onSuccess: (r) => {
-      toast(
-        `${r.added} words added to ${r.deck}`,
-        r.failed > 0 ? `${r.failed} could not be added.` : undefined,
-      );
-      refresh();
-    },
-    onError: (e) => toast("Adding words did not work", errorText(e)),
-  });
-
   if (unit.isPending) {
     return (
       <div className="page">
@@ -260,27 +334,36 @@ export function UnitRoute({ courseId, n }: { courseId: string; n: number }) {
               {learn.isPending ? "Working…" : `Study first in Anki (${s.newInAnki})`}
             </Button>
           </Tooltip>
-          {s.missing > 0 && deckChoice.addDeck ? (
-            <AddToAnki
-              {...deckChoice.addDeck}
-              variant="secondary"
-              label={
-                add.isPending
-                  ? "Adding to"
-                  : `Add ${s.missing} missing ${s.missing === 1 ? "word" : "words"} to`
-              }
-              disabled={add.isPending}
-              onAdd={() => add.mutate()}
-            />
-          ) : s.missing > 0 ? (
-            <Button disabled={add.isPending} onClick={() => add.mutate()}>
-              {add.isPending
-                ? "Adding…"
-                : `Add ${s.missing} missing ${s.missing === 1 ? "word" : "words"}`}
+          {s.missing > 0 ? (
+            <Button onClick={() => setAdding(true)}>
+              Add {s.missing} {s.missing === 1 ? "word" : "words"} to Anki…
             </Button>
           ) : null}
-          <CreateStoryButton preset={{ topic: u.unit.title, unit: { courseId, unitN: n } }} />
+          <Link
+            to="/talk"
+            search={{
+              words: u.words
+                .filter((w) => w.state !== "known")
+                .slice(0, 6)
+                .map((w) => w.key)
+                .join(","),
+              topic: u.unit.title,
+            }}
+            className="k-btn k-btn--ghost"
+          >
+            Talk about this unit
+          </Link>
+          <CreateStoryButton
+            preset={{
+              topic: u.unit.title,
+              unit: { courseId, unitN: n },
+              ...(grammar.data?.[0] ? { grammarTopic: grammar.data[0].topicId } : {}),
+            }}
+          />
         </div>
+      ) : null}
+      {adding ? (
+        <AddWordsDialog courseId={courseId} scope={n} open={adding} onOpenChange={setAdding} />
       ) : null}
       <Tabs
         aria-label="Unit sections"
@@ -298,7 +381,7 @@ export function UnitRoute({ courseId, n }: { courseId: string; n: number }) {
           },
           {
             value: "exercises",
-            label: `Exercises (${u.exercises.length})`,
+            label: `Exercises (${u.exercises.length + u.generated.length})`,
             content: (
               <div className="cs-tabpanel">
                 {u.exercises.length === 0 ? (
@@ -314,6 +397,22 @@ export function UnitRoute({ courseId, n }: { courseId: string; n: number }) {
                     />
                   ))
                 )}
+                {u.generated.length > 0 ? (
+                  <section className="cs-made" aria-label="Made for this unit">
+                    <h2 className="cs-section-title">Made for this unit</h2>
+                    {u.generated.map((e) => (
+                      <BookExercise
+                        key={e.number}
+                        courseId={courseId}
+                        unitN={n}
+                        exercise={e}
+                        onChanged={refresh}
+                        generated
+                      />
+                    ))}
+                  </section>
+                ) : null}
+                <GenerateButton courseId={courseId} n={n} onDone={refresh} />
               </div>
             ),
           },
@@ -331,19 +430,7 @@ export function UnitRoute({ courseId, n }: { courseId: string; n: number }) {
             label: "Grammar",
             content: (
               <div className="cs-tabpanel">
-                {u.grammar.length === 0 ? (
-                  <p className="cs-note">No grammar notes are linked to this unit.</p>
-                ) : (
-                  u.grammar.map((g) => (
-                    <section key={g.title}>
-                      <h3>{g.title}</h3>
-                      <pre className="cs-raw" lang="nl">
-                        {g.text}
-                      </pre>
-                    </section>
-                  ))
-                )}
-                <p className="cs-note">From your book, for your own use.</p>
+                <GrammarTab unit={u} topics={grammar.data} />
               </div>
             ),
           },
@@ -352,7 +439,7 @@ export function UnitRoute({ courseId, n }: { courseId: string; n: number }) {
             label: "Practice",
             content: (
               <div className="cs-tabpanel">
-                <PracticeTab courseId={courseId} n={n} />
+                <PracticeTab unit={u} onBook={() => setTab("exercises")} />
               </div>
             ),
           },

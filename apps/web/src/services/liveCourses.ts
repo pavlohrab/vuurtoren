@@ -481,6 +481,12 @@ export function createLiveCourses(deps: LiveCoursesDeps): CourseServices {
         unitCount: view.units.length,
         knownRatio: total > 0 ? known / total : null,
         continueUnit: open?.unit.n ?? null,
+        ...(open
+          ? {
+              continueTitle: open.unit.title,
+              continueKnown: open.status.total > 0 ? open.status.knownRatio : null,
+            }
+          : {}),
       });
     }
     return out;

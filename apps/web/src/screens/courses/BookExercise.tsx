@@ -24,6 +24,8 @@ interface Props {
   unitN: number;
   exercise: BookExerciseView;
   onChanged: () => void;
+  /** Made with AI for the unit (not from the book): no page, no "More like this". */
+  generated?: boolean;
 }
 
 /** Remembered notes of an open task; storage may be unavailable (private window). */
@@ -52,6 +54,16 @@ function useNotes(key: string): [string, (v: string) => void] {
 function SourceNote({ item }: { item: ExerciseItem }) {
   if (item.answer === undefined) return <span className="cs-hint">No answer stored</span>;
   if (item.answerSource === "user") return <span className="cs-hint">Your answer</span>;
+  if (item.answerSource === "ai") {
+    const text = "Made with AI for this unit. The sentence passed Kenning's language checks.";
+    return (
+      <Tooltip content={text}>
+        <button type="button" className="cs-info" aria-label={text}>
+          <Info size={14} aria-hidden />
+        </button>
+      </Tooltip>
+    );
+  }
   if (item.answerSource === "derived") {
     // How the answer was found is an internal detail: one small info icon, explained on hover.
     const text =
@@ -244,7 +256,7 @@ function Item({
 
 /** A book exercise rendered by its type: interactive items, notes for open tasks, text otherwise. */
 export function BookExercise(props: Props) {
-  const { courseId, unitN, exercise } = props;
+  const { courseId, unitN, exercise, generated: made = false } = props;
   const services = useServices();
   const [notes, setNotes] = useNotes(`kenning.course.${courseId}.${unitN}.${exercise.number}`);
   const [generated, setGenerated] = useState<Exercise[] | null>(null);
@@ -252,9 +264,9 @@ export function BookExercise(props: Props) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const interactive = INTERACTIVE.has(exercise.type) && exercise.items.length > 0;
-  const canMore = ["gapfill", "conjugation-table", "sentence-building", "choice"].includes(
-    exercise.type,
-  );
+  const canMore =
+    !made &&
+    ["gapfill", "conjugation-table", "sentence-building", "choice"].includes(exercise.type);
 
   const more = async () => {
     setBusy(true);
@@ -274,9 +286,9 @@ export function BookExercise(props: Props) {
   return (
     <article className="cs-ex" aria-label={`Exercise ${exercise.number}`}>
       <div className="cs-ex-head">
-        <h3>Oefening {exercise.number}</h3>
+        <h3>{made ? "Made for this unit" : `Exercise ${exercise.number}`}</h3>
         <Chip>{TYPE_LABEL[exercise.type]}</Chip>
-        <span className="cs-hint">page {exercise.page}</span>
+        {made ? null : <span className="cs-hint">page {exercise.page}</span>}
       </div>
       {exercise.instruction ? (
         <p className="cs-instruction" lang="nl">
@@ -285,8 +297,15 @@ export function BookExercise(props: Props) {
       ) : null}
       {exercise.example ? (
         <p className="cs-example" lang="nl">
-          Voorbeeld: {exercise.example}
+          Example: {exercise.example}
         </p>
+      ) : null}
+      {exercise.passage ? (
+        <div className="cs-passage" lang="nl">
+          {exercise.passage.split(/\n{2,}/).map((p, i) => (
+            <p key={i}>{p}</p>
+          ))}
+        </div>
       ) : null}
       {interactive ? (
         <ol style={{ padding: 0, margin: 0 }}>
