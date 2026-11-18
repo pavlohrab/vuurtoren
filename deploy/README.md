@@ -3,6 +3,9 @@
 Kenning is a Dutch reading and vocabulary app. Everything runs on your machine; nothing is sent
 to a third party.
 
+**Using Dockge?** The five-step [quick card](dockge/README.md) is all you need; this page has the
+details.
+
 ## Quick start (3 steps)
 
 1. **Install Docker** (Docker Desktop on Windows/macOS, or Docker Engine on Linux).
@@ -21,12 +24,13 @@ to a third party.
 
 ## What runs
 
-| Service | What it does                                                          | Port                  |
-| ------- | --------------------------------------------------------------------- | --------------------- |
-| `web`   | The app (static files) and a same-origin proxy to the language server | `127.0.0.1:8080`      |
-| `nlp`   | Dutch analysis, dictionary, example sentences, OCR, translation       | none (only via `web`) |
-| `api`   | Your data (one SQLite file) and sign-in                               | none (only via `web`) |
-| `caddy` | Optional HTTPS front (profile `https`)                                | 80 and 443            |
+| Service  | What it does                                                          | Port                  |
+| -------- | --------------------------------------------------------------------- | --------------------- |
+| `web`    | The app (static files) and a same-origin proxy to the language server | `127.0.0.1:8080`      |
+| `nlp`    | Dutch analysis, dictionary, example sentences, OCR, translation       | none (only via `web`) |
+| `api`    | Your data (one SQLite file) and sign-in                               | none (only via `web`) |
+| `caddy`  | Optional HTTPS front (profile `https`)                                | 80 and 443            |
+| `backup` | Optional scheduled backups (profile `backup`), see below              | none                  |
 
 Change the web port with `KENNING_WEB_PORT=9000` in `deploy/.env`.
 
@@ -128,8 +132,8 @@ files next to it. A [Cloudflare Tunnel](https://developers.cloudflare.com/cloudf
 gives it a public `https://` address without opening a port on your router.
 
 1. **Images.** The stack pulls `ghcr.io/<owner>/kenning-web`, `-nlp` and `-api`, published by
-   `.github/workflows/images.yml` (amd64 and arm64) when a `v*` tag is pushed or the workflow is
-   run by hand. If the packages are private, log the Docker host in once:
+   `.github/workflows/images.yml` (amd64 and arm64): `edge` and `sha-<commit>` on every push to
+   `main`, `X.Y.Z`, `X.Y` and `latest` when a `v*` tag is pushed. If the packages are private, log the Docker host in once:
    `docker login ghcr.io -u <github-user>` with a token that has `read:packages`. (Or make the
    packages public in GitHub, Packages, Package settings.)
 2. **Password hash.** On the Docker host: `docker run --rm -it ghcr.io/<owner>/kenning-api:latest hash-password`.
@@ -172,7 +176,37 @@ Notes:
   Access service token (`CF-Access-Client-Id` / `CF-Access-Client-Secret` headers).
 - Your data is the `kenning-data` volume (`kenning.sqlite` plus `auth.sqlite` for sessions).
   Back it up as described below.
-- Updates: in Dockge, **Update** (pulls the images) or set `KENNING_TAG` to a release.
+- Updates: in Dockge, **Update** (pulls the images). `KENNING_TAG` picks what you follow:
+  `latest` (newest release, the default), a release such as `0.1.0` (pinned), or `edge` (every
+  commit on `main`, for testing).
+
+## Checking an installation
+
+- **In the app:** Settings > Advanced > **Server status**. One row per check, each with a dot:
+  app version and commit, where your data lives (and its size), the server database's state,
+  whether sign-in is on, the language server's version and whether its dictionary, example
+  sentences, translation model and grammar examples are present, whether _this browser_ reaches
+  Anki, and whether the page is a secure context. **Copy** puts it on the clipboard for a bug
+  report.
+- **From a shell:** `scripts/doctor.sh [address]` (default `http://127.0.0.1:8080`) checks the
+  page, security headers, `/api/health`, that data is refused without a sign-in, signs in, and
+  checks `/api/info` and `/nlp/health`. With sign-in on, set `KENNING_TOKEN`, or `KENNING_USER`
+  and `KENNING_PASSWORD`. It needs only `curl`; exit code 0 means all good. CI runs it against
+  freshly built images on every pull request.
+
+## Images
+
+| Image         | Base                              | Runs as                     | Health check      |
+| ------------- | --------------------------------- | --------------------------- | ----------------- |
+| `kenning-web` | `nginx` (Alpine), static files    | `nginx` (port 80, see note) | `GET /`           |
+| `kenning-api` | `node` (Alpine), build output     | `node`                      | `GET /api/health` |
+| `kenning-nlp` | `python` (slim) + Tesseract, data | `kenning` (uid 10001)       | `GET /health`     |
+
+Base images are pinned to a patch release and updated by Dependabot. The NLP image is the big
+one: it contains the dictionary, the example-sentence database, the translation model and the
+spaCy pipeline so it works offline; CI prints the current sizes in its job summary (_images +
+smoke test_). Note: the web container binds port 80 without root, which needs Docker 20.10 or
+newer (it allows unprivileged ports inside containers by default).
 
 ## Updating
 
@@ -231,6 +265,25 @@ from anywhere but this computer, and use HTTPS (see above): the session cookie i
 over https by default.
 
 ### Backup and restore
+
+**Scheduled backups (recommended).** Both compose files have an optional `backup` service.
+Start it with the profile (`COMPOSE_PROFILES=backup` in `.env`, or
+`docker compose --profile backup up -d`). Every `KENNING_BACKUP_INTERVAL_HOURS` (default 24) it
+saves a consistent snapshot from `/api/export` as `kenning-YYYY-MM-DD-HHMM.sqlite` into
+`KENNING_BACKUP_DIR` (default `./backups`, next to the compose file; in Dockge
+`/opt/stacks/kenning/backups`) and deletes files older than `KENNING_BACKUP_KEEP_DAYS` (default
+14). With sign-in on it needs `KENNING_TOKEN`; `docker compose logs backup` shows each run. The
+files are readable by root only (`umask 077`): they hold all your data. Copy the folder off the
+machine (restic, rclone, a NAS sync) for a real backup.
+
+**Or a cron job on any machine that reaches the app** (here: daily at 03:15, 30 days kept):
+
+```sh
+15 3 * * * curl -fsS -H "Authorization: Bearer $KENNING_TOKEN" -o "$HOME/kenning-backups/kenning-$(date +\%F).sqlite" https://kenning.example.com/api/export && find "$HOME/kenning-backups" -name 'kenning-*.sqlite' -mtime +30 -delete
+```
+
+**Restore** any of these files in the app (below) or with `curl` (`/api/import`, below). Restore
+replaces all data; download a fresh backup first if you might want the current state back.
 
 - In the app: Settings > Your data > **Download backup (.sqlite)** and **Restore from backup...**.
   This works in both modes. A restore replaces all current data, gives this installation a new
