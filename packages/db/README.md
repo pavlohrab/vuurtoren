@@ -5,11 +5,12 @@ truth; every other table is a projection that `rebuild()` can recreate by replay
 
 ## Entry points
 
-| Import         | Contents                                                                                  |
-| -------------- | ----------------------------------------------------------------------------------------- |
-| `@app/db`      | `createRepository`, schema/migrations, ULID/HLC helpers, `contentHash`, types. No drivers |
-| `@app/db/node` | `createNodeDriver(path = ":memory:")` on `node:sqlite` (tests, CLI)                       |
-| `@app/db/web`  | `createWebDriver(name = "kenning")`: sqlite-wasm + opfs-sahpool in a dedicated worker     |
+| Import           | Contents                                                                                  |
+| ---------------- | ----------------------------------------------------------------------------------------- |
+| `@app/db`        | `createRepository`, schema/migrations, ULID/HLC helpers, `contentHash`, types. No drivers |
+| `@app/db/node`   | `createNodeDriver(path = ":memory:")` on `node:sqlite` (tests, CLI)                       |
+| `@app/db/web`    | `createWebDriver(name = "kenning")`: sqlite-wasm + opfs-sahpool in a dedicated worker     |
+| `@app/db/native` | `createNativeDriver(native)`: the desktop app's SQLite file via its Rust commands (D4)    |
 
 The root export never imports `node:sqlite` or the web driver, so apps tree-shake cleanly.
 

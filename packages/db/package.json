@@ -21,6 +21,10 @@
       "types": "./dist/http.d.ts",
       "import": "./dist/http.js"
     },
+    "./native": {
+      "types": "./dist/native.d.ts",
+      "import": "./dist/native.js"
+    },
     "./web": {
       "types": "./dist/web/index.d.ts",
       "import": "./dist/web/index.js"
