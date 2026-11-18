@@ -19,6 +19,7 @@ fn main() {
             "nlp_status",
             "nlp_restart",
             "nlp_retry_packs",
+            "self_test_report",
         ]),
     ))
     .expect("failed to run tauri-build");

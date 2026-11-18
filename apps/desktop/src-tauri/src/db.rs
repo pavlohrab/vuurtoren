@@ -222,6 +222,9 @@ pub fn acquire_lock(db: &Path, me: &LockInfo, force: bool) -> Result<(), LockInf
 }
 
 pub fn write_lock(db: &Path, me: &LockInfo) {
+    if let Some(dir) = db.parent() {
+        let _ = fs::create_dir_all(dir);
+    }
     let _ = fs::write(
         lock_path(db),
         serde_json::to_vec_pretty(me).unwrap_or_default(),
@@ -416,8 +419,12 @@ mod tests {
     #[test]
     fn lock_file_guards_against_a_second_computer() {
         let dir = tempfile::tempdir().unwrap();
-        let db = dir.path().join(DB_FILE);
-        assert_eq!(lock_path(&db), dir.path().join("kenning.sqlite.lock"));
+        // First start: the folder does not exist yet.
+        let db = dir.path().join("Kenning").join(DB_FILE);
+        assert_eq!(
+            lock_path(&db),
+            dir.path().join("Kenning").join("kenning.sqlite.lock")
+        );
 
         acquire_lock(&db, &me("laptop", 10), false).unwrap();
         assert_eq!(read_lock(&db).unwrap().host, "laptop");

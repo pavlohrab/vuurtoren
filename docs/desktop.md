@@ -24,7 +24,15 @@ normal installers download that data once on first start instead.
 
 **Sizes** (0.1.0, Linux, measured locally; the language server dominates):
 
-SIZES_TABLE
+| File                            | Standard (data downloaded on first start) | Offline (`Kenning_offline_…`, data inside) |
+| ------------------------------- | ----------------------------------------- | ------------------------------------------ |
+| `.deb` (system WebKitGTK)       | 197 MB                                    | 300 MB                                     |
+| AppImage (own WebKitGTK)        | 254 MB                                    | 357 MB                                     |
+| Installed language server       | 445 MB                                    | 445 MB + 104 MB archives                   |
+| Language data after first start | 169 MB (download 104 MB)                  | 169 MB (no download)                       |
+
+The thin client without the language server was 4.8 MB (`.deb`); the difference is the bundled
+Python, spaCy with the Dutch model, CTranslate2 and NumPy.
 
 Windows uses the built-in WebView2 and macOS the system WebKit, so their installers are the
 `.deb` size plus or minus a few MB (the language server is built per system by CI).

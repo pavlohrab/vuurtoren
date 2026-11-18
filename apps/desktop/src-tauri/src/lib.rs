@@ -805,7 +805,8 @@ pub fn run() {
             db_move,
             nlp_status,
             nlp_restart,
-            nlp_retry_packs
+            nlp_retry_packs,
+            self_test_report
         ])
         .register_asynchronous_uri_scheme_protocol(proxy::SCHEME, |ctx, request, responder| {
             let app = ctx.app_handle().clone();
@@ -914,6 +915,17 @@ async fn heartbeat(app: AppHandle) {
     }
 }
 
+/// What the page reported in `--self-test` mode.
+static SELF_TEST_PAGE: Mutex<Option<String>> = Mutex::new(None);
+
+/// The page's answer in `--self-test` mode (ignored otherwise).
+#[tauri::command]
+fn self_test_report(report: String) {
+    if std::env::args().any(|a| a == "--self-test") {
+        *SELF_TEST_PAGE.lock().unwrap() = Some(report);
+    }
+}
+
 /// `kenning --self-test`: start with a hidden window, wait for the language server and its data
 /// packs, analyse a sentence through the page's own `/nlp` route (the `kenning-nlp:` protocol)
 /// and check the database file, then print one JSON line and exit (0 = all good).
@@ -965,26 +977,20 @@ async fn self_test_run(app: AppHandle) {
             out.status = r.status;
             out.lemma = j[0] && j[0].tokens[1] && j[0].tokens[1].lemma;
           } catch (e) { out.error = String(e); }
-          out.app = !!document.querySelector(".shell, .app-shell, nav");
-          document.title = "SELFTEST:" + JSON.stringify(out);
+          window.__TAURI_INTERNALS__.invoke("self_test_report", { report: JSON.stringify(out) });
         })();"#;
-        let mut page = None;
+        let mut page: Option<Json> = None;
         for i in 0..120 {
             tokio::time::sleep(Duration::from_millis(500)).await;
             // The web app needs a moment to boot (and to install its `/nlp` route): try every 5 s.
             if i % 10 == 0 {
                 let _ = window.eval(script);
             }
-            if let Some(json) = window
-                .title()
-                .ok()
-                .and_then(|t| t.strip_prefix("SELFTEST:").map(str::to_string))
-            {
+            if let Some(json) = SELF_TEST_PAGE.lock().unwrap().take() {
                 page = serde_json::from_str::<Json>(&json).ok();
                 if page.as_ref().and_then(|p| p.get("status")).is_some() {
                     break;
                 }
-                page = None;
             }
         }
         let lemma_ok = page

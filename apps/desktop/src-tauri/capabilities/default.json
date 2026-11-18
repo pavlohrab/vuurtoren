@@ -20,6 +20,7 @@
     "allow-db-move",
     "allow-nlp-status",
     "allow-nlp-restart",
-    "allow-nlp-retry-packs"
+    "allow-nlp-retry-packs",
+    "allow-self-test-report"
   ]
 }
