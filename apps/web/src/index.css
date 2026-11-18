@@ -1728,3 +1728,12 @@ a.home-step:hover .home-step-go {
 .words-row:nth-child(n + 6) {
   animation-delay: 150ms;
 }
+
+/* On a reader page the top bar is the reader bar: the degraded notice shows as an icon only,
+   so it never pushes over the reader's controls (Aa, …). */
+.topbar:has(.topbar-page:not([hidden])) .topbar-degraded-text {
+  display: none;
+}
+.topbar-page > * {
+  min-width: 0;
+}
