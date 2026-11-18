@@ -24,7 +24,7 @@ ENV KENNING_COMMIT=$KENNING_COMMIT
 RUN pnpm --filter @app/web... build
 
 # ---- Stage 2: serve --------------------------------------------------------------------
-FROM nginx:1.30.6-alpine
+FROM nginx:1.31.8-alpine
 # The config is a template: the image's entrypoint renders it to conf.d/default.conf,
 # substituting only KENNING_* variables (see the top of deploy/nginx.conf.template).
 ENV NGINX_ENVSUBST_FILTER=^KENNING_ \
