@@ -23,8 +23,53 @@
   display: flex;
   align-items: baseline;
   gap: var(--s-2);
+  font-family: var(--font-display);
   font-size: 17px;
+  font-weight: 600;
   margin: 0 0 var(--s-4);
+}
+.grammar-level-line {
+  color: var(--ink-muted);
+  font-size: 13.5px;
+  max-width: 62ch;
+  margin: calc(-1 * var(--s-3)) 0 var(--s-4);
+}
+.grammar-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-3) var(--s-4);
+  margin: 0 0 var(--s-6);
+}
+.grammar-search {
+  position: relative;
+  width: 260px;
+  max-width: 100%;
+}
+.grammar-search .k-input {
+  padding-left: 32px;
+}
+.grammar-search-icon {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--ink-muted);
+  pointer-events: none;
+}
+.grammar-count {
+  margin: calc(-1 * var(--s-5)) 0 var(--s-5);
+}
+.grammar-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--s-3);
+  color: var(--ink-muted);
+}
+.grammar-empty p {
+  margin: 0;
 }
 .grammar-level-code {
   font-family: var(--font-ui);
@@ -73,15 +118,34 @@
   color: var(--ink-muted);
   font-size: 13.5px;
 }
-.grammar-row-count {
-  font-variant-numeric: tabular-nums;
-  font-size: 14px;
-  color: var(--ink);
-  min-width: 2.5em;
+.grammar-row-num {
+  flex: none;
+  width: 2ch;
   text-align: right;
-}
-.grammar-row-zero {
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
   color: var(--ink-muted);
+  align-self: flex-start;
+  padding-top: 2px;
+}
+.grammar-row-summary {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.grammar-row-meta {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+}
+.grammar-row-seen {
+  color: var(--ink-muted);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 .grammar-row-chevron {
   color: var(--ink-muted);
@@ -154,8 +218,7 @@
   font-style: italic;
 }
 .grammar-examples,
-.grammar-found,
-.grammar-related {
+.grammar-found {
   list-style: none;
   margin: 0;
   padding: 0;
@@ -201,24 +264,177 @@
 .grammar-credit {
   margin: 8px 0 0;
 }
-.grammar-related {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+/* The pattern box: the one tinted surface on the page (design-system.md, Surfaces). */
+.grammar-pattern {
+  margin: var(--s-5) 0 0;
+  padding: var(--s-4) var(--s-5);
+  border-radius: var(--radius-card);
+  background: color-mix(in srgb, var(--accent-soft) 70%, var(--bg));
+  border: 1px solid color-mix(in srgb, var(--accent) 18%, transparent);
 }
-.grammar-chip-link {
-  display: inline-block;
-  font-size: 14px;
-  padding: 4px 12px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-chip);
-  color: var(--ink);
-  background: var(--surface);
-  text-decoration: none;
-}
-.grammar-chip-link:hover {
-  border-color: var(--accent);
+.grammar-pattern figcaption {
+  margin: 0 0 var(--s-2);
   color: var(--accent);
+}
+.grammar-pattern ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: minmax(0, auto) minmax(0, 1fr);
+  gap: var(--s-2) var(--s-5);
+}
+.grammar-pattern li {
+  display: contents;
+}
+.grammar-pattern-solo .grammar-pattern-rule {
+  grid-column: 1 / -1;
+}
+.grammar-pattern-rule {
+  font-size: 14.5px;
+}
+.grammar-pattern-eg {
+  font-family: var(--font-reading);
+  font-size: 16px;
+}
+.grammar-pattern-eg em[lang="nl"] {
+  font-style: normal;
+}
+.grammar-pattern-arrow {
+  color: var(--ink-muted);
+  font-family: var(--font-ui);
+}
+.grammar-pattern code,
+.grammar-mistakes code {
+  font-family: var(--font-mono);
+  font-size: 0.86em;
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--ink) 7%, transparent);
+}
+.grammar-mistakes {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--hairline);
+}
+.grammar-mistakes li {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+  padding: var(--s-3) 0;
+  border-bottom: 1px solid var(--hairline);
+}
+.grammar-mistake {
+  display: flex;
+  gap: var(--s-2);
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.55;
+}
+.grammar-mistake-icon {
+  flex: none;
+  margin-top: 4px;
+}
+.grammar-mistake--wrong .grammar-mistake-icon {
+  color: var(--danger);
+}
+.grammar-mistake--note .grammar-mistake-icon {
+  color: var(--ink-muted);
+}
+.grammar-mistake--right .grammar-mistake-icon {
+  color: var(--known);
+}
+.grammar-mistake em[lang="nl"] {
+  font-family: var(--font-reading);
+  font-style: normal;
+  font-weight: 500;
+}
+.grammar-pager {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--s-5);
+  max-width: var(--w-read);
+  margin-top: var(--s-7);
+  padding-top: var(--s-5);
+  border-top: 1px solid var(--hairline);
+}
+.grammar-pager-link {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+  text-decoration: none;
+  color: var(--ink);
+  min-width: 0;
+}
+.grammar-pager-link--next {
+  align-items: flex-end;
+  text-align: right;
+  grid-column: 2;
+}
+.grammar-pager-dir {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--ink-muted);
+}
+.grammar-pager-title {
+  font-weight: 500;
+  font-size: 15px;
+}
+.grammar-pager-link:hover .grammar-pager-title {
+  color: var(--accent);
+}
+
+@media (max-width: 700px) {
+  .grammar-search {
+    width: 100%;
+  }
+  .grammar-row {
+    flex-wrap: wrap;
+    gap: var(--s-1) var(--s-3);
+  }
+  .grammar-row-main {
+    flex-basis: calc(100% - 2ch - var(--s-3) - 24px);
+  }
+  .grammar-row-summary {
+    white-space: normal;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+  .grammar-row-meta {
+    order: 3;
+    flex-basis: 100%;
+    gap: var(--s-2);
+    flex-direction: row-reverse;
+    justify-content: flex-end;
+  }
+  .grammar-row-num + .grammar-row-main ~ .grammar-row-meta {
+    padding-left: calc(2ch + var(--s-3));
+  }
+  .grammar-row-chevron {
+    display: none;
+  }
+  /* Related topics have no summary: keep the level chip on the title line. */
+  .grammar-topic .grammar-row {
+    flex-wrap: nowrap;
+  }
+  .grammar-topic .grammar-row-meta {
+    order: 0;
+    flex-basis: auto;
+  }
+  .grammar-pattern {
+    padding: var(--s-3) var(--s-4);
+  }
+  .grammar-pattern ul {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+  .grammar-pattern-eg {
+    margin-bottom: var(--s-2);
+  }
 }
 
 /* ---------- Reader: grammar notes in the inspector ---------- */
