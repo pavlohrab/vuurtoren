@@ -24,6 +24,21 @@
      everything aligned to it (tools, footer, AI panel), whatever their font size. */
   --measure: 44rem;
 
+  /* Layout (design-system.md, Layout & composition): the 8px scale and the three page widths. */
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 24px;
+  --s-6: 32px;
+  --s-7: 48px;
+  --s-8: 64px;
+  --w-wide: 75rem; /* dashboards and shelves: 1200px */
+  --w-list: 60rem; /* lists and forms: 960px */
+  --w-read: var(--measure); /* reading: ~68ch */
+  /* Hairline: the low-contrast divider for sections, list rows and quiet edges. */
+  --hairline: color-mix(in srgb, var(--ink) 9%, transparent);
+
   --font-reading: "Literata Variable", Georgia, "Times New Roman", serif;
   --font-ui: "Inter Variable", system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-display: "Instrument Sans Variable", "Inter Variable", system-ui, sans-serif;
@@ -247,8 +262,8 @@ kbd {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  height: 34px;
-  padding: 0 14px;
+  height: 36px;
+  padding: 0 16px;
   border-radius: var(--radius-control);
   border: 1px solid transparent;
   font: inherit;
@@ -276,7 +291,7 @@ kbd {
   background: color-mix(in srgb, var(--accent) 88%, var(--ink));
 }
 .k-btn--secondary {
-  background: var(--surface);
+  background: transparent;
   color: var(--ink);
   border-color: var(--line);
 }
@@ -303,7 +318,7 @@ kbd {
   font-size: 13px;
 }
 .k-btn--icon {
-  width: 34px;
+  width: 36px;
   padding: 0;
 }
 .k-btn--icon.k-btn--sm {
@@ -370,7 +385,7 @@ kbd {
 .k-command {
   background: var(--surface);
   color: var(--ink);
-  border: 1px solid var(--line);
+  border: 1px solid var(--hairline);
   border-radius: var(--radius-card);
   box-shadow: var(--shadow-pop);
 }
@@ -546,31 +561,252 @@ kbd {
 }
 
 /* ---------- Chip ---------- */
+/* One shape (design-system.md, Chips): 22px pill, Inter 12.5px, hairline edge. */
 .k-chip {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 1px 9px;
+  height: 22px;
+  padding: 0 9px;
   border-radius: var(--radius-chip);
-  border: 1px solid var(--line);
-  background: var(--surface);
+  border: 1px solid var(--hairline);
+  background: transparent;
   color: var(--ink-muted);
-  font-size: 12px;
-  line-height: 1.6;
+  font-family: var(--font-ui);
+  font-size: 12.5px;
+  font-weight: 500;
+  line-height: 1;
   white-space: nowrap;
 }
 .k-chip--accent {
   color: var(--accent);
   background: var(--accent-soft);
-  border-color: color-mix(in srgb, var(--accent) 30%, var(--line));
+  border-color: color-mix(in srgb, var(--accent) 22%, transparent);
 }
 .k-chip--warm {
-  color: var(--accent-warm);
-  border-color: color-mix(in srgb, var(--accent-warm) 40%, var(--line));
+  color: var(--learn-ink);
+  border-color: color-mix(in srgb, var(--learn) 32%, transparent);
 }
 .k-chip--success {
-  color: var(--success);
-  border-color: color-mix(in srgb, var(--success) 40%, var(--line));
+  color: var(--known-ink);
+  border-color: color-mix(in srgb, var(--known) 32%, transparent);
+}
+
+/* ---------- Layout primitives (design-system.md, Layout & composition) ---------- */
+/* Quiet link: navigation to another place. Accent text, small arrow, no underline until hover. */
+.k-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--accent);
+  font-size: 13.5px;
+  font-weight: 500;
+  text-decoration: none;
+  white-space: nowrap;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+.k-link:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.k-link svg {
+  flex: none;
+  transition: transform var(--dur-fast) var(--ease);
+}
+.k-link:hover svg:last-child {
+  transform: translateX(2px);
+}
+/* Section: h2 with an optional quiet link on the right, 16px above its content. */
+.k-section + .k-section {
+  margin-top: var(--s-7);
+}
+.k-section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s-4);
+  margin-bottom: var(--s-4);
+}
+.k-section-title {
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  margin: 0;
+}
+.k-section-hint {
+  color: var(--ink-muted);
+  font-size: 13px;
+  margin: calc(-1 * var(--s-3)) 0 var(--s-4);
+}
+/* A list with hairline rows and no outer box. */
+.k-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--hairline);
+}
+.k-list > li {
+  border-bottom: 1px solid var(--hairline);
+}
+.k-row {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  min-height: 48px;
+  padding: var(--s-3) var(--s-1);
+  color: inherit;
+  text-decoration: none;
+  border-radius: 6px;
+  transition: background var(--dur-fast) var(--ease);
+}
+a.k-row:hover,
+button.k-row:hover {
+  background: color-mix(in srgb, var(--ink) 4%, transparent);
+}
+.k-row-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.k-row-title {
+  font-weight: 500;
+}
+.k-row-hint {
+  color: var(--ink-muted);
+  font-size: 13px;
+}
+.k-row-go {
+  flex: none;
+  color: var(--ink-muted);
+  transition: transform var(--dur-fast) var(--ease);
+}
+a.k-row:hover .k-row-go {
+  transform: translateX(2px);
+  color: var(--accent);
+}
+/* Numbers: display face, tabular, label below. */
+.k-num {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+  color: var(--ink);
+}
+.k-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-5) var(--s-6);
+  margin: 0;
+}
+.k-stats > div {
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 2px;
+}
+.k-stats dt {
+  color: var(--ink-muted);
+  font-size: 13px;
+}
+.k-stats dd {
+  margin: 0;
+  font-size: 20px;
+}
+.k-stats dd a {
+  color: inherit;
+  text-decoration: none;
+}
+.k-stats dd a:hover {
+  color: var(--accent);
+}
+/* A surface: only to group interactive objects. */
+.k-surface {
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-card);
+}
+/* A clickable Dutch word: Inter, article muted. */
+.k-word-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: var(--radius-chip);
+  border: 1px solid color-mix(in srgb, var(--learn) 26%, transparent);
+  background: color-mix(in srgb, var(--learn-soft) 55%, transparent);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 30px;
+  text-decoration: none;
+  white-space: nowrap;
+  transition:
+    border-color var(--dur-fast) var(--ease),
+    background var(--dur-fast) var(--ease);
+}
+.k-word-chip:hover {
+  border-color: color-mix(in srgb, var(--learn) 60%, transparent);
+  background: var(--learn-soft);
+}
+.k-word-chip--quiet {
+  border-color: var(--hairline);
+  background: transparent;
+}
+.k-word-chip--quiet:hover {
+  border-color: var(--line-strong);
+  background: var(--surface-2);
+}
+.k-word-art {
+  color: var(--ink-muted);
+  font-weight: 400;
+}
+/* Toggle chip: selection is a soft fill, an accent edge and a check, never a solid fill. */
+.k-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 14px;
+  border-radius: var(--radius-chip);
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background var(--dur-fast) var(--ease),
+    border-color var(--dur-fast) var(--ease);
+}
+.k-toggle:hover:not([aria-disabled="true"]) {
+  border-color: var(--line-strong);
+  background: var(--surface-2);
+}
+.k-toggle[aria-pressed="true"],
+.k-toggle[aria-checked="true"] {
+  background: var(--accent-soft);
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+  color: var(--ink);
+}
+.k-toggle[aria-pressed="true"] svg,
+.k-toggle[aria-checked="true"] svg {
+  color: var(--accent);
+}
+.k-toggle[aria-disabled="true"] {
+  color: var(--ink-muted);
+  border-style: dashed;
+  cursor: not-allowed;
 }
 
 /* ---------- Word state / Anki status / lemma (docs/design/naming.md) ---------- */
@@ -636,9 +872,10 @@ kbd {
   color: var(--danger);
   border-color: color-mix(in srgb, var(--danger) 40%, var(--line));
 }
+/* A single Dutch word in UI: Inter, never the reading serif (design-system.md, Type roles). */
 .k-lemma {
-  font-family: var(--font-reading);
-  font-size: 17px;
+  font-family: var(--font-ui);
+  font-size: 15px;
   font-weight: 500;
 }
 .k-lemma-article {
@@ -746,7 +983,7 @@ kbd {
   width: 100%;
   box-sizing: border-box;
   border: 0;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--hairline);
   background: transparent;
   color: var(--ink);
   font: inherit;
@@ -961,8 +1198,10 @@ kbd {
   font-size: 14px;
 }
 .k-inspector-surface {
-  font-family: var(--font-reading);
+  font-family: var(--font-display);
   font-size: 28px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
   line-height: 1.2;
   margin: 0;
 }
@@ -1017,7 +1256,7 @@ kbd {
   gap: 12px;
   padding: 18px;
   background: var(--surface);
-  border: 1px solid var(--line);
+  border: 1px solid var(--hairline);
   border-radius: var(--radius-card);
   transition:
     border-color var(--dur) var(--ease),
@@ -1092,7 +1331,7 @@ svg.lucide {
   gap: 16px;
   padding: 28px 24px;
   background: var(--surface);
-  border: 1px solid var(--line);
+  border: 1px solid var(--hairline);
   border-radius: var(--radius-card);
 }
 .ex-instruction {
@@ -1389,17 +1628,25 @@ svg.lucide {
 .k-cover {
   --cover-hue: var(--accent);
   position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: var(--s-4);
+  aspect-ratio: 4 / 5;
   overflow: hidden;
   isolation: isolate;
-  border-radius: calc(var(--radius-card) - 4px);
-  background: color-mix(in srgb, var(--cover-hue) 9%, var(--surface-2));
-  color: color-mix(in srgb, var(--cover-hue) 70%, var(--ink));
-}
-.k-cover--md {
-  aspect-ratio: 16 / 7;
-}
-.k-cover--sm {
-  aspect-ratio: 4 / 3;
+  padding: 12px 12px 14px 18px;
+  border-radius: 12px;
+  /* A flat tint by source kind with a darker spine on the left: a book, not a placeholder. */
+  background:
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--cover-hue) 30%, var(--surface-2)) 0 5px,
+      transparent 5px
+    ),
+    color-mix(in srgb, var(--cover-hue) 11%, var(--surface));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--cover-hue) 14%, transparent);
+  color: var(--ink);
 }
 .k-cover[data-kind="url"],
 .k-cover[data-kind="image"] {
@@ -1409,97 +1656,74 @@ svg.lucide {
 .k-cover[data-kind="course"] {
   --cover-hue: var(--learn);
 }
-.k-cover-pattern {
-  --cover-line: color-mix(in srgb, var(--cover-hue) 26%, transparent);
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  background-position: var(--cover-shift) var(--cover-shift);
-  /* Pasted text: fine stripes at an angle taken from the title. */
-  background-image: repeating-linear-gradient(
-    var(--cover-angle),
-    var(--cover-line) 0 1px,
-    transparent 1px 9px
-  );
-  mask-image: linear-gradient(115deg, transparent 18%, black 75%);
+.k-cover[data-kind="talk"] {
+  --cover-hue: var(--ink-muted);
 }
-.k-cover[data-kind="url"] .k-cover-pattern {
-  background-image: radial-gradient(var(--cover-line) 1.2px, transparent 1.6px);
-  background-size: 12px 12px;
-}
-.k-cover[data-kind="pdf"] .k-cover-pattern {
-  background-image:
-    linear-gradient(var(--cover-line) 1px, transparent 1px),
-    linear-gradient(90deg, var(--cover-line) 1px, transparent 1px);
-  background-size: 16px 16px;
-}
-.k-cover[data-kind="image"] .k-cover-pattern {
-  background-image: repeating-radial-gradient(
-    circle at 85% 30%,
-    var(--cover-line) 0 1px,
-    transparent 1px 10px
-  );
-}
-.k-cover[data-kind="ai"] .k-cover-pattern {
-  background-image:
-    repeating-linear-gradient(var(--cover-angle), var(--cover-line) 0 1px, transparent 1px 12px),
-    repeating-linear-gradient(
-      calc(var(--cover-angle) + 90deg),
-      var(--cover-line) 0 1px,
-      transparent 1px 12px
-    );
-}
-.k-cover[data-kind="course"] .k-cover-pattern {
-  background-image: repeating-linear-gradient(
-    180deg,
-    transparent 0 13px,
-    var(--cover-line) 13px 14px
-  );
-}
-.k-cover[data-kind="talk"] .k-cover-pattern {
-  background-image:
-    radial-gradient(
-      circle at 78% 38%,
-      transparent 22px,
-      var(--cover-line) 23px 24px,
-      transparent 25px
-    ),
-    radial-gradient(
-      circle at 62% 62%,
-      transparent 30px,
-      var(--cover-line) 31px 32px,
-      transparent 33px
-    );
+.k-cover-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-2);
+  min-width: 0;
 }
 .k-cover-kind {
-  position: absolute;
-  top: 10px;
-  left: 10px;
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 4px 8px;
-  border-radius: 999px;
-  font-size: 12px;
+  min-width: 0;
+  font-size: 11.5px;
   font-weight: 500;
-  background: color-mix(in srgb, var(--surface) 82%, transparent);
   color: var(--ink-muted);
-}
-.k-cover--sm .k-cover-kind {
-  top: 8px;
-  left: 8px;
-  padding: 4px;
+  white-space: nowrap;
 }
 .k-cover-kind svg {
-  color: color-mix(in srgb, var(--cover-hue) 80%, var(--ink));
+  flex: none;
+  color: color-mix(in srgb, var(--cover-hue) 75%, var(--ink));
+}
+.k-cover-pct {
+  font-size: 11.5px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--known-ink);
+}
+.k-cover-title {
+  font-family: var(--font-reading);
+  font-weight: 500;
+  font-size: 18px;
+  line-height: 1.25;
+  color: var(--ink);
+  text-wrap: balance;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+/* A short rule under the title: the one ornament. */
+.k-cover-rule {
+  display: block;
+  flex: none;
+  width: 24px;
+  height: 2px;
+  margin-top: calc(-1 * var(--s-2));
+  border-radius: 1px;
+  background: color-mix(in srgb, var(--cover-hue) 55%, transparent);
+}
+.k-cover--sm {
+  gap: var(--s-3);
+  padding: 10px 10px 12px 15px;
+  border-radius: 10px;
+}
+.k-cover--sm .k-cover-title {
+  font-size: 15px;
+  -webkit-line-clamp: 3;
 }
 .k-cover-meter {
   position: absolute;
-  left: 0;
+  left: 5px;
   right: 0;
   bottom: 0;
   height: 3px;
-  background: color-mix(in srgb, var(--ink) 8%, transparent);
+  background: color-mix(in srgb, var(--ink) 7%, transparent);
 }
 .k-cover-meter > span {
   display: block;
@@ -1509,42 +1733,63 @@ svg.lucide {
   animation: k-fill-x var(--dur-fill) var(--ease-out) both;
 }
 
-/* Library shelf card */
+/* Library shelf item: a cover, then quiet meta. No box around it. */
 .k-shelf-card {
-  padding: 12px 12px 14px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
   gap: 10px;
+  min-width: 0;
 }
-.k-shelf-card > :not(.k-cover) {
-  margin-inline: 4px;
+.k-shelf-card .k-cover {
+  transition:
+    transform var(--dur) var(--ease),
+    box-shadow var(--dur) var(--ease);
 }
-.k-shelf-title {
-  font-family: var(--font-reading);
-  font-weight: 500;
-  font-size: 19px;
-  line-height: 1.3;
-  letter-spacing: 0;
-  text-wrap: balance;
+@media (hover: hover) {
+  .k-shelf-card:hover .k-cover {
+    transform: translateY(-2px);
+    box-shadow:
+      inset 0 0 0 1px color-mix(in srgb, var(--cover-hue) 24%, transparent),
+      var(--shadow-lift);
+  }
+}
+.k-shelf-open {
+  all: unset;
+  box-sizing: border-box;
+  display: block;
+  cursor: pointer;
+  border-radius: 12px;
+}
+.k-shelf-open:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 .k-shelf-card .k-card-meta {
   flex-wrap: wrap;
-  min-height: 24px;
+  gap: 6px 10px;
+  min-height: 22px;
+}
+.k-shelf-card .k-meter {
+  font-size: 12.5px;
 }
 .k-shelf-foot {
-  position: relative;
-  z-index: 1;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  margin-top: auto;
-  padding-top: 2px;
+  min-height: 28px;
 }
 .k-shelf-tools {
   display: inline-flex;
   gap: 2px;
+  margin-right: -6px;
 }
-.k-shelf-continue {
-  gap: 6px;
+.k-shelf-tools .k-btn {
+  color: var(--ink-muted);
+}
+.k-shelf-tools .k-btn:hover:not(:disabled) {
+  color: var(--ink);
 }
 
 /* Inspector actions (U23): primary full width, then Mark known and Ignore as one even row. */
@@ -1568,4 +1813,9 @@ svg.lucide {
 }
 .k-inspector-actions .k-add-anki-main {
   flex: 1;
+}
+.k-toggle--sm {
+  height: 28px;
+  padding: 0 12px;
+  font-size: 13px;
 }
