@@ -20,6 +20,7 @@ import {
 } from "./projections.js";
 import { courseQueries } from "./course.js";
 import { projectGeneratedSentences } from "./generated.js";
+import { projectSuggestedWords } from "./suggested.js";
 import { projectExamAttempts } from "./exam.js";
 import { PROJECTION_TABLES, migrate } from "./schema.js";
 import type {
@@ -27,6 +28,7 @@ import type {
   AppEvent,
   ExamAttemptRecord,
   GeneratedSentenceSet,
+  SuggestedWord,
   PracticeLogEntry,
   ActivityEntry,
   Repository,
@@ -74,6 +76,8 @@ export interface KenningRepository extends Repository {
   conversationEvents(): Promise<StoredEvent[]>;
   /** Accepted AI example sentences of a language, one set per (key, topic) (see generated.ts). */
   generatedSentences(lang: string): Promise<GeneratedSentenceSet[]>;
+  /** Open word suggestions of a language (from an assistant over MCP), newest first. */
+  suggestedWords(lang: string): Promise<SuggestedWord[]>;
   /** Finished exam-preparation sessions of a language, oldest first (see exam.ts). */
   examAttempts(lang: string): Promise<ExamAttemptRecord[]>;
   /**
@@ -501,6 +505,18 @@ export async function createRepository(
           (
             await driver.exec(
               "SELECT * FROM events WHERE type = 'SentencesGenerated' AND json_extract(payload, '$.lang') = ? ORDER BY id",
+              [lang],
+            )
+          ).map(toStored),
+        ),
+      ),
+
+    suggestedWords: (lang) =>
+      serial(async () =>
+        projectSuggestedWords(
+          (
+            await driver.exec(
+              "SELECT * FROM events WHERE type IN ('WordSuggested','WordSuggestionDismissed') AND json_extract(payload, '$.lang') = ? ORDER BY id",
               [lang],
             )
           ).map(toStored),

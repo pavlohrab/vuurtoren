@@ -49,9 +49,7 @@ export const PROFILE_LANGUAGES: {
   name: string;
   english: string;
   enabled: boolean;
-}[] = [
-  { code: "nl", name: "Nederlands", english: "Dutch", enabled: true },
-];
+}[] = [{ code: "nl", name: "Nederlands", english: "Dutch", enabled: true }];
 
 /** Native name of a language, used in deck names ("Nederlands"). */
 export function langName(lang: string): string {

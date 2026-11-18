@@ -217,6 +217,9 @@ importers:
       '@app/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@app/mcp-tools':
+        specifier: workspace:*
+        version: link:../../packages/mcp-tools
       '@app/nlp-client':
         specifier: workspace:*
         version: link:../../packages/nlp-client
@@ -358,6 +361,34 @@ importers:
         specifier: ^26.6.6
         version: 26.6.6
 
+  packages/mcp-tools:
+    dependencies:
+      '@app/ai':
+        specifier: workspace:*
+        version: link:../ai
+      '@app/content':
+        specifier: workspace:*
+        version: link:../content
+      '@app/core':
+        specifier: workspace:*
+        version: link:../core
+      '@app/db':
+        specifier: workspace:*
+        version: link:../db
+      '@modelcontextprotocol/sdk':
+        specifier: ^1.32.2
+        version: 1.32.2(zod@4.6.7)
+      zod:
+        specifier: ^4.6.7
+        version: 4.6.7
+    devDependencies:
+      '@types/node':
+        specifier: ^26.6.6
+        version: 26.6.6
+      vitest:
+        specifier: ^5.1.0
+        version: 5.1.0(@types/node@26.6.6)(jsdom@31.0.1)(vite@8.3.8(@types/node@26.6.6)(jiti@2.7.0))
+
   packages/nlp-client: {}
 
   packages/ui:
@@ -447,6 +478,15 @@ importers:
       '@app/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@app/mcp-tools':
+        specifier: workspace:*
+        version: link:../../packages/mcp-tools
+      '@app/nlp-client':
+        specifier: workspace:*
+        version: link:../../packages/nlp-client
+      '@modelcontextprotocol/sdk':
+        specifier: ^1.32.2
+        version: 1.32.2(zod@4.6.7)
     devDependencies:
       '@types/node':
         specifier: ^26.6.6

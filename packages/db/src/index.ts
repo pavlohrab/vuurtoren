@@ -35,4 +35,5 @@ export type { SyncDb, SqlRow } from "./driver-core.js";
 export { projectConversations } from "./conversations.js";
 export type { Conversation, ConversationMessage } from "./conversations.js";
 export { projectGeneratedSentences } from "./generated.js";
+export { projectSuggestedWords } from "./suggested.js";
 export { projectExamAttempts } from "./exam.js";

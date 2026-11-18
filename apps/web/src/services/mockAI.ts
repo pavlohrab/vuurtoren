@@ -1,4 +1,5 @@
 /** In-memory AI services for the demo build and UI tests (no network, no key handling). */
+import { modelOptions } from "@app/ai";
 import type {
   AIServices,
   AISettings,
@@ -192,6 +193,9 @@ export function createMockAI(
     async unlockAI(passphrase) {
       if (passphrase !== "secret") throw new Error("Wrong passphrase.");
       unlocked = true;
+    },
+    async listAIModels(input) {
+      return { options: modelOptions(input.provider, null), live: false };
     },
     async testAI() {
       await wait();

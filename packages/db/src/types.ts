@@ -213,6 +213,25 @@ export type AppEvent =
     }
   | { type: "SettingChanged"; key: string; value: unknown }
   /**
+   * An assistant (Claude Code over MCP) suggested a word for Anki. Nothing is written to Anki:
+   * the learner confirms it in the Words hub with the normal AddToAnki (ADR 0007).
+   */
+  | {
+      type: "WordSuggested";
+      lang: string;
+      key: string;
+      /** Headword as the assistant wrote it, e.g. "de fiets". */
+      word: string;
+      gloss?: string;
+      sentence?: string;
+      /** Who suggested it, e.g. "claude-code". */
+      by: string;
+      /** Optional note, e.g. "from the cycling story". */
+      note?: string;
+    }
+  /** The learner dismissed a suggested word (or added it to Anki). */
+  | { type: "WordSuggestionDismissed"; lang: string; key: string }
+  /**
    * The language profile (ADR 0010): confirmed source decks and destination decks of one
    * language. Replaces the whole profile; last write wins by HLC.
    */
@@ -294,6 +313,19 @@ export type AppEvent =
       words?: string[];
     };
 
+/** An open word suggestion (see `suggestedWords`). */
+export interface SuggestedWord {
+  lang: string;
+  key: string;
+  word: string;
+  gloss?: string;
+  sentence?: string;
+  by: string;
+  note?: string;
+  /** Event id of the latest suggestion (ULID, time-sortable). */
+  id: string;
+}
+
 /** Every event type this app version understands (checked against `AppEvent` at compile time). */
 const EVENT_TYPE_MAP = {
   TextImported: 1,
@@ -315,6 +347,8 @@ const EVENT_TYPE_MAP = {
   MessageAdded: 1,
   SentencesGenerated: 1,
   SettingChanged: 1,
+  WordSuggested: 1,
+  WordSuggestionDismissed: 1,
   LanguageProfileSet: 1,
   CourseImported: 1,
   CourseDeleted: 1,

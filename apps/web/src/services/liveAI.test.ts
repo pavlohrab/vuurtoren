@@ -94,6 +94,32 @@ afterEach(() => vi.unstubAllGlobals());
 const turn = (reply: string) => JSON.stringify({ reply, corrections: [], new_words: [] });
 
 describe("live AI services", () => {
+  it("lists models with the saved key, caches per provider, falls back to curated", async () => {
+    const { ai } = await setup();
+    const urls: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string, init?: RequestInit) => {
+        urls.push(url);
+        expect(new Headers(init?.headers).get("x-api-key")).toBe("sk-ant-K");
+        return new Response(JSON.stringify({ data: [{ id: "claude-sonnet-5-5" }] }));
+      }),
+    );
+    const anth = { provider: "anthropic" as const, baseUrl: "https://api.anthropic.com" };
+    // No key yet: curated list, no request.
+    expect((await ai.listAIModels(anth)).live).toBe(false);
+    expect(urls).toHaveLength(0);
+    await ai.saveAIKey("sk-ant-K");
+    const live = await ai.listAIModels(anth, "sk-ant-K");
+    expect(live.live).toBe(true);
+    expect(live.options.map((o) => [o.id, o.recommended ?? false])).toEqual([
+      ["claude-haiku-5-5", true],
+      ["claude-sonnet-5-5", false],
+    ]);
+    await ai.listAIModels(anth);
+    expect(urls).toHaveLength(1); // cached for the session
+  });
+
   it("refuses to start without a key, and stores the key outside the database", async () => {
     const { repo, storage, ai } = await setup();
     expect((await ai.aiStatus()).configured).toBe(false);

@@ -48,6 +48,8 @@ services:
       KENNING_COOKIE_SECURE: ${KENNING_COOKIE_SECURE:-1}
       KENNING_TRUST_CF: ${KENNING_TRUST_CF:-0}
       KENNING_ALLOWED_ORIGINS: ${KENNING_ALLOWED_ORIGINS:-}
+      # Text analysis for the MCP endpoint (/api/mcp, Claude Code).
+      KENNING_NLP_URL: ${KENNING_NLP_URL:-http://nlp:8000}
     volumes:
       # kenning.sqlite (your data) and auth.sqlite (sign-in sessions, never in backups)
       - kenning-data:/data

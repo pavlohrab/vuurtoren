@@ -13,7 +13,10 @@
   },
   "dependencies": {
     "@app/core": "workspace:*",
-    "@app/db": "workspace:*"
+    "@app/db": "workspace:*",
+    "@app/mcp-tools": "workspace:*",
+    "@app/nlp-client": "workspace:*",
+    "@modelcontextprotocol/sdk": "^1.32.2"
   },
   "devDependencies": {
     "@types/node": "^26.6.6"

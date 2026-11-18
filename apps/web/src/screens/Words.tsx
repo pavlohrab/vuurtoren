@@ -32,6 +32,7 @@ import { PageHeader } from "../shell/PageHeader.js";
 import { useShell } from "../shell/ShellContext.js";
 import { revealAboveSheet } from "../shell/revealAboveSheet.js";
 import { useDebounced } from "../useDebounced.js";
+import { SuggestedWords } from "./SuggestedWords.js";
 import { useWordActions } from "./useWordActions.js";
 import "./words.css";
 
@@ -339,6 +340,8 @@ export function Words() {
           </div>
         </div>
       </div>
+
+      <SuggestedWords />
 
       {filtered ? (
         <ul className="words-chips" aria-label="Active filters">

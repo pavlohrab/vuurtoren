@@ -23,6 +23,7 @@ import { PageHeader } from "../shell/PageHeader.js";
 import { useTheme } from "../theme.js";
 import { AccountSettings } from "./AccountSettings.js";
 import { AISettings } from "./AISettings.js";
+import { ClaudeCodeSettings } from "./ClaudeCodeSettings.js";
 import { AnkiConnection } from "./AnkiSettings.js";
 import { DataSettings } from "./DataSettings.js";
 import { LanguageDecksSettings } from "./LanguageDecksSettings.js";
@@ -55,7 +56,7 @@ const SECTIONS: { id: SectionId; label: string; hint: string; icon: ReactNode }[
   {
     id: "ai",
     label: "AI",
-    hint: "Your own provider for Talk, stories and explanations.",
+    hint: "Your own provider, or Claude Code with your subscription.",
     icon: <Sparkles size={18} />,
   },
   {
@@ -124,7 +125,10 @@ export function SettingsScreen() {
           ) : section === "reading" ? (
             <ReadingSettings />
           ) : section === "ai" ? (
-            <AISettings />
+            <div className="stack settings-stack">
+              <AISettings />
+              <ClaudeCodeSettings />
+            </div>
           ) : section === "data" ? (
             <DataSettings />
           ) : section === "account" ? (

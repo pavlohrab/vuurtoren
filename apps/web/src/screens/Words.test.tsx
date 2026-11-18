@@ -25,6 +25,23 @@ describe("parseSource", () => {
 });
 
 describe("Words", () => {
+  it("shows Claude's suggestions behind a chip: add one to Anki, dismiss another", async () => {
+    const { services, user } = setup("/words");
+    const chip = await screen.findByRole("button", { name: /Suggested by Claude \(2\)/ });
+    await user.click(chip);
+    const list = screen.getByRole("list", { name: "Suggested by Claude" });
+    expect(within(list).getByText("de reis")).toBeInTheDocument();
+    expect(within(list).getByText(/journey/)).toBeInTheDocument();
+    await user.click(within(list).getByRole("button", { name: "Dismiss de wind" }));
+    await waitFor(() => expect(within(list).queryByText("de wind")).toBeNull());
+    await user.click(await within(list).findByRole("button", { name: /^Add de reis to/ }));
+    await waitFor(async () => expect(await services.suggestedWords()).toEqual([]));
+    expect((await services.inspectWord("reis")).inAnki).toBe(true);
+    await waitFor(() =>
+      expect(screen.queryByRole("button", { name: /Suggested by Claude/ })).toBeNull(),
+    );
+  });
+
   it("filters by state from the URL and shows a removable chip", async () => {
     const { history, user } = setup("/words?state=learning");
     const table = await screen.findByRole("table");
