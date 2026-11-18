@@ -19,8 +19,9 @@ describe("App with mock services", () => {
         name: "Library",
       }),
     );
-    expect(await screen.findByText("Een dag in Utrecht")).toBeInTheDocument();
-    expect(screen.getByText("Op de markt")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { level: 1, name: "Library" })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Een dag in Utrecht" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Op de markt" })).toBeInTheDocument();
     // Anki has not been synced in the mock, so the onboarding hint shows.
     expect(await screen.findByRole("button", { name: "Connect Anki" })).toBeInTheDocument();
     expect(screen.getByRole("navigation", { name: "Main" })).toBeInTheDocument();
