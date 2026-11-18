@@ -2,36 +2,56 @@
 id: adjective-inflection
 title: Adjective endings (the -e rule)
 level: A2
-summary: An adjective before a noun gets -e, except after een with a het-word, or without an article.
+group: adjectives
+order: 25
+summary: An adjective before a noun gets -e, except with a singular het-word after een, geen, elk, veel or no article at all.
 detects: [adjective-inflection]
 practice: [adjective-e]
-related: [de-het, comparison, plural-nouns]
+related: [de-het, comparison, possessive-pronouns, spelling-rules, participles]
 ---
 
 ## Explanation
 
-An adjective **after** the noun or a linking verb never changes: _Het huis is groot_. An adjective **before** its noun usually gets an **-e**: _het grote huis_, _de oude man_, _een mooie dag_.
+An adjective **after** the noun, with _zijn_, _worden_ or _blijven_, never changes: _Het huis is groot._
 
-There are exactly three situations without -e. They all combine a **singular het-word** with an **indefinite** form:
+An adjective **before** a noun usually adds **-e**: _de grote stad_, _een oude man_, _mooie bloemen_.
 
-- _een_ + het-word: _een groot huis_;
-- no article + het-word: _koud water_;
-- _geen_, _elk_, _dit_/_dat_ + het-word… of which only the first two lack -e: _geen groot huis_, _elk groot huis_ (the demonstratives _dit_ and _dat_ do take -e: _dit grote huis_).
+There is **one** case without -e: a **singular het-word** that is **not definite** — so after _een_, _geen_, _elk/ieder_, _veel_, _wat_, _zo'n_, or with no article: _een groot huis_, _geen warm water_, _lekker brood_.
 
-Everything else takes -e: the definite article (_het grote huis_), all de-words (_een grote tafel_) and all plurals (_grote huizen_).
+Definite words always give -e, also with het-words: _het grote huis_, _dit grote huis_, _mijn grote huis_.
 
-Spelling follows the usual rules: _groot_ → _grote_ (one o in an open syllable), _mooi_ → _mooie_, _wit_ → _witte_ (doubled consonant), _slecht_ → _slechte_. A few adjectives never change (_prima_, _extra_, most ones ending in _-en_ such as _open_ or _gouden_ — though _gouden_ keeps its form).
+Spelling changes follow the spelling rules: _groot → grote_, _dik → dikke_, _lief → lieve_, _grijs → grijze_.
+
+### Exceptions
+
+- Adjectives ending in **-en** never get -e: _een gouden ring_, _de open deur_, _gebakken eieren_.
+- Some words never change: _een plastic tas_, _een gratis kaartje_, _een prima idee_, and colours such as _roze_, _oranje_ and _lila_.
+- With a few person nouns, leaving out the -e changes the meaning: _een groot man_ (a great man) but _een grote man_ (a tall man). This is a detail for later.
+- **iets / niets / veel / wat + adjective + s**: _iets lekkers_ (something tasty), _niets nieuws_.
+
+### Adjectives as nouns
+
+With -e, an adjective can stand alone for a person (_de rijken_, the rich) or with _het_ for an idea: _het mooie is…_ (the nice thing is…). _Ik wil de rode_ (the red one) leaves out the noun.
+
+### Pattern
+
+- after the verb: no -e → _De soep is warm._
+- before a noun: `+ e` → _de warme soep, warme soep (de-word)_
+- singular het-word with `een / geen / elk / veel / no article`: no -e → _een warm bad_
+- `iets / niets` + adjective + `s` → _iets warms_
 
 ## Examples
 
 - Het is een **mooie** dag. | It is a beautiful day.
-- Zij heeft een **klein** huis. | She has a small house.
-- Het **kleine** huis staat aan de rivier. | The small house stands by the river.
-- De **oude** man loopt langzaam. | The old man walks slowly.
+- Zij heeft een **klein** appartement. | She has a small flat.
+- Het **kleine** appartement ligt in het centrum. | The small flat is in the centre.
 - Wij hebben **nieuwe** buren. | We have new neighbours.
+- Ik drink graag **warme** melk met **vers** brood. | I like warm milk with fresh bread.
+- Heb je iets **leuks** gedaan? | Did you do anything nice?
 
 ## Common mistakes
 
-- Dropping -e after the definite article: _het klein huis_. Say _het kleine huis_.
-- Adding -e after een with a het-word: _een kleine huis_. It is _een klein huis_.
-- Inflecting the predicate: _Het huis is kleine_. After _is_ the adjective stays bare.
+- _het klein huis_. With het (definite) add -e: _het kleine huis_.
+- _een kleine huis_. With een + het-word, no -e: _een klein huis_.
+- _Het huis is kleine._ After the verb, no ending: _Het huis is klein._
+- _iets lekker_. Add -s: _iets lekkers_.

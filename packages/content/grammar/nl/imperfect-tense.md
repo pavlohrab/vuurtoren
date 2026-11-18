@@ -1,33 +1,53 @@
 ---
 id: imperfect-tense
-title: Simple past (imperfectum)
+title: The simple past (werkte, liep)
 level: A2
-summary: Weak verbs add -te or -de, strong verbs change their vowel; the plural ends in -en.
+group: verbs
+order: 22
+summary: Weak verbs add -te(n) or -de(n) to the stem ('t kofschip again); strong verbs change their vowel; there is one form for the singular and one for the plural.
 detects: [imperfect-tense]
 practice: [verb-form]
-related: [perfect-tense, future]
+related: [perfect-tense, irregular-verbs, past-perfect]
 ---
 
 ## Explanation
 
-The simple past is common in stories, in writing and with a few very frequent verbs (_was_, _had_, _kon_, _moest_, _wilde_). In speech about recent events Dutch usually prefers the perfect tense (see the topic on the perfect), but you need the simple past for reading.
+The simple past (_imperfectum_) is used for **stories**, for describing **how things were** and for **habits** in the past: _Vroeger woonden we in Gent. Elke zomer gingen we naar zee._ In conversation about a single finished event, Dutch prefers the perfect (_Ik heb gisteren gewerkt_).
 
-**Weak verbs** (most verbs) add **-te** or **-de** to the stem in the singular and **-ten** or **-den** in the plural. The choice follows the same 't kofschip rule as the participle: _werken_ → _ik werkte, wij werkten_; _horen_ → _ik hoorde, wij hoorden_.
+There are only **two forms**: one for all singular persons, one for all plural persons.
 
-**Strong verbs** change the vowel of the stem and have no ending in the singular. The plural ends in **-en**: _lopen_ → _ik liep, wij liepen_; _komen_ → _ik kwam, wij kwamen_; _geven_ → _ik gaf, wij gaven_. These forms have to be learned with the verb. Some verbs change the vowel in the plural too: _ik was, wij waren_.
+### Weak (regular) verbs
 
-For all persons in the singular the form is the same: _ik liep, jij liep, hij liep_.
+Stem + **-te / -ten** or **-de / -den**. Choose with **'t kofschip**, just like for the participle:
+
+- stem ends in t, k, f, s, ch, p → **-te**: _werken → werkte, werkten_; _fietsen → fietste_.
+- otherwise → **-de**: _wonen → woonde, woonden_; _leven → leefde_; _reizen → reisde_.
+
+A stem in t or d keeps it: _zetten → zette_, _branden → brandde_.
+
+### Strong verbs
+
+Strong verbs change their **vowel** and add nothing in the singular, **-en** in the plural: _lopen → liep, liepen_; _nemen → nam, namen_; _zijn → was, waren_. Learn them with the list in irregular verbs.
+
+### Pattern
+
+- weak, kofschip: `stem + te / ten` → _ik werkte, wij werkten_
+- weak, other: `stem + de / den` → _ik woonde, wij woonden_
+- strong: new vowel, plural `+ en` → _ik liep, wij liepen_
+- **hebben**: _had, hadden_; **zijn**: _was, waren_
 
 ## Examples
 
-- Zij **werkte** vroeger in een bakkerij. | She used to work in a bakery.
-- Wij **woonden** toen in Utrecht. | We lived in Utrecht then.
-- Hij **liep** elke dag naar school. | He walked to school every day.
-- Ik **kwam** laat thuis. | I came home late.
-- Het **was** een warme zomer. | It was a warm summer.
+- Vroeger **woonden** wij in een klein dorp. | We used to live in a small village.
+- Hij **werkte** elke dag tot zes uur. | He worked until six every day.
+- Het **was** koud en het **regende**. | It was cold and it was raining.
+- Ik **liep** naar huis toen ik haar **zag**. | I was walking home when I saw her.
+- Als kind **speelde** ik altijd buiten. | As a child I always played outside.
+- Wij **hadden** geen tijd. | We had no time.
 
 ## Common mistakes
 
-- Making a strong verb weak: _ik lopte_. The form is _ik liep_.
-- Using -d after a 't kofschip stem: _ik werkde_. The stem _werk_ ends in k, so it is _werkte_.
-- Adding an ending in the singular of a strong verb: _hij liepte_. Say _hij liep_.
+- _Ik woonte_. N is not in 't kofschip: _ik woonde_.
+- _Hij leefte_. Look at the infinitive (leven has a v): _hij leefde_.
+- _Wij liep_. The plural adds -en: _wij liepen_.
+- Using the simple past for a single recent event in speech: _Ik kocht gisteren een fiets._ This is not wrong, but _Ik heb gisteren een fiets gekocht_ sounds more natural.

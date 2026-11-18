@@ -1,37 +1,50 @@
 ---
 id: plural-nouns
-title: Plural nouns
+title: Plural nouns (-en and -s)
 level: A1
-summary: Most plurals end in -en, many in -s; sound and spelling changes are regular.
+group: nouns
+order: 5
+summary: Most nouns add -en, nouns ending in an unstressed -el, -em, -en, -er or -je add -s, and a few vowels need -'s.
 detects: [plural-nouns]
 practice: [scramble]
-related: [de-het, adjective-inflection]
+related: [spelling-rules, de-het, diminutives]
 ---
 
 ## Explanation
 
-The two common plural endings are **-en** and **-s**.
+Most Dutch nouns make the plural with **-en**: _boek → boeken_. A large group uses **-s**. All plurals take the article **de**.
 
-**-en** is the standard ending: _boek_ → _boeken_, _tafel_ → _tafels_ is an exception, _dag_ → _dagen_. The spelling follows from the sound:
+**-s** is used after an unstressed ending: _-el, -em, -en, -er, -je_ (_tafel → tafels_, _jongen → jongens_, _kamer → kamers_, _meisje → meisjes_), and with many loanwords (_computer → computers_, _hobby → hobby's_).
 
-- a single vowel in a closed syllable doubles the consonant: _man_ → _mannen_;
-- a long vowel that was written with a doubled letter loses one: _boom_ → _bomen_, _maan_ → _manen_;
-- _s_ and _f_ turn into _z_ and _v_: _huis_ → _huizen_, _brief_ → _brieven_.
+**-'s** (with an apostrophe) goes after a single **a, i, o, u** or **y** at the end, so the vowel keeps its sound: _auto → auto's_, _foto → foto's_, _menu → menu's_.
 
-**-s** is used after an unstressed ending: _-el_, _-er_, _-em_, _-en_, _-e_ (_tafels_, _bakkers_), after the diminutive (_huisjes_), and for many words from other languages (_auto's_, _taxi's_, _computers_). After a vowel at the end of the word an apostrophe is used: _foto's_, _paraplu's_.
+With **-en** the spelling rules apply: _boom → bomen_ (open syllable, one o), _bus → bussen_ (short vowel, double s), _huis → huizen_ (s becomes z), _brief → brieven_ (f becomes v).
 
-A few plurals are irregular, for example _kind_ → _kinderen_, _ei_ → _eieren_, _stad_ → _steden_, _blad_ → _bladeren_. All plurals take _de_.
+### Pattern
+
+- most nouns: `+ en` → _de deur → de deuren_
+- long vowel loses a letter: _de boom → de bomen_
+- short vowel doubles the consonant: _de bus → de bussen_
+- `-f → -ven`, `-s → -zen` (often): _de brief → de brieven, het huis → de huizen_
+- unstressed `-el -em -en -er -je`: `+ s` → _de tafel → de tafels_
+- final `a i o u y`: `+ 's` → _de foto → de foto's_
+
+### Some irregular plurals
+
+A few common words change the vowel: _de stad → de steden_, _het schip → de schepen_, _de dag → de dagen_ (short a, but no double g). Some add **-eren**: _het kind → de kinderen_, _het ei → de eieren_, _het lied → de liederen_. Words with **-man** often become **-lui** or **-lieden**: _de timmerman → de timmerlieden_.
 
 ## Examples
 
-- Ik heb twee **katten**. | I have two cats.
-- De **kinderen** spelen buiten. | The children are playing outside.
-- Wij kopen **appels** en **peren**. | We buy apples and pears.
-- Zij heeft veel **boeken** en **tijdschriften**. | She has many books and magazines.
-- De **huizen** in deze straat zijn oud. | The houses in this street are old.
+- Ik heb twee **broers** en drie **zussen**. | I have two brothers and three sisters.
+- De **kinderen** spelen in de tuin. | The children are playing in the garden.
+- Hoeveel **boeken** heb je gelezen? | How many books have you read?
+- Op tafel liggen veel **foto's**. | There are lots of photos on the table.
+- In deze straat staan oude **huizen**. | There are old houses in this street.
+- Wij hebben drie **dagen** vrij. | We have three days off.
 
 ## Common mistakes
 
-- Using -en after -el or -er: _tafelen_. Say _tafels_.
-- Forgetting the spelling change: _mans_ or _mannen_? The word is _mannen_, with a doubled n.
-- Using _het_ with a plural: _het kinderen_. The plural article is _de_.
+- _De boomen_. In an open syllable the long vowel has one letter: _de bomen_.
+- _De bussen_ is right, but _de busen_ is not: a short vowel needs a double consonant.
+- _De autos_. A final o needs an apostrophe: _de auto's_.
+- _De kinds_ or _de kinden_. The plural of kind is _kinderen_.
