@@ -253,3 +253,35 @@ describe("cross-device freshness (A7)", () => {
     expect(createLiveServices(repo).checkRemoteChanges).toBeUndefined();
   });
 });
+
+describe("analyzer version (review A4)", () => {
+  it("a text analysed by an older analyzer is re-analysed once, in the background", async () => {
+    const analyzed: string[][] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
+        const u = String(url);
+        if (u.includes("/nlp/health"))
+          return Response.json({ status: "ok", version: "x", analyzerVersion: "a1-new" });
+        if (u.includes("/nlp/analyze/text")) {
+          const texts = (JSON.parse(String(init?.body)) as { texts: string[] }).texts;
+          analyzed.push(texts);
+          return Response.json(
+            texts.map((t) => ({ tokens: tokenize(t), analyzerVersion: "a1-new" })),
+          );
+        }
+        return nlpFetch(url, init);
+      }),
+    );
+    const repo = (toClose = await seed());
+    expect((await repo.getText("t03"))?.analyzerVersion).toBeNull();
+    const c = await client(repo);
+    expect(await c.services.getReading("t03")).not.toBeNull();
+    await vi.waitFor(async () => {
+      expect((await repo.getText("t03"))?.analyzerVersion).toBe("a1-new");
+    });
+    await c.services.getReading("t03");
+    await c.services.getReading("t03");
+    expect(analyzed).toHaveLength(1);
+  });
+});

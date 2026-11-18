@@ -128,13 +128,39 @@ export function createLiveTexts({
     const tokens = mergeChunkTokens(
       chunks.map((c, k) => ({ start: c.start, tokens: analyses[k]!.tokens as AnalyzedToken[] })),
     );
+    const analyzerVersion = analyses[0]?.analyzerVersion;
     await repo.append({
       type: "TextAnalyzed",
       textId: text.id,
       contentHash: contentHash(text.content),
       tokens,
+      ...(analyzerVersion ? { analyzerVersion } : {}),
     });
     return tokens;
+  }
+
+  // Review A4: texts analysed by an older analyzer are re-analysed once, in the background,
+  // when opened. The server's version is asked once per session (null: unknown or offline).
+  let serverAnalyzer: Promise<string | null> | null = null;
+  const refreshed = new Set<string>();
+  function refreshIfStale(text: StoredText): void {
+    if (!text.tokens || refreshed.has(text.id)) return;
+    refreshed.add(text.id);
+    serverAnalyzer ??= nlp()
+      .then((c) => c.health())
+      .then(
+        (h) => h.analyzerVersion ?? null,
+        () => null,
+      );
+    void serverAnalyzer
+      .then(async (current) => {
+        if (!current || current === text.analyzerVersion) return;
+        await analyze(text);
+        planCache.delete(text.id);
+      })
+      .catch(() => {
+        // Offline or the text is gone: the stored analysis stays in use.
+      });
   }
 
   /** Concurrent callers for the same text share one computation (and one analysis). */
@@ -172,6 +198,7 @@ export function createLiveTexts({
     const staircase = { targetCoverage: opts.targetCoverage, newWordBudget: opts.newWordBudget };
     const views: ReadingView[] = [];
     for (const text of texts) {
+      if (text.tokens) refreshIfStale(text);
       const tokens = text.tokens ?? (await analyze(text));
       const plans: SegmentPlan[] = planText(tokens, m, opts, text.content);
       views.push({ text: { ...text, tokens }, tokens, plans, staircase });

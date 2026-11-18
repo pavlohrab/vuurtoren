@@ -25,6 +25,8 @@ export interface Token {
 
 export interface TextAnalysis {
   tokens: Token[];
+  /** Version of the server's analyzer (review A4); absent from servers before D1. */
+  analyzerVersion?: string;
 }
 
 export interface TermAnalysis {
@@ -314,7 +316,7 @@ export class NlpClient {
     return out;
   }
 
-  health(): Promise<{ status: string; version: string }> {
+  health(): Promise<{ status: string; version: string; analyzerVersion?: string }> {
     return this.request("/health");
   }
 

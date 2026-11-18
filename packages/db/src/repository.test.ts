@@ -71,6 +71,47 @@ describe("projections", () => {
     expect(await repo.getText("missing")).toBeNull();
   });
 
+  it("TextAnalyzed keeps the analyzer version; a new version drops the grammar hits (A4)", async () => {
+    const { repo } = await newRepo();
+    const content = "De kat slaapt.";
+    const hash = contentHash(content);
+    await repo.append(importText("t1", content));
+    await repo.append({
+      type: "TextAnalyzed",
+      textId: "t1",
+      contentHash: hash,
+      tokens: [tok(0, "kat")],
+    });
+    expect((await repo.getText("t1"))?.analyzerVersion).toBeNull();
+    const grammar: AppEvent = {
+      type: "TextGrammarDetected",
+      textId: "t1",
+      contentHash: hash,
+      version: 1,
+      hits: [],
+    };
+    await repo.append(grammar);
+    await repo.append({
+      type: "TextAnalyzed",
+      textId: "t1",
+      contentHash: hash,
+      tokens: [tok(0, "kat")],
+      analyzerVersion: "a1-new",
+    });
+    expect((await repo.getText("t1"))?.analyzerVersion).toBe("a1-new");
+    expect(await repo.textGrammar("t1")).toBeNull();
+    // The same version again keeps freshly computed hits.
+    await repo.append(grammar);
+    await repo.append({
+      type: "TextAnalyzed",
+      textId: "t1",
+      contentHash: hash,
+      tokens: [tok(0, "kat")],
+      analyzerVersion: "a1-new",
+    });
+    expect(await repo.textGrammar("t1")).not.toBeNull();
+  });
+
   it("TextAnalyzed stores tokens only when the content hash matches", async () => {
     const { repo } = await newRepo();
     const content = "hallo wereld";

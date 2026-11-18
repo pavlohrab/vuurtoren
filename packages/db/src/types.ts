@@ -123,7 +123,17 @@ export type AppEvent =
       source: TextSource;
       content: string;
     }
-  | { type: "TextAnalyzed"; textId: string; contentHash: string; tokens: AnalyzedToken[] }
+  | {
+      type: "TextAnalyzed";
+      textId: string;
+      contentHash: string;
+      tokens: AnalyzedToken[];
+      /**
+       * The language server's `analyzerVersion` (review A4). A text whose stored version differs
+       * from the server's is re-analysed once when opened. Absent in events from before D1.
+       */
+      analyzerVersion?: string;
+    }
   | {
       /**
        * Grammar constructions found in a text (M5; server `/grammar`), indices and offsets
@@ -457,6 +467,8 @@ export interface TextSummary {
 export interface StoredText extends TextSummary {
   content: string;
   tokens: AnalyzedToken[] | null;
+  /** Analyzer version of `tokens` (null/absent: unknown, analysed before versions existed). */
+  analyzerVersion?: string | null;
 }
 
 export interface WordInfo {
