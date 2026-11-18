@@ -23,7 +23,9 @@ import {
   generateUnitExercises,
   type UnitExerciseKind,
   keyStatus,
+  listModels,
   loadKey,
+  modelOptions,
   presetFor,
   runTurn,
   saveKey,
@@ -54,6 +56,7 @@ import type {
   AIStatus,
   AIUsage,
   ConversationView,
+  ModelChoices,
   NewWord,
   StoryView,
 } from "./aiTypes.js";
@@ -210,6 +213,9 @@ export function createLiveAI(deps: LiveAIDeps): AIServices &
       /* tally is best effort */
     }
   };
+
+  /** Model lists per provider and address, for this session (Settings → AI picker). */
+  const modelCache = new Map<string, ModelChoices>();
 
   async function provider(): Promise<AIProvider> {
     const s = getSettings();
@@ -655,6 +661,28 @@ export function createLiveAI(deps: LiveAIDeps): AIServices &
       const k = await loadKey(storage, id, passphrase);
       if (k === undefined) throw new WrongPassphraseError();
       unlocked.set(id, k);
+    },
+    async listAIModels(input, key) {
+      const id = `${input.provider}\u0000${input.baseUrl}`;
+      const hit = modelCache.get(id);
+      if (hit && !key) return hit;
+      let apiKey = key?.trim() || unlocked.get(input.provider);
+      if (!apiKey) {
+        try {
+          apiKey = await loadKey(storage, input.provider);
+        } catch {
+          // encrypted and locked: list without a key (curated fallback)
+        }
+      }
+      let out: ModelChoices;
+      try {
+        const listed = await listModels({ ...input, apiKey }, deps.fetch);
+        out = { options: modelOptions(input.provider, listed.length ? listed : null), live: listed.length > 0 };
+      } catch {
+        out = { options: modelOptions(input.provider, null), live: false };
+      }
+      if (out.live || !modelCache.has(id)) modelCache.set(id, out);
+      return out;
     },
     async testAI() {
       const p = await provider();

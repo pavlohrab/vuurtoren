@@ -1,8 +1,21 @@
 /** Contract of the AI services (M6). Keys never appear here except as write-only arguments. */
 import type { GenerateUnitResult } from "./courseTypes.js";
-import type { Correction, NewWord, ProviderId, StoryLength, StoryStyle } from "@app/ai";
+import type {
+  Correction,
+  ModelOption,
+  NewWord,
+  ProviderId,
+  StoryLength,
+  StoryStyle,
+} from "@app/ai";
 
-export type { Correction, NewWord, ProviderId, StoryLength, StoryStyle };
+export type { Correction, ModelOption, NewWord, ProviderId, StoryLength, StoryStyle };
+
+/** Models offered by the picker; `live` when they came from the provider itself. */
+export interface ModelChoices {
+  options: ModelOption[];
+  live: boolean;
+}
 
 /** Provider choice, stored per device (never in the database or backups). */
 export interface AISettings {
@@ -79,6 +92,11 @@ export interface AIServices {
   clearAIKey(): Promise<void>;
   /** Decrypt the saved key for this session. Throws on a wrong passphrase. */
   unlockAI(passphrase: string): Promise<void>;
+  /**
+   * Models for the picker: the provider's own list (with `key`, else the saved key), cached per
+   * provider and address for this session; the curated list when it cannot be read.
+   */
+  listAIModels(input: { provider: ProviderId; baseUrl: string }, key?: string): Promise<ModelChoices>;
   /** One tiny request to check the key, model and address. */
   testAI(): Promise<{ text: string; ms: number }>;
   aiUsage(): Promise<AIUsage>;

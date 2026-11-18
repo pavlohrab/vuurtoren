@@ -4,6 +4,7 @@ import { PRESETS, presetFor, type ProviderId } from "@app/ai";
 import { Button, Input, Select, Spinner } from "@app/ui";
 import { useServices } from "../services/context.js";
 import type { AISettings as AISettingsData } from "../services/aiTypes.js";
+import { ModelPicker } from "./ModelPicker.js";
 import { SavedNote } from "./SavedNote.js";
 import { useAutosave } from "./useAutosave.js";
 
@@ -97,11 +98,12 @@ export function AISettings() {
         value={form.baseUrl}
         onChange={(e) => set({ baseUrl: e.target.value })}
       />
-      <Input
-        label="Model"
+      <ModelPicker
+        provider={form.provider}
+        baseUrl={form.baseUrl}
         value={form.model}
-        hint="A cheap, fast model is plenty. Names change; check your provider's list."
-        onChange={(e) => set({ model: e.target.value })}
+        keyDraft={key}
+        onChange={(model) => set({ model })}
       />
       {preset.needsKey || st?.keySaved ? (
         <>
