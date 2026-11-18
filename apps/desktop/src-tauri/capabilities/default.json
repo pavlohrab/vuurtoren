@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "The bundled home page (Connect screen; later the offline app).",
+  "description": "The bundled home page: the offline app (local database, language server) and the Connect screen.",
   "windows": ["main"],
   "permissions": [
     "core:default",
@@ -9,6 +9,17 @@
     "allow-check-server",
     "allow-connect",
     "allow-change-server",
-    "allow-anki-fetch"
+    "allow-anki-fetch",
+    "allow-use-local",
+    "allow-db-open",
+    "allow-db-exec",
+    "allow-db-close",
+    "allow-db-export",
+    "allow-db-import",
+    "allow-db-reveal",
+    "allow-db-move",
+    "allow-nlp-status",
+    "allow-nlp-restart",
+    "allow-nlp-retry-packs"
   ]
 }

@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-db-export"
+description = "Enables the db_export command without any pre-configured scope."
+commands.allow = ["db_export"]
+
+[[permission]]
+identifier = "deny-db-export"
+description = "Denies the db_export command without any pre-configured scope."
+commands.deny = ["db_export"]

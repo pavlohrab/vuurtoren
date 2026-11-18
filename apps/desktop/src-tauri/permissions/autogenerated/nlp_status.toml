@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-nlp-status"
+description = "Enables the nlp_status command without any pre-configured scope."
+commands.allow = ["nlp_status"]
+
+[[permission]]
+identifier = "deny-nlp-status"
+description = "Denies the nlp_status command without any pre-configured scope."
+commands.deny = ["nlp_status"]

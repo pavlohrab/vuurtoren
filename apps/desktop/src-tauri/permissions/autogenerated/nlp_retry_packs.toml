@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-nlp-retry-packs"
+description = "Enables the nlp_retry_packs command without any pre-configured scope."
+commands.allow = ["nlp_retry_packs"]
+
+[[permission]]
+identifier = "deny-nlp-retry-packs"
+description = "Denies the nlp_retry_packs command without any pre-configured scope."
+commands.deny = ["nlp_retry_packs"]

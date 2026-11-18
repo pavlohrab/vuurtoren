@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-nlp-restart"
+description = "Enables the nlp_restart command without any pre-configured scope."
+commands.allow = ["nlp_restart"]
+
+[[permission]]
+identifier = "deny-nlp-restart"
+description = "Denies the nlp_restart command without any pre-configured scope."
+commands.deny = ["nlp_restart"]

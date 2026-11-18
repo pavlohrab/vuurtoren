@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-db-reveal"
+description = "Enables the db_reveal command without any pre-configured scope."
+commands.allow = ["db_reveal"]
+
+[[permission]]
+identifier = "deny-db-reveal"
+description = "Denies the db_reveal command without any pre-configured scope."
+commands.deny = ["db_reveal"]
