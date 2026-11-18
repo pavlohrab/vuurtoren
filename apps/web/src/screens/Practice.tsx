@@ -1,3 +1,4 @@
+import { plural } from "../format.js";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams, useSearch } from "@tanstack/react-router";
 import {
@@ -52,7 +53,7 @@ export function aiReportText(r: AISentenceReport | null): string | null {
   const parts: string[] = [];
   if (r.accepted > 0) {
     parts.push(
-      `${r.accepted} new AI ${r.accepted === 1 ? "sentence" : "sentences"} for ${r.requested} ${r.requested === 1 ? "item" : "items"}`,
+      `${r.accepted} new AI ${r.accepted === 1 ? "sentence" : "sentences"} for ${plural(r.requested, "item")}`,
     );
   }
   if (r.rejected > 0) parts.push(`${r.rejected} rejected by the checks`);
@@ -274,12 +275,11 @@ function StartView({
         lede={
           focus ? (
             <>
-              {focus.length} {focus.length === 1 ? "word" : "words"}:{" "}
-              <span lang="nl">{focus.slice(0, 8).join(", ")}</span>
+              {plural(focus.length, "word")}: <span lang="nl">{focus.slice(0, 8).join(", ")}</span>
               {focus.length > 8 ? "…" : ""}
             </>
           ) : o ? (
-            `${o.due} ${o.due === 1 ? "exercise" : "exercises"} due · ${o.newAvailable} new`
+            `${plural(o.due, "exercise")} due · ${o.newAvailable} new`
           ) : (
             "Short exercises from words you are learning."
           )

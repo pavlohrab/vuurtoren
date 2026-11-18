@@ -1,3 +1,4 @@
+import { pct } from "../format.js";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { BookmarkPlus, MessagesSquare, Plus } from "lucide-react";
@@ -54,7 +55,7 @@ function PartnerMessage({
             tone={TONE[difficultyBand(m.coverage)]}
             title="Share of the words in this reply that you know"
           >
-            {Math.round(m.coverage * 100)}% known
+            {pct(m.coverage)} known
           </Chip>
         ) : null}
         {m.rewritten ? <span>Simplified once to fit your vocabulary</span> : null}

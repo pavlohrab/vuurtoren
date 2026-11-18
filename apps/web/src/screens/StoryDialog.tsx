@@ -3,6 +3,7 @@
  * Used from the Library, a grammar topic page and a course unit. The trigger is only shown when an
  * AI provider is configured (`useAIReady`).
  */
+import { pct } from "../format.js";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { Sparkles } from "lucide-react";
@@ -143,7 +144,7 @@ function StoryDialog({
         r.missingTargets.length
           ? `It does not use: ${r.missingTargets.join(", ")}.`
           : r.coverage !== null
-            ? `You know about ${Math.round(r.coverage * 100)}% of its words.`
+            ? `You know about ${pct(r.coverage)} of its words.`
             : undefined,
       );
       void navigate({ to: "/read/$textId", params: { textId: r.textId } });

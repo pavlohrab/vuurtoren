@@ -3,6 +3,7 @@
  * then check each answer with the checklist and the model answer. Optional AI feedback when a
  * provider is configured; the score is what you tick (AI verdicts tick task points for you).
  */
+import { plural } from "../../format.js";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Check, Sparkles } from "lucide-react";
 import { useState } from "react";
@@ -103,9 +104,7 @@ export function WritingSession({
     <div className="exam-session" data-mode={mode}>
       <div className="exam-bar" role="region" aria-label="Session">
         <span className="exam-bar-title">{title}</span>
-        <span className="exam-bar-progress">
-          {tasks.length} {tasks.length === 1 ? "task" : "tasks"}
-        </span>
+        <span className="exam-bar-progress">{plural(tasks.length, "task")}</span>
         {phase === "write" ? (
           <ExamClock remaining={clock.remaining} elapsed={clock.elapsed} />
         ) : null}
@@ -260,7 +259,7 @@ function TaskBlock({
             className="exam-muted exam-wordcount"
             data-short={words < (task.minWords ?? 0) || undefined}
           >
-            {words} {words === 1 ? "word" : "words"}
+            {plural(words, "word")}
             {task.minWords ? ` · at least ${task.minWords}` : ""}
           </p>
         </>

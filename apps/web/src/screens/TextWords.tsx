@@ -1,3 +1,4 @@
+import { plural } from "../format.js";
 import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "@tanstack/react-router";
 import { ArrowLeft, ArrowRight, Dumbbell, ListChecks, MessagesSquare } from "lucide-react";
@@ -237,7 +238,7 @@ export function TextWords({ textId }: { textId: string }) {
                 ? "Applying…"
                 : jobs.length === 0
                   ? "Apply"
-                  : `Apply ${jobs.length} ${jobs.length === 1 ? "action" : "actions"}`}
+                  : `Apply ${plural(jobs.length, "action")}`}
             </Button>
           </div>
         </>

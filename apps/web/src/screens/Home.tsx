@@ -29,7 +29,7 @@ import type { TextListItem, TextWordItem } from "../services/types.js";
 import type { ExamAttemptRecord } from "../services/examTypes.js";
 import { usePageHeader } from "../shell/ShellContext.js";
 import { PageHeader, SectionHeader } from "../shell/PageHeader.js";
-import { pct } from "../format.js";
+import { pct, plural } from "../format.js";
 import { pagesOf, WORDS_PER_PAGE } from "../textPages.js";
 import { topicCount } from "./Grammar.js";
 import { CreateStoryButton } from "./StoryDialog.js";
@@ -537,9 +537,7 @@ function CourseStep({
       label={course.course.title}
       value={
         (course.continueTitle ?? `Unit ${course.continueUnit}`) +
-        (course.continueKnown != null
-          ? ` · ${Math.round(course.continueKnown * 100)}% of its words known`
-          : "")
+        (course.continueKnown != null ? ` · ${pct(course.continueKnown)} of its words known` : "")
       }
     />
   );
@@ -578,9 +576,7 @@ function ContinueCard({
           {text.title}
         </Link>
         <p className="home-meta">
-          <span>
-            {started ? `Page ${page} of ${pages}` : `${pages} ${pages === 1 ? "page" : "pages"}`}
-          </span>
+          <span>{started ? `Page ${page} of ${pages}` : `${plural(pages, "page")}`}</span>
           <span>{fmt(text.wordCount)} words</span>
           {text.newTypes ? <span>{fmt(text.newTypes)} new</span> : null}
           {text.coverage !== null ? (

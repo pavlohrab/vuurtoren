@@ -1,3 +1,4 @@
+import { pct } from "../../format.js";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { PageHeader } from "../../shell/PageHeader.js";
 import { Link, useNavigate } from "@tanstack/react-router";
@@ -8,8 +9,6 @@ import { useServices } from "../../services/context.js";
 import type { CourseListItem } from "../../services/courseTypes.js";
 import { ImportPackDialog } from "./CoursePacks.js";
 import "./courses.css";
-
-const percent = (v: number) => `${Math.round(v * 100)}%`;
 
 /** Courses: the books you study along, with progress and a way to continue. */
 export function Courses() {
@@ -72,7 +71,7 @@ export function Courses() {
                 </h2>
                 <p className="cs-meta">
                   {c.unitCount} units
-                  {c.knownRatio !== null ? ` · ${percent(c.knownRatio)} of the words known` : ""}
+                  {c.knownRatio !== null ? ` · ${pct(c.knownRatio)} of the words known` : ""}
                 </p>
                 {c.knownRatio !== null ? (
                   <CoverageMeter value={c.knownRatio} block hideValue label="Words known" />

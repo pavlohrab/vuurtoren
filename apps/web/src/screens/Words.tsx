@@ -5,6 +5,7 @@
  * opens the shared word inspector with the reader's actions; a selection goes to Anki, to
  * Practice or to Talk in one step.
  */
+import { pct, plural } from "../format.js";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { Dumbbell, Languages, MessagesSquare, X } from "lucide-react";
@@ -255,7 +256,7 @@ export function Words() {
         failed ? `${failed} could not be added` : "",
       ].filter(Boolean);
       toast(
-        added ? `Added ${added} ${added === 1 ? "word" : "words"} to ${deck}` : "Nothing to add",
+        added ? `Added ${plural(added, "word")} to ${deck}` : "Nothing to add",
         notes.length ? notes.join(" · ") : undefined,
       );
       setSelected(new Set());
@@ -461,7 +462,7 @@ export function Words() {
                       <WordStateChip state={w.state} inKenning={w.appLearning} />
                     </td>
                     <td className="k-mono words-col-recall">
-                      {w.pKnown === null ? "–" : `${Math.round(w.pKnown * 100)}%`}
+                      {w.pKnown === null ? "–" : `${pct(w.pKnown)}`}
                     </td>
                     <td className="words-gloss">{w.gloss ?? ""}</td>
                     <td className="words-col-decks">{w.decks.join(", ")}</td>

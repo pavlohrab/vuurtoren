@@ -1,3 +1,4 @@
+import { pct, plural } from "../../format.js";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { Sparkles } from "lucide-react";
@@ -173,9 +174,7 @@ function GrammarTab({ unit, topics }: { unit: UnitView; topics: UnitGrammarTopic
                     </p>
                   ) : null}
                 </div>
-                <span className="cs-meta">
-                  {t.count} {t.count === 1 ? "sentence" : "sentences"}
-                </span>
+                <span className="cs-meta">{plural(t.count, "sentence")}</span>
                 <Link
                   to="/grammar/$topic/practice"
                   params={{ topic: t.topicId }}
@@ -322,7 +321,7 @@ export function UnitRoute({ courseId, n }: { courseId: string; n: number }) {
       <h1>{u.unit.title}</h1>
       {s.total > 0 ? (
         <p className="page-lede">
-          {Math.round(s.knownRatio * 100)}% of the words known, {s.learning} learning, {fresh} new.
+          {pct(s.knownRatio)} of the words known, {s.learning} learning, {fresh} new.
         </p>
       ) : (
         <p className="page-lede">
@@ -343,7 +342,7 @@ export function UnitRoute({ courseId, n }: { courseId: string; n: number }) {
           </Tooltip>
           {s.missing > 0 ? (
             <Button onClick={() => setAdding(true)}>
-              Add {s.missing} {s.missing === 1 ? "word" : "words"} to Anki…
+              Add {plural(s.missing, "word")} to Anki…
             </Button>
           ) : null}
           <Link

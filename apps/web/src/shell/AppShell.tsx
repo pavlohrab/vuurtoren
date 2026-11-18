@@ -1,3 +1,4 @@
+import { plural } from "../format.js";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
@@ -421,8 +422,8 @@ function NavLink({
       {badge ? (
         <span
           className="nav-badge"
-          aria-label={`${badge} ${badge === 1 ? "exercise" : "exercises"} due`}
-          title={`${badge} ${badge === 1 ? "exercise" : "exercises"} due in Practice`}
+          aria-label={`${plural(badge, "exercise")} due`}
+          title={`${plural(badge, "exercise")} due in Practice`}
         >
           {badge}
         </span>

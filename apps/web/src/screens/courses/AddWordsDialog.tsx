@@ -1,3 +1,4 @@
+import { plural } from "../../format.js";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { AddToAnki, Button, Dialog, Lemma, Skeleton, useToast } from "@app/ui";
@@ -51,7 +52,7 @@ export function AddWordsDialog({
       }),
     onSuccess: async (r) => {
       toast(
-        `${r.added} ${r.added === 1 ? "word" : "words"} added to ${perUnit ? "the units' decks" : r.deck}`,
+        `${plural(r.added, "word")} added to ${perUnit ? "the units' decks" : r.deck}`,
         r.failed > 0 ? `${r.failed} could not be added.` : undefined,
       );
       await qc.invalidateQueries({ queryKey: ["unit", courseId] });

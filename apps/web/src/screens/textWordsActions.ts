@@ -2,6 +2,7 @@
  * Pure logic of the "Words from this text" review: which action each Anki state starts with,
  * which others it offers, and how a batch of actions is run and summarised (ADR 0007).
  */
+import { plural } from "../format.js";
 import type { AppServices, InspectorEntry, TextWordItem } from "../services/types.js";
 
 export type WordAction = "add" | "learn" | "known" | "skip";
@@ -124,6 +125,6 @@ export function summarize(results: Iterable<RowResult>): string {
   }
   if (known.length) parts.push(`${known.length} marked known`);
   const done = parts.length ? `${parts.join(", ")}.` : "";
-  const bad = failed ? `${failed} ${failed === 1 ? "word" : "words"} could not be updated.` : "";
+  const bad = failed ? `${plural(failed, "word")} could not be updated.` : "";
   return [done, bad].filter(Boolean).join(" ") || "Nothing was changed.";
 }

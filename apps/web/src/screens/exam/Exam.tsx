@@ -11,7 +11,7 @@ import { useServices } from "../../services/context.js";
 import type { ExamAttemptRecord } from "../../services/examTypes.js";
 import { PageHeader } from "../../shell/PageHeader.js";
 import { usePageHeader } from "../../shell/ShellContext.js";
-import { pct } from "../../format.js";
+import { pct, plural } from "../../format.js";
 import "./exam.css";
 
 export function useExamAttempts() {
@@ -98,9 +98,7 @@ export function Exam() {
                             Best mock {pct(prog.bestExam)}
                           </Chip>
                         ) : null}
-                        <span className="exam-muted">
-                          {prog.attempts} {prog.attempts === 1 ? "session" : "sessions"}
-                        </span>
+                        <span className="exam-muted">{plural(prog.attempts, "session")}</span>
                       </>
                     ) : (
                       <span className="exam-muted">Not started</span>

@@ -1,3 +1,4 @@
+import { pct } from "../../format.js";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
@@ -7,8 +8,6 @@ import type { UnitRow } from "../../services/courseTypes.js";
 import { AddWordsDialog } from "./AddWordsDialog.js";
 import { ExportPackDialog } from "./CoursePacks.js";
 import "./courses.css";
-
-const pct = (v: number) => `${Math.round(v * 100)}%`;
 
 function UnitLine({ courseId, row }: { courseId: string; row: UnitRow }) {
   const { unit, status } = row;
