@@ -54,7 +54,9 @@ describe("Courses", () => {
     await user.click(await screen.findByRole("button", { name: "Add 1 word to Anki…" }));
     const dialog = await screen.findByRole("dialog", { name: "Add this unit's words to Anki" });
     expect(await within(dialog).findByText("Anne woont in een kleine stad.")).toBeVisible();
-    expect(within(dialog).getByText(/^1 new word · \d+ already in Anki · \d+ known$/)).toBeVisible();
+    expect(
+      within(dialog).getByText(/^1 new word · \d+ already in Anki · \d+ known$/),
+    ).toBeVisible();
     await user.click(within(dialog).getByRole("button", { name: /^Add 1 to/ }));
     expect(addUnitWords).toHaveBeenCalledWith("demo-course", 1, { keys: ["stad"] });
     expect(await screen.findByText(/1 word added to/)).toBeInTheDocument();
