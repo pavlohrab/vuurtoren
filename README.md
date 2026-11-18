@@ -251,6 +251,7 @@ pnpm install && pnpm build
 
 # one-time data (git-ignored): 34 MB dictionary + 154 MB translation model
 cd server/nlp && uv run python scripts/build_dictionary.py && uv run python scripts/fetch_mt_model.py && cd -
+# (or, with published packs: KENNING_PACKS=download KENNING_PACKS_URL=... uv run python -c "from kenning_nlp import packs; print(packs.ensure())")
 
 pnpm nlp     # language server on :8000 (spaCy, dictionary, OCR, translation)
 pnpm dev     # web app on http://localhost:5173 (proxies /nlp and /anki)

@@ -4,7 +4,7 @@ Working name **Kenning**: an open-source reader that uses your Anki decks as the
 
 ## How to run (dev)
 
-One-time data downloads (git-ignored): `cd server/nlp && uv run python scripts/build_dictionary.py && uv run python scripts/fetch_mt_model.py` (34 MB dictionary + 154 MB translation model).
+One-time data downloads (git-ignored): `cd server/nlp && uv run python scripts/build_dictionary.py && uv run python scripts/fetch_mt_model.py` (34 MB dictionary + 85 MB int8 translation model). In Docker the same data are versioned data packs on the `/data` volume (server/nlp/src/kenning_nlp/packs.py).
 
 ```sh
 pnpm install && pnpm build
@@ -233,4 +233,4 @@ None open. (The cloze range was settled at recall 0.60–0.99.)
 - **FSRS-6 decay** per preset isn't read yet; 0.5 is assumed (FSRS is off in your collection).
 - **The demo (mock) data** only approximates the real behaviour. A Playwright smoke test (`pnpm e2e`) runs the main loop in demo mode and against the real services in browser-storage mode (fake language server and AnkiConnect).
 - **Not yet run here:** the Docker images (no daemon on this machine; CI builds them and runs the smoke test), Tesseract OCR end-to-end on this machine.
-- **NLP image build depends on pinned upstream data** (Kaikki, Tatoeba): when upstream refreshes and the CI layer cache has expired, the image job fails until the pins are updated (`server/nlp/scripts/pinned_download.py`).
+- **Data packs depend on pinned upstream data** (Kaikki, Tatoeba, OPUS-MT): when upstream refreshes, building the packs (`scripts/build_packs.py`, the `-full` image, or a server without `KENNING_PACKS_URL`) fails until the pins are updated (`server/nlp/scripts/pinned_download.py`). The standard image no longer depends on them.

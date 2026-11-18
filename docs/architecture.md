@@ -88,6 +88,40 @@ flowchart LR
 - **Degraded modes** (NLP, Anki, AI, translation, storage) report to one signal
   (`services/degraded.ts`) shown in the top bar.
 
+## Language server data packs (D1)
+
+The NLP image holds code and libraries only; its data are versioned **data packs** on the
+`/data` volume (`server/nlp/src/kenning_nlp/packs.py`, manifest `packs.json` next to it):
+
+| pack                  | contents                               | archive | installed |
+| --------------------- | -------------------------------------- | ------- | --------- |
+| `dictionary-nl`       | Wiktionary (Kaikki) glosses, forms     | 14 MB   | 39 MB     |
+| `sentences-nl`        | Tatoeba sentences + lemma index        | 20 MB   | 47 MB     |
+| `mt-nl-en`            | OPUS-MT nl→en, CTranslate2 int8        | 70 MB   | 84 MB     |
+| `grammar-examples-nl` | derived: built on the server (< 2 min) | —       | 0.4 MB    |
+
+- **Manifest**: `{name: {version, sha256, size}}`; the archive is `<name>-<version>.tar.gz`
+  (deterministic tar.gz of one file or directory). A marker `<data>.pack.json` records what is
+  installed (version, digest, source).
+- **Install** (at startup in a background thread, and on `POST /nlp/admin/packs`): each missing
+  or outdated pack comes from `KENNING_PACKS_DIR` (bundled archives: the `-full` image, the
+  desktop sidecar), else `KENNING_PACKS_URL` (release assets; optional `KENNING_PACKS_TOKEN`),
+  else, with `KENNING_PACKS=auto`, a local build from the pinned upstream sources with
+  `scripts/`. Archives are size- and SHA-256-checked, unpacked next to the target and renamed into
+  place; caches holding the old data are dropped. Data without a marker (a development build) is
+  never replaced unless forced. Works offline once installed. `GET /health` shows
+  `packs.items.<name>.state` (`ok`, `outdated`, `unversioned`, `missing`) and `activity`.
+- **Releasing new data**: bump the pack's version in `packs.json`, run
+  `uv run python scripts/build_packs.py --out dist/packs`, upload `dist/packs/*` as assets of a
+  `packs-<version>` release (the `packs` workflow does both) and commit the updated `packs.json`.
+  The repository is private for now, so `KENNING_PACKS_URL` has no default: set it to wherever the
+  archives are reachable, or let the server build them.
+- **Analyzer version** (review A4): `GET /health` and every `/analyze/text` result carry
+  `analyzerVersion` (hash of the spaCy/model/library versions, the token-shaping modules, the
+  grammar detectors and the installed dictionary pack). `TextAnalyzed` events store it
+  (`text_tokens.analyzer_version`); the reader re-analyses a text stored with another version once,
+  in the background, when it is opened, and the projection drops that text's grammar hits.
+
 ## Checks
 
 - `pnpm build && pnpm typecheck && pnpm lint && pnpm test && pnpm format:check`
