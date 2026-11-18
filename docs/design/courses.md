@@ -1,6 +1,6 @@
 # Courses: study along a textbook, with your own private resources
 
-**Status:** C1 built (2026-11-17): import (PDF or page photos) → background OCR job (`/course/ocr`) → outline detection and editor → texts into the Library → unit word lists → Anki deck mapping → unit status → Learn next / Add missing words per unit. Book exercises (C2) and unit practice are built too, as a first version. Not yet tried on the real book with Tesseract. Motivated by learning Dutch with _De Opmaat (NT2 A2)_. The design is generic: any book, course PDF, set of photos or web pages.
+**Status:** C1 built (2026-11-17), C2 first version, parts of C3 built (2026-11-18): any textbook (PDF with or without text layer, EPUB, page photos, web pages; multilingual outline words; page-strip outline editor), resumable imports, bulk "Add words to Anki" with preview, unit grammar linked to topic pages, and AI exercises per unit (validated, graded by the book checkers). **Tried on the real book** (_De Opmaat A2_, 289 scanned pages): see [Real-book results](#real-book-results-2026-11-18). The design is generic: any book, course PDF, set of photos or web pages.
 
 ## Principles
 
@@ -65,6 +65,47 @@ Events: `CourseImported`, `UnitDefined`/`UnitEdited`, `BlocksExtracted`, `BookEx
   - **Grammar:** the unit's topics with explanation (from the book's appendix, OCR'd, for your own use) and practice.
   - **Practice:** a session for this unit.
 - **Import wizard:** upload → OCR progress → outline editor → mapping to Anki decks → done.
+
+## Any textbook (2026-11-18)
+
+Nothing in the pipeline is specific to the example book any more:
+
+- **Sources:** a PDF (pages with a text layer skip OCR; scanned pages are OCR'd), an **EPUB** (each spine document is a page, no OCR), photos of pages, or a list of **web pages** (one unit each, via `/extract/url`). OCR runs in the profile's language (`lang`; Tesseract `nld`, `deu`, `fra`, ... when the language pack is installed; the server answers with an install hint otherwise).
+- **Outline**, in this order: the contents page (headings _Inhoud, Contents, Inhalt, Table des matières, Índice, Зміст..._), entries with or without a unit word (_Thema, Chapter, Unit, Lesson, Lektion, Kapitel, Leçon, Unité, Lección, Unidad, Lezione, Urok..._, `course/vocab.ts`); the printed-page offset from running footers, else from page numbers at the top or bottom of pages, else from finding each contents title on the pages. Without a contents page: running footers (_Thema 3 Winkelen 52_), else unit headings at the top of pages (_Lektion 3: Einkaufen_), plus appendix headings (grammar, transcripts, word list) after the last unit. Unit titles keep the book's own word ("Lektion 3 Einkaufen", "Unit 3 Food", or "3 Food").
+- **Exercises:** exercise headers in several languages (_Oefening, Opdracht, Exercise, Activity, Task, Übung, Aufgabe, Exercice, Ejercicio, Esercizio, Ćwiczenie, Вправа..._) and English, German, French and Spanish instruction keywords next to the Dutch ones. Multiple-choice questions (a question line followed by lettered options, with the tick boxes OCR reads as `[ |`, `L |`, `«`) become choice items whatever the instruction says. The task line is found below a situation sentence.
+- **Outline editor:** the units on the left (title, kind, page range, **Merge up**, Remove) and every page of the book on the right with its first lines; **Start a unit here** on a page splits the unit that holds it (`splitOutlineAt`, `mergeOutlineRow` in core). Page numbers can still be typed.
+- **Resume:** the reading job's id is remembered in the browser. Leaving the wizard (or closing the tab) and coming back offers **Continue**; the server keeps a finished job for an hour, and recognised pages are cached on disk (`KENNING_COURSE_CACHE_DIR`, a volume in compose), so even after a server restart choosing the file again is quick.
+- **Server:** pages are rendered one at a time and OCR'd by `KENNING_OCR_WORKERS` Tesseract processes (default half the CPUs, at most 6), published in page order, with the time left in the job status.
+
+Tests: two synthetic books (an English coursebook with "Unit N" contents, running headers and a glossary by unit; a German one with no contents page, "Lektion N" headings and "Übung" exercises) in `packages/core/src/course/anybook.test.ts`; text-layer PDF, EPUB, disk cache and order in `server/nlp/tests/test_course.py`.
+
+## Words to Anki
+
+- **Unit page → Add N words to Anki…** opens a preview of the unit's words that are not in Anki: de/het, a gloss (the word list's, else the dictionary's), and **a sentence from the book's pages** that uses the word (lemma or a form sharing its stem). Words you know and words with a note are skipped and counted; each word can be unticked. **Course page → Add all course words to Anki…** does the same over all units, with the same confirm step.
+- The deck comes from the language profile (ADR 0010, `courseDecks`): per unit (the Anki deck the unit is mapped to, else `Kenning::<Lang>::<Course>::<Unit>`), per course, or the default deck; the shared AddToAnki picker overrides it. Every note goes through `addWordToAnki` (tags `kenning::course::<book>::<unit>`, the sentence in the Sentence field), logged as `NoteAddedToAnki`.
+- **A different book or someone else's deck:** deck suggestions match unit numbers after any unit word ("Thema 03", "Lektion 2", "Unit 3::Words": the deepest level with a number) and title words. For the user's own _De Opmaat A2_ deck (`De Opmaat A2::Thema 01 – Kennismaken` ... `Thema 10 – Nederland en natuur`, 4,508 notes) every unit gets its deck, including the ones whose titles differ (Vervoer ↔ Onderweg, Verleden, heden, toekomst ↔ Nederland en natuur) by number alone.
+
+## AI per unit (only with a provider)
+
+- **Generate exercises like this unit** (Exercises tab): new gap fills, sentence building, questions about a short text and word–meaning matching, made from the kinds the book's unit uses, the unit's words (new ones first) and the grammar point its texts show most. Every sentence is checked by the language server before it is kept (see [ai.md](../ai.md#unit-exercises)); kept exercises are stored as `UnitExercisesGenerated` events, shown under **Made for this unit** and graded by the same checkers as the book's exercises (numbers from 1001).
+- **Create a story** on a unit uses the unit's new words and its main grammar point.
+- **Grammar tab:** the topics the unit's own sentences show (rule-based detectors, no AI), each linked to its topic page and its practice; the book's grammar notes follow, folded.
+
+## Real-book results (2026-11-18)
+
+_De Opmaat A2_, 106 MB PDF, 289 scanned pages, no text layer, Tesseract 5.5 `nld`, 12-core laptop, 6 workers:
+
+| Step                | Result                                                                                                                                                            |
+| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| OCR (`/course/ocr`) | 211 s for 289 pages (was single-threaded); mean word confidence 0.875; a re-import from the disk cache: REIMPORT_S                                                |
+| Outline             | 13 of 13 units right (10 themes, grammar, transcripts, word list): every start page matches the contents, titles from the footers; 73 ms                          |
+| Word lists          | 2,210 entries over 10 units vs the user's own deck: precision 99.4 %, recall 97.5 %, de/het right for 97.1 %                                                      |
+| Exercises           | 218 recognised: 34 choice (questions with options), 10 gap fill, 1 table, 1 sentence building, 1 matching, 74 open or listening tasks, 97 unknown (shown as text) |
+| Analysis            | ANALYZE_S (derived answers, NNN reading texts into the Library)                                                                                                   |
+| Words to Anki       | unit 3: PREVIEW_U3                                                                                                                                                |
+| Grammar             | GRAMMAR_U3                                                                                                                                                        |
+
+Without the contents page (blanked), the footers alone still give all 10 themes, 6 with the exact first page and the rest one or two pages late (the theme's title page has no footer), and the word list appendix.
 
 ## Sharing without sharing the book
 
