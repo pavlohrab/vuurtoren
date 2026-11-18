@@ -39,7 +39,7 @@ All shared-library stripping was verified by running the full pytest suite (775 
 the final image against the real data.
 
 Remaining big items: spaCy model 53 MB, ctranslate2 74 MB (one library, no CUDA split
-available), blis 34 MB, numpy 45 MB, pypdfium2 9 MB, lxml 12 MB, uvloop 16 MB.
+available), blis 34 MB, numpy 43 MB, pypdfium2 9 MB, lxml 12 MB, uvloop 16 MB.
 
 ## Runtime
 

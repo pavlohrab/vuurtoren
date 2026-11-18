@@ -93,12 +93,12 @@ flowchart LR
 The NLP image holds code and libraries only; its data are versioned **data packs** on the
 `/data` volume (`server/nlp/src/kenning_nlp/packs.py`, manifest `packs.json` next to it):
 
-| pack                  | contents                               | archive | installed |
-| --------------------- | -------------------------------------- | ------- | --------- |
-| `dictionary-nl`       | Wiktionary (Kaikki) glosses, forms     | 14 MB   | 39 MB     |
-| `sentences-nl`        | Tatoeba sentences + lemma index        | 20 MB   | 47 MB     |
-| `mt-nl-en`            | OPUS-MT nl→en, CTranslate2 int8        | 70 MB   | 84 MB     |
-| `grammar-examples-nl` | derived: built on the server (< 2 min) | —       | 0.4 MB    |
+| pack                  | contents                              | archive | installed |
+| --------------------- | ------------------------------------- | ------- | --------- |
+| `dictionary-nl`       | Wiktionary (Kaikki) glosses, forms    | 14 MB   | 39 MB     |
+| `sentences-nl`        | Tatoeba sentences + lemma index       | 20 MB   | 47 MB     |
+| `mt-nl-en`            | OPUS-MT nl→en, CTranslate2 int8       | 70 MB   | 84 MB     |
+| `grammar-examples-nl` | derived: built on the server (~3 min) | —       | 0.4 MB    |
 
 - **Manifest**: `{name: {version, sha256, size}}`; the archive is `<name>-<version>.tar.gz`
   (deterministic tar.gz of one file or directory). A marker `<data>.pack.json` records what is
