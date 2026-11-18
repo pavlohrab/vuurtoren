@@ -248,6 +248,7 @@ export async function createHttpRepository(
     conversationEvents: () => call("conversationEvents"),
     generatedSentences: (lang) => call("generatedSentences", lang),
     examAttempts: (lang) => call("examAttempts", lang),
+    suggestedWords: (lang) => call("suggestedWords", lang),
     // The server serialises every call already; nothing to lock on this side.
     exclusive: (fn) => fn(),
     close: () => Promise.resolve(),

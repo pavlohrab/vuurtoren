@@ -2,6 +2,8 @@
 /**
  * Kenning MCP server (stdio). Lets Claude Desktop / Claude Code (or any MCP client) read the
  * learner's data under the user's own subscription (ADR 0005): no keys, no OAuth handling here.
+ * Prefer the server's own endpoint (/api/mcp, Settings → AI → Use with Claude Code) when Kenning
+ * runs on a server; this stdio server adds `add_to_anki` for a local AnkiConnect.
  *
  * Environment:
  *   KENNING_URL        base URL of the Kenning server (required), e.g. http://localhost:8080
@@ -15,7 +17,8 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { AnkiConnectClient } from "@app/anki";
 import { createHttpRepository } from "@app/db/http";
 import { NlpClient } from "@app/nlp-client";
-import { createHandlers } from "./handlers.js";
+import { createToolHandlers } from "@app/mcp-tools";
+import { createAnkiHandler } from "./handlers.js";
 import { buildServer } from "./server.js";
 
 async function main(): Promise<void> {
@@ -43,13 +46,12 @@ async function main(): Promise<void> {
     url: env["KENNING_ANKI_URL"] ?? "http://127.0.0.1:8765",
     ...(ankiKey ? { apiKey: ankiKey } : {}),
   });
-  const handlers = createHandlers({
+  const handlers = createToolHandlers({
     repo,
-    deck: env["KENNING_DECK"],
     analyze: async (text) => (await nlp.analyzeText("nl", [text]))[0]?.tokens ?? [],
-    anki,
   });
-  await buildServer(handlers).connect(new StdioServerTransport());
+  const addToAnki = createAnkiHandler({ repo, anki, deck: env["KENNING_DECK"] });
+  await buildServer(handlers, addToAnki).connect(new StdioServerTransport());
   // stdout carries the protocol; log to stderr only.
   console.error("kenning-mcp ready");
 }
