@@ -3,7 +3,7 @@ import { type KenningRepository, contentHash, createRepository } from "@app/db";
 import { createNodeDriver } from "@app/db/node";
 import type { GrammarHit as ServerHit, NlpClient } from "@app/nlp-client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { chunkText } from "./live.js";
+import { chunkText } from "./liveTexts.js";
 import { GRAMMAR_VERSION, createLiveGrammar, rebaseHits } from "./liveGrammar.js";
 
 /** Tokenizer like the server's: words and full stops, sentences end at a full stop. */

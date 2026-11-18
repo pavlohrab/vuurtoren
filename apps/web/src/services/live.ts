@@ -1,284 +1,25 @@
 /**
  * Real services: local database (@app/db), planner (@app/core), NLP service (@app/nlp-client)
  * and AnkiConnect (@app/anki). The UI only sees the AppServices interface.
+ *
+ * This is the composition root: each domain lives in its own module and gets what it needs
+ * from here (settings and clients, the learner-model cache, the dictionary, texts).
  */
-import {
-  AnkiConnectClient,
-  probeAnki,
-  requestAnkiPermission,
-  type AnkiConnectionState,
-  addWordToAnki,
-  cardStatus,
-  highlightSentence,
-  markWordKnown,
-  setAppWordState,
-  studyWordFirst,
-  resetToAnkiState,
-  type NoteCardStatus,
-} from "@app/anki";
-import {
-  type AnalyzedToken,
-  DEFAULT_PLANNER,
-  type LearnerModel,
-  type PlannerOptions,
-  type SegmentPlan,
-  type StaircaseState,
-  type TokenLabel,
-  type WordState,
-  classifyTokens,
-  estimateVocabulary,
-  matchToken,
-  normalizeKey,
-  planText,
-  summarizeModel,
-  textDifficulty,
-  updateStaircase,
-} from "@app/core";
-import {
-  type KenningRepository,
-  type StoredText,
-  type WordInfo,
-  contentHash,
-  createUlidGenerator,
-} from "@app/db";
-import { absentAnki, ankiFromStatus, unavailableAnki } from "./ankiState.js";
-import { suggestionEntry } from "./suggestions.js";
-import { NlpClient, NlpError, createPracticeData } from "@app/nlp-client";
-import { DEGRADED_MESSAGES, clearDegraded, reportDegraded, watchClient } from "./degraded.js";
-import { createLiveCourses } from "./liveCourses.js";
+import type { KenningRepository } from "@app/db";
+import { createPracticeData } from "@app/nlp-client";
 import { createLiveAI } from "./liveAI.js";
+import { createLiveCourses } from "./liveCourses.js";
+import { composeGlosses, createLiveDictionary } from "./liveDictionary.js";
 import { createLiveExam } from "./liveExam.js";
-import { createLiveProfile } from "./liveProfile.js";
-import type { AddOptions } from "./profileTypes.js";
 import { createLiveGrammar } from "./liveGrammar.js";
+import { createLearnerCache } from "./liveLearner.js";
 import { createLivePractice } from "./livePractice.js";
-import { fetchTexts } from "./textBatch.js";
-import { activitySince, groupActivity } from "./activity.js";
-import type {
-  AnkiConnectResult,
-  AnkiStatus,
-  AppServices,
-  ImportInput,
-  InspectorEntry,
-  LearnerSummary,
-  ReadingView,
-  Settings,
-  TextListItem,
-  TextWordItem,
-} from "./types.js";
-
-/** How long opening a word waits for Anki before showing "Anki not reachable". */
-const INSPECT_TIMEOUT_MS = 3000;
-/** The review asks for many notes at once, so it waits a little longer than one word does. */
-const REVIEW_TIMEOUT_MS = 5000;
-const ANKI_KEY_STORAGE = "kenning.ankiKey";
-function readSecret(name: string): string | undefined {
-  try {
-    return localStorage.getItem(name) ?? undefined;
-  } catch {
-    return undefined;
-  }
-}
-function writeSecret(name: string, value: string): void {
-  try {
-    if (value) localStorage.setItem(name, value);
-    else localStorage.removeItem(name);
-  } catch {
-    // storage unavailable (private mode): the key lasts for this session only
-  }
-}
-
-export const DEFAULT_SETTINGS: Settings = {
-  // Dev server proxies /anki and /nlp (vite.config.ts); nginx proxies /nlp in production.
-  ankiUrl: import.meta.env.DEV ? "/anki" : "http://127.0.0.1:8765",
-  nlpUrl: (import.meta.env["VITE_NLP_URL"] as string | undefined) ?? "/nlp",
-  lang: "nl",
-  targetDeck: "Kenning::Nederlands",
-  theme: "system",
-  help: 0.25,
-  newWords: "auto",
-  glossClozes: false,
-  grammarMarks: true,
-};
-
-// spaCy universal POS -> Wiktionary (kaikki) part of speech, to pick the sense that fits.
-const KAIKKI_POS: Record<string, string[]> = {
-  NOUN: ["noun"],
-  PROPN: ["name", "noun"],
-  VERB: ["verb"],
-  AUX: ["verb"],
-  ADJ: ["adj"],
-  ADV: ["adv"],
-  PRON: ["pron"],
-  DET: ["det", "article", "pron"],
-  ADP: ["prep", "postp"],
-  NUM: ["num"],
-  CCONJ: ["conj"],
-  SCONJ: ["conj"],
-  INTJ: ["intj"],
-};
-
-/** Max words per /gloss request (server limit 2000). */
-const GLOSS_BATCH = 500;
-
-/** Dictionary entries with senses of the token's part of speech first. */
-function orderByPos<T extends { pos: string }>(entries: T[], pos?: string): T[] {
-  const wanted = pos ? (KAIKKI_POS[pos] ?? []) : [];
-  return [
-    ...entries.filter((e) => wanted.includes(e.pos)),
-    ...entries.filter((e) => !wanted.includes(e.pos)),
-  ];
-}
-
-// Wiktionary form-of senses ("inflection of fietsen: …", "plural of …") are noise as glosses.
-const FORM_OF =
-  /^(inflection|plural|diminutive|singular|past|present|feminine|comparative|superlative)[^:]* of /i;
-
-const DEFAULT_STAIRCASE: StaircaseState = {
-  targetCoverage: DEFAULT_PLANNER.targetCoverage,
-  newWordBudget: DEFAULT_PLANNER.newWordBudget,
-};
-
-/** Max characters per /analyze/text request (server limit is higher; keeps requests snappy). */
-const CHUNK_CHARS = 40_000;
-
-/** Split at paragraph (or line) boundaries into chunks of at most `max` chars. */
-export function chunkText(text: string, max = CHUNK_CHARS): { start: number; text: string }[] {
-  const chunks: { start: number; text: string }[] = [];
-  let start = 0;
-  while (start < text.length) {
-    let end = Math.min(text.length, start + max);
-    if (end < text.length) {
-      const para = text.lastIndexOf("\n\n", end);
-      const line = text.lastIndexOf("\n", end);
-      const space = text.lastIndexOf(" ", end);
-      end = para > start ? para + 2 : line > start ? line + 1 : space > start ? space + 1 : end;
-    }
-    chunks.push({ start, text: text.slice(start, end) });
-    start = end;
-  }
-  return chunks;
-}
-
-/** Re-base chunk analyses into one token list for the whole text. */
-function mergeChunkTokens(chunks: { start: number; tokens: AnalyzedToken[] }[]): AnalyzedToken[] {
-  const out: AnalyzedToken[] = [];
-  let sentBase = 0;
-  for (const { start, tokens } of chunks) {
-    const base = out.length;
-    let maxSent = -1;
-    for (const t of tokens) {
-      maxSent = Math.max(maxSent, t.sent);
-      out.push({
-        ...t,
-        i: t.i + base,
-        head: t.head + base,
-        particle_of: t.particle_of === null ? null : t.particle_of + base,
-        sent: t.sent + sentBase,
-        start: t.start + start,
-        end: t.end + start,
-      });
-    }
-    sentBase += maxSent + 1;
-  }
-  return out;
-}
-
-function titleFrom(content: string): string {
-  const first = content.trim().split(/\n/)[0] ?? "";
-  return first.length > 60 ? `${first.slice(0, 57).trimEnd()}…` : first || "Untitled";
-}
-
-type Dictionary = Awaited<ReturnType<NlpClient["gloss"]>>;
-
-/** Character range [start, end) of every sentence, by sentence number. */
-function sentenceSpans(tokens: AnalyzedToken[]): Map<number, [number, number]> {
-  const spans = new Map<number, [number, number]>();
-  for (const t of tokens) {
-    const s = spans.get(t.sent);
-    if (s) s[1] = t.end;
-    else spans.set(t.sent, [t.start, t.end]);
-  }
-  return spans;
-}
-
-/** Meanings of a word: the card's gloss first, then dictionary senses (form-of noise removed). */
-function composeGlosses(
-  info: WordInfo | null,
-  entries: Dictionary[string] | undefined,
-  pos: string,
-): { glosses: string[]; article: string | undefined } {
-  const glosses: string[] = [];
-  if (info?.gloss) glosses.push(info.gloss);
-  const ordered = orderByPos(entries ?? [], pos);
-  for (const e of ordered)
-    for (const g of e.glosses)
-      if (!FORM_OF.test(g) && !PLACE_SENSE.test(g) && !glosses.includes(g)) glosses.push(g);
-  const article =
-    info?.article ??
-    ordered.find((e) => e.article === "de" || e.article === "het")?.article ??
-    undefined;
-  return { glosses: glosses.slice(0, 6), article };
-}
-
-/** Text ids: ULIDs (`crypto.randomUUID` does not exist in insecure http contexts). */
-const nextUlid = createUlidGenerator();
-
-/**
- * Wiktionary place-name senses ("a hamlet in Weststellingwerf, Friesland, Netherlands") are
- * noise for a learner looking up a common noun; proper nouns are not glossed this way anyway.
- */
-const PLACE_SENSE =
-  /^an? (hamlet|village|town|city|neighbourhood|neighborhood|municipality|river|surname|placename|place)\b.*\b(in|of)\b/i;
-
-/** Where a word may enter the review, strongest reason first. */
-const SOURCE_RANK = { introduce: 0, lookup: 1, gloss: 2 } as const;
-
-/** The language server is down or unreachable (not: it refused one request). */
-export const nlpOutage = (e: unknown): boolean =>
-  e instanceof NlpError && (e.status === null || e.status === 502 || e.status === 504);
-
-/**
- * Dictionary or sentence translation failed. An outage is already reported as "nlp" by the
- * client watcher; a missing feature (503: dictionary not built, model not fetched) is
- * reported as "translate".
- */
-function translationFailed(e: unknown): void {
-  if (!nlpOutage(e)) reportDegraded("translate", DEGRADED_MESSAGES.translate, e);
-}
-
-/** Map the client's connection state to what the Settings screen shows. */
-function toAnkiStatus(c: AnkiConnectionState): AnkiStatus {
-  switch (c.state) {
-    case "connected":
-      return { connected: true, state: "connected", version: c.version };
-    case "needs-key":
-      return {
-        connected: false,
-        state: "needs-key",
-        version: c.version,
-        error: "Anki allows this site but wants an API key. Enter it above.",
-      };
-    case "not-allowed":
-      return {
-        connected: false,
-        state: "not-allowed",
-        error: "Anki does not allow this site yet.",
-      };
-    case "busy":
-      return {
-        connected: false,
-        state: "busy",
-        error: "Anki did not answer in time. Is a dialog open in Anki?",
-      };
-    default:
-      return {
-        connected: false,
-        state: "not-running",
-        error: "Cannot reach Anki. Is Anki running with the AnkiConnect add-on installed?",
-      };
-  }
-}
+import { createLiveProfile } from "./liveProfile.js";
+import { createLiveSettings } from "./liveSettings.js";
+import { chunkText, createLiveTexts } from "./liveTexts.js";
+import { createLiveWords } from "./liveWords.js";
+import { type Platform, browserPlatform } from "./platform.js";
+import type { AppServices } from "./types.js";
 
 export interface LiveServicesOptions {
   /**
@@ -286,445 +27,68 @@ export interface LiveServicesOptions {
    * call (`HttpRepository.remoteChanged`). Absent in browser mode (one tab owns the data).
    */
   remoteChanged?: () => Promise<boolean>;
+  /** Network and device storage (review A20); the browser's by default. */
+  platform?: Platform;
 }
 
 export function createLiveServices(
   repo: KenningRepository,
   options: LiveServicesOptions = {},
 ): AppServices {
-  let settingsCache: Settings | null = null;
-  // Bumped whenever the learner model changes, so cached plans are recomputed.
-  let modelVersion = 0;
-  let modelCache: {
-    version: number;
-    lang: string;
-    model: Promise<LearnerModel>;
-  } | null = null;
-  let staircaseCache: {
-    version: number;
-    lang: string;
-    state: Promise<StaircaseState | null>;
-  } | null = null;
-  // Text content never changes under an id within this client (imports get new ids); another
-  // device's changes clear the cache through `checkRemoteChanges` (review A7).
-  const planCache = new Map<string, { version: number; view: ReadingView }>();
-  // Translation per lemma key: Anki gloss first, then the Wiktionary dictionary; null = none.
-  const glossCache = new Map<string, string | null>();
-  const translationCache = new Map<string, string>();
-  const inFlight = new Map<string, Promise<ReadingView | null>>();
-
-  /** Translations for (key, lemma) pairs, batched: one dictionary request for all misses. */
-  /**
-   * Translations for (key, lemma, pos) items: the Anki card's gloss first, then the Wiktionary
-   * dictionary (sense matching the part of speech preferred). `complete` is false when the
-   * dictionary could not be reached — callers must not treat missing entries as "no translation".
-   */
-  async function lookupGlosses(
-    items: { key: string; lemma: string; pos?: string }[],
-  ): Promise<{ found: Map<string, string>; complete: boolean }> {
-    const { lang } = await settings();
-    const cacheKey = (it: { key: string; pos?: string }) => `${it.key}|${it.pos ?? ""}`;
-    const seen = new Set<string>();
-    const missing = items.filter((it) => {
-      const k = cacheKey(it);
-      if (glossCache.has(k) || seen.has(k)) return false;
-      seen.add(k);
-      return true;
-    });
-    const needDict: { key: string; lemma: string; pos?: string }[] = [];
-    // One repository call for all card glosses (review A8), not one per word.
-    const infos = new Map(
-      (await repo.wordsByKeys(lang, [...new Set(missing.map((it) => it.key))])).map((w) => [
-        w.key,
-        w,
-      ]),
-    );
-    for (const it of missing) {
-      const gloss = infos.get(it.key)?.gloss;
-      if (gloss) glossCache.set(cacheKey(it), gloss);
-      else needDict.push(it);
-    }
-    let complete = true;
-    if (needDict.length) {
-      try {
-        const lemmas = [...new Set(needDict.map((it) => it.lemma))];
-        const dict: Record<string, { pos: string; glosses: string[] }[]> = {};
-        for (let i = 0; i < lemmas.length; i += GLOSS_BATCH) {
-          Object.assign(dict, await (await nlp()).gloss("nl", lemmas.slice(i, i + GLOSS_BATCH)));
-        }
-        clearDegraded("translate");
-        for (const it of needDict) {
-          const g = orderByPos(dict[it.lemma] ?? [], it.pos)
-            .flatMap((e) => e.glosses)
-            .find((x) => !FORM_OF.test(x));
-          glossCache.set(cacheKey(it), g ?? null);
-        }
-      } catch (e) {
-        // dictionary unavailable (503 when not built, or the server is down): retry next time
-        complete = false;
-        translationFailed(e);
-      }
-    }
-    const found = new Map<string, string>();
-    for (const it of items) {
-      const g = glossCache.get(cacheKey(it));
-      if (g) found.set(it.key, g);
-    }
-    return { found, complete };
-  }
-
-  async function settings(): Promise<Settings> {
-    if (!settingsCache) {
-      const saved = await repo.setting<Partial<Settings>>("settings");
-      // Older versions stored the key in the event log; ignore it there.
-      const rest: Partial<Settings> & { grammarSpotlights?: boolean } = { ...saved };
-      delete rest.ankiKey;
-      // The all-topics spotlight toggle became margin marks (on by default): whoever had the
-      // spotlights on keeps grammar in the reader; the old default (off) is not a choice.
-      if (rest.grammarMarks === undefined && rest.grammarSpotlights === true)
-        rest.grammarMarks = true;
-      delete rest.grammarSpotlights;
-      settingsCache = { ...DEFAULT_SETTINGS, ...rest };
-      const key = readSecret(ANKI_KEY_STORAGE);
-      if (key) settingsCache.ankiKey = key;
-    }
-    return settingsCache;
-  }
-  // Every language-server call feeds the shared degraded signal (review A17).
-  const nlp = async () =>
-    watchClient(new NlpClient({ url: (await settings()).nlpUrl }), "nlp", nlpOutage);
-  const ankiOptions = async (timeoutMs?: number) => {
-    const s = await settings();
-    return {
-      url: s.ankiUrl,
-      ...(s.ankiKey ? { apiKey: s.ankiKey } : {}),
-      ...(timeoutMs ? { timeoutMs } : {}),
-    };
-  };
-  const anki = async (timeoutMs?: number) => new AnkiConnectClient(await ankiOptions(timeoutMs));
-  /** The add request for a reader word (used by Add to Anki and Mark known). */
-  const addRequest = async (entry: InspectorEntry, opts?: AddOptions) => {
-    const v = await view(entry.textId);
-    const word =
-      entry.article && entry.pos === "NOUN" ? `${entry.article} ${entry.lemma}` : entry.lemma;
-    return {
-      profile: await profile.current(),
-      // Words from an AI story go to the profile's AI deck, other texts to the reading deck.
-      context: {
-        source: v?.text.sourceKind === "ai" ? ("ai" as const) : ("reading" as const),
-        ...(opts?.deck ? { deck: opts.deck } : {}),
-      },
-      word,
-      key: entry.key,
-      sentence: highlightSentence(entry.sentence, ...entry.sentenceHighlight),
-      ...(entry.glosses[0] ? { gloss: entry.glosses[0] } : {}),
-      ...(entry.sentenceTranslation ? { sentenceTranslation: entry.sentenceTranslation } : {}),
-      ...(v ? { source: v.text.title } : {}),
-    };
-  };
-  const record = (e: Parameters<typeof repo.append>[0]) => repo.append(e);
-  /** Live Anki state of a word; "unavailable" (with the reason) if Anki cannot answer in time. */
-  async function liveAnki(info: WordInfo | null): Promise<InspectorEntry["anki"]> {
-    if (!info || info.noteIds.length === 0) return absentAnki(info);
-    try {
-      const { notes } = await cardStatus(await anki(INSPECT_TIMEOUT_MS), info.noteIds);
-      clearDegraded("anki");
-      return ankiFromStatus(info, notes);
-    } catch (e) {
-      reportDegraded("anki", DEGRADED_MESSAGES.anki, e);
-      return unavailableAnki(info, e instanceof Error ? e.message : String(e));
-    }
-  }
-  /**
-   * Live Anki state for many words with ONE request; if Anki cannot answer in time every word is
-   * "unavailable" (with the reason), so no action is offered that would fail.
-   */
-  async function liveAnkiBatch(infos: (WordInfo | null)[]): Promise<InspectorEntry["anki"][]> {
-    const ids = [...new Set(infos.flatMap((i) => i?.noteIds ?? []))];
-    let notes: NoteCardStatus[] = [];
-    try {
-      const client = await anki(REVIEW_TIMEOUT_MS);
-      // With no notes to ask about, a version call still tells whether Anki is reachable.
-      if (ids.length) notes = (await cardStatus(client, ids)).notes;
-      else if (infos.length) await client.version();
-      if (infos.length) clearDegraded("anki");
-    } catch (e) {
-      reportDegraded("anki", DEGRADED_MESSAGES.anki, e);
-      const reason = e instanceof Error ? e.message : String(e);
-      return infos.map((i) => unavailableAnki(i, reason));
-    }
-    const byId = new Map(notes.map((n) => [n.noteId, n]));
-    return infos.map((info) =>
-      info && info.noteIds.length
-        ? ankiFromStatus(
-            info,
-            info.noteIds.flatMap((id) => byId.get(id) ?? []),
-          )
-        : absentAnki(info),
-    );
-  }
-  /** Sentence translations (offline MT), cached; missing entries when the model is unavailable. */
-  async function translateSentences(sentences: string[]): Promise<Map<string, string>> {
-    const todo = [...new Set(sentences.filter((s) => s.trim() && !translationCache.has(s)))];
-    if (todo.length) {
-      try {
-        const res = await (await nlp()).translate(todo, { source: "nl", target: "en" });
-        for (const r of res) translationCache.set(r.text, r.translation);
-        clearDegraded("translate");
-      } catch (e) {
-        // optional: model not fetched (503) or server down
-        translationFailed(e);
-      }
-    }
-    const out = new Map<string, string>();
-    for (const s of sentences) {
-      const t = translationCache.get(s);
-      if (t) out.set(s, t);
-    }
-    return out;
-  }
-  /** Dictionary entries for lemmas in one request; empty when the dictionary is unavailable. */
-  async function dictionaryFor(lemmas: string[]): Promise<Dictionary> {
-    if (lemmas.length === 0) return {};
-    try {
-      const dict = await (await nlp()).gloss("nl", lemmas);
-      clearDegraded("translate");
-      return dict;
-    } catch (e) {
-      // The dictionary is optional (503 when not built): words show without meanings.
-      translationFailed(e);
-      return {};
-    }
-  }
-  /** The inspector entry of one word occurrence; shared by `inspect` and `textWords`. */
-  function describeWord(
-    v: ReadingView,
-    t: AnalyzedToken,
-    spans: Map<number, [number, number]>,
-    w: {
-      key: string;
-      info: WordInfo | null;
-      label: InspectorEntry["label"];
-      dict: Dictionary;
-      anki: InspectorEntry["anki"];
-    },
-  ): InspectorEntry {
-    const [s0, s1] = spans.get(t.sent) ?? [t.start, t.end];
-    const { glosses, article } = composeGlosses(w.info, w.dict[t.lemma], t.pos);
-    const entry: InspectorEntry = {
-      textId: v.text.id,
-      tokenIndex: t.i,
-      surface: t.text,
-      lemma: t.lemma,
-      key: w.key,
-      label: w.label,
-      state: w.info?.state ?? "unknown",
-      pKnown: w.info?.pKnown ?? 0,
-      pos: t.pos,
-      glosses,
-      decks: w.info?.decks ?? [],
-      inAnki: w.info?.source === "anki" || w.info?.addedNoteId !== undefined,
-      anki: w.anki,
-      sentence: v.text.content.slice(s0, s1),
-      sentenceHighlight: [t.start - s0, t.end - s0],
-    };
-    if (article) entry.article = article;
-    if (w.info?.appLearning) entry.appLearning = true;
-    return entry;
-  }
-  const changed = () => {
-    modelVersion++;
-  };
-
-  async function model(): Promise<LearnerModel> {
-    const { lang } = await settings();
-    if (!modelCache || modelCache.version !== modelVersion || modelCache.lang !== lang) {
-      // The promise is cached, so concurrent callers share one read.
-      const entry = { version: modelVersion, lang, model: repo.learnerModel(lang) };
-      modelCache = entry;
-      entry.model.catch(() => {
-        if (modelCache === entry) modelCache = null;
-      });
-    }
-    return modelCache.model;
-  }
-
-  /** The staircase changes only with `finishSegment` (which bumps modelVersion) or remotely. */
-  function staircase(lang: string): Promise<StaircaseState | null> {
-    if (
-      !staircaseCache ||
-      staircaseCache.version !== modelVersion ||
-      staircaseCache.lang !== lang
-    ) {
-      const entry = { version: modelVersion, lang, state: repo.staircase(lang) };
-      staircaseCache = entry;
-      entry.state.catch(() => {
-        if (staircaseCache === entry) staircaseCache = null;
-      });
-    }
-    return staircaseCache.state;
-  }
-
-  async function plannerOptions(m: LearnerModel): Promise<PlannerOptions> {
-    const s = await settings();
-    const st = (await staircase(s.lang)) ?? DEFAULT_STAIRCASE;
-    return {
-      ...DEFAULT_PLANNER,
-      targetCoverage: st.targetCoverage,
-      newWordBudget: s.newWords === "auto" ? st.newWordBudget : s.newWords,
-      vocabEstimate: estimateVocabulary(m),
-    };
-  }
-
-  async function analyze(text: StoredText): Promise<AnalyzedToken[]> {
-    const client = await nlp();
-    const chunks = chunkText(text.content);
-    const analyses = await client.analyzeText(
-      "nl",
-      chunks.map((c) => c.text),
-    );
-    const tokens = mergeChunkTokens(
-      chunks.map((c, k) => ({ start: c.start, tokens: analyses[k]!.tokens as AnalyzedToken[] })),
-    );
-    await repo.append({
-      type: "TextAnalyzed",
-      textId: text.id,
-      contentHash: contentHash(text.content),
-      tokens,
-    });
-    return tokens;
-  }
-
-  /** Concurrent callers for the same text share one computation (and one analysis). */
-  function view(textId: string): Promise<ReadingView | null> {
-    const running = inFlight.get(textId);
-    if (running) return running;
-    const p = computeView(textId).finally(() => inFlight.delete(textId));
-    inFlight.set(textId, p);
-    return p;
-  }
-
-  /** A fresh cached view (same learner-model version), if any. */
-  function cachedView(textId: string): ReadingView | null {
-    const cached = planCache.get(textId);
-    return cached && cached.version === modelVersion ? cached.view : null;
-  }
-
-  async function computeView(textId: string): Promise<ReadingView | null> {
-    const hit = cachedView(textId);
-    if (hit) return hit;
-    const text = await repo.getText(textId);
-    if (!text) return null;
-    return (await computeViews([text]))[0] ?? null;
-  }
-
-  /**
-   * Plan several texts with one learner model, one planner-options read and one gloss lookup
-   * for all their clozes (review A8: the Library plans every text).
-   */
-  async function computeViews(texts: StoredText[]): Promise<ReadingView[]> {
-    if (texts.length === 0) return [];
-    const version = modelVersion;
-    const m = await model();
-    const opts = await plannerOptions(m);
-    const staircase = { targetCoverage: opts.targetCoverage, newWordBudget: opts.newWordBudget };
-    const views: ReadingView[] = [];
-    for (const text of texts) {
-      const tokens = text.tokens ?? (await analyze(text));
-      const plans: SegmentPlan[] = planText(tokens, m, opts, text.content);
-      views.push({ text: { ...text, tokens }, tokens, plans, staircase });
-    }
-    const cacheable = await dropUnhintableClozes(views, m);
-    if (cacheable && version === modelVersion) {
-      for (const v of views) planCache.set(v.text.id, { version, view: v });
-    }
-    return views;
-  }
-
-  /**
-   * A cloze needs a meaning hint to be fair (one sentence often fits several words), so clozes
-   * whose word has no translation are turned back into normal words. One lookup for all views.
-   */
-  async function dropUnhintableClozes(views: ReadingView[], m: LearnerModel): Promise<boolean> {
-    const keyOf = (t: AnalyzedToken) => matchToken(t, m) ?? normalizeKey(t.lemma);
-    const clozeTokens = views.flatMap((v) =>
-      v.plans.flatMap((p) => p.clozes).map((i) => v.tokens[i]!),
-    );
-    if (!clozeTokens.length) return true;
-    const { found, complete } = await lookupGlosses(
-      clozeTokens.map((t) => ({ key: keyOf(t), lemma: t.lemma, pos: t.pos })),
-    );
-    // Dictionary unreachable: keep the clozes rather than silently removing them all.
-    if (!complete) return false;
-    for (const { tokens, plans } of views) {
-      let base: ReturnType<typeof classifyTokens> | null = null;
-      for (const plan of plans) {
-        const drop = new Set(plan.clozes.filter((i) => !found.has(keyOf(tokens[i]!))));
-        if (!drop.size) continue;
-        base ??= classifyTokens(tokens, m);
-        plan.clozes = plan.clozes.filter((i) => !drop.has(i));
-        for (const p of plan.tokens) if (drop.has(p.i)) p.label = base[p.i]?.label ?? "known";
-      }
-    }
-    return true;
-  }
-
-  async function summary(): Promise<LearnerSummary> {
-    const { lang } = await settings();
-    const m = await model();
-    const counts = summarizeModel(m);
-    const snap = await repo.lastSnapshot(lang);
-    return {
-      known: counts.known,
-      learning: counts.learning,
-      // "Seen" words have been met in a text, so they are not part of "not yet met".
-      unknown: counts.unknown,
-      vocabEstimate: estimateVocabulary(m),
-      lastSync: snap?.at ?? null,
-      sources: snap?.sources ?? [],
-    };
-  }
+  const platform = options.platform ?? browserPlatform();
+  // Resolved at call time: the learner cache needs the language from the settings.
+  const changed = () => learner.changed();
+  const config = createLiveSettings({ repo, platform, changed });
+  const { settings, lang, nlp, anki } = config;
+  const learner = createLearnerCache(repo, lang);
+  const dictionary = createLiveDictionary({ repo, lang, nlp });
+  const texts = createLiveTexts({ repo, settings, nlp, learner, dictionary });
+  const model = learner.model;
 
   const grammar = createLiveGrammar({
     repo,
     nlp,
-    view,
+    view: texts.view,
     model,
     chunkText,
-    translate: translateSentences,
+    translate: dictionary.translateSentences,
   });
 
   const profile = createLiveProfile({ repo, settings, anki, nlp, changed });
+
+  const words = createLiveWords({
+    repo,
+    lang,
+    anki,
+    learner,
+    dictionary,
+    texts,
+    profile: profile.current,
+    ankiSnapshot: profile.snapshot,
+    synced: () => {
+      changed();
+      texts.clearPlans();
+      dictionary.clearGlosses();
+    },
+  });
 
   const ai = createLiveAI({
     repo,
     settings,
     profile: profile.current,
     model,
-    vocabEstimate: async () => (await summary()).vocabEstimate,
+    vocabEstimate: async () => (await learner.summary()).vocabEstimate,
     anki: () => anki(),
     glossLemmas: async (lemmas) =>
-      Object.fromEntries((await lookupGlosses(lemmas.map((l) => ({ key: l, lemma: l })))).found),
+      Object.fromEntries(
+        (await dictionary.lookupGlosses(lemmas.map((l) => ({ key: l, lemma: l })))).found,
+      ),
     changed,
     // Resolved at call time: the course services are created below.
     unitGrammar: (courseId, n) => courses.unitGrammar(courseId, n),
-    saveText: async ({ title, content, source }) => {
-      const textId = nextUlid();
-      await repo.append({
-        type: "TextImported",
-        textId,
-        title,
-        lang: (await settings()).lang,
-        source,
-        content,
-      });
-      // Analyse now when the server is up; the reader analyses on open otherwise. A paid story
-      // is never dropped because the language server is down.
-      const stored = await repo.getText(textId);
-      // Expected when the server is down (the outage shows in the degraded indicator).
-      if (stored) await analyze(stored).catch(() => undefined);
-      return textId;
-    },
+    saveText: texts.saveText,
+    storage: platform.storage,
+    fetch: platform.fetch,
   });
 
   // One cached practice-data source for practice and courses (review item A9).
@@ -736,9 +100,9 @@ export function createLiveServices(
     ...practice
   } = createLivePractice({
     repo,
-    lang: async () => (await settings()).lang,
+    lang,
     model,
-    dictionary: dictionaryFor,
+    dictionary: dictionary.dictionaryFor,
     composeGlosses,
     data: practiceData,
     topicMaterial: grammar.topicMaterial,
@@ -752,13 +116,14 @@ export function createLiveServices(
     nlp,
     anki,
     model,
-    wordData: async (lang, entries) => (await buildWordData(lang, entries)).words,
+    wordData: async (l, entries) => (await buildWordData(l, entries)).words,
     importText: (input) => services.importText(input),
     deckOptions: async () => (await services.deckChoices("course")).options.map((o) => o.deck),
     changed,
+    storage: platform.storage,
   });
 
-  const exam = createLiveExam({ repo, lang: async () => (await settings()).lang, changed });
+  const exam = createLiveExam({ repo, lang, changed });
 
   const services: AppServices = {
     ...profile.services,
@@ -769,385 +134,25 @@ export function createLiveServices(
     textGrammar: grammar.textGrammar,
     grammarOverview: grammar.grammarOverview,
     grammarExamples: grammar.grammarExamples,
-    async listTexts(): Promise<TextListItem[]> {
-      const texts = await repo.listTexts();
-      // Plan the analysed texts without a fresh cached plan together: batched text reads and
-      // one gloss lookup instead of several calls per text (review A8).
-      const stale = texts.filter((t) => t.analyzed && !cachedView(t.id));
-      const planned = new Map(
-        (await computeViews(await fetchTexts(repo, stale))).map((v) => [v.text.id, v]),
-      );
-      return texts.map((t) => {
-        const v = t.analyzed ? (cachedView(t.id) ?? planned.get(t.id)) : undefined;
-        const d = v ? textDifficulty(v.plans) : null;
-        return { ...t, coverage: d?.coverage ?? null, newTypes: d?.newTypes ?? null };
-      });
-    },
-
-    getReading: view,
+    ...texts.services,
+    ...words.services,
+    ...config.services,
 
     ...(options.remoteChanged
       ? {
           async checkRemoteChanges(): Promise<boolean> {
             if (!(await options.remoteChanged!())) return false;
             // Another device wrote: drop everything derived from the shared data.
-            settingsCache = null;
-            modelCache = null;
-            staircaseCache = null;
-            changed();
-            planCache.clear();
-            glossCache.clear();
+            config.invalidate();
+            learner.invalidate();
+            texts.clearPlans();
+            dictionary.clearGlosses();
             profile.invalidate();
             invalidatePractice();
             return true;
           },
         }
       : {}),
-
-    async importText(input: ImportInput, onProgress?: (msg: string) => void): Promise<string> {
-      const client = await nlp();
-      let title: string;
-      let content: string;
-      let ref: string | undefined;
-      if (input.kind === "paste" || input.kind === "talk") {
-        content = input.content;
-        title = input.title?.trim() || titleFrom(content);
-        ref = input.ref;
-      } else if (input.kind === "url") {
-        onProgress?.("Fetching the page…");
-        const page = await client.extractUrl(input.url);
-        content = page.text;
-        title = page.title || titleFrom(content);
-        ref = page.url;
-      } else if (input.kind === "pdf") {
-        onProgress?.("Reading the PDF…");
-        const pdf = await client.extractPdf(input.file, input.file.name);
-        if (pdf.needs_ocr) {
-          onProgress?.("The PDF has no text layer — running OCR (this can take a while)…");
-          content = (await client.ocr(input.file, "nl", input.file.name)).text;
-        } else content = pdf.text;
-        title = input.title?.trim() || pdf.title || input.file.name.replace(/\.pdf$/i, "");
-        ref = input.file.name;
-      } else {
-        onProgress?.("Recognising text in the photo…");
-        content = (await client.ocr(input.file, "nl", input.file.name)).text;
-        title = input.title?.trim() || titleFrom(content);
-        ref = input.file.name;
-      }
-      // Normalise line endings so paragraph detection ("\n\n") works for Windows text too.
-      content = content.replace(/\r\n?/g, "\n");
-      if (!content.trim()) throw new Error("No text found to import.");
-      const textId = nextUlid();
-      await repo.append({
-        type: "TextImported",
-        textId,
-        title,
-        lang: (await settings()).lang,
-        source: ref === undefined ? { kind: input.kind } : { kind: input.kind, ref },
-        content,
-      });
-      onProgress?.("Analysing the text…");
-      const stored = await repo.getText(textId);
-      try {
-        if (stored) await analyze(stored);
-      } catch (e) {
-        // Don't leave a half-imported text behind (a retry would create a duplicate).
-        await repo.append({ type: "TextDeleted", textId });
-        throw e;
-      }
-      return textId;
-    },
-
-    async deleteText(textId: string): Promise<void> {
-      await repo.append({ type: "TextDeleted", textId });
-      planCache.delete(textId);
-    },
-
-    async inspect(textId: string, tokenIndex: number): Promise<InspectorEntry> {
-      const v = await view(textId);
-      if (!v) throw new Error("Text not found");
-      const clicked = v.tokens[tokenIndex];
-      if (!clicked) throw new Error("Token not found");
-      // A detached particle ("op" in "Ik bel je op") stands for its verb.
-      const t = clicked.particle_of !== null ? (v.tokens[clicked.particle_of] ?? clicked) : clicked;
-      const { lang } = await settings();
-      const m = await model();
-      const key = matchToken(t, m) ?? normalizeKey(t.lemma);
-      const info = await repo.word(lang, key);
-      const planned = v.plans.flatMap((p) => p.tokens).find((p) => p.i === t.i);
-      const [dict, anki] = await Promise.all([dictionaryFor([t.lemma]), liveAnki(info)]);
-      const entry = describeWord(v, t, sentenceSpans(v.tokens), {
-        key,
-        info,
-        label: planned?.label ?? "new",
-        dict,
-        anki,
-      });
-      const tr = (await translateSentences([entry.sentence])).get(entry.sentence);
-      if (tr) entry.sentenceTranslation = tr;
-      return entry;
-    },
-
-    async textWords(textId, opts = {}): Promise<TextWordItem[]> {
-      const v = await view(textId);
-      if (!v) throw new Error("Text not found");
-      const { lang } = await settings();
-      const looked = new Set(await repo.lookedUpKeys(lang, textId));
-      // Union in text order: first qualifying occurrence of each key, strongest source wins.
-      const picked = new Map<
-        string,
-        { t: AnalyzedToken; label: TokenLabel; source: TextWordItem["source"] }
-      >();
-      for (const p of v.plans.flatMap((plan) => plan.tokens)) {
-        const t = v.tokens[p.i];
-        if (!t || !p.key || p.label === "nonword" || p.label === "ignored") continue;
-        // A detached particle stands for its verb, which has its own token.
-        if (t.particle_of !== null) continue;
-        const source: TextWordItem["source"] | null =
-          p.label === "introduce"
-            ? "introduce"
-            : p.label === "gloss" && opts.includeGlossed
-              ? "gloss"
-              : looked.has(p.key) && p.label !== "known"
-                ? "lookup"
-                : null;
-        if (!source) continue;
-        const have = picked.get(p.key);
-        if (!have) picked.set(p.key, { t, label: p.label, source });
-        else if (SOURCE_RANK[source] < SOURCE_RANK[have.source]) have.source = source;
-      }
-      if (picked.size === 0) return [];
-      // One read of the learner's words, one dictionary request, one Anki request.
-      const infoByKey = new Map((await repo.words(lang)).map((w) => [w.key, w]));
-      const chosen = [...picked.entries()].filter(([key]) => {
-        const state = infoByKey.get(key)?.state;
-        return state !== "known" && state !== "ignored";
-      });
-      const infos = chosen.map(([key]) => infoByKey.get(key) ?? null);
-      const dict = await dictionaryFor([...new Set(chosen.map(([, c]) => c.t.lemma))]);
-      const ankis = await liveAnkiBatch(infos);
-      const spans = sentenceSpans(v.tokens);
-      const rows = chosen.map(([key, c], n) => {
-        const entry = describeWord(v, c.t, spans, {
-          key,
-          info: infos[n] ?? null,
-          label: c.label,
-          dict,
-          anki: ankis[n]!,
-        });
-        return {
-          key,
-          lemma: entry.lemma,
-          ...(entry.article ? { article: entry.article } : {}),
-          pos: entry.pos,
-          glosses: entry.glosses,
-          sentence: entry.sentence,
-          sentenceHighlight: entry.sentenceHighlight,
-          tokenIndex: entry.tokenIndex,
-          source: c.source,
-          entry,
-        };
-      });
-      // One translation request for all row sentences.
-      const translations = await translateSentences(rows.map((r) => r.sentence));
-      for (const r of rows) {
-        const tr = translations.get(r.sentence);
-        if (tr) r.entry.sentenceTranslation = tr;
-      }
-      return rows;
-    },
-
-    async glosses(textId: string, tokenIndices: number[]): Promise<Record<number, string>> {
-      const v = await view(textId);
-      if (!v) return {};
-      const m = await model();
-      const items = tokenIndices.flatMap((i) => {
-        const clicked = v.tokens[i];
-        if (!clicked) return [];
-        const t =
-          clicked.particle_of !== null ? (v.tokens[clicked.particle_of] ?? clicked) : clicked;
-        return [{ i, key: matchToken(t, m) ?? normalizeKey(t.lemma), lemma: t.lemma, pos: t.pos }];
-      });
-      const { found } = await lookupGlosses(items);
-      const out: Record<number, string> = {};
-      for (const it of items) {
-        const g = found.get(it.key);
-        if (g) out[it.i] = g;
-      }
-      return out;
-    },
-
-    async addToAnki(entry: InspectorEntry, opts?: AddOptions) {
-      const { noteId, deck } = await addWordToAnki(
-        await anki(),
-        record,
-        await addRequest(entry, opts),
-      );
-      changed();
-      return { noteId, deck };
-    },
-
-    async learnNext(entry: InspectorEntry): Promise<{ deck: string }> {
-      const noteId = entry.anki.noteIds[0];
-      if (noteId === undefined) throw new Error("This word has no card in Anki");
-      await studyWordFirst(await anki(), record, {
-        lang: (await settings()).lang,
-        key: entry.key,
-        noteId,
-        cardIds: entry.anki.cardIds,
-      });
-      changed();
-      return { deck: entry.anki.deck ?? "" };
-    },
-
-    async markKnown(entry: InspectorEntry, opts?: AddOptions): Promise<{ addedToDeck?: string }> {
-      if (entry.anki.status === "unavailable") {
-        throw new Error(entry.anki.detail ?? "Anki is not reachable");
-      }
-      const { addedToDeck } = await markWordKnown(await anki(), record, {
-        lang: (await settings()).lang,
-        key: entry.key,
-        noteIds: entry.anki.noteIds,
-        cardIds: entry.anki.cardIds,
-        add: await addRequest(entry, opts),
-      });
-      changed();
-      return addedToDeck ? { addedToDeck } : {};
-    },
-
-    async resetWordState(key: string): Promise<void> {
-      await resetToAnkiState(record, (await settings()).lang, key);
-      changed();
-    },
-
-    async setWordState(key: string, state: WordState): Promise<void> {
-      await setAppWordState(record, (await settings()).lang, key, state);
-      changed();
-    },
-
-    async recordLookup(textId: string, key: string): Promise<void> {
-      await repo.append({ type: "WordLookedUp", lang: (await settings()).lang, key, textId });
-      // The word becomes "seen": refresh counts, but keep the current page's plan stable.
-      modelCache = null;
-    },
-
-    async recordClozeAnswer(key: string, correct: boolean, hinted: boolean): Promise<void> {
-      const { lang } = await settings();
-      await repo.append({ type: "ClozeAnswered", lang, key, correct, hinted, at: Date.now() });
-      // Like a lookup: refresh counts later, keep the current page's plan stable.
-      modelCache = null;
-    },
-
-    async finishSegment(textId, segment, outcome): Promise<StaircaseState> {
-      const { lang } = await settings();
-      const current = (await repo.staircase(lang)) ?? DEFAULT_STAIRCASE;
-      const next = updateStaircase(current, outcome);
-      await repo.append({ type: "ReadingProgress", textId, segment, ...outcome });
-      await repo.append({ type: "StaircaseUpdated", lang, state: next });
-      changed();
-      return next;
-    },
-
-    getSettings: settings,
-
-    async saveSettings(patch: Partial<Settings>): Promise<void> {
-      const next = { ...(await settings()), ...patch };
-      // Secrets never go into the append-only (later: synced) event log.
-      if ("ankiKey" in patch) writeSecret(ANKI_KEY_STORAGE, patch.ankiKey ?? "");
-      const persisted: Partial<Settings> = { ...next };
-      delete persisted.ankiKey;
-      await repo.append({ type: "SettingChanged", key: "settings", value: persisted });
-      settingsCache = next;
-      if ("newWords" in patch || "lang" in patch) changed();
-    },
-
-    async ankiStatus(): Promise<AnkiStatus> {
-      return toAnkiStatus(await probeAnki(await ankiOptions()));
-    },
-
-    async connectAnki(): Promise<AnkiConnectResult> {
-      const outcome = await requestAnkiPermission(await ankiOptions());
-      const status = toAnkiStatus(await probeAnki(await ankiOptions()));
-      return { denied: outcome.outcome === "denied", status };
-    },
-
-    async syncAnki(onProgress?: (msg: string) => void): Promise<LearnerSummary> {
-      const { lang } = await settings();
-      // The confirmed sources of the language profile, plus destination and course decks.
-      const snap = await profile.snapshot(onProgress);
-      await repo.append({
-        type: "AnkiSnapshotImported",
-        lang,
-        entries: snap.entries,
-        sources: snap.sources.map((s) => s.deck),
-      });
-      changed();
-      planCache.clear();
-      glossCache.clear();
-      return summary();
-    },
-
-    learnerSummary: summary,
-
-    async words(opts = {}) {
-      const { lang } = await settings();
-      if (!opts.keys) return repo.words(lang, opts);
-      const { keys, limit, offset = 0, ...rest } = opts;
-      const wanted = new Set(keys);
-      const rows = (await repo.words(lang, rest)).filter((w) => wanted.has(w.key));
-      return rows.slice(offset, limit === undefined ? undefined : offset + limit);
-    },
-
-    async activity(days = 7) {
-      const now = Date.now();
-      return groupActivity(await repo.activity(activitySince(now, days)), now, days);
-    },
-
-    async suggestedWords() {
-      return repo.suggestedWords((await settings()).lang);
-    },
-    async addSuggestedToAnki(key, opts) {
-      const { lang } = await settings();
-      const s = (await repo.suggestedWords(lang)).find((x) => x.key === key);
-      if (!s) throw new Error("That suggestion is gone.");
-      const entry = suggestionEntry(await services.inspectWord(key), s);
-      const added = await services.addToAnki(entry, opts);
-      await repo.append({ type: "WordSuggestionDismissed", lang, key });
-      return added;
-    },
-    async dismissSuggestion(key) {
-      await repo.append({ type: "WordSuggestionDismissed", lang: (await settings()).lang, key });
-    },
-    async inspectWord(key: string): Promise<InspectorEntry> {
-      const { lang } = await settings();
-      const info = await repo.word(lang, key);
-      const [dict, ankiState] = await Promise.all([dictionaryFor([key]), liveAnki(info)]);
-      const pos = info?.article ? "NOUN" : (dict[key]?.[0]?.pos ?? "");
-      const { glosses, article } = composeGlosses(info, dict[key], pos);
-      const sentence = info?.sentence ?? "";
-      const at = sentence.toLocaleLowerCase().indexOf(key.toLocaleLowerCase());
-      const entry: InspectorEntry = {
-        textId: "",
-        tokenIndex: -1,
-        surface: key,
-        lemma: key,
-        key,
-        label: "new",
-        state: info?.state ?? "unknown",
-        pKnown: info?.pKnown ?? 0,
-        pos,
-        glosses,
-        decks: info?.decks ?? [],
-        inAnki: info?.source === "anki" || info?.addedNoteId !== undefined,
-        anki: ankiState,
-        sentence,
-        sentenceHighlight: at >= 0 ? [at, at + key.length] : [0, 0],
-      };
-      if (article) entry.article = article;
-      if (info?.appLearning) entry.appLearning = true;
-      if (info?.sentenceTranslation) entry.sentenceTranslation = info.sentenceTranslation;
-      return entry;
-    },
   };
   return services;
 }

@@ -5,7 +5,7 @@ import { createNodeDriver } from "@app/db/node";
 import type { NlpClient } from "@app/nlp-client";
 import { afterEach, describe, expect, it } from "vitest";
 import { createLiveProfile } from "./liveProfile.js";
-import { DEFAULT_SETTINGS } from "./live.js";
+import { DEFAULT_SETTINGS } from "./liveSettings.js";
 import type { Settings } from "./types.js";
 
 interface Note {

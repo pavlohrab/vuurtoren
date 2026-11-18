@@ -3,6 +3,7 @@
  * the event log), conversations (events ConversationStarted / MessageAdded), reader helpers.
  * No request leaves the browser except to the provider the user configured (ADR 0005).
  */
+import { deviceStorage } from "../storage/local.js";
 import {
   AIError,
   type AIProvider,
@@ -134,23 +135,6 @@ class AILockedError extends Error {
   }
 }
 
-function defaultStorage(): KeyValueStorage {
-  try {
-    const t = "kenning.ai.probe";
-    localStorage.setItem(t, "1");
-    localStorage.removeItem(t);
-    return localStorage;
-  } catch {
-    // Expected in private windows / blocked storage: settings last for this session only.
-    const m = new Map<string, string>();
-    return {
-      getItem: (k) => m.get(k) ?? null,
-      setItem: (k, v) => void m.set(k, v),
-      removeItem: (k) => void m.delete(k),
-    };
-  }
-}
-
 const DEFAULT_AI: AISettings = (() => {
   const p = presetFor("anthropic");
   return { provider: p.id, baseUrl: p.baseUrl, model: p.defaultModel, budgetNote: "" };
@@ -165,7 +149,7 @@ export function createLiveAI(deps: LiveAIDeps): AIServices &
     aiReady: () => boolean;
   } {
   const { repo } = deps;
-  const storage = deps.storage ?? defaultStorage();
+  const storage = deps.storage ?? deviceStorage();
   /** Decrypted keys of this session only. */
   const unlocked = new Map<string, string>();
 

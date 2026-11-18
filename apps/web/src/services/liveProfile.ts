@@ -183,3 +183,5 @@ export function createLiveProfile(deps: LiveProfileDeps) {
 
   return { services, current, snapshot, invalidate: () => (cache = null) };
 }
+
+export type LiveProfile = ReturnType<typeof createLiveProfile>;

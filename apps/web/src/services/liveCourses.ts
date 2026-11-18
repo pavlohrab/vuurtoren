@@ -4,6 +4,8 @@
  * the user's own NLP server. Anki writes are the explicit actions of ADR 0007 (Learn next, add
  * notes), each logged as an event.
  */
+import { pct } from "../format.js";
+import { deviceStorage } from "../storage/local.js";
 import { AnkiConnectClient, addWordToAnki, studyWordsFirst } from "@app/anki";
 import {
   type Block,
@@ -103,22 +105,6 @@ export interface LiveCoursesDeps {
 
 const PENDING_KEY = "kenning.course.pendingImport";
 
-function defaultStorage(): Pick<Storage, "getItem" | "setItem" | "removeItem"> {
-  try {
-    localStorage.setItem("kenning.probe", "1");
-    localStorage.removeItem("kenning.probe");
-    return localStorage;
-  } catch {
-    // Expected in private windows / blocked storage: in-memory for this session.
-    const m = new Map<string, string>();
-    return {
-      getItem: (k) => m.get(k) ?? null,
-      setItem: (k, v) => void m.set(k, v),
-      removeItem: (k) => void m.delete(k),
-    };
-  }
-}
-
 /** "about 3 min left" from seconds. */
 function etaText(eta: number | null | undefined): string {
   if (eta === null || eta === undefined) return "";
@@ -177,7 +163,7 @@ export function createLiveCourses(deps: LiveCoursesDeps): CourseServices {
 
   // ------------------------------------------------------------------ import
 
-  const storage = deps.storage ?? defaultStorage();
+  const storage = deps.storage ?? deviceStorage();
   const readPending = (): PendingImport | null => {
     try {
       const raw = storage.getItem(PENDING_KEY);
@@ -1199,7 +1185,7 @@ export function createLiveCourses(deps: LiveCoursesDeps): CourseServices {
         );
       if (fp.ratio < MIN_FINGERPRINT_MATCH)
         throw new Error(
-          `Your file does not look like the book of this pack: only ${Math.round(fp.ratio * 100)}% of its pages match.`,
+          `Your file does not look like the book of this pack: only ${pct(fp.ratio)} of its pages match.`,
         );
       const courseId = await buildCourse(
         pages,

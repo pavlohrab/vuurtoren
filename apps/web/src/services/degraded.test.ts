@@ -11,7 +11,7 @@ import {
   watchClient,
 } from "./degraded.js";
 import { freshnessHeld, holdFreshness, onFreshnessReleased } from "./freshness.js";
-import { nlpOutage } from "./live.js";
+import { nlpOutage } from "./liveSettings.js";
 
 afterEach(() => resetDegraded());
 
