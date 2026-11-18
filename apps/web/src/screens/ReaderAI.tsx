@@ -1,5 +1,5 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useRef } from "react";
 import { Button, Spinner } from "@app/ui";
 import type { ExplainGrammar } from "../services/aiTypes.js";
 import { useServices } from "../services/context.js";
@@ -8,7 +8,7 @@ const message = (e: unknown) => (e instanceof Error && e.message ? e.message : "
 const pct = (v: number | null) => (v === null ? "not scored" : `${(v * 100).toFixed(1)}%`);
 
 /** True once an AI provider is usable; the helpers below render nothing otherwise. */
-function useAIReady(): boolean {
+export function useAIReady(): boolean {
   const services = useServices();
   const q = useQuery({ queryKey: ["ai-status"], queryFn: () => services.aiStatus() });
   return q.data?.configured === true;
@@ -54,38 +54,43 @@ export function ExplainSentence({
   );
 }
 
-/** "Simplify this page": a rewrite shown beside the original, re-scored. The text is untouched. */
-export function SimplifyPage({ text }: { text: string }) {
+/**
+ * "Simplify this page" (started from the reader's "…" menu): a rewrite shown under the original,
+ * re-scored. The text is untouched. It runs once when shown.
+ */
+export function SimplifyPage({ text, onClose }: { text: string; onClose: () => void }) {
   const services = useServices();
-  const ready = useAIReady();
-  const [open, setOpen] = useState(false);
   const simplify = useMutation({ mutationFn: () => services.aiSimplify(text) });
-  if (!ready) return null;
+  const started = useRef(false);
+  const { mutate } = simplify;
+  useEffect(() => {
+    if (started.current) return;
+    started.current = true;
+    mutate();
+  }, [mutate]);
   return (
-    <section className="stack" style={{ maxWidth: "var(--measure)", margin: "16px auto 0" }}>
+    <section className="stack reader-simplify" aria-label="Simplify this page">
       <div className="row">
-        <Button
-          onClick={() => {
-            setOpen(true);
-            simplify.mutate();
-          }}
-          disabled={simplify.isPending}
-        >
-          {simplify.isPending ? <Spinner label="Simplifying" /> : null}
-          Simplify this page
-        </Button>
-        {open ? (
-          <Button variant="ghost" onClick={() => setOpen(false)}>
-            Hide
+        {simplify.isPending ? <Spinner label="Simplifying" /> : null}
+        <span className="k-hint">
+          {simplify.isPending ? "Simplifying this page…" : "Simplified page"}
+        </span>
+        <span style={{ flex: 1 }} />
+        {simplify.isError ? (
+          <Button variant="ghost" onClick={() => simplify.mutate()}>
+            Try again
           </Button>
         ) : null}
+        <Button variant="ghost" onClick={onClose}>
+          Hide
+        </Button>
       </div>
-      {open && simplify.isError ? (
+      {simplify.isError ? (
         <p role="alert" className="error-text" style={{ margin: 0 }}>
           {message(simplify.error)}
         </p>
       ) : null}
-      {open && simplify.data ? (
+      {simplify.data ? (
         <div role="region" aria-label="Simplified page">
           <p className="k-hint" style={{ margin: "0 0 8px" }}>
             Words you know: {pct(simplify.data.before)} in the original, {pct(simplify.data.after)}{" "}

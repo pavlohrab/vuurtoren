@@ -1,6 +1,6 @@
 /**
  * Reading comforts, remembered per device (localStorage): text size, line spacing, line width,
- * reading font and reading theme. Every read and write is guarded: blocked storage just means
+ * reading font, reading theme and whether cloze blanks show their meaning. Every read and write is guarded: blocked storage just means
  * the defaults.
  */
 import { useCallback, useState } from "react";
@@ -24,6 +24,8 @@ export interface ReaderPrefs {
   width: keyof typeof WIDTHS;
   font: keyof typeof FONTS;
   theme: (typeof READING_THEMES)[number];
+  /** Cloze: show the blank's meaning above it while it has focus (the first, free hint). */
+  clozeMeaning: boolean;
 }
 
 export const DEFAULT_PREFS: ReaderPrefs = {
@@ -32,6 +34,7 @@ export const DEFAULT_PREFS: ReaderPrefs = {
   width: "normal",
   font: "literata",
   theme: "app",
+  clozeMeaning: true,
 };
 
 const KEY = "kenning-reader-prefs";
@@ -51,6 +54,7 @@ export function readPrefs(): ReaderPrefs {
       width: pick(v["width"], Object.keys(WIDTHS) as ReaderPrefs["width"][], "normal"),
       font: pick(v["font"], Object.keys(FONTS) as ReaderPrefs["font"][], "literata"),
       theme: pick(v["theme"], READING_THEMES, "app"),
+      clozeMeaning: typeof v["clozeMeaning"] === "boolean" ? v["clozeMeaning"] : true,
     };
   } catch {
     return { ...DEFAULT_PREFS };

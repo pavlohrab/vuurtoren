@@ -281,7 +281,7 @@ describe("Reader grammar", () => {
 
   it("passes the sentence's grammar to Explain this sentence", async () => {
     setup("/read/t-utrecht", (s) => ({ ...s, ...createMockAI(() => Promise.resolve()) }));
-    await userEvent.click(await screen.findByRole("button", { name: "Next segment" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Next" }));
     await screen.findAllByText("staat");
     await userEvent.click(tok("staat"));
     await userEvent.click(await screen.findByRole("button", { name: "Explain this sentence" }));

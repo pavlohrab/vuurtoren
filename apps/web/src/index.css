@@ -4,19 +4,14 @@
 
 /* ---------- App shell layout (docs/design/design-system.md, Layout) ---------- */
 .shell {
+  --inspector-w: 340px;
   display: grid;
-  grid-template-columns: 220px minmax(0, 1fr) 0;
+  grid-template-columns: 220px minmax(0, 1fr);
   grid-template-rows: 100vh;
   height: 100vh;
 }
 .shell[data-sidebar="collapsed"] {
-  grid-template-columns: 56px minmax(0, 1fr) 0;
-}
-.shell[data-inspector="open"] {
-  grid-template-columns: 220px minmax(0, 1fr) 340px;
-}
-.shell[data-sidebar="collapsed"][data-inspector="open"] {
-  grid-template-columns: 56px minmax(0, 1fr) 340px;
+  grid-template-columns: 56px minmax(0, 1fr);
 }
 
 .sidebar {
@@ -149,8 +144,21 @@
 .topbar-heading {
   flex: 0 1 auto;
 }
-/* With the inspector open the top bar is narrow: the palette button keeps only its icon. */
-.shell[data-inspector="open"] .topbar-kbd {
+/* Reader route: the title steps back (UI font, muted) and the page's controls fill the bar. */
+.topbar-title--quiet {
+  font-family: var(--font-ui);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ink-muted);
+}
+.topbar-page {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.topbar-page[hidden] {
   display: none;
 }
 .topbar-spacer {
@@ -222,14 +230,65 @@
   padding: 48px 24px 96px;
 }
 
+/* Content plus the word panel over its right edge. */
+.main-body {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+/* Closed by default and takes no space; slides in when a word is chosen. */
 .inspector-panel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10;
+  width: var(--inspector-w);
   background: var(--surface);
   border-left: 1px solid var(--hairline);
   overflow: auto;
   visibility: hidden;
+  transform: translateX(100%);
+  transition:
+    transform var(--dur-slow) var(--ease-in-out),
+    visibility 0s linear var(--dur-slow);
 }
 .shell[data-inspector="open"] .inspector-panel {
   visibility: visible;
+  transform: none;
+  transition: transform var(--dur-slow) var(--ease-out);
+}
+/* The reading column moves aside by half the panel, as far as the margin allows. */
+.reader-page {
+  --reader-col: min(var(--measure), 100vw - var(--sb-w, 220px) - 48px);
+  --reader-shift: min(
+    var(--inspector-w) / 2,
+    max(0px, (100vw - var(--sb-w, 220px) - var(--reader-col)) / 2 - 8px)
+  );
+  transition: transform var(--dur-slow) var(--ease-in-out);
+}
+.shell[data-sidebar="collapsed"] {
+  --sb-w: 56px;
+}
+.shell[data-inspector="open"] .reader-page {
+  transform: translateX(calc(-1 * var(--reader-shift)));
+}
+@media (max-width: 1099px) and (min-width: 900px) {
+  /* Too narrow to slide the column aside: keep the text clear of the panel instead. */
+  .shell[data-inspector="open"] .reader-page {
+    transform: none;
+    padding-right: calc(24px + var(--inspector-w));
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .inspector-panel,
+  .shell[data-inspector="open"] .inspector-panel,
+  .reader-page {
+    transition: none;
+  }
 }
 .inspector-head {
   display: flex;
@@ -244,15 +303,11 @@
 
 /* Below 1200px the sidebar collapses to icons. */
 @media (max-width: 1199px) {
-  .shell,
-  .shell[data-inspector="open"] {
-    --sb: 56px;
-  }
   .shell {
-    grid-template-columns: 56px minmax(0, 1fr) 0;
-  }
-  .shell[data-inspector="open"] {
-    grid-template-columns: 56px minmax(0, 1fr) 320px;
+    --sb: 56px;
+    --sb-w: 56px;
+    --inspector-w: 320px;
+    grid-template-columns: 56px minmax(0, 1fr);
   }
   .shell .nav-label,
   .shell .k-logo-word {
@@ -262,14 +317,12 @@
 
 /* Below 900px the inspector becomes a bottom sheet. */
 @media (max-width: 899px) {
-  .shell,
-  .shell[data-inspector="open"] {
-    grid-template-columns: 56px minmax(0, 1fr);
-  }
   .inspector-panel {
     position: fixed;
     inset: auto 0 0 0;
+    width: auto;
     max-height: 60vh;
+    transform: translateY(100%);
     border-left: 0;
     border-top: 1px solid var(--hairline);
     border-radius: var(--radius-card) var(--radius-card) 0 0;
@@ -297,6 +350,9 @@
     padding: 4px 8px;
     font-size: 12px;
   }
+  .shell[data-inspector="open"] .reader-page {
+    transform: none;
+  }
   .page {
     padding: 24px 16px 48px;
   }
@@ -307,8 +363,6 @@
 }
 /* Phone width: a bottom tab bar replaces the icon rail (U20). */
 @media (max-width: 699px) {
-  /* Coverage and the to-learn count are on the page itself. */
-  .topbar-coverage,
   .topbar-palette,
   .topbar-spacer,
   .topbar-crumb-sep,
@@ -320,8 +374,7 @@
     min-width: 5rem;
   }
   .shell,
-  .shell[data-sidebar="collapsed"],
-  .shell[data-inspector="open"] {
+  .shell[data-sidebar="collapsed"] {
     grid-template-columns: minmax(0, 1fr);
     height: 100dvh;
     grid-template-rows: 100dvh;
@@ -628,46 +681,14 @@
   white-space: pre-wrap;
   word-break: break-word;
 }
+/* Reader footer: "‹ 1 / 2 ›" and the primary Next → (Finish on the last page). */
 .reader-footer {
   max-width: var(--measure);
-  margin: 32px auto 0;
+  margin: 40px auto 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-}
-
-/* Reader toolbar: translations dial + new-word budget */
-.reader-tools {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 12px 20px;
-  max-width: var(--measure);
-  margin: 0 auto 28px;
-  padding-bottom: 14px;
-  border-bottom: 1px solid var(--hairline);
-  font-size: 13px;
-  color: var(--ink-muted);
-}
-.reader-tool {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.reader-tool .k-field {
-  gap: 0;
-}
-.reader-tool-label {
-  font-weight: 500;
-  color: var(--ink);
-}
-.reader-tool-slider {
-  width: 150px;
-}
-.reader-tool-value {
-  min-width: 12ch;
-  font-variant-numeric: tabular-nums;
 }
 
 /* ---------- Practice ---------- */
@@ -1674,30 +1695,8 @@ a.home-step:hover .home-step-go {
 }
 
 /* ---------- Motion (docs/design/design-system.md, Motion budget) ---------- */
-/* The shell's columns snap (animating them would reflow the reader text); what appears fades. */
-.shell[data-inspector="open"] .inspector-panel > * {
-  animation: k-inspector-in var(--dur) var(--ease-out);
-}
-@keyframes k-inspector-in {
-  from {
-    opacity: 0;
-    transform: translateX(8px);
-  }
-}
-@media (max-width: 899px) {
-  .shell[data-inspector="open"] .inspector-panel {
-    animation: k-sheet-in var(--dur) var(--ease-out);
-  }
-  .shell[data-inspector="open"] .inspector-panel > * {
-    animation: none;
-  }
-}
-@keyframes k-sheet-in {
-  from {
-    opacity: 0;
-    transform: translateY(12px);
-  }
-}
+/* The word panel slides in (transform) and the reader column moves aside with it: see
+   .inspector-panel above. */
 .shell:not([data-sidebar="collapsed"]) .nav-label {
   animation: k-appear var(--dur) var(--ease-out);
 }
