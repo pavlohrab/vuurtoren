@@ -33,3 +33,84 @@ jobs:
       - run: uv run ruff check .
       - run: uv run ruff format --check .
       - run: uv run pytest -q
+
+  # Builds the three images exactly as published (amd64 only, nothing pushed), starts the Dockge
+  # stack from them and runs scripts/doctor.sh against it: page, health, sign-in, data, NLP.
+  images:
+    name: images + smoke test
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      KENNING_IMAGE_OWNER: ci-local
+      KENNING_TAG: ci
+      # Test-only credentials; plain http, so the cookie must not be Secure-only.
+      KENNING_USER: smoke
+      KENNING_PASSWORD: smoke-test-password
+      KENNING_COOKIE_SECURE: "0"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      # Reads the release cache of images.yml too; writes its own scope (amd64 only), so it never
+      # replaces the multi-arch cache.
+      - name: Build kenning-web
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: deploy/web.Dockerfile
+          load: true
+          build-args: KENNING_COMMIT=${{ github.sha }}
+          tags: ghcr.io/ci-local/kenning-web:ci
+          cache-from: |
+            type=gha,scope=ci-web
+            type=gha,scope=web
+          cache-to: type=gha,mode=max,scope=ci-web
+      - name: Build kenning-api
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: server/api/Dockerfile
+          load: true
+          tags: ghcr.io/ci-local/kenning-api:ci
+          cache-from: |
+            type=gha,scope=ci-api
+            type=gha,scope=api
+          cache-to: type=gha,mode=max,scope=ci-api
+      - name: Build kenning-nlp
+        uses: docker/build-push-action@v6
+        with:
+          context: server/nlp
+          load: true
+          tags: ghcr.io/ci-local/kenning-nlp:ci
+          cache-from: |
+            type=gha,scope=ci-nlp
+            type=gha,scope=nlp
+          cache-to: type=gha,mode=max,scope=ci-nlp
+      - name: Image report
+        run: |
+          {
+            echo "### Images"
+            echo "| image | size | user |"
+            echo "| --- | --- | --- |"
+            for n in web api nlp; do
+              img=ghcr.io/ci-local/kenning-$n:ci
+              size=$(docker image inspect -f '{{.Size}}' "$img" | numfmt --to=si --suffix=B)
+              user=$(docker image inspect -f '{{.Config.User}}' "$img")
+              echo "| kenning-$n | $size | ${user:-root} |"
+              if [ -z "$user" ] || [ "$user" = root ] || [ "$user" = 0 ]; then
+                echo "::error::kenning-$n runs as root"; exit 1
+              fi
+            done
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Start the stack
+        working-directory: deploy/dockge
+        run: docker compose up -d --pull never --wait --wait-timeout 420
+      - name: Smoke test
+        run: scripts/doctor.sh http://127.0.0.1:8080
+      - name: Logs
+        if: failure()
+        working-directory: deploy/dockge
+        run: docker compose ps -a && docker compose logs --no-color
+      - name: Stop the stack
+        if: always()
+        working-directory: deploy/dockge
+        run: docker compose down -v

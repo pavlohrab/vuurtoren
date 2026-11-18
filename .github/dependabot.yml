@@ -1,0 +1,24 @@
+# Keeps the pinned base images and actions current (monthly, grouped into one PR each).
+version: 2
+updates:
+  - package-ecosystem: docker
+    directories: ["/deploy", "/server/api", "/server/nlp"]
+    schedule:
+      interval: monthly
+    groups:
+      base-images:
+        patterns: ["*"]
+  - package-ecosystem: docker-compose
+    directories: ["/deploy", "/deploy/dockge"]
+    schedule:
+      interval: monthly
+    groups:
+      compose-images:
+        patterns: ["*"]
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      actions:
+        patterns: ["*"]
