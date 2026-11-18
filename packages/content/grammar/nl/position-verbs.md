@@ -7,6 +7,7 @@ order: 43
 summary: Dutch says where things are with staan (upright), liggen (flat) or zitten (inside, attached), and moves them with zetten, leggen or stoppen.
 practice: [cloze-choice]
 related: [progressive, prepositions, verb-pairs]
+detects: [position-verbs]
 ---
 
 ## Explanation

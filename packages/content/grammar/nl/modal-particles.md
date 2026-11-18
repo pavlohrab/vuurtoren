@@ -7,6 +7,7 @@ order: 49
 summary: Small unstressed words such as even, maar, toch, wel, eens, hoor, nou and gewoon change the tone of a sentence — friendlier, softer, more insistent — without changing its facts.
 practice: [cloze-choice]
 related: [imperative, adverbs, negation, register]
+detects: [modal-particles]
 ---
 
 ## Explanation

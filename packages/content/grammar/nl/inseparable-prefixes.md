@@ -7,6 +7,7 @@ order: 45
 summary: Verbs with an unstressed prefix such as be-, ge-, her-, ont-, ver- or er- never split and get no ge- in the participle; door-, over-, om-, onder- and voor- can be either kind.
 practice: [perfect]
 related: [separable-verbs, perfect-tense, word-formation]
+detects: [inseparable-prefixes]
 ---
 
 ## Explanation

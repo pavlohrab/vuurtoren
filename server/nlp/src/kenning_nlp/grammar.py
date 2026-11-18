@@ -1004,6 +1004,627 @@ def detect_conditional_inversion(s: Sentence) -> Iterable[Hit]:
             return
 
 
+# ------------------------------------------------------------- reader detectors (2026-11)
+# Precision-first detectors for B1/B2 phenomena the reader marks in the margin. Each one fires
+# only on a curated word list plus a parse that agrees; see docs/grammar-coverage.md.
+
+# Prepositions that combine with er/daar/hier/waar, by the form they take in the compound.
+PRONOMINAL_PREPS = frozenset(
+    {
+        "aan",
+        "achter",
+        "bij",
+        "boven",
+        "door",
+        "in",
+        "langs",
+        "mee",
+        "naar",
+        "naast",
+        "om",
+        "onder",
+        "op",
+        "over",
+        "tegen",
+        "toe",
+        "tussen",
+        "uit",
+        "van",
+        "voor",
+        "zonder",
+    }
+)
+PRONOMINAL_HEADS = ("daar", "hier", "waar", "er")
+# Lexicalised compounds whose meaning is not "preposition + it/that" any more.
+NOT_PRONOMINAL = frozenset(
+    {"daarom", "waarom", "daarna", "hierna", "erna", "daarnaast", "daarvoor", "hiervoor", "ervoor"}
+)
+# Fixed expressions where the compound is not "preposition + it": "De bus komt eraan".
+PRONOMINAL_IDIOMS = frozenset(
+    {
+        ("komen", "eraan"),
+        ("aankomen", "eraan"),
+        ("gaan", "eraan"),
+        ("zien", "eruit"),
+        ("uitzien", "eruit"),
+    }
+)
+# Split forms: the stranded preposition shows its compound form (met -> mee, tot -> toe).
+STRANDED_FORM = {"met": "mee", "tot": "toe"}
+
+
+def _pronominal_parts(word: str) -> tuple[str, str] | None:
+    """``("daar", "mee")`` for ``daarmee``; None for anything else."""
+    low = word.lower()
+    if low in NOT_PRONOMINAL:
+        return None
+    for head in PRONOMINAL_HEADS:
+        rest = low[len(head) :]
+        if low.startswith(head) and rest in PRONOMINAL_PREPS:
+            return head, rest
+    return None
+
+
+def detect_pronominal_adverb(s: Sentence) -> Iterable[Hit]:
+    """``daarmee``, ``erop``, ``waarover``, and split ``daar … mee`` / ``er … aan``."""
+    used: set[int] = set()
+    for t in s.toks:
+        if t.pos not in {"ADV", "PRON", "ADP"}:
+            continue
+        parts = _pronominal_parts(t.text)
+        if parts is not None:
+            head = s.head_of(t)
+            if head is not None and (head.lemma.lower(), t.text.lower()) in PRONOMINAL_IDIOMS:
+                continue
+            if t.particle_of is not None:
+                continue  # "Je ziet eruit": part of the verb eruitzien
+            yield Hit(
+                "pronominal-adverbs",
+                (t.i,),
+                f"«{t.text}» = «{parts[1]}» + «{parts[0]}»: Dutch says «{parts[0]}{parts[1]}» "
+                f"instead of a preposition + it/that/what for things.",
+            )
+            continue
+        low = t.text.lower()
+        if low not in PRONOMINAL_HEADS or t.pos not in {"ADV", "PRON"} or t.i in used:
+            continue
+        head = s.head_of(t)
+        if head is None or head.pos not in {"VERB", "AUX", "ADJ", "ADV"}:
+            continue
+        # A bare preposition later in the clause, on the same verb, with nothing after it
+        # (stranded): "Daar heb ik niet aan gedacht", "Waar denk je aan?".
+        for p in s.toks:
+            if p.i <= t.i + 1 or p.pos != "ADP" or p.particle_of is not None:
+                continue
+            if p.dep == "compound:prt" or s.children(p):
+                continue
+            # On the same verb, or hung on the adverb itself ("Daar ben ik het mee eens").
+            if p.head != t.head and not (p.head == t.i and p.dep == "case"):
+                continue
+            form = STRANDED_FORM.get(p.text.lower(), p.text.lower())
+            if form not in PRONOMINAL_PREPS:
+                continue
+            nxt = s.by_index.get(p.i + 1)
+            if nxt is not None and nxt.pos in {"DET", "NOUN", "PROPN", "PRON", "NUM"}:
+                continue  # the preposition still has its own object
+            obj = s.by_index.get(p.head) if p.dep == "case" and p.head > p.i else None
+            if p.dep == "mark" or (obj is not None and obj.pos not in {"VERB", "AUX"}):
+                continue  # the preposition has its own object ("er … van" + a dat-clause is ok)
+            if form == "uit" and head.lemma.lower() in {"zien", "uitzien"}:
+                continue  # "Ze zien er gelukkig uit": er uitzien is a fixed verb
+            used.add(t.i)
+            yield Hit(
+                "pronominal-adverbs",
+                (t.i, p.i),
+                f"«{t.text} … {p.text}» is one word split in two («{low}{form}»): "
+                f"the preposition goes to the end of the middle field.",
+            )
+            break
+
+
+POSITION_VERBS = {
+    "staan": "upright",
+    "liggen": "lying flat",
+    "zitten": "inside, attached or sitting",
+    "hangen": "hanging",
+}
+LOCATIVE_PREPS = frozenset(
+    {"in", "op", "onder", "naast", "achter", "voor", "bij", "tussen", "boven", "tegen", "aan"}
+)
+# Idioms with a position verb that are not about position: "in brand staan", "aan de kant
+# staan van", "op een club zitten".
+NOT_PLACES = frozenset(
+    {
+        "vlam",
+        "vlammen",
+        "brand",
+        "kant",
+        "club",
+        "baseballclub",
+        "school",
+        "universiteit",
+        "schuld",
+        "probleem",
+    }
+)
+LOCATIVE_ADVS = frozenset(
+    {"hier", "daar", "er", "binnen", "buiten", "thuis", "boven", "beneden", "ergens", "overal"}
+)
+
+
+def detect_position_verb(s: Sentence) -> Iterable[Hit]:
+    """staan / liggen / zitten / hangen for where something is, or + ``te`` + infinitive."""
+    for v in s.toks:
+        lemma = v.lemma.lower()
+        if lemma not in POSITION_VERBS or v.pos != "VERB":
+            continue
+        te_inf = [
+            c
+            for c in s.children(v, "xcomp")
+            if "VerbForm=Inf" in _morph(c)
+            and any(m.text.lower() == "te" for m in s.children(c, "mark"))
+        ]
+        if te_inf:
+            inf = te_inf[0]
+            te = next(m for m in s.children(inf, "mark") if m.text.lower() == "te")
+            yield Hit(
+                "position-verbs",
+                (v.i, te.i, inf.i),
+                f"«{v.text} te {inf.text}»: busy doing it while {lemma[:-2]}ing — "
+                f"the position verb gives the posture ({POSITION_VERBS[lemma]}).",
+            )
+            continue
+        place: Token | None = None
+        for c in s.children(v, "obl", "advmod", "expl"):
+            if c.dep in {"advmod", "expl"} and c.text.lower() in LOCATIVE_ADVS:
+                # "Daar ligt het niet aan", "wie hier achter zit": a split er/daar + preposition.
+                if any(
+                    p.pos == "ADP" and p.head == v.i and not s.children(p) and p.i > c.i
+                    for p in s.toks
+                ):
+                    break
+                place = c
+                break
+            case = s.children(c, "case")
+            if c.dep == "obl" and case and case[0].text.lower() in LOCATIVE_PREPS:
+                # "Het ligt aan jou" (it depends on you) is not a position, nor "daar zit hij
+                # achter" (he is behind it).
+                if c.text.lower() in PRONOMINAL_HEADS:
+                    continue  # "wie hier achter zit": a split pronominal adverb
+                if c.pos == "PRON" and case[0].text.lower() in {"aan", "achter"}:
+                    continue
+                if c.lemma.lower() in NOT_PLACES:
+                    continue
+                place = case[0]
+                break
+        if place is None:
+            continue
+        yield Hit(
+            "position-verbs",
+            tuple(sorted((v.i, place.i))),
+            f"«{v.text}» says where something is and how: {POSITION_VERBS[lemma]}.",
+        )
+
+
+def detect_laten(s: Sentence) -> Iterable[Hit]:
+    """laten + infinitive (let / have something done) and ``laten we`` (let's)."""
+    for v in s.toks:
+        if v.lemma.lower() != "laten" or v.text.lower() in {"gelaten"}:
+            continue
+        words = s.words
+        nxt = s.by_index.get(v.i + 1)
+        if words and words[0].i == v.i and nxt is not None and nxt.text.lower() in {"we", "wij"}:
+            yield Hit("laten", (v.i, nxt.i), "«Laten we …»: a suggestion, “let's …”.")
+            continue
+        infs = [c for c in s.children(v, "xcomp", "ccomp") if "VerbForm=Inf" in _morph(c)]
+        if not infs and v.dep in {"aux", "xcomp"}:
+            head = s.head_of(v)
+            if head is not None and "VerbForm=Inf" in _morph(head) and head.i > v.i:
+                infs = [head]
+        infs = [x for x in infs if not any(m.text.lower() == "te" for m in s.children(x, "mark"))]
+        if infs:
+            inf = infs[0]
+            yield Hit(
+                "laten",
+                tuple(sorted((v.i, inf.i))),
+                f"«{v.text} … {inf.text}»: let something happen, or have it done by someone.",
+            )
+
+
+# Verb (or adjective) lemma -> the prepositions it takes as a fixed pair.
+FIXED_PREPOSITIONS: dict[str, frozenset[str]] = {
+    k: frozenset(v.split())
+    for k, v in {
+        "wachten": "op",
+        "denken": "aan",
+        "houden": "van",
+        "zorgen": "voor",
+        "kijken": "naar",
+        "luisteren": "naar",
+        "praten": "over",
+        "zoeken": "naar",
+        "geloven": "in",
+        "hopen": "op",
+        "rekenen": "op",
+        "letten": "op",
+        "lijken": "op",
+        "stoppen": "met",
+        "ophouden": "met",
+        "deelnemen": "aan",
+        "meedoen": "aan",
+        "bestaan": "uit",
+        "afhangen": "van",
+        "genieten": "van",
+        "dromen": "van",
+        "schrikken": "van",
+        "twijfelen": "aan",
+        "verlangen": "naar",
+        "ergeren": "aan",
+        "interesseren": "voor",
+        "verheugen": "op",
+        "concentreren": "op",
+        "voorbereiden": "op",
+        "schamen": "voor",
+        "reageren": "op",
+        "antwoorden": "op",
+        "omgaan": "met",
+        "beschikken": "over",
+        "klagen": "over",
+        "nadenken": "over",
+        "kiezen": "voor",
+        "vragen": "om naar",
+        "bang": "voor",
+        "trots": "op",
+        "gek": "op",
+        "boos": "op",
+        "jaloers": "op",
+        "verliefd": "op",
+        "geïnteresseerd": "in",
+        "tevreden": "over met",
+        "afhankelijk": "van",
+        "verantwoordelijk": "voor",
+        "zeker": "van",
+        "benieuwd": "naar",
+        "gewend": "aan",
+    }.items()
+}
+# "wachten op het station": op + a place is where, not what you wait for.
+PLACE_NOUNS = frozenset(
+    {
+        "station",
+        "perron",
+        "straat",
+        "plein",
+        "hoek",
+        "school",
+        "werk",
+        "kantoor",
+        "vliegveld",
+        "halte",
+        "stoep",
+        "bank",
+        "markt",
+        "dak",
+        "tafel",
+        "bed",
+        "stoel",
+        "gang",
+        "terras",
+        "balkon",
+        "trap",
+        "strand",
+    }
+)
+
+
+def detect_fixed_preposition(s: Sentence) -> Iterable[Hit]:
+    """A verb or adjective with its fixed preposition: ``wachten op``, ``trots op``."""
+    for v in s.toks:
+        preps = FIXED_PREPOSITIONS.get(v.lemma.lower())
+        if preps is None or v.pos not in {"VERB", "ADJ"}:
+            continue
+        for c in s.children(v, "obl", "obl:arg", "advmod", "nmod"):
+            prep: Token | None = None
+            case = s.children(c, "case")
+            if case and case[0].text.lower() in preps:
+                if c.lemma.lower() in PLACE_NOUNS:
+                    continue
+                prep = case[0]
+            else:
+                parts = _pronominal_parts(c.text)
+                if parts is not None and parts[1] in preps:
+                    prep = c
+            if prep is not None:
+                yield Hit(
+                    "verbs-with-prepositions",
+                    tuple(sorted((v.i, prep.i))),
+                    f"«{v.lemma} {next(iter(sorted(preps)))}» is a fixed pair: "
+                    "learn the preposition with the word.",
+                )
+                break
+        else:
+            # Split pronominal adverb: "Ik wacht er al lang op", "Daar denk ik niet aan".
+            for p in s.toks:
+                if p.pos != "ADP" or p.head != v.i or s.children(p) or p.i < v.i - 6:
+                    continue
+                if p.particle_of is not None or p.dep == "compound:prt":
+                    continue
+                form = STRANDED_FORM.get(p.text.lower(), p.text.lower())
+                fixed = {STRANDED_FORM.get(x, x) for x in preps}
+                adv = next(
+                    (x for x in s.children(v) if x.text.lower() in PRONOMINAL_HEADS and x.i < p.i),
+                    None,
+                )
+                if form in fixed and adv is not None:
+                    yield Hit(
+                        "verbs-with-prepositions",
+                        tuple(sorted((v.i, adv.i, p.i))),
+                        f"«{v.lemma} {p.text}» is a fixed pair; here the preposition "
+                        f"is split off with «{adv.text}».",
+                    )
+                    break
+
+
+def detect_niet_position(s: Sentence) -> Iterable[Hit]:
+    """``niet`` where its place is clear: before a predicate adjective or a prepositional
+    phrase, or at the end after a definite object."""
+    words = s.words
+    for n in s.toks:
+        if n.text.lower() != "niet" or n.pos not in {"ADV", "PART"}:
+            continue
+        nxt = next((w for w in words if w.i > n.i), None)
+        head = s.head_of(n)
+        if head is None or nxt is None:
+            continue
+        if nxt.i == head.i and head.pos == "ADJ" and s.children(head, "cop"):
+            yield Hit(
+                "niet-position",
+                (n.i, head.i),
+                f"«niet» goes right before the adjective «{head.text}».",
+            )
+            continue
+        if nxt.pos == "ADP" and nxt.dep == "case":
+            pp = s.head_of(nxt)
+            if pp is not None and pp.i > nxt.i and pp.head == n.head and pp.dep == "obl":
+                yield Hit(
+                    "niet-position",
+                    (n.i, nxt.i, pp.i),
+                    f"«niet» goes before the phrase with «{nxt.text}».",
+                )
+                continue
+    # "Ik zie de man niet.": niet closes the clause after the definite object.
+    last = words[-1] if words else None
+    if last is not None and last.text.lower() == "niet" and last.pos in {"ADV", "PART"}:
+        head = s.head_of(last)
+        if head is not None and head.pos == "VERB" and _is_fin(head):
+            objs = [
+                o
+                for o in s.children(head, "obj")
+                if o.i < last.i
+                and (
+                    (o.pos == "PRON" and o.text.lower() not in {"iets", "niets", "wat", "alles"})
+                    or any(
+                        d.text.lower() in {"de", "het", "deze", "die", "dit", "dat"}
+                        for d in s.children(o, "det")
+                    )
+                    or any("Poss=Yes" in _morph(d) for d in s.children(o, "nmod:poss"))
+                )
+            ]
+            if objs:
+                yield Hit(
+                    "niet-position",
+                    (objs[0].i, last.i),
+                    f"«niet» comes at the end, after the definite object «{objs[0].text}».",
+                )
+
+
+INSEPARABLE_VERBS = frozenset(
+    [
+        "beantwoorden",
+        "bedanken",
+        "bedoelen",
+        "beginnen",
+        "begrijpen",
+        "behalen",
+        "behandelen",
+        "behoren",
+        "beloven",
+        "bepalen",
+        "bereiken",
+        "beschermen",
+        "beschrijven",
+        "beslissen",
+        "bespreken",
+        "bestaan",
+        "bestellen",
+        "betalen",
+        "betekenen",
+        "bevallen",
+        "bewegen",
+        "beweren",
+        "bewijzen",
+        "bezitten",
+        "bezoeken",
+        "gebeuren",
+        "gebruiken",
+        "gehoorzamen",
+        "genieten",
+        "herhalen",
+        "herinneren",
+        "herkennen",
+        "herstellen",
+        "ontbijten",
+        "ontdekken",
+        "ontmoeten",
+        "ontslaan",
+        "ontstaan",
+        "ontvangen",
+        "ontwikkelen",
+        "erkennen",
+        "ervaren",
+        "verbeteren",
+        "verbieden",
+        "verbinden",
+        "verdedigen",
+        "verdienen",
+        "verdwijnen",
+        "vergelijken",
+        "vergeten",
+        "verhuizen",
+        "verkopen",
+        "verklaren",
+        "verlaten",
+        "verliezen",
+        "vermijden",
+        "veranderen",
+        "veroorzaken",
+        "verrassen",
+        "verschijnen",
+        "verschillen",
+        "verstaan",
+        "versturen",
+        "vertalen",
+        "vertellen",
+        "vertrekken",
+        "vertrouwen",
+        "verwachten",
+        "verwijderen",
+        "verzamelen",
+        "verzorgen",
+    ]
+)
+INSEPARABLE_PREFIXES = ("be", "ge", "her", "ont", "ver", "er")
+
+
+def detect_inseparable(s: Sentence) -> Iterable[Hit]:
+    """A common verb with an inseparable prefix (be-, ge-, her-, ont-, ver-, er-)."""
+    for v in s.toks:
+        lemma = v.lemma.lower()
+        if lemma not in INSEPARABLE_VERBS or v.pos not in {"VERB", "AUX"}:
+            continue
+        if v.dep in {"aux", "aux:pass", "cop", "amod", "det"} or v.text.lower().endswith("end"):
+            continue  # "bepaalde rechten": an adjective
+        prefix = next(
+            p for p in sorted(INSEPARABLE_PREFIXES, key=len, reverse=True) if lemma.startswith(p)
+        )
+        if "VerbForm=Part" in _morph(v) and v.text.lower().startswith(prefix):
+            note = (
+                f"«{v.text}»: no extra ge- in the participle, because «{prefix}-» is an "
+                "inseparable prefix."
+            )
+        elif _is_fin(v):
+            note = f"«{prefix}-» in «{lemma}» never splits off: «{v.text}» stays one word."
+        else:
+            continue
+        yield Hit("inseparable-prefixes", (v.i,), note)
+
+
+def _is_command(s: Sentence) -> bool:
+    words = s.words
+    if not words or s.is_question:
+        return False
+    first = words[0]
+    if first.lemma.lower() in {"alsjeblieft", "alstublieft", "even", "maar", "toch"}:
+        first = words[1] if len(words) > 1 else first
+    return (
+        _is_fin(first)
+        and not s.subjects(s.clause_head(first))
+        and "Tense=Past" not in _morph(first)
+    )
+
+
+def _has_modal(s: Sentence) -> bool:
+    return any(_is_fin(t) and t.lemma.lower() in {"kunnen", "willen", "mogen"} for t in s.toks)
+
+
+PARTICLE_NOTES = {
+    "even": "«even» makes a request small and friendly: “just (for a moment)”.",
+    "maar": "«maar» in a request softens or encourages: “go ahead and …”.",
+    "eens": "«eens» makes a request or suggestion lighter: “(just) have a …”.",
+    "toch": "«toch» appeals to what the listener already knows or should agree with.",
+    "nou": "«nou» adds impatience or emphasis: “then / now”.",
+    "hoor": "«hoor» at the end reassures or insists: “you know / really”.",
+}
+
+
+def detect_modal_particle(s: Sentence) -> Iterable[Hit]:
+    """even / maar / eens / toch / nou / hoor used as a tone particle."""
+    words = s.words
+    command = _is_command(s)
+    question = s.is_question
+    exclaim = bool(s.toks) and s.toks[-1].text == "!"
+    request = command or (question and _has_modal(s))
+    for k, t in enumerate(words):
+        low = t.text.lower()
+        if low not in PARTICLE_NOTES or t.pos not in {"ADV", "PART", "INTJ"}:
+            continue
+        nxt = words[k + 1] if k + 1 < len(words) else None
+        if low in {"even", "maar"}:
+            # "even groot" (equally), "maar twee" (only): not particles.
+            if nxt is not None and (
+                nxt.pos in {"ADJ", "NUM"} or nxt.text.lower() in {"een", "één", "zo", "net"}
+            ):
+                continue
+            ok = request
+        elif low == "eens":
+            prev = words[k - 1].text.lower() if k > 0 else ""
+            ok = request and prev not in {"nog", "wel", "niet"}
+        elif low == "toch":
+            ok = question or exclaim or command
+        elif low == "nou":
+            ok = (question or command or exclaim) and k > 0
+        else:  # hoor: last word, after a comma
+            prev_tok = s.by_index.get(t.i - 1)
+            ok = nxt is None and prev_tok is not None and prev_tok.text == ","
+        if ok:
+            yield Hit("modal-particles", (t.i,), PARTICLE_NOTES[low])
+
+
+OBJECT_FORMS = frozenset(
+    {"mij", "me", "jou", "je", "hem", "haar", "ons", "jullie", "hen", "hun", "ze"}
+)
+
+
+def detect_object_pronoun(s: Sentence) -> Iterable[Hit]:
+    """Object forms of personal pronouns (after a verb or a preposition), not reflexive."""
+    for t in s.toks:
+        low = t.text.lower()
+        if low not in OBJECT_FORMS or t.pos != "PRON" or "Poss=Yes" in _morph(t):
+            continue
+        if "Case=Nom" in _morph(t) or t.dep in {"expl:pv", "nsubj", "nsubj:pass", "nmod:poss"}:
+            continue
+        head = s.head_of(t)
+        if head is None:
+            continue
+        prev = s.by_index.get(t.i - 1)
+        nxt = s.by_index.get(t.i + 1)
+        if (prev is not None and (prev.pos == "DET" or "Poss=Yes" in _morph(prev))) or (
+            low in {"haar", "je", "ons"}
+            and nxt is not None
+            and nxt.pos in {"NOUN", "PROPN"}
+            and nxt.head == t.head
+        ):
+            continue  # possessive or the noun "haar" (hair) misread as a pronoun
+        after_prep = bool(s.children(t, "case"))
+        if t.dep in {"obj", "iobj"} and head.pos in {"VERB", "AUX"}:
+            subject = _subject_lemma(s, head)
+            if subject is not None and (
+                low in REFLEXIVE_FOR.get(subject, set()) or (subject, low) == ("ik", "mij")
+            ):
+                continue  # reflexive (ik … me), a different topic
+            if low in {"je", "ze", "jullie"} and "Case=Acc" not in _morph(t):
+                continue  # same form as the subject: only trust an explicit object case
+            note = f"«{t.text}» is the object form: it receives the action of «{head.text}»."
+        elif after_prep and t.dep in {"obl", "nmod", "obl:agent"}:
+            prep = s.children(t, "case")[0]
+            if low in {"je", "ze", "jullie"} and "Case=Acc" not in _morph(t):
+                continue
+            note = f"After «{prep.text}» Dutch uses the object form «{t.text}»."
+        else:
+            continue
+        yield Hit("object-pronouns", (t.i,), note)
+
+
 DETECTORS: tuple[Detector, ...] = (
     detect_inversion,
     detect_question,
@@ -1034,6 +1655,14 @@ DETECTORS: tuple[Detector, ...] = (
     detect_progressive,
     detect_possessive,
     detect_conditional_inversion,
+    detect_pronominal_adverb,
+    detect_position_verb,
+    detect_laten,
+    detect_fixed_preposition,
+    detect_niet_position,
+    detect_inseparable,
+    detect_modal_particle,
+    detect_object_pronoun,
 )
 
 TOPICS: frozenset[str] = frozenset(
@@ -1069,6 +1698,14 @@ TOPICS: frozenset[str] = frozenset(
         "progressive",
         "possessive-pronouns",
         "conditional-inversion",
+        "pronominal-adverbs",
+        "position-verbs",
+        "laten",
+        "verbs-with-prepositions",
+        "niet-position",
+        "inseparable-prefixes",
+        "modal-particles",
+        "object-pronouns",
     }
 )
 """Topic ids the detectors can produce (a subset of the topic pages)."""

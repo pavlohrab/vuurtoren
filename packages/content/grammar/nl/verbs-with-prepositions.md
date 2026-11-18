@@ -7,6 +7,7 @@ order: 44
 summary: Many verbs and adjectives always go with one preposition (wachten op, denken aan, trots op); learn them as a pair.
 practice: [cloze-choice]
 related: [prepositions, pronominal-adverbs, reflexive-verbs, er]
+detects: [verbs-with-prepositions]
 ---
 
 ## Explanation

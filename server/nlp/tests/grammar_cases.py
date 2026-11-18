@@ -435,4 +435,116 @@ CASES: dict[str, tuple[list[str], list[str]]] = {
             "Heb geduld, het komt goed.",
         ],
     ),
+    "pronominal-adverbs": (
+        [
+            "Daar heb ik niet aan gedacht.",
+            "Waarmee schrijf je?",
+            "Ik denk er vaak aan.",
+            "Daar ben ik het niet mee eens.",
+            "Hij praat er graag over.",
+        ],
+        [
+            "Waarom kom je niet?",
+            "Daarna gingen we naar huis.",
+            "Ze zien er gelukkig uit.",
+            "De bus komt eraan.",
+            "Er staat een kat op het dak.",
+        ],
+    ),
+    "position-verbs": (
+        [
+            "Het boek ligt op de tafel.",
+            "Hij zit te lezen.",
+            "De jas hangt aan de kapstok.",
+            "Er staat een fiets voor de deur.",
+        ],
+        [
+            "Het ligt aan jou.",
+            "Hij staat op.",
+            "Het huis staat in brand.",
+            "Ik weet wie hier achter zit.",
+        ],
+    ),
+    "laten": (
+        [
+            "Ik laat mijn fiets repareren.",
+            "Laten we gaan.",
+            "Ik heb hem laten gaan.",
+            "Zij liet de hond buiten spelen.",
+        ],
+        [
+            "Laat me met rust.",
+            "Ik laat het licht aan.",
+            "Hij verliet het huis.",
+        ],
+    ),
+    "verbs-with-prepositions": (
+        [
+            "Ik wacht op de bus.",
+            "Wij praten over het weer.",
+            "Ik ben trots op jou.",
+            "Zij houdt van muziek.",
+            "Ik denk er vaak aan.",
+        ],
+        [
+            "Ik wacht op het station.",
+            "Hij denkt dat het regent.",
+            "Zij houdt het boek vast.",
+        ],
+    ),
+    "niet-position": (
+        [
+            "Het mes is niet scherp.",
+            "Ik woon niet in Amsterdam.",
+            "Ik zie de man niet.",
+            "Ik begrijp dat woord niet.",
+        ],
+        [
+            "Hij komt niet.",
+            "Ik heb geen tijd.",
+            "Daar ben ik het niet mee eens.",
+        ],
+    ),
+    "inseparable-prefixes": (
+        [
+            "Zij heeft de rekening betaald.",
+            "Ik begrijp het probleem.",
+            "Wij hebben Maria gisteren ontmoet.",
+            "Hij vertelt een verhaal.",
+        ],
+        [
+            "Ik heb bepaalde rechten.",
+            "Hij belt zijn moeder op.",
+            "Ik geef haar een boek.",
+        ],
+    ),
+    "modal-particles": (
+        [
+            "Kom maar binnen.",
+            "Kun je even helpen?",
+            "Kijk eens!",
+            "Dat is goed, hoor.",
+            "Je komt toch?",
+        ],
+        [
+            "Hij is even groot als zijn broer.",
+            "Ik heb maar twee euro.",
+            "Hij kwam toch.",
+            "Ik wil wel, maar ik kan niet.",
+        ],
+    ),
+    "object-pronouns": (
+        [
+            "Ik zie hem morgen.",
+            "Ik geef haar een boek.",
+            "Zij wacht op mij.",
+            "Ik bel hen morgen.",
+        ],
+        [
+            "Zij wast zich.",
+            "Ik voel mij moe.",
+            "Ik was mijn haar.",
+            "Hij leest haar boek.",
+        ],
+    ),
 }
