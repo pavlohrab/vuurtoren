@@ -10,7 +10,7 @@ An open-source app that turns **your Anki deck into a reading and speaking coach
 
 ## Decisions
 
-- **Languages:** Dutch first, then Ukrainian (with grammar for both).
+- **Language:** Dutch (vocabulary, reading, grammar A1–C1, Inburgeringsexamen A2 practice).
 - **Stack:** TypeScript core + React. Self-hosted web app first → Tauri desktop → Chrome/Firefox extension (WXT) → mobile later.
 - **NLP:** Python service (spaCy), run via Docker compose with one worker. It keeps no user data, but holds running OCR jobs and a grammar-example cache (ADR 0004).
 - **Data:** an append-only SQLite event log, either local in the browser (OPFS) or in one file on your own server (ADR 0008). Sync to user-owned storage (folder, WebDAV, GitHub) is planned (M7), not built.
