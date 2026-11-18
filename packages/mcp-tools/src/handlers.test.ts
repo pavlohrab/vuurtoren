@@ -95,9 +95,7 @@ describe("tool handlers", () => {
 
   it("lists and reads texts, truncating long ones", async () => {
     const h = handlers();
-    expect(await h.listTexts()).toEqual([
-      { id: "t1", title: "Koffie", words: 3, source: "paste" },
-    ]);
+    expect(await h.listTexts()).toEqual([{ id: "t1", title: "Koffie", words: 3, source: "paste" }]);
     expect((await h.getText({ id: "t1" })).content).toBe("Ik drink koffie.");
     await expect(h.getText({ id: "nope" })).rejects.toThrow(/No text/);
     await repo.append({
@@ -125,7 +123,9 @@ describe("tool handlers", () => {
     const t = await repo.getText("new-text");
     expect(t?.sourceKind).toBe("ai");
     expect(t?.analyzed).toBe(true);
-    const ev = (await repo.events()).find((e) => e.event.type === "TextImported" && e.event.textId === "new-text");
+    const ev = (await repo.events()).find(
+      (e) => e.event.type === "TextImported" && e.event.textId === "new-text",
+    );
     expect(ev?.event).toMatchObject({
       source: { kind: "ai", provider: "claude-code", targets: ["fiets"], topic: "cycling" },
     });
@@ -193,7 +193,14 @@ describe("tool handlers", () => {
       courseId: "c1",
       units: [
         { courseId: "c1", n: 1, title: "Thema 1", pages: [1, 5], ankiDecks: [], kind: "theme" },
-        { courseId: "c1", n: 2, title: "Thema 2 Wonen", pages: [6, 10], ankiDecks: [], kind: "theme" },
+        {
+          courseId: "c1",
+          n: 2,
+          title: "Thema 2 Wonen",
+          pages: [6, 10],
+          ankiDecks: [],
+          kind: "theme",
+        },
       ],
     });
     await repo.append({
@@ -219,7 +226,15 @@ describe("tool handlers", () => {
       courseId: "c1",
       unitN: 2,
       exercises: [
-        { number: 1, page: 7, instruction: "Vul in.", type: "gapfill", raw: "", items: [], grammar: topic },
+        {
+          number: 1,
+          page: 7,
+          instruction: "Vul in.",
+          type: "gapfill",
+          raw: "",
+          items: [],
+          grammar: topic,
+        },
       ],
     });
     expect(await h.listCourses()).toEqual([

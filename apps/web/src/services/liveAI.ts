@@ -677,7 +677,10 @@ export function createLiveAI(deps: LiveAIDeps): AIServices &
       let out: ModelChoices;
       try {
         const listed = await listModels({ ...input, apiKey }, deps.fetch);
-        out = { options: modelOptions(input.provider, listed.length ? listed : null), live: listed.length > 0 };
+        out = {
+          options: modelOptions(input.provider, listed.length ? listed : null),
+          live: listed.length > 0,
+        };
       } catch {
         out = { options: modelOptions(input.provider, null), live: false };
       }

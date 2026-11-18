@@ -6,7 +6,7 @@ const reply = (body: unknown, status = 200) =>
 
 describe("listModels", () => {
   it("reads OpenAI-compatible lists, drops non-chat models, sends the key", async () => {
-    const f = vi.fn((_u: string | URL | Request, _i?: RequestInit) =>
+    const f = vi.fn<(u: string | URL | Request, i?: RequestInit) => Promise<Response>>(() =>
       reply({ data: [{ id: "gpt-5-mini" }, { id: "text-embedding-3-small" }, { id: "gpt-5" }] }),
     );
     const out = await listModels(
@@ -19,7 +19,7 @@ describe("listModels", () => {
   });
 
   it("uses Anthropic's /v1/models with the browser headers and display names", async () => {
-    const f = vi.fn((_u: string | URL | Request, _i?: RequestInit) =>
+    const f = vi.fn<(u: string | URL | Request, i?: RequestInit) => Promise<Response>>(() =>
       reply({ data: [{ id: "claude-haiku-5-5", display_name: "Claude Haiku 5.5" }] }),
     );
     const out = await listModels(
@@ -63,7 +63,10 @@ describe("listModels", () => {
     ).rejects.toThrow(/key/);
     expect(f).not.toHaveBeenCalled();
     await expect(
-      listModels({ provider: "groq", baseUrl: "https://x", apiKey: "k" }, f as unknown as typeof fetch),
+      listModels(
+        { provider: "groq", baseUrl: "https://x", apiKey: "k" },
+        f as unknown as typeof fetch,
+      ),
     ).rejects.toThrow();
   });
 });

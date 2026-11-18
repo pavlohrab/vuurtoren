@@ -20,10 +20,7 @@ export const SERVER_INSTRUCTIONS = `Kenning is the learner's Dutch reading app. 
 
 /** A new MCP server named "kenning" with the shared tools registered. */
 export function createKenningMcpServer(h: ToolHandlers, version = "0.2.0"): McpServer {
-  const server = new McpServer(
-    { name: "kenning", version },
-    { instructions: SERVER_INSTRUCTIONS },
-  );
+  const server = new McpServer({ name: "kenning", version }, { instructions: SERVER_INSTRUCTIONS });
   registerKenningTools(server, h);
   return server;
 }
@@ -59,7 +56,10 @@ export function registerKenningTools(server: McpServer, h: ToolHandlers): void {
 
   server.registerTool(
     "list_texts",
-    { description: "List the texts in the learner's Kenning Library (id, title, words).", inputSchema: {} },
+    {
+      description: "List the texts in the learner's Kenning Library (id, title, words).",
+      inputSchema: {},
+    },
     () => respond(() => h.listTexts()),
   );
 

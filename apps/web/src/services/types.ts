@@ -11,7 +11,7 @@ import type {
   StaircaseState,
   WordState,
 } from "@app/core";
-import type { StoredText, TextSummary, WordInfo } from "@app/db";
+import type { StoredText, SuggestedWord, TextSummary, WordInfo } from "@app/db";
 import type { InspectorEntry } from "@app/ui";
 import type { CourseServices } from "./courseTypes.js";
 import type { AIServices, AISentenceReport } from "./aiTypes.js";
@@ -236,6 +236,15 @@ export interface AppServices extends CourseServices, AIServices, ProfileServices
   glosses(textId: string, tokenIndices: number[]): Promise<Record<number, string>>;
   /** Add the word to Anki: the deck from the language profile, or `opts.deck` (the picker). */
   addToAnki(entry: InspectorEntry, opts?: AddOptions): Promise<{ noteId: number; deck: string }>;
+  /** Words Claude suggested over MCP, waiting for the learner (newest first). */
+  suggestedWords(): Promise<SuggestedWord[]>;
+  /**
+   * Add a suggested word to Anki (the learner's click, ADR 0007) with Claude's gloss and
+   * sentence, then take it off the queue.
+   */
+  addSuggestedToAnki(key: string, opts?: AddOptions): Promise<{ noteId: number; deck: string }>;
+  /** Take a suggestion off the queue without adding it. */
+  dismissSuggestion(key: string): Promise<void>;
   /** Move the word's new card to the front of its deck, unsuspending it (ADR 0007). */
   learnNext(entry: InspectorEntry): Promise<{ deck: string }>;
   /** Mark the word known in Anki (adding the note first if needed), then record it (ADR 0007). */

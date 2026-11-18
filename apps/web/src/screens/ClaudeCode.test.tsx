@@ -13,7 +13,9 @@ import { ModelPicker } from "./ModelPicker.js";
 
 function wrap(node: ReactNode, info: AppInfo = {}, services?: AppServices) {
   render(
-    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+    <QueryClientProvider
+      client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
+    >
       <ServicesProvider services={services ?? createMockServices({ latencyMs: 0 })}>
         <AppInfoProvider value={info}>{node}</AppInfoProvider>
       </ServicesProvider>
@@ -64,7 +66,10 @@ describe("Use with Claude Code", () => {
       vi.fn(async (url: string, init?: RequestInit) => {
         calls.push(`${init?.method ?? "GET"} ${url}`);
         if (init?.method === "POST") {
-          tokens = [...tokens, { id: "ffffffffffff", label: "Claude Code", createdAt: 2, lastUsedAt: null }];
+          tokens = [
+            ...tokens,
+            { id: "ffffffffffff", label: "Claude Code", createdAt: 2, lastUsedAt: null },
+          ];
           return new Response(JSON.stringify({ ok: true, id: "ffffffffffff", token: "kmcp_new" }));
         }
         if (init?.method === "DELETE") {
@@ -105,29 +110,30 @@ describe("ModelPicker", () => {
         asked.push(key);
         return {
           live: true,
-          options: [
-            { id: "gpt-5-mini", recommended: true },
-            { id: "gpt-5" },
-            { id: "o4-mini" },
-          ],
+          options: [{ id: "gpt-5-mini", recommended: true }, { id: "gpt-5" }, { id: "o4-mini" }],
         };
       },
     };
     const onChange = vi.fn();
     const user = userEvent.setup();
     wrap(
-      <ModelPicker provider="openai" baseUrl="https://api.openai.com/v1" value="" onChange={onChange} />,
+      <ModelPicker
+        provider="openai"
+        baseUrl="https://api.openai.com/v1"
+        value=""
+        onChange={onChange}
+      />,
       {},
       services,
     );
     const box = screen.getByRole("combobox", { name: "Model" });
     await user.click(box);
     const list = await screen.findByRole("listbox", { name: "Models" });
-    expect(within(list).getAllByRole("option").map((o) => o.textContent)).toEqual([
-      "gpt-5-miniRecommended",
-      "gpt-5",
-      "o4-mini",
-    ]);
+    expect(
+      within(list)
+        .getAllByRole("option")
+        .map((o) => o.textContent),
+    ).toEqual(["gpt-5-miniRecommended", "gpt-5", "o4-mini"]);
     expect(await screen.findByText(/3 models from your provider/)).toBeInTheDocument();
     await user.type(box, "o4");
     expect(within(screen.getByRole("listbox")).getAllByRole("option")).toHaveLength(1);

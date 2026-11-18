@@ -6,11 +6,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Button, Input } from "@app/ui";
-import {
-  claudeCodeCommand,
-  claudeDesktopConfig,
-  createMcpTokenClient,
-} from "../auth/mcpTokens.js";
+import { claudeCodeCommand, claudeDesktopConfig, createMcpTokenClient } from "../auth/mcpTokens.js";
 import { useAppInfo } from "../shell/AppInfo.js";
 
 export const EXAMPLE_PROMPTS = [
@@ -80,26 +76,22 @@ export function ClaudeCodeSettings() {
       {!server ? (
         <p className="k-hint" style={{ margin: 0 }}>
           This needs Kenning running as a server (your data in one place Claude can reach): see
-          deploy/README.md. Here your data lives in this browser only. With a local server you
-          can also run the stdio MCP server in apps/mcp.
+          deploy/README.md. Here your data lives in this browser only. With a local server you can
+          also run the stdio MCP server in apps/mcp.
         </p>
       ) : (
         <>
           {authOn ? (
             <div className="row" style={{ alignItems: "flex-end" }}>
-              <Input
-                label="Token name"
-                value={label}
-                onChange={(e) => setLabel(e.target.value)}
-              />
+              <Input label="Token name" value={label} onChange={(e) => setLabel(e.target.value)} />
               <Button variant="primary" onClick={() => make.mutate()} disabled={make.isPending}>
                 Generate token
               </Button>
             </div>
           ) : (
             <p className="k-hint" style={{ margin: 0 }}>
-              Sign-in is off on this server, so Claude needs no token. Turn sign-in on before
-              this address is reachable from the internet.
+              Sign-in is off on this server, so Claude needs no token. Turn sign-in on before this
+              address is reachable from the internet.
             </p>
           )}
           {make.isError ? (

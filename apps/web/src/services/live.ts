@@ -42,6 +42,7 @@ import {
   createUlidGenerator,
 } from "@app/db";
 import { absentAnki, ankiFromStatus, unavailableAnki } from "./ankiState.js";
+import { suggestionEntry } from "./suggestions.js";
 import { NlpClient, NlpError, createPracticeData } from "@app/nlp-client";
 import { DEGRADED_MESSAGES, clearDegraded, reportDegraded, watchClient } from "./degraded.js";
 import { createLiveCourses } from "./liveCourses.js";
@@ -1104,6 +1105,21 @@ export function createLiveServices(
       return groupActivity(await repo.activity(activitySince(now, days)), now, days);
     },
 
+    async suggestedWords() {
+      return repo.suggestedWords((await settings()).lang);
+    },
+    async addSuggestedToAnki(key, opts) {
+      const { lang } = await settings();
+      const s = (await repo.suggestedWords(lang)).find((x) => x.key === key);
+      if (!s) throw new Error("That suggestion is gone.");
+      const entry = suggestionEntry(await services.inspectWord(key), s);
+      const added = await services.addToAnki(entry, opts);
+      await repo.append({ type: "WordSuggestionDismissed", lang, key });
+      return added;
+    },
+    async dismissSuggestion(key) {
+      await repo.append({ type: "WordSuggestionDismissed", lang: (await settings()).lang, key });
+    },
     async inspectWord(key: string): Promise<InspectorEntry> {
       const { lang } = await settings();
       const info = await repo.word(lang, key);

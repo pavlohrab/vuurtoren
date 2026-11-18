@@ -11,8 +11,9 @@ import type {
   TokenLabel,
   WordState,
 } from "@app/core";
-import type { ActivityEntry, StoredText, WordInfo } from "@app/db";
+import type { ActivityEntry, StoredText, SuggestedWord, WordInfo } from "@app/db";
 import { groupActivity } from "./activity.js";
+import { suggestionEntry } from "./suggestions.js";
 import { createMockCourses } from "./mockCourses.js";
 import { createMockAI } from "./mockAI.js";
 import { createMockExam, demoAttempts } from "./mockExam.js";
@@ -223,6 +224,18 @@ export function createMockServices(
   const wait = () => (latency > 0 ? delay(latency) : Promise.resolve());
 
   const lexicon = new Map<string, LexEntry>();
+  // Demo: two words Claude suggested over MCP (Words → Suggested by Claude).
+  const suggestions = new Map<string, SuggestedWord>(
+    [
+      {
+        key: "reis",
+        word: "de reis",
+        gloss: "journey",
+        sentence: "De reis naar Utrecht duurt een uur.",
+      },
+      { key: "wind", word: "de wind", gloss: "wind", note: "from the weather story" },
+    ].map((s, i) => [s.key, { ...s, lang: "nl", by: "claude-code", id: String(i) }]),
+  );
   const bySurface = new Map<string, string>();
   for (const [surface, key, pos, gloss, state, pKnown, planLabel, article] of SPECS) {
     const demo = DEMO_ANKI[key];
@@ -503,7 +516,7 @@ export function createMockServices(
     (lemma) => lexicon.get(lemma)?.article,
   );
 
-  return {
+  const services: AppServices = {
     ...profile.services,
     ...practice,
     ...createMockCourses({ latencyMs: latency }),
@@ -646,6 +659,18 @@ export function createMockServices(
       return out;
     },
 
+    async suggestedWords() {
+      return [...suggestions.values()];
+    },
+    async addSuggestedToAnki(key, opts) {
+      const s = suggestions.get(key);
+      if (!s) throw new Error("That suggestion is gone.");
+      suggestions.delete(key);
+      return services.addToAnki(suggestionEntry(await services.inspectWord(key), s), opts);
+    },
+    async dismissSuggestion(key) {
+      suggestions.delete(key);
+    },
     async addToAnki(entry, opts) {
       await wait();
       sessionActivity.push({ kind: "added", at: Date.now() });
@@ -858,4 +883,5 @@ export function createMockServices(
       return rows.slice(offset, offset + (opts.limit ?? 100));
     },
   };
+  return services;
 }

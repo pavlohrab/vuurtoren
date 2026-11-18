@@ -96,7 +96,10 @@ export interface AIServices {
    * Models for the picker: the provider's own list (with `key`, else the saved key), cached per
    * provider and address for this session; the curated list when it cannot be read.
    */
-  listAIModels(input: { provider: ProviderId; baseUrl: string }, key?: string): Promise<ModelChoices>;
+  listAIModels(
+    input: { provider: ProviderId; baseUrl: string },
+    key?: string,
+  ): Promise<ModelChoices>;
   /** One tiny request to check the key, model and address. */
   testAI(): Promise<{ text: string; ms: number }>;
   aiUsage(): Promise<AIUsage>;
