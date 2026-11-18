@@ -3,6 +3,7 @@
  * winkelen" <-> deck "De Opmaat A2::Thema 03 - Winkelen". The user confirms the result once.
  */
 import type { Unit } from "./types.js";
+import { UNIT_WORDS } from "./vocab.js";
 
 /** Words that carry no meaning for matching titles. */
 const STOP = new Set([
@@ -19,13 +20,7 @@ const STOP = new Set([
   "met",
   "aan",
   "bij",
-  "thema",
-  "hoofdstuk",
-  "les",
-  "unit",
-  "chapter",
-  "module",
-  "lektion",
+  ...UNIT_WORDS.map((w) => fold(w)),
   "deck",
   "anki",
   "nl",
@@ -40,12 +35,15 @@ function fold(s: string): string {
     .replace(/[^\p{L}\p{N}\s]/gu, " ");
 }
 
+const UNIT_NUMBER_RE = new RegExp(
+  `(?:${[...new Set(UNIT_WORDS.map((w) => fold(w)))].join("|")})\\s*0*(\\d{1,3})(?!\\d)`,
+  "u",
+);
+
 /** Unit/deck number: the first integer that follows a unit word, else the first integer. */
 export function extractNumber(s: string): number | null {
   const f = fold(s);
-  const m =
-    /(?:thema|hoofdstuk|les|unit|chapter|module|lektion)\s*0*(\d{1,3})\b/.exec(f) ??
-    /\b0*(\d{1,3})\b/.exec(f);
+  const m = UNIT_NUMBER_RE.exec(f) ?? /(?<![\p{L}\d])0*(\d{1,3})(?!\d)/u.exec(f);
   return m ? Number(m[1]) : null;
 }
 
@@ -67,8 +65,13 @@ function wordSimilarity(a: string, b: string): number {
 
 /** Score in [0, 1] of how well `deck` fits `unit` (0 = unrelated). */
 export function deckScore(unit: Pick<Unit, "title" | "n">, deck: string): number {
-  // Only the deck's last path segments matter ("Course::Thema 03 - Winkelen").
-  const leaf = deck.split("::").slice(-1)[0] ?? deck;
+  // Only the deck's leaf matters ("Course::Thema 03 - Winkelen"); for "Course::Unit 3::Words"
+  // the deepest level that names a number.
+  const levels = deck.split("::");
+  const leaf =
+    [...levels].reverse().find((l, i) => i < 2 && extractNumber(l) !== null) ??
+    levels[levels.length - 1] ??
+    deck;
   const uNum = extractNumber(unit.title) ?? unit.n;
   const dNum = extractNumber(leaf);
   const uw = titleWords(unit.title);

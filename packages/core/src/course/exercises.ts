@@ -40,23 +40,29 @@ export function addImplicitBlanks(s: string): string {
 const RULES: { type: ExerciseType; re: RegExp }[] = [
   {
     type: "sentence-building",
-    re: /\b(maak|schrijf|vorm)\s+(\w+\s+)?(zinnen|zin)\b|woordvolgorde|(goede|juiste) volgorde/i,
+    re: /\b(maak|schrijf|vorm)\s+(\w+\s+)?(zinnen|zin)\b|woordvolgorde|(goede|juiste) volgorde|\b(put the words in (the right |the correct )?order|make sentences|build sentences|bilden sie sätze|ordnen sie|remettez .* dans l'ordre|ordena las palabras)\b/iu,
   },
-  { type: "conjugation-table", re: /\b(schema|tabel)\b/i },
+  {
+    type: "conjugation-table",
+    re: /\b(schema|tabel|complete the table|ergänzen sie die tabelle)\b/iu,
+  },
   {
     type: "matching",
-    re: /\b(combineer|verbind|koppel|welke .* hoort bij|trek een lijn|wat hoort bij)\b/i,
+    re: /\b(combineer|verbind|koppel|welke .* hoort bij|trek een lijn|wat hoort bij|maak combinaties|match|connect|ordnen sie zu|verbinden sie|was passt zusammen|associez|relaciona|une)\b/iu,
   },
   {
     type: "choice",
-    re: /\b(kies|omcirkel|wat is goed|welk(e)? (woord|antwoord|zin)|ja of nee|waar of niet waar|juist of onjuist)\b/i,
+    re: /\b(kies|omcirkel|kruis aan|wat is goed|welk(e)? (woord|antwoord|zin|titel)|ja of nee|waar of niet waar|juist of onjuist|choose|circle|tick|true or false|kreuzen sie an|richtig oder falsch|wählen sie|choisissez|cochez|vrai ou faux|elige|verdadero o falso)\b/iu,
   },
-  { type: "gapfill", re: /\b(vul|aanvullen|invullen)\b/i },
+  {
+    type: "gapfill",
+    re: /\b(vul|vu|aanvullen|invullen|fill in|complete the (sentences|text|gaps)|ergänzen sie|füllen sie|complétez|completa)\b/iu,
+  },
   {
     type: "open-task",
-    re: /\b(werk in (groepjes|drietallen|tweetallen|tweetal|paren)|schrijf|vertel|spreek|bespreek|beschrijf|vraag|interview|praat|geef (kort )?antwoord|beantwoord|maak een (gesprek|dialoog|afspraak|woordweb)|speel|leg uit|woordweb)\b/i,
+    re: /\b(werk in (groepjes|drietallen|tweetallen|tweetal|paren)|schrijf|vertel|spreek|bespreek|beschrijf|vraag|interview|praat|geef (kort )?antwoord|beantwoord|maak een (gesprek|dialoog|afspraak|woordweb)|speel|leg uit|woordweb|write|talk|discuss|describe|answer the questions|schreiben sie|sprechen sie|erzählen sie|écrivez|parlez|escribe|habla)\b/iu,
   },
-  { type: "listening", re: /\bluister\b/i },
+  { type: "listening", re: /\b(luister|listen|hören sie|écoutez|escucha)\b/iu },
 ];
 
 /** Type from the instruction alone (null when no keyword matches). */
@@ -71,13 +77,16 @@ interface Parts {
 }
 
 const isItemStart = (l: string) => ITEM_MARKER.test(l);
+/** A line without a single word of three letters: an icon or a stray mark the OCR read. */
+const isJunkLine = (l: string) => !/\p{L}{3}/u.test(l);
 const endsSentence = (l: string) => /[.?!:]["”’')\]]?\s*$/.test(l);
 
 /** Split a block's lines into instruction, example and raw item strings. */
 export function splitExercise(text: string): Parts {
   const lines = text.split("\n").map((l) => l.trim());
   let i = 0;
-  while (i < lines.length && !lines[i]) i++;
+  // Blank lines and OCR junk before the instruction (icons read as "k", "0 N n n p n").
+  while (i < lines.length && (!lines[i] || isJunkLine(lines[i] ?? ""))) i++;
   // Instruction: the first line, and following lines while it has not ended with . ? : or !.
   const instr: string[] = [];
   while (i < lines.length && lines[i]) {
@@ -220,6 +229,63 @@ function tableItems(lines: readonly string[]): ExerciseItem[] {
 
 const hasHint = (s: string) => HINT_ANY.test(s);
 
+/**
+ * An answer option line of a multiple-choice question: "a Ja.", "b) Nee", with the tick box the
+ * OCR reads as "[ |", "L |", "|" or "[]" in front, and "c" often read as "«".
+ */
+const OPTION_RE = /^(?:[[(|L]?\s*[|\]]?\s*|\[\]\s*)?([a-fA-F]|«)[.)]?\s+(\S.*)$/u;
+
+function optionOf(line: string): string | null {
+  const m = OPTION_RE.exec(line.trim());
+  return m?.[2] && /\p{L}{2}/u.test(m[2]) ? m[2].trim() : null;
+}
+
+/**
+ * Multiple-choice questions in a block: a question line ("1 Waarom gaat Anne ...?") followed by
+ * at least two option lines. Questions about a text and "Kies het goede antwoord" look like this
+ * in most textbooks. The book's answer key is not known, so the items have no answer.
+ */
+export function choiceQuestions(text: string): ExerciseItem[] {
+  const lines = text
+    .split("\n")
+    .map((l) => l.trim())
+    .filter(Boolean);
+  const out: ExerciseItem[] = [];
+  let current: { prompt: string; options: string[] } | null = null;
+  const close = () => {
+    if (current && current.options.length >= 2) {
+      out.push({
+        prompt: current.prompt,
+        options: current.options,
+        answerSource: "user",
+        confidence: 0,
+      });
+    }
+    current = null;
+  };
+  for (const line of lines) {
+    const option = current ? optionOf(line) : null;
+    if (current && option) {
+      current.options.push(option);
+      continue;
+    }
+    if (current && current.options.length > 0 && !isItemStart(line) && !/\?$/.test(line)) {
+      // A wrapped option line.
+      const last = current.options.length - 1;
+      current.options[last] = `${current.options[last]} ${line}`;
+      continue;
+    }
+    if (/\?\s*$/.test(line) && /\p{L}{3}/u.test(line)) {
+      close();
+      current = { prompt: line.replace(ITEM_MARKER, "").trim(), options: [] };
+    } else if (!current || current.options.length > 0) {
+      close();
+    }
+  }
+  close();
+  return out;
+}
+
 /** Decide the type from instruction + item shapes. */
 export function classify(instruction: string, items: readonly string[], block = ""): ExerciseType {
   const fromText = typeFromInstruction(instruction);
@@ -262,7 +328,25 @@ export function classify(instruction: string, items: readonly string[], block = 
 export function recognizeExercise(block: Block): BookExercise {
   const { instruction, example, items: raw } = splitExercise(block.text);
   const lines = block.text.split("\n").map((l) => l.trim());
-  const type = classify(instruction, raw, block.text);
+  // The task is often a line or two below a situation sentence ("Het is half zes. ...").
+  const taskLine =
+    typeFromInstruction(instruction) !== null
+      ? instruction
+      : (lines.slice(0, 10).find((l) => typeFromInstruction(l) !== null) ?? instruction);
+  const questions = choiceQuestions(block.text);
+  if (questions.length >= 2) {
+    const ex: BookExercise = {
+      number: block.number ?? 0,
+      page: block.page,
+      instruction: taskLine === instruction ? instruction : `${instruction} ${taskLine}`.trim(),
+      type: "choice",
+      items: questions,
+      raw: normalizeBlanks(block.text),
+    };
+    if (example) ex.example = example;
+    return ex;
+  }
+  const type = classify(taskLine, raw, block.text);
   let items: ExerciseItem[];
   switch (type) {
     case "gapfill":
@@ -287,7 +371,7 @@ export function recognizeExercise(block: Block): BookExercise {
   const ex: BookExercise = {
     number: block.number ?? 0,
     page: block.page,
-    instruction,
+    instruction: taskLine === instruction ? instruction : `${instruction} ${taskLine}`.trim(),
     type:
       items.length === 0 &&
       ["gapfill", "sentence-building", "conjugation-table", "choice"].includes(type)
