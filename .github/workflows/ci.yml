@@ -8,9 +8,9 @@ jobs:
   js:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: pnpm
@@ -27,8 +27,8 @@ jobs:
       run:
         working-directory: server/nlp
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
       - run: uv sync --locked
       - run: uv run ruff check .
       - run: uv run ruff format --check .
@@ -48,12 +48,12 @@ jobs:
       KENNING_PASSWORD: smoke-test-password
       KENNING_COOKIE_SECURE: "0"
     steps:
-      - uses: actions/checkout@v4
-      - uses: docker/setup-buildx-action@v3
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v4
       # Reads the release cache of images.yml too; writes its own scope (amd64 only), so it never
       # replaces the multi-arch cache.
       - name: Build kenning-web
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: deploy/web.Dockerfile
@@ -65,7 +65,7 @@ jobs:
             type=gha,scope=web
           cache-to: type=gha,mode=max,scope=ci-web
       - name: Build kenning-api
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: server/api/Dockerfile
@@ -76,7 +76,7 @@ jobs:
             type=gha,scope=api
           cache-to: type=gha,mode=max,scope=ci-api
       - name: Build kenning-nlp
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: server/nlp
           load: true
