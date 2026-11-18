@@ -147,6 +147,14 @@ pnpm dev            # web app on http://localhost:5173 (proxies /nlp and /anki)
 - **Layout:** sideways-scrolling shelf rows with snap and a hairline shelf board, one tab stop per row and arrow keys inside it; an "All texts" grid; search (title, author, note, level; accent-blind); sort by recent, title or coverage. `?demo` seeds three shelves and three image covers.
 - Not done: og:image covers for web pages (needs a server-side image fetch), course book page covers (pages are not stored), image covers on Home, orphaned blob clean-up.
 
+### Desktop app, thin client (branch `desktop`, 2026-11-18; plan D2 + D3)
+
+- `apps/desktop`: Tauri v2 (crates pinned, `@tauri-apps/cli` 2.12.4). The window starts on the bundled web build and shows a **Connect** screen (address, `/api/health` check from Rust, clear errors; "use on this computer only" placeholder for D4); then it navigates to the server, so cookies, CSRF, CSP and sign-in work unchanged and need no server changes. Single instance, remembered window size, external links in the system browser, downloads to Downloads.
+- **Anki without setup**: `window.__KENNING_DESKTOP__.ankiFetch` (init script + Rust `anki_fetch`, only `127.0.0.1/localhost:8765`), granted to the saved server origin by a runtime capability; `browserPlatform()` routes AnkiConnect through it when present. Settings > Account: "Change server…".
+- **Packaging**: `.github/workflows/desktop.yml` (`v*` tags, manual) with `tauri-action` (pinned): ubuntu-22.04 AppImage + .deb, windows NSIS + .msi, macOS universal .dmg (ad-hoc signed, not notarised); draft release. Unsigned (SmartScreen / Gatekeeper steps in [desktop.md](desktop.md)).
+- **Updates**: updater plugin, feed URL from `KENNING_UPDATE_URL` (build) or `desktop.json`; asks before installing. Key pair generated outside the repo; secrets and `latest.json` hosting in [desktop.md](desktop.md#updates).
+- Tests: web `src/desktop/desktop.test.tsx` (detection, Anki bridge with the real client, Connect flows); Rust unit tests for address normalisation and the Anki allow-list (`cargo test`).
+
 ### Review fixes applied
 
 - **NLP:** lemma precision, UTF-16 offsets, request size limits, one shared key-normalisation rule (Python = TypeScript), particle and R-pronoun false positives.

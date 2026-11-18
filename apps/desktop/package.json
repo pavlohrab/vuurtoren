@@ -1,0 +1,15 @@
+{
+  "name": "@app/desktop",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT OR Apache-2.0",
+  "type": "module",
+  "description": "Kenning desktop app (Tauri v2) around the web build. Not part of `pnpm build`: build it with `pnpm --filter desktop tauri build`.",
+  "scripts": {
+    "tauri": "tauri",
+    "bundle": "tauri build"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "2.12.4"
+  }
+}

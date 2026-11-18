@@ -4,9 +4,21 @@ import reactHooks from "eslint-plugin-react-hooks";
 import globals from "globals";
 
 export default tseslint.config(
-  { ignores: ["**/dist/**", "**/coverage/**", "server/nlp/**", "**/*.config.*", ".claude/**"] },
+  {
+    ignores: [
+      "**/dist/**",
+      "**/coverage/**",
+      "server/nlp/**",
+      "**/*.config.*",
+      ".claude/**",
+      "apps/desktop/src-tauri/target/**",
+      "apps/desktop/src-tauri/gen/**",
+    ],
+  },
   js.configs.recommended,
   ...tseslint.configs.recommended,
+  // The desktop app's injected bridge script (plain browser JS).
+  { files: ["apps/desktop/src-tauri/src/*.js"], languageOptions: { globals: globals.browser } },
   {
     files: ["apps/web/**/*.{ts,tsx}"],
     languageOptions: { globals: globals.browser },

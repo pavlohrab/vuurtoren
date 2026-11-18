@@ -9,3 +9,5 @@ packages/core/src/reading/fixtures/
 packages/content/src/generated/
 test-results
 playwright-report
+apps/desktop/src-tauri/target
+apps/desktop/src-tauri/gen

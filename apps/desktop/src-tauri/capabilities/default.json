@@ -1,0 +1,14 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "The bundled home page (Connect screen; later the offline app).",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "allow-desktop-info",
+    "allow-check-server",
+    "allow-connect",
+    "allow-change-server",
+    "allow-anki-fetch"
+  ]
+}

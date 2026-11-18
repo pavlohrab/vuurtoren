@@ -5,6 +5,8 @@ import type { ServerHealth } from "@app/db/http";
 import { App } from "./App.js";
 import { type Account, type AuthClient, createAuthClient } from "./auth/client.js";
 import { installFetchWatch } from "./auth/watch.js";
+import { desktopBridge, type DesktopBridge } from "./desktop/bridge.js";
+import { ConnectScreen } from "./desktop/ConnectScreen.js";
 import { createMockServices } from "./services/mock.js";
 import type { AppServices } from "./services/types.js";
 import type { AccountControls, DataControls } from "./shell/AppInfo.js";
@@ -82,7 +84,9 @@ type Boot =
   | { kind: "unreachable"; reason: string }
   | { kind: "blocked"; message: string; download: () => Promise<Uint8Array> }
   | { kind: "busy"; takeOver: () => Promise<void> }
-  | { kind: "elsewhere" };
+  | { kind: "elsewhere" }
+  /** Desktop app, bundled home page: choose the server (docs/desktop.md). */
+  | { kind: "desktop"; bridge: DesktopBridge };
 
 const INSECURE_NOTICE =
   "Kenning needs https or http://localhost to store data (you opened it over plain http from another device). Use https (see deploy/README.md) or run in server mode.";
@@ -192,6 +196,10 @@ async function openBrowser(lock: HeldLock): Promise<Boot> {
 }
 
 async function boot(): Promise<Boot> {
+  // The desktop app's own page connects to a server first; the server's pages boot as usual.
+  // (D4, offline: this is where "use on this computer only" will continue into local mode.)
+  const desktop = desktopBridge();
+  if (desktop?.home) return { kind: "desktop", bridge: desktop };
   const demo = isDemo();
   // The demo looks like a set-up app: a recent sync, so no "Connect Anki" prompts.
   if (demo)
@@ -288,6 +296,14 @@ function show(b: Boot): Promise<void> {
       break;
     case "elsewhere":
       node = <ElsewhereScreen />;
+      break;
+    case "desktop":
+      node = (
+        <ConnectScreen
+          bridge={b.bridge}
+          changing={new URLSearchParams(location.search).has("connect")}
+        />
+      );
       break;
   }
   reactRoot.render(<StrictMode>{node}</StrictMode>);
