@@ -5,7 +5,8 @@
 
 # ---- Stage 1: build and prune ----------------------------------------------------------
 FROM node:26.13.1-slim AS build
-RUN corepack enable
+# Node 25+ no longer bundles corepack; install the pnpm version pinned in package.json.
+RUN npm install -g pnpm@12.21.0 --no-fund --no-audit
 WORKDIR /repo
 # Dependency download cached until pnpm-lock.yaml changes (see deploy/web.Dockerfile).
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./

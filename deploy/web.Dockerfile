@@ -6,7 +6,8 @@
 # ---- Stage 1: build --------------------------------------------------------------------
 FROM node:26.13.1-slim AS build
 # The exact pnpm version comes from the "packageManager" field in package.json.
-RUN corepack enable
+# Node 25+ no longer bundles corepack; install the pnpm version pinned in package.json.
+RUN npm install -g pnpm@12.21.0 --no-fund --no-audit
 WORKDIR /repo
 
 # Layer caching: `pnpm fetch` needs only the lockfile, so the dependency download stays cached
