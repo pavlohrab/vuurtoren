@@ -459,6 +459,13 @@
           "options": ["Vanochtend.", "Vanmiddag.", "Het regent vandaag niet."],
           "answer": 1,
           "explain": "Dry this morning, rain this afternoon."
+        },
+        {
+          "id": "lu-1-12-b",
+          "q": "Hoe is het weer morgen?",
+          "options": ["Grijs en nat.", "Zonnig en warmer.", "Koud, twaalf graden."],
+          "answer": 1,
+          "explain": "'Morgen komt de zon terug en wordt het warmer.'"
         }
       ]
     },
@@ -901,6 +908,13 @@
           "options": ["1.", "2.", "3."],
           "answer": 2,
           "explain": "'Gaat u verhuizen? Toets dan drie.'"
+        },
+        {
+          "id": "lu-2-12-b",
+          "q": "Je hebt een vraag over je rekening. Welke toets kies je?",
+          "options": ["1.", "2.", "3."],
+          "answer": 1,
+          "explain": "'Heeft u een vraag over uw rekening? Toets dan twee.'"
         }
       ]
     }

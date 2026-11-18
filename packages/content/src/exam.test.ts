@@ -24,10 +24,10 @@ describe("exam bank nl-a2", () => {
     for (const part of EXAM_PARTS) expect(examSets(part).length).toBeGreaterThanOrEqual(2);
   });
 
-  it("has a full-size Lezen and Luisteren mock (about 25 questions each)", () => {
+  it("has a full-size Lezen and Luisteren mock (at least 25 questions each)", () => {
     for (const part of ["lezen", "luisteren"] as const) {
       for (const set of examSets(part)) {
-        expect(groupQuestions(mcGroups(part, { set })).length).toBeGreaterThanOrEqual(24);
+        expect(groupQuestions(mcGroups(part, { set })).length).toBeGreaterThanOrEqual(25);
       }
     }
   });
