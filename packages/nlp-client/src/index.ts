@@ -46,8 +46,15 @@ export interface Detection {
   confidence: number;
 }
 
-/** Languages Tesseract can read via `/ocr` (nl -> nld, uk -> ukr, en -> eng). */
-export type OcrLang = "nl" | "uk" | "en";
+/**
+ * Languages Tesseract can read via `/ocr` and `/course/ocr` (nl -> nld, uk -> ukr, en -> eng,
+ * de -> deu, ...); the server reports a missing language pack with an install hint.
+ */
+export type OcrLang = "nl" | "uk" | "en" | "de" | "fr" | "es" | "it" | "pt" | "sv" | "da" | "pl";
+
+/** True when `lang` is a code the OCR endpoints accept. */
+export const isOcrLang = (lang: string): lang is OcrLang =>
+  ["nl", "uk", "en", "de", "fr", "es", "it", "pt", "sv", "da", "pl"].includes(lang);
 
 export interface UrlExtraction {
   title: string;
@@ -86,6 +93,12 @@ export interface CourseOcrStatus {
   error: string | null;
   done: number;
   total: number;
+  /** Pages that needed no OCR (cache hits, text layer, EPUB). */
+  cached?: number;
+  /** Seconds since the job started. */
+  elapsed?: number;
+  /** Estimated seconds left, or null before there is a pace. */
+  eta?: number | null;
   pages: CoursePage[];
 }
 

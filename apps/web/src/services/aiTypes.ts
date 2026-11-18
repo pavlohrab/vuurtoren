@@ -1,4 +1,5 @@
 /** Contract of the AI services (M6). Keys never appear here except as write-only arguments. */
+import type { GenerateUnitResult } from "./courseTypes.js";
 import type { Correction, NewWord, ProviderId, StoryLength, StoryStyle } from "@app/ai";
 
 export type { Correction, NewWord, ProviderId, StoryLength, StoryStyle };
@@ -104,6 +105,16 @@ export interface AIServices {
    * save it to the Library as an AI text. `onProgress` gets short status lines.
    */
   createStory(input: StoryInput, onProgress?: (msg: string) => void): Promise<StoryView>;
+  /**
+   * "Generate exercises like this unit": new exercises of the book's kinds with the unit's
+   * words and grammar, each sentence checked by the language server, stored as an event and
+   * graded by the book checkers.
+   */
+  generateUnitExercises(
+    courseId: string,
+    unitN: number,
+    onProgress?: (msg: string) => void,
+  ): Promise<GenerateUnitResult>;
 }
 
 /** Where a story's target words come from. */

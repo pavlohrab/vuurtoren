@@ -18,6 +18,8 @@ import {
   explainSentence,
   generateSentences,
   generateStory,
+  generateUnitExercises,
+  type UnitExerciseKind,
   keyStatus,
   loadKey,
   presetFor,
@@ -53,6 +55,7 @@ import type {
   StoryView,
 } from "./aiTypes.js";
 import { toConversationView } from "./conversationView.js";
+import type { GenerateUnitResult, UnitGrammarTopic } from "./courseTypes.js";
 import type { Settings } from "./types.js";
 
 export interface LiveAIDeps {
@@ -72,6 +75,8 @@ export interface LiveAIDeps {
    * plain TextImported append.
    */
   saveText?: (t: { title: string; content: string; source: TextSource }) => Promise<string>;
+  /** Grammar topics a course unit's texts show (course services). */
+  unitGrammar?: (courseId: string, n: number) => Promise<UnitGrammarTopic[]>;
   /** Injectable for tests; defaults to localStorage (or memory when unavailable). */
   storage?: KeyValueStorage;
   fetch?: typeof fetch;
@@ -390,9 +395,111 @@ export function createLiveAI(deps: LiveAIDeps): AIServices & {
     return view(id);
   }
 
+  /** Book exercise types -> the generated kinds that imitate them. */
+  const KIND_FOR: Partial<Record<string, UnitExerciseKind>> = {
+    gapfill: "gapfill",
+    "conjugation-table": "gapfill",
+    "sentence-building": "sentence-building",
+    choice: "questions",
+    matching: "matching",
+  };
+
+  async function makeUnitExercises(
+    courseId: string,
+    unitN: number,
+    onProgress?: (msg: string) => void,
+  ): Promise<GenerateUnitResult> {
+    const course = (await repo.courses()).find((c) => c.id === courseId);
+    const unit = course?.units.find((u) => u.n === unitN);
+    if (!course || !unit) throw new Error("This unit no longer exists.");
+    const [p, model, vocab, words, unitWords, own, earlier, thr] = await Promise.all([
+      provider(),
+      deps.model(),
+      deps.vocabEstimate(),
+      repo.words(course.lang),
+      repo.unitWords(courseId, unitN),
+      repo.unitExercises(courseId, unitN),
+      repo.generatedUnitExercises(courseId, unitN),
+      threshold(course.lang),
+    ]);
+    if (unitWords.length === 0) throw new Error("This unit has no words yet.");
+    onProgress?.("Looking at the unit's grammar…");
+    const topics = deps.unitGrammar ? await deps.unitGrammar(courseId, unitN).catch(() => []) : [];
+    const topic = topics[0] ? grammarTopic(topics[0].topicId, course.lang) : undefined;
+    // The kinds the book uses in this unit; gap fill and matching at least.
+    const kinds = new Set<UnitExerciseKind>(["gapfill", "matching"]);
+    for (const e of own) {
+      const k = KIND_FOR[e.type];
+      if (k) kinds.add(k);
+    }
+    if (own.some((e) => e.type === "open-task" || e.type === "unknown")) kinds.add("questions");
+    // Glosses for matching: the word list's, else the dictionary's.
+    const glosses = await deps
+      .glossLemmas(unitWords.filter((w) => !w.gloss).map((w) => w.lemma))
+      .catch(() => ({}) as Record<string, string>);
+    // Words not known yet first, in book order.
+    const state = (lemma: string) => model.get(normalizeKey(lemma))?.state;
+    const targets = [
+      ...unitWords.filter((w) => state(w.lemma) !== "known"),
+      ...unitWords.filter((w) => state(w.lemma) === "known"),
+    ].map((w) => ({
+      lemma: w.lemma,
+      ...(w.article ? { article: w.article } : {}),
+      ...((w.gloss ?? glosses[w.lemma]) ? { gloss: w.gloss ?? glosses[w.lemma] } : {}),
+    }));
+    onProgress?.("Writing exercises…");
+    const r = await generateUnitExercises(
+      { provider: p, analyze, model, detectGrammar, minCoverage: thr },
+      {
+        unitTitle: unit.title,
+        words: targets,
+        kinds: [...kinds],
+        vocabEstimate: vocab,
+        knownLemmas: selectKnownLemmas(
+          words,
+          `${unit.title} ${targets.map((t) => t.lemma).join(" ")}`,
+          300,
+        ),
+        ...(topic
+          ? {
+              grammar: {
+                id: topic.id,
+                title: topic.title,
+                summary: topic.summary,
+                detects: topic.detects,
+              },
+            }
+          : {}),
+      },
+    );
+    if (r.parseFailed)
+      throw new AIError("The provider did not return exercises in the expected form.", "server");
+    onProgress?.("Saving…");
+    const start = Math.max(1000, ...earlier.map((e) => e.number)) + 1;
+    const exercises = r.exercises.map((e, i) => ({ ...e, number: start + i, page: unit.pages[0] }));
+    if (exercises.length > 0 || r.rejected.length > 0) {
+      await repo.append({
+        type: "UnitExercisesGenerated",
+        courseId,
+        unitN,
+        exercises,
+        rejected: r.rejected.length,
+        ...(topic ? { grammarTopic: topic.id } : {}),
+        provider: p.config.provider,
+        model: p.config.model,
+      });
+    }
+    return {
+      added: exercises.reduce((n, e) => n + e.items.length, 0),
+      rejected: r.rejected.length,
+      ...(topic ? { grammarTopic: topic.title } : {}),
+    };
+  }
+
   return {
     fillSentences,
     aiReady: () => status().configured,
+    generateUnitExercises: makeUnitExercises,
     async storyTargets(source) {
       const { lang } = await deps.settings();
       if (source.kind === "grammar") return [];

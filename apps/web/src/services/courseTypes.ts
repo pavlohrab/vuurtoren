@@ -27,9 +27,66 @@ export interface ImportProgress {
 
 /** What can be imported as a course. */
 export type CourseSourceInput =
-  /** One PDF, or photos of pages (read in the given order). */
+  /** One PDF or EPUB, or photos of pages (read in the given order). */
   | { kind: "pdf" | "images"; files: File[]; title?: string }
-  | { kind: "text"; title: string; text: string };
+  | { kind: "text"; title: string; text: string }
+  /** Web pages, one unit each, in the given order. */
+  | { kind: "url"; urls: string[]; title: string };
+
+/** An import whose reading job was started but not turned into a course yet (wizard left). */
+export interface PendingImport {
+  jobId: string;
+  title: string;
+  filename: string;
+  kind: "pdf" | "images";
+  lang: string;
+  total: number;
+  startedAt: number;
+}
+
+/** First lines of one page, for the outline editor. */
+export interface PagePreview {
+  n: number;
+  lines: string[];
+}
+
+/** One row of the "Add words to Anki" preview. */
+export interface AddWordRow {
+  key: string;
+  lemma: string;
+  article?: string;
+  gloss?: string;
+  /** A sentence from the book that uses the word. */
+  example?: string;
+  unitN: number;
+  /** "new": not in Anki; "in-anki": a note exists; "known": known already (skipped). */
+  status: "new" | "in-anki" | "known";
+}
+
+export interface AddWordsPreview {
+  rows: AddWordRow[];
+  /** Deck the words go to by the profile rule, per unit (per-unit rule) or one for all. */
+  decks: Record<number, string>;
+  /** The deck options of the picker. */
+  options: string[];
+}
+
+/** A grammar topic the unit's texts show (rule-based detectors over the book's own texts). */
+export interface UnitGrammarTopic {
+  topicId: string;
+  title: string;
+  level: string;
+  summary: string;
+  /** Sentences of the unit that show it. */
+  count: number;
+  example?: string;
+}
+
+export interface GenerateUnitResult {
+  added: number;
+  rejected: number;
+  grammarTopic?: string;
+}
 
 export interface CourseListItem {
   course: Course;
@@ -92,6 +149,8 @@ export interface UnitView {
   words: UnitWordView[];
   /** The unit's grammar notes: OCR'd blocks linked to the unit (for your own use). */
   grammar: { title: string; text: string }[];
+  /** Exercises made for this unit with AI (validated, graded like the book's). */
+  generated: BookExerciseView[];
 }
 
 /** Editable outline row (the outline editor). */
@@ -131,6 +190,24 @@ export interface AddMissingResult {
 export interface CourseServices {
   /** OCR (server job) + outline detection; saves the course and its draft outline. */
   importCourse(input: CourseSourceInput, onProgress?: (p: ImportProgress) => void): Promise<string>;
+  /** The import left unfinished in this browser (its reading job id is remembered), or null. */
+  pendingImport(): Promise<PendingImport | null>;
+  /** Reattach to the pending reading job and finish the import (throws when the job is gone). */
+  resumeImport(onProgress?: (p: ImportProgress) => void): Promise<string>;
+  /** Forget the pending import (and stop its job when it still runs). */
+  discardPendingImport(): Promise<void>;
+  /** First lines of every page, for the outline editor. */
+  pagePreviews(courseId: string): Promise<PagePreview[]>;
+  /** Preview of "Add words to Anki" for a unit, or the whole course ("all"). */
+  addWordsPreview(courseId: string, scope: number | "all"): Promise<AddWordsPreview>;
+  /** Add words of a unit (or the whole course) to Anki: `keys` (default: all new ones). */
+  addUnitWords(
+    courseId: string,
+    scope: number | "all",
+    opts?: { keys?: string[]; deck?: string },
+  ): Promise<AddMissingResult>;
+  /** Grammar topics the unit's texts show, most frequent first. */
+  unitGrammar(courseId: string, n: number): Promise<UnitGrammarTopic[]>;
   /** Recognise exercises, derive answers, extract word lists, add texts to the Library. */
   analyzeCourse(courseId: string, onProgress?: (p: ImportProgress) => void): Promise<void>;
   courseList(): Promise<CourseListItem[]>;

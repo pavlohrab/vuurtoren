@@ -231,6 +231,21 @@ export type AppEvent =
   | { type: "BlocksExtracted"; courseId: string; blocks: Block[] }
   /** Recognised exercises of one unit (replaces that unit's exercises). */
   | { type: "BookExerciseExtracted"; courseId: string; unitN: number; exercises: BookExercise[] }
+  /**
+   * AI exercises made for one unit ("Generate exercises like this unit", docs/ai.md). Only
+   * items that passed the language server's checks are stored; they add to earlier ones and
+   * are graded by the book checkers. Numbers start at 1001 so they never meet the book's.
+   */
+  | {
+      type: "UnitExercisesGenerated";
+      courseId: string;
+      unitN: number;
+      exercises: BookExercise[];
+      rejected: number;
+      grammarTopic?: string;
+      provider: string;
+      model: string;
+    }
   | {
       type: "BookExerciseEdited";
       courseId: string;
@@ -282,6 +297,7 @@ const EVENT_TYPE_MAP = {
   UnitEdited: 1,
   BlocksExtracted: 1,
   BookExerciseExtracted: 1,
+  UnitExercisesGenerated: 1,
   BookExerciseEdited: 1,
   UnitWordsSet: 1,
   BookExerciseAnswered: 1,
@@ -424,6 +440,8 @@ export interface Repository {
   /** Exercises of a unit in book order, with user edits applied. */
   unitExercises(courseId: string, unitN: number): Promise<BookExercise[]>;
   unitWords(courseId: string, unitN: number): Promise<UnitWord[]>;
+  /** AI exercises made for a unit (UnitExercisesGenerated events, oldest first). */
+  generatedUnitExercises(courseId: string, unitN: number): Promise<BookExercise[]>;
   /** Latest answers of the exercises of a unit (all units when `unitN` is omitted). */
   bookAnswers(courseId: string, unitN?: number): Promise<BookAnswerRecord[]>;
   /** Drop projections and rebuild them from the event log. */

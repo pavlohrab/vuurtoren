@@ -35,12 +35,15 @@ import {
   unitWordLists,
   validateOutline,
 } from "@app/core";
+import { topicForHit } from "@app/content";
 import type { KenningRepository, WordInfo } from "@app/db";
-import type { NlpClient } from "@app/nlp-client";
+import { type NlpClient, isOcrLang } from "@app/nlp-client";
 import { createRng, generate } from "../practice/engine.js";
 import { type DeriveClient, deriveAnswers } from "./courseDerive.js";
 import type {
   AddMissingResult,
+  AddWordRow,
+  AddWordsPreview,
   BookCheckResult,
   CourseListItem,
   CourseServices,
@@ -50,6 +53,9 @@ import type {
   ImportProgress,
   LearnNextResult,
   OutlineRow,
+  PagePreview,
+  PendingImport,
+  UnitGrammarTopic,
   UnitRow,
   UnitText,
   UnitView,
@@ -77,6 +83,34 @@ export interface LiveCoursesDeps {
   now?: () => number;
   /** Polling interval of the OCR job in ms (shortened in tests). */
   pollMs?: number;
+  /** Where the pending import is remembered (default: localStorage, or memory). */
+  storage?: Pick<Storage, "getItem" | "setItem" | "removeItem">;
+  /** Deck names for the Add to Anki picker (the profile's deck choices). */
+  deckOptions?: () => Promise<string[]>;
+}
+
+const PENDING_KEY = "kenning.course.pendingImport";
+
+function defaultStorage(): Pick<Storage, "getItem" | "setItem" | "removeItem"> {
+  try {
+    localStorage.setItem("kenning.probe", "1");
+    localStorage.removeItem("kenning.probe");
+    return localStorage;
+  } catch {
+    const m = new Map<string, string>();
+    return {
+      getItem: (k) => m.get(k) ?? null,
+      setItem: (k, v) => void m.set(k, v),
+      removeItem: (k) => void m.delete(k),
+    };
+  }
+}
+
+/** "about 3 min left" from seconds. */
+function etaText(eta: number | null | undefined): string {
+  if (eta === null || eta === undefined) return "";
+  if (eta < 60) return " · less than a minute left";
+  return ` · about ${Math.round(eta / 60)} min left`;
 }
 
 /** Marker in a Library text's source reference: `course:<courseId>:<unit>`. */
@@ -92,6 +126,8 @@ const KINDS_FOR_TYPE: Partial<Record<BookExercise["type"], ExerciseKind[]>> = {
   "sentence-building": ["scramble"],
   choice: ["cloze-choice", "word-choice"],
 };
+
+const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 const fileTitle = (name: string) =>
   name
@@ -112,22 +148,44 @@ export function createLiveCourses(deps: LiveCoursesDeps): CourseServices {
 
   // ------------------------------------------------------------------ import
 
-  /** Run the server OCR job; resolves with all pages. */
-  async function ocrPages(
-    files: readonly File[],
+  const storage = deps.storage ?? defaultStorage();
+  const readPending = (): PendingImport | null => {
+    try {
+      const raw = storage.getItem(PENDING_KEY);
+      return raw ? (JSON.parse(raw) as PendingImport) : null;
+    } catch {
+      return null;
+    }
+  };
+  const writePending = (p: PendingImport | null) => {
+    try {
+      if (p) storage.setItem(PENDING_KEY, JSON.stringify(p));
+      else storage.removeItem(PENDING_KEY);
+    } catch {
+      // Without storage an import cannot be resumed; it still works in one go.
+    }
+  };
+
+  /** Poll an OCR job to the end; resolves with all pages. */
+  async function pollPages(
+    client: NlpClient,
+    jobId: string,
+    total: number,
     onProgress?: (p: ImportProgress) => void,
   ): Promise<OcrPage[]> {
-    const client = await deps.nlp();
-    const job = await client.courseOcrStart(files, "nl");
     const pages: OcrPage[] = [];
     for (;;) {
-      const st = await client.courseOcrStatus(job.id, pages.length);
+      const st = await client.courseOcrStatus(jobId, pages.length);
       pages.push(...st.pages);
+      const all = st.total || total;
       onProgress?.({
         stage: "ocr",
         done: st.done,
-        total: st.total || job.total,
-        message: `Recognising page ${Math.min(st.done + 1, st.total || job.total)} of ${st.total || job.total}`,
+        total: all,
+        message:
+          st.done >= all
+            ? `Read all ${all} pages`
+            : `Reading page ${Math.min(st.done + 1, all)} of ${all}${etaText(st.eta)}`,
       });
       if (st.status === "error") throw new Error(st.error ?? "OCR failed.");
       if (st.status === "done" && pages.length >= st.total) return pages;
@@ -135,29 +193,40 @@ export function createLiveCourses(deps: LiveCoursesDeps): CourseServices {
     }
   }
 
-  async function importCourse(
-    input: CourseSourceInput,
+  /** Start the server OCR job (remembered, so the wizard can be left); resolves with all pages. */
+  async function ocrPages(
+    files: readonly File[],
+    meta: { title: string; kind: "pdf" | "images" },
     onProgress?: (p: ImportProgress) => void,
+  ): Promise<OcrPage[]> {
+    const client = await deps.nlp();
+    const lang = (await deps.settings()).lang;
+    const job = await client.courseOcrStart(files, isOcrLang(lang) ? lang : "nl");
+    writePending({
+      jobId: job.id,
+      title: meta.title,
+      filename: files[0]?.name ?? "",
+      kind: meta.kind,
+      lang,
+      total: job.total,
+      startedAt: clock(),
+    });
+    return pollPages(client, job.id, job.total, onProgress);
+  }
+
+  /** Turn recognised pages into a saved course with its draft outline. */
+  async function buildCourse(
+    pages: OcrPage[],
+    title: string,
+    source: Course["source"],
+    onProgress?: (p: ImportProgress) => void,
+    units?: (courseId: string) => Unit[],
   ): Promise<string> {
-    let pages: OcrPage[];
-    let source: Course["source"];
-    let title: string;
-    if (input.kind === "text") {
-      pages = input.text.split("\f").map((text, i) => ({ n: i + 1, text }));
-      source = { kind: "text" };
-      title = input.title;
-    } else {
-      const first = input.files[0];
-      if (!first) throw new Error("Choose a file first.");
-      pages = await ocrPages(input.files, onProgress);
-      source = { kind: input.kind, filename: first.name };
-      title = input.title?.trim() || fileTitle(first.name);
-    }
     if (pages.every((p) => !p.text.trim())) throw new Error("No text was found in this file.");
     onProgress?.({ stage: "outline", done: 0, total: 1, message: "Finding units and exercises" });
     const courseId = crypto.randomUUID();
-    const units = detectOutline(pages, courseId);
-    const blocks = assignKinds(segmentPages(stripRunningText(pages)), units);
+    const outline = units ? units(courseId) : detectOutline(pages, courseId);
+    const blocks = assignKinds(segmentPages(stripRunningText(pages)), outline);
     const course: Course = {
       id: courseId,
       title: title || "Course",
@@ -167,10 +236,86 @@ export function createLiveCourses(deps: LiveCoursesDeps): CourseServices {
       created: clock(),
     };
     await repo.append({ type: "CourseImported", course });
-    await repo.append({ type: "UnitDefined", courseId, units });
+    await repo.append({ type: "UnitDefined", courseId, units: outline });
     await repo.append({ type: "BlocksExtracted", courseId, blocks });
     onProgress?.({ stage: "outline", done: 1, total: 1, message: "Outline ready" });
     return courseId;
+  }
+
+  async function resumeImport(onProgress?: (p: ImportProgress) => void): Promise<string> {
+    const p = readPending();
+    if (!p) throw new Error("There is no unfinished import.");
+    const client = await deps.nlp();
+    let pages: OcrPage[];
+    try {
+      pages = await pollPages(client, p.jobId, p.total, onProgress);
+    } catch (e) {
+      if (/unknown or expired|404/i.test(String((e as Error).message ?? e))) {
+        writePending(null);
+        throw new Error(
+          "The language server no longer has this reading job (it was restarted, or the job finished more than an hour ago). Choose the file again: pages it already read come from its cache.",
+          { cause: e },
+        );
+      }
+      throw e;
+    }
+    const id = await buildCourse(
+      pages,
+      p.title,
+      { kind: p.kind, filename: p.filename },
+      onProgress,
+    );
+    writePending(null);
+    return id;
+  }
+
+  async function importCourse(
+    input: CourseSourceInput,
+    onProgress?: (p: ImportProgress) => void,
+  ): Promise<string> {
+    if (input.kind === "text") {
+      const pages = input.text.split("\f").map((text, i) => ({ n: i + 1, text }));
+      return buildCourse(pages, input.title, { kind: "text" }, onProgress);
+    }
+    if (input.kind === "url") {
+      // One page and one unit per web page, titled by the page.
+      const client = await deps.nlp();
+      const pages: OcrPage[] = [];
+      const titles: string[] = [];
+      for (const [i, url] of input.urls.entries()) {
+        onProgress?.({
+          stage: "ocr",
+          done: i,
+          total: input.urls.length,
+          message: `Reading page ${i + 1} of ${input.urls.length}`,
+        });
+        const r = await client.extractUrl(url);
+        pages.push({ n: i + 1, text: `${r.title}\n\n${r.text}` });
+        titles.push(r.title.trim() || `Page ${i + 1}`);
+      }
+      return buildCourse(pages, input.title, { kind: "url" }, onProgress, (courseId) =>
+        titles.map((title, i) => ({
+          courseId,
+          n: i + 1,
+          title,
+          pages: [i + 1, i + 1] as [number, number],
+          ankiDecks: [],
+          kind: "theme" as const,
+        })),
+      );
+    }
+    const first = input.files[0];
+    if (!first) throw new Error("Choose a file first.");
+    const title = input.title?.trim() || fileTitle(first.name);
+    const pages = await ocrPages(input.files, { title, kind: input.kind }, onProgress);
+    const id = await buildCourse(
+      pages,
+      title,
+      { kind: input.kind, filename: first.name },
+      onProgress,
+    );
+    writePending(null);
+    return id;
   }
 
   async function editOutline(courseId: string, rows: OutlineRow[]): Promise<void> {
@@ -346,13 +491,21 @@ export function createLiveCourses(deps: LiveCoursesDeps): CourseServices {
     const row = view?.units.find((r) => r.unit.n === n);
     if (!view || !row) return null;
     const infos = await wordMap();
-    const [blocks, exercises, answers, unitWords, library] = await Promise.all([
+    const [blocks, exercises, answers, unitWords, library, generated] = await Promise.all([
       repo.courseBlocks(courseId),
       repo.unitExercises(courseId, n),
       repo.bookAnswers(courseId, n),
       repo.unitWords(courseId, n),
       repo.listTexts(),
+      repo.generatedUnitExercises(courseId, n),
     ]);
+    const withAnswers = (e: BookExercise) => ({
+      ...e,
+      answers: e.items.map((_, i) => {
+        const a = answers.find((x) => x.number === e.number && x.item === i);
+        return a ? { answer: a.answer, correct: a.correct } : {};
+      }),
+    });
     const texts: UnitText[] = readingTexts(blocks, row.unit).map((t) => {
       const textId = library.find((x) => x.title === t.title)?.id;
       return {
@@ -368,13 +521,8 @@ export function createLiveCourses(deps: LiveCoursesDeps): CourseServices {
       unit: row.unit,
       status: row.status,
       texts,
-      exercises: exercises.map((e) => ({
-        ...e,
-        answers: e.items.map((_, i) => {
-          const a = answers.find((x) => x.number === e.number && x.item === i);
-          return a ? { answer: a.answer, correct: a.correct } : {};
-        }),
-      })),
+      exercises: exercises.map(withAnswers),
+      generated: generated.map(withAnswers),
       words: await wordViews(unitWords, infos),
       grammar: blocks
         .filter((b) => b.kind === "grammar" && b.label && grammarMatches(b, exercises))
@@ -464,44 +612,7 @@ export function createLiveCourses(deps: LiveCoursesDeps): CourseServices {
     n: number,
     opts?: { deck?: string },
   ): Promise<AddMissingResult> {
-    const s = await deps.settings();
-    const profile = deps.profile ? await deps.profile() : migratedProfile(s.lang, s.targetDeck, []);
-    const course = await courseOrThrow(courseId);
-    const unit = course.units.find((u) => u.n === n);
-    const context = {
-      source: "course" as const,
-      course: { title: course.title, ...(unit ? { unitTitle: unit.title } : {}) },
-      ...(opts?.deck ? { deck: opts.deck } : {}),
-    };
-    const infos = await wordMap();
-    const missing = (await repo.unitWords(courseId, n)).filter(
-      (w) => !infos.get(keyOf(w))?.noteIds.length,
-    );
-    const anki = await deps.anki();
-    const slug = course.title
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-|-$/g, "");
-    let added = 0;
-    let failed = 0;
-    for (const w of missing) {
-      try {
-        await addWordToAnki(anki, (e) => repo.append(e), {
-          profile,
-          context,
-          word: w.article ? `${w.article} ${w.lemma}` : w.lemma,
-          key: keyOf(w),
-          source: course.title,
-          extraTags: [`kenning::course::${slug}::${n}`],
-          ...(w.gloss ? { gloss: w.gloss } : {}),
-        });
-        added++;
-      } catch {
-        failed++;
-      }
-    }
-    deps.changed();
-    return { added, failed, deck: resolveDeck(profile, context) };
+    return addUnitWords(courseId, n, opts?.deck ? { deck: opts.deck } : {});
   }
 
   // ------------------------------------------------------------------ practice
@@ -577,6 +688,12 @@ export function createLiveCourses(deps: LiveCoursesDeps): CourseServices {
 
   // ------------------------------------------------------------------ book exercises
 
+  /** A book exercise, or one generated for the unit (numbers from 1001). */
+  async function findExercise(courseId: string, n: number, number: number) {
+    const own = (await repo.unitExercises(courseId, n)).find((e) => e.number === number);
+    return own ?? (await repo.generatedUnitExercises(courseId, n)).find((e) => e.number === number);
+  }
+
   async function checkItem(
     courseId: string,
     n: number,
@@ -584,7 +701,7 @@ export function createLiveCourses(deps: LiveCoursesDeps): CourseServices {
     item: number,
     answer: string,
   ): Promise<BookCheckResult> {
-    const ex = (await repo.unitExercises(courseId, n)).find((e) => e.number === number);
+    const ex = await findExercise(courseId, n, number);
     const it = ex?.items[item];
     if (!ex || !it) throw new Error("This exercise item no longer exists.");
     let orderOk: boolean | undefined;
@@ -638,8 +755,259 @@ export function createLiveCourses(deps: LiveCoursesDeps): CourseServices {
     await repo.append({ type: "BookExerciseEdited", courseId, unitN: n, number, patch: { items } });
   }
 
+  // ------------------------------------------------------------------ outline editor
+
+  async function pagePreviews(courseId: string): Promise<PagePreview[]> {
+    const course = await courseOrThrow(courseId);
+    const blocks = await repo.courseBlocks(courseId);
+    const byPage = new Map<number, string[]>();
+    for (const b of blocks) {
+      const lines = byPage.get(b.page) ?? [];
+      if (lines.length >= 3) continue;
+      const own = [b.label, ...b.text.split("\n")]
+        .map((l) => l?.trim() ?? "")
+        .filter((l) => /\p{L}{3}/u.test(l));
+      byPage.set(b.page, [...lines, ...own].slice(0, 3));
+    }
+    return Array.from({ length: course.pageCount }, (_, i) => ({
+      n: i + 1,
+      lines: byPage.get(i + 1) ?? [],
+    }));
+  }
+
+  // ------------------------------------------------------------------ words to Anki
+
+  /** A sentence of the unit's pages that uses the word (lemma, or a form sharing its stem). */
+  function exampleFor(lemma: string, sentences: readonly string[]): string | undefined {
+    const l = lemma.toLowerCase();
+    if (l.length < 2 || /\s/.test(l)) {
+      return sentences.find((s) => s.toLowerCase().includes(l));
+    }
+    const stem = l.length >= 5 ? l.replace(/(en|e|n)$/u, "") : l;
+    const re = new RegExp(
+      `(?<![\\p{L}])(?:${escapeRe(l)}|${escapeRe(stem)}\\p{L}{0,3})(?![\\p{L}])`,
+      "iu",
+    );
+    return sentences.find((s) => re.test(s));
+  }
+
+  /** Sentences of a unit's pages (reading texts and exercise items), 4 to 25 words. */
+  function unitSentences(blocks: readonly Block[], unit: Unit): string[] {
+    const text = blocks
+      .filter((b) => b.page >= unit.pages[0] && b.page <= unit.pages[1])
+      .map((b) => b.text.replace(/-\n(?=\p{Ll})/gu, "").replace(/\n/g, " "))
+      .join(" ");
+    return (text.match(/[^.!?]*\p{L}[^.!?]*[.!?]/gu) ?? [])
+      .map((x) =>
+        x
+          .replace(/\s+/g, " ")
+          .replace(/^[\d\W]+/u, "")
+          .trim(),
+      )
+      .filter((x) => {
+        const n = x.match(/\p{L}+/gu)?.length ?? 0;
+        return n >= 4 && n <= 25 && !x.includes("____") && /^\p{Lu}/u.test(x);
+      });
+  }
+
+  async function currentProfile(): Promise<LanguageProfile> {
+    const s = await deps.settings();
+    return deps.profile ? deps.profile() : migratedProfile(s.lang, s.targetDeck, []);
+  }
+
+  /** Where a unit's new words go: the per-unit rule prefers the Anki deck the unit is mapped to. */
+  function unitDeck(profile: LanguageProfile, courseTitle: string, unit: Unit): string {
+    if (profile.courseDecks === "unit" && unit.ankiDecks[0]) return unit.ankiDecks[0];
+    return resolveDeck(profile, {
+      source: "course",
+      course: { title: courseTitle, unitTitle: unit.title },
+    });
+  }
+
+  async function addWordsPreview(
+    courseId: string,
+    scope: number | "all",
+  ): Promise<AddWordsPreview> {
+    const course = await courseOrThrow(courseId);
+    const units = course.units.filter((u) =>
+      scope === "all" ? u.kind === "theme" || u.kind === "other" : u.n === scope,
+    );
+    const [infos, blocks, profile] = await Promise.all([
+      wordMap(),
+      repo.courseBlocks(courseId),
+      currentProfile(),
+    ]);
+    const rows: AddWordRow[] = [];
+    const seen = new Set<string>();
+    for (const unit of units) {
+      const sentences = unitSentences(blocks, unit);
+      for (const w of await repo.unitWords(courseId, unit.n)) {
+        const key = keyOf(w);
+        if (seen.has(key)) continue;
+        seen.add(key);
+        const info = infos.get(key);
+        const example = exampleFor(w.lemma, sentences);
+        rows.push({
+          key,
+          lemma: w.lemma,
+          unitN: unit.n,
+          status:
+            info?.state === "known" ? "known" : info && info.noteIds.length > 0 ? "in-anki" : "new",
+          ...(w.article ? { article: w.article } : {}),
+          ...(w.gloss ? { gloss: w.gloss } : {}),
+          ...(example ? { example } : {}),
+        });
+      }
+    }
+    // Glosses (and de/het) from the dictionary for words the book list does not gloss.
+    const missing = rows.filter((r) => r.status === "new" && !r.gloss).map((r) => r.lemma);
+    if (missing.length > 0 && course.lang === "nl") {
+      try {
+        const found = await (await deps.nlp()).gloss("nl", missing);
+        for (const r of rows) {
+          const g = found[r.lemma]?.[0];
+          if (!g) continue;
+          if (!r.gloss && g.glosses[0]) r.gloss = g.glosses.slice(0, 2).join("; ");
+          if (!r.article && g.article && g.article !== "de/het") r.article = g.article;
+        }
+      } catch {
+        // The dictionary is optional: words go to Anki without a gloss.
+      }
+    }
+    const options: string[] = deps.deckOptions ? await deps.deckOptions().catch(() => []) : [];
+    const decks = Object.fromEntries(units.map((u) => [u.n, unitDeck(profile, course.title, u)]));
+    return {
+      rows,
+      decks,
+      options: [...new Set([...Object.values(decks), ...options])],
+    };
+  }
+
+  async function addUnitWords(
+    courseId: string,
+    scope: number | "all",
+    opts: { keys?: string[]; deck?: string } = {},
+  ): Promise<AddMissingResult> {
+    const course = await courseOrThrow(courseId);
+    const preview = await addWordsPreview(courseId, scope);
+    const wanted = opts.keys ? new Set(opts.keys) : null;
+    const rows = preview.rows.filter(
+      (r) => r.status === "new" && (wanted ? wanted.has(r.key) : true),
+    );
+    const profile = await currentProfile();
+    const anki = await deps.anki();
+    const slug = course.title
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "");
+    let added = 0;
+    let failed = 0;
+    let lastDeck = opts.deck ?? Object.values(preview.decks)[0] ?? profile.destinations.default;
+    for (const r of rows) {
+      const unit = course.units.find((u) => u.n === r.unitN);
+      const deck = opts.deck ?? preview.decks[r.unitN];
+      try {
+        const res = await addWordToAnki(anki, (e) => repo.append(e), {
+          profile,
+          context: {
+            source: "course",
+            course: { title: course.title, ...(unit ? { unitTitle: unit.title } : {}) },
+            ...(deck ? { deck } : {}),
+          },
+          word: r.article ? `${r.article} ${r.lemma}` : r.lemma,
+          key: r.key,
+          source: course.title,
+          extraTags: [`kenning::course::${slug}::${r.unitN}`],
+          ...(r.gloss ? { gloss: r.gloss } : {}),
+          ...(r.example ? { sentence: r.example } : {}),
+        });
+        lastDeck = res.deck;
+        added++;
+      } catch {
+        failed++;
+      }
+    }
+    deps.changed();
+    return { added, failed, deck: lastDeck };
+  }
+
+  // ------------------------------------------------------------------ grammar
+
+  const grammarCache = new Map<string, UnitGrammarTopic[]>();
+
+  async function unitGrammar(courseId: string, n: number): Promise<UnitGrammarTopic[]> {
+    const cacheKey = `${courseId}:${n}`;
+    const cached = grammarCache.get(cacheKey);
+    if (cached) return cached;
+    const course = await courseOrThrow(courseId);
+    const unit = course.units.find((u) => u.n === n);
+    if (!unit || course.lang !== "nl") return [];
+    const blocks = await repo.courseBlocks(courseId);
+    const sentences = [
+      ...readingTexts(blocks, unit).flatMap((t) => t.text.split(/(?<=[.!?])\s+/u)),
+      ...unitSentences(blocks, unit),
+    ]
+      .filter((x) => (x.match(/\p{L}+/gu)?.length ?? 0) >= 4)
+      .slice(0, 400);
+    if (sentences.length === 0) return [];
+    let hits: Awaited<ReturnType<NlpClient["grammar"]>>;
+    try {
+      hits = await (await deps.nlp()).grammar("nl", sentences);
+    } catch {
+      return [];
+    }
+    const counts = new Map<string, { count: number; example: string }>();
+    hits.forEach((list, i) => {
+      for (const id of new Set(list.map((h) => topicForHit(h.topic, course.lang)?.id ?? ""))) {
+        if (!id) continue;
+        const cur = counts.get(id) ?? { count: 0, example: sentences[i] ?? "" };
+        cur.count++;
+        counts.set(id, cur);
+      }
+    });
+    const out: UnitGrammarTopic[] = [...counts]
+      .flatMap(([id, c]) => {
+        const t = topicForHit(id, course.lang) ?? undefined;
+        return t
+          ? [
+              {
+                topicId: t.id,
+                title: t.title,
+                level: t.level,
+                summary: t.summary,
+                count: c.count,
+                ...(c.example ? { example: c.example } : {}),
+              },
+            ]
+          : [];
+      })
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 6);
+    grammarCache.set(cacheKey, out);
+    return out;
+  }
+
   return {
     importCourse,
+    async pendingImport() {
+      return readPending();
+    },
+    resumeImport,
+    async discardPendingImport() {
+      const p = readPending();
+      writePending(null);
+      if (p) {
+        try {
+          await (await deps.nlp()).courseOcrCancel(p.jobId);
+        } catch {
+          // Already finished or gone.
+        }
+      }
+    },
+    pagePreviews,
+    addWordsPreview,
+    addUnitWords,
+    unitGrammar,
     analyzeCourse,
     courseList,
     course: courseView,

@@ -603,6 +603,8 @@ export function createLiveServices(repo: KenningRepository): AppServices {
     glossLemmas: async (lemmas) =>
       Object.fromEntries((await lookupGlosses(lemmas.map((l) => ({ key: l, lemma: l })))).found),
     changed,
+    // Resolved at call time: the course services are created below.
+    unitGrammar: (courseId, n) => courses.unitGrammar(courseId, n),
     saveText: async ({ title, content, source }) => {
       const textId = nextUlid();
       await repo.append({
@@ -644,6 +646,7 @@ export function createLiveServices(repo: KenningRepository): AppServices {
     model,
     wordData: async (lang, entries) => (await buildWordData(lang, entries)).words,
     importText: (input) => services.importText(input),
+    deckOptions: async () => (await services.deckChoices("course")).options.map((o) => o.deck),
     changed,
   });
 

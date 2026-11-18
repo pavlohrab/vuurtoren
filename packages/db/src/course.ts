@@ -195,6 +195,14 @@ export function courseQueries(driver: SqlDriver) {
       );
       return rows.map((r) => json<UnitWord>(r["data"]));
     },
+    async generatedUnitExercises(courseId: string, unitN: number): Promise<BookExercise[]> {
+      if (!(await courseExists(driver, courseId))) return [];
+      const rows = await driver.exec(
+        "SELECT payload FROM events WHERE type = 'UnitExercisesGenerated' AND json_extract(payload, '$.courseId') = ? AND json_extract(payload, '$.unitN') = ? ORDER BY id",
+        [courseId, unitN],
+      );
+      return rows.flatMap((r) => json<{ exercises: BookExercise[] }>(r["payload"]).exercises);
+    },
     async bookAnswers(courseId: string, unitN?: number): Promise<BookAnswerRecord[]> {
       const rows = await driver.exec(
         `SELECT unit_n, number, item, answer, correct, at FROM book_answers
