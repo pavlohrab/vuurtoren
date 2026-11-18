@@ -409,9 +409,7 @@ function McResults({
   return (
     <div className="exam-results">
       <header className="exam-results-head">
-        <p className="exam-eyebrow">
-          {mode === "exam" ? "Mock exam" : "Practice"} · {title}
-        </p>
+        <p className="exam-eyebrow">{title}</p>
         <h2>Your result</h2>
       </header>
       <ScoreCard part={part} score={score} mode={mode} unit="questions" />

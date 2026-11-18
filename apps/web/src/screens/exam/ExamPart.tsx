@@ -127,7 +127,7 @@ function ExamPartScreen({
   if (m) {
     const title = theme
       ? `${MODE_LABEL[m]} · ${bank.knm.find((t) => t.id === theme)?.title ?? theme}`
-      : `${MODE_LABEL[m]} ${setN}`;
+      : `${MODE_LABEL[m]} · set ${setN}`;
     const setId = theme ? `theme:${theme}` : `set:${setN}`;
     let body;
     if (part === "lezen" || part === "luisteren" || part === "knm") {
@@ -230,7 +230,6 @@ function ExamPartScreen({
                   className="k-btn k-btn--primary k-btn--sm"
                 >
                   <Timer size={14} aria-hidden /> Mock exam
-                  {part === "spreken" ? "" : ` · ${info.minutes} min`}
                 </Link>
               </span>
             </li>

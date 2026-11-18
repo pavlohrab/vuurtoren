@@ -6,7 +6,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { Check, Clock, Dumbbell, Plus } from "lucide-react";
 import { useState } from "react";
-import { type ExamPart, type Score, examPartInfo, grammarTopic } from "@app/content";
+import { type ExamPart, type Score, grammarTopic } from "@app/content";
 import { AddToAnki, Button, Chip, useToast } from "@app/ui";
 import { normalizeKey } from "@app/core";
 import { useServices } from "../../services/context.js";
@@ -58,9 +58,13 @@ export function ScoreCard({
   mode: "exam" | "practice";
   unit?: string;
 }) {
-  const info = examPartInfo(part);
   return (
-    <section className="exam-score" aria-label="Your score" data-passed={score.passed || undefined}>
+    <section
+      className="exam-score"
+      data-part={part}
+      aria-label="Your score"
+      data-passed={score.passed || undefined}
+    >
       <p className="exam-score-big">
         {score.correct}
         <span className="exam-score-of"> / {score.total}</span>
@@ -71,7 +75,8 @@ export function ScoreCard({
           <Chip tone={score.passed ? "success" : "neutral"}>{pct(score.ratio)}</Chip>
         </p>
         <p className="exam-muted">
-          Pass mark about {score.passMark} {unit} of {score.total} — an estimate ({info.passRule}).
+          Pass mark about {score.passMark} {unit} of {score.total} (an estimate; the official pass
+          marks are not published).
           {mode === "practice" ? " Practice rounds are easier than the timed exam." : ""}
         </p>
       </div>
