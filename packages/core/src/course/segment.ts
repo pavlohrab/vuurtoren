@@ -11,9 +11,16 @@ import { EXERCISE_WORDS, UNIT_WORD_SRC } from "./vocab.js";
 const SKILL = String.raw`(?:Luisteren en spreken|Luisteren en schrijven|Luisteren|Lezen|Spreken of schrijven|Spreken en schrijven|Spreken|Schrijven|Woordenschat|Grammatica|Uitspraak|Kijken|Spelling|Vocabulaire|Lezen en schrijven|Lezen en spreken)`;
 /** Up to two junk tokens (icons the OCR read as symbols or stray capitals) may precede the header. */
 const HEADER_RE = new RegExp(
-  String.raw`^(?:(?:[^\p{Ll}\s]{1,3}|\p{Ll})\s+){0,2}?(?:(${SKILL})\s+)?(\p{Lu}\p{L}{3,11})\s+(\d{1,3})(?:\.\d{1,2})?\b[\s.:)]*(.*)$`,
+  String.raw`^(?:(?:[^\p{Ll}\s]{1,3}|\p{Ll})\s+){0,2}?(?:(${SKILL})\s+)?(\p{Lu}\p{L}{3,11})\s*(\d{1,3})(?:\.\d{1,2})?\b[\s.:)]*(.*)$`,
   "u",
 );
+/**
+ * A header alone on its line behind a label the book uses but {@link SKILL} does not list
+ * ("Internet Oefening 26", "Vocabulaire en spreken Oefening 22", "Lied Oefening 15"), possibly
+ * cut ("isteren Oefening 6") and behind up to three icon tokens.
+ */
+const LABELLED_HEADER_RE =
+  /^(?:[^\p{L}\s]{1,3}\s+){0,3}(\p{L}{3,14}(?:\s+(?:en|of)\s+\p{L}{3,14})?)\s+(\p{Lu}\p{L}{3,11})\s*(\d{1,3})\s*[.:]?\s*$/u;
 const UNIT_HEADING_RE = new RegExp(
   String.raw`^(${UNIT_WORD_SRC})\s+(\d{1,2})\b[\s.:–—-]*(.*)$`,
   "iu",
@@ -61,8 +68,13 @@ export interface ExerciseHeader {
 
 /** Parse an exercise header line, or null. */
 export function parseExerciseHeader(line: string): ExerciseHeader | null {
-  const m = HEADER_RE.exec(line.trim());
-  if (!m || !isExerciseWord(m[2] ?? "")) return null;
+  const t = line.trim();
+  const m = HEADER_RE.exec(t);
+  if (!m || !isExerciseWord(m[2] ?? "")) {
+    const l = LABELLED_HEADER_RE.exec(t);
+    if (!l || !isExerciseWord(l[2] ?? "")) return null;
+    return { word: l[2] ?? "Oefening", skill: l[1] ?? "", number: Number(l[3]), rest: "" };
+  }
   const out: ExerciseHeader = {
     word: m[2] ?? "Oefening",
     number: Number(m[3]),
@@ -130,8 +142,11 @@ interface Open {
  * blocks, everything else is `other`; {@link assignKinds} refines kinds from the outline.
  *
  * @param pages OCR'd pages (already stripped of running text)
+ * @param breaks pages that start a unit: a block never grows across them (an exercise at the
+ *   end of a theme must not swallow the first pages of the next unit)
  */
-export function segmentPages(pages: readonly OcrPage[]): Block[] {
+export function segmentPages(pages: readonly OcrPage[], breaks: Iterable<number> = []): Block[] {
+  const unitStarts = new Set(breaks);
   const blocks: Block[] = [];
   let open: Open | null = null;
   const flush = () => {
@@ -148,6 +163,7 @@ export function segmentPages(pages: readonly OcrPage[]): Block[] {
   };
 
   for (const page of pages) {
+    if (unitStarts.has(page.n)) flush();
     for (const raw of page.text.split("\n")) {
       const line = raw.trim();
       const ex = parseExerciseHeader(line);

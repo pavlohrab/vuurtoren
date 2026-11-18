@@ -473,7 +473,8 @@ export function parseCoursePack(value: unknown): CoursePack {
         !isObj(b) ||
         !isInt(b["page"]) ||
         !isStr(b["text"]) ||
-        !BLOCK_KINDS.includes(String(b["kind"]))
+        !BLOCK_KINDS.includes(String(b["kind"])) ||
+        (b["topic"] !== undefined && !isStr(b["topic"]))
       )
         fail("The pack has a text block that is not valid.");
     }

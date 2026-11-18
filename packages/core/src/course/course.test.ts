@@ -158,6 +158,37 @@ describe("segmentation", () => {
       rest: "Luister.",
     });
     expect(parseExerciseHeader("Oefening")).toBeNull();
+    // Labels the skill list does not know, icons in front, a lost space.
+    expect(parseExerciseHeader("Vocabulaire en spreken Oefening 22")).toMatchObject({
+      skill: "Vocabulaire en spreken",
+      number: 22,
+    });
+    expect(parseExerciseHeader('> ) " Luisteren en spreken Oefening 17')?.number).toBe(17);
+    expect(parseExerciseHeader("Internet Oefening 26")?.number).toBe(26);
+    expect(parseExerciseHeader("Internet en schrijven Oefening9")?.number).toBe(9);
+    // A reference inside a sentence is not a header.
+    expect(parseExerciseHeader("Klopt uw antwoord op vraag 3 van oefening 22?")).toBeNull();
+    expect(parseExerciseHeader("Gebruik de woorden uit Oefening 15 en 16.")).toBeNull();
+  });
+
+  it("never lets a block grow across the first page of a unit", () => {
+    const pages: OcrPage[] = [
+      { n: 1, text: "Oefening 24\nLees het gedicht." },
+      { n: 2, text: "Grammaticale termen\nbijvoeglijk naamwoord" },
+      { n: 3, text: "1 Het verbum\nOefening 1\nVul in." },
+    ];
+    expect(segmentPages(pages).map((b) => [b.label, b.page])).toEqual([
+      ["Oefening 24", 1],
+      ["Oefening 1", 3],
+    ]);
+    const split = segmentPages(pages, [1, 2]);
+    expect(split.map((b) => [b.kind, b.label, b.page])).toEqual([
+      ["exercise", "Oefening 24", 1],
+      ["other", undefined, 2],
+      ["exercise", "Oefening 1", 3],
+    ]);
+    expect(split[0]?.text).toBe("Lees het gedicht.");
+    expect(split[1]?.text).toContain("1 Het verbum");
   });
 
   it("strips footers and page numbers, then splits pages into blocks", () => {
@@ -292,6 +323,14 @@ describe("word lists and texts", () => {
     expect(readingTexts(marked, unit).map((t) => [t.title, t.text])).toEqual([
       ["Thema 1 Kennismaken · Op de markt", "Anne gaat naar de markt.\n\nZe koopt fruit."],
     ]);
+
+    // A grammar appendix explains and drills: no reading texts are guessed there.
+    const grammar: Unit = { ...unit, n: 2, title: "Grammatica", kind: "grammar" };
+    const appendix = assignKinds(
+      [{ page: 1, kind: "exercise", number: 4, label: "Oefening 4", text: `Vul in.\n\n${prose}` }],
+      [grammar],
+    );
+    expect(readingTexts(appendix, grammar)).toEqual([]);
   });
 });
 

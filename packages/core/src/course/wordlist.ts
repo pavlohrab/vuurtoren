@@ -125,6 +125,8 @@ export function reflow(par: string): string {
  * Reading texts of a unit: prose paragraphs inside its exercise/other blocks (kind "text") and
  * the transcript sections for the unit (kind "transcript"). When the unit has blocks of kind
  * "text" (marked by hand, e.g. in a corrected course pack), exactly those are its reading texts.
+ * Prose is only guessed in themes (and units of kind "other"): a grammar appendix explains and
+ * drills, the word list and transcripts units hold no reading texts of their own.
  */
 export function readingTexts(blocks: readonly Block[], unit: Unit): ReadingText[] {
   const themeNumber = extractNumber(unit.title) ?? unit.n;
@@ -165,6 +167,7 @@ export function readingTexts(blocks: readonly Block[], unit: Unit): ReadingText[
       continue;
     }
     if (b.kind !== "exercise" && b.kind !== "other") continue;
+    if (unit.kind !== "theme" && unit.kind !== "other") continue;
     const prose = b.text
       .split(/\n{2,}/)
       .filter(isProse)

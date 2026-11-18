@@ -191,11 +191,18 @@ function GrammarTab({ unit, topics }: { unit: UnitView; topics: UnitGrammarTopic
         <p className="cs-note">No grammar topics were found in this unit&rsquo;s texts.</p>
       )}
       {unit.grammar.length > 0 ? (
-        <details className="cs-booknotes">
+        <details className="cs-booknotes" open={unit.unit.kind === "grammar"}>
           <summary>Grammar notes from your book</summary>
           {unit.grammar.map((g) => (
             <section key={g.title}>
               <h3>{g.title}</h3>
+              {g.topicId ? (
+                <p className="cs-meta">
+                  <Link to="/grammar/$topic" params={{ topic: g.topicId }}>
+                    Kenning&rsquo;s page on this topic
+                  </Link>
+                </p>
+              ) : null}
               <pre className="cs-raw" lang="nl">
                 {g.text}
               </pre>
