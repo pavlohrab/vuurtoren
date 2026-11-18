@@ -951,6 +951,28 @@
   }
 }
 
+/* Desktop app: Connect screen (desktop/ConnectScreen.tsx), built on the sign-in styles. */
+.connect-opening {
+  align-items: center;
+  text-align: center;
+}
+.connect-opening .signin-lede {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.connect-offline {
+  padding: 20px 32px;
+}
+.connect-offline-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0;
+}
+.connect-offline .signin-lede {
+  margin-bottom: 8px;
+}
+
 /* ---------- Home (screens/Home.tsx) ---------- */
 /* Calm and editorial: no boxes. Hero (8) + quiet column (4), Today, words (7) + recent (5), more. */
 .home-kicker {

@@ -4,6 +4,7 @@
  * uses `browserPlatform()`; a desktop shell or browser extension passes its own.
  */
 import type { KeyValueStorage } from "@app/ai";
+import { desktopBridge, withDesktopAnki } from "../desktop/bridge.js";
 import { deviceStorage } from "../storage/local.js";
 
 export interface Platform {
@@ -13,9 +14,12 @@ export interface Platform {
 }
 
 export function browserPlatform(): Platform {
+  // Resolved per call, so a fetch installed later (tests, the degraded watcher) is used.
+  const fetch: typeof globalThis.fetch = (input, init) => globalThis.fetch(input, init);
+  // In the desktop app, AnkiConnect goes through the app (no webCorsOriginList setup).
+  const bridge = desktopBridge();
   return {
-    // Resolved per call, so a fetch installed later (tests, the degraded watcher) is used.
-    fetch: (input, init) => globalThis.fetch(input, init),
+    fetch: bridge ? withDesktopAnki(bridge, fetch) : fetch,
     storage: deviceStorage(),
   };
 }

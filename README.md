@@ -242,6 +242,13 @@ with Caddy, Tailscale, sign-in, updates and backups: [deploy/README.md](deploy/R
 
 </details>
 
+### Desktop app
+
+Linux (AppImage, .deb), Windows (.exe, .msi) and macOS (.dmg) installers come with each
+release. Enter your server's address once and sign in; Anki works without any AnkiConnect
+setup. The builds are unsigned (Windows: More info > Run anyway; macOS: right-click > Open).
+Details, updates and building it yourself: [docs/desktop.md](docs/desktop.md).
+
 ### Development
 
 Requirements: Node ≥ 22, pnpm, [uv](https://docs.astral.sh/uv/), Python ≥ 3.12.
