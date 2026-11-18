@@ -70,7 +70,7 @@ describe("empty states", () => {
 
   it("the demo (synced) shows no Connect Anki banner", async () => {
     setup("/library", {}, true);
-    await screen.findAllByRole("meter");
+    await screen.findAllByRole("button", { name: "Het weer" });
     expect(screen.queryByRole("button", { name: "Connect Anki" })).toBeNull();
   });
 

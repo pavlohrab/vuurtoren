@@ -13,6 +13,7 @@ import {
 import { applyCourseEvent } from "./course.js";
 import { contentHash } from "./hash.js";
 import { compareHlc } from "./ids.js";
+import { applyTextMeta, metaPatchFields } from "./library.js";
 import type { AnkiWordEntry, AppEvent, SqlDriver, SqlValue, WordInfo } from "./types.js";
 
 /** An event plus the metadata the projections need. */
@@ -155,8 +156,14 @@ export async function applyEvent(driver: SqlDriver, ctx: EventContext): Promise<
       );
       return;
     }
+    case "TextMetaUpdated":
+      await applyTextMeta(driver, ctx.hlc, e.textId, metaPatchFields(e.patch ?? {}));
+      return;
+    case "TextCoverSet":
+      await applyTextMeta(driver, ctx.hlc, e.textId, { cover: e.blobId ?? null });
+      return;
     case "TextDeleted":
-      for (const t of ["texts", "text_tokens", "text_grammar", "reading_progress"]) {
+      for (const t of ["texts", "text_meta", "text_tokens", "text_grammar", "reading_progress"]) {
         await driver.exec(`DELETE FROM ${t} WHERE ${t === "texts" ? "id" : "text_id"} = ?`, [
           e.textId,
         ]);
@@ -258,6 +265,11 @@ export async function applyEvent(driver: SqlDriver, ctx: EventContext): Promise<
     case "WordSuggested":
     case "WordSuggestionDismissed":
     case "ExamAttempt":
+    case "ShelfCreated":
+    case "ShelfRenamed":
+    case "ShelfDeleted":
+    case "ShelfTextAdded":
+    case "ShelfTextRemoved":
     case "UnitExercisesGenerated":
       // Read straight from the event log (see generated.ts, suggested.ts, exam.ts, course.ts): no table.
       return;

@@ -48,6 +48,7 @@ import { DEGRADED_MESSAGES, clearDegraded, reportDegraded, watchClient } from ".
 import { createLiveCourses } from "./liveCourses.js";
 import { createLiveAI } from "./liveAI.js";
 import { createLiveExam } from "./liveExam.js";
+import { createLiveLibrary } from "./liveLibrary.js";
 import { createLiveProfile } from "./liveProfile.js";
 import type { AddOptions } from "./profileTypes.js";
 import { createLiveGrammar } from "./liveGrammar.js";
@@ -762,8 +763,14 @@ export function createLiveServices(
 
   const exam = createLiveExam({ repo, lang: async () => (await settings()).lang, changed });
 
+  const { autoCover, ...library } = createLiveLibrary({
+    repo,
+    forget: (textId) => planCache.delete(textId),
+  });
+
   const services: AppServices = {
     ...profile.services,
+    ...library,
     ...practice,
     ...ai,
     ...courses,
@@ -856,6 +863,10 @@ export function createLiveServices(
         // Don't leave a half-imported text behind (a retry would create a duplicate).
         await repo.append({ type: "TextDeleted", textId });
         throw e;
+      }
+      if (input.kind === "pdf" || input.kind === "image") {
+        onProgress?.("Making a cover…");
+        await autoCover(textId, input.file, input.file.name, client);
       }
       return textId;
     },

@@ -252,8 +252,10 @@ describe("routing to the review", () => {
     expect(history.location.pathname).toBe("/read/t-markt/words");
 
     history.push("/library");
-    const card = (await screen.findByText("Het weer")).closest("article")!;
-    await userEvent.click(within(card).getByRole("button", { name: "Words from Het weer" }));
+    await userEvent.click(
+      (await screen.findAllByRole("button", { name: "More for Het weer" }))[0]!,
+    );
+    await userEvent.click(await screen.findByRole("menuitem", { name: "Words from this text" }));
     await screen.findByRole("heading", { name: "Words from this text" });
     expect(history.location.pathname).toBe("/read/t-weer/words");
   });
