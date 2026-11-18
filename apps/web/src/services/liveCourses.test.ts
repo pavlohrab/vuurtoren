@@ -25,7 +25,8 @@ function fakeBackend() {
   const anki: { action: string; params: Record<string, unknown> }[] = [];
   const uploads: string[] = [];
   let polls = 0;
-  const state = { failPoll: false };
+  /** Polls to fail with a network error (the client retries a failed request once). */
+  const state = { failPoll: 0 };
   const fetchFn = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
     const u = String(url);
     if (u.includes("/nlp/course/ocr")) {
@@ -34,8 +35,8 @@ function fakeBackend() {
         uploads.push(...form.getAll("file").map((f) => (f as File).name));
         return Response.json({ id: "j1", total: PAGES.length });
       }
-      if (state.failPoll) {
-        state.failPoll = false;
+      if (state.failPoll > 0) {
+        state.failPoll--;
         throw new TypeError("Failed to fetch");
       }
       // First poll: one page done; second poll: the rest.
@@ -236,7 +237,7 @@ describe("live courses", () => {
 
   it("remembers a started import, so leaving the wizard does not lose the reading job", async () => {
     const { backend, services } = await setup();
-    backend.state.failPoll = true;
+    backend.state.failPoll = 2;
     await expect(
       services.importCourse({ kind: "pdf", files: [new File(["%PDF"], "boek.pdf")] }),
     ).rejects.toThrow();

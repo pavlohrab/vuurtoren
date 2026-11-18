@@ -245,11 +245,20 @@ export class NlpClient {
 
   private async request<T>(path: string, init: RequestInit = {}): Promise<T> {
     let res: Response;
-    try {
-      res = await this.fetchImpl(`${this.url}${path}`, {
+    const send = () =>
+      this.fetchImpl(`${this.url}${path}`, {
         ...init,
         signal: AbortSignal.timeout(this.timeoutMs),
       });
+    try {
+      try {
+        res = await send();
+      } catch (e) {
+        // A kept-alive connection the server already closed fails once ("fetch failed"); every
+        // JSON endpoint is a pure function, so one retry is safe. Uploads are not retried.
+        if (!(e instanceof TypeError) || init.body instanceof FormData) throw e;
+        res = await send();
+      }
     } catch (e) {
       const timedOut = e instanceof DOMException && e.name === "TimeoutError";
       throw new NlpError(

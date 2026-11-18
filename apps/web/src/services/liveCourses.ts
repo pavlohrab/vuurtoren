@@ -127,7 +127,23 @@ const KINDS_FOR_TYPE: Partial<Record<BookExercise["type"], ExerciseKind[]>> = {
   choice: ["cloze-choice", "word-choice"],
 };
 
-const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+/** A card-sized gloss: the first two senses without their explanations in brackets. */
+export function shortGloss(senses: readonly string[]): string {
+  const clean = senses
+    .map((g) =>
+      g
+        .replace(/\s*\([^)]*\)/g, "")
+        .replace(/\s+/g, " ")
+        .trim(),
+    )
+    .filter(Boolean);
+  const out: string[] = [];
+  for (const g of clean) {
+    if (out.length >= 2 || [...out, g].join("; ").length > 60) break;
+    if (!out.includes(g)) out.push(g);
+  }
+  return out.join("; ") || (clean[0] ?? "").slice(0, 60);
+}
 
 const fileTitle = (name: string) =>
   name
@@ -783,18 +799,31 @@ export function createLiveCourses(deps: LiveCoursesDeps): CourseServices {
 
   // ------------------------------------------------------------------ words to Anki
 
-  /** A sentence of the unit's pages that uses the word (lemma, or a form sharing its stem). */
-  function exampleFor(lemma: string, sentences: readonly string[]): string | undefined {
-    const l = lemma.toLowerCase();
-    if (l.length < 2 || /\s/.test(l)) {
-      return sentences.find((s) => s.toLowerCase().includes(l));
-    }
-    const stem = l.length >= 5 ? l.replace(/(en|e|n)$/u, "") : l;
-    const re = new RegExp(
-      `(?<![\\p{L}])(?:${escapeRe(l)}|${escapeRe(stem)}\\p{L}{0,3})(?![\\p{L}])`,
-      "iu",
-    );
-    return sentences.find((s) => re.test(s));
+  /**
+   * Finder of a sentence of the unit's pages that uses a word: the lemma itself, or a form
+   * sharing its stem ("fietst" for "fietsen"). Indexes the words of the sentences once.
+   */
+  function exampleFinder(sentences: readonly string[]): (lemma: string) => string | undefined {
+    const first = new Map<string, number>();
+    sentences.forEach((x, i) => {
+      for (const w of x.toLowerCase().match(/\p{L}+/gu) ?? []) if (!first.has(w)) first.set(w, i);
+    });
+    const words = [...first.keys()];
+    return (lemma) => {
+      const l = lemma.toLowerCase();
+      if (l.length < 2) return undefined;
+      if (/\s/.test(l)) return sentences.find((x) => x.toLowerCase().includes(l));
+      const exact = first.get(l);
+      if (exact !== undefined) return sentences[exact];
+      const stem = l.length >= 5 ? l.replace(/(en|e|n)$/u, "") : l;
+      let best: number | undefined;
+      for (const w of words) {
+        if (w.length > stem.length + 3 || !w.startsWith(stem)) continue;
+        const i = first.get(w) ?? Infinity;
+        if (best === undefined || i < best) best = i;
+      }
+      return best === undefined ? undefined : sentences[best];
+    };
   }
 
   /** Sentences of a unit's pages (reading texts and exercise items), 4 to 25 words. */
@@ -846,13 +875,13 @@ export function createLiveCourses(deps: LiveCoursesDeps): CourseServices {
     const rows: AddWordRow[] = [];
     const seen = new Set<string>();
     for (const unit of units) {
-      const sentences = unitSentences(blocks, unit);
+      const exampleFor = exampleFinder(unitSentences(blocks, unit));
       for (const w of await repo.unitWords(courseId, unit.n)) {
         const key = keyOf(w);
         if (seen.has(key)) continue;
         seen.add(key);
         const info = infos.get(key);
-        const example = exampleFor(w.lemma, sentences);
+        const example = exampleFor(w.lemma);
         rows.push({
           key,
           lemma: w.lemma,
@@ -873,7 +902,7 @@ export function createLiveCourses(deps: LiveCoursesDeps): CourseServices {
         for (const r of rows) {
           const g = found[r.lemma]?.[0];
           if (!g) continue;
-          if (!r.gloss && g.glosses[0]) r.gloss = g.glosses.slice(0, 2).join("; ");
+          if (!r.gloss && g.glosses[0]) r.gloss = shortGloss(g.glosses);
           if (!r.article && g.article && g.article !== "de/het") r.article = g.article;
         }
       } catch {
@@ -940,7 +969,48 @@ export function createLiveCourses(deps: LiveCoursesDeps): CourseServices {
   // ------------------------------------------------------------------ grammar
 
   const grammarCache = new Map<string, UnitGrammarTopic[]>();
+  const baselineCache = new Map<string, Promise<Map<string, number>>>();
 
+  /** Sentences that show each grammar topic, per topic id, with a sample sentence. */
+  async function topicCounts(
+    lang: string,
+    sentences: readonly string[],
+  ): Promise<Map<string, { count: number; example: string }>> {
+    const hits = await (await deps.nlp()).grammar("nl", [...sentences]);
+    const counts = new Map<string, { count: number; example: string }>();
+    hits.forEach((list, i) => {
+      for (const id of new Set(list.map((h) => topicForHit(h.topic, lang)?.id ?? ""))) {
+        if (!id) continue;
+        const cur = counts.get(id) ?? { count: 0, example: sentences[i] ?? "" };
+        cur.count++;
+        counts.set(id, cur);
+      }
+    });
+    return counts;
+  }
+
+  /** How often each topic occurs in a sample of the whole course (share of sentences). */
+  function courseBaseline(course: { id: string; lang: string; units: Unit[] }, blocks: Block[]) {
+    let p = baselineCache.get(course.id);
+    if (!p) {
+      p = (async () => {
+        const themes = course.units.filter((u) => u.kind === "theme");
+        const per = Math.max(10, Math.floor(400 / Math.max(1, themes.length)));
+        const sample = themes.flatMap((u) => unitSentences(blocks, u).slice(0, per));
+        const counts = await topicCounts(course.lang, sample);
+        return new Map([...counts].map(([id, c]) => [id, c.count / Math.max(1, sample.length)]));
+      })();
+      baselineCache.set(course.id, p);
+      p.catch(() => baselineCache.delete(course.id));
+    }
+    return p;
+  }
+
+  /**
+   * Grammar topics of a unit, ranked by how much more the unit uses them than the course does
+   * (so "plural nouns" and "questions", which every unit has, do not crowd out what the unit
+   * teaches), with at least three sentences each.
+   */
   async function unitGrammar(courseId: string, n: number): Promise<UnitGrammarTopic[]> {
     const cacheKey = `${courseId}:${n}`;
     const cached = grammarCache.get(cacheKey);
@@ -956,24 +1026,30 @@ export function createLiveCourses(deps: LiveCoursesDeps): CourseServices {
       .filter((x) => (x.match(/\p{L}+/gu)?.length ?? 0) >= 4)
       .slice(0, 400);
     if (sentences.length === 0) return [];
-    let hits: Awaited<ReturnType<NlpClient["grammar"]>>;
+    let counts: Map<string, { count: number; example: string }>;
+    let baseline: Map<string, number>;
     try {
-      hits = await (await deps.nlp()).grammar("nl", sentences);
+      [counts, baseline] = await Promise.all([
+        topicCounts(course.lang, sentences),
+        unit.kind === "theme" ? courseBaseline(course, blocks) : Promise.resolve(new Map()),
+      ]);
     } catch {
       return [];
     }
-    const counts = new Map<string, { count: number; example: string }>();
-    hits.forEach((list, i) => {
-      for (const id of new Set(list.map((h) => topicForHit(h.topic, course.lang)?.id ?? ""))) {
-        if (!id) continue;
-        const cur = counts.get(id) ?? { count: 0, example: sentences[i] ?? "" };
-        cur.count++;
-        counts.set(id, cur);
-      }
-    });
+    const lift = (id: string, c: number) => {
+      const rate = c / sentences.length;
+      const base = baseline.get(id);
+      return base ? rate / base : 1;
+    };
     const out: UnitGrammarTopic[] = [...counts]
+      .filter(([, c]) => c.count >= 3)
+      .sort(
+        (a, b) =>
+          lift(b[0], b[1].count) * Math.sqrt(b[1].count) -
+          lift(a[0], a[1].count) * Math.sqrt(a[1].count),
+      )
       .flatMap(([id, c]) => {
-        const t = topicForHit(id, course.lang) ?? undefined;
+        const t = topicForHit(id, course.lang);
         return t
           ? [
               {
@@ -987,7 +1063,6 @@ export function createLiveCourses(deps: LiveCoursesDeps): CourseServices {
             ]
           : [];
       })
-      .sort((a, b) => b.count - a.count)
       .slice(0, 6);
     grammarCache.set(cacheKey, out);
     return out;
