@@ -276,7 +276,7 @@ export function Words() {
   ];
 
   return (
-    <div className="page words-page">
+    <div className="page page--list words-page">
       <PageHeader
         title="Words"
         lede="Every word Kenning knows about, from Anki and from your reading. Open one to act on it."

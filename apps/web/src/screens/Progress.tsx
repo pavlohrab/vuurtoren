@@ -117,8 +117,10 @@ function PracticeSection() {
   const p = q.data;
   if (!p) return null;
   return (
-    <section style={{ marginTop: 32 }} aria-label="Practice">
-      <h2 className="practice-h2">Practice</h2>
+    <section className="progress-section" aria-labelledby="progress-practice-h">
+      <h2 className="k-section-title" id="progress-practice-h">
+        Practice
+      </h2>
       <div className="stat-grid">
         <Link to="/practice" className="stat stat--link">
           <div className="stat-value">{fmt(p.due)}</div>

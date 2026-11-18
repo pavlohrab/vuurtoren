@@ -14,7 +14,6 @@ import type { Exercise, ExerciseKind, Skill } from "@app/core";
 import { grammarTopic } from "@app/content";
 import {
   Button,
-  Chip,
   EmptyState,
   ExerciseCard,
   ExerciseProgress,
@@ -130,18 +129,18 @@ function PracticeSession({ focus }: { focus: string[] | null }) {
   };
 
   return (
-    <div className="page page--narrow practice">
+    <div className="page page--list practice">
       {phase.name === "start" || phase.name === "loading" ? (
         <StartView loading={phase.name === "loading"} error={error} onStart={start} focus={focus} />
       ) : phase.name === "session" ? (
-        <>
+        <div className="practice-session">
           {aiReportText(aiReport) ? (
             <p className="k-hint practice-note" role="status">
               {aiReportText(aiReport)}
             </p>
           ) : null}
           <Session exercises={phase.exercises} listening={phase.listening} onFinish={finish} />
-        </>
+        </div>
       ) : (
         <Summary
           answered={phase.answered}
@@ -178,7 +177,7 @@ function OptionChip({
   return (
     <button
       type="button"
-      className="practice-option"
+      className="k-toggle"
       aria-pressed={pressed}
       aria-disabled={disabled || undefined}
       title={title}
@@ -193,13 +192,16 @@ function OptionChip({
 /** Practice vs Anki, said once (U4). */
 function TwoSchedules() {
   return (
-    <aside className="practice-explain" aria-label="Practice and Anki">
-      <Info size={16} aria-hidden />
+    <aside className="page-aside practice-explain" aria-labelledby="practice-anki-h">
+      <h2 id="practice-anki-h">
+        <Info size={14} aria-hidden /> Practice and Anki
+      </h2>
       <p>
         Practice trains what Anki doesn&rsquo;t — forms, gender, word order, listening. Your Anki
         reviews stay in Anki; results here also count toward how well Kenning thinks you know a
         word.
       </p>
+      <p>Keys: 1–4 to choose, Enter to check and go on, Esc to end the session.</p>
     </aside>
   );
 }
@@ -289,78 +291,86 @@ function StartView({
           ) : null
         }
       />
-      <TwoSchedules />
-      {overview.isPending ? <Skeleton style={{ height: 24, width: 160 }} /> : null}
-      {o?.degraded ? (
-        <p className="k-hint practice-note">
-          The language server is unreachable — fewer exercise types today
-        </p>
-      ) : null}
+      <div className="page-split">
+        <div className="practice-form">
+          {overview.isPending ? <Skeleton style={{ height: 24, width: 160 }} /> : null}
+          {o?.degraded ? (
+            <p className="k-hint practice-note">
+              The language server is unreachable — fewer exercise types today
+            </p>
+          ) : null}
 
-      <fieldset className="practice-group">
-        <legend className="k-label">Skills</legend>
-        <div className="practice-options">
-          {SKILLS.map(({ skill, label }) => {
-            const blocked = skill === "listening" && noVoice;
-            return (
-              <OptionChip
-                key={skill}
-                pressed={!blocked && skills.includes(skill)}
-                disabled={blocked}
-                title={blocked ? "No Dutch voice is available in this browser" : undefined}
-                onClick={() => toggle(skill)}
-              >
-                {label}
-              </OptionChip>
-            );
-          })}
+          <fieldset className="practice-group">
+            <legend className="k-label">Skills</legend>
+            <div className="practice-options">
+              {SKILLS.map(({ skill, label }) => {
+                const blocked = skill === "listening" && noVoice;
+                return (
+                  <OptionChip
+                    key={skill}
+                    pressed={!blocked && skills.includes(skill)}
+                    disabled={blocked}
+                    title={blocked ? "No Dutch voice is available in this browser" : undefined}
+                    onClick={() => toggle(skill)}
+                  >
+                    {label}
+                  </OptionChip>
+                );
+              })}
+            </div>
+            {noVoice ? (
+              <p className="k-hint practice-note">
+                Listening is off: no Dutch voice is available in this browser.
+              </p>
+            ) : null}
+          </fieldset>
+
+          <fieldset className="practice-group">
+            <legend className="k-label">Session length</legend>
+            <div className="practice-options">
+              {SIZES.map((n) => (
+                <OptionChip key={n} pressed={size === n} onClick={() => setSize(n)}>
+                  {n} exercises
+                </OptionChip>
+              ))}
+            </div>
+          </fieldset>
+
+          {aiReady ? (
+            <fieldset className="practice-group">
+              <legend className="k-label">Sentences</legend>
+              <label className="row" style={{ gap: 8 }}>
+                <input
+                  type="checkbox"
+                  checked={aiFill}
+                  onChange={(e) => setAIFill(e.target.checked)}
+                />
+                Fill gaps with AI sentences
+              </label>
+              <p className="k-hint practice-note">
+                Words with fewer than 3 example sentences get checked AI sentences (at most 8 words
+                per session, saved for next time).
+              </p>
+            </fieldset>
+          ) : null}
+
+          {error ? (
+            <ErrorNotice
+              error={error}
+              title="The session could not be prepared."
+              onRetry={() => onStart(size, effective, aiReady && aiFill)}
+            />
+          ) : null}
+          <Button
+            variant="primary"
+            disabled={loading || effective.length === 0}
+            onClick={() => onStart(size, effective, aiReady && aiFill)}
+          >
+            {loading ? "Preparing…" : "Start"}
+          </Button>
         </div>
-        {noVoice ? (
-          <p className="k-hint practice-note">
-            Listening is off: no Dutch voice is available in this browser.
-          </p>
-        ) : null}
-      </fieldset>
-
-      <fieldset className="practice-group">
-        <legend className="k-label">Session length</legend>
-        <div className="practice-options">
-          {SIZES.map((n) => (
-            <OptionChip key={n} pressed={size === n} onClick={() => setSize(n)}>
-              {n} exercises
-            </OptionChip>
-          ))}
-        </div>
-      </fieldset>
-
-      {aiReady ? (
-        <fieldset className="practice-group">
-          <legend className="k-label">Sentences</legend>
-          <label className="row" style={{ gap: 8 }}>
-            <input type="checkbox" checked={aiFill} onChange={(e) => setAIFill(e.target.checked)} />
-            Fill gaps with AI sentences
-          </label>
-          <p className="k-hint practice-note">
-            Words with fewer than 3 example sentences get checked AI sentences (at most 8 words per
-            session, saved for next time).
-          </p>
-        </fieldset>
-      ) : null}
-
-      {error ? (
-        <ErrorNotice
-          error={error}
-          title="The session could not be prepared."
-          onRetry={() => onStart(size, effective, aiReady && aiFill)}
-        />
-      ) : null}
-      <Button
-        variant="primary"
-        disabled={loading || effective.length === 0}
-        onClick={() => onStart(size, effective, aiReady && aiFill)}
-      >
-        {loading ? "Preparing…" : "Start"}
-      </Button>
+        <TwoSchedules />
+      </div>
     </>
   );
 }
@@ -572,16 +582,17 @@ function Summary({
       ) : null}
       {again.length > 0 ? (
         <section className="practice-group">
-          <h2 className="practice-h2">Words to look at again</h2>
+          <h2 className="k-section-title">Words to look at again</h2>
           <div className="practice-options">
             {again.map((k) => (
               <Link
                 key={k}
                 to="/words"
                 search={{ source: "practice-again", word: k }}
-                className="practice-word"
+                className="k-word-chip"
+                lang="nl"
               >
-                <Chip tone="warm">{k}</Chip>
+                {k}
               </Link>
             ))}
           </div>

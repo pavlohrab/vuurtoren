@@ -56,7 +56,7 @@ export function LanguageDecksSettings() {
       ) : null}
       <LanguageChoice value={profile.lang} onChange={(lang) => setDraft({ ...profile, lang })} />
 
-      <h3 style={{ fontSize: 16, margin: "8px 0 0" }}>Decks Kenning reads</h3>
+      <h3 className="settings-h3">Decks Kenning reads</h3>
       <p className="k-hint" style={{ margin: 0 }}>
         Words in these decks count as known or learning. Kenning&rsquo;s own decks are always read.
       </p>
@@ -84,7 +84,7 @@ export function LanguageDecksSettings() {
         </p>
       ) : null}
 
-      <h3 style={{ fontSize: 16, margin: "8px 0 0" }}>Where new words go</h3>
+      <h3 className="settings-h3">Where new words go</h3>
       <DestinationFields profile={profile} onChange={setDraft} />
       {draft && !profile.destinations.default.trim() ? (
         <p className="error-text" role="alert" style={{ margin: 0 }}>

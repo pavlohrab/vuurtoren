@@ -16,46 +16,43 @@
 }
 
 /* ---------- Index ---------- */
-.grammar-level {
-  margin-bottom: 32px;
+.grammar-level + .grammar-level {
+  margin-top: var(--s-7);
 }
 .grammar-level-title {
   display: flex;
   align-items: baseline;
-  gap: 8px;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--ink-muted);
-  margin: 0 0 8px;
+  gap: var(--s-2);
+  font-size: 17px;
+  margin: 0 0 var(--s-4);
 }
 .grammar-level-code {
-  font-size: 11px;
-  letter-spacing: 0.06em;
+  font-family: var(--font-ui);
+  font-size: 12.5px;
+  font-weight: 600;
   color: var(--accent);
 }
 .grammar-list {
   list-style: none;
   margin: 0;
   padding: 0;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-card);
-  background: var(--surface);
-  overflow: hidden;
+  border-top: 1px solid var(--hairline);
 }
-.grammar-list li + li {
-  border-top: 1px solid var(--line);
+.grammar-list li {
+  border-bottom: 1px solid var(--hairline);
 }
 .grammar-row {
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 12px 16px;
+  gap: var(--s-4);
+  min-height: 56px;
+  padding: var(--s-3) var(--s-1);
   color: var(--ink);
   text-decoration: none;
-  transition: background var(--dur) var(--ease);
+  transition: background var(--dur-fast) var(--ease);
 }
 .grammar-row:hover {
-  background: var(--surface-2);
+  background: color-mix(in srgb, var(--ink) 3.5%, transparent);
 }
 .grammar-row:focus-visible {
   outline: 2px solid var(--accent);
@@ -69,12 +66,12 @@
   min-width: 0;
 }
 .grammar-row-title {
-  font-weight: 600;
+  font-weight: 500;
   font-size: 15px;
 }
 .grammar-row-summary {
   color: var(--ink-muted);
-  font-size: 14px;
+  font-size: 13.5px;
 }
 .grammar-row-count {
   font-variant-numeric: tabular-nums;
@@ -117,12 +114,24 @@
   flex-wrap: wrap;
   margin: -8px 0 32px;
 }
-.grammar-section {
-  margin-bottom: 32px;
+.grammar-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-2) var(--s-4);
+  margin: calc(-1 * var(--s-4)) 0 var(--s-6);
+  color: var(--ink-muted);
+  font-size: 13px;
+}
+.grammar-topic .grammar-section {
+  max-width: var(--w-read);
+}
+.grammar-section + .grammar-section {
+  margin-top: var(--s-7);
 }
 .grammar-section h2 {
-  font-size: 19px;
-  margin: 0 0 12px;
+  font-size: 17px;
+  margin: 0 0 var(--s-4);
 }
 .grammar-prose {
   line-height: 1.6;
@@ -156,7 +165,7 @@
   flex-direction: column;
   gap: 2px;
   padding: 8px 0;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--hairline);
 }
 .grammar-examples li:last-child,
 .grammar-found li:last-child {
@@ -177,7 +186,7 @@
 }
 .grammar-found li {
   padding: 10px 0;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--hairline);
 }
 .grammar-found-sentence {
   font-size: 17px;
@@ -215,7 +224,7 @@
 /* ---------- Reader: grammar notes in the inspector ---------- */
 .grammar-notes {
   padding: 12px 16px;
-  border-top: 1px solid var(--line);
+  border-top: 1px solid var(--hairline);
   display: flex;
   flex-direction: column;
   gap: 12px;

@@ -81,7 +81,7 @@ export function SettingsScreen() {
   const section = chosen ?? "language";
   const meta = SECTIONS.find((s) => s.id === section)!;
   return (
-    <div className="page settings-page" data-picked={chosen ? "" : undefined}>
+    <div className="page page--list settings-page" data-picked={chosen ? "" : undefined}>
       <PageHeader
         title="Settings"
         lede="Everything stays on your device unless you point it elsewhere. Changes save themselves."

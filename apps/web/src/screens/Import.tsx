@@ -1,6 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "@tanstack/react-router";
-import { UploadCloud } from "lucide-react";
+import { Link, useNavigate } from "@tanstack/react-router";
+import { ArrowLeft, UploadCloud } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { DragEvent } from "react";
 import { Button, Input, Spinner, Tabs, Textarea, useToast } from "@app/ui";
@@ -8,6 +8,7 @@ import { useServices } from "../services/context.js";
 import type { ImportInput } from "../services/types.js";
 import { errorText } from "../services/errors.js";
 import { ErrorNotice } from "../shell/ErrorNotice.js";
+import { PageHeader } from "../shell/PageHeader.js";
 
 type Kind = "paste" | "url" | "pdf" | "image";
 
@@ -133,9 +134,16 @@ export function ImportScreen() {
   );
 
   return (
-    <div className="page page--narrow">
-      <h1>Import text</h1>
-      <p className="page-lede">Bring in something you want to read in Dutch.</p>
+    <div className="page page--list import-page">
+      <PageHeader
+        back={
+          <Link to="/library">
+            <ArrowLeft size={14} aria-hidden /> Library
+          </Link>
+        }
+        title="Import text"
+        lede="Bring in something you want to read in Dutch: paste it, add a web page, a PDF or a photo."
+      />
       <form
         className="stack"
         onSubmit={(e) => {

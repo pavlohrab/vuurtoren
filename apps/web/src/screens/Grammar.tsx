@@ -72,7 +72,7 @@ export function Grammar() {
   const o = overview.data;
   const groups = topicsByLevel();
   return (
-    <div className="page page--narrow grammar">
+    <div className="page page--list grammar">
       <PageHeader
         title="Grammar"
         lede="Short topics with examples from what you read. The numbers show how often each one occurs in your Library."
@@ -175,34 +175,40 @@ export function GrammarTopicPage({ topicId }: { topicId: string }) {
   const canPractise = topic.practice.length > 0 && topic.detects.length > 0;
 
   return (
-    <div className="page page--narrow grammar grammar-topic">
-      <Link to="/grammar" className="grammar-back">
-        <ArrowLeft size={14} aria-hidden /> Grammar
-      </Link>
-      <div className="grammar-topic-head">
-        <h1>{topic.title}</h1>
-        <Chip tone="accent" title={LEVEL_LABEL[topic.level]}>
-          {topic.level}
-        </Chip>
-      </div>
-      <p className="page-lede">{inline(topic.summary)}</p>
-      <div className="grammar-actions">
-        {canPractise ? (
-          <Link
-            to="/grammar/$topic/practice"
-            params={{ topic: topic.id }}
-            className="k-btn k-btn--primary"
-          >
-            Practise
+    <div className="page page--list grammar grammar-topic">
+      <PageHeader
+        back={
+          <Link to="/grammar">
+            <ArrowLeft size={14} aria-hidden /> Grammar
           </Link>
-        ) : null}
-        <CreateStoryButton preset={{ grammarTopic: topic.id }} />
+        }
+        title={topic.title}
+        lede={inline(topic.summary)}
+        actions={
+          <>
+            <CreateStoryButton preset={{ grammarTopic: topic.id }} />
+            {canPractise ? (
+              <Link
+                to="/grammar/$topic/practice"
+                params={{ topic: topic.id }}
+                className="k-btn k-btn--primary"
+              >
+                Practise
+              </Link>
+            ) : null}
+          </>
+        }
+      />
+      <p className="grammar-meta">
+        <Chip tone="accent" title={LEVEL_LABEL[topic.level]}>
+          {topic.level} · {LEVEL_LABEL[topic.level]}
+        </Chip>
         {count && count.hits > 0 ? (
-          <span className="k-hint">
+          <span>
             Seen {plural(count.hits, "time")} in {plural(count.texts, "text")} of your Library
           </span>
         ) : null}
-      </div>
+      </p>
 
       {explanation ? (
         <section className="grammar-section grammar-prose" aria-labelledby="g-explanation">

@@ -7,7 +7,7 @@
   gap: 8px 24px;
   padding-bottom: 14px;
   margin-bottom: 8px;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--hairline);
   font-size: 14px;
 }
 .tw-check {
@@ -37,8 +37,8 @@
     "sentence action";
   column-gap: 24px;
   row-gap: 4px;
-  padding: 18px 0;
-  border-bottom: 1px solid var(--line);
+  padding: var(--s-4) 0;
+  border-bottom: 1px solid var(--hairline);
 }
 .tw-head {
   grid-area: head;
@@ -48,9 +48,9 @@
   gap: 4px 10px;
 }
 .tw-word {
-  font-family: var(--font-reading);
-  font-size: 20px;
-  font-weight: 500;
+  font-family: var(--font-ui);
+  font-size: 17px;
+  font-weight: 600;
 }
 .tw-source {
   color: var(--ink-muted);
@@ -106,7 +106,7 @@
   gap: 16px;
   padding: 14px 0;
   background: var(--bg);
-  border-top: 1px solid var(--line);
+  border-top: 1px solid var(--hairline);
 }
 .tw-apply-text {
   margin: 0;

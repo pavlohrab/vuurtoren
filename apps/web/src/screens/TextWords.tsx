@@ -1,6 +1,6 @@
 import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "@tanstack/react-router";
-import { Dumbbell, ListChecks, MessagesSquare } from "lucide-react";
+import { ArrowLeft, ArrowRight, Dumbbell, ListChecks, MessagesSquare } from "lucide-react";
 import { useMemo, useState } from "react";
 import { AddToAnki, AnkiStatusChip, Button, EmptyState, Lemma, Select, Skeleton } from "@app/ui";
 import { useServices } from "../services/context.js";
@@ -119,8 +119,13 @@ export function TextWords({ textId }: { textId: string }) {
   const list = words.data;
 
   return (
-    <div className="page page--narrow">
+    <div className="page page--list tw-page">
       <PageHeader
+        back={
+          <Link to="/read/$textId" params={{ textId }}>
+            <ArrowLeft size={14} aria-hidden /> {title ?? "Back to the text"}
+          </Link>
+        }
         title="Words from this text"
         lede={
           <>
@@ -166,11 +171,8 @@ export function TextWords({ textId }: { textId: string }) {
           Show translated words too
         </label>
         <span className="tw-links">
-          <Link to="/read/$textId" params={{ textId }}>
-            Back to the text
-          </Link>
-          <Link to="/words" search={{ source: `text:${textId}` }}>
-            Open in Words
+          <Link to="/words" search={{ source: `text:${textId}` }} className="k-link">
+            Open in Words <ArrowRight size={14} aria-hidden />
           </Link>
         </span>
       </div>
