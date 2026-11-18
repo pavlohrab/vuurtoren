@@ -255,7 +255,8 @@ export async function applyEvent(driver: SqlDriver, ctx: EventContext): Promise<
       ]);
       return;
     case "SentencesGenerated":
-      // Read straight from the event log (see generated.ts): no table.
+    case "ExamAttempt":
+      // Read straight from the event log (see generated.ts, exam.ts): no table.
       return;
     case "ConversationStarted":
     case "MessageAdded":

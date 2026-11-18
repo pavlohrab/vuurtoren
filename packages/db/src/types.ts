@@ -252,6 +252,31 @@ export type AppEvent =
       lang?: string;
       /** Learner-model keys of the word(s) the item tests (empty or absent: none). */
       keys?: string[];
+    }
+  | {
+      /**
+       * One finished exam-preparation session (docs/exam.md): a practice round or a timed mock
+       * exam of one part. Scores only; spoken audio is never stored.
+       */
+      type: "ExamAttempt";
+      lang: string;
+      /** Exam bank id, e.g. "nl-a2". */
+      exam: string;
+      /** "lezen" | "luisteren" | "schrijven" | "spreken" | "knm". */
+      part: string;
+      mode: "exam" | "practice";
+      /** What was taken: "set:1", "theme:wonen", "task:sc-1-02", "ai". */
+      setId: string;
+      correct: number;
+      total: number;
+      /** Estimated pass mark (points) for `total`. */
+      passMark: number;
+      durationMs: number;
+      at: number;
+      /** Ids of the items answered wrongly or not ticked. */
+      missed?: string[];
+      /** Words worth learning from what went wrong (lemma keys). */
+      words?: string[];
     };
 
 /** Every event type this app version understands (checked against `AppEvent` at compile time). */
@@ -285,6 +310,7 @@ const EVENT_TYPE_MAP = {
   BookExerciseEdited: 1,
   UnitWordsSet: 1,
   BookExerciseAnswered: 1,
+  ExamAttempt: 1,
 } as const satisfies Record<AppEvent["type"], 1>;
 
 export const EVENT_TYPES: ReadonlySet<string> = new Set(Object.keys(EVENT_TYPE_MAP));
@@ -384,6 +410,22 @@ export interface PracticeLogEntry {
   correct: boolean;
   ms: number;
   at: number;
+}
+
+/** One ExamAttempt as stored (see exam.ts). */
+export interface ExamAttemptRecord {
+  id: string;
+  exam: string;
+  part: string;
+  mode: "exam" | "practice";
+  setId: string;
+  correct: number;
+  total: number;
+  passMark: number;
+  durationMs: number;
+  at: number;
+  missed: string[];
+  words: string[];
 }
 
 /** Repository API used by apps (web/desktop/extension). */
