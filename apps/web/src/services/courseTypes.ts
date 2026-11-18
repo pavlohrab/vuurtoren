@@ -152,8 +152,11 @@ export interface UnitView {
   texts: UnitText[];
   exercises: BookExerciseView[];
   words: UnitWordView[];
-  /** The unit's grammar notes: OCR'd blocks linked to the unit (for your own use). */
-  grammar: { title: string; text: string }[];
+  /**
+   * The unit's grammar notes: OCR'd blocks linked to the unit (for your own use); every chapter
+   * of a grammar unit. `topicId`: the app's topic page for the chapter, when known.
+   */
+  grammar: { title: string; text: string; topicId?: string }[];
   /** Exercises made for this unit with AI (validated, graded like the book's). */
   generated: BookExerciseView[];
 }

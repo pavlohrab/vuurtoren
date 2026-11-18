@@ -45,7 +45,7 @@ import {
   unitWordLists,
   validateOutline,
 } from "@app/core";
-import { topicForHit } from "@app/content";
+import { grammarTopic, topicForHit } from "@app/content";
 import type { KenningRepository, WordInfo } from "@app/db";
 import { type NlpClient, isOcrLang } from "@app/nlp-client";
 import { createRng, generate, shuffle } from "../practice/engine.js";
@@ -256,7 +256,13 @@ export function createLiveCourses(deps: LiveCoursesDeps): CourseServices {
     onProgress?.({ stage: "outline", done: 0, total: 1, message: "Finding units and exercises" });
     const courseId = crypto.randomUUID();
     const outline = units ? units(courseId) : detectOutline(pages, courseId);
-    const blocks = assignKinds(segmentPages(stripRunningText(pages)), outline);
+    const blocks = assignKinds(
+      segmentPages(
+        stripRunningText(pages),
+        outline.map((u) => u.pages[0]),
+      ),
+      outline,
+    );
     const course: Course = {
       id: courseId,
       title: title || "Course",
@@ -601,8 +607,19 @@ export function createLiveCourses(deps: LiveCoursesDeps): CourseServices {
       generated: generated.map(withAnswers),
       words: await wordViews(unitWords, infos),
       grammar: blocks
-        .filter((b) => b.kind === "grammar" && b.label && grammarMatches(b, exercises))
-        .map((b) => ({ title: b.label ?? "", text: b.text })),
+        .filter(
+          (b) =>
+            b.kind === "grammar" &&
+            b.label &&
+            (row.unit.kind === "grammar"
+              ? b.page >= row.unit.pages[0] && b.page <= row.unit.pages[1]
+              : grammarMatches(b, exercises)),
+        )
+        .map((b) => ({
+          title: b.label ?? "",
+          text: b.text,
+          ...(b.topic && grammarTopic(b.topic, view.course.lang) ? { topicId: b.topic } : {}),
+        })),
     };
   }
 

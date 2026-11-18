@@ -201,6 +201,14 @@ describe("course packs", () => {
         units: [{ ...units[0], exercises: [{ number: 1, page: 2, type: "essay", items: [] }] }],
       }),
     ).toThrow("unknown type");
+    // A grammar chapter may name its topic page; the name must be text.
+    const grammar = { page: 2, kind: "grammar", label: "1.2 modale verba", text: "kunnen" };
+    expect(
+      parseCoursePack({ ...good, blocks: [{ ...grammar, topic: "modal-verbs" }] }).blocks,
+    ).toHaveLength(1);
+    expect(() => parseCoursePack({ ...good, blocks: [{ ...grammar, topic: 3 }] })).toThrow(
+      "text block",
+    );
   });
 
   it("names files after the course", () => {

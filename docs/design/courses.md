@@ -135,7 +135,7 @@ One JSON file, `<course>.kenning-course.json` (structure: `<course>.structure.ke
                   "prompt"?, "options"?, "chunks"? }]             // full only
     }]
   }],
-  "blocks": [{ "page", "kind", "label"?, "number"?, "text" }],   // full only: the book's text
+  "blocks": [{ "page", "kind", "label"?, "number"?, "topic"?, "text" }],   // full only: the book's text; topic: grammar topic id of a grammar chapter
   "meta": { "generator"?, "corrections"?: { "<category>": n }, "notes"? }
 }
 ```

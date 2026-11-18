@@ -53,6 +53,8 @@ export interface Block {
   label?: string;
   /** Exercise number for `exercise` blocks. */
   number?: number;
+  /** `grammar` blocks: id of the app's grammar topic page the chapter explains ("modal-verbs"). */
+  topic?: string;
   text: string;
 }
 
