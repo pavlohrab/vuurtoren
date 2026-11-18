@@ -118,6 +118,40 @@ const TABLE: [string, string, string[], string | null][] = [
   ["Hij zou het boek kopen als hij geld had.", "kopen", ["verb.conditional"], null],
   ["Hij zou het boek kopen als hij geld had.", "zou", ["verb.conditional"], "order.v2"],
   ["Hij zal morgen komen.", "komen", ["verb.future"], null],
+  // gaan / laten + infinitive, aan het + infinitive (B9)
+  [
+    "Ik ga morgen boodschappen doen.",
+    "ga",
+    ["verb.present.ik", "verb.gaan-infinitive"],
+    "order.v2",
+  ],
+  ["Ik ga morgen boodschappen doen.", "doen", ["verb.gaan-infinitive"], null],
+  ["We gaan vanavond film kijken.", "kijken", ["verb.gaan-infinitive"], null],
+  ["Ik ga naar huis.", "ga", ["verb.present.ik"], "order.v2"],
+  [
+    "Ik laat mijn fiets repareren.",
+    "laat",
+    ["verb.present.ik", "verb.laten-infinitive"],
+    "order.v2",
+  ],
+  ["Ik laat mijn fiets repareren.", "repareren", ["verb.laten-infinitive"], null],
+  ["Ze laten hun kinderen buiten spelen.", "spelen", ["verb.laten-infinitive"], null],
+  ["Zij liet de hond uit.", "liet", ["verb.past.strong", "verb.separable"], "order.v2"],
+  ["Ik ben aan het koken.", "koken", ["verb.progressive"], null],
+  ["Ik ben aan het koken.", "ben", ["verb.present.irregular", "verb.progressive"], "order.v2"],
+  ["Ik ben aan het koken.", "het", ["verb.progressive"], null],
+  ["Hij was een boek aan het lezen.", "lezen", ["verb.progressive"], null],
+  ["Hij was een boek aan het lezen.", "aan", ["verb.progressive"], null],
+  // perfect: hebben or zijn
+  ["Ik ben naar huis gefietst.", "gefietst", ["verb.participle.weak", "verb.perfect"], null],
+  ["Ik heb twee uur gefietst.", "gefietst", ["verb.participle.weak", "verb.perfect"], null],
+  [
+    "Hij is gisteren vertrokken.",
+    "vertrokken",
+    ["verb.participle.strong", "verb.participle.no-ge", "verb.perfect"],
+    null,
+  ],
+  ["Ze is ziek geworden.", "is", ["verb.present.irregular", "verb.perfect"], "order.v2"],
   // word order in subordinate clauses
   ["Ik weet dat hij morgen komt.", "komt", ["verb.present.t"], "order.subordinate"],
   ["Hij zou het boek kopen als hij geld had.", "had", ["verb.past.strong"], "order.subordinate"],
@@ -198,6 +232,21 @@ describe("explainWord (fixtures from the real NLP server)", () => {
     expect(explain("Ik bel je morgen op.", "bel").notes[1]?.text).toMatch(/^bel … op = opbellen/);
     expect(explain("Gisteren ging ik naar de markt.", "ging").order?.text).toMatch(/«Gisteren»/);
     expect(explain("Het is een mooi huis.", "mooi").notes[0]?.text).toMatch(/een mooi huis/);
+  });
+
+  it("says why a perfect takes hebben or zijn", () => {
+    const note = (text: string, word: string) =>
+      explain(text, word).notes.find((n) => n.key === "verb.perfect");
+    expect(note("Ik ben naar huis gefietst.", "gefietst")?.text).toMatch(/where to/);
+    expect(note("Ik ben naar huis gefietst.", "gefietst")?.topic).toBe("hebben-or-zijn");
+    expect(note("Ik heb twee uur gefietst.", "gefietst")?.text).toMatch(/just the activity/);
+    expect(note("Hij is gisteren vertrokken.", "vertrokken")?.text).toMatch(
+      /change of place or state/,
+    );
+    expect(note("Ik heb mijn moeder gebeld.", "gebeld")?.text).toMatch(/most verbs take hebben/);
+    expect(explain("Ik ga morgen boodschappen doen.", "doen").notes[0]?.text).toMatch(
+      /^ga … doen: gaan \+ infinitive = "going to …"/,
+    );
   });
 
   it("says less when the analysis does not support a rule", () => {

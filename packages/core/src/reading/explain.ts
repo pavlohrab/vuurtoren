@@ -43,10 +43,12 @@ export const WORD_NOTE_TOPICS: readonly string[] = [
   "demonstratives",
   "diminutives",
   "future",
+  "hebben-or-zijn",
   "imperative",
   "imperfect-tense",
   "inversion",
   "irregular-verbs",
+  "laten",
   "modal-verbs",
   "negation",
   "object-pronouns",
@@ -59,6 +61,7 @@ export const WORD_NOTE_TOPICS: readonly string[] = [
   "plural-nouns",
   "possessive-pronouns",
   "present-tense",
+  "progressive",
   "pronominal-adverbs",
   "questions",
   "reflexive-verbs",
@@ -89,6 +92,27 @@ const IRREGULAR_PRESENT: Record<string, string> = {
   zien: "ik zie, jij ziet, hij ziet",
   komen: "ik kom, jij komt, hij komt",
 };
+/**
+ * Verbs of movement: perfect with zijn when a goal is given (Ik ben naar huis gefietst), with
+ * hebben for just the activity (Ik heb veel gefietst).
+ */
+const MOVEMENT = new Set([
+  "fietsen",
+  "lopen",
+  "rijden",
+  "zwemmen",
+  "wandelen",
+  "rennen",
+  "vliegen",
+  "varen",
+  "reizen",
+  "klimmen",
+  "springen",
+  "roeien",
+  "zeilen",
+  "schaatsen",
+  "kruipen",
+]);
 /** Irregular -cht participles and pasts (denken → gedacht, kopen → gekocht). */
 const IRREGULAR_CHT = /(dacht|bracht|kocht|zocht|mocht|vocht)$/;
 const DEFINITE = new Set(["de", "het", "deze", "die", "dit", "dat"]);
@@ -364,6 +388,96 @@ function arrow(form: string, lemma: string, verb = false): string {
   return `${form} → ${lemma}`;
 }
 
+/**
+ * The present perfect, with why this verb takes hebben or zijn: zijn for a change of place or
+ * state (and zijn, blijven, gebeuren), hebben for the rest; movement verbs depend on a goal.
+ */
+function perfectNote(pair: string, aux: string, verb: string): WordNote {
+  if (MOVEMENT.has(verb)) {
+    return {
+      key: "verb.perfect",
+      text:
+        aux === "zijn"
+          ? `${pair}: present perfect with zijn: a movement verb takes zijn when it says where to (naar huis), hebben when it is just the activity.`
+          : `${pair}: present perfect with hebben: a movement verb takes hebben for just the activity, zijn when it says where to (Ik ben naar huis ${verb === "fietsen" ? "gefietst" : "gegaan"}).`,
+      topic: "hebben-or-zijn",
+    };
+  }
+  return aux === "zijn"
+    ? {
+        key: "verb.perfect",
+        text: `${pair}: present perfect with zijn, used for a change of place or state (gaan, komen, vertrekken, worden) and for zijn, blijven and gebeuren; most verbs take hebben.`,
+        topic: "hebben-or-zijn",
+      }
+    : {
+        key: "verb.perfect",
+        text: `${pair}: present perfect (hebben + past participle at the end); most verbs take hebben, zijn is only for a change of place or state.`,
+        topic: "perfect-tense",
+      };
+}
+
+/** gaan (present) or laten + a bare infinitive (no te): near future, or "let / have done". */
+function bareInfinitive(verb: Tok, inf: Tok): WordNote | null {
+  const vf = morphFeatures(verb.morph);
+  if (morphFeatures(inf.morph)["VerbForm"] !== "Inf") return null;
+  const pair = `${verb.text} … ${inf.text}`;
+  const lemma = lower(verb.lemma);
+  if (lemma === "gaan" && vf["VerbForm"] === "Fin" && vf["Tense"] === "Pres") {
+    return {
+      key: "verb.gaan-infinitive",
+      text: `${pair}: gaan + infinitive = "going to …", a plan or something about to happen; the infinitive goes to the end.`,
+      topic: "future",
+    };
+  }
+  if (lemma === "laten") {
+    return {
+      key: "verb.laten-infinitive",
+      text: `${pair}: laten + infinitive (no te) = "let …" or "have something done" (Ik laat mijn fiets repareren).`,
+      topic: "laten",
+    };
+  }
+  return null;
+}
+
+/** The verb whose bare (no te) xcomp `v` is, if any. */
+function bareXcompHead(s: Sentence, v: Tok): Tok | undefined {
+  const h = s.head(v);
+  return h && bareXcomp(s, h)?.i === v.i ? h : undefined;
+}
+
+/** The infinitive a verb governs without te (gaan/laten … infinitive as xcomp). */
+function bareXcomp(s: Sentence, v: Tok): Tok | undefined {
+  return s
+    .children(v, "xcomp")
+    .find(
+      (c) =>
+        morphFeatures(c.morph)["VerbForm"] === "Inf" &&
+        !s.children(c, "mark").some((m) => lower(m.text) === "te"),
+    );
+}
+
+/**
+ * zijn + aan het + infinitive («Ik ben aan het koken»), found from any of its words: the
+ * infinitive right after «aan het», with a form of zijn depending on it.
+ */
+function progressive(s: Sentence, t: Tok): WordNote | null {
+  for (let k = 0; k + 2 < s.tokens.length; k++) {
+    const [a, h, inf] = [s.tokens[k], s.tokens[k + 1], s.tokens[k + 2]];
+    if (!a || !h || !inf || lower(a.text) !== "aan" || lower(h.text) !== "het") continue;
+    if (!isVerb(inf) || morphFeatures(inf.morph)["VerbForm"] !== "Inf") continue;
+    const zijn = s.tokens.find(
+      (z) => z.head === inf.i && lower(z.lemma) === "zijn" && ["aux", "cop"].includes(z.dep),
+    );
+    if (!zijn || (t !== a && t !== h && t !== inf && t !== zijn)) continue;
+    return {
+      key: "verb.progressive",
+      text: `${zijn.text} aan het ${inf.text}: zijn + aan het + infinitive = "busy …-ing", an action in progress.`,
+      topic: "progressive",
+    };
+  }
+  return null;
+}
+
 /** Helper-verb role of an auxiliary: perfect, passive, modal, future or conditional. */
 function auxRole(aux: Tok, main: Tok): WordNote | null {
   const af = morphFeatures(aux.morph);
@@ -385,14 +499,7 @@ function auxRole(aux: Tok, main: Tok): WordNote | null {
           topic: "past-perfect",
         };
       }
-      return {
-        key: "verb.perfect",
-        text:
-          aux.lemma === "zijn"
-            ? `${pair}: present perfect with zijn (verbs of movement or change take zijn).`
-            : `${pair}: present perfect (hebben + past participle at the end).`,
-        topic: "perfect-tense",
-      };
+      return perfectNote(pair, aux.lemma, lower(main.lemma));
     }
     return null;
   }
@@ -410,6 +517,8 @@ function auxRole(aux: Tok, main: Tok): WordNote | null {
             topic: "future",
           };
     }
+    const bare = bareInfinitive(aux, main);
+    if (bare) return bare;
     if (MODALS.has(aux.lemma)) {
       return {
         key: "verb.modal-infinitive",
@@ -636,10 +745,13 @@ function explainVerb(s: Sentence, v: Tok, notes: WordNote[]): void {
       });
     }
     const main = ["aux", "aux:pass"].includes(v.dep) ? s.head(v) : undefined;
-    if (main) {
-      const role = auxRole(v, main);
-      if (role) notes.push(role);
-    }
+    const role = main ? auxRole(v, main) : null;
+    if (role) notes.push(role);
+    const inf = prt ? undefined : bareXcomp(s, v);
+    const bare = inf ? bareInfinitive(v, inf) : null;
+    if (bare) notes.push(bare);
+    const prog = role || bare ? null : progressive(s, v);
+    if (prog) notes.push(prog);
     return;
   }
   if (form === "Part") {
@@ -721,10 +833,15 @@ function explainVerb(s: Sentence, v: Tok, notes: WordNote[]): void {
       );
     }
     const aux = s.children(v, "aux").find((a) => morphFeatures(a.morph)["VerbForm"] === "Fin");
-    if (aux) {
-      const role = auxRole(aux, v);
-      if (role) notes.push(role);
+    const role = aux ? auxRole(aux, v) : null;
+    if (role) notes.push(role);
+    const h = bareXcompHead(s, v);
+    if (!role && h && !particleOf(s, h)) {
+      const bare = bareInfinitive(h, v);
+      if (bare) notes.push(bare);
     }
+    const prog = role ? null : progressive(s, v);
+    if (prog) notes.push(prog);
   }
 }
 
@@ -1014,8 +1131,12 @@ export function explainWord(
   const w = lower(t.text);
   const f = morphFeatures(t.morph);
   let order: WordNote | null = null;
+  // «aan het» before an infinitive with zijn: the progressive, not a preposition or article.
+  const prog = w === "aan" || w === "het" ? progressive(sent, t) : null;
 
-  if (t.particle_of !== null || t.dep === "compound:prt") {
+  if (prog) {
+    notes.push(prog);
+  } else if (t.particle_of !== null || t.dep === "compound:prt") {
     const v = sent.get(t.particle_of ?? t.head);
     if (v && isVerb(v)) {
       notes.push({
