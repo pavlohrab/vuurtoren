@@ -107,6 +107,31 @@ Some **bold** text.
     expect(t.sections.map((s) => s.title)).toEqual(["Explanation", "Examples", "Common mistakes"]);
     expect(t.examples).toEqual([{ nl: "Morgen **ga ik**.", en: "Tomorrow I go." }]);
     expect(t.body.startsWith("## Explanation")).toBe(true);
+    expect(t.group).toBeUndefined();
+    expect(t.order).toBeUndefined();
+    expect(t.pattern).toEqual([]);
+  });
+
+  it("joins wrapped front-matter lines", () => {
+    const wrapped = page.replace("detects: [inversion, er]", "detects:\n  [inversion,\n  er]");
+    expect(parseTopic(wrapped, "demo.md", "nl").detects).toEqual(["inversion", "er"]);
+  });
+
+  it("reads group, order and the pattern box", () => {
+    const withMeta = page
+      .replace("level: A2\n", "level: A2\ngroup: verbs\norder: 7\n")
+      .replace(
+        "Some **bold** text.",
+        "Some **bold** text.\n\n### Pattern\n- `a` → b\n- c\n\n### More\n- not this",
+      );
+    const t = parseTopic(withMeta, "demo.md", "nl");
+    expect(t).toMatchObject({ group: "verbs", order: 7, pattern: ["`a` → b", "c"] });
+    expect(() =>
+      parseTopic(withMeta.replace("group: verbs", "group: nope"), "demo.md", "nl"),
+    ).toThrow(/group/);
+    expect(() => parseTopic(withMeta.replace("order: 7", "order: x"), "demo.md", "nl")).toThrow(
+      /order/,
+    );
   });
 
   it("rejects broken pages", () => {
