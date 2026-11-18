@@ -97,7 +97,7 @@ _De Opmaat A2_, 106 MB PDF, 289 scanned pages, no text layer, Tesseract 5.5 `nld
 
 | Step                | Result                                                                                                                                                            |
 | ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| OCR (`/course/ocr`) | 211 s for 289 pages (was single-threaded); mean word confidence 0.875; a re-import from the disk cache: REIMPORT_S                                                |
+| OCR (`/course/ocr`) | 211 s for 289 pages (was single-threaded); mean word confidence 0.875; importing the same file again (disk cache, through the app's services): 2.4 s              |
 | Outline             | 13 of 13 units right (10 themes, grammar, transcripts, word list): every start page matches the contents, titles from the footers; 73 ms                          |
 | Word lists          | 2,210 entries over 10 units vs the user's own deck: precision 99.4 %, recall 97.5 %, de/het right for 97.1 %                                                      |
 | Exercises           | 218 recognised: 34 choice (questions with options), 10 gap fill, 1 table, 1 sentence building, 1 matching, 74 open or listening tasks, 97 unknown (shown as text) |
