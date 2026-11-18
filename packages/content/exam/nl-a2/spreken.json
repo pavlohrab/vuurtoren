@@ -1,0 +1,241 @@
+{
+  "prompts": [
+    {
+      "id": "sp-1-01",
+      "set": 1,
+      "kind": "short",
+      "situation": "Je bent bij de huisarts. De assistente vraagt:",
+      "question": "Wat is uw geboortedatum?",
+      "seconds": 20,
+      "model": "Mijn geboortedatum is 4 juni 1988.",
+      "points": ["Geef de datum in een hele zin."],
+      "grammar": []
+    },
+    {
+      "id": "sp-1-02",
+      "set": 1,
+      "kind": "short",
+      "situation": "Je collega vraagt in de pauze:",
+      "question": "Wat heb je gisteravond gedaan?",
+      "seconds": 30,
+      "model": "Gisteravond heb ik gekookt en daarna heb ik een film gekeken met mijn man.",
+      "points": ["Vertel wat je gedaan hebt.", "Gebruik de voltooide tijd (heb … gedaan)."],
+      "grammar": ["perfect-tense", "inversion"]
+    },
+    {
+      "id": "sp-1-03",
+      "set": 1,
+      "kind": "short",
+      "situation": "Je bent in een winkel. Je zoekt melk, maar je kunt het niet vinden. Wat vraag je aan de medewerker?",
+      "question": "Stel je vraag.",
+      "seconds": 20,
+      "model": "Pardon, waar kan ik de melk vinden?",
+      "points": ["Begin beleefd (pardon / sorry).", "Stel een vraag."],
+      "grammar": ["questions"]
+    },
+    {
+      "id": "sp-1-04",
+      "set": 1,
+      "kind": "short",
+      "situation": "Je buurvrouw vraagt:",
+      "question": "Hoe ga je meestal naar je werk of naar school?",
+      "seconds": 30,
+      "model": "Ik ga meestal met de fiets, want het is niet ver. Als het regent, neem ik de bus.",
+      "points": ["Noem hoe je reist.", "Geef een reden."],
+      "grammar": ["conjunctions", "subordinate-clauses"]
+    },
+    {
+      "id": "sp-1-05",
+      "set": 1,
+      "kind": "short",
+      "situation": "Je belt de tandarts. Je wilt je afspraak van morgen verzetten. Wat zeg je?",
+      "question": "Zeg wat je wilt.",
+      "seconds": 30,
+      "model": "Goedemorgen, met Ali Demir. Ik heb morgen om tien uur een afspraak, maar ik kan dan niet. Kan ik een andere afspraak maken?",
+      "points": ["Zeg je naam.", "Zeg welke afspraak het is.", "Vraag om een nieuwe afspraak."],
+      "grammar": ["modal-verbs", "questions"]
+    },
+    {
+      "id": "sp-1-06",
+      "set": 1,
+      "kind": "long",
+      "situation": "Een nieuwe collega wil je leren kennen.",
+      "question": "Vertel iets over jezelf: waar kom je vandaan, wat doe je en wat zijn je hobby's?",
+      "seconds": 60,
+      "model": "Ik heet Elena en ik kom uit Roemenië. Ik woon nu drie jaar in Nederland, in Utrecht. Ik werk in een hotel bij de receptie. In mijn vrije tijd zwem ik graag en ik lees boeken. In het weekend ga ik vaak wandelen met mijn vriend.",
+      "points": [
+        "Land van herkomst",
+        "Werk of opleiding",
+        "Minstens twee hobby's",
+        "Minstens vijf zinnen"
+      ],
+      "grammar": ["word-order-v2", "inversion"]
+    },
+    {
+      "id": "sp-1-07",
+      "set": 1,
+      "kind": "long",
+      "situation": "Je vriend vraagt naar je weekend.",
+      "question": "Wat ga je dit weekend doen? Vertel over zaterdag en zondag.",
+      "seconds": 60,
+      "model": "Zaterdagochtend ga ik boodschappen doen op de markt. 's Middags ga ik naar mijn taalles. Zondag komt mijn zus op bezoek. We gaan samen koken en daarna wandelen we in het park.",
+      "points": ["Zaterdag", "Zondag", "Gebruik 'gaan' + werkwoord of de tegenwoordige tijd"],
+      "grammar": ["future", "inversion"]
+    },
+    {
+      "id": "sp-1-08",
+      "set": 1,
+      "kind": "opinion",
+      "situation": "Je collega zegt: 'Ik vind thuiswerken veel beter dan op kantoor werken.'",
+      "question": "Wat vind jij? Geef je mening en een reden.",
+      "seconds": 45,
+      "model": "Ik vind thuiswerken soms fijn, want ik hoef niet te reizen. Maar ik werk liever op kantoor, omdat ik dan mijn collega's zie.",
+      "points": ["Zeg wat je vindt (ik vind …).", "Geef een reden (want / omdat)."],
+      "grammar": ["subordinate-clauses", "conjunctions"]
+    },
+    {
+      "id": "sp-1-09",
+      "set": 1,
+      "kind": "story",
+      "situation": "Je hebt gisteren een nieuwe telefoon gekocht.",
+      "question": "Vertel in drie stappen wat je gedaan hebt: eerst, daarna, tot slot.",
+      "seconds": 60,
+      "model": "Eerst heb ik op internet verschillende telefoons bekeken. Daarna ben ik naar de winkel in het centrum gegaan. Tot slot heb ik een zwarte telefoon gekocht en met mijn pinpas betaald.",
+      "points": ["Eerst", "Daarna", "Tot slot", "Voltooide tijd"],
+      "grammar": ["perfect-tense", "inversion"]
+    },
+    {
+      "id": "sp-1-10",
+      "set": 1,
+      "kind": "short",
+      "situation": "Je bent op een verjaardag. Iemand vraagt:",
+      "question": "Wil je koffie of thee?",
+      "seconds": 20,
+      "model": "Graag thee, zonder suiker. Dank je wel.",
+      "points": ["Kies iets.", "Bedank."],
+      "grammar": []
+    },
+    {
+      "id": "sp-2-01",
+      "set": 2,
+      "kind": "short",
+      "situation": "Je bent bij het gemeentehuis. De medewerker vraagt:",
+      "question": "Waar woont u?",
+      "seconds": 20,
+      "model": "Ik woon in de Lindelaan, nummer 12, in Lindendam.",
+      "points": ["Noem straat, nummer en plaats."],
+      "grammar": []
+    },
+    {
+      "id": "sp-2-02",
+      "set": 2,
+      "kind": "short",
+      "situation": "Je vriendin vraagt:",
+      "question": "Wat eet je het liefst?",
+      "seconds": 30,
+      "model": "Ik eet het liefst rijst met kip en groente. Dat kookt mijn moeder vaak.",
+      "points": ["Noem een gerecht.", "Zeg iets meer (wie kookt het, wanneer eet je het)."],
+      "grammar": ["comparison", "inversion"]
+    },
+    {
+      "id": "sp-2-03",
+      "set": 2,
+      "kind": "short",
+      "situation": "Je zit in de trein. Iemand zit op jouw gereserveerde plaats. Wat zeg je?",
+      "question": "Zeg het beleefd.",
+      "seconds": 20,
+      "model": "Sorry, ik denk dat dit mijn plaats is. Ik heb deze stoel gereserveerd.",
+      "points": ["Begin beleefd.", "Leg het probleem uit."],
+      "grammar": ["subordinate-clauses"]
+    },
+    {
+      "id": "sp-2-04",
+      "set": 2,
+      "kind": "short",
+      "situation": "Je collega vraagt:",
+      "question": "Hoe laat begin je morgen met werken?",
+      "seconds": 20,
+      "model": "Morgen begin ik om half negen.",
+      "points": ["Noem een tijd in een hele zin."],
+      "grammar": ["inversion"]
+    },
+    {
+      "id": "sp-2-05",
+      "set": 2,
+      "kind": "short",
+      "situation": "Je belt de school. Je zoon is ziek. Wat zeg je?",
+      "question": "Meld je zoon ziek.",
+      "seconds": 30,
+      "model": "Goedemorgen, met de vader van Omar uit groep vier. Omar is ziek, hij heeft koorts. Hij komt vandaag niet naar school.",
+      "points": ["Zeg wie je bent.", "Zeg wat er is.", "Zeg dat hij niet komt."],
+      "grammar": ["negation"]
+    },
+    {
+      "id": "sp-2-06",
+      "set": 2,
+      "kind": "long",
+      "situation": "Je docent vraagt naar je woning.",
+      "question": "Vertel over je huis: hoe groot is het, wat vind je fijn en wat niet?",
+      "seconds": 60,
+      "model": "Ik woon in een appartement op de derde verdieping. Het heeft twee slaapkamers en een klein balkon. Ik vind het fijn dat het dicht bij de winkels is. Maar er is geen lift, en dat vind ik niet fijn met de boodschappen.",
+      "points": [
+        "Soort woning",
+        "Kamers of grootte",
+        "Iets wat je fijn vindt",
+        "Iets wat je niet fijn vindt"
+      ],
+      "grammar": ["subordinate-clauses", "er"]
+    },
+    {
+      "id": "sp-2-07",
+      "set": 2,
+      "kind": "long",
+      "situation": "Een vriend vraagt naar je laatste vakantie.",
+      "question": "Waar ben je geweest en wat heb je gedaan?",
+      "seconds": 60,
+      "model": "Vorige zomer ben ik naar Spanje geweest met mijn gezin. We hebben in een klein hotel bij de zee geslapen. Elke dag zijn we naar het strand gegaan. Het was heel warm en het eten was lekker.",
+      "points": ["Waar", "Met wie", "Wat je gedaan hebt", "Voltooide tijd en verleden tijd"],
+      "grammar": ["perfect-tense", "imperfect-tense"]
+    },
+    {
+      "id": "sp-2-08",
+      "set": 2,
+      "kind": "opinion",
+      "situation": "Je buurman zegt: 'Kinderen moeten elke dag buiten spelen.'",
+      "question": "Ben je het eens of niet? Geef een reden.",
+      "seconds": 45,
+      "model": "Ik ben het met u eens. Buiten spelen is gezond, want kinderen bewegen dan veel. Ook leren ze andere kinderen kennen.",
+      "points": ["Eens of niet eens", "Een reden (want / omdat)"],
+      "grammar": ["conjunctions", "inversion"]
+    },
+    {
+      "id": "sp-2-09",
+      "set": 2,
+      "kind": "story",
+      "situation": "Je hebt vanochtend een pakketje teruggestuurd.",
+      "question": "Vertel in drie stappen wat je gedaan hebt: eerst, daarna, tot slot.",
+      "seconds": 60,
+      "model": "Eerst heb ik de trui weer in de doos gedaan. Daarna heb ik het label op de doos geplakt. Tot slot ben ik naar het postpunt in de supermarkt gegaan en heb ik de doos afgegeven.",
+      "points": ["Eerst", "Daarna", "Tot slot", "Voltooide tijd"],
+      "grammar": ["perfect-tense", "separable-verbs"]
+    },
+    {
+      "id": "sp-2-10",
+      "set": 2,
+      "kind": "short",
+      "situation": "Je bent in een restaurant. De ober vraagt:",
+      "question": "Wilt u nog iets drinken?",
+      "seconds": 20,
+      "model": "Nee, dank u. Mag ik de rekening, alstublieft?",
+      "points": ["Geef antwoord.", "Vraag om de rekening."],
+      "grammar": ["modal-verbs"]
+    }
+  ],
+  "rubric": [
+    "Ik heb antwoord gegeven op de vraag.",
+    "Ik heb alle punten genoemd.",
+    "Ik sprak in hele zinnen.",
+    "Een Nederlander kan mij begrijpen.",
+    "Ik heb de goede tijd gebruikt (nu, verleden, toekomst)."
+  ]
+}

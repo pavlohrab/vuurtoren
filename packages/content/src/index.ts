@@ -1,5 +1,6 @@
 /**
- * Learning content shipped with the app. For now: grammar topic pages (packages/content/grammar),
+ * Learning content shipped with the app: grammar topic pages (packages/content/grammar) and exam
+ * practice banks (packages/content/exam),
  * parsed at build time into plain data (see scripts/generate.ts).
  */
 import { TOPICS } from "./generated/grammar.js";
@@ -39,3 +40,34 @@ export function topicForHit(detector: string, lang = "nl"): GrammarTopic | undef
   if (own?.detects.includes(detector)) return own;
   return grammarTopics(lang).find((t) => t.detects.includes(detector));
 }
+
+export { EXAM_PARTS, ExamContentError, parseExamBank } from "./exam.js";
+export type {
+  ExamBank,
+  ExamPart,
+  FormField,
+  KnmTheme,
+  ListeningFragment,
+  ListeningLine,
+  McQuestion,
+  ReadingText,
+  SpeakingPrompt,
+  Vocab,
+  WritingTask,
+} from "./exam.js";
+export { A2_EXAM, examPartInfo } from "./examInfo.js";
+export type { ExamInfo, ExamPartInfo, ExamSource } from "./examInfo.js";
+export {
+  KNM_PER_THEME,
+  countAnswerWords,
+  examBank,
+  examSets,
+  groupQuestions,
+  mcGroups,
+  missedVocab,
+  optionOrder,
+  passMark,
+  scoreMc,
+  scoreRubric,
+} from "./examScore.js";
+export type { McGroup, Score } from "./examScore.js";

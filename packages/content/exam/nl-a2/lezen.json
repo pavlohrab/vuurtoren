@@ -1,0 +1,748 @@
+{
+  "texts": [
+    {
+      "id": "lz-1-01",
+      "set": 1,
+      "kind": "letter",
+      "title": "Brief van de gemeente",
+      "text": "Gemeente Lindendam\nAfdeling Burgerzaken\n\nBeste mevrouw Kaya,\n\nU heeft een nieuw paspoort aangevraagd. Uw paspoort is klaar. U kunt het ophalen in het gemeentehuis, Marktplein 4.\n\nMaak eerst een afspraak via onze website of bel 14 0123. Zonder afspraak kunt u het paspoort niet ophalen.\n\nNeem uw oude paspoort mee. U hoeft niets meer te betalen.\n\nU moet het paspoort binnen drie maanden ophalen.\n\nMet vriendelijke groet,\nAfdeling Burgerzaken",
+      "vocab": {
+        "aanvragen": "to apply for",
+        "ophalen": "to collect",
+        "afspraak": "appointment",
+        "binnen": "within"
+      },
+      "questions": [
+        {
+          "id": "lz-1-01-a",
+          "q": "Waarom krijgt mevrouw Kaya deze brief?",
+          "options": [
+            "Haar paspoort is klaar.",
+            "Ze moet een nieuw paspoort aanvragen.",
+            "Haar paspoort is verlopen."
+          ],
+          "answer": 0,
+          "explain": "'Uw paspoort is klaar.'"
+        },
+        {
+          "id": "lz-1-01-b",
+          "q": "Wat moet mevrouw Kaya eerst doen?",
+          "options": ["Naar het gemeentehuis gaan.", "Een afspraak maken.", "Geld betalen."],
+          "answer": 1,
+          "explain": "'Maak eerst een afspraak' — without an appointment she cannot collect it."
+        },
+        {
+          "id": "lz-1-01-c",
+          "q": "Wat neemt mevrouw Kaya mee?",
+          "options": ["Geld.", "Een pasfoto.", "Haar oude paspoort."],
+          "answer": 2,
+          "explain": "'Neem uw oude paspoort mee. U hoeft niets meer te betalen.'"
+        }
+      ]
+    },
+    {
+      "id": "lz-1-02",
+      "set": 1,
+      "kind": "sign",
+      "title": "Bord bij het zwembad",
+      "text": "ZWEMBAD DE GOLF\n\nKinderen onder 8 jaar alleen met een volwassene in het water.\nEerst douchen, dan zwemmen.\nEten en drinken alleen in het café.\nGeen glazen flessen in het zwembad.",
+      "vocab": {
+        "volwassene": "adult",
+        "douchen": "to shower",
+        "fles": "bottle"
+      },
+      "questions": [
+        {
+          "id": "lz-1-02-a",
+          "q": "Tim is 6 jaar. Wat zegt het bord?",
+          "options": [
+            "Tim mag alleen zwemmen.",
+            "Tim mag alleen met een volwassene in het water.",
+            "Tim mag niet in het zwembad."
+          ],
+          "answer": 1,
+          "explain": "Children under 8 only with an adult."
+        },
+        {
+          "id": "lz-1-02-b",
+          "q": "Waar mag je een broodje eten?",
+          "options": ["In het café.", "Bij het water.", "In de douche."],
+          "answer": 0,
+          "explain": "'Eten en drinken alleen in het café.'"
+        }
+      ]
+    },
+    {
+      "id": "lz-1-03",
+      "set": 1,
+      "kind": "ad",
+      "title": "Advertentie: fiets te koop",
+      "text": "Te koop: damesfiets\n\nZwart, 3 jaar oud, 7 versnellingen.\nNieuwe banden en een nieuw slot.\nPrijs: € 150. Kom gerust kijken en een proefrit maken.\n\nBellen na 18.00 uur: 06-12345678 (Ellen).\nIk woon in Lindendam-Noord.",
+      "vocab": {
+        "te koop": "for sale",
+        "versnelling": "gear",
+        "band": "tyre",
+        "slot": "lock",
+        "proefrit": "test ride"
+      },
+      "questions": [
+        {
+          "id": "lz-1-03-a",
+          "q": "Wat is nieuw aan de fiets?",
+          "options": ["De kleur.", "De banden en het slot.", "De versnellingen."],
+          "answer": 1,
+          "explain": "'Nieuwe banden en een nieuw slot.'"
+        },
+        {
+          "id": "lz-1-03-b",
+          "q": "Wanneer kun je Ellen bellen?",
+          "options": ["'s Ochtends.", "Tussen 12.00 en 13.00 uur.", "Na 18.00 uur."],
+          "answer": 2,
+          "explain": "'Bellen na 18.00 uur.'"
+        },
+        {
+          "id": "lz-1-03-c",
+          "q": "Wat mag je doen voor je de fiets koopt?",
+          "options": ["Een stukje fietsen.", "De fiets een week lenen.", "Minder betalen."],
+          "answer": 0,
+          "explain": "'een proefrit maken' = try riding it."
+        }
+      ]
+    },
+    {
+      "id": "lz-1-04",
+      "set": 1,
+      "kind": "schedule",
+      "title": "Openingstijden bibliotheek",
+      "text": "Bibliotheek Lindendam\n\nmaandag: gesloten\ndinsdag t/m vrijdag: 10.00 – 18.00 uur\ndonderdag ook 's avonds: 19.00 – 21.00 uur\nzaterdag: 10.00 – 14.00 uur\nzondag: gesloten\n\nTaalcafé: elke woensdag 14.00 – 15.30 uur. Gratis, aanmelden is niet nodig.",
+      "vocab": {
+        "gesloten": "closed",
+        "t/m (tot en met)": "up to and including",
+        "aanmelden": "to sign up",
+        "gratis": "free"
+      },
+      "questions": [
+        {
+          "id": "lz-1-04-a",
+          "q": "Op welke dag kun je 's avonds naar de bibliotheek?",
+          "options": ["Maandag.", "Donderdag.", "Zaterdag."],
+          "answer": 1,
+          "explain": "Thursday also 19.00–21.00."
+        },
+        {
+          "id": "lz-1-04-b",
+          "q": "Je wilt naar het taalcafé. Wat moet je doen?",
+          "options": [
+            "Je meldt je eerst aan.",
+            "Je betaalt € 5.",
+            "Je gaat woensdag om 14.00 uur naar de bibliotheek."
+          ],
+          "answer": 2,
+          "explain": "Free, no sign-up needed, Wednesdays 14.00."
+        },
+        {
+          "id": "lz-1-04-c",
+          "q": "Het is zaterdag 15.00 uur. Is de bibliotheek open?",
+          "options": ["Ja.", "Nee.", "Alleen het taalcafé."],
+          "answer": 1,
+          "explain": "Saturday 10.00–14.00 only."
+        }
+      ]
+    },
+    {
+      "id": "lz-1-05",
+      "set": 1,
+      "kind": "email",
+      "title": "E-mail van de school",
+      "text": "Van: groep5@basisschooldebrug.nl\nAan: ouders groep 5\nOnderwerp: Schoolreisje\n\nBeste ouders,\n\nOp vrijdag 12 juni gaan we met groep 5 naar de dierentuin. We vertrekken om 8.30 uur met de bus bij school. Om 15.30 uur zijn we weer terug.\n\nGeef uw kind een lunchpakket en iets te drinken mee. Snoep is niet nodig.\n\nWe zoeken nog twee ouders die mee willen. Wilt u mee? Stuur dan voor 1 juni een e-mail.\n\nGroeten,\nJuf Mirjam",
+      "vocab": {
+        "schoolreisje": "school trip",
+        "vertrekken": "to leave",
+        "lunchpakket": "packed lunch",
+        "snoep": "sweets"
+      },
+      "questions": [
+        {
+          "id": "lz-1-05-a",
+          "q": "Hoe gaan de kinderen naar de dierentuin?",
+          "options": ["Met de trein.", "Met de bus.", "Met de fiets."],
+          "answer": 1,
+          "explain": "'We vertrekken om 8.30 uur met de bus.'"
+        },
+        {
+          "id": "lz-1-05-b",
+          "q": "Wat moeten de kinderen meenemen?",
+          "options": ["Eten en drinken.", "Snoep.", "Geld voor de lunch."],
+          "answer": 0,
+          "explain": "A packed lunch and something to drink."
+        },
+        {
+          "id": "lz-1-05-c",
+          "q": "Wat vraagt juf Mirjam aan de ouders?",
+          "options": [
+            "Of ze de bus willen betalen.",
+            "Of twee ouders mee willen gaan.",
+            "Of ze om 15.30 uur willen bellen."
+          ],
+          "answer": 1,
+          "explain": "'We zoeken nog twee ouders die mee willen.'"
+        }
+      ]
+    },
+    {
+      "id": "lz-1-06",
+      "set": 1,
+      "kind": "notice",
+      "title": "Briefje in de hal van de flat",
+      "text": "Beste bewoners,\n\nVolgende week dinsdag (14 mei) wordt de lift gerepareerd. De lift doet het die dag van 8.00 tot 17.00 uur niet.\n\nHeeft u hulp nodig met boodschappen? Bel dan de huismeester, Peter: 06-98765432.\n\nOnze excuses voor het ongemak.\nWoningcorporatie Thuis",
+      "vocab": {
+        "bewoner": "resident",
+        "repareren": "to repair",
+        "huismeester": "caretaker",
+        "ongemak": "inconvenience"
+      },
+      "questions": [
+        {
+          "id": "lz-1-06-a",
+          "q": "Wat is er op 14 mei aan de hand?",
+          "options": [
+            "Er komt een nieuwe huismeester.",
+            "De lift werkt overdag niet.",
+            "De flat is de hele dag dicht."
+          ],
+          "answer": 1,
+          "explain": "The lift does not work from 8.00 to 17.00."
+        },
+        {
+          "id": "lz-1-06-b",
+          "q": "Waarvoor kun je Peter bellen?",
+          "options": [
+            "Voor hulp met je boodschappen.",
+            "Om de lift te repareren.",
+            "Om een klacht te sturen."
+          ],
+          "answer": 0,
+          "explain": "'Heeft u hulp nodig met boodschappen? Bel dan de huismeester.'"
+        }
+      ]
+    },
+    {
+      "id": "lz-1-07",
+      "set": 1,
+      "kind": "letter",
+      "title": "Herinnering van de tandarts",
+      "text": "Tandartspraktijk Witte Tand\n\nBeste meneer Haddad,\n\nU heeft een afspraak voor controle op woensdag 3 april om 9.15 uur.\n\nKunt u niet komen? Bel ons dan minimaal 24 uur van tevoren. Belt u niet en komt u niet? Dan moet u € 25 betalen.\n\nNeem uw verzekeringspas mee.\n\nTot ziens!",
+      "vocab": {
+        "controle": "check-up",
+        "van tevoren": "in advance",
+        "verzekeringspas": "insurance card",
+        "minimaal": "at least"
+      },
+      "questions": [
+        {
+          "id": "lz-1-07-a",
+          "q": "Waarom heeft meneer Haddad een afspraak?",
+          "options": ["Voor een controle.", "Voor een operatie.", "Voor een nieuwe verzekering."],
+          "answer": 0,
+          "explain": "'een afspraak voor controle'."
+        },
+        {
+          "id": "lz-1-07-b",
+          "q": "Meneer Haddad kan niet op 3 april. Wanneer moet hij uiterlijk bellen?",
+          "options": [
+            "Op 3 april om 9.00 uur.",
+            "Op 2 april om 9.15 uur.",
+            "Hij hoeft niet te bellen."
+          ],
+          "answer": 1,
+          "explain": "At least 24 hours before 3 April 9.15."
+        },
+        {
+          "id": "lz-1-07-c",
+          "q": "Wanneer moet meneer Haddad € 25 betalen?",
+          "options": [
+            "Als hij te laat komt.",
+            "Als hij niet belt en niet komt.",
+            "Bij elke afspraak."
+          ],
+          "answer": 1,
+          "explain": "'Belt u niet en komt u niet? Dan moet u € 25 betalen.'"
+        }
+      ]
+    },
+    {
+      "id": "lz-1-08",
+      "set": 1,
+      "kind": "ad",
+      "title": "Cursus koken",
+      "text": "Kookcursus in het buurthuis!\n\nLeer gezond en goedkoop koken. Elke week maken we samen een ander gerecht uit een ander land.\n\nWanneer? 6 maandagavonden, vanaf 2 september, 19.00 – 21.00 uur\nKosten: € 30 voor 6 lessen (inclusief eten)\nAanmelden: bij de balie van het buurthuis of via kookcursus@buurthuisoost.nl\n\nLet op: maximaal 12 deelnemers.",
+      "vocab": {
+        "gerecht": "dish",
+        "goedkoop": "cheap",
+        "inclusief": "including",
+        "deelnemer": "participant",
+        "balie": "desk"
+      },
+      "questions": [
+        {
+          "id": "lz-1-08-a",
+          "q": "Hoeveel kost één les?",
+          "options": ["€ 5.", "€ 12.", "€ 30."],
+          "answer": 0,
+          "explain": "€ 30 for 6 lessons = € 5 per lesson."
+        },
+        {
+          "id": "lz-1-08-b",
+          "q": "Waarom moet je je snel aanmelden?",
+          "options": [
+            "Omdat de cursus morgen begint.",
+            "Omdat er maar 12 mensen mee kunnen doen.",
+            "Omdat het eten duur is."
+          ],
+          "answer": 1,
+          "explain": "'maximaal 12 deelnemers'."
+        }
+      ]
+    },
+    {
+      "id": "lz-1-09",
+      "set": 1,
+      "kind": "schedule",
+      "title": "Ophaaldagen afval",
+      "text": "Afvalkalender Lindendam-Noord\n\nGFT (groente, fruit, tuin): elke maandag\nRestafval: dinsdag, om de twee weken (even weken)\nPapier: de eerste vrijdag van de maand\n\nZet de container voor 7.30 uur aan de straat. Haal de lege container dezelfde dag weer binnen.",
+      "vocab": {
+        "afval": "waste",
+        "restafval": "residual waste",
+        "om de twee weken": "every two weeks",
+        "container": "wheelie bin"
+      },
+      "questions": [
+        {
+          "id": "lz-1-09-a",
+          "q": "Je hebt oude kranten. Wanneer worden die opgehaald?",
+          "options": ["Elke maandag.", "De eerste vrijdag van de maand.", "Elke dinsdag."],
+          "answer": 1,
+          "explain": "Papier: first Friday of the month."
+        },
+        {
+          "id": "lz-1-09-b",
+          "q": "Wanneer zet je de container buiten?",
+          "options": [
+            "De avond ervoor of 's ochtends voor 7.30 uur.",
+            "Om 12.00 uur.",
+            "Wanneer je wilt."
+          ],
+          "answer": 0,
+          "explain": "Before 7.30."
+        }
+      ]
+    },
+    {
+      "id": "lz-1-10",
+      "set": 1,
+      "kind": "email",
+      "title": "Bericht van de taalschool",
+      "text": "Beste cursisten,\n\nDe les van donderdag 7 november gaat niet door, want de docent is ziek. We maken de les een week later in, op donderdag 14 november, van 13.00 tot 15.00 uur. Dat is een uur langer dan normaal.\n\nHet huiswerk voor 7 november mag u op 14 november meenemen.\n\nMet vriendelijke groet,\nTaalschool Woord & Wijs",
+      "vocab": {
+        "cursist": "course participant",
+        "doorgaan": "to go ahead",
+        "inhalen": "to make up for",
+        "huiswerk": "homework"
+      },
+      "questions": [
+        {
+          "id": "lz-1-10-a",
+          "q": "Waarom is er op 7 november geen les?",
+          "options": ["Het is vakantie.", "De docent is ziek.", "Er zijn te weinig cursisten."],
+          "answer": 1,
+          "explain": "'want de docent is ziek'."
+        },
+        {
+          "id": "lz-1-10-b",
+          "q": "Wat is anders aan de les op 14 november?",
+          "options": [
+            "De les duurt een uur langer.",
+            "De les is 's avonds.",
+            "Er is geen huiswerk."
+          ],
+          "answer": 0,
+          "explain": "'Dat is een uur langer dan normaal.'"
+        }
+      ]
+    },
+    {
+      "id": "lz-2-01",
+      "set": 2,
+      "kind": "letter",
+      "title": "Brief van de huisartsenpraktijk",
+      "text": "Huisartsenpraktijk Het Plein\n\nBeste patiënt,\n\nVanaf 1 maart heeft onze praktijk nieuwe tijden voor het spreekuur:\n\nmaandag t/m vrijdag 8.00 – 12.00 uur: op afspraak\nmaandag t/m vrijdag 13.00 – 17.00 uur: alleen telefonisch\n\nBel voor een afspraak tussen 8.00 en 10.00 uur. Voor herhaalrecepten gebruikt u onze website.\n\nIs het spoed? Bel dan altijd direct. 's Avonds en in het weekend belt u de huisartsenpost.\n\nMet vriendelijke groet,\nDokter Visser",
+      "vocab": {
+        "spreekuur": "consulting hours",
+        "herhaalrecept": "repeat prescription",
+        "spoed": "emergency",
+        "telefonisch": "by phone"
+      },
+      "questions": [
+        {
+          "id": "lz-2-01-a",
+          "q": "Wanneer kun je bellen voor een afspraak?",
+          "options": ["Tussen 8.00 en 10.00 uur.", "Tussen 13.00 en 17.00 uur.", "De hele dag."],
+          "answer": 0,
+          "explain": "'Bel voor een afspraak tussen 8.00 en 10.00 uur.'"
+        },
+        {
+          "id": "lz-2-01-b",
+          "q": "Je hebt weer dezelfde medicijnen nodig. Wat doe je?",
+          "options": [
+            "Je belt de huisartsenpost.",
+            "Je vraagt ze aan via de website.",
+            "Je komt zonder afspraak langs."
+          ],
+          "answer": 1,
+          "explain": "Repeat prescriptions via the website."
+        },
+        {
+          "id": "lz-2-01-c",
+          "q": "Het is zaterdag en je bent erg ziek. Wie bel je?",
+          "options": ["Dokter Visser.", "De huisartsenpost.", "Niemand, je wacht tot maandag."],
+          "answer": 1,
+          "explain": "Evenings and weekends: the huisartsenpost."
+        }
+      ]
+    },
+    {
+      "id": "lz-2-02",
+      "set": 2,
+      "kind": "sign",
+      "title": "Bord op het station",
+      "text": "LET OP\n\nVan 20 tot en met 22 juli rijden er geen treinen tussen Lindendam en Rivierstad.\nEr rijden bussen. De bussen vertrekken bij uitgang Zuid.\nReken op 30 minuten extra reistijd.\nUw treinkaartje is geldig in de bus.",
+      "vocab": {
+        "rijden": "to run (vehicles)",
+        "uitgang": "exit",
+        "reistijd": "travel time",
+        "geldig": "valid"
+      },
+      "questions": [
+        {
+          "id": "lz-2-02-a",
+          "q": "Je wilt op 21 juli naar Rivierstad. Hoe reis je?",
+          "options": ["Met de trein.", "Met de bus.", "Je kunt niet reizen."],
+          "answer": 1,
+          "explain": "Buses replace trains 20–22 July."
+        },
+        {
+          "id": "lz-2-02-b",
+          "q": "Wat moet je voor de bus kopen?",
+          "options": [
+            "Niets extra, je treinkaartje is genoeg.",
+            "Een buskaartje van € 3.",
+            "Een kaartje bij uitgang Zuid."
+          ],
+          "answer": 0,
+          "explain": "'Uw treinkaartje is geldig in de bus.'"
+        }
+      ]
+    },
+    {
+      "id": "lz-2-03",
+      "set": 2,
+      "kind": "ad",
+      "title": "Vacature",
+      "text": "Supermarkt FrisVers zoekt een medewerker vakkenvullen (m/v)\n\nWat ga je doen? Je vult de vakken met producten en houdt de winkel netjes.\nWanneer? 's avonds van 18.00 tot 22.00 uur, 3 of 4 avonden per week.\nWie zoeken we? Je bent 18 jaar of ouder en je spreekt een beetje Nederlands. Ervaring is niet nodig.\n\nInteresse? Kom langs met je cv en vraag naar Ricardo.",
+      "vocab": {
+        "vacature": "job opening",
+        "vakken vullen": "to stock shelves",
+        "ervaring": "experience",
+        "langskomen": "to drop by"
+      },
+      "questions": [
+        {
+          "id": "lz-2-03-a",
+          "q": "Wanneer werk je bij deze baan?",
+          "options": ["Overdag.", "'s Avonds.", "Alleen in het weekend."],
+          "answer": 1,
+          "explain": "18.00–22.00."
+        },
+        {
+          "id": "lz-2-03-b",
+          "q": "Wat is nodig voor deze baan?",
+          "options": ["Veel ervaring.", "Een diploma.", "Je bent minimaal 18 jaar."],
+          "answer": 2,
+          "explain": "18 or older; no experience needed."
+        },
+        {
+          "id": "lz-2-03-c",
+          "q": "Hoe solliciteer je?",
+          "options": [
+            "Je gaat naar de winkel met je cv.",
+            "Je stuurt een e-mail.",
+            "Je belt Ricardo."
+          ],
+          "answer": 0,
+          "explain": "'Kom langs met je cv.'"
+        }
+      ]
+    },
+    {
+      "id": "lz-2-04",
+      "set": 2,
+      "kind": "email",
+      "title": "E-mail van een collega",
+      "text": "Hoi Nadia,\n\nMorgen kan ik niet werken, want mijn zoon is ziek. Wil jij mijn dienst van 9.00 tot 13.00 uur doen? Dan doe ik jouw dienst op zaterdag.\n\nIk heb het al aan de baas gevraagd. Hij vindt het goed als jij ja zegt.\n\nLaat je het vanavond weten? Stuur maar een appje.\n\nGroetjes,\nMarco",
+      "vocab": {
+        "dienst": "shift",
+        "de baas": "the boss",
+        "laten weten": "to let know",
+        "appje": "(WhatsApp) message"
+      },
+      "questions": [
+        {
+          "id": "lz-2-04-a",
+          "q": "Waarom kan Marco morgen niet werken?",
+          "options": ["Hij is zelf ziek.", "Zijn zoon is ziek.", "Hij heeft vakantie."],
+          "answer": 1,
+          "explain": "'want mijn zoon is ziek'."
+        },
+        {
+          "id": "lz-2-04-b",
+          "q": "Wat vraagt Marco aan Nadia?",
+          "options": [
+            "Of ze morgen voor hem werkt.",
+            "Of ze de baas belt.",
+            "Of ze zaterdag vrij is."
+          ],
+          "answer": 0,
+          "explain": "He asks her to take his shift tomorrow."
+        },
+        {
+          "id": "lz-2-04-c",
+          "q": "Hoe moet Nadia antwoorden?",
+          "options": [
+            "Met een e-mail aan de baas.",
+            "Met een berichtje aan Marco, vanavond.",
+            "Morgen op het werk."
+          ],
+          "answer": 1,
+          "explain": "'Laat je het vanavond weten? Stuur maar een appje.'"
+        }
+      ]
+    },
+    {
+      "id": "lz-2-05",
+      "set": 2,
+      "kind": "notice",
+      "title": "Bericht van de woningcorporatie",
+      "text": "Onderhoud aan de ramen\n\nBeste huurder,\n\nIn week 18 krijgen alle woningen in de Bloemstraat nieuwe ramen. Een monteur komt bij u binnen. Dat duurt ongeveer drie uur.\n\nU krijgt een week van tevoren een brief met de dag en de tijd. Kunt u dan niet thuis zijn? Bel ons dan om een andere afspraak te maken: 088-1234567.\n\nMaak de vensterbanken leeg en zet planten en spullen opzij.",
+      "vocab": {
+        "onderhoud": "maintenance",
+        "monteur": "technician",
+        "vensterbank": "windowsill",
+        "opzij": "aside"
+      },
+      "questions": [
+        {
+          "id": "lz-2-05-a",
+          "q": "Wat gebeurt er in week 18?",
+          "options": [
+            "De huur gaat omhoog.",
+            "De woningen krijgen nieuwe ramen.",
+            "De straat krijgt een nieuwe naam."
+          ],
+          "answer": 1,
+          "explain": "'nieuwe ramen'."
+        },
+        {
+          "id": "lz-2-05-b",
+          "q": "Wat moet je voor de monteur doen?",
+          "options": [
+            "De vensterbanken leegmaken.",
+            "Koffie zetten.",
+            "De oude ramen eruit halen."
+          ],
+          "answer": 0,
+          "explain": "'Maak de vensterbanken leeg.'"
+        }
+      ]
+    },
+    {
+      "id": "lz-2-06",
+      "set": 2,
+      "kind": "schedule",
+      "title": "Zwemrooster",
+      "text": "Zwembad De Golf – rooster\n\nBanenzwemmen (volwassenen): ma, wo, vr 7.00 – 9.00 uur\nRecreatief zwemmen: za en zo 12.00 – 17.00 uur\nZwemles kinderen: di en do 16.00 – 18.00 uur\nZwemmen voor vrouwen: wo 19.00 – 20.30 uur\n\nEntree: volwassenen € 6, kinderen tot 12 jaar € 4.",
+      "vocab": {
+        "banenzwemmen": "lane swimming",
+        "rooster": "timetable",
+        "entree": "admission"
+      },
+      "questions": [
+        {
+          "id": "lz-2-06-a",
+          "q": "Wanneer kun je banenzwemmen?",
+          "options": ["Op dinsdagmiddag.", "Op maandagochtend.", "Op zondagmiddag."],
+          "answer": 1,
+          "explain": "Mon, Wed, Fri 7.00–9.00."
+        },
+        {
+          "id": "lz-2-06-b",
+          "q": "Een moeder (35) gaat met haar dochter (9) zwemmen. Hoeveel betalen ze samen?",
+          "options": ["€ 8.", "€ 10.", "€ 12."],
+          "answer": 1,
+          "explain": "€ 6 + € 4 = € 10."
+        }
+      ]
+    },
+    {
+      "id": "lz-2-07",
+      "set": 2,
+      "kind": "letter",
+      "title": "Brief van DUO",
+      "text": "DUO\n\nBeste meneer Novak,\n\nU heeft zich aangemeld voor het examen Lezen op niveau A2. Hieronder staan de gegevens.\n\nDatum: dinsdag 9 september\nTijd: 10.00 uur. Kom een half uur eerder.\nPlaats: examenlocatie Lindendam, Stationsweg 20\n\nNeem een geldig identiteitsbewijs mee. Zonder identiteitsbewijs mag u niet meedoen.\nUw telefoon moet uit en in een kluisje.\n\nSucces!",
+      "vocab": {
+        "zich aanmelden": "to register",
+        "gegevens": "details",
+        "identiteitsbewijs": "ID document",
+        "kluisje": "locker"
+      },
+      "questions": [
+        {
+          "id": "lz-2-07-a",
+          "q": "Hoe laat moet meneer Novak bij de examenlocatie zijn?",
+          "options": ["Om 9.30 uur.", "Om 10.00 uur.", "Om 10.30 uur."],
+          "answer": 0,
+          "explain": "Exam at 10.00; come half an hour earlier."
+        },
+        {
+          "id": "lz-2-07-b",
+          "q": "Wat gebeurt er als hij zijn identiteitsbewijs vergeet?",
+          "options": [
+            "Hij betaalt een boete.",
+            "Hij mag het examen niet doen.",
+            "Hij mag later komen."
+          ],
+          "answer": 1,
+          "explain": "'Zonder identiteitsbewijs mag u niet meedoen.'"
+        },
+        {
+          "id": "lz-2-07-c",
+          "q": "Wat doet hij met zijn telefoon?",
+          "options": [
+            "Hij legt hem op de tafel.",
+            "Hij zet hem uit en doet hem in een kluisje.",
+            "Hij geeft hem aan de docent."
+          ],
+          "answer": 1,
+          "explain": "'Uw telefoon moet uit en in een kluisje.'"
+        }
+      ]
+    },
+    {
+      "id": "lz-2-08",
+      "set": 2,
+      "kind": "ad",
+      "title": "Kamer te huur",
+      "text": "Kamer te huur in Rivierstad\n\nGrote kamer (16 m²) in een huis met 3 andere mensen. Gedeelde keuken en badkamer. Vlak bij het station.\n\nHuur: € 550 per maand, inclusief gas, water en licht. Internet kost € 10 per maand extra.\nVanaf 1 oktober. Geen huisdieren. Niet roken in huis.\n\nMail naar kamer.rivierstad@mail.nl met een korte tekst over jezelf.",
+      "vocab": {
+        "te huur": "for rent",
+        "gedeeld": "shared",
+        "vlak bij": "close to",
+        "huisdier": "pet"
+      },
+      "questions": [
+        {
+          "id": "lz-2-08-a",
+          "q": "Wat moet je naast de huur nog betalen?",
+          "options": ["Gas en licht.", "Internet.", "Water."],
+          "answer": 1,
+          "explain": "Gas, water and light are included; internet is € 10 extra."
+        },
+        {
+          "id": "lz-2-08-b",
+          "q": "Voor wie is deze kamer niet geschikt?",
+          "options": [
+            "Voor iemand met een kat.",
+            "Voor iemand die met de trein reist.",
+            "Voor een student."
+          ],
+          "answer": 0,
+          "explain": "'Geen huisdieren.'"
+        },
+        {
+          "id": "lz-2-08-c",
+          "q": "Wat stuur je in de e-mail?",
+          "options": ["Je loonstrook.", "Een korte tekst over jezelf.", "€ 550."],
+          "answer": 1,
+          "explain": "'met een korte tekst over jezelf'."
+        }
+      ]
+    },
+    {
+      "id": "lz-2-09",
+      "set": 2,
+      "kind": "notice",
+      "title": "Bericht op de deur van de bakker",
+      "text": "Beste klanten,\n\nWegens vakantie is onze winkel gesloten van maandag 29 juli tot en met zaterdag 10 augustus.\n\nVanaf maandag 12 augustus staan we weer voor u klaar met vers brood.\n\nIn de vakantie kunt u brood kopen bij onze andere winkel in de Kerkstraat (open van 7.30 tot 17.00 uur).\n\nTot ziens! Bakkerij Mulder",
+      "vocab": {
+        "wegens": "because of",
+        "klaarstaan": "to be ready",
+        "vers": "fresh"
+      },
+      "questions": [
+        {
+          "id": "lz-2-09-a",
+          "q": "Waarom is de winkel dicht?",
+          "options": [
+            "De bakker is ziek.",
+            "De bakker gaat op vakantie.",
+            "De winkel gaat verhuizen."
+          ],
+          "answer": 1,
+          "explain": "'Wegens vakantie'."
+        },
+        {
+          "id": "lz-2-09-b",
+          "q": "Het is 5 augustus. Waar kun je brood kopen bij Bakkerij Mulder?",
+          "options": [
+            "Nergens.",
+            "In de winkel in de Kerkstraat.",
+            "In deze winkel, na 17.00 uur."
+          ],
+          "answer": 1,
+          "explain": "Their other shop in the Kerkstraat stays open."
+        }
+      ]
+    },
+    {
+      "id": "lz-2-10",
+      "set": 2,
+      "kind": "sign",
+      "title": "Bord in het park",
+      "text": "PARK DE LINDE\n\nHonden aan de lijn.\nFietsen alleen op het fietspad.\nNiet barbecueën op het gras. Barbecueën mag alleen op de plek bij de vijver.\nHet park is open van 7.00 tot 23.00 uur.",
+      "vocab": {
+        "aan de lijn": "on a lead",
+        "fietspad": "cycle path",
+        "vijver": "pond"
+      },
+      "questions": [
+        {
+          "id": "lz-2-10-a",
+          "q": "Waar mag je barbecueën?",
+          "options": ["Overal op het gras.", "Alleen bij de vijver.", "Nergens in het park."],
+          "answer": 1,
+          "explain": "Only at the spot by the pond."
+        },
+        {
+          "id": "lz-2-10-b",
+          "q": "Wat zegt het bord over honden?",
+          "options": [
+            "Honden mogen niet in het park.",
+            "Honden moeten aan de lijn.",
+            "Honden mogen vrij lopen."
+          ],
+          "answer": 1,
+          "explain": "'Honden aan de lijn.'"
+        }
+      ]
+    }
+  ]
+}
