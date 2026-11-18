@@ -18,7 +18,8 @@
     "format:check": "prettier --check .",
     "anki-report": "pnpm --filter @app/anki-report start",
     "nlp": "cd server/nlp && uv run uvicorn kenning_nlp.app:app --port 8000",
-    "knip": "knip"
+    "knip": "knip",
+    "e2e": "turbo run build --filter=@app/web && pnpm --filter @app/web e2e"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

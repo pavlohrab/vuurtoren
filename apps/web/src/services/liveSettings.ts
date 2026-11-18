@@ -160,5 +160,3 @@ export function createLiveSettings({ repo, platform, changed }: LiveSettingsDeps
     services,
   };
 }
-
-export type LiveSettings = ReturnType<typeof createLiveSettings>;

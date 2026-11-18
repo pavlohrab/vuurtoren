@@ -98,7 +98,7 @@ export interface AnkiStatus {
   error?: string;
 }
 /** Outcome of "Connect to Anki" (asks Anki to allow this site, then re-tests). */
-export interface AnkiConnectResult {
+interface AnkiConnectResult {
   /** True if the user answered No in Anki's dialog. */
   denied: boolean;
   status: AnkiStatus;

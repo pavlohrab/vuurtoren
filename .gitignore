@@ -27,3 +27,7 @@ server/nlp/data
 
 # generated from packages/content/grammar (pnpm --filter @app/content generate)
 packages/content/src/generated/
+
+# playwright (pnpm e2e)
+test-results/
+playwright-report/
