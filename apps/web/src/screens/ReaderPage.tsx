@@ -38,6 +38,7 @@ import {
 } from "./reader/grammarMarks.js";
 import { FocusChip, MarkCard } from "./reader/ReaderGrammar.js";
 import { type MenuView, ReaderMenu, ShortcutsDialog } from "./reader/ReaderMenu.js";
+import { TextDetailsDialog } from "./library/TextDetailsDialog.js";
 import { ReadingSettings } from "./reader/ReadingSettings.js";
 import { WordGrammar } from "./reader/WordGrammar.js";
 import { prefsStyle, useReaderPrefs } from "./reader/readerPrefs.js";
@@ -209,6 +210,7 @@ export function ReaderPage({ textId }: { textId: string }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuView, setMenuView] = useState<MenuView>("menu");
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const [simplifyAt, setSimplifyAt] = useState<number | null>(null);
   useEffect(() => {
     if (!readingFocus) return;
@@ -732,6 +734,7 @@ export function ReaderPage({ textId }: { textId: string }) {
                       : undefined
                   }
                   onSimplify={aiReady ? () => setSimplifyAt(current) : undefined}
+                  onEditDetails={() => setDetailsOpen(true)}
                   onShortcuts={() => setShortcutsOpen(true)}
                 />
               </span>
@@ -740,6 +743,10 @@ export function ReaderPage({ textId }: { textId: string }) {
           )
         : null}
       <ShortcutsDialog open={shortcutsOpen} onOpenChange={setShortcutsOpen} />
+      <TextDetailsDialog
+        text={detailsOpen ? data.text : null}
+        onClose={() => setDetailsOpen(false)}
+      />
       {readingFocus ? (
         <button type="button" className="reader-focus-exit" onClick={() => setReadingFocus(false)}>
           Leave focus mode <kbd>Esc</kbd>

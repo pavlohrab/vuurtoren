@@ -230,6 +230,22 @@ describe("the reader bar, footer and word panel", () => {
     expect(history.location.pathname).toBe("/read/t-utrecht/words");
   });
 
+  it("edits the text's details from the … menu and shows the new title", async () => {
+    const { services } = setup("/read/t-utrecht");
+    const update = vi.spyOn(services, "updateTextMeta");
+    await userEvent.click(await screen.findByRole("button", { name: "More reading options" }));
+    await userEvent.click(await screen.findByRole("menuitem", { name: "Edit details…" }));
+    const dialog = await screen.findByRole("dialog", { name: "Edit details" });
+    const title = within(dialog).getByLabelText("Title");
+    await userEvent.clear(title);
+    await userEvent.type(title, "Mijn Utrecht");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Save" }));
+    await waitFor(() =>
+      expect(update).toHaveBeenCalledWith("t-utrecht", { title: "Mijn Utrecht" }),
+    );
+    expect(await screen.findAllByText("Mijn Utrecht")).not.toHaveLength(0);
+  });
+
   it("opens the word panel on a click and closes it with Esc, focus back on the word", async () => {
     setup("/read/t-utrecht");
     await screen.findAllByText("zus");

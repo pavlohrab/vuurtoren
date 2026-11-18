@@ -44,7 +44,8 @@ function Item({
 
 /**
  * The reader's "…" menu: the grammar focus picker (a second view of the same popover), focus
- * mode, Show answers, Simplify this page, Words from this text and the keyboard shortcuts.
+ * mode, Show answers, Simplify this page, Words from this text, Edit details and the keyboard
+ * shortcuts.
  */
 export function ReaderMenu({
   open,
@@ -58,6 +59,7 @@ export function ReaderMenu({
   onFocusMode,
   onShowAnswers,
   onSimplify,
+  onEditDetails,
   onShortcuts,
 }: {
   open: boolean;
@@ -80,6 +82,7 @@ export function ReaderMenu({
   onShowAnswers?: (() => void) | undefined;
   /** Only with an AI provider. */
   onSimplify?: (() => void) | undefined;
+  onEditDetails: () => void;
   onShortcuts: () => void;
 }) {
   const close = (then: () => void) => () => {
@@ -157,6 +160,7 @@ export function ReaderMenu({
             >
               <span className="rmenu-label">Words from this text</span>
             </Link>
+            <Item onSelect={close(onEditDetails)}>Edit details…</Item>
             <hr className="rmenu-sep" />
             <Item onSelect={close(onShortcuts)} kbd="?">
               Keyboard shortcuts
