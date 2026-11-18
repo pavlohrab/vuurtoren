@@ -118,4 +118,8 @@ export interface UnitWord {
   pos?: string;
   gloss?: string;
   source: "wordlist" | "anki" | "text";
+  /** A sentence of the book that uses the word (e.g. from a course pack). */
+  example?: string;
+  /** The page of that sentence. */
+  page?: number;
 }

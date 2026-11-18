@@ -1,11 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { PageHeader } from "../../shell/PageHeader.js";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { GraduationCap, Plus } from "lucide-react";
+import { FileUp, GraduationCap, Plus } from "lucide-react";
 import { useState } from "react";
 import { Button, CoverageMeter, Dialog, EmptyState, Skeleton, useToast } from "@app/ui";
 import { useServices } from "../../services/context.js";
 import type { CourseListItem } from "../../services/courseTypes.js";
+import { ImportPackDialog } from "./CoursePacks.js";
 import "./courses.css";
 
 const percent = (v: number) => `${Math.round(v * 100)}%`;
@@ -17,6 +18,7 @@ export function Courses() {
   const qc = useQueryClient();
   const toast = useToast();
   const [pendingDelete, setPendingDelete] = useState<CourseListItem | null>(null);
+  const [importing, setImporting] = useState(false);
   const courses = useQuery({ queryKey: ["courses"], queryFn: () => services.courseList() });
   const remove = useMutation({
     mutationFn: (id: string) => services.deleteCourse(id),
@@ -33,9 +35,14 @@ export function Courses() {
         title="Courses"
         lede="Study along a textbook you own. The book stays on your device or your own server."
         actions={
-          <Link to="/courses/import" className="k-btn k-btn--primary">
-            <Plus size={16} aria-hidden /> Add a course
-          </Link>
+          <>
+            <Button onClick={() => setImporting(true)}>
+              <FileUp size={16} aria-hidden /> Import a course pack
+            </Button>
+            <Link to="/courses/import" className="k-btn k-btn--primary">
+              <Plus size={16} aria-hidden /> Add a course
+            </Link>
+          </>
         }
       />
       {courses.isPending ? (
@@ -89,6 +96,7 @@ export function Courses() {
           ))}
         </ul>
       )}
+      <ImportPackDialog open={importing} onOpenChange={setImporting} />
       <Dialog
         open={pendingDelete !== null}
         onOpenChange={(o) => {

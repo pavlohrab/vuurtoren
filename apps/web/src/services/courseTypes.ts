@@ -6,9 +6,11 @@ import type {
   Block,
   BookExercise,
   Course,
+  CoursePack,
   Exercise,
   ExerciseItem,
   ItemCheck,
+  PackMode,
   Unit,
   UnitStatus,
   UnitWord,
@@ -190,7 +192,43 @@ export interface AddMissingResult {
   deck: string;
 }
 
+/** A course pack ready to download. */
+export interface ExportedPack {
+  fileName: string;
+  /** The pack as JSON text. */
+  json: string;
+}
+
+/** What importing a course pack did. */
+export interface PackImportResult {
+  courseId: string;
+  units: number;
+  words: number;
+  exercises: number;
+  /** Reading texts and transcripts added to the Library (or already there). */
+  texts: number;
+  /** Texts that could not be added (analysis failed, e.g. the language server is not reachable). */
+  textsFailed: number;
+  /** Structure packs: pack exercises found in your own import, and the ones it missed. */
+  matched?: number;
+  missing?: number;
+  /** Structure packs: share of the pack's page fingerprint your pages match (0..1). */
+  fingerprint?: number;
+}
+
 export interface CourseServices {
+  /** The course as a course pack: "full" (with the book's text) or "structure" (without). */
+  exportCoursePack(courseId: string, mode: PackMode): Promise<ExportedPack>;
+  /**
+   * Create a course from a pack (validated with `parseCoursePack`). A full pack needs nothing
+   * else; a structure pack needs your own copy of the book (`files`), read like a normal import
+   * (from the server's cache when it read the file before) and checked against the pack's
+   * fingerprint.
+   */
+  importCoursePack(
+    pack: CoursePack,
+    opts?: { files?: File[]; onProgress?: (p: ImportProgress) => void },
+  ): Promise<PackImportResult>;
   /** OCR (server job) + outline detection; saves the course and its draft outline. */
   importCourse(input: CourseSourceInput, onProgress?: (p: ImportProgress) => void): Promise<string>;
   /** The import left unfinished in this browser (its reading job id is remembered), or null. */

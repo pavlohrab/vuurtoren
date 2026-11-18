@@ -9,22 +9,32 @@ import {
   type Block,
   type BookExercise,
   type Course,
+  type CoursePack,
   type Exercise,
   type ExerciseKind,
   type ItemCheck,
   type LanguageProfile,
   type LearnerModel,
   type OcrPage,
+  type PackMode,
   type Unit,
   type UnitWord,
   type WordData,
+  MIN_FINGERPRINT_MATCH,
+  applyStructure,
   assignKinds,
   bookItemKeys,
+  buildCoursePack,
+  compareFingerprints,
   checkBookItem,
   detectOutline,
   isVerbSecond,
   migratedProfile,
   normalizeKey,
+  packExercises,
+  packFileName,
+  packUnits,
+  pagesFingerprint,
   readingTexts,
   recognizeExercises,
   resolveDeck,
@@ -50,9 +60,11 @@ import type {
   CourseSourceInput,
   CourseView,
   DeckMapping,
+  ExportedPack,
   ImportProgress,
   LearnNextResult,
   OutlineRow,
+  PackImportResult,
   PagePreview,
   PendingImport,
   UnitGrammarTopic,
@@ -357,7 +369,8 @@ export function createLiveCourses(deps: LiveCoursesDeps): CourseServices {
   async function analyzeCourse(
     courseId: string,
     onProgress?: (p: ImportProgress) => void,
-  ): Promise<void> {
+    overlay?: CoursePack,
+  ): Promise<{ matched: number; missing: number; texts: number; textsFailed: number }> {
     const course = await courseOrThrow(courseId);
     const blocks = await repo.courseBlocks(courseId);
     const client = await deps.nlp();
@@ -369,6 +382,8 @@ export function createLiveCourses(deps: LiveCoursesDeps): CourseServices {
     const wordLists = unitWordLists(blocks, course.units);
 
     let step = 0;
+    let matched = 0;
+    let missing = 0;
     const total = themes.length * 2 + 1;
     for (const unit of themes) {
       onProgress?.({
@@ -381,6 +396,13 @@ export function createLiveCourses(deps: LiveCoursesDeps): CourseServices {
       const previous = await repo.unitExercises(courseId, unit.n);
       let exercises = recognizeExercises(inUnit);
       exercises = await deriveAnswers(exercises, derive);
+      const packUnit = overlay?.units.find((u) => u.n === unit.n);
+      if (packUnit) {
+        const applied = applyStructure(exercises, packUnit.exercises);
+        exercises = applied.exercises;
+        matched += applied.matched;
+        missing += applied.missing;
+      }
       exercises = exercises.map((e) =>
         keepUserEdits(
           e,
@@ -388,26 +410,55 @@ export function createLiveCourses(deps: LiveCoursesDeps): CourseServices {
         ),
       );
       await repo.append({ type: "BookExerciseExtracted", courseId, unitN: unit.n, exercises });
-      const words = wordLists.get(unit.n);
+      const words = packUnit?.words.length ? packUnit.words : wordLists.get(unit.n);
       if (words && words.length > 0) {
         await repo.append({ type: "UnitWordsSet", courseId, unitN: unit.n, words });
       }
     }
-    const library = await repo.listTexts();
-    for (const unit of themes) {
-      onProgress?.({ stage: "texts", done: step++, total, message: `Texts of ${unit.title}` });
-      for (const t of readingTexts(blocks, unit)) {
-        if (library.some((x) => x.title === t.title)) continue;
-        await deps.importText({
-          kind: "paste",
-          title: t.title,
-          content: t.text,
-          ref: courseRef(courseId, unit.n),
-        });
-      }
-    }
+    const texts = await importUnitTexts(courseId, themes, blocks, onProgress, step, total);
     onProgress?.({ stage: "done", done: total, total, message: "Course ready" });
     deps.changed();
+    return { matched, missing, ...texts };
+  }
+
+  /** Add the reading texts and transcripts of units to the Library (skipping ones already there). */
+  async function importUnitTexts(
+    courseId: string,
+    units: readonly Unit[],
+    blocks: readonly Block[],
+    onProgress: ((p: ImportProgress) => void) | undefined,
+    step: number,
+    total: number,
+  ): Promise<{ texts: number; textsFailed: number }> {
+    const library = await repo.listTexts();
+    let texts = 0;
+    let textsFailed = 0;
+    let firstError: unknown = null;
+    for (const unit of units) {
+      onProgress?.({ stage: "texts", done: step++, total, message: `Texts of ${unit.title}` });
+      for (const t of readingTexts(blocks, unit)) {
+        if (library.some((x) => x.title === t.title)) {
+          texts++;
+          continue;
+        }
+        try {
+          await deps.importText({
+            kind: "paste",
+            title: t.title,
+            content: t.text,
+            ref: courseRef(courseId, unit.n),
+          });
+          texts++;
+        } catch (e) {
+          textsFailed++;
+          firstError ??= e;
+          // Without the language server no text can be analysed: stop trying.
+          if (texts === 0 && textsFailed >= 2) throw e;
+        }
+      }
+    }
+    if (texts === 0 && firstError) throw firstError;
+    return { texts, textsFailed };
   }
 
   /** Corrections the user made survive a re-analysis (same prompt, answer set by the user). */
@@ -881,7 +932,7 @@ export function createLiveCourses(deps: LiveCoursesDeps): CourseServices {
         if (seen.has(key)) continue;
         seen.add(key);
         const info = infos.get(key);
-        const example = exampleFor(w.lemma);
+        const example = w.example ?? exampleFor(w.lemma);
         rows.push({
           key,
           lemma: w.lemma,
@@ -1068,7 +1119,107 @@ export function createLiveCourses(deps: LiveCoursesDeps): CourseServices {
     return out;
   }
 
+  // ------------------------------------------------------------------ course packs
+
+  async function exportCoursePack(courseId: string, mode: PackMode): Promise<ExportedPack> {
+    const course = await courseOrThrow(courseId);
+    const { units, ...plain } = course;
+    const exercises = new Map<number, BookExercise[]>();
+    const words = new Map<number, UnitWord[]>();
+    for (const u of units) {
+      exercises.set(u.n, await repo.unitExercises(courseId, u.n));
+      words.set(u.n, await repo.unitWords(courseId, u.n));
+    }
+    const pack = buildCoursePack(
+      { course: plain, units, blocks: await repo.courseBlocks(courseId), exercises, words },
+      mode,
+      { now: clock(), meta: { generator: "Kenning" } },
+    );
+    return { fileName: packFileName(course.title, mode), json: JSON.stringify(pack, null, 1) };
+  }
+
+  async function importCoursePack(
+    pack: CoursePack,
+    opts: { files?: File[]; onProgress?: (p: ImportProgress) => void } = {},
+  ): Promise<PackImportResult> {
+    const { onProgress } = opts;
+    const counts = {
+      units: pack.units.length,
+      words: pack.units.reduce((n, u) => n + u.words.length, 0),
+      exercises: pack.units.reduce((n, u) => n + u.exercises.length, 0),
+    };
+    if (pack.mode === "structure") {
+      const files = opts.files ?? [];
+      const first = files[0];
+      if (!first) throw new Error("Choose your copy of the book: a structure pack has no text.");
+      const kind = /\.(png|jpe?g|webp|tiff?)$/i.test(first.name) ? "images" : "pdf";
+      const pages = await ocrPages(files, { title: pack.course.title, kind }, onProgress);
+      const fp = compareFingerprints(pack, pages.length, pagesFingerprint(pages));
+      if (!fp.samePageCount)
+        throw new Error(
+          `This pack is for a book of ${pack.course.pageCount} pages; your file has ${pages.length}.`,
+        );
+      if (fp.ratio < MIN_FINGERPRINT_MATCH)
+        throw new Error(
+          `Your file does not look like the book of this pack: only ${Math.round(fp.ratio * 100)}% of its pages match.`,
+        );
+      const courseId = await buildCourse(
+        pages,
+        pack.course.title,
+        { kind, filename: first.name },
+        onProgress,
+        (id) => packUnits(pack, id),
+      );
+      writePending(null);
+      const r = await analyzeCourse(courseId, onProgress, pack);
+      return { courseId, ...counts, ...r, fingerprint: fp.ratio };
+    }
+    const blocks = pack.blocks ?? [];
+    onProgress?.({ stage: "outline", done: 0, total: 1, message: "Creating the course" });
+    const courseId = crypto.randomUUID();
+    const course: Course = {
+      id: courseId,
+      title: pack.course.title,
+      lang: pack.course.lang,
+      source: { ...pack.course.source },
+      pageCount: pack.course.pageCount,
+      created: clock(),
+      ...(pack.course.level ? { level: pack.course.level } : {}),
+    };
+    const units = packUnits(pack, courseId);
+    await repo.append({ type: "CourseImported", course });
+    await repo.append({ type: "UnitDefined", courseId, units });
+    await repo.append({ type: "BlocksExtracted", courseId, blocks });
+    for (const u of pack.units) {
+      await repo.append({
+        type: "BookExerciseExtracted",
+        courseId,
+        unitN: u.n,
+        exercises: packExercises(u),
+      });
+      if (u.words.length > 0)
+        await repo.append({ type: "UnitWordsSet", courseId, unitN: u.n, words: u.words });
+    }
+    onProgress?.({ stage: "outline", done: 1, total: 1, message: "Course created" });
+    const withTexts = units.filter((u) => u.kind === "theme" || u.kind === "other");
+    let texts: { texts: number; textsFailed: number };
+    try {
+      texts = await importUnitTexts(courseId, withTexts, blocks, onProgress, 0, withTexts.length);
+    } catch {
+      // The course is there; its texts can be added later (Edit outline → analyse again).
+      texts = {
+        texts: 0,
+        textsFailed: withTexts.reduce((n, u) => n + readingTexts(blocks, u).length, 0),
+      };
+    }
+    onProgress?.({ stage: "done", done: 1, total: 1, message: "Course ready" });
+    deps.changed();
+    return { courseId, ...counts, ...texts };
+  }
+
   return {
+    exportCoursePack,
+    importCoursePack,
     importCourse,
     async pendingImport() {
       return readPending();
@@ -1089,7 +1240,9 @@ export function createLiveCourses(deps: LiveCoursesDeps): CourseServices {
     addWordsPreview,
     addUnitWords,
     unitGrammar,
-    analyzeCourse,
+    async analyzeCourse(courseId, onProgress) {
+      await analyzeCourse(courseId, onProgress);
+    },
     courseList,
     course: courseView,
     async deleteCourse(courseId) {

@@ -1,6 +1,7 @@
 import { type KenningRepository, createRepository } from "@app/db";
 import { createNodeDriver } from "@app/db/node";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { parseCoursePack } from "@app/core";
 import { createLiveServices } from "./live.js";
 
 /** A two-page invented book: one theme with an exercise and a text, then the word list. */
@@ -314,5 +315,130 @@ describe("live courses", () => {
       answer: "woon",
       correct: true,
     });
+  });
+});
+
+describe("course packs", () => {
+  /** A course read from PAGES, mapped to a deck, analysed, with an exercise fixed by the user. */
+  async function preparedCourse() {
+    const env = await setup();
+    const id = await env.services.importCourse({
+      kind: "images",
+      files: [new File(["a"], "p1.jpg")],
+      title: "Mijn boek",
+    });
+    await env.services.mapDecks(id, { 1: ["Opmaat::Thema 01 - Kennismaken"] });
+    await env.services.analyzeCourse(id);
+    // The user corrects the exercise the importer could not read.
+    await env.services.editBookExercise(id, 1, 1, {
+      type: "gapfill",
+      items: [
+        {
+          prompt: "Anne ____ (wonen) in Nijmegen.",
+          hint: "wonen",
+          answerSource: "user",
+          confidence: 0,
+        },
+      ],
+    });
+    await env.services.setBookAnswer(id, 1, 1, 0, "woont");
+    return { ...env, id };
+  }
+
+  /** Everything a course is made of, without ids and times. */
+  async function snapshot(
+    repo: KenningRepository,
+    services: Awaited<ReturnType<typeof setup>>["services"],
+    id: string,
+  ) {
+    const course = (await repo.courses()).find((c) => c.id === id);
+    const units = course?.units.map((u) => ({ ...u, courseId: "" }));
+    const per = await Promise.all(
+      (course?.units ?? []).map(async (u) => ({
+        words: await repo.unitWords(id, u.n),
+        exercises: await repo.unitExercises(id, u.n),
+        texts: (await services.unit(id, u.n))?.texts.map((t) => [t.label, !!t.textId]),
+      })),
+    );
+    return {
+      title: course?.title,
+      pageCount: course?.pageCount,
+      units,
+      per,
+      blocks: await repo.courseBlocks(id),
+    };
+  }
+
+  it("exports a full pack that imports into another database as the same course, texts included", async () => {
+    const a = await preparedCourse();
+    const before = await snapshot(a.repo, a.services, a.id);
+    const out = await a.services.exportCoursePack(a.id, "full");
+    expect(out.fileName).toBe("mijn-boek.kenning-course.json");
+    await a.repo.close();
+    repoToClose = null;
+
+    const b = await setup();
+    const pack = parseCoursePack(JSON.parse(out.json));
+    const r = await b.services.importCoursePack(pack);
+    expect(r).toMatchObject({ units: 2, words: 4, exercises: 1, texts: 1, textsFailed: 0 });
+    expect(await snapshot(b.repo, b.services, r.courseId)).toEqual(before);
+    expect((await b.services.listTexts()).map((t) => t.title)).toContain(
+      "Thema 1 Kennismaken · Oefening 1",
+    );
+    // The user's fixed answer travelled with the pack.
+    expect((await b.services.unit(r.courseId, 1))?.exercises[0]?.items[0]).toMatchObject({
+      answer: "woont",
+      answerSource: "user",
+    });
+  });
+
+  it("applies a structure pack, which holds none of the book's text, to your own copy of the book", async () => {
+    const a = await preparedCourse();
+    const out = await a.services.exportCoursePack(a.id, "structure");
+    expect(out.fileName).toBe("mijn-boek.structure.kenning-course.json");
+    expect(out.json).not.toContain("Nijmegen");
+    expect(out.json).not.toContain("fietst");
+    await a.repo.close();
+    repoToClose = null;
+
+    const b = await setup();
+    const pack = parseCoursePack(JSON.parse(out.json));
+    await expect(b.services.importCoursePack(pack)).rejects.toThrow("Choose your copy");
+    const r = await b.services.importCoursePack(pack, { files: [new File(["a"], "mijn.pdf")] });
+    expect(r).toMatchObject({ units: 2, matched: 1, missing: 0, fingerprint: 1 });
+    const unit = await b.services.unit(r.courseId, 1);
+    expect(unit?.unit.ankiDecks).toEqual(["Opmaat::Thema 01 - Kennismaken"]);
+    expect(unit?.words.map((w) => w.lemma)).toEqual(["naam", "straat", "wonen", "fiets"]);
+    // The pack's type; the items are read from your own pages (answers land on items it finds there).
+    expect(unit?.exercises[0]).toMatchObject({ number: 1, type: "gapfill" });
+    expect(unit?.exercises[0]?.raw).toContain("Nijmegen");
+    expect(unit?.texts[0]?.textId).toBeDefined();
+  });
+
+  it("refuses a structure pack made for another book", async () => {
+    const b = await setup();
+    const pack = parseCoursePack({
+      format: "kenning-course-pack",
+      version: 1,
+      mode: "structure",
+      exported: "2026-01-01T00:00:00.000Z",
+      course: { title: "Ander boek", lang: "nl", source: { kind: "pdf" }, pageCount: 40 },
+      fingerprint: {},
+      units: [
+        {
+          n: 1,
+          title: "Unit 1",
+          pages: [1, 40],
+          kind: "theme",
+          ankiDecks: [],
+          words: [],
+          exercises: [],
+        },
+      ],
+    });
+    await expect(
+      b.services.importCoursePack(pack, { files: [new File(["a"], "mijn.pdf")] }),
+    ).rejects.toThrow("book of 40 pages; your file has 3");
+    expect(await b.services.courseList()).toEqual([]);
   });
 });

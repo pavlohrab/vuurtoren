@@ -5,6 +5,7 @@ import { Button, CoverageMeter, Skeleton } from "@app/ui";
 import { useServices } from "../../services/context.js";
 import type { UnitRow } from "../../services/courseTypes.js";
 import { AddWordsDialog } from "./AddWordsDialog.js";
+import { ExportPackDialog } from "./CoursePacks.js";
 import "./courses.css";
 
 const pct = (v: number) => `${Math.round(v * 100)}%`;
@@ -57,6 +58,7 @@ function UnitLine({ courseId, row }: { courseId: string; row: UnitRow }) {
 export function CourseRoute({ courseId }: { courseId: string }) {
   const services = useServices();
   const [adding, setAdding] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const course = useQuery({
     queryKey: ["course", courseId],
     queryFn: () => services.course(courseId),
@@ -106,6 +108,9 @@ export function CourseRoute({ courseId }: { courseId: string }) {
           <Link to="/courses/$courseId/edit" params={{ courseId }} className="k-btn k-btn--ghost">
             Edit outline
           </Link>
+          <Button variant="ghost" onClick={() => setExporting(true)}>
+            Export course pack…
+          </Button>
         </div>
       </div>
       <p className="page-lede">
@@ -119,6 +124,9 @@ export function CourseRoute({ courseId }: { courseId: string }) {
       ) : null}
       {adding ? (
         <AddWordsDialog courseId={courseId} scope="all" open={adding} onOpenChange={setAdding} />
+      ) : null}
+      {exporting ? (
+        <ExportPackDialog courseId={courseId} open={exporting} onOpenChange={setExporting} />
       ) : null}
       <ul className="cs-list" style={{ gap: 0 }}>
         {units.map((row) => (

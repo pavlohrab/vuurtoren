@@ -4,7 +4,7 @@
 
 ## Principles
 
-- **Your resource stays yours.** Imported books live only in your own storage (browser database or your server's volume). Nothing is shipped in the repository or the images, and nothing is uploaded anywhere else. Exporting a "course pack" is your explicit choice, and page images are excluded by default.
+- **Your resource stays yours.** Imported books live only in your own storage (browser database or your server's volume). Nothing is shipped in the repository or the images, and nothing is uploaded anywhere else. Exporting a "course pack" is your explicit choice; page images are never included, and only a "full" pack (for your own devices) includes the book's text.
 - **Structure first, then interactivity.** The app turns a book into units → texts, exercises, word list and grammar points. You can always correct what the importer guessed.
 - **Anki stays the memory.** A course unit maps onto your Anki decks (e.g. _De Opmaat A2::Thema 03 – Winkelen_). Course progress _is_ Anki maturity of the unit's words, plus practice results.
 - **No AI required.** Rules and the existing NLP do the work. Your own AI key (M6) can help with structuring and with feedback on open writing tasks.
@@ -111,6 +111,40 @@ Without the contents page (blanked), the footers alone still give all 10 themes,
 
 - **Course pack** = JSON with units, exercise _structures_ and your corrections, without page images or OCR'd prose by default. Someone who owns the same book imports their own PDF and applies the pack to get the corrected structure. Copyrighted text never travels; only coordinates and answers do. Packs can be fully open for free resources (e.g. your own texts, public-domain readers).
 - The repository can host **pack schemas and an example pack for a free resource**, never commercial content.
+
+### Course packs (built 2026-11-18)
+
+One JSON file, `<course>.kenning-course.json` (structure: `<course>.structure.kenning-course.json`). Code: `packages/core/src/course/pack.ts` (build, validate, fingerprint, apply; pure), `exportCoursePack` / `importCoursePack` in `apps/web/src/services/liveCourses.ts`, screens in `screens/courses/CoursePacks.tsx`.
+
+```
+{
+  "format": "kenning-course-pack", "version": 1,
+  "mode": "full" | "structure",
+  "exported": "2026-11-18T10:00:00.000Z",
+  "course": { "title", "lang", "level"?, "source": { "kind", "filename"? }, "pageCount" },
+  "fingerprint": { "<page>": "<8 hex>" },      // first line of the first block of each page
+  "units": [{
+    "n", "title", "pages": [from, to], "kind": "theme|grammar|transcripts|wordlist|other",
+    "ankiDecks": ["De Opmaat A2::Thema 03 – Winkelen"],
+    "words": [{ "lemma", "article"?, "pos"?, "gloss"?, "source", "example"?, "page"? }],
+    "exercises": [{
+      "number", "page", "type", "grammar"?,
+      "instruction"?, "example"?, "raw"?, "passage"?,             // full only
+      "items": [{ "key", "answer"?, "accept"?, "hint"?, "person"?, "first"?, "tense"?,
+                  "answerSource", "confidence",
+                  "prompt"?, "options"?, "chunks"? }]             // full only
+    }]
+  }],
+  "blocks": [{ "page", "kind", "label"?, "number"?, "text" }],   // full only: the book's text
+  "meta": { "generator"?, "corrections"?: { "<category>": n }, "notes"? }
+}
+```
+
+- **full:** everything, including the recognised text (blocks, exercise prompts and instructions, a sentence per word). For your own backup or to move a course between your own devices: imports without the book, the OCR or a language server (texts are analysed when the server is there). The export dialog says that it contains the book's text and is for personal use.
+- **structure:** no prose of the book: units, decks, word lists (lemma, article), exercise numbers, types and per item a hash of its prompt (`key`, letters only, FNV-1a) with the answer. Importing asks for your own copy of the book; it is read like a normal import (from the server's OCR cache when it read the file before), checked against the pack (same page count, and at least half of the page fingerprints match, else "this pack is for another book"), then the pack's outline replaces the detected one, its word lists replace the parsed ones, and its exercise types and answers are laid over the exercises recognised from your pages (items matched by `key`, else by position when the counts agree). Items your OCR did not find stay as recognised: a structure pack cannot restore text it does not carry.
+- **Validation** (`parseCoursePack`): format, version (a newer version is refused with "update Kenning"), mode, page ranges within the page count, unique unit numbers, known unit kinds, exercise types and answer sources, full packs need their blocks and prompts, structure packs must not have blocks. The import preview shows the title, mode, units with page ranges, and the counts of words, exercises, answers and corrections.
+- **Import** writes the same events as a normal import (`CourseImported`, `UnitDefined`, `BlocksExtracted`, `BookExerciseExtracted`, `UnitWordsSet`) and adds the unit texts to the Library through the normal text import, so word states, glosses and grammar work as for any course. It goes through the repository, so it works in browser and server storage alike.
+- **UI:** course page → **Export course pack…** (structure only / full, Download); Courses → **Import a course pack** (choose or drop the file, preview, for a structure pack choose the book file, Import, Open the course).
 
 ## Phases
 

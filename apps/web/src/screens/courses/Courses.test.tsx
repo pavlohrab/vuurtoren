@@ -1,5 +1,5 @@
 import { createMemoryHistory } from "@tanstack/react-router";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { App } from "../../App.js";
@@ -137,5 +137,50 @@ describe("Courses", () => {
       "href",
       "/courses/demo-course",
     );
+  });
+
+  it("exports a course pack and imports one from a file, after a preview", async () => {
+    const createObjectURL = vi.fn(() => "blob:pack");
+    const revokeObjectURL = vi.fn();
+    Object.assign(URL, { createObjectURL, revokeObjectURL });
+    const base = createMockServices({ latencyMs: 0 });
+    const exportCoursePack = vi.fn(base.exportCoursePack);
+    const { user } = setup("/courses/demo-course", { exportCoursePack });
+    await user.click(await screen.findByRole("button", { name: "Export course pack…" }));
+    let dialog = await screen.findByRole("dialog", { name: "Export course pack" });
+    await user.click(within(dialog).getByRole("radio", { name: /Full/ }));
+    expect(within(dialog).getByText(/contains the book.s text/)).toBeVisible();
+    await user.click(within(dialog).getByRole("button", { name: "Download" }));
+    expect(exportCoursePack).toHaveBeenCalledWith("demo-course", "full");
+    expect(createObjectURL).toHaveBeenCalled();
+    const json = (await exportCoursePack.mock.results[0]?.value)?.json as string;
+
+    const importCoursePack = vi.fn(base.importCoursePack);
+    cleanup();
+    const second = setup("/courses", { importCoursePack });
+    await second.user.click(await screen.findByRole("button", { name: /Import a course pack/ }));
+    dialog = await screen.findByRole("dialog", { name: "Import a course pack" });
+    await second.user.upload(
+      within(dialog).getByLabelText("Course pack file"),
+      new File([json], "pack.kenning-course.json", { type: "application/json" }),
+    );
+    expect(await within(dialog).findByTestId("pack-counts")).toHaveTextContent(
+      /^4 units · \d+ words · \d+ exercises/,
+    );
+    await second.user.click(within(dialog).getByRole("button", { name: "Import" }));
+    await waitFor(() => expect(importCoursePack).toHaveBeenCalled());
+    await second.user.click(await within(dialog).findByRole("button", { name: "Open the course" }));
+    await waitFor(() => expect(second.history.location.pathname).toBe("/courses/demo-course"));
+
+    // A pack of a newer app: a clear message, no import.
+    cleanup();
+    setup("/courses");
+    await second.user.click(await screen.findByRole("button", { name: /Import a course pack/ }));
+    dialog = await screen.findByRole("dialog", { name: "Import a course pack" });
+    await second.user.upload(
+      within(dialog).getByLabelText("Course pack file"),
+      new File([JSON.stringify({ format: "kenning-course-pack", version: 9 })], "x.json"),
+    );
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent(/newer version of Kenning/);
   });
 });

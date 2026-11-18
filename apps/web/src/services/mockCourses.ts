@@ -9,7 +9,11 @@ import {
   type Exercise,
   type Unit,
   type UnitWord,
+  buildCoursePack,
   checkBookItem,
+  packExercises,
+  packFileName,
+  packUnits,
   suggestDecks,
   unitStatus,
   validateOutline,
@@ -339,6 +343,47 @@ export function createMockCourses(opts: { latencyMs?: number } = {}): CourseServ
   });
 
   return {
+    async exportCoursePack(_id, mode) {
+      if (!course) throw new Error("This course no longer exists.");
+      const pack = buildCoursePack(
+        {
+          course,
+          units,
+          blocks: units.map((u) => ({ page: u.pages[0], kind: "other", text: u.title })),
+          exercises,
+          words,
+        },
+        mode,
+        { meta: { generator: "Kenning demo" } },
+      );
+      return { fileName: packFileName(course.title, mode), json: JSON.stringify(pack, null, 1) };
+    },
+    async importCoursePack(pack, opts = {}) {
+      if (pack.mode === "structure" && !opts.files?.length)
+        throw new Error("Choose your copy of the book: a structure pack has no text.");
+      opts.onProgress?.({ stage: "outline", done: 1, total: 1, message: "Creating the course" });
+      await wait(latency);
+      course = {
+        id: COURSE_ID,
+        title: pack.course.title,
+        lang: pack.course.lang,
+        source: pack.course.source,
+        pageCount: pack.course.pageCount,
+        created: Date.now(),
+      };
+      units = packUnits(pack, COURSE_ID);
+      words = new Map(pack.units.map((u) => [u.n, u.words]));
+      if (pack.mode === "full") exercises = new Map(pack.units.map((u) => [u.n, packExercises(u)]));
+      generated = new Map();
+      return {
+        courseId: COURSE_ID,
+        units: units.length,
+        words: pack.units.reduce((n, u) => n + u.words.length, 0),
+        exercises: pack.units.reduce((n, u) => n + u.exercises.length, 0),
+        texts: 0,
+        textsFailed: 0,
+      };
+    },
     async importCourse(input, onProgress) {
       const total = 6;
       for (let i = 1; i <= total; i++) {

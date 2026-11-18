@@ -54,7 +54,7 @@ function privacyCopy(mode: "server" | "browser" | undefined): string {
   return "This is the demo: nothing you upload is kept.";
 }
 
-function ProgressBar({ p }: { p: ImportProgress | null }) {
+export function ProgressBar({ p }: { p: ImportProgress | null }) {
   if (!p) return <Spinner label="Starting" />;
   const pct = p.total ? Math.round((p.done / p.total) * 100) : 0;
   return (
