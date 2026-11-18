@@ -108,7 +108,7 @@ export function SignInScreen({ methods, signIn, onSignedIn, reason, defaultUser 
     <div className={reason === "expired" ? "signin signin--overlay" : "signin"}>
       <main className="signin-main" aria-labelledby={`${ids.lede}-title`}>
         <header className="signin-brand">
-          <LogoMark size={56} coverage={0.75} />
+          <LogoMark size={56} />
           <p className="signin-name" aria-hidden="true">
             kenning
           </p>

@@ -2,56 +2,47 @@ import type * as React from "react";
 import { cn } from "./cn.js";
 
 /**
- * The Kenning mark: a "k" inside a coverage ring that is three-quarters complete, the share of
- * a text you already know. The ring starts at 12 o'clock and runs counter-clockwise, so the
- * open quarter sits at the top right, where the k's arm points.
+ * The Kenning mark: a lowercase k whose leg is a bookmark ribbon. Stem and arm are ink; the leg
+ * is a honey-accent ribbon tucked under the arm (a hairline gap) that hangs just below the
+ * baseline and ends in a level swallow-tail notch, the bookmark you leave in a text.
  *
  * Geometry is drawn on three grids (docs/design/design-system.md, Logo): a 48 px master for
- * large sizes, a heavier 24 px cut for 19–32 px and a 16 px cut for favicons. Stroke weights follow Instrument
- * Sans SemiBold; all caps and joins are round. The ring is the accent, the k is ink.
+ * large sizes, a 24 px cut for 19–32 px and a simplified 16 px cut for favicons (pixel-aligned
+ * stem and arm, steeper ribbon so the notch survives). Stroke weights follow Instrument Sans
+ * SemiBold; terminals are flat. Every number is listed in the design doc; change both together.
  */
 interface MarkGeometry {
   vb: number;
-  r: number;
-  ring: number;
-  k: number;
-  d: string;
+  /** Stem + arm (ink). */
+  ink: string;
+  /** The bookmark ribbon (accent). */
+  ribbon: string;
 }
 
-const GRID_48: MarkGeometry = {
+export const LOGO_GRID_48: MarkGeometry = {
   vb: 48,
-  r: 18.5,
-  ring: 4.5,
-  k: 4.5,
-  d: "M19 13V35M19 29.5L29 19.5M23 25.5L29.75 35",
+  ink: "M12 5H18V40H12ZM12.5 40V33.01L27.51 18H36L14 40Z",
+  ribbon: "M27.09 29.03L35.44 43.5L31.4 40L27.36 43.5L21.96 34.16Z",
 };
-/** 16 px cut: a full-bleed 2 px ring and a 2 px k, for favicons and the tiniest uses. */
-const GRID_16: MarkGeometry = {
-  vb: 16,
-  r: 7,
-  ring: 2,
-  k: 2,
-  d: "M6 4V12M6 10.5L10.25 6.25M8 8.5L10.5 12",
-};
-const GRID_24: MarkGeometry = {
+export const LOGO_GRID_24: MarkGeometry = {
   vb: 24,
-  r: 9.5,
-  ring: 2.75,
-  k: 2.5,
-  d: "M9.5 6V18M9.5 15L15 9.5M11.75 12.75L15.25 18",
+  ink: "M6 2.5H9V20H6ZM6.5 20V16.5L14 9H18L7 20Z",
+  ribbon: "M13.51 14.55L17.81 22L15.79 20L13.77 22L10.95 17.11Z",
+};
+export const LOGO_GRID_16: MarkGeometry = {
+  vb: 16,
+  ink: "M3 1H5V13H3ZM3.5 13V10.5L9 5H12L4 13Z",
+  ribbon: "M10.74 7.67L13.18 15L11.5 13L9.81 15L8.21 10.2Z",
 };
 
-/** The default ring value of the mark. */
-export const LOGO_COVERAGE = 0.75;
+/** The grid cut used at a rendered size. */
+export function logoGrid(size: number): MarkGeometry {
+  return size <= 18 ? LOGO_GRID_16 : size <= 32 ? LOGO_GRID_24 : LOGO_GRID_48;
+}
 
 export interface LogoMarkProps {
   /** Rendered size in px. */
   size?: number;
-  /**
-   * Coverage in [0, 1]. When set, the ring fills to this value once on mount (an animation that
-   * is off under reduced motion); otherwise the ring is the static 3/4 brand arc.
-   */
-  coverage?: number | undefined;
   /** Accessible name; omit for a decorative mark. */
   title?: string;
   className?: string;
@@ -59,7 +50,7 @@ export interface LogoMarkProps {
 
 const clamp01 = (n: number) => Math.max(0, Math.min(1, Number.isFinite(n) ? n : 0));
 
-/** The ring arc for a fraction, counter-clockwise from 12 o'clock. */
+/** A ring arc for a fraction, counter-clockwise from 12 o'clock (used by ProgressRing). */
 export function ringArc(c: number, r: number, frac: number): string {
   const f = clamp01(frac);
   if (f >= 0.9999) {
@@ -71,46 +62,23 @@ export function ringArc(c: number, r: number, frac: number): string {
   return `M${c} ${c - r}A${r} ${r} 0 ${f > 0.5 ? 1 : 0} 0 ${x} ${y}`;
 }
 
-/** The coverage-ring mark on its own. */
-export function LogoMark({ size = 24, coverage, title, className }: LogoMarkProps) {
-  const g = size <= 18 ? GRID_16 : size <= 32 ? GRID_24 : GRID_48;
-  const c = g.vb / 2;
-  const animated = coverage !== undefined;
-  const value = animated ? clamp01(coverage) : LOGO_COVERAGE;
+/** The bookmark-k mark on its own. */
+export function LogoMark({ size = 24, title, className }: LogoMarkProps) {
+  const g = logoGrid(size);
   return (
     <svg
-      className={cn("k-logo-mark", animated && "k-logo-mark--live", className)}
+      className={cn("k-logo-mark", className)}
       width={size}
       height={size}
       viewBox={`0 0 ${g.vb} ${g.vb}`}
       role={title ? "img" : undefined}
       aria-label={title}
       aria-hidden={title ? undefined : true}
-      data-coverage={Math.round(value * 1000) / 1000}
       focusable="false"
     >
       {title ? <title>{title}</title> : null}
-      {animated ? (
-        <circle className="k-logo-track" cx={c} cy={c} r={g.r} fill="none" strokeWidth={g.ring} />
-      ) : null}
-      {value > 0 ? (
-        <path
-          className="k-logo-ring"
-          d={ringArc(c, g.r, value)}
-          fill="none"
-          strokeWidth={g.ring}
-          strokeLinecap="round"
-          pathLength={animated ? 1 : undefined}
-        />
-      ) : null}
-      <path
-        className="k-logo-k"
-        d={g.d}
-        fill="none"
-        strokeWidth={g.k}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
+      <path className="k-logo-ribbon" d={g.ribbon} />
+      <path className="k-logo-k" d={g.ink} />
     </svg>
   );
 }
@@ -120,7 +88,7 @@ export interface LogoProps extends LogoMarkProps {
   variant?: "full" | "mark";
 }
 
-/** The Kenning logo: the coverage-ring mark with the "kenning" wordmark in Instrument Sans. */
+/** The Kenning logo: the bookmark-k mark with the "kenning" wordmark in Instrument Sans. */
 export function Logo({ variant = "full", size = 24, className, title, ...rest }: LogoProps) {
   if (variant === "mark") {
     return (
@@ -164,8 +132,8 @@ export interface ProgressRingProps {
 }
 
 /**
- * A ring in the logo's language (12 o'clock, counter-clockwise, round caps) that fills to its
- * value once on mount.
+ * A data ring (12 o'clock, counter-clockwise, round caps) that fills to its value once on mount.
+ * Kept separate from the mark: the logo is a bookmark, the ring is for numbers.
  */
 export function ProgressRing({
   value,
