@@ -118,7 +118,8 @@ COPY --from=sentences /out/sentences-nl.sqlite /data/sentences-nl.sqlite
 COPY --from=mtmodel /out/mt-nl-en /data/mt-nl-en
 COPY --from=grammar /out/grammar-examples-nl.sqlite /data/grammar-examples-nl.sqlite
 
-RUN useradd --system --uid 10001 kenning
+RUN useradd --system --uid 10001 kenning \
+    && mkdir -p /cache/course && chown -R kenning /cache
 USER kenning
 
 EXPOSE 8000
