@@ -66,8 +66,8 @@ export type ExerciseType =
   | "listening"
   | "unknown";
 
-/** Where an item's answer came from. */
-export type AnswerSource = "book" | "derived" | "user";
+/** Where an item's answer came from ("ai": a generated exercise whose sentence passed the checks). */
+export type AnswerSource = "book" | "derived" | "user" | "ai";
 
 export interface ExerciseItem {
   /** The item as printed, with blanks normalised to `____`. */
@@ -108,6 +108,8 @@ export interface BookExercise {
   raw: string;
   /** Linked grammar topic id, when known. */
   grammar?: string;
+  /** A reading passage the items ask about (generated "questions about a text"). */
+  passage?: string;
 }
 
 export interface UnitWord {

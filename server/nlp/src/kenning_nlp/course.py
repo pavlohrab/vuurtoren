@@ -4,7 +4,9 @@
 reports progress and returns the pages finished so far (``?after=N`` returns only pages with
 index >= N, so a client can poll cheaply). The upload and the rendered pages live only in memory
 for the job's lifetime; finished jobs are dropped after :data:`JOB_TTL_SECONDS`. Recognised page
-text is cached by the hash of the page image so that re-importing the same book is instant.
+text is cached by file hash and page index (in memory, and in ``$KENNING_COURSE_CACHE_DIR`` when
+set) so that re-importing the same book, or restarting a job, is fast. PDF pages with a text layer
+and EPUB chapters skip OCR. Scanned pages are recognised by several Tesseract processes at once.
 
 Each page is returned as layout *blocks* (Tesseract blocks with a normalised bounding box and the
 text, lines joined by newlines) plus the full page text. Interpretation (headers, exercises,
@@ -15,18 +17,25 @@ from __future__ import annotations
 
 import hashlib
 import io
+import json
+import os
+import re
 import threading
 import time
 import uuid
+import zipfile
 from collections import OrderedDict
 from collections.abc import Callable, Iterator
+from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import dataclass, field
+from html.parser import HTMLParser
+from pathlib import Path
 from typing import Any
 
 from PIL import Image, UnidentifiedImageError
 
 from kenning_nlp.errors import ServiceError
-from kenning_nlp.ocr import MAX_FRAMES, ensure_tesseract, ocr_image_data
+from kenning_nlp.ocr import MAX_FRAMES, TESSERACT_LANGS, ensure_tesseract, ocr_image_data
 from kenning_nlp.pdf import OCR_DPI, PDFIUM_LOCK, _open, is_pdf
 
 MAX_COURSE_PAGES = 400
@@ -35,6 +44,8 @@ COURSE_MAX_UPLOAD_BYTES = 200 * 1024 * 1024
 JOB_TTL_SECONDS = 3600
 MAX_JOBS = 4
 CACHE_PAGES = 1500
+MIN_TEXT_LAYER_CHARS = 40
+"""A PDF page with at least this many letters/digits in its text layer is not OCR'd."""
 
 # (image, tesseract code) -> (blocks, word confidences 0..100); replaced by a fake in tests.
 Engine = Callable[[Image.Image, str], tuple[list[dict[str, Any]], list[float]]]
@@ -96,38 +107,190 @@ def _open_image(data: bytes) -> Image.Image:
         raise ServiceError(415, "Unsupported file: expected PDF, PNG, JPEG, WebP or TIFF.") from e
 
 
-def iter_page_images(data: bytes, max_pages: int = MAX_COURSE_PAGES) -> Iterator[Image.Image]:
-    """Yield the pages of a PDF (rendered one at a time) or the frames of an image."""
-    if is_pdf(data):
-        with PDFIUM_LOCK:
-            pdf = _open(data)
-            n = len(pdf)
-        try:
-            if n > max_pages:
-                raise ServiceError(413, f"Too many pages (limit {max_pages}).")
-            for i in range(n):
-                with PDFIUM_LOCK:
-                    page = pdf[i]
-                    try:
-                        img = page.render(scale=OCR_DPI / 72).to_pil().convert("RGB")
-                    finally:
-                        page.close()
-                yield img
-        finally:
+@dataclass
+class PageSource:
+    """One page of an upload: either text that needs no OCR, or an image rendered on demand.
+
+    ``key`` is stable for the same file and page (file hash + index), so the cache can be hit
+    without rendering the page at all.
+    """
+
+    key: str
+    text: str | None = None
+    render: Callable[[], Image.Image] | None = None
+
+
+def _alnum(text: str) -> int:
+    return sum(c.isalnum() for c in text)
+
+
+def text_blocks(text: str) -> list[dict[str, Any]]:
+    """Blocks of a text-layer page: paragraphs (blank-line separated), without real boxes."""
+    paras = [p.strip() for p in re.split(r"\n\s*\n", text.replace("\r\n", "\n")) if p.strip()]
+    if len(paras) <= 1:
+        # PDF text layers rarely contain blank lines: then every line is its own paragraph.
+        paras = [ln.strip() for ln in text.replace("\r\n", "\n").split("\n") if ln.strip()]
+    return [{"text": p, "x": 0.0, "y": 0.0, "w": 1.0, "h": 1.0} for p in paras]
+
+
+def _pdf_sources(data: bytes, prefix: str, max_pages: int) -> Iterator[PageSource]:
+    with PDFIUM_LOCK:
+        pdf = _open(data)
+        n = len(pdf)
+    try:
+        if n > max_pages:
+            raise ServiceError(413, f"Too many pages (limit {max_pages}).")
+        for i in range(n):
             with PDFIUM_LOCK:
-                pdf.close()
+                page = pdf[i]
+                try:
+                    tp = page.get_textpage()
+                    text = tp.get_text_range()
+                    tp.close()
+                finally:
+                    page.close()
+            if _alnum(text) >= MIN_TEXT_LAYER_CHARS:
+                yield PageSource(key=f"{prefix}-{i}-text", text=text)
+                continue
+
+            def render(i: int = i) -> Image.Image:
+                with PDFIUM_LOCK:
+                    pg = pdf[i]
+                    try:
+                        return pg.render(scale=OCR_DPI / 72).to_pil().convert("RGB")
+                    finally:
+                        pg.close()
+
+            yield PageSource(key=f"{prefix}-{i}-{OCR_DPI}", render=render)
+    finally:
+        with PDFIUM_LOCK:
+            pdf.close()
+
+
+def iter_page_sources(data: bytes, max_pages: int = MAX_COURSE_PAGES) -> Iterator[PageSource]:
+    """Yield the pages of a PDF, an EPUB (chapters) or an image (frames), in reading order."""
+    prefix = hashlib.sha256(data).hexdigest()[:32]
+    if is_pdf(data):
+        yield from _pdf_sources(data, prefix, max_pages)
+        return
+    if is_epub(data):
+        for i, text in enumerate(epub_chapters(data)[:max_pages]):
+            yield PageSource(key=f"{prefix}-{i}-epub", text=text)
         return
     img = _open_image(data)
     frames = getattr(img, "n_frames", 1)
     if frames > MAX_FRAMES:
         raise ServiceError(413, f"Too many image frames (limit {MAX_FRAMES}).")
     for i in range(frames):
-        img.seek(i)
-        yield img.copy()
+
+        def render(i: int = i) -> Image.Image:
+            img.seek(i)
+            return img.copy()
+
+        yield PageSource(key=f"{prefix}-{i}-img", render=render)
+
+
+def iter_page_images(data: bytes, max_pages: int = MAX_COURSE_PAGES) -> Iterator[Image.Image]:
+    """Yield the page images of an upload (text-layer and EPUB pages are skipped)."""
+    for src in iter_page_sources(data, max_pages):
+        if src.render is not None:
+            yield src.render()
+
+
+# --------------------------------------------------------------------------- EPUB
+
+
+def is_epub(data: bytes) -> bool:
+    """True for a ZIP whose ``mimetype`` entry says EPUB."""
+    if not data.startswith(b"PK"):
+        return False
+    try:
+        with zipfile.ZipFile(io.BytesIO(data)) as z:
+            return z.read("mimetype").strip() == b"application/epub+zip"
+    except (zipfile.BadZipFile, KeyError):
+        return False
+
+
+class _TextOfHtml(HTMLParser):
+    BLOCK = {"p", "div", "br", "li", "tr", "h1", "h2", "h3", "h4", "h5", "h6", "section", "td"}
+    SKIP = {"script", "style", "head", "nav"}
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.parts: list[str] = []
+        self.skip = 0
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag in self.SKIP:
+            self.skip += 1
+        elif tag in self.BLOCK:
+            self.parts.append("\n")
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag in self.SKIP:
+            self.skip = max(0, self.skip - 1)
+        elif tag in self.BLOCK:
+            self.parts.append("\n")
+
+    def handle_data(self, data: str) -> None:
+        if not self.skip:
+            self.parts.append(data)
+
+    def text(self) -> str:
+        raw = "".join(self.parts)
+        lines = [re.sub(r"[ \t\xa0]+", " ", ln).strip() for ln in raw.split("\n")]
+        return re.sub(r"\n{3,}", "\n\n", "\n".join(lines)).strip()
+
+
+def html_text(html: str) -> str:
+    """Plain text of an (X)HTML document, one line per block element."""
+    p = _TextOfHtml()
+    p.feed(html)
+    return p.text()
+
+
+def epub_chapters(data: bytes) -> list[str]:
+    """Text of each spine document of an EPUB (empty documents dropped).
+
+    Raises:
+        ServiceError: 422 when the EPUB is malformed.
+    """
+    try:
+        with zipfile.ZipFile(io.BytesIO(data)) as z:
+            container = z.read("META-INF/container.xml").decode("utf-8", "replace")
+            m = re.search(r'full-path="([^"]+)"', container)
+            if not m:
+                raise ServiceError(422, "The EPUB has no package document.")
+            opf_path = m.group(1)
+            opf = z.read(opf_path).decode("utf-8", "replace")
+            base = opf_path.rsplit("/", 1)[0] + "/" if "/" in opf_path else ""
+            items = {
+                mm.group("id"): mm.group("href")
+                for mm in re.finditer(
+                    r'<item\b(?=[^>]*\bid="(?P<id>[^"]+)")(?=[^>]*\bhref="(?P<href>[^"]+)")[^>]*>',
+                    opf,
+                )
+            }
+            spine = re.findall(r'<itemref\b[^>]*\bidref="([^"]+)"', opf)
+            out = []
+            for idref in spine:
+                href = items.get(idref)
+                if not href:
+                    continue
+                try:
+                    html = z.read(base + href).decode("utf-8", "replace")
+                except KeyError:
+                    continue
+                text = html_text(html)
+                if text.strip():
+                    out.append(text)
+            return out
+    except (zipfile.BadZipFile, KeyError) as e:
+        raise ServiceError(422, "The EPUB could not be read.") from e
 
 
 def count_pages(data: bytes) -> int:
-    """Number of pages/frames in an upload (cheap; validates the file)."""
+    """Number of pages/frames/chapters in an upload (cheap; validates the file)."""
     if is_pdf(data):
         with PDFIUM_LOCK:
             pdf = _open(data)
@@ -138,6 +301,8 @@ def count_pages(data: bytes) -> int:
         if n > MAX_COURSE_PAGES:
             raise ServiceError(413, f"Too many pages (limit {MAX_COURSE_PAGES}).")
         return n
+    if is_epub(data):
+        return min(len(epub_chapters(data)), MAX_COURSE_PAGES)
     return int(getattr(_open_image(data), "n_frames", 1))
 
 
@@ -150,29 +315,78 @@ class Job:
     status: str = "running"  # running | done | error
     error: str | None = None
     pages: list[dict[str, Any]] = field(default_factory=list)
+    started_at: float = field(default_factory=time.time)
     finished_at: float | None = None
     cancelled: bool = False
+    cached: int = 0
     lock: threading.Lock = field(default_factory=threading.Lock)
 
     def view(self, after: int = 0) -> dict[str, Any]:
-        """JSON-able progress snapshot with the pages at index >= ``after``."""
+        """JSON-able progress snapshot with the pages at index >= ``after``.
+
+        ``eta`` is the estimated seconds left (from the pace of the pages OCR'd so far, cache
+        hits excluded), or null before there is a pace.
+        """
         with self.lock:
+            done = len(self.pages)
+            worked = done - self.cached
+            elapsed = (self.finished_at or time.time()) - self.started_at
+            eta = (
+                round(elapsed / worked * (self.total - done))
+                if self.status == "running" and worked > 0
+                else None
+            )
             return {
                 "id": self.id,
                 "status": self.status,
                 "error": self.error,
-                "done": len(self.pages),
+                "done": done,
                 "total": self.total,
+                "cached": self.cached,
+                "elapsed": round(elapsed, 1),
+                "eta": eta,
                 "pages": self.pages[after:],
             }
 
 
-class CourseOcr:
-    """Starts and tracks OCR jobs; holds the per-page cache. One instance per process."""
+def default_workers() -> int:
+    """Parallel Tesseract processes: ``$KENNING_OCR_WORKERS`` or half the CPUs (1..6)."""
+    env = os.environ.get("KENNING_OCR_WORKERS")
+    if env and env.isdigit() and int(env) > 0:
+        return int(env)
+    return max(1, min(6, (os.cpu_count() or 2) // 2))
 
-    def __init__(self, engine: Engine = tesseract_engine, check: bool = True) -> None:
+
+def default_cache_dir() -> Path | None:
+    """Disk cache of recognised pages: ``$KENNING_COURSE_CACHE_DIR`` (unset = memory only)."""
+    env = os.environ.get("KENNING_COURSE_CACHE_DIR")
+    return Path(env) if env else None
+
+
+class CourseOcr:
+    """Starts and tracks OCR jobs; holds the per-page cache. One instance per process.
+
+    Pages are rendered one at a time (PDFium is not thread-safe) and recognised by up to
+    ``workers`` Tesseract processes in parallel; finished pages are published in page order.
+    The cache (memory, plus an optional directory) is keyed by file hash and page index, so a
+    re-import of the same book, or a job restarted after the server restarted, skips both
+    rendering and OCR.
+    """
+
+    def __init__(
+        self,
+        engine: Engine = tesseract_engine,
+        check: bool = True,
+        workers: int | None = None,
+        cache_dir: Path | None | bool = True,
+    ) -> None:
         self.engine = engine
         self.check = check
+        self.workers = workers or default_workers()
+        self.cache_dir = default_cache_dir() if cache_dir is True else (cache_dir or None)
+        if self.workers > 1:
+            # Tesseract's own OpenMP threads would oversubscribe the CPUs next to our workers.
+            os.environ.setdefault("OMP_THREAD_LIMIT", "1")
         self.jobs: dict[str, Job] = {}
         self.cache: OrderedDict[str, tuple[list[dict[str, Any]], float]] = OrderedDict()
         self.lock = threading.Lock()
@@ -187,18 +401,25 @@ class CourseOcr:
             ServiceError: 503 without Tesseract, 415/413/422 for bad uploads, 429 if too many
                 jobs are running.
         """
-        code = ensure_tesseract(lang) if self.check else "nld"
         files = data if isinstance(data, list) else [data]
         total = sum(count_pages(d) for d in files)
         if total > MAX_COURSE_PAGES:
             raise ServiceError(413, f"Too many pages (limit {MAX_COURSE_PAGES}).")
+        code = TESSERACT_LANGS.get(lang, lang)
+        missing: ServiceError | None = None
+        if self.check:
+            try:
+                code = ensure_tesseract(lang)
+            except ServiceError as e:
+                # Text-layer PDFs and EPUBs need no OCR; a scanned page will report this error.
+                missing = e
         self._purge()
         with self.lock:
             if sum(j.status == "running" for j in self.jobs.values()) >= MAX_JOBS:
                 raise ServiceError(429, "Too many OCR jobs are running; wait for one to finish.")
             job = Job(id=uuid.uuid4().hex, total=total)
             self.jobs[job.id] = job
-        threading.Thread(target=self._run, args=(job, files, code), daemon=True).start()
+        threading.Thread(target=self._run, args=(job, files, code, missing), daemon=True).start()
         return job
 
     def get(self, job_id: str) -> Job:
@@ -226,37 +447,113 @@ class CourseOcr:
             ]:
                 del self.jobs[jid]
 
-    def _page(self, img: Image.Image, code: str) -> tuple[list[dict[str, Any]], float]:
-        key = hashlib.sha256(img.tobytes() + code.encode()).hexdigest()
+    # ------------------------------------------------------------------ cache
+
+    def _cache_path(self, key: str) -> Path | None:
+        if not self.cache_dir or not re.fullmatch(r"[0-9a-z-]+", key):
+            return None
+        return self.cache_dir / f"{key}.json"
+
+    def _cached(self, key: str) -> tuple[list[dict[str, Any]], float] | None:
         with self.lock:
             hit = self.cache.get(key)
             if hit:
                 self.cache.move_to_end(key)
                 return hit
-        blocks, confs = self.engine(img, code)
-        conf = sum(confs) / len(confs) / 100 if confs else 0.0
-        result = (blocks, round(conf, 3))
+        path = self._cache_path(key)
+        if path and path.is_file():
+            try:
+                raw = json.loads(path.read_text("utf-8"))
+                hit = (raw["blocks"], float(raw["confidence"]))
+            except (OSError, ValueError, KeyError, TypeError):
+                return None
+            self._remember(key, hit, disk=False)
+            return hit
+        return None
+
+    def _remember(self, key: str, result: tuple[list[dict[str, Any]], float], disk: bool) -> None:
         with self.lock:
             self.cache[key] = result
             while len(self.cache) > CACHE_PAGES:
                 self.cache.popitem(last=False)
-        return result
+        path = self._cache_path(key) if disk else None
+        if path:
+            try:
+                path.parent.mkdir(parents=True, exist_ok=True)
+                tmp = path.with_suffix(".tmp")
+                tmp.write_text(json.dumps({"blocks": result[0], "confidence": result[1]}), "utf-8")
+                tmp.replace(path)
+            except OSError:
+                pass  # the cache is an optimisation only
 
-    def _run(self, job: Job, files: list[bytes], code: str) -> None:
-        images = (img for data in files for img in iter_page_images(data))
+    def _ocr(self, img: Image.Image, code: str) -> tuple[list[dict[str, Any]], float]:
+        blocks, confs = self.engine(img, code)
+        conf = sum(confs) / len(confs) / 100 if confs else 0.0
+        return blocks, round(conf, 3)
+
+    # ------------------------------------------------------------------ run
+
+    def _run(
+        self, job: Job, files: list[bytes], code: str, missing: ServiceError | None = None
+    ) -> None:
+        sources = (src for data in files for src in iter_page_sources(data))
+        pending: dict[int, Future[tuple[list[dict[str, Any]], float]] | tuple[Any, float]] = {}
+        keys: dict[int, str] = {}
+        next_out = 1
+
+        def publish(n: int, result: tuple[list[dict[str, Any]], float]) -> None:
+            blocks, conf = result
+            page = {
+                "n": n,
+                "text": "\n\n".join(b["text"] for b in blocks),
+                "confidence": conf,
+                "blocks": blocks,
+            }
+            with job.lock:
+                job.pages.append(page)
+
+        def flush(block: bool) -> None:
+            nonlocal next_out
+            while next_out in pending:
+                item = pending[next_out]
+                if isinstance(item, Future):
+                    if not block and not item.done():
+                        return
+                    result = item.result()
+                    self._remember(keys[next_out], result, disk=True)
+                else:
+                    result = item
+                del pending[next_out]
+                publish(next_out, result)
+                next_out += 1
+
         try:
-            for n, img in enumerate(images, start=1):
-                if job.cancelled:
-                    return
-                blocks, conf = self._page(img, code)
-                page = {
-                    "n": n,
-                    "text": "\n\n".join(b["text"] for b in blocks),
-                    "confidence": conf,
-                    "blocks": blocks,
-                }
-                with job.lock:
-                    job.pages.append(page)
+            with ThreadPoolExecutor(max_workers=self.workers) as pool:
+                for n, src in enumerate(sources, start=1):
+                    if job.cancelled:
+                        return
+                    keys[n] = f"{src.key}-{code}"
+                    hit = self._cached(keys[n])
+                    if hit is not None:
+                        with job.lock:
+                            job.cached += 1
+                        pending[n] = hit
+                    elif src.text is not None:
+                        result = (text_blocks(src.text), 1.0)
+                        self._remember(keys[n], result, disk=False)
+                        with job.lock:
+                            job.cached += 1
+                        pending[n] = result
+                    else:
+                        assert src.render is not None
+                        if missing is not None:
+                            raise missing
+                        pending[n] = pool.submit(self._ocr, src.render(), code)
+                    flush(block=False)
+                    # Bound memory: at most two rendered pages per worker in flight.
+                    while sum(isinstance(v, Future) for v in pending.values()) >= 2 * self.workers:
+                        flush(block=True)
+                flush(block=True)
             with job.lock:
                 job.status = "done"
         except ServiceError as e:

@@ -25,6 +25,8 @@ function fakeBackend() {
   const anki: { action: string; params: Record<string, unknown> }[] = [];
   const uploads: string[] = [];
   let polls = 0;
+  /** Polls to fail with a network error (the client retries a failed request once). */
+  const state = { failPoll: 0 };
   const fetchFn = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
     const u = String(url);
     if (u.includes("/nlp/course/ocr")) {
@@ -32,6 +34,10 @@ function fakeBackend() {
         const form = init.body as FormData;
         uploads.push(...form.getAll("file").map((f) => (f as File).name));
         return Response.json({ id: "j1", total: PAGES.length });
+      }
+      if (state.failPoll > 0) {
+        state.failPoll--;
+        throw new TypeError("Failed to fetch");
       }
       // First poll: one page done; second poll: the rest.
       const after = Number(new URL(u, "http://x").searchParams.get("after"));
@@ -107,7 +113,7 @@ function fakeBackend() {
     return Response.json({ result, error: null });
   });
   vi.stubGlobal("fetch", fetchFn);
-  return { anki, uploads };
+  return { anki, uploads, state };
 }
 
 let repoToClose: KenningRepository | null = null;
@@ -227,5 +233,86 @@ describe("live courses", () => {
     };
     expect(note.fields.Word).toBe("de fiets");
     expect(note.tags).toContain("kenning::course::b::1");
+  });
+
+  it("remembers a started import, so leaving the wizard does not lose the reading job", async () => {
+    const { backend, services } = await setup();
+    backend.state.failPoll = 2;
+    await expect(
+      services.importCourse({ kind: "pdf", files: [new File(["%PDF"], "boek.pdf")] }),
+    ).rejects.toThrow();
+    expect(await services.pendingImport()).toMatchObject({ jobId: "j1", title: "boek", total: 3 });
+    const id = await services.resumeImport();
+    expect((await services.outline(id)).map((r) => r.title)).toEqual([
+      "Thema 1 Kennismaken",
+      "Woordenlijst",
+    ]);
+    expect(await services.pendingImport()).toBeNull();
+  });
+
+  it("previews and adds unit words to Anki with a sentence from the book, skipping notes that exist", async () => {
+    const { backend, services } = await setup();
+    const id = await services.importCourse({ kind: "pdf", files: [new File(["%PDF"], "b.pdf")] });
+    await services.mapDecks(id, { 1: ["Opmaat::Thema 01 - Kennismaken"] });
+    await services.analyzeCourse(id);
+    const preview = await services.addWordsPreview(id, 1);
+    expect(preview.rows.map((r) => [r.lemma, r.status])).toEqual([
+      ["naam", "in-anki"],
+      ["straat", "in-anki"],
+      ["wonen", "known"],
+      ["fiets", "new"],
+    ]);
+    const fiets = preview.rows.find((r) => r.lemma === "fiets");
+    expect(fiets?.article).toBe("de");
+    expect(fiets?.example).toBe("Ze fietst elke dag naar haar werk, ook als het regent.");
+    expect(preview.options).toContain(preview.decks[1]);
+
+    backend.anki.length = 0;
+    const r = await services.addUnitWords(id, "all", { deck: "Kenning::Nederlands" });
+    expect(r).toMatchObject({ added: 1, failed: 0, deck: "Kenning::Nederlands" });
+    const note = backend.anki.find((c) => c.action === "addNote")?.params["note"] as {
+      deckName: string;
+      fields: { Word: string; Sentence: string };
+    };
+    expect(note.deckName).toBe("Kenning::Nederlands");
+    expect(note.fields.Word).toBe("de fiets");
+    expect(note.fields.Sentence).toContain("fietst elke dag");
+  });
+
+  it("checks answers to exercises generated for the unit like book exercises", async () => {
+    const { repo, services } = await setup();
+    const id = await services.importCourse({ kind: "pdf", files: [new File(["%PDF"], "b.pdf")] });
+    await repo.append({
+      type: "UnitExercisesGenerated",
+      courseId: id,
+      unitN: 1,
+      rejected: 2,
+      provider: "custom",
+      model: "m",
+      exercises: [
+        {
+          number: 1001,
+          page: 2,
+          instruction: "Fill in.",
+          type: "gapfill",
+          raw: "",
+          items: [
+            {
+              prompt: "Ik ____ (wonen) hier.",
+              hint: "wonen",
+              answer: "woon",
+              answerSource: "ai",
+              confidence: 1,
+            },
+          ],
+        },
+      ],
+    });
+    expect((await services.unit(id, 1))?.generated.map((e) => e.number)).toEqual([1001]);
+    expect(await services.checkBookItem(id, 1, 1001, 0, "woon")).toMatchObject({ correct: true });
+    expect((await services.unit(id, 1))?.generated[0]?.answers[0]).toEqual({
+      answer: "woon",
+      correct: true,
+    });
   });
 });

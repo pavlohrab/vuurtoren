@@ -3,10 +3,18 @@
  * has one entry per line, nouns with their article ("de boodschap", "boodschap, de"), verbs
  * in the infinitive, sometimes several columns whose lines the OCR joined.
  */
+import { extractNumber } from "./deckmap.js";
 import type { Block, Unit, UnitWord } from "./types.js";
+import { UNIT_WORD_SRC } from "./vocab.js";
+
+/** A section label that names a unit ("Thema 3", "Unit 3", "Lektion 3"). */
+const UNIT_LABEL_RE = new RegExp(String.raw`^${UNIT_WORD_SRC}\s+\d`, "iu");
 
 const ARTICLE = /^(de|het|een)\s+/i;
 const TRAILING_ARTICLE = /^(.+?),\s*(de|het)\b.*$/i;
+/** "achternaam (de)", "dier (hef)" (OCR), "Engels (het)", "aanbod (het/de)": the article in brackets. */
+const BRACKET_ARTICLE = /^(.+?)\s*[([{]\s*(de|het|hef|hel|dc)\b[^)\]}]*[)\]}]?\s*$/i;
+const OCR_ARTICLE: Record<string, string> = { hef: "het", hel: "het", dc: "de" };
 const ENTRY = /^[\p{L}][\p{L}'’.-]*(?:\s+[\p{L}'’.-]+){0,3}$/u;
 
 /** Parse one word-list line into an entry, or null for headings, numbers and sentences. */
@@ -17,6 +25,12 @@ export function parseWordLine(raw: string): UnitWord | null {
     .replace(/\s{2,}.*$/, "");
   if (!line || /\d/.test(line) || line.length > 40) return null;
   let article: string | undefined;
+  const bracket = BRACKET_ARTICLE.exec(line);
+  if (bracket) {
+    line = bracket[1] ?? line;
+    const a = (bracket[2] ?? "").toLowerCase();
+    article = OCR_ARTICLE[a] ?? a;
+  }
   const trailing = TRAILING_ARTICLE.exec(line);
   if (trailing) {
     line = trailing[1] ?? line;
@@ -41,7 +55,9 @@ export function parseWordLine(raw: string): UnitWord | null {
 export function parseWordList(text: string): UnitWord[] {
   const seen = new Set<string>();
   const out: UnitWord[] = [];
-  for (const line of text.split("\n")) {
+  // Re-join entries the layout hyphenated across lines ("assistent in oplei-" / "ding").
+  const lines = text.replace(/-\n(?=\p{Ll})/gu, "").split("\n");
+  for (const line of lines) {
     const w = parseWordLine(line);
     if (!w || seen.has(w.lemma)) continue;
     seen.add(w.lemma);
@@ -65,7 +81,7 @@ export function unitWordLists(
   const themeNumber = new Map(
     units
       .filter((u) => u.kind === "theme")
-      .map((u) => [Number(/^Thema (\d+)/.exec(u.title)?.[1] ?? u.n), u.n] as const),
+      .map((u) => [extractNumber(u.title) ?? u.n, u.n] as const),
   );
   for (const b of blocks) {
     if (b.kind !== "wordlist") continue;
@@ -110,13 +126,12 @@ export function reflow(par: string): string {
  * the transcript sections for the unit (kind "transcript").
  */
 export function readingTexts(blocks: readonly Block[], unit: Unit): ReadingText[] {
-  const themeNumber = Number(/^Thema (\d+)/.exec(unit.title)?.[1] ?? unit.n);
+  const themeNumber = extractNumber(unit.title) ?? unit.n;
   const out: ReadingText[] = [];
   for (const b of blocks) {
     if (b.kind === "transcript") {
       const num = sectionUnitNumber(b.label);
-      if (num !== themeNumber && b.label?.startsWith("Thema")) continue;
-      if (!b.label?.startsWith("Thema")) continue;
+      if (!b.label || !UNIT_LABEL_RE.test(b.label) || num !== themeNumber) continue;
       const text = reflow(b.text);
       if (wordsIn(text) >= 20) {
         out.push({

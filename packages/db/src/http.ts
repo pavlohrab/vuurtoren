@@ -185,6 +185,7 @@ export async function createHttpRepository(
     courseBlocks: (courseId) => call("courseBlocks", courseId),
     unitExercises: (courseId, unitN) => call("unitExercises", courseId, unitN),
     unitWords: (courseId, unitN) => call("unitWords", courseId, unitN),
+    generatedUnitExercises: (courseId, unitN) => call("generatedUnitExercises", courseId, unitN),
     bookAnswers: (courseId, unitN) => call("bookAnswers", courseId, unitN),
     conversationEvents: () => call("conversationEvents"),
     generatedSentences: (lang) => call("generatedSentences", lang),

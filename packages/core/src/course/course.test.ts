@@ -101,7 +101,10 @@ describe("outline detection", () => {
     const units = detectOutline(pages, "c1");
     expect(units.map((u) => [u.title, u.pages])).toEqual([
       ["Thema 1 Kennismaken en afspreken", [7, 10]],
-      ["Thema 2 Boodschappen doen", [11, 18]],
+      ["Thema 2 Boodschappen doen", [11, 16]],
+      // Without contents, appendix headings at the top of later pages still start units.
+      ["Transcripten luisterteksten", [17, 17]],
+      ["Woordenlijst", [18, 18]],
     ]);
   });
 
@@ -114,7 +117,7 @@ describe("outline detection", () => {
       "c1",
     );
     expect(units).toEqual([
-      { courseId: "c1", n: 1, title: "Hele boek", pages: [1, 2], ankiDecks: [], kind: "other" },
+      { courseId: "c1", n: 1, title: "Whole book", pages: [1, 2], ankiDecks: [], kind: "other" },
     ]);
   });
 });
@@ -149,6 +152,7 @@ describe("segmentation", () => {
     expect(isExerciseWord("Opdracht")).toBe(true);
     expect(isExerciseWord("Afbeelding")).toBe(false);
     expect(parseExerciseHeader("Luisteren en spreken Oefening 7 Luister.")).toEqual({
+      word: "Oefening",
       skill: "Luisteren en spreken",
       number: 7,
       rest: "Luister.",

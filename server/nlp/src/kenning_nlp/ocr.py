@@ -17,7 +17,19 @@ from kenning_nlp.errors import ServiceError
 from kenning_nlp.pdf import is_pdf, rasterize_pdf
 
 # Public language code -> Tesseract traineddata name.
-TESSERACT_LANGS = {"nl": "nld", "uk": "ukr", "en": "eng"}
+TESSERACT_LANGS = {
+    "nl": "nld",
+    "uk": "ukr",
+    "en": "eng",
+    "de": "deu",
+    "fr": "fra",
+    "es": "spa",
+    "it": "ita",
+    "pt": "por",
+    "sv": "swe",
+    "da": "dan",
+    "pl": "pol",
+}
 MIN_LONG_SIDE = 2000
 """Images whose longer side is below this (pixels) are upscaled before OCR."""
 MAX_UPSCALE = 3.0

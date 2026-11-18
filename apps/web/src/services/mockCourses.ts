@@ -16,6 +16,7 @@ import {
 } from "@app/core";
 import type {
   AddMissingResult,
+  AddWordsPreview,
   BookCheckResult,
   BookExerciseView,
   CourseListItem,
@@ -124,7 +125,7 @@ const item = (
   hint: string | undefined,
   answer: string | undefined,
   confidence: number,
-  source: "derived" | "book" | "user" = "derived",
+  source: "derived" | "book" | "user" | "ai" = "derived",
 ) => ({
   prompt,
   ...(hint ? { hint } : {}),
@@ -238,6 +239,44 @@ const demoExercises = (): Map<number, BookExercise[]> =>
     ],
   ]);
 
+/** Exercises "made for this unit" in the demo (as if generated with AI and validated). */
+const demoGenerated = (): Map<number, BookExercise[]> =>
+  new Map([
+    [
+      1,
+      [
+        {
+          number: 1001,
+          page: 3,
+          instruction: "Fill in the right form of the word in brackets.",
+          type: "gapfill",
+          raw: "",
+          items: [
+            item("Mijn buurman ____ (werken) in de stad.", "werken", "werkt", 1, "ai"),
+            item("Hoe ____ (heten) jouw buurman?", "heten", "heet", 1, "ai"),
+          ],
+        },
+        {
+          number: 1002,
+          page: 3,
+          instruction: "Make sentences: put the words in the right order.",
+          type: "sentence-building",
+          raw: "",
+          grammar: "inversion",
+          items: [
+            {
+              prompt: "in de stad / Morgen / ik / werk",
+              chunks: ["in de stad", "Morgen", "ik", "werk"],
+              answer: "Morgen werk ik in de stad.",
+              answerSource: "ai",
+              confidence: 1,
+            },
+          ],
+        },
+      ],
+    ],
+  ]);
+
 const wait = (ms: number) =>
   ms > 0 ? new Promise<void>((r) => setTimeout(r, ms)) : Promise.resolve();
 
@@ -248,6 +287,7 @@ export function createMockCourses(opts: { latencyMs?: number } = {}): CourseServ
   let units: Unit[] = [];
   let words = new Map<number, UnitWord[]>();
   let exercises = new Map<number, BookExercise[]>();
+  let generated = new Map<number, BookExercise[]>();
   const answers = new Map<string, { answer: string; correct: boolean }>();
   const states = new Map<string, "known" | "learning" | "unknown">([
     ["wonen", "known"],
@@ -263,7 +303,10 @@ export function createMockCourses(opts: { latencyMs?: number } = {}): CourseServ
     units = demoUnits();
     words = demoWords();
     exercises = demoExercises();
+    generated = demoGenerated();
   };
+  const findEx = (n: number, number: number) =>
+    [...(exercises.get(n) ?? []), ...(generated.get(n) ?? [])].find((e) => e.number === number);
   load();
 
   const wordView = (word: UnitWord): UnitWordView => {
@@ -333,6 +376,12 @@ export function createMockCourses(opts: { latencyMs?: number } = {}): CourseServ
           unitCount: units.length,
           knownRatio: total ? known / total : null,
           continueUnit: open?.n ?? null,
+          ...(open
+            ? {
+                continueTitle: open.title,
+                continueKnown: statusOf(open.n).total > 0 ? statusOf(open.n).knownRatio : null,
+              }
+            : {}),
         },
       ];
     },
@@ -398,6 +447,7 @@ export function createMockCourses(opts: { latencyMs?: number } = {}): CourseServ
               ]
             : [],
         exercises: (exercises.get(n) ?? []).map((e) => exerciseView(n, e)),
+        generated: (generated.get(n) ?? []).map((e) => exerciseView(n, e)),
         words: (words.get(n) ?? []).map(wordView),
         grammar:
           unit.kind === "theme"
@@ -409,6 +459,99 @@ export function createMockCourses(opts: { latencyMs?: number } = {}): CourseServ
               ]
             : [],
       };
+    },
+    async pendingImport() {
+      return null;
+    },
+    async resumeImport() {
+      throw new Error("There is no unfinished import.");
+    },
+    async discardPendingImport() {},
+    async pagePreviews() {
+      await wait(latency);
+      const firsts = new Map(units.map((u) => [u.pages[0], u.title]));
+      return Array.from({ length: course?.pageCount ?? 0 }, (_, i) => {
+        const n = i + 1;
+        const head = firsts.get(n);
+        return {
+          n,
+          lines: head
+            ? [head, "Lezen: Een nieuwe buurman"]
+            : n % 3 === 0
+              ? [`Oefening ${n % 12}`, "Vul de goede vorm van het verbum in."]
+              : ["Tekst", "Anne woont in Nijmegen. Ze werkt in een winkel."],
+        };
+      });
+    },
+    async addWordsPreview(_id, scope): Promise<AddWordsPreview> {
+      await wait(latency);
+      const ns =
+        scope === "all" ? units.filter((u) => u.kind === "theme").map((u) => u.n) : [scope];
+      const rows = ns.flatMap((n) =>
+        (words.get(n) ?? []).map((wd) => ({
+          key: wd.lemma,
+          lemma: wd.lemma,
+          unitN: n,
+          status: (states.get(wd.lemma) === "known"
+            ? "known"
+            : inAnki.has(wd.lemma)
+              ? "in-anki"
+              : "new") as "known" | "in-anki" | "new",
+          ...(wd.article ? { article: wd.article } : {}),
+          ...(wd.gloss ? { gloss: wd.gloss } : {}),
+          example:
+            wd.lemma === "stad"
+              ? "Anne woont in een kleine stad."
+              : wd.lemma === "brood"
+                ? "Wij kopen brood bij de bakker."
+                : `Dit is een zin met ${wd.lemma}.`,
+        })),
+      );
+      const decks = Object.fromEntries(
+        ns.map((n) => [
+          n,
+          units.find((u) => u.n === n)?.ankiDecks[0] ??
+            `Kenning::Dutch::Nederlands voor beginners::Thema ${n}`,
+        ]),
+      );
+      return { rows, decks, options: [...new Set([...Object.values(decks), ...DEMO_DECKS])] };
+    },
+    async addUnitWords(_id, scope, opts): Promise<AddMissingResult> {
+      await wait(latency);
+      const ns =
+        scope === "all" ? units.filter((u) => u.kind === "theme").map((u) => u.n) : [scope];
+      let added = 0;
+      for (const n of ns)
+        for (const wd of words.get(n) ?? []) {
+          if (inAnki.has(wd.lemma) || (opts?.keys && !opts.keys.includes(wd.lemma))) continue;
+          inAnki.add(wd.lemma);
+          states.set(wd.lemma, "learning");
+          added++;
+        }
+      return { added, failed: 0, deck: opts?.deck ?? "Kenning::Dutch::Nederlands voor beginners" };
+    },
+    async unitGrammar(_id, n) {
+      await wait(latency);
+      if (units.find((u) => u.n === n)?.kind !== "theme") return [];
+      return [
+        {
+          topicId: "word-order-v2",
+          title: "Word order in main clauses (V2)",
+          level: "A1",
+          summary: "In a main clause the conjugated verb is always the second element.",
+          count: 14,
+          example: "Anne woont in Nijmegen.",
+        },
+        {
+          topicId: "inversion",
+          title: "Inversion",
+          level: "A2",
+          summary:
+            "When something other than the subject comes first, the verb jumps in front of the subject.",
+          count: 6,
+          example: "Morgen werk ik in de stad.",
+        },
+      ];
     },
     async unitStatus(_id, n) {
       await wait(latency);
@@ -448,7 +591,7 @@ export function createMockCourses(opts: { latencyMs?: number } = {}): CourseServ
     },
     async checkBookItem(_id, n, number, i, answer): Promise<BookCheckResult> {
       await wait(latency);
-      const ex = (exercises.get(n) ?? []).find((e) => e.number === number);
+      const ex = findEx(n, number);
       const it = ex?.items[i];
       if (!ex || !it) return { correct: null };
       const res = checkBookItem(ex.type, it, answer);
