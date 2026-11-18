@@ -1,0 +1,832 @@
+{
+  "themes": [
+    {
+      "id": "werk",
+      "title": "Werk en inkomen",
+      "en": "Work and income",
+      "questions": [
+        {
+          "id": "knm-werk-01",
+          "q": "Saskia is ziek. Ze kan vandaag niet werken. Wat moet ze doen?",
+          "options": [
+            "Ze belt haar werkgever voor het begin van haar werkdag.",
+            "Ze stuurt na een week een kaartje.",
+            "Ze gaat eerst naar het UWV."
+          ],
+          "answer": 0,
+          "explain": "You report sick to your employer yourself, as early as possible, usually before your working day starts."
+        },
+        {
+          "id": "knm-werk-02",
+          "q": "Op de loonstrook van Ahmed staat 'nettoloon'. Wat is dat?",
+          "options": [
+            "Het loon voor de belasting eraf gaat.",
+            "Het geld dat hij echt op zijn rekening krijgt.",
+            "Het vakantiegeld van het hele jaar."
+          ],
+          "answer": 1,
+          "explain": "Netto is what is paid into your account after tax and premiums. Bruto is the amount before deductions."
+        },
+        {
+          "id": "knm-werk-03",
+          "q": "Maria heeft geen werk meer. Haar contract is gestopt. Waar vraagt ze een WW-uitkering aan?",
+          "options": ["Bij de gemeente.", "Bij de Belastingdienst.", "Bij het UWV."],
+          "answer": 2,
+          "explain": "The UWV handles unemployment benefit (WW) and helps people find work."
+        },
+        {
+          "id": "knm-werk-04",
+          "q": "Een werkgever wil Piotr minder betalen dan het wettelijk minimumloon. Mag dat?",
+          "options": [
+            "Ja, als Piotr het goedvindt.",
+            "Nee, dat mag niet.",
+            "Ja, in de eerste maand."
+          ],
+          "answer": 1,
+          "explain": "The statutory minimum wage is a legal floor. An employer may not pay less, even if the worker agrees."
+        },
+        {
+          "id": "knm-werk-05",
+          "q": "In mei of juni krijgen veel werknemers extra geld. Hoe heet dat?",
+          "options": ["Vakantiegeld.", "Kinderbijslag.", "Huurtoeslag."],
+          "answer": 0,
+          "explain": "Vakantiegeld (holiday allowance) is at least 8% of your gross salary and is often paid in May or June."
+        },
+        {
+          "id": "knm-werk-06",
+          "q": "In het contract van Li staat: 'proeftijd één maand'. Wat betekent dat?",
+          "options": [
+            "Li krijgt de eerste maand geen loon.",
+            "Li en de werkgever kunnen het contract in die maand snel stoppen.",
+            "Li moet die maand elke dag een toets maken."
+          ],
+          "answer": 1,
+          "explain": "During a probation period (proeftijd) both sides may end the contract quickly. You are paid as normal."
+        },
+        {
+          "id": "knm-werk-07",
+          "q": "Een buurman zegt: 'Ik betaal je contant. Geen contract, geen belasting.' Wat is dit?",
+          "options": [
+            "Vrijwilligerswerk.",
+            "Zwart werk. Dat is niet toegestaan.",
+            "Een gewone baan met proeftijd."
+          ],
+          "answer": 1,
+          "explain": "Working without registering the income for tax is illegal work (zwart werk). You also build up no rights such as WW or pension."
+        },
+        {
+          "id": "knm-werk-08",
+          "q": "Youssef heeft geen werk en geen WW. Hij heeft te weinig geld om van te leven. Waar kan hij bijstand aanvragen?",
+          "options": ["Bij de gemeente.", "Bij DUO.", "Bij de huisarts."],
+          "answer": 0,
+          "explain": "Social assistance (bijstand, Participatiewet) is requested at the municipality (gemeente)."
+        },
+        {
+          "id": "knm-werk-09",
+          "q": "Fatima solliciteert. De werkgever zegt: 'Met een hoofddoek kun je hier niet werken.' Het is een baan op kantoor. Wat is dit?",
+          "options": [
+            "Normaal. De werkgever mag dat altijd zeggen.",
+            "Discriminatie. Dat mag niet.",
+            "Een regel van de gemeente."
+          ],
+          "answer": 1,
+          "explain": "Refusing someone because of their religion is discrimination. You can report it to a local anti-discrimination service or the College voor de Rechten van de Mens."
+        },
+        {
+          "id": "knm-werk-10",
+          "q": "Je schrijft een sollicitatiebrief. Wat stuur je meestal mee?",
+          "options": ["Je paspoort.", "Je cv.", "Je loonstrook."],
+          "answer": 1,
+          "explain": "With a job application you send a cv (curriculum vitae) with your education and work experience."
+        },
+        {
+          "id": "knm-werk-11",
+          "q": "Anna helpt elke week in het buurthuis. Ze krijgt geen salaris. Wat doet Anna?",
+          "options": ["Zwart werk.", "Vrijwilligerswerk.", "Een stage met loon."],
+          "answer": 1,
+          "explain": "Vrijwilligerswerk is unpaid work for an organisation. It is common in the Netherlands and a good way to practise Dutch."
+        }
+      ]
+    },
+    {
+      "id": "omgang",
+      "title": "Omgangsvormen, waarden en normen",
+      "en": "Manners, values and norms",
+      "questions": [
+        {
+          "id": "knm-omgang-01",
+          "q": "Je hebt om 10.00 uur een afspraak bij de huisarts. Hoe laat ben je er?",
+          "options": [
+            "Om ongeveer 10.15 uur.",
+            "Een paar minuten voor 10.00 uur.",
+            "Het maakt niet uit, als je vandaag komt."
+          ],
+          "answer": 1,
+          "explain": "Being on time matters in the Netherlands. Arrive a few minutes before the appointment."
+        },
+        {
+          "id": "knm-omgang-02",
+          "q": "Je bent op de verjaardag van je collega Joost. Zijn moeder is er ook. Wat zeg je tegen haar?",
+          "options": [
+            "'Gefeliciteerd met je zoon.'",
+            "'Fijne vakantie.'",
+            "Niets, alleen Joost is jarig."
+          ],
+          "answer": 0,
+          "explain": "At Dutch birthdays you congratulate the person and also close family: 'Gefeliciteerd met je zoon/dochter/man'."
+        },
+        {
+          "id": "knm-omgang-03",
+          "q": "Je komt 20 minuten later dan afgesproken bij een vriendin. Wat doe je?",
+          "options": [
+            "Je belt of appt haar van tevoren.",
+            "Je zegt niets, dat is normaal.",
+            "Je gaat niet meer."
+          ],
+          "answer": 0,
+          "explain": "If you will be late, let the other person know in advance by phone or message."
+        },
+        {
+          "id": "knm-omgang-04",
+          "q": "Wat is waar in Nederland?",
+          "options": [
+            "Mannen hebben meer rechten dan vrouwen.",
+            "Mannen en vrouwen hebben dezelfde rechten.",
+            "Alleen getrouwde vrouwen mogen werken."
+          ],
+          "answer": 1,
+          "explain": "Men and women are equal before the law (Grondwet, article 1)."
+        },
+        {
+          "id": "knm-omgang-05",
+          "q": "Twee mannen willen met elkaar trouwen. Kan dat in Nederland?",
+          "options": ["Nee, dat mag niet.", "Ja, dat kan sinds 2001.", "Alleen in Amsterdam."],
+          "answer": 1,
+          "explain": "Since 2001 two people of the same sex can marry in the Netherlands. The Netherlands was the first country in the world to allow this."
+        },
+        {
+          "id": "knm-omgang-06",
+          "q": "Je collega zegt in een vergadering: 'Ik vind jouw plan niet goed, want het is te duur.' Wat betekent dit meestal?",
+          "options": [
+            "Hij is boos op jou.",
+            "Hij zegt eerlijk wat hij denkt. Dat is normaal.",
+            "Hij wil dat je ontslag neemt."
+          ],
+          "answer": 1,
+          "explain": "Many Dutch people are direct. Saying openly that you disagree is usually not meant as rude."
+        },
+        {
+          "id": "knm-omgang-07",
+          "q": "Mag iedereen in Nederland zelf kiezen welk geloof hij heeft?",
+          "options": [
+            "Ja, iedereen mag zijn eigen geloof kiezen, of geen geloof.",
+            "Nee, de regering kiest het geloof.",
+            "Alleen mensen met een Nederlands paspoort."
+          ],
+          "answer": 0,
+          "explain": "Freedom of religion is a fundamental right. You may also choose to have no religion or to change religion."
+        },
+        {
+          "id": "knm-omgang-08",
+          "q": "Je buurvrouw wordt thuis vaak geslagen door haar man. Waar kun je advies vragen?",
+          "options": ["Bij Veilig Thuis.", "Bij de Belastingdienst.", "Bij de woningcorporatie."],
+          "answer": 0,
+          "explain": "Veilig Thuis (0800-2000, free) gives advice about domestic violence. In an emergency, call 112. Domestic violence is a crime."
+        },
+        {
+          "id": "knm-omgang-09",
+          "q": "Je nieuwe buren zijn net verhuisd. Wat doen veel Nederlanders?",
+          "options": [
+            "Ze stellen zich even voor aan de buren.",
+            "Ze wachten tot de buren een brief sturen.",
+            "Ze bellen de gemeente."
+          ],
+          "answer": 0,
+          "explain": "It is friendly to say hello and introduce yourself to new neighbours."
+        },
+        {
+          "id": "knm-omgang-10",
+          "q": "Een collega vraagt: 'Kom je zaterdag om 15.00 uur koffie drinken?' Je kunt niet. Wat doe je?",
+          "options": [
+            "Je zegt niets en gaat niet.",
+            "Je zegt het eerlijk en bedankt voor de uitnodiging.",
+            "Je komt om 18.00 uur."
+          ],
+          "answer": 1,
+          "explain": "It is polite to answer an invitation, also when you cannot come."
+        },
+        {
+          "id": "knm-omgang-11",
+          "q": "Mag je in een café of restaurant binnen roken?",
+          "options": ["Ja, altijd.", "Nee, dat is verboden.", "Alleen na 22.00 uur."],
+          "answer": 1,
+          "explain": "Smoking indoors is not allowed in cafés, restaurants and other public buildings."
+        }
+      ]
+    },
+    {
+      "id": "wonen",
+      "title": "Wonen",
+      "en": "Housing",
+      "questions": [
+        {
+          "id": "knm-wonen-01",
+          "q": "Karim huurt een huis. Hij verdient weinig en de huur is hoog. Waar vraagt hij huurtoeslag aan?",
+          "options": ["Bij de verhuurder.", "Bij de Belastingdienst (Toeslagen).", "Bij het UWV."],
+          "answer": 1,
+          "explain": "Rent benefit (huurtoeslag) is requested at the Belastingdienst, department Toeslagen."
+        },
+        {
+          "id": "knm-wonen-02",
+          "q": "Je hebt lege glazen potten. Waar laat je die?",
+          "options": ["In de glasbak.", "In de container voor papier.", "In de gft-bak."],
+          "answer": 0,
+          "explain": "In the Netherlands waste is separated: glass goes in the glass container (glasbak)."
+        },
+        {
+          "id": "knm-wonen-03",
+          "q": "Je huurt een huis van een woningcorporatie. De verwarming is kapot. Wie bel je?",
+          "options": ["De politie.", "De woningcorporatie.", "De gemeente."],
+          "answer": 1,
+          "explain": "Large repairs in a rented home are the landlord's job. Report them to your landlord or housing association."
+        },
+        {
+          "id": "knm-wonen-04",
+          "q": "Je gaat verhuizen naar een andere straat. Aan wie geef je je nieuwe adres door?",
+          "options": ["Aan de gemeente.", "Aan de IND.", "Aan niemand."],
+          "answer": 0,
+          "explain": "You report a move to the gemeente (Basisregistratie Personen). Other government bodies then get your new address."
+        },
+        {
+          "id": "knm-wonen-05",
+          "q": "Wat is een sociale huurwoning?",
+          "options": [
+            "Een koophuis voor mensen met veel geld.",
+            "Een huurhuis met een lagere huur, vaak van een woningcorporatie.",
+            "Een kamer in een hotel."
+          ],
+          "answer": 1,
+          "explain": "Social rented homes have a capped rent and are mostly owned by housing associations. There is often a waiting list."
+        },
+        {
+          "id": "knm-wonen-06",
+          "q": "Je buren draaien elke avond om 23.00 uur harde muziek. Wat doe je eerst?",
+          "options": [
+            "Je belt meteen 112.",
+            "Je praat rustig met de buren.",
+            "Je zet zelf ook harde muziek aan."
+          ],
+          "answer": 1,
+          "explain": "First talk to your neighbours calmly. If that does not help, you can ask for buurtbemiddeling (neighbour mediation)."
+        },
+        {
+          "id": "knm-wonen-07",
+          "q": "Bij een nieuw huurhuis moet je vaak eerst een bedrag betalen. Je krijgt het terug als je weggaat en het huis is in orde. Hoe heet dat?",
+          "options": ["De borg.", "De huurtoeslag.", "De energierekening."],
+          "answer": 0,
+          "explain": "A deposit (borg or waarborgsom) is paid back when you leave the home in good condition."
+        },
+        {
+          "id": "knm-wonen-08",
+          "q": "Je wilt een oude bank weggooien. Wat doe je?",
+          "options": [
+            "Je zet hem op straat, wanneer je wilt.",
+            "Je maakt een afspraak met de gemeente voor grofvuil of brengt hem naar de milieustraat.",
+            "Je doet hem in de glasbak."
+          ],
+          "answer": 1,
+          "explain": "Large items (grofvuil) are collected on appointment or brought to the municipal recycling centre (milieustraat)."
+        },
+        {
+          "id": "knm-wonen-09",
+          "q": "Je verhuurder doet niets aan de schimmel in je huis. Jullie zijn het niet eens. Wie kan helpen?",
+          "options": ["De Huurcommissie.", "De huisarts.", "DUO."],
+          "answer": 0,
+          "explain": "The Huurcommissie settles disputes between tenants and landlords about rent and maintenance."
+        },
+        {
+          "id": "knm-wonen-10",
+          "q": "Elk jaar krijg je een aanslag van de gemeente voor het ophalen van afval. Wat is dit?",
+          "options": ["Een boete.", "Een gemeentelijke belasting.", "Een rekening van de buren."],
+          "answer": 1,
+          "explain": "Municipalities charge local taxes, such as the waste collection levy (afvalstoffenheffing)."
+        },
+        {
+          "id": "knm-wonen-11",
+          "q": "Wat moet je doen als je in een nieuw huis komt wonen?",
+          "options": [
+            "Een contract voor gas en stroom regelen, als dat nog niet geregeld is.",
+            "Een vergunning bij de politie halen.",
+            "Niets, de gemeente regelt alles."
+          ],
+          "answer": 0,
+          "explain": "You choose an energy supplier yourself and pass on the meter readings when you move in."
+        }
+      ]
+    },
+    {
+      "id": "gezondheid",
+      "title": "Gezondheid en gezondheidszorg",
+      "en": "Health and health care",
+      "questions": [
+        {
+          "id": "knm-gezondheid-01",
+          "q": "Je hebt al een week keelpijn en koorts. Naar wie ga je eerst?",
+          "options": [
+            "Naar het ziekenhuis.",
+            "Naar de huisarts.",
+            "Naar de apotheek voor antibiotica zonder recept."
+          ],
+          "answer": 1,
+          "explain": "The huisarts (GP) is the first stop for health problems. The GP refers you to a hospital or specialist when needed."
+        },
+        {
+          "id": "knm-gezondheid-02",
+          "q": "Je ziet een ongeluk. Een man ligt op straat en beweegt niet. Welk nummer bel je?",
+          "options": ["112.", "0800-2000.", "Het nummer van de gemeente."],
+          "answer": 0,
+          "explain": "112 is the emergency number for police, ambulance and fire brigade when life is in danger."
+        },
+        {
+          "id": "knm-gezondheid-03",
+          "q": "Het is zondagavond. Je kind heeft hoge koorts, maar het is geen levensgevaar. Wie bel je?",
+          "options": ["De huisartsenpost.", "112.", "De school."],
+          "answer": 0,
+          "explain": "Evenings, nights and weekends you call the huisartsenpost for urgent care that is not life-threatening."
+        },
+        {
+          "id": "knm-gezondheid-04",
+          "q": "Moet iedereen die in Nederland woont of werkt een zorgverzekering hebben?",
+          "options": [
+            "Nee, het is vrijwillig.",
+            "Ja, een basisverzekering is verplicht.",
+            "Alleen mensen ouder dan 65 jaar."
+          ],
+          "answer": 1,
+          "explain": "Basic health insurance (basisverzekering) is compulsory for adults who live or work in the Netherlands. Children under 18 are insured for free."
+        },
+        {
+          "id": "knm-gezondheid-05",
+          "q": "Wat is het 'eigen risico' van je zorgverzekering?",
+          "options": [
+            "Het bedrag dat je eerst zelf betaalt voor bepaalde zorg.",
+            "Een boete als je ziek bent.",
+            "Geld dat je terugkrijgt van de huisarts."
+          ],
+          "answer": 0,
+          "explain": "The deductible (eigen risico) is paid yourself first for some care, such as hospital care or medicines. A visit to the huisarts does not count."
+        },
+        {
+          "id": "knm-gezondheid-06",
+          "q": "Je hebt een laag inkomen. De zorgverzekering is duur voor jou. Wat kun je aanvragen?",
+          "options": [
+            "Zorgtoeslag bij de Belastingdienst.",
+            "Kinderbijslag bij de SVB.",
+            "Een uitkering bij de huisarts."
+          ],
+          "answer": 0,
+          "explain": "Zorgtoeslag helps people with a low income pay for health insurance. You request it at Belastingdienst/Toeslagen."
+        },
+        {
+          "id": "knm-gezondheid-07",
+          "q": "Zit de tandarts voor volwassenen in de basisverzekering?",
+          "options": [
+            "Ja, alles wordt betaald.",
+            "Nee, meestal niet. Daarvoor heb je een aanvullende verzekering.",
+            "Alleen bij de eerste afspraak."
+          ],
+          "answer": 1,
+          "explain": "Dental care for adults is mostly not in the basic package. Many people take extra (aanvullende) insurance. For children under 18 it is covered."
+        },
+        {
+          "id": "knm-gezondheid-08",
+          "q": "Lisa heeft een baby van drie maanden. Waar wordt de baby gewogen en krijgt hij vaccinaties?",
+          "options": ["Bij het consultatiebureau.", "Bij de apotheek.", "Bij de tandarts."],
+          "answer": 0,
+          "explain": "The consultatiebureau (youth health care) checks young children's growth and gives vaccinations, free of charge."
+        },
+        {
+          "id": "knm-gezondheid-09",
+          "q": "De huisarts geeft je een recept voor medicijnen. Waar haal je de medicijnen?",
+          "options": ["Bij de apotheek.", "Bij de gemeente.", "Bij het consultatiebureau."],
+          "answer": 0,
+          "explain": "Prescription medicines are collected at the pharmacy (apotheek)."
+        },
+        {
+          "id": "knm-gezondheid-10",
+          "q": "Sara is zwanger. Wie begeleidt haar meestal tijdens de zwangerschap?",
+          "options": ["Een verloskundige.", "De tandarts.", "De leraar van haar zoon."],
+          "answer": 0,
+          "explain": "In the Netherlands a midwife (verloskundige) usually looks after a normal pregnancy and birth."
+        },
+        {
+          "id": "knm-gezondheid-11",
+          "q": "Je gaat op reis en hebt vaccinaties nodig. Welke organisatie kan je daarmee helpen?",
+          "options": ["De GGD.", "Het UWV.", "De Huurcommissie."],
+          "answer": 0,
+          "explain": "The GGD (municipal public health service) gives travel vaccinations and works on public health."
+        }
+      ]
+    },
+    {
+      "id": "geschiedenis",
+      "title": "Geschiedenis en geografie",
+      "en": "History and geography",
+      "questions": [
+        {
+          "id": "knm-geschiedenis-01",
+          "q": "Op 27 april is er een groot feest in het hele land. Veel mensen dragen oranje. Welk feest is dat?",
+          "options": ["Koningsdag.", "Sinterklaas.", "Bevrijdingsdag."],
+          "answer": 0,
+          "explain": "Koningsdag (King's Day) on 27 April celebrates King Willem-Alexander's birthday."
+        },
+        {
+          "id": "knm-geschiedenis-02",
+          "q": "Wat gebeurt er op 4 mei om 20.00 uur?",
+          "options": [
+            "Twee minuten stilte voor de doden van de oorlog.",
+            "Vuurwerk voor het nieuwe jaar.",
+            "De kinderen krijgen cadeaus."
+          ],
+          "answer": 0,
+          "explain": "On 4 May (Dodenherdenking) the country is silent for two minutes at 20.00. On 5 May it celebrates the liberation."
+        },
+        {
+          "id": "knm-geschiedenis-03",
+          "q": "Van 1940 tot 1945 was Nederland bezet. Door welk land?",
+          "options": ["Duitsland.", "België.", "Engeland."],
+          "answer": 0,
+          "explain": "Nazi Germany occupied the Netherlands during the Second World War, from May 1940 to May 1945."
+        },
+        {
+          "id": "knm-geschiedenis-04",
+          "q": "Wat is de hoofdstad van Nederland?",
+          "options": ["Den Haag.", "Amsterdam.", "Rotterdam."],
+          "answer": 1,
+          "explain": "Amsterdam is the capital. The government and parliament sit in The Hague (Den Haag)."
+        },
+        {
+          "id": "knm-geschiedenis-05",
+          "q": "Hoeveel provincies heeft Nederland?",
+          "options": ["8.", "12.", "20."],
+          "answer": 1,
+          "explain": "The Netherlands has 12 provinces, for example Noord-Holland, Utrecht and Limburg."
+        },
+        {
+          "id": "knm-geschiedenis-06",
+          "q": "In 1953 was er een grote overstroming in Zeeland. Wat heeft Nederland daarna gebouwd?",
+          "options": ["De Deltawerken.", "Het Rijksmuseum.", "Schiphol."],
+          "answer": 0,
+          "explain": "After the 1953 flood disaster the Delta Works (dams and barriers) were built to protect the south-west against the sea."
+        },
+        {
+          "id": "knm-geschiedenis-07",
+          "q": "Anne Frank schreef een beroemd dagboek. Waar zat zij ondergedoken?",
+          "options": [
+            "In een huis in Amsterdam.",
+            "In een kasteel in Limburg.",
+            "Op een boot in Rotterdam."
+          ],
+          "answer": 0,
+          "explain": "Anne Frank, a Jewish girl, hid with her family in a house on the Prinsengracht in Amsterdam during the war."
+        },
+        {
+          "id": "knm-geschiedenis-08",
+          "q": "In de zeventiende eeuw was Nederland heel rijk door de handel. Hoe heet die tijd?",
+          "options": ["De Gouden Eeuw.", "De Middeleeuwen.", "De Wederopbouw."],
+          "answer": 0,
+          "explain": "The 17th century is called the Golden Age (Gouden Eeuw): trade (VOC), art and science flourished. Slavery and colonial violence were also part of it."
+        },
+        {
+          "id": "knm-geschiedenis-09",
+          "q": "Op 1 juli herdenken en vieren veel mensen het einde van de slavernij in Suriname en de Antillen (1863). Hoe heet die dag?",
+          "options": ["Keti Koti.", "Koningsdag.", "Prinsjesdag."],
+          "answer": 0,
+          "explain": "Keti Koti ('the chains are broken') on 1 July marks the abolition of slavery in 1863."
+        },
+        {
+          "id": "knm-geschiedenis-10",
+          "q": "Wat is waar over Nederland?",
+          "options": [
+            "Een groot deel van het land ligt onder de zeespiegel.",
+            "Nederland heeft hoge bergen.",
+            "Nederland ligt aan de Middellandse Zee."
+          ],
+          "answer": 0,
+          "explain": "About a quarter of the country lies below sea level. Dikes, dunes and pumps keep the water out."
+        },
+        {
+          "id": "knm-geschiedenis-11",
+          "q": "Welke landen zijn de buurlanden van Nederland?",
+          "options": ["Duitsland en België.", "Frankrijk en Spanje.", "Denemarken en Polen."],
+          "answer": 0,
+          "explain": "The Netherlands borders Germany in the east and Belgium in the south."
+        }
+      ]
+    },
+    {
+      "id": "instanties",
+      "title": "Instanties",
+      "en": "Public bodies",
+      "questions": [
+        {
+          "id": "knm-instanties-01",
+          "q": "Welke organisatie regelt de inburgeringsexamens en de studiefinanciering?",
+          "options": ["DUO.", "De SVB.", "De politie."],
+          "answer": 0,
+          "explain": "DUO (Dienst Uitvoering Onderwijs) runs the civic integration exams and student finance."
+        },
+        {
+          "id": "knm-instanties-02",
+          "q": "Je wilt een nieuwe identiteitskaart. Waar vraag je die aan?",
+          "options": ["Bij de gemeente.", "Bij de Belastingdienst.", "Bij het UWV."],
+          "answer": 0,
+          "explain": "Passports and ID cards are requested at the gemeente where you are registered."
+        },
+        {
+          "id": "knm-instanties-03",
+          "q": "Welke organisatie beslist over een verblijfsvergunning?",
+          "options": ["De IND.", "De GGD.", "De woningcorporatie."],
+          "answer": 0,
+          "explain": "The IND (Immigratie- en Naturalisatiedienst) decides on residence permits and naturalisation."
+        },
+        {
+          "id": "knm-instanties-04",
+          "q": "Je fiets is gestolen. Wat kun je doen?",
+          "options": [
+            "Aangifte doen bij de politie.",
+            "Een brief sturen naar DUO.",
+            "Bellen met de huisartsenpost."
+          ],
+          "answer": 0,
+          "explain": "You report a crime such as theft to the police (aangifte doen). For some crimes this can be done online."
+        },
+        {
+          "id": "knm-instanties-05",
+          "q": "Wat heb je nodig om online in te loggen bij de overheid, bijvoorbeeld bij de Belastingdienst?",
+          "options": ["DigiD.", "Een bibliotheekpas.", "Een rijbewijs."],
+          "answer": 0,
+          "explain": "DigiD is your personal login for government websites. Never give your DigiD to someone else."
+        },
+        {
+          "id": "knm-instanties-06",
+          "q": "Je hebt een probleem met je verhuurder en wilt gratis juridisch advies. Waar kun je heen?",
+          "options": ["Het Juridisch Loket.", "De apotheek.", "Het consultatiebureau."],
+          "answer": 0,
+          "explain": "Het Juridisch Loket gives free legal advice to people with a low or middle income."
+        },
+        {
+          "id": "knm-instanties-07",
+          "q": "Welke organisatie betaalt de kinderbijslag en de AOW?",
+          "options": ["De SVB.", "Het UWV.", "De gemeente."],
+          "answer": 0,
+          "explain": "The SVB (Sociale Verzekeringsbank) pays child benefit (kinderbijslag) and the state pension (AOW)."
+        },
+        {
+          "id": "knm-instanties-08",
+          "q": "Voor welke datum moet je meestal je belastingaangifte over het vorige jaar doen?",
+          "options": ["Voor 1 mei.", "Voor 1 januari.", "Voor 31 december."],
+          "answer": 0,
+          "explain": "The income tax return for last year is usually due before 1 May. You can ask for more time."
+        },
+        {
+          "id": "knm-instanties-09",
+          "q": "Je krijgt een brief van de Belastingdienst. Je begrijpt de brief niet. Wat doe je?",
+          "options": [
+            "Je gooit de brief weg.",
+            "Je vraagt hulp, bijvoorbeeld aan de BelastingTelefoon of een vrijwilliger.",
+            "Je wacht een jaar."
+          ],
+          "answer": 1,
+          "explain": "Never ignore official letters: there are often deadlines. Ask for help, for example at the library, a social service or the BelastingTelefoon."
+        },
+        {
+          "id": "knm-instanties-10",
+          "q": "Je zoekt werk. Op welke website van het UWV kun je vacatures vinden?",
+          "options": ["werk.nl", "duo.nl", "ind.nl"],
+          "answer": 0,
+          "explain": "werk.nl is the UWV website for job seekers and people with a WW benefit."
+        },
+        {
+          "id": "knm-instanties-11",
+          "q": "Je komt in Nederland wonen. Waar schrijf je je in?",
+          "options": [
+            "In de Basisregistratie Personen (BRP) van de gemeente.",
+            "Bij de huisarts.",
+            "Bij de Huurcommissie."
+          ],
+          "answer": 0,
+          "explain": "When you come to live in the Netherlands you register with the gemeente in the BRP and receive a BSN (citizen service number)."
+        }
+      ]
+    },
+    {
+      "id": "staat",
+      "title": "Staatsinrichting en rechtsstaat",
+      "en": "Government and rule of law",
+      "questions": [
+        {
+          "id": "knm-staat-01",
+          "q": "Nederland heeft een koning. Wie maakt de wetten?",
+          "options": [
+            "De koning alleen.",
+            "De regering en het parlement samen.",
+            "De burgemeester van Amsterdam."
+          ],
+          "answer": 1,
+          "explain": "The Netherlands is a parliamentary democracy and constitutional monarchy. Laws are made by the government and parliament (Eerste and Tweede Kamer)."
+        },
+        {
+          "id": "knm-staat-02",
+          "q": "Hoeveel leden heeft de Tweede Kamer?",
+          "options": ["75.", "150.", "300."],
+          "answer": 1,
+          "explain": "The Tweede Kamer (House of Representatives) has 150 members, normally elected every four years."
+        },
+        {
+          "id": "knm-staat-03",
+          "q": "In artikel 1 van de Grondwet staat een belangrijke regel. Welke?",
+          "options": [
+            "Iedereen moet in gelijke gevallen gelijk behandeld worden. Discriminatie mag niet.",
+            "Iedereen moet een fiets hebben.",
+            "Alleen Nederlanders mogen werken."
+          ],
+          "answer": 0,
+          "explain": "Article 1 of the Constitution: equal treatment in equal cases; discrimination on grounds such as religion, belief, race, sex or sexual orientation is not allowed."
+        },
+        {
+          "id": "knm-staat-04",
+          "q": "Omar komt uit Marokko. Hij woont al zes jaar legaal in Nederland. Hij heeft geen Nederlands paspoort. Mag hij stemmen voor de gemeenteraad?",
+          "options": ["Ja.", "Nee, nooit.", "Alleen als hij werk heeft."],
+          "answer": 0,
+          "explain": "Non-Dutch residents may vote in municipal elections: EU citizens right away, others after five years of legal residence."
+        },
+        {
+          "id": "knm-staat-05",
+          "q": "Wat betekent 'scheiding van kerk en staat'?",
+          "options": [
+            "De overheid bemoeit zich niet met het geloof, en een geloof bepaalt niet de wetten.",
+            "Kerken zijn verboden.",
+            "Alleen christenen mogen in de regering."
+          ],
+          "answer": 0,
+          "explain": "The state and religious organisations are independent of each other. Religion does not make the laws."
+        },
+        {
+          "id": "knm-staat-06",
+          "q": "In Nederland mag je zeggen wat je denkt. Wat mag niet?",
+          "options": [
+            "Kritiek hebben op de regering.",
+            "Iemand bedreigen of oproepen tot geweld.",
+            "Een brief schrijven naar de krant."
+          ],
+          "answer": 1,
+          "explain": "Freedom of expression is broad, but threats, incitement to violence and discrimination are crimes."
+        },
+        {
+          "id": "knm-staat-07",
+          "q": "Wat is waar over de rechter in Nederland?",
+          "options": [
+            "De rechter is onafhankelijk. De regering bepaalt de uitspraak niet.",
+            "De minister zegt wat de rechter moet beslissen.",
+            "De politie is ook de rechter."
+          ],
+          "answer": 0,
+          "explain": "Judges are independent from the government (separation of powers, trias politica)."
+        },
+        {
+          "id": "knm-staat-08",
+          "q": "Wie is de leider van de regering?",
+          "options": ["De minister-president.", "De koning.", "De burgemeester."],
+          "answer": 0,
+          "explain": "The prime minister (minister-president) leads the cabinet. The king is head of state but has no political power of his own."
+        },
+        {
+          "id": "knm-staat-09",
+          "q": "Welke organisatie zorgt voor de dijken en voor schoon water in een gebied?",
+          "options": ["Het waterschap.", "De SVB.", "De school."],
+          "answer": 0,
+          "explain": "Water boards (waterschappen) look after dikes, water levels and water treatment. Residents elect their board."
+        },
+        {
+          "id": "knm-staat-10",
+          "q": "Wie is het hoofd van de gemeente en verantwoordelijk voor de openbare orde?",
+          "options": ["De burgemeester.", "De koning.", "De directeur van de school."],
+          "answer": 0,
+          "explain": "The mayor (burgemeester) chairs the municipal council and is responsible for public order and safety. Mayors are appointed, not elected."
+        },
+        {
+          "id": "knm-staat-11",
+          "q": "Vanaf welke leeftijd mag een Nederlander stemmen voor de Tweede Kamer?",
+          "options": ["16 jaar.", "18 jaar.", "21 jaar."],
+          "answer": 1,
+          "explain": "Dutch citizens may vote in national elections from the age of 18."
+        }
+      ]
+    },
+    {
+      "id": "onderwijs",
+      "title": "Onderwijs en opvoeding",
+      "en": "Education and upbringing",
+      "questions": [
+        {
+          "id": "knm-onderwijs-01",
+          "q": "Vanaf welke leeftijd moet een kind in Nederland naar school?",
+          "options": ["Vanaf 3 jaar.", "Vanaf 5 jaar.", "Vanaf 7 jaar."],
+          "answer": 1,
+          "explain": "Compulsory education (leerplicht) starts at 5. Most children start primary school at 4."
+        },
+        {
+          "id": "knm-onderwijs-02",
+          "q": "Hoeveel groepen heeft de basisschool?",
+          "options": ["6.", "8.", "10."],
+          "answer": 1,
+          "explain": "Primary school has 8 groups (groep 1 to 8), for children of about 4 to 12."
+        },
+        {
+          "id": "knm-onderwijs-03",
+          "q": "Welke schooltypes zijn er na de basisschool?",
+          "options": ["Vmbo, havo en vwo.", "Mbo, hbo en wo.", "Groep 1 tot en met 8."],
+          "answer": 0,
+          "explain": "Secondary education has three main types: vmbo (pre-vocational), havo (senior general) and vwo (pre-university)."
+        },
+        {
+          "id": "knm-onderwijs-04",
+          "q": "In groep 8 krijgt een kind een schooladvies. Wie geeft dat advies?",
+          "options": ["De basisschool.", "De gemeente.", "De huisarts."],
+          "answer": 0,
+          "explain": "The primary school advises which type of secondary school suits the child, together with a national test (doorstroomtoets)."
+        },
+        {
+          "id": "knm-onderwijs-05",
+          "q": "De school nodigt je uit voor een tien-minutengesprek. Wat is dat?",
+          "options": [
+            "Een kort gesprek met de leraar over je kind.",
+            "Een sollicitatiegesprek.",
+            "Een toets voor de ouders."
+          ],
+          "answer": 0,
+          "explain": "Parents talk briefly with the teacher about how their child is doing. Parents are expected to be involved in school."
+        },
+        {
+          "id": "knm-onderwijs-06",
+          "q": "Je werkt en je kind gaat naar de kinderopvang. Waar vraag je kinderopvangtoeslag aan?",
+          "options": [
+            "Bij de Belastingdienst (Toeslagen).",
+            "Bij de school.",
+            "Bij het consultatiebureau."
+          ],
+          "answer": 0,
+          "explain": "Childcare benefit (kinderopvangtoeslag) is requested at Belastingdienst/Toeslagen."
+        },
+        {
+          "id": "knm-onderwijs-07",
+          "q": "Je dochter is ziek en kan niet naar school. Wat doe je?",
+          "options": [
+            "Je belt of meldt het aan de school, voor school begint.",
+            "Je doet niets.",
+            "Je stuurt na een week een e-mail."
+          ],
+          "answer": 0,
+          "explain": "Report your child sick to the school before lessons start, the same day."
+        },
+        {
+          "id": "knm-onderwijs-08",
+          "q": "Je wilt twee weken voor de zomervakantie al met je kinderen op vakantie. Mag dat?",
+          "options": [
+            "Ja, dat mag altijd.",
+            "Nee, alleen met toestemming van de school in speciale gevallen. Anders krijg je een boete.",
+            "Ja, als de kinderen goede cijfers hebben."
+          ],
+          "answer": 1,
+          "explain": "Because of leerplicht, holidays outside school holidays are only allowed in exceptional cases with permission. The leerplichtambtenaar can fine parents."
+        },
+        {
+          "id": "knm-onderwijs-09",
+          "q": "Mogen ouders hun kind slaan als straf?",
+          "options": ["Ja, een beetje.", "Nee, dat is verboden.", "Alleen thuis."],
+          "answer": 1,
+          "explain": "Since 2007 Dutch law says parents may not use physical or psychological violence in raising children."
+        },
+        {
+          "id": "knm-onderwijs-10",
+          "q": "Je zoon is 15 jaar en heeft een vmbo-diploma. Welke opleiding kan hij daarna vaak doen?",
+          "options": ["Het mbo.", "De universiteit.", "De basisschool."],
+          "answer": 0,
+          "explain": "After vmbo many pupils go on to mbo (secondary vocational education). Until 18, young people must study until they have a basic qualification (startkwalificatie)."
+        },
+        {
+          "id": "knm-onderwijs-11",
+          "q": "De school vraagt een vrijwillige ouderbijdrage voor een schoolreisje. Wat betekent 'vrijwillig'?",
+          "options": [
+            "Je moet het altijd betalen.",
+            "Je kiest zelf of je betaalt. Je kind mag ook mee als je niet betaalt.",
+            "Alleen de leraar betaalt."
+          ],
+          "answer": 1,
+          "explain": "The parental contribution is voluntary. Since 2021 a school may not exclude a child from activities when the parents do not pay."
+        }
+      ]
+    }
+  ]
+}

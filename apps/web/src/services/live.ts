@@ -45,6 +45,7 @@ import { absentAnki, ankiFromStatus, unavailableAnki } from "./ankiState.js";
 import { NlpClient, createPracticeData } from "@app/nlp-client";
 import { createLiveCourses } from "./liveCourses.js";
 import { createLiveAI } from "./liveAI.js";
+import { createLiveExam } from "./liveExam.js";
 import { createLiveProfile } from "./liveProfile.js";
 import type { AddOptions } from "./profileTypes.js";
 import { createLiveGrammar } from "./liveGrammar.js";
@@ -650,11 +651,14 @@ export function createLiveServices(repo: KenningRepository): AppServices {
     changed,
   });
 
+  const exam = createLiveExam({ repo, lang: async () => (await settings()).lang, changed });
+
   const services: AppServices = {
     ...profile.services,
     ...practice,
     ...ai,
     ...courses,
+    ...exam,
     textGrammar: grammar.textGrammar,
     grammarOverview: grammar.grammarOverview,
     grammarExamples: grammar.grammarExamples,

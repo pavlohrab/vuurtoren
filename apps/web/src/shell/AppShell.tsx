@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
   BookText,
+  ClipboardCheck,
   Ellipsis,
   House,
   Command as CommandIcon,
@@ -49,6 +50,7 @@ const PAGE_TITLES: Record<string, string> = {
   "/courses": "Courses",
   "/talk": "Talk",
   "/grammar": "Grammar",
+  "/exam": "Exam",
   "/progress": "Progress",
   "/settings": "Settings",
 };
@@ -208,6 +210,7 @@ export function AppShell() {
           <NavLink to="/courses" label="Courses" icon={<GraduationCap size={18} />} secondary />
           <NavLink to="/grammar" label="Grammar" icon={<BookText size={18} />} secondary />
           <NavLink to="/talk" label="Talk" icon={<MessagesSquare size={18} />} secondary />
+          <NavLink to="/exam" label="Exam" icon={<ClipboardCheck size={18} />} secondary />
           <div className="nav-spacer" />
           <NavLink to="/settings" label="Settings" icon={<SettingsIcon size={18} />} secondary />
           <button
@@ -228,6 +231,7 @@ export function AppShell() {
               <MoreLink to="/courses" label="Courses" icon={<GraduationCap size={18} />} />
               <MoreLink to="/grammar" label="Grammar" icon={<BookText size={18} />} />
               <MoreLink to="/talk" label="Talk" icon={<MessagesSquare size={18} />} />
+              <MoreLink to="/exam" label="Exam" icon={<ClipboardCheck size={18} />} />
               <MoreLink to="/progress" label="Progress" icon={<TrendingUp size={18} />} />
               <MoreLink to="/settings" label="Settings" icon={<SettingsIcon size={18} />} />
             </div>
@@ -381,6 +385,7 @@ type FixedRoute =
   | "/talk"
   | "/words"
   | "/grammar"
+  | "/exam"
   | "/progress"
   | "/settings";
 
