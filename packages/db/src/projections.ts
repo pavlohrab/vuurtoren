@@ -150,9 +150,18 @@ export async function applyEvent(driver: SqlDriver, ctx: EventContext): Promise<
       const rows = await driver.exec("SELECT content_hash FROM texts WHERE id = ?", [e.textId]);
       // Ignore results for unknown texts or for content that has since changed.
       if (rows[0]?.["content_hash"] !== e.contentHash) return;
+      const version = e.analyzerVersion ?? null;
+      const old = await driver.exec("SELECT analyzer_version FROM text_tokens WHERE text_id = ?", [
+        e.textId,
+      ]);
+      // A re-analysis by another analyzer may shift token indices: the grammar hits refer to
+      // the old tokens, so they are dropped and recomputed (liveGrammar).
+      if (old.length > 0 && (old[0]?.["analyzer_version"] ?? null) !== version) {
+        await driver.exec("DELETE FROM text_grammar WHERE text_id = ?", [e.textId]);
+      }
       await driver.exec(
-        "INSERT OR REPLACE INTO text_tokens (text_id, content_hash, tokens) VALUES (?,?,?)",
-        [e.textId, e.contentHash, JSON.stringify(e.tokens)],
+        "INSERT OR REPLACE INTO text_tokens (text_id, content_hash, tokens, analyzer_version) VALUES (?,?,?,?)",
+        [e.textId, e.contentHash, JSON.stringify(e.tokens), version],
       );
       return;
     }

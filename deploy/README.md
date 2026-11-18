@@ -15,8 +15,8 @@ details.
    docker compose -f deploy/compose.yml up -d
    ```
 
-   This downloads the ready-made images. To build them yourself instead, add `--build`
-   (the first build downloads about 300 MB of dictionary data and takes several minutes).
+   This downloads the ready-made images. To build them yourself instead, add `--build`.
+   On the first start the language server installs its data (see [Language data](#language-data)).
 
 3. **Open <http://localhost:8080>**, go to Settings, Anki, and click **Connect to Anki**.
    Anki must be open with the [AnkiConnect](https://ankiweb.net/shared/info/2055492159) add-on
@@ -197,16 +197,23 @@ Notes:
 
 ## Images
 
-| Image         | Base                              | Runs as                     | Health check      |
-| ------------- | --------------------------------- | --------------------------- | ----------------- |
-| `kenning-web` | `nginx` (Alpine), static files    | `nginx` (port 80, see note) | `GET /`           |
-| `kenning-api` | `node` (Alpine), build output     | `node`                      | `GET /api/health` |
-| `kenning-nlp` | `python` (slim) + Tesseract, data | `kenning` (uid 10001)       | `GET /health`     |
+| Image         | Base                           | Runs as                     | Health check      |
+| ------------- | ------------------------------ | --------------------------- | ----------------- |
+| `kenning-web` | `nginx` (Alpine), static files | `nginx` (port 80, see note) | `GET /`           |
+| `kenning-api` | `node` (Alpine), build output  | `node`                      | `GET /api/health` |
+| `kenning-nlp` | `python` (slim) + Tesseract    | `kenning` (uid 10001)       | `GET /health`     |
 
 Base images are pinned to a patch release and updated by Dependabot. The NLP image is the big
-one: it contains the dictionary, the example-sentence database, the translation model and the
-spaCy pipeline so it works offline; CI prints the current sizes in its job summary (_images +
-smoke test_). Note: the web container binds port 80 without root, which needs Docker 20.10 or
+one (spaCy pipeline, translation engine, Tesseract; about 820 MB). It comes in three variants,
+chosen with `KENNING_NLP_VARIANT` in `.env`:
+
+| Variant          | What                                                            | Size    |
+| ---------------- | --------------------------------------------------------------- | ------- |
+| (empty, default) | everything; data packs installed on first start                 | ~820 MB |
+| `-full`          | the same plus the data packs inside: no download, works offline | ~1.0 GB |
+| `-slim`          | no OCR (photo, scan and course import are switched off)         | ~660 MB |
+
+CI prints the current sizes in its job summary (_images + smoke test_). Note: the web container binds port 80 without root, which needs Docker 20.10 or
 newer (it allows unprivileged ports inside containers by default).
 
 ## Updating
@@ -217,9 +224,30 @@ docker compose -f deploy/compose.yml pull     # or: up -d --build
 docker compose -f deploy/compose.yml up -d
 ```
 
-Dictionary data is pinned to a known snapshot so builds are reproducible. If the upstream sources
-have moved on, a self-build stops with a message; see `server/nlp/Dockerfile` for the
-`KAIKKI_ACCEPT_NEW` and `TATOEBA_ACCEPT_NEW` build-args.
+Updating the images never touches the language data; new data packs are installed by the
+language server itself (next section).
+
+## Language data
+
+The dictionary, the example sentences and the translation model are **data packs** (about
+100 MB to download, 170 MB installed) on the `kenning-nlp-data` volume, versioned separately
+from the images. The language server installs missing or outdated packs in the background after
+it starts; meanwhile it already answers, and the features light up as their data arrives
+(Settings > Advanced > Server status, or `scripts/doctor.sh`). Where the packs come from:
+
+| Setting                          | Effect                                                                                                                                                                                       |
+| -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `KENNING_PACKS_URL=<url>`        | Download `<url>/<pack>-<version>.tar.gz` (e.g. a GitHub release of the packs), checked against the SHA-256 in the image. `KENNING_PACKS_TOKEN` is sent as a bearer token for a private host. |
+| (no URL, `KENNING_PACKS=auto`)   | Build them on the server from the public sources (Wiktionary/Kaikki, Tatoeba, OPUS-MT): about 10 minutes and 1 GB of downloads, once.                                                        |
+| `KENNING_NLP_VARIANT=-full`      | Use the packs inside the image: nothing is downloaded (offline installs).                                                                                                                    |
+| `KENNING_PACKS=download` / `off` | Never build locally / manage `/data` yourself.                                                                                                                                               |
+
+Once installed, everything works offline. When an image update needs newer packs, they are
+installed at the next start (the old data stays in use until the new data is complete), or right
+away with `curl -X POST <your address>/nlp/admin/packs` (signed in). Data builds are pinned to
+known upstream snapshots; if upstream moved on, a local build stops with a message (see
+`server/nlp/scripts/pinned_download.py` and the `KAIKKI_ACCEPT_NEW` / `TATOEBA_ACCEPT_NEW`
+build-args of `server/nlp/full.Dockerfile`).
 
 ## Troubleshooting
 
@@ -245,7 +273,8 @@ have moved on, a self-build stops with a message; see `server/nlp/Dockerfile` fo
 docker compose -f deploy/compose.yml -f deploy/compose.dev.yml up --build
 ```
 
-`nlp` and `web` are stateless. Your data lives in the `api` service's volume, see below.
+`web` is stateless and `nlp` keeps only downloadable language data (`kenning-nlp-data`). Your
+data lives in the `api` service's volume, see below.
 
 ## Where your data lives
 

@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import os
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from functools import lru_cache
 from typing import Annotated
 
@@ -11,7 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
 from starlette.concurrency import run_in_threadpool
 
-from kenning_nlp import __version__
+from kenning_nlp import __version__, analyzer, lexicon, packs, translate
 from kenning_nlp.course import COURSE_MAX_UPLOAD_BYTES, CourseOcr
 from kenning_nlp.detect import detect
 from kenning_nlp.dictionary import Dictionary, DictionaryMissingError
@@ -69,7 +71,16 @@ def check_total(texts: list[str], limit: int = MAX_TOTAL_CHARS) -> None:
         raise ServiceError(413, f"Request too large (limit {limit} characters in total).")
 
 
-app = FastAPI(title="Kenning NLP", version=__version__)
+@asynccontextmanager
+async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+    # Data packs (kenning_nlp.packs): install missing/outdated ones in the background, so the
+    # service answers /health at once and features light up as their data arrives.
+    if packs.mode() != "off":
+        packs.ensure_in_background()
+    yield
+
+
+app = FastAPI(title="Kenning NLP", version=__version__, lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=parse_origins(os.environ.get("KENNING_CORS_ORIGINS", "http://localhost:5173")),
@@ -89,10 +100,31 @@ def health() -> dict[str, object]:
     return health_report()
 
 
+@app.get("/admin/packs")
+def packs_status() -> dict[str, object]:
+    """Data pack state (also part of ``/health``)."""
+    return {"mode": packs.mode(), "busy": packs.busy(), "items": packs.status()}
+
+
+@app.post("/admin/packs")
+def packs_update(force: bool = False) -> dict[str, object]:
+    """Install missing or outdated data packs now (in the background; poll ``GET``).
+
+    ``force`` also replaces unversioned data. Works in every ``KENNING_PACKS`` mode except that
+    local builds need ``auto``. Behind the sign-in like every /nlp/ route.
+    """
+    started = packs.ensure_in_background(force=force)
+    return {"started": started, **packs_status()}
+
+
 @app.post("/analyze/text")
 def analyze_text_endpoint(req: AnalyzeRequest) -> list[TextAnalysis]:
     check_total(req.texts)
-    return analyze_texts(req.lang, req.texts)
+    version = analyzer.analyzer_version()
+    return [
+        a.model_copy(update={"analyzerVersion": version})
+        for a in analyze_texts(req.lang, req.texts)
+    ]
 
 
 @app.post("/analyze/terms")
@@ -178,6 +210,18 @@ def translate_endpoint(req: TranslateRequest) -> list[Translation]:
 @lru_cache(maxsize=1)
 def _similar_service() -> SimilarService:
     return SimilarService(default_dictionary_path())
+
+
+def _drop_data_caches() -> None:
+    """After a data pack update: forget everything that holds the old files."""
+    _dictionary.cache_clear()
+    _similar_service.cache_clear()
+    lexicon.get_lexicon.cache_clear()
+    translate.reset_engine()
+    analyzer.reset()
+
+
+packs.on_installed(_drop_data_caches)
 
 
 @app.post("/forms", response_model_exclude_none=True)

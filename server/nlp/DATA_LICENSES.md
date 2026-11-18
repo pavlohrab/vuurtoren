@@ -12,9 +12,8 @@ Share-alike terms apply to the data, not to the application code.
 | wordfreq | `zipf` token frequency | Data CC BY-SA 4.0, code Apache-2.0 | Wordfreq bundles data from Wikipedia, subtitles, news, books, Twitter, Reddit and others. |
 | spaCy `nl_core_news_md` | tagging, parsing, lemmas | CC BY-SA 4.0 (trained on Dutch UD treebanks) | Downloaded from the explosion/spacy-models release as a locked dependency. |
 | simplemma | dictionary lemmas | MIT | |
-| lingua-language-detector | `/detect` | Apache-2.0 | |
 | Tesseract and `nld` / `ukr` / `eng` traineddata | `POST /ocr` | Apache-2.0 | Installed from Debian packages in the Docker image. |
-| Helsinki-NLP OPUS-MT `opus-mt-nl-en` (CTranslate2 conversion `gaudi/opus-mt-nl-en-ctranslate2`) | `POST /translate`, `data/mt-nl-en/` | Apache-2.0 on the Hugging Face model card; OPUS-MT training data and recipes are CC BY 4.0 | Attribution below. Downloaded by `scripts/fetch_mt_model.py` (pinned commit, SHA-256 verified) or at Docker build time; not committed. |
+| Helsinki-NLP OPUS-MT `opus-mt-nl-en` (original Marian release `opus-2019-12-05`, converted to CTranslate2 int8) | `POST /translate`, `data/mt-nl-en/` (data pack `mt-nl-en`) | Apache-2.0 on the Hugging Face model card; OPUS-MT training data and recipes are CC BY 4.0 | Attribution below. Downloaded and converted by `scripts/fetch_mt_model.py` (SHA-256 pinned); shipped as a data pack, not committed. |
 | ctranslate2 / sentencepiece | MT inference | MIT / Apache-2.0 | |
 | trafilatura | `POST /extract/url` | Apache-2.0 | |
 | pypdfium2 / PDFium | `POST /extract/pdf`, PDF rasterising | BSD-3-Clause / Apache-2.0 | |
@@ -63,5 +62,5 @@ uv run python scripts/build_sentences.py       # downloads ~30 MB once, ~4 min w
 
 ```sh
 cd server/nlp
-uv run python scripts/fetch_mt_model.py        # ~160 MB once, writes data/mt-nl-en/
+uv run python scripts/fetch_mt_model.py        # ~290 MB download once, writes data/mt-nl-en/ (85 MB)
 ```

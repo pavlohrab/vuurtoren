@@ -62,6 +62,8 @@ class Token(BaseModel):
 
 class TextAnalysis(BaseModel):
     tokens: list[Token]
+    analyzerVersion: str = ""
+    """Version of the analyzer that produced ``tokens`` (see :mod:`kenning_nlp.analyzer`)."""
 
 
 class TermAnalysis(BaseModel):

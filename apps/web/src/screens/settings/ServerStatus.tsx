@@ -22,7 +22,10 @@ interface ApiHealth {
 }
 interface NlpHealth {
   version: string;
+  analyzerVersion?: string;
   data?: Record<string, boolean>;
+  /** Data packs (D1): installed in the background after the server starts. */
+  packs?: { busy: boolean; items: Record<string, { state: string; activity?: string }> };
 }
 
 const DATA_NAMES: Record<string, string> = {
@@ -142,10 +145,20 @@ export function ServerStatus({ nlpUrl }: { nlpUrl: string }) {
       const missing = Object.entries(lang.data.data ?? {})
         .filter(([, present]) => !present)
         .map(([k]) => DATA_NAMES[k] ?? k);
+      const busy = lang.data.packs?.busy === true;
+      const failed = Object.entries(lang.data.packs?.items ?? {}).filter(([, p]) =>
+        p.activity?.startsWith("error"),
+      );
       rows.push({
         label: "Language server",
-        tone: missing.length ? "warn" : "ok",
-        value: `${lang.data.version}${missing.length ? `, missing: ${missing.join(", ")}` : ", all data present"}`,
+        tone: missing.length || failed.length ? (busy ? "pending" : "warn") : "ok",
+        value: `${lang.data.version}${
+          missing.length
+            ? `, ${busy ? "installing language data" : "missing"}: ${missing.join(", ")}`
+            : ", all data present"
+        }${failed.length ? ` (data pack ${failed.map(([k]) => k).join(", ")} failed)` : ""}${
+          lang.data.analyzerVersion ? ` · analyzer ${lang.data.analyzerVersion}` : ""
+        }`,
       });
     }
   }

@@ -39,7 +39,8 @@ Image.MAX_IMAGE_PIXELS = MAX_PIXELS
 
 INSTALL_HINT = (
     "Tesseract OCR is not available on the server. Install it (Debian/Ubuntu: "
-    "`apt install tesseract-ocr tesseract-ocr-nld tesseract-ocr-ukr`) or use the Docker image."
+    "`apt install tesseract-ocr tesseract-ocr-nld tesseract-ocr-ukr`) or use the standard "
+    "kenning-nlp Docker image (the `-slim` variant has no OCR)."
 )
 
 

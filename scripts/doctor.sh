@@ -91,12 +91,33 @@ if [ "$AUTHED" = 1 ]; then
 
   echo "nlp"
   get /nlp/health -K "$TMP/auth.conf"
+  # Data packs install in the background after the first start; KENNING_DOCTOR_WAIT=<seconds>
+  # waits until every data file is there (CI), otherwise missing data during an install is only
+  # a warning.
+  waited=0
+  while [ "$STATUS" = 200 ] && [ "$(field busy)" = true ] && grep -q '"data":{[^}]*false' "$TMP/body" &&
+    [ "$waited" -lt "${KENNING_DOCTOR_WAIT:-0}" ]; do
+    sleep 10
+    waited=$((waited + 10))
+    get /nlp/health -K "$TMP/auth.conf"
+  done
   if [ "$STATUS" = 200 ]; then
-    ok "language server $(field version)"
+    ok "language server $(field version), analyzer $(field analyzerVersion)"
+    BUSY=$(field busy)
     for d in dictionary sentences translation grammarExamples; do
       v=$(field "$d")
-      if [ "$v" = true ]; then ok "data: $d"; elif [ "$v" = false ]; then fail "data missing: $d (rebuild or re-pull the nlp image)"; fi
+      if [ "$v" = true ]; then
+        ok "data: $d"
+      elif [ "$v" = false ] && [ "$BUSY" = true ]; then
+        warn "data: $d is still being installed (data packs; see GET /nlp/admin/packs)"
+      elif [ "$v" = false ]; then
+        fail "data missing: $d (data packs: check KENNING_PACKS_URL and docker compose logs nlp)"
+      fi
     done
+    if grep -q '"activity":"error' "$TMP/body"; then
+      warn "a data pack failed: $(sed -nE 's/.*"activity":"(error[^"]*)".*/\1/p' "$TMP/body" | cut -c1-160)"
+    fi
+    if [ "$(field ocr)" = false ]; then warn "no OCR in this image (-slim): photo/scan import is off"; fi
   else
     fail "GET /nlp/health -> $STATUS (the language server needs up to a minute after start: docker compose logs nlp)"
   fi

@@ -270,7 +270,7 @@ export async function createRepository(
   async function loadTexts(ids: string[]): Promise<StoredText[]> {
     if (ids.length === 0) return [];
     const rows = await driver.exec(
-      `SELECT ${TEXT_COLS}, t.content, tt.tokens ${TEXT_FROM}
+      `SELECT ${TEXT_COLS}, t.content, tt.tokens, tt.analyzer_version ${TEXT_FROM}
         WHERE t.id IN (SELECT value FROM json_each(?))`,
       [JSON.stringify(ids)],
     );
@@ -281,6 +281,7 @@ export async function createRepository(
           ...textSummary(r),
           content: String(r["content"]),
           tokens: r["tokens"] === null ? null : json<AnalyzedToken[]>(r["tokens"]),
+          analyzerVersion: r["analyzer_version"] == null ? null : String(r["analyzer_version"]),
         },
       ]),
     );

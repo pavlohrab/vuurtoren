@@ -196,6 +196,10 @@ export const MIGRATIONS: readonly (readonly string[])[] = [
        created_at INTEGER NOT NULL
      )`,
   ],
+  [
+    // Analyzer version of the stored tokens (review A4): texts re-analyse when it changes.
+    `ALTER TABLE text_tokens ADD COLUMN analyzer_version TEXT`,
+  ],
 ];
 
 /** Latest schema version. */
