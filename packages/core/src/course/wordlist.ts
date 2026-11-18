@@ -123,11 +123,14 @@ export function reflow(par: string): string {
 
 /**
  * Reading texts of a unit: prose paragraphs inside its exercise/other blocks (kind "text") and
- * the transcript sections for the unit (kind "transcript").
+ * the transcript sections for the unit (kind "transcript"). When the unit has blocks of kind
+ * "text" (marked by hand, e.g. in a corrected course pack), exactly those are its reading texts.
  */
 export function readingTexts(blocks: readonly Block[], unit: Unit): ReadingText[] {
   const themeNumber = extractNumber(unit.title) ?? unit.n;
   const out: ReadingText[] = [];
+  const inUnit = (b: Block) => b.page >= unit.pages[0] && b.page <= unit.pages[1];
+  const explicit = blocks.some((b) => b.kind === "text" && inUnit(b));
   for (const b of blocks) {
     if (b.kind === "transcript") {
       const num = sectionUnitNumber(b.label);
@@ -146,7 +149,21 @@ export function readingTexts(blocks: readonly Block[], unit: Unit): ReadingText[
       }
       continue;
     }
-    if (b.page < unit.pages[0] || b.page > unit.pages[1]) continue;
+    if (!inUnit(b)) continue;
+    if (explicit) {
+      if (b.kind !== "text") continue;
+      out.push({
+        title: `${unit.title} · ${b.label ?? `blz. ${b.page}`}`,
+        text: b.text
+          .split(/\n{2,}/)
+          .map(reflow)
+          .filter(Boolean)
+          .join("\n\n"),
+        kind: "text",
+        page: b.page,
+      });
+      continue;
+    }
     if (b.kind !== "exercise" && b.kind !== "other") continue;
     const prose = b.text
       .split(/\n{2,}/)

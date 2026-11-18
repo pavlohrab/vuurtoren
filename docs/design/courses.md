@@ -45,7 +45,7 @@ Events: `CourseImported`, `UnitDefined`/`UnitEdited`, `BlocksExtracted`, `BookEx
    - **open tasks** ("Schrijf…", "Vertel…", speaking/listening without audio) → shown as book tasks with a notes field. Optional AI feedback later (M6).
    - **unknown** → shown as text with the OCR'd content (still useful while reading the book).
 5. **Word list** → unit vocabulary (lemma, article, gloss if present), matched to your Anki notes (exact headword, then lemma).
-6. **Reading texts and transcripts** → added to the Library, tagged with course + unit → the existing graded reader (clozes, glosses, Learn next, Words from this text).
+6. **Reading texts and transcripts** → added to the Library, tagged with course + unit → the existing graded reader (clozes, glosses, Learn next, Words from this text). Blocks of kind `text` (marked by hand, e.g. in a corrected course pack) are then the unit's reading texts, instead of the prose paragraphs found in its exercises; they keep their kind when the outline changes.
 7. **Grammar appendix** → grammar topics, linked to units by the topics their exercises practise. This is where M5 (Grammar) plugs in.
 
 ## Anki integration

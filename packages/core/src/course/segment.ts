@@ -196,8 +196,9 @@ export function assignKinds(blocks: readonly Block[], units: readonly Unit[]): B
             : null;
     // Grammar appendices hold exercises too ("Oefening 12"); transcripts and word lists do not.
     if (mapped === "grammar" && b.number !== undefined) return { ...b, kind: "exercise" };
-    return mapped
-      ? { ...b, kind: mapped }
-      : { ...b, kind: b.number !== undefined ? "exercise" : "other" };
+    if (mapped) return { ...b, kind: mapped };
+    // Reading texts marked by hand stay texts.
+    if (b.kind === "text") return b;
+    return { ...b, kind: b.number !== undefined ? "exercise" : "other" };
   });
 }

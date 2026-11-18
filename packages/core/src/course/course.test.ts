@@ -274,6 +274,24 @@ describe("word lists and texts", () => {
       ["Thema 1 Kennismaken · luisterteksten", "transcript", 40],
     ]);
     expect(texts[0]?.text).toBe(prose);
+
+    // Texts marked by hand replace the guesses, and survive an outline change.
+    const marked = assignKinds(
+      [
+        { page: 1, kind: "other", label: "Tekst", text: `Lees de tekst.\n\n${prose}` },
+        {
+          page: 2,
+          kind: "text",
+          label: "Op de markt",
+          text: "Anne gaat naar de\nmarkt.\n\nZe koopt fruit.",
+        },
+      ],
+      [unit],
+    );
+    expect(marked[1]?.kind).toBe("text");
+    expect(readingTexts(marked, unit).map((t) => [t.title, t.text])).toEqual([
+      ["Thema 1 Kennismaken · Op de markt", "Anne gaat naar de markt.\n\nZe koopt fruit."],
+    ]);
   });
 });
 
