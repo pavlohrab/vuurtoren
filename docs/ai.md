@@ -12,7 +12,9 @@ These buttons are hidden until a provider is configured.
 
 ## Providers
 
-Settings, AI. Pick a provider, check the model, paste your key, press **Test**.
+Settings, AI. Pick a provider, paste your key, pick a model, press **Test**.
+
+The **Model** field is a searchable list. Once a key is entered (or saved) Kenning asks the provider for its models (`GET {address}/models` for OpenAI-compatible providers, Gemini and LM Studio; `GET /v1/models` for Anthropic; Ollama's `/v1/models`, else `/api/tags`), drops non-chat models (embeddings, speech, images) and keeps the list for the session. When the provider cannot be asked from the browser (no key yet, CORS, offline) a short curated list per provider is shown instead. The preset's default is always first, marked **Recommended**, and any other name can be typed.
 
 | Provider          | Address (preset)                                          | Default model             | Notes                                                                             |
 | ----------------- | --------------------------------------------------------- | ------------------------- | --------------------------------------------------------------------------------- |
@@ -27,7 +29,7 @@ Settings, AI. Pick a provider, check the model, paste your key, press **Test**.
 | LM Studio (local) | `http://localhost:1234/v1`                                | `local-model`             | No key. Enable the local server and CORS.                                         |
 | Other             | your address                                              | your model                | Anything that speaks the OpenAI Chat Completions API.                             |
 
-Model names change often; the defaults are cheap and fast and you can type any model your provider offers.
+Model names change often; the defaults are cheap and fast and you can pick or type any model your provider offers.
 
 **Implementation choice.** `packages/ai` uses `fetch` directly (two small adapters: OpenAI-compatible and native Anthropic) instead of the Vercel AI SDK or the vendor SDKs. The app needs one JSON chat call, a cache breakpoint and good error messages; the SDKs would add hundreds of kB to the browser bundle and hide the exact request shape (headers, `cache_control`) that the tests pin down. Streaming is not implemented; replies are short.
 
@@ -117,26 +119,52 @@ On a course unit (Exercises tab, only when a provider is configured): **Generate
 
 To your provider only: the topic, the target words, the grammar topic's title and one-line summary, your vocabulary estimate and a list of 200-300 known lemmas (for unit exercises also the unit's title and up to 12 of its words; never the book's text). No texts from your Library, no Anki content, no keys or identifiers. The generated text and sentences are stored in your data (events), so they are included in backups and sync.
 
-## Claude subscription (Pro / Max): use MCP
+## Use Kenning from Claude Code
 
-Anthropic does not allow third-party apps to use claude.ai logins or route requests through subscription credentials ([ADR 0005](adr/0005-no-claude-oauth-mcp-instead.md)). Kenning never asks for or stores them. Subscribers have two legitimate options:
+Anthropic does not allow third-party apps to use claude.ai logins or route requests through subscription credentials ([ADR 0005](adr/0005-no-claude-oauth-mcp-instead.md)). Kenning never asks for or stores them. Instead your own Claude Code (or Claude Desktop) runs under your plan and calls Kenning's tools over MCP. No API key is needed.
 
-1. An **API key** from console.anthropic.com (separate billing; check whether your plan includes API credits).
-2. The **MCP server** below: your own Claude Desktop or Claude Code drives the conversation under your plan and calls Kenning's tools.
+This needs Kenning in **server mode** (the compose stack with the `api` service): Claude has to reach your data somewhere. In browser storage mode your data lives in one browser only; Settings → AI says so.
 
-## MCP server (`apps/mcp`)
+**Connect (once per computer):**
 
-Needs the server storage mode (the compose stack's `api` service), because the MCP process reads your data over `/api/rpc`.
+1. Open Kenning, **Settings → AI → Use with Claude Code**, press **Generate token**. The token is shown once; only its hash is stored (in the auth database, never in your data or backups).
+2. Copy the command shown and run it in a terminal:
 
-Tools:
+   ```sh
+   claude mcp add --transport http kenning https://kenning.example.com/api/mcp \
+     --header "Authorization: Bearer kmcp_..."
+   ```
 
-| Tool              | Purpose                                                                |
-| ----------------- | ---------------------------------------------------------------------- |
-| `get_known_words` | `lang`, `limit`, `query`, `state`: words you know (or are learning).   |
-| `check_coverage`  | `text`: share of words you know and the unknown words (target 95-98%). |
-| `list_texts`      | Your library.                                                          |
-| `get_text`        | `id`: one text (truncated at 20,000 characters).                       |
-| `add_to_anki`     | `word`, `gloss`, `sentence`: a new card in the target deck.            |
+   For Claude Desktop, copy the JSON shown instead into `claude_desktop_config.json` (it uses the `mcp-remote` bridge).
+
+3. In Claude Code, `/mcp` lists `kenning` as connected. Then ask, for example:
+   - "Write me an A2 story using my words to learn about cycling and save it to Kenning."
+   - "Quiz me on Thema 3 words."
+   - "Explain the grammar of this sentence: …"
+
+An MCP token opens `/api/mcp` and nothing else (not the app, not `/api/rpc`); revoke it in the same card. The server's `KENNING_TOKEN` also works for `/api/mcp`. With sign-in off (a server on your own computer) no token is needed and the card shows the command without one.
+
+**Tools** (shared by `/api/mcp` and the stdio server; implementation in `packages/mcp-tools`):
+
+| Tool                     | Purpose                                                                                                                                                                                                                                                                              |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `get_known_words`        | `limit`, `query`, `state`: words you know (or are learning, have seen).                                                                                                                                                                                                              |
+| `get_words_to_learn`     | `textId?`, `limit?`: the reader's amber "to learn" words of your recent (opened) texts, each with a sentence.                                                                                                                                                                        |
+| `check_coverage`         | `text`: share of words you know and the unknown words (target 95-98%). Needs the language server (`KENNING_NLP_URL` on the api).                                                                                                                                                     |
+| `list_texts`, `get_text` | Your Library; one text (truncated at 20,000 characters).                                                                                                                                                                                                                             |
+| `list_courses`           | Your courses and their units.                                                                                                                                                                                                                                                        |
+| `get_unit`               | `unit` (number or title, e.g. "Thema 3"), `courseId?`, `includeTexts?`: words with your state, grammar topics, grammar notes, reading texts.                                                                                                                                         |
+| `get_grammar_topic`      | `id?`, `query?`: Kenning's grammar pages (list, or one page's explanation) so Claude explains grammar the way the app does.                                                                                                                                                          |
+| `save_text`              | `title`, `content`, `topic?`, `targets?`, `grammarTopic?`: saves a story, dialogue or exercise to the Library (source "ai", provider `claude-code`), analysed like any import.                                                                                                       |
+| `suggest_words_for_anki` | `words[]` (`word`, `gloss?`, `sentence?`), `note?`: queues words under **Words → Suggested by Claude**. Nothing is written to Anki ([ADR 0007](adr/0007-anki-write-actions.md)): you press Add (the normal AddToAnki) or Dismiss. Known words and words already in Anki are skipped. |
+
+The server cannot reach your AnkiConnect (it runs on your computer, not the server), so `/api/mcp` has no tool that writes to Anki.
+
+**nginx.** `/api/mcp` has its own location behind the same sign-in gate: the gate passes `X-Original-URI`, and `/api/auth/check` accepts MCP tokens only for `/api/mcp`. Answers are not buffered (`proxy_buffering off`), so streamed responses pass straight through.
+
+## Stdio MCP server (`apps/mcp`)
+
+For a Kenning server on your own computer, or when Claude should also add cards to your local Anki: the stdio server offers the same tools plus `add_to_anki` (`word`, `gloss`, `sentence`: a card in the profile's MCP deck right away; Claude should use it only when you ask for that word). It reads your data over `/api/rpc`, so it needs `KENNING_TOKEN` (not an MCP token) when sign-in is on.
 
 Build it once: `pnpm install && pnpm build`. Environment:
 

@@ -111,7 +111,8 @@ every device.
 | `KENNING_COOKIE_SECURE`   | `1`                 | Set `0` only if you open the app over plain `http://` from another device (LAN). `http://localhost` works with `1` in Chrome and Firefox.           |
 | `KENNING_TRUST_CF`        | `0`                 | `1` behind a Cloudflare Tunnel: the sign-in rate limit uses the visitor's IP from `CF-Connecting-IP`. Keep `0` otherwise (the header is forgeable). |
 | `KENNING_ALLOWED_ORIGINS` |                     | Extra origins allowed to change data, comma-separated. Only needed if a proxy in front rewrites the `Host` header.                                  |
-| `KENNING_AUTH_DB`         | `/data/auth.sqlite` | Session database, separate from your data: backups never contain or replace it.                                                                     |
+| `KENNING_AUTH_DB`         | `/data/auth.sqlite` | Session database (and Claude Code MCP token hashes), separate from your data: backups never contain or replace it.                                  |
+| `KENNING_NLP_URL` (api)   | `http://nlp:8000`   | Language server the api uses for the Claude Code endpoint (`/api/mcp`: coverage checks, analysing saved stories). See docs/ai.md.                   |
 | `KENNING_NLP_AUTH` (web)  | `on`                | The web container lets `/nlp/` through only for signed-in requests. Set `off` only when you run **without** the `api` service.                      |
 
 Protection in short: wrong attempts from one address wait 1 s, 2 s, 4 s, ... (up to 15 minutes)
