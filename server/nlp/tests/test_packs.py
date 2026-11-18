@@ -141,3 +141,18 @@ def test_shipped_manifest_lists_the_downloadable_packs() -> None:
     manifest = json.loads((Path(packs.__file__).with_name("packs.json")).read_text())
     assert set(manifest["packs"]) == {"dictionary-nl", "sentences-nl", "mt-nl-en"}
     assert set(manifest["packs"]) | {"grammar-examples-nl"} == set(packs.SPECS)
+
+
+def test_download_progress_is_reported(env: dict[str, Path]) -> None:
+    items = packs.status()
+    assert items["dictionary-nl"]["size"] > 0
+    assert "received" not in items["dictionary-nl"]
+    packs._set("dictionary-nl", "downloading")
+    packs._progress("dictionary-nl", 1234)
+    try:
+        entry = packs.status()["dictionary-nl"]
+        assert entry["activity"] == "downloading"
+        assert entry["received"] == 1234
+    finally:
+        packs._set("dictionary-nl", None)
+    assert "received" not in packs.status()["dictionary-nl"]

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import secrets
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from functools import lru_cache
@@ -81,6 +82,23 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
 
 
 app = FastAPI(title="Kenning NLP", version=__version__, lifespan=lifespan)
+
+TOKEN_HEADER = "x-kenning-token"
+
+
+@app.middleware("http")
+async def require_token(request: Request, call_next):  # type: ignore[no-untyped-def]
+    """Desktop sidecar (D4): with ``$KENNING_NLP_TOKEN`` set, every request must carry it.
+
+    The desktop app starts this server on a random localhost port and sends the token from its
+    own process, so other programs and web pages on this computer cannot use the server.
+    """
+    token = os.environ.get("KENNING_NLP_TOKEN")
+    if token and not secrets.compare_digest(request.headers.get(TOKEN_HEADER, ""), token):
+        return JSONResponse({"detail": "Missing or wrong token."}, status_code=401)
+    return await call_next(request)
+
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=parse_origins(os.environ.get("KENNING_CORS_ORIGINS", "http://localhost:5173")),

@@ -154,6 +154,8 @@ def _grammar_state() -> str:
 _lock = threading.Lock()
 _activity: dict[str, str] = {}
 """Pack name -> what is happening right now ("downloading", "building", "error: ...")."""
+_received: dict[str, int] = {}
+"""Pack name -> bytes of the archive fetched so far (while ``downloading``)."""
 _thread: threading.Thread | None = None
 _reset_hooks: list[Callable[[], None]] = []
 
@@ -180,19 +182,29 @@ def status() -> dict[str, dict[str, Any]]:
             else:
                 state = "ok" if mark.get("version") == want else "outdated"
             entry = {"state": state, "wanted": want, "installed": (mark or {}).get("version")}
+        if not spec.derived and name in wanted:
+            entry["size"] = int(wanted[name].get("size", 0))
         with _lock:
             if name in _activity:
                 entry["activity"] = _activity[name]
+            if name in _received:
+                entry["received"] = _received[name]
         out[name] = entry
     return out
 
 
 def _set(name: str, activity: str | None) -> None:
     with _lock:
+        _received.pop(name, None)
         if activity is None:
             _activity.pop(name, None)
         else:
             _activity[name] = activity
+
+
+def _progress(name: str, received: int) -> None:
+    with _lock:
+        _received[name] = received
 
 
 def _sha256(path: Path) -> str:
@@ -234,6 +246,7 @@ def _fetch(name: str, entry: dict[str, Any], dest: Path) -> str | None:
                 if got > limit:
                     raise ValueError(f"{file} is larger than the manifest says ({limit} bytes)")
                 fh.write(chunk)
+                _progress(name, got)
         source = "download"
     size = dest.stat().st_size
     sha = _sha256(dest)
