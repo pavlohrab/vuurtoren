@@ -222,6 +222,61 @@ describe("http repository", () => {
   });
 });
 
+describe("cover blobs and shelves (Library)", () => {
+  it("stores and serves blobs behind auth, capped, and keeps them through a backup", async () => {
+    await start("s3cret");
+    const repo = await createHttpRepository(base, "s3cret");
+    const bytes = new Uint8Array([0x52, 0x49, 0x46, 0x46, 5, 6, 7]);
+    const id = await repo.putBlob(bytes, "image/webp");
+    expect(await repo.getBlob(id)).toEqual({ type: "image/webp", bytes });
+    expect(await repo.getBlob("f".repeat(64))).toBeNull();
+
+    // Auth-gated, typed and capped.
+    expect((await fetch(`${base}/api/blobs/${id}`)).status).toBe(401);
+    const post = (body: Uint8Array, type: string) =>
+      fetch(`${base}/api/blobs`, {
+        method: "POST",
+        headers: { authorization: "Bearer s3cret", "content-type": type },
+        body: Buffer.from(body),
+      });
+    expect((await post(bytes, "text/html")).status).toBe(400);
+    expect((await post(new Uint8Array(2 * 1024 * 1024 + 1), "image/webp")).status).toBe(413);
+    const served = await fetch(`${base}/api/blobs/${id}`, {
+      headers: { authorization: "Bearer s3cret" },
+    });
+    expect(served.headers.get("cache-control")).toMatch(/immutable/);
+
+    // Text details and shelves go through the RPC allow-list.
+    await repo.append({
+      type: "TextImported",
+      textId: "t1",
+      title: "Old",
+      lang: "nl",
+      source: { kind: "paste" },
+      content: "Hallo wereld.",
+    });
+    await repo.append({ type: "TextMetaUpdated", textId: "t1", patch: { title: "New" } });
+    await repo.append({ type: "TextCoverSet", textId: "t1", blobId: id });
+    await repo.append({ type: "ShelfCreated", shelfId: "s1", name: "Stories" });
+    await repo.append({ type: "ShelfTextAdded", shelfId: "s1", textIds: ["t1"] });
+    expect((await repo.listTexts())[0]).toMatchObject({ title: "New", coverId: id });
+    expect((await repo.shelves()).map((s) => [s.name, s.textIds])).toEqual([["Stories", ["t1"]]]);
+
+    // Backup round trip into a fresh server carries the cover.
+    const backup = await createHttpAdmin(base, "s3cret").exportBackup();
+    await new Promise((r) => server.close(r));
+    await store.close();
+    rmSync(dir, { recursive: true });
+    dir = mkdtempSync(join(tmpdir(), "kenning-api-"));
+    await start();
+    await createHttpAdmin(base).importBackup(backup);
+    const b = await createHttpRepository(base);
+    expect((await b.listTexts())[0]).toMatchObject({ title: "New", coverId: id });
+    expect(await b.getBlob(id)).toEqual({ type: "image/webp", bytes });
+    expect(await b.shelves()).toHaveLength(1);
+  });
+});
+
 describe("export / import", () => {
   beforeEach(() => start());
 

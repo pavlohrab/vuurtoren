@@ -177,6 +177,25 @@ export const MIGRATIONS: readonly (readonly string[])[] = [
        PRIMARY KEY (lang, key)
      )`,
   ],
+  [
+    // Learner-edited text details and cover (TextMetaUpdated / TextCoverSet), LWW per field.
+    `CREATE TABLE text_meta (
+       text_id TEXT PRIMARY KEY,
+       title TEXT,
+       author TEXT,
+       note TEXT,
+       level TEXT,
+       cover TEXT,
+       hlcs TEXT NOT NULL
+     )`,
+    // Cover images, content-addressed. Not a projection: rebuild keeps them; backups carry them.
+    `CREATE TABLE blobs (
+       id TEXT PRIMARY KEY,
+       type TEXT NOT NULL,
+       bytes BLOB NOT NULL,
+       created_at INTEGER NOT NULL
+     )`,
+  ],
 ];
 
 /** Latest schema version. */
@@ -185,6 +204,7 @@ export const SCHEMA_VERSION = MIGRATIONS.length;
 /** Projection tables, cleared (in this order) by `rebuild()`. `meta` and `events` are kept. */
 export const PROJECTION_TABLES = [
   "texts",
+  "text_meta",
   "text_tokens",
   "text_grammar",
   "anki_words",

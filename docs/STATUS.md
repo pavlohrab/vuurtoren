@@ -139,6 +139,14 @@ pnpm dev            # web app on http://localhost:5173 (proxies /nlp and /anki)
 - **Motion** refined within the budget (see [design-system.md](design/design-system.md#motion-budget)); the page grid no longer animates when the inspector opens, so the reader text never reflows in motion.
 - **Cleanup**: shared `format.ts` (`pct`, `plural`, `formatBytes`), unused exports removed in screens/theme/exam, quiet test output (jsdom `scrollTo` and download navigation stubbed).
 
+### Library bookshelf (branch `library`, 2026-11-18)
+
+- **Edit details:** title, author, source note and level from a cover's "…" menu (and `updateTextMeta` for the reader). `TextMetaUpdated` event, last write wins per field by HLC, projected into `text_meta`; Home, Continue reading, the reader and search use the edited title ("Use imported title" restores it).
+- **Covers:** PDF and photo imports get their first page / the photo as a cover (NLP `POST /thumbnail`, 600×750 WebP; best effort). "Change cover…" takes your own photo with a small 4:5 cropper (drag/arrow keys, zoom), saved as a 600px WebP; "Use plain cover" goes back to the typographic one. `TextCoverSet {textId, blobId|null}`. Images are content-addressed rows of a `blobs` table inside the database (browser: the OPFS file; server: `POST /api/blobs`, `GET /api/blobs/:id`, auth-gated, 2 MB cap), so backups carry them in both modes and `rebuild` keeps them.
+- **Shelves:** your own shelves (create, rename, delete; add/remove from the cover menu, by multi-select, or by dragging covers onto a shelf on desktop; a text can be on several) plus automatic ones: Reading now, To read, Finished, and by source (Course books, AI stories, Web, Photos & PDFs, Talk). `ShelfCreated/Renamed/Deleted`, `ShelfTextAdded/Removed`, folded from the log in HLC order (`repo.shelves()`, on the RPC allow-list).
+- **Layout:** sideways-scrolling shelf rows with snap and a hairline shelf board, one tab stop per row and arrow keys inside it; an "All texts" grid; search (title, author, note, level; accent-blind); sort by recent, title or coverage. `?demo` seeds three shelves and three image covers.
+- Not done: og:image covers for web pages (needs a server-side image fetch), course book page covers (pages are not stored), image covers on Home, orphaned blob clean-up.
+
 ### Review fixes applied
 
 - **NLP:** lemma precision, UTF-16 offsets, request size limits, one shared key-normalisation rule (Python = TypeScript), particle and R-pronoun false positives.

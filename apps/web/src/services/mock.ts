@@ -18,6 +18,7 @@ import { createMockCourses } from "./mockCourses.js";
 import { applySampleMorph } from "./mockMorph.js";
 import { createMockAI } from "./mockAI.js";
 import { createMockExam, demoAttempts } from "./mockExam.js";
+import { createMockLibrary } from "./mockLibrary.js";
 import { createMockProfile } from "./mockProfile.js";
 import { createMockGrammar } from "./mockGrammar.js";
 import { createMockPractice } from "./mockPractice.js";
@@ -219,6 +220,8 @@ export function createMockServices(
     latencyMs?: number;
     /** Start as if Anki was synced an hour ago (the ?demo app). */
     synced?: boolean;
+    /** Seed more texts, shelves and image covers for the bookshelf (the ?demo app). */
+    demoLibrary?: boolean;
   } = {},
 ): AppServices {
   const latency = options.latencyMs ?? 40;
@@ -508,6 +511,12 @@ export function createMockServices(
   };
 
   const practice = createMockPractice(wait);
+  const library = createMockLibrary(wait, {
+    texts,
+    addText,
+    lastSegments,
+    demo: options.demoLibrary === true,
+  });
   /** What was done in this demo session, for the Home week strip. */
   const sessionActivity: ActivityEntry[] = [];
   const ai = createMockAI(wait, { saveText: (title, content) => addText(title, content, "ai") });
@@ -525,6 +534,7 @@ export function createMockServices(
     ...ai,
     ...createMockExam(wait, options.synced ? demoAttempts() : []),
     ...grammar,
+    ...library,
     async listTexts() {
       await wait();
       return [...texts.values()].sort((a, b) => b.createdAt - a.createdAt).map(listItem);

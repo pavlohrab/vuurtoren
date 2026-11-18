@@ -84,3 +84,27 @@ def test_too_large_upload_413(monkeypatch) -> None:
 
     monkeypatch.setattr(app_module, "read_upload", small_limit)
     assert post_pdf(b"%PDF-" + b"0" * 2048).status_code == 413
+
+
+def test_thumbnail_of_first_pdf_page_is_a_4_5_webp() -> None:
+    from PIL import Image
+
+    pdf = make_pdf([["Hoofdstuk 1", "Een korte tekst."], ["Tweede pagina"]])
+    r = client.post("/thumbnail", files={"file": ("a.pdf", pdf, "application/pdf")})
+    assert r.status_code == 200
+    assert r.headers["content-type"] == "image/webp"
+    img = Image.open(io.BytesIO(r.content))
+    assert img.format == "WEBP"
+    assert img.size == (600, 750)
+
+
+def test_thumbnail_of_a_photo_and_of_junk() -> None:
+    from PIL import Image
+
+    buf = io.BytesIO()
+    Image.new("RGB", (1200, 800), (200, 120, 40)).save(buf, "JPEG")
+    r = client.post("/thumbnail", files={"file": ("p.jpg", buf.getvalue(), "image/jpeg")})
+    assert r.status_code == 200
+    assert Image.open(io.BytesIO(r.content)).size == (600, 750)
+    bad = client.post("/thumbnail", files={"file": ("x.bin", b"not an image", "text/plain")})
+    assert bad.status_code == 415

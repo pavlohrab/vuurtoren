@@ -249,6 +249,30 @@ export async function createHttpRepository(
     generatedSentences: (lang) => call("generatedSentences", lang),
     examAttempts: (lang) => call("examAttempts", lang),
     suggestedWords: (lang) => call("suggestedWords", lang),
+    shelves: () => call("shelves"),
+    // Cover images travel as raw bytes over /api/blobs, not as JSON.
+    async putBlob(bytes, type) {
+      const res = await fetchImpl(`${baseUrl}/api/blobs`, {
+        method: "POST",
+        headers: {
+          "content-type": type,
+          "x-kenning": "1",
+          ...(token ? { authorization: `Bearer ${token}` } : {}),
+        },
+        body: bytes as BodyInit,
+      });
+      if (!res.ok) throw await failure(res);
+      return ((await res.json()) as { id: string }).id;
+    },
+    async getBlob(id) {
+      const res = await fetchImpl(`${baseUrl}/api/blobs/${encodeURIComponent(id)}`, {
+        headers: token ? { authorization: `Bearer ${token}` } : {},
+      });
+      if (res.status === 404) return null;
+      if (!res.ok) throw await failure(res);
+      const type = (res.headers.get("content-type") ?? "application/octet-stream").split(";")[0]!;
+      return { type, bytes: new Uint8Array(await res.arrayBuffer()) };
+    },
     // The server serialises every call already; nothing to lock on this side.
     exclusive: (fn) => fn(),
     close: () => Promise.resolve(),

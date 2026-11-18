@@ -43,7 +43,7 @@ describe("Create a story", () => {
     await history.push("/library");
     await waitFor(() => {
       const card = screen
-        .getAllByRole("article")
+        .getAllByRole("listitem")
         .find((a) => within(a).queryByText(MOCK_STORY.title));
       expect(card && within(card).getByText("AI story")).toBeInTheDocument();
     });
@@ -76,7 +76,7 @@ describe("Create a story", () => {
         label: "Anthropic",
       }),
     });
-    await screen.findAllByRole("article");
+    await screen.findAllByRole("listitem");
     // the status query has settled once the Library's cards are shown
     await new Promise((r) => setTimeout(r, 20));
     expect(screen.queryByRole("button", { name: /Create a story/ })).not.toBeInTheDocument();

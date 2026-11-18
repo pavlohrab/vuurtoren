@@ -101,7 +101,7 @@ describe("ReaderPage", () => {
 
     // Leaving and coming back resumes at the segment after the finished one.
     await act(async () => history.push("/library"));
-    await screen.findByText("Op de markt");
+    await screen.findAllByText("Op de markt");
     await act(async () => history.push("/read/t-utrecht"));
     expect(await screen.findByText("Segment 2 of 2")).toBeInTheDocument();
   });

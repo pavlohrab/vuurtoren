@@ -132,6 +132,21 @@ describe("web driver message protocol", () => {
       expect(await repoB.eventCount()).toBe(1);
     });
 
+    it("keeps cover images (blobs) through the worker and a backup round trip", async () => {
+      const a = await createWorkerDriver(fakeWorker(true), "a");
+      const repoA = await createRepository(a);
+      const bytes = new Uint8Array([0x52, 0x49, 0x46, 0x46, 1, 2, 3]);
+      const id = await repoA.putBlob(bytes, "image/webp");
+      await repoA.append({ type: "TextCoverSet", textId: "t", blobId: id });
+      expect(await repoA.getBlob(id)).toEqual({ type: "image/webp", bytes });
+      const file = await repoA.exclusive(() => a.exportFile());
+
+      const b = await createWorkerDriver(fakeWorker(true), "b");
+      await b.importFile(file);
+      const repoB = await createRepository(b);
+      expect(await repoB.getBlob(id)).toEqual({ type: "image/webp", bytes });
+    });
+
     it("rejects a non-SQLite file and keeps the current data", async () => {
       const d = await createWorkerDriver(fakeWorker(true), "x");
       const repo = await createRepository(d);
