@@ -10,7 +10,7 @@ function isTheme(v: unknown): v is ThemeChoice {
 }
 
 /** Read the persisted theme; falls back to "system" if storage is unavailable. */
-export function readTheme(): ThemeChoice {
+function readTheme(): ThemeChoice {
   try {
     const v = localStorage.getItem(KEY);
     return isTheme(v) ? v : "system";
@@ -21,7 +21,7 @@ export function readTheme(): ThemeChoice {
 }
 
 /** Apply a theme to <html>; "system" removes the override so prefers-color-scheme decides. */
-export function applyTheme(theme: ThemeChoice): void {
+function applyTheme(theme: ThemeChoice): void {
   const root = document.documentElement;
   if (theme === "system") delete root.dataset.theme;
   else root.dataset.theme = theme;

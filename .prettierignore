@@ -5,3 +5,5 @@ server/
 docs/roadmap.md
 .claude
 packages/core/src/reading/fixtures/
+# generated (pnpm --filter @app/content generate)
+packages/content/src/generated/

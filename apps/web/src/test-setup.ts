@@ -11,6 +11,13 @@ globalThis.ResizeObserver ??= class {
   disconnect() {}
 };
 Element.prototype.scrollIntoView ??= () => {};
+// jsdom has window.scrollTo but only logs "Not implemented" (route changes scroll to the top).
+window.scrollTo = (() => {}) as typeof window.scrollTo;
+// Saving a file clicks an <a download>; jsdom would try (and fail, noisily) to navigate.
+const anchorClick = HTMLAnchorElement.prototype.click;
+HTMLAnchorElement.prototype.click = function (this: HTMLAnchorElement) {
+  if (!this.hasAttribute("download")) anchorClick.call(this);
+};
 window.matchMedia ??= ((query: string) => ({
   matches: false,
   media: query,

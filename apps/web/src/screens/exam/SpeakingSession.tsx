@@ -17,7 +17,7 @@ import { formatClock, useExamClock } from "../../exam/timer.js";
 import { GrammarLinks, ScoreCard, useRecordAttempt } from "./shared.js";
 import { FeedbackView } from "./WritingSession.js";
 
-export function speakingChecklist(p: SpeakingPrompt): string[] {
+function speakingChecklist(p: SpeakingPrompt): string[] {
   return [...p.points, ...examBank().spreken.rubric];
 }
 

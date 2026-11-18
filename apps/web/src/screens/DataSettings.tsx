@@ -2,20 +2,8 @@ import { useQuery } from "@tanstack/react-query";
 import { useRef, useState } from "react";
 import { backupFilename } from "@app/db";
 import { Button, Dialog, Skeleton, useToast } from "@app/ui";
+import { formatBytes } from "../format.js";
 import { useAppInfo } from "../shell/AppInfo.js";
-
-/** "12.3 MB" style size. */
-export function formatBytes(n: number): string {
-  if (n < 1024) return `${n} B`;
-  const units = ["KB", "MB", "GB"];
-  let v = n / 1024;
-  let i = 0;
-  while (v >= 1024 && i < units.length - 1) {
-    v /= 1024;
-    i++;
-  }
-  return `${v.toFixed(v < 10 ? 1 : 0)} ${units[i]}`;
-}
 
 /** Save bytes as a file through a temporary link. */
 export function downloadBytes(bytes: Uint8Array, filename: string): void {

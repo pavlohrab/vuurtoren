@@ -77,7 +77,7 @@ Never use bright highlighter blocks. Violet is never a word state: it means "you
 
 ### Motion budget
 
-CSS only, `transform` and `opacity` (plus the SVG ring's dash offset), 150–300 ms, nothing loops (the busy spinner and loading skeleton are the only exceptions), and everything is off under `prefers-reduced-motion`. Tokens: `--dur-fast` 150ms, `--dur` 200ms, `--dur-slow` 300ms, `--dur-fill` 700ms (rings and bars filling once), `--ease-out`, `--ease-in-out`, `--ease-pop`.
+CSS only, `transform` and `opacity` (plus the SVG ring's dash offset), 150–300 ms, nothing loops (the busy spinner and loading skeleton are the only exceptions), and everything is off under `prefers-reduced-motion`. Use the tokens, never raw values: `--dur-fast` 150ms, `--dur` 200ms, `--dur-slow` 300ms, `--dur-fill` 700ms (rings and bars filling once), `--ease-out`, `--ease-in-out`, `--ease-pop`.
 
 | Moment                         | Motion                                                                                                 |
 | ------------------------------ | ------------------------------------------------------------------------------------------------------ |
@@ -86,7 +86,12 @@ CSS only, `transform` and `opacity` (plus the SVG ring's dash offset), 150–300
 | Word state changes (inspector) | the state chip pops (scale .88 → 1), each state its own keyframe so a change restarts it               |
 | Library card hover             | lifts 2px with a soft shadow (pointer devices only)                                                    |
 | Progress rings and bars        | fill once on mount (Home ring, coverage bars, Continue reading bar)                                    |
-| Dialogs, toasts, More sheet    | fade + 6px rise                                                                                        |
+| Dialogs, toasts, More sheet    | fade + 6px rise in; dialogs and the palette fade out (`--dur-fast`)                                    |
+| Popovers, menus, tooltips      | scale-fade (.96 → 1) from the side they open on (`--dur-fast`)                                         |
+| Inspector                      | content fades in with an 8px slide (bottom sheet: 12px rise); the page grid itself never animates      |
+| Library covers, Words rows     | appear once in a short cascade (30 ms steps, at most 150 ms); rows fade only, so filters never jump    |
+| Buttons, toggle chips          | 1px press on `:active`                                                                                 |
+| Loading skeleton               | invisible for the first 150 ms (fast loads never flash), then a soft 1.2 s sweep while loading         |
 
 The reader stays calm: no decorative motion while reading, only the one-time to-learn line.
 

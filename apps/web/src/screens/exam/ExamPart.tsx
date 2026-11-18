@@ -28,7 +28,7 @@ import { McSession } from "./McSession.js";
 import { SpeakingSession } from "./SpeakingSession.js";
 import { WritingSession } from "./WritingSession.js";
 import { useExamAttempts } from "./Exam.js";
-import { pct } from "./shared.js";
+import { pct } from "../../format.js";
 import "./exam.css";
 
 const MODE_LABEL = { exam: "Mock exam", practice: "Practice" } as const;

@@ -29,7 +29,7 @@ const PROMPT_LEMMAS = 300;
 
 type Source = "learn-now" | "unit" | "grammar" | "own";
 
-export interface StoryPreset {
+interface StoryPreset {
   topic?: string;
   /** Grammar topic page id: the story features it. */
   grammarTopic?: string;

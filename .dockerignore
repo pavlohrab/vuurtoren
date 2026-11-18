@@ -1,10 +1,18 @@
-node_modules/
+# Build context for deploy/web.Dockerfile and server/api/Dockerfile (the repo root).
+# server/nlp has its own context and .dockerignore.
 **/node_modules/
 **/dist/
-.turbo/
+**/.turbo/
+**/coverage/
 .git/
-**/.venv/
-server/nlp/data/
+.github/
+.claude/
+docs/
+reports/
+server/nlp/
+**/*.tsbuildinfo
 **/__pycache__/
+**/.venv/
 .env
 .env.*
+**/.env

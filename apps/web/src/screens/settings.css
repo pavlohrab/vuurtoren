@@ -213,3 +213,74 @@
   padding-top: var(--s-5);
   border-top: 1px solid var(--hairline);
 }
+/* Advanced > Server status: one hairline row per check, a dot for its state. */
+.server-status {
+  margin-top: var(--s-4);
+  padding-top: var(--s-5);
+  border-top: 1px solid var(--hairline);
+}
+.server-status-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-3);
+}
+.server-status-head h3 {
+  font-size: 15px;
+  margin: 0;
+}
+.server-status-actions {
+  display: flex;
+  gap: var(--s-1);
+}
+.server-status-list {
+  margin: var(--s-3) 0 0;
+  border-top: 1px solid var(--hairline);
+}
+.server-status-row {
+  display: grid;
+  grid-template-columns: minmax(140px, 180px) minmax(0, 1fr);
+  gap: var(--s-3);
+  padding: 10px var(--s-1);
+  border-bottom: 1px solid var(--hairline);
+  font-size: 14px;
+}
+.server-status-row dt {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 500;
+}
+.server-status-row dd {
+  margin: 0;
+  color: var(--ink-muted);
+  overflow-wrap: anywhere;
+}
+.server-status-dot {
+  width: 8px;
+  height: 8px;
+  flex: none;
+  border-radius: 999px;
+  background: var(--line);
+}
+.server-status-row[data-tone="ok"] .server-status-dot {
+  background: var(--known);
+}
+.server-status-row[data-tone="warn"] .server-status-dot {
+  background: var(--accent);
+}
+.server-status-row[data-tone="error"] .server-status-dot {
+  background: var(--danger);
+}
+.server-status-row[data-tone="error"] dd {
+  color: var(--danger);
+}
+@media (max-width: 599px) {
+  .server-status-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
+  }
+  .server-status-row dd {
+    padding-left: 18px;
+  }
+}

@@ -1,6 +1,9 @@
 # syntax=docker/dockerfile:1
 # Kenning NLP service. Build context: server/nlp (see deploy/compose.yml).
 #
+# Base images are pinned to a patch release (all stages share it: the venv is copied between
+# them); .github/dependabot.yml proposes updates.
+#
 # The Wiktionary dictionary is built AT IMAGE BUILD TIME in a throwaway stage: the 250 MB
 # Kaikki download never reaches the final image, only the ~35 MB SQLite file does, and a
 # self-hoster gets working /gloss with a plain `docker compose up --build`. The builder uses
@@ -20,7 +23,7 @@
 # ~30 MB of Tatoeba exports never reach the final image, only the ~50 MB SQLite file.
 
 # ---- Stage 1: dictionary ---------------------------------------------------------------
-FROM python:3.12-slim AS dictionary
+FROM python:3.12.16-slim AS dictionary
 ARG KAIKKI_URL=https://kaikki.org/dictionary/Dutch/kaikki.org-dictionary-Dutch.jsonl
 # Defaults ("-") mean: use the digest and size pinned in scripts/build_dictionary.py.
 ARG KAIKKI_SHA256=-
@@ -42,14 +45,15 @@ RUN set -eu; \
 # OPUS-MT nl->en (CTranslate2, ~160 MB) fetched at build time like the dictionary: the script is
 # stdlib-only, pins a commit and verifies SHA-256, so the image works offline with a plain
 # `docker compose up --build` and no first-request download or writable volume is needed.
-FROM python:3.12-slim AS mtmodel
+FROM python:3.12.16-slim AS mtmodel
 WORKDIR /build
 COPY scripts/fetch_mt_model.py scripts/
 RUN python scripts/fetch_mt_model.py --output /out/mt-nl-en
 
 # ---- Stage 3: Python environment ---------------------------------------------------------
-FROM python:3.12-slim AS venv
-RUN pip install --no-cache-dir uv
+FROM python:3.12.16-slim AS venv
+# Pinned uv binary from its official image (no pip, nothing extra in the layer).
+COPY --from=ghcr.io/astral-sh/uv:0.13.9 /uv /usr/local/bin/uv
 ENV UV_COMPILE_BYTECODE=1 \
     UV_LINK_MODE=copy \
     UV_PROJECT_ENVIRONMENT=/opt/venv \
@@ -93,7 +97,7 @@ COPY scripts/build_grammar_examples.py scripts/
 RUN python scripts/build_grammar_examples.py
 
 # ---- Stage 6: runtime ------------------------------------------------------------------
-FROM python:3.12-slim
+FROM python:3.12.16-slim
 
 # Tesseract + Dutch/Ukrainian (English is a dependency of the base package) traineddata.
 RUN apt-get update \

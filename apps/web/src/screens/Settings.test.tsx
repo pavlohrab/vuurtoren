@@ -1,7 +1,7 @@
 import { createMemoryHistory } from "@tanstack/react-router";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { App } from "../App.js";
 import { createMockServices } from "../services/mock.js";
 import type { AppServices, Settings } from "../services/types.js";
@@ -61,5 +61,35 @@ describe("Settings", () => {
       timeout: 2000,
     });
     expect(screen.getByLabelText("AnkiConnect address")).toBeInTheDocument();
+  });
+
+  describe("server status", () => {
+    afterEach(() => vi.unstubAllGlobals());
+
+    it("shows the version and what the language server is missing", async () => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async (url: string) =>
+          String(url).endsWith("/health")
+            ? new Response(
+                JSON.stringify({
+                  status: "ok",
+                  version: "9.9.9",
+                  data: { dictionary: true, sentences: false, translation: true },
+                }),
+              )
+            : new Response("", { status: 404 }),
+        ),
+      );
+      setup("/settings?section=advanced");
+      const status = await screen.findByRole("region", { name: "Server status" });
+      expect(within(status).getByText("Kenning")).toBeInTheDocument();
+      expect(within(status).getByText(/^\d+\.\d+\.\d+/)).toBeInTheDocument();
+      expect(
+        await within(status).findByText("9.9.9, missing: example sentences", {}, { timeout: 3000 }),
+      ).toBeInTheDocument();
+      expect(within(status).getByText("Anki")).toBeInTheDocument();
+      expect(within(status).getByRole("button", { name: "Copy" })).toBeInTheDocument();
+    });
   });
 });

@@ -22,7 +22,7 @@ import { dutchVoiceAvailable } from "../../practice/speech.js";
 import { ExamClock, ScoreCard, WordsToLearn, useRecordAttempt } from "./shared.js";
 
 /** Plays allowed per fragment in exam mode (practice: unlimited). */
-export const EXAM_PLAYS = 2;
+const EXAM_PLAYS = 2;
 
 interface Screen {
   key: string;
@@ -31,7 +31,7 @@ interface Screen {
 }
 
 /** One screen per text or fragment; KNM shows one question per screen. */
-export function screensOf(groups: readonly McGroup[]): Screen[] {
+function screensOf(groups: readonly McGroup[]): Screen[] {
   return groups.flatMap((group): Screen[] =>
     group.kind === "knm"
       ? group.questions.map((q) => ({ key: q.id, group, questions: [q] }))
@@ -39,7 +39,7 @@ export function screensOf(groups: readonly McGroup[]): Screen[] {
   );
 }
 
-export interface McSessionProps {
+interface McSessionProps {
   part: Extract<ExamPart, "lezen" | "luisteren" | "knm">;
   mode: "exam" | "practice";
   groups: McGroup[];
@@ -260,7 +260,7 @@ function QuestionBlock({
 }
 
 /** Plays a fragment with the Dutch voice; exam mode allows `limit` plays. */
-export function ListeningPlayer({
+function ListeningPlayer({
   fragment,
   limit,
   showTranscript,
@@ -355,7 +355,7 @@ export function ListeningPlayer({
   );
 }
 
-export function Transcript({ fragment }: { fragment: ListeningFragment }) {
+function Transcript({ fragment }: { fragment: ListeningFragment }) {
   return (
     <dl className="exam-transcript" lang="nl" aria-label="Transcript">
       {fragment.lines.map((l, i) => (

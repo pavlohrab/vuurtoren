@@ -13,14 +13,14 @@ import {
   LEVEL_LABEL,
   MarkedSentence,
   groupTitle,
-  plural,
   topicCount,
   useGrammarOverview,
 } from "./GrammarCommon.js";
+import { plural } from "../format.js";
 import "./grammar.css";
 
 /** The Explanation without its `### Pattern` subsection (shown as a box instead). */
-export function withoutPattern(md: string): string {
+function withoutPattern(md: string): string {
   return md.replace(/^### Pattern[^\n]*\n[\s\S]*?(?=^### |(?![\s\S]))/m, "").trim();
 }
 

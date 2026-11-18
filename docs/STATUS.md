@@ -1,4 +1,4 @@
-# Project status — 2026-11-17
+# Project status — 2026-11-18
 
 Working name **Kenning**: an open-source reader that uses your Anki decks as the record of the words you know. Plan: [roadmap.md](roadmap.md). Decisions: [adr/](adr/).
 
@@ -16,7 +16,8 @@ pnpm dev            # web app on http://localhost:5173 (proxies /nlp and /anki)
 - `?demo` shows mock data instead of your own.
 - The Wiktionary dictionary (`server/nlp/data/dictionary-nl.sqlite`, 34 MB, git-ignored) is built with `cd server/nlp && uv run python scripts/build_dictionary.py`.
 - *OCR of photos needs Tesseract with Dutch data installed locally (the Docker image includes it).
-- Self-hosting: [deploy/README.md](../deploy/README.md) (`docker compose -f deploy/compose.yml up --build`).
+- Self-hosting: [deploy/README.md](../deploy/README.md) (`docker compose -f deploy/compose.yml up --build`); Dockge: [quick card](../deploy/dockge/README.md).
+- Version **0.1.0** (root `package.json`, not tagged yet): [CHANGELOG.md](../CHANGELOG.md), [release notes](releases/v0.1.0.md).
 
 ## Done
 
@@ -78,7 +79,7 @@ pnpm dev            # web app on http://localhost:5173 (proxies /nlp and /anki)
 - **Server:**
   - Analysis, language detection, gloss, URL/PDF/OCR endpoints.
   - Size limits and timeouts (URL fetch: 10 s per read, 20 s in total; upload bodies streamed; decompression bombs rejected).
-  - Dockerfiles and compose files (one NLP worker, see ADR 0004). The images have not been built or run here yet (no Docker daemon).
+  - Dockerfiles and compose files (one NLP worker, see ADR 0004). Built and smoke-tested in CI (no Docker daemon on this machine).
 - **Quality:**
   - 847 TypeScript and 629 Python tests (56 Python tests skip without the downloaded data or Tesseract).
   - Four reviews; the 2026-11 review and its status: [review-2026-11.md](review-2026-11.md).
@@ -127,6 +128,16 @@ pnpm dev            # web app on http://localhost:5173 (proxies /nlp and /anki)
 - Practice (instant feedback) and timed mock exams for **Lezen, Luisteren** (Dutch Web Speech voice, speed control, two plays in exam mode, transcript after), **Schrijven** (checklist, model answer, grammar links, optional AI feedback), **Spreken** (per-question clock, in-memory recording, model answer, optional AI feedback on a transcript) and **KNM** (by theme or as a 40-question mock).
 - Original content in `packages/content/exam/nl-a2` (validated at build): 50 reading and 48 listening questions, 8 writing tasks, 20 speaking prompts, 88 KNM questions over the 8 official themes.
 - Results are `ExamAttempt` events (`examAttempts` projection, RPC + HTTP); missed words → Add to Anki / Practise these; an _Exam prep_ step in Home's Today once started; optional AI-written Lezen/Luisteren items with the coverage check.
+
+### Self-hosting polish (branch `selfhost`, 2026-11-18)
+
+- **CI** builds the three images on every PR and push (no push), starts the Dockge stack from them and runs `scripts/doctor.sh` as the smoke test (page, CSP, `/api/health`, 401 without sign-in, sign-in, `/api/info`, `/nlp/health` with data presence, sign-out); image sizes and users in the job summary, non-root enforced.
+- **images.yml**: one matrix job; `edge` + `sha-<commit>` on pushes to `main`, `X.Y.Z`, `X.Y`, `latest` on `v*` tags; amd64 + arm64; the web image carries the commit.
+- **Images**: pinned bases (node 26.13.1, nginx 1.30.6, python 3.12.16, uv 0.13.9; Dependabot keeps them current), `pnpm fetch` layer caching, unprivileged nginx with `nginx -t` at build time, Alpine api runtime with only `dist/` + production `node_modules`, a tighter `.dockerignore`.
+- **First run**: Settings > Advanced > **Server status** (version, data, database, sign-in, language server data files, Anki from this browser, secure context, Copy); `scripts/doctor.sh`; NLP `/health` reports its data files; [Dockge quick card](../deploy/dockge/README.md).
+- **Backups**: optional `backup` compose service (profile) with interval and retention; cron recipe; restore documented.
+- **Motion** refined within the budget (see [design-system.md](design/design-system.md#motion-budget)); the page grid no longer animates when the inspector opens, so the reader text never reflows in motion.
+- **Cleanup**: shared `format.ts` (`pct`, `plural`, `formatBytes`), unused exports removed in screens/theme/exam, quiet test output (jsdom `scrollTo` and download navigation stubbed).
 
 ### Review fixes applied
 
@@ -213,4 +224,5 @@ None open. (The cloze range was settled at recall 0.60–0.99.)
 - **Concurrent finishes:** `finishSegment` is read-modify-write on the staircase. Not atomic, but harmless with one tab.
 - **FSRS-6 decay** per preset isn't read yet; 0.5 is assumed (FSRS is off in your collection).
 - **The demo (mock) data** only approximates the real behaviour.
-- **Not yet run here:** the Docker images (Dockerfiles and compose exist; no daemon on this machine), Tesseract OCR end-to-end on this machine, the GitHub/CI run itself (local gates pass).
+- **Not yet run here:** the Docker images (no daemon on this machine; CI builds them and runs the smoke test), Tesseract OCR end-to-end on this machine.
+- **NLP image build depends on pinned upstream data** (Kaikki, Tatoeba): when upstream refreshes and the CI layer cache has expired, the image job fails until the pins are updated (`server/nlp/scripts/pinned_download.py`).

@@ -20,6 +20,7 @@ from kenning_nlp.errors import ServiceError, read_upload
 from kenning_nlp.extract_url import extract_from_url
 from kenning_nlp.grammar import detect_grammar
 from kenning_nlp.grammar_examples import GrammarExamples
+from kenning_nlp.health import health_report
 from kenning_nlp.models import (
     GRAMMAR_EXAMPLE_LIMIT,
     MAX_TOTAL_CHARS,
@@ -83,8 +84,9 @@ def service_error_handler(_: Request, exc: ServiceError) -> JSONResponse:
 
 
 @app.get("/health")
-def health() -> dict[str, str]:
-    return {"status": "ok", "version": __version__}
+def health() -> dict[str, object]:
+    """Liveness plus version and data presence (kenning_nlp.health)."""
+    return health_report()
 
 
 @app.post("/analyze/text")

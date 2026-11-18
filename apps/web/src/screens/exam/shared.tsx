@@ -13,17 +13,8 @@ import { useServices } from "../../services/context.js";
 import type { ExamAttemptInput } from "../../services/examTypes.js";
 import { errorText } from "../../services/errors.js";
 import { formatClock } from "../../exam/timer.js";
+import { pct } from "../../format.js";
 import { useDeckChoice } from "../useDeckChoice.js";
-
-export const PART_ORDER: readonly ExamPart[] = [
-  "lezen",
-  "luisteren",
-  "schrijven",
-  "spreken",
-  "knm",
-];
-
-export const pct = (v: number) => `${Math.round(v * 100)}%`;
 
 /** The exam clock in the session bar: remaining time (exam) or elapsed time (practice). */
 export function ExamClock({ remaining, elapsed }: { remaining: number | null; elapsed: number }) {

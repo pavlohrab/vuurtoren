@@ -52,7 +52,7 @@ export function LanguageChoice({
 }
 
 /** One row of the deck list: a detected deck, or a confirmed one detection has not seen. */
-export interface DeckRow {
+interface DeckRow {
   deck: string;
   modelName?: string;
   noteCount?: number;
@@ -97,7 +97,7 @@ const rowKey = (r: { deck: string; modelName?: string | undefined }) =>
   `${r.deck}\u0000${r.modelName ?? ""}`;
 
 /** True if `row` is among the confirmed sources (a deck-only source matches every note type). */
-export function isChosen(row: DeckRow, chosen: ProfileSource[]): boolean {
+function isChosen(row: DeckRow, chosen: ProfileSource[]): boolean {
   return chosen.some((c) => c.deck === row.deck && (!c.modelName || c.modelName === row.modelName));
 }
 

@@ -11,7 +11,7 @@ import { useServices } from "../../services/context.js";
 import type { ExamAttemptRecord } from "../../services/examTypes.js";
 import { PageHeader } from "../../shell/PageHeader.js";
 import { usePageHeader } from "../../shell/ShellContext.js";
-import { pct } from "./shared.js";
+import { pct } from "../../format.js";
 import "./exam.css";
 
 export function useExamAttempts() {
