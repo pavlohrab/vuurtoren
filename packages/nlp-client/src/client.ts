@@ -366,6 +366,27 @@ export class NlpClient {
     return this.postForm("/extract/pdf", form);
   }
 
+  /**
+   * A 600x750 WebP cover of a PDF's first page or of a photo (Library covers). Rejects with
+   * NlpError when the service cannot make one (older servers answer 404).
+   */
+  async thumbnail(file: Blob, filename = "file"): Promise<Blob> {
+    const form = new FormData();
+    form.append("file", file, filename);
+    let res: Response;
+    try {
+      res = await this.fetchImpl(`${this.url}/thumbnail`, {
+        method: "POST",
+        body: form,
+        signal: AbortSignal.timeout(this.timeoutMs),
+      });
+    } catch (e) {
+      throw new NlpError(`NLP service unreachable at ${this.url} (${String(e)})`, null);
+    }
+    if (!res.ok) throw new NlpError(`NLP /thumbnail: HTTP ${res.status}`, res.status);
+    return res.blob();
+  }
+
   /** OCR an image (png/jpg/webp/tiff) or PDF. Rejects with HTTP 503 if Tesseract is missing. */
   ocr(file: Blob, lang: OcrLang = "nl", filename = "scan"): Promise<OcrResult> {
     const form = new FormData();

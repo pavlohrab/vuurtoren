@@ -60,6 +60,11 @@ export interface TextCoverProps {
   /** Show the kind label next to the icon. */
   showLabel?: boolean;
   className?: string;
+  /**
+   * A cover image (first page of a PDF, a photo, the learner's own): it fills the cover and the
+   * title sits on a quiet band at the bottom. Without one the cover is typographic.
+   */
+  imageUrl?: string | null;
   /** Replaces the printed title (e.g. a button carrying the title, so it is not read twice). */
   titleSlot?: ReactNode;
   children?: ReactNode;
@@ -68,7 +73,7 @@ export interface TextCoverProps {
 /**
  * The cover of a text, typographic (design-system.md, Covers): a flat tint per source kind with
  * a spine, the source icon and kind at the top, the title in Literata at the bottom and the
- * coverage as a thin known-colour line on the bottom edge.
+ * coverage as a thin known-colour line on the bottom edge. With `imageUrl` the image fills it.
  */
 export function TextCover({
   title,
@@ -78,12 +83,18 @@ export function TextCover({
   size = "md",
   showLabel = true,
   className,
+  imageUrl = null,
   titleSlot,
   children,
 }: TextCoverProps) {
   const cov = coverage === null ? null : Math.max(0, Math.min(1, coverage));
   return (
-    <div className={cn("k-cover", `k-cover--${size}`, className)} data-kind={kind}>
+    <div
+      className={cn("k-cover", `k-cover--${size}`, className)}
+      data-kind={kind}
+      {...(imageUrl ? { "data-image": "" } : {})}
+    >
+      {imageUrl ? <img className="k-cover-img" src={imageUrl} alt="" draggable={false} /> : null}
       <span className="k-cover-top">
         <span className="k-cover-kind" title={COVER_LABEL[kind]}>
           {COVER_ICON[kind](size === "sm" ? 13 : 14)}

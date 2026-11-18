@@ -135,6 +135,8 @@ async function handle(route: Route): Promise<void> {
       return json(texts.map(analyze));
     case "/gloss":
       return json(glosses((body["words"] as string[] | undefined) ?? []));
+    case "/translate":
+      return json(texts.map((text) => ({ text, translation: `[en] ${text}` })));
     case "/grammar":
       return json(texts.map(() => []));
     case "/forms":
@@ -142,7 +144,7 @@ async function handle(route: Route): Promise<void> {
     case "/similar":
       return json({});
     default:
-      // Optional features (translation, OCR, examples): "not available", as a fresh server.
+      // Optional features (OCR, examples, thumbnails): "not available", as a fresh server.
       return json({ detail: "not available in the e2e fake" }, 503);
   }
 }

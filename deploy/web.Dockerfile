@@ -6,7 +6,8 @@
 # ---- Stage 1: build --------------------------------------------------------------------
 FROM node:26.13.1-slim AS build
 # The exact pnpm version comes from the "packageManager" field in package.json.
-RUN corepack enable
+# Node 25+ no longer bundles corepack; install the pnpm version pinned in package.json.
+RUN npm install -g pnpm@12.21.0 --no-fund --no-audit
 WORKDIR /repo
 
 # Layer caching: `pnpm fetch` needs only the lockfile, so the dependency download stays cached
@@ -36,7 +37,7 @@ COPY deploy/nginx.conf.template /etc/nginx/templates/default.conf.template
 # net.ipv4.ip_unprivileged_port_start=0 inside containers.
 # `nginx -t` checks the config rendered with the default variables, so a broken template fails
 # the build instead of the container start.
-RUN sed -i -e '/^user /d' -e 's,/var/run/nginx.pid,/tmp/nginx.pid,' /etc/nginx/nginx.conf \
+RUN sed -i -e '/^user /d' -e 's,^pid .*;,pid /tmp/nginx.pid;,' /etc/nginx/nginx.conf \
     && printf '%s\n' \
         'client_body_temp_path /tmp/client_temp;' \
         'proxy_temp_path /tmp/proxy_temp;' \

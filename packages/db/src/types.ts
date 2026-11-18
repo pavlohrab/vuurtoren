@@ -69,6 +69,25 @@ export type TextSource =
 
 export type TextSourceKind = TextSource["kind"];
 
+/** Editable details of a text (TextMetaUpdated). Absent = unchanged; null or "" = cleared. */
+export interface TextMetaPatch {
+  title?: string | null;
+  author?: string | null;
+  /** A free source note ("De Opmaat A2, p. 34", "NOS, 3 May"). */
+  note?: string | null;
+  /** A level tag, e.g. "A2". */
+  level?: string | null;
+}
+
+/** A learner shelf: a named collection of texts (see library.ts). */
+export interface Shelf {
+  id: string;
+  name: string;
+  /** Texts on the shelf, newest addition first (may include deleted texts). */
+  textIds: string[];
+  createdAt: number;
+}
+
 /** One AI example sentence that passed validation (see SentencesGenerated). */
 export interface GeneratedSentence {
   text: string;
@@ -118,6 +137,20 @@ export type AppEvent =
       hits: GrammarHit[];
     }
   | { type: "TextDeleted"; textId: string }
+  /**
+   * The learner edited a text's details (Library, reader). Last write wins per field (HLC);
+   * null or "" clears a field (a cleared title shows the imported one again).
+   */
+  | { type: "TextMetaUpdated"; textId: string; patch: TextMetaPatch }
+  /** A cover image (blob id, see library.ts) for a text; null goes back to the typographic one. */
+  | { type: "TextCoverSet"; textId: string; blobId: string | null }
+  /** A learner shelf ("De Opmaat", "News"): a named collection of texts. */
+  | { type: "ShelfCreated"; shelfId: string; name: string }
+  | { type: "ShelfRenamed"; shelfId: string; name: string }
+  | { type: "ShelfDeleted"; shelfId: string }
+  /** Texts put on (or taken off) a shelf; a text may be on several shelves. */
+  | { type: "ShelfTextAdded"; shelfId: string; textIds: string[] }
+  | { type: "ShelfTextRemoved"; shelfId: string; textIds: string[] }
   | { type: "AnkiSnapshotImported"; lang: string; entries: AnkiWordEntry[]; sources: string[] }
   | { type: "WordStateSet"; lang: string; key: string; state: WordState }
   | {
@@ -332,6 +365,13 @@ const EVENT_TYPE_MAP = {
   TextAnalyzed: 1,
   TextGrammarDetected: 1,
   TextDeleted: 1,
+  TextMetaUpdated: 1,
+  TextCoverSet: 1,
+  ShelfCreated: 1,
+  ShelfRenamed: 1,
+  ShelfDeleted: 1,
+  ShelfTextAdded: 1,
+  ShelfTextRemoved: 1,
   AnkiSnapshotImported: 1,
   WordStateSet: 1,
   CardsPrioritized: 1,
@@ -403,6 +443,15 @@ export interface TextSummary {
   wordCount: number;
   analyzed: boolean;
   lastSegment: number;
+  /** The title as imported, when the learner renamed the text (`title` is the edited one). */
+  importedTitle?: string;
+  author?: string;
+  /** Source note set by the learner. */
+  note?: string;
+  /** Level tag set by the learner, e.g. "A2". */
+  level?: string;
+  /** Blob id of the cover image (TextCoverSet); absent = typographic cover. */
+  coverId?: string;
 }
 
 export interface StoredText extends TextSummary {
@@ -520,6 +569,12 @@ export interface Repository {
   generatedUnitExercises(courseId: string, unitN: number): Promise<BookExercise[]>;
   /** Latest answers of the exercises of a unit (all units when `unitN` is omitted). */
   bookAnswers(courseId: string, unitN?: number): Promise<BookAnswerRecord[]>;
+  /** The learner's shelves in creation order (Shelf* events). */
+  shelves(): Promise<Shelf[]>;
+  /** Store an image (content-addressed); returns its id. Rejects over 2 MB or a non-image type. */
+  putBlob(bytes: Uint8Array, type: string): Promise<string>;
+  /** A stored image, or null. */
+  getBlob(id: string): Promise<{ type: string; bytes: Uint8Array } | null>;
   /** Drop projections and rebuild them from the event log. */
   rebuild(): Promise<void>;
 }

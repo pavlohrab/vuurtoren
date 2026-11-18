@@ -90,9 +90,18 @@ export interface LiveTextsDeps {
   nlp: () => Promise<NlpClient>;
   learner: LearnerCache;
   dictionary: LiveDictionary;
+  /** After importing a PDF or a photo: make its Library cover (best effort; liveLibrary). */
+  autoCover: (textId: string, file: Blob, filename: string, nlp: NlpClient) => Promise<void>;
 }
 
-export function createLiveTexts({ repo, settings, nlp, learner, dictionary }: LiveTextsDeps) {
+export function createLiveTexts({
+  repo,
+  settings,
+  nlp,
+  learner,
+  dictionary,
+  autoCover,
+}: LiveTextsDeps) {
   // Text content never changes under an id within this client (imports get new ids); another
   // device's changes clear the cache through `checkRemoteChanges` (review A7).
   const planCache = new Map<string, { version: number; view: ReadingView }>();
@@ -300,6 +309,10 @@ export function createLiveTexts({ repo, settings, nlp, learner, dictionary }: Li
         await repo.append({ type: "TextDeleted", textId });
         throw e;
       }
+      if (input.kind === "pdf" || input.kind === "image") {
+        onProgress?.("Making a cover…");
+        await autoCover(textId, input.file, input.file.name, client);
+      }
       return textId;
     },
 
@@ -358,6 +371,8 @@ export function createLiveTexts({ repo, settings, nlp, learner, dictionary }: Li
     saveText,
     /** Plans depend on card glosses and shared data: recompute them (sync, another device). */
     clearPlans: () => planCache.clear(),
+    /** One text changed (its details or cover): plan it again. */
+    forget: (textId: string) => planCache.delete(textId),
     services,
   };
 }

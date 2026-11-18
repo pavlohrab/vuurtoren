@@ -12,6 +12,7 @@ import { createLiveCourses } from "./liveCourses.js";
 import { composeGlosses, createLiveDictionary } from "./liveDictionary.js";
 import { createLiveExam } from "./liveExam.js";
 import { createLiveGrammar } from "./liveGrammar.js";
+import { createLiveLibrary } from "./liveLibrary.js";
 import { createLearnerCache } from "./liveLearner.js";
 import { createLivePractice } from "./livePractice.js";
 import { createLiveProfile } from "./liveProfile.js";
@@ -42,7 +43,12 @@ export function createLiveServices(
   const { settings, lang, nlp, anki } = config;
   const learner = createLearnerCache(repo, lang);
   const dictionary = createLiveDictionary({ repo, lang, nlp });
-  const texts = createLiveTexts({ repo, settings, nlp, learner, dictionary });
+  // Resolved at call time: the texts are created next.
+  const { autoCover, ...library } = createLiveLibrary({
+    repo,
+    forget: (textId) => texts.forget(textId),
+  });
+  const texts = createLiveTexts({ repo, settings, nlp, learner, dictionary, autoCover });
   const model = learner.model;
 
   const grammar = createLiveGrammar({
@@ -127,6 +133,7 @@ export function createLiveServices(
 
   const services: AppServices = {
     ...profile.services,
+    ...library,
     ...practice,
     ...ai,
     ...courses,

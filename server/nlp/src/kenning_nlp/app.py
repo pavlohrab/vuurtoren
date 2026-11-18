@@ -8,7 +8,7 @@ from typing import Annotated
 
 from fastapi import FastAPI, File, Query, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from starlette.concurrency import run_in_threadpool
 
 from kenning_nlp import __version__
@@ -49,7 +49,7 @@ from kenning_nlp.models import (
     WordForms,
 )
 from kenning_nlp.ocr import TESSERACT_LANGS, run_ocr
-from kenning_nlp.pdf import extract_pdf
+from kenning_nlp.pdf import cover_thumbnail, extract_pdf
 from kenning_nlp.pipeline import analyze_terms, analyze_texts
 from kenning_nlp.sentences import SentencesMissingError, SentenceStore
 from kenning_nlp.sentences import default_db_path as default_sentences_path
@@ -119,6 +119,14 @@ async def extract_pdf_endpoint(file: Annotated[UploadFile, File()]) -> PdfExtrac
     data = await read_upload(file)
     # Parsing is blocking: run it in the threadpool so the event loop keeps serving requests.
     return PdfExtraction(**await run_in_threadpool(extract_pdf, data))
+
+
+@app.post("/thumbnail")
+async def thumbnail_endpoint(file: Annotated[UploadFile, File()]) -> Response:
+    """A 600x750 WebP cover of a PDF's first page or of a photo (Library covers)."""
+    data = await read_upload(file)
+    webp = await run_in_threadpool(cover_thumbnail, data)
+    return Response(content=webp, media_type="image/webp")
 
 
 @app.post("/ocr")

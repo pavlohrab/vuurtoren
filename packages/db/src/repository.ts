@@ -22,6 +22,7 @@ import { courseQueries } from "./course.js";
 import { projectGeneratedSentences } from "./generated.js";
 import { projectSuggestedWords } from "./suggested.js";
 import { projectExamAttempts } from "./exam.js";
+import { SHELF_EVENT_TYPES, blobId, blobProblem, isBlobId, projectShelves } from "./library.js";
 import { PROJECTION_TABLES, migrate } from "./schema.js";
 import type {
   AnkiWordEntry,
@@ -91,9 +92,9 @@ export interface KenningRepository extends Repository {
 }
 
 /**
- * Bump when a projection's meaning changes. 2: reading_progress.last_segment = next segment to read. 3: write-action events (ADR 0007). 4: anki_words sentences, practice_items. 5: course tables. 6: text_grammar. 7: language_profiles (ADR 0010). 8: word_evidence (ADR 0011).
+ * Bump when a projection's meaning changes. 2: reading_progress.last_segment = next segment to read. 3: write-action events (ADR 0007). 4: anki_words sentences, practice_items. 5: course tables. 6: text_grammar. 7: language_profiles (ADR 0010). 8: word_evidence (ADR 0011). 9: text_meta (edited details, covers).
  */
-export const PROJECTION_VERSION = 8;
+export const PROJECTION_VERSION = 9;
 
 /** Wrap every query function in the repository's mutex. */
 function serialised<T extends Record<string, (...a: never[]) => Promise<unknown>>>(
@@ -108,9 +109,17 @@ function serialised<T extends Record<string, (...a: never[]) => Promise<unknown>
 const json = <T>(v: SqlValue | undefined): T => JSON.parse(String(v)) as T;
 
 function textSummary(r: Row): TextSummary {
+  const opt = (col: string, field: string): Record<string, string> =>
+    typeof r[col] === "string" && r[col] ? { [field]: r[col] } : {};
+  const edited = typeof r["m_title"] === "string" && r["m_title"] ? r["m_title"] : null;
   return {
     id: String(r["id"]),
-    title: String(r["title"]),
+    title: edited ?? String(r["title"]),
+    ...(edited ? { importedTitle: String(r["title"]) } : {}),
+    ...opt("m_author", "author"),
+    ...opt("m_note", "note"),
+    ...opt("m_level", "level"),
+    ...opt("m_cover", "coverId"),
     lang: String(r["lang"]),
     sourceKind: String(r["source_kind"]) as TextSummary["sourceKind"],
     ...(r["source_ref"] != null ? { sourceRef: String(r["source_ref"]) } : {}),
@@ -122,8 +131,10 @@ function textSummary(r: Row): TextSummary {
 }
 
 const TEXT_COLS = `t.id, t.title, t.lang, t.source_kind, t.source_ref, t.created_at, t.word_count,
-    tt.text_id AS analyzed, rp.last_segment`;
+    tt.text_id AS analyzed, rp.last_segment,
+    m.title AS m_title, m.author AS m_author, m.note AS m_note, m.level AS m_level, m.cover AS m_cover`;
 const TEXT_FROM = `FROM texts t
+  LEFT JOIN text_meta m ON m.text_id = t.id
   LEFT JOIN text_tokens tt ON tt.text_id = t.id
   LEFT JOIN reading_progress rp ON rp.text_id = t.id`;
 
@@ -426,6 +437,43 @@ export async function createRepository(
           lang,
         ]);
         return rows[0] ? json<LanguageProfile>(rows[0]["profile"]) : null;
+      }),
+
+    shelves: () =>
+      serial(async () =>
+        projectShelves(
+          (
+            await driver.exec(
+              `SELECT * FROM events WHERE type IN (${SHELF_EVENT_TYPES.map(() => "?").join(",")}) ORDER BY id`,
+              [...SHELF_EVENT_TYPES],
+            )
+          ).map(toStored),
+        ),
+      ),
+
+    putBlob: (bytes, type) =>
+      serial(async () => {
+        const problem = blobProblem(bytes, type);
+        if (problem) throw new Error(problem);
+        const id = blobId(bytes);
+        await driver.exec(
+          "INSERT OR IGNORE INTO blobs (id, type, bytes, created_at) VALUES (?,?,?,?)",
+          [id, type, bytes, now()],
+        );
+        return id;
+      }),
+
+    getBlob: (id) =>
+      serial(async () => {
+        if (!isBlobId(id)) return null;
+        const r = (await driver.exec("SELECT type, bytes FROM blobs WHERE id = ?", [id]))[0];
+        const bytes = r?.["bytes"];
+        // ArrayBuffer.isView rather than instanceof: the driver's realm may differ (worker, jsdom).
+        if (!r || !ArrayBuffer.isView(bytes)) return null;
+        return {
+          type: String(r["type"]),
+          bytes: new Uint8Array(bytes.buffer, bytes.byteOffset, bytes.byteLength),
+        };
       }),
 
     rebuild: () =>

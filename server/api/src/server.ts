@@ -5,6 +5,8 @@
  *   *    /api/auth/*   sign-in, sign-out, session check (see auth/index.ts)
  *   GET  /api/info     size, event count, device id
  *   POST /api/rpc      { method, args } -> { ok, result } (allow-listed repository methods)
+ *   POST /api/blobs    raw image body (Content-Type image/*, at most 2 MB) -> { ok, id }
+ *   GET  /api/blobs/:id  a stored image (cover photos; content-addressed, cached privately)
  *   GET  /api/export   consistent snapshot, kenning-YYYY-MM-DD.sqlite
  *   POST /api/import   raw SQLite body replaces the database
  *   POST /api/mcp      MCP over Streamable HTTP (Claude Code; see mcp.ts). Also accepts a
@@ -18,7 +20,10 @@ import { createReadStream, rmSync, statSync } from "node:fs";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import {
   BackupError,
+  MAX_BLOB_BYTES,
   SCHEMA_VERSION,
+  blobProblem,
+  isBlobId,
   backupFilename,
   encodeRpcResult,
   isRpcMethod,
@@ -117,6 +122,34 @@ export function createApiServer(opts: ApiOptions): Server {
         value === undefined ? { ok: true } : { ok: true, result: value },
         extra,
       );
+    }
+
+    if (path === "/api/blobs" && method === "POST") {
+      const type = (req.headers["content-type"] ?? "").split(";")[0]!.trim().toLowerCase();
+      const bytes = new Uint8Array(await readBody(req, MAX_BLOB_BYTES));
+      const problem = blobProblem(bytes, type);
+      if (problem) throw new HttpFail(400, problem);
+      const blobId = await store.withRepo((repo) => repo.putBlob(bytes, type));
+      return json(res, 200, { ok: true, id: blobId }, extra);
+    }
+
+    if (path.startsWith("/api/blobs/") && method === "GET") {
+      const blobId = path.slice("/api/blobs/".length);
+      if (!isBlobId(blobId)) throw new HttpFail(404, "Not found.");
+      const blob = await store.withRepo((repo) => repo.getBlob(blobId));
+      if (!blob) throw new HttpFail(404, "Not found.");
+      res.writeHead(200, {
+        "content-type": blob.type,
+        "content-length": blob.bytes.length,
+        // Content-addressed: the bytes behind an id never change.
+        "cache-control": "private, max-age=31536000, immutable",
+        "x-content-type-options": "nosniff",
+        // An SVG must never run script when opened directly.
+        "content-security-policy": "default-src 'none'; style-src 'unsafe-inline'; sandbox",
+        ...extra,
+      });
+      res.end(blob.bytes);
+      return;
     }
 
     if (path === "/api/export" && method === "GET") {

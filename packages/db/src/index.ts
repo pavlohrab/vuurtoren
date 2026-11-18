@@ -37,3 +37,11 @@ export type { Conversation, ConversationMessage } from "./conversations.js";
 export { projectGeneratedSentences } from "./generated.js";
 export { projectSuggestedWords } from "./suggested.js";
 export { projectExamAttempts } from "./exam.js";
+export {
+  BLOB_TYPES,
+  MAX_BLOB_BYTES,
+  blobId,
+  blobProblem,
+  isBlobId,
+  projectShelves,
+} from "./library.js";

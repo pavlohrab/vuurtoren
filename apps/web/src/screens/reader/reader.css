@@ -1,14 +1,6 @@
 /* Reader toolbar chips, grammar marks popover, focus picker, "Aa" settings and focus mode
    (docs/design/design-system.md, Reader; docs/research/09-reader-annotations.md). */
 
-/* Order: grammar (+ its count), the word budget, then Aa / focus at the right edge. On a phone
-   the grammar picker and Aa share the first row and the count gets a row of its own. */
-.reader-tool--count {
-  margin-left: calc(-1 * var(--s-2));
-}
-.reader-tool--budget {
-  order: 2;
-}
 /* A reading theme paints the whole reading surface (its tokens are inline on .reader-page). */
 .reader-page[data-reading-theme] {
   min-height: 100%;
@@ -16,27 +8,6 @@
   color: var(--ink);
 }
 
-.reader-tool--end {
-  order: 3;
-  margin-left: auto;
-  gap: var(--s-1);
-}
-@media (max-width: 699px) {
-  .reader-tool--end {
-    order: 1;
-  }
-  .reader-tool--count {
-    order: 2;
-    flex-basis: 100%;
-    margin-left: 0;
-  }
-  .reader-tool--budget {
-    order: 3;
-  }
-  .reader-chip-value {
-    max-width: 14ch;
-  }
-}
 .aa-opt[data-font="literata"] {
   font-family: "Literata Variable", Georgia, serif;
 }
@@ -47,38 +18,203 @@
   font-family: "Atkinson Hyperlegible Next Variable", var(--font-ui);
 }
 
-/* A quiet toolbar button: hairline edge, label + value. */
-.reader-chip {
+/* ---------- The reader bar (portalled into the shell's top bar) ---------- */
+.rbar-known {
+  font-size: 13px;
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  cursor: default;
+}
+.rbar-spacer {
+  flex: 1 1 auto;
+}
+.rbar-tools {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 2px;
+}
+/* Quiet icon button: no edge until hovered or open. */
+.rbar-btn {
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
   height: 32px;
-  padding: 0 10px;
-  border: 1px solid var(--hairline);
+  border: 0;
   border-radius: var(--radius-control);
   background: transparent;
   color: var(--ink-muted);
   font: inherit;
-  font-size: 13px;
   cursor: pointer;
-  transition: background-color var(--dur) var(--ease);
+  transition: background-color var(--dur-fast) var(--ease);
 }
-.reader-chip:hover,
-.reader-chip[aria-expanded="true"],
-.reader-chip[aria-pressed="true"] {
+.rbar-btn:hover,
+.rbar-btn[aria-expanded="true"] {
   background: var(--surface-2);
   color: var(--ink);
 }
-.reader-chip-label {
-  font-weight: 500;
-  color: var(--ink);
+.rbar-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
 }
-.reader-chip-value {
-  max-width: 18ch;
+@media (max-width: 699px) {
+  .rbar-known {
+    display: none;
+  }
+  /* No room in the phone's bar: the grammar focus chip floats just under it. */
+  .topbar {
+    position: relative;
+  }
+  .topbar-page .gfocus {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 16px;
+    z-index: 5;
+    background: var(--surface);
+    box-shadow: var(--shadow-pop);
+  }
+}
+
+/* "…" menu */
+.rmenu {
+  width: min(280px, calc(100vw - 32px));
+  padding: var(--s-1);
+}
+.rmenu--grammar {
+  width: min(340px, calc(100vw - 32px));
+}
+.rmenu-summary {
+  margin: 0;
+  padding: var(--s-2) var(--s-2) var(--s-2);
+  font-size: 12px;
+  color: var(--ink-muted);
+  border-bottom: 1px solid var(--hairline);
+  margin-bottom: var(--s-1);
+}
+.rmenu-item {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  width: 100%;
+  min-height: 34px;
+  padding: 0 var(--s-2);
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+.rmenu-item:hover,
+.rmenu-item:focus-visible {
+  background: var(--surface-2);
+  outline: none;
+}
+.rmenu-label {
+  flex: 1 1 auto;
+}
+.rmenu-value {
+  max-width: 14ch;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-size: 13px;
+  color: var(--ink-muted);
 }
+.rmenu-kbd {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  color: var(--ink-muted);
+  padding: 0 5px;
+  border: 1px solid var(--hairline);
+  border-radius: 4px;
+}
+.rmenu-sep {
+  margin: var(--s-1) 0;
+  border: 0;
+  border-top: 1px solid var(--hairline);
+}
+.rmenu-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px var(--s-2) 6px 4px;
+  border: 0;
+  background: transparent;
+  color: var(--ink-muted);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.rmenu-back:hover {
+  color: var(--ink);
+}
+.rkeys {
+  margin: 0;
+  display: grid;
+  gap: var(--s-2);
+  font-size: 14px;
+}
+.rkeys-row {
+  display: grid;
+  grid-template-columns: 9rem minmax(0, 1fr);
+  gap: var(--s-3);
+  align-items: baseline;
+}
+.rkeys dd {
+  margin: 0;
+  color: var(--ink-muted);
+}
+.rkeys kbd {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  padding: 1px 6px;
+  border: 1px solid var(--hairline);
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+/* Footer pager: "‹ 1 / 2 ›" */
+.reader-pager {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+.reader-pager-count {
+  min-width: 4.5ch;
+  text-align: center;
+  font-size: 13px;
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+.reader-pager-btn {
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--ink-muted);
+  cursor: pointer;
+}
+.reader-pager-btn:hover:not(:disabled) {
+  background: var(--surface-2);
+  color: var(--ink);
+}
+.reader-pager-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.reader-simplify {
+  max-width: var(--measure);
+  margin: 24px auto 0;
+}
+
 .aa-glyph {
   font-family: var(--font-reading);
   font-size: 15px;
@@ -86,22 +222,46 @@
   letter-spacing: -0.02em;
 }
 
-/* Focus count: "4 on this page ‹ › ×" */
+/* Grammar focus chip in the bar: "Passive · 4 ‹ › ×" */
 .gfocus {
   display: inline-flex;
   align-items: center;
-  gap: 2px;
+  gap: 0;
+  height: 28px;
+  padding: 0 2px 0 10px;
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+  font-size: 13px;
+  color: var(--ink-muted);
   font-variant-numeric: tabular-nums;
+  min-width: 0;
+}
+.gfocus-topic {
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+  font-weight: 500;
+  color: var(--ink);
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 16ch;
+}
+.gfocus-topic:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 .gfocus-count {
-  margin-right: var(--s-1);
+  margin: 0 var(--s-1);
   white-space: nowrap;
 }
 .gfocus-btn {
   display: inline-grid;
   place-items: center;
-  width: 28px;
-  height: 28px;
+  width: 24px;
+  height: 24px;
   border: 0;
   border-radius: var(--radius-control);
   background: transparent;
@@ -157,8 +317,7 @@
 
 /* Grammar focus picker */
 .gpick {
-  width: min(340px, calc(100vw - 32px));
-  padding: var(--s-2);
+  padding: 0 var(--s-1) var(--s-1);
 }
 .gpick-search {
   display: flex;
@@ -243,10 +402,48 @@
 /* "Aa" reading settings */
 .aa-pop {
   width: min(320px, calc(100vw - 32px));
+  max-height: min(760px, calc(100dvh - 72px));
+  overflow: auto;
   padding: var(--s-4);
   display: flex;
   flex-direction: column;
+  gap: var(--s-4);
+}
+.aa-section {
+  display: flex;
+  flex-direction: column;
   gap: var(--s-3);
+}
+.aa-section + .aa-section {
+  padding-top: var(--s-4);
+  border-top: 1px solid var(--hairline);
+}
+.aa-heading {
+  margin: 0;
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.aa-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-3);
+}
+.aa-line-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.aa-line-hint {
+  font-size: 12px;
+  color: var(--ink-muted);
+}
+.aa-select .k-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink-muted);
 }
 .aa-row {
   display: flex;
@@ -313,18 +510,15 @@
   color: var(--ink-muted);
 }
 
-/* Reading focus mode: no sidebar, top bar or reader toolbar; the text alone. */
+/* Reading focus mode: no sidebar or top bar (the reader bar); the text alone. */
 :root[data-reading-focus] .sidebar,
 :root[data-reading-focus] .topbar,
-:root[data-reading-focus] .shell-notices,
-:root[data-reading-focus] .reader-tools {
+:root[data-reading-focus] .shell-notices {
   display: none;
 }
 :root[data-reading-focus] .shell {
-  grid-template-columns: minmax(0, 1fr) 0;
-}
-:root[data-reading-focus] .shell[data-inspector="open"] {
-  grid-template-columns: minmax(0, 1fr) 340px;
+  grid-template-columns: minmax(0, 1fr);
+  --sb-w: 0px;
 }
 :root[data-reading-focus] .main {
   padding-bottom: 0;
@@ -366,12 +560,6 @@
   padding: 0 4px;
   border: 1px solid var(--hairline);
   border-radius: 4px;
-}
-@media (max-width: 899px) {
-  :root[data-reading-focus] .shell,
-  :root[data-reading-focus] .shell[data-inspector="open"] {
-    grid-template-columns: minmax(0, 1fr);
-  }
 }
 @media (prefers-reduced-motion: reduce) {
   :root[data-reading-focus] .reader-footer,

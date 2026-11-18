@@ -79,19 +79,19 @@ Never use bright highlighter blocks. Violet is never a word state: it means "you
 
 CSS only, `transform` and `opacity` (plus the SVG ring's dash offset), 150–300 ms, nothing loops (the busy spinner and loading skeleton are the only exceptions), and everything is off under `prefers-reduced-motion`. Use the tokens, never raw values: `--dur-fast` 150ms, `--dur` 200ms, `--dur-slow` 300ms, `--dur-fill` 700ms (rings and bars filling once), `--ease-out`, `--ease-in-out`, `--ease-pop`.
 
-| Moment                         | Motion                                                                                                 |
-| ------------------------------ | ------------------------------------------------------------------------------------------------------ |
-| Route change                   | cross-fade through the View Transitions API (`defaultViewTransition`; browsers without it just switch) |
-| To-learn word in the reader    | the amber line draws in left to right, once, when the page appears                                     |
-| Word state changes (inspector) | the state chip pops (scale .88 → 1), each state its own keyframe so a change restarts it               |
-| Library card hover             | lifts 2px with a soft shadow (pointer devices only)                                                    |
-| Progress rings and bars        | fill once on mount (Home ring, coverage bars, Continue reading bar)                                    |
-| Dialogs, toasts, More sheet    | fade + 6px rise in; dialogs and the palette fade out (`--dur-fast`)                                    |
-| Popovers, menus, tooltips      | scale-fade (.96 → 1) from the side they open on (`--dur-fast`)                                         |
-| Inspector                      | content fades in with an 8px slide (bottom sheet: 12px rise); the page grid itself never animates      |
-| Library covers, Words rows     | appear once in a short cascade (30 ms steps, at most 150 ms); rows fade only, so filters never jump    |
-| Buttons, toggle chips          | 1px press on `:active`                                                                                 |
-| Loading skeleton               | invisible for the first 150 ms (fast loads never flash), then a soft 1.2 s sweep while loading         |
+| Moment                         | Motion                                                                                                                                    |
+| ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| Route change                   | cross-fade through the View Transitions API (`defaultViewTransition`; browsers without it just switch)                                    |
+| To-learn word in the reader    | the amber line draws in left to right, once, when the page appears                                                                        |
+| Word state changes (inspector) | the state chip pops (scale .88 → 1), each state its own keyframe so a change restarts it                                                  |
+| Library card hover             | lifts 2px with a soft shadow (pointer devices only)                                                                                       |
+| Progress rings and bars        | fill once on mount (Home ring, coverage bars, Continue reading bar)                                                                       |
+| Dialogs, toasts, More sheet    | fade + 6px rise in; dialogs and the palette fade out (`--dur-fast`)                                                                       |
+| Popovers, menus, tooltips      | scale-fade (.96 → 1) from the side they open on (`--dur-fast`)                                                                            |
+| Inspector                      | slides in from the right over the content (`--dur-slow`, transform); the reading column moves aside by half its width; bottom sheet rises |
+| Library covers, Words rows     | appear once in a short cascade (30 ms steps, at most 150 ms); rows fade only, so filters never jump                                       |
+| Buttons, toggle chips          | 1px press on `:active`                                                                                                                    |
+| Loading skeleton               | invisible for the first 150 ms (fast loads never flash), then a soft 1.2 s sweep while loading                                            |
 
 The reader stays calm: no decorative motion while reading, only the one-time to-learn line.
 
@@ -182,6 +182,8 @@ One shape: 24px tall, pill, Inter 12.5px, hairline edge. Tones: neutral, accent,
 
 `TextCover` is typographic: a flat tint by source kind (paste and AI: honey, web and photo: sage, PDF and course: apricot, talk: neutral) with a darker spine on the left, the source icon and kind at the top, the title in Literata at the bottom and the coverage as a thin sage line on the bottom edge (with the percentage when there is no meter next to it). Portrait 4:5 everywhere: Library shelf, Home hero and Recent texts. No generated patterns.
 
+An **image cover** (a PDF's first page, the photo of an import, or the learner's own photo, cropped to 4:5 and stored as a 600px WebP) fills the frame; the kind shrinks to its icon on a small surface plate, and the title sits on a quiet surface band at the bottom (2 lines). Without an image the typographic cover stays.
+
 ### Empty, loading, error
 
 - Empty: `EmptyState` left-aligned inside the section it replaces (icon 20px, one sentence, one action). Full-page empty only when the whole page is empty.
@@ -213,8 +215,8 @@ Domain components:
 
 ```
 ┌──────────┬───────────────────────────────────────────┬──────────────────┐
-│ (k) kenning│ Top bar: title · coverage · mode · ⌘K · ◐ │  Inspector panel │
-│ Home     │                                           │  (reader only)   │
+│ (k) kenning│ Top bar (reader: title · % known · mode · Aa · …) · ⌘K · ◐ │ Inspector │
+│ Home     │                                           │  (slides in)     │
 │ Library  │      page content / reading column        │                  │
 │ Practice │                                           │                  │
 │ Words    │                                           │                  │
@@ -227,6 +229,7 @@ Domain components:
 
 - Navigation: Home · Library · Practice · Words · Courses · Grammar · Talk, Settings at the bottom of the rail. There is no "Read" item: Continue reading on Home and the Library cards open texts. Progress is reached from Home (and ⌘K), not the rail.
 - The rail collapses to icons below 1200px; the inspector becomes a bottom sheet below 900px.
+- The inspector is closed by default and takes no space: choosing a word slides it in over the content's right edge, and the reading column moves aside (transform only, so the text never re-wraps; between 900 and 1100px it makes room instead). Esc or × closes it and the focus returns to the word.
 - Below 700px a bottom tab bar replaces the rail: Home, Library, Practice, Words, More. More opens a sheet with Courses, Grammar, Talk, Progress and Settings.
 
 ## Screens
@@ -234,7 +237,7 @@ Domain components:
 - **Home** (`/`, first screen): calm and editorial, not a dashboard; four groups above the fold. (1) The page header: Dutch greeting, "You know N Dutch words", Import and Create a story. (2) Continue reading without a box (cover, Literata title, two-line excerpt, progress, the one primary button) next to a quiet column behind a hairline: the known-words ring and three numbers. (3) Today: two or three steps as one list with hairline dividers (practise, words waiting for Anki, course unit; done steps get a check). (4) Words to learn now (Inter word chips) and Recent texts (covers). Below: one quiet "More for today" line (grammar topic in your texts, Talk about the text, this week). A brand-new learner sees two first steps (Connect Anki, Import a text) instead.
 - **Sign-in**: a small landing: the mark, the wordmark, one sentence on what Kenning does, then the form.
 - **Onboarding** (`/welcome`): connect AnkiConnect, choose decks and fields, language profile.
-- **Library:** a shelf of typographic covers (4:5, tinted by source kind), each with words, new words, a whole-text coverage meter, "Continue · page N of M" as a quiet link for texts in progress, and ghost tools (words, delete). No boxes around the items.
+- **Library:** a bookshelf. Rows of covers that scroll sideways (snap, a hairline "shelf board" under each row, no boxes): Reading now, the learner's own shelves, To read, Finished, then "By source" (Course books, AI stories, Web, Photos & PDFs, Talk). Under each cover one quiet line: page N of M / Finished / words, and "% known". A "…" on each cover (on hover or focus with a pointer, always on touch) opens Open, Words from this text, Edit details, Change cover, Add to shelf, Remove from this shelf, Delete. The toolbar: Shelves / All texts (segmented), Search, Sort (recent, title, coverage), New shelf, Select (multi-select with a floating bar: Add to shelf). All texts is the cover grid with words, new words, author/note and the coverage meter. Keyboard: one tab stop per row, arrow keys / Home / End inside it. Desktop: drag covers onto one of your shelves. Phones: rows stack, 128px covers, rows bleed to the screen edge.
 - **Import:** paste, URL, PDF, photo; editable OCR preview.
 - **Reader:** read / cloze / gloss modes; the end of a text shows a calm completion panel (new words met, in Anki, still to decide) leading to Words from this text, Practise these words, Talk about this text and Next text.
 - **Practice:** one exercise per screen; keys 1–4, Enter, Esc.
@@ -264,6 +267,10 @@ Research and contrast table: `docs/research/09-reader-annotations.md`.
 
 - **Two layers, two positions.** Word states draw at the baseline (to-learn line, learning dots, new/gloss underlines). Grammar draws a dotted row below them (`.k-tok--spot`), so both can sit on one word and still read apart without colour.
 - **Margin marks** (`.k-gmark`): a 2px hairline beside the first line of a sentence worth noticing, `--state-grammar-line` at 50% (full on hover, focus or open). At most one per two sentences, never neighbours, never for very common topics (V2, de/het, plurals, perfect…). Tapping one underlines that sentence's hits and opens a popover under that line.
-- **Grammar focus**: one topic at a time from the toolbar picker ("Grammar: <topic> ▾"), "n on this page" with ‹ ›; Esc clears. Replaces the old all-topics spotlight toggle.
-- **"Aa" popover**: text size (5 steps, also Ctrl/Cmd + / −), line spacing, line width, font (Literata, Inter, Atkinson Hyperlegible Next) and reading theme (match app, paper, sepia, night). Per device (localStorage). Reading themes are token sets (`readingThemes.ts` in @app/ui) set inline on the reader page; every mark stays ≥ 3:1 on each.
-- **Focus mode** (F, Esc to leave): sidebar, top bar and toolbar hidden; paragraphs other than the current one at 28% opacity (opacity transition only, none under reduced motion); the footer stays, dimmed until hovered.
+- **One slim reader bar** (the top bar on the reader route): the text title (UI font, muted) and "82% known" (to-learn count in its tooltip and the "…" menu), then Read | Cloze | Gloss, **Aa** and **…**; ⌘K and the theme stay at the end. No second toolbar, no coverage bar or coloured chip.
+- **Footer**: "‹ 1 / 2 ›" (also ← → from outside the text) and one primary "Next →" ("Finish" on the last page).
+- **"…" menu**: Grammar focus (the picker opens in the same popover), Focus mode, Show answers (blanks open), Simplify this page (with an AI provider), Words from this text, Keyboard shortcuts (also "?").
+- **Grammar focus**: one topic at a time, picked from the "…" menu; while active a removable chip sits in the bar ("Passive · 4 ‹ › ×", under the bar on phones); Esc clears. Replaces the old all-topics spotlight toggle.
+- **Cloze chrome**: a blank's hint button appears only on the focused blank; scores only in the completion panel.
+- **"Aa" popover**: first the current mode's reading help (Gloss: Translations dial and Blanks; Cloze: meaning above blanks; all: words to learn per page and grammar marks), then text size (5 steps, also Ctrl/Cmd + / −), line spacing, line width, font (Literata, Inter, Atkinson Hyperlegible Next) and reading theme (match app, paper, sepia, night). Per device (localStorage). Reading themes are token sets (`readingThemes.ts` in @app/ui) set inline on the reader page; every mark stays ≥ 3:1 on each.
+- **Focus mode** (F, Esc to leave): sidebar and top bar (the reader bar) hidden; paragraphs other than the current one at 28% opacity (opacity transition only, none under reduced motion); the footer stays, dimmed until hovered.

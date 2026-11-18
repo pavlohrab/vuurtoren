@@ -98,3 +98,50 @@ def rasterize_pdf(data: bytes, dpi: int = OCR_DPI, max_pages: int = MAX_OCR_PAGE
             return images
         finally:
             pdf.close()
+
+
+THUMB_WIDTH = 600
+"""Width of a cover thumbnail; the height is 5/4 of it (the Library's 4:5 covers)."""
+
+
+def cover_thumbnail(data: bytes) -> bytes:
+    """A 4:5 WebP cover (600x750) of the first page of a PDF, or of an image.
+
+    The page is scaled to cover the frame and cropped from the top (a page's title is there),
+    an image is cropped around its centre.
+
+    Raises:
+        ServiceError: 415 if the bytes are neither a PDF nor an image, 422 if unreadable.
+    """
+    import io
+
+    from PIL import Image, ImageOps, UnidentifiedImageError
+
+    w, h = THUMB_WIDTH, THUMB_WIDTH * 5 // 4
+    if is_pdf(data):
+        with PDFIUM_LOCK:
+            pdf = _open(data)
+            try:
+                if len(pdf) == 0:
+                    raise ServiceError(422, "The PDF has no pages.")
+                page = pdf[0]
+                try:
+                    pw, _ = page.get_size()
+                    img = page.render(scale=max(w / max(pw, 1.0), 0.1)).to_pil().convert("RGB")
+                finally:
+                    page.close()
+            finally:
+                pdf.close()
+        centering = (0.5, 0.0)
+    else:
+        try:
+            src = Image.open(io.BytesIO(data))
+            src.draft("RGB", (w * 2, h * 2))
+            img = ImageOps.exif_transpose(src).convert("RGB")
+        except (UnidentifiedImageError, OSError) as e:
+            raise ServiceError(415, "The file is not a PDF or an image.") from e
+        centering = (0.5, 0.5)
+    thumb = ImageOps.fit(img, (w, h), Image.Resampling.LANCZOS, centering=centering)
+    out = io.BytesIO()
+    thumb.save(out, "WEBP", quality=80, method=4)
+    return out.getvalue()

@@ -1,8 +1,7 @@
 import { Link } from "@tanstack/react-router";
-import { ChevronDown, ChevronLeft, ChevronRight, Search, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Search, X } from "lucide-react";
 import { useState } from "react";
 import type { GrammarTopic } from "@app/content";
-import { Popover } from "@app/ui";
 import { inline } from "../Markdown.js";
 
 /**
@@ -45,10 +44,11 @@ export interface PickerTopic {
 }
 
 /**
- * Toolbar picker "Grammar: <topic> ▾": choose one topic to mark all through the text. Suggested
- * topics first (at the learner's level, recently used), then every topic found in the text.
+ * The grammar focus picker (shown inside the reader's "…" menu): choose one topic to mark all
+ * through the text. Suggested topics first (at the learner's level, recently used), then every
+ * topic found in the text.
  */
-export function GrammarPicker({
+export function GrammarTopics({
   topics,
   suggested,
   value,
@@ -61,18 +61,12 @@ export function GrammarPicker({
   onChange: (topic: GrammarTopic | null) => void;
   unavailable?: boolean;
 }) {
-  const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const q = query.trim().toLowerCase();
   const match = (t: PickerTopic) =>
     q === "" || t.topic.title.toLowerCase().includes(q) || t.topic.id.includes(q);
   const shownSuggested = q ? [] : suggested;
   const shownAll = topics.filter(match);
-  const choose = (t: GrammarTopic | null) => {
-    onChange(t);
-    setOpen(false);
-    setQuery("");
-  };
   const item = (t: PickerTopic, group: string) => (
     <button
       key={`${group}-${t.topic.id}`}
@@ -80,7 +74,7 @@ export function GrammarPicker({
       role="option"
       aria-selected={value?.id === t.topic.id}
       className="gpick-item"
-      onClick={() => choose(t.topic)}
+      onClick={() => onChange(t.topic)}
     >
       <span className="gpick-item-title">{t.topic.title}</span>
       <span className="gpick-item-meta">
@@ -89,28 +83,7 @@ export function GrammarPicker({
     </button>
   );
   return (
-    <Popover
-      open={open}
-      onOpenChange={(o) => {
-        setOpen(o);
-        if (!o) setQuery("");
-      }}
-      label="Choose a grammar topic"
-      className="gpick"
-      trigger={
-        <button
-          type="button"
-          className="reader-chip"
-          aria-label={
-            value ? `Grammar focus: ${value.title}. Change` : "Grammar focus: off. Choose"
-          }
-        >
-          <span className="reader-chip-label">Grammar</span>
-          <span className="reader-chip-value">{value ? value.title : "Off"}</span>
-          <ChevronDown size={14} aria-hidden />
-        </button>
-      }
-    >
+    <div className="gpick">
       <label className="gpick-search">
         <Search size={14} aria-hidden />
         <input
@@ -124,7 +97,7 @@ export function GrammarPicker({
             const first = shownAll[0];
             if (e.key === "Enter" && first) {
               e.preventDefault();
-              choose(first.topic);
+              onChange(first.topic);
             }
           }}
         />
@@ -151,35 +124,55 @@ export function GrammarPicker({
         ) : null}
       </div>
       {value ? (
-        <button type="button" className="gpick-off" onClick={() => choose(null)}>
+        <button type="button" className="gpick-off" onClick={() => onChange(null)}>
           Turn the grammar focus off
         </button>
       ) : null}
-    </Popover>
+    </div>
   );
 }
 
-/** "4 on this page ‹ ›" plus a clear button, shown while a grammar topic is in focus. */
-export function FocusCount({
+/**
+ * The active grammar focus as a compact removable chip in the reader bar:
+ * "Passive · 4 ‹ › ×". The topic name reopens the picker.
+ */
+export function FocusChip({
+  topic,
   count,
   current,
   onStep,
   onClear,
+  onChange,
 }: {
+  topic: GrammarTopic;
   count: number;
   /** Index of the hit jumped to, or null. */
   current: number | null;
   onStep: (dir: 1 | -1) => void;
   onClear: () => void;
+  onChange: () => void;
 }) {
   return (
     <div className="gfocus" role="group" aria-label="Grammar focus">
+      <button
+        type="button"
+        className="gfocus-topic"
+        aria-label={`Grammar focus: ${topic.title}. Change`}
+        onClick={onChange}
+      >
+        {topic.title}
+      </button>
       <span className="gfocus-count" role="status">
-        {count === 0
-          ? "None on this page"
-          : current === null
-            ? `${count} on this page`
-            : `${current + 1} of ${count} on this page`}
+        <span aria-hidden>
+          · {count === 0 ? "none" : current === null ? count : `${current + 1}/${count}`}
+        </span>
+        <span className="k-sr">
+          {count === 0
+            ? "None on this page"
+            : current === null
+              ? `${count} on this page`
+              : `${current + 1} of ${count} on this page`}
+        </span>
       </span>
       {count > 0 ? (
         <>
@@ -189,7 +182,7 @@ export function FocusCount({
             aria-label="Previous one"
             onClick={() => onStep(-1)}
           >
-            <ChevronLeft size={16} aria-hidden />
+            <ChevronLeft size={15} aria-hidden />
           </button>
           <button
             type="button"
@@ -197,7 +190,7 @@ export function FocusCount({
             aria-label="Next one"
             onClick={() => onStep(1)}
           >
-            <ChevronRight size={16} aria-hidden />
+            <ChevronRight size={15} aria-hidden />
           </button>
         </>
       ) : null}

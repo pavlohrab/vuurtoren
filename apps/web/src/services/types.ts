@@ -18,6 +18,7 @@ import type { AIServices, AISentenceReport } from "./aiTypes.js";
 import type { AddOptions, ProfileServices } from "./profileTypes.js";
 import type { ActivityDay } from "./activity.js";
 import type { ExamServices } from "./examTypes.js";
+import type { LibraryServices } from "./libraryTypes.js";
 
 /** Defined in @app/ui (the WordInspector consumes it); re-exported here as part of the contract. */
 export type { InspectorEntry };
@@ -206,7 +207,8 @@ export interface PracticeOptions {
  * Everything the UI needs from the outside world. The app never talks to the database,
  * AnkiConnect or the NLP server directly; swap the implementation passed to <ServicesProvider>.
  */
-export interface AppServices extends CourseServices, AIServices, ProfileServices, ExamServices {
+export interface AppServices
+  extends CourseServices, AIServices, ProfileServices, ExamServices, LibraryServices {
   /**
    * Server mode only (review A7): ask the server whether another device changed the shared
    * data; if so, drop the service caches and return true (the caller then refetches its
