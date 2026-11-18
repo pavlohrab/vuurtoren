@@ -244,13 +244,18 @@ export function StoryDialog({
             {create.error instanceof Error ? create.error.message : String(create.error)}
           </p>
         ) : null}
-        <div className="row" style={{ justifyContent: "flex-end" }}>
+        <div className="k-dialog-actions">
           {progress ? (
             <span className="k-hint" role="status" style={{ marginRight: "auto" }}>
               {progress}
             </span>
           ) : null}
-          <Button type="button" disabled={create.isPending} onClick={() => onOpenChange(false)}>
+          <Button
+            type="button"
+            variant="ghost"
+            disabled={create.isPending}
+            onClick={() => onOpenChange(false)}
+          >
             Cancel
           </Button>
           <Button

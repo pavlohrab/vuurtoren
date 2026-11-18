@@ -116,8 +116,10 @@ export function Library() {
           pendingDelete ? `"${pendingDelete.title}" will be removed from your library.` : ""
         }
       >
-        <div className="row" style={{ justifyContent: "flex-end" }}>
-          <Button onClick={() => setPendingDelete(null)}>Cancel</Button>
+        <div className="k-dialog-actions">
+          <Button variant="ghost" onClick={() => setPendingDelete(null)}>
+            Cancel
+          </Button>
           <Button
             variant="danger"
             onClick={() => {

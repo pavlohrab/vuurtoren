@@ -385,7 +385,7 @@ kbd {
 .k-command {
   background: var(--surface);
   color: var(--ink);
-  border: 1px solid var(--hairline);
+  border: 1px solid var(--line);
   border-radius: var(--radius-card);
   box-shadow: var(--shadow-pop);
 }
@@ -499,7 +499,15 @@ kbd {
 }
 .k-dialog-desc {
   color: var(--ink-muted);
-  margin: 0 0 16px;
+  margin: 0 0 var(--s-4);
+}
+/* Dialog actions: right-aligned, the primary last, Cancel as ghost. */
+.k-dialog-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--s-2);
+  margin-top: var(--s-5);
 }
 .k-popover {
   z-index: 60;

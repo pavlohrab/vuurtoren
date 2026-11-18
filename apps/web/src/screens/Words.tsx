@@ -467,7 +467,7 @@ export function Words() {
             </table>
           </div>
           {!source && list.length >= limit ? (
-            <div className="row" style={{ marginTop: 16, justifyContent: "center" }}>
+            <div className="words-more">
               <Button onClick={() => setLimit((l) => l + PAGE_SIZE)}>Show more</Button>
             </div>
           ) : null}
