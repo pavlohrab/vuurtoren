@@ -4,6 +4,7 @@ import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { Button, CoverageMeter, Skeleton } from "@app/ui";
 import { useServices } from "../../services/context.js";
+import { PageHeader } from "../../shell/PageHeader.js";
 import type { UnitRow } from "../../services/courseTypes.js";
 import { AddWordsDialog } from "./AddWordsDialog.js";
 import { ExportPackDialog } from "./CoursePacks.js";
@@ -72,10 +73,10 @@ export function CourseRoute({ courseId }: { courseId: string }) {
   if (course.isError || !course.data) {
     return (
       <div className="page">
-        <h1>Course not found</h1>
-        <p className="page-lede">
-          <Link to="/courses">Back to your courses</Link>
-        </p>
+        <PageHeader
+          title="Course not found"
+          lede={<Link to="/courses">Back to your courses</Link>}
+        />
       </div>
     );
   }
@@ -89,33 +90,37 @@ export function CourseRoute({ courseId }: { courseId: string }) {
   );
   return (
     <div className="page">
-      <div className="row" style={{ justifyContent: "space-between", marginBottom: 8 }}>
-        <h1>{c.title}</h1>
-        <div className="cs-actions">
-          {next ? (
-            <Link
-              to="/courses/$courseId/$unit"
-              params={{ courseId, unit: String(next.unit.n) }}
-              className="k-btn k-btn--primary"
-            >
-              Continue with {next.unit.title}
+      <PageHeader
+        title={c.title}
+        lede={
+          <>
+            Progress is the state of each unit&rsquo;s words in your Anki decks, plus the exercises
+            you have done.
+          </>
+        }
+        actions={
+          <>
+            {next ? (
+              <Link
+                to="/courses/$courseId/$unit"
+                params={{ courseId, unit: String(next.unit.n) }}
+                className="k-btn k-btn--primary"
+              >
+                Continue with {next.unit.title}
+              </Link>
+            ) : null}
+            {missing > 0 ? (
+              <Button onClick={() => setAdding(true)}>Add all course words to Anki…</Button>
+            ) : null}
+            <Link to="/courses/$courseId/edit" params={{ courseId }} className="k-btn k-btn--ghost">
+              Edit outline
             </Link>
-          ) : null}
-          {missing > 0 ? (
-            <Button onClick={() => setAdding(true)}>Add all course words to Anki…</Button>
-          ) : null}
-          <Link to="/courses/$courseId/edit" params={{ courseId }} className="k-btn k-btn--ghost">
-            Edit outline
-          </Link>
-          <Button variant="ghost" onClick={() => setExporting(true)}>
-            Export course pack…
-          </Button>
-        </div>
-      </div>
-      <p className="page-lede">
-        Progress is the state of each unit&rsquo;s words in your Anki decks, plus the exercises you
-        have done.
-      </p>
+            <Button variant="ghost" onClick={() => setExporting(true)}>
+              Export course pack…
+            </Button>
+          </>
+        }
+      />
       {!ankiReady ? (
         <div className="banner" role="note">
           <span>Sync Anki in Settings to see how much of each unit you already know.</span>

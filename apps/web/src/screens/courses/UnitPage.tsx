@@ -18,6 +18,7 @@ import { CreateStoryButton, useAIReady } from "../StoryDialog.js";
 import { useServices } from "../../services/context.js";
 import { errorText } from "../../services/errors.js";
 import { usePageHeader } from "../../shell/ShellContext.js";
+import { PageHeader } from "../../shell/PageHeader.js";
 import type { UnitGrammarTopic, UnitView, UnitWordView } from "../../services/courseTypes.js";
 import { AddWordsDialog } from "./AddWordsDialog.js";
 import { BookExercise } from "./BookExercise.js";
@@ -301,10 +302,14 @@ export function UnitRoute({ courseId, n }: { courseId: string; n: number }) {
   if (unit.isError || !u) {
     return (
       <div className="page">
-        <h1>Unit not found</h1>
-        <Link to="/courses/$courseId" params={{ courseId }}>
-          Back to the course
-        </Link>
+        <PageHeader
+          title="Unit not found"
+          lede={
+            <Link to="/courses/$courseId" params={{ courseId }}>
+              Back to the course
+            </Link>
+          }
+        />
       </div>
     );
   }
@@ -312,22 +317,28 @@ export function UnitRoute({ courseId, n }: { courseId: string; n: number }) {
   const fresh = s.newInAnki + s.missing;
   return (
     <div className="page">
-      {/* The top bar shows this breadcrumb on wider screens. */}
-      <p className="cs-meta cs-crumb">
-        <Link to="/courses/$courseId" params={{ courseId }}>
-          {u.course.title}
-        </Link>
-      </p>
-      <h1>{u.unit.title}</h1>
-      {s.total > 0 ? (
-        <p className="page-lede">
-          {pct(s.knownRatio)} of the words known, {s.learning} learning, {fresh} new.
-        </p>
-      ) : (
-        <p className="page-lede">
-          Pages {u.unit.pages[0]}–{u.unit.pages[1]}.
-        </p>
-      )}
+      <PageHeader
+        // The top bar shows this breadcrumb on wider screens.
+        back={
+          <span className="cs-meta cs-crumb">
+            <Link to="/courses/$courseId" params={{ courseId }}>
+              {u.course.title}
+            </Link>
+          </span>
+        }
+        title={u.unit.title}
+        lede={
+          s.total > 0 ? (
+            <>
+              {pct(s.knownRatio)} of the words known, {s.learning} learning, {fresh} new.
+            </>
+          ) : (
+            <>
+              Pages {u.unit.pages[0]}–{u.unit.pages[1]}.
+            </>
+          )
+        }
+      />
       {s.total > 0 ? (
         <div className="cs-actions" style={{ marginBottom: 12 }}>
           <Tooltip content={STUDY_FIRST_HINT}>

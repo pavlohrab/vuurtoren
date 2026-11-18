@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { validateOutline } from "@app/core";
 import { Button, Chip, Input, Select, Spinner, Textarea } from "@app/ui";
 import { useServices } from "../../services/context.js";
+import { PageHeader } from "../../shell/PageHeader.js";
 import { useAppInfo } from "../../shell/AppInfo.js";
 import type {
   DeckMapping,
@@ -239,7 +240,7 @@ export function CourseImportScreen({ courseId: existing }: { courseId?: string }
 
   return (
     <div className={step === "outline" ? "page" : "page page--narrow"}>
-      <h1>{existing ? "Edit course" : "Add a course"}</h1>
+      <PageHeader title={existing ? "Edit course" : "Add a course"} />
       <Steps step={step === "done" ? "analyze" : step} />
       {error ? (
         <p className="error-text" role="alert">

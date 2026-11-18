@@ -741,8 +741,7 @@ export function TopicPractice({ topicId }: { topicId: string }) {
   if (!topic) {
     return (
       <div className="page page--narrow practice">
-        <h1>Practice</h1>
-        <p className="page-lede">This grammar topic was not found.</p>
+        <PageHeader title="Practice" lede="This grammar topic was not found." />
         <Link to="/grammar" className="k-btn k-btn--secondary">
           All grammar topics
         </Link>
@@ -763,8 +762,10 @@ export function TopicPractice({ topicId }: { topicId: string }) {
     <div className="page page--narrow practice">
       {phase.name === "loading" || phase.name === "start" ? (
         <>
-          <h1>Practise: {topic.title}</h1>
-          <p className="page-lede">{error ? "The session could not be prepared." : "Preparing…"}</p>
+          <PageHeader
+            title={`Practise: ${topic.title}`}
+            lede={error ? "The session could not be prepared." : "Preparing…"}
+          />
           {error ? (
             <>
               <p className="error-text" role="alert">
