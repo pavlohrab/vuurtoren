@@ -8,7 +8,6 @@ import {
   type SegmentPlan,
   glossTargets,
   helpLevel,
-  hitsAtToken,
   hitsInSentence,
 } from "@app/core";
 import type { GrammarTopic } from "@app/content";
@@ -26,7 +25,7 @@ import {
 } from "@app/ui";
 import { useServices } from "../services/context.js";
 import type { InspectorEntry, ReadingView } from "../services/types.js";
-import { GrammarNotes, notesFor } from "./GrammarNotes.js";
+import { notesFor } from "./GrammarNotes.js";
 import {
   type MarginMark,
   hitsForTopic,
@@ -39,6 +38,7 @@ import {
 } from "./reader/grammarMarks.js";
 import { FocusCount, GrammarPicker, MarkCard } from "./reader/ReaderGrammar.js";
 import { ReadingSettings } from "./reader/ReadingSettings.js";
+import { WordGrammar } from "./reader/WordGrammar.js";
 import { prefsStyle, useReaderPrefs } from "./reader/readerPrefs.js";
 import "./reader/reader.css";
 import { ExplainSentence, SimplifyPage } from "./ReaderAI.js";
@@ -735,7 +735,15 @@ export function ReaderPage({ textId }: { textId: string }) {
                 onRetry={() => void inspect.refetch()}
                 {...actions.props(entry)}
               />
-              {entry ? <GrammarNotes hits={hitsAtToken(hits, entry.tokenIndex)} /> : null}
+              {entry ? (
+                <WordGrammar
+                  tokens={data.tokens}
+                  index={entry.tokenIndex}
+                  hits={hits}
+                  article={entry.article}
+                  onFocus={chooseFocus}
+                />
+              ) : null}
               <ExplainSentence sentence={entry?.sentence} grammar={sentenceGrammar} />
             </>,
             inspectorEl,

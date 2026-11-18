@@ -14,6 +14,7 @@ import type {
 import type { ActivityEntry, StoredText, WordInfo } from "@app/db";
 import { groupActivity } from "./activity.js";
 import { createMockCourses } from "./mockCourses.js";
+import { applySampleMorph } from "./mockMorph.js";
 import { createMockAI } from "./mockAI.js";
 import { createMockExam, demoAttempts } from "./mockExam.js";
 import { createMockProfile } from "./mockProfile.js";
@@ -293,6 +294,7 @@ export function createMockServices(
   let created = Date.now() - 86_400_000 * SAMPLE_TEXTS.length;
   for (const t of SAMPLE_TEXTS) {
     const tokens = tokenize(t.content, (s) => ensure(s), t.particles);
+    applySampleMorph(t.id, tokens);
     texts.set(t.id, {
       id: t.id,
       title: t.title,
