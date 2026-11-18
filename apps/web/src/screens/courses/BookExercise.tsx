@@ -286,8 +286,8 @@ export function BookExercise(props: Props) {
   return (
     <article className="cs-ex" aria-label={`Exercise ${exercise.number}`}>
       <div className="cs-ex-head">
-        <h3>{made ? "Made for this unit" : `Exercise ${exercise.number}`}</h3>
-        <Chip>{TYPE_LABEL[exercise.type]}</Chip>
+        <h3>{made ? TYPE_LABEL[exercise.type] : `Exercise ${exercise.number}`}</h3>
+        <Chip>{made ? "AI, checked" : TYPE_LABEL[exercise.type]}</Chip>
         {made ? null : <span className="cs-hint">page {exercise.page}</span>}
       </div>
       {exercise.instruction ? (

@@ -328,7 +328,7 @@
   white-space: nowrap;
 }
 .cs-page-unit {
-  color: var(--accent-ink);
+  color: var(--ink);
   font-size: 13px;
 }
 .cs-page-split {
@@ -469,4 +469,15 @@
   .cs-grammar-list > li > div {
     grid-column: 1 / -1;
   }
+}
+
+/* Five tabs do not fit a phone: the tab row scrolls instead of the page. */
+.cs-tabs .k-tabs-list {
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.cs-tabs .k-tabs-trigger {
+  flex-shrink: 0;
+  white-space: nowrap;
 }

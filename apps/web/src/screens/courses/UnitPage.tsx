@@ -365,86 +365,88 @@ export function UnitRoute({ courseId, n }: { courseId: string; n: number }) {
       {adding ? (
         <AddWordsDialog courseId={courseId} scope={n} open={adding} onOpenChange={setAdding} />
       ) : null}
-      <Tabs
-        aria-label="Unit sections"
-        value={tab}
-        onValueChange={setTab}
-        items={[
-          {
-            value: "read",
-            label: "Read",
-            content: (
-              <div className="cs-tabpanel">
-                <ReadTab unit={u} />
-              </div>
-            ),
-          },
-          {
-            value: "exercises",
-            label: `Exercises (${u.exercises.length + u.generated.length})`,
-            content: (
-              <div className="cs-tabpanel">
-                {u.exercises.length === 0 ? (
-                  <p className="cs-note">No exercises were recognised in this unit.</p>
-                ) : (
-                  u.exercises.map((e) => (
-                    <BookExercise
-                      key={e.number}
-                      courseId={courseId}
-                      unitN={n}
-                      exercise={e}
-                      onChanged={refresh}
-                    />
-                  ))
-                )}
-                {u.generated.length > 0 ? (
-                  <section className="cs-made" aria-label="Made for this unit">
-                    <h2 className="cs-section-title">Made for this unit</h2>
-                    {u.generated.map((e) => (
+      <div className="cs-tabs">
+        <Tabs
+          aria-label="Unit sections"
+          value={tab}
+          onValueChange={setTab}
+          items={[
+            {
+              value: "read",
+              label: "Read",
+              content: (
+                <div className="cs-tabpanel">
+                  <ReadTab unit={u} />
+                </div>
+              ),
+            },
+            {
+              value: "exercises",
+              label: `Exercises (${u.exercises.length + u.generated.length})`,
+              content: (
+                <div className="cs-tabpanel">
+                  {u.exercises.length === 0 ? (
+                    <p className="cs-note">No exercises were recognised in this unit.</p>
+                  ) : (
+                    u.exercises.map((e) => (
                       <BookExercise
                         key={e.number}
                         courseId={courseId}
                         unitN={n}
                         exercise={e}
                         onChanged={refresh}
-                        generated
                       />
-                    ))}
-                  </section>
-                ) : null}
-                <GenerateButton courseId={courseId} n={n} onDone={refresh} />
-              </div>
-            ),
-          },
-          {
-            value: "words",
-            label: `Words (${u.words.length})`,
-            content: (
-              <div className="cs-tabpanel">
-                <WordsTab unit={u} courseId={courseId} n={n} />
-              </div>
-            ),
-          },
-          {
-            value: "grammar",
-            label: "Grammar",
-            content: (
-              <div className="cs-tabpanel">
-                <GrammarTab unit={u} topics={grammar.data} />
-              </div>
-            ),
-          },
-          {
-            value: "practice",
-            label: "Practice",
-            content: (
-              <div className="cs-tabpanel">
-                <PracticeTab unit={u} onBook={() => setTab("exercises")} />
-              </div>
-            ),
-          },
-        ]}
-      />
+                    ))
+                  )}
+                  {u.generated.length > 0 ? (
+                    <section className="cs-made" aria-label="Made for this unit">
+                      <h2 className="cs-section-title">Made for this unit</h2>
+                      {u.generated.map((e) => (
+                        <BookExercise
+                          key={e.number}
+                          courseId={courseId}
+                          unitN={n}
+                          exercise={e}
+                          onChanged={refresh}
+                          generated
+                        />
+                      ))}
+                    </section>
+                  ) : null}
+                  <GenerateButton courseId={courseId} n={n} onDone={refresh} />
+                </div>
+              ),
+            },
+            {
+              value: "words",
+              label: `Words (${u.words.length})`,
+              content: (
+                <div className="cs-tabpanel">
+                  <WordsTab unit={u} courseId={courseId} n={n} />
+                </div>
+              ),
+            },
+            {
+              value: "grammar",
+              label: "Grammar",
+              content: (
+                <div className="cs-tabpanel">
+                  <GrammarTab unit={u} topics={grammar.data} />
+                </div>
+              ),
+            },
+            {
+              value: "practice",
+              label: "Practice",
+              content: (
+                <div className="cs-tabpanel">
+                  <PracticeTab unit={u} onBook={() => setTab("exercises")} />
+                </div>
+              ),
+            },
+          ]}
+        />
+      </div>
     </div>
   );
 }
