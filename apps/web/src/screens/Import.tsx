@@ -4,6 +4,7 @@ import { ArrowLeft, UploadCloud } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { DragEvent } from "react";
 import { Button, Input, Spinner, Tabs, Textarea, useToast } from "@app/ui";
+import { useOcrAvailable } from "../desktop/DesktopSetup.js";
 import { useServices } from "../services/context.js";
 import type { ImportInput } from "../services/types.js";
 import { errorText } from "../services/errors.js";
@@ -77,7 +78,10 @@ export function ImportScreen() {
     };
   }, []);
 
+  // The desktop app has no text recognition (Tesseract) unless it is installed on the computer.
+  const ocr = useOcrAvailable();
   const [kind, setKind] = useState<Kind>("paste");
+  const shownKind: Kind = !ocr && kind === "image" ? "paste" : kind;
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [url, setUrl] = useState("");
@@ -94,6 +98,7 @@ export function ImportScreen() {
         ? { kind, content, ...(title.trim() ? { title: title.trim() } : {}) }
         : null;
     if (kind === "url") return url.trim() ? { kind, url: url.trim() } : null;
+    if (kind === "image" && !ocr) return null;
     const file = kind === "pdf" ? pdfFile : imageFile;
     return file ? { kind, file, ...(title.trim() ? { title: title.trim() } : {}) } : null;
   };
@@ -142,7 +147,11 @@ export function ImportScreen() {
           </Link>
         }
         title="Import text"
-        lede="Bring in something you want to read in Dutch: paste it, add a web page, a PDF or a photo."
+        lede={
+          ocr
+            ? "Bring in something you want to read in Dutch: paste it, add a web page, a PDF or a photo."
+            : "Bring in something you want to read in Dutch: paste it, add a web page or a PDF."
+        }
       />
       <form
         className="stack"
@@ -153,7 +162,7 @@ export function ImportScreen() {
       >
         <Tabs
           aria-label="Import source"
-          value={kind}
+          value={shownKind}
           onValueChange={(v) => setKind(v as Kind)}
           items={[
             {
@@ -201,23 +210,34 @@ export function ImportScreen() {
                 </div>
               ),
             },
-            {
-              value: "image",
-              label: "Photo",
-              content: (
-                <div className="stack">
-                  {titleField}
-                  <FileDrop
-                    accept="image/*"
-                    label="Choose a photo or drop it here"
-                    file={imageFile}
-                    onFile={setImageFile}
-                  />
-                </div>
-              ),
-            },
+            ...(ocr
+              ? [
+                  {
+                    value: "image",
+                    label: "Photo",
+                    content: (
+                      <div className="stack">
+                        {titleField}
+                        <FileDrop
+                          accept="image/*"
+                          label="Choose a photo or drop it here"
+                          file={imageFile}
+                          onFile={setImageFile}
+                        />
+                      </div>
+                    ),
+                  },
+                ]
+              : []),
           ]}
         />
+        {!ocr ? (
+          <p className="k-hint" role="note" style={{ margin: 0 }}>
+            Photos and scanned pages need text recognition (OCR), which the desktop app does not
+            include. PDFs with a text layer, web pages and pasted text work; to import a photo,
+            install Tesseract or use a Kenning server.
+          </p>
+        ) : null}
 
         {progress.length > 0 || busy ? (
           <ul className="progress-log" aria-live="polite">

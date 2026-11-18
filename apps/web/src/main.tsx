@@ -7,9 +7,11 @@ import { type Account, type AuthClient, createAuthClient } from "./auth/client.j
 import { installFetchWatch } from "./auth/watch.js";
 import { desktopBridge, type DesktopBridge } from "./desktop/bridge.js";
 import { ConnectScreen } from "./desktop/ConnectScreen.js";
+import { type LocalBoot, bootDesktopLocal } from "./desktop/local.js";
+import { LockedScreen } from "./desktop/LockedScreen.js";
 import { createMockServices } from "./services/mock.js";
 import type { AppServices } from "./services/types.js";
-import type { AccountControls, DataControls } from "./shell/AppInfo.js";
+import type { AccountControls, DataControls, DesktopLocal } from "./shell/AppInfo.js";
 import { SessionGate } from "./shell/SessionGate.js";
 import { SignInScreen } from "./shell/SignIn.js";
 import {
@@ -79,6 +81,8 @@ type Boot =
       account?: AccountControls;
       /** Server mode with sign-in: watch for the session ending. */
       session?: { methods: ServerHealth["authMethods"]; user: string | null };
+      /** Desktop app on this computer only (D4). */
+      desktop?: DesktopLocal;
     }
   | { kind: "signin"; health: ServerHealth }
   | { kind: "unreachable"; reason: string }
@@ -86,7 +90,9 @@ type Boot =
   | { kind: "busy"; takeOver: () => Promise<void> }
   | { kind: "elsewhere" }
   /** Desktop app, bundled home page: choose the server (docs/desktop.md). */
-  | { kind: "desktop"; bridge: DesktopBridge };
+  | { kind: "desktop"; bridge: DesktopBridge }
+  /** Desktop app, offline: the data file is open on another computer. */
+  | Extract<LocalBoot, { kind: "locked" }>;
 
 const INSECURE_NOTICE =
   "Kenning needs https or http://localhost to store data (you opened it over plain http from another device). Use https (see deploy/README.md) or run in server mode.";
@@ -195,11 +201,29 @@ async function openBrowser(lock: HeldLock): Promise<Boot> {
   };
 }
 
+/**
+ * The desktop app's own page (docs/desktop.md): on this computer only (the default; data in a
+ * local SQLite file, the bundled language server), or the Connect screen when the user chose a
+ * Kenning server (it then opens the server's page, which boots as usual).
+ */
+async function bootDesktop(bridge: DesktopBridge): Promise<Boot> {
+  const info = await bridge.info().catch(() => null);
+  const changing = new URLSearchParams(location.search).has("connect");
+  if (changing || info?.mode === "server") return { kind: "desktop", bridge };
+  try {
+    return await bootDesktopLocal(bridge, info?.nlpBase);
+  } catch (e) {
+    console.error("The local database could not be opened:", e);
+    return {
+      kind: "unreachable",
+      reason: `Kenning could not open its data file: ${e instanceof Error ? e.message : String(e)}`,
+    };
+  }
+}
+
 async function boot(): Promise<Boot> {
-  // The desktop app's own page connects to a server first; the server's pages boot as usual.
-  // (D4, offline: this is where "use on this computer only" will continue into local mode.)
   const desktop = desktopBridge();
-  if (desktop?.home) return { kind: "desktop", bridge: desktop };
+  if (desktop?.home) return bootDesktop(desktop);
   const demo = isDemo();
   // The demo looks like a set-up app: a recent sync, so no "Connect Anki" prompts.
   if (demo)
@@ -253,6 +277,7 @@ function show(b: Boot): Promise<void> {
           onLeaveDemo={leaveDemo}
           data={b.data}
           account={b.account}
+          desktop={b.desktop}
         />
       );
       node = b.session ? (
@@ -296,6 +321,15 @@ function show(b: Boot): Promise<void> {
       break;
     case "elsewhere":
       node = <ElsewhereScreen />;
+      break;
+    case "locked":
+      node = (
+        <LockedScreen
+          path={b.path}
+          lock={b.lock}
+          onOpenAnyway={async () => show(await b.openAnyway())}
+        />
+      );
       break;
     case "desktop":
       node = (

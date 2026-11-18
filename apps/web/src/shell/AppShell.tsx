@@ -36,6 +36,7 @@ import {
 import { useServices } from "../services/context.js";
 import { useTheme, type ThemeChoice } from "../theme.js";
 import { useAppInfo } from "./AppInfo.js";
+import { DesktopSetup } from "../desktop/DesktopSetup.js";
 import { DegradedIndicator } from "./DegradedIndicator.js";
 import { ShellContext, type PageHeader, type ShellState } from "./ShellContext.js";
 import { useRemoteFreshness } from "./useRemoteFreshness.js";
@@ -73,7 +74,7 @@ export function AppShell() {
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [theme, setTheme] = useTheme();
-  const { notice, demo, onLeaveDemo } = useAppInfo();
+  const { notice, demo, onLeaveDemo, desktop } = useAppInfo();
   useRemoteFreshness(services, useQueryClient());
 
   const [header, setHeader] = useState<PageHeader | null>(null);
@@ -233,6 +234,7 @@ export function AppShell() {
         ) : null}
 
         <div className="main">
+          {desktop ? <DesktopSetup /> : null}
           {notice || demo ? (
             <div className="shell-notices">
               {demo ? (

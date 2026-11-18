@@ -26,10 +26,12 @@ const messageOf = (e: unknown): string =>
   typeof e === "string" ? e : e instanceof Error ? e.message : "Something went wrong. Try again.";
 
 /**
- * First start of the desktop app (docs/desktop.md): which Kenning server to open. The address
- * is checked (`/api/health`) by the app, then the window opens the server itself, which shows
- * its own sign-in screen when it needs one. Later starts open the saved server straight away;
- * if it does not answer, this screen says so and offers to retry or pick another.
+ * "Connect to a Kenning server" in the desktop app (docs/desktop.md); the app itself starts on
+ * this computer only, so this screen is the advanced route. The address is checked
+ * (`/api/health`) by the app, then the window opens the server itself, which shows its own
+ * sign-in screen when it needs one. Later starts open the saved server straight away; if it
+ * does not answer, this screen says so and offers to retry, pick another, or go back to using
+ * Kenning on this computer.
  */
 export function ConnectScreen({ bridge, changing }: ConnectProps) {
   const [phase, setPhase] = useState<Phase>({ kind: "loading" });
@@ -192,11 +194,21 @@ export function ConnectScreen({ bridge, changing }: ConnectProps) {
             Use on this computer only
           </h2>
           <p className="signin-lede">
-            Without a server, everything on this computer, also offline. Coming soon.
+            No server needed: your data stays in a file on this computer and Kenning works offline.
           </p>
-          <Button disabled>Coming soon</Button>
+          <Button
+            disabled={pending}
+            onClick={() => {
+              setPending(true);
+              void bridge.useLocal().catch((e: unknown) => {
+                setProblem(messageOf(e));
+                setPending(false);
+              });
+            }}
+          >
+            Use on this computer
+          </Button>
         </section>
-        <p className="signin-foot">No server yet? See the Kenning README for the one-file setup.</p>
       </main>
     </div>
   );

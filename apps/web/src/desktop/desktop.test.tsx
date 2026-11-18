@@ -16,6 +16,23 @@ function fakeBridge(over: Partial<DesktopBridge> = {}): DesktopBridge {
     connect: vi.fn(() => Promise.resolve()),
     changeServer: vi.fn(() => Promise.resolve()),
     ankiFetch: vi.fn(() => Promise.resolve({ status: 200, body: '{"result":6,"error":null}' })),
+    useLocal: vi.fn(() => Promise.resolve()),
+    db: {
+      open: vi.fn(() =>
+        Promise.resolve({ path: "/k/kenning.sqlite", created: true, conflicts: [], locked: null }),
+      ),
+      exec: vi.fn(() => Promise.resolve([])),
+      close: vi.fn(() => Promise.resolve()),
+      exportFile: vi.fn(() => Promise.resolve(new Uint8Array())),
+      importFile: vi.fn(() => Promise.resolve()),
+      reveal: vi.fn(() => Promise.resolve()),
+      move: vi.fn(() => Promise.resolve(null)),
+    },
+    nlp: {
+      status: vi.fn(() => Promise.resolve({ state: "ready" as const, health: null })),
+      restart: vi.fn(() => Promise.resolve()),
+      retryPacks: vi.fn(() => Promise.resolve()),
+    },
     ...over,
   };
 }
@@ -108,7 +125,7 @@ describe("Anki through the desktop bridge", () => {
 });
 
 describe("ConnectScreen", () => {
-  it("asks for a server on first start, checks it and opens it", async () => {
+  it("asks for a server, checks it and opens it", async () => {
     const bridge = fakeBridge();
     render(<ConnectScreen bridge={bridge} changing={false} />);
     const input = await screen.findByLabelText("Server address");
@@ -116,7 +133,13 @@ describe("ConnectScreen", () => {
     await userEvent.click(screen.getByRole("button", { name: "Connect" }));
     await waitFor(() => expect(bridge.connect).toHaveBeenCalledWith("https://kenning.example/"));
     expect(bridge.checkServer).toHaveBeenCalledWith("kenning.example");
-    expect(screen.getByRole("button", { name: "Coming soon" })).toBeDisabled();
+  });
+
+  it("goes back to using Kenning on this computer", async () => {
+    const bridge = fakeBridge();
+    render(<ConnectScreen bridge={bridge} changing />);
+    await userEvent.click(await screen.findByRole("button", { name: "Use on this computer" }));
+    expect(bridge.useLocal).toHaveBeenCalledTimes(1);
   });
 
   it("shows why a server cannot be used and stays on the form", async () => {

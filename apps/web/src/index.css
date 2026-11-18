@@ -528,6 +528,26 @@
   gap: 4px 12px;
   padding: 6px 16px;
 }
+/* Desktop app, offline mode: language tools starting / data packs downloading */
+.desktop-setup-sub {
+  color: var(--ink-subtle, var(--ink-muted));
+}
+.desktop-setup--error {
+  color: var(--ink);
+}
+.desktop-setup-bar {
+  flex: 0 0 140px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--hairline);
+  overflow: hidden;
+}
+.desktop-setup-bar > span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.4s ease;
+}
 .link-button {
   font: inherit;
   color: var(--accent);

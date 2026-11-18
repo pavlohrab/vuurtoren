@@ -92,11 +92,17 @@ export function ServerStatus({ nlpUrl }: { nlpUrl: string }) {
     rows.push(
       server
         ? { label: "Your data", tone: "ok", value: `On this server (one SQLite file)${size}` }
-        : {
-            label: "Your data",
-            tone: data.persistent && data.persisted !== false ? "ok" : "warn",
-            value: `In this browser${data.persistent ? "" : ", in memory only (not saved)"}${size}`,
-          },
+        : data.mode === "desktop"
+          ? {
+              label: "Your data",
+              tone: "ok",
+              value: `${data.file?.path ?? "On this computer"}${size}`,
+            }
+          : {
+              label: "Your data",
+              tone: data.persistent && data.persisted !== false ? "ok" : "warn",
+              value: `In this browser${data.persistent ? "" : ", in memory only (not saved)"}${size}`,
+            },
     );
   }
 
@@ -139,7 +145,10 @@ export function ServerStatus({ nlpUrl }: { nlpUrl: string }) {
       rows.push({
         label: "Language server",
         tone: "error",
-        value: `Not reachable at ${nlp || "(no address)"} (${why(lang.error)})`,
+        value:
+          data?.mode === "desktop"
+            ? `Not answering yet (${why(lang.error)})`
+            : `Not reachable at ${nlp || "(no address)"} (${why(lang.error)})`,
       });
     } else if (lang.data) {
       const missing = Object.entries(lang.data.data ?? {})

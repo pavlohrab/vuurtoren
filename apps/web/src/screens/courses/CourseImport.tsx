@@ -47,7 +47,9 @@ function Steps({ step }: { step: Step }) {
 }
 
 /** Where the book ends up, by storage mode (server, this browser, or the demo). */
-function privacyCopy(mode: "server" | "browser" | undefined): string {
+function privacyCopy(mode: "server" | "browser" | "desktop" | undefined): string {
+  if (mode === "desktop")
+    return "It is read by the language tools on this computer and kept only in your Kenning data file. Nothing is shared.";
   if (mode === "server")
     return "It is read on your own Kenning server and kept only in its storage. Nothing is shared.";
   if (mode === "browser")
