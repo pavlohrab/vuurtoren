@@ -6,7 +6,7 @@ name: kenning
 
 services:
   nlp:
-    image: ghcr.io/${KENNING_IMAGE_OWNER:-kenning}/kenning-nlp:${KENNING_TAG:-latest}
+    image: ghcr.io/${KENNING_IMAGE_OWNER:-kenning}/kenning-nlp:${KENNING_TAG:-latest}${KENNING_NLP_VARIANT:-}
     # One replica, one worker: OCR jobs are held in memory (see server/nlp/Dockerfile).
     deploy:
       replicas: 1
@@ -22,8 +22,13 @@ services:
       KENNING_COURSE_CACHE_DIR: /cache/course
       # Parallel Tesseract processes for course imports (default: half the CPUs, at most 6).
       KENNING_OCR_WORKERS: ${KENNING_OCR_WORKERS:-}
+      # Data packs on the kenning-nlp-data volume (see deploy/README.md, "Language data").
+      KENNING_PACKS: ${KENNING_PACKS:-auto}
+      KENNING_PACKS_URL: ${KENNING_PACKS_URL:-}
+      KENNING_PACKS_TOKEN: ${KENNING_PACKS_TOKEN:-}
     volumes:
       - kenning-ocr-cache:/cache
+      - kenning-nlp-data:/data
     networks: [internal]
 
   # Your data: ONE SQLite file on the kenning-data volume, shared by every device (ADR 0008).
@@ -150,3 +155,4 @@ volumes:
   caddy-data: {}
   kenning-data: {}
   kenning-ocr-cache: {}
+  kenning-nlp-data: {}

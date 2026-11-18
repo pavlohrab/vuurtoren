@@ -5,7 +5,9 @@
 #
 #   web          the app + sign-in gate (nginx); the only service with a published port
 #   api          your data in ONE SQLite file on the kenning-data volume, and sign-in
-#   nlp          Dutch analysis, dictionary, OCR, translation
+#   nlp          Dutch analysis, dictionary, OCR, translation; its data packs (~100 MB download,
+#                once) go to the kenning-nlp-data volume. KENNING_NLP_VARIANT=-full ships them
+#                inside the image (offline installs), -slim leaves out OCR.
 #   cloudflared  optional (profile "tunnel"): public https address without opening ports
 #   backup       optional (profile "backup"): scheduled snapshots of your data to a folder
 #
@@ -66,11 +68,21 @@ services:
       retries: 3
 
   nlp:
-    image: ghcr.io/${KENNING_IMAGE_OWNER:?set KENNING_IMAGE_OWNER}/kenning-nlp:${KENNING_TAG:-latest}
+    image: ghcr.io/${KENNING_IMAGE_OWNER:?set KENNING_IMAGE_OWNER}/kenning-nlp:${KENNING_TAG:-latest}${KENNING_NLP_VARIANT:-}
     # One replica, one worker: OCR jobs are held in memory (see server/nlp/Dockerfile).
     deploy:
       replicas: 1
     restart: unless-stopped
+    environment:
+      # Data packs (dictionary, sentences, translation model): installed on first start and
+      # updated when a new version is released. With KENNING_PACKS_URL they are downloaded
+      # (~100 MB); without it the server builds them from the public sources (~10 min, once).
+      # Progress: Settings > Advanced > Server status, or scripts/doctor.sh.
+      KENNING_PACKS: ${KENNING_PACKS:-auto}
+      KENNING_PACKS_URL: ${KENNING_PACKS_URL:-}
+      KENNING_PACKS_TOKEN: ${KENNING_PACKS_TOKEN:-}
+    volumes:
+      - kenning-nlp-data:/data
     networks: [edge, backend]
     healthcheck:
       test:
@@ -143,3 +155,4 @@ networks:
 
 volumes:
   kenning-data: {}
+  kenning-nlp-data: {}

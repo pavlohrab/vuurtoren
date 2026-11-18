@@ -1,137 +1,91 @@
 # syntax=docker/dockerfile:1
 # Kenning NLP service. Build context: server/nlp (see deploy/compose.yml).
 #
-# Base images are pinned to a patch release (all stages share it: the venv is copied between
-# them); .github/dependabot.yml proposes updates.
+#   docker build server/nlp                          -> kenning-nlp:<tag>       (with OCR)
+#   docker build --build-arg OCR=0 server/nlp        -> kenning-nlp:<tag>-slim  (no Tesseract)
+#   docker build -f server/nlp/full.Dockerfile ...   -> kenning-nlp:<tag>-full  (data packs inside)
 #
-# The Wiktionary dictionary is built AT IMAGE BUILD TIME in a throwaway stage: the 250 MB
-# Kaikki download never reaches the final image, only the ~35 MB SQLite file does, and a
-# self-hoster gets working /gloss with a plain `docker compose up --build`. The builder uses
-# only the standard library, so it does not depend on the (slow) Python dependency layer.
-# Reproducibility: Kaikki and Tatoeba only publish a rolling "latest" export, so scripts/ pin the
-# SHA-256 + size of the snapshot the data was built from (scripts/pinned_download.py). When
-# upstream refreshes, the build stops with a clear message. To build from the new data anyway:
-#   docker build --build-arg KAIKKI_ACCEPT_NEW=1 --build-arg TATOEBA_ACCEPT_NEW=1 ...
-# (then record the printed digests in the scripts). To use your own copy or mirror:
-#   --build-arg KAIKKI_URL=... KAIKKI_SHA256=<hex> (empty = no check) KAIKKI_SIZE=<bytes> (0 = none)
-#   --build-arg TATOEBA_BASE_URL=...
+# The image holds code and libraries only. The data (dictionary, Tatoeba sentences, translation
+# model; ~100 MB download, ~185 MB installed) are versioned *data packs* on the /data volume:
+# at startup the server installs missing or outdated packs in the background, from
+# KENNING_PACKS_DIR (bundled archives, the -full image), KENNING_PACKS_URL (release assets) or, with
+# neither, by building them here from the pinned upstream sources with scripts/ (~10 minutes,
+# once). See kenning_nlp/packs.py and docs/architecture.md ("Data packs").
 #
-# The Tatoeba sentence DB (/sentences, and the perfect-tense evidence behind /forms `aux`) is built
-# the same way, in a throwaway stage, but that stage needs the Python dependencies (the spaCy
-# pipeline analyses ~150k sentences, ~4 min): it therefore starts from the shared `venv` stage, which
-# the runtime image copies as well, so the dependencies are installed (and cached) only once. The
-# ~30 MB of Tatoeba exports never reach the final image, only the ~50 MB SQLite file.
+# Size (docs/research/10-nlp-footprint.md): no lingua (a small wordfreq-based detector instead),
+# Dutch-only simplemma data, wordfreq lists only for the detected languages, no tests or bytecode
+# in the venv, no build tools in the runtime. Base images are pinned to a patch release (all
+# stages share it: the venv is copied between them); .github/dependabot.yml proposes updates.
 
-# ---- Stage 1: dictionary ---------------------------------------------------------------
-FROM python:3.12.16-slim AS dictionary
-ARG KAIKKI_URL=https://kaikki.org/dictionary/Dutch/kaikki.org-dictionary-Dutch.jsonl
-# Defaults ("-") mean: use the digest and size pinned in scripts/build_dictionary.py.
-ARG KAIKKI_SHA256=-
-ARG KAIKKI_SIZE=-
-ARG KAIKKI_ACCEPT_NEW=0
-WORKDIR /build
-COPY src/kenning_nlp/__init__.py src/kenning_nlp/dictionary.py src/kenning_nlp/compound.py \
-    src/kenning_nlp/wordforms.py src/kenning_nlp/nl.py src/kenning_nlp/
-COPY scripts/build_dictionary.py scripts/pinned_download.py scripts/
-RUN set -eu; \
-    args=""; \
-    [ "$KAIKKI_SHA256" = "-" ] || args="$args --sha256=$KAIKKI_SHA256"; \
-    [ "$KAIKKI_SIZE" = "-" ] || args="$args --size=$KAIKKI_SIZE"; \
-    [ "$KAIKKI_ACCEPT_NEW" = "0" ] || args="$args --accept-new-upstream"; \
-    PYTHONPATH=src python scripts/build_dictionary.py --url "$KAIKKI_URL" $args \
-    --output /out/dictionary-nl.sqlite
-
-# ---- Stage 2: translation model --------------------------------------------------------
-# OPUS-MT nl->en (CTranslate2, ~160 MB) fetched at build time like the dictionary: the script is
-# stdlib-only, pins a commit and verifies SHA-256, so the image works offline with a plain
-# `docker compose up --build` and no first-request download or writable volume is needed.
-FROM python:3.12.16-slim AS mtmodel
-WORKDIR /build
-COPY scripts/fetch_mt_model.py scripts/
-RUN python scripts/fetch_mt_model.py --output /out/mt-nl-en
-
-# ---- Stage 3: Python environment ---------------------------------------------------------
+# ---- Stage 1: Python environment ----------------------------------------------------------
 FROM python:3.12.16-slim AS venv
 # Pinned uv binary from its official image (no pip, nothing extra in the layer).
 COPY --from=ghcr.io/astral-sh/uv:0.13.9 /uv /usr/local/bin/uv
-ENV UV_COMPILE_BYTECODE=1 \
-    UV_LINK_MODE=copy \
+ENV UV_LINK_MODE=copy \
     UV_PROJECT_ENVIRONMENT=/opt/venv \
+    UV_NO_CACHE=1 \
     PATH="/opt/venv/bin:$PATH" \
-    PYTHONUNBUFFERED=1
+    PYTHONDONTWRITEBYTECODE=1
 
 WORKDIR /app
 # Dependencies first (cached unless pyproject/uv.lock change). The spaCy model is a locked
 # wheel dependency (nl-core-news-md), so no separate `spacy download` is needed.
 COPY pyproject.toml uv.lock ./
 RUN uv sync --locked --no-dev --no-install-project
-COPY src ./src
-RUN uv sync --locked --no-dev
-
-# ---- Stage 4: sentences ------------------------------------------------------------------
-# Needs the dictionary (the pipeline's lemma logic reads it) and the spaCy model.
-FROM venv AS sentences
-ARG TATOEBA_BASE_URL=https://downloads.tatoeba.org/exports/per_language
-ARG TATOEBA_ACCEPT_NEW=0
-ENV KENNING_DICT_PATH=/in/dictionary-nl.sqlite
-COPY --from=dictionary /out/dictionary-nl.sqlite /in/dictionary-nl.sqlite
-COPY scripts/build_sentences.py scripts/pinned_download.py scripts/
-RUN set -eu; \
-    args=""; \
-    [ "$TATOEBA_ACCEPT_NEW" = "0" ] || args="--accept-new-upstream"; \
-    python scripts/build_sentences.py --processes 4 --download-dir /tmp/tatoeba \
-    --base-url "$TATOEBA_BASE_URL" $args --output /out/sentences-nl.sqlite
-
-# ---- Stage 5: grammar examples -------------------------------------------------------------
-# GET /grammar/examples scans the sentence DB with the grammar detectors and caches what it finds.
-# The runtime /data is read-only (the service runs as an unprivileged user), so the cache is
-# precomputed here (well under a minute: the scan stops once every topic has 40 examples) and
-# shipped as a ~0.2 MB SQLite file. At runtime it is only read (see kenning_nlp.grammar_examples).
-FROM venv AS grammar
-ENV KENNING_DICT_PATH=/in/dictionary-nl.sqlite \
-    KENNING_SENTENCES_PATH=/in/sentences-nl.sqlite \
-    KENNING_GRAMMAR_CACHE_PATH=/out/grammar-examples-nl.sqlite
-COPY --from=dictionary /out/dictionary-nl.sqlite /in/dictionary-nl.sqlite
-COPY --from=sentences /out/sentences-nl.sqlite /in/sentences-nl.sqlite
-COPY scripts/build_grammar_examples.py scripts/
-RUN python scripts/build_grammar_examples.py
-
-# ---- Stage 6: runtime ------------------------------------------------------------------
-FROM python:3.12.16-slim
-
-# Tesseract + Dutch/Ukrainian (English is a dependency of the base package) traineddata.
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends \
-        tesseract-ocr tesseract-ocr-nld tesseract-ocr-ukr \
+# Trim what the service never loads:
+#   debug symbols of the compiled extensions (strip: ~220 MB, mostly ctranslate2 and spaCy);
+#   simplemma: Dutch only; wordfreq: Dutch (large, for frequencies) + the small lists of the
+#   languages /detect knows (kenning_nlp/detect.py); test suites; bytecode (compiled on first
+#   start into PYTHONPYCACHEPREFIX instead); setuptools (build-time only).
+# binutils (strip) stays in this throwaway stage.
+RUN apt-get update && apt-get install -y --no-install-recommends binutils \
     && rm -rf /var/lib/apt/lists/*
+RUN set -eu; sp=/opt/venv/lib/python3.12/site-packages; \
+    find /opt/venv -name '*.so*' -type f -exec strip --strip-unneeded {} +; \
+    find "$sp/simplemma/strategies/dictionaries/data" -type f ! -name 'nl.plzma' -delete; \
+    find "$sp/wordfreq/data" -type f ! -regex '.*/\(large_nl\|small_\(nl\|en\|de\|fr\|es\|it\|pt\|pl\|uk\|ru\)\)\.msgpack\.gz' -delete; \
+    find /opt/venv -depth -type d \( -name tests -o -name __pycache__ \) -exec rm -rf {} +; \
+    rm -rf "$sp/setuptools" "$sp"/setuptools-*.dist-info "$sp/pkg_resources" "$sp/_distutils_hack"
+COPY src ./src
+COPY scripts ./scripts
+RUN uv sync --locked --no-dev && find /opt/venv /app -depth -name __pycache__ -exec rm -rf {} +
+
+# ---- Stage 2: runtime ------------------------------------------------------------------
+FROM python:3.12.16-slim AS runtime
+
+# OCR=1 (default): Tesseract + Dutch/Ukrainian (English comes with it) for photo/scan and course
+# import. OCR=0 gives the -slim image: everything else works, /ocr and /course/ocr answer 503
+# with an install hint (GET /health shows "ocr": false).
+ARG OCR=1
+RUN if [ "$OCR" = 1 ]; then \
+      apt-get update \
+      && apt-get install -y --no-install-recommends \
+          tesseract-ocr tesseract-ocr-nld tesseract-ocr-ukr \
+      && rm -rf /var/lib/apt/lists/* /var/cache/apt/* /usr/share/doc/* /usr/share/man/*; \
+    fi
 
 ENV PATH="/opt/venv/bin:$PATH" \
     PYTHONUNBUFFERED=1 \
-    KENNING_DICT_PATH=/data/dictionary-nl.sqlite \
-    KENNING_SENTENCES_PATH=/data/sentences-nl.sqlite \
-    KENNING_MT_DIR=/data/mt-nl-en \
-    KENNING_GRAMMAR_CACHE_PATH=/data/grammar-examples-nl.sqlite
+    PYTHONPYCACHEPREFIX=/cache/pycache \
+    KENNING_DATA_DIR=/data \
+    KENNING_PACKS=auto
 
 WORKDIR /app
-# The project is installed in editable mode, so /app (src) must sit next to /opt/venv.
+# The project is installed in editable mode, so /app (src, scripts) must sit next to /opt/venv.
 COPY --from=venv /opt/venv /opt/venv
 COPY --from=venv /app /app
 
-COPY --from=dictionary /out/dictionary-nl.sqlite /data/dictionary-nl.sqlite
-COPY --from=sentences /out/sentences-nl.sqlite /data/sentences-nl.sqlite
-COPY --from=mtmodel /out/mt-nl-en /data/mt-nl-en
-COPY --from=grammar /out/grammar-examples-nl.sqlite /data/grammar-examples-nl.sqlite
-
+# /data is the data-pack volume: owned by the service user so a fresh named volume inherits it.
 RUN useradd --system --uid 10001 kenning \
-    && mkdir -p /cache/course && chown -R kenning /cache
+    && mkdir -p /cache/course /cache/pycache /data && chown -R kenning /cache /data
 USER kenning
 
 EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=40s \
     CMD python -c "import urllib.request as u; u.urlopen('http://127.0.0.1:8000/health', timeout=4)"
 # Exactly ONE worker process (review item A15): course OCR jobs live in this process's memory
-# (`GET /course/ocr/{id}` must reach the process that started the job) and the grammar-example
-# cache is written by one process. Blocking work runs in the threadpool, so one worker still
-# serves requests concurrently. Do not add --workers or WEB_CONCURRENCY; scale with one
-# container per user instead.
+# (`GET /course/ocr/{id}` must reach the process that started the job), the grammar-example
+# cache and the data packs are written by one process. Blocking work runs in the threadpool, so
+# one worker still serves requests concurrently. Do not add --workers or WEB_CONCURRENCY; scale
+# with one container per user instead.
 CMD ["uvicorn", "kenning_nlp.app:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]

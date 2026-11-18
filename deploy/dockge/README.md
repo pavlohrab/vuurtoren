@@ -45,7 +45,10 @@ after `--token`) into `TUNNEL_TOKEN`. Add a **Public hostname**: `kenning.exampl
 
 ## 5. Deploy and check
 
-**Deploy** in Dockge. After about a minute `web`, `api` and `nlp` show healthy. Open
+**Deploy** in Dockge. After about a minute `web`, `api` and `nlp` show healthy. On the very
+first start the language server then installs its language data in the background (a ~100 MB
+download with `KENNING_PACKS_URL`, otherwise a ~10 minute build; instant with
+`KENNING_NLP_VARIANT=-full`); Server status shows the progress. Open
 `https://kenning.example.com`, sign in, then **Settings > Advanced > Server status**: every row
 should have a green dot. Then Settings > Language & decks > **Connect to Anki** on each computer
 that runs Anki.

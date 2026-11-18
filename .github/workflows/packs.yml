@@ -1,0 +1,41 @@
+name: packs
+
+# Builds the language server's data packs (server/nlp/src/kenning_nlp/packs.json) from the pinned
+# upstream sources and uploads them as assets of the release `packs-<version>` (one release per
+# dictionary-nl version; the other packs ride along). Afterwards commit the packs.json attached
+# to the release: servers with KENNING_PACKS_URL=https://github.com/<owner>/<repo>/releases/download/packs-<version>
+# then install exactly these archives. Manual only: new data is a deliberate change.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  packs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: server/nlp
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --locked --no-dev
+      - run: uv run --no-dev python scripts/build_packs.py --out dist/packs
+      - name: Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version=$(python3 -c "import json;print(json.load(open('src/kenning_nlp/packs.json'))['packs']['dictionary-nl']['version'])")
+          tag="packs-$version"
+          gh release view "$tag" >/dev/null 2>&1 ||
+            gh release create "$tag" --title "Data packs $version" --notes "Language server data packs. See docs/architecture.md, 'Language server data packs'." --prerelease
+          gh release upload "$tag" dist/packs/*.tar.gz src/kenning_nlp/packs.json --clobber
+          {
+            echo "### Data packs $version"
+            echo '```json'
+            cat src/kenning_nlp/packs.json
+            echo '```'
+            echo "Commit this packs.json (server/nlp/src/kenning_nlp/packs.json)."
+          } >> "$GITHUB_STEP_SUMMARY"
