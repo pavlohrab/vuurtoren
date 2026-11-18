@@ -223,6 +223,6 @@ None open. (The cloze range was settled at recall 0.60–0.99.)
 - **Deleted texts stay in the event log** until compaction (needed before sync).
 - **Concurrent finishes:** `finishSegment` is read-modify-write on the staircase. Not atomic, but harmless with one tab.
 - **FSRS-6 decay** per preset isn't read yet; 0.5 is assumed (FSRS is off in your collection).
-- **The demo (mock) data** only approximates the real behaviour.
+- **The demo (mock) data** only approximates the real behaviour. A Playwright smoke test (`pnpm e2e`) runs the main loop in demo mode and against the real services in browser-storage mode (fake language server and AnkiConnect).
 - **Not yet run here:** the Docker images (no daemon on this machine; CI builds them and runs the smoke test), Tesseract OCR end-to-end on this machine.
 - **NLP image build depends on pinned upstream data** (Kaikki, Tatoeba): when upstream refreshes and the CI layer cache has expired, the image job fails until the pins are updated (`server/nlp/scripts/pinned_download.py`).

@@ -22,6 +22,7 @@ An open-source app that turns **your Anki deck into a reading and speaking coach
 
 - **[STATUS.md](STATUS.md)**: what is done, what is next, open decisions, known issues.
 
+- [architecture.md](architecture.md): the current map of packages, web services and data flow.
 - [algorithms.md](algorithms.md): how the non-AI algorithms work (learner model, Dutch analysis, reading planner, practice, grammar, Anki writes), with their real thresholds.
 - [ai.md](ai.md): AI providers, privacy, costs, MCP setup.
 - [exam.md](exam.md): the Exam section (A2 inburgeringsexamen practice and mock exams).
