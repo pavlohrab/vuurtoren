@@ -1319,9 +1319,30 @@ a.home-step:hover .home-step-go {
   .home-hero {
     padding-bottom: var(--s-6);
   }
+  /* Phones: cover beside the title and meta; excerpt, progress and actions use the full width. */
   .home-continue {
-    grid-template-columns: 96px minmax(0, 1fr);
-    gap: var(--s-4);
+    grid-template-columns: 80px minmax(0, 1fr);
+    gap: var(--s-3) var(--s-4);
+  }
+  .home-continue-main {
+    display: contents;
+  }
+  .home-continue-cover {
+    grid-row: 1 / span 2;
+  }
+  .home-continue-title,
+  .home-meta {
+    grid-column: 2;
+    align-self: end;
+  }
+  .home-meta {
+    align-self: start;
+  }
+  .home-excerpt,
+  .home-progress,
+  .home-continue-main > .k-skeleton,
+  .home-continue-foot {
+    grid-column: 1 / -1;
   }
   .home-continue .k-cover-title {
     font-size: 12px;
@@ -1334,9 +1355,6 @@ a.home-step:hover .home-step-go {
   }
   .home-excerpt {
     font-size: 15.5px;
-  }
-  .home-continue-foot {
-    grid-column: 1 / -1;
   }
   .home-known-body {
     gap: var(--s-4);
