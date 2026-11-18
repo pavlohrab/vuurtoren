@@ -28,6 +28,7 @@ import type { AISentenceReport } from "../services/aiTypes.js";
 import type { AnswerResult } from "../services/types.js";
 import { usePageHeader } from "../shell/ShellContext.js";
 import { ErrorNotice } from "../shell/ErrorNotice.js";
+import { useHoldFreshness } from "../services/freshness.js";
 import { errorText } from "../services/errors.js";
 import { useAIReady } from "./StoryDialog.js";
 import { PageHeader } from "../shell/PageHeader.js";
@@ -394,6 +395,8 @@ function Session({
   const skippedAt = useRef(-1);
   const current = exercises[index];
   const skipDictation = current?.kind === "dictation" && !listening;
+  // Another device's changes wait until the session ends (review A7).
+  useHoldFreshness();
 
   // Synchronously updated mirrors of the state, so Escape and the end button see an answer
   // that is still being saved.

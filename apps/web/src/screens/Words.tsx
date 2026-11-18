@@ -242,6 +242,7 @@ export function Words() {
           deck = (await services.addToAnki(e, opts)).deck;
           added++;
         } catch {
+          // counted; the summary toast reports how many failed
           failed++;
         }
       }

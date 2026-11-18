@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
   BookText,
@@ -39,7 +39,9 @@ import {
 import { useServices } from "../services/context.js";
 import { useTheme, type ThemeChoice } from "../theme.js";
 import { useAppInfo } from "./AppInfo.js";
+import { DegradedIndicator } from "./DegradedIndicator.js";
 import { ShellContext, type PageHeader, type ShellState } from "./ShellContext.js";
+import { useRemoteFreshness } from "./useRemoteFreshness.js";
 
 const PAGE_TITLES: Record<string, string> = {
   "/": "Home",
@@ -81,6 +83,7 @@ export function AppShell() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [theme, setTheme] = useTheme();
   const { notice, demo, onLeaveDemo } = useAppInfo();
+  useRemoteFreshness(services, useQueryClient());
 
   const [header, setHeader] = useState<PageHeader | null>(null);
   const [mode, setMode] = useState<ReaderMode>("read");
@@ -316,6 +319,7 @@ export function AppShell() {
               />
             ) : null}
             <div className="topbar-group">
+              <DegradedIndicator />
               <Button
                 variant="secondary"
                 size="sm"

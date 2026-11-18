@@ -80,7 +80,7 @@ pnpm dev            # web app on http://localhost:5173 (proxies /nlp and /anki)
   - Size limits and timeouts (URL fetch: 10 s per read, 20 s in total; upload bodies streamed; decompression bombs rejected).
   - Dockerfiles and compose files (one NLP worker, see ADR 0004). The images have not been built or run here yet (no Docker daemon).
 - **Quality:**
-  - 728 TypeScript and 629 Python tests (56 Python tests skip without the downloaded data or Tesseract).
+  - 847 TypeScript and 629 Python tests (56 Python tests skip without the downloaded data or Tesseract).
   - Four reviews; the 2026-11 review and its status: [review-2026-11.md](review-2026-11.md).
 
 ### Practice (M4)
@@ -196,6 +196,8 @@ None open. (The cloze range was settled at recall 0.60–0.99.)
 ### Known issues / technical debt
 
 - **Staircase:** its _target coverage_ is tracked but not used by the planner yet. Only the new-word budget adapts. Planned use: recommending texts and pages of the right difficulty in the Library.
+- **Several devices (server mode):** each device refreshes within ~30 s (or on focus) when another one changed the data (review A7); a practice session waits until it ends. Edits are not merged: the last write of a setting wins.
+- **Degraded modes** (language server, Anki, AI, translation, the Kenning server) show as one quiet indicator in the top bar with details and Retry (review A17).
 - **One tab only (browser mode):** a second tab now sees "Kenning is open in another tab" with "Use here instead" (Web Locks + BroadcastChannel). A private window still falls back to an in-memory database, with a banner. In server mode (compose) there is no such limit.
 - **Language is hard-coded to Dutch** in several places. Ukrainian needs language-aware caches, analysis and dictionaries.
 - **Analysis gaps** (recall misses):
@@ -203,8 +205,8 @@ None open. (The cloze range was settled at recall 0.60–0.99.)
   - "hier/daar … particle" verbs (_groeien hier op_).
   - Reordered idioms (_nodig hebben_).
 - **Performance on very long texts:**
-  - Plans are recomputed for every text in the Library after changes.
-  - Opening a text reads all its tokens.
+  - Plans are recomputed for every text in the Library after changes (now in one batched pass, review A8).
+  - Opening a text reads all its tokens (once; then cached until the learner model changes).
   - Every Anki sync stores a full snapshot in the event log; that needs compaction before M7.
 - **Deleted texts stay in the event log** until compaction (needed before sync).
 - **Concurrent finishes:** `finishSegment` is read-modify-write on the staircase. Not atomic, but harmless with one tab.

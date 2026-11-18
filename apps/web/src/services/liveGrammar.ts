@@ -18,7 +18,7 @@ import {
   normalizeKey,
 } from "@app/core";
 import { type KenningRepository, type StoredText, contentHash } from "@app/db";
-import type { NlpClient } from "@app/nlp-client";
+import { NlpError, type NlpClient } from "@app/nlp-client";
 import type {
   GrammarOverview,
   LibraryGrammarExample,
@@ -106,6 +106,16 @@ function marksOf(hit: GrammarHit, tokens: AnalyzedToken[]): [number, number][] {
 /** Parts of speech the word exercises (gender, separable, perfect, adjective-e…) work on. */
 const WORD_POS = new Set(["NOUN", "VERB", "ADJ"]);
 
+/**
+ * A grammar request failed for another reason than an outage (which the NLP client watcher
+ * reports as "nlp"): keep it in the console for bug reports, the screen shows the gap.
+ */
+function reportGrammarFailure(e: unknown): void {
+  if (!(e instanceof NlpError && (e.status === null || e.status === 502 || e.status === 504))) {
+    console.warn("[kenning] grammar request failed:", e);
+  }
+}
+
 export function createLiveGrammar(deps: LiveGrammarDeps) {
   const { repo } = deps;
   const inFlight = new Map<string, Promise<GrammarHit[]>>();
@@ -166,9 +176,10 @@ export function createLiveGrammar(deps: LiveGrammarDeps) {
         try {
           hits = await textGrammar(s.id);
         } catch (e) {
-          // One failure (server down) is enough: do not wait for every text to time out.
+          // One failure (server down) is enough: do not wait for every text to time out. The
+          // text counts as `missing` in the overview; an outage shows in the degraded indicator.
           serverDown = true;
-          console.warn("[kenning] grammar detection unavailable:", e);
+          reportGrammarFailure(e);
         }
       }
       if (!hits) {
@@ -252,8 +263,9 @@ export function createLiveGrammar(deps: LiveGrammarDeps) {
           });
         }
       } catch (e) {
+        // The screen shows "examples unavailable"; an outage shows in the degraded indicator.
         unavailable = true;
-        console.warn("[kenning] grammar examples unavailable:", e);
+        reportGrammarFailure(e);
         break;
       }
     }
@@ -282,6 +294,7 @@ export function createLiveGrammar(deps: LiveGrammarDeps) {
     const wanted = new Set(detects);
     const [lib, tat, model] = await Promise.all([
       librarySentences(wanted, 40),
+      // Optional extra sentences; `unavailable` tells the screen, outages show in the indicator.
       tatoeba(detects, 10).catch(() => ({ examples: [], unavailable: true })),
       deps.model(),
     ]);

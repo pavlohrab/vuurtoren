@@ -120,7 +120,19 @@ export function createHttpAdmin(
 }
 
 /** A repository backed by the API service, plus its backup/restore surface. */
-export type HttpRepository = KenningRepository & DataAdmin;
+export type HttpRepository = KenningRepository &
+  DataAdmin & {
+    /**
+     * Cross-device freshness (review A7): true when someone else (another device or tab)
+     * changed the server's data since the previous check (or since connecting). Own appends
+     * through this repository do not count. One cheap `head` RPC. Returns false while an own
+     * append is in flight (asked again on the next check) and on servers without `head`.
+     * Rejects when the server cannot be reached.
+     */
+    remoteChanged(): Promise<boolean>;
+  };
+
+type Head = { deviceId: string; seq: number };
 
 /**
  * Connect to the API service. Fetches the server's device id once (this verifies the token:
@@ -138,7 +150,6 @@ export async function createHttpRepository(
   fetchImpl: FetchLike = ambientFetch,
 ): Promise<HttpRepository> {
   const admin = createHttpAdmin(baseUrl, token, fetchImpl);
-  const deviceId = (await admin.info()).deviceId ?? "server";
 
   /** Call one allow-listed method. */
   async function call<T>(method: RpcMethod, ...args: unknown[]): Promise<T> {
@@ -158,14 +169,60 @@ export async function createHttpRepository(
     return body.result as T;
   }
 
+  // Freshness bookkeeping: the head seen last, plus the appends this client made since then
+  // (each append raises the server's seq by exactly one).
+  let baseline: Head | null = null;
+  let ownAppends = 0;
+  let appending = 0;
+  let headSupported = true;
+  const readHead = (): Promise<Head | null> =>
+    call<Head>("head").catch((e: unknown) => {
+      // An older server answers 400 "Unknown method": freshness stays off (not an error).
+      if (e instanceof HttpError && e.status === 400) {
+        headSupported = false;
+        return null;
+      }
+      throw e;
+    });
+
+  const [info, head] = await Promise.all([admin.info(), readHead().catch(() => null)]);
+  const deviceId = info.deviceId ?? "server";
+  baseline = head;
+
   const repo: HttpRepository = {
     deviceId,
-    append: (event) => call("append", event),
+    append: async (event) => {
+      appending++;
+      try {
+        const stored = await call<Awaited<ReturnType<KenningRepository["append"]>>>(
+          "append",
+          event,
+        );
+        ownAppends++;
+        return stored;
+      } finally {
+        appending--;
+      }
+    },
+    async remoteChanged(): Promise<boolean> {
+      if (!headSupported || appending > 0) return false;
+      const own = ownAppends;
+      const now = await readHead();
+      if (!now || appending > 0) return false;
+      const before = baseline;
+      baseline = now;
+      ownAppends -= own;
+      if (!before) return false;
+      return now.deviceId !== before.deviceId || now.seq !== before.seq + own;
+    },
     listTexts: () => call("listTexts"),
     getText: (id) => call("getText", id),
+    getTexts: (ids) => (ids.length ? call("getTexts", ids) : Promise.resolve([])),
     learnerModel: async (lang) =>
       new Map(await call<[string, WordKnowledge][]>("learnerModel", lang)),
     word: (lang, key) => call("word", lang, key),
+    wordsByKeys: (lang, keys) =>
+      keys.length ? call("wordsByKeys", lang, keys) : Promise.resolve([]),
     words: (lang, opts) => call("words", lang, opts),
     staircase: (lang) => call("staircase", lang),
     practiceItems: (lang) => call("practiceItems", lang),
@@ -181,6 +238,7 @@ export async function createHttpRepository(
     lookedUpKeys: (lang, textId) => call("lookedUpKeys", lang, textId),
     lastSnapshot: (lang) => call("lastSnapshot", lang),
     eventCount: () => call("eventCount"),
+    head: () => call<Head>("head"),
     courses: () => call("courses"),
     courseBlocks: (courseId) => call("courseBlocks", courseId),
     unitExercises: (courseId, unitN) => call("unitExercises", courseId, unitN),

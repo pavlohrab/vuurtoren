@@ -14,6 +14,7 @@ export function readLastText(): string | null {
   try {
     return localStorage.getItem(KEY);
   } catch {
+    // storage blocked: no remembered text (expected)
     return null;
   }
 }

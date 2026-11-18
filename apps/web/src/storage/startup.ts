@@ -64,6 +64,7 @@ export function serverSeen(): boolean {
   try {
     return localStorage.getItem(SERVER_KEY) === "1";
   } catch {
+    // storage blocked: treated as never seen (expected)
     return false;
   }
 }

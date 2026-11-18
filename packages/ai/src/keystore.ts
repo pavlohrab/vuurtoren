@@ -65,6 +65,7 @@ function read(storage: KeyValueStorage, provider: string): Stored | null {
     const raw = storage.getItem(PREFIX + provider);
     return raw ? (JSON.parse(raw) as Stored) : null;
   } catch {
+    // unreadable entry: treated as no saved key (expected; the user enters it again)
     return null;
   }
 }

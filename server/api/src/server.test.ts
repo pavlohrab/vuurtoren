@@ -333,3 +333,42 @@ describe("body caps", () => {
     expect((await rpc("listTexts")).status).toBe(200);
   });
 });
+
+describe("cross-device freshness (review A7)", () => {
+  beforeEach(() => start());
+
+  it("each HTTP client sees the other's appends but not its own", async () => {
+    const laptop = await createHttpRepository(base);
+    const phone = await createHttpRepository(base);
+    expect(await laptop.remoteChanged()).toBe(false);
+    expect(await phone.remoteChanged()).toBe(false);
+
+    await laptop.append({ type: "SettingChanged", key: "a", value: 1 });
+    expect(await laptop.remoteChanged()).toBe(false);
+    expect(await phone.remoteChanged()).toBe(true);
+    expect(await phone.remoteChanged()).toBe(false);
+
+    await phone.append({ type: "SettingChanged", key: "b", value: 2 });
+    await laptop.append({ type: "SettingChanged", key: "c", value: 3 });
+    // The laptop's own append does not hide the phone's one in between.
+    expect(await laptop.remoteChanged()).toBe(true);
+    expect(await phone.remoteChanged()).toBe(true);
+    expect(await laptop.remoteChanged()).toBe(false);
+  });
+
+  it("a restored backup counts as a change (new device id)", async () => {
+    const laptop = await createHttpRepository(base);
+    await laptop.append({ type: "SettingChanged", key: "a", value: 1 });
+    expect(await laptop.remoteChanged()).toBe(false);
+    const backup = await laptop.exportBackup();
+    await createHttpAdmin(base).importBackup(backup);
+    expect(await laptop.remoteChanged()).toBe(true);
+  });
+
+  it("batched reads go through the allow-list", async () => {
+    const repo = await createHttpRepository(base);
+    await repo.append({ type: "TextImported", textId: "t", title: "T", lang: "nl", source: { kind: "paste" }, content: "Hoi." });
+    expect((await repo.getTexts(["t", "x"])).map((t) => t.id)).toEqual(["t"]);
+    expect(await repo.wordsByKeys("nl", ["a"])).toEqual([]);
+  });
+});

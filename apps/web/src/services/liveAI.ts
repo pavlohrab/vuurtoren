@@ -30,6 +30,7 @@ import {
   selectKnownLemmas,
   simplifyText,
 } from "@app/ai";
+import { DEGRADED_MESSAGES, clearDegraded, reportDegraded } from "./degraded.js";
 import { AnkiConnectClient, addWordToAnki, highlightSentence } from "@app/anki";
 import { grammarTopic } from "@app/content";
 import {
@@ -137,6 +138,7 @@ function defaultStorage(): KeyValueStorage {
     localStorage.removeItem(t);
     return localStorage;
   } catch {
+    // Expected in private windows / blocked storage: settings last for this session only.
     const m = new Map<string, string>();
     return {
       getItem: (k) => m.get(k) ?? null,
@@ -169,6 +171,7 @@ export function createLiveAI(deps: LiveAIDeps): AIServices &
       const raw = storage.getItem(key);
       return raw ? (JSON.parse(raw) as T) : undefined;
     } catch {
+      // Unreadable or corrupt entry: fall back to the defaults (expected, nothing to report).
       return undefined;
     }
   };
@@ -303,6 +306,7 @@ export function createLiveAI(deps: LiveAIDeps): AIServices &
         out.accepted += sentences.length;
         out.rejected += r.rejected.length;
         out.sentences.push(sentences);
+        clearDegraded("ai");
         await repo.append({
           type: "SentencesGenerated",
           lang,
@@ -317,6 +321,7 @@ export function createLiveAI(deps: LiveAIDeps): AIServices &
         // One provider failure (key, rate limit, network) stops the fill; practice goes on.
         out.error = e instanceof Error ? e.message : String(e);
         out.sentences.push([]);
+        reportDegraded("ai", DEGRADED_MESSAGES.ai, e);
       }
     }
     return out;
@@ -428,6 +433,7 @@ export function createLiveAI(deps: LiveAIDeps): AIServices &
     ]);
     if (unitWords.length === 0) throw new Error("This unit has no words yet.");
     onProgress?.("Looking at the unit's grammar…");
+    // Grammar focus is optional; a language-server outage shows in the degraded indicator.
     const topics = deps.unitGrammar ? await deps.unitGrammar(courseId, unitN).catch(() => []) : [];
     const topic = topics[0] ? grammarTopic(topics[0].topicId, course.lang) : undefined;
     // The kinds the book uses in this unit; gap fill and matching at least.
@@ -437,7 +443,8 @@ export function createLiveAI(deps: LiveAIDeps): AIServices &
       if (k) kinds.add(k);
     }
     if (own.some((e) => e.type === "open-task" || e.type === "unknown")) kinds.add("questions");
-    // Glosses for matching: the word list's, else the dictionary's.
+    // Glosses for matching: the word list's, else the dictionary's (optional: missing ones are
+    // generated without a gloss; an outage shows in the degraded indicator).
     const glosses = await deps
       .glossLemmas(unitWords.filter((w) => !w.gloss).map((w) => w.lemma))
       .catch(() => ({}) as Record<string, string>);

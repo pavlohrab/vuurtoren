@@ -98,10 +98,11 @@ async function bootServer(health: ServerHealth, account: Account): Promise<Boot>
         download: () => admin.exportBackup(),
       };
     }
-    const repo = await createHttpRepository("");
+    const { watchedFetch } = await import("./services/degradedFetch.js");
+    const repo = await createHttpRepository("", undefined, watchedFetch);
     return {
       kind: "app",
-      services: createLiveServices(repo),
+      services: createLiveServices(repo, { remoteChanged: () => repo.remoteChanged() }),
       data: { mode: "server", persisted: null, persistent: true, secure: isSecureContext, admin },
       account: {
         authEnabled: account.authEnabled,

@@ -11,16 +11,21 @@ import { EVENT_TYPES } from "./types.js";
 /** Largest event `append` accepts over RPC (serialised JSON, in UTF-16 code units). */
 export const MAX_RPC_EVENT_CHARS = 24 * 1024 * 1024;
 
+/** Most keys or ids one batched call (`wordsByKeys`, `getTexts`) accepts. */
+export const MAX_RPC_BATCH = 20_000;
+
 /** Argument kinds; a trailing "?" marks an optional argument. */
-type ArgKind = "string" | "number" | "object" | "string?" | "number?" | "object?";
+type ArgKind = "string" | "number" | "object" | "string[]" | "string?" | "number?" | "object?";
 
 /** Allow-list of remotely callable repository methods and their argument kinds. */
 export const RPC_METHODS = {
   append: ["object"],
   listTexts: [],
   getText: ["string"],
+  getTexts: ["string[]"],
   learnerModel: ["string"],
   word: ["string", "string"],
+  wordsByKeys: ["string", "string[]"],
   words: ["string", "object?"],
   staircase: ["string"],
   practiceItems: ["string"],
@@ -34,6 +39,7 @@ export const RPC_METHODS = {
   lookedUpKeys: ["string", "string"],
   lastSnapshot: ["string"],
   eventCount: [],
+  head: [],
   courses: [],
   courseBlocks: ["string"],
   unitExercises: ["string", "number"],
@@ -77,6 +83,13 @@ export function validateRpcArgs(method: RpcMethod, args: unknown): string | null
     if (v === undefined || v === null) {
       if (optional) continue;
       return `${method}: argument ${i + 1} is required`;
+    }
+    if (base === "string[]") {
+      if (!Array.isArray(v) || v.some((x) => typeof x !== "string")) {
+        return `${method}: argument ${i + 1} must be an array of strings`;
+      }
+      if (v.length > MAX_RPC_BATCH) return `${method}: at most ${MAX_RPC_BATCH} items per call`;
+      continue;
     }
     const ok = base === "object" ? typeof v === "object" && !Array.isArray(v) : typeof v === base;
     if (!ok) return `${method}: argument ${i + 1} must be a ${base}`;

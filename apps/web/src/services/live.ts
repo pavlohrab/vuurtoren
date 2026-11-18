@@ -42,7 +42,8 @@ import {
   createUlidGenerator,
 } from "@app/db";
 import { absentAnki, ankiFromStatus, unavailableAnki } from "./ankiState.js";
-import { NlpClient, createPracticeData } from "@app/nlp-client";
+import { NlpClient, NlpError, createPracticeData } from "@app/nlp-client";
+import { DEGRADED_MESSAGES, clearDegraded, reportDegraded, watchClient } from "./degraded.js";
 import { createLiveCourses } from "./liveCourses.js";
 import { createLiveAI } from "./liveAI.js";
 import { createLiveExam } from "./liveExam.js";
@@ -50,6 +51,7 @@ import { createLiveProfile } from "./liveProfile.js";
 import type { AddOptions } from "./profileTypes.js";
 import { createLiveGrammar } from "./liveGrammar.js";
 import { createLivePractice } from "./livePractice.js";
+import { fetchTexts } from "./textBatch.js";
 import { activitySince, groupActivity } from "./activity.js";
 import type {
   AnkiConnectResult,
@@ -233,6 +235,19 @@ const PLACE_SENSE =
 /** Where a word may enter the review, strongest reason first. */
 const SOURCE_RANK = { introduce: 0, lookup: 1, gloss: 2 } as const;
 
+/** The language server is down or unreachable (not: it refused one request). */
+export const nlpOutage = (e: unknown): boolean =>
+  e instanceof NlpError && (e.status === null || e.status === 502 || e.status === 504);
+
+/**
+ * Dictionary or sentence translation failed. An outage is already reported as "nlp" by the
+ * client watcher; a missing feature (503: dictionary not built, model not fetched) is
+ * reported as "translate".
+ */
+function translationFailed(e: unknown): void {
+  if (!nlpOutage(e)) reportDegraded("translate", DEGRADED_MESSAGES.translate, e);
+}
+
 /** Map the client's connection state to what the Settings screen shows. */
 export function toAnkiStatus(c: AnkiConnectionState): AnkiStatus {
   switch (c.state) {
@@ -266,12 +281,34 @@ export function toAnkiStatus(c: AnkiConnectionState): AnkiStatus {
   }
 }
 
-export function createLiveServices(repo: KenningRepository): AppServices {
+export interface LiveServicesOptions {
+  /**
+   * Server mode (review A7): true when another device changed the shared data since the last
+   * call (`HttpRepository.remoteChanged`). Absent in browser mode (one tab owns the data).
+   */
+  remoteChanged?: () => Promise<boolean>;
+}
+
+export function createLiveServices(
+  repo: KenningRepository,
+  options: LiveServicesOptions = {},
+): AppServices {
   let settingsCache: Settings | null = null;
   // Bumped whenever the learner model changes, so cached plans are recomputed.
   let modelVersion = 0;
-  let modelCache: { version: number; lang: string; model: LearnerModel } | null = null;
-  const planCache = new Map<string, { version: number; hash: string; view: ReadingView }>();
+  let modelCache: {
+    version: number;
+    lang: string;
+    model: Promise<LearnerModel>;
+  } | null = null;
+  let staircaseCache: {
+    version: number;
+    lang: string;
+    state: Promise<StaircaseState | null>;
+  } | null = null;
+  // Text content never changes under an id within this client (imports get new ids); another
+  // device's changes clear the cache through `checkRemoteChanges` (review A7).
+  const planCache = new Map<string, { version: number; view: ReadingView }>();
   // Translation per lemma key: Anki gloss first, then the Wiktionary dictionary; null = none.
   const glossCache = new Map<string, string | null>();
   const translationCache = new Map<string, string>();
@@ -296,9 +333,16 @@ export function createLiveServices(repo: KenningRepository): AppServices {
       return true;
     });
     const needDict: { key: string; lemma: string; pos?: string }[] = [];
+    // One repository call for all card glosses (review A8), not one per word.
+    const infos = new Map(
+      (await repo.wordsByKeys(lang, [...new Set(missing.map((it) => it.key))])).map((w) => [
+        w.key,
+        w,
+      ]),
+    );
     for (const it of missing) {
-      const info = await repo.word(lang, it.key);
-      if (info?.gloss) glossCache.set(cacheKey(it), info.gloss);
+      const gloss = infos.get(it.key)?.gloss;
+      if (gloss) glossCache.set(cacheKey(it), gloss);
       else needDict.push(it);
     }
     let complete = true;
@@ -309,6 +353,7 @@ export function createLiveServices(repo: KenningRepository): AppServices {
         for (let i = 0; i < lemmas.length; i += GLOSS_BATCH) {
           Object.assign(dict, await (await nlp()).gloss("nl", lemmas.slice(i, i + GLOSS_BATCH)));
         }
+        clearDegraded("translate");
         for (const it of needDict) {
           const g = orderByPos(dict[it.lemma] ?? [], it.pos)
             .flatMap((e) => e.glosses)
@@ -318,7 +363,7 @@ export function createLiveServices(repo: KenningRepository): AppServices {
       } catch (e) {
         // dictionary unavailable (503 when not built, or the server is down): retry next time
         complete = false;
-        console.warn("[kenning] dictionary lookup failed:", e);
+        translationFailed(e);
       }
     }
     const found = new Map<string, string>();
@@ -346,7 +391,9 @@ export function createLiveServices(repo: KenningRepository): AppServices {
     }
     return settingsCache;
   }
-  const nlp = async () => new NlpClient({ url: (await settings()).nlpUrl });
+  // Every language-server call feeds the shared degraded signal (review A17).
+  const nlp = async () =>
+    watchClient(new NlpClient({ url: (await settings()).nlpUrl }), "nlp", nlpOutage);
   const ankiOptions = async (timeoutMs?: number) => {
     const s = await settings();
     return {
@@ -382,8 +429,10 @@ export function createLiveServices(repo: KenningRepository): AppServices {
     if (!info || info.noteIds.length === 0) return absentAnki(info);
     try {
       const { notes } = await cardStatus(await anki(INSPECT_TIMEOUT_MS), info.noteIds);
+      clearDegraded("anki");
       return ankiFromStatus(info, notes);
     } catch (e) {
+      reportDegraded("anki", DEGRADED_MESSAGES.anki, e);
       return unavailableAnki(info, e instanceof Error ? e.message : String(e));
     }
   }
@@ -399,7 +448,9 @@ export function createLiveServices(repo: KenningRepository): AppServices {
       // With no notes to ask about, a version call still tells whether Anki is reachable.
       if (ids.length) notes = (await cardStatus(client, ids)).notes;
       else if (infos.length) await client.version();
+      if (infos.length) clearDegraded("anki");
     } catch (e) {
+      reportDegraded("anki", DEGRADED_MESSAGES.anki, e);
       const reason = e instanceof Error ? e.message : String(e);
       return infos.map((i) => unavailableAnki(i, reason));
     }
@@ -420,9 +471,10 @@ export function createLiveServices(repo: KenningRepository): AppServices {
       try {
         const res = await (await nlp()).translate(todo, { source: "nl", target: "en" });
         for (const r of res) translationCache.set(r.text, r.translation);
+        clearDegraded("translate");
       } catch (e) {
         // optional: model not fetched (503) or server down
-        console.warn("[kenning] sentence translation unavailable:", e);
+        translationFailed(e);
       }
     }
     const out = new Map<string, string>();
@@ -436,9 +488,13 @@ export function createLiveServices(repo: KenningRepository): AppServices {
   async function dictionaryFor(lemmas: string[]): Promise<Dictionary> {
     if (lemmas.length === 0) return {};
     try {
-      return await (await nlp()).gloss("nl", lemmas);
-    } catch {
-      return {}; // dictionary optional (503 when not built)
+      const dict = await (await nlp()).gloss("nl", lemmas);
+      clearDegraded("translate");
+      return dict;
+    } catch (e) {
+      // The dictionary is optional (503 when not built): words show without meanings.
+      translationFailed(e);
+      return {};
     }
   }
   /** The inspector entry of one word occurrence; shared by `inspect` and `textWords`. */
@@ -484,14 +540,35 @@ export function createLiveServices(repo: KenningRepository): AppServices {
   async function model(): Promise<LearnerModel> {
     const { lang } = await settings();
     if (!modelCache || modelCache.version !== modelVersion || modelCache.lang !== lang) {
-      modelCache = { version: modelVersion, lang, model: await repo.learnerModel(lang) };
+      // The promise is cached, so concurrent callers share one read.
+      const entry = { version: modelVersion, lang, model: repo.learnerModel(lang) };
+      modelCache = entry;
+      entry.model.catch(() => {
+        if (modelCache === entry) modelCache = null;
+      });
     }
     return modelCache.model;
   }
 
+  /** The staircase changes only with `finishSegment` (which bumps modelVersion) or remotely. */
+  function staircase(lang: string): Promise<StaircaseState | null> {
+    if (
+      !staircaseCache ||
+      staircaseCache.version !== modelVersion ||
+      staircaseCache.lang !== lang
+    ) {
+      const entry = { version: modelVersion, lang, state: repo.staircase(lang) };
+      staircaseCache = entry;
+      entry.state.catch(() => {
+        if (staircaseCache === entry) staircaseCache = null;
+      });
+    }
+    return staircaseCache.state;
+  }
+
   async function plannerOptions(m: LearnerModel): Promise<PlannerOptions> {
     const s = await settings();
-    const st = (await repo.staircase(s.lang)) ?? DEFAULT_STAIRCASE;
+    const st = (await staircase(s.lang)) ?? DEFAULT_STAIRCASE;
     return {
       ...DEFAULT_PLANNER,
       targetCoverage: st.targetCoverage,
@@ -528,46 +605,67 @@ export function createLiveServices(repo: KenningRepository): AppServices {
     return p;
   }
 
+  /** A fresh cached view (same learner-model version), if any. */
+  function cachedView(textId: string): ReadingView | null {
+    const cached = planCache.get(textId);
+    return cached && cached.version === modelVersion ? cached.view : null;
+  }
+
   async function computeView(textId: string): Promise<ReadingView | null> {
+    const hit = cachedView(textId);
+    if (hit) return hit;
     const text = await repo.getText(textId);
     if (!text) return null;
-    const hash = contentHash(text.content);
-    const cached = planCache.get(textId);
-    if (cached && cached.version === modelVersion && cached.hash === hash) return cached.view;
-    const tokens = text.tokens ?? (await analyze(text));
+    return (await computeViews([text]))[0] ?? null;
+  }
+
+  /**
+   * Plan several texts with one learner model, one planner-options read and one gloss lookup
+   * for all their clozes (review A8: the Library plans every text).
+   */
+  async function computeViews(texts: StoredText[]): Promise<ReadingView[]> {
+    if (texts.length === 0) return [];
+    const version = modelVersion;
     const m = await model();
     const opts = await plannerOptions(m);
-    const plans: SegmentPlan[] = planText(tokens, m, opts, text.content);
-    const cacheable = await dropUnhintableClozes(tokens, plans, m);
     const staircase = { targetCoverage: opts.targetCoverage, newWordBudget: opts.newWordBudget };
-    const v: ReadingView = { text: { ...text, tokens }, tokens, plans, staircase };
-    if (cacheable) planCache.set(textId, { version: modelVersion, hash, view: v });
-    return v;
+    const views: ReadingView[] = [];
+    for (const text of texts) {
+      const tokens = text.tokens ?? (await analyze(text));
+      const plans: SegmentPlan[] = planText(tokens, m, opts, text.content);
+      views.push({ text: { ...text, tokens }, tokens, plans, staircase });
+    }
+    const cacheable = await dropUnhintableClozes(views, m);
+    if (cacheable && version === modelVersion) {
+      for (const v of views) planCache.set(v.text.id, { version, view: v });
+    }
+    return views;
   }
 
   /**
    * A cloze needs a meaning hint to be fair (one sentence often fits several words), so clozes
-   * whose word has no translation are turned back into normal words.
+   * whose word has no translation are turned back into normal words. One lookup for all views.
    */
-  async function dropUnhintableClozes(
-    tokens: AnalyzedToken[],
-    plans: SegmentPlan[],
-    m: LearnerModel,
-  ): Promise<boolean> {
-    const clozeTokens = plans.flatMap((p) => p.clozes).map((i) => tokens[i]!);
-    if (!clozeTokens.length) return true;
+  async function dropUnhintableClozes(views: ReadingView[], m: LearnerModel): Promise<boolean> {
     const keyOf = (t: AnalyzedToken) => matchToken(t, m) ?? normalizeKey(t.lemma);
+    const clozeTokens = views.flatMap((v) =>
+      v.plans.flatMap((p) => p.clozes).map((i) => v.tokens[i]!),
+    );
+    if (!clozeTokens.length) return true;
     const { found, complete } = await lookupGlosses(
       clozeTokens.map((t) => ({ key: keyOf(t), lemma: t.lemma, pos: t.pos })),
     );
     // Dictionary unreachable: keep the clozes rather than silently removing them all.
     if (!complete) return false;
-    const base = classifyTokens(tokens, m);
-    for (const plan of plans) {
-      const drop = new Set(plan.clozes.filter((i) => !found.has(keyOf(tokens[i]!))));
-      if (!drop.size) continue;
-      plan.clozes = plan.clozes.filter((i) => !drop.has(i));
-      for (const p of plan.tokens) if (drop.has(p.i)) p.label = base[p.i]?.label ?? "known";
+    for (const { tokens, plans } of views) {
+      let base: ReturnType<typeof classifyTokens> | null = null;
+      for (const plan of plans) {
+        const drop = new Set(plan.clozes.filter((i) => !found.has(keyOf(tokens[i]!))));
+        if (!drop.size) continue;
+        base ??= classifyTokens(tokens, m);
+        plan.clozes = plan.clozes.filter((i) => !drop.has(i));
+        for (const p of plan.tokens) if (drop.has(p.i)) p.label = base[p.i]?.label ?? "known";
+      }
     }
     return true;
   }
@@ -624,6 +722,7 @@ export function createLiveServices(repo: KenningRepository): AppServices {
       // Analyse now when the server is up; the reader analyses on open otherwise. A paid story
       // is never dropped because the language server is down.
       const stored = await repo.getText(textId);
+      // Expected when the server is down (the outage shows in the degraded indicator).
       if (stored) await analyze(stored).catch(() => undefined);
       return textId;
     },
@@ -632,7 +731,11 @@ export function createLiveServices(repo: KenningRepository): AppServices {
   // One cached practice-data source for practice and courses (review item A9).
   const practiceData = createPracticeData(nlp);
 
-  const { buildWordData, ...practice } = createLivePractice({
+  const {
+    buildWordData,
+    invalidate: invalidatePractice,
+    ...practice
+  } = createLivePractice({
     repo,
     lang: async () => (await settings()).lang,
     model,
@@ -669,24 +772,38 @@ export function createLiveServices(repo: KenningRepository): AppServices {
     grammarExamples: grammar.grammarExamples,
     async listTexts(): Promise<TextListItem[]> {
       const texts = await repo.listTexts();
-      const out: TextListItem[] = [];
-      for (const t of texts) {
-        let coverage: number | null = null;
-        let newTypes: number | null = null;
-        if (t.analyzed) {
-          const v = await view(t.id);
-          if (v) {
-            const d = textDifficulty(v.plans);
-            coverage = d.coverage;
-            newTypes = d.newTypes;
-          }
-        }
-        out.push({ ...t, coverage, newTypes });
-      }
-      return out;
+      // Plan the analysed texts without a fresh cached plan together: batched text reads and
+      // one gloss lookup instead of several calls per text (review A8).
+      const stale = texts.filter((t) => t.analyzed && !cachedView(t.id));
+      const planned = new Map(
+        (await computeViews(await fetchTexts(repo, stale))).map((v) => [v.text.id, v]),
+      );
+      return texts.map((t) => {
+        const v = t.analyzed ? (cachedView(t.id) ?? planned.get(t.id)) : undefined;
+        const d = v ? textDifficulty(v.plans) : null;
+        return { ...t, coverage: d?.coverage ?? null, newTypes: d?.newTypes ?? null };
+      });
     },
 
     getReading: view,
+
+    ...(options.remoteChanged
+      ? {
+          async checkRemoteChanges(): Promise<boolean> {
+            if (!(await options.remoteChanged!())) return false;
+            // Another device wrote: drop everything derived from the shared data.
+            settingsCache = null;
+            modelCache = null;
+            staircaseCache = null;
+            changed();
+            planCache.clear();
+            glossCache.clear();
+            profile.invalidate();
+            invalidatePractice();
+            return true;
+          },
+        }
+      : {}),
 
     async importText(input: ImportInput, onProgress?: (msg: string) => void): Promise<string> {
       const client = await nlp();

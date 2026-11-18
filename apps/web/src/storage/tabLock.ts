@@ -100,6 +100,7 @@ export async function acquireTabLock(
   try {
     held = await hold(locks, deps, { ifAvailable: true });
   } catch {
+    // Web Locks unavailable (old browser): run without the single-tab guard (expected)
     return { status: "acquired", lock: none };
   }
   if (held) return { status: "acquired", lock: held };
