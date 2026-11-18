@@ -448,7 +448,7 @@ export function createMockServices(
   const entryOf = (
     t: StoredText,
     tokens: AnalyzedToken[],
-    tok: AnalyzedToken,
+    tok: Pick<AnalyzedToken, "i" | "start" | "end" | "sent">,
     e: LexEntry,
   ): InspectorEntry => {
     const sentToks = tokens.filter((x) => x.sent === tok.sent);
@@ -857,7 +857,7 @@ export function createMockServices(
         content: "",
         tokens: [],
       } satisfies StoredText;
-      const fake = { i: -1, start: 0, end: 0, sent: -1 } as unknown as AnalyzedToken;
+      const fake = { i: -1, start: 0, end: 0, sent: -1 };
       return { ...entryOf(empty, [], fake, e), surface: key, tokenIndex: -1 };
     },
 

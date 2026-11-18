@@ -12,7 +12,7 @@ import type {
   WordState,
 } from "@app/core";
 import type { StoredText, SuggestedWord, TextSummary, WordInfo } from "@app/db";
-import type { InspectorEntry } from "@app/ui";
+import type { InspectorEntry } from "@app/core";
 import type { CourseServices } from "./courseTypes.js";
 import type { AIServices, AISentenceReport } from "./aiTypes.js";
 import type { AddOptions, ProfileServices } from "./profileTypes.js";

@@ -350,7 +350,7 @@ export function applyStructure(
           confidence: src.confidence,
         };
         for (const f of ITEM_FIELDS) {
-          if (src[f] !== undefined) (next as unknown as Record<string, unknown>)[f] = src[f];
+          if (src[f] !== undefined) Object.assign(next, { [f]: src[f] });
         }
         return next;
       }),

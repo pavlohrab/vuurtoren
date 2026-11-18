@@ -1,5 +1,5 @@
 import type { SuggestedWord } from "@app/db";
-import type { InspectorEntry } from "@app/ui";
+import type { InspectorEntry } from "@app/core";
 
 /** Inspector entry for a suggestion: Claude's gloss and sentence first. */
 export function suggestionEntry(base: InspectorEntry, s: SuggestedWord): InspectorEntry {

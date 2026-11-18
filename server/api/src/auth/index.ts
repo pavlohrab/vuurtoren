@@ -110,7 +110,7 @@ function csrfProblem(
   if (req.headers["sec-fetch-site"] === "cross-site") return "cross-site request";
   const origin = req.headers.origin;
   if (origin !== undefined) {
-    let host: string | null = null;
+    let host: string | null;
     try {
       host = origin === "null" ? null : new URL(origin).host;
     } catch {
