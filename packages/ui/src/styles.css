@@ -46,8 +46,9 @@
   --font-display: "Instrument Sans Variable", "Inter Variable", system-ui, sans-serif;
   --font-mono: "JetBrains Mono Variable", ui-monospace, "SFMono-Regular", Menlo, monospace;
 
-  /* Motion budget: CSS only, transform/opacity, 150–300 ms, nothing loops (except the
-     busy spinner), all off under prefers-reduced-motion. */
+  /* Motion budget (docs/design/design-system.md): CSS only, transform/opacity, 150–300 ms,
+     nothing loops (except the busy spinner and loading skeletons), all off under
+     prefers-reduced-motion. Use these tokens, never raw durations or easings. */
   --dur-fast: 150ms;
   --dur: 200ms;
   --dur-slow: 300ms;
@@ -241,14 +242,23 @@ kbd {
     transform: scaleX(0);
   }
 }
-@keyframes k-pop {
-  0% {
-    transform: scale(0.88);
-    opacity: 0.4;
+/* Popovers, menus, tooltips: a quick scale-fade from the side they open on. */
+@keyframes k-pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
   }
-  100% {
-    transform: none;
-    opacity: 1;
+}
+/* Generic exit for overlays (Radix waits for it before unmounting). */
+@keyframes k-fade-out-plain {
+  to {
+    opacity: 0;
+  }
+}
+/* List items appearing on first render: opacity only, so nothing jumps. */
+@keyframes k-appear {
+  from {
+    opacity: 0;
   }
 }
 /* Route cross-fade (View Transitions API, when the browser has it). */
@@ -395,6 +405,8 @@ kbd {
   z-index: 60;
   padding: 4px;
   min-width: var(--radix-select-trigger-width);
+  transform-origin: var(--radix-select-content-transform-origin);
+  animation: k-pop-in var(--dur-fast) var(--ease-out);
 }
 .k-select-item {
   display: flex;
@@ -487,13 +499,18 @@ kbd {
   width: min(480px, calc(100vw - 32px));
   padding: 24px;
   z-index: 51;
-  animation: k-dialog-in var(--dur) var(--ease);
+  animation: k-dialog-in var(--dur) var(--ease-out);
 }
 @keyframes k-dialog-in {
   from {
     opacity: 0;
     transform: translate(-50%, calc(-50% + 6px)) scale(0.98);
   }
+}
+.k-overlay[data-state="closed"],
+.k-dialog[data-state="closed"],
+.k-command[data-state="closed"] {
+  animation: k-fade-out-plain var(--dur-fast) var(--ease-in-out) forwards;
 }
 .k-dialog-title {
   font-size: 20px;
@@ -514,12 +531,20 @@ kbd {
 .k-popover {
   z-index: 60;
   padding: 12px;
+  transform-origin: var(--radix-popover-content-transform-origin);
+  animation: k-pop-in var(--dur-fast) var(--ease-out);
 }
 .k-tooltip {
   z-index: 70;
   padding: 4px 8px;
   font-size: 12px;
   max-width: 280px;
+  transform-origin: var(--radix-tooltip-content-transform-origin);
+  animation: k-pop-in var(--dur-fast) var(--ease-out);
+}
+.k-popover[data-state="closed"],
+.k-tooltip[data-state="closed"] {
+  animation: k-fade-out-plain var(--dur-fast) var(--ease-in-out) forwards;
 }
 
 /* ---------- Toast ---------- */
@@ -797,7 +822,11 @@ a.k-row:hover .k-row-go {
   cursor: pointer;
   transition:
     background var(--dur-fast) var(--ease),
-    border-color var(--dur-fast) var(--ease);
+    border-color var(--dur-fast) var(--ease),
+    transform var(--dur-fast) var(--ease);
+}
+.k-toggle:active:not([aria-disabled="true"]) {
+  transform: translateY(1px);
 }
 .k-toggle:hover:not([aria-disabled="true"]) {
   border-color: var(--line-strong);
@@ -946,11 +975,20 @@ a.k-row:hover .k-row-go {
     transform: rotate(360deg);
   }
 }
+/* Loading placeholder: invisible for the first 150 ms (fast loads never flash), then a soft
+   sweep. The sweep is one of the two loops the motion budget allows, and only while loading. */
 .k-skeleton {
-  background: linear-gradient(90deg, var(--surface-2), var(--line), var(--surface-2));
+  background: linear-gradient(
+    90deg,
+    var(--surface-2) 30%,
+    color-mix(in srgb, var(--surface-2) 70%, var(--line)) 50%,
+    var(--surface-2) 70%
+  );
   background-size: 200% 100%;
   border-radius: var(--radius-control);
-  animation: k-shimmer 1.6s ease-in-out infinite;
+  animation:
+    k-appear var(--dur) var(--ease-out) var(--dur-fast) both,
+    k-shimmer 1.2s var(--ease-in-out) infinite;
 }
 @keyframes k-shimmer {
   to {
@@ -988,6 +1026,13 @@ a.k-row:hover .k-row-go {
   width: min(560px, calc(100vw - 32px));
   z-index: 51;
   overflow: hidden;
+  animation: k-command-in var(--dur) var(--ease-out);
+}
+@keyframes k-command-in {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-4px) scale(0.98);
+  }
 }
 .k-command-input {
   width: 100%;
@@ -1241,8 +1286,8 @@ a.k-row:hover .k-row-go {
   opacity: 0;
   pointer-events: none;
   transition:
-    opacity 150ms ease-out,
-    transform 150ms ease-out;
+    opacity var(--dur-fast) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out);
   z-index: 5;
 }
 .k-cloze-wrap:hover .k-cloze-hint,

@@ -8,7 +8,6 @@
   grid-template-columns: 220px minmax(0, 1fr) 0;
   grid-template-rows: 100vh;
   height: 100vh;
-  transition: grid-template-columns 180ms var(--ease);
 }
 .shell[data-sidebar="collapsed"] {
   grid-template-columns: 56px minmax(0, 1fr) 0;
@@ -1635,4 +1634,61 @@ a.home-step:hover .home-step-go {
   font-family: var(--font-reading);
   font-size: 16px;
   line-height: 1.6;
+}
+
+/* ---------- Motion (docs/design/design-system.md, Motion budget) ---------- */
+/* The shell's columns snap (animating them would reflow the reader text); what appears fades. */
+.shell[data-inspector="open"] .inspector-panel > * {
+  animation: k-inspector-in var(--dur) var(--ease-out);
+}
+@keyframes k-inspector-in {
+  from {
+    opacity: 0;
+    transform: translateX(8px);
+  }
+}
+@media (max-width: 899px) {
+  .shell[data-inspector="open"] .inspector-panel {
+    animation: k-sheet-in var(--dur) var(--ease-out);
+  }
+  .shell[data-inspector="open"] .inspector-panel > * {
+    animation: none;
+  }
+}
+@keyframes k-sheet-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+.shell:not([data-sidebar="collapsed"]) .nav-label {
+  animation: k-appear var(--dur) var(--ease-out);
+}
+/* Library covers and Words rows appear in a short cascade (first items only, opacity only for
+   rows so a filter never makes the table jump). */
+.shelf:not([aria-busy="true"]) > * {
+  animation: k-fade-in var(--dur) var(--ease-out) both;
+}
+.words-row {
+  animation: k-appear var(--dur-fast) var(--ease-out) both;
+}
+.shelf:not([aria-busy="true"]) > :nth-child(2),
+.words-row:nth-child(2) {
+  animation-delay: 30ms;
+}
+.shelf:not([aria-busy="true"]) > :nth-child(3),
+.words-row:nth-child(3) {
+  animation-delay: 60ms;
+}
+.shelf:not([aria-busy="true"]) > :nth-child(4),
+.words-row:nth-child(4) {
+  animation-delay: 90ms;
+}
+.shelf:not([aria-busy="true"]) > :nth-child(5),
+.words-row:nth-child(5) {
+  animation-delay: 120ms;
+}
+.shelf:not([aria-busy="true"]) > :nth-child(n + 6),
+.words-row:nth-child(n + 6) {
+  animation-delay: 150ms;
 }
