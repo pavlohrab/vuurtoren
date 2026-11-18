@@ -15,6 +15,12 @@ export function Root() {
   const { demo } = useAppInfo();
   const navigate = useNavigate();
   const path = useRouterState({ select: (s) => s.location.pathname });
+  // Choose shell or no shell by the route actually rendered, not by the location: while a
+  // navigation to /welcome is pending (its screen is code-split), the location is already
+  // /welcome but the Outlet still renders the previous screen, which needs the shell (B7).
+  const welcomeShown = useRouterState({
+    select: (s) => s.matches.some((m) => m.routeId === "/welcome"),
+  });
   const profile = useQuery({
     queryKey: ["languageProfile"],
     queryFn: () => services.languageProfile(),
@@ -26,6 +32,6 @@ export function Root() {
     if (needsSetup && path !== "/welcome") void navigate({ to: "/welcome", replace: true });
   }, [needsSetup, path, navigate]);
 
-  if (path === "/welcome") return <Outlet />;
+  if (welcomeShown) return <Outlet />;
   return <AppShell />;
 }

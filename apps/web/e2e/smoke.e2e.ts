@@ -8,6 +8,16 @@ import { type Page, expect, test } from "@playwright/test";
 import { fakeAnki } from "./fakeAnki.js";
 import { SAMPLE_TEXT, fakeNlp } from "./fakeNlp.js";
 
+/** Collect console errors and uncaught page errors; the smoke flow must end with none. */
+function watchErrors(page: Page): string[] {
+  const errors: string[] = [];
+  page.on("console", (m) => {
+    if (m.type() === "error") errors.push(m.text());
+  });
+  page.on("pageerror", (e) => errors.push(e.message));
+  return errors;
+}
+
 async function importAndRead(page: Page): Promise<void> {
   await page.goto("/import");
   await page.getByLabel("Text", { exact: true }).fill(SAMPLE_TEXT);
@@ -47,14 +57,17 @@ async function answerOneExercise(page: Page): Promise<void> {
 }
 
 test("demo mode", async ({ page }) => {
+  const errors = watchErrors(page);
   await page.goto("/?demo");
   await importAndRead(page);
   await inspectWord(page);
   await changeTextSize(page);
   await answerOneExercise(page);
+  expect(errors).toEqual([]);
 });
 
 test("browser storage mode", async ({ page }) => {
+  const errors = watchErrors(page);
   await fakeNlp(page);
   await fakeAnki(page);
   await page.goto("/");
@@ -65,4 +78,5 @@ test("browser storage mode", async ({ page }) => {
   await expect(page.locator(".inspector-panel")).toContainText("Learning");
   await changeTextSize(page);
   await answerOneExercise(page);
+  expect(errors).toEqual([]);
 });
