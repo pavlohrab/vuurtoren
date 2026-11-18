@@ -203,6 +203,10 @@ def _sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+DEFAULT_PACKS_BASE = "https://github.com/pavlohrab/Kenning/releases/download"
+"""Where published packs live (the `packs` workflow uploads them as release assets)."""
+
+
 def _fetch(name: str, entry: dict[str, Any], dest: Path) -> str | None:
     """Put the verified archive at ``dest``; return its source, or None if no source has it."""
     file = archive_name(name, entry["version"])
@@ -213,6 +217,9 @@ def _fetch(name: str, entry: dict[str, Any], dest: Path) -> str | None:
     else:
         url = os.environ.get("KENNING_PACKS_URL", "").strip()
         if not url:
+            # Default: the public GitHub release named after this pack's version.
+            url = f"{DEFAULT_PACKS_BASE}/packs-{entry['version']}"
+        elif url.lower() == "none":
             return None
         headers = {"User-Agent": "kenning-nlp-packs"}
         token = os.environ.get("KENNING_PACKS_TOKEN")

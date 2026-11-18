@@ -121,7 +121,10 @@ def test_download_from_url_and_checksum_mismatch(
         server.shutdown()
 
 
-def test_no_source_is_an_error_not_a_crash(env: dict[str, Path]) -> None:
+def test_no_source_is_an_error_not_a_crash(
+    env: dict[str, Path], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("KENNING_PACKS_URL", "none")  # no default GitHub download in tests
     assert "no source" in packs.ensure(allow_build=False)["dictionary-nl"]
 
 
