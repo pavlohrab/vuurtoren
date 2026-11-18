@@ -27,6 +27,7 @@ import { AnkiConnection } from "./AnkiSettings.js";
 import { DataSettings } from "./DataSettings.js";
 import { LanguageDecksSettings } from "./LanguageDecksSettings.js";
 import { SavedNote } from "./SavedNote.js";
+import { ServerStatus } from "./ServerStatus.js";
 import { useAutosave } from "./useAutosave.js";
 import "./settings.css";
 
@@ -66,7 +67,7 @@ const SECTIONS: { id: SectionId; label: string; hint: string; icon: ReactNode }[
   {
     id: "advanced",
     label: "Advanced",
-    hint: "Language server and AnkiConnect addresses.",
+    hint: "Server status, version, language server and AnkiConnect addresses.",
     icon: <SlidersHorizontal size={18} />,
   },
 ];
@@ -249,6 +250,7 @@ function AdvancedSettings() {
           }
         }}
       />
+      <ServerStatus nlpUrl={form.nlpUrl} />
     </div>
   );
 }

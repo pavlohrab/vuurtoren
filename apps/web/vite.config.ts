@@ -1,6 +1,7 @@
 import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
+import { readFileSync } from "node:fs";
 import type { ProxyOptions } from "vite";
 
 /**
@@ -17,8 +18,18 @@ const stripOrigin: ProxyOptions["configure"] = (proxy) => {
 
 const apiTarget = process.env["KENNING_API_TARGET"];
 
+/** The product version (root package.json) and, in image builds, the commit (KENNING_COMMIT). */
+const rootPackage = JSON.parse(
+  readFileSync(new URL("../../package.json", import.meta.url), "utf8"),
+) as { version: string };
+const commit = (process.env["KENNING_COMMIT"] ?? "").slice(0, 7);
+
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  define: {
+    __KENNING_VERSION__: JSON.stringify(rootPackage.version),
+    __KENNING_COMMIT__: JSON.stringify(commit),
+  },
   server: {
     port: 5173,
     proxy: {

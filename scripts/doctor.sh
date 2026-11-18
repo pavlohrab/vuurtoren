@@ -1,0 +1,112 @@
+#!/bin/sh
+# Kenning doctor: checks a running Kenning from the outside, the way a browser sees it.
+#
+#   scripts/doctor.sh                         http://127.0.0.1:8080
+#   scripts/doctor.sh https://kenning.example.com
+#
+# With sign-in on, the checks behind it need credentials (from the environment):
+#   KENNING_TOKEN=...                         the bearer token, or
+#   KENNING_USER=... KENNING_PASSWORD=...     signs in with a cookie and signs out again
+#
+# Needs only curl. Exit code 0 when everything works, 1 otherwise. CI runs it as the
+# smoke test against freshly built images (.github/workflows/ci.yml).
+set -u
+
+BASE=${1:-http://127.0.0.1:8080}
+BASE=${BASE%/}
+FAILED=0
+TMP=$(mktemp -d)
+JAR="$TMP/cookies"
+trap 'rm -rf "$TMP"' EXIT
+
+ok() { printf '  \033[32mok\033[0m    %s\n' "$*"; }
+warn() { printf '  \033[33mwarn\033[0m  %s\n' "$*"; }
+fail() {
+  printf '  \033[31mFAIL\033[0m  %s\n' "$*"
+  FAILED=1
+}
+# get PATH [curl args...] -> body in $TMP/body, status in $STATUS
+get() {
+  path=$1
+  shift
+  STATUS=$(curl -sS -m 20 -o "$TMP/body" -w '%{http_code}' -b "$JAR" -c "$JAR" "$@" "$BASE$path" 2>"$TMP/err") ||
+    STATUS="000 ($(cat "$TMP/err"))"
+}
+body() { tr -d '\n' <"$TMP/body" | cut -c1-200; }
+field() { sed -nE "s/.*\"$1\":(\"[^\"]*\"|[^,}]*).*/\1/p" "$TMP/body" | tr -d '"'; }
+
+echo "Kenning doctor: $BASE"
+
+echo "web"
+get /
+if [ "$STATUS" = 200 ] && grep -q 'id="root"' "$TMP/body"; then ok "app page loads"; else fail "GET / -> $STATUS (is the web container up? docker compose ps)"; fi
+if curl -sS -m 10 -I "$BASE/" 2>/dev/null | grep -qi '^content-security-policy:'; then
+  ok "security headers present"
+else
+  warn "no Content-Security-Policy header (a proxy in front may strip it)"
+fi
+
+echo "api"
+get /api/health
+if [ "$STATUS" != 200 ]; then
+  fail "GET /api/health -> $STATUS (api container down? docker compose logs api)"
+  AUTH=unknown
+else
+  STATE=$(field state)
+  AUTH=$(field authRequired)
+  ok "health: state=$STATE, schema=$(field schemaVersion), sign-in required=$AUTH"
+  [ "$STATE" = ready ] || fail "database state is '$STATE' (open the app: it explains what to do)"
+  [ "$AUTH" = true ] || warn "sign-in is OFF: fine on localhost only (deploy/README.md, Sign-in)"
+fi
+
+AUTHED=1
+if [ "$AUTH" = true ]; then
+  get /api/info
+  if [ "$STATUS" = 401 ]; then ok "data is refused without a sign-in"; else fail "GET /api/info without sign-in -> $STATUS (expected 401)"; fi
+  if [ -n "${KENNING_TOKEN:-}" ]; then
+    printf 'header = "Authorization: Bearer %s"\n' "$KENNING_TOKEN" >"$TMP/auth.conf"
+  elif [ -n "${KENNING_USER:-}" ] && [ -n "${KENNING_PASSWORD:-}" ]; then
+    : >"$TMP/auth.conf"
+    # JSON-escape backslashes and quotes in the credentials.
+    esc() { printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'; }
+    get /api/auth/login -X POST -H 'Content-Type: application/json' \
+      --data-binary "{\"user\":\"$(esc "$KENNING_USER")\",\"password\":\"$(esc "$KENNING_PASSWORD")\"}"
+    if [ "$STATUS" = 200 ]; then ok "signed in as $(field user)"; else
+      fail "sign-in -> $STATUS: $(body)"
+      AUTHED=0
+    fi
+  else
+    warn "sign-in is on: set KENNING_TOKEN or KENNING_USER + KENNING_PASSWORD to check the rest"
+    AUTHED=0
+  fi
+else
+  : >"$TMP/auth.conf"
+fi
+
+if [ "$AUTHED" = 1 ]; then
+  get /api/auth/me -K "$TMP/auth.conf"
+  if [ "$STATUS" = 200 ]; then ok "session: $(body)"; else fail "GET /api/auth/me -> $STATUS"; fi
+  get /api/info -K "$TMP/auth.conf"
+  if [ "$STATUS" = 200 ]; then ok "data: $(field sizeBytes) bytes, $(field eventCount) events"; else fail "GET /api/info -> $STATUS: $(body)"; fi
+
+  echo "nlp"
+  get /nlp/health -K "$TMP/auth.conf"
+  if [ "$STATUS" = 200 ]; then
+    ok "language server $(field version)"
+    for d in dictionary sentences translation grammarExamples; do
+      v=$(field "$d")
+      if [ "$v" = true ]; then ok "data: $d"; elif [ "$v" = false ]; then fail "data missing: $d (rebuild or re-pull the nlp image)"; fi
+    done
+  else
+    fail "GET /nlp/health -> $STATUS (the language server needs up to a minute after start: docker compose logs nlp)"
+  fi
+
+  if [ -s "$JAR" ] && [ -z "${KENNING_TOKEN:-}" ] && [ "$AUTH" = true ]; then
+    get /api/auth/logout -X POST -H 'Content-Type: application/json' --data-binary '{}'
+    if [ "$STATUS" = 200 ]; then ok "signed out"; else fail "sign-out -> $STATUS"; fi
+  fi
+fi
+
+echo "Anki: checked by your browser, not the server (Settings > Advanced > Server status)."
+if [ "$FAILED" = 0 ]; then echo "All good."; else echo "Some checks failed (see above and deploy/README.md, Troubleshooting)."; fi
+exit "$FAILED"

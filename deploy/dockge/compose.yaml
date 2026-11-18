@@ -1,12 +1,13 @@
 # Kenning for Dockge (or any `docker compose`): published images only, no build, no files
 # next to it. Paste this into a new Dockge stack and the contents of .env.example into the
 # stack's .env, then fill in at least KENNING_IMAGE_OWNER, KENNING_USER and
-# KENNING_PASSWORD_HASH. Guide: deploy/README.md, "Dockge and Cloudflare Tunnel".
+# KENNING_PASSWORD_HASH. Quick card: deploy/dockge/README.md. Full guide: deploy/README.md.
 #
 #   web          the app + sign-in gate (nginx); the only service with a published port
 #   api          your data in ONE SQLite file on the kenning-data volume, and sign-in
 #   nlp          Dutch analysis, dictionary, OCR, translation
 #   cloudflared  optional (profile "tunnel"): public https address without opening ports
+#   backup       optional (profile "backup"): scheduled snapshots of your data to a folder
 #
 # Networks: `backend` is internal (no internet); the api lives only there. `edge` has
 # internet access for the NLP service (URL import), the tunnel and the published port.
@@ -81,11 +82,50 @@ services:
       start_period: 60s
       retries: 3
 
+  # Scheduled backups (optional, profile "backup"): every KENNING_BACKUP_INTERVAL_HOURS a
+  # consistent snapshot from /api/export (safe while the app is in use) is written to
+  # KENNING_BACKUP_DIR as kenning-YYYY-MM-DD-HHMM.sqlite; files older than KENNING_BACKUP_KEEP_DAYS
+  # are deleted. With sign-in on it needs KENNING_TOKEN. Each file is a normal Kenning backup:
+  # restore it in Settings > Data & backup (deploy/README.md, "Backup and restore").
+  backup:
+    image: alpine:3.24
+    profiles: [backup]
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      KENNING_TOKEN: ${KENNING_TOKEN:-}
+      INTERVAL_HOURS: ${KENNING_BACKUP_INTERVAL_HOURS:-24}
+      KEEP_DAYS: ${KENNING_BACKUP_KEEP_DAYS:-14}
+    volumes:
+      - ${KENNING_BACKUP_DIR:-./backups}:/backups
+    networks: [backend]
+    command:
+      - sh
+      - -c
+      - |
+        set -u
+        umask 077
+        if [ -n "$$KENNING_TOKEN" ]; then set -- --header "Authorization: Bearer $$KENNING_TOKEN"; else set --; fi
+        while :; do
+          f="/backups/kenning-$$(date +%Y-%m-%d-%H%M).sqlite"
+          if wget -q -T 600 "$$@" -O "$$f.part" http://api:8787/api/export; then
+            mv "$$f.part" "$$f"
+            echo "backup: $$f ($$(du -h "$$f" | cut -f1))"
+            find /backups -name 'kenning-*.sqlite' -mtime +"$$KEEP_DAYS" -delete
+          else
+            rm -f "$$f.part"
+            echo "backup FAILED: is the api healthy? With sign-in on, set KENNING_TOKEN." >&2
+          fi
+          sleep "$$((INTERVAL_HOURS * 3600))"
+        done
+
   # Cloudflare Tunnel (optional): enable the "tunnel" profile and set TUNNEL_TOKEN. In the
   # Cloudflare dashboard, give the tunnel a public hostname whose service is http://web:80.
   # (No healthcheck: the image is distroless; Cloudflare's dashboard shows the tunnel state.)
   cloudflared:
-    image: cloudflare/cloudflared:${CLOUDFLARED_TAG:-2026.11.0}
+    image: cloudflare/cloudflared:${CLOUDFLARED_TAG:-2026.11.1}
     profiles: [tunnel]
     restart: unless-stopped
     command: ["tunnel", "--no-autoupdate", "run"]
