@@ -74,7 +74,7 @@ async function setup() {
     help: 0.25,
     newWords: "auto",
     glossClozes: false,
-    grammarSpotlights: false,
+    grammarMarks: true,
   };
   const ai = createLiveAI({
     repo,

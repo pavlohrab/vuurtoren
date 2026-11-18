@@ -43,10 +43,10 @@ describe("Settings", () => {
 
   it("saves reading settings on their own and says so quietly", async () => {
     const { saves, user } = setup("/settings?section=reading");
-    const box = await screen.findByRole("checkbox", { name: /Grammar spotlights/ });
+    const box = await screen.findByRole("checkbox", { name: /Grammar marks/ });
     const before = (box as HTMLInputElement).checked;
     await user.click(box);
-    await waitFor(() => expect(saves.at(-1)?.grammarSpotlights).toBe(!before), {
+    await waitFor(() => expect(saves.at(-1)?.grammarMarks).toBe(!before), {
       timeout: 2000,
     });
     expect(await screen.findByText("Saved")).toBeInTheDocument();

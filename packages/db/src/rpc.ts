@@ -42,6 +42,7 @@ export const RPC_METHODS = {
   bookAnswers: ["string", "number?"],
   conversationEvents: [],
   generatedSentences: ["string"],
+  examAttempts: ["string"],
 } as const satisfies Record<string, readonly ArgKind[]>;
 
 export type RpcMethod = keyof typeof RPC_METHODS;

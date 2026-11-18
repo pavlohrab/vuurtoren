@@ -1,7 +1,7 @@
 import { createMemoryHistory } from "@tanstack/react-router";
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { act, configure, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 import { App, type AppProps } from "./App.js";
 import { createMockServices } from "./services/mock.js";
 import type { AppServices } from "./services/types.js";
@@ -17,6 +17,18 @@ function setup(
   render(<App services={services} history={history} {...props} />);
   return { history, services };
 }
+
+// The reader route is code-split (router.tsx). The first test of the file used to pay for the
+// cold dynamic import and transform of the reader's module graph inside its first findBy
+// (Testing Library waits 1 s by default): under a parallel `pnpm test` that ran out, and the
+// test failed on "Next segment" before the reader had rendered at all. Load the screen up
+// front, and give waits (and tests) a budget that holds on a loaded machine; a passing wait
+// still returns as soon as the element is there.
+beforeAll(async () => {
+  configure({ asyncUtilTimeout: 5000 });
+  await import("./screens/ReaderPage.js");
+}, 30_000);
+vi.setConfig({ testTimeout: 20_000 });
 
 describe("ReaderPage", () => {
   it("starts a different text from its own beginning, with no selection", async () => {

@@ -45,6 +45,7 @@ import { absentAnki, ankiFromStatus, unavailableAnki } from "./ankiState.js";
 import { NlpClient, createPracticeData } from "@app/nlp-client";
 import { createLiveCourses } from "./liveCourses.js";
 import { createLiveAI } from "./liveAI.js";
+import { createLiveExam } from "./liveExam.js";
 import { createLiveProfile } from "./liveProfile.js";
 import type { AddOptions } from "./profileTypes.js";
 import { createLiveGrammar } from "./liveGrammar.js";
@@ -94,7 +95,7 @@ export const DEFAULT_SETTINGS: Settings = {
   help: 0.25,
   newWords: "auto",
   glossClozes: false,
-  grammarSpotlights: false,
+  grammarMarks: true,
 };
 
 // spaCy universal POS -> Wiktionary (kaikki) part of speech, to pick the sense that fits.
@@ -332,8 +333,13 @@ export function createLiveServices(repo: KenningRepository): AppServices {
     if (!settingsCache) {
       const saved = await repo.setting<Partial<Settings>>("settings");
       // Older versions stored the key in the event log; ignore it there.
-      const rest: Partial<Settings> = { ...saved };
+      const rest: Partial<Settings> & { grammarSpotlights?: boolean } = { ...saved };
       delete rest.ankiKey;
+      // The all-topics spotlight toggle became margin marks (on by default): whoever had the
+      // spotlights on keeps grammar in the reader; the old default (off) is not a choice.
+      if (rest.grammarMarks === undefined && rest.grammarSpotlights === true)
+        rest.grammarMarks = true;
+      delete rest.grammarSpotlights;
       settingsCache = { ...DEFAULT_SETTINGS, ...rest };
       const key = readSecret(ANKI_KEY_STORAGE);
       if (key) settingsCache.ankiKey = key;
@@ -650,11 +656,14 @@ export function createLiveServices(repo: KenningRepository): AppServices {
     changed,
   });
 
+  const exam = createLiveExam({ repo, lang: async () => (await settings()).lang, changed });
+
   const services: AppServices = {
     ...profile.services,
     ...practice,
     ...ai,
     ...courses,
+    ...exam,
     textGrammar: grammar.textGrammar,
     grammarOverview: grammar.grammarOverview,
     grammarExamples: grammar.grammarExamples,

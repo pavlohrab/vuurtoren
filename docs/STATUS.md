@@ -120,6 +120,13 @@ pnpm dev            # web app on http://localhost:5173 (proxies /nlp and /anki)
 - **Settings**: sections (Account, Language & decks, Reading, AI, Data & backup, Advanced) with a sub-nav, autosave and a quiet Saved note; Anki connection and Sync at the top of Language & decks.
 - **Library** is a shelf with generated covers per source kind and Continue · page N of M; one page header (title, purpose, primary action) on Library, Practice, Words, Courses, Grammar, Talk, Settings and Progress. Favicon PNGs use the dark tile.
 
+### Exam preparation (branch `exam`, 2026-11-18)
+
+- **Exam** (`/exam`, one nav entry): the A2 inburgeringsexamen at a glance (parts, formats, official durations, estimated pass rules, "last checked 18 November 2026", links to inburgeren.nl/DUO/IND and the official practice exams). Research: [research/08](research/08-inburgering-a2.md); details: [exam.md](exam.md).
+- Practice (instant feedback) and timed mock exams for **Lezen, Luisteren** (Dutch Web Speech voice, speed control, two plays in exam mode, transcript after), **Schrijven** (checklist, model answer, grammar links, optional AI feedback), **Spreken** (per-question clock, in-memory recording, model answer, optional AI feedback on a transcript) and **KNM** (by theme or as a 40-question mock).
+- Original content in `packages/content/exam/nl-a2` (validated at build): 50 reading and 48 listening questions, 8 writing tasks, 20 speaking prompts, 88 KNM questions over the 8 official themes.
+- Results are `ExamAttempt` events (`examAttempts` projection, RPC + HTTP); missed words → Add to Anki / Practise these; an _Exam prep_ step in Home's Today once started; optional AI-written Lezen/Luisteren items with the coverage check.
+
 ### Review fixes applied
 
 - **NLP:** lemma precision, UTF-16 offsets, request size limits, one shared key-normalisation rule (Python = TypeScript), particle and R-pronoun false positives.

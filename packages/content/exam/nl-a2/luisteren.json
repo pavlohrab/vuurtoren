@@ -1,0 +1,908 @@
+{
+  "fragments": [
+    {
+      "id": "lu-1-01",
+      "set": 1,
+      "kind": "dialogue",
+      "context": "Een vrouw belt de huisarts.",
+      "lines": [
+        { "who": "Assistente", "voice": "f", "text": "Huisartsenpraktijk Het Plein, goedemorgen." },
+        {
+          "who": "Vrouw",
+          "voice": "f",
+          "text": "Goedemorgen, met Amira El Idrissi. Mijn zoon heeft sinds gisteren hoge koorts."
+        },
+        { "who": "Assistente", "voice": "f", "text": "Hoe oud is uw zoon?" },
+        { "who": "Vrouw", "voice": "f", "text": "Hij is vier jaar." },
+        {
+          "who": "Assistente",
+          "voice": "f",
+          "text": "Dan wil de dokter hem vandaag zien. Kunt u om half twaalf komen?"
+        },
+        { "who": "Vrouw", "voice": "f", "text": "Ja, dat kan. Dank u wel." }
+      ],
+      "vocab": { "koorts": "fever", "sinds": "since", "half twaalf": "half past eleven" },
+      "questions": [
+        {
+          "id": "lu-1-01-a",
+          "q": "Waarom belt de vrouw?",
+          "options": ["Ze is zelf ziek.", "Haar zoon is ziek.", "Ze wil een recept."],
+          "answer": 1,
+          "explain": "Her son has had a high fever since yesterday."
+        },
+        {
+          "id": "lu-1-01-b",
+          "q": "Hoe laat heeft de vrouw een afspraak?",
+          "options": ["Om 11.30 uur.", "Om 12.30 uur.", "Om 10.30 uur."],
+          "answer": 0,
+          "explain": "'half twaalf' = 11.30."
+        }
+      ]
+    },
+    {
+      "id": "lu-1-02",
+      "set": 1,
+      "kind": "announcement",
+      "context": "Je bent op het station. Je hoort een omroepbericht.",
+      "lines": [
+        {
+          "who": "Omroeper",
+          "voice": "m",
+          "text": "Reizigers naar Rivierstad, let op. De trein van 14.12 uur vertrekt vandaag niet van spoor 3, maar van spoor 5. De trein heeft ongeveer tien minuten vertraging. Onze excuses."
+        }
+      ],
+      "vocab": { "spoor": "platform (track)", "vertraging": "delay", "reiziger": "traveller" },
+      "questions": [
+        {
+          "id": "lu-1-02-a",
+          "q": "Van welk spoor vertrekt de trein naar Rivierstad?",
+          "options": ["Spoor 3.", "Spoor 5.", "Spoor 12."],
+          "answer": 1,
+          "explain": "Not platform 3 but platform 5."
+        },
+        {
+          "id": "lu-1-02-b",
+          "q": "Hoe laat vertrekt de trein ongeveer?",
+          "options": ["Om 14.02 uur.", "Om 14.12 uur.", "Om 14.22 uur."],
+          "answer": 2,
+          "explain": "14.12 plus about ten minutes' delay."
+        }
+      ]
+    },
+    {
+      "id": "lu-1-03",
+      "set": 1,
+      "kind": "dialogue",
+      "context": "Twee collega's praten in de pauze.",
+      "lines": [
+        {
+          "who": "Jan",
+          "voice": "m",
+          "text": "Hé Sofia, ga je vrijdag mee naar het etentje van het werk?"
+        },
+        {
+          "who": "Sofia",
+          "voice": "f",
+          "text": "Ik wil graag, maar ik heb geen oppas voor mijn dochter."
+        },
+        {
+          "who": "Jan",
+          "voice": "m",
+          "text": "Je mag haar meenemen hoor. Er komen meer kinderen."
+        },
+        { "who": "Sofia", "voice": "f", "text": "O, leuk! Dan kom ik. Hoe laat begint het?" },
+        { "who": "Jan", "voice": "m", "text": "Om zes uur, in het restaurant naast het kantoor." }
+      ],
+      "vocab": {
+        "etentje": "dinner (outing)",
+        "oppas": "babysitter",
+        "meenemen": "to bring along"
+      },
+      "questions": [
+        {
+          "id": "lu-1-03-a",
+          "q": "Waarom twijfelt Sofia eerst?",
+          "options": [
+            "Ze moet vrijdag werken.",
+            "Ze heeft geen oppas.",
+            "Ze houdt niet van het restaurant."
+          ],
+          "answer": 1,
+          "explain": "'ik heb geen oppas voor mijn dochter'."
+        },
+        {
+          "id": "lu-1-03-b",
+          "q": "Wat doet Sofia vrijdag?",
+          "options": [
+            "Ze blijft thuis.",
+            "Ze gaat met haar dochter naar het etentje.",
+            "Ze zoekt een oppas."
+          ],
+          "answer": 1,
+          "explain": "Children are welcome, so she comes."
+        }
+      ]
+    },
+    {
+      "id": "lu-1-04",
+      "set": 1,
+      "kind": "voicemail",
+      "context": "Je luistert naar je voicemail.",
+      "lines": [
+        {
+          "who": "Monteur",
+          "voice": "m",
+          "text": "Goedemiddag, met Kees van Installatiebedrijf Warm. Ik zou morgen om negen uur uw cv-ketel komen maken. Maar ik ben morgen ziek. Kan het ook donderdag om negen uur? Bel me even terug op nul zes, twee drie, vier vijf, zes zeven, acht negen. Dank u wel."
+        }
+      ],
+      "vocab": { "cv-ketel": "boiler", "terugbellen": "to call back", "maken": "here: to repair" },
+      "questions": [
+        {
+          "id": "lu-1-04-a",
+          "q": "Wat wil de monteur?",
+          "options": ["Een andere dag komen.", "Eerder komen.", "Niet meer komen."],
+          "answer": 0,
+          "explain": "He is ill tomorrow and asks for Thursday instead."
+        },
+        {
+          "id": "lu-1-04-b",
+          "q": "Wat moet je doen?",
+          "options": [
+            "Een e-mail sturen.",
+            "De monteur terugbellen.",
+            "Donderdag om negen uur bij het bedrijf zijn."
+          ],
+          "answer": 1,
+          "explain": "'Bel me even terug.'"
+        }
+      ]
+    },
+    {
+      "id": "lu-1-05",
+      "set": 1,
+      "kind": "dialogue",
+      "context": "Een man is in een winkel.",
+      "lines": [
+        {
+          "who": "Man",
+          "voice": "m",
+          "text": "Goedemiddag. Ik heb vorige week deze broek gekocht, maar hij is te klein."
+        },
+        { "who": "Verkoopster", "voice": "f", "text": "Heeft u de bon nog?" },
+        { "who": "Man", "voice": "m", "text": "Ja, hier is hij." },
+        { "who": "Verkoopster", "voice": "f", "text": "Wilt u een grotere maat of uw geld terug?" },
+        { "who": "Man", "voice": "m", "text": "Een grotere maat graag. Dezelfde kleur." }
+      ],
+      "vocab": { "bon": "receipt", "maat": "size", "geld terug": "refund" },
+      "questions": [
+        {
+          "id": "lu-1-05-a",
+          "q": "Wat is het probleem met de broek?",
+          "options": ["Hij is kapot.", "Hij is te klein.", "Hij heeft de verkeerde kleur."],
+          "answer": 1,
+          "explain": "'hij is te klein'."
+        },
+        {
+          "id": "lu-1-05-b",
+          "q": "Wat wil de man?",
+          "options": [
+            "Zijn geld terug.",
+            "Een andere kleur.",
+            "Dezelfde broek in een grotere maat."
+          ],
+          "answer": 2,
+          "explain": "'Een grotere maat graag. Dezelfde kleur.'"
+        }
+      ]
+    },
+    {
+      "id": "lu-1-06",
+      "set": 1,
+      "kind": "announcement",
+      "context": "Je bent in de supermarkt.",
+      "lines": [
+        {
+          "who": "Omroepster",
+          "voice": "f",
+          "text": "Beste klanten, vandaag is alle groente en fruit de helft van de prijs. Alleen vandaag, tot sluitingstijd. Over vijftien minuten gaat de winkel dicht. Wilt u uw boodschappen naar de kassa brengen?"
+        }
+      ],
+      "vocab": { "de helft": "half", "sluitingstijd": "closing time", "kassa": "checkout" },
+      "questions": [
+        {
+          "id": "lu-1-06-a",
+          "q": "Wat is vandaag goedkoper?",
+          "options": ["Brood.", "Groente en fruit.", "Alle producten."],
+          "answer": 1,
+          "explain": "Fruit and vegetables at half price."
+        },
+        {
+          "id": "lu-1-06-b",
+          "q": "Wat gebeurt er over een kwartier?",
+          "options": [
+            "De winkel gaat dicht.",
+            "Er komen nieuwe aanbiedingen.",
+            "De kassa gaat open."
+          ],
+          "answer": 0,
+          "explain": "'Over vijftien minuten gaat de winkel dicht.'"
+        }
+      ]
+    },
+    {
+      "id": "lu-1-07",
+      "set": 1,
+      "kind": "dialogue",
+      "context": "Een vrouw is bij het loket van de gemeente.",
+      "lines": [
+        { "who": "Medewerker", "voice": "m", "text": "Goedemorgen, waarmee kan ik u helpen?" },
+        {
+          "who": "Vrouw",
+          "voice": "f",
+          "text": "Ik ben verhuisd. Ik wil mijn nieuwe adres doorgeven."
+        },
+        {
+          "who": "Medewerker",
+          "voice": "m",
+          "text": "Dat kan ook online, met DigiD. Maar ik help u nu ook graag. Mag ik uw identiteitskaart?"
+        },
+        { "who": "Vrouw", "voice": "f", "text": "Alstublieft. Moet ik iets betalen?" },
+        { "who": "Medewerker", "voice": "m", "text": "Nee, dat is gratis." }
+      ],
+      "vocab": {
+        "verhuizen": "to move house",
+        "doorgeven": "to pass on, report",
+        "loket": "counter"
+      },
+      "questions": [
+        {
+          "id": "lu-1-07-a",
+          "q": "Waarom is de vrouw bij de gemeente?",
+          "options": [
+            "Ze wil een nieuw paspoort.",
+            "Ze wil haar nieuwe adres doorgeven.",
+            "Ze zoekt een huis."
+          ],
+          "answer": 1,
+          "explain": "She has moved and reports her new address."
+        },
+        {
+          "id": "lu-1-07-b",
+          "q": "Wat zegt de medewerker?",
+          "options": ["Het kost € 10.", "Het kan ook via internet.", "Ze moet een afspraak maken."],
+          "answer": 1,
+          "explain": "'Dat kan ook online, met DigiD.'"
+        },
+        {
+          "id": "lu-1-07-c",
+          "q": "Wat moet de vrouw laten zien?",
+          "options": ["Haar huurcontract.", "Haar identiteitskaart.", "Haar bankpas."],
+          "answer": 1,
+          "explain": "'Mag ik uw identiteitskaart?'"
+        }
+      ]
+    },
+    {
+      "id": "lu-1-08",
+      "set": 1,
+      "kind": "dialogue",
+      "context": "Twee buren praten op straat.",
+      "lines": [
+        { "who": "Henk", "voice": "m", "text": "Goedemorgen! Gaat u op vakantie?" },
+        {
+          "who": "Leila",
+          "voice": "f",
+          "text": "Ja, twee weken naar mijn familie. Wilt u misschien onze planten water geven?"
+        },
+        { "who": "Henk", "voice": "m", "text": "Natuurlijk. Hoe vaak?" },
+        {
+          "who": "Leila",
+          "voice": "f",
+          "text": "Twee keer per week is genoeg. Ik geef u vanavond de sleutel."
+        }
+      ],
+      "vocab": { "water geven": "to water", "sleutel": "key", "genoeg": "enough" },
+      "questions": [
+        {
+          "id": "lu-1-08-a",
+          "q": "Wat vraagt Leila aan Henk?",
+          "options": [
+            "Of hij de planten water wil geven.",
+            "Of hij mee op vakantie wil.",
+            "Of hij de post wil halen."
+          ],
+          "answer": 0,
+          "explain": "She asks him to water the plants."
+        },
+        {
+          "id": "lu-1-08-b",
+          "q": "Wanneer krijgt Henk de sleutel?",
+          "options": ["Morgen.", "Vanavond.", "Na de vakantie."],
+          "answer": 1,
+          "explain": "'Ik geef u vanavond de sleutel.'"
+        }
+      ]
+    },
+    {
+      "id": "lu-1-09",
+      "set": 1,
+      "kind": "announcement",
+      "context": "Je bent bij het zwembad. Je hoort een bericht.",
+      "lines": [
+        {
+          "who": "Badmeester",
+          "voice": "m",
+          "text": "Attentie, attentie. Er is een kleine jongen gevonden bij de glijbaan. Hij heet Daan en hij is vijf jaar. Hij heeft een rode zwembroek aan. De ouders van Daan kunnen naar de kassa bij de ingang komen."
+        }
+      ],
+      "vocab": { "glijbaan": "slide", "zwembroek": "swimming trunks", "ingang": "entrance" },
+      "questions": [
+        {
+          "id": "lu-1-09-a",
+          "q": "Waar moeten de ouders van Daan naartoe?",
+          "options": ["Naar de glijbaan.", "Naar de kassa bij de ingang.", "Naar de kleedkamer."],
+          "answer": 1,
+          "explain": "'naar de kassa bij de ingang'."
+        },
+        {
+          "id": "lu-1-09-b",
+          "q": "Wat weet je over Daan?",
+          "options": [
+            "Hij is vijf jaar.",
+            "Hij heeft een blauwe zwembroek.",
+            "Hij kan goed zwemmen."
+          ],
+          "answer": 0,
+          "explain": "He is five and wears red trunks."
+        }
+      ]
+    },
+    {
+      "id": "lu-1-10",
+      "set": 1,
+      "kind": "dialogue",
+      "context": "Een man belt met zijn werk.",
+      "lines": [
+        {
+          "who": "Man",
+          "voice": "m",
+          "text": "Hoi Ellen, met Tarik. Ik sta in de file op de snelweg. Er is een ongeluk gebeurd."
+        },
+        { "who": "Ellen", "voice": "f", "text": "Vervelend! Hoe laat ben je er dan?" },
+        {
+          "who": "Man",
+          "voice": "m",
+          "text": "Ik denk om tien uur, een uur later dan normaal. Kun jij de vergadering van negen uur beginnen?"
+        },
+        { "who": "Ellen", "voice": "f", "text": "Ja hoor, geen probleem. Rij voorzichtig!" }
+      ],
+      "vocab": {
+        "file": "traffic jam",
+        "snelweg": "motorway",
+        "vergadering": "meeting",
+        "voorzichtig": "carefully"
+      },
+      "questions": [
+        {
+          "id": "lu-1-10-a",
+          "q": "Waarom is Tarik te laat?",
+          "options": ["Hij is ziek.", "Hij staat in de file.", "Zijn auto is kapot."],
+          "answer": 1,
+          "explain": "He is in a traffic jam after an accident."
+        },
+        {
+          "id": "lu-1-10-b",
+          "q": "Wat gaat Ellen doen?",
+          "options": ["Ze begint de vergadering.", "Ze haalt Tarik op.", "Ze belt de politie."],
+          "answer": 0,
+          "explain": "She will start the 9 o'clock meeting."
+        }
+      ]
+    },
+    {
+      "id": "lu-1-11",
+      "set": 1,
+      "kind": "dialogue",
+      "context": "Een vader praat met de juf van zijn dochter.",
+      "lines": [
+        {
+          "who": "Juf",
+          "voice": "f",
+          "text": "Goed dat u er bent. Fatma doet het goed in de klas. Ze leest veel beter dan vorig jaar."
+        },
+        { "who": "Vader", "voice": "m", "text": "Wat fijn. En rekenen?" },
+        {
+          "who": "Juf",
+          "voice": "f",
+          "text": "Rekenen is nog moeilijk voor haar. Thuis oefenen helpt. Ik geef u een boekje mee."
+        }
+      ],
+      "vocab": { "rekenen": "arithmetic", "oefenen": "to practise", "boekje": "booklet" },
+      "questions": [
+        {
+          "id": "lu-1-11-a",
+          "q": "Waar is Fatma beter in geworden?",
+          "options": ["In rekenen.", "In lezen.", "In sport."],
+          "answer": 1,
+          "explain": "'Ze leest veel beter dan vorig jaar.'"
+        },
+        {
+          "id": "lu-1-11-b",
+          "q": "Wat geeft de juf aan de vader?",
+          "options": [
+            "Een boekje om thuis te oefenen.",
+            "Een rapport.",
+            "Een brief voor de directeur."
+          ],
+          "answer": 0,
+          "explain": "A booklet for practising arithmetic at home."
+        }
+      ]
+    },
+    {
+      "id": "lu-1-12",
+      "set": 1,
+      "kind": "announcement",
+      "context": "Je luistert naar het weerbericht op de radio.",
+      "lines": [
+        {
+          "who": "Weervrouw",
+          "voice": "f",
+          "text": "Vandaag wordt het een grijze dag. Vanochtend is het droog, maar vanmiddag gaat het regenen. Het wordt twaalf graden. Morgen komt de zon terug en wordt het warmer."
+        }
+      ],
+      "vocab": { "droog": "dry", "graad": "degree", "weerbericht": "weather forecast" },
+      "questions": [
+        {
+          "id": "lu-1-12-a",
+          "q": "Wanneer gaat het vandaag regenen?",
+          "options": ["Vanochtend.", "Vanmiddag.", "Het regent vandaag niet."],
+          "answer": 1,
+          "explain": "Dry this morning, rain this afternoon."
+        }
+      ]
+    },
+    {
+      "id": "lu-2-01",
+      "set": 2,
+      "kind": "dialogue",
+      "context": "Een vrouw belt de woningcorporatie.",
+      "lines": [
+        {
+          "who": "Medewerker",
+          "voice": "m",
+          "text": "Woningcorporatie Thuis, met Mark. Waarmee kan ik u helpen?"
+        },
+        {
+          "who": "Vrouw",
+          "voice": "f",
+          "text": "Goedemiddag. In mijn badkamer lekt de kraan. Er komt steeds water op de vloer."
+        },
+        {
+          "who": "Medewerker",
+          "voice": "m",
+          "text": "Dat is vervelend. Er kan morgenochtend een monteur komen, tussen acht en twaalf uur. Bent u dan thuis?"
+        },
+        { "who": "Vrouw", "voice": "f", "text": "Morgen werk ik. Kan het ook overmorgen?" },
+        { "who": "Medewerker", "voice": "m", "text": "Ja, overmorgen tussen één en vijf uur." }
+      ],
+      "vocab": { "lekken": "to leak", "kraan": "tap", "overmorgen": "the day after tomorrow" },
+      "questions": [
+        {
+          "id": "lu-2-01-a",
+          "q": "Wat is het probleem?",
+          "options": ["De verwarming is kapot.", "De kraan lekt.", "De deur gaat niet open."],
+          "answer": 1,
+          "explain": "The bathroom tap leaks."
+        },
+        {
+          "id": "lu-2-01-b",
+          "q": "Wanneer komt de monteur?",
+          "options": ["Morgenochtend.", "Overmorgen 's middags.", "Volgende week."],
+          "answer": 1,
+          "explain": "The day after tomorrow, 13.00–17.00."
+        }
+      ]
+    },
+    {
+      "id": "lu-2-02",
+      "set": 2,
+      "kind": "announcement",
+      "context": "Je zit in de bus.",
+      "lines": [
+        {
+          "who": "Chauffeur",
+          "voice": "m",
+          "text": "Beste reizigers, door werkzaamheden rijdt deze bus vandaag niet langs het ziekenhuis. Wilt u naar het ziekenhuis? Stap dan uit bij de halte Marktplein. Daar kunt u overstappen op bus twaalf."
+        }
+      ],
+      "vocab": { "werkzaamheden": "roadworks", "halte": "stop", "overstappen": "to change (bus)" },
+      "questions": [
+        {
+          "id": "lu-2-02-a",
+          "q": "Waar stopt de bus vandaag niet?",
+          "options": ["Bij het Marktplein.", "Bij het ziekenhuis.", "Bij het station."],
+          "answer": 1,
+          "explain": "Not past the hospital today."
+        },
+        {
+          "id": "lu-2-02-b",
+          "q": "Je wilt naar het ziekenhuis. Wat doe je?",
+          "options": [
+            "Je blijft in de bus.",
+            "Je stapt uit bij het Marktplein en neemt bus 12.",
+            "Je neemt een taxi."
+          ],
+          "answer": 1,
+          "explain": "Change at Marktplein to bus 12."
+        }
+      ]
+    },
+    {
+      "id": "lu-2-03",
+      "set": 2,
+      "kind": "dialogue",
+      "context": "Twee vriendinnen maken een afspraak.",
+      "lines": [
+        { "who": "Noor", "voice": "f", "text": "Zullen we zaterdag samen naar de markt gaan?" },
+        { "who": "Eva", "voice": "f", "text": "Zaterdag moet ik werken. Kan zondag ook?" },
+        {
+          "who": "Noor",
+          "voice": "f",
+          "text": "Op zondag is er geen markt. Maar we kunnen zondag wel wandelen in het park."
+        },
+        { "who": "Eva", "voice": "f", "text": "Goed idee! Om twee uur bij de ingang?" },
+        { "who": "Noor", "voice": "f", "text": "Prima, tot zondag!" }
+      ],
+      "vocab": { "zullen we": "shall we", "wandelen": "to walk", "ingang": "entrance" },
+      "questions": [
+        {
+          "id": "lu-2-03-a",
+          "q": "Waarom kan Eva zaterdag niet?",
+          "options": ["Ze moet werken.", "Ze is ziek.", "Ze gaat naar haar ouders."],
+          "answer": 0,
+          "explain": "'Zaterdag moet ik werken.'"
+        },
+        {
+          "id": "lu-2-03-b",
+          "q": "Wat gaan ze zondag doen?",
+          "options": ["Naar de markt gaan.", "Wandelen in het park.", "Samen koken."],
+          "answer": 1,
+          "explain": "There is no market on Sunday, so they walk in the park."
+        }
+      ]
+    },
+    {
+      "id": "lu-2-04",
+      "set": 2,
+      "kind": "voicemail",
+      "context": "Je luistert naar je voicemail.",
+      "lines": [
+        {
+          "who": "Apotheek",
+          "voice": "f",
+          "text": "Goedemorgen, dit is apotheek De Linde. Uw medicijnen zijn klaar. U kunt ze vanaf vanmiddag twee uur ophalen. Neem uw verzekeringspas mee. We zijn open tot half zes."
+        }
+      ],
+      "vocab": { "apotheek": "pharmacy", "medicijn": "medicine", "half zes": "half past five" },
+      "questions": [
+        {
+          "id": "lu-2-04-a",
+          "q": "Wanneer kun je de medicijnen ophalen?",
+          "options": ["Vanaf 12.00 uur.", "Vanaf 14.00 uur.", "Morgen."],
+          "answer": 1,
+          "explain": "'vanaf vanmiddag twee uur'."
+        },
+        {
+          "id": "lu-2-04-b",
+          "q": "Tot hoe laat is de apotheek open?",
+          "options": ["Tot 17.30 uur.", "Tot 16.30 uur.", "Tot 18.30 uur."],
+          "answer": 0,
+          "explain": "'half zes' = 17.30."
+        }
+      ]
+    },
+    {
+      "id": "lu-2-05",
+      "set": 2,
+      "kind": "dialogue",
+      "context": "Een man is bij een sollicitatiegesprek.",
+      "lines": [
+        {
+          "who": "Werkgever",
+          "voice": "f",
+          "text": "Vertel eens, wat voor werk heeft u eerder gedaan?"
+        },
+        {
+          "who": "Man",
+          "voice": "m",
+          "text": "In mijn land was ik kok. Hier heb ik een jaar in een bakkerij gewerkt."
+        },
+        {
+          "who": "Werkgever",
+          "voice": "f",
+          "text": "Mooi. Bij ons werkt u in de keuken. Kunt u ook in het weekend werken?"
+        },
+        { "who": "Man", "voice": "m", "text": "Zaterdag wel, zondag liever niet." }
+      ],
+      "vocab": { "kok": "cook", "eerder": "before", "liever niet": "preferably not" },
+      "questions": [
+        {
+          "id": "lu-2-05-a",
+          "q": "Waar heeft de man in Nederland gewerkt?",
+          "options": ["In een restaurant.", "In een bakkerij.", "In een supermarkt."],
+          "answer": 1,
+          "explain": "'Hier heb ik een jaar in een bakkerij gewerkt.'"
+        },
+        {
+          "id": "lu-2-05-b",
+          "q": "Wanneer wil de man niet werken?",
+          "options": ["Op zaterdag.", "Op zondag.", "Op maandag."],
+          "answer": 1,
+          "explain": "'zondag liever niet'."
+        }
+      ]
+    },
+    {
+      "id": "lu-2-06",
+      "set": 2,
+      "kind": "announcement",
+      "context": "Je bent in de bibliotheek.",
+      "lines": [
+        {
+          "who": "Medewerkster",
+          "voice": "f",
+          "text": "Beste bezoekers, de bibliotheek gaat over tien minuten dicht. Wilt u boeken lenen? Ga dan nu naar de computers bij de uitgang. Morgen zijn we de hele dag gesloten. Overmorgen zijn we weer open vanaf tien uur."
+        }
+      ],
+      "vocab": { "bezoeker": "visitor", "lenen": "to borrow", "uitgang": "exit" },
+      "questions": [
+        {
+          "id": "lu-2-06-a",
+          "q": "Waar leen je een boek?",
+          "options": [
+            "Bij de computers bij de uitgang.",
+            "Bij de balie boven.",
+            "Morgen bij de ingang."
+          ],
+          "answer": 0,
+          "explain": "At the computers by the exit."
+        },
+        {
+          "id": "lu-2-06-b",
+          "q": "Wanneer is de bibliotheek weer open?",
+          "options": ["Morgen om tien uur.", "Overmorgen om tien uur.", "Over tien minuten."],
+          "answer": 1,
+          "explain": "Closed tomorrow; open again the day after from 10.00."
+        }
+      ]
+    },
+    {
+      "id": "lu-2-07",
+      "set": 2,
+      "kind": "dialogue",
+      "context": "Een vrouw is bij de bakker.",
+      "lines": [
+        { "who": "Bakker", "voice": "m", "text": "Goedemorgen, zegt u het maar." },
+        {
+          "who": "Vrouw",
+          "voice": "f",
+          "text": "Een volkorenbrood, gesneden, en zes krentenbollen, alstublieft."
+        },
+        {
+          "who": "Bakker",
+          "voice": "m",
+          "text": "De krentenbollen zijn op. Ik heb nog wel witte bollen."
+        },
+        { "who": "Vrouw", "voice": "f", "text": "Dan neem ik vier witte bollen. Kan ik pinnen?" },
+        { "who": "Bakker", "voice": "m", "text": "Ja hoor. Dat is dan zes euro twintig." }
+      ],
+      "vocab": { "gesneden": "sliced", "op zijn": "to be sold out", "pinnen": "to pay by card" },
+      "questions": [
+        {
+          "id": "lu-2-07-a",
+          "q": "Wat koopt de vrouw?",
+          "options": [
+            "Een brood en zes krentenbollen.",
+            "Een brood en vier witte bollen.",
+            "Alleen witte bollen."
+          ],
+          "answer": 1,
+          "explain": "The currant buns are sold out, so she takes four white rolls with the bread."
+        },
+        {
+          "id": "lu-2-07-b",
+          "q": "Hoe betaalt de vrouw?",
+          "options": ["Met contant geld.", "Met haar bankpas.", "Ze betaalt later."],
+          "answer": 1,
+          "explain": "'pinnen' = pay by debit card."
+        },
+        {
+          "id": "lu-2-07-c",
+          "q": "Hoeveel moet ze betalen?",
+          "options": ["€ 2,60.", "€ 6,20.", "€ 6,02."],
+          "answer": 1,
+          "explain": "'zes euro twintig'."
+        }
+      ]
+    },
+    {
+      "id": "lu-2-08",
+      "set": 2,
+      "kind": "dialogue",
+      "context": "Een man praat met de buurvrouw.",
+      "lines": [
+        {
+          "who": "Buurvrouw",
+          "voice": "f",
+          "text": "Hallo! Ik heb een pakje voor u. De bezorger kwam vanochtend en u was niet thuis."
+        },
+        {
+          "who": "Man",
+          "voice": "m",
+          "text": "O, wat aardig. Dank u wel! Dat zijn mijn nieuwe schoenen."
+        },
+        {
+          "who": "Buurvrouw",
+          "voice": "f",
+          "text": "Graag gedaan. Ik ben morgen ook thuis, als u nog iets verwacht."
+        }
+      ],
+      "vocab": { "pakje": "parcel", "bezorger": "delivery person", "verwachten": "to expect" },
+      "questions": [
+        {
+          "id": "lu-2-08-a",
+          "q": "Waarom heeft de buurvrouw het pakje?",
+          "options": [
+            "Ze heeft het zelf gekocht.",
+            "De man was niet thuis.",
+            "De bezorger was ziek."
+          ],
+          "answer": 1,
+          "explain": "The courier came while the man was out."
+        },
+        {
+          "id": "lu-2-08-b",
+          "q": "Wat zit er in het pakje?",
+          "options": ["Schoenen.", "Een boek.", "Een telefoon."],
+          "answer": 0,
+          "explain": "'Dat zijn mijn nieuwe schoenen.'"
+        }
+      ]
+    },
+    {
+      "id": "lu-2-09",
+      "set": 2,
+      "kind": "announcement",
+      "context": "Je hoort een bericht op de radio van de gemeente.",
+      "lines": [
+        {
+          "who": "Omroeper",
+          "voice": "m",
+          "text": "Op zaterdag vijftien juni is er een buurtfeest op het Marktplein. Er is muziek, eten uit verschillende landen en er zijn spelletjes voor kinderen. Het feest begint om twaalf uur. De toegang is gratis. Wilt u helpen? Meld u dan aan bij het buurthuis."
+        }
+      ],
+      "vocab": { "buurtfeest": "neighbourhood party", "toegang": "admission", "spelletje": "game" },
+      "questions": [
+        {
+          "id": "lu-2-09-a",
+          "q": "Wat kost het buurtfeest?",
+          "options": ["Niets.", "€ 5.", "€ 12."],
+          "answer": 0,
+          "explain": "'De toegang is gratis.'"
+        },
+        {
+          "id": "lu-2-09-b",
+          "q": "Je wilt helpen bij het feest. Wat doe je?",
+          "options": [
+            "Je belt de gemeente.",
+            "Je meldt je aan bij het buurthuis.",
+            "Je gaat om twaalf uur naar het Marktplein."
+          ],
+          "answer": 1,
+          "explain": "'Meld u dan aan bij het buurthuis.'"
+        }
+      ]
+    },
+    {
+      "id": "lu-2-10",
+      "set": 2,
+      "kind": "dialogue",
+      "context": "Een vrouw belt de school van haar zoon.",
+      "lines": [
+        {
+          "who": "Moeder",
+          "voice": "f",
+          "text": "Goedemorgen, met de moeder van Samir uit groep zes. Samir is ziek. Hij heeft buikpijn."
+        },
+        {
+          "who": "Conciërge",
+          "voice": "m",
+          "text": "Dank u wel dat u belt. Ik zeg het tegen de meester. Beterschap voor Samir!"
+        },
+        { "who": "Moeder", "voice": "f", "text": "Dank u. Hij komt waarschijnlijk morgen weer." }
+      ],
+      "vocab": {
+        "buikpijn": "stomach ache",
+        "beterschap": "get well soon",
+        "waarschijnlijk": "probably"
+      },
+      "questions": [
+        {
+          "id": "lu-2-10-a",
+          "q": "Waarom belt de moeder?",
+          "options": [
+            "Samir is ziek.",
+            "Ze wil met de meester praten.",
+            "Samir is zijn tas vergeten."
+          ],
+          "answer": 0,
+          "explain": "She reports her son sick."
+        },
+        {
+          "id": "lu-2-10-b",
+          "q": "Wanneer komt Samir weer naar school?",
+          "options": ["Vandaag.", "Waarschijnlijk morgen.", "Volgende week."],
+          "answer": 1,
+          "explain": "'Hij komt waarschijnlijk morgen weer.'"
+        }
+      ]
+    },
+    {
+      "id": "lu-2-11",
+      "set": 2,
+      "kind": "dialogue",
+      "context": "Een man koopt een treinkaartje.",
+      "lines": [
+        { "who": "Man", "voice": "m", "text": "Een retour naar Rivierstad, alstublieft." },
+        { "who": "Medewerkster", "voice": "f", "text": "Gaat u vandaag ook terug?" },
+        { "who": "Man", "voice": "m", "text": "Ja, vanavond." },
+        {
+          "who": "Medewerkster",
+          "voice": "f",
+          "text": "Dat is negentien euro veertig. De trein vertrekt over acht minuten van spoor twee."
+        }
+      ],
+      "vocab": { "retour": "return ticket", "vertrekken": "to depart" },
+      "questions": [
+        {
+          "id": "lu-2-11-a",
+          "q": "Wat voor kaartje koopt de man?",
+          "options": ["Een enkele reis.", "Een retour.", "Een abonnement."],
+          "answer": 1,
+          "explain": "'Een retour naar Rivierstad'."
+        },
+        {
+          "id": "lu-2-11-b",
+          "q": "Van welk spoor vertrekt de trein?",
+          "options": ["Spoor 2.", "Spoor 8.", "Spoor 19."],
+          "answer": 0,
+          "explain": "'van spoor twee'."
+        }
+      ]
+    },
+    {
+      "id": "lu-2-12",
+      "set": 2,
+      "kind": "announcement",
+      "context": "Je belt het klantnummer van de energieleverancier.",
+      "lines": [
+        {
+          "who": "Stem",
+          "voice": "f",
+          "text": "Welkom bij Stroomnet. Wilt u uw meterstanden doorgeven? Toets dan een. Heeft u een vraag over uw rekening? Toets dan twee. Gaat u verhuizen? Toets dan drie."
+        }
+      ],
+      "vocab": { "meterstand": "meter reading", "toetsen": "to press (a key)", "rekening": "bill" },
+      "questions": [
+        {
+          "id": "lu-2-12-a",
+          "q": "Je gaat verhuizen. Welke toets kies je?",
+          "options": ["1.", "2.", "3."],
+          "answer": 2,
+          "explain": "'Gaat u verhuizen? Toets dan drie.'"
+        }
+      ]
+    }
+  ]
+}

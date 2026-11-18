@@ -7,6 +7,7 @@ order: 15
 summary: After a verb or a preposition, use object forms such as mij/me, jou/je, hem, haar, ons and hen/hun/ze; for things, use hem, het or ze.
 practice: [scramble]
 related: [personal-pronouns, reflexive-verbs, possessive-pronouns, pronominal-adverbs]
+detects: [object-pronouns]
 ---
 
 ## Explanation

@@ -1,12 +1,38 @@
 import { createMemoryHistory } from "@tanstack/react-router";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { configure, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import { grammarTopic, grammarTopics } from "@app/content";
 import type { Exercise } from "@app/core";
 import { App } from "../App.js";
 import { createMockAI } from "../services/mockAI.js";
 import { createMockServices } from "../services/mock.js";
 import type { AppServices } from "../services/types.js";
+import { matchTopic } from "./Grammar.js";
+import { practiceOffer, splitMistake } from "./GrammarTopic.js";
+
+// The routes are code-split: load the screens once up front, so the first test of the file
+// does not spend its findBy budget on a cold dynamic import (that made it flaky under load).
+beforeAll(async () => {
+  configure({ asyncUtilTimeout: 5000 });
+  await Promise.all([import("./Grammar.js"), import("./Practice.js"), import("./ReaderPage.js")]);
+}, 30_000);
+vi.setConfig({ testTimeout: 20_000 });
+afterEach(() => {
+  try {
+    localStorage.clear();
+  } catch {
+    // ignore
+  }
+});
+
+/** The list rows (links) of one index section, found by its heading. */
+async function shelf(name: RegExp | string): Promise<HTMLElement> {
+  const h = await screen.findByRole("heading", { level: 2, name });
+  return h.closest("section") as HTMLElement;
+}
+const rowTitles = (section: HTMLElement) =>
+  [...section.querySelectorAll(".grammar-row-title")].map((e) => e.textContent);
 
 function setup(path: string, wrap?: (s: AppServices) => AppServices) {
   const history = createMemoryHistory({ initialEntries: [path] });
@@ -19,12 +45,49 @@ function setup(path: string, wrap?: (s: AppServices) => AppServices) {
 describe("Grammar index", () => {
   it("groups topics by level with hit counts from the Library", async () => {
     setup("/grammar");
-    expect(await screen.findByRole("heading", { name: /A1\s+Beginner/ })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: /B1\s+Intermediate/ })).toBeInTheDocument();
-    const row = screen.getByRole("link", { name: /Separable verbs/ });
-    // Three separable verbs in "Een dag in Utrecht".
-    await waitFor(() => expect(within(row).getByText("3")).toBeInTheDocument());
+    const a1 = await shelf(/A1\s+Beginner/);
+    // The learning path: curriculum order within the level, a line on what the level covers.
+    expect(rowTitles(a1)[0]).toBe("Spelling rules (one vowel or two)");
+    expect(rowTitles(a1)).toHaveLength(grammarTopics().filter((t) => t.level === "A1").length);
+    expect(a1.querySelector(".grammar-level-line")?.textContent).toMatch(/present tense/);
+    expect(await shelf(/B1\s+Intermediate/)).toBeInTheDocument();
+    const row = screen.getByText("Separable verbs").closest("a") as HTMLElement;
     expect(row).toHaveAttribute("href", "/grammar/separable-verbs");
+    expect(within(row).getByText("A2")).toBeInTheDocument();
+    // Three separable verbs in "Een dag in Utrecht".
+    expect(await within(row).findByText("seen 3× in your texts")).toBeInTheDocument();
+  });
+
+  it("switches to topic shelves, remembers the view and filters by search", async () => {
+    setup("/grammar");
+    await shelf(/A1\s+Beginner/);
+    await userEvent.click(screen.getByRole("tab", { name: "By topic" }));
+    const order = await shelf("Word order");
+    expect(rowTitles(order)).toContain("Inversion");
+    expect(screen.queryByRole("heading", { name: /A1\s+Beginner/ })).toBeNull();
+    expect(localStorage.getItem("kenning.grammar.view")).toBe("topic");
+
+    await userEvent.type(screen.getByRole("searchbox", { name: "Search topics" }), "passive");
+    const titles = [...document.querySelectorAll(".grammar-row-title")].map((e) => e.textContent);
+    expect(titles).toContain("The passive (worden and zijn)");
+    expect(titles).not.toContain("Inversion");
+    expect(screen.getByRole("status")).toHaveTextContent(`${titles.length} topics`);
+    await userEvent.type(screen.getByRole("searchbox", { name: "Search topics" }), "zzz");
+    expect(screen.getByText(/No topic matches/)).toBeInTheDocument();
+  });
+
+  it("opens in the remembered view", async () => {
+    localStorage.setItem("kenning.grammar.view", "topic");
+    setup("/grammar");
+    expect(await shelf("Word order")).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "By topic" })).toHaveAttribute("aria-selected", "true");
+  });
+
+  it("matches title and summary, ignoring case, accents and Markdown", () => {
+    const t = grammarTopic("present-tense")!;
+    expect(matchTopic(t, "PRESENT")).toBe(true);
+    expect(matchTopic(t, "stem plurals")).toBe(true);
+    expect(matchTopic(t, "passive")).toBe(false);
   });
 });
 
@@ -64,9 +127,84 @@ describe("Grammar topic page", () => {
     expect(screen.getByText(/Example sentences are unavailable/)).toBeInTheDocument();
   });
 
+  it("shows the pattern box, mistakes as pairs and the learning path; no Practise without a detector", async () => {
+    setup("/grammar/present-tense");
+    expect(
+      (await screen.findAllByRole("heading", { level: 1, name: "The present tense" })).length,
+    ).toBeGreaterThan(0);
+    const box = screen.getByRole("figure", { name: "Pattern" });
+    expect(within(box).getByText(/ik woon/)).toBeInTheDocument();
+    // The pattern is not repeated in the explanation prose.
+    expect(screen.queryByRole("heading", { level: 3, name: "Pattern" })).toBeNull();
+    const mistakes = screen.getByRole("heading", { name: "Common mistakes" }).closest("section")!;
+    expect(within(mistakes).getAllByText("Mistake:").length).toBeGreaterThan(1);
+    expect(within(mistakes).getAllByText("Instead:").length).toBeGreaterThan(1);
+    const path = screen.getByRole("navigation", { name: "Learning path" });
+    expect(within(path).getByRole("link", { name: /Previous/ })).toHaveAttribute(
+      "href",
+      "/grammar/personal-pronouns",
+    );
+    expect(within(path).getByRole("link", { name: /Next/ })).toHaveAttribute(
+      "href",
+      "/grammar/de-het",
+    );
+    expect(screen.getByRole("link", { name: /Spelling rules/ })).toHaveAttribute(
+      "href",
+      "/grammar/spelling-rules",
+    );
+    expect(screen.queryByRole("link", { name: /^Practise/ })).toBeNull();
+  });
+
   it("handles an unknown topic", async () => {
     setup("/grammar/nope");
     expect(await screen.findByText("This topic was not found")).toBeInTheDocument();
+  });
+});
+
+describe("Topic page helpers", () => {
+  it("splits a mistake into the wrong form and the fix", () => {
+    expect(
+      splitMistake("Adding -t after ik: _ik werkt_. With ik, use the bare stem: _ik werk_."),
+    ).toEqual({
+      wrong: "Adding -t after ik: _ik werkt_.",
+      right: "With ik, use the bare stem: _ik werk_.",
+    });
+    expect(splitMistake("_Er wordt erover veel gepraat._ Let the preposition move.")).toEqual({
+      wrong: "_Er wordt erover veel gepraat._",
+      right: "Let the preposition move.",
+    });
+    expect(splitMistake("Writing 3.5 for three and a half. In Dutch it is _3,5_.").right).toBe(
+      "In Dutch it is _3,5_.",
+    );
+    expect(splitMistake("Only one sentence here.")).toEqual({
+      wrong: "Only one sentence here.",
+      right: "",
+    });
+  });
+
+  it("splits most mistakes on the pages into pairs without losing text", () => {
+    let all = 0;
+    let pairs = 0;
+    for (const t of grammarTopics()) {
+      const md = t.sections.find((s) => s.id === "common-mistakes")?.markdown ?? "";
+      for (const line of md.split("\n").filter((l) => l.startsWith("- "))) {
+        const { wrong, right } = splitMistake(line.slice(2));
+        expect(`${wrong} ${right}`.trim()).toBe(line.slice(2).trim());
+        all++;
+        if (right) pairs++;
+      }
+    }
+    expect(pairs / all).toBeGreaterThan(0.9);
+  });
+
+  it("offers Practise only with a detector, AI sentences only when they can be checked", () => {
+    const sep = grammarTopic("separable-verbs")!;
+    const present = grammarTopic("present-tense")!;
+    expect(practiceOffer(sep, false)).toBe("practise");
+    expect(practiceOffer(present, true)).toBeNull();
+    expect(practiceOffer({ ...sep, practice: [] }, false)).toBeNull();
+    expect(practiceOffer({ ...sep, practice: [] }, true)).toBeNull();
+    expect(practiceOffer({ ...present, detects: ["x"], practice: [] }, true)).toBeNull();
   });
 });
 
@@ -105,26 +243,16 @@ describe("Topic exercises", () => {
 const tok = (text: string) =>
   screen.getAllByText(text).find((el) => el.hasAttribute("data-tok")) as HTMLElement;
 
-describe("Reader spotlights", () => {
-  it("underlines grammar hits and explains them in the inspector", async () => {
-    const { services } = setup("/read/t-utrecht");
+describe("Reader grammar", () => {
+  it("explains a clicked word's grammar in the inspector", async () => {
+    setup("/read/t-utrecht");
     await screen.findAllByText("bel");
-    await waitFor(() => expect(tok("bel")).toHaveClass("k-tok--spot"));
-    const bel = tok("bel");
-    expect(tok("zus")).not.toHaveClass("k-tok--spot");
-    await userEvent.click(bel);
+    await userEvent.click(tok("bel"));
     const notes = await screen.findByRole("region", { name: "Grammar" });
     expect(within(notes).getByText("Separable verbs")).toBeInTheDocument();
     expect(
       within(notes).getByRole("link", { name: "Open the topic: Separable verbs" }),
     ).toHaveAttribute("href", "/grammar/separable-verbs");
-
-    const toggle = screen.getByRole("button", { name: "Grammar" });
-    expect(toggle).toHaveAttribute("aria-pressed", "true");
-    await userEvent.click(toggle);
-    await waitFor(() => expect(tok("bel")).not.toHaveClass("k-tok--spot"));
-    expect((await services.getSettings()).grammarSpotlights).toBe(false);
-    expect(screen.queryByRole("region", { name: "Grammar" })).toBeNull();
   });
 
   it("passes the sentence's grammar to Explain this sentence", async () => {

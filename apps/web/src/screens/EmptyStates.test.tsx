@@ -57,6 +57,7 @@ describe("empty states", () => {
       "Courses",
       "Grammar",
       "Talk",
+      "Exam",
       "Settings",
     ]);
     expect(within(nav).getByRole("link", { name: "Library" })).toHaveAttribute(

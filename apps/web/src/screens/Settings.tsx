@@ -204,12 +204,14 @@ function ReadingSettings() {
       <label className="settings-check">
         <input
           type="checkbox"
-          checked={form.grammarSpotlights}
-          onChange={(e) => set({ grammarSpotlights: e.target.checked })}
+          checked={form.grammarMarks}
+          onChange={(e) => set({ grammarMarks: e.target.checked })}
         />
         <span>
-          Grammar spotlights
-          <small>Underline grammar constructions while reading.</small>
+          Grammar marks
+          <small>
+            A quiet mark in the margin beside sentences with grammar worth noticing at your level.
+          </small>
         </span>
       </label>
     </div>

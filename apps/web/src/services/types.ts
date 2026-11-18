@@ -17,6 +17,7 @@ import type { CourseServices } from "./courseTypes.js";
 import type { AIServices, AISentenceReport } from "./aiTypes.js";
 import type { AddOptions, ProfileServices } from "./profileTypes.js";
 import type { ActivityDay } from "./activity.js";
+import type { ExamServices } from "./examTypes.js";
 
 export type { ActivityDay };
 
@@ -69,8 +70,11 @@ export interface Settings {
   newWords: number | "auto";
   /** Gloss mode: also show cloze blanks (off by default). */
   glossClozes: boolean;
-  /** Reader: underline grammar constructions (spotlights). Off by default. */
-  grammarSpotlights: boolean;
+  /**
+   * Reader: quiet margin marks beside sentences with grammar worth noticing (on by default).
+   * Replaces `grammarSpotlights` (underline every construction), migrated on load.
+   */
+  grammarMarks: boolean;
 }
 export type ImportInput =
   | {
@@ -204,7 +208,7 @@ export interface PracticeOptions {
  * Everything the UI needs from the outside world. The app never talks to the database,
  * AnkiConnect or the NLP server directly; swap the implementation passed to <ServicesProvider>.
  */
-export interface AppServices extends CourseServices, AIServices, ProfileServices {
+export interface AppServices extends CourseServices, AIServices, ProfileServices, ExamServices {
   listTexts(): Promise<TextListItem[]>;
   getReading(textId: string): Promise<ReadingView | null>;
   importText(input: ImportInput, onProgress?: (msg: string) => void): Promise<string>;

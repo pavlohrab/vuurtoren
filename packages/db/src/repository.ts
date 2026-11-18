@@ -20,10 +20,12 @@ import {
 } from "./projections.js";
 import { courseQueries } from "./course.js";
 import { projectGeneratedSentences } from "./generated.js";
+import { projectExamAttempts } from "./exam.js";
 import { PROJECTION_TABLES, migrate } from "./schema.js";
 import type {
   AnkiWordEntry,
   AppEvent,
+  ExamAttemptRecord,
   GeneratedSentenceSet,
   PracticeLogEntry,
   ActivityEntry,
@@ -63,6 +65,8 @@ export interface KenningRepository extends Repository {
   conversationEvents(): Promise<StoredEvent[]>;
   /** Accepted AI example sentences of a language, one set per (key, topic) (see generated.ts). */
   generatedSentences(lang: string): Promise<GeneratedSentenceSet[]>;
+  /** Finished exam-preparation sessions of a language, oldest first (see exam.ts). */
+  examAttempts(lang: string): Promise<ExamAttemptRecord[]>;
   /**
    * Run `fn` while no other repository call is in flight or can start (the repository's own
    * mutex). Used for operations on the raw file: export while no transaction is open.
@@ -471,6 +475,19 @@ export async function createRepository(
               [lang],
             )
           ).map(toStored),
+        ),
+      ),
+
+    examAttempts: (lang) =>
+      serial(async () =>
+        projectExamAttempts(
+          (
+            await driver.exec(
+              "SELECT * FROM events WHERE type = 'ExamAttempt' AND json_extract(payload, '$.lang') = ? ORDER BY id",
+              [lang],
+            )
+          ).map(toStored),
+          lang,
         ),
       ),
 

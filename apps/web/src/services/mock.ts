@@ -15,6 +15,7 @@ import type { ActivityEntry, StoredText, WordInfo } from "@app/db";
 import { groupActivity } from "./activity.js";
 import { createMockCourses } from "./mockCourses.js";
 import { createMockAI } from "./mockAI.js";
+import { createMockExam, demoAttempts } from "./mockExam.js";
 import { createMockProfile } from "./mockProfile.js";
 import { createMockGrammar } from "./mockGrammar.js";
 import { createMockPractice } from "./mockPractice.js";
@@ -320,7 +321,7 @@ export function createMockServices(
     help: 0.25,
     newWords: "auto",
     glossClozes: false,
-    grammarSpotlights: true,
+    grammarMarks: true,
   };
   let staircase: StaircaseState = { targetCoverage: 0.98, newWordBudget: 3 };
   let lastSync: number | null = options.synced ? Date.now() - 60 * 60 * 1000 : null;
@@ -507,6 +508,7 @@ export function createMockServices(
     ...practice,
     ...createMockCourses({ latencyMs: latency }),
     ...ai,
+    ...createMockExam(wait, options.synced ? demoAttempts() : []),
     ...grammar,
     async listTexts() {
       await wait();

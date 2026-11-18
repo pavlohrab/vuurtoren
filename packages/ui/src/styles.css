@@ -14,6 +14,8 @@
 @import "@fontsource-variable/inter";
 @import "@fontsource-variable/instrument-sans";
 @import "@fontsource-variable/jetbrains-mono";
+/* Optional reading font (Latin only; Cyrillic falls back to Inter). Loaded only when used. */
+@import "@fontsource-variable/atkinson-hyperlegible-next";
 
 /* ---------- Tokens: theme-independent ---------- */
 :root {
@@ -1030,9 +1032,10 @@ a.k-row:hover .k-row-go {
 
 /* ---------- Reader ---------- */
 .k-reader {
+  position: relative; /* anchors the margin marks */
   font-family: var(--font-reading);
-  font-size: 19.5px;
-  line-height: 1.7;
+  font-size: var(--reader-size, 19.5px);
+  line-height: var(--reader-leading, 1.7);
   max-width: var(--measure);
   margin-inline: auto;
   color: var(--ink);
@@ -1048,26 +1051,28 @@ a.k-row:hover .k-row-go {
   transition: background var(--dur) var(--ease);
 }
 .k-tok:hover {
-  background: color-mix(in srgb, var(--ink) 6%, transparent);
+  background-color: color-mix(in srgb, var(--ink) 6%, transparent);
 }
-.k-tok[data-label="new"],
-.k-tok[data-label="introduce"] {
-  background: var(--state-new-bg);
-  border-bottom: 1px solid var(--state-new-line);
+/* Word states use lines at the baseline (text decoration, the to-learn line); grammar uses
+   dots further down (see .k-tok--spot), so the two never sit on the same line. */
+.k-tok[data-label="new"] {
+  background-color: var(--state-new-bg);
+  text-decoration: underline solid var(--state-new-line);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
 }
 /* Words to learn: amber tint plus a 2px line that draws in once when the page appears. */
 .k-tok[data-label="introduce"] {
   position: relative;
-  border-bottom: 0;
-  box-shadow: none;
-  background: var(--state-new-bg);
+  background-color: var(--state-new-bg);
 }
 .k-tok[data-label="introduce"]::after {
   content: "";
   position: absolute;
   left: 0;
   right: 0;
-  bottom: -1px;
+  /* At the text's bottom edge, above the grammar dots when the word has them. */
+  bottom: calc(var(--gpad, 0px) - 1px);
   height: 2px;
   border-radius: 1px;
   background: var(--state-new-line);
@@ -1085,10 +1090,80 @@ a.k-row:hover .k-row-go {
   text-decoration-thickness: 1px;
   text-underline-offset: 4px;
 }
-/* Grammar spotlight: a quiet line under the words of a construction. An inset shadow, so it
-   combines with the word-state underlines and borders and survives the hover background. */
-.k-tok--spot {
-  box-shadow: inset 0 -2px 0 color-mix(in srgb, var(--state-grammar-line) 75%, transparent);
+/* Grammar marks in the text (an open margin mark, or the focus topic): a row of fine dots
+   below the word-state lines, in one muted colour. Dots, not colour, carry the meaning, so
+   it also reads in grayscale. Drawn as a background so it combines with every word state. */
+.k-tok.k-tok--spot {
+  --gpad: 0.26em;
+  --gdot: color-mix(in srgb, var(--state-grammar-line) 80%, transparent);
+  padding-bottom: var(--gpad);
+  background-image: radial-gradient(circle at 50% 50%, var(--gdot) 0.85px, transparent 1.15px);
+  background-size: 4px 3px;
+  background-repeat: repeat-x;
+  background-position: 1px 100%;
+}
+.k-tok.k-tok--spot-current {
+  --gdot: var(--state-grammar-line);
+  background-image: radial-gradient(circle at 50% 50%, var(--gdot) 1.1px, transparent 1.4px);
+}
+/* Margin mark: a short hairline beside the first line of a sentence worth noticing. The
+   button is a 24px target; only the 2px line inside it is visible. */
+.k-gmark {
+  position: absolute;
+  left: -28px;
+  width: 20px;
+  height: 1.4em;
+  margin-top: 0.15em;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+}
+.k-gmark::before {
+  content: "";
+  position: absolute;
+  left: 9px;
+  top: 0.3em;
+  bottom: 0.3em;
+  width: 2px;
+  border-radius: 1px;
+  background: color-mix(in srgb, var(--state-grammar-line) 50%, transparent);
+  transition:
+    background var(--dur) var(--ease),
+    transform var(--dur) var(--ease);
+}
+.k-gmark:hover::before,
+.k-gmark:focus-visible::before,
+.k-gmark[data-open="true"]::before {
+  background: var(--state-grammar-line);
+}
+.k-gmark:focus-visible {
+  outline: 1.5px solid var(--accent);
+  outline-offset: 0;
+}
+@media (max-width: 699px) {
+  .k-gmark {
+    left: -22px;
+    width: 18px;
+  }
+  .k-gmark::before {
+    left: 8px;
+  }
+}
+/* Reading focus: every paragraph but the current one steps back. */
+.k-reader--focus > p {
+  opacity: 0.28;
+  transition: opacity var(--dur-slow) var(--ease-out);
+}
+.k-reader--focus > p[data-current] {
+  opacity: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  .k-reader--focus > p,
+  .k-gmark::before {
+    transition: none;
+  }
 }
 .k-tok[data-selected="true"] {
   outline: 1.5px solid var(--accent);

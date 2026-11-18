@@ -1,0 +1,162 @@
+{
+  "tasks": [
+    {
+      "id": "sc-1-01",
+      "set": 1,
+      "kind": "form",
+      "title": "Aanmelden bij de sportschool",
+      "situation": "Je wilt lid worden van sportschool FitFit. Vul het formulier in. Schrijf bij de laatste vraag één of twee hele zinnen.",
+      "fields": [
+        { "label": "Voornaam en achternaam", "model": "Daria Kovalenko" },
+        { "label": "Adres", "model": "Lindelaan 12, 1234 AB Lindendam" },
+        { "label": "Geboortedatum", "model": "14-03-1990" },
+        { "label": "Telefoonnummer", "model": "06-12345678" },
+        { "label": "Op welke dagen wilt u sporten?", "model": "Op maandag en donderdag" },
+        {
+          "label": "Waarom wilt u lid worden? (1 of 2 zinnen)",
+          "model": "Ik wil fitter worden, want ik zit de hele dag op kantoor. Ik wil ook nieuwe mensen leren kennen.",
+          "sentence": true
+        }
+      ],
+      "points": [
+        "Alle vakjes ingevuld",
+        "Datum en telefoonnummer in het goede formaat",
+        "Laatste vraag: een hele zin met onderwerp en werkwoord"
+      ],
+      "grammar": ["word-order-v2", "conjunctions"]
+    },
+    {
+      "id": "sc-1-02",
+      "set": 1,
+      "kind": "note",
+      "title": "Briefje voor de buren",
+      "situation": "Je geeft zaterdag een feestje voor je verjaardag. Het kan laat worden. Schrijf een briefje voor je buren.",
+      "points": [
+        "Wanneer is het feest (dag en tijd)?",
+        "Waarom geef je een feest?",
+        "Zeg sorry voor het lawaai.",
+        "Nodig de buren uit of geef je telefoonnummer."
+      ],
+      "minWords": 30,
+      "model": "Beste buren,\n\nZaterdag 12 oktober geef ik een feestje, want ik ben jarig. Het feest begint om acht uur 's avonds. Het kan een beetje laat en lawaaierig worden. Sorry daarvoor! U bent ook van harte welkom. Is er een probleem? Bel me dan: 06-12345678.\n\nGroeten,\nDaria (nummer 14)",
+      "grammar": ["word-order-v2", "conjunctions", "inversion"]
+    },
+    {
+      "id": "sc-1-03",
+      "set": 1,
+      "kind": "email",
+      "title": "E-mail aan je docent",
+      "situation": "Je kunt morgen niet naar de Nederlandse les. Schrijf een e-mail aan je docent, meneer De Vries.",
+      "points": [
+        "Begin en eind van een e-mail (aanhef en groet)",
+        "Zeg dat je morgen niet komt.",
+        "Leg uit waarom.",
+        "Vraag naar het huiswerk."
+      ],
+      "minWords": 35,
+      "model": "Beste meneer De Vries,\n\nMorgen kan ik helaas niet naar de les komen. Mijn dochter is ziek en ik moet met haar naar de dokter. Wat is het huiswerk voor volgende week? Kunt u dat naar mij mailen?\n\nAlvast bedankt.\n\nMet vriendelijke groet,\nAhmed Saleh",
+      "grammar": ["modal-verbs", "questions", "word-order-v2"]
+    },
+    {
+      "id": "sc-1-04",
+      "set": 1,
+      "kind": "message",
+      "title": "Bericht aan een vriendin",
+      "situation": "Je vriendin Sanne heeft je uitgenodigd om zondag te komen eten. Je kunt niet. Stuur haar een bericht.",
+      "points": [
+        "Bedank Sanne voor de uitnodiging.",
+        "Zeg dat je niet kunt en waarom.",
+        "Stel een andere dag voor."
+      ],
+      "minWords": 25,
+      "model": "Hoi Sanne,\n\nBedankt voor je uitnodiging! Helaas kan ik zondag niet komen, want mijn ouders komen op bezoek. Kan het misschien volgende week zaterdag? Dan neem ik een toetje mee.\n\nLiefs,\nMaria",
+      "grammar": ["conjunctions", "modal-verbs"]
+    },
+    {
+      "id": "sc-2-01",
+      "set": 2,
+      "kind": "form",
+      "title": "Formulier: kapotte lamp melden",
+      "situation": "Bij jouw huis is een straatlamp kapot. Meld dit bij de gemeente. Vul het formulier in. Schrijf bij de laatste vraag één of twee hele zinnen.",
+      "fields": [
+        { "label": "Naam", "model": "Juan Morales" },
+        { "label": "E-mailadres", "model": "juan.morales@mail.nl" },
+        { "label": "Straat en huisnummer van de lamp", "model": "Kastanjestraat, bij nummer 8" },
+        { "label": "Sinds wanneer is de lamp kapot?", "model": "Sinds maandag 3 februari" },
+        {
+          "label": "Wat is het probleem? (1 of 2 zinnen)",
+          "model": "De lamp brandt 's avonds niet meer. Het is nu heel donker op straat en dat vind ik niet veilig.",
+          "sentence": true
+        }
+      ],
+      "points": [
+        "Alle vakjes ingevuld",
+        "Adres en datum duidelijk",
+        "Laatste vraag: een hele zin met onderwerp en werkwoord"
+      ],
+      "grammar": ["word-order-v2", "perfect-tense"]
+    },
+    {
+      "id": "sc-2-02",
+      "set": 2,
+      "kind": "email",
+      "title": "E-mail aan de verhuurder",
+      "situation": "In je keuken is de kraan kapot. Schrijf een e-mail aan je verhuurder, mevrouw Bakker.",
+      "points": [
+        "Aanhef en groet",
+        "Wat is er kapot?",
+        "Sinds wanneer?",
+        "Vraag wanneer iemand het kan maken."
+      ],
+      "minWords": 35,
+      "model": "Beste mevrouw Bakker,\n\nIn mijn keuken is de kraan kapot. Sinds gisteren lekt hij en er staat water op de vloer. Kan er snel iemand komen om de kraan te maken? Ik ben elke dag na vier uur thuis.\n\nMet vriendelijke groet,\nJuan Morales\nKastanjestraat 8",
+      "grammar": ["perfect-tense", "modal-verbs", "questions"]
+    },
+    {
+      "id": "sc-2-03",
+      "set": 2,
+      "kind": "note",
+      "title": "Briefje voor je collega",
+      "situation": "Je collega Rob werkt morgen in jouw plaats. Schrijf een briefje voor Rob met wat hij moet doen.",
+      "points": [
+        "Bedank Rob.",
+        "Noem twee dingen die hij moet doen.",
+        "Zeg waar iets ligt of hoe hij je kan bereiken."
+      ],
+      "minWords": 30,
+      "model": "Hoi Rob,\n\nBedankt dat je morgen voor mij werkt! Wil je om negen uur de nieuwe producten in de vakken zetten? Bel ook even meneer Jansen terug, zijn nummer ligt op mijn bureau. Heb je een vraag? Stuur me dan een appje.\n\nGroetjes,\nLin",
+      "grammar": ["imperative", "modal-verbs", "separable-verbs"]
+    },
+    {
+      "id": "sc-2-04",
+      "set": 2,
+      "kind": "message",
+      "title": "Kaartje voor een zieke buurman",
+      "situation": "Je buurman, meneer Peters, ligt in het ziekenhuis. Schrijf een kaartje.",
+      "points": [
+        "Zeg dat je het jammer vindt.",
+        "Wens hem beterschap.",
+        "Bied hulp aan (bijvoorbeeld boodschappen of de planten)."
+      ],
+      "minWords": 25,
+      "model": "Beste meneer Peters,\n\nIk vind het heel vervelend dat u in het ziekenhuis ligt. Ik wens u veel beterschap! Zal ik uw planten water geven of boodschappen voor u doen? Zeg het maar.\n\nHartelijke groet,\nYara van nummer 10",
+      "grammar": ["modal-verbs", "subordinate-clauses"]
+    }
+  ],
+  "rubric": {
+    "form": [
+      "Ik heb alle vakjes ingevuld.",
+      "Wat ik schreef past bij de vraag.",
+      "De laatste vraag is een hele zin (onderwerp + werkwoord).",
+      "Ik heb hoofdletters en punten goed gebruikt."
+    ],
+    "message": [
+      "Ik heb alle punten van de opdracht genoemd.",
+      "De lezer begrijpt wat ik bedoel.",
+      "Ik heb een begin en een einde (aanhef en groet).",
+      "Mijn zinnen hebben een onderwerp en een werkwoord op de goede plek.",
+      "Ik heb hoofdletters en punten goed gebruikt.",
+      "Ik heb genoeg woorden geschreven."
+    ]
+  }
+}

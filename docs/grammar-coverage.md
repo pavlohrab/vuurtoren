@@ -21,34 +21,34 @@ The pages were checked for completeness against two standard reference grammars 
 | 16  | Inversion (`inversion`)                                                | A2    | inversion                                   |
 | 17  | The verb bracket (two verbs, two places) (`verb-bracket`)              | A2    | modal-verbs, perfect-tense, separable-verbs |
 | 18  | Time, manner, place (`time-manner-place`)                              | A2    |                                             |
-| 33  | Where does niet go? (`niet-position`)                                  | B1    | negation                                    |
+| 33  | Where does niet go? (`niet-position`)                                  | B1    | niet-position, negation                     |
 | 51  | Verb clusters and "infinitive instead of participle" (`verb-clusters`) | B2    | verb-clusters                               |
 
 ## Verbs
 
-| #   | Topic                                                                                   | Level | Detectors           |
-| --- | --------------------------------------------------------------------------------------- | ----- | ------------------- |
-| 3   | The present tense (`present-tense`)                                                     | A1    |                     |
-| 13  | The imperative (`imperative`)                                                           | A1    | imperative          |
-| 14  | Modal verbs (kunnen, willen, moeten, mogen) (`modal-verbs`)                             | A1    | modal-verbs         |
-| 19  | Separable verbs (`separable-verbs`)                                                     | A2    | separable-verbs     |
-| 20  | The perfect tense (heb gewerkt) (`perfect-tense`)                                       | A2    | perfect-tense       |
-| 21  | hebben or zijn in the perfect (`hebben-or-zijn`)                                        | A2    | perfect-tense       |
-| 22  | The simple past (werkte, liep) (`imperfect-tense`)                                      | A2    | imperfect-tense     |
-| 23  | Strong and irregular verbs (`irregular-verbs`)                                          | A2    | imperfect-tense     |
-| 24  | Talking about the future (`future`)                                                     | A2    | future              |
-| 31  | Reflexive verbs (zich wassen) (`reflexive-verbs`)                                       | A2    | reflexive-verbs     |
-| 39  | would and should (zou, zouden) (`conditional`)                                          | B1    | conditional         |
-| 40  | The past perfect (had gedaan) (`past-perfect`)                                          | B1    | past-perfect        |
-| 41  | The passive (worden and zijn) (`passive`)                                               | B1    | passive             |
-| 42  | Busy doing (aan het + infinitive, zitten te) (`progressive`)                            | B1    | progressive         |
-| 43  | staan, liggen, zitten and zetten, leggen (`position-verbs`)                             | B1    |                     |
-| 45  | Inseparable prefixes (be-, ver-, ont-…) (`inseparable-prefixes`)                        | B1    |                     |
-| 46  | laten (let, have something done, let's) (`laten`)                                       | B1    | verb-clusters       |
-| 47  | Easily confused verbs (kennen/weten, wonen/leven…) (`verb-pairs`)                       | B1    |                     |
-| 52  | would have and will have (zou hebben gedaan, zal hebben gedaan) (`conditional-perfect`) | B2    | conditional-perfect |
-| 53  | The impersonal passive (er wordt gedanst) (`impersonal-passive`)                        | B2    | impersonal-passive  |
-| 61  | Old wish forms (leve de koning, het zij zo) (`subjunctive`)                             | C1    |                     |
+| #   | Topic                                                                                   | Level | Detectors            |
+| --- | --------------------------------------------------------------------------------------- | ----- | -------------------- |
+| 3   | The present tense (`present-tense`)                                                     | A1    |                      |
+| 13  | The imperative (`imperative`)                                                           | A1    | imperative           |
+| 14  | Modal verbs (kunnen, willen, moeten, mogen) (`modal-verbs`)                             | A1    | modal-verbs          |
+| 19  | Separable verbs (`separable-verbs`)                                                     | A2    | separable-verbs      |
+| 20  | The perfect tense (heb gewerkt) (`perfect-tense`)                                       | A2    | perfect-tense        |
+| 21  | hebben or zijn in the perfect (`hebben-or-zijn`)                                        | A2    | perfect-tense        |
+| 22  | The simple past (werkte, liep) (`imperfect-tense`)                                      | A2    | imperfect-tense      |
+| 23  | Strong and irregular verbs (`irregular-verbs`)                                          | A2    | imperfect-tense      |
+| 24  | Talking about the future (`future`)                                                     | A2    | future               |
+| 31  | Reflexive verbs (zich wassen) (`reflexive-verbs`)                                       | A2    | reflexive-verbs      |
+| 39  | would and should (zou, zouden) (`conditional`)                                          | B1    | conditional          |
+| 40  | The past perfect (had gedaan) (`past-perfect`)                                          | B1    | past-perfect         |
+| 41  | The passive (worden and zijn) (`passive`)                                               | B1    | passive              |
+| 42  | Busy doing (aan het + infinitive, zitten te) (`progressive`)                            | B1    | progressive          |
+| 43  | staan, liggen, zitten and zetten, leggen (`position-verbs`)                             | B1    | position-verbs       |
+| 45  | Inseparable prefixes (be-, ver-, ont-…) (`inseparable-prefixes`)                        | B1    | inseparable-prefixes |
+| 46  | laten (let, have something done, let's) (`laten`)                                       | B1    | laten, verb-clusters |
+| 47  | Easily confused verbs (kennen/weten, wonen/leven…) (`verb-pairs`)                       | B1    |                      |
+| 52  | would have and will have (zou hebben gedaan, zal hebben gedaan) (`conditional-perfect`) | B2    | conditional-perfect  |
+| 53  | The impersonal passive (er wordt gedanst) (`impersonal-passive`)                        | B2    | impersonal-passive   |
+| 61  | Old wish forms (leve de koning, het zij zo) (`subjunctive`)                             | C1    |                      |
 
 ## Infinitives & participles
 
@@ -75,7 +75,7 @@ The pages were checked for completeness against two standard reference grammars 
 | 2   | Subject pronouns (ik, jij, je, u…) (`personal-pronouns`)            | A1    |                     |
 | 11  | Possessives (mijn, jouw, van mij, de mijne) (`possessive-pronouns`) | A1    | possessive-pronouns |
 | 12  | this and that (deze, dit, die, dat) (`demonstratives`)              | A1    | demonstratives      |
-| 15  | Object pronouns (me, hem, haar, ze…) (`object-pronouns`)            | A2    |                     |
+| 15  | Object pronouns (me, hem, haar, ze…) (`object-pronouns`)            | A2    | object-pronouns     |
 | 32  | iemand, niemand, iets, niets, alles, elk… (`indefinite-pronouns`)   | A2    |                     |
 
 ## Adjectives & adverbs
@@ -99,14 +99,14 @@ The pages were checked for completeness against two standard reference grammars 
 
 ## Small words
 
-| #   | Topic                                                                            | Level | Detectors             |
-| --- | -------------------------------------------------------------------------------- | ----- | --------------------- |
-| 28  | Prepositions of place, time and movement (`prepositions`)                        | A2    |                       |
-| 38  | The word er (four jobs) (`er`)                                                   | B1    | er                    |
-| 44  | Verbs and adjectives with fixed prepositions (`verbs-with-prepositions`)         | B1    |                       |
-| 49  | Little words that add tone (even, maar, toch, wel, eens…) (`modal-particles`)    | B1    |                       |
-| 57  | erop, daarmee, waarover (er/daar/hier/waar + preposition) (`pronominal-adverbs`) | B2    | er, relative-pronouns |
-| 60  | One er, two jobs (Er liggen er drie; er wordt veel over gepraat) (`er-combined`) | C1    | er                    |
+| #   | Topic                                                                            | Level | Detectors                                 |
+| --- | -------------------------------------------------------------------------------- | ----- | ----------------------------------------- |
+| 28  | Prepositions of place, time and movement (`prepositions`)                        | A2    |                                           |
+| 38  | The word er (four jobs) (`er`)                                                   | B1    | er                                        |
+| 44  | Verbs and adjectives with fixed prepositions (`verbs-with-prepositions`)         | B1    | verbs-with-prepositions                   |
+| 49  | Little words that add tone (even, maar, toch, wel, eens…) (`modal-particles`)    | B1    | modal-particles                           |
+| 57  | erop, daarmee, waarover (er/daar/hier/waar + preposition) (`pronominal-adverbs`) | B2    | pronominal-adverbs, er, relative-pronouns |
+| 60  | One er, two jobs (Er liggen er drie; er wordt veel over gepraat) (`er-combined`) | C1    | er                                        |
 
 ## Numbers & time
 
@@ -121,3 +121,23 @@ The pages were checked for completeness against two standard reference grammars 
 | --- | ------------------------------------------------------------------ | ----- | --------- |
 | 62  | Formal and informal Dutch (hetgeen, men, gij, emails) (`register`) | C1    |           |
 | 63  | Dutch in Flanders and the Netherlands (`flemish-dutch`)            | C1    |           |
+
+## Reader detectors (2026-11): precision
+
+Eight detectors added for the reader's margin marks: `pronominal-adverbs` (fused and split er/daar/hier/waar + preposition), `position-verbs` (staan/liggen/zitten/hangen with a place, or + te + infinitive), `laten` (+ infinitive, laten we), `verbs-with-prepositions` (51 curated verb/adjective + preposition pairs, also with a split pronominal adverb), `niet-position` (only when the scope is clear: before a predicate adjective, before a prepositional phrase of its own verb, or clause-final after a definite object), `inseparable-prefixes` (curated list of 70 common be-/ge-/her-/ont-/ver-/er- verbs), `modal-particles` (even/maar/eens/toch/nou/hoor, only in requests, questions or exclamations) and `object-pronouns` (object forms, reflexive uses and possessive look-alikes excluded). Each has hand-labelled cases in `server/nlp/tests/grammar_cases.py`.
+
+Precision was judged by hand on random Tatoeba sentences (4–18 words) from `sentences-nl.sqlite`:
+
+| Topic                   | Tuning set (2000 sentences) | Held-out (1000 sentences) |
+| ----------------------- | --------------------------- | ------------------------- |
+| pronominal-adverbs      | 38 / 38                     | 18 / 18                   |
+| position-verbs          | 31 / 31                     | 9 / 11                    |
+| laten                   | 19 / 19                     | 14 / 14                   |
+| verbs-with-prepositions | 73 / 73                     | 37 / 37                   |
+| niet-position           | 65 / 67                     | 27 / 28                   |
+| inseparable-prefixes    | 108 / 108                   | 55 / 56                   |
+| modal-particles         | 6 / 6                       | 5 / 5                     |
+| object-pronouns         | 176 / 177                   | 108 / 109                 |
+| **all**                 | **516 / 519 (99.4%)**       | **273 / 278 (98.2%)**     |
+
+The tuning set was used to write the exclusions, so its number is optimistic; the held-out number was taken before the last three fixes (a noun "hen", "verrassend", "op de universiteit zitten"). Recall is deliberately low for `modal-particles` (wel, gewoon and statement uses of toch are left out) and for `niet-position` (only unambiguous scopes). Very common phenomena (V2/inversion, de/het, plurals…) are shown in the reader's focus mode only, never as margin marks.

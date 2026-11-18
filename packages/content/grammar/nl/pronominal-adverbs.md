@@ -5,7 +5,7 @@ level: B2
 group: small-words
 order: 57
 summary: For things, Dutch replaces "preposition + it/that/this/what" with er-, daar-, hier- or waar- + preposition, and the two parts usually split around the middle of the clause.
-detects: [er, relative-pronouns]
+detects: [pronominal-adverbs, er, relative-pronouns]
 practice: [scramble]
 related: [er, verbs-with-prepositions, relative-pronouns, questions, er-combined]
 ---

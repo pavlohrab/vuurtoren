@@ -11,6 +11,7 @@ import {
   BookOpen,
   BookText,
   Check,
+  ClipboardCheck,
   Dumbbell,
   GraduationCap,
   ListChecks,
@@ -19,12 +20,13 @@ import {
   Settings as SettingsIcon,
 } from "lucide-react";
 import type { ReactNode } from "react";
-import { grammarTopics } from "@app/content";
+import { A2_EXAM, grammarTopics } from "@app/content";
 import { Chip, Logo, ProgressRing, Skeleton, TextCover, coverKind, difficultyBand } from "@app/ui";
 import { readLastText } from "../lastText.js";
 import { useServices } from "../services/context.js";
 import { activeDays, type ActivityDay } from "../services/activity.js";
 import type { TextListItem, TextWordItem } from "../services/types.js";
+import type { ExamAttemptRecord } from "../services/examTypes.js";
 import { usePageHeader } from "../shell/ShellContext.js";
 import { PageHeader, SectionHeader } from "../shell/PageHeader.js";
 import { pagesOf, WORDS_PER_PAGE } from "../textPages.js";
@@ -261,6 +263,7 @@ export function Home() {
             />
           ) : null}
           <CourseStep course={courses.data?.find((c) => c.continueUnit !== null)} />
+          <ExamStep />
         </ol>
       </section>
 
@@ -371,6 +374,7 @@ type StepTarget =
   | { to: "/read/$textId"; params: { textId: string } }
   | { to: "/read/$textId/words"; params: { textId: string } }
   | { to: "/courses/$courseId/$unit"; params: { courseId: string; unit: string } }
+  | { to: "/exam/$part"; params: { part: string } }
   | { to: "/practice" | "/import" };
 
 function PlanStep({
@@ -454,6 +458,58 @@ function PracticeStep({
       to={{ to: "/practice" }}
       label="Practise new words"
       value={`${fmt(fresh)} new`}
+    />
+  );
+}
+
+/**
+ * The exam part to work on next: the first part never tried, else the part with the weakest
+ * latest result. Null before the learner has started exam preparation.
+ */
+export function examNextStep(
+  attempts: readonly ExamAttemptRecord[],
+  now = Date.now(),
+): { part: string; label: string; doneToday: number } | null {
+  if (attempts.length === 0) return null;
+  const today = new Date(now).toDateString();
+  const doneToday = attempts.filter((a) => new Date(a.at).toDateString() === today).length;
+  const latest = new Map<string, ExamAttemptRecord>();
+  for (const a of attempts) latest.set(a.part, a);
+  const untried = A2_EXAM.parts.find((p) => !latest.has(p.part));
+  if (untried) return { part: untried.part, label: `Try ${untried.nl}`, doneToday };
+  const weakest = A2_EXAM.parts
+    .map((p) => {
+      const a = latest.get(p.part)!;
+      return { p, share: a.total ? a.correct / a.total : 0 };
+    })
+    .sort((x, y) => x.share - y.share)[0]!;
+  return { part: weakest.p.part, label: `Practise ${weakest.p.nl}`, doneToday };
+}
+
+/** "Exam prep" in Today, once the learner has started preparing (see /exam). */
+function ExamStep() {
+  const services = useServices();
+  const attempts = useQuery({
+    queryKey: ["exam", "attempts"],
+    queryFn: () => services.examAttempts(),
+    staleTime: 30_000,
+  });
+  const next = examNextStep(attempts.data ?? []);
+  if (!next) return null;
+  if (next.doneToday > 0) {
+    return (
+      <DoneStep
+        label="Exam prep today"
+        value={`${fmt(next.doneToday)} ${next.doneToday === 1 ? "session" : "sessions"}`}
+      />
+    );
+  }
+  return (
+    <PlanStep
+      icon={<ClipboardCheck size={16} />}
+      to={{ to: "/exam/$part", params: { part: next.part } }}
+      label="Exam prep"
+      value={next.label}
     />
   );
 }

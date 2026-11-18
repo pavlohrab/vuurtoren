@@ -24,6 +24,7 @@ An open-source app that turns **your Anki deck into a reading and speaking coach
 
 - [algorithms.md](algorithms.md): how the non-AI algorithms work (learner model, Dutch analysis, reading planner, practice, grammar, Anki writes), with their real thresholds.
 - [ai.md](ai.md): AI providers, privacy, costs, MCP setup.
+- [exam.md](exam.md): the Exam section (A2 inburgeringsexamen practice and mock exams).
 - [roadmap.md](roadmap.md): the approved plan with milestones M0–M8 and Phases 2–4.
 - Research
   - [01 Market & competitors](research/01-market.md)
@@ -33,6 +34,7 @@ An open-source app that turns **your Anki deck into a reading and speaking coach
   - [05 AI / BYOK / Claude policy](research/05-ai-byok.md)
   - [06 Weave reading](research/06-weave-reading.md)
   - [07 M1 findings on a real collection](research/07-m1-findings.md)
+  - [08 The inburgeringsexamen at A2](research/08-inburgering-a2.md)
 - Design
   - [Design system](design/design-system.md)
   - [Naming](design/naming.md)
