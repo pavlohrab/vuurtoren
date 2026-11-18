@@ -276,7 +276,7 @@ export function Words() {
   ];
 
   return (
-    <div className="page words-page">
+    <div className="page page--list words-page">
       <PageHeader
         title="Words"
         lede="Every word Kenning knows about, from Anki and from your reading. Open one to act on it."
@@ -467,7 +467,7 @@ export function Words() {
             </table>
           </div>
           {!source && list.length >= limit ? (
-            <div className="row" style={{ marginTop: 16, justifyContent: "center" }}>
+            <div className="words-more">
               <Button onClick={() => setLimit((l) => l + PAGE_SIZE)}>Show more</Button>
             </div>
           ) : null}

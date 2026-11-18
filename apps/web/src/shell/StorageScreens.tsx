@@ -16,7 +16,7 @@ function Page({ title, children }: { title: string; children: ReactNode }) {
         color: "var(--ink)",
       }}
     >
-      <h1 style={{ fontSize: 26 }}>{title}</h1>
+      <h1 style={{ fontSize: 28 }}>{title}</h1>
       {children}
     </main>
   );

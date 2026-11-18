@@ -17,7 +17,7 @@
 }
 .cv-bubble {
   background: var(--surface-2);
-  border: 1px solid var(--line);
+  border: 1px solid var(--hairline);
   border-radius: var(--radius-card, 12px);
   padding: 10px 14px;
   font-family: var(--font-reading);
@@ -63,7 +63,7 @@
   bottom: 0;
   background: var(--bg, var(--surface));
   padding: 12px 0 4px;
-  border-top: 1px solid var(--line);
+  border-top: 1px solid var(--hairline);
 }
 .cv-past {
   list-style: none;
@@ -79,7 +79,7 @@
   box-sizing: border-box;
   cursor: pointer;
   padding: 10px 4px;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--hairline);
 }
 .cv-past li button:focus-visible {
   outline: 2px solid var(--accent);
@@ -97,4 +97,34 @@
 }
 .cv-compose > p {
   flex-basis: 100%;
+}
+/* Start: the form on the left, earlier conversations in the quiet aside. */
+.cv-start {
+  max-width: 34rem;
+}
+.cv-past li button {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--s-3) var(--s-1);
+}
+.cv-past li:first-child button {
+  border-top: 1px solid var(--hairline);
+}
+.cv-past li button:hover .cv-past-title {
+  color: var(--accent);
+}
+.cv-past-title {
+  color: var(--ink);
+  font-weight: 500;
+  font-size: 14px;
+}
+.cv-past-hint {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cv-page .cv-list,
+.cv-page .cv-compose {
+  max-width: var(--w-read);
 }

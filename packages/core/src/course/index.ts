@@ -7,3 +7,4 @@ export * from "./check.js";
 export * from "./deckmap.js";
 export * from "./progress.js";
 export * from "./wordlist.js";
+export * from "./vocab.js";

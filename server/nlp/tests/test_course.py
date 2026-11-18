@@ -141,3 +141,129 @@ def test_load_images_rejects_a_decompression_bomb(monkeypatch) -> None:
     with pytest.raises(ServiceError) as e:
         load_images(tiff_pages(1))
     assert e.value.status_code == 413
+
+
+# --------------------------------------------------------------------------- any book
+
+
+def text_pdf(pages: list[list[str]]) -> bytes:
+    from reportlab.pdfgen import canvas
+
+    buf = io.BytesIO()
+    c = canvas.Canvas(buf)
+    for lines in pages:
+        y = 800
+        for line in lines:
+            c.drawString(72, y, line)
+            y -= 16
+        c.showPage()
+    c.save()
+    return buf.getvalue()
+
+
+def epub(chapters: list[str]) -> bytes:
+    import zipfile
+
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as z:
+        z.writestr("mimetype", "application/epub+zip")
+        z.writestr(
+            "META-INF/container.xml",
+            '<container><rootfiles><rootfile full-path="OEBPS/book.opf"/></rootfiles></container>',
+        )
+        items = "".join(
+            f'<item id="c{i}" href="c{i}.xhtml" media-type="application/xhtml+xml"/>'
+            for i in range(len(chapters))
+        )
+        spine = "".join(f'<itemref idref="c{i}"/>' for i in range(len(chapters)))
+        z.writestr(
+            "OEBPS/book.opf",
+            f"<package><manifest>{items}</manifest><spine>{spine}</spine></package>",
+        )
+        for i, html in enumerate(chapters):
+            z.writestr(f"OEBPS/c{i}.xhtml", f"<html><body>{html}</body></html>")
+    return buf.getvalue()
+
+
+def test_text_layer_pdf_needs_no_ocr(monkeypatch) -> None:
+    calls = []
+
+    def counting(img, code):
+        calls.append(1)
+        return fake_engine(img, code)
+
+    monkeypatch.setattr(app_module, "_course_ocr", CourseOcr(counting, check=False))
+    client = TestClient(app)
+    data = text_pdf(
+        [
+            ["Chapter 1 Greetings", "Exercise 1 Fill in the gaps with the right word please."],
+            ["Chapter 2 Shopping", "Exercise 1 Choose the right answer from the list below."],
+        ]
+    )
+    r = client.post("/course/ocr?lang=en", files={"file": ("b.pdf", data, "application/pdf")})
+    body = wait_done(client, r.json()["id"])
+    assert body["status"] == "done" and body["cached"] == 2 and calls == []
+    assert body["pages"][0]["text"].startswith("Chapter 1 Greetings")
+    assert body["pages"][1]["confidence"] == 1.0
+
+
+def test_epub_chapters_are_pages(monkeypatch) -> None:
+    monkeypatch.setattr(app_module, "_course_ocr", CourseOcr(fake_engine, check=False))
+    client = TestClient(app)
+    data = epub(
+        [
+            "<h1>Lektion 1: Hallo</h1><p>Guten Tag. Wie geht es dir?</p><script>x()</script>",
+            "<h1>Lektion 2: Einkaufen</h1><p>Ich kaufe Brot.</p>",
+        ]
+    )
+    r = client.post("/course/ocr", files={"file": ("b.epub", data, "application/epub+zip")})
+    assert r.json()["total"] == 2
+    body = wait_done(client, r.json()["id"])
+    assert body["pages"][0]["text"].splitlines()[0] == "Lektion 1: Hallo"
+    assert "x()" not in body["pages"][0]["text"]
+    assert body["pages"][1]["text"].endswith("Ich kaufe Brot.")
+
+
+def test_disk_cache_survives_a_new_instance_and_order_is_kept(tmp_path, monkeypatch) -> None:
+    calls = []
+
+    def slow_first(img, code):
+        calls.append(img.width)
+        if img.width == 40:
+            time.sleep(0.05)  # the first page finishes last; pages must still come in order
+        return fake_engine(img, code)
+
+    monkeypatch.setattr(
+        app_module, "_course_ocr", CourseOcr(slow_first, check=False, workers=3, cache_dir=tmp_path)
+    )
+    client = TestClient(app)
+    data = tiff_pages(4)
+    r = client.post("/course/ocr", files={"file": ("b.tiff", data, "image/tiff")})
+    body = wait_done(client, r.json()["id"])
+    assert [p["text"] for p in body["pages"]] == ["page 40", "page 41", "page 42", "page 43"]
+    assert len(list(tmp_path.glob("*.json"))) == 4
+    # A restarted server (new instance, empty memory) reads the pages from disk.
+    monkeypatch.setattr(
+        app_module, "_course_ocr", CourseOcr(slow_first, check=False, cache_dir=tmp_path)
+    )
+    again = client.post("/course/ocr", files={"file": ("b.tiff", data, "image/tiff")})
+    body = wait_done(client, again.json()["id"])
+    assert body["cached"] == 4 and len(calls) == 4 and body["eta"] is None
+
+
+def test_scanned_page_without_tesseract_reports_the_install_hint(monkeypatch) -> None:
+    import kenning_nlp.course as course_module
+    from kenning_nlp.errors import ServiceError
+
+    def missing(lang):
+        raise ServiceError(503, "Tesseract OCR is not available on the server.")
+
+    monkeypatch.setattr(course_module, "ensure_tesseract", missing)
+    monkeypatch.setattr(app_module, "_course_ocr", CourseOcr(fake_engine, check=True))
+    client = TestClient(app)
+    # An EPUB needs no OCR: it works without Tesseract.
+    ok = client.post("/course/ocr", files={"file": ("b.epub", epub(["<p>Hallo</p>"]), "x")})
+    assert wait_done(client, ok.json()["id"])["status"] == "done"
+    r = client.post("/course/ocr", files={"file": ("b.tiff", tiff_pages(1), "image/tiff")})
+    body = wait_done(client, r.json()["id"])
+    assert body["status"] == "error" and "Tesseract" in body["error"]

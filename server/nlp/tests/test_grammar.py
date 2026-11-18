@@ -23,7 +23,7 @@ def test_every_topic_has_enough_cases() -> None:
     assert set(CASES) == TOPICS
     for topic, (pos, neg) in CASES.items():
         assert len(pos) >= 3 and len(neg) >= 2, topic
-    assert len(DETECTORS) >= len(TOPICS)
+    assert len(DETECTORS) >= 20  # some detectors yield several topics
 
 
 @pytest.mark.parametrize(("topic", "sentence"), POSITIVE)

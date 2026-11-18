@@ -117,7 +117,7 @@ describe("Writing and speaking", () => {
     await user.click(screen.getAllByRole("button", { name: "Check my answer" })[0]!);
     expect(screen.getByText("Model answer")).toBeInTheDocument();
     expect(screen.getByRole("group", { name: "Check your answer" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Modal verbs" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: /^Modal verbs/ })).toHaveAttribute(
       "href",
       "/grammar/modal-verbs",
     );

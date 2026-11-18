@@ -133,6 +133,11 @@ export function createMockAI(
         parseFailed: false,
       };
     },
+    async generateUnitExercises(_courseId, _unitN, onProgress) {
+      onProgress?.("Writing exercises…");
+      await wait();
+      return { added: 6, rejected: 1, grammarTopic: "Presens" };
+    },
     async storyTargets(source) {
       await wait();
       if (source.kind === "grammar") return [];

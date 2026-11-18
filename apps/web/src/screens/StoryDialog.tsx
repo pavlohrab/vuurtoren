@@ -112,7 +112,11 @@ export function StoryDialog({
     .split(/[,\n]/)
     .map((w) => w.trim())
     .filter(Boolean);
-  const topicPage = source === "grammar" && grammarId ? grammarTopic(grammarId) : undefined;
+  // A unit's story also features the unit's main grammar point (preset from its texts).
+  const topicPage =
+    (source === "grammar" || (source === "unit" && preset.grammarTopic)) && grammarId
+      ? grammarTopic(grammarId)
+      : undefined;
 
   const est = estimateStoryTokens({
     length,
@@ -202,7 +206,14 @@ export function StoryDialog({
           <div className="practice-options">
             {option<Source>("learn-now", source, pickSource, "Words to learn now")}
             {preset.unit
-              ? option<Source>("unit", source, pickSource, "This unit's new words")
+              ? option<Source>(
+                  "unit",
+                  source,
+                  pickSource,
+                  preset.grammarTopic && grammarTopic(preset.grammarTopic)
+                    ? `This unit's new words and ${grammarTopic(preset.grammarTopic)?.title}`
+                    : "This unit's new words",
+                )
               : null}
             {option<Source>("grammar", source, pickSource, "A grammar topic")}
             {option<Source>("own", source, pickSource, "My own words")}
@@ -244,13 +255,18 @@ export function StoryDialog({
             {create.error instanceof Error ? create.error.message : String(create.error)}
           </p>
         ) : null}
-        <div className="row" style={{ justifyContent: "flex-end" }}>
+        <div className="k-dialog-actions">
           {progress ? (
             <span className="k-hint" role="status" style={{ marginRight: "auto" }}>
               {progress}
             </span>
           ) : null}
-          <Button type="button" disabled={create.isPending} onClick={() => onOpenChange(false)}>
+          <Button
+            type="button"
+            variant="ghost"
+            disabled={create.isPending}
+            onClick={() => onOpenChange(false)}
+          >
             Cancel
           </Button>
           <Button

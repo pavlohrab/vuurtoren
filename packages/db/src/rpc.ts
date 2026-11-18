@@ -38,6 +38,7 @@ export const RPC_METHODS = {
   courseBlocks: ["string"],
   unitExercises: ["string", "number"],
   unitWords: ["string", "number"],
+  generatedUnitExercises: ["string", "number"],
   bookAnswers: ["string", "number?"],
   conversationEvents: [],
   generatedSentences: ["string"],

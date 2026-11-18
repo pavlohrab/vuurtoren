@@ -220,14 +220,14 @@ export function Converse() {
 
   if (!status.data) {
     return (
-      <div className="page page--narrow">
+      <div className="page page--list">
         <Skeleton style={{ height: 160 }} />
       </div>
     );
   }
   if (!status.data.configured) {
     return (
-      <div className="page page--narrow">
+      <div className="page page--list">
         <EmptyState
           icon={<MessagesSquare size={28} />}
           title="Talk in Dutch"
@@ -248,74 +248,76 @@ export function Converse() {
 
   if (!conv) {
     return (
-      <div className="page page--narrow">
+      <div className="page page--list">
         <PageHeader
           title="Talk"
           lede="A short chat in Dutch that stays within the words you know, with corrections of your own messages."
         />
-        <form
-          className="stack"
-          onSubmit={(e) => {
-            e.preventDefault();
-            start.mutate();
-          }}
-        >
-          <Input
-            label="Topic"
-            value={topic}
-            placeholder="Ordering coffee, my weekend, ..."
-            onChange={(e) => setTopic(e.target.value)}
-          />
-          <Input
-            label="Words to practise"
-            value={targets ?? (suggested.data ?? []).join(", ")}
-            hint="Comma separated. The partner works these in; new words can go to Anki."
-            onChange={(e) => setTargets(e.target.value)}
-          />
-          <div className="row">
-            <Button type="submit" variant="primary" disabled={start.isPending}>
-              {start.isPending ? <Spinner label="Starting" /> : null}
-              Start conversation
-            </Button>
-          </div>
-          {start.isError ? (
-            <p role="alert" className="error-text" style={{ margin: 0 }}>
-              {message(start.error)}
-            </p>
-          ) : null}
-        </form>
-        {past.data && past.data.length > 0 ? (
-          <section style={{ marginTop: 32 }}>
-            <h2 style={{ fontSize: 19 }}>Earlier conversations</h2>
-            <ul className="cv-past">
-              {past.data.map((c) => (
-                <li key={c.id}>
-                  <button
-                    onClick={async () => {
-                      const v = await services.getConversation(c.id);
-                      if (v) setConv(v);
-                    }}
-                  >
-                    <b>{topicTitle(c.topic)}</b>{" "}
-                    <span className="k-hint">{c.messages} messages</span>
-                    <br />
-                    <span className="k-hint">{c.preview}</span>
-                  </button>
-                </li>
-              ))}
-            </ul>
+        <div className="page-split">
+          <form
+            className="stack cv-start"
+            onSubmit={(e) => {
+              e.preventDefault();
+              start.mutate();
+            }}
+          >
+            <Input
+              label="Topic"
+              value={topic}
+              placeholder="Ordering coffee, my weekend, ..."
+              onChange={(e) => setTopic(e.target.value)}
+            />
+            <Input
+              label="Words to practise"
+              value={targets ?? (suggested.data ?? []).join(", ")}
+              hint="Comma separated. The partner works these in; new words can go to Anki."
+              onChange={(e) => setTargets(e.target.value)}
+            />
+            <div className="row">
+              <Button type="submit" variant="primary" disabled={start.isPending}>
+                {start.isPending ? <Spinner label="Starting" /> : null}
+                Start conversation
+              </Button>
+            </div>
+            {start.isError ? (
+              <p role="alert" className="error-text" style={{ margin: 0 }}>
+                {message(start.error)}
+              </p>
+            ) : null}
+          </form>
+          <section className="page-aside" aria-labelledby="cv-past-h">
+            <h2 id="cv-past-h">Earlier conversations</h2>
+            {past.data && past.data.length > 0 ? (
+              <ul className="cv-past">
+                {past.data.map((c) => (
+                  <li key={c.id}>
+                    <button
+                      onClick={async () => {
+                        const v = await services.getConversation(c.id);
+                        if (v) setConv(v);
+                      }}
+                    >
+                      <span className="cv-past-title">{topicTitle(c.topic)}</span>
+                      <span className="cv-past-hint">
+                        {c.messages} messages · {c.preview}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : past.data ? (
+              <p>No conversations yet. Pick a topic; your chats are kept here to come back to.</p>
+            ) : (
+              <Skeleton style={{ height: 48 }} />
+            )}
           </section>
-        ) : past.data ? (
-          <p className="k-hint" style={{ marginTop: 32 }}>
-            No conversations yet. Pick a topic above; your chats are kept here to come back to.
-          </p>
-        ) : null}
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="page page--narrow">
+    <div className="page page--list cv-page">
       <PageHeader
         title={topicTitle(conv.topic)}
         lede={

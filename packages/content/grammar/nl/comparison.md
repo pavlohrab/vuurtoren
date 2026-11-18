@@ -1,36 +1,50 @@
 ---
 id: comparison
-title: Comparing (-er and -st)
+title: Comparing (groter, grootst)
 level: A2
-summary: Add -er to compare two things (groter dan) and -st for the most (het grootst).
+group: adjectives
+order: 26
+summary: Add -er for "more" (groter dan) and -st for "most" (het grootst); a few common words are irregular.
 detects: [comparison]
 practice: [scramble]
-related: [adjective-inflection, word-order-v2]
+related: [adjective-inflection, adverbs, spelling-rules]
 ---
 
 ## Explanation
 
-Dutch compares with endings, also for long words. The **comparative** adds **-er**, the **superlative** adds **-st**: _groot – groter – grootst_, _moeilijk – moeilijker – moeilijkst_.
+Dutch compares with **endings**, also for long words.
 
-- Adjectives ending in **-r** add **-der**: _duur – duurder_, _lekker – lekkerder_, _ver – verder_.
-- Spelling follows the same rules as the -e ending: _groot → groter_ (one o in an open syllable), _dik → dikker_ (doubled consonant), _vies → viezer_ (s becomes z).
-- "Than" is **dan**: _Mijn broer is ouder dan ik_. "As … as" is **even … als** or **zo … als**: _Hij is even groot als zijn vader_.
+- **Comparative** (bigger): **-er** → _groot → groter_, _moeilijk → moeilijker_.
+- **Superlative** (biggest): **-st** → _grootst_, _moeilijkst_.
 
-A few common words are irregular: _goed – beter – best_, _veel – meer – meest_, _weinig – minder – minst_, _graag – liever – liefst_.
+Spelling follows the spelling rules: _groot → groter_, _dik → dikker_, _vies → viezer_. Words ending in **-r** add **-der**: _duur → duurder_, _lekker → lekkerder_, _ver → verder_.
 
-Before a noun, comparatives and superlatives take -e like any adjective: _een grotere auto_, _de grootste stad_ (and no -e after _een_ with a het-word: _een groter huis_). After a verb, the superlative comes with **het**: _Deze fiets is het snelst_.
+**than** = **dan**: _Hij is ouder dan ik._ **as … as** = **even … als** or **zo … als**: _Zij is even oud als ik._
+
+**Before a noun**, the forms take -e like any adjective: _een grotere kamer_, _de grootste kamer_. **After a verb** or as an adverb, the superlative usually has _het_: _Deze kamer is het grootst._ _Wie loopt het snelst?_
+
+Long or foreign words and words ending in -st can also use _meer_ / _meest_: _meer ervaren_, _het meest bekend_. But short words never do.
+
+### Pattern
+
+- `adjective + er + dan` → _goedkoper dan_
+- `de/het + adjective + ste + noun` → _de goedkoopste fiets_
+- `het + adjective + st` (after a verb) → _Deze is het goedkoopst._
+- -r words: `+ der` → _duurder_
+- irregular: `goed – beter – best`; `veel – meer – meest`; `weinig – minder – minst`; `graag – liever – liefst`; `dichtbij – dichterbij – het dichtstbij`
 
 ## Examples
 
-- Mijn broer is **ouder** dan ik. | My brother is older than me.
-- Amsterdam is **groter** dan Utrecht. | Amsterdam is bigger than Utrecht.
-- Dit is de **mooiste** dag van het jaar. | This is the most beautiful day of the year.
+- Mijn broer is twee jaar **ouder** dan ik. | My brother is two years older than me.
+- Deze jas is **duurder**, maar ook **warmer**. | This coat is more expensive, but also warmer.
+- Dat was de **leukste** dag van de vakantie. | That was the nicest day of the holiday.
 - Ik drink **liever** thee dan koffie. | I prefer tea to coffee.
-- Het boek is **beter** dan de film. | The book is better than the film.
-- Zij woont het **verst** van school. | She lives furthest from school.
+- Wie van jullie woont het **dichtstbij**? | Which of you lives closest?
+- Mijn fiets is **even** oud **als** de jouwe. | My bike is as old as yours.
 
 ## Common mistakes
 
-- Using _meer_ with a short adjective: _meer groot_. Use the ending: _groter_.
-- Forgetting the -d- after -r: _duurer_. It is _duurder_.
-- Using _dan_ in "as … as": _even groot dan_. Say _even groot als_. (And after a comparative, written Dutch wants _dan_, not _als_: _groter dan_.)
+- _meer groot_. Short words take the ending: _groter_.
+- _duurer_. After r, add -der: _duurder_.
+- _groter als_. In good Dutch, use dan after a comparative: _groter dan_ (_als_ is common in speech but seen as incorrect).
+- _even groot dan_. Use als here: _even groot als_.

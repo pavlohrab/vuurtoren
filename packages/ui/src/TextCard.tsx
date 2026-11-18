@@ -43,31 +43,24 @@ export function TextCard({
   const kind = coverKind(sourceKind, sourceRef);
   const band = coverage !== null ? difficultyBand(coverage) : null;
   return (
-    <article className="k-card k-shelf-card">
-      <TextCover title={title} kind={kind} coverage={coverage} />
-      <button type="button" className="k-card-title k-shelf-title" onClick={() => onOpen?.()}>
-        {title}
+    <article className="k-shelf-card">
+      <button type="button" className="k-shelf-open" onClick={() => onOpen?.()} aria-label={title}>
+        <TextCover title={title} kind={kind} coverage={coverage} />
       </button>
       <div className="k-card-meta">
         <span>{wordCount.toLocaleString("en")} words</span>
-        {/* No band chip below "challenging": there is no weave mode to suggest yet. */}
-        {band && band !== "weave" ? (
-          <Chip tone={band === "comfortable" ? "success" : "warm"}>{BAND_LABEL[band]}</Chip>
-        ) : null}
         {newTypes !== null ? <WordStateChip state="unknown" count={newTypes} /> : null}
+        {/* No band chip below "challenging": there is no weave mode to suggest yet. */}
+        {band && band !== "weave" && band !== "comfortable" ? (
+          <Chip tone="warm">{BAND_LABEL[band]}</Chip>
+        ) : null}
       </div>
       <CoverageMeter value={coverage} block label="Whole text" />
       <div className="k-shelf-foot">
-        {progress ? (
-          <Button size="sm" variant="primary" className="k-shelf-continue" onClick={onOpen}>
-            Continue · page {progress.page} of {progress.pages}
-            <ArrowRight size={14} aria-hidden />
-          </Button>
-        ) : (
-          <Button size="sm" variant="secondary" className="k-shelf-continue" onClick={onOpen}>
-            Start reading
-          </Button>
-        )}
+        <button type="button" className="k-link" onClick={onOpen}>
+          {progress ? `Continue · page ${progress.page} of ${progress.pages}` : "Start reading"}
+          <ArrowRight size={14} aria-hidden />
+        </button>
         <span className="k-shelf-tools">
           {onWords ? (
             <Button
@@ -88,6 +81,7 @@ export function TextCard({
               icon
               className="k-card-delete"
               aria-label={`Delete ${title}`}
+              title="Delete"
               onClick={onDelete}
             >
               <Trash2 size={16} />

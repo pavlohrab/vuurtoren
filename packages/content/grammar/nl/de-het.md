@@ -1,36 +1,53 @@
 ---
 id: de-het
-title: de or het, and diminutives
+title: de, het and een
 level: A1
-summary: Every noun is de or het; diminutives (-je) are always het.
+group: nouns
+order: 4
+summary: Every noun is a de-word or a het-word; all plurals and most nouns take de, all diminutives take het, and een is the same for both.
 detects: [diminutives, demonstratives]
 practice: [gender]
-related: [diminutives, demonstratives, adjective-inflection, plural-nouns]
+related: [diminutives, demonstratives, adjective-inflection, plural-nouns, word-formation]
 ---
 
 ## Explanation
 
-Dutch nouns are either **de-words** or **het-words**. There is no reliable meaning-based rule, so the gender is best learned with the word: _de tafel_, _het huis_. About three out of four nouns are de-words.
+"The" has two forms in Dutch: **de** and **het**. Every noun belongs to one of them, so learn each noun together with its article: _de tafel_, _het huis_. About two out of three nouns are de-words.
 
-Some rules help:
+"A" is always **een**, for de-words and het-words alike. Its negative is **geen** (see negation).
 
-- **het**: all diminutives, nouns ending in _-ment_ and _-isme_, most nouns for languages and metals, and most words for buildings, materials and young animals (_het huis_, _het hout_).
-- **de**: nouns ending in _-heid_, _-teit_, _-ing_, _-ie_ and _-schap_, nouns for people with _-er_, and **all plurals**.
+**All plurals take de**: _het huis → de huizen_.
 
-A **diminutive** makes a noun small or friendly. It ends in **-je**, or **-tje**, **-pje**, **-etje** depending on the last sound: _het huisje_, _het boekje_, _het stoeltje_, _het boompje_, _het balletje_. Whatever the original gender, the diminutive is always **het**: _de hond_ → _het hondje_.
+### Pattern
 
-The article also decides other forms: the demonstrative (_dit_ or _deze_), the pronoun (_het_ or _hij_) and the -e of the adjective (see those topics).
+- singular de-word: `de` / `een` → _de stoel, een stoel_
+- singular het-word: `het` / `een` → _het boek, een boek_
+- every plural: `de` / no article → _de stoelen, boeken_
+- diminutive (-je): always `het` → _het stoeltje_
+
+### Rules of thumb
+
+There is no rule that covers everything, but these help:
+
+- **het**: diminutives (_het meisje_), words with _-ment_, _-isme_, _-um_ (_het moment_, _het museum_), infinitives used as nouns (_het eten_), languages (_het Nederlands_), most metals, and most words starting with _ge-_ or _be-_ (_het gebouw_, _het begin_).
+- **de**: words ending in _-heid_, _-ing_, _-ie_, _-teit_, _-schap_ (mostly), _-nis_ (mostly), people (_de man_, _de vrouw_, _de leraar_), trees, fruit, rivers and numbers as nouns.
+
+### When there is no article
+
+Unlike English, Dutch leaves out _een_ before a job, a nationality or a religion after _zijn_ or _worden_: _Ik ben lerares_, _Hij is Belg_. And many fixed phrases have no article: _naar huis_, _op school_, _met de fiets_ (here Dutch does use _de_).
 
 ## Examples
 
-- **Het** meisje heeft **een** hondje. | The girl has a little dog.
-- Ik wil **een** kopje thee. | I would like a cup of tea.
-- **De** tafel is groot; **het** huis ook. | The table is big, and so is the house.
-- **De** vrijheid is belangrijk. | Freedom is important.
-- Zij heeft **een** klein **boekje** in haar tas. | She has a small book in her bag.
+- **De** tafel is groot en **het** raam is klein. | The table is big and the window is small.
+- Ik heb **een** broer en **een** zus. | I have a brother and a sister.
+- **De** kinderen spelen buiten. | The children are playing outside.
+- **Het** meisje leest **een** boek. | The girl is reading a book.
+- Mijn vader is **kok**. | My father is a cook.
+- Ik leer **het** Nederlands. | I am learning Dutch.
 
 ## Common mistakes
 
-- Saying _de meisje_ (the girl). _Meisje_ is a diminutive in form, so it is _het meisje_.
-- Using _de_ with a plural: _de huizen_ is right, _het huizen_ is not.
-- Spelling the diminutive ending wrong: it is _huisje_, _stoeltje_, _boompje_ and _balletje_ (see the topic on diminutives).
+- _Het huizen_. Plurals always take de: _de huizen_.
+- _De meisje_. A diminutive is always het: _het meisje_.
+- _Ik ben een studente_. For a job or study, leave out een: _Ik ben studente_ (een is only used when you add an adjective: _een goede studente_).
+- Guessing from the meaning: _de water_. Water is a het-word: _het water_. When in doubt, look it up.

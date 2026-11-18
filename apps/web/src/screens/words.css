@@ -5,22 +5,21 @@
   align-items: flex-end;
   justify-content: space-between;
   gap: 12px 24px;
-  margin-bottom: 12px;
+  margin-bottom: var(--s-5);
 }
 .words-states {
   display: inline-flex;
   flex-wrap: wrap;
-  gap: 4px;
-  padding: 3px;
-  border: 1px solid var(--line);
+  gap: 2px;
+  padding: 2px;
   border-radius: var(--radius-control);
-  background: var(--surface);
+  background: var(--surface-2);
 }
 .words-state {
   all: unset;
   box-sizing: border-box;
   cursor: pointer;
-  padding: 5px 12px;
+  padding: 4px 12px;
   border-radius: 6px;
   font-size: 13px;
   font-weight: 500;
@@ -30,8 +29,9 @@
   color: var(--ink);
 }
 .words-state[aria-checked="true"] {
-  background: var(--accent-soft);
-  color: var(--accent);
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 0 0 1px var(--hairline);
 }
 .words-state:focus-visible {
   outline: 2px solid var(--accent);
@@ -43,10 +43,10 @@
   gap: 12px;
 }
 .words-source {
-  width: 240px;
+  width: 200px;
 }
 .words-search {
-  width: 240px;
+  width: 200px;
 }
 .words-chips {
   list-style: none;
@@ -92,9 +92,6 @@
   font-size: 13px;
 }
 .words-table-wrap {
-  border: 1px solid var(--line);
-  border-radius: var(--radius-card);
-  background: var(--surface);
   overflow: hidden;
 }
 .words-table {
@@ -102,7 +99,7 @@
 }
 .words-table th:first-child,
 .words-table td:first-child {
-  padding-left: 16px;
+  padding-left: 4px;
 }
 .words-check {
   width: 36px;
@@ -189,4 +186,9 @@
   .shell[data-inspector="open"] .words-bulk {
     display: none;
   }
+}
+.words-more {
+  display: flex;
+  justify-content: center;
+  margin-top: var(--s-5);
 }

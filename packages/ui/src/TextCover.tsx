@@ -7,7 +7,7 @@ import {
   MessagesSquare,
   Sparkles,
 } from "lucide-react";
-import type { CSSProperties, ReactNode } from "react";
+import type { ReactNode } from "react";
 import { cn } from "./cn.js";
 
 /** Where a text came from, as its Library cover shows it. */
@@ -49,58 +49,66 @@ const COVER_ICON: Record<CoverKind, (size: number) => ReactNode> = {
   talk: (s) => <MessagesSquare size={s} aria-hidden />,
 };
 
-/** A small stable hash of the title, so each cover's pattern sits a little differently. */
-function seed(title: string): number {
-  let h = 2166136261;
-  for (let i = 0; i < title.length; i++) h = Math.imul(h ^ title.charCodeAt(i), 16777619);
-  return h >>> 0;
-}
-
 export interface TextCoverProps {
   title: string;
   kind: CoverKind;
   /** Coverage in [0, 1]: a thin known-colour line along the bottom edge. */
   coverage?: number | null;
+  /** Also print the coverage percentage at the top right (when no meter sits next to the cover). */
+  showPercent?: boolean;
   size?: "sm" | "md";
-  /** Show the kind label next to the icon (md covers). */
+  /** Show the kind label next to the icon. */
   showLabel?: boolean;
   className?: string;
+  /** Replaces the printed title (e.g. a button carrying the title, so it is not read twice). */
+  titleSlot?: ReactNode;
   children?: ReactNode;
 }
 
 /**
- * The decorative cover of a text: a quiet generated pattern per source kind (stripes, dots,
- * grid…) offset by the title, with the source icon. Purely visual (aria-hidden pattern).
+ * The cover of a text, typographic (design-system.md, Covers): a flat tint per source kind with
+ * a spine, the source icon and kind at the top, the title in Literata at the bottom and the
+ * coverage as a thin known-colour line on the bottom edge.
  */
 export function TextCover({
   title,
   kind,
   coverage = null,
+  showPercent = false,
   size = "md",
-  showLabel = size === "md",
+  showLabel = true,
   className,
+  titleSlot,
   children,
 }: TextCoverProps) {
-  const h = seed(title);
-  const style = {
-    "--cover-angle": `${(h % 8) * 22.5 + 15}deg`,
-    "--cover-shift": `${h % 23}px`,
-  } as CSSProperties;
+  const cov = coverage === null ? null : Math.max(0, Math.min(1, coverage));
   return (
-    <div className={cn("k-cover", `k-cover--${size}`, className)} data-kind={kind} style={style}>
-      <span className="k-cover-pattern" aria-hidden />
-      <span className="k-cover-kind" title={COVER_LABEL[kind]}>
-        {COVER_ICON[kind](size === "sm" ? 14 : 16)}
-        {showLabel ? (
-          <span>{COVER_LABEL[kind]}</span>
-        ) : (
-          <span className="k-sr">{COVER_LABEL[kind]}</span>
-        )}
+    <div className={cn("k-cover", `k-cover--${size}`, className)} data-kind={kind}>
+      <span className="k-cover-top">
+        <span className="k-cover-kind" title={COVER_LABEL[kind]}>
+          {COVER_ICON[kind](size === "sm" ? 13 : 14)}
+          {showLabel ? (
+            <span>{COVER_LABEL[kind]}</span>
+          ) : (
+            <span className="k-sr">{COVER_LABEL[kind]}</span>
+          )}
+        </span>
+        {showPercent && cov !== null ? (
+          <span className="k-cover-pct" aria-hidden>
+            {Math.round(cov * 100)}%
+          </span>
+        ) : null}
       </span>
+      {titleSlot ?? (
+        <span className="k-cover-title" lang="nl">
+          {title}
+        </span>
+      )}
+      <span className="k-cover-rule" aria-hidden />
       {children}
-      {coverage !== null ? (
+      {cov !== null ? (
         <span className="k-cover-meter" aria-hidden>
-          <span style={{ transform: `scaleX(${Math.max(0, Math.min(1, coverage))})` }} />
+          <span style={{ transform: `scaleX(${cov})` }} />
         </span>
       ) : null}
     </div>

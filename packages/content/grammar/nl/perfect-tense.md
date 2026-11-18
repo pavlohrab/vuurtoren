@@ -1,33 +1,56 @@
 ---
 id: perfect-tense
-title: Perfect tense (voltooid tegenwoordige tijd)
+title: The perfect tense (heb gewerkt)
 level: A2
-summary: Use hebben or zijn plus a past participle, which starts with ge- and ends in -d or -t for regular verbs.
+group: verbs
+order: 20
+summary: Hebben or zijn plus a past participle; regular participles are ge- + stem + -t or -d, and 't kofschip tells you which.
 detects: [perfect-tense]
 practice: [perfect]
-related: [imperfect-tense, separable-verbs, subordinate-clauses]
+related:
+  [hebben-or-zijn, imperfect-tense, irregular-verbs, verb-bracket, past-perfect, verb-clusters]
 ---
 
 ## Explanation
 
-The perfect tense is the usual way to talk about something that has happened. It has two parts: a conjugated auxiliary (_hebben_ or _zijn_) in second position, and the **past participle** at the end of the clause.
+The perfect is the normal way to talk about the past in conversation: _Ik heb gisteren gewerkt_ (I worked yesterday / I have worked). It has two parts:
 
-**The participle.** Take the stem of the verb (the infinitive without _-en_) and put _ge-_ in front: _werken_ → _gewerkt_, _lezen_ → _gelezen_. Regular (weak) verbs end in **-t** or **-d**. Strong verbs end in **-en** and often change their vowel (_schrijven_ → _geschreven_). Verbs that begin with an unstressed prefix (_be-_, _ver-_, _ont-_, _her-_) get no _ge-_: _bezoeken_ → _bezocht_, _vergeten_ → _vergeten_.
+1. a form of **hebben** or **zijn** in second place (see hebben or zijn);
+2. a **past participle** at the end.
 
-**-t or -d?** Look at the last letter of the stem. If it is one of the letters of **'t kofschip** (t, k, f, s, ch, p), add **-t**: _werk_ → _gewerkt_, _fiets_ → _gefietst_. For every other final letter add **-d**: _hoor_ → _gehoord_, _speel_ → _gespeeld_. The rule looks at the stem as written in the infinitive. That is why _leven_ (stem _lev_, and v is not in the rule) gives _geleefd_ with -d, even though the sound is an f.
+### Making the participle (regular verbs)
 
-**hebben or zijn?** Most verbs use _hebben_. Verbs of movement to a place and of change of state use _zijn_: _gaan_, _komen_, _vallen_, _blijven_, _worden_, _sterven_. The verb _zijn_ itself uses _zijn_ as well.
+Take the stem and put **ge-** in front. Then add **-t** or **-d**:
+
+- **-t** if the stem ends in one of the consonants of **'t kofschip**: t, k, f, s, ch, p (and also x and c): _werken → gewerkt_, _fietsen → gefietst_, _koken → gekookt_.
+- **-d** after any other sound: _wonen → gewoond_, _horen → gehoord_, _spelen → gespeeld_.
+- Look at the **infinitive** to choose, not the stem: _leven_ has a v, so _geleefd_; _reizen_ has a z, so _gereisd_.
+- Never write a double letter at the end: _zetten → gezet_, _branden → gebrand_.
+
+**No ge-** when the verb starts with an unstressed prefix: _be-, ge-, her-, ont-, ver-, er-_: _betalen → betaald_, _vertellen → verteld_.
+
+Strong verbs have their own participles, mostly ending in **-en**: _lezen → gelezen_, _drinken → gedronken_ (see irregular verbs).
+
+### Pattern
+
+- `hebben/zijn` (2nd place) … `ge + stem + t/d` (end)
+- stem ends in **t k f s ch p** → `-t`: _gewerkt, gekookt_
+- other sound → `-d`: _gewoond, gespeeld_
+- prefix be-, ver-, ont-, her-, ge-, er- → no ge-: _betaald, verteld_
+- separable: _opgebeld_
 
 ## Examples
 
-- Ik **heb** gisteren een boek **gelezen**. | I read a book yesterday.
-- Wij **hebben** de hele dag **gewerkt**. | We worked all day.
+- Ik **heb** gisteren lang **gewerkt**. | I worked late yesterday.
+- **Heb** jij die film al **gezien**? | Have you seen that film yet?
+- Wij **hebben** in Frankrijk veel **gefietst**. | We cycled a lot in France.
 - Zij **is** naar huis **gegaan**. | She went home.
-- Hij **is** in Utrecht **aangekomen**. | He arrived in Utrecht.
-- Ik **heb** mijn moeder **opgebeld**. | I phoned my mother.
+- Ik **heb** de rekening al **betaald**. | I have already paid the bill.
+- Ze **hebben** tien jaar in Leiden **gewoond**. | They lived in Leiden for ten years.
 
 ## Common mistakes
 
-- Placing the participle early: _Ik heb gelezen een boek_. It goes to the end: _Ik heb een boek gelezen_.
-- Choosing _hebben_ for movement: _Ik heb naar huis gegaan_. A change of place takes _zijn_: _Ik ben naar huis gegaan_.
-- Adding _ge-_ to a verb with an unstressed prefix: _gebezocht_. Say _bezocht_.
+- _Gewerkd_ or _gewoont_. Use 't kofschip: k → _gewerkt_; n → _gewoond_.
+- _Gebetaald_. Verbs with be- get no ge-: _betaald_.
+- The participle in the middle: _Ik heb gewerkt gisteren._ It goes last: _Ik heb gisteren gewerkt._
+- Using the perfect with "since/for" as in English "I have lived here for two years": Dutch uses the present: _Ik woon hier al twee jaar._

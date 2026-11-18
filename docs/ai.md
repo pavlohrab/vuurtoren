@@ -98,9 +98,24 @@ Practice exercises need example sentences. Anki notes, your own texts and Tatoeb
 
 **Cost.** One request per word: about 1K tokens in (mostly cacheable) and 200-300 out. A full fill of 8 words is roughly 10K in, 2K out: under a cent on small models.
 
+## Unit exercises
+
+On a course unit (Exercises tab, only when a provider is configured): **Generate exercises like this unit** (`generateUnitExercises` in `packages/ai/src/unitExercises.ts`, wired in `liveAI.ts`).
+
+- **Input:** the unit's words (new ones first, at most 12 sent), the kinds of exercises the book's unit has (gap fill and conjugation tables → gap fill; sentence building; choice, open tasks and texts → questions about a short text), and the grammar point the unit's own sentences show most (rule-based detectors over the book's text, the same topics as the Grammar tab). One JSON request: `{gapfill: [{sentence, answer, lemma}], order: [{sentence}], text: {title, text, questions: [{question, options, answer}]}}`.
+- **Validated by the language server**, like AI example sentences; anything that fails is dropped and counted:
+  - gap fill: 4-14 words; a unit word really occurs (reader matcher, separable verbs count) and the gap is exactly its form in the sentence; coverage at least your threshold (90% or more) with the unit's words counted as known, at most one other unknown word;
+  - sentence building: the same coverage and length, a unit word present, and, when the unit has a grammar point, the detector for that topic fires on the sentence;
+  - questions about a text: the text reaches the coverage threshold; each question has distinct options and its right option shares a word with the text.
+- **Matching** (word ↔ meaning) needs no AI: it is built from the unit words' glosses (word list or dictionary).
+- **Stored** as one `UnitExercisesGenerated {courseId, unitN, exercises, rejected, grammarTopic?, provider, model}` event (read from the log, both storage modes, `/api/rpc` allow-list). The exercises are ordinary book-exercise data (`answerSource: "ai"`, numbers from 1001), shown under **Made for this unit**, and **graded by the book checkers** (`checkBookItem`: exact and accent-lenient answers, any verb-second order for sentence building). Answers feed the learner model like book answers (ADR 0011). The AI never grades.
+- **Cost:** one request of about 2K tokens in and 1-2K out per click; well under a cent on small models.
+
+**Explain this unit's grammar** is the Grammar tab: the topics found in the unit's texts, each linked to its topic page (explanation, examples, practice). **Create a story** on a unit uses the unit's new words and that grammar point.
+
 ## What is sent (stories and sentences)
 
-To your provider only: the topic, the target words, the grammar topic's title and one-line summary, your vocabulary estimate and a list of 200-300 known lemmas. No texts from your Library, no Anki content, no keys or identifiers. The generated text and sentences are stored in your data (events), so they are included in backups and sync.
+To your provider only: the topic, the target words, the grammar topic's title and one-line summary, your vocabulary estimate and a list of 200-300 known lemmas (for unit exercises also the unit's title and up to 12 of its words; never the book's text). No texts from your Library, no Anki content, no keys or identifiers. The generated text and sentences are stored in your data (events), so they are included in backups and sync.
 
 ## Claude subscription (Pro / Max): use MCP
 

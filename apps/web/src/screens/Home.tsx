@@ -28,6 +28,7 @@ import { activeDays, type ActivityDay } from "../services/activity.js";
 import type { TextListItem, TextWordItem } from "../services/types.js";
 import type { ExamAttemptRecord } from "../services/examTypes.js";
 import { usePageHeader } from "../shell/ShellContext.js";
+import { PageHeader, SectionHeader } from "../shell/PageHeader.js";
 import { pagesOf, WORDS_PER_PAGE } from "../textPages.js";
 import { topicCount } from "./Grammar.js";
 import { CreateStoryButton } from "./StoryDialog.js";
@@ -159,39 +160,34 @@ export function Home() {
     (w) => w.source !== "gloss" && w.entry.anki.status === "absent",
   ).length;
 
+  const learnWords = (learn ?? []).slice(0, 3).map((w) => w.lemma);
+
   return (
     <div className="page home">
-      <header className="home-head">
-        <h1 className="home-hello">{hello}</h1>
-        <div className="home-actions" role="group" aria-label="Quick actions">
-          <Link to="/import" className="k-btn k-btn--secondary">
-            <Plus size={16} aria-hidden /> Import
-          </Link>
-          <CreateStoryButton />
-          <Link to="/talk" className="k-btn k-btn--secondary">
-            <MessagesSquare size={16} aria-hidden /> Talk
-          </Link>
-        </div>
-        <p className="page-lede">
-          {s && s.known > 0
+      <PageHeader
+        title={hello}
+        lede={
+          s && s.known > 0
             ? `You know ${fmt(s.known)} Dutch words. Here is a short plan for today.`
-            : "Here is a short plan for today."}
-        </p>
-      </header>
-
-      <div className="home-grid">
-        <Tile
-          id="home-continue-h"
-          title={cont?.started === false ? "Start reading" : "Continue reading"}
-          className="home-continue"
-          action={
-            <Link to="/library" className="home-tile-link">
-              Not this one? Library <ArrowRight size={14} aria-hidden />
+            : "Here is a short plan for today."
+        }
+        actions={
+          <>
+            <Link to="/import" className="k-btn k-btn--secondary">
+              <Plus size={16} aria-hidden /> Import
             </Link>
-          }
-        >
+            <CreateStoryButton />
+          </>
+        }
+      />
+
+      <div className="home-hero">
+        <section className="home-reading" aria-labelledby="home-continue-h">
+          <h2 className="home-kicker" id="home-continue-h">
+            {cont?.started === false ? "Next to read" : "Continue reading"}
+          </h2>
           {texts.isPending ? (
-            <Skeleton style={{ height: 150 }} />
+            <Skeleton style={{ height: 224 }} />
           ) : cont ? (
             <ContinueCard
               text={cont.text}
@@ -220,11 +216,14 @@ export function Home() {
               }
             />
           )}
-        </Tile>
+        </section>
 
-        <Tile id="home-known-h" title="Your words" className="home-known">
+        <section className="home-known" aria-labelledby="home-known-h">
+          <h2 className="home-kicker" id="home-known-h">
+            Your words
+          </h2>
           {summary.isPending || texts.isPending ? (
-            <Skeleton style={{ height: 200 }} />
+            <Skeleton style={{ height: 180 }} />
           ) : s ? (
             <KnownWords
               coverage={libraryCoverage(list)}
@@ -235,53 +234,52 @@ export function Home() {
           ) : (
             <Empty text="Your word counts could not be loaded." />
           )}
-        </Tile>
+        </section>
+      </div>
 
-        <Tile id="home-plan-h" title="Today" className="home-plan">
-          <ol className="home-steps">
-            <PracticeStep
-              due={practice.data?.due}
-              fresh={practice.data?.newAvailable ?? 0}
-              answered={today?.exercises ?? 0}
+      <section className="k-section home-today" aria-labelledby="home-plan-h">
+        <SectionHeader id="home-plan-h" title="Today" />
+        <ol className="home-steps">
+          <PracticeStep
+            due={practice.data?.due}
+            fresh={practice.data?.newAvailable ?? 0}
+            answered={today?.exercises ?? 0}
+          />
+          {cont && waiting ? (
+            <PlanStep
+              icon={<ListChecks size={16} />}
+              to={{ to: "/read/$textId/words", params: { textId: cont.text.id } }}
+              label="New words waiting for Anki"
+              value={`${fmt(waiting)} to decide`}
+              tone="learn"
             />
-            {cont && waiting ? (
-              <PlanStep
-                icon={<ListChecks size={18} />}
-                to={{ to: "/read/$textId/words", params: { textId: cont.text.id } }}
-                label="New words waiting for Anki"
-                value={fmt(waiting)}
-                tone="learn"
-              />
-            ) : today?.added ? (
-              <DoneStep label="Words added to Anki" value={fmt(today.added)} />
-            ) : null}
-            {today?.pages ? (
-              <DoneStep
-                label="Read today"
-                value={`${fmt(today.pages)} ${today.pages === 1 ? "page" : "pages"}`}
-              />
-            ) : null}
-            <CourseStep course={courses.data?.find((c) => c.continueUnit !== null)} />
-            <ExamStep />
-          </ol>
-        </Tile>
+          ) : today?.added ? (
+            <DoneStep label="Words added to Anki" value={fmt(today.added)} />
+          ) : null}
+          {today?.pages ? (
+            <DoneStep
+              label="Read today"
+              value={`${fmt(today.pages)} ${today.pages === 1 ? "page" : "pages"}`}
+            />
+          ) : null}
+          <CourseStep course={courses.data?.find((c) => c.continueUnit !== null)} />
+          <ExamStep />
+        </ol>
+      </section>
 
-        <Tile
-          id="home-learn-h"
-          title="Words to learn now"
-          className="home-learn"
-          action={
-            cont && learn?.length ? (
-              <Link
-                to="/words"
-                search={{ source: `text:${cont.text.id}` }}
-                className="home-tile-link"
-              >
-                All words <ArrowRight size={14} aria-hidden />
-              </Link>
-            ) : null
-          }
-        >
+      <div className="k-section home-row">
+        <section className="home-learn" aria-labelledby="home-learn-h">
+          <SectionHeader
+            id="home-learn-h"
+            title="Words to learn now"
+            action={
+              cont && learn?.length ? (
+                <Link to="/words" search={{ source: `text:${cont.text.id}` }} className="k-link">
+                  All words <ArrowRight size={14} aria-hidden />
+                </Link>
+              ) : null
+            }
+          />
           {textWords.isPending && contId ? (
             <Skeleton style={{ height: 96 }} />
           ) : cont && learn && learn.length + extra.length > 0 ? (
@@ -292,12 +290,12 @@ export function Home() {
                     <Link
                       to="/words"
                       search={{ source: `text:${cont.text.id}`, word: w.key }}
-                      className="home-word"
+                      className="k-word-chip"
                       title={w.glosses[0] ?? undefined}
                       lang="nl"
                     >
                       {w.article && w.pos === "NOUN" ? (
-                        <span className="home-word-art">{w.article}</span>
+                        <span className="k-word-art">{w.article}</span>
                       ) : null}
                       {w.lemma}
                     </Link>
@@ -308,18 +306,18 @@ export function Home() {
                     <Link
                       to="/words"
                       search={{ word: w.key }}
-                      className="home-word home-word--other"
+                      className="k-word-chip k-word-chip--quiet"
                       title={w.gloss ?? undefined}
                       lang="nl"
                     >
-                      {w.article ? <span className="home-word-art">{w.article}</span> : null}
+                      {w.article ? <span className="k-word-art">{w.article}</span> : null}
                       {w.key}
                     </Link>
                   </li>
                 ))}
               </ul>
-              <p className="home-muted home-small">
-                From <span className="home-text-ref">{cont.text.title}</span>
+              <p className="home-note">
+                From {cont.text.title}
                 {extra.length ? " and your other reading" : ""}. Open a word to add it to Anki or
                 mark it known.
               </p>
@@ -327,79 +325,46 @@ export function Home() {
           ) : (
             <Empty text="No new words waiting. Words you meet while reading show up here." />
           )}
-        </Tile>
+        </section>
 
-        <Tile id="home-week-h" title="This week" className="home-week">
-          {activity.isPending ? (
-            <Skeleton style={{ height: 120 }} />
-          ) : activity.data ? (
-            <WeekStrip days={activity.data} />
-          ) : (
-            <Empty text="Your activity could not be loaded." />
-          )}
-        </Tile>
-
-        <Tile
-          id="home-recent-h"
-          title="Recent texts"
-          className="home-recent"
-          action={
-            list.length > 0 ? (
-              <Link to="/library" className="home-tile-link">
-                Library <ArrowRight size={14} aria-hidden />
-              </Link>
-            ) : null
-          }
-        >
-          <RecentTexts texts={list} skip={contId} />
-        </Tile>
-
-        <Tile id="home-grammar-h" title="Grammar in your texts" className="home-grammar">
-          <GrammarSuggestion />
-        </Tile>
-
-        <Tile id="home-talk-h" title="Talk about it" className="home-talk">
-          <TalkPrompt
-            words={(learn ?? []).slice(0, 3).map((w) => w.lemma)}
-            topic={cont?.text.title}
+        <section className="home-recent" aria-labelledby="home-recent-h">
+          <SectionHeader
+            id="home-recent-h"
+            title="Recent texts"
+            action={
+              list.length > 0 ? (
+                <Link to="/library" className="k-link">
+                  Library <ArrowRight size={14} aria-hidden />
+                </Link>
+              ) : null
+            }
           />
-        </Tile>
+          <RecentTexts texts={list} skip={contId} />
+        </section>
       </div>
-    </div>
-  );
-}
 
-/** A Home tile: eyebrow heading with an optional action on the right, then the body. */
-function Tile({
-  id,
-  title,
-  action,
-  className,
-  children,
-}: {
-  id: string;
-  title: string;
-  action?: ReactNode;
-  className: string;
-  children: ReactNode;
-}) {
-  return (
-    <section className={`home-card ${className}`} aria-labelledby={id}>
-      <header className="home-card-head">
-        <h2 className="k-overline" id={id}>
-          {title}
-        </h2>
-        {action}
-      </header>
-      {children}
-    </section>
+      <section className="k-section home-more" aria-labelledby="home-more-h">
+        <SectionHeader id="home-more-h" title="More for today" />
+        <ul className="home-more-list">
+          <li>
+            <GrammarSuggestion />
+          </li>
+          <li>
+            <TalkPrompt words={learnWords} topic={cont?.text.title} />
+          </li>
+          <li>
+            <WeekLine days={activity.data} pending={activity.isPending} />
+          </li>
+        </ul>
+      </section>
+    </div>
   );
 }
 
 function Empty({ text, action }: { text: string; action?: ReactNode }) {
   return (
     <div className="home-empty">
-      <p className="home-muted">{text}</p>
+      <p>{text}</p>
       {action}
     </div>
   );
@@ -431,8 +396,10 @@ function PlanStep({
         <span className="home-step-icon" aria-hidden>
           {icon}
         </span>
-        <span className="home-step-label">{label}</span>
-        <span className="home-step-value">{value}</span>
+        <span className="home-step-main">
+          <span className="home-step-label">{label}</span>
+          <span className="home-step-value">{value}</span>
+        </span>
         <ArrowRight size={16} className="home-step-go" aria-hidden />
       </Link>
     </li>
@@ -445,13 +412,15 @@ function DoneStep({ label, value }: { label: string; value: string }) {
     <li>
       <div className="home-step home-step--done">
         <span className="home-step-icon" aria-hidden>
-          <Check size={18} />
+          <Check size={16} />
         </span>
-        <span className="home-step-label">
-          {label}
-          <span className="k-sr"> (done)</span>
+        <span className="home-step-main">
+          <span className="home-step-label">
+            {label}
+            <span className="k-sr"> (done)</span>
+          </span>
+          <span className="home-step-value">{value}</span>
         </span>
-        <span className="home-step-value">{value}</span>
       </div>
     </li>
   );
@@ -468,13 +437,13 @@ function PracticeStep({
 }) {
   if (due === undefined) {
     return (
-      <PlanStep icon={<Dumbbell size={18} />} to={{ to: "/practice" }} label="Practise" value="…" />
+      <PlanStep icon={<Dumbbell size={16} />} to={{ to: "/practice" }} label="Practise" value="…" />
     );
   }
   if (due > 0) {
     return (
       <PlanStep
-        icon={<Dumbbell size={18} />}
+        icon={<Dumbbell size={16} />}
         to={{ to: "/practice" }}
         label="Practise"
         value={`${fmt(due)} ${due === 1 ? "exercise" : "exercises"} due`}
@@ -485,7 +454,7 @@ function PracticeStep({
   if (answered > 0) return <DoneStep label="Practised today" value={`${fmt(answered)} answered`} />;
   return (
     <PlanStep
-      icon={<Dumbbell size={18} />}
+      icon={<Dumbbell size={16} />}
       to={{ to: "/practice" }}
       label="Practise new words"
       value={`${fmt(fresh)} new`}
@@ -537,7 +506,7 @@ function ExamStep() {
   }
   return (
     <PlanStep
-      icon={<ClipboardCheck size={18} />}
+      icon={<ClipboardCheck size={16} />}
       to={{ to: "/exam/$part", params: { part: next.part } }}
       label="Exam prep"
       value={next.label}
@@ -548,18 +517,30 @@ function ExamStep() {
 function CourseStep({
   course,
 }: {
-  course: { course: { id: string; title: string }; continueUnit: number | null } | undefined;
+  course:
+    | {
+        course: { id: string; title: string };
+        continueUnit: number | null;
+        continueTitle?: string;
+        continueKnown?: number | null;
+      }
+    | undefined;
 }) {
   if (!course || course.continueUnit === null) return null;
   return (
     <PlanStep
-      icon={<GraduationCap size={18} />}
+      icon={<GraduationCap size={16} />}
       to={{
         to: "/courses/$courseId/$unit",
         params: { courseId: course.course.id, unit: String(course.continueUnit) },
       }}
       label={course.course.title}
-      value={`Unit ${course.continueUnit}`}
+      value={
+        (course.continueTitle ?? `Unit ${course.continueUnit}`) +
+        (course.continueKnown != null
+          ? ` · ${Math.round(course.continueKnown * 100)}% of its words known`
+          : "")
+      }
     />
   );
 }
@@ -582,14 +563,16 @@ function ContinueCard({
   const done = Math.min(1, text.lastSegment / pages);
   const band = text.coverage !== null ? difficultyBand(text.coverage) : null;
   return (
-    <div className="home-continue-body">
-      <TextCover
-        title={text.title}
-        kind={coverKind(text.sourceKind, text.sourceRef)}
-        size="sm"
-        showLabel={false}
+    <div className="home-continue">
+      <Link
+        to="/read/$textId"
+        params={{ textId: text.id }}
         className="home-continue-cover"
-      />
+        tabIndex={-1}
+        aria-hidden
+      >
+        <TextCover title={text.title} kind={coverKind(text.sourceKind, text.sourceRef)} />
+      </Link>
       <div className="home-continue-main">
         <Link to="/read/$textId" params={{ textId: text.id }} className="home-continue-title">
           {text.title}
@@ -614,29 +597,32 @@ function ContinueCard({
             {excerpt}
           </p>
         ) : excerpt === null ? (
-          <Skeleton style={{ height: 44 }} />
+          <Skeleton style={{ height: 52 }} />
         ) : null}
-        <div className="home-continue-foot">
-          <div className="home-progress" hidden={!started}>
-            <div
-              className="home-bar"
-              role="progressbar"
-              aria-label="Pages read"
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-valuenow={Math.round(done * 100)}
-            >
-              <span style={{ transform: `scaleX(${done})` }} />
-            </div>
-            <span className="home-bar-label">{pct(done)} read</span>
+        <div className="home-progress" hidden={!started}>
+          <div
+            className="home-bar"
+            role="progressbar"
+            aria-label="Pages read"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={Math.round(done * 100)}
+          >
+            <span style={{ transform: `scaleX(${done})` }} />
           </div>
-          {started ? null : (
-            <span className="home-bar-label home-progress">
-              About {Math.max(1, Math.round(text.wordCount / 70))} min for the whole text
-            </span>
-          )}
+          <span className="home-bar-label">{pct(done)} read</span>
+        </div>
+        <div className="home-continue-foot">
           <Link to="/read/$textId" params={{ textId: text.id }} className="k-btn k-btn--primary">
             {started ? "Continue" : "Start reading"} <ArrowRight size={16} aria-hidden />
+          </Link>
+          {started ? null : (
+            <span className="home-bar-label">
+              About {Math.max(1, Math.round(text.wordCount / 70))} min
+            </span>
+          )}
+          <Link to="/library" className="k-link home-other">
+            Not this one? Library <ArrowRight size={14} aria-hidden />
           </Link>
         </div>
       </div>
@@ -660,11 +646,11 @@ function KnownWords({
       <div className="home-known-top">
         <ProgressRing
           value={coverage ?? 0}
-          size={104}
-          stroke={9}
+          size={88}
+          stroke={7}
           label="Share of the words in your texts you already know"
         >
-          <span className="home-ring-num">{coverage === null ? "–" : pct(coverage)}</span>
+          <span className="home-ring-num k-num">{coverage === null ? "–" : pct(coverage)}</span>
         </ProgressRing>
         <p className="home-known-caption">
           {coverage === null
@@ -672,88 +658,59 @@ function KnownWords({
             : `You know ${pct(coverage)} of the words in your texts.`}
         </p>
       </div>
-      <dl className="home-stats">
-        <div className="home-stat">
+      <dl className="k-stats home-stats">
+        <div>
           <dt>Known</dt>
-          <dd className="home-stat--known">
+          <dd className="k-num home-stat--known">
             <Link to="/words" search={{ state: "known" }}>
               {fmt(known)}
             </Link>
           </dd>
         </div>
-        <div className="home-stat">
+        <div>
           <dt>Learning</dt>
-          <dd>
+          <dd className="k-num">
             <Link to="/words" search={{ state: "learning" }}>
               {fmt(learning)}
             </Link>
           </dd>
         </div>
-        <div className="home-stat">
+        <div>
           <dt title="Estimated from your Anki collection">Vocabulary</dt>
-          <dd>{vocab === null ? "–" : fmt(vocab)}</dd>
+          <dd className="k-num">{vocab === null ? "–" : fmt(vocab)}</dd>
         </div>
       </dl>
-      <Link to="/progress" className="home-tile-link home-progress-link">
+      <Link to="/progress" className="k-link">
         View progress <ArrowRight size={14} aria-hidden />
       </Link>
     </div>
   );
 }
 
-const DAY_FMT = new Intl.DateTimeFormat("en-GB", { weekday: "narrow" });
-const DAY_LONG = new Intl.DateTimeFormat("en-GB", { weekday: "long" });
-
-/** Seven days of activity: a quiet bar per day (no streak guilt), totals below. */
-function WeekStrip({ days }: { days: ActivityDay[] }) {
-  const total = (d: ActivityDay) => d.pages + d.exercises + d.added;
-  const max = Math.max(1, ...days.map(total));
-  const sum = (k: "pages" | "exercises" | "added") => days.reduce((n, d) => n + d[k], 0);
-  // The strip ends today.
-  const todayKey = days.at(-1)?.date;
+/** This week in one quiet line (no streak guilt), linking to Progress. */
+function WeekLine({ days, pending }: { days: ActivityDay[] | undefined; pending: boolean }) {
+  const sum = (k: "pages" | "exercises" | "added") => (days ?? []).reduce((n, d) => n + d[k], 0);
   return (
-    <div className="home-week-body">
-      <ol className="home-days" aria-label="Activity per day">
-        {days.map((d) => {
-          const date = new Date(`${d.date}T12:00:00`);
-          const t = total(d);
-          const label = `${DAY_LONG.format(date)}: ${d.pages} pages, ${d.exercises} exercises, ${d.added} words added`;
-          return (
-            <li key={d.date} className="home-day" data-today={d.date === todayKey || undefined}>
-              <span className="home-day-track" title={label}>
-                <span
-                  className="home-day-fill"
-                  data-empty={t === 0 || undefined}
-                  style={{ transform: `scaleY(${t === 0 ? 0.06 : 0.15 + (0.85 * t) / max})` }}
-                />
-              </span>
-              <span className="home-day-name" aria-hidden>
-                {DAY_FMT.format(date)}
-              </span>
-              <span className="k-sr">{label}</span>
-            </li>
-          );
-        })}
-      </ol>
-      <dl className="home-week-totals">
-        <div>
-          <dt>Days active</dt>
-          <dd>{activeDays(days)}/7</dd>
-        </div>
-        <div>
-          <dt>Pages</dt>
-          <dd>{fmt(sum("pages"))}</dd>
-        </div>
-        <div>
-          <dt>Exercises</dt>
-          <dd>{fmt(sum("exercises"))}</dd>
-        </div>
-        <div>
-          <dt>Added</dt>
-          <dd>{fmt(sum("added"))}</dd>
-        </div>
-      </dl>
-    </div>
+    <section className="home-more-item" aria-labelledby="home-week-h">
+      <h3 className="home-more-label" id="home-week-h">
+        This week
+      </h3>
+      {pending ? (
+        <Skeleton style={{ height: 20 }} />
+      ) : days ? (
+        <Link to="/progress" className="home-more-link">
+          <span className="home-days" aria-hidden>
+            {days.map((d) => (
+              <span key={d.date} data-on={d.pages + d.exercises + d.added > 0 || undefined} />
+            ))}
+          </span>
+          {activeDays(days)} of 7 days active · {fmt(sum("pages"))} pages · {fmt(sum("exercises"))}{" "}
+          exercises
+        </Link>
+      ) : (
+        <p className="home-more-text">Your activity could not be loaded.</p>
+      )}
+    </section>
   );
 }
 
@@ -767,7 +724,7 @@ function RecentTexts({ texts, skip }: { texts: TextListItem[]; skip: string | un
       <Empty
         text="Texts you add show up here as a small shelf."
         action={
-          <Link to="/import" className="home-tile-link">
+          <Link to="/import" className="k-link">
             <Plus size={14} aria-hidden /> Import a text
           </Link>
         }
@@ -778,17 +735,24 @@ function RecentTexts({ texts, skip }: { texts: TextListItem[]; skip: string | un
     <ul className="home-shelf">
       {recent.map((t) => (
         <li key={t.id}>
-          <Link to="/read/$textId" params={{ textId: t.id }} className="home-shelf-item">
+          <Link
+            to="/read/$textId"
+            params={{ textId: t.id }}
+            className="home-shelf-item"
+            aria-label={`${t.title}${t.coverage === null ? "" : `, ${pct(t.coverage)} known`}`}
+          >
             <TextCover
               title={t.title}
               kind={coverKind(t.sourceKind, t.sourceRef)}
               coverage={t.coverage}
+              showPercent
+              showLabel={false}
               size="sm"
             />
-            <span className="home-shelf-title">{t.title}</span>
             <span className="home-shelf-meta">
-              {t.coverage === null ? "Not analysed" : `${pct(t.coverage)} known`}
-              {t.lastSegment > 0 ? ` · page ${pagesOf(t).page}` : ""}
+              {t.lastSegment > 0
+                ? `Page ${pagesOf(t).page} of ${pagesOf(t).pages}`
+                : `${fmt(t.wordCount)} words`}
             </span>
           </Link>
         </li>
@@ -806,41 +770,37 @@ function GrammarSuggestion() {
     staleTime: 60_000,
     retry: false,
   });
-  if (overview.isPending) return <Skeleton style={{ height: 80 }} />;
-  let best: { id: string; title: string; summary: string; hits: number; texts: number } | null =
-    null;
-  for (const topic of grammarTopics()) {
+  let best: { id: string; title: string; hits: number; texts: number } | null = null;
+  for (const topic of overview.data ? grammarTopics() : []) {
     const c = topicCount(topic, overview.data);
     if (c && c.hits > 0 && (!best || c.hits > best.hits)) {
-      best = { id: topic.id, title: topic.title, summary: topic.summary, ...c };
+      best = { id: topic.id, title: topic.title, ...c };
     }
   }
-  if (!best) {
-    return (
-      <Empty
-        text="Once your texts are analysed, the construction you meet most shows up here."
-        action={
-          <Link to="/grammar" className="home-tile-link">
-            <BookText size={14} aria-hidden /> Browse grammar
-          </Link>
-        }
-      />
-    );
-  }
   return (
-    <div className="home-grammar-body">
-      <Link to="/grammar/$topic" params={{ topic: best.id }} className="home-grammar-title">
-        {best.title}
-      </Link>
-      <p className="home-muted home-small home-clamp">{best.summary}</p>
-      <p className="home-meta">
-        Seen {fmt(best.hits)} {best.hits === 1 ? "time" : "times"} in {fmt(best.texts)}{" "}
-        {best.texts === 1 ? "text" : "texts"}
-      </p>
-      <Link to="/grammar/$topic" params={{ topic: best.id }} className="home-tile-link">
-        Open topic <ArrowRight size={14} aria-hidden />
-      </Link>
-    </div>
+    <section className="home-more-item" aria-labelledby="home-grammar-h">
+      <h3 className="home-more-label" id="home-grammar-h">
+        Grammar in your texts
+      </h3>
+      {overview.isPending ? (
+        <Skeleton style={{ height: 20 }} />
+      ) : best ? (
+        <Link to="/grammar/$topic" params={{ topic: best.id }} className="home-more-link">
+          <BookText size={14} aria-hidden />
+          <span>
+            {best.title}
+            <span className="home-more-quiet">
+              {" "}
+              · seen {fmt(best.hits)} {best.hits === 1 ? "time" : "times"}
+            </span>
+          </span>
+        </Link>
+      ) : (
+        <Link to="/grammar" className="home-more-link">
+          <BookText size={14} aria-hidden /> Browse grammar
+        </Link>
+      )}
+    </section>
   );
 }
 
@@ -848,94 +808,71 @@ function GrammarSuggestion() {
 function TalkPrompt({ words, topic }: { words: string[]; topic: string | undefined }) {
   const services = useServices();
   const status = useQuery({ queryKey: ["ai-status"], queryFn: () => services.aiStatus() });
-  if (status.isPending) return <Skeleton style={{ height: 80 }} />;
-  if (!status.data?.configured) {
-    return (
-      <Empty
-        text="Chat in Dutch about what you read, within the words you know. Talk uses your own AI provider."
-        action={
-          <Link to="/settings" search={{ section: "ai" }} className="home-tile-link">
-            <SettingsIcon size={14} aria-hidden /> Set up AI
-          </Link>
-        }
-      />
-    );
-  }
   return (
-    <div className="home-talk-body">
-      <p className="home-talk-q">
-        {topic ? (
-          <>
-            A short chat about <span className="home-text-ref">{topic}</span>
-          </>
-        ) : (
-          "A short chat in Dutch"
-        )}
-        {words.length ? (
-          <>
-            , using{" "}
-            {words.map((w, i) => (
-              <span key={w}>
-                <span className="home-inline-word" lang="nl">
-                  {w}
-                </span>
-                {i < words.length - 2 ? ", " : i === words.length - 2 ? " and " : ""}
-              </span>
-            ))}
-          </>
-        ) : null}
-        {"."}
-      </p>
-      <Link
-        to="/talk"
-        search={{
-          ...(words.length ? { words: words.join(",") } : {}),
-          ...(topic ? { topic } : {}),
-        }}
-        className="home-tile-link"
-      >
-        <MessagesSquare size={14} aria-hidden /> Start talking
-      </Link>
-    </div>
+    <section className="home-more-item" aria-labelledby="home-talk-h">
+      <h3 className="home-more-label" id="home-talk-h">
+        Talk about it
+      </h3>
+      {status.isPending ? (
+        <Skeleton style={{ height: 20 }} />
+      ) : !status.data?.configured ? (
+        <Link to="/settings" search={{ section: "ai" }} className="home-more-link">
+          <SettingsIcon size={14} aria-hidden /> Set up AI to chat about what you read
+        </Link>
+      ) : (
+        <Link
+          to="/talk"
+          search={{
+            ...(words.length ? { words: words.join(",") } : {}),
+            ...(topic ? { topic } : {}),
+          }}
+          className="home-more-link"
+        >
+          <MessagesSquare size={14} aria-hidden />
+          <span>
+            {topic ? `Start talking about ${topic}` : "Start talking in Dutch"}
+            {words.length ? (
+              <span className="home-more-quiet"> · using {words.join(", ")}</span>
+            ) : null}
+          </span>
+        </Link>
+      )}
+    </section>
   );
 }
 
 /** A brand-new learner: no texts and no words yet. */
 function Welcome({ hello }: { hello: string }) {
   return (
-    <div className="page page--narrow home home-welcome">
-      <Logo variant="mark" size={56} coverage={0.75} title="Kenning" />
-      <h1 className="home-hello">{hello}</h1>
-      <p className="page-lede">
-        Kenning helps you read Dutch with the words you already know. Two steps to start:
-      </p>
-      <ol className="home-steps home-steps--welcome">
+    <div className="page page--read home home-welcome">
+      <Logo variant="mark" size={48} coverage={0.75} title="Kenning" />
+      <PageHeader
+        title={hello}
+        lede="Kenning helps you read Dutch with the words you already know. Two steps to start:"
+      />
+      <ol className="k-list">
         <li>
-          <Link to="/settings" search={{ section: "language" }} className="home-step">
-            <span className="home-step-icon" aria-hidden>
-              <SettingsIcon size={18} />
+          <Link to="/settings" search={{ section: "language" }} className="k-row">
+            <SettingsIcon size={16} className="k-row-go" aria-hidden />
+            <span className="k-row-main">
+              <span className="k-row-title">Connect Anki</span>
+              <span className="k-row-hint">Your decks tell Kenning which words you know.</span>
             </span>
-            <span className="home-step-label">
-              Connect Anki
-              <span className="home-step-hint">Your decks tell Kenning which words you know.</span>
-            </span>
-            <ArrowRight size={16} className="home-step-go" aria-hidden />
+            <ArrowRight size={16} className="k-row-go" aria-hidden />
           </Link>
         </li>
         <li>
-          <Link to="/import" className="home-step">
-            <span className="home-step-icon" aria-hidden>
-              <BookOpen size={18} />
+          <Link to="/import" className="k-row">
+            <BookOpen size={16} className="k-row-go" aria-hidden />
+            <span className="k-row-main">
+              <span className="k-row-title">Import a text</span>
+              <span className="k-row-hint">Paste an article, add a web page or a PDF.</span>
             </span>
-            <span className="home-step-label">
-              Import a text
-              <span className="home-step-hint">Paste an article, add a web page or a PDF.</span>
-            </span>
-            <ArrowRight size={16} className="home-step-go" aria-hidden />
+            <ArrowRight size={16} className="k-row-go" aria-hidden />
           </Link>
         </li>
       </ol>
-      <p className="home-muted">
+      <p className="home-note">
         Not set up yet? <Link to="/welcome">Run the guided setup</Link>.
       </p>
     </div>

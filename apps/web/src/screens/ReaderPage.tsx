@@ -1,5 +1,6 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "@tanstack/react-router";
+import { Check } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
@@ -444,24 +445,28 @@ export function ReaderPage({ textId }: { textId: string }) {
         ) : null}
         {mode === "gloss" && plan.clozes.length > 0 ? (
           <div className="reader-tool">
-            <Button
-              variant={blanks ? "primary" : "secondary"}
+            <button
+              type="button"
+              className="k-toggle k-toggle--sm"
               aria-pressed={blanks}
               onClick={() => saveSettings.mutate({ glossClozes: !blanks })}
             >
+              {blanks ? <Check size={14} aria-hidden /> : null}
               {blanks ? "Blanks on" : "Blanks off"}
-            </Button>
+            </button>
           </div>
         ) : null}
         <div className="reader-tool">
-          <Button
-            variant={spotlightsOn ? "primary" : "secondary"}
+          <button
+            type="button"
+            className="k-toggle k-toggle--sm"
             aria-pressed={spotlightsOn}
             title="Underline grammar constructions; click a word to see its grammar"
             onClick={() => saveSettings.mutate({ grammarSpotlights: !spotlightsOn })}
           >
+            {spotlightsOn ? <Check size={14} aria-hidden /> : null}
             Grammar
-          </Button>
+          </button>
           {spotlightsOn && grammarQ.isError ? (
             <span className="k-hint" role="status">
               Unavailable: the language server is unreachable

@@ -2,39 +2,49 @@
 id: imperative
 title: The imperative
 level: A1
-summary: A request or command uses the stem of the verb, first in the sentence, without a subject.
+group: verbs
+order: 13
+summary: For a command, use the stem of the verb at the start of the sentence, without a subject; small words like even and maar make it friendlier.
 detects: [imperative]
 practice: [scramble]
-related: [word-order-v2, separable-verbs, modal-verbs]
+related: [present-tense, separable-verbs, modal-particles, modal-verbs]
 ---
 
 ## Explanation
 
-The imperative is the **stem** of the verb, the same form as with _ik_: _komen → kom_, _luisteren → luister_, _zitten → zit_. It is the same for one person and for several.
+To tell someone to do something, use the **stem** of the verb (the _ik_ form) and put it **first**. There is no subject: _Kom hier!_, _Luister!_. The form is the same for one person or more.
 
-The verb comes **first**, there is no subject, and the rest of the sentence keeps its usual order. A separable verb puts its particle at the end: _Bel me morgen op_. _Niet_ follows the normal rules: _Rook hier niet_.
+The rest of the sentence keeps its normal order. A separable verb sends its particle to the end: _Doe het licht uit._ _Niet_ follows the normal rules: _Vergeet het niet._
 
-Two verbs are irregular: _zijn → wees_ (_Wees voorzichtig_) and, less often, _hebben → heb_ (_Heb geduld_).
+_zijn_ is irregular: **wees** (_Wees voorzichtig!_).
 
-A bare imperative can sound abrupt. Small words make it friendlier:
+A bare command can sound rude. Dutch softens it with small words:
 
-- _maar_ encourages: _Kom maar binnen_;
-- _even_ makes it light and short: _Wacht even_;
-- _alsjeblieft_ or _alstublieft_ (formal) means "please".
+- **even** — "just quickly": _Wacht even._
+- **maar** — "go ahead": _Ga maar zitten._
+- **eens** — "why don't you": _Kijk eens!_
+- **alsjeblieft** / **alstublieft** (polite) — "please".
 
-For a polite request to someone you address with _u_, use the _u_-form: _Komt u binnen_, or a question: _Kunt u even wachten?_
+To be polite to someone you call _u_, ask a question (_Kunt u even helpen?_) or add _u_ after the verb (_Komt u binnen_). On signs and in recipes you often see the infinitive: _Niet roken_, _Langzaam roeren_.
+
+### Pattern
+
+- stem first, no subject → _Kom binnen!_
+- separable verb: particle at the end → _Doe de deur dicht._
+- softer: `stem + even / maar / eens` → _Wacht even._
+- `zijn` → _Wees …_
 
 ## Examples
 
 - **Kom** maar binnen. | Do come in.
-- **Wacht** even op mij. | Wait for me a moment.
-- **Bel** me morgen **op**. | Call me tomorrow.
-- **Doe** de deur dicht, alsjeblieft. | Close the door, please.
-- **Wees** voorzichtig. | Be careful.
-- **Rook** hier niet. | Do not smoke here.
+- **Wacht** even, ik kom zo. | Wait a moment, I am coming.
+- **Doe** de deur **dicht**, alsjeblieft. | Close the door, please.
+- **Wees** niet bang. | Do not be afraid.
+- **Bel** me morgen even **op**. | Give me a call tomorrow.
+- **Vergeet** je jas niet! | Do not forget your coat!
 
 ## Common mistakes
 
-- Adding -t when talking to one person: _Komt binnen_. The imperative is the stem: _Kom binnen_.
-- Keeping a separable verb together: _Opbel me morgen_. The particle goes to the end: _Bel me morgen op_.
-- _Ben stil_. The imperative of _zijn_ is _wees_: _Wees stil_.
+- Adding -t: _Komt hier!_ Use the stem: _Kom hier!_
+- Keeping a separable verb together: _Opbel me._ The particle goes to the end: _Bel me op._
+- _Ben stil._ The command of zijn is _Wees stil._

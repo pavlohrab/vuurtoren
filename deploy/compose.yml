@@ -18,6 +18,12 @@ services:
     environment:
       # Server-side support is kept; leave unset unless you call the service from another origin.
       KENNING_CORS_ORIGINS: ${KENNING_CORS_ORIGINS:-}
+      # Recognised course pages, so re-importing a book (or resuming after a restart) skips OCR.
+      KENNING_COURSE_CACHE_DIR: /cache/course
+      # Parallel Tesseract processes for course imports (default: half the CPUs, at most 6).
+      KENNING_OCR_WORKERS: ${KENNING_OCR_WORKERS:-}
+    volumes:
+      - kenning-ocr-cache:/cache
     networks: [internal]
 
   # Your data: ONE SQLite file on the kenning-data volume, shared by every device (ADR 0008).
@@ -102,3 +108,4 @@ networks:
 volumes:
   caddy-data: {}
   kenning-data: {}
+  kenning-ocr-cache: {}

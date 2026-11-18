@@ -46,8 +46,15 @@ export interface Detection {
   confidence: number;
 }
 
-/** Languages Tesseract can read via `/ocr` (nl -> nld, uk -> ukr, en -> eng). */
-export type OcrLang = "nl" | "uk" | "en";
+/**
+ * Languages Tesseract can read via `/ocr` and `/course/ocr` (nl -> nld, uk -> ukr, en -> eng,
+ * de -> deu, ...); the server reports a missing language pack with an install hint.
+ */
+export type OcrLang = "nl" | "uk" | "en" | "de" | "fr" | "es" | "it" | "pt" | "sv" | "da" | "pl";
+
+/** True when `lang` is a code the OCR endpoints accept. */
+export const isOcrLang = (lang: string): lang is OcrLang =>
+  ["nl", "uk", "en", "de", "fr", "es", "it", "pt", "sv", "da", "pl"].includes(lang);
 
 export interface UrlExtraction {
   title: string;
@@ -86,6 +93,12 @@ export interface CourseOcrStatus {
   error: string | null;
   done: number;
   total: number;
+  /** Pages that needed no OCR (cache hits, text layer, EPUB). */
+  cached?: number;
+  /** Seconds since the job started. */
+  elapsed?: number;
+  /** Estimated seconds left, or null before there is a pace. */
+  eta?: number | null;
   pages: CoursePage[];
 }
 
@@ -232,11 +245,20 @@ export class NlpClient {
 
   private async request<T>(path: string, init: RequestInit = {}): Promise<T> {
     let res: Response;
-    try {
-      res = await this.fetchImpl(`${this.url}${path}`, {
+    const send = () =>
+      this.fetchImpl(`${this.url}${path}`, {
         ...init,
         signal: AbortSignal.timeout(this.timeoutMs),
       });
+    try {
+      try {
+        res = await send();
+      } catch (e) {
+        // A kept-alive connection the server already closed fails once ("fetch failed"); every
+        // JSON endpoint is a pure function, so one retry is safe. Uploads are not retried.
+        if (!(e instanceof TypeError) || init.body instanceof FormData) throw e;
+        res = await send();
+      }
     } catch (e) {
       const timedOut = e instanceof DOMException && e.name === "TimeoutError";
       throw new NlpError(

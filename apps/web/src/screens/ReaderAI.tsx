@@ -99,14 +99,14 @@ export function SimplifyPage({ text }: { text: string }) {
             }}
           >
             <div>
-              <h3 style={{ fontSize: 14, margin: "0 0 4px" }}>Original</h3>
-              <p lang="nl" style={{ whiteSpace: "pre-wrap", margin: 0 }}>
+              <h3 className="reader-ai-h">Original</h3>
+              <p lang="nl" className="reader-ai-text">
                 {text}
               </p>
             </div>
             <div>
-              <h3 style={{ fontSize: 14, margin: "0 0 4px" }}>Simplified</h3>
-              <p lang="nl" style={{ whiteSpace: "pre-wrap", margin: 0 }}>
+              <h3 className="reader-ai-h">Simplified</h3>
+              <p lang="nl" className="reader-ai-text">
                 {simplify.data.simplified}
               </p>
             </div>

@@ -23,7 +23,7 @@ All faces are self-hosted via Fontsource (no Google CDN, for privacy).
 
 - `--font-display` is `"Instrument Sans Variable", "Inter Variable", system-ui`. Instrument Sans has no Cyrillic, so Ukrainian headings render glyph by glyph in Inter, which matches its proportions closely. Checked: the Fontsource package ships `latin` and `latin-ext` subsets only.
 - Literata stays the reading face: Newsreader (considered in the proposal) has no Cyrillic, and Ukrainian is planned.
-- Scale: 12 · 14 · 16 · 20 · 24 · 30 · 40. Headings never all caps except the tiny overline labels (`.k-overline`, 11px, +0.06em). Text titles (Library cards' book titles, Continue reading) use Literata, because they are Dutch text.
+- Scale: 12 · 14 · 16 · 20 · 24 · 30 · 40. Headings never all caps except the tiny overline labels (`.k-overline`, 11px, +0.06em). Literata is **only** for Dutch reading text (the reader, excerpts, example sentences, chat bubbles) and text titles (covers, Continue reading). Single Dutch words in UI (chips, table lemmas, the inspector headword) are Inter 500, never serif. See _Type roles_ below.
 
 ## Color tokens
 
@@ -70,9 +70,9 @@ Never use bright highlighter blocks. Violet is never a word state: it means "you
 
 ## Shape, depth, motion
 
-- Spacing on a 4px grid (4, 8, 12, 16, 20, 24, 32, 48).
-- Radius: 8px controls, 14px cards and dialogs, 999px chips.
-- 1px borders do the separation; shadows only on popovers, dialogs (`--shadow-pop`) and hovered cards (`--shadow-lift`).
+- Spacing: the 8px scale in **Layout & composition** below.
+- Radius: 8px controls, 12px covers, 14px surfaces and dialogs, 999px chips.
+- Hairlines (`--hairline`, ink at ~8%) do the separation; `--line` is for control borders. Shadows only on popovers, dialogs (`--shadow-pop`) and hovered covers (`--shadow-lift`).
 - Icons: **Lucide**, 1.5px stroke, 16/18/20px.
 
 ### Motion budget
@@ -103,6 +103,89 @@ The **coverage ring**: a lowercase k inside a ring that is three-quarters comple
 - Clear space: one ring stroke on every side. Minimum size 16px. Wordmark size is 0.74 × the mark, gap 0.34 × the mark.
 - Don't: recolour the k, close the ring, rotate the gap, put the mark on the accent colour, or add effects.
 - Files in `apps/web/public`: `favicon.svg` (16 grid, light/dark through `prefers-color-scheme` inside the SVG), `favicon-16.png` / `favicon-32.png` (the mark on the dark rounded lamp tile, so it reads on light and dark tab bars), `apple-touch-icon.png` (180, mark on the dark lamp tile), `icon-192.png` / `icon-512.png` (rounded tile), `icon-maskable-512.png`, `logo-mark.svg`, `manifest.webmanifest`.
+
+## Layout & composition (polish 3, 2026-11-18)
+
+One set of rules for every screen, so the app reads as one product.
+
+### Spacing
+
+An 8px scale with one 4px half-step. Tokens on `:root`: `--s-1` 4 · `--s-2` 8 · `--s-3` 12 · `--s-4` 16 · `--s-5` 24 · `--s-6` 32 · `--s-7` 48 · `--s-8` 64. Use only these.
+
+| Between                              | Space                                        |
+| ------------------------------------ | -------------------------------------------- |
+| label and its control, icon and text | 4–8                                          |
+| items in a list row, chips in a row  | 8                                            |
+| a section header and its content     | 16                                           |
+| page header and the first section    | 32                                           |
+| sections on a page                   | 48 (32 phone)                                |
+| page padding                         | 32 top, 24 sides, 64 bottom (24/16/96 phone) |
+
+### Grid and content widths
+
+A 12-column grid, 24px gutters (16px on phones). Every page sits in one centred `.page` column whose width depends on the page type, so the header lands on the same edge on every page of that type:
+
+| Page type         | Width                   | Screens                                                                |
+| ----------------- | ----------------------- | ---------------------------------------------------------------------- |
+| Dashboard / shelf | `--w-wide` 1200px       | Home, Library, Progress, Courses                                       |
+| List / form       | `--w-list` 960px        | Words, Practice, Grammar, Talk, Settings, Import, Words from this text |
+| Reading           | `--w-read` 68ch (44rem) | Reader, Grammar topic prose column, onboarding, sign-in card           |
+
+Inside a page, split the grid only as 12, 8 + 4, 7 + 5 or 6 + 6. No rows with different splits stacked on one another without a section header between them. Below 900px everything is one column.
+
+### Surfaces
+
+A surface (`--surface` fill, hairline edge, 14px radius) only **groups interactive objects**: a dialog, the inspector, a popover, a cover, a form card that saves as one. Everything else — stats, explanations, steps, lists, settings rows — lives on the page with whitespace, type and hairline dividers. Never nest a surface inside a surface. Filled tints (`--accent-soft`, `--learn-soft`) are for state (selected, word to learn), not decoration.
+
+### Page header (`PageHeader`)
+
+Every top-level screen, Home included: h1 (Instrument Sans 600, 28px, 24 on phones), one muted line on what the page is for (max 62ch), actions on the right (at most one primary, plus up to two secondary or ghost). No border under it. Home's h1 is the greeting. Sub-pages (Grammar topic, Words from this text) use the same header with a back link above the title.
+
+### Section header (`SectionHeader`)
+
+h2 in Instrument Sans 600, 17px, ink; optional quiet link on the right (`.k-link`: accent text + 14px arrow). No caps overlines as section heads; `.k-overline` is only for tiny labels inside a component (inspector rows, cover kind).
+
+### Lists
+
+`.k-list`: rows separated by hairlines, no outer box, min row height 48px (56 with a hint line), 12px vertical padding, the row is the link with a chevron or arrow at the end. Tables (Words) follow the same look: hairline rows, 12px caps-free muted header.
+
+### Buttons and links
+
+- **Primary** (filled accent): one per view — the thing most people came to do (Continue reading on Home, Import on Library, Start on Practice, Apply on Words from this text).
+- **Secondary** (hairline outline): other actions in the header or a form.
+- **Ghost**: tools in rows (icons), cancel in dialogs next to a primary.
+- **Quiet link** (`.k-link`): navigation to another place ("All words →"). One style everywhere.
+- Destructive actions use `danger` only inside a confirming dialog.
+
+### Chips
+
+One shape: 24px tall, pill, Inter 12.5px, hairline edge. Tones: neutral, accent, known (sage), learn (apricot). Word chips (`.k-word-chip`, clickable Dutch words) are 32px tall, Inter 14px 500, with the article muted. Toggle chips (`.k-toggle`, Practice options) show selection with an accent-soft fill, accent edge and a check — never a solid accent fill (that is the primary button).
+
+### Type roles
+
+| Role                      | Face / size                                                                                     |
+| ------------------------- | ----------------------------------------------------------------------------------------------- |
+| Page title                | Instrument Sans 600, 28 / 24 phone                                                              |
+| Section title             | Instrument Sans 600, 17                                                                         |
+| Text title (covers, hero) | Literata 500, 15–32                                                                             |
+| Reading text, excerpts    | Literata 400, 17–20                                                                             |
+| UI, labels, chips, lemmas | Inter 400/500, 13–15                                                                            |
+| Meta                      | Inter 13, `--ink-muted`                                                                         |
+| Numbers                   | `.k-num`: Instrument Sans 600, tabular, 28 (stat) / 20 (inline stat); label below in 13px muted |
+
+### Covers
+
+`TextCover` is typographic: a flat tint by source kind (paste and AI: honey, web and photo: sage, PDF and course: apricot, talk: neutral) with a darker spine on the left, the source icon and kind at the top, the title in Literata at the bottom and the coverage as a thin sage line on the bottom edge (with the percentage when there is no meter next to it). Portrait 4:5 everywhere: Library shelf, Home hero and Recent texts. No generated patterns.
+
+### Empty, loading, error
+
+- Empty: `EmptyState` left-aligned inside the section it replaces (icon 20px, one sentence, one action). Full-page empty only when the whole page is empty.
+- Loading: skeletons in the shape of the content; no "Loading…" text except in buttons.
+- Error: `ErrorNotice` (hairline box with danger edge, what happened, what to try).
+
+### Icons
+
+Lucide, 1.5 stroke: 16 in buttons and rows, 14 in quiet links and chips, 20 in empty states, 18 in nav. No filled icon wells except the nav active state.
 
 ## Components
 
@@ -143,10 +226,10 @@ Domain components:
 
 ## Screens
 
-- **Home** (`/`, first screen): a 12-column dashboard (max 1200px, 24px gutters, every tile with an eyebrow header and an optional action on the right). Dutch greeting with quick actions on the title row (Import, Create a story, Talk); the top bar shows the date. Tiles: Continue reading (cover, excerpt in Literata, pages read, coverage chip, "Not this one? Library"), Your words (ring = share of the words in your texts you know, known / learning / vocabulary linking to Words), Today (practise, words waiting for Anki, course unit; done steps get a check), Words to learn now (amber chips that open the inspector in Words), This week (activity per day, no streak guilt), Recent texts, Grammar in your texts, Talk about it. A brand-new learner sees two first steps (Connect Anki, Import a text) instead.
+- **Home** (`/`, first screen): calm and editorial, not a dashboard; four groups above the fold. (1) The page header: Dutch greeting, "You know N Dutch words", Import and Create a story. (2) Continue reading without a box (cover, Literata title, two-line excerpt, progress, the one primary button) next to a quiet column behind a hairline: the known-words ring and three numbers. (3) Today: two or three steps as one list with hairline dividers (practise, words waiting for Anki, course unit; done steps get a check). (4) Words to learn now (Inter word chips) and Recent texts (covers). Below: one quiet "More for today" line (grammar topic in your texts, Talk about the text, this week). A brand-new learner sees two first steps (Connect Anki, Import a text) instead.
 - **Sign-in**: a small landing: the mark, the wordmark, one sentence on what Kenning does, then the form.
 - **Onboarding** (`/welcome`): connect AnkiConnect, choose decks and fields, language profile.
-- **Library:** a shelf of cards with a generated cover per source kind (paste, web page, PDF, photo, AI story, course text, conversation), coverage on the cover edge, new-word count, difficulty band and Continue · page N of M for texts in progress.
+- **Library:** a shelf of typographic covers (4:5, tinted by source kind), each with words, new words, a whole-text coverage meter, "Continue · page N of M" as a quiet link for texts in progress, and ghost tools (words, delete). No boxes around the items.
 - **Import:** paste, URL, PDF, photo; editable OCR preview.
 - **Reader:** read / cloze / gloss modes; the end of a text shows a calm completion panel (new words met, in Anki, still to decide) leading to Words from this text, Practise these words, Talk about this text and Next text.
 - **Practice:** one exercise per screen; keys 1–4, Enter, Esc.

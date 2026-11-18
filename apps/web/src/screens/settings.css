@@ -1,8 +1,8 @@
 /* Settings: sub-nav on the left, one section at a time, autosave. */
 .settings-layout {
   display: grid;
-  grid-template-columns: 260px minmax(0, 1fr);
-  gap: 32px;
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: var(--s-7);
   align-items: start;
 }
 .settings-nav {
@@ -45,23 +45,20 @@
 .settings-nav-go {
   display: none;
 }
+/* The section sits on the page (no box): a section header, then rows and fields. */
 .settings-panel {
   min-width: 0;
-  max-width: 44rem;
-  padding: 24px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-card);
-  background: var(--surface);
+  max-width: var(--w-read);
 }
 .settings-panel-head {
-  margin-bottom: 20px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid var(--line);
+  margin-bottom: var(--s-5);
+  padding-bottom: var(--s-4);
+  border-bottom: 1px solid var(--hairline);
 }
 .settings-panel-head h2 {
   margin: 0 0 4px;
   font-family: var(--font-display);
-  font-size: 20px;
+  font-size: 17px;
   font-weight: 600;
 }
 .settings-panel-head p {
@@ -122,10 +119,10 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding: 16px;
-  border: 1px solid var(--line);
+  padding: var(--s-4);
+  border: 1px solid var(--hairline);
   border-radius: var(--radius-card);
-  background: var(--bg);
+  background: var(--surface);
 }
 .anki-conn-head {
   display: flex;
@@ -164,15 +161,16 @@
     grid-template-columns: minmax(0, 1fr);
     gap: 16px;
   }
+  /* Phones: the section list is a hairline list like every other list. */
   .settings-nav {
     position: static;
-    border: 1px solid var(--line);
-    border-radius: var(--radius-card);
-    background: var(--surface);
-    padding: 4px;
+    gap: 0;
+    border-top: 1px solid var(--hairline);
   }
   .settings-nav-item {
-    padding: 12px;
+    padding: var(--s-3) var(--s-1);
+    border-radius: 0;
+    border-bottom: 1px solid var(--hairline);
   }
   .settings-nav-text small {
     display: block;
@@ -208,7 +206,10 @@
     text-decoration: none;
     font-size: 14px;
   }
-  .settings-panel {
-    padding: 16px;
-  }
+}
+.settings-h3 {
+  font-size: 15px;
+  margin: var(--s-4) 0 0;
+  padding-top: var(--s-5);
+  border-top: 1px solid var(--hairline);
 }

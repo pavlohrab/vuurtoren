@@ -7,6 +7,7 @@ import { useServices } from "../services/context.js";
 import type { TextListItem } from "../services/types.js";
 import { CreateStoryButton } from "./StoryDialog.js";
 import { PageHeader } from "../shell/PageHeader.js";
+import { ErrorNotice } from "../shell/ErrorNotice.js";
 import { pagesOf } from "../textPages.js";
 
 /** Page to continue on for a text that is started and not finished; null otherwise. */
@@ -63,13 +64,17 @@ export function Library() {
       ) : null}
 
       {texts.isPending ? (
-        <div className="card-grid" aria-busy>
-          {[0, 1, 2].map((i) => (
-            <Skeleton key={i} style={{ height: 260, borderRadius: 14 }} />
+        <div className="shelf" aria-busy>
+          {[0, 1, 2, 3].map((i) => (
+            <Skeleton key={i} style={{ aspectRatio: "4 / 5", borderRadius: 12 }} />
           ))}
         </div>
       ) : texts.isError ? (
-        <p className="error-text">The library could not be loaded. {String(texts.error)}</p>
+        <ErrorNotice
+          title="The library could not be loaded."
+          error={texts.error}
+          onRetry={() => void texts.refetch()}
+        />
       ) : texts.data.length === 0 ? (
         <EmptyState
           icon={<LibraryIcon size={28} />}
@@ -82,7 +87,7 @@ export function Library() {
           }
         />
       ) : (
-        <div className="card-grid">
+        <div className="shelf">
           {texts.data.map((t) => (
             <TextCard
               key={t.id}
@@ -111,8 +116,10 @@ export function Library() {
           pendingDelete ? `"${pendingDelete.title}" will be removed from your library.` : ""
         }
       >
-        <div className="row" style={{ justifyContent: "flex-end" }}>
-          <Button onClick={() => setPendingDelete(null)}>Cancel</Button>
+        <div className="k-dialog-actions">
+          <Button variant="ghost" onClick={() => setPendingDelete(null)}>
+            Cancel
+          </Button>
           <Button
             variant="danger"
             onClick={() => {

@@ -1,8 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { CoverageMeter, Skeleton } from "@app/ui";
+import { useState } from "react";
+import { Button, CoverageMeter, Skeleton } from "@app/ui";
 import { useServices } from "../../services/context.js";
 import type { UnitRow } from "../../services/courseTypes.js";
+import { AddWordsDialog } from "./AddWordsDialog.js";
 import "./courses.css";
 
 const pct = (v: number) => `${Math.round(v * 100)}%`;
@@ -54,6 +56,7 @@ function UnitLine({ courseId, row }: { courseId: string; row: UnitRow }) {
 /** One course: its units with progress, and the way back to the outline editor. */
 export function CourseRoute({ courseId }: { courseId: string }) {
   const services = useServices();
+  const [adding, setAdding] = useState(false);
   const course = useQuery({
     queryKey: ["course", courseId],
     queryFn: () => services.course(courseId),
@@ -76,6 +79,7 @@ export function CourseRoute({ courseId }: { courseId: string }) {
     );
   }
   const { units, course: c, ankiReady } = course.data;
+  const missing = units.reduce((n, r) => n + r.status.missing, 0);
   const next = units.find(
     (r) =>
       r.unit.kind === "theme" &&
@@ -93,14 +97,13 @@ export function CourseRoute({ courseId }: { courseId: string }) {
               params={{ courseId, unit: String(next.unit.n) }}
               className="k-btn k-btn--primary"
             >
-              Continue {next.unit.title.split(" ").slice(0, 2).join(" ")}
+              Continue with {next.unit.title}
             </Link>
           ) : null}
-          <Link
-            to="/courses/$courseId/edit"
-            params={{ courseId }}
-            className="k-btn k-btn--secondary"
-          >
+          {missing > 0 ? (
+            <Button onClick={() => setAdding(true)}>Add all course words to Anki…</Button>
+          ) : null}
+          <Link to="/courses/$courseId/edit" params={{ courseId }} className="k-btn k-btn--ghost">
             Edit outline
           </Link>
         </div>
@@ -113,6 +116,9 @@ export function CourseRoute({ courseId }: { courseId: string }) {
         <div className="banner" role="note">
           <span>Sync Anki in Settings to see how much of each unit you already know.</span>
         </div>
+      ) : null}
+      {adding ? (
+        <AddWordsDialog courseId={courseId} scope="all" open={adding} onOpenChange={setAdding} />
       ) : null}
       <ul className="cs-list" style={{ gap: 0 }}>
         {units.map((row) => (

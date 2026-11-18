@@ -5,15 +5,22 @@
  */
 import { footerTheme } from "./outline.js";
 import type { Block, BlockKind, OcrPage, Unit } from "./types.js";
+import { EXERCISE_WORDS, UNIT_WORD_SRC } from "./vocab.js";
 
 /** Skill labels the book prints in front of an exercise header. */
 const SKILL = String.raw`(?:Luisteren en spreken|Luisteren en schrijven|Luisteren|Lezen|Spreken of schrijven|Spreken en schrijven|Spreken|Schrijven|Woordenschat|Grammatica|Uitspraak|Kijken|Spelling|Vocabulaire|Lezen en schrijven|Lezen en spreken)`;
 /** Up to two junk tokens (icons the OCR read as symbols or stray capitals) may precede the header. */
 const HEADER_RE = new RegExp(
-  String.raw`^(?:(?:[^\p{Ll}\s]{1,3}|\p{Ll})\s+){0,2}?(?:(${SKILL})\s+)?(\p{Lu}\p{L}{4,8})\s+(\d{1,3})\b[\s.:]*(.*)$`,
+  String.raw`^(?:(?:[^\p{Ll}\s]{1,3}|\p{Ll})\s+){0,2}?(?:(${SKILL})\s+)?(\p{Lu}\p{L}{3,11})\s+(\d{1,3})(?:\.\d{1,2})?\b[\s.:)]*(.*)$`,
   "u",
 );
-const UNIT_HEADING_RE = /^(?:Thema|Hoofdstuk|Les)\s+(\d{1,2})\b[\s.:]*(.*)$/iu;
+const UNIT_HEADING_RE = new RegExp(
+  String.raw`^(${UNIT_WORD_SRC})\s+(\d{1,2})\b[\s.:–—-]*(.*)$`,
+  "iu",
+);
+/** A unit word followed by a number anywhere in a line (running footers). */
+const UNIT_MENTION_RE = new RegExp(String.raw`(?:${UNIT_WORD_SRC})\s+\d`, "iu");
+const EXERCISE_WORD_SET: ReadonlySet<string> = new Set(EXERCISE_WORDS);
 
 /** Levenshtein distance (small strings only). */
 function distance(a: string, b: string): number {
@@ -30,13 +37,21 @@ function distance(a: string, b: string): number {
   return row[b.length] ?? 0;
 }
 
-/** True for "Oefening" (or an OCR variant such as "Oefeninq" / "Oetening") or "Opdracht". */
+/**
+ * True for "Oefening" (or an OCR variant such as "Oefeninq" / "Oetening"), "Opdracht", or the
+ * exercise word of another language ("Exercise", "Übung", "Aufgabe", "Exercice", ...).
+ */
 export function isExerciseWord(word: string): boolean {
   const w = word.toLowerCase();
+  if (EXERCISE_WORD_SET.has(w)) return true;
+  if (w.length >= 7 && EXERCISE_WORDS.some((e) => e.length >= 7 && distance(w, e) <= 1))
+    return true;
   return distance(w, "oefening") <= 2 || distance(w, "opdracht") <= 1;
 }
 
 export interface ExerciseHeader {
+  /** The exercise word as printed ("Oefening", "Exercise"). */
+  word: string;
   /** Skill label before the header ("Luisteren en spreken"), if any. */
   skill?: string;
   number: number;
@@ -48,7 +63,11 @@ export interface ExerciseHeader {
 export function parseExerciseHeader(line: string): ExerciseHeader | null {
   const m = HEADER_RE.exec(line.trim());
   if (!m || !isExerciseWord(m[2] ?? "")) return null;
-  const out: ExerciseHeader = { number: Number(m[3]), rest: (m[4] ?? "").trim() };
+  const out: ExerciseHeader = {
+    word: m[2] ?? "Oefening",
+    number: Number(m[3]),
+    rest: (m[4] ?? "").trim(),
+  };
   if (m[1]) out.skill = m[1];
   return out;
 }
@@ -79,7 +98,7 @@ export function stripRunningText(pages: readonly OcrPage[]): OcrPage[] {
     const footer = footerTheme(p);
     const lines = p.text.split("\n").filter((l) => {
       if (isRunning(l)) return false;
-      if (footer && /(?:Thema|Hoofdstuk|Les)\s+\d/.test(l) && l.trim().length < 90) {
+      if (footer && UNIT_MENTION_RE.test(l) && l.trim().length < 90) {
         return !l.includes(footer.title);
       }
       return true;
@@ -138,14 +157,14 @@ export function segmentPages(pages: readonly OcrPage[]): Block[] {
         open = {
           kind: "exercise",
           page: page.n,
-          label: `Oefening ${ex.number}`,
+          label: `${ex.word} ${ex.number}`,
           number: ex.number,
           lines: ex.rest ? [ex.rest] : [],
         };
       } else if (section && line.length < 80) {
         flush();
-        open = { kind: "other", page: page.n, label: `Thema ${section[1]}`, lines: [] };
-        if (section[2]?.trim()) open.lines.push(section[2].trim());
+        open = { kind: "other", page: page.n, label: `${section[1]} ${section[2]}`, lines: [] };
+        if (section[3]?.trim()) open.lines.push(section[3].trim());
       } else {
         open ??= { kind: "other", page: page.n, lines: [] };
         open.lines.push(raw);
