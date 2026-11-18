@@ -6,3 +6,4 @@ export * from "./reading/index.js";
 export * from "./practice/index.js";
 export * from "./course/index.js";
 export * from "./profile.js";
+export * from "./inspector.js";

@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { WordInspector } from "./WordInspector.js";
 import { BAND_LABEL, difficultyBand } from "./CoverageMeter.js";
-import type { InspectorEntry } from "./types.js";
+import type { InspectorEntry } from "@app/core";
 
 const entry: InspectorEntry = {
   textId: "t1",

@@ -1,6 +1,6 @@
 import type { WordState } from "@app/core";
 import { cn } from "./cn.js";
-import type { InspectorAnki } from "./types.js";
+import type { InspectorAnki } from "@app/core";
 
 /**
  * Word states as the learner sees them (glossary: docs/design/naming.md, "Word states").

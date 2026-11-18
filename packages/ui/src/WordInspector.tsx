@@ -2,7 +2,7 @@ import type { WordState } from "@app/core";
 import { AddToAnki, type DeckOption } from "./AddToAnki.js";
 import { Button } from "./Button.js";
 import { Chip } from "./Chip.js";
-import type { InspectorAnki, InspectorEntry } from "./types.js";
+import type { InspectorAnki, InspectorEntry } from "@app/core";
 import { WordStateChip } from "./WordState.js";
 
 export interface WordInspectorProps {
