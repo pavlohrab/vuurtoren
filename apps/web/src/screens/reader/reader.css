@@ -1,0 +1,381 @@
+/* Reader toolbar chips, grammar marks popover, focus picker, "Aa" settings and focus mode
+   (docs/design/design-system.md, Reader; docs/research/09-reader-annotations.md). */
+
+/* Order: grammar (+ its count), the word budget, then Aa / focus at the right edge. On a phone
+   the grammar picker and Aa share the first row and the count gets a row of its own. */
+.reader-tool--count {
+  margin-left: calc(-1 * var(--s-2));
+}
+.reader-tool--budget {
+  order: 2;
+}
+/* A reading theme paints the whole reading surface (its tokens are inline on .reader-page). */
+.reader-page[data-reading-theme] {
+  min-height: 100%;
+  background: var(--bg);
+  color: var(--ink);
+}
+
+.reader-tool--end {
+  order: 3;
+  margin-left: auto;
+  gap: var(--s-1);
+}
+@media (max-width: 699px) {
+  .reader-tool--end {
+    order: 1;
+  }
+  .reader-tool--count {
+    order: 2;
+    flex-basis: 100%;
+    margin-left: 0;
+  }
+  .reader-tool--budget {
+    order: 3;
+  }
+  .reader-chip-value {
+    max-width: 14ch;
+  }
+}
+.aa-opt[data-font="literata"] {
+  font-family: "Literata Variable", Georgia, serif;
+}
+.aa-opt[data-font="inter"] {
+  font-family: var(--font-ui);
+}
+.aa-opt[data-font="atkinson"] {
+  font-family: "Atkinson Hyperlegible Next Variable", var(--font-ui);
+}
+
+/* A quiet toolbar button: hairline edge, label + value. */
+.reader-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--ink-muted);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background-color var(--dur) var(--ease);
+}
+.reader-chip:hover,
+.reader-chip[aria-expanded="true"],
+.reader-chip[aria-pressed="true"] {
+  background: var(--surface-2);
+  color: var(--ink);
+}
+.reader-chip-label {
+  font-weight: 500;
+  color: var(--ink);
+}
+.reader-chip-value {
+  max-width: 18ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.aa-glyph {
+  font-family: var(--font-reading);
+  font-size: 15px;
+  color: var(--ink);
+  letter-spacing: -0.02em;
+}
+
+/* Focus count: "4 on this page ‹ › ×" */
+.gfocus {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-variant-numeric: tabular-nums;
+}
+.gfocus-count {
+  margin-right: var(--s-1);
+  white-space: nowrap;
+}
+.gfocus-btn {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--ink-muted);
+  cursor: pointer;
+}
+.gfocus-btn:hover {
+  background: var(--surface-2);
+  color: var(--ink);
+}
+
+/* Margin mark popover */
+.gmark-pop {
+  width: min(320px, calc(100vw - 32px));
+  padding: var(--s-4);
+}
+.gmark-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  font-size: 14px;
+}
+.gmark-card p {
+  margin: 0;
+}
+.gmark-card-title {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s-2);
+  font-weight: 600;
+  color: var(--ink);
+}
+.gmark-card-level {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink-muted);
+}
+.gmark-card-note {
+  color: var(--ink);
+}
+.gmark-card-rule {
+  color: var(--ink-muted);
+  font-size: 13px;
+}
+.gmark-card-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-3);
+  margin-top: var(--s-1);
+}
+
+/* Grammar focus picker */
+.gpick {
+  width: min(340px, calc(100vw - 32px));
+  padding: var(--s-2);
+}
+.gpick-search {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  padding: 0 var(--s-2);
+  height: 36px;
+  border-bottom: 1px solid var(--hairline);
+  color: var(--ink-muted);
+}
+.gpick-search input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+  outline: none;
+}
+.gpick-list {
+  max-height: min(360px, 50vh);
+  overflow: auto;
+  padding-top: var(--s-1);
+}
+.gpick-group {
+  margin: var(--s-2) var(--s-2) var(--s-1);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink-muted);
+}
+.gpick-item {
+  display: flex;
+  width: 100%;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s-3);
+  padding: 7px var(--s-2);
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+.gpick-item:hover,
+.gpick-item:focus-visible {
+  background: var(--surface-2);
+}
+.gpick-item[aria-selected="true"] {
+  background: var(--accent-soft);
+}
+.gpick-item-meta {
+  flex: none;
+  font-size: 12px;
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+.gpick-empty {
+  margin: var(--s-3) var(--s-2);
+  font-size: 13px;
+  color: var(--ink-muted);
+}
+.gpick-off {
+  width: 100%;
+  margin-top: var(--s-1);
+  padding: 8px;
+  border: 0;
+  border-top: 1px solid var(--hairline);
+  background: transparent;
+  color: var(--ink-muted);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.gpick-off:hover {
+  color: var(--ink);
+}
+
+/* "Aa" reading settings */
+.aa-pop {
+  width: min(320px, calc(100vw - 32px));
+  padding: var(--s-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+}
+.aa-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.aa-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink-muted);
+}
+.aa-seg,
+.aa-size {
+  display: flex;
+  gap: 4px;
+}
+.aa-size {
+  align-items: center;
+  justify-content: space-between;
+}
+.aa-opt {
+  flex: 1 1 0;
+  min-height: 32px;
+  padding: 0 6px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.aa-size .aa-opt {
+  flex: 0 0 44px;
+  font-family: var(--font-reading);
+}
+.aa-opt:hover:not(:disabled) {
+  background: var(--surface-2);
+}
+.aa-opt:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.aa-opt[aria-checked="true"] {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+.aa-size-dots {
+  display: flex;
+  gap: 6px;
+}
+.aa-size-dots span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--line-strong);
+}
+.aa-size-dots span[data-on="true"] {
+  background: var(--ink-muted);
+}
+.aa-hint {
+  margin: 0;
+  font-size: 12px;
+  color: var(--ink-muted);
+}
+
+/* Reading focus mode: no sidebar, top bar or reader toolbar; the text alone. */
+:root[data-reading-focus] .sidebar,
+:root[data-reading-focus] .topbar,
+:root[data-reading-focus] .shell-notices,
+:root[data-reading-focus] .reader-tools {
+  display: none;
+}
+:root[data-reading-focus] .shell {
+  grid-template-columns: minmax(0, 1fr) 0;
+}
+:root[data-reading-focus] .shell[data-inspector="open"] {
+  grid-template-columns: minmax(0, 1fr) 340px;
+}
+:root[data-reading-focus] .main {
+  padding-bottom: 0;
+}
+:root[data-reading-focus] .reader-footer {
+  opacity: 0.55;
+  transition: opacity var(--dur) var(--ease);
+}
+:root[data-reading-focus] .reader-footer:hover,
+:root[data-reading-focus] .reader-footer:focus-within {
+  opacity: 1;
+}
+.reader-focus-exit {
+  position: fixed;
+  top: var(--s-3);
+  right: var(--s-4);
+  z-index: 20;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  padding: 4px 10px;
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--bg) 90%, transparent);
+  color: var(--ink-muted);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  opacity: 0.6;
+  transition: opacity var(--dur) var(--ease);
+}
+.reader-focus-exit:hover,
+.reader-focus-exit:focus-visible {
+  opacity: 1;
+}
+.reader-focus-exit kbd {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  padding: 0 4px;
+  border: 1px solid var(--hairline);
+  border-radius: 4px;
+}
+@media (max-width: 899px) {
+  :root[data-reading-focus] .shell,
+  :root[data-reading-focus] .shell[data-inspector="open"] {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  :root[data-reading-focus] .reader-footer,
+  .reader-focus-exit {
+    transition: none;
+  }
+}

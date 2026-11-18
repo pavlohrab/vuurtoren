@@ -243,26 +243,16 @@ describe("Topic exercises", () => {
 const tok = (text: string) =>
   screen.getAllByText(text).find((el) => el.hasAttribute("data-tok")) as HTMLElement;
 
-describe("Reader spotlights", () => {
-  it("underlines grammar hits and explains them in the inspector", async () => {
-    const { services } = setup("/read/t-utrecht");
+describe("Reader grammar", () => {
+  it("explains a clicked word's grammar in the inspector", async () => {
+    setup("/read/t-utrecht");
     await screen.findAllByText("bel");
-    await waitFor(() => expect(tok("bel")).toHaveClass("k-tok--spot"));
-    const bel = tok("bel");
-    expect(tok("zus")).not.toHaveClass("k-tok--spot");
-    await userEvent.click(bel);
+    await userEvent.click(tok("bel"));
     const notes = await screen.findByRole("region", { name: "Grammar" });
     expect(within(notes).getByText("Separable verbs")).toBeInTheDocument();
     expect(
       within(notes).getByRole("link", { name: "Open the topic: Separable verbs" }),
     ).toHaveAttribute("href", "/grammar/separable-verbs");
-
-    const toggle = screen.getByRole("button", { name: "Grammar" });
-    expect(toggle).toHaveAttribute("aria-pressed", "true");
-    await userEvent.click(toggle);
-    await waitFor(() => expect(tok("bel")).not.toHaveClass("k-tok--spot"));
-    expect((await services.getSettings()).grammarSpotlights).toBe(false);
-    expect(screen.queryByRole("region", { name: "Grammar" })).toBeNull();
   });
 
   it("passes the sentence's grammar to Explain this sentence", async () => {

@@ -70,8 +70,11 @@ export interface Settings {
   newWords: number | "auto";
   /** Gloss mode: also show cloze blanks (off by default). */
   glossClozes: boolean;
-  /** Reader: underline grammar constructions (spotlights). Off by default. */
-  grammarSpotlights: boolean;
+  /**
+   * Reader: quiet margin marks beside sentences with grammar worth noticing (on by default).
+   * Replaces `grammarSpotlights` (underline every construction), migrated on load.
+   */
+  grammarMarks: boolean;
 }
 export type ImportInput =
   | {

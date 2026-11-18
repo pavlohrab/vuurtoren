@@ -5,7 +5,7 @@ level: B1
 group: verbs
 order: 46
 summary: Laten + infinitive means "let" or "have something done"; laten we … means "let's"; in the perfect it stays an infinitive.
-detects: [verb-clusters]
+detects: [laten, verb-clusters]
 practice: [scramble]
 related: [modal-verbs, verb-clusters, imperative, te-infinitive]
 ---

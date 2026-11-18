@@ -55,16 +55,16 @@ Contrast (WCAG 2.1, checked with a script): body ink 15.2:1 (light) / 14.8:1 (da
 
 ### Word-state semantics (the heart of the reader)
 
-| State                          | Treatment                                                                                                              |
-| ------------------------------ | ---------------------------------------------------------------------------------------------------------------------- |
-| to learn (planner `introduce`) | `--learn-soft` tint + a 2px `--learn` line that draws in once when the page appears                                    |
-| new (in Gloss / budget views)  | `--learn-soft` tint + 1px `--learn` underline                                                                          |
-| learning                       | dotted underline in a muted `--known`; opacity = 1 − recall (fades as you master it)                                   |
-| known                          | no decoration in text; teal-green in chips, bars and rings                                                             |
-| ignored / proper noun          | no decoration, never highlighted                                                                                       |
-| gloss                          | dotted `--accent` underline + small superscript mark                                                                   |
-| cloze                          | hairline blank sized to the word; focused blank gets an accent line                                                    |
-| grammar spotlight (toggle)     | 2px inset line `--state-grammar-line` (rose `#b0437f`, dark `#e7a3c8`) under the construction; combines with the above |
+| State                          | Treatment                                                                                                                  |
+| ------------------------------ | -------------------------------------------------------------------------------------------------------------------------- |
+| to learn (planner `introduce`) | `--learn-soft` tint + a 2px `--learn` line that draws in once when the page appears                                        |
+| new (in Gloss / budget views)  | `--learn-soft` tint + 1px `--learn` underline (text decoration, 3px offset)                                                |
+| learning                       | dotted underline in a muted `--known`; opacity = 1 − recall (fades as you master it)                                       |
+| known                          | no decoration in text; teal-green in chips, bars and rings                                                                 |
+| ignored / proper noun          | no decoration, never highlighted                                                                                           |
+| gloss                          | dotted `--accent` underline + small superscript mark                                                                       |
+| cloze                          | hairline blank sized to the word; focused blank gets an accent line                                                        |
+| grammar (open mark / focus)    | a row of fine dots in `--state-grammar-line`, 0.26em below the text (under the word-state lines); see _Reader annotations_ |
 
 Never use bright highlighter blocks. Violet is never a word state: it means "you can act here".
 
@@ -252,3 +252,13 @@ sage green, words to learn in apricot (kept distinct from the amber accent). Tex
 deliberately softer than pure white/black. All text pairs stay at or above WCAG AA 4.5:1 (ink ≈ 11.8:1,
 muted ≈ 4.6–5.6:1, accent links ≈ 4.6–7.3:1). Tokens live in `packages/ui/src/styles.css`; the logo and
 favicons were regenerated in the same colours. The older violet values above are superseded.
+
+## Reader annotations and reading comforts (2026-11-18)
+
+Research and contrast table: `docs/research/09-reader-annotations.md`.
+
+- **Two layers, two positions.** Word states draw at the baseline (to-learn line, learning dots, new/gloss underlines). Grammar draws a dotted row below them (`.k-tok--spot`), so both can sit on one word and still read apart without colour.
+- **Margin marks** (`.k-gmark`): a 2px hairline beside the first line of a sentence worth noticing, `--state-grammar-line` at 50% (full on hover, focus or open). At most one per two sentences, never neighbours, never for very common topics (V2, de/het, plurals, perfect…). Tapping one underlines that sentence's hits and opens a popover under that line.
+- **Grammar focus**: one topic at a time from the toolbar picker ("Grammar: <topic> ▾"), "n on this page" with ‹ ›; Esc clears. Replaces the old all-topics spotlight toggle.
+- **"Aa" popover**: text size (5 steps, also Ctrl/Cmd + / −), line spacing, line width, font (Literata, Inter, Atkinson Hyperlegible Next) and reading theme (match app, paper, sepia, night). Per device (localStorage). Reading themes are token sets (`readingThemes.ts` in @app/ui) set inline on the reader page; every mark stays ≥ 3:1 on each.
+- **Focus mode** (F, Esc to leave): sidebar, top bar and toolbar hidden; paragraphs other than the current one at 28% opacity (opacity transition only, none under reduced motion); the footer stays, dimmed until hovered.

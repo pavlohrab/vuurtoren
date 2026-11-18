@@ -19,3 +19,4 @@ export * from "./ExerciseCard.js";
 export * from "./AddToAnki.js";
 export * from "./Logo.js";
 export * from "./TextCover.js";
+export * from "./readingThemes.js";
