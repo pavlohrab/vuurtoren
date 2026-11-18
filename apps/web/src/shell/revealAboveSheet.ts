@@ -9,7 +9,10 @@ export function revealAboveSheet(target: Element | null): void {
     const sheet = document.querySelector(".inspector-panel");
     const content = document.getElementById("content");
     if (!sheet || !content) return;
-    const top = sheet.getBoundingClientRect().top;
+    // Where the sheet comes to rest (it may still be sliding up): its bottom edge is fixed.
+    const bottom = sheet.getBoundingClientRect().bottom;
+    const slide = new DOMMatrixReadOnly(getComputedStyle(sheet).transform).m42;
+    const top = bottom - slide - (sheet as HTMLElement).offsetHeight;
     const r = target.getBoundingClientRect();
     const margin = 24;
     if (r.bottom > top - margin) {

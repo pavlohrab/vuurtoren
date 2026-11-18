@@ -13,7 +13,6 @@ import {
   Monitor,
   Moon,
   PanelLeft,
-  PanelRight,
   Settings as SettingsIcon,
   Sun,
   TrendingUp,
@@ -29,10 +28,7 @@ import {
   Chip,
   Logo,
   CommandPalette,
-  CoverageMeter,
-  Tabs,
   Tooltip,
-  WordStateChip,
   type CommandGroup,
   type ReaderMode,
 } from "@app/ui";
@@ -68,12 +64,6 @@ const THEME_ICON: Record<ThemeChoice, ReactNode> = {
   dark: <Moon size={16} />,
 };
 
-const MODES = [
-  { value: "read", label: "Read" },
-  { value: "cloze", label: "Cloze" },
-  { value: "gloss", label: "Gloss" },
-] as const;
-
 const isMac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
 
 /** The three-column app frame: sidebar, top bar with content, and the inspector panel. */
@@ -88,12 +78,10 @@ export function AppShell() {
   const [header, setHeader] = useState<PageHeader | null>(null);
   const [mode, setMode] = useState<ReaderMode>("read");
   const [inspectorEl, setInspectorEl] = useState<HTMLElement | null>(null);
+  const [toolbarEl, setToolbarEl] = useState<HTMLElement | null>(null);
   const [inspectorAvailable, setInspectorAvailable] = useState(false);
-  // On small screens the inspector is a bottom sheet that covers the text: closed until a word
-  // is selected.
-  const [inspectorOpen, setInspectorOpen] = useState(
-    () => !window.matchMedia("(max-width: 899px)").matches,
-  );
+  // Closed until a word is chosen: it then slides in (a bottom sheet on a phone).
+  const [inspectorOpen, setInspectorOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   // Phone tab bar: the "More" sheet with the secondary destinations.
@@ -135,12 +123,13 @@ export function AppShell() {
       setHeader,
       mode,
       setMode,
+      toolbarEl,
       inspectorEl,
       setInspectorAvailable,
       inspectorOpen,
       setInspectorOpen,
     }),
-    [mode, inspectorEl, inspectorOpen],
+    [mode, toolbarEl, inspectorEl, inspectorOpen],
   );
 
   const title =
@@ -148,6 +137,7 @@ export function AppShell() {
     PAGE_TITLES[pathname] ??
     (pathname.startsWith("/courses/") ? "Courses" : "Kenning");
   const showInspector = inspectorAvailable && inspectorOpen;
+  const titleClass = header?.reader ? "topbar-title topbar-title--quiet" : "topbar-title";
 
   const goto = useCallback(
     (to: string) => void navigate({ to } as Parameters<typeof navigate>[0]),
@@ -293,31 +283,14 @@ export function AppShell() {
               ) : null}
               {/* One h1 per page: the page's own heading, unless it asks the top bar for it. */}
               {header?.heading ? (
-                <h1 className="topbar-title">{title}</h1>
+                <h1 className={titleClass}>{title}</h1>
               ) : (
-                <span className="topbar-title">{title}</span>
+                <span className={titleClass}>{title}</span>
               )}
             </div>
-            {header?.coverage != null ? (
-              <div
-                className="topbar-group topbar-coverage"
-                title="Coverage and words to learn for the page you are reading"
-              >
-                <CoverageMeter value={header.coverage} label="This page" />
-                {header.newCount != null ? (
-                  <WordStateChip state="toLearn" count={header.newCount} />
-                ) : null}
-              </div>
-            ) : null}
-            <div className="topbar-spacer" />
-            {header?.reader ? (
-              <Tabs
-                aria-label="Reading mode"
-                items={MODES}
-                value={mode}
-                onValueChange={(v) => setMode(v as ReaderMode)}
-              />
-            ) : null}
+            {/* A reader page fills this with its own controls (the top bar is its reader bar). */}
+            <div className="topbar-page" ref={setToolbarEl} hidden={!header?.reader} />
+            {header?.reader ? null : <div className="topbar-spacer" />}
             <div className="topbar-group">
               <DegradedIndicator />
               <Button
@@ -341,40 +314,36 @@ export function AppShell() {
                   {THEME_ICON[theme]}
                 </Button>
               </Tooltip>
-              {inspectorAvailable ? (
+            </div>
+          </header>
+          <div className="main-body">
+            <main className="content" id="content">
+              <Outlet />
+            </main>
+            {/* Over the content, not beside it: closed it takes no space, open it slides in and
+                the reader column moves aside (transform only, no reflow). */}
+            <aside
+              className="inspector-panel"
+              aria-label="Inspector"
+              hidden={!inspectorAvailable}
+              inert={!showInspector}
+            >
+              <div className="inspector-head">
+                <span className="k-overline">Word</span>
                 <Button
                   variant="ghost"
                   size="sm"
                   icon
-                  aria-label={inspectorOpen ? "Hide inspector" : "Show inspector"}
-                  aria-pressed={inspectorOpen}
-                  onClick={() => setInspectorOpen(!inspectorOpen)}
+                  aria-label="Close the word panel (Esc)"
+                  onClick={() => setInspectorOpen(false)}
                 >
-                  <PanelRight size={16} />
+                  <X size={16} />
                 </Button>
-              ) : null}
-            </div>
-          </header>
-          <main className="content" id="content">
-            <Outlet />
-          </main>
-        </div>
-
-        <aside className="inspector-panel" aria-label="Inspector" hidden={!showInspector}>
-          <div className="inspector-head">
-            <span className="k-overline">Word</span>
-            <Button
-              variant="ghost"
-              size="sm"
-              icon
-              aria-label="Close inspector"
-              onClick={() => setInspectorOpen(false)}
-            >
-              <X size={16} />
-            </Button>
+              </div>
+              <div className="inspector-body" ref={setInspectorEl} />
+            </aside>
           </div>
-          <div className="inspector-body" ref={setInspectorEl} />
-        </aside>
+        </div>
       </div>
       <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} groups={groups} />
     </ShellContext.Provider>

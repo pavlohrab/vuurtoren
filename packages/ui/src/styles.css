@@ -1310,9 +1310,16 @@ a.k-row:hover .k-row-go {
   margin-left: 2px;
   vertical-align: super;
   cursor: pointer;
-  opacity: 0.6;
+  /* Quiet chrome: the hint button shows only on the blank being answered. */
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--dur-fast) var(--ease-out);
 }
-.k-cloze-hintbtn:hover {
+.k-cloze-wrap:focus-within .k-cloze-hintbtn {
+  opacity: 0.6;
+  pointer-events: auto;
+}
+.k-cloze-wrap:focus-within .k-cloze-hintbtn:hover {
   opacity: 1;
   color: var(--accent);
   border-color: var(--accent);

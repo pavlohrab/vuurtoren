@@ -88,14 +88,17 @@ describe("AI settings and reader helpers", () => {
 
   it("offers Simplify this page only with a provider, and keeps the original", async () => {
     const off = setup("/read/t-utrecht", false);
-    await screen.findByRole("button", { name: "Next segment" });
-    expect(screen.queryByRole("button", { name: "Simplify this page" })).toBeNull();
+    await screen.findByRole("button", { name: "Next" });
+    await userEvent.click(screen.getByRole("button", { name: "More reading options" }));
+    await screen.findByRole("menu", { name: "More reading options" });
+    expect(screen.queryByRole("menuitem", { name: "Simplify this page" })).toBeNull();
     void off;
   });
 
   it("shows the simplified page beside the original", async () => {
     const { user } = setup("/read/t-utrecht");
-    await user.click(await screen.findByRole("button", { name: "Simplify this page" }));
+    await user.click(await screen.findByRole("button", { name: "More reading options" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Simplify this page" }));
     const region = await screen.findByRole("region", { name: "Simplified page" });
     expect(region).toHaveTextContent("The original text is unchanged");
     expect(region).toHaveTextContent("88.0%");

@@ -64,21 +64,23 @@ describe("grammar margin marks", () => {
     expect(
       screen.getByRole("button", { name: "Grammar focus: Separable verbs. Change" }),
     ).toBeInTheDocument();
-    expect(screen.getByText("1 on this page")).toBeInTheDocument();
+    const status = () =>
+      within(screen.getByRole("group", { name: "Grammar focus" })).getByRole("status");
+    expect(status()).toHaveTextContent("1 on this page");
     // In focus, margin marks step aside.
     expect(screen.queryByRole("button", { name: /^Grammar: / })).toBeNull();
 
-    await userEvent.click(screen.getByRole("button", { name: "Next segment" }));
+    await userEvent.click(screen.getByRole("button", { name: "Next" }));
     await screen.findAllByText("staat");
-    expect(await screen.findByText("2 on this page")).toBeInTheDocument();
+    await waitFor(() => expect(status()).toHaveTextContent("2 on this page"));
     expect(tok("neemt")).toHaveClass("k-tok--spot");
     expect(tok("trein")).not.toHaveClass("k-tok--spot");
 
     await userEvent.click(screen.getByRole("button", { name: "Next one" }));
-    expect(screen.getByText("1 of 2 on this page")).toBeInTheDocument();
+    expect(status()).toHaveTextContent("1 of 2 on this page");
     expect(tok("staat")).toHaveClass("k-tok--spot-current");
     await userEvent.click(screen.getByRole("button", { name: "Next one" }));
-    expect(screen.getByText("2 of 2 on this page")).toBeInTheDocument();
+    expect(status()).toHaveTextContent("2 of 2 on this page");
     expect(tok("neemt")).toHaveClass("k-tok--spot-current");
     expect(tok("staat")).not.toHaveClass("k-tok--spot-current");
 
@@ -86,13 +88,16 @@ describe("grammar margin marks", () => {
     act(() => document.body.focus());
     fireEvent.keyDown(document.body, { key: "Escape" });
     await waitFor(() => expect(tok("neemt")).not.toHaveClass("k-tok--spot"));
-    expect(screen.getByRole("button", { name: "Grammar focus: off. Choose" })).toBeInTheDocument();
+    expect(screen.queryByRole("group", { name: "Grammar focus" })).toBeNull();
   });
 
-  it("the picker suggests topics and searches the ones in the text", async () => {
+  it("the picker (in the … menu) suggests topics and searches the ones in the text", async () => {
     setup();
     await screen.findByRole("button", { name: "Grammar: Separable verbs" }, SLOW);
-    await userEvent.click(screen.getByRole("button", { name: "Grammar focus: off. Choose" }));
+    await userEvent.click(screen.getByRole("button", { name: "More reading options" }));
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Grammar focus: off. Choose" }),
+    );
     const pop = await screen.findByRole("dialog", { name: "Choose a grammar topic" });
     expect(within(pop).getByText("Suggested")).toBeInTheDocument();
     expect(within(pop).getByText("In this text")).toBeInTheDocument();
@@ -100,9 +105,14 @@ describe("grammar margin marks", () => {
     const option = within(pop).getByRole("option", { name: /Subordinate clauses/ });
     await userEvent.click(option);
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
-    expect(screen.getByText("None on this page")).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "Next segment" }));
-    expect(await screen.findByText("1 on this page")).toBeInTheDocument();
+    const focus = screen.getByRole("group", { name: "Grammar focus" });
+    expect(within(focus).getByRole("status")).toHaveTextContent("None on this page");
+    await userEvent.click(screen.getByRole("button", { name: "Next" }));
+    await waitFor(() =>
+      expect(
+        within(screen.getByRole("group", { name: "Grammar focus" })).getByRole("status"),
+      ).toHaveTextContent("1 on this page"),
+    );
     expect(tok("omdat")).toHaveClass("k-tok--spot");
   });
 });

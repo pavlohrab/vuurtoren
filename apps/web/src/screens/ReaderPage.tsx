@@ -1,6 +1,6 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "@tanstack/react-router";
-import { Check, Maximize2 } from "lucide-react";
+import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
@@ -16,9 +16,9 @@ import {
   Button,
   EmptyState,
   Reader,
-  Select,
+  type ReaderMode,
   Skeleton,
-  Slider,
+  Tabs,
   WordInspector,
   matchAnswer,
   useToast,
@@ -36,12 +36,13 @@ import {
   topicPriority,
   topicsInText,
 } from "./reader/grammarMarks.js";
-import { FocusCount, GrammarPicker, MarkCard } from "./reader/ReaderGrammar.js";
+import { FocusChip, MarkCard } from "./reader/ReaderGrammar.js";
+import { type MenuView, ReaderMenu, ShortcutsDialog } from "./reader/ReaderMenu.js";
 import { ReadingSettings } from "./reader/ReadingSettings.js";
 import { WordGrammar } from "./reader/WordGrammar.js";
 import { prefsStyle, useReaderPrefs } from "./reader/readerPrefs.js";
 import "./reader/reader.css";
-import { ExplainSentence, SimplifyPage } from "./ReaderAI.js";
+import { ExplainSentence, SimplifyPage, useAIReady } from "./ReaderAI.js";
 import { writeLastText } from "../lastText.js";
 import { useWordActions } from "./useWordActions.js";
 import { TextComplete } from "./TextComplete.js";
@@ -55,10 +56,11 @@ const HELP_LABEL: Record<HelpLevel, string> = {
   shaky: "New + shaky words",
   most: "Most words",
 };
-const NEW_WORD_OPTIONS = [
-  { value: "auto", label: "Auto" },
-  ...[0, 1, 2, 3, 4, 5, 6, 8].map((n) => ({ value: String(n), label: String(n) })),
-];
+const MODES = [
+  { value: "read", label: "Read" },
+  { value: "cloze", label: "Cloze" },
+  { value: "gloss", label: "Gloss" },
+] as const;
 
 /** Elements whose own keyboard handling the reader's global shortcuts must not steal. */
 const WIDGET_SELECTOR = [
@@ -104,12 +106,25 @@ export function ReaderRoute() {
   return <ReaderPage key={textId} textId={textId} />;
 }
 
-/** Reader page: one segment at a time, with the word inspector in the shell's right panel. */
+/**
+ * Reader page: one segment at a time. Its controls live in the shell's top bar (one slim reader
+ * bar: title, "82% known", Read | Cloze | Gloss, Aa, …); the word inspector slides in from the
+ * right when a word is chosen.
+ */
 export function ReaderPage({ textId }: { textId: string }) {
   const services = useServices();
   const qc = useQueryClient();
   const toast = useToast();
-  const { mode, inspectorEl, setInspectorAvailable, setInspectorOpen } = useShell();
+  const {
+    mode,
+    setMode,
+    toolbarEl,
+    inspectorEl,
+    inspectorOpen,
+    setInspectorAvailable,
+    setInspectorOpen,
+  } = useShell();
+  const aiReady = useAIReady();
 
   const reading = useQuery({
     queryKey: ["reading", textId],
@@ -164,9 +179,6 @@ export function ReaderPage({ textId }: { textId: string }) {
     frozen && frozen.segment === current && frozen.epoch === epoch ? frozen.plan : undefined;
 
   usePageHeader(data?.text.title ?? "Reading", {
-    coverage: complete ? null : (plan?.coverage ?? null),
-    // The badge counts the highlighted (amber) words to learn, not every unknown word.
-    newCount: complete ? null : (plan?.introduce.length ?? null),
     reader: !complete,
     // The reader has no in-page heading, so the text title in the top bar is the page's h1.
     heading: true,
@@ -174,8 +186,11 @@ export function ReaderPage({ textId }: { textId: string }) {
 
   useEffect(() => {
     setInspectorAvailable(true);
-    return () => setInspectorAvailable(false);
-  }, [setInspectorAvailable]);
+    return () => {
+      setInspectorAvailable(false);
+      setInspectorOpen(false);
+    };
+  }, [setInspectorAvailable, setInspectorOpen]);
   useEffect(() => writeLastText(textId), [textId]);
 
   const resetSegmentState = useCallback(() => {
@@ -190,6 +205,11 @@ export function ReaderPage({ textId }: { textId: string }) {
   // Reading comforts (per device) and reading focus mode.
   const [prefs, setPrefs] = useReaderPrefs();
   const [readingFocus, setReadingFocus] = useState(false);
+  // The "…" menu (and its grammar view), the shortcuts list and Simplify this page.
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [menuView, setMenuView] = useState<MenuView>("menu");
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [simplifyAt, setSimplifyAt] = useState<number | null>(null);
   useEffect(() => {
     if (!readingFocus) return;
     document.documentElement.dataset["readingFocus"] = "";
@@ -206,6 +226,8 @@ export function ReaderPage({ textId }: { textId: string }) {
   useEffect(() => {
     keyState.current = { selected, focusTopic, readingFocus, size: prefs.size };
   });
+  /** Turns the page (set below, once the page's navigation is known). */
+  const stepRef = useRef<(dir: 1 | -1) => void>(() => {});
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.defaultPrevented) return;
@@ -222,7 +244,6 @@ export function ReaderPage({ textId }: { textId: string }) {
           setReadingFocus(false);
           return;
         }
-        setSelected(null);
         setInspectorOpen(false);
         return;
       }
@@ -244,8 +265,19 @@ export function ReaderPage({ textId }: { textId: string }) {
         setReadingFocus((v) => !v);
         return;
       }
+      if (e.key === "?" && !typing && !t?.closest(OVERLAY_SELECTOR)) {
+        e.preventDefault();
+        setShortcutsOpen(true);
+        return;
+      }
       if (t?.closest(WIDGET_SELECTOR) || e.metaKey || e.ctrlKey || e.altKey) return;
-      if (["j", "k", "ArrowRight", "ArrowLeft"].includes(e.key)) {
+      // ← → from outside the text turn the page; inside it they move word by word.
+      if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
+        e.preventDefault();
+        stepRef.current(e.key === "ArrowRight" ? 1 : -1);
+        return;
+      }
+      if (e.key === "j" || e.key === "k") {
         const el = document.querySelector<HTMLElement>('[data-tok][tabindex="0"]');
         if (el) {
           e.preventDefault();
@@ -256,6 +288,18 @@ export function ReaderPage({ textId }: { textId: string }) {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [setInspectorOpen, setPrefs]);
+
+  // Closing the word panel (Esc or its close button) clears the selection and gives the focus
+  // back to the word, so reading continues where it was.
+  useEffect(() => {
+    if (inspectorOpen) return;
+    const i = keyState.current.selected;
+    if (i === null) return;
+    setSelected(null);
+    document
+      .querySelector<HTMLElement>(`.k-reader [data-i="${i}"]`)
+      ?.focus({ preventScroll: true });
+  }, [inspectorOpen]);
 
   // The query data always belongs to the current key; keepPreviousData only avoids a flash, so
   // placeholder data (the previously selected word) is treated as "still loading".
@@ -337,9 +381,9 @@ export function ReaderPage({ textId }: { textId: string }) {
       );
       return blanks ? [...new Set([...dial, ...plan.clozes])].sort((a, b) => a - b) : dial;
     }
-    if (mode === "cloze") return [...plan.clozes];
+    if (mode === "cloze") return prefs.clozeMeaning ? [...plan.clozes] : [];
     return [];
-  }, [plan, help, mode, data, blanks]);
+  }, [plan, help, mode, data, blanks, prefs.clozeMeaning]);
   const glossQ = useQuery({
     queryKey: ["glosses", textId, current, glossIdx.join(",")],
     queryFn: () => services.glosses(textId, glossIdx),
@@ -517,6 +561,17 @@ export function ReaderPage({ textId }: { textId: string }) {
     }
   };
 
+  /** ‹ › and ← →: the previous page, or the next one (finishing this one; never the text). */
+  const stepPage = (dir: 1 | -1) => {
+    if (finishing || complete || !plan) return;
+    if (dir === -1) {
+      if (current > 0) goTo(current - 1);
+    } else if (!isLast) void finish();
+  };
+  useEffect(() => {
+    stepRef.current = stepPage;
+  });
+
   // A failed background refetch keeps the text on screen; only a failed first load is an error page.
   if (reading.isError && !data) {
     return (
@@ -566,6 +621,10 @@ export function ReaderPage({ textId }: { textId: string }) {
   }
 
   const allAnswered = plan.clozes.every((i) => credits.has(i) || revealed.has(i));
+  const known = Math.round(plan.coverage * 100);
+  // The highlighted (amber) words to learn, not every unknown word.
+  const toLearn = plan.introduce.length;
+  const knownTitle = `${known}% known · ${toLearn} ${toLearn === 1 ? "word" : "words"} to learn on this page`;
 
   if (complete) {
     return (
@@ -590,78 +649,97 @@ export function ReaderPage({ textId }: { textId: string }) {
       {...(prefs.theme !== "app" ? { "data-reading-theme": prefs.theme } : {})}
       {...(readingFocus ? { "data-focus": "" } : {})}
     >
-      <div className="reader-tools" role="group" aria-label="Reading help">
-        {mode === "gloss" ? (
-          <div className="reader-tool">
-            <span className="reader-tool-label">Translations</span>
-            <div className="reader-tool-slider">
-              <Slider
-                aria-label="Translations"
-                value={Math.round(help * 100)}
-                onValueChange={(v) => setHelpDraft(v / 100)}
-                onValueCommit={(v) => saveSettings.mutate({ help: v / 100 })}
+      {toolbarEl
+        ? createPortal(
+            <>
+              <span className="rbar-known" title={knownTitle}>
+                {known}% known
+              </span>
+              {focusTopic ? (
+                <FocusChip
+                  topic={focusTopic}
+                  count={focusHits.length}
+                  current={hitIndex}
+                  onStep={stepHit}
+                  onClear={() => chooseFocus(null)}
+                  onChange={() => {
+                    setMenuView("grammar");
+                    setMenuOpen(true);
+                  }}
+                />
+              ) : null}
+              <span className="rbar-spacer" />
+              <Tabs
+                aria-label="Reading mode"
+                items={MODES}
+                value={mode}
+                onValueChange={(v) => setMode(v as ReaderMode)}
               />
-            </div>
-            <span className="reader-tool-value">{HELP_LABEL[helpLevel(help)]}</span>
-          </div>
-        ) : null}
-        {mode === "gloss" && plan.clozes.length > 0 ? (
-          <div className="reader-tool">
-            <button
-              type="button"
-              className="k-toggle k-toggle--sm"
-              aria-pressed={blanks}
-              onClick={() => saveSettings.mutate({ glossClozes: !blanks })}
-            >
-              {blanks ? <Check size={14} aria-hidden /> : null}
-              {blanks ? "Blanks on" : "Blanks off"}
-            </button>
-          </div>
-        ) : null}
-        <div className="reader-tool reader-tool--grammar">
-          <GrammarPicker
-            topics={pickerTopics}
-            suggested={suggestedTopics}
-            value={focusTopic}
-            onChange={chooseFocus}
-            unavailable={grammarQ.isError}
-          />
-        </div>
-        {focusTopic ? (
-          <div className="reader-tool reader-tool--count">
-            <FocusCount
-              count={focusHits.length}
-              current={hitIndex}
-              onStep={stepHit}
-              onClear={() => chooseFocus(null)}
-            />
-          </div>
-        ) : null}
-
-        <div className="reader-tool reader-tool--budget">
-          <span className="reader-tool-label">Words to learn per page</span>
-          <Select
-            value={String(settingsQ.data?.newWords ?? "auto")}
-            onValueChange={(v) =>
-              saveSettings.mutate({ newWords: v === "auto" ? "auto" : Number(v) })
-            }
-            options={NEW_WORD_OPTIONS}
-          />
-        </div>
-        <div className="reader-tool reader-tool--end">
-          <ReadingSettings prefs={prefs} onChange={setPrefs} />
-          <button
-            type="button"
-            className="reader-chip"
-            aria-label="Focus mode (F)"
-            title="Focus mode (F)"
-            aria-pressed={readingFocus}
-            onClick={() => setReadingFocus((v) => !v)}
-          >
-            <Maximize2 size={15} aria-hidden />
-          </button>
-        </div>
-      </div>
+              <span className="rbar-tools">
+                <ReadingSettings
+                  prefs={prefs}
+                  onChange={setPrefs}
+                  settings={{
+                    mode,
+                    ...(mode === "gloss"
+                      ? {
+                          help: {
+                            value: Math.round(help * 100),
+                            label: HELP_LABEL[helpLevel(help)],
+                            onChange: (v: number) => setHelpDraft(v / 100),
+                            onCommit: (v: number) => saveSettings.mutate({ help: v / 100 }),
+                          },
+                        }
+                      : {}),
+                    ...(mode === "gloss" && plan.clozes.length > 0
+                      ? {
+                          blanks: {
+                            on: blanks,
+                            onToggle: () => saveSettings.mutate({ glossClozes: !blanks }),
+                          },
+                        }
+                      : {}),
+                    newWords: {
+                      value: String(settingsQ.data?.newWords ?? "auto"),
+                      onChange: (v: string) =>
+                        saveSettings.mutate({ newWords: v === "auto" ? "auto" : Number(v) }),
+                    },
+                    marks: {
+                      on: marksOn,
+                      onToggle: () => saveSettings.mutate({ grammarMarks: !marksOn }),
+                    },
+                  }}
+                />
+                <ReaderMenu
+                  open={menuOpen}
+                  onOpenChange={setMenuOpen}
+                  view={menuView}
+                  onViewChange={setMenuView}
+                  textId={textId}
+                  summary={knownTitle}
+                  grammar={{
+                    value: focusTopic,
+                    topics: pickerTopics,
+                    suggested: suggestedTopics,
+                    onChange: chooseFocus,
+                    unavailable: grammarQ.isError,
+                  }}
+                  readingFocus={readingFocus}
+                  onFocusMode={() => setReadingFocus((v) => !v)}
+                  onShowAnswers={
+                    blanks && plan.clozes.length > 0 && !allAnswered
+                      ? () => setRevealed(new Set(plan.clozes))
+                      : undefined
+                  }
+                  onSimplify={aiReady ? () => setSimplifyAt(current) : undefined}
+                  onShortcuts={() => setShortcutsOpen(true)}
+                />
+              </span>
+            </>,
+            toolbarEl,
+          )
+        : null}
+      <ShortcutsDialog open={shortcutsOpen} onOpenChange={setShortcutsOpen} />
       {readingFocus ? (
         <button type="button" className="reader-focus-exit" onClick={() => setReadingFocus(false)}>
           Leave focus mode <kbd>Esc</kbd>
@@ -702,29 +780,55 @@ export function ReaderPage({ textId }: { textId: string }) {
           />
         ) : null}
       </AnchoredPopover>
-      <SimplifyPage
-        key={current}
-        text={data.text.content.slice(plan.segment.charStart, plan.segment.charEnd)}
-      />
-      <div className="reader-footer">
-        <span className="k-hint">
-          Segment {current + 1} of {plans?.length}
-        </span>
-        <div className="row">
-          {blanks && plan.clozes.length > 0 && !allAnswered ? (
-            <Button variant="ghost" onClick={() => setRevealed(new Set(plan.clozes))}>
-              Show answers
-            </Button>
-          ) : null}
-          <Link to="/read/$textId/words" params={{ textId }} className="k-btn k-btn--ghost">
-            Words from this text
-          </Link>
-          {current > 0 ? <Button onClick={() => goTo(current - 1)}>Previous</Button> : null}
-          <Button variant="primary" disabled={finishing} onClick={() => void finish()}>
-            {isLast ? "Finish text" : "Next segment"}
-          </Button>
+      {simplifyAt === current ? (
+        <SimplifyPage
+          key={current}
+          text={data.text.content.slice(plan.segment.charStart, plan.segment.charEnd)}
+          onClose={() => setSimplifyAt(null)}
+        />
+      ) : null}
+      <nav className="reader-footer" aria-label="Pages">
+        <div className="reader-pager">
+          <button
+            type="button"
+            className="reader-pager-btn"
+            aria-label="Previous page"
+            title="Previous page (←)"
+            disabled={current === 0 || finishing}
+            onClick={() => stepPage(-1)}
+          >
+            <ChevronLeft size={18} aria-hidden />
+          </button>
+          <span className="reader-pager-count">
+            <span aria-hidden>
+              {current + 1} / {plans?.length}
+            </span>
+            <span className="k-sr">
+              Page {current + 1} of {plans?.length}
+            </span>
+          </span>
+          <button
+            type="button"
+            className="reader-pager-btn"
+            aria-label="Next page"
+            title="Next page (→)"
+            disabled={isLast || finishing}
+            onClick={() => stepPage(1)}
+          >
+            <ChevronRight size={18} aria-hidden />
+          </button>
         </div>
-      </div>
+        <Button variant="primary" disabled={finishing} onClick={() => void finish()}>
+          {isLast ? (
+            "Finish"
+          ) : (
+            <>
+              Next
+              <ArrowRight size={16} aria-hidden />
+            </>
+          )}
+        </Button>
+      </nav>
       {inspectorEl
         ? createPortal(
             <>
