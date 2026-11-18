@@ -17,13 +17,13 @@ import { ExamClock, GrammarLinks, ScoreCard, useRecordAttempt } from "./shared.j
 type Answer = { text: string; fields: string[] };
 
 /** Checklist of one task: its own points, then the general rubric of its kind. */
-export function checklist(task: WritingTask): string[] {
+function checklist(task: WritingTask): string[] {
   const rubric = examBank().schrijven.rubric;
   return [...task.points, ...(task.kind === "form" ? rubric.form : rubric.message)];
 }
 
 /** The answer as plain text (forms: "Label: value" lines), for AI feedback. */
-export function answerText(task: WritingTask, a: Answer): string {
+function answerText(task: WritingTask, a: Answer): string {
   if (task.kind !== "form") return a.text;
   return (task.fields ?? []).map((f, i) => `${f.label}: ${a.fields[i] ?? ""}`).join("\n");
 }

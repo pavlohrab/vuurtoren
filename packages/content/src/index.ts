@@ -12,7 +12,7 @@ import {
   type GrammarTopic,
 } from "./parse.js";
 
-export { CEFR_LEVELS, GRAMMAR_GROUPS, TopicParseError, parseTopic, slug } from "./parse.js";
+export { CEFR_LEVELS, GRAMMAR_GROUPS, parseTopic } from "./parse.js";
 export type { CefrLevel, GrammarGroup, GrammarTopic, TopicExample, TopicSection } from "./parse.js";
 
 /** Every grammar topic of `lang`, ordered by level, then title. */

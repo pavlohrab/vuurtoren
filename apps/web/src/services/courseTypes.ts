@@ -17,7 +17,7 @@ import type {
   WordState,
 } from "@app/core";
 
-export type ImportStage = "ocr" | "outline" | "texts" | "exercises" | "done";
+type ImportStage = "ocr" | "outline" | "texts" | "exercises" | "done";
 
 /** Progress callback payload of the long-running import steps. */
 export interface ImportProgress {
@@ -134,7 +134,7 @@ export interface UnitText {
   textId?: string;
 }
 
-export interface BookItemState {
+interface BookItemState {
   /** Latest answer given, if any. */
   answer?: string;
   correct?: boolean;

@@ -83,7 +83,7 @@ const MAX_TARGETS = 12;
 
 const wordCount = (s: string) => s.match(/\p{L}+(?:['’-]\p{L}+)*/gu)?.length ?? 0;
 
-export function buildUnitExercisePrompt(s: UnitExerciseSetup): SystemPrompt {
+function buildUnitExercisePrompt(s: UnitExerciseSetup): SystemPrompt {
   const lang = s.language ?? "Dutch";
   return {
     cached: [

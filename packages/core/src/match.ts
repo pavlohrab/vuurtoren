@@ -22,7 +22,7 @@ export function normalizeKey(s: string): string {
 export type MatchVia = "lemma" | "surface" | "alt";
 
 /** Candidate keys for a token in priority order: lemma, surface, alternative lemmas. */
-export function tokenCandidates(t: TokenLike): { key: string; via: MatchVia }[] {
+function tokenCandidates(t: TokenLike): { key: string; via: MatchVia }[] {
   const out: { key: string; via: MatchVia }[] = [];
   const seen = new Set<string>();
   const add = (raw: string, via: MatchVia) => {
@@ -38,7 +38,7 @@ export function tokenCandidates(t: TokenLike): { key: string; via: MatchVia }[] 
   return out;
 }
 
-export function tokenKeys(t: TokenLike): string[] {
+function tokenKeys(t: TokenLike): string[] {
   return tokenCandidates(t).map((c) => c.key);
 }
 

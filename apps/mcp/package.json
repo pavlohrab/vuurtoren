@@ -14,7 +14,6 @@
     "start": "node dist/main.js"
   },
   "dependencies": {
-    "@app/ai": "workspace:*",
     "@app/anki": "workspace:*",
     "@app/core": "workspace:*",
     "@app/db": "workspace:*",

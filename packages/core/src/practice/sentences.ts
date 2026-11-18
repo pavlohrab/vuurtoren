@@ -39,11 +39,6 @@ export function rankSentences(
     .map((x) => x.s);
 }
 
-/** Best sentence for cloze-style exercises, if any. */
-export function bestSentence(sentences: readonly ExampleSentence[]): ExampleSentence | undefined {
-  return rankSentences(sentences)[0];
-}
-
 /** The text covered by the sentence's target span. */
 export function targetSurface(s: ExampleSentence): string {
   return s.text.slice(s.target[0], s.target[1]);

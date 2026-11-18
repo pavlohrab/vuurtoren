@@ -48,7 +48,7 @@ export function extractNumber(s: string): number | null {
 }
 
 /** Meaningful lowercase words of a title (stop words and numbers removed). */
-export function titleWords(s: string): string[] {
+function titleWords(s: string): string[] {
   return fold(s)
     .split(/\s+/)
     .filter((w) => w.length > 2 && !STOP.has(w) && !/^\d+$/.test(w));

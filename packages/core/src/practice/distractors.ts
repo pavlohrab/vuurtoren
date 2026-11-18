@@ -7,7 +7,7 @@ const MAX_BAND = 8;
 const firstGloss = (w: WordData): string | undefined => w.glosses[0];
 const lc = (s: string) => s.toLowerCase();
 /** Normalise one gloss into comparable meaning variants: lowercase, no parentheses, articles or "to ". */
-export function glossVariants(gloss: string): string[] {
+function glossVariants(gloss: string): string[] {
   return gloss
     .toLowerCase()
     .replace(/\([^)]*\)/g, " ")

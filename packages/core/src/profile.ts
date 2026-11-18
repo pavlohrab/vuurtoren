@@ -52,7 +52,7 @@ export const PROFILE_LANGUAGES: {
 }[] = [{ code: "nl", name: "Nederlands", english: "Dutch", enabled: true }];
 
 /** Native name of a language, used in deck names ("Nederlands"). */
-export function langName(lang: string): string {
+function langName(lang: string): string {
   return PROFILE_LANGUAGES.find((l) => l.code === lang)?.name ?? lang.toUpperCase();
 }
 

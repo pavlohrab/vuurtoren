@@ -53,9 +53,9 @@ export interface ToolDeps {
 /** Longest text body returned by get_text (keeps a single tool result a sensible size). */
 export const MAX_TEXT_CHARS = 20_000;
 /** Longest text save_text accepts. */
-export const MAX_SAVE_CHARS = 50_000;
+const MAX_SAVE_CHARS = 50_000;
 /** Most words one suggest_words_for_anki call queues. */
-export const MAX_SUGGESTIONS = 30;
+const MAX_SUGGESTIONS = 30;
 const MAX_WORDS = 500;
 /** Texts get_words_to_learn plans at most (newest first). */
 const MAX_PLANNED_TEXTS = 25;

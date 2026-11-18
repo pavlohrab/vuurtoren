@@ -127,7 +127,7 @@ export interface SentenceFill {
 }
 
 /** The key is encrypted and not unlocked yet. */
-export class AILockedError extends Error {
+class AILockedError extends Error {
   override readonly name = "AILockedError";
   constructor() {
     super("Enter your passphrase in Settings, AI to unlock the key.");

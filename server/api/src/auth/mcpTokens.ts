@@ -17,10 +17,10 @@ export interface McpTokenInfo {
 }
 
 /** Tokens look like `kmcp_<43 base64url chars>`: easy to recognise in a config file. */
-export const MCP_TOKEN_PREFIX = "kmcp_";
+const MCP_TOKEN_PREFIX = "kmcp_";
 const TOKEN_RE = /^kmcp_[A-Za-z0-9_-]{43}$/;
 /** Most tokens kept at once (one per computer is the expected use). */
-export const MAX_MCP_TOKENS = 20;
+const MAX_MCP_TOKENS = 20;
 
 const digest = (token: string): Buffer => createHash("sha256").update(token).digest();
 

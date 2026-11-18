@@ -11,9 +11,9 @@
  */
 import type { PlannedToken } from "./types.js";
 
-export const HELP_OFF = 0.05;
-export const HELP_NEW_ONLY = 1 / 3;
-export const HELP_MAX_RECALL = 0.95;
+const HELP_OFF = 0.05;
+const HELP_NEW_ONLY = 1 / 3;
+const HELP_MAX_RECALL = 0.95;
 
 /** Recall threshold below which studied words are translated at this help level. */
 export function helpRecallThreshold(help: number): number {

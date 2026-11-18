@@ -54,7 +54,7 @@ function occurrences(text: string, surface: string): number {
 }
 
 /**
- * Best sentence for a cloze: ranked like bestSentence, but sentences where the target surface
+ * Best sentence for a cloze: ranked like rankSentences, but sentences where the target surface
  * occurs more than once are skipped (the other copy would give the answer away).
  */
 function clozeSentence(word: WordData): ExampleSentence | undefined {

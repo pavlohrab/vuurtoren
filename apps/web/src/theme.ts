@@ -30,7 +30,7 @@ function applyTheme(theme: ThemeChoice): void {
 let current: ThemeChoice = readTheme();
 
 /** Persist and apply a theme choice. */
-export function setTheme(theme: ThemeChoice): void {
+function setTheme(theme: ThemeChoice): void {
   current = theme;
   try {
     localStorage.setItem(KEY, theme);

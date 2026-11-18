@@ -5,7 +5,7 @@
  * understand, one next step, and the original text as details.
  */
 
-export type ErrorSource = "nlp" | "anki" | "network" | "other";
+type ErrorSource = "nlp" | "anki" | "network" | "other";
 
 export interface FriendlyError {
   /** What went wrong, in plain words. */

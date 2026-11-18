@@ -63,7 +63,7 @@ const ENGLISH_PROMPT = new Set(["word-choice", "scramble"]);
 type Mode = "choice" | "gender" | "scramble" | "typed" | "dictation";
 
 /** Which interaction an exercise needs (derived from its data, so new kinds degrade sensibly). */
-export function exerciseMode(e: Exercise): Mode {
+function exerciseMode(e: Exercise): Mode {
   if (e.kind === "gender") return "gender";
   if (e.kind === "dictation") return "dictation";
   if (e.pieces && e.pieces.length > 0) return "scramble";

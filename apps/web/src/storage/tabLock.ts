@@ -25,7 +25,7 @@ export interface TabLockDeps {
   openChannel: (name: string) => ChannelLike;
 }
 
-export const LOCK_NAME = "kenning-db";
+const LOCK_NAME = "kenning-db";
 const CHANNEL_NAME = "kenning-db";
 const RELEASE_MESSAGE = "release";
 
@@ -41,7 +41,7 @@ export interface BusyLock {
 }
 
 /** Production dependencies from `navigator` (`locks` undefined where unsupported). */
-export function browserTabLockDeps(): TabLockDeps {
+function browserTabLockDeps(): TabLockDeps {
   return {
     locks: typeof navigator !== "undefined" ? navigator.locks : undefined,
     openChannel: (name) => new BroadcastChannel(name),

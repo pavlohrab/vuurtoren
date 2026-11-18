@@ -36,7 +36,7 @@ const SUGGESTIONS: DeckSuggestion[] = [
   },
 ];
 
-export const DEMO_ANKI_DECKS = [
+const DEMO_ANKI_DECKS = [
   "A Frequency Dictionary of Dutch",
   "Dutch::Core 2k",
   "Opmaat::Thema 01 - Kennismaken",

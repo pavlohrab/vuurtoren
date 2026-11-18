@@ -12,9 +12,9 @@ import type { AnalyzedToken, PlannedToken, PlannerOptions, Segment } from "./typ
 export const UNKNOWN_THRESHOLD = 0.5;
 /** Cloze candidates must have pKnown within this range. */
 /** Recall range of words chosen as clozes (shakier words preferred within it). */
-export const CLOZE_P_RANGE = [0.6, 0.99] as const;
+const CLOZE_P_RANGE = [0.6, 0.99] as const;
 /** Function words make poor clozes ("met", "de", "hij"): only content words are blanked. */
-export const CLOZE_EXCLUDED_POS: ReadonlySet<string> = new Set([
+const CLOZE_EXCLUDED_POS: ReadonlySet<string> = new Set([
   "ADP",
   "DET",
   "PRON",
@@ -24,12 +24,12 @@ export const CLOZE_EXCLUDED_POS: ReadonlySet<string> = new Set([
   "PART",
   "INTJ",
 ]);
-export const CLOZE_MIN_SENTENCE_WORDS = 6;
-export const CLOZE_MIN_CHARS = 2;
+const CLOZE_MIN_SENTENCE_WORDS = 6;
+const CLOZE_MIN_CHARS = 2;
 /** A "page": the new-word budget is per page (segments are ~150 words). */
-export const BUDGET_WORDS = 150;
+const BUDGET_WORDS = 150;
 /** Words rarer than this (Zipf < 3, about rank 20,000+) are never introduced, only glossed. */
-export const ABSOLUTE_MIN_ZIPF = 3.0;
+const ABSOLUTE_MIN_ZIPF = 3.0;
 
 /**
  * Lowest Zipf frequency worth introducing for a learner with `vocabEstimate` known words:
@@ -45,7 +45,7 @@ export function zipfFloor(vocabEstimate: number): number {
 }
 
 /** Usefulness of learning a word: its Zipf frequency (frequent words pay off more). */
-export function usefulness(zipf: number): number {
+function usefulness(zipf: number): number {
   return zipf;
 }
 

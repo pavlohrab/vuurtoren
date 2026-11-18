@@ -27,7 +27,7 @@ const WORD_STATE_HINT: Record<WordStateKind, string> = {
 };
 
 /** Label of a word that is "learning" only because of answers given in Kenning (ADR 0011). */
-export const IN_KENNING_LABEL = "Learning (in Kenning)";
+const IN_KENNING_LABEL = "Learning (in Kenning)";
 
 export interface WordStateChipProps {
   state: WordStateKind;
@@ -60,7 +60,7 @@ export function WordStateChip({ state, count, className, inKenning }: WordStateC
 export type AnkiStatus = InspectorAnki["status"];
 
 /** A word's card in Anki, kept apart from the word state. */
-export const ANKI_STATUS_LABEL: Record<AnkiStatus, string> = {
+const ANKI_STATUS_LABEL: Record<AnkiStatus, string> = {
   absent: "Not in Anki",
   new: "In Anki: new",
   learning: "In Anki: learning",

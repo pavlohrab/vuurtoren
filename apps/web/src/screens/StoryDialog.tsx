@@ -68,7 +68,7 @@ export function CreateStoryButton({
 const tokensText = (n: number) =>
   n >= 1000 ? `${(Math.round(n / 100) / 10).toLocaleString("en")}K` : String(n);
 
-export function StoryDialog({
+function StoryDialog({
   open,
   onOpenChange,
   preset = {},

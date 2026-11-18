@@ -190,13 +190,6 @@ def iter_page_sources(data: bytes, max_pages: int = MAX_COURSE_PAGES) -> Iterato
         yield PageSource(key=f"{prefix}-{i}-img", render=render)
 
 
-def iter_page_images(data: bytes, max_pages: int = MAX_COURSE_PAGES) -> Iterator[Image.Image]:
-    """Yield the page images of an upload (text-layer and EPUB pages are skipped)."""
-    for src in iter_page_sources(data, max_pages):
-        if src.render is not None:
-            yield src.render()
-
-
 # --------------------------------------------------------------------------- EPUB
 
 

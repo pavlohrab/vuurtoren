@@ -24,10 +24,10 @@ import type {
   UnitWord,
 } from "./types.js";
 
-export const PACK_FORMAT = "kenning-course-pack";
+const PACK_FORMAT = "kenning-course-pack";
 export const PACK_VERSION = 1;
 /** File name suffix of a pack ("de-opmaat-a2.kenning-course.json"). */
-export const PACK_SUFFIX = ".kenning-course.json";
+const PACK_SUFFIX = ".kenning-course.json";
 
 export type PackMode = "full" | "structure";
 
@@ -113,12 +113,12 @@ export function itemKey(prompt: string): string {
 }
 
 /** Hash of a line for the page fingerprint: its first 24 letters. */
-export function lineKey(line: string): string {
+function lineKey(line: string): string {
   return fnv(letters(line).slice(0, 24));
 }
 
 /** Fingerprint of a book from its blocks: the first letter-bearing line per page. */
-export function blocksFingerprint(blocks: readonly Block[]): Record<string, string> {
+function blocksFingerprint(blocks: readonly Block[]): Record<string, string> {
   const out: Record<string, string> = {};
   for (const b of blocks) {
     if (out[b.page] !== undefined) continue;

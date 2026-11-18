@@ -203,7 +203,7 @@ export interface GrammarExample {
 }
 
 /** Server limit for `/grammar/examples?limit=`. */
-export const GRAMMAR_EXAMPLES_MAX = 10;
+const GRAMMAR_EXAMPLES_MAX = 10;
 /** Characters per `/grammar` request (server: 2,000,000 in total). */
 const GRAMMAR_CHARS = 1_000_000;
 

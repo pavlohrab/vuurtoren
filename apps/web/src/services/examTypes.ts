@@ -3,7 +3,7 @@ import type { ExamFeedback, ExamFeedbackInput, ExamItemPart, GeneratedExamItem }
 import type { ExamPart } from "@app/content";
 import type { ExamAttemptRecord } from "@app/db";
 
-export type { ExamAttemptRecord, ExamFeedback, ExamFeedbackInput, ExamItemPart, GeneratedExamItem };
+export type { ExamAttemptRecord, ExamFeedback, ExamItemPart, GeneratedExamItem };
 
 /** One finished practice round or mock exam, as recorded. */
 export interface ExamAttemptInput {

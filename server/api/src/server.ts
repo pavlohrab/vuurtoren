@@ -47,9 +47,9 @@ export interface ApiOptions {
 }
 
 /** Default cap of an import body (a whole database backup). */
-export const DEFAULT_MAX_IMPORT_BYTES = 512 * 1024 * 1024;
+const DEFAULT_MAX_IMPORT_BYTES = 512 * 1024 * 1024;
 /** Default cap of one RPC body: the largest event is an analysed book (tokens), well below this. */
-export const DEFAULT_MAX_RPC_BYTES = 32 * 1024 * 1024;
+const DEFAULT_MAX_RPC_BYTES = 32 * 1024 * 1024;
 
 /** Create (not yet listening) the API server. */
 export function createApiServer(opts: ApiOptions): Server {

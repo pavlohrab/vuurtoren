@@ -19,7 +19,7 @@ const wordsOf = (s: string): string[] =>
     .sort();
 
 /** True when both sentences use exactly the same words (any order, case and final punctuation ignored). */
-export function sameWords(a: string, b: string): boolean {
+function sameWords(a: string, b: string): boolean {
   const x = wordsOf(a);
   const y = wordsOf(b);
   return x.length === y.length && x.every((w, i) => w === y[i]);

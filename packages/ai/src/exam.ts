@@ -134,7 +134,7 @@ export function parseExamItem(text: string, part: ExamItemPart): GeneratedExamIt
 }
 
 /** The Dutch text whose coverage is checked: the text, or the spoken lines. */
-export function itemText(item: GeneratedExamItem, part: ExamItemPart): string {
+function itemText(item: GeneratedExamItem, part: ExamItemPart): string {
   return part === "luisteren" ? item.lines.map((l) => l.text).join("\n") : item.text;
 }
 

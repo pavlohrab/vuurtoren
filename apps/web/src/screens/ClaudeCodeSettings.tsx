@@ -9,7 +9,7 @@ import { Button, Input } from "@app/ui";
 import { claudeCodeCommand, claudeDesktopConfig, createMcpTokenClient } from "../auth/mcpTokens.js";
 import { useAppInfo } from "../shell/AppInfo.js";
 
-export const EXAMPLE_PROMPTS = [
+const EXAMPLE_PROMPTS = [
   "Write me an A2 story using my words to learn about cycling and save it to Kenning.",
   "Quiz me on Thema 3 words.",
   "Explain the grammar of this sentence, the way Kenning's grammar pages do: …",

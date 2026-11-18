@@ -11,13 +11,3 @@ export function notesFor(hits: readonly GrammarHit[]): { topic: GrammarTopic; no
   }
   return out;
 }
-
-/** Spotlight label for a token: the titles of its topics ("Inversion · Separable verbs"). */
-export function spotlightLabel(detectors: readonly string[]): string {
-  const titles: string[] = [];
-  for (const d of detectors) {
-    const title = topicForHit(d)?.title;
-    if (title && !titles.includes(title)) titles.push(title);
-  }
-  return titles.join(" · ");
-}

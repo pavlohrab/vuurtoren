@@ -4,10 +4,10 @@
 import type { LearnerModel } from "../learner.js";
 import type { ReadingOutcome, SegmentPlan, StaircaseState } from "./types.js";
 
-export const MIN_TARGET_COVERAGE = 0.92;
-export const MAX_TARGET_COVERAGE = 0.99;
-export const MIN_BUDGET = 1;
-export const MAX_BUDGET = 8;
+const MIN_TARGET_COVERAGE = 0.92;
+const MAX_TARGET_COVERAGE = 0.99;
+const MIN_BUDGET = 1;
+const MAX_BUDGET = 8;
 const COVERAGE_STEP = 0.005;
 
 /**
@@ -31,7 +31,7 @@ export function updateStaircase(state: StaircaseState, outcome: ReadingOutcome):
 }
 
 /** Minimum vocabulary estimate, so brand-new learners still get sensible planning. */
-export const MIN_VOCAB_ESTIMATE = 200;
+const MIN_VOCAB_ESTIMATE = 200;
 
 /** Vocabulary estimate: Σ pKnown over known and learning entries, at least 200. */
 export function estimateVocabulary(model: LearnerModel): number {

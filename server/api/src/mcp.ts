@@ -19,7 +19,7 @@ import { HttpFail, readBody } from "./http-util.js";
 import type { Store } from "./store.js";
 
 /** Largest MCP request body (save_text carries a whole text). */
-export const MAX_MCP_BYTES = 1024 * 1024;
+const MAX_MCP_BYTES = 1024 * 1024;
 
 export interface McpEndpointOptions {
   store: Store;

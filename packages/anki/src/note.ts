@@ -5,7 +5,7 @@
 import { AnkiConnectError, type AnkiConnectClient } from "./client.js";
 
 export const NOTE_TYPE = "Kenning Word";
-export const NOTE_FIELDS = ["Word", "Gloss", "Sentence", "SentenceTranslation", "Source"] as const;
+const NOTE_FIELDS = ["Word", "Gloss", "Sentence", "SentenceTranslation", "Source"] as const;
 
 const CSS = `.card { font-family: "Literata", Georgia, serif; font-size: 22px; line-height: 1.5;
   color: #1F1B16; background: #F8F5EF; text-align: center; padding: 24px; }
@@ -19,7 +19,7 @@ const BACK = `{{FrontSide}}<hr id="answer"><div class="gloss">{{Gloss}}</div>
 {{#SentenceTranslation}}<div class="sentence">{{SentenceTranslation}}</div>{{/SentenceTranslation}}
 {{#Source}}<div class="source">{{Source}}</div>{{/Source}}`;
 
-export async function ensureNoteType(anki: AnkiConnectClient): Promise<void> {
+async function ensureNoteType(anki: AnkiConnectClient): Promise<void> {
   const models = await anki.invoke<string[]>("modelNames");
   if (models.includes(NOTE_TYPE)) return;
   await anki.invoke("createModel", {

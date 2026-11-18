@@ -19,8 +19,6 @@ import type { AddOptions, ProfileServices } from "./profileTypes.js";
 import type { ActivityDay } from "./activity.js";
 import type { ExamServices } from "./examTypes.js";
 
-export type { ActivityDay };
-
 /** Defined in @app/ui (the WordInspector consumes it); re-exported here as part of the contract. */
 export type { InspectorEntry };
 

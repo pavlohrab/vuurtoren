@@ -161,9 +161,7 @@ export function chunkText(text: string, max = CHUNK_CHARS): { start: number; tex
 }
 
 /** Re-base chunk analyses into one token list for the whole text. */
-export function mergeChunkTokens(
-  chunks: { start: number; tokens: AnalyzedToken[] }[],
-): AnalyzedToken[] {
+function mergeChunkTokens(chunks: { start: number; tokens: AnalyzedToken[] }[]): AnalyzedToken[] {
   const out: AnalyzedToken[] = [];
   let sentBase = 0;
   for (const { start, tokens } of chunks) {
@@ -250,7 +248,7 @@ function translationFailed(e: unknown): void {
 }
 
 /** Map the client's connection state to what the Settings screen shows. */
-export function toAnkiStatus(c: AnkiConnectionState): AnkiStatus {
+function toAnkiStatus(c: AnkiConnectionState): AnkiStatus {
   switch (c.state) {
     case "connected":
       return { connected: true, state: "connected", version: c.version };

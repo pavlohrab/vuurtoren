@@ -67,7 +67,7 @@ export function parseWordList(text: string): UnitWord[] {
 }
 
 /** Unit number named by a word-list / transcript section label ("Thema 3"). */
-export function sectionUnitNumber(label: string | undefined): number | null {
+function sectionUnitNumber(label: string | undefined): number | null {
   const m = /(\d{1,2})/.exec(label ?? "");
   return m ? Number(m[1]) : null;
 }
@@ -113,7 +113,7 @@ export interface ReadingText {
 }
 
 /** Re-join lines of a paragraph (OCR line breaks inside sentences). */
-export function reflow(par: string): string {
+function reflow(par: string): string {
   return par
     .replace(/-\n(?=\p{Ll})/gu, "")
     .replace(/\n/g, " ")

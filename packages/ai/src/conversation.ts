@@ -45,7 +45,7 @@ export interface ConversationSetup {
 }
 
 /** Cap on known lemmas sent in the prompt (token budget: ~2 tokens per lemma). */
-export const MAX_PROMPT_LEMMAS = 400;
+const MAX_PROMPT_LEMMAS = 400;
 
 /** Minimal word info needed to pick prompt lemmas. */
 export interface WordLite {

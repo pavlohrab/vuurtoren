@@ -17,13 +17,15 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "anki-report": "pnpm --filter @app/anki-report start",
-    "nlp": "cd server/nlp && uv run uvicorn kenning_nlp.app:app --port 8000"
+    "nlp": "cd server/nlp && uv run uvicorn kenning_nlp.app:app --port 8000",
+    "knip": "knip"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "eslint": "^10.15.0",
     "eslint-plugin-react-hooks": "^7.1.1",
     "globals": "^17.14.0",
+    "knip": "6.45.1",
     "prettier": "^3.10.1",
     "turbo": "^2.11.11",
     "typescript": "~6.0.3",

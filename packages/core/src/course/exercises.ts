@@ -23,12 +23,12 @@ const PRONOUN_ROW =
   /^(ik|jij|je|u|hij|zij|ze|het|wij|we|jullie)(?:\s*\/\s*(?:jij|je|u|hij|zij|ze|het|we))*\b/i;
 
 /** Normalise explicit blanks to `____` (a lone "_" before a bracket counts as a blank). */
-export function normalizeBlanks(s: string): string {
+function normalizeBlanks(s: string): string {
   return s.replace(BLANK_NORMALIZE, "____").replace(/(^|\s)_(?=\s*[([])/gu, "$1____");
 }
 
 /** Give a lemma hint without a visible blank one in front of it ("Willem (werken)" -> "Willem ____ (werken)"). */
-export function addImplicitBlanks(s: string): string {
+function addImplicitBlanks(s: string): string {
   const t = normalizeBlanks(s).replace(
     HINT_GLOBAL,
     (m: string, _w: string, at: number, all: string) =>
@@ -66,7 +66,7 @@ const RULES: { type: ExerciseType; re: RegExp }[] = [
 ];
 
 /** Type from the instruction alone (null when no keyword matches). */
-export function typeFromInstruction(instruction: string): ExerciseType | null {
+function typeFromInstruction(instruction: string): ExerciseType | null {
   return RULES.find((r) => r.re.test(instruction))?.type ?? null;
 }
 
@@ -82,7 +82,7 @@ const isJunkLine = (l: string) => !/\p{L}{3}/u.test(l);
 const endsSentence = (l: string) => /[.?!:]["”’')\]]?\s*$/.test(l);
 
 /** Split a block's lines into instruction, example and raw item strings. */
-export function splitExercise(text: string): Parts {
+function splitExercise(text: string): Parts {
   const lines = text.split("\n").map((l) => l.trim());
   let i = 0;
   // Blank lines and OCR junk before the instruction (icons read as "k", "0 N n n p n").
@@ -120,7 +120,7 @@ export function splitExercise(text: string): Parts {
  * Group lines into items. A line opens a new item when it has an item marker, or when the
  * previous item is already a finished sentence; otherwise it continues the previous item.
  */
-export function groupItems(lines: readonly string[]): string[] {
+function groupItems(lines: readonly string[]): string[] {
   const out: string[] = [];
   for (const raw of lines) {
     const line = raw.trim();
@@ -245,7 +245,7 @@ function optionOf(line: string): string | null {
  * at least two option lines. Questions about a text and "Kies het goede antwoord" look like this
  * in most textbooks. The book's answer key is not known, so the items have no answer.
  */
-export function choiceQuestions(text: string): ExerciseItem[] {
+function choiceQuestions(text: string): ExerciseItem[] {
   const lines = text
     .split("\n")
     .map((l) => l.trim())
@@ -287,7 +287,7 @@ export function choiceQuestions(text: string): ExerciseItem[] {
 }
 
 /** Decide the type from instruction + item shapes. */
-export function classify(instruction: string, items: readonly string[], block = ""): ExerciseType {
+function classify(instruction: string, items: readonly string[], block = ""): ExerciseType {
   const fromText = typeFromInstruction(instruction);
   const hinted = items.filter(hasHint);
   const chunked = items.filter((i) => chunksOf(i).length >= 3);

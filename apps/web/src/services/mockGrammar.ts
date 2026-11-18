@@ -191,7 +191,7 @@ function sentenceSpan(tokens: AnalyzedToken[], sent: number): [number, number] {
 }
 
 /** Hits of a mock text from SAMPLE_HITS (imported texts have none). */
-export function mockHits(text: StoredText): GrammarHit[] {
+function mockHits(text: StoredText): GrammarHit[] {
   const tokens = text.tokens ?? [];
   const hits: GrammarHit[] = [];
   for (const [topic, words, note] of SAMPLE_HITS[text.id] ?? []) {

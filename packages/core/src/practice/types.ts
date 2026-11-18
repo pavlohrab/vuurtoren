@@ -171,8 +171,6 @@ export interface SessionOptions {
   skills?: Skill[];
 }
 
-export const DEFAULT_SESSION: SessionOptions = { size: 20, newItems: 8, now: 0 };
-
 /*
  * Engine API (implemented in packages/core/src/practice/*.ts):
  *   generate(kind, word, pool, rng): Exercise | null       — one exercise, null if the word lacks data

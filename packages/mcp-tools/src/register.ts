@@ -13,7 +13,7 @@ export async function respond(run: () => Promise<unknown>) {
   }
 }
 
-export const SERVER_INSTRUCTIONS = `Kenning is the learner's Dutch reading app. Use these tools to keep what you write at the learner's level:
+const SERVER_INSTRUCTIONS = `Kenning is the learner's Dutch reading app. Use these tools to keep what you write at the learner's level:
 - Before writing Dutch for the learner, look at get_words_to_learn and get_known_words; afterwards run check_coverage (aim for 95-98%) and rewrite unknown words.
 - save_text puts a story, dialogue or exercise you wrote into their Kenning Library.
 - Never claim you added cards to Anki: suggest_words_for_anki only queues words; the learner confirms them in Kenning.`;
@@ -26,7 +26,7 @@ export function createKenningMcpServer(h: ToolHandlers, version = "0.2.0"): McpS
 }
 
 /** Register the shared Kenning tools on `server`. */
-export function registerKenningTools(server: McpServer, h: ToolHandlers): void {
+function registerKenningTools(server: McpServer, h: ToolHandlers): void {
   server.registerTool(
     "get_known_words",
     {

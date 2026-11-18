@@ -24,12 +24,12 @@ export const LOGO_GRID_48: MarkGeometry = {
   ink: "M12 5H18V40H12ZM12.5 40V33.01L27.51 18H36L14 40Z",
   ribbon: "M27.09 29.03L35.44 43.5L31.4 40L27.36 43.5L21.96 34.16Z",
 };
-export const LOGO_GRID_24: MarkGeometry = {
+const LOGO_GRID_24: MarkGeometry = {
   vb: 24,
   ink: "M6 2.5H9V20H6ZM6.5 20V16.5L14 9H18L7 20Z",
   ribbon: "M13.51 14.55L17.81 22L15.79 20L13.77 22L10.95 17.11Z",
 };
-export const LOGO_GRID_16: MarkGeometry = {
+const LOGO_GRID_16: MarkGeometry = {
   vb: 16,
   ink: "M3 1H5V13H3ZM3.5 13V10.5L9 5H12L4 13Z",
   ribbon: "M10.74 7.67L13.18 15L11.5 13L9.81 15L8.21 10.2Z",

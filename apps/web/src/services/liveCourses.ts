@@ -127,7 +127,7 @@ function etaText(eta: number | null | undefined): string {
 }
 
 /** Marker in a Library text's source reference: `course:<courseId>:<unit>`. */
-export const courseRef = (courseId: string, unitN: number) => `course:${courseId}:${unitN}`;
+const courseRef = (courseId: string, unitN: number) => `course:${courseId}:${unitN}`;
 
 const POLL_MS = 1500;
 const MAX_PRACTICE_WORDS = 60;
@@ -141,7 +141,7 @@ const KINDS_FOR_TYPE: Partial<Record<BookExercise["type"], ExerciseKind[]>> = {
 };
 
 /** A card-sized gloss: the first two senses without their explanations in brackets. */
-export function shortGloss(senses: readonly string[]): string {
+function shortGloss(senses: readonly string[]): string {
   const clean = senses
     .map((g) =>
       g

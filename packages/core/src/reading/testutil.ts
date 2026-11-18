@@ -48,7 +48,7 @@ export function tokenize(text: string, overrides: Overrides = {}): AnalyzedToken
 }
 
 /** Letters-only unique word for index n ("qa", "qb", ... "qba"), safe for the tokenizer. */
-export function fillerWord(n: number): string {
+function fillerWord(n: number): string {
   let s = "";
   let x = n;
   do {

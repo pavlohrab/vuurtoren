@@ -35,7 +35,7 @@ export const MOCK_NEW_WORD: NewWord = {
 };
 
 /** The demo's generated exam items. */
-export const MOCK_EXAM_ITEM: Record<ExamItemPart, GeneratedExamItem> = {
+const MOCK_EXAM_ITEM: Record<ExamItemPart, GeneratedExamItem> = {
   lezen: {
     title: "Nieuwe openingstijden",
     text: "Supermarkt De Hoek\n\nVanaf 1 mei zijn we op zondag open van 12.00 tot 18.00 uur.\nOp maandag t/m zaterdag blijven we open van 8.00 tot 21.00 uur.\n\nTot ziens in de winkel!",

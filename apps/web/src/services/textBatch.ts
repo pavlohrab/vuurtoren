@@ -1,7 +1,7 @@
 import type { KenningRepository, StoredText, TextSummary } from "@app/db";
 
 /** Words of text (tokens) per batched `getTexts` call: bounds one server-mode response. */
-export const TEXT_BATCH_WORDS = 150_000;
+const TEXT_BATCH_WORDS = 150_000;
 
 /**
  * Full texts (content and tokens) for `summaries`, in their order, with as few repository calls

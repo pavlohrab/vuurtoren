@@ -5,7 +5,7 @@
  */
 type MorphRow = [number, string, string, string, number];
 
-export const SAMPLE_MORPH: Record<string, MorphRow[]> = {
+const SAMPLE_MORPH: Record<string, MorphRow[]> = {
   "t-utrecht": [
     [0, "PRON", "Case=Nom|Person=1|PronType=Prs", "nsubj", 3],
     [3, "VERB", "Number=Sing|Tense=Pres|VerbForm=Fin", "ROOT", 3],

@@ -74,7 +74,7 @@ export function footerTheme(page: OcrPage): FooterTheme | null {
 }
 
 /** Pages whose footer names a theme, in page order. */
-export function footerThemes(pages: readonly OcrPage[]): FooterTheme[] {
+function footerThemes(pages: readonly OcrPage[]): FooterTheme[] {
   return pages.flatMap((p) => footerTheme(p) ?? []);
 }
 
@@ -133,7 +133,7 @@ export function pageOffset(footers: readonly FooterTheme[]): number {
  * starts one of the first two) of a page, "Everyday English 12" or a bare "12". Needs agreement
  * on at least three pages; null otherwise.
  */
-export function printedPageOffset(pages: readonly OcrPage[]): number | null {
+function printedPageOffset(pages: readonly OcrPage[]): number | null {
   const diffs: number[] = [];
   for (const p of pages) {
     const lines = p.text
@@ -155,10 +155,7 @@ export function printedPageOffset(pages: readonly OcrPage[]): number | null {
  * Offset from the contents titles themselves: the page (at or after the printed number) whose
  * first lines carry the entry's title. Works without any page numbers on the pages.
  */
-export function titleOffset(
-  entries: readonly ContentsEntry[],
-  pages: readonly OcrPage[],
-): number | null {
+function titleOffset(entries: readonly ContentsEntry[], pages: readonly OcrPage[]): number | null {
   const diffs: number[] = [];
   for (const e of entries) {
     const words = titleWords(e.title);
@@ -203,7 +200,7 @@ export function parseContents(pages: readonly OcrPage[], scan = 15): ContentsEnt
 }
 
 /** {@link parseContents}, plus the unit word of a section heading such as "Thema's". */
-export function parseContentsWithWord(
+function parseContentsWithWord(
   pages: readonly OcrPage[],
   scan = 15,
 ): { entries: ContentsEntry[]; unitWord: string | null } {
@@ -264,12 +261,12 @@ function appendixKind(title: string): UnitKind | null {
 }
 
 /** "Thema 3 Winkelen", "Lektion 3 Einkaufen", or "3 Food" for a book without a unit word. */
-export function unitTitle(word: string | null | undefined, n: number, title: string): string {
+function unitTitle(word: string | null | undefined, n: number, title: string): string {
   return [word, String(n), title].filter(Boolean).join(" ").trim();
 }
 
 /** Unit headings at the top of pages (first three lines): first page per unit number. */
-export function headingUnits(pages: readonly OcrPage[]): FooterTheme[] {
+function headingUnits(pages: readonly OcrPage[]): FooterTheme[] {
   const out: FooterTheme[] = [];
   for (const p of pages) {
     const top = p.text

@@ -9,7 +9,7 @@ import type {
   StoryStyle,
 } from "@app/ai";
 
-export type { Correction, ModelOption, NewWord, ProviderId, StoryLength, StoryStyle };
+export type { Correction, NewWord, StoryLength, StoryStyle };
 
 /** Models offered by the picker; `live` when they came from the provider itself. */
 export interface ModelChoices {
@@ -45,7 +45,7 @@ export interface AIUsage {
   outputTokens: number;
 }
 
-export interface ConversationListItem {
+interface ConversationListItem {
   id: string;
   topic: string;
   messages: number;

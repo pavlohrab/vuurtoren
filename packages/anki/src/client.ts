@@ -251,18 +251,8 @@ export function ankiEscape(value: string): string {
   return value.replace(/[\\"*_]/g, (c) => `\\${c}`);
 }
 
-/** Quote a literal value for Anki's search syntax. */
-export function ankiQuote(value: string): string {
-  return `"${ankiEscape(value)}"`;
-}
-
 /** Query for notes in exactly this deck (not its subdecks). */
 export function exactDeckQuery(deck: string): string {
   const d = ankiEscape(deck);
   return `"deck:${d}" -"deck:${d}::*"`;
-}
-
-/** Ask Anki desktop to sync with AnkiWeb (Anki's own sync; the app never talks to AnkiWeb). */
-export async function syncWithAnkiWeb(anki: AnkiConnectClient): Promise<void> {
-  await anki.invoke("sync");
 }

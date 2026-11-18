@@ -74,7 +74,7 @@ export interface GrammarTopic {
 }
 
 /** Error with the file name, so a broken page fails the build with a clear message. */
-export class TopicParseError extends Error {
+class TopicParseError extends Error {
   override readonly name = "TopicParseError";
 }
 
@@ -82,7 +82,7 @@ const LIST_KEYS = new Set(["detects", "practice", "related"]);
 const REQUIRED = ["id", "title", "level", "summary"] as const;
 
 /** URL-style slug of a heading: "Common mistakes" -> "common-mistakes". */
-export function slug(s: string): string {
+function slug(s: string): string {
   return s
     .toLowerCase()
     .normalize("NFD")

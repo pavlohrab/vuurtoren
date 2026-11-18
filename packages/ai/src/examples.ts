@@ -77,14 +77,14 @@ export interface SentenceResult {
   usage: Usage;
 }
 
-export const SENTENCE_MIN_WORDS = 4;
-export const SENTENCE_MAX_WORDS = 14;
+const SENTENCE_MIN_WORDS = 4;
+const SENTENCE_MAX_WORDS = 14;
 
 /**
  * The static system prompt (vocabulary and rules only), so that the target of each request goes
  * into the user message and providers can cache this part across lemmas.
  */
-export function buildSentencePrompt(
+function buildSentencePrompt(
   s: Pick<SentenceSetup, "vocabEstimate" | "knownLemmas" | "explainIn">,
 ): SystemPrompt {
   const explain = s.explainIn ?? "English";
@@ -145,7 +145,7 @@ const wordCount = (s: string) => s.match(/\p{L}+(?:['’-]\p{L}+)*/gu)?.length ?
  * Check one sentence.
  * @returns the accepted sentence, or the reason it was rejected
  */
-export async function validateSentence(
+async function validateSentence(
   deps: SentenceDeps,
   setup: Pick<SentenceSetup, "lemma" | "grammar">,
   candidate: { text: string; translation?: string },

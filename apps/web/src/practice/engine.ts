@@ -6,7 +6,6 @@ export {
   buildSession,
   checkAnswer,
   createRng,
-  distractors,
   generate,
   gradeAttempt,
   practiceStats,

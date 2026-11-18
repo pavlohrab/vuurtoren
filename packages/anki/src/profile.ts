@@ -43,24 +43,13 @@ function knownCandidate(
 }
 
 /** Kenning's own note type in a destination deck. */
-export const kenningCandidate = (deck: string): Candidate =>
+const kenningCandidate = (deck: string): Candidate =>
   knownCandidate(
     deck,
     NOTE_TYPE,
     { wordField: "Word", sentenceField: "Sentence", glossField: "Gloss" },
     "SentenceTranslation",
   );
-
-/** The profile entry for a detected candidate the user confirmed. */
-export function sourceFromCandidate(c: Candidate): ProfileSource {
-  return {
-    deck: c.deck,
-    modelName: c.modelName,
-    wordField: c.wordField,
-    ...(c.sentenceField ? { sentenceField: c.sentenceField } : {}),
-    ...(c.glossField ? { glossField: c.glossField } : {}),
-  };
-}
 
 /** Apply the user's field choices to a detected candidate. */
 function withOverrides(c: Candidate, s: ProfileSource): Candidate {

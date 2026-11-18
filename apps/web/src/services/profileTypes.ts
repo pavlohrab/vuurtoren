@@ -2,7 +2,7 @@
 import type { AddSource, LanguageProfile } from "@app/core";
 import type { DeckOption } from "@app/ui";
 
-export type { AddSource, LanguageProfile, DeckOption };
+export type { AddSource };
 
 /** A deck detection suggests as a source of known words. */
 export interface DeckSuggestion {
@@ -31,7 +31,7 @@ export interface CourseDeckContext {
 }
 
 /** A word of the placement check. */
-export interface PlacementWord {
+interface PlacementWord {
   key: string;
   /** As shown, e.g. "de fiets". */
   word: string;

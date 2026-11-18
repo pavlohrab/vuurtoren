@@ -271,7 +271,7 @@ export interface DerivedAnswer {
 const SG: Person[] = ["ik", "jij", "hij"];
 
 /** The finite form of a verb for `person` in `tense` (null when the data lacks it). */
-export function conjugate(
+function conjugate(
   forms: WordForms,
   person: Person,
   tense: Tense,

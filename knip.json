@@ -1,0 +1,27 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "workspaces": {
+    "apps/web": {
+      "project": ["src/**/*.{ts,tsx}"]
+    },
+    "apps/mcp": {
+      "project": ["src/**/*.ts"]
+    },
+    "server/api": {
+      "project": ["src/**/*.ts"]
+    },
+    "tools/anki-report": {
+      "project": ["src/**/*.ts"]
+    },
+    "packages/content": {
+      "project": ["src/**/*.ts", "scripts/**/*.ts"]
+    },
+    "packages/db": {
+      "project": ["src/**/*.ts"]
+    },
+    "packages/*": {
+      "project": ["src/**/*.{ts,tsx}"]
+    }
+  },
+  "ignoreBinaries": ["uv"]
+}

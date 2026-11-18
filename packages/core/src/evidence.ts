@@ -24,7 +24,7 @@ export interface AppEvidence {
 export type EvidenceSource = "practice" | "cloze" | "book";
 
 /** Weight of one correct answer; a wrong answer always counts 1 wrong. */
-export const EVIDENCE_WEIGHT = {
+const EVIDENCE_WEIGHT = {
   practice: 1,
   cloze: 1,
   book: 1,
@@ -35,13 +35,13 @@ export const EVIDENCE_WEIGHT = {
 /** Ceiling of the app-derived recall estimate: below "known", inside the reader's cloze range. */
 export const APP_MAX_P = 0.8;
 /** The app-derived estimate halves every this many days without an answer. */
-export const APP_HALF_LIFE_DAYS = 30;
+const APP_HALF_LIFE_DAYS = 30;
 /** Factor applied when the newest answer was wrong. */
-export const APP_LAST_WRONG_FACTOR = 0.5;
+const APP_LAST_WRONG_FACTOR = 0.5;
 /** Weighted correct answers needed before a word shows as "Learning (in Kenning)". */
-export const APP_LEARNING_MIN_CORRECT = 3;
+const APP_LEARNING_MIN_CORRECT = 3;
 /** ... and the current estimate must be at least this. */
-export const APP_LEARNING_MIN_P = 0.5;
+const APP_LEARNING_MIN_P = 0.5;
 
 const DAY_MS = 86_400_000;
 

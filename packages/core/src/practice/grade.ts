@@ -1,7 +1,7 @@
 import type { Attempt, Exercise, Grade } from "./types.js";
 
 /** Typed answers faster than this (ms, without hints) are graded "easy". */
-export const FAST_TYPED_MS = 4000;
+const FAST_TYPED_MS = 4000;
 
 /**
  * Map an attempt to an FSRS grade.

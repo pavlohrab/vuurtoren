@@ -34,7 +34,7 @@ interface Slot {
 }
 
 /** Split a gap-fill prompt into its blanks (each with its "(hint)"). */
-export function slotsOf(item: ExerciseItem): Slot[] | null {
+function slotsOf(item: ExerciseItem): Slot[] | null {
   const hints = (item.hint ?? "").split("|").filter(Boolean);
   const pieces = item.prompt.split(BLANK_G);
   const blanks = pieces.length - 1;

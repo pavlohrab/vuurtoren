@@ -12,9 +12,6 @@ export const TAG_READING = "kenning::reading";
 export const TAG_KNOWN = "kenning::known";
 /** Anki's day syntax: "21-35!" sets the interval (not just the due date) to 21–35 days. */
 export const KNOWN_DUE_DATE = "21-35!";
-/** Interval from which a card counts as mature. */
-export const MATURE_DAYS = 21;
-
 export type CardType = "new" | "learning" | "review" | "relearning";
 
 export interface CardState {
@@ -36,7 +33,7 @@ export interface NoteCardStatus {
 }
 
 /** Error for a missing capability or an unusable request (as opposed to a transport error). */
-export class AnkiActionError extends Error {
+class AnkiActionError extends Error {
   constructor(message: string) {
     super(message);
     this.name = "AnkiActionError";

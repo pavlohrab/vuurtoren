@@ -86,7 +86,7 @@ export interface Snapshot {
 const MIN_DECK_NOTES = 10;
 
 /** Detection found no target-language vocabulary deck. */
-export class NoSourceDecksError extends Error {
+class NoSourceDecksError extends Error {
   override readonly name = "NoSourceDecksError";
   constructor(readonly lang: string) {
     super(`No ${lang} vocabulary decks found in Anki.`);

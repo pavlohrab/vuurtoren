@@ -50,7 +50,7 @@ export interface ReaderProps {
 }
 
 /** Letter hint: the first `shown` letters, then one underscore per remaining letter. */
-export function letterHint(word: string, shown = 1): string {
+function letterHint(word: string, shown = 1): string {
   const chars = [...word];
   return chars.map((c, k) => (k < shown || !/\p{L}/u.test(c) ? c : "_")).join(" ");
 }
@@ -59,7 +59,7 @@ export function letterHint(word: string, shown = 1): string {
  * Cloze help ladder: 0 meaning (tooltip on focus) → 1 first letter → 2 first half → reveal.
  * `onClozeAnswer` receives the level used; a reveal is reported as answer "" with level 3.
  */
-export const CLOZE_REVEAL_LEVEL = 3;
+const CLOZE_REVEAL_LEVEL = 3;
 const HINT_TITLES = ["Show the first letter (?)", "Show half of the word (?)", "Show the word (?)"];
 
 /** Opacity of the "learning" underline: fades as recall grows, clamped to 0.25..1. */

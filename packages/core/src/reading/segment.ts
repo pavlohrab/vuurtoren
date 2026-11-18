@@ -4,7 +4,7 @@
 import type { AnalyzedToken, Segment } from "./types.js";
 
 /** Default segment size in word tokens. */
-export const DEFAULT_SEGMENT_WORDS = 150;
+const DEFAULT_SEGMENT_WORDS = 150;
 
 /** Fractions of the target used by the cut heuristics. */
 const PARAGRAPH_CUT_FRACTION = 0.67; // cut at a paragraph break once a segment is this full

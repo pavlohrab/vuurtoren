@@ -21,9 +21,9 @@ import { LoginLimiter, type LimiterOptions } from "./ratelimit.js";
 import { McpTokenStore } from "./mcpTokens.js";
 import { SessionStore, type SessionOptions } from "./sessions.js";
 
-export type AuthMethod = "password" | "token";
+type AuthMethod = "password" | "token";
 
-export const COOKIE_NAME = "kenning_session";
+const COOKIE_NAME = "kenning_session";
 
 export interface AuthOptions {
   /** Username for password sign-in (required with `password`). */
@@ -47,7 +47,7 @@ export interface AuthOptions {
 }
 
 /** Who made a request. */
-export type Identity =
+type Identity =
   | { via: "open" }
   | { via: "token" }
   /** A per-user MCP token: valid for `/api/mcp` only. */
@@ -55,7 +55,7 @@ export type Identity =
   | { via: "session"; user: string; expiresAt: number; cookie: string; renewed: boolean };
 
 /** What a request is for: MCP tokens are accepted for "mcp" (the `/api/mcp` endpoint) only. */
-export type AuthScope = "api" | "mcp";
+type AuthScope = "api" | "mcp";
 
 export interface Auth {
   readonly enabled: boolean;
@@ -76,7 +76,7 @@ const fingerprint = (...parts: string[]): string =>
   createHash("sha256").update(parts.join("\0")).digest("base64url");
 
 /** Read one cookie from the Cookie header. */
-export function readCookie(req: IncomingMessage, name: string): string | undefined {
+function readCookie(req: IncomingMessage, name: string): string | undefined {
   const header = req.headers.cookie;
   if (!header) return undefined;
   for (const part of header.split(";")) {
@@ -100,7 +100,7 @@ export function readCookie(req: IncomingMessage, name: string): string | undefin
  *
  * @returns a reason when the request must be refused, else null
  */
-export function csrfProblem(
+function csrfProblem(
   req: IncomingMessage,
   allowedOrigins: readonly string[] = [],
 ): string | null {

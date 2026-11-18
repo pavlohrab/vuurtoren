@@ -7,7 +7,7 @@
  * See docs/research/02-anki-integration.md §6 and docs/research/03-algorithms.md §2.
  */
 
-export const DEFAULT_DECAY = 0.5;
+const DEFAULT_DECAY = 0.5;
 const DAY_MS = 86_400_000;
 
 /** Factor F such that R(t = S) = 0.9 for the given decay. */
@@ -51,9 +51,9 @@ export interface WordKnowledge {
 }
 
 /** Interval (or stability) in days from which a card counts as "known" (Anki's "mature"). */
-export const KNOWN_THRESHOLD_DAYS = 21;
+const KNOWN_THRESHOLD_DAYS = 21;
 /** Minimum current recall probability for a mature card to count as "known". */
-export const KNOWN_MIN_RECALL = 0.6;
+const KNOWN_MIN_RECALL = 0.6;
 
 /**
  * Classify a card into a word state with a probability of knowing it.
