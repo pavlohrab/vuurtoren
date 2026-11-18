@@ -142,6 +142,7 @@ export class AnkiConnectClient {
       await this.rpc("api.describe");
       return true;
     } catch {
+      // api.describe missing (older AnkiConnect): feature detection, not an error
       return false;
     }
   }

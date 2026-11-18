@@ -109,6 +109,7 @@ function defaultStorage(): Pick<Storage, "getItem" | "setItem" | "removeItem"> {
     localStorage.removeItem("kenning.probe");
     return localStorage;
   } catch {
+    // Expected in private windows / blocked storage: in-memory for this session.
     const m = new Map<string, string>();
     return {
       getItem: (k) => m.get(k) ?? null,
@@ -182,6 +183,7 @@ export function createLiveCourses(deps: LiveCoursesDeps): CourseServices {
       const raw = storage.getItem(PENDING_KEY);
       return raw ? (JSON.parse(raw) as PendingImport) : null;
     } catch {
+      // Unreadable entry: nothing to resume (expected).
       return null;
     }
   };
@@ -375,6 +377,7 @@ export function createLiveCourses(deps: LiveCoursesDeps): CourseServices {
     const blocks = await repo.courseBlocks(courseId);
     const client = await deps.nlp();
     const derive: DeriveClient = {
+      // Forms are optional (fewer matches); an outage shows in the degraded indicator.
       forms: (lang, lemmas) => client.forms(lang, lemmas).catch(() => ({})),
       analyzeText: (lang, texts) => client.analyzeText(lang, texts),
     };
@@ -783,6 +786,7 @@ export function createLiveCourses(deps: LiveCoursesDeps): CourseServices {
         const [parsed] = await (await deps.nlp()).analyzeText("nl", [answer]);
         orderOk = parsed ? isVerbSecond(parsed.tokens) : undefined;
       } catch {
+        // Word-order check is optional: the answer is graded without it.
         orderOk = undefined;
       }
     }
@@ -960,6 +964,7 @@ export function createLiveCourses(deps: LiveCoursesDeps): CourseServices {
         // The dictionary is optional: words go to Anki without a gloss.
       }
     }
+    // Deck suggestions are optional (Anki may be closed): the default decks are still offered.
     const options: string[] = deps.deckOptions ? await deps.deckOptions().catch(() => []) : [];
     const decks = Object.fromEntries(units.map((u) => [u.n, unitDeck(profile, course.title, u)]));
     return {
@@ -1010,6 +1015,7 @@ export function createLiveCourses(deps: LiveCoursesDeps): CourseServices {
         lastDeck = res.deck;
         added++;
       } catch {
+        // Counted and returned to the screen, which reports how many words failed.
         failed++;
       }
     }
@@ -1085,6 +1091,7 @@ export function createLiveCourses(deps: LiveCoursesDeps): CourseServices {
         unit.kind === "theme" ? courseBaseline(course, blocks) : Promise.resolve(new Map()),
       ]);
     } catch {
+      // Grammar topics of a unit are optional; an outage shows in the degraded indicator.
       return [];
     }
     const lift = (id: string, c: number) => {

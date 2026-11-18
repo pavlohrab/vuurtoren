@@ -18,6 +18,7 @@ export function readPracticeAgain(): string[] {
     const v: unknown = JSON.parse(localStorage.getItem(KEY) ?? "[]");
     return Array.isArray(v) ? v.filter((k): k is string => typeof k === "string") : [];
   } catch {
+    // storage blocked or corrupt: no remembered words (expected)
     return [];
   }
 }

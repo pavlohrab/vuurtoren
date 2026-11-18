@@ -61,6 +61,15 @@ export interface KenningRepository extends Repository {
   lastSnapshot(lang: string): Promise<{ at: number; sources: string[] } | null>;
   /** Number of events in the log. */
   eventCount(): Promise<number>;
+  /**
+   * Cheap change marker (review A7): the device id of the database plus the rowid of the newest
+   * event. Every append raises `seq` by exactly one; an import (new device id) changes `deviceId`.
+   */
+  head(): Promise<{ deviceId: string; seq: number }>;
+  /** `word` for many keys in one call (review A8); unknown keys are left out, key order. */
+  wordsByKeys(lang: string, keys: string[]): Promise<WordInfo[]>;
+  /** `getText` for many ids in one call (review A8); missing ids are left out, request order. */
+  getTexts(ids: string[]): Promise<StoredText[]>;
   /** ConversationStarted / MessageAdded events in id order (fold with `projectConversations`). */
   conversationEvents(): Promise<StoredEvent[]>;
   /** Accepted AI example sentences of a language, one set per (key, topic) (see generated.ts). */
@@ -195,10 +204,11 @@ export async function createRepository(
     event: json<AppEvent>(r["payload"]),
   });
 
-  /** Gather facts for all words (or one key) of a language and compose them. */
-  async function loadWords(lang: string, key?: string): Promise<Map<string, WordInfo>> {
-    const k = key === undefined ? "" : " AND key = ?";
-    const p = key === undefined ? [lang] : [lang, key];
+  /** Gather facts for all words (or only `keys`) of a language and compose them. */
+  async function loadWords(lang: string, keys?: string[]): Promise<Map<string, WordInfo>> {
+    // One JSON parameter instead of one per key: no SQLite variable limit for large batches.
+    const k = keys === undefined ? "" : " AND key IN (SELECT value FROM json_each(?))";
+    const p = keys === undefined ? [lang] : [lang, JSON.stringify(keys)];
     const facts = new Map<string, WordFacts>();
     const get = (key: string): WordFacts => {
       let f = facts.get(key);
@@ -241,6 +251,27 @@ export async function createRepository(
     return out;
   }
 
+  /** Full texts (content and tokens) for `ids`, in request order; missing ids left out. */
+  async function loadTexts(ids: string[]): Promise<StoredText[]> {
+    if (ids.length === 0) return [];
+    const rows = await driver.exec(
+      `SELECT ${TEXT_COLS}, t.content, tt.tokens ${TEXT_FROM}
+        WHERE t.id IN (SELECT value FROM json_each(?))`,
+      [JSON.stringify(ids)],
+    );
+    const byId = new Map(
+      rows.map((r): [string, StoredText] => [
+        String(r["id"]),
+        {
+          ...textSummary(r),
+          content: String(r["content"]),
+          tokens: r["tokens"] === null ? null : json<AnalyzedToken[]>(r["tokens"]),
+        },
+      ]),
+    );
+    return ids.flatMap((id) => byId.get(id) ?? []);
+  }
+
   const repo: KenningRepository = {
     deviceId,
 
@@ -269,21 +300,9 @@ export async function createRepository(
         ).map(textSummary),
       ),
 
-    getText: (id) =>
-      serial(async () => {
-        const rows = await driver.exec(
-          `SELECT ${TEXT_COLS}, t.content, tt.tokens ${TEXT_FROM} WHERE t.id = ?`,
-          [id],
-        );
-        const r = rows[0];
-        if (!r) return null;
-        const text: StoredText = {
-          ...textSummary(r),
-          content: String(r["content"]),
-          tokens: r["tokens"] === null ? null : json<AnalyzedToken[]>(r["tokens"]),
-        };
-        return text;
-      }),
+    getText: (id) => serial(async () => (await loadTexts([id]))[0] ?? null),
+
+    getTexts: (ids) => serial(() => loadTexts(ids)),
 
     learnerModel: (lang) =>
       serial(async () => {
@@ -294,7 +313,10 @@ export async function createRepository(
         return model;
       }),
 
-    word: (lang, key) => serial(async () => (await loadWords(lang, key)).get(key) ?? null),
+    word: (lang, key) => serial(async () => (await loadWords(lang, [key])).get(key) ?? null),
+
+    wordsByKeys: (lang, keys) =>
+      serial(async () => (keys.length ? [...(await loadWords(lang, keys)).values()] : [])),
 
     words: (lang, q = {}) =>
       serial(async () => {
@@ -456,6 +478,13 @@ export async function createRepository(
 
     eventCount: () =>
       serial(async () => Number((await driver.exec("SELECT count(*) AS c FROM events"))[0]?.["c"])),
+
+    // max(rowid) is O(1) on a rowid table; events are never deleted (append-only triggers).
+    head: () =>
+      serial(async () => ({
+        deviceId,
+        seq: Number((await driver.exec("SELECT max(rowid) AS s FROM events"))[0]?.["s"] ?? 0),
+      })),
 
     conversationEvents: () =>
       serial(async () =>

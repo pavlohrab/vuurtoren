@@ -6,6 +6,7 @@ export function onboardingSkipped(): boolean {
   try {
     return localStorage.getItem(SKIPPED) === "1";
   } catch {
+    // storage blocked: onboarding is shown (expected)
     return false;
   }
 }

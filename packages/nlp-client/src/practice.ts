@@ -46,6 +46,7 @@ export function createPracticeData(client: () => NlpClient | Promise<NlpClient>)
         const res = await request(nlp, batch);
         got = res && typeof res === "object" ? res : null;
       } catch {
+        // optional data: `failed` makes degraded() true, which the practice screen shows
         got = null;
       }
       failed = got === null;

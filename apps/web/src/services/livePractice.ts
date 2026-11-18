@@ -32,6 +32,7 @@ import type { AISentenceReport } from "./aiTypes.js";
 import type { SentenceFill, SentenceNeed } from "./liveAI.js";
 import type { TopicMaterial } from "./liveGrammar.js";
 import type { PracticeData } from "@app/nlp-client";
+import { fetchTexts } from "./textBatch.js";
 import type {
   AnswerResult,
   AttemptInput,
@@ -295,9 +296,9 @@ export function createLivePractice(deps: LivePracticeDeps) {
   ): Promise<Map<string, Occurrence>> {
     const out = new Map<string, Occurrence>();
     const texts = (await repo.listTexts()).filter((t) => t.analyzed).slice(0, MAX_TEXTS);
-    for (const summary of texts) {
-      const text = await repo.getText(summary.id);
-      if (text?.tokens) sentencesFromTexts(text.tokens, text.content, model, keys, out);
+    // Batched reads (review A8): one call per ~150k words instead of one per text.
+    for (const text of await fetchTexts(repo, texts)) {
+      if (text.tokens) sentencesFromTexts(text.tokens, text.content, model, keys, out);
     }
     return out;
   }
@@ -556,10 +557,14 @@ export function createLivePractice(deps: LivePracticeDeps) {
               .map(([, w]) => ({ lemma: w.lemma, pos: w.pos })),
           )
         : none<WordForms>(),
-      Promise.all(entries.map(([key]) => repo.word(lang, key))),
+      repo.wordsByKeys(
+        lang,
+        entries.map(([key]) => key),
+      ),
     ]);
-    const words: WordData[] = entries.map(([key, w], k) => {
-      const info = infos[k] ?? null;
+    const infoByKey = new Map(infos.map((w) => [w.key, w]));
+    const words: WordData[] = entries.map(([key, w]) => {
+      const info = infoByKey.get(key) ?? null;
       const { glosses, article } = deps.composeGlosses(info, dict[w.lemma], w.pos);
       const word: WordData = {
         key,
@@ -657,5 +662,13 @@ export function createLivePractice(deps: LivePracticeDeps) {
     };
   }
 
-  return { practiceOverview, startPractice, startTopicPractice, answerExercise, buildWordData };
+  return {
+    practiceOverview,
+    startPractice,
+    startTopicPractice,
+    answerExercise,
+    buildWordData,
+    /** Forget the cached practice items (another device answered; review A7). */
+    invalidate: () => itemCache.clear(),
+  };
 }

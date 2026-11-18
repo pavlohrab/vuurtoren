@@ -20,6 +20,7 @@ export function watchesUrl(input: RequestInfo | URL, origin: string): boolean {
     const raw = input instanceof Request ? input.url : String(input);
     url = new URL(raw, origin);
   } catch {
+    // not a URL we can parse: not an /api or /nlp request (expected)
     return false;
   }
   if (url.origin !== origin) return false;

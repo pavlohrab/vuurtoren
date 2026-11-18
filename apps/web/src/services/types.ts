@@ -209,6 +209,12 @@ export interface PracticeOptions {
  * AnkiConnect or the NLP server directly; swap the implementation passed to <ServicesProvider>.
  */
 export interface AppServices extends CourseServices, AIServices, ProfileServices, ExamServices {
+  /**
+   * Server mode only (review A7): ask the server whether another device changed the shared
+   * data; if so, drop the service caches and return true (the caller then refetches its
+   * queries). Absent in browser and demo mode. Rejects when the server is unreachable.
+   */
+  checkRemoteChanges?(): Promise<boolean>;
   listTexts(): Promise<TextListItem[]>;
   getReading(textId: string): Promise<ReadingView | null>;
   importText(input: ImportInput, onProgress?: (msg: string) => void): Promise<string>;

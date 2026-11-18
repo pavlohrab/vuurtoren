@@ -15,6 +15,7 @@ export function readTheme(): ThemeChoice {
     const v = localStorage.getItem(KEY);
     return isTheme(v) ? v : "system";
   } catch {
+    // storage blocked: follow the system theme (expected)
     return "system";
   }
 }

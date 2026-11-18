@@ -19,3 +19,5 @@
 - Two devices in browser mode still do not sync. M7 can reuse the event log either way.
 - Large Anki snapshots in the log make the file grow (see "Known issues" in STATUS.md); compaction is still needed.
 - Every read is an HTTP round trip. Acceptable on a LAN; revisit with batching if it feels slow.
+
+**Note (2026-11-18, review A7/A8):** several devices share the server, so each client checks a cheap change marker (`head` RPC: the database's device id and the newest event's rowid) on focus, when the page becomes visible and every 30 s while visible. When someone else wrote (own appends are counted and excluded; a restored backup changes the device id) the services drop their caches and every query is refetched, except during a practice session, which defers it to its end. Browser mode does not check (one tab owns the data). The worst N+1 paths are batched (`wordsByKeys`, `getTexts`, one plan pass for the Library): Library open 38 → 7 RPCs (cached: 13 → 1), reader page 13 → 9, practice start 21 → 10 (12 texts, measured in `requestCount.test.ts`). Server outages show in the shell's degraded indicator (review A17).

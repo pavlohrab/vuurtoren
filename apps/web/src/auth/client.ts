@@ -48,6 +48,7 @@ async function errorText(res: Response): Promise<string | null> {
     const body = (await res.json()) as { error?: unknown };
     return typeof body.error === "string" ? body.error : null;
   } catch {
+    // no JSON error body: the caller uses its generic message (expected)
     return null;
   }
 }

@@ -105,6 +105,7 @@ export function csrfProblem(
     try {
       host = origin === "null" ? null : new URL(origin).host;
     } catch {
+      // malformed Origin header: treated as no origin (the CSRF check then refuses)
       host = null;
     }
     const sameHost = host !== null && host === req.headers.host;

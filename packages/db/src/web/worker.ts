@@ -79,6 +79,8 @@ async function open(name: string): Promise<OpenedDb> {
       if (i < attempts - 1) await new Promise((r) => setTimeout(r, 250));
     }
   }
+  // Degraded mode, reported to the user: the driver says `persistent: false` and the shell
+  // shows "data will not be saved". The warning keeps the cause for bug reports.
   console.warn("[@app/db] OPFS unavailable, using in-memory database:", lastErr);
   let current = memoryDb(sqlite3);
   return {

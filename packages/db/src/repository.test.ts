@@ -866,3 +866,56 @@ describe("file database", () => {
     expect(await repo.lookedUpKeys("nl", "missing")).toEqual([]);
   });
 });
+
+describe("batched reads and head (review A7, A8)", () => {
+  it("wordsByKeys and getTexts equal the single-item calls", async () => {
+    const { repo } = await newRepo();
+    await repo.append({
+      type: "AnkiSnapshotImported",
+      lang: "nl",
+      sources: ["D"],
+      entries: [
+        anki("fiets", { gloss: "bike" }),
+        anki("huis"),
+        anki("kaas", { state: "learning" }),
+      ],
+    });
+    await repo.append({ type: "WordStateSet", lang: "nl", key: "boom", state: "learning" });
+    const keys = ["kaas", "nope", "boom", "fiets"];
+    const batch = await repo.wordsByKeys("nl", keys);
+    const single = (await Promise.all(keys.map((k) => repo.word("nl", k)))).filter((w) => w);
+    expect(batch).toEqual([...single].sort((a, b) => (a!.key < b!.key ? -1 : 1)));
+    expect(await repo.wordsByKeys("nl", [])).toEqual([]);
+
+    for (const [id, content] of [
+      ["a", "Een fiets."],
+      ["b", "Het huis."],
+    ] as const) {
+      await repo.append({
+        type: "TextImported",
+        textId: id,
+        title: id,
+        lang: "nl",
+        source: { kind: "paste" },
+        content,
+      });
+    }
+    await repo.append({
+      type: "TextAnalyzed",
+      textId: "b",
+      contentHash: contentHash("Het huis."),
+      tokens: [tok(0, "huis")],
+    });
+    const texts = await repo.getTexts(["b", "missing", "a"]);
+    expect(texts).toEqual([await repo.getText("b"), await repo.getText("a")]);
+    expect(texts[0]!.tokens).toHaveLength(1);
+  });
+
+  it("head rises by one per append", async () => {
+    const { repo } = await newRepo();
+    expect(await repo.head()).toEqual({ deviceId: "dev1", seq: 0 });
+    await repo.append({ type: "SettingChanged", key: "x", value: 1 });
+    await repo.append({ type: "SettingChanged", key: "x", value: 2 });
+    expect(await repo.head()).toEqual({ deviceId: "dev1", seq: 2 });
+  });
+});

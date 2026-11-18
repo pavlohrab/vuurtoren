@@ -43,6 +43,7 @@ async function isReachable(opts: AnkiConnectOptions): Promise<boolean> {
     await f(url, { method: "GET", mode: "no-cors", signal: AbortSignal.timeout(5_000) });
     return true;
   } catch {
+    // nothing listens on the port: "not running" (expected; the caller reports it)
     return false;
   }
 }
