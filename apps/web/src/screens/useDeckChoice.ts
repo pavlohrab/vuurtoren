@@ -11,7 +11,7 @@ import type { AddSource, CourseDeckContext } from "../services/profileTypes.js";
 
 const picks = new Map<string, string>();
 
-export interface DeckChoice {
+interface DeckChoice {
   /** The deck words go to now (undefined while loading). */
   deck: string | undefined;
   /** Explicit picker choice to pass to the add call (undefined = profile's rule). */

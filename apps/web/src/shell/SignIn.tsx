@@ -3,7 +3,7 @@ import { Eye, EyeOff } from "lucide-react";
 import { Button, LogoMark, Spinner } from "@app/ui";
 import type { AuthMethod, Credentials, SignInResult } from "../auth/client.js";
 
-export interface SignInProps {
+interface SignInProps {
   /** What the server accepts (from /api/health). */
   methods: readonly AuthMethod[];
   signIn: (c: Credentials) => Promise<SignInResult>;

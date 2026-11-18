@@ -4,3 +4,5 @@ coverage
 server/
 docs/roadmap.md
 .claude
+# generated (pnpm --filter @app/content generate)
+packages/content/src/generated/

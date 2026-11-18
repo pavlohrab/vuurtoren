@@ -43,8 +43,6 @@ export function topicCount(
   return { hits, texts };
 }
 
-export const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
-
 export function useGrammarOverview() {
   const services = useServices();
   return useQuery({

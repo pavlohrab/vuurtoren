@@ -4,7 +4,7 @@
  */
 import { dutchVoice } from "../practice/speech.js";
 
-export interface SpokenLine {
+interface SpokenLine {
   voice: "f" | "m";
   text: string;
 }
@@ -12,7 +12,7 @@ export interface SpokenLine {
 /** Playback speeds offered in the UI (1 = the voice's normal speed). */
 export const RATES = [0.75, 0.9, 1] as const;
 
-export function speechSupported(): boolean {
+function speechSupported(): boolean {
   return typeof window !== "undefined" && "speechSynthesis" in window;
 }
 

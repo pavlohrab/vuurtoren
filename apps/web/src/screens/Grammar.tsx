@@ -6,13 +6,8 @@ import { Button, Chip, Tabs } from "@app/ui";
 import { PageHeader } from "../shell/PageHeader.js";
 import type { GrammarOverview } from "../services/types.js";
 import { inline } from "./Markdown.js";
-import {
-  LEVEL_LABEL,
-  LEVEL_LINE,
-  plural,
-  topicCount,
-  useGrammarOverview,
-} from "./GrammarCommon.js";
+import { LEVEL_LABEL, LEVEL_LINE, topicCount, useGrammarOverview } from "./GrammarCommon.js";
+import { plural } from "../format.js";
 import "./grammar.css";
 
 export { LEVEL_LABEL, MarkedSentence, topicCount } from "./GrammarCommon.js";

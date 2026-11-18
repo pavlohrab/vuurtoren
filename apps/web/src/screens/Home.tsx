@@ -29,6 +29,7 @@ import type { TextListItem, TextWordItem } from "../services/types.js";
 import type { ExamAttemptRecord } from "../services/examTypes.js";
 import { usePageHeader } from "../shell/ShellContext.js";
 import { PageHeader, SectionHeader } from "../shell/PageHeader.js";
+import { pct } from "../format.js";
 import { pagesOf, WORDS_PER_PAGE } from "../textPages.js";
 import { topicCount } from "./Grammar.js";
 import { CreateStoryButton } from "./StoryDialog.js";
@@ -43,7 +44,6 @@ export function greeting(hour: number): string {
 }
 
 const fmt = (n: number) => n.toLocaleString("en");
-const pct = (v: number) => `${Math.round(v * 100)}%`;
 
 /** The text to continue: the one opened last, else one in progress, else the best next one. */
 export function pickContinue(

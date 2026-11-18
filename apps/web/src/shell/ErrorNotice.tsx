@@ -2,7 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { Button } from "@app/ui";
 import { describeError } from "../services/errors.js";
 
-export interface ErrorNoticeProps {
+interface ErrorNoticeProps {
   error: unknown;
   /** Shown when the error has no plain message of its own. */
   fallback?: string;
