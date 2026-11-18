@@ -2,34 +2,43 @@
 id: inversion
 title: Inversion
 level: A2
-summary: When something other than the subject comes first, the verb jumps in front of the subject.
+group: word-order
+order: 16
+summary: When something other than the subject comes first, the verb stays in second place and the subject comes right after it.
 detects: [inversion]
 practice: [scramble]
-related: [word-order-v2, questions, subordinate-clauses]
+related: [word-order-v2, questions, subordinate-clauses, conjunctional-adverbs]
 ---
 
 ## Explanation
 
-Dutch likes to start a sentence with the information that matters most: a time, a place, a reason, an object. Because the verb must stay in second position, the subject has to step aside and follow the verb. That swap is called inversion.
+Because the verb must be second (V2), the subject has to move when you start with something else. It goes **right after the verb**. This swap is called **inversion**.
 
-It happens in three common situations:
+Dutch speakers start with something other than the subject very often: a time (_Morgen_), a place (_In Gent_), a reason word (_Daarom_), an object that you want to stress (_Die film_), or a whole subordinate clause (_Als het regent,_).
 
-- a sentence starts with an adverb or a time or place phrase (_morgen_, _daarom_, _in de tuin_);
-- a sentence starts with a subordinate clause (_Als het regent, blijf ik thuis_);
-- a question is formed (_Woon jij hier?_).
+A subordinate clause at the start counts as **one element**. So the main verb comes right after the comma: _Als ik tijd heb, kom ik._
 
-The meaning does not change. Only the emphasis does. A short word such as _en_, _maar_ or _want_ in front does not count as an element, so it causes no inversion.
+Remember the jij-rule: after inversion, _jij/je_ makes the verb lose its -t: _Morgen werk je thuis._
+
+These do **not** cause inversion, because they stand outside the clause: _en, maar, of, want, dus_ (dus may), and _ja, nee, nou_.
+
+### Pattern
+
+- `[subject] [verb] [rest]` → _Wij eten om zes uur._
+- `[other element] [verb] [subject] [rest]` → _Om zes uur eten wij._
+- `[subordinate clause], [verb] [subject] …` → _Als het mooi weer is, gaan we fietsen._
 
 ## Examples
 
-- Morgen **ga ik** naar het strand. | Tomorrow I am going to the beach.
-- Daarom **blijft zij** thuis. | That is why she stays at home.
-- Als het regent, **blijf ik** thuis. | If it rains, I stay at home.
-- In de zomer **fietsen wij** vaak naar zee. | In summer we often cycle to the sea.
-- Dat **weet ik** niet. | I do not know that.
+- Vandaag **blijf ik** thuis. | Today I am staying at home.
+- In de zomer **gaan wij** vaak naar zee. | In the summer we often go to the sea.
+- Daarom **heeft zij** de bus genomen. | That is why she took the bus.
+- Die film **heb ik** al gezien. | I have already seen that film.
+- Als het morgen regent, **blijven we** binnen. | If it rains tomorrow, we will stay inside.
+- Morgen **werk je** thuis, toch? | You are working from home tomorrow, aren't you?
 
 ## Common mistakes
 
-- Forgetting the swap after a first element: _Morgen ik ga naar het strand_. Say _Morgen ga ik naar het strand_.
-- Swapping after _en_ or _maar_: _Ik ben moe, maar blijf ik werken_. The conjunction does not count: _maar ik blijf werken_.
-- Swapping inside a subordinate clause. The verb of a clause with _omdat_ goes to the end instead; see the topic on subordinate clauses.
+- English order after a time word: _Vandaag ik blijf thuis._ Say _Vandaag blijf ik thuis._
+- No inversion after a subordinate clause: _Als het regent, we blijven binnen._ Say _…, blijven we binnen._
+- Inversion after _want_ or _maar_: _want heb ik geen tijd._ Keep normal order: _want ik heb geen tijd._

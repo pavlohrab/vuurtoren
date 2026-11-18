@@ -390,14 +390,16 @@ def detect_perfect(s: Sentence) -> Iterable[Hit]:
     for aux in s.toks:
         if not _is_fin(aux) or aux.lemma.lower() not in {"hebben", "zijn"}:
             continue
-        if aux.dep == "aux:pass":
-            continue
+        if aux.dep == "aux:pass" or "Tense=Past" in _morph(aux):
+            continue  # passives; "had/was + participle" is the past perfect
         head = s.head_of(aux)
         parts = [head] if head is not None and aux.dep == "aux" else []
         parts += [c for c in s.children(aux) if c.dep in {"xcomp", "ccomp"}]
         for p in parts:
             if p.pos != "VERB" or "VerbForm=Part" not in _morph(p):
                 continue
+            if any(c.lemma.lower() == "zullen" for c in s.children(p, "aux")):
+                continue  # "zou gekomen zijn" (the tagger may call zijn finite)
             if aux.lemma.lower() == "zijn" and not _is_zijn_verb(p.lemma):
                 continue  # most "zijn + participle" is a passive or a state ("is gesloten")
             yield Hit(
@@ -406,6 +408,34 @@ def detect_perfect(s: Sentence) -> Iterable[Hit]:
                 f"Perfect tense: «{aux.text}» + participle «{p.text}» ({p.lemma}).",
             )
             break
+
+
+def _past_perfect_participle(s: Sentence, aux: Token) -> Token | None:
+    """The participle of ``had/was + participle`` (past perfect), or None."""
+    if not _is_fin(aux) or aux.dep != "aux" or "Tense=Past" not in _morph(aux):
+        return None
+    lemma = aux.lemma.lower()
+    if lemma not in {"hebben", "zijn"}:
+        return None
+    head = s.head_of(aux)
+    if head is None or head.pos != "VERB" or "VerbForm=Part" not in _morph(head):
+        return None
+    if lemma == "zijn" and not _is_zijn_verb(head.lemma):
+        return None  # "was gesloten" is a state or a passive
+    return head
+
+
+def detect_past_perfect(s: Sentence) -> Iterable[Hit]:
+    """had / was + past participle: ``had gelezen``, ``was vertrokken``."""
+    for aux in s.toks:
+        p = _past_perfect_participle(s, aux)
+        if p is not None:
+            yield Hit(
+                "past-perfect",
+                tuple(sorted((aux.i, p.i))),
+                f"Past perfect: «{aux.text}» + participle «{p.text}», "
+                "one step further back in the past.",
+            )
 
 
 def _complement_infinitives(s: Sentence, fin: Token) -> list[Token]:
@@ -435,6 +465,10 @@ def detect_imperfect(s: Sentence) -> Iterable[Hit]:
     """A finite verb in the simple past."""
     for t in s.toks:
         if _is_fin(t) and "Tense=Past" in _morph(t):
+            if t.lemma.lower() == "zullen" or (
+                t.dep == "aux" and t.lemma.lower() in {"hebben", "zijn"}
+            ):
+                continue  # "zou" is the conditional, "had gelezen" the past perfect
             weak = t.text.lower().endswith(("te", "de", "ten", "den"))
             kind = "weak (-te/-de)" if weak else "strong (stem change)"
             yield Hit(
@@ -623,7 +657,10 @@ def detect_er(s: Sentence) -> Iterable[Hit]:
             continue
         after = [x for x in s.toks if x.i > t.i and x.pos != "PUNCT"]
         stranded = [x for x in after if x.pos == "ADP" and not s.children(x)]
-        if t.dep == "expl" or any(x.dep == "nsubj" and x.i > t.i for x in s.kids[verb.i]):
+        passive = [c for c in s.children(verb, "aux:pass") if c.lemma.lower() == "worden"]
+        if passive and not s.subjects(verb):
+            note = "«Er» fills the empty subject place: «er wordt…» (impersonal passive)."
+        elif t.dep == "expl" or any(x.dep == "nsubj" and x.i > t.i for x in s.kids[verb.i]):
             note = "«Er» introduces something new: «er is… / er staat…»."
         elif any(x.pos == "NUM" or x.lemma in {"veel", "weinig", "genoeg"} for x in after):
             note = "«Er» stands for the thing being counted: «Ik heb er twee»."
@@ -756,6 +793,217 @@ def detect_conjunction(s: Sentence) -> Iterable[Hit]:
         )
 
 
+# Verbs that take a bare infinitive and then use the infinitive instead of a participle in the
+# perfect ("heeft moeten werken", "heb hem zien vallen").
+IPP_VERBS = frozenset(
+    {
+        "kunnen",
+        "mogen",
+        "moeten",
+        "willen",
+        "laten",
+        "zien",
+        "horen",
+        "helpen",
+        "leren",
+        "blijven",
+        "gaan",
+        "komen",
+        "zitten",
+        "staan",
+        "liggen",
+        "lopen",
+        "durven",
+        "hoeven",
+    }
+)
+
+
+def detect_conditional(s: Sentence) -> Iterable[Hit]:
+    """zou / zouden + infinitive (conditional), or + participle + hebben/zijn (conditional
+    perfect)."""
+    for f in s.toks:
+        if not _is_fin(f) or f.lemma.lower() != "zullen" or "Tense=Past" not in _morph(f):
+            continue
+        head = s.head_of(f)
+        if f.dep == "aux" and head is not None and "VerbForm=Part" in _morph(head):
+            haux = [
+                c
+                for c in s.children(head, "aux")
+                if c.lemma.lower() in {"hebben", "zijn"} and c.i != f.i
+            ]
+            if haux:
+                yield Hit(
+                    "conditional-perfect",
+                    tuple(sorted((f.i, haux[0].i, head.i))),
+                    f"«{f.text}» + «{haux[0].text}» + participle «{head.text}»: what would have "
+                    "happened (but did not).",
+                )
+            continue
+        infs = _complement_infinitives(s, f)
+        if infs:
+            yield Hit(
+                "conditional",
+                tuple(sorted((f.i, infs[0].i))),
+                f"«{f.text}» + infinitive «{infs[0].text}»: would / should.",
+            )
+
+
+def _has_agent(s: Sentence, p: Token) -> bool:
+    """A ``door`` phrase on the participle (the parser labels it obl:agent or obl)."""
+    for c in s.children(p, "obl:agent", "obl"):
+        if c.dep == "obl:agent" or any(x.lemma.lower() == "door" for x in s.children(c, "case")):
+            return True
+    return False
+
+
+def detect_passive(s: Sentence) -> Iterable[Hit]:
+    """worden + participle, or zijn + participle with a door-agent. Without any subject it is an
+    impersonal passive (``Er wordt gedanst``)."""
+    for p in s.toks:
+        if p.pos != "VERB" or "VerbForm=Part" not in _morph(p):
+            continue
+        auxes = s.children(p, "aux:pass")
+        worden = next((a for a in auxes if a.lemma.lower() == "worden"), None)
+        zijn = next((a for a in auxes if a.lemma.lower() == "zijn"), None)
+        if worden is not None:
+            first = s.words[0] if s.words else None
+            fronted_pp = (
+                first is not None
+                and first.pos == "ADP"
+                and s.head_of(first) is not None
+                and s.head_of(first).head == p.i  # type: ignore[union-attr]
+            )
+            has_er = any(c.lemma.lower() == "er" for c in s.children(p, "expl", "advmod"))
+            # "Er moet nog meer gedaan worden": a quantity word is the hidden subject.
+            hidden = any(
+                c.dep == "obj" or c.lemma.lower() in QUANTITY_SUBJECTS for c in s.children(p)
+            )
+            has_er = has_er and not hidden
+            fronted_pp = fronted_pp and not hidden
+            if not s.subjects(p) and s.finite_of(p) is not None and (has_er or fronted_pp):
+                yield Hit(
+                    "impersonal-passive",
+                    tuple(sorted((worden.i, p.i))),
+                    f"«{worden.text}» + «{p.text}» without a subject: an activity, "
+                    "nobody in particular does it.",
+                )
+            elif s.subjects(p):
+                yield Hit(
+                    "passive",
+                    tuple(sorted((worden.i, p.i))),
+                    f"Passive: «{worden.text}» + participle «{p.text}».",
+                )
+        elif zijn is not None and _has_agent(s, p) and s.subjects(p):
+            yield Hit(
+                "passive",
+                tuple(sorted((zijn.i, p.i))),
+                f"Passive with «{zijn.text}» + participle «{p.text}»: the action is finished.",
+            )
+
+
+def detect_ipp(s: Sentence) -> Iterable[Hit]:
+    """Perfect of a modal-like verb with an infinitive instead of a participle:
+    ``heeft moeten werken``, ``heb hem zien vallen``."""
+    for aux in s.toks:
+        if not _is_fin(aux) or aux.dep != "aux" or aux.lemma.lower() not in {"hebben", "zijn"}:
+            continue
+        head = s.head_of(aux)
+        if head is None or "VerbForm=Inf" not in _morph(head):
+            continue
+        if any(c.lemma.lower() in {"te", "om"} for c in s.children(head, "mark")):
+            continue
+        inner = [
+            c
+            for c in s.children(head, "aux")
+            if "VerbForm=Inf" in _morph(c) and c.lemma.lower() in IPP_VERBS and c.i > aux.i
+        ]
+        if inner:
+            pair = (inner[0], head)
+        else:
+            more = [c for c in s.children(head, "xcomp") if "VerbForm=Inf" in _morph(c)]
+            if head.lemma.lower() not in IPP_VERBS or not more or head.i < aux.i:
+                continue
+            pair = (head, more[0])
+        yield Hit(
+            "verb-clusters",
+            tuple(sorted((aux.i, pair[0].i, pair[1].i))),
+            f"«{aux.text} … {pair[0].text} {pair[1].text}»: with another infinitive, "
+            f"«{pair[0].lemma}» keeps its infinitive instead of a participle.",
+        )
+
+
+def detect_progressive(s: Sentence) -> Iterable[Hit]:
+    """zijn + aan het + infinitive: ``Wij zijn aan het eten``."""
+    for aan in s.toks:
+        if aan.text.lower() != "aan" or aan.pos != "ADP":
+            continue
+        verb = s.head_of(aan)
+        nxt = s.by_index.get(aan.i + 1)
+        if verb is None or nxt is None or "VerbForm=Inf" not in _morph(verb):
+            continue
+        if nxt.text.lower() != "het" or nxt.head not in {verb.i, aan.i} or verb.i <= nxt.i:
+            continue
+        zijn = [c for c in s.children(verb, "cop", "aux") if c.lemma.lower() == "zijn"]
+        if not zijn and verb.pos == "VERB" and nxt.i + 1 == verb.i:
+            # The parser sometimes hangs "aan het bouwen" on the object ("een kast"); accept a
+            # finite zijn earlier in the sentence when "aan het" + infinitive are adjacent.
+            zijn = [t for t in s.toks if t.i < aan.i and _is_fin(t) and t.lemma.lower() == "zijn"]
+        if zijn:
+            yield Hit(
+                "progressive",
+                (zijn[0].i, aan.i, nxt.i, verb.i),
+                f"«{zijn[0].text} aan het {verb.text}»: busy doing it right now.",
+            )
+
+
+QUANTITY_SUBJECTS = frozenset(
+    {"veel", "meer", "weinig", "minder", "iets", "niets", "alles", "iemand", "niemand", "wat"}
+)
+
+POSSESSIVES = frozenset(
+    {"mijn", "m'n", "jouw", "je", "uw", "zijn", "z'n", "haar", "ons", "onze", "hun", "jullie"}
+)
+
+
+def detect_possessive(s: Sentence) -> Iterable[Hit]:
+    """A possessive word before its noun: ``mijn fiets``, ``onze buren``."""
+    for t in s.toks:
+        if t.pos not in {"PRON", "DET"} or "Poss=Yes" not in _morph(t):
+            continue
+        if t.text.lower() not in POSSESSIVES or t.dep not in {"nmod:poss", "det"}:
+            continue
+        noun = s.head_of(t)
+        if noun is None or noun.pos != "NOUN" or noun.i < t.i or noun.i - t.i > 3:
+            continue
+        yield Hit(
+            "possessive-pronouns",
+            (t.i, noun.i),
+            f"«{t.text}» says whose «{noun.text}» it is.",
+        )
+
+
+def detect_conditional_inversion(s: Sentence) -> Iterable[Hit]:
+    """An if-clause without ``als``: the verb first, then ``, dan …`` (``Had je gebeld, dan …``)."""
+    words = s.words
+    if s.is_question or len(words) < 5:
+        return
+    f, subj = words[0], words[1]
+    if not _is_fin(f) or subj.dep not in {"nsubj", "nsubj:pass"} or subj.pos != "PRON":
+        return
+    for k, a in enumerate(s.toks):
+        after = [b for b in s.toks[k + 1 : k + 4] if b.text.lower() == "dan"]
+        if a.text == "," and after:
+            b = after[0]
+            yield Hit(
+                "conditional-inversion",
+                (f.i, b.i),
+                f"The clause starts with the verb «{f.text}»: it means «if…», and «dan» "
+                "opens the result.",
+            )
+            return
+
+
 DETECTORS: tuple[Detector, ...] = (
     detect_inversion,
     detect_question,
@@ -779,6 +1027,13 @@ DETECTORS: tuple[Detector, ...] = (
     detect_imperative,
     detect_indirect_speech,
     detect_conjunction,
+    detect_past_perfect,
+    detect_conditional,
+    detect_passive,
+    detect_ipp,
+    detect_progressive,
+    detect_possessive,
+    detect_conditional_inversion,
 )
 
 TOPICS: frozenset[str] = frozenset(
@@ -805,6 +1060,15 @@ TOPICS: frozenset[str] = frozenset(
         "imperative",
         "indirect-speech",
         "conjunctions",
+        "past-perfect",
+        "conditional",
+        "conditional-perfect",
+        "passive",
+        "impersonal-passive",
+        "verb-clusters",
+        "progressive",
+        "possessive-pronouns",
+        "conditional-inversion",
     }
 )
 """Topic ids the detectors can produce (a subset of the topic pages)."""

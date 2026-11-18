@@ -1,38 +1,46 @@
 ---
 id: modal-verbs
-title: Modal verbs
+title: Modal verbs (kunnen, willen, moeten, mogen)
 level: A1
-summary: Kunnen, willen, moeten and mogen combine with an infinitive at the end of the clause.
+group: verbs
+order: 14
+summary: Kunnen, willen, moeten, mogen and hoeven combine with an infinitive at the end of the clause, without te (except hoeven).
 detects: [modal-verbs]
 practice: [scramble]
-related: [word-order-v2, future, te-infinitive]
+related: [verb-bracket, future, te-infinitive, verb-clusters, conditional]
 ---
 
 ## Explanation
 
-Modal verbs express ability, wish, duty and permission:
+Modal verbs say whether you **can**, **want**, **must** or **may** do something. The modal is the conjugated verb in second place. The other verb goes to the **end** as an infinitive, without _te_: _Ik kan morgen niet komen._
 
-- _kunnen_ (can, be able to),
-- _willen_ (want),
-- _moeten_ (must, have to),
-- _mogen_ (may, be allowed to).
+- **kunnen** = can, be able to; also "possible": _Dat kan_ (that is possible).
+- **willen** = want to. _Ik wil graag…_ is a friendly way to order something.
+- **moeten** = must, have to.
+- **mogen** = may, be allowed to.
+- **hoeven** + _te_ = need to. It is only used with a negative: _Je hoeft niet te komen_ (you do not need to come). "Not have to" is _niet hoeven te_, never _niet moeten_.
 
-The modal is the conjugated verb. The main verb stays in the **infinitive and goes to the end** of the clause, with no _te_: _Ik kan morgen komen_. Everything else (time, place, objects) stands between the two verbs.
+Watch out: _Je mag dat niet doen_ means "you must not do that" (it is not allowed).
 
-Their present tense is irregular and the singular forms are alike: _ik kan, jij kunt/kan, hij kan_; _ik wil, jij wilt/wil_; _ik moet_; _ik mag_. The plural ends in _-en_: _wij kunnen, willen, moeten, mogen_.
+The infinitive can be left out when the meaning is clear: _Ik moet naar huis_ (I must go home), _Dat mag niet_ (that is not allowed).
 
-Instead of a second verb you can also have a modal on its own when the meaning is clear: _Ik moet naar huis_ (the verb _gaan_ is understood).
+### Pattern
+
+- `[subject] [modal] … [infinitive]` → _Ik wil een boek lezen._
+- forms: `ik kan / jij kunt (kan) / hij kan / wij kunnen`; `ik wil / jij wilt / hij wil / wij willen`; `ik moet / hij moet`; `ik mag / hij mag`
+- not need to: `niet hoeven te + infinitive` → _Je hoeft niet te betalen._
 
 ## Examples
 
-- Ik **kan** morgen niet **komen**. | I cannot come tomorrow.
-- Zij **wil** graag Nederlands **leren**. | She would like to learn Dutch.
-- Wij **moeten** vandaag veel **doen**. | We have a lot to do today.
-- **Mag** ik hier **zitten**? | May I sit here?
-- Hij **wil** nog een kop koffie. | He wants another cup of coffee.
+- Ik **kan** goed **zwemmen**. | I can swim well.
+- **Wil** je iets **drinken**? | Do you want something to drink?
+- We **moeten** om acht uur **vertrekken**. | We have to leave at eight.
+- **Mag** ik het raam **openen**? | May I open the window?
+- Je **hoeft** morgen niet te **komen**. | You do not need to come tomorrow.
+- Hier **mag** je niet **parkeren**. | You are not allowed to park here.
 
 ## Common mistakes
 
-- Adding _te_: _Ik kan te komen_. After a modal the infinitive stands alone: _Ik kan komen_.
-- Putting the infinitive right after the modal: _Ik kan komen morgen_. It belongs at the end: _Ik kan morgen komen_.
-- Conjugating both verbs: _Ik kan komt_. Only the modal is conjugated.
+- Putting the infinitive next to the modal: _Ik kan zwemmen goed._ The infinitive goes last: _Ik kan goed zwemmen._
+- Adding te: _Ik wil te slapen._ Modals take no te: _Ik wil slapen._ Only hoeven does: _Je hoeft niet te slapen._
+- _Je moet niet komen_ for "you don't have to come". That means "you must not come". Say _Je hoeft niet te komen._

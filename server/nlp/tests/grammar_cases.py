@@ -315,4 +315,124 @@ CASES: dict[str, tuple[list[str], list[str]]] = {
             "Hij is arm maar gelukkig.",
         ],
     ),
+    "past-perfect": (
+        [
+            "Hij had het boek al gelezen.",
+            "Toen ik aankwam, was de trein al vertrokken.",
+            "Wij hadden die film nog nooit gezien.",
+            "Zij zei dat ze haar sleutels had verloren.",
+        ],
+        [
+            "Hij heeft het boek gelezen.",
+            "Hij had geen tijd.",
+            "De winkel was gesloten.",
+            "Ik had het moeten weten.",
+        ],
+    ),
+    "conditional": (
+        [
+            "Ik zou graag een kopje koffie willen.",
+            "Wat zou jij doen?",
+            "Als ik rijk was, zou ik een boot kopen.",
+            "Zij zei dat ze morgen zou komen.",
+        ],
+        [
+            "Ik zal je morgen bellen.",
+            "Ik wil graag koffie.",
+            "Ik zou het anders gedaan hebben.",
+        ],
+    ),
+    "conditional-perfect": (
+        [
+            "Ik zou het anders gedaan hebben.",
+            "Zonder jou zouden we de weg niet hebben gevonden.",
+            "Hij zou eerder gekomen zijn, maar de bus was te laat.",
+        ],
+        [
+            "Ik zou graag komen.",
+            "Ik heb het anders gedaan.",
+            "Hij zal wel gekomen zijn.",
+        ],
+    ),
+    "passive": (
+        [
+            "Het huis wordt volgend jaar verkocht.",
+            "De brief werd gisteren verstuurd.",
+            "Mijn fiets moet worden gerepareerd.",
+            "Dit huis is in 1900 door mijn opa gebouwd.",
+            "Het boek is door een bekende schrijver geschreven.",
+        ],
+        [
+            "Hij wordt morgen dertig.",
+            "Zij heeft de brief verstuurd.",
+            "De winkel is gesloten.",
+            "Er wordt vanavond gedanst.",
+        ],
+    ),
+    "impersonal-passive": (
+        [
+            "Er wordt vanavond gedanst.",
+            "Er werd die avond hard gelachen.",
+            "In de keuken wordt gekookt.",
+        ],
+        [
+            "Het huis wordt verkocht.",
+            "Er moet nog meer gedaan worden.",
+            "Er staat een kat op het dak.",
+        ],
+    ),
+    "verb-clusters": (
+        [
+            "Zij heeft niet kunnen komen.",
+            "Ik weet dat hij het had moeten doen.",
+            "Ik heb hem zien vallen.",
+            "Wij hebben lang moeten wachten.",
+        ],
+        [
+            "Zij heeft niet gekund.",
+            "Ik heb hem gezien.",
+            "Hij heeft veel te doen.",
+            "Wij moeten lang wachten.",
+        ],
+    ),
+    "progressive": (
+        [
+            "Wij zijn aan het eten.",
+            "Hij was de auto aan het wassen.",
+            "Ik ben nog aan het lezen.",
+            "Mijn broer is een nieuwe kast aan het bouwen.",
+        ],
+        [
+            "Het eten is klaar.",
+            "Ik denk aan het examen.",
+            "Hij werkt aan het boek.",
+            "Ik ben door het park gelopen.",
+            "Hij is aan het werk.",
+        ],
+    ),
+    "possessive-pronouns": (
+        [
+            "Dat is mijn fiets.",
+            "Hij heeft haar boek gelezen.",
+            "Onze buren zijn erg aardig.",
+            "Is dit uw jas?",
+        ],
+        [
+            "Ik zie haar morgen.",
+            "Zij zijn erg blij.",
+            "Die fiets is van mij.",
+        ],
+    ),
+    "conditional-inversion": (
+        [
+            "Had je gebeld, dan was ik gekomen.",
+            "Heb je vragen, dan kun je mij bellen.",
+            "Komt hij niet, dan gaan wij alleen.",
+        ],
+        [
+            "Had je gebeld?",
+            "Als het regent, dan blijven we thuis.",
+            "Heb geduld, het komt goed.",
+        ],
+    ),
 }

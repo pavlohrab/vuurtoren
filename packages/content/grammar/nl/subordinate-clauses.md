@@ -1,31 +1,49 @@
 ---
 id: subordinate-clauses
-title: Subordinate clauses (bijzinnen)
+title: Subordinate clauses (verb at the end)
 level: A2
-summary: After words such as omdat, dat and als, the conjugated verb moves to the end of the clause.
+group: clauses
+order: 30
+summary: After words like omdat, dat, als, toen and of, the conjugated verb goes to the end of the clause.
 detects: [subordinate-clauses]
 practice: [scramble]
-related: [word-order-v2, indirect-speech, conjunctions, relative-pronouns]
+related: [conjunctions, inversion, indirect-speech, relative-pronouns, verb-clusters]
 ---
 
 ## Explanation
 
-A subordinate clause cannot stand alone. It depends on a main clause and starts with a linking word such as _omdat_ (because), _dat_ (that), _als_ (if, when), _wanneer_ (when), _toen_ (when, in the past), _terwijl_ (while), _hoewel_ (although), _zodat_ (so that), _voordat_ (before), _nadat_ (after) or _of_ (whether).
+A **subordinate clause** (_bijzin_) cannot stand on its own. It starts with a **subordinating conjunction** such as _omdat_ (because) or _als_ (if). In this kind of clause, the **conjugated verb goes to the end**. The subject comes right after the conjunction.
 
-In such a clause the word order changes: the subject comes straight after the linking word, and the **conjugated verb goes to the end**. If there are two verbs, they stand together at the end. In the written language both orders are possible (_heeft gelezen_ or _gelezen heeft_), and the first is the most common in everyday Dutch.
+If the clause has more verbs, they all stand at the end together: _…omdat ik morgen moet werken._ (See verb clusters for their order.) A separable verb is written as one word again: _…omdat ik vroeg opsta._
 
-A subordinate clause can also come first. Then it counts as the first element of the main clause, and the main clause follows with inversion: _Omdat het regent, blijf ik thuis_.
+If the subordinate clause comes **first**, it counts as one element, so the main clause starts with its verb: _Omdat het regent, blijf ik thuis._
+
+Common subordinating conjunctions:
+
+- **dat** (that), **of** (whether, if)
+- **omdat** (because), **doordat** (because, as a result of), **zodat** (so that)
+- **als** (if, when — present/future), **wanneer** (when), **toen** (when — once in the past)
+- **terwijl** (while), **voordat** (before), **nadat** (after), **totdat** (until), **sinds**, **zodra** (as soon as)
+- **hoewel** (although), **tenzij** (unless), **alsof** (as if)
+
+**toen or als?** For a single event in the past, use _toen_: _Toen ik jong was…_. For something that happens repeatedly or in the future, use _als_ or _wanneer_: _Als ik moe ben, slaap ik._
+
+### Pattern
+
+- `[main clause], [conjunction] [subject] … [verb(s)]` → _Ik blijf thuis omdat ik ziek ben._
+- `[conjunction] [subject] … [verb(s)], [verb] [subject] …` → _Omdat ik ziek ben, blijf ik thuis._
 
 ## Examples
 
-- Ik blijf thuis omdat het **regent**. | I stay at home because it is raining.
-- Ik denk dat hij morgen **komt**. | I think he is coming tomorrow.
-- Als ik moe **ben**, ga ik slapen. | When I am tired, I go to sleep.
-- Zij vertelt dat zij het boek al **heeft gelezen**. | She says she has already read the book.
-- Ik weet niet of hij thuis **is**. | I do not know whether he is at home.
+- Ik blijf thuis **omdat** ik ziek **ben**. | I am staying at home because I am ill.
+- Ik denk **dat** hij morgen **komt**. | I think he is coming tomorrow.
+- **Als** het mooi weer **is**, gaan we naar het strand. | If the weather is nice, we will go to the beach.
+- **Toen** ik klein **was**, woonden we in Brugge. | When I was little, we lived in Bruges.
+- Ze belde **terwijl** ik aan het koken **was**. | She called while I was cooking.
+- Ik weet niet **of** ze vanavond **kan** komen. | I don't know whether she can come tonight.
 
 ## Common mistakes
 
-- Keeping the main-clause order: _Ik blijf thuis omdat het regent niet_. Place the verb last and _niet_ before it: _omdat het niet regent_.
-- Forgetting the inversion when the subordinate clause starts the sentence: _Als ik moe ben, ik ga slapen_. Say _Als ik moe ben, ga ik slapen_.
-- Mixing up _want_ and _omdat_. _Want_ is a coordinating word and does not move the verb (see the topic on conjunctions).
+- Main-clause order after omdat: _omdat ik ben ziek_. The verb goes last: _omdat ik ziek ben_.
+- No inversion after a subordinate clause at the start: _Als het regent, we blijven thuis._ Say _…, blijven we thuis._
+- _Als ik jong was_ for one period in the past. Use toen: _Toen ik jong was…_

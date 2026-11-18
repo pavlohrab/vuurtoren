@@ -1,31 +1,48 @@
 ---
 id: questions
-title: Questions
+title: Questions and question words
 level: A1
-summary: Yes/no questions start with the verb; open questions start with a question word and then the verb.
+group: word-order
+order: 7
+summary: A yes/no question starts with the verb; an open question starts with a question word, followed by the verb.
 detects: [questions]
 practice: [scramble]
-related: [word-order-v2, inversion, er]
+related: [word-order-v2, present-tense, indirect-speech, pronominal-adverbs]
 ---
 
 ## Explanation
 
-For a **yes/no question** put the conjugated verb first and the subject second: _Woon jij hier?_ Compare the statement _Jij woont hier_. The voice goes up at the end, and the written question ends with a question mark.
+**Yes/no questions** start with the conjugated verb. The subject comes right after it. There is no helper verb like English "do": _Werk je hier?_ (Do you work here?)
 
-For an **open question** start with a question word and follow it with the verb and the subject: _Waar woon jij?_ The common question words are _wie_ (who), _wat_ (what), _waar_ (where), _wanneer_ (when), _waarom_ (why), _hoe_ (how), _welk/welke_ (which) and _hoeveel_ (how many, how much).
+**Open questions** start with a **question word**. Then comes the verb, then the subject.
 
-The question word stays at the front even when it is the subject of the sentence: _Wie komt er?_ If a preposition belongs to the question, Dutch uses _waar_ plus the preposition: _Waarmee schrijf je?_ (What do you write with?). The version _Met wat schrijf je?_ sounds wrong.
+Remember: when _jij/je_ comes after the verb, the -t is dropped: _Waar woon je?_
+
+Some question words to know:
+
+- **wie** (who), **wat** (what), **waar** (where), **wanneer** (when), **waarom** (why), **hoe** (how), **hoeveel** (how much/many);
+- **welk / welke** (which): _welk_ with a singular het-word, _welke_ otherwise: _Welk boek? Welke film?_;
+- **wat voor** (what kind of): _Wat voor auto heb je?_;
+- **waar + preposition** (what … with/about): _Waarmee schrijf je?_ (What do you write with?), _Waar denk je aan?_ (What are you thinking about?).
+
+### Pattern
+
+- yes/no: `[verb] [subject] [rest]?` → _Heb je honger?_
+- open: `[question word] [verb] [subject] [rest]?` → _Wat eet je?_
+- with a preposition: `waar … [preposition]` → _Waar wacht je op?_
 
 ## Examples
 
-- **Heb** jij honger? | Are you hungry?
-- **Kom** je morgen ook? | Are you coming tomorrow too?
-- **Waar** woon je? | Where do you live?
-- **Waarom** ben je zo moe? | Why are you so tired?
-- **Hoeveel** kost deze trui? | How much does this jumper cost?
+- **Heb** je zin in koffie? | Do you feel like a coffee?
+- **Waar** woont je moeder? | Where does your mother live?
+- **Hoe** laat begint de film? | What time does the film start?
+- **Welke** trein moet ik nemen? | Which train do I have to take?
+- **Wat voor** werk doe je? | What kind of work do you do?
+- **Waar** wacht je **op**? | What are you waiting for?
 
 ## Common mistakes
 
-- Keeping the statement order after a question word: _Waar jij woont?_ Put the verb second: _Waar woon jij?_
-- Using _do_: there is no auxiliary like English _do_. _Woon jij hier?_, not _Doe jij wonen hier?_
-- Using _wat_ with a preposition: _Met wat schrijf je?_ Use _waarmee_ instead.
+- Using "do": _Doe je hier werken?_ Just put the verb first: _Werk je hier?_
+- Keeping the subject first: _Waar jij woont?_ The verb comes second: _Waar woon jij?_
+- _Wat_ with a preposition: _Met wat schrijf je?_ Use _waar_: _Waarmee schrijf je?_
+- _Welke boek?_ Boek is a het-word: _Welk boek?_

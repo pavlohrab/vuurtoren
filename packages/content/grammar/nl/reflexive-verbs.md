@@ -1,37 +1,47 @@
 ---
 id: reflexive-verbs
-title: Reflexive verbs
+title: Reflexive verbs (zich wassen)
 level: A2
-summary: Some verbs need a pronoun that refers back to the subject: zich, me, je, ons.
+group: verbs
+order: 31
+summary: Some verbs need a pronoun that points back to the subject, such as me, je, zich or ons; zichzelf adds emphasis, elkaar means "each other".
 detects: [reflexive-verbs]
 practice: [scramble]
-related: [personal-pronouns, perfect-tense]
+related: [object-pronouns, personal-pronouns, perfect-tense]
 ---
 
 ## Explanation
 
-With a reflexive verb the action goes back to the subject, and a reflexive pronoun is part of the verb. The infinitive has _zich_: _zich wassen_, _zich herinneren_, _zich vergissen_. In a sentence the pronoun changes with the subject:
+A **reflexive** pronoun refers back to the **subject**: _Ik was me_ (I wash myself). Some Dutch verbs are **always** reflexive, even when English has no "myself": _zich vergissen_ (to be mistaken), _zich herinneren_ (to remember), _zich haasten_ (to hurry), _zich voelen_ (to feel), _zich vervelen_ (to be bored), _zich verheugen op_ (to look forward to).
 
-- ik … **me** (_Ik herinner me dat_),
-- jij/je … **je** (_Je vergist je_), with polite _u_: **zich**,
-- hij, zij, het, men, zij (plural) … **zich**,
-- wij … **ons**,
-- jullie … **je**.
+Other verbs can be used with or without it: _Ik was de auto_ / _Ik was me._ Dictionaries show reflexive verbs with **zich**.
 
-Some verbs are always reflexive (_zich schamen_, _zich vergissen_, _zich gedragen_). Many others can be reflexive or not: _Ik was de auto_, _Ik was me_. Where the pronoun stands: after the finite verb in a main clause, or after the subject in a subordinate clause (_dat hij zich schaamt_).
+The pronoun goes right after the conjugated verb, or after the subject when the subject comes after the verb: _Ik voel me goed._ _Morgen haast ik me niet._
 
-In the perfect tense the pronoun stays in front of the participle: _Hij heeft zich vergist_.
+**zichzelf / mezelf** (-zelf forms) add emphasis or contrast: _Hij denkt alleen aan zichzelf._
+
+**elkaar** means "each other": _Wij zien elkaar morgen._
+
+Reflexive verbs take **hebben** in the perfect: _Ik heb me vergist._
+
+### Pattern
+
+- `ik … me`, `jij … je`, `u … u/zich`, `hij/zij/het … zich`
+- `wij … ons`, `jullie … je`, `zij … zich`
+- emphatic: `mezelf, jezelf, zichzelf, onszelf`
+- each other: `elkaar`
 
 ## Examples
 
-- Ik **herinner me** haar naam niet. | I do not remember her name.
-- Hij **schaamt zich** voor zijn fout. | He is ashamed of his mistake.
-- Wij **wassen ons** elke ochtend. | We wash every morning.
-- Zij **hebben zich** gisteren **verslapen**. | They overslept yesterday.
-- Ik ga **me** even **omkleden**. | I am going to get changed quickly.
+- Ik **voel me** vandaag niet zo goed. | I don't feel very well today.
+- Hij **vergist zich**; de winkel is al dicht. | He is mistaken; the shop is already closed.
+- **Herinner je je** onze eerste vakantie? | Do you remember our first holiday?
+- Wij **verheugen ons** op het weekend. | We are looking forward to the weekend.
+- De kinderen **vervelen zich**. | The children are bored.
+- We hebben **elkaar** op het werk leren kennen. | We met at work.
 
 ## Common mistakes
 
-- Using _zich_ for every person: _Ik herinner zich haar naam_. Match the pronoun with the subject: _Ik herinner me_.
-- Adding an extra object. _Zich vergissen_ already means to be mistaken, so _Ik vergis me_ is complete.
-- Dropping the pronoun: _Hij schaamt voor zijn fout_. Add _zich_.
+- Leaving out the pronoun: _Ik vergis._ Say _Ik vergis me._
+- _zich_ for every person: _Ik voel zich goed._ Use the matching form: _Ik voel me goed._
+- _Ik ben me vergist._ Reflexive verbs take hebben: _Ik heb me vergist._

@@ -1,35 +1,50 @@
 ---
 id: om-te-infinitive
-title: om … te + infinitive
+title: om … te, zonder te, door te
 level: B1
-summary: A purpose or a comment on an adjective is built with om at the start and te + infinitive at the end.
+group: infinitives
+order: 37
+summary: Om … te + infinitive expresses a purpose ("in order to") or completes a noun or adjective; zonder te, door te and in plaats van te build similar phrases.
 detects: [om-te-infinitive]
 practice: [scramble]
-related: [te-infinitive, modal-verbs, subordinate-clauses]
+related: [te-infinitive, subordinate-clauses, infinitive-as-noun]
 ---
 
 ## Explanation
 
-An **om … te** clause has _om_ at the start, _te_ in front of an infinitive that stands at the end, and the rest of the clause in between. It has no subject of its own: the subject is the subject of the main clause.
+**om … te** + infinitive has two main jobs.
 
-You use it to say:
+1. **Purpose** ("in order to"): _Ik ga naar de winkel **om** brood **te** kopen._
+2. **Completing a noun or an adjective**: _Ik heb geen zin **om te** koken._ _Het is leuk **om** je **te** zien._ _Dit boek is te moeilijk **om te** lezen._
 
-- **why** something is done (purpose, "in order to"): _Ik leer Nederlands om hier te kunnen werken_;
-- what something is **good, difficult or easy for**, after an adjective: _Het is moeilijk om te slapen_;
-- **what** the main verb is about, after verbs such as _vergeten_, _beginnen_ and _proberen_, where _om_ is optional.
+_om_ comes at the **start**, _te_ + infinitive at the **end**; objects and other words go in between: _om elke dag een uur te wandelen_.
 
-Separable verbs keep _te_ between particle and verb: _om hem op te bellen_. The clause is usually separated from the main clause by a comma when it is long.
+After many verbs (_proberen, beginnen, besluiten, vergeten_) _om_ is optional: _Ik probeer (om) gezond te eten._ For purpose, keep _om_.
+
+Similar phrases work the same way. They all need the same subject as the main clause:
+
+- **zonder … te** — without …-ing: _Hij ging weg zonder iets te zeggen._
+- **door … te** — by …-ing: _Je leert veel door veel te lezen._
+- **in plaats van … te** — instead of …-ing: _In plaats van te werken, keek hij tv._
+- **na … te hebben** — after …-ing (formal): _Na gegeten te hebben, gingen we wandelen._ (In speech: _Nadat we gegeten hadden, …_)
+
+### Pattern
+
+- purpose: `om … te + infinitive` → _om Nederlands te leren_
+- noun/adjective + `om … te` → _tijd om te lezen, moeilijk om te begrijpen_
+- `zonder / door / in plaats van … te + infinitive`
 
 ## Examples
 
-- Ik ga naar de winkel **om** brood **te** kopen. | I am going to the shop to buy bread.
-- Het is moeilijk **om** goed **te** slapen. | It is hard to sleep well.
-- Hij vergat **om** zijn tas mee **te** nemen. | He forgot to take his bag.
-- Zij spaart **om** een huis **te** kunnen kopen. | She is saving to be able to buy a house.
-- Ik heb geen tijd **om** te koken. | I have no time to cook.
+- Ik spaar geld **om** een nieuwe fiets **te kopen**. | I am saving money to buy a new bike.
+- Het is gezellig **om** samen **te eten**. | It is nice to eat together.
+- Heb je tijd **om** me **te helpen**? | Do you have time to help me?
+- Hij vertrok **zonder** gedag **te zeggen**. | He left without saying goodbye.
+- Je kunt geld besparen **door** de fiets **te nemen**. | You can save money by taking the bike.
+- **In plaats van te** klagen, kun je beter iets doen. | Instead of complaining, you'd better do something.
 
 ## Common mistakes
 
-- Leaving out _te_: _Ik ga naar de winkel om brood kopen_. Say _om brood te kopen_.
-- Using _om_ with a time: _De les begint om negen uur_ is a different _om_ (at nine o'clock), without an infinitive.
-- Giving the clause its own subject: _om ik brood te kopen_. The subject is understood from the main clause.
+- _voor te_ for purpose (an English or French pattern): _Ik ga naar de winkel voor brood te kopen._ Use om: _om brood te kopen_.
+- Forgetting te: _om brood kopen_. Say _om brood te kopen_.
+- _zonder zeggen_. Add te: _zonder iets te zeggen_.

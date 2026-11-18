@@ -2,34 +2,49 @@
 id: relative-pronouns
 title: Relative clauses (die, dat, wat, waar-)
 level: B1
-summary: A relative clause describes a noun; it starts with die or dat, and its verb goes to the end.
+group: clauses
+order: 34
+summary: A relative clause describes a noun; it starts with die (de-words, plurals) or dat (het-words), or with waar + preposition, and its verb goes to the end.
 detects: [relative-pronouns]
 practice: [scramble]
-related: [subordinate-clauses, demonstratives, er]
+related: [subordinate-clauses, demonstratives, pronominal-adverbs, register]
 ---
 
 ## Explanation
 
-A relative clause tells more about a noun: _de man die naast ons woont_. It is a subordinate clause, so its conjugated verb goes to the **end**.
+A **relative clause** gives more information about a noun: _de man **die daar staat**_ (the man who is standing there). It is a subordinate clause, so its **verb goes to the end**. In writing, a comma often separates it from the rest.
 
-The pronoun depends on the noun it describes:
+Choose the relative pronoun by the noun it describes:
 
-- **die** for de-words and all plurals: _de vrouw die daar staat_, _de boeken die ik lees_;
-- **dat** for het-words in the singular: _het huis dat te koop staat_;
-- **wat** after _alles_, _iets_, _niets_, _veel_, a superlative, or a whole sentence: _Alles wat hij zegt, is waar_; _Hij komt niet, wat jammer is_.
+- **die** — after a de-word or a plural: _de fiets die ik heb gekocht_, _de mensen die hier wonen_.
+- **dat** — after a singular het-word: _het huis dat te koop staat_.
+- **wat** — after _alles, iets, niets, veel_, after a superlative used as a noun (_het mooiste wat ik ken_), and when it refers to a whole sentence: _Hij kwam te laat, wat ik vervelend vond._
+- **wie** — after a preposition, for **people**: _de vrouw met wie ik werk_ (the woman I work with). Also "whoever": _Wie wil, mag mee._
 
-With a preposition, people get preposition + **wie**: _de vriend met wie ik reis_. Things get **waar** + preposition, written as one word: _het mes waarmee ik snijd_ (_met_ becomes _mee_). The preposition may also stand further on: _het boek waar ik over praat_. For a place, _waar_ alone is enough: _de stad waar ik woon_.
+**Prepositions and things.** For things, Dutch does not say _met die_ or _met wat_. It uses **waar + preposition**: _de pen waarmee ik schrijf_ (the pen I write with). In speech the two parts are often split: _de pen waar ik mee schrijf_. _met_ becomes _mee_, _tot_ becomes _toe_. For people, _waar-_ is common in speech too, but _met wie_ is better in writing.
+
+English can leave out "that/who" (_the book I read_). Dutch cannot: _het boek dat ik las_.
+
+### Pattern
+
+- de-word / plural + `die` … verb → _de trein die net vertrok_
+- het-word + `dat` … verb → _het boek dat ik lees_
+- alles / iets / niets / sentence + `wat` → _alles wat je zegt_
+- preposition + person: `met wie, voor wie` → _de collega met wie ik praat_
+- preposition + thing: `waar + preposition` → _het mes waarmee ik snijd_ / _waar ik mee snijd_
 
 ## Examples
 
-- De man **die** naast ons **woont**, is dokter. | The man who lives next to us is a doctor.
-- Het boek **dat** ik **lees**, is spannend. | The book I am reading is exciting.
-- Dit zijn de schoenen **die** ik gisteren **heb gekocht**. | These are the shoes I bought yesterday.
-- Alles **wat** hij **zegt**, is waar. | Everything he says is true.
-- Dat is de pen **waarmee** ik **schrijf**. | That is the pen I write with.
+- De man **die** naast ons woont, is dokter. | The man who lives next to us is a doctor.
+- Het huis **dat** we hebben gekocht, is honderd jaar oud. | The house that we bought is a hundred years old.
+- Alles **wat** hij zegt, is waar. | Everything he says is true.
+- Dat is de vriendin **met wie** ik op vakantie ga. | That is the friend I am going on holiday with.
+- Waar is de doos **waarin** ik mijn foto's bewaar? | Where is the box that I keep my photos in?
+- Zij heeft de baan gekregen, **wat** ik heel goed nieuws vind. | She got the job, which I think is great news.
 
 ## Common mistakes
 
-- _Het huis die_. _Huis_ is a het-word, so it is _het huis dat_.
-- Keeping main-clause order: _de man die woont naast ons_. The verb goes last: _de man die naast ons woont_.
-- _Alles dat hij zegt_. After _alles_, standard Dutch uses _wat_: _alles wat hij zegt_.
+- _het boek die ik lees_. Boek is a het-word: _het boek dat ik lees_.
+- Leaving out the pronoun: _de film ik zag_. Say _de film die ik zag_.
+- _alles dat hij zegt_. After alles, use wat: _alles wat hij zegt_ (in speech _dat_ is heard, but _wat_ is standard).
+- _de pen met die ik schrijf_. For things use waar-: _de pen waarmee ik schrijf_.

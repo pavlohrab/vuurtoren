@@ -1,7 +1,16 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { grammarTopic, grammarTopics, parseTopic, topicForHit, topicsByLevel } from "./index.js";
+import {
+  GRAMMAR_GROUPS,
+  curriculum,
+  grammarTopic,
+  grammarTopics,
+  parseTopic,
+  topicForHit,
+  topicsByGroup,
+  topicsByLevel,
+} from "./index.js";
 
 /** Detector topic ids, read from the NLP service source (the single source of truth). */
 function detectorTopics(): Set<string> {
@@ -62,13 +71,51 @@ describe("grammar topics", () => {
 
   it("groups by level and looks topics up", () => {
     const groups = topicsByLevel();
-    expect(groups.map((g) => g.level)).toEqual(["A1", "A2", "B1"]);
+    expect(groups.map((g) => g.level)).toEqual(["A1", "A2", "B1", "B2", "C1"]);
     expect(groups.flatMap((g) => g.topics)).toHaveLength(topics.length);
     expect(grammarTopic("inversion")?.title).toBe("Inversion");
     expect(grammarTopic("nope")).toBeUndefined();
     // The diminutive detector has its own page; de-het borrows its hits.
     expect(topicForHit("diminutives")?.id).toBe("diminutives");
     expect(grammarTopic("de-het")?.detects).toContain("diminutives");
+  });
+});
+
+describe("curriculum", () => {
+  const topics = grammarTopics("nl");
+  const ids = new Set(topics.map((t) => t.id));
+
+  it("every page has a group and a unique order", () => {
+    const orders = topics.map((t) => t.order);
+    for (const t of topics) {
+      expect(t.group, t.id).toBeDefined();
+      expect(t.order, t.id).toBeGreaterThan(0);
+    }
+    expect(new Set(orders).size).toBe(topics.length);
+  });
+
+  it("the path starts easy and every level stays in order", () => {
+    const path = curriculum();
+    expect(path).toHaveLength(topics.length);
+    expect(path[0]?.level).toBe("A1");
+    const levels = path.map((t) => ["A1", "A2", "B1", "B2", "C1", "C2"].indexOf(t.level));
+    for (let i = 1; i < levels.length; i++)
+      expect(levels[i]).toBeGreaterThanOrEqual(levels[i - 1]!);
+  });
+
+  it("groups cover every topic, in group order", () => {
+    const groups = topicsByGroup();
+    expect(groups.flatMap((g) => g.topics)).toHaveLength(topics.length);
+    const order = GRAMMAR_GROUPS.map((g) => g.id);
+    const seen = groups.map((g) => order.indexOf(g.group));
+    expect([...seen].sort((a, b) => a - b)).toEqual(seen);
+  });
+
+  it("related ids point at existing pages and pages have a pattern box", () => {
+    for (const t of topics) {
+      for (const r of t.related) expect(ids, `${t.id} -> ${r}`).toContain(r);
+      expect(t.pattern.length, t.id).toBeGreaterThan(0);
+    }
   });
 });
 
