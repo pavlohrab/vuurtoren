@@ -1,6 +1,6 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "@tanstack/react-router";
-import { Check } from "lucide-react";
+import { Check, Maximize2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
@@ -10,9 +10,10 @@ import {
   helpLevel,
   hitsAtToken,
   hitsInSentence,
-  spotlightTokens,
 } from "@app/core";
+import type { GrammarTopic } from "@app/content";
 import {
+  AnchoredPopover,
   Button,
   EmptyState,
   Reader,
@@ -25,7 +26,21 @@ import {
 } from "@app/ui";
 import { useServices } from "../services/context.js";
 import type { InspectorEntry, ReadingView } from "../services/types.js";
-import { GrammarNotes, notesFor, spotlightLabel } from "./GrammarNotes.js";
+import { GrammarNotes, notesFor } from "./GrammarNotes.js";
+import {
+  type MarginMark,
+  hitsForTopic,
+  levelFromVocabulary,
+  marginMarks,
+  noteRecentTopic,
+  readRecentTopics,
+  topicPriority,
+  topicsInText,
+} from "./reader/grammarMarks.js";
+import { FocusCount, GrammarPicker, MarkCard } from "./reader/ReaderGrammar.js";
+import { ReadingSettings } from "./reader/ReadingSettings.js";
+import { prefsStyle, useReaderPrefs } from "./reader/readerPrefs.js";
+import "./reader/reader.css";
 import { ExplainSentence, SimplifyPage } from "./ReaderAI.js";
 import { writeLastText } from "../lastText.js";
 import { useWordActions } from "./useWordActions.js";
@@ -65,6 +80,21 @@ const OVERLAY_SELECTOR = "[role=dialog],[role=listbox],[role=option],[role=combo
 const errorMessage = (e: unknown): string => errorText(e);
 
 /**
+ * Where a margin mark's popover goes: under the line of the last marked word, from the reading
+ * column's left edge, so the underlined words stay visible above it.
+ */
+function belowHits(tokens: readonly number[]): DOMRect {
+  const reader = document.querySelector(".k-reader")?.getBoundingClientRect();
+  let best: DOMRect | null = null;
+  for (const i of tokens) {
+    const r = document.querySelector(`.k-reader [data-i="${i}"]`)?.getBoundingClientRect();
+    if (r && (!best || r.bottom > best.bottom)) best = r;
+  }
+  if (!best || !reader) return reader ?? new DOMRect();
+  return new DOMRect(reader.left, best.top, 0, best.height);
+}
+
+/**
  * Route component. Keying the page on the text id makes TanStack's reuse of the mounted
  * component (only `$textId` changed) start from a clean slate: segment, selection, answers
  * and counters of the previous text never carry over.
@@ -99,6 +129,10 @@ export function ReaderPage({ textId }: { textId: string }) {
   const [complete, setComplete] = useState(false);
   /** Bumped when the plan is deliberately recomputed (new-word budget changed). */
   const [epoch, setEpoch] = useState(0);
+  /** Grammar: the focus topic, the open margin mark and the focus hit jumped to. */
+  const [focusTopic, setFocusTopic] = useState<GrammarTopic | null>(null);
+  const [openMark, setOpenMark] = useState<{ sent: number; el: HTMLElement } | null>(null);
+  const [hitIndex, setHitIndex] = useState<number | null>(null);
 
   const data = reading.data;
   const plans = data?.plans;
@@ -145,22 +179,69 @@ export function ReaderPage({ textId }: { textId: string }) {
   useEffect(() => writeLastText(textId), [textId]);
 
   const resetSegmentState = useCallback(() => {
+    setOpenMark(null);
+    setHitIndex(null);
     setSelected(null);
     setRevealed(new Set());
     setCredits(new Map());
     lookups.current = 0;
   }, []);
 
-  // Esc closes the inspector; j/k/arrows from nowhere move focus into the text. Keys that
-  // belong to a control (slider, tabs, select, buttons, dialogs) are left alone.
+  // Reading comforts (per device) and reading focus mode.
+  const [prefs, setPrefs] = useReaderPrefs();
+  const [readingFocus, setReadingFocus] = useState(false);
+  useEffect(() => {
+    if (!readingFocus) return;
+    document.documentElement.dataset["readingFocus"] = "";
+    return () => {
+      delete document.documentElement.dataset["readingFocus"];
+    };
+  }, [readingFocus]);
+
+  // Esc steps back one layer: the selected word, then the grammar focus, then focus mode.
+  // j/k/arrows from nowhere move focus into the text; Ctrl/Cmd +/− change the text size; F
+  // toggles focus mode. Keys that belong to a control (slider, tabs, select, buttons, dialogs)
+  // are left alone.
+  const keyState = useRef({ selected, focusTopic, readingFocus, size: prefs.size });
+  useEffect(() => {
+    keyState.current = { selected, focusTopic, readingFocus, size: prefs.size };
+  });
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.defaultPrevented) return;
       const t = e.target instanceof Element ? e.target : null;
+      const st = keyState.current;
       if (e.key === "Escape") {
         if (t?.closest(OVERLAY_SELECTOR)) return;
+        if (st.selected === null && st.focusTopic) {
+          setFocusTopic(null);
+          setHitIndex(null);
+          return;
+        }
+        if (st.selected === null && st.readingFocus) {
+          setReadingFocus(false);
+          return;
+        }
         setSelected(null);
         setInspectorOpen(false);
+        return;
+      }
+      if ((e.ctrlKey || e.metaKey) && !e.altKey && ["+", "=", "-", "0"].includes(e.key)) {
+        e.preventDefault();
+        setPrefs({ size: e.key === "0" ? 2 : st.size + (e.key === "-" ? -1 : 1) });
+        return;
+      }
+      const typing = t?.closest("input, textarea, select, [contenteditable=true]");
+      if (
+        (e.key === "f" || e.key === "F") &&
+        !typing &&
+        !t?.closest(OVERLAY_SELECTOR) &&
+        !e.metaKey &&
+        !e.ctrlKey &&
+        !e.altKey
+      ) {
+        e.preventDefault();
+        setReadingFocus((v) => !v);
         return;
       }
       if (t?.closest(WIDGET_SELECTOR) || e.metaKey || e.ctrlKey || e.altKey) return;
@@ -174,7 +255,7 @@ export function ReaderPage({ textId }: { textId: string }) {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [setInspectorOpen]);
+  }, [setInspectorOpen, setPrefs]);
 
   // The query data always belongs to the current key; keepPreviousData only avoids a flash, so
   // placeholder data (the previously selected word) is treated as "still loading".
@@ -209,23 +290,27 @@ export function ReaderPage({ textId }: { textId: string }) {
     onSettled: () => setHelpDraft(null),
   });
 
-  // Grammar spotlights (M5): hits are detected once per text and stored. They are also loaded
-  // when a word is selected, as context for "Explain this sentence".
-  const spotlightsOn = settingsQ.data?.grammarSpotlights ?? false;
+  // Grammar (M5): hits are detected once per text and stored. The reader shows them as quiet
+  // margin marks (docs/research/09-reader-annotations.md), or all hits of one focus topic.
+  // They are also loaded when a word is selected, as context for "Explain this sentence".
+  const marksOn = settingsQ.data?.grammarMarks ?? true;
   const grammarQ = useQuery({
     queryKey: ["grammar", "text", textId],
     queryFn: () => services.textGrammar(textId),
-    enabled: data != null && (spotlightsOn || selected !== null),
+    enabled: data != null,
     staleTime: Infinity,
     retry: 1,
   });
   const hits = useMemo(() => grammarQ.data ?? [], [grammarQ.data]);
-  const spotlights = useMemo(() => {
-    if (!spotlightsOn || hits.length === 0) return undefined;
-    const out = new Map<number, string>();
-    for (const [i, topics] of spotlightTokens(hits)) out.set(i, spotlightLabel(topics));
-    return out;
-  }, [hits, spotlightsOn]);
+  const learnerQ = useQuery({ queryKey: ["learner"], queryFn: () => services.learnerSummary() });
+  const [recent, setRecent] = useState(readRecentTopics);
+  const markContext = useMemo(
+    () => ({
+      level: levelFromVocabulary(learnerQ.data?.vocabEstimate),
+      recentTopics: new Set(recent),
+    }),
+    [learnerQ.data?.vocabEstimate, recent],
+  );
   const selectedSent = selected !== null ? data?.tokens[selected]?.sent : undefined;
   const sentenceGrammar = useMemo(
     () =>
@@ -269,6 +354,78 @@ export function ReaderPage({ textId }: { textId: string }) {
     }
     return out;
   }, [glossIdx, glossQ.data]);
+
+  // Sentences of the current page, and what the grammar marks show on it.
+  const pageTokens = useMemo(() => new Set(plan?.tokens.map((t) => t.i) ?? []), [plan]);
+  const pageSentences = useMemo(() => {
+    const out = new Set<number>();
+    for (const i of pageTokens) {
+      const sent = data?.tokens[i]?.sent;
+      if (sent !== undefined) out.add(sent);
+    }
+    return out;
+  }, [pageTokens, data]);
+  const marks = useMemo(
+    () =>
+      marksOn && !focusTopic
+        ? marginMarks(hits, markContext, pageSentences)
+        : new Map<number, MarginMark>(),
+    [marksOn, focusTopic, hits, markContext, pageSentences],
+  );
+  const markLabels = useMemo(
+    () => new Map([...marks].map(([sent, m]) => [sent, `Grammar: ${m.topic.title}`])),
+    [marks],
+  );
+  const openMarkData = openMark ? marks.get(openMark.sent) : undefined;
+  // Focus topic: its hits on this page, in text order (for the count and ‹ ›).
+  const focusHits = useMemo(
+    () =>
+      focusTopic
+        ? hitsForTopic(hits, focusTopic).filter((h) => h.tokens.some((i) => pageTokens.has(i)))
+        : [],
+    [focusTopic, hits, pageTokens],
+  );
+  const spotlights = useMemo(() => {
+    const shown = focusTopic ? focusHits : (openMarkData?.hits ?? []);
+    if (shown.length === 0) return undefined;
+    const label = focusTopic?.title ?? openMarkData?.topic.title ?? "";
+    const out = new Map<number, string>();
+    for (const h of shown) for (const i of h.tokens) out.set(i, label);
+    return out;
+  }, [focusTopic, focusHits, openMarkData]);
+  const currentHitTokens = useMemo(
+    () => new Set(hitIndex !== null ? (focusHits[hitIndex]?.tokens ?? []) : []),
+    [hitIndex, focusHits],
+  );
+  const pickerTopics = useMemo(() => topicsInText(hits), [hits]);
+  const suggestedTopics = useMemo(
+    () =>
+      pickerTopics
+        .map((t) => ({ ...t, score: topicPriority(t.topic, markContext) }))
+        .filter((t) => t.score >= 1.5)
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 4),
+    [pickerTopics, markContext],
+  );
+  const chooseFocus = (topic: GrammarTopic | null) => {
+    setOpenMark(null);
+    setHitIndex(null);
+    setFocusTopic(topic);
+    if (topic) {
+      noteRecentTopic(topic.id);
+      setRecent(readRecentTopics());
+    }
+  };
+  const stepHit = (dir: 1 | -1) => {
+    if (focusHits.length === 0) return;
+    const n = focusHits.length;
+    const next = hitIndex === null ? (dir === 1 ? 0 : n - 1) : (hitIndex + dir + n) % n;
+    setHitIndex(next);
+    const first = focusHits[next]?.tokens[0];
+    const el = document.querySelector<HTMLElement>(`.k-reader [data-i="${first}"]`);
+    el?.scrollIntoView?.({ block: "center", behavior: "smooth" });
+    el?.focus({ preventScroll: true });
+  };
 
   const onTokenClick = (i: number) => {
     setSelected(i);
@@ -427,7 +584,12 @@ export function ReaderPage({ textId }: { textId: string }) {
   }
 
   return (
-    <div className="reader-page">
+    <div
+      className="reader-page"
+      style={prefsStyle(prefs)}
+      {...(prefs.theme !== "app" ? { "data-reading-theme": prefs.theme } : {})}
+      {...(readingFocus ? { "data-focus": "" } : {})}
+    >
       <div className="reader-tools" role="group" aria-label="Reading help">
         {mode === "gloss" ? (
           <div className="reader-tool">
@@ -456,24 +618,27 @@ export function ReaderPage({ textId }: { textId: string }) {
             </button>
           </div>
         ) : null}
-        <div className="reader-tool">
-          <button
-            type="button"
-            className="k-toggle k-toggle--sm"
-            aria-pressed={spotlightsOn}
-            title="Underline grammar constructions; click a word to see its grammar"
-            onClick={() => saveSettings.mutate({ grammarSpotlights: !spotlightsOn })}
-          >
-            {spotlightsOn ? <Check size={14} aria-hidden /> : null}
-            Grammar
-          </button>
-          {spotlightsOn && grammarQ.isError ? (
-            <span className="k-hint" role="status">
-              Unavailable: the language server is unreachable
-            </span>
-          ) : null}
+        <div className="reader-tool reader-tool--grammar">
+          <GrammarPicker
+            topics={pickerTopics}
+            suggested={suggestedTopics}
+            value={focusTopic}
+            onChange={chooseFocus}
+            unavailable={grammarQ.isError}
+          />
         </div>
-        <div className="reader-tool">
+        {focusTopic ? (
+          <div className="reader-tool reader-tool--count">
+            <FocusCount
+              count={focusHits.length}
+              current={hitIndex}
+              onStep={stepHit}
+              onClear={() => chooseFocus(null)}
+            />
+          </div>
+        ) : null}
+
+        <div className="reader-tool reader-tool--budget">
           <span className="reader-tool-label">Words to learn per page</span>
           <Select
             value={String(settingsQ.data?.newWords ?? "auto")}
@@ -483,7 +648,25 @@ export function ReaderPage({ textId }: { textId: string }) {
             options={NEW_WORD_OPTIONS}
           />
         </div>
+        <div className="reader-tool reader-tool--end">
+          <ReadingSettings prefs={prefs} onChange={setPrefs} />
+          <button
+            type="button"
+            className="reader-chip"
+            aria-label="Focus mode (F)"
+            title="Focus mode (F)"
+            aria-pressed={readingFocus}
+            onClick={() => setReadingFocus((v) => !v)}
+          >
+            <Maximize2 size={15} aria-hidden />
+          </button>
+        </div>
       </div>
+      {readingFocus ? (
+        <button type="button" className="reader-focus-exit" onClick={() => setReadingFocus(false)}>
+          Leave focus mode <kbd>Esc</kbd>
+        </button>
+      ) : null}
       <Reader
         key={`${current}-${epoch}`}
         text={data.text.content}
@@ -495,9 +678,30 @@ export function ReaderPage({ textId }: { textId: string }) {
         blanks={blanks}
         glosses={glosses}
         {...(spotlights ? { spotlights } : {})}
+        spotlightCurrent={currentHitTokens}
+        marks={markLabels}
+        openMark={openMark?.sent ?? null}
+        onMarkClick={(sent, el) => setOpenMark((cur) => (cur?.sent === sent ? null : { sent, el }))}
+        focusParagraphs={readingFocus}
         onTokenClick={onTokenClick}
         onClozeAnswer={onClozeAnswer}
       />
+      <AnchoredPopover
+        anchor={openMarkData ? (openMark?.el ?? null) : null}
+        onClose={() => setOpenMark(null)}
+        label={openMarkData ? `Grammar: ${openMarkData.topic.title}` : "Grammar"}
+        measure={() => belowHits(openMarkData?.hits.flatMap((h) => h.tokens) ?? [])}
+        side="bottom"
+        className="gmark-pop"
+      >
+        {openMarkData ? (
+          <MarkCard
+            topic={openMarkData.topic}
+            note={openMarkData.hits[0]?.note}
+            onFocus={() => chooseFocus(openMarkData.topic)}
+          />
+        ) : null}
+      </AnchoredPopover>
       <SimplifyPage
         key={current}
         text={data.text.content.slice(plan.segment.charStart, plan.segment.charEnd)}
@@ -531,9 +735,7 @@ export function ReaderPage({ textId }: { textId: string }) {
                 onRetry={() => void inspect.refetch()}
                 {...actions.props(entry)}
               />
-              {spotlightsOn && entry ? (
-                <GrammarNotes hits={hitsAtToken(hits, entry.tokenIndex)} />
-              ) : null}
+              {entry ? <GrammarNotes hits={hitsAtToken(hits, entry.tokenIndex)} /> : null}
               <ExplainSentence sentence={entry?.sentence} grammar={sentenceGrammar} />
             </>,
             inspectorEl,

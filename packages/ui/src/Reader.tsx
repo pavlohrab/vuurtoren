@@ -31,6 +31,22 @@ export interface ReaderProps {
    * calls `onTokenClick`.
    */
   spotlights?: ReadonlyMap<number, string>;
+  /** Tokens of the grammar hit the learner jumped to: their underline is a little stronger. */
+  spotlightCurrent?: ReadonlySet<number>;
+  /**
+   * Margin marks: sentence number (`AnalyzedToken.sent`) -> accessible name of the mark
+   * ("Grammar: Separable verbs"). A tiny line in the left margin beside the sentence's first
+   * line; clicking it calls `onMarkClick` with the mark element (to anchor a popover).
+   */
+  marks?: ReadonlyMap<number, string>;
+  /** The sentence whose mark is open (drawn active, `aria-expanded`). */
+  openMark?: number | null;
+  onMarkClick?: (sent: number, anchor: HTMLElement) => void;
+  /**
+   * Reading focus: dim every paragraph except the current one (the one with the keyboard focus
+   * or the selected word, else the one in the middle of the viewport).
+   */
+  focusParagraphs?: boolean;
 }
 
 /** Letter hint: the first `shown` letters, then one underscore per remaining letter. */
@@ -83,6 +99,11 @@ export function Reader({
   mode,
   blanks,
   spotlights,
+  spotlightCurrent,
+  marks,
+  openMark = null,
+  onMarkClick,
+  focusParagraphs = false,
 }: ReaderProps) {
   const [answers, setAnswers] = useState<Record<number, string>>({});
   const [hints, setHints] = useState<Record<number, number>>({});
@@ -95,6 +116,61 @@ export function Reader({
     focusAfterRender.current = null;
     rootRef.current?.querySelector<HTMLElement>(`[data-i="${i}"]`)?.focus();
   }, [answers]);
+
+  // Reading focus: the current paragraph follows the keyboard focus and the selected word,
+  // and the middle of the viewport while scrolling (whichever happened last).
+  const [currentPara, setCurrentPara] = useState<number | null>(null);
+  useEffect(() => {
+    if (!focusParagraphs) return;
+    const root = rootRef.current;
+    if (!root) return;
+    const paras = () => Array.from(root.querySelectorAll<HTMLElement>(":scope > p"));
+    const indexOf = (el: Element | null) => {
+      const p = el?.closest(".k-reader > p");
+      return p ? paras().indexOf(p as HTMLElement) : -1;
+    };
+    const fromSelection = () => {
+      const sel = selectedToken != null ? root.querySelector(`[data-i="${selectedToken}"]`) : null;
+      const k =
+        indexOf(document.activeElement) >= 0 ? indexOf(document.activeElement) : indexOf(sel);
+      return k;
+    };
+    const fromViewport = () => {
+      const mid = window.innerHeight / 2;
+      let bestK = 0;
+      let bestD = Infinity;
+      paras().forEach((p, k) => {
+        const r = p.getBoundingClientRect();
+        const d =
+          r.top <= mid && r.bottom >= mid
+            ? 0
+            : Math.min(Math.abs(r.top - mid), Math.abs(r.bottom - mid));
+        if (d < bestD) {
+          bestD = d;
+          bestK = k;
+        }
+      });
+      return bestK;
+    };
+    const initial = fromSelection();
+    setCurrentPara(initial >= 0 ? initial : fromViewport());
+    let frame = 0;
+    const onScroll = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => setCurrentPara(fromViewport()));
+    };
+    const onFocus = () => {
+      const k = indexOf(document.activeElement);
+      if (k >= 0) setCurrentPara(k);
+    };
+    window.addEventListener("scroll", onScroll, { capture: true, passive: true });
+    root.addEventListener("focusin", onFocus);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener("scroll", onScroll, { capture: true });
+      root.removeEventListener("focusin", onFocus);
+    };
+  }, [focusParagraphs, selectedToken]);
 
   const planned = useMemo(() => {
     const m = new Map<number, PlannedToken>();
@@ -277,6 +353,7 @@ export function Reader({
           "k-tok",
           t.particle_of != null && "k-tok--particle",
           spot !== undefined && "k-tok--spot",
+          spot !== undefined && spotlightCurrent?.has(t.i) && "k-tok--spot-current",
         )}
         role="button"
         tabIndex={t.i === tabStop ? 0 : -1}
@@ -298,6 +375,21 @@ export function Reader({
     );
   };
 
+  const renderMark = (sent: number, label: string): ReactNode => (
+    <button
+      key={`mark-${sent}`}
+      type="button"
+      className="k-gmark"
+      data-sent={sent}
+      data-open={openMark === sent}
+      aria-label={label}
+      aria-expanded={openMark === sent}
+      aria-haspopup="dialog"
+      title={label}
+      onClick={(e) => onMarkClick?.(sent, e.currentTarget)}
+    />
+  );
+
   // Build paragraphs from the tokens inside the planned region, keeping gaps from `text`.
   const buildParagraphs = (): ReactNode[][] => {
     const inRegion = tokens.filter((t) => planned.has(t.i));
@@ -316,8 +408,14 @@ export function Reader({
         if (part) out[out.length - 1]?.push(part);
       });
     };
+    let lastSent: number | null = null;
     for (const t of inRegion) {
       addGap(text.slice(cursor, t.start));
+      if (t.sent !== lastSent) {
+        lastSent = t.sent;
+        const label = marks?.get(t.sent);
+        if (label !== undefined) out[out.length - 1]?.push(renderMark(t.sent, label));
+      }
       out[out.length - 1]?.push(renderToken(t));
       cursor = t.end;
     }
@@ -326,9 +424,11 @@ export function Reader({
   };
 
   return (
-    <div ref={rootRef} className="k-reader" lang="nl">
+    <div ref={rootRef} className={cn("k-reader", focusParagraphs && "k-reader--focus")} lang="nl">
       {buildParagraphs().map((nodes, idx) => (
-        <p key={idx}>{nodes}</p>
+        <p key={idx} {...(focusParagraphs && idx === currentPara ? { "data-current": "" } : {})}>
+          {nodes}
+        </p>
       ))}
     </div>
   );
