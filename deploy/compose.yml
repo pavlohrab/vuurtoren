@@ -48,6 +48,8 @@ services:
       # 1 only behind a Cloudflare Tunnel (client IP from CF-Connecting-IP).
       KENNING_TRUST_CF: ${KENNING_TRUST_CF:-0}
       KENNING_ALLOWED_ORIGINS: ${KENNING_ALLOWED_ORIGINS:-}
+      # Text analysis for the MCP endpoint (/api/mcp, Claude Code).
+      KENNING_NLP_URL: ${KENNING_NLP_URL:-http://nlp:8000}
     volumes:
       - kenning-data:/data
     networks: [internal]

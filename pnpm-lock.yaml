@@ -478,6 +478,15 @@ importers:
       '@app/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@app/mcp-tools':
+        specifier: workspace:*
+        version: link:../../packages/mcp-tools
+      '@app/nlp-client':
+        specifier: workspace:*
+        version: link:../../packages/nlp-client
+      '@modelcontextprotocol/sdk':
+        specifier: ^1.32.2
+        version: 1.32.2(zod@4.6.7)
     devDependencies:
       '@types/node':
         specifier: ^26.6.6
