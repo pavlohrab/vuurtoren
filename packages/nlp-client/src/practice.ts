@@ -6,7 +6,7 @@
  * including "nothing found", are cached per (server URL, lang, lemma, pos); failures never are,
  * so a server that comes up later is used.
  */
-import type { ExampleSentence, LemmaPos, NlpClient, NlpLang, WordForms } from "./index.js";
+import type { ExampleSentence, LemmaPos, NlpClient, NlpLang, WordForms } from "./client.js";
 
 export interface PracticeData {
   forms(lang: string, items: LemmaPos[]): Promise<Record<string, WordForms>>;
