@@ -6,6 +6,11 @@ apps and everything still open. Order = recommended order.
 
 ## 1. Desktop apps (Linux AppImage/.deb, Windows .exe/.msi; macOS skipped for now)
 
+**Goal: ease of installation.** Desktop = download one file, double-click, it works offline (no Docker, no
+server, no Python). Server = one pasted Dockge stack or one command, language data fetched and updated
+automatically. So the offline desktop app (D4) is a goal, not an option, and D1 (slim language server) is its
+prerequisite. The thin client (D2) is the first stepping stone and stays useful for people with a server.
+
 | Step | What                                                                                                                                                                                                                                                                                                                                                                                                                                                                   | Effort       | Notes                                                                                                            |
 | ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------ | ---------------------------------------------------------------------------------------------------------------- |
 | D0   | **Installable web app (PWA)** — service worker for the app shell, install prompt, offline page                                                                                                                                                                                                                                                                                                                                                                         | ½ day        | Chrome/Edge "Install Kenning" on Linux and Windows today; no store, no signing.                                  |
