@@ -13,6 +13,13 @@ export default tseslint.config(
     plugins: { "react-hooks": reactHooks },
     rules: reactHooks.configs.recommended.rules,
   },
+  // The service worker template (built into /sw.js by apps/web/vite.config.ts).
+  {
+    files: ["apps/web/sw/**/*.js"],
+    languageOptions: {
+      globals: { ...globals.serviceworker, __KENNING_SW_PRECACHE__: "readonly" },
+    },
+  },
   // Type-aware rules, on source files only (tests and scripts stay fast and untyped).
   {
     files: ["{apps,packages,tools}/*/src/**/*.{ts,tsx}", "server/api/src/**/*.ts"],

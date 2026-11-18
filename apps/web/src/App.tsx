@@ -8,6 +8,7 @@ import { ServicesProvider } from "./services/context.js";
 import type { AppServices } from "./services/types.js";
 import type { RouterHistory } from "@tanstack/react-router";
 import { SIGNED_IN_EVENT } from "./auth/watch.js";
+import { UpdateBanner } from "./pwa/PwaControls.js";
 
 export interface AppProps extends AppInfo {
   services: AppServices;
@@ -35,6 +36,7 @@ export function App({ services, history, notice, demo, onLeaveDemo, data, accoun
           <TooltipProvider>
             <ToastProvider>
               <RouterProvider router={router} />
+              <UpdateBanner />
             </ToastProvider>
           </TooltipProvider>
         </QueryClientProvider>

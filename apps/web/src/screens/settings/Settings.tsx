@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { Input, Select, Skeleton, Slider } from "@app/ui";
+import { InstallApp } from "../../pwa/PwaControls.js";
 import { useServices } from "../../services/context.js";
 import type { Settings as SettingsData } from "../../services/types.js";
 import { PageHeader } from "../../shell/PageHeader.js";
@@ -68,7 +69,7 @@ const SECTIONS: { id: SectionId; label: string; hint: string; icon: ReactNode }[
   {
     id: "advanced",
     label: "Advanced",
-    hint: "Server status, version, language server and AnkiConnect addresses.",
+    hint: "Server status, version, language server and AnkiConnect addresses, install the app.",
     icon: <SlidersHorizontal size={18} />,
   },
 ];
@@ -255,6 +256,7 @@ function AdvancedSettings() {
         }}
       />
       <ServerStatus nlpUrl={form.nlpUrl} />
+      <InstallApp />
     </div>
   );
 }

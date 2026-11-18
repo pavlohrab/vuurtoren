@@ -1737,3 +1737,15 @@ a.home-step:hover .home-step-go {
 .topbar-page > * {
   min-width: 0;
 }
+
+/* ---------- New version waiting (pwa/PwaControls.tsx) ---------- */
+.pwa-update {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 85;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: calc(100vw - 32px);
+}

@@ -1,8 +1,9 @@
 import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
-import { readFileSync } from "node:fs";
-import type { ProxyOptions } from "vite";
+import { createHash } from "node:crypto";
+import { readFileSync, readdirSync } from "node:fs";
+import type { Plugin, ProxyOptions } from "vite";
 
 /**
  * Dev proxies keep the browser same-origin:
@@ -24,8 +25,41 @@ const rootPackage = JSON.parse(
 ) as { version: string };
 const commit = (process.env["KENNING_COMMIT"] ?? "").slice(0, 7);
 
+/**
+ * The service worker (D0, installable app): sw/sw.js with the app shell's file list and a
+ * version hash filled in, emitted as /sw.js on build. Fonts: only the latin subsets are
+ * precached (the others load and are cached on first use). The dev server has no worker.
+ */
+function kenningServiceWorker(): Plugin {
+  const publicDir = new URL("./public/", import.meta.url);
+  return {
+    name: "kenning-sw",
+    apply: "build",
+    enforce: "post",
+    generateBundle(_options, bundle) {
+      const built = Object.keys(bundle).filter(
+        (f) =>
+          f === "index.html" ||
+          /\.(js|css|wasm)$/.test(f) ||
+          (/\.woff2$/.test(f) && /-latin(-ext)?-/.test(f)),
+      );
+      const pub = readdirSync(publicDir).filter((f) => !f.startsWith("."));
+      const files = [...built, ...pub].sort();
+      const hash = createHash("sha256");
+      for (const f of files) hash.update(f);
+      for (const f of pub) hash.update(readFileSync(new URL(f, publicDir)));
+      const index = bundle["index.html"];
+      if (index?.type === "asset") hash.update(index.source);
+      const source = readFileSync(new URL("./sw/sw.js", import.meta.url), "utf8")
+        .replace('"__KENNING_SW_VERSION__"', JSON.stringify(hash.digest("hex").slice(0, 12)))
+        .replace("__KENNING_SW_PRECACHE__", JSON.stringify(files.map((f) => `/${f}`)));
+      this.emitFile({ type: "asset", fileName: "sw.js", source });
+    },
+  };
+}
+
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
+  plugins: [react(), tailwindcss(), kenningServiceWorker()],
   define: {
     __KENNING_VERSION__: JSON.stringify(rootPackage.version),
     __KENNING_COMMIT__: JSON.stringify(commit),

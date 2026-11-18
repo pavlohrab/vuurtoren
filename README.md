@@ -242,6 +242,11 @@ with Caddy, Tailscale, sign-in, updates and backups: [deploy/README.md](deploy/R
 
 </details>
 
+**Install it as an app** (Chrome or Edge on Linux and Windows): open Kenning over `https://` or
+`http://localhost`, then use the install icon in the address bar, or **Settings → Advanced →
+Install app**. Kenning then opens in its own window, starts without a connection (your data
+in browser storage works offline) and shows "A new version is ready — Reload" after an update.
+
 ### Development
 
 Requirements: Node ≥ 22, pnpm, [uv](https://docs.astral.sh/uv/), Python ≥ 3.12.

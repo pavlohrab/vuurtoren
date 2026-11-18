@@ -35,12 +35,18 @@ src/
     Home, Library, Import, ReaderPage, Practice, Progress, Converse, ...
   services/           everything the screens call (AppServices), see below
   storage/            startup mode, tab lock, local.ts (localStorage helpers)
+  pwa/                service worker registration, update prompt, install button
   practice/           practice engine glue (core generators, speech)
   format.ts           pct, plural, formatBytes
 ```
 
 Screens only talk to `AppServices` (`services/types.ts`) through `useServices()`. They never
 import `@app/db`, `@app/anki` or `@app/nlp-client` directly.
+
+The service worker is `apps/web/sw/sw.js`, filled in and emitted as `/sw.js` by the
+`kenning-sw` plugin in `vite.config.ts` (built app only): it precaches the app shell (scripts,
+styles, SQLite wasm, latin fonts, icons, `offline.html`), answers navigations network first
+(offline: the cached shell), and never touches `/api`, `/nlp`, `/anki` or other origins.
 
 ### Services
 
