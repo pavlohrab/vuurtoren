@@ -23,8 +23,14 @@ const MAIN: &str = "main";
 /// The only addresses the Anki bridge may reach (AnkiConnect's default port, this machine).
 const ANKI_HOSTS: [&str; 2] = ["127.0.0.1", "localhost"];
 const ANKI_PORT: u16 = 8765;
-/// Build-time default for the update feed (CI sets it from a repository variable).
-const BUILD_UPDATE_URL: Option<&str> = option_env!("KENNING_UPDATE_URL");
+/// Update feed: the `latest.json` of the newest GitHub release (public repo). CI may override it
+/// at build time with the `KENNING_UPDATE_URL` repository variable.
+const DEFAULT_UPDATE_URL: &str =
+    "https://github.com/pavlohrab/Kenning/releases/latest/download/latest.json";
+const BUILD_UPDATE_URL: Option<&str> = match option_env!("KENNING_UPDATE_URL") {
+    Some(url) if !url.is_empty() => Some(url),
+    _ => Some(DEFAULT_UPDATE_URL),
+};
 
 /// What the app remembers between starts (`<config dir>/desktop.json`).
 #[derive(Default, Serialize, Deserialize, Clone)]

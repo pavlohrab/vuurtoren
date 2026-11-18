@@ -1,5 +1,5 @@
 # Desktop app (apps/desktop, Tauri v2): Linux AppImage + .deb, Windows NSIS .exe + .msi and a
-# universal macOS .dmg, attached to a draft GitHub release. Unsigned (see docs/desktop.md).
+# universal macOS .dmg, attached to a GitHub release (the updater reads its latest.json). Unsigned (see docs/desktop.md).
 #
 # Secrets/variables (Settings > Secrets and variables > Actions):
 #   TAURI_SIGNING_PRIVATE_KEY           secret: the updater key (not a code-signing certificate)
@@ -77,6 +77,7 @@ jobs:
           tagName: ${{ github.ref_type == 'tag' && github.ref_name || 'desktop-v__VERSION__' }}
           releaseName: Kenning __VERSION__
           releaseBody: Desktop installers (unsigned). See docs/desktop.md for installing and first start.
-          releaseDraft: true
+          # Published (not draft) so releases/latest/download/latest.json resolves for the updater.
+          releaseDraft: false
           prerelease: false
           uploadUpdaterJson: true

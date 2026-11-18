@@ -80,24 +80,16 @@ Updates are signed with a key only you have; the app refuses anything else.
    - secret `TAURI_SIGNING_PRIVATE_KEY` = the _contents_ of `updater.key`
      (`cat ~/.config/kenning-desktop/updater.key`);
    - (only if you made a key with a password) secret `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`;
-   - variable `KENNING_UPDATE_URL` = where the app will look, e.g.
-     `https://kenning.example.com/desktop/latest.json`.
+   - nothing else: the app checks
+     `https://github.com/pavlohrab/Kenning/releases/latest/download/latest.json` (the newest
+     public release). A repository variable `KENNING_UPDATE_URL` can point it elsewhere.
 3. Release: push a tag `vX.Y.Z` (the version comes from the root `package.json`). The
    **Desktop** workflow builds all installers plus the update files (`.AppImage.tar.gz`,
    `.nsis.zip`/`-setup.exe`, `.app.tar.gz` and their `.sig`) and a `latest.json`, all attached
-   to a **draft** release. Check it, then publish.
-
-**Hosting `latest.json`.** The repository is private, so the app cannot download release assets
-from it. Put `latest.json` and the files it points to somewhere public:
-
-- on your server, e.g. a `desktop/` folder served by nginx/Caddy next to Kenning; edit the
-  `url` fields in `latest.json` to point there (they point at GitHub by default); or
-- in a small **public** GitHub repository used only for releases (copy the release there; the
-  default URLs then only need the repository name changed).
+   to a published release, which becomes "latest" and is what installed apps update to.
 
 A user can override the feed in `desktop.json`: `"updateUrl": "https://…/latest.json"` (an
-empty string turns update checks off). Without `KENNING_UPDATE_URL` at build time and without
-an override the app does not check for updates.
+empty string turns update checks off).
 
 ## Build it yourself
 
