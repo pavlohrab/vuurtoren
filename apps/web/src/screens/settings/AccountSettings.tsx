@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Button, Dialog } from "@app/ui";
-import { useAppInfo } from "../shell/AppInfo.js";
+import { useAppInfo } from "../../shell/AppInfo.js";
 
 /** Settings > Account: who is signed in on this server, sign out here or everywhere. */
 export function AccountSettings() {

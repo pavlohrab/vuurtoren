@@ -1,8 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { type CefrLevel, GRAMMAR_GROUPS, type GrammarTopic } from "@app/content";
-import { useServices } from "../services/context.js";
-import type { GrammarOverview } from "../services/types.js";
+import { useServices } from "../../services/context.js";
+import type { GrammarOverview } from "../../services/types.js";
 
 export const LEVEL_LABEL: Record<CefrLevel, string> = {
   A1: "Beginner",

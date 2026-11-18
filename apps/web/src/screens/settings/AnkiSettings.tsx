@@ -2,12 +2,12 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { corsConfigLine } from "@app/anki";
 import { Button, Spinner } from "@app/ui";
-import { useServices } from "../services/context.js";
-import { errorText } from "../services/errors.js";
-import { isNoDecksError } from "../services/profileErrors.js";
-import type { AnkiStatus } from "../services/types.js";
-import { ErrorNotice } from "../shell/ErrorNotice.js";
-import { NoDecksHelp } from "./onboarding/NoDecksHelp.js";
+import { useServices } from "../../services/context.js";
+import { errorText } from "../../services/errors.js";
+import { isNoDecksError } from "../../services/profileErrors.js";
+import type { AnkiStatus } from "../../services/types.js";
+import { ErrorNotice } from "../../shell/ErrorNotice.js";
+import { NoDecksHelp } from "../onboarding/NoDecksHelp.js";
 
 /** Advice for each state that is not "connected" (also used by onboarding). */
 export function AnkiConnectionHelp({ status, denied }: { status: AnkiStatus; denied: boolean }) {

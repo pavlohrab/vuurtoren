@@ -2,9 +2,9 @@ import { createMemoryHistory } from "@tanstack/react-router";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
-import { App } from "../App.js";
-import { createMockServices } from "../services/mock.js";
-import type { AppServices } from "../services/types.js";
+import { App } from "../../App.js";
+import { createMockServices } from "../../services/mock.js";
+import type { AppServices } from "../../services/types.js";
 import {
   actionOptions,
   applyActions,

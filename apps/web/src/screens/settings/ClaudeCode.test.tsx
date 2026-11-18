@@ -3,11 +3,11 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createMockServices } from "../services/mock.js";
-import { ServicesProvider } from "../services/context.js";
-import type { AppServices } from "../services/types.js";
-import { type AppInfo, AppInfoProvider } from "../shell/AppInfo.js";
-import { claudeCodeCommand, claudeDesktopConfig } from "../auth/mcpTokens.js";
+import { createMockServices } from "../../services/mock.js";
+import { ServicesProvider } from "../../services/context.js";
+import type { AppServices } from "../../services/types.js";
+import { type AppInfo, AppInfoProvider } from "../../shell/AppInfo.js";
+import { claudeCodeCommand, claudeDesktopConfig } from "../../auth/mcpTokens.js";
 import { ClaudeCodeSettings } from "./ClaudeCodeSettings.js";
 import { ModelPicker } from "./ModelPicker.js";
 

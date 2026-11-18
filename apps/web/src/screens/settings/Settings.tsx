@@ -17,10 +17,10 @@ import {
 } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { Input, Select, Skeleton, Slider } from "@app/ui";
-import { useServices } from "../services/context.js";
-import type { Settings as SettingsData } from "../services/types.js";
-import { PageHeader } from "../shell/PageHeader.js";
-import { useTheme } from "../theme.js";
+import { useServices } from "../../services/context.js";
+import type { Settings as SettingsData } from "../../services/types.js";
+import { PageHeader } from "../../shell/PageHeader.js";
+import { useTheme } from "../../theme.js";
 import { AccountSettings } from "./AccountSettings.js";
 import { AISettings } from "./AISettings.js";
 import { ClaudeCodeSettings } from "./ClaudeCodeSettings.js";

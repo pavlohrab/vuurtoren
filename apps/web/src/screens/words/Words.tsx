@@ -5,7 +5,7 @@
  * opens the shared word inspector with the reader's actions; a selection goes to Anki, to
  * Practice or to Talk in one step.
  */
-import { pct, plural } from "../format.js";
+import { pct, plural } from "../../format.js";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { Dumbbell, Languages, MessagesSquare, X } from "lucide-react";
@@ -25,16 +25,16 @@ import {
   WordStateChip,
   useToast,
 } from "@app/ui";
-import { readPracticeAgain } from "../lastPractice.js";
-import { useServices } from "../services/context.js";
-import { errorText } from "../services/errors.js";
-import type { AppServices, InspectorEntry } from "../services/types.js";
-import { PageHeader } from "../shell/PageHeader.js";
-import { useShell } from "../shell/ShellContext.js";
-import { revealAboveSheet } from "../shell/revealAboveSheet.js";
-import { useDebounced } from "../useDebounced.js";
+import { readPracticeAgain } from "../../lastPractice.js";
+import { useServices } from "../../services/context.js";
+import { errorText } from "../../services/errors.js";
+import type { AppServices, InspectorEntry } from "../../services/types.js";
+import { PageHeader } from "../../shell/PageHeader.js";
+import { useShell } from "../../shell/ShellContext.js";
+import { revealAboveSheet } from "../../shell/revealAboveSheet.js";
+import { useDebounced } from "../../useDebounced.js";
 import { SuggestedWords } from "./SuggestedWords.js";
-import { useWordActions } from "./useWordActions.js";
+import { useWordActions } from "../useWordActions.js";
 import "./words.css";
 
 const PAGE_SIZE = 50;

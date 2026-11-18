@@ -1,6 +1,6 @@
 import type { GrammarHit } from "@app/core";
 import { type GrammarTopic, topicForHit } from "@app/content";
-import "./grammar.css";
+import "./grammar/grammar.css";
 
 /** The hits of one token, one entry per topic page (first note wins). */
 export function notesFor(hits: readonly GrammarHit[]): { topic: GrammarTopic; note: string }[] {

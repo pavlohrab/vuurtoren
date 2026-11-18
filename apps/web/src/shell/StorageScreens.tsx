@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { Button } from "@app/ui";
-import { downloadBytes } from "../screens/DataSettings.js";
+import { downloadBytes } from "../screens/settings/DataSettings.js";
 import { backupFilename } from "@app/db";
 
 /** Full-page message used before the app can start (no router, no providers). */

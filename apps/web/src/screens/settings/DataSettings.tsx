@@ -2,8 +2,8 @@ import { useQuery } from "@tanstack/react-query";
 import { useRef, useState } from "react";
 import { backupFilename } from "@app/db";
 import { Button, Dialog, Skeleton, useToast } from "@app/ui";
-import { formatBytes } from "../format.js";
-import { useAppInfo } from "../shell/AppInfo.js";
+import { formatBytes } from "../../format.js";
+import { useAppInfo } from "../../shell/AppInfo.js";
 
 /** Save bytes as a file through a temporary link. */
 export function downloadBytes(bytes: Uint8Array, filename: string): void {

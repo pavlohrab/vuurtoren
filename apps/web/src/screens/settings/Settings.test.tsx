@@ -2,9 +2,9 @@ import { createMemoryHistory } from "@tanstack/react-router";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { App } from "../App.js";
-import { createMockServices } from "../services/mock.js";
-import type { AppServices, Settings } from "../services/types.js";
+import { App } from "../../App.js";
+import { createMockServices } from "../../services/mock.js";
+import type { AppServices, Settings } from "../../services/types.js";
 
 function setup(url: string) {
   const base = createMockServices({ latencyMs: 0 });

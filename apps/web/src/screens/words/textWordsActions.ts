@@ -2,8 +2,8 @@
  * Pure logic of the "Words from this text" review: which action each Anki state starts with,
  * which others it offers, and how a batch of actions is run and summarised (ADR 0007).
  */
-import { plural } from "../format.js";
-import type { AppServices, InspectorEntry, TextWordItem } from "../services/types.js";
+import { plural } from "../../format.js";
+import type { AppServices, InspectorEntry, TextWordItem } from "../../services/types.js";
 
 export type WordAction = "add" | "learn" | "known" | "skip";
 export type AnkiStatus = InspectorEntry["anki"]["status"];

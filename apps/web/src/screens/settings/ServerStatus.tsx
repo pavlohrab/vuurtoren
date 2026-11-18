@@ -6,11 +6,11 @@
  */
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button, useToast } from "@app/ui";
-import { formatBytes } from "../format.js";
-import { useServices } from "../services/context.js";
-import { useAppInfo } from "../shell/AppInfo.js";
-import { useDebounced } from "../useDebounced.js";
-import { appVersionLabel } from "../version.js";
+import { formatBytes } from "../../format.js";
+import { useServices } from "../../services/context.js";
+import { useAppInfo } from "../../shell/AppInfo.js";
+import { useDebounced } from "../../useDebounced.js";
+import { appVersionLabel } from "../../version.js";
 
 type Tone = "ok" | "warn" | "error" | "pending";
 

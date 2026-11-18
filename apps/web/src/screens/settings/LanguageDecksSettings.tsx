@@ -3,13 +3,13 @@ import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { type LanguageProfile, defaultProfile } from "@app/core";
 import { Button, Skeleton, Spinner, useToast } from "@app/ui";
-import { useServices } from "../services/context.js";
+import { useServices } from "../../services/context.js";
 import {
   DeckChecklist,
   DestinationFields,
   LanguageChoice,
   deckRows,
-} from "./onboarding/deckParts.js";
+} from "../onboarding/deckParts.js";
 
 import { SavedNote } from "./SavedNote.js";
 import { useAutosave } from "./useAutosave.js";

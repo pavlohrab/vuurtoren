@@ -6,9 +6,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Sparkles } from "lucide-react";
 import { useState } from "react";
 import { AddToAnki, Button, useToast } from "@app/ui";
-import { useServices } from "../services/context.js";
-import { errorText } from "../services/errors.js";
-import { useDeckChoice } from "./useDeckChoice.js";
+import { useServices } from "../../services/context.js";
+import { errorText } from "../../services/errors.js";
+import { useDeckChoice } from "../useDeckChoice.js";
 
 export function SuggestedWords() {
   const services = useServices();

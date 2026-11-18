@@ -31,7 +31,7 @@ import { usePageHeader } from "../shell/ShellContext.js";
 import { PageHeader, SectionHeader } from "../shell/PageHeader.js";
 import { pct, plural } from "../format.js";
 import { pagesOf, WORDS_PER_PAGE } from "../textPages.js";
-import { topicCount } from "./Grammar.js";
+import { topicCount } from "./grammar/Grammar.js";
 import { CreateStoryButton } from "./StoryDialog.js";
 
 export { pagesOf, WORDS_PER_PAGE };

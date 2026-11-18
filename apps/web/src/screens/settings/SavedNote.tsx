@@ -1,5 +1,5 @@
 import { Check } from "lucide-react";
-import { errorText } from "../services/errors.js";
+import { errorText } from "../../services/errors.js";
 import type { SaveStatus } from "./useAutosave.js";
 
 /** The quiet autosave indicator: "Saving…", "Saved", or what went wrong. */

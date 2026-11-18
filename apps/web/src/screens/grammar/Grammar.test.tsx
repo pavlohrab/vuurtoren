@@ -4,10 +4,10 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { grammarTopic, grammarTopics } from "@app/content";
 import type { Exercise } from "@app/core";
-import { App } from "../App.js";
-import { createMockAI } from "../services/mockAI.js";
-import { createMockServices } from "../services/mock.js";
-import type { AppServices } from "../services/types.js";
+import { App } from "../../App.js";
+import { createMockAI } from "../../services/mockAI.js";
+import { createMockServices } from "../../services/mock.js";
+import type { AppServices } from "../../services/types.js";
 import { matchTopic } from "./Grammar.js";
 import { practiceOffer, splitMistake } from "./GrammarTopic.js";
 
@@ -15,7 +15,7 @@ import { practiceOffer, splitMistake } from "./GrammarTopic.js";
 // does not spend its findBy budget on a cold dynamic import (that made it flaky under load).
 beforeAll(async () => {
   configure({ asyncUtilTimeout: 5000 });
-  await Promise.all([import("./Grammar.js"), import("./Practice.js"), import("./ReaderPage.js")]);
+  await Promise.all([import("./Grammar.js"), import("../Practice.js"), import("../ReaderPage.js")]);
 }, 30_000);
 vi.setConfig({ testTimeout: 20_000 });
 afterEach(() => {

@@ -6,8 +6,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { useId, useState } from "react";
 import type { ProviderId } from "@app/ai";
-import { useServices } from "../services/context.js";
-import { useDebounced } from "../useDebounced.js";
+import { useServices } from "../../services/context.js";
+import { useDebounced } from "../../useDebounced.js";
 
 export interface ModelPickerProps {
   provider: ProviderId;

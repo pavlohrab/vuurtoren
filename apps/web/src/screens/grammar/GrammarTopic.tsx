@@ -3,12 +3,12 @@ import { Link, useParams } from "@tanstack/react-router";
 import { ArrowLeft, ArrowRight, Check, ChevronRight, X } from "lucide-react";
 import { type GrammarTopic, curriculum, grammarTopic } from "@app/content";
 import { Chip, EmptyState, Skeleton } from "@app/ui";
-import { CreateStoryButton, useAIReady } from "./StoryDialog.js";
-import { PageHeader } from "../shell/PageHeader.js";
-import { useServices } from "../services/context.js";
-import type { TopicExamples } from "../services/types.js";
-import { usePageHeader } from "../shell/ShellContext.js";
-import { Markdown, inline } from "./Markdown.js";
+import { CreateStoryButton, useAIReady } from "../StoryDialog.js";
+import { PageHeader } from "../../shell/PageHeader.js";
+import { useServices } from "../../services/context.js";
+import type { TopicExamples } from "../../services/types.js";
+import { usePageHeader } from "../../shell/ShellContext.js";
+import { Markdown, inline } from "../Markdown.js";
 import {
   LEVEL_LABEL,
   MarkedSentence,
@@ -16,7 +16,7 @@ import {
   topicCount,
   useGrammarOverview,
 } from "./GrammarCommon.js";
-import { plural } from "../format.js";
+import { plural } from "../../format.js";
 import "./grammar.css";
 
 /** The Explanation without its `### Pattern` subsection (shown as a box instead). */

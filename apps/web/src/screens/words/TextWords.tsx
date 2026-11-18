@@ -1,14 +1,14 @@
-import { plural } from "../format.js";
+import { plural } from "../../format.js";
 import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "@tanstack/react-router";
 import { ArrowLeft, ArrowRight, Dumbbell, ListChecks, MessagesSquare } from "lucide-react";
 import { useMemo, useState } from "react";
 import { AddToAnki, AnkiStatusChip, Button, EmptyState, Lemma, Select, Skeleton } from "@app/ui";
-import { useServices } from "../services/context.js";
-import type { InspectorEntry, TextWordItem } from "../services/types.js";
-import { useDeckChoice } from "./useDeckChoice.js";
-import { usePageHeader } from "../shell/ShellContext.js";
-import { PageHeader } from "../shell/PageHeader.js";
+import { useServices } from "../../services/context.js";
+import type { InspectorEntry, TextWordItem } from "../../services/types.js";
+import { useDeckChoice } from "../useDeckChoice.js";
+import { usePageHeader } from "../../shell/ShellContext.js";
+import { PageHeader } from "../../shell/PageHeader.js";
 import {
   type Job,
   type RowResult,

@@ -6,8 +6,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Button, Input } from "@app/ui";
-import { claudeCodeCommand, claudeDesktopConfig, createMcpTokenClient } from "../auth/mcpTokens.js";
-import { useAppInfo } from "../shell/AppInfo.js";
+import {
+  claudeCodeCommand,
+  claudeDesktopConfig,
+  createMcpTokenClient,
+} from "../../auth/mcpTokens.js";
+import { useAppInfo } from "../../shell/AppInfo.js";
 
 const EXAMPLE_PROMPTS = [
   "Write me an A2 story using my words to learn about cycling and save it to Kenning.",

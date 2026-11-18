@@ -10,7 +10,7 @@ import { type LanguageProfile, type ProfileSource, defaultProfile, rootDeck } fr
 import { Button, Spinner, Logo } from "@app/ui";
 import { useServices } from "../../services/context.js";
 import type { AnkiStatus } from "../../services/types.js";
-import { AnkiConnectionHelp } from "../AnkiSettings.js";
+import { AnkiConnectionHelp } from "../settings/AnkiSettings.js";
 import { DeckChecklist, DestinationFields, LanguageChoice, deckRows } from "./deckParts.js";
 import { SAMPLE_TEXT } from "./sample.js";
 import { setSkipped } from "./skip.js";

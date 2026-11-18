@@ -3,13 +3,13 @@ import { ChevronRight, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import { CEFR_LEVELS, type GrammarTopic, curriculum, topicsByGroup } from "@app/content";
 import { Button, Chip, Tabs } from "@app/ui";
-import { PageHeader } from "../shell/PageHeader.js";
-import type { GrammarOverview } from "../services/types.js";
-import { inline } from "./Markdown.js";
+import { PageHeader } from "../../shell/PageHeader.js";
+import type { GrammarOverview } from "../../services/types.js";
+import { inline } from "../Markdown.js";
 import { LEVEL_LABEL, LEVEL_LINE, topicCount, useGrammarOverview } from "./GrammarCommon.js";
-import { plural } from "../format.js";
+import { plural } from "../../format.js";
 import "./grammar.css";
-import { readLocal, writeLocal } from "../storage/local.js";
+import { readLocal, writeLocal } from "../../storage/local.js";
 
 export { LEVEL_LABEL, MarkedSentence, topicCount } from "./GrammarCommon.js";
 export { GrammarTopicPage, GrammarTopicRoute } from "./GrammarTopic.js";

@@ -71,12 +71,12 @@ const libraryRoute = screen("/library", () => import("./screens/Library.js"), "L
 const readRoute = screen("/read/$textId", () => import("./screens/ReaderPage.js"), "ReaderRoute");
 const wordsOfTextRoute = screen(
   "/read/$textId/words",
-  () => import("./screens/TextWords.js"),
+  () => import("./screens/words/TextWords.js"),
   "TextWordsRoute",
 );
 const importRoute = screen("/import", () => import("./screens/Import.js"), "ImportScreen");
 /** /words?state=&source=text:<id>|unit:<course>/<n>|practice-again&q=&word=<key> */
-const wordsRoute = searchScreen("/words", () => import("./screens/Words.js"), "Words", [
+const wordsRoute = searchScreen("/words", () => import("./screens/words/Words.js"), "Words", [
   "state",
   "source",
   "q",
@@ -92,10 +92,10 @@ const talkRoute = searchScreen("/talk", () => import("./screens/Converse.js"), "
   "topic",
 ]);
 const converseAlias = alias("/converse", "/talk");
-const grammarRoute = screen("/grammar", () => import("./screens/Grammar.js"), "Grammar");
+const grammarRoute = screen("/grammar", () => import("./screens/grammar/Grammar.js"), "Grammar");
 const grammarTopicRoute = screen(
   "/grammar/$topic",
-  () => import("./screens/Grammar.js"),
+  () => import("./screens/grammar/Grammar.js"),
   "GrammarTopicRoute",
 );
 const topicPracticeRoute = screen(
@@ -107,7 +107,7 @@ const progressRoute = screen("/progress", () => import("./screens/Progress.js"),
 /** /settings?section=account|language|reading|ai|data|advanced */
 const settingsRoute = searchScreen(
   "/settings",
-  () => import("./screens/Settings.js"),
+  () => import("./screens/settings/Settings.js"),
   "SettingsScreen",
   ["section"],
 );
