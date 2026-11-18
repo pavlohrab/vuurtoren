@@ -1,30 +1,18 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { Logo, LogoMark, ProgressRing, ringArc } from "./Logo.js";
+import { LOGO_GRID_48, Logo, LogoMark, ProgressRing, logoGrid, ringArc } from "./Logo.js";
 
 describe("Logo", () => {
-  it("the mark is the 3/4 brand ring by default", () => {
+  it("the mark is an ink k with an accent bookmark ribbon for a leg", () => {
     const { container } = render(<LogoMark size={48} />);
     const svg = container.querySelector("svg")!;
-    expect(svg).toHaveAttribute("data-coverage", "0.75");
     expect(svg).toHaveAttribute("aria-hidden", "true");
-    // Ring starts at 12 o'clock and ends at 3 o'clock (counter-clockwise, gap at top right).
-    expect(container.querySelector(".k-logo-ring")).toHaveAttribute(
-      "d",
-      "M24 5.5A18.5 18.5 0 1 0 42.5 24",
-    );
-  });
-
-  it("a coverage value sets and animates the ring, clamped to [0, 1]", () => {
-    const { container, rerender } = render(<LogoMark size={64} coverage={0.42} />);
-    const svg = () => container.querySelector("svg")!;
-    expect(svg()).toHaveAttribute("data-coverage", "0.42");
-    expect(svg()).toHaveClass("k-logo-mark--live");
-    expect(container.querySelector(".k-logo-track")).not.toBeNull();
-    rerender(<LogoMark size={64} coverage={1.4} />);
-    expect(svg()).toHaveAttribute("data-coverage", "1");
-    rerender(<LogoMark size={64} coverage={0} />);
-    expect(container.querySelector(".k-logo-ring")).toBeNull();
+    expect(svg).toHaveAttribute("viewBox", "0 0 48 48");
+    expect(container.querySelector(".k-logo-k")).toHaveAttribute("d", LOGO_GRID_48.ink);
+    // The ribbon is drawn first (it tucks under the arm) and ends in a swallow-tail: five points.
+    const ribbon = container.querySelector(".k-logo-ribbon")!;
+    expect(svg.firstElementChild).toBe(ribbon);
+    expect(ribbon.getAttribute("d")!.match(/[ML]/g)).toHaveLength(5);
   });
 
   it("uses the small-size cuts at favicon and rail sizes", () => {
@@ -32,6 +20,7 @@ describe("Logo", () => {
     expect(container.querySelector("svg")).toHaveAttribute("viewBox", "0 0 16 16");
     rerender(<LogoMark size={24} />);
     expect(container.querySelector("svg")).toHaveAttribute("viewBox", "0 0 24 24");
+    expect(logoGrid(33)).toBe(LOGO_GRID_48);
   });
 
   it("full logo has the wordmark and one accessible name", () => {

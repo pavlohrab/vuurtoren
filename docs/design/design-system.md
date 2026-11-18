@@ -92,17 +92,17 @@ The reader stays calm: no decorative motion while reading, only the one-time to-
 
 ## Logo
 
-The **coverage ring**: a lowercase k inside a ring that is three-quarters complete, the share of a text you already know. The ring starts at 12 o'clock and runs counter-clockwise, so the open quarter sits at the top right, where the k's arm points. The ring is `--accent`, the k is `--ink`.
+The **bookmark k**: a lowercase k whose leg is a bookmark ribbon. Stem and arm are `--ink`; the leg is an `--accent` ribbon tucked under the arm (a hairline gap), hanging just below the baseline and ending in a level swallow-tail notch, the bookmark you leave in a text. (It replaced the coverage-ring mark in November 2026; the ring lives on only as `ProgressRing`, for data.)
 
-- Component: `Logo` (mark + "kenning" wordmark in Instrument Sans 600, −0.02em) and `LogoMark` from `@app/ui`. `variant="mark"` for the mark alone. `coverage={0.62}` draws the ring to that value once on mount (with a faint accent track); without it the ring is the static 3/4 brand arc.
-- `ProgressRing` uses the same language (12 o'clock, counter-clockwise, round caps) for data: the Home ring is `--known`.
-- Geometry, drawn on fixed grids with round caps and joins:
-  - 48 grid (≥ 33px): ring r 18.5, stroke 4.5; k stroke 4.5: stem 19,13 → 19,35; arm 19,29.5 → 29,19.5; leg from 23,25.5 on the arm → 29.75,35.
-  - 24 grid (19–32px): ring r 9.5, stroke 2.75; k stroke 2.5.
-  - 16 grid (favicons): full-bleed ring r 7, stroke 2; k stroke 2, stem on the pixel grid (x 5–7).
-- Clear space: one ring stroke on every side. Minimum size 16px. Wordmark size is 0.74 × the mark, gap 0.34 × the mark.
-- Don't: recolour the k, close the ring, rotate the gap, put the mark on the accent colour, or add effects.
-- Files in `apps/web/public`: `favicon.svg` (16 grid, light/dark through `prefers-color-scheme` inside the SVG), `favicon-16.png` / `favicon-32.png` (the mark on the dark rounded lamp tile, so it reads on light and dark tab bars), `apple-touch-icon.png` (180, mark on the dark lamp tile), `icon-192.png` / `icon-512.png` (rounded tile), `icon-maskable-512.png`, `logo-mark.svg`, `manifest.webmanifest`.
+- Component: `Logo` (mark + "kenning" wordmark in Instrument Sans 600, −0.02em, sitting on the k's baseline) and `LogoMark` from `@app/ui`. `variant="mark"` for the mark alone.
+- `ProgressRing` (12 o'clock, counter-clockwise, round caps) is for data, not branding: the Home ring is `--known`.
+- Geometry, filled shapes with flat terminals (paths in `Logo.tsx`):
+  - 48 grid (≥ 33px): stem x 12–18, y 5–40 (baseline 40); arm 6 wide at 45°, top cut level at the x-height (y 18), x 27.5–36; ribbon 7 wide at 60°, 1.5 below the arm, tails level at y 43.5, notch 3.5 deep.
+  - 24 grid (19–32px): stem x 6–9, y 2.5–20; arm 2.83 wide (whole-pixel steps), x-height 9; ribbon 3.5 wide, tails at 22, notch 2.
+  - 16 grid (favicons): stem x 3–5, y 1–13; arm 2.12 wide so both edges hit pixel corners; ribbon 3.2 wide at a steeper 72° so the 2px notch survives, tails at 15.
+- Clear space: one stem width on every side. Minimum size 16px. Wordmark size is 0.74 × the mark; the mark's right side bearing is the gap.
+- Don't: recolour the k, put the ribbon in ink, untuck the ribbon, rotate or mirror the mark, put it on the accent colour, or add effects.
+- Files in `apps/web/public`: `favicon.svg` (16 grid, light/dark through `prefers-color-scheme` inside the SVG), `favicon-16.png` / `favicon-32.png` (the 16 cut at 1× and exactly 2× on the dark rounded lamp tile, so it stays pixel-crisp on light and dark tab bars), `apple-touch-icon.png` (180, square dark tile), `icon-192.png` / `icon-512.png` (rounded tile), `icon-maskable-512.png` (mark inside the safe zone), `logo-mark.svg` (48 master, light/dark inside), `manifest.webmanifest`. README lockups (outlined wordmark): `docs/images/logo-dark.svg`, `docs/images/logo-light.svg`.
 
 ## Layout & composition (polish 3, 2026-11-18)
 

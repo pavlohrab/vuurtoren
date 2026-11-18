@@ -845,7 +845,7 @@ function TalkPrompt({ words, topic }: { words: string[]; topic: string | undefin
 function Welcome({ hello }: { hello: string }) {
   return (
     <div className="page page--read home home-welcome">
-      <Logo variant="mark" size={48} coverage={0.75} title="Kenning" />
+      <Logo variant="mark" size={48} title="Kenning" />
       <PageHeader
         title={hello}
         lede="Kenning helps you read Dutch with the words you already know. Two steps to start:"

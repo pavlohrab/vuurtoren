@@ -1635,7 +1635,7 @@ svg.lucide {
 .k-logo {
   display: inline-flex;
   align-items: center;
-  gap: calc(var(--k-logo-size, 24px) * 0.34);
+  gap: 0;
   color: var(--ink);
   line-height: 1;
 }
@@ -1644,23 +1644,20 @@ svg.lucide {
   font-weight: 600;
   font-size: calc(var(--k-logo-size, 24px) * 0.74);
   letter-spacing: -0.02em;
-  /* optical: the x-height sits on the ring's centre line */
-  transform: translateY(-0.04em);
+  /* optical: the word sits on the k's baseline; the mark's right side bearing is the gap */
+  margin-left: calc(var(--k-logo-size, 24px) * -0.12);
+  transform: translateY(0.09em);
 }
 .k-logo-mark {
   flex: none;
   display: block;
 }
-.k-logo-ring {
-  stroke: var(--accent);
+.k-logo-ribbon {
+  fill: var(--accent);
 }
 .k-logo-k {
-  stroke: currentColor;
+  fill: currentColor;
 }
-.k-logo-track {
-  stroke: color-mix(in srgb, var(--accent) 16%, transparent);
-}
-.k-logo-mark--live .k-logo-ring,
 .k-ring-value {
   stroke-dasharray: 1 2;
   animation: k-ring-draw var(--dur-fill) var(--ease-out) both;
