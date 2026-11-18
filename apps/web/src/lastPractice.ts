@@ -1,3 +1,5 @@
+import { readLocalJSON, writeLocalJSON } from "./storage/local.js";
+
 const KEY = "kenning-practice-again";
 
 /**
@@ -5,20 +7,11 @@ const KEY = "kenning-practice-again";
  * words" opens Words filtered to them (`/words?source=practice-again`).
  */
 export function writePracticeAgain(keys: readonly string[]): void {
-  try {
-    localStorage.setItem(KEY, JSON.stringify([...new Set(keys)]));
-  } catch {
-    /* storage blocked: the filter then shows no words */
-  }
+  writeLocalJSON(KEY, [...new Set(keys)]);
 }
 
 /** The words to look at again from the last session ([] when unknown). */
 export function readPracticeAgain(): string[] {
-  try {
-    const v: unknown = JSON.parse(localStorage.getItem(KEY) ?? "[]");
-    return Array.isArray(v) ? v.filter((k): k is string => typeof k === "string") : [];
-  } catch {
-    // storage blocked or corrupt: no remembered words (expected)
-    return [];
-  }
+  const v = readLocalJSON(KEY);
+  return Array.isArray(v) ? v.filter((k): k is string => typeof k === "string") : [];
 }

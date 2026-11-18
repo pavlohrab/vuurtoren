@@ -6,6 +6,7 @@ import { Button, Chip, Textarea, Tooltip } from "@app/ui";
 import { useServices } from "../../services/context.js";
 import type { BookCheckResult, BookExerciseView } from "../../services/courseTypes.js";
 import { GeneratedSession } from "./GeneratedSession.js";
+import { readLocal, writeLocal } from "../../storage/local.js";
 
 const TYPE_LABEL: Record<BookExerciseView["type"], string> = {
   gapfill: "Fill in",
@@ -30,22 +31,12 @@ interface Props {
 
 /** Remembered notes of an open task; storage may be unavailable (private window). */
 function useNotes(key: string): [string, (v: string) => void] {
-  const [value, setValue] = useState(() => {
-    try {
-      return localStorage.getItem(key) ?? "";
-    } catch {
-      return "";
-    }
-  });
+  const [value, setValue] = useState(() => readLocal(key) ?? "");
   return [
     value,
     (v) => {
       setValue(v);
-      try {
-        localStorage.setItem(key, v);
-      } catch {
-        /* notes stay in memory only */
-      }
+      writeLocal(key, v);
     },
   ];
 }

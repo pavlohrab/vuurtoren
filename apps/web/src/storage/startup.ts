@@ -1,5 +1,6 @@
 import type { ServerHealth } from "@app/db/http";
 import type { Account } from "../auth/client.js";
+import { readLocal, writeLocal } from "./local.js";
 
 /**
  * What the page should open with. Server mode never silently turns into browser mode: when
@@ -53,36 +54,19 @@ const SERVER_KEY = "kenning-server-seen";
 
 /** Remember that this origin is a Kenning server (so an outage is not mistaken for none). */
 export function rememberServer(): void {
-  try {
-    localStorage.setItem(SERVER_KEY, "1");
-  } catch {
-    /* storage blocked: an outage would then open browser mode, as before */
-  }
+  writeLocal(SERVER_KEY, "1");
 }
 
 export function serverSeen(): boolean {
-  try {
-    return localStorage.getItem(SERVER_KEY) === "1";
-  } catch {
-    // storage blocked: treated as never seen (expected)
-    return false;
-  }
+  return readLocal(SERVER_KEY) === "1";
 }
 
 /** The user says this address no longer runs a Kenning server. */
 export function forgetServer(): void {
-  try {
-    localStorage.removeItem(SERVER_KEY);
-  } catch {
-    /* nothing to forget */
-  }
+  writeLocal(SERVER_KEY, null);
 }
 
 /** Sessions are cookies now (ADR 0009): drop the access token older versions kept here. */
 export function forgetLegacyToken(): void {
-  try {
-    localStorage.removeItem("kenning-token");
-  } catch {
-    /* storage blocked: nothing stored either */
-  }
+  writeLocal("kenning-token", null);
 }

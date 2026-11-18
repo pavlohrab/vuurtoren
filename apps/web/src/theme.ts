@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from "react";
+import { readLocal, writeLocal } from "./storage/local.js";
 
 export type ThemeChoice = "system" | "light" | "dark";
 
@@ -11,13 +12,8 @@ function isTheme(v: unknown): v is ThemeChoice {
 
 /** Read the persisted theme; falls back to "system" if storage is unavailable. */
 function readTheme(): ThemeChoice {
-  try {
-    const v = localStorage.getItem(KEY);
-    return isTheme(v) ? v : "system";
-  } catch {
-    // storage blocked: follow the system theme (expected)
-    return "system";
-  }
+  const v = readLocal(KEY);
+  return isTheme(v) ? v : "system";
 }
 
 /** Apply a theme to <html>; "system" removes the override so prefers-color-scheme decides. */
@@ -32,11 +28,7 @@ let current: ThemeChoice = readTheme();
 /** Persist and apply a theme choice. */
 function setTheme(theme: ThemeChoice): void {
   current = theme;
-  try {
-    localStorage.setItem(KEY, theme);
-  } catch {
-    /* storage blocked; the choice still applies for this session */
-  }
+  writeLocal(KEY, theme);
   applyTheme(theme);
   listeners.forEach((l) => l());
 }

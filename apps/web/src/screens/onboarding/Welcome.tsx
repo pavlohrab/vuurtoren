@@ -15,6 +15,7 @@ import { DeckChecklist, DestinationFields, LanguageChoice, deckRows } from "./de
 import { SAMPLE_TEXT } from "./sample.js";
 import { setSkipped } from "./skip.js";
 import "./onboarding.css";
+import { readLocalJSON, writeLocalJSON } from "../../storage/local.js";
 
 const STORAGE = "kenning.onboarding";
 
@@ -49,21 +50,11 @@ const fresh = (): Draft => ({
 });
 
 function readDraft(): Draft {
-  try {
-    const raw = localStorage.getItem(STORAGE);
-    if (raw) return { ...fresh(), ...(JSON.parse(raw) as Partial<Draft>) };
-  } catch {
-    // storage unavailable or corrupt: start over
-  }
-  return fresh();
+  const saved = readLocalJSON(STORAGE) as Partial<Draft> | undefined;
+  return saved && typeof saved === "object" ? { ...fresh(), ...saved } : fresh();
 }
 function writeDraft(d: Draft | null): void {
-  try {
-    if (d) localStorage.setItem(STORAGE, JSON.stringify(d));
-    else localStorage.removeItem(STORAGE);
-  } catch {
-    // storage unavailable: the wizard still works for this visit
-  }
+  writeLocalJSON(STORAGE, d);
 }
 
 export function Welcome() {

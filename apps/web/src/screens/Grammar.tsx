@@ -9,6 +9,7 @@ import { inline } from "./Markdown.js";
 import { LEVEL_LABEL, LEVEL_LINE, topicCount, useGrammarOverview } from "./GrammarCommon.js";
 import { plural } from "../format.js";
 import "./grammar.css";
+import { readLocal, writeLocal } from "../storage/local.js";
 
 export { LEVEL_LABEL, MarkedSentence, topicCount } from "./GrammarCommon.js";
 export { GrammarTopicPage, GrammarTopicRoute } from "./GrammarTopic.js";
@@ -21,18 +22,10 @@ const VIEWS = [
 ] as const;
 
 function readView(): View {
-  try {
-    return localStorage.getItem(VIEW_KEY) === "topic" ? "topic" : "path";
-  } catch {
-    return "path";
-  }
+  return readLocal(VIEW_KEY) === "topic" ? "topic" : "path";
 }
 function writeView(v: View) {
-  try {
-    localStorage.setItem(VIEW_KEY, v);
-  } catch {
-    // Storage blocked (private window): the choice just isn't remembered.
-  }
+  writeLocal(VIEW_KEY, v);
 }
 
 /** Lower-case, accent- and Markdown-free text for search. */
