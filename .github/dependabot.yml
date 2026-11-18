@@ -5,6 +5,15 @@ updates:
     directories: ["/deploy", "/server/api", "/server/nlp"]
     schedule:
       interval: monthly
+    ignore:
+      # Python minors need spaCy/CTranslate2 wheels first; nginx odd minors are "mainline" (dev).
+      # Patch updates still come through; bump these minors by hand after testing.
+      - dependency-name: "python"
+        update-types: ["version-update:semver-minor", "version-update:semver-major"]
+      - dependency-name: "nginx"
+        update-types: ["version-update:semver-minor", "version-update:semver-major"]
+      - dependency-name: "node"
+        update-types: ["version-update:semver-major"]
     groups:
       base-images:
         patterns: ["*"]
