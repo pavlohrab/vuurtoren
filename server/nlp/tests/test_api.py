@@ -25,3 +25,25 @@ def test_detect_endpoint() -> None:
     r = client.post("/detect", json={"texts": ["gezellig", "the house is big", "", "17.31"]})
     langs = [d["lang"] for d in r.json()]
     assert langs == ["nl", "en", None, None]
+
+
+def test_analyze_reports_analyzer_version() -> None:
+    from kenning_nlp.analyzer import analyzer_version
+
+    r = client.post("/analyze/text", json={"lang": "nl", "texts": ["De kat slaapt."]})
+    assert r.json()[0]["analyzerVersion"] == analyzer_version()
+    assert client.get("/health").json()["analyzerVersion"] == analyzer_version()
+
+
+def test_detect_short_strings_and_scripts() -> None:
+    texts = [
+        "Ik heb geen tijd want ik moet werken.",
+        "I don't have time because I have to work.",
+        "fietsen",
+        "Ich habe heute keine Zeit.",
+        "Дякую, все добре.",
+        "Спасибо, всё хорошо.",
+        "woordeloos",
+    ]
+    langs = [d["lang"] for d in client.post("/detect", json={"texts": texts}).json()]
+    assert langs == ["nl", "en", "nl", "de", "uk", "ru", "nl"]

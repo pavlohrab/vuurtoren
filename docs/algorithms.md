@@ -29,7 +29,7 @@ Kenning has no word list of its own. Your Anki collection is the record of which
 
 1. Every deck with at least 10 notes is sampled: up to 30 random notes per deck. Smaller decks are skipped unless you named them, or unless it is Kenning's own target deck.
 2. Field values are cleaned of HTML, `[sound:…]` tags, cloze markup and furigana (`packages/anki/src/clean.ts`).
-3. Every cleaned value goes through language identification (`server/nlp/src/kenning_nlp/detect.py`, the _lingua_ library, restricted to 11 languages). Only the first 400 characters are examined, and a result with confidence below 0.2 counts as "unknown language".
+3. Every cleaned value goes through language identification (`server/nlp/src/kenning_nlp/detect.py`): a small naive-Bayes classifier over the `wordfreq` "small" word lists of 10 languages (nl, en, de, fr, es, it, pt, pl; uk and ru after a Cyrillic-script check). Each word scores its log-frequency per language; a word missing from a list scores a floor plus a character-trigram estimate learnt from that list, so rare words still lean the right way. It replaced _lingua_ in D1 (290 MB smaller and more accurate on our cases: Tatoeba sentences 99.8% vs 95.6% Dutch, single common Dutch words 83% vs 64%, English one/two-word glosses 81% vs 60%; docs/research/10-nlp-footprint.md). Only the first 400 characters are examined, and a result with confidence below 0.2 counts as "unknown language".
 4. Per (deck, note type), each field gets statistics: the share of values detected as Dutch, the share detected as English, and the average number of words.
 5. Fields are scored:
 
@@ -227,7 +227,7 @@ The compound takes the article of its head (`de souvenirwinkel` because `de wink
 
 **What.** A machine translation of the sentence a word appears in. It is shown in the word inspector and saved with a new Anki card as `SentenceTranslation`.
 
-**How** (`server/nlp/src/kenning_nlp/translate.py`): the Helsinki-NLP `opus-mt-nl-en` model, run with CTranslate2 on the CPU, weights quantised to int8, beam size 4. It is a small (about 160 MB) neural MT model that runs offline. It is not a chat model and never sees anything but the sentence.
+**How** (`server/nlp/src/kenning_nlp/translate.py`): the Helsinki-NLP `opus-mt-nl-en` model, run with CTranslate2 on the CPU, weights stored as int8 (converted from the original Marian release by `scripts/fetch_mt_model.py`), beam size 4. It is a small (about 85 MB, the `mt-nl-en` data pack) neural MT model that runs offline. It is not a chat model and never sees anything but the sentence.
 
 **Numbers.** Input up to 1024 subword tokens, output up to 512. Per request: at most 64 texts, 2,000 characters each, 20,000 characters in total (`models.py`). Only Dutch → English. Without the model the feature is quietly unavailable.
 

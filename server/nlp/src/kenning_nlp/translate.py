@@ -1,8 +1,9 @@
 """Offline Dutch -> English machine translation (OPUS-MT ``opus-mt-nl-en`` on CTranslate2).
 
-The model is not part of the repository: ``scripts/fetch_mt_model.py`` downloads it into
-``data/mt-nl-en/`` (or ``$KENNING_MT_DIR``). It is loaded lazily on the first request and cached
-for the process lifetime. Only ``ctranslate2`` and ``sentencepiece`` are needed (no torch).
+The model is a data pack (``mt-nl-en``, see :mod:`kenning_nlp.packs`): downloaded or built by
+``scripts/fetch_mt_model.py`` into ``$KENNING_DATA_DIR/mt-nl-en/`` (or ``$KENNING_MT_DIR``). It
+is loaded lazily on the first request and cached for the process lifetime.
+Only ``ctranslate2`` and ``sentencepiece`` are needed (no torch).
 
 TODO(weave reading): keeping marked Dutch spans verbatim needs word alignment (SimAlign or the
 CT2 ``return_alignment`` attention output); plain MT cannot guarantee it. See
@@ -11,11 +12,13 @@ docs/research/06-weave-reading.md.
 
 from __future__ import annotations
 
+import json
 import os
 import threading
 from pathlib import Path
 from typing import Any, Protocol
 
+from kenning_nlp.datadir import data_path
 from kenning_nlp.errors import ServiceError
 
 SUPPORTED_PAIRS = {("nl", "en")}
@@ -24,9 +27,9 @@ MAX_INPUT_TOKENS = 1024
 MAX_OUTPUT_TOKENS = 512
 BEAM_SIZE = 4
 FETCH_HINT = (
-    "The offline translation model is not installed. Run "
-    "`uv run python scripts/fetch_mt_model.py` in server/nlp (about 160 MB), or set "
-    "KENNING_MT_DIR to a CTranslate2 opus-mt-nl-en directory. The Docker image includes it."
+    "The offline translation model (data pack mt-nl-en) is not installed yet. The server "
+    "installs it at startup when KENNING_PACKS is on (see GET /health); in development run "
+    "`uv run python scripts/fetch_mt_model.py` in server/nlp (about 85 MB)."
 )
 
 
@@ -38,10 +41,7 @@ class Translator(Protocol):
 
 def model_dir() -> Path:
     """Model location: ``$KENNING_MT_DIR`` or ``server/nlp/data/mt-nl-en``."""
-    env = os.environ.get("KENNING_MT_DIR")
-    if env:
-        return Path(env)
-    return Path(__file__).resolve().parents[2] / "data" / "mt-nl-en"
+    return data_path("KENNING_MT_DIR", "mt-nl-en")
 
 
 class MtEngine:
@@ -63,10 +63,17 @@ class MtEngine:
             raise FileNotFoundError(f"missing model files in {path}: {', '.join(missing)}")
         self._src = sentencepiece.SentencePieceProcessor(model_file=str(path / "source.spm"))
         self._tgt = sentencepiece.SentencePieceProcessor(model_file=str(path / "target.spm"))
+        # Models converted with the Marian converter add </s> themselves (config.json); the older
+        # Transformers conversion did not, so it is appended by hand for those.
+        try:
+            config = json.loads((path / "config.json").read_text())
+        except (OSError, ValueError):
+            config = {}
+        self._eos = [] if config.get("add_source_eos") else ["</s>"]
         self._model: Any = ctranslate2.Translator(
             str(path),
             device="cpu",
-            compute_type="int8",  # quantise the float32 weights at load: ~2x faster, same quality
+            compute_type="int8",  # the pack is int8 already; older float32 models quantise at load
             inter_threads=1,
             intra_threads=intra_threads or min(4, os.cpu_count() or 1),
         )
@@ -78,8 +85,7 @@ class MtEngine:
         out = [""] * len(texts)
         if not todo:
             return out
-        # Marian expects an explicit </s> at the end of the source (not added by the config).
-        batch = [[*self._src.encode(texts[i].strip(), out_type=str), "</s>"] for i in todo]
+        batch = [[*self._src.encode(texts[i].strip(), out_type=str), *self._eos] for i in todo]
         with self._lock:
             results = self._model.translate_batch(
                 batch,
@@ -125,3 +131,10 @@ def translate_texts(source: str, target: str, texts: list[str]) -> list[dict[str
         raise ServiceError(422, f"Unsupported language pair {source}->{target} (only nl->en).")
     translations = get_engine().translate(texts)
     return [{"text": t, "translation": tr} for t, tr in zip(texts, translations, strict=True)]
+
+
+def reset_engine() -> None:
+    """Forget the loaded model (after a new ``mt-nl-en`` pack was installed)."""
+    global _engine
+    with _engine_lock:
+        _engine = None
