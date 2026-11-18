@@ -95,15 +95,15 @@ Tests: two synthetic books (an English coursebook with "Unit N" contents, runnin
 
 _De Opmaat A2_, 106 MB PDF, 289 scanned pages, no text layer, Tesseract 5.5 `nld`, 12-core laptop, 6 workers:
 
-| Step                | Result                                                                                                                                                            |
-| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| OCR (`/course/ocr`) | 211 s for 289 pages (was single-threaded); mean word confidence 0.875; importing the same file again (disk cache, through the app's services): 2.4 s              |
-| Outline             | 13 of 13 units right (10 themes, grammar, transcripts, word list): every start page matches the contents, titles from the footers; 73 ms                          |
-| Word lists          | 2,210 entries over 10 units vs the user's own deck: precision 99.4 %, recall 97.5 %, de/het right for 97.1 %                                                      |
-| Exercises           | 218 recognised: 34 choice (questions with options), 10 gap fill, 1 table, 1 sentence building, 1 matching, 74 open or listening tasks, 97 unknown (shown as text) |
-| Analysis            | ANALYZE_S (derived answers, NNN reading texts into the Library)                                                                                                   |
-| Words to Anki       | unit 3: PREVIEW_U3                                                                                                                                                |
-| Grammar             | GRAMMAR_U3                                                                                                                                                        |
+| Step                | Result                                                                                                                                                                |
+| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| OCR (`/course/ocr`) | 211 s for 289 pages (was single-threaded); mean word confidence 0.875; importing the same file again (disk cache, through the app's services): 2.4 s                  |
+| Outline             | 13 of 13 units right (10 themes, grammar, transcripts, word list): every start page matches the contents, titles from the footers; 73 ms                              |
+| Word lists          | 2,210 entries over 10 units vs the user's own deck: precision 99.4 %, recall 97.5 %, de/het right for 97.1 %                                                          |
+| Exercises           | 218 recognised: 34 choice (questions with options), 10 gap fill, 1 table, 1 sentence building, 1 matching, 74 open or listening tasks, 97 unknown (shown as text)     |
+| Analysis            | 5-13 s: exercises, derived answers and 121 reading texts and transcripts into the Library                                                                             |
+| Words to Anki       | Thema 3: 331 words, 326 with a dictionary gloss, 137 with a sentence from the book; the whole course: 1,868 new words, 1,839 glosses, 885 sentences, preview in 1.2 s |
+| Grammar             | 2-3 s per unit; ranked against the course: Thema 4 and 5 lead with the perfect tense, Thema 6 with adjective endings and _er_, Thema 7 with _om … te_ and comparison  |
 
 Without the contents page (blanked), the footers alone still give all 10 themes, 6 with the exact first page and the rest one or two pages late (the theme's title page has no footer), and the word list appendix.
 
