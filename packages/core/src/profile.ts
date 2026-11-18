@@ -51,7 +51,6 @@ export const PROFILE_LANGUAGES: {
   enabled: boolean;
 }[] = [
   { code: "nl", name: "Nederlands", english: "Dutch", enabled: true },
-  { code: "uk", name: "Українська", english: "Ukrainian", enabled: false },
 ];
 
 /** Native name of a language, used in deck names ("Nederlands"). */

@@ -35,7 +35,8 @@ describe("onboarding", () => {
     const { user, history, saveLanguageProfile } = setup();
     expect(await screen.findByRole("heading", { name: "Welcome to Kenning" })).toBeVisible();
     expect(history.location.pathname).toBe("/welcome");
-    expect(screen.getByRole("radio", { name: /Українська/ })).toBeDisabled();
+    expect(screen.queryByRole("radio", { name: /Українська/ })).toBeNull();
+    expect(screen.getByText("More languages coming soon.")).toBeVisible();
     expect(screen.getByRole("radio", { name: /Nederlands/ })).toBeChecked();
     await user.click(cont());
 

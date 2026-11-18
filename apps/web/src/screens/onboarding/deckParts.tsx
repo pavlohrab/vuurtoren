@@ -47,6 +47,7 @@ export function LanguageChoice({
           </span>
         </label>
       ))}
+      <p className="ob-choice-sub">More languages coming soon.</p>
     </fieldset>
   );
 }
