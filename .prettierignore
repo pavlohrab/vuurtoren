@@ -4,3 +4,4 @@ coverage
 server/
 docs/roadmap.md
 .claude
+packages/core/src/reading/fixtures/

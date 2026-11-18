@@ -438,37 +438,3 @@
 }
 
 /* ---------- Reader: grammar notes in the inspector ---------- */
-.grammar-notes {
-  padding: 12px 16px;
-  border-top: 1px solid var(--hairline);
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-.grammar-notes-label {
-  margin: 0;
-}
-.grammar-notes-item {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding-left: 10px;
-  border-left: 2px solid var(--state-grammar-line);
-}
-.grammar-notes-title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-weight: 600;
-  font-size: 14px;
-}
-.grammar-notes-item p {
-  margin: 0;
-  font-size: 14px;
-}
-.grammar-notes-summary {
-  color: var(--ink-muted);
-}
-.grammar-notes-link {
-  font-size: 14px;
-}

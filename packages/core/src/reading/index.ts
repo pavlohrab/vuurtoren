@@ -5,3 +5,4 @@ export * from "./plan.js";
 export * from "./staircase.js";
 export * from "./help.js";
 export * from "./grammar.js";
+export * from "./explain.js";

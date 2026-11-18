@@ -248,11 +248,35 @@ describe("Reader grammar", () => {
     setup("/read/t-utrecht");
     await screen.findAllByText("bel");
     await userEvent.click(tok("bel"));
-    const notes = await screen.findByRole("region", { name: "Grammar" });
-    expect(within(notes).getByText("Separable verbs")).toBeInTheDocument();
+    const notes = await screen.findByRole("region", { name: "Grammar of this word" });
+    expect(within(notes).getByText(/^bel → bellen: present with ik/)).toBeInTheDocument();
+    expect(within(notes).getByText(/^bel … op = opbellen: separable verb/)).toBeInTheDocument();
+    expect(within(notes).getByText(/^Main clause: subject \(Ik\) first/)).toBeInTheDocument();
     expect(
       within(notes).getByRole("link", { name: "Open the topic: Separable verbs" }),
     ).toHaveAttribute("href", "/grammar/separable-verbs");
+    // Topics without a detector hit in the text offer no focus.
+    expect(
+      within(notes).queryByRole("button", { name: "Focus on this: The present tense" }),
+    ).toBeNull();
+    // Focus on this: the reader marks that topic all through the page.
+    await userEvent.click(
+      within(notes).getByRole("button", { name: "Focus on this: Separable verbs" }),
+    );
+    const focus = await screen.findByRole("group", { name: "Grammar focus" });
+    expect(within(focus).getByRole("status")).toHaveTextContent("on this page");
+  });
+
+  it("explains words without a margin mark or detector hit", async () => {
+    setup("/read/t-utrecht");
+    await screen.findAllByText("zus");
+    await userEvent.click(tok("zus"));
+    const notes = await screen.findByRole("region", { name: "Grammar of this word" });
+    expect(within(notes).getByText(/^zus: a de-word \(de zus\)/)).toBeInTheDocument();
+    expect(
+      within(notes).getByRole("link", { name: "Open the topic: de, het and een" }),
+    ).toHaveAttribute("href", "/grammar/de-het");
+    expect(within(notes).getByText("More about this word")).toBeInTheDocument();
   });
 
   it("passes the sentence's grammar to Explain this sentence", async () => {

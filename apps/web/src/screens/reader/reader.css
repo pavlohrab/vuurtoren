@@ -379,3 +379,91 @@
     transition: none;
   }
 }
+
+/* "Grammar of this word" in the inspector: quiet lines with a hairline above. */
+.word-grammar {
+  margin-top: var(--s-4);
+  padding-top: var(--s-4);
+  border-top: 1px solid var(--hairline);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  font-size: 14px;
+}
+.word-grammar-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+}
+.word-grammar-line p {
+  margin: 0;
+  color: var(--ink);
+  line-height: 1.45;
+}
+.word-grammar-order {
+  padding-top: var(--s-3);
+  border-top: 1px dashed var(--hairline);
+}
+.word-grammar-order p {
+  color: var(--ink-muted);
+}
+.word-grammar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px var(--s-3);
+  margin-top: 2px;
+}
+.word-grammar-actions .k-link {
+  font-size: 13px;
+}
+.word-grammar-focus {
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+  font-size: 13px;
+  color: var(--ink-muted);
+  cursor: pointer;
+}
+.word-grammar-focus:hover {
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.word-grammar-focus:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+.word-grammar-more summary {
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--ink-muted);
+}
+.word-grammar-more[open] summary {
+  margin-bottom: var(--s-2);
+}
+.word-grammar-more dl {
+  margin: var(--s-2) 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+.word-grammar-more dt {
+  font-weight: 500;
+  font-size: 13px;
+}
+.word-grammar-more dd {
+  margin: 0;
+  font-size: 13px;
+  color: var(--ink-muted);
+}
+.word-grammar-level {
+  color: var(--ink-muted);
+  font-weight: 400;
+  font-size: 12px;
+}
