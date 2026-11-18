@@ -249,10 +249,15 @@ in browser storage works offline) and shows "A new version is ready — Reload" 
 
 ### Desktop app
 
-Linux (AppImage, .deb), Windows (.exe, .msi) and macOS (.dmg) installers come with each
-release. Enter your server's address once and sign in; Anki works without any AnkiConnect
-setup. The builds are unsigned (Windows: More info > Run anyway; macOS: right-click > Open).
-Details, updates and building it yourself: [docs/desktop.md](docs/desktop.md).
+The easiest way to use Kenning: download the installer for Linux (AppImage, .deb), Windows
+(.exe, .msi) or macOS (.dmg, Apple chip or Intel) from a release, open it, keep Anki open, done.
+No server, no Docker, nothing to set up: your data is one file in `Documents/Kenning`
+(Settings → Your data shows it, with "Show in folder" and "Move…"), the Dutch language tools
+run inside the app (the dictionary and translation model, ~104 MB, download once on first start;
+the `Kenning_offline_…` installers include them), and Anki works without any AnkiConnect setup.
+Photo/scan import needs a server (the app has no OCR). The app can also connect to a Kenning
+server instead. The builds are unsigned (Windows: More info > Run anyway; macOS: right-click >
+Open). Details, sizes, updates and building it yourself: [docs/desktop.md](docs/desktop.md).
 
 ### Development
 

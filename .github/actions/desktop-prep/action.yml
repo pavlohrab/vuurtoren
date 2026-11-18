@@ -1,0 +1,61 @@
+# Shared setup of the desktop jobs (.github/workflows/desktop.yml): toolchains, dependencies and
+# the language-server sidecar (server/nlp/desktop/build_sidecar.py), optionally with the data
+# pack archives for the offline installer.
+name: Desktop build prerequisites
+description: Node, Rust, uv, system libraries and the PyInstaller sidecar.
+inputs:
+  rust-targets:
+    description: Extra Rust targets (macOS)
+    default: ""
+  packs:
+    description: "true: download the data pack archives and bundle them (offline installer)"
+    default: "false"
+runs:
+  using: composite
+  steps:
+    - uses: pnpm/action-setup@v4
+    - uses: actions/setup-node@v4
+      with:
+        node-version-file: .nvmrc
+        cache: pnpm
+    - name: Linux system libraries
+      if: runner.os == 'Linux'
+      shell: bash
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+    - uses: dtolnay/rust-toolchain@stable
+      with:
+        targets: ${{ inputs.rust-targets }}
+    - uses: Swatinem/rust-cache@v2
+      with:
+        workspaces: apps/desktop/src-tauri -> target
+        key: ${{ inputs.rust-targets }}
+    # uv caches the Python wheels between runs (keyed on server/nlp/uv.lock).
+    - uses: astral-sh/setup-uv@v6
+      with:
+        enable-cache: true
+        cache-dependency-glob: server/nlp/uv.lock
+    - shell: bash
+      run: pnpm install --frozen-lockfile
+    - name: Data pack archives (offline installer)
+      if: inputs.packs == 'true'
+      shell: bash
+      run: |
+        mkdir -p "$RUNNER_TEMP/packs"
+        python3 - "$RUNNER_TEMP/packs" <<'PY'
+        import hashlib, json, sys, urllib.request
+        out = sys.argv[1]
+        packs = json.load(open("server/nlp/src/kenning_nlp/packs.json"))["packs"]
+        for name, p in packs.items():
+            file = f"{name}-{p['version']}.tar.gz"
+            url = f"https://github.com/pavlohrab/Kenning/releases/download/packs-{p['version']}/{file}"
+            print("fetch", url, flush=True)
+            urllib.request.urlretrieve(url, f"{out}/{file}")
+            sha = hashlib.sha256(open(f"{out}/{file}", "rb").read()).hexdigest()
+            assert sha == p["sha256"], f"{file}: checksum mismatch"
+        PY
+        echo "PACKS_ARG=--packs $RUNNER_TEMP/packs" >> "$GITHUB_ENV"
+    - name: Language server sidecar (PyInstaller, one directory, no Tesseract)
+      shell: bash
+      run: uv run --no-project python server/nlp/desktop/build_sidecar.py $PACKS_ARG

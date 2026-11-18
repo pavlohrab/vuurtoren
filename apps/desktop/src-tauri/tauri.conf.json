@@ -21,7 +21,7 @@
     "targets": ["appimage", "deb", "nsis", "msi", "dmg", "app"],
     "category": "Education",
     "shortDescription": "Read Dutch, learn from what you read",
-    "longDescription": "Kenning is an open-source reading app for learning Dutch. The desktop app connects to your Kenning server and talks to Anki on this computer without extra setup.",
+    "longDescription": "Kenning is an open-source reading app for learning Dutch. Everything runs on this computer: your texts and words in one file under Documents/Kenning, a bundled Dutch language server, and Anki through AnkiConnect without extra setup. It can also connect to a Kenning server.",
     "publisher": "Kenning",
     "copyright": "MIT OR Apache-2.0",
     "license": "MIT OR Apache-2.0",

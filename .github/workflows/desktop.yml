@@ -1,5 +1,14 @@
-# Desktop app (apps/desktop, Tauri v2): Linux AppImage + .deb, Windows NSIS .exe + .msi and a
-# universal macOS .dmg, attached to a GitHub release (the updater reads its latest.json). Unsigned (see docs/desktop.md).
+# Desktop app (apps/desktop, Tauri v2): the offline app with its bundled language server (D4).
+# Linux AppImage + .deb, Windows NSIS .exe + .msi, macOS .dmg for Apple silicon and for Intel,
+# attached to a GitHub release (the updater reads its latest.json). Unsigned (see docs/desktop.md).
+#
+# Every job builds the language-server sidecar for its OS first (.github/actions/desktop-prep:
+# PyInstaller, one directory, no Tesseract), then the app. Two variants:
+#   build     standard installers: the data packs (dictionary, sentences, translation model;
+#             ~104 MB) are downloaded on first start from the public `packs-<version>` release;
+#   offline   the pack archives inside the installer (`Kenning_offline_*`, ~104 MB larger), for
+#             computers without internet at first start. Tags always build it; "Run workflow"
+#             asks.
 #
 # Secrets/variables (Settings > Secrets and variables > Actions):
 #   TAURI_SIGNING_PRIVATE_KEY           secret: the updater key (not a code-signing certificate)
@@ -11,6 +20,11 @@ on:
   push:
     tags: ["v*"]
   workflow_dispatch:
+    inputs:
+      offline:
+        description: "Also build the offline installers (data packs inside)"
+        type: boolean
+        default: true
 
 permissions:
   contents: write
@@ -29,30 +43,20 @@ jobs:
             args: --bundles appimage,deb
           - os: windows-latest
             args: --bundles nsis,msi
+          # PyInstaller bundles are per architecture: one .dmg each instead of a universal one.
           - os: macos-latest
-            args: --target universal-apple-darwin --bundles app,dmg
-            rust-targets: aarch64-apple-darwin,x86_64-apple-darwin
+            args: --target aarch64-apple-darwin --bundles app,dmg
+            rust-targets: aarch64-apple-darwin
+          - os: macos-15-intel
+            args: --target x86_64-apple-darwin --bundles app,dmg
+            rust-targets: x86_64-apple-darwin
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 60
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: ./.github/actions/desktop-prep
         with:
-          node-version-file: .nvmrc
-          cache: pnpm
-      - name: Linux system libraries
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: ${{ matrix.rust-targets }}
-      - uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: apps/desktop/src-tauri -> target
-      - run: pnpm install --frozen-lockfile
+          rust-targets: ${{ matrix.rust-targets }}
       - name: Updater files only when the signing key is present
         id: updater
         shell: bash
@@ -73,11 +77,63 @@ jobs:
         with:
           projectPath: apps/desktop
           tauriScript: pnpm tauri
-          args: ${{ matrix.args }} ${{ steps.updater.outputs.config }}
+          args: ${{ matrix.args }} --config src-tauri/tauri.sidecar.conf.json ${{ steps.updater.outputs.config }}
           tagName: ${{ github.ref_type == 'tag' && github.ref_name || 'desktop-v__VERSION__' }}
           releaseName: Kenning __VERSION__
-          releaseBody: Desktop installers (unsigned). See docs/desktop.md for installing and first start.
+          releaseBody: Desktop installers (unsigned). The `Kenning_offline_*` files include the language data (no download at first start). See docs/desktop.md.
           # Published (not draft) so releases/latest/download/latest.json resolves for the updater.
           releaseDraft: false
           prerelease: false
           uploadUpdaterJson: true
+
+  # Same app plus the data pack archives, renamed `Kenning_offline_*` and attached to the same
+  # release. No updater files: the updater feed belongs to the standard installers.
+  offline:
+    if: github.event_name == 'push' || inputs.offline
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            args: --bundles appimage,deb
+          - os: windows-latest
+            args: --bundles nsis,msi
+          - os: macos-latest
+            args: --target aarch64-apple-darwin --bundles app,dmg
+            rust-targets: aarch64-apple-darwin
+          - os: macos-15-intel
+            args: --target x86_64-apple-darwin --bundles app,dmg
+            rust-targets: x86_64-apple-darwin
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/desktop-prep
+        with:
+          rust-targets: ${{ matrix.rust-targets }}
+          packs: "true"
+      - name: Build
+        working-directory: apps/desktop
+        shell: bash
+        env:
+          KENNING_UPDATE_URL: ${{ vars.KENNING_UPDATE_URL }}
+        run: pnpm tauri build ${{ matrix.args }} --config src-tauri/tauri.packs.conf.json
+      - name: Attach to the release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
+        run: |
+          version=$(node -p "require('./package.json').version")
+          tag="${TAG:-desktop-v$version}"
+          mkdir -p "$RUNNER_TEMP/offline"
+          find apps/desktop/src-tauri/target -path '*/release/bundle/*' -type f \
+            \( -name '*.AppImage' -o -name '*.deb' -o -name '*.exe' -o -name '*.msi' -o -name '*.dmg' \) |
+          while read -r f; do
+            base=$(basename "$f")
+            cp "$f" "$RUNNER_TEMP/offline/${base/Kenning_/Kenning_offline_}"
+          done
+          ls -la "$RUNNER_TEMP/offline"
+          # The standard job may still be creating the release: wait for it (up to 30 minutes).
+          for i in $(seq 1 60); do gh release view "$tag" >/dev/null 2>&1 && break; sleep 30; done
+          gh release upload "$tag" "$RUNNER_TEMP"/offline/* --clobber

@@ -1,0 +1,9 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "bundle": {
+    "resources": {
+      "sidecar/kenning-nlp/": "sidecar/kenning-nlp/",
+      "sidecar/packs/": "sidecar/packs/"
+    }
+  }
+}

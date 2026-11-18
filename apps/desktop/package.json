@@ -4,10 +4,12 @@
   "private": true,
   "license": "MIT OR Apache-2.0",
   "type": "module",
-  "description": "Kenning desktop app (Tauri v2) around the web build. Not part of `pnpm build`: build it with `pnpm --filter desktop tauri build`.",
+  "description": "Kenning desktop app (Tauri v2): the offline app with a bundled language server, or a thin client for a Kenning server. Not part of `pnpm build`: build the sidecar (server/nlp/desktop/build_sidecar.py), then `pnpm --filter desktop bundle`.",
   "scripts": {
     "tauri": "tauri",
-    "bundle": "tauri build"
+    "sidecar": "uv run --no-project python ../../server/nlp/desktop/build_sidecar.py",
+    "bundle": "tauri build --config src-tauri/tauri.sidecar.conf.json",
+    "bundle:offline": "tauri build --config src-tauri/tauri.packs.conf.json"
   },
   "devDependencies": {
     "@tauri-apps/cli": "2.12.4"
