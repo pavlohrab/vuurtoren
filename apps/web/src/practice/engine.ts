@@ -11,4 +11,5 @@ export {
   gradeAttempt,
   practiceStats,
   review,
+  shuffle,
 } from "@app/core";

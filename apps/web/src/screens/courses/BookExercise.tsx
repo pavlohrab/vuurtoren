@@ -328,7 +328,7 @@ export function BookExercise(props: Props) {
       {canMore ? (
         <div className="row" style={{ marginTop: 8 }}>
           <Button size="sm" disabled={busy} onClick={() => void more()}>
-            {busy ? "Preparing…" : "More like this"}
+            {busy ? "Preparing…" : "More practice like this"}
           </Button>
         </div>
       ) : null}

@@ -1,5 +1,5 @@
 export * from "./types.js";
-export { createRng, type Rng } from "./rng.js";
+export { createRng, shuffle, type Rng } from "./rng.js";
 export { checkAnswer } from "./check.js";
 export { distractors, sharesMeaning, glossVariants } from "./distractors.js";
 export { generate } from "./generate.js";

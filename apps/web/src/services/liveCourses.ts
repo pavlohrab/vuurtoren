@@ -48,7 +48,7 @@ import {
 import { topicForHit } from "@app/content";
 import type { KenningRepository, WordInfo } from "@app/db";
 import { type NlpClient, isOcrLang } from "@app/nlp-client";
-import { createRng, generate } from "../practice/engine.js";
+import { createRng, generate, shuffle } from "../practice/engine.js";
 import { type DeriveClient, deriveAnswers } from "./courseDerive.js";
 import type {
   AddMissingResult,
@@ -726,11 +726,25 @@ export function createLiveCourses(deps: LiveCoursesDeps): CourseServices {
     );
     const rng = createRng(clock());
     const out: Exercise[] = [];
+    // Shuffle the words (unit words first, then review) so each run picks different ones;
+    // before, the same first words came out every time.
+    const unitSet = new Set(unit);
+    const order = [
+      ...shuffle(
+        words.filter((w) => unitSet.has(w.key)),
+        rng,
+      ),
+      ...shuffle(
+        words.filter((w) => !unitSet.has(w.key)),
+        rng,
+      ),
+    ];
+    const startKind = Math.floor(rng() * kinds.length);
     // Round-robin over words and kinds so a session spreads out.
     for (let round = 0; out.length < size && round < kinds.length * 2; round++) {
-      for (const w of words) {
+      for (const w of order) {
         if (out.length >= size) break;
-        const kind = kinds[(round + out.length) % kinds.length];
+        const kind = kinds[(startKind + round + out.length) % kinds.length];
         const ex = kind ? generate(kind, w, words, rng) : null;
         if (ex && !out.some((o) => o.key === ex.key && o.kind === ex.kind)) out.push(ex);
       }
