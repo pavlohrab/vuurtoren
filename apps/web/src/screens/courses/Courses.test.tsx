@@ -116,7 +116,11 @@ describe("Courses", () => {
     const file = new File(["%PDF-1.4"], "Mijn boek.pdf", { type: "application/pdf" });
     await user.upload(await screen.findByLabelText("Book file"), file);
     await user.click(screen.getByRole("button", { name: "Start reading the book" }));
-    expect(importCourse).toHaveBeenCalledWith({ kind: "pdf", files: [file] }, expect.any(Function));
+    expect(importCourse).toHaveBeenCalledWith(
+      { kind: "pdf", files: [file] },
+      expect.any(Function),
+      { review: expect.any(Function) },
+    );
 
     const first = await screen.findByLabelText("Last page of unit 1");
     await user.clear(first);

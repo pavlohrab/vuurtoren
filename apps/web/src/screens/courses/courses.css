@@ -518,3 +518,11 @@
   border-bottom: 1px solid var(--line);
   font-size: 0.9rem;
 }
+
+/* Course import, Check step: page switcher in the review bar. */
+.cs-review-pages {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-right: 4px;
+}

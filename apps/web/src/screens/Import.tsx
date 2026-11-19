@@ -7,6 +7,17 @@ import { Button, Input, Spinner, Tabs, Textarea, useToast } from "@app/ui";
 import { useOcrAvailable } from "../desktop/DesktopSetup.js";
 import { useServices } from "../services/context.js";
 import type { ImportInput } from "../services/types.js";
+import {
+  ImportCancelledError,
+  type OcrReviewDoc,
+  type ReviewState,
+  acceptAllSuggestions,
+  changedCount,
+  initReview,
+  reviewText,
+  suggestionCount,
+} from "../services/ocrReview.js";
+import { OcrReview } from "./ocr/OcrReview.js";
 import { errorText } from "../services/errors.js";
 import { ErrorNotice } from "../shell/ErrorNotice.js";
 import { PageHeader } from "../shell/PageHeader.js";
@@ -91,6 +102,16 @@ export function ImportScreen() {
   const [progress, setProgress] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
+  // The OCR review step: the recognised text waits here until the learner imports it.
+  const [review, setReview] = useState<{ doc: OcrReviewDoc; state: ReviewState } | null>(null);
+  const resolveReview = useRef<((text: string | null) => void) | null>(null);
+  // Leaving the page during the review cancels the import.
+  useEffect(() => () => resolveReview.current?.(null), []);
+  const finishReview = (text: string | null) => {
+    resolveReview.current?.(text);
+    resolveReview.current = null;
+    setReview(null);
+  };
 
   const input = (): ImportInput | null => {
     if (kind === "paste")
@@ -111,13 +132,31 @@ export function ImportScreen() {
     setError(null);
     setProgress([]);
     try {
-      const id = await services.importText(payload, (m) => {
-        if (mounted.current) setProgress((p) => [...p, m]);
-      });
+      const id = await services.importText(
+        payload,
+        (m) => {
+          if (mounted.current) setProgress((p) => [...p, m]);
+        },
+        {
+          review: (doc) =>
+            new Promise((resolve) => {
+              if (!mounted.current) return resolve(doc.text);
+              resolveReview.current = resolve;
+              setReview({ doc, state: initReview(doc.text, doc.flags) });
+            }),
+        },
+      );
       await qc.invalidateQueries({ queryKey: ["texts"] });
       if (mounted.current) await navigate({ to: "/read/$textId", params: { textId: id } });
       else toast("Text imported", "It is in your library.");
     } catch (e) {
+      if (e instanceof ImportCancelledError) {
+        if (mounted.current) {
+          setProgress([]);
+          setBusy(false);
+        }
+        return;
+      }
       // A failed live import may still have changed the library (e.g. saved before analysis).
       void qc.invalidateQueries({ queryKey: ["texts"] });
       if (mounted.current) {
@@ -137,6 +176,53 @@ export function ImportScreen() {
       placeholder="Taken from the text if left empty"
     />
   );
+
+  if (review) {
+    const { state, doc } = review;
+    const pages = new Map(doc.pages.map((p) => [p.n, p]));
+    const canAccept = suggestionCount(state);
+    return (
+      <div className="page import-page">
+        <PageHeader
+          title="Check the text"
+          lede="Words that may be misread are underlined. Compare them with the scan, fix what is wrong, then import."
+        />
+        <OcrReview
+          value={state}
+          onChange={(next) => setReview({ ...review, state: next })}
+          image={(n) => {
+            const p = pages.get(n);
+            return p ? { src: p.image, width: p.width, height: p.height } : null;
+          }}
+          allowTextEdit
+          actions={
+            <>
+              {canAccept > 0 ? (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setReview({ ...review, state: acceptAllSuggestions(state) })}
+                >
+                  Accept all suggestions
+                </Button>
+              ) : null}
+              {changedCount(state) === 0 ? (
+                <Button size="sm" variant="ghost" onClick={() => finishReview(doc.text)}>
+                  Skip review
+                </Button>
+              ) : null}
+              <Button size="sm" variant="ghost" onClick={() => finishReview(null)}>
+                Cancel
+              </Button>
+              <Button size="sm" variant="primary" onClick={() => finishReview(reviewText(state))}>
+                Import
+              </Button>
+            </>
+          }
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="page page--list import-page">
