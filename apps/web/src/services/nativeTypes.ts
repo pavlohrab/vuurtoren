@@ -60,7 +60,7 @@ export interface DeckWithLoad extends NativeDeckSummary {
 }
 
 /** What Move to Anki did. */
-export interface MoveToAnkiSummary {
+interface MoveToAnkiSummary {
   added: number;
   existing: number;
   skipped: number;
@@ -69,7 +69,7 @@ export interface MoveToAnkiSummary {
 }
 
 /** What an export holds. */
-export interface ExportSummary {
+interface ExportSummary {
   notes: number;
   cards: number;
   reviews: number;

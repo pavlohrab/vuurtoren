@@ -81,7 +81,7 @@ const RETUNE_REVIEWS = 500;
 const FIRST_TUNE_REVIEWS = 400;
 const CHANGES_PER_EVENT = 500;
 /** Target recalls the deck table offers, with the load each means. */
-export const LOAD_RETENTIONS = [0.8, 0.85, 0.87, 0.9, 0.92, 0.95, 0.97];
+const LOAD_RETENTIONS = [0.8, 0.85, 0.87, 0.9, 0.92, 0.95, 0.97];
 /** Texts searched for a sentence with the word (newest first). */
 const OWN_TEXTS = 200;
 

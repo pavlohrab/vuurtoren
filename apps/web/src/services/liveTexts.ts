@@ -105,7 +105,7 @@ export interface LiveTextsDeps {
 }
 
 /** What reading tells the native cards (see liveNative `evidence`). */
-export interface ReadingEvidence {
+interface ReadingEvidence {
   lookup: (key: string) => Promise<unknown>;
   cloze: (key: string, correct: boolean, hinted: boolean) => Promise<unknown>;
   pageRead: (keys: string[]) => Promise<unknown>;
