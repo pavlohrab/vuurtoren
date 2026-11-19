@@ -3,6 +3,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import {
   BookOpen,
   FolderPlus,
+  GraduationCap,
   ImageIcon,
   Library as LibraryIcon,
   ListChecks,
@@ -30,6 +31,7 @@ import {
   type SortKey,
   type SourceId,
   bySource,
+  courseUnitOf,
   searchTexts,
   shelfRows,
   sortTexts,
@@ -161,6 +163,23 @@ export function Library() {
     else void navigate({ to: "/read/$textId", params: { textId: t.id } });
   };
 
+  // A course text and its unit are one object: the text leads to its unit.
+  const courseItem = (t: TextListItem): MenuItem[] => {
+    const cu = courseUnitOf(t.sourceRef);
+    if (!cu) return [];
+    return [
+      {
+        label: "Open its course unit",
+        icon: <GraduationCap size={16} aria-hidden />,
+        onSelect: () =>
+          void navigate({
+            to: "/courses/$courseId/$unit",
+            params: { courseId: cu.courseId, unit: cu.unit },
+          }),
+      },
+    ];
+  };
+
   const menuFor = (t: TextListItem, row?: ShelfRow): MenuItem[] => [
     { label: "Open", icon: <BookOpen size={16} aria-hidden />, onSelect: () => open(t) },
     {
@@ -168,6 +187,7 @@ export function Library() {
       icon: <ListChecks size={16} aria-hidden />,
       onSelect: () => void navigate({ to: "/read/$textId/words", params: { textId: t.id } }),
     },
+    ...courseItem(t),
     {
       label: "Edit details…",
       icon: <Pencil size={16} aria-hidden />,

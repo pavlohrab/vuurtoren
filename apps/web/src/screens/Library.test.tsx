@@ -9,7 +9,7 @@ import { createLiveLibrary } from "../services/liveLibrary.js";
 import { createMockServices } from "../services/mock.js";
 import type { AppServices, TextListItem } from "../services/types.js";
 import { cropFor } from "./library/coverImage.js";
-import { bySource, searchTexts, shelfRows, sortTexts } from "./library/shelving.js";
+import { bySource, courseUnitOf, searchTexts, shelfRows, sortTexts } from "./library/shelving.js";
 
 const text = (over: Partial<TextListItem>): TextListItem => ({
   id: "t",
@@ -84,6 +84,13 @@ describe("Library logic", () => {
       ["Finished", ["c"]],
     ]);
     expect(rows.filter((r) => r.own).map((r) => r.id)).toEqual(["s1", "s2"]);
+  });
+
+  it("reads the course unit of a course text", () => {
+    expect(courseUnitOf("course:demo-course:3")).toEqual({ courseId: "demo-course", unit: "3" });
+    expect(courseUnitOf("course:a:b:12")).toEqual({ courseId: "a:b", unit: "12" });
+    expect(courseUnitOf("talk:x")).toBeNull();
+    expect(courseUnitOf(undefined)).toBeNull();
   });
 
   it("filters texts by source", () => {
@@ -192,6 +199,16 @@ describe("Library screen", () => {
     await user.click(await screen.findByRole("button", { name: "Delete shelf" }));
     await waitFor(() => expect(screen.queryByRole("region", { name: "News" })).toBeNull());
     expect(screen.getAllByRole("link", { name: "Op de markt" }).length).toBeGreaterThan(0);
+  });
+
+  it("leads from a course text to its unit", async () => {
+    const { user, history } = setup(
+      "/library",
+      createMockServices({ latencyMs: 0, demoLibrary: true }),
+    );
+    await openMenu(user, "Unit 3 · Wonen");
+    await user.click(await screen.findByRole("menuitem", { name: "Open its course unit" }));
+    await waitFor(() => expect(history.location.pathname).toBe("/courses/demo-course/3"));
   });
 
   it("puts several selected texts on a new shelf at once", async () => {

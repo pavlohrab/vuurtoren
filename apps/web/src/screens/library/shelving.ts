@@ -114,3 +114,14 @@ export function shelfRows(
   );
   return rows;
 }
+
+/** The course unit a text came from ("course:<id>:<unit>"), or null. */
+export function courseUnitOf(
+  sourceRef: string | null | undefined,
+): { courseId: string; unit: string } | null {
+  if (!sourceRef?.startsWith("course:")) return null;
+  const rest = sourceRef.slice("course:".length);
+  const at = rest.lastIndexOf(":");
+  if (at <= 0 || at === rest.length - 1) return null;
+  return { courseId: rest.slice(0, at), unit: rest.slice(at + 1) };
+}
