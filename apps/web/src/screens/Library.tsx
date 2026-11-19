@@ -3,6 +3,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import {
   BookOpen,
   FolderPlus,
+  GraduationCap,
   ImageIcon,
   Library as LibraryIcon,
   ListChecks,
@@ -25,8 +26,12 @@ import { type MenuItem, MenuButton } from "./library/MenuButton.js";
 import { AddToShelfDialog, ShelfNameDialog } from "./library/ShelfDialogs.js";
 import {
   SORT_LABEL,
+  SOURCES,
   type ShelfRow,
   type SortKey,
+  type SourceId,
+  bySource,
+  courseUnitOf,
   searchTexts,
   shelfRows,
   sortTexts,
@@ -83,6 +88,7 @@ export function Library() {
     readPref(SORT_KEY, ["recent", "title", "coverage"], "recent"),
   );
   const [query, setQuery] = useState("");
+  const [source, setSource] = useState<SourceId>("all");
   const [selecting, setSelecting] = useState(false);
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
 
@@ -157,6 +163,23 @@ export function Library() {
     else void navigate({ to: "/read/$textId", params: { textId: t.id } });
   };
 
+  // A course text and its unit are one object: the text leads to its unit.
+  const courseItem = (t: TextListItem): MenuItem[] => {
+    const cu = courseUnitOf(t.sourceRef);
+    if (!cu) return [];
+    return [
+      {
+        label: "Open its course unit",
+        icon: <GraduationCap size={16} aria-hidden />,
+        onSelect: () =>
+          void navigate({
+            to: "/courses/$courseId/$unit",
+            params: { courseId: cu.courseId, unit: cu.unit },
+          }),
+      },
+    ];
+  };
+
   const menuFor = (t: TextListItem, row?: ShelfRow): MenuItem[] => [
     { label: "Open", icon: <BookOpen size={16} aria-hidden />, onSelect: () => open(t) },
     {
@@ -164,6 +187,7 @@ export function Library() {
       icon: <ListChecks size={16} aria-hidden />,
       onSelect: () => void navigate({ to: "/read/$textId/words", params: { textId: t.id } }),
     },
+    ...courseItem(t),
     {
       label: "Edit details…",
       icon: <Pencil size={16} aria-hidden />,
@@ -209,7 +233,7 @@ export function Library() {
       text={t}
       variant={variant}
       menu={menuFor(t, row)}
-      onOpen={() => open(t)}
+      onToggle={() => toggleSelected(t.id)}
       selecting={selecting}
       selected={selected.has(t.id)}
       dragIds={() => (selected.has(t.id) ? [...selected] : [t.id])}
@@ -243,7 +267,7 @@ export function Library() {
   } else if (texts.data.length === 0) {
     body = (
       <EmptyState
-        icon={<LibraryIcon size={28} />}
+        icon={<LibraryIcon size={20} />}
         title="Your library is empty"
         description="Paste a text, add a web page, or upload a PDF or photo to start reading."
         action={
@@ -265,16 +289,21 @@ export function Library() {
       </>
     );
   } else if (view === "all") {
-    body = grid(all);
+    const shown = bySource(all, source);
+    body = shown.length ? (
+      grid(shown)
+    ) : (
+      <p className="lib-count" role="status">
+        No texts from this source.
+      </p>
+    );
   } else {
-    const firstSource = rows.findIndex((r) => r.group === "source");
-    body = rows.map((row, i) => {
+    body = rows.map((row) => {
       const shelf = ownShelves.find((s) => s.id === row.id);
       return (
         <ShelfRowView
           key={row.id}
           row={row}
-          sourceHeading={i === firstSource}
           renderItem={(t, extra) => item(t, "shelf", row, extra)}
           shelfMenu={
             shelf
@@ -365,6 +394,16 @@ export function Library() {
                 }))}
               />
             </div>
+            {view === "all" ? (
+              <div className="lib-sort">
+                <Select
+                  label="Source"
+                  value={source}
+                  onValueChange={(v) => setSource(v as SourceId)}
+                  options={SOURCES.map((s) => ({ value: s.id, label: s.name }))}
+                />
+              </div>
+            ) : null}
             <div className="lib-toolbar-buttons">
               <Button
                 variant="ghost"
@@ -492,7 +531,7 @@ export function Library() {
 interface RovingProps {
   tabIndex: number;
   onFocus: () => void;
-  onKeyDown: (e: KeyboardEvent<HTMLButtonElement>) => void;
+  onKeyDown: (e: KeyboardEvent<HTMLElement>) => void;
 }
 
 /**
@@ -502,13 +541,11 @@ interface RovingProps {
  */
 function ShelfRowView({
   row,
-  sourceHeading,
   renderItem,
   shelfMenu,
   onDropTexts,
 }: {
   row: ShelfRow;
-  sourceHeading: boolean;
   renderItem: (t: TextListItem, extra: RovingProps) => ReactNode;
   shelfMenu: MenuItem[] | null;
   onDropTexts?: ((ids: string[]) => void) | undefined;
@@ -519,14 +556,14 @@ function ShelfRowView({
   const current = Math.min(active, Math.max(0, row.texts.length - 1));
 
   const focusAt = (from: HTMLElement, i: number) => {
-    const buttons = from.closest(".lib-row")?.querySelectorAll<HTMLElement>(".lib-open");
-    if (!buttons?.length) return;
-    const j = Math.max(0, Math.min(buttons.length - 1, i));
+    const covers = from.closest(".lib-row")?.querySelectorAll<HTMLElement>(".lib-open");
+    if (!covers?.length) return;
+    const j = Math.max(0, Math.min(covers.length - 1, i));
     setActive(j);
-    buttons[j]?.focus();
-    buttons[j]?.scrollIntoView?.({ block: "nearest", inline: "nearest" });
+    covers[j]?.focus();
+    covers[j]?.scrollIntoView?.({ block: "nearest", inline: "nearest" });
   };
-  const keyFor = (i: number) => (e: KeyboardEvent<HTMLButtonElement>) => {
+  const keyFor = (i: number) => (e: KeyboardEvent<HTMLElement>) => {
     const moves: Record<string, number> = {
       ArrowRight: i + 1,
       ArrowLeft: i - 1,
@@ -562,7 +599,6 @@ function ShelfRowView({
 
   return (
     <>
-      {sourceHeading ? <p className="k-overline lib-group-label">By source</p> : null}
       <section
         className="lib-shelf"
         aria-labelledby={headingId}

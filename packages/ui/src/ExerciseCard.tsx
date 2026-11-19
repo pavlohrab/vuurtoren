@@ -10,6 +10,7 @@ import { Check, Volume2, X } from "lucide-react";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import type { Exercise } from "@app/core";
 import { Button } from "./Button.js";
+import { WordText } from "./WordText.js";
 import { cn } from "./cn.js";
 
 /** What the learner did, reported on submit. */
@@ -37,6 +38,11 @@ export interface ExerciseCardProps {
   onSpeak?: (text: string) => void;
   /** Label of the continue button (e.g. "Finish" on the last exercise). */
   continueLabel?: string;
+  /**
+   * After answering, the Dutch answer and sentence open the word inspector: a word as written
+   * and the sentence it stands in.
+   */
+  onWord?: (form: string, sentence: string | undefined, el: HTMLElement) => void;
 }
 
 /** Elements that mean another layer (dialog, command palette) owns the keyboard. */
@@ -95,6 +101,7 @@ export function ExerciseCard({
   onContinue,
   onSpeak,
   continueLabel = "Continue",
+  onWord,
 }: ExerciseCardProps) {
   const mode = exerciseMode(e);
   const answered = feedback !== null;
@@ -137,8 +144,12 @@ export function ExerciseCard({
       if (ev.metaKey || ev.ctrlKey || ev.altKey || ev.repeat) return;
       if (shortcutBlocked(ev, cardRef.current)) return;
       if (answered) {
-        // A focused button handles Enter itself (its click would otherwise fire a second time).
-        if (ev.key === "Enter" && !(ev.target instanceof HTMLButtonElement)) {
+        // A focused button or word handles Enter itself (its click would otherwise fire a
+        // second time, or a word would open and the card move on at once).
+        const own =
+          ev.target instanceof HTMLButtonElement ||
+          (ev.target instanceof HTMLElement && ev.target.closest("[data-word]") !== null);
+        if (ev.key === "Enter" && !own) {
           ev.preventDefault();
           onContinue();
         }
@@ -345,7 +356,14 @@ export function ExerciseCard({
             <p>
               Answer:{" "}
               <strong className="ex-dutch" lang="nl">
-                {e.answer}
+                {onWord ? (
+                  <WordText
+                    text={e.answer}
+                    onWord={(form, el) => onWord(form, e.prompt.sentence ?? e.answer, el)}
+                  />
+                ) : (
+                  e.answer
+                )}
               </strong>
             </p>
           ) : null}
@@ -353,7 +371,14 @@ export function ExerciseCard({
           {e.explanation ? <p className="ex-explanation">{e.explanation}</p> : null}
           {e.prompt.sentence ? (
             <p className="ex-sentence ex-dutch" lang="nl">
-              {e.prompt.sentence}
+              {onWord ? (
+                <WordText
+                  text={e.prompt.sentence}
+                  onWord={(form, el) => onWord(form, e.prompt.sentence, el)}
+                />
+              ) : (
+                e.prompt.sentence
+              )}
             </p>
           ) : null}
           {e.prompt.translation ? <p className="ex-translation">{e.prompt.translation}</p> : null}

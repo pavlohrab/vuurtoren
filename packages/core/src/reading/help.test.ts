@@ -39,6 +39,20 @@ describe("help dial", () => {
     expect(wantsGloss({ label: "nonword", pKnown: 0 }, 1)).toBe(false);
   });
 
+  it("tops up to a minimum with the least-known studied words, once per word", () => {
+    const toks = [
+      tok(0, "known", 0.8),
+      tok(1, "learning", 0.3),
+      { ...tok(2, "learning", 0.3), key: "k1" },
+      tok(3, "known", 0.99),
+      tok(4, "gloss", 0),
+    ];
+    expect(glossTargets(toks, 0.25, 3)).toEqual([0, 1, 4]);
+    expect(glossTargets(toks, 0.25, 1)).toEqual([4]);
+    expect(glossTargets(toks, 0, 3)).toEqual([]);
+    expect(glossTargets([tok(0, "known", 0.99)], 0.25, 2)).toEqual([]);
+  });
+
   it("names the levels", () => {
     expect([0, 0.2, 0.6, 1].map(helpLevel)).toEqual(["off", "new", "shaky", "most"]);
   });

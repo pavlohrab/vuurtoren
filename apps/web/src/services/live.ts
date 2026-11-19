@@ -74,6 +74,7 @@ export function createLiveServices(
     texts,
     profile: profile.current,
     ankiSnapshot: profile.snapshot,
+    nlp,
     synced: () => {
       changed();
       texts.clearPlans();

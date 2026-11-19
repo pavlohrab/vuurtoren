@@ -7,6 +7,7 @@ import { useServices } from "../services/context.js";
 import { groupWeeks, type ActivityWeek, type KnownPoint } from "../services/activity.js";
 import { PageHeader, SectionHeader } from "../shell/PageHeader.js";
 import { relativeTime } from "../format.js";
+import { ErrorNotice } from "../shell/ErrorNotice.js";
 import "./progress.css";
 
 const fmt = (n: number) => n.toLocaleString();
@@ -68,7 +69,11 @@ export function Progress() {
           <Stat value={fmt(s.unknown)} label="New words" state="unknown" />
         </div>
       ) : (
-        <p className="error-text">The summary could not be loaded.</p>
+        <ErrorNotice
+          title="Your word counts could not be loaded."
+          error={q.error}
+          onRetry={() => void q.refetch()}
+        />
       )}
       <div className="progress-charts">
         <KnownChart />
@@ -175,7 +180,11 @@ function KnownChart() {
       {q.isPending ? (
         <Skeleton style={{ height: 160 }} />
       ) : q.isError ? (
-        <p className="k-hint">The history could not be loaded.</p>
+        <ErrorNotice
+          title="The history could not be loaded."
+          error={q.error}
+          onRetry={() => void q.refetch()}
+        />
       ) : (
         <LineChart points={points} />
       )}
@@ -259,7 +268,11 @@ function ReadingChart() {
       {q.isPending ? (
         <Skeleton style={{ height: 160 }} />
       ) : q.isError ? (
-        <p className="k-hint">Your reading could not be loaded.</p>
+        <ErrorNotice
+          title="Your reading could not be loaded."
+          error={q.error}
+          onRetry={() => void q.refetch()}
+        />
       ) : (
         <BarChart weeks={weeks} />
       )}

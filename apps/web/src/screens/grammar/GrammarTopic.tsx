@@ -17,6 +17,7 @@ import {
   useGrammarOverview,
 } from "./GrammarCommon.js";
 import { plural } from "../../format.js";
+import { ErrorNotice } from "../../shell/ErrorNotice.js";
 import "./grammar.css";
 
 /** The Explanation without its `### Pattern` subsection (shown as a box instead). */
@@ -189,7 +190,7 @@ export function GrammarTopicPage({ topicId }: { topicId: string }) {
       {topic.detects.length ? (
         <TopicExamplesSection
           loading={examples.isPending}
-          error={examples.isError}
+          error={examples.isError ? examples.error : null}
           data={examples.data}
           onRetry={() => void examples.refetch()}
         />
@@ -316,7 +317,8 @@ function TopicExamplesSection({
   onRetry,
 }: {
   loading: boolean;
-  error: boolean;
+  /** The load error, or null. */
+  error: unknown;
   data: TopicExamples | undefined;
   onRetry: () => void;
 }) {
@@ -330,12 +332,7 @@ function TopicExamplesSection({
             <Skeleton style={{ height: 20, width: "80%" }} />
           </div>
         ) : error ? (
-          <p className="error-text" role="alert">
-            Examples could not be loaded.{" "}
-            <button type="button" className="link-button" onClick={onRetry}>
-              Retry
-            </button>
-          </p>
+          <ErrorNotice title="Examples could not be loaded." error={error} onRetry={onRetry} />
         ) : data && data.library.length ? (
           <ul className="grammar-found">
             {data.library.map((ex, i) => (

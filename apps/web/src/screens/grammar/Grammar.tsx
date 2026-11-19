@@ -13,6 +13,7 @@ import { readLocal, writeLocal } from "../../storage/local.js";
 
 export { LEVEL_LABEL, MarkedSentence, topicCount } from "./GrammarCommon.js";
 export { GrammarTopicPage, GrammarTopicRoute } from "./GrammarTopic.js";
+import { practiceOffer } from "./GrammarTopic.js";
 
 type View = "path" | "topic";
 const VIEW_KEY = "kenning.grammar.view";
@@ -48,6 +49,27 @@ interface Shelf {
   topics: GrammarTopic[];
 }
 
+/**
+ * The topic "Practise grammar" opens: of the topics with their own exercises, the one seen most
+ * in the learner's texts, else the first on the learning path.
+ */
+export function topicToPractise(
+  path: readonly GrammarTopic[],
+  overview: GrammarOverview | undefined,
+): GrammarTopic | undefined {
+  const practisable = path.filter((t) => practiceOffer(t, false) === "practise");
+  let best: GrammarTopic | undefined;
+  let bestHits = 0;
+  for (const t of practisable) {
+    const hits = topicCount(t, overview)?.hits ?? 0;
+    if (hits > bestHits) {
+      best = t;
+      bestHits = hits;
+    }
+  }
+  return best ?? practisable[0];
+}
+
 /** /grammar: the learning path (by level) or the topic shelves, with search. */
 export function Grammar() {
   const overview = useGrammarOverview();
@@ -72,6 +94,7 @@ export function Grammar() {
     .map((s) => ({ ...s, topics: s.topics.filter((t) => matchTopic(t, query)) }))
     .filter((s) => s.topics.length > 0);
   const total = shown.reduce((n, s) => n + s.topics.length, 0);
+  const practise = useMemo(() => topicToPractise(curriculum(), o), [o]);
 
   return (
     <div className="page page--list grammar">
@@ -79,9 +102,16 @@ export function Grammar() {
         title="Grammar"
         lede="Short topics with examples from what you read. Follow the learning path, or browse by topic."
         actions={
-          <Link to="/practice" className="k-btn k-btn--secondary">
-            Practice
-          </Link>
+          practise ? (
+            <Link
+              to="/grammar/$topic/practice"
+              params={{ topic: practise.id }}
+              className="k-btn k-btn--secondary"
+              title={practise.title}
+            >
+              Practise grammar
+            </Link>
+          ) : null
         }
       />
       {o && o.missing > 0 ? (
@@ -181,7 +211,7 @@ function TopicRow({
               seen {count.hits}× in your texts
             </span>
           ) : null}
-          <Chip title={LEVEL_LABEL[t.level]}>{t.level}</Chip>
+          {numbered ? null : <Chip title={LEVEL_LABEL[t.level]}>{t.level}</Chip>}
         </span>
         <ChevronRight size={16} aria-hidden className="grammar-row-chevron" />
       </Link>

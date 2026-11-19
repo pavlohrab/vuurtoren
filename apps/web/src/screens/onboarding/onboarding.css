@@ -228,3 +228,8 @@
     font-size: 23px;
   }
 }
+/* The first question under the welcome text. */
+.ob-question {
+  font-size: 18px;
+  margin: 0 0 6px;
+}

@@ -1,5 +1,5 @@
 import { createMemoryHistory } from "@tanstack/react-router";
-import { configure, render, screen, waitFor } from "@testing-library/react";
+import { configure, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { LanguageProfile } from "@app/core";
@@ -35,16 +35,20 @@ describe("onboarding", () => {
     const { user, history, saveLanguageProfile } = setup();
     expect(await screen.findByRole("heading", { name: "Welcome to Kenning" })).toBeVisible();
     expect(history.location.pathname).toBe("/welcome");
-    expect(screen.queryByRole("radio", { name: /Українська/ })).toBeNull();
-    expect(screen.getByText("More languages coming soon.")).toBeVisible();
-    expect(screen.getByRole("radio", { name: /Nederlands/ })).toBeChecked();
-    await user.click(cont());
-
-    expect(await screen.findByRole("heading", { name: "Do you use Anki?" })).toBeVisible();
+    // One language: no language step; the first question is under the welcome text.
+    expect(screen.queryByRole("radio", { name: /Nederlands/ })).toBeNull();
+    expect(screen.getByRole("heading", { name: "Do you use Anki?" })).toBeVisible();
+    // Three fixed parts, whatever the answers add.
+    const parts = () =>
+      within(screen.getByRole("list", { name: "Setup steps" }))
+        .getAllByRole("listitem")
+        .map((li) => li.textContent);
+    expect(parts()).toEqual(["1. Getting started", "2. Your words", "3. First text"]);
     expect(cont()).toBeDisabled();
     await user.click(screen.getByRole("radio", { name: /^Yes/ }));
     await user.click(cont());
     expect(await screen.findByRole("heading", { name: "Your Anki cards" })).toBeVisible();
+    expect(parts()).toHaveLength(3);
     await user.click(screen.getByRole("radio", { name: /Keep using Anki/ }));
     expect(screen.getByText(/Anki must be open for Kenning to send words to it/)).toBeVisible();
     await user.click(cont());
@@ -93,7 +97,6 @@ describe("onboarding", () => {
       savePlacement,
       suggestDecks,
     });
-    await user.click(await screen.findByRole("button", { name: "Continue" }));
     await user.click(await screen.findByRole("radio", { name: /^Yes/ }));
     await user.click(cont());
     await user.click(await screen.findByRole("radio", { name: /Keep using Anki/ }));
@@ -119,7 +122,6 @@ describe("onboarding", () => {
   it("no Anki: Kenning holds the cards, no Anki steps", async () => {
     const ankiStatus = vi.fn(async () => ({ connected: true, state: "connected" as const }));
     const { user, saveLanguageProfile } = setup({ ankiStatus });
-    await user.click(await screen.findByRole("button", { name: "Continue" }));
     await user.click(await screen.findByRole("radio", { name: /^No/ }));
     await user.click(cont());
     expect(await screen.findByRole("heading", { name: "Where new words go" })).toBeVisible();
@@ -140,7 +142,6 @@ describe("onboarding", () => {
       skippedMedia: 0,
     }));
     const { user, saveLanguageProfile } = setup({ moveFromAnki });
-    await user.click(await screen.findByRole("button", { name: "Continue" }));
     await user.click(await screen.findByRole("radio", { name: /^Yes/ }));
     await user.click(cont());
     expect(

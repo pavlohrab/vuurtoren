@@ -1,3 +1,4 @@
+import { Link } from "@tanstack/react-router";
 import { CoverageMeter, TextCover, WordStateChip, coverKind } from "@app/ui";
 import { Check } from "lucide-react";
 import type { DragEvent, FocusEvent, KeyboardEvent } from "react";
@@ -14,13 +15,14 @@ export interface LibraryItemProps {
   /** "shelf": a cover in a bookshelf row; "grid": the All texts view, with more meta. */
   variant: "shelf" | "grid";
   menu: MenuItem[];
-  onOpen: () => void;
+  /** Select mode: the cover toggles this text's selection instead of opening it. */
+  onToggle: () => void;
   selecting: boolean;
   selected: boolean;
   /** Roving focus inside a shelf row: only the active cover is in the tab order. */
   tabIndex?: number;
-  onFocus?: (e: FocusEvent<HTMLButtonElement>) => void;
-  onKeyDown?: (e: KeyboardEvent<HTMLButtonElement>) => void;
+  onFocus?: (e: FocusEvent<HTMLElement>) => void;
+  onKeyDown?: (e: KeyboardEvent<HTMLElement>) => void;
   /** Ids to drag with this cover (the selection when it is part of it). */
   dragIds: () => string[];
 }
@@ -30,7 +32,7 @@ export function LibraryItem({
   text: t,
   variant,
   menu,
-  onOpen,
+  onToggle,
   selecting,
   selected,
   tabIndex,
@@ -46,40 +48,59 @@ export function LibraryItem({
       : state.kind === "done"
         ? "Finished"
         : `${t.wordCount.toLocaleString("en")} words`;
-  const onDragStart = (e: DragEvent<HTMLButtonElement>) => {
+  const onDragStart = (e: DragEvent<HTMLElement>) => {
     e.dataTransfer.setData(DRAG_TYPE, JSON.stringify(dragIds()));
     e.dataTransfer.setData("text/plain", t.title);
     e.dataTransfer.effectAllowed = "copy";
   };
+  const cover = (
+    <TextCover
+      title={t.title}
+      kind={coverKind(t.sourceKind, t.sourceRef)}
+      coverage={t.coverage}
+      showLabel={variant === "grid"}
+      imageUrl={imageUrl}
+    />
+  );
   return (
     <li className="lib-item" data-variant={variant} data-selected={selected ? "" : undefined}>
       <div className="lib-item-cover">
-        <button
-          type="button"
-          className="lib-open"
-          data-text-id={t.id}
-          aria-label={t.title}
-          {...(selecting ? { "aria-pressed": selected } : {})}
-          {...(tabIndex !== undefined ? { tabIndex } : {})}
-          draggable={!selecting || selected}
-          onDragStart={onDragStart}
-          onClick={onOpen}
-          onFocus={onFocus}
-          onKeyDown={onKeyDown}
-        >
-          <TextCover
-            title={t.title}
-            kind={coverKind(t.sourceKind, t.sourceRef)}
-            coverage={t.coverage}
-            showLabel={variant === "grid"}
-            imageUrl={imageUrl}
-          />
-          {selecting ? (
+        {selecting ? (
+          <button
+            type="button"
+            className="lib-open"
+            data-text-id={t.id}
+            aria-label={t.title}
+            aria-pressed={selected}
+            {...(tabIndex !== undefined ? { tabIndex } : {})}
+            draggable={selected}
+            onDragStart={onDragStart}
+            onClick={onToggle}
+            onFocus={onFocus}
+            onKeyDown={onKeyDown}
+          >
+            {cover}
             <span className="lib-check" aria-hidden>
               {selected ? <Check size={14} /> : null}
             </span>
-          ) : null}
-        </button>
+          </button>
+        ) : (
+          // A real link: middle-click and "Open in new tab" work.
+          <Link
+            to="/read/$textId"
+            params={{ textId: t.id }}
+            className="lib-open"
+            data-text-id={t.id}
+            aria-label={t.title}
+            {...(tabIndex !== undefined ? { tabIndex } : {})}
+            draggable
+            onDragStart={onDragStart}
+            onFocus={onFocus}
+            onKeyDown={onKeyDown}
+          >
+            {cover}
+          </Link>
+        )}
         {selecting ? null : (
           <MenuButton className="lib-item-menu" label={`More for ${t.title}`} items={menu} />
         )}

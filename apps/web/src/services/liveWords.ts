@@ -22,6 +22,7 @@ import {
   profileMode,
 } from "@app/core";
 import type { KenningRepository, WordInfo } from "@app/db";
+import type { NlpClient, NlpLang } from "@app/nlp-client";
 import { activitySince, firstCard, groupActivity, knownByWeek } from "./activity.js";
 import { absentAnki, ankiFromStatus, unavailableAnki } from "./ankiState.js";
 import { DEGRADED_MESSAGES, clearDegraded, reportDegraded } from "./degraded.js";
@@ -112,6 +113,8 @@ export interface LiveWordsDeps {
   ankiSnapshot: LiveProfile["snapshot"];
   /** A new Anki snapshot was imported: card glosses and plans are stale. */
   synced: () => void;
+  /** The language server (lemmas of a sentence for `inspectForm`). */
+  nlp: () => Promise<NlpClient>;
 }
 
 export function createLiveWords(deps: LiveWordsDeps) {
@@ -271,6 +274,7 @@ export function createLiveWords(deps: LiveWordsDeps) {
     AppServices,
     | "inspect"
     | "inspectWord"
+    | "inspectForm"
     | "textWords"
     | "wordsToDecide"
     | "addToAnki"
@@ -317,6 +321,33 @@ export function createLiveWords(deps: LiveWordsDeps) {
     },
 
     inspectWord,
+
+    async inspectForm(form: string, sentence?: string): Promise<InspectorEntry> {
+      const wanted = normalizeKey(form);
+      let key = wanted;
+      if (sentence) {
+        try {
+          const l = await lang();
+          const [analysis] = await (await deps.nlp()).analyzeText(l as NlpLang, [sentence]);
+          const tok = analysis?.tokens.find((t) => t.is_word && normalizeKey(t.text) === wanted);
+          if (tok) key = matchToken(tok, await learner.model()) ?? normalizeKey(tok.lemma);
+        } catch {
+          // No language server: look the form itself up (the reader shows the same).
+        }
+      }
+      const entry = await inspectWord(key);
+      if (!sentence) return { ...entry, surface: form };
+      const at = sentence.toLocaleLowerCase().indexOf(form.toLocaleLowerCase());
+      // The Anki example's translation does not belong to this sentence.
+      const rest = { ...entry };
+      delete rest.sentenceTranslation;
+      return {
+        ...rest,
+        surface: form,
+        sentence,
+        sentenceHighlight: at >= 0 ? [at, at + form.length] : [0, 0],
+      };
+    },
 
     async textWords(textId): Promise<TextWordItem[]> {
       const v = await texts.view(textId);

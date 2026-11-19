@@ -21,6 +21,8 @@ export interface CommandPaletteProps {
   onOpenChange: (open: boolean) => void;
   groups: CommandGroup[];
   placeholder?: string;
+  /** The typed search, for groups that load their entries as the learner types. */
+  onSearchChange?: (search: string) => void;
 }
 
 /** Command palette (cmdk) shown in a modal. Selecting an entry runs it and closes the palette. */
@@ -29,6 +31,7 @@ export function CommandPalette({
   onOpenChange,
   groups,
   placeholder = "Search pages and texts",
+  onSearchChange,
 }: CommandPaletteProps) {
   return (
     <RDialog.Root open={open} onOpenChange={onOpenChange}>
@@ -39,7 +42,12 @@ export function CommandPalette({
             Command palette
           </RDialog.Title>
           <Command label="Command palette" loop>
-            <Command.Input className="k-command-input" placeholder={placeholder} autoFocus />
+            <Command.Input
+              className="k-command-input"
+              placeholder={placeholder}
+              autoFocus
+              {...(onSearchChange ? { onValueChange: onSearchChange } : {})}
+            />
             <Command.List className="k-command-list">
               <Command.Empty className="k-command-empty">Nothing matches.</Command.Empty>
               {groups.map((g) => (

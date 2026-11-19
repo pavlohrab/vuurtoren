@@ -89,9 +89,10 @@ const wordsRoute = searchScreen("/words", () => import("./screens/words/Words.js
   "q",
   "word",
 ]);
-/** /practice?words=a,b,c (practise these words) */
+/** /practice?words=a,b,c (practise these words) &start=1 (start at once, with the last options) */
 const practiceRoute = searchScreen("/practice", () => import("./screens/Practice.js"), "Practice", [
   "words",
+  "start",
 ]);
 /** /talk?words=a,b&topic=… (seeded from Practice, Words, a unit or a text) */
 const talkRoute = searchScreen("/talk", () => import("./screens/Converse.js"), "Converse", [

@@ -69,9 +69,10 @@ Kenning writes to Anki only when you click, and tags every note it touches.
 - One profile per language: its mode (native or connected), the decks Kenning reads (confirmed by you, detection only suggests),
   where new words go (default, plus optional decks for reading, Talk, AI, MCP), and the deck rule
   for course words (per unit, per course or default).
-- Onboarding at `/welcome` creates it: language → "Do you use Anki?" → (connected or moving:
-  connect Anki → confirm decks) → where new words go → the import when moving, or the placement
-  check when you start fresh → first text.
+- Onboarding at `/welcome` creates it: language (only when there is more than one) → "Do you use
+  Anki?" → (connected or moving: connect Anki → confirm decks) → where new words go → the import
+  when moving, or the placement check when you start fresh → first text. The stepper shows three
+  fixed parts: Getting started, Your words, First text.
 - A profile saved without a mode is connected.
 
 ## Data

@@ -1,6 +1,6 @@
 import { plural } from "../format.js";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link, useParams, useSearch } from "@tanstack/react-router";
+import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import {
   ArrowRight,
   BookOpen,
@@ -35,6 +35,7 @@ import { PageHeader } from "../shell/PageHeader.js";
 import { writePracticeAgain } from "../lastPractice.js";
 import { readLastText } from "../lastText.js";
 import { readLocalJSON, writeLocalJSON } from "../storage/local.js";
+import { type WordInspectorHandle, useWordInspector } from "./useWordInspector.js";
 import { pickContinue } from "./Home.js";
 
 export const SKILLS: { skill: Skill; label: string }[] = [
@@ -60,7 +61,7 @@ type Phase =
 
 /** Practice: start view, one exercise per screen, then a quiet summary. */
 export function Practice() {
-  const params: { words?: string } = useSearch({ from: "/practice" });
+  const params: { words?: string; start?: string } = useSearch({ from: "/practice" });
   // "Practise these words" from Words, Words from this text or a summary: only these words.
   const focus = params.words
     ? [
@@ -72,14 +73,17 @@ export function Practice() {
         ),
       ]
     : null;
-  return <PracticeSession key={params.words ?? ""} focus={focus} />;
+  return (
+    <PracticeSession key={params.words ?? ""} focus={focus} autoStart={params.start === "1"} />
+  );
 }
 
-function PracticeSession({ focus }: { focus: string[] | null }) {
+function PracticeSession({ focus, autoStart }: { focus: string[] | null; autoStart: boolean }) {
   const [phase, setPhase] = useState<Phase>({ name: "start" });
   const [error, setError] = useState<unknown>(null);
   const services = useServices();
   const client = useQueryClient();
+  const inspector = useWordInspector();
 
   const start = async (size: number, skills: Skill[], aiSentences: boolean) => {
     setError(null);
@@ -115,13 +119,25 @@ function PracticeSession({ focus }: { focus: string[] | null }) {
   return (
     <div className="page page--list practice">
       {phase.name === "start" || phase.name === "loading" ? (
-        <StartView loading={phase.name === "loading"} error={error} onStart={start} focus={focus} />
+        <StartView
+          loading={phase.name === "loading"}
+          error={error}
+          onStart={start}
+          focus={focus}
+          autoStart={autoStart}
+        />
       ) : phase.name === "session" ? (
         <div className="practice-session">
-          <Session exercises={phase.exercises} listening={phase.listening} onFinish={finish} />
+          <Session
+            exercises={phase.exercises}
+            listening={phase.listening}
+            onFinish={finish}
+            inspector={inspector}
+          />
         </div>
       ) : (
         <Summary
+          inspector={inspector}
           answered={phase.answered}
           skipped={phase.skipped}
           empty={phase.empty}
@@ -135,6 +151,7 @@ function PracticeSession({ focus }: { focus: string[] | null }) {
             : {})}
         />
       )}
+      {inspector.portal}
     </div>
   );
 }
@@ -221,14 +238,18 @@ function StartView({
   error,
   onStart,
   focus,
+  autoStart,
 }: {
   loading: boolean;
   error: unknown;
   onStart: (size: number, skills: Skill[], aiSentences: boolean) => void;
   /** Practise only these words. */
   focus: string[] | null;
+  /** Start with the remembered options as soon as there is something to practise (?start=1). */
+  autoStart: boolean;
 }) {
   const services = useServices();
+  const navigate = useNavigate();
   const aiReady = useAIReady();
   const [initial] = useState(readStartOptions);
   const [aiFill, setAIFill] = useState(initial.ai);
@@ -255,6 +276,21 @@ function StartView({
   // Listening needs a Dutch voice; while the check runs it stays available.
   const noVoice = voice.data === false;
   const effective = skills.filter((s) => !(s === "listening" && noVoice));
+
+  // ?start=1 (the command palette's "Start practice"): start once, then drop the flag so
+  // "Practise again" from the summary shows this view instead of starting by itself.
+  const ready = !!o && voice.data !== undefined && (o.due > 0 || o.newAvailable > 0 || !!focus);
+  const autoStarted = useRef(false);
+  useEffect(() => {
+    if (!autoStart || autoStarted.current || !ready || loading || effective.length === 0) return;
+    autoStarted.current = true;
+    void navigate({
+      to: "/practice",
+      search: focus ? { words: focus.join(",") } : {},
+      replace: true,
+    });
+    onStart(size, effective, aiReady && aiFill);
+  });
 
   const toggle = (s: Skill) =>
     setSkills((cur) =>
@@ -413,10 +449,13 @@ function Session({
   exercises,
   listening,
   onFinish,
+  inspector,
 }: {
   exercises: Exercise[];
   listening: boolean;
   onFinish: (answered: Answered[], skipped: number) => void;
+  /** After answering, the Dutch answer and sentence open the word inspector. */
+  inspector: WordInspectorHandle;
 }) {
   const services = useServices();
   const [index, setIndex] = useState(0);
@@ -546,6 +585,7 @@ function Session({
           onContinue={() => advance(answeredRef.current, skippedRef.current)}
           onSpeak={speakDutch}
           continueLabel={last ? "Finish" : "Continue"}
+          onWord={(form, sentence, el) => inspector.open(form, sentence, el)}
         />
       </div>
       {error ? (
@@ -565,7 +605,10 @@ function Summary({
   emptyTitle = "Practice",
   emptyText = "Nothing to practise yet. Sync Anki in Settings, or read a text and start learning a few words.",
   actions,
+  inspector,
 }: {
+  /** The words to look at again open the word inspector. */
+  inspector: WordInspectorHandle;
   answered: Answered[];
   skipped: number;
   empty: boolean;
@@ -630,15 +673,16 @@ function Summary({
           <h2 className="k-section-title">Words to look at again</h2>
           <div className="practice-options">
             {again.map((k) => (
-              <Link
+              <button
                 key={k}
-                to="/words"
-                search={{ source: "practice-again", word: k }}
+                type="button"
                 className="k-word-chip"
                 lang="nl"
+                aria-pressed={inspector.current === k}
+                onClick={(e) => inspector.openKey(k, e.currentTarget)}
               >
                 {k}
-              </Link>
+              </button>
             ))}
           </div>
         </section>
@@ -738,6 +782,7 @@ export function TopicPractice({ topicId }: { topicId: string }) {
   const [phase, setPhase] = useState<Phase>({ name: "loading" });
   const [error, setError] = useState<string | null>(null);
   const [run, setRun] = useState(0);
+  const inspector = useWordInspector();
   const aiStatus = useQuery({ queryKey: ["ai-status"], queryFn: () => services.aiStatus() });
   const aiKnown = aiStatus.isFetched || aiStatus.isError;
   const aiOn = aiStatus.data?.configured === true;
@@ -825,9 +870,11 @@ export function TopicPractice({ topicId }: { topicId: string }) {
             void client.invalidateQueries({ queryKey: ["practice"] });
             setPhase({ name: "summary", answered, skipped, empty: false });
           }}
+          inspector={inspector}
         />
       ) : (
         <Summary
+          inspector={inspector}
           answered={phase.answered}
           skipped={phase.skipped}
           empty={phase.empty}
@@ -837,6 +884,7 @@ export function TopicPractice({ topicId }: { topicId: string }) {
           actions={back}
         />
       )}
+      {inspector.portal}
     </div>
   );
 }

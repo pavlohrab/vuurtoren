@@ -1,11 +1,17 @@
 import { createMemoryHistory } from "@tanstack/react-router";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { App } from "../App.js";
 import { createMockAI, MOCK_NEW_WORD } from "../services/mockAI.js";
 import { createMockServices } from "../services/mock.js";
 import type { AppServices } from "../services/types.js";
+
+/** A message bubble by its whole text (its words are separate, clickable spans). */
+const bubble = (text: string) =>
+  screen.findByText(
+    (_, el) => el?.classList.contains("cv-bubble") === true && el.textContent === text,
+  );
 
 function setup(path: string, configured = true, patch: Partial<AppServices> = {}) {
   const ai = createMockAI(() => Promise.resolve(), { configured });
@@ -30,8 +36,13 @@ describe("Converse", () => {
     expect(screen.getByLabelText("Words to practise")).toHaveValue("gezellig, afspraak");
     await user.click(screen.getByRole("button", { name: "Start conversation" }));
 
-    expect(await screen.findByText("Hoi! Drink je graag koffie?")).toBeInTheDocument();
+    const hoi = await bubble("Hoi! Drink je graag koffie?");
     expect(screen.getByText("98% known")).toBeInTheDocument();
+    // Every word opens the inspector, as in the reader.
+    await user.click(within(hoi).getByRole("button", { name: "koffie" }));
+    const panel = await screen.findByRole("complementary", { name: "Inspector" });
+    // The word with its sentence from the message as the context.
+    await waitFor(() => expect(panel).toHaveTextContent(/Drink je graag koffie\?/));
 
     await user.click(await screen.findByRole("button", { name: "Add to Anki: gezellig" }));
     await waitFor(() => expect(ai.added).toEqual([MOCK_NEW_WORD]));
@@ -39,7 +50,7 @@ describe("Converse", () => {
 
     await user.type(screen.getByLabelText("Your message"), "Ik is blij");
     await user.click(screen.getByRole("button", { name: "Send" }));
-    expect(await screen.findByText("Wat leuk. Waar drink je koffie?")).toBeInTheDocument();
+    expect(await bubble("Wat leuk. Waar drink je koffie?")).toBeInTheDocument();
     // inline correction of the learner's message
     expect(screen.getByText("ik is")).toBeInTheDocument();
     expect(screen.getByText("ik ben")).toBeInTheDocument();

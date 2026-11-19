@@ -11,6 +11,7 @@ import {
   claudeDesktopConfig,
   createMcpTokenClient,
 } from "../../auth/mcpTokens.js";
+import { relativeTime } from "../../format.js";
 import { useAppInfo } from "../../shell/AppInfo.js";
 
 const EXAMPLE_PROMPTS = [
@@ -133,9 +134,9 @@ export function ClaudeCodeSettings() {
                   <span>
                     {t.label}{" "}
                     <span className="k-hint">
-                      made {new Date(t.createdAt).toLocaleDateString()}
+                      made {relativeTime(t.createdAt)}
                       {t.lastUsedAt
-                        ? `, last used ${new Date(t.lastUsedAt).toLocaleDateString()}`
+                        ? `, last used ${relativeTime(t.lastUsedAt)}`
                         : ", not used yet"}
                     </span>
                   </span>

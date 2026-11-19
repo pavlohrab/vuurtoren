@@ -8,6 +8,7 @@ import { isNoDecksError } from "../../services/profileErrors.js";
 import type { AnkiStatus } from "../../services/types.js";
 import { ErrorNotice } from "../../shell/ErrorNotice.js";
 import { runAnkiSync, useAnkiSync } from "../../shell/ankiSync.js";
+import { relativeTime } from "../../format.js";
 import { NoDecksHelp } from "../onboarding/NoDecksHelp.js";
 
 /** Advice for each state that is not "connected" (also used by onboarding). */
@@ -104,7 +105,7 @@ export function AnkiConnection() {
           </strong>
           <span className="k-hint">
             {s?.lastSync
-              ? `Last synced ${new Date(s.lastSync).toLocaleString("en")}: ${s.known.toLocaleString("en")} known, ${s.learning.toLocaleString("en")} learning.`
+              ? `Last synced ${relativeTime(s.lastSync)}: ${s.known.toLocaleString("en")} known, ${s.learning.toLocaleString("en")} learning.`
               : "Not synced yet. Sync to read which words you know."}
           </span>
         </div>

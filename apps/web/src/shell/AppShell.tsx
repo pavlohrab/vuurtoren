@@ -45,6 +45,7 @@ import { useAnkiAutoSync } from "./ankiSync.js";
 import { useAutoTune } from "./autoTune.js";
 import { ShellContext, type PageHeader, type ShellState } from "./ShellContext.js";
 import { useRemoteFreshness } from "./useRemoteFreshness.js";
+import { useDebounced } from "../useDebounced.js";
 
 const PAGE_TITLES: Record<string, string> = {
   "/": "Home",
@@ -111,6 +112,15 @@ export function AppShell() {
   }, [moreOpen, setMoreOpen]);
 
   const texts = useQuery({ queryKey: ["texts"], queryFn: () => services.listTexts() });
+  // The palette's Words group: looked up as the learner types (two letters or more).
+  const [paletteSearch, setPaletteSearch] = useState("");
+  const wordQuery = useDebounced(paletteSearch.trim(), 150);
+  const paletteWords = useQuery({
+    queryKey: ["words", "palette", wordQuery],
+    queryFn: () => services.words({ query: wordQuery, limit: 8 }),
+    enabled: paletteOpen && wordQuery.length >= 2,
+    staleTime: 30_000,
+  });
   // Due count for the sidebar badge; failures just hide the badge.
   const practice = useQuery({
     queryKey: ["practice", "overview"],
@@ -170,7 +180,6 @@ export function AppShell() {
     const pages: [string, string, ReactNode][] = [
       ["/", "Home", <House key="h" size={16} />],
       ["/library", "Library", <Library key="l" size={16} />],
-      ["/import", "Import text", <Plus key="i" size={16} />],
       ...(native
         ? [["/review", "Review", <Layers key="r" size={16} />] as [string, string, ReactNode]]
         : []),
@@ -179,10 +188,41 @@ export function AppShell() {
       ["/talk", "Talk", <MessagesSquare key="c" size={16} />],
       ["/words", "Words", <Languages key="w" size={16} />],
       ["/grammar", "Grammar", <BookText key="g" size={16} />],
+      ["/exam", "Exam", <ClipboardCheck key="e" size={16} />],
       ["/progress", "Progress", <TrendingUp key="pr" size={16} />],
       ["/settings", "Settings", <SettingsIcon key="s" size={16} />],
     ];
+    const words = wordQuery.length >= 2 ? (paletteWords.data ?? []) : [];
     return [
+      {
+        heading: "Actions",
+        entries: [
+          {
+            id: "action:add-text",
+            label: "Add text",
+            keywords: ["import", "paste", "web", "pdf", "photo", "story"],
+            icon: <Plus size={16} />,
+            onSelect: () => goto("/import"),
+          },
+          {
+            id: "action:practice",
+            label: "Start practice",
+            keywords: ["practise", "exercises"],
+            icon: <Dumbbell size={16} />,
+            onSelect: () => void navigate({ to: "/practice", search: { start: "1" } }),
+          },
+        ],
+      },
+      {
+        heading: "Words",
+        entries: words.map((w) => ({
+          id: `word:${w.key}`,
+          label: [w.article ? `${w.article} ${w.key}` : w.key, w.gloss].filter(Boolean).join(" · "),
+          keywords: [w.key],
+          icon: <Languages size={16} />,
+          onSelect: () => void navigate({ to: "/words", search: { word: w.key } }),
+        })),
+      },
       {
         heading: "Go to",
         entries: pages.map(([to, label, icon]) => ({
@@ -203,7 +243,7 @@ export function AppShell() {
         })),
       },
     ].filter((g) => g.entries.length > 0);
-  }, [texts.data, goto, navigate, native]);
+  }, [texts.data, goto, navigate, native, wordQuery, paletteWords.data]);
 
   return (
     <NativeModeContext.Provider value={native}>
@@ -389,7 +429,16 @@ export function AppShell() {
             </div>
           </div>
         </div>
-        <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} groups={groups} />
+        <CommandPalette
+          open={paletteOpen}
+          onOpenChange={(o) => {
+            setPaletteOpen(o);
+            if (!o) setPaletteSearch("");
+          }}
+          groups={groups}
+          placeholder="Search pages, texts and words"
+          onSearchChange={setPaletteSearch}
+        />
       </ShellContext.Provider>
     </NativeModeContext.Provider>
   );

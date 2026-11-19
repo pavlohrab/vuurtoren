@@ -1,6 +1,7 @@
 import { Popover } from "@app/ui";
 import { MoreHorizontal } from "lucide-react";
 import { type KeyboardEvent, type ReactNode, useEffect, useRef, useState } from "react";
+import "./menuButton.css";
 
 export interface MenuItem {
   label: string;
@@ -11,7 +12,7 @@ export interface MenuItem {
 
 /**
  * A quiet "…" button with a small menu (role menu; arrow keys, Home/End, Esc). Used on Library
- * covers and shelf headers.
+ * covers and shelf headers, OCR review and Courses.
  */
 export function MenuButton({
   label,

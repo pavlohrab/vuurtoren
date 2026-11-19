@@ -76,7 +76,7 @@ const DEMO_TEXTS: {
   {
     title: "Unit 3 · Wonen",
     kind: "paste",
-    ref: "course:opmaat:3",
+    ref: "course:demo-course:3",
     content:
       "Wij wonen in een klein huis aan de rand van de stad. Het huis heeft twee slaapkamers en een tuin.\n\nIn de zomer eten we vaak buiten.",
     cover: "demo-course",
@@ -86,7 +86,7 @@ const DEMO_TEXTS: {
   {
     title: "Unit 4 · Werk",
     kind: "paste",
-    ref: "course:opmaat:4",
+    ref: "course:demo-course:4",
     content:
       "Mijn broer werkt in een ziekenhuis. Hij begint elke dag om zeven uur.\n\nHij vindt zijn werk zwaar, maar ook mooi.",
     meta: { note: "De Opmaat A2, p. 46", level: "A2" },

@@ -12,12 +12,15 @@ import {
   Input,
   Skeleton,
   Spinner,
+  WordText,
   difficultyBand,
   useToast,
 } from "@app/ui";
 import { useServices } from "../services/context.js";
 import type { ChatMessageView, ConversationView, NewWord } from "../services/aiTypes.js";
 import { useDeckChoice } from "./useDeckChoice.js";
+import { type WordInspectorHandle, useWordInspector } from "./useWordInspector.js";
+import { sentenceWith } from "../sentence.js";
 import { PageHeader } from "../shell/PageHeader.js";
 import { readLastText } from "../lastText.js";
 import { pickContinue } from "./Home.js";
@@ -40,26 +43,39 @@ const TONE = {
   weave: "warm",
 } as const;
 
+/** A message's text with every word opening the inspector. */
+function Bubble({ text, inspector }: { text: string; inspector: WordInspectorHandle }) {
+  return (
+    <div className="cv-bubble" lang="nl">
+      <WordText
+        text={text}
+        selected={inspector.current}
+        onWord={(form, el) => inspector.open(form, sentenceWith(text, form), el)}
+      />
+    </div>
+  );
+}
+
 /** One partner message with its coverage chip, glosses and new-word chips. */
 function PartnerMessage({
   m,
   added,
   onAdd,
   addDeck,
+  inspector,
 }: {
   m: ChatMessageView;
   added: Set<string>;
   onAdd: (w: NewWord) => void;
   /** Destination deck and picker (absent while loading: a plain button). */
   addDeck?: AddDeckChoice | undefined;
+  inspector: WordInspectorHandle;
 }) {
   const glosses = Object.entries(m.glosses ?? {});
   const unknownWithout = (m.unknown ?? []).filter((u) => !(m.glosses ?? {})[u]);
   return (
     <div className="cv-msg">
-      <div className="cv-bubble" lang="nl">
-        {m.text}
-      </div>
+      <Bubble text={m.text} inspector={inspector} />
       <div className="cv-meta">
         {m.coverage !== null && m.coverage !== undefined ? (
           <Chip
@@ -80,9 +96,15 @@ function PartnerMessage({
       </div>
       {(m.newWords ?? []).map((w) => (
         <div className="cv-new" key={w.lemma}>
-          <Chip tone="warm">
-            {w.lemma} · {w.gloss}
-          </Chip>
+          <button
+            type="button"
+            className="cv-new-word"
+            onClick={(e) => inspector.openKey(w.lemma, e.currentTarget)}
+          >
+            <Chip tone="warm">
+              <span lang="nl">{w.lemma}</span> · {w.gloss}
+            </Chip>
+          </button>
           {w.example ? <span lang="nl">{w.example}</span> : null}
           {addDeck && !added.has(w.lemma) ? (
             <AddToAnki
@@ -108,12 +130,10 @@ function PartnerMessage({
   );
 }
 
-function UserMessage({ m }: { m: ChatMessageView }) {
+function UserMessage({ m, inspector }: { m: ChatMessageView; inspector: WordInspectorHandle }) {
   return (
     <div className="cv-msg cv-msg--user">
-      <div className="cv-bubble" lang="nl">
-        {m.text}
-      </div>
+      <Bubble text={m.text} inspector={inspector} />
       {(m.corrections ?? []).map((c, i) => (
         <div className="cv-fix" key={i} role="note">
           <span lang="nl">
@@ -174,6 +194,7 @@ export function Converse() {
   const [pending, setPending] = useState<string | null>(null);
   const [added, setAdded] = useState<Set<string>>(new Set());
   const endRef = useRef<HTMLDivElement>(null);
+  const inspector = useWordInspector("converse");
 
   useEffect(() => {
     endRef.current?.scrollIntoView?.({ block: "end" });
@@ -237,7 +258,7 @@ export function Converse() {
     return (
       <div className="page page--list">
         <EmptyState
-          icon={<MessagesSquare size={28} />}
+          icon={<MessagesSquare size={20} />}
           title="Talk in Dutch"
           description={
             status.data.locked
@@ -450,9 +471,10 @@ export function Converse() {
               added={added}
               onAdd={(w) => add.mutate(w)}
               addDeck={deckChoice.addDeck}
+              inspector={inspector}
             />
           ) : (
-            <UserMessage key={m.id} m={m} />
+            <UserMessage key={m.id} m={m} inspector={inspector} />
           ),
         )}
         {pending ? (
@@ -465,6 +487,7 @@ export function Converse() {
         ) : null}
         <div ref={endRef} />
       </div>
+      {inspector.portal}
       <form
         className="cv-compose stack"
         onSubmit={(e) => {
