@@ -180,8 +180,15 @@ class GlossEntry(BaseModel):
     """Short English senses (at most 5)."""
     compound: bool = False
     """True if the word has no entry and was analysed as a compound of ``parts``.
-    ``glosses`` is then one string ``"souvenir shop (souvenir + winkel)"``; ``pos`` and
-    ``article`` are the head's."""
+    ``glosses`` is then one string ``"souvenir shop"``; ``pos`` and ``article`` are the
+    head's."""
+    origin: Literal["derivation", "compound"] | None = None
+    """Set when the word has no entry and the meaning is built from its parts: ``derivation``
+    (base + affix, ``woordeloos``) or ``compound`` (``souvenirwinkel``). ``glosses`` is then one
+    string."""
+    formed: str | None = None
+    """The parts the meaning was built from, with ``origin``: ``"woord + -loos"``,
+    ``"souvenir + winkel"``."""
     via: Literal["diminutive", "plural"] | None = None
     """Set when the word is a diminutive/plural of a known noun and ``glosses`` are the lemma's."""
     parts: list[GlossPart] | None = None

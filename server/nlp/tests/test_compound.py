@@ -88,15 +88,17 @@ def test_not_split(fixture_dict: Dictionary, word: str):
 def test_gloss_format(fixture_dict: Dictionary):
     found = split_compound("souvenirwinkel", fixture_dict._part_readings)
     assert found is not None
-    assert found.gloss == "souvenir shop (souvenir + winkel)"
+    assert found.gloss == "souvenir shop"
+    assert found.formed == "souvenir + winkel"
     assert found.part_glosses == [
         {"part": "souvenir", "gloss": "souvenir"},
         {"part": "winkel", "gloss": "shop, store"},
     ]
-    # inflected plural head is pluralised in English, lemmas in the parenthesis
+    # inflected plural head is pluralised in English; the parts are lemmas
     plural = split_compound("gemeenteraadsverkiezingen", fixture_dict._part_readings)
     assert plural is not None
-    assert plural.gloss == "municipality council elections (gemeente + raad + verkiezing)"
+    assert plural.gloss == "municipality council elections"
+    assert plural.formed == "gemeente + raad + verkiezing"
 
 
 def test_head_article_is_heads(fixture_dict: Dictionary):
@@ -150,7 +152,8 @@ def test_form_of_only_entry_gets_compound(fixture_dict: Dictionary):
     # "waterpark" only has "plural of waterparken" (missing lemma): compound analysis wins.
     entry = fixture_dict.lookup(["waterpark"])["waterpark"][0]
     assert entry["compound"] is True
-    assert entry["glosses"] == ["water park (water + park)"]
+    assert entry["glosses"] == ["water park"]
+    assert (entry["origin"], entry["formed"]) == ("compound", "water + park")
 
 
 def test_gloss_endpoint_compound(fixture_dict: Dictionary, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -162,8 +165,10 @@ def test_gloss_endpoint_compound(fixture_dict: Dictionary, monkeypatch: pytest.M
     assert entry == {
         "pos": "noun",
         "article": "de",
-        "glosses": ["souvenir shop (souvenir + winkel)"],
+        "glosses": ["souvenir shop"],
         "compound": True,
+        "origin": "compound",
+        "formed": "souvenir + winkel",
         "parts": [
             {"part": "souvenir", "gloss": "souvenir"},
             {"part": "winkel", "gloss": "shop, store"},
