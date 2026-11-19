@@ -248,6 +248,38 @@ kbd {
   }
 }
 
+/* ---------- Disclosure: options and details that wait until asked for ---------- */
+.k-disclosure > summary {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  min-height: 32px;
+  list-style: none;
+  cursor: pointer;
+  color: var(--ink);
+  font-weight: 500;
+  border-radius: var(--radius-control);
+}
+.k-disclosure > summary::-webkit-details-marker {
+  display: none;
+}
+.k-disclosure-icon {
+  color: var(--ink-muted);
+  transition: transform var(--dur-fast) var(--ease-out);
+}
+.k-disclosure[open] > summary .k-disclosure-icon {
+  transform: rotate(90deg);
+}
+.k-disclosure-hint {
+  color: var(--ink-muted);
+  font-weight: 400;
+  font-size: 13px;
+}
+.k-disclosure-body {
+  padding: var(--s-4) 0 0 var(--s-5);
+}
+
 /* ---------- Motion primitives ---------- */
 @keyframes k-fill-x {
   from {

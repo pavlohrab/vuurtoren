@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Exercise } from "@app/core";
 import { App } from "../App.js";
 import { MOCK_EXERCISES } from "../services/mockPractice.js";
+import { readStartOptions } from "./Practice.js";
 import { createMockServices } from "../services/mock.js";
 import type { AppServices } from "../services/types.js";
 
@@ -24,8 +25,12 @@ function setup(exercises: Exercise[] = MOCK_EXERCISES) {
   return { services, answers, user: userEvent.setup() };
 }
 
+const START = /^Start/;
+
 async function begin(user: ReturnType<typeof userEvent.setup>) {
-  await user.click(await screen.findByRole("button", { name: "Start" }));
+  const start = await screen.findByRole("button", { name: START });
+  await waitFor(() => expect(start).toBeEnabled());
+  await user.click(start);
 }
 const fed = (re: RegExp) => screen.findByText(re);
 
@@ -45,6 +50,7 @@ function stubSpeech(voices: { lang: string }[]) {
 }
 
 afterEach(() => {
+  localStorage.clear();
   vi.unstubAllGlobals();
   Reflect.deleteProperty(window, "speechSynthesis");
 });
@@ -55,9 +61,9 @@ describe("Practice start view", () => {
     const { services, user } = setup();
     await waitFor(() => expect(screen.getByRole("button", { name: "Listening" })).toBeEnabled());
     expect(await screen.findByText(/\d+ exercises? due · \d+ new/)).toBeInTheDocument();
-    expect(screen.getByRole("complementary", { name: "Practice and Anki" })).toHaveTextContent(
-      /Practice trains what Anki doesn.t/,
-    );
+    expect(screen.getByText(/Practice trains what Anki doesn.t/)).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: /^Start · \d+ due$/ })).toBeInTheDocument();
+    await user.click(screen.getByText("Options"));
     const chips = ["Recognition", "Recall", "Forms", "Gender", "Listening"];
     for (const c of chips)
       expect(screen.getByRole("button", { name: c })).toHaveAttribute("aria-pressed", "true");
@@ -76,24 +82,33 @@ describe("Practice start view", () => {
         size: 10,
         skills: ["recognition", "gender"],
         aiSentences: true,
-        onAISentences: expect.any(Function),
       }),
     );
   });
 
-  it("fills gaps with AI sentences when a provider is set, shows the count, and can be turned off", async () => {
+  it("remembers the options for the next visit", async () => {
+    stubSpeech([{ lang: "nl-NL" }]);
+    const { user } = setup();
+    await user.click(await screen.findByText("Options"));
+    await user.click(screen.getByRole("button", { name: "30 exercises" }));
+    await user.click(screen.getByRole("button", { name: "Listening" }));
+    expect(readStartOptions()).toMatchObject({ size: 30 });
+    expect(readStartOptions().skills).not.toContain("listening");
+  });
+
+  it("fills gaps with AI sentences when a provider is set, without a line about it in the session", async () => {
     stubSpeech([{ lang: "nl-NL" }]);
     const { services, user } = setup();
-    vi.mocked(services.startPractice).mockImplementationOnce(async (opts) => {
-      opts?.onAISentences?.({ requested: 2, accepted: 5, rejected: 1, reused: 0 });
-      return MOCK_EXERCISES;
-    });
     const box = await screen.findByRole("checkbox", { name: /Fill gaps with AI sentences/ });
     expect(box).toBeChecked();
     await begin(user);
-    expect(
-      await screen.findByText("5 new AI sentences for 2 items · 1 rejected by the checks"),
-    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(services.startPractice).toHaveBeenCalledWith(
+        expect.objectContaining({ aiSentences: true }),
+      ),
+    );
+    expect(await screen.findByText(`1 of ${MOCK_EXERCISES.length}`)).toBeInTheDocument();
+    expect(screen.queryByText(/AI sentences? for/)).not.toBeInTheDocument();
   });
 
   it("starts without AI sentences when the option is off", async () => {
@@ -138,7 +153,7 @@ describe("Practice start view", () => {
     await begin(user);
     expect(await screen.findByText(/Nothing to practise yet/)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Back" }));
-    expect(await screen.findByRole("button", { name: "Start" })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: START })).toBeInTheDocument();
   });
 });
 
@@ -179,7 +194,7 @@ describe("Practice session", () => {
     await user.click(screen.getByRole("button", { name: "Practise again" }));
     // Everything was just practised: nothing is due or new, so there is no Start button.
     expect(await screen.findByRole("heading", { name: "All caught up" })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Start" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: START })).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Go to the library" })).toBeInTheDocument();
   });
 
@@ -201,7 +216,7 @@ describe("Practice session", () => {
     expect(
       await screen.findByRole("heading", { name: "Nothing to practise yet" }),
     ).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Start" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: START })).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Go to the library" })).toBeInTheDocument();
   });
 
@@ -259,7 +274,7 @@ describe("Practice session", () => {
     );
     expect(await screen.findByRole("heading", { name: "Practise these words" })).toBeVisible();
     expect(screen.getByText("gracht, brug")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Start" }));
+    await begin(user);
     await waitFor(() => expect(calls).toHaveLength(1));
     expect(calls[0]).toMatchObject({ keys: ["gracht", "brug"] });
   });

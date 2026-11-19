@@ -46,7 +46,7 @@ async function changeTextSize(page: Page): Promise<void> {
 
 async function answerOneExercise(page: Page): Promise<void> {
   await page.goto("/practice");
-  await page.getByRole("button", { name: "Start" }).click();
+  await page.getByRole("button", { name: /^Start/ }).click();
   await expect(page.getByText(/^1 of \d+$/)).toBeVisible();
   // Keys work for every exercise kind: 1 picks the first choice (or types "1"), Enter checks.
   await page.keyboard.press("1");
