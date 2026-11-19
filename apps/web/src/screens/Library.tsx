@@ -33,6 +33,7 @@ import {
   sortTexts,
 } from "./library/shelving.js";
 import { TextDetailsDialog } from "./library/TextDetailsDialog.js";
+import { readLastText } from "../lastText.js";
 import "./library/library.css";
 
 type View = "shelves" | "all";
@@ -135,7 +136,7 @@ export function Library() {
   const all = useMemo(() => sortTexts(texts.data ?? [], sort), [texts.data, sort]);
   const found = useMemo(() => searchTexts(all, query), [all, query]);
   const ownShelves = useMemo(() => shelves.data ?? [], [shelves.data]);
-  const rows = useMemo(() => shelfRows(all, ownShelves), [all, ownShelves]);
+  const rows = useMemo(() => shelfRows(all, ownShelves, readLastText()), [all, ownShelves]);
 
   const needsAnki = summary.data != null && summary.data.lastSync === null && !summary.data.native;
   const searching = query.trim() !== "";

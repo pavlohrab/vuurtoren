@@ -31,11 +31,11 @@ import type { ExamAttemptRecord } from "../services/examTypes.js";
 import { usePageHeader } from "../shell/ShellContext.js";
 import { PageHeader, SectionHeader } from "../shell/PageHeader.js";
 import { pct, plural } from "../format.js";
-import { pagesOf, WORDS_PER_PAGE } from "../textPages.js";
+import { pagesOf, pickContinue, WORDS_PER_PAGE } from "../textPages.js";
 import { topicCount } from "./grammar/Grammar.js";
 import { CreateStoryButton } from "./StoryDialog.js";
 
-export { pagesOf, WORDS_PER_PAGE };
+export { pagesOf, pickContinue, WORDS_PER_PAGE };
 
 /** Dutch greeting for the time of day. */
 export function greeting(hour: number): string {
@@ -45,20 +45,6 @@ export function greeting(hour: number): string {
 }
 
 const fmt = (n: number) => n.toLocaleString("en");
-
-/** The text to continue: the one opened last, else one in progress, else the best next one. */
-export function pickContinue(
-  texts: readonly TextListItem[],
-  lastId: string | null,
-): { text: TextListItem; started: boolean } | null {
-  const last = texts.find((t) => t.id === lastId);
-  if (last) return { text: last, started: last.lastSegment > 0 };
-  const inProgress = texts.find((t) => t.lastSegment > 0);
-  if (inProgress) return { text: inProgress, started: true };
-  // Nothing started: the analysed text with the highest coverage is the gentlest start.
-  const ranked = [...texts].sort((a, b) => (b.coverage ?? -1) - (a.coverage ?? -1));
-  return ranked[0] ? { text: ranked[0], started: false } : null;
-}
 
 /** Coverage of the library: analysed texts weighted by length. Null when nothing is analysed. */
 export function libraryCoverage(texts: readonly TextListItem[]): number | null {
@@ -72,12 +58,18 @@ export function libraryCoverage(texts: readonly TextListItem[]): number | null {
   return words > 0 ? known / words : null;
 }
 
-/** Words worth learning now from a text: highlighted or looked up, and not studied in Anki yet. */
+/**
+ * Words to learn now from a text: its words (`textWords`) without a card yet or with a card
+ * not studied yet, the highlighted and looked-up ones first.
+ */
 export function wordsToLearn(items: readonly TextWordItem[], max = 8): TextWordItem[] {
-  return items
-    .filter((w) => w.source !== "gloss")
-    .filter((w) => w.entry.anki.status === "absent" || w.entry.anki.status === "new")
-    .slice(0, max);
+  const open = items.filter(
+    (w) => w.entry.anki.status === "absent" || w.entry.anki.status === "new",
+  );
+  return [
+    ...open.filter((w) => w.source !== "gloss"),
+    ...open.filter((w) => w.source === "gloss"),
+  ].slice(0, max);
 }
 
 /** A line of text to show from where the learner left off: whole words, about two lines. */
@@ -163,9 +155,7 @@ export function Home() {
   const extra = (more.data ?? [])
     .filter((w) => !(learn ?? []).some((l) => l.key === w.key))
     .slice(0, Math.max(0, 8 - (learn?.length ?? 0)));
-  const waiting = textWords.data?.filter(
-    (w) => w.source !== "gloss" && w.entry.anki.status === "absent",
-  ).length;
+  const waiting = textWords.data?.filter((w) => w.entry.anki.status === "absent").length;
 
   const learnWords = (learn ?? []).slice(0, 3).map((w) => w.lemma);
 
@@ -199,7 +189,6 @@ export function Home() {
             <ContinueCard
               text={cont.text}
               started={cont.started}
-              pages={reading.data?.plans.length ?? null}
               excerpt={
                 reading.data
                   ? excerptAt(
@@ -574,19 +563,14 @@ function CourseStep({
 function ContinueCard({
   text,
   started,
-  pages: planned,
   excerpt,
 }: {
   text: TextListItem;
   started: boolean;
-  /** Pages from the reading plan, when loaded (else estimated from the length). */
-  pages: number | null;
   /** Null while loading; "" when it cannot be shown. */
   excerpt: string | null;
 }) {
-  const pages = planned ?? pagesOf(text).pages;
-  const page = Math.min(text.lastSegment + 1, pages);
-  const done = Math.min(1, text.lastSegment / pages);
+  const { pages, page, done } = pagesOf(text);
   const band = text.coverage !== null ? difficultyBand(text.coverage) : null;
   return (
     <div className="home-continue">

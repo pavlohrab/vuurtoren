@@ -82,7 +82,7 @@ export async function loadRows(
     (!state || r.state === state) &&
     (!q || r.key.toLowerCase().includes(q) || (r.gloss ?? "").toLowerCase().includes(q));
   if (source?.kind === "text") {
-    const items = await services.textWords(source.textId, { includeGlossed: true });
+    const items = await services.textWords(source.textId);
     return items
       .map((w): WordRow => ({
         key: w.key,

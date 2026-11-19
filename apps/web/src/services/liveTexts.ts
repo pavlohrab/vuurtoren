@@ -287,7 +287,12 @@ export function createLiveTexts({
       return texts.map((t) => {
         const v = t.analyzed ? (cachedView(t.id) ?? planned.get(t.id)) : undefined;
         const d = v ? textDifficulty(v.plans) : null;
-        return { ...t, coverage: d?.coverage ?? null, newTypes: d?.newTypes ?? null };
+        return {
+          ...t,
+          coverage: d?.coverage ?? null,
+          newTypes: d?.newTypes ?? null,
+          pages: v ? v.plans.length : null,
+        };
       });
     },
 

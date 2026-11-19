@@ -11,9 +11,11 @@ import type {
   TokenLabel,
   WordState,
 } from "@app/core";
+import { textDifficulty } from "@app/core";
 import type { ActivityEntry, StoredText, SuggestedWord, WordInfo } from "@app/db";
 import { groupActivity } from "./activity.js";
 import { suggestionEntry } from "./suggestions.js";
+import { pickTextWords } from "./textWordSet.js";
 import { createMockCourses } from "./mockCourses.js";
 import { applySampleMorph } from "./mockMorph.js";
 import { createMockAI } from "./mockAI.js";
@@ -355,10 +357,8 @@ export function createMockServices(
     });
   }
 
-  // Words looked up per text. Seeded so the review shows every Anki state in ?demo.
-  const lookedUp = new Map<string, Set<string>>([
-    ["t-utrecht", new Set(["meenemen", "reis", "boek", "opbellen", "trein"])],
-  ]);
+  // Words looked up per text, seeded for ?demo.
+  const lookedUp = new Map<string, Set<string>>([["t-utrecht", new Set(["meenemen", "reis"])]]);
 
   const settings: Settings = {
     ankiUrl: "http://127.0.0.1:8765",
@@ -439,7 +439,12 @@ export function createMockServices(
         },
         tokens: planned,
         coverage,
-        newTypes: uniq(counted.filter((p) => p.pKnown < 0.5).map((p) => p.key)),
+        // Like the planner: words not studied yet (learning words are not new).
+        newTypes: uniq(
+          counted
+            .filter((p) => ["new", "introduce", "gloss"].includes(p.label) && p.pKnown < 0.5)
+            .map((p) => p.key),
+        ),
         introduce: uniq(planned.filter((p) => p.label === "introduce").map((p) => p.key)),
         gloss: uniq(planned.filter((p) => p.label === "gloss").map((p) => p.key)),
         clozes: planned.filter((p) => p.label === "cloze").map((p) => p.i),
@@ -461,11 +466,7 @@ export function createMockServices(
 
   const listItem = (t: StoredText): TextListItem => {
     const plans = buildPlans(t);
-    const all = plans
-      .flatMap((p) => p.tokens)
-      .filter((p) => p.label !== "ignored" && p.label !== "nonword");
-    const coverage = all.length ? all.reduce((s, p) => s + p.pKnown, 0) / all.length : null;
-    const newTypes = new Set(plans.flatMap((p) => p.newTypes)).size;
+    const { coverage, newTypes } = textDifficulty(plans);
     const { content: _c, tokens: _t, ...summary } = t;
     void _c;
     void _t;
@@ -474,6 +475,7 @@ export function createMockServices(
       lastSegment: lastSegments.get(t.id) ?? 0,
       coverage,
       newTypes,
+      pages: plans.length,
     };
   };
 
@@ -662,54 +664,34 @@ export function createMockServices(
       return entryOf(t, tokens, tok, e);
     },
 
-    async textWords(textId, opts = {}): Promise<TextWordItem[]> {
+    async textWords(textId): Promise<TextWordItem[]> {
       await wait();
       const t = texts.get(textId);
       if (!t) throw new Error("Text not found");
       const tokens = t.tokens ?? [];
-      const looked = lookedUp.get(textId) ?? new Set<string>();
-      const picked = new Map<string, { tok: AnalyzedToken; source: TextWordItem["source"] }>();
-      const rank = { introduce: 0, lookup: 1, gloss: 2 };
-      for (const p of buildPlans(t).flatMap((plan) => plan.tokens)) {
-        const tok = tokens[p.i];
-        if (!tok || !p.key || p.label === "nonword" || p.label === "ignored") continue;
-        if (tok.particle_of != null) continue;
-        const source =
-          p.label === "introduce"
-            ? "introduce"
-            : p.label === "gloss" && opts.includeGlossed
-              ? "gloss"
-              : looked.has(p.key) &&
-                  (p.label !== "known" || lexicon.get(p.key)?.anki.status === "unavailable")
-                ? "lookup"
-                : null;
-        if (!source) continue;
-        const have = picked.get(p.key);
-        if (!have) picked.set(p.key, { tok, source });
-        else if (rank[source] < rank[have.source]) have.source = source;
-      }
-      const out: TextWordItem[] = [];
-      for (const [key, { tok, source }] of picked) {
+      const picked = pickTextWords(
+        { tokens, plans: buildPlans(t) },
+        lookedUp.get(textId) ?? new Set(),
+      );
+      return picked.flatMap(({ key, tokenIndex, source }) => {
         const e = lexicon.get(key);
-        // Known words are left out, except the demo word whose Anki state is "unavailable":
-        // it is kept so the review shows that state too.
-        const skipKnown = e?.state === "known" && e.anki.status !== "unavailable";
-        if (!e || skipKnown || e.state === "ignored") continue;
-        const entry = entryOf(t, tokens, tok, e);
-        out.push({
-          key,
-          lemma: entry.lemma,
-          ...(entry.article ? { article: entry.article } : {}),
-          pos: entry.pos,
-          glosses: entry.glosses,
-          sentence: entry.sentence,
-          sentenceHighlight: entry.sentenceHighlight,
-          tokenIndex: entry.tokenIndex,
-          source,
-          entry,
-        });
-      }
-      return out;
+        if (!e) return [];
+        const entry = entryOf(t, tokens, tokens[tokenIndex]!, e);
+        return [
+          {
+            key,
+            lemma: entry.lemma,
+            ...(entry.article ? { article: entry.article } : {}),
+            pos: entry.pos,
+            glosses: entry.glosses,
+            sentence: entry.sentence,
+            sentenceHighlight: entry.sentenceHighlight,
+            tokenIndex: entry.tokenIndex,
+            source,
+            entry,
+          },
+        ];
+      });
     },
 
     async suggestedWords() {

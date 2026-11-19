@@ -5,6 +5,8 @@ import { App } from "../App.js";
 import { createMockServices } from "../services/mock.js";
 import type { AppServices, TextListItem } from "../services/types.js";
 import { greeting, libraryCoverage, pagesOf, pickContinue } from "./Home.js";
+import { shelfRows } from "./library/shelving.js";
+import { readingNow, readingState } from "../textPages.js";
 
 function setup(patch: Partial<AppServices> = {}, synced = true) {
   const services: AppServices = { ...createMockServices({ latencyMs: 0, synced }), ...patch };
@@ -23,6 +25,7 @@ const text = (over: Partial<TextListItem>): TextListItem => ({
   lastSegment: 0,
   coverage: 0.9,
   newTypes: 3,
+  pages: null,
   ...over,
 });
 
@@ -34,14 +37,42 @@ describe("Home helpers", () => {
     expect(greeting(2)).toBe("Goedenavond");
   });
 
-  it("continues the last text, else one in progress, else the easiest", () => {
+  it("continues a text in progress, never a finished one; else the next to read", () => {
     const a = text({ id: "a", coverage: 0.8 });
     const b = text({ id: "b", coverage: 0.95 });
-    const c = text({ id: "c", lastSegment: 1 });
-    expect(pickContinue([a, b, c], "a")).toEqual({ text: a, started: false });
+    const c = text({ id: "c", lastSegment: 1, pages: 3 });
+    const done = text({ id: "done", lastSegment: 3, pages: 3 });
+    // A text in progress comes before the one opened last when that one is not started.
+    expect(pickContinue([a, b, c], "a")).toEqual({ text: c, started: true });
     expect(pickContinue([a, b, c], null)).toEqual({ text: c, started: true });
+    // A finished text is skipped even when it was opened last.
+    expect(pickContinue([a, b, done], "done")).toEqual({ text: b, started: false });
+    expect(pickContinue([a, b], "a")).toEqual({ text: a, started: false });
     expect(pickContinue([a, b], null)).toEqual({ text: b, started: false });
+    expect(pickContinue([done], "done")).toBeNull();
     expect(pickContinue([], null)).toBeNull();
+  });
+
+  it("uses one rule for Continue reading and Library's Reading now", () => {
+    const x = text({ id: "x", lastSegment: 1, pages: 4 });
+    const y = text({ id: "y", lastSegment: 2, pages: 4 });
+    const done = text({ id: "done", lastSegment: 4, pages: 4 });
+    const texts = [x, y, done];
+    const shelf = shelfRows(texts, [], "y").find((r) => r.id === "auto:reading")!;
+    expect(shelf.texts.map((t) => t.id)).toEqual(["y", "x"]);
+    expect(pickContinue(texts, "y")?.text).toBe(shelf.texts[0]);
+    expect(readingNow(texts, null).map((t) => t.id)).toEqual(["x", "y"]);
+  });
+
+  it("counts pages from the reading plan, estimating only unanalysed texts", () => {
+    // 320 words would be estimated at 3 pages; the plan has 5.
+    expect(pagesOf({ wordCount: 320, lastSegment: 1, pages: 5 })).toEqual({
+      pages: 5,
+      page: 2,
+      done: 1 / 5,
+    });
+    expect(readingState({ wordCount: 320, lastSegment: 3, pages: 5 }).kind).toBe("reading");
+    expect(readingState({ wordCount: 320, lastSegment: 5, pages: 5 }).kind).toBe("done");
   });
 
   it("estimates pages and weights library coverage by length", () => {

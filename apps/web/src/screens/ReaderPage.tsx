@@ -9,6 +9,7 @@ import {
   glossTargets,
   helpLevel,
   hitsInSentence,
+  textDifficulty,
 } from "@app/core";
 import type { GrammarTopic } from "@app/content";
 import {
@@ -625,10 +626,11 @@ export function ReaderPage({ textId }: { textId: string }) {
   }
 
   const allAnswered = plan.clozes.every((i) => credits.has(i) || revealed.has(i));
-  const known = Math.round(plan.coverage * 100);
+  // The whole text's coverage, the same number as Home and the Library.
+  const known = Math.round(textDifficulty(plans ?? [plan]).coverage * 100);
   // The highlighted (amber) words to learn, not every unknown word.
   const toLearn = plan.introduce.length;
-  const knownTitle = `${known}% known · ${toLearn} ${toLearn === 1 ? "word" : "words"} to learn on this page`;
+  const knownTitle = `${known}% of this text known · ${toLearn} ${toLearn === 1 ? "word" : "words"} to learn on this page`;
 
   if (complete) {
     return (

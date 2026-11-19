@@ -62,6 +62,16 @@ export function bandOf(coverage: number): DifficultyBand {
   return "weave";
 }
 
+/**
+ * The new words of a text: the distinct unknown keys of all its pages, in page order. This is
+ * the one definition behind a text's "N new" and the words listed for it after reading.
+ */
+export function textNewKeys(plans: readonly SegmentPlan[]): string[] {
+  const keys = new Set<string>();
+  for (const p of plans) p.newTypes.forEach((k) => keys.add(k));
+  return [...keys];
+}
+
 /** Whole-text difficulty: word-weighted coverage, distinct unknown keys, and band. */
 export function textDifficulty(plans: readonly SegmentPlan[]): {
   coverage: number;
@@ -70,15 +80,13 @@ export function textDifficulty(plans: readonly SegmentPlan[]): {
 } {
   let sum = 0;
   let n = 0;
-  const types = new Set<string>();
   for (const p of plans) {
     const w = weightOf(p);
     sum += p.coverage * w;
     n += w;
-    p.newTypes.forEach((k) => types.add(k));
   }
   const coverage = n ? sum / n : 1;
-  return { coverage, newTypes: types.size, band: bandOf(coverage) };
+  return { coverage, newTypes: textNewKeys(plans).length, band: bandOf(coverage) };
 }
 
 /** Default reader mode for a coverage value (docs/06): >= 0.95 graded, >= 0.80 glossed, else weave. */
