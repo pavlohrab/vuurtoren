@@ -97,7 +97,7 @@ const DATE_FMT = new Intl.DateTimeFormat("en-GB", {
 export function Home() {
   const services = useServices();
   // The top bar shows today's date: the page's own heading is the greeting.
-  usePageHeader(DATE_FMT.format(new Date()));
+  usePageHeader(DATE_FMT.format(new Date()), { always: true });
   const texts = useQuery({ queryKey: ["texts"], queryFn: () => services.listTexts() });
   const summary = useQuery({ queryKey: ["learner"], queryFn: () => services.learnerSummary() });
   const practice = useQuery({

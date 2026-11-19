@@ -13,6 +13,11 @@ export interface PageHeader {
   heading?: boolean;
   /** Breadcrumb before the title, e.g. the course of a unit. */
   parent?: { label: string; to: string } | null;
+  /**
+   * Keep the title in the top bar while the page's own h1 is in view. Only for a title that
+   * says something else than the h1 (Home's date next to its greeting).
+   */
+  always?: boolean;
 }
 
 export interface ShellState {
@@ -41,12 +46,12 @@ export function useShell(): ShellState {
 /** Publish the top-bar content for the current screen; cleared on unmount. */
 export function usePageHeader(title: string, extra: Omit<PageHeader, "title"> = {}): void {
   const { setHeader } = useShell();
-  const { reader = false, heading = false } = extra;
+  const { reader = false, heading = false, always = false } = extra;
   const parentLabel = extra.parent?.label;
   const parentTo = extra.parent?.to;
   useEffect(() => {
     const parent = parentLabel && parentTo ? { label: parentLabel, to: parentTo } : null;
-    setHeader({ title, reader, heading, parent });
+    setHeader({ title, reader, heading, parent, always });
     return () => setHeader(null);
-  }, [setHeader, title, reader, heading, parentLabel, parentTo]);
+  }, [setHeader, title, reader, heading, always, parentLabel, parentTo]);
 }
