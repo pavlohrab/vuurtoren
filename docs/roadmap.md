@@ -2,13 +2,11 @@
 
 ## Next
 
-1. **Better word meanings.** Derivations (_-loos_, _-heid_, _-baar_, linking _-e-_/_-s-_) and the
-   meaning taken from the aligned sentence translation.
-2. **Native mode.** See below.
-3. **Sync.** See below.
-4. **Anki in the self-hosted stack.** Headless Anki with your AnkiWeb login, read-only.
-5. **Weave reading.** An English text with Dutch islands that grow as you learn.
-6. **Phone app.** Native mode and sync; OCR through the phone's own engine (ML Kit on Android,
+1. **Native mode.** See below.
+2. **Sync.** See below.
+3. **Anki in the self-hosted stack.** Headless Anki with your AnkiWeb login, read-only.
+4. **Weave reading.** An English text with Dutch islands that grow as you learn.
+5. **Phone app.** Native mode and sync; OCR through the phone's own engine (ML Kit on Android,
    Apple Vision on iOS).
 
 ## Native mode
