@@ -1,7 +1,7 @@
-/** `OpenSqlite` for the browser: SQLite (wasm) in a worker, for reading Anki packages. */
-import type { OpenSqlite } from "@app/anki";
+/** SQLite (wasm) in a worker for the browser: reading Anki packages and writing exports. */
+import type { CreateSqlite, OpenSqlite } from "@app/anki";
 
-export function browserSqlite(): { open: OpenSqlite; dispose: () => void } {
+export function browserSqlite(): { open: OpenSqlite; create: CreateSqlite; dispose: () => void } {
   const worker = new Worker(new URL("./sqlite.worker.ts", import.meta.url), { type: "module" });
   let seq = 0;
   const pending = new Map<number, { resolve: (v: unknown) => void; reject: (e: Error) => void }>();
@@ -25,5 +25,13 @@ export function browserSqlite(): { open: OpenSqlite; dispose: () => void } {
       close: () => call<void>({ op: "close", db }),
     };
   };
-  return { open, dispose: () => worker.terminate() };
+  const create: CreateSqlite = async () => {
+    const db = await call<number>({ op: "create" });
+    return {
+      exec: (sql, params = []) => call<void>({ op: "run", db, sql, params: [...params] }),
+      bytes: () => call<Uint8Array>({ op: "export", db }),
+      close: () => call<void>({ op: "close", db }),
+    };
+  };
+  return { open, create, dispose: () => worker.terminate() };
 }

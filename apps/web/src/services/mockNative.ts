@@ -192,6 +192,16 @@ export function createMockNative(
         skippedMedia: 0,
       };
     },
+    async exportPackage(decks) {
+      await wait();
+      const reviewed = cards.filter((c) => c.schedule).length;
+      return {
+        // Demo data: an empty zip stands in for the package.
+        bytes: new Uint8Array([0x50, 0x4b, 0x05, 0x06, ...new Array<number>(18).fill(0)]),
+        fileName: `${decks.length === 1 ? decks[0]!.replace(/::/g, "-") : "Kenning"}.apkg`,
+        summary: { notes: cards.length, cards: cards.length, reviews: reviewed * 3, media: 0 },
+      };
+    },
     async tuning() {
       await wait();
       return tuning;

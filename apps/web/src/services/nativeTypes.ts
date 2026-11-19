@@ -54,6 +54,14 @@ export interface ImportSummary {
   skippedMedia: number;
 }
 
+/** What an export holds. */
+export interface ExportSummary {
+  notes: number;
+  cards: number;
+  reviews: number;
+  media: number;
+}
+
 /** The FSRS parameters in use and how they were tuned. */
 export interface TuningInfo {
   /** Trained on the learner's reviews (false: the FSRS-6 defaults). */
@@ -104,6 +112,13 @@ export interface NativeServices {
    * history), then switch the profile to native. Nothing is written to Anki.
    */
   moveFromAnki(onProgress?: (msg: string) => void): Promise<ImportSummary>;
+  /**
+   * Export decks and their subdecks (every deck when `decks` is empty) as an Anki package:
+   * notes, cards with their schedule and memory, deck options, the review history and media.
+   */
+  exportPackage(
+    decks: string[],
+  ): Promise<{ bytes: Uint8Array; fileName: string; summary: ExportSummary }>;
   tuning(): Promise<TuningInfo>;
   /** Train the FSRS parameters on the review history now. */
   optimiseNow(onProgress?: (msg: string) => void): Promise<TuningResult>;

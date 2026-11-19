@@ -6,12 +6,14 @@
 import {
   type AnkiConnectClient,
   type AnkiCollection,
+  type CreateSqlite,
   type NativeImport,
   type OpenSqlite,
   buildNativeImport,
   collectionFromAnki,
   packageDecks,
   readAnkiPackage,
+  writeAnkiPackage,
 } from "@app/anki";
 import {
   type CardRating,
@@ -52,7 +54,7 @@ export interface LiveNativeDeps {
   changed: () => void;
   optimizer: RunOptimizer;
   /** SQLite for reading package files. */
-  sqlite: () => { open: OpenSqlite; dispose: () => void };
+  sqlite: () => { open: OpenSqlite; create: CreateSqlite; dispose: () => void };
   now?: () => number;
 }
 
@@ -441,6 +443,33 @@ export function createLiveNative(deps: LiveNativeDeps) {
       await deps.saveProfile({ ...profile, mode: "native" });
       deps.changed();
       return summary;
+    },
+
+    async exportPackage(decks) {
+      const lang = await deps.lang();
+      const col = await repo.nativeCollection(lang, decks);
+      const at = now();
+      const sqlite = deps.sqlite();
+      try {
+        const { bytes, summary } = await writeAnkiPackage(
+          {
+            ...col,
+            params: await params(lang),
+            media: Object.entries(col.media).map(([name, blobId]) => ({
+              name,
+              bytes: async () => (await repo.getBlob(blobId))?.bytes ?? null,
+            })),
+            now: at,
+          },
+          sqlite.create,
+        );
+        const day = new Date(at).toISOString().slice(0, 10);
+        const label = decks.length === 1 ? decks[0]!.replace(/::/g, "-") : "Kenning";
+        const fileName = `${label.replace(/[^\p{L}\p{N}._-]+/gu, "_")}-${day}.apkg`;
+        return { bytes, fileName, summary };
+      } finally {
+        sqlite.dispose();
+      }
     },
 
     async tuning() {

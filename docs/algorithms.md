@@ -703,3 +703,18 @@ It runs by itself when the app opens: the first time once the history holds 400 
 ### 9.6 The review screen
 
 Front, then Space or **Show answer**, then Again / Hard / Good / Easy (keys 1–4; Space or Enter is Good), Z or **Undo** takes back the last answer. A vocabulary card whose template shows the word on the front is laid out by Kenning: the word and its sentence on the front, the meaning and the sentence translation on the back. Clozes and other templates are rendered from the note type's own template (fields, conditional sections, `FrontSide`, clozes, hints) and shown through an allow-list sanitiser: formatting tags only, no scripts, styles, frames, forms or event handlers, and only the card's own images. Sounds get a play button. After the answer, a sentence with the word from your own texts is shown when one exists.
+
+### 9.7 Export to .apkg
+
+`writeAnkiPackage` (`packages/anki/src/apkg/write.ts`) writes the older package layout that every Anki since 2.1 imports: `collection.anki21` (schema 11; note types, decks and deck options as JSON in `col`) and `media` as JSON. What goes in:
+
+| Kenning                 | In the package                                                                                                                                                                  |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Note types              | imported ones keep their Anki id; Kenning's own word type has a fixed id, so exports and re-imports update the same type                                                        |
+| Notes                   | their ids, fields and tags; a guid from the note id, so importing a newer export updates the notes instead of doubling them                                                     |
+| Decks and their parents | the deck options (steps, limits, maximum interval, target retention) and the FSRS-6 parameters in use, one preset per deck                                                      |
+| Cards                   | new cards in their new-queue order; learning cards with their step and due time; review cards with their due day and interval; FSRS stability and difficulty in the card's data |
+| History                 | every answer, with the interval it gave (the history replayed without fuzz); manual changes as manual entries                                                                   |
+| Media                   | the images and sounds the notes and templates use                                                                                                                               |
+
+Checked by importing the file into a fresh collection with Anki 26.08: cards, due days, memory state, history and deck presets come through.

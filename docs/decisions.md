@@ -27,6 +27,8 @@ The rules the code follows, and why.
   then becomes native.
 - In native mode an `.apkg` or `.colpkg` file can be imported at any time: one deck, several or
   all.
+- In native mode your decks can be exported to an `.apkg` at any time, with their schedule,
+  memory and review history, to import in Anki or keep as a copy.
 - Kenning never writes reviews or schedules to Anki. Imported notes and cards keep their Anki
   ids.
 - The automatic Anki import (on start and every 6 hours) runs only in connected mode.

@@ -1,7 +1,7 @@
 /** Native services over a real repository: the move from Anki, a deck file, reviews, tuning. */
 import { DatabaseSync } from "node:sqlite";
 import { zipSync } from "fflate";
-import { AnkiConnectClient, type OpenSqlite } from "@app/anki";
+import { AnkiConnectClient, type CreateSqlite, type OpenSqlite, readAnkiPackage } from "@app/anki";
 import { DEFAULT_FSRS_PARAMS, type LanguageProfile, defaultProfile } from "@app/core";
 import { type KenningRepository, createRepository } from "@app/db";
 import { createNodeDriver } from "@app/db/node";
@@ -22,6 +22,16 @@ const sqlite = () => ({
       close: async () => db.close(),
     };
   }) satisfies OpenSqlite,
+  create: (async () => {
+    const db = new DatabaseSync(":memory:");
+    return {
+      exec: async (sql: string, params: readonly (string | number | null)[] = []) => {
+        db.prepare(sql).run(...params);
+      },
+      bytes: async () => new Uint8Array(db.serialize()),
+      close: async () => db.close(),
+    };
+  }) satisfies CreateSqlite,
   dispose: () => undefined,
 });
 
@@ -255,6 +265,22 @@ describe("native services", () => {
     const undone = await live.reviewQueue();
     expect(undone).toMatchObject({ fresh: 1 });
     expect(undone.cards[0]).toMatchObject({ cardId: 11, isNew: true });
+  });
+
+  it("exports moved cards with their history to an .apkg that reads back", async () => {
+    const { live } = await setup(defaultProfile("nl", [{ deck: "Dutch" }], "connected"));
+    await live.moveFromAnki();
+    const q = await live.reviewQueue();
+    await live.answerReview(q.cards[0]!.cardId, 3, 2500);
+    const { bytes, fileName, summary } = await live.exportPackage([]);
+    expect(fileName).toMatch(/^Kenning-\d{4}-\d\d-\d\d\.apkg$/);
+    expect(summary).toMatchObject({ notes: 2, cards: 2, reviews: 6 });
+    const col = await readAnkiPackage(bytes, sqlite().open);
+    expect(col.decks.map((d) => d.name)).toContain("Dutch");
+    expect(col.cards.map((c) => c.id).sort()).toEqual([10, 20]);
+    expect(col.reviews).toHaveLength(6);
+    // Only one deck: its name in the file.
+    expect((await live.exportPackage(["Dutch"])).fileName).toMatch(/^Dutch-/);
   });
 
   it("tunes by itself once the history is long enough, and recomputes memory", async () => {

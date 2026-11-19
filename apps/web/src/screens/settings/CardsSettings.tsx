@@ -6,9 +6,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { type ChangeEvent, useState } from "react";
 import { DEFAULT_DECK_OPTIONS, type DeckOptions } from "@app/core";
-import { Button, Skeleton, Spinner, useToast } from "@app/ui";
+import { Button, Select, Skeleton, Spinner, useToast } from "@app/ui";
 import { plural, relativeTime } from "../../format.js";
 import { useServices } from "../../services/context.js";
+import { saveFile } from "../../saveFile.js";
 import type { ImportSummary, NativeDeckSummary } from "../../services/nativeTypes.js";
 
 const message = (e: unknown) => (e instanceof Error && e.message ? e.message : "Try again.");
@@ -116,6 +117,7 @@ function NativeCards() {
         )}
       </section>
       <ImportPackage />
+      {decks.data?.length ? <ExportPackage decks={decks.data.map((d) => d.name)} /> : null}
       <Tuning />
     </>
   );
@@ -195,6 +197,58 @@ function DeckTable({ decks }: { decks: NativeDeckSummary[] }) {
         reviews a day.
       </p>
     </div>
+  );
+}
+
+/** Export to .apkg: some decks or all of them, with history, for Anki or a backup. */
+function ExportPackage({ decks }: { decks: string[] }) {
+  const services = useServices();
+  // Only top-level choices: a deck brings its subdecks.
+  const tops = [...new Set(decks.map((d) => d.split("::")[0]!))];
+  const [deck, setDeck] = useState("");
+  const run = useMutation({
+    mutationFn: () => services.exportPackage(deck ? [deck] : []),
+    onSuccess: (r) => saveFile(r.bytes, r.fileName, "application/octet-stream"),
+  });
+  return (
+    <section className="stack" aria-labelledby="export-deck-h">
+      <h3 className="settings-h3" id="export-deck-h">
+        Export to a deck file
+      </h3>
+      <p className="k-hint" style={{ margin: 0 }}>
+        An Anki deck file (.apkg) with your notes, cards, their schedule and memory, deck options,
+        review history, images and sounds. Import it in Anki with File › Import.
+      </p>
+      <div className="row" style={{ alignItems: "flex-end" }}>
+        {tops.length > 1 ? (
+          <Select
+            label="Decks"
+            value={deck || "all"}
+            onValueChange={(v) => setDeck(v === "all" ? "" : v)}
+            options={[
+              { value: "all", label: "All decks" },
+              ...tops.map((d) => ({ value: d, label: d })),
+            ]}
+          />
+        ) : null}
+        <Button disabled={run.isPending} onClick={() => run.mutate()}>
+          {run.isPending ? <Spinner label="Exporting" /> : null}
+          Export to .apkg
+        </Button>
+      </div>
+      {run.isSuccess ? (
+        <p role="status" style={{ margin: 0 }}>
+          Exported {plural(run.data.summary.notes, "note")},{" "}
+          {plural(run.data.summary.cards, "card")} and {plural(run.data.summary.reviews, "review")}{" "}
+          to {run.data.fileName}.
+        </p>
+      ) : null}
+      {run.isError ? (
+        <p role="alert" className="error-text" style={{ margin: 0 }}>
+          The export did not finish. {message(run.error)}
+        </p>
+      ) : null}
+    </section>
   );
 }
 

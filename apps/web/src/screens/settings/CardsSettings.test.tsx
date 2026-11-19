@@ -1,7 +1,7 @@
 import { createMemoryHistory } from "@tanstack/react-router";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { App } from "../../App.js";
 import { createMockServices } from "../../services/mock.js";
 
@@ -46,5 +46,22 @@ describe("Settings → Language & decks: cards", { timeout: 20_000 }, () => {
     const table = screen.getByRole("table", { name: "Fit before and after tuning" });
     expect(within(table).getByText("0.3378")).toBeVisible();
     expect(within(table).getByText("0.3121")).toBeVisible();
+  });
+
+  it("exports the decks to an .apkg file", async () => {
+    const created = vi.fn(() => "blob:apkg");
+    vi.stubGlobal(
+      "URL",
+      Object.assign(URL, { createObjectURL: created, revokeObjectURL: () => {} }),
+    );
+    const { user } = setup(true);
+    await user.click(await screen.findByRole("button", { name: "Export to .apkg" }));
+    expect(
+      await screen.findByText(
+        /^Exported \d+ notes?, \d+ cards? and \d+ reviews? to Kenning\.apkg\.$/,
+      ),
+    ).toBeVisible();
+    expect(created).toHaveBeenCalledTimes(1);
+    vi.unstubAllGlobals();
   });
 });
