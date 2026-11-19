@@ -17,7 +17,6 @@ import { Button, Dialog, EmptyState, Input, Select, Skeleton, useToast } from "@
 import { useServices } from "../services/context.js";
 import type { Shelf } from "../services/libraryTypes.js";
 import type { TextListItem } from "../services/types.js";
-import { CreateStoryButton } from "./StoryDialog.js";
 import { PageHeader } from "../shell/PageHeader.js";
 import { ErrorNotice } from "../shell/ErrorNotice.js";
 import { CoverDialog } from "./library/CoverDialog.js";
@@ -247,9 +246,9 @@ export function Library() {
         title="Your library is empty"
         description="Paste a text, add a web page, or upload a PDF or photo to start reading."
         action={
-          <Button variant="primary" onClick={() => void navigate({ to: "/import" })}>
-            Import a text
-          </Button>
+          <Link to="/import" className="k-btn k-btn--primary">
+            <Plus size={16} aria-hidden /> Add text
+          </Link>
         }
       />
     );
@@ -306,9 +305,8 @@ export function Library() {
         lede="Your bookshelf: texts on shelves, with how much of each you already know."
         actions={
           <>
-            <CreateStoryButton />
             <Link to="/import" className="k-btn k-btn--primary">
-              <Plus size={16} aria-hidden /> Import text
+              <Plus size={16} aria-hidden /> Add text
             </Link>
           </>
         }

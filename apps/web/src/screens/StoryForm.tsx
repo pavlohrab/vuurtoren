@@ -1,16 +1,16 @@
 /**
- * "Create a story": an AI-written text at your level, saved to the Library (docs/ai.md, Stories).
- * Used from the Library, a grammar topic page and a course unit. The trigger is only shown when an
- * AI provider is configured (`useAIReady`).
+ * "Write a story": an AI-written text at your level, saved to the Library (docs/ai.md, Stories).
+ * The form is the last tab of Add text; a grammar topic page and a course unit link to it with
+ * their topic or words preset. Shown only when an AI provider is configured (`useAIReady`).
  */
 import { pct } from "../format.js";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { Sparkles } from "lucide-react";
 import { useState } from "react";
 import { STORY_WORDS, estimateStoryTokens } from "@app/ai";
 import { grammarTopic, grammarTopics } from "@app/content";
-import { Button, Dialog, Input, Spinner, useToast } from "@app/ui";
+import { Button, Input, Spinner, useToast } from "@app/ui";
 import type { StoryLength, StoryStyle, StoryTargetSource } from "../services/aiTypes.js";
 import { useServices } from "../services/context.js";
 
@@ -30,7 +30,7 @@ const PROMPT_LEMMAS = 300;
 
 type Source = "learn-now" | "unit" | "grammar" | "own";
 
-interface StoryPreset {
+export interface StoryPreset {
   topic?: string;
   /** Grammar topic page id: the story features it. */
   grammarTopic?: string;
@@ -45,8 +45,18 @@ export function useAIReady(): boolean {
   return q.data?.configured === true;
 }
 
-/** Button + dialog. Renders nothing without a configured provider. */
-export function CreateStoryButton({
+/** The search params of Add text that open "Write a story" with a preset. */
+export function storySearch(preset: StoryPreset = {}) {
+  return {
+    tab: "story",
+    ...(preset.topic ? { topic: preset.topic } : {}),
+    ...(preset.grammarTopic ? { grammar: preset.grammarTopic } : {}),
+    ...(preset.unit ? { course: preset.unit.courseId, unit: String(preset.unit.unitN) } : {}),
+  };
+}
+
+/** A link to "Write a story" with a preset. Renders nothing without a configured provider. */
+export function WriteStoryLink({
   preset = {},
   variant = "secondary",
 }: {
@@ -54,30 +64,18 @@ export function CreateStoryButton({
   variant?: "primary" | "secondary" | "ghost";
 }) {
   const ready = useAIReady();
-  const [open, setOpen] = useState(false);
   if (!ready) return null;
   return (
-    <>
-      <Button variant={variant} onClick={() => setOpen(true)}>
-        <Sparkles size={16} aria-hidden /> Create a story
-      </Button>
-      {open ? <StoryDialog open={open} onOpenChange={setOpen} preset={preset} /> : null}
-    </>
+    <Link to="/import" search={storySearch(preset)} className={`k-btn k-btn--${variant}`}>
+      <Sparkles size={16} aria-hidden /> Write a story
+    </Link>
   );
 }
 
 const tokensText = (n: number) =>
   n >= 1000 ? `${(Math.round(n / 100) / 10).toLocaleString("en")}K` : String(n);
 
-function StoryDialog({
-  open,
-  onOpenChange,
-  preset = {},
-}: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  preset?: StoryPreset;
-}) {
+export function StoryForm({ preset = {} }: { preset?: StoryPreset }) {
   const services = useServices();
   const qc = useQueryClient();
   const navigate = useNavigate();
@@ -138,7 +136,6 @@ function StoryDialog({
       ),
     onSuccess: async (r) => {
       await qc.invalidateQueries({ queryKey: ["texts"] });
-      onOpenChange(false);
       toast(
         `Saved “${r.title}” to your library`,
         r.missingTargets.length
@@ -166,14 +163,10 @@ function StoryDialog({
   );
 
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(o) => {
-        if (!create.isPending) onOpenChange(o);
-      }}
-      title="Create a story"
-      description="A new text written for you, kept to words you know, with a few words to learn."
-    >
+    <>
+      <p className="k-hint import-story-lede">
+        A new text written for you, kept to words you know, with a few words to learn.
+      </p>
       <form
         className="stack"
         onSubmit={(e) => {
@@ -256,30 +249,22 @@ function StoryDialog({
             {create.error instanceof Error ? create.error.message : String(create.error)}
           </p>
         ) : null}
-        <div className="k-dialog-actions">
-          {progress ? (
-            <span className="k-hint" role="status" style={{ marginRight: "auto" }}>
-              {progress}
-            </span>
-          ) : null}
-          <Button
-            type="button"
-            variant="ghost"
-            disabled={create.isPending}
-            onClick={() => onOpenChange(false)}
-          >
-            Cancel
-          </Button>
+        <div className="row">
           <Button
             type="submit"
             variant="primary"
             disabled={create.isPending || (source === "grammar" && !topicPage)}
           >
             {create.isPending ? <Spinner label="Writing" /> : null}
-            Create
+            Write the story
           </Button>
+          {progress ? (
+            <span className="k-hint" role="status">
+              {progress}
+            </span>
+          ) : null}
         </div>
       </form>
-    </Dialog>
+    </>
   );
 }

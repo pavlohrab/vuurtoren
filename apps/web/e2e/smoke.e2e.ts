@@ -21,7 +21,7 @@ function watchErrors(page: Page): string[] {
 async function importAndRead(page: Page): Promise<void> {
   await page.goto("/import");
   await page.getByLabel("Text", { exact: true }).fill(SAMPLE_TEXT);
-  await page.getByRole("button", { name: "Import" }).click();
+  await page.getByRole("button", { name: "Add to Library" }).click();
   await expect(page).toHaveURL(/\/read\//);
   await expect(page.locator(".k-reader .k-tok").first()).toBeVisible();
 }

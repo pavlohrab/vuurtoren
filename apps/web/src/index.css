@@ -1480,7 +1480,13 @@ a.home-step:hover .home-step-go {
   justify-self: start;
   margin-bottom: var(--s-3);
 }
-.page-back a {
+.page-back a,
+.page-back button {
+  font: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -1488,7 +1494,8 @@ a.home-step:hover .home-step-go {
   font-size: 13.5px;
   text-decoration: none;
 }
-.page-back a:hover {
+.page-back a:hover,
+.page-back button:hover {
   color: var(--accent);
 }
 .page .page-head .page-title {

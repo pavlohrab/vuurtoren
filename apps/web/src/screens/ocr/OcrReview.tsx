@@ -1,3 +1,4 @@
+import { type MenuItem, MenuButton } from "../library/MenuButton.js";
 import { ChevronLeft, ChevronRight, Undo2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
@@ -107,8 +108,10 @@ export interface OcrReviewProps {
   image: (page: number) => ReviewImage | null | undefined;
   /** Offer "Edit the whole text" (a plain text box). */
   allowTextEdit?: boolean;
-  /** Buttons for the bar above the text (Accept all, Skip, Import...). */
+  /** The buttons in the bar above the text: Cancel and the one primary. */
   actions: ReactNode;
+  /** Less used actions, in a "…" menu before them (Accept all suggestions, Skip review). */
+  more?: MenuItem[];
   /** Shown before the count of words to check, e.g. "Page 12 · ". */
   label?: ReactNode;
 }
@@ -125,6 +128,7 @@ export function OcrReview({
   image,
   allowTextEdit = false,
   actions,
+  more = [],
   label,
 }: OcrReviewProps) {
   const [active, setActive] = useState(() => Math.max(0, nextOpen(value, -1, 1)));
@@ -210,6 +214,13 @@ export function OcrReview({
     return out;
   }, [value]);
 
+  const menu: MenuItem[] = [
+    ...(allowTextEdit && editingAll === null
+      ? [{ label: "Edit the whole text", onSelect: () => setEditingAll(reviewText(value)) }]
+      : []),
+    ...more,
+  ];
+
   const summary =
     total === 0
       ? "Nothing to check."
@@ -225,10 +236,8 @@ export function OcrReview({
           {summary}
         </p>
         <div className="ocr-review__actions">
-          {allowTextEdit && editingAll === null ? (
-            <Button size="sm" variant="ghost" onClick={() => setEditingAll(reviewText(value))}>
-              Edit the whole text
-            </Button>
+          {menu.length ? (
+            <MenuButton label="More for this text" items={menu} className="ocr-review__more" />
           ) : null}
           {actions}
         </div>

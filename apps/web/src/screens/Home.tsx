@@ -33,7 +33,6 @@ import { PageHeader, SectionHeader } from "../shell/PageHeader.js";
 import { pct, plural } from "../format.js";
 import { pagesOf, WORDS_PER_PAGE } from "../textPages.js";
 import { topicCount } from "./grammar/Grammar.js";
-import { CreateStoryButton } from "./StoryDialog.js";
 
 export { pagesOf, WORDS_PER_PAGE };
 
@@ -181,9 +180,8 @@ export function Home() {
         actions={
           <>
             <Link to="/import" className="k-btn k-btn--secondary">
-              <Plus size={16} aria-hidden /> Import
+              <Plus size={16} aria-hidden /> Add text
             </Link>
-            <CreateStoryButton />
           </>
         }
       />
@@ -215,10 +213,10 @@ export function Home() {
             />
           ) : (
             <Empty
-              text="Your library is empty. Import an article, a web page or a PDF to start reading."
+              text="Your library is empty. Add an article, a web page or a PDF to start reading."
               action={
                 <Link to="/import" className="k-btn k-btn--primary">
-                  <Plus size={16} aria-hidden /> Import a text
+                  <Plus size={16} aria-hidden /> Add text
                 </Link>
               }
             />
@@ -678,7 +676,7 @@ function KnownWords({
         </ProgressRing>
         <p className="home-known-caption">
           {coverage === null
-            ? "Import a text to see how much of it you already know."
+            ? "Add a text to see how much of it you already know."
             : `You know ${pct(coverage)} of the words in your texts.`}
         </p>
       </div>
@@ -749,7 +747,7 @@ function RecentTexts({ texts, skip }: { texts: TextListItem[]; skip: string | un
         text="Texts you add show up here as a small shelf."
         action={
           <Link to="/import" className="k-link">
-            <Plus size={14} aria-hidden /> Import a text
+            <Plus size={14} aria-hidden /> Add text
           </Link>
         }
       />
@@ -889,7 +887,7 @@ function Welcome({ hello }: { hello: string }) {
           <Link to="/import" className="k-row">
             <BookOpen size={16} className="k-row-go" aria-hidden />
             <span className="k-row-main">
-              <span className="k-row-title">Import a text</span>
+              <span className="k-row-title">Add text</span>
               <span className="k-row-hint">Paste an article, add a web page or a PDF.</span>
             </span>
             <ArrowRight size={16} className="k-row-go" aria-hidden />

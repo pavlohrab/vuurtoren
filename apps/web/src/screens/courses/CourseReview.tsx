@@ -99,20 +99,19 @@ export function CourseReview({ pages, onDone }: Props) {
             <span aria-hidden>·</span>{" "}
           </span>
         }
+        more={[
+          ...(withSuggestions > 0
+            ? [
+                {
+                  label: "Accept all suggestions",
+                  onSelect: () => setStates((all) => all.map(acceptAllSuggestions)),
+                },
+              ]
+            : []),
+          { label: "Skip review", onSelect: () => onDone(null) },
+        ]}
         actions={
           <>
-            {withSuggestions > 0 ? (
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => setStates((all) => all.map(acceptAllSuggestions))}
-              >
-                Accept all suggestions
-              </Button>
-            ) : null}
-            <Button size="sm" variant="ghost" onClick={() => onDone(null)}>
-              Skip review
-            </Button>
             <Button size="sm" variant="primary" onClick={finish}>
               Continue
             </Button>

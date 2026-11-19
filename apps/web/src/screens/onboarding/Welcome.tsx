@@ -518,7 +518,7 @@ export function Welcome() {
               </p>
               <div className="ob-first">
                 <div className="ob-first-card">
-                  <h2>Import a text</h2>
+                  <h2>Add a text</h2>
                   <p>Paste an article, open a web page, or a PDF or photo of a page.</p>
                   <Button
                     variant="primary"
@@ -527,7 +527,7 @@ export function Welcome() {
                       void navigate({ to: "/import" });
                     }}
                   >
-                    Import a text
+                    Add text
                   </Button>
                 </div>
                 <div className="ob-first-card">

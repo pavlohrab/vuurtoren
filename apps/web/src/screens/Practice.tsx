@@ -30,7 +30,7 @@ import { usePageHeader } from "../shell/ShellContext.js";
 import { ErrorNotice } from "../shell/ErrorNotice.js";
 import { useHoldFreshness } from "../services/freshness.js";
 import { errorText } from "../services/errors.js";
-import { useAIReady } from "./StoryDialog.js";
+import { useAIReady } from "./StoryForm.js";
 import { PageHeader } from "../shell/PageHeader.js";
 import { writePracticeAgain } from "../lastPractice.js";
 import { readLastText } from "../lastText.js";

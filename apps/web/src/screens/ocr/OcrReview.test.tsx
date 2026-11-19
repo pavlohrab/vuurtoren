@@ -15,7 +15,7 @@ async function toReview() {
     screen.getByLabelText("Choose a photo or drop it here"),
     new File(["x"], "page.jpg", { type: "image/jpeg" }),
   );
-  await user.click(screen.getByRole("button", { name: "Import" }));
+  await user.click(screen.getByRole("button", { name: "Add to Library" }));
   await screen.findByRole("heading", { name: "Check the text" });
   return { services, history, user };
 }
@@ -32,7 +32,8 @@ describe("OCR review in Import", () => {
     await user.keyboard("{ArrowRight}");
     expect(screen.getByRole("button", { name: "soep", pressed: true })).toBeInTheDocument();
     await user.keyboard("k");
-    await user.click(screen.getByRole("button", { name: "Accept all suggestions" }));
+    await user.click(screen.getByRole("button", { name: "More for this text" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Accept all suggestions" }));
     expect(screen.getByRole("status")).toHaveTextContent("All 4 words checked.");
     await user.click(screen.getByRole("button", { name: "Import" }));
     await waitFor(() => expect(history.location.pathname).toMatch(/^\/read\//));
@@ -52,7 +53,7 @@ describe("OCR review in Import", () => {
     await user.type(box, "huizen{Enter}");
     expect(screen.getByRole("button", { name: "huizen" })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Cancel" }));
-    expect(await screen.findByRole("heading", { name: "Import text" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Add text" })).toBeInTheDocument();
     expect(history.location.pathname).toBe("/import");
   });
 });

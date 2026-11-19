@@ -1,8 +1,8 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { ArrowLeft, UploadCloud } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import type { DragEvent } from "react";
+import type { DragEvent, ReactNode } from "react";
 import { Button, Input, Spinner, Tabs, Textarea, useToast } from "@app/ui";
 import { useOcrAvailable } from "../desktop/DesktopSetup.js";
 import { useServices } from "../services/context.js";
@@ -21,8 +21,26 @@ import { OcrReview } from "./ocr/OcrReview.js";
 import { errorText } from "../services/errors.js";
 import { ErrorNotice } from "../shell/ErrorNotice.js";
 import { PageHeader } from "../shell/PageHeader.js";
+import { StoryForm, useAIReady, type StoryPreset } from "./StoryForm.js";
 
 type Kind = "paste" | "url" | "pdf" | "image";
+type Tab = Kind | "story";
+
+/** Tab names in the URL (?tab=web) and the import kind behind each. */
+const TAB_OF: Record<string, Tab> = {
+  paste: "paste",
+  web: "url",
+  pdf: "pdf",
+  photo: "image",
+  story: "story",
+};
+const PARAM_OF: Record<Tab, string> = {
+  paste: "paste",
+  url: "web",
+  pdf: "pdf",
+  image: "photo",
+  story: "story",
+};
 
 interface FileDropProps {
   accept: string;
@@ -74,10 +92,16 @@ function FileDrop({ accept, label, file, onFile }: FileDropProps) {
   );
 }
 
-/** Import: paste, URL, PDF or photo. Shows progress, then opens the reader. */
+/**
+ * Add text: paste, a web page, a PDF, a photo, or a story written by the AI provider. Shows
+ * progress, then opens the reader.
+ */
 export function ImportScreen() {
   const services = useServices();
   const navigate = useNavigate();
+  const search: { tab?: string; topic?: string; grammar?: string; course?: string; unit?: string } =
+    useSearch({ from: "/import" });
+  const aiReady = useAIReady();
   const qc = useQueryClient();
   const toast = useToast();
   // False once the learner has left this page; a finished import then must not pull them back.
@@ -91,8 +115,22 @@ export function ImportScreen() {
 
   // Photo import needs text recognition on the language server.
   const ocr = useOcrAvailable();
-  const [kind, setKind] = useState<Kind>("paste");
-  const shownKind: Kind = !ocr && kind === "image" ? "paste" : kind;
+  const asked = TAB_OF[search.tab ?? "paste"] ?? "paste";
+  const tab: Tab = (asked === "image" && !ocr) || (asked === "story" && !aiReady) ? "paste" : asked;
+  const kind: Kind = tab === "story" ? "paste" : tab;
+  const setTab = (t: Tab) =>
+    void navigate({
+      to: "/import",
+      search: t === "paste" ? {} : { tab: PARAM_OF[t] },
+      replace: true,
+    });
+  const storyPreset: StoryPreset = {
+    ...(search.topic ? { topic: search.topic } : {}),
+    ...(search.grammar ? { grammarTopic: search.grammar } : {}),
+    ...(search.course && search.unit && Number.isFinite(Number(search.unit))
+      ? { unit: { courseId: search.course, unitN: Number(search.unit) } }
+      : {}),
+  };
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [url, setUrl] = useState("");
@@ -184,6 +222,11 @@ export function ImportScreen() {
     return (
       <div className="page import-page">
         <PageHeader
+          back={
+            <button type="button" className="link-button" onClick={() => finishReview(null)}>
+              <ArrowLeft size={14} aria-hidden /> Add text
+            </button>
+          }
           title="Check the text"
           lede="Words that may be misread are underlined. Compare them with the scan, fix what is wrong, then import."
         />
@@ -195,22 +238,21 @@ export function ImportScreen() {
             return p ? { src: p.image, width: p.width, height: p.height } : null;
           }}
           allowTextEdit
+          more={[
+            ...(canAccept > 0
+              ? [
+                  {
+                    label: "Accept all suggestions",
+                    onSelect: () => setReview({ ...review, state: acceptAllSuggestions(state) }),
+                  },
+                ]
+              : []),
+            ...(changedCount(state) === 0
+              ? [{ label: "Skip review", onSelect: () => finishReview(doc.text) }]
+              : []),
+          ]}
           actions={
             <>
-              {canAccept > 0 ? (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => setReview({ ...review, state: acceptAllSuggestions(state) })}
-                >
-                  Accept all suggestions
-                </Button>
-              ) : null}
-              {changedCount(state) === 0 ? (
-                <Button size="sm" variant="ghost" onClick={() => finishReview(doc.text)}>
-                  Skip review
-                </Button>
-              ) : null}
               <Button size="sm" variant="ghost" onClick={() => finishReview(null)}>
                 Cancel
               </Button>
@@ -224,6 +266,53 @@ export function ImportScreen() {
     );
   }
 
+  const fields: Record<Kind, ReactNode> = {
+    paste: (
+      <div className="stack">
+        {titleField}
+        <Textarea
+          label="Text"
+          rows={10}
+          value={content}
+          onChange={(e) => setContent(e.target.value)}
+          placeholder="Paste Dutch text here"
+        />
+      </div>
+    ),
+    url: (
+      <Input
+        label="Web address"
+        type="url"
+        value={url}
+        onChange={(e) => setUrl(e.target.value)}
+        placeholder="https://"
+        hint="The article text is extracted from the page."
+      />
+    ),
+    pdf: (
+      <div className="stack">
+        {titleField}
+        <FileDrop
+          accept="application/pdf"
+          label="Choose a PDF or drop it here"
+          file={pdfFile}
+          onFile={setPdfFile}
+        />
+      </div>
+    ),
+    image: (
+      <div className="stack">
+        {titleField}
+        <FileDrop
+          accept="image/*"
+          label="Choose a photo or drop it here"
+          file={imageFile}
+          onFile={setImageFile}
+        />
+      </div>
+    ),
+  };
+
   return (
     <div className="page page--list import-page">
       <PageHeader
@@ -232,120 +321,64 @@ export function ImportScreen() {
             <ArrowLeft size={14} aria-hidden /> Library
           </Link>
         }
-        title="Import text"
-        lede={
-          ocr
-            ? "Bring in something you want to read in Dutch: paste it, add a web page, a PDF or a photo."
-            : "Bring in something you want to read in Dutch: paste it, add a web page or a PDF."
-        }
+        title="Add text"
+        lede="Something you want to read in Dutch: paste it, add a web page or a PDF, or have a story written for you."
       />
-      <form
-        className="stack"
-        onSubmit={(e) => {
-          e.preventDefault();
-          void submit();
-        }}
-      >
-        <Tabs
-          aria-label="Import source"
-          value={shownKind}
-          onValueChange={(v) => setKind(v as Kind)}
-          items={[
-            {
-              value: "paste",
-              label: "Paste",
-              content: (
-                <div className="stack">
-                  {titleField}
-                  <Textarea
-                    label="Text"
-                    rows={10}
-                    value={content}
-                    onChange={(e) => setContent(e.target.value)}
-                    placeholder="Paste Dutch text here"
-                  />
-                </div>
-              ),
-            },
-            {
-              value: "url",
-              label: "URL",
-              content: (
-                <Input
-                  label="Web address"
-                  type="url"
-                  value={url}
-                  onChange={(e) => setUrl(e.target.value)}
-                  placeholder="https://"
-                  hint="The article text is extracted from the page."
-                />
-              ),
-            },
-            {
-              value: "pdf",
-              label: "PDF",
-              content: (
-                <div className="stack">
-                  {titleField}
-                  <FileDrop
-                    accept="application/pdf"
-                    label="Choose a PDF or drop it here"
-                    file={pdfFile}
-                    onFile={setPdfFile}
-                  />
-                </div>
-              ),
-            },
-            ...(ocr
-              ? [
-                  {
-                    value: "image",
-                    label: "Photo",
-                    content: (
-                      <div className="stack">
-                        {titleField}
-                        <FileDrop
-                          accept="image/*"
-                          label="Choose a photo or drop it here"
-                          file={imageFile}
-                          onFile={setImageFile}
-                        />
-                      </div>
-                    ),
-                  },
-                ]
-              : []),
-          ]}
-        />
-        {!ocr ? (
-          <p className="k-hint" role="note" style={{ margin: 0 }}>
-            Photos and scanned pages need text recognition, which isn't available on this language
-            server yet. PDFs with a text layer, web pages and pasted text work.
-          </p>
-        ) : null}
-
-        {progress.length > 0 || busy ? (
-          <ul className="progress-log" aria-live="polite">
-            {progress.map((m, i) => (
-              <li key={i}>{m}</li>
-            ))}
-          </ul>
-        ) : null}
-        {error ? (
-          <ErrorNotice
-            error={error}
-            title="The import did not work."
-            onRetry={ready ? () => void submit() : undefined}
-          />
-        ) : null}
-
-        <div className="row">
-          <Button type="submit" variant="primary" disabled={!ready || busy}>
-            {busy ? <Spinner label="Importing" /> : null}
-            {busy ? "Importing" : "Import"}
-          </Button>
+      <Tabs
+        aria-label="Add text from"
+        value={tab}
+        onValueChange={(v) => setTab(v as Tab)}
+        items={[
+          { value: "paste", label: "Paste" },
+          { value: "url", label: "Web" },
+          { value: "pdf", label: "PDF" },
+          ...(ocr ? [{ value: "image", label: "Photo" }] : []),
+          ...(aiReady ? [{ value: "story", label: "Write a story" }] : []),
+        ]}
+      />
+      {tab === "story" ? (
+        <div className="import-story">
+          <StoryForm key={JSON.stringify(storyPreset)} preset={storyPreset} />
         </div>
-      </form>
+      ) : (
+        <form
+          className="stack"
+          onSubmit={(e) => {
+            e.preventDefault();
+            void submit();
+          }}
+        >
+          {fields[kind]}
+          {!ocr && kind === "pdf" ? (
+            <p className="k-hint" role="note" style={{ margin: 0 }}>
+              Scanned pages need text recognition, which this language server does not have. PDFs
+              with a text layer work.
+            </p>
+          ) : null}
+
+          {progress.length > 0 || busy ? (
+            <ul className="progress-log" aria-live="polite">
+              {progress.map((m, i) => (
+                <li key={i}>{m}</li>
+              ))}
+            </ul>
+          ) : null}
+          {error ? (
+            <ErrorNotice
+              error={error}
+              title="The import did not work."
+              onRetry={ready ? () => void submit() : undefined}
+            />
+          ) : null}
+
+          <div className="row">
+            <Button type="submit" variant="primary" disabled={!ready || busy}>
+              {busy ? <Spinner label="Adding" /> : null}
+              {busy ? "Adding…" : "Add to Library"}
+            </Button>
+          </div>
+        </form>
+      )}
     </div>
   );
 }

@@ -49,7 +49,7 @@ import { useRemoteFreshness } from "./useRemoteFreshness.js";
 const PAGE_TITLES: Record<string, string> = {
   "/": "Home",
   "/library": "Library",
-  "/import": "Import text",
+  "/import": "Add text",
   "/words": "Words",
   "/practice": "Practice",
   "/review": "Review",

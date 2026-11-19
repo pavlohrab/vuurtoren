@@ -14,7 +14,7 @@ import {
   WordStateChip,
   useToast,
 } from "@app/ui";
-import { CreateStoryButton, useAIReady } from "../StoryDialog.js";
+import { WriteStoryLink, useAIReady } from "../StoryForm.js";
 import { useServices } from "../../services/context.js";
 import { errorText } from "../../services/errors.js";
 import { usePageHeader } from "../../shell/ShellContext.js";
@@ -370,7 +370,7 @@ export function UnitRoute({ courseId, n }: { courseId: string; n: number }) {
           >
             Talk about this unit
           </Link>
-          <CreateStoryButton
+          <WriteStoryLink
             preset={{
               topic: u.unit.title,
               unit: { courseId, unitN: n },

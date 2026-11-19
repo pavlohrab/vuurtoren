@@ -40,7 +40,7 @@ describe("empty states", () => {
   it("Words: a real empty state when there are no words at all", async () => {
     setup("/words", { words: async () => [] });
     expect(await screen.findByRole("heading", { name: "No words yet" })).toBeVisible();
-    expect(screen.getByRole("link", { name: "Import a text" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Add text" })).toBeInTheDocument();
   });
 
   it("the main nav: Home first, no Read entry, Talk instead of Converse", async () => {
@@ -92,7 +92,7 @@ describe("plain errors", () => {
       },
     });
     await user.type(await screen.findByLabelText("Text"), "Ik bel mijn zus op.");
-    await user.click(screen.getByRole("button", { name: "Import" }));
+    await user.click(screen.getByRole("button", { name: "Add to Library" }));
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent("The import did not work.");
     expect(alert).toHaveTextContent(/language server is not reachable/);

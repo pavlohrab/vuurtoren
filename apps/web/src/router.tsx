@@ -74,7 +74,14 @@ const wordsOfTextRoute = screen(
   () => import("./screens/words/TextWords.js"),
   "TextWordsRoute",
 );
-const importRoute = screen("/import", () => import("./screens/Import.js"), "ImportScreen");
+/** /import?tab=paste|web|pdf|photo|story (story presets: topic, grammar, course + unit) */
+const importRoute = searchScreen("/import", () => import("./screens/Import.js"), "ImportScreen", [
+  "tab",
+  "topic",
+  "grammar",
+  "course",
+  "unit",
+]);
 /** /words?state=&source=text:<id>|unit:<course>/<n>|practice-again&q=&word=<key> */
 const wordsRoute = searchScreen("/words", () => import("./screens/words/Words.js"), "Words", [
   "state",
