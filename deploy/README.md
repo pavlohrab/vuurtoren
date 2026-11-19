@@ -110,14 +110,29 @@ progress.
 The desktop app (and later phones) keep their own data and sync through your server: in the
 server's Settings → Sync make a **sync token** for each device, then on the device choose
 Settings → Sync → **Your Kenning server** with the server's address, the token and a passphrase.
-The server stores sealed files in `sync/` next to the database; it cannot read them. A sync
-token opens `/api/sync` and nothing else.
+On the first device choose **Start new sync data here**; on every other one **Join my synced
+data**, with the same passphrase. The server stores sealed files in `sync/` next to the
+database; it cannot read them.
+
+- A sync token opens `/api/sync` and nothing else, and belongs to one device: the first device
+  folder it writes becomes its own, and it may write only there and the shared images. Give
+  each device its own token (a device that starts over, for example after a restore, needs a
+  new one).
+- The token of the device that started the sync data may change its passphrase and recovery
+  key; other tokens may not. A token made with `{"vault": true}` (`POST /api/auth/sync-tokens`)
+  may too.
+- All sync files together may take `KENNING_SYNC_QUOTA_MB` (default 2048 MB).
+- With sign-in off, `/api/sync` answers only the server's own address and
+  `KENNING_ALLOWED_ORIGINS`: a page on another site cannot read or change your sync files. The
+  desktop app is not a site and syncs either way.
 
 ## Backup and restore
 
 - **Scheduled:** profile `backup` saves a snapshot every 24 h into `./backups` next to the
   compose file and keeps 14 days (`KENNING_BACKUP_INTERVAL_HOURS`, `KENNING_BACKUP_KEEP_DAYS`).
-  Needs `KENNING_TOKEN` when sign-in is on. Copy the folder off the machine.
+  Needs `KENNING_TOKEN` when sign-in is on. Copy the folder off the machine. The sync files of
+  your devices go there too, as `kenning-sync-…tar.gz`: to bring them back, stop the stack and
+  unpack one into the `kenning-data` volume (it holds a `sync/` folder).
 - **In the app:** Settings → Your data → **Download backup** and **Restore from backup…**.
 - **Shell:** `curl -H "Authorization: Bearer $KENNING_TOKEN" -o kenning.sqlite https://kenning.example.com/api/export`.
 
