@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import type { AnalyzedToken } from "@app/core";
 import { SCHEMA_VERSION, contentHash } from "@app/db";
 import { createHttpAdmin, createHttpRepository, fetchServerHealth, HttpError } from "@app/db/http";
 import { createApiServer } from "./server.js";
@@ -192,7 +193,7 @@ describe("http repository", () => {
     expect((await rpc("unitWords", ["c1", "1"])).status).toBe(400);
   });
 
-  it("serves stored grammar hits", async () => {
+  it("keeps the analysis cache for its clients, without events", async () => {
     const repo = await createHttpRepository(base);
     const content = "Morgen ga ik naar school.";
     await repo.append({
@@ -204,13 +205,18 @@ describe("http repository", () => {
       content,
     });
     const hits = [{ topic: "inversion", tokens: [1, 2], sent: 0, start: 0, end: 25, note: "n" }];
-    await repo.append({
-      type: "TextGrammarDetected",
-      textId: "t1",
-      contentHash: contentHash(content),
-      version: 1,
-      hits,
-    });
+    const tokens = [{ i: 0, lemma: "morgen" }] as unknown as AnalyzedToken[];
+    const hash = contentHash(content);
+    const events = await repo.eventCount();
+    expect(
+      await repo.saveTextAnalysis({ textId: "t1", contentHash: hash, tokens, analyzerVersion: "a1" }),
+    ).toBe(true);
+    expect(await repo.saveTextGrammar({ textId: "t1", contentHash: hash, version: 1, hits })).toBe(
+      true,
+    );
+    expect(await repo.eventCount()).toBe(events);
+    expect((await repo.getText("t1"))?.tokens).toEqual(tokens);
+    expect(await repo.analyzerSeen("a1")).toBe(await repo.analyzerSeen("a1"));
     expect(await repo.textGrammar("t1")).toEqual({ textId: "t1", version: 1, hits });
     expect(await repo.textGrammar("t2")).toBeNull();
     expect((await repo.allTextGrammar()).map((g) => g.textId)).toEqual(["t1"]);

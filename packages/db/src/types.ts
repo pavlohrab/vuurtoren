@@ -132,21 +132,23 @@ export type AppEvent =
       content: string;
     }
   | {
+      /**
+       * Read from older logs only: analyses now live in each device's analysis cache
+       * (`saveTextAnalysis`), outside the synced log. Replays still fill the cache from it.
+       */
       type: "TextAnalyzed";
       textId: string;
       contentHash: string;
       tokens: AnalyzedToken[];
-      /**
-       * The language server's `analyzerVersion`. A text whose stored version differs
-       * from the server's is re-analysed once when opened. Absent in older events.
-       */
+      /** The language server's `analyzerVersion`. Absent in the oldest events. */
       analyzerVersion?: string;
     }
   | {
       /**
        * Grammar constructions found in a text (server `/grammar`), indices and offsets
        * relative to the whole text and its TextAnalyzed tokens. `version` is the client's
-       * GRAMMAR_VERSION: hits of an older version are recomputed.
+       * GRAMMAR_VERSION: hits of an older version are recomputed. Read from older logs only,
+       * like TextAnalyzed (`saveTextGrammar`).
        */
       type: "TextGrammarDetected";
       textId: string;
@@ -585,6 +587,8 @@ export interface StoredText extends TextSummary {
   tokens: AnalyzedToken[] | null;
   /** Analyzer version of `tokens` (null/absent: unknown, analysed before versions existed). */
   analyzerVersion?: string | null;
+  /** When `tokens` were made (ms; 0: unknown), see `analyzerSeen`. */
+  analyzedAt?: number;
 }
 
 export interface WordInfo {
@@ -762,6 +766,30 @@ export interface Repository {
   textGrammar(textId: string): Promise<TextGrammar | null>;
   /** Stored grammar hits of every text that has them (for the grammar index). */
   allTextGrammar(): Promise<TextGrammar[]>;
+  /**
+   * Store a language-server analysis of a text in this device's analysis cache. Analyses are
+   * derived data: not events, never synced; each device (or the server, for its clients) keeps
+   * its own and analyses again when one is missing. Ignored (false) when the text is gone or
+   * its content changed. A different analyzer version drops the text's grammar hits.
+   */
+  saveTextAnalysis(analysis: {
+    textId: string;
+    contentHash: string;
+    tokens: AnalyzedToken[];
+    analyzerVersion?: string | null | undefined;
+  }): Promise<boolean>;
+  /** Store grammar hits for the cached analysis of a text (false: content or tokens changed). */
+  saveTextGrammar(grammar: {
+    textId: string;
+    contentHash: string;
+    version: number;
+    hits: GrammarHit[];
+  }): Promise<boolean>;
+  /**
+   * When this device's language server first reported analyzer `version` (ms; recorded now
+   * when new). An analysis made before that time is older than the analyzer.
+   */
+  analyzerSeen(version: string): Promise<number>;
   setting<T>(key: string): Promise<T | undefined>;
   /** The language profile of `lang`, or null if none was saved. */
   languageProfile(lang: string): Promise<LanguageProfile | null>;

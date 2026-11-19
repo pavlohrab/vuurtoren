@@ -1,6 +1,7 @@
 /**
  * Schema and versioned migrations (tracked with `PRAGMA user_version`).
- * `events` is the append-only source of truth; every other table is a rebuildable projection.
+ * `events` is the append-only source of truth; every other table is a rebuildable projection,
+ * except `blobs` and the per-device text analysis cache (`text_tokens`, `text_grammar`).
  */
 import type { SqlDriver } from "./types.js";
 
@@ -265,17 +266,24 @@ export const MIGRATIONS: readonly (readonly string[])[] = [
     `ALTER TABLE events ADD COLUMN v INTEGER NOT NULL DEFAULT 1`,
     `CREATE INDEX events_device ON events (device_id, id)`,
   ],
+  [
+    // Text analyses are a local cache, not projections: when the stored tokens were made
+    // (a replayed old TextAnalyzed event never overwrites a newer analysis).
+    `ALTER TABLE text_tokens ADD COLUMN analyzed_at INTEGER NOT NULL DEFAULT 0`,
+  ],
 ];
 
 /** Latest schema version. */
 export const SCHEMA_VERSION = MIGRATIONS.length;
 
-/** Projection tables, cleared (in this order) by `rebuild()`. `meta` and `events` are kept. */
+/**
+ * Projection tables, cleared (in this order) by `rebuild()`. `meta`, `events`, `blobs` and the
+ * analysis cache (`text_tokens`, `text_grammar`: this device's language-server results, see
+ * `saveTextAnalysis`) are kept.
+ */
 export const PROJECTION_TABLES = [
   "texts",
   "text_meta",
-  "text_tokens",
-  "text_grammar",
   "anki_words",
   "word_overrides",
   "word_lookups",

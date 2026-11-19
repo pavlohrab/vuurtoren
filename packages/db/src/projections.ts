@@ -61,6 +61,102 @@ async function insertMany(
   }
 }
 
+/** A language-server analysis of one text version (see `KenningRepository.saveTextAnalysis`). */
+interface TextAnalysisInput {
+  textId: string;
+  contentHash: string;
+  tokens: unknown[];
+  analyzerVersion?: string | null | undefined;
+}
+
+/** Grammar hits found in one text version (see `KenningRepository.saveTextGrammar`). */
+interface TextGrammarInput {
+  textId: string;
+  contentHash: string;
+  version: number;
+  hits: unknown[];
+}
+
+async function currentHash(driver: SqlDriver, textId: string): Promise<SqlValue | undefined> {
+  return (await driver.exec("SELECT content_hash FROM texts WHERE id = ?", [textId]))[0]?.[
+    "content_hash"
+  ];
+}
+
+/**
+ * Write an analysis made at `at` into the analysis cache (one row per text). Ignored for unknown
+ * texts, for content that has since changed, and, for an old TextAnalyzed event (`local`
+ * false), when the cache holds a newer analysis of the same content. A `local` analysis (this
+ * device's language server, just now) always wins and is stamped after the one it replaces, so
+ * a replayed event can never overwrite it, whatever the other device's clock said.
+ * @returns true when stored
+ */
+export async function writeTextAnalysis(
+  driver: SqlDriver,
+  a: TextAnalysisInput,
+  at: number,
+  local = false,
+): Promise<boolean> {
+  if ((await currentHash(driver, a.textId)) !== a.contentHash) return false;
+  const version = a.analyzerVersion ?? null;
+  const old = (
+    await driver.exec(
+      "SELECT content_hash, analyzer_version, analyzed_at FROM text_tokens WHERE text_id = ?",
+      [a.textId],
+    )
+  )[0];
+  const sameContent = old !== undefined && old["content_hash"] === a.contentHash;
+  const before = sameContent ? Number(old["analyzed_at"]) : 0;
+  if (!local && before > at) return false;
+  const stamp = local ? Math.max(at, before + 1) : at;
+  // Another analyzer may shift token indices: the grammar hits refer to the old tokens, so they
+  // are dropped and recomputed (liveGrammar).
+  if (old && (old["analyzer_version"] ?? null) !== version) {
+    await driver.exec("DELETE FROM text_grammar WHERE text_id = ?", [a.textId]);
+  }
+  await driver.exec(
+    "INSERT OR REPLACE INTO text_tokens (text_id, content_hash, tokens, analyzer_version, analyzed_at) VALUES (?,?,?,?,?)",
+    [a.textId, a.contentHash, JSON.stringify(a.tokens), version, stamp],
+  );
+  return true;
+}
+
+/**
+ * Write grammar hits found at `at` into the analysis cache. They refer to the cached tokens, so
+ * they are stored only when those tokens are of the same content and, for an old
+ * TextGrammarDetected event (`local` false), not newer than the hits; never over hits of a newer
+ * grammar version.
+ * @returns true when stored
+ */
+export async function writeTextGrammar(
+  driver: SqlDriver,
+  g: TextGrammarInput,
+  at: number,
+  local = false,
+): Promise<boolean> {
+  if ((await currentHash(driver, g.textId)) !== g.contentHash) return false;
+  const tokens = (
+    await driver.exec("SELECT content_hash, analyzed_at FROM text_tokens WHERE text_id = ?", [
+      g.textId,
+    ])
+  )[0];
+  if (!tokens || tokens["content_hash"] !== g.contentHash) return false;
+  if (!local && Number(tokens["analyzed_at"]) > at) return false;
+  const old = (
+    await driver.exec("SELECT content_hash, version FROM text_grammar WHERE text_id = ?", [
+      g.textId,
+    ])
+  )[0];
+  if (old && old["content_hash"] === g.contentHash && Number(old["version"]) > g.version) {
+    return false;
+  }
+  await driver.exec(
+    "INSERT OR REPLACE INTO text_grammar (text_id, content_hash, version, hits) VALUES (?,?,?,?)",
+    [g.textId, g.contentHash, g.version, JSON.stringify(g.hits)],
+  );
+  return true;
+}
+
 /** Last-write-wins (by HLC, independent of arrival order) write of a word's manual state. */
 async function setOverride(
   driver: SqlDriver,
@@ -142,34 +238,14 @@ export async function applyEvent(driver: SqlDriver, ctx: EventContext): Promise<
       }
       return;
     }
-    case "TextGrammarDetected": {
-      const rows = await driver.exec("SELECT content_hash FROM texts WHERE id = ?", [e.textId]);
-      if (rows[0]?.["content_hash"] !== e.contentHash) return;
-      await driver.exec(
-        "INSERT OR REPLACE INTO text_grammar (text_id, content_hash, version, hits) VALUES (?,?,?,?)",
-        [e.textId, e.contentHash, e.version, JSON.stringify(e.hits)],
-      );
+    // Analyses written by older app versions: kept in the analysis cache, so nothing has to be
+    // analysed again after an upgrade. New analyses are not events (`saveTextAnalysis`).
+    case "TextGrammarDetected":
+      await writeTextGrammar(driver, e, ctx.createdAt);
       return;
-    }
-    case "TextAnalyzed": {
-      const rows = await driver.exec("SELECT content_hash FROM texts WHERE id = ?", [e.textId]);
-      // Ignore results for unknown texts or for content that has since changed.
-      if (rows[0]?.["content_hash"] !== e.contentHash) return;
-      const version = e.analyzerVersion ?? null;
-      const old = await driver.exec("SELECT analyzer_version FROM text_tokens WHERE text_id = ?", [
-        e.textId,
-      ]);
-      // A re-analysis by another analyzer may shift token indices: the grammar hits refer to
-      // the old tokens, so they are dropped and recomputed (liveGrammar).
-      if (old.length > 0 && (old[0]?.["analyzer_version"] ?? null) !== version) {
-        await driver.exec("DELETE FROM text_grammar WHERE text_id = ?", [e.textId]);
-      }
-      await driver.exec(
-        "INSERT OR REPLACE INTO text_tokens (text_id, content_hash, tokens, analyzer_version) VALUES (?,?,?,?)",
-        [e.textId, e.contentHash, JSON.stringify(e.tokens), version],
-      );
+    case "TextAnalyzed":
+      await writeTextAnalysis(driver, e, ctx.createdAt);
       return;
-    }
     case "TextMetaUpdated":
       await applyTextMeta(driver, ctx.hlc, e.textId, metaPatchFields(e.patch ?? {}));
       return;

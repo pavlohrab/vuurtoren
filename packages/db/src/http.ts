@@ -233,6 +233,9 @@ export async function createHttpRepository(
     activity: (sinceMs) => call("activity", sinceMs),
     textGrammar: (textId) => call("textGrammar", textId),
     allTextGrammar: () => call("allTextGrammar"),
+    saveTextAnalysis: (analysis) => call("saveTextAnalysis", analysis),
+    saveTextGrammar: (grammar) => call("saveTextGrammar", grammar),
+    analyzerSeen: (version) => call("analyzerSeen", version),
     setting: <T>(key: string) => call<T | undefined>("setting", key),
     languageProfile: (lang) => call("languageProfile", lang),
     // Not on the RPC allow-list: the server rebuilds its projections itself on open.
