@@ -8,7 +8,10 @@
  */
 import { EVENT_TYPES } from "./types.js";
 
-/** Largest event `append` accepts over RPC (serialised JSON, in UTF-16 code units). */
+/**
+ * Largest event `append` (or analysis `saveTextAnalysis`) accepts over RPC (serialised JSON, in
+ * UTF-16 code units).
+ */
 export const MAX_RPC_EVENT_CHARS = 24 * 1024 * 1024;
 
 /** Most keys or ids one batched call (`wordsByKeys`, `getTexts`) accepts. */
@@ -34,6 +37,9 @@ export const RPC_METHODS = {
   activity: ["number"],
   textGrammar: ["string"],
   allTextGrammar: [],
+  saveTextAnalysis: ["object"],
+  saveTextGrammar: ["object"],
+  analyzerSeen: ["string"],
   setting: ["string"],
   languageProfile: ["string"],
   events: ["string?"],
@@ -113,6 +119,22 @@ export function validateRpcArgs(method: RpcMethod, args: unknown): string | null
     if (!ok) return `${method}: argument ${i + 1} must be a ${base}`;
   }
   if (method === "append") return validateEvent(args[0]);
+  if (method === "saveTextAnalysis") return validateCached(method, args[0], "tokens");
+  if (method === "saveTextGrammar") return validateCached(method, args[0], "hits");
+  return null;
+}
+
+/** Shape check for an analysis-cache write: text id, content hash, a list, a bounded size. */
+function validateCached(method: RpcMethod, value: unknown, list: "tokens" | "hits"): string | null {
+  const v = value as Record<string, unknown>;
+  if (typeof v["textId"] !== "string" || typeof v["contentHash"] !== "string") {
+    return `${method}: textId and contentHash are required`;
+  }
+  if (!Array.isArray(v[list])) return `${method}: ${list} must be an array`;
+  if (list === "hits" && typeof v["version"] !== "number") {
+    return `${method}: version must be a number`;
+  }
+  if (JSON.stringify(v).length > MAX_RPC_EVENT_CHARS) return `${method}: too large`;
   return null;
 }
 

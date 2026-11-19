@@ -28,6 +28,11 @@ latest-wins for settings and marks, merged reviews and answers, event versions, 
 - **Kenning Cloud** (paid, about €3–4 a month or €30 a year, lower for students and poorer
   countries): the same sync and a hosted language server for devices that can't run one, such
   as phones. Still to build: accounts, payments, storage limits per account.
+- **One device, one data file.** The desktop app refuses a sync folder that holds its own data
+  folder, and warns when it sees another computer syncing under its device id (a data file
+  copied or shared between computers).
+- **Server mode as a syncing client.** The web app on your Kenning server keeps its own copy in
+  the browser and syncs with the server, like every other device.
 - **Before Kenning Cloud:** a run against a real GitHub repository and a real Nextcloud (the
   test `apps/web/src/sync/real.test.ts` takes their addresses), and an outside review of the
   encryption code. Argon2id, changing the passphrase and the recovery key are built; WebDAV is
@@ -35,6 +40,32 @@ latest-wins for settings and marks, merged reviews and answers, event versions, 
 - **Hosting:** one stack of three containers: `kenning` (web app, API and sync), `kenning-nlp`
   (the language server; phones need it) and, only for Keep using Anki, `anki` (headless, read
   only). Self-hosting and Kenning Cloud run the same stack.
+
+## Kenning Cloud design
+
+- **Accounts.** One account is one learner, signed in with email and password (scrypt) or a
+  passkey. Signing in a device gives it a sync token; the account page lists devices and can
+  remove one.
+- **Storage.** Object storage (S3-compatible). Every account has its own prefix,
+  `accounts/<account id>/`, holding the same layout as any sync place (`kenning/vault.json`,
+  `kenning/devices/…`, `kenning/blobs/…`). Files are sealed on the device as today: the service
+  stores them and cannot read them.
+- **Sync API.** The `/api/sync` of a self-hosted server, append-only: a device creates files in
+  its own folder and in blobs, and removes only its own folded segments. Nothing overwrites
+  another device's file.
+- **Tokens bound to devices.** Each token belongs to one device id and one account. It reads the
+  whole account and writes only that device's folder and blobs. Removing a device revokes its
+  token.
+- **Quotas.** Storage per account and requests per minute. Over the storage quota, sending is
+  refused with a clear message in Settings → Sync; receiving keeps working, so no device falls
+  behind.
+- **Hosted language server.** Phones send texts to it for analysis, grammar, translation and
+  OCR. Texts sent to the hosted language server are processed and not stored: they live in
+  memory for the request, are never written to disk or logs, and the results go straight back
+  to the device, which keeps them in its own analysis cache. Requests are counted per account for
+  the quota, by size only.
+- **Same stack.** Kenning Cloud runs the self-hosted stack with accounts and object storage
+  switched on; self-hosting stays single-user and free.
 
 ## Known issues
 

@@ -150,20 +150,21 @@ export function createLiveTexts({
     const tokens = mergeChunkTokens(
       chunks.map((c, k) => ({ start: c.start, tokens: analyses[k]!.tokens as AnalyzedToken[] })),
     );
-    const analyzerVersion = analyses[0]?.analyzerVersion;
-    await repo.append({
-      type: "TextAnalyzed",
+    // Derived data: kept in this device's analysis cache, not in the synced event log.
+    await repo.saveTextAnalysis({
       textId: text.id,
       contentHash: contentHash(text.content),
       tokens,
-      ...(analyzerVersion ? { analyzerVersion } : {}),
+      analyzerVersion: analyses[0]?.analyzerVersion ?? null,
     });
     return tokens;
   }
 
-  // Review A4: texts analysed by an older analyzer are re-analysed once, in the background,
-  // when opened. The server's version is asked once per session (null: unknown or offline).
-  let serverAnalyzer: Promise<string | null> | null = null;
+  // Texts analysed before the language server's analyzer appeared on this device are
+  // re-analysed once, in the background, when opened. A different but not newer analysis (an
+  // older analyzer brought back, another device's analysis from an old log) is kept. The
+  // server's version is asked once per session (null: unknown or offline).
+  let serverAnalyzer: Promise<{ version: string; since: number } | null> | null = null;
   const refreshed = new Set<string>();
   function refreshIfStale(text: StoredText): void {
     if (!text.tokens || refreshed.has(text.id)) return;
@@ -171,12 +172,16 @@ export function createLiveTexts({
     serverAnalyzer ??= nlp()
       .then((c) => c.health())
       .then(
-        (h) => h.analyzerVersion ?? null,
+        async (h) =>
+          h.analyzerVersion
+            ? { version: h.analyzerVersion, since: await repo.analyzerSeen(h.analyzerVersion) }
+            : null,
         () => null,
       );
     void serverAnalyzer
       .then(async (current) => {
-        if (!current || current === text.analyzerVersion) return;
+        if (!current || current.version === text.analyzerVersion) return;
+        if ((text.analyzedAt ?? 0) >= current.since) return;
         await analyze(text);
         planCache.delete(text.id);
       })

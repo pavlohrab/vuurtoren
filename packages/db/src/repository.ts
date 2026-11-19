@@ -18,6 +18,8 @@ import {
   type WordFacts,
   applyEvent,
   composeWord,
+  writeTextAnalysis,
+  writeTextGrammar,
 } from "./projections.js";
 import { courseQueries } from "./course.js";
 import { nativeQueries, nativeWordEntries } from "./cards.js";
@@ -147,9 +149,9 @@ export interface ImportResult {
 }
 
 /**
- * Bump when a projection's meaning changes. 2: reading_progress.last_segment = next segment to read. 3: write-action events. 4: anki_words sentences, practice_items. 5: course tables. 6: text_grammar. 7: language_profiles. 8: word_evidence. 9: text_meta (edited details, covers). 10: native cards.
+ * Bump when a projection's meaning changes. 2: reading_progress.last_segment = next segment to read. 3: write-action events. 4: anki_words sentences, practice_items. 5: course tables. 6: text_grammar. 7: language_profiles. 8: word_evidence. 9: text_meta (edited details, covers). 10: native cards. 11: text analyses are a per-device cache (text_tokens.analyzed_at), kept by rebuilds.
  */
-export const PROJECTION_VERSION = 10;
+export const PROJECTION_VERSION = 11;
 
 /** Wrap every query function in the repository's mutex. */
 function serialised<T extends Record<string, (...a: never[]) => Promise<unknown>>>(
@@ -367,7 +369,7 @@ export async function createRepository(
   async function loadTexts(ids: string[]): Promise<StoredText[]> {
     if (ids.length === 0) return [];
     const rows = await driver.exec(
-      `SELECT ${TEXT_COLS}, t.content, tt.tokens, tt.analyzer_version ${TEXT_FROM}
+      `SELECT ${TEXT_COLS}, t.content, tt.tokens, tt.analyzer_version, tt.analyzed_at ${TEXT_FROM}
         WHERE t.id IN (SELECT value FROM json_each(?))`,
       [JSON.stringify(ids)],
     );
@@ -379,6 +381,7 @@ export async function createRepository(
           content: String(r["content"]),
           tokens: r["tokens"] === null ? null : json<AnalyzedToken[]>(r["tokens"]),
           analyzerVersion: r["analyzer_version"] == null ? null : String(r["analyzer_version"]),
+          analyzedAt: Number(r["analyzed_at"] ?? 0),
         },
       ]),
     );
@@ -537,6 +540,25 @@ export async function createRepository(
           )
         ).map(textGrammar),
       ),
+
+    // The analysis cache: this device's language-server results, outside the event log.
+    saveTextAnalysis: (analysis) => serial(() => writeTextAnalysis(driver, analysis, now(), true)),
+
+    saveTextGrammar: (grammar) => serial(() => writeTextGrammar(driver, grammar, now(), true)),
+
+    analyzerSeen: (version) =>
+      serial(async () => {
+        const row = (await driver.exec("SELECT value FROM meta WHERE key = 'analyzers'"))[0];
+        const seen = row ? json<Record<string, number>>(row["value"]) : {};
+        const at = seen[version];
+        if (at !== undefined) return at;
+        seen[version] = now();
+        await driver.exec(
+          "INSERT INTO meta (key, value) VALUES ('analyzers', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+          [JSON.stringify(seen)],
+        );
+        return seen[version];
+      }),
 
     setting: <T>(key: string) =>
       serial(async () => {

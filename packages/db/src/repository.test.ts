@@ -189,6 +189,14 @@ describe("projections", () => {
     await repo.append(importText("t1", content));
     await repo.append(detected("t1", contentHash("something else"))); // stale: ignored
     expect(await repo.textGrammar("t1")).toBeNull();
+    await repo.append(detected("t1")); // no tokens yet: the hits would refer to nothing
+    expect(await repo.textGrammar("t1")).toBeNull();
+    await repo.append({
+      type: "TextAnalyzed",
+      textId: "t1",
+      contentHash: contentHash(content),
+      tokens: [tok(0, "morgen")],
+    });
     await repo.append(detected("t1"));
     expect(await repo.textGrammar("t1")).toEqual({ textId: "t1", version: 1, hits });
     await repo.append(importText("t2", "Ik werk niet."));
@@ -202,7 +210,14 @@ describe("projections", () => {
     await repo.append(importText("t1", "Andere tekst."));
     expect(await repo.textGrammar("t1")).toBeNull();
     await repo.append(importText("t1", content));
+    await repo.append({
+      type: "TextAnalyzed",
+      textId: "t1",
+      contentHash: contentHash(content),
+      tokens: [tok(0, "morgen")],
+    });
     await repo.append(detected("t1"));
+    expect(await repo.textGrammar("t1")).not.toBeNull();
     await repo.append({ type: "TextDeleted", textId: "t1" });
     expect(await repo.allTextGrammar()).toEqual([]);
     expect(await driver.exec("SELECT count(*) AS c FROM text_grammar")).toEqual([{ c: 0 }]);

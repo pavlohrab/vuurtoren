@@ -29,6 +29,7 @@ export type ToolRepo = Pick<
   | "getTexts"
   | "learnerModel"
   | "listTexts"
+  | "saveTextAnalysis"
   | "staircase"
   | "suggestedWords"
   | "unitExercises"
@@ -345,12 +346,7 @@ export function createToolHandlers(deps: ToolDeps) {
             deps.analyze(content),
             repo.learnerModel(lang),
           ]);
-          await repo.append({
-            type: "TextAnalyzed",
-            textId,
-            contentHash: contentHash(content),
-            tokens,
-          });
+          await repo.saveTextAnalysis({ textId, contentHash: contentHash(content), tokens });
           coverage = Math.round(coverageReport(tokens, model).coverage * 1000) / 1000;
         } catch {
           // Analysis is optional here: the app analyses the text when it is opened.

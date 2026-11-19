@@ -123,6 +123,8 @@ describe("tool handlers", () => {
     const t = await repo.getText("new-text");
     expect(t?.sourceKind).toBe("ai");
     expect(t?.analyzed).toBe(true);
+    // The analysis is cached, not logged.
+    expect((await repo.events()).some((e) => e.event.type === "TextAnalyzed")).toBe(false);
     const ev = (await repo.events()).find(
       (e) => e.event.type === "TextImported" && e.event.textId === "new-text",
     );
