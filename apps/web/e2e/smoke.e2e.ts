@@ -86,7 +86,6 @@ test("native mode: add a word while reading, then review it", async ({ page }) =
   await fakeNlp(page);
   await fakeAnki(page);
   await page.goto("/");
-  await page.getByRole("button", { name: "Continue" }).click();
   await page.getByRole("radio", { name: /^No/ }).check();
   await page.getByRole("button", { name: "Continue" }).click();
   await page.getByRole("button", { name: "Save and continue" }).click();

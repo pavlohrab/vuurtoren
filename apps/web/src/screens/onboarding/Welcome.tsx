@@ -12,7 +12,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { type FormEvent, useEffect, useRef, useState } from "react";
-import { type LanguageProfile, type ProfileSource, defaultProfile, rootDeck } from "@app/core";
+import {
+  type LanguageProfile,
+  PROFILE_LANGUAGES,
+  type ProfileSource,
+  defaultProfile,
+  rootDeck,
+} from "@app/core";
 import { Button, Spinner, Logo } from "@app/ui";
 import { useServices } from "../../services/context.js";
 import type { AnkiStatus } from "../../services/types.js";
@@ -36,16 +42,24 @@ type Step =
   | "moving"
   | "placement"
   | "first";
-const LABEL: Record<Step, string> = {
-  language: "Language",
-  uses: "Anki",
-  choice: "Your cards",
-  anki: "Connect",
-  moving: "Import",
-  decks: "Decks",
-  destinations: "New words",
-  placement: "Quick check",
-  first: "First text",
+/** The language step is shown only when there is more than one language to choose. */
+const PICK_LANGUAGE = PROFILE_LANGUAGES.filter((l) => l.enabled).length > 1;
+
+/**
+ * The stepper shows three fixed parts, whatever the answers add or skip inside them, so it
+ * never changes length mid-flow.
+ */
+const PARTS = ["Getting started", "Your words", "First text"] as const;
+const PART: Record<Step, number> = {
+  language: 0,
+  uses: 0,
+  choice: 0,
+  anki: 0,
+  decks: 0,
+  destinations: 1,
+  moving: 1,
+  placement: 1,
+  first: 2,
 };
 
 interface Draft {
@@ -64,7 +78,7 @@ interface Draft {
 }
 
 const fresh = (): Draft => ({
-  step: "language",
+  step: PICK_LANGUAGE ? "language" : "uses",
   lang: "nl",
   sources: [],
   decksInit: false,
@@ -76,7 +90,9 @@ const fresh = (): Draft => ({
 
 function readDraft(): Draft {
   const saved = readLocalJSON(STORAGE) as Partial<Draft> | undefined;
-  return saved && typeof saved === "object" ? { ...fresh(), ...saved } : fresh();
+  if (!saved || typeof saved !== "object") return fresh();
+  const d = { ...fresh(), ...saved };
+  return d.step === "language" && !PICK_LANGUAGE ? { ...d, step: "uses" } : d;
 }
 function writeDraft(d: Draft | null): void {
   writeLocalJSON(STORAGE, d);
@@ -99,13 +115,13 @@ export function Welcome() {
   const startFresh = draft.sources.length === 0;
   const native = draft.usesAnki === false;
   const moving = draft.usesAnki === true && draft.move && !draft.noAnki && !startFresh;
+  const start: Step[] = PICK_LANGUAGE ? ["language", "uses"] : ["uses"];
   const steps: Step[] = native
-    ? ["language", "uses", "destinations", "placement", "first"]
+    ? [...start, "destinations", "placement", "first"]
     : draft.usesAnki === null
-      ? ["language", "uses", "first"]
+      ? [...start, "first"]
       : [
-          "language",
-          "uses",
+          ...start,
           "choice",
           "anki",
           "decks",
@@ -116,7 +132,7 @@ export function Welcome() {
   const at = Math.max(0, steps.indexOf(draft.step));
   const go = (step: Step) => setDraft({ step });
   const next = () => go(steps[at + 1] ?? "first");
-  const back = () => go(steps[at - 1] ?? "language");
+  const back = () => go(steps[at - 1] ?? steps[0]!);
 
   const skip = () => {
     setSkipped(true);
@@ -251,13 +267,13 @@ export function Welcome() {
       <main className="ob-card">
         <Logo size={28} className="ob-brand" />
         <ol className="ob-steps" aria-label="Setup steps">
-          {steps.map((s, i) => (
+          {PARTS.map((name, i) => (
             <li
-              key={s}
-              aria-current={s === draft.step ? "step" : undefined}
-              data-done={i < at || undefined}
+              key={name}
+              aria-current={i === PART[draft.step] ? "step" : undefined}
+              data-done={i < PART[draft.step] || undefined}
             >
-              {i + 1}. {LABEL[s]}
+              {i + 1}. {name}
             </li>
           ))}
         </ol>
@@ -277,9 +293,23 @@ export function Welcome() {
 
           {draft.step === "uses" ? (
             <>
-              <h1 ref={heading} tabIndex={-1}>
-                Do you use Anki?
-              </h1>
+              {PICK_LANGUAGE ? (
+                <h1 ref={heading} tabIndex={-1}>
+                  Do you use Anki?
+                </h1>
+              ) : (
+                <>
+                  <h1 ref={heading} tabIndex={-1}>
+                    Welcome to Kenning
+                  </h1>
+                  <p className="ob-lede">
+                    Kenning helps you read real Dutch texts at the edge of what you know. A few
+                    choices first: this takes about two minutes, and you can change everything later
+                    in Settings.
+                  </p>
+                  <h2 className="ob-question">Do you use Anki?</h2>
+                </>
+              )}
               <p className="ob-lede">
                 Kenning can keep your words and run your reviews itself, or work alongside Anki.
               </p>
