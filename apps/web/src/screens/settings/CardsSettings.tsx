@@ -4,7 +4,7 @@
  * and limits, and FSRS tuning ("Optimise now").
  */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { type ChangeEvent, useState } from "react";
+import { type ChangeEvent, useRef, useState } from "react";
 import { DEFAULT_DECK_OPTIONS, type DeckOptions } from "@app/core";
 import { Button, Select, Skeleton, Spinner, useToast } from "@app/ui";
 import { plural, relativeTime } from "../../format.js";
@@ -218,12 +218,26 @@ function ReviewWeek() {
   const services = useServices();
   const qc = useQueryClient();
   const settings = useQuery({ queryKey: ["settings"], queryFn: () => services.getSettings() });
+  // The week as last chosen here: quick changes to several days build on each other, not on
+  // settings that have not come back yet.
+  const [draft, setDraft] = useState<number[] | null>(null);
+  const saving = useRef(0);
   const save = useMutation({
     mutationFn: (reviewWeek: number[]) => services.saveSettings({ reviewWeek }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["settings"] }),
+    onMutate: () => void saving.current++,
+    onSettled: async () => {
+      await qc.invalidateQueries({ queryKey: ["settings"] });
+      if (--saving.current === 0) setDraft(null);
+    },
   });
   const week =
-    settings.data?.reviewWeek?.length === 7 ? settings.data.reviewWeek : [1, 1, 1, 1, 1, 1, 1];
+    draft ??
+    (settings.data?.reviewWeek?.length === 7 ? settings.data.reviewWeek : [1, 1, 1, 1, 1, 1, 1]);
+  const choose = (day: number, load: number) => {
+    const next = week.map((x, j) => (j === day ? load : x));
+    setDraft(next);
+    save.mutate(next);
+  };
   return (
     <section className="stack" aria-labelledby="review-week-h">
       <h3 className="settings-h3" id="review-week-h">
@@ -239,7 +253,7 @@ function ReviewWeek() {
             key={day}
             label={day}
             value={String(week[i] ?? 1)}
-            onValueChange={(v) => save.mutate(week.map((x, j) => (j === i ? Number(v) : x)))}
+            onValueChange={(v) => choose(i, Number(v))}
             options={DAY_LOAD}
           />
         ))}
