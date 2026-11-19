@@ -166,7 +166,7 @@ export const MIGRATIONS: readonly (readonly string[])[] = [
      )`,
   ],
   [
-    // App evidence per word (ADR 0011): additive sums, so independent of event order.
+    // App evidence per word: additive sums, so independent of event order.
     `CREATE TABLE word_evidence (
        lang TEXT NOT NULL,
        key TEXT NOT NULL,
@@ -197,7 +197,7 @@ export const MIGRATIONS: readonly (readonly string[])[] = [
      )`,
   ],
   [
-    // Analyzer version of the stored tokens (review A4): texts re-analyse when it changes.
+    // Analyzer version of the stored tokens: texts re-analyse when it changes.
     `ALTER TABLE text_tokens ADD COLUMN analyzer_version TEXT`,
   ],
 ];

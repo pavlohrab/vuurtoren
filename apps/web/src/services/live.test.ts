@@ -232,7 +232,7 @@ describe("live textWords", () => {
     ]);
   });
 
-  it("lets reader cloze answers teach the learner model (ADR 0011)", async () => {
+  it("lets reader cloze answers teach the learner model", async () => {
     const backend = fakeBackend({ notes: NOTES });
     const { repo, services, textId } = await setup(backend, KNOWN, ANKI_WORDS);
     repoToClose = repo;

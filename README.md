@@ -8,7 +8,7 @@
 
 <p align="center">
   <strong>Read Dutch with the words you already know.</strong><br>
-  An open-source, self-hosted reader that uses your Anki decks as the record of your vocabulary.
+  An open-source reader that uses your Anki decks as the record of your vocabulary.
 </p>
 
 <p align="center">
@@ -21,12 +21,11 @@
 </p>
 
 <p align="center">
-  <a href="#quick-start">Quick start</a> ·
+  <a href="#download">Download</a> ·
   <a href="#a-tour">Tour</a> ·
   <a href="#how-it-works">How it works</a> ·
-  <a href="#architecture">Architecture</a> ·
-  <a href="#roadmap">Roadmap</a> ·
-  <a href="docs/README.md">Docs</a>
+  <a href="#self-hosting">Self-hosting</a> ·
+  <a href="#development">Development</a>
 </p>
 
 <picture>
@@ -53,19 +52,19 @@ to Anki with the sentence you found it in.
 
 - **Your Anki decks are the source of truth.** Dutch decks and fields are found automatically;
   each card's interval (SM-2) or stability (FSRS) becomes a recall probability.
-- **Graded reading of your own texts.** Paste, a web address, a PDF (OCR for scans) or a photo.
+- **Graded reading of your own texts.** Paste, a web address, a PDF, an EPUB or a photo.
   Read, Cloze and Gloss modes, an exact new-words budget per page, and cloze hints.
 - **Real Dutch analysis.** spaCy plus rules for separable verbs (_bel … op_ → _opbellen_),
   compounds glossed from their parts, an offline Wiktionary dictionary and offline sentence
   translation.
-- **Practice, grammar, exam.** Exercises without AI on their own FSRS schedule, 24 grammar topic
-  pages with examples from what you read, and preparation for the A2 inburgeringsexamen.
+- **Practice, grammar, exam.** Exercises without AI on their own FSRS schedule, grammar topic
+  pages (A1–C1) with examples from what you read, and preparation for the A2 inburgeringsexamen.
 - **Study along your textbook.** Import the course book you own; units, word lists and
   exercises are found and matched to your decks.
 - **No AI needed; bring your own key if you want it.** Talk, stories and explanations are
   optional extras with Anthropic, any OpenAI-compatible provider, or a local model.
-- **Private and self-hosted.** Your data lives in your browser or in one SQLite file on your own
-  server. Kenning writes to Anki only when you click.
+- **Private.** Your data is one SQLite file on your computer or your own server. Kenning writes
+  to Anki only when you click.
 
 ## A tour
 
@@ -129,7 +128,7 @@ to Anki with the sentence you found it in.
   <tr>
     <td width="50%" valign="top">
       <h3>Grammar</h3>
-      A learning path of 24 Dutch topics, each with an explanation, examples from your own
+      A learning path of Dutch grammar topics from A1 to C1, each with an explanation, examples from your own
       texts (then Tatoeba), common mistakes and focused practice.
     </td>
     <td width="50%" valign="top">
@@ -182,169 +181,74 @@ to Anki with the sentence you found it in.
 
 <sub>Screenshots use the built-in demo data (<code>?demo</code>) and follow your GitHub theme.</sub>
 
+## Download
+
+| System  | File                                                                                 |
+| ------- | ------------------------------------------------------------------------------------ |
+| Windows | [`.exe` installer](https://github.com/pavlohrab/Kenning/releases/latest)             |
+| Linux   | [`.AppImage` or `.deb`](https://github.com/pavlohrab/Kenning/releases/latest)        |
+| macOS   | [`.dmg` (Apple chip or Intel)](https://github.com/pavlohrab/Kenning/releases/latest) |
+
+Open it, keep Anki open with [AnkiConnect](https://ankiweb.net/shared/info/2055492159) (add-on
+code `2055492159`), done. The `Kenning_offline_…` files include the Dutch data, for a computer
+without internet.
+
+The apps are not signed yet. **Windows:** click **More info → Run anyway**. **macOS:** right-click
+the app → **Open**. **AppImage:** make it executable (`chmod +x`), then run it.
+
 ## How it works
 
-**Anki is the record of what you know.** Kenning finds your Dutch decks and their word,
-sentence and gloss fields, merges them, and turns each card into a recall probability (SM-2
-decay since the last review, or FSRS stability). A word counts as known at an interval of 21
-days or more with recall of at least 0.6. Answers you give in Kenning (practice, clozes, book
-exercises) add evidence that you are learning a word but never make it known; only Anki or an
-explicit **Mark known** does that.
+**Anki is the record of what you know.** Kenning reads your Dutch decks and turns each card into a
+recall probability (SM-2 or FSRS). A word counts as known at an interval of 21 days or more with
+recall of at least 0.6. Answers you give in Kenning add evidence but never make a word known; only
+Anki or **Mark known** does that.
 
-**Algorithms, not AI, by default.** Texts are analysed by spaCy with precision rules for lemma
-choice, separable verbs, te-forms and compounds. Meanings come from an offline Wiktionary
-dictionary; sentences are translated by an offline OPUS-MT model on your own server. Per page,
-a planner decides which words to leave plain, which few to introduce and which to blank as
-clozes, and a staircase controller adapts the new-word budget to how you read. Practice is
-scheduled with FSRS per (word, skill), and grammar detectors are rule-based. Every rule and
-threshold is written down in [docs/algorithms.md](docs/algorithms.md).
+**Algorithms, not AI.** Texts are analysed by spaCy with rules for lemmas, separable verbs and
+compounds. Meanings come from an offline Wiktionary dictionary, sentences are translated by an
+offline model, and a planner picks which words to leave plain, introduce or blank. Practice is
+scheduled with FSRS. Every rule and threshold: [docs/algorithms.md](docs/algorithms.md).
 
-**AI is optional, with your own key.** Add a provider in Settings (Anthropic, OpenAI, Gemini,
-OpenRouter, Groq, DeepSeek, Mistral, or a local Ollama / LM Studio) to unlock Talk, Explain
-this sentence, Simplify this page, stories at your level, extra example sentences and
-exercises like your textbook's. Generated text is checked against your vocabulary and by the
-language server before you see it. There is also an MCP server for Claude Desktop and Claude
-Code. Details: [docs/ai.md](docs/ai.md).
+**AI is optional, with your own key**: Talk, explanations, stories at your level, extra example
+sentences and exercises. Generated text is checked against your vocabulary before you see it.
+Claude Code and Claude Desktop can connect over MCP. See [docs/ai.md](docs/ai.md).
 
-**Privacy.** No telemetry and no third-party scripts. AI requests go from your browser straight
-to the provider you chose; the key stays on your device (optionally encrypted with a
-passphrase) and is never written to your data, backups or the server. Kenning talks to Anki
-through AnkiConnect from your browser and writes only when you click (Add, Study first, Mark
-known), tagging every note it touches.
+**Private.** No telemetry, no third-party scripts. AI requests go straight from your device to
+the provider you chose, and the key never leaves the device.
 
-## Quick start
+## Self-hosting
 
-You need [Docker](https://docs.docker.com/get-docker/) and, for your vocabulary, Anki desktop
-with the [AnkiConnect](https://ankiweb.net/shared/info/2055492159) add-on (code `2055492159`).
+For one Kenning shared by all your devices:
 
 ```sh
 git clone https://github.com/pavlohrab/Kenning.git && cd Kenning
 docker compose -f deploy/compose.yml up -d
 ```
 
-Open <http://localhost:8080>, follow the welcome steps and click **Connect to Anki** (Anki asks
-once whether to allow the site). Add `--build` to build the images yourself instead of pulling
-them from `ghcr.io`.
+Open <http://localhost:8080>. HTTPS, sign-in, Dockge + Cloudflare Tunnel, updates and backups:
+[deploy/README.md](deploy/README.md).
 
-<details>
-<summary><b>Dockge + Cloudflare Tunnel</b> (a public <code>https://</code> address, no open ports)</summary>
+## Development
 
-1. Create a password hash: `docker run --rm -it ghcr.io/pavlohrab/kenning-api:latest hash-password`.
-2. In Dockge, **+ Compose** a stack named `kenning` from
-   [`deploy/dockge/compose.yaml`](deploy/dockge/compose.yaml) and
-   [`deploy/dockge/.env.example`](deploy/dockge/.env.example); set your user, the hash,
-   `KENNING_TRUST_CF=1`, `TUNNEL_TOKEN` and `COMPOSE_PROFILES=tunnel`.
-3. In Cloudflare Zero Trust, create a tunnel and point a public hostname at `http://web:80`.
-4. Deploy, wait until the services are healthy, open your address and sign in.
-
-Anki keeps working: your browser talks to AnkiConnect on your own computer. The full guide,
-with Caddy, Tailscale, sign-in, updates and backups: [deploy/README.md](deploy/README.md).
-
-</details>
-
-**Install it as an app** (Chrome or Edge on Linux and Windows): open Kenning over `https://` or
-`http://localhost`, then use the install icon in the address bar, or **Settings → Advanced →
-Install app**. Kenning then opens in its own window, starts without a connection (your data
-in browser storage works offline) and shows "A new version is ready — Reload" after an update.
-
-### Desktop app
-
-The easiest way to use Kenning: download the installer for Linux (AppImage, .deb), Windows
-(.exe, .msi) or macOS (.dmg, Apple chip or Intel) from a release, open it, keep Anki open, done.
-No server, no Docker, nothing to set up: your data is one file in `Documents/Kenning`
-(Settings → Your data shows it, with "Show in folder" and "Move…"), the Dutch language tools
-run inside the app (the dictionary and translation model, ~104 MB, download once on first start;
-the `Kenning_offline_…` installers include them), and Anki works without any AnkiConnect setup.
-Photo/scan import needs a server (the app has no OCR). The app can also connect to a Kenning
-server instead. The builds are unsigned (Windows: More info > Run anyway; macOS: right-click >
-Open). Details, sizes, updates and building it yourself: [docs/desktop.md](docs/desktop.md).
-
-### Development
-
-Requirements: Node ≥ 22, pnpm, [uv](https://docs.astral.sh/uv/), Python ≥ 3.12.
+Node ≥ 22, pnpm, [uv](https://docs.astral.sh/uv/), Python ≥ 3.12.
 
 ```sh
 pnpm install && pnpm build
-
-# one-time data (git-ignored): 34 MB dictionary + 154 MB translation model
 cd server/nlp && uv run python scripts/build_dictionary.py && uv run python scripts/fetch_mt_model.py && cd -
-# (or, with published packs: KENNING_PACKS=download KENNING_PACKS_URL=... uv run python -c "from kenning_nlp import packs; print(packs.ensure())")
-
-pnpm nlp     # language server on :8000 (spaCy, dictionary, OCR, translation)
-pnpm dev     # web app on http://localhost:5173 (proxies /nlp and /anki)
+pnpm nlp     # language server on :8000
+pnpm dev     # web app on http://localhost:5173
 ```
 
-Open <http://localhost:5173/?demo> to explore with demo data and no Anki. Checks:
-`pnpm build && pnpm typecheck && pnpm lint && pnpm test`, and `uv run pytest` in `server/nlp`.
+`http://localhost:5173/?demo` runs with demo data and no Anki. Desktop app:
+`pnpm --filter @app/desktop tauri dev`.
 
-## Architecture
+Checks: `pnpm build && pnpm typecheck && pnpm lint && pnpm test`, and
+`uv run ruff check && uv run pytest` in `server/nlp`.
 
-```mermaid
-flowchart LR
-  subgraph Browser["Your browser"]
-    WEB["apps/web<br/>React PWA"]
-    DBL[("SQLite in OPFS<br/>event log")]
-    WEB --- DBL
-  end
-  ANKI["Anki desktop<br/>+ AnkiConnect"]
-  AI["AI provider<br/>(optional, your key)"]
-  subgraph Server["Your server (Docker compose)"]
-    NGINX["web<br/>nginx: app + proxy"]
-    NLP["nlp<br/>FastAPI · spaCy · Wiktionary<br/>OPUS-MT · Tesseract"]
-    API["api<br/>sign-in + one SQLite file"]
-    NGINX --> NLP
-    NGINX --> API
-  end
-  WEB <-->|"reads decks, writes on click"| ANKI
-  WEB -->|"/nlp"| NGINX
-  WEB -.->|"/api (server storage mode)"| NGINX
-  WEB -.-> AI
-  MCP["apps/mcp<br/>MCP server"] -.-> NGINX
-  MCP -.-> ANKI
-```
+Docs: [architecture](docs/architecture.md) · [algorithms](docs/algorithms.md) ·
+[decisions](docs/decisions.md) · [design system](docs/design-system.md) ·
+[roadmap](docs/roadmap.md).
 
-| Path               | What it is                                                                                            |
-| ------------------ | ----------------------------------------------------------------------------------------------------- |
-| `apps/web`         | Vite + React PWA: reader, words, practice, courses, grammar, exam, talk                               |
-| `apps/mcp`         | stdio MCP server (known words, coverage, texts, add to Anki)                                          |
-| `packages/core`    | pure TypeScript domain logic: learner model, planner, exercises, FSRS                                 |
-| `packages/anki`    | AnkiConnect client, deck detection, one command layer for Anki writes                                 |
-| `packages/db`      | event log and projections (browser SQLite, or the server over HTTP)                                   |
-| `packages/ai`      | bring-your-own-key adapters and prompts                                                               |
-| `packages/content` | grammar topics and exam content, validated at build                                                   |
-| `packages/ui`      | design system components                                                                              |
-| `server/nlp`       | Python FastAPI language server (analysis, dictionary, OCR, translation)                               |
-| `server/api`       | storage and sign-in for server mode                                                                   |
-| `deploy/`          | compose files, nginx, Caddy, Dockge stack                                                             |
-| `docs/`            | [status](docs/STATUS.md), [algorithms](docs/algorithms.md), [design](docs/design/), [ADRs](docs/adr/) |
-
-## Roadmap
-
-|     | Milestone              |                                                                                                   |
-| --- | ---------------------- | ------------------------------------------------------------------------------------------------- |
-| ✅  | **Anki ↔ words**       | deck detection, learner model, 99.1% headword match on a real 7k-note collection                  |
-| ✅  | **Reader**             | import (paste, URL, PDF, photo), graded pages, Read / Cloze / Gloss, word inspector, Anki actions |
-| ✅  | **Practice & grammar** | exercises without AI, FSRS per skill, 24 topic pages, grammar focus in the reader                 |
-| ✅  | **Courses**            | study along your textbook: import, outline, word lists, deck matching, book exercises             |
-| ✅  | **Exam**               | A2 inburgeringsexamen: overview, practice and timed mock exams for all five parts                 |
-| ✅  | **AI (optional)**      | Talk, explanations, stories, sentences and exercises with your own key; MCP server                |
-| ✅  | **Self-hosting**       | Docker images, server storage mode, sign-in, Dockge + Cloudflare Tunnel                           |
-| 🔜  | **Weave reading**      | an English text with Dutch islands that grow as you learn                                         |
-| 🔜  | **Sync**               | encrypted sync between devices (folder, WebDAV, GitHub)                                           |
-| 🔜  | **Desktop & beyond**   | a desktop app, a browser extension, mobile                                                        |
-
-What works today, what is still being tested and the known issues: [docs/STATUS.md](docs/STATUS.md).
-
-## Contributing
-
-Issues and pull requests are welcome. Before you open a PR:
-
-- run `pnpm build && pnpm typecheck && pnpm lint && pnpm test` (and `uv run ruff check && uv run pytest` in `server/nlp` for Python changes);
-- keep algorithms documented: a new rule or threshold belongs in [docs/algorithms.md](docs/algorithms.md);
-- follow the [design system](docs/design/design-system.md) for anything visible, and record
-  bigger decisions as an [ADR](docs/adr/).
-
-Unless you say otherwise, contributions are dual-licensed as below.
+Issues and pull requests are welcome. Contributions are dual-licensed as below.
 
 ## Licence
 

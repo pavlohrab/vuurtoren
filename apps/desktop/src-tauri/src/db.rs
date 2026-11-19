@@ -1,4 +1,4 @@
-//! The local database of the offline app (D4): one SQLite file in a folder the user can see
+//! The local database of the offline app: one SQLite file in a folder the user can see
 //! (`~/Documents/Kenning/kenning.sqlite` by default), opened natively with rusqlite.
 //!
 //! The web app's `SqlDriver` (packages/db/src/native.ts) sends every statement here; schema,

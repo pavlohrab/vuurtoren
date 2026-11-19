@@ -1,4 +1,4 @@
-/** HTTP client for server/nlp (see ADR 0004). Types mirror server/nlp/src/kenning_nlp/models.py. */
+/** HTTP client for server/nlp. Types mirror server/nlp/src/kenning_nlp/models.py. */
 
 export type NlpLang = "nl";
 
@@ -25,7 +25,7 @@ export interface Token {
 
 export interface TextAnalysis {
   tokens: Token[];
-  /** Version of the server's analyzer (review A4); absent from servers before D1. */
+  /** Version of the server's analyzer; absent from older servers. */
   analyzerVersion?: string;
 }
 

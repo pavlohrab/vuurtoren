@@ -12,7 +12,7 @@
  *   POST /api/mcp      MCP over Streamable HTTP (Claude Code; see mcp.ts). Also accepts a
  *                      per-user MCP token, which opens nothing else.
  *
- * When auth is on (password and/or token, ADR 0009) every endpoint except health and the
+ * When auth is on (password and/or token) every endpoint except health and the
  * sign-in routes needs a session cookie or `Authorization: Bearer <token>`. State-changing
  * requests are CSRF-checked in every mode.
  */

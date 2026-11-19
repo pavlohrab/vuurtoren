@@ -1,5 +1,5 @@
 /**
- * Installable app (D0) against `vite preview` of the build: the manifest's icons exist, the
+ * Installable app against `vite preview` of the build: the manifest's icons exist, the
  * service worker registers with scope /, controls the page after a reload, never caches /api
  * or /nlp, and the app shell starts offline.
  */

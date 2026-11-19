@@ -19,7 +19,7 @@ export interface ServerHealth {
   state: "ready" | "schema-too-new";
   /** True when requests need a sign-in session (cookie) or `Authorization: Bearer <token>`. */
   authRequired: boolean;
-  /** How one can sign in (absent on servers older than ADR 0009: token only). */
+  /** How one can sign in (absent on old token-only servers). */
   authMethods?: ("password" | "token")[];
   schemaVersion: number;
   /** Schema version found in the file when `state` is "schema-too-new". */
@@ -123,7 +123,7 @@ export function createHttpAdmin(
 export type HttpRepository = KenningRepository &
   DataAdmin & {
     /**
-     * Cross-device freshness (review A7): true when someone else (another device or tab)
+     * Cross-device freshness: true when someone else (another device or tab)
      * changed the server's data since the previous check (or since connecting). Own appends
      * through this repository do not count. One cheap `head` RPC. Returns false while an own
      * append is in flight (asked again on the next check) and on servers without `head`.

@@ -1,5 +1,5 @@
 /**
- * Course packs (docs/design/courses.md, "Course packs"): a course as one versioned JSON file.
+ * Course packs: a course as one versioned JSON file.
  *
  * - **full**: everything, including the OCR'd text of the book (blocks, exercise prompts). For
  *   your own backup or to move a course between your own devices; never for sharing.

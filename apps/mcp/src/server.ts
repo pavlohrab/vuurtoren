@@ -5,7 +5,7 @@ import type { AddToAnki } from "./handlers.js";
 
 /**
  * The stdio server: the shared Kenning tools plus `add_to_anki` (local AnkiConnect), which
- * the user must ask for explicitly (ADR 0007).
+ * the user must ask for explicitly.
  */
 export function buildServer(h: ToolHandlers, addToAnki: AddToAnki): McpServer {
   const server = createKenningMcpServer(h);

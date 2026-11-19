@@ -1,5 +1,5 @@
 /**
- * Course projections (docs/design/courses.md): event -> table logic and read queries.
+ * Course projections: event -> table logic and read queries.
  * `applyCourseEvent` is called from `applyEvent`, so live appends and `rebuild()` share it.
  */
 import type { Block, BookExercise, Course, Unit, UnitWord } from "@app/core";

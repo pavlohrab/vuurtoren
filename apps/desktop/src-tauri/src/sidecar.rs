@@ -1,4 +1,4 @@
-//! The bundled language server (D4): `kenning-nlp`, a PyInstaller build of server/nlp, started
+//! The bundled language server: `kenning-nlp`, a PyInstaller build of server/nlp, started
 //! as a child process on a free 127.0.0.1 port with a random token. The web app never talks to
 //! it directly: its `/nlp/...` requests go to the `kenning-nlp:` protocol (see `proxy`), which
 //! adds the token in Rust. The process is stopped when the app exits; if the app dies, the

@@ -1,6 +1,6 @@
 """Data packs: the dictionary, the sentence DB, the MT model and the grammar-example cache.
 
-The data is not part of the image (D1). Each pack has a version in ``packs.json`` (next to this
+The data is not part of the image. Each pack has a version in ``packs.json`` (next to this
 file: version, SHA-256 and size of its ``<name>-<version>.tar.gz`` archive). The installed state
 of a pack is a marker next to its data (``dictionary-nl.sqlite.pack.json``). A pack is
 

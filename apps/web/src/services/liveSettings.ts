@@ -96,7 +96,7 @@ export function createLiveSettings({ repo, platform, changed }: LiveSettingsDeps
 
   const lang = async () => (await settings()).lang;
 
-  // Every language-server call feeds the shared degraded signal (review A17).
+  // Every language-server call feeds the shared degraded signal.
   const nlp = async () =>
     watchClient(
       new NlpClient({ url: (await settings()).nlpUrl, fetch: platform.fetch }),

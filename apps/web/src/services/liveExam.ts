@@ -1,4 +1,4 @@
-/** Exam preparation over the repository (docs/exam.md): attempts as ExamAttempt events. */
+/** Exam preparation over the repository: attempts as ExamAttempt events. */
 import type { KenningRepository } from "@app/db";
 import type { ExamServices } from "./examTypes.js";
 

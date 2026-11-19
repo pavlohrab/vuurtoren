@@ -31,8 +31,8 @@ services:
       - kenning-nlp-data:/data
     networks: [internal]
 
-  # Your data: ONE SQLite file on the kenning-data volume, shared by every device (ADR 0008).
-  # Sign-in (ADR 0009) is off unless a password or token is set; set one before the app is
+  # Your data: ONE SQLite file on the kenning-data volume, shared by every device.
+  # Sign-in is off unless a password or token is set; set one before the app is
   # reachable from anywhere but this computer. Create the hash with:
   #   docker compose -f deploy/compose.yml run --rm -it api hash-password
   api:

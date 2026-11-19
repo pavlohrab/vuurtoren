@@ -130,7 +130,7 @@ export function conversationText(c: ConversationView): string {
     .join("\n\n");
 }
 
-/** Talk (route /talk, formerly Converse): talk with a partner who keeps to words you know (needs an AI provider in Settings). */
+/** Talk (route /talk): talk with a partner who keeps to words you know (needs an AI provider in Settings). */
 export function Converse() {
   const services = useServices();
   const navigate = useNavigate();

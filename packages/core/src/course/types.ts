@@ -1,5 +1,5 @@
 /**
- * Course model (docs/design/courses.md): a user-supplied book becomes units, blocks of OCR'd
+ * Course model: a user-supplied book becomes units, blocks of OCR'd
  * text, book exercises and unit words. Pure data; persisted as events by packages/db
  * (`CourseImported`, `UnitDefined`, ...). Nothing here ever ships content of a book.
  */

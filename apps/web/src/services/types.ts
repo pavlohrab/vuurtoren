@@ -59,7 +59,7 @@ export interface Settings {
   lang: "nl";
   /**
    * @deprecated Kept to migrate older users: the language profile's destinations decide where
-   * new words go (ADR 0010).
+   * new words go.
    */
   targetDeck: string;
   theme: "system" | "light" | "dark";
@@ -210,7 +210,7 @@ export interface PracticeOptions {
 export interface AppServices
   extends CourseServices, AIServices, ProfileServices, ExamServices, LibraryServices {
   /**
-   * Server mode only (review A7): ask the server whether another device changed the shared
+   * Server mode only: ask the server whether another device changed the shared
    * data; if so, drop the service caches and return true (the caller then refetches its
    * queries). Absent in browser and demo mode. Rejects when the server is unreachable.
    */
@@ -239,22 +239,22 @@ export interface AppServices
   /** Words Claude suggested over MCP, waiting for the learner (newest first). */
   suggestedWords(): Promise<SuggestedWord[]>;
   /**
-   * Add a suggested word to Anki (the learner's click, ADR 0007) with Claude's gloss and
+   * Add a suggested word to Anki (the learner's click) with Claude's gloss and
    * sentence, then take it off the queue.
    */
   addSuggestedToAnki(key: string, opts?: AddOptions): Promise<{ noteId: number; deck: string }>;
   /** Take a suggestion off the queue without adding it. */
   dismissSuggestion(key: string): Promise<void>;
-  /** Move the word's new card to the front of its deck, unsuspending it (ADR 0007). */
+  /** Move the word's new card to the front of its deck, unsuspending it. */
   learnNext(entry: InspectorEntry): Promise<{ deck: string }>;
-  /** Mark the word known in Anki (adding the note first if needed), then record it (ADR 0007). */
+  /** Mark the word known in Anki (adding the note first if needed), then record it. */
   markKnown(entry: InspectorEntry, opts?: AddOptions): Promise<{ addedToDeck?: string }>;
   /** Drop a manual state so Anki's applies again. */
   resetWordState(key: string): Promise<void>;
   /** App-only state changes (Ignore). Marking known goes through `markKnown`. */
   setWordState(key: string, state: WordState): Promise<void>;
   recordLookup(textId: string, key: string): Promise<void>;
-  /** One answered reader cloze (first answer per blank): feeds the word's app evidence (ADR 0011). */
+  /** One answered reader cloze (first answer per blank): feeds the word's app evidence. */
   recordClozeAnswer(key: string, correct: boolean, hinted: boolean): Promise<void>;
   finishSegment(
     textId: string,
@@ -274,13 +274,13 @@ export interface AppServices
   practiceOverview(): Promise<PracticeOverview>;
   /**
    * Build a session: due items first, then new ones, from words you are learning or know.
-   * Never writes to Anki (ADR 0003).
+   * Never writes to Anki.
    */
   startPractice(opts?: PracticeOptions): Promise<Exercise[]>;
   /** Grade an answer, schedule the (word, skill) pair and record it. */
   answerExercise(exercise: Exercise, attempt: AttemptInput): Promise<AnswerResult>;
   /**
-   * Grammar constructions in a text (M5): detected once by the language server, then stored
+   * Grammar constructions in a text: detected once by the language server, then stored
    * with the analysis. Rejects when they are not stored and the server cannot be reached.
    */
   textGrammar(textId: string): Promise<GrammarHit[]>;

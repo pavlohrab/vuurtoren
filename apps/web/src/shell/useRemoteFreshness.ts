@@ -14,7 +14,7 @@ import {
 import type { AppServices } from "../services/types.js";
 
 /**
- * Cross-device freshness (review A7, server mode only): on focus, on becoming visible and every
+ * Cross-device freshness (server mode only): on focus, on becoming visible and every
  * ~30 s while visible, ask whether another device changed the data; if so every query is
  * refetched (the services already dropped their caches). Deferred while a practice session
  * holds it. An unreachable server shows in the degraded indicator; Retry checks again.

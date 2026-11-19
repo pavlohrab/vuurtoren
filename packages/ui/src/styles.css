@@ -1,5 +1,5 @@
 /*
- * Kenning design tokens and component styles (docs/design/design-system.md).
+ * Kenning design tokens and component styles (docs/design-system.md).
  * Direction "Night lamp": dark-first and focused, like reading under a lamp. The light theme
  * is designed on its own (cool, violet-tinted paper), not an inversion.
  *
@@ -46,7 +46,7 @@
   --font-display: "Instrument Sans Variable", "Inter Variable", system-ui, sans-serif;
   --font-mono: "JetBrains Mono Variable", ui-monospace, "SFMono-Regular", Menlo, monospace;
 
-  /* Motion budget (docs/design/design-system.md): CSS only, transform/opacity, 150–300 ms,
+  /* Motion budget (docs/design-system.md): CSS only, transform/opacity, 150–300 ms,
      nothing loops (except the busy spinner and loading skeletons), all off under
      prefers-reduced-motion. Use these tokens, never raw durations or easings. */
   --dur-fast: 150ms;
@@ -848,7 +848,7 @@ a.k-row:hover .k-row-go {
   cursor: not-allowed;
 }
 
-/* ---------- Word state / Anki status / lemma (docs/design/naming.md) ---------- */
+/* ---------- Word state / Anki status / lemma ---------- */
 .k-state--known {
   color: var(--known-ink);
   background: var(--known-soft);

@@ -1,6 +1,6 @@
 # @app/db
 
-Local-first persistence for Kenning (ADR 0002). An append-only `events` table is the source of
+Local-first persistence for Kenning. An append-only `events` table is the source of
 truth; every other table is a projection that `rebuild()` can recreate by replaying the log.
 
 ## Entry points
@@ -10,7 +10,7 @@ truth; every other table is a projection that `rebuild()` can recreate by replay
 | `@app/db`        | `createRepository`, schema/migrations, ULID/HLC helpers, `contentHash`, types. No drivers |
 | `@app/db/node`   | `createNodeDriver(path = ":memory:")` on `node:sqlite` (tests, CLI)                       |
 | `@app/db/web`    | `createWebDriver(name = "kenning")`: sqlite-wasm + opfs-sahpool in a dedicated worker     |
-| `@app/db/native` | `createNativeDriver(native)`: the desktop app's SQLite file via its Rust commands (D4)    |
+| `@app/db/native` | `createNativeDriver(native)`: the desktop app's SQLite file via its Rust commands         |
 
 The root export never imports `node:sqlite` or the web driver, so apps tree-shake cleanly.
 
@@ -60,7 +60,7 @@ Helpers: `contentHash(text)` (SHA-256 hex of UTF-8, synchronous, pure) is the ha
   Below the override, app evidence (`word_evidence`, from `ExerciseAnswered`, `ClozeAnswered`
   and `BookExerciseAnswered` with `keys`) is overlaid with `withAppEvidence` from `@app/core`:
   it can raise pKnown and make a word `learning` (`appLearning: true`), never demotes `known` /
-  `ignored`, and fades with the repository clock (ADR 0011).
+  `ignored`, and fades with the repository clock.
 
 - **RPC** (`rpc.ts`): only allow-listed methods; `append` accepts known event types up to
   `MAX_RPC_EVENT_CHARS`; `rebuild` is not remotely callable.

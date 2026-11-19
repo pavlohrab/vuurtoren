@@ -1,4 +1,4 @@
-/** Contract of the language profile, deck routing and onboarding services (ADR 0010). */
+/** Contract of the language profile, deck routing and onboarding services. */
 import type { AddSource, LanguageProfile } from "@app/core";
 import type { DeckOption } from "@app/ui";
 

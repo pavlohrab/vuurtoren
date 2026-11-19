@@ -1,9 +1,9 @@
 /**
- * Contracts for practice (M4). Implemented in packages/core/src/practice/*.ts (engine),
+ * Contracts for practice. Implemented in packages/core/src/practice/*.ts (engine),
  * fed by server/nlp (/forms, /sentences, /similar) and the app (apps/web), persisted by
- * packages/db (ExerciseAnswered events). See docs/roadmap.md M4 and docs/research/03 §4–5.
+ * packages/db (ExerciseAnswered events).
  *
- * Practice results never go to Anki (ADR 0003): each (word, skill) has its own FSRS state.
+ * Practice results never go to Anki: each (word, skill) has its own FSRS state.
  */
 import type { WordState } from "../memory.js";
 

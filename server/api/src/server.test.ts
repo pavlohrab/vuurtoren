@@ -192,7 +192,7 @@ describe("http repository", () => {
     expect((await rpc("unitWords", ["c1", "1"])).status).toBe(400);
   });
 
-  it("serves stored grammar hits (M5)", async () => {
+  it("serves stored grammar hits", async () => {
     const repo = await createHttpRepository(base);
     const content = "Morgen ga ik naar school.";
     await repo.append({
@@ -389,7 +389,7 @@ describe("body caps", () => {
   });
 });
 
-describe("cross-device freshness (review A7)", () => {
+describe("cross-device freshness", () => {
   beforeEach(() => start());
 
   it("each HTTP client sees the other's appends but not its own", async () => {

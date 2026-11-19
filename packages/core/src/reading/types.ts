@@ -1,7 +1,7 @@
 /**
- * Contracts for graded reading (M3). Implemented in packages/core/src/reading/*.ts,
+ * Contracts for graded reading. Implemented in packages/core/src/reading/*.ts,
  * rendered by packages/ui (Reader, WordInspector), persisted by packages/db.
- * See docs/research/03-algorithms.md §3 and docs/research/06-weave-reading.md.
+ *
  */
 import type { TokenLike } from "../match.js";
 

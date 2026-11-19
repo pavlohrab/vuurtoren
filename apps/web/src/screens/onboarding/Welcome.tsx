@@ -1,5 +1,5 @@
 /**
- * First-run onboarding (ADR 0010): language → connect Anki → confirm decks → where new words go
+ * First-run onboarding: language → connect Anki → confirm decks → where new words go
  * → (start fresh) placement check → first text. Skippable; the step and choices are kept in
  * localStorage so a reload resumes where the learner was. Nothing is written to Anki here.
  */

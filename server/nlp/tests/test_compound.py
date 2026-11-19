@@ -223,7 +223,7 @@ def test_real_db_coverage_on_news_text(capsys: pytest.CaptureFixture[str]):
     assert after >= 0.95
 
 
-# ----------------------------------------------------------------------------- M4 inflections
+# ----------------------------------------------------------------------------- inflections
 
 
 def test_inflection_candidates_pure() -> None:

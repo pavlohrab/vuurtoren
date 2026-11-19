@@ -1,4 +1,4 @@
-/** Contract of the exam-preparation services (docs/exam.md). */
+/** Contract of the exam-preparation services. */
 import type { ExamFeedback, ExamFeedbackInput, ExamItemPart, GeneratedExamItem } from "@app/ai";
 import type { ExamPart } from "@app/content";
 import type { ExamAttemptRecord } from "@app/db";

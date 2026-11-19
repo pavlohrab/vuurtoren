@@ -8,7 +8,7 @@
  *
  * `requestPermission` (legacy API, allowed from any origin) shows an "allow this site?" dialog
  * inside Anki, so it is only ever called on an explicit user action, never while probing.
- * See docs/research/02-anki-integration.md.
+ *
  */
 import { AnkiConnectClient, AnkiConnectError, type AnkiConnectOptions } from "./client.js";
 

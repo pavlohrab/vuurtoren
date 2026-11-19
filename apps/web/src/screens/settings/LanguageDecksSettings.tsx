@@ -16,7 +16,7 @@ import { useAutosave } from "./useAutosave.js";
 
 const message = (e: unknown) => (e instanceof Error && e.message ? e.message : "Try again.");
 
-/** Settings → Language & decks: the language profile (ADR 0010). */
+/** Settings → Language & decks: the language profile. */
 export function LanguageDecksSettings() {
   const services = useServices();
   const qc = useQueryClient();

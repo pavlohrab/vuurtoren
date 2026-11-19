@@ -908,7 +908,7 @@ describe("file database", () => {
   });
 });
 
-describe("batched reads and head (review A7, A8)", () => {
+describe("batched reads and head", () => {
   it("wordsByKeys and getTexts equal the single-item calls", async () => {
     const { repo } = await newRepo();
     await repo.append({

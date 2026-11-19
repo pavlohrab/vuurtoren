@@ -1,4 +1,4 @@
-"""Entry point of the desktop sidecar (D4): the language server inside the Kenning desktop app.
+"""Entry point of the desktop sidecar: the language server inside the Kenning desktop app.
 
 The desktop app (apps/desktop, ``src/sidecar.rs``) starts this as a child process with:
 

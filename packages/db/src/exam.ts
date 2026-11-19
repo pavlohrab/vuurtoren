@@ -1,5 +1,5 @@
 /**
- * Exam preparation (docs/exam.md): folds ExamAttempt events into a list of attempts. Pure and
+ * Exam preparation: folds ExamAttempt events into a list of attempts. Pure and
  * table-free like generated.ts, so no schema migration is needed and the local and HTTP
  * repositories answer the same way.
  */

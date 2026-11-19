@@ -1,5 +1,5 @@
 /**
- * One shared "degraded" signal (review A17): optional parts of the app (language server, Anki,
+ * One shared "degraded" signal: optional parts of the app (language server, Anki,
  * AI provider, translation, the storage server) report here when they stop answering, and
  * clear their entry when they answer again. The shell shows a quiet indicator in the top bar;
  * nothing here raises toasts. Real errors of a user action still go to the screen's

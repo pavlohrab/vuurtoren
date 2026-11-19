@@ -26,7 +26,7 @@ const messageOf = (e: unknown): string =>
   typeof e === "string" ? e : e instanceof Error ? e.message : "Something went wrong. Try again.";
 
 /**
- * "Connect to a Kenning server" in the desktop app (docs/desktop.md); the app itself starts on
+ * "Connect to a Kenning server" in the desktop app; the app itself starts on
  * this computer only, so this screen is the advanced route. The address is checked
  * (`/api/health`) by the app, then the window opens the server itself, which shows its own
  * sign-in screen when it needs one. Later starts open the saved server straight away; if it

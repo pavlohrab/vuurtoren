@@ -136,7 +136,7 @@ export function createCoursePractice(ctx: CourseContext) {
       }
     }
     const result: ItemCheck = checkBookItem(ex.type, it, answer, orderOk);
-    // The words the item tests, so a marked answer teaches the learner model (ADR 0011).
+    // The words the item tests, so a marked answer teaches the learner model.
     const course = await courseOrThrow(courseId);
     const unitKeys = new Set((await repo.unitWords(courseId, n)).map(keyOf));
     const infos: Map<string, WordInfo> = result.correct === null ? new Map() : await wordMap();

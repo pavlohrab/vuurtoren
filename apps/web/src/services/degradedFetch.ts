@@ -1,7 +1,7 @@
 import { DEGRADED_MESSAGES, clearDegraded, reportDegraded } from "./degraded.js";
 
 /**
- * Fetch for the server-mode repository (review A17): a network failure or a gateway error
+ * Fetch for the server-mode repository: a network failure or a gateway error
  * (the API behind nginx/the tunnel is down) shows as "storage" in the degraded indicator, any
  * answer clears it. The failure still reaches the caller (a user action shows its error).
  */

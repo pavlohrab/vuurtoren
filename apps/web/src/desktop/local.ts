@@ -1,8 +1,8 @@
 /**
- * The desktop app on this computer only (D4, the default): the data is a SQLite file the app
+ * The desktop app on this computer only (the default): the data is a SQLite file the app
  * opens natively (`~/Documents/Kenning/kenning.sqlite`), the language server is the bundled
  * sidecar. Everything above the driver (repository, services, screens) is the browser build's.
- * See docs/desktop.md.
+ *
  */
 import type { DataControls, DesktopLocal } from "../shell/AppInfo.js";
 import type { AppServices } from "../services/types.js";

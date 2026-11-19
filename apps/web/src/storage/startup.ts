@@ -66,7 +66,7 @@ export function forgetServer(): void {
   writeLocal(SERVER_KEY, null);
 }
 
-/** Sessions are cookies now (ADR 0009): drop the access token older versions kept here. */
+/** Sessions are cookies now: drop the access token older versions kept here. */
 export function forgetLegacyToken(): void {
   writeLocal("kenning-token", null);
 }

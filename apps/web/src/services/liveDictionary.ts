@@ -108,7 +108,7 @@ export function createLiveDictionary({ repo, lang, nlp }: LiveDictionaryDeps) {
       return true;
     });
     const needDict: { key: string; lemma: string; pos?: string }[] = [];
-    // One repository call for all card glosses (review A8), not one per word.
+    // One repository call for all card glosses, not one per word.
     const infos = new Map(
       (await repo.wordsByKeys(l, [...new Set(missing.map((it) => it.key))])).map((w) => [w.key, w]),
     );

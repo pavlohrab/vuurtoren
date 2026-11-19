@@ -1,5 +1,5 @@
 /**
- * Contracts for local persistence (ADR 0002): an append-only event log is the source of
+ * Contracts for local persistence: an append-only event log is the source of
  * truth; tables are rebuildable projections. Implemented by packages/db.
  */
 import type {
@@ -129,14 +129,14 @@ export type AppEvent =
       contentHash: string;
       tokens: AnalyzedToken[];
       /**
-       * The language server's `analyzerVersion` (review A4). A text whose stored version differs
-       * from the server's is re-analysed once when opened. Absent in events from before D1.
+       * The language server's `analyzerVersion`. A text whose stored version differs
+       * from the server's is re-analysed once when opened. Absent in older events.
        */
       analyzerVersion?: string;
     }
   | {
       /**
-       * Grammar constructions found in a text (M5; server `/grammar`), indices and offsets
+       * Grammar constructions found in a text (server `/grammar`), indices and offsets
        * relative to the whole text and its TextAnalyzed tokens. `version` is the client's
        * GRAMMAR_VERSION: hits of an older version are recomputed.
        */
@@ -186,7 +186,7 @@ export type AppEvent =
   | {
       /**
        * One reader cloze blank was answered (first answer per blank and page visit). Feeds the
-       * word's app evidence (ADR 0011); `hinted` = a letter hint was taken first.
+       * word's app evidence; `hinted` = a letter hint was taken first.
        */
       type: "ClozeAnswered";
       lang: string;
@@ -207,7 +207,7 @@ export type AppEvent =
   | { type: "StaircaseUpdated"; lang: string; state: StaircaseState }
   | {
       /**
-       * One practice exercise was answered (ADR 0003: never written to Anki). `state` is the
+       * One practice exercise was answered (never written to Anki). `state` is the
        * new FSRS state of (key, skill), computed by the engine at answer time and stored here so
        * replays are deterministic without the engine.
        */
@@ -224,7 +224,7 @@ export type AppEvent =
       state: ItemState;
     }
   | {
-      /** A conversation with the AI partner began (M6). Never contains API keys. */
+      /** A conversation with the AI partner began. Never contains API keys. */
       type: "ConversationStarted";
       conversationId: string;
       lang: string;
@@ -257,7 +257,7 @@ export type AppEvent =
   | { type: "SettingChanged"; key: string; value: unknown }
   /**
    * An assistant (Claude Code over MCP) suggested a word for Anki. Nothing is written to Anki:
-   * the learner confirms it in the Words hub with the normal AddToAnki (ADR 0007).
+   * the learner confirms it in the Words hub with the normal AddToAnki.
    */
   | {
       type: "WordSuggested";
@@ -275,7 +275,7 @@ export type AppEvent =
   /** The learner dismissed a suggested word (or added it to Anki). */
   | { type: "WordSuggestionDismissed"; lang: string; key: string }
   /**
-   * The language profile (ADR 0010): confirmed source decks and destination decks of one
+   * The language profile: confirmed source decks and destination decks of one
    * language. Replaces the whole profile; last write wins by HLC.
    */
   | { type: "LanguageProfileSet"; profile: LanguageProfile }
@@ -325,14 +325,14 @@ export type AppEvent =
       answer: string;
       correct: boolean;
       at: number;
-      /** Course language; with `keys`, the answer feeds those words' app evidence (ADR 0011). */
+      /** Course language; with `keys`, the answer feeds those words' app evidence. */
       lang?: string;
       /** Learner-model keys of the word(s) the item tests (empty or absent: none). */
       keys?: string[];
     }
   | {
       /**
-       * One finished exam-preparation session (docs/exam.md): a practice round or a timed mock
+       * One finished exam-preparation session: a practice round or a timed mock
        * exam of one part. Scores only; spoken audio is never stored.
        */
       type: "ExamAttempt";
@@ -437,7 +437,7 @@ export interface StoredEvent {
   /** ULID: time-sortable, unique across devices. */
   id: string;
   deviceId: string;
-  /** Hybrid logical clock "<ms>-<counter>-<deviceId>" for cross-device ordering (M7). */
+  /** Hybrid logical clock "<ms>-<counter>-<deviceId>" for cross-device ordering. */
   hlc: string;
   event: AppEvent;
 }
@@ -492,7 +492,7 @@ export interface WordInfo {
   markedKnownInAnki?: boolean;
   /** A manual state (set in the app) currently overrides Anki's. */
   overridden?: boolean;
-  /** Answers given in Kenning (practice, reader clozes, book exercises; ADR 0011). */
+  /** Answers given in Kenning (practice, reader clozes, book exercises). */
   evidence?: { correct: number; wrong: number; lastAt: number };
   /** App evidence alone made this word "learning": shown as "Learning (in Kenning)". */
   appLearning?: boolean;
@@ -568,7 +568,7 @@ export interface Repository {
   /** Stored grammar hits of every text that has them (for the grammar index). */
   allTextGrammar(): Promise<TextGrammar[]>;
   setting<T>(key: string): Promise<T | undefined>;
-  /** The language profile of `lang` (ADR 0010), or null if none was saved. */
+  /** The language profile of `lang`, or null if none was saved. */
   languageProfile(lang: string): Promise<LanguageProfile | null>;
   /** Courses with their outlines, newest first. */
   courses(): Promise<CourseRecord[]>;

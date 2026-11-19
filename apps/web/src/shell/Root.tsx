@@ -1,6 +1,6 @@
 /**
  * Root route: the app shell, or the full-page onboarding at /welcome. A new learner (no language
- * profile, not in ?demo, has not skipped setup) is sent to onboarding once (ADR 0010).
+ * profile, not in ?demo, has not skipped setup) is sent to onboarding once.
  */
 import { useQuery } from "@tanstack/react-query";
 import { Outlet, useNavigate, useRouterState } from "@tanstack/react-router";

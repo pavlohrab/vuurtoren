@@ -5,9 +5,6 @@ lists (top ~30k words per language). Each word scores its log-frequency in each 
 missing from a list scores a floor plus a character-trigram estimate trained on that list's
 spelling, so rare words (``woordeloos``) still lean towards the right language. Scripts are
 separated first (Cyrillic vs Latin), so Ukrainian/Russian never compete with Dutch.
-
-It replaced ``lingua`` (~290 MB of n-gram models) in D1; see docs/research/10-nlp-footprint.md
-for the accuracy comparison on Tatoeba sentences and dictionary words.
 """
 
 from __future__ import annotations

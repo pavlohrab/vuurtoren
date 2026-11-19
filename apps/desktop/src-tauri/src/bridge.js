@@ -29,7 +29,7 @@
       ankiFetch: function (req) {
         return invoke("anki_fetch", { req: req });
       },
-      // Offline mode (D4), home page only.
+      // Offline mode, home page only.
       useLocal: function () {
         return invoke("use_local");
       },

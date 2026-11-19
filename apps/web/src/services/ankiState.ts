@@ -1,6 +1,6 @@
 /**
  * Turns the live Anki card status of a word (packages/anki `cardStatus`) into the
- * `InspectorEntry.anki` the inspector renders (ADR 0007). Pure, so it is easy to test.
+ * `InspectorEntry.anki` the inspector renders. Pure, so it is easy to test.
  */
 import type { CardState, NoteCardStatus } from "@app/anki";
 import type { WordInfo } from "@app/db";

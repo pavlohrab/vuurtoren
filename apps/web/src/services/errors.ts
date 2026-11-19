@@ -1,5 +1,5 @@
 /**
- * Plain-language errors (review U6). Transport errors from the language server (NLP) and
+ * Plain-language errors. Transport errors from the language server (NLP) and
  * AnkiConnect arrive as technical strings, often through the server's RPC, so they are
  * recognised by their message rather than their class. Each becomes a cause the learner can
  * understand, one next step, and the original text as details.

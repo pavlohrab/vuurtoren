@@ -1,7 +1,7 @@
 /**
  * Settings → AI → Use with Claude Code: connect Claude Code (or Claude Desktop) to this
  * server's MCP endpoint with a per-user token, so the learner's subscription can write
- * stories, quizzes and explanations from their Kenning data (ADR 0005). No API key needed.
+ * stories, quizzes and explanations from their Kenning data. No API key needed.
  */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";

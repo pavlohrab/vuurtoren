@@ -134,7 +134,7 @@ describe("addWordToAnki", () => {
     expect(p.deck).toBe("Picked");
   });
 
-  it("can add as known (ADR 0007 mark known)", async () => {
+  it("can add as known (mark known)", async () => {
     const col = fakeCollection([]);
     const anki = new AnkiConnectClient({ fetch: fakeAnkiWrite(col) });
     const r = await addWordToAnki(anki, async () => {}, {

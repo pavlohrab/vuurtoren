@@ -3,7 +3,7 @@ import { cn } from "./cn.js";
 import type { InspectorAnki } from "@app/core";
 
 /**
- * Word states as the learner sees them (glossary: docs/design/naming.md, "Word states").
+ * Word states as the learner sees them.
  * `toLearn` is not a stored state: it marks the new words the reader suggests learning now.
  */
 export type WordStateKind = WordState | "toLearn";
@@ -26,7 +26,7 @@ const WORD_STATE_HINT: Record<WordStateKind, string> = {
   ignored: "Left out of coverage and suggestions",
 };
 
-/** Label of a word that is "learning" only because of answers given in Kenning (ADR 0011). */
+/** Label of a word that is "learning" only because of answers given in Kenning. */
 const IN_KENNING_LABEL = "Learning (in Kenning)";
 
 export interface WordStateChipProps {

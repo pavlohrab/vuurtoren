@@ -1,5 +1,5 @@
 /**
- * Browser side of sign-in (server/api/src/auth, ADR 0009). The session lives in an HttpOnly
+ * Browser side of sign-in (server/api/src/auth). The session lives in an HttpOnly
  * cookie the page cannot read; this module only calls the endpoints and interprets answers.
  */
 

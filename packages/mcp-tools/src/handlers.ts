@@ -4,7 +4,7 @@
  * Streamable HTTP endpoint (/api/mcp, data straight from the server's repository).
  *
  * Outputs are kept small: an assistant reads every byte of a tool result.
- * Nothing here writes to Anki (ADR 0007): words for Anki are only *suggested*; the learner
+ * Nothing here writes to Anki: words for Anki are only *suggested*; the learner
  * confirms them in the app with the normal AddToAnki.
  */
 import { coverageReport } from "@app/ai";

@@ -2,7 +2,7 @@
  * The word commands shared by every caller (web reader, Words from this text, course units, MCP,
  * later Tauri and the extension): Study first in Anki (learn next), Mark known, Use Anki's state
  * and app-only states, next to `addWordToAnki` (profile.ts). Each one acts on Anki only when the
- * user clicked it (ADR 0007), and records its event with the one key rule (`wordKey`).
+ * user clicked it, and records its event with the one key rule (`wordKey`).
  * Platform-neutral: needs an AnkiConnect client and a callback that records the event.
  */
 import { type WordState, wordKey } from "@app/core";
@@ -134,7 +134,7 @@ export interface MarkKnownRequest {
 
 /**
  * Mark known: give the word's cards a mature interval in Anki, or add the word first when it has
- * none (ADR 0007), then record `MarkedKnownInAnki`.
+ * none, then record `MarkedKnownInAnki`.
  */
 export async function markWordKnown(
   anki: AnkiConnectClient,

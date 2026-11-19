@@ -1,5 +1,5 @@
 /**
- * Topic exercises (M5): a short session for one grammar topic, built with the ordinary M4
+ * Topic exercises: a short session for one grammar topic, built with the ordinary
  * generators but only from sentences in which the topic's detector fired.
  *
  * - Sentence kinds (scramble) take every hit sentence as its own item.

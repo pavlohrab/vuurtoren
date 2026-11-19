@@ -1,4 +1,4 @@
-"""Text and term analysis. The SAME pipeline runs on Anki card fields and on texts (ADR 0004)."""
+"""Text and term analysis. The SAME pipeline runs on Anki card fields and on texts."""
 
 from __future__ import annotations
 

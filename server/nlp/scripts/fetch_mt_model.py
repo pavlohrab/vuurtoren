@@ -7,9 +7,8 @@ Usage (from server/nlp)::
 
 The model is Helsinki-NLP's OPUS-MT ``opus-mt-nl-en`` (opus-2019-12-05; Apache-2.0 / CC BY 4.0,
 see DATA_LICENSES.md). The original Marian release (~290 MB zip, pinned SHA-256) is downloaded
-and converted with CTranslate2's OPUS-MT converter to **int8 weights on disk** (~85 MB, half the
-float32 conversion we shipped before; the service already ran it as int8, see
-docs/research/10-nlp-footprint.md for the comparison). The zip is deleted afterwards.
+and converted with CTranslate2's OPUS-MT converter to **int8 weights on disk**
+(~85 MB). The zip is deleted afterwards.
 """
 
 from __future__ import annotations

@@ -1,5 +1,5 @@
 /**
- * Vocabulary-constrained conversation (docs/research/05-ai-byok.md).
+ * Vocabulary-constrained conversation.
  *
  * 1. A static system prompt carries level, topic, 200-400 relevant known lemmas, target words
  *    and the JSON contract (cacheable: it never changes within a conversation).

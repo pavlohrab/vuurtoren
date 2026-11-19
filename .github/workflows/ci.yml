@@ -123,7 +123,7 @@ jobs:
             type=gha,scope=ci-nlp
             type=gha,scope=nlp
           cache-to: type=gha,mode=max,scope=ci-nlp
-      # Data packs (D1): built natively once and cached (the data change only with packs.json,
+      # Data packs: built natively once and cached (the data change only with packs.json,
       # the build scripts or the locked libraries), then baked into the -full image the smoke
       # test runs, which also exercises the bundled-pack install at startup.
       - uses: astral-sh/setup-uv@v6

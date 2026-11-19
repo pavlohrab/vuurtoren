@@ -1,7 +1,7 @@
 /**
  * The stdio-only tool: `add_to_anki` writes a card through the learner's local AnkiConnect.
  * It exists here and not on the server's /api/mcp endpoint, which cannot reach the learner's
- * Anki (and only queues suggestions instead, ADR 0007). The shared tools live in
+ * Anki (and only queues suggestions instead). The shared tools live in
  * @app/mcp-tools.
  */
 import { type AnkiConnectClient, addWordToAnki } from "@app/anki";
@@ -10,7 +10,7 @@ import type { KenningRepository } from "@app/db";
 
 export interface AnkiToolDeps {
   repo: Pick<KenningRepository, "append" | "languageProfile">;
-  /** AnkiConnect: new notes go through the shared add command (ADR 0010). */
+  /** AnkiConnect: new notes go through the shared add command. */
   anki: AnkiConnectClient;
   /**
    * Deck override (KENNING_DECK). Without it the deck comes from the language profile's MCP
