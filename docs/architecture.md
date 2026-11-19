@@ -58,7 +58,7 @@ composition root. Each domain module gets only what it needs:
 | `platform.ts`       | `Platform`: `fetch` and device storage; `browserPlatform()` by default.                                           |
 | `liveSettings.ts`   | Settings (secrets in device storage), the NLP and AnkiConnect clients, Anki connection status.                    |
 | `liveLearner.ts`    | Learner-model and staircase cache with a version counter (`changed()` makes plans stale).                         |
-| `liveDictionary.ts` | Glosses (card gloss, then Wiktionary), sentence translation, both cached.                                         |
+| `liveDictionary.ts` | Glosses (card gloss, then Wiktionary), sentence translation, word meanings in the sentence, cached.               |
 | `liveTexts.ts`      | Import, analysis, Library list, reading plans, lookups, cloze answers, finished segments.                         |
 | `liveWords.ts`      | Inspector entry, words of a text, word actions, Anki sync, Words list, suggestions.                               |
 | `liveProfile.ts`    | Language profile, deck choices, Anki snapshot of the profile's sources.                                           |

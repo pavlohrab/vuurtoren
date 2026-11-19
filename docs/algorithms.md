@@ -185,27 +185,72 @@ Dutch splits verbs: _Ik **bel** je morgen **op**_ is a form of _opbellen_. The p
 
 There are 39 separable particles (`aan`, `af`, `bij`, `door`, `in`, `mee`, `op`, `uit`, `terug`, `weg`, …).
 
-### 2.4 Compound splitting and compound glosses
+### 2.4 Words the dictionary does not have: derivations, compounds, the sentence
 
-**What.** Dutch writes compounds as one word (`souvenirwinkel`). When a word has no dictionary entry, Kenning tries to explain it from its parts.
+**What.** Dutch builds new words from old ones: with affixes (`woord` + `-loos` = `woordeloos`, "wordless") and by writing compounds as one word (`souvenirwinkel`). When a word has no dictionary entry, Kenning builds its meaning from its parts, and failing that takes the English it became in the translation of its sentence.
 
-**How** (`server/nlp/src/kenning_nlp/compound.py`). A dynamic-programming search tries every split into 2 or 3 dictionary parts, with optional linking elements `s`, `e`, `en`, `er` between them. Each split is scored as the sum of `len(part)²`, minus costs, so fewer and longer parts win.
+**Which meaning wins.** Dictionary entry (the word or a form of it), then a diminutive or plural of a known noun (`vriendinnetje` → `vriendin`), then a derivation, then the sentence when its alignment is confident, then a compound, then a less confident alignment (`Dictionary.lookup` in `dictionary.py`; the app adds the sentence). A confident alignment beats a compound guess because on the test set below it is right far more often (29 of 33 against 11 of 48 on the same words). A derivation loses to a compound only when the compound's parts are plain dictionary words and its head already contains the suffix: `berglandschap` is `berg` + `landschap`, not `bergland` + `-schap`; `brandgevaarlijk` is `brand` + `gevaarlijk`. When nothing at all resolves, a derivation of a compound is tried (`vastgoedmakelaar` + `-ster`).
 
-| Rule                               | Value                                                                                                  |
-| ---------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| Minimum word length                | 7 letters (3 parts: 10)                                                                                |
-| Minimum part length                | 3 letters (an inflected head: 4)                                                                       |
-| Penalty per extra part             | 25                                                                                                     |
-| Linker cost                        | none 0, `s` 2, `e` 3, `en` 3, `er` 4                                                                   |
-| Head (last part)                   | noun preferred (cost 0; inflected 2); adjective 10; verb infinitive 15                                 |
-| Modifiers                          | nouns, adjectives or verb _stems_; prefixes like `ver`, `be`, `ont`, `aan`, `voor` are never modifiers |
-| Capitalised words (possible names) | only split if ≥ 9 letters, exactly 2 parts of ≥ 4 letters, and a noun head                             |
-| Dictionary lookups per word        | at most 400                                                                                            |
-| Diminutives (`-je`, `-tje`, …)     | never split; resolved through the noun they come from                                                  |
+**Derivations** (`server/nlp/src/kenning_nlp/derive.py`). Each affix knows which bases it takes and how to say the result in English:
 
-The compound takes the article of its head (`de souvenirwinkel` because `de winkel`). The gloss is built as "English of each part (Dutch parts)", e.g. **`souvenir shop (souvenir + winkel)`**. Each part's English is the first sense of at most 3 words; when no sense is that short, the Dutch lemma is used. A plural head is pluralised.
+| Affix                 | Base                       | Result     | English                                                       |
+| --------------------- | -------------------------- | ---------- | ------------------------------------------------------------- |
+| `-loos`               | noun                       | adjective  | `woord` → wordless                                            |
+| `-baar`               | verb stem                  | adjective  | `werken` → workable                                           |
+| `-lijk`               | noun, adjective, verb stem | adjective  | `bitter` → bitterly; verb: `-able`                            |
+| `-ig`, `-erig`        | noun, adjective, verb      | adjective  | `poeder` → powdery                                            |
+| `-achtig`             | noun, adjective            | adjective  | `spin` → spider-like                                          |
+| `-vormig`             | noun                       | adjective  | `ster` → star-shaped                                          |
+| `-isch`               | noun                       | adjective  | `symfonie` → symphonic                                        |
+| `-heid`               | adjective, participle      | noun (de)  | `eerlijk` → honestness                                        |
+| `-iteit`              | adjective                  | noun (de)  | `origineel` → originality                                     |
+| `-ing`                | verb                       | noun (de)  | `boeken` → booking                                            |
+| `-er`, `-aar`         | verb                       | noun (de)  | `stotteren` → stutterer                                       |
+| `-ster`               | verb stem, agent noun      | noun (de)  | `ontwerpen` → female designer                                 |
+| `-schap`              | noun                       | noun (het) | `eigenaar` → ownership                                        |
+| `-dom`                | noun, adjective            | noun (het) | `paus` → popedom                                              |
+| `on-`                 | adjective, participle      | adjective  | `beschermd` → unprotected                                     |
+| `her-`                | verb, noun                 | same       | `schrijven` → rewrite                                         |
+| number + noun + `-ig` | —                          | adjective  | `tweehandig` → two-handed, `dertienjarig` → thirteen-year-old |
 
-**Dictionary lookup order** (`Dictionary.lookup` in `dictionary.py`): the exact entry, then the lemma(s) the word is a known form of (`fietsen` → `fiets`), then a diminutive or plural reading (`vriendinnetje` → `vriendin`), then a compound split.
+`ver-`, `be-` and `ont-` change a verb in ways that cannot be guessed, so they are never split off: a base that starts with them must be a dictionary verb. Diminutives (`-je`, `-tje`, `-pje`, `-etje`, `-kje`) are resolved through the noun they come from, which may itself be a derivation or a compound.
+
+A base is looked up with the spelling changes Dutch makes at a suffix: a linking `e`, `s`, `en` or `er` (`woord-e-loos`, `verkeer-s-loos`), an undoubled consonant (`rott-ig` → `rot`), a long vowel written single in an open syllable (`slap-e-loos` → `slaap`, `drie-tal-ig` → `taal`), and `v`/`z` for `f`/`s` (`slav-en-dom` → `slaaf`). Before a suffix that starts with a vowel a verb base is the infinitive minus `-en` (`lez-er` → `lezen`); before a consonant it is the present stem (`lees-baar` → `lezen`). Bases may be derived themselves, two levels deep (`on-` + `verdedigen` + `-baar` → undefendable).
+
+Every reading that resolves is scored by the length of its base, minus 1 for an inflected base, 3 for a derived base, 6 for a compound base and 1 for a linker; the highest score wins. The base's English is its first one-word sense (`"without feeling; numb"` → numb), and English spelling rules form the result (`use` → usable, `happy` → happiness, `stop` → stopping, `translate` → translator). Suffixes are never compound heads, so `woordeloos` is no longer `woord` + `loos` (the plural of `loo`).
+
+**Compounds** (`compound.py`). A dynamic-programming search tries every split into 2 or 3 dictionary parts, with optional linking elements `s`, `e`, `en`, `er` between them. Each split is scored as the sum of `len(part)²`, minus costs, so fewer and longer parts win. A head without an entry may be a derivation (`schoenen` + `poetser`).
+
+| Rule                               | Value                                                                                                                                                            |
+| ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Minimum word length                | 7 letters (3 parts: 10)                                                                                                                                          |
+| Minimum part length                | 3 letters (an inflected head: 4)                                                                                                                                 |
+| Penalty per extra part             | 25                                                                                                                                                               |
+| Linker cost                        | none 0, `s` 2, `e` 3, `en` 3, `er` 4                                                                                                                             |
+| Head (last part)                   | noun preferred (cost 0; inflected 2); adjective 10; verb infinitive 15; never a suffix (`loos`, `lijk`, `baar`, `heid`, `schap`, `achtig`, `isch`, `dom`, `aar`) |
+| Modifiers                          | nouns, adjectives or verb _stems_; prefixes like `ver`, `be`, `ont`, `aan`, `voor` are never modifiers                                                           |
+| Capitalised words (possible names) | only split if ≥ 9 letters, exactly 2 parts of ≥ 4 letters, and a noun head                                                                                       |
+| Dictionary lookups per word        | at most 400                                                                                                                                                      |
+| Diminutives (`-je`, `-tje`, …)     | never split; resolved through the noun they come from                                                                                                            |
+
+The compound takes the article of its head (`de souvenirwinkel` because `de winkel`). Its meaning is the English of each part, e.g. **souvenir shop**. Each part's English is the first sense of at most 3 words; when no sense is that short, the Dutch lemma is used. A plural head is pluralised, and a female head comes first (`zwaardvechtster` → female sword fighter).
+
+**Where a guess came from.** `/gloss` marks these entries with `origin` (`derivation` or `compound`) and `formed` (`woord + -loos`, `souvenir + winkel`). The word inspector shows the note after the meaning, small and muted: "wordless · from woord + -loos". In Gloss mode a guessed meaning is lighter and italic, with the note in its tooltip.
+
+**The sentence** (`align.py`, `POST /translate/align`). OPUS-MT's decoder attends to the source subwords it is translating; CTranslate2 returns that attention for the best translation. A target word belongs to the Dutch word when one of its subwords attends most to one of the Dutch word's subwords. Neighbouring target words form runs; the run that gives the Dutch word the most attention wins, without articles, possessives, `to` and the like at its edges, and with at most 3 words. A word copied unchanged from the Dutch is no meaning. Attention alone hardly separates right from wrong, so the word is also translated on its own: the alignment is confident only when the two share an English word stem.
+
+The app shows the meaning in the sentence marked "in this sentence". A confident one comes before a compound guess, which stays as the second meaning; after a derivation it is a second line when it differs ("speechless · in this sentence"). A less confident one is used only for a word with no other meaning. Words the dictionary knows are never aligned. The alignment request also returns the sentence translation, so the inspector needs no second request.
+
+**Numbers.** A test set of 244 Dutch words without a dictionary entry (192 derivations, 51 compounds and derived compounds, 1 other), each in a Tatoeba sentence, with the English meanings that count as right (`server/nlp/tests/fixtures/meanings-nl.tsv`, `test_meanings.py`):
+
+| Meaning from                                 | Right                                                      |
+| -------------------------------------------- | ---------------------------------------------------------- |
+| Compound splitting only (before derivations) | 8 / 244 (3 %)                                              |
+| Derivations, then compounds                  | 156 / 244 (64 %): derivations 140 / 192, compounds 16 / 51 |
+| All, in the order above                      | 194 / 244 (80 %)                                           |
+| Sentence alignment, where confident          | used for 149 / 244 words, 132 right (89 %)                 |
+
+The words were chosen because the dictionary misses them or the compound splitter glossed them badly, so the compound share is lower than on running text. Glosses for nouns + `-lijk` read oddly (`inzichtelijk` → insightly), and a base whose first dictionary sense is not the one used in the word gives the wrong meaning (`herverkiezen` → reprefer).
 
 ### 2.5 Dictionary glosses by part of speech, and de/het
 
@@ -225,7 +270,7 @@ The compound takes the article of its head (`de souvenirwinkel` because `de wink
 
 **What.** A machine translation of the sentence a word appears in. It is shown in the word inspector and saved with a new Anki card as `SentenceTranslation`.
 
-**How** (`server/nlp/src/kenning_nlp/translate.py`): the Helsinki-NLP `opus-mt-nl-en` model, run with CTranslate2 on the CPU, weights stored as int8 (converted from the original Marian release by `scripts/fetch_mt_model.py`), beam size 4. It is a small (about 85 MB, the `mt-nl-en` data pack) neural MT model that runs offline. It is not a chat model and never sees anything but the sentence.
+**How** (`server/nlp/src/kenning_nlp/translate.py`): the Helsinki-NLP `opus-mt-nl-en` model, run with CTranslate2 on the CPU, weights stored as int8 (converted from the original Marian release by `scripts/fetch_mt_model.py`), beam size 4. It is a small (about 85 MB, the `mt-nl-en` data pack) neural MT model that runs offline. It is not a chat model and never sees anything but the sentence. The same model gives the meaning of a word the dictionary does not know in its sentence (section 2.4).
 
 **Numbers.** Input up to 1024 subword tokens, output up to 512. Per request: at most 64 texts, 2,000 characters each, 20,000 characters in total (`models.py`). Only Dutch → English. Without the model the feature is quietly unavailable.
 
@@ -582,6 +627,6 @@ spaCy attached `op` to `bel` as a particle, so rule 2.3(a) joined them into `opb
 
 ## 8. Where AI is optional
 
-Everything above (deck detection, the learner model, lemmatisation, separable verbs, compound glosses, the dictionary, offline sentence translation, OCR and cleanup, the reading planner, clozes, the staircase, practice scheduling and exercises, distractors, grammar detection, and Anki writes) runs **without any AI provider or API key**. The two models involved (spaCy and OPUS-MT) are small, local and deterministic for a given input. They never generate free text about you or for you.
+Everything above (deck detection, the learner model, lemmatisation, separable verbs, derivation and compound glosses, meanings read off the sentence translation, the dictionary, offline sentence translation, OCR and cleanup, the reading planner, clozes, the staircase, practice scheduling and exercises, distractors, grammar detection, and Anki writes) runs **without any AI provider or API key**. The two models involved (spaCy and OPUS-MT) are small, local and deterministic for a given input. They never generate free text about you or for you.
 
 AI features are opt-in extras, hidden until you configure a provider: Converse, Explain this sentence and Simplify this page. See [ai.md](ai.md) for what they do, which providers work and what is sent.

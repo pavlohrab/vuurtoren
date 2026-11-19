@@ -23,12 +23,14 @@ from pathlib import Path
 from typing import Any
 
 from kenning_nlp.compound import (
+    CompoundAnalysis,
     PartEntry,
     inflection_candidates,
     real_glosses,
     split_compound,
 )
 from kenning_nlp.datadir import data_path
+from kenning_nlp.derive import Derivation, derive
 from kenning_nlp.wordforms import extract_word_forms
 
 MAX_GLOSSES = 5
@@ -223,6 +225,7 @@ class Dictionary:
         self.db_path = db_path or default_db_path()
         # Part readings are reused heavily across words (modifiers like "huis", "school").
         self._cached_part_readings = lru_cache(maxsize=50_000)(self._part_readings)
+        self._cached_derived_head = lru_cache(maxsize=20_000)(self._derived_head)
         if not self.db_path.is_file():
             raise DictionaryMissingError(
                 f"Dictionary database not found at {self.db_path}. "
@@ -266,18 +269,59 @@ class Dictionary:
         finally:
             con.close()
 
-    def analyze_compound(self, word: str) -> dict[str, Any] | None:
-        """Gloss entry for an out-of-dictionary compound (see :mod:`kenning_nlp.compound`)."""
-        found = split_compound(word, self._cached_part_readings)
+    def _derived_head(self, text: str) -> tuple[PartEntry, ...]:
+        """A compound head without an entry, read as a derivation (``poetser``)."""
+        found = derive(text, self._cached_part_readings, depth=1)
+        if found is None:
+            return ()
+        return (PartEntry(text, found.pos, found.article, (found.gloss,), derived=True),)
+
+    def _split(self, word: str) -> CompoundAnalysis | None:
+        return split_compound(word, self._cached_part_readings, derived=self._cached_derived_head)
+
+    def _split_as_derivation(self, word: str) -> Derivation | None:
+        """A compound shaped as a :class:`Derivation`, for derivations of compounds."""
+        found = self._split(word)
         if found is None:
             return None
-        return {
-            "pos": found.pos,
-            "article": found.article,
-            "glosses": [found.gloss],
-            "compound": True,
-            "parts": found.part_glosses,
-        }
+        parts = (found.formed,)
+        return Derivation(found.pos, found.article, found.gloss, parts, found.score)
+
+    def analyze_unknown(self, word: str) -> dict[str, Any] | None:
+        """Entry for a word without one: a derivation or a compound (see :mod:`kenning_nlp.derive`
+        and :mod:`kenning_nlp.compound`).
+
+        A derivation from a dictionary base wins (``woord`` + ``-loos``) unless the compound's
+        head is a dictionary word that already ends in that suffix (``berg`` + ``landschap``,
+        not ``bergland`` + ``-schap``). Failing both, a derivation of a compound is tried
+        (``vastgoedmakelaar`` + ``-ster``).
+        """
+        resolve = self._cached_part_readings
+        derivation = derive(word, resolve)
+        compound = self._split(word)
+        if derivation and compound and _head_explains(compound, derivation):
+            derivation = None
+        if derivation is None and compound is None:
+            derivation = derive(word, resolve, split=self._split_as_derivation)
+        if derivation is not None:
+            return {
+                "pos": derivation.pos,
+                "article": derivation.article,
+                "glosses": [derivation.gloss],
+                "origin": "derivation",
+                "formed": derivation.formed,
+            }
+        if compound is not None:
+            return {
+                "pos": compound.pos,
+                "article": compound.article,
+                "glosses": [compound.gloss],
+                "compound": True,
+                "origin": "compound",
+                "formed": compound.formed,
+                "parts": compound.part_glosses,
+            }
+        return None
 
     def _resolve_inflected(
         self, con: sqlite3.Connection, word: str
@@ -294,8 +338,8 @@ class Dictionary:
             if any(real_glosses(e["glosses"]) for e in entries):
                 return via, [{**e, "via": via} for e in entries]
         for via, guess in candidates:
-            if via == "diminutive":  # diminutive of an out-of-dictionary compound
-                found = self.analyze_compound(guess)
+            if via == "diminutive":  # diminutive of an out-of-dictionary compound/derivation
+                found = self.analyze_unknown(guess)
                 if found:
                     return via, [{**found, "via": via}]
         return None
@@ -304,9 +348,11 @@ class Dictionary:
         """Entries per word (case-insensitive). Unknown words map to ``[]``.
 
         If a word has no entry of its own, entries of the lemma(s) it is a known form of
-        are returned instead (e.g. ``fietsen`` -> ``fiets``). Failing that, a compound analysis
-        is attempted (``souvenirwinkel`` -> one entry with ``compound=True`` and ``parts``).
-        Order: exact entry -> forms table -> (lowercase, applied to both) -> compound.
+        are returned instead (e.g. ``fietsen`` -> ``fiets``). Failing that, the word is read as
+        a diminutive or plural, then as a derivation or compound (:meth:`analyze_unknown`: one
+        entry with ``origin`` and ``formed``; compounds also have ``compound=True`` and ``parts``).
+        Order: exact entry -> forms table -> (lowercase, applied to both) -> diminutive/plural
+        -> derivation/compound.
         """
         result: dict[str, list[dict[str, Any]]] = {}
         con = self._connect()
@@ -330,10 +376,28 @@ class Dictionary:
                     if resolved:
                         entries = resolved[1]
                     else:
-                        compound = self.analyze_compound(word.strip())
-                        if compound:
-                            entries = [compound]
+                        found = self.analyze_unknown(word.strip())
+                        if found:
+                            entries = [found]
                 result[word] = entries
         finally:
             con.close()
         return result
+
+
+def _head_explains(compound: CompoundAnalysis, derivation: Derivation) -> bool:
+    """True if the compound's last (or first) part is a dictionary word that contains the
+    derivation's affix, so the compound reading is the better one (``berg`` + ``landschap``)."""
+    if derivation.having:
+        return False
+    # Only a compound of plain dictionary lemmas beats a derivation (not druppe + laar).
+    if any(p.entry.inflected or p.entry.derived for p in compound.parts):
+        return False
+    if derivation.suffix:
+        head = compound.parts[-1]
+        text, affix = head.part.lower(), derivation.suffix
+        return text.endswith(affix) and len(text) > len(affix)
+    first = compound.parts[0]
+    prefix = derivation.parts[0].rstrip("-")
+    text = first.part.lower()
+    return text.startswith(prefix) and len(text) > len(prefix)

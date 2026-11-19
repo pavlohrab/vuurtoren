@@ -49,14 +49,33 @@ type Handler = (action: string, params: Record<string, unknown>) => unknown;
 function fakeBackend(opts: {
   ankiDown?: boolean;
   notes?: Record<number, { deck: string; type: number; queue: number }>;
+  /** Dictionary entries by word, instead of the default "<word> (dictionary)". */
+  dict?: Record<string, unknown[]>;
+  /** English per Dutch word for /translate/align (confidence 0.9). */
+  aligned?: Record<string, string>;
 }) {
   const calls: string[] = [];
   const glossRequests: string[][] = [];
+  const nlpCalls: string[] = [];
   const fetchFn = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
     const u = String(url);
     const body = JSON.parse(String(init?.body ?? "{}")) as Record<string, unknown>;
     // Review A4: the reader asks the server's analyzer version once per session.
     if (u.includes("/nlp/health")) return Response.json({ status: "ok", version: "test" });
+    if (u.includes("/nlp/")) nlpCalls.push(u.slice(u.indexOf("/nlp/") + 4));
+    if (u.includes("/nlp/translate/align")) {
+      const items = body["items"] as { text: string; spans: [number, number][] }[];
+      return Response.json(
+        items.map(({ text, spans }) => ({
+          text,
+          translation: `EN: ${text}`,
+          words: spans.map(([start, end]) => {
+            const english = opts.aligned?.[text.slice(start, end).toLowerCase()] ?? null;
+            return { start, end, text: english, confidence: english ? 0.9 : 0 };
+          }),
+        })),
+      );
+    }
     if (u.includes("/nlp/translate")) {
       const { texts } = JSON.parse(String(init?.body)) as { texts: string[] };
       return Promise.resolve(
@@ -67,7 +86,10 @@ function fakeBackend(opts: {
       const words = body["words"] as string[];
       glossRequests.push(words);
       const result = Object.fromEntries(
-        words.map((w) => [w, [{ pos: "noun", glosses: [`${w} (dictionary)`], article: "de" }]]),
+        words.map((w) => [
+          w,
+          opts.dict?.[w] ?? [{ pos: "noun", glosses: [`${w} (dictionary)`], article: "de" }],
+        ]),
       );
       return Response.json(result);
     }
@@ -106,7 +128,7 @@ function fakeBackend(opts: {
     };
     return Response.json({ result: answer(action, params), error: null });
   });
-  return { fetchFn, calls, glossRequests };
+  return { fetchFn, calls, glossRequests, nlpCalls };
 }
 
 async function setup(
@@ -287,5 +309,90 @@ describe("live textWords", () => {
     const { repo, services } = await setup(backend);
     repoToClose = repo;
     await expect(services.textWords("nope")).rejects.toThrow(/not found/);
+  });
+});
+
+describe("live word meanings", () => {
+  // schuur: a derivation guess; brug: unknown to the dictionary; tuin: a dictionary word.
+  const dict = {
+    schuur: [
+      {
+        pos: "noun",
+        article: "de",
+        glosses: ["scourer"],
+        origin: "derivation",
+        formed: "schuren + -er",
+      },
+    ],
+    brug: [],
+  };
+  const aligned = { schuur: "barn", brug: "bridge", tuin: "garden" };
+  const tokenOf = (text: string) => tokenize(TEXT).find((t) => t.text === text)!.i;
+
+  it("notes a meaning built from the word's parts and adds the meaning in the sentence", async () => {
+    const backend = fakeBackend({ dict, aligned });
+    const { repo, services, textId } = await setup(backend);
+    repoToClose = repo;
+    const entry = await services.inspect(textId, tokenOf("schuur"));
+    expect(entry.glosses).toEqual(["scourer"]);
+    expect(entry.glossNote).toBe("from schuren + -er");
+    expect(entry.sentenceGloss).toBe("barn");
+    // the alignment request also brought the sentence translation: no second request
+    expect(entry.sentenceTranslation).toBe("EN: De schuur is mooi.");
+    expect(backend.nlpCalls.filter((c) => c === "/translate")).toHaveLength(0);
+  });
+
+  it("puts a confident meaning in the sentence above a compound guess", async () => {
+    const compound = {
+      gracht: [
+        {
+          pos: "noun",
+          article: "de",
+          glosses: ["grace slot"],
+          compound: true,
+          origin: "compound",
+          formed: "gra + cht",
+        },
+      ],
+    };
+    const backend = fakeBackend({ dict: { ...dict, ...compound }, aligned: { gracht: "canal" } });
+    const { repo, services, textId } = await setup(backend);
+    repoToClose = repo;
+    const entry = await services.inspect(textId, tokenOf("gracht"));
+    expect(entry.glosses).toEqual(["canal", "grace slot"]);
+    expect(entry.glossNote).toBe("in this sentence");
+    const inline = await services.glosses(textId, [tokenOf("gracht")]);
+    expect(inline[tokenOf("gracht")]).toEqual({ text: "canal", note: "in this sentence" });
+  });
+
+  it("uses the meaning in the sentence when the dictionary has nothing", async () => {
+    const backend = fakeBackend({ dict, aligned });
+    const { repo, services, textId } = await setup(backend);
+    repoToClose = repo;
+    const entry = await services.inspect(textId, tokenOf("brug"));
+    expect(entry.glosses).toEqual(["bridge"]);
+    expect(entry.glossNote).toBe("in this sentence");
+    expect(entry.sentenceGloss).toBeUndefined();
+  });
+
+  it("does not align words the dictionary knows", async () => {
+    const backend = fakeBackend({ dict, aligned });
+    const { repo, services, textId } = await setup(backend);
+    repoToClose = repo;
+    const entry = await services.inspect(textId, tokenOf("tuin"));
+    expect(entry.glosses).toEqual(["tuin (dictionary)"]);
+    expect(entry.glossNote).toBeUndefined();
+    expect(backend.nlpCalls).not.toContain("/translate/align");
+  });
+
+  it("gives inline glosses with a note for guesses", async () => {
+    const backend = fakeBackend({ dict, aligned });
+    const { repo, services, textId } = await setup(backend);
+    repoToClose = repo;
+    const idx = ["schuur", "brug", "tuin"].map(tokenOf);
+    const glosses = await services.glosses(textId, idx);
+    expect(glosses[idx[0]!]).toEqual({ text: "scourer", note: "from schuren + -er" });
+    expect(glosses[idx[1]!]).toEqual({ text: "bridge", note: "in this sentence" });
+    expect(glosses[idx[2]!]).toEqual({ text: "tuin (dictionary)" });
   });
 });

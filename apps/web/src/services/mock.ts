@@ -631,12 +631,12 @@ export function createMockServices(
       await wait();
       const t = texts.get(textId);
       const tokens = t?.tokens ?? [];
-      const out: Record<number, string> = {};
+      const out: Record<number, { text: string }> = {};
       for (const i of tokenIndices) {
         const tok = tokens[i];
         if (!tok) continue;
         const e = entryFor(tok, tokens) ?? lexicon.get(ensure(tok.text).key);
-        if (e?.gloss) out[i] = e.gloss;
+        if (e?.gloss) out[i] = { text: e.gloss };
       }
       return out;
     },

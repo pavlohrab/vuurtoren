@@ -180,8 +180,15 @@ class GlossEntry(BaseModel):
     """Short English senses (at most 5)."""
     compound: bool = False
     """True if the word has no entry and was analysed as a compound of ``parts``.
-    ``glosses`` is then one string ``"souvenir shop (souvenir + winkel)"``; ``pos`` and
-    ``article`` are the head's."""
+    ``glosses`` is then one string ``"souvenir shop"``; ``pos`` and ``article`` are the
+    head's."""
+    origin: Literal["derivation", "compound"] | None = None
+    """Set when the word has no entry and the meaning is built from its parts: ``derivation``
+    (base + affix, ``woordeloos``) or ``compound`` (``souvenirwinkel``). ``glosses`` is then one
+    string."""
+    formed: str | None = None
+    """The parts the meaning was built from, with ``origin``: ``"woord + -loos"``,
+    ``"souvenir + winkel"``."""
     via: Literal["diminutive", "plural"] | None = None
     """Set when the word is a diminutive/plural of a known noun and ``glosses`` are the lemma's."""
     parts: list[GlossPart] | None = None
@@ -213,6 +220,41 @@ class Translation(BaseModel):
     """The input text, echoed."""
     translation: str
     """English translation (empty for a blank input)."""
+
+
+ALIGN_MAX_SPANS = 200
+"""Word spans per ``/translate/align`` text (422 above)."""
+
+
+class AlignItem(BaseModel):
+    text: Annotated[str, StringConstraints(max_length=MT_MAX_TEXT_CHARS)]
+    spans: list[tuple[Annotated[int, Field(ge=0)], Annotated[int, Field(ge=0)]]] = Field(
+        max_length=ALIGN_MAX_SPANS
+    )
+    """``[start, end)`` character ranges of words in ``text``."""
+
+
+class AlignRequest(BaseModel):
+    """``POST /translate/align``: like ``/translate``, with the words to align per text."""
+
+    source: Literal["nl"]
+    target: Literal["en"]
+    items: list[AlignItem] = Field(max_length=MT_MAX_TEXTS)
+
+
+class AlignedWord(BaseModel):
+    start: int
+    end: int
+    text: str | None
+    """The English this word became in the translation, or None when unclear."""
+    confidence: float
+    """0-1; below 0.5 the English is not a reliable meaning of the word."""
+
+
+class AlignedText(BaseModel):
+    text: str
+    translation: str
+    words: list[AlignedWord]
 
 
 # --------------------------------------------------------------------------- practice data

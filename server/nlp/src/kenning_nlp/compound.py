@@ -18,13 +18,18 @@ Rules
 * Best split = highest ``sum(len(part)**2)`` (long parts win) minus penalties per extra part,
   per linker and for less typical readings; so fewer, longer parts win.
 * Title-case words (possible names) need >= 9 letters, two parts >= 4 letters and a noun head.
+* A derivational suffix is never a head (:data:`SUFFIX_HEADS`: ``woordeloos`` is no
+  ``woord`` + ``loos``, the plural of ``loo``); :mod:`kenning_nlp.derive` handles those words.
+* A head without a dictionary entry may be a derivation (``schoenen`` + ``poetser``), through the
+  optional ``derived`` resolver.
 * The compound's article/gender is the head's (Dutch rule).
 
-Gloss format: ``"<english of each part> (<dutch lemmas joined by ' + '>)"``, e.g.
-``"souvenir shop (souvenir + winkel)"``. English of a part = a short (<= 3 words) non-form-of
-gloss cut at the first comma/parenthetical/colon (see :func:`short_gloss`); if no sense is that
-short the Dutch lemma is used instead (``"bicycle stalling (fiets + stalling)"``). An inflected
-plural head is pluralised: ``"municipality council elections (gemeente + raad + verkiezing)"``.
+Gloss: the English of each part joined by spaces (``"souvenir shop"``), and
+:attr:`CompoundAnalysis.formed` the Dutch lemmas (``"souvenir + winkel"``). English of a part = a
+short (<= 3 words) non-form-of gloss cut at the first comma/parenthetical/colon (see
+:func:`short_gloss`); if no sense is that short the Dutch lemma is used instead
+(``"bicycle stalling"``). An inflected plural head is pluralised:
+``"municipality council elections"``.
 """
 
 from __future__ import annotations
@@ -69,6 +74,11 @@ _FORM_OF = re.compile(
     re.I,
 )
 
+
+SUFFIX_HEADS = frozenset(
+    {"loos", "lijk", "baar", "heid", "schap", "achtig", "isch", "dom", "aar", "vormig"}
+)
+"""Derivational suffixes that are also (rare) words: never a compound head."""
 
 _DIM_SUFFIXES = ("etje", "tje", "pje", "kje", "je")
 _PLURAL_SUFFIXES = ("eren", "en", "s")
@@ -125,6 +135,8 @@ class PartEntry:
     glosses: tuple[str, ...]
     inflected: bool = False
     """True if the part is an inflected form of ``lemma`` (e.g. a plural), not the lemma."""
+    derived: bool = False
+    """True if the reading is a derivation (:mod:`kenning_nlp.derive`), not a dictionary entry."""
 
 
 Resolver = Callable[[str], Sequence[PartEntry]]
@@ -152,9 +164,14 @@ class CompoundAnalysis:
     pos: str
     article: str | None
     gloss: str
-    """Readable gloss, see the module docstring."""
+    """English of the parts (``"souvenir shop"``), see the module docstring."""
     part_glosses: list[dict[str, str | None]]
     """``[{"part": surface, "gloss": first full gloss of the part or None}]``."""
+
+    @property
+    def formed(self) -> str:
+        """The parts' Dutch lemmas: ``"souvenir + winkel"``."""
+        return " + ".join(p.entry.lemma for p in self.parts)
 
 
 def is_form_of_gloss(gloss: str) -> bool:
@@ -229,6 +246,8 @@ def _usable(e: PartEntry, surface: str, head: bool) -> bool:
     if not real_glosses(e.glosses):
         return False
     if head:
+        if surface in SUFFIX_HEADS:
+            return False
         # short inflected heads are mostly inflection fragments (kop+eer); 3-letter lemmas are fine
         return len(surface) >= 4 or not e.inflected
     if surface in _NOT_MODIFIERS:
@@ -255,9 +274,12 @@ def _best_reading(
 class _Search:
     """Memoised DP over split positions; ``max_lookups`` caps dictionary work per word."""
 
-    def __init__(self, word: str, resolve: Resolver, max_lookups: int) -> None:
+    def __init__(
+        self, word: str, resolve: Resolver, max_lookups: int, derived: Resolver | None
+    ) -> None:
         self.word = word
         self.resolve = resolve
+        self.derived = derived
         self.max_lookups = max_lookups
         self._readings: dict[str, Sequence[PartEntry]] = {}
         self._tails: dict[tuple[int, int], _Split | None] = {}
@@ -281,7 +303,10 @@ class _Search:
         if len(rest) < MIN_PART_LEN:
             return None
         if parts_left == 1:
-            head = _best_reading(rest, self._lookup(rest), _HEAD_COST, True)
+            readings = self._lookup(rest)
+            if not readings and self.derived is not None and rest not in SUFFIX_HEADS:
+                readings = self.derived(rest)
+            head = _best_reading(rest, readings, _HEAD_COST, True)
             if head is None:
                 return None
             return len(rest) ** 2 - head[0], (Part(rest, head[1]),)
@@ -319,8 +344,10 @@ def _build_gloss(parts: Sequence[Part]) -> tuple[str, list[dict[str, str | None]
             short = _pluralise(short)
         english.append(short or p.entry.lemma)
         details.append({"part": p.part, "gloss": part_gloss(p.entry)})
-    lemmas = " + ".join(p.entry.lemma for p in parts)
-    return f"{' '.join(english)} ({lemmas})", details
+    if len(english) > 1 and english[-1].startswith("female "):
+        # zwaard + vechtster: "female sword fighter", not "sword female fighter"
+        english = ["female", *english[:-1], english[-1].removeprefix("female ")]
+    return " ".join(english), details
 
 
 def _with_original_case(word: str, parts: Sequence[Part]) -> tuple[Part, ...]:
@@ -333,12 +360,17 @@ def _with_original_case(word: str, parts: Sequence[Part]) -> tuple[Part, ...]:
 
 
 def split_compound(
-    word: str, resolve: Resolver, *, max_lookups: int = MAX_LOOKUPS
+    word: str,
+    resolve: Resolver,
+    *,
+    max_lookups: int = MAX_LOOKUPS,
+    derived: Resolver | None = None,
 ) -> CompoundAnalysis | None:
     """Best 2-3 part compound analysis of ``word``, or None.
 
     ``resolve(part)`` returns the :class:`PartEntry` readings of a lowercase string (``()`` if
-    unknown). The caller must not call this for words that have an entry of their own.
+    unknown); ``derived(part)``, if given, the derivational readings of a head that has none.
+    The caller must not call this for words that have an entry of their own.
     All-caps and non-alphabetic strings are never split.
     """
     if len(word) < MIN_WORD_LEN or not word.isalpha() or word.isupper():
@@ -348,7 +380,7 @@ def split_compound(
     cautious = word[0].isupper()
     if cautious and len(word) < 9:
         return None
-    search = _Search(word.lower(), resolve, max_lookups)
+    search = _Search(word.lower(), resolve, max_lookups, derived)
     best: _Split | None = None
     for n_parts in range(2, MAX_PARTS + 1):
         if n_parts == 3 and len(word) < MIN_WORD_LEN_3_PARTS:

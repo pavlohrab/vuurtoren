@@ -2,6 +2,10 @@
  * Meanings and translations: the learner's Anki gloss first, then the Wiktionary dictionary and
  * offline sentence translation of the language server, cached. Both server features are
  * optional: when they fail the app shows words without meanings and reports "translate".
+ *
+ * A word the dictionary does not know gets a meaning built from its parts or read off the
+ * translation of its sentence. Order: derivation ("from woord + -loos"), a confident alignment
+ * ("in this sentence"), compound, then a less confident alignment.
  */
 import type { KenningRepository, WordInfo } from "@app/db";
 import type { NlpClient } from "@app/nlp-client";
@@ -50,12 +54,32 @@ const FORM_OF =
 const PLACE_SENSE =
   /^an? (hamlet|village|town|city|neighbourhood|neighborhood|municipality|river|surname|placename|place)\b.*\b(in|of)\b/i;
 
-/** Meanings of a word: the card's gloss first, then dictionary senses (form-of noise removed). */
+/** Note for a meaning built from the word's parts ("from woord + -loos"), else undefined. */
+function partsNote(entry: Dictionary[string][number] | undefined): string | undefined {
+  return entry?.origin && entry.formed ? `from ${entry.formed}` : undefined;
+}
+
+/** Note shown with a meaning read off the sentence translation. */
+export const IN_SENTENCE = "in this sentence";
+
+/** Below this an aligned word is not used as a meaning (see server/nlp align.py). */
+const ALIGN_MIN_CONFIDENCE = 0.5;
+
+/**
+ * Meanings of a word: the card's gloss first, then dictionary senses (form-of noise removed).
+ * `glossNote` says where the first meaning came from when it is a guess built from the word's
+ * parts.
+ */
 export function composeGlosses(
   info: WordInfo | null,
   entries: Dictionary[string] | undefined,
   pos: string,
-): { glosses: string[]; article: string | undefined } {
+): {
+  glosses: string[];
+  article: string | undefined;
+  glossNote?: string;
+  guess?: "derivation" | "compound";
+} {
   const glosses: string[] = [];
   if (info?.gloss) glosses.push(info.gloss);
   const ordered = orderByPos(entries ?? [], pos);
@@ -66,8 +90,40 @@ export function composeGlosses(
     info?.article ??
     ordered.find((e) => e.article === "de" || e.article === "het")?.article ??
     undefined;
-  return { glosses: glosses.slice(0, 6), article };
+  const note = info?.gloss ? undefined : partsNote(ordered[0]);
+  const guess = note ? ordered[0]?.origin : undefined;
+  return {
+    glosses: glosses.slice(0, 6),
+    article,
+    ...(note ? { glossNote: note } : {}),
+    ...(guess ? { guess } : {}),
+  };
 }
+
+/** Same meaning, ignoring case and punctuation ("Wordless." = "wordless"). */
+export function sameMeaning(a: string, b: string): boolean {
+  const norm = (s: string) =>
+    s
+      .toLocaleLowerCase()
+      .replace(/[^\p{L}\p{N} ]+/gu, "")
+      .trim();
+  return norm(a) === norm(b);
+}
+
+/** A word in its sentence: [start, end) inside `sentence`. */
+export interface WordInSentence {
+  sentence: string;
+  start: number;
+  end: number;
+}
+
+/** A word's English in its sentence; `confident` alignments rank above compound guesses. */
+export interface AlignedMeaning {
+  text: string;
+  confident: boolean;
+}
+
+const alignKey = (w: WordInSentence) => `${w.start}:${w.end}:${w.sentence}`;
 
 /**
  * Dictionary or sentence translation failed. An outage is already reported as "nlp" by the
@@ -84,10 +140,20 @@ export interface LiveDictionaryDeps {
   nlp: () => Promise<NlpClient>;
 }
 
+/** An inline meaning; `note` marks a guess ("from woord + -loos", "in this sentence"). */
+export interface FoundGloss {
+  text: string;
+  note?: string;
+  /** Set when the meaning is a guess built from the word's parts. */
+  guess?: "derivation" | "compound";
+}
+
 export function createLiveDictionary({ repo, lang, nlp }: LiveDictionaryDeps) {
   // Translation per lemma key: Anki gloss first, then the Wiktionary dictionary; null = none.
-  const glossCache = new Map<string, string | null>();
+  const glossCache = new Map<string, FoundGloss | null>();
   const translationCache = new Map<string, string>();
+  // English of a word in its sentence (confident alignments only); null = none.
+  const alignCache = new Map<string, AlignedMeaning | null>();
 
   /**
    * Translations for (key, lemma, pos) items: the Anki card's gloss first, then the Wiktionary
@@ -95,9 +161,12 @@ export function createLiveDictionary({ repo, lang, nlp }: LiveDictionaryDeps) {
    * for all misses. `complete` is false when the dictionary could not be reached — callers
    * must not treat missing entries as "no translation".
    */
-  async function lookupGlosses(
-    items: { key: string; lemma: string; pos?: string }[],
-  ): Promise<{ found: Map<string, string>; complete: boolean }> {
+  async function lookupGlosses(items: { key: string; lemma: string; pos?: string }[]): Promise<{
+    found: Map<string, string>;
+    notes: Map<string, string>;
+    guesses: Map<string, "derivation" | "compound">;
+    complete: boolean;
+  }> {
     const l = await lang();
     const cacheKey = (it: { key: string; pos?: string }) => `${it.key}|${it.pos ?? ""}`;
     const seen = new Set<string>();
@@ -114,7 +183,7 @@ export function createLiveDictionary({ repo, lang, nlp }: LiveDictionaryDeps) {
     );
     for (const it of missing) {
       const gloss = infos.get(it.key)?.gloss;
-      if (gloss) glossCache.set(cacheKey(it), gloss);
+      if (gloss) glossCache.set(cacheKey(it), { text: gloss });
       else needDict.push(it);
     }
     let complete = true;
@@ -127,10 +196,14 @@ export function createLiveDictionary({ repo, lang, nlp }: LiveDictionaryDeps) {
         }
         clearDegraded("translate");
         for (const it of needDict) {
-          const g = orderByPos(dict[it.lemma] ?? [], it.pos)
-            .flatMap((e) => e.glosses)
-            .find((x) => !FORM_OF.test(x));
-          glossCache.set(cacheKey(it), g ?? null);
+          const ordered = orderByPos(dict[it.lemma] ?? [], it.pos);
+          const g = ordered.flatMap((e) => e.glosses).find((x) => !FORM_OF.test(x));
+          const note = partsNote(ordered[0]);
+          const guess = note ? ordered[0]?.origin : undefined;
+          glossCache.set(
+            cacheKey(it),
+            g ? { text: g, ...(note ? { note } : {}), ...(guess ? { guess } : {}) } : null,
+          );
         }
       } catch (e) {
         // dictionary unavailable (503 when not built, or the server is down): retry next time
@@ -139,11 +212,58 @@ export function createLiveDictionary({ repo, lang, nlp }: LiveDictionaryDeps) {
       }
     }
     const found = new Map<string, string>();
+    const notes = new Map<string, string>();
+    const guesses = new Map<string, "derivation" | "compound">();
     for (const it of items) {
       const g = glossCache.get(cacheKey(it));
-      if (g) found.set(it.key, g);
+      if (g) found.set(it.key, g.text);
+      if (g?.note) notes.set(it.key, g.note);
+      if (g?.guess) guesses.set(it.key, g.guess);
     }
-    return { found, complete };
+    return { found, notes, guesses, complete };
+  }
+
+  /**
+   * The English each word became in the translation of its sentence (keyed by `alignKey`), with
+   * whether the alignment is confident. Also fills the sentence-translation cache. Empty when
+   * the translation model is unavailable.
+   */
+  async function alignWords(words: WordInSentence[]): Promise<Map<string, AlignedMeaning>> {
+    const todo = words.filter((w) => !alignCache.has(alignKey(w)));
+    if (todo.length) {
+      const bySentence = new Map<string, [number, number][]>();
+      for (const w of todo) {
+        const spans = bySentence.get(w.sentence) ?? [];
+        if (!spans.some(([a, b]) => a === w.start && b === w.end)) spans.push([w.start, w.end]);
+        bySentence.set(w.sentence, spans);
+      }
+      try {
+        const res = await (
+          await nlp()
+        ).align([...bySentence].map(([text, spans]) => ({ text, spans })));
+        clearDegraded("translate");
+        for (const r of res) {
+          translationCache.set(r.text, r.translation);
+          for (const word of r.words) {
+            alignCache.set(
+              alignKey({ sentence: r.text, start: word.start, end: word.end }),
+              word.text
+                ? { text: word.text, confident: word.confidence >= ALIGN_MIN_CONFIDENCE }
+                : null,
+            );
+          }
+        }
+      } catch (e) {
+        // optional: model not fetched (503) or server down
+        translationFailed(e);
+      }
+    }
+    const out = new Map<string, AlignedMeaning>();
+    for (const w of words) {
+      const a = alignCache.get(alignKey(w));
+      if (a) out.set(alignKey(w), a);
+    }
+    return out;
   }
 
   /** Sentence translations (offline MT), cached; missing entries when the model is unavailable. */
@@ -184,6 +304,8 @@ export function createLiveDictionary({ repo, lang, nlp }: LiveDictionaryDeps) {
   return {
     lookupGlosses,
     translateSentences,
+    alignWords,
+    alignKey,
     dictionaryFor,
     /** Card glosses changed (Anki sync, another device): look them up again. */
     clearGlosses: () => glossCache.clear(),

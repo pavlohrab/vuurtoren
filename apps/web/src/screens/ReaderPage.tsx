@@ -392,13 +392,15 @@ export function ReaderPage({ textId }: { textId: string }) {
     enabled: glossIdx.length > 0,
     placeholderData: keepPreviousData,
   });
-  const glosses = useMemo(() => {
-    const out: Record<number, string> = {};
+  const { glosses, glossNotes } = useMemo(() => {
+    const text: Record<number, string> = {};
+    const notes: Record<number, string> = {};
     for (const i of glossIdx) {
       const g = glossQ.data?.[i];
-      if (g) out[i] = g;
+      if (g) text[i] = g.text;
+      if (g?.note) notes[i] = g.note;
     }
-    return out;
+    return { glosses: text, glossNotes: notes };
   }, [glossIdx, glossQ.data]);
 
   // Sentences of the current page, and what the grammar marks show on it.
@@ -762,6 +764,7 @@ export function ReaderPage({ textId }: { textId: string }) {
         mode={mode}
         blanks={blanks}
         glosses={glosses}
+        glossNotes={glossNotes}
         {...(spotlights ? { spotlights } : {})}
         spotlightCurrent={currentHitTokens}
         marks={markLabels}

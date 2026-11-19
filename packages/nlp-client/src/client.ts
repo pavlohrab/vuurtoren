@@ -149,10 +149,18 @@ export interface GlossEntry {
   glosses: string[];
   /**
    * True when the word has no dictionary entry and was analysed as a Dutch compound. Then
-   * `glosses` is a single readable string like "souvenir shop (souvenir + winkel)", and `pos` /
-   * `article` are the head's (last part). Absent for ordinary entries.
+   * `glosses` is a single string like "souvenir shop", and `pos` / `article` are the head's
+   * (last part). Absent for ordinary entries.
    */
   compound?: boolean;
+  /**
+   * Set when the word has no dictionary entry and the meaning was built from its parts:
+   * "derivation" (base + affix, "woordeloos" = "wordless") or "compound". Absent for ordinary
+   * entries.
+   */
+  origin?: "derivation" | "compound";
+  /** With `origin`: the parts the meaning was built from, e.g. "woord + -loos". */
+  formed?: string;
   /** Compound parts in order (only when `compound`); `gloss` is the part's first full sense. */
   parts?: { part: string; gloss: string | null }[];
 }
@@ -172,6 +180,26 @@ export interface Translation {
   /** The input text, echoed. */
   text: string;
   translation: string;
+}
+
+/** A text and the [start, end) character ranges of the words to align in it. */
+export interface AlignItem {
+  text: string;
+  spans: [number, number][];
+}
+
+/** One word's English in the translation of its sentence. */
+export interface AlignedWord {
+  start: number;
+  end: number;
+  /** The English the word became, or null when unclear. */
+  text: string | null;
+  /** 0-1; below 0.5 the English is not a reliable meaning of the word. */
+  confidence: number;
+}
+
+export interface AlignedText extends Translation {
+  words: AlignedWord[];
 }
 
 /** A lemma with its spaCy universal POS (`VERB`, `NOUN`, `ADJ`, ...). */
@@ -498,6 +526,36 @@ export class NlpClient {
       if (chunk.length >= 64 || chars + t.length > 20_000) await flush();
       chunk.push(t);
       chars += t.length;
+    }
+    await flush();
+    return out;
+  }
+
+  /**
+   * Translate texts (nl to en) and read the English of the given words off the translation:
+   * the in-context meaning of words the dictionary does not know. Sent in requests of at most
+   * 64 texts and 20,000 characters. Rejects with HTTP 503 if the model is not installed.
+   */
+  async align(items: AlignItem[]): Promise<AlignedText[]> {
+    const out: AlignedText[] = [];
+    let chunk: AlignItem[] = [];
+    let chars = 0;
+    const flush = async () => {
+      if (chunk.length)
+        out.push(
+          ...(await this.post<AlignedText[]>("/translate/align", {
+            source: "nl",
+            target: "en",
+            items: chunk,
+          })),
+        );
+      chunk = [];
+      chars = 0;
+    };
+    for (const it of items) {
+      if (chunk.length >= 64 || chars + it.text.length > 20_000) await flush();
+      chunk.push(it);
+      chars += it.text.length;
     }
     await flush();
     return out;

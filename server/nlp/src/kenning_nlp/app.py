@@ -28,6 +28,8 @@ from kenning_nlp.models import (
     GRAMMAR_EXAMPLE_LIMIT,
     MAX_TOTAL_CHARS,
     MT_MAX_TOTAL_CHARS,
+    AlignedText,
+    AlignRequest,
     AnalyzeRequest,
     AnalyzeTermsRequest,
     Detection,
@@ -211,6 +213,15 @@ def gloss_endpoint(req: GlossRequest) -> dict[str, list[GlossEntry]]:
     except DictionaryMissingError as e:
         raise ServiceError(503, str(e)) from e
     return {w: [GlossEntry(**e) for e in es] for w, es in entries.items()}
+
+
+@app.post("/translate/align")
+def align_endpoint(req: AlignRequest) -> list[AlignedText]:
+    """Translate texts and give the English of the given words: the in-context meaning of a word
+    the dictionary does not know (see :mod:`kenning_nlp.align`). 503 without the model."""
+    check_total([it.text for it in req.items], MT_MAX_TOTAL_CHARS)
+    items = [(it.text, list(it.spans)) for it in req.items]
+    return [AlignedText(**t) for t in translate.align_texts(req.source, req.target, items)]
 
 
 @app.post("/translate")

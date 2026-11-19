@@ -246,8 +246,15 @@ export interface AppServices
    * Anki state (one batched lookup; "unavailable" when Anki cannot be reached).
    */
   textWords(textId: string, opts?: { includeGlossed?: boolean }): Promise<TextWordItem[]>;
-  /** Short translations for many tokens at once (missing keys = no translation found). */
-  glosses(textId: string, tokenIndices: number[]): Promise<Record<number, string>>;
+  /**
+   * Short translations for many tokens at once (missing keys = no translation found). A guess
+   * carries a `note`: "from woord + -loos" (built from the word's parts) or "in this sentence"
+   * (read off the sentence translation).
+   */
+  glosses(
+    textId: string,
+    tokenIndices: number[],
+  ): Promise<Record<number, { text: string; note?: string }>>;
   /** Add the word to Anki: the deck from the language profile, or `opts.deck` (the picker). */
   addToAnki(entry: InspectorEntry, opts?: AddOptions): Promise<{ noteId: number; deck: string }>;
   /** Words Claude suggested over MCP, waiting for the learner (newest first). */
