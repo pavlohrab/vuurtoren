@@ -131,3 +131,13 @@
 .cv-page .cv-compose {
   max-width: var(--w-read);
 }
+/* A new word opens the inspector: the chip is the button. */
+.cv-new-word {
+  all: unset;
+  cursor: pointer;
+  border-radius: 999px;
+}
+.cv-new-word:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}

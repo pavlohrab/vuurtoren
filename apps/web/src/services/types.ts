@@ -253,6 +253,12 @@ export interface AppServices
    */
   inspectWord(key: string): Promise<InspectorEntry>;
   /**
+   * The inspector entry of a word as it appears in a sentence outside the Library (a Talk
+   * message, a practice sentence): the sentence is analysed to find the word's lemma, and is the
+   * entry's context. Without the language server the form itself is looked up.
+   */
+  inspectForm(form: string, sentence?: string): Promise<InspectorEntry>;
+  /**
    * The words of a text: its new words (see `pickTextWords`), in text order, the same set that
    * `listTexts` counts as `newTypes`. Each item carries the live card state (one batched lookup;
    * "unavailable" when Anki cannot be reached).

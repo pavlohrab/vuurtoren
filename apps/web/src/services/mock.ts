@@ -938,6 +938,19 @@ export function createMockServices(
       return { ...entryOf(empty, [], fake, e), surface: key, tokenIndex: -1 };
     },
 
+    async inspectForm(form: string, sentence?: string): Promise<InspectorEntry> {
+      const { key } = ensure(form, true);
+      const entry = await this.inspectWord(key);
+      if (!sentence) return { ...entry, surface: form };
+      const at = sentence.toLowerCase().indexOf(form.toLowerCase());
+      return {
+        ...entry,
+        surface: form,
+        sentence,
+        sentenceHighlight: at >= 0 ? [at, at + form.length] : [0, 0],
+      };
+    },
+
     async words(opts = {}) {
       await wait();
       const q = opts.query?.trim().toLowerCase();
