@@ -105,6 +105,14 @@ progress.
 | `KENNING_NLP_VARIANT=-slim` | no OCR, smaller image                               |
 | `KENNING_PACKS_URL=<url>`   | download the data from another host                 |
 
+## Sync for your devices
+
+The desktop app (and later phones) keep their own data and sync through your server: in the
+server's Settings → Sync make a **sync token** for each device, then on the device choose
+Settings → Sync → **Your Kenning server** with the server's address, the token and a passphrase.
+The server stores sealed files in `sync/` next to the database; it cannot read them. A sync
+token opens `/api/sync` and nothing else.
+
 ## Backup and restore
 
 - **Scheduled:** profile `backup` saves a snapshot every 24 h into `./backups` next to the
