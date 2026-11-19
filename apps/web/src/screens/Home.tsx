@@ -32,6 +32,7 @@ import { usePageHeader } from "../shell/ShellContext.js";
 import { PageHeader, SectionHeader } from "../shell/PageHeader.js";
 import { pct, plural } from "../format.js";
 import { pagesOf, pickContinue, WORDS_PER_PAGE } from "../textPages.js";
+import { useWordInspector } from "./useWordInspector.js";
 import { topicCount } from "./grammar/Grammar.js";
 
 export { pagesOf, pickContinue, WORDS_PER_PAGE };
@@ -87,6 +88,7 @@ const DATE_FMT = new Intl.DateTimeFormat("en-GB", {
 
 export function Home() {
   const services = useServices();
+  const inspector = useWordInspector();
   // The top bar shows today's date: the page's own heading is the greeting.
   usePageHeader(DATE_FMT.format(new Date()), { always: true });
   const texts = useQuery({ queryKey: ["texts"], queryFn: () => services.listTexts() });
@@ -287,32 +289,34 @@ export function Home() {
               <ul className="home-words" aria-label="Words to learn now">
                 {learn.map((w) => (
                   <li key={w.key}>
-                    <Link
-                      to="/words"
-                      search={{ source: `text:${cont.text.id}`, word: w.key }}
+                    <button
+                      type="button"
                       className="k-word-chip"
                       title={w.glosses[0] ?? undefined}
                       lang="nl"
+                      aria-pressed={inspector.current === w.key}
+                      onClick={(e) => inspector.openKey(w.key, e.currentTarget)}
                     >
                       {w.article && w.pos === "NOUN" ? (
                         <span className="k-word-art">{w.article}</span>
                       ) : null}
                       {w.lemma}
-                    </Link>
+                    </button>
                   </li>
                 ))}
                 {extra.map((w) => (
                   <li key={w.key}>
-                    <Link
-                      to="/words"
-                      search={{ word: w.key }}
+                    <button
+                      type="button"
                       className="k-word-chip k-word-chip--quiet"
                       title={w.gloss ?? undefined}
                       lang="nl"
+                      aria-pressed={inspector.current === w.key}
+                      onClick={(e) => inspector.openKey(w.key, e.currentTarget)}
                     >
                       {w.article ? <span className="k-word-art">{w.article}</span> : null}
                       {w.key}
-                    </Link>
+                    </button>
                   </li>
                 ))}
               </ul>
@@ -357,6 +361,7 @@ export function Home() {
           </li>
         </ul>
       </section>
+      {inspector.portal}
     </div>
   );
 }

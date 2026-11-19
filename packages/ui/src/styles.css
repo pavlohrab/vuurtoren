@@ -843,7 +843,11 @@ button.k-row:hover .k-row-go {
     border-color var(--dur-fast) var(--ease),
     background var(--dur-fast) var(--ease);
 }
-.k-word-chip:hover {
+button.k-word-chip {
+  cursor: pointer;
+}
+.k-word-chip:hover,
+.k-word-chip[aria-pressed="true"] {
   border-color: color-mix(in srgb, var(--learn) 60%, transparent);
   background: var(--learn-soft);
 }

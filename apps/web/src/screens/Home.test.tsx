@@ -1,5 +1,6 @@
 import { createMemoryHistory } from "@tanstack/react-router";
 import { render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { App } from "../App.js";
 import { createMockServices } from "../services/mock.js";
@@ -124,8 +125,12 @@ describe("Home", () => {
   it("lays out words to learn, recent texts and one quiet line of more", async () => {
     setup();
     const learn = await screen.findByRole("region", { name: "Words to learn now" });
-    const chips = await within(learn).findAllByRole("link", { name: /\w/ });
-    expect(chips.some((a) => /^\/words\?/.test(a.getAttribute("href") ?? ""))).toBe(true);
+    // A word chip opens the word inspector on Home.
+    const list = await within(learn).findByRole("list", { name: "Words to learn now" });
+    const [chip] = await within(list).findAllByRole("button");
+    await userEvent.click(chip!);
+    expect(chip).toHaveAttribute("aria-pressed", "true");
+    expect(await screen.findByRole("complementary", { name: "Inspector" })).toBeInTheDocument();
     const recent = screen.getByRole("region", { name: "Recent texts" });
     const covers = await within(recent).findAllByRole("link", { name: /% known|Het weer|Een dag/ });
     expect(covers[0]).toHaveAttribute("href", expect.stringMatching(/^\/read\//));
