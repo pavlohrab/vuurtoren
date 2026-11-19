@@ -7,9 +7,9 @@
  *   GET  /api/auth/check       204 signed in (or auth off) / 401; nginx auth_request target
  *   GET  /api/auth/me          { authEnabled, user, via, expiresAt } or 401
  *   GET  /api/auth/mcp-tokens       list MCP tokens (Claude Code; see tokens.ts)
- *   GET/POST/DELETE /api/auth/sync-tokens[/:id]  the same for sync tokens (devices that sync)
  *   POST /api/auth/mcp-tokens       {label?} -> { token, id, ... } (token shown once)
  *   DELETE /api/auth/mcp-tokens/:id revoke one
+ *   GET/POST/DELETE /api/auth/sync-tokens[/:id]  the same for sync tokens (devices that sync)
  *
  * Credentials: a password (scrypt hash) for people, an optional bearer token for scripts and
  * the MCP server. With neither, auth is off (localhost / trusted network use).
