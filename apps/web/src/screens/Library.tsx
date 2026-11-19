@@ -137,7 +137,7 @@ export function Library() {
   const ownShelves = useMemo(() => shelves.data ?? [], [shelves.data]);
   const rows = useMemo(() => shelfRows(all, ownShelves), [all, ownShelves]);
 
-  const needsAnki = summary.data != null && summary.data.lastSync === null;
+  const needsAnki = summary.data != null && summary.data.lastSync === null && !summary.data.native;
   const searching = query.trim() !== "";
 
   const toggleSelected = (id: string) =>

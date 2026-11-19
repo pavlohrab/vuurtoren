@@ -236,7 +236,7 @@ export function Home() {
               coverage={libraryCoverage(list)}
               known={s.known}
               learning={s.learning}
-              vocab={s.lastSync ? s.vocabEstimate : null}
+              vocab={s.lastSync || s.native ? s.vocabEstimate : null}
             />
           ) : (
             <Empty text="Your word counts could not be loaded." />

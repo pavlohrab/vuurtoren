@@ -12,7 +12,7 @@ export function Progress() {
   const services = useServices();
   const q = useQuery({ queryKey: ["learner"], queryFn: () => services.learnerSummary() });
   const s = q.data;
-  const synced = Boolean(s?.lastSync);
+  const synced = Boolean(s?.lastSync) || s?.native === true;
 
   // Nothing synced and nothing read yet: one next step instead of a wall of zeros.
   if (s && !synced && s.known + s.learning === 0) {
@@ -38,9 +38,11 @@ export function Progress() {
       <PageHeader
         title="Progress"
         lede={
-          s?.lastSync
-            ? `Based on your Anki collection, last synced ${new Date(s.lastSync).toLocaleString("en")}.`
-            : "Based on your reading so far. Sync Anki in Settings to include your decks and an estimate of your vocabulary."
+          s?.native
+            ? "Based on your cards in Kenning and your reading."
+            : s?.lastSync
+              ? `Based on your Anki collection, last synced ${new Date(s.lastSync).toLocaleString("en")}.`
+              : "Based on your reading so far. Sync Anki in Settings to include your decks and an estimate of your vocabulary."
         }
         actions={
           <Link to="/words" className="k-btn k-btn--secondary">

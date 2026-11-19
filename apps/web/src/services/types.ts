@@ -117,6 +117,8 @@ export interface LearnerSummary {
   vocabEstimate: number;
   lastSync: number | null;
   sources: string[];
+  /** Native mode: Kenning's own cards are the record (no Anki sync involved). */
+  native?: boolean;
 }
 
 /** What the Practice start screen and the sidebar badge show. */
