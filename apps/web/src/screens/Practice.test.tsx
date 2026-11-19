@@ -244,10 +244,10 @@ describe("Practice session", () => {
     await user.keyboard("{Enter}");
     expect(await screen.findByText("0 of 1 correct.")).toBeInTheDocument();
     expect(screen.getByText("Words to look at again")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "gracht" })).toHaveAttribute(
-      "href",
-      "/words?source=practice-again&word=gracht",
-    );
+    // A word to look at again opens the inspector here, not another page.
+    await user.click(screen.getByRole("button", { name: "gracht" }));
+    const panel = await screen.findByRole("complementary", { name: "Inspector" });
+    await waitFor(() => expect(panel).toHaveTextContent(/gracht/));
     // Every next step leads somewhere: Words filtered to the misses, Talk seeded, a next text.
     const next = screen.getByRole("navigation", { name: "Next steps" });
     expect(within(next).getByRole("link", { name: /Review these words/ })).toHaveAttribute(

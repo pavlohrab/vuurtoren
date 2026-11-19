@@ -35,6 +35,7 @@ import { PageHeader } from "../shell/PageHeader.js";
 import { writePracticeAgain } from "../lastPractice.js";
 import { readLastText } from "../lastText.js";
 import { readLocalJSON, writeLocalJSON } from "../storage/local.js";
+import { type WordInspectorHandle, useWordInspector } from "./useWordInspector.js";
 import { pickContinue } from "./Home.js";
 
 export const SKILLS: { skill: Skill; label: string }[] = [
@@ -82,6 +83,7 @@ function PracticeSession({ focus, autoStart }: { focus: string[] | null; autoSta
   const [error, setError] = useState<unknown>(null);
   const services = useServices();
   const client = useQueryClient();
+  const inspector = useWordInspector();
 
   const start = async (size: number, skills: Skill[], aiSentences: boolean) => {
     setError(null);
@@ -126,10 +128,16 @@ function PracticeSession({ focus, autoStart }: { focus: string[] | null; autoSta
         />
       ) : phase.name === "session" ? (
         <div className="practice-session">
-          <Session exercises={phase.exercises} listening={phase.listening} onFinish={finish} />
+          <Session
+            exercises={phase.exercises}
+            listening={phase.listening}
+            onFinish={finish}
+            inspector={inspector}
+          />
         </div>
       ) : (
         <Summary
+          inspector={inspector}
           answered={phase.answered}
           skipped={phase.skipped}
           empty={phase.empty}
@@ -143,6 +151,7 @@ function PracticeSession({ focus, autoStart }: { focus: string[] | null; autoSta
             : {})}
         />
       )}
+      {inspector.portal}
     </div>
   );
 }
@@ -440,10 +449,13 @@ function Session({
   exercises,
   listening,
   onFinish,
+  inspector,
 }: {
   exercises: Exercise[];
   listening: boolean;
   onFinish: (answered: Answered[], skipped: number) => void;
+  /** After answering, the Dutch answer and sentence open the word inspector. */
+  inspector: WordInspectorHandle;
 }) {
   const services = useServices();
   const [index, setIndex] = useState(0);
@@ -573,6 +585,7 @@ function Session({
           onContinue={() => advance(answeredRef.current, skippedRef.current)}
           onSpeak={speakDutch}
           continueLabel={last ? "Finish" : "Continue"}
+          onWord={(form, sentence, el) => inspector.open(form, sentence, el)}
         />
       </div>
       {error ? (
@@ -592,7 +605,10 @@ function Summary({
   emptyTitle = "Practice",
   emptyText = "Nothing to practise yet. Sync Anki in Settings, or read a text and start learning a few words.",
   actions,
+  inspector,
 }: {
+  /** The words to look at again open the word inspector. */
+  inspector: WordInspectorHandle;
   answered: Answered[];
   skipped: number;
   empty: boolean;
@@ -657,15 +673,16 @@ function Summary({
           <h2 className="k-section-title">Words to look at again</h2>
           <div className="practice-options">
             {again.map((k) => (
-              <Link
+              <button
                 key={k}
-                to="/words"
-                search={{ source: "practice-again", word: k }}
+                type="button"
                 className="k-word-chip"
                 lang="nl"
+                aria-pressed={inspector.current === k}
+                onClick={(e) => inspector.openKey(k, e.currentTarget)}
               >
                 {k}
-              </Link>
+              </button>
             ))}
           </div>
         </section>
@@ -765,6 +782,7 @@ export function TopicPractice({ topicId }: { topicId: string }) {
   const [phase, setPhase] = useState<Phase>({ name: "loading" });
   const [error, setError] = useState<string | null>(null);
   const [run, setRun] = useState(0);
+  const inspector = useWordInspector();
   const aiStatus = useQuery({ queryKey: ["ai-status"], queryFn: () => services.aiStatus() });
   const aiKnown = aiStatus.isFetched || aiStatus.isError;
   const aiOn = aiStatus.data?.configured === true;
@@ -852,9 +870,11 @@ export function TopicPractice({ topicId }: { topicId: string }) {
             void client.invalidateQueries({ queryKey: ["practice"] });
             setPhase({ name: "summary", answered, skipped, empty: false });
           }}
+          inspector={inspector}
         />
       ) : (
         <Summary
+          inspector={inspector}
           answered={phase.answered}
           skipped={phase.skipped}
           empty={phase.empty}
@@ -864,6 +884,7 @@ export function TopicPractice({ topicId }: { topicId: string }) {
           actions={back}
         />
       )}
+      {inspector.portal}
     </div>
   );
 }
