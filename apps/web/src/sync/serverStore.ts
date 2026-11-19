@@ -4,7 +4,8 @@ import { SyncPlaceError, readError } from "./errors.js";
 
 export function serverStore(url: string, token: string, fetch: typeof globalThis.fetch): SyncStore {
   const base = url.replace(/\/+$/, "");
-  const auth = { authorization: `Bearer ${token}` };
+  // X-Kenning: a server with sign-in off has no token to check, and asks for it on writes.
+  const auth = { authorization: `Bearer ${token}`, "x-kenning": "1" };
   const call = async (path: string, init: RequestInit = {}) => {
     let res: Response;
     try {
