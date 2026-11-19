@@ -16,6 +16,7 @@ import { PageHeader } from "../../shell/PageHeader.js";
 import { usePageHeader } from "../../shell/ShellContext.js";
 import { sanitizeCardHtml } from "./sanitize.js";
 import { useMediaUrls } from "./useMedia.js";
+import { ErrorNotice } from "../../shell/ErrorNotice.js";
 import "./review.css";
 
 const RATINGS: { rating: CardRating; label: string }[] = [
@@ -164,9 +165,11 @@ export function Review() {
       {queue.isPending ? (
         <Skeleton style={{ height: 280, width: "100%" }} />
       ) : queue.isError ? (
-        <p className="error-text" role="alert">
-          The cards could not be loaded. {errorText(queue.error, "")}
-        </p>
+        <ErrorNotice
+          title="The cards could not be loaded."
+          error={queue.error}
+          onRetry={() => void queue.refetch()}
+        />
       ) : card ? (
         <>
           <CardView key={`${card.cardId}:${done}`} card={card} shown={shown} />

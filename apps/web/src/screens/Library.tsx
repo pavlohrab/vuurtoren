@@ -247,7 +247,7 @@ export function Library() {
   } else if (texts.data.length === 0) {
     body = (
       <EmptyState
-        icon={<LibraryIcon size={28} />}
+        icon={<LibraryIcon size={20} />}
         title="Your library is empty"
         description="Paste a text, add a web page, or upload a PDF or photo to start reading."
         action={

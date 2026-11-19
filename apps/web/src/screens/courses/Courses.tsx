@@ -9,6 +9,7 @@ import { useServices } from "../../services/context.js";
 import type { CourseListItem } from "../../services/courseTypes.js";
 import { ImportPackDialog } from "./CoursePacks.js";
 import { MenuButton } from "../library/MenuButton.js";
+import { ErrorNotice } from "../../shell/ErrorNotice.js";
 import "./courses.css";
 
 /** Courses: the books you study along, with progress and a way to continue. */
@@ -48,10 +49,14 @@ export function Courses() {
       {courses.isPending ? (
         <Skeleton style={{ height: 90, borderRadius: 10 }} />
       ) : courses.isError ? (
-        <p className="error-text">The courses could not be loaded. {String(courses.error)}</p>
+        <ErrorNotice
+          title="The courses could not be loaded."
+          error={courses.error}
+          onRetry={() => void courses.refetch()}
+        />
       ) : courses.data.length === 0 ? (
         <EmptyState
-          icon={<GraduationCap size={28} />}
+          icon={<GraduationCap size={20} />}
           title="No courses yet"
           description="Upload a scanned book or a PDF. Kenning finds its units, exercises and word lists, and ties them to your Anki decks."
           action={

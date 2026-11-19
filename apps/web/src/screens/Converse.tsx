@@ -237,7 +237,7 @@ export function Converse() {
     return (
       <div className="page page--list">
         <EmptyState
-          icon={<MessagesSquare size={28} />}
+          icon={<MessagesSquare size={20} />}
           title="Talk in Dutch"
           description={
             status.data.locked
