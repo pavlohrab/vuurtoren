@@ -151,6 +151,37 @@ describe("moveToAnki", () => {
     });
   });
 
+  it("finishes on a second try after stopping halfway, without adding words twice", async () => {
+    const c = collection();
+    const { col } = anki();
+    const broken = new AnkiConnectClient({
+      fetch: fakeAnkiWrite(col, { failing: { setDueDate: "collection is not available" } }),
+    });
+    await expect(moveToAnki(broken, { ...c, withHistory: true })).rejects.toThrow(
+      /did not set the due dates/,
+    );
+    expect(col.notes.size).toBe(4);
+    expect(col.revlog).toHaveLength(1);
+
+    const client = new AnkiConnectClient({ fetch: fakeAnkiWrite(col) });
+    const r = await moveToAnki(client, { ...c, withHistory: true });
+    expect(r).toMatchObject({ added: 3, existing: 1, skipped: 1, scheduled: 2, reviews: 4 });
+    expect(r.decks).toEqual(["Dutch", "Kenning::Nederlands", "Opmaat"]);
+    expect(col.notes.size).toBe(4);
+    const [fiets, huis] = [...col.notes.keys()]
+      .filter((id) => id !== 3)
+      .map((id) => col.cards.find((x) => x.note === id)!);
+    expect(fiets).toMatchObject({ type: 2, interval: Math.round(c.s.scheduledDays) });
+    expect(huis).toMatchObject({ type: 0, queue: -1 });
+    expect(col.revlog!.filter((x) => x[1] === fiets!.id)).toHaveLength(3);
+
+    // A third run changes nothing: the history is not written twice.
+    const again = await moveToAnki(client, { ...c, withHistory: true });
+    expect(again).toMatchObject({ added: 3, reviews: 0 });
+    expect(col.notes.size).toBe(4);
+    expect(col.revlog).toHaveLength(5);
+  });
+
   it("maps an imported word type onto Kenning's fields, and skips notes without a word", () => {
     expect(wordFields(collection().notes[2]!, IMPORTED)).toEqual({
       Word: "de boom",

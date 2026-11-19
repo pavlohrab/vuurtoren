@@ -37,7 +37,7 @@ export interface ToAnkiInput {
 }
 
 export interface ToAnkiResult {
-  /** Notes added to Anki. */
+  /** Notes added to Anki (also those an earlier move added before it stopped). */
   added: number;
   /** Notes Anki already had. */
   existing: number;
@@ -94,6 +94,27 @@ function leadCard(cards: NativeCard[]): NativeCard | undefined {
   )[0];
 }
 
+const movedKey = (deck: string, word: string) => `${deck}\n${strip(word)}`;
+
+/** Notes a move already added (tagged, of Kenning's note type): deck and word → their card. */
+async function movedNotes(anki: AnkiConnectClient): Promise<Map<string, number>> {
+  const out = new Map<string, number>();
+  const ids = await anki.findNotes(`tag:${TAG_MOVED} "note:${NOTE_TYPE}"`);
+  if (ids.length === 0) return out;
+  const infos = (await anki.notesInfo(ids)).filter(
+    (n) => typeof n.noteId === "number" && n.cards?.length,
+  );
+  const cards = await anki.cardsInfo(infos.map((n) => n.cards[0]!));
+  const deckOf = new Map(cards.map((c) => [c.cardId, c.deckName]));
+  for (const n of infos) {
+    const card = n.cards[0]!;
+    const deck = deckOf.get(card);
+    const key = deck === undefined ? undefined : movedKey(deck, n.fields["Word"]?.value ?? "");
+    if (key !== undefined && !out.has(key)) out.set(key, card);
+  }
+  return out;
+}
+
 export async function moveToAnki(
   anki: AnkiConnectClient,
   input: ToAnkiInput,
@@ -134,14 +155,25 @@ export async function moveToAnki(
 
   const decks = new Set<string>();
   let added = 0;
-  if (toAdd.length) {
-    onProgress?.(`Adding ${toAdd.length} words to Anki`);
+  // Words an earlier move added before it stopped: they are scheduled now, not added twice.
+  const earlier = toAdd.length ? await movedNotes(anki) : new Map<string, number>();
+  const adding = toAdd.filter((a) => {
+    const key = movedKey(a.deck, a.fields["Word"] ?? "");
+    const card = earlier.get(key);
+    if (card === undefined) return true;
+    earlier.delete(key);
+    added++;
+    pairs.push({ native: leadCard(cardsOf.get(a.note.id) ?? [])!, anki: card, fresh: false });
+    return false;
+  });
+  if (adding.length) {
+    onProgress?.(`Adding ${adding.length} words to Anki`);
     await ensureNoteType(anki);
-    for (const deck of new Set(toAdd.map((a) => a.deck))) {
+    for (const deck of new Set(adding.map((a) => a.deck))) {
       await anki.invoke("createDeck", { deck });
     }
     const ids = await anki.multi<number>(
-      toAdd.map((a) => ({
+      adding.map((a) => ({
         action: "addNote",
         params: {
           note: {
@@ -156,7 +188,7 @@ export async function moveToAnki(
     );
     const newIds: number[] = [];
     const lead = new Map<number, NativeCard>();
-    toAdd.forEach((a, i) => {
+    adding.forEach((a, i) => {
       const reply = ids[i];
       if (!reply?.ok || typeof reply.result !== "number") return;
       const id = reply.result;
@@ -184,11 +216,17 @@ export async function moveToAnki(
     byDays.set(days, [...(byDays.get(days) ?? []), p.anki]);
   }
   if (byDays.size) onProgress?.("Setting due dates");
-  const groups = [...byDays];
   const set = await anki.multi(
-    groups.map(([days, cards]) => ({ action: "setDueDate", params: { cards, days: `${days}!` } })),
+    [...byDays].map(([days, cards]) => ({
+      action: "setDueDate",
+      params: { cards, days: `${days}!` },
+    })),
   );
-  const scheduled = groups.reduce((n, [, cards], i) => n + (set[i]?.ok ? cards.length : 0), 0);
+  // Stop rather than leave words unscheduled; trying again finds the words already added.
+  const refused = set.find((r) => !r.ok);
+  if (refused && !refused.ok) {
+    throw new Error(`Anki did not set the due dates (${refused.error}). Please try again.`);
+  }
   const dueToday = new Set(byDays.get(0) ?? []);
   if (!input.withHistory && dueToday.size) {
     await anki.multi(
@@ -270,7 +308,7 @@ export async function moveToAnki(
     added,
     existing: known.size,
     skipped,
-    scheduled,
+    scheduled: reviewed.length,
     reviews,
     decks: [...decks].sort(),
   };

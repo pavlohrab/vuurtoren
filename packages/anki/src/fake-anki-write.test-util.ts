@@ -111,7 +111,13 @@ function legacy(
     case "findNotes": {
       const q = String(params["query"]);
       const word = /"Word:((?:\\.|[^"\\])*)"/.exec(q)?.[1]?.replace(/\\(.)/g, "$1");
-      return [...col.notes].filter(([, n]) => !word || n.fields["Word"] === word).map(([id]) => id);
+      const tag = /(?:^|\s)tag:(\S+)/.exec(q)?.[1];
+      const model = /"note:([^"]*)"/.exec(q)?.[1];
+      return [...col.notes]
+        .filter(([, n]) => !word || n.fields["Word"] === word)
+        .filter(([id]) => !tag || col.tags.get(id)?.has(tag))
+        .filter(([, n]) => !model || n.model === model)
+        .map(([id]) => id);
     }
     case "findCards":
       return findCards(col, String(params["query"]));
@@ -191,7 +197,9 @@ function legacy(
           noteId: id,
           modelName: n.model,
           tags: [...(col.tags.get(id) ?? [])],
-          fields: {},
+          fields: Object.fromEntries(
+            Object.entries(n.fields).map(([k, value], order) => [k, { value, order }]),
+          ),
           cards: col.cards.filter((c) => c.note === id).map((c) => c.id),
         };
       });
