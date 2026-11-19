@@ -7,6 +7,7 @@ import { errorText } from "../../services/errors.js";
 import { isNoDecksError } from "../../services/profileErrors.js";
 import type { AnkiStatus } from "../../services/types.js";
 import { ErrorNotice } from "../../shell/ErrorNotice.js";
+import { runAnkiSync, useAnkiSync } from "../../shell/ankiSync.js";
 import { NoDecksHelp } from "../onboarding/NoDecksHelp.js";
 
 /** Advice for each state that is not "connected" (also used by onboarding). */
@@ -81,13 +82,11 @@ export function AnkiConnection() {
   const sync = useMutation({
     mutationFn: () => {
       setSyncLog([]);
-      return services.syncAnki((m) => setSyncLog((l) => [...l, m]));
-    },
-    onSuccess: async () => {
-      for (const k of ["learner", "texts", "words", "home"])
-        await qc.invalidateQueries({ queryKey: [k] });
+      return runAnkiSync(services, qc, (m) => setSyncLog((l) => [...l, m]));
     },
   });
+  const shared = useAnkiSync();
+  const syncing = sync.isPending || shared.running;
   const st = status.data;
   const connected = st?.state === "connected";
   const s = summary.data;
@@ -111,8 +110,8 @@ export function AnkiConnection() {
         </div>
         <div className="anki-conn-actions">
           {connected ? (
-            <Button variant="primary" onClick={() => sync.mutate()} disabled={sync.isPending}>
-              {sync.isPending ? <Spinner label="Syncing" /> : null}
+            <Button variant="primary" onClick={() => sync.mutate()} disabled={syncing}>
+              {syncing ? <Spinner label="Syncing" /> : null}
               Sync from Anki
             </Button>
           ) : (

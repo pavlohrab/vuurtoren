@@ -38,6 +38,8 @@ import { useTheme, type ThemeChoice } from "../theme.js";
 import { useAppInfo } from "./AppInfo.js";
 import { DesktopSetup } from "../desktop/DesktopSetup.js";
 import { DegradedIndicator } from "./DegradedIndicator.js";
+import { AnkiSyncLine } from "./AnkiSyncLine.js";
+import { useAnkiAutoSync } from "./ankiSync.js";
 import { ShellContext, type PageHeader, type ShellState } from "./ShellContext.js";
 import { useRemoteFreshness } from "./useRemoteFreshness.js";
 
@@ -75,7 +77,9 @@ export function AppShell() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [theme, setTheme] = useTheme();
   const { notice, demo, onLeaveDemo, desktop } = useAppInfo();
-  useRemoteFreshness(services, useQueryClient());
+  const qc = useQueryClient();
+  useRemoteFreshness(services, qc);
+  useAnkiAutoSync(services, qc, !demo);
 
   const [header, setHeader] = useState<PageHeader | null>(null);
   const [mode, setMode] = useState<ReaderMode>("read");
@@ -235,6 +239,7 @@ export function AppShell() {
 
         <div className="main">
           {desktop ? <DesktopSetup /> : null}
+          <AnkiSyncLine />
           {notice || demo ? (
             <div className="shell-notices">
               {demo ? (

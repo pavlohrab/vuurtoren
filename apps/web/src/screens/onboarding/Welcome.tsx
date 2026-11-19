@@ -16,6 +16,7 @@ import { SAMPLE_TEXT } from "./sample.js";
 import { setSkipped } from "./skip.js";
 import "./onboarding.css";
 import { readLocalJSON, writeLocalJSON } from "../../storage/local.js";
+import { runAnkiSync } from "../../shell/ankiSync.js";
 
 const STORAGE = "kenning.onboarding";
 
@@ -148,6 +149,9 @@ export function Welcome() {
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: ["languageProfile"] });
       await qc.invalidateQueries({ queryKey: ["deckChoices"] });
+      // Read the confirmed decks in the background while the learner finishes the welcome steps.
+      if (draft.sources.length > 0 && connected && !draft.noAnki)
+        void runAnkiSync(services, qc).catch(() => undefined);
       next();
     },
   });
