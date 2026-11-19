@@ -14,18 +14,7 @@ import { useServices } from "../../services/context.js";
 import type { ImportProgress, PackImportResult } from "../../services/courseTypes.js";
 import { ProgressBar } from "./CourseImport.js";
 import "./courses.css";
-
-/** Save text as a file through a Blob link. */
-function download(fileName: string, text: string) {
-  const url = URL.createObjectURL(new Blob([text], { type: "application/json" }));
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = fileName;
-  document.body.append(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
+import { saveFile } from "../../saveFile.js";
 
 const errorText = (e: unknown) => (e instanceof Error ? e.message : String(e));
 
@@ -47,7 +36,7 @@ export function ExportPackDialog({
     setBusy(true);
     try {
       const pack = await services.exportCoursePack(courseId, mode);
-      download(pack.fileName, pack.json);
+      saveFile(pack.json, pack.fileName, "application/json");
       toast("Course pack saved", pack.fileName);
       onOpenChange(false);
     } catch (e) {

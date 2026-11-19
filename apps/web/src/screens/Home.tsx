@@ -700,7 +700,9 @@ function KnownWords({
 
 /** This week in one quiet line (no streak guilt), linking to Progress. */
 function WeekLine({ days, pending }: { days: ActivityDay[] | undefined; pending: boolean }) {
-  const sum = (k: "pages" | "exercises" | "added") => (days ?? []).reduce((n, d) => n + d[k], 0);
+  const sum = (k: "pages" | "exercises" | "added" | "reviews") =>
+    (days ?? []).reduce((n, d) => n + d[k], 0);
+  const reviews = sum("reviews");
   return (
     <section className="home-more-item" aria-labelledby="home-week-h">
       <h3 className="home-more-label" id="home-week-h">
@@ -712,11 +714,14 @@ function WeekLine({ days, pending }: { days: ActivityDay[] | undefined; pending:
         <Link to="/progress" className="home-more-link">
           <span className="home-days" aria-hidden>
             {days.map((d) => (
-              <span key={d.date} data-on={d.pages + d.exercises + d.added > 0 || undefined} />
+              <span
+                key={d.date}
+                data-on={d.pages + d.exercises + d.added + d.reviews > 0 || undefined}
+              />
             ))}
           </span>
           {activeDays(days)} of 7 days active · {fmt(sum("pages"))} pages · {fmt(sum("exercises"))}{" "}
-          exercises
+          exercises{reviews ? ` · ${fmt(reviews)} reviews` : ""}
         </Link>
       ) : (
         <p className="home-more-text">Your activity could not be loaded.</p>

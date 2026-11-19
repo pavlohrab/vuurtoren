@@ -2,30 +2,19 @@
 
 ## Next
 
-1. **Native mode, round 2.** See below.
-2. **Sync.** See below.
-3. **Anki in the self-hosted stack.** Headless Anki with your AnkiWeb login, read-only.
-4. **Weave reading.** An English text with Dutch islands that grow as you learn.
-5. **Phone app.** Native mode and sync; OCR through the phone's own engine (ML Kit on Android,
+1. **Sync.** See below.
+2. **Anki in the self-hosted stack.** Headless Anki with your AnkiWeb login, read-only.
+3. **Weave reading.** An English text with Dutch islands that grow as you learn.
+4. **Phone app.** Native mode and sync; OCR through the phone's own engine (ML Kit on Android,
    Apple Vision on iOS).
 
 ## Native mode
 
-Built: the two modes and the onboarding choice, Move from Anki to Kenning, `.apkg`/`.colpkg`
-import, the FSRS-6 scheduler tuned to you, and the review screen. Still to do:
-
-- **Move to Anki** (Settings, native mode, one time): new words become notes, known words get
-  mature intervals, and, as an experimental option, your review history with real times plus each
-  card's due date and interval. The profile then switches to Keep using Anki.
-- **Export to `.apkg`** with review history.
-- **Workload:** spread across days, lighter days of the week, related cards kept apart, the
-  expected daily load shown before changing target recall.
-- **Reading evidence.** A due word you met and understood in a text without looking it up counts
-  as a light review: its due date moves later by a capped amount. A lookup counts against it.
-  Kept out of the optimizer's training data.
-- Practice answers and reader clozes feed the same card, so one word has one memory state.
-- Due words in Words, review history per word in the inspector, reviews in Home's week.
-- Undo beyond the current session.
+Built: the two modes and the onboarding choice, Move from Anki to Kenning and Move to Anki,
+`.apkg`/`.colpkg` import and `.apkg` export with history, the FSRS-6 scheduler tuned to you,
+workload (due dates on the lightest day, review days, related cards apart, the load of each
+target recall), reading and Practice as evidence for the cards, due words, review history per
+word, and the review screen with undo across sessions.
 
 **Not planned:** a general flashcard editor, Anki add-ons, a card browser beyond Words.
 
@@ -42,6 +31,9 @@ Your data on every device, with the event log as the unit of sync.
   take the latest change.
 - Before sync: event versions, compaction of Anki snapshots and deleted texts, and replay in
   clock order across devices.
+- **Hosting:** one stack of three containers: `kenning` (web app, API and sync), `kenning-nlp`
+  (the language server; phones need it) and, only for Keep using Anki, `anki` (headless, read
+  only). Self-hosting and Kenning Cloud run the same stack.
 
 ## Known issues
 
@@ -61,5 +53,3 @@ Your data on every device, with the event log as the unit of sync.
 - Connected mode doesn't read FSRS-6 decay per preset; 0.5 is assumed. Native mode uses the
   decay of its own parameters.
 - Anki's FSRS parameters are not read from older-format (JSON) deck packages.
-- The newer `.apkg` format is tested only with files built from Anki's published format, not with
-  a file exported by Anki.

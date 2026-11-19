@@ -80,6 +80,11 @@ export interface Settings {
    * Replaces `grammarSpotlights` (underline every construction), migrated on load.
    */
   grammarMarks: boolean;
+  /**
+   * Native mode: how much of the usual review load each weekday takes, Monday first (1 normal,
+   * 0.5 reduced, 0 as little as possible). Due dates spread away from lighter days.
+   */
+  reviewWeek: number[];
 }
 export interface ImportOptions {
   review?: OcrReviewHandler;
@@ -344,4 +349,11 @@ export interface AppServices
     limit?: number;
     offset?: number;
   }): Promise<WordInfo[]>;
+  /** Native mode: words with a card due now, earliest due first (Words → Due). */
+  dueWords(opts?: { limit?: number }): Promise<DueWord[]>;
+}
+
+/** A word whose card is due, with the time it came due. */
+interface DueWord extends WordInfo {
+  due: number;
 }

@@ -1,14 +1,15 @@
 /** Native services over a real repository: the move from Anki, a deck file, reviews, tuning. */
 import { DatabaseSync } from "node:sqlite";
 import { zipSync } from "fflate";
-import { AnkiConnectClient, type OpenSqlite } from "@app/anki";
+import { AnkiConnectClient, type CreateSqlite, type OpenSqlite, readAnkiPackage } from "@app/anki";
 import { DEFAULT_FSRS_PARAMS, type LanguageProfile, defaultProfile } from "@app/core";
 import { type KenningRepository, createRepository } from "@app/db";
 import { createNodeDriver } from "@app/db/node";
 import type { NlpClient } from "@app/nlp-client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { RunOptimizer } from "../native/optimizer.js";
-import { createLiveNative, studyDayStart } from "./liveNative.js";
+import { createLiveNative, readingDelay, studyDayStart } from "./liveNative.js";
+import { createLiveServices } from "./live.js";
 
 const DAY = 86_400_000;
 const NOW = Date.UTC(2026, 5, 1, 12);
@@ -22,6 +23,16 @@ const sqlite = () => ({
       close: async () => db.close(),
     };
   }) satisfies OpenSqlite,
+  create: (async () => {
+    const db = new DatabaseSync(":memory:");
+    return {
+      exec: async (sql: string, params: readonly (string | number | null)[] = []) => {
+        db.prepare(sql).run(...params);
+      },
+      bytes: async () => new Uint8Array(db.serialize()),
+      close: async () => db.close(),
+    };
+  }) satisfies CreateSqlite,
   dispose: () => undefined,
 });
 
@@ -120,6 +131,10 @@ function fakeAnki() {
             ],
             20: [],
           };
+        case "multi":
+          return (
+            JSON.parse(String(init?.body)) as { params: { actions: unknown[] } }
+          ).params.actions.map(() => null);
         default:
           return null;
       }
@@ -142,7 +157,11 @@ afterEach(async () => {
   repo = undefined;
 });
 
-async function setup(profile: LanguageProfile, optimizer?: RunOptimizer) {
+async function setup(
+  profile: LanguageProfile,
+  optimizer?: RunOptimizer,
+  reviewWeek: readonly number[] = [],
+) {
   let t = NOW;
   const r = await createRepository(await createNodeDriver(), { deviceId: "d", now: () => t });
   repo = r;
@@ -162,12 +181,47 @@ async function setup(profile: LanguageProfile, optimizer?: RunOptimizer) {
     changed: () => undefined,
     optimizer: optimizer ?? (async () => Promise.reject(new Error("no optimizer"))),
     sqlite,
+    reviewWeek: async () => reviewWeek,
     now: () => t,
   });
-  return { live: live.services, anki, profile: () => current, tick: (ms: number) => (t += ms) };
+  return {
+    live: live.services,
+    evidence: live.evidence,
+    anki,
+    profile: () => current,
+    tick: (ms: number) => (t += ms),
+    at: () => t,
+  };
 }
 
 describe("native services", () => {
+  it("lists due words, shows a word's reviews and undoes stored answers one by one", async () => {
+    const { live, tick } = await setup(defaultProfile("nl", [{ deck: "Dutch" }], "connected"));
+    await live.moveFromAnki();
+    expect(await live.lastReview()).toBeNull();
+    // fiets (card 20) answered Again at NOW: learning, due a minute later (long past now).
+    const first = await live.answerReview(20, 1, 1500);
+    tick(30_000);
+    const second = await live.answerReview(20, 3, 1500);
+    expect(await live.lastReview()).toMatchObject({ cardId: 20, reviewId: second.reviewId });
+
+    // The rest of the app over the same database (no language server: the form itself).
+    vi.stubGlobal("fetch", () => Promise.reject(new Error("offline")));
+    const app = createLiveServices(repo!);
+    const due = await app.dueWords();
+    expect(due.map((w) => w.key)).toContain("fiets");
+    expect(due.find((w) => w.key === "fiets")?.due).toBeLessThan(Date.now());
+    const entry = await app.inspectWord("fiets");
+    expect(entry.anki.reviews?.map((r) => r.rating)).toEqual([3, 1]);
+    expect(entry.anki.reviews?.[1]?.interval).toBe("1m");
+    vi.unstubAllGlobals();
+
+    await live.undoReview(20, (await live.lastReview())!.reviewId);
+    expect(await live.lastReview()).toMatchObject({ reviewId: first.reviewId });
+    await live.undoReview(20, first.reviewId);
+    expect(await live.lastReview()).toBeNull();
+  });
+
   it("moves from Anki: notes, cards and history come in, Anki is not written", async () => {
     const connected = defaultProfile("nl", [{ deck: "Dutch" }], "connected");
     const { live, anki, profile } = await setup(connected);
@@ -255,6 +309,104 @@ describe("native services", () => {
     const undone = await live.reviewQueue();
     expect(undone).toMatchObject({ fresh: 1 });
     expect(undone.cards[0]).toMatchObject({ cardId: 11, isNew: true });
+  });
+
+  it("moves back to Anki: notes Anki has stay, reviewed cards get their due date, the profile is connected", async () => {
+    const { live, anki, profile } = await setup(
+      defaultProfile("nl", [{ deck: "Dutch" }], "connected"),
+    );
+    await live.moveFromAnki();
+    expect(profile().mode).toBe("native");
+    const r = await live.moveToAnki(false);
+    expect(r).toEqual({ added: 0, existing: 2, skipped: 0, scheduled: 1, reviews: 0 });
+    expect(anki.writes).toEqual(["multi"]);
+    expect(profile().mode).toBe("connected");
+    expect(profile().sources.map((s) => s.deck)).toEqual(["Dutch"]);
+    await expect(live.moveToAnki(false)).rejects.toThrow(/already in Anki/);
+  });
+
+  it("spreads a review's due date away from lighter days", async () => {
+    // Only Sunday takes reviews.
+    const { live } = await setup(
+      defaultProfile("nl", [{ deck: "Dutch" }], "connected"),
+      undefined,
+      [0, 0, 0, 0, 0, 0, 1],
+    );
+    await live.moveFromAnki();
+    await live.answerReview(10, 3, 2000);
+    const s = (await repo!.nativeCard("nl", 10))!.card.schedule!;
+    expect(s.scheduledDays).toBeGreaterThan(7);
+    expect(new Date(s.due).getDay()).toBe(0);
+  });
+
+  it("lets Practice and blanks answer the word's due card, once a day", async () => {
+    const { live, evidence, tick, at } = await setup(
+      defaultProfile("nl", [{ deck: "Dutch" }], "connected"),
+    );
+    await live.moveFromAnki();
+    const before = (await repo!.nativeCard("nl", 10))!.card.schedule!;
+    // Not due yet: a right answer changes nothing.
+    expect(await evidence.exercise("huis", "good", 3000)).toBe(false);
+    tick(before.due - at() + 60_000);
+    expect(await evidence.exercise("huis", "good", 3000)).toBe(true);
+    const after = (await repo!.nativeCard("nl", 10))!.card.schedule!;
+    expect(after.lastReview).toBe(at());
+    expect(after.due).toBeGreaterThan(before.due);
+    // One answer per word a day; the blank of the same word is not counted again.
+    expect(await evidence.cloze("huis", true, false)).toBe(false);
+    expect((await repo!.nativeReviews("nl")).at(-1)).toMatchObject({ cardId: 10, rating: 3 });
+    // A new card is never introduced by practice.
+    expect(await evidence.exercise("fiets", "again", 1000)).toBe(false);
+  });
+
+  it("counts a wrong answer on a card that is not due", async () => {
+    const { live, evidence } = await setup(defaultProfile("nl", [{ deck: "Dutch" }], "connected"));
+    await live.moveFromAnki();
+    expect(await evidence.cloze("huis", false, false)).toBe(true);
+    expect((await repo!.nativeCard("nl", 10))!.card.schedule!.state).toBe(3);
+  });
+
+  it("moves a due card later when its word is read, and brings it back on a lookup", async () => {
+    const { live, evidence, tick, at } = await setup(
+      defaultProfile("nl", [{ deck: "Dutch" }], "connected"),
+    );
+    await live.moveFromAnki();
+    const s = (await repo!.nativeCard("nl", 10))!.card.schedule!;
+    // A lookup of a word not due: due now.
+    expect(await evidence.lookup("huis")).toBe(1);
+    expect((await repo!.nativeCard("nl", 10))!.card.schedule!.due).toBe(at());
+    // Read without a lookup: later by 15 % of the interval (1–7 days); not an answer.
+    tick(1000);
+    expect(await evidence.pageRead(["huis", "fiets"])).toBe(1);
+    const moved = (await repo!.nativeCard("nl", 10))!.card.schedule!;
+    expect(moved.due).toBe(at() + readingDelay(s.scheduledDays) * DAY);
+    expect(moved.lastReview).toBe(s.lastReview);
+    expect(await repo!.nativeReviews("nl")).toHaveLength(5);
+    expect(readingDelay(2)).toBe(1);
+    expect(readingDelay(20)).toBe(3);
+    expect(readingDelay(400)).toBe(7);
+  });
+
+  it("leaves connected learners' cards alone", async () => {
+    const { evidence } = await setup(defaultProfile("nl", [{ deck: "Dutch" }], "connected"));
+    expect(await evidence.exercise("huis", "again", 1000)).toBe(false);
+    expect(await evidence.pageRead(["huis"])).toBe(0);
+  });
+
+  it("exports moved cards with their history to an .apkg that reads back", async () => {
+    const { live } = await setup(defaultProfile("nl", [{ deck: "Dutch" }], "connected"));
+    await live.moveFromAnki();
+    const q = await live.reviewQueue();
+    await live.answerReview(q.cards[0]!.cardId, 3, 2500);
+    const { bytes, fileName, summary } = await live.exportPackage([]);
+    expect(fileName).toMatch(/^Kenning-\d{4}-\d\d-\d\d\.apkg$/);
+    expect(summary).toMatchObject({ notes: 2, cards: 2, reviews: 6 });
+    const col = await readAnkiPackage(bytes, sqlite().open);
+    expect(col.decks.map((d) => d.name)).toContain("Dutch");
+    expect(col.cards.map((c) => c.id).sort()).toEqual([10, 20]);
+    expect(col.reviews).toHaveLength(6);
+    // Only one deck: its name in the file.
+    expect((await live.exportPackage(["Dutch"])).fileName).toMatch(/^Dutch-/);
   });
 
   it("tunes by itself once the history is long enough, and recomputes memory", async () => {

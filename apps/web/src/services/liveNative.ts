@@ -6,20 +6,32 @@
 import {
   type AnkiConnectClient,
   type AnkiCollection,
+  type CreateSqlite,
   type NativeImport,
   type OpenSqlite,
   buildNativeImport,
+  NOTE_FIELDS,
+  NOTE_TYPE,
   collectionFromAnki,
+  moveToAnki,
   packageDecks,
   readAnkiPackage,
+  writeAnkiPackage,
 } from "@app/anki";
 import {
   type CardRating,
   type CardSchedule,
   DEFAULT_FSRS_PARAMS,
+  type Grade,
   type LanguageProfile,
+  NORMAL_WEEK,
+  type WeekLoad,
   answerCard,
+  balanceInterval,
   clozeNumbers,
+  dailyLoad,
+  mondayFirst,
+  paramsDecay,
   destinationDecks,
   formatInterval,
   normalizeKey,
@@ -52,7 +64,9 @@ export interface LiveNativeDeps {
   changed: () => void;
   optimizer: RunOptimizer;
   /** SQLite for reading package files. */
-  sqlite: () => { open: OpenSqlite; dispose: () => void };
+  sqlite: () => { open: OpenSqlite; create: CreateSqlite; dispose: () => void };
+  /** How much of the usual load each weekday takes, Monday first (Settings). */
+  reviewWeek?: () => Promise<readonly number[]>;
   now?: () => number;
 }
 
@@ -66,6 +80,8 @@ const RETUNE_REVIEWS = 500;
 /** First tuning by itself once the history has this many answers. */
 const FIRST_TUNE_REVIEWS = 400;
 const CHANGES_PER_EVENT = 500;
+/** Target recalls the deck table offers, with the load each means. */
+const LOAD_RETENTIONS = [0.8, 0.85, 0.87, 0.9, 0.92, 0.95, 0.97];
 /** Texts searched for a sentence with the word (newest first). */
 const OWN_TEXTS = 200;
 
@@ -86,6 +102,13 @@ const MIME: Record<string, string> = {
   webm: "audio/webm",
   flac: "audio/flac",
 };
+
+const RATING_OF: Record<Grade, CardRating> = { again: 1, hard: 2, good: 3, easy: 4 };
+
+/** Days a due card moves when its word is read without a lookup: 15 % of its interval, 1–7. */
+export function readingDelay(intervalDays: number): number {
+  return Math.min(7, Math.max(1, Math.round(intervalDays * 0.15)));
+}
 
 /** Start of the study day (4:00 local time) that `now` falls in. */
 export function studyDayStart(now: number): number {
@@ -338,6 +361,36 @@ export function createLiveNative(deps: LiveNativeDeps) {
     }
   }
 
+  /**
+   * A review answer's due date within its random spread: the lightest day, away from lighter
+   * weekdays (`balanceInterval`).
+   */
+  async function balanced(
+    lang: string,
+    s: CardSchedule,
+    prev: CardSchedule | undefined,
+    at: number,
+    maxInterval: number,
+  ): Promise<CardSchedule> {
+    const planned = s.scheduledDays;
+    if (planned < 3) return s;
+    const today = studyDayStart(at);
+    const counts = await repo.nativeDueCounts(lang, today, Math.ceil(planned * 1.3) + 5);
+    const week = (
+      (await deps.reviewWeek?.())?.length === 7 ? await deps.reviewWeek!() : NORMAL_WEEK
+    ) as WeekLoad;
+    const elapsed = prev ? Math.max(0, Math.round((at - prev.lastReview) / DAY_MS)) : 0;
+    const days = balanceInterval(
+      planned,
+      elapsed,
+      maxInterval,
+      (d) => counts[d] ?? 0,
+      (d) => mondayFirst(new Date(today + d * DAY_MS + 12 * 3_600_000).getDay()),
+      week,
+    );
+    return days === planned ? s : { ...s, scheduledDays: days, due: at + days * DAY_MS };
+  }
+
   const services: NativeServices = {
     async reviewOverview() {
       if (profileMode(await deps.profile()) !== "native")
@@ -367,10 +420,14 @@ export function createLiveNative(deps: LiveNativeDeps) {
       const v = await repo.nativeCard(lang, cardId);
       if (!v) throw new Error("This card no longer exists.");
       const at = now();
-      const schedule = answerCard(v.card.schedule, rating, at, {
+      const prev = v.card.schedule;
+      let schedule = answerCard(prev, rating, at, {
         options: v.options,
         params: await params(lang),
+        fuzz: false,
       });
+      if (schedule.state === 2)
+        schedule = await balanced(lang, schedule, prev, at, v.options.maxInterval);
       const stored = await repo.append({
         type: "CardReviewed",
         lang,
@@ -396,7 +453,30 @@ export function createLiveNative(deps: LiveNativeDeps) {
     },
 
     async nativeDecks() {
-      return repo.nativeDecks(await deps.lang(), now());
+      const lang = await deps.lang();
+      const decks = await repo.nativeDecks(lang, now());
+      const { cards } = await repo.nativeCollection(lang, []);
+      const decay = paramsDecay(await params(lang));
+      const stabilities = new Map<string, number[]>();
+      for (const c of cards) {
+        if (c.schedule?.state !== 2 || c.suspended) continue;
+        stabilities.set(c.deck, [...(stabilities.get(c.deck) ?? []), c.schedule.stability]);
+      }
+      return decks.map((d) => ({
+        ...d,
+        load: LOAD_RETENTIONS.map((retention) => ({
+          retention,
+          perDay: Math.round(
+            dailyLoad(
+              stabilities.get(d.name) ?? [],
+              retention,
+              decay,
+              d.fresh > 0 ? d.options.newPerDay : 0,
+              d.options.maxInterval,
+            ),
+          ),
+        })),
+      }));
     },
 
     async setDeckOptions(deck, options) {
@@ -443,6 +523,68 @@ export function createLiveNative(deps: LiveNativeDeps) {
       return summary;
     },
 
+    async exportPackage(decks) {
+      const lang = await deps.lang();
+      const col = await repo.nativeCollection(lang, decks);
+      const at = now();
+      const sqlite = deps.sqlite();
+      try {
+        const { bytes, summary } = await writeAnkiPackage(
+          {
+            ...col,
+            params: await params(lang),
+            media: Object.entries(col.media).map(([name, blobId]) => ({
+              name,
+              bytes: async () => (await repo.getBlob(blobId))?.bytes ?? null,
+            })),
+            now: at,
+          },
+          sqlite.create,
+        );
+        const day = new Date(at).toISOString().slice(0, 10);
+        const label = decks.length === 1 ? decks[0]!.replace(/::/g, "-") : "Kenning";
+        const fileName = `${label.replace(/[^\p{L}\p{N}._-]+/gu, "_")}-${day}.apkg`;
+        return { bytes, fileName, summary };
+      } finally {
+        sqlite.dispose();
+      }
+    },
+
+    async moveToAnki(withHistory, onProgress) {
+      const profile = await deps.profile();
+      if (profileMode(profile) !== "native") throw new Error("Your words are already in Anki.");
+      const lang = await deps.lang();
+      const client = await deps.anki();
+      const col = await repo.nativeCollection(lang, []);
+      const r = await moveToAnki(
+        client,
+        { ...col, params: await params(lang), now: now(), withHistory },
+        onProgress,
+      );
+      // Kenning reads the moved decks: its own note type where words were added.
+      const kenningDecks = new Set(destinationDecks(profile));
+      const sources = [...profile.sources];
+      for (const deck of r.decks) {
+        if (sources.some((s) => s.deck === deck) || kenningDecks.has(deck)) continue;
+        sources.push({
+          deck,
+          modelName: NOTE_TYPE,
+          wordField: NOTE_FIELDS[0],
+          glossField: NOTE_FIELDS[1],
+          sentenceField: NOTE_FIELDS[2],
+        });
+      }
+      await deps.saveProfile({ ...profile, mode: "connected", sources });
+      deps.changed();
+      return {
+        added: r.added,
+        existing: r.existing,
+        skipped: r.skipped,
+        scheduled: r.scheduled,
+        reviews: r.reviews,
+      };
+    },
+
     async tuning() {
       const lang = await deps.lang();
       return info(await repo.fsrsParams(lang), (await repo.nativeStats(lang)).reviews);
@@ -463,7 +605,109 @@ export function createLiveNative(deps: LiveNativeDeps) {
       if (!due || history < MIN_TRAINING_REVIEWS) return null;
       return tune();
     },
+
+    async lastReview() {
+      return repo.nativeLastReview(await deps.lang());
+    },
   };
 
-  return { services, invalidate: () => (ownIndex = null) };
+  /**
+   * Native mode: an answer to a word outside the review screen (a Practice exercise, a reader
+   * blank) answers its review card when that card is due today, or, for a wrong answer, any
+   * review card of the word. One answer per word a day. Returns whether a card was answered.
+   */
+  async function feedWord(
+    key: string,
+    rating: CardRating,
+    durationMs: number,
+    via: "practice" | "cloze",
+  ): Promise<boolean> {
+    if (profileMode(await deps.profile()) !== "native") return false;
+    const lang = await deps.lang();
+    const at = now();
+    const start = studyDayStart(at);
+    const cards = (await repo.nativeKeyCards(lang, [normalizeKey(key)], start)).filter(
+      (c) => c.card.schedule?.state === 2 && !c.card.suspended,
+    );
+    if (cards.length === 0 || cards.some((c) => c.answeredToday)) return false;
+    const target =
+      cards.find((c) => c.card.schedule!.due < start + DAY_MS) ??
+      (rating === 1 ? cards[0] : undefined);
+    if (!target) return false;
+    const prev = target.card.schedule!;
+    let schedule = answerCard(prev, rating, at, {
+      options: target.options,
+      params: await params(lang),
+      fuzz: false,
+    });
+    if (schedule.state === 2) {
+      schedule = await balanced(lang, schedule, prev, at, target.options.maxInterval);
+    }
+    await repo.append({
+      type: "CardReviewed",
+      lang,
+      cardId: target.card.id,
+      rating,
+      at,
+      durationMs: Math.max(0, Math.round(durationMs)),
+      schedule,
+      previous: prev,
+      via,
+    });
+    deps.changed();
+    return true;
+  }
+
+  /**
+   * Reading as light evidence, never an answer (the optimizer does not see it): words of a
+   * finished page that were not looked up move their due review card later by a capped amount;
+   * a lookup brings a word's review card back to today.
+   */
+  async function moveDue(
+    keys: string[],
+    pick: (s: CardSchedule, dayEnd: number) => boolean,
+    due: (s: CardSchedule, at: number) => number,
+  ): Promise<number> {
+    if (keys.length === 0 || profileMode(await deps.profile()) !== "native") return 0;
+    const lang = await deps.lang();
+    const at = now();
+    const start = studyDayStart(at);
+    const changes: NativeCardChange[] = [];
+    for (const c of await repo.nativeKeyCards(lang, [...new Set(keys.map(normalizeKey))], start)) {
+      const s = c.card.schedule;
+      if (!s || s.state !== 2 || c.card.suspended || c.answeredToday) continue;
+      if (!pick(s, start + DAY_MS)) continue;
+      changes.push({ cardId: c.card.id, schedule: { ...s, due: due(s, at) } });
+    }
+    if (changes.length) {
+      await repo.append({ type: "NativeCardsChanged", lang, reason: "reading", changes });
+      deps.changed();
+    }
+    return changes.length;
+  }
+
+  const evidence = {
+    /** A Practice exercise was answered. */
+    exercise: (key: string, grade: Grade, ms: number) =>
+      feedWord(key, RATING_OF[grade], ms, "practice"),
+    /** A reader blank was answered (first answer per blank). */
+    cloze: (key: string, correct: boolean, hinted: boolean) =>
+      feedWord(key, !correct ? 1 : hinted ? 2 : 3, 0, "cloze"),
+    /** A page was finished: these words were met and not looked up. */
+    pageRead: (keys: string[]) =>
+      moveDue(
+        keys,
+        (s, dayEnd) => s.due < dayEnd,
+        (s, at) => at + readingDelay(s.scheduledDays) * DAY_MS,
+      ),
+    /** A word was looked up while reading. */
+    lookup: (key: string) =>
+      moveDue(
+        [key],
+        (s, dayEnd) => s.due >= dayEnd,
+        (_s, at) => at,
+      ),
+  };
+
+  return { services, evidence, invalidate: () => (ownIndex = null) };
 }

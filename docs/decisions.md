@@ -27,8 +27,16 @@ The rules the code follows, and why.
   then becomes native.
 - In native mode an `.apkg` or `.colpkg` file can be imported at any time: one deck, several or
   all.
-- Kenning never writes reviews or schedules to Anki. Imported notes and cards keep their Anki
-  ids.
+- In native mode your decks can be exported to an `.apkg` at any time, with their schedule,
+  memory and review history, to import in Anki or keep as a copy.
+- A native profile can move back once with **Move to Anki** (Settings → Language & decks):
+  words become notes of Kenning's note type in their own decks (notes that came from Anki stay
+  as they are there), cards reviewed in Kenning get their next due date with that gap as their
+  interval, and, as an experimental option, the review history goes in with real answer times,
+  plus each card's exact interval, reviews and lapses. The profile then becomes connected.
+  Notes of other types without a word stay out; the `.apkg` export carries them.
+- Apart from Move to Anki, Kenning never writes reviews or schedules to Anki. Imported notes and
+  cards keep their Anki ids.
 - The automatic Anki import (on start and every 6 hours) runs only in connected mode.
 
 ## Word commands

@@ -3,21 +3,13 @@ import { useRef, useState } from "react";
 import { backupFilename } from "@app/db";
 import { Button, Dialog, Skeleton, useToast } from "@app/ui";
 import { formatBytes } from "../../format.js";
+import { saveFile } from "../../saveFile.js";
 import { DesktopDataFile } from "../../desktop/DesktopData.js";
 import { useAppInfo } from "../../shell/AppInfo.js";
 
-/** Save bytes as a file through a temporary link. */
+/** Save a backup file. */
 export function downloadBytes(bytes: Uint8Array, filename: string): void {
-  const url = URL.createObjectURL(
-    new Blob([bytes as BlobPart], { type: "application/vnd.sqlite3" }),
-  );
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.append(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 10_000);
+  saveFile(bytes, filename, "application/vnd.sqlite3");
 }
 
 /** Settings > Your data: where the data lives, its size, backup and restore. */

@@ -144,7 +144,7 @@ pApp = 0.8 · c / (c + w + 1) · 0.5^(days since the newest answer / 30)     (×
 
 So three unaided correct answers today give `pKnown = 0.6`: the word counts as "Learning (in Kenning)", adds 0.6 to coverage and can become a cloze. Two months later, with no new answers, it is back to Anki's state with `pKnown ≈ 0.15`. Nothing is written to Anki: to make the word a card, use Add to Anki or Study first in Anki.
 
-**Limits.** Exposure while reading (a word read without a lookup) is not evidence yet. Practice FSRS states are kept separately for scheduling exercises (section 4.1); only right/wrong feeds the learner model.
+**Limits.** In connected mode, exposure while reading (a word read without a lookup) is not evidence. Practice FSRS states are kept separately for scheduling exercises (section 4.1); only right/wrong feeds the learner model. In native mode reading, blanks and Practice also reach the word's card (section 9.5.1).
 
 ---
 
@@ -658,21 +658,29 @@ Notes and cards keep their Anki ids. A card that is already held keeps its state
 
 `packages/core/src/native/schedule.ts`, on `ts-fsrs` (FSRS-6, 21 parameters):
 
-| Setting          | Value                                                                                                                                             |
-| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Parameters       | the learner's tuned ones (9.3); before the first tuning, Anki's own FSRS-6 parameters when the imported preset had them, else the FSRS-6 defaults |
-| Target retention | per deck, default 0.9 (between 0.7 and 0.99)                                                                                                      |
-| Learning steps   | per deck, default 1 min and 10 min                                                                                                                |
-| Relearning steps | per deck, default 10 min                                                                                                                          |
-| Maximum interval | per deck, default 36,500 days                                                                                                                     |
-| New cards a day  | per deck, default 20; counted from 4:00 local time                                                                                                |
-| Fuzz             | on for answers (due dates spread at random within ts-fsrs's ranges), off for replays and the intervals shown on the buttons                       |
+| Setting          | Value                                                                                                                                                    |
+| ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Parameters       | the learner's tuned ones (9.3); before the first tuning, Anki's own FSRS-6 parameters when the imported preset had them, else the FSRS-6 defaults        |
+| Target retention | per deck, default 0.9 (between 0.7 and 0.99)                                                                                                             |
+| Learning steps   | per deck, default 1 min and 10 min                                                                                                                       |
+| Relearning steps | per deck, default 10 min                                                                                                                                 |
+| Maximum interval | per deck, default 36,500 days                                                                                                                            |
+| New cards a day  | per deck, default 20; counted from 4:00 local time                                                                                                       |
+| Spread           | answers of 3 days and more land on the lightest day within ts-fsrs's fuzz range (9.2.1); replays and the intervals on the buttons use the plain interval |
 
 Imported decks bring their own steps, limits and target retention.
 
 **Imported memory.** Each card's review log is replayed through the scheduler, oldest first, without fuzz, so stability and difficulty are what FSRS makes of the whole history. Manual changes (rescheduling, set due date) are not answers and are skipped; a manual entry followed by learning answers is a reset and starts the card over. A review card keeps the due date and interval Anki gave it. A reviewed card without any history gets its interval as stability and difficulty 5.
 
 **Queue** (`nativeQueue` in `packages/db/src/cards.ts`): cards due now first (learning, relearning and review, earliest first), then new cards in each deck's order within its daily limit. When nothing else is left, learning cards due within 20 minutes come forward.
+
+**Related cards apart.** Once a card of a note, or of another note of the same word (same key), is answered on a study day, that note's and word's other new and review cards wait for the next day. In one session only the first of them is offered. Learning and relearning steps go on. The counts on the badge and Home follow the same rule.
+
+#### 9.2.1 Workload
+
+- **Load balancing** (`balanceInterval` in `packages/core/src/native/workload.ts`). A review answer of 3 days or more can land anywhere in the range ts-fsrs's fuzz allows (`get_fuzz_range`, for 20 days about 17–23). Kenning picks the day with the fewest review cards already due (`nativeDueCounts`); ties go to the planned interval. Cards answered alike so spread by themselves, without randomness.
+- **Review days** (Settings): each weekday takes its normal, reduced (half) or minimum share. The cost of a day is (cards due + 1) ÷ its share; a minimum day takes a card only when every day in the range is one.
+- **Expected load.** Next to each target recall, Settings shows about how many reviews a day it means for the cards you have now: for each review card, one review per interval at that recall (FSRS-6: t = S/F · (R^(−1/decay) − 1), F = 0.9^(−1/decay) − 1, capped by the maximum interval), plus the new cards a day while a deck has new cards.
 
 **Answering** (`answerCard`): Again, Hard, Good, Easy are FSRS ratings 1–4. The event stores the card's schedule before and after the answer, so the log replays without the scheduler and an undo restores the earlier state exactly. The buttons show the interval each rating would give.
 
@@ -700,6 +708,47 @@ It runs by itself when the app opens: the first time once the history holds 400 
 | **Study first**     | the word's new cards move to the front of the new queue and are unsuspended            |
 | **Mark known**      | the cards get a mature interval of 21–35 days (the word is added first if it has none) |
 
+#### 9.5.1 One memory per word
+
+In native mode, what you do with a word outside the review screen reaches its card (`evidence` in `apps/web/src/services/liveNative.ts`), so one word has one memory state:
+
+| What you do                                | What happens to the word's review card                                                                                             |
+| ------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------- |
+| Answer a **Practice** exercise             | when the card is due today: an answer (Again, Hard, Good, Easy as the exercise's grade); a wrong answer also on a card not due yet |
+| Answer a **reader blank** (first answer)   | the same: wrong is Again, right after a letter hint is Hard, right is Good                                                         |
+| **Finish a page** and not look the word up | a due card moves later by 15 % of its interval (1–7 days): light evidence, not an answer                                           |
+| **Look the word up** while reading         | a card not due yet becomes due now                                                                                                 |
+
+- A word gets at most one answer a day, from wherever it comes first (the review screen included). New cards are never introduced this way; suspended cards are left alone.
+- Answers from Practice and blanks are reviews (source `practice` or `cloze`): the optimizer trains on them. Moves from reading are not reviews and stay out of its training data.
+
 ### 9.6 The review screen
 
-Front, then Space or **Show answer**, then Again / Hard / Good / Easy (keys 1–4; Space or Enter is Good), Z or **Undo** takes back the last answer. A vocabulary card whose template shows the word on the front is laid out by Kenning: the word and its sentence on the front, the meaning and the sentence translation on the back. Clozes and other templates are rendered from the note type's own template (fields, conditional sections, `FrontSide`, clozes, hints) and shown through an allow-list sanitiser: formatting tags only, no scripts, styles, frames, forms or event handlers, and only the card's own images. Sounds get a play button. After the answer, a sentence with the word from your own texts is shown when one exists.
+Front, then Space or **Show answer**, then Again / Hard / Good / Easy (keys 1–4; Space or Enter is Good), Z or **Undo** takes back the latest answer, then the one before, also after a reload or on another day (the newest answer given in Kenning, `nativeLastReview`). A vocabulary card whose template shows the word on the front is laid out by Kenning: the word and its sentence on the front, the meaning and the sentence translation on the back. Clozes and other templates are rendered from the note type's own template (fields, conditional sections, `FrontSide`, clozes, hints) and shown through an allow-list sanitiser: formatting tags only, no scripts, styles, frames, forms or event handlers, and only the card's own images. Sounds get a play button. After the answer, a sentence with the word from your own texts is shown when one exists.
+
+**Your words and your reviews.** In native mode Words has a **Due** view: the words with a card due now (`nativeDueKeys`), earliest first, each with how long ago it came due; with a source chosen, only that text's, unit's or session's words. The word inspector lists the word's latest eight answers under **Your reviews**: the day, the answer and the interval it gave (the card's history replayed; the latest answer shows the due date the card really got). Home's **This week** counts the reviews answered in Kenning per day; an undone answer no longer counts.
+
+### 9.7 Export to .apkg
+
+`writeAnkiPackage` (`packages/anki/src/apkg/write.ts`) writes the older package layout that every Anki since 2.1 imports: `collection.anki21` (schema 11; note types, decks and deck options as JSON in `col`) and `media` as JSON. What goes in:
+
+| Kenning                 | In the package                                                                                                                                                                  |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Note types              | imported ones keep their Anki id; Kenning's own word type has a fixed id, so exports and re-imports update the same type                                                        |
+| Notes                   | their ids, fields and tags; a guid from the note id, so importing a newer export updates the notes instead of doubling them                                                     |
+| Decks and their parents | the deck options (steps, limits, maximum interval, target retention) and the FSRS-6 parameters in use, one preset per deck                                                      |
+| Cards                   | new cards in their new-queue order; learning cards with their step and due time; review cards with their due day and interval; FSRS stability and difficulty in the card's data |
+| History                 | every answer, with the interval it gave (the history replayed without fuzz); manual changes as manual entries                                                                   |
+| Media                   | the images and sounds the notes and templates use                                                                                                                               |
+
+Checked by importing the file into a fresh collection with Anki 26.08: cards, due days, memory state, history and deck presets come through.
+
+### 9.8 Move to Anki
+
+`moveToAnki` (`packages/anki/src/toAnki.ts`), through AnkiConnect, once:
+
+1. `notesInfo` on every note: notes Anki already has (they came from Anki and kept their ids) are not added.
+2. The others are added as **Kenning Word** notes in their deck, tagged `kenning::moved`. A Kenning note keeps its fields; an imported vocabulary note maps its word, meaning, sentence and translation fields onto Kenning's. A note with several cards becomes one card, standing for its most advanced card. Notes of other types without a word are left out.
+3. Each card reviewed in Kenning gets `setDueDate "N!"`: due on the same study day, with that gap (N days) as its interval. New and learning cards are new in Anki. Suspended cards are suspended.
+4. **With history (experimental):** `setSpecificValueOfCard` sets the exact interval, reviews and lapses, and `insertReviews` writes every answer with its real time and the interval it gave (the history replayed without fuzz, as in the export). Answers Anki already holds (`getReviewsOfCards`) are not written twice. Anki computes FSRS memory from this history when its deck options are saved or optimised.
+5. The profile becomes connected and reads the moved decks (Kenning's note type and fields), and an Anki sync runs. Kenning's own cards stay in its database, unused.

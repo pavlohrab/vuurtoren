@@ -25,6 +25,28 @@ describe("parseSource", () => {
 });
 
 describe("Words", () => {
+  it("has a Due view in native mode only: words due now, earliest first, with how overdue", async () => {
+    const native = { ...createMockServices({ latencyMs: 0, native: true }) };
+    const history = createMemoryHistory({ initialEntries: ["/words?state=due"] });
+    render(<App services={native} history={history} />);
+    const due = await native.dueWords();
+    expect(due.length).toBeGreaterThan(0);
+    expect(await screen.findByRole("radio", { name: "Due" })).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
+    const table = await screen.findByRole("table");
+    const rows = await within(table).findAllByRole("button", { name: /^Open / });
+    expect(rows[0]).toHaveAccessibleName(`Open ${due[0]!.key}`);
+    expect(screen.getAllByText(/^due (today|yesterday|\d+ days ago)$/).length).toBe(due.length);
+  });
+
+  it("has no Due view in connected mode", async () => {
+    setup("/words");
+    await screen.findByRole("radio", { name: "To decide" });
+    expect(screen.queryByRole("radio", { name: "Due" })).toBeNull();
+  });
+
   it("shows Claude's suggestions behind a chip: add one to Anki, dismiss another", async () => {
     const { services, user } = setup("/words");
     const chip = await screen.findByRole("button", { name: /Suggested \(2\)/ });

@@ -45,9 +45,10 @@ import "./words.css";
 const PAGE_SIZE = 50;
 
 /** The views of the list: words to decide on, then by state. */
-export type WordsView = "decide" | "new" | "learning" | "known" | "ignored" | "all";
-const VIEWS: { id: WordsView; label: string }[] = [
+export type WordsView = "decide" | "due" | "new" | "learning" | "known" | "ignored" | "all";
+const VIEWS: { id: WordsView; label: string; native?: true }[] = [
   { id: "decide", label: "To decide" },
+  { id: "due", label: "Due", native: true },
   { id: "new", label: "New" },
   { id: "learning", label: "Learning" },
   { id: "known", label: "Known" },
@@ -64,7 +65,7 @@ export function parseView(raw: string | undefined, hasSource: boolean): WordsVie
 
 /** Does a word belong in a view? "New" holds words met but not learned (new and seen). */
 function inView(view: WordsView, r: { state: WordState; hasCard?: boolean | undefined }): boolean {
-  if (view === "all") return true;
+  if (view === "all" || view === "due") return true;
   const fresh = r.state === "unknown" || r.state === "seen";
   if (view === "decide") return fresh && !r.hasCard;
   if (view === "new") return fresh;
@@ -112,6 +113,16 @@ export interface WordRow {
   hasCard?: boolean | undefined;
   /** Inspector entry when the source has one (a text: with its sentence from that text). */
   entry?: InspectorEntry;
+  /** Native mode, Due view: when the word's card came due. */
+  due?: number;
+}
+
+const DAY_MS = 86_400_000;
+/** "due today", "due yesterday", "due 3 days ago". */
+export function dueAgo(due: number, now = Date.now()): string {
+  const days = Math.floor((now - due) / DAY_MS);
+  if (days <= 0) return "due today";
+  return days === 1 ? "due yesterday" : `due ${days} days ago`;
 }
 
 const rowOf = (w: WordInfo): WordRow => ({
@@ -136,7 +147,19 @@ export async function loadRows(
   const q = query?.toLowerCase();
   const matches = (r: WordRow) =>
     !q || r.key.toLowerCase().includes(q) || (r.gloss ?? "").toLowerCase().includes(q);
-  const keep = (r: WordRow) => inView(view, r) && matches(r);
+  // Due view: the words due now, narrowed to the chosen source.
+  const dueAt =
+    view === "due"
+      ? new Map((await services.dueWords({ limit: 1000 })).map((w) => [w.key, w.due]))
+      : null;
+  const withDue = (r: WordRow): WordRow =>
+    dueAt?.has(r.key) ? { ...r, due: dueAt.get(r.key)! } : r;
+  const keep = (r: WordRow) => (dueAt ? dueAt.has(r.key) : inView(view, r)) && matches(r);
+  if (view === "due" && !source) {
+    return (await services.dueWords({ limit }))
+      .map((w) => ({ ...rowOf(w), due: w.due }))
+      .filter(matches);
+  }
   if (source?.kind === "text") {
     const items = await services.textWords(source.textId);
     return items
@@ -152,7 +175,8 @@ export async function loadRows(
         hasCard: w.entry.anki.noteIds.length > 0,
         entry: w.entry,
       }))
-      .filter(keep);
+      .filter(keep)
+      .map(withDue);
   }
   if (source?.kind === "unit") {
     const u = await services.unit(source.courseId, source.unit);
@@ -167,10 +191,18 @@ export async function loadRows(
         decks: w.decks,
         hasCard: w.state !== "absent",
       }))
-      .filter(keep);
+      .filter(keep)
+      .map(withDue);
   }
   const keys = source?.kind === "practice-again" ? readPracticeAgain() : undefined;
   if (keys && keys.length === 0) return [];
+  if (dueAt && keys) {
+    return (await services.words({ keys }))
+      .map(rowOf)
+      .filter(keep)
+      .map(withDue)
+      .sort((a, b) => (a.due ?? 0) - (b.due ?? 0));
+  }
   if (view === "decide" && !keys) {
     return (await services.wordsToDecide({ limit })).map(rowOf).filter(matches);
   }
@@ -183,7 +215,7 @@ export async function loadRows(
     return [...seen, ...fresh].map(rowOf);
   }
   if (view === "decide") return (await services.words(base)).map(rowOf).filter(keep);
-  const state = view === "all" ? undefined : view;
+  const state = view === "all" || view === "due" ? undefined : view;
   return (await services.words({ ...base, ...(state ? { state } : {}) })).map(rowOf);
 }
 
@@ -366,7 +398,7 @@ export function Words() {
 
       <div className="words-filters" role="group" aria-label="Filters">
         <div className="words-states" role="radiogroup" aria-label="Show">
-          {VIEWS.map((v) => (
+          {VIEWS.filter((v) => !v.native || native).map((v) => (
             <button
               key={v.id}
               type="button"
@@ -518,6 +550,17 @@ export function Words() {
             </Link>
           }
         />
+      ) : list.length === 0 && view === "due" && !source && !params.q ? (
+        <EmptyState
+          icon={<Languages size={20} />}
+          title="Nothing due"
+          description="Every card is up to date. Words come back here when their next review is due."
+          action={
+            <Link to="/library" className="k-btn k-btn--secondary">
+              Find something to read
+            </Link>
+          }
+        />
       ) : list.length === 0 ? (
         <EmptyState
           title="No words match"
@@ -586,6 +629,9 @@ export function Words() {
                     </td>
                     <td>
                       <WordStateChip state={w.state} inKenning={w.appLearning} />
+                      {w.due !== undefined ? (
+                        <span className="words-due">{dueAgo(w.due)}</span>
+                      ) : null}
                     </td>
                     <td className={w.gloss ? "words-gloss" : "words-gloss words-gloss--none"}>
                       {w.gloss ?? "No meaning yet"}

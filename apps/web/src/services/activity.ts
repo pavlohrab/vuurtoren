@@ -12,6 +12,8 @@ export interface ActivityDay {
   pages: number;
   exercises: number;
   added: number;
+  /** Native cards reviewed in Kenning. */
+  reviews: number;
 }
 
 const pad = (n: number) => String(n).padStart(2, "0");
@@ -41,7 +43,13 @@ export function groupActivity(
   for (let i = 0; i < days; i++) {
     const d = new Date(start);
     d.setDate(start.getDate() + i);
-    const day: ActivityDay = { date: localDate(d.getTime()), pages: 0, exercises: 0, added: 0 };
+    const day: ActivityDay = {
+      date: localDate(d.getTime()),
+      pages: 0,
+      exercises: 0,
+      added: 0,
+      reviews: 0,
+    };
     out.push(day);
     byDate.set(day.date, day);
   }
@@ -50,6 +58,7 @@ export function groupActivity(
     if (!day) continue;
     if (e.kind === "page") day.pages++;
     else if (e.kind === "exercise") day.exercises++;
+    else if (e.kind === "review") day.reviews++;
     else day.added++;
   }
   return out;
@@ -57,7 +66,7 @@ export function groupActivity(
 
 /** Days with any activity. */
 export const activeDays = (days: readonly ActivityDay[]): number =>
-  days.filter((d) => d.pages + d.exercises + d.added > 0).length;
+  days.filter((d) => d.pages + d.exercises + d.added + d.reviews > 0).length;
 
 /** One week of activity (Progress, reading per week). */
 export interface ActivityWeek {
@@ -66,6 +75,7 @@ export interface ActivityWeek {
   pages: number;
   exercises: number;
   added: number;
+  reviews: number;
 }
 
 /** Consecutive 7-day weeks of `days` (oldest first, the last week ends today). */
@@ -79,6 +89,7 @@ export function groupWeeks(days: readonly ActivityDay[]): ActivityWeek[] {
       pages: week.reduce((n, d) => n + d.pages, 0),
       exercises: week.reduce((n, d) => n + d.exercises, 0),
       added: week.reduce((n, d) => n + d.added, 0),
+      reviews: week.reduce((n, d) => n + d.reviews, 0),
     });
   }
   return out;

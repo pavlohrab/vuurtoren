@@ -98,7 +98,10 @@ export function createMockNative(
   now: () => number = Date.now,
 ): NativeServices {
   const cards = demoCards(now());
-  const undo = new Map<string, { cardId: number; schedule: CardSchedule | undefined }>();
+  const undo = new Map<
+    string,
+    { cardId: number; schedule: CardSchedule | undefined; at: number }
+  >();
   let seq = 0;
   let tuning: TuningInfo = { tuned: false, at: null, reviewsUsed: 0, history: 6 };
   const isDue = (c: MockCard) => !c.schedule || c.schedule.due <= now();
@@ -130,7 +133,7 @@ export function createMockNative(
       const c = cards.find((x) => x.card.cardId === cardId);
       if (!c) throw new Error("This card no longer exists.");
       const reviewId = String(++seq);
-      undo.set(reviewId, { cardId, schedule: c.schedule });
+      undo.set(reviewId, { cardId, schedule: c.schedule, at: now() });
       c.schedule = answerCard(c.schedule, rating, now(), ctx);
       return { reviewId };
     },
@@ -142,6 +145,7 @@ export function createMockNative(
         if (u.schedule) c.schedule = u.schedule;
         else delete c.schedule;
       }
+      undo.delete(reviewId);
     },
     async mediaFile() {
       return null;
@@ -157,6 +161,11 @@ export function createMockNative(
           fresh: own.filter((c) => !c.schedule).length,
           due: own.filter((c) => c.schedule && isDue(c)).length,
           suspended: 0,
+          // Demo: a deck of about 400 reviewed cards.
+          load: [0.8, 0.85, 0.87, 0.9, 0.92, 0.95, 0.97].map((retention) => ({
+            retention,
+            perDay: Math.round(20 + 12 / (1 - retention) / 4),
+          })),
         };
       });
     },
@@ -192,6 +201,28 @@ export function createMockNative(
         skippedMedia: 0,
       };
     },
+    async exportPackage(decks) {
+      await wait();
+      const reviewed = cards.filter((c) => c.schedule).length;
+      return {
+        // Demo data: an empty zip stands in for the package.
+        bytes: new Uint8Array([0x50, 0x4b, 0x05, 0x06, ...new Array<number>(18).fill(0)]),
+        fileName: `${decks.length === 1 ? decks[0]!.replace(/::/g, "-") : "Kenning"}.apkg`,
+        summary: { notes: cards.length, cards: cards.length, reviews: reviewed * 3, media: 0 },
+      };
+    },
+    async moveToAnki(withHistory, onProgress) {
+      onProgress?.("Adding your words to Anki");
+      await wait();
+      await profile.save({ ...profile.current(), mode: "connected" });
+      return {
+        added: cards.length,
+        existing: 0,
+        skipped: 0,
+        scheduled: cards.filter((c) => c.schedule).length,
+        reviews: withHistory ? cards.filter((c) => c.schedule).length * 3 : 0,
+      };
+    },
     async tuning() {
       await wait();
       return tuning;
@@ -213,6 +244,11 @@ export function createMockNative(
     },
     async autoTune() {
       return null;
+    },
+    async lastReview() {
+      await wait();
+      const last = [...undo].at(-1);
+      return last ? { cardId: last[1].cardId, reviewId: last[0], at: last[1].at } : null;
     },
   };
 }

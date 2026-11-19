@@ -371,17 +371,23 @@ export type AppEvent =
       durationMs: number;
       schedule: CardSchedule;
       previous?: CardSchedule;
+      /**
+       * Where the answer was given: absent on the review screen; "practice" or "cloze" when a
+       * Practice exercise or a reader blank answered the word's due card.
+       */
+      via?: "practice" | "cloze";
     }
   /** Native mode: the answer recorded by CardReviewed `reviewId` was taken back. */
   | { type: "CardReviewUndone"; lang: string; cardId: number; reviewId: string }
   /**
-   * Native mode: cards changed outside a review: marked known, studied first, or their memory
-   * recomputed with new FSRS parameters.
+   * Native mode: cards changed outside a review: marked known, studied first, their memory
+   * recomputed with new FSRS parameters, or a due date moved by reading (a word met without a
+   * lookup, or looked up).
    */
   | {
       type: "NativeCardsChanged";
       lang: string;
-      reason: "known" | "first" | "memory";
+      reason: "known" | "first" | "memory" | "reading";
       changes: NativeCardChange[];
     }
   /**
@@ -594,8 +600,11 @@ export interface TextGrammar {
 
 /** One learning event, as listed by `activity` (Home's week strip). */
 export interface ActivityEntry {
-  /** Pages read, exercises answered (in Practice or as a reader cloze) and words added to Anki. */
-  kind: "page" | "exercise" | "added";
+  /**
+   * Pages read, exercises answered (in Practice or as a reader cloze), words added to Anki and
+   * native cards reviewed in Kenning.
+   */
+  kind: "page" | "exercise" | "added" | "review";
   at: number;
 }
 
@@ -642,6 +651,27 @@ export interface NativeCardView {
   note: NativeNote;
   notetype: NativeNotetype;
   options: DeckOptions;
+}
+
+/** Native mode: a card of a word (`nativeKeyCards`). */
+export interface NativeKeyCard {
+  key: string;
+  card: NativeCard;
+  options: DeckOptions;
+  /** Answered since the start of the study day. */
+  answeredToday: boolean;
+}
+
+/** Native mode: everything of some decks, for an export (`nativeCollection`). */
+export interface NativeCollection {
+  notetypes: NativeNotetype[];
+  decks: { name: string; options: DeckOptions }[];
+  notes: NativeNote[];
+  cards: NativeCard[];
+  /** The review history of these cards, oldest first. */
+  reviews: CardReview[];
+  /** Media files held (name → blob id); the export keeps the ones its notes use. */
+  media: Record<string, string>;
 }
 
 /** Native mode: the cards of one review session, in order, and what is left today. */
@@ -736,14 +766,38 @@ export interface Repository {
    * daily limit (counted from `dayStart`, the start of the learner's study day), at most `limit`.
    */
   nativeQueue(lang: string, now: number, dayStart: number, limit: number): Promise<NativeQueue>;
+  /**
+   * Native mode: review cards due on each of `days` study days from `from` (the start of a
+   * study day), for spreading new due dates.
+   */
+  nativeDueCounts(lang: string, from: number, days: number): Promise<number[]>;
+  /**
+   * Native mode: words with a card due at `now` (reviewed cards, not suspended), each with its
+   * earliest due time, earliest first.
+   */
+  nativeDueKeys(lang: string, now: number, limit: number): Promise<{ key: string; due: number }[]>;
+  /** Native mode: the review history of some cards, oldest first. */
+  nativeCardReviews(lang: string, cardIds: number[]): Promise<CardReview[]>;
+  /** Native mode: the latest answer given in Kenning (the one Undo takes back), or null. */
+  nativeLastReview(lang: string): Promise<{ cardId: number; reviewId: string; at: number } | null>;
   /** Native mode: one card with its note, note type and deck options. */
   nativeCard(lang: string, cardId: number): Promise<NativeCardView | null>;
   /** Native mode: the whole review history (imported and answered in Kenning), oldest first. */
   nativeReviews(lang: string): Promise<CardReview[]>;
+  /**
+   * Native mode: the note types, notes, cards, review history and media of some decks (and
+   * their subdecks); every deck when `decks` is empty. For an export.
+   */
+  nativeCollection(lang: string, decks: string[]): Promise<NativeCollection>;
   /** Native mode: notes, cards and answers held, for Settings. */
   nativeStats(lang: string): Promise<{ notes: number; cards: number; reviews: number }>;
   /** Native mode: the FSRS parameters in use, or null for the defaults. */
   fsrsParams(lang: string): Promise<FsrsParamsRecord | null>;
+  /**
+   * Native mode: the cards of the notes whose headword key is one of `keys`, earliest due
+   * first, each with its deck options and whether it was answered since `dayStart`.
+   */
+  nativeKeyCards(lang: string, keys: string[], dayStart: number): Promise<NativeKeyCard[]>;
   /** Native mode: blob ids of media files by name (names without a blob are left out). */
   nativeMedia(lang: string, names: string[]): Promise<Record<string, string>>;
   /** Native mode: the cards of some notes, for the word inspector. */

@@ -75,6 +75,7 @@ async function setup() {
     newWords: "auto",
     glossClozes: false,
     grammarMarks: true,
+    reviewWeek: [1, 1, 1, 1, 1, 1, 1],
   };
   const ai = createLiveAI({
     repo,

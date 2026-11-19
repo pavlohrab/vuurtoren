@@ -55,10 +55,16 @@ export const RPC_METHODS = {
   nativeDecks: ["string", "number"],
   nativeQueue: ["string", "number", "number", "number"],
   nativeCard: ["string", "number"],
+  nativeDueKeys: ["string", "number", "number"],
+  nativeCardReviews: ["string", "number[]"],
+  nativeLastReview: ["string"],
+  nativeDueCounts: ["string", "number", "number"],
   nativeReviews: ["string"],
+  nativeCollection: ["string", "string[]"],
   nativeStats: ["string"],
   fsrsParams: ["string"],
   nativeMedia: ["string", "string[]"],
+  nativeKeyCards: ["string", "string[]", "number"],
   nativeNoteStatus: ["string", "number[]", "number"],
 } as const satisfies Record<string, readonly ArgKind[]>;
 

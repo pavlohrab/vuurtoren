@@ -112,6 +112,34 @@ const bytes = (v: unknown): Uint8Array =>
 const steps = (xs: unknown): number[] =>
   Array.isArray(xs) ? xs.map(Number).filter((x) => x > 0) : [];
 
+const UNICASE = new TextEncoder().encode(" COLLATE unicase");
+const BINARY = new TextEncoder().encode(" COLLATE binary ");
+
+/**
+ * Make Anki's collection file openable by a plain SQLite in memory:
+ * - Anki writes it in WAL journal mode (header bytes 18–19 are 2), which a database opened from
+ *   bytes cannot use: the copy is marked as a rollback-journal file (1). The file is complete.
+ * - The current schema declares text columns `COLLATE unicase`, a collation only Anki registers;
+ *   without it SQLite refuses those tables. The declaration is swapped for `COLLATE binary `
+ *   (the same length, so no record moves). Kenning never sorts or filters by those columns.
+ */
+export function openableCollection(bytes: Uint8Array): Uint8Array {
+  const wal = bytes.length >= 20 && (bytes[18] === 2 || bytes[19] === 2);
+  const at: number[] = [];
+  outer: for (let i = bytes.indexOf(UNICASE[0]!); i >= 0; i = bytes.indexOf(UNICASE[0]!, i + 1)) {
+    for (let j = 1; j < UNICASE.length; j++) if (bytes[i + j] !== UNICASE[j]) continue outer;
+    at.push(i);
+  }
+  if (!wal && at.length === 0) return bytes;
+  const copy = bytes.slice();
+  if (wal) {
+    copy[18] = 1;
+    copy[19] = 1;
+  }
+  for (const i of at) copy.set(BINARY, i);
+  return copy;
+}
+
 /** Read a package's collection and media list. */
 export async function readAnkiPackage(file: Uint8Array, open: OpenSqlite): Promise<AnkiCollection> {
   let entries: Record<string, Uint8Array>;
@@ -122,9 +150,9 @@ export async function readAnkiPackage(file: Uint8Array, open: OpenSqlite): Promi
   }
   const latest = entries["collection.anki21b"];
   const legacy = entries["collection.anki21"] ?? entries["collection.anki2"];
-  const dbBytes = latest ? unzstd(latest) : legacy;
-  if (!dbBytes) throw new AnkiPackageError("The package holds no Anki collection.");
-  const db = await open(dbBytes);
+  const raw = latest ? unzstd(latest) : legacy;
+  if (!raw) throw new AnkiPackageError("The package holds no Anki collection.");
+  const db = await open(openableCollection(raw));
   try {
     const crtRow = (await db.all("SELECT crt FROM col"))[0];
     const crt = num(crtRow?.["crt"]);

@@ -6,10 +6,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { type ChangeEvent, useState } from "react";
 import { DEFAULT_DECK_OPTIONS, type DeckOptions } from "@app/core";
-import { Button, Skeleton, Spinner, useToast } from "@app/ui";
+import { Button, Select, Skeleton, Spinner, useToast } from "@app/ui";
 import { plural, relativeTime } from "../../format.js";
 import { useServices } from "../../services/context.js";
-import type { ImportSummary, NativeDeckSummary } from "../../services/nativeTypes.js";
+import { saveFile } from "../../saveFile.js";
+import type { DeckWithLoad, ImportSummary, NativeDeckSummary } from "../../services/nativeTypes.js";
 
 const message = (e: unknown) => (e instanceof Error && e.message ? e.message : "Try again.");
 /** Queries that change when cards come in or the mode changes. */
@@ -116,14 +117,17 @@ function NativeCards() {
         )}
       </section>
       <ImportPackage />
+      {decks.data?.length ? <ExportPackage decks={decks.data.map((d) => d.name)} /> : null}
+      {decks.data?.length ? <ReviewWeek /> : null}
       <Tuning />
+      {decks.data?.length ? <MoveToAnki /> : null}
     </>
   );
 }
 
 const RETENTIONS = [0.8, 0.85, 0.87, 0.9, 0.92, 0.95, 0.97];
 
-function DeckTable({ decks }: { decks: NativeDeckSummary[] }) {
+function DeckTable({ decks }: { decks: DeckWithLoad[] }) {
   const services = useServices();
   const qc = useQueryClient();
   const toast = useToast();
@@ -165,11 +169,15 @@ function DeckTable({ decks }: { decks: NativeDeckSummary[] }) {
                   value={String(d.options.desiredRetention)}
                   onChange={(e) => set(d, { desiredRetention: Number(e.target.value) })}
                 >
-                  {[...new Set([...RETENTIONS, d.options.desiredRetention])].sort().map((r) => (
-                    <option key={r} value={String(r)}>
-                      {Math.round(r * 100)}%
-                    </option>
-                  ))}
+                  {[...new Set([...RETENTIONS, d.options.desiredRetention])].sort().map((r) => {
+                    const perDay = d.load.find((l) => l.retention === r)?.perDay;
+                    return (
+                      <option key={r} value={String(r)}>
+                        {Math.round(r * 100)}%
+                        {perDay !== undefined ? ` · about ${perDay} a day` : ""}
+                      </option>
+                    );
+                  })}
                 </select>
               </td>
               <td>
@@ -192,9 +200,185 @@ function DeckTable({ decks }: { decks: NativeDeckSummary[] }) {
       </table>
       <p className="k-hint" style={{ margin: 0 }}>
         Target recall is how likely you are to remember a card when it comes back. Higher means more
-        reviews a day.
+        reviews a day: each choice shows about how many, for the cards you have now.
       </p>
     </div>
+  );
+}
+
+const WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+const DAY_LOAD = [
+  { value: "1", label: "Normal" },
+  { value: "0.5", label: "Reduced" },
+  { value: "0", label: "Minimum" },
+];
+
+/** Lighter days: weekdays with fewer reviews; due dates spread away from them. */
+function ReviewWeek() {
+  const services = useServices();
+  const qc = useQueryClient();
+  const settings = useQuery({ queryKey: ["settings"], queryFn: () => services.getSettings() });
+  const save = useMutation({
+    mutationFn: (reviewWeek: number[]) => services.saveSettings({ reviewWeek }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["settings"] }),
+  });
+  const week =
+    settings.data?.reviewWeek?.length === 7 ? settings.data.reviewWeek : [1, 1, 1, 1, 1, 1, 1];
+  return (
+    <section className="stack" aria-labelledby="review-week-h">
+      <h3 className="settings-h3" id="review-week-h">
+        Review days
+      </h3>
+      <p className="k-hint" style={{ margin: 0 }}>
+        Days with fewer reviews. Kenning spreads due dates within the room each interval allows:
+        away from busy days, and away from reduced and minimum days.
+      </p>
+      <div className="cards-week">
+        {WEEKDAYS.map((day, i) => (
+          <Select
+            key={day}
+            label={day}
+            value={String(week[i] ?? 1)}
+            onValueChange={(v) => save.mutate(week.map((x, j) => (j === i ? Number(v) : x)))}
+            options={DAY_LOAD}
+          />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+/** Move to Anki, once: the words go to Anki and the profile switches to Keep using Anki. */
+function MoveToAnki() {
+  const services = useServices();
+  const qc = useQueryClient();
+  const toast = useToast();
+  const [confirm, setConfirm] = useState(false);
+  const [history, setHistory] = useState(false);
+  const [progress, setProgress] = useState<string | null>(null);
+  const move = useMutation({
+    mutationFn: async () => {
+      const r = await services.moveToAnki(history, setProgress);
+      setProgress("Reading your words from Anki");
+      await services.syncAnki(setProgress).catch(() => undefined);
+      return r;
+    },
+    onSuccess: async (r) => {
+      const parts = [`${plural(r.added, "word")} added`];
+      if (r.existing) parts.push(`${plural(r.existing, "note")} Anki already had`);
+      if (r.scheduled) parts.push(`${plural(r.scheduled, "card")} given their due date`);
+      if (r.reviews) parts.push(`${plural(r.reviews, "past review")} copied`);
+      if (r.skipped) parts.push(`${plural(r.skipped, "note")} without a word left out`);
+      // This part of Settings is replaced by the connected one: the result goes to a toast.
+      toast("Your reviews now happen in Anki", `${parts.join(", ")}.`);
+      for (const k of AFFECTED) await qc.invalidateQueries({ queryKey: [k] });
+    },
+  });
+  return (
+    <section className="stack" aria-labelledby="to-anki-h">
+      <h3 className="settings-h3" id="to-anki-h">
+        Move to Anki
+      </h3>
+      <p className="k-hint" style={{ margin: 0 }}>
+        Use Anki for your reviews from now on. Your words become notes in Anki, in the same decks;
+        cards you have reviewed come due on the same day. Kenning then reads your words from Anki
+        again. Notes of other types stay out: export them to a deck file above.
+      </p>
+      {confirm ? (
+        <div className="stack" style={{ gap: 8 }}>
+          <label className="row" style={{ gap: 8, alignItems: "flex-start" }}>
+            <input
+              type="checkbox"
+              checked={history}
+              onChange={(e) => setHistory(e.target.checked)}
+            />
+            <span>
+              Also copy the review history and exact intervals (experimental)
+              <span className="k-hint" style={{ display: "block" }}>
+                Every answer with its real time. Open the deck options in Anki afterwards so FSRS
+                reads it.
+              </span>
+            </span>
+          </label>
+          <p style={{ margin: 0 }}>Keep Anki open while it runs.</p>
+          <div className="row">
+            <Button variant="primary" disabled={move.isPending} onClick={() => move.mutate()}>
+              {move.isPending ? <Spinner label="Moving" /> : null}
+              Move to Anki
+            </Button>
+            <Button variant="ghost" disabled={move.isPending} onClick={() => setConfirm(false)}>
+              Cancel
+            </Button>
+          </div>
+          {move.isPending && progress ? (
+            <p className="k-hint" role="status" style={{ margin: 0 }}>
+              {progress}
+            </p>
+          ) : null}
+        </div>
+      ) : (
+        <div className="row">
+          <Button onClick={() => setConfirm(true)}>Move to Anki…</Button>
+        </div>
+      )}
+      {move.isError ? (
+        <p role="alert" className="error-text" style={{ margin: 0 }}>
+          The move did not finish. {message(move.error)}
+        </p>
+      ) : null}
+    </section>
+  );
+}
+
+/** Export to .apkg: some decks or all of them, with history, for Anki or a backup. */
+function ExportPackage({ decks }: { decks: string[] }) {
+  const services = useServices();
+  // Only top-level choices: a deck brings its subdecks.
+  const tops = [...new Set(decks.map((d) => d.split("::")[0]!))];
+  const [deck, setDeck] = useState("");
+  const run = useMutation({
+    mutationFn: () => services.exportPackage(deck ? [deck] : []),
+    onSuccess: (r) => saveFile(r.bytes, r.fileName, "application/octet-stream"),
+  });
+  return (
+    <section className="stack" aria-labelledby="export-deck-h">
+      <h3 className="settings-h3" id="export-deck-h">
+        Export to a deck file
+      </h3>
+      <p className="k-hint" style={{ margin: 0 }}>
+        An Anki deck file (.apkg) with your notes, cards, their schedule and memory, deck options,
+        review history, images and sounds. Import it in Anki with File › Import.
+      </p>
+      <div className="row" style={{ alignItems: "flex-end" }}>
+        {tops.length > 1 ? (
+          <Select
+            label="Decks"
+            value={deck || "all"}
+            onValueChange={(v) => setDeck(v === "all" ? "" : v)}
+            options={[
+              { value: "all", label: "All decks" },
+              ...tops.map((d) => ({ value: d, label: d })),
+            ]}
+          />
+        ) : null}
+        <Button disabled={run.isPending} onClick={() => run.mutate()}>
+          {run.isPending ? <Spinner label="Exporting" /> : null}
+          Export to .apkg
+        </Button>
+      </div>
+      {run.isSuccess ? (
+        <p role="status" style={{ margin: 0 }}>
+          Exported {plural(run.data.summary.notes, "note")},{" "}
+          {plural(run.data.summary.cards, "card")} and {plural(run.data.summary.reviews, "review")}{" "}
+          to {run.data.fileName}.
+        </p>
+      ) : null}
+      {run.isError ? (
+        <p role="alert" className="error-text" style={{ margin: 0 }}>
+          The export did not finish. {message(run.error)}
+        </p>
+      ) : null}
+    </section>
   );
 }
 

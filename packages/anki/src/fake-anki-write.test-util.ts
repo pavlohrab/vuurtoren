@@ -24,6 +24,10 @@ export interface FakeCollection {
   decks: Set<string>;
   notes: Map<number, { deck: string; model: string; fields: Record<string, string> }>;
   nextId: number;
+  /** Rows written by insertReviews: [id, cid, usn, ease, ivl, lastIvl, factor, time, type]. */
+  revlog?: number[][];
+  /** Card values set with setSpecificValueOfCard (other than ivl), by "cardId:key". */
+  values?: Map<string, number>;
 }
 
 export interface FakeOptions {
@@ -104,9 +108,41 @@ function legacy(col: FakeCollection, action: string, params: Record<string, unkn
     case "findCards":
       return findCards(col, String(params["query"]));
     case "multi":
-      return (params["actions"] as { action: string; params: Record<string, unknown> }[]).map((a) =>
-        legacy(col, a.action, a.params),
+      // Like AnkiConnect: a failing action gives `{ error }` in its place.
+      return (params["actions"] as { action: string; params: Record<string, unknown> }[]).map(
+        (a) => {
+          col.log.push({ action: a.action, params: a.params });
+          try {
+            return legacy(col, a.action, a.params);
+          } catch (e) {
+            return { result: null, error: (e as Error).message };
+          }
+        },
       );
+    case "suspend":
+      for (const c of col.cards) if ((params["cards"] as number[]).includes(c.id)) c.queue = -1;
+      return true;
+    case "setSpecificValueOfCard": {
+      const c = col.cards.find((x) => x.id === params["card"]);
+      if (!c) throw new Error("card not found");
+      const keys = params["keys"] as string[];
+      const values = params["newValues"] as number[];
+      keys.forEach((k, i) => {
+        if (k === "ivl") c.interval = values[i]!;
+        else (col.values ??= new Map()).set(`${c.id}:${k}`, values[i]!);
+      });
+      return keys.map(() => true);
+    }
+    case "insertReviews":
+      for (const r of params["reviews"] as number[][]) (col.revlog ??= []).push(r);
+      return null;
+    case "getReviewsOfCards": {
+      const out: Record<string, { id: number }[]> = {};
+      for (const id of params["cards"] as string[]) {
+        out[id] = (col.revlog ?? []).filter((r) => r[1] === Number(id)).map((r) => ({ id: r[0]! }));
+      }
+      return out;
+    }
     case "addNote": {
       const n = params["note"] as {
         deckName: string;

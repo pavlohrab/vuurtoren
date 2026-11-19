@@ -388,3 +388,9 @@
   padding: 0;
   margin: 0;
 }
+/* Review days: one select per weekday, wrapping on narrow screens. */
+.cards-week {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
+  gap: var(--s-3);
+}

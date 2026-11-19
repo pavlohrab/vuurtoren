@@ -27,6 +27,17 @@ export interface InspectorAnki {
   overridden: boolean;
   /** Native mode: the cards are Kenning's own, not Anki's (the inspector words it that way). */
   native?: boolean;
+  /** Native mode: the word's latest answers, newest first, with the interval each gave. */
+  reviews?: InspectorReview[];
+}
+
+/** One answer from a word's review history (native mode). */
+export interface InspectorReview {
+  at: number;
+  /** 1 Again, 2 Hard, 3 Good, 4 Easy. */
+  rating: 1 | 2 | 3 | 4;
+  /** The interval the answer gave, e.g. "10m", "4d", "2mo". */
+  interval: string;
 }
 
 /** Everything the word inspector shows about one token. Built by the app's services layer. */

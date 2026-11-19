@@ -54,6 +54,28 @@ export interface ImportSummary {
   skippedMedia: number;
 }
 
+/** A deck, with about how many reviews a day each target recall would mean. */
+export interface DeckWithLoad extends NativeDeckSummary {
+  load: { retention: number; perDay: number }[];
+}
+
+/** What Move to Anki did. */
+interface MoveToAnkiSummary {
+  added: number;
+  existing: number;
+  skipped: number;
+  scheduled: number;
+  reviews: number;
+}
+
+/** What an export holds. */
+interface ExportSummary {
+  notes: number;
+  cards: number;
+  reviews: number;
+  media: number;
+}
+
 /** The FSRS parameters in use and how they were tuned. */
 export interface TuningInfo {
   /** Trained on the learner's reviews (false: the FSRS-6 defaults). */
@@ -89,7 +111,8 @@ export interface NativeServices {
   undoReview(cardId: number, reviewId: string): Promise<void>;
   /** An image or sound of a card. */
   mediaFile(blobId: string): Promise<Blob | null>;
-  nativeDecks(): Promise<NativeDeckSummary[]>;
+  /** Decks with their options, counts and the reviews a day each target recall would mean. */
+  nativeDecks(): Promise<DeckWithLoad[]>;
   setDeckOptions(deck: string, options: DeckOptions): Promise<void>;
   /** Open an .apkg or .colpkg file and list its decks; `token` names it for `importPackage`. */
   openPackage(file: File): Promise<{ token: string; decks: PackageDeck[] }>;
@@ -104,9 +127,28 @@ export interface NativeServices {
    * history), then switch the profile to native. Nothing is written to Anki.
    */
   moveFromAnki(onProgress?: (msg: string) => void): Promise<ImportSummary>;
+  /**
+   * Export decks and their subdecks (every deck when `decks` is empty) as an Anki package:
+   * notes, cards with their schedule and memory, deck options, the review history and media.
+   */
+  exportPackage(
+    decks: string[],
+  ): Promise<{ bytes: Uint8Array; fileName: string; summary: ExportSummary }>;
+  /**
+   * Move to Anki, once: words become notes of Kenning's type in Anki (cards that came from Anki
+   * stay as they are there), reviewed cards get their due date, and with `withHistory`
+   * (experimental) the review history and exact intervals too. The profile then switches to
+   * Keep using Anki and reads the moved decks. Kenning's own cards are kept, unused.
+   */
+  moveToAnki(withHistory: boolean, onProgress?: (msg: string) => void): Promise<MoveToAnkiSummary>;
   tuning(): Promise<TuningInfo>;
   /** Train the FSRS parameters on the review history now. */
   optimiseNow(onProgress?: (msg: string) => void): Promise<TuningResult>;
   /** Tune by itself when 30 days or 500 answers have passed; null when nothing was due. */
   autoTune(): Promise<TuningResult | null>;
+  /**
+   * The latest answer given in Kenning, which Undo takes back when the review screen has none
+   * of its own (after a reload or on another day); null when there is none.
+   */
+  lastReview(): Promise<{ cardId: number; reviewId: string; at: number } | null>;
 }

@@ -1,7 +1,7 @@
 /**
  * The review screen (native mode): front, then Space or "Show answer" for the back, then
  * Again / Hard / Good / Easy with the next interval on each button (keys 1–4; Space is Good).
- * The last answer can be undone (Undo or Z).
+ * Answers can be taken back one by one (Undo or Z), also after a reload or on another day.
  */
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
@@ -96,23 +96,36 @@ export function Review() {
     [card, busy, services, refresh],
   );
 
+  // Beyond this session (after a reload, on another day): the latest answer stored.
+  const stored = useQuery({
+    queryKey: ["review", "last"],
+    queryFn: () => services.lastReview(),
+    enabled: undo.length === 0,
+  });
+  const canUndo = undo.length > 0 || !!stored.data;
+
   const takeBack = useCallback(async () => {
-    const last = undo.at(-1);
-    if (!last || busy) return;
+    if (busy) return;
+    const own = undo.at(-1);
     setBusy(true);
     setError(null);
     try {
+      const last = own ?? (await services.lastReview());
+      if (!last) return;
       await services.undoReview(last.cardId, last.reviewId);
-      setUndo((u) => u.slice(0, -1));
+      if (own) {
+        setUndo((u) => u.slice(0, -1));
+        setDone((d) => Math.max(0, d - 1));
+      }
       setFirst(last.cardId);
-      setDone((d) => Math.max(0, d - 1));
       await refresh();
+      await stored.refetch();
     } catch (e) {
       setError(errorText(e, "The answer could not be taken back."));
     } finally {
       setBusy(false);
     }
-  }, [undo, busy, services, refresh]);
+  }, [undo, busy, services, refresh, stored]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -156,7 +169,7 @@ export function Review() {
           {counts}
           {done ? ` · ${done} done` : ""}
         </span>
-        {undo.length ? (
+        {canUndo ? (
           <Button variant="ghost" size="sm" onClick={() => void takeBack()} disabled={busy}>
             <Undo2 size={14} aria-hidden /> Undo <kbd className="ex-key">Z</kbd>
           </Button>

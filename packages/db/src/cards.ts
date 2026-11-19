@@ -24,7 +24,9 @@ import type {
   AppEvent,
   FsrsParamsRecord,
   NativeCardView,
+  NativeCollection,
   NativeDeckSummary,
+  NativeKeyCard,
   NativeNoteStatus,
   NativeQueue,
   SqlDriver,
@@ -193,7 +195,7 @@ export async function applyNativeEvent(
           e.rating,
           e.previous ? REVIEW_KIND[e.previous.state as 1 | 2 | 3] : "learn",
           Math.max(0, Math.round(e.durationMs)),
-          "kenning",
+          e.via ?? "kenning",
           e.previous ? JSON.stringify(e.previous) : null,
         ],
       );
@@ -391,7 +393,45 @@ export function nativeQueries(driver: SqlDriver) {
         fresh.push(...rows.map(toCard));
       }
       fresh.sort((a, b) => a.position - b.position || a.id - b.id);
-      let cards = [...dueRows.map(toCard), ...fresh];
+      // Related cards apart: after one card of a note (or of the same word) was answered today,
+      // its other new and review cards wait for another day. Learning steps go on.
+      const keyOf = new Map<number, string | null>();
+      const cand = [...dueRows.map(toCard), ...fresh];
+      for (const r of await driver.exec(
+        "SELECT id, key FROM native_notes WHERE lang = ? AND id IN (SELECT value FROM json_each(?))",
+        [lang, JSON.stringify([...new Set(cand.map((c) => c.noteId))])],
+      )) {
+        keyOf.set(Number(r["id"]), r["key"] === null ? null : String(r["key"]));
+      }
+      const answered = new Set<number>();
+      const busy = new Set<string>();
+      for (const r of await driver.exec(
+        `SELECT DISTINCT r.card_id AS card, c.note_id AS note, n.key AS key
+           FROM native_reviews r JOIN native_cards c ON c.id = r.card_id
+           JOIN native_notes n ON n.id = c.note_id
+          WHERE r.lang = ? AND r.at >= ? AND r.rating > 0`,
+        [lang, dayStart],
+      )) {
+        answered.add(Number(r["card"]));
+        busy.add(`n${String(r["note"])}`);
+        if (r["key"] !== null) busy.add(`k${String(r["key"])}`);
+      }
+      const apart = (list: NativeCard[]) =>
+        list.filter((c) => {
+          const s = c.schedule;
+          if (s && s.state !== 2) return true;
+          if (answered.has(c.id)) return true;
+          const tags = [`n${c.noteId}`];
+          const key = keyOf.get(c.noteId);
+          if (key) tags.push(`k${key}`);
+          if (tags.some((t) => busy.has(t))) return false;
+          // One of them per session: the next comes once this one is answered (then tomorrow).
+          for (const t of tags) busy.add(t);
+          return true;
+        });
+      const dueCards = apart(dueRows.map(toCard));
+      const freshCards = apart(fresh);
+      let cards = [...dueCards, ...freshCards];
       if (cards.length === 0) {
         // Nothing else today: learning cards due within the next minutes come forward.
         cards = (
@@ -406,9 +446,73 @@ export function nativeQueries(driver: SqlDriver) {
       }
       return {
         cards: await views(driver, lang, cards.slice(0, Math.max(0, limit)), options),
-        due: dueRows.length,
-        fresh: fresh.length,
+        due: dueCards.length,
+        fresh: freshCards.length,
       };
+    },
+
+    async nativeDueCounts(lang: string, from: number, days: number): Promise<number[]> {
+      const out = Array.from({ length: Math.max(0, days) }, () => 0);
+      for (const r of await driver.exec(
+        `SELECT CAST((due - ?) / ? AS INTEGER) AS d, count(*) AS n FROM native_cards
+          WHERE lang = ? AND suspended = 0 AND schedule IS NOT NULL AND due >= ? AND due < ?
+            AND json_extract(schedule, '$.state') = 2
+          GROUP BY d`,
+        [from, DAY_MS, lang, from, from + days * DAY_MS],
+      )) {
+        const d = Number(r["d"]);
+        if (d >= 0 && d < out.length) out[d] = Number(r["n"]);
+      }
+      return out;
+    },
+
+    async nativeDueKeys(
+      lang: string,
+      now: number,
+      limit: number,
+    ): Promise<{ key: string; due: number }[]> {
+      return (
+        await driver.exec(
+          `SELECT n.key AS key, min(c.due) AS due FROM native_cards c
+             JOIN native_notes n ON n.id = c.note_id
+            WHERE c.lang = ? AND c.suspended = 0 AND c.schedule IS NOT NULL AND c.due <= ?
+              AND n.key IS NOT NULL
+            GROUP BY n.key ORDER BY due, n.key LIMIT ?`,
+          [lang, now, Math.max(0, Math.floor(limit))],
+        )
+      ).map((r) => ({ key: String(r["key"]), due: Number(r["due"]) }));
+    },
+
+    async nativeCardReviews(lang: string, cardIds: number[]): Promise<CardReview[]> {
+      if (cardIds.length === 0) return [];
+      return (
+        await driver.exec(
+          `SELECT card_id, at, rating, kind, duration_ms FROM native_reviews
+            WHERE lang = ? AND card_id IN (SELECT value FROM json_each(?)) ORDER BY at, id`,
+          [lang, JSON.stringify(cardIds)],
+        )
+      ).map((r) => ({
+        cardId: Number(r["card_id"]),
+        at: Number(r["at"]),
+        rating: Number(r["rating"]) as CardReview["rating"],
+        kind: String(r["kind"]) as CardReview["kind"],
+        durationMs: Number(r["duration_ms"]),
+      }));
+    },
+
+    async nativeLastReview(
+      lang: string,
+    ): Promise<{ cardId: number; reviewId: string; at: number } | null> {
+      const r = (
+        await driver.exec(
+          `SELECT id, card_id, at FROM native_reviews
+            WHERE lang = ? AND source = 'kenning' ORDER BY at DESC, id DESC LIMIT 1`,
+          [lang],
+        )
+      )[0];
+      return r
+        ? { cardId: Number(r["card_id"]), reviewId: String(r["id"]), at: Number(r["at"]) }
+        : null;
     },
 
     async nativeCard(lang: string, cardId: number): Promise<NativeCardView | null> {
@@ -448,6 +552,65 @@ export function nativeQueries(driver: SqlDriver) {
 
     fsrsParams: (lang: string) => paramsOf(driver, lang),
 
+    async nativeCollection(lang: string, decks: string[]): Promise<NativeCollection> {
+      const options = await deckOptions(driver, lang);
+      const all = decks.length === 0;
+      const inDeck = (name: string) =>
+        all || decks.some((d) => name === d || name.startsWith(`${d}::`));
+      const cards = (
+        await driver.exec("SELECT * FROM native_cards WHERE lang = ? ORDER BY id", [lang])
+      )
+        .map(toCard)
+        .filter((c) => inDeck(c.deck));
+      const noteIds = new Set(cards.map((c) => c.noteId));
+      const notes: NativeNote[] = [];
+      for (const r of await driver.exec(
+        "SELECT id, data FROM native_notes WHERE lang = ? ORDER BY id",
+        [lang],
+      )) {
+        if (noteIds.has(Number(r["id"]))) notes.push(json<NativeNote>(r["data"]));
+      }
+      const typeIds = [...new Set(notes.map((n) => n.notetypeId))];
+      const notetypes = (
+        await driver.exec(
+          "SELECT data FROM native_notetypes WHERE id IN (SELECT value FROM json_each(?)) ORDER BY id",
+          [JSON.stringify(typeIds)],
+        )
+      ).map((r) => json<NativeNotetype>(r["data"]));
+      const cardIds = new Set(cards.map((c) => c.id));
+      const reviews = (
+        await driver.exec(
+          "SELECT card_id, at, rating, kind, duration_ms FROM native_reviews WHERE lang = ? ORDER BY at, id",
+          [lang],
+        )
+      )
+        .filter((r) => cardIds.has(Number(r["card_id"])))
+        .map((r) => ({
+          cardId: Number(r["card_id"]),
+          at: Number(r["at"]),
+          rating: Number(r["rating"]) as CardReview["rating"],
+          kind: String(r["kind"]) as CardReview["kind"],
+          durationMs: Number(r["duration_ms"]),
+        }));
+      const deckNames = [...new Set(cards.map((c) => c.deck))].sort();
+      const media = Object.fromEntries(
+        (await driver.exec("SELECT name, blob_id FROM native_media WHERE lang = ?", [lang])).map(
+          (r) => [String(r["name"]), String(r["blob_id"])],
+        ),
+      );
+      return {
+        notetypes,
+        decks: deckNames.map((name) => ({
+          name,
+          options: options.get(name) ?? DEFAULT_DECK_OPTIONS,
+        })),
+        notes,
+        cards,
+        reviews,
+        media,
+      };
+    },
+
     async nativeMedia(lang: string, names: string[]): Promise<Record<string, string>> {
       if (names.length === 0) return {};
       const rows = await driver.exec(
@@ -455,6 +618,29 @@ export function nativeQueries(driver: SqlDriver) {
         [lang, JSON.stringify(names)],
       );
       return Object.fromEntries(rows.map((r) => [String(r["name"]), String(r["blob_id"])]));
+    },
+
+    async nativeKeyCards(lang: string, keys: string[], dayStart: number): Promise<NativeKeyCard[]> {
+      if (keys.length === 0) return [];
+      const options = await deckOptions(driver, lang);
+      const rows = await driver.exec(
+        `SELECT c.*, n.key AS word_key,
+                EXISTS (SELECT 1 FROM native_reviews r
+                         WHERE r.card_id = c.id AND r.at >= ? AND r.rating > 0) AS answered
+           FROM native_cards c JOIN native_notes n ON n.id = c.note_id
+          WHERE c.lang = ? AND n.key IN (SELECT value FROM json_each(?))
+          ORDER BY c.due, c.id`,
+        [dayStart, lang, JSON.stringify(keys)],
+      );
+      return rows.map((r) => {
+        const card = toCard(r);
+        return {
+          key: String(r["word_key"]),
+          card,
+          options: options.get(card.deck) ?? DEFAULT_DECK_OPTIONS,
+          answeredToday: Number(r["answered"]) === 1,
+        };
+      });
     },
 
     async nativeNoteStatus(
