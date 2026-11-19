@@ -880,19 +880,21 @@ export function createMockServices(
       const now = Date.now();
       const day = 86_400_000;
       const plan = [
-        [2, 12, 3],
-        [1, 0, 0],
-        [0, 0, 0],
-        [3, 20, 5],
-        [1, 8, 2],
-        [0, 0, 0],
+        [2, 12, 3, 18],
+        [1, 0, 0, 0],
+        [0, 0, 0, 9],
+        [3, 20, 5, 24],
+        [1, 8, 2, 15],
+        [0, 0, 0, 0],
       ];
       const entries: ActivityEntry[] = [];
-      plan.forEach(([pages, exercises, added], k) => {
+      plan.forEach(([pages, exercises, added, reviews], k) => {
         const at = now - (plan.length - k) * day;
         for (let i = 0; i < pages!; i++) entries.push({ kind: "page", at });
         for (let i = 0; i < exercises!; i++) entries.push({ kind: "exercise", at });
         for (let i = 0; i < added!; i++) entries.push({ kind: "added", at });
+        // Native reviews only where Kenning holds the cards.
+        if (options.native) for (let i = 0; i < reviews!; i++) entries.push({ kind: "review", at });
       });
       // Earlier weeks (Progress): a few pages on most days.
       for (let k = plan.length + 1; k < days; k++) {
