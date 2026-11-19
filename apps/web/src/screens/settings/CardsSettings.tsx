@@ -7,7 +7,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { type ChangeEvent, useState } from "react";
 import { DEFAULT_DECK_OPTIONS, type DeckOptions } from "@app/core";
 import { Button, Skeleton, Spinner, useToast } from "@app/ui";
-import { plural } from "../../format.js";
+import { plural, relativeTime } from "../../format.js";
 import { useServices } from "../../services/context.js";
 import type { ImportSummary, NativeDeckSummary } from "../../services/nativeTypes.js";
 
@@ -329,7 +329,7 @@ function Tuning() {
       {t ? (
         <p style={{ margin: 0 }} role="status">
           {t.tuned
-            ? `Tuned on ${plural(t.reviewsUsed, "review")}${t.at ? `, ${new Date(t.at).toLocaleDateString()}` : ""}.`
+            ? `Tuned on ${plural(t.reviewsUsed, "review")}${t.at ? `, ${relativeTime(t.at)}` : ""}.`
             : "Using the FSRS defaults."}{" "}
           {plural(t.history, "review")} in your history.
         </p>
