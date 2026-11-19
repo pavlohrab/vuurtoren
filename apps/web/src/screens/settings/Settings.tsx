@@ -1,6 +1,7 @@
 /**
  * Settings (U17): sections with a sub-nav on the left (a list on phones), each saving itself a
- * moment after a change. Account · Language & decks · Reading · AI · Data & backup · Advanced.
+ * moment after a change. Account · Language & decks · Reading · AI · Data & backup · Sync ·
+ * Advanced.
  * The theme lives only in the top bar.
  */
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -11,6 +12,7 @@ import {
   ChevronRight,
   Database,
   Languages,
+  RefreshCw,
   SlidersHorizontal,
   Sparkles,
   UserRound,
@@ -29,11 +31,12 @@ import { AnkiConnection } from "./AnkiSettings.js";
 import { DataSettings } from "./DataSettings.js";
 import { LanguageDecksSettings } from "./LanguageDecksSettings.js";
 import { SavedNote } from "./SavedNote.js";
+import { SyncSettings } from "./SyncSettings.js";
 import { ServerStatus } from "./ServerStatus.js";
 import { useAutosave } from "./useAutosave.js";
 import "./settings.css";
 
-export type SectionId = "language" | "reading" | "ai" | "data" | "account" | "advanced";
+export type SectionId = "language" | "reading" | "ai" | "data" | "sync" | "account" | "advanced";
 
 const SECTIONS: { id: SectionId; label: string; hint: string; icon: ReactNode }[] = [
   {
@@ -65,6 +68,12 @@ const SECTIONS: { id: SectionId; label: string; hint: string; icon: ReactNode }[
     label: "Data & backup",
     hint: "Where your data lives; download and restore a backup.",
     icon: <Database size={18} />,
+  },
+  {
+    id: "sync",
+    label: "Sync",
+    hint: "Your data on every device, encrypted with your passphrase.",
+    icon: <RefreshCw size={18} />,
   },
   {
     id: "advanced",
@@ -132,6 +141,8 @@ export function SettingsScreen() {
             </div>
           ) : section === "data" ? (
             <DataSettings />
+          ) : section === "sync" ? (
+            <SyncSettings />
           ) : section === "account" ? (
             <AccountSettings />
           ) : (

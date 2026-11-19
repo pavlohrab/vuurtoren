@@ -394,3 +394,41 @@
   grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
   gap: var(--s-3);
 }
+/* Sync: where to sync (radio rows), the devices (hairline rows). */
+.sync-kinds {
+  display: grid;
+  gap: var(--s-2);
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+.sync-kind {
+  display: flex;
+  gap: var(--s-3);
+  align-items: flex-start;
+  padding: var(--s-2) 0;
+  border-bottom: 1px solid var(--hairline);
+  cursor: pointer;
+}
+.sync-kind > span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.sync-kind-title {
+  font-weight: 500;
+}
+.sync-devices {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--hairline);
+}
+.sync-devices li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--s-3);
+  min-height: 44px;
+  border-bottom: 1px solid var(--hairline);
+}

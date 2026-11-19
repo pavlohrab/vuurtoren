@@ -1,5 +1,6 @@
 /**
- * MCP tokens for Claude Code (server/api/src/auth/mcpTokens.ts): list, make (the token is
+ * Tokens a Kenning server makes for one use (server/api/src/auth/tokens.ts): MCP tokens for
+ * Claude Code, sync tokens for devices that keep their own data. List, make (the token is
  * returned once) and revoke. Only in server mode; the session cookie authorises the calls.
  */
 export interface McpToken {
@@ -20,16 +21,28 @@ async function ok<T>(res: Response): Promise<T> {
 }
 
 export function createMcpTokenClient(base = "", fetchImpl: FetchLike = ambient) {
+  return createTokenClient("mcp-tokens", base, fetchImpl);
+}
+
+export function createSyncTokenClient(base = "", fetchImpl: FetchLike = ambient) {
+  return createTokenClient("sync-tokens", base, fetchImpl);
+}
+
+function createTokenClient(
+  kind: "mcp-tokens" | "sync-tokens",
+  base: string,
+  fetchImpl: FetchLike,
+) {
   return {
     async list(): Promise<McpToken[]> {
-      const res = await fetchImpl(`${base}/api/auth/mcp-tokens`, {
+      const res = await fetchImpl(`${base}/api/auth/${kind}`, {
         credentials: "same-origin",
         cache: "no-store",
       });
       return (await ok<{ tokens: McpToken[] }>(res)).tokens;
     },
     async create(label: string): Promise<McpToken & { token: string }> {
-      const res = await fetchImpl(`${base}/api/auth/mcp-tokens`, {
+      const res = await fetchImpl(`${base}/api/auth/${kind}`, {
         method: "POST",
         credentials: "same-origin",
         headers: HEADERS,
@@ -38,7 +51,7 @@ export function createMcpTokenClient(base = "", fetchImpl: FetchLike = ambient) 
       return ok(res);
     },
     async revoke(id: string): Promise<void> {
-      const res = await fetchImpl(`${base}/api/auth/mcp-tokens/${encodeURIComponent(id)}`, {
+      const res = await fetchImpl(`${base}/api/auth/${kind}/${encodeURIComponent(id)}`, {
         method: "DELETE",
         credentials: "same-origin",
         headers: HEADERS,
