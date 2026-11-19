@@ -58,7 +58,7 @@ describe("desktop sync", () => {
   it("asks the app once per address before the first request", async () => {
     const sync = fakeSync();
     let allow = false;
-    const allowHost = vi.fn((_url: string) =>
+    const allowHost = vi.fn<(url: string) => Promise<void>>(() =>
       allow ? Promise.resolve() : Promise.reject(new Error("Sync was not allowed.")),
     );
     sync.allowHost = allowHost;
