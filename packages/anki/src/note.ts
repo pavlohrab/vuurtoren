@@ -5,17 +5,17 @@
 import { AnkiConnectError, type AnkiConnectClient } from "./client.js";
 
 export const NOTE_TYPE = "Kenning Word";
-const NOTE_FIELDS = ["Word", "Gloss", "Sentence", "SentenceTranslation", "Source"] as const;
+export const NOTE_FIELDS = ["Word", "Gloss", "Sentence", "SentenceTranslation", "Source"] as const;
 
-const CSS = `.card { font-family: "Literata", Georgia, serif; font-size: 22px; line-height: 1.5;
+export const NOTE_CSS = `.card { font-family: "Literata", Georgia, serif; font-size: 22px; line-height: 1.5;
   color: #1F1B16; background: #F8F5EF; text-align: center; padding: 24px; }
 .word { font-size: 32px; } .sentence { margin-top: 16px; font-size: 18px; color: #6B6259; }
 .sentence b { color: #B5562E; font-weight: 600; } .gloss { font-size: 24px; color: #2F6F6A; }
 .source { margin-top: 20px; font-size: 12px; color: #A39A8F; }
 .night_mode .card { color: #ECE6DC; background: #181512; }`;
 
-const FRONT = `<div class="word">{{Word}}</div>{{#Sentence}}<div class="sentence">{{Sentence}}</div>{{/Sentence}}`;
-const BACK = `{{FrontSide}}<hr id="answer"><div class="gloss">{{Gloss}}</div>
+export const NOTE_FRONT = `<div class="word">{{Word}}</div>{{#Sentence}}<div class="sentence">{{Sentence}}</div>{{/Sentence}}`;
+export const NOTE_BACK = `{{FrontSide}}<hr id="answer"><div class="gloss">{{Gloss}}</div>
 {{#SentenceTranslation}}<div class="sentence">{{SentenceTranslation}}</div>{{/SentenceTranslation}}
 {{#Source}}<div class="source">{{Source}}</div>{{/Source}}`;
 
@@ -25,8 +25,8 @@ async function ensureNoteType(anki: AnkiConnectClient): Promise<void> {
   await anki.invoke("createModel", {
     modelName: NOTE_TYPE,
     inOrderFields: [...NOTE_FIELDS],
-    css: CSS,
-    cardTemplates: [{ Name: "Recognition", Front: FRONT, Back: BACK }],
+    css: NOTE_CSS,
+    cardTemplates: [{ Name: "Recognition", Front: NOTE_FRONT, Back: NOTE_BACK }],
   });
 }
 
@@ -42,7 +42,7 @@ export interface NewWordNote {
   tags?: string[];
 }
 
-const escapeHtml = (s: string) =>
+export const escapeHtml = (s: string) =>
   s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
 
 /** Bold the first occurrence of `surface` in `sentence` (HTML-escaped). */
