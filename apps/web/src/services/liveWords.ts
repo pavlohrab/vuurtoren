@@ -25,7 +25,13 @@ import type { KenningRepository, WordInfo } from "@app/db";
 import { activitySince, groupActivity } from "./activity.js";
 import { absentAnki, ankiFromStatus, unavailableAnki } from "./ankiState.js";
 import { DEGRADED_MESSAGES, clearDegraded, reportDegraded } from "./degraded.js";
-import { type Dictionary, type LiveDictionary, composeGlosses } from "./liveDictionary.js";
+import {
+  type Dictionary,
+  IN_SENTENCE,
+  type LiveDictionary,
+  composeGlosses,
+  sameMeaning,
+} from "./liveDictionary.js";
 import type { LearnerCache } from "./liveLearner.js";
 import type { LiveProfile } from "./liveProfile.js";
 import type { LiveTexts } from "./liveTexts.js";
@@ -72,7 +78,7 @@ function describeWord(
   },
 ): InspectorEntry {
   const [s0, s1] = spans.get(t.sent) ?? [t.start, t.end];
-  const { glosses, article } = composeGlosses(w.info, w.dict[t.lemma], t.pos);
+  const { glosses, article, glossNote } = composeGlosses(w.info, w.dict[t.lemma], t.pos);
   const entry: InspectorEntry = {
     textId: v.text.id,
     tokenIndex: t.i,
@@ -91,6 +97,7 @@ function describeWord(
     sentenceHighlight: [t.start - s0, t.end - s0],
   };
   if (article) entry.article = article;
+  if (glossNote) entry.glossNote = glossNote;
   if (w.info?.appLearning) entry.appLearning = true;
   return entry;
 }
@@ -206,6 +213,25 @@ export function createLiveWords(deps: LiveWordsDeps) {
     return entry;
   }
 
+  /**
+   * A word without a dictionary meaning (none, or only a guess from its parts) also gets the
+   * English it became in the translation of its sentence, when the alignment is confident.
+   */
+  async function addSentenceMeaning(entry: InspectorEntry): Promise<void> {
+    const guessOnly = entry.glosses.length === 0 || entry.glossNote !== undefined;
+    if (!guessOnly || !entry.sentence) return;
+    const [start, end] = entry.sentenceHighlight;
+    const word = { sentence: entry.sentence, start, end };
+    const english = (await dictionary.alignWords([word])).get(dictionary.alignKey(word));
+    if (!english) return;
+    if (entry.glosses.length === 0) {
+      entry.glosses = [english];
+      entry.glossNote = IN_SENTENCE;
+    } else if (!sameMeaning(english, entry.glosses[0]!)) {
+      entry.sentenceGloss = english;
+    }
+  }
+
   async function addToAnki(entry: InspectorEntry, opts?: AddOptions) {
     const { noteId, deck } = await addWordToAnki(
       await anki(),
@@ -257,6 +283,7 @@ export function createLiveWords(deps: LiveWordsDeps) {
         dict,
         anki: ankiState,
       });
+      await addSentenceMeaning(entry);
       const tr = (await dictionary.translateSentences([entry.sentence])).get(entry.sentence);
       if (tr) entry.sentenceTranslation = tr;
       return entry;

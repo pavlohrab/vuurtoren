@@ -21,6 +21,11 @@ export interface ReaderProps {
   onClozeAnswer?: (i: number, answer: string, hints: number) => void;
   /** Translations keyed by token index: inline in gloss mode, meaning hints on clozes. */
   glosses?: Readonly<Record<number, string>>;
+  /**
+   * Where a guessed translation came from ("from woord + -loos", "in this sentence"): such
+   * glosses are shown lighter, with the note in the tooltip.
+   */
+  glossNotes?: Readonly<Record<number, string>>;
   /** read: clozes shown as plain words; cloze/undefined: blanks; gloss: glosses shown inline. */
   mode?: ReaderMode;
   /** Show cloze blanks. Default: only in cloze mode (or when no mode is given). */
@@ -96,6 +101,7 @@ export function Reader({
   onTokenClick,
   onClozeAnswer,
   glosses,
+  glossNotes,
   mode,
   blanks,
   spotlights,
@@ -341,7 +347,10 @@ export function Reader({
     // In read mode a cloze degrades to a plain (known/learning-style) word.
     const shownLabel: TokenLabel = label === "cloze" ? "known" : label;
     const spot = spotlights?.get(t.i);
-    const title = gloss && mode === "gloss" ? (spot ? `${gloss} · ${spot}` : gloss) : spot;
+    const glossNote = glossNotes?.[t.i];
+    const glossTitle = gloss && glossNote ? `${gloss} · ${glossNote}` : gloss;
+    const title =
+      gloss && mode === "gloss" ? (spot ? `${glossTitle} · ${spot}` : glossTitle) : spot;
     return (
       <span
         key={t.i}
@@ -370,7 +379,9 @@ export function Reader({
         onKeyDown={(e) => onKeyDown(e, t.i)}
       >
         {surface}
-        {gloss && mode === "gloss" ? <sup className="k-gloss-mark">{gloss}</sup> : null}
+        {gloss && mode === "gloss" ? (
+          <sup className={cn("k-gloss-mark", glossNote && "k-gloss-mark--guess")}>{gloss}</sup>
+        ) : null}
       </span>
     );
   };

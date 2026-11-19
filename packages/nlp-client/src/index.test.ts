@@ -51,8 +51,10 @@ describe("NlpClient import + gloss endpoints", () => {
     const compound = {
       pos: "noun",
       article: "de",
-      glosses: ["souvenir shop (souvenir + winkel)"],
+      glosses: ["souvenir shop"],
       compound: true,
+      origin: "compound",
+      formed: "souvenir + winkel",
       parts: [
         { part: "souvenir", gloss: "souvenir" },
         { part: "winkel", gloss: "shop, store" },
@@ -66,7 +68,27 @@ describe("NlpClient import + gloss endpoints", () => {
     const entry = res["souvenirwinkel"]?.[0];
     expect(entry?.compound).toBe(true);
     expect(entry?.parts?.map((p) => p.part)).toEqual(["souvenir", "winkel"]);
+    expect(entry?.formed).toBe("souvenir + winkel");
     expect(res["fiets"]?.[0]?.compound).toBeUndefined();
+  });
+
+  it("align posts texts with word spans", async () => {
+    const aligned = [
+      {
+        text: "Hij keek woordeloos.",
+        translation: "He looked wordless.",
+        words: [{ start: 9, end: 19, text: "wordless", confidence: 0.9 }],
+      },
+    ];
+    const { client, calls } = mockClient(aligned);
+    const res = await client.align([{ text: "Hij keek woordeloos.", spans: [[9, 19]] }]);
+    expect(res[0]?.words[0]?.text).toBe("wordless");
+    expect(calls[0]?.url).toBe("http://nlp.test/translate/align");
+    expect(JSON.parse(String(calls[0]?.init.body))).toEqual({
+      source: "nl",
+      target: "en",
+      items: [{ text: "Hij keek woordeloos.", spans: [[9, 19]] }],
+    });
   });
 
   it("surfaces HTTP errors with the server detail", async () => {

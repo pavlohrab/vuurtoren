@@ -130,6 +130,23 @@ describe("Reader", () => {
     expect(container).toBeTruthy();
   });
 
+  it("shows guessed glosses lighter, with their source in the tooltip", () => {
+    const f = fixture(TEXT, { 3: "gloss", 6: "gloss" });
+    const { container } = render(
+      <Reader
+        {...f}
+        mode="gloss"
+        glosses={{ 3: "tomorrow", 6: "house" }}
+        glossNotes={{ 3: "in this sentence" }}
+      />,
+    );
+    const marks = [...container.querySelectorAll("sup.k-gloss-mark")];
+    expect(marks.map((m) => m.textContent)).toEqual(["tomorrow", "house"]);
+    expect(marks[0]).toHaveClass("k-gloss-mark--guess");
+    expect(marks[1]).not.toHaveClass("k-gloss-mark--guess");
+    expect(screen.getByText("morgen")).toHaveAttribute("title", "tomorrow · in this sentence");
+  });
+
   it("shows blanks only where asked: cloze mode by default, gloss mode only with blanks on", () => {
     const f = fixture(TEXT, { 1: "cloze" });
     const { rerender } = render(<Reader {...f} mode="gloss" />);

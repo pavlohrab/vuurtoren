@@ -26,7 +26,7 @@ import {
   createUlidGenerator,
 } from "@app/db";
 import type { NlpClient } from "@app/nlp-client";
-import type { LiveDictionary } from "./liveDictionary.js";
+import { IN_SENTENCE, type LiveDictionary } from "./liveDictionary.js";
 import { DEFAULT_STAIRCASE, type LearnerCache } from "./liveLearner.js";
 import { fetchTexts } from "./textBatch.js";
 import { ImportCancelledError } from "./ocrReview.js";
@@ -373,7 +373,10 @@ export function createLiveTexts({
       planCache.delete(textId);
     },
 
-    async glosses(textId: string, tokenIndices: number[]): Promise<Record<number, string>> {
+    async glosses(
+      textId: string,
+      tokenIndices: number[],
+    ): Promise<Record<number, { text: string; note?: string }>> {
       const v = await view(textId);
       if (!v) return {};
       const m = await learner.model();
@@ -382,13 +385,40 @@ export function createLiveTexts({
         if (!clicked) return [];
         const t =
           clicked.particle_of !== null ? (v.tokens[clicked.particle_of] ?? clicked) : clicked;
-        return [{ i, key: matchToken(t, m) ?? normalizeKey(t.lemma), lemma: t.lemma, pos: t.pos }];
+        return [
+          { i, t, key: matchToken(t, m) ?? normalizeKey(t.lemma), lemma: t.lemma, pos: t.pos },
+        ];
       });
-      const { found } = await dictionary.lookupGlosses(items);
-      const out: Record<number, string> = {};
+      const { found, notes } = await dictionary.lookupGlosses(items);
+      const out: Record<number, { text: string; note?: string }> = {};
       for (const it of items) {
         const g = found.get(it.key);
-        if (g) out[it.i] = g;
+        const note = notes.get(it.key);
+        if (g) out[it.i] = note ? { text: g, note } : { text: g };
+      }
+      // Words without any meaning: the English they became in their sentence's translation.
+      const missing = items.filter((it) => !found.has(it.key) && it.t.is_word);
+      if (missing.length) {
+        const spans = new Map<number, [number, number]>();
+        for (const t of v.tokens) {
+          const s = spans.get(t.sent);
+          if (s) s[1] = t.end;
+          else spans.set(t.sent, [t.start, t.end]);
+        }
+        const words = missing.map((it) => {
+          const [s0, s1] = spans.get(it.t.sent) ?? [it.t.start, it.t.end];
+          return {
+            i: it.i,
+            sentence: v.text.content.slice(s0, s1),
+            start: it.t.start - s0,
+            end: it.t.end - s0,
+          };
+        });
+        const aligned = await dictionary.alignWords(words);
+        for (const w of words) {
+          const english = aligned.get(dictionary.alignKey(w));
+          if (english) out[w.i] = { text: english, note: IN_SENTENCE };
+        }
       }
       return out;
     },

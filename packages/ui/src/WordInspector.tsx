@@ -106,9 +106,20 @@ export function WordInspector({
         <section>
           <div className="k-overline">Meaning</div>
           <ul className="k-inspector-glosses">
-            {entry.glosses.map((g) => (
-              <li key={g}>{g}</li>
+            {entry.glosses.map((g, i) => (
+              <li key={g}>
+                {g}
+                {i === 0 && entry.glossNote ? (
+                  <span className="k-gloss-note"> · {entry.glossNote}</span>
+                ) : null}
+              </li>
             ))}
+            {entry.sentenceGloss ? (
+              <li key="in-sentence">
+                {entry.sentenceGloss}
+                <span className="k-gloss-note"> · in this sentence</span>
+              </li>
+            ) : null}
           </ul>
         </section>
       ) : null}

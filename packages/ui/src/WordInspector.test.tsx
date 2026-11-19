@@ -46,6 +46,22 @@ describe("WordInspector", () => {
     expect(container.querySelector("mark")?.textContent).toBe("huizen");
   });
 
+  it("says quietly where a guessed meaning came from", () => {
+    const guess = {
+      ...entry,
+      surface: "woordeloos",
+      lemma: "woordeloos",
+      glosses: ["wordless"],
+      glossNote: "from woord + -loos",
+      sentenceGloss: "speechless",
+    };
+    const { container } = render(<WordInspector entry={guess} />);
+    const items = [...container.querySelectorAll(".k-inspector-glosses li")].map(
+      (li) => li.textContent,
+    );
+    expect(items).toEqual(["wordless · from woord + -loos", "speechless · in this sentence"]);
+  });
+
   it("shows the sentence translation when present", () => {
     render(<WordInspector entry={{ ...entry, sentenceTranslation: "I call my sister." }} />);
     expect(screen.getByText("I call my sister.")).toBeInTheDocument();

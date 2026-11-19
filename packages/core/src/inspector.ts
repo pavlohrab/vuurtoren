@@ -43,6 +43,16 @@ export interface InspectorEntry {
   /** de / het for nouns. */
   article?: string;
   glosses: string[];
+  /**
+   * Where `glosses[0]` came from when it is a guess: "from woord + -loos" (built from the
+   * word's parts) or "in this sentence" (read off the sentence translation).
+   */
+  glossNote?: string;
+  /**
+   * What the word became in the translation of its sentence, when that differs from a guessed
+   * `glosses[0]`.
+   */
+  sentenceGloss?: string;
   /** Anki decks this word comes from. */
   decks: string[];
   inAnki: boolean;
