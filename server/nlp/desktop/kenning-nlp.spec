@@ -30,6 +30,13 @@ for pkg in (
     "uvicorn",
     "langcodes",
     "language_data",
+    # OCR: RapidOCR loads its config (YAML) and bundled models (ONNX) from its package folder.
+    "rapidocr",
+    "onnxruntime",
+    "cv2",
+    "pyclipper",
+    "shapely",
+    "omegaconf",
 ):
     try:
         d, b, h = collect_all(pkg)

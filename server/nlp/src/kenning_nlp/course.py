@@ -5,10 +5,11 @@ reports progress and returns the pages finished so far (``?after=N`` returns onl
 index >= N, so a client can poll cheaply). The upload and the rendered pages live only in memory
 for the job's lifetime; finished jobs are dropped after :data:`JOB_TTL_SECONDS`. Recognised page
 text is cached by file hash and page index (in memory, and in ``$KENNING_COURSE_CACHE_DIR`` when
-set) so that re-importing the same book, or restarting a job, is fast. PDF pages with a text layer
-and EPUB chapters skip OCR. Scanned pages are recognised by several Tesseract processes at once.
+set) so that re-importing the same book, or restarting a job, is fast. PDF pages with a usable
+text layer (:func:`kenning_nlp.pdf.text_layer_ok`) and EPUB chapters skip OCR. Scanned pages are
+recognised by several workers at once.
 
-Each page is returned as layout *blocks* (Tesseract blocks with a normalised bounding box and the
+Each page is returned as layout *blocks* (OCR blocks with a normalised bounding box and the
 text, lines joined by newlines) plus the full page text. Interpretation (headers, exercises,
 units) is done by the client's pure course logic; this module only does I/O.
 """
@@ -34,10 +35,18 @@ from typing import Any
 
 from PIL import Image, UnidentifiedImageError
 
+from kenning_nlp import rapid
 from kenning_nlp.errors import ServiceError
-from kenning_nlp.ocr import MAX_FRAMES, TESSERACT_LANGS, ensure_tesseract, ocr_image_data
+from kenning_nlp.ocr import (
+    MAX_FRAMES,
+    TESSERACT_LANGS,
+    ensure_engine,
+    lang_of_code,
+    low_conf,
+    ocr_image_data,
+)
 from kenning_nlp.ocr_review import COURSE_PREVIEW_LONG_SIDE, OcrWord, find_flags, preview_webp
-from kenning_nlp.pdf import OCR_DPI, PDFIUM_LOCK, _open, is_pdf
+from kenning_nlp.pdf import OCR_DPI, PDFIUM_LOCK, _open, is_pdf, text_layer_ok
 
 MAX_COURSE_PAGES = 400
 COURSE_MAX_UPLOAD_BYTES = 200 * 1024 * 1024
@@ -45,19 +54,18 @@ COURSE_MAX_UPLOAD_BYTES = 200 * 1024 * 1024
 JOB_TTL_SECONDS = 3600
 MAX_JOBS = 4
 CACHE_PAGES = 1500
-MIN_TEXT_LAYER_CHARS = 40
-"""A PDF page with at least this many letters/digits in its text layer is not OCR'd."""
 
-# (image, tesseract code) -> (blocks, word confidences 0..100[, words with boxes]); the words
-# are optional (a fake engine in tests may leave them out; then the page has no review flags).
+# (image, engine code) -> (blocks, word confidences 0..100[, words with boxes[, cleaned page
+# image]]); the words are optional (a fake engine in tests may leave them out; then the page has
+# no review flags), the image too (then the preview shows the page as uploaded).
 Engine = Callable[[Image.Image, str], tuple[Any, ...]]
 # (blocks, mean confidence 0..1, review flags or None)
 PageResult = tuple[list[dict[str, Any]], float, list[dict[str, Any]] | None]
-_LANG_OF_CODE = {v: k for k, v in TESSERACT_LANGS.items()}
 
 
-def tesseract_engine(img: Image.Image, code: str) -> tuple[Any, ...]:
-    """Real engine: Tesseract via :func:`kenning_nlp.ocr.ocr_image_data`."""
+def ocr_engine(img: Image.Image, code: str) -> tuple[Any, ...]:
+    """Real engine: clean-up plus RapidOCR or Tesseract, via
+    :func:`kenning_nlp.ocr.ocr_image_data`."""
     return ocr_image_data(img, code)
 
 
@@ -125,10 +133,6 @@ class PageSource:
     render: Callable[[], Image.Image] | None = None
 
 
-def _alnum(text: str) -> int:
-    return sum(c.isalnum() for c in text)
-
-
 def text_blocks(text: str) -> list[dict[str, Any]]:
     """Blocks of a text-layer page: paragraphs (blank-line separated), without real boxes."""
     paras = [p.strip() for p in re.split(r"\n\s*\n", text.replace("\r\n", "\n")) if p.strip()]
@@ -154,7 +158,7 @@ def _pdf_sources(data: bytes, prefix: str, max_pages: int) -> Iterator[PageSourc
                     tp.close()
                 finally:
                     page.close()
-            if _alnum(text) >= MIN_TEXT_LAYER_CHARS:
+            if text_layer_ok(text):
                 yield PageSource(key=f"{prefix}-{i}-text", text=text)
                 continue
 
@@ -367,7 +371,7 @@ class CourseOcr:
     """Starts and tracks OCR jobs; holds the per-page cache. One instance per process.
 
     Pages are rendered one at a time (PDFium is not thread-safe) and recognised by up to
-    ``workers`` Tesseract processes in parallel; finished pages are published in page order.
+    ``workers`` threads in parallel; finished pages are published in page order.
     The cache (memory, plus an optional directory) is keyed by file hash and page index, so a
     re-import of the same book, or a job restarted after the server restarted, skips both
     rendering and OCR.
@@ -375,7 +379,7 @@ class CourseOcr:
 
     def __init__(
         self,
-        engine: Engine = tesseract_engine,
+        engine: Engine = ocr_engine,
         check: bool = True,
         workers: int | None = None,
         cache_dir: Path | None | bool = True,
@@ -385,8 +389,9 @@ class CourseOcr:
         self.workers = workers or default_workers()
         self.cache_dir = default_cache_dir() if cache_dir is True else (cache_dir or None)
         if self.workers > 1:
-            # Tesseract's own OpenMP threads would oversubscribe the CPUs next to our workers.
+            # The engines' own threads would oversubscribe the CPUs next to our workers.
             os.environ.setdefault("OMP_THREAD_LIMIT", "1")
+        self.engine_threads = max(1, (os.cpu_count() or 2) // self.workers)
         self.jobs: dict[str, Job] = {}
         self.cache: OrderedDict[str, PageResult] = OrderedDict()
         self.lock = threading.Lock()
@@ -398,8 +403,8 @@ class CourseOcr:
         consecutively.
 
         Raises:
-            ServiceError: 503 without Tesseract, 415/413/422 for bad uploads, 429 if too many
-                jobs are running.
+            ServiceError: 503 without an OCR engine, 415/413/422 for bad uploads, 429 if too
+                many jobs are running.
         """
         files = data if isinstance(data, list) else [data]
         total = sum(count_pages(d) for d in files)
@@ -409,7 +414,7 @@ class CourseOcr:
         missing: ServiceError | None = None
         if self.check:
             try:
-                code = ensure_tesseract(lang)
+                code = ensure_engine(lang)
             except ServiceError as e:
                 # Text-layer PDFs and EPUBs need no OCR; a scanned page will report this error.
                 missing = e
@@ -513,16 +518,18 @@ class CourseOcr:
 
     def _ocr(self, img: Image.Image, code: str) -> tuple[PageResult, bytes | None]:
         """Recognise one page; flag doubtful words and keep a small preview of a flagged page."""
+        rapid.limit_threads(self.engine_threads)
         blocks, confs, *rest = self.engine(img, code)
         conf = round(sum(confs) / len(confs) / 100 if confs else 0.0, 3)
         words: list[OcrWord] = rest[0] if rest else []
+        page_img: Image.Image = rest[1] if len(rest) > 1 else img
         flags = None
         preview = None
         if words:
             text = "\n\n".join(b["text"] for b in blocks)
-            flags = find_flags(text, words, _LANG_OF_CODE.get(code, "nl")) or None
+            flags = find_flags(text, words, lang_of_code(code), low_conf=low_conf(code)) or None
             if flags:
-                preview = preview_webp(img, COURSE_PREVIEW_LONG_SIDE, quality=55)
+                preview = preview_webp(page_img, COURSE_PREVIEW_LONG_SIDE, quality=55)
         return (blocks, conf, flags), preview
 
     # ------------------------------------------------------------------ run

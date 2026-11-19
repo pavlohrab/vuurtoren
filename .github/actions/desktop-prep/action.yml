@@ -56,6 +56,6 @@ runs:
             assert sha == p["sha256"], f"{file}: checksum mismatch"
         PY
         echo "PACKS_ARG=--packs $RUNNER_TEMP/packs" >> "$GITHUB_ENV"
-    - name: Language server sidecar (PyInstaller, one directory, no Tesseract)
+    - name: Language server sidecar (PyInstaller, one directory, RapidOCR included)
       shell: bash
       run: uv run --no-project python server/nlp/desktop/build_sidecar.py $PACKS_ARG

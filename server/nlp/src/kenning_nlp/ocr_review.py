@@ -1,11 +1,13 @@
-"""OCR review: find words Tesseract may have misread and suggest fixes.
+"""OCR review: find words the OCR engine may have misread and suggest fixes.
 
-Pure logic plus small Pillow helpers; no Tesseract calls here. :mod:`kenning_nlp.ocr` and
-:mod:`kenning_nlp.course` feed it Tesseract ``image_to_data`` rows.
+Pure logic plus small Pillow helpers; no OCR calls here. :mod:`kenning_nlp.ocr` and
+:mod:`kenning_nlp.course` feed it rows shaped like Tesseract's ``image_to_data`` (RapidOCR
+results are converted to that shape).
 
 A word is *flagged* when
 
-* Tesseract's own confidence for it is low (``conf < LOW_CONF`` on its 0-100 scale), or
+* the engine's own confidence for it is low (below ``low_conf`` on a 0-100 scale:
+  :data:`LOW_CONF` for Tesseract, a higher one for RapidOCR, whose scores run higher), or
 * it is not a Dutch word: not in wordfreq, the Kaikki dictionary (when built) or simplemma, and
   not a plain two-part compound of known words, or
 * it was glued together from a line-end hyphenation and the result is not a word.
@@ -363,13 +365,15 @@ def assess(
     lang: str = "nl",
     sentence_start: bool = False,
     joined: Sequence[str] = (),
+    low_conf: float = LOW_CONF,
 ) -> tuple[str, list[str]] | None:
     """Decide whether one word should be flagged; returns ``(reason, suggestions)`` or None.
 
     ``reason`` is ``"unknown"`` (not a word), ``"hyphen"`` (a line-end hyphenation was joined
     into a non-word), ``"confusable"`` (a rare short word next to a very common reading:
     ``ln`` -> ``in``) or ``"low"`` (a known word Tesseract was unsure about). ``joined`` holds
-    the OCR pieces when the word was glued from a hyphenated line end.
+    the OCR pieces when the word was glued from a hyphenated line end. ``low_conf`` is the
+    engine's own threshold for an unsure word (on its 0-100 scale).
     """
     if not word or _looks_like_number(word):
         return None
@@ -396,17 +400,17 @@ def assess(
             ]
             if likely:
                 return "confusable", likely
-        if conf < LOW_CONF and len(word) >= 2:
+        if conf < low_conf and len(word) >= 2:
             better = suggestions(word, lang, sentence_start=sentence_start)
             return "low", [s for s in better if zipf(s.lower(), lang) > own]
         return None
     if len(alpha) <= 1:
-        return ("low", []) if conf < LOW_CONF else None
+        return ("low", []) if conf < low_conf else None
     found = suggestions(word, lang, sentence_start=sentence_start)
     capital = word[:1].isupper() and not word.isupper()
     if capital and not sentence_start and not found and not _digit_confusable(word):
         # Probably a name: flag only when Tesseract itself was unsure.
-        return ("low", []) if conf < LOW_CONF else None
+        return ("low", []) if conf < low_conf else None
     if word.isupper() and len(word) <= 4 and not found:
         return None  # abbreviations: EU, NOS, KLM
     return "unknown", found
@@ -435,7 +439,11 @@ def _box(words: Iterable[OcrWord]) -> dict[str, float | int]:
 
 
 def find_flags(
-    text: str, words: Sequence[OcrWord], lang: str = "nl", limit: int = MAX_FLAGS
+    text: str,
+    words: Sequence[OcrWord],
+    lang: str = "nl",
+    limit: int = MAX_FLAGS,
+    low_conf: float = LOW_CONF,
 ) -> list[dict[str, Any]]:
     """Flags for the words of ``text`` that may be misread, in text order.
 
@@ -443,6 +451,7 @@ def find_flags(
     ``start``/``end`` are offsets into ``text``, ``conf`` is 0..1 and ``box`` is
     ``{"page", "x", "y", "w", "h"}`` (page 1-based, box in fractions of that page) of the
     word's first line. Words that could not be traced back to the image are not flagged.
+    ``low_conf`` is the engine's threshold for an unsure word (see :func:`assess`).
     """
     flags: list[dict[str, Any]] = []
     prev_end = ""
@@ -479,7 +488,7 @@ def find_flags(
         joined = [w.text for w in tok.words] if len(tok.words) >= 2 else []
         if joined and not any(j.rstrip(_EDGE_PUNCT)[-1:] in _HYPHENS for j in joined[:-1]):
             joined = []
-        verdict = assess(word, conf, lang, sentence_start, joined)
+        verdict = assess(word, conf, lang, sentence_start, joined, low_conf)
         if verdict is None:
             continue
         reason, sugg = verdict

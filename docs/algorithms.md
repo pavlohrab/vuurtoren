@@ -231,11 +231,37 @@ The compound takes the article of its head (`de souvenirwinkel` because `de wink
 
 ### 2.7 Getting text in: OCR, PDF and URL cleanup
 
-| Input            | How                                                                                                                                        | Numbers                                                                                           |
-| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------- |
-| **URL**          | `trafilatura` extracts the main article (no comments, no tables, precision mode) (`extract_url.py`). Only public IP addresses are fetched. | ≤ 5 redirects, 10 s timeout, ≤ 5 MB, needs ≥ 40 characters of text                                |
-| **PDF**          | Text layer through PDFium (`pdf.py`). If there is almost no text, the PDF is treated as a scan and sent to OCR.                            | ≤ 300 pages; "needs OCR" when there are < 25 letters/digits per page                              |
-| **Photo / scan** | Tesseract (`ocr.py`): grayscale, upscaling of small images, contrast stretch, automatic page segmentation (PSM 3, which handles columns).  | upscale until the long side is 2000 px (at most 3×); PDFs rendered at 300 DPI, ≤ 60 pages for OCR |
+| Input            | How                                                                                                                                                                             | Numbers                                                                                        |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| **URL**          | `trafilatura` extracts the main article (no comments, no tables, precision mode) (`extract_url.py`). Only public IP addresses are fetched.                                      | ≤ 5 redirects, 10 s timeout, ≤ 5 MB, needs ≥ 40 characters of text                             |
+| **PDF**          | Text layer through PDFium (`pdf.py`), judged page by page. A page whose text layer is missing, nearly empty or not Dutch is read by OCR; the other pages keep their text layer. | ≤ 300 pages, ≤ 60 of them OCR'd; OCR when a page has < 40 letters/digits or < 70 % Dutch words |
+| **Photo / scan** | Page clean-up, then RapidOCR, or Tesseract as fallback (`straighten.py`, `rapid.py`, `ocr.py`). See below.                                                                      | PDFs rendered at 300 DPI                                                                       |
+
+**Text layer check.** A PDF page keeps its text layer when it has at least 40 letters and digits and at least 70 % of its words (the first 300 words of two or more letters) are Dutch words in the server's lexicon: wordfreq (Zipf ≥ 2), the dictionary, simplemma, or a two-part compound of known words. Pages with fewer than 12 words are not judged by that share. Real Dutch pages score 0.97 to 1.0; broken font encodings and poor scanner OCR layers score 0.1 to 0.45. Without an OCR engine only a whole-file scan (< 25 letters/digits per page) asks for OCR. Course import uses the same check.
+
+**Page clean-up** (`straighten.py`, OpenCV). Geometry only: no binarisation and no contrast change, so a flat, straight scan comes out unchanged, pixel for pixel. Three steps, each skipped when it would change nothing:
+
+1. **Page in a photo.** The largest bright or edge-bounded four-sided shape covering at least 20 % of the image is the page. It is cut out and warped to a rectangle, unless it is an upright rectangle filling more than 85 % of the image (a scan or tight crop).
+2. **Deskew.** The rotation between −10° and +10° that makes the rows of dark pixels sharpest (horizontal projection profile, 0.5° then 0.1° steps) is applied when it is at least 0.5°.
+3. **Dewarp.** Text lines are traced (dark pixels smeared sideways into line blobs, the centre of each blob per column), and one smooth polynomial surface is fitted to how far they bend. When the 90th-percentile line bends by at least a third of a line height, every column is shifted up or down to make the lines straight. This flattens the curl of a book page near the spine.
+
+**Recognition.** RapidOCR runs the PaddleOCR PP-OCRv6 _small_ models on ONNX Runtime (CPU): a detection model finds the text lines, a text-direction model turns upside-down lines, and the multilingual recognition model reads each line, with Dutch diacritics (ë, é, ï) and a box and score per word. Pages are scaled to at most 2000 px on the long side. The models ship inside the `rapidocr` package (about 30 MB), so OCR works offline from the first start. RapidOCR reads Dutch, English, German, French, Spanish, Italian, Portuguese, Swedish, Danish and Polish; Tesseract reads Ukrainian, and every language when RapidOCR is not installed (grayscale, upscaling to a 2000 px long side, contrast stretch, page segmentation PSM 3). `KENNING_OCR_ENGINE` forces one engine.
+
+**Reading order** (`rapid.py`). RapidOCR returns lines top to bottom across the page. A recursive XY cut puts them in order: a region is split at horizontal gaps of at least 0.9 line heights (paragraphs, boxes), else at vertical gutters of at least one line height (columns). Two columns are read one after the other; three or more columns, or a label column narrower than 20 % of the region, are a table and are read row by row.
+
+**Lost spaces.** The recognition model sometimes drops a space. A token is split after sentence punctuation before a capital (`woning.De`), after `?` or `!` before a letter, after a digit before a capitalised word (`3Fietsen`), and around a short Dutch function word when the token is not a word itself and the rest is (`Komtu` → `Komt u`). There is no compound guess, so real compounds stay whole.
+
+**Review flags** use each engine's own confidence: a known word is flagged when Tesseract's confidence is below 55 or RapidOCR's score below 70 (out of 100). RapidOCR's scores run higher and separate right from wrong words only weakly (at 70, about 1 % of correct words get a flag); most of its misreads are caught by the lexicon instead.
+
+**Benchmark** (`server/nlp/scripts/ocr_bench.py`). Six pages of a scanned A2 textbook (reading text, word list, exercises, a menu table, a grammar table; 1,685 words transcribed by hand), each also as two synthetic phone photos: tilted with uneven light and blur, and the same with a page curl. Word error rate (WER), character error rate (CER), WER ignoring word order (bag), and seconds per scanned page on one CPU thread (the clean-up itself takes about 0.2 s):
+
+| Variant                 | Scans WER / CER / bag | Photos WER / CER / bag | Curled WER / CER / bag | s/page |
+| ----------------------- | --------------------- | ---------------------- | ---------------------- | ------ |
+| Tesseract, raw image    | 24.7 / 21.0 / 3.7 %   | 37.9 / 30.0 / 16.3 %   | 48.8 / 36.5 / 20.0 %   | 1.4    |
+| Tesseract, cleaned page | 24.7 / 21.0 / 3.7 %   | 28.4 / 24.4 / 17.9 %   | 35.5 / 31.4 / 21.4 %   | 1.4    |
+| RapidOCR, cleaned page  | 4.8 / 2.5 / 1.7 %     | 5.4 / 2.6 / 2.1 %      | 8.1 / 5.2 / 2.4 %      | 6.7    |
+
+Most of Tesseract's scan errors are reading order in tables and word lists; on photos it also loses whole boxes of text. The PP-OCRv5 Latin recognition model scored about the same as the bundled PP-OCRv6 model (4.4 / 2.9 / 1.2 % on scans) but missed one accent and needs a separate download.
 
 After PDF and OCR extraction, `cleanup.py` repairs the text:
 
