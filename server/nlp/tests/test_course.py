@@ -207,6 +207,27 @@ def test_text_layer_pdf_needs_no_ocr(monkeypatch) -> None:
     assert body["pages"][1]["confidence"] == 1.0
 
 
+def test_pdf_page_with_a_garbled_text_layer_is_ocrd(monkeypatch) -> None:
+    calls = []
+
+    def counting(img, code):
+        calls.append(1)
+        return fake_engine(img, code)
+
+    monkeypatch.setattr(app_module, "_course_ocr", CourseOcr(counting, check=False))
+    client = TestClient(app)
+    data = text_pdf(
+        [
+            ["Les 1 Wonen", "Anna en haar broer fietsen elke ochtend samen naar school."],
+            ["Gh nrhu rqvhq ylqw khw qlhw ohxn gdw kh zhhu ylhw zhhn vfkrro nhuhq rqghu"],
+        ]
+    )
+    r = client.post("/course/ocr", files={"file": ("b.pdf", data, "application/pdf")})
+    body = wait_done(client, r.json()["id"])
+    assert body["status"] == "done" and body["cached"] == 1 and calls == [1]
+    assert body["pages"][1]["text"].startswith("page ")
+
+
 def test_epub_chapters_are_pages(monkeypatch) -> None:
     monkeypatch.setattr(app_module, "_course_ocr", CourseOcr(fake_engine, check=False))
     client = TestClient(app)
@@ -258,7 +279,7 @@ def test_scanned_page_without_tesseract_reports_the_install_hint(monkeypatch) ->
     def missing(lang):
         raise ServiceError(503, "Tesseract OCR is not available on the server.")
 
-    monkeypatch.setattr(course_module, "ensure_tesseract", missing)
+    monkeypatch.setattr(course_module, "ensure_engine", missing)
     monkeypatch.setattr(app_module, "_course_ocr", CourseOcr(fake_engine, check=True))
     client = TestClient(app)
     # An EPUB needs no OCR: it works without Tesseract.

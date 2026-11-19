@@ -42,6 +42,10 @@ def test_preprocess_upscales_small_and_returns_gray() -> None:
 def test_missing_tesseract_returns_503(monkeypatch: pytest.MonkeyPatch) -> None:
     import pytesseract
 
+    from kenning_nlp import rapid
+
+    monkeypatch.setattr(rapid, "available", lambda: False)
+
     def boom() -> None:
         raise pytesseract.TesseractNotFoundError()
 
