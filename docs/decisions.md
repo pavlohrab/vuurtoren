@@ -126,6 +126,34 @@ Kenning writes to Anki only when you click, and tags every note it touches.
 - One TypeScript core and one React UI for every platform.
 - Web (PWA) and desktop (Tauri v2) now. Browser extension and phone later.
 
+## Desktop app security
+
+The bundled page can do more than a web page (its database file, a sync folder, requests without
+CORS), so what it may do is narrowed in Rust, where a script injected into the page cannot
+change it:
+
+- **Content Security Policy** (`tauri.conf.json`): the app's own scripts and WebAssembly (SQLite,
+  the optimizer), images and media from blobs and data URLs, and connections to the app itself,
+  its IPC, the bundled language server (`kenning-nlp:`) and http(s) for AI providers and GitHub.
+  No frames, plugins or form posts. Inline `style` attributes stay allowed (React uses them).
+  `tauri dev` runs without it (Vite's dev server needs inline scripts).
+- **Database statements** (`db_exec`): the app's SQL runs as before, but a statement may not open
+  other files (`ATTACH`, `VACUUM INTO`), drop the events table or its append-only trigger, rename
+  it or drop its columns, edit the schema by hand or load extensions. Compaction still deletes
+  events, so this guards against reshaping the history and reaching past the file, not against
+  every change.
+- **Sync requests** (`sync_fetch`) go only to addresses the user allowed: the app asks in its own
+  dialog the first time a sync place's address is used (a refusal holds until the app restarts).
+  Redirects are followed only within the same address, the page cannot set Host, cookies or
+  connection headers, no cookies are kept, and an answer is read only up to 64 MB.
+- **Sync folder**: links inside it are not followed (a device syncing the same folder could
+  otherwise point Kenning's reads and writes elsewhere); the chosen folder itself may be a link.
+- **Sync key**: `apps/web/src/sync/keyStore.ts` keeps the 64-byte data key in the system keychain
+  (macOS Keychain, Windows Credential Manager, the Secret Service on Linux), or in a file only
+  this user can read when there is no keychain. In a browser it keeps the key encrypted under a
+  non-extractable AES key in IndexedDB. Sync still keeps the key in local storage until it moves
+  to this store.
+
 ## Native scheduler
 
 - FSRS-6 through `ts-fsrs` (MIT). The optimizer is `fsrs-rs` (BSD-3-Clause) compiled to
