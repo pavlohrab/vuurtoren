@@ -69,8 +69,9 @@ INSTALL_HINT = (
     "kenning-nlp Docker image (the `-slim` variant has no OCR)."
 )
 RAPID_PREFIX = "rapidocr-"
-RAPID_LOW_CONF = 85.0
-"""RapidOCR word score (0-100) below which a known word is still flagged for review."""
+RAPID_LOW_CONF = 70.0
+"""RapidOCR word score (0-100) below which a known word is still flagged for review. Its scores
+separate right from wrong words weakly; at 70 about 1 % of correct words get a flag."""
 
 
 def engine_choice() -> str:
