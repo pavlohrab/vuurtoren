@@ -9,7 +9,7 @@ import { createLiveLibrary } from "../services/liveLibrary.js";
 import { createMockServices } from "../services/mock.js";
 import type { AppServices, TextListItem } from "../services/types.js";
 import { cropFor } from "./library/coverImage.js";
-import { searchTexts, shelfRows, sortTexts } from "./library/shelving.js";
+import { bySource, searchTexts, shelfRows, sortTexts } from "./library/shelving.js";
 
 const text = (over: Partial<TextListItem>): TextListItem => ({
   id: "t",
@@ -68,7 +68,7 @@ describe("Library logic", () => {
     expect(searchTexts([a, b, c], "  ")).toHaveLength(3);
   });
 
-  it("builds the bookshelf: status rows, own shelves (empty kept), source rows", () => {
+  it("builds the bookshelf: status rows and own shelves (empty kept), no rows by source", () => {
     const rows = shelfRows(
       [a, b, c],
       [
@@ -82,10 +82,14 @@ describe("Library logic", () => {
       ["Empty", []],
       ["To read", ["a"]],
       ["Finished", ["c"]],
-      ["Course books", ["c"]],
-      ["Web", ["a"]],
     ]);
     expect(rows.filter((r) => r.own).map((r) => r.id)).toEqual(["s1", "s2"]);
+  });
+
+  it("filters texts by source", () => {
+    expect(bySource([a, b, c], "course").map((t) => t.id)).toEqual(["c"]);
+    expect(bySource([a, b, c], "web").map((t) => t.id)).toEqual(["a"]);
+    expect(bySource([a, b, c], "all")).toHaveLength(3);
   });
 });
 
@@ -223,6 +227,9 @@ describe("Library screen", () => {
 
     await user.click(screen.getByRole("radio", { name: "All texts" }));
     const grid = await screen.findByRole("list", { name: "All texts" });
+    // Where a text came from is a filter here, not more shelves.
+    expect(screen.queryByText("By source")).toBeNull();
+    expect(screen.getByRole("combobox", { name: "Source" })).toBeInTheDocument();
     await user.click(screen.getByRole("combobox", { name: "Sort" }));
     await user.click(await screen.findByRole("option", { name: "Title" }));
     await waitFor(() =>

@@ -66,14 +66,8 @@
   border-radius: 14px;
   transition: background var(--dur-fast) var(--ease);
 }
-.lib-shelf + .lib-shelf,
-.lib-group-label + .lib-shelf {
+.lib-shelf + .lib-shelf {
   margin-top: var(--s-6);
-}
-.lib-group-label {
-  margin: var(--s-7) 0 0;
-  padding-top: var(--s-5);
-  border-top: 1px solid var(--hairline);
 }
 .lib-shelf[data-drop] {
   background: var(--accent-soft);

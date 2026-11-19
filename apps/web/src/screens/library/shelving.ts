@@ -48,21 +48,32 @@ export interface ShelfRow {
   texts: TextListItem[];
   /** A learner shelf (renamable, a drop target) rather than an automatic one. */
   own: boolean;
-  /** Where the row sits: status rows, the learner's shelves, rows by source. */
-  group: "status" | "own" | "source";
+  /** Where the row sits: status rows or the learner's shelves. */
+  group: "status" | "own";
 }
 
-const SOURCE_SHELVES: { id: string; name: string; kinds: string[] }[] = [
-  { id: "auto:course", name: "Course books", kinds: ["course"] },
-  { id: "auto:ai", name: "AI stories", kinds: ["ai"] },
-  { id: "auto:web", name: "Web", kinds: ["url"] },
-  { id: "auto:scans", name: "Photos & PDFs", kinds: ["image", "pdf"] },
-  { id: "auto:talk", name: "Talk", kinds: ["talk"] },
-];
+/** The All texts view's Source filter: where texts came from. */
+export const SOURCES = [
+  { id: "all", name: "All sources", kinds: [] },
+  { id: "course", name: "Course books", kinds: ["course"] },
+  { id: "ai", name: "AI stories", kinds: ["ai"] },
+  { id: "web", name: "Web", kinds: ["url"] },
+  { id: "scans", name: "Photos & PDFs", kinds: ["image", "pdf"] },
+  { id: "talk", name: "Talk", kinds: ["talk"] },
+  { id: "pasted", name: "Pasted", kinds: ["paste"] },
+] as const;
+export type SourceId = (typeof SOURCES)[number]["id"];
+
+/** Texts from one source ("all": every text), in the given order. */
+export function bySource(texts: readonly TextListItem[], source: SourceId): TextListItem[] {
+  if (source === "all") return [...texts];
+  const kinds: readonly string[] = SOURCES.find((s) => s.id === source)?.kinds ?? [];
+  return texts.filter((t) => kinds.includes(coverKind(t.sourceKind, t.sourceRef)));
+}
 
 /**
- * The bookshelf: Reading now (`readingNow`), the learner's shelves, To read and Finished, then one row per
- * source. Rows keep `texts` in the given (already sorted) order; empty automatic rows are left
+ * The bookshelf: Reading now (`readingNow`), the learner's shelves, To read and Finished. Where a
+ * text came from is a filter on All texts, not more rows, so a text shows up at most twice. Rows keep `texts` in the given (already sorted) order; empty automatic rows are left
  * out, empty learner shelves stay (they are drop targets).
  */
 export function shelfRows(
@@ -101,13 +112,5 @@ export function shelfRows(
     by((t) => readingState(t).kind === "done"),
     "status",
   );
-  for (const s of SOURCE_SHELVES) {
-    auto(
-      s.id,
-      s.name,
-      by((t) => s.kinds.includes(coverKind(t.sourceKind, t.sourceRef))),
-      "source",
-    );
-  }
   return rows;
 }

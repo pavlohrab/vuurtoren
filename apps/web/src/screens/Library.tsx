@@ -25,8 +25,11 @@ import { type MenuItem, MenuButton } from "./library/MenuButton.js";
 import { AddToShelfDialog, ShelfNameDialog } from "./library/ShelfDialogs.js";
 import {
   SORT_LABEL,
+  SOURCES,
   type ShelfRow,
   type SortKey,
+  type SourceId,
+  bySource,
   searchTexts,
   shelfRows,
   sortTexts,
@@ -83,6 +86,7 @@ export function Library() {
     readPref(SORT_KEY, ["recent", "title", "coverage"], "recent"),
   );
   const [query, setQuery] = useState("");
+  const [source, setSource] = useState<SourceId>("all");
   const [selecting, setSelecting] = useState(false);
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
 
@@ -265,16 +269,21 @@ export function Library() {
       </>
     );
   } else if (view === "all") {
-    body = grid(all);
+    const shown = bySource(all, source);
+    body = shown.length ? (
+      grid(shown)
+    ) : (
+      <p className="lib-count" role="status">
+        No texts from this source.
+      </p>
+    );
   } else {
-    const firstSource = rows.findIndex((r) => r.group === "source");
-    body = rows.map((row, i) => {
+    body = rows.map((row) => {
       const shelf = ownShelves.find((s) => s.id === row.id);
       return (
         <ShelfRowView
           key={row.id}
           row={row}
-          sourceHeading={i === firstSource}
           renderItem={(t, extra) => item(t, "shelf", row, extra)}
           shelfMenu={
             shelf
@@ -365,6 +374,16 @@ export function Library() {
                 }))}
               />
             </div>
+            {view === "all" ? (
+              <div className="lib-sort">
+                <Select
+                  label="Source"
+                  value={source}
+                  onValueChange={(v) => setSource(v as SourceId)}
+                  options={SOURCES.map((s) => ({ value: s.id, label: s.name }))}
+                />
+              </div>
+            ) : null}
             <div className="lib-toolbar-buttons">
               <Button
                 variant="ghost"
@@ -502,13 +521,11 @@ interface RovingProps {
  */
 function ShelfRowView({
   row,
-  sourceHeading,
   renderItem,
   shelfMenu,
   onDropTexts,
 }: {
   row: ShelfRow;
-  sourceHeading: boolean;
   renderItem: (t: TextListItem, extra: RovingProps) => ReactNode;
   shelfMenu: MenuItem[] | null;
   onDropTexts?: ((ids: string[]) => void) | undefined;
@@ -562,7 +579,6 @@ function ShelfRowView({
 
   return (
     <>
-      {sourceHeading ? <p className="k-overline lib-group-label">By source</p> : null}
       <section
         className="lib-shelf"
         aria-labelledby={headingId}
