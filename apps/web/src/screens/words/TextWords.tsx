@@ -293,7 +293,9 @@ function WordRow({ item, action, result, done, disabled, onAction }: WordRowProp
           label={`Action for ${item.lemma}`}
           value={unavailable ? "skip" : action}
           options={
-            unavailable ? [{ value: "skip", label: "Unavailable" }] : actionOptions(anki.status)
+            unavailable
+              ? [{ value: "skip", label: "Unavailable" }]
+              : actionOptions(anki.status, item.source, native)
           }
           onValueChange={(v) => onAction(v as WordAction)}
           disabled={disabled || done || unavailable}
