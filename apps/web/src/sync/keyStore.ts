@@ -59,7 +59,7 @@ function request<T>(r: IDBRequest<T>): Promise<T> {
 }
 
 /** The browser's IndexedDB as the record storage (one database, one store, one record). */
-export function indexedDbRecords(idb: IDBFactory = indexedDB): WrappedKeyRecords {
+function indexedDbRecords(idb: IDBFactory = indexedDB): WrappedKeyRecords {
   const open = (): Promise<IDBDatabase> => {
     const r = idb.open(DB_NAME, 1);
     r.onupgradeneeded = () => r.result.createObjectStore(STORE);
