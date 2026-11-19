@@ -9,6 +9,8 @@ import { hashPassword, parsePasswordHash } from "./auth/password.js";
 import { createApiServer } from "./server.js";
 import { openStore, type Store } from "./store.js";
 import { syncPath } from "./sync.js";
+import { type SyncStore, createRepository, openVault, syncOnce } from "@app/db";
+import { createNodeDriver } from "@app/db/node";
 
 const PASSWORD = "correct horse battery";
 let dir: string;
@@ -137,5 +139,40 @@ describe("/api/sync", () => {
       expect(r.status, bad).toBe(400);
     }
     expect(() => syncPath("kenning/devices/a1/01J.base.kev")).not.toThrow();
+  });
+
+  it("carries two devices' changes with the real sync engine", async () => {
+    const { token } = await syncToken(await session());
+    const h = { authorization: `Bearer ${token}` };
+    const store: SyncStore = {
+      label: "server",
+      list: async (d) =>
+        (
+          (await (
+            await fetch(`${base}/api/sync/list?dir=${encodeURIComponent(d)}`, { headers: h })
+          ).json()) as {
+            names: string[];
+          }
+        ).names,
+      get: async (p) => {
+        const r = await fetch(file(p), { headers: h });
+        return r.status === 404 ? null : new Uint8Array(await r.arrayBuffer());
+      },
+      put: async (p, b) => {
+        expect((await fetch(file(p), { method: "PUT", headers: h, body: b as BodyInit })).ok).toBe(
+          true,
+        );
+      },
+      remove: async (p) => {
+        await fetch(file(p), { method: "DELETE", headers: h });
+      },
+    };
+    const a = await createRepository(await createNodeDriver(), { deviceId: "aaaaaaaaaaaa" });
+    const b = await createRepository(await createNodeDriver(), { deviceId: "bbbbbbbbbbbb" });
+    const key = await openVault(store, "lange zinnen lezen", true, 1000);
+    await a.append({ type: "WordStateSet", lang: "nl", key: "fiets", state: "known" });
+    expect(await syncOnce(a, store, key, { deviceName: "Laptop" })).toMatchObject({ sent: 1 });
+    expect(await syncOnce(b, store, key, { deviceName: "Phone" })).toMatchObject({ received: 1 });
+    expect((await b.word("nl", "fiets"))?.state).toBe("known");
   });
 });
