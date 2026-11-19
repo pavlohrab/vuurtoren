@@ -3,9 +3,9 @@
  * offline sentence translation of the language server, cached. Both server features are
  * optional: when they fail the app shows words without meanings and reports "translate".
  *
- * A word the dictionary does not know gets a meaning built from its parts (a derivation or a
- * compound, with a quiet note "from woord + -loos"), and failing that the English it became in
- * the translation of its sentence ("in this sentence"), when the alignment is confident.
+ * A word the dictionary does not know gets a meaning built from its parts or read off the
+ * translation of its sentence. Order: derivation ("from woord + -loos"), a confident alignment
+ * ("in this sentence"), compound, then a less confident alignment.
  */
 import type { KenningRepository, WordInfo } from "@app/db";
 import type { NlpClient } from "@app/nlp-client";
@@ -74,7 +74,12 @@ export function composeGlosses(
   info: WordInfo | null,
   entries: Dictionary[string] | undefined,
   pos: string,
-): { glosses: string[]; article: string | undefined; glossNote?: string } {
+): {
+  glosses: string[];
+  article: string | undefined;
+  glossNote?: string;
+  guess?: "derivation" | "compound";
+} {
   const glosses: string[] = [];
   if (info?.gloss) glosses.push(info.gloss);
   const ordered = orderByPos(entries ?? [], pos);
@@ -86,7 +91,13 @@ export function composeGlosses(
     ordered.find((e) => e.article === "de" || e.article === "het")?.article ??
     undefined;
   const note = info?.gloss ? undefined : partsNote(ordered[0]);
-  return { glosses: glosses.slice(0, 6), article, ...(note ? { glossNote: note } : {}) };
+  const guess = note ? ordered[0]?.origin : undefined;
+  return {
+    glosses: glosses.slice(0, 6),
+    article,
+    ...(note ? { glossNote: note } : {}),
+    ...(guess ? { guess } : {}),
+  };
 }
 
 /** Same meaning, ignoring case and punctuation ("Wordless." = "wordless"). */
@@ -104,6 +115,12 @@ export interface WordInSentence {
   sentence: string;
   start: number;
   end: number;
+}
+
+/** A word's English in its sentence; `confident` alignments rank above compound guesses. */
+export interface AlignedMeaning {
+  text: string;
+  confident: boolean;
 }
 
 const alignKey = (w: WordInSentence) => `${w.start}:${w.end}:${w.sentence}`;
@@ -127,6 +144,8 @@ export interface LiveDictionaryDeps {
 export interface FoundGloss {
   text: string;
   note?: string;
+  /** Set when the meaning is a guess built from the word's parts. */
+  guess?: "derivation" | "compound";
 }
 
 export function createLiveDictionary({ repo, lang, nlp }: LiveDictionaryDeps) {
@@ -134,7 +153,7 @@ export function createLiveDictionary({ repo, lang, nlp }: LiveDictionaryDeps) {
   const glossCache = new Map<string, FoundGloss | null>();
   const translationCache = new Map<string, string>();
   // English of a word in its sentence (confident alignments only); null = none.
-  const alignCache = new Map<string, string | null>();
+  const alignCache = new Map<string, AlignedMeaning | null>();
 
   /**
    * Translations for (key, lemma, pos) items: the Anki card's gloss first, then the Wiktionary
@@ -142,9 +161,12 @@ export function createLiveDictionary({ repo, lang, nlp }: LiveDictionaryDeps) {
    * for all misses. `complete` is false when the dictionary could not be reached — callers
    * must not treat missing entries as "no translation".
    */
-  async function lookupGlosses(
-    items: { key: string; lemma: string; pos?: string }[],
-  ): Promise<{ found: Map<string, string>; notes: Map<string, string>; complete: boolean }> {
+  async function lookupGlosses(items: { key: string; lemma: string; pos?: string }[]): Promise<{
+    found: Map<string, string>;
+    notes: Map<string, string>;
+    guesses: Map<string, "derivation" | "compound">;
+    complete: boolean;
+  }> {
     const l = await lang();
     const cacheKey = (it: { key: string; pos?: string }) => `${it.key}|${it.pos ?? ""}`;
     const seen = new Set<string>();
@@ -177,7 +199,11 @@ export function createLiveDictionary({ repo, lang, nlp }: LiveDictionaryDeps) {
           const ordered = orderByPos(dict[it.lemma] ?? [], it.pos);
           const g = ordered.flatMap((e) => e.glosses).find((x) => !FORM_OF.test(x));
           const note = partsNote(ordered[0]);
-          glossCache.set(cacheKey(it), g ? { text: g, ...(note ? { note } : {}) } : null);
+          const guess = note ? ordered[0]?.origin : undefined;
+          glossCache.set(
+            cacheKey(it),
+            g ? { text: g, ...(note ? { note } : {}), ...(guess ? { guess } : {}) } : null,
+          );
         }
       } catch (e) {
         // dictionary unavailable (503 when not built, or the server is down): retry next time
@@ -187,20 +213,22 @@ export function createLiveDictionary({ repo, lang, nlp }: LiveDictionaryDeps) {
     }
     const found = new Map<string, string>();
     const notes = new Map<string, string>();
+    const guesses = new Map<string, "derivation" | "compound">();
     for (const it of items) {
       const g = glossCache.get(cacheKey(it));
       if (g) found.set(it.key, g.text);
       if (g?.note) notes.set(it.key, g.note);
+      if (g?.guess) guesses.set(it.key, g.guess);
     }
-    return { found, notes, complete };
+    return { found, notes, guesses, complete };
   }
 
   /**
-   * The English each word became in the translation of its sentence, for confident alignments
-   * only (keyed by `alignKey`). Also fills the sentence-translation cache. Empty when the
-   * translation model is unavailable.
+   * The English each word became in the translation of its sentence (keyed by `alignKey`), with
+   * whether the alignment is confident. Also fills the sentence-translation cache. Empty when
+   * the translation model is unavailable.
    */
-  async function alignWords(words: WordInSentence[]): Promise<Map<string, string>> {
+  async function alignWords(words: WordInSentence[]): Promise<Map<string, AlignedMeaning>> {
     const todo = words.filter((w) => !alignCache.has(alignKey(w)));
     if (todo.length) {
       const bySentence = new Map<string, [number, number][]>();
@@ -217,10 +245,11 @@ export function createLiveDictionary({ repo, lang, nlp }: LiveDictionaryDeps) {
         for (const r of res) {
           translationCache.set(r.text, r.translation);
           for (const word of r.words) {
-            const ok = word.text && word.confidence >= ALIGN_MIN_CONFIDENCE;
             alignCache.set(
               alignKey({ sentence: r.text, start: word.start, end: word.end }),
-              ok ? word.text : null,
+              word.text
+                ? { text: word.text, confident: word.confidence >= ALIGN_MIN_CONFIDENCE }
+                : null,
             );
           }
         }
@@ -229,7 +258,7 @@ export function createLiveDictionary({ repo, lang, nlp }: LiveDictionaryDeps) {
         translationFailed(e);
       }
     }
-    const out = new Map<string, string>();
+    const out = new Map<string, AlignedMeaning>();
     for (const w of words) {
       const a = alignCache.get(alignKey(w));
       if (a) out.set(alignKey(w), a);

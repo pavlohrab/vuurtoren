@@ -342,6 +342,29 @@ describe("live word meanings", () => {
     expect(backend.nlpCalls.filter((c) => c === "/translate")).toHaveLength(0);
   });
 
+  it("puts a confident meaning in the sentence above a compound guess", async () => {
+    const compound = {
+      gracht: [
+        {
+          pos: "noun",
+          article: "de",
+          glosses: ["grace slot"],
+          compound: true,
+          origin: "compound",
+          formed: "gra + cht",
+        },
+      ],
+    };
+    const backend = fakeBackend({ dict: { ...dict, ...compound }, aligned: { gracht: "canal" } });
+    const { repo, services, textId } = await setup(backend);
+    repoToClose = repo;
+    const entry = await services.inspect(textId, tokenOf("gracht"));
+    expect(entry.glosses).toEqual(["canal", "grace slot"]);
+    expect(entry.glossNote).toBe("in this sentence");
+    const inline = await services.glosses(textId, [tokenOf("gracht")]);
+    expect(inline[tokenOf("gracht")]).toEqual({ text: "canal", note: "in this sentence" });
+  });
+
   it("uses the meaning in the sentence when the dictionary has nothing", async () => {
     const backend = fakeBackend({ dict, aligned });
     const { repo, services, textId } = await setup(backend);

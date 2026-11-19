@@ -189,7 +189,7 @@ There are 39 separable particles (`aan`, `af`, `bij`, `door`, `in`, `mee`, `op`,
 
 **What.** Dutch builds new words from old ones: with affixes (`woord` + `-loos` = `woordeloos`, "wordless") and by writing compounds as one word (`souvenirwinkel`). When a word has no dictionary entry, Kenning builds its meaning from its parts, and failing that takes the English it became in the translation of its sentence.
 
-**Which meaning wins.** Dictionary entry (the word or a form of it), then a diminutive or plural of a known noun (`vriendinnetje` → `vriendin`), then a derivation, then a compound, then the sentence (`Dictionary.lookup` in `dictionary.py`, and the app for the sentence). A derivation loses to a compound only when the compound's parts are plain dictionary words and its head already contains the suffix: `berglandschap` is `berg` + `landschap`, not `bergland` + `-schap`; `brandgevaarlijk` is `brand` + `gevaarlijk`. When nothing at all resolves, a derivation of a compound is tried (`vastgoedmakelaar` + `-ster`).
+**Which meaning wins.** Dictionary entry (the word or a form of it), then a diminutive or plural of a known noun (`vriendinnetje` → `vriendin`), then a derivation, then the sentence when its alignment is confident, then a compound, then a less confident alignment (`Dictionary.lookup` in `dictionary.py`; the app adds the sentence). A confident alignment beats a compound guess because on the test set below it is right far more often (29 of 33 against 11 of 48 on the same words). A derivation loses to a compound only when the compound's parts are plain dictionary words and its head already contains the suffix: `berglandschap` is `berg` + `landschap`, not `bergland` + `-schap`; `brandgevaarlijk` is `brand` + `gevaarlijk`. When nothing at all resolves, a derivation of a compound is tried (`vastgoedmakelaar` + `-ster`).
 
 **Derivations** (`server/nlp/src/kenning_nlp/derive.py`). Each affix knows which bases it takes and how to say the result in English:
 
@@ -239,7 +239,7 @@ The compound takes the article of its head (`de souvenirwinkel` because `de wink
 
 **The sentence** (`align.py`, `POST /translate/align`). OPUS-MT's decoder attends to the source subwords it is translating; CTranslate2 returns that attention for the best translation. A target word belongs to the Dutch word when one of its subwords attends most to one of the Dutch word's subwords. Neighbouring target words form runs; the run that gives the Dutch word the most attention wins, without articles, possessives, `to` and the like at its edges, and with at most 3 words. A word copied unchanged from the Dutch is no meaning. Attention alone hardly separates right from wrong, so the word is also translated on its own: the alignment is confident only when the two share an English word stem.
 
-The app uses a confident alignment as the meaning of a word with no dictionary entry and no guess from its parts, marked "in this sentence". For a word whose meaning is a guess, the inspector adds the meaning in the sentence as a second line when it differs ("speechless · in this sentence"). Words the dictionary knows are never aligned. The alignment request also returns the sentence translation, so the inspector needs no second request.
+The app shows the meaning in the sentence marked "in this sentence". A confident one comes before a compound guess, which stays as the second meaning; after a derivation it is a second line when it differs ("speechless · in this sentence"). A less confident one is used only for a word with no other meaning. Words the dictionary knows are never aligned. The alignment request also returns the sentence translation, so the inspector needs no second request.
 
 **Numbers.** A test set of 244 Dutch words without a dictionary entry (192 derivations, 51 compounds and derived compounds, 1 other), each in a Tatoeba sentence, with the English meanings that count as right (`server/nlp/tests/fixtures/meanings-nl.tsv`, `test_meanings.py`):
 
@@ -247,7 +247,7 @@ The app uses a confident alignment as the meaning of a word with no dictionary e
 | -------------------------------------------- | ---------------------------------------------------------- |
 | Compound splitting only (before derivations) | 8 / 244 (3 %)                                              |
 | Derivations, then compounds                  | 156 / 244 (64 %): derivations 140 / 192, compounds 16 / 51 |
-| …, then the sentence for the words left      | 171 / 244 (70 %)                                           |
+| All, in the order above                      | 194 / 244 (80 %)                                           |
 | Sentence alignment, where confident          | used for 149 / 244 words, 132 right (89 %)                 |
 
 The words were chosen because the dictionary misses them or the compound splitter glossed them badly, so the compound share is lower than on running text. Glosses for nouns + `-lijk` read oddly (`inzichtelijk` → insightly), and a base whose first dictionary sense is not the one used in the word gives the wrong meaning (`herverkiezen` → reprefer).

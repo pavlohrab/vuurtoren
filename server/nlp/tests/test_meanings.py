@@ -145,13 +145,20 @@ def test_sentence_alignment_precision(capsys: pytest.CaptureFixture[str]) -> Non
         ok = is_right_in_context(word["text"], c)
         used += bool(confident)
         right_used += bool(confident and ok)
-        entries = found[c.lemma]
-        gloss = entries[0]["glosses"][0] if entries else None
-        combined += is_right(gloss, c) if gloss else bool(confident and ok)
+        # The app's order: dictionary/derivation > confident alignment > compound > alignment.
+        entry = found[c.lemma][0] if found[c.lemma] else None
+        if entry and entry.get("origin") != "compound":
+            combined += is_right(entry["glosses"][0], c)
+        elif confident:
+            combined += ok
+        elif entry:
+            combined += is_right(entry["glosses"][0], c)
+        else:
+            combined += bool(word["text"]) and ok
     precision = right_used / used
     with capsys.disabled():
         print(
             f"\nalignment: used for {used}/{len(cases)} words, {right_used} right "
-            f"(precision {precision:.2f}); dictionary, else alignment: {combined}/{len(cases)}"
+            f"(precision {precision:.2f}); all sources in the app's order: {combined}/{len(cases)}"
         )
     assert precision >= 0.8

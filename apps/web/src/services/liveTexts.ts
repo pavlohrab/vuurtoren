@@ -389,15 +389,18 @@ export function createLiveTexts({
           { i, t, key: matchToken(t, m) ?? normalizeKey(t.lemma), lemma: t.lemma, pos: t.pos },
         ];
       });
-      const { found, notes } = await dictionary.lookupGlosses(items);
+      const { found, notes, guesses } = await dictionary.lookupGlosses(items);
       const out: Record<number, { text: string; note?: string }> = {};
       for (const it of items) {
         const g = found.get(it.key);
         const note = notes.get(it.key);
         if (g) out[it.i] = note ? { text: g, note } : { text: g };
       }
-      // Words without any meaning: the English they became in their sentence's translation.
-      const missing = items.filter((it) => !found.has(it.key) && it.t.is_word);
+      // Words without a meaning or with only a compound guess: the English they became in their
+      // sentence's translation (above a compound guess only when the alignment is confident).
+      const missing = items.filter(
+        (it) => (!found.has(it.key) || guesses.get(it.key) === "compound") && it.t.is_word,
+      );
       if (missing.length) {
         const spans = new Map<number, [number, number]>();
         for (const t of v.tokens) {
@@ -406,9 +409,11 @@ export function createLiveTexts({
           else spans.set(t.sent, [t.start, t.end]);
         }
         const words = missing.map((it) => {
+          const hasGuess = found.has(it.key);
           const [s0, s1] = spans.get(it.t.sent) ?? [it.t.start, it.t.end];
           return {
             i: it.i,
+            hasGuess,
             sentence: v.text.content.slice(s0, s1),
             start: it.t.start - s0,
             end: it.t.end - s0,
@@ -416,8 +421,8 @@ export function createLiveTexts({
         });
         const aligned = await dictionary.alignWords(words);
         for (const w of words) {
-          const english = aligned.get(dictionary.alignKey(w));
-          if (english) out[w.i] = { text: english, note: IN_SENTENCE };
+          const a = aligned.get(dictionary.alignKey(w));
+          if (a && (a.confident || !w.hasGuess)) out[w.i] = { text: a.text, note: IN_SENTENCE };
         }
       }
       return out;

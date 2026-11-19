@@ -215,20 +215,30 @@ export function createLiveWords(deps: LiveWordsDeps) {
 
   /**
    * A word without a dictionary meaning (none, or only a guess from its parts) also gets the
-   * English it became in the translation of its sentence, when the alignment is confident.
+   * English it became in the translation of its sentence. A confident alignment ranks above a
+   * compound guess (it becomes the first meaning); below a derivation it is a second line. A
+   * less confident one is used only when there is nothing else.
    */
-  async function addSentenceMeaning(entry: InspectorEntry): Promise<void> {
-    const guessOnly = entry.glosses.length === 0 || entry.glossNote !== undefined;
-    if (!guessOnly || !entry.sentence) return;
+  async function addSentenceMeaning(
+    entry: InspectorEntry,
+    guess: "derivation" | "compound" | undefined,
+  ): Promise<void> {
+    if ((entry.glosses.length > 0 && !guess) || !entry.sentence) return;
     const [start, end] = entry.sentenceHighlight;
     const word = { sentence: entry.sentence, start, end };
-    const english = (await dictionary.alignWords([word])).get(dictionary.alignKey(word));
-    if (!english) return;
-    if (entry.glosses.length === 0) {
-      entry.glosses = [english];
+    const aligned = (await dictionary.alignWords([word])).get(dictionary.alignKey(word));
+    if (!aligned) return;
+    const first = entry.glosses[0];
+    if (first === undefined) {
+      entry.glosses = [aligned.text];
       entry.glossNote = IN_SENTENCE;
-    } else if (!sameMeaning(english, entry.glosses[0]!)) {
-      entry.sentenceGloss = english;
+    } else if (aligned.confident && !sameMeaning(aligned.text, first)) {
+      if (guess === "compound") {
+        entry.glosses = [aligned.text, ...entry.glosses];
+        entry.glossNote = IN_SENTENCE;
+      } else {
+        entry.sentenceGloss = aligned.text;
+      }
     }
   }
 
@@ -283,7 +293,7 @@ export function createLiveWords(deps: LiveWordsDeps) {
         dict,
         anki: ankiState,
       });
-      await addSentenceMeaning(entry);
+      await addSentenceMeaning(entry, composeGlosses(info, dict[t.lemma], t.pos).guess);
       const tr = (await dictionary.translateSentences([entry.sentence])).get(entry.sentence);
       if (tr) entry.sentenceTranslation = tr;
       return entry;

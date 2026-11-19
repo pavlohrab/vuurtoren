@@ -55,7 +55,7 @@ to Anki with the sentence you found it in.
 - **Graded reading of your own texts.** Paste, a web address, a PDF, an EPUB or a photo.
   Read, Cloze and Gloss modes, an exact new-words budget per page, and cloze hints.
 - **Real Dutch analysis.** spaCy plus rules for separable verbs (_bel … op_ → _opbellen_),
-  compounds glossed from their parts, an offline Wiktionary dictionary and offline sentence
+  derivations and compounds glossed from their parts, an offline Wiktionary dictionary and offline sentence
   translation.
 - **Practice, grammar, exam.** Exercises without AI on their own FSRS schedule, grammar topic
   pages (A1–C1) with examples from what you read, and preparation for the A2 inburgeringsexamen.
