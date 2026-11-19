@@ -1,5 +1,5 @@
 /**
- * Sign-in for public deployments (ADR 0009). Single user, no dependencies.
+ * Sign-in for public deployments. Single user, no dependencies.
  *
  *   POST /api/auth/login       {user, password} or {token}  -> session cookie
  *   POST /api/auth/logout      ends this browser's session

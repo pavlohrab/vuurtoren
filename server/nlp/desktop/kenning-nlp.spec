@@ -1,6 +1,5 @@
-# PyInstaller spec of the desktop sidecar (D4): `kenning_nlp` as a one-directory bundle.
-# Built by build_sidecar.py (it trims the venv first, like the slim Docker image); see
-# docs/desktop.md, "Language server". Run from server/nlp/desktop.
+# PyInstaller spec of the desktop sidecar: `kenning_nlp` as a one-directory bundle.
+# Built by build_sidecar.py (it trims the venv first, like the slim Docker image). Run from server/nlp/desktop.
 # ruff: noqa
 import sys
 

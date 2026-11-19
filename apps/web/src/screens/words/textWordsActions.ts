@@ -1,6 +1,6 @@
 /**
  * Pure logic of the "Words from this text" review: which action each Anki state starts with,
- * which others it offers, and how a batch of actions is run and summarised (ADR 0007).
+ * which others it offers, and how a batch of actions is run and summarised.
  */
 import { plural } from "../../format.js";
 import type { AppServices, InspectorEntry, TextWordItem } from "../../services/types.js";
@@ -20,7 +20,7 @@ export interface RowResult {
   deck?: string;
 }
 
-/** Tooltip for "Study first in Anki" (formerly "Learn next"; the service keeps `learnNext`). */
+/** Tooltip for "Study first in Anki" (the service calls it `learnNext`). */
 export const STUDY_FIRST_HINT =
   "Moves the new card to the front of Anki's queue, so Anki shows it next.";
 

@@ -1,4 +1,4 @@
-"""Regressions from the 2026-11 review: article pairs in headwords, curly-apostrophe clitics."""
+"""Regressions: article pairs in headwords, curly-apostrophe clitics."""
 
 import pytest
 

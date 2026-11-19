@@ -107,7 +107,7 @@ const WORD_TYPES: ReadonlySet<ExerciseType> = new Set([
 
 /**
  * The learner-model keys a book exercise item tests, so its answer can feed those words' app
- * evidence (ADR 0011). The bracketed hint (usually the lemma, "(lopen)") wins; otherwise the
+ * evidence. The bracketed hint (usually the lemma, "(lopen)") wins; otherwise the
  * words of the expected answer that `isWord` recognises (unit words or the learner model).
  * At most three keys; none for sentence building, open tasks and listening.
  */

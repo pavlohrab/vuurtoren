@@ -4,7 +4,7 @@
  * FSRS retrievability: R(t) = (1 + F * t / S) ^ (-decay), where for FSRS-4.5/5
  * decay = 0.5 and F = 19/81 (so that R(S) = 0.9). FSRS-6 learns `decay` per preset;
  * in that case F = 0.9^(-1/decay) - 1.
- * See docs/research/02-anki-integration.md §6 and docs/research/03-algorithms.md §2.
+ *
  */
 
 const DEFAULT_DECAY = 0.5;

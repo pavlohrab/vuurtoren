@@ -26,7 +26,7 @@ const rootPackage = JSON.parse(
 const commit = (process.env["KENNING_COMMIT"] ?? "").slice(0, 7);
 
 /**
- * The service worker (D0, installable app): sw/sw.js with the app shell's file list and a
+ * The service worker (installable app): sw/sw.js with the app shell's file list and a
  * version hash filled in, emitted as /sw.js on build. Fonts: only the latin subsets are
  * precached (the others load and are cached on first use). The dev server has no worker.
  */

@@ -1,5 +1,5 @@
 /**
- * What the live services need from the host (review A20): network access and per-device
+ * What the live services need from the host: network access and per-device
  * key-value storage (settings secrets, AI keys, a pending course import). The browser build
  * uses `browserPlatform()`; a desktop shell or browser extension passes its own.
  */

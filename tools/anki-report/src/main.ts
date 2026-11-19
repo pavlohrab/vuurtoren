@@ -1,5 +1,5 @@
 /**
- * M1 gate report: build the Anki snapshot (all target-language decks), check that each
+ * Anki mapping report: build the Anki snapshot (all target-language decks), check that each
  * card's headword is found in its own example sentence, and write a review sample.
  *   pnpm anki-report [--deck NAME ...] [--min-share 0.5] [--lang nl] [--sample 100]
  *                    [--anki URL] [--key APIKEY] [--nlp URL] [--seed 42]
@@ -182,7 +182,7 @@ async function main(): Promise<void> {
   };
   await writeFile(new URL("m1-summary.json", reportsDir), JSON.stringify(summary, null, 2));
 
-  const md = `# M1 mapping report — ${summary.generated}
+  const md = `# Anki mapping report — ${summary.generated}
 
 AnkiConnect v${version}${v1 ? " + API v1" : ""} · FSRS memory on ${snap.fsrsCards} cards${snap.fsrsCards ? "" : " (FSRS off: recall estimated as 0.9^(days since review / interval))"}
 

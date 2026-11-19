@@ -3,10 +3,10 @@ import type { WordState } from "./memory.js";
 
 /*
  * What the word inspector shows about one word: built by the app's services layer, rendered by
- * @app/ui (review A12: the contract lives here, not in the UI package).
+ * @app/ui (the contract lives here, not in the UI package).
  */
 
-/** Live state of a word in Anki, read when the word is opened (ADR 0007). */
+/** Live state of a word in Anki, read when the word is opened. */
 export interface InspectorAnki {
   /**
    * absent: not in Anki; new / suspended: the matched card has never been studied;
@@ -36,7 +36,7 @@ export interface InspectorEntry {
   key: string;
   label: TokenLabel;
   state: WordState;
-  /** "learning" only because of answers in Kenning (ADR 0011). */
+  /** "learning" only because of answers in Kenning. */
   appLearning?: boolean;
   pKnown: number;
   pos: string;

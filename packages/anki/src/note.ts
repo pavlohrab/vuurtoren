@@ -1,5 +1,5 @@
 /**
- * Writing new vocabulary to Anki (the only write the app does — ADR 0003).
+ * Writing new vocabulary to Anki (the only write the app does).
  * Uses a dedicated note type so app-created cards are recognisable and well formatted.
  */
 import { AnkiConnectError, type AnkiConnectClient } from "./client.js";

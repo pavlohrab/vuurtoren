@@ -1,6 +1,6 @@
 /**
  * Exam-preparation content (`exam/<exam id>/*.json`): original practice items in the formats of
- * an official exam (for now the Dutch inburgeringsexamen A2, docs/research/08-inburgering-a2.md).
+ * an official exam (the Dutch inburgeringsexamen A2).
  * Self-contained like parse.ts: scripts/generate.ts runs this file directly with Node's type
  * stripping, so it must not import anything at runtime.
  */

@@ -1,5 +1,5 @@
 /**
- * Reading themes for the reader surface (docs/research/09-reader-annotations.md): token sets
+ * Reading themes for the reader surface: token sets
  * applied as inline custom properties on the reader page, so the reading column changes while
  * the sidebar, top bar and inspector keep the app theme. Every pair is WCAG AA (text) and
  * every mark is at least 3:1 (checked in readingThemes.test.ts).

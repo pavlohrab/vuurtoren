@@ -1,4 +1,4 @@
-"""The analyzer version (review A4): changes whenever ``/analyze/text`` could tokenise or
+"""The analyzer version: changes whenever ``/analyze/text`` could tokenise or
 lemmatise a text differently, so clients can re-analyse texts stored with an older one.
 
 It hashes the spaCy and model versions, the source of the modules that shape a token (pipeline,

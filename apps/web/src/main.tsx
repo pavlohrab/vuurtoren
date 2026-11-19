@@ -35,7 +35,7 @@ import { initPwa } from "./pwa/pwa.js";
 initTheme();
 initPwa();
 // Before any service exists (the NLP client binds fetch when created): a 401 from /api or
-// /nlp later on means the session ended, and the sign-in screen comes back (ADR 0009).
+// /nlp later on means the session ended, and the sign-in screen comes back.
 installFetchWatch();
 forgetLegacyToken();
 const auth: AuthClient = createAuthClient();
@@ -43,7 +43,7 @@ const auth: AuthClient = createAuthClient();
 /**
  * Real services by default; `?demo` (or a failure to open the database) uses mock data.
  * Where the data lives: a Kenning API on the same origin (server mode, one SQLite file on the
- * server), else this browser (OPFS). See docs/adr/0008-server-storage-mode.md.
+ * server), else this browser (OPFS).
  */
 const DEMO_KEY = "kenning-demo";
 
@@ -81,7 +81,7 @@ type Boot =
       account?: AccountControls;
       /** Server mode with sign-in: watch for the session ending. */
       session?: { methods: ServerHealth["authMethods"]; user: string | null };
-      /** Desktop app on this computer only (D4). */
+      /** Desktop app on this computer only. */
       desktop?: DesktopLocal;
     }
   | { kind: "signin"; health: ServerHealth }
@@ -89,7 +89,7 @@ type Boot =
   | { kind: "blocked"; message: string; download: () => Promise<Uint8Array> }
   | { kind: "busy"; takeOver: () => Promise<void> }
   | { kind: "elsewhere" }
-  /** Desktop app, bundled home page: choose the server (docs/desktop.md). */
+  /** Desktop app, bundled home page: choose the server. */
   | { kind: "desktop"; bridge: DesktopBridge }
   /** Desktop app, offline: the data file is open on another computer. */
   | Extract<LocalBoot, { kind: "locked" }>;
@@ -202,7 +202,7 @@ async function openBrowser(lock: HeldLock): Promise<Boot> {
 }
 
 /**
- * The desktop app's own page (docs/desktop.md): on this computer only (the default; data in a
+ * The desktop app's own page: on this computer only (the default; data in a
  * local SQLite file, the bundled language server), or the Connect screen when the user chose a
  * Kenning server (it then opens the server's page, which boots as usual).
  */

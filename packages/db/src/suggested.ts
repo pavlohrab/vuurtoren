@@ -2,7 +2,7 @@
  * Word suggestions from an assistant (Claude Code over MCP): folds WordSuggested /
  * WordSuggestionDismissed events into the open queue. Table-free like generated.ts, so no
  * schema migration is needed and the local and HTTP repositories answer the same way.
- * Nothing here touches Anki: the learner confirms each word with AddToAnki (ADR 0007).
+ * Nothing here touches Anki: the learner confirms each word with AddToAnki.
  */
 import type { StoredEvent, SuggestedWord } from "./types.js";
 

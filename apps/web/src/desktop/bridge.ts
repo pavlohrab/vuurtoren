@@ -2,7 +2,7 @@
  * The desktop app (apps/desktop, Tauri) injects `window.__KENNING_DESKTOP__` into every page
  * its window loads: the bundled home page (the offline app, or the Connect screen) and the
  * user's Kenning server. In a normal browser it is absent and nothing here changes behaviour.
- * See docs/desktop.md.
+ *
  */
 import type { NativeDb } from "@app/db/native";
 

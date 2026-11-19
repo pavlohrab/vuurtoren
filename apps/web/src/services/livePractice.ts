@@ -1,7 +1,7 @@
 /**
  * Practice services on top of the local database: builds sessions from the learner model,
  * Anki sentences, the learner's own texts and the NLP server, grades answers with the engine
- * and records them as ExerciseAnswered events. Nothing here writes to Anki (ADR 0003).
+ * and records them as ExerciseAnswered events. Nothing here writes to Anki.
  */
 import {
   type AnalyzedToken,
@@ -56,7 +56,7 @@ export interface LivePracticeDeps {
     pos: string,
   ) => { glosses: string[]; article: string | undefined };
   data: PracticeData;
-  /** Hit sentences and words of a grammar topic (M5 topic exercises). */
+  /** Hit sentences and words of a grammar topic (topic exercises). */
   topicMaterial?: (detects: string[]) => Promise<TopicMaterial>;
   /** AI example sentences (docs/ai.md); absent or not ready = no generation. */
   aiSentences?: {
@@ -296,7 +296,7 @@ export function createLivePractice(deps: LivePracticeDeps) {
   ): Promise<Map<string, Occurrence>> {
     const out = new Map<string, Occurrence>();
     const texts = (await repo.listTexts()).filter((t) => t.analyzed).slice(0, MAX_TEXTS);
-    // Batched reads (review A8): one call per ~150k words instead of one per text.
+    // Batched reads: one call per ~150k words instead of one per text.
     for (const text of await fetchTexts(repo, texts)) {
       if (text.tokens) sentencesFromTexts(text.tokens, text.content, model, keys, out);
     }
@@ -304,8 +304,8 @@ export function createLivePractice(deps: LivePracticeDeps) {
   }
 
   /**
-   * The engine's WordData for some words, the one assembly used by practice and courses
-   * (review item A10): lemma, part of speech and frequency (zipf) from the learner's texts,
+   * The engine's WordData for some words, the one assembly used by practice and courses:
+   * lemma, part of speech and frequency (zipf) from the learner's texts,
    * dictionary glosses and article, server forms, and example sentences in the order Anki, the
    * learner's texts, earlier AI sentences, Tatoeba. A word absent from every text gets zipf 0
    * (unknown frequency) and its dictionary part of speech.
@@ -668,7 +668,7 @@ export function createLivePractice(deps: LivePracticeDeps) {
     startTopicPractice,
     answerExercise,
     buildWordData,
-    /** Forget the cached practice items (another device answered; review A7). */
+    /** Forget the cached practice items (another device answered). */
     invalidate: () => itemCache.clear(),
   };
 }

@@ -173,7 +173,7 @@ class Translation(BaseModel):
     """English translation (empty for a blank input)."""
 
 
-# --------------------------------------------------------------------------- practice data (M4)
+# --------------------------------------------------------------------------- practice data
 
 PRACTICE_MAX_LEMMAS = 500
 """Items per ``/forms``, ``/sentences`` and ``/similar`` request (422 above)."""
@@ -245,7 +245,7 @@ class SimilarRequest(BaseModel):
     k: int = Field(default=8, ge=1, le=20)
 
 
-# ----------------------------------------------------------------------------- grammar (M5)
+# ----------------------------------------------------------------------------- grammar
 
 GRAMMAR_EXAMPLE_LIMIT = 10
 """Maximum examples per ``GET /grammar/examples`` request."""

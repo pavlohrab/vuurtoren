@@ -1,7 +1,7 @@
 # Kenning for Dockge (or any `docker compose`): published images only, no build, no files
 # next to it. Paste this into a new Dockge stack and the contents of .env.example into the
 # stack's .env, then fill in at least KENNING_IMAGE_OWNER, KENNING_USER and
-# KENNING_PASSWORD_HASH. Quick card: deploy/dockge/README.md. Full guide: deploy/README.md.
+# KENNING_PASSWORD_HASH. Guide: deploy/README.md.
 #
 #   web          the app + sign-in gate (nginx); the only service with a published port
 #   api          your data in ONE SQLite file on the kenning-data volume, and sign-in

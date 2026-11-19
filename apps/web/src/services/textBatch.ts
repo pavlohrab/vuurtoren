@@ -5,7 +5,7 @@ const TEXT_BATCH_WORDS = 150_000;
 
 /**
  * Full texts (content and tokens) for `summaries`, in their order, with as few repository calls
- * as possible (review A8): one `getTexts` per ~150k words instead of one `getText` per text.
+ * as possible: one `getTexts` per ~150k words instead of one `getText` per text.
  */
 export async function fetchTexts(
   repo: Pick<KenningRepository, "getTexts">,

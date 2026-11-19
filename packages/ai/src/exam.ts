@@ -1,5 +1,5 @@
 /**
- * Exam preparation with AI (docs/exam.md): new A2 practice items for Lezen and Luisteren written
+ * Exam preparation with AI: new A2 practice items for Lezen and Luisteren written
  * around the learner's vocabulary (validated like stories: coverage check with one rewrite), and
  * feedback on a written or (typed) spoken answer against the task's checklist.
  */

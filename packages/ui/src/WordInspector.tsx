@@ -165,7 +165,7 @@ const STATUS_TEXT: Record<InspectorAnki["status"], string> = {
   unavailable: "Anki not reachable",
 };
 
-/** Status line and action buttons for the word's state in Anki (ADR 0007). */
+/** Status line and action buttons for the word's state in Anki. */
 function AnkiActions({
   entry,
   busy = false,

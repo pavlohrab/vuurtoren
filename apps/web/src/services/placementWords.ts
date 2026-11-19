@@ -1,5 +1,5 @@
 /**
- * Placement check for "start fresh" users (ADR 0010): 60 Dutch words in four frequency bands
+ * Placement check for "start fresh" users: 60 Dutch words in four frequency bands
  * (rough SUBTLEX-NL ranks). Ticked words are recorded as manual known marks, app-only.
  */
 import { normalizeKey } from "@app/core";

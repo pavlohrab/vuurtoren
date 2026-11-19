@@ -88,7 +88,7 @@ TOKEN_HEADER = "x-kenning-token"
 
 @app.middleware("http")
 async def require_token(request: Request, call_next):  # type: ignore[no-untyped-def]
-    """Desktop sidecar (D4): with ``$KENNING_NLP_TOKEN`` set, every request must carry it.
+    """Desktop sidecar: with ``$KENNING_NLP_TOKEN`` set, every request must carry it.
 
     The desktop app starts this server on a random localhost port and sends the token from its
     own process, so other programs and web pages on this computer cannot use the server.
@@ -219,7 +219,7 @@ def translate_endpoint(req: TranslateRequest) -> list[Translation]:
     return [Translation(**t) for t in translate_texts(req.source, req.target, req.texts)]
 
 
-# --------------------------------------------------------------------------- practice data (M4)
+# --------------------------------------------------------------------------- practice data
 # Stores are created per request (cheap: they only check the files) and the expensive parts are
 # cached inside them / below, so that a data file built after startup is picked up without a
 # restart and a missing file gives a 503 with build instructions rather than a crash.
@@ -330,7 +330,7 @@ def course_ocr_cancel(job_id: str) -> dict[str, str]:
     return {"status": "cancelled"}
 
 
-# --------------------------------------------------------------------------------- grammar (M5)
+# --------------------------------------------------------------------------------- grammar
 
 
 @app.post("/grammar")

@@ -1004,9 +1004,9 @@ def detect_conditional_inversion(s: Sentence) -> Iterable[Hit]:
             return
 
 
-# ------------------------------------------------------------- reader detectors (2026-11)
+# ------------------------------------------------------------- reader detectors
 # Precision-first detectors for B1/B2 phenomena the reader marks in the margin. Each one fires
-# only on a curated word list plus a parse that agrees; see docs/grammar-coverage.md.
+# only on a curated word list plus a parse that agrees.
 
 # Prepositions that combine with er/daar/hier/waar, by the form they take in the compound.
 PRONOMINAL_PREPS = frozenset(

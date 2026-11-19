@@ -1,5 +1,5 @@
 /**
- * Installable app (D0): registers the service worker (sw/sw.js, built builds only), tells the
+ * Installable app: registers the service worker (sw/sw.js, built builds only), tells the
  * app when a new version is waiting, and keeps the browser's install prompt for Settings.
  */
 import { useSyncExternalStore } from "react";

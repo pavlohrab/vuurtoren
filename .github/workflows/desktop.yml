@@ -1,6 +1,6 @@
-# Desktop app (apps/desktop, Tauri v2): the offline app with its bundled language server (D4).
+# Desktop app (apps/desktop, Tauri v2): the offline app with its bundled language server.
 # Linux AppImage + .deb, Windows NSIS .exe + .msi, macOS .dmg for Apple silicon and for Intel,
-# attached to a GitHub release (the updater reads its latest.json). Unsigned (see docs/desktop.md).
+# attached to a GitHub release (the updater reads its latest.json). Unsigned.
 #
 # Every job builds the language-server sidecar for its OS first (.github/actions/desktop-prep:
 # PyInstaller, one directory, no Tesseract), then the app. Two variants:
@@ -80,7 +80,7 @@ jobs:
           args: ${{ matrix.args }} --config src-tauri/tauri.sidecar.conf.json ${{ steps.updater.outputs.config }}
           tagName: ${{ github.ref_type == 'tag' && github.ref_name || 'desktop-v__VERSION__' }}
           releaseName: Kenning __VERSION__
-          releaseBody: Desktop installers (unsigned). The `Kenning_offline_*` files include the language data (no download at first start). See docs/desktop.md.
+          releaseBody: Desktop installers (unsigned). The `Kenning_offline_*` files include the language data (no download at first start).
           # Published (not draft) so releases/latest/download/latest.json resolves for the updater.
           releaseDraft: false
           prerelease: false

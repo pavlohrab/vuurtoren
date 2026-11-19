@@ -24,7 +24,7 @@ interface NlpHealth {
   version: string;
   analyzerVersion?: string;
   data?: Record<string, boolean>;
-  /** Data packs (D1): installed in the background after the server starts. */
+  /** Data packs: installed in the background after the server starts. */
   packs?: { busy: boolean; items: Record<string, { state: string; activity?: string }> };
 }
 

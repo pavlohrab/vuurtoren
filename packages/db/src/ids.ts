@@ -1,6 +1,6 @@
 /**
  * ID and clock helpers (pure, no I/O): ULIDs for event ids and a hybrid logical clock (HLC)
- * for cross-device ordering of mutable fields (ADR 0002).
+ * for cross-device ordering of mutable fields.
  */
 
 const CROCKFORD = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";

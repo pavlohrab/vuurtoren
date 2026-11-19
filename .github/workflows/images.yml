@@ -34,7 +34,7 @@ jobs:
           - name: api
             context: .
             file: server/api/Dockerfile
-          # Code and libraries only: the data are packs on the /data volume (D1).
+          # Code and libraries only: the data are packs on the /data volume.
           - name: nlp
             context: server/nlp
             file: server/nlp/Dockerfile

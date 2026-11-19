@@ -395,7 +395,7 @@ function Session({
   const skippedAt = useRef(-1);
   const current = exercises[index];
   const skipDictation = current?.kind === "dictation" && !listening;
-  // Another device's changes wait until the session ends (review A7).
+  // Another device's changes wait until the session ends.
   useHoldFreshness();
 
   // Synchronously updated mirrors of the state, so Escape and the end button see an answer

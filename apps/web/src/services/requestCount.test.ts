@@ -1,5 +1,5 @@
 /**
- * Server mode request counts (review A8) and cross-device freshness (review A7): the live
+ * Server mode request counts and cross-device freshness: the live
  * services run over the real HTTP repository, whose fetch is answered in-process by a local
  * repository through the same RPC allow-list the API service uses.
  */
@@ -254,7 +254,7 @@ describe("cross-device freshness (A7)", () => {
   });
 });
 
-describe("analyzer version (review A4)", () => {
+describe("analyzer version", () => {
   it("a text analysed by an older analyzer is re-analysed once, in the background", async () => {
     const analyzed: string[][] = [];
     vi.stubGlobal(

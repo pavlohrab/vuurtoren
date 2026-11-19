@@ -2,7 +2,7 @@ import { createContext, useContext } from "react";
 import type { DataAdmin } from "@app/db";
 import type { DesktopBridge } from "../desktop/bridge.js";
 
-/** Desktop app, offline mode: the database file in a visible folder (docs/desktop.md). */
+/** Desktop app, offline mode: the database file in a visible folder. */
 export interface DataFile {
   /** Full path of `kenning.sqlite`. */
   path: string;
@@ -34,7 +34,7 @@ export interface DesktopLocal {
   connectServer(): Promise<void>;
 }
 
-/** Settings > Account in server mode (ADR 0009). */
+/** Settings > Account in server mode. */
 export interface AccountControls {
   /** False when the server runs without sign-in. */
   authEnabled: boolean;

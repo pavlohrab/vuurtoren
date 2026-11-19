@@ -6,8 +6,7 @@ is loaded lazily on the first request and cached for the process lifetime.
 Only ``ctranslate2`` and ``sentencepiece`` are needed (no torch).
 
 TODO(weave reading): keeping marked Dutch spans verbatim needs word alignment (SimAlign or the
-CT2 ``return_alignment`` attention output); plain MT cannot guarantee it. See
-docs/research/06-weave-reading.md.
+CT2 ``return_alignment`` attention output); plain MT cannot guarantee it.
 """
 
 from __future__ import annotations

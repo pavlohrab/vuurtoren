@@ -1,7 +1,7 @@
 /**
  * AnkiConnect client. The legacy action API (version 6) is the stable baseline; the v1
  * JSON-RPC API (AnkiConnect ≥ 26.08) is probed and used opportunistically.
- * See docs/research/02-anki-integration.md.
+ *
  */
 
 export interface AnkiConnectOptions {

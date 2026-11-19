@@ -1,4 +1,4 @@
-"""Desktop sidecar (D4): the token guard and the entry point's settings."""
+"""Desktop sidecar: the token guard and the entry point's settings."""
 
 from __future__ import annotations
 

@@ -1,5 +1,5 @@
 /**
- * Segment planning (docs/research/03-algorithms.md §3): which unknown words to introduce or
+ * Segment planning: which unknown words to introduce or
  * gloss, and which known/learning words to turn into clozes.
  */
 import type { LearnerModel } from "../learner.js";
@@ -33,8 +33,7 @@ const ABSOLUTE_MIN_ZIPF = 3.0;
 
 /**
  * Lowest Zipf frequency worth introducing for a learner with `vocabEstimate` known words:
- * words within roughly the next 3000 frequency ranks are worth learning now (docs/research
- * 03 §3: rank <= vocab + 3000). Zipf ≈ 7.6 − 0.9·log10(rank) approximates Dutch wordfreq
+ * words within roughly the next 3000 frequency ranks are worth learning now. Zipf ≈ 7.6 − 0.9·log10(rank) approximates Dutch wordfreq
  * (rank 1000 → 4.9, 3000 → 4.5, 10000 → 4.0), clamped to [2.5, 5.0].
  * Examples: vocab 300 → 4.43, 1000 → 4.36, 8000 → 3.96. Rarer words are glossed, not taught.
  */

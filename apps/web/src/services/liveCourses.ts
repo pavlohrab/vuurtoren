@@ -1,8 +1,8 @@
 /**
  * Course services on top of the local database, the NLP server (OCR job, forms, analysis) and
  * Anki. Book content only ever lives in the user's own event log; nothing is sent anywhere but
- * the user's own NLP server. Anki writes are the explicit actions of ADR 0007 (Learn next, add
- * notes), each logged as an event.
+ * the user's own NLP server. Anki writes are explicit clicks (Learn next, add notes), each
+ * logged as an event.
  *
  * Composition of the course modules in ./courses/.
  */

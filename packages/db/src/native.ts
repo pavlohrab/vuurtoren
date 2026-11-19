@@ -1,5 +1,5 @@
 /**
- * Native driver ("@app/db/native"): the SQLite file of the desktop app (D4), opened by the app
+ * Native driver ("@app/db/native"): the SQLite file of the desktop app, opened by the app
  * itself (apps/desktop, `db.rs`, rusqlite). Every statement crosses the app's IPC as JSON; this
  * module encodes what JSON cannot carry: blobs as `{"$b": base64}` and integers beyond 2^53 as
  * `{"$i": "123"}` (both directions). Schema, migrations and projections are the shared ones

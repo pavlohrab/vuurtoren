@@ -1,5 +1,4 @@
-//! Kenning desktop: the offline app (D4, the default) and a thin client for a Kenning server
-//! (D2/D3).
+//! Kenning desktop: the offline app (the default) and a thin client for a Kenning server.
 //!
 //! The window starts on the bundled web build (the "home" page).
 //!
@@ -8,8 +7,7 @@
 //!   server is the bundled sidecar (`sidecar.rs`), reached through the `kenning-nlp:` protocol
 //!   (`proxy.rs`).
 //! * **Connected to a server**: once a server is chosen the window navigates to it, so the page,
-//!   its cookies, CSP and CSRF checks are exactly those of the server in a browser (see
-//!   docs/desktop.md, "Why the window loads the server").
+//!   its cookies, CSP and CSRF checks are exactly those of the server in a browser.
 //!
 //! Both get `window.__KENNING_DESKTOP__` (see `bridge.js`): AnkiConnect requests sent from Rust
 //! (no webCorsOriginList setup), and the commands each mode may use.
@@ -53,7 +51,7 @@ struct Config {
     /// Overrides the update feed (a `latest.json` URL); empty string turns updates off.
     update_url: Option<String>,
     /// "local" (this computer) or "server". Unset: "server" if a server was saved (thin-client
-    /// installs from before D4), else "local".
+    /// installs), else "local".
     mode: Option<String>,
     /// The database file (local mode); unset: `<Documents>/Kenning/kenning.sqlite`.
     database: Option<String>,
@@ -313,7 +311,7 @@ async fn anki_fetch(
     Ok(AnkiResponse { status, body })
 }
 
-// ------------------------------------------------------------------ local database (D4)
+// ------------------------------------------------------------------ local database
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -562,7 +560,7 @@ fn move_target(current: &Path, dir: &Path) -> Result<PathBuf, String> {
     Ok(target)
 }
 
-// ------------------------------------------------------------------ language server (D4)
+// ------------------------------------------------------------------ language server
 
 /// Start the bundled language server unless it runs (or is starting) already.
 fn ensure_sidecar(app: &AppHandle) {

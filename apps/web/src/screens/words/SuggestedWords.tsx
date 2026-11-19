@@ -1,6 +1,6 @@
 /**
  * Words → "Suggested by Claude": words Claude Code queued over MCP (suggest_words_for_anki).
- * Nothing reaches Anki until the learner clicks Add here (ADR 0007); Dismiss drops a word.
+ * Nothing reaches Anki until the learner clicks Add here; Dismiss drops a word.
  */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Sparkles } from "lucide-react";

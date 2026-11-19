@@ -1,4 +1,4 @@
-//! The `kenning-nlp:` protocol: the web app's way to the bundled language server (D4).
+//! The `kenning-nlp:` protocol: the web app's way to the bundled language server.
 //!
 //! The page fetches `kenning-nlp://localhost/<path>` (Windows: `http://kenning-nlp.localhost/`);
 //! this handler forwards the request to the sidecar on 127.0.0.1 with the secret token, so the

@@ -24,11 +24,11 @@ import type { AppServices } from "./types.js";
 
 export interface LiveServicesOptions {
   /**
-   * Server mode (review A7): true when another device changed the shared data since the last
+   * Server mode: true when another device changed the shared data since the last
    * call (`HttpRepository.remoteChanged`). Absent in browser mode (one tab owns the data).
    */
   remoteChanged?: () => Promise<boolean>;
-  /** Network and device storage (review A20); the browser's by default. */
+  /** Network and device storage; the browser's by default. */
   platform?: Platform;
 }
 
@@ -97,7 +97,7 @@ export function createLiveServices(
     fetch: platform.fetch,
   });
 
-  // One cached practice-data source for practice and courses (review item A9).
+  // One cached practice-data source for practice and courses.
   const practiceData = createPracticeData(nlp);
 
   const {

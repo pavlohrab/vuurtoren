@@ -1,4 +1,4 @@
-/** Contract of the AI services (M6). Keys never appear here except as write-only arguments. */
+/** Contract of the AI services. Keys never appear here except as write-only arguments. */
 import type { GenerateUnitResult } from "./courseTypes.js";
 import type {
   Correction,

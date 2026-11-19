@@ -1,5 +1,5 @@
 /**
- * The language profile meets Anki (ADR 0010): which deck/note-type pairs a snapshot reads, and
+ * The language profile meets Anki: which deck/note-type pairs a snapshot reads, and
  * the one command that adds a word to Anki for every caller (reader, Words from this text,
  * Converse, courses, MCP). Platform-neutral: needs only an AnkiConnect client and a callback that
  * records the event, so the web app and the MCP server share it.
@@ -133,7 +133,7 @@ export interface AddWordRequest {
   /** Shown on the card's back, e.g. the text title. */
   source?: string;
   extraTags?: string[];
-  /** Mark known (ADR 0007): also give the new card a mature interval. */
+  /** Mark known: also give the new card a mature interval. */
   asKnown?: boolean;
 }
 
@@ -148,7 +148,7 @@ export interface AddWordResult {
 /**
  * Add a word to Anki: resolve the deck from the profile, create the note type and the deck when
  * missing, add the note (an identical one in that deck is reused) and record `NoteAddedToAnki`
- * with the one key rule (`wordKey`). Only call from an explicit user action (ADR 0007).
+ * with the one key rule (`wordKey`). Only call from an explicit user action.
  */
 export async function addWordToAnki(
   anki: AnkiConnectClient,

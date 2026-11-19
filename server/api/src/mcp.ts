@@ -1,13 +1,13 @@
 /**
  * `/api/mcp`: the Kenning MCP tools over Streamable HTTP, so Claude Code (or Claude Desktop, or
- * any MCP client) can use the learner's data under the user's own subscription (ADR 0005):
+ * any MCP client) can use the learner's data under the user's own subscription:
  *
  *   claude mcp add --transport http kenning https://<host>/api/mcp \
  *     --header "Authorization: Bearer <MCP token from Settings → AI>"
  *
  * Stateless: every POST gets a fresh MCP server and transport (no session to keep), answers
  * are plain JSON. Tools read and write through the server's own repository queue, exactly like
- * `/api/rpc`. Nothing here talks to Anki (ADR 0007): words are only suggested.
+ * `/api/rpc`. Nothing here talks to Anki: words are only suggested.
  */
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";

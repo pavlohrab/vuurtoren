@@ -1,5 +1,5 @@
 /**
- * Cross-device freshness (review A7): in server mode the shell asks the server for a change
+ * Cross-device freshness: in server mode the shell asks the server for a change
  * marker on focus, on becoming visible and every ~30 s while visible. A screen that must not
  * change under the learner's hands (a practice session mid-answer) holds the check; it runs
  * when the last hold is released.

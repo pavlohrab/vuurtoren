@@ -19,7 +19,7 @@ const SOURCE_LABEL: Record<DegradedEntry["source"], string> = {
 const time = (ms: number) =>
   new Date(ms).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
 
-/** The shared degraded signal (review A17): a quiet top-bar button with a details popover. */
+/** The shared degraded signal: a quiet top-bar button with a details popover. */
 export function DegradedIndicator() {
   const entries = useSyncExternalStore(subscribeDegraded, degradedEntries, degradedEntries);
   const first = entries[0];

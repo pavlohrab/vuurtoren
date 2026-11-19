@@ -1,6 +1,6 @@
 /**
  * Facts about the A2 inburgeringsexamen shown on the Exam overview, and the official links.
- * From docs/research/08-inburgering-a2.md; re-check them when `lastChecked` gets old.
+ * Re-check them on inburgeren.nl when `lastChecked` gets old.
  * Pass marks are not published on the pages we could check: `passEstimate` is an estimate.
  */
 import type { ExamPart } from "./exam.js";

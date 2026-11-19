@@ -12,7 +12,7 @@
 # neither, by building them here from the pinned upstream sources with scripts/ (~10 minutes,
 # once). See kenning_nlp/packs.py and docs/architecture.md ("Data packs").
 #
-# Size (docs/research/10-nlp-footprint.md): no lingua (a small wordfreq-based detector instead),
+# Size: a small wordfreq-based language detector,
 # Dutch-only simplemma data, wordfreq lists only for the detected languages, no tests or bytecode
 # in the venv, no build tools in the runtime. Base images are pinned to a patch release (all
 # stages share it: the venv is copied between them); .github/dependabot.yml proposes updates.
@@ -83,7 +83,7 @@ USER kenning
 EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=40s \
     CMD python -c "import urllib.request as u; u.urlopen('http://127.0.0.1:8000/health', timeout=4)"
-# Exactly ONE worker process (review item A15): course OCR jobs live in this process's memory
+# Exactly ONE worker process: course OCR jobs live in this process's memory
 # (`GET /course/ocr/{id}` must reach the process that started the job), the grammar-example
 # cache and the data packs are written by one process. Blocking work runs in the threadpool, so
 # one worker still serves requests concurrently. Do not add --workers or WEB_CONCURRENCY; scale

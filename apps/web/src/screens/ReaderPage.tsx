@@ -336,8 +336,8 @@ export function ReaderPage({ textId }: { textId: string }) {
     onSettled: () => setHelpDraft(null),
   });
 
-  // Grammar (M5): hits are detected once per text and stored. The reader shows them as quiet
-  // margin marks (docs/research/09-reader-annotations.md), or all hits of one focus topic.
+  // Grammar: hits are detected once per text and stored. The reader shows them as quiet
+  // margin marks, or all hits of one focus topic.
   // They are also loaded when a word is selected, as context for "Explain this sentence".
   const marksOn = settingsQ.data?.grammarMarks ?? true;
   const grammarQ = useQuery({
@@ -495,7 +495,7 @@ export function ReaderPage({ textId }: { textId: string }) {
     const correct = answer !== "" && matchAnswer(answer, tok.text) !== "incorrect";
     const credit = !correct ? 0 : hints === 0 ? 1 : hints === 1 ? 0.5 : hints === 2 ? 0.25 : 0;
     setCredits((prev) => new Map(prev).set(i, credit));
-    // The first answer per blank teaches the learner model (ADR 0011); retries do not count.
+    // The first answer per blank teaches the learner model; retries do not count.
     const key = plan?.tokens.find((t) => t.i === i)?.key;
     if (key && !credits.has(i)) {
       services.recordClozeAnswer(key, correct && hints < 3, hints > 0).catch((e: unknown) => {

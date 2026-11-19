@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Kenning MCP server (stdio). Lets Claude Desktop / Claude Code (or any MCP client) read the
- * learner's data under the user's own subscription (ADR 0005): no keys, no OAuth handling here.
+ * learner's data under the user's own subscription: no keys, no OAuth handling here.
  * Prefer the server's own endpoint (/api/mcp, Settings → AI → Use with Claude Code) when Kenning
  * runs on a server; this stdio server adds `add_to_anki` for a local AnkiConnect.
  *
@@ -30,7 +30,7 @@ async function main(): Promise<void> {
   }
   const token = env["KENNING_TOKEN"];
   const repo = await createHttpRepository(url, token);
-  // The web container gates /nlp behind the same sign-in (ADR 0009): send the token there too,
+  // The web container gates /nlp behind the same sign-in: send the token there too,
   // but never to another host.
   const nlpUrl = env["KENNING_NLP_URL"] ?? `${url}/nlp`;
   const nlpFetch: typeof fetch = (input, init) => {

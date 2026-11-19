@@ -1,5 +1,5 @@
 /**
- * Which grammar the reader points out (docs/research/09-reader-annotations.md).
+ * Which grammar the reader points out.
  *
  * Margin marks: at most one quiet mark per sentence, for the topic the learner should notice
  * most (at or just above their level, the course unit's topics, topics they practise), and

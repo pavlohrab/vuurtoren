@@ -1,5 +1,5 @@
 # Kenning web container: static SPA, same-origin proxies to the NLP service and the API, and
-# the sign-in gate (ADR 0009).
+# the sign-in gate.
 #
 # This is an nginx *template*: the official image's entrypoint copies it to
 # /etc/nginx/conf.d/default.conf and substitutes ${KENNING_...} environment variables

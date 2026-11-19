@@ -6,7 +6,7 @@ import { cn } from "./cn.js";
  * is a honey-accent ribbon tucked under the arm (a hairline gap) that hangs just below the
  * baseline and ends in a level swallow-tail notch, the bookmark you leave in a text.
  *
- * Geometry is drawn on three grids (docs/design/design-system.md, Logo): a 48 px master for
+ * Geometry is drawn on three grids (docs/design-system.md, Logo): a 48 px master for
  * large sizes, a 24 px cut for 19–32 px and a simplified 16 px cut for favicons (pixel-aligned
  * stem and arm, steeper ribbon so the notch survives). Stroke weights follow Instrument Sans
  * SemiBold; terminals are flat. Every number is listed in the design doc; change both together.

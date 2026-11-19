@@ -1,4 +1,4 @@
-/* Onboarding wizard and Settings → Language & decks (ADR 0010). */
+/* Onboarding wizard and Settings → Language & decks. */
 .ob-shell {
   min-height: 100dvh;
   background: var(--bg);

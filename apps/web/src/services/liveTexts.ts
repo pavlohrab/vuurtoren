@@ -103,7 +103,7 @@ export function createLiveTexts({
   autoCover,
 }: LiveTextsDeps) {
   // Text content never changes under an id within this client (imports get new ids); another
-  // device's changes clear the cache through `checkRemoteChanges` (review A7).
+  // device's changes clear the cache through `checkRemoteChanges`.
   const planCache = new Map<string, { version: number; view: ReadingView }>();
   const inFlight = new Map<string, Promise<ReadingView | null>>();
 
@@ -188,7 +188,7 @@ export function createLiveTexts({
 
   /**
    * Plan several texts with one learner model, one planner-options read and one gloss lookup
-   * for all their clozes (review A8: the Library plans every text).
+   * for all their clozes (the Library plans every text).
    */
   async function computeViews(texts: StoredText[]): Promise<ReadingView[]> {
     if (texts.length === 0) return [];
@@ -271,7 +271,7 @@ export function createLiveTexts({
     async listTexts(): Promise<TextListItem[]> {
       const texts = await repo.listTexts();
       // Plan the analysed texts without a fresh cached plan together: batched text reads and
-      // one gloss lookup instead of several calls per text (review A8).
+      // one gloss lookup instead of several calls per text.
       const stale = texts.filter((t) => t.analyzed && !cachedView(t.id));
       const planned = new Map(
         (await computeViews(await fetchTexts(repo, stale))).map((v) => [v.text.id, v]),

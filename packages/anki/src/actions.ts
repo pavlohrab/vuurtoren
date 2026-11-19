@@ -1,5 +1,5 @@
 /**
- * Explicit write actions on existing Anki cards (ADR 0007): learn next, mark known, and the
+ * Explicit write actions on existing Anki cards: learn next, mark known, and the
  * live card status the inspector needs to decide which buttons to offer.
  * Every function acts only on the ids it is given; the app never calls them in the background.
  */

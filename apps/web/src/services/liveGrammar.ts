@@ -1,5 +1,5 @@
 /**
- * Grammar services (M5) on top of the local database and the NLP service.
+ * Grammar services on top of the local database and the NLP service.
  *
  * Grammar hits are computed once per text content by `POST /grammar` and stored as a
  * TextGrammarDetected event next to the TextAnalyzed one (same content hash, so editing a text

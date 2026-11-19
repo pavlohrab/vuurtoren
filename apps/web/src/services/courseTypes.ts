@@ -1,5 +1,5 @@
 /**
- * Course services contract (docs/design/courses.md). Implemented by liveCourses.ts (database +
+ * Course services contract. Implemented by liveCourses.ts (database +
  * NLP server + Anki) and mockCourses.ts (demo data); the UI only sees this interface.
  */
 import type {
@@ -265,7 +265,7 @@ export interface CourseServices {
   mapDecks(courseId: string, mapping: Record<number, string[]>): Promise<void>;
   unit(courseId: string, n: number): Promise<UnitView | null>;
   unitStatus(courseId: string, n: number): Promise<UnitStatus>;
-  /** "Learn next" for the unit's new cards (ADR 0007: explicit, logged). */
+  /** "Learn next" for the unit's new cards (explicit, logged). */
   learnNextForUnit(courseId: string, n: number): Promise<LearnNextResult>;
   /** Add the unit words that are not in Anki (the profile's course deck or `opts.deck`, tagged for the unit). */
   addMissingUnitWords(

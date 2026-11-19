@@ -40,7 +40,7 @@ const snapshot = (
   sources: ["D"],
 });
 
-describe("learning signals (ADR 0011)", () => {
+describe("learning signals", () => {
   it("practice, cloze and book answers raise a word Anki does not know", async () => {
     const clock = { t: T };
     const repo = await repoAt(clock);

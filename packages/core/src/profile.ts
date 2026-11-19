@@ -1,5 +1,5 @@
 /**
- * The language profile (ADR 0010): per language, which Anki decks Kenning reads (confirmed by
+ * The language profile: per language, which Anki decks Kenning reads (confirmed by
  * the user; detection is only a suggestion) and where new words go. Pure data and rules, shared
  * by the web app, the database projections and the MCP server.
  */

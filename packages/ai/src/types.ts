@@ -1,4 +1,4 @@
-/** Provider-neutral contracts for the BYOK AI layer (docs/ai.md, ADR 0005). */
+/** Provider-neutral contracts for the BYOK AI layer (docs/ai.md). */
 
 /** Supported provider families. `custom` is any OpenAI-compatible endpoint. */
 export type ProviderId =

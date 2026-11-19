@@ -1,6 +1,6 @@
 /**
  * Practice data (word forms, example sentences, similar words) over `NlpClient`, with one cache
- * shared by practice and courses (review item A9). Every call degrades to empty data on any
+ * shared by practice and courses. Every call degrades to empty data on any
  * failure (HTTP error, 503 for a missing dictionary, network error), and `degraded()` says so,
  * so practice still works with what Anki and the learner's texts provide. Successful answers,
  * including "nothing found", are cached per (server URL, lang, lemma, pos); failures never are,

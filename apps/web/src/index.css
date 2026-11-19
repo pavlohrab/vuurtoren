@@ -2,7 +2,7 @@
 @import "@app/ui/styles.css";
 @import "@app/ui/add-to-anki.css";
 
-/* ---------- App shell layout (docs/design/design-system.md, Layout) ---------- */
+/* ---------- App shell layout (docs/design-system.md, Layout) ---------- */
 .shell {
   --inspector-w: 340px;
   display: grid;
@@ -1699,7 +1699,7 @@ a.home-step:hover .home-step-go {
   line-height: 1.6;
 }
 
-/* Shared degraded signal (review A17): quiet, never a toast. */
+/* Shared degraded signal: quiet, never a toast. */
 .topbar-degraded {
   color: var(--ink-muted);
   max-width: 22rem;
@@ -1736,7 +1736,7 @@ a.home-step:hover .home-step-go {
   overflow-wrap: anywhere;
 }
 
-/* ---------- Motion (docs/design/design-system.md, Motion budget) ---------- */
+/* ---------- Motion (docs/design-system.md, Motion budget) ---------- */
 /* The word panel slides in (transform) and the reader column moves aside with it: see
    .inspector-panel above. */
 .shell:not([data-sidebar="collapsed"]) .nav-label {

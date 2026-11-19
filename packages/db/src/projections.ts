@@ -79,7 +79,7 @@ async function setOverride(
 }
 
 /**
- * Add one answer to a word's app evidence (ADR 0011). Sums and "newest answer" are combined in
+ * Add one answer to a word's app evidence. Sums and "newest answer" are combined in
  * SQL so the result is the same whatever order the events are applied in.
  */
 async function addEvidence(
@@ -346,7 +346,7 @@ export interface WordFacts {
   prioritizedNoteId?: number;
   /** The override was set by "Mark known" (written to Anki too). */
   markedKnownInAnki?: boolean;
-  /** Answers given in Kenning (ADR 0011). */
+  /** Answers given in Kenning. */
   evidence?: AppEvidence;
 }
 
@@ -358,7 +358,7 @@ export interface WordFacts {
  * - known: pKnown = max(anki pKnown, 0.95); ignored: 1; unknown: 0; seen: 0.1
  * - learning: keep the Anki pKnown if Anki also says "learning", otherwise 0.3
  *
- * App evidence (ADR 0011, `withAppEvidence`) is overlaid on everything below a manual override:
+ * App evidence (`withAppEvidence`) is overlaid on everything below a manual override:
  * it can raise pKnown and turn an unknown / seen / absent word into "learning" ("Learning (in
  * Kenning)"), but never touches known or ignored words and never makes a word known.
  * `nowMs` only affects how much old evidence has faded.

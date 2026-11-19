@@ -3,7 +3,7 @@ import type { AnalyzedToken, LearnerModel } from "@app/core";
 import { coverageReport } from "./coverage.js";
 import type { AIProvider } from "./types.js";
 
-/** A construction the app's grammar detectors found in the sentence (M5). */
+/** A construction the app's grammar detectors found in the sentence. */
 export interface DetectedGrammar {
   /** Topic title, e.g. "Inversion". */
   title: string;

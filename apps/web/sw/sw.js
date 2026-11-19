@@ -1,5 +1,5 @@
 /**
- * Kenning's service worker (D0: installable web app). Built by the `kenning-sw` plugin in
+ * Kenning's service worker (installable web app). Built by the `kenning-sw` plugin in
  * vite.config.ts, which fills in PRECACHE (the app shell: index.html, every built script,
  * style sheet and the SQLite wasm, the latin fonts, icons, manifest and offline page) and
  * VERSION (a hash of that list).

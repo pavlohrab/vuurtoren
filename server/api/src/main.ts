@@ -9,7 +9,7 @@
  *   KENNING_HOST   bind address (default 127.0.0.1; the container sets 0.0.0.0)
  *   KENNING_PORT   port (default 8787)
  *   KENNING_NLP_URL  NLP service for the MCP endpoint's text analysis (e.g. http://nlp:8000)
- *   Sign-in (ADR 0009): KENNING_USER, KENNING_PASSWORD_HASH (or KENNING_PASSWORD),
+ *   Sign-in: KENNING_USER, KENNING_PASSWORD_HASH (or KENNING_PASSWORD),
  *   KENNING_TOKEN, KENNING_AUTH_DB, KENNING_COOKIE_SECURE, KENNING_TRUST_CF,
  *   KENNING_ALLOWED_ORIGINS; see auth/config.ts. With no password and no token, auth is off.
  */

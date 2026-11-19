@@ -1,5 +1,5 @@
 /**
- * Live language profile (ADR 0010): load / migrate / save the profile, deck suggestions,
+ * Live language profile: load / migrate / save the profile, deck suggestions,
  * deck choices for the AddToAnki picker, the placement check, and the snapshot sources.
  * Works in both storage modes: everything goes through the repository contract.
  */

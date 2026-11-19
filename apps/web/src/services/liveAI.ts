@@ -1,7 +1,7 @@
 /**
  * AI services on top of the local database: provider settings and key (per device, never in
  * the event log), conversations (events ConversationStarted / MessageAdded), reader helpers.
- * No request leaves the browser except to the provider the user configured (ADR 0005).
+ * No request leaves the browser except to the provider the user configured.
  */
 import { deviceStorage } from "../storage/local.js";
 import {

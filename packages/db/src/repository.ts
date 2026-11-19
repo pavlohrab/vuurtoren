@@ -65,13 +65,13 @@ export interface KenningRepository extends Repository {
   /** Number of events in the log. */
   eventCount(): Promise<number>;
   /**
-   * Cheap change marker (review A7): the device id of the database plus the rowid of the newest
+   * Cheap change marker: the device id of the database plus the rowid of the newest
    * event. Every append raises `seq` by exactly one; an import (new device id) changes `deviceId`.
    */
   head(): Promise<{ deviceId: string; seq: number }>;
-  /** `word` for many keys in one call (review A8); unknown keys are left out, key order. */
+  /** `word` for many keys in one call; unknown keys are left out, key order. */
   wordsByKeys(lang: string, keys: string[]): Promise<WordInfo[]>;
-  /** `getText` for many ids in one call (review A8); missing ids are left out, request order. */
+  /** `getText` for many ids in one call; missing ids are left out, request order. */
   getTexts(ids: string[]): Promise<StoredText[]>;
   /** ConversationStarted / MessageAdded events in id order (fold with `projectConversations`). */
   conversationEvents(): Promise<StoredEvent[]>;
@@ -92,7 +92,7 @@ export interface KenningRepository extends Repository {
 }
 
 /**
- * Bump when a projection's meaning changes. 2: reading_progress.last_segment = next segment to read. 3: write-action events (ADR 0007). 4: anki_words sentences, practice_items. 5: course tables. 6: text_grammar. 7: language_profiles (ADR 0010). 8: word_evidence (ADR 0011). 9: text_meta (edited details, covers).
+ * Bump when a projection's meaning changes. 2: reading_progress.last_segment = next segment to read. 3: write-action events. 4: anki_words sentences, practice_items. 5: course tables. 6: text_grammar. 7: language_profiles. 8: word_evidence. 9: text_meta (edited details, covers).
  */
 export const PROJECTION_VERSION = 9;
 
