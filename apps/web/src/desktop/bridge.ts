@@ -88,6 +88,30 @@ export interface DesktopBridge {
     restart(): Promise<void>;
     retryPacks(): Promise<void>;
   };
+  /**
+   * Sync (offline mode, home page only): a folder you already sync (Syncthing, Dropbox, iCloud
+   * Drive), and requests to sync places the page cannot reach itself (no CORS for the app).
+   */
+  sync?: DesktopSync;
+}
+
+/** What the desktop app offers for sync (see `apps/web/src/sync/desktopStore.ts`). */
+export interface DesktopSync {
+  /** The system folder dialog; the chosen folder becomes a sync root. Null when cancelled. */
+  pickFolder(): Promise<string | null>;
+  /** Names directly inside `dir` of a chosen folder (empty when it does not exist). */
+  list(root: string, dir: string): Promise<string[]>;
+  get(root: string, path: string): Promise<Uint8Array | null>;
+  /** Written whole (a temporary file, then renamed), creating folders as needed. */
+  put(root: string, path: string, bytes: Uint8Array): Promise<void>;
+  remove(root: string, path: string): Promise<void>;
+  /** An HTTP request sent by the app (http/https, the methods a sync place needs). */
+  fetch(req: {
+    url: string;
+    method: string;
+    headers?: Record<string, string>;
+    body?: Uint8Array;
+  }): Promise<{ status: number; headers: Record<string, string>; body: Uint8Array }>;
 }
 
 declare global {

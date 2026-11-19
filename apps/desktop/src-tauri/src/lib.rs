@@ -15,6 +15,7 @@
 mod db;
 mod proxy;
 mod sidecar;
+mod sync;
 
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
@@ -55,6 +56,8 @@ struct Config {
     mode: Option<String>,
     /// The database file (local mode); unset: `<Documents>/Kenning/kenning.sqlite`.
     database: Option<String>,
+    /// Folders the user picked to sync through; the page may only reach files inside these.
+    sync_roots: Vec<String>,
 }
 
 impl Config {
@@ -544,6 +547,156 @@ async fn db_move(app: AppHandle, state: tauri::State<'_, State>) -> Result<Optio
     Ok(Some(target.to_string_lossy().into()))
 }
 
+// ------------------------------------------------------------------ sync
+
+const B64: base64::engine::GeneralPurpose = base64::engine::general_purpose::STANDARD;
+
+/// Pick the folder to sync through (one Syncthing, Dropbox or iCloud Drive already syncs).
+/// None when the user cancelled.
+#[tauri::command]
+async fn sync_pick_folder(
+    app: AppHandle,
+    state: tauri::State<'_, State>,
+) -> Result<Option<String>, String> {
+    let picker = app
+        .dialog()
+        .file()
+        .set_title("Choose the folder to sync Kenning through");
+    let Some(dir) = picker.blocking_pick_folder() else {
+        return Ok(None);
+    };
+    let dir = dir
+        .into_path()
+        .map_err(|e| e.to_string())?
+        .to_string_lossy()
+        .into_owned();
+    let mut config = state.config.lock().unwrap();
+    if !config.sync_roots.contains(&dir) {
+        config.sync_roots.push(dir.clone());
+        state.save(&config)?;
+    }
+    Ok(Some(dir))
+}
+
+fn sync_root(state: &State, root: &str) -> Result<PathBuf, String> {
+    sync::allowed_root(root, &state.config.lock().unwrap().sync_roots)
+}
+
+#[tauri::command]
+async fn sync_dir_list(
+    root: String,
+    dir: String,
+    state: tauri::State<'_, State>,
+) -> Result<Vec<String>, String> {
+    sync::list(&sync_root(&state, &root)?, &dir)
+}
+
+/// A file of the sync folder as base64, or None when it does not exist.
+#[tauri::command]
+async fn sync_dir_get(
+    root: String,
+    path: String,
+    state: tauri::State<'_, State>,
+) -> Result<Option<String>, String> {
+    use base64::Engine as _;
+    Ok(sync::get(&sync_root(&state, &root)?, &path)?.map(|b| B64.encode(b)))
+}
+
+#[tauri::command]
+async fn sync_dir_put(
+    root: String,
+    path: String,
+    data: String,
+    state: tauri::State<'_, State>,
+) -> Result<(), String> {
+    use base64::Engine as _;
+    let bytes = B64
+        .decode(data)
+        .map_err(|_| "The file did not arrive whole.".to_string())?;
+    sync::put(&sync_root(&state, &root)?, &path, &bytes)
+}
+
+#[tauri::command]
+async fn sync_dir_remove(
+    root: String,
+    path: String,
+    state: tauri::State<'_, State>,
+) -> Result<(), String> {
+    sync::remove(&sync_root(&state, &root)?, &path)
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct SyncRequest {
+    url: String,
+    method: String,
+    #[serde(default)]
+    headers: std::collections::HashMap<String, String>,
+    body_base64: Option<String>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct SyncResponse {
+    status: u16,
+    headers: std::collections::HashMap<String, String>,
+    body_base64: String,
+}
+
+/// A request to a sync place (WebDAV, a Kenning server), sent from Rust: no browser Origin, so
+/// no CORS setup on that server. No cookies are kept.
+#[tauri::command]
+async fn sync_fetch(
+    req: SyncRequest,
+    state: tauri::State<'_, State>,
+) -> Result<SyncResponse, String> {
+    use base64::Engine as _;
+    let (url, method) = sync::check_request(&req.url, &req.method)?;
+    let method = reqwest::Method::from_bytes(method.as_bytes()).map_err(|e| e.to_string())?;
+    let mut builder = state
+        .client
+        .request(method, url)
+        .timeout(Duration::from_secs(120));
+    for (name, value) in &req.headers {
+        builder = builder.header(name, value);
+    }
+    if let Some(body) = req.body_base64 {
+        let bytes = B64
+            .decode(body)
+            .map_err(|_| "The request body did not arrive whole.".to_string())?;
+        if bytes.len() > sync::MAX_BODY {
+            return Err("This file is too large to sync.".into());
+        }
+        builder = builder.body(bytes);
+    }
+    let res = builder.send().await.map_err(|e| {
+        if e.is_timeout() {
+            "The sync place did not answer in time.".to_string()
+        } else {
+            format!("Cannot reach the sync place: {e}")
+        }
+    })?;
+    let status = res.status().as_u16();
+    let headers = res
+        .headers()
+        .iter()
+        .filter_map(|(k, v)| {
+            v.to_str()
+                .ok()
+                .map(|v| (k.as_str().to_string(), v.to_string()))
+        })
+        .collect();
+    let bytes = res.bytes().await.map_err(|e| e.to_string())?;
+    if bytes.len() > sync::MAX_BODY {
+        return Err("The sync place sent more than a sync file can hold.".into());
+    }
+    Ok(SyncResponse {
+        status,
+        headers,
+        body_base64: B64.encode(&bytes),
+    })
+}
+
 /// Where a move to `dir` puts the file; refuses to overwrite another database.
 fn move_target(current: &Path, dir: &Path) -> Result<PathBuf, String> {
     let target = dir.join(db::DB_FILE);
@@ -794,6 +947,12 @@ pub fn run() {
             change_server,
             anki_fetch,
             use_local,
+            sync_pick_folder,
+            sync_dir_list,
+            sync_dir_get,
+            sync_dir_put,
+            sync_dir_remove,
+            sync_fetch,
             db_open,
             db_exec,
             db_close,
