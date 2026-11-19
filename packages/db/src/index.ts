@@ -47,3 +47,5 @@ export {
   isBlobId,
   projectShelves,
 } from "./library.js";
+export * from "./sync/index.js";
+export type { ImportResult } from "./repository.js";

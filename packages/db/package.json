@@ -38,7 +38,8 @@
   },
   "dependencies": {
     "@app/core": "workspace:*",
-    "@sqlite.org/sqlite-wasm": "3.54.1-build1"
+    "@sqlite.org/sqlite-wasm": "3.54.1-build1",
+    "fflate": "0.8.3"
   },
   "devDependencies": {
     "@types/node": "^26.6.6"

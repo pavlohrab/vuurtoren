@@ -383,6 +383,9 @@ importers:
       '@sqlite.org/sqlite-wasm':
         specifier: 3.54.1-build1
         version: 3.54.1-build1
+      fflate:
+        specifier: 0.8.3
+        version: 0.8.3
     devDependencies:
       '@types/node':
         specifier: ^26.6.6
