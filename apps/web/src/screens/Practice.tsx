@@ -1,6 +1,6 @@
 import { plural } from "../format.js";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link, useParams, useSearch } from "@tanstack/react-router";
+import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import {
   ArrowRight,
   BookOpen,
@@ -60,7 +60,7 @@ type Phase =
 
 /** Practice: start view, one exercise per screen, then a quiet summary. */
 export function Practice() {
-  const params: { words?: string } = useSearch({ from: "/practice" });
+  const params: { words?: string; start?: string } = useSearch({ from: "/practice" });
   // "Practise these words" from Words, Words from this text or a summary: only these words.
   const focus = params.words
     ? [
@@ -72,10 +72,12 @@ export function Practice() {
         ),
       ]
     : null;
-  return <PracticeSession key={params.words ?? ""} focus={focus} />;
+  return (
+    <PracticeSession key={params.words ?? ""} focus={focus} autoStart={params.start === "1"} />
+  );
 }
 
-function PracticeSession({ focus }: { focus: string[] | null }) {
+function PracticeSession({ focus, autoStart }: { focus: string[] | null; autoStart: boolean }) {
   const [phase, setPhase] = useState<Phase>({ name: "start" });
   const [error, setError] = useState<unknown>(null);
   const services = useServices();
@@ -115,7 +117,13 @@ function PracticeSession({ focus }: { focus: string[] | null }) {
   return (
     <div className="page page--list practice">
       {phase.name === "start" || phase.name === "loading" ? (
-        <StartView loading={phase.name === "loading"} error={error} onStart={start} focus={focus} />
+        <StartView
+          loading={phase.name === "loading"}
+          error={error}
+          onStart={start}
+          focus={focus}
+          autoStart={autoStart}
+        />
       ) : phase.name === "session" ? (
         <div className="practice-session">
           <Session exercises={phase.exercises} listening={phase.listening} onFinish={finish} />
@@ -221,14 +229,18 @@ function StartView({
   error,
   onStart,
   focus,
+  autoStart,
 }: {
   loading: boolean;
   error: unknown;
   onStart: (size: number, skills: Skill[], aiSentences: boolean) => void;
   /** Practise only these words. */
   focus: string[] | null;
+  /** Start with the remembered options as soon as there is something to practise (?start=1). */
+  autoStart: boolean;
 }) {
   const services = useServices();
+  const navigate = useNavigate();
   const aiReady = useAIReady();
   const [initial] = useState(readStartOptions);
   const [aiFill, setAIFill] = useState(initial.ai);
@@ -255,6 +267,21 @@ function StartView({
   // Listening needs a Dutch voice; while the check runs it stays available.
   const noVoice = voice.data === false;
   const effective = skills.filter((s) => !(s === "listening" && noVoice));
+
+  // ?start=1 (the command palette's "Start practice"): start once, then drop the flag so
+  // "Practise again" from the summary shows this view instead of starting by itself.
+  const ready = !!o && voice.data !== undefined && (o.due > 0 || o.newAvailable > 0 || !!focus);
+  const autoStarted = useRef(false);
+  useEffect(() => {
+    if (!autoStart || autoStarted.current || !ready || loading || effective.length === 0) return;
+    autoStarted.current = true;
+    void navigate({
+      to: "/practice",
+      search: focus ? { words: focus.join(",") } : {},
+      replace: true,
+    });
+    onStart(size, effective, aiReady && aiFill);
+  });
 
   const toggle = (s: Skill) =>
     setSkills((cur) =>

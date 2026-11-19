@@ -237,6 +237,7 @@ Domain components:
 ```
 
 - Navigation: Home · Library · Practice · Words · Courses · Grammar · Talk, Settings at the bottom of the rail. There is no "Read" item: Continue reading on Home and the Library cards open texts. Progress is reached from Home (and ⌘K), not the rail.
+- ⌘K / Ctrl+K: Actions (Add text, Start practice), Words (two letters or more; opens the word in Words with the inspector), Go to (every page, Exam included) and Texts.
 - The rail collapses to icons below 1200px; the inspector becomes a bottom sheet below 900px.
 - The inspector is closed by default and takes no space: choosing a word slides it in over the content's right edge, and the reading column moves aside (transform only, so the text never re-wraps; between 900 and 1100px it makes room instead). Esc or × closes it and the focus returns to the word.
 - Below 700px a bottom tab bar replaces the rail: Home, Library, Practice, Words, More. More opens a sheet with Courses, Grammar, Talk, Progress and Settings.

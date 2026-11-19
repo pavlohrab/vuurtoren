@@ -9,7 +9,7 @@ import { readStartOptions } from "./Practice.js";
 import { createMockServices } from "../services/mock.js";
 import type { AppServices } from "../services/types.js";
 
-function setup(exercises: Exercise[] = MOCK_EXERCISES) {
+function setup(exercises: Exercise[] = MOCK_EXERCISES, path = "/practice") {
   const base = createMockServices({ latencyMs: 0 });
   const answers: { id: string; answer: string }[] = [];
   const services: AppServices = {
@@ -20,9 +20,9 @@ function setup(exercises: Exercise[] = MOCK_EXERCISES) {
       return base.answerExercise(exercise, attempt);
     },
   };
-  const history = createMemoryHistory({ initialEntries: ["/practice"] });
+  const history = createMemoryHistory({ initialEntries: [path] });
   render(<App services={services} history={history} />);
-  return { services, answers, user: userEvent.setup() };
+  return { services, answers, history, user: userEvent.setup() };
 }
 
 const START = /^Start/;
@@ -84,6 +84,15 @@ describe("Practice start view", () => {
         aiSentences: true,
       }),
     );
+  });
+
+  it("?start=1 starts at once with the remembered options, then drops the flag", async () => {
+    const { services, history } = setup(MOCK_EXERCISES, "/practice?start=1");
+    await waitFor(() => expect(services.startPractice).toHaveBeenCalledTimes(1));
+    expect(vi.mocked(services.startPractice).mock.calls[0]![0]).toMatchObject({
+      size: readStartOptions().size,
+    });
+    await waitFor(() => expect(history.location.search).not.toContain("start"));
   });
 
   it("remembers the options for the next visit", async () => {
