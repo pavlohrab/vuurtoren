@@ -13,20 +13,20 @@
 
 Kenning holds your cards and runs the reviews itself. Anki becomes optional.
 
-**Two modes, chosen in onboarding and switchable in Settings:**
+**Two modes, each with one owner of the schedule.** Onboarding asks "Do you use Anki?"
 
-- **Native** (default for new users): cards live in Kenning. Add to Anki becomes Add to my words.
-- **Connected to Anki** (today's mode, unchanged): Anki is the record of known words; Add to
-  Anki, Study first and Mark known write to Anki.
-- **Native, with Anki as a destination:** reviews happen in Kenning, and new words can also be
-  pushed to an Anki deck, for people who keep Anki on another device.
+- **Yes → connected to Anki** (today's mode, unchanged): Anki owns the schedule; Add to Anki,
+  Study first and Mark known write to Anki.
+- **No → native:** Kenning owns the schedule. Add to Anki becomes Add to my words.
+- **Move from Anki to Kenning** (Settings, connected mode): a one-way import of your decks with
+  their review history, after which Kenning owns the schedule. Kenning never writes reviews or
+  schedules back to Anki.
 
 **Import:**
 
 - `.apkg` and `.colpkg` (old and new formats): notes, cards, media and the full review history.
 - One deck, several decks or the whole collection. Vocabulary decks are detected the same way as
   in connected mode.
-- Switching from connected to native imports the confirmed decks straight from AnkiConnect.
 - Export back to `.apkg`, with review history, so leaving Kenning is always possible.
 
 **Scheduler (FSRS-6, `ts-fsrs`):**
