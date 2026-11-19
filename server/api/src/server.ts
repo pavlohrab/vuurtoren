@@ -21,6 +21,7 @@ import { createServer, type IncomingMessage, type Server, type ServerResponse } 
 import {
   BackupError,
   MAX_AUDIO_BLOB_BYTES,
+  MAX_BLOB_BYTES,
   SCHEMA_VERSION,
   blobProblem,
   isBlobId,
@@ -126,7 +127,8 @@ export function createApiServer(opts: ApiOptions): Server {
 
     if (path === "/api/blobs" && method === "POST") {
       const type = (req.headers["content-type"] ?? "").split(";")[0]!.trim().toLowerCase();
-      const bytes = new Uint8Array(await readBody(req, MAX_AUDIO_BLOB_BYTES));
+      const cap = type.startsWith("image/") ? MAX_BLOB_BYTES : MAX_AUDIO_BLOB_BYTES;
+      const bytes = new Uint8Array(await readBody(req, cap));
       const problem = blobProblem(bytes, type);
       if (problem) throw new HttpFail(400, problem);
       const blobId = await store.withRepo((repo) => repo.putBlob(bytes, type));

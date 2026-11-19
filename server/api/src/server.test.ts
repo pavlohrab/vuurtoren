@@ -241,6 +241,8 @@ describe("cover blobs and shelves (Library)", () => {
       });
     expect((await post(bytes, "text/html")).status).toBe(400);
     expect((await post(new Uint8Array(2 * 1024 * 1024 + 1), "image/webp")).status).toBe(413);
+    expect((await post(new Uint8Array(8 * 1024 * 1024 + 1), "audio/mpeg")).status).toBe(413);
+    expect((await post(new Uint8Array([1, 2, 3]), "audio/mpeg")).status).toBe(200);
     const served = await fetch(`${base}/api/blobs/${id}`, {
       headers: { authorization: "Bearer s3cret" },
     });
