@@ -213,6 +213,12 @@
   padding-top: var(--s-5);
   border-top: 1px solid var(--hairline);
 }
+/* The first heading of a panel sits under the panel's own hairline: no second one. */
+.settings-panel-head + * > .settings-h3:first-child {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
+}
 /* Advanced > Server status: one hairline row per check, a dot for its state. */
 .server-status {
   margin-top: var(--s-4);

@@ -22,7 +22,7 @@ const KINDS: { kind: Kind; title: string; sub: string }[] = [
   {
     kind: "server",
     title: "Your Kenning server",
-    sub: "A server you run, or Kenning Cloud. Make a sync token in its Settings → Sync.",
+    sub: "A Kenning server you run. Make a sync token in its Settings → Sync.",
   },
   {
     kind: "folder",
