@@ -209,7 +209,7 @@ export function Library() {
       text={t}
       variant={variant}
       menu={menuFor(t, row)}
-      onOpen={() => open(t)}
+      onToggle={() => toggleSelected(t.id)}
       selecting={selecting}
       selected={selected.has(t.id)}
       dragIds={() => (selected.has(t.id) ? [...selected] : [t.id])}
@@ -492,7 +492,7 @@ export function Library() {
 interface RovingProps {
   tabIndex: number;
   onFocus: () => void;
-  onKeyDown: (e: KeyboardEvent<HTMLButtonElement>) => void;
+  onKeyDown: (e: KeyboardEvent<HTMLElement>) => void;
 }
 
 /**
@@ -519,14 +519,14 @@ function ShelfRowView({
   const current = Math.min(active, Math.max(0, row.texts.length - 1));
 
   const focusAt = (from: HTMLElement, i: number) => {
-    const buttons = from.closest(".lib-row")?.querySelectorAll<HTMLElement>(".lib-open");
-    if (!buttons?.length) return;
-    const j = Math.max(0, Math.min(buttons.length - 1, i));
+    const covers = from.closest(".lib-row")?.querySelectorAll<HTMLElement>(".lib-open");
+    if (!covers?.length) return;
+    const j = Math.max(0, Math.min(covers.length - 1, i));
     setActive(j);
-    buttons[j]?.focus();
-    buttons[j]?.scrollIntoView?.({ block: "nearest", inline: "nearest" });
+    covers[j]?.focus();
+    covers[j]?.scrollIntoView?.({ block: "nearest", inline: "nearest" });
   };
-  const keyFor = (i: number) => (e: KeyboardEvent<HTMLButtonElement>) => {
+  const keyFor = (i: number) => (e: KeyboardEvent<HTMLElement>) => {
     const moves: Record<string, number> = {
       ArrowRight: i + 1,
       ArrowLeft: i - 1,

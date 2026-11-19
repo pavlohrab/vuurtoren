@@ -111,8 +111,8 @@ describe("Library screen", () => {
     await user.type(title, "Regen in april");
     await user.type(within(dialog).getByLabelText("Author (optional)"), "KNMI");
     await user.click(within(dialog).getByRole("button", { name: "Save" }));
-    expect((await screen.findAllByRole("button", { name: "Regen in april" }))[0]).toBeVisible();
-    expect(screen.queryByRole("button", { name: "Het weer" })).toBeNull();
+    expect((await screen.findAllByRole("link", { name: "Regen in april" }))[0]).toBeVisible();
+    expect(screen.queryByRole("link", { name: "Het weer" })).toBeNull();
 
     // Search finds it by the new title and by the author; the imported title is offered back.
     await user.type(screen.getByLabelText("Search"), "knmi");
@@ -129,7 +129,7 @@ describe("Library screen", () => {
     const created = vi.fn(() => "blob:cover");
     vi.stubGlobal("URL", Object.assign(URL, { createObjectURL: created }));
     const { user } = setup("/library", services);
-    const cover = (await screen.findAllByRole("button", { name: "Het weer" }))[0]!;
+    const cover = (await screen.findAllByRole("link", { name: "Het weer" }))[0]!;
     await waitFor(() => expect(cover.querySelector("img")).toHaveAttribute("src", "blob:cover"));
 
     await openMenu(user, "Het weer");
@@ -141,9 +141,7 @@ describe("Library screen", () => {
       expect((await services.listTexts()).find((t) => t.id === "t-weer")?.coverId).toBeUndefined(),
     );
     await waitFor(() =>
-      expect(
-        screen.getAllByRole("button", { name: "Het weer" })[0]!.querySelector("img"),
-      ).toBeNull(),
+      expect(screen.getAllByRole("link", { name: "Het weer" })[0]!.querySelector("img")).toBeNull(),
     );
     vi.unstubAllGlobals();
   });
@@ -170,7 +168,7 @@ describe("Library screen", () => {
     await user.click(within(dialog).getByRole("button", { name: "Done" }));
     await waitFor(() =>
       expect(
-        within(screen.getByRole("region", { name: "Nieuws" })).getByRole("button", {
+        within(screen.getByRole("region", { name: "Nieuws" })).getByRole("link", {
           name: "Op de markt",
         }),
       ).toBeInTheDocument(),
@@ -189,7 +187,7 @@ describe("Library screen", () => {
     await user.click(await screen.findByRole("menuitem", { name: "Delete shelf…" }));
     await user.click(await screen.findByRole("button", { name: "Delete shelf" }));
     await waitFor(() => expect(screen.queryByRole("region", { name: "News" })).toBeNull());
-    expect(screen.getAllByRole("button", { name: "Op de markt" }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole("link", { name: "Op de markt" }).length).toBeGreaterThan(0);
   });
 
   it("puts several selected texts on a new shelf at once", async () => {
@@ -212,7 +210,9 @@ describe("Library screen", () => {
   it("switches to All texts, sorts by title, and moves through a shelf with arrow keys", async () => {
     const { user } = setup();
     const toRead = await screen.findByRole("region", { name: "To read" });
-    const covers = within(toRead).getAllByRole("button", { name: /^(?!More)/ });
+    const covers = within(toRead).getAllByRole("link", { name: /^(?!More)/ });
+    // Covers are links, so middle-click and "Open in new tab" work.
+    expect(covers[0]).toHaveAttribute("href", expect.stringMatching(/^\/read\/t-/));
     // One tab stop per shelf; arrows move along it.
     expect(covers.filter((b) => b.tabIndex === 0)).toHaveLength(1);
     covers[0]!.focus();
@@ -228,7 +228,7 @@ describe("Library screen", () => {
     await waitFor(() =>
       expect(
         within(grid)
-          .getAllByRole("button", { name: /^(?!More)/ })
+          .getAllByRole("link", { name: /^(?!More)/ })
           .map((b) => b.getAttribute("aria-label")),
       ).toEqual(["Een dag in Utrecht", "Het weer", "Op de markt"]),
     );
