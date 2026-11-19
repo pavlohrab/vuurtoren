@@ -440,6 +440,13 @@
   font-size: 12px;
   color: var(--ink-muted);
 }
+.aa-ends {
+  display: flex;
+  justify-content: space-between;
+  margin-top: -2px;
+  font-size: 12px;
+  color: var(--ink-muted);
+}
 .aa-select .k-label {
   font-size: 12px;
   font-weight: 500;

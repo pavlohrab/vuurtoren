@@ -58,6 +58,8 @@ const HELP_LABEL: Record<HelpLevel, string> = {
   shaky: "New + shaky words",
   most: "Most words",
 };
+/** Gloss mode translates at least this many words on a page (unless the dial is off). */
+const GLOSS_MIN = 2;
 const MODES = [
   { value: "read", label: "Read" },
   { value: "cloze", label: "Cloze" },
@@ -381,6 +383,7 @@ export function ReaderPage({ textId }: { textId: string }) {
       const dial = glossTargets(
         plan.tokens.filter((p) => data?.tokens[p.i]?.particle_of == null),
         help,
+        GLOSS_MIN,
       );
       return blanks ? [...new Set([...dial, ...plan.clozes])].sort((a, b) => a - b) : dial;
     }

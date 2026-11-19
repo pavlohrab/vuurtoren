@@ -176,6 +176,10 @@ export function ReadingSettings({
                 onValueChange={settings.help.onChange}
                 onValueCommit={settings.help.onCommit}
               />
+              <span className="aa-ends" aria-hidden>
+                <span>Fewer</span>
+                <span>More</span>
+              </span>
             </div>
           ) : null}
           {settings.blanks ? (
