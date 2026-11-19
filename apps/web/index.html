@@ -16,9 +16,63 @@
     <meta name="theme-color" content="#ece5d9" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#151210" media="(prefers-color-scheme: dark)" />
     <meta name="color-scheme" content="dark light" />
+    <style>
+      /* Shown until the app renders (it replaces #root's content). CSS only: the CSP has no inline scripts. */
+      /* :where() keeps these below the app's own styles once they load. */
+      :where(html, body) {
+        margin: 0;
+        background: #ece5d9;
+      }
+      .boot {
+        min-height: 100vh;
+        min-height: 100dvh;
+        display: grid;
+        place-items: center;
+        opacity: 0;
+        animation: boot-in 300ms ease-out 400ms forwards;
+      }
+      .boot svg {
+        width: 40px;
+        height: 40px;
+      }
+      .boot .r {
+        fill: #8f5a1f;
+      }
+      .boot .k {
+        fill: #2e2721;
+      }
+      @keyframes boot-in {
+        to {
+          opacity: 1;
+        }
+      }
+      @media (prefers-color-scheme: dark) {
+        :where(html:not([data-theme="light"]), html:not([data-theme="light"]) body) {
+          background: #151210;
+        }
+        html:not([data-theme="light"]) .boot .r {
+          fill: #c99a5b;
+        }
+        html:not([data-theme="light"]) .boot .k {
+          fill: #d6cdbf;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .boot {
+          animation-duration: 1ms;
+        }
+      }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div class="boot" role="status" aria-label="Kenning is loading">
+        <svg viewBox="0 0 16 16" aria-hidden="true">
+          <path class="r" d="M10.74 7.67L13.18 15L11.5 13L9.81 15L8.21 10.2Z" />
+          <path class="k" d="M3 1L5 1L5 13L3 13ZM3.5 13L3.5 10.5L9 5L12 5L4 13Z" />
+        </svg>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
