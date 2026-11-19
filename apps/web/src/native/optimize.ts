@@ -38,13 +38,18 @@ export interface OptimizeResult {
   improved: boolean;
 }
 
-/** One training item per answer after the first: the answer with everything before it. */
+/**
+ * One training item per answer given on a later day than the previous one: that answer with
+ * everything before it, same-day learning steps included. Answers within a day are history
+ * only, so the fit is measured on the recall the scheduler plans for.
+ */
 function items(mod: FsrsOptimizerModule, seqs: readonly TrainingSequence[]): unknown[] {
   const out: unknown[] = [];
   for (const s of seqs) {
     const reviews = s.ratings.map((r, i) => new mod.FSRSBindingReview(r, s.deltaDays[i] ?? 0));
-    for (let i = 2; i <= reviews.length; i++)
-      out.push(new mod.FSRSBindingItem(reviews.slice(0, i)));
+    for (let i = 1; i < reviews.length; i++) {
+      if ((s.deltaDays[i] ?? 0) > 0) out.push(new mod.FSRSBindingItem(reviews.slice(0, i + 1)));
+    }
   }
   return out;
 }

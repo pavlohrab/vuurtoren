@@ -62,7 +62,10 @@ export function trainingSequences(
   return out;
 }
 
-/** Number of answers a set of sequences holds after the first one of each card. */
+/**
+ * Answers the optimizer learns from: each answer given on a later study day than the one
+ * before it (answers within a day only appear as history).
+ */
 export function trainingReviewCount(seqs: readonly TrainingSequence[]): number {
-  return seqs.reduce((n, s) => n + Math.max(0, s.ratings.length - 1), 0);
+  return seqs.reduce((n, s) => n + s.deltaDays.filter((d, i) => i > 0 && d > 0).length, 0);
 }
