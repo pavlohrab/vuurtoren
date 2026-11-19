@@ -44,6 +44,9 @@ describe("Review", () => {
     await user.click(screen.getByRole("button", { name: /Undo/ }));
     expect(await screen.findByText("de fiets")).toBeVisible();
     await waitFor(() => expect(screen.queryByRole("button", { name: /Undo/ })).toBeNull());
+    // The card comes back with its answer hidden, as the first time.
+    expect(screen.queryByText("bicycle")).toBeNull();
+    expect(screen.getByRole("button", { name: /Show answer/ })).toBeVisible();
   });
 
   it("undoes an answer from an earlier session, one after another", async () => {

@@ -58,8 +58,10 @@ export function Review() {
   }, [queue.data, first]);
   const card = cards[0];
 
-  // The answer is shown for one card at a time: a new card (or the same one again) starts hidden.
-  const cardKey = card ? `${card.cardId}:${done}` : "";
+  // The answer is shown for one card at a time: a new card (or the same one again, after an
+  // answer or an undo) starts hidden. Every answer and undo is a new turn.
+  const [turn, setTurn] = useState(0);
+  const cardKey = card ? `${card.cardId}:${turn}` : "";
   const [shownKey, setShownKey] = useState<string | null>(null);
   const shown = shownKey === cardKey;
   const setShown = useCallback((on: boolean) => setShownKey(on ? cardKey : null), [cardKey]);
@@ -86,6 +88,7 @@ export function Review() {
         setUndo((u) => [...u.slice(-19), { cardId: card.cardId, reviewId }]);
         setFirst(null);
         setDone((d) => d + 1);
+        setTurn((t) => t + 1);
         await refresh();
       } catch (e) {
         setError(errorText(e, "The answer could not be saved."));
@@ -118,6 +121,7 @@ export function Review() {
         setDone((d) => Math.max(0, d - 1));
       }
       setFirst(last.cardId);
+      setTurn((t) => t + 1);
       await refresh();
       await stored.refetch();
     } catch (e) {
@@ -185,7 +189,7 @@ export function Review() {
         />
       ) : card ? (
         <>
-          <CardView key={`${card.cardId}:${done}`} card={card} shown={shown} />
+          <CardView key={cardKey} card={card} shown={shown} />
           <div className="review-actions">
             {shown ? (
               <div className="review-ratings" role="group" aria-label="How well did you know it?">
