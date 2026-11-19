@@ -259,4 +259,40 @@ describe("native card store", () => {
     expect(counts[dueDay]).toBe(1);
     expect(validateRpcArgs("nativeDueCounts", ["nl", T0, 30])).toBeNull();
   });
+
+  it("lists due words, a card's history and the last answer to undo; reviews count as activity", async () => {
+    const { repo, clock } = await newRepo();
+    await repo.append(imported);
+    // huis (card 101) is due once its interval has passed.
+    const later = mature.due + DAY;
+    expect(await repo.nativeDueKeys("nl", T0, 10)).toEqual([]);
+    expect(await repo.nativeDueKeys("nl", later, 10)).toEqual([{ key: "huis", due: mature.due }]);
+    expect(await repo.nativeLastReview("nl")).toBeNull();
+
+    clock.set(later);
+    const next = answerCard(mature, 3, later, ctx);
+    const stored = await repo.append({
+      type: "CardReviewed",
+      lang: "nl",
+      cardId: 101,
+      rating: 3,
+      at: later,
+      durationMs: 1000,
+      schedule: next,
+      previous: mature,
+    });
+    expect((await repo.nativeCardReviews("nl", [101])).map((r) => r.rating)).toEqual([4, 4, 3]);
+    expect(await repo.nativeCardReviews("nl", [])).toEqual([]);
+    expect(await repo.nativeLastReview("nl")).toEqual({
+      cardId: 101,
+      reviewId: stored.id,
+      at: later,
+    });
+    expect((await repo.activity(later - DAY)).filter((a) => a.kind === "review")).toHaveLength(1);
+
+    await repo.append({ type: "CardReviewUndone", lang: "nl", cardId: 101, reviewId: stored.id });
+    expect(await repo.nativeLastReview("nl")).toBeNull();
+    expect((await repo.activity(later - DAY)).filter((a) => a.kind === "review")).toHaveLength(0);
+    expect(validateRpcArgs("nativeCardReviews", ["nl", [101]])).toBeNull();
+  });
 });

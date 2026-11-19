@@ -525,6 +525,17 @@ export function createMockServices(
         prioritized: e.anki.prioritized,
         markedKnown: e.anki.markedKnown,
         overridden: e.overridden,
+        ...(options.native ? { native: true } : {}),
+        // Demo: a short history for words being studied.
+        ...(options.native && (e.anki.status === "learning" || e.anki.status === "review")
+          ? {
+              reviews: [
+                { at: Date.now() - 2 * 86_400_000, rating: 3 as const, interval: "9d" },
+                { at: Date.now() - 6 * 86_400_000, rating: 1 as const, interval: "10m" },
+                { at: Date.now() - 9 * 86_400_000, rating: 3 as const, interval: "3d" },
+              ],
+            }
+          : {}),
       },
       sentence: t.content.slice(first, last),
       sentenceHighlight: [tok.start - first, tok.end - first],
@@ -880,19 +891,21 @@ export function createMockServices(
       const now = Date.now();
       const day = 86_400_000;
       const plan = [
-        [2, 12, 3],
-        [1, 0, 0],
-        [0, 0, 0],
-        [3, 20, 5],
-        [1, 8, 2],
-        [0, 0, 0],
+        [2, 12, 3, 18],
+        [1, 0, 0, 0],
+        [0, 0, 0, 9],
+        [3, 20, 5, 24],
+        [1, 8, 2, 15],
+        [0, 0, 0, 0],
       ];
       const entries: ActivityEntry[] = [];
-      plan.forEach(([pages, exercises, added], k) => {
+      plan.forEach(([pages, exercises, added, reviews], k) => {
         const at = now - (plan.length - k) * day;
         for (let i = 0; i < pages!; i++) entries.push({ kind: "page", at });
         for (let i = 0; i < exercises!; i++) entries.push({ kind: "exercise", at });
         for (let i = 0; i < added!; i++) entries.push({ kind: "added", at });
+        // Native reviews only where Kenning holds the cards.
+        if (options.native) for (let i = 0; i < reviews!; i++) entries.push({ kind: "review", at });
       });
       // Earlier weeks (Progress): a few pages on most days.
       for (let k = plan.length + 1; k < days; k++) {
@@ -964,6 +977,19 @@ export function createMockServices(
         .map(infoOf);
       const offset = opts.offset ?? 0;
       return rows.slice(offset, offset + (opts.limit ?? 100));
+    },
+
+    async dueWords(opts = {}) {
+      await wait();
+      if (!options.native) return [];
+      // Demo: the words being learned came due over the last days.
+      const now = Date.now();
+      return [...lexicon.values()]
+        .filter((e) => e.state === "learning")
+        .sort((a, b) => a.key.localeCompare(b.key))
+        .slice(0, opts.limit ?? 200)
+        .map((e, i) => ({ ...infoOf(e), due: now - i * 86_400_000 - 3_600_000 }))
+        .sort((a, b) => a.due - b.due);
     },
   };
   return services;

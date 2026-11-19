@@ -122,6 +122,13 @@ describe("Home", () => {
     );
   });
 
+  it("counts native reviews in the week", async () => {
+    const services = createMockServices({ latencyMs: 0, synced: true, native: true });
+    render(<App services={services} history={createMemoryHistory({ initialEntries: ["/"] })} />);
+    const week = await screen.findByRole("region", { name: "This week" });
+    expect(await within(week).findByRole("link", { name: /· \d+ reviews$/ })).toBeVisible();
+  });
+
   it("lays out words to learn, recent texts and one quiet line of more", async () => {
     setup();
     const learn = await screen.findByRole("region", { name: "Words to learn now" });

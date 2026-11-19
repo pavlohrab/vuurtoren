@@ -600,8 +600,11 @@ export interface TextGrammar {
 
 /** One learning event, as listed by `activity` (Home's week strip). */
 export interface ActivityEntry {
-  /** Pages read, exercises answered (in Practice or as a reader cloze) and words added to Anki. */
-  kind: "page" | "exercise" | "added";
+  /**
+   * Pages read, exercises answered (in Practice or as a reader cloze), words added to Anki and
+   * native cards reviewed in Kenning.
+   */
+  kind: "page" | "exercise" | "added" | "review";
   at: number;
 }
 
@@ -768,6 +771,15 @@ export interface Repository {
    * study day), for spreading new due dates.
    */
   nativeDueCounts(lang: string, from: number, days: number): Promise<number[]>;
+  /**
+   * Native mode: words with a card due at `now` (reviewed cards, not suspended), each with its
+   * earliest due time, earliest first.
+   */
+  nativeDueKeys(lang: string, now: number, limit: number): Promise<{ key: string; due: number }[]>;
+  /** Native mode: the review history of some cards, oldest first. */
+  nativeCardReviews(lang: string, cardIds: number[]): Promise<CardReview[]>;
+  /** Native mode: the latest answer given in Kenning (the one Undo takes back), or null. */
+  nativeLastReview(lang: string): Promise<{ cardId: number; reviewId: string; at: number } | null>;
   /** Native mode: one card with its note, note type and deck options. */
   nativeCard(lang: string, cardId: number): Promise<NativeCardView | null>;
   /** Native mode: the whole review history (imported and answered in Kenning), oldest first. */

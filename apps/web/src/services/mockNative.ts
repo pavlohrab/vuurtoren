@@ -98,7 +98,10 @@ export function createMockNative(
   now: () => number = Date.now,
 ): NativeServices {
   const cards = demoCards(now());
-  const undo = new Map<string, { cardId: number; schedule: CardSchedule | undefined }>();
+  const undo = new Map<
+    string,
+    { cardId: number; schedule: CardSchedule | undefined; at: number }
+  >();
   let seq = 0;
   let tuning: TuningInfo = { tuned: false, at: null, reviewsUsed: 0, history: 6 };
   const isDue = (c: MockCard) => !c.schedule || c.schedule.due <= now();
@@ -130,7 +133,7 @@ export function createMockNative(
       const c = cards.find((x) => x.card.cardId === cardId);
       if (!c) throw new Error("This card no longer exists.");
       const reviewId = String(++seq);
-      undo.set(reviewId, { cardId, schedule: c.schedule });
+      undo.set(reviewId, { cardId, schedule: c.schedule, at: now() });
       c.schedule = answerCard(c.schedule, rating, now(), ctx);
       return { reviewId };
     },
@@ -142,6 +145,7 @@ export function createMockNative(
         if (u.schedule) c.schedule = u.schedule;
         else delete c.schedule;
       }
+      undo.delete(reviewId);
     },
     async mediaFile() {
       return null;
@@ -240,6 +244,11 @@ export function createMockNative(
     },
     async autoTune() {
       return null;
+    },
+    async lastReview() {
+      await wait();
+      const last = [...undo].at(-1);
+      return last ? { cardId: last[1].cardId, reviewId: last[0], at: last[1].at } : null;
     },
   };
 }

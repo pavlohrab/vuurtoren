@@ -71,6 +71,34 @@ describe("WordInspector", () => {
     expect(items).toEqual(["wordless · from woord + -loos", "speechless · in this sentence"]);
   });
 
+  it("lists the word's latest reviews in native mode", () => {
+    const at = new Date(2026, 10, 3).getTime();
+    render(
+      <WordInspector
+        entry={{
+          ...entry,
+          anki: {
+            ...entry.anki,
+            status: "review",
+            native: true,
+            reviews: [
+              { at, rating: 1, interval: "10m" },
+              { at: at - 86_400_000, rating: 3, interval: "4d" },
+            ],
+          },
+        }}
+      />,
+    );
+    expect(screen.getByText("Your reviews")).toBeInTheDocument();
+    const rows = screen
+      .getAllByRole("listitem")
+      .filter((li) => /Again|Good/.test(li.textContent ?? ""));
+    expect(rows.map((r) => r.textContent)).toEqual([
+      expect.stringMatching(/Again10m$/),
+      expect.stringMatching(/Good4d$/),
+    ]);
+  });
+
   it("shows the sentence translation when present", () => {
     render(<WordInspector entry={{ ...entry, sentenceTranslation: "I call my sister." }} />);
     expect(screen.getByText("I call my sister.")).toBeInTheDocument();

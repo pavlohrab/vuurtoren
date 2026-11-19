@@ -19,15 +19,25 @@ describe("activity", () => {
         { kind: "exercise", at: now - 1000 },
         { kind: "exercise", at: now - 2 * day },
         { kind: "added", at: now - 2 * day },
+        { kind: "review", at: now - 3 * day },
+        { kind: "review", at: now - 3 * day },
         { kind: "page", at: now - 30 * day }, // outside the window
       ],
       now,
     );
     expect(days).toHaveLength(7);
-    expect(days[6]).toEqual({ date: localDate(now), pages: 1, exercises: 1, added: 0 });
+    expect(days[6]).toEqual({
+      date: localDate(now),
+      pages: 1,
+      exercises: 1,
+      added: 0,
+      reviews: 0,
+    });
     expect(days[4]).toMatchObject({ exercises: 1, added: 1 });
+    // Native reviews make a day active too.
+    expect(days[3]).toMatchObject({ reviews: 2, pages: 0 });
     expect(days[0]!.date).toBe(localDate(activitySince(now, 7)));
-    expect(activeDays(days)).toBe(2);
+    expect(activeDays(days)).toBe(3);
   });
 
   it("sums days into weeks that end today", () => {

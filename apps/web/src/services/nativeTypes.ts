@@ -146,4 +146,9 @@ export interface NativeServices {
   optimiseNow(onProgress?: (msg: string) => void): Promise<TuningResult>;
   /** Tune by itself when 30 days or 500 answers have passed; null when nothing was due. */
   autoTune(): Promise<TuningResult | null>;
+  /**
+   * The latest answer given in Kenning, which Undo takes back when the review screen has none
+   * of its own (after a reload or on another day); null when there is none.
+   */
+  lastReview(): Promise<{ cardId: number; reviewId: string; at: number } | null>;
 }
