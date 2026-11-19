@@ -1,8 +1,6 @@
 /** Contract of sync: your data on every device, through a place you choose, encrypted. */
 import type { SyncDevice } from "@app/db";
 
-export type { SyncDevice };
-
 /** Where synced files live, with what this device needs to reach it. */
 export type SyncPlace =
   | { kind: "server"; url: string; token: string }

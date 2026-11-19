@@ -3,7 +3,7 @@
  * Claude Code, sync tokens for devices that keep their own data. List, make (the token is
  * returned once) and revoke. Only in server mode; the session cookie authorises the calls.
  */
-export interface McpToken {
+interface McpToken {
   id: string;
   label: string;
   createdAt: number;
@@ -28,11 +28,7 @@ export function createSyncTokenClient(base = "", fetchImpl: FetchLike = ambient)
   return createTokenClient("sync-tokens", base, fetchImpl);
 }
 
-function createTokenClient(
-  kind: "mcp-tokens" | "sync-tokens",
-  base: string,
-  fetchImpl: FetchLike,
-) {
+function createTokenClient(kind: "mcp-tokens" | "sync-tokens", base: string, fetchImpl: FetchLike) {
   return {
     async list(): Promise<McpToken[]> {
       const res = await fetchImpl(`${base}/api/auth/${kind}`, {

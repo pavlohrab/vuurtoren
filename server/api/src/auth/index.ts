@@ -61,7 +61,7 @@ type Identity =
  * What a request is for: MCP tokens are accepted for "mcp" (`/api/mcp`) only, sync tokens for
  * "sync" (`/api/sync`) only.
  */
-export type AuthScope = "api" | "mcp" | "sync";
+type AuthScope = "api" | "mcp" | "sync";
 
 export interface Auth {
   readonly enabled: boolean;

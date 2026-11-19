@@ -159,7 +159,7 @@ describe("/api/sync", () => {
         return r.status === 404 ? null : new Uint8Array(await r.arrayBuffer());
       },
       put: async (p, b) => {
-        expect((await fetch(file(p), { method: "PUT", headers: h, body: b as BodyInit })).ok).toBe(
+        expect((await fetch(file(p), { method: "PUT", headers: h, body: Buffer.from(b) })).ok).toBe(
           true,
         );
       },
