@@ -248,9 +248,11 @@ describe("cross-device freshness (A7)", () => {
     expect(await check()).toBe(false);
   });
 
-  it("is absent in browser mode (no remote source)", async () => {
+  it("in browser mode it syncs only when sync is set up: without it, nothing changes", async () => {
     const repo = (toClose = await seed());
-    expect(createLiveServices(repo).checkRemoteChanges).toBeUndefined();
+    const services = createLiveServices(repo);
+    expect(await services.checkRemoteChanges!()).toBe(false);
+    expect((await services.syncStatus()).available).toBe(true);
   });
 });
 

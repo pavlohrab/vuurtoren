@@ -14,6 +14,7 @@ const SOURCE_LABEL: Record<DegradedEntry["source"], string> = {
   anki: "Anki",
   ai: "AI provider",
   storage: "Kenning server",
+  sync: "Sync",
 };
 
 const time = (ms: number) =>

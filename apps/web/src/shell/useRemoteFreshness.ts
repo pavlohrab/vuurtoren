@@ -14,10 +14,11 @@ import {
 import type { AppServices } from "../services/types.js";
 
 /**
- * Cross-device freshness (server mode only): on focus, on becoming visible and every
- * ~30 s while visible, ask whether another device changed the data; if so every query is
- * refetched (the services already dropped their caches). Deferred while a practice session
- * holds it. An unreachable server shows in the degraded indicator; Retry checks again.
+ * Cross-device freshness: on focus, on becoming visible and every ~30 s while visible, ask
+ * whether another device changed the data (server mode: the server; a device with its own data:
+ * a sync when one is due); if so every query is refetched (the services already dropped their
+ * caches). Deferred while a practice session holds it. An unreachable server or sync place shows
+ * in the degraded indicator; Retry checks again.
  */
 export function useRemoteFreshness(services: AppServices, queryClient: QueryClient): void {
   // Retry (any mode): refetch everything; sources that still fail report themselves again.
