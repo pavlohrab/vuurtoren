@@ -21,9 +21,9 @@ describe("App with mock services", () => {
     );
     expect(await screen.findByRole("heading", { level: 1, name: "Library" })).toBeInTheDocument();
     expect(
-      (await screen.findAllByRole("button", { name: "Een dag in Utrecht" }))[0],
+      (await screen.findAllByRole("link", { name: "Een dag in Utrecht" }))[0],
     ).toBeInTheDocument();
-    expect(screen.getAllByRole("button", { name: "Op de markt" })[0]).toBeInTheDocument();
+    expect(screen.getAllByRole("link", { name: "Op de markt" })[0]).toBeInTheDocument();
     // The mock's Anki is open and its decks are confirmed, so the app imports them by itself.
     await waitFor(() => expect(screen.queryByRole("button", { name: "Connect Anki" })).toBeNull());
     expect(screen.getByRole("navigation", { name: "Main" })).toBeInTheDocument();
