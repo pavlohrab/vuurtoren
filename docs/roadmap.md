@@ -2,14 +2,13 @@
 
 ## Next
 
-1. **OCR engine.** Page clean-up for photos and PaddleOCR, tested on a real textbook (in progress).
-2. **Better word meanings.** Derivations (_-loos_, _-heid_, _-baar_, linking _-e-_/_-s-_) and the
+1. **Better word meanings.** Derivations (_-loos_, _-heid_, _-baar_, linking _-e-_/_-s-_) and the
    meaning taken from the aligned sentence translation.
-3. **Native mode.** See below.
-4. **Sync.** See below.
-5. **Anki in the self-hosted stack.** Headless Anki with your AnkiWeb login, read-only.
-6. **Weave reading.** An English text with Dutch islands that grow as you learn.
-7. **Phone app.** Native mode and sync; OCR through the phone's own engine (ML Kit on Android,
+2. **Native mode.** See below.
+3. **Sync.** See below.
+4. **Anki in the self-hosted stack.** Headless Anki with your AnkiWeb login, read-only.
+5. **Weave reading.** An English text with Dutch islands that grow as you learn.
+6. **Phone app.** Native mode and sync; OCR through the phone's own engine (ML Kit on Android,
    Apple Vision on iOS).
 
 ## Native mode
@@ -78,11 +77,12 @@ Your data on every device, with the event log as the unit of sync.
 ## Known issues
 
 - Windows and macOS installers are built by CI but not yet tested on a real machine.
-- The desktop app has no OCR. Photo import appears only if Tesseract is installed.
 - If the desktop data file can't be opened, the app shows the "Can't reach your Kenning server"
   screen instead of a file error.
 - In course import a page can merge into the previous one, and the outline then shows "No text
   on this page".
+- OCR sometimes glues two words together (_productenwilt_), and reads some tables column by
+  column.
 - Exercise recognition on scanned books misses gap fills whose blanks the OCR loses.
 - spaCy leaves some past tenses unchanged (_pleegden_, _wierpen_) and misses "hier/daar …
   particle" verbs (_groeien hier op_).

@@ -58,7 +58,9 @@ Kenning writes to Anki only when you click, and tags every note it touches.
 - One process, one worker: OCR jobs and the grammar-example cache live in that process.
 - Data (dictionary, sentences, translation model) are versioned packs, downloaded and checked on
   start. Analyses carry an analyzer version, and texts are re-analysed once when it changes.
-- The desktop app bundles the same server, without OCR.
+- OCR: RapidOCR (PaddleOCR models, bundled) on a straightened page, Tesseract as the fallback.
+  A PDF page uses its text layer unless it has under 40 letters or under 70% Dutch words.
+- The desktop app bundles the same server, OCR included.
 
 ## Platforms
 

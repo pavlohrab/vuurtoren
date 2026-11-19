@@ -273,7 +273,7 @@ describe("offline app screens", () => {
     renderOffline("/import", downloading);
     expect(await screen.findByRole("tab", { name: "PDF" })).toBeVisible();
     await waitFor(() => expect(screen.queryByRole("tab", { name: "Photo" })).toBeNull());
-    expect(screen.getByRole("note")).toHaveTextContent(/text recognition \(OCR\)/);
+    expect(screen.getByRole("note")).toHaveTextContent(/text recognition/);
     expect(screen.getByRole("tab", { name: "Paste" })).toBeVisible();
     expect(screen.getByRole("tab", { name: "URL" })).toBeVisible();
   });

@@ -89,7 +89,7 @@ export function ImportScreen() {
     };
   }, []);
 
-  // The desktop app has no text recognition (Tesseract) unless it is installed on the computer.
+  // Photo import needs text recognition on the language server.
   const ocr = useOcrAvailable();
   const [kind, setKind] = useState<Kind>("paste");
   const shownKind: Kind = !ocr && kind === "image" ? "paste" : kind;
@@ -319,9 +319,8 @@ export function ImportScreen() {
         />
         {!ocr ? (
           <p className="k-hint" role="note" style={{ margin: 0 }}>
-            Photos and scanned pages need text recognition (OCR), which the desktop app does not
-            include. PDFs with a text layer, web pages and pasted text work; to import a photo,
-            install Tesseract or use a Kenning server.
+            Photos and scanned pages need text recognition, which isn't available on this language
+            server yet. PDFs with a text layer, web pages and pasted text work.
           </p>
         ) : null}
 
