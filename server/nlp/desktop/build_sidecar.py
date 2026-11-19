@@ -5,8 +5,9 @@
 Steps: a fresh build venv from uv.lock (no dev tools), trimmed like the slim Docker image
 (Dutch-only simplemma, the wordfreq lists /detect needs, no tests), then PyInstaller with
 kenning-nlp.spec. The result goes to ``apps/desktop/src-tauri/sidecar/kenning-nlp/`` (bundled as
-a Tauri resource by ``tauri.sidecar.conf.json``). No Tesseract: ``/health`` reports
-``"ocr": false`` unless the user has Tesseract installed.
+a Tauri resource by ``tauri.sidecar.conf.json``). OCR is included: RapidOCR with its bundled
+PaddleOCR models (the ``ocr`` extra), so photo and scan import work offline from the first start
+and ``/health`` reports ``"ocr": true``.
 
 ``--packs DIR`` also copies the data pack archives (``<name>-<version>.tar.gz`` for every pack in
 ``packs.json``) to ``sidecar/packs/`` for the offline installer (``tauri.packs.conf.json``).
@@ -89,7 +90,8 @@ def main() -> None:
         shutil.rmtree(venv, ignore_errors=True)
     env = {**os.environ, "UV_PROJECT_ENVIRONMENT": str(venv), "UV_LINK_MODE": "copy"}
     run(
-        ["uv", "sync", "--locked", "--no-dev", "--no-editable", "--python", PYTHON],
+        ["uv", "sync", "--locked", "--no-dev", "--no-editable", "--extra", "ocr"]
+        + ["--python", PYTHON],
         cwd=NLP,
         env=env,
     )

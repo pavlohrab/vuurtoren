@@ -20,7 +20,7 @@ services:
       KENNING_CORS_ORIGINS: ${KENNING_CORS_ORIGINS:-}
       # Recognised course pages, so re-importing a book (or resuming after a restart) skips OCR.
       KENNING_COURSE_CACHE_DIR: /cache/course
-      # Parallel Tesseract processes for course imports (default: half the CPUs, at most 6).
+      # Parallel OCR workers for course imports (default: half the CPUs, at most 6).
       KENNING_OCR_WORKERS: ${KENNING_OCR_WORKERS:-}
       # Data packs on the kenning-nlp-data volume (see deploy/README.md, "Language data").
       KENNING_PACKS: ${KENNING_PACKS:-auto}

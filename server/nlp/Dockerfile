@@ -2,7 +2,7 @@
 # Kenning NLP service. Build context: server/nlp (see deploy/compose.yml).
 #
 #   docker build server/nlp                          -> kenning-nlp:<tag>       (with OCR)
-#   docker build --build-arg OCR=0 server/nlp        -> kenning-nlp:<tag>-slim  (no Tesseract)
+#   docker build --build-arg OCR=0 server/nlp        -> kenning-nlp:<tag>-slim  (no OCR)
 #   docker build -f server/nlp/full.Dockerfile ...   -> kenning-nlp:<tag>-full  (data packs inside)
 #
 # The image holds code and libraries only. The data (dictionary, Tatoeba sentences, translation
@@ -19,6 +19,9 @@
 
 # ---- Stage 1: Python environment ----------------------------------------------------------
 FROM python:3.12.16-slim AS venv
+# OCR=1 (default) installs the `ocr` extra: RapidOCR, ONNX Runtime, OpenCV and the bundled
+# PaddleOCR models (~30 MB, inside the rapidocr wheel, so OCR works offline from the first start).
+ARG OCR=1
 # Pinned uv binary from its official image (no pip, nothing extra in the layer).
 COPY --from=ghcr.io/astral-sh/uv:0.13.9 /uv /usr/local/bin/uv
 ENV UV_LINK_MODE=copy \
@@ -31,7 +34,8 @@ WORKDIR /app
 # Dependencies first (cached unless pyproject/uv.lock change). The spaCy model is a locked
 # wheel dependency (nl-core-news-md), so no separate `spacy download` is needed.
 COPY pyproject.toml uv.lock ./
-RUN uv sync --locked --no-dev --no-install-project
+RUN extra=""; [ "$OCR" = 1 ] && extra="--extra ocr"; \
+    uv sync --locked --no-dev --no-install-project $extra
 # Trim what the service never loads:
 #   debug symbols of the compiled extensions (strip: ~220 MB, mostly ctranslate2 and spaCy);
 #   simplemma: Dutch only; wordfreq: Dutch (large, for frequencies) + the small lists of the
@@ -48,14 +52,16 @@ RUN set -eu; sp=/opt/venv/lib/python3.12/site-packages; \
     rm -rf "$sp/setuptools" "$sp"/setuptools-*.dist-info "$sp/pkg_resources" "$sp/_distutils_hack"
 COPY src ./src
 COPY scripts ./scripts
-RUN uv sync --locked --no-dev && find /opt/venv /app -depth -name __pycache__ -exec rm -rf {} +
+RUN extra=""; [ "$OCR" = 1 ] && extra="--extra ocr"; \
+    uv sync --locked --no-dev $extra && find /opt/venv /app -depth -name __pycache__ -exec rm -rf {} +
 
 # ---- Stage 2: runtime ------------------------------------------------------------------
 FROM python:3.12.16-slim AS runtime
 
-# OCR=1 (default): Tesseract + Dutch/Ukrainian (English comes with it) for photo/scan and course
-# import. OCR=0 gives the -slim image: everything else works, /ocr and /course/ocr answer 503
-# with an install hint (GET /health shows "ocr": false).
+# OCR=1 (default): RapidOCR (above) reads Dutch and the other Latin-script languages; Tesseract
+# reads Ukrainian and is the fallback (KENNING_OCR_ENGINE=tesseract). OCR=0 gives the -slim image:
+# everything else works, /ocr and /course/ocr answer 503 with an install hint (GET /health
+# shows "ocr": false).
 ARG OCR=1
 RUN if [ "$OCR" = 1 ]; then \
       apt-get update \
