@@ -173,22 +173,38 @@ export async function moveToAnki(
   }
   for (const p of pairs) if (!p.fresh) decks.add(p.native.deck);
 
-  // Schedules: due on the same study day, with that gap as the interval.
+  // Schedules: due on the same study day, with that gap as the interval. Cards due today or
+  // overdue are due today; "0!" would leave them a 1-day interval, so theirs is set after.
   const today = dayStart(now);
   const reviewed = pairs.filter((p) => p.native.schedule?.state === 2);
   const byDays = new Map<number, number[]>();
   for (const p of reviewed) {
     const s = p.native.schedule as CardSchedule;
-    const days = Math.max(1, Math.round((dayStart(s.due) - today) / DAY_MS));
+    const days = Math.max(0, Math.round((dayStart(s.due) - today) / DAY_MS));
     byDays.set(days, [...(byDays.get(days) ?? []), p.anki]);
   }
   if (byDays.size) onProgress?.("Setting due dates");
-  await anki.multi(
-    [...byDays].map(([days, cards]) => ({
-      action: "setDueDate",
-      params: { cards, days: `${days}!` },
-    })),
+  const groups = [...byDays];
+  const set = await anki.multi(
+    groups.map(([days, cards]) => ({ action: "setDueDate", params: { cards, days: `${days}!` } })),
   );
+  const scheduled = groups.reduce((n, [, cards], i) => n + (set[i]?.ok ? cards.length : 0), 0);
+  const dueToday = new Set(byDays.get(0) ?? []);
+  if (!input.withHistory && dueToday.size) {
+    await anki.multi(
+      reviewed
+        .filter((p) => dueToday.has(p.anki))
+        .map((p) => ({
+          action: "setSpecificValueOfCard",
+          params: {
+            card: p.anki,
+            keys: ["ivl"],
+            newValues: [Math.max(1, Math.round((p.native.schedule as CardSchedule).scheduledDays))],
+            warning_check: true,
+          },
+        })),
+    );
+  }
   const suspended = pairs.filter((p) => p.native.suspended).map((p) => p.anki);
   if (suspended.length) await anki.invoke("suspend", { cards: suspended });
 
@@ -254,7 +270,7 @@ export async function moveToAnki(
     added,
     existing: known.size,
     skipped,
-    scheduled: reviewed.length,
+    scheduled,
     reviews,
     decks: [...decks].sort(),
   };

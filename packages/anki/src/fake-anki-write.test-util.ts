@@ -77,14 +77,17 @@ function findCards(col: FakeCollection, query: string): number[] {
     .map((c) => c.id);
 }
 
-/** Legacy `setDueDate` with "a-b!" : set the interval to a (cards become review cards). */
+/**
+ * Legacy `setDueDate` with "a-b!", as Anki does it without FSRS: cards become review cards due
+ * in a days; "!" (or a card that was not a review card) sets the interval to a, at least 1.
+ */
 function applyDueDate(c: FakeCard, days: string): void {
   const m = /^(\d+)(?:-(\d+))?(!)?$/.exec(days);
   if (!m) throw new Error(`bad days ${days}`);
   const lo = Number(m[1]);
+  if (m[3] || (c.type !== 2 && c.type !== 3)) c.interval = Math.max(1, lo);
   c.type = 2;
   c.queue = 2;
-  if (m[3]) c.interval = lo;
   c.due = lo;
 }
 

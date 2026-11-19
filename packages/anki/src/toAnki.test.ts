@@ -101,7 +101,9 @@ describe("moveToAnki", () => {
   it("adds words as Kenning notes, keeps Anki's own, gives reviewed cards their due date", async () => {
     const c = collection();
     const { col, client } = anki();
-    const r = await moveToAnki(client, { ...c, withHistory: false });
+    // Five days before fiets is due.
+    const now = c.s.due - 5 * DAY;
+    const r = await moveToAnki(client, { ...c, now, withHistory: false });
     expect(r).toMatchObject({ added: 3, existing: 1, skipped: 1, scheduled: 2, reviews: 0 });
     expect(r.decks).toEqual(["Dutch", "Kenning::Nederlands", "Opmaat"]);
     expect(col.models.has(NOTE_TYPE)).toBe(true);
@@ -114,9 +116,7 @@ describe("moveToAnki", () => {
     expect(col.tags.get(added[0]![0])?.has(TAG_MOVED)).toBe(true);
     // fiets: due on the same study day, that gap as its interval; huis: new and suspended.
     const fiets = col.cards.find((x) => x.note === added[0]![0])!;
-    const days = Math.round((c.s.due - NOW) / DAY);
-    expect(fiets).toMatchObject({ type: 2 });
-    expect(Math.abs(fiets.interval - days)).toBeLessThanOrEqual(1);
+    expect(fiets).toMatchObject({ type: 2, due: 5, interval: 5 });
     expect(col.cards.find((x) => x.note === added[1]![0])).toMatchObject({ type: 0, queue: -1 });
     expect(col.cards.find((x) => x.id === 30)).toMatchObject({ type: 2 });
     expect(col.revlog).toHaveLength(1);
@@ -135,6 +135,20 @@ describe("moveToAnki", () => {
     expect(col.revlog!.filter((x) => x[1] === 30)).toHaveLength(2);
     expect(fietsCard.interval).toBe(Math.round(c.s.scheduledDays));
     expect(col.values?.get(`${fietsCard.id}:reps`)).toBe(c.s.reps);
+  });
+
+  it("makes an overdue card due today in Anki, keeping its interval", async () => {
+    const c = collection();
+    const { col, client } = anki();
+    const later = c.s.due + 3 * DAY;
+    const r = await moveToAnki(client, { ...c, now: later, withHistory: false });
+    expect(r.scheduled).toBe(2);
+    const fiets = col.cards.find((x) => x.note === [...col.notes.keys()].find((id) => id !== 3))!;
+    expect(fiets).toMatchObject({ type: 2, due: 0, interval: Math.round(c.s.scheduledDays) });
+    expect(col.log).toContainEqual({
+      action: "setDueDate",
+      params: { cards: [30, fiets.id], days: "0!" },
+    });
   });
 
   it("maps an imported word type onto Kenning's fields, and skips notes without a word", () => {
