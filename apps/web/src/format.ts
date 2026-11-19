@@ -19,3 +19,29 @@ export function formatBytes(n: number): string {
   }
   return `${v.toFixed(v < 10 ? 1 : 0)} ${units[i]}`;
 }
+
+const RELATIVE = new Intl.RelativeTimeFormat(undefined, { numeric: "auto" });
+const STEPS: [Intl.RelativeTimeFormatUnit, number][] = [
+  ["minute", 60],
+  ["hour", 24],
+  ["day", 7],
+];
+
+/**
+ * A past moment in plain words: "just now", "5 minutes ago", "yesterday", then a locale date
+ * ("12 Nov") after a week.
+ */
+export function relativeTime(ms: number, now = Date.now()): string {
+  let v = Math.max(0, (now - ms) / 60_000);
+  if (v < 1) return "just now";
+  for (const [unit, next] of STEPS) {
+    if (v < next) return RELATIVE.format(-Math.floor(v), unit);
+    v /= next;
+  }
+  const d = new Date(ms);
+  return d.toLocaleDateString(undefined, {
+    day: "numeric",
+    month: "short",
+    ...(d.getFullYear() !== new Date(now).getFullYear() ? { year: "numeric" } : {}),
+  });
+}

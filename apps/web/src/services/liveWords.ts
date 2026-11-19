@@ -23,7 +23,7 @@ import {
   profileMode,
 } from "@app/core";
 import type { KenningRepository, WordInfo } from "@app/db";
-import { activitySince, groupActivity } from "./activity.js";
+import { activitySince, firstCard, groupActivity, knownByWeek } from "./activity.js";
 import { absentAnki, ankiFromStatus, unavailableAnki } from "./ankiState.js";
 import { DEGRADED_MESSAGES, clearDegraded, reportDegraded } from "./degraded.js";
 import {
@@ -284,6 +284,7 @@ export function createLiveWords(deps: LiveWordsDeps) {
     | "learnerSummary"
     | "words"
     | "activity"
+    | "knownOverTime"
     | "suggestedWords"
     | "addSuggestedToAnki"
     | "dismissSuggestion"
@@ -456,6 +457,15 @@ export function createLiveWords(deps: LiveWordsDeps) {
     async activity(days = 7) {
       const now = Date.now();
       return groupActivity(await repo.activity(activitySince(now, days)), now, days);
+    },
+
+    async knownOverTime(weeks = 12) {
+      const known = await repo.words(await lang(), { state: "known" });
+      return knownByWeek(
+        known.map((w) => firstCard(w.noteIds)),
+        Date.now(),
+        weeks,
+      );
     },
 
     async suggestedWords() {

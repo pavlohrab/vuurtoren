@@ -25,14 +25,16 @@ describe("empty states", () => {
   it("Progress: one next step and no made-up estimate before a first sync", async () => {
     setup("/progress", { learnerSummary: async () => emptySummary });
     expect(await screen.findByRole("heading", { name: "Nothing to measure yet" })).toBeVisible();
-    expect(screen.getByRole("link", { name: "Connect Anki" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Set up your words" })).toBeInTheDocument();
     expect(screen.queryByText("Estimated vocabulary")).toBeNull();
   });
 
   it("Progress: the estimate appears once Anki was synced", async () => {
     setup("/progress", {}, true);
     expect(await screen.findByText("Estimated vocabulary")).toBeInTheDocument();
-    expect(screen.getByText(/last synced/)).toBeInTheDocument();
+    expect(screen.getByText(/Anki collection, synced/)).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Known words" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Reading per week" })).toBeInTheDocument();
   });
 
   it("Words: a real empty state when there are no words at all", async () => {
