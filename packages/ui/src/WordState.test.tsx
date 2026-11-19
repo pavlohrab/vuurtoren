@@ -11,7 +11,7 @@ describe("WordStateChip", () => {
       learning: "Learning",
       toLearn: "To learn",
       unknown: "New",
-      seen: "Seen",
+      seen: "New",
       ignored: "Ignored",
     });
     render(<WordStateChip state="unknown" />);

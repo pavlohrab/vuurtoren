@@ -59,7 +59,7 @@ describe("AddToAnki", () => {
   it("works as a picker only and shortens deep names", async () => {
     const onDeckChange = vi.fn();
     render(<AddToAnki deck="Kenning::Nederlands" options={options} onDeckChange={onDeckChange} />);
-    await userEvent.click(screen.getByRole("button", { name: "Add to Kenning::Nederlands" }));
+    await userEvent.click(screen.getByRole("button", { name: "Add to Nederlands" }));
     await userEvent.click(screen.getByRole("option", { name: /Les 1/ }));
     expect(onDeckChange).toHaveBeenCalledWith("Kenning::Nederlands::Boek::Les 1");
     expect(deckName("A::B::C::D")).toBe("D");
