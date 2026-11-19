@@ -11,53 +11,21 @@
 
 ## Native mode
 
-Kenning holds your cards and runs the reviews itself. Anki becomes optional.
+Built: the two modes and the onboarding choice, Move from Anki to Kenning, `.apkg`/`.colpkg`
+import, the FSRS-6 scheduler tuned to you, and the review screen. Still to do:
 
-**Onboarding:** "Do you use Anki?" No → native. Yes → a choice:
-
-- **Import from Anki and use Kenning's scheduler** (native): one import of your decks and review
-  history; Kenning owns the schedule from then on. Add to Anki becomes Add to my words.
-- **Keep using Anki** (connected, today's mode): Anki owns the schedule and must be open for
-  Kenning to send words to it. Existing users stay here; Settings offers the same move later.
-
-**Move to Anki** (Settings, native mode, one time): new words become notes, known words get
-mature intervals, and, as an experimental option, your review history with real times plus each
-card's due date and interval. The profile then switches to Keep using Anki. There is no ongoing
-sync between the two: one owner of the schedule at a time.
-
-**Import:**
-
-- `.apkg` and `.colpkg` (old and new formats): notes, cards, media and the full review history.
-- One deck, several decks or the whole collection. Vocabulary decks are detected the same way as
-  in connected mode.
-- Export back to `.apkg`, with review history, so leaving Kenning is always possible.
-
-**Scheduler (FSRS-6, `ts-fsrs`):**
-
-- **Tuned to you.** The FSRS optimizer (`fsrs-rs`, compiled to WebAssembly) trains your
-  parameters from the imported history and your reviews in Kenning. It runs again by itself
-  every 30 days or 500 reviews, and on request in Settings.
-- Target retention per deck (default 0.9), with the expected daily load shown before you
-  change it.
-- Learning and relearning steps, a maximum interval, random spread of due dates.
-- Workload spread across days, lighter days of the week, related cards kept apart.
-- Imported cards keep their memory state: the history is replayed, nothing restarts.
-
-**What only Kenning can do:**
-
-- **Reading evidence.** A due word you met and understood in a text without looking it up
-  counts as a light review: its due date moves later by a capped amount. A lookup counts
-  against it. These never replace a real review and are kept out of the optimizer's training
-  data.
+- **Move to Anki** (Settings, native mode, one time): new words become notes, known words get
+  mature intervals, and, as an experimental option, your review history with real times plus each
+  card's due date and interval. The profile then switches to Keep using Anki.
+- **Export to `.apkg`** with review history.
+- **Workload:** spread across days, lighter days of the week, related cards kept apart, the
+  expected daily load shown before changing target recall.
+- **Reading evidence.** A due word you met and understood in a text without looking it up counts
+  as a light review: its due date moves later by a capped amount. A lookup counts against it.
+  Kept out of the optimizer's training data.
 - Practice answers and reader clozes feed the same card, so one word has one memory state.
-- Reviews show the word's sentences from your own texts.
-
-**Review screen:**
-
-- Front, back, Again / Hard / Good / Easy, keys 1–4 and Space, undo.
-- Vocabulary and cloze notes rendered natively; images and audio. Other Anki templates are
-  shown in a simple fallback view.
-- Today's count on Home; due words in Words; review history per word in the inspector.
+- Due words in Words, review history per word in the inspector, reviews in Home's week.
+- Undo beyond the current session.
 
 **Not planned:** a general flashcard editor, Anki add-ons, a card browser beyond Words.
 
@@ -90,4 +58,8 @@ Your data on every device, with the event log as the unit of sync.
 - Every Anki sync stores a full snapshot in the event log, and deleted texts stay in it. The log
   needs compaction before sync.
 - The staircase tracks a target coverage that the planner doesn't use yet.
-- FSRS-6 decay per preset isn't read; 0.5 is assumed.
+- Connected mode doesn't read FSRS-6 decay per preset; 0.5 is assumed. Native mode uses the
+  decay of its own parameters.
+- Anki's FSRS parameters are not read from older-format (JSON) deck packages.
+- The newer `.apkg` format is tested only with files built from Anki's published format, not with
+  a file exported by Anki.
