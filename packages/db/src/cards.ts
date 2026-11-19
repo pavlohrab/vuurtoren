@@ -4,6 +4,7 @@
  * `nativeWordEntries` gives the learner model the same per-word facts an Anki snapshot gives.
  */
 import {
+  type CardRating,
   type CardReview,
   type CardSchedule,
   DEFAULT_DECK_OPTIONS,
@@ -24,6 +25,7 @@ import type {
   AnkiWordEntry,
   AppEvent,
   FsrsParamsRecord,
+  NativeCardChange,
   NativeCardView,
   NativeCollection,
   NativeDeckSummary,
@@ -94,6 +96,30 @@ function sameSchedule(a: CardSchedule | undefined, b: CardSchedule | undefined):
     a.stability === b.stability &&
     a.difficulty === b.difficulty
   );
+}
+
+/**
+ * A reading move or a memory update applied to the card as it is now, or null to leave it.
+ * Both stand back when the card was answered since they were made (`lastReview` differs): the
+ * answer is the stronger evidence, and it was scheduled from the card the device saw.
+ */
+function intended(
+  s: CardSchedule,
+  suspended: boolean,
+  c: NativeCardChange,
+  paramsInUse: boolean,
+): CardSchedule | null {
+  let next: CardSchedule | null = null;
+  const d = c.due;
+  if (d && s.state === 2 && !suspended && s.lastReview === d.lastReview) {
+    if (d.to === "later" && s.due < d.dayEnd) next = { ...s, due: d.at + d.days * DAY_MS };
+    if (d.to === "now" && s.due >= d.dayEnd) next = { ...s, due: d.at };
+  }
+  const m = c.memory;
+  if (m && paramsInUse && s.lastReview === m.lastReview) {
+    next = { ...(next ?? s), stability: m.stability, difficulty: m.difficulty };
+  }
+  return next;
 }
 
 /** Apply one native-mode event (inside the caller's transaction). */
@@ -206,7 +232,9 @@ export async function applyNativeEvent(
       let schedule = e.schedule;
       if (!sameSchedule(current, e.previous)) {
         // Answered on another device in the meantime (sync): this answer applies to the card
-        // as it is now, so both answers count.
+        // as it is now, so both answers count. The result comes from this app's scheduler
+        // whenever the log is replayed; devices on app versions whose FSRS differs could
+        // disagree slightly on such a card until its next answer.
         const options = (await deckOptions(driver, e.lang)).get(String(row["deck"]));
         const params = (await paramsOf(driver, e.lang))?.params ?? DEFAULT_FSRS_PARAMS;
         schedule = answerCard(current, e.rating, e.at, {
@@ -234,22 +262,62 @@ export async function applyNativeEvent(
     }
     case "CardReviewUndone": {
       const rows = await driver.exec(
-        "SELECT previous FROM native_reviews WHERE id = ? AND card_id = ? AND source = 'kenning'",
+        `SELECT rowid AS seq, previous FROM native_reviews
+          WHERE id = ? AND card_id = ? AND source = 'kenning'`,
         [e.reviewId, e.cardId],
       );
       const row = rows[0];
       if (!row) return;
-      await setSchedule(
-        driver,
-        e.cardId,
-        row["previous"] === null ? null : json<CardSchedule>(row["previous"]),
-      );
+      let schedule = row["previous"] === null ? undefined : json<CardSchedule>(row["previous"]);
       await driver.exec("DELETE FROM native_reviews WHERE id = ?", [e.reviewId]);
+      // Answers applied after this one (from another device, merged) still count: the card is
+      // replayed from the schedule before the undone answer through each of them, in order.
+      // Rows are inserted in the order events apply, which is clock order on every device.
+      const later = await driver.exec(
+        `SELECT id, at, rating FROM native_reviews
+          WHERE card_id = ? AND rowid > ? AND rating > 0 ORDER BY rowid`,
+        [e.cardId, Number(row["seq"])],
+      );
+      if (later.length > 0) {
+        const deck = (
+          await driver.exec("SELECT deck FROM native_cards WHERE id = ?", [e.cardId])
+        )[0];
+        const ctx = {
+          options:
+            (await deckOptions(driver, e.lang)).get(String(deck?.["deck"])) ?? DEFAULT_DECK_OPTIONS,
+          params: (await paramsOf(driver, e.lang))?.params ?? DEFAULT_FSRS_PARAMS,
+          fuzz: false,
+        };
+        for (const r of later) {
+          await driver.exec("UPDATE native_reviews SET kind = ?, previous = ? WHERE id = ?", [
+            schedule ? REVIEW_KIND[schedule.state] : "learn",
+            schedule ? JSON.stringify(schedule) : null,
+            String(r["id"]),
+          ]);
+          schedule = answerCard(schedule, Number(r["rating"]) as CardRating, Number(r["at"]), ctx);
+        }
+      }
+      await setSchedule(driver, e.cardId, schedule ?? null);
       return;
     }
-    case "NativeCardsChanged":
+    case "NativeCardsChanged": {
+      const params = e.params
+        ? ((await paramsOf(driver, e.lang))?.params ?? DEFAULT_FSRS_PARAMS)
+        : null;
+      const paramsInUse = !!e.params && JSON.stringify(e.params) === JSON.stringify(params);
       for (const c of e.changes) {
         if (c.schedule !== undefined) await setSchedule(driver, c.cardId, c.schedule);
+        if (c.due || c.memory) {
+          const row = (
+            await driver.exec("SELECT schedule, suspended FROM native_cards WHERE id = ?", [
+              c.cardId,
+            ])
+          )[0];
+          const s =
+            row && row["schedule"] !== null ? json<CardSchedule>(row["schedule"]) : undefined;
+          const next = s && intended(s, row?.["suspended"] === 1, c, paramsInUse);
+          if (next) await setSchedule(driver, c.cardId, next);
+        }
         if (c.suspended !== undefined) {
           await driver.exec("UPDATE native_cards SET suspended = ? WHERE id = ?", [
             c.suspended ? 1 : 0,
@@ -264,6 +332,7 @@ export async function applyNativeEvent(
         }
       }
       return;
+    }
     case "FsrsParamsSet": {
       const record: FsrsParamsRecord = {
         params: e.params,
@@ -534,14 +603,21 @@ export function nativeQueries(driver: SqlDriver) {
     async nativeLastReview(
       lang: string,
     ): Promise<{ cardId: number; reviewId: string; at: number } | null> {
+      // This device's newest answer on the review screen, and only while it is still its card's
+      // latest: an answer another device gave after it is never taken back from here.
       const r = (
         await driver.exec(
-          `SELECT id, card_id, at FROM native_reviews
-            WHERE lang = ? AND source = 'kenning' ORDER BY at DESC, id DESC LIMIT 1`,
+          `SELECT r.id, r.card_id, r.at,
+                  EXISTS (SELECT 1 FROM native_reviews o
+                           WHERE o.card_id = r.card_id AND o.rowid > r.rowid) AS answered_since
+             FROM native_reviews r JOIN events e ON e.id = r.id
+            WHERE r.lang = ? AND r.source = 'kenning'
+              AND e.device_id = (SELECT json_extract(value, '$') FROM meta WHERE key = 'device_id')
+            ORDER BY r.at DESC, r.id DESC LIMIT 1`,
           [lang],
         )
       )[0];
-      return r
+      return r && Number(r["answered_since"]) === 0
         ? { cardId: Number(r["card_id"]), reviewId: String(r["id"]), at: Number(r["at"]) }
         : null;
     },

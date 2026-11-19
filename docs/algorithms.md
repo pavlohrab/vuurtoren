@@ -683,7 +683,7 @@ Imported decks bring their own steps, limits and target retention.
 - **Review days** (Settings): each weekday takes its normal, reduced (half) or minimum share. The cost of a day is (cards due + 1) ÷ its share; a minimum day takes a card only when every day in the range is one.
 - **Expected load.** Next to each target recall, Settings shows about how many reviews a day it means for the cards you have now: for each review card, one review per interval at that recall (FSRS-6: t = S/F · (R^(−1/decay) − 1), F = 0.9^(−1/decay) − 1, capped by the maximum interval), plus the new cards a day while a deck has new cards.
 
-**Answering** (`answerCard`): Again, Hard, Good, Easy are FSRS ratings 1–4. The event stores the card's schedule before and after the answer, so the log replays without the scheduler and an undo restores the earlier state exactly. The buttons show the interval each rating would give.
+**Answering** (`answerCard`): Again, Hard, Good, Easy are FSRS ratings 1–4. The event stores the card's schedule before and after the answer, so the log replays without the scheduler and an undo restores the earlier state exactly (when another device answered the card after it, the card is replayed instead, 9.6). The buttons show the interval each rating would give.
 
 ### 9.3 Tuning to you
 
@@ -693,9 +693,9 @@ The FSRS optimizer is `fsrs-rs` compiled to WebAssembly (`@open-spaced-repetitio
 2. Every answer given on a later study day than the one before is one training item: that answer with the card's whole history before it, same-day learning steps included.
 3. The optimizer trains FSRS-6 parameters with short-term memory enabled. It needs at least 50 such answers.
 4. The new and the current parameters are scored on the same items: log loss and RMSE (binned), lower is better. The new ones are used only when their log loss is lower; otherwise the current ones stay.
-5. With new parameters, every card with a complete history is replayed again for its stability and difficulty. Due dates stay as they are.
+5. With new parameters, every card with a complete history is replayed again for its stability and difficulty. Due dates stay as they are. Only the new stability and difficulty are recorded, with the parameters and the card's last answer; a card answered since (on another device) keeps that answer, and a card whose parameters were replaced meanwhile (another device tuned too) is left as it is.
 
-It runs by itself when the app opens: the first time once the history holds 400 answers, then every 30 days (when there are new answers) or after 500 new answers. **Optimise now** in Settings runs it at once and shows the reviews used and the log loss and RMSE before and after.
+It runs by itself when the app opens: the first time once the history holds 400 answers, then every 30 days (when there are new answers) or after 500 new answers, but not within a day of the last tuning on any device. **Optimise now** in Settings runs it at once and shows the reviews used and the log loss and RMSE before and after.
 
 ### 9.4 What you know
 
@@ -722,10 +722,11 @@ In native mode, what you do with a word outside the review screen reaches its ca
 
 - A word gets at most one answer a day, from wherever it comes first (the review screen included). New cards are never introduced this way; suspended cards are left alone.
 - Answers from Practice and blanks are reviews (source `practice` or `cloze`): the optimizer trains on them. Moves from reading are not reviews and stay out of its training data.
+- A move from reading is recorded as what to do (later by so many days, or due now) with the card's last answer, and done to the card as it is when the change applies: a card answered since, here or on another device, is left as answered, and a card another device already moved is not moved twice.
 
 ### 9.6 The review screen
 
-Front, then Space or **Show answer**, then Again / Hard / Good / Easy (keys 1–4; Space or Enter is Good), Z or **Undo** takes back the latest answer, then the one before, also after a reload or on another day (the newest answer given in Kenning, `nativeLastReview`). A vocabulary card whose template shows the word on the front is laid out by Kenning: the word and its sentence on the front, the meaning and the sentence translation on the back. Clozes and other templates are rendered from the note type's own template (fields, conditional sections, `FrontSide`, clozes, hints) and shown through an allow-list sanitiser: formatting tags only, no scripts, styles, frames, forms or event handlers, and only the card's own images. Sounds get a play button. After the answer, a sentence with the word from your own texts is shown when one exists.
+Front, then Space or **Show answer**, then Again / Hard / Good / Easy (keys 1–4; Space or Enter is Good), Z or **Undo** takes back the latest answer, then the one before, also after a reload or on another day (the newest answer given on the review screen of this device, `nativeLastReview`, as long as no later answer to that card came from another device). The card comes back with its answer hidden. When another device's answer to the card arrives after an undo, the card is replayed from its remaining answers in order, so that answer still counts. A vocabulary card whose template shows the word on the front is laid out by Kenning: the word and its sentence on the front, the meaning and the sentence translation on the back. Clozes and other templates are rendered from the note type's own template (fields, conditional sections, `FrontSide`, clozes, hints) and shown through an allow-list sanitiser: formatting tags only, no scripts, styles, frames, forms or event handlers, and only the card's own images. Sounds get a play button. After the answer, a sentence with the word from your own texts is shown when one exists.
 
 **Your words and your reviews.** In native mode Words has a **Due** view: the words with a card due now (`nativeDueKeys`), earliest first, each with how long ago it came due; with a source chosen, only that text's, unit's or session's words. The word inspector lists the word's latest eight answers under **Your reviews**: the day, the answer and the interval it gave (the card's history replayed; the latest answer shows the due date the card really got). Home's **This week** counts the reviews answered in Kenning per day; an undone answer no longer counts.
 
@@ -796,6 +797,8 @@ Events carry a hybrid logical clock (milliseconds, a counter, the device). Impor
 
 - **Latest wins** for settings, the language profile, word marks, deck options and a text's details: the last event in clock order sets them.
 - **Merge** for reviews and answers: they add up. An answer to a native card stores the card's schedule before it; when the card has changed since (answered on another device), the answer is applied to the card as it is now (FSRS, without fuzz), so both answers count.
+- **Intent** for other changes to native cards: a move from reading, new memory after tuning and an undo say what to do, and are applied to the card as it is when they apply (sections 9.3, 9.5.1 and 9.6), so none of them undoes an answer from another device. Mark known and Study first set the card (a mature schedule, a place in the new queue): the latest wins.
+- **Merged answers depend on the scheduler.** A merged answer is computed whenever the log is replayed, with this app's FSRS and the parameters in use then. Devices on app versions whose scheduler differs can disagree slightly on such a card until its next answer; an answer that is not merged stores its result and replays the same everywhere.
 - **Event versions.** Each event type has a payload version. An event newer than this app understands is stored and passed on, not applied; once the app is updated it applies it.
 
 ### 10.5 Compaction

@@ -472,7 +472,29 @@ describe("native services", () => {
     expect(card?.card.schedule?.stability).not.toBe(10);
     // Not again until 30 days or 500 more answers.
     expect(await live.autoTune()).toBeNull();
+    // Memory travels as stability and difficulty for the parameters used, not a schedule.
+    const memory = (await repo!.exportEvents()).find(
+      (e) => e.event.type === "NativeCardsChanged",
+    )?.event;
+    expect(memory).toMatchObject({ reason: "memory", params: expect.any(Array) });
+    expect(memory?.type === "NativeCardsChanged" && memory.changes[0]).toEqual({
+      cardId: 1000,
+      memory: {
+        stability: card?.card.schedule?.stability,
+        difficulty: card?.card.schedule?.difficulty,
+        lastReview: NOW - 9 * DAY,
+      },
+    });
     expect((await live.tuning()).logLoss).toBe(0.3);
+    // Another device tuned a moment ago with less history (synced): not here as well.
+    await repo!.append({
+      type: "FsrsParamsSet",
+      lang: "nl",
+      params: [...DEFAULT_FSRS_PARAMS],
+      reviews: 100,
+      historySize: 0,
+    });
+    expect(await live.autoTune()).toBeNull();
   });
 
   it("starts the study day at 4:00", () => {

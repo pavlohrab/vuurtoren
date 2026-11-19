@@ -326,7 +326,8 @@ export function createLiveNative(deps: LiveNativeDeps) {
 
   /**
    * Stability and difficulty of every card with a complete history, replayed with new
-   * parameters. Due dates stay as they are.
+   * parameters. Due dates stay as they are. Only the memory travels, tied to the card's last
+   * answer, so a card answered on another device meanwhile keeps that answer.
    */
   async function recomputeMemory(
     lang: string,
@@ -344,18 +345,21 @@ export function createLiveNative(deps: LiveNativeDeps) {
       if (!v || !s) continue;
       const replayed = replayReviews(list, { options: v.options, params: p });
       if (!replayed) continue;
-      const next: CardSchedule = {
-        ...s,
-        stability: replayed.stability,
-        difficulty: replayed.difficulty,
-      };
-      changes.push({ cardId, schedule: next });
+      changes.push({
+        cardId,
+        memory: {
+          stability: replayed.stability,
+          difficulty: replayed.difficulty,
+          lastReview: s.lastReview,
+        },
+      });
     }
     for (let i = 0; i < changes.length; i += CHANGES_PER_EVENT) {
       await repo.append({
         type: "NativeCardsChanged",
         lang,
         reason: "memory",
+        params: p,
         changes: changes.slice(i, i + CHANGES_PER_EVENT),
       });
     }
@@ -598,9 +602,12 @@ export function createLiveNative(deps: LiveNativeDeps) {
       const rec = await repo.fsrsParams(lang);
       const history = (await repo.nativeStats(lang)).reviews;
       const trained = rec && rec.reviews > 0;
+      // Tuned in the last day (here, or on another device and synced): leave it for now, so
+      // two devices do not tune one after the other.
       const due = trained
-        ? (now() - rec.at >= RETUNE_MS && history > (rec.historySize ?? 0)) ||
-          history - (rec.historySize ?? 0) >= RETUNE_REVIEWS
+        ? now() - rec.at >= DAY_MS &&
+          ((now() - rec.at >= RETUNE_MS && history > (rec.historySize ?? 0)) ||
+            history - (rec.historySize ?? 0) >= RETUNE_REVIEWS)
         : history >= FIRST_TUNE_REVIEWS;
       if (!due || history < MIN_TRAINING_REVIEWS) return null;
       return tune();
@@ -661,23 +668,25 @@ export function createLiveNative(deps: LiveNativeDeps) {
   /**
    * Reading as light evidence, never an answer (the optimizer does not see it): words of a
    * finished page that were not looked up move their due review card later by a capped amount;
-   * a lookup brings a word's review card back to today.
+   * a lookup brings a word's review card back to today. The event says what to do, and the
+   * card is moved as it is when the event applies: a card answered since stays as answered.
    */
-  async function moveDue(
-    keys: string[],
-    pick: (s: CardSchedule, dayEnd: number) => boolean,
-    due: (s: CardSchedule, at: number) => number,
-  ): Promise<number> {
+  async function moveDue(keys: string[], to: "later" | "now"): Promise<number> {
     if (keys.length === 0 || profileMode(await deps.profile()) !== "native") return 0;
     const lang = await deps.lang();
     const at = now();
     const start = studyDayStart(at);
+    const dayEnd = start + DAY_MS;
     const changes: NativeCardChange[] = [];
     for (const c of await repo.nativeKeyCards(lang, [...new Set(keys.map(normalizeKey))], start)) {
       const s = c.card.schedule;
       if (!s || s.state !== 2 || c.card.suspended || c.answeredToday) continue;
-      if (!pick(s, start + DAY_MS)) continue;
-      changes.push({ cardId: c.card.id, schedule: { ...s, due: due(s, at) } });
+      if (to === "later" ? s.due >= dayEnd : s.due < dayEnd) continue;
+      const days = to === "later" ? readingDelay(s.scheduledDays) : 0;
+      changes.push({
+        cardId: c.card.id,
+        due: { to, at, days, dayEnd, lastReview: s.lastReview },
+      });
     }
     if (changes.length) {
       await repo.append({ type: "NativeCardsChanged", lang, reason: "reading", changes });
@@ -694,19 +703,9 @@ export function createLiveNative(deps: LiveNativeDeps) {
     cloze: (key: string, correct: boolean, hinted: boolean) =>
       feedWord(key, !correct ? 1 : hinted ? 2 : 3, 0, "cloze"),
     /** A page was finished: these words were met and not looked up. */
-    pageRead: (keys: string[]) =>
-      moveDue(
-        keys,
-        (s, dayEnd) => s.due < dayEnd,
-        (s, at) => at + readingDelay(s.scheduledDays) * DAY_MS,
-      ),
+    pageRead: (keys: string[]) => moveDue(keys, "later"),
     /** A word was looked up while reading. */
-    lookup: (key: string) =>
-      moveDue(
-        [key],
-        (s, dayEnd) => s.due >= dayEnd,
-        (_s, at) => at,
-      ),
+    lookup: (key: string) => moveDue([key], "now"),
   };
 
   return { services, evidence, invalidate: () => (ownIndex = null) };
