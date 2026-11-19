@@ -804,4 +804,10 @@ Events carry a hybrid logical clock (milliseconds, a counter, the device). Impor
 
 ### 10.6 When it runs
 
-While the app is open: on focus, when it becomes visible and every 30 seconds, at most once a minute. When changes came in, the services drop their caches and every screen refetches. A sync that fails keeps its reason for Settings and shows in the top bar's indicator; changes stay on the device until the next sync.
+While the app is open: on focus, when it becomes visible and every 30 seconds, at most once a minute. When the app is hidden or closed it syncs once more if this device has changes the last sync did not carry (at most every 15 seconds; best effort, as the page may go first). When changes came in, the services drop their caches and every screen refetches, also when the sync failed after some files came in. A sync that fails keeps its reason for Settings and shows in the top bar's indicator; changes stay on the device until the next sync. Setting up, a sync, a passphrase change and Stop run one at a time, so Stop during a setup stays stopped.
+
+**Setting up** asks which device this is. **Start new sync data here** (the first device) refuses a place that already holds a vault or device folders, writes `vault.json`, reads it back and only then shows the recovery key. **Join my synced data** never writes a vault: before the first device's files arrive (a synced folder still copying, another folder, address or branch) it says so. Once the place is open sync stays set up even when the first sync does not finish; the recovery key is shown all the same. Passphrase changes and new recovery keys read `vault.json` back too.
+
+**A restored backup** gets a new device id (two devices restored from one backup never share one). Its events not yet sent move to the new id (same event ids, so a device that has them skips them), so they still reach the other devices.
+
+**On a Kenning server** a sync token belongs to one device: the first device folder it writes is its own, and it writes only there and the blobs. It may create `vault.json` when there is none; replacing it needs a session, the server's token, the sync token that made it or one made for it. All sync files share a quota (`KENNING_SYNC_QUOTA_MB`, 2 GB). With sign-in off the server answers this site and `KENNING_ALLOWED_ORIGINS` only.

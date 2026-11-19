@@ -258,7 +258,7 @@ Domain components:
 - **Inspector, your reviews** (native mode): under the card's status, a quiet "Your reviews" list with hairline rows: day, answer (Again in the danger colour) and the interval it gave.
 - **Grammar:** topics with "seen in your texts" examples.
 - **Progress:** the numbers, then two calm charts side by side — known words over 12 weeks (a 2px `--known` line, faint area, last value labelled) and pages read per week (thin `--known` bars, this week full strength) — and Practice with "By skill" in a disclosure. Times are relative ("synced 1 hour ago"). Reached from Home ("View progress", "This week"), ⌘K and the phone's More sheet; it stays off the rail because it is a place to look back, not a daily task.
-- **Settings:** sections with a sub-nav (a list on phones): Account, Language & decks (Anki connection first), Reading, AI, Data & backup, Sync (set up a place with a passphrase, the devices, Sync now; on a server's page: sync tokens for devices), Advanced. Changes save themselves with a quiet "Saved" note; the theme is only in the top bar.
+- **Settings:** sections with a sub-nav (a list on phones): Account, Language & decks (Anki connection first), Reading, AI, Data & backup, Sync (start new sync data on the first device or join it on the others, with a place and a passphrase; the devices, Sync now; on a server's page: sync tokens for devices), Advanced. Changes save themselves with a quiet "Saved" note; the theme is only in the top bar.
 - **Page header:** every top-level screen opens with the same header: title (h1), one line on what the page is for, the primary action on the right.
 
 ## Voice & copy
