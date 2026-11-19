@@ -20,6 +20,7 @@ import {
   migratedProfile,
   resolveDeck,
   isLanguageProfile,
+  profileMode,
 } from "@app/core";
 import type { KenningRepository } from "@app/db";
 import type { NlpClient } from "@app/nlp-client";
@@ -148,6 +149,13 @@ export function createLiveProfile(deps: LiveProfileDeps) {
         for (const u of c.units) {
           for (const d of u.ankiDecks) options.push({ deck: d, group: "course", hint: u.title });
         }
+      }
+      if (profileMode(profile) === "native") {
+        // Native mode: Kenning's own decks; Anki is not asked.
+        for (const d of await repo.nativeDecks(profile.lang, Date.now())) {
+          options.push({ deck: d.name, group: "anki" });
+        }
+        return { deck, options };
       }
       try {
         const names = await (await deps.anki(DECKS_TIMEOUT_MS)).deckNames();

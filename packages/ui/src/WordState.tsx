@@ -1,5 +1,6 @@
 import type { WordState } from "@app/core";
 import { cn } from "./cn.js";
+import { useNativeMode } from "./mode.js";
 import type { InspectorAnki } from "@app/core";
 
 /**
@@ -69,11 +70,31 @@ const ANKI_STATUS_LABEL: Record<AnkiStatus, string> = {
   unavailable: "Anki not reachable",
 };
 
-/** Chip for a word's Anki card status. */
-export function AnkiStatusChip({ status, className }: { status: AnkiStatus; className?: string }) {
+/** The same statuses for Kenning's own cards (native mode). */
+const NATIVE_STATUS_LABEL: Record<AnkiStatus, string> = {
+  absent: "Not in your words",
+  new: "Card: new",
+  learning: "Card: learning",
+  review: "Card: review",
+  suspended: "Card: suspended",
+  unavailable: "Card not available",
+};
+
+/** Chip for a word's card status (in Anki, or Kenning's own card with `native`). */
+export function AnkiStatusChip({
+  status,
+  className,
+  native: nativeProp,
+}: {
+  status: AnkiStatus;
+  className?: string;
+  native?: boolean;
+}) {
+  const nativeMode = useNativeMode();
+  const native = nativeProp ?? nativeMode;
   return (
     <span className={cn("k-chip", "k-anki", `k-anki--${status}`, className)} data-status={status}>
-      {ANKI_STATUS_LABEL[status]}
+      {(native ? NATIVE_STATUS_LABEL : ANKI_STATUS_LABEL)[status]}
     </span>
   );
 }

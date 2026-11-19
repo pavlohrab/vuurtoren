@@ -25,7 +25,8 @@ describe("profile mode", () => {
     expect(profileMode(defaultProfile("nl"))).toBe("native");
     expect(profileMode(defaultProfile("nl", [], "connected"))).toBe("connected");
     expect(profileMode(migratedProfile("nl", "Deck", []))).toBe("connected");
-    const { mode: _m, ...old } = defaultProfile("nl");
+    const old: Partial<ReturnType<typeof defaultProfile>> = defaultProfile("nl");
+    delete old.mode;
     expect(isLanguageProfile(old)).toBe(true);
     expect(profileMode(old)).toBe("connected");
     expect(isLanguageProfile({ ...old, mode: "hybrid" })).toBe(false);

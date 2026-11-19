@@ -1,7 +1,13 @@
 /**
- * First-run onboarding: language → connect Anki → confirm decks → where new words go
- * → (start fresh) placement check → first text. Skippable; the step and choices are kept in
- * localStorage so a reload resumes where the learner was. Nothing is written to Anki here.
+ * First-run onboarding: language → "Do you use Anki?".
+ * - No: Kenning holds the cards (native mode) → where new words go → placement check → first
+ *   text.
+ * - Yes, and move to Kenning: connect Anki → confirm decks → where new words go → the decks are
+ *   imported with their review history (native mode) → first text.
+ * - Yes, and keep using Anki (connected mode): connect Anki → confirm decks → where new words
+ *   go → (start fresh) placement check → first text.
+ * Skippable; the step and choices are kept in localStorage so a reload resumes where the learner
+ * was. Nothing is written to Anki here.
  */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
@@ -20,10 +26,22 @@ import { runAnkiSync } from "../../shell/ankiSync.js";
 
 const STORAGE = "kenning.onboarding";
 
-type Step = "language" | "anki" | "decks" | "destinations" | "placement" | "first";
+type Step =
+  | "language"
+  | "uses"
+  | "choice"
+  | "anki"
+  | "decks"
+  | "destinations"
+  | "moving"
+  | "placement"
+  | "first";
 const LABEL: Record<Step, string> = {
   language: "Language",
-  anki: "Anki",
+  uses: "Anki",
+  choice: "Your cards",
+  anki: "Connect",
+  moving: "Import",
   decks: "Decks",
   destinations: "New words",
   placement: "Quick check",
@@ -38,6 +56,10 @@ interface Draft {
   decksInit: boolean;
   /** Continue without Anki or no decks: start fresh. */
   noAnki: boolean;
+  /** The answer to "Do you use Anki?" (null: not answered yet). */
+  usesAnki: boolean | null;
+  /** Import the Anki decks and review in Kenning (else keep using Anki). */
+  move: boolean;
   profile: LanguageProfile;
 }
 
@@ -47,6 +69,8 @@ const fresh = (): Draft => ({
   sources: [],
   decksInit: false,
   noAnki: false,
+  usesAnki: null,
+  move: true,
   profile: defaultProfile("nl"),
 });
 
@@ -73,14 +97,22 @@ export function Welcome() {
   useEffect(() => heading.current?.focus(), [draft.step]);
 
   const startFresh = draft.sources.length === 0;
-  const steps: Step[] = [
-    "language",
-    "anki",
-    "decks",
-    "destinations",
-    ...(startFresh ? (["placement"] as const) : []),
-    "first",
-  ];
+  const native = draft.usesAnki === false;
+  const moving = draft.usesAnki === true && draft.move && !draft.noAnki && !startFresh;
+  const steps: Step[] = native
+    ? ["language", "uses", "destinations", "placement", "first"]
+    : draft.usesAnki === null
+      ? ["language", "uses", "first"]
+      : [
+          "language",
+          "uses",
+          "choice",
+          "anki",
+          "decks",
+          "destinations",
+          ...(moving ? (["moving"] as const) : startFresh ? (["placement"] as const) : []),
+          "first",
+        ];
   const at = Math.max(0, steps.indexOf(draft.step));
   const go = (step: Step) => setDraft({ step });
   const next = () => go(steps[at + 1] ?? "first");
@@ -138,10 +170,12 @@ export function Welcome() {
   // ---- Save the profile when leaving "where new words go"
   const save = useMutation({
     mutationFn: async () => {
+      // Native from the start, or connected until the move has imported the decks.
       const profile: LanguageProfile = {
         ...draft.profile,
         lang: draft.lang,
-        sources: draft.sources,
+        mode: native ? "native" : "connected",
+        sources: native ? [] : draft.sources,
         tags: [draft.lang],
       };
       await services.saveLanguageProfile(profile);
@@ -150,9 +184,20 @@ export function Welcome() {
       await qc.invalidateQueries({ queryKey: ["languageProfile"] });
       await qc.invalidateQueries({ queryKey: ["deckChoices"] });
       // Read the confirmed decks in the background while the learner finishes the welcome steps.
-      if (draft.sources.length > 0 && connected && !draft.noAnki)
+      if (!native && !moving && draft.sources.length > 0 && connected && !draft.noAnki)
         void runAnkiSync(services, qc).catch(() => undefined);
       next();
+    },
+  });
+
+  // ---- Move from Anki: import the confirmed decks with their history
+  const [moveMsg, setMoveMsg] = useState<string | null>(null);
+  const move = useMutation({
+    mutationFn: () => services.moveFromAnki(setMoveMsg),
+    onSuccess: async () => {
+      for (const k of ["languageProfile", "learner", "review", "words", "texts"]) {
+        await qc.invalidateQueries({ queryKey: [k] });
+      }
     },
   });
 
@@ -188,8 +233,13 @@ export function Welcome() {
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
-    if (draft.step === "destinations") save.mutate();
-    else if (draft.step === "placement") placement.mutate();
+    if (draft.step === "uses") {
+      if (draft.usesAnki !== null) go(draft.usesAnki ? "choice" : "destinations");
+    } else if (draft.step === "destinations") save.mutate();
+    else if (draft.step === "moving") {
+      if (move.isSuccess) next();
+      else if (!move.isPending) move.mutate();
+    } else if (draft.step === "placement") placement.mutate();
     else if (draft.step !== "first") next();
   };
 
@@ -218,11 +268,92 @@ export function Welcome() {
                 Welcome to Kenning
               </h1>
               <p className="ob-lede">
-                Kenning helps you read real texts at the edge of what you know. Your Anki decks are
-                its record of the words you know, so a few choices first. This takes about two
-                minutes, and you can change everything later in Settings.
+                Kenning helps you read real texts at the edge of what you know. A few choices first:
+                this takes about two minutes, and you can change everything later in Settings.
               </p>
               <LanguageChoice value={draft.lang} onChange={(lang) => setDraft({ lang })} />
+            </>
+          ) : null}
+
+          {draft.step === "uses" ? (
+            <>
+              <h1 ref={heading} tabIndex={-1}>
+                Do you use Anki?
+              </h1>
+              <p className="ob-lede">
+                Kenning can keep your words and run your reviews itself, or work alongside Anki.
+              </p>
+              <fieldset className="ob-choices">
+                <legend className="k-sr">Do you use Anki?</legend>
+                <Choice
+                  name="uses"
+                  checked={draft.usesAnki === false}
+                  onChange={() => setDraft({ usesAnki: false, sources: [], noAnki: false })}
+                  title="No"
+                  sub="Kenning keeps your words and schedules your reviews. You can import an Anki deck file later."
+                />
+                <Choice
+                  name="uses"
+                  checked={draft.usesAnki === true}
+                  onChange={() => setDraft({ usesAnki: true })}
+                  title="Yes"
+                  sub="Bring your Anki decks into Kenning, or keep using Anki."
+                />
+              </fieldset>
+            </>
+          ) : null}
+
+          {draft.step === "choice" ? (
+            <>
+              <h1 ref={heading} tabIndex={-1}>
+                Your Anki cards
+              </h1>
+              <p className="ob-lede">Choose who schedules your reviews from now on.</p>
+              <fieldset className="ob-choices">
+                <legend className="k-sr">Who schedules your reviews</legend>
+                <Choice
+                  name="move"
+                  checked={draft.move}
+                  onChange={() => setDraft({ move: true })}
+                  title="Import from Anki and use Kenning’s scheduler"
+                  sub="Your chosen decks come into Kenning once, with every card and its review history. Reviews then happen in Kenning; Anki is not changed."
+                />
+                <Choice
+                  name="move"
+                  checked={!draft.move}
+                  onChange={() => setDraft({ move: false })}
+                  title="Keep using Anki"
+                  sub="Anki stays the record of what you know and runs your reviews. Anki must be open for Kenning to send words to it."
+                />
+              </fieldset>
+            </>
+          ) : null}
+
+          {draft.step === "moving" ? (
+            <>
+              <h1 ref={heading} tabIndex={-1}>
+                Importing your decks
+              </h1>
+              <p className="ob-lede">
+                Kenning reads your chosen decks from Anki: notes, cards and the full review history.
+                Nothing in Anki changes.
+              </p>
+              {move.isPending ? (
+                <p role="status">
+                  <Spinner label="Importing" /> {moveMsg ?? "Starting"}
+                </p>
+              ) : move.isSuccess ? (
+                <p role="status">
+                  Imported {move.data.cards} cards from {move.data.notes} notes, with{" "}
+                  {move.data.reviews} past reviews. Your reviews now happen in Kenning.
+                </p>
+              ) : move.isError ? (
+                <p role="alert" className="error-text">
+                  The import did not finish. {errorOf(move.error)}
+                </p>
+              ) : (
+                <p>This can take a minute for a large collection.</p>
+              )}
             </>
           ) : null}
 
@@ -317,8 +448,9 @@ export function Welcome() {
                 Where new words go
               </h1>
               <p className="ob-lede">
-                When you add a word, Kenning creates a card in this deck. Every Add button shows the
-                deck and lets you pick another one.
+                When you add a word, Kenning creates a card in this deck
+                {native ? "" : " in Anki"}. Every Add button shows the deck and lets you pick
+                another one.
               </p>
               <DestinationFields
                 compact
@@ -339,8 +471,8 @@ export function Welcome() {
                 Words you already know
               </h1>
               <p className="ob-lede">
-                Tick the words you know, so the first texts are not too easy or too hard. This stays
-                in Kenning; nothing is added to Anki.
+                Tick the words you know, so the first texts are not too easy or too hard. This only
+                marks them known; no cards are made.
               </p>
               {bands.data ? (
                 <div className="ob-bands">
@@ -441,8 +573,13 @@ export function Welcome() {
             {draft.step === "anki" && !connected ? (
               <Button
                 onClick={() => {
-                  setDraft({ noAnki: true, sources: [] });
-                  go("decks");
+                  // Moving needs Anki; without it Kenning starts fresh with its own cards.
+                  if (draft.move) {
+                    setDraft({ usesAnki: false, sources: [], step: "destinations" });
+                  } else {
+                    setDraft({ noAnki: true, sources: [] });
+                    go("decks");
+                  }
                 }}
               >
                 Continue without Anki
@@ -460,6 +597,8 @@ export function Welcome() {
                 disabled={
                   save.isPending ||
                   placement.isPending ||
+                  move.isPending ||
+                  (draft.step === "uses" && draft.usesAnki === null) ||
                   (draft.step === "decks" && connected && !draft.noAnki && decks.isPending) ||
                   (draft.step === "destinations" && !draft.profile.destinations.default.trim())
                 }
@@ -469,15 +608,46 @@ export function Welcome() {
               >
                 {draft.step === "destinations"
                   ? "Save and continue"
-                  : draft.step === "placement"
-                    ? `Continue${known.size ? ` with ${known.size} known` : ""}`
-                    : "Continue"}
+                  : draft.step === "moving"
+                    ? move.isSuccess
+                      ? "Continue"
+                      : move.isError
+                        ? "Try again"
+                        : "Import"
+                    : draft.step === "placement"
+                      ? `Continue${known.size ? ` with ${known.size} known` : ""}`
+                      : "Continue"}
               </Button>
             ) : null}
           </div>
         </form>
       </main>
     </div>
+  );
+}
+
+/** One radio choice with a title and a line under it. */
+function Choice({
+  name,
+  checked,
+  onChange,
+  title,
+  sub,
+}: {
+  name: string;
+  checked: boolean;
+  onChange: () => void;
+  title: string;
+  sub: string;
+}) {
+  return (
+    <label className="ob-choice">
+      <input type="radio" name={name} checked={checked} onChange={onChange} />
+      <span>
+        <span className="ob-choice-title">{title}</span>
+        <span className="ob-choice-sub">{sub}</span>
+      </span>
+    </label>
   );
 }
 

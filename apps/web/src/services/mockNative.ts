@@ -56,7 +56,7 @@ function demoCards(now: number): MockCard[] {
         ownSentence: {
           text: "Hij zet zijn fiets tegen de muur.",
           title: "Een dag in Utrecht",
-          highlight: [15, 20],
+          highlight: [13, 18],
         },
       }),
       3,
