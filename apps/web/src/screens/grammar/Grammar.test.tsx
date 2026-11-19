@@ -8,7 +8,7 @@ import { App } from "../../App.js";
 import { createMockAI } from "../../services/mockAI.js";
 import { createMockServices } from "../../services/mock.js";
 import type { AppServices } from "../../services/types.js";
-import { matchTopic } from "./Grammar.js";
+import { matchTopic, topicToPractise } from "./Grammar.js";
 import { practiceOffer, splitMistake } from "./GrammarTopic.js";
 
 // The routes are code-split: load the screens once up front, so the first test of the file
@@ -53,7 +53,8 @@ describe("Grammar index", () => {
     expect(await shelf(/B1\s+Intermediate/)).toBeInTheDocument();
     const row = screen.getByText("Separable verbs").closest("a") as HTMLElement;
     expect(row).toHaveAttribute("href", "/grammar/separable-verbs");
-    expect(within(row).getByText("A2")).toBeInTheDocument();
+    // The level heading says A2; the row does not repeat it.
+    expect(within(row).queryByText("A2")).toBeNull();
     // Three separable verbs in "Een dag in Utrecht".
     expect(await within(row).findByText("seen 3× in your texts")).toBeInTheDocument();
   });
@@ -64,6 +65,9 @@ describe("Grammar index", () => {
     await userEvent.click(screen.getByRole("tab", { name: "By topic" }));
     const order = await shelf("Word order");
     expect(rowTitles(order)).toContain("Inversion");
+    // Topic shelves mix levels, so each row shows its own.
+    const inversion = within(order).getByText("Inversion").closest("a") as HTMLElement;
+    expect(within(inversion).getByText(grammarTopic("inversion")!.level)).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: /A1\s+Beginner/ })).toBeNull();
     expect(localStorage.getItem("kenning.grammar.view")).toBe("topic");
 
@@ -81,6 +85,20 @@ describe("Grammar index", () => {
     setup("/grammar");
     expect(await shelf("Word order")).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "By topic" })).toHaveAttribute("aria-selected", "true");
+  });
+
+  it("Practise grammar opens the practisable topic seen most in your texts", async () => {
+    setup("/grammar");
+    const link = await screen.findByRole("link", { name: "Practise grammar" });
+    expect(link.getAttribute("href")).toMatch(/^\/grammar\/[^/]+\/practice$/);
+
+    const path = grammarTopics();
+    const practisable = path.filter((t) => practiceOffer(t, false) === "practise");
+    const [first, second] = practisable;
+    expect(topicToPractise(path, undefined)).toBe(first);
+    const counts = Object.fromEntries(second!.detects.map((d) => [d, 4]));
+    const overview = { counts, textCounts: counts, texts: 2, missing: 0 };
+    expect(topicToPractise(path, overview)).toBe(second);
   });
 
   it("matches title and summary, ignoring case, accents and Markdown", () => {
