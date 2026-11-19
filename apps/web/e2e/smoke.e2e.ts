@@ -2,7 +2,7 @@
  * Smoke test of the main loop, in demo mode and in browser-storage mode (OPFS, the real
  * services over a fake language server and AnkiConnect): import a pasted text, open it, click
  * a word (grammar and Add to Anki show), change the text size (the reader really changes) and
- * answer one practice exercise.
+ * answer one practice exercise; in native mode, add a word and review it.
  */
 import { type Page, expect, test } from "@playwright/test";
 import { fakeAnki } from "./fakeAnki.js";
@@ -78,5 +78,30 @@ test("browser storage mode", async ({ page }) => {
   await expect(page.locator(".inspector-panel")).toContainText("Learning");
   await changeTextSize(page);
   await answerOneExercise(page);
+  expect(errors).toEqual([]);
+});
+
+test("native mode: add a word while reading, then review it", async ({ page }) => {
+  const errors = watchErrors(page);
+  await fakeNlp(page);
+  await fakeAnki(page);
+  await page.goto("/");
+  await page.getByRole("button", { name: "Continue" }).click();
+  await page.getByRole("radio", { name: /^No/ }).check();
+  await page.getByRole("button", { name: "Continue" }).click();
+  await page.getByRole("button", { name: "Save and continue" }).click();
+  await page.getByRole("button", { name: "Skip this" }).click();
+  await page.getByRole("button", { name: "Go to the library" }).click();
+  await importAndRead(page);
+  await inspectWord(page);
+  await expect(page.getByRole("group", { name: "Add to my words" })).toBeVisible();
+  await page.getByRole("button", { name: /^Add to / }).click();
+  await expect(page.locator(".inspector-panel")).toContainText("Your card");
+  await page.goto("/review");
+  await expect(page.locator(".review-word")).toContainText("buurvrouw");
+  await page.keyboard.press("Space");
+  await expect(page.getByRole("button", { name: /Easy/ })).toBeVisible();
+  await page.keyboard.press("4");
+  await expect(page.getByRole("heading", { name: "Done for now" })).toBeVisible();
   expect(errors).toEqual([]);
 });
