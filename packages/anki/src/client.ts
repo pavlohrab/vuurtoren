@@ -114,6 +114,27 @@ export class AnkiConnectClient {
     return json.result;
   }
 
+  /**
+   * Run legacy actions through `multi`, in batches of 100, and say per action whether it
+   * worked. Each action carries `version: 6` (and the API key when there is one, since
+   * AnkiConnect checks it on every action).
+   */
+  async multi<T>(
+    actions: { action: string; params: Record<string, unknown> }[],
+  ): Promise<MultiReply<T>[]> {
+    const out: MultiReply<T>[] = [];
+    for (let i = 0; i < actions.length; i += MULTI_BATCH) {
+      const chunk = actions.slice(i, i + MULTI_BATCH).map((a) => {
+        const one: Record<string, unknown> = { ...a, version: 6 };
+        if (this.apiKey) one["key"] = this.apiKey;
+        return one;
+      });
+      const replies = (await this.invoke<unknown[] | null>("multi", { actions: chunk })) ?? [];
+      chunk.forEach((_, j) => out.push(multiReply<T>(replies[j])));
+    }
+    return out;
+  }
+
   /** Call a v1 JSON-RPC method. */
   async rpc<T>(method: string, params: unknown = {}): Promise<T> {
     const headers: Record<string, string> = { "Content-Type": "application/json" };
@@ -232,6 +253,24 @@ export class AnkiConnectClient {
 }
 
 const RPC_BATCH = 100;
+const MULTI_BATCH = 100;
+
+/** One action's answer inside a `multi` reply. */
+export type MultiReply<T> = { ok: true; result: T } | { ok: false; error: string };
+
+/**
+ * Read one item of a `multi` reply. Actions sent with `version: 6` answer `{ result, error }`;
+ * older ones answer the plain value, or `{ error }` when they failed.
+ */
+function multiReply<T>(raw: unknown): MultiReply<T> {
+  if (raw === undefined) return { ok: false, error: "no answer" };
+  if (typeof raw === "object" && raw !== null && !Array.isArray(raw) && "error" in raw) {
+    const r = raw as { result?: unknown; error: unknown };
+    if (r.error !== null && r.error !== undefined) return { ok: false, error: String(r.error) };
+    if ("result" in r) return { ok: true, result: r.result as T };
+  }
+  return { ok: true, result: raw as T };
+}
 
 export interface FsrsMemory {
   difficulty: number;

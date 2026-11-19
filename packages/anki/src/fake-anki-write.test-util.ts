@@ -77,18 +77,26 @@ function findCards(col: FakeCollection, query: string): number[] {
     .map((c) => c.id);
 }
 
-/** Legacy `setDueDate` with "a-b!" : set the interval to a (cards become review cards). */
+/**
+ * Legacy `setDueDate` with "a-b!", as Anki does it without FSRS: cards become review cards due
+ * in a days; "!" (or a card that was not a review card) sets the interval to a, at least 1.
+ */
 function applyDueDate(c: FakeCard, days: string): void {
   const m = /^(\d+)(?:-(\d+))?(!)?$/.exec(days);
   if (!m) throw new Error(`bad days ${days}`);
   const lo = Number(m[1]);
+  if (m[3] || (c.type !== 2 && c.type !== 3)) c.interval = Math.max(1, lo);
   c.type = 2;
   c.queue = 2;
-  if (m[3]) c.interval = lo;
   c.due = lo;
 }
 
-function legacy(col: FakeCollection, action: string, params: Record<string, unknown>): unknown {
+function legacy(
+  col: FakeCollection,
+  action: string,
+  params: Record<string, unknown>,
+  failing: Record<string, string> = {},
+): unknown {
   switch (action) {
     case "version":
       return 6;
@@ -103,22 +111,36 @@ function legacy(col: FakeCollection, action: string, params: Record<string, unkn
     case "findNotes": {
       const q = String(params["query"]);
       const word = /"Word:((?:\\.|[^"\\])*)"/.exec(q)?.[1]?.replace(/\\(.)/g, "$1");
-      return [...col.notes].filter(([, n]) => !word || n.fields["Word"] === word).map(([id]) => id);
+      const tag = /(?:^|\s)tag:(\S+)/.exec(q)?.[1];
+      const model = /"note:([^"]*)"/.exec(q)?.[1];
+      return [...col.notes]
+        .filter(([, n]) => !word || n.fields["Word"] === word)
+        .filter(([id]) => !tag || col.tags.get(id)?.has(tag))
+        .filter(([, n]) => !model || n.model === model)
+        .map(([id]) => id);
     }
     case "findCards":
       return findCards(col, String(params["query"]));
     case "multi":
-      // Like AnkiConnect: a failing action gives `{ error }` in its place.
-      return (params["actions"] as { action: string; params: Record<string, unknown> }[]).map(
-        (a) => {
-          col.log.push({ action: a.action, params: a.params });
-          try {
-            return legacy(col, a.action, a.params);
-          } catch (e) {
-            return { result: null, error: (e as Error).message };
-          }
-        },
-      );
+      // Like AnkiConnect: an action sent with version 5 or later answers `{ result, error }`,
+      // an older one the plain value (and `{ result: null, error }` when it fails).
+      return (
+        params["actions"] as {
+          action: string;
+          version?: number;
+          params?: Record<string, unknown>;
+        }[]
+      ).map((a) => {
+        col.log.push({ action: a.action, params: a.params });
+        try {
+          const fail = failing[a.action];
+          if (fail) throw new Error(fail);
+          const result = legacy(col, a.action, a.params ?? {}, failing);
+          return (a.version ?? 4) >= 5 ? { result, error: null } : result;
+        } catch (e) {
+          return { result: null, error: (e as Error).message };
+        }
+      });
     case "suspend":
       for (const c of col.cards) if ((params["cards"] as number[]).includes(c.id)) c.queue = -1;
       return true;
@@ -175,7 +197,9 @@ function legacy(col: FakeCollection, action: string, params: Record<string, unkn
           noteId: id,
           modelName: n.model,
           tags: [...(col.tags.get(id) ?? [])],
-          fields: {},
+          fields: Object.fromEntries(
+            Object.entries(n.fields).map(([k, value], order) => [k, { value, order }]),
+          ),
           cards: col.cards.filter((c) => c.note === id).map((c) => c.id),
         };
       });
@@ -260,7 +284,10 @@ export function fakeAnkiWrite(col: FakeCollection, opts: FakeOptions = {}): type
     if (fail) return new Response(JSON.stringify({ result: null, error: fail }));
     try {
       return new Response(
-        JSON.stringify({ result: legacy(col, action, params ?? {}), error: null }),
+        JSON.stringify({
+          result: legacy(col, action, params ?? {}, opts.failing),
+          error: null,
+        }),
       );
     } catch (e) {
       return new Response(JSON.stringify({ result: null, error: (e as Error).message }));

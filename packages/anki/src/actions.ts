@@ -83,17 +83,16 @@ async function reviewDueTexts(
     { query: "prop:due>90", text: "due in more than three months" },
   ];
   try {
-    const results = await anki.invoke<(number[] | { error: string })[]>("multi", {
-      actions: probes.map((p) => ({
+    const results = await anki.multi<number[]>(
+      probes.map((p) => ({
         action: "findCards",
-        version: 6,
         params: { query: `cid:${ids} ${p.query}` },
       })),
-    });
+    );
     probes.forEach((p, i) => {
       const hit = results[i];
-      if (!Array.isArray(hit)) return;
-      for (const id of hit) if (!out.has(id)) out.set(id, p.text);
+      if (!hit?.ok || !Array.isArray(hit.result)) return;
+      for (const id of hit.result) if (!out.has(id)) out.set(id, p.text);
     });
   } catch {
     // The due text is cosmetic; the status stays correct without it.
