@@ -56,6 +56,7 @@ export const RPC_METHODS = {
   nativeQueue: ["string", "number", "number", "number"],
   nativeCard: ["string", "number"],
   nativeReviews: ["string"],
+  nativeCollection: ["string", "string[]"],
   nativeStats: ["string"],
   fsrsParams: ["string"],
   nativeMedia: ["string", "string[]"],

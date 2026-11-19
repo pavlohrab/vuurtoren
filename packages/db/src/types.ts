@@ -644,6 +644,18 @@ export interface NativeCardView {
   options: DeckOptions;
 }
 
+/** Native mode: everything of some decks, for an export (`nativeCollection`). */
+export interface NativeCollection {
+  notetypes: NativeNotetype[];
+  decks: { name: string; options: DeckOptions }[];
+  notes: NativeNote[];
+  cards: NativeCard[];
+  /** The review history of these cards, oldest first. */
+  reviews: CardReview[];
+  /** Media files held (name → blob id); the export keeps the ones its notes use. */
+  media: Record<string, string>;
+}
+
 /** Native mode: the cards of one review session, in order, and what is left today. */
 export interface NativeQueue {
   /** Due (re)learning and review cards first, then today's new cards. */
@@ -740,6 +752,11 @@ export interface Repository {
   nativeCard(lang: string, cardId: number): Promise<NativeCardView | null>;
   /** Native mode: the whole review history (imported and answered in Kenning), oldest first. */
   nativeReviews(lang: string): Promise<CardReview[]>;
+  /**
+   * Native mode: the note types, notes, cards, review history and media of some decks (and
+   * their subdecks); every deck when `decks` is empty. For an export.
+   */
+  nativeCollection(lang: string, decks: string[]): Promise<NativeCollection>;
   /** Native mode: notes, cards and answers held, for Settings. */
   nativeStats(lang: string): Promise<{ notes: number; cards: number; reviews: number }>;
   /** Native mode: the FSRS parameters in use, or null for the defaults. */

@@ -24,6 +24,7 @@ import type {
   AppEvent,
   FsrsParamsRecord,
   NativeCardView,
+  NativeCollection,
   NativeDeckSummary,
   NativeNoteStatus,
   NativeQueue,
@@ -447,6 +448,65 @@ export function nativeQueries(driver: SqlDriver) {
     },
 
     fsrsParams: (lang: string) => paramsOf(driver, lang),
+
+    async nativeCollection(lang: string, decks: string[]): Promise<NativeCollection> {
+      const options = await deckOptions(driver, lang);
+      const all = decks.length === 0;
+      const inDeck = (name: string) =>
+        all || decks.some((d) => name === d || name.startsWith(`${d}::`));
+      const cards = (
+        await driver.exec("SELECT * FROM native_cards WHERE lang = ? ORDER BY id", [lang])
+      )
+        .map(toCard)
+        .filter((c) => inDeck(c.deck));
+      const noteIds = new Set(cards.map((c) => c.noteId));
+      const notes: NativeNote[] = [];
+      for (const r of await driver.exec(
+        "SELECT id, data FROM native_notes WHERE lang = ? ORDER BY id",
+        [lang],
+      )) {
+        if (noteIds.has(Number(r["id"]))) notes.push(json<NativeNote>(r["data"]));
+      }
+      const typeIds = [...new Set(notes.map((n) => n.notetypeId))];
+      const notetypes = (
+        await driver.exec(
+          "SELECT data FROM native_notetypes WHERE id IN (SELECT value FROM json_each(?)) ORDER BY id",
+          [JSON.stringify(typeIds)],
+        )
+      ).map((r) => json<NativeNotetype>(r["data"]));
+      const cardIds = new Set(cards.map((c) => c.id));
+      const reviews = (
+        await driver.exec(
+          "SELECT card_id, at, rating, kind, duration_ms FROM native_reviews WHERE lang = ? ORDER BY at, id",
+          [lang],
+        )
+      )
+        .filter((r) => cardIds.has(Number(r["card_id"])))
+        .map((r) => ({
+          cardId: Number(r["card_id"]),
+          at: Number(r["at"]),
+          rating: Number(r["rating"]) as CardReview["rating"],
+          kind: String(r["kind"]) as CardReview["kind"],
+          durationMs: Number(r["duration_ms"]),
+        }));
+      const deckNames = [...new Set(cards.map((c) => c.deck))].sort();
+      const media = Object.fromEntries(
+        (await driver.exec("SELECT name, blob_id FROM native_media WHERE lang = ?", [lang])).map(
+          (r) => [String(r["name"]), String(r["blob_id"])],
+        ),
+      );
+      return {
+        notetypes,
+        decks: deckNames.map((name) => ({
+          name,
+          options: options.get(name) ?? DEFAULT_DECK_OPTIONS,
+        })),
+        notes,
+        cards,
+        reviews,
+        media,
+      };
+    },
 
     async nativeMedia(lang: string, names: string[]): Promise<Record<string, string>> {
       if (names.length === 0) return {};

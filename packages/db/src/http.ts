@@ -254,6 +254,7 @@ export async function createHttpRepository(
     nativeQueue: (lang, now, dayStart, limit) => call("nativeQueue", lang, now, dayStart, limit),
     nativeCard: (lang, cardId) => call("nativeCard", lang, cardId),
     nativeReviews: (lang) => call("nativeReviews", lang),
+    nativeCollection: (lang, decks) => call("nativeCollection", lang, decks),
     nativeStats: (lang) => call("nativeStats", lang),
     fsrsParams: (lang) => call("fsrsParams", lang),
     nativeMedia: (lang, names) =>
