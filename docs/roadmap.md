@@ -13,14 +13,17 @@
 
 Kenning holds your cards and runs the reviews itself. Anki becomes optional.
 
-**Two modes, each with one owner of the schedule.** Onboarding asks "Do you use Anki?"
+**Onboarding:** "Do you use Anki?" No → native. Yes → a choice:
 
-- **Yes → connected to Anki** (today's mode, unchanged): Anki owns the schedule; Add to Anki,
-  Study first and Mark known write to Anki.
-- **No → native:** Kenning owns the schedule. Add to Anki becomes Add to my words.
-- **Move from Anki to Kenning** (Settings, connected mode): a one-way import of your decks with
-  their review history, after which Kenning owns the schedule. Kenning never writes reviews or
-  schedules back to Anki.
+- **Import from Anki and use Kenning's scheduler** (native): one import of your decks and review
+  history; Kenning owns the schedule from then on. Add to Anki becomes Add to my words.
+- **Keep using Anki** (connected, today's mode): Anki owns the schedule and must be open for
+  Kenning to send words to it. Existing users stay here; Settings offers the same move later.
+
+**Keep Anki up to date (experimental, off by default):** in native mode, new words, Mark known
+and your reviews (with their real times, plus the resulting due date and interval) are sent to
+Anki, queued while Anki is closed. Reviews done in Anki are read back and merged by time.
+Imported cards keep their Anki note and card ids for this.
 
 **Import:**
 
