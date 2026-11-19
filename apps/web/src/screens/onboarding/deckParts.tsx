@@ -191,7 +191,9 @@ export function DestinationFields({
       <Input
         label="Default deck"
         value={d.default}
-        hint="Anything without its own deck goes here. Anki creates it with the first word."
+        hint={`Anything without its own deck goes here. ${
+          profile.mode === "native" ? "The deck is made" : "Anki creates it"
+        } with the first word.`}
         onChange={(e) => setDest({ default: e.target.value })}
       />
       {compact ? (
