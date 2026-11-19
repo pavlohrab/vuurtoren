@@ -30,8 +30,8 @@ export function createMockSync(
       await wait();
       return state;
     },
-    async setUpSync(place, passphrase, deviceName, onProgress) {
-      onProgress?.("Opening your synced data");
+    async setUpSync(place, how, passphrase, deviceName, onProgress) {
+      onProgress?.(how === "join" ? "Opening your synced data" : "Starting your sync data");
       await wait();
       if (passphrase.trim().length < 8)
         throw new Error("Use a passphrase of at least 8 characters.");
@@ -40,11 +40,13 @@ export function createMockSync(
         ...state,
         place: { kind: place.kind, label: LABEL[place.kind](place) },
         deviceName: deviceName || state.deviceName,
-        last: { at, sent: 12, received: 0 },
+        last: { at, sent: 12, received: how === "join" ? 40 : 0 },
         error: null,
         devices: devices(deviceName || state.deviceName, at),
       };
-      return { ...state, created: true, recoveryKey: "K7QM-2XRA-9F4D-HV3C-T8NW-5BJP-6GZE-1YKS" };
+      return how === "join"
+        ? { ...state, created: false, recoveryKey: null }
+        : { ...state, created: true, recoveryKey: "K7QM-2XRA-9F4D-HV3C-T8NW-5BJP-6GZE-1YKS" };
     },
     async syncNow(onProgress) {
       onProgress?.("Sending 0 changes");

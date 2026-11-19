@@ -20,6 +20,7 @@ describe("Settings → Sync", { timeout: 20_000 }, () => {
     expect(screen.queryByRole("radio", { name: /folder you already sync/ })).toBeNull();
     const start = screen.getByRole("button", { name: "Start syncing" });
     expect(start).toBeDisabled();
+    await user.click(screen.getByRole("radio", { name: /Start new sync data here/ }));
     await user.type(screen.getByLabelText("Server address"), "https://kenning.example.org");
     await user.type(screen.getByLabelText("Sync token"), "ksync_abc");
     await user.type(screen.getByLabelText("Passphrase"), "short");
@@ -45,6 +46,19 @@ describe("Settings → Sync", { timeout: 20_000 }, () => {
     await user.type(screen.getByLabelText("Current passphrase or recovery key"), "een nieuwe zin");
     await user.click(screen.getByRole("button", { name: "Make a new recovery key" }));
     expect(await screen.findByText("P3VD-8KQA-2MXN-7HTF-4WJC-9ZBE-6RGS-1YQK")).toBeVisible();
+    // A failed attempt's error goes with Cancel, and does not come back with the next form.
+    await user.click(screen.getByRole("button", { name: "Change passphrase…" }));
+    await user.type(screen.getByLabelText("Current passphrase or recovery key"), "kort");
+    await user.type(screen.getByLabelText("New passphrase"), "nog een nieuwe zin");
+    await user.click(screen.getByRole("button", { name: "Change passphrase" }));
+    expect(
+      await screen.findByText("This passphrase does not open your synced data."),
+    ).toBeVisible();
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(screen.queryByText("This passphrase does not open your synced data.")).toBeNull();
+    await user.click(screen.getByRole("button", { name: "Make a new recovery key…" }));
+    expect(screen.queryByRole("alert")).toBeNull();
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
     expect(screen.getByText(/Kenning server · kenning\.example\.org/)).toBeVisible();
     const devices = screen.getByRole("list", { name: "Devices" });
     expect(within(devices).getByText("Phone")).toBeVisible();
@@ -55,6 +69,18 @@ describe("Settings → Sync", { timeout: 20_000 }, () => {
     await user.click(screen.getByRole("button", { name: "Stop syncing" }));
     expect(await screen.findByRole("button", { name: "Start syncing" })).toBeVisible();
     expect((await services.syncStatus()).place).toBeNull();
+  });
+
+  it("joins data another device started: no recovery key, its passphrase", async () => {
+    const { user } = setup();
+    await user.click(await screen.findByRole("radio", { name: /Join my synced data/ }));
+    expect(screen.getByLabelText("Passphrase or recovery key")).toBeVisible();
+    await user.type(screen.getByLabelText("Server address"), "https://kenning.example.org");
+    await user.type(screen.getByLabelText("Sync token"), "ksync_abc");
+    await user.type(screen.getByLabelText("Passphrase or recovery key"), "lange zinnen lezen");
+    await user.click(screen.getByRole("button", { name: "Join and sync" }));
+    expect(await screen.findByText("Sync is on")).toBeVisible();
+    expect(screen.queryByRole("heading", { name: "Your recovery key" })).toBeNull();
   });
 
   it("offers WebDAV and GitHub with their own fields", async () => {
