@@ -51,7 +51,11 @@ if (authDb !== ":memory:" && resolve(authDb) === resolve(dbPath)) {
 mkdirSync(dirname(dbPath), { recursive: true });
 const store = await openStore(dbPath);
 const auth = createAuth(config.options);
-const server = createApiServer({ store, auth, nlpUrl: process.env["KENNING_NLP_URL"] || undefined });
+const server = createApiServer({
+  store,
+  auth,
+  nlpUrl: process.env["KENNING_NLP_URL"] || undefined,
+});
 server.listen(port, host, () => {
   console.log(
     `[kenning-api] ${dbPath} on http://${host}:${port} (${store.state}, auth ${auth.enabled ? auth.methods.join("+") : "OFF"})`,

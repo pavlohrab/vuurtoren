@@ -11,7 +11,7 @@ import {
   type WordState,
   profileMode,
 } from "@app/core";
-import { createHlc, createUlidGenerator, randomDeviceId } from "./ids.js";
+import { compareHlc, createHlc, createUlidGenerator, parseHlc, randomDeviceId } from "./ids.js";
 import {
   type EventContext,
   type Row,
@@ -26,6 +26,7 @@ import { projectSuggestedWords } from "./suggested.js";
 import { projectExamAttempts } from "./exam.js";
 import { SHELF_EVENT_TYPES, blobId, blobProblem, isBlobId, projectShelves } from "./library.js";
 import { PROJECTION_TABLES, migrate } from "./schema.js";
+import { EVENT_VERSIONS, canApply } from "./types.js";
 import type {
   AnkiWordEntry,
   AppEvent,
@@ -39,10 +40,36 @@ import type {
   SqlValue,
   StoredEvent,
   StoredText,
+  SyncEvent,
   TextGrammar,
   TextSummary,
   WordInfo,
 } from "./types.js";
+
+/** A well-formed event from another device: ids, clock and payload as this app writes them. */
+function isSyncEvent(x: unknown): x is SyncEvent {
+  if (!x || typeof x !== "object") return false;
+  const e = x as Partial<SyncEvent>;
+  if (typeof e.id !== "string" || !/^[0-9A-HJKMNP-TV-Z]{26}$/.test(e.id)) return false;
+  if (typeof e.deviceId !== "string" || e.deviceId.length === 0 || e.deviceId.length > 64) {
+    return false;
+  }
+  if (typeof e.hlc !== "string") return false;
+  try {
+    parseHlc(e.hlc);
+  } catch {
+    return false;
+  }
+  return (
+    typeof e.createdAt === "number" &&
+    typeof e.v === "number" &&
+    Number.isInteger(e.v) &&
+    e.v >= 1 &&
+    !!e.event &&
+    typeof e.event === "object" &&
+    typeof (e.event as { type?: unknown }).type === "string"
+  );
+}
 
 export interface RepositoryOptions {
   /** Override the persisted device id (mainly for tests). */
@@ -91,6 +118,32 @@ export interface KenningRepository extends Repository {
   exclusive<T>(fn: () => Promise<T>): Promise<T>;
   /** This device's id. */
   readonly deviceId: string;
+  /** Sync: this device's events after `afterId` (all when absent), oldest first, at most `limit`. */
+  exportEvents(afterId?: string, limit?: number): Promise<SyncEvent[]>;
+  /**
+   * Sync: store events of other devices (ids already held are skipped) and apply them in clock
+   * order: at the end when all are newer than the log, else by replaying the whole log.
+   * Events newer than this app understands are kept, and applied once the app is updated.
+   */
+  importEvents(events: SyncEvent[]): Promise<ImportResult>;
+  /**
+   * Drop what later events made useless: Anki snapshots older than the newest of their
+   * language, and the contents and analyses of deleted texts. The projections do not change.
+   */
+  compact(): Promise<{ removed: number; emptied: number }>;
+  /** This device's sync bookkeeping (cursors), never synced; null before the first sync. */
+  syncState(): Promise<unknown>;
+  setSyncState(state: unknown): Promise<void>;
+}
+
+/** What `importEvents` did. */
+export interface ImportResult {
+  /** New events stored. */
+  added: number;
+  /** Events that were not well formed and were left out. */
+  invalid: number;
+  /** True when the whole log was replayed (some events were older than the log's end). */
+  rebuilt: boolean;
 }
 
 /**
@@ -214,6 +267,32 @@ export async function createRepository(
     typeof lastId === "string" ? lastId : undefined,
   );
 
+  const toSync = (r: Row): SyncEvent => ({
+    id: String(r["id"]),
+    deviceId: String(r["device_id"]),
+    hlc: String(r["hlc"]),
+    createdAt: Number(r["created_at"]),
+    v: Number(r["v"] ?? 1),
+    event: json<AppEvent>(r["payload"]),
+  });
+
+  /** Clear the projections and apply the whole log again, in clock order across devices. */
+  async function replayAll(): Promise<void> {
+    for (const t of PROJECTION_TABLES) await driver.exec(`DELETE FROM ${t}`);
+    await driver.exec("DELETE FROM meta WHERE key LIKE 'snapshot:%'");
+    const rows = await driver.exec("SELECT * FROM events ORDER BY hlc, id");
+    for (const r of rows) {
+      const e = toSync(r);
+      await applyEvent(driver, {
+        id: e.id,
+        hlc: e.hlc,
+        createdAt: e.createdAt,
+        v: e.v,
+        event: e.event,
+      });
+    }
+  }
+
   const toStored = (r: Row): StoredEvent => ({
     id: String(r["id"]),
     deviceId: String(r["device_id"]),
@@ -314,11 +393,12 @@ export async function createRepository(
         const id = nextId();
         const stamp = hlc.tick();
         const createdAt = now();
-        const ctx: EventContext = { id, hlc: stamp, createdAt, event };
+        const v = (EVENT_VERSIONS as Record<string, number>)[event.type] ?? 1;
+        const ctx: EventContext = { id, hlc: stamp, createdAt, v, event };
         await driver.transaction(async () => {
           await driver.exec(
-            "INSERT INTO events (id, device_id, hlc, type, payload, created_at) VALUES (?,?,?,?,?,?)",
-            [id, deviceId, stamp, event.type, JSON.stringify(event), createdAt],
+            "INSERT INTO events (id, device_id, hlc, type, payload, created_at, v) VALUES (?,?,?,?,?,?,?)",
+            [id, deviceId, stamp, event.type, JSON.stringify(event), createdAt, v],
           );
           await applyEvent(driver, ctx);
         });
@@ -509,23 +589,150 @@ export async function createRepository(
         };
       }),
 
-    rebuild: () =>
+    rebuild: () => serial(() => driver.transaction(replayAll)),
+
+    exportEvents: (afterId, limit = 10_000) =>
+      serial(async () =>
+        (
+          await driver.exec(
+            `SELECT * FROM events WHERE device_id = ? AND id > ? ORDER BY id LIMIT ?`,
+            [deviceId, afterId ?? "", Math.max(1, Math.floor(limit))],
+          )
+        ).map(toSync),
+      ),
+
+    importEvents: (incoming) =>
+      serial(async () => {
+        const valid = incoming.filter(isSyncEvent);
+        const ids = valid.map((e) => e.id);
+        const held = new Set<string>();
+        for (let i = 0; i < ids.length; i += 500) {
+          for (const r of await driver.exec(
+            "SELECT id FROM events WHERE id IN (SELECT value FROM json_each(?))",
+            [JSON.stringify(ids.slice(i, i + 500))],
+          )) {
+            held.add(String(r["id"]));
+          }
+        }
+        const seen = new Set<string>();
+        const fresh = valid
+          .filter((e) => !held.has(e.id) && !seen.has(e.id) && seen.add(e.id))
+          .sort((a, b) => compareHlc(a.hlc, b.hlc) || (a.id < b.id ? -1 : 1));
+        const result = {
+          added: fresh.length,
+          invalid: incoming.length - valid.length,
+          rebuilt: false,
+        };
+        if (fresh.length === 0) return result;
+        const end = (await driver.exec("SELECT hlc FROM events ORDER BY hlc DESC LIMIT 1"))[0]?.[
+          "hlc"
+        ];
+        const inOrder = typeof end !== "string" || compareHlc(fresh[0]!.hlc, end) > 0;
+        for (const e of fresh) hlc.receive(e.hlc);
+        await driver.transaction(async () => {
+          for (const e of fresh) {
+            await driver.exec(
+              "INSERT INTO events (id, device_id, hlc, type, payload, created_at, v) VALUES (?,?,?,?,?,?,?)",
+              [e.id, e.deviceId, e.hlc, e.event.type, JSON.stringify(e.event), e.createdAt, e.v],
+            );
+            if (inOrder) {
+              await applyEvent(driver, {
+                id: e.id,
+                hlc: e.hlc,
+                createdAt: e.createdAt,
+                v: e.v,
+                event: e.event,
+              });
+            }
+          }
+          if (!inOrder) await replayAll();
+          if (fresh.some((e) => !canApply(e.event.type, e.v))) {
+            await driver.exec(
+              "INSERT INTO meta (key, value) VALUES ('unapplied_events', 'true') ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+            );
+          }
+        });
+        return { ...result, rebuilt: !inOrder };
+      }),
+
+    compact: () =>
       serial(() =>
         driver.transaction(async () => {
-          for (const t of PROJECTION_TABLES) await driver.exec(`DELETE FROM ${t}`);
-          await driver.exec("DELETE FROM meta WHERE key LIKE 'snapshot:%'");
-          const rows = await driver.exec("SELECT * FROM events ORDER BY id");
-          for (const r of rows) {
-            const s = toStored(r);
-            await applyEvent(driver, {
-              id: s.id,
-              hlc: s.hlc,
-              createdAt: Number(r["created_at"]),
-              event: s.event,
-            });
+          let removed = 0;
+          let emptied = 0;
+          // Anki snapshots: each replaces the last; only the newest per language matters.
+          const newest = new Map<string, string>();
+          const snaps = await driver.exec(
+            "SELECT id, json_extract(payload, '$.lang') AS lang FROM events WHERE type = 'AnkiSnapshotImported' ORDER BY hlc, id",
+          );
+          for (const r of snaps) newest.set(String(r["lang"]), String(r["id"]));
+          const keep = new Set(newest.values());
+          for (const r of snaps) {
+            if (keep.has(String(r["id"]))) continue;
+            await driver.exec("DELETE FROM events WHERE id = ?", [String(r["id"])]);
+            removed++;
           }
+          // Deleted texts: their analyses go, their content is emptied (the import stays).
+          const gone = (
+            await driver.exec(
+              "SELECT DISTINCT json_extract(payload, '$.textId') AS t FROM events WHERE type = 'TextDeleted'",
+            )
+          ).map((r) => String(r["t"]));
+          if (gone.length) {
+            const list = JSON.stringify(gone);
+            const heavy = await driver.exec(
+              `SELECT id FROM events WHERE type IN ('TextAnalyzed', 'TextGrammarDetected')
+                 AND json_extract(payload, '$.textId') IN (SELECT value FROM json_each(?))`,
+              [list],
+            );
+            for (const r of heavy)
+              await driver.exec("DELETE FROM events WHERE id = ?", [String(r["id"])]);
+            removed += heavy.length;
+            const imports = await driver.exec(
+              `SELECT * FROM events WHERE type = 'TextImported'
+                 AND json_extract(payload, '$.textId') IN (SELECT value FROM json_each(?))
+                 AND json_extract(payload, '$.content') != ''`,
+              [list],
+            );
+            for (const r of imports) {
+              // The log is append-only (no UPDATE): the row is replaced, same id and clock.
+              const payload = JSON.stringify({
+                ...json<Record<string, unknown>>(r["payload"]),
+                content: "",
+              });
+              await driver.exec("DELETE FROM events WHERE id = ?", [String(r["id"])]);
+              await driver.exec(
+                "INSERT INTO events (id, device_id, hlc, type, payload, created_at, v) VALUES (?,?,?,?,?,?,?)",
+                [
+                  String(r["id"]),
+                  String(r["device_id"]),
+                  String(r["hlc"]),
+                  String(r["type"]),
+                  payload,
+                  Number(r["created_at"]),
+                  Number(r["v"] ?? 1),
+                ],
+              );
+              emptied++;
+            }
+          }
+          return { removed, emptied };
         }),
       ),
+
+    syncState: () =>
+      serial(async () => {
+        const r = (await driver.exec("SELECT value FROM meta WHERE key = 'sync_state'"))[0];
+        return r ? json<unknown>(r["value"]) : null;
+      }),
+
+    setSyncState: (state) =>
+      serial(async () => {
+        await driver.exec(
+          "INSERT INTO meta (key, value) VALUES ('sync_state', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+          [JSON.stringify(state)],
+        );
+      }),
 
     events: (sinceId) =>
       serial(async () =>
@@ -621,6 +828,18 @@ export async function createRepository(
 
     close: () => serial(() => driver.close()),
   };
+
+  // Events kept from a newer app version: once this version understands them all, apply them.
+  const unapplied = (
+    await driver.exec("SELECT 1 AS x FROM meta WHERE key = 'unapplied_events'")
+  )[0];
+  if (unapplied) {
+    const types = await driver.exec("SELECT type, max(v) AS v FROM events GROUP BY type");
+    if (types.every((r) => canApply(String(r["type"]), Number(r["v"])))) {
+      await repo.rebuild();
+      await driver.exec("DELETE FROM meta WHERE key = 'unapplied_events'");
+    }
+  }
 
   // Projections are derived data: when their semantics change (PROJECTION_VERSION), rebuild them
   // once from the event log so existing databases pick up the new meaning.

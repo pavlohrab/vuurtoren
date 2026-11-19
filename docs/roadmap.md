@@ -2,7 +2,8 @@
 
 ## Next
 
-1. **Sync.** See below.
+1. **Kenning Cloud.** The hosted service behind sync: accounts, payments and a hosted language
+   server for phones. Sync itself is built and works with your own server today.
 2. **Anki in the self-hosted stack.** Headless Anki with your AnkiWeb login, read-only.
 3. **Weave reading.** An English text with Dutch islands that grow as you learn.
 4. **Phone app.** Native mode and sync; OCR through the phone's own engine (ML Kit on Android,
@@ -20,17 +21,17 @@ word, and the review screen with undo across sessions.
 
 ## Sync
 
-Your data on every device, with the event log as the unit of sync.
+Built: your data on every device through your Kenning server, a folder you already sync (desktop
+app), WebDAV or a private GitHub repository, encrypted on the device with your passphrase;
+latest-wins for settings and marks, merged reviews and answers, event versions, compaction.
 
 - **Kenning Cloud** (paid, about €3–4 a month or €30 a year, lower for students and poorer
-  countries): end-to-end encrypted sync and a hosted language server for devices that can't run
-  one, such as phones.
-- **Free alternatives:** your own Kenning server (works today), or a folder you already sync
-  (Syncthing, Dropbox, iCloud Drive), WebDAV or a private GitHub repository, all encrypted.
-- Conflicts are resolved per kind of data: reviews and answers merge, settings and word marks
-  take the latest change.
-- Before sync: event versions, compaction of Anki snapshots and deleted texts, and replay in
-  clock order across devices.
+  countries): the same sync and a hosted language server for devices that can't run one, such
+  as phones. Still to build: accounts, payments, storage limits per account.
+- **Before Kenning Cloud:** Argon2id instead of PBKDF2 for the passphrase (older vaults keep
+  working), changing the passphrase (the key is re-sealed, files are re-encrypted), an
+  optional recovery key, test runs against a real Nextcloud, GitHub and Syncthing, and an
+  outside review of the encryption code.
 - **Hosting:** one stack of three containers: `kenning` (web app, API and sync), `kenning-nlp`
   (the language server; phones need it) and, only for Keep using Anki, `anki` (headless, read
   only). Self-hosting and Kenning Cloud run the same stack.

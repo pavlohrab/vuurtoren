@@ -13,6 +13,7 @@ Contents
 7. [Worked example: "Ik bel je morgen op."](#7-worked-example-ik-bel-je-morgen-op)
 8. [Where AI is optional](#8-where-ai-is-optional)
 9. [Native mode: Kenning's own cards](#9-native-mode-kennings-own-cards)
+10. [Sync](#10-sync)
 
 ---
 
@@ -752,3 +753,45 @@ Checked by importing the file into a fresh collection with Anki 26.08: cards, du
 3. Each card reviewed in Kenning gets `setDueDate "N!"`: due on the same study day, with that gap (N days) as its interval. New and learning cards are new in Anki. Suspended cards are suspended.
 4. **With history (experimental):** `setSpecificValueOfCard` sets the exact interval, reviews and lapses, and `insertReviews` writes every answer with its real time and the interval it gave (the history replayed without fuzz, as in the export). Answers Anki already holds (`getReviewsOfCards`) are not written twice. Anki computes FSRS memory from this history when its deck options are saved or optimised.
 5. The profile becomes connected and reads the moved decks (Kenning's note type and fields), and an Anki sync runs. Kenning's own cards stay in its database, unused.
+
+## 10. Sync
+
+Your data on every device, with the event log as the unit of sync (`packages/db/src/sync/`).
+
+### 10.1 What travels
+
+Every change is an event in the append-only log ([decisions](decisions.md#data)). A device sends **its own** events, oldest first, in segments of at most 2,000, and imports the other devices' segments. Images and sounds the events refer to (covers, card media) travel as blobs. Per-device bookkeeping (what was sent, what was received from each device) stays on the device.
+
+### 10.2 The place
+
+| Path                                         | What it holds                                                                    |
+| -------------------------------------------- | -------------------------------------------------------------------------------- |
+| `kenning/vault.json`                         | how the passphrase becomes the key (salt, rounds) and a sealed value to check it |
+| `kenning/devices/<device>/<lastId>.kev`      | events of one device, up to `lastId`                                             |
+| `kenning/devices/<device>/<lastId>.base.kev` | all of a device's events up to `lastId` (folded)                                 |
+| `kenning/devices/<device>/device.kev`        | the device's name and last sync                                                  |
+| `kenning/blobs/<hmac>.kbl`                   | an image or sound                                                                |
+
+A device writes only its own folder and blobs (named by content), so places that copy files around (Syncthing, Dropbox, iCloud Drive) never see two devices write one file. Past 40 segment files a device folds its files into one base file (after compaction, 10.5) and removes the older ones; a device that already has those events skips them, a new device starts from the base file.
+
+Places: a Kenning server (`/api/sync`, a sync token made in that server's Settings → Sync opens it and nothing else), a folder (desktop app; writes go to a temporary file and are renamed), WebDAV (PROPFIND, PUT, MKCOL; through the desktop app no CORS setup is needed) and a private GitHub repository (the contents API; each write is a commit).
+
+### 10.3 Encryption
+
+PBKDF2-SHA256 with 600,000 rounds turns the passphrase and a random salt into 64 bytes: an AES-256-GCM key for every file (`KSY1` + a random 12-byte IV + ciphertext; segments are gzipped first) and an HMAC-SHA256 key for blob names, so the names do not reveal what a file holds. The passphrase is never stored; the 64 key bytes are kept in the device's own storage, like AI keys. A wrong passphrase fails the vault check; a place set up again with a new vault makes devices start over.
+
+### 10.4 Order and conflicts
+
+Events carry a hybrid logical clock (milliseconds, a counter, the device). Imported events newer than the end of the log are applied there; otherwise the projections are rebuilt from the whole log in clock order. Either way every device reaches the same state:
+
+- **Latest wins** for settings, the language profile, word marks, deck options and a text's details: the last event in clock order sets them.
+- **Merge** for reviews and answers: they add up. An answer to a native card stores the card's schedule before it; when the card has changed since (answered on another device), the answer is applied to the card as it is now (FSRS, without fuzz), so both answers count.
+- **Event versions.** Each event type has a payload version. An event newer than this app understands is stored and passed on, not applied; once the app is updated it applies it.
+
+### 10.5 Compaction
+
+`compact()` removes what later events made useless without changing any projection: Anki snapshots older than the newest of their language (each replaces the last), and of deleted texts the analyses and the content (the import stays, emptied).
+
+### 10.6 When it runs
+
+While the app is open: on focus, when it becomes visible and every 30 seconds, at most once a minute. When changes came in, the services drop their caches and every screen refetches. A sync that fails keeps its reason for Settings and shows in the top bar's indicator; changes stay on the device until the next sync.

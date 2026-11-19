@@ -22,7 +22,7 @@ const EXAMPLE_PROMPTS = [
 
 const client = createMcpTokenClient();
 
-function CopyBlock({ label, text }: { label: string; text: string }) {
+export function CopyBlock({ label, text }: { label: string; text: string }) {
   const [copied, setCopied] = useState(false);
   return (
     <div className="stack" style={{ gap: 6 }}>

@@ -11,6 +11,10 @@
  *   POST /api/import   raw SQLite body replaces the database
  *   POST /api/mcp      MCP over Streamable HTTP (Claude Code; see mcp.ts). Also accepts a
  *                      per-user MCP token, which opens nothing else.
+ *   GET  /api/sync/list?dir=   names in a sync folder        (see sync.ts: sealed files of
+ *   GET  /api/sync/file?path=  a sync file                     devices that keep their own
+ *   PUT  /api/sync/file?path=  write one (raw body)            data; also accepts a sync
+ *   DELETE /api/sync/file?path=  remove one                    token, which opens nothing else)
  *
  * When auth is on (password and/or token) every endpoint except health and the
  * sign-in routes needs a session cookie or `Authorization: Bearer <token>`. State-changing
@@ -35,6 +39,8 @@ import { type Auth, createAuth } from "./auth/index.js";
 import { HttpFail, json, readBody, streamBodyToFile } from "./http-util.js";
 import { createMcpEndpoint, type McpEndpointOptions, nlpAnalyzer } from "./mcp.js";
 import type { Store } from "./store.js";
+import { MAX_SYNC_FILE_BYTES, SyncFiles, syncPath } from "./sync.js";
+import { dirname, join } from "node:path";
 
 export interface ApiOptions {
   store: Store;
@@ -50,6 +56,21 @@ export interface ApiOptions {
   nlpUrl?: string | undefined;
   /** Analyser override (tests); defaults to the NLP service at `nlpUrl`. */
   analyze?: McpEndpointOptions["analyze"];
+  /** Folder of the sync files (default: `sync` next to the database file). */
+  syncDir?: string;
+}
+
+/** Cross-origin access to `/api/sync` with a token (no cookies): browsers syncing from elsewhere. */
+function syncCors(req: IncomingMessage): Record<string, string> {
+  const origin = req.headers.origin;
+  if (!origin) return {};
+  return {
+    "access-control-allow-origin": origin,
+    "access-control-allow-methods": "GET, PUT, DELETE, OPTIONS",
+    "access-control-allow-headers": "authorization, content-type, x-kenning",
+    "access-control-max-age": "600",
+    vary: "Origin",
+  };
 }
 
 /** Default cap of an import body (a whole database backup). */
@@ -63,10 +84,48 @@ export function createApiServer(opts: ApiOptions): Server {
   const auth = opts.auth ?? createAuth({ token: opts.token });
   const maxBody = opts.maxBodyBytes ?? DEFAULT_MAX_IMPORT_BYTES;
   const maxRpc = Math.min(opts.maxRpcBytes ?? DEFAULT_MAX_RPC_BYTES, maxBody);
+  const sync = new SyncFiles(opts.syncDir ?? join(dirname(store.path), "sync"));
   const mcp = createMcpEndpoint({
     store,
     analyze: opts.analyze ?? (opts.nlpUrl ? nlpAnalyzer(opts.nlpUrl) : undefined),
   });
+
+  async function handleSync(
+    req: IncomingMessage,
+    res: ServerResponse,
+    path: string,
+    method: string,
+    headers: Record<string, string | string[]>,
+  ): Promise<void> {
+    const q = new URL(req.url ?? "/", "http://x").searchParams;
+    if (path === "/api/sync/list" && method === "GET") {
+      return json(res, 200, { ok: true, names: sync.list(syncPath(q.get("dir"), true)) }, headers);
+    }
+    if (path === "/api/sync/file") {
+      const parts = syncPath(q.get("path"));
+      if (method === "GET") {
+        const bytes = sync.get(parts);
+        if (!bytes) throw new HttpFail(404, "No such file.");
+        res.writeHead(200, {
+          "content-type": "application/octet-stream",
+          "content-length": bytes.length,
+          "cache-control": "no-store",
+          ...headers,
+        });
+        res.end(bytes);
+        return;
+      }
+      if (method === "PUT") {
+        sync.put(parts, new Uint8Array(await readBody(req, MAX_SYNC_FILE_BYTES)));
+        return json(res, 200, { ok: true }, headers);
+      }
+      if (method === "DELETE") {
+        sync.remove(parts);
+        return json(res, 200, { ok: true }, headers);
+      }
+    }
+    throw new HttpFail(404, "Not found.");
+  }
 
   async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> {
     const path = new URL(req.url ?? "/", "http://x").pathname;
@@ -84,6 +143,11 @@ export function createApiServer(opts: ApiOptions): Server {
       });
     }
     if (!path.startsWith("/api/")) throw new HttpFail(404, "Not found.");
+    if (path.startsWith("/api/sync/") && method === "OPTIONS") {
+      res.writeHead(204, syncCors(req));
+      res.end();
+      return;
+    }
 
     const csrf = auth.csrf(req);
     if (csrf) throw new HttpFail(403, `Request refused (${csrf}).`);
@@ -92,6 +156,18 @@ export function createApiServer(opts: ApiOptions): Server {
     if (path === "/api/mcp") {
       auth.require(req, "mcp");
       return mcp(req, res);
+    }
+
+    if (path.startsWith("/api/sync/")) {
+      const cors = syncCors(req);
+      try {
+        const who = auth.require(req, "sync");
+        return await handleSync(req, res, path, method, { ...cors, ...auth.responseHeaders(who) });
+      } catch (e) {
+        if (e instanceof HttpFail)
+          throw new HttpFail(e.status, e.message, { ...e.headers, ...cors });
+        throw e;
+      }
     }
 
     const id = auth.require(req);

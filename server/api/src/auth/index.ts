@@ -6,9 +6,10 @@
  *   POST /api/auth/logout-all  ends every session (needs to be signed in)
  *   GET  /api/auth/check       204 signed in (or auth off) / 401; nginx auth_request target
  *   GET  /api/auth/me          { authEnabled, user, via, expiresAt } or 401
- *   GET  /api/auth/mcp-tokens       list MCP tokens (Claude Code; see mcpTokens.ts)
+ *   GET  /api/auth/mcp-tokens       list MCP tokens (Claude Code; see tokens.ts)
  *   POST /api/auth/mcp-tokens       {label?} -> { token, id, ... } (token shown once)
  *   DELETE /api/auth/mcp-tokens/:id revoke one
+ *   GET/POST/DELETE /api/auth/sync-tokens[/:id]  the same for sync tokens (devices that sync)
  *
  * Credentials: a password (scrypt hash) for people, an optional bearer token for scripts and
  * the MCP server. With neither, auth is off (localhost / trusted network use).
@@ -18,7 +19,7 @@ import { createHash } from "node:crypto";
 import { HttpFail, json, readJson, safeEqual } from "../http-util.js";
 import { type PasswordHash, verifyPassword } from "./password.js";
 import { LoginLimiter, type LimiterOptions } from "./ratelimit.js";
-import { McpTokenStore } from "./mcpTokens.js";
+import { MCP_TOKENS, SYNC_TOKENS, TokenStore } from "./tokens.js";
 import { SessionStore, type SessionOptions } from "./sessions.js";
 
 type AuthMethod = "password" | "token";
@@ -52,10 +53,15 @@ type Identity =
   | { via: "token" }
   /** A per-user MCP token: valid for `/api/mcp` only. */
   | { via: "mcp"; tokenId: string }
+  /** A per-device sync token: valid for `/api/sync` only. */
+  | { via: "sync"; tokenId: string }
   | { via: "session"; user: string; expiresAt: number; cookie: string; renewed: boolean };
 
-/** What a request is for: MCP tokens are accepted for "mcp" (the `/api/mcp` endpoint) only. */
-type AuthScope = "api" | "mcp";
+/**
+ * What a request is for: MCP tokens are accepted for "mcp" (`/api/mcp`) only, sync tokens for
+ * "sync" (`/api/sync`) only.
+ */
+type AuthScope = "api" | "mcp" | "sync";
 
 export interface Auth {
   readonly enabled: boolean;
@@ -100,10 +106,7 @@ function readCookie(req: IncomingMessage, name: string): string | undefined {
  *
  * @returns a reason when the request must be refused, else null
  */
-function csrfProblem(
-  req: IncomingMessage,
-  allowedOrigins: readonly string[] = [],
-): string | null {
+function csrfProblem(req: IncomingMessage, allowedOrigins: readonly string[] = []): string | null {
   const method = req.method ?? "GET";
   if (SAFE_METHODS.has(method)) return null;
   if (req.headers.authorization) return null;
@@ -159,7 +162,8 @@ export function createAuth(opts: AuthOptions = {}): Auth {
     ...opts.sessions,
   });
   const limiter = new LoginLimiter({ now, ...opts.limiter });
-  const mcpTokens = new McpTokenStore(opts.sessionDb ?? ":memory:", now);
+  const mcpTokens = new TokenStore(opts.sessionDb ?? ":memory:", MCP_TOKENS, now);
+  const syncTokens = new TokenStore(opts.sessionDb ?? ":memory:", SYNC_TOKENS, now);
   const pruneTimer = setInterval(() => sessions.prune(), 3600_000);
   pruneTimer.unref();
 
@@ -211,7 +215,7 @@ export function createAuth(opts: AuthOptions = {}): Auth {
     const authz = req.headers.authorization;
     if (authz !== undefined) {
       const given = /^Bearer\s+(\S+)\s*$/i.exec(authz)?.[1];
-      if (given !== undefined && (token || scope === "mcp")) {
+      if (given !== undefined && (token || scope !== "api")) {
         const ip = clientIp(req);
         const verdict = limiter.check(ip);
         if (!verdict.ok) return tooMany(verdict.retryAfterMs);
@@ -219,6 +223,10 @@ export function createAuth(opts: AuthOptions = {}): Auth {
         if (scope === "mcp") {
           const tokenId = mcpTokens.verify(given);
           if (tokenId) return { via: "mcp", tokenId };
+        }
+        if (scope === "sync") {
+          const tokenId = syncTokens.verify(given);
+          if (tokenId) return { via: "sync", tokenId };
         }
         limiter.fail(ip);
       }
@@ -310,9 +318,14 @@ export function createAuth(opts: AuthOptions = {}): Auth {
       return true;
     }
     if (path === "/api/auth/check" && get) {
-      // nginx's gate passes the original URI: MCP tokens are good for /api/mcp only.
+      // nginx's gate passes the original URI: MCP tokens are good for /api/mcp only, sync
+      // tokens for /api/sync only.
       const original = String(req.headers["x-original-uri"] ?? "");
-      const scope: AuthScope = /^\/api\/mcp(?:[/?]|$)/.test(original) ? "mcp" : "api";
+      const scope: AuthScope = /^\/api\/mcp(?:[/?]|$)/.test(original)
+        ? "mcp"
+        : /^\/api\/sync(?:[/?]|$)/.test(original)
+          ? "sync"
+          : "api";
       const id = identify(req, scope);
       const status = id instanceof HttpFail ? id.status : 204;
       res.writeHead(status, {
@@ -339,28 +352,32 @@ export function createAuth(opts: AuthOptions = {}): Auth {
       );
       return true;
     }
-    if (path === "/api/auth/mcp-tokens" || path.startsWith("/api/auth/mcp-tokens/")) {
+    for (const [base, store, what] of [
+      ["/api/auth/mcp-tokens", mcpTokens, "MCP"],
+      ["/api/auth/sync-tokens", syncTokens, "Sync"],
+    ] as const) {
+      if (path !== base && !path.startsWith(`${base}/`)) continue;
       require(req);
-      if (path === "/api/auth/mcp-tokens" && get) {
-        json(res, 200, { ok: true, tokens: mcpTokens.list() });
+      if (path === base && get) {
+        json(res, 200, { ok: true, tokens: store.list() });
         return true;
       }
-      if (path === "/api/auth/mcp-tokens" && method === "POST") {
+      if (path === base && method === "POST") {
         const body = await readJson<{ label?: unknown }>(req, 4 * 1024);
         let made;
         try {
-          made = mcpTokens.create(typeof body.label === "string" ? body.label : "");
+          made = store.create(typeof body.label === "string" ? body.label : "");
         } catch (e) {
           throw new HttpFail(409, e instanceof Error ? e.message : "Could not make a token.");
         }
-        console.log(`[kenning-api] MCP token ${made.id} created`);
+        console.log(`[kenning-api] ${what} token ${made.id} created`);
         json(res, 200, { ok: true, ...made });
         return true;
       }
-      const tokenId = path.slice("/api/auth/mcp-tokens/".length);
+      const tokenId = path.slice(base.length + 1);
       if (method === "DELETE" && /^[0-9a-f]{12}$/.test(tokenId)) {
-        if (!mcpTokens.revoke(tokenId)) throw new HttpFail(404, "No such token.");
-        console.log(`[kenning-api] MCP token ${tokenId} revoked`);
+        if (!store.revoke(tokenId)) throw new HttpFail(404, "No such token.");
+        console.log(`[kenning-api] ${what} token ${tokenId} revoked`);
         json(res, 200, { ok: true });
         return true;
       }
@@ -379,6 +396,7 @@ export function createAuth(opts: AuthOptions = {}): Auth {
       clearInterval(pruneTimer);
       sessions.close();
       mcpTokens.close();
+      syncTokens.close();
     },
   };
 }

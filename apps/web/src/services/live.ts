@@ -22,6 +22,9 @@ import { createLiveProfile } from "./liveProfile.js";
 import { createLiveSettings } from "./liveSettings.js";
 import { chunkText, createLiveTexts } from "./liveTexts.js";
 import { createLiveWords } from "./liveWords.js";
+import { createLiveSync } from "./liveSync.js";
+import { desktopBridge } from "../desktop/bridge.js";
+import { DEGRADED_MESSAGES, clearDegraded, reportDegraded } from "./degraded.js";
 import { type Platform, browserPlatform } from "./platform.js";
 import type { AppServices } from "./types.js";
 
@@ -162,6 +165,26 @@ export function createLiveServices(
     reviewWeek: async () => (await settings()).reviewWeek ?? [],
   });
 
+  /** Another device changed the data: drop everything derived from it. */
+  const dropCaches = () => {
+    config.invalidate();
+    learner.invalidate();
+    texts.clearPlans();
+    dictionary.clearGlosses();
+    profile.invalidate();
+    native.invalidate();
+    invalidatePractice();
+  };
+
+  // Sync applies to a device with its own data, not to a page of a Kenning server.
+  const sync = createLiveSync({
+    repo: options.remoteChanged ? null : repo,
+    storage: platform.storage,
+    fetch: platform.fetch,
+    desktop: desktopBridge()?.sync,
+    changed: dropCaches,
+  });
+
   const services: AppServices = {
     ...profile.services,
     ...library,
@@ -177,22 +200,23 @@ export function createLiveServices(
     ...words.services,
     ...config.services,
 
-    ...(options.remoteChanged
-      ? {
-          async checkRemoteChanges(): Promise<boolean> {
-            if (!(await options.remoteChanged!())) return false;
-            // Another device wrote: drop everything derived from the shared data.
-            config.invalidate();
-            learner.invalidate();
-            texts.clearPlans();
-            dictionary.clearGlosses();
-            profile.invalidate();
-            native.invalidate();
-            invalidatePractice();
-            return true;
-          },
-        }
-      : {}),
+    ...sync.services,
+    async checkRemoteChanges(): Promise<boolean> {
+      if (options.remoteChanged) {
+        if (!(await options.remoteChanged())) return false;
+        dropCaches();
+        return true;
+      }
+      // A device with its own data: sync when it is due (the caches drop on new changes).
+      try {
+        const got = await sync.tick();
+        if (sync.configured()) clearDegraded("sync");
+        return got;
+      } catch (e) {
+        reportDegraded("sync", DEGRADED_MESSAGES.sync, e);
+        return false;
+      }
+    },
   };
   return services;
 }

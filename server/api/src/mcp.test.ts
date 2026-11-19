@@ -102,7 +102,9 @@ describe("MCP tokens", () => {
     expect(made.label).toBe("Laptop");
     expect(readFileSync(join(dir, "auth.sqlite")).includes(made.token)).toBe(false);
 
-    const list = (await (await fetch(`${base}/api/auth/mcp-tokens`, { headers: { cookie } })).json()) as {
+    const list = (await (
+      await fetch(`${base}/api/auth/mcp-tokens`, { headers: { cookie } })
+    ).json()) as {
       tokens: { id: string; lastUsedAt: number | null }[];
     };
     expect(list.tokens.map((t) => t.id)).toEqual([made.id]);
@@ -138,9 +140,9 @@ describe("MCP tokens", () => {
 describe("/api/mcp", () => {
   it("serves the tools to an MCP client with an MCP token; KENNING_TOKEN works too", async () => {
     const cookie = await session();
-    const { token } = (await (
-      await jsonPost("/api/auth/mcp-tokens", {}, { cookie })
-    ).json()) as { token: string };
+    const { token } = (await (await jsonPost("/api/auth/mcp-tokens", {}, { cookie })).json()) as {
+      token: string;
+    };
 
     const client = await connect(token);
     const names = (await client.listTools()).tools.map((t) => t.name);

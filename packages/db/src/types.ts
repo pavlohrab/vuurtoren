@@ -456,8 +456,13 @@ export interface SuggestedWord {
   id: string;
 }
 
-/** Every event type this app version understands (checked against `AppEvent` at compile time). */
-const EVENT_TYPE_MAP = {
+/**
+ * Every event type this app version understands, with the version of its payload (checked
+ * against `AppEvent` at compile time). Raise a type's version when its payload changes in a way
+ * an older app would misread: older apps then keep such events without applying them, until
+ * they are updated.
+ */
+export const EVENT_VERSIONS = {
   TextImported: 1,
   TextAnalyzed: 1,
   TextGrammarDetected: 1,
@@ -506,7 +511,13 @@ const EVENT_TYPE_MAP = {
   FsrsParamsSet: 1,
 } as const satisfies Record<AppEvent["type"], 1>;
 
-export const EVENT_TYPES: ReadonlySet<string> = new Set(Object.keys(EVENT_TYPE_MAP));
+export const EVENT_TYPES: ReadonlySet<string> = new Set(Object.keys(EVENT_VERSIONS));
+
+/** True when this app version can apply an event of `type` at payload version `v`. */
+export function canApply(type: string, v: number): boolean {
+  const known = (EVENT_VERSIONS as Record<string, number>)[type];
+  return known !== undefined && v <= known;
+}
 
 /** Stored course with its outline. */
 export interface CourseRecord extends Course {
@@ -525,6 +536,18 @@ export interface BookAnswerRecord {
 
 /** Item-level helper type re-exported for consumers that edit items. */
 export type { ExerciseItem as BookExerciseItem };
+
+/** An event as it travels between devices: the log row with its payload. */
+export interface SyncEvent {
+  id: string;
+  deviceId: string;
+  hlc: string;
+  /** Wall-clock ms the event was appended on its device. */
+  createdAt: number;
+  /** Payload version (see `EVENT_VERSIONS`). */
+  v: number;
+  event: AppEvent;
+}
 
 export interface StoredEvent {
   /** ULID: time-sortable, unique across devices. */

@@ -6,7 +6,7 @@
  * ErrorNotice; this is only for "works, but with less".
  */
 
-export type DegradedSource = "nlp" | "anki" | "ai" | "translate" | "storage";
+export type DegradedSource = "nlp" | "anki" | "ai" | "translate" | "storage" | "sync";
 
 export interface DegradedEntry {
   source: DegradedSource;
@@ -94,6 +94,7 @@ export const DEGRADED_MESSAGES = {
   anki: "Anki not reachable — card status and adding cards unavailable",
   ai: "AI provider not answering — AI features limited",
   storage: "Server unreachable — changes may not be saved",
+  sync: "Sync not reaching its place — your changes stay here until it does",
 } as const satisfies Record<DegradedSource, string>;
 
 /**

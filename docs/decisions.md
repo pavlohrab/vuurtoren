@@ -97,8 +97,17 @@ Kenning writes to Anki only when you click, and tags every note it touches.
   - browser only: SQLite in OPFS, one tab at a time.
 - **Several devices on one server:** each client checks a cheap change marker on focus and every
   30 s, and refetches when another device wrote. The last write of a setting wins.
+- **Sync** (Settings → Sync), for devices that keep their own data (the desktop app, the browser's
+  own storage, later phones): each device's events travel through a place you choose — your
+  Kenning server, a folder you already sync (desktop app), WebDAV or a private GitHub repository —
+  encrypted on the device with your passphrase. The place only stores sealed files; each device
+  writes only its own. The passphrase is never stored; the key it opens is kept on the device.
+- Conflicts by kind of data: the log is replayed in clock order across devices, so the latest
+  setting, word mark or profile wins; reviews and answers merge (an answer to a card another
+  device answered meanwhile applies to the card as it is now).
+- Events carry a version: an older app keeps newer events without applying them until it is
+  updated.
 - Backups export and import the whole file in every mode.
-- Encrypted sync without a server is planned, not built.
 
 ## Language server
 

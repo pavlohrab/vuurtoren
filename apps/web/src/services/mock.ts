@@ -27,6 +27,7 @@ import { createMockGrammar } from "./mockGrammar.js";
 import { createMockPractice } from "./mockPractice.js";
 import { ImportCancelledError, type OcrReviewDoc } from "./ocrReview.js";
 import type { OcrFlag } from "@app/nlp-client";
+import { createMockSync } from "./mockSync.js";
 import type {
   AnkiStatus,
   AppServices,
@@ -594,6 +595,7 @@ export function createMockServices(
     ...createMockCourses({ latencyMs: latency }),
     ...ai,
     ...createMockExam(wait, options.synced ? demoAttempts() : []),
+    ...createMockSync(wait),
     ...grammar,
     ...library,
     async listTexts() {

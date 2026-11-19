@@ -9,6 +9,9 @@ import type { KenningRepository } from "./repository.js";
 import { type RpcMethod, type RpcResponse } from "./rpc.js";
 import type { WordKnowledge } from "@app/core";
 
+/** Sync is a device feature; in server mode the server holds the one log. */
+const SERVER_SYNC = "Sync runs on a device with its own data, not through a Kenning server.";
+
 export { backupFilename };
 
 /** Body of `GET /api/health` (never requires authentication). */
@@ -264,6 +267,12 @@ export async function createHttpRepository(
     nativeMedia: (lang, names) =>
       names.length ? call("nativeMedia", lang, names) : Promise.resolve({}),
     nativeKeyCards: (lang, keys, dayStart) => call("nativeKeyCards", lang, keys, dayStart),
+    // Sync runs on a device with its own log; a server-mode client is the server's log.
+    exportEvents: () => Promise.reject(new Error(SERVER_SYNC)),
+    importEvents: () => Promise.reject(new Error(SERVER_SYNC)),
+    compact: () => Promise.reject(new Error(SERVER_SYNC)),
+    syncState: async () => null,
+    setSyncState: () => Promise.reject(new Error(SERVER_SYNC)),
     nativeNoteStatus: (lang, noteIds, now) =>
       noteIds.length ? call("nativeNoteStatus", lang, noteIds, now) : Promise.resolve([]),
     // Cover images travel as raw bytes over /api/blobs, not as JSON.

@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-sync-dir-list"
+description = "Enables the sync_dir_list command without any pre-configured scope."
+commands.allow = ["sync_dir_list"]
+
+[[permission]]
+identifier = "deny-sync-dir-list"
+description = "Denies the sync_dir_list command without any pre-configured scope."
+commands.deny = ["sync_dir_list"]

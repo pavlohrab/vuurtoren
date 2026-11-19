@@ -55,7 +55,8 @@ function queuedRepo(store: Store): ToolRepo {
 /** NLP analysis through the NLP service (`KENNING_NLP_URL`), for the API process. */
 export function nlpAnalyzer(url: string): (text: string) => Promise<AnalyzedToken[]> {
   const client = new NlpClient({ url, timeoutMs: 60_000 });
-  return async (text) => ((await client.analyzeText("nl", [text]))[0]?.tokens ?? []) as AnalyzedToken[];
+  return async (text) =>
+    ((await client.analyzeText("nl", [text]))[0]?.tokens ?? []) as AnalyzedToken[];
 }
 
 /** Handle one request to `/api/mcp` (the caller has authenticated it). */

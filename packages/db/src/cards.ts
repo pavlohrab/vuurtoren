@@ -13,6 +13,7 @@ import {
   type NativeNote,
   type NativeNotetype,
   type WordKnowledge,
+  answerCard,
   classifyCard,
   mergeKnowledge,
   paramsDecay,
@@ -80,6 +81,20 @@ async function setSchedule(
 }
 
 const REVIEW_KIND = { 1: "learn", 2: "review", 3: "relearn" } as const;
+
+/** The same memory and due date (both new counts as the same). */
+function sameSchedule(a: CardSchedule | undefined, b: CardSchedule | undefined): boolean {
+  if (!a || !b) return !a && !b;
+  return (
+    a.due === b.due &&
+    a.lastReview === b.lastReview &&
+    a.state === b.state &&
+    a.reps === b.reps &&
+    a.lapses === b.lapses &&
+    a.stability === b.stability &&
+    a.difficulty === b.difficulty
+  );
+}
 
 /** Apply one native-mode event (inside the caller's transaction). */
 export async function applyNativeEvent(
@@ -182,9 +197,25 @@ export async function applyNativeEvent(
       return;
     }
     case "CardReviewed": {
-      const exists = await driver.exec("SELECT 1 AS x FROM native_cards WHERE id = ?", [e.cardId]);
-      if (exists.length === 0) return;
-      await setSchedule(driver, e.cardId, e.schedule);
+      const rows = await driver.exec("SELECT deck, schedule FROM native_cards WHERE id = ?", [
+        e.cardId,
+      ]);
+      const row = rows[0];
+      if (!row) return;
+      const current = row["schedule"] === null ? undefined : json<CardSchedule>(row["schedule"]);
+      let schedule = e.schedule;
+      if (!sameSchedule(current, e.previous)) {
+        // Answered on another device in the meantime (sync): this answer applies to the card
+        // as it is now, so both answers count.
+        const options = (await deckOptions(driver, e.lang)).get(String(row["deck"]));
+        const params = (await paramsOf(driver, e.lang))?.params ?? DEFAULT_FSRS_PARAMS;
+        schedule = answerCard(current, e.rating, e.at, {
+          options: options ?? DEFAULT_DECK_OPTIONS,
+          params,
+          fuzz: false,
+        });
+      }
+      await setSchedule(driver, e.cardId, schedule);
       await driver.exec(
         "INSERT OR REPLACE INTO native_reviews (id, lang, card_id, at, rating, kind, duration_ms, source, previous) VALUES (?,?,?,?,?,?,?,?,?)",
         [
@@ -193,10 +224,10 @@ export async function applyNativeEvent(
           e.cardId,
           e.at,
           e.rating,
-          e.previous ? REVIEW_KIND[e.previous.state as 1 | 2 | 3] : "learn",
+          current ? REVIEW_KIND[current.state as 1 | 2 | 3] : "learn",
           Math.max(0, Math.round(e.durationMs)),
           e.via ?? "kenning",
-          e.previous ? JSON.stringify(e.previous) : null,
+          current ? JSON.stringify(current) : null,
         ],
       );
       return;

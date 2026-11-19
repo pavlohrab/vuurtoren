@@ -1,0 +1,71 @@
+/**
+ * Sync places through the desktop app: a folder you already sync (Syncthing, Dropbox, iCloud
+ * Drive), and a fetch sent by the app for places the page cannot reach because of CORS.
+ */
+import type { SyncStore } from "@app/db";
+import type { DesktopSync } from "../desktop/bridge.js";
+
+/** The last part of a folder path, for labels ("/home/me/Sync" → "Sync"). */
+function folderName(root: string): string {
+  return root.split(/[\\/]/).filter(Boolean).at(-1) ?? root;
+}
+
+/** A synced folder on this computer as a sync place. */
+export function folderStore(sync: DesktopSync, root: string): SyncStore {
+  return {
+    label: `Folder · ${folderName(root)}`,
+    list: (dir) => sync.list(root, dir),
+    get: (path) => sync.get(root, path),
+    put: (path, bytes) => sync.put(root, path, bytes),
+    remove: (path) => sync.remove(root, path),
+  };
+}
+
+const urlOf = (input: RequestInfo | URL): string =>
+  typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+
+/** Request headers as a plain object (whatever form `init.headers` takes). */
+function headersOf(
+  init: RequestInit | undefined,
+  input: RequestInfo | URL,
+): Record<string, string> {
+  const h = new Headers(input instanceof Request ? input.headers : undefined);
+  new Headers(init?.headers).forEach((v, k) => h.set(k, v));
+  return Object.fromEntries(h.entries());
+}
+
+async function bodyOf(init: RequestInit | undefined): Promise<Uint8Array | undefined> {
+  const body = init?.body;
+  if (body === undefined || body === null) return undefined;
+  return new Uint8Array(await new Response(body).arrayBuffer());
+}
+
+/**
+ * A `fetch` sent by the desktop app. Failures of the bridge (no network, a refused address)
+ * surface as a `TypeError`, like a failed browser fetch.
+ */
+export function desktopFetch(sync: DesktopSync): typeof fetch {
+  return async (input, init) => {
+    const method = (
+      init?.method ?? (input instanceof Request ? input.method : "GET")
+    ).toUpperCase();
+    let res: Awaited<ReturnType<DesktopSync["fetch"]>>;
+    try {
+      const body = await bodyOf(init);
+      res = await sync.fetch({
+        url: urlOf(input),
+        method,
+        headers: headersOf(init, input),
+        ...(body ? { body } : {}),
+      });
+    } catch (e) {
+      throw new TypeError(e instanceof Error ? e.message : String(e), { cause: e });
+    }
+    // A Response cannot carry a body for these statuses.
+    const empty = method === "HEAD" || [101, 204, 205, 304].includes(res.status);
+    return new Response(empty ? null : (res.body as BodyInit), {
+      status: res.status,
+      headers: res.headers,
+    });
+  };
+}

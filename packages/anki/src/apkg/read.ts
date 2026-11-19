@@ -123,7 +123,7 @@ const BINARY = new TextEncoder().encode(" COLLATE binary ");
  *   without it SQLite refuses those tables. The declaration is swapped for `COLLATE binary `
  *   (the same length, so no record moves). Kenning never sorts or filters by those columns.
  */
-export function openableCollection(bytes: Uint8Array): Uint8Array {
+function openableCollection(bytes: Uint8Array): Uint8Array {
   const wal = bytes.length >= 20 && (bytes[18] === 2 || bytes[19] === 2);
   const at: number[] = [];
   outer: for (let i = bytes.indexOf(UNICASE[0]!); i >= 0; i = bytes.indexOf(UNICASE[0]!, i + 1)) {
