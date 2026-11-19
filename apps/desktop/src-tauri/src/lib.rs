@@ -418,7 +418,7 @@ async fn db_exec(
     params: Vec<Json>,
     state: tauri::State<'_, State>,
 ) -> Result<Vec<Json>, String> {
-    with_db(&state, |open| db::exec(&open.conn, &sql, &params))
+    with_db(&state, |open| db::page_exec(&open.conn, &sql, &params))
 }
 
 #[tauri::command]
