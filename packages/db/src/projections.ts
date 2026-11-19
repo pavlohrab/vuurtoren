@@ -16,6 +16,7 @@ import { contentHash } from "./hash.js";
 import { compareHlc } from "./ids.js";
 import { applyTextMeta, metaPatchFields } from "./library.js";
 import type { AnkiWordEntry, AppEvent, SqlDriver, SqlValue, WordInfo } from "./types.js";
+import { canApply } from "./types.js";
 
 /** An event plus the metadata the projections need. */
 export interface EventContext {
@@ -23,6 +24,8 @@ export interface EventContext {
   hlc: string;
   /** Wall-clock ms the event was appended (from the events table, so replays are stable). */
   createdAt: number;
+  /** Payload version (absent: 1). An event newer than this app understands is not applied. */
+  v?: number;
   event: AppEvent;
 }
 
@@ -107,6 +110,7 @@ async function addEvidence(
 /** Apply one event to the projection tables. Must run inside a transaction. */
 export async function applyEvent(driver: SqlDriver, ctx: EventContext): Promise<void> {
   const e = ctx.event;
+  if (!canApply(e.type, ctx.v ?? 1)) return;
   switch (e.type) {
     case "TextImported": {
       const hash = contentHash(e.content);

@@ -260,6 +260,11 @@ export const MIGRATIONS: readonly (readonly string[])[] = [
        data TEXT NOT NULL
      )`,
   ],
+  [
+    // Sync: the version of each event's payload (an older app keeps newer events unapplied).
+    `ALTER TABLE events ADD COLUMN v INTEGER NOT NULL DEFAULT 1`,
+    `CREATE INDEX events_device ON events (device_id, id)`,
+  ],
 ];
 
 /** Latest schema version. */
