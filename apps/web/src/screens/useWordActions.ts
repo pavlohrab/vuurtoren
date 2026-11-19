@@ -1,10 +1,10 @@
 /**
- * The word inspector's actions (Add to Anki with the deck picker, Study first in Anki, Mark
- * known, Ignore, Use Anki's state), shared by the Reader and Words so both behave the same.
+ * The word inspector's actions (Add to Anki or to my words with the deck picker, Study first,
+ * Mark known, Ignore, Use Anki's state), shared by every screen that opens the inspector.
  */
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { WordState } from "@app/core";
-import { type WordInspectorProps, useToast } from "@app/ui";
+import { type WordInspectorProps, deckName, useNativeMode, useToast } from "@app/ui";
 import { useServices } from "../services/context.js";
 import { errorText } from "../services/errors.js";
 import type { AddSource } from "../services/profileTypes.js";
@@ -27,6 +27,7 @@ export function useWordActions(source: AddSource, refresh?: () => Promise<unknow
   const services = useServices();
   const qc = useQueryClient();
   const toast = useToast();
+  const native = useNativeMode();
   const deckChoice = useDeckChoice(source);
   const deckOpts = deckChoice.chosen ? { deck: deckChoice.chosen } : undefined;
 
@@ -43,15 +44,16 @@ export function useWordActions(source: AddSource, refresh?: () => Promise<unknow
   const addToAnki = useMutation({
     mutationFn: (e: InspectorEntry) => services.addToAnki(e, deckOpts),
     onSuccess: async ({ deck }) => {
-      toast(`Added to ${deck}`);
+      toast(native ? "Added to your words" : "Added to Anki", deckName(deck));
       await done();
     },
-    onError: (e) => toast("Could not add to Anki", errorText(e)),
+    onError: (e) =>
+      toast(native ? "Could not add the word" : "Could not add to Anki", errorText(e)),
   });
   const learnNext = useMutation({
     mutationFn: (e: InspectorEntry) => services.learnNext(e),
-    onSuccess: async ({ deck }) => {
-      toast(deck ? `Moved to the front of ‘${deck}’` : "Moved to the front");
+    onSuccess: async () => {
+      toast("Moved to the front of the queue");
       await done();
     },
     onError: (e) => toast("Could not move the card", errorText(e)),
@@ -59,7 +61,12 @@ export function useWordActions(source: AddSource, refresh?: () => Promise<unknow
   const markKnown = useMutation({
     mutationFn: (e: InspectorEntry) => services.markKnown(e, deckOpts),
     onSuccess: async ({ addedToDeck }) => {
-      toast(addedToDeck ? `Added to ${addedToDeck} as known` : "Marked as known in Anki");
+      toast(
+        "Marked as known",
+        addedToDeck
+          ? `${native ? "Added to your words" : "Added to Anki"}, ${deckName(addedToDeck)}`
+          : undefined,
+      );
       await done();
     },
     onError: (e) => toast("Could not mark the word as known", errorText(e)),
@@ -67,7 +74,7 @@ export function useWordActions(source: AddSource, refresh?: () => Promise<unknow
   const resetState = useMutation({
     mutationFn: (e: InspectorEntry) => services.resetWordState(e.key),
     onSuccess: async () => {
-      toast("Using Anki’s state");
+      toast(native ? "Using the card’s state" : "Using Anki’s state");
       await done();
     },
     onError: (e) => toast("Could not reset the word", errorText(e)),

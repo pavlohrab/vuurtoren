@@ -3,12 +3,22 @@ import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-quer
 import { Link, useParams } from "@tanstack/react-router";
 import { ArrowLeft, ArrowRight, Dumbbell, ListChecks, MessagesSquare } from "lucide-react";
 import { useMemo, useState } from "react";
-import { AddToAnki, AnkiStatusChip, Button, EmptyState, Lemma, Select, Skeleton } from "@app/ui";
+import {
+  AddToAnki,
+  AnkiStatusChip,
+  Button,
+  EmptyState,
+  Lemma,
+  Select,
+  Skeleton,
+  useNativeMode,
+} from "@app/ui";
 import { useServices } from "../../services/context.js";
 import type { InspectorEntry, TextWordItem } from "../../services/types.js";
 import { useDeckChoice } from "../useDeckChoice.js";
 import { usePageHeader } from "../../shell/ShellContext.js";
 import { PageHeader } from "../../shell/PageHeader.js";
+import { ErrorNotice } from "../../shell/ErrorNotice.js";
 import {
   type Job,
   type RowResult,
@@ -21,9 +31,6 @@ import {
 } from "./textWordsActions.js";
 
 import "./textWords.css";
-
-const errorMessage = (e: unknown): string =>
-  e instanceof Error && e.message ? e.message : "Something went wrong. Try again.";
 
 const SOURCE_LABEL: Record<TextWordItem["source"], string | null> = {
   introduce: null,
@@ -44,7 +51,7 @@ export function TextWordsRoute() {
 export function TextWords({ textId }: { textId: string }) {
   const services = useServices();
   const qc = useQueryClient();
-  const [includeGlossed, setIncludeGlossed] = useState(false);
+  const native = useNativeMode();
   /** Actions the learner changed; rows not listed use the default for their Anki state. */
   const [choices, setChoices] = useState<ReadonlyMap<string, WordAction>>(new Map());
   const [results, setResults] = useState<ReadonlyMap<string, RowResult>>(new Map());
@@ -60,8 +67,8 @@ export function TextWords({ textId }: { textId: string }) {
   usePageHeader(reading.data?.text.title ?? "Words");
   // No refetch on focus: statuses must not shift while the learner is choosing or applying.
   const words = useQuery({
-    queryKey: ["textWords", textId, includeGlossed],
-    queryFn: () => services.textWords(textId, { includeGlossed }),
+    queryKey: ["textWords", textId],
+    queryFn: () => services.textWords(textId),
     placeholderData: keepPreviousData,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
@@ -69,13 +76,13 @@ export function TextWords({ textId }: { textId: string }) {
 
   const deckChoice = useDeckChoice(reading.data?.text.sourceKind === "ai" ? "ai" : "reading");
   const actionOf = (w: TextWordItem): WordAction =>
-    choices.get(w.key) ?? defaultAction(w.entry.anki.status);
+    choices.get(w.key) ?? defaultAction(w.entry.anki.status, w.source);
   const isDone = (w: TextWordItem) => results.get(w.key)?.ok === true;
 
   const jobs: Job[] = useMemo(
     () =>
       (words.data ?? []).flatMap((item) => {
-        const action = choices.get(item.key) ?? defaultAction(item.entry.anki.status);
+        const action = choices.get(item.key) ?? defaultAction(item.entry.anki.status, item.source);
         const locked =
           results.get(item.key)?.ok === true || item.entry.anki.status === "unavailable";
         return action === "skip" || locked ? [] : [{ item, action }];
@@ -131,7 +138,8 @@ export function TextWords({ textId }: { textId: string }) {
         lede={
           <>
             {title ? `From “${title}”. ` : ""}
-            Choose what to do with each word, then apply. Nothing changes in Anki until you do.
+            Choose what to do with each word, then apply.{" "}
+            {native ? "Nothing changes until you do." : "Nothing changes in Anki until you do."}
           </>
         }
         actions={
@@ -163,14 +171,6 @@ export function TextWords({ textId }: { textId: string }) {
       />
 
       <div className="tw-toolbar">
-        <label className="tw-check">
-          <input
-            type="checkbox"
-            checked={includeGlossed}
-            onChange={(e) => setIncludeGlossed(e.target.checked)}
-          />
-          Show translated words too
-        </label>
         <span className="tw-links">
           <Link to="/words" search={{ source: `text:${textId}` }} className="k-link">
             Open in Words <ArrowRight size={14} aria-hidden />
@@ -185,21 +185,26 @@ export function TextWords({ textId }: { textId: string }) {
           ))}
         </div>
       ) : words.isError && !list ? (
-        <div role="alert" className="stack">
-          <p className="error-text">The words could not be loaded. {errorMessage(words.error)}</p>
-          <div>
-            <Button onClick={() => void words.refetch()}>Try again</Button>
-          </div>
-        </div>
+        <ErrorNotice
+          title="The words could not be loaded."
+          error={words.error}
+          onRetry={() => void words.refetch()}
+          retryLabel="Try again"
+        />
       ) : list && list.length === 0 ? (
         <EmptyState
-          icon={<ListChecks size={28} />}
+          icon={<ListChecks size={20} />}
           title="No new words in this text"
-          description="Nothing was highlighted or looked up here, so there is nothing to add."
+          description="You knew every word here, so there is nothing to add."
           action={
-            <Link to="/library" className="k-btn k-btn--primary">
-              Back to the library
-            </Link>
+            <>
+              <Link to="/read/$textId" params={{ textId }} className="k-btn k-btn--primary">
+                <ArrowLeft size={16} aria-hidden /> Back to the text
+              </Link>
+              <Link to="/library" className="k-btn k-btn--ghost">
+                Library
+              </Link>
+            </>
           }
         />
       ) : (
@@ -258,6 +263,7 @@ interface WordRowProps {
 
 /** One word: headword, meaning, the sentence with the word highlighted, status and action. */
 function WordRow({ item, action, result, done, disabled, onAction }: WordRowProps) {
+  const native = useNativeMode();
   const { anki } = item.entry;
   const unavailable = anki.status === "unavailable";
   const [from, to] = item.sentenceHighlight;
@@ -271,7 +277,7 @@ function WordRow({ item, action, result, done, disabled, onAction }: WordRowProp
         <AnkiStatusChip status={anki.status} />
         {source ? <span className="tw-source">{source}</span> : null}
       </div>
-      <p className="tw-meaning">{item.glosses[0] ?? "No meaning found"}</p>
+      <p className="tw-meaning">{item.glosses[0] ?? "No meaning yet"}</p>
       <p className="tw-sentence" lang="nl">
         {s.slice(0, from)}
         <mark>{s.slice(from, to)}</mark>

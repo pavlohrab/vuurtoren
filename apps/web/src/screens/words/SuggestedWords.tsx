@@ -25,7 +25,7 @@ export function SuggestedWords() {
     mutationFn: (key: string) =>
       services.addSuggestedToAnki(key, deckChoice.chosen ? { deck: deckChoice.chosen } : undefined),
     onSuccess: ({ deck }) => {
-      toast(`Added to ${deck}`);
+      toast("Added", deck.split("::").at(-1));
       refresh();
     },
     onError: (e) => toast("Could not add the word", errorText(e)),
@@ -47,14 +47,14 @@ export function SuggestedWords() {
           aria-controls="suggested-words"
           onClick={() => setOpen((o) => !o)}
         >
-          <Sparkles size={14} aria-hidden /> Suggested by Claude ({list.length})
+          <Sparkles size={14} aria-hidden /> Suggested ({list.length})
         </button>
       </div>
       {open ? (
         <ul
           id="suggested-words"
           className="stack"
-          aria-label="Suggested by Claude"
+          aria-label="Suggested words"
           style={{ margin: 0, padding: 0, listStyle: "none", gap: 8 }}
         >
           {list.map((s) => (

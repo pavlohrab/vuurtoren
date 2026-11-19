@@ -259,6 +259,11 @@ export interface AppServices
    */
   textWords(textId: string): Promise<TextWordItem[]>;
   /**
+   * Words to decide on (Words' first view): the new words of the learner's texts, newest text
+   * first, that have no card yet and are not ignored, each with a meaning when one is known.
+   */
+  wordsToDecide(opts?: { limit?: number }): Promise<WordInfo[]>;
+  /**
    * Short translations for many tokens at once (missing keys = no translation found). A guess
    * carries a `note`: "from woord + -loos" (built from the word's parts) or "in this sentence"
    * (read off the sentence translation).

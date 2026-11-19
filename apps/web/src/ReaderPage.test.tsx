@@ -288,7 +288,7 @@ describe("the reader bar, footer and word panel", () => {
 
 describe("Anki write actions in the inspector", () => {
   const buttons = () => screen.getAllByRole("button").map((b) => b.textContent);
-  const ADD = "Add to …::Nederlands::Reading";
+  const ADD = "Add to Anki";
   const inspectorButtons = (...names: string[]) =>
     names.forEach((n) => expect(screen.getByRole("button", { name: n })).toBeInTheDocument());
 
@@ -302,13 +302,12 @@ describe("Anki write actions in the inspector", () => {
     await userEvent.click(await screen.findByText("grachten"));
     await screen.findByRole("button", { name: ADD });
     inspectorButtons("Mark known", "Ignore");
-    expect(
-      screen.getByText(/Mark known adds it to ‘Kenning::Nederlands::Reading’ as known/),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/Mark known adds it to Anki as known/)).toBeInTheDocument();
+    // No deck path on the word: the deck is named only in the Add menu.
+    expect(screen.queryByText(/Kenning::Nederlands/)).toBeNull();
     await userEvent.click(screen.getByRole("button", { name: "Mark known" }));
-    expect(
-      await screen.findByText("Added to Kenning::Nederlands::Reading as known"),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("Marked as known")).toBeInTheDocument();
+    expect(await screen.findByText("Added to Anki, Reading")).toBeInTheDocument();
     expect(await screen.findByText("In review · due in 28 days")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Mark known" })).toBeNull();
     await userEvent.click(screen.getByRole("button", { name: /Use Anki.s state/ }));
@@ -322,7 +321,8 @@ describe("Anki write actions in the inspector", () => {
     setup("/read/t-utrecht");
     await userEvent.click(await screen.findByText("grachten"));
     await userEvent.click(await screen.findByRole("button", { name: ADD }));
-    expect(await screen.findByText("Added to Kenning::Nederlands::Reading")).toBeInTheDocument();
+    expect(await screen.findByText("Added to Anki")).toBeInTheDocument();
+    expect(await screen.findByText("Reading")).toBeInTheDocument();
     expect(await screen.findByRole("button", { name: "Study first in Anki" })).toBeInTheDocument();
   });
 
@@ -331,11 +331,12 @@ describe("Anki write actions in the inspector", () => {
     await userEvent.click(await screen.findByText("grachten"));
     await userEvent.click(await screen.findByRole("button", { name: /Choose the deck/ }));
     await userEvent.click(screen.getByRole("option", { name: /Dutch::Core 2k/ }));
-    await userEvent.click(await screen.findByRole("button", { name: "Add to Dutch::Core 2k" }));
-    expect(await screen.findByText("Added to Dutch::Core 2k")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Choose the deck (now Core 2k)" })).toBeVisible();
+    await userEvent.click(await screen.findByRole("button", { name: ADD }));
+    expect(await screen.findByText("Core 2k")).toBeInTheDocument();
   });
 
-  it("new card: Study first in Anki moves it and says where", async () => {
+  it("new card: Study first in Anki moves it to the front", async () => {
     const learn = vi.fn();
     setup("/read/t-utrecht", (s) => ({
       ...s,
@@ -346,16 +347,10 @@ describe("Anki write actions in the inspector", () => {
     }));
     await openSecondSegment();
     await userEvent.click(await screen.findByText("neemt"));
-    expect(
-      await screen.findByText(
-        "Moves its card to the front of \u2018A Frequency Dictionary of Dutch\u2019",
-      ),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("Moves its card to the front of the queue")).toBeInTheDocument();
     expect(buttons()).toContain("Study first in Anki");
     await userEvent.click(screen.getByRole("button", { name: "Study first in Anki" }));
-    expect(
-      await screen.findByText("Moved to the front of \u2018A Frequency Dictionary of Dutch\u2019"),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("Moved to the front of the queue")).toBeInTheDocument();
     expect(learn).toHaveBeenCalledWith("new");
     expect(
       await screen.findByText("New card · next in A Frequency Dictionary of Dutch"),
@@ -376,7 +371,7 @@ describe("Anki write actions in the inspector", () => {
     await userEvent.click(await screen.findByText("trein"));
     expect(await screen.findByText("In review · due in 6 days")).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Mark known" }));
-    expect(await screen.findByText("Marked as known in Anki")).toBeInTheDocument();
+    expect(await screen.findByText("Marked as known")).toBeInTheDocument();
   });
 
   it("Anki unreachable: shows the reason and disables the actions", async () => {

@@ -272,6 +272,7 @@ export function createLiveWords(deps: LiveWordsDeps) {
     | "inspect"
     | "inspectWord"
     | "textWords"
+    | "wordsToDecide"
     | "addToAnki"
     | "learnNext"
     | "markKnown"
@@ -359,6 +360,43 @@ export function createLiveWords(deps: LiveWordsDeps) {
         if (tr) r.entry.sentenceTranslation = tr;
       }
       return rows;
+    },
+
+    async wordsToDecide({ limit } = {}) {
+      const l = await lang();
+      const list = (await repo.listTexts())
+        .filter((t) => t.analyzed)
+        .sort((a, b) => b.createdAt - a.createdAt);
+      const keys = new Set<string>();
+      for (const t of list) {
+        const v = await texts.view(t.id);
+        if (v) for (const w of pickTextWords(v, new Set())) keys.add(w.key);
+      }
+      const infos = new Map((await repo.wordsByKeys(l, [...keys])).map((w) => [w.key, w]));
+      const open = [...keys]
+        .filter((k) => {
+          const i = infos.get(k);
+          return !i || (i.noteIds.length === 0 && i.state !== "ignored" && i.state !== "known");
+        })
+        .slice(0, limit);
+      const dict = await dictionary.dictionaryFor(open);
+      return open.map((key): WordInfo => {
+        const info = infos.get(key) ?? null;
+        const { glosses, article } = composeGlosses(info, dict[key], "");
+        return {
+          ...(info ?? {
+            key,
+            state: "unknown",
+            pKnown: 0,
+            source: "app",
+            decks: [],
+            lookups: 0,
+            noteIds: [],
+          }),
+          ...(glosses[0] ? { gloss: glosses[0] } : {}),
+          ...(article ? { article } : {}),
+        };
+      });
     },
 
     addToAnki,

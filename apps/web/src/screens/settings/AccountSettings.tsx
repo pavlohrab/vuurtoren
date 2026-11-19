@@ -1,3 +1,4 @@
+import { SELF_HOSTING_URL } from "./ClaudeCodeSettings.js";
 import { useState } from "react";
 import { Button, Dialog } from "@app/ui";
 import { DesktopServer } from "../../desktop/DesktopServer.js";
@@ -38,7 +39,11 @@ export function AccountSettings() {
         <p style={{ margin: 0, color: "var(--ink-muted)" }}>
           Sign-in is off on this server: anyone who can open this address can read and change your
           data. That is fine on your own computer. Before you make it reachable from the internet,
-          set a password (see deploy/README.md).
+          set a password:{" "}
+          <a href={`${SELF_HOSTING_URL}#sign-in`} target="_blank" rel="noreferrer">
+            how to turn on sign-in
+          </a>
+          .
         </p>
       ) : (
         <>

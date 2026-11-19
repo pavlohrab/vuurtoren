@@ -1,14 +1,14 @@
 /**
- * Words: the hub of the learning loop. Every word Kenning knows about, filterable by state,
- * source (a text, a course unit, the last practice session) and search, all kept in the URL
- * (`/words?state=&source=text:<id>|unit:<course>/<n>|practice-again&q=&word=<key>`). A row
- * opens the shared word inspector with the reader's actions; a selection goes to Anki, to
- * Practice or to Talk in one step.
+ * Words: the hub of the learning loop. It opens on the words to decide on (the new words of
+ * your texts without a card, newest text first); other views list words by state, source (a
+ * text, a course unit, the last practice session) and search, all kept in the URL
+ * (`/words?state=decide|new|learning|known|ignored|all&source=…&q=&word=<key>`). A row opens
+ * the shared word inspector; in Select mode a selection goes to Anki, Practice or Talk.
  */
 import { pct, plural } from "../../format.js";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
-import { Dumbbell, Languages, MessagesSquare, X } from "lucide-react";
+import { Columns3, Dumbbell, Languages, MessagesSquare, SquareCheck, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import type { WordState } from "@app/core";
@@ -18,18 +18,23 @@ import {
   EmptyState,
   Input,
   Lemma,
+  Popover,
   Select,
   Skeleton,
-  WORD_STATE_LABEL,
   WordInspector,
   WordStateChip,
+  deckName,
+  useNativeMode,
   useToast,
 } from "@app/ui";
 import { readPracticeAgain } from "../../lastPractice.js";
+import { readLocalJSON, writeLocalJSON } from "../../storage/local.js";
 import { useServices } from "../../services/context.js";
 import { errorText } from "../../services/errors.js";
 import type { AppServices, InspectorEntry } from "../../services/types.js";
+import type { WordInfo } from "@app/db";
 import { PageHeader } from "../../shell/PageHeader.js";
+import { ErrorNotice } from "../../shell/ErrorNotice.js";
 import { useShell } from "../../shell/ShellContext.js";
 import { revealAboveSheet } from "../../shell/revealAboveSheet.js";
 import { useDebounced } from "../../useDebounced.js";
@@ -38,7 +43,44 @@ import { useWordActions } from "../useWordActions.js";
 import "./words.css";
 
 const PAGE_SIZE = 50;
-const STATES: WordState[] = ["known", "learning", "seen", "unknown", "ignored"];
+
+/** The views of the list: words to decide on, then by state. */
+export type WordsView = "decide" | "new" | "learning" | "known" | "ignored" | "all";
+const VIEWS: { id: WordsView; label: string }[] = [
+  { id: "decide", label: "To decide" },
+  { id: "new", label: "New" },
+  { id: "learning", label: "Learning" },
+  { id: "known", label: "Known" },
+  { id: "ignored", label: "Ignored" },
+  { id: "all", label: "All" },
+];
+
+/** The view of `state` in the URL; without one, To decide (or All words of a source). */
+export function parseView(raw: string | undefined, hasSource: boolean): WordsView {
+  if (raw === "unknown" || raw === "seen") return "new";
+  const v = VIEWS.find((x) => x.id === raw);
+  return v ? v.id : hasSource ? "all" : "decide";
+}
+
+/** Does a word belong in a view? "New" holds words met but not learned (new and seen). */
+function inView(view: WordsView, r: { state: WordState; hasCard?: boolean | undefined }): boolean {
+  if (view === "all") return true;
+  const fresh = r.state === "unknown" || r.state === "seen";
+  if (view === "decide") return fresh && !r.hasCard;
+  if (view === "new") return fresh;
+  return r.state === view;
+}
+
+/** Optional table columns, off by default; the choice is remembered on this device. */
+export interface WordColumns {
+  recall: boolean;
+  decks: boolean;
+}
+const COLUMNS_KEY = "kenning-words-columns";
+function readColumns(): WordColumns {
+  const v = readLocalJSON(COLUMNS_KEY) as Partial<WordColumns> | undefined;
+  return { recall: v?.recall === true, decks: v?.decks === true };
+}
 
 /** Where the listed words come from (the `source` search param). */
 export type WordSource =
@@ -66,21 +108,35 @@ export interface WordRow {
   pKnown: number | null;
   gloss?: string | undefined;
   decks: string[];
+  /** The word has a card (in Anki, or Kenning's own). */
+  hasCard?: boolean | undefined;
   /** Inspector entry when the source has one (a text: with its sentence from that text). */
   entry?: InspectorEntry;
 }
+
+const rowOf = (w: WordInfo): WordRow => ({
+  key: w.key,
+  lemma: w.key,
+  article: w.article,
+  state: w.state,
+  appLearning: w.appLearning,
+  pKnown: w.pKnown,
+  gloss: w.gloss,
+  decks: w.decks,
+  hasCard: w.noteIds.length > 0,
+});
 
 /** Rows for a source and filters. Text and unit lists are filtered here; the rest by the service. */
 export async function loadRows(
   services: AppServices,
   source: WordSource | null,
-  filters: { state?: WordState | undefined; query?: string | undefined; limit: number },
+  filters: { view: WordsView; query?: string | undefined; limit: number },
 ): Promise<WordRow[]> {
-  const { state, query, limit } = filters;
+  const { view, query, limit } = filters;
   const q = query?.toLowerCase();
-  const keep = (r: WordRow) =>
-    (!state || r.state === state) &&
-    (!q || r.key.toLowerCase().includes(q) || (r.gloss ?? "").toLowerCase().includes(q));
+  const matches = (r: WordRow) =>
+    !q || r.key.toLowerCase().includes(q) || (r.gloss ?? "").toLowerCase().includes(q);
+  const keep = (r: WordRow) => inView(view, r) && matches(r);
   if (source?.kind === "text") {
     const items = await services.textWords(source.textId);
     return items
@@ -93,6 +149,7 @@ export async function loadRows(
         pKnown: w.entry.pKnown,
         gloss: w.glosses[0],
         decks: w.entry.decks,
+        hasCard: w.entry.anki.noteIds.length > 0,
         entry: w.entry,
       }))
       .filter(keep);
@@ -108,27 +165,26 @@ export async function loadRows(
         pKnown: null,
         gloss: w.gloss ?? undefined,
         decks: w.decks,
+        hasCard: w.state !== "absent",
       }))
       .filter(keep);
   }
   const keys = source?.kind === "practice-again" ? readPracticeAgain() : undefined;
   if (keys && keys.length === 0) return [];
-  const infos = await services.words({
-    limit,
-    ...(keys ? { keys } : {}),
-    ...(state ? { state } : {}),
-    ...(query ? { query } : {}),
-  });
-  return infos.map((w) => ({
-    key: w.key,
-    lemma: w.key,
-    article: w.article,
-    state: w.state,
-    appLearning: w.appLearning,
-    pKnown: w.pKnown,
-    gloss: w.gloss,
-    decks: w.decks,
-  }));
+  if (view === "decide" && !keys) {
+    return (await services.wordsToDecide({ limit })).map(rowOf).filter(matches);
+  }
+  const base = { limit, ...(keys ? { keys } : {}), ...(query ? { query } : {}) };
+  if (view === "new") {
+    const [fresh, seen] = await Promise.all([
+      services.words({ ...base, state: "unknown" }),
+      services.words({ ...base, state: "seen" }),
+    ]);
+    return [...seen, ...fresh].map(rowOf);
+  }
+  if (view === "decide") return (await services.words(base)).map(rowOf).filter(keep);
+  const state = view === "all" ? undefined : view;
+  return (await services.words({ ...base, ...(state ? { state } : {}) })).map(rowOf);
 }
 
 interface WordsSearch {
@@ -142,15 +198,15 @@ interface WordsSearch {
 export function Words() {
   const services = useServices();
   const toast = useToast();
+  const native = useNativeMode();
   const qc = useQueryClient();
   const params: WordsSearch = useSearch({ from: "/words" });
   const navigate = useNavigate();
   const { inspectorEl, setInspectorAvailable, setInspectorOpen } = useShell();
 
-  const state = STATES.includes(params.state as WordState)
-    ? (params.state as WordState)
-    : undefined;
   const source = parseSource(params.source);
+  const view = parseView(params.state, source !== null);
+  const defaultView: WordsView = source ? "all" : "decide";
   const word = params.word;
   const setSearch = (patch: Partial<Record<keyof WordsSearch, string | undefined>>) => {
     const next: Record<string, string | undefined> = { ...params, ...patch };
@@ -168,11 +224,23 @@ export function Words() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search]);
   const [limit, setLimit] = useState(PAGE_SIZE);
+  const [selecting, setSelecting] = useState(false);
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
+  const [columns, setColumns] = useState<WordColumns>(readColumns);
+  const toggleColumn = (k: keyof WordColumns) =>
+    setColumns((c) => {
+      const next = { ...c, [k]: !c[k] };
+      writeLocalJSON(COLUMNS_KEY, next);
+      return next;
+    });
+  const stopSelecting = () => {
+    setSelecting(false);
+    setSelected(new Set());
+  };
 
   const rows = useQuery({
-    queryKey: ["words", "rows", params.source ?? null, state ?? null, params.q ?? "", limit],
-    queryFn: () => loadRows(services, source, { state, query: params.q, limit }),
+    queryKey: ["words", "rows", params.source ?? null, view, params.q ?? "", limit],
+    queryFn: () => loadRows(services, source, { view, query: params.q, limit }),
     placeholderData: keepPreviousData,
   });
   const texts = useQuery({ queryKey: ["texts"], queryFn: () => services.listTexts() });
@@ -252,21 +320,21 @@ export function Words() {
     },
     onSuccess: ({ added, skipped, failed, deck }) => {
       const notes = [
-        skipped ? `${skipped} already in Anki` : "",
+        skipped ? `${skipped} already ${native ? "in your words" : "in Anki"}` : "",
         failed ? `${failed} could not be added` : "",
       ].filter(Boolean);
       toast(
-        added ? `Added ${plural(added, "word")} to ${deck}` : "Nothing to add",
-        notes.length ? notes.join(" · ") : undefined,
+        added ? `Added ${plural(added, "word")}${native ? "" : " to Anki"}` : "Nothing to add",
+        [added ? deckName(deck) : "", ...notes].filter(Boolean).join(" · ") || undefined,
       );
-      setSelected(new Set());
+      stopSelecting();
       for (const k of ["words", "inspect-word", "texts", "learner", "home", "textWords"])
         void qc.invalidateQueries({ queryKey: [k] });
     },
     onError: (e) => toast("Could not add the words", errorText(e)),
   });
 
-  const filtered = Boolean(state || source || params.q);
+  const filtered = Boolean(view !== defaultView || source || params.q);
   const practiseKeys = (chosenKeys.length ? chosenKeys : list.map((r) => r.key)).slice(0, 30);
   const again = readPracticeAgain();
   const sourceOptions = [
@@ -282,7 +350,7 @@ export function Words() {
     <div className="page page--list words-page">
       <PageHeader
         title="Words"
-        lede="Every word Kenning knows about, from Anki and from your reading. Open one to act on it."
+        lede="New words from your reading wait here for you to decide: learn them, mark them known or leave them. Open one to act on it."
         actions={
           list.length > 0 ? (
             <Link
@@ -297,20 +365,20 @@ export function Words() {
       />
 
       <div className="words-filters" role="group" aria-label="Filters">
-        <div className="words-states" role="radiogroup" aria-label="State">
-          {[undefined, ...STATES].map((s) => (
+        <div className="words-states" role="radiogroup" aria-label="Show">
+          {VIEWS.map((v) => (
             <button
-              key={s ?? "all"}
+              key={v.id}
               type="button"
               role="radio"
-              aria-checked={state === s}
+              aria-checked={view === v.id}
               className="words-state"
               onClick={() => {
                 setLimit(PAGE_SIZE);
-                setSearch({ state: s });
+                setSearch({ state: v.id === defaultView ? undefined : v.id });
               }}
             >
-              {s ? WORD_STATE_LABEL[s] : "All"}
+              {v.label}
             </button>
           ))}
         </div>
@@ -339,6 +407,43 @@ export function Words() {
               }}
             />
           </div>
+          <div className="words-tools">
+            <Popover
+              align="end"
+              label="Columns"
+              className="words-columns"
+              trigger={
+                <Button variant="ghost" size="sm">
+                  <Columns3 size={14} aria-hidden /> Columns
+                </Button>
+              }
+            >
+              <label className="words-column-opt">
+                <input
+                  type="checkbox"
+                  checked={columns.recall}
+                  onChange={() => toggleColumn("recall")}
+                />
+                Recall
+              </label>
+              <label className="words-column-opt">
+                <input
+                  type="checkbox"
+                  checked={columns.decks}
+                  onChange={() => toggleColumn("decks")}
+                />
+                Decks
+              </label>
+            </Popover>
+            <Button
+              variant={selecting ? "secondary" : "ghost"}
+              size="sm"
+              aria-pressed={selecting}
+              onClick={() => (selecting ? stopSelecting() : setSelecting(true))}
+            >
+              <SquareCheck size={14} aria-hidden /> Select
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -352,9 +457,9 @@ export function Words() {
               onClear={() => setSearch({ source: undefined })}
             />
           ) : null}
-          {state ? (
+          {view !== defaultView ? (
             <FilterChip
-              label={`State: ${WORD_STATE_LABEL[state]}`}
+              label={`Showing: ${VIEWS.find((v) => v.id === view)?.label ?? view}`}
               onClear={() => setSearch({ state: undefined })}
             />
           ) : null}
@@ -385,15 +490,31 @@ export function Words() {
       {rows.isPending ? (
         <Skeleton style={{ height: 160, borderRadius: 10 }} />
       ) : rows.isError ? (
-        <p className="error-text">Words could not be loaded. {errorText(rows.error)}</p>
+        <ErrorNotice
+          title="Words could not be loaded."
+          error={rows.error}
+          onRetry={() => void rows.refetch()}
+          retryLabel="Try again"
+        />
       ) : list.length === 0 && !filtered ? (
         <EmptyState
-          icon={<Languages size={28} />}
+          icon={<Languages size={20} />}
           title="No words yet"
           description="Words arrive when you sync your Anki decks or read a text. Start with a text you want to read."
           action={
             <Link to="/import" className="k-btn k-btn--primary">
               Import a text
+            </Link>
+          }
+        />
+      ) : list.length === 0 && view === "decide" && !source && !params.q ? (
+        <EmptyState
+          icon={<Languages size={20} />}
+          title="Nothing to decide"
+          description="Every new word from your texts has a card or a decision. New words appear here as you read."
+          action={
+            <Link to="/library" className="k-btn k-btn--secondary">
+              Find something to read
             </Link>
           }
         />
@@ -403,7 +524,7 @@ export function Words() {
           description={
             source?.kind === "practice-again"
               ? "Nothing to look at again: every answer in your last session was right."
-              : "Try a different state, source or search."
+              : "Try another view, source or search."
           }
         />
       ) : (
@@ -412,21 +533,23 @@ export function Words() {
             <table className="data-table words-table">
               <thead>
                 <tr>
-                  <th className="words-check">
-                    <input
-                      type="checkbox"
-                      aria-label="Select all words shown"
-                      checked={allSelected}
-                      onChange={() =>
-                        setSelected(allSelected ? new Set() : new Set(list.map((r) => r.key)))
-                      }
-                    />
-                  </th>
+                  {selecting ? (
+                    <th className="words-check">
+                      <input
+                        type="checkbox"
+                        aria-label="Select all words shown"
+                        checked={allSelected}
+                        onChange={() =>
+                          setSelected(allSelected ? new Set() : new Set(list.map((r) => r.key)))
+                        }
+                      />
+                    </th>
+                  ) : null}
                   <th>Word</th>
                   <th>State</th>
-                  <th className="words-col-recall">Recall</th>
                   <th>Meaning</th>
-                  <th className="words-col-decks">Decks</th>
+                  {columns.recall ? <th className="words-col-recall">Recall</th> : null}
+                  {columns.decks ? <th className="words-col-decks">Decks</th> : null}
                 </tr>
               </thead>
               <tbody>
@@ -437,17 +560,20 @@ export function Words() {
                     className="words-row"
                     onClick={(e) => {
                       if ((e.target as Element).closest("input,button,a")) return;
-                      open(w.key, e.currentTarget);
+                      if (selecting) toggle(w.key);
+                      else open(w.key, e.currentTarget);
                     }}
                   >
-                    <td className="words-check">
-                      <input
-                        type="checkbox"
-                        aria-label={`Select ${w.lemma}`}
-                        checked={selected.has(w.key)}
-                        onChange={() => toggle(w.key)}
-                      />
-                    </td>
+                    {selecting ? (
+                      <td className="words-check">
+                        <input
+                          type="checkbox"
+                          aria-label={`Select ${w.lemma}`}
+                          checked={selected.has(w.key)}
+                          onChange={() => toggle(w.key)}
+                        />
+                      </td>
+                    ) : null}
                     <td>
                       <button
                         type="button"
@@ -461,11 +587,19 @@ export function Words() {
                     <td>
                       <WordStateChip state={w.state} inKenning={w.appLearning} />
                     </td>
-                    <td className="k-mono words-col-recall">
-                      {w.pKnown === null ? "–" : `${pct(w.pKnown)}`}
+                    <td className={w.gloss ? "words-gloss" : "words-gloss words-gloss--none"}>
+                      {w.gloss ?? "No meaning yet"}
                     </td>
-                    <td className="words-gloss">{w.gloss ?? ""}</td>
-                    <td className="words-col-decks">{w.decks.join(", ")}</td>
+                    {columns.recall ? (
+                      <td className="k-mono words-col-recall">
+                        {w.pKnown === null || w.state !== "learning" ? "–" : pct(w.pKnown)}
+                      </td>
+                    ) : null}
+                    {columns.decks ? (
+                      <td className="words-col-decks" title={w.decks.join(", ")}>
+                        {w.decks.map(deckName).join(", ")}
+                      </td>
+                    ) : null}
                   </tr>
                 ))}
               </tbody>
@@ -479,20 +613,20 @@ export function Words() {
         </>
       )}
 
-      {chosen.length > 0 ? (
+      {selecting && chosen.length > 0 ? (
         <div className="words-bulk" role="region" aria-label="Selected words">
           <span className="words-bulk-count">{chosen.length} selected</span>
           {actions.deckChoice.addDeck ? (
             <AddToAnki
               {...actions.deckChoice.addDeck}
               size="sm"
-              label={bulkAdd.isPending ? "Adding to" : "Add to"}
+              {...(bulkAdd.isPending ? { label: "Adding…" } : {})}
               disabled={bulkAdd.isPending}
               onAdd={() => bulkAdd.mutate(chosen)}
             />
           ) : (
             <Button size="sm" disabled={bulkAdd.isPending} onClick={() => bulkAdd.mutate(chosen)}>
-              Add to Anki
+              {native ? "Add to my words" : "Add to Anki"}
             </Button>
           )}
           <Link
@@ -509,8 +643,8 @@ export function Words() {
           >
             <MessagesSquare size={14} aria-hidden /> Talk about these
           </Link>
-          <Button size="sm" variant="ghost" onClick={() => setSelected(new Set())}>
-            Clear
+          <Button size="sm" variant="ghost" onClick={stopSelecting}>
+            Done
           </Button>
         </div>
       ) : null}

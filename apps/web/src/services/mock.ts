@@ -464,6 +464,18 @@ export function createMockServices(
     };
   };
 
+  const infoOf = (e: LexEntry): WordInfo => ({
+    key: e.key,
+    state: e.state,
+    pKnown: e.pKnown,
+    source: e.decks.includes(DECK) ? "anki" : "app",
+    ...(e.gloss ? { gloss: e.gloss } : {}),
+    ...(e.article ? { article: e.article } : {}),
+    decks: e.decks,
+    lookups: e.lookups,
+    noteIds: e.anki.status === "absent" ? [] : [1],
+  });
+
   const listItem = (t: StoredText): TextListItem => {
     const plans = buildPlans(t);
     const { coverage, newTypes } = textDifficulty(plans);
@@ -694,6 +706,21 @@ export function createMockServices(
       });
     },
 
+    async wordsToDecide({ limit } = {}) {
+      await wait();
+      const keys = new Set<string>();
+      for (const t of [...texts.values()].sort((a, b) => b.createdAt - a.createdAt)) {
+        const view = { tokens: t.tokens ?? [], plans: buildPlans(t) };
+        for (const w of pickTextWords(view, new Set())) keys.add(w.key);
+      }
+      return [...keys]
+        .flatMap((k) => {
+          const e = lexicon.get(k);
+          return e && e.anki.status === "absent" && e.state !== "ignored" ? [infoOf(e)] : [];
+        })
+        .slice(0, limit);
+    },
+
     async suggestedWords() {
       return [...suggestions.values()];
     },
@@ -903,17 +930,7 @@ export function createMockServices(
         .filter((e) => (opts.state ? e.state === opts.state : true))
         .filter((e) => (q ? e.key.includes(q) || e.gloss.toLowerCase().includes(q) : true))
         .sort((a, b) => a.key.localeCompare(b.key))
-        .map((e) => ({
-          key: e.key,
-          state: e.state,
-          pKnown: e.pKnown,
-          source: e.decks.includes(DECK) ? ("anki" as const) : ("app" as const),
-          ...(e.gloss ? { gloss: e.gloss } : {}),
-          ...(e.article ? { article: e.article } : {}),
-          decks: e.decks,
-          lookups: e.lookups,
-          noteIds: e.anki.status === "absent" ? [] : [1],
-        }));
+        .map(infoOf);
       const offset = opts.offset ?? 0;
       return rows.slice(offset, offset + (opts.limit ?? 100));
     },
