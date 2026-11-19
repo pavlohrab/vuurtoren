@@ -6,7 +6,12 @@ the English meanings that count as right. A meaning is right when one of its com
 semicolon-separated senses equals one of the accepted answers, ignoring case, hyphens,
 parentheticals and a leading article or "to".
 
-Run with ``-s`` to see the report. Needs the real dictionary (skipped without it).
+The second test measures the meaning read off the sentence translation
+(:mod:`kenning_nlp.align`): how often it is confident enough to be used, and how often it is then
+right (an inflected form counts: the meaning is shown "in this sentence").
+
+The report is printed. Needs the real dictionary and, for alignment, the MT model (skipped
+without them).
 """
 
 from __future__ import annotations
@@ -19,7 +24,9 @@ from pathlib import Path
 
 import pytest
 
+from kenning_nlp.align import MIN_CONFIDENCE, stems
 from kenning_nlp.dictionary import Dictionary, default_db_path
+from kenning_nlp.translate import MODEL_FILES, align_texts, model_dir
 
 FIXTURE = Path(__file__).parent / "fixtures" / "meanings-nl.tsv"
 needs_db = pytest.mark.skipif(not default_db_path().is_file(), reason="dictionary DB not built")
@@ -105,3 +112,46 @@ def test_real_db_origin(word: str, gloss: str | None, origin: str, formed: str) 
     assert (entry["origin"], entry["formed"]) == (origin, formed)
     if gloss:
         assert entry["glosses"] == [gloss]
+
+
+needs_mt = pytest.mark.skipif(
+    not all((model_dir() / f).is_file() for f in MODEL_FILES), reason="MT model not installed"
+)
+
+
+def is_right_in_context(english: str | None, case: Case) -> bool:
+    """Like :func:`is_right`, but an inflected form counts (``rewrote``, ``unanswered``)."""
+    if not english:
+        return False
+    return is_right(english, case) or stems(english) in ({*stems(a)} for a in case.accepted)
+
+
+def _span(case: Case) -> tuple[int, int]:
+    m = re.search(r"(?<!\w)" + re.escape(case.surface) + r"(?!\w)", case.sentence)
+    assert m, case.lemma
+    return m.span()
+
+
+@needs_db
+@needs_mt
+def test_sentence_alignment_precision(capsys: pytest.CaptureFixture[str]) -> None:
+    cases = load_cases()
+    aligned = align_texts("nl", "en", [(c.sentence, [_span(c)]) for c in cases])
+    found = Dictionary().lookup([c.lemma for c in cases])
+    used = right_used = combined = 0
+    for c, a in zip(cases, aligned, strict=True):
+        word = a["words"][0]
+        confident = word["text"] and word["confidence"] >= MIN_CONFIDENCE
+        ok = is_right_in_context(word["text"], c)
+        used += bool(confident)
+        right_used += bool(confident and ok)
+        entries = found[c.lemma]
+        gloss = entries[0]["glosses"][0] if entries else None
+        combined += is_right(gloss, c) if gloss else bool(confident and ok)
+    precision = right_used / used
+    with capsys.disabled():
+        print(
+            f"\nalignment: used for {used}/{len(cases)} words, {right_used} right "
+            f"(precision {precision:.2f}); dictionary, else alignment: {combined}/{len(cases)}"
+        )
+    assert precision >= 0.8

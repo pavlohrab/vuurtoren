@@ -222,6 +222,41 @@ class Translation(BaseModel):
     """English translation (empty for a blank input)."""
 
 
+ALIGN_MAX_SPANS = 200
+"""Word spans per ``/translate/align`` text (422 above)."""
+
+
+class AlignItem(BaseModel):
+    text: Annotated[str, StringConstraints(max_length=MT_MAX_TEXT_CHARS)]
+    spans: list[tuple[Annotated[int, Field(ge=0)], Annotated[int, Field(ge=0)]]] = Field(
+        max_length=ALIGN_MAX_SPANS
+    )
+    """``[start, end)`` character ranges of words in ``text``."""
+
+
+class AlignRequest(BaseModel):
+    """``POST /translate/align``: like ``/translate``, with the words to align per text."""
+
+    source: Literal["nl"]
+    target: Literal["en"]
+    items: list[AlignItem] = Field(max_length=MT_MAX_TEXTS)
+
+
+class AlignedWord(BaseModel):
+    start: int
+    end: int
+    text: str | None
+    """The English this word became in the translation, or None when unclear."""
+    confidence: float
+    """0-1; below 0.5 the English is not a reliable meaning of the word."""
+
+
+class AlignedText(BaseModel):
+    text: str
+    translation: str
+    words: list[AlignedWord]
+
+
 # --------------------------------------------------------------------------- practice data
 
 PRACTICE_MAX_LEMMAS = 500

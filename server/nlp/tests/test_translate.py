@@ -10,6 +10,7 @@ from fastapi.testclient import TestClient
 from httpx import Response
 
 from kenning_nlp import translate as mt
+from kenning_nlp.align import AttentionResult, agrees, align_word
 from kenning_nlp.app import app
 
 client = TestClient(app)
@@ -86,3 +87,72 @@ def test_real_model_translates_dutch() -> None:
     assert "sister" in out[0]
     assert out[1] == ""
     assert "bike" in out[2] or "bicycle" in out[2]
+
+
+# --- /translate/align ----------------------------------------------------------------------
+
+
+class FakeAttentionEngine(FakeEngine):
+    """Word-by-word "translation": each source word maps to its upper-cased self."""
+
+    def translate_attention(self, texts: list[str]) -> list[AttentionResult]:
+        self.batches.append(texts)
+        out = []
+        for text in texts:
+            src = ["▁" + w for w in text.split()]
+            tgt = ["▁" + w.upper() for w in text.split()]
+            att = [[1.0 if s == t else 0.0 for s in range(len(src) + 1)] for t in range(len(tgt))]
+            out.append(AttentionResult(text.upper(), src, tgt, att))
+        return out
+
+
+@pytest.fixture
+def fake_align(monkeypatch: pytest.MonkeyPatch) -> Iterator[FakeAttentionEngine]:
+    engine = FakeAttentionEngine()
+    monkeypatch.setattr(mt, "get_engine", lambda: engine)
+    mt.reset_engine()
+    yield engine
+    mt.reset_engine()
+
+
+def test_align_endpoint(fake_align: FakeAttentionEngine) -> None:
+    res = client.post(
+        "/translate/align",
+        json={
+            "source": "nl",
+            "target": "en",
+            "items": [{"text": "Hij stond woordeloos te kijken", "spans": [[10, 20], [0, 3]]}],
+        },
+    )
+    assert res.status_code == 200
+    body = res.json()
+    assert body[0]["translation"] == "HIJ STOND WOORDELOOS TE KIJKEN"
+    first, second = body[0]["words"]
+    # an English word identical to the Dutch one counts as left untranslated
+    assert (first["start"], first["end"], first["text"]) == (10, 20, None)
+    assert second["text"] is None
+    # the sentence and each word were translated once
+    assert fake_align.batches == [["Hij stond woordeloos te kijken", "woordeloos", "Hij"]]
+
+
+def test_align_limits(fake_align: FakeAttentionEngine) -> None:
+    body = {"source": "nl", "target": "en", "items": [{"text": "x", "spans": [[0, 1]] * 201}]}
+    assert client.post("/translate/align", json=body).status_code == 422
+
+
+def test_align_word_reads_attention() -> None:
+    # He was looking at the sea wordless . <- Hij stond woordeloos naar de zee te kijken .
+    src = ["▁Hij", "▁stond", "▁woord", "eloos", "▁naar", "▁de", "▁zee", "▁te", "▁kijken", "."]
+    tgt = ["▁He", "▁was", "▁looking", "▁at", "▁the", "▁sea", "▁word", "less", "."]
+    argmax = [0, 1, 2, 4, 5, 6, 2, 3, 9]  # "looking" wrongly attends to "woord"
+    att = [[0.9 if s == a else 0.01 for s in range(len(src) + 1)] for a in argmax]
+    res = AttentionResult("He was looking at the sea wordless.", src, tgt, att)
+    sentence = "Hij stond woordeloos naar de zee te kijken."
+    found = align_word(res, sentence, 10, 20)
+    assert found is not None
+    # two runs ("looking", "wordless"): the one with more attention mass wins
+    assert found.text == "wordless"
+    assert agrees("wordless", "Wordless")
+    assert not agrees("looking", "wordless")
+    assert align_word(res, sentence, 0, 3) is not None
+    assert align_word(res, "two words", 0, 3) is None  # word groups do not match the sentence

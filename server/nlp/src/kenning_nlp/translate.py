@@ -5,8 +5,8 @@ The model is a data pack (``mt-nl-en``, see :mod:`kenning_nlp.packs`): downloade
 is loaded lazily on the first request and cached for the process lifetime.
 Only ``ctranslate2`` and ``sentencepiece`` are needed (no torch).
 
-TODO(weave reading): keeping marked Dutch spans verbatim needs word alignment (SimAlign or the
-CT2 ``return_alignment`` attention output); plain MT cannot guarantee it.
+:func:`align_texts` also returns the decoder attention, from which :mod:`kenning_nlp.align` reads
+the English of single words (their meaning in that sentence).
 """
 
 from __future__ import annotations
@@ -14,9 +14,11 @@ from __future__ import annotations
 import json
 import os
 import threading
+from collections import OrderedDict
 from pathlib import Path
 from typing import Any, Protocol
 
+from kenning_nlp.align import DISAGREE_FACTOR, AttentionResult, agrees, align_word
 from kenning_nlp.datadir import data_path
 from kenning_nlp.errors import ServiceError
 
@@ -36,6 +38,8 @@ class Translator(Protocol):
     """Anything that translates a batch of sentences (the real engine or a test double)."""
 
     def translate(self, texts: list[str]) -> list[str]: ...
+
+    def translate_attention(self, texts: list[str]) -> list[AttentionResult]: ...
 
 
 def model_dir() -> Path:
@@ -80,11 +84,17 @@ class MtEngine:
 
     def translate(self, texts: list[str]) -> list[str]:
         """Translate each text; blank texts map to ``""`` without touching the model."""
+        return [r.translation for r in self.translate_attention(texts)]
+
+    def translate_attention(self, texts: list[str]) -> list[AttentionResult]:
+        """Translate each text and keep the subwords and decoder attention of the best
+        hypothesis (the translation is the same as without attention)."""
         todo = [i for i, t in enumerate(texts) if t.strip()]
-        out = [""] * len(texts)
+        out = [AttentionResult("", [], [], []) for _ in texts]
         if not todo:
             return out
-        batch = [[*self._src.encode(texts[i].strip(), out_type=str), *self._eos] for i in todo]
+        sources = [self._src.encode(texts[i].strip(), out_type=str) for i in todo]
+        batch = [[*src, *self._eos] for src in sources]
         with self._lock:
             results = self._model.translate_batch(
                 batch,
@@ -93,9 +103,12 @@ class MtEngine:
                 max_decoding_length=MAX_OUTPUT_TOKENS,
                 batch_type="tokens",
                 max_batch_size=4096,
+                return_attention=True,
             )
-        for i, res in zip(todo, results, strict=True):
-            out[i] = self._tgt.decode(res.hypotheses[0]).strip()
+        for i, src, res in zip(todo, sources, results, strict=True):
+            target = res.hypotheses[0]
+            attention = res.attention[0] if res.attention else []
+            out[i] = AttentionResult(self._tgt.decode(target).strip(), src, target, attention)
         return out
 
 
@@ -132,8 +145,69 @@ def translate_texts(source: str, target: str, texts: list[str]) -> list[dict[str
     return [{"text": t, "translation": tr} for t, tr in zip(texts, translations, strict=True)]
 
 
+_ALIGN_CACHE_SIZE = 256
+_align_cache: OrderedDict[str, AttentionResult] = OrderedDict()
+_align_lock = threading.Lock()
+
+
+def _attention(texts: list[str]) -> list[AttentionResult]:
+    """Attention results per text, from a small cache (the reader asks for one sentence often)."""
+    with _align_lock:
+        found = {t: _align_cache[t] for t in texts if t in _align_cache}
+    missing = [t for t in dict.fromkeys(texts) if t not in found]
+    if missing:
+        found.update(zip(missing, get_engine().translate_attention(missing), strict=True))
+        with _align_lock:
+            for t in missing:
+                _align_cache[t] = found[t]
+            while len(_align_cache) > _ALIGN_CACHE_SIZE:
+                _align_cache.popitem(last=False)
+    return [found[t] for t in texts]
+
+
+def align_texts(
+    source: str, target: str, items: list[tuple[str, list[tuple[int, int]]]]
+) -> list[dict[str, Any]]:
+    """Translate each ``(text, spans)`` and give each character span its English.
+
+    Returns ``[{"text", "translation", "words": [{"start", "end", "text", "confidence"}]}]``;
+    a word's ``text`` is None when its alignment is unclear. The confidence is lowered when the
+    word translated on its own disagrees (see :mod:`kenning_nlp.align`).
+
+    Raises:
+        ServiceError: 422 for an unsupported pair, 503 if the model is not installed.
+    """
+    if (source, target) not in SUPPORTED_PAIRS:
+        raise ServiceError(422, f"Unsupported language pair {source}->{target} (only nl->en).")
+    words = [text[a:b].strip() for text, spans in items for a, b in spans]
+    results = _attention([text for text, _ in items] + words)
+    alone = iter(r.translation for r in results[len(items) :])
+    out: list[dict[str, Any]] = []
+    for (text, spans), res in zip(items, results[: len(items)], strict=True):
+        found_words = []
+        for start, end in spans:
+            found = align_word(res, text, start, end) if res.target else None
+            own = next(alone)
+            confidence = 0.0
+            if found:
+                factor = 1.0 if agrees(found.text, own) else DISAGREE_FACTOR
+                confidence = round(found.confidence * factor, 3)
+            found_words.append(
+                {
+                    "start": start,
+                    "end": end,
+                    "text": found.text if found else None,
+                    "confidence": confidence,
+                }
+            )
+        out.append({"text": text, "translation": res.translation, "words": found_words})
+    return out
+
+
 def reset_engine() -> None:
     """Forget the loaded model (after a new ``mt-nl-en`` pack was installed)."""
     global _engine
     with _engine_lock:
         _engine = None
+    with _align_lock:
+        _align_cache.clear()
