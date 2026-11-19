@@ -3,7 +3,7 @@ import type { CardRating, DeckOptions } from "@app/core";
 import type { PackageDeck } from "@app/anki";
 import type { NativeDeckSummary } from "@app/db";
 
-export type { CardRating, DeckOptions, NativeDeckSummary, PackageDeck };
+export type { CardRating, NativeDeckSummary };
 
 /** One card ready for the review screen. */
 export interface ReviewCard {
@@ -36,7 +36,7 @@ export interface ReviewCard {
   intervals: Record<CardRating, string>;
 }
 
-export interface ReviewSession {
+interface ReviewSession {
   cards: ReviewCard[];
   /** Reviewed cards due now. */
   due: number;

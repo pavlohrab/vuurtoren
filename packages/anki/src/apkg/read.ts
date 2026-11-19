@@ -47,7 +47,7 @@ export interface AnkiDeckData {
   fsrsParams?: number[];
 }
 
-export interface AnkiNoteData {
+interface AnkiNoteData {
   id: number;
   notetypeId: number;
   fields: string[];

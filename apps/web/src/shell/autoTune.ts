@@ -20,7 +20,3 @@ export function useAutoTune(services: AppServices, qc: QueryClient, enabled: boo
   }, [services, qc, enabled]);
 }
 
-/** Tests only. */
-export function resetAutoTuneForTests(): void {
-  started = false;
-}
