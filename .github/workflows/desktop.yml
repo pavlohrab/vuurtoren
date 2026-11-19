@@ -53,7 +53,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 90
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/desktop-prep
         with:
           rust-targets: ${{ matrix.rust-targets }}
@@ -107,7 +107,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 90
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/desktop-prep
         with:
           rust-targets: ${{ matrix.rust-targets }}
