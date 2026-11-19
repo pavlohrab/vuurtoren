@@ -87,7 +87,14 @@ flowchart LR
 ```
 
 - **Writes** are events appended to the log (`TextImported`, `NoteAdded`, `ExerciseAnswered`,
-  ...). Projections in `@app/db` turn them into tables; nothing writes a table directly.
+  ...). Projections in `@app/db` turn them into tables; nothing writes a table directly, except
+  the analysis cache below.
+- **Analysis cache.** Tokens and grammar hits from the language server are derived data:
+  `saveTextAnalysis` and `saveTextGrammar` write them to `text_tokens` and `text_grammar` on
+  this device (in server mode, on the server through `/api/rpc`), never as events, so sync
+  never carries them. One row per text, valid for its content hash and analyzer version;
+  `analyzed_at` keeps a replayed `TextAnalyzed` event from an older log from overwriting a newer
+  analysis. Rebuilds keep the cache; a text without an analysis is analysed when opened.
 - **Reads** go through repository queries; the services cache what is expensive (learner model,
   reading plans, glosses) and drop the caches on `changed()` or when another device wrote
   (server mode, `checkRemoteChanges`).
@@ -145,9 +152,12 @@ The NLP image holds code and libraries only; its data are versioned **data packs
   By default the server downloads them from this repository's GitHub releases.
 - **Analyzer version**: `GET /health` and every `/analyze/text` result carry
   `analyzerVersion` (hash of the spaCy/model/library versions, the token-shaping modules, the
-  grammar detectors and the installed dictionary pack). `TextAnalyzed` events store it
-  (`text_tokens.analyzer_version`); the reader re-analyses a text stored with another version once,
-  in the background, when it is opened, and the projection drops that text's grammar hits.
+  grammar detectors and the installed dictionary pack). The analysis cache stores it
+  (`text_tokens.analyzer_version`), and the repository records when each version first appeared
+  on the device (`analyzerSeen`). The reader re-analyses a text once, in the background, when
+  it is opened and its analysis is older than the device's analyzer; another device's analysis
+  from an old log, or an older analyzer brought back, is kept. A new analyzer version drops the
+  text's grammar hits.
 
 ## Checks
 

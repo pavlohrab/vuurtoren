@@ -86,8 +86,16 @@ Kenning writes to Anki only when you click, and tags every note it touches.
 ## Data
 
 - **Event log.** An append-only `events` table is the source of truth; every other table is a
-  projection rebuilt from it. Native cards are events too: notes added or imported, reviews (each
-  carrying the card's schedule before and after), undos, deck options and FSRS parameters.
+  projection rebuilt from it, apart from blobs and the analysis cache. Native cards are events
+  too: notes added or imported, reviews (each carrying the card's schedule before and after),
+  undos, deck options and FSRS parameters.
+- **Analyses are a cache on each device.** A text's tokens and grammar hits come from the
+  language server, so they are derived data, not events: each device keeps its own (the server
+  keeps them for server mode), one per text, valid for its content and analyzer version, and
+  never synced. A text is analysed again when its device has no analysis of the current content,
+  or when the device's analyzer arrived after the analysis was made. Logs from earlier versions
+  still hold `TextAnalyzed` and `TextGrammarDetected` events; they fill the cache, so nothing is
+  analysed again after an update.
 - **Media** of imported cards (images, sounds) are blobs, like covers: not in the log, kept by
   backups.
 - **Where it lives:**
@@ -109,6 +117,26 @@ Kenning writes to Anki only when you click, and tags every note it touches.
   updated.
 - Backups export and import the whole file in every mode.
 
+## Several devices
+
+- **One model: event sync.** Each device keeps its own data and its own log. Devices exchange
+  events through a sync place, replay them in hybrid-clock order and reach the same state:
+  latest wins for settings and marks, reviews and answers merge. This is the only way two copies
+  of your data come together.
+- **Server mode is a thin client.** The web app opened on your Kenning server reads and writes
+  that server's database directly and keeps no copy, so there is nothing to merge. It will become
+  a syncing client: a copy in the browser that syncs with the server like any other device.
+- **Words.** _Kenning server_ is the stack you host (web app, API, language server). _Server
+  mode_ is the web app working on that server's database. A _sync place_ is where devices
+  exchange events; your Kenning server is one, next to a synced folder, WebDAV and GitHub.
+- **A data file belongs to one computer.** The desktop app's lock file only keeps two apps from
+  writing at once; it is not a way to share data. Sharing one database file between computers
+  (a cloud-synced Documents folder, a network drive) is not combined with event sync: the
+  computers would share one device id and one log. Keep the desktop data folder out of synced
+  folders, and use Sync to bring computers together. Two checks guard this rule (see the
+  roadmap): a sync folder that holds the data folder is refused, and two computers using one
+  device id get a warning.
+
 ## Language server
 
 - Python (`server/nlp`, FastAPI, spaCy `nl_core_news_md`), because Dutch separable verbs and
@@ -116,7 +144,8 @@ Kenning writes to Anki only when you click, and tags every note it touches.
   texts.
 - One process, one worker: OCR jobs and the grammar-example cache live in that process.
 - Data (dictionary, sentences, translation model) are versioned packs, downloaded and checked on
-  start. Analyses carry an analyzer version, and texts are re-analysed once when it changes.
+  start. Analyses carry an analyzer version; a text is analysed again once when the device's
+  analyzer is newer than its analysis.
 - OCR: RapidOCR (PaddleOCR models, bundled) on a straightened page, Tesseract as the fallback.
   A PDF page uses its text layer unless it has under 40 letters or under 70% Dutch words.
 - The desktop app bundles the same server, OCR included.
