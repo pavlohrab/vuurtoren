@@ -59,12 +59,11 @@ export function createUlidGenerator(
 ): () => string {
   let lastMs = -1;
   let digits: number[] = [];
-  if (after) {
-    // Resume after a persisted id: every new id sorts after it.
+  // Resume after a persisted id: every new id sorts after it. An id this generator could not
+  // have made (damaged, or from a broken device) is left aside rather than trusted.
+  if (after && isUlid(after)) {
     lastMs = ulidTime(after);
     digits = Array.from(after.slice(TIME_LEN), (ch) => CROCKFORD.indexOf(ch));
-    if (digits.length !== RANDOM_LEN || digits.includes(-1))
-      throw new Error(`Invalid ULID: ${after}`);
   }
   return () => {
     const ms = now();
@@ -76,6 +75,11 @@ export function createUlidGenerator(
     }
     return encodeTime(lastMs) + digits.map((v) => CROCKFORD[v]).join("");
   };
+}
+
+/** A ULID as `createUlidGenerator` makes them: 26 Crockford characters, a 48-bit time. */
+export function isUlid(id: unknown): id is string {
+  return typeof id === "string" && /^[0-7][0-9A-HJKMNP-TV-Z]{25}$/.test(id);
 }
 
 /** Parse the timestamp (ms) out of a ULID. */
@@ -117,6 +121,16 @@ export function parseHlc(hlc: string): HlcParts {
   const m = /^(\d+)-(\d+)-(.+)$/.exec(hlc);
   if (!m) throw new Error(`Invalid HLC: ${hlc}`);
   return { ms: Number(m[1]), counter: Number(m[2]), deviceId: m[3] as string };
+}
+
+/**
+ * True for an HLC exactly as `formatHlc` writes it (15 + 5 digits), of `deviceId` when given.
+ * Only such strings sort the same as text (SQL) and as numbers (`compareHlc`).
+ */
+export function isHlc(hlc: unknown, deviceId?: string): hlc is string {
+  if (typeof hlc !== "string") return false;
+  const m = /^\d{15}-\d{5}-([0-9A-Za-z_]{1,64})$/.exec(hlc);
+  return !!m && (deviceId === undefined || m[1] === deviceId);
 }
 
 /** Total order on HLC strings: by ms, then counter, then device id. Negative if a < b. */

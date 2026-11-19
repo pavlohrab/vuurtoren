@@ -11,7 +11,16 @@ import {
   type WordState,
   profileMode,
 } from "@app/core";
-import { compareHlc, createHlc, createUlidGenerator, parseHlc, randomDeviceId } from "./ids.js";
+import {
+  compareHlc,
+  createHlc,
+  createUlidGenerator,
+  isHlc,
+  isUlid,
+  parseHlc,
+  randomDeviceId,
+  ulidTime,
+} from "./ids.js";
 import {
   type EventContext,
   type Row,
@@ -46,22 +55,24 @@ import type {
   WordInfo,
 } from "./types.js";
 
-/** A well-formed event from another device: ids, clock and payload as this app writes them. */
-function isSyncEvent(x: unknown): x is SyncEvent {
+/** How far ahead of this device's clock another device's event may be (one day). */
+const MAX_AHEAD_MS = 86_400_000;
+
+/**
+ * A well-formed event of another device: an id and a clock as this app makes them, of that
+ * device, not from the far future (a clock that far ahead would hold every device's clock
+ * there), and a payload with a type. Events that claim to be this device's are refused: only
+ * this device writes them.
+ */
+function isSyncEvent(x: unknown, self: string, now: number): x is SyncEvent {
   if (!x || typeof x !== "object") return false;
   const e = x as Partial<SyncEvent>;
-  if (typeof e.id !== "string" || !/^[0-9A-HJKMNP-TV-Z]{26}$/.test(e.id)) return false;
-  if (typeof e.deviceId !== "string" || e.deviceId.length === 0 || e.deviceId.length > 64) {
-    return false;
-  }
-  if (typeof e.hlc !== "string") return false;
-  try {
-    parseHlc(e.hlc);
-  } catch {
-    return false;
-  }
+  if (!isUlid(e.id) || ulidTime(e.id) > now + MAX_AHEAD_MS) return false;
+  if (typeof e.deviceId !== "string" || e.deviceId === self) return false;
+  if (!isHlc(e.hlc, e.deviceId) || parseHlc(e.hlc).ms > now + MAX_AHEAD_MS) return false;
   return (
     typeof e.createdAt === "number" &&
+    Number.isFinite(e.createdAt) &&
     typeof e.v === "number" &&
     Number.isInteger(e.v) &&
     e.v >= 1 &&
@@ -124,8 +135,13 @@ export interface KenningRepository extends Repository {
    * Sync: store events of other devices (ids already held are skipped) and apply them in clock
    * order: at the end when all are newer than the log, else by replaying the whole log.
    * Events newer than this app understands are kept, and applied once the app is updated.
+   * An event a projection cannot apply stays in the log and is reported in `failed`.
+   *
+   * With `deferReplay`, an import that needs a replay only notes it: the next import without
+   * it (an empty one is enough) replays once for all of them. A sync brings in many files and
+   * replays at most once. A noted replay survives a restart: opening the repository does it.
    */
-  importEvents(events: SyncEvent[]): Promise<ImportResult>;
+  importEvents(events: SyncEvent[], opts?: { deferReplay?: boolean }): Promise<ImportResult>;
   /**
    * Drop what later events made useless: Anki snapshots older than the newest of their
    * language, and the contents and analyses of deleted texts. The projections do not change.
@@ -144,6 +160,8 @@ export interface ImportResult {
   invalid: number;
   /** True when the whole log was replayed (some events were older than the log's end). */
   rebuilt: boolean;
+  /** Events kept in the log that a projection could not apply, with the reason. */
+  failed: { id: string; error: string }[];
 }
 
 /**
@@ -255,16 +273,24 @@ export async function createRepository(
     ]);
   }
 
-  // Resume clocks past the newest stored event so ids/hlcs stay monotonic across restarts.
+  // Resume clocks past this device's newest event so ids and clocks stay monotonic across
+  // restarts. Ids follow this device's own events only: another device's id never decides
+  // what this one writes. The clock also moves past the newest event of any device, unless
+  // that one is beyond what an import would accept.
+  const own = (
+    await driver.exec("SELECT id, hlc FROM events WHERE device_id = ? ORDER BY id DESC LIMIT 1", [
+      deviceId,
+    ])
+  )[0];
   const lastHlc = (await driver.exec("SELECT hlc FROM events ORDER BY hlc DESC LIMIT 1"))[0]?.[
     "hlc"
   ];
-  const lastId = (await driver.exec("SELECT id FROM events ORDER BY id DESC LIMIT 1"))[0]?.["id"];
-  const hlc = createHlc(deviceId, now, typeof lastHlc === "string" ? lastHlc : undefined);
+  const hlc = createHlc(deviceId, now, isHlc(own?.["hlc"]) ? own["hlc"] : undefined);
+  if (isHlc(lastHlc) && parseHlc(lastHlc).ms <= now() + MAX_AHEAD_MS) hlc.receive(lastHlc);
   const nextId = createUlidGenerator(
     now,
     undefined,
-    typeof lastId === "string" ? lastId : undefined,
+    typeof own?.["id"] === "string" ? own["id"] : undefined,
   );
 
   const toSync = (r: Row): SyncEvent => ({
@@ -276,20 +302,63 @@ export async function createRepository(
     event: json<AppEvent>(r["payload"]),
   });
 
-  /** Clear the projections and apply the whole log again, in clock order across devices. */
-  async function replayAll(): Promise<void> {
-    for (const t of PROJECTION_TABLES) await driver.exec(`DELETE FROM ${t}`);
-    await driver.exec("DELETE FROM meta WHERE key LIKE 'snapshot:%'");
-    const rows = await driver.exec("SELECT * FROM events ORDER BY hlc, id");
-    for (const r of rows) {
-      const e = toSync(r);
-      await applyEvent(driver, {
-        id: e.id,
-        hlc: e.hlc,
-        createdAt: e.createdAt,
-        v: e.v,
-        event: e.event,
-      });
+  const contextOf = (e: SyncEvent): EventContext => ({
+    id: e.id,
+    hlc: e.hlc,
+    createdAt: e.createdAt,
+    v: e.v,
+    event: e.event,
+  });
+
+  /**
+   * Apply one event inside a savepoint: when a projection throws, what it wrote so far is
+   * undone and the reason returned. The event itself stays in the log.
+   */
+  async function applyGuarded(e: SyncEvent): Promise<string | null> {
+    await driver.exec("SAVEPOINT apply_event");
+    try {
+      await applyEvent(driver, contextOf(e));
+      await driver.exec("RELEASE apply_event");
+      return null;
+    } catch (err) {
+      await driver.exec("ROLLBACK TO apply_event");
+      await driver.exec("RELEASE apply_event");
+      return err instanceof Error ? err.message : String(err);
+    }
+  }
+
+  /**
+   * Clear the projections and apply the whole log again, in clock order across devices. Run
+   * inside a transaction. The fast way first; when an event throws, once more with each event
+   * guarded, so one event a projection cannot apply does not stop the others.
+   */
+  async function replayAll(): Promise<ImportResult["failed"]> {
+    const pass = async (guarded: boolean) => {
+      const failed: ImportResult["failed"] = [];
+      for (const t of PROJECTION_TABLES) await driver.exec(`DELETE FROM ${t}`);
+      await driver.exec("DELETE FROM meta WHERE key LIKE 'snapshot:%'");
+      await driver.exec("DELETE FROM meta WHERE key = 'replay_pending'");
+      const rows = await driver.exec("SELECT * FROM events ORDER BY hlc, id");
+      for (const r of rows) {
+        const e = toSync(r);
+        if (!guarded) await applyEvent(driver, contextOf(e));
+        else {
+          const error = await applyGuarded(e);
+          if (error !== null) failed.push({ id: e.id, error });
+        }
+      }
+      return failed;
+    };
+    await driver.exec("SAVEPOINT replay");
+    try {
+      await pass(false);
+      await driver.exec("RELEASE replay");
+      return [];
+    } catch {
+      await driver.exec("ROLLBACK TO replay");
+      const failed = await pass(true);
+      await driver.exec("RELEASE replay");
+      return failed;
     }
   }
 
@@ -589,7 +658,12 @@ export async function createRepository(
         };
       }),
 
-    rebuild: () => serial(() => driver.transaction(replayAll)),
+    rebuild: () =>
+      serial(() =>
+        driver.transaction(async () => {
+          await replayAll();
+        }),
+      ),
 
     exportEvents: (afterId, limit = 10_000) =>
       serial(async () =>
@@ -601,9 +675,10 @@ export async function createRepository(
         ).map(toSync),
       ),
 
-    importEvents: (incoming) =>
+    importEvents: (incoming, opts = {}) =>
       serial(async () => {
-        const valid = incoming.filter(isSyncEvent);
+        const at = now();
+        const valid = incoming.filter((e) => isSyncEvent(e, deviceId, at));
         const ids = valid.map((e) => e.id);
         const held = new Set<string>();
         for (let i = 0; i < ids.length; i += 500) {
@@ -618,16 +693,22 @@ export async function createRepository(
         const fresh = valid
           .filter((e) => !held.has(e.id) && !seen.has(e.id) && seen.add(e.id))
           .sort((a, b) => compareHlc(a.hlc, b.hlc) || (a.id < b.id ? -1 : 1));
-        const result = {
+        const result: ImportResult = {
           added: fresh.length,
           invalid: incoming.length - valid.length,
           rebuilt: false,
+          failed: [],
         };
-        if (fresh.length === 0) return result;
+        const pending =
+          (await driver.exec("SELECT 1 AS x FROM meta WHERE key = 'replay_pending'")).length > 0;
+        if (fresh.length === 0 && (!pending || opts.deferReplay)) return result;
         const end = (await driver.exec("SELECT hlc FROM events ORDER BY hlc DESC LIMIT 1"))[0]?.[
           "hlc"
         ];
-        const inOrder = typeof end !== "string" || compareHlc(fresh[0]!.hlc, end) > 0;
+        // A replay already due covers these events too: they are only stored.
+        const inOrder =
+          !pending &&
+          (fresh.length === 0 || typeof end !== "string" || compareHlc(fresh[0]!.hlc, end) > 0);
         for (const e of fresh) hlc.receive(e.hlc);
         await driver.transaction(async () => {
           for (const e of fresh) {
@@ -636,23 +717,27 @@ export async function createRepository(
               [e.id, e.deviceId, e.hlc, e.event.type, JSON.stringify(e.event), e.createdAt, e.v],
             );
             if (inOrder) {
-              await applyEvent(driver, {
-                id: e.id,
-                hlc: e.hlc,
-                createdAt: e.createdAt,
-                v: e.v,
-                event: e.event,
-              });
+              const error = await applyGuarded(e);
+              if (error !== null) result.failed.push({ id: e.id, error });
             }
           }
-          if (!inOrder) await replayAll();
+          if (!inOrder) {
+            if (opts.deferReplay) {
+              await driver.exec(
+                "INSERT INTO meta (key, value) VALUES ('replay_pending', 'true') ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+              );
+            } else {
+              result.failed.push(...(await replayAll()));
+              result.rebuilt = true;
+            }
+          }
           if (fresh.some((e) => !canApply(e.event.type, e.v))) {
             await driver.exec(
               "INSERT INTO meta (key, value) VALUES ('unapplied_events', 'true') ON CONFLICT(key) DO UPDATE SET value = excluded.value",
             );
           }
         });
-        return { ...result, rebuilt: !inOrder };
+        return result;
       }),
 
     compact: () =>
@@ -828,6 +913,11 @@ export async function createRepository(
 
     close: () => serial(() => driver.close()),
   };
+
+  // A sync that stopped before its replay: do it now (it clears the note).
+  if ((await driver.exec("SELECT 1 AS x FROM meta WHERE key = 'replay_pending'")).length > 0) {
+    await repo.rebuild();
+  }
 
   // Events kept from a newer app version: once this version understands them all, apply them.
   const unapplied = (
