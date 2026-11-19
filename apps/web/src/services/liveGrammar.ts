@@ -1,9 +1,9 @@
 /**
  * Grammar services on top of the local database and the NLP service.
  *
- * Grammar hits are computed once per text content by `POST /grammar` and stored as a
- * TextGrammarDetected event next to the TextAnalyzed one (same content hash, so editing a text
- * invalidates both; projections stay rebuildable from the log). The server analyses each chunk
+ * Grammar hits are computed once per text content by `POST /grammar` and stored in this
+ * device's analysis cache next to the tokens (same content hash, so editing a text invalidates
+ * both; a new analyzer version drops the hits). Like the tokens they are not events. The server analyses each chunk
  * again, so its token indices and offsets are rebased exactly like the analysis chunks
  * (`chunkText` / `mergeChunkTokens`) and checked against the stored tokens.
  */
@@ -150,8 +150,7 @@ export function createLiveGrammar(deps: LiveGrammarDeps) {
       chunks.map((c) => c.text),
     );
     const hits = rebaseHits(chunks, perChunk, text.tokens);
-    await repo.append({
-      type: "TextGrammarDetected",
+    await repo.saveTextGrammar({
       textId,
       contentHash: contentHash(text.content),
       version: GRAMMAR_VERSION,

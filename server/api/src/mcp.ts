@@ -43,6 +43,7 @@ function queuedRepo(store: Store): ToolRepo {
     getTexts: via("getTexts"),
     learnerModel: via("learnerModel"),
     listTexts: via("listTexts"),
+    saveTextAnalysis: via("saveTextAnalysis"),
     staircase: via("staircase"),
     suggestedWords: via("suggestedWords"),
     unitExercises: via("unitExercises"),
