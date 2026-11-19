@@ -54,6 +54,15 @@ export interface ImportSummary {
   skippedMedia: number;
 }
 
+/** What Move to Anki did. */
+export interface MoveToAnkiSummary {
+  added: number;
+  existing: number;
+  skipped: number;
+  scheduled: number;
+  reviews: number;
+}
+
 /** What an export holds. */
 export interface ExportSummary {
   notes: number;
@@ -119,6 +128,13 @@ export interface NativeServices {
   exportPackage(
     decks: string[],
   ): Promise<{ bytes: Uint8Array; fileName: string; summary: ExportSummary }>;
+  /**
+   * Move to Anki, once: words become notes of Kenning's type in Anki (cards that came from Anki
+   * stay as they are there), reviewed cards get their due date, and with `withHistory`
+   * (experimental) the review history and exact intervals too. The profile then switches to
+   * Keep using Anki and reads the moved decks. Kenning's own cards are kept, unused.
+   */
+  moveToAnki(withHistory: boolean, onProgress?: (msg: string) => void): Promise<MoveToAnkiSummary>;
   tuning(): Promise<TuningInfo>;
   /** Train the FSRS parameters on the review history now. */
   optimiseNow(onProgress?: (msg: string) => void): Promise<TuningResult>;

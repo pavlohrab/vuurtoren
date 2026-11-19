@@ -19,7 +19,7 @@ export const NOTE_BACK = `{{FrontSide}}<hr id="answer"><div class="gloss">{{Glos
 {{#SentenceTranslation}}<div class="sentence">{{SentenceTranslation}}</div>{{/SentenceTranslation}}
 {{#Source}}<div class="source">{{Source}}</div>{{/Source}}`;
 
-async function ensureNoteType(anki: AnkiConnectClient): Promise<void> {
+export async function ensureNoteType(anki: AnkiConnectClient): Promise<void> {
   const models = await anki.invoke<string[]>("modelNames");
   if (models.includes(NOTE_TYPE)) return;
   await anki.invoke("createModel", {

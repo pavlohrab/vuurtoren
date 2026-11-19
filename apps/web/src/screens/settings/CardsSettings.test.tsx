@@ -64,4 +64,13 @@ describe("Settings → Language & decks: cards", { timeout: 20_000 }, () => {
     expect(created).toHaveBeenCalledTimes(1);
     vi.unstubAllGlobals();
   });
+
+  it("moves a native learner to Anki, with the history as an option", async () => {
+    const { user, services } = setup(true);
+    await user.click(await screen.findByRole("button", { name: "Move to Anki…" }));
+    await user.click(screen.getByRole("checkbox", { name: /review history/ }));
+    await user.click(screen.getByRole("button", { name: "Move to Anki" }));
+    expect(await screen.findByText("Your reviews now happen in Anki")).toBeVisible();
+    expect((await services.languageProfile())?.mode).toBe("connected");
+  });
 });

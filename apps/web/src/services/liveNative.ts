@@ -10,7 +10,10 @@ import {
   type NativeImport,
   type OpenSqlite,
   buildNativeImport,
+  NOTE_FIELDS,
+  NOTE_TYPE,
   collectionFromAnki,
+  moveToAnki,
   packageDecks,
   readAnkiPackage,
   writeAnkiPackage,
@@ -470,6 +473,41 @@ export function createLiveNative(deps: LiveNativeDeps) {
       } finally {
         sqlite.dispose();
       }
+    },
+
+    async moveToAnki(withHistory, onProgress) {
+      const profile = await deps.profile();
+      if (profileMode(profile) !== "native") throw new Error("Your words are already in Anki.");
+      const lang = await deps.lang();
+      const client = await deps.anki();
+      const col = await repo.nativeCollection(lang, []);
+      const r = await moveToAnki(
+        client,
+        { ...col, params: await params(lang), now: now(), withHistory },
+        onProgress,
+      );
+      // Kenning reads the moved decks: its own note type where words were added.
+      const kenningDecks = new Set(destinationDecks(profile));
+      const sources = [...profile.sources];
+      for (const deck of r.decks) {
+        if (sources.some((s) => s.deck === deck) || kenningDecks.has(deck)) continue;
+        sources.push({
+          deck,
+          modelName: NOTE_TYPE,
+          wordField: NOTE_FIELDS[0],
+          glossField: NOTE_FIELDS[1],
+          sentenceField: NOTE_FIELDS[2],
+        });
+      }
+      await deps.saveProfile({ ...profile, mode: "connected", sources });
+      deps.changed();
+      return {
+        added: r.added,
+        existing: r.existing,
+        skipped: r.skipped,
+        scheduled: r.scheduled,
+        reviews: r.reviews,
+      };
     },
 
     async tuning() {

@@ -234,7 +234,7 @@ const REVLOG_TYPE = { learn: 0, review: 1, relearn: 2, filtered: 3, manual: 4 } 
  * The revlog rows of one card: its answers replayed (without fuzz) for the interval each gave,
  * as Anki shows them in its card info.
  */
-function revlogRows(
+export function revlogRows(
   reviews: CardReview[],
   options: DeckOptions,
   params: readonly number[],

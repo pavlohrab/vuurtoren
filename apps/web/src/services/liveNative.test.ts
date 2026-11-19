@@ -130,6 +130,10 @@ function fakeAnki() {
             ],
             20: [],
           };
+        case "multi":
+          return (
+            JSON.parse(String(init?.body)) as { params: { actions: unknown[] } }
+          ).params.actions.map(() => null);
         default:
           return null;
       }
@@ -265,6 +269,20 @@ describe("native services", () => {
     const undone = await live.reviewQueue();
     expect(undone).toMatchObject({ fresh: 1 });
     expect(undone.cards[0]).toMatchObject({ cardId: 11, isNew: true });
+  });
+
+  it("moves back to Anki: notes Anki has stay, reviewed cards get their due date, the profile is connected", async () => {
+    const { live, anki, profile } = await setup(
+      defaultProfile("nl", [{ deck: "Dutch" }], "connected"),
+    );
+    await live.moveFromAnki();
+    expect(profile().mode).toBe("native");
+    const r = await live.moveToAnki(false);
+    expect(r).toEqual({ added: 0, existing: 2, skipped: 0, scheduled: 1, reviews: 0 });
+    expect(anki.writes).toEqual(["multi"]);
+    expect(profile().mode).toBe("connected");
+    expect(profile().sources.map((s) => s.deck)).toEqual(["Dutch"]);
+    await expect(live.moveToAnki(false)).rejects.toThrow(/already in Anki/);
   });
 
   it("exports moved cards with their history to an .apkg that reads back", async () => {

@@ -119,6 +119,7 @@ function NativeCards() {
       <ImportPackage />
       {decks.data?.length ? <ExportPackage decks={decks.data.map((d) => d.name)} /> : null}
       <Tuning />
+      {decks.data?.length ? <MoveToAnki /> : null}
     </>
   );
 }
@@ -197,6 +198,88 @@ function DeckTable({ decks }: { decks: NativeDeckSummary[] }) {
         reviews a day.
       </p>
     </div>
+  );
+}
+
+/** Move to Anki, once: the words go to Anki and the profile switches to Keep using Anki. */
+function MoveToAnki() {
+  const services = useServices();
+  const qc = useQueryClient();
+  const toast = useToast();
+  const [confirm, setConfirm] = useState(false);
+  const [history, setHistory] = useState(false);
+  const [progress, setProgress] = useState<string | null>(null);
+  const move = useMutation({
+    mutationFn: async () => {
+      const r = await services.moveToAnki(history, setProgress);
+      setProgress("Reading your words from Anki");
+      await services.syncAnki(setProgress).catch(() => undefined);
+      return r;
+    },
+    onSuccess: async (r) => {
+      const parts = [`${plural(r.added, "word")} added`];
+      if (r.existing) parts.push(`${plural(r.existing, "note")} Anki already had`);
+      if (r.scheduled) parts.push(`${plural(r.scheduled, "card")} given their due date`);
+      if (r.reviews) parts.push(`${plural(r.reviews, "past review")} copied`);
+      if (r.skipped) parts.push(`${plural(r.skipped, "note")} without a word left out`);
+      // This part of Settings is replaced by the connected one: the result goes to a toast.
+      toast("Your reviews now happen in Anki", `${parts.join(", ")}.`);
+      for (const k of AFFECTED) await qc.invalidateQueries({ queryKey: [k] });
+    },
+  });
+  return (
+    <section className="stack" aria-labelledby="to-anki-h">
+      <h3 className="settings-h3" id="to-anki-h">
+        Move to Anki
+      </h3>
+      <p className="k-hint" style={{ margin: 0 }}>
+        Use Anki for your reviews from now on. Your words become notes in Anki, in the same decks;
+        cards you have reviewed come due on the same day. Kenning then reads your words from Anki
+        again. Notes of other types stay out: export them to a deck file above.
+      </p>
+      {confirm ? (
+        <div className="stack" style={{ gap: 8 }}>
+          <label className="row" style={{ gap: 8, alignItems: "flex-start" }}>
+            <input
+              type="checkbox"
+              checked={history}
+              onChange={(e) => setHistory(e.target.checked)}
+            />
+            <span>
+              Also copy the review history and exact intervals (experimental)
+              <span className="k-hint" style={{ display: "block" }}>
+                Every answer with its real time. Open the deck options in Anki afterwards so FSRS
+                reads it.
+              </span>
+            </span>
+          </label>
+          <p style={{ margin: 0 }}>Keep Anki open while it runs.</p>
+          <div className="row">
+            <Button variant="primary" disabled={move.isPending} onClick={() => move.mutate()}>
+              {move.isPending ? <Spinner label="Moving" /> : null}
+              Move to Anki
+            </Button>
+            <Button variant="ghost" disabled={move.isPending} onClick={() => setConfirm(false)}>
+              Cancel
+            </Button>
+          </div>
+          {move.isPending && progress ? (
+            <p className="k-hint" role="status" style={{ margin: 0 }}>
+              {progress}
+            </p>
+          ) : null}
+        </div>
+      ) : (
+        <div className="row">
+          <Button onClick={() => setConfirm(true)}>Move to Anki…</Button>
+        </div>
+      )}
+      {move.isError ? (
+        <p role="alert" className="error-text" style={{ margin: 0 }}>
+          The move did not finish. {message(move.error)}
+        </p>
+      ) : null}
+    </section>
   );
 }
 

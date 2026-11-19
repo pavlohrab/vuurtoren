@@ -718,3 +718,13 @@ Front, then Space or **Show answer**, then Again / Hard / Good / Easy (keys 1–
 | Media                   | the images and sounds the notes and templates use                                                                                                                               |
 
 Checked by importing the file into a fresh collection with Anki 26.08: cards, due days, memory state, history and deck presets come through.
+
+### 9.8 Move to Anki
+
+`moveToAnki` (`packages/anki/src/toAnki.ts`), through AnkiConnect, once:
+
+1. `notesInfo` on every note: notes Anki already has (they came from Anki and kept their ids) are not added.
+2. The others are added as **Kenning Word** notes in their deck, tagged `kenning::moved`. A Kenning note keeps its fields; an imported vocabulary note maps its word, meaning, sentence and translation fields onto Kenning's. A note with several cards becomes one card, standing for its most advanced card. Notes of other types without a word are left out.
+3. Each card reviewed in Kenning gets `setDueDate "N!"`: due on the same study day, with that gap (N days) as its interval. New and learning cards are new in Anki. Suspended cards are suspended.
+4. **With history (experimental):** `setSpecificValueOfCard` sets the exact interval, reviews and lapses, and `insertReviews` writes every answer with its real time and the interval it gave (the history replayed without fuzz, as in the export). Answers Anki already holds (`getReviewsOfCards`) are not written twice. Anki computes FSRS memory from this history when its deck options are saved or optimised.
+5. The profile becomes connected and reads the moved decks (Kenning's note type and fields), and an Anki sync runs. Kenning's own cards stay in its database, unused.

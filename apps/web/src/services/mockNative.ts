@@ -202,6 +202,18 @@ export function createMockNative(
         summary: { notes: cards.length, cards: cards.length, reviews: reviewed * 3, media: 0 },
       };
     },
+    async moveToAnki(withHistory, onProgress) {
+      onProgress?.("Adding your words to Anki");
+      await wait();
+      await profile.save({ ...profile.current(), mode: "connected" });
+      return {
+        added: cards.length,
+        existing: 0,
+        skipped: 0,
+        scheduled: cards.filter((c) => c.schedule).length,
+        reviews: withHistory ? cards.filter((c) => c.schedule).length * 3 : 0,
+      };
+    },
     async tuning() {
       await wait();
       return tuning;
