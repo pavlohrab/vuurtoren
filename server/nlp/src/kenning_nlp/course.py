@@ -36,6 +36,7 @@ from PIL import Image, UnidentifiedImageError
 
 from kenning_nlp.errors import ServiceError
 from kenning_nlp.ocr import MAX_FRAMES, TESSERACT_LANGS, ensure_tesseract, ocr_image_data
+from kenning_nlp.ocr_review import COURSE_PREVIEW_LONG_SIDE, OcrWord, find_flags, preview_webp
 from kenning_nlp.pdf import OCR_DPI, PDFIUM_LOCK, _open, is_pdf
 
 MAX_COURSE_PAGES = 400
@@ -47,11 +48,15 @@ CACHE_PAGES = 1500
 MIN_TEXT_LAYER_CHARS = 40
 """A PDF page with at least this many letters/digits in its text layer is not OCR'd."""
 
-# (image, tesseract code) -> (blocks, word confidences 0..100); replaced by a fake in tests.
-Engine = Callable[[Image.Image, str], tuple[list[dict[str, Any]], list[float]]]
+# (image, tesseract code) -> (blocks, word confidences 0..100[, words with boxes]); the words
+# are optional (a fake engine in tests may leave them out; then the page has no review flags).
+Engine = Callable[[Image.Image, str], tuple[Any, ...]]
+# (blocks, mean confidence 0..1, review flags or None)
+PageResult = tuple[list[dict[str, Any]], float, list[dict[str, Any]] | None]
+_LANG_OF_CODE = {v: k for k, v in TESSERACT_LANGS.items()}
 
 
-def tesseract_engine(img: Image.Image, code: str) -> tuple[list[dict[str, Any]], list[float]]:
+def tesseract_engine(img: Image.Image, code: str) -> tuple[Any, ...]:
     """Real engine: Tesseract via :func:`kenning_nlp.ocr.ocr_image_data`."""
     return ocr_image_data(img, code)
 
@@ -312,6 +317,8 @@ class Job:
     finished_at: float | None = None
     cancelled: bool = False
     cached: int = 0
+    previews: dict[int, bytes] = field(default_factory=dict)
+    """Page number -> downscaled WebP of pages with review flags (served while the job lives)."""
     lock: threading.Lock = field(default_factory=threading.Lock)
 
     def view(self, after: int = 0) -> dict[str, Any]:
@@ -381,7 +388,7 @@ class CourseOcr:
             # Tesseract's own OpenMP threads would oversubscribe the CPUs next to our workers.
             os.environ.setdefault("OMP_THREAD_LIMIT", "1")
         self.jobs: dict[str, Job] = {}
-        self.cache: OrderedDict[str, tuple[list[dict[str, Any]], float]] = OrderedDict()
+        self.cache: OrderedDict[str, PageResult] = OrderedDict()
         self.lock = threading.Lock()
 
     def start(self, data: bytes | list[bytes], lang: str) -> Job:
@@ -423,6 +430,15 @@ class CourseOcr:
             raise ServiceError(404, "Unknown or expired OCR job.")
         return job
 
+    def preview(self, job_id: str, n: int) -> bytes:
+        """The WebP preview of page ``n`` of a job (404 when the page has none)."""
+        job = self.get(job_id)
+        with job.lock:
+            img = job.previews.get(n)
+        if img is None:
+            raise ServiceError(404, "No image of this page.")
+        return img
+
     def cancel(self, job_id: str) -> None:
         """Stop a job after its current page and drop it."""
         job = self.get(job_id)
@@ -447,7 +463,8 @@ class CourseOcr:
             return None
         return self.cache_dir / f"{key}.json"
 
-    def _cached(self, key: str) -> tuple[list[dict[str, Any]], float] | None:
+    def _cached(self, key: str) -> PageResult | None:
+        """A cached page: memory first, then the disk cache (with its preview image, if any)."""
         with self.lock:
             hit = self.cache.get(key)
             if hit:
@@ -457,14 +474,26 @@ class CourseOcr:
         if path and path.is_file():
             try:
                 raw = json.loads(path.read_text("utf-8"))
-                hit = (raw["blocks"], float(raw["confidence"]))
-            except (OSError, ValueError, KeyError, TypeError):
+                flags = raw.get("flags")
+                hit = (raw["blocks"], float(raw["confidence"]), flags if flags else None)
+            except (OSError, ValueError, KeyError, TypeError, AttributeError):
                 return None
             self._remember(key, hit, disk=False)
             return hit
         return None
 
-    def _remember(self, key: str, result: tuple[list[dict[str, Any]], float], disk: bool) -> None:
+    def _cached_preview(self, key: str) -> bytes | None:
+        path = self._cache_path(key)
+        if not path:
+            return None
+        try:
+            return path.with_suffix(".webp").read_bytes()
+        except OSError:
+            return None
+
+    def _remember(
+        self, key: str, result: PageResult, disk: bool, preview: bytes | None = None
+    ) -> None:
         with self.lock:
             self.cache[key] = result
             while len(self.cache) > CACHE_PAGES:
@@ -473,16 +502,28 @@ class CourseOcr:
         if path:
             try:
                 path.parent.mkdir(parents=True, exist_ok=True)
+                if preview:
+                    path.with_suffix(".webp").write_bytes(preview)
                 tmp = path.with_suffix(".tmp")
-                tmp.write_text(json.dumps({"blocks": result[0], "confidence": result[1]}), "utf-8")
+                body = {"blocks": result[0], "confidence": result[1], "flags": result[2]}
+                tmp.write_text(json.dumps(body), "utf-8")
                 tmp.replace(path)
             except OSError:
                 pass  # the cache is an optimisation only
 
-    def _ocr(self, img: Image.Image, code: str) -> tuple[list[dict[str, Any]], float]:
-        blocks, confs = self.engine(img, code)
-        conf = sum(confs) / len(confs) / 100 if confs else 0.0
-        return blocks, round(conf, 3)
+    def _ocr(self, img: Image.Image, code: str) -> tuple[PageResult, bytes | None]:
+        """Recognise one page; flag doubtful words and keep a small preview of a flagged page."""
+        blocks, confs, *rest = self.engine(img, code)
+        conf = round(sum(confs) / len(confs) / 100 if confs else 0.0, 3)
+        words: list[OcrWord] = rest[0] if rest else []
+        flags = None
+        preview = None
+        if words:
+            text = "\n\n".join(b["text"] for b in blocks)
+            flags = find_flags(text, words, _LANG_OF_CODE.get(code, "nl")) or None
+            if flags:
+                preview = preview_webp(img, COURSE_PREVIEW_LONG_SIDE, quality=55)
+        return (blocks, conf, flags), preview
 
     # ------------------------------------------------------------------ run
 
@@ -490,19 +531,25 @@ class CourseOcr:
         self, job: Job, files: list[bytes], code: str, missing: ServiceError | None = None
     ) -> None:
         sources = (src for data in files for src in iter_page_sources(data))
-        pending: dict[int, Future[tuple[list[dict[str, Any]], float]] | tuple[Any, float]] = {}
+        pending: dict[int, Future[tuple[PageResult, bytes | None]] | PageResult] = {}
         keys: dict[int, str] = {}
         next_out = 1
 
-        def publish(n: int, result: tuple[list[dict[str, Any]], float]) -> None:
-            blocks, conf = result
-            page = {
+        def publish(n: int, result: PageResult, preview: bytes | None) -> None:
+            blocks, conf, flags = result
+            page: dict[str, Any] = {
                 "n": n,
                 "text": "\n\n".join(b["text"] for b in blocks),
                 "confidence": conf,
                 "blocks": blocks,
             }
+            if flags:
+                # Offsets in the flags point into ``text``; ``image`` says whether
+                # ``GET /course/ocr/{id}/page/{n}/image`` has a picture of the page.
+                page["review"] = {"flags": flags, "image": preview is not None}
             with job.lock:
+                if preview is not None:
+                    job.previews[n] = preview
                 job.pages.append(page)
 
         def flush(block: bool) -> None:
@@ -512,12 +559,13 @@ class CourseOcr:
                 if isinstance(item, Future):
                     if not block and not item.done():
                         return
-                    result = item.result()
-                    self._remember(keys[next_out], result, disk=True)
+                    result, preview = item.result()
+                    self._remember(keys[next_out], result, disk=True, preview=preview)
                 else:
                     result = item
+                    preview = self._cached_preview(keys[next_out]) if result[2] else None
                 del pending[next_out]
-                publish(next_out, result)
+                publish(next_out, result, preview)
                 next_out += 1
 
         try:
@@ -532,7 +580,7 @@ class CourseOcr:
                             job.cached += 1
                         pending[n] = hit
                     elif src.text is not None:
-                        result = (text_blocks(src.text), 1.0)
+                        result = (text_blocks(src.text), 1.0, None)
                         self._remember(keys[n], result, disk=False)
                         with job.lock:
                             job.cached += 1

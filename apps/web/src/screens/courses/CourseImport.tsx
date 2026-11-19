@@ -15,12 +15,15 @@ import type {
   PendingImport,
 } from "../../services/courseTypes.js";
 import { OutlineEditor } from "./OutlineEditor.js";
+import { CourseReview } from "./CourseReview.js";
+import type { CourseReviewPage, TextEdit } from "../../services/ocrReview.js";
 import "./courses.css";
 
-type Step = "upload" | "ocr" | "outline" | "decks" | "analyze" | "done";
+type Step = "upload" | "ocr" | "check" | "outline" | "decks" | "analyze" | "done";
 const STEPS: [Step, string][] = [
   ["upload", "Book"],
   ["ocr", "Reading"],
+  ["check", "Check"],
   ["outline", "Outline"],
   ["decks", "Anki decks"],
   ["analyze", "Exercises"],
@@ -109,6 +112,26 @@ export function CourseImportScreen({ courseId: existing }: { courseId?: string }
   const [source, setSource] = useState<"file" | "web">("file");
   const [urls, setUrls] = useState("");
   const fileInput = useRef<HTMLInputElement>(null);
+  // The Check step: flagged pages wait here until the learner continues or skips.
+  const [check, setCheck] = useState<CourseReviewPage[] | null>(null);
+  const resolveCheck = useRef<((edits: Map<number, TextEdit[]> | null) => void) | null>(null);
+  // Leaving the wizard during the check keeps the text as recognised.
+  useEffect(() => () => resolveCheck.current?.(null), []);
+  const review = {
+    review: (pages: CourseReviewPage[]) =>
+      new Promise<Map<number, TextEdit[]> | null>((resolve) => {
+        if (!mounted.current) return resolve(null);
+        resolveCheck.current = resolve;
+        setCheck(pages);
+        setStep("check");
+      }),
+  };
+  const endCheck = (edits: Map<number, TextEdit[]> | null) => {
+    resolveCheck.current?.(edits);
+    resolveCheck.current = null;
+    setCheck(null);
+    setStep("ocr");
+  };
 
   const fail = (e: unknown) => {
     if (mounted.current)
@@ -141,7 +164,7 @@ export function CourseImportScreen({ courseId: existing }: { courseId?: string }
     setProgress(null);
     setStep("ocr");
     try {
-      const id = await services.resumeImport((p) => mounted.current && setProgress(p));
+      const id = await services.resumeImport((p) => mounted.current && setProgress(p), review);
       if (mounted.current) await toOutline(id);
     } catch (e) {
       fail(e);
@@ -192,6 +215,7 @@ export function CourseImportScreen({ courseId: existing }: { courseId?: string }
           ...(title.trim() ? { title: title.trim() } : {}),
         },
         (p) => mounted.current && setProgress(p),
+        review,
       );
       if (!mounted.current) return;
       await toOutline(id);
@@ -241,7 +265,7 @@ export function CourseImportScreen({ courseId: existing }: { courseId?: string }
   const outlineProblem = validateOutline(rows, pages?.length ?? 0);
 
   return (
-    <div className={step === "outline" ? "page" : "page page--narrow"}>
+    <div className={step === "outline" || step === "check" ? "page" : "page page--narrow"}>
       <PageHeader title={existing ? "Edit course" : "Add a course"} />
       <Steps step={step === "done" ? "analyze" : step} />
       {error ? (
@@ -379,6 +403,8 @@ export function CourseImportScreen({ courseId: existing }: { courseId?: string }
           <ProgressBar p={progress} />
         </>
       ) : null}
+
+      {step === "check" && check ? <CourseReview pages={check} onDone={endCheck} /> : null}
 
       {step === "outline" ? (
         <>

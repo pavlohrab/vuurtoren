@@ -17,6 +17,8 @@ import type {
   WordState,
 } from "@app/core";
 
+import type { CourseReviewHandler } from "./ocrReview.js";
+
 type ImportStage = "ocr" | "outline" | "texts" | "exercises" | "done";
 
 /** Progress callback payload of the long-running import steps. */
@@ -34,6 +36,11 @@ export type CourseSourceInput =
   | { kind: "text"; title: string; text: string }
   /** Web pages, one unit each, in the given order. */
   | { kind: "url"; urls: string[]; title: string };
+
+export interface CourseImportOptions {
+  /** Shows the flagged pages; resolves with the fixes per page (null: keep as recognised). */
+  review?: CourseReviewHandler;
+}
 
 /** An import whose reading job was started but not turned into a course yet (wizard left). */
 export interface PendingImport {
@@ -232,12 +239,22 @@ export interface CourseServices {
     pack: CoursePack,
     opts?: { files?: File[]; onProgress?: (p: ImportProgress) => void },
   ): Promise<PackImportResult>;
-  /** OCR (server job) + outline detection; saves the course and its draft outline. */
-  importCourse(input: CourseSourceInput, onProgress?: (p: ImportProgress) => void): Promise<string>;
+  /**
+   * OCR (server job) + outline detection; saves the course and its draft outline. Between the
+   * two, `opts.review` may show the pages with words that look misread.
+   */
+  importCourse(
+    input: CourseSourceInput,
+    onProgress?: (p: ImportProgress) => void,
+    opts?: CourseImportOptions,
+  ): Promise<string>;
   /** The import left unfinished in this browser (its reading job id is remembered), or null. */
   pendingImport(): Promise<PendingImport | null>;
   /** Reattach to the pending reading job and finish the import (throws when the job is gone). */
-  resumeImport(onProgress?: (p: ImportProgress) => void): Promise<string>;
+  resumeImport(
+    onProgress?: (p: ImportProgress) => void,
+    opts?: CourseImportOptions,
+  ): Promise<string>;
   /** Forget the pending import (and stop its job when it still runs). */
   discardPendingImport(): Promise<void>;
   /** First lines of every page, for the outline editor. */

@@ -29,7 +29,15 @@ import type { NlpClient } from "@app/nlp-client";
 import type { LiveDictionary } from "./liveDictionary.js";
 import { DEFAULT_STAIRCASE, type LearnerCache } from "./liveLearner.js";
 import { fetchTexts } from "./textBatch.js";
-import type { AppServices, ImportInput, ReadingView, Settings, TextListItem } from "./types.js";
+import { ImportCancelledError } from "./ocrReview.js";
+import type {
+  AppServices,
+  ImportInput,
+  ImportOptions,
+  ReadingView,
+  Settings,
+  TextListItem,
+} from "./types.js";
 
 /** Max characters per /analyze/text request (server limit is higher; keeps requests snappy). */
 const CHUNK_CHARS = 40_000;
@@ -285,8 +293,25 @@ export function createLiveTexts({
 
     getReading: view,
 
-    async importText(input: ImportInput, onProgress?: (msg: string) => void): Promise<string> {
+    async importText(
+      input: ImportInput,
+      onProgress?: (msg: string) => void,
+      opts: ImportOptions = {},
+    ): Promise<string> {
       const client = await nlp();
+      /** OCR, then (when asked for and something looks misread) the learner's review. */
+      const recognise = async (file: File): Promise<string> => {
+        const r = await client.ocr(file, "nl", file.name, { review: Boolean(opts.review) });
+        if (!opts.review || !r.review || r.review.flags.length === 0) return r.text;
+        onProgress?.("Waiting for your check of the text…");
+        const checked = await opts.review({
+          text: r.text,
+          flags: r.review.flags,
+          pages: r.review.pages,
+        });
+        if (checked === null) throw new ImportCancelledError();
+        return checked;
+      };
       let title: string;
       let content: string;
       let ref: string | undefined;
@@ -305,13 +330,13 @@ export function createLiveTexts({
         const pdf = await client.extractPdf(input.file, input.file.name);
         if (pdf.needs_ocr) {
           onProgress?.("The PDF has no text layer — running OCR (this can take a while)…");
-          content = (await client.ocr(input.file, "nl", input.file.name)).text;
+          content = await recognise(input.file);
         } else content = pdf.text;
         title = input.title?.trim() || pdf.title || input.file.name.replace(/\.pdf$/i, "");
         ref = input.file.name;
       } else {
         onProgress?.("Recognising text in the photo…");
-        content = (await client.ocr(input.file, "nl", input.file.name)).text;
+        content = await recognise(input.file);
         title = input.title?.trim() || titleFrom(content);
         ref = input.file.name;
       }

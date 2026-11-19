@@ -27,7 +27,7 @@ function fakeBackend() {
   const uploads: string[] = [];
   let polls = 0;
   /** Polls to fail with a network error (the client retries a failed request once). */
-  const state = { failPoll: 0 };
+  const state = { failPoll: 0, flagged: false };
   const fetchFn = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
     const u = String(url);
     if (u.includes("/nlp/course/ocr")) {
@@ -49,12 +49,33 @@ function fakeBackend() {
         error: null,
         done,
         total: PAGES.length,
-        pages: PAGES.slice(after, done).map((text, i) => ({
-          n: after + i + 1,
-          text,
-          confidence: 0.9,
-          blocks: [],
-        })),
+        pages: PAGES.slice(after, done).map((text, i) => {
+          const n = after + i + 1;
+          const page = { n, text, confidence: 0.9, blocks: [] as { text: string }[] };
+          if (!state.flagged || n !== 3) return page;
+          // The word list page, read as "de fiels" with a review flag on it.
+          const read = text.replace("fiets", "fiels");
+          const start = read.indexOf("fiels");
+          return {
+            ...page,
+            text: read,
+            blocks: [{ text: read, x: 0, y: 0, w: 1, h: 1 }],
+            review: {
+              image: false,
+              flags: [
+                {
+                  start,
+                  end: start + 5,
+                  word: "fiels",
+                  reason: "unknown",
+                  conf: 0.8,
+                  suggestions: ["fiets"],
+                  box: { page: 1, x: 0.1, y: 0.8, w: 0.1, h: 0.04 },
+                },
+              ],
+            },
+          };
+        }),
       });
     }
     const body = JSON.parse(String(init?.body ?? "{}")) as Record<string, unknown>;
@@ -205,6 +226,28 @@ describe("live courses", () => {
     expect(courses).toHaveLength(1);
     expect(courses[0]).toMatchObject({ unitCount: 2, continueUnit: 1 });
     expect(courses[0]?.course.title).toBe("Mijn boek");
+  });
+
+  it("shows flagged pages to the review and applies its fixes before building the course", async () => {
+    const { backend, repo, services } = await setup();
+    backend.state.flagged = true;
+    const seen: number[] = [];
+    const id = await services.importCourse(
+      { kind: "pdf", files: [new File(["%PDF"], "b.pdf")] },
+      undefined,
+      {
+        review: async (pages) => {
+          seen.push(...pages.map((p) => p.n));
+          expect(pages[0]?.image).toBeNull();
+          const f = pages[0]?.flags[0];
+          return new Map([[3, f ? [{ start: f.start, end: f.end, text: "fiets" }] : []]]);
+        },
+      },
+    );
+    expect(seen).toEqual([3]);
+    const text = (await repo.courseBlocks(id)).map((b) => b.text).join("\n");
+    expect(text).toContain("de fiets");
+    expect(text).not.toContain("fiels");
   });
 
   it("Learn next for a unit moves its new cards in book order and logs each word", async () => {

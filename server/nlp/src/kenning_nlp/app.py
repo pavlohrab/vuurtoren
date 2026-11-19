@@ -179,14 +179,19 @@ async def thumbnail_endpoint(file: Annotated[UploadFile, File()]) -> Response:
     return Response(content=webp, media_type="image/webp")
 
 
-@app.post("/ocr")
+@app.post("/ocr", response_model_exclude_none=True)
 async def ocr_endpoint(
     file: Annotated[UploadFile, File()],
     lang: Annotated[str, Query(pattern=f"^({'|'.join(TESSERACT_LANGS)})$")] = "nl",
+    review: bool = False,
 ) -> OcrResult:
-    """OCR an image (png/jpg/webp/tiff) or a PDF. 503 if Tesseract is not installed."""
+    """OCR an image (png/jpg/webp/tiff) or a PDF. 503 if Tesseract is not installed.
+
+    ``review=true`` adds ``review``: page images and the words that may be misread, with
+    suggestions (see :mod:`kenning_nlp.ocr_review`).
+    """
     data = await read_upload(file)
-    return OcrResult(**await run_in_threadpool(run_ocr, data, lang))
+    return OcrResult(**await run_in_threadpool(run_ocr, data, lang, review))
 
 
 @lru_cache(maxsize=1)
@@ -321,6 +326,12 @@ async def course_ocr_start(
 def course_ocr_status(job_id: str, after: Annotated[int, Query(ge=0)] = 0) -> dict[str, object]:
     """Progress of an OCR job and its pages from index ``after`` (page text + layout blocks)."""
     return _course_ocr.get(job_id).view(after)
+
+
+@app.get("/course/ocr/{job_id}/page/{n}/image")
+def course_ocr_page_image(job_id: str, n: int) -> Response:
+    """A small WebP of a page that has review flags (for the review screen's image crops)."""
+    return Response(content=_course_ocr.preview(job_id, n), media_type="image/webp")
 
 
 @app.post("/course/ocr/{job_id}/cancel")

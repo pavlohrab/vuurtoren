@@ -22,6 +22,8 @@ import { createMockLibrary } from "./mockLibrary.js";
 import { createMockProfile } from "./mockProfile.js";
 import { createMockGrammar } from "./mockGrammar.js";
 import { createMockPractice } from "./mockPractice.js";
+import { ImportCancelledError, type OcrReviewDoc } from "./ocrReview.js";
+import type { OcrFlag } from "@app/nlp-client";
 import type {
   AnkiStatus,
   AppServices,
@@ -159,6 +161,31 @@ const SAMPLE_TEXTS: {
 
 const IMPORT_SAMPLE =
   "De fiets staat voor het huis. Mijn vader werkt vandaag thuis en maakt een grote pot soep.\n\nTegen de avond komen onze vrienden langs voor het eten.";
+
+/** IMPORT_SAMPLE as OCR might read it, with the words a review would flag (no page picture). */
+function demoOcrReview(): OcrReviewDoc {
+  const misread: [string, string, OcrFlag["reason"], string[]][] = [
+    ["huis", "hu1s", "unknown", ["huis"]],
+    ["maakt", "rnaakt", "unknown", ["maakt"]],
+    ["soep", "soep", "low", []],
+    ["vrienden", "vrienclen", "unknown", ["vrienden"]],
+  ];
+  let text = IMPORT_SAMPLE;
+  for (const [word, read] of misread) text = text.replace(word, read);
+  const flags: OcrFlag[] = misread.map(([, read, reason, suggestions], i) => {
+    const start = text.indexOf(read);
+    return {
+      start,
+      end: start + read.length,
+      word: read,
+      reason,
+      conf: reason === "low" ? 0.41 : 0.88,
+      suggestions,
+      box: { page: 1, x: 0.1, y: 0.1 + i * 0.1, w: 0.12, h: 0.04 },
+    };
+  });
+  return { text, flags, pages: [] };
+}
 
 const TOKEN_RE = /\p{L}+(?:-\p{L}+)*|\d+|[^\s\p{L}\d]/gu;
 const SENTENCE_END = new Set([".", "!", "?"]);
@@ -552,7 +579,7 @@ export function createMockServices(
       };
     },
 
-    async importText(input: ImportInput, onProgress) {
+    async importText(input: ImportInput, onProgress, opts = {}) {
       onProgress?.("Fetching content");
       await delay(latency * 3);
       let title: string;
@@ -572,6 +599,12 @@ export function createMockServices(
         onProgress?.(input.kind === "pdf" ? "Extracting text from PDF" : "Reading text from photo");
         await delay(latency * 3);
         content = IMPORT_SAMPLE;
+        if (opts.review) {
+          // The demo has no OCR: show the review with a few typical misreadings.
+          const checked = await opts.review(demoOcrReview());
+          if (checked === null) throw new ImportCancelledError();
+          content = checked;
+        }
         title = input.title?.trim() || input.file.name;
         kind = input.kind;
       }

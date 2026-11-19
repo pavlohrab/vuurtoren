@@ -73,11 +73,43 @@ export interface PdfExtraction {
   needs_ocr: boolean;
 }
 
+/**
+ * A word OCR may have misread: `text.slice(start, end)` of the text it belongs to. `box` is the
+ * word's first line on its page, in fractions of the page.
+ */
+export interface OcrFlag {
+  start: number;
+  end: number;
+  word: string;
+  /**
+   * `unknown`: not a word; `hyphen`: a line-end hyphenation joined (or left split) wrongly;
+   * `confusable`: a rare short word next to a very common reading; `low`: Tesseract was unsure.
+   */
+  reason: "unknown" | "hyphen" | "confusable" | "low";
+  /** Tesseract's confidence for the word, 0..1. */
+  conf: number;
+  /** Likely intended words, best first (may be empty). */
+  suggestions: string[];
+  box: { page: number; x: number; y: number; w: number; h: number };
+}
+
+/** A page of an `ocr(..., { review: true })` result: a small grayscale picture and its size. */
+export interface OcrReviewPage {
+  n: number;
+  confidence: number;
+  /** WebP data URL. */
+  image: string;
+  width: number;
+  height: number;
+}
+
 export interface OcrResult {
   text: string;
   /** Mean word confidence, 0..1. */
   confidence: number;
   pages: number;
+  /** Only when asked for (`review: true`) and the server supports it. */
+  review?: { pages: OcrReviewPage[]; flags: OcrFlag[] };
 }
 
 /** One OCR'd page of a course job: full text plus layout blocks (box = fractions of the page). */
@@ -86,6 +118,11 @@ export interface CoursePage {
   text: string;
   confidence: number;
   blocks: { text: string; x: number; y: number; w: number; h: number }[];
+  /**
+   * Words that may be misread (offsets into `text`). `image`: the job serves a picture of the
+   * page (`courseOcrPageImage`). Absent when nothing was flagged.
+   */
+  review?: { flags: OcrFlag[]; image: boolean };
 }
 
 /** Progress of a `/course/ocr` job; `pages` holds the pages from the requested index on. */
@@ -351,6 +388,21 @@ export class NlpClient {
     return this.request(`/course/ocr/${encodeURIComponent(id)}?after=${after}`);
   }
 
+  /** A small grayscale WebP of a flagged page of an OCR job (for the review screen). */
+  async courseOcrPageImage(id: string, n: number): Promise<Blob> {
+    const path = `/course/ocr/${encodeURIComponent(id)}/page/${n}/image`;
+    let res: Response;
+    try {
+      res = await this.fetchImpl(`${this.url}${path}`, {
+        signal: AbortSignal.timeout(this.timeoutMs),
+      });
+    } catch (e) {
+      throw new NlpError(`NLP service unreachable at ${this.url} (${String(e)})`, null);
+    }
+    if (!res.ok) throw new NlpError(`NLP ${path}: HTTP ${res.status}`, res.status);
+    return res.blob();
+  }
+
   /** Stop an OCR job and free its memory on the server. */
   courseOcrCancel(id: string): Promise<{ status: string }> {
     return this.request(`/course/ocr/${encodeURIComponent(id)}/cancel`, { method: "POST" });
@@ -389,11 +441,21 @@ export class NlpClient {
     return res.blob();
   }
 
-  /** OCR an image (png/jpg/webp/tiff) or PDF. Rejects with HTTP 503 if Tesseract is missing. */
-  ocr(file: Blob, lang: OcrLang = "nl", filename = "scan"): Promise<OcrResult> {
+  /**
+   * OCR an image (png/jpg/webp/tiff) or PDF. Rejects with HTTP 503 if Tesseract is missing.
+   * With `review` the result also has page pictures and the words that may be misread (older
+   * servers ignore the option and leave `review` out).
+   */
+  ocr(
+    file: Blob,
+    lang: OcrLang = "nl",
+    filename = "scan",
+    opts: { review?: boolean } = {},
+  ): Promise<OcrResult> {
     const form = new FormData();
     form.append("file", file, filename);
-    return this.postForm(`/ocr?lang=${encodeURIComponent(lang)}`, form);
+    const review = opts.review ? "&review=true" : "";
+    return this.postForm(`/ocr?lang=${encodeURIComponent(lang)}${review}`, form);
   }
 
   /**

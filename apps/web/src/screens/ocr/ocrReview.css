@@ -1,0 +1,217 @@
+/* OCR review: page picture beside the text (7 + 5 on wide screens, stacked below 900px). */
+.ocr-review {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+}
+.ocr-review__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--s-2) var(--s-4);
+  padding-bottom: var(--s-3);
+  border-bottom: 1px solid var(--hairline);
+}
+.ocr-review__summary {
+  margin: 0;
+  color: var(--ink-muted);
+  font-size: 14px;
+}
+.ocr-review__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-2);
+}
+.ocr-review__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--s-5);
+}
+@media (min-width: 900px) {
+  .ocr-review__grid[data-picture] {
+    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  }
+  .ocr-review__page {
+    position: sticky;
+    top: var(--s-4);
+    align-self: start;
+  }
+  .ocr-page {
+    max-height: calc(100vh - 160px);
+  }
+}
+.ocr-page {
+  max-height: 42vh;
+  overflow: auto;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-control);
+  background: var(--surface-2);
+}
+.ocr-page__frame {
+  position: relative;
+}
+.ocr-page__frame img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+/* The scan stays as it is in both themes; only the frame around the chosen word is drawn. */
+.ocr-page__mark {
+  position: absolute;
+  margin: -3px;
+  padding: 3px;
+  box-sizing: content-box;
+  border: 1.5px solid var(--accent);
+  border-radius: 4px;
+  pointer-events: none;
+  transition:
+    left var(--dur) var(--ease),
+    top var(--dur) var(--ease);
+}
+@media (prefers-reduced-motion: reduce) {
+  .ocr-page__mark {
+    transition: none;
+  }
+}
+
+/* Scans are white paper: dim them a little on the dark theme so they do not glare. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .ocr-page img,
+  :root:not([data-theme="light"]) .ocr-crop {
+    filter: brightness(0.86);
+  }
+}
+:root[data-theme="dark"] .ocr-page img,
+:root[data-theme="dark"] .ocr-crop {
+  filter: brightness(0.86);
+}
+
+.ocr-review__text {
+  min-width: 0;
+}
+.ocr-review__prose {
+  font-family: var(--font-reading);
+  font-size: 18px;
+  line-height: 1.75;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-width: var(--measure);
+}
+/* A word to check: the text itself, with a dotted underline; no fill until chosen. */
+.ocr-flag {
+  cursor: pointer;
+  border-radius: 3px;
+  text-decoration: underline dotted var(--accent);
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 4px;
+}
+.ocr-flag[data-status="fixed"],
+.ocr-flag[data-status="kept"] {
+  text-decoration: none;
+}
+.ocr-flag[data-status="fixed"] {
+  color: var(--known-ink);
+}
+.ocr-flag[data-active] {
+  background: var(--accent-soft);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+.ocr-flag:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* The chosen word: its scan, what is wrong, and the ways to fix it. */
+.ocr-word {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+  padding: var(--s-3) var(--s-4);
+  margin-bottom: var(--s-4);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+}
+@media (max-width: 899px) {
+  .ocr-word {
+    position: sticky;
+    top: var(--s-2);
+    z-index: 2;
+    box-shadow: var(--shadow-pop);
+  }
+}
+.ocr-crop {
+  width: 100%;
+  max-width: 360px;
+  max-height: 120px;
+  background-repeat: no-repeat;
+  border-radius: 6px;
+  background-color: var(--surface-2);
+}
+.ocr-crop--empty {
+  height: 48px;
+}
+.ocr-word__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--s-3);
+}
+.ocr-word__read {
+  display: block;
+  font-weight: 500;
+  font-size: 16px;
+}
+.ocr-word__why {
+  display: block;
+  color: var(--ink-muted);
+  font-size: 13px;
+}
+.ocr-word__nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  color: var(--ink-muted);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.ocr-word__pos {
+  min-width: 3.5em;
+  text-align: center;
+}
+.ocr-word__choices {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-2);
+}
+.ocr-word__choices kbd {
+  margin-left: 6px;
+  font-size: 11px;
+}
+.ocr-word__input {
+  width: auto;
+  flex: 1 1 10rem;
+  max-width: 16rem;
+}
+.ocr-review__textarea {
+  font-family: var(--font-reading);
+  font-size: 16px;
+  line-height: 1.6;
+}
+.ocr-review__keys {
+  margin: var(--s-5) 0 0;
+  color: var(--ink-muted);
+  font-size: 12.5px;
+}
+.ocr-review__keys kbd {
+  font-size: 11px;
+}
+@media (hover: none), (max-width: 699px) {
+  .ocr-review__keys,
+  .ocr-word__choices kbd {
+    display: none;
+  }
+}

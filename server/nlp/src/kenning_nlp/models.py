@@ -111,11 +111,53 @@ class PdfExtraction(BaseModel):
     """True when the PDF has (almost) no text layer: send it to /ocr instead."""
 
 
+class OcrBox(BaseModel):
+    page: int
+    """1-based page number."""
+    x: float
+    y: float
+    w: float
+    h: float
+    """Box of the word's first line, in fractions of the page."""
+
+
+class OcrFlag(BaseModel):
+    """A word that may be misread: ``text[start:end]`` of the result."""
+
+    start: int
+    end: int
+    word: str
+    reason: str
+    """``unknown`` (not a word), ``hyphen`` (joined line-end hyphenation), ``confusable``
+    (rare short word next to a common reading), ``low`` (Tesseract was unsure)."""
+    conf: float
+    """Tesseract's confidence for the word, 0..1."""
+    suggestions: list[str]
+    """Likely intended words, best first (may be empty)."""
+    box: OcrBox
+
+
+class OcrReviewPage(BaseModel):
+    n: int
+    confidence: float
+    image: str
+    """Downscaled grayscale page as a WebP data URL."""
+    width: int
+    height: int
+
+
+class OcrReview(BaseModel):
+    pages: list[OcrReviewPage]
+    flags: list[OcrFlag]
+
+
 class OcrResult(BaseModel):
     text: str
     confidence: float
     """Mean word confidence, 0..1."""
     pages: int
+    review: OcrReview | None = None
+    """Only with ``?review=true``."""
 
 
 class GlossRequest(BaseModel):

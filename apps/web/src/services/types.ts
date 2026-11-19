@@ -14,6 +14,7 @@ import type {
 import type { StoredText, SuggestedWord, TextSummary, WordInfo } from "@app/db";
 import type { InspectorEntry } from "@app/core";
 import type { CourseServices } from "./courseTypes.js";
+import type { OcrReviewHandler } from "./ocrReview.js";
 import type { AIServices, AISentenceReport } from "./aiTypes.js";
 import type { AddOptions, ProfileServices } from "./profileTypes.js";
 import type { ActivityDay } from "./activity.js";
@@ -75,6 +76,10 @@ export interface Settings {
    */
   grammarMarks: boolean;
 }
+export interface ImportOptions {
+  review?: OcrReviewHandler;
+}
+
 export type ImportInput =
   | {
       kind: "paste";
@@ -217,7 +222,16 @@ export interface AppServices
   checkRemoteChanges?(): Promise<boolean>;
   listTexts(): Promise<TextListItem[]>;
   getReading(textId: string): Promise<ReadingView | null>;
-  importText(input: ImportInput, onProgress?: (msg: string) => void): Promise<string>;
+  /**
+   * Import a text. For a photo or a scanned PDF, `opts.review` is shown the recognised text and
+   * the words that may be misread; the text it resolves with is imported (null cancels the
+   * import with ImportCancelledError). Without words to check the review is not shown.
+   */
+  importText(
+    input: ImportInput,
+    onProgress?: (msg: string) => void,
+    opts?: ImportOptions,
+  ): Promise<string>;
   deleteText(textId: string): Promise<void>;
   inspect(textId: string, tokenIndex: number): Promise<InspectorEntry>;
   /**
