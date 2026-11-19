@@ -10,6 +10,19 @@
   function invoke(cmd, args) {
     return window.__TAURI_INTERNALS__.invoke(cmd, args);
   }
+  function toBase64(bytes) {
+    var s = "";
+    for (var i = 0; i < bytes.length; i += 0x8000) {
+      s += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+    }
+    return btoa(s);
+  }
+  function fromBase64(text) {
+    var s = atob(text);
+    var out = new Uint8Array(s.length);
+    for (var i = 0; i < s.length; i++) out[i] = s.charCodeAt(i);
+    return out;
+  }
   Object.defineProperty(window, "__KENNING_DESKTOP__", {
     value: Object.freeze({
       // Not `location.origin`: custom schemes (tauri://) can report an opaque "null" origin.
@@ -57,6 +70,39 @@
         },
         move: function () {
           return invoke("db_move");
+        },
+      }),
+      // Sync (offline mode, home page only): a folder you already sync, and requests to sync
+      // places the page cannot reach itself. Bytes travel as base64.
+      sync: Object.freeze({
+        pickFolder: function () {
+          return invoke("sync_pick_folder");
+        },
+        list: function (root, dir) {
+          return invoke("sync_dir_list", { root: root, dir: dir });
+        },
+        get: function (root, path) {
+          return invoke("sync_dir_get", { root: root, path: path }).then(function (b64) {
+            return b64 == null ? null : fromBase64(b64);
+          });
+        },
+        put: function (root, path, bytes) {
+          return invoke("sync_dir_put", { root: root, path: path, data: toBase64(bytes) });
+        },
+        remove: function (root, path) {
+          return invoke("sync_dir_remove", { root: root, path: path });
+        },
+        fetch: function (req) {
+          return invoke("sync_fetch", {
+            req: {
+              url: req.url,
+              method: req.method,
+              headers: req.headers || {},
+              bodyBase64: req.body ? toBase64(req.body) : null,
+            },
+          }).then(function (res) {
+            return { status: res.status, headers: res.headers, body: fromBase64(res.bodyBase64) };
+          });
         },
       }),
       nlp: Object.freeze({
