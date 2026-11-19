@@ -5,7 +5,7 @@
  *   *    /api/auth/*   sign-in, sign-out, session check (see auth/index.ts)
  *   GET  /api/info     size, event count, device id
  *   POST /api/rpc      { method, args } -> { ok, result } (allow-listed repository methods)
- *   POST /api/blobs    raw image body (Content-Type image/*, at most 2 MB) -> { ok, id }
+ *   POST /api/blobs    raw image or sound body (images at most 2 MB, sounds 8 MB) -> { ok, id }
  *   GET  /api/blobs/:id  a stored image (cover photos; content-addressed, cached privately)
  *   GET  /api/export   consistent snapshot, kenning-YYYY-MM-DD.sqlite
  *   POST /api/import   raw SQLite body replaces the database
@@ -20,7 +20,7 @@ import { createReadStream, rmSync, statSync } from "node:fs";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import {
   BackupError,
-  MAX_BLOB_BYTES,
+  MAX_AUDIO_BLOB_BYTES,
   SCHEMA_VERSION,
   blobProblem,
   isBlobId,
@@ -126,7 +126,7 @@ export function createApiServer(opts: ApiOptions): Server {
 
     if (path === "/api/blobs" && method === "POST") {
       const type = (req.headers["content-type"] ?? "").split(";")[0]!.trim().toLowerCase();
-      const bytes = new Uint8Array(await readBody(req, MAX_BLOB_BYTES));
+      const bytes = new Uint8Array(await readBody(req, MAX_AUDIO_BLOB_BYTES));
       const problem = blobProblem(bytes, type);
       if (problem) throw new HttpFail(400, problem);
       const blobId = await store.withRepo((repo) => repo.putBlob(bytes, type));

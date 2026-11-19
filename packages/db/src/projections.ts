@@ -10,6 +10,7 @@ import {
   answerEvidence,
   withAppEvidence,
 } from "@app/core";
+import { applyNativeEvent } from "./cards.js";
 import { applyCourseEvent } from "./course.js";
 import { contentHash } from "./hash.js";
 import { compareHlc } from "./ids.js";
@@ -322,6 +323,14 @@ export async function applyEvent(driver: SqlDriver, ctx: EventContext): Promise<
           await addEvidence(driver, e.lang, key, answerEvidence("book", e.correct, e.at));
         }
       }
+      return;
+    case "NativeNotesAdded":
+    case "NativeDeckOptionsSet":
+    case "CardReviewed":
+    case "CardReviewUndone":
+    case "NativeCardsChanged":
+    case "FsrsParamsSet":
+      await applyNativeEvent(driver, ctx, e);
       return;
     default: {
       // An event written by a newer app version (or a future sync peer). It stays in the log

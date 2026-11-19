@@ -28,6 +28,7 @@ export {
 } from "./rpc.js";
 export type { RpcMethod, RpcRequest, RpcResponse } from "./rpc.js";
 export { composeWord, countWords } from "./projections.js";
+export { nativeWordEntries } from "./cards.js";
 export type { WordFacts } from "./projections.js";
 export { PROJECTION_VERSION, createRepository } from "./repository.js";
 export type { KenningRepository, RepositoryOptions } from "./repository.js";
@@ -39,6 +40,7 @@ export { projectSuggestedWords } from "./suggested.js";
 export { projectExamAttempts } from "./exam.js";
 export {
   BLOB_TYPES,
+  MAX_AUDIO_BLOB_BYTES,
   MAX_BLOB_BYTES,
   blobId,
   blobProblem,
