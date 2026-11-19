@@ -90,11 +90,19 @@ const handlers = (deck?: string) => ({
 });
 
 describe("handlers", () => {
+  it("add_to_anki adds to my words in native mode, without Anki", async () => {
+    await repo.append({ type: "LanguageProfileSet", profile: defaultProfile("nl") });
+    const r = await handlers().addToAnki({ word: "de kat", gloss: "cat", sentence: "De kat." });
+    expect(r.deck).toBe("Kenning::Nederlands");
+    expect(notes).toEqual([]);
+    expect((await repo.word("nl", "kat"))?.state).toBe("learning");
+  });
+
   it("add_to_anki uses the language profile's deck and the shared key rule", async () => {
     await repo.append({
       type: "LanguageProfileSet",
       profile: {
-        ...defaultProfile("nl"),
+        ...defaultProfile("nl", [], "connected"),
         destinations: { default: "Kenning::Nederlands", mcp: "Kenning::Nederlands::Claude" },
       },
     });
