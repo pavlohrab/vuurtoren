@@ -17,9 +17,11 @@ import {
   unitWordLists,
   validateOutline,
 } from "@app/core";
-import { type NlpClient, isOcrLang } from "@app/nlp-client";
+import { type CoursePage, type NlpClient, isOcrLang } from "@app/nlp-client";
 import { type DeriveClient, deriveAnswers } from "../courseDerive.js";
+import { type CourseReviewHandler, applyEditsToBlocks } from "../ocrReview.js";
 import type {
+  CourseImportOptions,
   CourseServices,
   CourseSourceInput,
   ImportProgress,
@@ -77,8 +79,8 @@ export function createCourseImport(ctx: CourseContext) {
     jobId: string,
     total: number,
     onProgress?: (p: ImportProgress) => void,
-  ): Promise<OcrPage[]> {
-    const pages: OcrPage[] = [];
+  ): Promise<CoursePage[]> {
+    const pages: CoursePage[] = [];
     for (;;) {
       const st = await client.courseOcrStatus(jobId, pages.length);
       pages.push(...st.pages);
@@ -98,11 +100,47 @@ export function createCourseImport(ctx: CourseContext) {
     }
   }
 
+  /**
+   * Let the learner check the words the server flagged; returns the pages with their fixes.
+   * Without a handler or flags, the pages come back as they are.
+   */
+  async function reviewPages(
+    client: NlpClient,
+    jobId: string,
+    pages: CoursePage[],
+    review: CourseReviewHandler | undefined,
+  ): Promise<OcrPage[]> {
+    const flagged = pages.filter((p) => p.review && p.review.flags.length > 0);
+    if (!review || flagged.length === 0) return pages;
+    const edits = await review(
+      flagged.map((p) => ({
+        n: p.n,
+        text: p.text,
+        flags: p.review?.flags ?? [],
+        image: p.review?.image
+          ? () =>
+              client.courseOcrPageImage(jobId, p.n).then(
+                (b) => URL.createObjectURL(b),
+                () => null,
+              )
+          : null,
+      })),
+    );
+    if (!edits) return pages;
+    return pages.map((p) => {
+      const pageEdits = edits.get(p.n);
+      if (!pageEdits || pageEdits.length === 0) return p;
+      const blocks = applyEditsToBlocks(p.blocks, pageEdits);
+      return { ...p, blocks, text: blocks.map((b) => b.text).join("\n\n") };
+    });
+  }
+
   /** Start the server OCR job (remembered, so the wizard can be left); resolves with all pages. */
   async function ocrPages(
     files: readonly File[],
     meta: { title: string; kind: "pdf" | "images" },
     onProgress?: (p: ImportProgress) => void,
+    review?: CourseReviewHandler,
   ): Promise<OcrPage[]> {
     const client = await deps.nlp();
     const lang = (await deps.settings()).lang;
@@ -116,7 +154,8 @@ export function createCourseImport(ctx: CourseContext) {
       total: job.total,
       startedAt: clock(),
     });
-    return pollPages(client, job.id, job.total, onProgress);
+    const pages = await pollPages(client, job.id, job.total, onProgress);
+    return reviewPages(client, job.id, pages, review);
   }
 
   /** Turn recognised pages into a saved course with its draft outline. */
@@ -153,7 +192,10 @@ export function createCourseImport(ctx: CourseContext) {
     return courseId;
   }
 
-  async function resumeImport(onProgress?: (p: ImportProgress) => void): Promise<string> {
+  async function resumeImport(
+    onProgress?: (p: ImportProgress) => void,
+    opts: CourseImportOptions = {},
+  ): Promise<string> {
     const p = readPending();
     if (!p) throw new Error("There is no unfinished import.");
     const client = await deps.nlp();
@@ -170,6 +212,7 @@ export function createCourseImport(ctx: CourseContext) {
       }
       throw e;
     }
+    pages = await reviewPages(client, p.jobId, pages as CoursePage[], opts.review);
     const id = await buildCourse(
       pages,
       p.title,
@@ -183,6 +226,7 @@ export function createCourseImport(ctx: CourseContext) {
   async function importCourse(
     input: CourseSourceInput,
     onProgress?: (p: ImportProgress) => void,
+    opts: CourseImportOptions = {},
   ): Promise<string> {
     if (input.kind === "text") {
       const pages = input.text.split("\f").map((text, i) => ({ n: i + 1, text }));
@@ -218,7 +262,7 @@ export function createCourseImport(ctx: CourseContext) {
     const first = input.files[0];
     if (!first) throw new Error("Choose a file first.");
     const title = input.title?.trim() || fileTitle(first.name);
-    const pages = await ocrPages(input.files, { title, kind: input.kind }, onProgress);
+    const pages = await ocrPages(input.files, { title, kind: input.kind }, onProgress, opts.review);
     const id = await buildCourse(
       pages,
       title,
