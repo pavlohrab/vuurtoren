@@ -46,7 +46,7 @@ export function useAIReady(): boolean {
 }
 
 /** The search params of Add text that open "Write a story" with a preset. */
-export function storySearch(preset: StoryPreset = {}) {
+function storySearch(preset: StoryPreset = {}) {
   return {
     tab: "story",
     ...(preset.topic ? { topic: preset.topic } : {}),
