@@ -266,6 +266,12 @@ importers:
       '@app/ui':
         specifier: workspace:*
         version: link:../../packages/ui
+      '@open-spaced-repetition/binding-wasm32-wasip1':
+        specifier: 0.6.0
+        version: 0.6.0
+      '@sqlite.org/sqlite-wasm':
+        specifier: 3.54.1-build1
+        version: 3.54.1-build1
       '@tanstack/react-query':
         specifier: ^5.107.1
         version: 5.107.1(@types/react@19.3.0)(react@19.3.1)
@@ -774,6 +780,10 @@ packages:
     peerDependencies:
       '@emnapi/core': ^1.7.1 || 2.0.0-beta.2
       '@emnapi/runtime': ^1.7.1 || 2.0.0-beta.2
+
+  '@open-spaced-repetition/binding-wasm32-wasip1@0.6.0':
+    resolution: {integrity: sha512-Pi+QOUODNOlTxRIQ8sKJokRYlc5bx+2GTKaxsjNk2QZ8cdbR+oMc5+mlL9E36X9b/cOipz3xI95/1XbJSPqUAA==}
+    engines: {node: '>=24'}
 
   '@open-spaced-repetition/srs-kit@1.0.0':
     resolution: {integrity: sha512-f++JAMpRw7Yh1U4JcHzTtVknJ1bYKz/4yejsus6TRl+ueGJpvexNBrOoqaeUWCgH/e1j046oiqjzy4Nf4RW/vw==}
@@ -3257,7 +3267,6 @@ snapshots:
     dependencies:
       '@emnapi/wasi-threads': 2.2.0
       tslib: 2.9.1
-    optional: true
 
   '@emnapi/runtime@1.11.2':
     dependencies:
@@ -3267,7 +3276,6 @@ snapshots:
   '@emnapi/runtime@2.0.0-beta.2':
     dependencies:
       tslib: 2.9.1
-    optional: true
 
   '@emnapi/wasi-threads@1.2.2':
     dependencies:
@@ -3277,7 +3285,6 @@ snapshots:
   '@emnapi/wasi-threads@2.2.0':
     dependencies:
       tslib: 2.9.1
-    optional: true
 
   '@eslint-community/eslint-utils@4.10.1(eslint@10.15.0(jiti@2.7.0))':
     dependencies:
@@ -3425,7 +3432,12 @@ snapshots:
       '@emnapi/core': 2.0.0-beta.2
       '@emnapi/runtime': 2.0.0-beta.2
       '@tybys/wasm-util': 0.10.5
-    optional: true
+
+  '@open-spaced-repetition/binding-wasm32-wasip1@0.6.0':
+    dependencies:
+      '@emnapi/core': 2.0.0-beta.2
+      '@emnapi/runtime': 2.0.0-beta.2
+      '@napi-rs/wasm-runtime': 1.2.6(@emnapi/core@2.0.0-beta.2)(@emnapi/runtime@2.0.0-beta.2)
 
   '@open-spaced-repetition/srs-kit@1.0.0': {}
 
@@ -4183,7 +4195,6 @@ snapshots:
   '@tybys/wasm-util@0.10.5':
     dependencies:
       tslib: 2.9.1
-    optional: true
 
   '@types/aria-query@5.0.4': {}
 

@@ -20,6 +20,7 @@ import { createMockAI } from "./mockAI.js";
 import { createMockExam, demoAttempts } from "./mockExam.js";
 import { createMockLibrary } from "./mockLibrary.js";
 import { createMockProfile } from "./mockProfile.js";
+import { createMockNative } from "./mockNative.js";
 import { createMockGrammar } from "./mockGrammar.js";
 import { createMockPractice } from "./mockPractice.js";
 import { ImportCancelledError, type OcrReviewDoc } from "./ocrReview.js";
@@ -249,6 +250,8 @@ export function createMockServices(
     synced?: boolean;
     /** Seed more texts, shelves and image covers for the bookshelf (the ?demo app). */
     demoLibrary?: boolean;
+    /** Start in native mode (Kenning holds the cards); connected to Anki by default. */
+    native?: boolean;
   } = {},
 ): AppServices {
   const latency = options.latencyMs ?? 40;
@@ -547,7 +550,11 @@ export function createMockServices(
   /** What was done in this demo session, for the Home week strip. */
   const sessionActivity: ActivityEntry[] = [];
   const ai = createMockAI(wait, { saveText: (title, content) => addText(title, content, "ai") });
-  const profile = createMockProfile(wait);
+  const profile = createMockProfile(wait, options.native ? "native" : "connected");
+  const native = createMockNative(wait, {
+    current: profile.current,
+    save: (p) => profile.services.saveLanguageProfile(p),
+  });
   const grammar = createMockGrammar(
     wait,
     () => [...texts.values()],
@@ -556,6 +563,7 @@ export function createMockServices(
 
   const services: AppServices = {
     ...profile.services,
+    ...native,
     ...practice,
     ...createMockCourses({ latencyMs: latency }),
     ...ai,

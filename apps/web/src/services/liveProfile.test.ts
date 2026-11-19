@@ -205,7 +205,7 @@ describe("live language profile", () => {
 
   it("the shared add command with the live profile: deck, tags and key", async () => {
     const { repo, live, anki } = await setup(new Map());
-    await live.services.saveLanguageProfile(defaultProfile("nl"));
+    await live.services.saveLanguageProfile(defaultProfile("nl", [], "connected"));
     const r = await addWordToAnki(anki.client, (e) => repo.append(e), {
       profile: await live.current(),
       context: { source: "reading" },

@@ -236,6 +236,7 @@ export async function applyNativeEvent(
         params: e.params,
         reviews: e.reviews,
         at: ctx.createdAt,
+        ...(e.historySize !== undefined ? { historySize: e.historySize } : {}),
         ...(e.logLoss !== undefined ? { logLoss: e.logLoss } : {}),
         ...(e.rmse !== undefined ? { rmse: e.rmse } : {}),
         ...(e.previousLogLoss !== undefined ? { previousLogLoss: e.previousLogLoss } : {}),

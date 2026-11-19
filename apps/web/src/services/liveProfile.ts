@@ -75,9 +75,12 @@ export function createLiveProfile(deps: LiveProfileDeps) {
     return profile;
   }
 
-  /** The profile for writes: a learner who skipped onboarding gets the defaults. */
+  /**
+   * The profile for writes: a learner who skipped onboarding gets the defaults, connected to
+   * Anki as before modes existed.
+   */
   async function current(): Promise<LanguageProfile> {
-    return (await load()) ?? defaultProfile((await deps.settings()).lang);
+    return (await load()) ?? defaultProfile((await deps.settings()).lang, [], "connected");
   }
 
   async function courseContext(c?: CourseDeckContext): Promise<AddContext["course"]> {

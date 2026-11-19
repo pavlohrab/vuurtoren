@@ -1,9 +1,10 @@
 /** Course words and Anki: deck mapping, Learn next, adding a unit's words. */
-import { addWordToAnki, studyWordsFirst } from "@app/anki";
+import { addWord, studyNativeFirst, studyWordsFirst } from "@app/anki";
 import {
   type LanguageProfile,
   type Unit,
   type UnitWord,
+  profileMode,
   resolveDeck,
   suggestDecks,
 } from "@app/core";
@@ -89,6 +90,26 @@ export function createCourseAnki(ctx: CourseContext) {
       .flatMap((k) => infos.get(k) ?? [])
       .filter((w) => w.noteIds.length > 0 && w.state !== "known");
     if (withNotes.length === 0) return { moved: 0, skipped: total };
+    if (profileMode(await currentProfile()) === "native") {
+      // Native mode: the new cards of the unit's words go to the front, in the unit's order.
+      const status = await repo.nativeNoteStatus(
+        lang,
+        withNotes.flatMap((w) => w.noteIds),
+        Date.now(),
+      );
+      const cardIds = status.flatMap((s) =>
+        s.cards.filter((c) => c.type === "new").map((c) => c.cardId),
+      );
+      const words = new Set(
+        status.filter((s) => s.cards.some((c) => c.type === "new")).map((s) => s.noteId),
+      );
+      const moved = withNotes.filter((w) => w.noteIds.some((id) => words.has(id))).length;
+      if (cardIds.length > 0) {
+        await studyNativeFirst((e) => repo.append(e), { lang, cardIds });
+      }
+      deps.changed();
+      return { moved, skipped: total - moved };
+    }
     // In the unit's word order, so Anki introduces the words as the book does.
     const { moved } = await studyWordsFirst(
       await deps.anki(),
@@ -216,7 +237,6 @@ export function createCourseAnki(ctx: CourseContext) {
       (r) => r.status === "new" && (wanted ? wanted.has(r.key) : true),
     );
     const profile = await currentProfile();
-    const anki = await deps.anki();
     const slug = course.title
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "-")
@@ -228,7 +248,7 @@ export function createCourseAnki(ctx: CourseContext) {
       const unit = course.units.find((u) => u.n === r.unitN);
       const deck = opts.deck ?? preview.decks[r.unitN];
       try {
-        const res = await addWordToAnki(anki, (e) => repo.append(e), {
+        const res = await addWord(deps.anki, (e) => repo.append(e), {
           profile,
           context: {
             source: "course",

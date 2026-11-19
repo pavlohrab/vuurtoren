@@ -394,6 +394,8 @@ export type AppEvent =
       params: number[];
       /** Reviews the optimizer trained on. */
       reviews: number;
+      /** Answers in the whole history at the time (for "500 new reviews since"). */
+      historySize?: number;
       logLoss?: number;
       rmse?: number;
       previousLogLoss?: number;
@@ -670,6 +672,7 @@ export interface NativeNoteStatus {
 export interface FsrsParamsRecord {
   params: number[];
   reviews: number;
+  historySize?: number;
   /** When they were set (ms). */
   at: number;
   logLoss?: number;

@@ -34,6 +34,8 @@
     "@app/db": "workspace:*",
     "@app/nlp-client": "workspace:*",
     "@app/ui": "workspace:*",
+    "@open-spaced-repetition/binding-wasm32-wasip1": "0.6.0",
+    "@sqlite.org/sqlite-wasm": "3.54.1-build1",
     "@tanstack/react-query": "^5.107.1",
     "@tanstack/react-router": "^1.170.46",
     "lucide-react": "^1.73.0",

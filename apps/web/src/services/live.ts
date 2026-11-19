@@ -13,6 +13,9 @@ import { composeGlosses, createLiveDictionary } from "./liveDictionary.js";
 import { createLiveExam } from "./liveExam.js";
 import { createLiveGrammar } from "./liveGrammar.js";
 import { createLiveLibrary } from "./liveLibrary.js";
+import { createLiveNative } from "./liveNative.js";
+import { workerOptimizer } from "../native/optimizer.js";
+import { browserSqlite } from "../native/openSqlite.js";
 import { createLearnerCache } from "./liveLearner.js";
 import { createLivePractice } from "./livePractice.js";
 import { createLiveProfile } from "./liveProfile.js";
@@ -131,6 +134,21 @@ export function createLiveServices(
 
   const exam = createLiveExam({ repo, lang, changed });
 
+  const native = createLiveNative({
+    repo,
+    lang,
+    profile: profile.current,
+    saveProfile: profile.services.saveLanguageProfile,
+    anki: () => anki(),
+    nlp,
+    changed: () => {
+      changed();
+      texts.clearPlans();
+    },
+    optimizer: workerOptimizer,
+    sqlite: browserSqlite,
+  });
+
   const services: AppServices = {
     ...profile.services,
     ...library,
@@ -138,6 +156,7 @@ export function createLiveServices(
     ...ai,
     ...courses,
     ...exam,
+    ...native.services,
     textGrammar: grammar.textGrammar,
     grammarOverview: grammar.grammarOverview,
     grammarExamples: grammar.grammarExamples,
@@ -155,6 +174,7 @@ export function createLiveServices(
             texts.clearPlans();
             dictionary.clearGlosses();
             profile.invalidate();
+            native.invalidate();
             invalidatePractice();
             return true;
           },
