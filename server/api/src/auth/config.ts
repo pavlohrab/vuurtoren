@@ -9,7 +9,8 @@
  *                           /data/auth.sqlite in Docker; in memory while auth is off)
  *   KENNING_COOKIE_SECURE   "0" to drop the Secure cookie flag (plain-http LAN only)
  *   KENNING_TRUST_CF        "1" behind a Cloudflare Tunnel: client IP from CF-Connecting-IP
- *   KENNING_ALLOWED_ORIGINS extra origins (comma-separated) for state-changing requests
+ *   KENNING_ALLOWED_ORIGINS extra origins (comma-separated) for state-changing requests, and
+ *                           with auth off the only other sites /api/sync answers
  *
  * With no password and no token, auth is off.
  */

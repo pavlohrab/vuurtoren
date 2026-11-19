@@ -9,7 +9,8 @@
  *   GET  /api/auth/mcp-tokens       list MCP tokens (Claude Code; see tokens.ts)
  *   POST /api/auth/mcp-tokens       {label?} -> { token, id, ... } (token shown once)
  *   DELETE /api/auth/mcp-tokens/:id revoke one
- *   GET/POST/DELETE /api/auth/sync-tokens[/:id]  the same for sync tokens (devices that sync)
+ *   GET/POST/DELETE /api/auth/sync-tokens[/:id]  the same for sync tokens (devices that sync;
+ *                                                POST {label?, vault?}: see tokens.ts)
  *
  * Credentials: a password (scrypt hash) for people, an optional bearer token for scripts and
  * the MCP server. With neither, auth is off (localhost / trusted network use).
@@ -48,7 +49,7 @@ export interface AuthOptions {
 }
 
 /** Who made a request. */
-type Identity =
+export type Identity =
   | { via: "open" }
   | { via: "token" }
   /** A per-user MCP token: valid for `/api/mcp` only. */
@@ -61,7 +62,7 @@ type Identity =
  * What a request is for: MCP tokens are accepted for "mcp" (`/api/mcp`) only, sync tokens for
  * "sync" (`/api/sync`) only.
  */
-type AuthScope = "api" | "mcp" | "sync";
+export type AuthScope = "api" | "mcp" | "sync";
 
 export interface Auth {
   readonly enabled: boolean;
@@ -70,8 +71,17 @@ export interface Auth {
   require(req: IncomingMessage, scope?: AuthScope): Identity;
   /** Handle `/api/auth/*`; returns false for other paths. */
   route(req: IncomingMessage, res: ServerResponse, path: string): Promise<boolean>;
-  /** Why a state-changing request must be refused (CSRF), or null. */
-  csrf(req: IncomingMessage): string | null;
+  /**
+   * Why a state-changing request must be refused (CSRF), or null. `scope` is what the request
+   * is for: a bearer token skips the check only when it is valid there.
+   */
+  csrf(req: IncomingMessage, scope?: AuthScope): string | null;
+  /** Why the request comes from another site (not this host, not an allowed origin), or null. */
+  foreignOrigin(req: IncomingMessage): string | null;
+  /** Extra origins allowed besides the server's own (KENNING_ALLOWED_ORIGINS). */
+  readonly allowedOrigins: readonly string[];
+  /** The sync tokens (each bound to a device; see tokens.ts). */
+  readonly syncTokens: TokenStore;
   /** Headers to add to a response for this identity (renewed session cookie). */
   responseHeaders(id: Identity): Record<string, string | string[]>;
   close(): void;
@@ -93,6 +103,23 @@ function readCookie(req: IncomingMessage, name: string): string | undefined {
   return undefined;
 }
 
+/** Why `req` comes from another site, or null (no Origin, this host, or a listed origin). */
+function originProblem(req: IncomingMessage, allowedOrigins: readonly string[]): string | null {
+  if (req.headers["sec-fetch-site"] === "cross-site") return "cross-site request";
+  const origin = req.headers.origin;
+  if (origin === undefined) return null;
+  let host: string | null;
+  try {
+    host = origin === "null" ? null : new URL(origin).host;
+  } catch {
+    // A malformed Origin header counts as another site.
+    host = null;
+  }
+  const sameHost = host !== null && host === req.headers.host;
+  const listed = allowedOrigins.includes(origin.replace(/\/$/, ""));
+  return sameHost || listed ? null : "origin does not match";
+}
+
 /**
  * Cross-site request forgery guard for state-changing requests (anything but GET/HEAD/
  * OPTIONS). The session cookie is SameSite=Lax already; in addition a request must
@@ -100,30 +127,23 @@ function readCookie(req: IncomingMessage, name: string): string | undefined {
  *    and `Sec-Fetch-Site` must not be "cross-site";
  *  - and be impossible for a plain HTML form: `Content-Type: application/json` or the
  *    `X-Kenning: 1` header (both force a CORS preflight, which this server never grants).
- * Requests with an `Authorization` header are exempt: browsers cannot attach one cross-site
- * without a preflight either, and scripts using the bearer token send no Origin.
+ * Requests with a valid bearer token (`bearerOk`) are exempt: browsers cannot attach one
+ * cross-site without a preflight either, and scripts using a token send no Origin. Any other
+ * Authorization header (auth off, a wrong token) is checked like everything else.
  * Applies with auth off too (a malicious page could otherwise POST to http://localhost).
  *
  * @returns a reason when the request must be refused, else null
  */
-function csrfProblem(req: IncomingMessage, allowedOrigins: readonly string[] = []): string | null {
+function csrfProblem(
+  req: IncomingMessage,
+  allowedOrigins: readonly string[],
+  bearerOk: boolean,
+): string | null {
   const method = req.method ?? "GET";
   if (SAFE_METHODS.has(method)) return null;
-  if (req.headers.authorization) return null;
-  if (req.headers["sec-fetch-site"] === "cross-site") return "cross-site request";
-  const origin = req.headers.origin;
-  if (origin !== undefined) {
-    let host: string | null;
-    try {
-      host = origin === "null" ? null : new URL(origin).host;
-    } catch {
-      // malformed Origin header: treated as no origin (the CSRF check then refuses)
-      host = null;
-    }
-    const sameHost = host !== null && host === req.headers.host;
-    const listed = allowedOrigins.includes(origin.replace(/\/$/, ""));
-    if (!sameHost && !listed) return "origin does not match";
-  }
+  if (bearerOk) return null;
+  const foreign = originProblem(req, allowedOrigins);
+  if (foreign) return foreign;
   const type = (req.headers["content-type"] ?? "").split(";")[0]!.trim().toLowerCase();
   if (type !== "application/json" && req.headers["x-kenning"] !== "1") {
     return "missing application/json or X-Kenning header";
@@ -209,8 +229,21 @@ export function createAuth(opts: AuthOptions = {}): Auth {
     });
   };
 
-  /** Resolve the caller without throwing. */
+  // One answer per request and scope: the CSRF check and the endpoint ask the same question,
+  // and a wrong token counts once towards the rate limit.
+  const identified = new WeakMap<IncomingMessage, Map<AuthScope, Identity | HttpFail>>();
   function identify(req: IncomingMessage, scope: AuthScope = "api"): Identity | HttpFail {
+    let known = identified.get(req);
+    if (!known) identified.set(req, (known = new Map()));
+    const hit = known.get(scope);
+    if (hit) return hit;
+    const id = resolve(req, scope);
+    known.set(scope, id);
+    return id;
+  }
+
+  /** Resolve the caller without throwing. */
+  function resolve(req: IncomingMessage, scope: AuthScope): Identity | HttpFail {
     if (!enabled) return { via: "open" };
     const authz = req.headers.authorization;
     if (authz !== undefined) {
@@ -363,10 +396,12 @@ export function createAuth(opts: AuthOptions = {}): Auth {
         return true;
       }
       if (path === base && method === "POST") {
-        const body = await readJson<{ label?: unknown }>(req, 4 * 1024);
+        const body = await readJson<{ label?: unknown; vault?: unknown }>(req, 4 * 1024);
         let made;
         try {
-          made = store.create(typeof body.label === "string" ? body.label : "");
+          made = store.create(typeof body.label === "string" ? body.label : "", {
+            vault: store === syncTokens && body.vault === true,
+          });
         } catch (e) {
           throw new HttpFail(409, e instanceof Error ? e.message : "Could not make a token.");
         }
@@ -390,7 +425,17 @@ export function createAuth(opts: AuthOptions = {}): Auth {
     methods,
     require,
     route,
-    csrf: (req) => csrfProblem(req, allowed),
+    csrf: (req, scope = "api") =>
+      csrfProblem(
+        req,
+        allowed,
+        enabled &&
+          req.headers.authorization !== undefined &&
+          !(identify(req, scope) instanceof HttpFail),
+      ),
+    foreignOrigin: (req) => originProblem(req, allowed),
+    allowedOrigins: allowed,
+    syncTokens,
     responseHeaders,
     close() {
       clearInterval(pruneTimer);

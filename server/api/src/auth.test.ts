@@ -420,6 +420,23 @@ describe("bearer token", () => {
       body: "x",
     });
     expect(imp.status).toBe(422);
+    // Only a token that is valid skips the check: a wrong one is refused like a form.
+    const forged = await fetch(`${base}/api/import`, {
+      method: "POST",
+      headers: { authorization: "Bearer not-the-token", origin: "https://evil.example" },
+      body: "x",
+    });
+    expect(forged.status).toBe(403);
+  });
+
+  it("with auth off, an Authorization header skips no check", async () => {
+    await start({ user: undefined, password: undefined });
+    const res = await fetch(`${base}/api/import`, {
+      method: "POST",
+      headers: { authorization: "Bearer anything" },
+      body: "x",
+    });
+    expect(res.status).toBe(403);
   });
 
   it("can be exchanged for a browser session (token-only servers)", async () => {
