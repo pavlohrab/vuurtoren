@@ -310,10 +310,11 @@ describe("export / import", () => {
     expect((await b.learnerModel("nl")).get("fiets")?.state).toBe("known");
     expect(await b.setting("k")).toBe(7);
     expect(await b.eventCount()).toBe(2);
-    // events keep their original device id; new writes use the new one
+    // New writes use the new device id. The backup never synced, so its events become this
+    // device's too: sync, once set up, sends them.
     const ev = await b.append({ type: "SettingChanged", key: "k", value: 8 });
     expect(ev.deviceId).toBe(b.deviceId);
-    expect((await b.events())[0]!.deviceId).toBe(oldDevice);
+    expect((await b.events())[0]!.deviceId).toBe(b.deviceId);
   });
 
   it("rejects non-SQLite, newer and foreign databases and keeps the data", async () => {
