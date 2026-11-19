@@ -2,12 +2,13 @@ import { pct } from "../../format.js";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { PageHeader } from "../../shell/PageHeader.js";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { FileUp, GraduationCap, Plus } from "lucide-react";
+import { FileUp, GraduationCap, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { Button, CoverageMeter, Dialog, EmptyState, Skeleton, useToast } from "@app/ui";
 import { useServices } from "../../services/context.js";
 import type { CourseListItem } from "../../services/courseTypes.js";
 import { ImportPackDialog } from "./CoursePacks.js";
+import { MenuButton } from "../library/MenuButton.js";
 import "./courses.css";
 
 /** Courses: the books you study along, with progress and a way to continue. */
@@ -87,9 +88,17 @@ export function Courses() {
                     Continue
                   </Link>
                 ) : null}
-                <Button variant="ghost" size="sm" onClick={() => setPendingDelete(c)}>
-                  Delete
-                </Button>
+                <MenuButton
+                  label={`More for ${c.course.title}`}
+                  items={[
+                    {
+                      label: "Delete course…",
+                      icon: <Trash2 size={16} aria-hidden />,
+                      danger: true,
+                      onSelect: () => setPendingDelete(c),
+                    },
+                  ]}
+                />
               </div>
             </li>
           ))}

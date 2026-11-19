@@ -196,27 +196,7 @@
   padding-left: 26px;
 }
 
-/* The "…" button: on pointer devices it appears on hover or focus; always there on touch. */
-.lib-menu-btn {
-  all: unset;
-  box-sizing: border-box;
-  display: grid;
-  place-items: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 8px;
-  color: var(--ink-muted);
-  cursor: pointer;
-}
-.lib-menu-btn:hover,
-.lib-menu-btn[aria-expanded="true"] {
-  background: var(--surface-2);
-  color: var(--ink);
-}
-.lib-menu-btn:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 1px;
-}
+/* The "…" button on a cover: on pointer devices it appears on hover or focus; always there on touch. */
 .lib-item-menu {
   position: absolute;
   top: 6px;
@@ -245,36 +225,6 @@
 .lib-known {
   color: var(--known-ink);
 }
-.lib-menu {
-  min-width: 200px;
-  padding: 4px;
-}
-.lib-menu-item {
-  all: unset;
-  box-sizing: border-box;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-  padding: 7px 10px;
-  border-radius: 6px;
-  font-size: 14px;
-  color: var(--ink);
-  cursor: pointer;
-}
-.lib-menu-item svg {
-  color: var(--ink-muted);
-}
-.lib-menu-item:hover,
-.lib-menu-item:focus-visible {
-  background: var(--surface-2);
-  outline: none;
-}
-.lib-menu-item[data-danger],
-.lib-menu-item[data-danger] svg {
-  color: var(--danger);
-}
-
 .lib-item-meta {
   display: flex;
   flex-wrap: wrap;

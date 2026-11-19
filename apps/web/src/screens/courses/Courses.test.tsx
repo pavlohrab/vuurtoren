@@ -28,6 +28,19 @@ describe("Courses", () => {
     );
   });
 
+  it("deletes a course from its … menu after a confirmation", async () => {
+    const { user } = setup("/courses");
+    await screen.findByRole("link", { name: "Nederlands voor beginners" });
+    expect(screen.queryByRole("button", { name: "Delete" })).toBeNull();
+    await user.click(screen.getByRole("button", { name: "More for Nederlands voor beginners" }));
+    await user.click(screen.getByRole("menuitem", { name: "Delete course…" }));
+    const dialog = await screen.findByRole("dialog", { name: "Delete this course" });
+    await user.click(within(dialog).getByRole("button", { name: "Delete" }));
+    await waitFor(() =>
+      expect(screen.queryByRole("link", { name: "Nederlands voor beginners" })).toBeNull(),
+    );
+  });
+
   it("shows unit status and runs Study first in Anki for the unit's new cards", async () => {
     const learnNextForUnit = vi.fn(async () => ({ moved: 2, skipped: 4 }));
     const { user } = setup("/courses/demo-course/1", { learnNextForUnit });

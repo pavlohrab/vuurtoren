@@ -1,0 +1,50 @@
+/* The quiet "…" button and its menu (MenuButton): Library covers and shelves, OCR review, Courses. */
+.lib-menu-btn {
+  all: unset;
+  box-sizing: border-box;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  color: var(--ink-muted);
+  cursor: pointer;
+}
+.lib-menu-btn:hover,
+.lib-menu-btn[aria-expanded="true"] {
+  background: var(--surface-2);
+  color: var(--ink);
+}
+.lib-menu-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.lib-menu {
+  min-width: 200px;
+  padding: 4px;
+}
+.lib-menu-item {
+  all: unset;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 7px 10px;
+  border-radius: 6px;
+  font-size: 14px;
+  color: var(--ink);
+  cursor: pointer;
+}
+.lib-menu-item svg {
+  color: var(--ink-muted);
+}
+.lib-menu-item:hover,
+.lib-menu-item:focus-visible {
+  background: var(--surface-2);
+  outline: none;
+}
+.lib-menu-item[data-danger],
+.lib-menu-item[data-danger] svg {
+  color: var(--danger);
+}
