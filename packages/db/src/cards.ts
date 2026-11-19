@@ -392,7 +392,45 @@ export function nativeQueries(driver: SqlDriver) {
         fresh.push(...rows.map(toCard));
       }
       fresh.sort((a, b) => a.position - b.position || a.id - b.id);
-      let cards = [...dueRows.map(toCard), ...fresh];
+      // Related cards apart: after one card of a note (or of the same word) was answered today,
+      // its other new and review cards wait for another day. Learning steps go on.
+      const keyOf = new Map<number, string | null>();
+      const cand = [...dueRows.map(toCard), ...fresh];
+      for (const r of await driver.exec(
+        "SELECT id, key FROM native_notes WHERE lang = ? AND id IN (SELECT value FROM json_each(?))",
+        [lang, JSON.stringify([...new Set(cand.map((c) => c.noteId))])],
+      )) {
+        keyOf.set(Number(r["id"]), r["key"] === null ? null : String(r["key"]));
+      }
+      const answered = new Set<number>();
+      const busy = new Set<string>();
+      for (const r of await driver.exec(
+        `SELECT DISTINCT r.card_id AS card, c.note_id AS note, n.key AS key
+           FROM native_reviews r JOIN native_cards c ON c.id = r.card_id
+           JOIN native_notes n ON n.id = c.note_id
+          WHERE r.lang = ? AND r.at >= ? AND r.rating > 0`,
+        [lang, dayStart],
+      )) {
+        answered.add(Number(r["card"]));
+        busy.add(`n${String(r["note"])}`);
+        if (r["key"] !== null) busy.add(`k${String(r["key"])}`);
+      }
+      const apart = (list: NativeCard[]) =>
+        list.filter((c) => {
+          const s = c.schedule;
+          if (s && s.state !== 2) return true;
+          if (answered.has(c.id)) return true;
+          const tags = [`n${c.noteId}`];
+          const key = keyOf.get(c.noteId);
+          if (key) tags.push(`k${key}`);
+          if (tags.some((t) => busy.has(t))) return false;
+          // One of them per session: the next comes once this one is answered (then tomorrow).
+          for (const t of tags) busy.add(t);
+          return true;
+        });
+      const dueCards = apart(dueRows.map(toCard));
+      const freshCards = apart(fresh);
+      let cards = [...dueCards, ...freshCards];
       if (cards.length === 0) {
         // Nothing else today: learning cards due within the next minutes come forward.
         cards = (
@@ -407,9 +445,24 @@ export function nativeQueries(driver: SqlDriver) {
       }
       return {
         cards: await views(driver, lang, cards.slice(0, Math.max(0, limit)), options),
-        due: dueRows.length,
-        fresh: fresh.length,
+        due: dueCards.length,
+        fresh: freshCards.length,
       };
+    },
+
+    async nativeDueCounts(lang: string, from: number, days: number): Promise<number[]> {
+      const out = Array.from({ length: Math.max(0, days) }, () => 0);
+      for (const r of await driver.exec(
+        `SELECT CAST((due - ?) / ? AS INTEGER) AS d, count(*) AS n FROM native_cards
+          WHERE lang = ? AND suspended = 0 AND schedule IS NOT NULL AND due >= ? AND due < ?
+            AND json_extract(schedule, '$.state') = 2
+          GROUP BY d`,
+        [from, DAY_MS, lang, from, from + days * DAY_MS],
+      )) {
+        const d = Number(r["d"]);
+        if (d >= 0 && d < out.length) out[d] = Number(r["n"]);
+      }
+      return out;
     },
 
     async nativeCard(lang: string, cardId: number): Promise<NativeCardView | null> {

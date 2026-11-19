@@ -27,6 +27,7 @@ export const DEFAULT_SETTINGS: Settings = {
   newWords: "auto",
   glossClozes: false,
   grammarMarks: true,
+  reviewWeek: [1, 1, 1, 1, 1, 1, 1],
 };
 
 /** The language server is down or unreachable (not: it refused one request). */

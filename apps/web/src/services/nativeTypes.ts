@@ -54,6 +54,11 @@ export interface ImportSummary {
   skippedMedia: number;
 }
 
+/** A deck, with about how many reviews a day each target recall would mean. */
+export interface DeckWithLoad extends NativeDeckSummary {
+  load: { retention: number; perDay: number }[];
+}
+
 /** What Move to Anki did. */
 export interface MoveToAnkiSummary {
   added: number;
@@ -106,7 +111,8 @@ export interface NativeServices {
   undoReview(cardId: number, reviewId: string): Promise<void>;
   /** An image or sound of a card. */
   mediaFile(blobId: string): Promise<Blob | null>;
-  nativeDecks(): Promise<NativeDeckSummary[]>;
+  /** Decks with their options, counts and the reviews a day each target recall would mean. */
+  nativeDecks(): Promise<DeckWithLoad[]>;
   setDeckOptions(deck: string, options: DeckOptions): Promise<void>;
   /** Open an .apkg or .colpkg file and list its decks; `token` names it for `importPackage`. */
   openPackage(file: File): Promise<{ token: string; decks: PackageDeck[] }>;

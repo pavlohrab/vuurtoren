@@ -370,6 +370,7 @@ export function createMockServices(
     newWords: "auto",
     glossClozes: false,
     grammarMarks: true,
+    reviewWeek: [1, 1, 1, 1, 1, 1, 1],
   };
   let staircase: StaircaseState = { targetCoverage: 0.98, newWordBudget: 3 };
   let lastSync: number | null = options.synced ? Date.now() - 60 * 60 * 1000 : null;

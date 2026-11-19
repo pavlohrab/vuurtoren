@@ -55,6 +55,7 @@ export const RPC_METHODS = {
   nativeDecks: ["string", "number"],
   nativeQueue: ["string", "number", "number", "number"],
   nativeCard: ["string", "number"],
+  nativeDueCounts: ["string", "number", "number"],
   nativeReviews: ["string"],
   nativeCollection: ["string", "string[]"],
   nativeStats: ["string"],

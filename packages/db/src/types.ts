@@ -748,6 +748,11 @@ export interface Repository {
    * daily limit (counted from `dayStart`, the start of the learner's study day), at most `limit`.
    */
   nativeQueue(lang: string, now: number, dayStart: number, limit: number): Promise<NativeQueue>;
+  /**
+   * Native mode: review cards due on each of `days` study days from `from` (the start of a
+   * study day), for spreading new due dates.
+   */
+  nativeDueCounts(lang: string, from: number, days: number): Promise<number[]>;
   /** Native mode: one card with its note, note type and deck options. */
   nativeCard(lang: string, cardId: number): Promise<NativeCardView | null>;
   /** Native mode: the whole review history (imported and answered in Kenning), oldest first. */

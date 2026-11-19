@@ -10,7 +10,7 @@ import { Button, Select, Skeleton, Spinner, useToast } from "@app/ui";
 import { plural, relativeTime } from "../../format.js";
 import { useServices } from "../../services/context.js";
 import { saveFile } from "../../saveFile.js";
-import type { ImportSummary, NativeDeckSummary } from "../../services/nativeTypes.js";
+import type { DeckWithLoad, ImportSummary, NativeDeckSummary } from "../../services/nativeTypes.js";
 
 const message = (e: unknown) => (e instanceof Error && e.message ? e.message : "Try again.");
 /** Queries that change when cards come in or the mode changes. */
@@ -118,6 +118,7 @@ function NativeCards() {
       </section>
       <ImportPackage />
       {decks.data?.length ? <ExportPackage decks={decks.data.map((d) => d.name)} /> : null}
+      {decks.data?.length ? <ReviewWeek /> : null}
       <Tuning />
       {decks.data?.length ? <MoveToAnki /> : null}
     </>
@@ -126,7 +127,7 @@ function NativeCards() {
 
 const RETENTIONS = [0.8, 0.85, 0.87, 0.9, 0.92, 0.95, 0.97];
 
-function DeckTable({ decks }: { decks: NativeDeckSummary[] }) {
+function DeckTable({ decks }: { decks: DeckWithLoad[] }) {
   const services = useServices();
   const qc = useQueryClient();
   const toast = useToast();
@@ -168,11 +169,15 @@ function DeckTable({ decks }: { decks: NativeDeckSummary[] }) {
                   value={String(d.options.desiredRetention)}
                   onChange={(e) => set(d, { desiredRetention: Number(e.target.value) })}
                 >
-                  {[...new Set([...RETENTIONS, d.options.desiredRetention])].sort().map((r) => (
-                    <option key={r} value={String(r)}>
-                      {Math.round(r * 100)}%
-                    </option>
-                  ))}
+                  {[...new Set([...RETENTIONS, d.options.desiredRetention])].sort().map((r) => {
+                    const perDay = d.load.find((l) => l.retention === r)?.perDay;
+                    return (
+                      <option key={r} value={String(r)}>
+                        {Math.round(r * 100)}%
+                        {perDay !== undefined ? ` · about ${perDay} a day` : ""}
+                      </option>
+                    );
+                  })}
                 </select>
               </td>
               <td>
@@ -195,9 +200,51 @@ function DeckTable({ decks }: { decks: NativeDeckSummary[] }) {
       </table>
       <p className="k-hint" style={{ margin: 0 }}>
         Target recall is how likely you are to remember a card when it comes back. Higher means more
-        reviews a day.
+        reviews a day: each choice shows about how many, for the cards you have now.
       </p>
     </div>
+  );
+}
+
+const WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+const DAY_LOAD = [
+  { value: "1", label: "Normal" },
+  { value: "0.5", label: "Reduced" },
+  { value: "0", label: "Minimum" },
+];
+
+/** Lighter days: weekdays with fewer reviews; due dates spread away from them. */
+function ReviewWeek() {
+  const services = useServices();
+  const qc = useQueryClient();
+  const settings = useQuery({ queryKey: ["settings"], queryFn: () => services.getSettings() });
+  const save = useMutation({
+    mutationFn: (reviewWeek: number[]) => services.saveSettings({ reviewWeek }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["settings"] }),
+  });
+  const week =
+    settings.data?.reviewWeek?.length === 7 ? settings.data.reviewWeek : [1, 1, 1, 1, 1, 1, 1];
+  return (
+    <section className="stack" aria-labelledby="review-week-h">
+      <h3 className="settings-h3" id="review-week-h">
+        Review days
+      </h3>
+      <p className="k-hint" style={{ margin: 0 }}>
+        Days with fewer reviews. Kenning spreads due dates within the room each interval allows:
+        away from busy days, and away from reduced and minimum days.
+      </p>
+      <div className="cards-week">
+        {WEEKDAYS.map((day, i) => (
+          <Select
+            key={day}
+            label={day}
+            value={String(week[i] ?? 1)}
+            onValueChange={(v) => save.mutate(week.map((x, j) => (j === i ? Number(v) : x)))}
+            options={DAY_LOAD}
+          />
+        ))}
+      </div>
+    </section>
   );
 }
 

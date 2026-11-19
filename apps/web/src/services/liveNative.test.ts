@@ -156,7 +156,11 @@ afterEach(async () => {
   repo = undefined;
 });
 
-async function setup(profile: LanguageProfile, optimizer?: RunOptimizer) {
+async function setup(
+  profile: LanguageProfile,
+  optimizer?: RunOptimizer,
+  reviewWeek: readonly number[] = [],
+) {
   let t = NOW;
   const r = await createRepository(await createNodeDriver(), { deviceId: "d", now: () => t });
   repo = r;
@@ -176,6 +180,7 @@ async function setup(profile: LanguageProfile, optimizer?: RunOptimizer) {
     changed: () => undefined,
     optimizer: optimizer ?? (async () => Promise.reject(new Error("no optimizer"))),
     sqlite,
+    reviewWeek: async () => reviewWeek,
     now: () => t,
   });
   return { live: live.services, anki, profile: () => current, tick: (ms: number) => (t += ms) };
@@ -283,6 +288,20 @@ describe("native services", () => {
     expect(profile().mode).toBe("connected");
     expect(profile().sources.map((s) => s.deck)).toEqual(["Dutch"]);
     await expect(live.moveToAnki(false)).rejects.toThrow(/already in Anki/);
+  });
+
+  it("spreads a review's due date away from lighter days", async () => {
+    // Only Sunday takes reviews.
+    const { live } = await setup(
+      defaultProfile("nl", [{ deck: "Dutch" }], "connected"),
+      undefined,
+      [0, 0, 0, 0, 0, 0, 1],
+    );
+    await live.moveFromAnki();
+    await live.answerReview(10, 3, 2000);
+    const s = (await repo!.nativeCard("nl", 10))!.card.schedule!;
+    expect(s.scheduledDays).toBeGreaterThan(7);
+    expect(new Date(s.due).getDay()).toBe(0);
   });
 
   it("exports moved cards with their history to an .apkg that reads back", async () => {

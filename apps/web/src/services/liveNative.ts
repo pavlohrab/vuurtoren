@@ -23,8 +23,14 @@ import {
   type CardSchedule,
   DEFAULT_FSRS_PARAMS,
   type LanguageProfile,
+  NORMAL_WEEK,
+  type WeekLoad,
   answerCard,
+  balanceInterval,
   clozeNumbers,
+  dailyLoad,
+  mondayFirst,
+  paramsDecay,
   destinationDecks,
   formatInterval,
   normalizeKey,
@@ -58,6 +64,8 @@ export interface LiveNativeDeps {
   optimizer: RunOptimizer;
   /** SQLite for reading package files. */
   sqlite: () => { open: OpenSqlite; create: CreateSqlite; dispose: () => void };
+  /** How much of the usual load each weekday takes, Monday first (Settings). */
+  reviewWeek?: () => Promise<readonly number[]>;
   now?: () => number;
 }
 
@@ -71,6 +79,8 @@ const RETUNE_REVIEWS = 500;
 /** First tuning by itself once the history has this many answers. */
 const FIRST_TUNE_REVIEWS = 400;
 const CHANGES_PER_EVENT = 500;
+/** Target recalls the deck table offers, with the load each means. */
+export const LOAD_RETENTIONS = [0.8, 0.85, 0.87, 0.9, 0.92, 0.95, 0.97];
 /** Texts searched for a sentence with the word (newest first). */
 const OWN_TEXTS = 200;
 
@@ -343,6 +353,36 @@ export function createLiveNative(deps: LiveNativeDeps) {
     }
   }
 
+  /**
+   * A review answer's due date within its random spread: the lightest day, away from lighter
+   * weekdays (`balanceInterval`).
+   */
+  async function balanced(
+    lang: string,
+    s: CardSchedule,
+    prev: CardSchedule | undefined,
+    at: number,
+    maxInterval: number,
+  ): Promise<CardSchedule> {
+    const planned = s.scheduledDays;
+    if (planned < 3) return s;
+    const today = studyDayStart(at);
+    const counts = await repo.nativeDueCounts(lang, today, Math.ceil(planned * 1.3) + 5);
+    const week = (
+      (await deps.reviewWeek?.())?.length === 7 ? await deps.reviewWeek!() : NORMAL_WEEK
+    ) as WeekLoad;
+    const elapsed = prev ? Math.max(0, Math.round((at - prev.lastReview) / DAY_MS)) : 0;
+    const days = balanceInterval(
+      planned,
+      elapsed,
+      maxInterval,
+      (d) => counts[d] ?? 0,
+      (d) => mondayFirst(new Date(today + d * DAY_MS + 12 * 3_600_000).getDay()),
+      week,
+    );
+    return days === planned ? s : { ...s, scheduledDays: days, due: at + days * DAY_MS };
+  }
+
   const services: NativeServices = {
     async reviewOverview() {
       if (profileMode(await deps.profile()) !== "native")
@@ -372,10 +412,14 @@ export function createLiveNative(deps: LiveNativeDeps) {
       const v = await repo.nativeCard(lang, cardId);
       if (!v) throw new Error("This card no longer exists.");
       const at = now();
-      const schedule = answerCard(v.card.schedule, rating, at, {
+      const prev = v.card.schedule;
+      let schedule = answerCard(prev, rating, at, {
         options: v.options,
         params: await params(lang),
+        fuzz: false,
       });
+      if (schedule.state === 2)
+        schedule = await balanced(lang, schedule, prev, at, v.options.maxInterval);
       const stored = await repo.append({
         type: "CardReviewed",
         lang,
@@ -401,7 +445,30 @@ export function createLiveNative(deps: LiveNativeDeps) {
     },
 
     async nativeDecks() {
-      return repo.nativeDecks(await deps.lang(), now());
+      const lang = await deps.lang();
+      const decks = await repo.nativeDecks(lang, now());
+      const { cards } = await repo.nativeCollection(lang, []);
+      const decay = paramsDecay(await params(lang));
+      const stabilities = new Map<string, number[]>();
+      for (const c of cards) {
+        if (c.schedule?.state !== 2 || c.suspended) continue;
+        stabilities.set(c.deck, [...(stabilities.get(c.deck) ?? []), c.schedule.stability]);
+      }
+      return decks.map((d) => ({
+        ...d,
+        load: LOAD_RETENTIONS.map((retention) => ({
+          retention,
+          perDay: Math.round(
+            dailyLoad(
+              stabilities.get(d.name) ?? [],
+              retention,
+              decay,
+              d.fresh > 0 ? d.options.newPerDay : 0,
+              d.options.maxInterval,
+            ),
+          ),
+        })),
+      }));
     },
 
     async setDeckOptions(deck, options) {

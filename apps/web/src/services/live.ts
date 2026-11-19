@@ -148,6 +148,7 @@ export function createLiveServices(
     },
     optimizer: workerOptimizer,
     sqlite: browserSqlite,
+    reviewWeek: async () => (await settings()).reviewWeek ?? [],
   });
 
   const services: AppServices = {

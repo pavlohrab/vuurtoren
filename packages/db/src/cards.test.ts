@@ -204,4 +204,59 @@ describe("native card store", () => {
     expect(validateRpcArgs("nativeNoteStatus", ["nl", ["1"], 0])).toMatch(/numbers/);
     expect(validateRpcArgs("append", [imported])).toBeNull();
   });
+
+  it("keeps related cards apart: one card of a note or word a day; learning steps go on", async () => {
+    const { repo, clock } = await newRepo();
+    const due = (d: number) => ({ ...mature, due: T0 - d * DAY, state: 2 as const });
+    await repo.append({
+      type: "NativeNotesAdded",
+      lang: "nl",
+      origin: "apkg",
+      notetypes: [WORD],
+      decks: [{ name: "Dutch", options: DEFAULT_DECK_OPTIONS }],
+      notes: [
+        { id: 21, notetypeId: WORD.id, fields: ["kat", "cat", ""], tags: [], key: "kat" },
+        { id: 22, notetypeId: WORD.id, fields: ["de kat", "cat", ""], tags: [], key: "kat" },
+        { id: 23, notetypeId: WORD.id, fields: ["hond", "dog", ""], tags: [], key: "hond" },
+      ],
+      cards: [
+        // Two cards of one note, a card of another note of the same word, another word.
+        { id: 201, noteId: 21, ord: 0, deck: "Dutch", schedule: due(3), position: 0 },
+        { id: 202, noteId: 21, ord: 1, deck: "Dutch", schedule: due(2), position: 1 },
+        { id: 203, noteId: 22, ord: 0, deck: "Dutch", schedule: due(1), position: 2 },
+        { id: 204, noteId: 23, ord: 0, deck: "Dutch", schedule: due(1), position: 3 },
+      ],
+    });
+    const start = T0 - 6 * 3_600_000;
+    let q = await repo.nativeQueue("nl", T0, start, 10);
+    expect(q.cards.map((c) => c.card.id)).toEqual([201, 204]);
+    expect(q.due).toBe(2);
+    clock.set(T0);
+    const relearn = answerCard(due(3), 1, T0, ctx);
+    await repo.append({
+      type: "CardReviewed",
+      lang: "nl",
+      cardId: 201,
+      rating: 1,
+      at: T0,
+      durationMs: 1000,
+      schedule: relearn,
+      previous: due(3),
+    });
+    // 202 and 203 wait for tomorrow; 201 relearns (due again in its step).
+    q = await repo.nativeQueue("nl", T0 + 3_600_000, start, 10);
+    expect(q.cards.map((c) => c.card.id)).toEqual([204, 201]);
+    q = await repo.nativeQueue("nl", T0 + DAY, start + DAY, 10);
+    expect(q.cards.map((c) => c.card.id)).toContain(202);
+  });
+
+  it("counts reviews due on each coming study day", async () => {
+    const { repo } = await newRepo();
+    await repo.append(imported);
+    const dueDay = Math.floor((mature.due - T0) / DAY);
+    const counts = await repo.nativeDueCounts("nl", T0, dueDay + 2);
+    expect(counts.reduce((a, b) => a + b, 0)).toBe(1);
+    expect(counts[dueDay]).toBe(1);
+    expect(validateRpcArgs("nativeDueCounts", ["nl", T0, 30])).toBeNull();
+  });
 });

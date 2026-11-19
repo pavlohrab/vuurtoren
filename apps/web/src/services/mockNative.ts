@@ -157,6 +157,11 @@ export function createMockNative(
           fresh: own.filter((c) => !c.schedule).length,
           due: own.filter((c) => c.schedule && isDue(c)).length,
           suspended: 0,
+          // Demo: a deck of about 400 reviewed cards.
+          load: [0.8, 0.85, 0.87, 0.9, 0.92, 0.95, 0.97].map((retention) => ({
+            retention,
+            perDay: Math.round(20 + 12 / (1 - retention) / 4),
+          })),
         };
       });
     },

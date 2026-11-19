@@ -1,5 +1,5 @@
 import { createMemoryHistory } from "@tanstack/react-router";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { App } from "../../App.js";
@@ -72,5 +72,18 @@ describe("Settings → Language & decks: cards", { timeout: 20_000 }, () => {
     await user.click(screen.getByRole("button", { name: "Move to Anki" }));
     expect(await screen.findByText("Your reviews now happen in Anki")).toBeVisible();
     expect((await services.languageProfile())?.mode).toBe("connected");
+  });
+
+  it("shows the load of each target recall and saves lighter review days", async () => {
+    const { user, services } = setup(true);
+    const recall = await screen.findAllByRole("combobox", { name: /^Target recall for/ });
+    expect(
+      within(recall[0]!).getByRole("option", { name: /^90% · about \d+ a day$/ }),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole("combobox", { name: "Saturday" }));
+    await user.click(await screen.findByRole("option", { name: "Minimum" }));
+    await waitFor(async () =>
+      expect((await services.getSettings()).reviewWeek).toEqual([1, 1, 1, 1, 1, 0, 1]),
+    );
   });
 });

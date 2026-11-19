@@ -658,21 +658,29 @@ Notes and cards keep their Anki ids. A card that is already held keeps its state
 
 `packages/core/src/native/schedule.ts`, on `ts-fsrs` (FSRS-6, 21 parameters):
 
-| Setting          | Value                                                                                                                                             |
-| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Parameters       | the learner's tuned ones (9.3); before the first tuning, Anki's own FSRS-6 parameters when the imported preset had them, else the FSRS-6 defaults |
-| Target retention | per deck, default 0.9 (between 0.7 and 0.99)                                                                                                      |
-| Learning steps   | per deck, default 1 min and 10 min                                                                                                                |
-| Relearning steps | per deck, default 10 min                                                                                                                          |
-| Maximum interval | per deck, default 36,500 days                                                                                                                     |
-| New cards a day  | per deck, default 20; counted from 4:00 local time                                                                                                |
-| Fuzz             | on for answers (due dates spread at random within ts-fsrs's ranges), off for replays and the intervals shown on the buttons                       |
+| Setting          | Value                                                                                                                                                    |
+| ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Parameters       | the learner's tuned ones (9.3); before the first tuning, Anki's own FSRS-6 parameters when the imported preset had them, else the FSRS-6 defaults        |
+| Target retention | per deck, default 0.9 (between 0.7 and 0.99)                                                                                                             |
+| Learning steps   | per deck, default 1 min and 10 min                                                                                                                       |
+| Relearning steps | per deck, default 10 min                                                                                                                                 |
+| Maximum interval | per deck, default 36,500 days                                                                                                                            |
+| New cards a day  | per deck, default 20; counted from 4:00 local time                                                                                                       |
+| Spread           | answers of 3 days and more land on the lightest day within ts-fsrs's fuzz range (9.2.1); replays and the intervals on the buttons use the plain interval |
 
 Imported decks bring their own steps, limits and target retention.
 
 **Imported memory.** Each card's review log is replayed through the scheduler, oldest first, without fuzz, so stability and difficulty are what FSRS makes of the whole history. Manual changes (rescheduling, set due date) are not answers and are skipped; a manual entry followed by learning answers is a reset and starts the card over. A review card keeps the due date and interval Anki gave it. A reviewed card without any history gets its interval as stability and difficulty 5.
 
 **Queue** (`nativeQueue` in `packages/db/src/cards.ts`): cards due now first (learning, relearning and review, earliest first), then new cards in each deck's order within its daily limit. When nothing else is left, learning cards due within 20 minutes come forward.
+
+**Related cards apart.** Once a card of a note, or of another note of the same word (same key), is answered on a study day, that note's and word's other new and review cards wait for the next day. In one session only the first of them is offered. Learning and relearning steps go on. The counts on the badge and Home follow the same rule.
+
+#### 9.2.1 Workload
+
+- **Load balancing** (`balanceInterval` in `packages/core/src/native/workload.ts`). A review answer of 3 days or more can land anywhere in the range ts-fsrs's fuzz allows (`get_fuzz_range`, for 20 days about 17–23). Kenning picks the day with the fewest review cards already due (`nativeDueCounts`); ties go to the planned interval. Cards answered alike so spread by themselves, without randomness.
+- **Review days** (Settings): each weekday takes its normal, reduced (half) or minimum share. The cost of a day is (cards due + 1) ÷ its share; a minimum day takes a card only when every day in the range is one.
+- **Expected load.** Next to each target recall, Settings shows about how many reviews a day it means for the cards you have now: for each review card, one review per interval at that recall (FSRS-6: t = S/F · (R^(−1/decay) − 1), F = 0.9^(−1/decay) − 1, capped by the maximum interval), plus the new cards a day while a deck has new cards.
 
 **Answering** (`answerCard`): Again, Hard, Good, Easy are FSRS ratings 1–4. The event stores the card's schedule before and after the answer, so the log replays without the scheduler and an undo restores the earlier state exactly. The buttons show the interval each rating would give.
 
