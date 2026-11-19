@@ -3,7 +3,7 @@ import { Link, useParams } from "@tanstack/react-router";
 import { ArrowLeft, ArrowRight, Check, ChevronRight, X } from "lucide-react";
 import { type GrammarTopic, curriculum, grammarTopic } from "@app/content";
 import { Chip, EmptyState, Skeleton } from "@app/ui";
-import { CreateStoryButton, useAIReady } from "../StoryDialog.js";
+import { WriteStoryLink, useAIReady } from "../StoryForm.js";
 import { PageHeader } from "../../shell/PageHeader.js";
 import { useServices } from "../../services/context.js";
 import type { TopicExamples } from "../../services/types.js";
@@ -132,7 +132,7 @@ export function GrammarTopicPage({ topicId }: { topicId: string }) {
         lede={inline(topic.summary)}
         actions={
           <>
-            <CreateStoryButton preset={{ grammarTopic: topic.id }} />
+            <WriteStoryLink preset={{ grammarTopic: topic.id }} />
             {offer ? (
               <Link
                 to="/grammar/$topic/practice"

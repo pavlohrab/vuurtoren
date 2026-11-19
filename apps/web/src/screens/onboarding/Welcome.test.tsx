@@ -81,7 +81,7 @@ describe("onboarding", () => {
     expect(p.tags).toEqual(["nl"]);
     expect(p.mode).toBe("connected");
 
-    await user.click(screen.getByRole("button", { name: "Import a text" }));
+    await user.click(screen.getByRole("button", { name: "Add text" }));
     await waitFor(() => expect(history.location.pathname).toBe("/import"));
   });
 

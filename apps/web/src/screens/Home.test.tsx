@@ -170,7 +170,7 @@ describe("Home", () => {
       "href",
       "/settings?section=language",
     );
-    expect(screen.getByRole("link", { name: /Import a text/ })).toHaveAttribute("href", "/import");
+    expect(screen.getByRole("link", { name: /Add text/ })).toHaveAttribute("href", "/import");
     expect(screen.queryByRole("region", { name: "Today" })).toBeNull();
   });
 });

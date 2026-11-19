@@ -1,7 +1,7 @@
 import { pct } from "../format.js";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
-import { BookmarkPlus, MessagesSquare, Plus } from "lucide-react";
+import { ArrowRight, BookmarkPlus, ChevronRight, MessagesSquare, Plus } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import {
   type AddDeckChoice,
@@ -19,7 +19,18 @@ import { useServices } from "../services/context.js";
 import type { ChatMessageView, ConversationView, NewWord } from "../services/aiTypes.js";
 import { useDeckChoice } from "./useDeckChoice.js";
 import { PageHeader } from "../shell/PageHeader.js";
+import { readLastText } from "../lastText.js";
+import { pickContinue } from "./Home.js";
 import "./converse.css";
+
+/** A suggested way to start a conversation. */
+interface TalkStart {
+  id: string;
+  title: string;
+  hint: string;
+  topic: string;
+  words: string[];
+}
 
 const message = (e: unknown) => (e instanceof Error && e.message ? e.message : "Try again.");
 const TONE = {
@@ -168,15 +179,11 @@ export function Converse() {
     endRef.current?.scrollIntoView?.({ block: "end" });
   }, [conv?.messages.length, pending]);
 
+  const texts = useQuery({ queryKey: ["texts"], queryFn: () => services.listTexts() });
+  const [starting, setStarting] = useState<string | null>(null);
   const start = useMutation({
-    mutationFn: () =>
-      services.startConversation({
-        topic: topic.trim() || "everyday life",
-        targetWords: (targets ?? (suggested.data ?? []).join(", "))
-          .split(/[,\n]/)
-          .map((w) => w.trim())
-          .filter(Boolean),
-      }),
+    mutationFn: (opts: { topic: string; targetWords: string[] }) =>
+      services.startConversation(opts),
     onSuccess: async (c) => {
       setConv(c);
       await qc.invalidateQueries({ queryKey: ["conversations"] });
@@ -248,6 +255,40 @@ export function Converse() {
   }
 
   if (!conv) {
+    const words = suggested.data ?? [];
+    const reading = texts.data ? pickContinue(texts.data, readLastText()) : null;
+    const starts: TalkStart[] = [
+      ...(reading
+        ? [
+            {
+              id: "text",
+              title: `About ${reading.text.title}`,
+              hint: reading.started ? "The text you are reading" : "The next text in your Library",
+              topic: reading.text.title,
+              words: words.slice(0, 5),
+            },
+          ]
+        : []),
+      ...(words.length
+        ? [
+            {
+              id: "words",
+              title: "Your words to learn",
+              hint: words.slice(0, 5).join(", "),
+              topic: "my week",
+              words: words.slice(0, 5),
+            },
+          ]
+        : []),
+      {
+        id: "everyday",
+        title: "Everyday life",
+        hint: "Shopping, the weather, your weekend",
+        topic: "everyday life",
+        words: [],
+      },
+    ];
+    const seeded = Boolean(seed.topic || seed.words);
     return (
       <div className="page page--list">
         <PageHeader
@@ -255,37 +296,80 @@ export function Converse() {
           lede="A short chat in Dutch that stays within the words you know, with corrections of your own messages."
         />
         <div className="page-split">
-          <form
-            className="stack cv-start"
-            onSubmit={(e) => {
-              e.preventDefault();
-              start.mutate();
-            }}
-          >
-            <Input
-              label="Topic"
-              value={topic}
-              placeholder="Ordering coffee, my weekend, ..."
-              onChange={(e) => setTopic(e.target.value)}
-            />
-            <Input
-              label="Words to practise"
-              value={targets ?? (suggested.data ?? []).join(", ")}
-              hint="Comma separated. The partner works these in; new words can go to Anki."
-              onChange={(e) => setTargets(e.target.value)}
-            />
-            <div className="row">
-              <Button type="submit" variant="primary" disabled={start.isPending}>
-                {start.isPending ? <Spinner label="Starting" /> : null}
-                Start conversation
-              </Button>
-            </div>
+          <div className="cv-start">
+            <ul className="k-list" aria-label="Ways to start">
+              {starts.map((s) => (
+                <li key={s.id}>
+                  <button
+                    type="button"
+                    className="k-row"
+                    disabled={start.isPending}
+                    onClick={() => {
+                      setStarting(s.id);
+                      start.mutate({ topic: s.topic, targetWords: s.words });
+                    }}
+                  >
+                    <MessagesSquare size={16} className="k-row-go" aria-hidden />
+                    <span className="k-row-main">
+                      <span className="k-row-title">{s.title}</span>
+                      <span className="k-row-hint" lang={s.id === "words" ? "nl" : undefined}>
+                        {s.hint}
+                      </span>
+                    </span>
+                    {start.isPending && starting === s.id ? (
+                      <Spinner label="Starting" />
+                    ) : (
+                      <ArrowRight size={16} className="k-row-go" aria-hidden />
+                    )}
+                  </button>
+                </li>
+              ))}
+            </ul>
+            <details className="k-disclosure cv-own" open={seeded || undefined}>
+              <summary>
+                <ChevronRight size={16} className="k-disclosure-icon" aria-hidden />
+                Your own topic
+              </summary>
+              <form
+                className="stack k-disclosure-body"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  setStarting("own");
+                  start.mutate({
+                    topic: topic.trim() || "everyday life",
+                    targetWords: (targets ?? words.join(", "))
+                      .split(/[,\n]/)
+                      .map((w) => w.trim())
+                      .filter(Boolean),
+                  });
+                }}
+              >
+                <Input
+                  label="Topic"
+                  value={topic}
+                  placeholder="Ordering coffee, my weekend, ..."
+                  onChange={(e) => setTopic(e.target.value)}
+                />
+                <Input
+                  label="Words to practise"
+                  value={targets ?? words.join(", ")}
+                  hint="Comma separated. The partner works these in."
+                  onChange={(e) => setTargets(e.target.value)}
+                />
+                <div className="row">
+                  <Button type="submit" variant="primary" disabled={start.isPending}>
+                    {start.isPending && starting === "own" ? <Spinner label="Starting" /> : null}
+                    Start conversation
+                  </Button>
+                </div>
+              </form>
+            </details>
             {start.isError ? (
               <p role="alert" className="error-text" style={{ margin: 0 }}>
                 {message(start.error)}
               </p>
             ) : null}
-          </form>
+          </div>
           <section className="page-aside" aria-labelledby="cv-past-h">
             <h2 id="cv-past-h">Earlier conversations</h2>
             {past.data && past.data.length > 0 ? (
@@ -307,7 +391,7 @@ export function Converse() {
                 ))}
               </ul>
             ) : past.data ? (
-              <p>No conversations yet. Pick a topic; your chats are kept here to come back to.</p>
+              <p>No conversations yet. Your chats are kept here to come back to.</p>
             ) : (
               <Skeleton style={{ height: 48 }} />
             )}

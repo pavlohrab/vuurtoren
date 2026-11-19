@@ -5,8 +5,8 @@ import {
   ArrowRight,
   BookOpen,
   Check,
+  ChevronRight,
   Dumbbell,
-  Info,
   ListChecks,
   MessagesSquare,
 } from "lucide-react";
@@ -25,16 +25,16 @@ import {
 } from "@app/ui";
 import { dutchVoiceAvailable, speakDutch } from "../practice/speech.js";
 import { useServices } from "../services/context.js";
-import type { AISentenceReport } from "../services/aiTypes.js";
 import type { AnswerResult } from "../services/types.js";
 import { usePageHeader } from "../shell/ShellContext.js";
 import { ErrorNotice } from "../shell/ErrorNotice.js";
 import { useHoldFreshness } from "../services/freshness.js";
 import { errorText } from "../services/errors.js";
-import { useAIReady } from "./StoryDialog.js";
+import { useAIReady } from "./StoryForm.js";
 import { PageHeader } from "../shell/PageHeader.js";
 import { writePracticeAgain } from "../lastPractice.js";
 import { readLastText } from "../lastText.js";
+import { readLocalJSON, writeLocalJSON } from "../storage/local.js";
 import { pickContinue } from "./Home.js";
 
 export const SKILLS: { skill: Skill; label: string }[] = [
@@ -45,21 +45,6 @@ export const SKILLS: { skill: Skill; label: string }[] = [
   { skill: "listening", label: "Listening" },
 ];
 const SIZES = [10, 20, 30];
-
-/** One line about what "Fill gaps with AI sentences" did, or null when there is nothing to say. */
-export function aiReportText(r: AISentenceReport | null): string | null {
-  if (!r) return null;
-  if (r.error) return `AI sentences unavailable: ${r.error}`;
-  const parts: string[] = [];
-  if (r.accepted > 0) {
-    parts.push(
-      `${r.accepted} new AI ${r.accepted === 1 ? "sentence" : "sentences"} for ${plural(r.requested, "item")}`,
-    );
-  }
-  if (r.rejected > 0) parts.push(`${r.rejected} rejected by the checks`);
-  if (r.reused > 0 && r.accepted === 0) parts.push(`earlier AI sentences used for ${r.reused}`);
-  return parts.length ? parts.join(" · ") : null;
-}
 
 /** One answered exercise of the running session. */
 interface Answered {
@@ -96,18 +81,15 @@ function PracticeSession({ focus }: { focus: string[] | null }) {
   const services = useServices();
   const client = useQueryClient();
 
-  const [aiReport, setAIReport] = useState<AISentenceReport | null>(null);
-
   const start = async (size: number, skills: Skill[], aiSentences: boolean) => {
     setError(null);
-    setAIReport(null);
     setPhase({ name: "loading" });
     try {
       const exercises = await services.startPractice({
         size,
         skills,
         ...(focus ? { keys: focus } : {}),
-        ...(aiSentences ? { aiSentences, onAISentences: setAIReport } : {}),
+        ...(aiSentences ? { aiSentences } : {}),
       });
       if (exercises.length === 0) {
         setPhase({ name: "summary", answered: [], skipped: 0, empty: true });
@@ -136,11 +118,6 @@ function PracticeSession({ focus }: { focus: string[] | null }) {
         <StartView loading={phase.name === "loading"} error={error} onStart={start} focus={focus} />
       ) : phase.name === "session" ? (
         <div className="practice-session">
-          {aiReportText(aiReport) ? (
-            <p className="k-hint practice-note" role="status">
-              {aiReportText(aiReport)}
-            </p>
-          ) : null}
           <Session exercises={phase.exercises} listening={phase.listening} onFinish={finish} />
         </div>
       ) : (
@@ -191,21 +168,52 @@ function OptionChip({
   );
 }
 
-/** Practice vs Anki, said once (U4). */
-function TwoSchedules() {
+/** What Practice is for, in one quiet line (both modes). */
+function PracticeNote({ native }: { native: boolean }) {
   return (
-    <aside className="page-aside practice-explain" aria-labelledby="practice-anki-h">
-      <h2 id="practice-anki-h">
-        <Info size={14} aria-hidden /> Practice and Anki
-      </h2>
-      <p>
-        Practice trains what Anki doesn&rsquo;t — forms, gender, word order, listening. Your Anki
-        reviews stay in Anki; results here also count toward how well Kenning thinks you know a
-        word.
-      </p>
-      <p>Keys: 1–4 to choose, Enter to check and go on, Esc to end the session.</p>
-    </aside>
+    <p className="k-hint practice-about">
+      {native
+        ? "Practice trains what flashcards don’t: forms, gender, word order and listening."
+        : "Practice trains what Anki doesn’t: forms, gender, word order and listening. Your Anki reviews stay in Anki."}{" "}
+      Keys: 1–4 to choose, Enter to check and go on, Esc to end.
+    </p>
   );
+}
+
+const OPTIONS_KEY = "kenning.practice.options";
+
+interface StartOptions {
+  skills: Skill[];
+  size: number;
+  ai: boolean;
+}
+
+/** The options last used on this device (all skills, 20 exercises, AI sentences on). */
+export function readStartOptions(): StartOptions {
+  const fallback: StartOptions = { skills: SKILLS.map((s) => s.skill), size: 20, ai: true };
+  const raw = readLocalJSON(OPTIONS_KEY);
+  if (!raw || typeof raw !== "object") return fallback;
+  const r = raw as Partial<Record<keyof StartOptions, unknown>>;
+  const known = new Set<string>(SKILLS.map((s) => s.skill));
+  const skills = Array.isArray(r.skills)
+    ? r.skills.filter((x): x is Skill => typeof x === "string" && known.has(x))
+    : [];
+  return {
+    skills: skills.length ? skills : fallback.skills,
+    size: typeof r.size === "number" && SIZES.includes(r.size) ? r.size : fallback.size,
+    ai: typeof r.ai === "boolean" ? r.ai : fallback.ai,
+  };
+}
+
+/** One line on the chosen options, shown next to the closed "Options". */
+function optionsSummary(skills: Skill[], size: number, ai: boolean): string {
+  const names =
+    skills.length === SKILLS.length
+      ? "All skills"
+      : SKILLS.filter((s) => skills.includes(s.skill))
+          .map((s) => s.label)
+          .join(", ");
+  return [names, `${size} exercises`, ...(ai ? ["AI sentences"] : [])].join(" · ");
 }
 
 function StartView({
@@ -222,18 +230,27 @@ function StartView({
 }) {
   const services = useServices();
   const aiReady = useAIReady();
-  const [aiFill, setAIFill] = useState(true);
+  const [initial] = useState(readStartOptions);
+  const [aiFill, setAIFill] = useState(initial.ai);
   const overview = useQuery({
     queryKey: ["practice", "overview"],
     queryFn: () => services.practiceOverview(),
+  });
+  const review = useQuery({
+    queryKey: ["review", "overview"],
+    queryFn: () => services.reviewOverview(),
+    staleTime: 60_000,
   });
   const voice = useQuery({
     queryKey: ["practice", "voice"],
     queryFn: () => dutchVoiceAvailable(),
     staleTime: Infinity,
   });
-  const [skills, setSkills] = useState<Skill[]>(SKILLS.map((s) => s.skill));
-  const [size, setSize] = useState(20);
+  const [skills, setSkills] = useState<Skill[]>(initial.skills);
+  const [size, setSize] = useState(initial.size);
+  useEffect(() => {
+    writeLocalJSON(OPTIONS_KEY, { skills, size, ai: aiFill });
+  }, [skills, size, aiFill]);
   const o = overview.data;
   // Listening needs a Dutch voice; while the check runs it stays available.
   const noVoice = voice.data === false;
@@ -251,7 +268,7 @@ function StartView({
       <>
         <PageHeader title="Practice" />
         <EmptyState
-          icon={<Dumbbell size={28} />}
+          icon={<Dumbbell size={20} />}
           title={fresh ? "Nothing to practise yet" : "All caught up"}
           description={
             fresh
@@ -267,6 +284,17 @@ function StartView({
       </>
     );
   }
+
+  const go = () => onStart(size, effective, aiReady && aiFill);
+  const startLabel = loading
+    ? "Preparing…"
+    : focus
+      ? `Start · ${plural(focus.length, "word")}`
+      : o && o.due > 0
+        ? `Start · ${o.due} due`
+        : o && o.newAvailable > 0
+          ? `Start · ${o.newAvailable} new`
+          : "Start";
 
   return (
     <>
@@ -285,92 +313,97 @@ function StartView({
           )
         }
         actions={
-          focus ? (
-            <Link to="/practice" className="k-btn k-btn--ghost">
-              All due exercises
-            </Link>
-          ) : null
+          <>
+            {focus ? (
+              <Link to="/practice" className="k-btn k-btn--ghost">
+                All due exercises
+              </Link>
+            ) : null}
+            <Button
+              variant="primary"
+              disabled={loading || effective.length === 0 || (!o && !focus)}
+              onClick={go}
+            >
+              {startLabel}
+            </Button>
+          </>
         }
       />
-      <div className="page-split">
-        <div className="practice-form">
-          {overview.isPending ? <Skeleton style={{ height: 24, width: 160 }} /> : null}
-          {o?.degraded ? (
-            <p className="k-hint practice-note">
-              The language server is unreachable — fewer exercise types today
-            </p>
-          ) : null}
+      <div className="practice-form">
+        {o?.degraded ? (
+          <p className="k-hint practice-note">
+            The language server is unreachable — fewer exercise types today
+          </p>
+        ) : null}
+        {error ? (
+          <ErrorNotice error={error} title="The session could not be prepared." onRetry={go} />
+        ) : null}
 
-          <fieldset className="practice-group">
-            <legend className="k-label">Skills</legend>
-            <div className="practice-options">
-              {SKILLS.map(({ skill, label }) => {
-                const blocked = skill === "listening" && noVoice;
-                return (
-                  <OptionChip
-                    key={skill}
-                    pressed={!blocked && skills.includes(skill)}
-                    disabled={blocked}
-                    title={blocked ? "No Dutch voice is available in this browser" : undefined}
-                    onClick={() => toggle(skill)}
-                  >
-                    {label}
-                  </OptionChip>
-                );
-              })}
-            </div>
-            {noVoice ? (
-              <p className="k-hint practice-note">
-                Listening is off: no Dutch voice is available in this browser.
-              </p>
-            ) : null}
-          </fieldset>
-
-          <fieldset className="practice-group">
-            <legend className="k-label">Session length</legend>
-            <div className="practice-options">
-              {SIZES.map((n) => (
-                <OptionChip key={n} pressed={size === n} onClick={() => setSize(n)}>
-                  {n} exercises
-                </OptionChip>
-              ))}
-            </div>
-          </fieldset>
-
-          {aiReady ? (
+        <details className="k-disclosure practice-more">
+          <summary>
+            <ChevronRight size={16} className="k-disclosure-icon" aria-hidden />
+            Options
+            <span className="k-disclosure-hint">
+              {optionsSummary(effective, size, aiReady && aiFill)}
+            </span>
+          </summary>
+          <div className="k-disclosure-body practice-form">
             <fieldset className="practice-group">
-              <legend className="k-label">Sentences</legend>
-              <label className="row" style={{ gap: 8 }}>
-                <input
-                  type="checkbox"
-                  checked={aiFill}
-                  onChange={(e) => setAIFill(e.target.checked)}
-                />
-                Fill gaps with AI sentences
-              </label>
-              <p className="k-hint practice-note">
-                Words with fewer than 3 example sentences get checked AI sentences (at most 8 words
-                per session, saved for next time).
-              </p>
+              <legend className="k-label">Skills</legend>
+              <div className="practice-options">
+                {SKILLS.map(({ skill, label }) => {
+                  const blocked = skill === "listening" && noVoice;
+                  return (
+                    <OptionChip
+                      key={skill}
+                      pressed={!blocked && skills.includes(skill)}
+                      disabled={blocked}
+                      title={blocked ? "No Dutch voice is available in this browser" : undefined}
+                      onClick={() => toggle(skill)}
+                    >
+                      {label}
+                    </OptionChip>
+                  );
+                })}
+              </div>
+              {noVoice ? (
+                <p className="k-hint practice-note">
+                  Listening is off: no Dutch voice is available in this browser.
+                </p>
+              ) : null}
             </fieldset>
-          ) : null}
 
-          {error ? (
-            <ErrorNotice
-              error={error}
-              title="The session could not be prepared."
-              onRetry={() => onStart(size, effective, aiReady && aiFill)}
-            />
-          ) : null}
-          <Button
-            variant="primary"
-            disabled={loading || effective.length === 0}
-            onClick={() => onStart(size, effective, aiReady && aiFill)}
-          >
-            {loading ? "Preparing…" : "Start"}
-          </Button>
-        </div>
-        <TwoSchedules />
+            <fieldset className="practice-group">
+              <legend className="k-label">Session length</legend>
+              <div className="practice-options">
+                {SIZES.map((n) => (
+                  <OptionChip key={n} pressed={size === n} onClick={() => setSize(n)}>
+                    {n} exercises
+                  </OptionChip>
+                ))}
+              </div>
+            </fieldset>
+
+            {aiReady ? (
+              <fieldset className="practice-group">
+                <legend className="k-label">Sentences</legend>
+                <label className="row" style={{ gap: 8 }}>
+                  <input
+                    type="checkbox"
+                    checked={aiFill}
+                    onChange={(e) => setAIFill(e.target.checked)}
+                  />
+                  Fill gaps with AI sentences
+                </label>
+                <p className="k-hint practice-note">
+                  Words with only a few example sentences get new ones, checked and kept for next
+                  time.
+                </p>
+              </fieldset>
+            ) : null}
+          </div>
+        </details>
+        <PracticeNote native={review.data?.native === true} />
       </div>
     </>
   );
@@ -551,10 +584,15 @@ function Summary({
     );
   }
   const correct = answered.filter((a) => a.result.correct).length;
-  const started = answered.filter((a) => a.result.next.reps === 1).length;
-  const relearned = answered.filter(
-    (a) => a.result.grade === "again" && a.result.next.reps > 1,
-  ).length;
+  // Counted per word: a word practised in several skills is one word.
+  const started = new Set(
+    answered.filter((a) => a.result.next.reps === 1).map((a) => a.exercise.key),
+  ).size;
+  const relearned = new Set(
+    answered
+      .filter((a) => a.result.grade === "again" && a.result.next.reps > 1)
+      .map((a) => a.exercise.key),
+  ).size;
   const again = [...new Set(answered.filter((a) => !a.result.correct).map((a) => a.exercise.key))];
   const practised = [...new Set(answered.map((a) => a.exercise.key))];
   return (
@@ -567,16 +605,20 @@ function Summary({
             : `${correct} of ${answered.length} correct.`
         }
       />
-      <div className="stat-grid">
-        <div className="stat">
-          <div className="stat-value">{started}</div>
-          <div className="stat-label">Items started</div>
+      <dl className="done-stats">
+        <div>
+          <dt>Words practised</dt>
+          <dd>{practised.length}</dd>
         </div>
-        <div className="stat">
-          <div className="stat-value">{relearned}</div>
-          <div className="stat-label">Items to relearn</div>
+        <div>
+          <dt>New words started</dt>
+          <dd>{started}</dd>
         </div>
-      </div>
+        <div>
+          <dt>Words to relearn</dt>
+          <dd className={relearned ? "done-stats-learn" : undefined}>{relearned}</dd>
+        </div>
+      </dl>
       {skipped > 0 ? (
         <p className="k-hint practice-note">
           {skipped} listening {skipped === 1 ? "exercise was" : "exercises were"} skipped: no Dutch
@@ -696,13 +738,11 @@ export function TopicPractice({ topicId }: { topicId: string }) {
   const [phase, setPhase] = useState<Phase>({ name: "loading" });
   const [error, setError] = useState<string | null>(null);
   const [run, setRun] = useState(0);
-  const [aiReport, setAIReport] = useState<AISentenceReport | null>(null);
   const aiStatus = useQuery({ queryKey: ["ai-status"], queryFn: () => services.aiStatus() });
   const aiKnown = aiStatus.isFetched || aiStatus.isError;
   const aiOn = aiStatus.data?.configured === true;
   const again = () => {
     setError(null);
-    setAIReport(null);
     setPhase({ name: "loading" });
     setRun((n) => n + 1);
   };
@@ -717,7 +757,7 @@ export function TopicPractice({ topicId }: { topicId: string }) {
         kinds: topic.practice as ExerciseKind[],
         size: TOPIC_SESSION,
         topicId: topic.id,
-        ...(aiOn ? { aiSentences: true, onAISentences: setAIReport } : {}),
+        ...(aiOn ? { aiSentences: true } : {}),
       })
       .then((exercises) => {
         if (cancelled) return;
@@ -778,21 +818,14 @@ export function TopicPractice({ topicId }: { topicId: string }) {
           )}
         </>
       ) : phase.name === "session" ? (
-        <>
-          {aiReportText(aiReport) ? (
-            <p className="k-hint practice-note" role="status">
-              {aiReportText(aiReport)}
-            </p>
-          ) : null}
-          <Session
-            exercises={phase.exercises}
-            listening={phase.listening}
-            onFinish={(answered, skipped) => {
-              void client.invalidateQueries({ queryKey: ["practice"] });
-              setPhase({ name: "summary", answered, skipped, empty: false });
-            }}
-          />
-        </>
+        <Session
+          exercises={phase.exercises}
+          listening={phase.listening}
+          onFinish={(answered, skipped) => {
+            void client.invalidateQueries({ queryKey: ["practice"] });
+            setPhase({ name: "summary", answered, skipped, empty: false });
+          }}
+        />
       ) : (
         <Summary
           answered={phase.answered}

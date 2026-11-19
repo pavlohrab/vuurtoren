@@ -15,11 +15,11 @@ function setup(path = "/", patch: Partial<AppServices> = {}) {
   return { services, history, user: userEvent.setup() };
 }
 
-describe("Create a story", () => {
-  it("creates a story from the Library, opens it in the reader, and marks it as an AI story", async () => {
-    const { services, history, user } = setup("/library");
-    await user.click(await screen.findByRole("button", { name: /Create a story/ }));
-    const dialog = await screen.findByRole("dialog");
+describe("Write a story", () => {
+  it("writes a story from Add text, opens it in the reader, and marks it as an AI story", async () => {
+    const { services, history, user } = setup("/import");
+    await user.click(await screen.findByRole("tab", { name: "Write a story" }));
+    const dialog = await screen.findByRole("main");
     expect(within(dialog).getByText(/tokens in/)).toBeInTheDocument();
     await user.type(within(dialog).getByLabelText("Topic"), "de markt");
     await user.click(within(dialog).getByRole("button", { name: /Medium/ }));
@@ -27,7 +27,7 @@ describe("Create a story", () => {
     // "Words to learn now" are suggested and editable
     const words = within(dialog).getByLabelText("Words to use");
     await waitFor(() => expect(words).toHaveValue("gezellig, kraam, afspraak"));
-    await user.click(within(dialog).getByRole("button", { name: "Create" }));
+    await user.click(within(dialog).getByRole("button", { name: "Write the story" }));
     await waitFor(() => expect(history.location.pathname).toMatch(/^\/read\//));
     expect(services.createStory).toHaveBeenCalledWith(
       {
@@ -51,13 +51,14 @@ describe("Create a story", () => {
 
   it("features a grammar topic from its page", async () => {
     const { services, user } = setup("/grammar/inversion");
-    await user.click(await screen.findByRole("button", { name: /Create a story/ }));
-    const dialog = await screen.findByRole("dialog");
+    await user.click(await screen.findByRole("link", { name: /Write a story/ }));
+    const dialog = await screen.findByRole("main");
+    await within(dialog).findByLabelText("Words to use");
     expect(within(dialog).getByRole("button", { name: "A grammar topic" })).toHaveAttribute(
       "aria-pressed",
       "true",
     );
-    await user.click(within(dialog).getByRole("button", { name: "Create" }));
+    await user.click(within(dialog).getByRole("button", { name: "Write the story" }));
     await waitFor(() => expect(services.createStory).toHaveBeenCalled());
     expect(vi.mocked(services.createStory).mock.calls[0]![0]).toMatchObject({
       grammarTopic: "inversion",
@@ -66,7 +67,7 @@ describe("Create a story", () => {
   });
 
   it("is hidden when no AI provider is configured", async () => {
-    setup("/library", {
+    setup("/grammar/inversion", {
       aiStatus: async () => ({
         configured: false,
         locked: false,
@@ -76,9 +77,9 @@ describe("Create a story", () => {
         label: "Anthropic",
       }),
     });
-    await screen.findAllByRole("listitem");
-    // the status query has settled once the Library's cards are shown
+    await screen.findAllByRole("heading");
+    // the status query has settled by now
     await new Promise((r) => setTimeout(r, 20));
-    expect(screen.queryByRole("button", { name: /Create a story/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /Write a story/ })).not.toBeInTheDocument();
   });
 });

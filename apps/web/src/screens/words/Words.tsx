@@ -503,7 +503,7 @@ export function Words() {
           description="Words arrive when you sync your Anki decks or read a text. Start with a text you want to read."
           action={
             <Link to="/import" className="k-btn k-btn--primary">
-              Import a text
+              Add text
             </Link>
           }
         />

@@ -13,7 +13,7 @@ import type {
 } from "@app/core";
 import { textDifficulty } from "@app/core";
 import type { ActivityEntry, StoredText, SuggestedWord, WordInfo } from "@app/db";
-import { groupActivity } from "./activity.js";
+import { groupActivity, knownByWeek } from "./activity.js";
 import { suggestionEntry } from "./suggestions.js";
 import { pickTextWords } from "./textWordSet.js";
 import { createMockCourses } from "./mockCourses.js";
@@ -893,7 +893,24 @@ export function createMockServices(
         for (let i = 0; i < exercises!; i++) entries.push({ kind: "exercise", at });
         for (let i = 0; i < added!; i++) entries.push({ kind: "added", at });
       });
+      // Earlier weeks (Progress): a few pages on most days.
+      for (let k = plan.length + 1; k < days; k++) {
+        const pages = (k * 7) % 5 === 0 ? 0 : (k % 3) + (k < 40 ? 1 : 0);
+        for (let i = 0; i < pages; i++) entries.push({ kind: "page", at: now - k * day });
+      }
       return groupActivity([...entries, ...sessionActivity], now, days);
+    },
+
+    async knownOverTime(weeks = 12) {
+      await wait();
+      // Demo: a steady climb to today's count.
+      const known = summaryOf().known;
+      const day = 86_400_000;
+      const now = Date.now();
+      const firsts = Array.from({ length: known }, (_, i) =>
+        i < known * 0.7 ? null : now - Math.round(((known - i) / (known * 0.3)) * weeks * 7) * day,
+      );
+      return knownByWeek(firsts, now, weeks);
     },
 
     async inspectWord(key: string): Promise<InspectorEntry> {

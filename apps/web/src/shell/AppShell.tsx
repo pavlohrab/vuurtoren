@@ -49,7 +49,7 @@ import { useRemoteFreshness } from "./useRemoteFreshness.js";
 const PAGE_TITLES: Record<string, string> = {
   "/": "Home",
   "/library": "Library",
-  "/import": "Import text",
+  "/import": "Add text",
   "/words": "Words",
   "/practice": "Practice",
   "/review": "Review",
@@ -89,6 +89,8 @@ export function AppShell() {
   const [mode, setMode] = useState<ReaderMode>("read");
   const [inspectorEl, setInspectorEl] = useState<HTMLElement | null>(null);
   const [toolbarEl, setToolbarEl] = useState<HTMLElement | null>(null);
+  const [contentEl, setContentEl] = useState<HTMLElement | null>(null);
+  const pageTitleInView = usePageTitleInView(contentEl);
   const [inspectorAvailable, setInspectorAvailable] = useState(false);
   // Closed until a word is chosen: it then slides in (a bottom sheet on a phone).
   const [inspectorOpen, setInspectorOpen] = useState(false);
@@ -156,6 +158,8 @@ export function AppShell() {
     (pathname.startsWith("/courses/") ? "Courses" : "Kenning");
   const showInspector = inspectorAvailable && inspectorOpen;
   const titleClass = header?.reader ? "topbar-title topbar-title--quiet" : "topbar-title";
+  // The page's h1 already says it: the top bar shows the title once the h1 has scrolled away.
+  const headingHidden = pageTitleInView && !header?.always && !header?.reader;
 
   const goto = useCallback(
     (to: string) => void navigate({ to } as Parameters<typeof navigate>[0]),
@@ -303,7 +307,7 @@ export function AppShell() {
               >
                 <PanelLeft size={16} />
               </Button>
-              <div className="topbar-heading">
+              <div className="topbar-heading" data-hidden={headingHidden || undefined}>
                 {header?.parent ? (
                   <>
                     <a
@@ -357,7 +361,7 @@ export function AppShell() {
               </div>
             </header>
             <div className="main-body">
-              <main className="content" id="content">
+              <main className="content" id="content" ref={setContentEl}>
                 <Outlet />
               </main>
               {/* Over the content, not beside it: closed it takes no space, open it slides in and
@@ -389,6 +393,42 @@ export function AppShell() {
       </ShellContext.Provider>
     </NativeModeContext.Provider>
   );
+}
+
+/**
+ * Whether the page's own title (the PageHeader h1) is visible in the scrolling content. Pages
+ * render their header late (after loading), so the observed element is looked up again
+ * whenever the content changes.
+ */
+function usePageTitleInView(contentEl: HTMLElement | null): boolean {
+  const [inView, setInView] = useState(false);
+  useEffect(() => {
+    if (!contentEl || typeof IntersectionObserver === "undefined") return;
+    let watched: Element | null = null;
+    const io = new IntersectionObserver(
+      (entries) => {
+        const last = entries.at(-1);
+        if (last) setInView(last.isIntersecting);
+      },
+      { root: contentEl },
+    );
+    const attach = () => {
+      const h = contentEl.querySelector(".page-title");
+      if (h === watched) return;
+      if (watched) io.unobserve(watched);
+      watched = h;
+      if (h) io.observe(h);
+      else setInView(false);
+    };
+    attach();
+    const mo = new MutationObserver(attach);
+    mo.observe(contentEl, { childList: true, subtree: true });
+    return () => {
+      mo.disconnect();
+      io.disconnect();
+    };
+  }, [contentEl]);
+  return inView;
 }
 
 type FixedRoute =

@@ -25,20 +25,22 @@ describe("empty states", () => {
   it("Progress: one next step and no made-up estimate before a first sync", async () => {
     setup("/progress", { learnerSummary: async () => emptySummary });
     expect(await screen.findByRole("heading", { name: "Nothing to measure yet" })).toBeVisible();
-    expect(screen.getByRole("link", { name: "Connect Anki" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Set up your words" })).toBeInTheDocument();
     expect(screen.queryByText("Estimated vocabulary")).toBeNull();
   });
 
   it("Progress: the estimate appears once Anki was synced", async () => {
     setup("/progress", {}, true);
     expect(await screen.findByText("Estimated vocabulary")).toBeInTheDocument();
-    expect(screen.getByText(/last synced/)).toBeInTheDocument();
+    expect(screen.getByText(/Anki collection, synced/)).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Known words" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Reading per week" })).toBeInTheDocument();
   });
 
   it("Words: a real empty state when there are no words at all", async () => {
     setup("/words", { words: async () => [], wordsToDecide: async () => [] });
     expect(await screen.findByRole("heading", { name: "No words yet" })).toBeVisible();
-    expect(screen.getByRole("link", { name: "Import a text" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Add text" })).toBeInTheDocument();
   });
 
   it("the main nav: Home first, no Read entry, Talk instead of Converse", async () => {
@@ -90,7 +92,7 @@ describe("plain errors", () => {
       },
     });
     await user.type(await screen.findByLabelText("Text"), "Ik bel mijn zus op.");
-    await user.click(screen.getByRole("button", { name: "Import" }));
+    await user.click(screen.getByRole("button", { name: "Add to Library" }));
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent("The import did not work.");
     expect(alert).toHaveTextContent(/language server is not reachable/);

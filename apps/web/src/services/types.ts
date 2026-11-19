@@ -17,7 +17,7 @@ import type { CourseServices } from "./courseTypes.js";
 import type { OcrReviewHandler } from "./ocrReview.js";
 import type { AIServices, AISentenceReport } from "./aiTypes.js";
 import type { AddOptions, ProfileServices } from "./profileTypes.js";
-import type { ActivityDay } from "./activity.js";
+import type { ActivityDay, KnownPoint } from "./activity.js";
 import type { ExamServices } from "./examTypes.js";
 import type { LibraryServices } from "./libraryTypes.js";
 import type { NativeServices } from "./nativeTypes.js";
@@ -308,6 +308,8 @@ export interface AppServices
   learnerSummary(): Promise<LearnerSummary>;
   /** The last `days` (default 7) local days of pages read, exercises answered and words added. */
   activity(days?: number): Promise<ActivityDay[]>;
+  /** Known words at the end of each of the last `weeks` (default 12) weeks, oldest first. */
+  knownOverTime(weeks?: number): Promise<KnownPoint[]>;
   /** Counts for the Practice start screen, the sidebar badge and Progress. */
   practiceOverview(): Promise<PracticeOverview>;
   /**

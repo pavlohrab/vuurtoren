@@ -143,6 +143,17 @@
 }
 .topbar-heading {
   flex: 0 1 auto;
+  transition:
+    opacity var(--dur) var(--ease-out),
+    visibility 0s linear 0s;
+}
+/* The page's own h1 is in view: the top bar title waits until it has scrolled away. */
+.topbar-heading[data-hidden] {
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity var(--dur-fast) var(--ease-out),
+    visibility 0s linear var(--dur-fast);
 }
 /* Reader route: the title steps back (UI font, muted) and the page's controls fill the bar. */
 .topbar-title--quiet {
@@ -172,18 +183,20 @@
   min-height: 0;
   overflow: auto;
 }
-/* One page column per page type (design-system.md, Grid and content widths). */
+/* One page column per page type (design-system.md, Grid and content widths). Every type
+   starts on the left edge of the wide column; only the right edge moves. */
 .page {
-  max-width: calc(var(--w-wide) + 2 * var(--s-5));
-  margin: 0 auto;
+  --page-w: var(--w-wide);
+  max-width: calc(var(--page-w) + 2 * var(--s-5));
+  margin: 0 auto 0 max(0px, (100% - var(--w-wide) - 2 * var(--s-5)) / 2);
   padding: var(--s-6) var(--s-5) var(--s-8);
 }
 .page--list,
 .page--narrow {
-  max-width: calc(var(--w-list) + 2 * var(--s-5));
+  --page-w: var(--w-list);
 }
 .page--read {
-  max-width: calc(var(--w-read) + 2 * var(--s-5));
+  --page-w: var(--w-read);
 }
 .page h1 {
   font-size: 28px;
@@ -743,8 +756,13 @@
   align-items: flex-start;
   gap: var(--s-5);
 }
-.practice-form > .k-btn--primary {
-  margin-top: var(--s-2);
+.practice-more,
+.practice-about {
+  width: 100%;
+  max-width: var(--w-read);
+}
+.practice-about {
+  margin: 0;
 }
 .practice-session,
 .practice-summary {
@@ -1462,7 +1480,13 @@ a.home-step:hover .home-step-go {
   justify-self: start;
   margin-bottom: var(--s-3);
 }
-.page-back a {
+.page-back a,
+.page-back button {
+  font: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -1470,7 +1494,8 @@ a.home-step:hover .home-step-go {
   font-size: 13.5px;
   text-decoration: none;
 }
-.page-back a:hover {
+.page-back a:hover,
+.page-back button:hover {
   color: var(--accent);
 }
 .page .page-head .page-title {
@@ -1517,14 +1542,6 @@ a.home-step:hover .home-step-go {
 .practice .page-head {
   width: 100%;
   margin-bottom: 8px;
-}
-.practice-explain h2 {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.practice-explain h2 svg {
-  color: var(--ink-muted);
 }
 .practice-next {
   display: grid;
@@ -1603,7 +1620,8 @@ a.home-step:hover .home-step-go {
   color: var(--accent);
 }
 
-/* ---------- Reader: end of a text (screens/TextComplete.tsx) ---------- */
+/* ---------- The end of a text or a session: flat, numbers between hairlines, one primary,
+   then the next steps as a hairline list (TextComplete, Practice summary) ---------- */
 .text-done {
   display: flex;
   flex-direction: column;
@@ -1611,10 +1629,8 @@ a.home-step:hover .home-step-go {
   gap: 12px;
   max-width: 40rem;
   margin: 0 auto;
-  padding: 32px;
-  border: 1px solid var(--hairline);
-  border-radius: var(--radius-card);
-  background: var(--surface);
+  padding: var(--s-6) 0 0;
+  border-top: 1px solid var(--hairline);
   animation: k-fade-in var(--dur-slow) var(--ease);
 }
 .text-done .k-overline {
@@ -1632,25 +1648,32 @@ a.home-step:hover .home-step-go {
   margin: 0;
   color: var(--ink-muted);
 }
-.text-done-stats {
+.text-done-stats,
+.done-stats {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
   width: 100%;
+  max-width: var(--w-read);
   margin: 8px 0;
   padding: 16px 0;
   border-block: 1px solid var(--hairline);
 }
-.text-done-stats dt {
-  font-size: 12px;
+.text-done-stats dt,
+.done-stats dt {
+  font-size: 13px;
   color: var(--ink-muted);
 }
-.text-done-stats dd {
+.text-done-stats dd,
+.done-stats dd {
   margin: 2px 0 0;
   font-family: var(--font-display);
   font-size: 26px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
+}
+.done-stats-learn {
+  color: var(--learn-ink);
 }
 .text-done-known {
   color: var(--known-ink);
@@ -1661,24 +1684,16 @@ a.home-step:hover .home-step-go {
 .text-done-next {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: 8px;
   width: 100%;
 }
 .text-done-primary {
   justify-self: start;
-  margin-bottom: 4px;
+  margin-bottom: var(--s-5);
 }
 @media (max-width: 699px) {
-  .text-done {
-    padding: 20px 16px;
-  }
   .text-done-title {
     font-size: 24px;
   }
-}
-.practice .stat-grid {
-  width: 100%;
-  max-width: var(--w-read);
 }
 .import-page > form {
   max-width: var(--w-read);

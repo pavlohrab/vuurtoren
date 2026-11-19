@@ -127,7 +127,7 @@ An 8px scale with one 4px half-step. Tokens on `:root`: `--s-1` 4 · `--s-2` 8 �
 
 ### Grid and content widths
 
-A 12-column grid, 24px gutters (16px on phones). Every page sits in one centred `.page` column whose width depends on the page type, so the header lands on the same edge on every page of that type:
+A 12-column grid, 24px gutters (16px on phones). Every page sits in one `.page` column whose width depends on the page type. All page types start on the left edge of the wide column, so headers line up across the app; only the right edge moves:
 
 | Page type         | Width                   | Screens                                                                |
 | ----------------- | ----------------------- | ---------------------------------------------------------------------- |
@@ -143,7 +143,17 @@ A surface (`--surface` fill, hairline edge, 14px radius) only **groups interacti
 
 ### Page header (`PageHeader`)
 
-Every top-level screen, Home included: h1 (Instrument Sans 600, 28px, 24 on phones), one muted line on what the page is for (max 62ch), actions on the right (at most one primary, plus up to two secondary or ghost). No border under it. Home's h1 is the greeting. Sub-pages (Grammar topic, Words from this text) use the same header with a back link above the title.
+Every top-level screen, Home included: h1 (Instrument Sans 600, 28px, 24 on phones), one muted line on what the page is for (max 62ch), actions on the right (at most one primary, plus up to two secondary or ghost). No border under it. Home's h1 is the greeting. Sub-pages (Grammar topic, Words from this text, Check the text) use the same header with a back link above the title.
+
+The top bar does not repeat the h1: its title fades in only once the h1 has scrolled out of view (Home keeps the date there, the reader its text title).
+
+### Disclosure (`.k-disclosure`)
+
+Options and details that most people do not need every time sit behind a `<details>` with a chevron and a short muted summary of the current choice: Practice "Options" (remembered per device), Talk "Your own topic", Progress "By skill".
+
+### Scrollbars
+
+Thin and warm everywhere (`scrollbar-width: thin`, `--line-strong` thumb); tab strips scroll without a bar.
 
 ### Section header (`SectionHeader`)
 
@@ -155,7 +165,7 @@ h2 in Instrument Sans 600, 17px, ink; optional quiet link on the right (`.k-link
 
 ### Buttons and links
 
-- **Primary** (filled accent): one per view — the thing most people came to do (Continue reading on Home, Import on Library, Start on Practice, Apply on Words from this text).
+- **Primary** (filled accent): one per view — the thing most people came to do (Continue reading on Home, Add text on Library, "Start · N due" on Practice, Apply on Words from this text).
 - **Secondary** (hairline outline): other actions in the header or a form.
 - **Ghost**: tools in rows (icons), cancel in dialogs next to a primary.
 - **Quiet link** (`.k-link`): navigation to another place ("All words →"). One style everywhere.
@@ -237,13 +247,13 @@ Domain components:
 - **Sign-in**: a small landing: the mark, the wordmark, one sentence on what Kenning does, then the form.
 - **Onboarding** (`/welcome`): connect AnkiConnect, choose decks and fields, language profile.
 - **Library:** a bookshelf. Rows of covers that scroll sideways (snap, a hairline "shelf board" under each row, no boxes): Reading now, the learner's own shelves, To read, Finished, then "By source" (Course books, AI stories, Web, Photos & PDFs, Talk). Under each cover one quiet line: page N of M / Finished / words, and "% known". A "…" on each cover (on hover or focus with a pointer, always on touch) opens Open, Words from this text, Edit details, Change cover, Add to shelf, Remove from this shelf, Delete. The toolbar: Shelves / All texts (segmented), Search, Sort (recent, title, coverage), New shelf, Select (multi-select with a floating bar: Add to shelf). All texts is the cover grid with words, new words, author/note and the coverage meter. Keyboard: one tab stop per row, arrow keys / Home / End inside it. Desktop: drag covers onto one of your shelves. Phones: rows stack, 128px covers, rows bleed to the screen edge.
-- **Import:** paste, URL, PDF, EPUB, photo; editable OCR preview.
+- **Add text** (`/import`, the one way in, labelled "Add text" everywhere): tabs Paste · Web · PDF · Photo (with OCR) · Write a story (with an AI provider). A grammar topic or a unit links to Write a story with its preset. The OCR check shows Cancel and Import; Edit the whole text, Accept all suggestions and Skip review are in "…".
 - **Reader:** read / cloze / gloss modes; the end of a text shows a calm completion panel (new words met, in Anki, still to decide) leading to Words from this text, Practise these words, Talk about this text and Next text.
-- **Practice:** one exercise per screen; keys 1–4, Enter, Esc.
-- **Talk** (`/talk`): chat with coverage chips, inline corrections and new-word chips.
+- **Practice:** the header's primary is "Start · N due"; skills, length and AI sentences in Options. One exercise per screen; keys 1–4, Enter, Esc. The summary and the end of a text share one flat pattern: numbers between hairlines, one primary, the next steps as a hairline list.
+- **Talk** (`/talk`): starts from a short list (the text you are reading, your words to learn, everyday life), your own topic behind a disclosure, earlier conversations beside it; then chat with coverage chips, inline corrections and new-word chips.
 - **Words:** the hub. State / source / search filters live in the URL with removable chips; rows open the shared inspector; a selection goes to Anki, Practice or Talk.
 - **Grammar:** topics with "seen in your texts" examples.
-- **Progress:** vocabulary estimate and practice numbers (from Home).
+- **Progress:** the numbers, then two calm charts side by side — known words over 12 weeks (a 2px `--known` line, faint area, last value labelled) and pages read per week (thin `--known` bars, this week full strength) — and Practice with "By skill" in a disclosure. Times are relative ("synced 1 hour ago"). Reached from Home ("View progress", "This week"), ⌘K and the phone's More sheet; it stays off the rail because it is a place to look back, not a daily task.
 - **Settings:** sections with a sub-nav (a list on phones): Account, Language & decks (Anki connection first), Reading, AI, Data & backup, Advanced. Changes save themselves with a quiet "Saved" note; the theme is only in the top bar.
 - **Page header:** every top-level screen opens with the same header: title (h1), one line on what the page is for, the primary action on the right.
 

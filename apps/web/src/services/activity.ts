@@ -1,6 +1,7 @@
 /**
- * Home's week strip: learning events grouped by local calendar day. Pure, so live and mock
- * services share it and it is easy to test.
+ * Learning activity over time: events grouped by local calendar day (Home's week strip), by
+ * week (Progress) and known words by week. Pure, so live and mock services share it and it is
+ * easy to test.
  */
 import type { ActivityEntry } from "@app/db";
 
@@ -57,3 +58,69 @@ export function groupActivity(
 /** Days with any activity. */
 export const activeDays = (days: readonly ActivityDay[]): number =>
   days.filter((d) => d.pages + d.exercises + d.added > 0).length;
+
+/** One week of activity (Progress, reading per week). */
+export interface ActivityWeek {
+  /** Local date of the week's first day, YYYY-MM-DD. */
+  start: string;
+  pages: number;
+  exercises: number;
+  added: number;
+}
+
+/** Consecutive 7-day weeks of `days` (oldest first, the last week ends today). */
+export function groupWeeks(days: readonly ActivityDay[]): ActivityWeek[] {
+  const out: ActivityWeek[] = [];
+  const offset = days.length % 7;
+  for (let i = offset; i < days.length; i += 7) {
+    const week = days.slice(i, i + 7);
+    out.push({
+      start: week[0]!.date,
+      pages: week.reduce((n, d) => n + d.pages, 0),
+      exercises: week.reduce((n, d) => n + d.exercises, 0),
+      added: week.reduce((n, d) => n + d.added, 0),
+    });
+  }
+  return out;
+}
+
+/** Known words at the end of a week. */
+export interface KnownPoint {
+  /** Local date of the week's last day, YYYY-MM-DD. */
+  date: string;
+  known: number;
+}
+
+const EARLIEST_CARD = Date.UTC(2006, 0, 1);
+
+/**
+ * Known words at the end of each of the last `weeks` weeks (oldest first, the last point is
+ * today). Each known word is dated by when its first card was made (Anki and Kenning note ids
+ * are creation times in ms); words without a usable date count from the start.
+ */
+export function knownByWeek(
+  firstCards: readonly (number | null)[],
+  now: number,
+  weeks = 12,
+): KnownPoint[] {
+  const dated = firstCards
+    .filter((t): t is number => t !== null && t >= EARLIEST_CARD && t <= now)
+    .sort((a, b) => a - b);
+  const undated = firstCards.length - dated.length;
+  const end = new Date(now);
+  end.setHours(23, 59, 59, 999);
+  const out: KnownPoint[] = [];
+  let j = 0;
+  for (let w = weeks - 1; w >= 0; w--) {
+    const d = new Date(end);
+    d.setDate(end.getDate() - 7 * w);
+    const t = d.getTime();
+    while (j < dated.length && dated[j]! <= t) j++;
+    out.push({ date: localDate(t), known: undated + j });
+  }
+  return out;
+}
+
+/** The first card of a word, from its note ids (null without one). */
+export const firstCard = (noteIds: readonly number[]): number | null =>
+  noteIds.length ? Math.min(...noteIds) : null;

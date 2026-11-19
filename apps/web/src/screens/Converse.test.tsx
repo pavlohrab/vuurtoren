@@ -24,6 +24,7 @@ describe("Converse", () => {
 
   it("starts a chat, shows coverage, adds a new word to Anki and shows corrections", async () => {
     const { ai, user } = setup("/converse");
+    await user.click(await screen.findByText("Your own topic"));
     await user.type(await screen.findByLabelText("Topic"), "koffie");
     // Suggested target words are prefilled.
     expect(screen.getByLabelText("Words to practise")).toHaveValue("gezellig, afspraak");
@@ -50,6 +51,22 @@ describe("Converse", () => {
 });
 
 describe("Talk entry points and the Library", () => {
+  it("offers suggested starts and starts one in a click", async () => {
+    const started: unknown[] = [];
+    const base = createMockAI(() => Promise.resolve(), { configured: true });
+    const { user } = setup("/talk", true, {
+      startConversation: async (input) => {
+        started.push(input);
+        return base.startConversation(input);
+      },
+    });
+    const list = await screen.findByRole("list", { name: "Ways to start" });
+    expect(list).toHaveTextContent("Everyday life");
+    await user.click(await screen.findByRole("button", { name: /Your words to learn/ }));
+    await waitFor(() => expect(started).toHaveLength(1));
+    expect(started[0]).toMatchObject({ targetWords: ["gezellig", "afspraak"] });
+  });
+
   it("is seeded with words and a topic from the URL, titles the topic in sentence case and saves the chat to the Library", async () => {
     const imported: unknown[] = [];
     const { user } = setup("/talk?words=gracht,brug&topic=een%20dag%20in%20utrecht", true, {
