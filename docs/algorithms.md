@@ -12,12 +12,13 @@ Contents
 6. [What Kenning writes to Anki](#6-what-kenning-writes-to-anki)
 7. [Worked example: "Ik bel je morgen op."](#7-worked-example-ik-bel-je-morgen-op)
 8. [Where AI is optional](#8-where-ai-is-optional)
+9. [Native mode: Kenning's own cards](#9-native-mode-kennings-own-cards)
 
 ---
 
 ## 1. Anki → learner model
 
-Kenning has no word list of its own. Your Anki collection is the record of which Dutch words you know. When you sync, Kenning reads your decks (read-only) and builds a **learner model**: for every word key, a state (`unknown`, `seen`, `learning`, `known`, `ignored`) and `pKnown`, the probability that you would recall it right now.
+In connected mode, your Anki collection is the record of which Dutch words you know. In native mode, Kenning's own cards are, read with the same rules (section 9.4). When you sync in connected mode, Kenning reads your decks (read-only) and builds a **learner model**: for every word key, a state (`unknown`, `seen`, `learning`, `known`, `ignored`) and `pKnown`, the probability that you would recall it right now.
 
 ### 1.1 Finding your Dutch decks and fields
 
@@ -585,6 +586,8 @@ The app checks the synonym rule again with its own dictionary before using a nei
 
 ## 6. What Kenning writes to Anki
 
+This section is about connected mode. In native mode Kenning writes nothing to Anki: the same buttons act on its own cards (section 9.5).
+
 Kenning reads Anki freely but **writes only when you click** a button for one word (`packages/anki/src/actions.ts`, `packages/anki/src/note.ts`). Every write is tagged, so you can find and undo it in Anki's browser.
 
 | Button                               | Shown when                          | What happens in Anki                                                                                                                                                                                    | Tag                |
@@ -627,6 +630,76 @@ spaCy attached `op` to `bel` as a particle, so rule 2.3(a) joined them into `opb
 
 ## 8. Where AI is optional
 
-Everything above (deck detection, the learner model, lemmatisation, separable verbs, derivation and compound glosses, meanings read off the sentence translation, the dictionary, offline sentence translation, OCR and cleanup, the reading planner, clozes, the staircase, practice scheduling and exercises, distractors, grammar detection, and Anki writes) runs **without any AI provider or API key**. The two models involved (spaCy and OPUS-MT) are small, local and deterministic for a given input. They never generate free text about you or for you.
+Everything above (deck detection, the learner model, lemmatisation, separable verbs, derivation and compound glosses, meanings read off the sentence translation, the dictionary, offline sentence translation, OCR and cleanup, the reading planner, clozes, the staircase, practice scheduling and exercises, distractors, grammar detection, Anki writes, and native reviews with their tuning) runs **without any AI provider or API key**. The two models involved (spaCy and OPUS-MT) are small, local and deterministic for a given input. They never generate free text about you or for you.
 
 AI features are opt-in extras, hidden until you configure a provider: Converse, Explain this sentence and Simplify this page. See [ai.md](ai.md) for what they do, which providers work and what is sent.
+
+---
+
+## 9. Native mode: Kenning's own cards
+
+In native mode Kenning holds the cards and runs the reviews. The learner model, the reader, Words, Practice and courses read these cards exactly as they read Anki cards in connected mode.
+
+### 9.1 Where cards come from
+
+| Source                        | What comes in                                                                                                                                                                                                |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Add to my words**           | a note of Kenning's own type (Word, Gloss, Sentence, SentenceTranslation, Source) with one card, in the deck the language profile chooses                                                                    |
+| **.apkg / .colpkg file**      | the chosen decks' notes, note types (fields, card templates, styling), cards, deck options, the full review log, and the images and sounds the notes use                                                     |
+| **Move from Anki to Kenning** | the same, read through AnkiConnect from the confirmed source decks and Kenning's destination decks (`notesInfo`, `cardsInfo`, `getReviewsOfCards`, `findModelsByName`, `getDeckConfig`, `retrieveMediaFile`) |
+
+**Package files** (`packages/anki/src/apkg/read.ts`). A package is a zip. The older layout holds `collection.anki2` or `collection.anki21`, a SQLite file whose `col` row carries note types, decks and deck options as JSON, and a `media` file mapping zip entries to names as JSON. The current layout holds `collection.anki21b`, compressed with zstd; note types, fields, templates, decks and deck options have their own tables with protobuf blobs (note type kind, CSS, template front and back, a deck's options id, learning steps, relearning steps, new cards per day, maximum interval, target retention, FSRS-6 parameters), and `media` is a zstd-compressed protobuf list; each media file is compressed too. Cards in a filtered deck are imported into their home deck. A review card's due day counts from the collection's creation day.
+
+**Vocabulary fields** are found with the same detection as in connected mode (section 1.1), per deck and note type. When the language server is unreachable, field names decide (`Woord`/`Word`/`Front` for the word, `Betekenis`/`Meaning`/`Back` for the meaning, `Zin`/`Sentence`/`Example` for the sentence). Headwords become keys with the server's term analysis (section 1.2), or with `wordKey` without it. Notes of other types are imported and reviewed, but do not feed the learner model.
+
+Notes and cards keep their Anki ids. A card that is already held keeps its state and history when the same deck is imported again. Images up to 2 MB and sounds up to 8 MB are kept; the import reports any it could not keep.
+
+### 9.2 The scheduler
+
+`packages/core/src/native/schedule.ts`, on `ts-fsrs` (FSRS-6, 21 parameters):
+
+| Setting          | Value                                                                                                                                             |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Parameters       | the learner's tuned ones (9.3); before the first tuning, Anki's own FSRS-6 parameters when the imported preset had them, else the FSRS-6 defaults |
+| Target retention | per deck, default 0.9 (between 0.7 and 0.99)                                                                                                      |
+| Learning steps   | per deck, default 1 min and 10 min                                                                                                                |
+| Relearning steps | per deck, default 10 min                                                                                                                          |
+| Maximum interval | per deck, default 36,500 days                                                                                                                     |
+| New cards a day  | per deck, default 20; counted from 4:00 local time                                                                                                |
+| Fuzz             | on for answers (due dates spread at random within ts-fsrs's ranges), off for replays and the intervals shown on the buttons                       |
+
+Imported decks bring their own steps, limits and target retention.
+
+**Imported memory.** Each card's review log is replayed through the scheduler, oldest first, without fuzz, so stability and difficulty are what FSRS makes of the whole history. Manual changes (rescheduling, set due date) are not answers and are skipped; a manual entry followed by learning answers is a reset and starts the card over. A review card keeps the due date and interval Anki gave it. A reviewed card without any history gets its interval as stability and difficulty 5.
+
+**Queue** (`nativeQueue` in `packages/db/src/cards.ts`): cards due now first (learning, relearning and review, earliest first), then new cards in each deck's order within its daily limit. When nothing else is left, learning cards due within 20 minutes come forward.
+
+**Answering** (`answerCard`): Again, Hard, Good, Easy are FSRS ratings 1–4. The event stores the card's schedule before and after the answer, so the log replays without the scheduler and an undo restores the earlier state exactly. The buttons show the interval each rating would give.
+
+### 9.3 Tuning to you
+
+The FSRS optimizer is `fsrs-rs` compiled to WebAssembly (`@open-spaced-repetition/binding-wasm32-wasip1`), run in a worker on the device (`apps/web/src/native/`). It trains on the whole review history: imported and answered in Kenning.
+
+1. Each card's answers become a sequence of ratings with whole study days between them (a study day starts at 4:00 local time). A card counts only when its history starts with a learning answer; a reset starts a new sequence; manual entries are left out (`trainingSequences`).
+2. Every answer given on a later study day than the one before is one training item: that answer with the card's whole history before it, same-day learning steps included.
+3. The optimizer trains FSRS-6 parameters with short-term memory enabled. It needs at least 50 such answers.
+4. The new and the current parameters are scored on the same items: log loss and RMSE (binned), lower is better. The new ones are used only when their log loss is lower; otherwise the current ones stay.
+5. With new parameters, every card with a complete history is replayed again for its stability and difficulty. Due dates stay as they are.
+
+It runs by itself when the app opens: the first time once the history holds 400 answers, then every 30 days (when there are new answers) or after 500 new answers. **Optimise now** in Settings runs it at once and shows the reviews used and the log loss and RMSE before and after.
+
+### 9.4 What you know
+
+`nativeWordEntries` in `packages/db/src/cards.ts` gives the learner model the same per-word facts an Anki snapshot gives (section 1.5): each note's strongest card, read with `classifyCard` (section 1.4) from its FSRS stability, the time of its last answer and the decay of the parameters in use (FSRS-6 learns it; the default is 0.1542). So **known** means stability ≥ 21 days and recall ≥ 0.6 now; a suspended mature card stays known. A word added with **Add to my words** is `learning` with `pKnown = 0.2` until its card is first answered, as in connected mode. Manual marks and app evidence apply on top as in sections 1.6 and 1.7.
+
+### 9.5 Word commands
+
+| Button              | What happens to Kenning's cards                                                        |
+| ------------------- | -------------------------------------------------------------------------------------- |
+| **Add to my words** | a new note and card (section 9.1), new in the queue's first place                      |
+| **Study first**     | the word's new cards move to the front of the new queue and are unsuspended            |
+| **Mark known**      | the cards get a mature interval of 21–35 days (the word is added first if it has none) |
+
+### 9.6 The review screen
+
+Front, then Space or **Show answer**, then Again / Hard / Good / Easy (keys 1–4; Space or Enter is Good), Z or **Undo** takes back the last answer. A vocabulary card whose template shows the word on the front is laid out by Kenning: the word and its sentence on the front, the meaning and the sentence translation on the back. Clozes and other templates are rendered from the note type's own template (fields, conditional sections, `FrontSide`, clozes, hints) and shown through an allow-list sanitiser: formatting tags only, no scripts, styles, frames, forms or event handlers, and only the card's own images. Sounds get a play button. After the answer, a sentence with the word from your own texts is shown when one exists.

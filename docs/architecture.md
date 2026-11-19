@@ -7,21 +7,21 @@ Algorithms: [algorithms.md](algorithms.md).
 
 Dependencies point down; nothing in `packages/` imports from `apps/`.
 
-| Package               | Owns                                                                                                                                                                                 | Depends on                            |
-| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------- |
-| `packages/core`       | Pure domain logic: learner model and evidence, token matching, reading planner and staircase, practice engine and FSRS, courses, language profile, the `InspectorEntry` DTO. No I/O. | —                                     |
-| `packages/content`    | Grammar topics and exam content (Markdown, generated and validated at build).                                                                                                        | —                                     |
-| `packages/db`         | The append-only event log, projections and the `KenningRepository` API; drivers for browser SQLite (OPFS worker), Node and HTTP (server mode).                                       | core                                  |
-| `packages/anki`       | AnkiConnect client, deck detection, snapshots, and the one command layer for Anki writes (add, study first, mark known).                                                             | core                                  |
-| `packages/nlp-client` | HTTP client of `server/nlp` and the cached practice-data source.                                                                                                                     | —                                     |
-| `packages/ai`         | Bring-your-own-key providers, prompts, story / sentence / exam generators and their checks, the per-device key store.                                                                | core                                  |
-| `packages/ui`         | Design-system components (reader, word inspector, cards, controls). Renders DTOs from core; no services.                                                                             | core                                  |
-| `packages/mcp-tools`  | The MCP tools shared by `apps/mcp` (stdio) and `server/api` (HTTP).                                                                                                                  | core, content, db, ai                 |
-| `apps/web`            | The React PWA.                                                                                                                                                                       | all of the above                      |
-| `apps/desktop`        | Tauri v2 desktop app: local SQLite file, bundled language server, Anki bridge, updater.                                                                                              | (loads apps/web)                      |
-| `apps/mcp`            | stdio MCP server.                                                                                                                                                                    | mcp-tools, core, db, anki, nlp-client |
-| `server/api`          | Server storage mode: sign-in, one SQLite file behind RPC, HTTP MCP.                                                                                                                  | mcp-tools, core, db, nlp-client       |
-| `server/nlp`          | Python language server: analysis (spaCy), dictionary, forms, sentences, grammar detectors, OCR (RapidOCR, Tesseract), translation.                                                   | —                                     |
+| Package               | Owns                                                                                                                                                                                                                                                                    | Depends on                            |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------- |
+| `packages/core`       | Pure domain logic: learner model and evidence, token matching, reading planner and staircase, practice engine and FSRS, the native scheduler (FSRS-6, replay, card templates, training data), courses, language profile and its mode, the `InspectorEntry` DTO. No I/O. | —                                     |
+| `packages/content`    | Grammar topics and exam content (Markdown, generated and validated at build).                                                                                                                                                                                           | —                                     |
+| `packages/db`         | The append-only event log, projections (native cards included) and the `KenningRepository` API; drivers for browser SQLite (OPFS worker), Node and HTTP (server mode).                                                                                                  | core                                  |
+| `packages/anki`       | AnkiConnect client, deck detection, snapshots, package files (.apkg, .colpkg) and decks read through AnkiConnect turned into native cards, and the one command layer for word actions in both modes (add, study first, mark known).                                     | core                                  |
+| `packages/nlp-client` | HTTP client of `server/nlp` and the cached practice-data source.                                                                                                                                                                                                        | —                                     |
+| `packages/ai`         | Bring-your-own-key providers, prompts, story / sentence / exam generators and their checks, the per-device key store.                                                                                                                                                   | core                                  |
+| `packages/ui`         | Design-system components (reader, word inspector, cards, controls). Renders DTOs from core; no services.                                                                                                                                                                | core                                  |
+| `packages/mcp-tools`  | The MCP tools shared by `apps/mcp` (stdio) and `server/api` (HTTP).                                                                                                                                                                                                     | core, content, db, ai                 |
+| `apps/web`            | The React PWA.                                                                                                                                                                                                                                                          | all of the above                      |
+| `apps/desktop`        | Tauri v2 desktop app: local SQLite file, bundled language server, Anki bridge, updater.                                                                                                                                                                                 | (loads apps/web)                      |
+| `apps/mcp`            | stdio MCP server.                                                                                                                                                                                                                                                       | mcp-tools, core, db, anki, nlp-client |
+| `server/api`          | Server storage mode: sign-in, one SQLite file behind RPC, HTTP MCP.                                                                                                                                                                                                     | mcp-tools, core, db, nlp-client       |
+| `server/nlp`          | Python language server: analysis (spaCy), dictionary, forms, sentences, grammar detectors, OCR (RapidOCR, Tesseract), translation.                                                                                                                                      | —                                     |
 
 ## apps/web
 
@@ -31,12 +31,13 @@ src/
   router.tsx          routes (lazy screens)
   shell/              app shell, PageHeader, degraded indicator, sign-in, storage screens
   screens/            one folder per area where it has several files:
-    courses/ exam/ grammar/ onboarding/ reader/ settings/ words/
+    courses/ exam/ grammar/ onboarding/ reader/ review/ settings/ words/
     Home, Library, Import, ReaderPage, Practice, Progress, Converse, ...
   services/           everything the screens call (AppServices), see below
   storage/            startup mode, tab lock, local.ts (localStorage helpers)
   pwa/                service worker registration, update prompt, install button
   practice/           practice engine glue (core generators, speech)
+  native/             workers: the FSRS optimizer (WebAssembly) and SQLite for package files
   format.ts           pct, plural, formatBytes
 ```
 
@@ -66,6 +67,7 @@ composition root. Each domain module gets only what it needs:
 | `liveGrammar.ts`    | Grammar hits of a text, topic overview and examples.                                                              |
 | `liveAI.ts`         | AI config and keys, stories, conversations, AI sentences, exam items.                                             |
 | `liveExam.ts`       | Exam attempts.                                                                                                    |
+| `liveNative.ts`     | Native mode: review queue, answers and undo, deck options, package import, the move from Anki, FSRS tuning.       |
 | `liveCourses.ts`    | Composition of `courses/`: `context` (shared lookups), `import`, `packs`, `views`, `anki`, `practice`, `grammar`. |
 
 `mock*.ts` implement the same `AppServices` for `?demo` and for screen tests.
@@ -88,8 +90,15 @@ flowchart LR
 - **Reads** go through repository queries; the services cache what is expensive (learner model,
   reading plans, glosses) and drop the caches on `changed()` or when another device wrote
   (server mode, `checkRemoteChanges`).
-- **Anki** is read for snapshots and live card state; it is written only by the commands in
-  `@app/anki`, each of which also records its event.
+- **Modes.** The language profile's mode decides who holds the cards. Connected: Anki is read
+  for snapshots and live card state and written only by the commands in `@app/anki`, each of
+  which also records its event. Native: the cards are events and projections in `@app/db`
+  (`NativeNotesAdded`, `CardReviewed`, `CardReviewUndone`, `NativeCardsChanged`,
+  `NativeDeckOptionsSet`, `FsrsParamsSet`); the learner model reads them in place of the Anki
+  snapshot, and the same commands act on them. Anki is only read, by the move from Anki.
+- **Native reviews** are scheduled on the device (`@app/core` native scheduler). The FSRS
+  optimizer runs in a worker as WebAssembly; a package file's SQLite collection is opened in
+  another worker. Both work offline, in the browser and in the desktop app.
 - **Degraded modes** (NLP, Anki, AI, translation, storage) report to one signal
   (`services/degraded.ts`) shown in the top bar.
 

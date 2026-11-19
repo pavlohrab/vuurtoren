@@ -50,6 +50,8 @@ to Anki with the sentence you found it in.
 
 ## Highlights
 
+- **Anki is optional.** Kenning can hold your cards and run your reviews itself, or work with
+  your Anki decks.
 - **Your Anki decks are the source of truth.** Dutch decks and fields are found automatically;
   each card's interval (SM-2) or stability (FSRS) becomes a recall probability.
 - **Graded reading of your own texts.** Paste, a web address, a PDF, an EPUB or a photo.
