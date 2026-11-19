@@ -19,4 +19,3 @@ export function useAutoTune(services: AppServices, qc: QueryClient, enabled: boo
       .catch(() => undefined);
   }, [services, qc, enabled]);
 }
-
