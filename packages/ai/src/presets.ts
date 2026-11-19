@@ -22,7 +22,7 @@ export const PRESETS: readonly ProviderPreset[] = [
     defaultModel: "claude-haiku-5-5",
     needsKey: true,
     jsonMode: false,
-    note: "Messages API with prompt caching. Needs an API key from console.anthropic.com (not a claude.ai login).",
+    note: "Needs an API key from console.anthropic.com (a claude.ai login does not work here).",
   },
   {
     id: "openai",
@@ -31,7 +31,7 @@ export const PRESETS: readonly ProviderPreset[] = [
     defaultModel: "gpt-5-mini",
     needsKey: true,
     jsonMode: true,
-    note: "Chat Completions API.",
+    note: "Needs an API key from platform.openai.com.",
   },
   {
     id: "gemini",
@@ -40,7 +40,7 @@ export const PRESETS: readonly ProviderPreset[] = [
     defaultModel: "gemini-2.5-flash",
     needsKey: true,
     jsonMode: true,
-    note: "OpenAI-compatible endpoint; use an AI Studio key.",
+    note: "Needs a Google AI Studio key.",
   },
   {
     id: "openrouter",
