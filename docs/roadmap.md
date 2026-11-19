@@ -8,7 +8,8 @@
 3. **Anki in the self-hosted stack.** Headless Anki with your AnkiWeb login, read-only.
 4. **Weave reading.** An English text with Dutch islands that grow as you learn.
 5. **Sync** between devices without a server (folder, WebDAV, GitHub), encrypted.
-6. **Phone app.**
+6. **Phone app.** OCR through the phone's own engine (ML Kit on Android, Apple Vision on iOS)
+   instead of the server.
 
 ## Known issues
 
