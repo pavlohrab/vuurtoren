@@ -387,15 +387,27 @@ export async function createRepository(
               ORDER BY created_at`,
             [Math.max(0, Math.floor(sinceMs))],
           )
-        ).map((r): ActivityEntry => ({
-          kind:
-            r["type"] === "ReadingProgress"
-              ? "page"
-              : r["type"] === "NoteAddedToAnki"
-                ? "added"
-                : "exercise",
-          at: Number(r["created_at"]),
-        })),
+        )
+          .map((r): ActivityEntry => ({
+            kind:
+              r["type"] === "ReadingProgress"
+                ? "page"
+                : r["type"] === "NoteAddedToAnki"
+                  ? "added"
+                  : "exercise",
+            at: Number(r["created_at"]),
+          }))
+          .concat(
+            // Native reviews answered in Kenning (an undone answer is gone from the table).
+            (
+              await driver.exec(
+                `SELECT at FROM native_reviews
+                  WHERE source = 'kenning' AND rating > 0 AND at >= ? ORDER BY at`,
+                [Math.max(0, Math.floor(sinceMs))],
+              )
+            ).map((r): ActivityEntry => ({ kind: "review", at: Number(r["at"]) })),
+          )
+          .sort((a, b) => a.at - b.at),
       ),
 
     practiceLog: (lang, limit) =>

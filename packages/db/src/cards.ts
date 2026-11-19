@@ -465,6 +465,55 @@ export function nativeQueries(driver: SqlDriver) {
       return out;
     },
 
+    async nativeDueKeys(
+      lang: string,
+      now: number,
+      limit: number,
+    ): Promise<{ key: string; due: number }[]> {
+      return (
+        await driver.exec(
+          `SELECT n.key AS key, min(c.due) AS due FROM native_cards c
+             JOIN native_notes n ON n.id = c.note_id
+            WHERE c.lang = ? AND c.suspended = 0 AND c.schedule IS NOT NULL AND c.due <= ?
+              AND n.key IS NOT NULL
+            GROUP BY n.key ORDER BY due, n.key LIMIT ?`,
+          [lang, now, Math.max(0, Math.floor(limit))],
+        )
+      ).map((r) => ({ key: String(r["key"]), due: Number(r["due"]) }));
+    },
+
+    async nativeCardReviews(lang: string, cardIds: number[]): Promise<CardReview[]> {
+      if (cardIds.length === 0) return [];
+      return (
+        await driver.exec(
+          `SELECT card_id, at, rating, kind, duration_ms FROM native_reviews
+            WHERE lang = ? AND card_id IN (SELECT value FROM json_each(?)) ORDER BY at, id`,
+          [lang, JSON.stringify(cardIds)],
+        )
+      ).map((r) => ({
+        cardId: Number(r["card_id"]),
+        at: Number(r["at"]),
+        rating: Number(r["rating"]) as CardReview["rating"],
+        kind: String(r["kind"]) as CardReview["kind"],
+        durationMs: Number(r["duration_ms"]),
+      }));
+    },
+
+    async nativeLastReview(
+      lang: string,
+    ): Promise<{ cardId: number; reviewId: string; at: number } | null> {
+      const r = (
+        await driver.exec(
+          `SELECT id, card_id, at FROM native_reviews
+            WHERE lang = ? AND source = 'kenning' ORDER BY at DESC, id DESC LIMIT 1`,
+          [lang],
+        )
+      )[0];
+      return r
+        ? { cardId: Number(r["card_id"]), reviewId: String(r["id"]), at: Number(r["at"]) }
+        : null;
+    },
+
     async nativeCard(lang: string, cardId: number): Promise<NativeCardView | null> {
       const rows = await driver.exec("SELECT * FROM native_cards WHERE lang = ? AND id = ?", [
         lang,
