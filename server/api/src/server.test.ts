@@ -424,7 +424,14 @@ describe("cross-device freshness", () => {
 
   it("batched reads go through the allow-list", async () => {
     const repo = await createHttpRepository(base);
-    await repo.append({ type: "TextImported", textId: "t", title: "T", lang: "nl", source: { kind: "paste" }, content: "Hoi." });
+    await repo.append({
+      type: "TextImported",
+      textId: "t",
+      title: "T",
+      lang: "nl",
+      source: { kind: "paste" },
+      content: "Hoi.",
+    });
     expect((await repo.getTexts(["t", "x"])).map((t) => t.id)).toEqual(["t"]);
     expect(await repo.wordsByKeys("nl", ["a"])).toEqual([]);
   });
