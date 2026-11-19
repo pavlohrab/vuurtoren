@@ -192,3 +192,24 @@
   justify-content: center;
   margin-top: var(--s-5);
 }
+.words-tools {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+}
+.words-column-opt {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  font-size: 14px;
+}
+.words-gloss--none {
+  color: var(--ink-muted);
+}
+/* The inspector moves list pages aside instead of covering them (wide screens). */
+@media (min-width: 900px) {
+  .shell[data-inspector="open"] .content:has(.words-page) {
+    padding-right: var(--inspector-w);
+  }
+}

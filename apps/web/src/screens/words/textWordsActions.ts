@@ -2,6 +2,7 @@
  * Pure logic of the "Words from this text" review: which action each Anki state starts with,
  * which others it offers, and how a batch of actions is run and summarised.
  */
+import { deckName } from "@app/ui";
 import { plural } from "../../format.js";
 import type { AppServices, InspectorEntry, TextWordItem } from "../../services/types.js";
 
@@ -20,13 +21,15 @@ export interface RowResult {
   deck?: string;
 }
 
-/** Tooltip for "Study first in Anki" (the service calls it `learnNext`). */
-export const STUDY_FIRST_HINT =
-  "Moves the new card to the front of Anki's queue, so Anki shows it next.";
+/** Tooltip for "Study first" (the service calls it `learnNext`). */
+export const STUDY_FIRST_HINT = "Moves the new card to the front of the queue, so it comes next.";
 
-/** The action a row starts with, by the word's state in Anki. */
-export function defaultAction(status: AnkiStatus): WordAction {
-  if (status === "absent") return "add";
+/**
+ * The action a row starts with, by the word's card state. A word that was only translated (a
+ * rare word, not highlighted or looked up) starts as Skip.
+ */
+export function defaultAction(status: AnkiStatus, source?: TextWordItem["source"]): WordAction {
+  if (status === "absent") return source === "gloss" ? "skip" : "add";
   if (status === "new" || status === "suspended") return "learn";
   return "skip";
 }
@@ -38,13 +41,29 @@ const LABEL: Record<WordAction, string> = {
   skip: "Skip",
 };
 
+const NATIVE_LABEL: Record<WordAction, string> = {
+  ...LABEL,
+  add: "Add to my words",
+  learn: "Study first",
+};
+
 /** Actions offered for a state, the default first. Every row can be marked known or skipped. */
-export function actionOptions(status: AnkiStatus): { value: WordAction; label: string }[] {
-  const first = defaultAction(status);
-  const order: WordAction[] = first === "skip" ? ["skip", "known"] : [first, "known", "skip"];
+export function actionOptions(
+  status: AnkiStatus,
+  source?: TextWordItem["source"],
+  native = false,
+): { value: WordAction; label: string }[] {
+  const first = defaultAction(status, source);
+  const order: WordAction[] =
+    first === "skip"
+      ? status === "absent"
+        ? ["skip", "add", "known"]
+        : ["skip", "known"]
+      : [first, "known", "skip"];
+  const labels = native ? NATIVE_LABEL : LABEL;
   return order.map((value) => ({
     value,
-    label: value === "learn" && status === "suspended" ? "Unsuspend & study first" : LABEL[value],
+    label: value === "learn" && status === "suspended" ? "Unsuspend & study first" : labels[value],
   }));
 }
 
@@ -61,7 +80,7 @@ async function runOne(services: Writes, { item, action }: Job): Promise<RowResul
   try {
     if (action === "add") {
       const { deck } = await services.addToAnki(item.entry);
-      return { ok: true, kind: "added", deck, message: `Added to ${deck}` };
+      return { ok: true, kind: "added", deck, message: `Added to ${deckName(deck)}` };
     }
     if (action === "learn") {
       const { deck } = await services.learnNext(item.entry);
@@ -69,14 +88,14 @@ async function runOne(services: Writes, { item, action }: Job): Promise<RowResul
         ok: true,
         kind: "moved",
         deck,
-        message: deck ? `Moved to the front of ‘${deck}’` : "Moved to the front",
+        message: "Moved to the front",
       };
     }
     const { addedToDeck } = await services.markKnown(item.entry);
     return {
       ok: true,
       kind: "known",
-      message: addedToDeck ? `Added to ${addedToDeck} as known` : "Marked known",
+      message: addedToDeck ? `Added to ${deckName(addedToDeck)} as known` : "Marked known",
     };
   } catch (e) {
     return { ok: false, message: messageOf(e) };
@@ -105,7 +124,7 @@ export async function applyActions(
   return results;
 }
 
-/** A quiet summary, e.g. "5 added to Kenning::Nederlands, 2 moved to the front of their decks." */
+/** A quiet summary, e.g. "5 added to Reading, 2 moved to the front of their decks." */
 export function summarize(results: Iterable<RowResult>): string {
   const all = [...results];
   const ok = (kind: RowResult["kind"]) => all.filter((r) => r.ok && r.kind === kind);
@@ -115,7 +134,7 @@ export function summarize(results: Iterable<RowResult>): string {
   const failed = all.filter((r) => !r.ok).length;
   const parts: string[] = [];
   if (added.length) {
-    const decks = [...new Set(added.map((r) => r.deck).filter(Boolean))];
+    const decks = [...new Set(added.flatMap((r) => (r.deck ? [deckName(r.deck)] : [])))];
     parts.push(`${added.length} added${decks.length ? ` to ${decks.join(" and ")}` : ""}`);
   }
   if (moved.length) {

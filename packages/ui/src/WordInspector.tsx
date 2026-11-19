@@ -1,5 +1,5 @@
 import type { WordState } from "@app/core";
-import { AddToAnki, type DeckOption } from "./AddToAnki.js";
+import { AddToAnki, type DeckOption, deckName } from "./AddToAnki.js";
 import { Button } from "./Button.js";
 import { Chip } from "./Chip.js";
 import type { InspectorAnki, InspectorEntry } from "@app/core";
@@ -39,6 +39,27 @@ export interface AddDeckChoice {
   onDeckChange: (deck: string) => void;
 }
 
+/** Parts of speech in plain words; tags without a plain name (X, PROPN, …) are not shown. */
+const POS_NAME: Record<string, string> = {
+  NOUN: "noun",
+  VERB: "verb",
+  AUX: "verb",
+  ADJ: "adjective",
+  ADV: "adverb",
+  ADP: "preposition",
+  PRON: "pronoun",
+  DET: "article",
+  NUM: "number",
+  CCONJ: "conjunction",
+  SCONJ: "conjunction",
+  INTJ: "interjection",
+};
+
+/** "verb" for "VERB"; undefined for tags that mean nothing to a learner. */
+export function posName(pos: string): string | undefined {
+  return POS_NAME[pos.toUpperCase()];
+}
+
 /** Detail panel for the selected word: forms, glosses, state, source decks and context sentence. */
 export function WordInspector({
   entry,
@@ -75,6 +96,7 @@ export function WordInspector({
   const [from, to] = entry.sentenceHighlight;
   const s = entry.sentence;
   const recall = Math.round(entry.pKnown * 100);
+  const pos = posName(entry.pos);
 
   return (
     <div className="k-inspector" aria-label="Word details">
@@ -95,14 +117,18 @@ export function WordInspector({
       </header>
 
       <div className="k-inspector-row">
-        {entry.pos ? <Chip>{entry.pos}</Chip> : null}
         <WordStateChip state={entry.state} inKenning={entry.appLearning} />
-        <span className="k-recall" style={{ color: "var(--ink-muted)", fontSize: 13 }}>
-          Recall {recall}%
-        </span>
+        {pos ? <span className="k-inspector-pos">{pos}</span> : null}
+        {entry.state === "learning" ? (
+          <span className="k-recall" style={{ color: "var(--ink-muted)", fontSize: 13 }}>
+            Recall {recall}%
+          </span>
+        ) : null}
       </div>
 
-      {entry.glosses.length > 0 ? (
+      {entry.glosses.length === 0 && !entry.sentenceGloss ? (
+        <p className="k-inspector-nomeaning">No meaning yet</p>
+      ) : (
         <section>
           <div className="k-overline">Meaning</div>
           <ul className="k-inspector-glosses">
@@ -122,14 +148,16 @@ export function WordInspector({
             ) : null}
           </ul>
         </section>
-      ) : null}
+      )}
 
       {entry.decks.length > 0 ? (
         <section>
           <div className="k-overline">In your decks</div>
           <div className="k-inspector-row" style={{ marginTop: 4 }}>
             {entry.decks.map((d) => (
-              <Chip key={d}>{d}</Chip>
+              <Chip key={d} title={d}>
+                {deckName(d)}
+              </Chip>
             ))}
           </div>
         </section>
@@ -208,15 +236,10 @@ function AnkiActions({
   // yet always get it, because it also writes to Anki.
   const canMarkKnown = !anki.markedKnown && !(inProgress && entry.state === "known");
   const disabled = busy || unavailable;
-  const deck = anki.deck ?? entry.decks[0];
 
   let primary: { label: string; hint?: string; onClick?: (() => void) | undefined } | null = null;
   if (status === "absent") {
-    primary = {
-      label: ADD,
-      hint: addDeck ? `Adds it to ‘${addDeck.deck}’` : "Adds it to your Kenning deck",
-      onClick: onAddToAnki,
-    };
+    primary = { label: ADD, onClick: onAddToAnki };
   } else if (status === "new" || status === "suspended" || (unavailable && anki.noteIds.length)) {
     primary = {
       label:
@@ -225,7 +248,7 @@ function AnkiActions({
           : native
             ? "Study first"
             : "Study first in Anki",
-      hint: deck ? `Moves its card to the front of ‘${deck}’` : "Moves its card to the front",
+      hint: "Moves its card to the front of the queue",
       onClick: onLearnNext,
     };
   } else if (unavailable) {
@@ -280,13 +303,8 @@ function AnkiActions({
         </div>
         {canMarkKnown && status === "absent" ? (
           <p style={hintStyle}>
-            Mark known{" "}
-            {addDeck
-              ? `adds it to ‘${addDeck.deck}’ as known`
-              : native
-                ? "adds it to your words as known"
-                : "adds it to Anki as known"}
-            . Ignore leaves it out of coverage and suggestions.
+            Mark known {native ? "adds it to your words as known" : "adds it to Anki as known"}.
+            Ignore leaves it out of coverage and suggestions.
           </p>
         ) : null}
         {anki.overridden ? (

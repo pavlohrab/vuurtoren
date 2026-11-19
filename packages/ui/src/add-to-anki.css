@@ -86,3 +86,12 @@
   font-size: 12px;
   color: var(--ink-muted);
 }
+.k-add-anki-now {
+  margin: 2px 8px 6px;
+  font-size: 13px;
+  color: var(--ink-muted);
+}
+.k-add-anki-now strong {
+  color: var(--ink);
+  font-weight: 500;
+}

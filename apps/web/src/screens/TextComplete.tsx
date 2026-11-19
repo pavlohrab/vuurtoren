@@ -13,10 +13,10 @@ import {
   MessagesSquare,
   RotateCcw,
 } from "lucide-react";
-import { Button, LogoMark, Skeleton } from "@app/ui";
+import { Button, LogoMark, Skeleton, useNativeMode } from "@app/ui";
 import { readLastText } from "../lastText.js";
 import { useServices } from "../services/context.js";
-import { pickContinue } from "./Home.js";
+import { pickContinue } from "../textPages.js";
 
 const fmt = (n: number) => n.toLocaleString("en");
 
@@ -32,8 +32,9 @@ export function TextComplete({
   onReadAgain: () => void;
 }) {
   const services = useServices();
+  const native = useNativeMode();
   const words = useQuery({
-    queryKey: ["textWords", textId, "complete"],
+    queryKey: ["textWords", textId],
     queryFn: () => services.textWords(textId),
     retry: false,
   });
@@ -67,11 +68,11 @@ export function TextComplete({
       ) : (
         <dl className="text-done-stats">
           <div>
-            <dt>New words met</dt>
+            <dt>New words</dt>
             <dd>{fmt(list.length)}</dd>
           </div>
           <div>
-            <dt>In Anki</dt>
+            <dt>{native ? "In your words" : "In Anki"}</dt>
             <dd className="text-done-known">{fmt(inAnki)}</dd>
           </div>
           <div>

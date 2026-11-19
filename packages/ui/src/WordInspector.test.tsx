@@ -37,11 +37,20 @@ describe("WordInspector", () => {
     expect(screen.getByText(/Select a word/)).toBeInTheDocument();
   });
 
+  it("hides Recall for a word not being learned", () => {
+    render(<WordInspector entry={{ ...entry, state: "unknown", glosses: [] }} />);
+    expect(screen.queryByText(/Recall/)).toBeNull();
+    expect(screen.getByText("No meaning yet")).toBeInTheDocument();
+  });
+
   it("renders the entry details", () => {
     const { container } = render(<WordInspector entry={entry} />);
     expect(screen.getByRole("heading", { name: /het huizen/ })).toBeInTheDocument();
     expect(screen.getByText("house")).toBeInTheDocument();
-    expect(screen.getByText("Dutch::Core 2k")).toBeInTheDocument();
+    // Short deck names, a plain part of speech; Recall only while learning.
+    expect(screen.getByText("Core 2k")).toBeInTheDocument();
+    expect(screen.getByText("noun")).toBeInTheDocument();
+    expect(screen.queryByText("NOUN")).toBeNull();
     expect(screen.getByText("Recall 62%")).toBeInTheDocument();
     expect(container.querySelector("mark")?.textContent).toBe("huizen");
   });
@@ -112,9 +121,7 @@ describe("WordInspector Anki states", () => {
       />,
     );
     expect(names()).toEqual(["Study first in Anki", "Mark known", "Ignore"]);
-    expect(
-      screen.getByText("Moves its card to the front of ‘A Frequency Dictionary of Dutch’"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Moves its card to the front of the queue")).toBeInTheDocument();
     expect(screen.getByText("New card · in A Frequency Dictionary of Dutch")).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Study first in Anki" }));
     expect(onLearn).toHaveBeenCalledOnce();

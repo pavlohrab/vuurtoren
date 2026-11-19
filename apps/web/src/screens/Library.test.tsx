@@ -22,6 +22,7 @@ const text = (over: Partial<TextListItem>): TextListItem => ({
   lastSegment: 0,
   coverage: 0.5,
   newTypes: 3,
+  pages: null,
   ...over,
 });
 

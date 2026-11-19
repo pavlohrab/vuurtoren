@@ -2,7 +2,9 @@
 import { coverKind } from "@app/ui";
 import type { Shelf } from "../../services/libraryTypes.js";
 import type { TextListItem } from "../../services/types.js";
-import { pagesOf } from "../../textPages.js";
+import { readingNow, readingState } from "../../textPages.js";
+
+export { readingState };
 
 export type SortKey = "recent" | "title" | "coverage";
 
@@ -11,16 +13,6 @@ export const SORT_LABEL: Record<SortKey, string> = {
   title: "Title",
   coverage: "Coverage",
 };
-
-/** Where a text stands: not started, in progress (page to continue on) or finished. */
-export function readingState(
-  t: TextListItem,
-): { kind: "new" } | { kind: "reading"; page: number; pages: number } | { kind: "done" } {
-  const { page, pages } = pagesOf(t);
-  if (t.lastSegment <= 0) return { kind: "new" };
-  if (t.lastSegment >= pages) return { kind: "done" };
-  return { kind: "reading", page, pages };
-}
 
 const fold = (s: string): string => s.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
 
@@ -69,22 +61,22 @@ const SOURCE_SHELVES: { id: string; name: string; kinds: string[] }[] = [
 ];
 
 /**
- * The bookshelf: Reading now, the learner's shelves, To read and Finished, then one row per
+ * The bookshelf: Reading now (`readingNow`), the learner's shelves, To read and Finished, then one row per
  * source. Rows keep `texts` in the given (already sorted) order; empty automatic rows are left
  * out, empty learner shelves stay (they are drop targets).
  */
-export function shelfRows(texts: readonly TextListItem[], shelves: readonly Shelf[]): ShelfRow[] {
+export function shelfRows(
+  texts: readonly TextListItem[],
+  shelves: readonly Shelf[],
+  lastId: string | null = null,
+): ShelfRow[] {
   const by = (pred: (t: TextListItem) => boolean) => texts.filter(pred);
   const rows: ShelfRow[] = [];
   const auto = (id: string, name: string, list: TextListItem[], group: ShelfRow["group"]) => {
     if (list.length) rows.push({ id, name, texts: list, own: false, group });
   };
-  auto(
-    "auto:reading",
-    "Reading now",
-    by((t) => readingState(t).kind === "reading"),
-    "status",
-  );
+  // The same rule as Home's Continue reading: the text opened last leads.
+  auto("auto:reading", "Reading now", readingNow(texts, lastId), "status");
   const byId = new Map(texts.map((t) => [t.id, t]));
   for (const s of shelves) {
     const on = new Set(s.textIds);

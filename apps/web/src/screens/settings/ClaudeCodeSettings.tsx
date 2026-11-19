@@ -43,6 +43,9 @@ function CopyBlock({ label, text }: { label: string; text: string }) {
   );
 }
 
+/** The self-hosting guide on GitHub. */
+export const SELF_HOSTING_URL = "https://github.com/pavlohrab/Kenning/blob/main/deploy/README.md";
+
 export function ClaudeCodeSettings() {
   const { data, account } = useAppInfo();
   const server = data?.mode === "server";
@@ -79,9 +82,11 @@ export function ClaudeCodeSettings() {
       </p>
       {!server ? (
         <p className="k-hint" style={{ margin: 0 }}>
-          This needs Kenning running as a server (your data in one place Claude can reach): see
-          deploy/README.md. Here your data lives in this browser only. With a local server you can
-          also run the stdio MCP server in apps/mcp.
+          This needs Kenning running as a server, so your data is in one place Claude can reach.
+          Here your data lives in this browser only.{" "}
+          <a href={SELF_HOSTING_URL} target="_blank" rel="noreferrer">
+            How to run Kenning as a server
+          </a>
         </p>
       ) : (
         <>

@@ -45,14 +45,18 @@ export interface TextWordItem {
   /** [start, end) character range of the word inside `sentence`. */
   sentenceHighlight: [number, number];
   tokenIndex: number;
-  /** Why it is listed: highlighted as new, looked up while reading, or only translated. */
+  /** Why it stands out: highlighted to learn, looked up while reading, or only translated. */
   source: "introduce" | "lookup" | "gloss";
   /** Same entry the word inspector uses, so addToAnki / learnNext / markKnown work unchanged. */
   entry: InspectorEntry;
 }
 export interface TextListItem extends TextSummary {
+  /** Share of the text's words known (same value as the reader bar); null until analysed. */
   coverage: number | null;
+  /** Number of new words: the length of `textWords` for the text. */
   newTypes: number | null;
+  /** Reader pages (the reading plan's segments); null until analysed. */
+  pages: number | null;
 }
 export interface Settings {
   ankiUrl: string;
@@ -249,12 +253,16 @@ export interface AppServices
    */
   inspectWord(key: string): Promise<InspectorEntry>;
   /**
-   * Words worth reviewing after reading a text, in text order: every highlighted ("introduce")
-   * word of any page plus the words looked up in this text, optionally also the translated-only
-   * ("gloss") words. Known, ignored and non-words are left out. Each item carries the live
-   * Anki state (one batched lookup; "unavailable" when Anki cannot be reached).
+   * The words of a text: its new words (see `pickTextWords`), in text order, the same set that
+   * `listTexts` counts as `newTypes`. Each item carries the live card state (one batched lookup;
+   * "unavailable" when Anki cannot be reached).
    */
-  textWords(textId: string, opts?: { includeGlossed?: boolean }): Promise<TextWordItem[]>;
+  textWords(textId: string): Promise<TextWordItem[]>;
+  /**
+   * Words to decide on (Words' first view): the new words of the learner's texts, newest text
+   * first, that have no card yet and are not ignored, each with a meaning when one is known.
+   */
+  wordsToDecide(opts?: { limit?: number }): Promise<WordInfo[]>;
   /**
    * Short translations for many tokens at once (missing keys = no translation found). A guess
    * carries a `note`: "from woord + -loos" (built from the word's parts) or "in this sentence"

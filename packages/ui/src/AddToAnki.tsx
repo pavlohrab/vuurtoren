@@ -20,7 +20,11 @@ export interface AddToAnkiProps {
   onDeckChange: (deck: string) => void;
   /** Called by the main button. Omit for a deck picker only (e.g. a batch apply bar). */
   onAdd?: () => void;
-  /** Main button text before the deck name (default "Add to"). */
+  /**
+   * With `onAdd`: the main button's text (default "Add to Anki", or "Add to my words" in native
+   * mode); the deck is named only in the menu. Without: the text before the deck's name
+   * (default "Add to").
+   */
   label?: string;
   disabled?: boolean;
   /** What is added, for the accessible name: "Add gezellig to <deck>". */
@@ -37,22 +41,22 @@ const GROUPS: { id: DeckOption["group"]; title: string }[] = [
   { id: "anki", title: "Other Anki decks" },
 ];
 
-/** The last two levels of a deck name, which tell decks apart without the long root. */
-export function shortDeck(deck: string): string {
-  const parts = deck.split("::");
-  return parts.length > 2 ? `…::${parts.slice(-2).join("::")}` : deck;
+/** The deck's own name, its last level: "Kenning::Nederlands::Reading" -> "Reading". */
+export function deckName(deck: string): string {
+  return deck.split("::").at(-1)?.trim() || deck;
 }
 
 /**
- * The one Add to Anki control: always names the destination deck and lets the learner pick
- * another one (Kenning's decks, course decks, any Anki deck, or a new deck) before adding.
+ * The one Add to Anki control: a plain main button and a menu that shows where the word goes
+ * and lets the learner pick another deck (Kenning's decks, course decks, any Anki deck, or a
+ * new deck) before adding.
  */
 export function AddToAnki({
   deck,
   options,
   onDeckChange,
   onAdd,
-  label = "Add to",
+  label,
   disabled = false,
   subject,
   variant = "primary",
@@ -61,6 +65,7 @@ export function AddToAnki({
 }: AddToAnkiProps) {
   const nativeMode = useNativeMode();
   const native = nativeProp ?? nativeMode;
+  const addLabel = native ? "Add to my words" : "Add to Anki";
   const [open, setOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState("");
@@ -94,15 +99,20 @@ export function AddToAnki({
           size={size}
           className={onAdd ? "k-add-anki-caret" : "k-add-anki-deck"}
           disabled={disabled}
-          aria-label={onAdd ? `Choose the deck (now ${deck})` : undefined}
+          aria-label={onAdd ? `Choose the deck (now ${deckName(deck)})` : undefined}
           title={deck}
         >
-          {onAdd ? null : <span className="k-add-anki-name">{`${label} ${shortDeck(deck)}`}</span>}
+          {onAdd ? null : (
+            <span className="k-add-anki-name">{`${label ?? "Add to"} ${deckName(deck)}`}</span>
+          )}
           <ChevronDown size={16} aria-hidden />
         </Button>
       </RPopover.Trigger>
       <RPopover.Portal>
         <RPopover.Content className="k-popover k-add-anki-menu" align="end" sideOffset={6}>
+          <p className="k-add-anki-now">
+            Goes to <strong>{deckName(deck)}</strong>
+          </p>
           <div id={listId} role="listbox" aria-label="Deck for new words">
             {GROUPS.map(({ id, title }) => {
               const items = unique.filter((o) => o.group === id);
@@ -173,21 +183,16 @@ export function AddToAnki({
 
   if (!onAdd) return <div className="k-add-anki">{picker}</div>;
   return (
-    <div
-      className="k-add-anki"
-      role="group"
-      aria-label={native ? "Add to my words" : "Add to Anki"}
-    >
+    <div className="k-add-anki" role="group" aria-label={addLabel}>
       <Button
         variant={variant}
         size={size}
         className="k-add-anki-main"
         disabled={disabled}
         onClick={onAdd}
-        title={`${label} ${deck}`}
-        {...(subject ? { "aria-label": `Add ${subject} to ${deck}` } : {})}
+        {...(subject ? { "aria-label": `${addLabel}: ${subject}` } : {})}
       >
-        <span className="k-add-anki-name">{`${label} ${shortDeck(deck)}`}</span>
+        <span className="k-add-anki-name">{label ?? addLabel}</span>
       </Button>
       {picker}
     </div>

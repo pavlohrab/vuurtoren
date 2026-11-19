@@ -1,4 +1,4 @@
-import type { AnalyzedToken } from "@app/core";
+import { type AnalyzedToken, textDifficulty } from "@app/core";
 import { type KenningRepository, contentHash, createRepository } from "@app/db";
 import { createNodeDriver } from "@app/db/node";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -208,7 +208,7 @@ describe("live textWords", () => {
 
     const words = await services.textWords(textId);
     // gracht occurs twice but is listed once, at its first occurrence
-    expect(words.map((w) => w.key)).toEqual(["gracht", "schuur", "brug"]);
+    expect(words.map((w) => w.key)).toEqual(["gracht", "schuur", "brug", "tuin", "zijn"]);
     const first = words[0]!;
     expect(first.source).toBe("introduce");
     expect(first.glosses[0]).toBe("gracht (dictionary)");
@@ -224,16 +224,16 @@ describe("live textWords", () => {
     expect(backend.calls).toEqual(["version"]);
     // one batched dictionary request for all words
     expect(backend.glossRequests).toHaveLength(1);
-    expect(backend.glossRequests[0]).toEqual(["gracht", "schuur", "brug"]);
+    expect(backend.glossRequests[0]).toEqual(["gracht", "schuur", "brug", "tuin", "zijn"]);
   });
 
-  it("adds looked-up words, skips known ones and honours the translated-words toggle", async () => {
+  it("lists the text's new words once; looked-up ones are marked, studied ones left out", async () => {
     const backend = fakeBackend({ notes: NOTES });
     const { repo, services, textId } = await setup(backend, KNOWN, ANKI_WORDS);
     repoToClose = repo;
-    await services.recordLookup(textId, "tuin");
+    await services.recordLookup(textId, "zijn"); // new, not highlighted: "lookup"
+    await services.recordLookup(textId, "tuin"); // being learned: not a new word of the text
     await services.recordLookup(textId, "huis"); // known: never listed
-    await services.recordLookup(textId, "de"); // known (a blank in Cloze mode): never listed
     await services.recordLookup(textId, "brug"); // already highlighted: stays "introduce"
 
     const words = await services.textWords(textId);
@@ -241,17 +241,22 @@ describe("live textWords", () => {
       ["gracht", "introduce"],
       ["schuur", "introduce"],
       ["brug", "introduce"],
-      ["tuin", "lookup"],
+      ["zijn", "lookup"],
     ]);
-    const glossed = await services.textWords(textId, { includeGlossed: true });
-    // "zijn" is only translated; it comes after "tuin" in the text
-    expect(glossed.map((w) => [w.key, w.source])).toEqual([
-      ["gracht", "introduce"],
-      ["schuur", "introduce"],
-      ["brug", "introduce"],
-      ["tuin", "lookup"],
-      ["zijn", "gloss"],
-    ]);
+  });
+
+  it("gives every screen the same numbers: coverage, pages and new words", async () => {
+    const backend = fakeBackend({ notes: NOTES });
+    const { repo, services, textId } = await setup(backend, KNOWN, ANKI_WORDS);
+    repoToClose = repo;
+    const [item] = await services.listTexts();
+    const view = (await services.getReading(textId))!;
+    const words = await services.textWords(textId);
+    // Library and Home read listTexts; the reader bar and footer read the reading view.
+    expect(item!.coverage).toBe(textDifficulty(view.plans).coverage);
+    expect(item!.pages).toBe(view.plans.length);
+    // "N new" is the number of words listed after reading.
+    expect(item!.newTypes).toBe(words.length);
   });
 
   it("lets reader cloze answers teach the learner model", async () => {
@@ -277,7 +282,7 @@ describe("live textWords", () => {
       gracht: "new",
       schuur: "suspended",
       brug: "absent",
-      tuin: "review",
+      zijn: "absent",
     });
     expect(words[0]?.entry.anki.cardIds).toEqual([70]);
     expect(backend.calls.filter((c) => c === "notesInfo")).toHaveLength(1);
@@ -289,7 +294,7 @@ describe("live textWords", () => {
     const { repo, services, textId } = await setup(backend);
     repoToClose = repo;
     const words = await services.textWords(textId);
-    expect(words).toHaveLength(3);
+    expect(words).toHaveLength(5);
     for (const w of words) {
       expect(w.entry.anki.status).toBe("unavailable");
       expect(w.entry.anki.detail).toMatch(/cannot reach/);

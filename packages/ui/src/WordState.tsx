@@ -14,7 +14,7 @@ export const WORD_STATE_LABEL: Record<WordStateKind, string> = {
   learning: "Learning",
   toLearn: "To learn",
   unknown: "New",
-  seen: "Seen",
+  seen: "New",
   ignored: "Ignored",
 };
 

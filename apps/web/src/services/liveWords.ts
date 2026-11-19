@@ -16,7 +16,6 @@ import {
 } from "@app/anki";
 import {
   type AnalyzedToken,
-  type TokenLabel,
   type WordState,
   matchToken,
   normalizeKey,
@@ -38,6 +37,7 @@ import type { LiveProfile } from "./liveProfile.js";
 import type { LiveTexts } from "./liveTexts.js";
 import type { AddOptions } from "./profileTypes.js";
 import { suggestionEntry } from "./suggestions.js";
+import { pickTextWords } from "./textWordSet.js";
 import type {
   AppServices,
   InspectorEntry,
@@ -50,9 +50,6 @@ import type {
 const INSPECT_TIMEOUT_MS = 3000;
 /** The review asks for many notes at once, so it waits a little longer than one word does. */
 const REVIEW_TIMEOUT_MS = 5000;
-
-/** Where a word may enter the review, strongest reason first. */
-const SOURCE_RANK = { introduce: 0, lookup: 1, gloss: 2 } as const;
 
 /** Character range [start, end) of every sentence, by sentence number. */
 function sentenceSpans(tokens: AnalyzedToken[]): Map<number, [number, number]> {
@@ -275,6 +272,7 @@ export function createLiveWords(deps: LiveWordsDeps) {
     | "inspect"
     | "inspectWord"
     | "textWords"
+    | "wordsToDecide"
     | "addToAnki"
     | "learnNext"
     | "markKnown"
@@ -319,50 +317,26 @@ export function createLiveWords(deps: LiveWordsDeps) {
 
     inspectWord,
 
-    async textWords(textId, opts = {}): Promise<TextWordItem[]> {
+    async textWords(textId): Promise<TextWordItem[]> {
       const v = await texts.view(textId);
       if (!v) throw new Error("Text not found");
       const l = await lang();
-      const looked = new Set(await repo.lookedUpKeys(l, textId));
-      // Union in text order: first qualifying occurrence of each key, strongest source wins.
-      const picked = new Map<
-        string,
-        { t: AnalyzedToken; label: TokenLabel; source: TextWordItem["source"] }
-      >();
-      for (const p of v.plans.flatMap((plan) => plan.tokens)) {
-        const t = v.tokens[p.i];
-        if (!t || !p.key || p.label === "nonword" || p.label === "ignored") continue;
-        // A detached particle stands for its verb, which has its own token.
-        if (t.particle_of !== null) continue;
-        const source: TextWordItem["source"] | null =
-          p.label === "introduce"
-            ? "introduce"
-            : p.label === "gloss" && opts.includeGlossed
-              ? "gloss"
-              : looked.has(p.key) && p.label !== "known"
-                ? "lookup"
-                : null;
-        if (!source) continue;
-        const have = picked.get(p.key);
-        if (!have) picked.set(p.key, { t, label: p.label, source });
-        else if (SOURCE_RANK[source] < SOURCE_RANK[have.source]) have.source = source;
-      }
-      if (picked.size === 0) return [];
+      const picked = pickTextWords(v, new Set(await repo.lookedUpKeys(l, textId)));
+      if (picked.length === 0) return [];
       // One read of the learner's words, one dictionary request, one Anki request.
       const infoByKey = new Map((await repo.words(l)).map((w) => [w.key, w]));
-      const chosen = [...picked.entries()].filter(([key]) => {
-        const state = infoByKey.get(key)?.state;
-        return state !== "known" && state !== "ignored";
-      });
-      const infos = chosen.map(([key]) => infoByKey.get(key) ?? null);
-      const dict = await dictionary.dictionaryFor([...new Set(chosen.map(([, c]) => c.t.lemma))]);
+      const labelAt = new Map(v.plans.flatMap((p) => p.tokens).map((p) => [p.i, p.label]));
+      const chosen = picked.map((c) => ({ ...c, t: v.tokens[c.tokenIndex]! }));
+      const infos = chosen.map((c) => infoByKey.get(c.key) ?? null);
+      const dict = await dictionary.dictionaryFor([...new Set(chosen.map((c) => c.t.lemma))]);
       const ankis = await liveAnkiBatch(infos);
       const spans = sentenceSpans(v.tokens);
-      const rows = chosen.map(([key, c], n) => {
+      const rows = chosen.map((c, n) => {
+        const key = c.key;
         const entry = describeWord(v, c.t, spans, {
           key,
           info: infos[n] ?? null,
-          label: c.label,
+          label: labelAt.get(c.tokenIndex) ?? "new",
           dict,
           anki: ankis[n]!,
         });
@@ -386,6 +360,43 @@ export function createLiveWords(deps: LiveWordsDeps) {
         if (tr) r.entry.sentenceTranslation = tr;
       }
       return rows;
+    },
+
+    async wordsToDecide({ limit } = {}) {
+      const l = await lang();
+      const list = (await repo.listTexts())
+        .filter((t) => t.analyzed)
+        .sort((a, b) => b.createdAt - a.createdAt);
+      const keys = new Set<string>();
+      for (const t of list) {
+        const v = await texts.view(t.id);
+        if (v) for (const w of pickTextWords(v, new Set())) keys.add(w.key);
+      }
+      const infos = new Map((await repo.wordsByKeys(l, [...keys])).map((w) => [w.key, w]));
+      const open = [...keys]
+        .filter((k) => {
+          const i = infos.get(k);
+          return !i || (i.noteIds.length === 0 && i.state !== "ignored" && i.state !== "known");
+        })
+        .slice(0, limit);
+      const dict = await dictionary.dictionaryFor(open);
+      return open.map((key): WordInfo => {
+        const info = infos.get(key) ?? null;
+        const { glosses, article } = composeGlosses(info, dict[key], "");
+        return {
+          ...(info ?? {
+            key,
+            state: "unknown",
+            pKnown: 0,
+            source: "app",
+            decks: [],
+            lookups: 0,
+            noteIds: [],
+          }),
+          ...(glosses[0] ? { gloss: glosses[0] } : {}),
+          ...(article ? { article } : {}),
+        };
+      });
     },
 
     addToAnki,

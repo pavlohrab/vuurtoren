@@ -38,6 +38,13 @@ describe("textWordsActions", () => {
     ]);
     expect(actionOptions("suspended")[0]?.label).toBe("Unsuspend & study first");
     expect(actionOptions("review").map((o) => o.label)).toEqual(["Skip", "Mark known"]);
+    // a word that was only translated starts as Skip
+    expect(defaultAction("absent", "gloss")).toBe("skip");
+    expect(actionOptions("absent", "gloss", true).map((o) => o.label)).toEqual([
+      "Skip",
+      "Add to my words",
+      "Mark known",
+    ]);
   });
 
   it("summarises quietly", () => {
@@ -50,7 +57,7 @@ describe("textWordsActions", () => {
     const added = Array.from({ length: 5 }, () => ok("added", "Kenning::Nederlands"));
     const moved = [ok("moved", "A"), ok("moved", "B")];
     expect(summarize([...added, ...moved])).toBe(
-      "5 added to Kenning::Nederlands, 2 moved to the front of their decks.",
+      "5 added to Nederlands, 2 moved to the front of their decks.",
     );
     expect(summarize([ok("moved"), { ok: false, message: "x" }])).toBe(
       "1 moved to the front of its deck. 1 word could not be updated.",
@@ -99,22 +106,36 @@ describe("TextWords page", () => {
     expect(row("vertrekken")).toHaveTextContent("Add to Anki");
     expect(row("meenemen")).toHaveTextContent("Study first in Anki");
     expect(row("reis")).toHaveTextContent("Unsuspend & study first");
-    expect(row("opbellen")).toHaveTextContent("Skip");
-    expect(row("trein")).toHaveTextContent("Skip");
+    expect(row("gracht")).toHaveTextContent("Skip");
     // article for nouns, meaning and the sentence with the word marked
     expect(screen.getByText("journey")).toBeVisible();
     const reis = screen.getByText("reis", { selector: ".tw-word" });
     expect(reis.textContent).toBe("de reis");
     expect(screen.getByText("reis", { selector: "mark" })).toBeVisible();
-    // known and nonwords are not listed; the count is on the button
+    // known, learning and nonwords are not listed; the count is on the button
     expect(screen.queryByText("zus")).toBeNull();
+    expect(screen.queryByText("trein", { selector: ".tw-word" })).toBeNull();
     expect(screen.getByRole("button", { name: "Apply 3 actions" })).toBeEnabled();
   });
 
   it("disables actions of a word when Anki cannot be reached, and says why", async () => {
-    setup(URL);
+    setup(URL, (s) => ({
+      ...s,
+      textWords: async (id) =>
+        (await s.textWords(id)).map((w) =>
+          w.key === "reis"
+            ? {
+                ...w,
+                entry: {
+                  ...w.entry,
+                  anki: { ...w.entry.anki, status: "unavailable", detail: "cannot reach Anki" },
+                },
+              }
+            : w,
+        ),
+    }));
     await screen.findByText("vertrekken");
-    expect(row("boek")).toBeDisabled();
+    expect(row("reis")).toBeDisabled();
     expect(screen.getByText(/Actions are unavailable: cannot reach/)).toBeVisible();
     expect(screen.getByText("Anki not reachable", { selector: ".k-chip" })).toBeVisible();
   });
@@ -122,7 +143,7 @@ describe("TextWords page", () => {
   it("changes the count when an action is chosen", async () => {
     setup(URL);
     await screen.findByText("vertrekken");
-    await userEvent.click(row("opbellen"));
+    await userEvent.click(row("gracht"));
     await userEvent.click(await screen.findByRole("option", { name: "Mark known" }));
     expect(screen.getByRole("button", { name: "Apply 4 actions" })).toBeVisible();
     await userEvent.click(row("vertrekken"));
@@ -148,12 +169,12 @@ describe("TextWords page", () => {
     await screen.findByText("vertrekken");
     await userEvent.click(screen.getByRole("button", { name: "Apply 3 actions" }));
 
-    expect(await screen.findByText(/1 added to Kenning::Nederlands::Reading/)).toBeVisible();
+    expect(await screen.findByText(/1 added to Reading/)).toBeVisible();
     expect(screen.getByText(/1 moved to the front of its deck/)).toBeVisible();
     expect(screen.getByText(/1 word could not be updated/)).toBeVisible();
     expect(calls).toEqual(["add:vertrekken", "learn:meenemen", "learn:reis"]);
     expect(screen.getByText("Failed. Its card is no longer new in Anki")).toBeVisible();
-    expect(screen.getByText("Done. Added to Kenning::Nederlands::Reading")).toBeVisible();
+    expect(screen.getByText("Done. Added to Reading")).toBeVisible();
     // finished rows are locked; only the failed one is left to retry
     expect(row("vertrekken")).toBeDisabled();
     expect(row("meenemen")).toBeEnabled();
@@ -187,13 +208,12 @@ describe("TextWords page", () => {
     expect(await screen.findByText(/1 added to/)).toBeVisible();
   });
 
-  it("shows translated-only words when asked", async () => {
+  it("lists translated-only words too, marked as such", async () => {
     setup(URL);
     await screen.findByText("vertrekken");
-    expect(screen.queryByText("langskomen")).toBeNull();
-    await userEvent.click(screen.getByLabelText("Show translated words too"));
-    // grachten is translated only (a gloss), so it appears with the toggle
-    expect(await screen.findByText("gracht", { selector: ".tw-word" })).toBeVisible();
+    // grachten is translated only (a gloss): listed, marked, and skipped unless chosen
+    expect(screen.getByText("gracht", { selector: ".tw-word" })).toBeVisible();
+    expect(screen.getAllByText("Translated").length).toBeGreaterThan(0);
   });
 
   it("shows a quiet empty state", async () => {
@@ -225,7 +245,7 @@ describe("routing to the review", () => {
     await userEvent.click(await screen.findByRole("button", { name: "Finish" }));
     const done = await screen.findByRole("region", { name: "Een dag in Utrecht" });
     expect(within(done).getByText("Finished")).toBeInTheDocument();
-    expect(await within(done).findByText("New words met")).toBeInTheDocument();
+    expect(await within(done).findByText("New words")).toBeInTheDocument();
     const next = within(done).getByRole("navigation", { name: "Next steps" });
     expect(within(next).getByRole("link", { name: /Practise these words/ })).toHaveAttribute(
       "href",
