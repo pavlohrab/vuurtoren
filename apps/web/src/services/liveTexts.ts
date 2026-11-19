@@ -100,7 +100,20 @@ export interface LiveTextsDeps {
   dictionary: LiveDictionary;
   /** After importing a PDF or a photo: make its Library cover (best effort; liveLibrary). */
   autoCover: (textId: string, file: Blob, filename: string, nlp: NlpClient) => Promise<void>;
+  /** Native mode: reading and blanks as evidence for the word's card (liveNative). */
+  evidence?: () => ReadingEvidence;
 }
+
+/** What reading tells the native cards (see liveNative `evidence`). */
+export interface ReadingEvidence {
+  lookup: (key: string) => Promise<unknown>;
+  cloze: (key: string, correct: boolean, hinted: boolean) => Promise<unknown>;
+  pageRead: (keys: string[]) => Promise<unknown>;
+}
+
+/** Evidence is a side effect: a failure never stops reading. */
+const quietly = (p: Promise<unknown> | undefined) =>
+  p?.catch((e: unknown) => console.warn("Could not update the card:", e));
 
 export function createLiveTexts({
   repo,
@@ -109,6 +122,7 @@ export function createLiveTexts({
   learner,
   dictionary,
   autoCover,
+  evidence,
 }: LiveTextsDeps) {
   // Text content never changes under an id within this client (imports get new ids); another
   // device's changes clear the cache through `checkRemoteChanges`.
@@ -435,6 +449,7 @@ export function createLiveTexts({
 
     async recordLookup(textId: string, key: string): Promise<void> {
       await repo.append({ type: "WordLookedUp", lang: (await settings()).lang, key, textId });
+      await quietly(evidence?.().lookup(key));
       // The word becomes "seen": refresh counts, but keep the current page's plan stable.
       learner.refreshModel();
     },
@@ -442,6 +457,7 @@ export function createLiveTexts({
     async recordClozeAnswer(key: string, correct: boolean, hinted: boolean): Promise<void> {
       const { lang } = await settings();
       await repo.append({ type: "ClozeAnswered", lang, key, correct, hinted, at: Date.now() });
+      await quietly(evidence?.().cloze(key, correct, hinted));
       // Like a lookup: refresh counts later, keep the current page's plan stable.
       learner.refreshModel();
     },
@@ -452,10 +468,26 @@ export function createLiveTexts({
       const next = updateStaircase(current, outcome);
       await repo.append({ type: "ReadingProgress", textId, segment, ...outcome });
       await repo.append({ type: "StaircaseUpdated", lang, state: next });
+      if (evidence) await quietly(pageWords(lang, textId, segment).then(evidence().pageRead));
       learner.changed();
       return next;
     },
   };
+
+  /** The words of a page met without a lookup in this text (blanks are answers, not reading). */
+  async function pageWords(lang: string, textId: string, segment: number): Promise<string[]> {
+    const plan = (await view(textId))?.plans[segment];
+    if (!plan) return [];
+    const looked = new Set(await repo.lookedUpKeys(lang, textId));
+    return [
+      ...new Set(
+        plan.tokens
+          .filter((t) => (t.label === "known" || t.label === "learning") && t.key)
+          .map((t) => t.key!)
+          .filter((k) => !looked.has(k)),
+      ),
+    ];
+  }
 
   return {
     view,

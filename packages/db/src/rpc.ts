@@ -61,6 +61,7 @@ export const RPC_METHODS = {
   nativeStats: ["string"],
   fsrsParams: ["string"],
   nativeMedia: ["string", "string[]"],
+  nativeKeyCards: ["string", "string[]", "number"],
   nativeNoteStatus: ["string", "number[]", "number"],
 } as const satisfies Record<string, readonly ArgKind[]>;
 

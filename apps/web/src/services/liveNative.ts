@@ -22,6 +22,7 @@ import {
   type CardRating,
   type CardSchedule,
   DEFAULT_FSRS_PARAMS,
+  type Grade,
   type LanguageProfile,
   NORMAL_WEEK,
   type WeekLoad,
@@ -101,6 +102,13 @@ const MIME: Record<string, string> = {
   webm: "audio/webm",
   flac: "audio/flac",
 };
+
+const RATING_OF: Record<Grade, CardRating> = { again: 1, hard: 2, good: 3, easy: 4 };
+
+/** Days a due card moves when its word is read without a lookup: 15 % of its interval, 1–7. */
+export function readingDelay(intervalDays: number): number {
+  return Math.min(7, Math.max(1, Math.round(intervalDays * 0.15)));
+}
 
 /** Start of the study day (4:00 local time) that `now` falls in. */
 export function studyDayStart(now: number): number {
@@ -599,5 +607,103 @@ export function createLiveNative(deps: LiveNativeDeps) {
     },
   };
 
-  return { services, invalidate: () => (ownIndex = null) };
+  /**
+   * Native mode: an answer to a word outside the review screen (a Practice exercise, a reader
+   * blank) answers its review card when that card is due today, or, for a wrong answer, any
+   * review card of the word. One answer per word a day. Returns whether a card was answered.
+   */
+  async function feedWord(
+    key: string,
+    rating: CardRating,
+    durationMs: number,
+    via: "practice" | "cloze",
+  ): Promise<boolean> {
+    if (profileMode(await deps.profile()) !== "native") return false;
+    const lang = await deps.lang();
+    const at = now();
+    const start = studyDayStart(at);
+    const cards = (await repo.nativeKeyCards(lang, [normalizeKey(key)], start)).filter(
+      (c) => c.card.schedule?.state === 2 && !c.card.suspended,
+    );
+    if (cards.length === 0 || cards.some((c) => c.answeredToday)) return false;
+    const target =
+      cards.find((c) => c.card.schedule!.due < start + DAY_MS) ??
+      (rating === 1 ? cards[0] : undefined);
+    if (!target) return false;
+    const prev = target.card.schedule!;
+    let schedule = answerCard(prev, rating, at, {
+      options: target.options,
+      params: await params(lang),
+      fuzz: false,
+    });
+    if (schedule.state === 2) {
+      schedule = await balanced(lang, schedule, prev, at, target.options.maxInterval);
+    }
+    await repo.append({
+      type: "CardReviewed",
+      lang,
+      cardId: target.card.id,
+      rating,
+      at,
+      durationMs: Math.max(0, Math.round(durationMs)),
+      schedule,
+      previous: prev,
+      via,
+    });
+    deps.changed();
+    return true;
+  }
+
+  /**
+   * Reading as light evidence, never an answer (the optimizer does not see it): words of a
+   * finished page that were not looked up move their due review card later by a capped amount;
+   * a lookup brings a word's review card back to today.
+   */
+  async function moveDue(
+    keys: string[],
+    pick: (s: CardSchedule, dayEnd: number) => boolean,
+    due: (s: CardSchedule, at: number) => number,
+  ): Promise<number> {
+    if (keys.length === 0 || profileMode(await deps.profile()) !== "native") return 0;
+    const lang = await deps.lang();
+    const at = now();
+    const start = studyDayStart(at);
+    const changes: NativeCardChange[] = [];
+    for (const c of await repo.nativeKeyCards(lang, [...new Set(keys.map(normalizeKey))], start)) {
+      const s = c.card.schedule;
+      if (!s || s.state !== 2 || c.card.suspended || c.answeredToday) continue;
+      if (!pick(s, start + DAY_MS)) continue;
+      changes.push({ cardId: c.card.id, schedule: { ...s, due: due(s, at) } });
+    }
+    if (changes.length) {
+      await repo.append({ type: "NativeCardsChanged", lang, reason: "reading", changes });
+      deps.changed();
+    }
+    return changes.length;
+  }
+
+  const evidence = {
+    /** A Practice exercise was answered. */
+    exercise: (key: string, grade: Grade, ms: number) =>
+      feedWord(key, RATING_OF[grade], ms, "practice"),
+    /** A reader blank was answered (first answer per blank). */
+    cloze: (key: string, correct: boolean, hinted: boolean) =>
+      feedWord(key, !correct ? 1 : hinted ? 2 : 3, 0, "cloze"),
+    /** A page was finished: these words were met and not looked up. */
+    pageRead: (keys: string[]) =>
+      moveDue(
+        keys,
+        (s, dayEnd) => s.due < dayEnd,
+        (s, at) => at + readingDelay(s.scheduledDays) * DAY_MS,
+      ),
+    /** A word was looked up while reading. */
+    lookup: (key: string) =>
+      moveDue(
+        [key],
+        (s, dayEnd) => s.due >= dayEnd,
+        (_s, at) => at,
+      ),
+  };
+
+  return { services, evidence, invalidate: () => (ownIndex = null) };
 }

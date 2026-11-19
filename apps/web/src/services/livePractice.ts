@@ -7,6 +7,7 @@ import {
   type AnalyzedToken,
   type Exercise,
   type ExampleSentence,
+  type Grade,
   type ItemState,
   type LearnerModel,
   type Skill,
@@ -64,6 +65,8 @@ export interface LivePracticeDeps {
     fill: (lang: string, needs: SentenceNeed[], avoid: string[]) => Promise<SentenceFill>;
   };
   now?: () => number;
+  /** Native mode: an answer also answers the word's due card (liveNative `evidence`). */
+  evidence?: () => { exercise: (key: string, grade: Grade, ms: number) => Promise<unknown> };
 }
 /** Most words per session that get AI sentences. */
 export const AI_WORDS_PER_SESSION = 8;
@@ -654,6 +657,10 @@ export function createLivePractice(deps: LivePracticeDeps) {
       state: next,
     });
     itemCache.get(lang)!.set(itemId(exercise.key, exercise.skill), next);
+    await deps
+      .evidence?.()
+      .exercise(exercise.key, grade, attempt.ms)
+      .catch((e: unknown) => console.warn("Could not update the card:", e));
     return {
       grade,
       correct: checked.correct,

@@ -144,7 +144,7 @@ pApp = 0.8 · c / (c + w + 1) · 0.5^(days since the newest answer / 30)     (×
 
 So three unaided correct answers today give `pKnown = 0.6`: the word counts as "Learning (in Kenning)", adds 0.6 to coverage and can become a cloze. Two months later, with no new answers, it is back to Anki's state with `pKnown ≈ 0.15`. Nothing is written to Anki: to make the word a card, use Add to Anki or Study first in Anki.
 
-**Limits.** Exposure while reading (a word read without a lookup) is not evidence yet. Practice FSRS states are kept separately for scheduling exercises (section 4.1); only right/wrong feeds the learner model.
+**Limits.** In connected mode, exposure while reading (a word read without a lookup) is not evidence. Practice FSRS states are kept separately for scheduling exercises (section 4.1); only right/wrong feeds the learner model. In native mode reading, blanks and Practice also reach the word's card (section 9.5.1).
 
 ---
 
@@ -707,6 +707,20 @@ It runs by itself when the app opens: the first time once the history holds 400 
 | **Add to my words** | a new note and card (section 9.1), new in the queue's first place                      |
 | **Study first**     | the word's new cards move to the front of the new queue and are unsuspended            |
 | **Mark known**      | the cards get a mature interval of 21–35 days (the word is added first if it has none) |
+
+#### 9.5.1 One memory per word
+
+In native mode, what you do with a word outside the review screen reaches its card (`evidence` in `apps/web/src/services/liveNative.ts`), so one word has one memory state:
+
+| What you do                                | What happens to the word's review card                                                                                             |
+| ------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------- |
+| Answer a **Practice** exercise             | when the card is due today: an answer (Again, Hard, Good, Easy as the exercise's grade); a wrong answer also on a card not due yet |
+| Answer a **reader blank** (first answer)   | the same: wrong is Again, right after a letter hint is Hard, right is Good                                                         |
+| **Finish a page** and not look the word up | a due card moves later by 15 % of its interval (1–7 days): light evidence, not an answer                                           |
+| **Look the word up** while reading         | a card not due yet becomes due now                                                                                                 |
+
+- A word gets at most one answer a day, from wherever it comes first (the review screen included). New cards are never introduced this way; suspended cards are left alone.
+- Answers from Practice and blanks are reviews (source `practice` or `cloze`): the optimizer trains on them. Moves from reading are not reviews and stay out of its training data.
 
 ### 9.6 The review screen
 

@@ -8,7 +8,7 @@ import { createNodeDriver } from "@app/db/node";
 import type { NlpClient } from "@app/nlp-client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { RunOptimizer } from "../native/optimizer.js";
-import { createLiveNative, studyDayStart } from "./liveNative.js";
+import { createLiveNative, readingDelay, studyDayStart } from "./liveNative.js";
 
 const DAY = 86_400_000;
 const NOW = Date.UTC(2026, 5, 1, 12);
@@ -183,7 +183,14 @@ async function setup(
     reviewWeek: async () => reviewWeek,
     now: () => t,
   });
-  return { live: live.services, anki, profile: () => current, tick: (ms: number) => (t += ms) };
+  return {
+    live: live.services,
+    evidence: live.evidence,
+    anki,
+    profile: () => current,
+    tick: (ms: number) => (t += ms),
+    at: () => t,
+  };
 }
 
 describe("native services", () => {
@@ -302,6 +309,60 @@ describe("native services", () => {
     const s = (await repo!.nativeCard("nl", 10))!.card.schedule!;
     expect(s.scheduledDays).toBeGreaterThan(7);
     expect(new Date(s.due).getDay()).toBe(0);
+  });
+
+  it("lets Practice and blanks answer the word's due card, once a day", async () => {
+    const { live, evidence, tick, at } = await setup(
+      defaultProfile("nl", [{ deck: "Dutch" }], "connected"),
+    );
+    await live.moveFromAnki();
+    const before = (await repo!.nativeCard("nl", 10))!.card.schedule!;
+    // Not due yet: a right answer changes nothing.
+    expect(await evidence.exercise("huis", "good", 3000)).toBe(false);
+    tick(before.due - at() + 60_000);
+    expect(await evidence.exercise("huis", "good", 3000)).toBe(true);
+    const after = (await repo!.nativeCard("nl", 10))!.card.schedule!;
+    expect(after.lastReview).toBe(at());
+    expect(after.due).toBeGreaterThan(before.due);
+    // One answer per word a day; the blank of the same word is not counted again.
+    expect(await evidence.cloze("huis", true, false)).toBe(false);
+    expect((await repo!.nativeReviews("nl")).at(-1)).toMatchObject({ cardId: 10, rating: 3 });
+    // A new card is never introduced by practice.
+    expect(await evidence.exercise("fiets", "again", 1000)).toBe(false);
+  });
+
+  it("counts a wrong answer on a card that is not due", async () => {
+    const { live, evidence } = await setup(defaultProfile("nl", [{ deck: "Dutch" }], "connected"));
+    await live.moveFromAnki();
+    expect(await evidence.cloze("huis", false, false)).toBe(true);
+    expect((await repo!.nativeCard("nl", 10))!.card.schedule!.state).toBe(3);
+  });
+
+  it("moves a due card later when its word is read, and brings it back on a lookup", async () => {
+    const { live, evidence, tick, at } = await setup(
+      defaultProfile("nl", [{ deck: "Dutch" }], "connected"),
+    );
+    await live.moveFromAnki();
+    const s = (await repo!.nativeCard("nl", 10))!.card.schedule!;
+    // A lookup of a word not due: due now.
+    expect(await evidence.lookup("huis")).toBe(1);
+    expect((await repo!.nativeCard("nl", 10))!.card.schedule!.due).toBe(at());
+    // Read without a lookup: later by 15 % of the interval (1–7 days); not an answer.
+    tick(1000);
+    expect(await evidence.pageRead(["huis", "fiets"])).toBe(1);
+    const moved = (await repo!.nativeCard("nl", 10))!.card.schedule!;
+    expect(moved.due).toBe(at() + readingDelay(s.scheduledDays) * DAY);
+    expect(moved.lastReview).toBe(s.lastReview);
+    expect(await repo!.nativeReviews("nl")).toHaveLength(5);
+    expect(readingDelay(2)).toBe(1);
+    expect(readingDelay(20)).toBe(3);
+    expect(readingDelay(400)).toBe(7);
+  });
+
+  it("leaves connected learners' cards alone", async () => {
+    const { evidence } = await setup(defaultProfile("nl", [{ deck: "Dutch" }], "connected"));
+    expect(await evidence.exercise("huis", "again", 1000)).toBe(false);
+    expect(await evidence.pageRead(["huis"])).toBe(0);
   });
 
   it("exports moved cards with their history to an .apkg that reads back", async () => {

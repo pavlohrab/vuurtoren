@@ -51,7 +51,17 @@ export function createLiveServices(
     repo,
     forget: (textId) => texts.forget(textId),
   });
-  const texts = createLiveTexts({ repo, settings, nlp, learner, dictionary, autoCover });
+  // Native evidence is bound late: native mode is created after texts and practice.
+  const evidence = () => native.evidence;
+  const texts = createLiveTexts({
+    repo,
+    settings,
+    nlp,
+    learner,
+    dictionary,
+    autoCover,
+    evidence,
+  });
   const model = learner.model;
 
   const grammar = createLiveGrammar({
@@ -117,6 +127,7 @@ export function createLiveServices(
     data: practiceData,
     topicMaterial: grammar.topicMaterial,
     aiSentences: { ready: ai.aiReady, fill: ai.fillSentences },
+    evidence,
   });
 
   const courses = createLiveCourses({

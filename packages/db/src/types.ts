@@ -371,17 +371,23 @@ export type AppEvent =
       durationMs: number;
       schedule: CardSchedule;
       previous?: CardSchedule;
+      /**
+       * Where the answer was given: absent on the review screen; "practice" or "cloze" when a
+       * Practice exercise or a reader blank answered the word's due card.
+       */
+      via?: "practice" | "cloze";
     }
   /** Native mode: the answer recorded by CardReviewed `reviewId` was taken back. */
   | { type: "CardReviewUndone"; lang: string; cardId: number; reviewId: string }
   /**
-   * Native mode: cards changed outside a review: marked known, studied first, or their memory
-   * recomputed with new FSRS parameters.
+   * Native mode: cards changed outside a review: marked known, studied first, their memory
+   * recomputed with new FSRS parameters, or a due date moved by reading (a word met without a
+   * lookup, or looked up).
    */
   | {
       type: "NativeCardsChanged";
       lang: string;
-      reason: "known" | "first" | "memory";
+      reason: "known" | "first" | "memory" | "reading";
       changes: NativeCardChange[];
     }
   /**
@@ -644,6 +650,15 @@ export interface NativeCardView {
   options: DeckOptions;
 }
 
+/** Native mode: a card of a word (`nativeKeyCards`). */
+export interface NativeKeyCard {
+  key: string;
+  card: NativeCard;
+  options: DeckOptions;
+  /** Answered since the start of the study day. */
+  answeredToday: boolean;
+}
+
 /** Native mode: everything of some decks, for an export (`nativeCollection`). */
 export interface NativeCollection {
   notetypes: NativeNotetype[];
@@ -766,6 +781,11 @@ export interface Repository {
   nativeStats(lang: string): Promise<{ notes: number; cards: number; reviews: number }>;
   /** Native mode: the FSRS parameters in use, or null for the defaults. */
   fsrsParams(lang: string): Promise<FsrsParamsRecord | null>;
+  /**
+   * Native mode: the cards of the notes whose headword key is one of `keys`, earliest due
+   * first, each with its deck options and whether it was answered since `dayStart`.
+   */
+  nativeKeyCards(lang: string, keys: string[], dayStart: number): Promise<NativeKeyCard[]>;
   /** Native mode: blob ids of media files by name (names without a blob are left out). */
   nativeMedia(lang: string, names: string[]): Promise<Record<string, string>>;
   /** Native mode: the cards of some notes, for the word inspector. */

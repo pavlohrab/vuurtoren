@@ -26,6 +26,7 @@ import type {
   NativeCardView,
   NativeCollection,
   NativeDeckSummary,
+  NativeKeyCard,
   NativeNoteStatus,
   NativeQueue,
   SqlDriver,
@@ -194,7 +195,7 @@ export async function applyNativeEvent(
           e.rating,
           e.previous ? REVIEW_KIND[e.previous.state as 1 | 2 | 3] : "learn",
           Math.max(0, Math.round(e.durationMs)),
-          "kenning",
+          e.via ?? "kenning",
           e.previous ? JSON.stringify(e.previous) : null,
         ],
       );
@@ -568,6 +569,29 @@ export function nativeQueries(driver: SqlDriver) {
         [lang, JSON.stringify(names)],
       );
       return Object.fromEntries(rows.map((r) => [String(r["name"]), String(r["blob_id"])]));
+    },
+
+    async nativeKeyCards(lang: string, keys: string[], dayStart: number): Promise<NativeKeyCard[]> {
+      if (keys.length === 0) return [];
+      const options = await deckOptions(driver, lang);
+      const rows = await driver.exec(
+        `SELECT c.*, n.key AS word_key,
+                EXISTS (SELECT 1 FROM native_reviews r
+                         WHERE r.card_id = c.id AND r.at >= ? AND r.rating > 0) AS answered
+           FROM native_cards c JOIN native_notes n ON n.id = c.note_id
+          WHERE c.lang = ? AND n.key IN (SELECT value FROM json_each(?))
+          ORDER BY c.due, c.id`,
+        [dayStart, lang, JSON.stringify(keys)],
+      );
+      return rows.map((r) => {
+        const card = toCard(r);
+        return {
+          key: String(r["word_key"]),
+          card,
+          options: options.get(card.deck) ?? DEFAULT_DECK_OPTIONS,
+          answeredToday: Number(r["answered"]) === 1,
+        };
+      });
     },
 
     async nativeNoteStatus(

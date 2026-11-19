@@ -260,6 +260,7 @@ export async function createHttpRepository(
     fsrsParams: (lang) => call("fsrsParams", lang),
     nativeMedia: (lang, names) =>
       names.length ? call("nativeMedia", lang, names) : Promise.resolve({}),
+    nativeKeyCards: (lang, keys, dayStart) => call("nativeKeyCards", lang, keys, dayStart),
     nativeNoteStatus: (lang, noteIds, now) =>
       noteIds.length ? call("nativeNoteStatus", lang, noteIds, now) : Promise.resolve([]),
     // Cover images travel as raw bytes over /api/blobs, not as JSON.
