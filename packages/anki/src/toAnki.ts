@@ -87,25 +87,6 @@ export function wordFields(
   };
 }
 
-/** One AnkiConnect `multi` call; failed actions come back as `{ error }`. */
-async function multi<T>(
-  anki: AnkiConnectClient,
-  actions: { action: string; params: Record<string, unknown> }[],
-): Promise<(T | { error: string } | null)[]> {
-  const out: (T | { error: string } | null)[] = [];
-  for (let i = 0; i < actions.length; i += BATCH) {
-    out.push(
-      ...((await anki.invoke<(T | { error: string } | null)[] | null>("multi", {
-        actions: actions.slice(i, i + BATCH).map((a) => ({ ...a, version: 6 })),
-      })) ?? []),
-    );
-  }
-  return out;
-}
-
-const failed = (r: unknown): r is { error: string } | null =>
-  r === null || (typeof r === "object" && r !== null && "error" in r);
-
 /** The card a moved note's single Anki card stands for: its most advanced native card. */
 function leadCard(cards: NativeCard[]): NativeCard | undefined {
   return [...cards].sort(
@@ -159,8 +140,7 @@ export async function moveToAnki(
     for (const deck of new Set(toAdd.map((a) => a.deck))) {
       await anki.invoke("createDeck", { deck });
     }
-    const ids = await multi<number>(
-      anki,
+    const ids = await anki.multi<number>(
       toAdd.map((a) => ({
         action: "addNote",
         params: {
@@ -177,8 +157,9 @@ export async function moveToAnki(
     const newIds: number[] = [];
     const lead = new Map<number, NativeCard>();
     toAdd.forEach((a, i) => {
-      const id = ids[i];
-      if (failed(id) || typeof id !== "number") return;
+      const reply = ids[i];
+      if (!reply?.ok || typeof reply.result !== "number") return;
+      const id = reply.result;
       added++;
       decks.add(a.deck);
       newIds.push(id);
@@ -202,8 +183,7 @@ export async function moveToAnki(
     byDays.set(days, [...(byDays.get(days) ?? []), p.anki]);
   }
   if (byDays.size) onProgress?.("Setting due dates");
-  await multi(
-    anki,
+  await anki.multi(
     [...byDays].map(([days, cards]) => ({
       action: "setDueDate",
       params: { cards, days: `${days}!` },
@@ -216,8 +196,7 @@ export async function moveToAnki(
   if (input.withHistory) {
     onProgress?.("Writing the review history");
     // Exact interval, reviews and lapses (the due date is already set).
-    await multi(
-      anki,
+    await anki.multi(
       reviewed.map((p) => {
         const s = p.native.schedule as CardSchedule;
         return {

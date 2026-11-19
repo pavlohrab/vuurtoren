@@ -22,6 +22,41 @@ describe("AnkiConnectClient", () => {
     expect(seen).toMatchObject({ action: "version", version: 6, key: "k" });
   });
 
+  it("reads every shape of a multi reply, in batches, with the key on each action", async () => {
+    const sent: Record<string, unknown>[][] = [];
+    const c = new AnkiConnectClient({
+      apiKey: "k",
+      fetch: fakeFetch((b) => {
+        const actions = (b["params"] as { actions: Record<string, unknown>[] }).actions;
+        sent.push(actions);
+        // AnkiConnect with version 6: `{ result, error }`; older shapes: the plain value.
+        const shapes: unknown[] = [
+          { result: 7, error: null },
+          { result: null, error: "cannot create note because it is a duplicate" },
+          7,
+          { error: "boom" },
+          null,
+          [1, 2],
+        ];
+        return { result: actions.map((_, i) => shapes[i % shapes.length]), error: null };
+      }),
+    });
+    const replies = await c.multi<unknown>(
+      Array.from({ length: 106 }, () => ({ action: "addNote", params: {} })),
+    );
+    expect(sent.map((s) => s.length)).toEqual([100, 6]);
+    expect(sent[0]![0]).toEqual({ action: "addNote", params: {}, version: 6, key: "k" });
+    expect(replies.slice(0, 6)).toEqual([
+      { ok: true, result: 7 },
+      { ok: false, error: "cannot create note because it is a duplicate" },
+      { ok: true, result: 7 },
+      { ok: false, error: "boom" },
+      { ok: true, result: null },
+      { ok: true, result: [1, 2] },
+    ]);
+    expect(replies).toHaveLength(106);
+  });
+
   it("throws AnkiConnectError on API errors", async () => {
     const c = new AnkiConnectClient({ fetch: fakeFetch(() => ({ result: null, error: "boom" })) });
     await expect(c.deckNames()).rejects.toBeInstanceOf(AnkiConnectError);

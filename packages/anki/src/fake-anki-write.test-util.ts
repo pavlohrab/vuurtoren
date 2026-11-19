@@ -88,7 +88,12 @@ function applyDueDate(c: FakeCard, days: string): void {
   c.due = lo;
 }
 
-function legacy(col: FakeCollection, action: string, params: Record<string, unknown>): unknown {
+function legacy(
+  col: FakeCollection,
+  action: string,
+  params: Record<string, unknown>,
+  failing: Record<string, string> = {},
+): unknown {
   switch (action) {
     case "version":
       return 6;
@@ -108,17 +113,25 @@ function legacy(col: FakeCollection, action: string, params: Record<string, unkn
     case "findCards":
       return findCards(col, String(params["query"]));
     case "multi":
-      // Like AnkiConnect: a failing action gives `{ error }` in its place.
-      return (params["actions"] as { action: string; params: Record<string, unknown> }[]).map(
-        (a) => {
-          col.log.push({ action: a.action, params: a.params });
-          try {
-            return legacy(col, a.action, a.params);
-          } catch (e) {
-            return { result: null, error: (e as Error).message };
-          }
-        },
-      );
+      // Like AnkiConnect: an action sent with version 5 or later answers `{ result, error }`,
+      // an older one the plain value (and `{ result: null, error }` when it fails).
+      return (
+        params["actions"] as {
+          action: string;
+          version?: number;
+          params?: Record<string, unknown>;
+        }[]
+      ).map((a) => {
+        col.log.push({ action: a.action, params: a.params });
+        try {
+          const fail = failing[a.action];
+          if (fail) throw new Error(fail);
+          const result = legacy(col, a.action, a.params ?? {}, failing);
+          return (a.version ?? 4) >= 5 ? { result, error: null } : result;
+        } catch (e) {
+          return { result: null, error: (e as Error).message };
+        }
+      });
     case "suspend":
       for (const c of col.cards) if ((params["cards"] as number[]).includes(c.id)) c.queue = -1;
       return true;
@@ -260,7 +273,10 @@ export function fakeAnkiWrite(col: FakeCollection, opts: FakeOptions = {}): type
     if (fail) return new Response(JSON.stringify({ result: null, error: fail }));
     try {
       return new Response(
-        JSON.stringify({ result: legacy(col, action, params ?? {}), error: null }),
+        JSON.stringify({
+          result: legacy(col, action, params ?? {}, opts.failing),
+          error: null,
+        }),
       );
     } catch (e) {
       return new Response(JSON.stringify({ result: null, error: (e as Error).message }));

@@ -132,9 +132,10 @@ function fakeAnki() {
             20: [],
           };
         case "multi":
+          // Like AnkiConnect: each action sent with version 6 answers `{ result, error }`.
           return (
             JSON.parse(String(init?.body)) as { params: { actions: unknown[] } }
-          ).params.actions.map(() => null);
+          ).params.actions.map(() => ({ result: true, error: null }));
         default:
           return null;
       }
