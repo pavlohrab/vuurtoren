@@ -246,6 +246,19 @@ After PDF and OCR extraction, `cleanup.py` repairs the text:
 - **De-hyphenation.** `woor-` + `den` → `woorden`. `Noord-` + `Amerika` stays hyphenated, because a capital follows. `land-` + `en tuinbouw` keeps the suspended hyphen.
 - **Re-flow.** Hard-wrapped lines are joined into paragraphs. For OCR text without blank lines, a line that ends a sentence and is shorter than 60 % of the longest line (when that line is at least 40 characters) ends a paragraph. A paragraph that continues across a page break is merged.
 
+### 2.8 Checking OCR text: which words get flagged
+
+After a photo or scanned page is recognised, you can check the text before it is imported. Kenning underlines the words that may be misread (`ocr_review.py`). A word is flagged when:
+
+- **Tesseract was unsure.** Its confidence for the word is below 55 %.
+- **It is not a Dutch word.** It is not in the word-frequency list (Zipf ≥ 2), the dictionary or simplemma, and it does not split into two common words (`fietsenstalling`). A capitalised word in mid-sentence is treated as a name and stays quiet unless a fix is found or Tesseract was unsure. Numbers and short all-caps abbreviations are never flagged.
+- **A hyphenation went wrong.** Two halves joined at a line end make no word, or a word stayed split (`groen-` … `ten`) when the halves together make one.
+- **It is a rare short word that looks like a very common one.** For example `ln` next to `in`, or `dc` next to `de`.
+
+**Suggestions** come from the mix-ups that print OCR typically makes: `rn` ↔ `m`, `cl` → `d`, `vv` → `w`, `l` / `I` / `1` / `i`, `0` → `o`, `ij` ↔ `y` / `ii`, `fi` ↔ `fl`, `c` ↔ `e`, accents (`e` → `é` / `ë`), a stray hyphen inside a word, and a lost space (`eenhuis` → `een huis`). Kenning applies up to two of these to the word and keeps only results that are real Dutch words. The commonest come first, and a candidate needing two changes ranks a little lower than one needing a single change. Suggestions that are far rarer than the best one are dropped. When the first letter itself was misread (`Iand`), the fix is capitalised only at the start of a sentence (`land`, or `Land` at the start of a sentence).
+
+Each flag carries its position in the text and its box on the page, so the review screen can show the enlarged scan of the word next to the suggestions. Nothing is changed unless you accept a suggestion, type a fix, or press "Accept all suggestions".
+
 ---
 
 ## 3. Reading
