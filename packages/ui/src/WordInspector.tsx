@@ -195,6 +195,28 @@ export function WordInspector({
 
 const hintStyle = { margin: 0, color: "var(--ink-muted)", fontSize: 13 } as const;
 
+const ANSWER = { 1: "Again", 2: "Hard", 3: "Good", 4: "Easy" } as const;
+
+/** Native mode: the word's latest answers, newest first, with the interval each gave. */
+function ReviewList({ reviews }: { reviews: NonNullable<InspectorAnki["reviews"]> }) {
+  return (
+    <section>
+      <div className="k-overline">Your reviews</div>
+      <ul className="k-inspector-reviews">
+        {reviews.map((r) => (
+          <li key={`${r.at}-${r.rating}`}>
+            <span>
+              {new Date(r.at).toLocaleDateString(undefined, { day: "numeric", month: "short" })}
+            </span>
+            <span data-rating={r.rating}>{ANSWER[r.rating]}</span>
+            <span className="k-inspector-review-ivl">{r.interval}</span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 const STATUS_TEXT: Record<InspectorAnki["status"], string> = {
   absent: "Not in Anki",
   new: "New card",
@@ -270,6 +292,7 @@ function AnkiActions({
           </p>
         </section>
       ) : null}
+      {anki.reviews?.length ? <ReviewList reviews={anki.reviews} /> : null}
       <div className="k-inspector-actions">
         {primary && addDeck && primary.label === ADD ? (
           <AddToAnki

@@ -597,6 +597,10 @@ export function createLiveNative(deps: LiveNativeDeps) {
       if (!due || history < MIN_TRAINING_REVIEWS) return null;
       return tune();
     },
+
+    async lastReview() {
+      return repo.nativeLastReview(await deps.lang());
+    },
   };
 
   return { services, invalidate: () => (ownIndex = null) };

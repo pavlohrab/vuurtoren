@@ -525,6 +525,17 @@ export function createMockServices(
         prioritized: e.anki.prioritized,
         markedKnown: e.anki.markedKnown,
         overridden: e.overridden,
+        ...(options.native ? { native: true } : {}),
+        // Demo: a short history for words being studied.
+        ...(options.native && (e.anki.status === "learning" || e.anki.status === "review")
+          ? {
+              reviews: [
+                { at: Date.now() - 2 * 86_400_000, rating: 3 as const, interval: "9d" },
+                { at: Date.now() - 6 * 86_400_000, rating: 1 as const, interval: "10m" },
+                { at: Date.now() - 9 * 86_400_000, rating: 3 as const, interval: "3d" },
+              ],
+            }
+          : {}),
       },
       sentence: t.content.slice(first, last),
       sentenceHighlight: [tok.start - first, tok.end - first],
@@ -966,6 +977,19 @@ export function createMockServices(
         .map(infoOf);
       const offset = opts.offset ?? 0;
       return rows.slice(offset, offset + (opts.limit ?? 100));
+    },
+
+    async dueWords(opts = {}) {
+      await wait();
+      if (!options.native) return [];
+      // Demo: the words being learned came due over the last days.
+      const now = Date.now();
+      return [...lexicon.values()]
+        .filter((e) => e.state === "learning")
+        .sort((a, b) => a.key.localeCompare(b.key))
+        .slice(0, opts.limit ?? 200)
+        .map((e, i) => ({ ...infoOf(e), due: now - i * 86_400_000 - 3_600_000 }))
+        .sort((a, b) => a.due - b.due);
     },
   };
   return services;

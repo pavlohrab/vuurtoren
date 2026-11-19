@@ -14,3 +14,4 @@ export {
 export { type TrainingSequence, trainingReviewCount, trainingSequences } from "./training.js";
 export { renderTemplate, clozeNumbers, type RenderedCard } from "./render.js";
 export * from "./workload.js";
+export { type CardHistory, reviewHistory } from "./history.js";

@@ -9,6 +9,7 @@ import type { NlpClient } from "@app/nlp-client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { RunOptimizer } from "../native/optimizer.js";
 import { createLiveNative, studyDayStart } from "./liveNative.js";
+import { createLiveServices } from "./live.js";
 
 const DAY = 86_400_000;
 const NOW = Date.UTC(2026, 5, 1, 12);
@@ -187,6 +188,33 @@ async function setup(
 }
 
 describe("native services", () => {
+  it("lists due words, shows a word's reviews and undoes stored answers one by one", async () => {
+    const { live, tick } = await setup(defaultProfile("nl", [{ deck: "Dutch" }], "connected"));
+    await live.moveFromAnki();
+    expect(await live.lastReview()).toBeNull();
+    // fiets (card 20) answered Again at NOW: learning, due a minute later (long past now).
+    const first = await live.answerReview(20, 1, 1500);
+    tick(30_000);
+    const second = await live.answerReview(20, 3, 1500);
+    expect(await live.lastReview()).toMatchObject({ cardId: 20, reviewId: second.reviewId });
+
+    // The rest of the app over the same database (no language server: the form itself).
+    vi.stubGlobal("fetch", () => Promise.reject(new Error("offline")));
+    const app = createLiveServices(repo!);
+    const due = await app.dueWords();
+    expect(due.map((w) => w.key)).toContain("fiets");
+    expect(due.find((w) => w.key === "fiets")?.due).toBeLessThan(Date.now());
+    const entry = await app.inspectWord("fiets");
+    expect(entry.anki.reviews?.map((r) => r.rating)).toEqual([3, 1]);
+    expect(entry.anki.reviews?.[1]?.interval).toBe("1m");
+    vi.unstubAllGlobals();
+
+    await live.undoReview(20, (await live.lastReview())!.reviewId);
+    expect(await live.lastReview()).toMatchObject({ reviewId: first.reviewId });
+    await live.undoReview(20, first.reviewId);
+    expect(await live.lastReview()).toBeNull();
+  });
+
   it("moves from Anki: notes, cards and history come in, Anki is not written", async () => {
     const connected = defaultProfile("nl", [{ deck: "Dutch" }], "connected");
     const { live, anki, profile } = await setup(connected);

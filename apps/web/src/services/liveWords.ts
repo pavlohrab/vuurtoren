@@ -16,10 +16,14 @@ import {
 } from "@app/anki";
 import {
   type AnalyzedToken,
+  type CardHistory,
+  DEFAULT_FSRS_PARAMS,
+  type InspectorReview,
   type WordState,
   matchToken,
   normalizeKey,
   profileMode,
+  reviewHistory,
 } from "@app/core";
 import type { KenningRepository, WordInfo } from "@app/db";
 import type { NlpClient, NlpLang } from "@app/nlp-client";
@@ -161,9 +165,33 @@ export function createLiveWords(deps: LiveWordsDeps) {
     }));
   }
 
+  /** Native mode: a word's latest answers with the interval each gave (the inspector). */
+  async function nativeHistory(cardIds: number[]): Promise<InspectorReview[]> {
+    if (cardIds.length === 0) return [];
+    const l = await lang();
+    const all = await repo.nativeCardReviews(l, cardIds);
+    if (all.length === 0) return [];
+    const params = (await repo.fsrsParams(l))?.params ?? [...DEFAULT_FSRS_PARAMS];
+    const cards: CardHistory[] = [];
+    for (const id of cardIds) {
+      const v = await repo.nativeCard(l, id);
+      if (!v) continue;
+      cards.push({
+        reviews: all.filter((r) => r.cardId === id),
+        schedule: v.card.schedule,
+        options: v.options,
+      });
+    }
+    return reviewHistory(cards, params);
+  }
+
   /** Live Anki state of a word; "unavailable" (with the reason) if Anki cannot answer in time. */
   async function liveAnki(info: WordInfo | null): Promise<InspectorEntry["anki"]> {
-    if (await native()) return (await nativeCards([info]))[0]!;
+    if (await native()) {
+      const state = (await nativeCards([info]))[0]!;
+      const reviews = await nativeHistory(state.cardIds);
+      return reviews.length ? { ...state, reviews } : state;
+    }
     if (!info || info.noteIds.length === 0) return absentAnki(info);
     try {
       const { notes } = await cardStatus(await anki(INSPECT_TIMEOUT_MS), info.noteIds);
@@ -285,6 +313,7 @@ export function createLiveWords(deps: LiveWordsDeps) {
     | "syncAnki"
     | "learnerSummary"
     | "words"
+    | "dueWords"
     | "activity"
     | "knownOverTime"
     | "suggestedWords"
@@ -494,6 +523,18 @@ export function createLiveWords(deps: LiveWordsDeps) {
       const wanted = new Set(keys);
       const rows = (await repo.words(l, rest)).filter((w) => wanted.has(w.key));
       return rows.slice(offset, limit === undefined ? undefined : offset + limit);
+    },
+
+    async dueWords(opts = {}) {
+      if (!(await native())) return [];
+      const l = await lang();
+      const due = await repo.nativeDueKeys(l, Date.now(), opts.limit ?? 200);
+      if (due.length === 0) return [];
+      const when = new Map(due.map((d) => [d.key, d.due]));
+      const infos = (await repo.words(l, {})).filter((w) => when.has(w.key));
+      return infos
+        .map((w) => ({ ...w, due: when.get(w.key)! }))
+        .sort((a, b) => a.due - b.due || a.key.localeCompare(b.key));
     },
 
     async activity(days = 7) {

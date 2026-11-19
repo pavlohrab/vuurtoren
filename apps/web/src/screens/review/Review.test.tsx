@@ -46,6 +46,33 @@ describe("Review", () => {
     await waitFor(() => expect(screen.queryByRole("button", { name: /Undo/ })).toBeNull());
   });
 
+  it("undoes an answer from an earlier session, one after another", async () => {
+    const services = createMockServices({ latencyMs: 0, synced: true, native: true });
+    const first = render(
+      <App services={services} history={createMemoryHistory({ initialEntries: ["/review"] })} />,
+    );
+    const user = userEvent.setup();
+    await screen.findByText("de fiets");
+    await user.keyboard(" ");
+    await user.keyboard("4");
+    expect(await screen.findByText("gezellig")).toBeVisible();
+    await user.keyboard(" ");
+    await user.keyboard("4");
+    first.unmount();
+
+    // A new session (a reload, another day): Undo takes back the stored answers.
+    render(
+      <App services={services} history={createMemoryHistory({ initialEntries: ["/review"] })} />,
+    );
+    const undo = await screen.findByRole("button", { name: /Undo/ });
+    await user.click(undo);
+    expect(await screen.findByText("gezellig")).toBeVisible();
+    await user.keyboard("z");
+    expect(await screen.findByText("de fiets")).toBeVisible();
+    await waitFor(() => expect(screen.queryByRole("button", { name: /Undo/ })).toBeNull());
+    expect(await services.lastReview()).toBeNull();
+  });
+
   it("renders clozes and other templates sanitised", async () => {
     const { user } = setup();
     for (let i = 0; i < 2; i++) {
