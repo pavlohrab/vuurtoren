@@ -10,8 +10,11 @@ import {
   type SyncStore,
   fromBase64,
   keyFromRaw,
+  changeVaultPassphrase,
   openVault,
   readVault,
+  renewRecoveryKey,
+  unlockVault,
   syncOnce,
   toBase64,
 } from "@app/db";
@@ -143,6 +146,17 @@ export function createLiveSync(deps: LiveSyncDeps) {
     return p;
   }
 
+  /** The place and its key, after `secret` (passphrase or recovery key) proved it opens it. */
+  async function opened(secret: string) {
+    const saved = read();
+    if (!saved) throw new Error("Sync is not set up on this device.");
+    const store = storeFor(saved.place);
+    const vault = await readVault(store);
+    if (!vault) throw new Error("The sync place no longer holds your Kenning data.");
+    const key = await unlockVault(vault, secret);
+    return { store, key };
+  }
+
   const services: SyncServices = {
     async syncStatus() {
       return status(read());
@@ -152,8 +166,8 @@ export function createLiveSync(deps: LiveSyncDeps) {
       if (!deps.repo) throw new Error("Sync runs on a device with its own data.");
       const store = storeFor(place);
       onProgress?.("Opening your synced data");
-      const created = !(await readVault(store));
-      const key = await openVault(store, passphrase, true);
+      const { key, recoveryKey } = await openVault(store, passphrase, true);
+      const created = recoveryKey !== null;
       const saved: Saved = {
         place,
         key: toBase64(key.raw),
@@ -164,12 +178,22 @@ export function createLiveSync(deps: LiveSyncDeps) {
       };
       write(saved);
       const r = await run(saved, key, onProgress);
-      return { ...r.status, created };
+      return { ...r.status, created, recoveryKey };
     },
 
     async syncNow(onProgress) {
       if (running) await running.catch(() => undefined);
       return (await once(onProgress)).status;
+    },
+
+    async changeSyncPassphrase(current, next) {
+      const { store, key } = await opened(current);
+      await changeVaultPassphrase(store, key, next);
+    },
+
+    async newSyncRecoveryKey(current) {
+      const { store, key } = await opened(current);
+      return renewRecoveryKey(store, key);
     },
 
     async stopSync() {

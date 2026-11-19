@@ -778,7 +778,17 @@ Places: a Kenning server (`/api/sync`, a sync token made in that server's Settin
 
 ### 10.3 Encryption
 
-PBKDF2-SHA256 with 600,000 rounds turns the passphrase and a random salt into 64 bytes: an AES-256-GCM key for every file (`KSY1` + a random 12-byte IV + ciphertext; segments are gzipped first) and an HMAC-SHA256 key for blob names, so the names do not reveal what a file holds. The passphrase is never stored; the 64 key bytes are kept in the device's own storage, like AI keys. A wrong passphrase fails the vault check; a place set up again with a new vault makes devices start over.
+A random **data key** (64 bytes) seals every file: an AES-256-GCM key (`KSY1` + a random 12-byte IV + ciphertext; segments are gzipped first) and an HMAC-SHA256 key for blob names, so the names do not reveal what a file holds. The vault holds the data key under two **locks**:
+
+| Lock         | Key from                                                         |
+| ------------ | ---------------------------------------------------------------- |
+| passphrase   | Argon2id, 64 MiB, 3 passes, one lane, a random 16-byte salt      |
+| recovery key | 160 random bits (32 letters and digits, shown once), HKDF-SHA256 |
+
+- **Changing the passphrase** re-locks the data key: no file is encrypted again and other devices keep syncing with the key they hold. It asks for the current passphrase or the recovery key first. A new recovery key replaces the old one.
+- The passphrase and the recovery key are never stored; the data key is kept in the device's own storage, like AI keys.
+- A vault of the first format (PBKDF2-SHA256, 600,000 rounds, the key derived from the passphrase) still opens. Changing its passphrase turns it into the current format with that key as its data key, so no file changes.
+- What the place can see: the number of devices, file sizes and when files were written. What it cannot: any content. A changed file is refused (GCM); a place can still delete files or serve older ones, so keep backups.
 
 ### 10.4 Order and conflicts
 

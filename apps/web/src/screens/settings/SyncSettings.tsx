@@ -44,13 +44,135 @@ const KINDS: { kind: Kind; title: string; sub: string }[] = [
 export function SyncSettings() {
   const services = useServices();
   const status = useQuery({ queryKey: ["sync", "status"], queryFn: () => services.syncStatus() });
+  const [recovery, setRecovery] = useState<string | null>(null);
   if (!status.data) return <Skeleton style={{ height: 120 }} />;
   if (!status.data.available) return <ServerTokens />;
-  return status.data.place ? <SyncOn status={status.data} /> : <SetUp status={status.data} />;
+  return status.data.place ? (
+    <div className="stack settings-stack">
+      {recovery ? <RecoveryKey value={recovery} onDone={() => setRecovery(null)} /> : null}
+      <SyncOn status={status.data} />
+      <Secrets onRecovery={setRecovery} />
+    </div>
+  ) : (
+    <SetUp status={status.data} onRecovery={setRecovery} />
+  );
+}
+
+/** A recovery key, shown once: it opens the synced data when the passphrase is forgotten. */
+function RecoveryKey({ value, onDone }: { value: string; onDone: () => void }) {
+  return (
+    <section className="stack sync-recovery" aria-labelledby="recovery-h" role="status">
+      <h3 className="settings-h3" id="recovery-h">
+        Your recovery key
+      </h3>
+      <p style={{ margin: 0 }}>
+        Write it down or keep it in a password manager now: it is shown only once. If you forget
+        your passphrase, it opens your synced data on a new device.
+      </p>
+      <CopyBlock label="Recovery key" text={value} />
+      <div className="row">
+        <Button onClick={onDone}>I have saved it</Button>
+      </div>
+    </section>
+  );
+}
+
+/** Change the passphrase, or make a new recovery key, after proving the current one. */
+function Secrets({ onRecovery }: { onRecovery: (key: string) => void }) {
+  const services = useServices();
+  const toast = useToast();
+  const [open, setOpen] = useState<"pass" | "key" | null>(null);
+  const [current, setCurrent] = useState("");
+  const [next, setNext] = useState("");
+  const reset = () => {
+    setOpen(null);
+    setCurrent("");
+    setNext("");
+  };
+  const change = useMutation({
+    mutationFn: () => services.changeSyncPassphrase(current, next),
+    onSuccess: () => {
+      reset();
+      toast("Passphrase changed", "Use the new one on new devices; your devices keep syncing.");
+    },
+  });
+  const renew = useMutation({
+    mutationFn: () => services.newSyncRecoveryKey(current),
+    onSuccess: (key) => {
+      reset();
+      onRecovery(key);
+    },
+  });
+  const busy = change.isPending || renew.isPending;
+  const error = change.error ?? renew.error;
+  return (
+    <section className="stack" aria-labelledby="secrets-h">
+      <h3 className="settings-h3" id="secrets-h">
+        Passphrase and recovery key
+      </h3>
+      {open === null ? (
+        <div className="row">
+          <Button onClick={() => setOpen("pass")}>Change passphrase…</Button>
+          <Button variant="ghost" onClick={() => setOpen("key")}>
+            Make a new recovery key…
+          </Button>
+        </div>
+      ) : (
+        <form
+          className="stack"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (open === "pass") change.mutate();
+            else renew.mutate();
+          }}
+        >
+          <Input
+            label="Current passphrase or recovery key"
+            type="password"
+            value={current}
+            onChange={(e) => setCurrent(e.target.value)}
+            autoComplete="current-password"
+          />
+          {open === "pass" ? (
+            <Input
+              label="New passphrase"
+              type="password"
+              value={next}
+              onChange={(e) => setNext(e.target.value)}
+              autoComplete="new-password"
+              hint="At least 8 characters. Nothing is encrypted again; your other devices keep syncing."
+            />
+          ) : (
+            <p className="k-hint" style={{ margin: 0 }}>
+              The old recovery key stops working.
+            </p>
+          )}
+          <div className="row">
+            <Button
+              type="submit"
+              variant="primary"
+              disabled={busy || !current || (open === "pass" && next.trim().length < 8)}
+            >
+              {busy ? <Spinner label="Working" /> : null}
+              {open === "pass" ? "Change passphrase" : "Make a new recovery key"}
+            </Button>
+            <Button type="button" variant="ghost" onClick={reset}>
+              Cancel
+            </Button>
+          </div>
+        </form>
+      )}
+      {error ? (
+        <p role="alert" className="error-text" style={{ margin: 0 }}>
+          {message(error)}
+        </p>
+      ) : null}
+    </section>
+  );
 }
 
 /** Choose a place, a passphrase and this device's name; then the first sync. */
-function SetUp({ status }: { status: SyncStatus }) {
+function SetUp({ status, onRecovery }: { status: SyncStatus; onRecovery: (key: string) => void }) {
   const services = useServices();
   const qc = useQueryClient();
   const toast = useToast();
@@ -95,6 +217,7 @@ function SetUp({ status }: { status: SyncStatus }) {
     mutationFn: () => services.setUpSync(place(), passphrase, name, setProgress),
     onSuccess: async (r) => {
       setPassphrase("");
+      if (r.recoveryKey) onRecovery(r.recoveryKey);
       toast(
         r.created ? "Sync is on" : "This device is in sync",
         r.created

@@ -28,6 +28,23 @@ describe("Settings → Sync", { timeout: 20_000 }, () => {
     await user.click(start);
 
     expect(await screen.findByText("Sync is on")).toBeVisible();
+    // The recovery key, once.
+    expect(screen.getByText("K7QM-2XRA-9F4D-HV3C-T8NW-5BJP-6GZE-1YKS")).toBeVisible();
+    await user.click(screen.getByRole("button", { name: "I have saved it" }));
+    expect(screen.queryByText("K7QM-2XRA-9F4D-HV3C-T8NW-5BJP-6GZE-1YKS")).toBeNull();
+    // Change the passphrase; make a new recovery key.
+    await user.click(screen.getByRole("button", { name: "Change passphrase…" }));
+    await user.type(
+      screen.getByLabelText("Current passphrase or recovery key"),
+      "short but longer now",
+    );
+    await user.type(screen.getByLabelText("New passphrase"), "een nieuwe zin");
+    await user.click(screen.getByRole("button", { name: "Change passphrase" }));
+    expect(await screen.findByText("Passphrase changed")).toBeVisible();
+    await user.click(screen.getByRole("button", { name: "Make a new recovery key…" }));
+    await user.type(screen.getByLabelText("Current passphrase or recovery key"), "een nieuwe zin");
+    await user.click(screen.getByRole("button", { name: "Make a new recovery key" }));
+    expect(await screen.findByText("P3VD-8KQA-2MXN-7HTF-4WJC-9ZBE-6RGS-1YQK")).toBeVisible();
     expect(screen.getByText(/Kenning server · kenning\.example\.org/)).toBeVisible();
     const devices = screen.getByRole("list", { name: "Devices" });
     expect(within(devices).getByText("Phone")).toBeVisible();

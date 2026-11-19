@@ -28,10 +28,9 @@ latest-wins for settings and marks, merged reviews and answers, event versions, 
 - **Kenning Cloud** (paid, about €3–4 a month or €30 a year, lower for students and poorer
   countries): the same sync and a hosted language server for devices that can't run one, such
   as phones. Still to build: accounts, payments, storage limits per account.
-- **Before Kenning Cloud:** Argon2id instead of PBKDF2 for the passphrase (older vaults keep
-  working), changing the passphrase (the key is re-sealed, files are re-encrypted), an
-  optional recovery key, test runs against a real Nextcloud, GitHub and Syncthing, and an
-  outside review of the encryption code.
+- **Before Kenning Cloud:** test runs against a real Nextcloud, GitHub and Syncthing, and an
+  outside review of the encryption code. (Argon2id, changing the passphrase and the recovery key
+  are built.)
 - **Hosting:** one stack of three containers: `kenning` (web app, API and sync), `kenning-nlp`
   (the language server; phones need it) and, only for Keep using Anki, `anki` (headless, read
   only). Self-hosting and Kenning Cloud run the same stack.

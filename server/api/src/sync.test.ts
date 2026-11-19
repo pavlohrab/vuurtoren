@@ -12,6 +12,9 @@ import { syncPath } from "./sync.js";
 import { type SyncStore, createRepository, openVault, syncOnce } from "@app/db";
 import { createNodeDriver } from "@app/db/node";
 
+/** A light Argon2id cost: tests stay fast. */
+const LIGHT = { memoryKiB: 64, iterations: 1, parallelism: 1 };
+
 const PASSWORD = "correct horse battery";
 let dir: string;
 let store: Store;
@@ -169,7 +172,7 @@ describe("/api/sync", () => {
     };
     const a = await createRepository(await createNodeDriver(), { deviceId: "aaaaaaaaaaaa" });
     const b = await createRepository(await createNodeDriver(), { deviceId: "bbbbbbbbbbbb" });
-    const key = await openVault(store, "lange zinnen lezen", true, 1000);
+    const key = (await openVault(store, "lange zinnen lezen", true, LIGHT)).key;
     await a.append({ type: "WordStateSet", lang: "nl", key: "fiets", state: "known" });
     expect(await syncOnce(a, store, key, { deviceName: "Laptop" })).toMatchObject({ sent: 1 });
     expect(await syncOnce(b, store, key, { deviceName: "Phone" })).toMatchObject({ received: 1 });

@@ -44,7 +44,7 @@ export function createMockSync(
         error: null,
         devices: devices(deviceName || state.deviceName, at),
       };
-      return { ...state, created: true };
+      return { ...state, created: true, recoveryKey: "K7QM-2XRA-9F4D-HV3C-T8NW-5BJP-6GZE-1YKS" };
     },
     async syncNow(onProgress) {
       onProgress?.("Sending 0 changes");
@@ -57,6 +57,18 @@ export function createMockSync(
         devices: devices(state.deviceName, at),
       };
       return state;
+    },
+    async changeSyncPassphrase(current, next) {
+      await wait();
+      if (current.trim().length < 8)
+        throw new Error("This passphrase does not open your synced data.");
+      if (next.trim().length < 8) throw new Error("Use a passphrase of at least 8 characters.");
+    },
+    async newSyncRecoveryKey(current) {
+      await wait();
+      if (current.trim().length < 8)
+        throw new Error("This passphrase does not open your synced data.");
+      return "P3VD-8KQA-2MXN-7HTF-4WJC-9ZBE-6RGS-1YQK";
     },
     async stopSync() {
       await wait();

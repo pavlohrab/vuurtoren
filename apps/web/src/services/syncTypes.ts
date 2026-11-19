@@ -36,9 +36,16 @@ export interface SyncServices {
     passphrase: string,
     deviceName: string,
     onProgress?: (msg: string) => void,
-  ): Promise<SyncStatus & { created: boolean }>;
+  ): Promise<SyncStatus & { created: boolean; recoveryKey: string | null }>;
   /** Sync now (sync also runs by itself while the app is open). */
   syncNow(onProgress?: (msg: string) => void): Promise<SyncStatus>;
+  /**
+   * A new passphrase for the synced data, after `current` (the passphrase or the recovery key)
+   * opened it. No file changes; other devices keep syncing.
+   */
+  changeSyncPassphrase(current: string, next: string): Promise<void>;
+  /** A new recovery key (shown once; the old one stops working), after `current` opened the data. */
+  newSyncRecoveryKey(current: string): Promise<string>;
   /** Stop syncing on this device; the data here and in the place stay. */
   stopSync(): Promise<void>;
   /** Choose a folder (desktop app); null when cancelled or not available. */

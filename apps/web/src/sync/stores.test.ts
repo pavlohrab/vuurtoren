@@ -10,6 +10,9 @@ import { propfindNames, webdavStore } from "./webdavStore.js";
 import { serverStore } from "./serverStore.js";
 import { fakeDav, fakeGithub, fakeServer } from "./fakePlaces.test-util.js";
 
+/** A light Argon2id cost: tests stay fast. */
+const LIGHT = { memoryKiB: 64, iterations: 1, parallelism: 1 };
+
 const places: [string, () => SyncStore][] = [
   [
     "Kenning server",
@@ -48,7 +51,7 @@ describe.each(places)("%s", (_name, make) => {
     const store = make();
     const a = await createRepository(await createNodeDriver(), { deviceId: "aaaaaaaaaaaa" });
     const b = await createRepository(await createNodeDriver(), { deviceId: "bbbbbbbbbbbb" });
-    const key = await openVault(store, "lange zinnen lezen", true, 1000);
+    const key = (await openVault(store, "lange zinnen lezen", true, LIGHT)).key;
     await a.append({ type: "WordStateSet", lang: "nl", key: "fiets", state: "known" });
     await syncOnce(a, store, key, { deviceName: "Laptop" });
     expect(await syncOnce(b, store, key, { deviceName: "Phone" })).toMatchObject({ received: 1 });

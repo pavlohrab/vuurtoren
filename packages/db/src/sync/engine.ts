@@ -19,13 +19,17 @@ import type { KenningRepository } from "../repository.js";
 import type { AppEvent, SyncEvent } from "../types.js";
 import {
   type SyncKey,
+  type Argon2Cost,
   type VaultFile,
+  changePassphrase,
   checkKey,
   createVault,
+  newRecoveryKey,
   hiddenName,
   seal,
   unlockVault,
   unseal,
+  vaultId,
 } from "./crypto.js";
 import type { SyncStore } from "./store.js";
 
@@ -104,21 +108,47 @@ export async function readVault(store: SyncStore): Promise<VaultFile | null> {
 }
 
 /**
- * The key for a place: unlock its vault with the passphrase, or, with `create`, make a new vault
- * when the place has none.
+ * The key for a place: unlock its vault with the passphrase (or a recovery key), or, with
+ * `create`, make a new vault when the place has none. `recoveryKey` is set only for a new vault:
+ * it is shown once.
  */
 export async function openVault(
   store: SyncStore,
-  passphrase: string,
+  secret: string,
   create: boolean,
-  iterations?: number,
-): Promise<SyncKey> {
+  cost?: Argon2Cost,
+): Promise<{ key: SyncKey; recoveryKey: string | null }> {
   const vault = await readVault(store);
-  if (vault) return unlockVault(vault, passphrase);
+  if (vault) return { key: await unlockVault(vault, secret), recoveryKey: null };
   if (!create) throw new NoVaultError();
-  const made = await createVault(passphrase, iterations);
+  const made = await createVault(secret, cost);
   await store.put(VAULT_PATH, encode(made.vault));
-  return made.key;
+  return { key: made.key, recoveryKey: made.recoveryKey };
+}
+
+/** Give the place's vault a new passphrase (the data key and every file stay as they are). */
+export async function changeVaultPassphrase(
+  store: SyncStore,
+  key: SyncKey,
+  passphrase: string,
+  cost?: Argon2Cost,
+): Promise<void> {
+  const vault = await readVault(store);
+  if (!vault) throw new NoVaultError();
+  await store.put(VAULT_PATH, encode(await changePassphrase(vault, key, passphrase, cost)));
+}
+
+/** A new recovery key for the place's vault (the old one stops working). */
+export async function renewRecoveryKey(
+  store: SyncStore,
+  key: SyncKey,
+  cost?: Argon2Cost,
+): Promise<string> {
+  const vault = await readVault(store);
+  if (!vault) throw new NoVaultError();
+  const made = await newRecoveryKey(vault, key, cost);
+  await store.put(VAULT_PATH, encode(made.vault));
+  return made.recoveryKey;
 }
 
 /** Blob ids an event refers to (a text's cover, the media of imported cards). */
@@ -222,7 +252,7 @@ export async function syncOnce(
   await checkKey(vault, key);
   const saved = (await repo.syncState()) as SyncState | null;
   const state: SyncState =
-    saved && saved.vault === vault.kdf.salt ? saved : { vault: vault.kdf.salt, received: {} };
+    saved && saved.vault === vaultId(vault) ? saved : { vault: vaultId(vault), received: {} };
   const me = repo.deviceId;
 
   // Send: blobs first, so a device that reads a segment finds what it refers to.

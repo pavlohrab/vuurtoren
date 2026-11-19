@@ -1,22 +1,55 @@
 /**
- * Sync encryption. A passphrase opens the vault: PBKDF2-SHA256 turns it into 64 bytes, the first
- * half an AES-256-GCM key for every file, the second an HMAC-SHA256 key for file names that must
- * not reveal what they hold (blob ids). Every file is `KSY1` + a random 12-byte IV + ciphertext.
- * Web Crypto only: the same code runs in browsers, the desktop app and Node.
+ * Sync encryption. A random data key (64 bytes) seals every file: its first half is an
+ * AES-256-GCM key, its second an HMAC-SHA256 key for file names that must not reveal what they
+ * hold (blob ids). Every file is `KSY1` + a random 12-byte IV + ciphertext.
+ *
+ * The vault (`kenning/vault.json`) holds the data key under locks: one opened by your
+ * passphrase (Argon2id), one by a recovery key (160 random bits, HKDF). Changing the passphrase
+ * re-locks the data key; no file changes and other devices keep their key. A vault of the first
+ * format derived the key from the passphrase with PBKDF2; it still opens, and changing its
+ * passphrase turns it into the current format with that key as its data key.
  */
+import { argon2id } from "hash-wasm";
 
 const MAGIC = new TextEncoder().encode("KSY1");
 const CHECK = "kenning-sync";
-/** OWASP's 2023 figure for PBKDF2-HMAC-SHA256. */
+/** PBKDF2 rounds of first-format vaults (OWASP's 2023 figure for PBKDF2-HMAC-SHA256). */
 export const DEFAULT_ITERATIONS = 600_000;
+/** Argon2id cost: 64 MiB, 3 passes, one lane (above OWASP's minimum of 19 MiB, 2 passes). */
+export const ARGON2_COST = { memoryKiB: 65_536, iterations: 3, parallelism: 1 } as const;
+export type Argon2Cost = { memoryKiB: number; iterations: number; parallelism: number };
 
-/** `kenning/vault.json`: how the passphrase becomes the key, and a value to check it with. */
-export interface VaultFile {
-  format: 1;
-  kdf: { name: "PBKDF2-SHA256"; iterations: number; salt: string };
-  /** `CHECK`, sealed with the key: opening it proves the passphrase. */
-  check: string;
+type Pbkdf2 = { name: "PBKDF2-SHA256"; iterations: number; salt: string };
+type Argon2 = { name: "argon2id"; salt: string } & Argon2Cost;
+type Hkdf = { name: "HKDF-SHA256"; salt: string };
+
+/** A copy of the data key, sealed with a key made from a secret. */
+interface Lock {
+  kind: "passphrase" | "recovery";
+  kdf: Argon2 | Hkdf;
+  /** The data key, sealed. */
+  sealed: string;
 }
+
+/** `kenning/vault.json`. */
+export type VaultFile =
+  | {
+      /** First format: the key is the passphrase's PBKDF2 output. */
+      format: 1;
+      kdf: Pbkdf2;
+      /** `CHECK`, sealed with the key: opening it proves the key. */
+      check: string;
+    }
+  | {
+      format: 2;
+      /** Stays the same across passphrase changes (devices keep their sync state). */
+      id: string;
+      check: string;
+      locks: Lock[];
+    };
+
+/** What identifies a vault for a device's sync state. */
+export const vaultId = (v: VaultFile): string => (v.format === 1 ? v.kdf.salt : v.id);
 
 export interface SyncKey {
   enc: CryptoKey;
@@ -113,33 +146,188 @@ export async function unseal(key: SyncKey, sealed: Uint8Array): Promise<Uint8Arr
   }
 }
 
-/** A new vault for a passphrase, with a random salt. */
+const random = (n: number) => globalThis.crypto.getRandomValues(new Uint8Array(n));
+const CROCKFORD = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
+
+/** A recovery key as people write it down: 32 letters and digits in groups of four. */
+function formatRecovery(bytes: Uint8Array): string {
+  let bits = 0;
+  let value = 0;
+  let out = "";
+  for (const b of bytes) {
+    value = (value << 8) | b;
+    bits += 8;
+    while (bits >= 5) {
+      out += CROCKFORD[(value >>> (bits - 5)) & 31];
+      bits -= 5;
+    }
+  }
+  return out.match(/.{4}/g)!.join("-");
+}
+
+/** The 20 bytes of a recovery key, or null when `text` is not one (any case, dashes, spaces). */
+export function parseRecovery(text: string): Uint8Array | null {
+  const clean = text
+    .toUpperCase()
+    .replace(/[\s-]/g, "")
+    .replace(/[OI L]/g, (c) => (c === "O" ? "0" : "1"));
+  if (!/^[0-9A-HJKMNP-TV-Z]{32}$/.test(clean)) return null;
+  const out = new Uint8Array(20);
+  let bits = 0;
+  let value = 0;
+  let i = 0;
+  for (const ch of clean) {
+    value = (value << 5) | CROCKFORD.indexOf(ch);
+    bits += 5;
+    if (bits >= 8) {
+      out[i++] = (value >>> (bits - 8)) & 0xff;
+      bits -= 8;
+    }
+  }
+  return out;
+}
+
+/** The 64 bytes a secret opens: Argon2id for a passphrase, HKDF for a recovery key. */
+async function lockKey(secret: string | Uint8Array, kdf: Argon2 | Hkdf | Pbkdf2): Promise<SyncKey> {
+  const salt = fromBase64(kdf.salt);
+  if (kdf.name === "argon2id") {
+    const out = await argon2id({
+      password: (secret as string).normalize("NFC"),
+      salt,
+      parallelism: kdf.parallelism,
+      iterations: kdf.iterations,
+      memorySize: kdf.memoryKiB,
+      hashLength: 64,
+      outputType: "binary",
+    });
+    return keyFromRaw(out);
+  }
+  if (kdf.name === "HKDF-SHA256") {
+    const base = await subtle().importKey("raw", secret as BufferSource, "HKDF", false, [
+      "deriveBits",
+    ]);
+    const bits = await subtle().deriveBits(
+      {
+        name: "HKDF",
+        hash: "SHA-256",
+        salt: salt as BufferSource,
+        info: new TextEncoder().encode("kenning recovery key"),
+      },
+      base,
+      512,
+    );
+    return keyFromRaw(new Uint8Array(bits));
+  }
+  return derive(secret as string, salt, kdf.iterations);
+}
+
+async function makeLock(
+  kind: Lock["kind"],
+  secret: string | Uint8Array,
+  dataKey: SyncKey,
+  cost: Argon2Cost,
+): Promise<Lock> {
+  const salt = toBase64(random(16));
+  const kdf: Argon2 | Hkdf =
+    kind === "passphrase" ? { name: "argon2id", salt, ...cost } : { name: "HKDF-SHA256", salt };
+  const key = await lockKey(secret, kdf);
+  return { kind, kdf, sealed: toBase64(await seal(key, dataKey.raw)) };
+}
+
+const checkPassphrase = (p: string) => {
+  if (p.trim().length < 8) throw new Error("Use a passphrase of at least 8 characters.");
+};
+
+/** A new vault: a random data key, locked by the passphrase and by a new recovery key. */
 export async function createVault(
   passphrase: string,
-  iterations = DEFAULT_ITERATIONS,
-): Promise<{ vault: VaultFile; key: SyncKey }> {
-  if (passphrase.trim().length < 8) throw new Error("Use a passphrase of at least 8 characters.");
-  const salt = globalThis.crypto.getRandomValues(new Uint8Array(16));
-  const key = await derive(passphrase, salt, iterations);
-  const check = await seal(key, new TextEncoder().encode(CHECK));
+  cost: Argon2Cost = ARGON2_COST,
+): Promise<{ vault: VaultFile; key: SyncKey; recoveryKey: string }> {
+  checkPassphrase(passphrase);
+  const key = await keyFromRaw(random(64));
+  const recovery = random(20);
   return {
     vault: {
-      format: 1,
-      kdf: { name: "PBKDF2-SHA256", iterations, salt: toBase64(salt) },
-      check: toBase64(check),
+      format: 2,
+      id: toBase64(random(16)),
+      check: toBase64(await seal(key, new TextEncoder().encode(CHECK))),
+      locks: [
+        await makeLock("passphrase", passphrase, key, cost),
+        await makeLock("recovery", recovery, key, cost),
+      ],
     },
     key,
+    recoveryKey: formatRecovery(recovery),
   };
 }
 
-/** The key of a vault, or WrongPassphraseError. */
-export async function unlockVault(vault: VaultFile, passphrase: string): Promise<SyncKey> {
-  if (vault.format !== 1 || vault.kdf?.name !== "PBKDF2-SHA256") {
+/** The data key of a vault from the passphrase or a recovery key, or WrongPassphraseError. */
+export async function unlockVault(vault: VaultFile, secret: string): Promise<SyncKey> {
+  if (vault.format === 1 && vault.kdf?.name === "PBKDF2-SHA256") {
+    const key = await lockKey(secret, vault.kdf);
+    await checkKey(vault, key);
+    return key;
+  }
+  if (vault.format !== 2) {
     throw new Error("This sync data was made by a newer Kenning. Update Kenning to use it.");
   }
-  const key = await derive(passphrase, fromBase64(vault.kdf.salt), vault.kdf.iterations);
+  const recovery = parseRecovery(secret);
+  const lock = vault.locks.find((l) => l.kind === (recovery ? "recovery" : "passphrase"));
+  if (!lock) throw new WrongPassphraseError();
+  let key: SyncKey;
+  try {
+    key = await keyFromRaw(
+      await unseal(await lockKey(recovery ?? secret, lock.kdf), fromBase64(lock.sealed)),
+    );
+  } catch {
+    throw new WrongPassphraseError();
+  }
   await checkKey(vault, key);
   return key;
+}
+
+/**
+ * The vault with a new passphrase for the data key `key` (which must open it). A first-format
+ * vault becomes the current format; its recovery lock stays (none yet for a first-format one).
+ */
+export async function changePassphrase(
+  vault: VaultFile,
+  key: SyncKey,
+  passphrase: string,
+  cost: Argon2Cost = ARGON2_COST,
+): Promise<VaultFile> {
+  checkPassphrase(passphrase);
+  await checkKey(vault, key);
+  const keep = vault.format === 2 ? vault.locks.filter((l) => l.kind !== "passphrase") : [];
+  return {
+    format: 2,
+    id: vaultId(vault),
+    check: vault.check,
+    locks: [await makeLock("passphrase", passphrase, key, cost), ...keep],
+  };
+}
+
+/** The vault with a new recovery key (the old one stops working), and that key. */
+export async function newRecoveryKey(
+  vault: VaultFile,
+  key: SyncKey,
+  cost: Argon2Cost = ARGON2_COST,
+): Promise<{ vault: VaultFile; recoveryKey: string }> {
+  await checkKey(vault, key);
+  if (vault.format !== 2) {
+    throw new Error("Change the passphrase first: it brings this sync data to the current format.");
+  }
+  const recovery = random(20);
+  return {
+    vault: {
+      ...vault,
+      locks: [
+        ...vault.locks.filter((l) => l.kind !== "recovery"),
+        await makeLock("recovery", recovery, key, cost),
+      ],
+    },
+    recoveryKey: formatRecovery(recovery),
+  };
 }
 
 /** Reject a remembered key that no longer opens the vault (the passphrase was changed). */
