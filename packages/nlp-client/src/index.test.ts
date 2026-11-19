@@ -34,6 +34,8 @@ describe("NlpClient import + gloss endpoints", () => {
 
     await client.ocr(new Blob(["img"]), "uk");
     expect(calls[1]?.url).toBe("http://nlp.test/ocr?lang=uk");
+    await client.ocr(new Blob(["img"]), "nl", "p.png", { review: true });
+    expect(calls[2]?.url).toBe("http://nlp.test/ocr?lang=nl&review=true");
   });
 
   it("gloss posts lang and words", async () => {
