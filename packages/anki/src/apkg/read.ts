@@ -11,7 +11,7 @@
  * Only the file format is read here; the SQLite engine is the caller's (`OpenSqlite`).
  */
 import { unzipSync } from "fflate";
-import { decompress } from "fzstd";
+import { Decompress } from "fzstd";
 import { DEFAULT_DECK_OPTIONS, type DeckOptions, type NotetypeKind } from "@app/core";
 import {
   decodeProto,
@@ -98,9 +98,75 @@ export class AnkiPackageError extends Error {
   override readonly name = "AnkiPackageError";
 }
 
+/**
+ * The largest file a package may unpack to: the collection, or one media file. Real
+ * collections and media are far smaller; this stops a small hostile file from filling memory.
+ */
+const MAX_UNPACKED = 512 * 1024 * 1024;
+/** And all of the package's files together. */
+const MAX_UNPACKED_TOTAL = 1024 * 1024 * 1024;
+
+const tooLarge = () =>
+  new AnkiPackageError("This package unpacks to more than Kenning can open at once.");
+
 const ZSTD_MAGIC = [0x28, 0xb5, 0x2f, 0xfd];
 const isZstd = (b: Uint8Array) => ZSTD_MAGIC.every((m, i) => b[i] === m);
-const unzstd = (b: Uint8Array) => (isZstd(b) ? decompress(b) : b);
+
+/** The memory a zstd frame asks for up front: its window, or its whole size in one segment. */
+function zstdWindow(b: Uint8Array): number {
+  const flags = b[4] ?? 0;
+  const single = (flags >> 5) & 1;
+  if (!single) {
+    const desc = b[5] ?? 0;
+    const base = 2 ** (10 + (desc >> 3));
+    return base + (base / 8) * (desc & 7);
+  }
+  const dictBytes = [0, 1, 2, 4][flags & 3]!;
+  const sizeBytes = [1, 2, 4, 8][flags >> 6]!;
+  let size = 0;
+  for (let i = sizeBytes - 1; i >= 0; i--) size = size * 256 + (b[5 + dictBytes + i] ?? 0);
+  return sizeBytes === 2 ? size + 256 : size;
+}
+
+/** Undo zstd (when the bytes are zstd), giving up as soon as the output passes `max`. */
+function unzstd(b: Uint8Array, max = MAX_UNPACKED): Uint8Array {
+  if (!isZstd(b)) return b;
+  if (zstdWindow(b) > max) throw tooLarge();
+  const parts: Uint8Array[] = [];
+  let total = 0;
+  new Decompress((chunk) => {
+    total += chunk.length;
+    if (total > max) throw tooLarge();
+    parts.push(chunk);
+  }).push(b, true);
+  if (parts.length === 1) return parts[0]!;
+  const out = new Uint8Array(total);
+  let at = 0;
+  for (const p of parts) {
+    out.set(p, at);
+    at += p.length;
+  }
+  return out;
+}
+
+/** Unzip, refusing entries that say they unpack to more than the limits allow. */
+function unzipLimited(file: Uint8Array): Record<string, Uint8Array> {
+  let total = 0;
+  try {
+    // fflate unpacks each entry into a buffer of its declared size and never past it.
+    return unzipSync(file, {
+      filter: (f) => {
+        total += f.originalSize;
+        if (f.originalSize > MAX_UNPACKED || total > MAX_UNPACKED_TOTAL) throw tooLarge();
+        return true;
+      },
+    });
+  } catch (e) {
+    if (e instanceof AnkiPackageError) throw e;
+    throw new AnkiPackageError("This is not an Anki package (.apkg or .colpkg).");
+  }
+}
+
 const DAY_MS = 86_400_000;
 
 const num = (v: unknown): number => (typeof v === "bigint" ? Number(v) : Number(v ?? 0));
@@ -112,42 +178,152 @@ const bytes = (v: unknown): Uint8Array =>
 const steps = (xs: unknown): number[] =>
   Array.isArray(xs) ? xs.map(Number).filter((x) => x > 0) : [];
 
-const UNICASE = new TextEncoder().encode(" COLLATE unicase");
-const BINARY = new TextEncoder().encode(" COLLATE binary ");
+const UNICASE = "collate unicase";
+const BINARY = new TextEncoder().encode("COLLATE binary ");
+
+const u16 = (b: Uint8Array, i: number) => ((b[i] ?? 0) << 8) | (b[i + 1] ?? 0);
+const u32 = (b: Uint8Array, i: number) => u16(b, i) * 65536 + u16(b, i + 2);
+
+/** A SQLite varint at `i`: its value (exact up to 2^53, enough here) and its length. */
+function varint(b: Uint8Array, i: number): [value: number, length: number] {
+  let v = 0;
+  for (let n = 0; n < 8; n++) {
+    const byte = b[i + n] ?? 0;
+    v = v * 128 + (byte & 0x7f);
+    if (!(byte & 0x80)) return [v, n + 1];
+  }
+  return [v * 256 + (b[i + 8] ?? 0), 9];
+}
+
+/** Bytes per serial type of a record column (SQLite file format, "Record Format"). */
+function serialSize(t: number): number {
+  if (t >= 12) return Math.floor((t - 12) / 2);
+  return [0, 1, 2, 3, 4, 6, 8, 8, 0, 0, 0, 0][t]!;
+}
+
+/**
+ * The file offsets of the `sql` text of every row of the schema table (`sqlite_schema`, the
+ * table b-tree rooted at page 1), one offset per byte, following overflow pages. Null when
+ * the file does not look like a UTF-8 SQLite database this reader understands.
+ */
+function schemaSqlOffsets(b: Uint8Array): number[][] | null {
+  if (b.length < 512 || new TextDecoder().decode(b.subarray(0, 15)) !== "SQLite format 3") {
+    return null;
+  }
+  const raw = u16(b, 16);
+  const pageSize = raw === 1 ? 65536 : raw;
+  const usable = pageSize - (b[20] ?? 0);
+  if (pageSize < 512 || usable < 480 || u32(b, 56) !== 1) return null;
+  const pageCount = Math.floor(b.length / pageSize);
+  const seen = new Set<number>();
+  const out: number[][] = [];
+  const pageAt = (n: number) =>
+    n >= 1 && n <= pageCount && !seen.has(n) ? (n - 1) * pageSize : -1;
+
+  /** One cell's payload as file offsets (local part, then overflow pages). */
+  const payload = (start: number, size: number): number[] | null => {
+    const maxLocal = usable - 35;
+    const minLocal = Math.floor(((usable - 12) * 32) / 255) - 23;
+    let local = size;
+    if (size > maxLocal) {
+      const k = minLocal + ((size - minLocal) % (usable - 4));
+      local = k <= maxLocal ? k : minLocal;
+    }
+    const at: number[] = [];
+    for (let i = 0; i < local; i++) at.push(start + i);
+    let next = size > local ? u32(b, start + local) : 0;
+    while (at.length < size) {
+      const page = pageAt(next);
+      if (page < 0) return null;
+      seen.add(next);
+      const take = Math.min(usable - 4, size - at.length);
+      for (let i = 0; i < take; i++) at.push(page + 4 + i);
+      next = u32(b, page);
+    }
+    return at;
+  };
+
+  const walk = (n: number): boolean => {
+    const page = pageAt(n);
+    if (page < 0) return false;
+    seen.add(n);
+    const head = page + (n === 1 ? 100 : 0);
+    const kind = b[head];
+    const cells = u16(b, head + 3);
+    if (kind === 0x05) {
+      for (let c = 0; c < cells; c++) {
+        if (!walk(u32(b, page + u16(b, head + 12 + c * 2)))) return false;
+      }
+      return walk(u32(b, head + 8));
+    }
+    if (kind !== 0x0d) return false;
+    for (let c = 0; c < cells; c++) {
+      let at = page + u16(b, head + 8 + c * 2);
+      const [size, l1] = varint(b, at);
+      at += l1;
+      at += varint(b, at)[1]; // the rowid
+      if (size > 16 * 1024 * 1024) return false;
+      const bytes = payload(at, size);
+      if (!bytes) return false;
+      const read = (i: number) => b[bytes[i] ?? -1] ?? 0;
+      const record = Uint8Array.from({ length: Math.min(size, 64) }, (_, i) => read(i));
+      // Record header: its length, then one serial type per column (type, name, tbl_name,
+      // rootpage, sql).
+      const [headerSize, hl] = varint(record, 0);
+      let h = hl;
+      let data = headerSize;
+      for (let col = 0; col < 5 && h < headerSize; col++) {
+        const [t, tl] = varint(record, h);
+        h += tl;
+        const len = serialSize(t);
+        if (col === 4 && t >= 13 && t % 2 === 1) out.push(bytes.slice(data, data + len));
+        data += len;
+      }
+    }
+    return true;
+  };
+  return walk(1) ? out : null;
+}
 
 /**
  * Make Anki's collection file openable by a plain SQLite in memory:
  * - Anki writes it in WAL journal mode (header bytes 18–19 are 2), which a database opened from
  *   bytes cannot use: the copy is marked as a rollback-journal file (1). The file is complete.
  * - The current schema declares text columns `COLLATE unicase`, a collation only Anki registers;
- *   without it SQLite refuses those tables. The declaration is swapped for `COLLATE binary `
- *   (the same length, so no record moves). Kenning never sorts or filters by those columns.
+ *   without it SQLite refuses those tables. Neither SQLite Kenning uses (node:sqlite,
+ *   sqlite-wasm through its worker) can add a collation, so the declaration is swapped for
+ *   `COLLATE binary ` (the same length, so nothing moves) in the schema's SQL text only, found
+ *   by walking the schema table's pages: note text that happens to say "COLLATE unicase" is
+ *   left alone. Kenning never sorts or filters by those columns.
  */
 function openableCollection(bytes: Uint8Array): Uint8Array {
   const wal = bytes.length >= 20 && (bytes[18] === 2 || bytes[19] === 2);
-  const at: number[] = [];
-  outer: for (let i = bytes.indexOf(UNICASE[0]!); i >= 0; i = bytes.indexOf(UNICASE[0]!, i + 1)) {
-    for (let j = 1; j < UNICASE.length; j++) if (bytes[i + j] !== UNICASE[j]) continue outer;
-    at.push(i);
+  const patches: number[][] = [];
+  for (const sql of schemaSqlOffsets(bytes) ?? []) {
+    let text = "";
+    for (const i of sql) text += String.fromCharCode(bytes[i]!);
+    text = text.toLowerCase();
+    for (let i = text.indexOf(UNICASE); i >= 0; i = text.indexOf(UNICASE, i + 1)) {
+      const after = text.charCodeAt(i + UNICASE.length);
+      // A whole word: not the start of a longer name.
+      if (!/[a-z0-9_$]/.test(String.fromCharCode(after || 32))) {
+        patches.push(sql.slice(i, i + UNICASE.length));
+      }
+    }
   }
-  if (!wal && at.length === 0) return bytes;
+  if (!wal && patches.length === 0) return bytes;
   const copy = bytes.slice();
   if (wal) {
     copy[18] = 1;
     copy[19] = 1;
   }
-  for (const i of at) copy.set(BINARY, i);
+  for (const at of patches) at.forEach((offset, j) => (copy[offset] = BINARY[j]!));
   return copy;
 }
 
 /** Read a package's collection and media list. */
 export async function readAnkiPackage(file: Uint8Array, open: OpenSqlite): Promise<AnkiCollection> {
-  let entries: Record<string, Uint8Array>;
-  try {
-    entries = unzipSync(file);
-  } catch {
-    throw new AnkiPackageError("This is not an Anki package (.apkg or .colpkg).");
-  }
+  const entries = unzipLimited(file);
   const latest = entries["collection.anki21b"];
   const legacy = entries["collection.anki21"] ?? entries["collection.anki2"];
   const raw = latest ? unzstd(latest) : legacy;

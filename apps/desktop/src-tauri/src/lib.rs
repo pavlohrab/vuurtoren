@@ -13,6 +13,7 @@
 //! (no webCorsOriginList setup), and the commands each mode may use.
 
 mod db;
+mod keys;
 mod proxy;
 mod sidecar;
 mod sync;
@@ -58,6 +59,9 @@ struct Config {
     database: Option<String>,
     /// Folders the user picked to sync through; the page may only reach files inside these.
     sync_roots: Vec<String>,
+    /// Addresses (`https://host:port`) the user allowed sync requests to; `sync_fetch` reaches
+    /// nothing else.
+    sync_hosts: Vec<String>,
 }
 
 impl Config {
@@ -81,6 +85,12 @@ struct State {
     config: Mutex<Config>,
     path: PathBuf,
     client: reqwest::Client,
+    /// For sync places: redirects only within the same address (`sync::redirect_policy`).
+    sync_client: reqwest::Client,
+    /// Sync addresses the user declined since the app started (not asked again until restart).
+    sync_declined: Mutex<Vec<String>>,
+    /// The fallback file for the sync key (`keys.rs`), in the app data folder.
+    key_file: PathBuf,
     db: Mutex<Option<OpenDb>>,
     sidecar: sidecar::Sidecar,
     /// The default database file (`<Documents>/Kenning/kenning.sqlite`).
@@ -418,7 +428,7 @@ async fn db_exec(
     params: Vec<Json>,
     state: tauri::State<'_, State>,
 ) -> Result<Vec<Json>, String> {
-    with_db(&state, |open| db::exec(&open.conn, &sql, &params))
+    with_db(&state, |open| db::page_exec(&open.conn, &sql, &params))
 }
 
 #[tauri::command]
@@ -643,8 +653,60 @@ struct SyncResponse {
     body_base64: String,
 }
 
+/// Allow sync requests to the address of `url` (a sync place the user just set up). The first
+/// time, the app asks the user itself, so a page cannot quietly send requests elsewhere.
+#[tauri::command]
+async fn sync_allow_host(
+    url: String,
+    app: AppHandle,
+    state: tauri::State<'_, State>,
+) -> Result<(), String> {
+    let (parsed, _) = sync::check_request(&url, "GET")?;
+    let origin = sync::origin(&parsed);
+    if state.config.lock().unwrap().sync_hosts.contains(&origin) {
+        return Ok(());
+    }
+    let host = parsed.host_str().unwrap_or_default().to_string();
+    // Asked once per start: automatic syncs do not bring the question back every minute.
+    let not_allowed = || {
+        format!("Sync with {host} was not allowed. To allow it after all, restart Kenning and sync again.")
+    };
+    if state.sync_declined.lock().unwrap().contains(&origin) {
+        return Err(not_allowed());
+    }
+    let plain = if parsed.scheme() == "http" {
+        "\n\nThis address does not use https, so use it only on a network you trust."
+    } else {
+        ""
+    };
+    let dialog = app
+        .dialog()
+        .message(format!(
+            "Kenning will send your encrypted sync files to {origin}.{plain}\n\nAllow this only for a sync place you set up yourself."
+        ))
+        .title(format!("Sync with {host}?"))
+        .buttons(MessageDialogButtons::OkCancelCustom(
+            "Allow".into(),
+            "Cancel".into(),
+        ));
+    let allowed = tauri::async_runtime::spawn_blocking(move || dialog.blocking_show())
+        .await
+        .unwrap_or(false);
+    if !allowed {
+        state.sync_declined.lock().unwrap().push(origin);
+        return Err(not_allowed());
+    }
+    let mut config = state.config.lock().unwrap();
+    if !config.sync_hosts.contains(&origin) {
+        config.sync_hosts.push(origin);
+        state.save(&config)?;
+    }
+    Ok(())
+}
+
 /// A request to a sync place (WebDAV, a Kenning server), sent from Rust: no browser Origin, so
-/// no CORS setup on that server. No cookies are kept.
+/// no CORS setup on that server. Only to addresses the user allowed (`sync_allow_host`); no
+/// cookies, no redirects to another address, and the answer is read only up to `MAX_BODY`.
 #[tauri::command]
 async fn sync_fetch(
     req: SyncRequest,
@@ -652,12 +714,24 @@ async fn sync_fetch(
 ) -> Result<SyncResponse, String> {
     use base64::Engine as _;
     let (url, method) = sync::check_request(&req.url, &req.method)?;
+    if !state
+        .config
+        .lock()
+        .unwrap()
+        .sync_hosts
+        .contains(&sync::origin(&url))
+    {
+        return Err(format!(
+            "Sync with {} is not allowed yet. Set up the sync place again in Settings.",
+            url.host_str().unwrap_or_default()
+        ));
+    }
     let method = reqwest::Method::from_bytes(method.as_bytes()).map_err(|e| e.to_string())?;
     let mut builder = state
-        .client
+        .sync_client
         .request(method, url)
         .timeout(Duration::from_secs(120));
-    for (name, value) in &req.headers {
+    for (name, value) in sync::request_headers(&req.headers) {
         builder = builder.header(name, value);
     }
     if let Some(body) = req.body_base64 {
@@ -677,24 +751,40 @@ async fn sync_fetch(
         }
     })?;
     let status = res.status().as_u16();
-    let headers = res
-        .headers()
-        .iter()
-        .filter_map(|(k, v)| {
-            v.to_str()
-                .ok()
-                .map(|v| (k.as_str().to_string(), v.to_string()))
-        })
-        .collect();
-    let bytes = res.bytes().await.map_err(|e| e.to_string())?;
-    if bytes.len() > sync::MAX_BODY {
-        return Err("The sync place sent more than a sync file can hold.".into());
-    }
+    let headers = sync::response_headers(res.headers());
+    let bytes = sync::read_capped(res, sync::MAX_BODY).await?;
     Ok(SyncResponse {
         status,
         headers,
         body_base64: B64.encode(&bytes),
     })
+}
+
+/// Keep the sync key (base64) in the system keychain, or in a private file when there is none.
+/// Says where it went: "keychain" or "file".
+#[tauri::command]
+async fn sync_key_save(key: String, state: tauri::State<'_, State>) -> Result<keys::Kept, String> {
+    let file = state.key_file.clone();
+    tauri::async_runtime::spawn_blocking(move || keys::save(&key, &file))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+/// The kept sync key (base64), or None.
+#[tauri::command]
+async fn sync_key_load(state: tauri::State<'_, State>) -> Result<Option<String>, String> {
+    let file = state.key_file.clone();
+    tauri::async_runtime::spawn_blocking(move || keys::load(&file))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn sync_key_forget(state: tauri::State<'_, State>) -> Result<(), String> {
+    let file = state.key_file.clone();
+    tauri::async_runtime::spawn_blocking(move || keys::forget(&file))
+        .await
+        .map_err(|e| e.to_string())?
 }
 
 /// Where a move to `dir` puts the file; refuses to overwrite another database.
@@ -953,6 +1043,10 @@ pub fn run() {
             sync_dir_put,
             sync_dir_remove,
             sync_fetch,
+            sync_allow_host,
+            sync_key_save,
+            sync_key_load,
+            sync_key_forget,
             db_open,
             db_exec,
             db_close,
@@ -988,6 +1082,11 @@ pub fn run() {
             let client = reqwest::Client::builder()
                 .user_agent(concat!("Kenning-Desktop/", env!("CARGO_PKG_VERSION")))
                 .build()?;
+            let sync_client = reqwest::Client::builder()
+                .user_agent(concat!("Kenning-Desktop/", env!("CARGO_PKG_VERSION")))
+                .redirect(sync::redirect_policy())
+                .build()?;
+            let key_file = app.path().app_data_dir()?.join(keys::KEY_FILE);
             let documents = app
                 .path()
                 .document_dir()
@@ -999,6 +1098,9 @@ pub fn run() {
                 config: Mutex::new(config),
                 path,
                 client,
+                sync_client,
+                sync_declined: Mutex::new(Vec::new()),
+                key_file,
                 db: Mutex::new(None),
                 sidecar: sidecar::Sidecar::default(),
                 default_db: db::default_path(&documents),

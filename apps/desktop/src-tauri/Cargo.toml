@@ -26,11 +26,14 @@ tauri-plugin-opener = "=2.7.3"
 reqwest = { version = "0.13", default-features = false, features = ["rustls-no-provider"] }
 rustls = { version = "0.23", default-features = false, features = ["ring"] }
 # Offline mode: the local database file and the language-server sidecar.
-rusqlite = { version = "0.37", features = ["bundled"] }
+rusqlite = { version = "0.37", features = ["bundled", "hooks"] }
 base64 = "0.23"
 gethostname = "1"
 getrandom = "0.3"
 tokio = { version = "1", features = ["time"] }
+# The sync key in the system keychain (macOS Keychain, Windows Credential Manager, the Secret
+# Service on Linux through libdbus, which the window toolkit links already).
+keyring = { version = "=3.6.3", features = ["apple-native", "windows-native", "sync-secret-service", "crypto-rust"] }
 
 [dev-dependencies]
 tempfile = "3"

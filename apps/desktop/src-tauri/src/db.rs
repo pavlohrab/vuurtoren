@@ -15,6 +15,7 @@ use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use base64::Engine as _;
+use rusqlite::hooks::{AuthAction, AuthContext, Authorization};
 use rusqlite::types::{Value, ValueRef};
 use rusqlite::{Connection, OpenFlags};
 use serde::{Deserialize, Serialize};
@@ -102,6 +103,129 @@ pub fn exec(conn: &Connection, sql: &str, params: &[Json]) -> Result<Vec<Json>, 
         out.push(Json::Object(obj));
     }
     Ok(out)
+}
+
+// ------------------------------------------------------------------- the page's statements
+
+/// The table the app's history lives in: append-only, the one thing sync and every projection
+/// are rebuilt from.
+const EVENTS: &str = "EVENTS";
+
+/// Words of a statement outside string literals and comments, upper-cased, plus `.` and `;`.
+/// Quoted names (`"events"`, `[events]`, `` `events` ``) count as plain words. Only the guard's
+/// rough view of the SQL: SQLite parses it for real.
+fn words(sql: &str) -> Vec<String> {
+    let b = sql.as_bytes();
+    let mut out = Vec::new();
+    let mut i = 0;
+    while i < b.len() {
+        let c = b[i];
+        if c == b'\'' {
+            // A string literal; '' inside it reads as two literals, which is fine here.
+            i += 1;
+            while i < b.len() && b[i] != b'\'' {
+                i += 1;
+            }
+            i += 1;
+        } else if c == b'-' && b.get(i + 1) == Some(&b'-') {
+            while i < b.len() && b[i] != b'\n' {
+                i += 1;
+            }
+        } else if c == b'/' && b.get(i + 1) == Some(&b'*') {
+            i += 2;
+            while i < b.len() && !(b[i] == b'*' && b.get(i + 1) == Some(&b'/')) {
+                i += 1;
+            }
+            i += 2;
+        } else if matches!(c, b'"' | b'`' | b'[') {
+            let close = if c == b'[' { b']' } else { c };
+            let start = i + 1;
+            i = start;
+            while i < b.len() && b[i] != close {
+                i += 1;
+            }
+            out.push(sql[start..i.min(b.len())].to_ascii_uppercase());
+            i += 1;
+        } else if c.is_ascii_alphanumeric() || c == b'_' || c >= 0x80 {
+            let start = i;
+            while i < b.len() && (b[i].is_ascii_alphanumeric() || b[i] == b'_' || b[i] >= 0x80) {
+                i += 1;
+            }
+            out.push(sql[start..i].to_ascii_uppercase());
+        } else {
+            if c == b'.' || c == b';' {
+                out.push((c as char).to_string());
+            }
+            i += 1;
+        }
+    }
+    out
+}
+
+/// Why a statement from the page is refused, if it is. The page runs the app's own SQL; these
+/// are things that SQL never does and that would reach past the database or reshape the
+/// history: other files (`ATTACH`, `VACUUM INTO`), and renaming the events table or dropping
+/// its columns (its migrations only ever add one).
+fn refused(sql: &str) -> Option<&'static str> {
+    let w = words(sql);
+    let at = |i: usize| w.get(i).map(String::as_str);
+    for (i, word) in w.iter().enumerate() {
+        match word.as_str() {
+            "ATTACH" | "DETACH" => return Some("Other database files cannot be opened here."),
+            "VACUUM" => return Some("The database file is copied and compacted by the app."),
+            "ALTER" if at(i + 1) == Some("TABLE") => {
+                // ALTER TABLE [schema .] name ADD ...
+                let name = if at(i + 3) == Some(".") { i + 4 } else { i + 2 };
+                if at(name) == Some(EVENTS) && at(name + 1) != Some("ADD") {
+                    return Some("The history table can only gain columns.");
+                }
+            }
+            _ => {}
+        }
+    }
+    None
+}
+
+/// What SQLite may do while it runs a statement from the page: no other database files, no
+/// dropping the events table or its append-only trigger, no editing the schema by hand.
+fn page_authorizer(ctx: AuthContext<'_>) -> Authorization {
+    let events = |t: &str| t.eq_ignore_ascii_case(EVENTS);
+    match ctx.action {
+        AuthAction::Attach { .. } | AuthAction::Detach { .. } => Authorization::Deny,
+        AuthAction::DropTable { table_name } | AuthAction::DropTempTable { table_name }
+            if events(table_name) =>
+        {
+            Authorization::Deny
+        }
+        AuthAction::DropTrigger { table_name, .. }
+        | AuthAction::DropTempTrigger { table_name, .. }
+            if events(table_name) =>
+        {
+            Authorization::Deny
+        }
+        AuthAction::Pragma {
+            pragma_name,
+            pragma_value: Some(_),
+        } if pragma_name.eq_ignore_ascii_case("writable_schema") => Authorization::Deny,
+        AuthAction::Function { function_name }
+            if function_name.eq_ignore_ascii_case("load_extension") =>
+        {
+            Authorization::Deny
+        }
+        _ => Authorization::Allow,
+    }
+}
+
+/// A statement (or script) from the web app: `exec` behind the guards above. The app's own
+/// operations in Rust (backup copies, moving the file) do not go through here.
+pub fn page_exec(conn: &Connection, sql: &str, params: &[Json]) -> Result<Vec<Json>, String> {
+    if let Some(why) = refused(sql) {
+        return Err(why.into());
+    }
+    conn.authorizer(Some(page_authorizer));
+    let result = exec(conn, sql, params);
+    conn.authorizer(None::<fn(AuthContext<'_>) -> Authorization>);
+    result
 }
 
 pub fn open_conn(path: &Path) -> Result<Connection, String> {
@@ -470,6 +594,66 @@ mod tests {
                 "kenning.sync-conflict-20261118-101010-ABCDEF.sqlite",
             ]
         );
+    }
+
+    #[test]
+    fn the_page_runs_the_apps_sql_but_cannot_reach_other_files_or_reshape_the_history() {
+        let dir = tempfile::tempdir().unwrap();
+        let c = open_conn(&dir.path().join(DB_FILE)).unwrap();
+        // The app's own kind of statements: schema, migrations, compaction, pragmas.
+        for sql in [
+            "CREATE TABLE events (id TEXT PRIMARY KEY, payload TEXT NOT NULL)",
+            "CREATE TRIGGER events_no_update BEFORE UPDATE ON events
+               BEGIN SELECT RAISE(ABORT, 'events is append-only'); END",
+            "CREATE TABLE notes (x); ALTER TABLE notes ADD COLUMN y TEXT; DROP TABLE notes;",
+            "ALTER TABLE events ADD COLUMN v INTEGER NOT NULL DEFAULT 1",
+            "PRAGMA user_version = 3",
+            "INSERT INTO events (id, payload) VALUES ('a', 'attach vacuum'), ('b', '{}')",
+            "DELETE FROM events WHERE id = 'b'",
+        ] {
+            page_exec(&c, sql, &[]).unwrap_or_else(|e| panic!("{sql}: {e}"));
+        }
+        assert_eq!(
+            page_exec(&c, "SELECT count(*) AS n FROM events", &[]).unwrap(),
+            vec![json!({ "n": 1 })]
+        );
+        let outside = dir.path().join("outside.sqlite");
+        for sql in [
+            format!("ATTACH '{}' AS x", outside.display()),
+            "ATTACH ? AS x".into(),
+            format!("VACUUM INTO '{}'", outside.display()),
+            "vacuum".into(),
+            "DROP TABLE events".into(),
+            "DROP TABLE IF EXISTS main.\"events\"".into(),
+            "DROP TRIGGER events_no_update".into(),
+            "ALTER TABLE events RENAME TO old".into(),
+            "ALTER TABLE main.[events] DROP COLUMN v".into(),
+            "ALTER TABLE events RENAME COLUMN payload TO p".into(),
+            "PRAGMA writable_schema = ON".into(),
+            "SELECT load_extension('x')".into(),
+            "SELECT 1; /* a script */ DROP TABLE events;".into(),
+        ] {
+            let params = if sql.contains('?') {
+                vec![json!(outside.to_string_lossy())]
+            } else {
+                vec![]
+            };
+            assert!(
+                page_exec(&c, &sql, &params).is_err(),
+                "{sql} should be refused"
+            );
+        }
+        assert!(!outside.exists());
+        assert_eq!(
+            page_exec(&c, "SELECT count(*) AS n FROM events", &[]).unwrap(),
+            vec![json!({ "n": 1 })]
+        );
+        // The guard is for the page only: the app's own backup copy still works.
+        assert!(!export(&c, &dir.path().join("copy.sqlite"))
+            .unwrap()
+            .is_empty());
+        // Words inside literals and comments do not count.
+        assert_eq!(refused("SELECT 'VACUUM' -- ATTACH\n /* DETACH */"), None);
     }
 
     #[test]

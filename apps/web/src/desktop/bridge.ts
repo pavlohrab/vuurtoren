@@ -105,7 +105,23 @@ export interface DesktopSync {
   /** Written whole (a temporary file, then renamed), creating folders as needed. */
   put(root: string, path: string, bytes: Uint8Array): Promise<void>;
   remove(root: string, path: string): Promise<void>;
-  /** An HTTP request sent by the app (http/https, the methods a sync place needs). */
+  /**
+   * Allow `fetch` to reach the address (scheme, host and port) of `url`. The first time, the
+   * app asks the user in its own dialog; rejects when they decline. Optional: older builds and
+   * test fakes have no list of allowed addresses.
+   */
+  allowHost?(url: string): Promise<void>;
+  /**
+   * The sync key (base64) in the system keychain, or a file only this user can read when the
+   * system has none; resolves with where it went. Use `../sync/keyStore.ts` rather than these.
+   */
+  saveKey?(key: string): Promise<"keychain" | "file">;
+  loadKey?(): Promise<string | null>;
+  forgetKey?(): Promise<void>;
+  /**
+   * An HTTP request sent by the app (http/https, the methods a sync place needs), only to an
+   * allowed address; redirects to another address come back as they are, and no cookies.
+   */
   fetch(req: {
     url: string;
     method: string;

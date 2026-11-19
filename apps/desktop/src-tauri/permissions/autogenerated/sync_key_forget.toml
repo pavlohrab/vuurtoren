@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-sync-key-forget"
+description = "Enables the sync_key_forget command without any pre-configured scope."
+commands.allow = ["sync_key_forget"]
+
+[[permission]]
+identifier = "deny-sync-key-forget"
+description = "Denies the sync_key_forget command without any pre-configured scope."
+commands.deny = ["sync_key_forget"]
