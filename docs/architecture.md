@@ -1,8 +1,7 @@
 # Architecture
 
-A short map of the code as it is now: which package owns what, how a click reaches the data,
-and where to put new code. The why is in the [ADRs](adr/); the algorithms are in
-[algorithms.md](algorithms.md).
+Which package owns what and how a click reaches the data. Rules: [decisions.md](decisions.md).
+Algorithms: [algorithms.md](algorithms.md).
 
 ## Packages
 
@@ -13,13 +12,13 @@ Dependencies point down; nothing in `packages/` imports from `apps/`.
 | `packages/core`       | Pure domain logic: learner model and evidence, token matching, reading planner and staircase, practice engine and FSRS, courses, language profile, the `InspectorEntry` DTO. No I/O. | —                                     |
 | `packages/content`    | Grammar topics and exam content (Markdown, generated and validated at build).                                                                                                        | —                                     |
 | `packages/db`         | The append-only event log, projections and the `KenningRepository` API; drivers for browser SQLite (OPFS worker), Node and HTTP (server mode).                                       | core                                  |
-| `packages/anki`       | AnkiConnect client, deck detection, snapshots, and the one command layer for Anki writes (add, study first, mark known; ADR 0007).                                                   | core                                  |
+| `packages/anki`       | AnkiConnect client, deck detection, snapshots, and the one command layer for Anki writes (add, study first, mark known).                                                             | core                                  |
 | `packages/nlp-client` | HTTP client of `server/nlp` and the cached practice-data source.                                                                                                                     | —                                     |
 | `packages/ai`         | Bring-your-own-key providers, prompts, story / sentence / exam generators and their checks, the per-device key store.                                                                | core                                  |
 | `packages/ui`         | Design-system components (reader, word inspector, cards, controls). Renders DTOs from core; no services.                                                                             | core                                  |
 | `packages/mcp-tools`  | The MCP tools shared by `apps/mcp` (stdio) and `server/api` (HTTP).                                                                                                                  | core, content, db, ai                 |
 | `apps/web`            | The React PWA.                                                                                                                                                                       | all of the above                      |
-| `apps/desktop`        | Tauri v2 desktop shell: Connect screen host, Anki bridge, updater ([desktop.md](desktop.md)).                                                                                        | (loads apps/web)                      |
+| `apps/desktop`        | Tauri v2 desktop app: local SQLite file, bundled language server, Anki bridge, updater.                                                                                              | (loads apps/web)                      |
 | `apps/mcp`            | stdio MCP server.                                                                                                                                                                    | mcp-tools, core, db, anki, nlp-client |
 | `server/api`          | Server storage mode: sign-in, one SQLite file behind RPC, HTTP MCP.                                                                                                                  | mcp-tools, core, db, nlp-client       |
 | `server/nlp`          | Python language server: analysis (spaCy), dictionary, forms, sentences, grammar detectors, OCR, translation.                                                                         | —                                     |
@@ -56,7 +55,7 @@ composition root. Each domain module gets only what it needs:
 
 | Module              | Domain                                                                                                            |
 | ------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| `platform.ts`       | `Platform`: `fetch` and device storage (review A20); `browserPlatform()` by default.                              |
+| `platform.ts`       | `Platform`: `fetch` and device storage; `browserPlatform()` by default.                                           |
 | `liveSettings.ts`   | Settings (secrets in device storage), the NLP and AnkiConnect clients, Anki connection status.                    |
 | `liveLearner.ts`    | Learner-model and staircase cache with a version counter (`changed()` makes plans stale).                         |
 | `liveDictionary.ts` | Glosses (card gloss, then Wiktionary), sentence translation, both cached.                                         |
@@ -69,8 +68,7 @@ composition root. Each domain module gets only what it needs:
 | `liveExam.ts`       | Exam attempts.                                                                                                    |
 | `liveCourses.ts`    | Composition of `courses/`: `context` (shared lookups), `import`, `packs`, `views`, `anki`, `practice`, `grammar`. |
 
-`mock*.ts` implement the same `AppServices` for `?demo` and for most screen tests (review A6:
-replacing them with the live services over a seeded repository is still open).
+`mock*.ts` implement the same `AppServices` for `?demo` and for screen tests.
 
 ## Data flow
 
@@ -91,11 +89,11 @@ flowchart LR
   reading plans, glosses) and drop the caches on `changed()` or when another device wrote
   (server mode, `checkRemoteChanges`).
 - **Anki** is read for snapshots and live card state; it is written only by the commands in
-  `@app/anki` (ADR 0007), each of which also records its event.
+  `@app/anki`, each of which also records its event.
 - **Degraded modes** (NLP, Anki, AI, translation, storage) report to one signal
   (`services/degraded.ts`) shown in the top bar.
 
-## Language server data packs (D1)
+## Language server data packs
 
 The NLP image holds code and libraries only; its data are versioned **data packs** on the
 `/data` volume (`server/nlp/src/kenning_nlp/packs.py`, manifest `packs.json` next to it):
@@ -121,9 +119,8 @@ The NLP image holds code and libraries only; its data are versioned **data packs
 - **Releasing new data**: bump the pack's version in `packs.json`, run
   `uv run python scripts/build_packs.py --out dist/packs`, upload `dist/packs/*` as assets of a
   `packs-<version>` release (the `packs` workflow does both) and commit the updated `packs.json`.
-  The repository is private for now, so `KENNING_PACKS_URL` has no default: set it to wherever the
-  archives are reachable, or let the server build them.
-- **Analyzer version** (review A4): `GET /health` and every `/analyze/text` result carry
+  By default the server downloads them from this repository's GitHub releases.
+- **Analyzer version**: `GET /health` and every `/analyze/text` result carry
   `analyzerVersion` (hash of the spaCy/model/library versions, the token-shaping modules, the
   grammar detectors and the installed dictionary pack). `TextAnalyzed` events store it
   (`text_tokens.analyzer_version`); the reader re-analyses a text stored with another version once,

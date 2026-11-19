@@ -1,182 +1,104 @@
-# AI in Kenning (bring your own key)
+# AI (optional, your own key)
 
-AI is optional. Without it the reader, practice and Anki integration work as before. With it you get:
+Without AI everything else works. With a provider set you also get:
 
-- **Converse** (`/converse`): a short chat in Dutch with a partner that stays within the words you know, corrects your messages and offers new words for Anki.
-- **Explain this sentence** (under the word inspector in the reader).
-- **Simplify this page** (in the reader): a rewrite at your coverage target, shown beside the original with both coverage scores. It never replaces the text.
-- **Create a story** (Library, a grammar topic page, a course unit): a new text at your level with a few words to learn, saved to your Library ([Stories](#stories)).
-- **Fill gaps with AI sentences** (Practice): checked example sentences for words that have too few ([AI example sentences](#ai-example-sentences)).
+- **Talk**: a short chat in Dutch that stays within the words you know, corrects your messages and
+  offers new words for Anki.
+- **Explain this sentence** and **Simplify this page** in the reader.
+- **Create a story** (Library, grammar topic, course unit): a text at your level, saved to the
+  Library.
+- **Fill gaps with AI sentences** in Practice, and **Generate exercises like this unit** in a course.
+- Examiner-style feedback on exam writing and speaking.
 
-These buttons are hidden until a provider is configured.
+The buttons stay hidden until a provider is set.
 
 ## Providers
 
-Settings, AI. Pick a provider, paste your key, pick a model, press **Test**.
+Settings → AI: pick a provider, paste the key, pick a model, press **Test**. The model list comes
+from the provider; any name can be typed.
 
-The **Model** field is a searchable list. Once a key is entered (or saved) Kenning asks the provider for its models (`GET {address}/models` for OpenAI-compatible providers, Gemini and LM Studio; `GET /v1/models` for Anthropic; Ollama's `/v1/models`, else `/api/tags`), drops non-chat models (embeddings, speech, images) and keeps the list for the session. When the provider cannot be asked from the browser (no key yet, CORS, offline) a short curated list per provider is shown instead. The preset's default is always first, marked **Recommended**, and any other name can be typed.
+| Provider          | Address                                                   | Default model             |
+| ----------------- | --------------------------------------------------------- | ------------------------- |
+| Anthropic         | `https://api.anthropic.com`                               | `claude-haiku-5-5`        |
+| OpenAI            | `https://api.openai.com/v1`                               | `gpt-5-mini`              |
+| Google Gemini     | `https://generativelanguage.googleapis.com/v1beta/openai` | `gemini-2.5-flash`        |
+| OpenRouter        | `https://openrouter.ai/api/v1`                            | `google/gemini-2.5-flash` |
+| Groq              | `https://api.groq.com/openai/v1`                          | `llama-3.3-70b-versatile` |
+| DeepSeek          | `https://api.deepseek.com/v1`                             | `deepseek-chat`           |
+| Mistral           | `https://api.mistral.ai/v1`                               | `mistral-small-latest`    |
+| Ollama (local)    | `http://localhost:11434/v1`                               | `llama3.2`                |
+| LM Studio (local) | `http://localhost:1234/v1`                                | `local-model`             |
+| Other             | any OpenAI-compatible address                             | your model                |
 
-| Provider          | Address (preset)                                          | Default model             | Notes                                                                             |
-| ----------------- | --------------------------------------------------------- | ------------------------- | --------------------------------------------------------------------------------- |
-| Anthropic         | `https://api.anthropic.com`                               | `claude-haiku-5-5`        | Native Messages API, prompt caching on the static prompt. API key, not claude.ai. |
-| OpenAI            | `https://api.openai.com/v1`                               | `gpt-5-mini`              |                                                                                   |
-| Google Gemini     | `https://generativelanguage.googleapis.com/v1beta/openai` | `gemini-2.5-flash`        | OpenAI-compatible endpoint, AI Studio key.                                        |
-| OpenRouter        | `https://openrouter.ai/api/v1`                            | `google/gemini-2.5-flash` | Many models; some free with rate limits.                                          |
-| Groq              | `https://api.groq.com/openai/v1`                          | `llama-3.3-70b-versatile` |                                                                                   |
-| DeepSeek          | `https://api.deepseek.com/v1`                             | `deepseek-chat`           |                                                                                   |
-| Mistral           | `https://api.mistral.ai/v1`                               | `mistral-small-latest`    |                                                                                   |
-| Ollama (local)    | `http://localhost:11434/v1`                               | `llama3.2`                | No key. Start Ollama with `OLLAMA_ORIGINS` set to the app's address.              |
-| LM Studio (local) | `http://localhost:1234/v1`                                | `local-model`             | No key. Enable the local server and CORS.                                         |
-| Other             | your address                                              | your model                | Anything that speaks the OpenAI Chat Completions API.                             |
+Ollama needs `OLLAMA_ORIGINS` set to Kenning's address. LM Studio needs its local server and CORS
+on.
 
-Model names change often; the defaults are cheap and fast and you can pick or type any model your provider offers.
+**Cost:** a 20-turn conversation, a story or a full sentence fill each cost well under a cent on
+small models. Settings shows a local monthly tally; set a hard limit with your provider.
 
-**Implementation choice.** `packages/ai` uses `fetch` directly (two small adapters: OpenAI-compatible and native Anthropic) instead of the Vercel AI SDK or the vendor SDKs. The app needs one JSON chat call, a cache breakpoint and good error messages; the SDKs would add hundreds of kB to the browser bundle and hide the exact request shape (headers, `cache_control`) that the tests pin down. Streaming is not implemented; replies are short.
+## Privacy
 
-## Privacy and keys
+- Requests go from your device straight to the provider. There is no Kenning proxy.
+- The key is stored on this device only. It is never in your data, backups or the server.
+  An optional passphrase encrypts it (AES-GCM, PBKDF2 250,000 iterations).
+- Sent to the provider: the topic, target words, a grammar point, your vocabulary estimate and
+  200–400 known lemmas. Never your Library texts, Anki content or identifiers.
+- Conversations, stories and generated sentences are saved in your data, so backups include them.
 
-- Requests go **from your browser straight to the provider**. There is no Kenning proxy.
-- The key is stored **on this device only**, in the browser's `localStorage` (also when you use the server storage mode). It is never written to the event log, the database, backups, exports or sync, and the server never sees it.
-- Optional passphrase: the key is encrypted with AES-GCM (key derived by PBKDF2, 250,000 iterations) via WebCrypto. You unlock it once per session. Without a passphrase the key is stored as plain text, which is only as safe as your browser profile. Use a key with a spend limit.
-- Conversation text (your messages, the partner's replies, corrections, new words) **is** stored as events (`ConversationStarted`, `MessageAdded`) in your data, so it is included in backups and sync. Words from your vocabulary (a list of 200-400 lemmas) are sent to the provider with each conversation.
-- A passphrase-less key is visible to any script running on the same origin. Kenning loads no third-party scripts.
+## How generated text is checked
 
-## What a conversation costs
+The AI writes, the algorithms check. Nothing generated is graded by the AI.
 
-Each conversation sends a static prompt (rules, level, 200-400 known words, target words), which providers can cache, then the chat history (last 16 messages). Rough numbers for 20 turns: about 60K tokens in, 3K out.
-
-- Small models (Haiku-class, Gemini Flash, Mistral Small): well under one cent.
-- Mid-size models: a few cents.
-- Local models (Ollama): free.
-
-Settings shows a **local tally** for the month (requests and tokens on this device) and a free-text spend note for you. It is not your provider's bill; set a hard limit in the provider's dashboard.
-
-## How Converse keeps to your vocabulary
-
-1. The system prompt lists your level (vocabulary estimate), the topic, up to 400 relevant known lemmas (topic words, words you are learning, then an even sample of the rest) and target words. Asked for JSON: `{reply, corrections:[{original, corrected, explanation}], new_words:[{lemma, gloss, example}]}`.
-2. Each reply is analysed by the language server and its coverage computed against your learner model with the same matcher as the reader (names, numbers and ignored words do not count; declared new words and target words count as known).
-3. Below the threshold (your coverage target minus 3 points, at least 90%) the app makes **one** rewrite request that names the offending words.
-4. Words that remain unknown are glossed inline. If the language server is down, the check is skipped and the chat continues.
-5. If the model answers with invalid JSON, its raw text is shown and no rewrite is attempted.
-
-The coverage chip on each reply shows the final score.
-
-## Stories
-
-**Create a story** opens a dialog: topic, length (short ~150, medium ~300, long ~600 words), kind of text (story, dialogue, news, letter) and a focus:
-
-- **Words to learn now**: words you put first with Learn next, words you looked up while reading, then the shakiest words you are learning (up to 6).
-- **This unit's new words** (from a course unit): the unit's words you do not know yet.
-- **A grammar topic**: the story features that construction (from a topic page it is preselected).
-- **My own words**: type them. The word field is always editable; at most 10 are sent.
-
-How it works (`generateStory` in `packages/ai/src/story.ts`):
-
-1. One request: level (vocabulary estimate), 300 relevant known lemmas (topic and target words first, then words you are learning, then an even sample), the target words, the grammar point and style. JSON answer `{title, text, used_targets}`.
-2. The text is analysed by the language server and scored with the reader's matcher (target words count as known; they are meant to be new).
-3. Below your coverage target minus 3 points (at least 90%): **one** rewrite request that names the offending words (and any missing target words). The rewrite is kept only if coverage does not drop.
-4. Target words are checked in the analysed text (lemma match, separable verbs included), not taken from the model's `used_targets`. The toast after saving names any that are missing.
-5. Invalid JSON: the raw answer is saved as the text (you paid for it), with the topic as title, and no rewrite is attempted. Language server down: the story is saved without the checks.
-
-The story is saved as a Library text (`TextImported` with `source: {kind: "ai", provider, model, targets, topic, grammarTopic?}`; older source kinds are unchanged) and opens in the reader. The Library card shows an **AI story** chip. Words from a story go to Anki through the reader's normal Add to Anki.
-
-**Cost.** About 1-2K tokens in and 300-1,200 out per story, roughly double with the rewrite. The dialog shows the estimate for the chosen length. Small models: well under a cent; mid-size: a few cents.
-
-## AI example sentences
-
-Practice exercises need example sentences. Anki notes, your own texts and Tatoeba cover most words; for the rest, the Practice start screen has **Fill gaps with AI sentences** (on by default when a provider is configured).
-
-- For up to **8 words per session** with fewer than 3 usable sentences (and no earlier AI attempt), the app asks for 5 short sentences each (4-14 words) using your vocabulary (`generateSentences` in `packages/ai/src/examples.ts`). The vocabulary list is in a static, cacheable system prompt; the target word goes in the user message.
-- Every sentence is **validated by the language server** before use, and dropped otherwise:
-  - the target lemma is present (same matcher as the reader; separable verbs count);
-  - the other words are known: coverage at least 90% and at most one unknown word;
-  - no other target word of the request leaks in;
-  - 4-14 words;
-  - for a grammar topic, the server's rule-based detector fires for that topic (its marks and note are kept for the exercise).
-- Accepted sentences are stored as `SentencesGenerated {lang, key, topic?, sentences:[{text, translation?, target?, marks?, note?}], rejected, provider, model}` events (no table; folded by `generatedSentences(lang)`, also over `/api/rpc`), so they are not generated again. An attempt with nothing accepted is stored too, so a hard word is not retried every session.
-- They join the sentence pipeline as `source: "ai"`: after Anki and text sentences, alongside Tatoeba (listed first, so they win a tie). The existing non-AI generators build and grade the exercises; the AI never grades.
-- **Grammar topic practice**: a topic with fewer than 6 hit sentences in your texts and Tatoeba gets one request for 5 sentences showing the construction (when a provider is configured). They feed the sentence exercises (scramble); word exercises (gender, perfect...) still need words from real hits.
-- The session shows a line such as "5 new AI sentences for 2 items · 1 rejected by the checks". A provider error stops the fill and is shown there; practice continues without it.
-
-**Cost.** One request per word: about 1K tokens in (mostly cacheable) and 200-300 out. A full fill of 8 words is roughly 10K in, 2K out: under a cent on small models.
-
-## Unit exercises
-
-On a course unit (Exercises tab, only when a provider is configured): **Generate exercises like this unit** (`generateUnitExercises` in `packages/ai/src/unitExercises.ts`, wired in `liveAI.ts`).
-
-- **Input:** the unit's words (new ones first, at most 12 sent), the kinds of exercises the book's unit has (gap fill and conjugation tables → gap fill; sentence building; choice, open tasks and texts → questions about a short text), and the grammar point the unit's own sentences show most (rule-based detectors over the book's text, the same topics as the Grammar tab). One JSON request: `{gapfill: [{sentence, answer, lemma}], order: [{sentence}], text: {title, text, questions: [{question, options, answer}]}}`.
-- **Validated by the language server**, like AI example sentences; anything that fails is dropped and counted:
-  - gap fill: 4-14 words; a unit word really occurs (reader matcher, separable verbs count) and the gap is exactly its form in the sentence; coverage at least your threshold (90% or more) with the unit's words counted as known, at most one other unknown word;
-  - sentence building: the same coverage and length, a unit word present, and, when the unit has a grammar point, the detector for that topic fires on the sentence;
-  - questions about a text: the text reaches the coverage threshold; each question has distinct options and its right option shares a word with the text.
-- **Matching** (word ↔ meaning) needs no AI: it is built from the unit words' glosses (word list or dictionary).
-- **Stored** as one `UnitExercisesGenerated {courseId, unitN, exercises, rejected, grammarTopic?, provider, model}` event (read from the log, both storage modes, `/api/rpc` allow-list). The exercises are ordinary book-exercise data (`answerSource: "ai"`, numbers from 1001), shown under **Made for this unit**, and **graded by the book checkers** (`checkBookItem`: exact and accent-lenient answers, any verb-second order for sentence building). Answers feed the learner model like book answers (ADR 0011). The AI never grades.
-- **Cost:** one request of about 2K tokens in and 1-2K out per click; well under a cent on small models.
-
-**Explain this unit's grammar** is the Grammar tab: the topics found in the unit's texts, each linked to its topic page (explanation, examples, practice). **Create a story** on a unit uses the unit's new words and that grammar point.
-
-## What is sent (stories and sentences)
-
-To your provider only: the topic, the target words, the grammar topic's title and one-line summary, your vocabulary estimate and a list of 200-300 known lemmas (for unit exercises also the unit's title and up to 12 of its words; never the book's text). No texts from your Library, no Anki content, no keys or identifiers. The generated text and sentences are stored in your data (events), so they are included in backups and sync.
+- **Talk and stories:** the language server analyses the text and the reader's matcher scores
+  coverage against your words. Below your target minus 3 points (at least 90%), one rewrite is
+  asked, naming the offending words. It is kept only if coverage doesn't drop. Words still
+  unknown are glossed.
+- **Example sentences** (up to 8 words per Practice session, 5 sentences each): kept only if the
+  target word is really there, coverage is at least 90% with at most one unknown word, no other
+  target leaks in, the length is 4–14 words, and for a grammar topic the rule-based detector fires.
+  Failed attempts are stored too, so a hard word isn't retried every session.
+- **Unit exercises:** gap fills, sentence building and a text with questions, each checked the
+  same way, then graded by the book's own checkers.
 
 ## Use Kenning from Claude Code
 
-Anthropic does not allow third-party apps to use claude.ai logins or route requests through subscription credentials ([ADR 0005](adr/0005-no-claude-oauth-mcp-instead.md)). Kenning never asks for or stores them. Instead your own Claude Code (or Claude Desktop) runs under your plan and calls Kenning's tools over MCP. No API key is needed.
+Your own Claude Code or Claude Desktop calls Kenning's tools over MCP, under your own plan. No API
+key needed. Kenning never asks for a Claude login.
 
-This needs Kenning in **server mode** (the compose stack with the `api` service): Claude has to reach your data somewhere. In browser storage mode your data lives in one browser only; Settings → AI says so.
+This needs a Kenning server, because Claude must reach your data.
 
-**Connect (once per computer):**
-
-1. Open Kenning, **Settings → AI → Use with Claude Code**, press **Generate token**. The token is shown once; only its hash is stored (in the auth database, never in your data or backups).
-2. Copy the command shown and run it in a terminal:
+1. **Settings → AI → Use with Claude Code → Generate token.**
+2. Run the command shown, for example:
 
    ```sh
    claude mcp add --transport http kenning https://kenning.example.com/api/mcp \
      --header "Authorization: Bearer kmcp_..."
    ```
 
-   For Claude Desktop, copy the JSON shown instead into `claude_desktop_config.json` (it uses the `mcp-remote` bridge).
+   For Claude Desktop, copy the JSON shown into `claude_desktop_config.json`.
 
-3. In Claude Code, `/mcp` lists `kenning` as connected. Then ask, for example:
-   - "Write me an A2 story using my words to learn about cycling and save it to Kenning."
-   - "Quiz me on Thema 3 words."
-   - "Explain the grammar of this sentence: …"
+3. Ask, for example: "Write me an A2 story with my words to learn about cycling and save it to
+   Kenning."
 
-An MCP token opens `/api/mcp` and nothing else (not the app, not `/api/rpc`); revoke it in the same card. The server's `KENNING_TOKEN` also works for `/api/mcp`. With sign-in off (a server on your own computer) no token is needed and the card shows the command without one.
+The token opens `/api/mcp` only; revoke it in the same card.
 
-**Tools** (shared by `/api/mcp` and the stdio server; implementation in `packages/mcp-tools`):
+| Tool                       | Does                                                                |
+| -------------------------- | ------------------------------------------------------------------- |
+| `get_known_words`          | words you know, are learning or have seen                           |
+| `get_words_to_learn`       | the reader's "to learn" words of your recent texts, with a sentence |
+| `check_coverage`           | share of a text you know, and the unknown words                     |
+| `list_texts`, `get_text`   | your Library                                                        |
+| `list_courses`, `get_unit` | your courses, a unit's words, grammar and texts                     |
+| `get_grammar_topic`        | Kenning's grammar pages                                             |
+| `save_text`                | saves a story or exercise to the Library                            |
+| `suggest_words_for_anki`   | queues words under **Words → Suggested by Claude**; you click Add   |
 
-| Tool                     | Purpose                                                                                                                                                                                                                                                                              |
-| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `get_known_words`        | `limit`, `query`, `state`: words you know (or are learning, have seen).                                                                                                                                                                                                              |
-| `get_words_to_learn`     | `textId?`, `limit?`: the reader's amber "to learn" words of your recent (opened) texts, each with a sentence.                                                                                                                                                                        |
-| `check_coverage`         | `text`: share of words you know and the unknown words (target 95-98%). Needs the language server (`KENNING_NLP_URL` on the api).                                                                                                                                                     |
-| `list_texts`, `get_text` | Your Library; one text (truncated at 20,000 characters).                                                                                                                                                                                                                             |
-| `list_courses`           | Your courses and their units.                                                                                                                                                                                                                                                        |
-| `get_unit`               | `unit` (number or title, e.g. "Thema 3"), `courseId?`, `includeTexts?`: words with your state, grammar topics, grammar notes, reading texts.                                                                                                                                         |
-| `get_grammar_topic`      | `id?`, `query?`: Kenning's grammar pages (list, or one page's explanation) so Claude explains grammar the way the app does.                                                                                                                                                          |
-| `save_text`              | `title`, `content`, `topic?`, `targets?`, `grammarTopic?`: saves a story, dialogue or exercise to the Library (source "ai", provider `claude-code`), analysed like any import.                                                                                                       |
-| `suggest_words_for_anki` | `words[]` (`word`, `gloss?`, `sentence?`), `note?`: queues words under **Words → Suggested by Claude**. Nothing is written to Anki ([ADR 0007](adr/0007-anki-write-actions.md)): you press Add (the normal AddToAnki) or Dismiss. Known words and words already in Anki are skipped. |
+The server can't reach the AnkiConnect on your computer, so `/api/mcp` never writes to Anki.
 
-The server cannot reach your AnkiConnect (it runs on your computer, not the server), so `/api/mcp` has no tool that writes to Anki.
+### Local stdio server
 
-**nginx.** `/api/mcp` has its own location behind the same sign-in gate: the gate passes `X-Original-URI`, and `/api/auth/check` accepts MCP tokens only for `/api/mcp`. Answers are not buffered (`proxy_buffering off`), so streamed responses pass straight through.
-
-## Stdio MCP server (`apps/mcp`)
-
-For a Kenning server on your own computer, or when Claude should also add cards to your local Anki: the stdio server offers the same tools plus `add_to_anki` (`word`, `gloss`, `sentence`: a card in the profile's MCP deck right away; Claude should use it only when you ask for that word). It reads your data over `/api/rpc`, so it needs `KENNING_TOKEN` (not an MCP token) when sign-in is on.
-
-Build it once: `pnpm install && pnpm build`. Environment:
-
-| Variable           | Meaning                                                                    |
-| ------------------ | -------------------------------------------------------------------------- |
-| `KENNING_URL`      | Address of your Kenning server, e.g. `http://localhost:8080`. Required.    |
-| `KENNING_TOKEN`    | Bearer token, needed when the server has sign-in on (also sent to `/nlp`). |
-| `KENNING_NLP_URL`  | Language server (default `$KENNING_URL/nlp`).                              |
-| `KENNING_ANKI_URL` | AnkiConnect (default `http://127.0.0.1:8765`); `KENNING_ANKI_KEY` if set.  |
-| `KENNING_DECK`     | Deck override. By default the language profile decides (ADR 0010).         |
-
-**Claude Code:**
+`apps/mcp` offers the same tools plus `add_to_anki`, which adds a card right away. Build with
+`pnpm install && pnpm build`, then:
 
 ```sh
 claude mcp add kenning \
@@ -184,18 +106,10 @@ claude mcp add kenning \
   -- node /path/to/kenning/apps/mcp/dist/main.js
 ```
 
-**Claude Desktop** (`claude_desktop_config.json`):
-
-```json
-{
-  "mcpServers": {
-    "kenning": {
-      "command": "node",
-      "args": ["/path/to/kenning/apps/mcp/dist/main.js"],
-      "env": { "KENNING_URL": "http://localhost:8080", "KENNING_TOKEN": "..." }
-    }
-  }
-}
-```
-
-Then ask, for example: "Have a B1 Dutch conversation with me about cycling. Keep your Dutch to words I know: call check_coverage on each reply before sending it, and rewrite if it is below 95%." The vocabulary limit can only be enforced through these tool calls; the in-app Converse screen enforces it automatically.
+| Variable           | Meaning                                                |
+| ------------------ | ------------------------------------------------------ |
+| `KENNING_URL`      | your Kenning server (required)                         |
+| `KENNING_TOKEN`    | the server's `KENNING_TOKEN`, when sign-in is on       |
+| `KENNING_NLP_URL`  | language server (default `$KENNING_URL/nlp`)           |
+| `KENNING_ANKI_URL` | AnkiConnect (default `http://127.0.0.1:8765`)          |
+| `KENNING_DECK`     | deck override; by default the language profile decides |

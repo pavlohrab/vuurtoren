@@ -2,8 +2,6 @@
 
 This page explains the algorithms behind Kenning's reader, practice and Anki integration. None of them uses a language model. They are deterministic rules, a few statistics and two offline tools: spaCy for Dutch analysis and a small translation model. The numbers below are copied from the code, and each section names the files it describes, so you can check them.
 
-Each section follows the same pattern: **what** it does, **how** it does it, the **numbers**, and the **limits**.
-
 Contents
 
 1. [Anki → learner model](#1-anki--learner-model)
@@ -29,7 +27,7 @@ Kenning has no word list of its own. Your Anki collection is the record of which
 
 1. Every deck with at least 10 notes is sampled: up to 30 random notes per deck. Smaller decks are skipped unless you named them, or unless it is Kenning's own target deck.
 2. Field values are cleaned of HTML, `[sound:…]` tags, cloze markup and furigana (`packages/anki/src/clean.ts`).
-3. Every cleaned value goes through language identification (`server/nlp/src/kenning_nlp/detect.py`): a small naive-Bayes classifier over the `wordfreq` "small" word lists of 10 languages (nl, en, de, fr, es, it, pt, pl; uk and ru after a Cyrillic-script check). Each word scores its log-frequency per language; a word missing from a list scores a floor plus a character-trigram estimate learnt from that list, so rare words still lean the right way. It replaced _lingua_ in D1 (290 MB smaller and more accurate on our cases: Tatoeba sentences 99.8% vs 95.6% Dutch, single common Dutch words 83% vs 64%, English one/two-word glosses 81% vs 60%; docs/research/10-nlp-footprint.md). Only the first 400 characters are examined, and a result with confidence below 0.2 counts as "unknown language".
+3. Every cleaned value goes through language identification (`server/nlp/src/kenning_nlp/detect.py`): a small naive-Bayes classifier over the `wordfreq` "small" word lists of 10 languages (nl, en, de, fr, es, it, pt, pl; uk and ru after a Cyrillic-script check). Each word scores its log-frequency per language; a word missing from a list scores a floor plus a character-trigram estimate learnt from that list, so rare words still lean the right way. Only the first 400 characters are examined, and a result with confidence below 0.2 counts as "unknown language".
 4. Per (deck, note type), each field gets statistics: the share of values detected as Dutch, the share detected as English, and the average number of words.
 5. Fields are scored:
 
@@ -113,7 +111,7 @@ Below the manual mark, **app evidence** (section 1.7) is laid over rows 2–4 an
 
 ### 1.7 Learning in Kenning (app evidence)
 
-**What.** What you show inside Kenning teaches the same learner model the reader and the Words list use (ADR 0011). Mastering a word in Practice, filling it into reader clozes or answering it in a book exercise raises it, even before Anki has seen it. Anki stays the record of known words: app evidence never makes a word `known` and never lowers what Anki says.
+**What.** What you show inside Kenning teaches the same learner model the reader and the Words list use. Mastering a word in Practice, filling it into reader clozes or answering it in a book exercise raises it, even before Anki has seen it. Anki stays the record of known words: app evidence never makes a word `known` and never lowers what Anki says.
 
 **Signals** (`packages/core/src/evidence.ts`, `packages/db/src/projections.ts`):
 
@@ -151,7 +149,7 @@ So three unaided correct answers today give `pKnown = 0.6`: the word counts as "
 
 ## 2. Dutch analysis (NLP service)
 
-Kenning's Python service (`server/nlp`) analyses texts and Anki headwords with the **same** pipeline (ADR 0004). It runs locally, for example in Docker, and sends nothing to third parties.
+Kenning's Python service (`server/nlp`) analyses texts and Anki headwords with the **same** pipeline. It runs locally, for example in Docker, and sends nothing to third parties.
 
 ### 2.1 The spaCy pipeline
 
@@ -276,7 +274,7 @@ A very long sentence stays whole, so a page can be longer than 150 words.
 4. The key's state in the model gives the label: `known`, `learning`, `ignored`, or `new` (no entry, `unknown` or `seen`).
 5. A **detached particle** (`op` in _bel … op_) copies its verb's label and key. It is not counted separately, so a separable verb counts once.
 
-**Limits.** Multi-word deck entries (`op de hoogte`) are not recognised in the reader. Only the M1 report tool (`tools/anki-report`) checks them, with a gap of up to 3 words. Words that are not in any deck, including function words like `ik` or `de`, are `new` with `pKnown = 0` until you mark them known or ignored.
+**Limits.** Multi-word deck entries (`op de hoogte`) are not recognised in the reader. The report tool `tools/anki-report` checks them, with a gap of up to 3 words. Words that are not in any deck, including function words like `ik` or `de`, are `new` with `pKnown = 0` until you mark them known or ignored.
 
 ### 3.3 Coverage
 
@@ -503,7 +501,7 @@ The app checks the synonym rule again with its own dictionary before using a nei
 
 ## 6. What Kenning writes to Anki
 
-Kenning reads Anki freely but **writes only when you click** a button for one word (ADR 0007, `packages/anki/src/actions.ts`, `packages/anki/src/note.ts`). Every write is tagged, so you can find and undo it in Anki's browser.
+Kenning reads Anki freely but **writes only when you click** a button for one word (`packages/anki/src/actions.ts`, `packages/anki/src/note.ts`). Every write is tagged, so you can find and undo it in Anki's browser.
 
 | Button                               | Shown when                          | What happens in Anki                                                                                                                                                                                    | Tag                |
 | ------------------------------------ | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------ |

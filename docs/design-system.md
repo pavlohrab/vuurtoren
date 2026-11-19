@@ -1,6 +1,6 @@
-# Design system: "Night lamp"
+# Design system: "Lamp amber"
 
-Dark-first and focused, like reading under a lamp: a deep blue-grey room, warm off-white ink, one soft violet accent, and two state colours that carry meaning (teal-green = known, amber = to learn). The light theme is designed on its own terms (cool, slightly violet-tinted paper with a deeper violet), not an inversion. The theme follows the system by default; the top-bar toggle cycles system / light / dark.
+Dark-first and focused, like reading under a lamp: warm charcoal, soft off-white ink, one honey-amber accent, and two state colours that carry meaning (sage green = known, apricot = to learn). The light theme is warm, slightly dimmed paper, designed on its own terms, not an inversion. Text and accents are deliberately softer than pure white or black. The theme follows the system by default; the top-bar toggle cycles system / light / dark.
 
 ## Principles
 
@@ -21,37 +21,36 @@ All faces are self-hosted via Fontsource (no Google CDN, for privacy).
 | Reading text       | **Literata** (variable serif)            | 19–20px / 1.7, max 66ch  | Latin + Cyrillic            |
 | Data / mono        | **JetBrains Mono**                       | 13px                     | Latin + Cyrillic            |
 
-- `--font-display` is `"Instrument Sans Variable", "Inter Variable", system-ui`. Instrument Sans has no Cyrillic, so Ukrainian headings render glyph by glyph in Inter, which matches its proportions closely. Checked: the Fontsource package ships `latin` and `latin-ext` subsets only.
-- Literata stays the reading face: Newsreader (considered in the proposal) has no Cyrillic, and Ukrainian is planned.
+- `--font-display` is `"Instrument Sans Variable", "Inter Variable", system-ui`.
 - Scale: 12 · 14 · 16 · 20 · 24 · 30 · 40. Headings never all caps except the tiny overline labels (`.k-overline`, 11px, +0.06em). Literata is **only** for Dutch reading text (the reader, excerpts, example sentences, chat bubbles) and text titles (covers, Continue reading). Single Dutch words in UI (chips, table lemmas, the inspector headword) are Inter 500, never serif. See _Type roles_ below.
 
 ## Color tokens
 
 CSS custom properties in `packages/ui/src/styles.css`, exposed to Tailwind v4 via `@theme`. **No literal colours in components**: everything goes through these tokens (the only literals left are the token definitions themselves).
 
-| Token           | Light     | Dark      | Use                                          |
-| --------------- | --------- | --------- | -------------------------------------------- |
-| `--bg`          | `#f4f3f7` | `#14161c` | page, sidebar                                |
-| `--surface`     | `#fcfcfe` | `#1b1e26` | cards, panels, dialogs                       |
-| `--surface-2`   | `#ecebf2` | `#222631` | hover, wells, tracks                         |
-| `--ink`         | `#1b1d24` | `#ebe8e1` | body text                                    |
-| `--ink-muted`   | `#5d5f6b` | `#9b9aa3` | secondary text                               |
-| `--line`        | `#dddbe6` | `#2c303b` | borders, dividers                            |
-| `--line-strong` | `#c9c6d6` | `#3a3f4d` | emphasised borders                           |
-| `--accent`      | `#6a4fd6` | `#c9a7ff` | primary actions, links, focus, the logo ring |
-| `--accent-ink`  | `#fcfcfe` | `#16121f` | text on an accent fill                       |
-| `--accent-soft` | `#ebe6fb` | `#2a2540` | active nav item, icon wells, accent chips    |
-| `--known`       | `#13896a` | `#7dd3b0` | coverage bars and rings, known lines         |
-| `--known-ink`   | `#0f7a5e` | `#7dd3b0` | "Known" text and chips                       |
-| `--known-soft`  | `#e3f0eb` | `#1c2f2b` | Known chip fill                              |
-| `--learn`       | `#b7791f` | `#f2c26b` | to-learn underline                           |
-| `--learn-ink`   | `#8a5a10` | `#f2c26b` | "To learn" text and chips                    |
-| `--learn-soft`  | `#f7ebcf` | `#3b3222` | to-learn tint in the reader, chip fill       |
-| `--success`     | `#0f7a5e` | `#7dd3b0` | correct answers                              |
-| `--danger`      | `#b42f3a` | `#ff8f8f` | wrong, destructive                           |
-| `--scrim`       | ink 36%   | black 60% | dialog and sheet backdrops                   |
+| Token           | Light     | Dark      | Use                                       |
+| --------------- | --------- | --------- | ----------------------------------------- |
+| `--bg`          | `#ece5d9` | `#151210` | page, sidebar                             |
+| `--surface`     | `#f3ede3` | `#1b1714` | cards, panels, dialogs                    |
+| `--surface-2`   | `#e5ddcf` | `#221d19` | hover, wells, tracks                      |
+| `--ink`         | `#2e2721` | `#d6cdbf` | body text                                 |
+| `--ink-muted`   | `#6e6457` | `#958b7e` | secondary text                            |
+| `--line`        | `#ddd3c3` | `#2b2520` | borders, dividers                         |
+| `--line-strong` | `#cbbfac` | `#3a332c` | emphasised borders                        |
+| `--accent`      | `#8f5a1f` | `#c99a5b` | primary actions, links, focus             |
+| `--accent-ink`  | `#f6f0e6` | `#1a140e` | text on an accent fill                    |
+| `--accent-soft` | `#efe2cc` | `#2f2519` | active nav item, icon wells, accent chips |
+| `--known`       | `#4a7a52` | `#8fb18c` | coverage bars and rings, known lines      |
+| `--known-ink`   | `#3d6a45` | `#8fb18c` | "Known" text and chips                    |
+| `--known-soft`  | `#e2e8d9` | `#1f271e` | Known chip fill                           |
+| `--learn`       | `#b5643f` | `#d4906f` | to-learn underline                        |
+| `--learn-ink`   | `#97492a` | `#d99a7b` | "To learn" text and chips                 |
+| `--learn-soft`  | `#f1dccd` | `#33231c` | to-learn tint in the reader, chip fill    |
+| `--success`     | `#3d6a45` | `#8fb18c` | correct answers                           |
+| `--danger`      | `#a83a31` | `#e0877a` | wrong, destructive                        |
+| `--scrim`       | ink 36%   | black 60% | dialog and sheet backdrops                |
 
-Contrast (WCAG 2.1, checked with a script): body ink 15.2:1 (light) / 14.8:1 (dark); muted text ≥ 5.3:1 on every surface; accent text 5.1–5.5:1 (light) / 8.3:1 (dark); text on accent buttons 5.5:1 / 9.0:1; Known chip text 4.5:1 on its tint (light) / 9.4:1 (dark); To-learn chip text 5.1:1 / 10.1:1; reader ink on the to-learn tint 13.8:1 / 10.3:1. Non-text lines (to-learn underline, known bars) are ≥ 3:1 against the page: `--learn` 3.3:1 and `--known` 4.0:1 in light, both > 9:1 in dark. That is why the light theme has separate `-ink` tokens: the line colours are too light for 14px text.
+Contrast: every text pair is at least WCAG AA 4.5:1 (ink ≈ 11.8:1, muted ≈ 4.6–5.6:1, accent links ≈ 4.6–7.3:1). Non-text lines (to-learn underline, known bars) are at least 3:1 against the page. The `-ink` tokens exist because the line colours are too light for 14px text.
 
 ### Word-state semantics (the heart of the reader)
 
@@ -66,7 +65,7 @@ Contrast (WCAG 2.1, checked with a script): body ink 15.2:1 (light) / 14.8:1 (da
 | cloze                          | hairline blank sized to the word; focused blank gets an accent line                                                        |
 | grammar (open mark / focus)    | a row of fine dots in `--state-grammar-line`, 0.26em below the text (under the word-state lines); see _Reader annotations_ |
 
-Never use bright highlighter blocks. Violet is never a word state: it means "you can act here".
+Never use bright highlighter blocks. The accent is never a word state: it means "you can act here".
 
 ## Shape, depth, motion
 
@@ -97,7 +96,7 @@ The reader stays calm: no decorative motion while reading, only the one-time to-
 
 ## Logo
 
-The **bookmark k**: a lowercase k whose leg is a bookmark ribbon. Stem and arm are `--ink`; the leg is an `--accent` ribbon tucked under the arm (a hairline gap), hanging just below the baseline and ending in a level swallow-tail notch, the bookmark you leave in a text. (It replaced the coverage-ring mark in November 2026; the ring lives on only as `ProgressRing`, for data.)
+The **bookmark k**: a lowercase k whose leg is a bookmark ribbon. Stem and arm are `--ink`; the leg is an `--accent` ribbon tucked under the arm (a hairline gap), hanging just below the baseline and ending in a level swallow-tail notch, the bookmark you leave in a text.
 
 - Component: `Logo` (mark + "kenning" wordmark in Instrument Sans 600, −0.02em, sitting on the k's baseline) and `LogoMark` from `@app/ui`. `variant="mark"` for the mark alone.
 - `ProgressRing` (12 o'clock, counter-clockwise, round caps) is for data, not branding: the Home ring is `--known`.
@@ -109,7 +108,7 @@ The **bookmark k**: a lowercase k whose leg is a bookmark ribbon. Stem and arm a
 - Don't: recolour the k, put the ribbon in ink, untuck the ribbon, rotate or mirror the mark, put it on the accent colour, or add effects.
 - Files in `apps/web/public`: `favicon.svg` (16 grid, light/dark through `prefers-color-scheme` inside the SVG), `favicon-16.png` / `favicon-32.png` (the 16 cut at 1× and exactly 2× on the dark rounded lamp tile, so it stays pixel-crisp on light and dark tab bars), `apple-touch-icon.png` (180, square dark tile), `icon-192.png` / `icon-512.png` (rounded tile), `icon-maskable-512.png` (mark inside the safe zone), `logo-mark.svg` (48 master, light/dark inside), `manifest.webmanifest`. README lockups (outlined wordmark): `docs/images/logo-dark.svg`, `docs/images/logo-light.svg`.
 
-## Layout & composition (polish 3, 2026-11-18)
+## Layout & composition
 
 One set of rules for every screen, so the app reads as one product.
 
@@ -238,10 +237,10 @@ Domain components:
 - **Sign-in**: a small landing: the mark, the wordmark, one sentence on what Kenning does, then the form.
 - **Onboarding** (`/welcome`): connect AnkiConnect, choose decks and fields, language profile.
 - **Library:** a bookshelf. Rows of covers that scroll sideways (snap, a hairline "shelf board" under each row, no boxes): Reading now, the learner's own shelves, To read, Finished, then "By source" (Course books, AI stories, Web, Photos & PDFs, Talk). Under each cover one quiet line: page N of M / Finished / words, and "% known". A "…" on each cover (on hover or focus with a pointer, always on touch) opens Open, Words from this text, Edit details, Change cover, Add to shelf, Remove from this shelf, Delete. The toolbar: Shelves / All texts (segmented), Search, Sort (recent, title, coverage), New shelf, Select (multi-select with a floating bar: Add to shelf). All texts is the cover grid with words, new words, author/note and the coverage meter. Keyboard: one tab stop per row, arrow keys / Home / End inside it. Desktop: drag covers onto one of your shelves. Phones: rows stack, 128px covers, rows bleed to the screen edge.
-- **Import:** paste, URL, PDF, photo; editable OCR preview.
+- **Import:** paste, URL, PDF, EPUB, photo; editable OCR preview.
 - **Reader:** read / cloze / gloss modes; the end of a text shows a calm completion panel (new words met, in Anki, still to decide) leading to Words from this text, Practise these words, Talk about this text and Next text.
 - **Practice:** one exercise per screen; keys 1–4, Enter, Esc.
-- **Talk** (`/talk`, formerly Converse; `/converse` redirects): chat with coverage chips, inline corrections and new-word chips.
+- **Talk** (`/talk`): chat with coverage chips, inline corrections and new-word chips.
 - **Words:** the hub. State / source / search filters live in the URL with removable chips; rows open the shared inspector; a selection goes to Anki, Practice or Talk.
 - **Grammar:** topics with "seen in your texts" examples.
 - **Progress:** vocabulary estimate and practice numbers (from Home).
@@ -252,25 +251,14 @@ Domain components:
 
 Plain, precise and kind. "You know 96% of this text." No exclamation marks or cheerleading.
 
-## Palette update — "Lamp amber" (2026-11-18)
-
-The violet Night lamp accent was replaced by a warmer, dimmer palette at the user's request:
-honey-amber accent on warm charcoal (dark) and warm, slightly dimmed paper (light); known words in
-sage green, words to learn in apricot (kept distinct from the amber accent). Text and accents are
-deliberately softer than pure white/black. All text pairs stay at or above WCAG AA 4.5:1 (ink ≈ 11.8:1,
-muted ≈ 4.6–5.6:1, accent links ≈ 4.6–7.3:1). Tokens live in `packages/ui/src/styles.css`; the logo and
-favicons were regenerated in the same colours. The older violet values above are superseded.
-
-## Reader annotations and reading comforts (2026-11-18)
-
-Research and contrast table: `docs/research/09-reader-annotations.md`.
+## Reader annotations and reading comforts
 
 - **Two layers, two positions.** Word states draw at the baseline (to-learn line, learning dots, new/gloss underlines). Grammar draws a dotted row below them (`.k-tok--spot`), so both can sit on one word and still read apart without colour.
 - **Margin marks** (`.k-gmark`): a 2px hairline beside the first line of a sentence worth noticing, `--state-grammar-line` at 50% (full on hover, focus or open). At most one per two sentences, never neighbours, never for very common topics (V2, de/het, plurals, perfect…). Tapping one underlines that sentence's hits and opens a popover under that line.
 - **One slim reader bar** (the top bar on the reader route): the text title (UI font, muted) and "82% known" (to-learn count in its tooltip and the "…" menu), then Read | Cloze | Gloss, **Aa** and **…**; ⌘K and the theme stay at the end. No second toolbar, no coverage bar or coloured chip.
 - **Footer**: "‹ 1 / 2 ›" (also ← → from outside the text) and one primary "Next →" ("Finish" on the last page).
 - **"…" menu**: Grammar focus (the picker opens in the same popover), Focus mode, Show answers (blanks open), Simplify this page (with an AI provider), Words from this text, Keyboard shortcuts (also "?").
-- **Grammar focus**: one topic at a time, picked from the "…" menu; while active a removable chip sits in the bar ("Passive · 4 ‹ › ×", under the bar on phones); Esc clears. Replaces the old all-topics spotlight toggle.
+- **Grammar focus**: one topic at a time, picked from the "…" menu; while active a removable chip sits in the bar ("Passive · 4 ‹ › ×", under the bar on phones); Esc clears.
 - **Cloze chrome**: a blank's hint button appears only on the focused blank; scores only in the completion panel.
 - **"Aa" popover**: first the current mode's reading help (Gloss: Translations dial and Blanks; Cloze: meaning above blanks; all: words to learn per page and grammar marks), then text size (5 steps, also Ctrl/Cmd + / −), line spacing, line width, font (Literata, Inter, Atkinson Hyperlegible Next) and reading theme (match app, paper, sepia, night). Per device (localStorage). Reading themes are token sets (`readingThemes.ts` in @app/ui) set inline on the reader page; every mark stays ≥ 3:1 on each.
 - **Focus mode** (F, Esc to leave): sidebar and top bar (the reader bar) hidden; paragraphs other than the current one at 28% opacity (opacity transition only, none under reduced motion); the footer stays, dimmed until hovered.
