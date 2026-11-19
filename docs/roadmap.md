@@ -2,7 +2,7 @@
 
 ## Next
 
-1. **Native mode.** See below.
+1. **Native mode, round 2.** See below.
 2. **Sync.** See below.
 3. **Anki in the self-hosted stack.** Headless Anki with your AnkiWeb login, read-only.
 4. **Weave reading.** An English text with Dutch islands that grow as you learn.
