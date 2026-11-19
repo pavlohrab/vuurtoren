@@ -760,7 +760,7 @@ Your data on every device, with the event log as the unit of sync (`packages/db/
 
 ### 10.1 What travels
 
-Every change is an event in the log (section 0). A device sends **its own** events, oldest first, in segments of at most 2,000, and imports the other devices' segments. Images and sounds the events refer to (covers, card media) travel as blobs. Per-device bookkeeping (what was sent, what was received from each device) stays on the device.
+Every change is an event in the append-only log ([decisions](decisions.md#data)). A device sends **its own** events, oldest first, in segments of at most 2,000, and imports the other devices' segments. Images and sounds the events refer to (covers, card media) travel as blobs. Per-device bookkeeping (what was sent, what was received from each device) stays on the device.
 
 ### 10.2 The place
 
