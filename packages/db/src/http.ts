@@ -250,6 +250,16 @@ export async function createHttpRepository(
     examAttempts: (lang) => call("examAttempts", lang),
     suggestedWords: (lang) => call("suggestedWords", lang),
     shelves: () => call("shelves"),
+    nativeDecks: (lang, now) => call("nativeDecks", lang, now),
+    nativeQueue: (lang, now, dayStart, limit) => call("nativeQueue", lang, now, dayStart, limit),
+    nativeCard: (lang, cardId) => call("nativeCard", lang, cardId),
+    nativeReviews: (lang) => call("nativeReviews", lang),
+    nativeStats: (lang) => call("nativeStats", lang),
+    fsrsParams: (lang) => call("fsrsParams", lang),
+    nativeMedia: (lang, names) =>
+      names.length ? call("nativeMedia", lang, names) : Promise.resolve({}),
+    nativeNoteStatus: (lang, noteIds, now) =>
+      noteIds.length ? call("nativeNoteStatus", lang, noteIds, now) : Promise.resolve([]),
     // Cover images travel as raw bytes over /api/blobs, not as JSON.
     async putBlob(bytes, type) {
       const res = await fetchImpl(`${baseUrl}/api/blobs`, {

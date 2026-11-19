@@ -176,7 +176,13 @@ const STATUS_TEXT: Record<InspectorAnki["status"], string> = {
   unavailable: "Anki not reachable",
 };
 
-/** Status line and action buttons for the word's state in Anki. */
+const NATIVE_STATUS_TEXT: Record<InspectorAnki["status"], string> = {
+  ...STATUS_TEXT,
+  absent: "Not in your words",
+  unavailable: "Card not available",
+};
+
+/** Status line and action buttons for the word's state in Anki (or its own card). */
 function AnkiActions({
   entry,
   busy = false,
@@ -192,6 +198,9 @@ function AnkiActions({
 > & { entry: InspectorEntry }) {
   const { anki } = entry;
   const { status } = anki;
+  // Native mode: Kenning's own cards, worded without Anki.
+  const native = anki.native === true;
+  const ADD = native ? "Add to my words" : "Add to Anki";
   const unavailable = status === "unavailable";
   const reason = anki.detail ?? "";
   const inProgress = status === "learning" || status === "review";
@@ -204,38 +213,44 @@ function AnkiActions({
   let primary: { label: string; hint?: string; onClick?: (() => void) | undefined } | null = null;
   if (status === "absent") {
     primary = {
-      label: "Add to Anki",
+      label: ADD,
       hint: addDeck ? `Adds it to ‘${addDeck.deck}’` : "Adds it to your Kenning deck",
       onClick: onAddToAnki,
     };
   } else if (status === "new" || status === "suspended" || (unavailable && anki.noteIds.length)) {
     primary = {
-      label: status === "suspended" ? "Unsuspend & study first" : "Study first in Anki",
+      label:
+        status === "suspended"
+          ? "Unsuspend & study first"
+          : native
+            ? "Study first"
+            : "Study first in Anki",
       hint: deck ? `Moves its card to the front of ‘${deck}’` : "Moves its card to the front",
       onClick: onLearnNext,
     };
   } else if (unavailable) {
-    primary = { label: "Add to Anki", onClick: onAddToAnki };
+    primary = { label: ADD, onClick: onAddToAnki };
   }
 
   return (
     <>
       {status !== "absent" ? (
         <section>
-          <div className="k-overline">In Anki</div>
+          <div className="k-overline">{native ? "Your card" : "In Anki"}</div>
           <p
             role={unavailable ? "alert" : "status"}
             style={unavailable ? { ...hintStyle, color: "var(--danger)" } : { margin: 0 }}
           >
             {unavailable
               ? `Anki not reachable${reason ? `. ${reason}` : ""}`
-              : (anki.detail ?? STATUS_TEXT[status])}
+              : (anki.detail ?? (native ? NATIVE_STATUS_TEXT : STATUS_TEXT)[status])}
           </p>
         </section>
       ) : null}
       <div className="k-inspector-actions">
-        {primary && addDeck && primary.label === "Add to Anki" ? (
+        {primary && addDeck && primary.label === ADD ? (
           <AddToAnki
+            native={native}
             deck={addDeck.deck}
             options={addDeck.options}
             onDeckChange={addDeck.onDeckChange}
@@ -266,13 +281,17 @@ function AnkiActions({
         {canMarkKnown && status === "absent" ? (
           <p style={hintStyle}>
             Mark known{" "}
-            {addDeck ? `adds it to ‘${addDeck.deck}’ as known` : "adds it to Anki as known"}. Ignore
-            leaves it out of coverage and suggestions.
+            {addDeck
+              ? `adds it to ‘${addDeck.deck}’ as known`
+              : native
+                ? "adds it to your words as known"
+                : "adds it to Anki as known"}
+            . Ignore leaves it out of coverage and suggestions.
           </p>
         ) : null}
         {anki.overridden ? (
           <Button variant="ghost" disabled={busy} onClick={() => onReset?.()}>
-            Use Anki&rsquo;s state
+            {native ? "Use the card’s state" : "Use Anki’s state"}
           </Button>
         ) : null}
       </div>

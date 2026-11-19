@@ -6,6 +6,7 @@ import {
   ClipboardCheck,
   Ellipsis,
   House,
+  Layers,
   Command as CommandIcon,
   FileText,
   Languages,
@@ -28,6 +29,7 @@ import {
   Button,
   Chip,
   Logo,
+  NativeModeContext,
   CommandPalette,
   Tooltip,
   type CommandGroup,
@@ -40,6 +42,7 @@ import { DesktopSetup } from "../desktop/DesktopSetup.js";
 import { DegradedIndicator } from "./DegradedIndicator.js";
 import { AnkiSyncLine } from "./AnkiSyncLine.js";
 import { useAnkiAutoSync } from "./ankiSync.js";
+import { useAutoTune } from "./autoTune.js";
 import { ShellContext, type PageHeader, type ShellState } from "./ShellContext.js";
 import { useRemoteFreshness } from "./useRemoteFreshness.js";
 
@@ -49,6 +52,7 @@ const PAGE_TITLES: Record<string, string> = {
   "/import": "Import text",
   "/words": "Words",
   "/practice": "Practice",
+  "/review": "Review",
   "/courses": "Courses",
   "/talk": "Talk",
   "/grammar": "Grammar",
@@ -111,6 +115,14 @@ export function AppShell() {
     queryFn: () => services.practiceOverview(),
     staleTime: 60_000,
   });
+  // Native mode: cards due in Review (the badge), and tuning by itself when it is time.
+  const review = useQuery({
+    queryKey: ["review", "overview"],
+    queryFn: () => services.reviewOverview(),
+    staleTime: 60_000,
+  });
+  const native = review.data?.native === true;
+  useAutoTune(services, qc, native && !demo);
 
   // ⌘K / Ctrl+K opens the palette from anywhere.
   useEffect(() => {
@@ -155,6 +167,9 @@ export function AppShell() {
       ["/", "Home", <House key="h" size={16} />],
       ["/library", "Library", <Library key="l" size={16} />],
       ["/import", "Import text", <Plus key="i" size={16} />],
+      ...(native
+        ? [["/review", "Review", <Layers key="r" size={16} />] as [string, string, ReactNode]]
+        : []),
       ["/practice", "Practice", <Dumbbell key="p" size={16} />],
       ["/courses", "Courses", <GraduationCap key="co" size={16} />],
       ["/talk", "Talk", <MessagesSquare key="c" size={16} />],
@@ -184,177 +199,195 @@ export function AppShell() {
         })),
       },
     ].filter((g) => g.entries.length > 0);
-  }, [texts.data, goto, navigate]);
+  }, [texts.data, goto, navigate, native]);
 
   return (
-    <ShellContext.Provider value={shell}>
-      <div
-        className="shell"
-        data-sidebar={sidebarCollapsed ? "collapsed" : "expanded"}
-        data-inspector={showInspector ? "open" : "closed"}
-      >
-        <nav className="sidebar" aria-label="Main">
-          <Link to="/" className="sidebar-brand" aria-label="Kenning, home">
-            <Logo size={26} className="brand-logo" title="Kenning" />
-          </Link>
-          <NavLink to="/" label="Home" icon={<House size={18} />} exact />
-          <NavLink to="/library" label="Library" icon={<Library size={18} />} />
-          <NavLink
-            to="/practice"
-            label="Practice"
-            icon={<Dumbbell size={18} />}
-            badge={practice.data?.due}
-          />
-          <NavLink to="/words" label="Words" icon={<Languages size={18} />} />
-          <NavLink to="/courses" label="Courses" icon={<GraduationCap size={18} />} secondary />
-          <NavLink to="/grammar" label="Grammar" icon={<BookText size={18} />} secondary />
-          <NavLink to="/talk" label="Talk" icon={<MessagesSquare size={18} />} secondary />
-          <NavLink to="/exam" label="Exam" icon={<ClipboardCheck size={18} />} secondary />
-          <div className="nav-spacer" />
-          <NavLink to="/settings" label="Settings" icon={<SettingsIcon size={18} />} secondary />
-          <button
-            type="button"
-            className="nav-link nav-more"
-            aria-expanded={moreOpen}
-            aria-controls="nav-more-sheet"
-            onClick={() => setMoreOpen(!moreOpen)}
-          >
-            <Ellipsis size={18} />
-            <span className="nav-label">More</span>
-          </button>
-        </nav>
-        {moreOpen ? (
-          <>
-            <div className="nav-more-scrim" onClick={() => setMoreOpen(false)} aria-hidden />
-            <div className="nav-more-sheet" id="nav-more-sheet" role="menu" aria-label="More">
-              <MoreLink to="/courses" label="Courses" icon={<GraduationCap size={18} />} />
-              <MoreLink to="/grammar" label="Grammar" icon={<BookText size={18} />} />
-              <MoreLink to="/talk" label="Talk" icon={<MessagesSquare size={18} />} />
-              <MoreLink to="/exam" label="Exam" icon={<ClipboardCheck size={18} />} />
-              <MoreLink to="/progress" label="Progress" icon={<TrendingUp size={18} />} />
-              <MoreLink to="/settings" label="Settings" icon={<SettingsIcon size={18} />} />
-            </div>
-          </>
-        ) : null}
-
-        <div className="main">
-          {desktop ? <DesktopSetup /> : null}
-          <AnkiSyncLine />
-          {notice || demo ? (
-            <div className="shell-notices">
-              {demo ? (
-                <div className="shell-notice shell-notice--demo" role="note">
-                  <Chip tone="accent">Demo data</Chip>
-                  <span className="shell-notice-text">Nothing here is saved to your account.</span>
-                  {onLeaveDemo ? (
-                    <button type="button" className="link-button" onClick={onLeaveDemo}>
-                      Use my data
-                    </button>
-                  ) : null}
-                </div>
-              ) : null}
-              {notice ? (
-                <div className="shell-notice" role="status">
-                  <span>{notice}</span>
-                </div>
-              ) : null}
-            </div>
-          ) : null}
-          <header className="topbar">
-            <Button
-              variant="ghost"
-              size="sm"
-              icon
-              className="topbar-sidebar-toggle"
-              aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-              onClick={() => setSidebarCollapsed((c) => !c)}
+    <NativeModeContext.Provider value={native}>
+      <ShellContext.Provider value={shell}>
+        <div
+          className="shell"
+          data-sidebar={sidebarCollapsed ? "collapsed" : "expanded"}
+          data-inspector={showInspector ? "open" : "closed"}
+        >
+          <nav className="sidebar" aria-label="Main">
+            <Link to="/" className="sidebar-brand" aria-label="Kenning, home">
+              <Logo size={26} className="brand-logo" title="Kenning" />
+            </Link>
+            <NavLink to="/" label="Home" icon={<House size={18} />} exact />
+            <NavLink to="/library" label="Library" icon={<Library size={18} />} />
+            {native ? (
+              <NavLink
+                to="/review"
+                label="Review"
+                icon={<Layers size={18} />}
+                badge={review.data?.due}
+                badgeNoun="card"
+                badgeWhere="Review"
+              />
+            ) : null}
+            <NavLink
+              to="/practice"
+              label="Practice"
+              icon={<Dumbbell size={18} />}
+              badge={practice.data?.due}
+              secondary={native}
+            />
+            <NavLink to="/words" label="Words" icon={<Languages size={18} />} />
+            <NavLink to="/courses" label="Courses" icon={<GraduationCap size={18} />} secondary />
+            <NavLink to="/grammar" label="Grammar" icon={<BookText size={18} />} secondary />
+            <NavLink to="/talk" label="Talk" icon={<MessagesSquare size={18} />} secondary />
+            <NavLink to="/exam" label="Exam" icon={<ClipboardCheck size={18} />} secondary />
+            <div className="nav-spacer" />
+            <NavLink to="/settings" label="Settings" icon={<SettingsIcon size={18} />} secondary />
+            <button
+              type="button"
+              className="nav-link nav-more"
+              aria-expanded={moreOpen}
+              aria-controls="nav-more-sheet"
+              onClick={() => setMoreOpen(!moreOpen)}
             >
-              <PanelLeft size={16} />
-            </Button>
-            <div className="topbar-heading">
-              {header?.parent ? (
-                <>
-                  <a
-                    className="topbar-crumb"
-                    href={header.parent.to}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      goto(header.parent!.to);
-                    }}
-                  >
-                    {header.parent.label}
-                  </a>
-                  <span className="topbar-crumb-sep" aria-hidden>
-                    /
-                  </span>
-                </>
-              ) : null}
-              {/* One h1 per page: the page's own heading, unless it asks the top bar for it. */}
-              {header?.heading ? (
-                <h1 className={titleClass}>{title}</h1>
-              ) : (
-                <span className={titleClass}>{title}</span>
-              )}
-            </div>
-            {/* A reader page fills this with its own controls (the top bar is its reader bar). */}
-            <div className="topbar-page" ref={setToolbarEl} hidden={!header?.reader} />
-            {header?.reader ? null : <div className="topbar-spacer" />}
-            <div className="topbar-group">
-              <DegradedIndicator />
-              <Button
-                variant="secondary"
-                size="sm"
-                className="topbar-palette"
-                aria-label="Open command palette"
-                onClick={() => setPaletteOpen(true)}
-              >
-                <CommandIcon size={14} />
-                <kbd className="topbar-kbd">{isMac ? "⌘K" : "Ctrl K"}</kbd>
-              </Button>
-              <Tooltip content={`Theme: ${theme}`}>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  icon
-                  aria-label={`Theme: ${theme}. Switch theme`}
-                  onClick={() => setTheme(THEME_NEXT[theme])}
-                >
-                  {THEME_ICON[theme]}
-                </Button>
-              </Tooltip>
-            </div>
-          </header>
-          <div className="main-body">
-            <main className="content" id="content">
-              <Outlet />
-            </main>
-            {/* Over the content, not beside it: closed it takes no space, open it slides in and
-                the reader column moves aside (transform only, no reflow). */}
-            <aside
-              className="inspector-panel"
-              aria-label="Inspector"
-              hidden={!inspectorAvailable}
-              inert={!showInspector}
-            >
-              <div className="inspector-head">
-                <span className="k-overline">Word</span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  icon
-                  aria-label="Close the word panel (Esc)"
-                  onClick={() => setInspectorOpen(false)}
-                >
-                  <X size={16} />
-                </Button>
+              <Ellipsis size={18} />
+              <span className="nav-label">More</span>
+            </button>
+          </nav>
+          {moreOpen ? (
+            <>
+              <div className="nav-more-scrim" onClick={() => setMoreOpen(false)} aria-hidden />
+              <div className="nav-more-sheet" id="nav-more-sheet" role="menu" aria-label="More">
+                {native ? (
+                  <MoreLink to="/practice" label="Practice" icon={<Dumbbell size={18} />} />
+                ) : null}
+                <MoreLink to="/courses" label="Courses" icon={<GraduationCap size={18} />} />
+                <MoreLink to="/grammar" label="Grammar" icon={<BookText size={18} />} />
+                <MoreLink to="/talk" label="Talk" icon={<MessagesSquare size={18} />} />
+                <MoreLink to="/exam" label="Exam" icon={<ClipboardCheck size={18} />} />
+                <MoreLink to="/progress" label="Progress" icon={<TrendingUp size={18} />} />
+                <MoreLink to="/settings" label="Settings" icon={<SettingsIcon size={18} />} />
               </div>
-              <div className="inspector-body" ref={setInspectorEl} />
-            </aside>
+            </>
+          ) : null}
+
+          <div className="main">
+            {desktop ? <DesktopSetup /> : null}
+            <AnkiSyncLine />
+            {notice || demo ? (
+              <div className="shell-notices">
+                {demo ? (
+                  <div className="shell-notice shell-notice--demo" role="note">
+                    <Chip tone="accent">Demo data</Chip>
+                    <span className="shell-notice-text">
+                      Nothing here is saved to your account.
+                    </span>
+                    {onLeaveDemo ? (
+                      <button type="button" className="link-button" onClick={onLeaveDemo}>
+                        Use my data
+                      </button>
+                    ) : null}
+                  </div>
+                ) : null}
+                {notice ? (
+                  <div className="shell-notice" role="status">
+                    <span>{notice}</span>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+            <header className="topbar">
+              <Button
+                variant="ghost"
+                size="sm"
+                icon
+                className="topbar-sidebar-toggle"
+                aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+                onClick={() => setSidebarCollapsed((c) => !c)}
+              >
+                <PanelLeft size={16} />
+              </Button>
+              <div className="topbar-heading">
+                {header?.parent ? (
+                  <>
+                    <a
+                      className="topbar-crumb"
+                      href={header.parent.to}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        goto(header.parent!.to);
+                      }}
+                    >
+                      {header.parent.label}
+                    </a>
+                    <span className="topbar-crumb-sep" aria-hidden>
+                      /
+                    </span>
+                  </>
+                ) : null}
+                {/* One h1 per page: the page's own heading, unless it asks the top bar for it. */}
+                {header?.heading ? (
+                  <h1 className={titleClass}>{title}</h1>
+                ) : (
+                  <span className={titleClass}>{title}</span>
+                )}
+              </div>
+              {/* A reader page fills this with its own controls (the top bar is its reader bar). */}
+              <div className="topbar-page" ref={setToolbarEl} hidden={!header?.reader} />
+              {header?.reader ? null : <div className="topbar-spacer" />}
+              <div className="topbar-group">
+                <DegradedIndicator />
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="topbar-palette"
+                  aria-label="Open command palette"
+                  onClick={() => setPaletteOpen(true)}
+                >
+                  <CommandIcon size={14} />
+                  <kbd className="topbar-kbd">{isMac ? "⌘K" : "Ctrl K"}</kbd>
+                </Button>
+                <Tooltip content={`Theme: ${theme}`}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    icon
+                    aria-label={`Theme: ${theme}. Switch theme`}
+                    onClick={() => setTheme(THEME_NEXT[theme])}
+                  >
+                    {THEME_ICON[theme]}
+                  </Button>
+                </Tooltip>
+              </div>
+            </header>
+            <div className="main-body">
+              <main className="content" id="content">
+                <Outlet />
+              </main>
+              {/* Over the content, not beside it: closed it takes no space, open it slides in and
+                the reader column moves aside (transform only, no reflow). */}
+              <aside
+                className="inspector-panel"
+                aria-label="Inspector"
+                hidden={!inspectorAvailable}
+                inert={!showInspector}
+              >
+                <div className="inspector-head">
+                  <span className="k-overline">Word</span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    icon
+                    aria-label="Close the word panel (Esc)"
+                    onClick={() => setInspectorOpen(false)}
+                  >
+                    <X size={16} />
+                  </Button>
+                </div>
+                <div className="inspector-body" ref={setInspectorEl} />
+              </aside>
+            </div>
           </div>
         </div>
-      </div>
-      <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} groups={groups} />
-    </ShellContext.Provider>
+        <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} groups={groups} />
+      </ShellContext.Provider>
+    </NativeModeContext.Provider>
   );
 }
 
@@ -362,6 +395,7 @@ type FixedRoute =
   | "/"
   | "/library"
   | "/practice"
+  | "/review"
   | "/courses"
   | "/talk"
   | "/words"
@@ -375,6 +409,8 @@ function NavLink({
   label,
   icon,
   badge,
+  badgeNoun = "exercise",
+  badgeWhere = "Practice",
   exact,
   secondary,
 }: {
@@ -382,6 +418,9 @@ function NavLink({
   label: string;
   icon: ReactNode;
   badge?: number | undefined;
+  /** What the badge counts ("exercise", "card") and where they are due. */
+  badgeNoun?: string;
+  badgeWhere?: string;
   exact?: boolean;
   /** Folded into the phone tab bar's More sheet. */
   secondary?: boolean;
@@ -398,8 +437,8 @@ function NavLink({
       {badge ? (
         <span
           className="nav-badge"
-          aria-label={`${plural(badge, "exercise")} due`}
-          title={`${plural(badge, "exercise")} due in Practice`}
+          aria-label={`${plural(badge, badgeNoun)} due`}
+          title={`${plural(badge, badgeNoun)} due in ${badgeWhere}`}
         >
           {badge}
         </span>

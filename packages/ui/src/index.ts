@@ -20,3 +20,4 @@ export * from "./AddToAnki.js";
 export * from "./Logo.js";
 export * from "./TextCover.js";
 export * from "./readingThemes.js";
+export { NativeModeContext, useNativeMode } from "./mode.js";

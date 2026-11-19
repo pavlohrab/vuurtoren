@@ -1,0 +1,330 @@
+/** Native services over a real repository: the move from Anki, a deck file, reviews, tuning. */
+import { DatabaseSync } from "node:sqlite";
+import { zipSync } from "fflate";
+import { AnkiConnectClient, type OpenSqlite } from "@app/anki";
+import { DEFAULT_FSRS_PARAMS, type LanguageProfile, defaultProfile } from "@app/core";
+import { type KenningRepository, createRepository } from "@app/db";
+import { createNodeDriver } from "@app/db/node";
+import type { NlpClient } from "@app/nlp-client";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import type { RunOptimizer } from "../native/optimizer.js";
+import { createLiveNative, studyDayStart } from "./liveNative.js";
+
+const DAY = 86_400_000;
+const NOW = Date.UTC(2026, 5, 1, 12);
+
+const sqlite = () => ({
+  open: (async (bytes) => {
+    const db = new DatabaseSync(":memory:");
+    db.deserialize(bytes);
+    return {
+      all: async (sql: string) => db.prepare(sql).all() as Record<string, unknown>[],
+      close: async () => db.close(),
+    };
+  }) satisfies OpenSqlite,
+  dispose: () => undefined,
+});
+
+/** An Anki with one deck of two notes; the first was learned 60 days ago and reviewed since. */
+function fakeAnki() {
+  const writes: string[] = [];
+  const READS = new Set([
+    "deckNames",
+    "getDeckConfig",
+    "findNotes",
+    "notesInfo",
+    "findModelsByName",
+    "cardsInfo",
+    "getReviewsOfCards",
+    "retrieveMediaFile",
+  ]);
+  const learned = NOW - 60 * DAY;
+  const fetch = (async (url: string | URL | Request, init?: RequestInit) => {
+    if (String(url).endsWith("/api/v1")) return new Response("{}", { status: 404 });
+    const { action } = JSON.parse(String(init?.body)) as { action: string };
+    if (!READS.has(action)) writes.push(action);
+    const result = (() => {
+      switch (action) {
+        case "deckNames":
+          return ["Dutch", "Other"];
+        case "getDeckConfig":
+          return {
+            new: { delays: [1, 10], perDay: 15 },
+            lapse: { delays: [10] },
+            rev: { maxIvl: 3650 },
+          };
+        case "findNotes":
+          return [1, 2];
+        case "notesInfo":
+          return [1, 2].map((noteId) => ({
+            noteId,
+            modelName: "Dutch word",
+            tags: [],
+            fields: {
+              Woord: { value: noteId === 1 ? "het huis" : "de fiets", order: 0 },
+              Betekenis: { value: noteId === 1 ? "house" : "bicycle", order: 1 },
+            },
+            cards: [noteId * 10],
+          }));
+        case "findModelsByName":
+          return [
+            {
+              id: 77,
+              name: "Dutch word",
+              type: 0,
+              css: "",
+              flds: [
+                { name: "Woord", ord: 0 },
+                { name: "Betekenis", ord: 1 },
+              ],
+              tmpls: [{ name: "Card 1", ord: 0, qfmt: "{{Woord}}", afmt: "{{Betekenis}}" }],
+            },
+          ];
+        case "cardsInfo":
+          return [
+            {
+              cardId: 10,
+              note: 1,
+              deckName: "Dutch",
+              modelName: "Dutch word",
+              interval: 40,
+              type: 2,
+              queue: 2,
+              reps: 4,
+              lapses: 0,
+              ord: 0,
+              due: 900,
+            },
+            {
+              cardId: 20,
+              note: 2,
+              deckName: "Dutch",
+              modelName: "Dutch word",
+              interval: 0,
+              type: 0,
+              queue: 0,
+              reps: 0,
+              lapses: 0,
+              ord: 0,
+              due: 3,
+            },
+          ];
+        case "getReviewsOfCards":
+          return {
+            10: [
+              { id: learned, ease: 3, type: 0, time: 3000 },
+              { id: learned + 600_000, ease: 3, type: 0, time: 3000 },
+              { id: learned + 3 * DAY, ease: 3, type: 1, time: 3000 },
+              { id: learned + 15 * DAY, ease: 3, type: 1, time: 3000 },
+              { id: learned + 50 * DAY, ease: 4, type: 1, time: 3000 },
+            ],
+            20: [],
+          };
+        default:
+          return null;
+      }
+    })();
+    return new Response(JSON.stringify({ result, error: null }));
+  }) as typeof globalThis.fetch;
+  return { client: new AnkiConnectClient({ url: "http://anki", fetch }), writes };
+}
+
+const nlp = {
+  detect: async (texts: string[]) =>
+    texts.map((t) => ({ lang: /^(house|bicycle|cat)$/.test(t) ? "en" : "nl", confidence: 0.9 })),
+  analyzeTerms: async (_lang: string, terms: string[]) =>
+    terms.map((t) => ({ key: t.split(" ").at(-1)!, aliases: [], article: t.split(" ")[0]! })),
+} as unknown as NlpClient;
+
+let repo: KenningRepository | undefined;
+afterEach(async () => {
+  await repo?.close();
+  repo = undefined;
+});
+
+async function setup(profile: LanguageProfile, optimizer?: RunOptimizer) {
+  let t = NOW;
+  const r = await createRepository(await createNodeDriver(), { deviceId: "d", now: () => t });
+  repo = r;
+  await r.append({ type: "LanguageProfileSet", profile });
+  const anki = fakeAnki();
+  let current = profile;
+  const live = createLiveNative({
+    repo: r,
+    lang: async () => "nl",
+    profile: async () => current,
+    saveProfile: async (p) => {
+      current = p;
+      await r.append({ type: "LanguageProfileSet", profile: p });
+    },
+    anki: async () => anki.client,
+    nlp: async () => nlp,
+    changed: () => undefined,
+    optimizer: optimizer ?? (async () => Promise.reject(new Error("no optimizer"))),
+    sqlite,
+    now: () => t,
+  });
+  return { live: live.services, anki, profile: () => current, tick: (ms: number) => (t += ms) };
+}
+
+describe("native services", () => {
+  it("moves from Anki: notes, cards and history come in, Anki is not written", async () => {
+    const connected = defaultProfile("nl", [{ deck: "Dutch" }], "connected");
+    const { live, anki, profile } = await setup(connected);
+    expect((await live.reviewOverview()).native).toBe(false);
+    const summary = await live.moveFromAnki();
+    expect(summary).toMatchObject({ notes: 2, cards: 2, reviews: 5, vocabNotes: 2 });
+    expect(anki.writes).toEqual([]);
+    expect(profile().mode).toBe("native");
+    expect((await repo!.languageProfile("nl"))?.mode).toBe("native");
+    // The replayed history makes "huis" known; "fiets" is a new card.
+    const model = await repo!.learnerModel("nl");
+    expect(model.get("huis")?.state).toBe("known");
+    expect(model.get("fiets")?.state).toBe("unknown");
+    // The card keeps its Anki ids.
+    expect((await repo!.nativeCard("nl", 10))?.note.id).toBe(1);
+    const decks = await live.nativeDecks();
+    expect(decks[0]).toMatchObject({ name: "Dutch", total: 2, fresh: 1 });
+    expect(decks[0]?.options.newPerDay).toBe(15);
+  });
+
+  it("imports a deck file, reviews with intervals, and undoes an answer", async () => {
+    const { live, tick } = await setup(defaultProfile("nl"));
+    const db = new DatabaseSync(":memory:");
+    db.exec("CREATE TABLE col (crt INTEGER, models TEXT, decks TEXT, dconf TEXT)");
+    db.exec("CREATE TABLE notes (id INTEGER, mid INTEGER, flds TEXT, tags TEXT)");
+    db.exec(
+      "CREATE TABLE cards (id INTEGER, nid INTEGER, did INTEGER, ord INTEGER, type INTEGER, queue INTEGER, due INTEGER, ivl INTEGER, odue INTEGER, odid INTEGER)",
+    );
+    db.exec(
+      "CREATE TABLE revlog (id INTEGER, cid INTEGER, ease INTEGER, type INTEGER, time INTEGER)",
+    );
+    const models = {
+      5: {
+        id: 5,
+        name: "Basic",
+        type: 0,
+        css: "",
+        flds: [
+          { name: "Front", ord: 0 },
+          { name: "Back", ord: 1 },
+        ],
+        tmpls: [
+          {
+            name: "Card 1",
+            ord: 0,
+            qfmt: "{{Front}}",
+            afmt: '{{FrontSide}}<hr>{{Back}}<img src="k.png">',
+          },
+        ],
+      },
+    };
+    db.prepare("INSERT INTO col VALUES (?,?,?,?)").run(
+      NOW / 1000 - 100 * 86400,
+      JSON.stringify(models),
+      JSON.stringify({ 1: { id: 1, name: "Words", conf: 1, dyn: 0 } }),
+      JSON.stringify({ 1: { new: { delays: [1, 10], perDay: 20 } } }),
+    );
+    db.prepare("INSERT INTO notes VALUES (1, 5, ?, '')").run("de kat\x1fcat");
+    db.prepare("INSERT INTO cards VALUES (11, 1, 1, 0, 0, 0, 1, 0, 0, 0)").run();
+    const apkg = zipSync({
+      "collection.anki2": db.serialize(),
+      media: new TextEncoder().encode('{"0":"k.png"}'),
+      0: new Uint8Array([0x89, 0x50, 0x4e, 0x47]),
+    });
+    const { token, decks } = await live.openPackage(new File([apkg], "words.apkg"));
+    expect(decks).toEqual([{ name: "Words", notes: 1, cards: 1, reviews: 0 }]);
+    expect(await live.importPackage(token, ["Words"])).toMatchObject({ cards: 1, media: 1 });
+
+    const q = await live.reviewQueue();
+    expect(q).toMatchObject({ due: 0, fresh: 1 });
+    const card = q.cards[0]!;
+    expect(card).toMatchObject({ layout: "vocab", word: "de kat", gloss: "cat", isNew: true });
+    expect(card.intervals).toEqual({ 1: "1m", 2: "6m", 3: "10m", 4: expect.stringMatching(/d$/) });
+    const blob = await live.mediaFile(card.media["k.png"]!);
+    expect(blob?.type).toBe("image/png");
+
+    const { reviewId } = await live.answerReview(card.cardId, 3, 4000);
+    tick(1000);
+    // The card is in its 10-minute learning step: with nothing else left it comes forward.
+    const after = await live.reviewQueue();
+    expect(after).toMatchObject({ due: 0, fresh: 0 });
+    expect(after.cards[0]).toMatchObject({ cardId: 11, isNew: false });
+    expect(after.cards[0]?.intervals[1]).toBe("1m");
+    await live.undoReview(card.cardId, reviewId);
+    const undone = await live.reviewQueue();
+    expect(undone).toMatchObject({ fresh: 1 });
+    expect(undone.cards[0]).toMatchObject({ cardId: 11, isNew: true });
+  });
+
+  it("tunes by itself once the history is long enough, and recomputes memory", async () => {
+    const optimizer = vi.fn<RunOptimizer>(async (seqs) => ({
+      params: DEFAULT_FSRS_PARAMS.map((w, i) => (i === 0 ? w * 2 : w)),
+      reviews: seqs.reduce((n, s) => n + s.ratings.length - 1, 0),
+      logLoss: 0.3,
+      rmse: 0.02,
+      previousLogLoss: 0.35,
+      previousRmse: 0.04,
+      improved: true,
+    }));
+    const { live } = await setup(defaultProfile("nl"), optimizer);
+    expect(await live.autoTune()).toBeNull();
+    // 100 cards with 5 answers each.
+    const notes = Array.from({ length: 100 }, (_, i) => ({
+      id: 1000 + i,
+      notetypeId: "t",
+      fields: ["x"],
+      tags: [],
+    }));
+    const start = NOW - 200 * DAY;
+    await repo!.append({
+      type: "NativeNotesAdded",
+      lang: "nl",
+      origin: "apkg",
+      notetypes: [{ id: "t", name: "T", kind: "standard", fields: ["F"], templates: [], css: "" }],
+      notes,
+      cards: notes.map((n, i) => ({
+        id: n.id,
+        noteId: n.id,
+        ord: 0,
+        deck: "D",
+        position: i,
+        schedule: {
+          due: NOW + DAY,
+          stability: 10,
+          difficulty: 5,
+          scheduledDays: 10,
+          learningSteps: 0,
+          reps: 5,
+          lapses: 0,
+          state: 2,
+          lastReview: NOW - 9 * DAY,
+        },
+      })),
+      reviews: notes.flatMap((n) =>
+        [0, 1, 4, 12, 40].map((d, k) => ({
+          cardId: n.id,
+          at: start + d * DAY,
+          rating: 3 as const,
+          kind: k === 0 ? ("learn" as const) : ("review" as const),
+          durationMs: 1000,
+        })),
+      ),
+    });
+    const r = await live.autoTune();
+    expect(r).toMatchObject({ tuned: true, improved: true, reviewsUsed: 400, history: 500 });
+    expect(optimizer).toHaveBeenCalledTimes(1);
+    const card = await repo!.nativeCard("nl", 1000);
+    expect(card?.card.schedule?.due).toBe(NOW + DAY);
+    expect(card?.card.schedule?.stability).not.toBe(10);
+    // Not again until 30 days or 500 more answers.
+    expect(await live.autoTune()).toBeNull();
+    expect((await live.tuning()).logLoss).toBe(0.3);
+  });
+
+  it("starts the study day at 4:00", () => {
+    const d = new Date(2026, 5, 2, 3, 0).getTime();
+    expect(new Date(studyDayStart(d)).getDate()).toBe(1);
+    expect(new Date(studyDayStart(d + 2 * 3600_000)).getHours()).toBe(4);
+  });
+});

@@ -25,6 +25,8 @@ export interface InspectorAnki {
   markedKnown: boolean;
   /** A manual state overrides Anki's (offer "Use Anki's state"). */
   overridden: boolean;
+  /** Native mode: the cards are Kenning's own, not Anki's (the inspector words it that way). */
+  native?: boolean;
 }
 
 /** Everything the word inspector shows about one token. Built by the app's services layer. */

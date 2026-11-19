@@ -81,7 +81,12 @@ export default defineConfig({
     },
   },
   // sqlite-wasm resolves its .wasm via import.meta.url; pre-bundling breaks that (see packages/db/README.md)
-  optimizeDeps: { exclude: ["@sqlite.org/sqlite-wasm"] },
+  // The FSRS optimizer finds its .wasm the same way.
+  optimizeDeps: {
+    exclude: ["@sqlite.org/sqlite-wasm", "@open-spaced-repetition/binding-wasm32-wasip1"],
+  },
+  // Workers (database, package reading, optimizer) are ES modules with top-level await.
+  worker: { format: "es" },
   test: {
     environment: "jsdom",
     setupFiles: ["./src/test-setup.ts"],

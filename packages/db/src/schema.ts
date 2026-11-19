@@ -200,6 +200,66 @@ export const MIGRATIONS: readonly (readonly string[])[] = [
     // Analyzer version of the stored tokens: texts re-analyse when it changes.
     `ALTER TABLE text_tokens ADD COLUMN analyzer_version TEXT`,
   ],
+  [
+    // Native mode: the cards Kenning holds itself.
+    `CREATE TABLE native_notetypes (
+       id TEXT PRIMARY KEY,
+       data TEXT NOT NULL
+     )`,
+    `CREATE TABLE native_decks (
+       lang TEXT NOT NULL,
+       name TEXT NOT NULL,
+       options TEXT NOT NULL,
+       updated_hlc TEXT,
+       PRIMARY KEY (lang, name)
+     )`,
+    `CREATE TABLE native_notes (
+       id INTEGER PRIMARY KEY,
+       lang TEXT NOT NULL,
+       notetype_id TEXT NOT NULL,
+       data TEXT NOT NULL,
+       key TEXT,
+       origin TEXT NOT NULL,
+       created_at INTEGER NOT NULL
+     )`,
+    `CREATE INDEX native_notes_lang ON native_notes (lang, key)`,
+    `CREATE TABLE native_cards (
+       id INTEGER PRIMARY KEY,
+       lang TEXT NOT NULL,
+       note_id INTEGER NOT NULL,
+       ord INTEGER NOT NULL,
+       deck TEXT NOT NULL,
+       schedule TEXT,
+       due INTEGER,
+       suspended INTEGER NOT NULL DEFAULT 0,
+       position REAL NOT NULL
+     )`,
+    `CREATE INDEX native_cards_note ON native_cards (note_id)`,
+    `CREATE INDEX native_cards_due ON native_cards (lang, due)`,
+    `CREATE TABLE native_reviews (
+       id TEXT PRIMARY KEY,
+       lang TEXT NOT NULL,
+       card_id INTEGER NOT NULL,
+       at INTEGER NOT NULL,
+       rating INTEGER NOT NULL,
+       kind TEXT NOT NULL,
+       duration_ms INTEGER NOT NULL,
+       source TEXT NOT NULL,
+       previous TEXT
+     )`,
+    `CREATE INDEX native_reviews_card ON native_reviews (card_id, at)`,
+    `CREATE INDEX native_reviews_lang ON native_reviews (lang, at)`,
+    `CREATE TABLE native_media (
+       lang TEXT NOT NULL,
+       name TEXT NOT NULL,
+       blob_id TEXT NOT NULL,
+       PRIMARY KEY (lang, name)
+     )`,
+    `CREATE TABLE fsrs_params (
+       lang TEXT PRIMARY KEY,
+       data TEXT NOT NULL
+     )`,
+  ],
 ];
 
 /** Latest schema version. */
@@ -228,6 +288,13 @@ export const PROJECTION_TABLES = [
   "book_exercises",
   "unit_words",
   "book_answers",
+  "native_notetypes",
+  "native_decks",
+  "native_notes",
+  "native_cards",
+  "native_reviews",
+  "native_media",
+  "fsrs_params",
 ] as const;
 
 /** The database file was written by a newer app version than this one understands. */

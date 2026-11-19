@@ -4,7 +4,7 @@
  * Anki (and only queues suggestions instead). The shared tools live in
  * @app/mcp-tools.
  */
-import { type AnkiConnectClient, addWordToAnki } from "@app/anki";
+import { type AnkiConnectClient, addWord } from "@app/anki";
 import { defaultProfile, wordKey } from "@app/core";
 import type { KenningRepository } from "@app/db";
 
@@ -26,15 +26,20 @@ export function createAnkiHandler(deps: AnkiToolDeps) {
   return async function addToAnki(args: { word: string; gloss: string; sentence: string }) {
     const word = args.word.trim();
     if (!word) throw new Error("word is empty");
-    const profile = (await deps.repo.languageProfile(lang)) ?? defaultProfile(lang);
-    const { noteId, deck } = await addWordToAnki(deps.anki, (e) => deps.repo.append(e), {
-      profile,
-      context: { source: "mcp", ...(deps.deck ? { deck: deps.deck } : {}) },
-      word,
-      gloss: args.gloss,
-      sentence: args.sentence,
-      source: "Kenning MCP",
-    });
+    const profile =
+      (await deps.repo.languageProfile(lang)) ?? defaultProfile(lang, [], "connected");
+    const { noteId, deck } = await addWord(
+      async () => deps.anki,
+      (e) => deps.repo.append(e),
+      {
+        profile,
+        context: { source: "mcp", ...(deps.deck ? { deck: deps.deck } : {}) },
+        word,
+        gloss: args.gloss,
+        sentence: args.sentence,
+        source: "Kenning MCP",
+      },
+    );
     return { noteId, deck };
   };
 }

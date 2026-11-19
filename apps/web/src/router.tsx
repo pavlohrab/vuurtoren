@@ -103,6 +103,7 @@ const topicPracticeRoute = screen(
   () => import("./screens/Practice.js"),
   "TopicPracticeRoute",
 );
+const reviewRoute = screen("/review", () => import("./screens/review/Review.js"), "Review");
 const progressRoute = screen("/progress", () => import("./screens/Progress.js"), "Progress");
 /** /settings?section=account|language|reading|ai|data|advanced */
 const settingsRoute = searchScreen(
@@ -158,6 +159,7 @@ const routeTree = rootRoute.addChildren([
   grammarTopicRoute,
   topicPracticeRoute,
   progressRoute,
+  reviewRoute,
   settingsRoute,
   examRoute,
   examPartRoute,

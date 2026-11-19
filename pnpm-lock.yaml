@@ -266,6 +266,12 @@ importers:
       '@app/ui':
         specifier: workspace:*
         version: link:../../packages/ui
+      '@open-spaced-repetition/binding-wasm32-wasip1':
+        specifier: 0.6.0
+        version: 0.6.0
+      '@sqlite.org/sqlite-wasm':
+        specifier: 3.54.1-build1
+        version: 3.54.1-build1
       '@tanstack/react-query':
         specifier: ^5.107.1
         version: 5.107.1(@types/react@19.3.0)(react@19.3.1)
@@ -312,6 +318,9 @@ importers:
       '@vitejs/plugin-react':
         specifier: ^6.3.0
         version: 6.3.0(vite@8.3.8(@types/node@26.6.6)(jiti@2.7.0)(yaml@2.9.1))
+      fflate:
+        specifier: 0.8.3
+        version: 0.8.3
       jsdom:
         specifier: ^31.0.1
         version: 31.0.1
@@ -337,7 +346,16 @@ importers:
       '@app/core':
         specifier: workspace:*
         version: link:../core
+      fflate:
+        specifier: 0.8.3
+        version: 0.8.3
+      fzstd:
+        specifier: 0.1.1
+        version: 0.1.1
     devDependencies:
+      '@types/node':
+        specifier: ^26.6.6
+        version: 26.6.6
       vitest:
         specifier: ^5.1.0
         version: 5.1.0(@types/node@26.6.6)(jsdom@31.0.1)(vite@8.3.8(@types/node@26.6.6)(jiti@2.7.0)(yaml@2.9.1))
@@ -765,6 +783,10 @@ packages:
     peerDependencies:
       '@emnapi/core': ^1.7.1 || 2.0.0-beta.2
       '@emnapi/runtime': ^1.7.1 || 2.0.0-beta.2
+
+  '@open-spaced-repetition/binding-wasm32-wasip1@0.6.0':
+    resolution: {integrity: sha512-Pi+QOUODNOlTxRIQ8sKJokRYlc5bx+2GTKaxsjNk2QZ8cdbR+oMc5+mlL9E36X9b/cOipz3xI95/1XbJSPqUAA==}
+    engines: {node: '>=24'}
 
   '@open-spaced-repetition/srs-kit@1.0.0':
     resolution: {integrity: sha512-f++JAMpRw7Yh1U4JcHzTtVknJ1bYKz/4yejsus6TRl+ueGJpvexNBrOoqaeUWCgH/e1j046oiqjzy4Nf4RW/vw==}
@@ -2185,6 +2207,9 @@ packages:
       picomatch:
         optional: true
 
+  fflate@0.8.3:
+    resolution: {integrity: sha512-tbZNuJrLwGUp3zshBtdy4W+ORxZuIh8a5ilyIEQDC5rY1f3U20JMry0Ll3WBzU58EZKsEuJFXhb5gwv8CsPvgA==}
+
   file-entry-cache@11.1.5:
     resolution: {integrity: sha512-+PFTHITI08JIGhnNpGNI8T8inUpgZfk3GNEqfT9R2zZV2iFXg3CvqzSl/uEhs7TSGujYRELEANyDvS8Fj7+S7Q==}
 
@@ -2222,6 +2247,9 @@ packages:
 
   function-bind@1.1.2:
     resolution: {integrity: sha512-7XHNxH7qX9xG5mIwxkhumTox/MIRNcOgDrxWsMt2pAr23WHp6MrRlN7FBSFpCpr+oVO0F744iUgR82nJMfG2SA==}
+
+  fzstd@0.1.1:
+    resolution: {integrity: sha512-dkuVSOKKwh3eas5VkJy1AW1vFpet8TA/fGmVA5krThl8YcOVE/8ZIoEA1+U1vEn5ckxxhLirSdY837azmbaNHA==}
 
   gensync@1.0.0-beta.2:
     resolution: {integrity: sha512-3hN7NaskYvMDLQY55gnW3NQ+mesEAepTqlg+VEbj7zzqEMBVNhzcGYYeqFo/TlYz6eQiFcp1HcsCZO+nGgS8zg==}
@@ -3242,7 +3270,6 @@ snapshots:
     dependencies:
       '@emnapi/wasi-threads': 2.2.0
       tslib: 2.9.1
-    optional: true
 
   '@emnapi/runtime@1.11.2':
     dependencies:
@@ -3252,7 +3279,6 @@ snapshots:
   '@emnapi/runtime@2.0.0-beta.2':
     dependencies:
       tslib: 2.9.1
-    optional: true
 
   '@emnapi/wasi-threads@1.2.2':
     dependencies:
@@ -3262,7 +3288,6 @@ snapshots:
   '@emnapi/wasi-threads@2.2.0':
     dependencies:
       tslib: 2.9.1
-    optional: true
 
   '@eslint-community/eslint-utils@4.10.1(eslint@10.15.0(jiti@2.7.0))':
     dependencies:
@@ -3410,7 +3435,12 @@ snapshots:
       '@emnapi/core': 2.0.0-beta.2
       '@emnapi/runtime': 2.0.0-beta.2
       '@tybys/wasm-util': 0.10.5
-    optional: true
+
+  '@open-spaced-repetition/binding-wasm32-wasip1@0.6.0':
+    dependencies:
+      '@emnapi/core': 2.0.0-beta.2
+      '@emnapi/runtime': 2.0.0-beta.2
+      '@napi-rs/wasm-runtime': 1.2.6(@emnapi/core@2.0.0-beta.2)(@emnapi/runtime@2.0.0-beta.2)
 
   '@open-spaced-repetition/srs-kit@1.0.0': {}
 
@@ -4168,7 +4198,6 @@ snapshots:
   '@tybys/wasm-util@0.10.5':
     dependencies:
       tslib: 2.9.1
-    optional: true
 
   '@types/aria-query@5.0.4': {}
 
@@ -4662,6 +4691,8 @@ snapshots:
     optionalDependencies:
       picomatch: 4.0.7
 
+  fflate@0.8.3: {}
+
   file-entry-cache@11.1.5:
     dependencies:
       flat-cache: 6.1.23
@@ -4703,6 +4734,8 @@ snapshots:
     optional: true
 
   function-bind@1.1.2: {}
+
+  fzstd@0.1.1: {}
 
   gensync@1.0.0-beta.2: {}
 

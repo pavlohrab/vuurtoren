@@ -10,7 +10,7 @@ const HOUR = 60 * 60 * 1000;
 function services(over: Partial<AppServices> = {}): AppServices {
   const base = createMockServices({ latencyMs: 0 });
   const profile = {
-    ...defaultProfile("nl"),
+    ...defaultProfile("nl", [], "connected"),
     sources: [{ deck: "Dutch" }],
   };
   return {
@@ -24,6 +24,13 @@ function services(over: Partial<AppServices> = {}): AppServices {
 afterEach(() => resetAnkiSyncForTests());
 
 describe("automatic Anki import", () => {
+  it("never runs in native mode", async () => {
+    const native = { ...defaultProfile("nl"), sources: [{ deck: "Dutch" }] };
+    expect(await shouldAutoSync(services({ languageProfile: () => Promise.resolve(native) }))).toBe(
+      false,
+    );
+  });
+
   it("imports when the decks were never read and Anki is open", async () => {
     expect(await shouldAutoSync(services())).toBe(true);
   });

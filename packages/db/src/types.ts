@@ -5,6 +5,14 @@
 import type {
   AnalyzedToken,
   Block,
+  CardRating,
+  CardReview,
+  CardSchedule,
+  DeckOptions,
+  NativeCard,
+  NativeDeck,
+  NativeNote,
+  NativeNotetype,
   BookExercise,
   Course,
   ExerciseItem,
@@ -330,6 +338,69 @@ export type AppEvent =
       /** Learner-model keys of the word(s) the item tests (empty or absent: none). */
       keys?: string[];
     }
+  /**
+   * Native mode: notes and cards entered Kenning (an .apkg file, a move from Anki, or Add to my
+   * words), with the note types and decks they need, their review history and their media
+   * (file name → blob id). Notes and cards already present are kept as they are; note types
+   * and decks are added when missing. Large imports arrive as several events.
+   */
+  | {
+      type: "NativeNotesAdded";
+      lang: string;
+      origin: "apkg" | "anki" | "kenning";
+      notetypes?: NativeNotetype[];
+      decks?: NativeDeck[];
+      notes: NativeNote[];
+      cards: NativeCard[];
+      reviews?: CardReview[];
+      media?: Record<string, string>;
+    }
+  /** Native mode: a deck's scheduling options. Last write wins per deck (HLC). */
+  | { type: "NativeDeckOptionsSet"; lang: string; deck: string; options: DeckOptions }
+  /**
+   * Native mode: one card was answered on the review screen. `schedule` is the card after the
+   * answer and `previous` the card before it (absent: it was new), so replays and undo need no
+   * scheduler.
+   */
+  | {
+      type: "CardReviewed";
+      lang: string;
+      cardId: number;
+      rating: CardRating;
+      at: number;
+      durationMs: number;
+      schedule: CardSchedule;
+      previous?: CardSchedule;
+    }
+  /** Native mode: the answer recorded by CardReviewed `reviewId` was taken back. */
+  | { type: "CardReviewUndone"; lang: string; cardId: number; reviewId: string }
+  /**
+   * Native mode: cards changed outside a review: marked known, studied first, or their memory
+   * recomputed with new FSRS parameters.
+   */
+  | {
+      type: "NativeCardsChanged";
+      lang: string;
+      reason: "known" | "first" | "memory";
+      changes: NativeCardChange[];
+    }
+  /**
+   * Native mode: FSRS parameters trained on the learner's reviews (or the defaults). Log loss
+   * and RMSE compare the new parameters with the ones they replace, on the same reviews.
+   */
+  | {
+      type: "FsrsParamsSet";
+      lang: string;
+      params: number[];
+      /** Reviews the optimizer trained on. */
+      reviews: number;
+      /** Answers in the whole history at the time (for "500 new reviews since"). */
+      historySize?: number;
+      logLoss?: number;
+      rmse?: number;
+      previousLogLoss?: number;
+      previousRmse?: number;
+    }
   | {
       /**
        * One finished exam-preparation session: a practice round or a timed mock
@@ -355,6 +426,16 @@ export type AppEvent =
       /** Words worth learning from what went wrong (lemma keys). */
       words?: string[];
     };
+
+/** Native mode: one change to a card outside a review (see NativeCardsChanged). */
+export interface NativeCardChange {
+  cardId: number;
+  /** New schedule; null makes the card new again. Absent = unchanged. */
+  schedule?: CardSchedule | null;
+  suspended?: boolean;
+  /** New place in the new queue. */
+  position?: number;
+}
 
 /** An open word suggestion (see `suggestedWords`). */
 export interface SuggestedWord {
@@ -411,6 +492,12 @@ const EVENT_TYPE_MAP = {
   UnitWordsSet: 1,
   BookExerciseAnswered: 1,
   ExamAttempt: 1,
+  NativeNotesAdded: 1,
+  NativeDeckOptionsSet: 1,
+  CardReviewed: 1,
+  CardReviewUndone: 1,
+  NativeCardsChanged: 1,
+  FsrsParamsSet: 1,
 } as const satisfies Record<AppEvent["type"], 1>;
 
 export const EVENT_TYPES: ReadonlySet<string> = new Set(Object.keys(EVENT_TYPE_MAP));
@@ -539,6 +626,61 @@ export interface ExamAttemptRecord {
   words: string[];
 }
 
+/** Native mode: a deck with its options and card counts. */
+export interface NativeDeckSummary extends NativeDeck {
+  total: number;
+  /** Cards never answered. */
+  fresh: number;
+  /** Reviewed cards (learning and review) due now. */
+  due: number;
+  suspended: number;
+}
+
+/** Native mode: a card with everything the review screen needs. */
+export interface NativeCardView {
+  card: NativeCard;
+  note: NativeNote;
+  notetype: NativeNotetype;
+  options: DeckOptions;
+}
+
+/** Native mode: the cards of one review session, in order, and what is left today. */
+export interface NativeQueue {
+  /** Due (re)learning and review cards first, then today's new cards. */
+  cards: NativeCardView[];
+  /** Reviewed cards due now. */
+  due: number;
+  /** New cards still allowed today. */
+  fresh: number;
+}
+
+/** Native mode: the live state of a note's cards, shaped like @app/anki NoteCardStatus. */
+export interface NativeNoteStatus {
+  noteId: number;
+  deck: string;
+  cards: {
+    cardId: number;
+    type: "new" | "learning" | "review" | "relearning";
+    suspended: boolean;
+    buried: boolean;
+    intervalDays: number;
+    dueText?: string;
+  }[];
+}
+
+/** Native mode: the FSRS parameters in use (FsrsParamsSet), or null for the defaults. */
+export interface FsrsParamsRecord {
+  params: number[];
+  reviews: number;
+  historySize?: number;
+  /** When they were set (ms). */
+  at: number;
+  logLoss?: number;
+  rmse?: number;
+  previousLogLoss?: number;
+  previousRmse?: number;
+}
+
 /** Repository API used by apps (web/desktop/extension). */
 export interface Repository {
   append(event: AppEvent): Promise<StoredEvent>;
@@ -587,6 +729,25 @@ export interface Repository {
   putBlob(bytes: Uint8Array, type: string): Promise<string>;
   /** A stored image, or null. */
   getBlob(id: string): Promise<{ type: string; bytes: Uint8Array } | null>;
+  /** Native mode: decks with their options and card counts at `now`. */
+  nativeDecks(lang: string, now: number): Promise<NativeDeckSummary[]>;
+  /**
+   * Native mode: the cards to review at `now`: due cards, then new cards within each deck's
+   * daily limit (counted from `dayStart`, the start of the learner's study day), at most `limit`.
+   */
+  nativeQueue(lang: string, now: number, dayStart: number, limit: number): Promise<NativeQueue>;
+  /** Native mode: one card with its note, note type and deck options. */
+  nativeCard(lang: string, cardId: number): Promise<NativeCardView | null>;
+  /** Native mode: the whole review history (imported and answered in Kenning), oldest first. */
+  nativeReviews(lang: string): Promise<CardReview[]>;
+  /** Native mode: notes, cards and answers held, for Settings. */
+  nativeStats(lang: string): Promise<{ notes: number; cards: number; reviews: number }>;
+  /** Native mode: the FSRS parameters in use, or null for the defaults. */
+  fsrsParams(lang: string): Promise<FsrsParamsRecord | null>;
+  /** Native mode: blob ids of media files by name (names without a blob are left out). */
+  nativeMedia(lang: string, names: string[]): Promise<Record<string, string>>;
+  /** Native mode: the cards of some notes, for the word inspector. */
+  nativeNoteStatus(lang: string, noteIds: number[], now: number): Promise<NativeNoteStatus[]>;
   /** Drop projections and rebuild them from the event log. */
   rebuild(): Promise<void>;
 }

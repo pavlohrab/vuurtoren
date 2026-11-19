@@ -40,6 +40,15 @@ describe("onboarding", () => {
     expect(screen.getByRole("radio", { name: /Nederlands/ })).toBeChecked();
     await user.click(cont());
 
+    expect(await screen.findByRole("heading", { name: "Do you use Anki?" })).toBeVisible();
+    expect(cont()).toBeDisabled();
+    await user.click(screen.getByRole("radio", { name: /^Yes/ }));
+    await user.click(cont());
+    expect(await screen.findByRole("heading", { name: "Your Anki cards" })).toBeVisible();
+    await user.click(screen.getByRole("radio", { name: /Keep using Anki/ }));
+    expect(screen.getByText(/Anki must be open for Kenning to send words to it/)).toBeVisible();
+    await user.click(cont());
+
     expect(await screen.findByRole("heading", { name: "Connect Anki" })).toBeVisible();
     expect(await screen.findByText(/Connected/)).toBeVisible();
     await user.click(cont());
@@ -70,6 +79,7 @@ describe("onboarding", () => {
     expect(p.destinations.reading).toBe("Kenning::Nederlands::Reading");
     expect(p.courseDecks).toBe("course");
     expect(p.tags).toEqual(["nl"]);
+    expect(p.mode).toBe("connected");
 
     await user.click(screen.getByRole("button", { name: "Import a text" }));
     await waitFor(() => expect(history.location.pathname).toBe("/import"));
@@ -84,6 +94,10 @@ describe("onboarding", () => {
       suggestDecks,
     });
     await user.click(await screen.findByRole("button", { name: "Continue" }));
+    await user.click(await screen.findByRole("radio", { name: /^Yes/ }));
+    await user.click(cont());
+    await user.click(await screen.findByRole("radio", { name: /Keep using Anki/ }));
+    await user.click(cont());
     expect(await screen.findByText(/Anki is not running/)).toBeVisible();
     expect(screen.getByRole("button", { name: "Check again" })).toBeVisible();
     await user.click(screen.getByRole("button", { name: "Continue without Anki" }));
@@ -99,6 +113,51 @@ describe("onboarding", () => {
     await user.click(screen.getByRole("checkbox", { name: /gezellig/ }));
     await user.click(screen.getByRole("button", { name: "Continue with 2 known" }));
     await waitFor(() => expect(savePlacement).toHaveBeenCalledWith(["huis", "gezellig"]));
+    expect(await screen.findByRole("heading", { name: "Your first text" })).toBeVisible();
+  });
+
+  it("no Anki: Kenning holds the cards, no Anki steps", async () => {
+    const ankiStatus = vi.fn(async () => ({ connected: true, state: "connected" as const }));
+    const { user, saveLanguageProfile } = setup({ ankiStatus });
+    await user.click(await screen.findByRole("button", { name: "Continue" }));
+    await user.click(await screen.findByRole("radio", { name: /^No/ }));
+    await user.click(cont());
+    expect(await screen.findByRole("heading", { name: "Where new words go" })).toBeVisible();
+    await user.click(screen.getByRole("button", { name: "Save and continue" }));
+    expect(await screen.findByRole("heading", { name: "Words you already know" })).toBeVisible();
+    const p = saveLanguageProfile.mock.calls[0]![0];
+    expect(p).toMatchObject({ mode: "native", sources: [] });
+    expect(ankiStatus).not.toHaveBeenCalled();
+  });
+
+  it("import from Anki: confirmed decks are moved into Kenning", async () => {
+    const moveFromAnki = vi.fn(async () => ({
+      notes: 10,
+      cards: 20,
+      reviews: 300,
+      vocabNotes: 10,
+      media: 0,
+      skippedMedia: 0,
+    }));
+    const { user, saveLanguageProfile } = setup({ moveFromAnki });
+    await user.click(await screen.findByRole("button", { name: "Continue" }));
+    await user.click(await screen.findByRole("radio", { name: /^Yes/ }));
+    await user.click(cont());
+    expect(
+      await screen.findByRole("radio", { name: /Import from Anki and use Kenning/ }),
+    ).toBeChecked();
+    await user.click(cont());
+    expect(await screen.findByText(/Connected/)).toBeVisible();
+    await user.click(cont());
+    await screen.findByRole("checkbox", { name: /Dutch::Core 2k/ });
+    await user.click(cont());
+    await user.click(await screen.findByRole("button", { name: "Save and continue" }));
+    expect(await screen.findByRole("heading", { name: "Importing your decks" })).toBeVisible();
+    expect(saveLanguageProfile.mock.calls[0]![0].mode).toBe("connected");
+    await user.click(screen.getByRole("button", { name: "Import" }));
+    expect(await screen.findByText(/Imported 20 cards from 10 notes/)).toBeVisible();
+    expect(moveFromAnki).toHaveBeenCalledTimes(1);
+    await user.click(cont());
     expect(await screen.findByRole("heading", { name: "Your first text" })).toBeVisible();
   });
 

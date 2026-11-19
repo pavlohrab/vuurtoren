@@ -1,5 +1,11 @@
 /** Demo language profile, deck suggestions and placement words (?demo). */
-import { type AddSource, type LanguageProfile, defaultProfile, resolveDeck } from "@app/core";
+import {
+  type AddSource,
+  type LanguageProfile,
+  type ProfileMode,
+  defaultProfile,
+  resolveDeck,
+} from "@app/core";
 import { placementBands } from "./placementWords.js";
 import type { DeckSuggestion, ProfileServices } from "./profileTypes.js";
 
@@ -51,7 +57,7 @@ const HINT: Record<string, string> = {
   mcp: "MCP",
 };
 
-export function createMockProfile(wait: () => Promise<void>) {
+export function createMockProfile(wait: () => Promise<void>, mode: ProfileMode = "connected") {
   let profile: LanguageProfile = defaultProfile(
     "nl",
     SUGGESTIONS.filter((s) => s.suggested).map(({ deck, modelName, wordField }) => ({
@@ -59,6 +65,7 @@ export function createMockProfile(wait: () => Promise<void>) {
       modelName,
       wordField,
     })),
+    mode,
   );
   const known = new Set<string>();
   const deckFor = (source: AddSource, deck?: string) =>
@@ -104,5 +111,5 @@ export function createMockProfile(wait: () => Promise<void>) {
       for (const k of keys) known.add(k);
     },
   };
-  return { services, deckFor };
+  return { services, deckFor, current: () => profile };
 }

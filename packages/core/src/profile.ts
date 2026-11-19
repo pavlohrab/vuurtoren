@@ -34,8 +34,16 @@ export interface ProfileDestinations {
  */
 export type CourseDeckMode = "unit" | "course" | "default";
 
+/**
+ * Who holds the cards. `connected`: Anki is the record of known words and runs the reviews.
+ * `native`: Kenning holds the cards and runs the reviews itself.
+ */
+export type ProfileMode = "connected" | "native";
+
 export interface LanguageProfile {
   lang: string;
+  /** Absent in profiles saved before modes existed: those are `connected`. */
+  mode?: ProfileMode;
   sources: ProfileSource[];
   destinations: ProfileDestinations;
   courseDecks: CourseDeckMode;
@@ -61,11 +69,26 @@ export function rootDeck(lang: string): string {
   return `Kenning::${langName(lang)}`;
 }
 
-/** A fresh profile: everything goes to `Kenning::<Lang>` (reading/Converse/AI subdecks). */
-export function defaultProfile(lang: string, sources: ProfileSource[] = []): LanguageProfile {
+/** The mode of a profile; a profile without one is `connected`. */
+export function profileMode(
+  profile: Pick<LanguageProfile, "mode"> | null | undefined,
+): ProfileMode {
+  return profile?.mode === "native" ? "native" : "connected";
+}
+
+/**
+ * A fresh profile: everything goes to `Kenning::<Lang>` (reading/Converse/AI subdecks). New
+ * learners hold their cards in Kenning unless they say they use Anki.
+ */
+export function defaultProfile(
+  lang: string,
+  sources: ProfileSource[] = [],
+  mode: ProfileMode = "native",
+): LanguageProfile {
   const root = rootDeck(lang);
   return {
     lang,
+    mode,
     sources,
     destinations: {
       default: root,
@@ -91,6 +114,7 @@ export function migratedProfile(
   const deck = targetDeck?.trim() || rootDeck(lang);
   return {
     lang,
+    mode: "connected",
     sources: [...new Set(lastSources)].filter((d) => d !== deck).map((d) => ({ deck: d })),
     destinations: { default: deck },
     courseDecks: "default",
@@ -172,6 +196,7 @@ export function isLanguageProfile(v: unknown): v is LanguageProfile {
     Array.isArray(p.sources) &&
     !!p.destinations &&
     typeof p.destinations.default === "string" &&
-    Array.isArray(p.tags)
+    Array.isArray(p.tags) &&
+    (p.mode === undefined || p.mode === "connected" || p.mode === "native")
   );
 }

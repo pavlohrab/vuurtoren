@@ -15,7 +15,8 @@ export const MAX_RPC_EVENT_CHARS = 24 * 1024 * 1024;
 export const MAX_RPC_BATCH = 20_000;
 
 /** Argument kinds; a trailing "?" marks an optional argument. */
-type ArgKind = "string" | "number" | "object" | "string[]" | "string?" | "number?" | "object?";
+type ArgKind =
+  "string" | "number" | "object" | "string[]" | "number[]" | "string?" | "number?" | "object?";
 
 /** Allow-list of remotely callable repository methods and their argument kinds. */
 export const RPC_METHODS = {
@@ -51,6 +52,14 @@ export const RPC_METHODS = {
   examAttempts: ["string"],
   suggestedWords: ["string"],
   shelves: [],
+  nativeDecks: ["string", "number"],
+  nativeQueue: ["string", "number", "number", "number"],
+  nativeCard: ["string", "number"],
+  nativeReviews: ["string"],
+  nativeStats: ["string"],
+  fsrsParams: ["string"],
+  nativeMedia: ["string", "string[]"],
+  nativeNoteStatus: ["string", "number[]", "number"],
 } as const satisfies Record<string, readonly ArgKind[]>;
 
 export type RpcMethod = keyof typeof RPC_METHODS;
@@ -86,9 +95,10 @@ export function validateRpcArgs(method: RpcMethod, args: unknown): string | null
       if (optional) continue;
       return `${method}: argument ${i + 1} is required`;
     }
-    if (base === "string[]") {
-      if (!Array.isArray(v) || v.some((x) => typeof x !== "string")) {
-        return `${method}: argument ${i + 1} must be an array of strings`;
+    if (base === "string[]" || base === "number[]") {
+      const item = base === "string[]" ? "string" : "number";
+      if (!Array.isArray(v) || v.some((x) => typeof x !== item)) {
+        return `${method}: argument ${i + 1} must be an array of ${item}s`;
       }
       if (v.length > MAX_RPC_BATCH) return `${method}: at most ${MAX_RPC_BATCH} items per call`;
       continue;

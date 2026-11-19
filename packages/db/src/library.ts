@@ -17,13 +17,30 @@ import type { Shelf, SqlDriver, StoredEvent, TextMetaPatch } from "./types.js";
 /** Largest cover image accepted (bytes). Covers are ~600px WebP, normally 30–80 KB. */
 export const MAX_BLOB_BYTES = 2 * 1024 * 1024;
 
-/** Image types a blob may have. */
-export const BLOB_TYPES: readonly string[] = [
+/** Largest audio blob accepted (bytes): sounds of imported cards. */
+export const MAX_AUDIO_BLOB_BYTES = 8 * 1024 * 1024;
+
+/** Image types a blob may have (covers and card images). */
+const IMAGE_TYPES: readonly string[] = [
   "image/webp",
   "image/jpeg",
   "image/png",
   "image/svg+xml",
+  "image/gif",
 ];
+
+/** Audio types a blob may have (card sounds). */
+const AUDIO_TYPES: readonly string[] = [
+  "audio/mpeg",
+  "audio/ogg",
+  "audio/wav",
+  "audio/mp4",
+  "audio/webm",
+  "audio/flac",
+];
+
+/** Types a blob may have. */
+export const BLOB_TYPES: readonly string[] = [...IMAGE_TYPES, ...AUDIO_TYPES];
 
 /** A blob id: the SHA-256 of its bytes, hex. */
 export function blobId(bytes: Uint8Array): string {
@@ -40,7 +57,14 @@ export function isBlobId(id: unknown): id is string {
  * @returns an error message safe to show, or null when it is acceptable
  */
 export function blobProblem(bytes: Uint8Array, type: string): string | null {
-  if (!BLOB_TYPES.includes(type)) return "Only WebP, JPEG, PNG or SVG images can be stored.";
+  if (AUDIO_TYPES.includes(type)) {
+    if (bytes.length === 0) return "The sound is empty.";
+    if (bytes.length > MAX_AUDIO_BLOB_BYTES) return "The sound is larger than 8 MB.";
+    return null;
+  }
+  if (!IMAGE_TYPES.includes(type)) {
+    return "Only images (WebP, JPEG, PNG, GIF, SVG) and sounds can be stored.";
+  }
   if (bytes.length === 0) return "The image is empty.";
   if (bytes.length > MAX_BLOB_BYTES) return "The image is larger than 2 MB.";
   return null;

@@ -1,14 +1,15 @@
 /**
  * Repository over any `SqlDriver`: appends events and keeps projections in sync, answers queries.
  */
-import type {
-  AnalyzedToken,
-  GrammarHit,
-  ItemState,
-  LanguageProfile,
-  LearnerModel,
-  StaircaseState,
-  WordState,
+import {
+  type AnalyzedToken,
+  type GrammarHit,
+  type ItemState,
+  type LanguageProfile,
+  type LearnerModel,
+  type StaircaseState,
+  type WordState,
+  profileMode,
 } from "@app/core";
 import { createHlc, createUlidGenerator, randomDeviceId } from "./ids.js";
 import {
@@ -19,6 +20,7 @@ import {
   composeWord,
 } from "./projections.js";
 import { courseQueries } from "./course.js";
+import { nativeQueries, nativeWordEntries } from "./cards.js";
 import { projectGeneratedSentences } from "./generated.js";
 import { projectSuggestedWords } from "./suggested.js";
 import { projectExamAttempts } from "./exam.js";
@@ -92,9 +94,9 @@ export interface KenningRepository extends Repository {
 }
 
 /**
- * Bump when a projection's meaning changes. 2: reading_progress.last_segment = next segment to read. 3: write-action events. 4: anki_words sentences, practice_items. 5: course tables. 6: text_grammar. 7: language_profiles. 8: word_evidence. 9: text_meta (edited details, covers).
+ * Bump when a projection's meaning changes. 2: reading_progress.last_segment = next segment to read. 3: write-action events. 4: anki_words sentences, practice_items. 5: course tables. 6: text_grammar. 7: language_profiles. 8: word_evidence. 9: text_meta (edited details, covers). 10: native cards.
  */
-export const PROJECTION_VERSION = 9;
+export const PROJECTION_VERSION = 10;
 
 /** Wrap every query function in the repository's mutex. */
 function serialised<T extends Record<string, (...a: never[]) => Promise<unknown>>>(
@@ -230,8 +232,22 @@ export async function createRepository(
       if (!f) facts.set(key, (f = { lookups: 0 }));
       return f;
     };
-    for (const r of await driver.exec(`SELECT * FROM anki_words WHERE lang = ?${k}`, p)) {
-      get(String(r["key"])).anki = ankiEntry(r);
+    const profileRow = (
+      await driver.exec("SELECT profile FROM language_profiles WHERE lang = ?", [lang])
+    )[0];
+    const native =
+      profileRow !== undefined &&
+      profileMode(json<LanguageProfile>(profileRow["profile"])) === "native";
+    if (native) {
+      // Native mode: Kenning's own cards are the record; Anki snapshots and notes added to Anki
+      // from connected days are left aside.
+      const n = await nativeWordEntries(driver, lang, now(), keys ? new Set(keys) : undefined);
+      for (const [key, entry] of n.entries) get(key).anki = entry;
+      for (const [key, note] of n.pending) get(key).note = note;
+    } else {
+      for (const r of await driver.exec(`SELECT * FROM anki_words WHERE lang = ?${k}`, p)) {
+        get(String(r["key"])).anki = ankiEntry(r);
+      }
     }
     for (const r of await driver.exec(`SELECT * FROM word_overrides WHERE lang = ?${k}`, p)) {
       // An empty state is the tombstone left by WordStateCleared.
@@ -243,11 +259,13 @@ export async function createRepository(
     for (const r of await driver.exec(`SELECT * FROM word_lookups WHERE lang = ?${k}`, p)) {
       get(String(r["key"])).lookups = Number(r["count"]);
     }
-    for (const r of await driver.exec(`SELECT * FROM notes_added WHERE lang = ?${k}`, p)) {
-      get(String(r["key"])).note = { noteId: Number(r["note_id"]), deck: String(r["deck"]) };
-    }
-    for (const r of await driver.exec(`SELECT * FROM prioritized WHERE lang = ?${k}`, p)) {
-      get(String(r["key"])).prioritizedNoteId = Number(r["note_id"]);
+    if (!native) {
+      for (const r of await driver.exec(`SELECT * FROM notes_added WHERE lang = ?${k}`, p)) {
+        get(String(r["key"])).note = { noteId: Number(r["note_id"]), deck: String(r["deck"]) };
+      }
+      for (const r of await driver.exec(`SELECT * FROM prioritized WHERE lang = ?${k}`, p)) {
+        get(String(r["key"])).prioritizedNoteId = Number(r["note_id"]);
+      }
     }
     for (const r of await driver.exec(`SELECT * FROM word_evidence WHERE lang = ?${k}`, p)) {
       get(String(r["key"])).evidence = {
@@ -405,6 +423,8 @@ export async function createRepository(
       ),
 
     ...serialised(courseQueries(driver), serial),
+
+    ...serialised(nativeQueries(driver), serial),
 
     textGrammar: (textId) =>
       serial(async () => {

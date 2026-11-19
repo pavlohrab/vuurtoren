@@ -151,7 +151,7 @@ describe("live language profile", () => {
 
   it("the snapshot reads only confirmed sources plus course-mapped decks", async () => {
     const { repo, live } = await setup(collection());
-    await live.services.saveLanguageProfile(defaultProfile("nl", [{ deck: "Dutch" }]));
+    await live.services.saveLanguageProfile(defaultProfile("nl", [{ deck: "Dutch" }], "connected"));
     await repo.append({
       type: "CourseImported",
       course: { id: "c1", title: "Opmaat", lang: "nl", createdAt: 0 } as never,
@@ -168,7 +168,7 @@ describe("live language profile", () => {
 
   it("deck choices: profile deck per source, course rule, Kenning, course and Anki decks", async () => {
     const { repo, live } = await setup(collection());
-    await live.services.saveLanguageProfile(defaultProfile("nl"));
+    await live.services.saveLanguageProfile(defaultProfile("nl", [], "connected"));
     await repo.append({
       type: "CourseImported",
       course: { id: "c1", title: "Opmaat", lang: "nl", createdAt: 0 } as never,
@@ -193,7 +193,7 @@ describe("live language profile", () => {
     const s = await live.services.suggestDecks();
     // Small decks are only sampled once confirmed; "Dutch" has 2 notes so it needs confirming.
     expect(s).toEqual([]);
-    await live.services.saveLanguageProfile(defaultProfile("nl", [{ deck: "Dutch" }]));
+    await live.services.saveLanguageProfile(defaultProfile("nl", [{ deck: "Dutch" }], "connected"));
     const again = await live.services.suggestDecks();
     expect(again[0]).toMatchObject({ deck: "Dutch", wordField: "Woord", suggested: true });
     expect(again[0]!.examples.sort()).toEqual(["fiets", "huis"]);
@@ -205,7 +205,7 @@ describe("live language profile", () => {
 
   it("the shared add command with the live profile: deck, tags and key", async () => {
     const { repo, live, anki } = await setup(new Map());
-    await live.services.saveLanguageProfile(defaultProfile("nl"));
+    await live.services.saveLanguageProfile(defaultProfile("nl", [], "connected"));
     const r = await addWordToAnki(anki.client, (e) => repo.append(e), {
       profile: await live.current(),
       context: { source: "reading" },

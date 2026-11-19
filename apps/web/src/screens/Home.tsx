@@ -14,6 +14,7 @@ import {
   ClipboardCheck,
   Dumbbell,
   GraduationCap,
+  Layers,
   ListChecks,
   MessagesSquare,
   Plus,
@@ -104,6 +105,12 @@ export function Home() {
     queryFn: () => services.practiceOverview(),
     staleTime: 60_000,
   });
+  const review = useQuery({
+    queryKey: ["review", "overview"],
+    queryFn: () => services.reviewOverview(),
+    staleTime: 60_000,
+  });
+  const native = review.data?.native === true;
   const courses = useQuery({ queryKey: ["courses"], queryFn: () => services.courseList() });
   const activity = useQuery({
     queryKey: ["activity"],
@@ -229,7 +236,7 @@ export function Home() {
               coverage={libraryCoverage(list)}
               known={s.known}
               learning={s.learning}
-              vocab={s.lastSync ? s.vocabEstimate : null}
+              vocab={s.lastSync || s.native ? s.vocabEstimate : null}
             />
           ) : (
             <Empty text="Your word counts could not be loaded." />
@@ -240,6 +247,9 @@ export function Home() {
       <section className="k-section home-today" aria-labelledby="home-plan-h">
         <SectionHeader id="home-plan-h" title="Today" />
         <ol className="home-steps">
+          {native && review.data ? (
+            <ReviewStep due={review.data.due} fresh={review.data.fresh} />
+          ) : null}
           <PracticeStep
             due={practice.data?.due}
             fresh={practice.data?.newAvailable ?? 0}
@@ -249,12 +259,15 @@ export function Home() {
             <PlanStep
               icon={<ListChecks size={16} />}
               to={{ to: "/read/$textId/words", params: { textId: cont.text.id } }}
-              label="New words waiting for Anki"
+              label={native ? "New words to decide on" : "New words waiting for Anki"}
               value={`${fmt(waiting)} to decide`}
               tone="learn"
             />
           ) : today?.added ? (
-            <DoneStep label="Words added to Anki" value={fmt(today.added)} />
+            <DoneStep
+              label={native ? "Words added" : "Words added to Anki"}
+              value={fmt(today.added)}
+            />
           ) : null}
           {today?.pages ? (
             <DoneStep
@@ -375,7 +388,7 @@ type StepTarget =
   | { to: "/read/$textId/words"; params: { textId: string } }
   | { to: "/courses/$courseId/$unit"; params: { courseId: string; unit: string } }
   | { to: "/exam/$part"; params: { part: string } }
-  | { to: "/practice" | "/import" };
+  | { to: "/practice" | "/import" | "/review" };
 
 function PlanStep({
   icon,
@@ -423,6 +436,21 @@ function DoneStep({ label, value }: { label: string; value: string }) {
         </span>
       </div>
     </li>
+  );
+}
+
+/** Native mode: the cards due today in Review. */
+function ReviewStep({ due, fresh }: { due: number; fresh: number }) {
+  const total = due + fresh;
+  if (total === 0) return <DoneStep label="Reviews" value="Nothing due" />;
+  return (
+    <PlanStep
+      icon={<Layers size={16} />}
+      to={{ to: "/review" }}
+      label="Review"
+      value={`${fmt(due)} due${fresh ? ` · ${fmt(fresh)} new` : ""}`}
+      tone="accent"
+    />
   );
 }
 

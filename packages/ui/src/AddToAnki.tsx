@@ -2,6 +2,7 @@ import * as RPopover from "@radix-ui/react-popover";
 import { Check, ChevronDown, Plus } from "lucide-react";
 import { useId, useState, type FormEvent } from "react";
 import { Button } from "./Button.js";
+import { useNativeMode } from "./mode.js";
 
 /** One deck the picker offers. */
 export interface DeckOption {
@@ -26,6 +27,8 @@ export interface AddToAnkiProps {
   subject?: string;
   variant?: "primary" | "secondary";
   size?: "md" | "sm";
+  /** Native mode: Kenning's own decks, worded without Anki. */
+  native?: boolean;
 }
 
 const GROUPS: { id: DeckOption["group"]; title: string }[] = [
@@ -54,7 +57,10 @@ export function AddToAnki({
   subject,
   variant = "primary",
   size = "md",
+  native: nativeProp,
 }: AddToAnkiProps) {
+  const nativeMode = useNativeMode();
+  const native = nativeProp ?? nativeMode;
   const [open, setOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState("");
@@ -103,7 +109,9 @@ export function AddToAnki({
               if (!items.length) return null;
               return (
                 <div key={id} role="group" aria-label={title}>
-                  <div className="k-overline k-add-anki-group">{title}</div>
+                  <div className="k-overline k-add-anki-group">
+                    {native && id === "anki" ? "Other decks" : title}
+                  </div>
                   {items.map((o) => (
                     <button
                       key={o.deck}
@@ -153,7 +161,11 @@ export function AddToAnki({
               <span className="k-add-anki-option-name">New deck…</span>
             </button>
           )}
-          <p className="k-add-anki-foot">Anki creates the deck when the first word is added.</p>
+          <p className="k-add-anki-foot">
+            {native
+              ? "The deck is made when the first word is added."
+              : "Anki creates the deck when the first word is added."}
+          </p>
         </RPopover.Content>
       </RPopover.Portal>
     </RPopover.Root>
@@ -161,7 +173,11 @@ export function AddToAnki({
 
   if (!onAdd) return <div className="k-add-anki">{picker}</div>;
   return (
-    <div className="k-add-anki" role="group" aria-label="Add to Anki">
+    <div
+      className="k-add-anki"
+      role="group"
+      aria-label={native ? "Add to my words" : "Add to Anki"}
+    >
       <Button
         variant={variant}
         size={size}

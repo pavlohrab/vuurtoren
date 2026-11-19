@@ -6,13 +6,13 @@
 import {
   type AnkiConnectClient,
   type NoteCardStatus,
-  addWordToAnki,
+  addWord,
   cardStatus,
   highlightSentence,
-  markWordKnown,
+  markKnown,
   resetToAnkiState,
   setAppWordState,
-  studyWordFirst,
+  studyFirst,
 } from "@app/anki";
 import {
   type AnalyzedToken,
@@ -20,6 +20,7 @@ import {
   type WordState,
   matchToken,
   normalizeKey,
+  profileMode,
 } from "@app/core";
 import type { KenningRepository, WordInfo } from "@app/db";
 import { activitySince, groupActivity } from "./activity.js";
@@ -141,8 +142,28 @@ export function createLiveWords(deps: LiveWordsDeps) {
     };
   };
 
+  /** Native mode: Kenning holds the cards (read from the database, never from Anki). */
+  const native = async (): Promise<boolean> => profileMode(await deps.profile()) === "native";
+
+  /** The state of words' cards in native mode, shaped like the live Anki state. */
+  async function nativeCards(infos: (WordInfo | null)[]): Promise<InspectorEntry["anki"][]> {
+    const ids = [...new Set(infos.flatMap((i) => i?.noteIds ?? []))];
+    const notes = await repo.nativeNoteStatus(await lang(), ids, Date.now());
+    const byId = new Map(notes.map((n) => [n.noteId, n]));
+    return infos.map((info) => ({
+      ...(info && info.noteIds.length
+        ? ankiFromStatus(
+            info,
+            info.noteIds.flatMap((id) => byId.get(id) ?? []),
+          )
+        : absentAnki(info)),
+      native: true,
+    }));
+  }
+
   /** Live Anki state of a word; "unavailable" (with the reason) if Anki cannot answer in time. */
   async function liveAnki(info: WordInfo | null): Promise<InspectorEntry["anki"]> {
+    if (await native()) return (await nativeCards([info]))[0]!;
     if (!info || info.noteIds.length === 0) return absentAnki(info);
     try {
       const { notes } = await cardStatus(await anki(INSPECT_TIMEOUT_MS), info.noteIds);
@@ -159,6 +180,7 @@ export function createLiveWords(deps: LiveWordsDeps) {
    * "unavailable" (with the reason), so no action is offered that would fail.
    */
   async function liveAnkiBatch(infos: (WordInfo | null)[]): Promise<InspectorEntry["anki"][]> {
+    if (await native()) return nativeCards(infos);
     const ids = [...new Set(infos.flatMap((i) => i?.noteIds ?? []))];
     let notes: NoteCardStatus[] = [];
     try {
@@ -243,11 +265,7 @@ export function createLiveWords(deps: LiveWordsDeps) {
   }
 
   async function addToAnki(entry: InspectorEntry, opts?: AddOptions) {
-    const { noteId, deck } = await addWordToAnki(
-      await anki(),
-      record,
-      await addRequest(entry, opts),
-    );
+    const { noteId, deck } = await addWord(anki, record, await addRequest(entry, opts));
     learner.changed();
     return { noteId, deck };
   }
@@ -375,7 +393,7 @@ export function createLiveWords(deps: LiveWordsDeps) {
     async learnNext(entry: InspectorEntry): Promise<{ deck: string }> {
       const noteId = entry.anki.noteIds[0];
       if (noteId === undefined) throw new Error("This word has no card in Anki");
-      await studyWordFirst(await anki(), record, {
+      await studyFirst(await native(), anki, record, {
         lang: await lang(),
         key: entry.key,
         noteId,
@@ -389,7 +407,7 @@ export function createLiveWords(deps: LiveWordsDeps) {
       if (entry.anki.status === "unavailable") {
         throw new Error(entry.anki.detail ?? "Anki is not reachable");
       }
-      const { addedToDeck } = await markWordKnown(await anki(), record, {
+      const { addedToDeck } = await markKnown(await native(), anki, record, {
         lang: await lang(),
         key: entry.key,
         noteIds: entry.anki.noteIds,

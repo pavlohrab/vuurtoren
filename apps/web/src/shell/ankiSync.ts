@@ -3,6 +3,7 @@
  * Settings and the automatic import when the app opens; the shell shows its progress.
  */
 import type { QueryClient } from "@tanstack/react-query";
+import { profileMode } from "@app/core";
 import { useEffect, useSyncExternalStore } from "react";
 import type { AppServices, LearnerSummary } from "../services/types.js";
 
@@ -77,7 +78,8 @@ let lastTry = 0;
 /** Should the app import by itself now? Exported for tests. */
 export async function shouldAutoSync(services: AppServices, now = Date.now()): Promise<boolean> {
   const profile = await services.languageProfile();
-  if (!profile || profile.sources.length === 0) return false;
+  // Native mode: Kenning holds the cards, Anki is not read.
+  if (!profile || profile.sources.length === 0 || profileMode(profile) === "native") return false;
   const summary = await services.learnerSummary();
   if (summary.lastSync !== null && now - summary.lastSync < STALE_MS) return false;
   const status = await services.ankiStatus();

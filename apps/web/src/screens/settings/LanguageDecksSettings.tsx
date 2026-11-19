@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { type LanguageProfile, defaultProfile } from "@app/core";
+import { type LanguageProfile, defaultProfile, profileMode } from "@app/core";
 import { Button, Skeleton, Spinner, useToast } from "@app/ui";
 import { useServices } from "../../services/context.js";
 import {
@@ -11,6 +11,7 @@ import {
   deckRows,
 } from "../onboarding/deckParts.js";
 
+import { CardsSettings } from "./CardsSettings.js";
 import { SavedNote } from "./SavedNote.js";
 import { useAutosave } from "./useAutosave.js";
 
@@ -34,7 +35,8 @@ export function LanguageDecksSettings() {
     async (p) => {
       const sourcesChanged =
         JSON.stringify(p.sources) !== JSON.stringify(saved.data?.sources ?? []);
-      await services.saveLanguageProfile(p);
+      // The mode is changed only by the move to Kenning, never by this form.
+      await services.saveLanguageProfile({ ...p, mode: saved.data?.mode ?? p.mode ?? "connected" });
       await qc.invalidateQueries({ queryKey: ["languageProfile"] });
       await qc.invalidateQueries({ queryKey: ["deckChoices"] });
       if (sourcesChanged) toast("Decks saved", "Sync from Anki to read the chosen decks.");
@@ -44,6 +46,8 @@ export function LanguageDecksSettings() {
 
   if (!profile) return <Skeleton style={{ height: 160 }} />;
   const rows = deckRows(detect.data ?? [], profile.sources);
+  // The saved mode decides (a move to Kenning changes it outside this form).
+  const native = profileMode(saved.data ?? profile) === "native";
 
   return (
     <section className="stack" aria-label="Language and decks">
@@ -56,33 +60,40 @@ export function LanguageDecksSettings() {
       ) : null}
       <LanguageChoice value={profile.lang} onChange={(lang) => setDraft({ ...profile, lang })} />
 
-      <h3 className="settings-h3">Decks Kenning reads</h3>
-      <p className="k-hint" style={{ margin: 0 }}>
-        Words in these decks count as known or learning. Kenning&rsquo;s own decks are always read.
-      </p>
-      {rows.length ? (
-        <DeckChecklist
-          rows={rows}
-          chosen={profile.sources}
-          onChange={(sources) => setDraft({ ...profile, sources })}
-        />
-      ) : (
-        <p style={{ margin: 0 }}>No decks chosen. Detect your decks to see suggestions.</p>
+      <CardsSettings native={native} />
+
+      {native ? null : (
+        <>
+          <h3 className="settings-h3">Decks Kenning reads</h3>
+          <p className="k-hint" style={{ margin: 0 }}>
+            Words in these decks count as known or learning. Kenning&rsquo;s own decks are always
+            read.
+          </p>
+          {rows.length ? (
+            <DeckChecklist
+              rows={rows}
+              chosen={profile.sources}
+              onChange={(sources) => setDraft({ ...profile, sources })}
+            />
+          ) : (
+            <p style={{ margin: 0 }}>No decks chosen. Detect your decks to see suggestions.</p>
+          )}
+          <div className="row">
+            <Button onClick={() => detect.mutate()} disabled={detect.isPending}>
+              {detect.isPending ? <Spinner label="Looking at your decks" /> : null}
+              {detect.data ? "Detect again" : "Detect decks"}
+            </Button>
+            {detect.data && detect.data.length === 0 ? (
+              <span className="k-hint">No Dutch vocabulary decks found.</span>
+            ) : null}
+          </div>
+          {detect.isError ? (
+            <p role="alert" className="error-text" style={{ margin: 0 }}>
+              Could not look at your decks. {message(detect.error)}
+            </p>
+          ) : null}
+        </>
       )}
-      <div className="row">
-        <Button onClick={() => detect.mutate()} disabled={detect.isPending}>
-          {detect.isPending ? <Spinner label="Looking at your decks" /> : null}
-          {detect.data ? "Detect again" : "Detect decks"}
-        </Button>
-        {detect.data && detect.data.length === 0 ? (
-          <span className="k-hint">No Dutch vocabulary decks found.</span>
-        ) : null}
-      </div>
-      {detect.isError ? (
-        <p role="alert" className="error-text" style={{ margin: 0 }}>
-          Could not look at your decks. {message(detect.error)}
-        </p>
-      ) : null}
 
       <h3 className="settings-h3">Where new words go</h3>
       <DestinationFields profile={profile} onChange={setDraft} />

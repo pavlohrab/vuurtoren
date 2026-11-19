@@ -62,6 +62,19 @@ Helpers: `contentHash(text)` (SHA-256 hex of UTF-8, synchronous, pure) is the ha
   it can raise pKnown and make a word `learning` (`appLearning: true`), never demotes `known` /
   `ignored`, and fades with the repository clock.
 
+- **Native cards** (`cards.ts`, native mode): `NativeNotesAdded` adds notes, cards, their
+  review history and media names (blob ids); notes and cards already held are kept, note types
+  and decks are added when missing. `CardReviewed` sets the card's schedule and logs the answer
+  with the schedule before it; `CardReviewUndone` restores that schedule and drops the answer.
+  `NativeCardsChanged` (mark known, study first, memory recomputed after tuning) sets schedule,
+  suspension or new-queue position. `NativeDeckOptionsSet` is last-write-wins per deck by HLC.
+  `FsrsParamsSet` replaces the language's parameters. Queries: `nativeDecks`, `nativeQueue`,
+  `nativeCard`, `nativeReviews`, `nativeStats`, `fsrsParams`, `nativeMedia`, `nativeNoteStatus`.
+- **Mode**: when the language profile is native, the learner model takes its per-word facts from
+  the native cards (`nativeWordEntries`, same classification as Anki cards) instead of
+  `anki_words`, and Kenning-added notes not yet answered count as pending (`learning`, 0.2);
+  `notes_added` and `prioritized` (connected-mode Anki actions) are left aside. Without a profile,
+  or with a profile saved before modes existed, the mode is connected.
 - **RPC** (`rpc.ts`): only allow-listed methods; `append` accepts known event types up to
   `MAX_RPC_EVENT_CHARS`; `rebuild` is not remotely callable.
 - "seen" words **are included** in `learnerModel` (state `seen`, pKnown 0.1); consumers that want

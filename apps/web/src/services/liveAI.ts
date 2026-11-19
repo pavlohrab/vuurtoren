@@ -34,7 +34,7 @@ import {
   simplifyText,
 } from "@app/ai";
 import { DEGRADED_MESSAGES, clearDegraded, reportDegraded } from "./degraded.js";
-import { AnkiConnectClient, addWordToAnki, highlightSentence } from "@app/anki";
+import { AnkiConnectClient, addWord, highlightSentence } from "@app/anki";
 import { grammarTopic } from "@app/content";
 import {
   DEFAULT_PLANNER,
@@ -734,7 +734,7 @@ export function createLiveAI(deps: LiveAIDeps): AIServices &
       const s = await deps.settings();
       const example = word.example.trim();
       const at = example.toLowerCase().indexOf(word.lemma.toLowerCase());
-      const { deck } = await addWordToAnki(await deps.anki(), (e) => repo.append(e), {
+      const { deck } = await addWord(deps.anki, (e) => repo.append(e), {
         profile: deps.profile ? await deps.profile() : migratedProfile(s.lang, s.targetDeck, []),
         context: { source: "converse", ...(opts?.deck ? { deck: opts.deck } : {}) },
         word: word.lemma,

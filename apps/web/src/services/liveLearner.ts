@@ -8,6 +8,7 @@ import {
   type LearnerModel,
   type StaircaseState,
   estimateVocabulary,
+  profileMode,
   summarizeModel,
 } from "@app/core";
 import type { KenningRepository } from "@app/db";
@@ -60,7 +61,9 @@ export function createLearnerCache(repo: KenningRepository, lang: () => Promise<
     const m = await model();
     const counts = summarizeModel(m);
     const snap = await repo.lastSnapshot(l);
+    const native = profileMode(await repo.languageProfile(l)) === "native";
     return {
+      ...(native ? { native } : {}),
       known: counts.known,
       learning: counts.learning,
       // "Seen" words have been met in a text, so they are not part of "not yet met".

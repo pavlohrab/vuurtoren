@@ -20,6 +20,7 @@ import type { AddOptions, ProfileServices } from "./profileTypes.js";
 import type { ActivityDay } from "./activity.js";
 import type { ExamServices } from "./examTypes.js";
 import type { LibraryServices } from "./libraryTypes.js";
+import type { NativeServices } from "./nativeTypes.js";
 
 /** Defined in @app/ui (the WordInspector consumes it); re-exported here as part of the contract. */
 export type { InspectorEntry };
@@ -116,6 +117,8 @@ export interface LearnerSummary {
   vocabEstimate: number;
   lastSync: number | null;
   sources: string[];
+  /** Native mode: Kenning's own cards are the record (no Anki sync involved). */
+  native?: boolean;
 }
 
 /** What the Practice start screen and the sidebar badge show. */
@@ -213,7 +216,13 @@ export interface PracticeOptions {
  * AnkiConnect or the NLP server directly; swap the implementation passed to <ServicesProvider>.
  */
 export interface AppServices
-  extends CourseServices, AIServices, ProfileServices, ExamServices, LibraryServices {
+  extends
+    CourseServices,
+    AIServices,
+    ProfileServices,
+    ExamServices,
+    LibraryServices,
+    NativeServices {
   /**
    * Server mode only: ask the server whether another device changed the shared
    * data; if so, drop the service caches and return true (the caller then refetches its
