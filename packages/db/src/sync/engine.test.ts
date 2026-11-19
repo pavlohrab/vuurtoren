@@ -130,6 +130,38 @@ describe("sync engine", () => {
     );
   });
 
+  it("ignores what a synced folder adds: markers, temporary files, conflict copies, late files", async () => {
+    const store = memoryStore();
+    const a = await device("aaaaaaaaaaaa", T0);
+    const b = await device("bbbbbbbbbbbb", T0 + 1000);
+    const key = (await openVault(store, PASS, true, LIGHT)).key;
+    await a.append({ type: "WordStateSet", lang: "nl", key: "x", state: "known" });
+    await syncOnce(a, store, key, { deviceName: "Laptop" });
+    const junk = new Uint8Array([1, 2, 3]);
+    await store.put(".stfolder/.keep", junk);
+    await store.put("kenning/devices/.stfolder", junk);
+    const [seg] = (await store.list("kenning/devices/aaaaaaaaaaaa")).filter(
+      (n) => n.endsWith(".kev") && n !== "device.kev",
+    );
+    await store.put(`kenning/devices/aaaaaaaaaaaa/.syncthing.${seg}.tmp`, junk);
+    await store.put(
+      `kenning/devices/aaaaaaaaaaaa/${seg!.replace(".kev", ".sync-conflict-20261120-120000-ABCDEFG.kev")}`,
+      junk,
+    );
+    const got = await syncOnce(b, store, key, { deviceName: "Phone" });
+    expect(got.received).toBe(1);
+    expect(got.devices.map((d) => d.name)).toEqual(["Phone", "Laptop"]);
+    // A segment listed before it has arrived (still being copied) comes next time.
+    await a.append({ type: "WordStateSet", lang: "nl", key: "y", state: "known" });
+    await syncOnce(a, store, key, { deviceName: "Laptop" });
+    const real = store.get.bind(store);
+    store.get = async (path) =>
+      path.endsWith(".kev") && !path.endsWith("device.kev") ? null : real(path);
+    expect((await syncOnce(b, store, key, { deviceName: "Phone" })).received).toBe(0);
+    store.get = real;
+    expect((await syncOnce(b, store, key, { deviceName: "Phone" })).received).toBe(1);
+  });
+
   it("imports the newest base and the files after it", () => {
     const id = (n: number) => `01J${String(n).padStart(23, "0")}`;
     const names = [

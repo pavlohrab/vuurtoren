@@ -224,13 +224,13 @@ export async function listDevices(
   const out: SyncDevice[] = [];
   for (const id of await store.list(DEVICES)) {
     const bytes = await store.get(`${deviceDir(id)}/device.kev`);
+    // An empty or foreign folder (some places keep folders whose files are gone) is no device.
+    if (!bytes) continue;
     let info = { name: "A device", at: 0 };
-    if (bytes) {
-      try {
-        info = decode<{ name: string; at: number }>(await unseal(key, bytes));
-      } catch {
-        // Unreadable: listed without a name.
-      }
+    try {
+      info = decode<{ name: string; at: number }>(await unseal(key, bytes));
+    } catch {
+      // Unreadable: listed without a name.
     }
     out.push({ id, name: info.name, at: info.at, self: id === self });
   }
