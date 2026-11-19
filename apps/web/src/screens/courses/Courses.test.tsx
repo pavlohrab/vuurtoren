@@ -41,7 +41,7 @@ describe("Courses", () => {
     );
   });
 
-  it("shows unit status and runs Study first in Anki for the unit's new cards", async () => {
+  it("leads with one primary; the unit's Anki actions sit with its words, which open the inspector", async () => {
     const learnNextForUnit = vi.fn(async () => ({ moved: 2, skipped: 4 }));
     const { user } = setup("/courses/demo-course/1", { learnNextForUnit });
     expect(
@@ -51,19 +51,42 @@ describe("Courses", () => {
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
     expect(document.querySelector(".topbar-title")).toHaveTextContent("Thema 1 Kennismaken");
     expect(document.querySelector(".topbar-crumb")).toHaveAttribute("href", "/courses/demo-course");
+    // The back link (and the top bar's crumb) lead to the course.
+    const back = screen.getAllByRole("link", { name: /Nederlands voor beginners/ });
+    expect(back.map((a) => a.getAttribute("href"))).toEqual(back.map(() => "/courses/demo-course"));
     expect(screen.getByText("33% of the words known, 1 learning, 3 new.")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Study first in Anki (2)" }));
+    // One primary in the header; Talk (and a story) in its menu; no Anki buttons up there.
+    // This unit's texts are not in the Library: the primary opens its exercises.
+    await user.click(screen.getByRole("tab", { name: "Grammar" }));
+    await user.click(screen.getByRole("button", { name: "Continue the unit" }));
+    expect(screen.getByRole("tab", { name: /Exercises/ })).toHaveAttribute("aria-selected", "true");
+    expect(screen.queryByRole("button", { name: /Study first in Anki/ })).toBeNull();
+    await user.click(screen.getByRole("button", { name: "More for this unit" }));
+    expect(await screen.findByRole("menuitem", { name: "Talk about this unit" })).toBeVisible();
+    await user.keyboard("{Escape}");
+    // No Practice tab: practice is one link away from the words and the exercises.
+    expect(screen.queryByRole("tab", { name: "Practice" })).toBeNull();
+
+    await user.click(screen.getByRole("tab", { name: /Words/ }));
+    await user.click(await screen.findByRole("button", { name: "Study first in Anki (2)" }));
     expect(learnNextForUnit).toHaveBeenCalledWith("demo-course", 1);
     expect(await screen.findByText("2 words moved to the front in Anki")).toBeInTheDocument();
-    // Words tab: each word with its Anki state, linked to the shared Words hub inspector
-    await user.click(screen.getByRole("tab", { name: /Words/ }));
-    expect(await screen.findByText("Not in Anki")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /stad/ }).getAttribute("href")).toContain("word=stad");
+    expect(screen.getByText("Not in Anki")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Practise these words" }).getAttribute("href")).toMatch(
+      /^\/practice\?words=/,
+    );
+    // A word opens the inspector here.
+    const stad = screen.getByRole("button", { name: /stad/ });
+    await user.click(stad);
+    expect(stad).toHaveAttribute("aria-pressed", "true");
+    const panel = await screen.findByRole("complementary", { name: "Inspector" });
+    await waitFor(() => expect(panel).toHaveTextContent(/stad/));
   });
 
   it("adds a unit's words to Anki from a preview with the book's sentence", async () => {
     const addUnitWords = vi.fn(async () => ({ added: 1, failed: 0, deck: "Kenning::Dutch" }));
     const { user } = setup("/courses/demo-course/1", { addUnitWords });
+    await user.click(await screen.findByRole("tab", { name: /Words/ }));
     await user.click(await screen.findByRole("button", { name: "Add 1 word to Anki…" }));
     const dialog = await screen.findByRole("dialog", { name: "Add this unit's words to Anki" });
     expect(await within(dialog).findByText("Anne woont in een kleine stad.")).toBeVisible();
@@ -75,7 +98,30 @@ describe("Courses", () => {
     expect(await screen.findByText(/1 word added to/)).toBeInTheDocument();
   });
 
-  it("links the unit's grammar to topic pages, practice to the shared screen, and shows exercises made for it", async () => {
+  it("checks a book exercise with one Check, and fixes an answer from an item's menu", async () => {
+    const { user, services } = setup("/courses/demo-course/1");
+    const ex = await screen.findByRole("article", { name: "Exercise 1" });
+    // No Check or Fix answer on every line.
+    expect(within(ex).queryByRole("button", { name: "Check" })).toBeNull();
+    expect(within(ex).queryByRole("button", { name: "Fix answer" })).toBeNull();
+    await user.type(within(ex).getByLabelText("Answer 1"), "woont");
+    await user.type(within(ex).getByLabelText("Answer 2"), "kom");
+    await user.click(within(ex).getByRole("button", { name: "Check answers" }));
+    expect(await within(ex).findByText("Correct")).toBeInTheDocument();
+    expect(within(ex).getByText(/Not quite\. Expected: komen/)).toBeInTheDocument();
+
+    await user.click(within(ex).getByRole("button", { name: "More for item 4" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Fix answer…" }));
+    const fix = within(ex).getByLabelText("Correct answer");
+    await user.clear(fix);
+    await user.type(fix, "werkt");
+    await user.click(within(ex).getByRole("button", { name: "Save" }));
+    await waitFor(async () =>
+      expect((await services.unit("demo-course", 1))?.exercises[0]?.items[3]?.answer).toBe("werkt"),
+    );
+  });
+
+  it("links the unit's grammar to topic pages and shows exercises made for it", async () => {
     const { user } = setup("/courses/demo-course/1");
     expect(
       await screen.findByRole("heading", { name: "Made for this unit", level: 2 }),
@@ -85,9 +131,6 @@ describe("Courses", () => {
       "href",
       "/grammar/inversion",
     );
-    await user.click(screen.getByRole("tab", { name: "Practice" }));
-    const practise = await screen.findByRole("link", { name: "Practise this unit’s words" });
-    expect(practise.getAttribute("href")).toMatch(/^\/practice\?words=/);
   });
 
   it("sets a unit boundary by clicking a page in the outline editor", async () => {

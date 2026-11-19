@@ -391,12 +391,23 @@
   font-family: var(--font-reading);
   font-size: 14px;
 }
+/* A unit word opens the word inspector. */
 .cs-word-link {
-  color: inherit;
-  text-decoration: none;
+  all: unset;
+  cursor: pointer;
+  border-radius: 4px;
 }
-.cs-word-link:hover {
+.cs-word-link:hover,
+.cs-word-link[aria-pressed="true"] {
   color: var(--accent);
+}
+.cs-word-link:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+/* The "…" of a book exercise item sits quietly at the end of its line. */
+.cs-item .cs-item-menu {
+  align-self: center;
 }
 
 /* Grammar of the unit, exercises made for it, passages. */

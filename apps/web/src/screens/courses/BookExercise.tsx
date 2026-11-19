@@ -1,11 +1,12 @@
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Exercise, ExerciseItem } from "@app/core";
 import { LOW_CONFIDENCE } from "@app/core";
-import { Info } from "lucide-react";
+import { Info, Pencil } from "lucide-react";
 import { Button, Chip, Textarea, Tooltip } from "@app/ui";
 import { useServices } from "../../services/context.js";
 import type { BookCheckResult, BookExerciseView } from "../../services/courseTypes.js";
 import { GeneratedSession } from "./GeneratedSession.js";
+import { MenuButton } from "../library/MenuButton.js";
 import { readLocal, writeLocal } from "../../storage/local.js";
 
 const TYPE_LABEL: Record<BookExerciseView["type"], string> = {
@@ -41,44 +42,32 @@ function useNotes(key: string): [string, (v: string) => void] {
   ];
 }
 
-/** Who gave the stored answer, as a quiet label next to the result. */
+/**
+ * A quiet info icon only when the stored answer may be wrong (worked out from the book with
+ * low confidence). Where other answers came from is an internal detail.
+ */
 function SourceNote({ item }: { item: ExerciseItem }) {
-  if (item.answer === undefined) return <span className="cs-hint">No answer stored</span>;
-  if (item.answerSource === "user") return <span className="cs-hint">Your answer</span>;
-  if (item.answerSource === "ai") {
-    const text = "Made with AI for this unit. The sentence passed Kenning's language checks.";
-    return (
-      <Tooltip content={text}>
-        <button type="button" className="cs-info" aria-label={text}>
-          <Info size={14} aria-hidden />
-        </button>
-      </Tooltip>
-    );
-  }
-  if (item.answerSource === "derived") {
-    // How the answer was found is an internal detail: one small info icon, explained on hover.
-    const text =
-      item.confidence < LOW_CONFIDENCE
-        ? "This answer was worked out from the book and may be wrong. Fix it if it is."
-        : "This answer was worked out from the book, not printed in it.";
-    return (
-      <Tooltip content={text}>
-        <button type="button" className="cs-info" aria-label={text}>
-          <Info size={14} aria-hidden />
-        </button>
-      </Tooltip>
-    );
-  }
-  return null;
+  if (item.answerSource !== "derived" || item.confidence >= LOW_CONFIDENCE) return null;
+  const text = "This answer was worked out from the book and may be wrong. Fix it if it is.";
+  return (
+    <Tooltip content={text}>
+      <button type="button" className="cs-info" aria-label={text}>
+        <Info size={14} aria-hidden />
+      </button>
+    </Tooltip>
+  );
 }
 
-/** One typed or chosen item with Check and Fix answer. */
+/** One typed or chosen item; the exercise's one Check checks it, Fix answer is in its menu. */
 function Item({
   props: { courseId, unitN, exercise, onChanged },
   index,
+  register,
 }: {
   props: Props;
   index: number;
+  /** Hands the exercise this item's check (answers only when something was entered). */
+  register: (index: number, check: () => Promise<void>) => void;
 }) {
   const services = useServices();
   const item = exercise.items[index]!;
@@ -97,15 +86,22 @@ function Item({
   const building = exercise.type === "sentence-building";
   const answer = building ? pieces.join(" ") : values.join("|");
 
-  const check = async () => {
+  const check = async (refresh = true) => {
+    if (!answer.replace(/\|/g, "").trim()) return;
     setError(null);
     try {
       setResult(await services.checkBookItem(courseId, unitN, exercise.number, index, answer));
-      onChanged();
+      if (refresh) onChanged();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not check the answer.");
     }
   };
+  // The exercise's Check calls the latest version of this item's check.
+  const checkRef = useRef(check);
+  useEffect(() => {
+    checkRef.current = check;
+  });
+  useEffect(() => register(index, () => checkRef.current(false)), [register, index]);
   const saveFix = async () => {
     await services.setBookAnswer(courseId, unitN, exercise.number, index, fix);
     setFixing(false);
@@ -183,9 +179,6 @@ function Item({
           </span>
         ))
       )}
-      <Button size="sm" onClick={() => void check()} disabled={!answer.replace(/\|/g, "").trim()}>
-        Check
-      </Button>
       {verdict?.correct === true ? (
         <span className="cs-ok" role="status">
           Correct{verdict.note ? `. ${verdict.note}` : ""}
@@ -212,17 +205,20 @@ function Item({
         </span>
       ) : null}
       <SourceNote item={item} />
-      <Button
-        size="sm"
-        variant="ghost"
-        aria-expanded={fixing}
-        onClick={() => {
-          setFix(item.answer ?? "");
-          setFixing((f) => !f);
-        }}
-      >
-        Fix answer
-      </Button>
+      <MenuButton
+        className="cs-item-menu"
+        label={`More for item ${index + 1}`}
+        items={[
+          {
+            label: "Fix answer…",
+            icon: <Pencil size={16} aria-hidden />,
+            onSelect: () => {
+              setFix(item.answer ?? "");
+              setFixing(true);
+            },
+          },
+        ]}
+      />
       {fixing ? (
         <span className="row">
           <input
@@ -233,6 +229,9 @@ function Item({
           />
           <Button size="sm" variant="primary" disabled={!fix.trim()} onClick={() => void saveFix()}>
             Save
+          </Button>
+          <Button size="sm" variant="ghost" onClick={() => setFixing(false)}>
+            Cancel
           </Button>
         </span>
       ) : null}
@@ -255,6 +254,21 @@ export function BookExercise(props: Props) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const interactive = INTERACTIVE.has(exercise.type) && exercise.items.length > 0;
+  // One Check for the whole exercise: every item hands over its check.
+  const checks = useRef(new Map<number, () => Promise<void>>());
+  const register = useCallback((i: number, fn: () => Promise<void>) => {
+    checks.current.set(i, fn);
+  }, []);
+  const [checking, setChecking] = useState(false);
+  const checkAll = async () => {
+    setChecking(true);
+    try {
+      await Promise.all([...checks.current.values()].map((fn) => fn()));
+      props.onChanged();
+    } finally {
+      setChecking(false);
+    }
+  };
   const canMore =
     !made &&
     ["gapfill", "conjugation-table", "sentence-building", "choice"].includes(exercise.type);
@@ -301,7 +315,7 @@ export function BookExercise(props: Props) {
       {interactive ? (
         <ol style={{ padding: 0, margin: 0 }}>
           {exercise.items.map((_, i) => (
-            <Item key={i} props={props} index={i} />
+            <Item key={i} props={props} index={i} register={register} />
           ))}
         </ol>
       ) : exercise.type === "open-task" || exercise.type === "listening" ? (
@@ -316,11 +330,18 @@ export function BookExercise(props: Props) {
           {exercise.raw || "No text was recognised for this exercise."}
         </pre>
       )}
-      {canMore ? (
+      {interactive || canMore ? (
         <div className="row" style={{ marginTop: 8 }}>
-          <Button size="sm" disabled={busy} onClick={() => void more()}>
-            {busy ? "Preparing…" : "More practice like this"}
-          </Button>
+          {interactive ? (
+            <Button size="sm" disabled={checking} onClick={() => void checkAll()}>
+              {checking ? "Checking…" : "Check answers"}
+            </Button>
+          ) : null}
+          {canMore ? (
+            <Button size="sm" variant="ghost" disabled={busy} onClick={() => void more()}>
+              {busy ? "Preparing…" : "More practice like this"}
+            </Button>
+          ) : null}
         </div>
       ) : null}
       {error ? (

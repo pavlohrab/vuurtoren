@@ -1,8 +1,8 @@
 import { pct, plural } from "../../format.js";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
-import { Sparkles } from "lucide-react";
-import { useState } from "react";
+import { Link, useNavigate } from "@tanstack/react-router";
+import { ArrowLeft, MessagesSquare, Sparkles } from "lucide-react";
+import { type ReactNode, useState } from "react";
 import {
   AnkiStatusChip,
   Button,
@@ -14,7 +14,9 @@ import {
   WordStateChip,
   useToast,
 } from "@app/ui";
-import { WriteStoryLink, useAIReady } from "../StoryForm.js";
+import { storySearch, useAIReady } from "../StoryForm.js";
+import { MenuButton } from "../library/MenuButton.js";
+import { type WordInspectorHandle, useWordInspector } from "../useWordInspector.js";
 import { useServices } from "../../services/context.js";
 import { errorText } from "../../services/errors.js";
 import { usePageHeader } from "../../shell/ShellContext.js";
@@ -63,7 +65,23 @@ function ReadTab({ unit }: { unit: UnitView }) {
   );
 }
 
-function WordsTab({ unit, courseId, n }: { unit: UnitView; courseId: string; n: number }) {
+/**
+ * The unit's words: each opens the word inspector here; the Anki actions for the unit and the
+ * ways on (Practice, Words) sit above the list.
+ */
+function WordsTab({
+  unit,
+  courseId,
+  n,
+  inspector,
+  anki,
+}: {
+  unit: UnitView;
+  courseId: string;
+  n: number;
+  inspector: WordInspectorHandle;
+  anki: ReactNode;
+}) {
   if (unit.words.length === 0) {
     return (
       <p className="cs-note">
@@ -73,73 +91,42 @@ function WordsTab({ unit, courseId, n }: { unit: UnitView; courseId: string; n: 
     );
   }
   const keys = unit.words.map((w) => w.key);
+  const toLearn = unit.words.filter((w) => w.state !== "known").map((w) => w.key);
   return (
     <>
       <div className="cs-actions" style={{ marginBottom: 12 }}>
         <Link
-          to="/words"
-          search={{ source: `unit:${courseId}/${n}` }}
-          className="k-btn k-btn--secondary k-btn--sm"
-        >
-          Open in Words
-        </Link>
-        <Link
           to="/practice"
-          search={{ words: keys.join(",") }}
+          search={{ words: (toLearn.length ? toLearn : keys).slice(0, 60).join(",") }}
           className="k-btn k-btn--secondary k-btn--sm"
         >
           Practise these words
         </Link>
+        {anki}
         <Link
-          to="/talk"
-          search={{ words: keys.slice(0, 6).join(","), topic: unit.unit.title }}
+          to="/words"
+          search={{ source: `unit:${courseId}/${n}` }}
           className="k-btn k-btn--ghost k-btn--sm"
         >
-          Talk about this unit
+          Open in Words
         </Link>
       </div>
       <ul className="cs-words">
         {unit.words.map((w) => (
           <li key={w.key}>
-            {/* The shared Words hub opens the word in its inspector (forms, decks, actions). */}
-            <Link
-              to="/words"
-              search={{ source: `unit:${courseId}/${n}`, word: w.key }}
+            <button
+              type="button"
               className="cs-word-link"
+              aria-pressed={inspector.current === w.key}
+              onClick={(e) => inspector.openKey(w.key, e.currentTarget)}
             >
               <Lemma lemma={w.lemma} article={w.article} />
-            </Link>
+            </button>
             <UnitWordState state={w.state} />
             {w.gloss ? <span className="cs-gloss">{w.gloss}</span> : null}
           </li>
         ))}
       </ul>
-    </>
-  );
-}
-
-/** Practice uses the app's one Practice screen, restricted to the unit's words. */
-function PracticeTab({ unit, onBook }: { unit: UnitView; onBook: () => void }) {
-  const keys = unit.words.filter((w) => w.state !== "known").map((w) => w.key);
-  const all = unit.words.map((w) => w.key);
-  if (all.length === 0) {
-    return <p className="cs-note">This unit has no words to practise yet.</p>;
-  }
-  return (
-    <>
-      <p className="cs-note">
-        Practice keeps its own schedule per word and skill; nothing here changes your Anki cards.
-      </p>
-      <div className="cs-actions">
-        <Link
-          to="/practice"
-          search={{ words: (keys.length ? keys : all).slice(0, 60).join(",") }}
-          className="k-btn k-btn--primary"
-        >
-          Practise this unit&rsquo;s words
-        </Link>
-        <Button onClick={onBook}>Do the book&rsquo;s exercises</Button>
-      </div>
     </>
   );
 }
@@ -259,11 +246,14 @@ function GenerateButton({
   );
 }
 
-/** One unit: reading, book exercises, words, grammar and practice. */
+/** One unit: reading, book exercises, words and grammar. */
 export function UnitRoute({ courseId, n }: { courseId: string; n: number }) {
   const services = useServices();
   const qc = useQueryClient();
   const toast = useToast();
+  const navigate = useNavigate();
+  const aiReady = useAIReady();
+  const inspector = useWordInspector("course");
   const [tab, setTab] = useState("exercises");
   const [adding, setAdding] = useState(false);
   const key = ["unit", courseId, n];
@@ -315,16 +305,69 @@ export function UnitRoute({ courseId, n }: { courseId: string; n: number }) {
   }
   const s = u.status;
   const fresh = s.newInAnki + s.missing;
+  // "Continue the unit": its first text in the reader (which resumes where you were), else
+  // the exercises.
+  const firstText = u.texts.find((t) => t.textId)?.textId;
+  const talkWords = u.words
+    .filter((w) => w.state !== "known")
+    .slice(0, 6)
+    .map((w) => w.key)
+    .join(",");
+  const more = [
+    {
+      label: "Talk about this unit",
+      icon: <MessagesSquare size={16} aria-hidden />,
+      onSelect: () =>
+        void navigate({ to: "/talk", search: { words: talkWords, topic: u.unit.title } }),
+    },
+    ...(aiReady
+      ? [
+          {
+            label: "Write a story",
+            icon: <Sparkles size={16} aria-hidden />,
+            onSelect: () =>
+              void navigate({
+                to: "/import",
+                search: storySearch({
+                  topic: u.unit.title,
+                  unit: { courseId, unitN: n },
+                  ...(grammar.data?.[0] ? { grammarTopic: grammar.data[0].topicId } : {}),
+                }),
+              }),
+          },
+        ]
+      : []),
+  ];
+  // The unit's Anki actions live with its words.
+  const anki =
+    s.total > 0 ? (
+      <>
+        {s.newInAnki > 0 ? (
+          <Tooltip content={STUDY_FIRST_HINT}>
+            <Button
+              size="sm"
+              disabled={learn.isPending}
+              title={STUDY_FIRST_HINT}
+              onClick={() => learn.mutate()}
+            >
+              {learn.isPending ? "Working…" : `Study first in Anki (${s.newInAnki})`}
+            </Button>
+          </Tooltip>
+        ) : null}
+        {s.missing > 0 ? (
+          <Button size="sm" onClick={() => setAdding(true)}>
+            Add {plural(s.missing, "word")} to Anki…
+          </Button>
+        ) : null}
+      </>
+    ) : null;
   return (
     <div className="page">
       <PageHeader
-        // The top bar shows this breadcrumb on wider screens.
         back={
-          <span className="cs-meta cs-crumb">
-            <Link to="/courses/$courseId" params={{ courseId }}>
-              {u.course.title}
-            </Link>
-          </span>
+          <Link to="/courses/$courseId" params={{ courseId }}>
+            <ArrowLeft size={14} aria-hidden /> {u.course.title}
+          </Link>
         }
         title={u.unit.title}
         lede={
@@ -338,47 +381,25 @@ export function UnitRoute({ courseId, n }: { courseId: string; n: number }) {
             </>
           )
         }
+        actions={
+          <>
+            {firstText ? (
+              <Link
+                to="/read/$textId"
+                params={{ textId: firstText }}
+                className="k-btn k-btn--primary"
+              >
+                Continue the unit
+              </Link>
+            ) : (
+              <Button variant="primary" onClick={() => setTab("exercises")}>
+                Continue the unit
+              </Button>
+            )}
+            <MenuButton label="More for this unit" items={more} />
+          </>
+        }
       />
-      {s.total > 0 ? (
-        <div className="cs-actions" style={{ marginBottom: 12 }}>
-          <Tooltip content={STUDY_FIRST_HINT}>
-            <Button
-              variant="primary"
-              disabled={learn.isPending || s.newInAnki === 0}
-              title={STUDY_FIRST_HINT}
-              onClick={() => learn.mutate()}
-            >
-              {learn.isPending ? "Working…" : `Study first in Anki (${s.newInAnki})`}
-            </Button>
-          </Tooltip>
-          {s.missing > 0 ? (
-            <Button onClick={() => setAdding(true)}>
-              Add {plural(s.missing, "word")} to Anki…
-            </Button>
-          ) : null}
-          <Link
-            to="/talk"
-            search={{
-              words: u.words
-                .filter((w) => w.state !== "known")
-                .slice(0, 6)
-                .map((w) => w.key)
-                .join(","),
-              topic: u.unit.title,
-            }}
-            className="k-btn k-btn--ghost"
-          >
-            Talk about this unit
-          </Link>
-          <WriteStoryLink
-            preset={{
-              topic: u.unit.title,
-              unit: { courseId, unitN: n },
-              ...(grammar.data?.[0] ? { grammarTopic: grammar.data[0].topicId } : {}),
-            }}
-          />
-        </div>
-      ) : null}
       {adding ? (
         <AddWordsDialog courseId={courseId} scope={n} open={adding} onOpenChange={setAdding} />
       ) : null}
@@ -439,7 +460,7 @@ export function UnitRoute({ courseId, n }: { courseId: string; n: number }) {
               label: `Words (${u.words.length})`,
               content: (
                 <div className="cs-tabpanel">
-                  <WordsTab unit={u} courseId={courseId} n={n} />
+                  <WordsTab unit={u} courseId={courseId} n={n} inspector={inspector} anki={anki} />
                 </div>
               ),
             },
@@ -452,18 +473,10 @@ export function UnitRoute({ courseId, n }: { courseId: string; n: number }) {
                 </div>
               ),
             },
-            {
-              value: "practice",
-              label: "Practice",
-              content: (
-                <div className="cs-tabpanel">
-                  <PracticeTab unit={u} onBook={() => setTab("exercises")} />
-                </div>
-              ),
-            },
           ]}
         />
       </div>
+      {inspector.portal}
     </div>
   );
 }
