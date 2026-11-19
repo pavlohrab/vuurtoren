@@ -377,18 +377,25 @@ export type AppEvent =
        */
       via?: "practice" | "cloze";
     }
-  /** Native mode: the answer recorded by CardReviewed `reviewId` was taken back. */
+  /**
+   * Native mode: the answer recorded by CardReviewed `reviewId` was taken back. When the card
+   * was answered again after it (on another device), the card is replayed from its other
+   * answers, so those still count.
+   */
   | { type: "CardReviewUndone"; lang: string; cardId: number; reviewId: string }
   /**
    * Native mode: cards changed outside a review: marked known, studied first, their memory
    * recomputed with new FSRS parameters, or a due date moved by reading (a word met without a
-   * lookup, or looked up).
+   * lookup, or looked up). Memory and reading changes say what to do (`memory`, `due`) and are
+   * applied to the card as it is then, so they never undo an answer from another device.
    */
   | {
       type: "NativeCardsChanged";
       lang: string;
       reason: "known" | "first" | "memory" | "reading";
       changes: NativeCardChange[];
+      /** Reason "memory": the FSRS parameters the memory was replayed with. */
+      params?: number[];
     }
   /**
    * Native mode: FSRS parameters trained on the learner's reviews (or the defaults). Log loss
@@ -441,6 +448,18 @@ export interface NativeCardChange {
   suspended?: boolean;
   /** New place in the new queue. */
   position?: number;
+  /**
+   * Reading moves a review card's due date, judged on the card as it is when applied, and only
+   * while its last answer is still `lastReview` (an answer given since wins): "later" moves a
+   * card due before `dayEnd` to `at` + `days`; "now" makes a card due after `dayEnd` due at `at`.
+   */
+  due?: { to: "later" | "now"; at: number; days: number; dayEnd: number; lastReview: number };
+  /**
+   * New stability and difficulty (the card's answers replayed with the event's `params`). Only
+   * the memory changes, never the due date, and only while the card's last answer is still
+   * `lastReview` and those parameters are in use.
+   */
+  memory?: { stability: number; difficulty: number; lastReview: number };
 }
 
 /** An open word suggestion (see `suggestedWords`). */
@@ -507,9 +526,10 @@ export const EVENT_VERSIONS = {
   NativeDeckOptionsSet: 1,
   CardReviewed: 1,
   CardReviewUndone: 1,
-  NativeCardsChanged: 1,
+  // 2: memory and reading changes carry `memory` / `due` instead of a whole schedule.
+  NativeCardsChanged: 2,
   FsrsParamsSet: 1,
-} as const satisfies Record<AppEvent["type"], 1>;
+} as const satisfies Record<AppEvent["type"], number>;
 
 export const EVENT_TYPES: ReadonlySet<string> = new Set(Object.keys(EVENT_VERSIONS));
 
