@@ -745,6 +745,14 @@ kbd {
   border-radius: 6px;
   transition: background var(--dur-fast) var(--ease);
 }
+button.k-row {
+  width: 100%;
+  font: inherit;
+  text-align: left;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
 a.k-row:hover,
 button.k-row:hover {
   background: color-mix(in srgb, var(--ink) 4%, transparent);
@@ -768,7 +776,8 @@ button.k-row:hover {
   color: var(--ink-muted);
   transition: transform var(--dur-fast) var(--ease);
 }
-a.k-row:hover .k-row-go {
+a.k-row:hover .k-row-go,
+button.k-row:hover .k-row-go {
   transform: translateX(2px);
   color: var(--accent);
 }

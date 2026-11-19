@@ -100,6 +100,9 @@
 }
 /* Start: the form on the left, earlier conversations in the quiet aside. */
 .cv-start {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-5);
   max-width: 34rem;
 }
 .cv-past li button {
