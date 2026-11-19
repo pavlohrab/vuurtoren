@@ -31,6 +31,9 @@ base64 = "0.23"
 gethostname = "1"
 getrandom = "0.3"
 tokio = { version = "1", features = ["time"] }
+# The sync key in the system keychain (macOS Keychain, Windows Credential Manager, the Secret
+# Service on Linux through libdbus, which the window toolkit links already).
+keyring = { version = "=3.6.3", features = ["apple-native", "windows-native", "sync-secret-service", "crypto-rust"] }
 
 [dev-dependencies]
 tempfile = "3"

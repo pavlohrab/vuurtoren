@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-sync-allow-host"
+description = "Enables the sync_allow_host command without any pre-configured scope."
+commands.allow = ["sync_allow_host"]
+
+[[permission]]
+identifier = "deny-sync-allow-host"
+description = "Denies the sync_allow_host command without any pre-configured scope."
+commands.deny = ["sync_allow_host"]

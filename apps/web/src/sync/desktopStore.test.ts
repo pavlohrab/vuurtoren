@@ -54,4 +54,28 @@ describe("desktop sync", () => {
     vi.mocked(sync.fetch).mockRejectedValueOnce(new Error("Cannot reach the sync place"));
     await expect(f("https://x.org/a")).rejects.toBeInstanceOf(TypeError);
   });
+
+  it("asks the app once per address before the first request", async () => {
+    const sync = fakeSync();
+    let allow = false;
+    const allowHost = vi.fn((_url: string) =>
+      allow ? Promise.resolve() : Promise.reject(new Error("Sync was not allowed.")),
+    );
+    sync.allowHost = allowHost;
+    const f = desktopFetch(sync);
+    // Declined: nothing is sent, and the failure reads like a failed fetch.
+    await expect(f("https://dav.example.org/a")).rejects.toBeInstanceOf(TypeError);
+    expect(sync.fetch).not.toHaveBeenCalled();
+    // Asked again later (the app keeps its own answer), then allowed once for the address.
+    allow = true;
+    await f("https://dav.example.org/a");
+    await desktopFetch(sync)("https://dav.example.org/b", { method: "PUT", body: "x" });
+    await f("https://other.example.org/a");
+    expect(allowHost.mock.calls.map((c) => new URL(c[0]).host)).toEqual([
+      "dav.example.org",
+      "dav.example.org",
+      "other.example.org",
+    ]);
+    expect(sync.fetch).toHaveBeenCalledTimes(3);
+  });
 });

@@ -92,6 +92,21 @@
         remove: function (root, path) {
           return invoke("sync_dir_remove", { root: root, path: path });
         },
+        // The app asks the user the first time an address is used; sync_fetch reaches only
+        // allowed addresses.
+        allowHost: function (url) {
+          return invoke("sync_allow_host", { url: url });
+        },
+        // The sync key (base64) in the system keychain, or a private file when there is none.
+        saveKey: function (key) {
+          return invoke("sync_key_save", { key: key });
+        },
+        loadKey: function () {
+          return invoke("sync_key_load");
+        },
+        forgetKey: function () {
+          return invoke("sync_key_forget");
+        },
         fetch: function (req) {
           return invoke("sync_fetch", {
             req: {
