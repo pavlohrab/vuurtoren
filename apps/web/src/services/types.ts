@@ -354,6 +354,6 @@ export interface AppServices
 }
 
 /** A word whose card is due, with the time it came due. */
-export interface DueWord extends WordInfo {
+interface DueWord extends WordInfo {
   due: number;
 }
