@@ -276,6 +276,36 @@ const GRAMMAR_CHARS = 1_000_000;
 
 /** Max items per `/forms`, `/sentences` and `/similar` request (server limit). */
 const PRACTICE_BATCH = 500;
+/** Texts and characters per `/translate` and `/translate/align` request (server limits). */
+const TRANSLATE_TEXTS = 64;
+const TRANSLATE_CHARS = 20_000;
+
+/**
+ * Split `items` into runs of at most `maxItems` items and `maxChars` characters, in order.
+ * An item longer than `maxChars` gets a run of its own.
+ */
+function chunked<T>(
+  items: readonly T[],
+  maxItems: number,
+  maxChars: number,
+  length: (item: T) => number,
+): T[][] {
+  const out: T[][] = [];
+  let chunk: T[] = [];
+  let chars = 0;
+  for (const item of items) {
+    const n = length(item);
+    if (chunk.length && (chunk.length >= maxItems || chars + n > maxChars)) {
+      out.push(chunk);
+      chunk = [];
+      chars = 0;
+    }
+    chunk.push(item);
+    chars += n;
+  }
+  if (chunk.length) out.push(chunk);
+  return out;
+}
 
 export interface NlpClientOptions {
   url?: string;
@@ -514,20 +544,9 @@ export class NlpClient {
       context: !!opts.context,
     };
     const out: Translation[] = [];
-    let chunk: string[] = [];
-    let chars = 0;
-    const flush = async () => {
-      if (chunk.length)
-        out.push(...(await this.post<Translation[]>("/translate", { ...body, texts: chunk })));
-      chunk = [];
-      chars = 0;
-    };
-    for (const t of texts) {
-      if (chunk.length >= 64 || chars + t.length > 20_000) await flush();
-      chunk.push(t);
-      chars += t.length;
+    for (const chunk of chunked(texts, TRANSLATE_TEXTS, TRANSLATE_CHARS, (t) => t.length)) {
+      out.push(...(await this.post<Translation[]>("/translate", { ...body, texts: chunk })));
     }
-    await flush();
     return out;
   }
 
@@ -538,26 +557,15 @@ export class NlpClient {
    */
   async align(items: AlignItem[]): Promise<AlignedText[]> {
     const out: AlignedText[] = [];
-    let chunk: AlignItem[] = [];
-    let chars = 0;
-    const flush = async () => {
-      if (chunk.length)
-        out.push(
-          ...(await this.post<AlignedText[]>("/translate/align", {
-            source: "nl",
-            target: "en",
-            items: chunk,
-          })),
-        );
-      chunk = [];
-      chars = 0;
-    };
-    for (const it of items) {
-      if (chunk.length >= 64 || chars + it.text.length > 20_000) await flush();
-      chunk.push(it);
-      chars += it.text.length;
+    for (const chunk of chunked(items, TRANSLATE_TEXTS, TRANSLATE_CHARS, (it) => it.text.length)) {
+      out.push(
+        ...(await this.post<AlignedText[]>("/translate/align", {
+          source: "nl",
+          target: "en",
+          items: chunk,
+        })),
+      );
     }
-    await flush();
     return out;
   }
 
@@ -567,22 +575,9 @@ export class NlpClient {
    */
   async grammar(lang: NlpLang, texts: string[]): Promise<GrammarHit[][]> {
     const out: GrammarHit[][] = [];
-    let chunk: string[] = [];
-    let chars = 0;
-    const flush = async () => {
-      if (chunk.length)
-        out.push(...(await this.post<GrammarHit[][]>("/grammar", { lang, texts: chunk })));
-      chunk = [];
-      chars = 0;
-    };
-    for (const t of texts) {
-      if (chunk.length && (chunk.length >= this.batchSize || chars + t.length > GRAMMAR_CHARS)) {
-        await flush();
-      }
-      chunk.push(t);
-      chars += t.length;
+    for (const chunk of chunked(texts, this.batchSize, GRAMMAR_CHARS, (t) => t.length)) {
+      out.push(...(await this.post<GrammarHit[][]>("/grammar", { lang, texts: chunk })));
     }
-    await flush();
     return out;
   }
 
