@@ -29,6 +29,19 @@ sentence, built by `server/nlp/scripts/build_starter.py` and committed. The web 
 a chunk of its own (`apps/web/src/services/starterWords.ts`), loaded on first use and precached by
 the service worker, so starter decks work offline in the browser and the desktop app.
 
+`content/stories/<level>/<slug>.md` holds the graded stories (A1–B2): front matter, then each
+Dutch sentence on its own line followed by its English on a `> ` line.
+`server/nlp/scripts/check_stories.py` checks each story against its level (length, share of words within the level's
+part of the starter list, sentence length, one English line per sentence) and with `--write`
+bundles them, with their spaCy analysis, into `content/stories/stories.json`. The web app imports
+the bundle as a chunk of its own (`apps/web/src/services/stories.ts`), precached like the starter
+list. The Library's Stories shelf computes the learner's coverage of each story from the bundled
+analysis (`classifyTokens` and `coverageOf`, the reader's rule); opening a story adds it to the
+Library once as a normal text (source ref `story:<slug>`) with that analysis, so it reads at once
+and offline. Side by side uses the story's English instead of machine translation: the language
+server only pairs its words, and without the server the English shows alone. How to add a story:
+`content/stories/README.md`.
+
 ## apps/web
 
 ```
