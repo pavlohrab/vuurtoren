@@ -207,6 +207,7 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
           TAG: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
         run: |
           version=$(node -p "require('./package.json').version")
@@ -219,6 +220,20 @@ jobs:
             cp "$f" "$RUNNER_TEMP/offline/${base/Kenning_/Kenning_offline_}"
           done
           ls -la "$RUNNER_TEMP/offline"
-          # The standard job may still be creating the release: wait for it (up to 30 minutes).
-          for i in $(seq 1 60); do gh release view "$tag" >/dev/null 2>&1 && break; sleep 30; done
-          gh release upload "$tag" "$RUNNER_TEMP"/offline/* --clobber
+          # Find the release (the API also lists drafts), or make it: this job does not wait for
+          # the standard one. A manual run is a pre-release, a tag a normal release.
+          find_release() {
+            gh api "repos/$REPO/releases?per_page=100" --jq ".[] | select(.tag_name == \"$tag\") | .id" | head -n1
+          }
+          id=$(find_release)
+          if [ -z "$id" ]; then
+            pre=--prerelease
+            [ -n "$TAG" ] && pre=
+            gh release create "$tag" --repo "$REPO" --target "$GITHUB_SHA" --title "Kenning $version" $pre \
+              --notes "Desktop installers (unsigned). The \`Kenning_offline_*\` files include the language data (no download at first start)." ||
+              true # the standard job may have made it at the same moment
+            id=$(find_release)
+          fi
+          [ -n "$id" ] || { echo "Could not find or create the release $tag."; exit 1; }
+          gh api -X PATCH "repos/$REPO/releases/$id" -F draft=false >/dev/null
+          gh release upload "$tag" --repo "$REPO" "$RUNNER_TEMP"/offline/* --clobber
