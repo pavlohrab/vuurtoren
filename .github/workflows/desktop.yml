@@ -58,18 +58,31 @@ jobs:
         run: |
           version=$(python3 -c "import json;print(json.load(open('src/kenning_nlp/packs.json'))['packs']['dictionary-nl']['version'])")
           tag="packs-$version"
-          if gh release view "$tag" --repo "$REPO" >/dev/null 2>&1; then
+          # The API also lists draft releases, which `gh release view <tag>` cannot find.
+          id=$(gh api "repos/$REPO/releases?per_page=100" --jq ".[] | select(.tag_name == \"$tag\") | .id" | head -n1)
+          assets=""
+          if [ -n "$id" ]; then
+            assets=$(gh api "repos/$REPO/releases/$id/assets?per_page=100" --jq '.[].name')
+          fi
+          if printf '%s\n' "$assets" | grep -qx packs.json; then
             echo "Using the existing release $tag."
+            gh api -X PATCH "repos/$REPO/releases/$id" -F draft=false >/dev/null
             gh release download "$tag" --repo "$REPO" --pattern packs.json --dir "$RUNNER_TEMP" --clobber
             cp "$RUNNER_TEMP/packs.json" src/kenning_nlp/packs.json
           else
-            echo "No release $tag yet: building the packs."
+            echo "No complete release $tag yet: building the packs."
             uv sync --locked --no-dev
             uv run --no-dev python scripts/build_packs.py --out dist/packs
-            gh release create "$tag" --repo "$REPO" --title "Data packs $version" --prerelease \
-              --notes "Language server data packs. See docs/architecture.md, 'Language server data packs'."
+            if [ -n "$id" ]; then
+              gh api -X PATCH "repos/$REPO/releases/$id" -F draft=false -F prerelease=true >/dev/null
+            else
+              gh release create "$tag" --repo "$REPO" --title "Data packs $version" --prerelease \
+                --notes "Language server data packs. See docs/architecture.md, 'Language server data packs'."
+            fi
             gh release upload "$tag" --repo "$REPO" dist/packs/*.tar.gz src/kenning_nlp/packs.json --clobber
-            echo "### New data packs $version: commit server/nlp/src/kenning_nlp/packs.json from the release" >> "$GITHUB_STEP_SUMMARY"
+            if ! git diff --quiet -- src/kenning_nlp/packs.json; then
+              echo "### New data pack checksums: commit server/nlp/src/kenning_nlp/packs.json from the release" >> "$GITHUB_STEP_SUMMARY"
+            fi
           fi
       - uses: actions/upload-artifact@v4
         with:
