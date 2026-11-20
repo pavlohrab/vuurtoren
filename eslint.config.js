@@ -30,7 +30,7 @@ export default tseslint.config(
   {
     files: ["apps/web/sw/**/*.js"],
     languageOptions: {
-      globals: { ...globals.serviceworker, __KENNING_SW_PRECACHE__: "readonly" },
+      globals: { ...globals.serviceworker, __VUURTOREN_SW_PRECACHE__: "readonly" },
     },
   },
   // Type-aware rules, on source files only (tests and scripts stay fast and untyped).

@@ -40,14 +40,14 @@ const files = [
   bump("apps/desktop/src-tauri/Cargo.toml", /^(version = )"[^"]+"/m, `$1"${version}"`),
   bump(
     "apps/desktop/src-tauri/Cargo.lock",
-    /(name = "kenning-desktop"\nversion = )"[^"]+"/,
+    /(name = "vuurtoren-desktop"\nversion = )"[^"]+"/,
     `$1"${version}"`,
   ),
   bump("server/nlp/pyproject.toml", /^(version = )"[^"]+"/m, `$1"${version}"`),
-  bump("server/nlp/uv.lock", /(name = "kenning-nlp"\nversion = )"[^"]+"/, `$1"${version}"`),
+  bump("server/nlp/uv.lock", /(name = "vuurtoren-nlp"\nversion = )"[^"]+"/, `$1"${version}"`),
 ];
 
 git("add", ...files);
 git("commit", "-m", `release: ${version}`);
-git("tag", "-a", `v${version}`, "-m", `Kenning ${version}`);
+git("tag", "-a", `v${version}`, "-m", `Vuurtoren ${version}`);
 console.log(`Tagged v${version}. To publish: git push origin main --tags`);

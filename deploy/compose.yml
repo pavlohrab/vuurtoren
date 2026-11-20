@@ -1,12 +1,12 @@
-# Kenning self-host stack.
+# Vuurtoren self-host stack.
 #   docker compose -f deploy/compose.yml up -d        (pulls published images; add --build to build)
 #   open http://localhost:8080
 # HTTPS for LAN/VPS:  docker compose -f deploy/compose.yml --profile https up -d   (see README)
-name: kenning
+name: vuurtoren
 
 services:
   nlp:
-    image: ghcr.io/${KENNING_IMAGE_OWNER:-kenning}/kenning-nlp:${KENNING_TAG:-latest}${KENNING_NLP_VARIANT:-}
+    image: ghcr.io/${VUURTOREN_IMAGE_OWNER:-vuurtoren}/vuurtoren-nlp:${VUURTOREN_TAG:-latest}${VUURTOREN_NLP_VARIANT:-}
     # One replica, one worker: OCR jobs are held in memory (see server/nlp/Dockerfile).
     deploy:
       replicas: 1
@@ -17,48 +17,48 @@ services:
     # (Direct access for development: see compose.dev.yml.)
     environment:
       # Server-side support is kept; leave unset unless you call the service from another origin.
-      KENNING_CORS_ORIGINS: ${KENNING_CORS_ORIGINS:-}
+      VUURTOREN_CORS_ORIGINS: ${VUURTOREN_CORS_ORIGINS:-}
       # Recognised course pages, so re-importing a book (or resuming after a restart) skips OCR.
-      KENNING_COURSE_CACHE_DIR: /cache/course
+      VUURTOREN_COURSE_CACHE_DIR: /cache/course
       # Parallel OCR workers for course imports (default: half the CPUs, at most 6).
-      KENNING_OCR_WORKERS: ${KENNING_OCR_WORKERS:-}
-      # Data packs on the kenning-nlp-data volume (see deploy/README.md, "Language data").
-      KENNING_PACKS: ${KENNING_PACKS:-auto}
-      KENNING_PACKS_URL: ${KENNING_PACKS_URL:-}
-      KENNING_PACKS_TOKEN: ${KENNING_PACKS_TOKEN:-}
+      VUURTOREN_OCR_WORKERS: ${VUURTOREN_OCR_WORKERS:-}
+      # Data packs on the vuurtoren-nlp-data volume (see deploy/README.md, "Language data").
+      VUURTOREN_PACKS: ${VUURTOREN_PACKS:-auto}
+      VUURTOREN_PACKS_URL: ${VUURTOREN_PACKS_URL:-}
+      VUURTOREN_PACKS_TOKEN: ${VUURTOREN_PACKS_TOKEN:-}
     volumes:
-      - kenning-ocr-cache:/cache
-      - kenning-nlp-data:/data
+      - vuurtoren-ocr-cache:/cache
+      - vuurtoren-nlp-data:/data
     networks: [internal]
 
-  # Your data: ONE SQLite file on the kenning-data volume, shared by every device.
+  # Your data: ONE SQLite file on the vuurtoren-data volume, shared by every device.
   # Sign-in is off unless a password or token is set; set one before the app is
   # reachable from anywhere but this computer. Create the hash with:
   #   docker compose -f deploy/compose.yml run --rm -it api hash-password
   api:
-    image: ghcr.io/${KENNING_IMAGE_OWNER:-kenning}/kenning-api:${KENNING_TAG:-latest}
+    image: ghcr.io/${VUURTOREN_IMAGE_OWNER:-vuurtoren}/vuurtoren-api:${VUURTOREN_TAG:-latest}
     build:
       context: ..
       dockerfile: server/api/Dockerfile
     restart: unless-stopped
     environment:
-      KENNING_USER: ${KENNING_USER:-}
-      KENNING_PASSWORD_HASH: ${KENNING_PASSWORD_HASH:-}
+      VUURTOREN_USER: ${VUURTOREN_USER:-}
+      VUURTOREN_PASSWORD_HASH: ${VUURTOREN_PASSWORD_HASH:-}
       # Plain password: accepted, but prefer the hash (it is logged as a warning).
-      KENNING_PASSWORD: ${KENNING_PASSWORD:-}
+      VUURTOREN_PASSWORD: ${VUURTOREN_PASSWORD:-}
       # Bearer token for scripts and the MCP server (optional).
-      KENNING_TOKEN: ${KENNING_TOKEN:-}
+      VUURTOREN_TOKEN: ${VUURTOREN_TOKEN:-}
       # 0 only when you open the app over plain http from another device (LAN).
-      KENNING_COOKIE_SECURE: ${KENNING_COOKIE_SECURE:-1}
+      VUURTOREN_COOKIE_SECURE: ${VUURTOREN_COOKIE_SECURE:-1}
       # 1 only behind a Cloudflare Tunnel (client IP from CF-Connecting-IP).
-      KENNING_TRUST_CF: ${KENNING_TRUST_CF:-0}
-      KENNING_ALLOWED_ORIGINS: ${KENNING_ALLOWED_ORIGINS:-}
+      VUURTOREN_TRUST_CF: ${VUURTOREN_TRUST_CF:-0}
+      VUURTOREN_ALLOWED_ORIGINS: ${VUURTOREN_ALLOWED_ORIGINS:-}
       # Text analysis for the MCP endpoint (/api/mcp, Claude Code).
-      KENNING_NLP_URL: ${KENNING_NLP_URL:-http://nlp:8000}
+      VUURTOREN_NLP_URL: ${VUURTOREN_NLP_URL:-http://nlp:8000}
       # Most space the sync files of your devices may take together, in MB (default 2048).
-      KENNING_SYNC_QUOTA_MB: ${KENNING_SYNC_QUOTA_MB:-}
+      VUURTOREN_SYNC_QUOTA_MB: ${VUURTOREN_SYNC_QUOTA_MB:-}
     volumes:
-      - kenning-data:/data
+      - vuurtoren-data:/data
     networks: [internal]
     healthcheck:
       test:
@@ -72,7 +72,7 @@ services:
       retries: 3
 
   web:
-    image: ghcr.io/${KENNING_IMAGE_OWNER:-kenning}/kenning-web:${KENNING_TAG:-latest}
+    image: ghcr.io/${VUURTOREN_IMAGE_OWNER:-vuurtoren}/vuurtoren-web:${VUURTOREN_TAG:-latest}
     build:
       context: ..
       dockerfile: deploy/web.Dockerfile
@@ -80,26 +80,26 @@ services:
     depends_on: [nlp, api]
     environment:
       # /nlp/ needs a sign-in when auth is on (checked by api). "off" only without the api.
-      KENNING_NLP_AUTH: ${KENNING_NLP_AUTH:-on}
+      VUURTOREN_NLP_AUTH: ${VUURTOREN_NLP_AUTH:-on}
     networks: [internal]
     ports:
       # Loopback only: http://localhost is a secure context, so everything works for one user.
       # To share on your LAN use the https profile below (plain http on a LAN address is not a
       # secure context: no persistent storage, no AnkiConnect permission).
-      - "127.0.0.1:${KENNING_WEB_PORT:-8080}:80"
+      - "127.0.0.1:${VUURTOREN_WEB_PORT:-8080}:80"
     healthcheck:
       test: ["CMD", "wget", "-qO", "/dev/null", "http://127.0.0.1/"]
       interval: 30s
       timeout: 5s
       retries: 3
 
-  # Scheduled backups (optional, profile "backup"): every KENNING_BACKUP_INTERVAL_HOURS a
+  # Scheduled backups (optional, profile "backup"): every VUURTOREN_BACKUP_INTERVAL_HOURS a
   # consistent snapshot from /api/export (safe while the app is in use) is written to
-  # KENNING_BACKUP_DIR as kenning-YYYY-MM-DD-HHMM.sqlite; files older than KENNING_BACKUP_KEEP_DAYS
-  # are deleted. With sign-in on it needs KENNING_TOKEN. Each file is a normal Kenning backup:
+  # VUURTOREN_BACKUP_DIR as vuurtoren-YYYY-MM-DD-HHMM.sqlite; files older than VUURTOREN_BACKUP_KEEP_DAYS
+  # are deleted. With sign-in on it needs VUURTOREN_TOKEN. Each file is a normal Vuurtoren backup:
   # restore it in Settings > Data & backup (deploy/README.md, "Backup and restore").
   # The sealed files of the devices that sync through this server (/data/sync) are kept next
-  # to it as kenning-sync-YYYY-MM-DD-HHMM.tar.gz.
+  # to it as vuurtoren-sync-YYYY-MM-DD-HHMM.tar.gz.
   backup:
     image: alpine:3.24
     profiles: [backup]
@@ -108,12 +108,12 @@ services:
       api:
         condition: service_healthy
     environment:
-      KENNING_TOKEN: ${KENNING_TOKEN:-}
-      INTERVAL_HOURS: ${KENNING_BACKUP_INTERVAL_HOURS:-24}
-      KEEP_DAYS: ${KENNING_BACKUP_KEEP_DAYS:-14}
+      VUURTOREN_TOKEN: ${VUURTOREN_TOKEN:-}
+      INTERVAL_HOURS: ${VUURTOREN_BACKUP_INTERVAL_HOURS:-24}
+      KEEP_DAYS: ${VUURTOREN_BACKUP_KEEP_DAYS:-14}
     volumes:
-      - ${KENNING_BACKUP_DIR:-./backups}:/backups
-      - kenning-data:/data:ro
+      - ${VUURTOREN_BACKUP_DIR:-./backups}:/backups
+      - vuurtoren-data:/data:ro
     networks: [internal]
     command:
       - sh
@@ -121,25 +121,25 @@ services:
       - |
         set -u
         umask 077
-        if [ -n "$$KENNING_TOKEN" ]; then set -- --header "Authorization: Bearer $$KENNING_TOKEN"; else set --; fi
+        if [ -n "$$VUURTOREN_TOKEN" ]; then set -- --header "Authorization: Bearer $$VUURTOREN_TOKEN"; else set --; fi
         while :; do
-          f="/backups/kenning-$$(date +%Y-%m-%d-%H%M).sqlite"
+          f="/backups/vuurtoren-$$(date +%Y-%m-%d-%H%M).sqlite"
           if wget -q -T 600 "$$@" -O "$$f.part" http://api:8787/api/export; then
             mv "$$f.part" "$$f"
             echo "backup: $$f ($$(du -h "$$f" | cut -f1))"
-            find /backups -name 'kenning-*.sqlite' -mtime +"$$KEEP_DAYS" -delete
+            find /backups -name 'vuurtoren-*.sqlite' -mtime +"$$KEEP_DAYS" -delete
           else
             rm -f "$$f.part"
-            echo "backup FAILED: is the api healthy? With sign-in on, set KENNING_TOKEN." >&2
+            echo "backup FAILED: is the api healthy? With sign-in on, set VUURTOREN_TOKEN." >&2
           fi
           # Sync files are written whole (a new file, then a rename): a copy never holds half
           # of one.
           if [ -d /data/sync ]; then
-            s="/backups/kenning-sync-$$(date +%Y-%m-%d-%H%M).tar.gz"
+            s="/backups/vuurtoren-sync-$$(date +%Y-%m-%d-%H%M).tar.gz"
             if tar -czf "$$s.part" -C /data sync; then
               mv "$$s.part" "$$s"
               echo "backup: $$s ($$(du -h "$$s" | cut -f1))"
-              find /backups -name 'kenning-sync-*.tar.gz' -mtime +"$$KEEP_DAYS" -delete
+              find /backups -name 'vuurtoren-sync-*.tar.gz' -mtime +"$$KEEP_DAYS" -delete
             else
               rm -f "$$s.part"
               echo "backup of the sync files FAILED" >&2
@@ -149,7 +149,7 @@ services:
         done
 
   # Optional HTTPS front (profile "https"): automatic certificates for a public domain, or a
-  # local CA with `tls internal` for LAN use. Set KENNING_DOMAIN in deploy/.env.
+  # local CA with `tls internal` for LAN use. Set VUURTOREN_DOMAIN in deploy/.env.
   caddy:
     image: caddy:2-alpine
     profiles: [https]
@@ -157,8 +157,8 @@ services:
     depends_on: [web]
     networks: [internal]
     environment:
-      KENNING_DOMAIN: ${KENNING_DOMAIN:-localhost}
-      KENNING_TLS: ${KENNING_TLS:-}
+      VUURTOREN_DOMAIN: ${VUURTOREN_DOMAIN:-localhost}
+      VUURTOREN_TLS: ${VUURTOREN_TLS:-}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy-data:/data
@@ -171,6 +171,6 @@ networks:
 
 volumes:
   caddy-data: {}
-  kenning-data: {}
-  kenning-ocr-cache: {}
-  kenning-nlp-data: {}
+  vuurtoren-data: {}
+  vuurtoren-ocr-cache: {}
+  vuurtoren-nlp-data: {}

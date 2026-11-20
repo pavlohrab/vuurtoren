@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-# Kenning web app: static Vite build served by nginx. Build context: the repo root
+# Vuurtoren web app: static Vite build served by nginx. Build context: the repo root
 # (see deploy/compose.yml), because @app/web depends on the other workspace packages.
 # Base images are pinned to a patch release; .github/dependabot.yml proposes updates.
 
@@ -20,16 +20,16 @@ RUN pnpm install --frozen-lockfile --offline
 ARG VITE_NLP_URL=/nlp
 ENV VITE_NLP_URL=$VITE_NLP_URL
 # Shown next to the version in Settings > Advanced (CI passes the commit SHA).
-ARG KENNING_COMMIT=
-ENV KENNING_COMMIT=$KENNING_COMMIT
+ARG VUURTOREN_COMMIT=
+ENV VUURTOREN_COMMIT=$VUURTOREN_COMMIT
 RUN pnpm --filter @app/web... build
 
 # ---- Stage 2: serve --------------------------------------------------------------------
 FROM nginx:1.30.6-alpine
 # The config is a template: the image's entrypoint renders it to conf.d/default.conf,
-# substituting only KENNING_* variables (see the top of deploy/nginx.conf.template).
-ENV NGINX_ENVSUBST_FILTER=^KENNING_ \
-    KENNING_NLP_AUTH=on
+# substituting only VUURTOREN_* variables (see the top of deploy/nginx.conf.template).
+ENV NGINX_ENVSUBST_FILTER=^VUURTOREN_ \
+    VUURTOREN_NLP_AUTH=on
 COPY deploy/nginx.conf.template /etc/nginx/templates/default.conf.template
 
 # Unprivileged nginx: no `user` directive, pid and temp files in /tmp, conf.d writable for the
@@ -44,7 +44,7 @@ RUN sed -i -e '/^user /d' -e 's,^pid .*;,pid /tmp/nginx.pid;,' /etc/nginx/nginx.
         'fastcgi_temp_path /tmp/fastcgi_temp;' \
         'uwsgi_temp_path /tmp/uwsgi_temp;' \
         'scgi_temp_path /tmp/scgi_temp;' > /etc/nginx/conf.d/00-unprivileged.conf \
-    && envsubst '${KENNING_NLP_AUTH}' < /etc/nginx/templates/default.conf.template \
+    && envsubst '${VUURTOREN_NLP_AUTH}' < /etc/nginx/templates/default.conf.template \
         > /etc/nginx/conf.d/default.conf \
     && nginx -t \
     && rm -rf /tmp/* \

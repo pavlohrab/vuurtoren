@@ -1,5 +1,5 @@
 {
-  "name": "kenning",
+  "name": "vuurtoren",
   "version": "0.1.0",
   "private": true,
   "license": "MIT OR Apache-2.0",
@@ -17,7 +17,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "anki-report": "pnpm --filter @app/anki-report start",
-    "nlp": "cd server/nlp && uv run uvicorn kenning_nlp.app:app --port 8000",
+    "nlp": "cd server/nlp && uv run uvicorn vuurtoren_nlp.app:app --port 8000",
     "knip": "knip",
     "release": "node scripts/release.mjs",
     "e2e": "turbo run build --filter=@app/web && pnpm --filter @app/web e2e"
