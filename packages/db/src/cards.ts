@@ -20,6 +20,7 @@ import {
   paramsDecay,
   scheduleMemory,
 } from "@app/core";
+import { insertMany } from "./driver-core.js";
 import { compareHlc } from "./ids.js";
 import type {
   AnkiWordEntry,
@@ -52,23 +53,9 @@ type NativeEvent = Extract<
 type Row = Record<string, SqlValue>;
 const json = <T>(v: SqlValue | undefined): T => JSON.parse(String(v)) as T;
 const DAY_MS = 86_400_000;
-const CHUNK = 100;
 
 /** Learning cards due this soon are shown when nothing else is left (Anki's learn-ahead). */
 const LEARN_AHEAD_MS = 20 * 60_000;
-
-async function insertMany(
-  driver: SqlDriver,
-  head: string,
-  cols: number,
-  rows: readonly SqlValue[][],
-): Promise<void> {
-  for (let i = 0; i < rows.length; i += CHUNK) {
-    const chunk = rows.slice(i, i + CHUNK);
-    const ph = `(${Array(cols).fill("?").join(",")})`;
-    await driver.exec(`${head} VALUES ${Array(chunk.length).fill(ph).join(",")}`, chunk.flat());
-  }
-}
 
 async function setSchedule(
   driver: SqlDriver,

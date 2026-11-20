@@ -12,6 +12,7 @@ import {
 } from "@app/core";
 import { applyNativeEvent } from "./cards.js";
 import { applyCourseEvent } from "./course.js";
+import { insertMany } from "./driver-core.js";
 import { contentHash } from "./hash.js";
 import { compareHlc } from "./ids.js";
 import { applyTextMeta, metaPatchFields } from "./library.js";
@@ -43,22 +44,6 @@ export const MARKED_LEARNING_P_KNOWN = 0.3;
 /** Word count = number of Unicode letter runs. */
 export function countWords(content: string): number {
   return content.match(/\p{L}+/gu)?.length ?? 0;
-}
-
-const CHUNK = 100;
-
-/** Multi-row INSERT in chunks (keeps worker round trips low for big Anki snapshots). */
-async function insertMany(
-  driver: SqlDriver,
-  head: string,
-  cols: number,
-  rows: readonly SqlValue[][],
-): Promise<void> {
-  for (let i = 0; i < rows.length; i += CHUNK) {
-    const chunk = rows.slice(i, i + CHUNK);
-    const ph = `(${Array(cols).fill("?").join(",")})`;
-    await driver.exec(`${head} VALUES ${Array(chunk.length).fill(ph).join(",")}`, chunk.flat());
-  }
 }
 
 /** A language-server analysis of one text version (see `KenningRepository.saveTextAnalysis`). */
