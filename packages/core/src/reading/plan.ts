@@ -10,7 +10,6 @@ import type { AnalyzedToken, PlannedToken, PlannerOptions, Segment } from "./typ
 
 /** Words with pKnown below this are "unknown" for planning. */
 export const UNKNOWN_THRESHOLD = 0.5;
-/** Cloze candidates must have pKnown within this range. */
 /** Recall range of words chosen as clozes (shakier words preferred within it). */
 const CLOZE_P_RANGE = [0.6, 0.99] as const;
 /** Function words make poor clozes ("met", "de", "hij"): only content words are blanked. */
@@ -26,6 +25,8 @@ const CLOZE_EXCLUDED_POS: ReadonlySet<string> = new Set([
 ]);
 const CLOZE_MIN_SENTENCE_WORDS = 6;
 const CLOZE_MIN_CHARS = 2;
+/** Recall assumed for an assumed-familiar word without evidence (the bottom of the cloze range). */
+const ASSUMED_P_KNOWN = CLOZE_P_RANGE[0];
 /** A "page": the new-word budget is per page (segments are ~150 words). */
 const BUDGET_WORDS = 150;
 /** Words rarer than this (Zipf < 3, about rank 20,000+) are never introduced, only glossed. */
@@ -60,8 +61,27 @@ interface ClozePick {
   sentence: number;
 }
 
+/**
+ * Label and recall a token has as a cloze candidate: its own, or, for a new word the learner is
+ * assumed to know (and not being introduced on this page), "learning" at ASSUMED_P_KNOWN.
+ */
+function clozeView(
+  p: PlannedToken,
+  assumed: ReadonlySet<string> | undefined,
+  introduced: ReadonlySet<string>,
+): { label: PlannedToken["label"]; pKnown: number } {
+  if (p.label === "new" && p.key !== null && assumed?.has(p.key) && !introduced.has(p.key))
+    return { label: "learning", pKnown: Math.max(p.pKnown, ASSUMED_P_KNOWN) };
+  return p;
+}
+
 /** Choose cloze token indices (`AnalyzedToken.i`) for one segment. */
-function pickClozes(toks: readonly AnalyzedToken[], base: readonly PlannedToken[]): number[] {
+function pickClozes(
+  toks: readonly AnalyzedToken[],
+  base: readonly PlannedToken[],
+  assumed: ReadonlySet<string> | undefined,
+  introduced: ReadonlySet<string>,
+): number[] {
   // group token positions by sentence
   const sentences: number[][] = [];
   toks.forEach((t, k) => {
@@ -79,7 +99,7 @@ function pickClozes(toks: readonly AnalyzedToken[], base: readonly PlannedToken[
     let top: ClozePick | undefined;
     for (const k of positions) {
       const t = toks[k]!;
-      const p = base[k]!;
+      const p = clozeView(base[k]!, assumed, introduced);
       const eligible =
         (p.label === "known" || p.label === "learning") &&
         t.particle_of === null &&
@@ -157,7 +177,7 @@ function planFromClassified(
   });
 
   // 2. clozes
-  const clozes = opts.clozes ? pickClozes(toks, base) : [];
+  const clozes = opts.clozes ? pickClozes(toks, base, opts.assumedFamiliar, introSet) : [];
   const clozeSet = new Set(clozes);
   planned.forEach((p) => {
     if (clozeSet.has(p.i)) p.label = "cloze";

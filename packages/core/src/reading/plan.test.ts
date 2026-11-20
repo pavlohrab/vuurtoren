@@ -250,6 +250,57 @@ describe("planSegment: clozes", () => {
     expect(p.clozes).toEqual([]);
   });
 
+  describe("assumed-familiar words", () => {
+    // Every word known beyond the cloze range except "sbwc" (sentence 1), which has no evidence.
+    const setup = (extra: Record<string, WordKnowledge> = {}) => {
+      const toks = tokenize(text);
+      const m = model({
+        ...Object.fromEntries(toks.filter((t) => t.is_word).map((t) => [t.lemma, known(0.995)])),
+        ...extra,
+      });
+      if (!extra["sbwc"]) m.delete("sbwc");
+      return { toks, m };
+    };
+    const glossOnly = { ...DEFAULT_PLANNER, newWordBudget: 0 };
+    const assumed = new Set(["sbwc"]);
+
+    it("become clozes without evidence", () => {
+      const { toks, m } = setup();
+      expect(run(toks, m, glossOnly).clozes).toEqual([]);
+      const p = run(toks, m, { ...glossOnly, assumedFamiliar: assumed });
+      expect(p.clozes.map((i) => toks[i]!.text)).toEqual(["sbwc"]);
+    });
+
+    it("change nothing else: glosses and coverage stay as without them", () => {
+      const { toks, m } = setup();
+      const without = run(toks, m, glossOnly);
+      const withA = run(toks, m, { ...glossOnly, assumedFamiliar: assumed });
+      expect(withA.gloss).toEqual(without.gloss);
+      expect(withA.introduce).toEqual(without.introduce);
+      expect(withA.newTypes).toEqual(without.newTypes);
+      expect(withA.coverage).toBe(without.coverage);
+      // an assumed word is never glossed because of the assumption
+      const known99 = setup({ sbwc: known(0.995) });
+      const p = run(known99.toks, known99.m, { ...glossOnly, assumedFamiliar: assumed });
+      expect(p.gloss).toEqual([]);
+    });
+
+    it("are not blanked while introduced, nor when ignored", () => {
+      const { toks, m } = setup();
+      const intro = run(toks, m, {
+        ...DEFAULT_PLANNER,
+        newWordBudget: 3,
+        assumedFamiliar: assumed,
+      });
+      expect(intro.introduce).toEqual(["sbwc"]);
+      expect(intro.clozes).toEqual([]);
+      const ignored = setup({ sbwc: { state: "ignored", pKnown: 1 } });
+      expect(
+        run(ignored.toks, ignored.m, { ...glossOnly, assumedFamiliar: assumed }).clozes,
+      ).toEqual([]);
+    });
+  });
+
   it("keeps a particle visible when its verb becomes a cloze", () => {
     const toks = tokenize("aa bb cc dd ee ff. gg hh ii jj bel op. kk ll mm nn oo pp.", {
       op: { particle_of: 11 },

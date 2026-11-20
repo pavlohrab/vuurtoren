@@ -84,6 +84,12 @@ export interface PlannerOptions {
   vocabEstimate: number;
   /** Hide known/learning words as clozes. */
   clozes: boolean;
+  /**
+   * Keys the learner most likely knows without evidence (the starter levels below their start
+   * level). They may become clozes, scored like learning words at pKnown 0.6; nothing else
+   * (labels, glossing, coverage) changes.
+   */
+  assumedFamiliar?: ReadonlySet<string>;
 }
 
 /** Adaptive difficulty (staircase controller). */

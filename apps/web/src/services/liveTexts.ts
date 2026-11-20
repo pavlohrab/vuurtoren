@@ -102,6 +102,8 @@ export interface LiveTextsDeps {
   autoCover: (textId: string, file: Blob, filename: string, nlp: NlpClient) => Promise<void>;
   /** Native mode: reading and blanks as evidence for the word's card (liveNative). */
   evidence?: () => ReadingEvidence;
+  /** Keys that may become clozes without evidence (assumedFamiliar.ts). */
+  assumedFamiliar?: () => Promise<ReadonlySet<string>>;
 }
 
 /** What reading tells the native cards (see liveNative `evidence`). */
@@ -123,6 +125,7 @@ export function createLiveTexts({
   dictionary,
   autoCover,
   evidence,
+  assumedFamiliar,
 }: LiveTextsDeps) {
   // Text content never changes under an id within this client (imports get new ids); another
   // device's changes clear the cache through `autoSync`.
@@ -137,6 +140,7 @@ export function createLiveTexts({
       targetCoverage: st.targetCoverage,
       newWordBudget: s.newWords === "auto" ? st.newWordBudget : s.newWords,
       vocabEstimate: estimateVocabulary(m),
+      ...(assumedFamiliar ? { assumedFamiliar: await assumedFamiliar() } : {}),
     };
   }
 

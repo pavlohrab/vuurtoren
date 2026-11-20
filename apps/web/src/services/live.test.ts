@@ -1,4 +1,4 @@
-import { type AnalyzedToken, textDifficulty } from "@app/core";
+import { type AnalyzedToken, defaultProfile, textDifficulty } from "@app/core";
 import { type VuurtorenRepository, contentHash, createRepository } from "@app/db";
 import { createNodeDriver } from "@app/db/node";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -322,6 +322,64 @@ describe("live textWords", () => {
     const { repo, services } = await setup(backend);
     repoToClose = repo;
     await expect(services.textWords("nope")).rejects.toThrow(/not found/);
+  });
+});
+
+describe("live cloze for beginners", () => {
+  // Sentence 1 has one word of the 1000 most common ("water", rank 254); the others are rarer.
+  const CLOZE_TEXT =
+    "Ik zie een gracht. Gracht schuur brug tuin kat water fiets. Brug tuin kat schuur fiets gracht.";
+
+  async function clozeSetup(starterFrom?: number) {
+    const backend = fakeBackend({});
+    const { repo, services } = await setup(backend, []);
+    repoToClose = repo;
+    await repo.append({
+      type: "LanguageProfileSet",
+      profile: { ...defaultProfile("nl"), ...(starterFrom ? { starterFrom } : {}) },
+    });
+    await repo.append({
+      type: "TextImported",
+      textId: "t2",
+      title: "Woorden",
+      lang: "nl",
+      source: { kind: "paste" },
+      content: CLOZE_TEXT,
+    });
+    await repo.append({
+      type: "TextAnalyzed",
+      textId: "t2",
+      contentHash: contentHash(CLOZE_TEXT),
+      tokens: tokenize(CLOZE_TEXT),
+    });
+    // No new words highlighted: the only change left to see is the blanks.
+    await services.saveSettings({ newWords: 0 });
+    const clozeKeys = async () => {
+      const view = (await services.getReading("t2"))!;
+      return view.plans.flatMap((p) => p.clozes).map((i) => view.tokens[i]!.lemma);
+    };
+    return { services, clozeKeys };
+  }
+
+  it("blanks starter words below the start level without evidence", async () => {
+    const { services, clozeKeys } = await clozeSetup(3);
+    expect(await clozeKeys()).toEqual(["water"]);
+    // only the blanks: the word is still new, nothing is recorded
+    expect(await services.words({ query: "water" })).toEqual([]);
+  });
+
+  it("leaves learners who start at level 1 as they were", async () => {
+    expect(await (await clozeSetup()).clozeKeys()).toEqual([]);
+    expect(await (await clozeSetup(1)).clozeKeys()).toEqual([]);
+  });
+
+  it("does not blank a word the learner set back to new or ignored", async () => {
+    const reset = await clozeSetup(3);
+    await reset.services.setWordState("water", "unknown");
+    expect(await reset.clozeKeys()).toEqual([]);
+    const ignored = await clozeSetup(3);
+    await ignored.services.setWordState("water", "ignored");
+    expect(await ignored.clozeKeys()).toEqual([]);
   });
 });
 

@@ -62,7 +62,8 @@ export function starterLevelOf(deck: string): number | null {
   return to % STARTER_LEVEL_SIZE === 0 ? to / STARTER_LEVEL_SIZE : null;
 }
 
-const levelOfRank = (rank: number) => Math.ceil(rank / STARTER_LEVEL_SIZE);
+/** The level (1-based) of a starter word's rank: ranks 1–500 are level 1. */
+export const starterLevelOfRank = (rank: number) => Math.ceil(rank / STARTER_LEVEL_SIZE);
 
 /** The learner-model key of a starter word. */
 export const starterKey = (w: Pick<StarterWord, "word">) => normalizeKey(w.word);
@@ -134,7 +135,7 @@ export async function addStarterWords(
   const cards: NativeCard[] = [];
   let skipped = 0;
   for (const w of [...req.words].sort((a, b) => a.rank - b.rank)) {
-    if (!levels.has(levelOfRank(w.rank))) continue;
+    if (!levels.has(starterLevelOfRank(w.rank))) continue;
     if (req.held.get(starterKey(w))?.length) {
       skipped++;
       continue;
@@ -145,7 +146,7 @@ export async function addStarterWords(
       id: note.id + 1,
       noteId: note.id,
       ord: 0,
-      deck: starterDeck(levelOfRank(w.rank)),
+      deck: starterDeck(starterLevelOfRank(w.rank)),
       position: w.rank,
     });
   }

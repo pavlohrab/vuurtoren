@@ -402,6 +402,8 @@ A very long sentence stays whole, so a page can be longer than 150 words.
 
 If a verb is blanked, its detached particle stays visible.
 
+**Assumed-familiar words (cloze for beginners).** A learner who starts the starter words at a later level (`starterFrom` on the language profile; start level 3 means ranks 1–1000 are skipped) most likely knows the words below it, but has no evidence for them yet, so Cloze would have nothing to blank. These words therefore count as cloze candidates without evidence: the planner option `assumedFamiliar` holds their keys, and a `new` word among them is treated as `learning` with `pKnown` 0.6 for the cloze rules above. The other rules still apply, and a word is left out when the learner ignored it, set it back to new in the app, or when the page introduces it. Only cloze candidacy changes: the word keeps its label, is glossed or introduced as before, counts towards coverage and the known count as before, and nothing is recorded because of the assumption. Answering the blank is evidence like any other cloze answer (3.5). Learners who start at level 1, or whose profile has no start level, get no assumed-familiar words (`apps/web/src/services/assumedFamiliar.ts`).
+
 ### 3.5 Translations dial, cloze hints and cloze credit
 
 **Translations dial** (`packages/core/src/reading/help.ts`). In Gloss mode, a dial from 0 to 1 decides which words get an inline translation:

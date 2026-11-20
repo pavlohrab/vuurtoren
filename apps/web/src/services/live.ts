@@ -23,6 +23,8 @@ import { createLiveStories } from "./liveStories.js";
 import { createLiveProfile } from "./liveProfile.js";
 import { createLiveSettings } from "./liveSettings.js";
 import { chunkText, createLiveTexts } from "./liveTexts.js";
+import { assumedFamiliarKeys } from "./assumedFamiliar.js";
+import { loadStarterWords } from "./starterWords.js";
 import { createLiveWords } from "./liveWords.js";
 import { type ThisServer, createLiveSync } from "./liveSync.js";
 import { desktopBridge } from "../desktop/bridge.js";
@@ -69,6 +71,13 @@ export function createLiveServices(
     dictionary,
     autoCover,
     evidence,
+    // The stored profile, read as it is: planning never migrates or saves one.
+    assumedFamiliar: () =>
+      assumedFamiliarKeys({
+        starterFrom: async () => (await repo.languageProfile(await lang()))?.starterFrom,
+        starterWords: loadStarterWords,
+        wordsByKeys: async (keys) => repo.wordsByKeys(await lang(), keys),
+      }),
   });
   const model = learner.model;
 
