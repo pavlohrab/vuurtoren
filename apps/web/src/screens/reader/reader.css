@@ -65,6 +65,17 @@
   .topbar {
     position: relative;
   }
+  /* Four modes: the title gives way, the modes keep their size. */
+  .topbar-page:has(.k-tabs-list),
+  .topbar-page > div:has(> .k-tabs-list) {
+    flex: none;
+  }
+  .topbar .k-tabs-list {
+    white-space: nowrap;
+  }
+  .topbar .k-tabs-trigger {
+    padding: 4px 5px;
+  }
   .topbar-page .gfocus {
     position: absolute;
     top: calc(100% + 8px);

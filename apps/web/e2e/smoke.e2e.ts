@@ -66,6 +66,39 @@ test("demo mode", async ({ page }) => {
   expect(errors).toEqual([]);
 });
 
+test("demo mode: side by side", async ({ page }) => {
+  const errors = watchErrors(page);
+  await page.goto("/?demo");
+  await page.goto("/read/t-regen");
+  await page.getByRole("tab", { name: "Side by side" }).click();
+  const rows = page.locator(".k-sbs-row");
+  await expect(rows).toHaveCount(2);
+  const row = rows.nth(1);
+  const nl = row.locator(".k-sbs-nl");
+  const en = row.locator(".k-sbs-en");
+  await expect(en).toContainText("we stayed inside");
+  // Desktop: the English stands beside the Dutch.
+  const [a, b] = [await nl.boundingBox(), await en.boundingBox()];
+  expect(b!.x).toBeGreaterThan(a!.x + a!.width - 1);
+
+  await row.locator('[data-side="nl"]', { hasText: /^bleven$/ }).hover();
+  await expect(row.locator('[data-side="en"]', { hasText: /^stayed$/ })).toHaveAttribute(
+    "data-active",
+    "",
+  );
+  await row.getByRole("button", { name: "Structure" }).click();
+  await expect(row.getByText("Verb at the end.")).toBeVisible();
+
+  // Phone width: the English sits under its Dutch sentence.
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect
+    .poll(async () => (await en.boundingBox())!.y)
+    .toBeGreaterThan((await nl.boundingBox())!.y + 10);
+  const width = await page.evaluate(() => document.documentElement.scrollWidth);
+  expect(width).toBeLessThanOrEqual(390);
+  expect(errors).toEqual([]);
+});
+
 test("browser storage mode", async ({ page }) => {
   const errors = watchErrors(page);
   await fakeNlp(page);

@@ -76,6 +76,38 @@ const SAMPLE_HITS: Record<string, HitSpec[]> = {
     ],
     ["comparison", ["beter"], "«beter» is the comparative of «goed»."],
   ],
+  "t-regen": [
+    [
+      "inversion",
+      ["bel", "ik"],
+      "«Morgen» comes first, so the verb «bel» goes before the subject «ik».",
+    ],
+    [
+      "separable-verbs",
+      ["bel", "op"],
+      "«bel»…«op» is one verb: «opbellen», with the particle split off.",
+    ],
+    [
+      "subordinate-clauses",
+      ["omdat", "regende"],
+      "After «Omdat» the finite verb «regende» moves to the end of the clause.",
+    ],
+    [
+      "inversion",
+      ["bleven", "we"],
+      "«Omdat» comes first, so the verb «bleven» goes before the subject «we».",
+    ],
+    [
+      "perfect-tense",
+      ["hebben", "gekeken"],
+      "Perfect tense: «hebben» + participle «gekeken» (kijken).",
+    ],
+    [
+      "relative-pronouns",
+      ["die", "kozen"],
+      "«die» introduces a relative clause; the verb «kozen» stands at its end.",
+    ],
+  ],
 };
 
 /** [topic, sentence, construction words, translation, note] */

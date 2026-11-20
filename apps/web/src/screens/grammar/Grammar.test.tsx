@@ -55,8 +55,8 @@ describe("Grammar index", () => {
     expect(row).toHaveAttribute("href", "/grammar/separable-verbs");
     // The level heading says A2; the row does not repeat it.
     expect(within(row).queryByText("A2")).toBeNull();
-    // Three separable verbs in "Een dag in Utrecht".
-    expect(await within(row).findByText("seen 3× in your texts")).toBeInTheDocument();
+    // Three separable verbs in "Een dag in Utrecht", one in "Een regenachtige dag".
+    expect(await within(row).findByText("seen 4× in your texts")).toBeInTheDocument();
   });
 
   it("switches to topic shelves, remembers the view and filters by search", async () => {
@@ -245,6 +245,8 @@ describe("Topic exercises", () => {
       "Morgen wordt het misschien beter, zegt de weerman.",
       "Morgen ga ik naar school.",
       "Gisteren kocht hij een nieuwe fiets.",
+      "Morgen bel ik mijn moeder op.",
+      "Omdat het gisteren zo hard regende, bleven we binnen.",
     ]);
     expect(built.length).toBeGreaterThan(0);
     for (const e of built) expect(hitSentences).toContain(e.answer);

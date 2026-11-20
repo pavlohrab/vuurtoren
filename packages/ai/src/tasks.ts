@@ -102,3 +102,36 @@ export async function simplifyText(deps: SimplifyDeps, text: string): Promise<Si
     unknown: after?.unknown ?? [],
   };
 }
+
+/** Sentences per translation request (one numbered list in, one out). */
+const TRANSLATE_BATCH = 40;
+
+/**
+ * Faithful English translations of Dutch sentences, one per sentence, in order (the
+ * side-by-side reader pairs them word by word with the offline model). A sentence the
+ * provider leaves out comes back as "" (the caller then uses the offline translation).
+ */
+export async function translateSentences(
+  provider: AIProvider,
+  sentences: readonly string[],
+): Promise<string[]> {
+  const out: string[] = [];
+  for (let k = 0; k < sentences.length; k += TRANSLATE_BATCH) {
+    const batch = sentences.slice(k, k + TRANSLATE_BATCH);
+    const res = await provider.chat({
+      system:
+        "Translate each numbered Dutch sentence into natural, faithful English. Keep the meaning " +
+        "and stay close to the Dutch where English allows; do not add or explain anything. " +
+        "Answer with the same numbered list: one line per sentence, `N. translation`.",
+      messages: [{ role: "user", content: batch.map((s, i) => `${i + 1}. ${s}`).join("\n") }],
+      maxTokens: 4096,
+    });
+    const lines = new Map<number, string>();
+    for (const line of res.text.split("\n")) {
+      const m = /^\s*(\d+)[.)]\s*(.+?)\s*$/.exec(line);
+      if (m) lines.set(Number(m[1]), m[2] ?? "");
+    }
+    out.push(...batch.map((_, i) => lines.get(i + 1) ?? ""));
+  }
+  return out;
+}

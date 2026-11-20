@@ -267,6 +267,41 @@ export interface GrammarExample {
 
 /** Server limit for `/grammar/examples?limit=`. */
 const GRAMMAR_EXAMPLES_MAX = 10;
+/** A sentence to pair word by word with its English (`/translate/pairs`). */
+export interface PairItem {
+  text: string;
+  /** [start, end) of the sentence's words, in order. */
+  spans: [number, number][];
+  /** Word indices (into `spans`) that are one unit: a separable verb's particle and its verb. */
+  joins?: [number, number][];
+  /** English to pair with (from an AI provider); without it the offline model translates. */
+  translation?: string;
+}
+
+/** A word or punctuation mark of the English, with its place in `translation`. */
+export interface EnglishToken {
+  start: number;
+  end: number;
+  text: string;
+}
+
+/** Dutch words (indices into `spans`) and the English words (into `english`) they became. */
+export interface WordPair {
+  nl: number[];
+  en: number[];
+  /** Mean attention of the English to the Dutch words, 0-1. */
+  confidence: number;
+}
+
+export interface PairedText extends Translation {
+  /** "mt": the offline model's translation; "given": the item's own `translation`. */
+  source: "mt" | "given";
+  english: EnglishToken[];
+  /** Per word of `spans`: its English tokens and its pair (null when unpaired). */
+  words: { start: number; end: number; en: number[]; pair: number | null; confidence: number }[];
+  pairs: WordPair[];
+}
+
 /** Characters per `/grammar` request (server: 2,000,000 in total). */
 const GRAMMAR_CHARS = 1_000_000;
 
@@ -562,6 +597,27 @@ export class NlpClient {
     for (const chunk of chunked(items, TRANSLATE_TEXTS, TRANSLATE_CHARS, (it) => it.text.length)) {
       out.push(
         ...(await this.post<AlignedText[]>("/translate/align", {
+          source: "nl",
+          target: "en",
+          items: chunk,
+        })),
+      );
+    }
+    return out;
+  }
+
+  /**
+   * Translate sentences (or take the item's English) and pair each Dutch word with the English
+   * words it became, for the side-by-side reader. A rejected translation comes back with an
+   * empty `translation` and no pairs. Sent in requests of at most 64 sentences and 20,000
+   * characters. Rejects with HTTP 503 if the model is not installed.
+   */
+  async pairs(items: PairItem[]): Promise<PairedText[]> {
+    const out: PairedText[] = [];
+    const size = (it: PairItem) => it.text.length + (it.translation?.length ?? 0);
+    for (const chunk of chunked(items, TRANSLATE_TEXTS, TRANSLATE_CHARS, size)) {
+      out.push(
+        ...(await this.post<PairedText[]>("/translate/pairs", {
           source: "nl",
           target: "en",
           items: chunk,

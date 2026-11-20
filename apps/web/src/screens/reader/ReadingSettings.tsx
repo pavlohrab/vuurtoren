@@ -1,7 +1,14 @@
 import { Check } from "lucide-react";
 import type { ReactNode } from "react";
 import { Popover, Select, Slider } from "@app/ui";
-import { LEADINGS, READING_THEMES, type ReaderPrefs, TEXT_SIZES, WIDTHS } from "./readerPrefs.js";
+import {
+  ENGLISH_VISIBILITY,
+  LEADINGS,
+  READING_THEMES,
+  type ReaderPrefs,
+  TEXT_SIZES,
+  WIDTHS,
+} from "./readerPrefs.js";
 
 const FONT_LABEL: Record<ReaderPrefs["font"], string> = {
   literata: "Literata",
@@ -18,6 +25,11 @@ const LEADING_LABEL: Record<ReaderPrefs["leading"], string> = {
   compact: "Compact",
   normal: "Normal",
   relaxed: "Relaxed",
+};
+const ENGLISH_LABEL: Record<ReaderPrefs["english"], string> = {
+  always: "Always",
+  hard: "Hard sentences",
+  tap: "Tap to show",
 };
 const WIDTH_LABEL: Record<ReaderPrefs["width"], string> = {
   narrow: "Narrow",
@@ -103,7 +115,7 @@ function Toggle({
 
 /** What the reading-help half of the popover offers in the current mode. */
 export interface ModeSettings {
-  mode: "read" | "cloze" | "gloss";
+  mode: "read" | "cloze" | "gloss" | "side";
   /** Gloss: the translations dial (0–100) and its current label. */
   help?: {
     value: number;
@@ -115,12 +127,15 @@ export interface ModeSettings {
   blanks?: { on: boolean; onToggle: () => void };
   newWords: { value: string; onChange: (v: string) => void };
   marks: { on: boolean; onToggle: () => void };
+  /** Side by side: an AI provider is set up, so its English can be chosen. */
+  aiReady?: boolean;
 }
 
 const MODE_TITLE: Record<ModeSettings["mode"], string> = {
   read: "Read mode",
   cloze: "Cloze mode",
   gloss: "Gloss mode",
+  side: "Side by side",
 };
 
 /**
@@ -184,6 +199,28 @@ export function ReadingSettings({
           ) : null}
           {settings.blanks ? (
             <Toggle label="Blanks" on={settings.blanks.on} onToggle={settings.blanks.onToggle} />
+          ) : null}
+          {settings.mode === "side" ? (
+            <>
+              <Choice
+                label="English"
+                value={prefs.english}
+                options={ENGLISH_VISIBILITY}
+                labels={ENGLISH_LABEL}
+                onChange={(english) => onChange({ english })}
+              />
+              <p className="aa-hint">
+                Hard sentences: the ones where you know less than 85% of the words.
+              </p>
+              {settings.aiReady ? (
+                <Toggle
+                  label="English from AI"
+                  hint="Your provider translates; the offline model pairs the words"
+                  on={prefs.englishAI}
+                  onToggle={() => onChange({ englishAI: !prefs.englishAI })}
+                />
+              ) : null}
+            </>
           ) : null}
           {settings.mode === "cloze" ? (
             <Toggle

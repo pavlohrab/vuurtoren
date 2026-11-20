@@ -7,7 +7,7 @@ import {
   selectKnownLemmas,
 } from "./conversation.js";
 import { extractJson } from "./json.js";
-import { explainSentence, simplifyText } from "./tasks.js";
+import { explainSentence, simplifyText, translateSentences } from "./tasks.js";
 import { fakeAnalyze, fakeProvider, modelOf } from "./test-util.js";
 
 const setup = {
@@ -172,5 +172,20 @@ describe("reader helpers", () => {
     expect(p.calls[0]!.messages[0]!.content).toContain("zonnebloem");
     expect(r.before).toBeLessThan(1);
     expect(r.after).toBe(1);
+  });
+});
+
+describe("translateSentences", () => {
+  it("sends a numbered list and reads the numbered answer back in order", async () => {
+    const p = fakeProvider(["1. Tomorrow I will call my mother.\n\n3) We stayed inside."]);
+    const out = await translateSentences(p, [
+      "Morgen bel ik mijn moeder op.",
+      "Het regende.",
+      "We bleven binnen.",
+    ]);
+    expect(out).toEqual(["Tomorrow I will call my mother.", "", "We stayed inside."]);
+    expect(p.calls[0]!.messages[0]!.content).toBe(
+      "1. Morgen bel ik mijn moeder op.\n2. Het regende.\n3. We bleven binnen.",
+    );
   });
 });

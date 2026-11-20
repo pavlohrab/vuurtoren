@@ -10,6 +10,7 @@ import {
   helpLevel,
   hitsInSentence,
   textDifficulty,
+  wordOrderNote,
 } from "@app/core";
 import type { GrammarTopic } from "@app/content";
 import {
@@ -18,7 +19,9 @@ import {
   EmptyState,
   Reader,
   type ReaderMode,
+  SideBySide,
   Skeleton,
+  type StructureNote,
   Tabs,
   WordInspector,
   matchAnswer,
@@ -65,6 +68,7 @@ const MODES = [
   { value: "read", label: "Read" },
   { value: "cloze", label: "Cloze" },
   { value: "gloss", label: "Gloss" },
+  { value: "side", label: "Side by side", short: "Side" },
 ] as const;
 
 /** Elements whose own keyboard handling the reader's global shortcuts must not steal. */
@@ -111,8 +115,8 @@ export function ReaderRoute() {
 
 /**
  * Reader page: one segment at a time. Its controls live in the shell's top bar (one slim reader
- * bar: title, "82% known", Read | Cloze | Gloss, Aa, …); the word inspector slides in from the
- * right when a word is chosen.
+ * bar: title, "82% known", Read | Cloze | Gloss | Side by side, Aa, …); the word inspector
+ * slides in from the right when a word is chosen.
  */
 export function ReaderPage({ textId }: { textId: string }) {
   const services = useServices();
@@ -416,12 +420,37 @@ export function ReaderPage({ textId }: { textId: string }) {
     }
     return out;
   }, [pageTokens, data]);
+  // Side by side: the page's sentences with their English and word pairs, and a word-order
+  // note per sentence for the structure view.
+  const side = mode === "side";
+  const englishAI = prefs.englishAI && aiReady;
+  const sentenceList = useMemo(() => [...pageSentences].sort((a, b) => a - b), [pageSentences]);
+  const pairsQ = useQuery({
+    queryKey: ["pairs", textId, current, englishAI, sentenceList.join(",")],
+    queryFn: () => services.sentencePairs(textId, sentenceList, { ai: englishAI }),
+    enabled: side && sentenceList.length > 0,
+    staleTime: Infinity,
+  });
+  const sentencePairs = useMemo(
+    () => new Map((pairsQ.data ?? []).map((p) => [p.sent, p])),
+    [pairsQ.data],
+  );
+  const orderNotes = useMemo(() => {
+    const out = new Map<number, StructureNote>();
+    if (!side || !data) return out;
+    for (const sent of sentenceList) {
+      const n = wordOrderNote(hits, sent, data.tokens);
+      if (n) out.set(sent, { label: n.label, note: n.note });
+    }
+    return out;
+  }, [side, data, hits, sentenceList]);
+
   const marks = useMemo(
     () =>
-      marksOn && !focusTopic
+      marksOn && !focusTopic && !side
         ? marginMarks(hits, markContext, pageSentences)
         : new Map<number, MarginMark>(),
-    [marksOn, focusTopic, hits, markContext, pageSentences],
+    [marksOn, focusTopic, hits, markContext, pageSentences, side],
   );
   const markLabels = useMemo(
     () => new Map([...marks].map(([sent, m]) => [sent, `Grammar: ${m.topic.title}`])),
@@ -716,6 +745,7 @@ export function ReaderPage({ textId }: { textId: string }) {
                       on: marksOn,
                       onToggle: () => saveSettings.mutate({ grammarMarks: !marksOn }),
                     },
+                    aiReady,
                   }}
                 />
                 <ReaderMenu
@@ -758,26 +788,42 @@ export function ReaderPage({ textId }: { textId: string }) {
           Leave focus mode <kbd>Esc</kbd>
         </button>
       ) : null}
-      <Reader
-        key={`${current}-${epoch}`}
-        text={data.text.content}
-        tokens={data.tokens}
-        plans={[plan]}
-        selectedToken={selected}
-        revealed={revealed}
-        mode={mode}
-        blanks={blanks}
-        glosses={glosses}
-        glossNotes={glossNotes}
-        {...(spotlights ? { spotlights } : {})}
-        spotlightCurrent={currentHitTokens}
-        marks={markLabels}
-        openMark={openMark?.sent ?? null}
-        onMarkClick={(sent, el) => setOpenMark((cur) => (cur?.sent === sent ? null : { sent, el }))}
-        focusParagraphs={readingFocus}
-        onTokenClick={onTokenClick}
-        onClozeAnswer={onClozeAnswer}
-      />
+      {side ? (
+        <SideBySide
+          key={`${current}-${epoch}`}
+          text={data.text.content}
+          tokens={data.tokens}
+          plan={plan}
+          pairs={sentencePairs}
+          visibility={prefs.english}
+          notes={orderNotes}
+          selectedToken={selected}
+          onTokenClick={onTokenClick}
+        />
+      ) : (
+        <Reader
+          key={`${current}-${epoch}`}
+          text={data.text.content}
+          tokens={data.tokens}
+          plans={[plan]}
+          selectedToken={selected}
+          revealed={revealed}
+          mode={mode}
+          blanks={blanks}
+          glosses={glosses}
+          glossNotes={glossNotes}
+          {...(spotlights ? { spotlights } : {})}
+          spotlightCurrent={currentHitTokens}
+          marks={markLabels}
+          openMark={openMark?.sent ?? null}
+          onMarkClick={(sent, el) =>
+            setOpenMark((cur) => (cur?.sent === sent ? null : { sent, el }))
+          }
+          focusParagraphs={readingFocus}
+          onTokenClick={onTokenClick}
+          onClozeAnswer={onClozeAnswer}
+        />
+      )}
       <AnchoredPopover
         anchor={openMarkData ? (openMark?.el ?? null) : null}
         onClose={() => setOpenMark(null)}

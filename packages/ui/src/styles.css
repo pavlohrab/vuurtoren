@@ -53,6 +53,7 @@
   --dur: 200ms;
   --dur-slow: 300ms;
   --dur-fill: 700ms; /* progress rings and bars, once on mount */
+  --dur-pair: 180ms; /* side by side: a pair lighting up */
   --ease-out: cubic-bezier(0.2, 0.7, 0.2, 1);
   --ease-in-out: cubic-bezier(0.45, 0, 0.2, 1);
   --ease-pop: cubic-bezier(0.3, 1.4, 0.5, 1);
@@ -89,6 +90,19 @@
   --state-gloss-line: var(--accent);
   --state-grammar-line: #566f99;
 
+  /* Side-by-side structure view: nine pair hues. They are mixed into the page colour at
+     different strengths in .k-sbs (so they follow reading themes) and differ in lightness
+     as well as hue. */
+  --pair-hue-1: #d99a3c; /* amber */
+  --pair-hue-2: #5b8fd0; /* blue */
+  --pair-hue-3: #7fb55f; /* green */
+  --pair-hue-4: #d0705f; /* rose */
+  --pair-hue-5: #9a85d6; /* violet */
+  --pair-hue-6: #3fa69a; /* teal */
+  --pair-hue-7: #d9c23c; /* yellow */
+  --pair-hue-8: #a87a55; /* brown */
+  --pair-hue-9: #8a97a6; /* slate */
+
   --scrim: rgb(35 29 23 / 0.36);
   --shadow-pop: 0 12px 32px -8px rgb(60 42 20 / 0.18), 0 2px 6px rgb(60 42 20 / 0.06);
   --shadow-lift: 0 10px 24px -14px rgb(60 42 20 / 0.35);
@@ -117,6 +131,15 @@
     --success: #8fb18c;
     --danger: #e0877a;
     --state-grammar-line: #8ea2c8;
+    --pair-hue-1: #e0a552;
+    --pair-hue-2: #6f9fe0;
+    --pair-hue-3: #8cc46c;
+    --pair-hue-4: #e07f6d;
+    --pair-hue-5: #a993e6;
+    --pair-hue-6: #4dbcae;
+    --pair-hue-7: #e6cf4f;
+    --pair-hue-8: #c39270;
+    --pair-hue-9: #9fadbd;
     --scrim: rgb(8 6 4 / 0.6);
     --shadow-pop: 0 16px 40px -8px rgb(0 0 0 / 0.55), 0 2px 6px rgb(0 0 0 / 0.3);
     --shadow-lift: 0 12px 28px -14px rgb(0 0 0 / 0.7);
@@ -143,6 +166,15 @@
   --success: #8fb18c;
   --danger: #e0877a;
   --state-grammar-line: #8ea2c8;
+  --pair-hue-1: #e0a552;
+  --pair-hue-2: #6f9fe0;
+  --pair-hue-3: #8cc46c;
+  --pair-hue-4: #e07f6d;
+  --pair-hue-5: #a993e6;
+  --pair-hue-6: #4dbcae;
+  --pair-hue-7: #e6cf4f;
+  --pair-hue-8: #c39270;
+  --pair-hue-9: #9fadbd;
   --scrim: rgb(8 6 4 / 0.6);
   --shadow-pop: 0 16px 40px -8px rgb(0 0 0 / 0.55), 0 2px 6px rgb(0 0 0 / 0.3);
   --shadow-lift: 0 12px 28px -14px rgb(0 0 0 / 0.7);
@@ -516,6 +548,17 @@ kbd {
   padding: 4px 12px;
   cursor: pointer;
   transition: background var(--dur) var(--ease);
+}
+.k-tabs-short {
+  display: none;
+}
+@media (max-width: 899px) {
+  .k-tabs-long {
+    display: none;
+  }
+  .k-tabs-short {
+    display: inline;
+  }
 }
 .k-tabs-trigger[data-state="active"] {
   background: var(--surface);
@@ -2098,4 +2141,210 @@ svg.lucide {
   height: 28px;
   padding: 0 12px;
   font-size: 13px;
+}
+
+/* ---------- Side by side (reading mode) ----------
+   Sentence rows: two columns from 900px (Dutch in the reading face, English in the UI face,
+   muted), interlinear below. A pair lights up amber with an underline on both sides; the
+   structure view gives every pair its own soft colour. */
+.k-sbs {
+  /* Mixed here, not on :root, so a reading theme's page colour is used. */
+  --pair-1: color-mix(in srgb, var(--pair-hue-1) 34%, var(--bg));
+  --pair-2: color-mix(in srgb, var(--pair-hue-2) 26%, var(--bg));
+  --pair-3: color-mix(in srgb, var(--pair-hue-3) 40%, var(--bg));
+  --pair-4: color-mix(in srgb, var(--pair-hue-4) 30%, var(--bg));
+  --pair-5: color-mix(in srgb, var(--pair-hue-5) 44%, var(--bg));
+  --pair-6: color-mix(in srgb, var(--pair-hue-6) 24%, var(--bg));
+  --pair-7: color-mix(in srgb, var(--pair-hue-7) 48%, var(--bg));
+  --pair-8: color-mix(in srgb, var(--pair-hue-8) 36%, var(--bg));
+  --pair-9: color-mix(in srgb, var(--pair-hue-9) 30%, var(--bg));
+  --pair-active-bg: color-mix(in srgb, var(--accent) 24%, var(--bg));
+  --pair-active-line: var(--accent);
+  font-family: var(--font-reading);
+  font-size: var(--reader-size, 19.5px);
+  line-height: var(--reader-leading, 1.7);
+  max-width: var(--measure);
+  margin-inline: auto;
+  color: var(--ink);
+}
+.k-sbs-para {
+  margin-bottom: 1.1em;
+}
+.k-sbs-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: "nl" "en" "tools" "note";
+  align-items: start;
+  padding-block: 0.2em 0.55em;
+}
+.k-sbs-nl {
+  grid-area: nl;
+  margin: 0;
+  white-space: pre-wrap;
+}
+.k-sbs-en {
+  grid-area: en;
+  font-family: var(--font-ui);
+  font-size: 0.74em;
+  line-height: 1.55;
+  color: var(--ink-muted);
+  white-space: pre-wrap;
+}
+.k-sbs-en-text {
+  animation: k-sbs-fade var(--dur-slow) var(--ease-out) both;
+}
+@keyframes k-sbs-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+/* Words are real buttons that read as text. */
+.k-sbs-w {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  border-radius: 3px;
+  cursor: pointer;
+  text-align: inherit;
+  white-space: inherit;
+  transition:
+    background-color var(--dur-pair) var(--ease),
+    box-shadow var(--dur-pair) var(--ease),
+    text-decoration-color var(--dur-pair) var(--ease);
+}
+.k-sbs-w[data-pc] {
+  background-color: var(--pair-1);
+}
+.k-sbs-w[data-pc="2"] {
+  background-color: var(--pair-2);
+}
+.k-sbs-w[data-pc="3"] {
+  background-color: var(--pair-3);
+}
+.k-sbs-w[data-pc="4"] {
+  background-color: var(--pair-4);
+}
+.k-sbs-w[data-pc="5"] {
+  background-color: var(--pair-5);
+}
+.k-sbs-w[data-pc="6"] {
+  background-color: var(--pair-6);
+}
+.k-sbs-w[data-pc="7"] {
+  background-color: var(--pair-7);
+}
+.k-sbs-w[data-pc="8"] {
+  background-color: var(--pair-8);
+}
+.k-sbs-w[data-pc="9"] {
+  background-color: var(--pair-9);
+}
+.k-sbs-row[data-structure] .k-sbs-en {
+  color: var(--ink);
+}
+/* The active pair: amber with an underline on both sides (an outline too in the structure
+   view, where the fill is already a colour), so colour is never the only cue. */
+.k-sbs .k-sbs-w[data-active] {
+  background-color: var(--pair-active-bg);
+  text-decoration: underline solid var(--pair-active-line);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+  color: var(--ink);
+}
+.k-sbs-row[data-structure] .k-sbs-w[data-active] {
+  box-shadow: 0 0 0 1.5px var(--pair-active-line);
+}
+.k-sbs-w:focus-visible {
+  outline: 1.5px solid var(--accent);
+  outline-offset: 1px;
+}
+.k-sbs-en-w:not([data-active]):hover,
+.k-sbs-w.k-tok:not([data-active]):hover {
+  background-color: color-mix(in srgb, var(--ink) 6%, transparent);
+}
+.k-sbs-show,
+.k-sbs-struct {
+  font-family: var(--font-ui);
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  color: var(--ink-muted);
+  background: none;
+  border: 0;
+  border-radius: 6px;
+  padding: 2px 6px;
+  margin-inline-start: -6px;
+  cursor: pointer;
+  text-decoration: underline dotted color-mix(in srgb, var(--ink-muted) 60%, transparent);
+  text-underline-offset: 3px;
+}
+.k-sbs-show:hover,
+.k-sbs-struct:hover,
+.k-sbs-struct[aria-pressed="true"] {
+  color: var(--accent);
+}
+.k-sbs-show:focus-visible,
+.k-sbs-struct:focus-visible {
+  outline: 1.5px solid var(--accent);
+}
+.k-sbs-struct {
+  grid-area: tools;
+  justify-self: start;
+}
+.k-sbs-note {
+  grid-area: note;
+  margin: 0.3em 0 0;
+  padding: 0.45em 0.7em;
+  border-inline-start: 2px solid var(--state-grammar-line);
+  font-family: var(--font-ui);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--ink);
+  background: color-mix(in srgb, var(--state-grammar-line) 7%, transparent);
+  border-radius: 0 6px 6px 0;
+  animation: k-sbs-fade var(--dur) var(--ease-out) both;
+}
+.k-sbs-none {
+  font-style: italic;
+}
+.k-sbs-wait {
+  display: inline-block;
+  width: 40%;
+  height: 0.7em;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--ink) 8%, transparent);
+}
+@media (min-width: 900px) {
+  .k-sbs {
+    max-width: calc(var(--measure) * 1.75);
+  }
+  /* The structure button has a narrow column at the row's end, shown on hover or focus. */
+  .k-sbs-row {
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr) 4.75rem;
+    grid-template-areas: "nl en tools" "note note .";
+    column-gap: 2rem;
+    padding-block: 0.25em;
+  }
+  .k-sbs-en {
+    font-size: 0.8em;
+    line-height: var(--reader-leading, 1.7);
+    padding-top: 0.12em;
+  }
+  .k-sbs-struct {
+    margin: 0.35em 0 0;
+    font-size: 0.75rem;
+  }
+}
+@media (min-width: 900px) and (hover: hover) {
+  .k-sbs-row:not(:hover, :focus-within) .k-sbs-struct[aria-pressed="false"] {
+    opacity: 0;
+  }
+  .k-sbs-struct {
+    transition: opacity var(--dur) var(--ease);
+  }
 }

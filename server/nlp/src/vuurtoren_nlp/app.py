@@ -43,6 +43,8 @@ from vuurtoren_nlp.models import (
     GrammarHit,
     GrammarRequest,
     OcrResult,
+    PairedText,
+    PairRequest,
     PdfExtraction,
     SentencesRequest,
     SimilarRequest,
@@ -222,6 +224,18 @@ def align_endpoint(req: AlignRequest) -> list[AlignedText]:
     check_total([it.text for it in req.items], MT_MAX_TOTAL_CHARS)
     items = [(it.text, list(it.spans)) for it in req.items]
     return [AlignedText(**t) for t in translate.align_texts(req.source, req.target, items)]
+
+
+@app.post("/translate/pairs")
+def pairs_endpoint(req: PairRequest) -> list[PairedText]:
+    """Translate sentences (or take the given English) and pair their words with the English
+    words, for the side-by-side reader (see :mod:`vuurtoren_nlp.pairs`). 503 without the model."""
+    check_total(
+        [it.text for it in req.items] + [it.translation or "" for it in req.items],
+        MT_MAX_TOTAL_CHARS,
+    )
+    items = [(it.text, list(it.spans), list(it.joins), it.translation) for it in req.items]
+    return [PairedText(**t) for t in translate.pair_texts(req.source, req.target, items)]
 
 
 @app.post("/translate")

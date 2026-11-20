@@ -24,6 +24,7 @@ import { createMockLibrary } from "./mockLibrary.js";
 import { createMockProfile } from "./mockProfile.js";
 import { createMockNative } from "./mockNative.js";
 import { createMockGrammar } from "./mockGrammar.js";
+import { mockSentencePairs } from "./mockPairs.js";
 import { createMockPractice } from "./mockPractice.js";
 import { ImportCancelledError, type OcrReviewDoc } from "./ocrReview.js";
 import type { OcrFlag } from "@app/nlp-client";
@@ -123,6 +124,12 @@ const SPECS: Spec[] = [
   ["misschien", "misschien", "ADV", "maybe", "known", 0.9, "cloze"],
   ["weerman", "weerman", "NOUN", "weatherman", "unknown", 0, "gloss", "de"],
   ["utrecht", "utrecht", "PROPN", "", "ignored", 1],
+  ["moeder", "moeder", "NOUN", "mother", "known", 0.95, undefined, "de"],
+  ["gisteren", "gisteren", "ADV", "yesterday", "known", 0.9],
+  ["bleven", "blijven", "VERB", "to stay", "unknown", 0, "introduce"],
+  ["binnen", "binnen", "ADV", "inside", "unknown", 0, "new"],
+  ["gekeken", "kijken", "VERB", "to watch, to look", "learning", 0.5, "learning"],
+  ["grappig", "grappig", "ADJ", "funny", "unknown", 0, "gloss"],
 ];
 
 const SAMPLE_TEXTS: {
@@ -160,6 +167,14 @@ const SAMPLE_TEXTS: {
     content:
       "Het regent al drie dagen. De wind is koud en de lucht is grijs.\n\nMorgen wordt het misschien beter, zegt de weerman.",
     particles: [],
+  },
+  {
+    id: "t-regen",
+    title: "Een regenachtige dag",
+    sourceKind: "paste",
+    content:
+      "Morgen bel ik mijn moeder op. Omdat het gisteren zo hard regende, bleven we binnen.\n\nWe hebben samen een film gekeken. De film die we kozen was erg grappig.",
+    particles: [[5, 1]],
   },
 ];
 
@@ -661,6 +676,20 @@ export function createMockServices(
     async deleteText(textId) {
       await wait();
       texts.delete(textId);
+    },
+
+    async sentencePairs(textId, sentences, opts = {}) {
+      await wait();
+      const t = texts.get(textId);
+      const tokens = t?.tokens ?? [];
+      return sentences.map((sent) =>
+        mockSentencePairs(
+          t?.content ?? "",
+          sent,
+          tokens.filter((x) => x.sent === sent),
+          opts.ai === true,
+        ),
+      );
     },
 
     async glosses(textId, tokenIndices) {

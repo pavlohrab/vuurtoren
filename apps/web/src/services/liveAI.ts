@@ -28,6 +28,7 @@ import {
   loadKey,
   modelOptions,
   presetFor,
+  translateSentences as aiTranslateSentences,
   runTurn,
   saveKey,
   selectKnownLemmas,
@@ -147,6 +148,8 @@ export function createLiveAI(deps: LiveAIDeps): AIServices &
     /** Generate, validate and store AI example sentences (practice). */
     fillSentences: (lang: string, needs: SentenceNeed[], avoid: string[]) => Promise<SentenceFill>;
     aiReady: () => boolean;
+    /** English translations from the provider, one per sentence ("" when it left one out). */
+    translateSentences: (sentences: string[]) => Promise<string[]>;
   } {
   const { repo } = deps;
   const storage = deps.storage ?? deviceStorage();
@@ -500,6 +503,8 @@ export function createLiveAI(deps: LiveAIDeps): AIServices &
   return {
     fillSentences,
     aiReady: () => status().configured,
+    translateSentences: async (sentences: string[]) =>
+      aiTranslateSentences(await provider(), sentences),
     generateUnitExercises: makeUnitExercises,
     async storyTargets(source) {
       const { lang } = await deps.settings();

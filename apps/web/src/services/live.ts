@@ -14,6 +14,7 @@ import { createLiveExam } from "./liveExam.js";
 import { createLiveGrammar } from "./liveGrammar.js";
 import { createLiveLibrary } from "./liveLibrary.js";
 import { createLiveNative } from "./liveNative.js";
+import { createLivePairs } from "./livePairs.js";
 import { workerOptimizer } from "../native/optimizer.js";
 import { browserSqlite } from "../native/openSqlite.js";
 import { createLearnerCache } from "./liveLearner.js";
@@ -150,6 +151,13 @@ export function createLiveServices(
     storage: platform.storage,
   });
 
+  const pairs = createLivePairs({
+    view: texts.view,
+    nlp,
+    aiReady: ai.aiReady,
+    aiTranslate: ai.translateSentences,
+  });
+
   const exam = createLiveExam({ repo, lang, changed });
 
   const native = createLiveNative({
@@ -197,6 +205,7 @@ export function createLiveServices(
     ...exam,
     ...native.services,
     textGrammar: grammar.textGrammar,
+    sentencePairs: pairs.sentencePairs,
     grammarOverview: grammar.grammarOverview,
     grammarExamples: grammar.grammarExamples,
     ...texts.services,
