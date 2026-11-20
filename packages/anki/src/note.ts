@@ -2,6 +2,7 @@
  * Writing new vocabulary to Anki (the only write the app does).
  * Uses a dedicated note type so app-created cards are recognisable and well formatted.
  */
+import { escapeHtml } from "@app/core";
 import { AnkiConnectError, type AnkiConnectClient } from "./client.js";
 
 export const NOTE_TYPE = "Kenning Word";
@@ -41,9 +42,6 @@ export interface NewWordNote {
   source?: string;
   tags?: string[];
 }
-
-export const escapeHtml = (s: string) =>
-  s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
 
 /** Bold the first occurrence of `surface` in `sentence` (HTML-escaped). */
 /**
