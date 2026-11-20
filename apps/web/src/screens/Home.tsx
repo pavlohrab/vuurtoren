@@ -22,7 +22,16 @@ import {
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { A2_EXAM, grammarTopics } from "@app/content";
-import { Chip, Logo, ProgressRing, Skeleton, TextCover, coverKind, difficultyBand } from "@app/ui";
+import {
+  Chip,
+  Logo,
+  ProgressRing,
+  Skeleton,
+  TextCover,
+  coverKind,
+  difficultyBand,
+  useNativeMode,
+} from "@app/ui";
 import { readLastText } from "../lastText.js";
 import { useServices } from "../services/context.js";
 import { activeDays, type ActivityDay } from "../services/activity.js";
@@ -859,6 +868,7 @@ function TalkPrompt({ words, topic }: { words: string[]; topic: string | undefin
 
 /** A brand-new learner: no texts and no words yet. */
 function Welcome({ hello }: { hello: string }) {
+  const native = useNativeMode();
   return (
     <div className="page page--read home home-welcome">
       <Logo variant="mark" size={48} title="Kenning" />
@@ -871,8 +881,19 @@ function Welcome({ hello }: { hello: string }) {
           <Link to="/settings" search={{ section: "language" }} className="k-row">
             <SettingsIcon size={16} className="k-row-go" aria-hidden />
             <span className="k-row-main">
-              <span className="k-row-title">Connect Anki</span>
-              <span className="k-row-hint">Your decks tell Kenning which words you know.</span>
+              {native ? (
+                <>
+                  <span className="k-row-title">Words you already know</span>
+                  <span className="k-row-hint">
+                    Import a deck file, or mark words as known while you read.
+                  </span>
+                </>
+              ) : (
+                <>
+                  <span className="k-row-title">Connect Anki</span>
+                  <span className="k-row-hint">Your decks tell Kenning which words you know.</span>
+                </>
+              )}
             </span>
             <ArrowRight size={16} className="k-row-go" aria-hidden />
           </Link>
