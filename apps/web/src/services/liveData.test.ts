@@ -1,18 +1,9 @@
 /**
- * Server mode request counts and cross-device freshness: the live
- * services run over the real HTTP repository, whose fetch is answered in-process by a local
- * repository through the same RPC allow-list the API service uses.
+ * The live services over a seeded local repository: batched Library results, sync while the
+ * app is open, and the analyzer version of cached analyses.
  */
 import { type AnalyzedToken, textDifficulty } from "@app/core";
-import {
-  type VuurtorenRepository,
-  contentHash,
-  createRepository,
-  encodeRpcResult,
-  isRpcMethod,
-  validateRpcArgs,
-} from "@app/db";
-import { createHttpRepository } from "@app/db/http";
+import { type VuurtorenRepository, contentHash, createRepository } from "@app/db";
 import { createNodeDriver } from "@app/db/node";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createLiveServices } from "./live.js";
@@ -88,25 +79,6 @@ const nlpFetch = vi.fn(async (url: string | URL | Request, init?: RequestInit) =
   return Response.json({});
 });
 
-/** In-process API: /api/info and /api/rpc over `repo`, counting RPCs by method. */
-function inProcessServer(repo: VuurtorenRepository) {
-  const calls: string[] = [];
-  const fetchImpl = (async (url: string | URL | Request, init?: RequestInit) => {
-    const u = String(url);
-    if (u.endsWith("/api/info")) return Response.json({ deviceId: repo.deviceId });
-    const { method, args } = JSON.parse(String(init?.body)) as { method: string; args: unknown[] };
-    if (!isRpcMethod(method))
-      return Response.json({ ok: false, error: "Unknown method." }, { status: 400 });
-    const problem = validateRpcArgs(method, args);
-    if (problem) return Response.json({ ok: false, error: problem }, { status: 400 });
-    calls.push(method);
-    const fn = repo[method] as (...a: unknown[]) => Promise<unknown>;
-    const value = encodeRpcResult(await fn.apply(repo, args));
-    return Response.json(value === undefined ? { ok: true } : { ok: true, result: value });
-  }) as typeof fetch;
-  return { calls, fetchImpl };
-}
-
 async function seed(): Promise<VuurtorenRepository> {
   const repo = await createRepository(await createNodeDriver());
   for (let n = 0; n < 12; n++) {
@@ -159,50 +131,10 @@ afterEach(async () => {
   toClose = null;
 });
 
-async function client(repo: VuurtorenRepository) {
-  const server = inProcessServer(repo);
-  const http = await createHttpRepository("", undefined, server.fetchImpl);
-  const services = createLiveServices(http, { remoteChanged: () => http.remoteChanged() });
-  server.calls.length = 0;
-  return { server, http, services };
+/** A fresh set of services over `repo` (as after a restart of the app). */
+function client(repo: VuurtorenRepository) {
+  return { services: createLiveServices(repo) };
 }
-
-describe("server mode request counts", () => {
-  it("Library open, reader page open and practice start use a bounded number of RPCs", async () => {
-    vi.stubGlobal("fetch", nlpFetch);
-    const repo = (toClose = await seed());
-    const counts: Record<string, number> = {};
-
-    let c = await client(repo);
-    await Promise.all([c.services.listTexts(), c.services.learnerSummary()]);
-    counts["library"] = c.server.calls.length;
-    c.server.calls.length = 0;
-    await c.services.listTexts();
-    counts["libraryAgain"] = c.server.calls.length;
-
-    c = await client(repo);
-    const view = await c.services.getReading("t03");
-    const idx = view!.plans[0]!.tokens.filter((t) => t.label === "gloss").map((t) => t.i);
-    await Promise.all([
-      c.services.getSettings(),
-      c.services.textGrammar("t03").catch(() => null),
-      c.services.learnerSummary(),
-      c.services.glosses("t03", idx.length ? idx : [3, 4, 5]),
-    ]);
-    counts["reader"] = c.server.calls.length;
-
-    c = await client(repo);
-    await c.services.practiceOverview();
-    await c.services.startPractice({ size: 10 });
-    counts["practice"] = c.server.calls.length;
-
-    console.info("RPCs per screen (cold caches):", JSON.stringify(counts));
-    expect(counts["library"]).toBeLessThanOrEqual(8);
-    expect(counts["libraryAgain"]).toBe(1);
-    expect(counts["reader"]).toBeLessThanOrEqual(10);
-    expect(counts["practice"]).toBeLessThanOrEqual(10);
-  });
-});
 
 describe("batched results equal the per-text results", () => {
   it("Library coverage equals the reader's plan of each text", async () => {
@@ -218,41 +150,12 @@ describe("batched results equal the per-text results", () => {
   });
 });
 
-describe("cross-device freshness", () => {
-  it("sees another client's writes, not its own, and refreshes its caches", async () => {
-    vi.stubGlobal("fetch", nlpFetch);
-    const repo = (toClose = await seed());
-    const laptop = await client(repo);
-    const phone = await client(repo);
-    const check = () => laptop.services.checkRemoteChanges!();
-
-    expect(await check()).toBe(false);
-    expect((await laptop.services.getSettings()).help).toBe(0.25);
-    const before = (await laptop.services.words({ keys: ["gracht"] }))[0]!.state;
-    const libraryBefore = await laptop.services.listTexts();
-
-    // Own writes do not count as remote changes.
-    await laptop.services.saveSettings({ glossClozes: true });
-    expect(await check()).toBe(false);
-
-    // The phone changes settings and a word state; the laptop notices on its next check.
-    await phone.services.saveSettings({ help: 0.5 });
-    await phone.services.setWordState("gracht", "known");
-    expect(before).not.toBe("known");
-    expect(await check()).toBe(true);
-    expect((await laptop.services.getSettings()).help).toBe(0.5);
-    expect((await laptop.services.words({ keys: ["gracht"] }))[0]!.state).toBe("known");
-    const libraryAfter = await laptop.services.listTexts();
-    expect(libraryAfter.map((t) => t.coverage)).not.toEqual(libraryBefore.map((t) => t.coverage));
-    // Nothing new since the last check.
-    expect(await check()).toBe(false);
-  });
-
-  it("in browser mode it syncs only when sync is set up: without it, nothing changes", async () => {
+describe("sync while the app is open", () => {
+  it("syncs only when sync is set up: without it, nothing changes", async () => {
     const repo = (toClose = await seed());
     const services = createLiveServices(repo);
-    expect(await services.checkRemoteChanges!()).toBe(false);
-    expect((await services.syncStatus()).available).toBe(true);
+    expect(await services.autoSync!("timer")).toBe(false);
+    expect((await services.syncStatus()).place).toBeNull();
   });
 });
 
@@ -291,10 +194,8 @@ describe("analyzer version", () => {
     await c.services.getReading("t03");
     await c.services.getReading("t03");
     expect(analyzed).toHaveLength(1);
-    // The new analysis is in the server's cache, not in the synced log.
+    // The new analysis is in this device's cache, not in the synced log.
     expect(await repo.eventCount()).toBe(events);
-    expect(c.server.calls).toContain("saveTextAnalysis");
-    expect(c.server.calls).not.toContain("append");
     // A new session with the same analyzer does not analyse again.
     const again = await client(repo);
     await again.services.getReading("t03");

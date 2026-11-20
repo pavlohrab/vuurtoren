@@ -2,7 +2,7 @@ import { createContext, useContext } from "react";
 import type { DataAdmin } from "@app/db";
 import type { DesktopBridge } from "../desktop/bridge.js";
 
-/** Desktop app, offline mode: the database file in a visible folder. */
+/** Desktop app: the database file in a visible folder. */
 export interface DataFile {
   /** Full path of `vuurtoren.sqlite`. */
   path: string;
@@ -14,8 +14,8 @@ export interface DataFile {
 
 /** What "Your data" in Settings needs: where data lives and how to back it up. */
 export interface DataControls {
-  /** "desktop": the desktop app's SQLite file on this computer (offline mode). */
-  mode: "server" | "browser" | "desktop";
+  /** "desktop": the desktop app's SQLite file; "browser": SQLite in this browser (OPFS). */
+  mode: "browser" | "desktop";
   /** Browser mode: did `navigator.storage.persist()` succeed (null = not asked/unsupported). */
   persisted: boolean | null;
   /** Browser mode: false when the database is in memory only. */
@@ -27,14 +27,12 @@ export interface DataControls {
   file?: DataFile | undefined;
 }
 
-/** Desktop app in offline mode: the bundled language server and the way to a server. */
+/** Desktop app: the bundled language server. */
 export interface DesktopLocal {
   nlp: DesktopBridge["nlp"];
-  /** Open the Connect screen ("Connect to a Vuurtoren server"). */
-  connectServer(): Promise<void>;
 }
 
-/** Settings > Account in server mode. */
+/** Settings > Account on a page served by a Vuurtoren server. */
 export interface AccountControls {
   /** False when the server runs without sign-in. */
   authEnabled: boolean;
@@ -55,9 +53,9 @@ export interface AppInfo {
   onLeaveDemo?: (() => void) | undefined;
   /** Backup/restore and storage facts; absent in demo mode. */
   data?: DataControls | undefined;
-  /** Who is signed in; absent in browser and demo mode. */
+  /** Who is signed in on the Vuurtoren server this page comes from; absent elsewhere. */
   account?: AccountControls | undefined;
-  /** Desktop app, offline mode (absent everywhere else). */
+  /** The desktop app (absent everywhere else). */
   desktop?: DesktopLocal | undefined;
 }
 

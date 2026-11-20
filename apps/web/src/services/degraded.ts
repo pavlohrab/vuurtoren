@@ -1,12 +1,12 @@
 /**
  * One shared "degraded" signal: optional parts of the app (language server, Anki,
- * AI provider, translation, the storage server) report here when they stop answering, and
+ * AI provider, translation, sync) report here when they stop answering, and
  * clear their entry when they answer again. The shell shows a quiet indicator in the top bar;
  * nothing here raises toasts. Real errors of a user action still go to the screen's
  * ErrorNotice; this is only for "works, but with less".
  */
 
-export type DegradedSource = "nlp" | "anki" | "ai" | "translate" | "storage" | "sync";
+export type DegradedSource = "nlp" | "anki" | "ai" | "translate" | "sync";
 
 export interface DegradedEntry {
   source: DegradedSource;
@@ -93,7 +93,6 @@ export const DEGRADED_MESSAGES = {
   translate: "Translations unavailable — meanings and sentence translations may be missing",
   anki: "Anki not reachable — card status and adding cards unavailable",
   ai: "AI provider not answering — AI features limited",
-  storage: "Server unreachable — changes may not be saved",
   sync: "Sync not reaching its place — your changes stay here until it does",
 } as const satisfies Record<DegradedSource, string>;
 

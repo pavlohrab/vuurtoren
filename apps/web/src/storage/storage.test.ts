@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { ServerHealth } from "@app/db/http";
-import type { Account } from "../auth/client.js";
+import type { Account, ServerHealth } from "../auth/client.js";
 import { decideStartup, type StartupDeps } from "./startup.js";
 import {
   type ChannelLike,
@@ -9,39 +8,31 @@ import {
   acquireTabLock,
 } from "./tabLock.js";
 
-const health: ServerHealth = {
-  ok: true,
-  service: "vuurtoren-api",
-  state: "ready",
-  authRequired: false,
-  schemaVersion: 3,
-};
+const health: ServerHealth = { ok: true, service: "vuurtoren-api", authRequired: false };
 const locked: ServerHealth = { ...health, authRequired: true, authMethods: ["password"] };
 const anna: Account = { authEnabled: true, user: "anna", via: "session" };
 
-function deps(over: Partial<StartupDeps> = {}): StartupDeps & { remembered: number } {
-  const d = {
-    remembered: 0,
+function deps(over: Partial<StartupDeps> = {}): StartupDeps {
+  return {
     demo: false,
     probe: () => Promise.resolve(health),
     me: () => Promise.resolve(anna),
-    serverSeen: () => false,
-    rememberServer: () => void d.remembered++,
     ...over,
   };
-  return d;
 }
 
 describe("decideStartup", () => {
-  it("uses the server when the API answers (and remembers it)", async () => {
-    const d = deps();
-    expect(await decideStartup(d)).toMatchObject({ kind: "server", health });
-    expect(d.remembered).toBe(1);
+  it("keeps the data in this browser and knows the server the page comes from", async () => {
+    expect(await decideStartup(deps())).toEqual({
+      kind: "browser",
+      server: { health, account: { authEnabled: false, user: null, via: "open" } },
+    });
   });
 
-  it("uses browser storage when nothing answers on a fresh browser", async () => {
+  it("without a server, the page works on its own", async () => {
     expect(await decideStartup(deps({ probe: () => Promise.resolve(null) }))).toEqual({
       kind: "browser",
+      server: null,
     });
   });
 
@@ -49,35 +40,25 @@ describe("decideStartup", () => {
     expect(await decideStartup(deps({ demo: true }))).toEqual({ kind: "demo" });
   });
 
-  it("signed out (401) shows sign-in and never falls back to browser storage", async () => {
+  it("signed out (401) shows sign-in first", async () => {
     const r = await decideStartup(
+      deps({ probe: () => Promise.resolve(locked), me: () => Promise.reject(null) }),
+    );
+    expect(r).toEqual({ kind: "browser", server: null });
+    const out = await decideStartup(
       deps({ probe: () => Promise.resolve(locked), me: () => Promise.resolve(null) }),
     );
-    expect(r).toEqual({ kind: "signin", health: locked });
+    expect(out).toEqual({ kind: "signin", health: locked });
   });
 
-  it("signed in opens the server with the account", async () => {
+  it("signed in opens with the account", async () => {
     const r = await decideStartup(deps({ probe: () => Promise.resolve(locked) }));
-    expect(r).toEqual({ kind: "server", health: locked, account: anna });
-  });
-
-  it("a failing sign-in check is an outage, not a reason to use local storage", async () => {
-    const r = await decideStartup(
-      deps({ probe: () => Promise.resolve(locked), me: () => Promise.reject(new Error("502")) }),
-    );
-    expect(r).toEqual({ kind: "unreachable", reason: "502" });
-  });
-
-  it("a server seen before that does not answer is reported, not replaced", async () => {
-    const r = await decideStartup(
-      deps({ probe: () => Promise.resolve(null), serverSeen: () => true }),
-    );
-    expect(r.kind).toBe("unreachable");
+    expect(r).toEqual({ kind: "browser", server: { health: locked, account: anna } });
   });
 
   it("auth off: no sign-in check at all", async () => {
     let asked = false;
-    const r = await decideStartup(
+    await decideStartup(
       deps({
         me: () => {
           asked = true;
@@ -85,7 +66,6 @@ describe("decideStartup", () => {
         },
       }),
     );
-    expect(r).toMatchObject({ kind: "server", account: { authEnabled: false } });
     expect(asked).toBe(false);
   });
 });

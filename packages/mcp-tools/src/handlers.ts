@@ -1,7 +1,7 @@
 /**
  * Tool logic of the Vuurtoren MCP tools, independent of the MCP transport so it can be tested
- * directly. Used by the stdio server (apps/mcp, data over /api/rpc) and the API's own
- * Streamable HTTP endpoint (/api/mcp, data straight from the server's repository).
+ * directly. Used by the stdio server (apps/mcp), which opens the desktop app's database on the
+ * same computer.
  *
  * Outputs are kept small: an assistant reads every byte of a tool result.
  * Nothing here writes to Anki: words for Anki are only *suggested*; the learner
@@ -39,7 +39,7 @@ export type ToolRepo = Pick<
 >;
 
 export interface ToolDeps {
-  /** The user's data: the server's repository, or the HTTP repository against /api/rpc. */
+  /** The user's data: the desktop app's repository on this computer. */
   repo: ToolRepo;
   /** Tokenise text with the NLP server; undefined when no NLP server is configured. */
   analyze?: ((text: string) => Promise<AnalyzedToken[]>) | undefined;
@@ -82,7 +82,7 @@ export function createToolHandlers(deps: ToolDeps) {
   function needAnalyze() {
     if (!deps.analyze) {
       throw new Error(
-        "No language server is configured for Vuurtoren's MCP endpoint (VUURTOREN_NLP_URL), so text cannot be analysed.",
+        "No language server is set for the Vuurtoren MCP server (VUURTOREN_NLP_URL), so text cannot be analysed.",
       );
     }
     return deps.analyze;

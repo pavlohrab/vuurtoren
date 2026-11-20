@@ -8,7 +8,6 @@ import {
 import { describe, expect, it } from "vitest";
 import { createNodeDriver } from "./node.js";
 import { createRepository } from "./repository.js";
-import { validateRpcArgs } from "./rpc.js";
 import type { AppEvent } from "./types.js";
 
 const DAY = 86_400_000;
@@ -198,13 +197,6 @@ describe("native card store", () => {
     expect(await snapshot()).toEqual(before);
   });
 
-  it("allows the native queries over RPC", () => {
-    expect(validateRpcArgs("nativeQueue", ["nl", 1, 0, 20])).toBeNull();
-    expect(validateRpcArgs("nativeNoteStatus", ["nl", [1, 2], 0])).toBeNull();
-    expect(validateRpcArgs("nativeNoteStatus", ["nl", ["1"], 0])).toMatch(/numbers/);
-    expect(validateRpcArgs("append", [imported])).toBeNull();
-  });
-
   it("keeps related cards apart: one card of a note or word a day; learning steps go on", async () => {
     const { repo, clock } = await newRepo();
     const due = (d: number) => ({ ...mature, due: T0 - d * DAY, state: 2 as const });
@@ -257,7 +249,6 @@ describe("native card store", () => {
     const counts = await repo.nativeDueCounts("nl", T0, dueDay + 2);
     expect(counts.reduce((a, b) => a + b, 0)).toBe(1);
     expect(counts[dueDay]).toBe(1);
-    expect(validateRpcArgs("nativeDueCounts", ["nl", T0, 30])).toBeNull();
   });
 
   it("lists due words, a card's history and the last answer to undo; reviews count as activity", async () => {
@@ -293,7 +284,6 @@ describe("native card store", () => {
     await repo.append({ type: "CardReviewUndone", lang: "nl", cardId: 101, reviewId: stored.id });
     expect(await repo.nativeLastReview("nl")).toBeNull();
     expect((await repo.activity(later - DAY)).filter((a) => a.kind === "review")).toHaveLength(0);
-    expect(validateRpcArgs("nativeCardReviews", ["nl", [101]])).toBeNull();
   });
 });
 

@@ -58,7 +58,7 @@ export type Identity =
  * What a request is for: sync tokens are accepted for "sync" (`/api/sync`) and "nlp" (the
  * language server behind nginx's `/nlp/`), never for "api".
  */
-export type AuthScope = "api" | "sync" | "nlp";
+type AuthScope = "api" | "sync" | "nlp";
 
 export interface Auth {
   readonly enabled: boolean;

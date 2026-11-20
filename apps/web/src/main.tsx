@@ -1,12 +1,17 @@
 import { StrictMode, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import "./index.css";
-import type { ServerHealth } from "@app/db/http";
 import { App } from "./App.js";
-import { type Account, type AuthClient, createAuthClient } from "./auth/client.js";
+import {
+  type Account,
+  type AuthClient,
+  type ServerHealth,
+  createAuthClient,
+  fetchServerHealth,
+} from "./auth/client.js";
+import { createSyncTokenClient } from "./auth/tokens.js";
 import { installFetchWatch } from "./auth/watch.js";
 import { desktopBridge, type DesktopBridge } from "./desktop/bridge.js";
-import { ConnectScreen } from "./desktop/ConnectScreen.js";
 import { type LocalBoot, bootDesktopLocal } from "./desktop/local.js";
 import { LockedScreen } from "./desktop/LockedScreen.js";
 import { createMockServices } from "./services/mock.js";
@@ -18,16 +23,10 @@ import {
   BlockedScreen,
   BusyTabScreen,
   ElsewhereScreen,
-  UnreachableScreen,
+  StartFailedScreen,
 } from "./shell/StorageScreens.js";
 import { createBrowserAdmin } from "./storage/browserAdmin.js";
-import {
-  decideStartup,
-  forgetLegacyToken,
-  forgetServer,
-  rememberServer,
-  serverSeen,
-} from "./storage/startup.js";
+import { decideStartup, forgetLegacyToken } from "./storage/startup.js";
 import { acquireTabLock, type HeldLock } from "./storage/tabLock.js";
 import { initTheme } from "./theme.js";
 import { initPwa } from "./pwa/pwa.js";
@@ -41,9 +40,9 @@ forgetLegacyToken();
 const auth: AuthClient = createAuthClient();
 
 /**
- * Real services by default; `?demo` (or a failure to open the database) uses mock data.
- * Where the data lives: a Vuurtoren API on the same origin (server mode, one SQLite file on the
- * server), else this browser (OPFS).
+ * Real services by default; `?demo` (or a failure to open the database) uses mock data. The data
+ * lives on this device: the desktop app's file, or this browser (OPFS). A page served by a
+ * Vuurtoren server signs in to it first, and can sync through it.
  */
 const DEMO_KEY = "vuurtoren-demo";
 
@@ -79,78 +78,41 @@ type Boot =
       notice?: string;
       data?: DataControls;
       account?: AccountControls;
-      /** Server mode with sign-in: watch for the session ending. */
+      /** A page of a Vuurtoren server with sign-in: watch for the session ending. */
       session?: { methods: ServerHealth["authMethods"]; user: string | null };
-      /** Desktop app on this computer only. */
+      /** The desktop app. */
       desktop?: DesktopLocal;
     }
   | { kind: "signin"; health: ServerHealth }
-  | { kind: "unreachable"; reason: string }
+  | { kind: "failed"; reason: string }
   | { kind: "blocked"; message: string; download: () => Promise<Uint8Array> }
   | { kind: "busy"; takeOver: () => Promise<void> }
   | { kind: "elsewhere" }
-  /** Desktop app, bundled home page: choose the server. */
-  | { kind: "desktop"; bridge: DesktopBridge }
-  /** Desktop app, offline: the data file is open on another computer. */
+  /** Desktop app: the data file is open on another computer. */
   | Extract<LocalBoot, { kind: "locked" }>;
 
-const INSECURE_NOTICE =
-  "Vuurtoren needs https or http://localhost to store data (you opened it over plain http from another device). Use https (see deploy/README.md) or run in server mode.";
+/** The Vuurtoren server this page comes from, signed in (or with sign-in off). */
+type PageServer = { health: ServerHealth; account: Account };
 
-/** Server mode: one SQLite file on the server, reached through /api (cookie session). */
-async function bootServer(health: ServerHealth, account: Account): Promise<Boot> {
-  const [{ createHttpAdmin, createHttpRepository, HttpError }, { createLiveServices }] =
-    await Promise.all([import("@app/db/http"), import("./services/live.js")]);
-  const admin = createHttpAdmin("");
-  try {
-    if (health.state === "schema-too-new") {
-      return {
-        kind: "blocked",
-        message: `The database on the server is from a newer Vuurtoren (schema v${health.foundVersion ?? "?"}; this app supports v${health.schemaVersion}).`,
-        download: () => admin.exportBackup(),
-      };
-    }
-    const { watchedFetch } = await import("./services/degradedFetch.js");
-    const repo = await createHttpRepository("", undefined, watchedFetch);
-    return {
-      kind: "app",
-      services: createLiveServices(repo, { remoteChanged: () => repo.remoteChanged() }),
-      data: { mode: "server", persisted: null, persistent: true, secure: isSecureContext, admin },
-      account: {
-        authEnabled: account.authEnabled,
-        user: account.user,
-        via: account.via,
-        signOut: () => auth.signOut(),
-        signOutAll: () => auth.signOutAll(),
-      },
-      ...(account.authEnabled
-        ? { session: { methods: health.authMethods, user: account.user } }
-        : {}),
-    };
-  } catch (e) {
-    // Signed out between the check and here: sign in again. Anything else is a server
-    // problem; never fall back to browser storage or demo data in server mode.
-    if (e instanceof HttpError && e.status === 401) return { kind: "signin", health };
-    return {
-      kind: "unreachable",
-      reason: `The server could not open your data: ${e instanceof Error ? e.message : String(e)}`,
-    };
-  }
-}
+const INSECURE_NOTICE =
+  "Vuurtoren needs https or http://localhost to store data (you opened it over plain http from another device). Use https (see deploy/README.md).";
+
+/** How long closing the page waits for the last sync before it lets go of the database. */
+const LEAVE_WAIT_MS = 3_000;
 
 /** Browser mode: SQLite in OPFS, owned by exactly one tab. */
-async function bootBrowser(): Promise<Boot> {
+async function bootBrowser(server: PageServer | null): Promise<Boot> {
   const tab = await acquireTabLock();
   if (tab.status === "busy") {
     return {
       kind: "busy",
-      takeOver: async () => show(await openBrowser(await tab.busy.takeOver())),
+      takeOver: async () => show(await openBrowser(await tab.busy.takeOver(), server)),
     };
   }
-  return openBrowser(tab.lock);
+  return openBrowser(tab.lock, server);
 }
 
-async function openBrowser(lock: HeldLock): Promise<Boot> {
+async function openBrowser(lock: HeldLock, server: PageServer | null): Promise<Boot> {
   const [{ createRepository, isSchemaTooNew }, { createWebDriver }, { createLiveServices }] =
     await Promise.all([import("@app/db"), import("@app/db/web"), import("./services/live.js")]);
   const driver = await createWebDriver("vuurtoren");
@@ -169,10 +131,24 @@ async function openBrowser(lock: HeldLock): Promise<Boot> {
     }
     throw e;
   }
-  // OPFS access handles are exclusive. Release them when the page is hidden (including the
+  const tokens = createSyncTokenClient();
+  const services = createLiveServices(repo, {
+    server: server
+      ? {
+          origin: location.origin,
+          newToken: async (label) => (await tokens.create(label, true)).token,
+        }
+      : undefined,
+  });
+  // OPFS access handles are exclusive. Release them when the page goes (including the
   // back/forward cache, which keeps frozen pages alive), and reopen by reloading if a frozen
-  // page is restored; otherwise the next page load could not open the database.
-  addEventListener("pagehide", () => driver.terminate());
+  // page is restored; otherwise the next page load could not open the database. The last sync
+  // (started when the page was hidden) finishes first, or gets a few seconds.
+  addEventListener("pagehide", () => {
+    const leaving = services.syncBeforeLeaving?.() ?? Promise.resolve();
+    const waited = new Promise((r) => setTimeout(r, LEAVE_WAIT_MS));
+    void Promise.race([leaving, waited]).finally(() => driver.terminate());
+  });
   addEventListener("pageshow", (e) => {
     if (e.persisted) location.reload();
   });
@@ -187,9 +163,10 @@ async function openBrowser(lock: HeldLock): Promise<Boot> {
     : driver.persistent
       ? undefined
       : "Your browser does not allow local storage here (private window), so data will not be saved.";
+  const account = server?.account;
   return {
     kind: "app",
-    services: createLiveServices(repo),
+    services,
     ...(notice ? { notice } : {}),
     data: {
       mode: "browser",
@@ -198,24 +175,32 @@ async function openBrowser(lock: HeldLock): Promise<Boot> {
       secure,
       admin: createBrowserAdmin(repo, driver),
     },
+    ...(account
+      ? {
+          account: {
+            authEnabled: account.authEnabled,
+            user: account.user,
+            via: account.via,
+            signOut: () => auth.signOut(),
+            signOutAll: () => auth.signOutAll(),
+          },
+        }
+      : {}),
+    ...(server && account?.authEnabled
+      ? { session: { methods: server.health.authMethods, user: account.user } }
+      : {}),
   };
 }
 
-/**
- * The desktop app's own page: on this computer only (the default; data in a
- * local SQLite file, the bundled language server), or the Connect screen when the user chose a
- * Vuurtoren server (it then opens the server's page, which boots as usual).
- */
+/** The desktop app: data in a local SQLite file, the bundled language server. */
 async function bootDesktop(bridge: DesktopBridge): Promise<Boot> {
   const info = await bridge.info().catch(() => null);
-  const changing = new URLSearchParams(location.search).has("connect");
-  if (changing || info?.mode === "server") return { kind: "desktop", bridge };
   try {
     return await bootDesktopLocal(bridge, info?.nlpBase);
   } catch (e) {
     console.error("The local database could not be opened:", e);
     return {
-      kind: "unreachable",
+      kind: "failed",
       reason: `Vuurtoren could not open its data file: ${e instanceof Error ? e.message : String(e)}`,
     };
   }
@@ -228,27 +213,14 @@ async function boot(): Promise<Boot> {
   // The demo looks like a set-up app: a recent sync, so no "Connect Anki" prompts.
   if (demo)
     return { kind: "app", services: createMockServices({ synced: true, demoLibrary: true }) };
-  const { fetchServerHealth } = await import("@app/db/http");
   const start = await decideStartup({
     demo,
     probe: () => fetchServerHealth(),
     me: () => auth.me(),
-    serverSeen,
-    rememberServer,
   });
-  switch (start.kind) {
-    case "server":
-      return bootServer(start.health, start.account);
-    case "signin":
-      return { kind: "signin", health: start.health };
-    case "unreachable":
-      return { kind: "unreachable", reason: start.reason };
-    default:
-      break;
-  }
-  // Browser mode (no Vuurtoren API on this origin). Only here can a failure fall back to demo.
+  if (start.kind === "signin") return { kind: "signin", health: start.health };
   try {
-    return await bootBrowser();
+    return await bootBrowser(start.kind === "browser" ? start.server : null);
   } catch (e) {
     console.error("Falling back to demo data:", e);
     return {
@@ -302,16 +274,8 @@ function show(b: Boot): Promise<void> {
         />
       );
       break;
-    case "unreachable":
-      node = (
-        <UnreachableScreen
-          reason={b.reason}
-          onForget={() => {
-            forgetServer();
-            location.reload();
-          }}
-        />
-      );
+    case "failed":
+      node = <StartFailedScreen reason={b.reason} />;
       break;
     case "blocked":
       node = <BlockedScreen message={b.message} download={b.download} />;
@@ -328,14 +292,6 @@ function show(b: Boot): Promise<void> {
           path={b.path}
           lock={b.lock}
           onOpenAnyway={async () => show(await b.openAnyway())}
-        />
-      );
-      break;
-    case "desktop":
-      node = (
-        <ConnectScreen
-          bridge={b.bridge}
-          changing={new URLSearchParams(location.search).has("connect")}
         />
       );
       break;

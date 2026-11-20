@@ -1,7 +1,6 @@
 import { SELF_HOSTING_URL } from "./shared.js";
 import { useState } from "react";
 import { Button, Dialog } from "@app/ui";
-import { DesktopServer } from "../../desktop/DesktopServer.js";
 import { useAppInfo } from "../../shell/AppInfo.js";
 
 /** Settings > Account: who is signed in on this server, sign out here or everywhere. */
@@ -34,7 +33,6 @@ export function AccountSettings() {
 
   return (
     <section className="stack" aria-label="Account">
-      <DesktopServer />
       {!account.authEnabled ? (
         <p style={{ margin: 0, color: "var(--ink-muted)" }}>
           Sign-in is off on this server: anyone who can open this address can read and change your

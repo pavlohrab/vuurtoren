@@ -4,7 +4,6 @@ import { createNodeDriver } from "./node.js";
 import { applyEvent } from "./projections.js";
 import { createRepository, type VuurtorenRepository } from "./repository.js";
 import { migrate } from "./schema.js";
-import { validateRpcArgs } from "./rpc.js";
 import type { AppEvent, StoredEvent } from "./types.js";
 
 const open: VuurtorenRepository[] = [];
@@ -158,15 +157,5 @@ describe("shelves", () => {
       ev("2", "000000000000002-00000-a", { type: "ShelfRenamed", shelfId: "s", name: "Early" }),
     ]);
     expect(shelves[0]?.name).toBe("Late");
-  });
-
-  it("are callable over RPC; new events pass the append check", () => {
-    expect(validateRpcArgs("shelves", [])).toBeNull();
-    expect(
-      validateRpcArgs("append", [{ type: "ShelfCreated", shelfId: "s", name: "Stories" }]),
-    ).toBeNull();
-    expect(
-      validateRpcArgs("append", [{ type: "TextMetaUpdated", textId: "t", patch: { title: "x" } }]),
-    ).toBeNull();
   });
 });
