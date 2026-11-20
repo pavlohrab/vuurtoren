@@ -485,7 +485,7 @@ export async function syncOnce(
   // Receive: every new file of every device, imported without a replay; one replay at the
   // end when some events were older than the log's end.
   let received = 0;
-  let rebuilt = false;
+  let rebuilt: boolean;
   const missing = missingOf(state, now());
   const noteFailed = (failed: { id: string; error: string }[]) => {
     for (const f of failed) {
