@@ -71,13 +71,6 @@
 .nav-link svg {
   flex: none;
 }
-.nav-link--disabled,
-.nav-link--disabled:hover {
-  opacity: 0.45;
-  background: none;
-  color: var(--ink-muted);
-  cursor: default;
-}
 .shell[data-sidebar="collapsed"] .nav-label,
 .shell[data-sidebar="collapsed"] .k-logo-word {
   display: none;
@@ -572,11 +565,6 @@
 }
 
 /* ---------- Screen bits ---------- */
-.card-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 24px;
-}
 /* Library shelf: covers in a row, no boxes. */
 .shelf {
   display: grid;
@@ -764,8 +752,7 @@
 .practice-about {
   margin: 0;
 }
-.practice-session,
-.practice-summary {
+.practice-session {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -815,14 +802,6 @@
   border: 1px solid var(--border, currentColor);
   border-radius: 8px;
   font-size: 14px;
-}
-.practice-h2 {
-  font-family: var(--font-display);
-  font-size: 17px;
-  margin: 0 0 var(--s-4);
-}
-.practice-word {
-  text-decoration: none;
 }
 .practice-actions {
   display: flex;

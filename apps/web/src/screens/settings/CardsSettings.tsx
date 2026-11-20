@@ -11,8 +11,8 @@ import { plural, relativeTime } from "../../format.js";
 import { useServices } from "../../services/context.js";
 import { saveFile } from "../../saveFile.js";
 import type { DeckWithLoad, ImportSummary, NativeDeckSummary } from "../../services/nativeTypes.js";
+import { errorText } from "../../services/errors.js";
 
-const message = (e: unknown) => (e instanceof Error && e.message ? e.message : "Try again.");
 /** Queries that change when cards come in or the mode changes. */
 const AFFECTED = ["languageProfile", "learner", "review", "words", "texts", "home"];
 
@@ -87,7 +87,7 @@ function MoveFromAnki() {
       )}
       {move.isError ? (
         <p role="alert" className="error-text" style={{ margin: 0 }}>
-          The move did not finish. {message(move.error)}
+          The move did not finish. {errorText(move.error)}
         </p>
       ) : null}
     </section>
@@ -337,7 +337,7 @@ function MoveToAnki() {
       )}
       {move.isError ? (
         <p role="alert" className="error-text" style={{ margin: 0 }}>
-          The move did not finish. {message(move.error)}
+          The move did not finish. {errorText(move.error)}
         </p>
       ) : null}
     </section>
@@ -389,7 +389,7 @@ function ExportPackage({ decks }: { decks: string[] }) {
       ) : null}
       {run.isError ? (
         <p role="alert" className="error-text" style={{ margin: 0 }}>
-          The export did not finish. {message(run.error)}
+          The export did not finish. {errorText(run.error)}
         </p>
       ) : null}
     </section>
@@ -435,7 +435,7 @@ function ImportPackage() {
         </p>
       ) : open.isError ? (
         <p role="alert" className="error-text" style={{ margin: 0 }}>
-          {message(open.error)}
+          {errorText(open.error)}
         </p>
       ) : open.data && !run.isSuccess ? (
         <fieldset className="stack cards-decks" style={{ gap: 6 }}>
@@ -493,7 +493,7 @@ function ImportPackage() {
       ) : null}
       {run.isError ? (
         <p role="alert" className="error-text" style={{ margin: 0 }}>
-          The import did not finish. {message(run.error)}
+          The import did not finish. {errorText(run.error)}
         </p>
       ) : null}
     </section>
@@ -569,7 +569,7 @@ function Tuning() {
       </div>
       {run.isError ? (
         <p role="alert" className="error-text" style={{ margin: 0 }}>
-          {message(run.error)}
+          {errorText(run.error)}
         </p>
       ) : null}
     </section>

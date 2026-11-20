@@ -270,10 +270,9 @@ export async function createHttpRepository(
     nativeMedia: (lang, names) =>
       names.length ? call("nativeMedia", lang, names) : Promise.resolve({}),
     nativeKeyCards: (lang, keys, dayStart) => call("nativeKeyCards", lang, keys, dayStart),
-    // Sync runs on a device with its own log; a server-mode client is the server's log.
     exportEvents: () => Promise.reject(new Error(SERVER_SYNC)),
     importEvents: () => Promise.reject(new Error(SERVER_SYNC)),
-    compact: () => Promise.reject(new Error(SERVER_SYNC)),
+    compact: () => Promise.reject(new Error("Compacting runs on a device with its own data.")),
     syncState: async () => null,
     setSyncState: () => Promise.reject(new Error(SERVER_SYNC)),
     nativeNoteStatus: (lang, noteIds, now) =>

@@ -23,8 +23,6 @@ const MAX_ARGON2_KIB = 1_048_576;
 const MAX_ARGON2_PASSES = 10;
 const MAX_ARGON2_LANES = 16;
 const MAX_PBKDF2_ROUNDS = 10_000_000;
-/** PBKDF2 rounds of first-format vaults (OWASP's 2023 figure for PBKDF2-HMAC-SHA256). */
-export const DEFAULT_ITERATIONS = 600_000;
 /** Argon2id cost: 64 MiB, 3 passes, one lane (above OWASP's minimum of 19 MiB, 2 passes). */
 export const ARGON2_COST = { memoryKiB: 65_536, iterations: 3, parallelism: 1 } as const;
 export type Argon2Cost = { memoryKiB: number; iterations: number; parallelism: number };
@@ -183,7 +181,7 @@ export function parseRecovery(text: string): Uint8Array | null {
   const clean = text
     .toUpperCase()
     .replace(/[\s-]/g, "")
-    .replace(/[OI L]/g, (c) => (c === "O" ? "0" : "1"));
+    .replace(/[OIL]/g, (c) => (c === "O" ? "0" : "1"));
   if (!/^[0-9A-HJKMNP-TV-Z]{32}$/.test(clean)) return null;
   const out = new Uint8Array(20);
   let bits = 0;

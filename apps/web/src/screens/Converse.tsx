@@ -25,6 +25,7 @@ import { PageHeader } from "../shell/PageHeader.js";
 import { readLastText } from "../lastText.js";
 import { pickContinue } from "./Home.js";
 import "./converse.css";
+import { errorText } from "../services/errors.js";
 
 /** A suggested way to start a conversation. */
 interface TalkStart {
@@ -35,7 +36,6 @@ interface TalkStart {
   words: string[];
 }
 
-const message = (e: unknown) => (e instanceof Error && e.message ? e.message : "Try again.");
 const TONE = {
   comfortable: "success",
   stretch: "accent",
@@ -234,7 +234,7 @@ export function Converse() {
       toast("Saved to your Library", "Read it again later, with its new words highlighted.");
       await qc.invalidateQueries({ queryKey: ["texts"] });
     },
-    onError: (e) => toast("Could not save the conversation", message(e)),
+    onError: (e) => toast("Could not save the conversation", errorText(e)),
   });
   const deckChoice = useDeckChoice("converse");
   const add = useMutation({
@@ -244,7 +244,7 @@ export function Converse() {
       setAdded((s) => new Set(s).add(w.lemma));
       toast(`Added “${w.lemma}” to ${r.deck}`);
     },
-    onError: (e) => toast("Could not add the word to Anki", message(e)),
+    onError: (e) => toast("Could not add the word to Anki", errorText(e)),
   });
 
   if (!status.data) {
@@ -387,7 +387,7 @@ export function Converse() {
             </details>
             {start.isError ? (
               <p role="alert" className="error-text" style={{ margin: 0 }}>
-                {message(start.error)}
+                {errorText(start.error)}
               </p>
             ) : null}
           </div>
@@ -509,7 +509,7 @@ export function Converse() {
         </div>
         {send.isError ? (
           <p role="alert" className="error-text" style={{ margin: 0 }}>
-            {message(send.error)} Your message is still in the box.
+            {errorText(send.error)} Your message is still in the box.
           </p>
         ) : null}
       </form>

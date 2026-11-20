@@ -28,7 +28,8 @@ export interface WordInspectorHandle {
   portal: ReactNode;
 }
 
-export function useWordInspector(source: AddSource = "reading"): WordInspectorHandle {
+/** `source` picks the deck that words added from this screen go to. */
+export function useWordInspector(source: AddSource): WordInspectorHandle {
   const services = useServices();
   const { inspectorEl, setInspectorAvailable, setInspectorOpen } = useShell();
   const [target, setTarget] = useState<Target | null>(null);

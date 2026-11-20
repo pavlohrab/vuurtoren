@@ -45,13 +45,10 @@ export function webdavStore(
         headers: { ...auth, ...init.headers },
       });
     } catch {
-      throw new SyncPlaceError(`${new URL(root).host} cannot be reached.`, "offline");
+      throw new SyncPlaceError(`${new URL(root).host} cannot be reached.`);
     }
     if (res.status === 401 || res.status === 403) {
-      throw new SyncPlaceError(
-        "The WebDAV server did not accept the user name or password.",
-        "auth",
-      );
+      throw new SyncPlaceError("The WebDAV server did not accept the user name or password.");
     }
     return res;
   };

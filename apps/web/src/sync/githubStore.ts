@@ -40,11 +40,11 @@ export function githubStore(
         headers: { ...headers, ...init.headers },
       });
     } catch {
-      throw new SyncPlaceError("GitHub cannot be reached.", "offline");
+      throw new SyncPlaceError("GitHub cannot be reached.");
     }
-    if (res.status === 401) throw new SyncPlaceError("GitHub did not accept the token.", "auth");
+    if (res.status === 401) throw new SyncPlaceError("GitHub did not accept the token.");
     if (res.status === 403 && res.headers.get("x-ratelimit-remaining") === "0") {
-      throw new SyncPlaceError("GitHub asks to wait a while (rate limit).", "offline");
+      throw new SyncPlaceError("GitHub asks to wait a while (rate limit).");
     }
     return res;
   };

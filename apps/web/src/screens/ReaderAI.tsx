@@ -3,8 +3,8 @@ import { useEffect, useRef } from "react";
 import { Button, Spinner } from "@app/ui";
 import type { ExplainGrammar } from "../services/aiTypes.js";
 import { useServices } from "../services/context.js";
+import { errorText } from "../services/errors.js";
 
-const message = (e: unknown) => (e instanceof Error && e.message ? e.message : "Try again.");
 const pct = (v: number | null) => (v === null ? "not scored" : `${(v * 100).toFixed(1)}%`);
 
 /** True once an AI provider is usable; the helpers below render nothing otherwise. */
@@ -47,7 +47,7 @@ export function ExplainSentence({
       ) : null}
       {explain.isError ? (
         <p role="alert" className="error-text" style={{ margin: 0 }}>
-          {message(explain.error)}
+          {errorText(explain.error)}
         </p>
       ) : null}
     </div>
@@ -87,7 +87,7 @@ export function SimplifyPage({ text, onClose }: { text: string; onClose: () => v
       </div>
       {simplify.isError ? (
         <p role="alert" className="error-text" style={{ margin: 0 }}>
-          {message(simplify.error)}
+          {errorText(simplify.error)}
         </p>
       ) : null}
       {simplify.data ? (

@@ -370,9 +370,8 @@ export function createLiveNative(deps: LiveNativeDeps) {
     if (planned < 3) return s;
     const today = studyDayStart(at);
     const counts = await repo.nativeDueCounts(lang, today, Math.ceil(planned * 1.3) + 5);
-    const week = (
-      (await deps.reviewWeek?.())?.length === 7 ? await deps.reviewWeek!() : NORMAL_WEEK
-    ) as WeekLoad;
+    const saved = await deps.reviewWeek?.();
+    const week = (saved?.length === 7 ? saved : NORMAL_WEEK) as WeekLoad;
     const elapsed = prev ? Math.max(0, Math.round((at - prev.lastReview) / DAY_MS)) : 0;
     const days = balanceInterval(
       planned,

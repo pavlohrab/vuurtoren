@@ -16,10 +16,10 @@ export function serverStore(url: string, token: string, fetch: typeof globalThis
         headers: { ...auth, ...init.headers },
       });
     } catch {
-      throw new SyncPlaceError(`Kenning at ${new URL(base).host} cannot be reached.`, "offline");
+      throw new SyncPlaceError(`Kenning at ${new URL(base).host} cannot be reached.`);
     }
     if (res.status === 401) {
-      throw new SyncPlaceError("The server did not accept the sync token.", "auth");
+      throw new SyncPlaceError("The server did not accept the sync token.");
     }
     return res;
   };

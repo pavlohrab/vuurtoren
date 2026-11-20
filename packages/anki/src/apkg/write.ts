@@ -85,23 +85,24 @@ const SCHEMA_11 = [
 ];
 
 /** Anki's numeric id of a note type: its own for imported ones, a fixed one for Kenning's. */
-export function ankiNotetypeId(t: NativeNotetype, i: number): number {
+function ankiNotetypeId(t: NativeNotetype, i: number): number {
   const m = /^anki:(\d+)$/.exec(t.id);
   if (m) return Number(m[1]);
   return t.id === "kenning-word" ? KENNING_NOTETYPE_ANKI_ID : KENNING_NOTETYPE_ANKI_ID + 1000 + i;
 }
 
-
 /** Anki's note checksum: the first 8 hex digits of the SHA-1 of the stripped sort field. */
 async function checksum(field: string): Promise<number> {
-  const digest = await crypto.subtle.digest("SHA-1", new TextEncoder().encode(stripHtml(field).trim()));
+  const digest = await crypto.subtle.digest(
+    "SHA-1",
+    new TextEncoder().encode(stripHtml(field).trim()),
+  );
   const b = new Uint8Array(digest);
   return ((b[0]! << 24) >>> 0) + (b[1]! << 16) + (b[2]! << 8) + b[3]!;
 }
 
 /** A note's guid: stable for the note id, so importing the file twice updates, not doubles. */
 const guidOf = (noteId: number) => `kenning${noteId.toString(36)}`;
-
 
 /** Each deck and every parent of it ("A::B" also needs "A"), by name. */
 function withParents(names: string[]): string[] {

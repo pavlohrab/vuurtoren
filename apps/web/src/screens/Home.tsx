@@ -88,7 +88,7 @@ const DATE_FMT = new Intl.DateTimeFormat("en-GB", {
 
 export function Home() {
   const services = useServices();
-  const inspector = useWordInspector();
+  const inspector = useWordInspector("reading");
   // The top bar shows today's date: the page's own heading is the greeting.
   usePageHeader(DATE_FMT.format(new Date()), { always: true });
   const texts = useQuery({ queryKey: ["texts"], queryFn: () => services.listTexts() });

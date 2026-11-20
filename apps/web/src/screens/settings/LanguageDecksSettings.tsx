@@ -14,8 +14,7 @@ import {
 import { CardsSettings } from "./CardsSettings.js";
 import { SavedNote } from "./SavedNote.js";
 import { useAutosave } from "./useAutosave.js";
-
-const message = (e: unknown) => (e instanceof Error && e.message ? e.message : "Try again.");
+import { errorText } from "../../services/errors.js";
 
 /** Settings → Language & decks: the language profile. */
 export function LanguageDecksSettings() {
@@ -89,7 +88,7 @@ export function LanguageDecksSettings() {
           </div>
           {detect.isError ? (
             <p role="alert" className="error-text" style={{ margin: 0 }}>
-              Could not look at your decks. {message(detect.error)}
+              Could not look at your decks. {errorText(detect.error)}
             </p>
           ) : null}
         </>
