@@ -22,8 +22,11 @@ them:
 
 Archives are verified (size + SHA-256) before anything is replaced, extracted next to the target
 and swapped in with a rename, so a failed or interrupted update leaves the old data in use. The
-grammar-example cache is *derived*: it is built here from the sentence pack (under a minute) and
-is tied to the grammar detectors' code, so it is never downloaded.
+grammar-example cache is *derived*: it is tied to the grammar detectors' code and the sentence pack,
+so it is never downloaded. A bundled ``grammar-examples-nl-<sentences version>-<detectors>.tar.gz``
+in ``$VUURTOREN_PACKS_DIR`` (the offline installer and the ``-full`` image; made by
+``scripts/build_packs.py``) is unpacked when it fits the installed sentences and the current
+detectors; otherwise the cache is built here from the sentence pack (a few minutes).
 
 ``VUURTOREN_PACKS`` = ``off`` (default outside Docker: nothing runs by itself), ``download``
 (sources 1-2 only) or ``auto`` (1-3; the Docker image's default). The server runs ``ensure()``
@@ -333,6 +336,36 @@ def _build_grammar_cache() -> None:
             return
 
 
+def grammar_archive_name() -> str:
+    """The bundled grammar-example cache that fits the shipped sentence pack and the detectors."""
+    from vuurtoren_nlp.grammar_examples import detector_version
+
+    sentences = manifest().get("sentences-nl", {}).get("version", "none")
+    return f"grammar-examples-nl-{sentences}-{detector_version()}.tar.gz"
+
+
+def _install_bundled_grammar() -> bool:
+    """Unpack the bundled grammar-example cache when there is one that fits; True if done."""
+    from vuurtoren_nlp.grammar_examples import GrammarExamples
+
+    local = os.environ.get("VUURTOREN_PACKS_DIR")
+    archive = Path(local) / grammar_archive_name() if local else None
+    mark = installed("sentences-nl")
+    wanted = manifest().get("sentences-nl", {}).get("version")
+    if archive is None or not archive.is_file() or not mark or mark.get("version") != wanted:
+        return False
+    target = grammar_cache_path()
+    target.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(dir=target.parent, prefix=".grammar-examples-") as d:
+        with tarfile.open(archive) as tar:
+            tar.extractall(d, filter="data")
+        staged = Path(d) / "grammar-examples-nl.sqlite"
+        if not staged.is_file() or not GrammarExamples(sentences_path(), staged).cache_version_ok():
+            return False
+        os.replace(staged, target)
+    return True
+
+
 def ensure(force: bool = False, allow_build: bool | None = None) -> dict[str, str]:
     """Install every missing/outdated pack (``force``: also replace unversioned ones).
 
@@ -347,9 +380,12 @@ def ensure(force: bool = False, allow_build: bool | None = None) -> dict[str, st
         try:
             if spec.derived:
                 if state != "ok" and sentences_path().is_file():
-                    _set(name, "building")
-                    _build_grammar_cache()
-                    results[name] = "build"
+                    if _install_bundled_grammar():
+                        results[name] = "bundled"
+                    else:
+                        _set(name, "building")
+                        _build_grammar_cache()
+                        results[name] = "build"
                 else:
                     results[name] = "ok" if state == "ok" else "skipped: no sentences"
             elif state in ("missing", "outdated") or (force and state == "unversioned"):

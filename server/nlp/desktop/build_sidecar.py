@@ -10,7 +10,8 @@ PaddleOCR models (the ``ocr`` extra), so photo and scan import work offline from
 and ``/health`` reports ``"ocr": true``.
 
 ``--packs DIR`` also copies the data pack archives (``<name>-<version>.tar.gz`` for every pack in
-``packs.json``) to ``sidecar/packs/`` for the offline installer (``tauri.packs.conf.json``).
+``packs.json``, and the grammar-example cache ``grammar-examples-nl-*.tar.gz``) to
+``sidecar/packs/`` for the offline installer (``tauri.packs.conf.json``).
 """
 
 from __future__ import annotations
@@ -74,6 +75,13 @@ def copy_packs(src: Path, out: Path) -> None:
         if not (src / file).is_file():
             sys.exit(f"missing pack archive {src / file}")
         shutil.copyfile(src / file, dest / file)
+    # The grammar-example cache (scripts/build_packs.py --grammar-from), so the offline app does
+    # not build it at first start; the server checks that it fits.
+    grammar = sorted(src.glob("grammar-examples-nl-*.tar.gz"))
+    if not grammar:
+        sys.exit(f"missing grammar-examples-nl-*.tar.gz in {src} (build_packs.py --grammar-from)")
+    for f in grammar:
+        shutil.copyfile(f, dest / f.name)
     print(f"packs: {dir_size(dest) / 1e6:.0f} MB in {dest}")
 
 

@@ -156,3 +156,49 @@ def test_download_progress_is_reported(env: dict[str, Path]) -> None:
     finally:
         packs._set("dictionary-nl", None)
     assert "received" not in packs.status()["dictionary-nl"]
+
+
+def _grammar_bundle(env: dict[str, Path], tmp_path: Path, version: str) -> None:
+    """Installed sentences (marker at 1.0), a manifest with them, and a bundled grammar cache
+    built by detectors of ``version``."""
+    from vuurtoren_nlp.grammar_examples import detector_version
+
+    sentences = env["data"] / "sentences-nl.sqlite"
+    sentences.parent.mkdir(parents=True, exist_ok=True)
+    sqlite3.connect(sentences).close()
+    (env["data"] / "sentences-nl.sqlite.pack.json").write_text(json.dumps({"version": "1.0"}))
+    manifest = json.loads(env["manifest"].read_text())
+    manifest["packs"]["sentences-nl"] = {"version": "1.0", "sha256": "x", "size": 1}
+    env["manifest"].write_text(json.dumps(manifest))
+    cache = tmp_path / "g" / "grammar-examples-nl.sqlite"
+    cache.parent.mkdir()
+    con = sqlite3.connect(cache)
+    con.execute("CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT)")
+    con.execute("INSERT INTO meta VALUES ('version', ?)", (version,))
+    con.commit()
+    con.close()
+    make_archive(cache, env["dist"] / f"grammar-examples-nl-1.0-{detector_version()}.tar.gz")
+
+
+def test_bundled_grammar_examples_are_unpacked_not_built(
+    env: dict[str, Path], tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from vuurtoren_nlp.grammar_examples import detector_version
+
+    _grammar_bundle(env, tmp_path, detector_version())
+    monkeypatch.setenv("VUURTOREN_PACKS_DIR", str(env["dist"]))
+    monkeypatch.setattr(packs, "_build_grammar_cache", lambda: pytest.fail("built on device"))
+    assert packs.grammar_archive_name() == f"grammar-examples-nl-1.0-{detector_version()}.tar.gz"
+    assert packs.ensure(allow_build=False)["grammar-examples-nl"] == "bundled"
+    assert packs.status()["grammar-examples-nl"]["state"] == "ok"
+
+
+def test_a_bundled_grammar_cache_of_other_detectors_is_built_again(
+    env: dict[str, Path], tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _grammar_bundle(env, tmp_path, "older-detectors")
+    monkeypatch.setenv("VUURTOREN_PACKS_DIR", str(env["dist"]))
+    built: list[int] = []
+    monkeypatch.setattr(packs, "_build_grammar_cache", lambda: built.append(1))
+    assert packs.ensure(allow_build=False)["grammar-examples-nl"] == "build"
+    assert built == [1]

@@ -63,6 +63,8 @@ runs:
             sha = hashlib.sha256(open(f"{out}/{file}", "rb").read()).hexdigest()
             assert sha == p["sha256"], f"{file}: checksum mismatch"
         PY
+        # The grammar-example cache from that sentence pack: the offline app does not build it.
+        (cd server/nlp && uv run --locked --no-dev python scripts/build_packs.py --grammar-from "$RUNNER_TEMP/packs")
         echo "PACKS_ARG=--packs $RUNNER_TEMP/packs" >> "$GITHUB_ENV"
     - name: Language server sidecar (PyInstaller, one directory, RapidOCR included)
       shell: bash

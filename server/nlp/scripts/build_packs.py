@@ -5,6 +5,7 @@ Usage (from server/nlp)::
     uv run python scripts/build_packs.py --out dist/packs                 # build everything
     uv run python scripts/build_packs.py --out dist/packs --from-data data  # pack existing files
     uv run python scripts/build_packs.py --out dist/packs --download URL    # fetch + verify
+    uv run python scripts/build_packs.py --grammar-from dist/packs          # grammar cache only
 
 Each downloadable pack becomes ``<name>-<version>.tar.gz`` (deterministic: sorted, mtime 0,
 root-owned, so the same data gives the same SHA-256). Versions come from packs.json: bump a
@@ -12,6 +13,12 @@ pack's version when its data changes (new upstream snapshot, schema change), reb
 archives as release assets (``gh release upload packs-<version> dist/packs/*``) and commit the
 updated packs.json. Servers then install the new version at their next start (or via
 ``POST /admin/packs``). See docs/architecture.md, "Data packs".
+
+Next to them goes the grammar-example cache, ``grammar-examples-nl-<sentences version>-<detector
+hash>.tar.gz`` (not in packs.json: it is derived from the sentence pack and the grammar detectors).
+The offline installer and the ``-full`` image bundle it, so their first start does not build it;
+``--grammar-from DIR`` makes it from the sentence pack archive in DIR (the offline installer's
+build, whose archives come from the release).
 """
 
 from __future__ import annotations
@@ -81,6 +88,39 @@ def build(name: str, data: Path) -> None:
     subprocess.run(py + cmd, check=True, cwd=ROOT, env=env)
 
 
+def build_grammar(sentences: Path, out: Path) -> Path:
+    """Build the grammar-example cache from a sentence DB and archive it into ``out``."""
+    from vuurtoren_nlp.packs import grammar_archive_name
+
+    with tempfile.TemporaryDirectory() as d:
+        cache = Path(d) / "grammar-examples-nl.sqlite"
+        env = {
+            **os.environ,
+            "VUURTOREN_SENTENCES_PATH": str(sentences),
+            "VUURTOREN_GRAMMAR_CACHE_PATH": str(cache),
+        }
+        subprocess.run(
+            [sys.executable, "scripts/build_grammar_examples.py"], check=True, cwd=ROOT, env=env
+        )
+        dest = out / grammar_archive_name()
+        make_archive(cache, dest)
+    print(f"{dest.name}: {dest.stat().st_size / 1e6:.1f} MB")
+    return dest
+
+
+def grammar_from(manifest: dict, packs_dir: Path) -> int:
+    """Build the grammar archive from the (verified) sentence pack archive in ``packs_dir``."""
+    entry = manifest["packs"]["sentences-nl"]
+    archive = packs_dir / f"sentences-nl-{entry['version']}.tar.gz"
+    if hashlib.sha256(archive.read_bytes()).hexdigest() != entry["sha256"]:
+        print(f"{archive.name}: checksum mismatch", file=sys.stderr)
+        return 1
+    with tempfile.TemporaryDirectory() as d, tarfile.open(archive) as tar:
+        tar.extractall(d, filter="data")
+        build_grammar(Path(d) / TARGETS["sentences-nl"], packs_dir)
+    return 0
+
+
 def download(manifest: dict, url: str, out: Path, names: list[str]) -> int:
     """Fetch ``<url>/<name>-<version>.tar.gz`` for each pack and verify it against packs.json."""
     for name in names:
@@ -104,12 +144,19 @@ def download(manifest: dict, url: str, out: Path, names: list[str]) -> int:
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
-    ap.add_argument("--out", type=Path, required=True, help="directory for the archives")
+    ap.add_argument("--out", type=Path, help="directory for the archives")
     ap.add_argument("--from-data", type=Path, help="pack these existing files instead of building")
     ap.add_argument("--download", metavar="URL", help="fetch the published archives instead")
     ap.add_argument("--only", nargs="*", choices=sorted(TARGETS), help="just these packs")
+    ap.add_argument(
+        "--grammar-from", type=Path, metavar="DIR", help="only the grammar cache, from DIR"
+    )
     args = ap.parse_args()
     manifest = json.loads(MANIFEST.read_text())
+    if args.grammar_from:
+        return grammar_from(manifest, args.grammar_from)
+    if args.out is None:
+        ap.error("--out is required")
     args.out.mkdir(parents=True, exist_ok=True)
     if args.download:
         return download(manifest, args.download, args.out, args.only or list(TARGETS))
@@ -125,6 +172,8 @@ def main() -> int:
             entry["sha256"] = hashlib.sha256(dest.read_bytes()).hexdigest()
             entry["size"] = dest.stat().st_size
             print(f"{dest.name}: {entry['size'] / 1e6:.1f} MB  sha256 {entry['sha256'][:16]}...")
+        if "sentences-nl" in (args.only or TARGETS):
+            build_grammar(data / TARGETS["sentences-nl"], args.out)
     MANIFEST.write_text(json.dumps(manifest, indent=1) + "\n")
     print(f"Updated {MANIFEST.relative_to(ROOT)}")
     return 0
