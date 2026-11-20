@@ -8,7 +8,7 @@
 
 <p align="center">
   <strong>Read Dutch with the words you already know.</strong><br>
-  An open-source reader that uses your Anki decks as the record of your vocabulary.
+  An open-source reader that knows your words: its own cards, or your Anki decks.
 </p>
 
 <p align="center">
@@ -194,10 +194,9 @@ Step by step: **[Install](docs/guide/install.md)** · **[Self-host](docs/guide/s
 
 ## How it works
 
-**Anki is the record of what you know.** Kenning reads your Dutch decks and turns each card into a
-recall probability (SM-2 or FSRS). A word counts as known at an interval of 21 days or more with
-recall of at least 0.6. Answers you give in Kenning add evidence but never make a word known; only
-Anki or **Mark known** does that.
+**Kenning knows your words.** It keeps your cards and schedules your reviews with FSRS, or it
+reads your Anki decks. A word counts as known when its card is mature (21 days or more) and you
+are still likely to recall it.
 
 **Algorithms, not AI.** Texts are analysed by spaCy with rules for lemmas, separable verbs and
 compounds. Meanings come from an offline Wiktionary dictionary, sentences are translated by an
