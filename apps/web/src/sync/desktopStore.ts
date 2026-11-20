@@ -4,16 +4,12 @@
  */
 import type { SyncStore } from "@app/db";
 import type { DesktopSync } from "../desktop/bridge.js";
-
-/** The last part of a folder path, for labels ("/home/me/Sync" → "Sync"). */
-function folderName(root: string): string {
-  return root.split(/[\\/]/).filter(Boolean).at(-1) ?? root;
-}
+import { placeLabel } from "./labels.js";
 
 /** A synced folder on this computer as a sync place. */
 export function folderStore(sync: DesktopSync, root: string): SyncStore {
   return {
-    label: `Folder · ${folderName(root)}`,
+    label: placeLabel({ kind: "folder", path: root }),
     list: (dir) => sync.list(root, dir),
     get: (path) => sync.get(root, path),
     put: (path, bytes) => sync.put(root, path, bytes),

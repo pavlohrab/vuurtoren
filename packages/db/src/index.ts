@@ -1,6 +1,7 @@
 export * from "./types.js";
 export * from "./ids.js";
 export * from "./hash.js";
+export { fromBase64, toBase64 } from "./base64.js";
 export {
   MIGRATIONS,
   PROJECTION_TABLES,

@@ -39,6 +39,8 @@ import {
   profileMode,
   renderTemplate,
   replayReviews,
+  stripHtml,
+  studyDayStart,
   trainingSequences,
 } from "@app/core";
 import type { KenningRepository, NativeCardChange, NativeCardView } from "@app/db";
@@ -110,19 +112,7 @@ export function readingDelay(intervalDays: number): number {
   return Math.min(7, Math.max(1, Math.round(intervalDays * 0.15)));
 }
 
-/** Start of the study day (4:00 local time) that `now` falls in. */
-export function studyDayStart(now: number): number {
-  const d = new Date(now);
-  d.setHours(4, 0, 0, 0);
-  if (d.getTime() > now) d.setDate(d.getDate() - 1);
-  return d.getTime();
-}
-
-const stripTags = (s: string) =>
-  s
-    .replace(/<[^>]*>/g, "")
-    .replace(/&nbsp;/g, " ")
-    .trim();
+const stripTags = (s: string) => stripHtml(s).trim();
 
 export function createLiveNative(deps: LiveNativeDeps) {
   const { repo } = deps;

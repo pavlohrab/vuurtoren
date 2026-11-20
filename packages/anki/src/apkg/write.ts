@@ -17,6 +17,8 @@ import {
   type NativeNote,
   type NativeNotetype,
   answerCard,
+  stripHtml,
+  studyDayStart,
 } from "@app/core";
 import { mediaRefs } from "./convert.js";
 
@@ -89,15 +91,10 @@ export function ankiNotetypeId(t: NativeNotetype, i: number): number {
   return t.id === "kenning-word" ? KENNING_NOTETYPE_ANKI_ID : KENNING_NOTETYPE_ANKI_ID + 1000 + i;
 }
 
-const stripHtml = (s: string) =>
-  s
-    .replace(/<[^>]*>/g, "")
-    .replace(/&nbsp;/g, " ")
-    .trim();
 
 /** Anki's note checksum: the first 8 hex digits of the SHA-1 of the stripped sort field. */
 async function checksum(field: string): Promise<number> {
-  const digest = await crypto.subtle.digest("SHA-1", new TextEncoder().encode(stripHtml(field)));
+  const digest = await crypto.subtle.digest("SHA-1", new TextEncoder().encode(stripHtml(field).trim()));
   const b = new Uint8Array(digest);
   return ((b[0]! << 24) >>> 0) + (b[1]! << 16) + (b[2]! << 8) + b[3]!;
 }
@@ -105,13 +102,6 @@ async function checksum(field: string): Promise<number> {
 /** A note's guid: stable for the note id, so importing the file twice updates, not doubles. */
 const guidOf = (noteId: number) => `kenning${noteId.toString(36)}`;
 
-/** Start of the study day (4:00 local time) that `ms` falls in. */
-function dayStart(ms: number): number {
-  const d = new Date(ms);
-  d.setHours(4, 0, 0, 0);
-  if (d.getTime() > ms) d.setDate(d.getDate() - 1);
-  return d.getTime();
-}
 
 /** Each deck and every parent of it ("A::B" also needs "A"), by name. */
 function withParents(names: string[]): string[] {
@@ -303,7 +293,7 @@ function cardRow(
     return {
       type: 2,
       queue: c.suspended ? -1 : 2,
-      due: Math.max(0, Math.round((dayStart(s.due) - crt) / DAY_MS)),
+      due: Math.max(0, Math.round((studyDayStart(s.due) - crt) / DAY_MS)),
       ivl: Math.max(1, Math.round(s.scheduledDays)),
       factor: 2500,
       reps: s.reps,
@@ -342,7 +332,7 @@ export async function writeAnkiPackage(
     ...input.cards.flatMap((c) => (c.schedule ? [c.schedule.due] : [])),
     ...input.reviews.map((r) => r.at),
   );
-  const crt = dayStart(firstMs);
+  const crt = studyDayStart(firstMs);
 
   const deckNames = withParents([
     ...input.decks.map((d) => d.name),
@@ -403,7 +393,7 @@ export async function writeAnkiPackage(
       if (mid === undefined) continue;
       noteIds.add(n.id);
       for (const f of n.fields) for (const m of mediaRefs(f)) used.add(m);
-      const sfld = stripHtml(n.fields[0] ?? "");
+      const sfld = stripHtml(n.fields[0] ?? "").trim();
       await db.exec("INSERT INTO notes VALUES (?,?,?,?,0,?,?,?,?,0,'')", [
         n.id,
         guidOf(n.id),

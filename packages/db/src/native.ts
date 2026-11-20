@@ -6,6 +6,7 @@
  * (`createRepository`), exactly as with the browser worker.
  */
 import { checkBackupHeader } from "./backup.js";
+import { fromBase64, toBase64 } from "./base64.js";
 import { makeDriver, type SqlRow } from "./driver-core.js";
 import { randomDeviceId } from "./ids.js";
 import { SCHEMA_VERSION } from "./schema.js";
@@ -29,21 +30,6 @@ export type NativeDriver = SqlDriver & {
 };
 
 const SAFE = BigInt(Number.MAX_SAFE_INTEGER);
-
-function toBase64(bytes: Uint8Array): string {
-  let s = "";
-  for (let i = 0; i < bytes.length; i += 0x8000) {
-    s += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
-  }
-  return btoa(s);
-}
-
-function fromBase64(b64: string): Uint8Array {
-  const s = atob(b64);
-  const out = new Uint8Array(s.length);
-  for (let i = 0; i < s.length; i++) out[i] = s.charCodeAt(i);
-  return out;
-}
 
 /** A parameter as JSON. */
 export function encodeParam(v: SqlValue): unknown {

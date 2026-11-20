@@ -12,6 +12,7 @@
  * passphrase turns it into the current format with that key as its data key.
  */
 import { argon2id } from "hash-wasm";
+import { fromBase64, toBase64 } from "../base64.js";
 
 const MAGIC = new TextEncoder().encode("KSY1");
 /** Sealed with the file's path as additional data. */
@@ -81,19 +82,6 @@ export class SealedFileError extends Error {
 }
 
 const subtle = () => globalThis.crypto.subtle;
-
-export function toBase64(bytes: Uint8Array): string {
-  let s = "";
-  for (const b of bytes) s += String.fromCharCode(b);
-  return btoa(s);
-}
-
-export function fromBase64(text: string): Uint8Array {
-  const s = atob(text);
-  const out = new Uint8Array(s.length);
-  for (let i = 0; i < s.length; i++) out[i] = s.charCodeAt(i);
-  return out;
-}
 
 /** The key from its 64 bytes (`SyncKey.raw`). */
 export async function keyFromRaw(raw: Uint8Array): Promise<SyncKey> {

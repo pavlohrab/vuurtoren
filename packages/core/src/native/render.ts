@@ -4,6 +4,7 @@
  * `{{cloze:Field}}`, and the `text:`, `hint:` and `type:` filters. Sound tags become a list of
  * audio files. The HTML still has to be sanitised before it is shown (the web app does that).
  */
+import { stripHtml } from "./text.js";
 
 export interface RenderedCard {
   html: string;
@@ -23,8 +24,6 @@ export function clozeNumbers(fields: readonly string[]): number[] {
 
 const escapeHtml = (s: string) =>
   s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
-
-const stripHtml = (s: string) => s.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ");
 
 /** One cloze field for card `n` (1-based), on the front (blanks) or the back (answers). */
 function renderCloze(value: string, n: number, back: boolean): string {

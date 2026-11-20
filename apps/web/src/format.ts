@@ -20,7 +20,7 @@ export function formatBytes(n: number): string {
   return `${v.toFixed(v < 10 ? 1 : 0)} ${units[i]}`;
 }
 
-const RELATIVE = new Intl.RelativeTimeFormat(undefined, { numeric: "auto" });
+const RELATIVE = new Intl.RelativeTimeFormat("en-GB", { numeric: "auto" });
 const STEPS: [Intl.RelativeTimeFormatUnit, number][] = [
   ["minute", 60],
   ["hour", 24],
@@ -28,7 +28,7 @@ const STEPS: [Intl.RelativeTimeFormatUnit, number][] = [
 ];
 
 /**
- * A past moment in plain words: "just now", "5 minutes ago", "yesterday", then a locale date
+ * A past moment in plain words: "just now", "5 minutes ago", "yesterday", then a date
  * ("12 Nov") after a week.
  */
 export function relativeTime(ms: number, now = Date.now()): string {
@@ -39,7 +39,7 @@ export function relativeTime(ms: number, now = Date.now()): string {
     v /= next;
   }
   const d = new Date(ms);
-  return d.toLocaleDateString(undefined, {
+  return d.toLocaleDateString("en-GB", {
     day: "numeric",
     month: "short",
     ...(d.getFullYear() !== new Date(now).getFullYear() ? { year: "numeric" } : {}),

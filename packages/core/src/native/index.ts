@@ -15,3 +15,4 @@ export { type TrainingSequence, trainingReviewCount, trainingSequences } from ".
 export { renderTemplate, clozeNumbers, type RenderedCard } from "./render.js";
 export * from "./workload.js";
 export { type CardHistory, reviewHistory } from "./history.js";
+export { stripHtml, studyDayStart } from "./text.js";

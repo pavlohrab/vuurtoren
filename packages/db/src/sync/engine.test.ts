@@ -2,6 +2,7 @@
 import { gzipSync } from "fflate";
 import { argon2id } from "hash-wasm";
 import { describe, expect, it } from "vitest";
+import { toBase64 } from "../base64.js";
 import { createNodeDriver } from "../node.js";
 import { type ImportResult, type KenningRepository, createRepository } from "../repository.js";
 import type { SyncEvent } from "../types.js";
@@ -15,7 +16,6 @@ import {
   keyFromRaw,
   parseRecovery,
   seal,
-  toBase64,
   unseal,
   vaultId,
 } from "./crypto.js";
