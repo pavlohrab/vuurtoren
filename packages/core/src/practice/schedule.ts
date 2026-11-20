@@ -1,4 +1,5 @@
-import { createEmptyCard, fsrs, generatorParameters, Rating, type Card, type State } from "ts-fsrs";
+import { createEmptyCard, fsrs, generatorParameters, Rating } from "ts-fsrs";
+import { toFsrsCard } from "../fsrsCard.js";
 import type { Grade, ItemState, Skill } from "./types.js";
 
 const DAY_MS = 86_400_000;
@@ -14,21 +15,6 @@ const RATING = {
   easy: Rating.Easy,
 } as const;
 
-function toCard(s: ItemState): Card {
-  const card: Card = {
-    due: new Date(s.due),
-    stability: s.stability,
-    difficulty: s.difficulty,
-    scheduled_days: s.scheduledDays,
-    learning_steps: s.learningSteps ?? 0,
-    reps: s.reps,
-    lapses: s.lapses,
-    state: s.state as State,
-  };
-  if (s.lastReview !== undefined) card.last_review = new Date(s.lastReview);
-  return card;
-}
-
 /**
  * One FSRS step. `state` undefined means the pair was never practised (new card).
  * @param now review time, ms since epoch.
@@ -40,7 +26,7 @@ export function review(
   grade: Grade,
   now: number,
 ): ItemState {
-  const card = state ? toCard(state) : createEmptyCard(new Date(now));
+  const card = state ? toFsrsCard(state) : createEmptyCard(new Date(now));
   const next = scheduler.next(card, new Date(now), RATING[grade]).card;
   return {
     key,

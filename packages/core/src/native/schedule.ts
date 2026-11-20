@@ -6,12 +6,12 @@
 import {
   type Card,
   type Grade,
-  type State,
   createEmptyCard,
   default_w,
   fsrs,
   generatorParameters,
 } from "ts-fsrs";
+import { toFsrsCard } from "../fsrsCard.js";
 import type { CardMemory } from "../memory.js";
 import type { CardRating, CardReview, CardSchedule, DeckOptions } from "./types.js";
 
@@ -42,18 +42,7 @@ function schedulerFor(options: DeckOptions, params: readonly number[], fuzz: boo
 }
 
 function toCard(s: CardSchedule | undefined, now: number): Card {
-  if (!s) return createEmptyCard(new Date(now));
-  return {
-    due: new Date(s.due),
-    stability: s.stability,
-    difficulty: s.difficulty,
-    scheduled_days: s.scheduledDays,
-    learning_steps: s.learningSteps,
-    reps: s.reps,
-    lapses: s.lapses,
-    state: s.state as State,
-    last_review: new Date(s.lastReview),
-  };
+  return s ? toFsrsCard(s) : createEmptyCard(new Date(now));
 }
 
 function fromCard(c: Card, now: number): CardSchedule {
