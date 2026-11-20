@@ -79,8 +79,12 @@ Vuurtoren writes to Anki only when you click, and tags every note it touches.
   for course words (per unit, per course or default).
 - Onboarding at `/welcome` creates it: language (only when there is more than one) → "Do you use
   Anki?" → (connected or moving: connect Anki → confirm decks) → where new words go → the import
-  when moving, or the placement check when you start fresh → first text. The stepper shows three
-  fixed parts: Getting started, Your words, First text.
+  when moving, the most common words with a placement question in native mode, or the placement
+  check when you start fresh with Anki → first text. The stepper shows three fixed parts: Getting
+  started, Your words, First text.
+- **Starter words** ship with the app (`content/starter/nl-5000.json`, CC BY-SA 4.0), so native
+  mode can start from the most common words offline; they become ordinary cards of Vuurtoren's
+  word type, and a placement marks the words below it known with Mark known.
 - A profile saved without a mode is connected.
 
 ## Data

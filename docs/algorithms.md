@@ -755,6 +755,33 @@ Checked by importing the file into a fresh collection with Anki 26.08: cards, du
 4. **With history (experimental):** `setSpecificValueOfCard` sets the exact interval, reviews and lapses, and `insertReviews` writes every answer with its real time and the interval it gave (the history replayed without fuzz, as in the export). Answers Anki already holds (`getReviewsOfCards`) are not written twice. Anki computes FSRS memory from this history when its deck options are saved or optimised.
 5. The profile becomes connected and reads the moved decks (Vuurtoren's note type and fields), and an Anki sync runs. Vuurtoren's own cards stay in its database, unused.
 
+### 9.9 Starter words
+
+A new learner in native mode can start with the most common Dutch words. The list ships with the app (`content/starter/nl-5000.json`, CC BY-SA 4.0) and works offline.
+
+**The list** (`server/nlp/scripts/build_starter.py`, rules in `server/nlp/src/vuurtoren_nlp/starter.py`):
+
+1. **Ranking.** The 12,000 most frequent Dutch word forms of `wordfreq` (frequency per word form, from subtitles, Wikipedia, web text and more).
+2. **Forms to lemmas.** Every Tatoeba sentence of the sentence pack is analysed with the app's own spaCy pipeline, so each form gets its readings in context: "was" is read mostly as _zijn_ and now and then as _wassen_. A form's frequency is shared among its readings in proportion and summed per lemma. A form that never occurs in the sentences is analysed on its own and takes the part of speech of its dictionary entry. A lemma without a dictionary entry takes the lemma the dictionary's forms table gives for the form; a word that is only an inflection of another ("Nederlanders", plural of _Nederlander_) becomes that word.
+3. **Filters.** Out go: words with digits, single letters (except _u_), names (read as a proper noun more than half the time, unless the dictionary has them as an ordinary word: _september_, _maandag_, _Engels_), abbreviations, interjections other than everyday ones (_ja_, _nee_, _hallo_, _dank_ …), English words (at least 0.5 Zipf more frequent in English and hardly in the Dutch sentences), very short words never met in context, and lemmas without a dictionary entry or meaning. Number words (_twee_, _nul_) stay.
+4. **What each word gets.** The 5000 highest lemmas are kept with their rank, part of speech (the commonest reading), article (nouns, from the dictionary), the reader's short gloss (the same rules as `shortGloss`, form-of senses resolved, the hand-written particle glosses; one test file holds both versions to the same cases) and one example sentence with its English: of the word's Tatoeba sentences, one of 5–10 words whose other words all rank at most 1000 after the word itself and that shows the word as its lemma, with the lowest practice score; otherwise the shortest. About 9 % of words have no sentence.
+
+**Levels** (`packages/anki/src/starter.ts`). Ranks 1–500, 501–1000 … are levels of 500 words, each a deck "Vuurtoren · Woorden 1–500" and so on. Levels 1–6 (words 1–3000) are the default; levels 7–10 (3001–5000) are the extended levels, added only on request. A word becomes a note of Vuurtoren's word type (word with its article, gloss, sentence with the word in bold, translation, and the Tatoeba sentence number as source) with one new card, in order of rank. Notes and cards have fixed ids from the rank, so adding a level again, or on two devices before they sync, gives the same cards once; a word the learner already has a card for is skipped.
+
+**One level at a time.** Starter decks are created with no new cards a day. When no starter deck that still has new cards adds any, the lowest such deck gets the default 20 a day (checked when the review counts are read). So the levels come in order, and the learner can change a deck's limit as usual.
+
+**Placement.** Onboarding asks "How much Dutch do you know?":
+
+| Answer           | Known (Mark known) | New cards                         |
+| ---------------- | ------------------ | --------------------------------- |
+| Just starting    | —                  | words 1–3000                      |
+| About 500 words  | words 1–500        | words 501–3000                    |
+| About 1000 words | words 1–1000       | words 1001–3000                   |
+| About 2000 words | words 1–2000       | words 2001–3000                   |
+| More             | words 1–3000       | words 3001–5000 (extended levels) |
+
+Known words are added with Mark known's schedule (an interval of 21–35 days, 9.5) in their level's deck, so they come back once to be checked; a word the learner already has as a new card gets that schedule instead. Settings → Language & decks adds the next level, or all the extended levels.
+
 ## 10. Sync
 
 Your data on every device, with the event log as the unit of sync (`packages/db/src/sync/`).

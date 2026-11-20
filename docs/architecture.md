@@ -23,6 +23,12 @@ Dependencies point down; nothing in `packages/` imports from `apps/`.
 | `server/api`          | A Vuurtoren server: sign-in, sync tokens, the sync place (`/api/sync`) and the sign-in check of the language server (`/nlp/`). Holds no learner data.                                                                                                                   | —                                     |
 | `server/nlp`          | Python language server: analysis (spaCy), dictionary, forms, sentences, grammar detectors, OCR (RapidOCR), translation.                                                                                                                                                 | —                                     |
 
+Content that is data, not code, lives in `content/` under CC BY-SA 4.0 (`content/LICENSE`):
+`content/starter/nl-5000.json`, the 5000 most common Dutch words with a gloss and an example
+sentence, built by `server/nlp/scripts/build_starter.py` and committed. The web app imports it as
+a chunk of its own (`apps/web/src/services/starterWords.ts`), loaded on first use and precached by
+the service worker, so starter decks work offline in the browser and the desktop app.
+
 ## apps/web
 
 ```
@@ -143,12 +149,12 @@ Runtime 73 MB, models 32 MB), the `-slim` image has no OCR. `GET /health` report
 The NLP image holds code and libraries only; its data are versioned **data packs** on the
 `/data` volume (`server/nlp/src/vuurtoren_nlp/packs.py`, manifest `packs.json` next to it):
 
-| pack                  | contents                              | archive | installed |
-| --------------------- | ------------------------------------- | ------- | --------- |
-| `dictionary-nl`       | Wiktionary (Kaikki) glosses, forms    | 14 MB   | 39 MB     |
-| `sentences-nl`        | Tatoeba sentences + lemma index       | 20 MB   | 47 MB     |
-| `mt-nl-en`            | OPUS-MT nl→en, CTranslate2 int8       | 70 MB   | 84 MB     |
-| `grammar-examples-nl` | derived: built on the server (~3 min) | —       | 0.4 MB    |
+| pack                  | contents                             | archive | installed |
+| --------------------- | ------------------------------------ | ------- | --------- |
+| `dictionary-nl`       | Wiktionary (Kaikki) glosses, forms   | 14 MB   | 39 MB     |
+| `sentences-nl`        | Tatoeba sentences + lemma index      | 20 MB   | 47 MB     |
+| `mt-nl-en`            | OPUS-MT nl→en, CTranslate2 int8      | 70 MB   | 84 MB     |
+| `grammar-examples-nl` | derived: example sentences per topic | 0.1 MB  | 0.4 MB    |
 
 - **Manifest**: `{name: {version, sha256, size}}`; the archive is `<name>-<version>.tar.gz`
   (deterministic tar.gz of one file or directory). A marker `<data>.pack.json` records what is
@@ -161,6 +167,13 @@ The NLP image holds code and libraries only; its data are versioned **data packs
   place; caches holding the old data are dropped. Data without a marker (a development build) is
   never replaced unless forced. Works offline once installed. `GET /health` shows
   `packs.items.<name>.state` (`ok`, `outdated`, `unversioned`, `missing`) and `activity`.
+- **Grammar examples** are derived from the sentence pack and the grammar detectors, so they are
+  not in `packs.json`. `build_packs.py` writes
+  `grammar-examples-nl-<sentences version>-<detector hash>.tar.gz` next to the archives
+  (`--grammar-from DIR` builds it from the sentence pack archive in `DIR`). The offline installer
+  and the `-full` image bundle it, and the server unpacks it when it fits the installed sentences
+  and the current detectors. The standard installer and the standard image build it on the device
+  after the sentence pack arrives (about a minute), as they do when the detectors change.
 - **Releasing new data**: bump the pack's version in `packs.json`, run
   `uv run python scripts/build_packs.py --out dist/packs`, upload `dist/packs/*` as assets of a
   `packs-<version>` release (the `packs` workflow does both) and commit the updated `packs.json`.
