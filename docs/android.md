@@ -48,8 +48,8 @@ apps/web/src/platform/
    Without a server the app still works: the starter words, reviews and the demo text. Adding a
    new text asks for a server.
 3. The starter words: where new words start (level 1, 2, 3, 5 or 7).
-4. Downloads, with progress and sizes: dictionary (14 MB, needed), audio (female or male,
-   optional, about 40 MB each).
+4. Downloads, with progress and sizes: dictionary (14 MB, needed), audio with both voices
+   (about 80 MB, optional).
 
 ## Design
 
@@ -110,5 +110,4 @@ Each one ends with something you can install and try.
 - Store the reading analysis in the event log (synced, so a text added on the desktop is ready on
   the phone) or keep it per device (smaller sync, but the phone needs the server once per text)?
   Today it is per device.
-- One audio voice per device to save space, or both? (Both: about 80 MB.)
 - F-Droid: ML Kit is not free software; an F-Droid build would need OCR off or another engine.
