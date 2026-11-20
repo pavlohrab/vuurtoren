@@ -30,8 +30,8 @@ export function LockedScreen({
           </h1>
           <p className="signin-lede" role="alert">
             Your data file is in use by Kenning on <strong>{lock.host}</strong> (last active{" "}
-            {relativeTime(lock.seen * 1000)}). The folder is probably synced between computers. If both change the
-            file at the same time, one side’s changes are lost.
+            {relativeTime(lock.seen * 1000)}). The folder is probably synced between computers. If
+            both change the file at the same time, one side’s changes are lost.
           </p>
           <p className="signin-lede">
             Close Kenning on {lock.host} and wait until the sync tool has finished, then try again.

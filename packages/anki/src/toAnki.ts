@@ -55,7 +55,6 @@ export interface ToAnkiResult {
 
 const strip = (s: string) => stripHtml(s).trim();
 
-
 /** The fields of a Kenning Word note for a native note, or null when it holds no word. */
 export function wordFields(
   note: NativeNote,
