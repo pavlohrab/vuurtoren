@@ -13,10 +13,13 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import threading
 from collections import OrderedDict
 from pathlib import Path
 from typing import Any, Protocol
+
+from wordfreq import zipf_frequency
 
 from vuurtoren_nlp.align import DISAGREE_FACTOR, AttentionResult, agrees, align_word
 from vuurtoren_nlp.datadir import data_path
@@ -142,7 +145,29 @@ def translate_texts(source: str, target: str, texts: list[str]) -> list[dict[str
     if (source, target) not in SUPPORTED_PAIRS:
         raise ServiceError(422, f"Unsupported language pair {source}->{target} (only nl->en).")
     translations = get_engine().translate(texts)
-    return [{"text": t, "translation": tr} for t, tr in zip(texts, translations, strict=True)]
+    return [
+        {"text": t, "translation": tr if plausible(t, tr) else ""}
+        for t, tr in zip(texts, translations, strict=True)
+    ]
+
+
+_WORD = re.compile(r"[^\W\d_]+(?:['’][^\W\d_]+)?")
+
+
+def plausible(source: str, translation: str) -> bool:
+    """False for an output that is not a translation: Dutch again (the model sometimes
+    "translates" an odd line into unrelated Dutch), or far longer than its source."""
+    if not translation.strip():
+        return False
+    if len(translation) > 4 * len(source) + 40:
+        return False
+    src = {w.lower() for w in _WORD.findall(source)}
+    new = [w.lower() for w in _WORD.findall(translation) if w.lower() not in src]
+    if len(new) < 3:
+        return True
+    en = sum(zipf_frequency(w, "en") for w in new) / len(new)
+    nl = sum(zipf_frequency(w, "nl") for w in new) / len(new)
+    return nl <= en + 0.5
 
 
 _ALIGN_CACHE_SIZE = 256
@@ -185,8 +210,9 @@ def align_texts(
     out: list[dict[str, Any]] = []
     for (text, spans), res in zip(items, results[: len(items)], strict=True):
         found_words = []
+        ok = plausible(text, res.translation)
         for start, end in spans:
-            found = align_word(res, text, start, end) if res.target else None
+            found = align_word(res, text, start, end) if res.target and ok else None
             own = next(alone)
             confidence = 0.0
             if found:
@@ -200,7 +226,9 @@ def align_texts(
                     "confidence": confidence,
                 }
             )
-        out.append({"text": text, "translation": res.translation, "words": found_words})
+        out.append(
+            {"text": text, "translation": res.translation if ok else "", "words": found_words}
+        )
     return out
 
 
