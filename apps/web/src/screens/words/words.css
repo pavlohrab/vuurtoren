@@ -219,3 +219,40 @@
   font-size: 12.5px;
   color: var(--ink-muted);
 }
+.words-level {
+  width: 200px;
+}
+/* Grouped by starter level: a header row per level with how many of its words are known. */
+.words-group th {
+  padding-top: var(--s-5);
+  background: transparent;
+  text-align: left;
+}
+.words-group-label {
+  font-weight: 600;
+  color: var(--ink);
+  font-size: 14px;
+}
+.words-group-count {
+  margin-left: var(--s-3);
+  font-weight: 400;
+  font-size: 13px;
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+.words-group-bar {
+  display: block;
+  width: 100%;
+  max-width: 240px;
+  margin-top: 6px;
+}
+.words-levels-hint {
+  margin: 0 0 16px;
+  font-size: 13.5px;
+  color: var(--ink-muted);
+}
+@media (max-width: 699px) {
+  .words-level {
+    width: 100%;
+  }
+}

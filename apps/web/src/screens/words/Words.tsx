@@ -1,15 +1,24 @@
 /**
  * Words: the hub of the learning loop. It opens on the words to decide on (the new words of
  * your texts without a card, newest text first); other views list words by state, source (a
- * text, a course unit, the last practice session) and search, all kept in the URL
- * (`/words?state=decide|new|learning|known|ignored|all&source=…&q=&word=<key>`). A row opens
- * the shared word inspector; in Select mode a selection goes to Anki, Practice or Talk.
+ * text, a course unit, the last practice session), starter level and search, all kept in the URL
+ * (`/words?state=decide|new|learning|known|ignored|all&source=…&level=1…10|other&group=level&q=
+ * &word=<key>`). Grouped by level, each level shows how many of its words are known. A row
+ * opens the shared word inspector; in Select mode a selection goes to Anki, Practice or Talk.
  */
 import { pct, plural } from "../../format.js";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
-import { Columns3, Dumbbell, Languages, MessagesSquare, SquareCheck, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import {
+  Columns3,
+  Dumbbell,
+  Languages,
+  Layers,
+  MessagesSquare,
+  SquareCheck,
+  X,
+} from "lucide-react";
+import { Fragment, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import type { WordState } from "@app/core";
 import {
@@ -38,11 +47,51 @@ import { ErrorNotice } from "../../shell/ErrorNotice.js";
 import { useShell } from "../../shell/ShellContext.js";
 import { revealAboveSheet } from "../../shell/revealAboveSheet.js";
 import { useDebounced } from "../../useDebounced.js";
+import { loadStarterWords } from "../../services/starterWords.js";
 import { SuggestedWords } from "./SuggestedWords.js";
+import {
+  type LevelFilter,
+  type LevelProgress,
+  type StarterIndex,
+  groupByLevel,
+  inLevel,
+  levelLabel,
+  levelProgress,
+  parseLevel,
+  progressText,
+  starterIndex,
+} from "./levels.js";
 import { useWordActions } from "../useWordActions.js";
 import "./words.css";
 
 const PAGE_SIZE = 50;
+/** With a level filter or grouping, every word is read and then narrowed here. */
+const ALL_WORDS = 100_000;
+
+let starterIndexCache: Promise<StarterIndex> | null = null;
+/** The starter list's ranks by key (loaded on first use). */
+function loadStarterIndex(): Promise<StarterIndex> {
+  starterIndexCache ??= loadStarterWords().then(starterIndex);
+  return starterIndexCache;
+}
+
+/**
+ * Rows narrowed to a starter level and/or ordered by level (`loadRows` reads them all first, so
+ * a level is complete), then cut to `limit`.
+ */
+async function loadLevelRows(
+  services: AppServices,
+  source: WordSource | null,
+  filters: { view: WordsView; query?: string | undefined; limit: number },
+  index: StarterIndex,
+  level: { only: LevelFilter | null; grouped: boolean },
+): Promise<WordRow[]> {
+  if (level.only === null && !level.grouped) return loadRows(services, source, filters);
+  let rows = await loadRows(services, source, { ...filters, limit: ALL_WORDS });
+  if (level.only !== null) rows = inLevel(rows, index, level.only);
+  if (level.grouped) rows = groupByLevel(rows, index).flatMap((g) => g.rows);
+  return rows.slice(0, filters.limit);
+}
 
 /** The views of the list: words to decide on, then by state. */
 export type WordsView = "decide" | "due" | "new" | "learning" | "known" | "ignored" | "all";
@@ -222,6 +271,8 @@ export async function loadRows(
 interface WordsSearch {
   state?: string;
   source?: string;
+  level?: string;
+  group?: string;
   q?: string;
   word?: string;
 }
@@ -243,7 +294,8 @@ export function Words() {
   const setSearch = (patch: Partial<Record<keyof WordsSearch, string | undefined>>) => {
     const next: Record<string, string | undefined> = { ...params, ...patch };
     const clean: WordsSearch = {};
-    for (const k of ["state", "source", "q", "word"] as const) if (next[k]) clean[k] = next[k];
+    for (const k of ["state", "source", "level", "group", "q", "word"] as const)
+      if (next[k]) clean[k] = next[k];
     void navigate({ to: "/words", search: clean, replace: true });
   };
 
@@ -270,11 +322,44 @@ export function Words() {
     setSelected(new Set());
   };
 
+  // Starter levels: the filter and the grouping (both in the URL).
+  const index = useQuery({
+    queryKey: ["starter-index"],
+    queryFn: loadStarterIndex,
+    staleTime: Infinity,
+  });
+  const level = parseLevel(params.level, index.data);
+  const grouped = params.group === "level";
   const rows = useQuery({
-    queryKey: ["words", "rows", params.source ?? null, view, params.q ?? "", limit],
-    queryFn: () => loadRows(services, source, { view, query: params.q, limit }),
+    queryKey: ["words", "rows", params.source ?? null, view, params.q ?? "", limit, level, grouped],
+    queryFn: async () =>
+      level !== null || grouped
+        ? loadLevelRows(
+            services,
+            source,
+            { view, query: params.q, limit },
+            await loadStarterIndex(),
+            { only: level, grouped },
+          )
+        : loadRows(services, source, { view, query: params.q, limit }),
     placeholderData: keepPreviousData,
   });
+  const progress = useQuery({
+    queryKey: ["words", "level-progress"],
+    queryFn: async () => {
+      const idx = await loadStarterIndex();
+      const keys = [...idx.rank.keys()];
+      return levelProgress(idx, await services.words({ keys, limit: ALL_WORDS }));
+    },
+    enabled: grouped,
+  });
+  // Native learners whose profile predates the starter words have no starter decks.
+  const starterDecks = useQuery({
+    queryKey: ["starter-levels"],
+    queryFn: () => services.starterLevels(),
+    enabled: grouped && native,
+  });
+  const noStarterDecks = grouped && native && starterDecks.data?.held.length === 0;
   const texts = useQuery({ queryKey: ["texts"], queryFn: () => services.listTexts() });
   const unitKey = source?.kind === "unit" ? source : null;
   const unitQ = useQuery({
@@ -366,7 +451,21 @@ export function Words() {
     onError: (e) => toast("Could not add the words", errorText(e)),
   });
 
-  const filtered = Boolean(view !== defaultView || source || params.q);
+  const filtered = Boolean(view !== defaultView || source || params.q || level !== null);
+  const levelOptions = [
+    { value: "all", label: "All levels" },
+    ...(index.data?.levels ?? []).map((l) => ({
+      value: String(l.level),
+      label: levelLabel(index.data!, l.level),
+    })),
+    { value: "other", label: "Other words" },
+  ];
+  const levelName = (l: LevelFilter) =>
+    l === "other" ? "Other words" : index.data ? levelLabel(index.data, l) : `Level ${l}`;
+  // Grouped: a header row per level (null: Other words); otherwise one group without a header.
+  const groups: { level?: number | null; rows: WordRow[] }[] =
+    grouped && index.data ? groupByLevel(list, index.data) : [{ rows: list }];
+  const span = 3 + Number(selecting) + Number(columns.recall) + Number(columns.decks);
   const practiseKeys = (chosenKeys.length ? chosenKeys : list.map((r) => r.key)).slice(0, 30);
   const again = readPracticeAgain();
   const sourceOptions = [
@@ -427,6 +526,18 @@ export function Words() {
               }}
             />
           </div>
+          <div className="words-level">
+            <Select
+              label="Level"
+              value={level === null ? "all" : String(level)}
+              options={levelOptions}
+              onValueChange={(v) => {
+                setLimit(PAGE_SIZE);
+                setSelected(new Set());
+                setSearch({ level: v === "all" ? undefined : v });
+              }}
+            />
+          </div>
           <div className="words-search">
             <Input
               label="Search"
@@ -468,6 +579,14 @@ export function Words() {
               </label>
             </Popover>
             <Button
+              variant={grouped ? "secondary" : "ghost"}
+              size="sm"
+              aria-pressed={grouped}
+              onClick={() => setSearch({ group: grouped ? undefined : "level" })}
+            >
+              <Layers size={14} aria-hidden /> Group by level
+            </Button>
+            <Button
               variant={selecting ? "secondary" : "ghost"}
               size="sm"
               aria-pressed={selecting}
@@ -487,6 +606,12 @@ export function Words() {
             <FilterChip
               label={`From: ${sourceLabel}`}
               onClear={() => setSearch({ source: undefined })}
+            />
+          ) : null}
+          {level !== null ? (
+            <FilterChip
+              label={`Level: ${levelName(level)}`}
+              onClear={() => setSearch({ level: undefined })}
             />
           ) : null}
           {view !== defaultView ? (
@@ -510,13 +635,23 @@ export function Words() {
               className="link-button words-clear"
               onClick={() => {
                 setDraft("");
-                void navigate({ to: "/words", search: word ? { word } : {}, replace: true });
+                // Grouping is a way of showing the list, not a filter: it stays.
+                const keep = { ...(word ? { word } : {}), ...(grouped ? { group: "level" } : {}) };
+                void navigate({ to: "/words", search: keep, replace: true });
               }}
             >
               Clear filters
             </button>
           </li>
         </ul>
+      ) : null}
+
+      {noStarterDecks ? (
+        <p className="words-levels-hint">
+          <Link to="/settings" search={{ section: "language" }}>
+            Add the starter levels in Settings → Language &amp; decks
+          </Link>
+        </p>
       ) : null}
 
       {rows.isPending ? (
@@ -600,57 +735,68 @@ export function Words() {
                 </tr>
               </thead>
               <tbody>
-                {list.map((w) => (
-                  <tr
-                    key={w.key}
-                    aria-selected={w.key === word}
-                    className="words-row"
-                    onClick={(e) => {
-                      if ((e.target as Element).closest("input,button,a")) return;
-                      if (selecting) toggle(w.key);
-                      else open(w.key, e.currentTarget);
-                    }}
-                  >
-                    {selecting ? (
-                      <td className="words-check">
-                        <input
-                          type="checkbox"
-                          aria-label={`Select ${w.lemma}`}
-                          checked={selected.has(w.key)}
-                          onChange={() => toggle(w.key)}
-                        />
-                      </td>
+                {groups.map((g) => (
+                  <Fragment key={String(g.level)}>
+                    {g.level !== undefined && index.data ? (
+                      <LevelHeader
+                        label={levelLabel(index.data, g.level)}
+                        progress={progress.data?.find((p) => p.level === g.level)}
+                        span={span}
+                      />
                     ) : null}
-                    <td>
-                      <button
-                        type="button"
-                        className="words-open"
-                        aria-label={`Open ${w.lemma}`}
-                        onClick={(e) => open(w.key, e.currentTarget.closest("tr"))}
+                    {g.rows.map((w) => (
+                      <tr
+                        key={w.key}
+                        aria-selected={w.key === word}
+                        className="words-row"
+                        onClick={(e) => {
+                          if ((e.target as Element).closest("input,button,a")) return;
+                          if (selecting) toggle(w.key);
+                          else open(w.key, e.currentTarget);
+                        }}
                       >
-                        <Lemma lemma={w.lemma} article={w.article} />
-                      </button>
-                    </td>
-                    <td>
-                      <WordStateChip state={w.state} inVuurtoren={w.appLearning} />
-                      {w.due !== undefined ? (
-                        <span className="words-due">{dueAgo(w.due)}</span>
-                      ) : null}
-                    </td>
-                    <td className={w.gloss ? "words-gloss" : "words-gloss words-gloss--none"}>
-                      {w.gloss ?? "No meaning yet"}
-                    </td>
-                    {columns.recall ? (
-                      <td className="k-mono words-col-recall">
-                        {w.pKnown === null || w.state !== "learning" ? "–" : pct(w.pKnown)}
-                      </td>
-                    ) : null}
-                    {columns.decks ? (
-                      <td className="words-col-decks" title={w.decks.join(", ")}>
-                        {w.decks.map(deckName).join(", ")}
-                      </td>
-                    ) : null}
-                  </tr>
+                        {selecting ? (
+                          <td className="words-check">
+                            <input
+                              type="checkbox"
+                              aria-label={`Select ${w.lemma}`}
+                              checked={selected.has(w.key)}
+                              onChange={() => toggle(w.key)}
+                            />
+                          </td>
+                        ) : null}
+                        <td>
+                          <button
+                            type="button"
+                            className="words-open"
+                            aria-label={`Open ${w.lemma}`}
+                            onClick={(e) => open(w.key, e.currentTarget.closest("tr"))}
+                          >
+                            <Lemma lemma={w.lemma} article={w.article} />
+                          </button>
+                        </td>
+                        <td>
+                          <WordStateChip state={w.state} inVuurtoren={w.appLearning} />
+                          {w.due !== undefined ? (
+                            <span className="words-due">{dueAgo(w.due)}</span>
+                          ) : null}
+                        </td>
+                        <td className={w.gloss ? "words-gloss" : "words-gloss words-gloss--none"}>
+                          {w.gloss ?? "No meaning yet"}
+                        </td>
+                        {columns.recall ? (
+                          <td className="k-mono words-col-recall">
+                            {w.pKnown === null || w.state !== "learning" ? "–" : pct(w.pKnown)}
+                          </td>
+                        ) : null}
+                        {columns.decks ? (
+                          <td className="words-col-decks" title={w.decks.join(", ")}>
+                            {w.decks.map(deckName).join(", ")}
+                          </td>
+                        ) : null}
+                      </tr>
+                    ))}
+                  </Fragment>
                 ))}
               </tbody>
             </table>
@@ -713,6 +859,41 @@ export function Words() {
           )
         : null}
     </div>
+  );
+}
+
+/** A level's header row: "Level 1 · 1–500", how many of its words are known, and a thin bar. */
+function LevelHeader({
+  label,
+  progress,
+  span,
+}: {
+  label: string;
+  progress: LevelProgress | undefined;
+  span: number;
+}) {
+  const share = progress && progress.size ? progress.known / progress.size : 0;
+  return (
+    <tr className="words-group">
+      <th colSpan={span} scope="colgroup">
+        <span className="words-group-label">{label}</span>
+        {progress ? (
+          <>
+            <span className="words-group-count">{progressText(progress)}</span>
+            <span
+              className="k-meter-track words-group-bar"
+              role="meter"
+              aria-label={`${label}: known`}
+              aria-valuemin={0}
+              aria-valuemax={progress.size}
+              aria-valuenow={progress.known}
+            >
+              <span className="k-meter-fill" style={{ width: `${share * 100}%` }} />
+            </span>
+          </>
+        ) : null}
+      </th>
+    </tr>
   );
 }
 

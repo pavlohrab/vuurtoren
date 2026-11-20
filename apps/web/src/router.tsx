@@ -82,10 +82,12 @@ const importRoute = searchScreen("/import", () => import("./screens/Import.js"),
   "course",
   "unit",
 ]);
-/** /words?state=&source=text:<id>|unit:<course>/<n>|practice-again&q=&word=<key> */
+/** /words?state=&source=text:<id>|unit:<course>/<n>|practice-again&level=1…10|other&group=level&q=&word=<key> */
 const wordsRoute = searchScreen("/words", () => import("./screens/words/Words.js"), "Words", [
   "state",
   "source",
+  "level",
+  "group",
   "q",
   "word",
 ]);
