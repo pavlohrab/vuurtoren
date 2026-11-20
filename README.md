@@ -17,33 +17,52 @@
   <a href="deploy/README.md"><img alt="Self-hosted" src="https://img.shields.io/badge/self--hosted-Docker%20%C2%B7%20Dockge-8f5a1f"></a>
 </p>
 
-<table><tr><td width="33%"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/reader-dark.webp"><img alt="Reading" src="docs/images/reader-light.webp"></picture></td><td width="33%"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/words-dark.webp"><img alt="Your words" src="docs/images/words-light.webp"></picture></td><td width="33%"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/practice-dark.webp"><img alt="Practice" src="docs/images/practice-light.webp"></picture></td></tr>
-<tr><td align="center"><b>Read</b></td><td align="center"><b>Keep</b></td><td align="center"><b>Practise</b></td></tr></table>
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/home-dark.webp">
+  <img alt="Kenning's Home: continue reading, today's steps and words to learn now" src="docs/images/home-light.webp">
+</picture>
 
-Kenning is an app for learning Dutch by reading. Give it any text, and it shows you which words
-you know, which few to learn next, and turns them into flashcards. Free and open source, works
-offline, no AI needed.
+## The problem
 
-Kenning is local-first and self-hosted. Your data stays on your device, or on your own server
-for all your devices.
+You learn words by reading. But a text is only pleasant to read when you know about 98 words in
+100 (Hu and Nation, 2000). At 90 you stop on every line to look something up.
 
-## Why Kenning
+So learners split the work. Flashcards for the words, graded readers for the reading. The cards
+do not know what you read. The books do not know which words you have.
 
-Reading is how you meet words in real use. But a text full of unknown words is tiring, and
-flashcards alone lose the context you learned the word in.
+Kenning puts the two in one place.
 
-Kenning joins the two. It knows which words you know, so it can make any text readable at your
-level, and every new word you keep goes into your flashcards with its sentence.
+## How it works
 
-| You want to…        | Kenning gives you                                                    |
-| ------------------- | -------------------------------------------------------------------- |
-| **Read**            | Any text at your level: articles, PDFs, EPUBs, photos, your textbook |
-| **Remember**        | Flashcards with FSRS reviews, made from what you read                |
-| **Practise**        | Exercises, grammar topics A1–C1, the A2 inburgeringsexamen           |
-| **Understand**      | Dutch analysis: separable verbs, compounds, an offline dictionary    |
-| **Keep it private** | Your data stays on your device or your own server; sync is encrypted |
+Kenning knows every word you have learned and how well you still remember it. It uses that to
+read any text with you.
+
+Paste an article, open a PDF or an EPUB, or take a photo of a page. Kenning cuts it into pages of
+about 150 words. Words you know stay plain. Three new words per page are marked to learn, and you
+can change that number. Everything else gets a quiet translation, so you keep reading.
+
+Click a word you want and it becomes a flashcard, with the sentence you found it in. Reviews are
+scheduled with FSRS, so each card comes back just before you would forget it. The next time the
+word turns up in a text, it stays plain.
+
+Around this there is practice (de/het, separable verbs, the perfect tense, word order), grammar
+from A1 to C1 with examples from your own texts, and preparation for the A2
+inburgeringsexamen.
 
 Already use Anki? Import your decks, export your cards back, or keep studying in Anki.
+
+## Your data stays yours
+
+Kenning is local-first and self-hosted. Your data is one file on your device, or on your own
+server for all your devices. Sync is encrypted with your passphrase before anything leaves the
+device. The dictionary and the translation model run offline.
+
+No AI is needed. If you want conversation practice or stories at your level, bring your own key.
+
+## In one sentence
+
+Kenning reads any text with you, gives you a few new words on every page, and makes sure you
+keep them.
 
 ## Get Kenning
 
