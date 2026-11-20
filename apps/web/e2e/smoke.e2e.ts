@@ -81,6 +81,24 @@ test("browser storage mode", async ({ page }) => {
   expect(errors).toEqual([]);
 });
 
+test("native mode: start with the most common words, offline data in the app", async ({ page }) => {
+  const errors = watchErrors(page);
+  await fakeNlp(page);
+  await fakeAnki(page);
+  await page.goto("/");
+  await page.getByRole("radio", { name: /^No/ }).check();
+  await page.getByRole("button", { name: "Continue" }).click();
+  await page.getByRole("button", { name: "Save and continue" }).click();
+  await page.getByRole("radio", { name: /About 500 words/ }).check();
+  await page.getByRole("button", { name: "Continue" }).click();
+  await page.getByRole("button", { name: "Go to the Library" }).click();
+  await page.goto("/review");
+  // Words 1–500 are known; the first new card is the most common word after them.
+  await expect(page.locator(".review-word")).toBeVisible();
+  await expect(page.locator(".review-word")).not.toContainText(/^(de|zijn|van)$/);
+  expect(errors).toEqual([]);
+});
+
 test("native mode: add a word while reading, then review it", async ({ page }) => {
   const errors = watchErrors(page);
   await fakeNlp(page);

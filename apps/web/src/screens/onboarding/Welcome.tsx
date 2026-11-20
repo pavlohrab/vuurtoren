@@ -704,7 +704,7 @@ export function Welcome() {
                 Continue without Anki
               </Button>
             ) : null}
-            {draft.step === "placement" ? (
+            {draft.step === "placement" || draft.step === "starter" ? (
               <Button variant="ghost" onClick={next}>
                 Skip this
               </Button>
