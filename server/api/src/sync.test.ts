@@ -7,7 +7,6 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createAuth } from "./auth/index.js";
 import { hashPassword, parsePasswordHash } from "./auth/password.js";
 import { createApiServer } from "./server.js";
-import { openStore, type Store } from "./store.js";
 import { syncPath } from "./sync.js";
 import { type SyncStore, createRepository, openVault, syncOnce } from "@app/db";
 import { createNodeDriver } from "@app/db/node";
@@ -15,7 +14,6 @@ import { LIGHT_ARGON2 } from "@app/db/testing";
 
 const PASSWORD = "correct horse battery";
 let dir: string;
-let store: Store;
 let server: ReturnType<typeof createApiServer>;
 let auth: ReturnType<typeof createAuth>;
 let base: string;
@@ -29,14 +27,17 @@ interface Serve {
 }
 
 async function serve(opts: Serve = {}) {
-  store = await openStore(join(dir, "vuurtoren.sqlite"));
   auth = createAuth({
     ...(opts.open ? {} : { user: "anna", password: parsePasswordHash(hash) }),
     sessionDb: join(dir, "auth.sqlite"),
     limiter: { freeFailures: 100 },
     ...(opts.allowedOrigins ? { allowedOrigins: opts.allowedOrigins } : {}),
   });
-  server = createApiServer({ store, auth, syncQuotaBytes: opts.syncQuotaBytes });
+  server = createApiServer({
+    auth,
+    syncDir: join(dir, "sync"),
+    syncQuotaBytes: opts.syncQuotaBytes,
+  });
   await new Promise<void>((r) => server.listen(0, "127.0.0.1", r));
   base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
 }
@@ -44,7 +45,6 @@ async function serve(opts: Serve = {}) {
 async function stop() {
   await new Promise((r) => server.close(r));
   auth.close();
-  await store.close();
 }
 
 /** The same folders, another configuration. */
@@ -109,7 +109,8 @@ describe("/api/sync", () => {
     expect(existsSync(join(dir, "sync", "vuurtoren", "devices", "abc", "01J.kev"))).toBe(false);
 
     // A sync token opens nothing else; a revoked one nothing at all.
-    expect((await fetch(`${base}/api/info`, { headers: bearer })).status).toBe(401);
+    expect((await fetch(`${base}/api/auth/sync-tokens`, { headers: bearer })).status).toBe(401);
+    expect((await fetch(`${base}/api/auth/me`, { headers: bearer })).status).toBe(401);
     const revoked = await fetch(`${base}/api/auth/sync-tokens/${id}`, {
       method: "DELETE",
       headers: { cookie, "x-vuurtoren": "1" },
@@ -127,20 +128,35 @@ describe("/api/sync", () => {
     });
     expect(ok.status).toBe(200);
     expect((await fetch(`${base}/api/sync/list?dir=vuurtoren`)).status).toBe(401);
-    const mcp = await fetch(`${base}/api/auth/mcp-tokens`, {
-      method: "POST",
-      headers: { "content-type": "application/json", cookie },
-      body: "{}",
-    });
-    const { token } = (await mcp.json()) as { token: string };
-    // An MCP token does not open sync.
     expect(
       (
         await fetch(`${base}/api/sync/list?dir=vuurtoren`, {
-          headers: { authorization: `Bearer ${token}` },
+          headers: { authorization: "Bearer ksync_madeupmadeupmadeupmadeupmadeupmadeupmadeu" },
         })
       ).status,
     ).toBe(401);
+  });
+
+  it("opens the language server (nginx's /nlp/ gate) for a session or a sync token", async () => {
+    const cookie = await session();
+    const { token } = await syncToken(cookie);
+    const check = (uri: string, headers: Record<string, string>) =>
+      fetch(`${base}/api/auth/check`, { headers: { "x-original-uri": uri, ...headers } }).then(
+        (r) => r.status,
+      );
+    const bearer = { authorization: `Bearer ${token}` };
+    expect(await check("/nlp/analyze/text", { cookie })).toBe(204);
+    expect(await check("/nlp/analyze/text", bearer)).toBe(204);
+    expect(await check("/nlp/course/ocr", bearer)).toBe(204);
+    expect(await check("/api/sync/list?dir=", bearer)).toBe(204);
+    expect(await check("/nlp/analyze/text", {})).toBe(401);
+    expect(await check("/nlp/analyze/text", { authorization: "Bearer ksync_wrong" })).toBe(401);
+    // A browser's preflight carries no token.
+    expect(await check("/nlp/analyze/text", { "x-original-method": "OPTIONS" })).toBe(204);
+    expect(await check("/api/sync/list?dir=", { "x-original-method": "OPTIONS" })).toBe(401);
+    // Nothing else of the server.
+    expect(await check("/api/auth/sync-tokens", bearer)).toBe(401);
+    expect(await check("/nlpx", bearer)).toBe(401);
   });
 
   it("answers browsers elsewhere (CORS) and refuses paths outside its folder", async () => {

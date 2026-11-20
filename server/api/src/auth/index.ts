@@ -6,21 +6,19 @@
  *   POST /api/auth/logout-all  ends every session (needs to be signed in)
  *   GET  /api/auth/check       204 signed in (or auth off) / 401; nginx auth_request target
  *   GET  /api/auth/me          { authEnabled, user, via, expiresAt } or 401
- *   GET  /api/auth/mcp-tokens       list MCP tokens (Claude Code; see tokens.ts)
- *   POST /api/auth/mcp-tokens       {label?} -> { token, id, ... } (token shown once)
- *   DELETE /api/auth/mcp-tokens/:id revoke one
- *   GET/POST/DELETE /api/auth/sync-tokens[/:id]  the same for sync tokens (devices that sync;
- *                                                POST {label?, vault?}: see tokens.ts)
+ *   GET  /api/auth/sync-tokens       list sync tokens (devices that sync; see tokens.ts)
+ *   POST /api/auth/sync-tokens       {label?, vault?} -> { token, id, ... } (token shown once)
+ *   DELETE /api/auth/sync-tokens/:id revoke one
  *
- * Credentials: a password (scrypt hash) for people, an optional bearer token for scripts and
- * the MCP server. With neither, auth is off (localhost / trusted network use).
+ * Credentials: a password (scrypt hash) for people, an optional bearer token for scripts.
+ * With neither, auth is off (localhost / trusted network use).
  */
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { createHash } from "node:crypto";
 import { HttpFail, json, readJson, safeEqual } from "../http-util.js";
 import { type PasswordHash, verifyPassword } from "./password.js";
 import { LoginLimiter, type LimiterOptions } from "./ratelimit.js";
-import { MCP_TOKENS, SYNC_TOKENS, TokenStore } from "./tokens.js";
+import { TokenStore } from "./tokens.js";
 import { SessionStore, type SessionOptions } from "./sessions.js";
 
 type AuthMethod = "password" | "token";
@@ -32,7 +30,7 @@ export interface AuthOptions {
   user?: string | undefined;
   /** Parsed scrypt hash; with `user` enables password sign-in. */
   password?: PasswordHash | undefined;
-  /** Bearer token for scripts / MCP; can also be exchanged for a browser session. */
+  /** Bearer token for scripts; can also be exchanged for a browser session. */
   token?: string | undefined;
   /** Session database file (default ":memory:"; the server passes VUURTOREN_AUTH_DB). */
   sessionDb?: string;
@@ -52,17 +50,15 @@ export interface AuthOptions {
 export type Identity =
   | { via: "open" }
   | { via: "token" }
-  /** A per-user MCP token: valid for `/api/mcp` only. */
-  | { via: "mcp"; tokenId: string }
-  /** A per-device sync token: valid for `/api/sync` only. */
+  /** A per-device sync token: valid for `/api/sync` and `/nlp/` only. */
   | { via: "sync"; tokenId: string }
   | { via: "session"; user: string; expiresAt: number; cookie: string; renewed: boolean };
 
 /**
- * What a request is for: MCP tokens are accepted for "mcp" (`/api/mcp`) only, sync tokens for
- * "sync" (`/api/sync`) only.
+ * What a request is for: sync tokens are accepted for "sync" (`/api/sync`) and "nlp" (the
+ * language server behind nginx's `/nlp/`), never for "api".
  */
-export type AuthScope = "api" | "mcp" | "sync";
+export type AuthScope = "api" | "sync" | "nlp";
 
 export interface Auth {
   readonly enabled: boolean;
@@ -182,8 +178,7 @@ export function createAuth(opts: AuthOptions = {}): Auth {
     ...opts.sessions,
   });
   const limiter = new LoginLimiter({ now, ...opts.limiter });
-  const mcpTokens = new TokenStore(opts.sessionDb ?? ":memory:", MCP_TOKENS, now);
-  const syncTokens = new TokenStore(opts.sessionDb ?? ":memory:", SYNC_TOKENS, now);
+  const syncTokens = new TokenStore(opts.sessionDb ?? ":memory:", now);
   const pruneTimer = setInterval(() => sessions.prune(), 3600_000);
   pruneTimer.unref();
 
@@ -253,11 +248,7 @@ export function createAuth(opts: AuthOptions = {}): Auth {
         const verdict = limiter.check(ip);
         if (!verdict.ok) return tooMany(verdict.retryAfterMs);
         if (token && safeEqual(given, token)) return { via: "token" };
-        if (scope === "mcp") {
-          const tokenId = mcpTokens.verify(given);
-          if (tokenId) return { via: "mcp", tokenId };
-        }
-        if (scope === "sync") {
+        if (scope !== "api") {
           const tokenId = syncTokens.verify(given);
           if (tokenId) return { via: "sync", tokenId };
         }
@@ -351,14 +342,21 @@ export function createAuth(opts: AuthOptions = {}): Auth {
       return true;
     }
     if (path === "/api/auth/check" && get) {
-      // nginx's gate passes the original URI: MCP tokens are good for /api/mcp only, sync
-      // tokens for /api/sync only.
+      // nginx's gate passes the original URI: a sync token opens /api/sync and the language
+      // server (/nlp/), nothing else.
       const original = String(req.headers["x-original-uri"] ?? "");
-      const scope: AuthScope = /^\/api\/mcp(?:[/?]|$)/.test(original)
-        ? "mcp"
-        : /^\/api\/sync(?:[/?]|$)/.test(original)
-          ? "sync"
+      const scope: AuthScope = /^\/api\/sync(?:[/?]|$)/.test(original)
+        ? "sync"
+        : /^\/nlp\//.test(original)
+          ? "nlp"
           : "api";
+      // A browser's CORS preflight to the language server carries no credentials and reads
+      // nothing: it may pass (the language server answers it for its allowed origins).
+      if (scope === "nlp" && req.headers["x-original-method"] === "OPTIONS") {
+        res.writeHead(204, { "cache-control": "no-store" });
+        res.end();
+        return true;
+      }
       const id = identify(req, scope);
       const status = id instanceof HttpFail ? id.status : 204;
       res.writeHead(status, {
@@ -385,34 +383,31 @@ export function createAuth(opts: AuthOptions = {}): Auth {
       );
       return true;
     }
-    for (const [base, store, what] of [
-      ["/api/auth/mcp-tokens", mcpTokens, "MCP"],
-      ["/api/auth/sync-tokens", syncTokens, "Sync"],
-    ] as const) {
-      if (path !== base && !path.startsWith(`${base}/`)) continue;
+    const base = "/api/auth/sync-tokens";
+    if (path === base || path.startsWith(`${base}/`)) {
       require(req);
       if (path === base && get) {
-        json(res, 200, { ok: true, tokens: store.list() });
+        json(res, 200, { ok: true, tokens: syncTokens.list() });
         return true;
       }
       if (path === base && method === "POST") {
         const body = await readJson<{ label?: unknown; vault?: unknown }>(req, 4 * 1024);
         let made;
         try {
-          made = store.create(typeof body.label === "string" ? body.label : "", {
-            vault: store === syncTokens && body.vault === true,
+          made = syncTokens.create(typeof body.label === "string" ? body.label : "", {
+            vault: body.vault === true,
           });
         } catch (e) {
           throw new HttpFail(409, e instanceof Error ? e.message : "Could not make a token.");
         }
-        console.log(`[vuurtoren-api] ${what} token ${made.id} created`);
+        console.log(`[vuurtoren-api] sync token ${made.id} created`);
         json(res, 200, { ok: true, ...made });
         return true;
       }
       const tokenId = path.slice(base.length + 1);
       if (method === "DELETE" && /^[0-9a-f]{12}$/.test(tokenId)) {
-        if (!store.revoke(tokenId)) throw new HttpFail(404, "No such token.");
-        console.log(`[vuurtoren-api] ${what} token ${tokenId} revoked`);
+        if (!syncTokens.revoke(tokenId)) throw new HttpFail(404, "No such token.");
+        console.log(`[vuurtoren-api] sync token ${tokenId} revoked`);
         json(res, 200, { ok: true });
         return true;
       }
@@ -440,7 +435,6 @@ export function createAuth(opts: AuthOptions = {}): Auth {
     close() {
       clearInterval(pruneTimer);
       sessions.close();
-      mcpTokens.close();
       syncTokens.close();
     },
   };

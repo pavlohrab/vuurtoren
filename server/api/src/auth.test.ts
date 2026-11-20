@@ -1,23 +1,20 @@
-import { existsSync, mkdtempSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, readdirSync, rmSync } from "node:fs";
 import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { createHttpAdmin, createHttpRepository, fetchServerHealth } from "@app/db/http";
 import { authFromEnv } from "./auth/config.js";
 import { type AuthOptions, createAuth } from "./auth/index.js";
 import { hashPassword, parsePasswordHash, verifyPassword } from "./auth/password.js";
 import { LoginLimiter } from "./auth/ratelimit.js";
 import { createApiServer } from "./server.js";
-import { openStore, type Store } from "./store.js";
 
 const FAST = { N: 2 ** 10, r: 8, p: 1 }; // cheap scrypt for tests
 const DAY = 86_400_000;
 const PASSWORD = "correct horse battery";
 
 let dir: string;
-let store: Store;
 let server: ReturnType<typeof createApiServer> | undefined;
 let auth: ReturnType<typeof createAuth> | undefined;
 let base: string;
@@ -37,13 +34,11 @@ afterEach(async () => {
 async function stop(): Promise<void> {
   if (server) await new Promise((r) => server!.close(r));
   auth?.close();
-  await store?.close();
   server = undefined;
   auth = undefined;
 }
 
 async function start(opts: Partial<AuthOptions> = {}): Promise<void> {
-  store = await openStore(join(dir, "vuurtoren.sqlite"));
   auth = createAuth({
     user: "anna",
     password: parsePasswordHash(hash),
@@ -51,7 +46,7 @@ async function start(opts: Partial<AuthOptions> = {}): Promise<void> {
     now: () => clock,
     ...opts,
   });
-  server = createApiServer({ store, auth });
+  server = createApiServer({ auth, syncDir: join(dir, "sync") });
   await new Promise<void>((r) => server!.listen(0, "127.0.0.1", r));
   base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
 }
@@ -73,8 +68,13 @@ function sessionOf(res: Response): string {
   return c.split(";")[0]!;
 }
 
-const rpc = (cookie?: string, headers: Record<string, string> = {}) =>
-  post("/api/rpc", { method: "listTexts", args: [] }, cookie ? { cookie, ...headers } : headers);
+/** A state-changing request a signed-in page makes: writing a sync file. */
+const write = (cookie?: string, headers: Record<string, string> = {}, type = "application/json") =>
+  fetch(`${base}/api/sync/file?path=vuurtoren%2Fvault.json`, {
+    method: "PUT",
+    headers: { "content-type": type, ...(cookie ? { cookie } : {}), ...headers },
+    body: "{}",
+  });
 
 describe("password hashing", () => {
   it("round-trips and rejects a wrong password", async () => {
@@ -110,7 +110,7 @@ describe("configuration from the environment", () => {
     const env = {
       VUURTOREN_USER: "anna",
       VUURTOREN_PASSWORD: "pw-pw-pw-pw",
-      VUURTOREN_DB: join(dir, "k.sqlite"),
+      VUURTOREN_DATA: dir,
     };
     const a = await authFromEnv(env);
     const b = await authFromEnv(env);
@@ -144,16 +144,19 @@ describe("sign-in", () => {
   beforeEach(() => start());
 
   it("health is open and announces the methods", async () => {
-    expect(await fetchServerHealth(base)).toMatchObject({
+    expect(await (await fetch(`${base}/api/health`)).json()).toEqual({
+      ok: true,
+      service: "vuurtoren-api",
       authRequired: true,
       authMethods: ["password"],
     });
   });
 
-  it("protects the data until signed in", async () => {
-    expect((await rpc()).status).toBe(401);
-    expect((await fetch(`${base}/api/export`)).status).toBe(401);
-    expect((await fetch(`${base}/api/info`)).status).toBe(401);
+  it("protects everything until signed in", async () => {
+    expect((await write()).status).toBe(401);
+    expect((await fetch(`${base}/api/sync/list?dir=`)).status).toBe(401);
+    expect((await fetch(`${base}/api/auth/sync-tokens`)).status).toBe(401);
+    expect((await fetch(`${base}/api/elsewhere`)).status).toBe(401);
     expect((await fetch(`${base}/api/auth/check`)).status).toBe(401);
     expect((await fetch(`${base}/api/auth/me`)).status).toBe(401);
   });
@@ -172,7 +175,7 @@ describe("sign-in", () => {
     expect(set).toContain(`Max-Age=${30 * 86_400}`);
 
     const cookie = sessionOf(res);
-    expect((await rpc(cookie)).status).toBe(200);
+    expect((await write(cookie)).status).toBe(200);
     expect((await fetch(`${base}/api/auth/check`, { headers: { cookie } })).status).toBe(204);
     const me = await fetch(`${base}/api/auth/me`, { headers: { cookie } });
     expect(await me.json()).toMatchObject({ user: "anna", via: "session", authEnabled: true });
@@ -202,8 +205,8 @@ describe("sign-in", () => {
 
   it("rejects malformed bodies and forged cookies", async () => {
     expect((await post("/api/auth/login", { user: 1 })).status).toBe(400);
-    expect((await rpc("vuurtoren_session=" + "A".repeat(43))).status).toBe(401);
-    expect((await rpc("vuurtoren_session=../../etc")).status).toBe(401);
+    expect((await write("vuurtoren_session=" + "A".repeat(43))).status).toBe(401);
+    expect((await write("vuurtoren_session=../../etc")).status).toBe(401);
   });
 
   it("can turn the Secure flag off for plain-http LAN use", async () => {
@@ -218,8 +221,8 @@ describe("sign-in", () => {
     const out = await post("/api/auth/logout", {}, { cookie: a });
     expect(out.status).toBe(200);
     expect(out.headers.getSetCookie()[0]).toMatch(/^vuurtoren_session=; .*Max-Age=0/);
-    expect((await rpc(a)).status).toBe(401);
-    expect((await rpc(b)).status).toBe(200);
+    expect((await write(a)).status).toBe(401);
+    expect((await write(b)).status).toBe(200);
   });
 
   it("logout-all ends every session and needs a session itself", async () => {
@@ -228,27 +231,27 @@ describe("sign-in", () => {
     expect((await post("/api/auth/logout-all", {})).status).toBe(401);
     const res = await post("/api/auth/logout-all", {}, { cookie: a });
     expect(await res.json()).toEqual({ ok: true, ended: 2 });
-    expect((await rpc(a)).status).toBe(401);
-    expect((await rpc(b)).status).toBe(401);
+    expect((await write(a)).status).toBe(401);
+    expect((await write(b)).status).toBe(401);
   });
 
   it("expires after 30 idle days, slides on use, and ends after 180 days regardless", async () => {
     const a = sessionOf(await login());
     const b = sessionOf(await login());
     clock += 20 * DAY;
-    const used = await rpc(a);
+    const used = await write(a);
     expect(used.status).toBe(200);
     // the renewed expiry is sent back so the browser keeps the cookie longer
     expect(used.headers.getSetCookie()[0]).toContain(`Max-Age=${30 * 86_400}`);
     clock += 11 * DAY; // b idle for 31 days, a for 11
-    expect((await rpc(b)).status).toBe(401);
-    expect((await rpc(a)).status).toBe(200);
+    expect((await write(b)).status).toBe(401);
+    expect((await write(a)).status).toBe(200);
     for (let i = 0; i < 5; i++) {
       clock += 25 * DAY; // day 56, 81, 106, 131, 156
-      expect((await rpc(a)).status).toBe(200);
+      expect((await write(a)).status).toBe(200);
     }
     clock += 25 * DAY; // day 181: past 180 days since sign-in, although used recently
-    expect((await rpc(a)).status).toBe(401);
+    expect((await write(a)).status).toBe(401);
   });
 
   it("a changed password invalidates existing sessions", async () => {
@@ -257,7 +260,7 @@ describe("sign-in", () => {
     hash = await hashPassword("a whole new password", FAST);
     try {
       await start();
-      expect((await rpc(a)).status).toBe(401);
+      expect((await write(a)).status).toBe(401);
     } finally {
       hash = await hashPassword(PASSWORD, FAST);
     }
@@ -353,90 +356,65 @@ describe("CSRF", () => {
 
   it("refuses state-changing requests a plain form or other site could send", async () => {
     const cookie = sessionOf(await login());
-    const form = await fetch(`${base}/api/rpc`, {
-      method: "POST",
-      headers: { cookie, "content-type": "text/plain" },
-      body: JSON.stringify({ method: "listTexts", args: [] }),
-    });
-    expect(form.status).toBe(403);
+    expect((await write(cookie, {}, "text/plain")).status).toBe(403);
     const formLogout = await fetch(`${base}/api/auth/logout`, {
       method: "POST",
       headers: { cookie, "content-type": "application/x-www-form-urlencoded" },
       body: "a=b",
     });
     expect(formLogout.status).toBe(403);
-    expect((await rpc(cookie, { origin: "https://evil.example" })).status).toBe(403);
-    expect((await rpc(cookie, { origin: "null" })).status).toBe(403);
-    expect((await rpc(cookie, { "sec-fetch-site": "cross-site" })).status).toBe(403);
+    expect((await write(cookie, { origin: "https://evil.example" })).status).toBe(403);
+    expect((await write(cookie, { origin: "null" })).status).toBe(403);
+    expect((await write(cookie, { "sec-fetch-site": "cross-site" })).status).toBe(403);
     expect((await login("anna", PASSWORD, { origin: "https://evil.example" })).status).toBe(403);
-    const importForm = await fetch(`${base}/api/import`, {
-      method: "POST",
-      headers: { cookie, "content-type": "application/octet-stream" },
-      body: "x",
-    });
-    expect(importForm.status).toBe(403);
+    expect((await write(cookie, {}, "application/octet-stream")).status).toBe(403);
     // the session still works for the real app
-    expect((await rpc(cookie, { origin: base, "sec-fetch-site": "same-origin" })).status).toBe(200);
+    expect((await write(cookie, { origin: base, "sec-fetch-site": "same-origin" })).status).toBe(
+      200,
+    );
   });
 
   it("accepts X-Vuurtoren: 1 for non-JSON bodies, and listed origins", async () => {
     const cookie = sessionOf(await login());
-    const res = await fetch(`${base}/api/import`, {
-      method: "POST",
-      headers: { cookie, "content-type": "application/octet-stream", "x-vuurtoren": "1" },
-      body: "not a database",
-    });
-    expect(res.status).toBe(422); // passed the guard, then failed validation
+    expect((await write(cookie, { "x-vuurtoren": "1" }, "application/octet-stream")).status).toBe(
+      200,
+    );
     await stop();
     await start({ allowedOrigins: ["https://vuurtoren.example.com"] });
     const c2 = sessionOf(await login());
-    expect((await rpc(c2, { origin: "https://vuurtoren.example.com" })).status).toBe(200);
+    expect((await write(c2, { origin: "https://vuurtoren.example.com" })).status).toBe(200);
   });
 
-  it("guards with auth off too (a page on another site must not wipe local data)", async () => {
+  it("guards with auth off too (a page on another site must not change sync files)", async () => {
     await stop();
     await start({ password: undefined, user: undefined });
-    const res = await fetch(`${base}/api/import`, { method: "POST", body: "x" });
-    expect(res.status).toBe(403);
+    expect((await write(undefined, {}, "text/plain")).status).toBe(403);
     expect((await fetch(`${base}/api/auth/check`)).status).toBe(204);
   });
 });
 
 describe("bearer token", () => {
-  it("keeps working for scripts and the MCP server next to the password", async () => {
+  it("keeps working for scripts next to the password", async () => {
     await start({ token: "t0ken-t0ken-t0ken-t0ken" });
-    expect(await fetchServerHealth(base)).toMatchObject({ authMethods: ["password", "token"] });
-    const repo = await createHttpRepository(base, "t0ken-t0ken-t0ken-t0ken");
-    expect(await repo.listTexts()).toEqual([]);
-    await expect(createHttpRepository(base, "wrong")).rejects.toMatchObject({ status: 401 });
+    expect(await (await fetch(`${base}/api/health`)).json()).toMatchObject({
+      authMethods: ["password", "token"],
+    });
     const check = (t: string) =>
       fetch(`${base}/api/auth/check`, { headers: { authorization: `Bearer ${t}` } });
     expect((await check("t0ken-t0ken-t0ken-t0ken")).status).toBe(204);
     expect((await check("nope")).status).toBe(401);
-    // no CSRF header needed with Authorization (scripts): import with octet-stream
-    const imp = await fetch(`${base}/api/import`, {
-      method: "POST",
-      headers: { authorization: "Bearer t0ken-t0ken-t0ken-t0ken" },
-      body: "x",
-    });
-    expect(imp.status).toBe(422);
+    // no CSRF header needed with Authorization (scripts)
+    const bearer = { authorization: "Bearer t0ken-t0ken-t0ken-t0ken" };
+    expect((await write(undefined, bearer, "application/octet-stream")).status).toBe(200);
     // Only a token that is valid skips the check: a wrong one is refused like a form.
-    const forged = await fetch(`${base}/api/import`, {
-      method: "POST",
-      headers: { authorization: "Bearer not-the-token", origin: "https://evil.example" },
-      body: "x",
-    });
-    expect(forged.status).toBe(403);
+    const forged = { authorization: "Bearer not-the-token", origin: "https://evil.example" };
+    expect((await write(undefined, forged, "application/octet-stream")).status).toBe(403);
   });
 
   it("with auth off, an Authorization header skips no check", async () => {
     await start({ user: undefined, password: undefined });
-    const res = await fetch(`${base}/api/import`, {
-      method: "POST",
-      headers: { authorization: "Bearer anything" },
-      body: "x",
-    });
-    expect(res.status).toBe(403);
+    const h = { authorization: "Bearer anything" };
+    expect((await write(undefined, h, "application/octet-stream")).status).toBe(403);
   });
 
   it("can be exchanged for a browser session (token-only servers)", async () => {
@@ -444,41 +422,24 @@ describe("bearer token", () => {
     expect((await post("/api/auth/login", { token: "bad" })).status).toBe(401);
     const res = await post("/api/auth/login", { token: "t0ken-t0ken-t0ken-t0ken" });
     expect(res.status).toBe(200);
-    expect((await rpc(sessionOf(res))).status).toBe(200);
+    expect((await write(sessionOf(res))).status).toBe(200);
   });
 
   it("wrong tokens count towards the rate limit", async () => {
     await start({ token: "t0ken-t0ken-t0ken-t0ken" });
     const h = { authorization: "Bearer guess", "x-real-ip": "203.0.113.1" };
-    for (let i = 0; i < 4; i++) expect((await rpc(undefined, h)).status).toBe(401);
-    expect((await rpc(undefined, h)).status).toBe(429);
+    for (let i = 0; i < 4; i++) expect((await write(undefined, h)).status).toBe(401);
+    expect((await write(undefined, h)).status).toBe(429);
   });
 });
 
-describe("sessions and backups are separate", () => {
-  it("export never contains sessions and import keeps everyone signed in", async () => {
+describe("sessions stay out of the sync files", () => {
+  it("keeps sessions in their own file, never next to the synced data", async () => {
     await start();
     const cookie = sessionOf(await login());
+    expect((await write(cookie)).status).toBe(200);
     expect(existsSync(join(dir, "auth.sqlite"))).toBe(true);
-    const exp = await fetch(`${base}/api/export`, { headers: { cookie } });
-    const bytes = new Uint8Array(await exp.arrayBuffer());
-    const copy = join(dir, "exported.sqlite");
-    const { writeFileSync } = await import("node:fs");
-    writeFileSync(copy, bytes);
-    const db = new DatabaseSync(copy);
-    const tables = (
-      db.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all() as {
-        name: string;
-      }[]
-    ).map((r) => r.name);
-    db.close();
-    expect(tables).not.toContain("sessions");
-
-    // restore through the admin client using the cookie
-    const admin = createHttpAdmin(base, undefined, (url, init) =>
-      fetch(url, { ...init, headers: { ...(init?.headers as Record<string, string>), cookie } }),
-    );
-    await admin.importBackup(bytes);
-    expect((await rpc(cookie)).status).toBe(200);
+    expect(existsSync(join(dir, "sync", "vuurtoren", "vault.json"))).toBe(true);
+    expect(readdirSync(join(dir, "sync"))).toEqual(["vuurtoren"]);
   });
 });

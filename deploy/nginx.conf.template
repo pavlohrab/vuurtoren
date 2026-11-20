@@ -1,13 +1,14 @@
-# Vuurtoren web container: static SPA, same-origin proxies to the NLP service and the API, and
-# the sign-in gate.
+# Vuurtoren web container: the app's static files, the sync place (/api/sync), the language
+# server (/nlp/) and the sign-in gate in front of them.
 #
 # This is an nginx *template*: the official image's entrypoint copies it to
 # /etc/nginx/conf.d/default.conf and substitutes ${VUURTOREN_...} environment variables
 # (NGINX_ENVSUBST_FILTER=^VUURTOREN_ in web.Dockerfile; nginx's own lower-case $variables are
 # left alone). Variables:
-#   VUURTOREN_NLP_AUTH  "on" (default): /nlp/ needs a valid sign-in, checked by the api service.
-#                     "off": /nlp/ is open. Only for setups WITHOUT the api service (browser
-#                     storage mode), where there is nothing to check against.
+#   VUURTOREN_NLP_AUTH  "on" (default): /nlp/ needs a signed-in browser or a device's sync token,
+#                     checked by the api service. "off": /nlp/ is open to anyone who can reach
+#                     it. Only for setups WITHOUT the api service on a private network; never
+#                     turn it off on a server reachable from the internet.
 
 # Cache policy by path; an empty value adds no header (so API answers keep their own).
 map $uri $vuurtoren_cache_control {
@@ -51,7 +52,7 @@ server {
 
     # ---- Sign-in gate ----------------------------------------------------------------------
     # nginx asks the api service (GET /api/auth/check: 204 or 401) before proxying /api/ and
-    # /nlp/. The browser's cookie and a script's Authorization header pass through unchanged.
+    # /nlp/. The browser's cookie and a device's Authorization header pass through unchanged.
     # The api checks again itself, so /api/ stays protected even without this gate.
     location = /_vuurtoren_auth {
         internal;
@@ -66,8 +67,11 @@ server {
         proxy_set_header X-Original-URI $request_uri;
     }
 
-    # Same check for the NLP service, which can be switched off for api-less setups (see top).
-    # Without the api service the check cannot answer, so /nlp/ would fail closed (500).
+    # Same check for the NLP service: a signed-in browser, or a device's sync token (a phone or
+    # computer that syncs through this server uses its language server too). It can be switched
+    # off for api-less setups (see top). Without the api service the check cannot answer, so
+    # /nlp/ would fail closed (500). A CORS preflight (no credentials) passes; the language
+    # server answers it for the origins in VUURTOREN_CORS_ORIGINS.
     location = /_vuurtoren_auth_nlp {
         internal;
         set $vuurtoren_nlp_auth "${VUURTOREN_NLP_AUTH}";
@@ -83,6 +87,7 @@ server {
         proxy_set_header Host $http_host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Original-URI $request_uri;
+        proxy_set_header X-Original-Method $request_method;
     }
 
     # A refused check answers JSON (like the api), which the app turns into its sign-in screen.
@@ -132,9 +137,9 @@ server {
         proxy_request_buffering off;
     }
 
-    # ---- API (user data, sign-in) ----------------------------------------------------------
+    # ---- API (sign-in, sync) ---------------------------------------------------------------
     # Lazy DNS as above, so the web container starts without the api service; the app then
-    # uses browser storage, because /api/health does not answer.
+    # works without sign-in and sync, because /api/health does not answer.
     #
     # Host keeps the port ($http_host) so the api's CSRF check can compare it with Origin.
     # X-Real-IP is the client address the api's rate limit uses (behind Cloudflare it reads
@@ -159,29 +164,6 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-Proto $scheme;
         client_max_body_size 16k;
-    }
-
-    # MCP for Claude Code / Claude Desktop (server/api/src/mcp.ts). Same gate: the check sees
-    # X-Original-URI and accepts a per-user MCP token here (and only here) besides a session
-    # or VUURTOREN_TOKEN. No buffering either way, so streamed (SSE) answers arrive as they come.
-    location = /api/mcp {
-        auth_request /_vuurtoren_auth;
-        error_page 401 = @vuurtoren_signin_required;
-        resolver 127.0.0.11 valid=10s;
-        set $api_upstream http://api:8787;
-        proxy_pass $api_upstream;
-        proxy_http_version 1.1;
-        proxy_set_header Connection "";
-        proxy_set_header Host $http_host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_set_header Authorization $http_authorization;
-        proxy_buffering off;
-        proxy_cache off;
-        proxy_request_buffering off;
-        proxy_read_timeout 300s;
-        client_max_body_size 2m;
     }
 
     # Sync files (sealed on the devices). No gate: a browser's CORS preflight carries no token,
@@ -210,9 +192,7 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_read_timeout 300s;
-        client_max_body_size 200m;    # backup restore uploads
-        proxy_request_buffering off;
+        client_max_body_size 64k;
     }
 
     # ---- Static app ------------------------------------------------------------------------
