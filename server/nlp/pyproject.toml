@@ -23,8 +23,10 @@ dependencies = [
 [project.optional-dependencies]
 # The main OCR engine: PaddleOCR models (bundled in the rapidocr wheel) on ONNX Runtime.
 # Installed in the standard Docker image and the desktop sidecar, not in the -slim image.
+# ONNX Runtime has no Intel-Mac builds after 1.23, so Intel Macs keep 1.23.
 ocr = [
-    "onnxruntime>=1.32.0",
+    "onnxruntime>=1.32.0; sys_platform != 'darwin' or platform_machine != 'x86_64'",
+    "onnxruntime>=1.23.2,<1.24; sys_platform == 'darwin' and platform_machine == 'x86_64'",
     "rapidocr>=3.10.0",
 ]
 
@@ -55,3 +57,12 @@ testpaths = ["tests"]
 
 [tool.uv.sources]
 nl-core-news-md = { url = "https://github.com/explosion/spacy-models/releases/download/nl_core_news_md-3.8.0/nl_core_news_md-3.8.0-py3-none-any.whl" }
+
+[tool.uv]
+# Platforms the desktop sidecar is built for: the lock must have wheels for each.
+required-environments = [
+    "sys_platform == 'linux' and platform_machine == 'x86_64'",
+    "sys_platform == 'win32' and platform_machine == 'AMD64'",
+    "sys_platform == 'darwin' and platform_machine == 'arm64'",
+    "sys_platform == 'darwin' and platform_machine == 'x86_64'",
+]

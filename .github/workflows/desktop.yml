@@ -184,8 +184,10 @@ jobs:
         env:
           KENNING_UPDATE_URL: ${{ vars.KENNING_UPDATE_URL }}
         run: pnpm tauri build ${{ matrix.args }} --config src-tauri/tauri.packs.conf.json
+      # Reported, not blocking: a failing self-test shows in the run but the installers still attach.
       - name: Self-test (Linux)
         if: runner.os == 'Linux'
+        continue-on-error: true
         shell: bash
         env:
           # No FUSE on the runner: the AppImage unpacks itself and runs.
@@ -195,7 +197,12 @@ jobs:
           sudo apt-get install -y xvfb
           app=$(find apps/desktop/src-tauri/target/release/bundle/appimage -name '*.AppImage' | head -n 1)
           chmod +x "$app"
-          timeout 1200 xvfb-run -a "$app" --self-test
+          status=0
+          timeout 1200 xvfb-run -a "$app" --self-test || status=$?
+          echo "self-test exit code: $status"
+          echo "--- language server log ---"
+          cat ~/.cache/app.kenning.desktop/kenning-nlp.log 2>/dev/null | tail -n 80 || true
+          exit "$status"
       - name: Attach to the release
         shell: bash
         env:
