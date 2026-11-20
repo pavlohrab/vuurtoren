@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createNodeDriver } from "./node.js";
 import { createRepository } from "./repository.js";
-import { RPC_METHODS } from "./rpc.js";
 
 describe("AI-generated sentences and AI texts", () => {
   it("fold SentencesGenerated per (lang, key, topic), dedupe, survive rebuild", async () => {
@@ -36,7 +35,6 @@ describe("AI-generated sentences and AI texts", () => {
     await check();
     await repo.rebuild();
     await check();
-    expect(RPC_METHODS.generatedSentences).toEqual(["string"]);
   });
 
   it("store AI stories as texts with source kind ai (old kinds unchanged)", async () => {

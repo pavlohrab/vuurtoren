@@ -52,17 +52,17 @@ if [ "$STATUS" != 200 ]; then
   fail "GET /api/health -> $STATUS (api container down? docker compose logs api)"
   AUTH=unknown
 else
-  STATE=$(field state)
   AUTH=$(field authRequired)
-  ok "health: state=$STATE, schema=$(field schemaVersion), sign-in required=$AUTH"
-  [ "$STATE" = ready ] || fail "database state is '$STATE' (open the app: it explains what to do)"
+  ok "health: sign-in required=$AUTH"
   [ "$AUTH" = true ] || warn "sign-in is OFF: fine on localhost only (deploy/README.md, Sign-in)"
 fi
 
 AUTHED=1
 if [ "$AUTH" = true ]; then
-  get /api/info
-  if [ "$STATUS" = 401 ]; then ok "data is refused without a sign-in"; else fail "GET /api/info without sign-in -> $STATUS (expected 401)"; fi
+  get "/api/sync/list?dir="
+  if [ "$STATUS" = 401 ]; then ok "sync files are refused without a sign-in"; else fail "GET /api/sync/list without sign-in -> $STATUS (expected 401)"; fi
+  get /nlp/health
+  if [ "$STATUS" = 401 ]; then ok "the language server is refused without a sign-in"; else fail "GET /nlp/health without sign-in -> $STATUS (expected 401; is VUURTOREN_NLP_AUTH off?)"; fi
   if [ -n "${VUURTOREN_TOKEN:-}" ]; then
     printf 'header = "Authorization: Bearer %s"\n' "$VUURTOREN_TOKEN" >"$TMP/auth.conf"
   elif [ -n "${VUURTOREN_USER:-}" ] && [ -n "${VUURTOREN_PASSWORD:-}" ]; then
@@ -86,8 +86,8 @@ fi
 if [ "$AUTHED" = 1 ]; then
   get /api/auth/me -K "$TMP/auth.conf"
   if [ "$STATUS" = 200 ]; then ok "session: $(body)"; else fail "GET /api/auth/me -> $STATUS"; fi
-  get /api/info -K "$TMP/auth.conf"
-  if [ "$STATUS" = 200 ]; then ok "data: $(field sizeBytes) bytes, $(field eventCount) events"; else fail "GET /api/info -> $STATUS: $(body)"; fi
+  get "/api/sync/list?dir=vuurtoren%2Fdevices" -K "$TMP/auth.conf"
+  if [ "$STATUS" = 200 ]; then ok "sync place: $(body)"; else fail "GET /api/sync/list -> $STATUS: $(body)"; fi
 
   echo "nlp"
   get /nlp/health -K "$TMP/auth.conf"

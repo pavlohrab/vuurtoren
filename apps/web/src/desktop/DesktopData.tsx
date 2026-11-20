@@ -1,15 +1,14 @@
 import { useState } from "react";
 import { Button, useToast } from "@app/ui";
-import { type DataFile, useAppInfo } from "../shell/AppInfo.js";
+import type { DataFile } from "../shell/AppInfo.js";
 
 const folderOf = (path: string): string => path.replace(/[\\/][^\\/]*$/, "") || path;
 
 /**
- * Settings > Your data in the desktop app (offline mode): where the file is, "Show in folder",
- * "Move…" (copy to another folder and use it from there), and the way to a Vuurtoren server.
+ * Settings > Your data in the desktop app: where the file is, "Show in folder" and "Move…"
+ * (copy to another folder and use it from there).
  */
 export function DesktopDataFile({ file }: { file: DataFile }) {
-  const { desktop } = useAppInfo();
   const toast = useToast();
   const [path, setPath] = useState(file.path);
   const [busy, setBusy] = useState(false);
@@ -43,8 +42,8 @@ export function DesktopDataFile({ file }: { file: DataFile }) {
         <code data-testid="data-file-path">{path}</code>
       </p>
       <p style={{ margin: 0, color: "var(--ink-muted)" }}>
-        Copy this file to back up everything, or keep it in a synced folder (Dropbox, OneDrive,
-        Syncthing) to have it on another computer. Open Vuurtoren on one computer at a time.
+        Copy this file to back up everything. To have your data on another device too, use Settings
+        → Sync; keep this file out of folders that Dropbox, OneDrive or Syncthing copy.
       </p>
       <div className="row">
         <Button onClick={() => void file.reveal().catch(fail)}>Show in folder</Button>
@@ -55,19 +54,6 @@ export function DesktopDataFile({ file }: { file: DataFile }) {
       {error ? (
         <p className="error-text" role="alert">
           {error}
-        </p>
-      ) : null}
-      {desktop ? (
-        <p style={{ margin: 0, color: "var(--ink-muted)" }}>
-          Have a Vuurtoren server?{" "}
-          <button
-            type="button"
-            className="link-button"
-            onClick={() => void desktop.connectServer().catch(fail)}
-          >
-            Connect to a Vuurtoren server
-          </button>{" "}
-          instead (your data here stays in this file).
         </p>
       ) : null}
     </div>

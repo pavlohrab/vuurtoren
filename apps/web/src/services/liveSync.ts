@@ -1,70 +1,97 @@
 /**
- * Sync on a device that keeps its own data (the desktop app, the browser's own storage): the
- * place, its credentials and the key stay in this device's storage, never in the synced data.
- * One thing runs at a time (setting up, a sync, a passphrase change, stopping); while the app is
- * open, `tick` syncs about once a minute, and `syncBeforeLeaving` sends the last changes when
- * the app is hidden or closed.
+ * Sync on this device: the place, its credentials and the key stay in this device's storage,
+ * never in the synced data. One thing runs at a time (setting up, a sync, unlocking, a
+ * passphrase change, stopping).
+ *
+ * While the app is open, `auto` syncs: once at start, when the app comes back into view, every
+ * 15 s while it is visible, and about 5 s after the last local change (the log's head is
+ * watched every few seconds). `syncBeforeLeaving` sends what is not sent yet when the app is
+ * hidden or closed.
  */
 import type { KeyValueStorage } from "@app/ai";
 import {
   type Argon2Cost,
-  type VuurtorenRepository,
   type SyncKey,
+  type SyncProblem,
   type SyncStore,
   type VaultFile,
+  type VuurtorenRepository,
   VAULT_PATH,
   changePassphrase,
   createVault,
   keyFromRaw,
   newRecoveryKey,
   readVault,
-  unlockVault,
   syncOnce,
+  unlockVault,
   vaultId,
 } from "@app/db";
 import type { DesktopSync } from "../desktop/bridge.js";
 import { desktopFetch, folderStore } from "../sync/desktopStore.js";
-import { githubStore } from "../sync/githubStore.js";
+import { forgetSyncKey, loadSyncKey, saveSyncKey } from "../sync/keyStore.js";
 import { serverStore } from "../sync/serverStore.js";
 import { webdavStore } from "../sync/webdavStore.js";
-import { forgetSyncKey, loadSyncKey, saveSyncKey } from "../sync/keyStore.js";
-import type { SetUpHow, SyncPlace, SyncServices, SyncStatus } from "./syncTypes.js";
+import type { AutoSync, SetUpHow, SyncPlace, SyncServices, SyncStatus } from "./syncTypes.js";
 
 const STORAGE_KEY = "vuurtoren.sync";
-/** Sync by itself at most this often. */
-const AUTO_EVERY_MS = 60_000;
-/** Hiding the app syncs at most this often (switching windows back and forth does not). */
-const LEAVE_EVERY_MS = 15_000;
+/** The timer pulls at most this often; after a failed sync nothing runs sooner. */
+const PULL_EVERY_MS = 15_000;
+/** Coming back into view right after a sync does not sync again. */
+const MIN_GAP_MS = 5_000;
+/** Local changes go out once the log has been quiet this long. */
+const QUIET_MS = 5_000;
+/** Problems listed in Settings. */
+const PROBLEMS_KEPT = 20;
 
 interface Saved {
   place: SyncPlace;
   deviceName: string;
   last: SyncStatus["last"];
   error: string | null;
+  /** The key store had no key for this place. */
+  needsKey?: boolean;
   devices: SyncStatus["devices"];
+  problems?: SyncProblem[];
 }
 
 /** Where this device keeps the sync key (the OS keychain, or protected browser storage). */
 interface SyncKeys {
   save(raw: Uint8Array): Promise<unknown>;
+  /** The key, or null when there is none; throws when the key store itself fails. */
   load(): Promise<Uint8Array | null>;
   forget(): Promise<void>;
 }
 
+/** The Vuurtoren server this page comes from: it can be the place. */
+export interface ThisServer {
+  origin: string;
+  /** Make a sync token for this page; it may change the passphrase and recovery key. */
+  newToken(label: string): Promise<string>;
+}
+
 export interface LiveSyncDeps {
-  /** This device's own log; null on a page of a Vuurtoren server (sync does not apply). */
-  repo: VuurtorenRepository | null;
+  repo: VuurtorenRepository;
   /** Where the sync key is kept (default: the key store). */
   keys?: SyncKeys;
   storage: KeyValueStorage;
   fetch: typeof globalThis.fetch;
-  /** The desktop app's file and fetch bridge (folders; places without CORS). */
+  /** The desktop app's file and fetch bridge (folders, WebDAV). */
   desktop?: DesktopSync | undefined;
+  /** The page comes from a Vuurtoren server, which can be the place. */
+  server?: ThisServer | undefined;
   /** Changes came in from another device: drop what is derived from the data. */
   changed: () => void;
   now?: () => number;
   /** How hard the passphrase is to guess by trying (tests use a light one). */
   cost?: Argon2Cost;
+}
+
+/** This device has no sync key: the passphrase brings it back. */
+class MissingKeyError extends Error {
+  override readonly name = "MissingKeyError";
+  constructor() {
+    super("This device does not have its sync key. Type your passphrase to unlock sync.");
+  }
 }
 
 /** A name for this device until the learner gives one. */
@@ -78,6 +105,7 @@ function defaultName(): string {
 }
 
 const encodeVault = (v: VaultFile) => new TextEncoder().encode(JSON.stringify(v));
+const messageOf = (e: unknown) => (e instanceof Error ? e.message : String(e));
 
 /**
  * Write vault.json, then read it back: a place that did not keep it, or another device that
@@ -108,8 +136,23 @@ async function holdsVuurtorenData(store: SyncStore): Promise<boolean> {
   return top.includes("blobs") && (await store.list("vuurtoren/blobs")).length > 0;
 }
 
+/** What was left out stays listed; what waits is replaced by this sync's view. */
+function mergeProblems(before: SyncProblem[] = [], now: SyncProblem[]): SyncProblem[] {
+  const kept = before.filter((p) => p.leftOut && !now.some((q) => q.what === p.what));
+  return [...kept, ...now].slice(-PROBLEMS_KEPT);
+}
+
+const sameOrigin = (a: string, b: string): boolean => {
+  try {
+    return new URL(a).origin === new URL(b).origin;
+  } catch {
+    return false;
+  }
+};
+
 export function createLiveSync(deps: LiveSyncDeps) {
   const now = deps.now ?? Date.now;
+  const { repo } = deps;
   const keyDeps = { desktop: deps.desktop };
   const keys: SyncKeys = deps.keys ?? {
     save: (raw) => saveSyncKey(raw, keyDeps),
@@ -118,8 +161,15 @@ export function createLiveSync(deps: LiveSyncDeps) {
   };
   let running: Promise<unknown> | null = null;
   let lastAttempt = 0;
-  /** The log's position after the last sync that finished: unchanged means nothing to send. */
+  let lastFailed = false;
+  /** The log's head after the last finished sync sent it all: unchanged means nothing to send. */
   let syncedAt: number | null = null;
+  /** The head as last watched, and since when it is so (`auto("local")`). */
+  let watched: { seq: number; since: number } | null = null;
+  /** The leave-sync in progress. */
+  let leaving: Promise<void> | null = null;
+  /** The place's store, made once per place. */
+  let built: { id: string; store: SyncStore } | null = null;
 
   const read = (): Saved | null => {
     try {
@@ -145,38 +195,54 @@ export function createLiveSync(deps: LiveSyncDeps) {
   }
 
   function storeFor(place: SyncPlace): SyncStore {
+    const id = JSON.stringify(place);
+    if (built?.id === id) return built.store;
     // In the desktop app requests go through the app: WebDAV servers rarely allow CORS.
     const fetch = deps.desktop ? desktopFetch(deps.desktop) : deps.fetch;
+    let store: SyncStore;
     switch (place.kind) {
       case "server":
-        return serverStore(place.url, place.token, fetch);
+        store = serverStore(place.url, place.token, fetch);
+        break;
       case "webdav":
-        return webdavStore(place.url, place.user, place.password, fetch);
-      case "github":
-        return githubStore(place.repo, place.token, deps.fetch, place.branch);
+        if (!deps.desktop) throw new Error("WebDAV can be chosen in the desktop app.");
+        store = webdavStore(place.url, place.user, place.password, fetch);
+        break;
       case "folder":
         if (!deps.desktop) throw new Error("A folder can be chosen in the desktop app.");
-        return folderStore(deps.desktop, place.path);
+        store = folderStore(deps.desktop, place.path);
+        break;
     }
+    built = { id, store };
+    return store;
+  }
+
+  /** The place as it is kept: on the page of that same server, with a token made for it. */
+  async function keptPlace(place: SyncPlace, deviceName: string): Promise<SyncPlace> {
+    if (place.kind !== "server" || place.token || !deps.server) return place;
+    if (!sameOrigin(place.url, deps.server.origin)) return place;
+    const token = await deps.server.newToken(`${deviceName} (this browser)`);
+    return { ...place, url: deps.server.origin, token };
   }
 
   function status(s: Saved | null): SyncStatus {
     return {
-      available: deps.repo !== null,
-      folders: !!deps.desktop,
+      desktop: !!deps.desktop,
+      thisServer: deps.server?.origin ?? null,
       place: s ? { kind: s.place.kind, label: storeFor(s.place).label } : null,
       deviceName: s?.deviceName ?? defaultName(),
       last: s?.last ?? null,
       error: s?.error ?? null,
+      needsKey: s?.needsKey ?? false,
       devices: s?.devices ?? [],
+      problems: s?.problems ?? [],
     };
   }
 
-  /** One sync. Whatever came in before a failure still drops the caches. */
+  /** One sync. Whatever came in drops the caches, also when the sync fails after it. */
   async function run(saved: Saved, key: SyncKey, onProgress?: (m: string) => void) {
-    const repo = deps.repo;
-    if (!repo) throw new Error("Sync runs on a device with its own data.");
     lastAttempt = now();
+    const before = (await repo.head()).seq;
     let applied = 0;
     // Count what is imported as it happens: a sync can fail after some files came in.
     const counting = new Proxy(repo, {
@@ -199,28 +265,50 @@ export function createLiveSync(deps: LiveSyncDeps) {
         ...saved,
         last: { at: now(), sent: r.sent, received: r.received },
         error: null,
+        needsKey: false,
         devices: r.devices ?? saved.devices,
+        problems: mergeProblems(saved.problems, r.problems),
       };
       write(next);
-      syncedAt = (await repo.head()).seq;
-      return { status: status(next), received: r.received };
+      // What came in moved the head too; a change made during the sync may not have gone out.
+      const after = (await repo.head()).seq;
+      syncedAt = after === before + applied ? after : before;
+      lastFailed = false;
+      return { status: status(next), applied };
     } catch (e) {
-      write({ ...saved, error: e instanceof Error ? e.message : String(e) });
-      throw e;
+      lastFailed = true;
+      write({ ...saved, error: messageOf(e) });
+      throw Object.assign(e instanceof Error ? e : new Error(messageOf(e)), { applied });
     } finally {
       if (applied > 0) deps.changed();
     }
+  }
+
+  /** The kept key, or MissingKeyError (noted, so Settings asks for the passphrase). */
+  async function loadKey(saved: Saved): Promise<SyncKey> {
+    let raw: Uint8Array | null;
+    try {
+      raw = await keys.load();
+    } catch (e) {
+      lastFailed = true;
+      lastAttempt = now();
+      throw new Error(`The sync key could not be read on this device: ${messageOf(e)}`, {
+        cause: e,
+      });
+    }
+    if (!raw) {
+      const missing = new MissingKeyError();
+      write({ ...saved, error: missing.message, needsKey: true });
+      throw missing;
+    }
+    return keyFromRaw(raw);
   }
 
   /** A sync with the saved place and key (inside `exclusive`). */
   async function once(onProgress?: (m: string) => void) {
     const saved = read();
     if (!saved) throw new Error("Sync is not set up on this device.");
-    const raw = await keys.load();
-    if (!raw) {
-      throw new Error("This device no longer has its sync key. Join again with your passphrase.");
-    }
-    return run(saved, await keyFromRaw(raw), onProgress);
+    return run(saved, await loadKey(saved), onProgress);
   }
 
   /** The place and its vault and key, after `secret` (passphrase or recovery key) opened it. */
@@ -231,19 +319,24 @@ export function createLiveSync(deps: LiveSyncDeps) {
     const vault = await readVault(store);
     if (!vault) throw new Error("The sync place no longer holds your Vuurtoren data.");
     const key = await unlockVault(vault, secret);
-    return { store, vault, key };
+    return { saved, store, vault, key };
   }
 
-  /** Open the data in a place (join) or start new data there (start). */
+  /**
+   * Open the data in a place (join) or start new data there (start). The key is kept on this
+   * device before a new vault is written, so no vault exists that no device can open.
+   */
   async function connect(store: SyncStore, how: SetUpHow, passphrase: string) {
     const vault = await readVault(store);
     if (how === "join") {
       if (!vault) {
         throw new Error(
-          "There is no Vuurtoren sync data in this place yet. If another device started it, check that this is the same place (folder, address, repository and branch); a synced folder can take a few minutes to bring the files. To begin here instead, choose Start new sync data here.",
+          "There is no Vuurtoren sync data in this place yet. If another device started it, check that this is the same place (folder or address); a synced folder can take a few minutes to bring the files. To begin here instead, choose Start new sync data here.",
         );
       }
-      return { key: await unlockVault(vault, passphrase), recoveryKey: null };
+      const key = await unlockVault(vault, passphrase);
+      await keys.save(key.raw);
+      return { key, recoveryKey: null };
     }
     if (vault) {
       throw new Error(
@@ -256,7 +349,13 @@ export function createLiveSync(deps: LiveSyncDeps) {
       );
     }
     const made = await createVault(passphrase, deps.cost);
-    await writeVault(store, made.vault);
+    await keys.save(made.key.raw);
+    try {
+      await writeVault(store, made.vault);
+    } catch (e) {
+      await keys.forget().catch(() => undefined);
+      throw e;
+    }
     return { key: made.key, recoveryKey: made.recoveryKey };
   }
 
@@ -266,15 +365,15 @@ export function createLiveSync(deps: LiveSyncDeps) {
     },
 
     async setUpSync(place, how, passphrase, deviceName, onProgress) {
-      if (!deps.repo) throw new Error("Sync runs on a device with its own data.");
       return exclusive(async () => {
-        const store = storeFor(place);
+        const name = deviceName.trim().slice(0, 60) || defaultName();
+        const kept = await keptPlace(place, name);
+        const store = storeFor(kept);
         onProgress?.(how === "join" ? "Opening your synced data" : "Starting your sync data");
         const { key, recoveryKey } = await connect(store, how, passphrase);
-        await keys.save(key.raw);
         const saved: Saved = {
-          place,
-          deviceName: deviceName.trim().slice(0, 60) || defaultName(),
+          place: kept,
+          deviceName: name,
           last: null,
           error: null,
           devices: [],
@@ -293,6 +392,20 @@ export function createLiveSync(deps: LiveSyncDeps) {
 
     async syncNow(onProgress) {
       return (await exclusive(() => once(onProgress))).status;
+    },
+
+    async unlockSync(secret) {
+      return exclusive(async () => {
+        const { saved, key } = await opened(secret);
+        await keys.save(key.raw);
+        const back: Saved = { ...saved, needsKey: false, error: null };
+        write(back);
+        try {
+          return (await run(back, key)).status;
+        } catch {
+          return status(read());
+        }
+      });
     },
 
     async changeSyncPassphrase(current, next) {
@@ -317,6 +430,8 @@ export function createLiveSync(deps: LiveSyncDeps) {
         await keys.forget();
         write(null);
         syncedAt = null;
+        watched = null;
+        built = null;
       });
     },
 
@@ -324,25 +439,79 @@ export function createLiveSync(deps: LiveSyncDeps) {
       return deps.desktop ? deps.desktop.pickFolder() : null;
     },
 
-    async syncBeforeLeaving() {
-      if (!read() || !deps.repo || running || now() - lastAttempt < LEAVE_EVERY_MS) return;
-      if (syncedAt !== null && (await deps.repo.head()).seq === syncedAt) return;
-      try {
-        await exclusive(() => once());
-      } catch {
-        // Kept in the saved status; the next sync tries again.
-      }
+    syncBeforeLeaving() {
+      // Hidden, then closed: both ask, one sync answers.
+      leaving ??= leave().finally(() => (leaving = null));
+      return leaving;
     },
   };
 
-  /**
-   * Sync by itself (on focus, when visible and every half minute, at most once a minute).
-   * True when changes came in. A failure is kept for Settings and thrown for the indicator.
-   */
-  async function tick(): Promise<boolean> {
-    if (!read() || running || now() - lastAttempt < AUTO_EVERY_MS) return false;
-    return (await exclusive(() => once())).received > 0;
+  /** Send what is not sent yet, if anything (never throws). */
+  async function leave(): Promise<void> {
+    const saved = read();
+    if (!saved || saved.needsKey) return;
+    if (syncedAt !== null && (await repo.head()).seq === syncedAt) return;
+    try {
+      await exclusive(() => once());
+    } catch {
+      // Kept in the saved status; the next sync tries again.
+    }
   }
 
-  return { services, tick, configured: () => read() !== null };
+  /** Should `why` sync now? */
+  async function due(why: AutoSync): Promise<boolean> {
+    const since = now() - lastAttempt;
+    if (lastFailed && since < PULL_EVERY_MS) return false;
+    switch (why) {
+      case "start":
+        return true;
+      case "focus":
+        return since >= MIN_GAP_MS;
+      case "timer":
+        return since >= PULL_EVERY_MS;
+      case "local": {
+        const seq = (await repo.head()).seq;
+        if (seq === syncedAt) {
+          watched = null;
+          return false;
+        }
+        if (watched?.seq !== seq) {
+          watched = { seq, since: now() };
+          return false;
+        }
+        return now() - watched.since >= QUIET_MS;
+      }
+    }
+  }
+
+  /**
+   * Sync by itself when `why` makes it due. `ran`: a sync ran; `changed`: changes came in (also
+   * when the sync failed after them); `error`: why it failed, or null.
+   */
+  async function auto(why: AutoSync): Promise<{ ran: boolean; changed: boolean; error: unknown }> {
+    const saved = read();
+    if (!saved || saved.needsKey || running || !(await due(why))) {
+      return { ran: false, changed: false, error: null };
+    }
+    try {
+      return { ran: true, changed: (await exclusive(() => once())).applied > 0, error: null };
+    } catch (e) {
+      return { ran: true, changed: ((e as { applied?: number }).applied ?? 0) > 0, error: e };
+    }
+  }
+
+  /**
+   * The language server of the server this device syncs with, for a device without one of its
+   * own: the place's `/nlp` and its sync token. Null for other places and on the page of that
+   * same server (it reaches `/nlp` with its sign-in).
+   */
+  function languageServer(): { url: string; token: string } | null {
+    const place = read()?.place;
+    if (place?.kind !== "server" || deps.desktop) return null;
+    const here = deps.server?.origin ?? (typeof location === "undefined" ? "" : location.origin);
+    if (sameOrigin(place.url, here)) return null;
+    return { url: `${place.url.replace(/\/+$/, "")}/nlp`, token: place.token };
+  }
+
+  return { services, auto, languageServer, configured: () => read() !== null };
 }

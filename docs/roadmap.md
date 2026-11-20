@@ -20,14 +20,14 @@
 - **One device, one data file.** The desktop app refuses a sync folder that holds its own data
   folder, and warns when it sees another computer syncing under its device id (a data file
   copied or shared between computers).
-- **Server mode as a syncing client.** The web app on your Vuurtoren server keeps its own copy in
-  the browser and syncs with the server, like every other device.
-- **Checks before Vuurtoren Cloud:** a run against a real GitHub repository and a real Nextcloud
-  (the test `apps/web/src/sync/real.test.ts` takes their addresses), and an outside review of
-  the encryption code.
-- **Hosting:** one stack of three containers: `vuurtoren` (web app, API and sync), `vuurtoren-nlp`
-  (the language server; phones need it) and, only for Keep using Anki, `anki` (headless, read
-  only). Self-hosting and Vuurtoren Cloud run the same stack.
+- **Live push.** Devices pull every 15 seconds while open; a server could tell them at once when
+  another device wrote.
+- **Checks before Vuurtoren Cloud:** a run against a real Nextcloud (the test
+  `apps/web/src/sync/real.test.ts` takes its address), and an outside review of the encryption
+  code.
+- **Hosting:** one stack of three containers: `vuurtoren` (web app, sign-in and sync),
+  `vuurtoren-nlp` (the language server; phones need it) and, only for Keep using Anki, `anki`
+  (headless, read only). Self-hosting and Vuurtoren Cloud run the same stack.
 
 ## Vuurtoren Cloud design
 
@@ -58,8 +58,6 @@
 ## Known issues
 
 - Windows and macOS installers are built by CI but not tested on a real machine.
-- If the desktop data file can't be opened, the app shows the "Can't reach your Vuurtoren server"
-  screen instead of a file error.
 - In course import a page can merge into the previous one, and the outline then shows "No text
   on this page".
 - OCR sometimes glues two words together (_productenwilt_), and reads some tables column by

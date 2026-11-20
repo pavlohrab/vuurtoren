@@ -1,11 +1,16 @@
 /** Contract of sync: your data on every device, through a place you choose, encrypted. */
-import type { SyncDevice } from "@app/db";
+import type { SyncDevice, SyncProblem } from "@app/db";
 
 /** Where synced files live, with what this device needs to reach it. */
 export type SyncPlace =
+  /**
+   * A Vuurtoren server's `/api/sync` with a sync token. On the page of that same server the
+   * token may be empty: the page makes one for itself with its sign-in.
+   */
   | { kind: "server"; url: string; token: string }
+  /** WebDAV (the desktop app). */
   | { kind: "webdav"; url: string; user: string; password: string }
-  | { kind: "github"; repo: string; token: string; branch?: string }
+  /** A folder you already sync (the desktop app). */
   | { kind: "folder"; path: string };
 
 /**
@@ -14,11 +19,14 @@ export type SyncPlace =
  */
 export type SetUpHow = "start" | "join";
 
+/** Why sync runs by itself: the app opened, it came back into view, the timer, a local change. */
+export type AutoSync = "start" | "focus" | "timer" | "local";
+
 export interface SyncStatus {
-  /** Sync can run here: a device with its own data (not a page of a Vuurtoren server). */
-  available: boolean;
-  /** A folder you already sync can be chosen (the desktop app). */
-  folders: boolean;
+  /** The desktop app: a folder and WebDAV can be chosen. */
+  desktop: boolean;
+  /** The address of the Vuurtoren server this page comes from (it can be the place), or null. */
+  thisServer: string | null;
   /** The place in use, or null when sync is off. */
   place: { kind: SyncPlace["kind"]; label: string } | null;
   /** This device's name, shown on the others. */
@@ -27,8 +35,12 @@ export interface SyncStatus {
   last: { at: number; sent: number; received: number } | null;
   /** Why the last attempt did not finish, or null. */
   error: string | null;
+  /** This device does not have its sync key: the passphrase or recovery key brings it back. */
+  needsKey: boolean;
   /** Every device that syncs to the place (after a sync). */
   devices: SyncDevice[];
+  /** Files and changes sync left out or still waits for. */
+  problems: SyncProblem[];
 }
 
 export interface SyncServices {
@@ -47,6 +59,8 @@ export interface SyncServices {
   ): Promise<SyncStatus & { created: boolean; recoveryKey: string | null }>;
   /** Sync now (sync also runs by itself while the app is open). */
   syncNow(onProgress?: (msg: string) => void): Promise<SyncStatus>;
+  /** Bring back this device's sync key with the passphrase or the recovery key, then sync. */
+  unlockSync(secret: string): Promise<SyncStatus>;
   /**
    * A new passphrase for the synced data, after `current` (the passphrase or the recovery key)
    * opened it. No file changes; other devices keep syncing.
@@ -59,7 +73,7 @@ export interface SyncServices {
   /** Choose a folder (desktop app); null when cancelled or not available. */
   pickSyncFolder(): Promise<string | null>;
   /**
-   * The app is being hidden or closed: send this device's last changes now, if there are any
+   * The app is being hidden or closed: send what this device has not sent yet, if anything
    * (best effort; never throws). Absent where nothing syncs.
    */
   syncBeforeLeaving?(): Promise<void>;

@@ -3,7 +3,6 @@ import { describe, expect, it } from "vitest";
 import { createNodeDriver } from "./node.js";
 import { applyEvent } from "./projections.js";
 import { createRepository } from "./repository.js";
-import { RPC_METHODS, validateRpcArgs } from "./rpc.js";
 
 async function newRepo() {
   let t = 1_000_000;
@@ -37,11 +36,5 @@ describe("LanguageProfileSet", () => {
     expect((await repo.languageProfile("nl"))?.destinations.default).toBe("Vuurtoren::Nederlands");
     expect(newer.hlc > older.hlc).toBe(true);
     await repo.close();
-  });
-
-  it("is callable over RPC", () => {
-    expect(RPC_METHODS.languageProfile).toEqual(["string"]);
-    expect(validateRpcArgs("languageProfile", ["nl"])).toBeNull();
-    expect(validateRpcArgs("languageProfile", [])).not.toBeNull();
   });
 });

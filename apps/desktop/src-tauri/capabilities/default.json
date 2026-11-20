@@ -1,16 +1,13 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "The bundled home page: the offline app (local database, language server) and the Connect screen.",
+  "description": "The bundled page: the app with its local database, sync and language server.",
   "windows": ["main"],
   "permissions": [
     "core:default",
     "allow-desktop-info",
-    "allow-check-server",
-    "allow-connect",
-    "allow-change-server",
+    "allow-close-now",
     "allow-anki-fetch",
-    "allow-use-local",
     "allow-sync-pick-folder",
     "allow-sync-dir-list",
     "allow-sync-dir-get",

@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createNodeDriver } from "./node.js";
 import { createRepository } from "./repository.js";
-import { RPC_METHODS, validateRpcArgs } from "./rpc.js";
 
 describe("exam attempts", () => {
   it("fold ExamAttempt per language, oldest first, and survive rebuild", async () => {
@@ -43,26 +42,5 @@ describe("exam attempts", () => {
     await check();
     await repo.rebuild();
     await check();
-  });
-
-  it("is callable over RPC and the event passes validation", () => {
-    expect(RPC_METHODS.examAttempts).toEqual(["string"]);
-    expect(
-      validateRpcArgs("append", [
-        {
-          type: "ExamAttempt",
-          lang: "nl",
-          exam: "nl-a2",
-          part: "knm",
-          mode: "practice",
-          setId: "theme:wonen",
-          correct: 1,
-          total: 2,
-          passMark: 2,
-          durationMs: 1,
-          at: 1,
-        },
-      ]),
-    ).toBeNull();
   });
 });

@@ -20,14 +20,6 @@ export {
   prepareImported,
 } from "./backup.js";
 export type { BackupFacts, DataAdmin, DataInfo } from "./backup.js";
-export {
-  MAX_RPC_EVENT_CHARS,
-  RPC_METHODS,
-  encodeRpcResult,
-  isRpcMethod,
-  validateRpcArgs,
-} from "./rpc.js";
-export type { RpcMethod, RpcRequest, RpcResponse } from "./rpc.js";
 export { composeWord, countWords } from "./projections.js";
 export { nativeWordEntries } from "./cards.js";
 export type { WordFacts } from "./projections.js";

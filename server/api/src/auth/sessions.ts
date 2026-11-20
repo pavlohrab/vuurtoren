@@ -1,7 +1,6 @@
 /**
  * Sign-in sessions in their own small SQLite file (`VUURTOREN_AUTH_DB`, default
- * /data/auth.sqlite), separate from the user's data so a backup export or import never
- * contains or replaces them.
+ * /data/auth.sqlite), next to the sync tokens and apart from the sync files.
  *
  * Only the SHA-256 of a session id is stored: a leaked auth file does not let anyone sign in.
  * Lookups are by that hash, so timing differences reveal nothing about a valid id.

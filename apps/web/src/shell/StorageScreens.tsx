@@ -60,45 +60,21 @@ export function BlockedScreen({
   );
 }
 
-/**
- * Server mode, but the server did not answer (or failed). Never falls back to browser
- * storage on its own: that would start a second, empty copy of the user's data.
- */
-export function UnreachableScreen({
-  reason,
-  onForget,
-}: {
-  reason: string;
-  /** Explicitly switch this address to browser storage (it no longer runs a server). */
-  onForget: () => void;
-}) {
+/** The app could not open its data (the desktop app's file). Nothing was changed. */
+export function StartFailedScreen({ reason }: { reason: string }) {
   return (
-    <Page title="Can't reach your Vuurtoren server">
+    <Page title="Vuurtoren could not start">
       <p role="alert" style={{ margin: 0 }}>
         {reason}
       </p>
       <p style={{ margin: 0, color: "var(--ink-muted)" }}>
-        Your data is on the server and nothing was changed. It may be restarting; try again in a
-        moment. If it keeps failing, check the containers (docker compose ps, docker compose logs
-        api).
+        Nothing was changed or deleted. Close other programs that may use the file and try again.
       </p>
       <div className="row">
         <Button variant="primary" onClick={() => location.reload()}>
           Try again
         </Button>
       </div>
-      <details style={{ color: "var(--ink-muted)", fontSize: 13 }}>
-        <summary style={{ cursor: "pointer" }}>
-          This address no longer runs a Vuurtoren server
-        </summary>
-        <p style={{ margin: "8px 0" }}>
-          Then Vuurtoren can keep data in this browser instead. That is a separate, empty
-          collection; your server data is not copied.
-        </p>
-        <Button size="sm" onClick={onForget}>
-          Use this browser's storage
-        </Button>
-      </details>
     </Page>
   );
 }

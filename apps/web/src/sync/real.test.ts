@@ -1,14 +1,12 @@
 /**
  * Sync against real places, when their addresses are given (skipped otherwise):
  *   VUURTOREN_TEST_WEBDAV_URL, VUURTOREN_TEST_WEBDAV_USER, VUURTOREN_TEST_WEBDAV_PASSWORD
- *   VUURTOREN_TEST_GITHUB_REPO (owner/name, private, empty), VUURTOREN_TEST_GITHUB_TOKEN
  * Each run writes under a fresh folder of the place and removes what it can afterwards.
  */
 import { describe, expect, it } from "vitest";
 import { type SyncStore, createRepository, openVault, syncOnce } from "@app/db";
 import { createNodeDriver } from "@app/db/node";
 import { LIGHT_ARGON2 } from "@app/db/testing";
-import { githubStore } from "./githubStore.js";
 import { webdavStore } from "./webdavStore.js";
 
 const env = process.env;
@@ -74,17 +72,6 @@ describe.runIf(env["VUURTOREN_TEST_WEBDAV_URL"])("a real WebDAV server", () => {
       env["VUURTOREN_TEST_WEBDAV_URL"]!,
       env["VUURTOREN_TEST_WEBDAV_USER"] ?? "",
       env["VUURTOREN_TEST_WEBDAV_PASSWORD"] ?? "",
-      fetch,
-    );
-    await roundTrip(under(store, run));
-  });
-});
-
-describe.runIf(env["VUURTOREN_TEST_GITHUB_TOKEN"])("a real GitHub repository", () => {
-  it("syncs two devices", { timeout: 300_000 }, async () => {
-    const store = githubStore(
-      env["VUURTOREN_TEST_GITHUB_REPO"]!,
-      env["VUURTOREN_TEST_GITHUB_TOKEN"]!,
       fetch,
     );
     await roundTrip(under(store, run));

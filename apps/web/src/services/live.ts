@@ -22,20 +22,17 @@ import { createLiveProfile } from "./liveProfile.js";
 import { createLiveSettings } from "./liveSettings.js";
 import { chunkText, createLiveTexts } from "./liveTexts.js";
 import { createLiveWords } from "./liveWords.js";
-import { createLiveSync } from "./liveSync.js";
+import { type ThisServer, createLiveSync } from "./liveSync.js";
 import { desktopBridge } from "../desktop/bridge.js";
 import { DEGRADED_MESSAGES, clearDegraded, reportDegraded } from "./degraded.js";
 import { type Platform, browserPlatform } from "./platform.js";
 import type { AppServices } from "./types.js";
 
 export interface LiveServicesOptions {
-  /**
-   * Server mode: true when another device changed the shared data since the last
-   * call (`HttpRepository.remoteChanged`). Absent in browser mode (one tab owns the data).
-   */
-  remoteChanged?: () => Promise<boolean>;
   /** Network and device storage; the browser's by default. */
   platform?: Platform;
+  /** The page comes from a Vuurtoren server, which can be its sync place. */
+  server?: ThisServer | undefined;
 }
 
 export function createLiveServices(
@@ -45,7 +42,13 @@ export function createLiveServices(
   const platform = options.platform ?? browserPlatform();
   // Resolved at call time: the learner cache needs the language from the settings.
   const changed = () => learner.changed();
-  const config = createLiveSettings({ repo, platform, changed });
+  // Resolved at call time: sync is created below.
+  const config = createLiveSettings({
+    repo,
+    platform,
+    changed,
+    languageServer: () => sync.languageServer(),
+  });
   const { settings, lang, nlp, anki } = config;
   const learner = createLearnerCache(repo, lang);
   const dictionary = createLiveDictionary({ repo, lang, nlp });
@@ -176,12 +179,12 @@ export function createLiveServices(
     invalidatePractice();
   };
 
-  // Sync applies to a device with its own data, not to a page of a Vuurtoren server.
   const sync = createLiveSync({
-    repo: options.remoteChanged ? null : repo,
+    repo,
     storage: platform.storage,
     fetch: platform.fetch,
     desktop: desktopBridge()?.sync,
+    server: options.server,
     changed: dropCaches,
   });
 
@@ -201,21 +204,12 @@ export function createLiveServices(
     ...config.services,
 
     ...sync.services,
-    async checkRemoteChanges(): Promise<boolean> {
-      if (options.remoteChanged) {
-        if (!(await options.remoteChanged())) return false;
-        dropCaches();
-        return true;
-      }
-      // A device with its own data: sync when it is due (the caches drop on new changes).
-      try {
-        const got = await sync.tick();
-        if (sync.configured()) clearDegraded("sync");
-        return got;
-      } catch (e) {
-        reportDegraded("sync", DEGRADED_MESSAGES.sync, e);
-        return false;
-      }
+    async autoSync(why) {
+      // Sync when it is due (the caches drop on new changes, also when it failed after them).
+      const r = await sync.auto(why);
+      if (r.error) reportDegraded("sync", DEGRADED_MESSAGES.sync, r.error);
+      else if (r.ran || !sync.configured()) clearDegraded("sync");
+      return r.changed;
     },
   };
   return services;

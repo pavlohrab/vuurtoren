@@ -4,12 +4,12 @@
 # VUURTOREN_PASSWORD_HASH. Guide: deploy/README.md.
 #
 #   web          the app + sign-in gate (nginx); the only service with a published port
-#   api          your data in ONE SQLite file on the vuurtoren-data volume, and sign-in
+#   api          sign-in, sync tokens and the sealed sync files of your devices (vuurtoren-data)
 #   nlp          Dutch analysis, dictionary, OCR, translation; its data packs (~100 MB download,
 #                once) go to the vuurtoren-nlp-data volume. VUURTOREN_NLP_VARIANT=-full ships them
 #                inside the image (offline installs), -slim leaves out OCR.
 #   cloudflared  optional (profile "tunnel"): public https address without opening ports
-#   backup       optional (profile "backup"): scheduled snapshots of your data to a folder
+#   backup       optional (profile "backup"): scheduled copies of the sync files to a folder
 #
 # Networks: `backend` is internal (no internet); the api lives only there. `edge` has
 # internet access for the NLP service (URL import), the tunnel and the published port.
@@ -25,7 +25,7 @@ services:
       nlp:
         condition: service_started
     environment:
-      # /nlp/ requires a sign-in (checked by api) whenever sign-in is on.
+      # /nlp/ needs a signed-in browser or a device's sync token (checked by api). Keep "on".
       VUURTOREN_NLP_AUTH: "on"
     ports:
       # Loopback by default: reach it through the tunnel (or a reverse proxy on this host).
@@ -50,13 +50,11 @@ services:
       VUURTOREN_COOKIE_SECURE: ${VUURTOREN_COOKIE_SECURE:-1}
       VUURTOREN_TRUST_CF: ${VUURTOREN_TRUST_CF:-0}
       VUURTOREN_ALLOWED_ORIGINS: ${VUURTOREN_ALLOWED_ORIGINS:-}
-      # Text analysis for the MCP endpoint (/api/mcp, Claude Code).
-      VUURTOREN_NLP_URL: ${VUURTOREN_NLP_URL:-http://nlp:8000}
       # Most space the sync files of your devices may take together, in MB (default 2048).
       VUURTOREN_SYNC_QUOTA_MB: ${VUURTOREN_SYNC_QUOTA_MB:-}
     volumes:
-      # vuurtoren.sqlite (your data), auth.sqlite (sign-in sessions, never in backups) and sync/
-      # (the sealed files of devices that sync through this server)
+      # auth.sqlite (sign-in sessions and sync tokens) and sync/ (the sealed files of your
+      # devices)
       - vuurtoren-data:/data
     networks: [backend]
     healthcheck:
@@ -99,45 +97,28 @@ services:
       start_period: 60s
       retries: 3
 
-  # Scheduled backups (optional, profile "backup"): every VUURTOREN_BACKUP_INTERVAL_HOURS a
-  # consistent snapshot from /api/export (safe while the app is in use) is written to
-  # VUURTOREN_BACKUP_DIR as vuurtoren-YYYY-MM-DD-HHMM.sqlite; files older than VUURTOREN_BACKUP_KEEP_DAYS
-  # are deleted. With sign-in on it needs VUURTOREN_TOKEN. Each file is a normal Vuurtoren backup:
-  # restore it in Settings > Data & backup (deploy/README.md, "Backup and restore").
-  # The sealed files of the devices that sync through this server (/data/sync) are kept next
-  # to it as vuurtoren-sync-YYYY-MM-DD-HHMM.tar.gz.
+  # Scheduled copies (optional, profile "backup"): every VUURTOREN_BACKUP_INTERVAL_HOURS the
+  # sealed sync files of your devices (/data/sync) are written to VUURTOREN_BACKUP_DIR as
+  # vuurtoren-sync-YYYY-MM-DD-HHMM.tar.gz; files older than VUURTOREN_BACKUP_KEEP_DAYS are
+  # deleted. Put a copy back under /data/sync to bring back files the place lost.
   backup:
     image: alpine:3.24
     profiles: [backup]
     restart: unless-stopped
-    depends_on:
-      api:
-        condition: service_healthy
     environment:
-      VUURTOREN_TOKEN: ${VUURTOREN_TOKEN:-}
       INTERVAL_HOURS: ${VUURTOREN_BACKUP_INTERVAL_HOURS:-24}
       KEEP_DAYS: ${VUURTOREN_BACKUP_KEEP_DAYS:-14}
     volumes:
       - ${VUURTOREN_BACKUP_DIR:-./backups}:/backups
       - vuurtoren-data:/data:ro
-    networks: [backend]
+    network_mode: none
     command:
       - sh
       - -c
       - |
         set -u
         umask 077
-        if [ -n "$$VUURTOREN_TOKEN" ]; then set -- --header "Authorization: Bearer $$VUURTOREN_TOKEN"; else set --; fi
         while :; do
-          f="/backups/vuurtoren-$$(date +%Y-%m-%d-%H%M).sqlite"
-          if wget -q -T 600 "$$@" -O "$$f.part" http://api:8787/api/export; then
-            mv "$$f.part" "$$f"
-            echo "backup: $$f ($$(du -h "$$f" | cut -f1))"
-            find /backups -name 'vuurtoren-*.sqlite' -mtime +"$$KEEP_DAYS" -delete
-          else
-            rm -f "$$f.part"
-            echo "backup FAILED: is the api healthy? With sign-in on, set VUURTOREN_TOKEN." >&2
-          fi
           # Sync files are written whole (a new file, then a rename): a copy never holds half
           # of one.
           if [ -d /data/sync ]; then

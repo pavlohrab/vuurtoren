@@ -1,7 +1,8 @@
 /**
  * Notice when the session ends while the app is open: any same-origin `/api/` or `/nlp/`
  * answer with status 401 (expired cookie, "sign out all devices" elsewhere, a changed
- * password) tells the listeners, which show the sign-in screen over the app.
+ * password) tells the listeners, which show the sign-in screen over the app. Sync requests
+ * carry the page's own sync token, so their 401 is a sync problem, not a sign-out.
  *
  * It wraps `fetch` once, before the services are created (the NLP client binds `fetch` at
  * construction). Other origins (AnkiConnect, AI providers) and the sign-in endpoints
@@ -25,7 +26,9 @@ export function watchesUrl(input: RequestInfo | URL, origin: string): boolean {
   }
   if (url.origin !== origin) return false;
   const p = url.pathname;
-  if (p.startsWith("/api/auth/") || p === "/api/health") return false;
+  if (p.startsWith("/api/auth/") || p.startsWith("/api/sync/") || p === "/api/health") {
+    return false;
+  }
   return p.startsWith("/api/") || p.startsWith("/nlp/");
 }
 

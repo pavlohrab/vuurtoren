@@ -3,7 +3,6 @@ import { afterEach, describe, expect, it } from "vitest";
 import { contentHash } from "./hash.js";
 import { createNodeDriver } from "./node.js";
 import { createRepository, type VuurtorenRepository } from "./repository.js";
-import { validateRpcArgs } from "./rpc.js";
 import type { AppEvent } from "./types.js";
 
 const open: VuurtorenRepository[] = [];
@@ -151,22 +150,5 @@ describe("analysis cache", () => {
     clock.t += 1000;
     expect(await repo.analyzerSeen("a1-x")).toBe(first);
     expect(await repo.analyzerSeen("a1-y")).toBeGreaterThan(first);
-  });
-
-  it("the cache methods are callable over RPC with checked arguments", () => {
-    expect(
-      validateRpcArgs("saveTextAnalysis", [{ textId: "t", contentHash: "h", tokens: [] }]),
-    ).toBeNull();
-    expect(validateRpcArgs("saveTextAnalysis", [{ textId: "t", tokens: [] }])).toMatch(/required/);
-    expect(validateRpcArgs("saveTextAnalysis", [{ textId: "t", contentHash: "h" }])).toMatch(
-      /array/,
-    );
-    expect(
-      validateRpcArgs("saveTextGrammar", [{ textId: "t", contentHash: "h", version: 1, hits: [] }]),
-    ).toBeNull();
-    expect(
-      validateRpcArgs("saveTextGrammar", [{ textId: "t", contentHash: "h", hits: [] }]),
-    ).toMatch(/version/);
-    expect(validateRpcArgs("analyzerSeen", ["a1-x"])).toBeNull();
   });
 });

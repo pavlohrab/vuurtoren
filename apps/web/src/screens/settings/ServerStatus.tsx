@@ -15,10 +15,8 @@ import { appVersionLabel } from "../../version.js";
 type Tone = "ok" | "warn" | "error" | "pending";
 
 interface ApiHealth {
-  state: string;
   authRequired: boolean;
   authMethods?: string[];
-  schemaVersion: number;
 }
 interface NlpHealth {
   version: string;
@@ -55,7 +53,8 @@ export function ServerStatus({ nlpUrl }: { nlpUrl: string }) {
   const services = useServices();
   const qc = useQueryClient();
   const toast = useToast();
-  const server = data?.mode === "server";
+  // The page comes from a Vuurtoren server (its sync place and sign-in).
+  const server = Boolean(account);
   const nlp = useDebounced(nlpUrl.replace(/\/+$/, ""), 600);
 
   const api = useQuery({
@@ -90,36 +89,26 @@ export function ServerStatus({ nlpUrl }: { nlpUrl: string }) {
       ? ` · ${formatBytes(info.data.sizeBytes)}, ${info.data.eventCount.toLocaleString()} events`
       : "";
     rows.push(
-      server
-        ? { label: "Your data", tone: "ok", value: `On this server (one SQLite file)${size}` }
-        : data.mode === "desktop"
-          ? {
-              label: "Your data",
-              tone: "ok",
-              value: `${data.file?.path ?? "On this computer"}${size}`,
-            }
-          : {
-              label: "Your data",
-              tone: data.persistent && data.persisted !== false ? "ok" : "warn",
-              value: `In this browser${data.persistent ? "" : ", in memory only (not saved)"}${size}`,
-            },
+      data.mode === "desktop"
+        ? {
+            label: "Your data",
+            tone: "ok",
+            value: `${data.file?.path ?? "On this computer"}${size}`,
+          }
+        : {
+            label: "Your data",
+            tone: data.persistent && data.persisted !== false ? "ok" : "warn",
+            value: `In this browser${data.persistent ? "" : ", in memory only (not saved)"}${size}`,
+          },
     );
   }
 
   if (server) {
-    if (api.isPending) rows.push({ label: "Server database", tone: "pending", value: "Checking…" });
+    if (api.isPending) rows.push({ label: "Server", tone: "pending", value: "Checking…" });
     else if (api.error) {
-      rows.push({
-        label: "Server database",
-        tone: "error",
-        value: `No answer (${why(api.error)})`,
-      });
+      rows.push({ label: "Server", tone: "error", value: `No answer (${why(api.error)})` });
     } else if (api.data) {
-      rows.push({
-        label: "Server database",
-        tone: api.data.state === "ready" ? "ok" : "error",
-        value: `${api.data.state}, schema ${api.data.schemaVersion}`,
-      });
+      rows.push({ label: "Server", tone: "ok", value: "Sync place and language server" });
       rows.push(
         api.data.authRequired
           ? {
@@ -132,7 +121,7 @@ export function ServerStatus({ nlpUrl }: { nlpUrl: string }) {
           : {
               label: "Sign-in",
               tone: "warn",
-              value: "Off: anyone who can open this address has your data",
+              value: "Off: anyone who can open this address can use its sync place",
             },
       );
     }

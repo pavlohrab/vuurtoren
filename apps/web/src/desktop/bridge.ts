@@ -1,16 +1,8 @@
 /**
- * The desktop app (apps/desktop, Tauri) injects `window.__VUURTOREN_DESKTOP__` into every page
- * its window loads: the bundled home page (the offline app, or the Connect screen) and the
- * user's Vuurtoren server. In a normal browser it is absent and nothing here changes behaviour.
- *
+ * The desktop app (apps/desktop, Tauri) injects `window.__VUURTOREN_DESKTOP__` into its bundled
+ * page. In a normal browser it is absent and nothing here changes behaviour.
  */
 import type { NativeDb } from "@app/db/native";
-
-/** `/api/health` as the Connect screen needs it (a subset of `ServerHealth`). */
-interface DesktopHealth {
-  schemaVersion: number;
-  authRequired?: boolean;
-}
 
 /** Who has the database file open (the lock file next to it, `db.rs`). */
 export interface DbLock {
@@ -50,31 +42,25 @@ export type SidecarStatus = (
 ) & { health: SidecarHealth | null };
 
 export interface DesktopBridge {
-  /** True on the bundled home page; false on the user's server. */
+  /** True on the bundled page. */
   readonly home: boolean;
   info(): Promise<{
     version: string;
-    serverUrl: string | null;
-    /** "local": this computer only (the default); "server": open `serverUrl`. */
-    mode?: "local" | "server";
     /** The bundled language server's address (`vuurtoren-nlp:` protocol). */
     nlpBase?: string;
   }>;
-  /** GET `<url>/api/health` from the app (home page only). Rejects with a readable message. */
-  checkServer(url: string): Promise<{ url: string; health: DesktopHealth }>;
-  /** Remember the server and open it in the window (home page only). */
-  connect(url: string): Promise<void>;
-  /** Back to the Connect screen. */
-  changeServer(): Promise<void>;
+  /**
+   * What to do before the window closes (the last sync): the app waits for it, at most a few
+   * seconds, then closes. Returns a function that removes it.
+   */
+  beforeClose?(fn: () => Promise<void>): () => void;
   /** One AnkiConnect request, sent by the app (no browser Origin, so no CORS setup). */
   ankiFetch(req: {
     url: string;
     method: string;
     body?: string | undefined;
   }): Promise<{ status: number; body: string }>;
-  /** Use Vuurtoren on this computer only (home page; reloads it in offline mode). */
-  useLocal(): Promise<void>;
-  /** The local database file (offline mode, home page only). */
+  /** The local database file. */
   db: NativeDb & {
     open(force?: boolean): Promise<DbOpened>;
     /** Show the file in the system file manager. */
@@ -82,15 +68,15 @@ export interface DesktopBridge {
     /** Pick a folder, copy the database there and switch to it; null when cancelled. */
     move(): Promise<string | null>;
   };
-  /** The bundled language server (offline mode, home page only). */
+  /** The bundled language server. */
   nlp: {
     status(): Promise<SidecarStatus>;
     restart(): Promise<void>;
     retryPacks(): Promise<void>;
   };
   /**
-   * Sync (offline mode, home page only): a folder you already sync (Syncthing, Dropbox, iCloud
-   * Drive), and requests to sync places the page cannot reach itself (no CORS for the app).
+   * Sync: a folder you already sync (Syncthing, Dropbox, iCloud Drive), and requests to sync
+   * places the page cannot reach itself (no CORS for the app).
    */
   sync?: DesktopSync;
 }
@@ -197,7 +183,7 @@ export function withDesktopAnki(bridge: DesktopBridge, fallback: typeof fetch): 
 }
 
 /**
- * Offline mode: send the app's `/nlp/...` requests (the default language-server address) to the
+ * Send the app's `/nlp/...` requests (the default language-server address) to the
  * bundled language server's protocol. Installed once at boot; everything else is untouched.
  */
 export function routeNlpTo(base: string, fallback: typeof fetch): typeof fetch {

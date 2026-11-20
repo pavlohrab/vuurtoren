@@ -400,7 +400,7 @@ export async function applyEvent(driver: SqlDriver, ctx: EventContext): Promise<
     default: {
       // An event written by a newer app version (or a future sync peer). It stays in the log
       // untouched and is skipped here, so an older app can still open the database instead of
-      // failing the whole rebuild. Appends of unknown types are rejected earlier (rpc.ts).
+      // failing the whole rebuild.
       const unknown: never = e;
       console.warn(
         `[vuurtoren-db] skipping unknown event type ${(unknown as { type?: unknown }).type}`,

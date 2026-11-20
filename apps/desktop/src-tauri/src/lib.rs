@@ -1,16 +1,13 @@
-//! Vuurtoren desktop: the offline app (the default) and a thin client for a Vuurtoren server.
+//! Vuurtoren desktop: the whole app on this computer.
 //!
-//! The window starts on the bundled web build (the "home" page).
+//! The window shows the bundled web build (the "home" page). Its data is one SQLite file in a
+//! visible folder (`db.rs`, `~/Documents/Vuurtoren/vuurtoren.sqlite`) and its language server is
+//! the bundled sidecar (`sidecar.rs`), reached through the `vuurtoren-nlp:` protocol
+//! (`proxy.rs`). Other devices come together with it through sync (`sync.rs`).
 //!
-//! * **On this computer** (default): the home page runs the whole app. Its data is one SQLite
-//!   file in a visible folder (`db.rs`, `~/Documents/Vuurtoren/vuurtoren.sqlite`) and its language
-//!   server is the bundled sidecar (`sidecar.rs`), reached through the `vuurtoren-nlp:` protocol
-//!   (`proxy.rs`).
-//! * **Connected to a server**: once a server is chosen the window navigates to it, so the page,
-//!   its cookies, CSP and CSRF checks are exactly those of the server in a browser.
-//!
-//! Both get `window.__VUURTOREN_DESKTOP__` (see `bridge.js`): AnkiConnect requests sent from Rust
-//! (no webCorsOriginList setup), and the commands each mode may use.
+//! The page gets `window.__VUURTOREN_DESKTOP__` (see `bridge.js`): AnkiConnect requests sent
+//! from Rust (no webCorsOriginList setup), the database, sync and the language server. Closing
+//! the window first lets the page send its last changes (`close_now`).
 
 mod db;
 mod keys;
@@ -19,14 +16,15 @@ mod sidecar;
 mod sync;
 
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
 use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value as Json;
-use tauri::ipc::{CapabilityBuilder, InvokeBody};
+use tauri::ipc::InvokeBody;
 use tauri::webview::{DownloadEvent, NewWindowResponse};
-use tauri::{AppHandle, Manager, RunEvent, Url, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
+use tauri::{AppHandle, Manager, RunEvent, Url, WebviewUrl, WebviewWindowBuilder, WindowEvent};
 use tauri_plugin_dialog::{DialogExt, MessageDialogButtons};
 use tauri_plugin_opener::OpenerExt;
 use tauri_plugin_updater::UpdaterExt;
@@ -44,34 +42,22 @@ const BUILD_UPDATE_URL: Option<&str> = match option_env!("VUURTOREN_UPDATE_URL")
     _ => Some(DEFAULT_UPDATE_URL),
 };
 
+/// How long closing the window waits for the page's last sync.
+const CLOSE_WAIT: Duration = Duration::from_secs(5);
+
 /// What the app remembers between starts (`<config dir>/desktop.json`).
 #[derive(Default, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase", default)]
 struct Config {
-    /// The Vuurtoren server this app opens, as an origin with a trailing slash.
-    server_url: Option<String>,
     /// Overrides the update feed (a `latest.json` URL); empty string turns updates off.
     update_url: Option<String>,
-    /// "local" (this computer) or "server". Unset: "server" if a server was saved (thin-client
-    /// installs), else "local".
-    mode: Option<String>,
-    /// The database file (local mode); unset: `<Documents>/Vuurtoren/vuurtoren.sqlite`.
+    /// The database file; unset: `<Documents>/Vuurtoren/vuurtoren.sqlite`.
     database: Option<String>,
     /// Folders the user picked to sync through; the page may only reach files inside these.
     sync_roots: Vec<String>,
     /// Addresses (`https://host:port`) the user allowed sync requests to; `sync_fetch` reaches
     /// nothing else.
     sync_hosts: Vec<String>,
-}
-
-impl Config {
-    fn local(&self) -> bool {
-        match self.mode.as_deref() {
-            Some("local") => true,
-            Some("server") => false,
-            _ => self.server_url.is_none(),
-        }
-    }
 }
 
 /// The open local database and the lock this process holds on it.
@@ -95,6 +81,8 @@ struct State {
     sidecar: sidecar::Sidecar,
     /// The default database file (`<Documents>/Vuurtoren/vuurtoren.sqlite`).
     default_db: PathBuf,
+    /// The page finished its last sync (or took too long): the window may close.
+    closing: AtomicBool,
 }
 
 impl State {
@@ -105,29 +93,6 @@ impl State {
         let json = serde_json::to_string_pretty(config).map_err(|e| e.to_string())?;
         std::fs::write(&self.path, json).map_err(|e| e.to_string())
     }
-}
-
-/// `https://host:port/` from whatever the user typed (scheme optional, path dropped).
-fn normalize_server(input: &str) -> Result<Url, String> {
-    let trimmed = input.trim();
-    if trimmed.is_empty() {
-        return Err("Enter the address of your Vuurtoren server.".into());
-    }
-    let with_scheme = if trimmed.contains("://") {
-        trimmed.to_string()
-    } else {
-        format!("https://{trimmed}")
-    };
-    let url =
-        Url::parse(&with_scheme).map_err(|_| format!("\"{trimmed}\" is not a web address."))?;
-    if url.scheme() != "https" && url.scheme() != "http" {
-        return Err("The address must start with https:// or http://.".into());
-    }
-    if url.host_str().is_none() {
-        return Err(format!("\"{trimmed}\" is not a web address."));
-    }
-    let origin = url.origin().ascii_serialization();
-    Url::parse(&format!("{origin}/")).map_err(|e| e.to_string())
 }
 
 /// The bundled web build's address (the dev server under `tauri dev`).
@@ -145,130 +110,63 @@ fn home_url(app: &AppHandle) -> Url {
     Url::parse(home).expect("valid home url")
 }
 
-/// Let pages from the chosen server use the bridge commands (and nothing else).
-fn allow_server(app: &AppHandle, server: &Url) -> Result<(), String> {
-    let origin = server.origin().ascii_serialization();
-    app.add_capability(
-        CapabilityBuilder::new("server")
-            .remote(format!("{origin}/*"))
-            .local(false)
-            .window(MAIN)
-            .permission("allow-anki-fetch")
-            .permission("allow-change-server")
-            .permission("allow-desktop-info"),
-    )
-    .map_err(|e| e.to_string())
-}
-
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct DesktopInfo {
     version: String,
-    server_url: Option<String>,
-    /// "local" (this computer, the default) or "server".
-    mode: &'static str,
     /// Base URL of the bundled language server (the `vuurtoren-nlp:` protocol).
     nlp_base: &'static str,
 }
 
 #[tauri::command]
-fn desktop_info(app: AppHandle, state: tauri::State<'_, State>) -> DesktopInfo {
-    let config = state.config.lock().unwrap();
+fn desktop_info(app: AppHandle) -> DesktopInfo {
     DesktopInfo {
         version: app.package_info().version.to_string(),
-        server_url: config.server_url.clone(),
-        mode: if config.local() { "local" } else { "server" },
         nlp_base: proxy::base_url(),
     }
 }
 
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-struct ServerCheck {
-    /// The normalized address (`https://host/`).
-    url: String,
-    /// The server's `/api/health` answer.
-    health: serde_json::Value,
-}
-
-/// GET `<server>/api/health` from Rust (the home page may not fetch another origin).
-#[tauri::command]
-async fn check_server(url: String, state: tauri::State<'_, State>) -> Result<ServerCheck, String> {
-    let server = normalize_server(&url)?;
-    let health_url = server.join("api/health").map_err(|e| e.to_string())?;
-    let host = server.host_str().unwrap_or_default().to_string();
-    let res = state
-        .client
-        .get(health_url)
-        .timeout(Duration::from_secs(10))
-        .send()
-        .await
-        .map_err(|e| {
-            if e.is_timeout() {
-                format!("{host} did not answer in time.")
-            } else {
-                format!("Could not reach {host}. Check the address and your connection.")
-            }
-        })?;
-    let status = res.status();
-    let health: serde_json::Value = res
-        .json()
-        .await
-        .map_err(|_| format!("{host} answered, but it is not a Vuurtoren server (HTTP {status})."))?;
-    if health.get("schemaVersion").is_none() {
-        return Err(format!("{host} answered, but it is not a Vuurtoren server."));
+/// Closing the window: the page sends its last changes first (`window.__VUURTOREN_CLOSING__`
+/// in bridge.js, at most about 5 s), then calls `close_now`. A page that never answers is
+/// closed after `CLOSE_WAIT`.
+fn on_close_requested(window: &tauri::Window, api: &tauri::CloseRequestApi) {
+    let state = window.state::<State>();
+    if state.closing.load(Ordering::SeqCst) {
+        return;
     }
-    Ok(ServerCheck {
-        url: server.to_string(),
-        health,
-    })
-}
-
-/// Remember the server and open it in the window.
-#[tauri::command]
-fn connect(
-    url: String,
-    app: AppHandle,
-    window: WebviewWindow,
-    state: tauri::State<'_, State>,
-) -> Result<(), String> {
-    let server = normalize_server(&url)?;
-    {
-        let mut config = state.config.lock().unwrap();
-        config.server_url = Some(server.to_string());
-        config.mode = Some("server".into());
-        state.save(&config)?;
+    api.prevent_close();
+    let app = window.app_handle().clone();
+    let asked = window.get_webview_window(window.label()).is_some_and(|page| {
+        page.eval(
+            "window.__VUURTOREN_CLOSING__ ? window.__VUURTOREN_CLOSING__() : window.__TAURI_INTERNALS__.invoke('close_now')",
+        )
+        .is_ok()
+    });
+    if !asked {
+        close_window(&app);
+        return;
     }
-    // The server keeps the data now: let go of the local file and the language server.
-    close_db(&state);
-    state.sidecar.stop();
-    state.sidecar.set_state(sidecar::NlpState::Idle);
-    allow_server(&app, &server)?;
-    window.navigate(server).map_err(|e| e.to_string())
+    tauri::async_runtime::spawn(async move {
+        tokio::time::sleep(CLOSE_WAIT).await;
+        close_window(&app);
+    });
 }
 
-/// Use Vuurtoren on this computer only (the default; also "Back to this computer").
-#[tauri::command]
-fn use_local(
-    app: AppHandle,
-    window: WebviewWindow,
-    state: tauri::State<'_, State>,
-) -> Result<(), String> {
-    {
-        let mut config = state.config.lock().unwrap();
-        config.mode = Some("local".into());
-        state.save(&config)?;
+/// Close the main window for good (the close request is not intercepted again).
+fn close_window(app: &AppHandle) {
+    let state = app.state::<State>();
+    if state.closing.swap(true, Ordering::SeqCst) {
+        return;
     }
-    ensure_sidecar(&app);
-    window.navigate(home_url(&app)).map_err(|e| e.to_string())
+    if let Some(w) = app.get_webview_window(MAIN) {
+        let _ = w.close();
+    }
 }
 
-/// Back to the Connect screen (the saved server stays until another one is chosen).
+/// The page sent its last changes (or has none): close the window.
 #[tauri::command]
-fn change_server(app: AppHandle, window: WebviewWindow) -> Result<(), String> {
-    let mut home = home_url(&app);
-    home.set_query(Some("connect"));
-    window.navigate(home).map_err(|e| e.to_string())
+fn close_now(app: AppHandle) {
+    close_window(&app);
 }
 
 #[derive(Deserialize)]
@@ -1030,13 +928,17 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
+        .on_window_event(|window, event| {
+            if let WindowEvent::CloseRequested { api, .. } = event {
+                if window.label() == MAIN {
+                    on_close_requested(window, api);
+                }
+            }
+        })
         .invoke_handler(tauri::generate_handler![
             desktop_info,
-            check_server,
-            connect,
-            change_server,
+            close_now,
             anki_fetch,
-            use_local,
             sync_pick_folder,
             sync_dir_list,
             sync_dir_get,
@@ -1072,13 +974,6 @@ pub fn run() {
                 .ok()
                 .and_then(|b| serde_json::from_slice(&b).ok())
                 .unwrap_or_default();
-            if let Some(server) = config
-                .server_url
-                .as_deref()
-                .and_then(|s| normalize_server(s).ok())
-            {
-                allow_server(&handle, &server)?;
-            }
             let client = reqwest::Client::builder()
                 .user_agent(concat!("Vuurtoren-Desktop/", env!("CARGO_PKG_VERSION")))
                 .build()?;
@@ -1091,7 +986,6 @@ pub fn run() {
                 .path()
                 .document_dir()
                 .or_else(|_| app.path().home_dir().map(|h| h.join("Documents")))?;
-            let local = config.local();
             // `--self-test`: start hidden, check the offline app end to end, exit.
             let self_test = std::env::args().any(|a| a == "--self-test");
             app.manage(State {
@@ -1104,11 +998,10 @@ pub fn run() {
                 db: Mutex::new(None),
                 sidecar: sidecar::Sidecar::default(),
                 default_db: db::default_path(&documents),
+                closing: AtomicBool::new(false),
             });
-            if local {
-                // Start the language server right away; the window does not wait for it.
-                ensure_sidecar(&handle);
-            }
+            // Start the language server right away; the window does not wait for it.
+            ensure_sidecar(&handle);
 
             let downloads = app.path().download_dir().ok();
             WebviewWindowBuilder::new(app, MAIN, WebviewUrl::App("index.html".into()))
@@ -1273,42 +1166,6 @@ async fn self_test_run(app: AppHandle) {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn server_addresses_are_normalized_to_origins() {
-        assert_eq!(
-            normalize_server("vuurtoren.example").unwrap().as_str(),
-            "https://vuurtoren.example/"
-        );
-        assert_eq!(
-            normalize_server(" http://10.0.0.5:8080/library?x ")
-                .unwrap()
-                .as_str(),
-            "http://10.0.0.5:8080/"
-        );
-        assert!(normalize_server("").is_err());
-        assert!(normalize_server("ftp://x").is_err());
-        assert!(normalize_server("file:///etc/passwd").is_err());
-    }
-
-    #[test]
-    fn offline_is_the_default_and_old_thin_clients_keep_their_server() {
-        let fresh = Config::default();
-        assert!(fresh.local());
-        let thin: Config =
-            serde_json::from_str(r#"{"serverUrl":"https://vuurtoren.example/"}"#).unwrap();
-        assert!(!thin.local());
-        let back = Config {
-            mode: Some("local".into()),
-            ..thin.clone()
-        };
-        assert!(back.local());
-        let chosen = Config {
-            mode: Some("server".into()),
-            ..Config::default()
-        };
-        assert!(!chosen.local());
-    }
 
     #[test]
     fn moving_never_overwrites_another_database() {

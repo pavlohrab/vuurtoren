@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
-# Vuurtoren API: user data in ONE SQLite file on a volume. Build context: the repo root
-# (see deploy/compose.yml), because @app/api depends on the workspace packages.
+# Vuurtoren API: sign-in, sync tokens and the sync files of your devices, on a volume. Build
+# context: the repo root (see deploy/compose.yml), because it is part of the pnpm workspace.
 # Base images are pinned to a patch release; .github/dependabot.yml proposes updates.
 
 # ---- Stage 1: build and prune ----------------------------------------------------------
@@ -19,10 +19,10 @@ RUN pnpm --filter @app/api... build
 RUN pnpm --filter @app/api deploy --prod /out
 
 # ---- Stage 2: runtime ------------------------------------------------------------------
-# Alpine is enough: SQLite is WebAssembly (@sqlite.org/sqlite-wasm), there are no native modules.
+# Alpine is enough: there are no native modules (node:sqlite holds the sign-in data).
 FROM node:26.13.1-alpine
 ENV NODE_ENV=production \
-    VUURTOREN_DB=/data/vuurtoren.sqlite \
+    VUURTOREN_DATA=/data \
     VUURTOREN_AUTH_DB=/data/auth.sqlite \
     VUURTOREN_HOST=0.0.0.0 \
     VUURTOREN_PORT=8787

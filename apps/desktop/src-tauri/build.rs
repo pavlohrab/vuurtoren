@@ -1,14 +1,11 @@
 fn main() {
     tauri_build::try_build(tauri_build::Attributes::new().app_manifest(
-        // One permission per command (`allow-<command>`), so pages from the user's server can be
-        // given only the bridge commands (the offline-mode commands stay on the home page) (see `allow_server` in src/lib.rs).
+        // One permission per command (`allow-<command>`): the bundled page gets them in
+        // capabilities/default.json, and no other page gets any.
         tauri_build::AppManifest::new().commands(&[
             "desktop_info",
-            "check_server",
-            "connect",
-            "change_server",
+            "close_now",
             "anki_fetch",
-            "use_local",
             "sync_pick_folder",
             "sync_dir_list",
             "sync_dir_get",

@@ -779,9 +779,9 @@ A device writes only its own folder and blobs (named by content), so places that
 
 **Limits.** No file over 60 MiB of JSON is written (a single change that big stays on its device and is reported), unpacking stops at 64 MiB, and parts stay at most 16 MiB, so every place's 64 MiB limit holds. `device.kev` is written when something was sent, else at most hourly; names are cut at 64 characters.
 
-**When something is wrong.** A file that does not open is tried again on the next two syncs, then set aside: recorded with its reason in the sync state, reported in the sync's summary, and the other files of that device follow. The other devices go on meanwhile. An event a projection cannot apply stays in the log and is reported; the others apply. A file from a newer Vuurtoren waits for the update.
+**When something is wrong.** A file that does not open is tried again for an hour, then set aside: recorded with its reason in the sync state, reported in the sync's summary and listed in Settings → Sync, and the other files of that device follow. The other devices go on meanwhile. An event a projection cannot apply stays in the log and is reported; the others apply. A file from a newer Vuurtoren waits for the update.
 
-Places: a Vuurtoren server (`/api/sync`, a sync token made in that server's Settings → Sync opens it and nothing else), a folder (desktop app; writes go to a temporary file and are renamed, and links inside the folder are not followed), WebDAV (PROPFIND, PUT, MKCOL; through the desktop app no CORS setup is needed, and the app asks once before it sends to a new address) and a private GitHub repository (the contents API, and the Git trees API for folders past 1,000 files; each write is a commit). Requests skip the browser cache.
+Places: a Vuurtoren server (`/api/sync`; a sync token made in that server's Settings → Sync opens it and the server's language server, nothing else; the page served by that server makes its own token with its session), a folder (desktop app; writes go to a temporary file and are renamed, and links inside the folder are not followed) and WebDAV (desktop app; PROPFIND, PUT, MKCOL; the app sends the requests itself, so no CORS setup is needed, and it asks once before it sends to a new address). Requests skip the browser cache. The store of a place is built once and kept while the place stays the same.
 
 ### 10.3 Encryption
 
@@ -793,7 +793,7 @@ A random **data key** (64 bytes) seals every file: an AES-256-GCM key and an HMA
 | recovery key | 160 random bits (32 letters and digits, shown once), HKDF-SHA256 |
 
 - **Changing the passphrase** re-locks the data key: no file is encrypted again and other devices keep syncing with the key they hold. It asks for the current passphrase or the recovery key first. A new recovery key replaces the old one.
-- The passphrase and the recovery key are never stored; the data key is kept in the device's own storage, like AI keys.
+- The passphrase and the recovery key are never stored; the data key is kept in the device's key store (10.6). A new vault is written only after its data key is kept, so no vault exists that no device can open. A recovery key that is not confirmed as saved waits in the tab's session storage, so a reload shows it again.
 - A passphrase is locked without the spaces around it. One that reads like a recovery key is refused. To open the vault, the recovery lock is tried first, then the passphrase lock.
 - `vault.json` is checked before use: its shape, Argon2id at most 1 GiB and 10 passes, PBKDF2 at most 10 million rounds.
 - A vault in the first format (PBKDF2-SHA256, 600,000 rounds, the key derived from the passphrase) opens too. Changing its passphrase turns it into the current format with that key as its data key, so no file changes.
@@ -817,10 +817,22 @@ An incoming event needs an id and a clock as Vuurtoren makes them (a ULID; a clo
 
 ### 10.6 When it runs
 
-While the app is open: on focus, when it becomes visible and every 30 seconds, at most once a minute. When the app is hidden or closed it syncs once more if this device has changes the last sync did not carry (at most every 15 seconds; best effort, as the page may go first). When changes came in, the services drop their caches and every screen refetches, also when the sync failed after some files came in. A sync that fails keeps its reason for Settings and shows in the top bar's indicator; changes stay on the device until the next sync. Setting up, a sync, a passphrase change and Stop run one at a time, so Stop during a setup stays stopped.
+| When                     | What                                                                               |
+| ------------------------ | ---------------------------------------------------------------------------------- |
+| the app opens            | one sync                                                                           |
+| a local change           | the log's head is read every 5 s; once it has stood still for 5 s, a sync sends it |
+| focus, back in view      | a sync, unless one ran in the last 5 s                                             |
+| every 15 s while visible | a sync, to pull what other devices sent                                            |
+| hidden or closed         | a sync whenever something is not sent yet                                          |
+
+So a change on one open device shows on another open device within about 5 to 20 seconds. After a failed sync nothing runs by itself for 15 seconds. During a practice session (a screen holds sync) nothing runs; what was asked runs when the hold ends. Closing: the desktop app holds the window's close request, the page syncs (at most about 5 s) and then lets it close; in a browser the sync starts when the page is hidden, and the page lets go of its database only after it (at most 3 s). Hidden and closed both ask; one sync answers.
+
+When changes came in, the services drop their caches and every screen refetches, also when the sync failed after some files came in. A sync that fails keeps its reason for Settings and shows in the top bar's indicator; changes stay on the device until the next sync. Files sync waits for or left out are kept with the status and listed in Settings → Sync. When the key store has no key for the place, sync stops by itself and Settings asks for the passphrase (or recovery key), which brings the key back. Setting up, a sync, unlocking, a passphrase change and Stop run one at a time, so Stop during a setup stays stopped.
 
 **Setting up** asks which device this is. **Start new sync data here** (the first device) refuses a place that already holds a vault or device folders, writes `vault.json`, reads it back and only then shows the recovery key. **Join my synced data** never writes a vault: before the first device's files arrive (a synced folder still copying, another folder, address or branch) it says so. Once the place is open sync stays set up even when the first sync does not finish; the recovery key is shown all the same. Passphrase changes and new recovery keys read `vault.json` back too.
 
 **A restored backup** gets a new device id (two devices restored from one backup never share one). Its events not yet sent move to the new id (same event ids, so a device that has them skips them), so they still reach the other devices.
 
-**On a Vuurtoren server** a sync token belongs to one device: the first device folder it writes is its own, and it writes only there and the blobs. It may create `vault.json` when there is none; replacing it needs a session, the server's token, the sync token that made it or one made for it. All sync files share a quota (`VUURTOREN_SYNC_QUOTA_MB`, 2 GB). With sign-in off the server answers this site and `VUURTOREN_ALLOWED_ORIGINS` only.
+**On a Vuurtoren server** a sync token belongs to one device: the first device folder it writes is its own, and it writes only there and the blobs. It may create `vault.json` when there is none; replacing it needs a session, the server's token, the sync token that made it or one made with `vault` allowed (**May change the passphrase and recovery key**; the page's own token has it). All sync files share a quota (`VUURTOREN_SYNC_QUOTA_MB`, 2 GB). With sign-in off the server answers this site and `VUURTOREN_ALLOWED_ORIGINS` only.
+
+**A lost device** keeps the data key. Revoking its sync token closes a Vuurtoren server to it; to be safe, start new sync data in a new place with a new passphrase and join it from the other devices (a new vault starts every device's bookkeeping over).

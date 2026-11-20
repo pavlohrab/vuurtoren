@@ -125,7 +125,7 @@ export function createLiveTexts({
   evidence,
 }: LiveTextsDeps) {
   // Text content never changes under an id within this client (imports get new ids); another
-  // device's changes clear the cache through `checkRemoteChanges`.
+  // device's changes clear the cache through `autoSync`.
   const planCache = new Map<string, { version: number; view: ReadingView }>();
   const inFlight = new Map<string, Promise<ReadingView | null>>();
 

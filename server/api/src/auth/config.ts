@@ -4,9 +4,9 @@
  *   VUURTOREN_USER            username for password sign-in
  *   VUURTOREN_PASSWORD_HASH   scrypt hash from `hash-password` (recommended)
  *   VUURTOREN_PASSWORD        plain password (accepted, hashed at startup; a warning is logged)
- *   VUURTOREN_TOKEN           bearer token for scripts / the MCP server
- *   VUURTOREN_AUTH_DB         session database (default auth.sqlite next to VUURTOREN_DB, i.e.
- *                           /data/auth.sqlite in Docker; in memory while auth is off)
+ *   VUURTOREN_TOKEN           bearer token for scripts (also a sign-in on token-only servers)
+ *   VUURTOREN_AUTH_DB         sessions and sync tokens (default auth.sqlite in VUURTOREN_DATA;
+ *                           in memory while auth is off)
  *   VUURTOREN_COOKIE_SECURE   "0" to drop the Secure cookie flag (plain-http LAN only)
  *   VUURTOREN_TRUST_CF        "1" behind a Cloudflare Tunnel: client IP from CF-Connecting-IP
  *   VUURTOREN_ALLOWED_ORIGINS extra origins (comma-separated) for state-changing requests, and
@@ -15,7 +15,7 @@
  * With no password and no token, auth is off.
  */
 import { createHash } from "node:crypto";
-import { dirname, join } from "node:path";
+import { join } from "node:path";
 import type { AuthOptions } from "./index.js";
 import { DEFAULT_SCRYPT, hashPasswordWithSalt, parsePasswordHash } from "./password.js";
 
@@ -23,6 +23,11 @@ const flag = (v: string | undefined, fallback: boolean): boolean => {
   if (v === undefined || v.trim() === "") return fallback;
   return !/^(0|false|no|off)$/i.test(v.trim());
 };
+
+/** The server's data folder (VUURTOREN_DATA, default /data). */
+export function dataDir(env: NodeJS.ProcessEnv): string {
+  return env["VUURTOREN_DATA"]?.trim() || "/data";
+}
 
 /** Build `AuthOptions` and a list of log lines describing the result. Throws on bad config. */
 export async function authFromEnv(
@@ -90,8 +95,7 @@ export async function authFromEnv(
       token,
       sessionDb:
         password || token
-          ? env["VUURTOREN_AUTH_DB"] ||
-            join(dirname(env["VUURTOREN_DB"] || "/data/vuurtoren.sqlite"), "auth.sqlite")
+          ? env["VUURTOREN_AUTH_DB"] || join(dataDir(env), "auth.sqlite")
           : ":memory:",
       cookieSecure,
       trustCloudflare,

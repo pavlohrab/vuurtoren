@@ -5,6 +5,16 @@
 
 export type AuthMethod = "password" | "token";
 
+/** Body of `GET /api/health` on a Vuurtoren server (never needs a sign-in). */
+export interface ServerHealth {
+  ok: true;
+  service: "vuurtoren-api";
+  /** True when requests need a sign-in session (cookie) or `Authorization: Bearer <token>`. */
+  authRequired: boolean;
+  /** How one can sign in. */
+  authMethods?: AuthMethod[];
+}
+
 /** Who is signed in (GET /api/auth/me). */
 export interface Account {
   authEnabled: boolean;
@@ -49,6 +59,28 @@ async function errorText(res: Response): Promise<string | null> {
     return typeof body.error === "string" ? body.error : null;
   } catch {
     // no JSON error body: the caller uses its generic message (expected)
+    return null;
+  }
+}
+
+/**
+ * Ask the page's own server whether it is a Vuurtoren server. Any other answer (404, an HTML
+ * page from a SPA fallback, a network error, a timeout) is null.
+ */
+export async function fetchServerHealth(
+  fetchImpl: FetchLike = ambientFetch,
+  timeoutMs = 2000,
+): Promise<ServerHealth | null> {
+  try {
+    const res = await fetchImpl("/api/health", {
+      signal: AbortSignal.timeout(timeoutMs),
+      cache: "no-store",
+    });
+    if (!res.ok) return null;
+    const body = (await res.json()) as Partial<ServerHealth> | null;
+    return body?.ok === true && body.service === "vuurtoren-api" ? (body as ServerHealth) : null;
+  } catch {
+    // Nothing answered: no Vuurtoren server here (expected for a plain page).
     return null;
   }
 }

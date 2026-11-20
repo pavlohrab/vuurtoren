@@ -74,7 +74,7 @@ jobs:
       - run: uv run pytest -q
 
   # Builds the three images exactly as published (amd64 only, nothing pushed), starts the Dockge
-  # stack from them and runs scripts/doctor.sh against it: page, health, sign-in, data, NLP.
+  # stack from them and runs scripts/doctor.sh against it: page, health, sign-in, sync, NLP.
   images:
     name: images + smoke test
     runs-on: ubuntu-latest

@@ -1,4 +1,4 @@
-/** Fake sync places for tests: a Vuurtoren server's /api/sync, a WebDAV server, GitHub. */
+/** Fake sync places for tests: a Vuurtoren server's /api/sync and a WebDAV server. */
 export type Files = Map<string, Uint8Array>;
 const bytesOf = async (body: BodyInit | null | undefined) =>
   body ? new Uint8Array(await new Response(body).arrayBuffer()) : new Uint8Array();
@@ -73,65 +73,5 @@ export function fakeDav(files: Files, dirs: Set<string>): typeof fetch {
         return b ? new Response(b as BodyInit) : new Response("", { status: 404 });
       }
     }
-  }) as typeof fetch;
-}
-
-/** GitHub's contents API for one repository. */
-export function fakeGithub(files: Files): typeof fetch {
-  const shas = new Map<string, string>();
-  let n = 0;
-  return (async (input: RequestInfo | URL, init: RequestInit = {}) => {
-    const url = new URL(String(input));
-    const headers = new Headers(init.headers);
-    if (headers.get("authorization") !== "Bearer ghp_x") return new Response("{}", { status: 401 });
-    // A folder's git tree (its sha here is "tree:<path>"): every entry.
-    const tree = /^\/repos\/anna\/vuurtoren-sync\/git\/trees\/tree:(.+)$/.exec(url.pathname);
-    if (tree) {
-      const dir = decodeURIComponent(tree[1]!);
-      return Response.json({
-        tree: names(files, dir).map((name) => {
-          const p = `${dir}/${name}`;
-          return { path: name, type: files.has(p) ? "blob" : "tree", sha: shas.get(p) ?? "" };
-        }),
-      });
-    }
-    const m = /^\/repos\/anna\/vuurtoren-sync\/contents\/?(.*)$/.exec(url.pathname);
-    if (!m) return new Response("{}", { status: 404 });
-    const path = decodeURIComponent(m[1]!);
-    const method = init.method ?? "GET";
-    if (method === "GET") {
-      const file = files.get(path);
-      if (file) {
-        if (headers.get("accept") === "application/vnd.github.raw+json")
-          return new Response(file as BodyInit);
-        return Response.json({ sha: shas.get(path), name: path.split("/").pop(), type: "file" });
-      }
-      const list = names(files, path);
-      if (!list.length) return Response.json({ message: "Not Found" }, { status: 404 });
-      // Like GitHub, at most 1000 entries.
-      return Response.json(
-        list.slice(0, 1000).map((name) => {
-          const p = path ? `${path}/${name}` : name;
-          return files.has(p)
-            ? { name, type: "file", sha: shas.get(p) ?? "" }
-            : { name, type: "dir", sha: `tree:${p}` };
-        }),
-      );
-    }
-    const body = JSON.parse(String(init.body)) as { content?: string; sha?: string };
-    if ((files.has(path) ? shas.get(path) : undefined) !== body.sha) {
-      return Response.json({ message: "sha does not match" }, { status: 409 });
-    }
-    if (method === "DELETE") {
-      files.delete(path);
-      shas.delete(path);
-      return Response.json({});
-    }
-    files.set(
-      path,
-      Uint8Array.from(atob(body.content!), (c) => c.charCodeAt(0)),
-    );
-    shas.set(path, `sha${++n}`);
-    return Response.json({ content: { sha: shas.get(path) } });
   }) as typeof fetch;
 }

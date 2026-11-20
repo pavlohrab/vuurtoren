@@ -1,5 +1,10 @@
 # Self-hosting Vuurtoren
 
+A Vuurtoren server gives your devices sync and the language server. It signs you in, serves the
+app, stores the locked sync files of your devices (`/api/sync`) and runs the Dutch language
+server (`/nlp/`). It holds no readable data: every device, the app opened from the server
+included, keeps its own copy and syncs through it.
+
 ## Quick start
 
 You need Docker, and Anki desktop with the [AnkiConnect](https://ankiweb.net/shared/info/2055492159)
@@ -12,13 +17,13 @@ docker compose -f deploy/compose.yml up -d
 Open <http://localhost:8080>, follow the welcome steps and click **Connect to Anki**. Anki asks
 once whether to allow the site: click **Yes**.
 
-| Service  | Does                                          | Port             |
-| -------- | --------------------------------------------- | ---------------- |
-| `web`    | the app and a proxy to the other services     | `127.0.0.1:8080` |
-| `api`    | your data (one SQLite file) and sign-in       | internal         |
-| `nlp`    | Dutch analysis, dictionary, OCR, translation  | internal         |
-| `caddy`  | optional HTTPS (profile `https`)              | 80, 443          |
-| `backup` | optional scheduled backups (profile `backup`) | —                |
+| Service  | Does                                                 | Port             |
+| -------- | ---------------------------------------------------- | ---------------- |
+| `web`    | the app and a proxy to the other services            | `127.0.0.1:8080` |
+| `api`    | sign-in, sync tokens and the sync files              | internal         |
+| `nlp`    | Dutch analysis, dictionary, OCR, translation         | internal         |
+| `caddy`  | optional HTTPS (profile `https`)                     | 80, 443          |
+| `backup` | optional copies of the sync files (profile `backup`) | —                |
 
 Settings go in `deploy/.env`. Change the port with `VUURTOREN_WEB_PORT=9000`.
 
@@ -53,13 +58,19 @@ VUURTOREN_PASSWORD_HASH=scrypt:65536:8:1:...
 Settings → Account has **Sign out** and **Sign out all devices**. A new hash signs out every
 device.
 
-| Variable                    | Default | Meaning                                                             |
-| --------------------------- | ------- | ------------------------------------------------------------------- |
-| `VUURTOREN_TOKEN`           |         | bearer token for scripts, backups and the stdio MCP server          |
-| `VUURTOREN_COOKIE_SECURE`   | `1`     | `0` only for plain `http://` on a trusted LAN                       |
-| `VUURTOREN_TRUST_CF`        | `0`     | `1` behind a Cloudflare Tunnel, so rate limits see the visitor's IP |
-| `VUURTOREN_ALLOWED_ORIGINS` |         | extra allowed origins, if a proxy rewrites the `Host` header        |
-| `VUURTOREN_NLP_AUTH` (web)  | `on`    | `off` only when running without the `api` service                   |
+| Variable                       | Default | Meaning                                                             |
+| ------------------------------ | ------- | ------------------------------------------------------------------- |
+| `VUURTOREN_TOKEN`              |         | bearer token for scripts (`scripts/doctor.sh`)                      |
+| `VUURTOREN_COOKIE_SECURE`      | `1`     | `0` only for plain `http://` on a trusted LAN                       |
+| `VUURTOREN_TRUST_CF`           | `0`     | `1` behind a Cloudflare Tunnel, so rate limits see the visitor's IP |
+| `VUURTOREN_ALLOWED_ORIGINS`    |         | extra allowed origins, if a proxy rewrites the `Host` header        |
+| `VUURTOREN_NLP_AUTH` (web)     | `on`    | `off` only when running without the `api` service (see below)       |
+| `VUURTOREN_CORS_ORIGINS` (nlp) |         | pages on other sites that use the language server with a sync token |
+
+**The language server stays behind the sign-in.** With `VUURTOREN_NLP_AUTH=on`, `/nlp/` answers
+a signed-in browser or a device's sync token (`Authorization: Bearer ksync_…`), and nothing
+else. Never set it to `off` on a server that the internet can reach: anyone could then use your
+language server.
 
 ## Dockge + Cloudflare Tunnel
 
@@ -75,7 +86,6 @@ A public `https://` address with no open ports.
    VUURTOREN_USER=anna
    VUURTOREN_PASSWORD_HASH=scrypt:...
    VUURTOREN_TRUST_CF=1
-   VUURTOREN_TOKEN=<openssl rand -hex 32>
    TUNNEL_TOKEN=<from step 3>
    COMPOSE_PROFILES=tunnel,backup
    ```
@@ -107,20 +117,26 @@ progress.
 
 ## Sync for your devices
 
-The desktop app (and later phones) keep their own data and sync through your server: in the
-server's Settings → Sync make a **sync token** for each device, then on the device choose
-Settings → Sync → **Your Vuurtoren server** with the server's address, the token and a passphrase.
-On the first device choose **Start new sync data here**; on every other one **Join my synced
-data**, with the same passphrase. The server stores sealed files in `sync/` next to the
-database; it cannot read them.
+Every device keeps its own data and syncs through your server. The server stores locked files
+in `sync/` on the `vuurtoren-data` volume; it cannot read them.
 
-- A sync token opens `/api/sync` and nothing else, and belongs to one device: the first device
-  folder it writes becomes its own, and it may write only there and the shared images. Give
-  each device its own token (a device that starts over, for example after a restore, needs a
-  new one).
+- **The app opened from the server:** sign in, then Settings → Sync → **This server**. The page
+  makes its own sync token.
+- **Other devices** (the desktop app, a phone's browser on another address): in the server's
+  Settings → Sync make a **sync token** for each device, then on the device choose Settings →
+  Sync → **Your Vuurtoren server** with the server's address and the token.
+
+On the first device choose **Start new sync data here**; on every other one **Join my synced
+data**, with the same passphrase. A device that syncs with the server also uses its language
+server, unless it has its own (the desktop app does).
+
+- A sync token opens `/api/sync` and the language server, nothing else, and belongs to one
+  device: the first device folder it writes becomes its own, and it may write only there and
+  the shared images. Give each device its own token (a device that starts over, for example
+  after a restore, needs a new one).
 - The token of the device that started the sync data may change its passphrase and recovery
-  key; other tokens may not. A token made with `{"vault": true}` (`POST /api/auth/sync-tokens`)
-  may too.
+  key. Others may too when made with **May change the passphrase and recovery key** ticked
+  (`POST /api/auth/sync-tokens` with `{"vault": true}`).
 - All sync files together may take `VUURTOREN_SYNC_QUOTA_MB` (default 2048 MB).
 - With sign-in off, `/api/sync` answers only the server's own address and
   `VUURTOREN_ALLOWED_ORIGINS`: a page on another site cannot read or change your sync files. The
@@ -128,15 +144,13 @@ database; it cannot read them.
 
 ## Backup and restore
 
-- **Scheduled:** profile `backup` saves a snapshot every 24 h into `./backups` next to the
-  compose file and keeps 14 days (`VUURTOREN_BACKUP_INTERVAL_HOURS`, `VUURTOREN_BACKUP_KEEP_DAYS`).
-  Needs `VUURTOREN_TOKEN` when sign-in is on. Copy the folder off the machine. The sync files of
-  your devices go there too, as `vuurtoren-sync-…tar.gz`: to bring them back, stop the stack and
-  unpack one into the `vuurtoren-data` volume (it holds a `sync/` folder).
-- **In the app:** Settings → Your data → **Download backup** and **Restore from backup…**.
-- **Shell:** `curl -H "Authorization: Bearer $VUURTOREN_TOKEN" -o vuurtoren.sqlite https://vuurtoren.example.com/api/export`.
-
-A restore replaces all data. Backups never contain sign-in sessions.
+- **On each device:** Settings → Data & backup → **Download backup** and **Restore from
+  backup…**. A restore replaces all data on that device.
+- **Sync files:** profile `backup` copies the locked sync files every 24 h into `./backups` next
+  to the compose file and keeps 14 days (`VUURTOREN_BACKUP_INTERVAL_HOURS`,
+  `VUURTOREN_BACKUP_KEEP_DAYS`), as `vuurtoren-sync-…tar.gz`. Copy the folder off the machine.
+  To bring files back, stop the stack and unpack one into the `vuurtoren-data` volume (it holds
+  a `sync/` folder).
 
 ## Troubleshooting
 
@@ -151,4 +165,4 @@ shell: `scripts/doctor.sh https://vuurtoren.example.com`.
 | signed out right after signing in     | plain `http://` with `VUURTOREN_COOKIE_SECURE=1`: use HTTPS |
 | "origin does not match"               | set `VUURTOREN_ALLOWED_ORIGINS=https://your.address`        |
 | "Too many attempts" behind Cloudflare | set `VUURTOREN_TRUST_CF=1`                                  |
-| "Can't reach your Vuurtoren server"   | `docker compose ps` and `docker compose logs api`           |
+| sync or language server not reached   | `docker compose ps` and `docker compose logs api nlp`       |

@@ -1,7 +1,7 @@
 /**
- * Tokens a Vuurtoren server makes for one use (server/api/src/auth/tokens.ts): MCP tokens for
- * Claude Code, sync tokens for devices that keep their own data. List, make (the token is
- * returned once) and revoke. Only in server mode; the session cookie authorises the calls.
+ * Sync tokens of a Vuurtoren server (server/api/src/auth/tokens.ts): what a device sends to
+ * sync through the server and to use its language server. List, make (the token is returned
+ * once) and revoke, on a page served by that server; its sign-in authorises the calls.
  */
 /** A token as listed: never the secret itself. */
 interface TokenInfo {
@@ -9,6 +9,8 @@ interface TokenInfo {
   label: string;
   createdAt: number;
   lastUsedAt: number | null;
+  /** The token may change the passphrase and recovery key. */
+  vault?: boolean;
 }
 
 type FetchLike = typeof fetch;
@@ -21,34 +23,25 @@ async function ok<T>(res: Response): Promise<T> {
   return body;
 }
 
-export function createMcpTokenClient(base = "", fetchImpl: FetchLike = ambient) {
-  return createTokenClient("mcp-tokens", base, fetchImpl);
-}
-
-export function createSyncTokenClient(base = "", fetchImpl: FetchLike = ambient) {
-  return createTokenClient("sync-tokens", base, fetchImpl);
-}
-
-function createTokenClient(kind: "mcp-tokens" | "sync-tokens", base: string, fetchImpl: FetchLike) {
+export function createSyncTokenClient(fetchImpl: FetchLike = ambient) {
+  const base = "/api/auth/sync-tokens";
   return {
     async list(): Promise<TokenInfo[]> {
-      const res = await fetchImpl(`${base}/api/auth/${kind}`, {
-        credentials: "same-origin",
-        cache: "no-store",
-      });
+      const res = await fetchImpl(base, { credentials: "same-origin", cache: "no-store" });
       return (await ok<{ tokens: TokenInfo[] }>(res)).tokens;
     },
-    async create(label: string): Promise<TokenInfo & { token: string }> {
-      const res = await fetchImpl(`${base}/api/auth/${kind}`, {
+    /** `vault`: the token may change the passphrase and recovery key. */
+    async create(label: string, vault = false): Promise<TokenInfo & { token: string }> {
+      const res = await fetchImpl(base, {
         method: "POST",
         credentials: "same-origin",
         headers: HEADERS,
-        body: JSON.stringify({ label }),
+        body: JSON.stringify({ label, vault }),
       });
       return ok(res);
     },
     async revoke(id: string): Promise<void> {
-      const res = await fetchImpl(`${base}/api/auth/${kind}/${encodeURIComponent(id)}`, {
+      const res = await fetchImpl(`${base}/${encodeURIComponent(id)}`, {
         method: "DELETE",
         credentials: "same-origin",
         headers: HEADERS,
@@ -56,22 +49,4 @@ function createTokenClient(kind: "mcp-tokens" | "sync-tokens", base: string, fet
       await ok(res);
     },
   };
-}
-
-/** `claude mcp add` command for this server (no header when sign-in is off). */
-export function claudeCodeCommand(url: string, token: string | null): string {
-  const header = token ? ` --header "Authorization: Bearer ${token}"` : "";
-  return `claude mcp add --transport http vuurtoren ${url}${header}`;
-}
-
-/** Claude Desktop config (claude_desktop_config.json), via the mcp-remote bridge. */
-export function claudeDesktopConfig(url: string, token: string | null): string {
-  const server = token
-    ? {
-        command: "npx",
-        args: ["-y", "mcp-remote", url, "--header", "Authorization:${VUURTOREN_AUTH}"],
-        env: { VUURTOREN_AUTH: `Bearer ${token}` },
-      }
-    : { command: "npx", args: ["-y", "mcp-remote", url] };
-  return JSON.stringify({ mcpServers: { vuurtoren: server } }, null, 2);
 }
