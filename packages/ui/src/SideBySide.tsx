@@ -36,6 +36,8 @@ export interface SideBySideProps {
   selectedToken?: number | null;
   /** A Dutch word was chosen (opens the word inspector). */
   onTokenClick?: (i: number) => void;
+  /** Something to show after each Dutch sentence (a play button), given its number and text. */
+  sentenceAction?: (sent: number, text: string) => ReactNode;
 }
 
 /** The pair a word belongs to: its sentence and the pair's index there. */
@@ -75,6 +77,7 @@ export function SideBySide({
   notes,
   selectedToken = null,
   onTokenClick,
+  sentenceAction,
 }: SideBySideProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const [hover, setHover] = useState<PairRef | null>(null);
@@ -336,6 +339,12 @@ export function SideBySide({
       >
         <p className="k-sbs-nl" lang="nl">
           {renderDutch(s, structured)}
+          {sentenceAction && s.tokens.length
+            ? sentenceAction(
+                s.sent,
+                text.slice(s.tokens[0]!.start, s.tokens[s.tokens.length - 1]!.end),
+              )
+            : null}
         </p>
         <div className="k-sbs-en" lang="en">
           {english}

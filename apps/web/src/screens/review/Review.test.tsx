@@ -1,7 +1,7 @@
 import { createMemoryHistory } from "@tanstack/react-router";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { App } from "../../App.js";
 import { createMockServices } from "../../services/mock.js";
 import type { AppServices } from "../../services/types.js";
@@ -16,6 +16,34 @@ function setup(path = "/review", patch: Partial<AppServices> = {}) {
 }
 
 describe("Review", () => {
+  it("says the word as the front shows, the sentence on request, and R replays", async () => {
+    const audioClip = vi.fn<(id: string) => Promise<Blob | null>>(async () => null);
+    const { user } = setup("/review", { audioClip });
+    await screen.findByText("de fiets");
+    // Autoplay of the word is on by default; the sentence waits for a click (its autoplay is off).
+    await waitFor(() => expect(audioClip).toHaveBeenCalledWith("word-demo1"));
+    await user.keyboard(" ");
+    await screen.findByText("bicycle");
+    expect(audioClip).not.toHaveBeenCalledWith("sentence-demo1");
+    await user.click(screen.getByRole("button", { name: "Play the sentence" }));
+    await waitFor(() => expect(audioClip).toHaveBeenCalledWith("sentence-demo1"));
+    audioClip.mockClear();
+    await user.keyboard("r");
+    await waitFor(() => expect(audioClip).toHaveBeenCalledWith("word-demo1"));
+    expect(screen.getByRole("button", { name: "Play the word (R)" })).toBeVisible();
+  });
+
+  it("plays nothing by itself with autoplay off", async () => {
+    const audioClip = vi.fn<(id: string) => Promise<Blob | null>>(async () => null);
+    const base = createMockServices({ latencyMs: 0, synced: true, native: true });
+    await base.saveSettings({ autoplayWord: false });
+    const history = createMemoryHistory({ initialEntries: ["/review"] });
+    render(<App services={{ ...base, audioClip }} history={history} />);
+    await screen.findByText("de fiets");
+    await new Promise((r) => setTimeout(r, 50));
+    expect(audioClip).not.toHaveBeenCalled();
+  });
+
   it("shows the front, then the answer and four buttons with intervals; keys answer", async () => {
     const { user } = setup("/review");
     expect(await screen.findByText("de fiets")).toBeVisible();

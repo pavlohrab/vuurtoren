@@ -1,0 +1,29 @@
+{
+ "cases": [
+  {
+   "kind": "word",
+   "text": "de",
+   "id": "word-600ccd1b71569232"
+  },
+  {
+   "kind": "word",
+   "text": "het huis",
+   "id": "word-7f3acd97cd7cde99"
+  },
+  {
+   "kind": "word",
+   "text": "de/het idee",
+   "id": "word-41ac2bc48283bcbe"
+  },
+  {
+   "kind": "sentence",
+   "text": "Hoe gaat het met je?",
+   "id": "sentence-be108d8171b5575c"
+  },
+  {
+   "kind": "sentence",
+   "text": "Zij drinkt koffie in het café.",
+   "id": "sentence-d7def2d1173ac683"
+  }
+ ]
+}

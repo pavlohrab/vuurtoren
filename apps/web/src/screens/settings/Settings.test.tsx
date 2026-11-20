@@ -27,7 +27,7 @@ describe("Settings", () => {
     for (const name of [
       "Account",
       "Language & decks",
-      "Reading",
+      "Reading & audio",
       "AI",
       "Data & backup",
       "Advanced",
@@ -50,6 +50,30 @@ describe("Settings", () => {
       timeout: 2000,
     });
     expect(await screen.findByText("Saved")).toBeInTheDocument();
+  });
+
+  it("saves the voice, the speed and the autoplay choices", async () => {
+    const { saves, user } = setup("/settings?section=reading");
+    await user.click(await screen.findByRole("combobox", { name: "Voice" }));
+    await user.click(await screen.findByRole("option", { name: "Male" }));
+    await user.click(screen.getByRole("combobox", { name: "Speed" }));
+    await user.click(await screen.findByRole("option", { name: "0.8×" }));
+    const word = screen.getByRole("checkbox", { name: /Say the word/ });
+    const sentence = screen.getByRole("checkbox", { name: /Say the sentence/ });
+    expect(word).toBeChecked();
+    expect(sentence).not.toBeChecked();
+    await user.click(word);
+    await user.click(sentence);
+    await waitFor(
+      () =>
+        expect(saves.at(-1)).toMatchObject({
+          voice: "male",
+          audioRate: 0.8,
+          autoplayWord: false,
+          autoplaySentence: true,
+        }),
+      { timeout: 2000 },
+    );
   });
 
   it("keeps the addresses under Advanced", async () => {

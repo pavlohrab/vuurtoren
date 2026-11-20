@@ -144,6 +144,8 @@ async function handle(route: Route): Promise<void> {
     case "/similar":
       return json({});
     default:
+      // No audio pack: every clip is missing, as on a server without it.
+      if (path.startsWith("/audio/")) return json({ detail: "No such clip." }, 404);
       // Optional features (OCR, examples, thumbnails): "not available", as a fresh server.
       return json({ detail: "not available in the e2e fake" }, 503);
   }

@@ -12,14 +12,17 @@ import {
   buildNativeImport,
   NOTE_FIELDS,
   NOTE_TYPE,
-  STARTER_CORE_LEVELS,
   STARTER_LEVELS,
   addStarterWords,
   collectionFromAnki,
   openStarterLevel,
   starterKey,
   starterLevelsHeld,
+  startStarterFrom,
   moveToAnki,
+  noteClipIds,
+  withClipSounds,
+  wordClipText,
   packageDecks,
   readAnkiPackage,
   writeAnkiPackage,
@@ -75,6 +78,8 @@ export interface LiveNativeDeps {
   optimizer: RunOptimizer;
   /** SQLite for reading package files. */
   sqlite: () => { open: OpenSqlite; create: CreateSqlite; dispose: () => void };
+  /** A clip of the audio pack (Settings' voice), for exports; absent: no clips. */
+  audioClip?: (id: string) => Promise<Blob | null>;
   /** How much of the usual load each weekday takes, Monday first (Settings). */
   reviewWeek?: () => Promise<readonly number[]>;
   now?: () => number;
@@ -413,7 +418,14 @@ export function createLiveNative(deps: LiveNativeDeps) {
       const cards: ReviewCard[] = [];
       for (const v of q.cards) {
         const media = await repo.nativeMedia(lang, mediaNames(v));
-        cards.push(reviewCard(v, p, at, own, media));
+        const card = reviewCard(v, p, at, own, media);
+        if (card.word) {
+          card.spoken = wordClipText(card.word, card.article);
+          const ids = await noteClipIds(v.note, card.word);
+          if (ids.word) card.wordAudio = ids.word;
+          if (ids.sentence && card.sentence) card.sentenceAudio = ids.sentence;
+        }
+        cards.push(card);
       }
       return { cards, due: q.due, fresh: q.fresh };
     },
@@ -534,14 +546,39 @@ export function createLiveNative(deps: LiveNativeDeps) {
       const at = now();
       const sqlite = deps.sqlite();
       try {
+        // The audio pack's clips of the word notes go along as Anki sounds.
+        const types = new Map(col.notetypes.map((t) => [t.id, t]));
+        const spoken = await withClipSounds(
+          col.notes,
+          async (id) => {
+            const blob = await deps.audioClip?.(id).catch(() => null);
+            return blob ? new Uint8Array(await blob.arrayBuffer()) : null;
+          },
+          (n) => {
+            const vocab = types.get(n.notetypeId)?.vocab;
+            const fields = types.get(n.notetypeId)?.fields ?? [];
+            const field = vocab ? fields.indexOf(vocab.word) : -1;
+            if (!vocab || field < 0) return null;
+            const sentenceField = vocab.sentence ? fields.indexOf(vocab.sentence) : -1;
+            return {
+              text: stripHtml(n.fields[field] ?? "").trim(),
+              field,
+              ...(sentenceField >= 0 ? { sentenceField } : {}),
+            };
+          },
+        );
         const { bytes, summary } = await writeAnkiPackage(
           {
             ...col,
+            notes: spoken.notes,
             params: await params(lang),
-            media: Object.entries(col.media).map(([name, blobId]) => ({
-              name,
-              bytes: async () => (await repo.getBlob(blobId))?.bytes ?? null,
-            })),
+            media: [
+              ...Object.entries(col.media).map(([name, blobId]) => ({
+                name,
+                bytes: async () => (await repo.getBlob(blobId))?.bytes ?? null,
+              })),
+              ...spoken.media,
+            ],
             now: at,
           },
           sqlite.create,
@@ -620,10 +657,10 @@ export function createLiveNative(deps: LiveNativeDeps) {
 
     async starterLevels() {
       const held = starterLevelsHeld(await repo.nativeDecks(await deps.lang(), now()));
-      return { held, core: STARTER_CORE_LEVELS, all: STARTER_LEVELS };
+      return { held, all: STARTER_LEVELS, from: (await deps.profile()).starterFrom ?? 1 };
     },
 
-    async addStarterLevels({ levels, knownThrough }) {
+    async addStarterLevels({ levels, from }) {
       const lang = await deps.lang();
       const words = await loadStarterWords();
       const at = now();
@@ -631,27 +668,34 @@ export function createLiveNative(deps: LiveNativeDeps) {
       for (const k of await repo.nativeKeyCards(lang, words.map(starterKey), studyDayStart(at)))
         held.set(k.key, [...(held.get(k.key) ?? []), k.card]);
       const profile = await deps.profile();
-      const result = await addStarterWords(
-        (e) => repo.append(e),
-        {
-          lang,
-          words,
-          levels,
-          held,
-          tags: profile.tags,
-          ...(knownThrough ? { knownThrough } : {}),
-        },
-        at,
-      );
+      if (from !== undefined && from !== (profile.starterFrom ?? 1))
+        await deps.saveProfile({ ...profile, starterFrom: from });
+      const result = await addStarterWords((e) => repo.append(e), {
+        lang,
+        words,
+        levels,
+        held,
+        tags: profile.tags,
+      });
       await openStarter(lang);
       deps.changed();
-      return { added: result.added, known: result.known, skipped: result.skipped };
+      return { added: result.added, skipped: result.skipped };
+    },
+
+    async setStarterFrom(level) {
+      const lang = await deps.lang();
+      const profile = await deps.profile();
+      await deps.saveProfile({ ...profile, starterFrom: level });
+      for (const change of startStarterFrom(await repo.nativeDecks(lang, now()), level))
+        await repo.append({ type: "NativeDeckOptionsSet", lang, ...change });
+      deps.changed();
     },
   };
 
   /** Starter levels bring new cards one at a time: open the next when one has none left. */
   async function openStarter(lang: string): Promise<void> {
-    const next = openStarterLevel(await repo.nativeDecks(lang, now()));
+    const from = (await deps.profile()).starterFrom ?? 1;
+    const next = openStarterLevel(await repo.nativeDecks(lang, now()), from);
     if (next) await repo.append({ type: "NativeDeckOptionsSet", lang, ...next });
   }
 

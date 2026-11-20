@@ -1,6 +1,6 @@
 /**
  * Settings: sections with a sub-nav on the left (a list on phones), each saving itself a
- * moment after a change. Account · Language & decks · Reading · AI · Data & backup · Sync ·
+ * moment after a change. Account · Language & decks · Reading & audio · AI · Data & backup · Sync ·
  * Advanced.
  * The theme lives only in the top bar.
  */
@@ -53,8 +53,8 @@ const SECTIONS: { id: SectionId; label: string; hint: string; icon: ReactNode }[
   },
   {
     id: "reading",
-    label: "Reading",
-    hint: "Translations, words to learn per page, blanks and grammar.",
+    label: "Reading & audio",
+    hint: "Translations, words to learn per page, blanks, grammar and the voice.",
     icon: <BookOpen size={18} />,
   },
   {
@@ -231,6 +231,53 @@ function ReadingSettings() {
           <small>
             A quiet mark in the margin beside sentences with grammar worth noticing at your level.
           </small>
+        </span>
+      </label>
+      <h3 className="settings-h3">Audio</h3>
+      <div className="row" style={{ alignItems: "flex-start" }}>
+        <div style={{ minWidth: 160 }}>
+          <Select
+            label="Voice"
+            value={form.voice}
+            options={[
+              { value: "female", label: "Female" },
+              { value: "male", label: "Male" },
+            ]}
+            onValueChange={(v) => set({ voice: v === "male" ? "male" : "female" })}
+          />
+        </div>
+        <div style={{ minWidth: 160 }}>
+          <Select
+            label="Speed"
+            value={String(form.audioRate)}
+            options={[
+              { value: "0.8", label: "0.8×" },
+              { value: "1", label: "1×" },
+            ]}
+            onValueChange={(v) => set({ audioRate: v === "0.8" ? 0.8 : 1 })}
+          />
+        </div>
+      </div>
+      <label className="settings-check">
+        <input
+          type="checkbox"
+          checked={form.autoplayWord}
+          onChange={(e) => set({ autoplayWord: e.target.checked })}
+        />
+        <span>
+          Say the word when a card shows
+          <small>Recorded starter words; other words use your system's Dutch voice.</small>
+        </span>
+      </label>
+      <label className="settings-check">
+        <input
+          type="checkbox"
+          checked={form.autoplaySentence}
+          onChange={(e) => set({ autoplaySentence: e.target.checked })}
+        />
+        <span>
+          Say the sentence when the answer shows
+          <small>R replays the word during review.</small>
         </span>
       </label>
     </div>

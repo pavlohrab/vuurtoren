@@ -22,7 +22,9 @@ The apps are not signed yet, so your computer may warn you:
 - **macOS:** right-click the app and choose **Open**.
 - **Linux (AppImage):** make the file executable (`chmod +x Vuurtoren*.AppImage`), then run it.
 
-Listening exercises and dictation read Dutch aloud with your system's Dutch voice. Windows and
+The most common words and their sentences come with recorded speech (Settings → Reading & audio:
+female or male voice) once the audio pack is out; other words and sentences use your system's
+voice. Listening exercises and dictation read Dutch aloud with your system's Dutch voice. Windows and
 macOS can add one in their speech settings; many Linux systems have no Dutch voice, and then
 those exercises are off.
 
@@ -31,7 +33,8 @@ those exercises are off.
 Vuurtoren asks one question: **Do you use Anki?**
 
 - **No:** Vuurtoren keeps your words and your reviews. You need nothing else. It offers cards for
-  the most common Dutch words, starting from how much Dutch you already know.
+  the most common Dutch words, starting from the level you choose; words you know get marked as
+  you read.
 - **Yes:** Vuurtoren can bring your Anki decks in, or keep working with Anki. To work with Anki,
   keep Anki open with the [AnkiConnect](https://ankiweb.net/shared/info/2055492159) add-on
   (code `2055492159`).

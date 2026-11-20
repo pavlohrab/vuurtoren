@@ -12,3 +12,4 @@ export * from "./apkg/index.js";
 export * from "./native.js";
 export * from "./toAnki.js";
 export * from "./starter.js";
+export * from "./audio.js";

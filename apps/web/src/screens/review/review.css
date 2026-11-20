@@ -29,8 +29,17 @@
   align-self: stretch;
   text-align: left;
 }
+.review-said {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-2);
+}
+.review-said:has(.review-word) {
+  margin-top: var(--s-4);
+}
 .review-word {
-  margin: var(--s-4) 0 0;
+  margin: 0;
   font-family: var(--font-ui);
   font-weight: 500;
   font-size: 30px;

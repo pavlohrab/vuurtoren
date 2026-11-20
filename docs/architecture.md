@@ -149,12 +149,13 @@ Runtime 73 MB, models 32 MB), the `-slim` image has no OCR. `GET /health` report
 The NLP image holds code and libraries only; its data are versioned **data packs** on the
 `/data` volume (`server/nlp/src/vuurtoren_nlp/packs.py`, manifest `packs.json` next to it):
 
-| pack                  | contents                             | archive | installed |
-| --------------------- | ------------------------------------ | ------- | --------- |
-| `dictionary-nl`       | Wiktionary (Kaikki) glosses, forms   | 14 MB   | 39 MB     |
-| `sentences-nl`        | Tatoeba sentences + lemma index      | 20 MB   | 47 MB     |
-| `mt-nl-en`            | OPUS-MT nl→en, CTranslate2 int8      | 70 MB   | 84 MB     |
-| `grammar-examples-nl` | derived: example sentences per topic | 0.1 MB  | 0.4 MB    |
+| pack                  | contents                                  | archive | installed |
+| --------------------- | ----------------------------------------- | ------- | --------- |
+| `dictionary-nl`       | Wiktionary (Kaikki) glosses, forms        | 14 MB   | 39 MB     |
+| `sentences-nl`        | Tatoeba sentences + lemma index           | 20 MB   | 47 MB     |
+| `mt-nl-en`            | OPUS-MT nl→en, CTranslate2 int8           | 70 MB   | 84 MB     |
+| `grammar-examples-nl` | derived: example sentences per topic      | 0.1 MB  | 0.4 MB    |
+| `audio-nl`            | optional: spoken starter words, sentences | —       | —         |
 
 - **Manifest**: `{name: {version, sha256, size}}`; the archive is `<name>-<version>.tar.gz`
   (deterministic tar.gz of one file or directory). A marker `<data>.pack.json` records what is
@@ -174,6 +175,14 @@ The NLP image holds code and libraries only; its data are versioned **data packs
   and the `-full` image bundle it, and the server unpacks it when it fits the installed sentences
   and the current detectors. The standard installer and the standard image build it on the device
   after the sentence pack arrives (about a minute), as they do when the detectors change.
+- **Audio** (`audio-nl`, optional): the starter words and their example sentences spoken with
+  ElevenLabs (`scripts/tts_elevenlabs.py`), laid out as `audio-nl/{female,male}/<id>.mp3`, where
+  the id comes from the text ([algorithms](algorithms.md#99-starter-words)). `packs.json` lists it
+  only once its archive is published (`build_packs.py --out dist/packs --audio-from DIR`); until
+  then `ensure()` skips it. The language server serves `GET /audio/<voice>/<id>.mp3` (404 when the
+  clip or the pack is missing; on the desktop, the bundled server). The app fetches clips through
+  its language-server client, caches them per session, and falls back to the system voice, then to
+  nothing; `.apkg` exports carry the clips as `[sound:<id>.mp3]`.
 - **Releasing new data**: bump the pack's version in `packs.json`, run
   `uv run python scripts/build_packs.py --out dist/packs`, upload `dist/packs/*` as assets of a
   `packs-<version>` release (the `packs` workflow does both) and commit the updated `packs.json`.

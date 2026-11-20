@@ -1,0 +1,33 @@
+/* Play buttons: a quiet icon button; a subtle pulse while the sound plays. */
+.play-btn {
+  flex: none;
+  color: var(--ink-muted);
+  vertical-align: middle;
+}
+.play-btn:hover:not(:disabled),
+.play-btn[data-playing] {
+  color: var(--accent);
+}
+.play-btn[data-playing] svg {
+  animation: play-pulse var(--dur-slow) var(--ease-in-out) infinite alternate;
+}
+@keyframes play-pulse {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0.45;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .play-btn[data-playing] svg {
+    animation: none;
+  }
+}
+/* Touch size on narrow screens. */
+@media (max-width: 640px), (pointer: coarse) {
+  .play-btn.k-btn--icon {
+    width: 44px;
+    height: 44px;
+  }
+}

@@ -87,6 +87,14 @@ export interface Settings {
    * 0.5 reduced, 0 as little as possible). Due dates spread away from lighter days.
    */
   reviewWeek: number[];
+  /** Spoken words and sentences (the audio pack): which voice. */
+  voice: "female" | "male";
+  /** Review: say the word when a card's front shows (on by default). */
+  autoplayWord: boolean;
+  /** Review: say the sentence when the answer shows (off by default). */
+  autoplaySentence: boolean;
+  /** Playback speed of spoken words and sentences. */
+  audioRate: 0.8 | 1;
 }
 export interface ImportOptions {
   review?: OcrReviewHandler;
@@ -318,6 +326,11 @@ export interface AppServices
   ankiStatus(): Promise<AnkiStatus>;
   /** Show Anki's "allow this site?" dialog (user action only), then re-test the connection. */
   connectAnki(): Promise<AnkiConnectResult>;
+  /**
+   * A spoken starter word or sentence (clip id `word-…`/`sentence-…`) in the chosen voice, from
+   * the audio pack on the language server; null when there is none.
+   */
+  audioClip(id: string): Promise<Blob | null>;
   /** Can the language server read photos and scanned pages? (its `/health` says; false when unreachable) */
   ocrAvailable(): Promise<boolean>;
   syncAnki(onProgress?: (msg: string) => void): Promise<LearnerSummary>;

@@ -1,6 +1,6 @@
 import { DEFAULT_DECK_OPTIONS, type NativeCard } from "@app/core";
 import { describe, expect, it } from "vitest";
-import type { NativeCardsChangedEvent, NativeWordAddedEvent } from "./native.js";
+import type { NativeWordAddedEvent } from "./native.js";
 import {
   type StarterWord,
   addStarterWords,
@@ -8,9 +8,9 @@ import {
   starterDeck,
   starterLevelOf,
   starterLevelsHeld,
+  startStarterFrom,
 } from "./starter.js";
 
-const NOW = Date.UTC(2026, 5, 1, 12);
 const WORDS: StarterWord[] = Array.from({ length: 1500 }, (_, i) => ({
   rank: i + 1,
   word: i === 4 ? "huis" : `woord${i + 1}`,
@@ -22,15 +22,13 @@ const WORDS: StarterWord[] = Array.from({ length: 1500 }, (_, i) => ({
     : {}),
 }));
 
-type Ev = NativeWordAddedEvent | NativeCardsChangedEvent;
+type Ev = NativeWordAddedEvent;
 function recorder() {
   const events: Ev[] = [];
   return { events, record: async (e: Ev) => void events.push(e) };
 }
-const notesOf = (events: Ev[]) =>
-  events.flatMap((e) => (e.type === "NativeNotesAdded" ? e.notes : []));
-const cardsOf = (events: Ev[]) =>
-  events.flatMap((e) => (e.type === "NativeNotesAdded" ? e.cards : []));
+const notesOf = (events: Ev[]) => events.flatMap((e) => e.notes);
+const cardsOf = (events: Ev[]) => events.flatMap((e) => e.cards);
 
 describe("starter words", () => {
   it("names the levels' decks and reads them back", () => {
@@ -45,12 +43,13 @@ describe("starter words", () => {
 
   it("adds a level as new cards of Vuurtoren's word type, in order of rank, decks closed", async () => {
     const { events, record } = recorder();
-    const r = await addStarterWords(
-      record,
-      { lang: "nl", words: WORDS, levels: [1], held: new Map() },
-      NOW,
-    );
-    expect(r).toEqual({ added: 500, known: 0, skipped: 0, decks: [starterDeck(1)] });
+    const r = await addStarterWords(record, {
+      lang: "nl",
+      words: WORDS,
+      levels: [1],
+      held: new Map(),
+    });
+    expect(r).toEqual({ added: 500, skipped: 0, decks: [starterDeck(1)] });
     expect(events).toHaveLength(2); // 300 notes per event
     const notes = notesOf(events);
     const cards = cardsOf(events);
@@ -65,57 +64,26 @@ describe("starter words", () => {
       "The house is big.",
     ]);
     expect(huis.article).toBe("het");
+    // The audio pack's clip ids, kept on the note (sha1 of "het huis" and of the sentence).
+    expect(huis.audio).toBe("word-7f3acd97cd7cde99");
+    expect(huis.sentenceAudio).toMatch(/^sentence-[0-9a-f]{16}$/);
     const first = events[0] as NativeWordAddedEvent;
     expect(first.decks[0]!.options.newPerDay).toBe(0);
   });
 
   it("is idempotent: words already held are skipped, and ids are fixed", async () => {
     const a = recorder();
-    await addStarterWords(
-      a.record,
-      { lang: "nl", words: WORDS, levels: [1], held: new Map() },
-      NOW,
-    );
+    await addStarterWords(a.record, { lang: "nl", words: WORDS, levels: [1], held: new Map() });
     const held = new Map<string, NativeCard[]>(
       cardsOf(a.events).map((c) => [notesOf(a.events).find((n) => n.id === c.noteId)!.key!, [c]]),
     );
     const b = recorder();
-    const r = await addStarterWords(b.record, { lang: "nl", words: WORDS, levels: [1], held }, NOW);
+    const r = await addStarterWords(b.record, { lang: "nl", words: WORDS, levels: [1], held });
     expect(r).toMatchObject({ added: 0, skipped: 500 });
     expect(b.events).toEqual([]);
     const c = recorder();
-    await addStarterWords(
-      c.record,
-      { lang: "nl", words: WORDS, levels: [1], held: new Map() },
-      NOW + 5,
-    );
+    await addStarterWords(c.record, { lang: "nl", words: WORDS, levels: [1], held: new Map() });
     expect(notesOf(c.events).map((n) => n.id)).toEqual(notesOf(a.events).map((n) => n.id));
-  });
-
-  it("places: words through the rank become known, held new cards are marked, levels above are new", async () => {
-    const { events, record } = recorder();
-    const mine: NativeCard = { id: 42, noteId: 41, ord: 0, deck: "Mine", position: 1 };
-    const r = await addStarterWords(
-      record,
-      {
-        lang: "nl",
-        words: WORDS,
-        levels: [2, 3],
-        knownThrough: 500,
-        held: new Map([["huis", [mine]]]),
-      },
-      NOW,
-    );
-    expect(r).toMatchObject({ added: 1000, known: 500, skipped: 0 });
-    const cards = cardsOf(events);
-    const known = cards.filter((c) => c.schedule);
-    expect(known).toHaveLength(499);
-    expect(known.every((c) => c.deck === starterDeck(1) && c.schedule!.scheduledDays >= 21)).toBe(
-      true,
-    );
-    const marked = events.find((e) => e.type === "NativeCardsChanged") as NativeCardsChangedEvent;
-    expect(marked.reason).toBe("known");
-    expect(marked.changes.map((c) => c.cardId)).toEqual([42]);
   });
 
   it("opens one level at a time: the lowest with new cards, when none is open", () => {
@@ -136,5 +104,23 @@ describe("starter words", () => {
       ]),
     ).toBeNull();
     expect(openStarterLevel([{ name: starterDeck(1), options: closed, fresh: 0 }])).toBeNull();
+  });
+
+  it("opens from the start level only; a new start level closes the others", () => {
+    const closed = { ...DEFAULT_DECK_OPTIONS, newPerDay: 0 };
+    const decks = [1, 2, 3, 4].map((l) => ({ name: starterDeck(l), options: closed, fresh: 500 }));
+    expect(openStarterLevel(decks, 3)?.deck).toBe(starterDeck(3));
+    const open = decks.map((d, i) => (i === 2 ? { ...d, options: DEFAULT_DECK_OPTIONS } : d));
+    expect(openStarterLevel(open, 3)).toBeNull();
+    // Level 3 runs out: level 4 opens, never the levels below the start.
+    const done = open.map((d, i) => (i === 2 ? { ...d, fresh: 0 } : d));
+    expect(openStarterLevel(done, 3)?.deck).toBe(starterDeck(4));
+    expect(openStarterLevel(decks.slice(0, 2), 3)).toBeNull();
+    // Turning the levels below on: level 1 opens now and level 3 closes.
+    expect(startStarterFrom(open, 1)).toEqual([
+      { deck: starterDeck(3), options: closed },
+      { deck: starterDeck(1), options: DEFAULT_DECK_OPTIONS },
+    ]);
+    expect(startStarterFrom(open, 3)).toEqual([]);
   });
 });

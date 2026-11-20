@@ -29,6 +29,7 @@ import { createMockPractice } from "./mockPractice.js";
 import { ImportCancelledError, type OcrReviewDoc } from "./ocrReview.js";
 import type { OcrFlag } from "@app/nlp-client";
 import { createMockSync } from "./mockSync.js";
+import { mockAudioClip } from "./mockAudio.js";
 import type {
   AnkiStatus,
   AppServices,
@@ -387,6 +388,10 @@ export function createMockServices(
     glossClozes: false,
     grammarMarks: true,
     reviewWeek: [1, 1, 1, 1, 1, 1, 1],
+    voice: "female",
+    autoplayWord: true,
+    autoplaySentence: false,
+    audioRate: 1,
   };
   let staircase: StaircaseState = { targetCoverage: 0.98, newWordBudget: 3 };
   let lastSync: number | null = options.synced ? Date.now() - 60 * 60 * 1000 : null;
@@ -896,6 +901,8 @@ export function createMockServices(
       await delay(latency * 4);
       return { connected: true, state: "connected", version: 6 };
     },
+
+    audioClip: mockAudioClip,
 
     async ocrAvailable() {
       return true;

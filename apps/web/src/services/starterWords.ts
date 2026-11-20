@@ -10,7 +10,7 @@ let words: Promise<StarterWord[]> | null = null;
 /** The 5000 most common Dutch words, most common first. */
 export function loadStarterWords(): Promise<StarterWord[]> {
   words ??= import("../../../../content/starter/nl-5000.json").then(
-    (m) => (m.default as { words: StarterWord[] }).words,
+    (m) => (m.default as unknown as { words: StarterWord[] }).words,
   );
   return words;
 }

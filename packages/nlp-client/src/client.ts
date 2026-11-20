@@ -498,6 +498,25 @@ export class NlpClient {
     return res.blob();
   }
 
+  /**
+   * A spoken starter word or sentence from the audio pack (`/audio/<voice>/<id>.mp3`); null when
+   * the server has no such clip (no audio pack, or a word without one).
+   */
+  async audioClip(voice: "female" | "male", id: string): Promise<Blob | null> {
+    const path = `/audio/${voice}/${encodeURIComponent(id)}.mp3`;
+    let res: Response;
+    try {
+      res = await this.fetchImpl(`${this.url}${path}`, {
+        signal: AbortSignal.timeout(this.timeoutMs),
+      });
+    } catch (e) {
+      throw new NlpError(`NLP service unreachable at ${this.url} (${String(e)})`, null);
+    }
+    if (res.status === 404) return null;
+    if (!res.ok) throw new NlpError(`NLP ${path}: HTTP ${res.status}`, res.status);
+    return res.blob();
+  }
+
   /** Stop an OCR job and free its memory on the server. */
   courseOcrCancel(id: string): Promise<{ status: string }> {
     return this.request(`/course/ocr/${encodeURIComponent(id)}/cancel`, { method: "POST" });
