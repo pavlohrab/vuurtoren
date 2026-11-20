@@ -110,12 +110,18 @@ Kenning writes to Anki only when you click, and tags every note it touches.
   Kenning server, a folder you already sync (desktop app), WebDAV or a private GitHub repository —
   encrypted on the device with your passphrase. The place only stores sealed files; each device
   writes only its own. The passphrase is never stored; the key it opens is kept on the device.
+  The first device starts the sync data; every other device joins it, and joining never makes
+  new data (a second vault would split your devices). Sync also runs when the app is hidden or
+  closed, so the last changes do not wait for the next start. On a Kenning server each sync
+  token belongs to one device and writes only that device's files.
 - Conflicts by kind of data: the log is replayed in clock order across devices, so the latest
   setting, word mark or profile wins; reviews and answers merge (an answer to a card another
   device answered meanwhile applies to the card as it is now).
 - Events carry a version: an older app keeps newer events without applying them until it is
   updated.
-- Backups export and import the whole file in every mode.
+- Backups export and import the whole file in every mode. A restore gives the device a new id;
+  the backup's changes not yet synced still go out. A server's scheduled backups keep its sync
+  files too.
 
 ## Several devices
 

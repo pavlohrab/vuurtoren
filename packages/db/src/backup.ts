@@ -91,9 +91,46 @@ export function inspectBackup(db: SyncDb): BackupFacts {
 /**
  * Make a freshly restored database safe to open: a NEW device id (so two devices restored
  * from the same backup never share one id) and no stored projection version, which makes the
- * repository rebuild every projection from the event log. Events are untouched.
+ * repository rebuild every projection from the event log.
+ *
+ * Sync sends a device's own events (those with its device id). So that the backup's events not
+ * yet sent still reach the other devices, they move to the new id (same event ids, so a device
+ * that already has them skips them), and the sync bookkeeping marks the old id's events up to
+ * the last one sent as already received. Without any sync bookkeeping, all of the old id's
+ * events move: none were sent.
  */
 export function prepareImported(db: SyncDb, deviceId: string = randomDeviceId()): string {
+  const meta = (key: string): unknown => {
+    const v = db.exec("SELECT value FROM meta WHERE key = ?", [key])[0]?.["value"];
+    try {
+      return typeof v === "string" ? (JSON.parse(v) as unknown) : null;
+    } catch {
+      return null;
+    }
+  };
+  const oldId = meta("device_id");
+  const state = meta("sync_state") as { sent?: unknown; received?: unknown } | null;
+  if (typeof oldId === "string" && oldId !== deviceId) {
+    const sent = state && typeof state.sent === "string" ? state.sent : "";
+    // The log is append-only (no UPDATE): copy the unsent rows out, then back in with the new id.
+    db.exec("DROP TABLE IF EXISTS temp.unsent");
+    db.exec("CREATE TEMP TABLE unsent AS SELECT * FROM events WHERE device_id = ? AND id > ?", [
+      oldId,
+      sent,
+    ]);
+    db.exec("DELETE FROM events WHERE id IN (SELECT id FROM temp.unsent)");
+    db.exec("UPDATE temp.unsent SET device_id = ?", [deviceId]);
+    db.exec("INSERT INTO events SELECT * FROM temp.unsent");
+    db.exec("DROP TABLE temp.unsent");
+    if (state && typeof state === "object") {
+      const received =
+        state.received && typeof state.received === "object"
+          ? (state.received as Record<string, string>)
+          : {};
+      const next = { ...state, received: sent ? { ...received, [oldId]: sent } : received };
+      db.exec("UPDATE meta SET value = ? WHERE key = 'sync_state'", [JSON.stringify(next)]);
+    }
+  }
   db.exec("INSERT OR REPLACE INTO meta (key, value) VALUES ('device_id', ?)", [
     JSON.stringify(deviceId),
   ]);

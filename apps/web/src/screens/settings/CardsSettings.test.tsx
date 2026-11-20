@@ -86,4 +86,23 @@ describe("Settings → Language & decks: cards", { timeout: 20_000 }, () => {
       expect((await services.getSettings()).reviewWeek).toEqual([1, 1, 1, 1, 1, 0, 1]),
     );
   });
+
+  it("keeps every review day changed quickly, before the first one is saved", async () => {
+    const { user, services } = setup(true);
+    const save = services.saveSettings.bind(services);
+    let release!: () => void;
+    const gate = new Promise<void>((r) => (release = r));
+    vi.spyOn(services, "saveSettings").mockImplementation(async (patch) => {
+      await gate;
+      return save(patch);
+    });
+    await user.click(await screen.findByRole("combobox", { name: "Saturday" }));
+    await user.click(await screen.findByRole("option", { name: "Minimum" }));
+    await user.click(screen.getByRole("combobox", { name: "Sunday" }));
+    await user.click(await screen.findByRole("option", { name: "Reduced" }));
+    release();
+    await waitFor(async () =>
+      expect((await services.getSettings()).reviewWeek).toEqual([1, 1, 1, 1, 1, 0, 0.5]),
+    );
+  });
 });

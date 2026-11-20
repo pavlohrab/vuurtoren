@@ -55,6 +55,8 @@ services:
       KENNING_ALLOWED_ORIGINS: ${KENNING_ALLOWED_ORIGINS:-}
       # Text analysis for the MCP endpoint (/api/mcp, Claude Code).
       KENNING_NLP_URL: ${KENNING_NLP_URL:-http://nlp:8000}
+      # Most space the sync files of your devices may take together, in MB (default 2048).
+      KENNING_SYNC_QUOTA_MB: ${KENNING_SYNC_QUOTA_MB:-}
     volumes:
       - kenning-data:/data
     networks: [internal]
@@ -96,6 +98,8 @@ services:
   # KENNING_BACKUP_DIR as kenning-YYYY-MM-DD-HHMM.sqlite; files older than KENNING_BACKUP_KEEP_DAYS
   # are deleted. With sign-in on it needs KENNING_TOKEN. Each file is a normal Kenning backup:
   # restore it in Settings > Data & backup (deploy/README.md, "Backup and restore").
+  # The sealed files of the devices that sync through this server (/data/sync) are kept next
+  # to it as kenning-sync-YYYY-MM-DD-HHMM.tar.gz.
   backup:
     image: alpine:3.24
     profiles: [backup]
@@ -109,6 +113,7 @@ services:
       KEEP_DAYS: ${KENNING_BACKUP_KEEP_DAYS:-14}
     volumes:
       - ${KENNING_BACKUP_DIR:-./backups}:/backups
+      - kenning-data:/data:ro
     networks: [internal]
     command:
       - sh
@@ -126,6 +131,19 @@ services:
           else
             rm -f "$$f.part"
             echo "backup FAILED: is the api healthy? With sign-in on, set KENNING_TOKEN." >&2
+          fi
+          # Sync files are written whole (a new file, then a rename): a copy never holds half
+          # of one.
+          if [ -d /data/sync ]; then
+            s="/backups/kenning-sync-$$(date +%Y-%m-%d-%H%M).tar.gz"
+            if tar -czf "$$s.part" -C /data sync; then
+              mv "$$s.part" "$$s"
+              echo "backup: $$s ($$(du -h "$$s" | cut -f1))"
+              find /backups -name 'kenning-sync-*.tar.gz' -mtime +"$$KEEP_DAYS" -delete
+            else
+              rm -f "$$s.part"
+              echo "backup of the sync files FAILED" >&2
+            fi
           fi
           sleep "$$((INTERVAL_HOURS * 3600))"
         done

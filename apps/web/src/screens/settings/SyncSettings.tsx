@@ -9,7 +9,7 @@ import { Button, Input, Skeleton, Spinner, useToast } from "@app/ui";
 import { createSyncTokenClient } from "../../auth/mcpTokens.js";
 import { relativeTime } from "../../format.js";
 import { useServices } from "../../services/context.js";
-import type { SyncPlace, SyncStatus } from "../../services/syncTypes.js";
+import type { SetUpHow, SyncPlace, SyncStatus } from "../../services/syncTypes.js";
 import { useAppInfo } from "../../shell/AppInfo.js";
 import { CopyBlock } from "./ClaudeCodeSettings.js";
 
@@ -18,6 +18,18 @@ const message = (e: unknown) =>
 const tokens = createSyncTokenClient();
 
 type Kind = SyncPlace["kind"];
+const HOWS: { how: SetUpHow; title: string; sub: string }[] = [
+  {
+    how: "join",
+    title: "Join my synced data",
+    sub: "Another of your devices already syncs there. Type the passphrase you chose on it.",
+  },
+  {
+    how: "start",
+    title: "Start new sync data here",
+    sub: "This is your first device to sync. You choose a passphrase and get a recovery key.",
+  },
+];
 const KINDS: { kind: Kind; title: string; sub: string }[] = [
   {
     kind: "server",
@@ -84,11 +96,6 @@ function Secrets({ onRecovery }: { onRecovery: (key: string) => void }) {
   const [open, setOpen] = useState<"pass" | "key" | null>(null);
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
-  const reset = () => {
-    setOpen(null);
-    setCurrent("");
-    setNext("");
-  };
   const change = useMutation({
     mutationFn: () => services.changeSyncPassphrase(current, next),
     onSuccess: () => {
@@ -103,6 +110,14 @@ function Secrets({ onRecovery }: { onRecovery: (key: string) => void }) {
       onRecovery(key);
     },
   });
+  /** Close the form (or open another): its fields and the last error go. */
+  const reset = (form: "pass" | "key" | null = null) => {
+    setOpen(form);
+    setCurrent("");
+    setNext("");
+    change.reset();
+    renew.reset();
+  };
   const busy = change.isPending || renew.isPending;
   const error = change.error ?? renew.error;
   return (
@@ -112,8 +127,8 @@ function Secrets({ onRecovery }: { onRecovery: (key: string) => void }) {
       </h3>
       {open === null ? (
         <div className="row">
-          <Button onClick={() => setOpen("pass")}>Change passphrase…</Button>
-          <Button variant="ghost" onClick={() => setOpen("key")}>
+          <Button onClick={() => reset("pass")}>Change passphrase…</Button>
+          <Button variant="ghost" onClick={() => reset("key")}>
             Make a new recovery key…
           </Button>
         </div>
@@ -156,7 +171,7 @@ function Secrets({ onRecovery }: { onRecovery: (key: string) => void }) {
               {busy ? <Spinner label="Working" /> : null}
               {open === "pass" ? "Change passphrase" : "Make a new recovery key"}
             </Button>
-            <Button type="button" variant="ghost" onClick={reset}>
+            <Button type="button" variant="ghost" onClick={() => reset()}>
               Cancel
             </Button>
           </div>
@@ -176,6 +191,7 @@ function SetUp({ status, onRecovery }: { status: SyncStatus; onRecovery: (key: s
   const services = useServices();
   const qc = useQueryClient();
   const toast = useToast();
+  const [how, setHow] = useState<SetUpHow | null>(null);
   const [kind, setKind] = useState<Kind>("server");
   const [fields, setFields] = useState<Record<string, string>>({});
   const [passphrase, setPassphrase] = useState("");
@@ -204,6 +220,7 @@ function SetUp({ status, onRecovery }: { status: SyncStatus; onRecovery: (key: s
     }
   };
   const ready =
+    how !== null &&
     passphrase.trim().length >= 8 &&
     (kind === "server"
       ? /^https?:\/\/./.test(f("url").trim())
@@ -214,18 +231,22 @@ function SetUp({ status, onRecovery }: { status: SyncStatus; onRecovery: (key: s
           : !!f("path"));
 
   const start = useMutation({
-    mutationFn: () => services.setUpSync(place(), passphrase, name, setProgress),
+    mutationFn: () => services.setUpSync(place(), how!, passphrase, name, setProgress),
     onSuccess: async (r) => {
       setPassphrase("");
       if (r.recoveryKey) onRecovery(r.recoveryKey);
       toast(
-        r.created ? "Sync is on" : "This device is in sync",
-        r.created
-          ? "Use the same passphrase on your other devices."
-          : "Your data from your other devices is here.",
+        r.error ? "Sync is set up" : r.created ? "Sync is on" : "This device is in sync",
+        r.error
+          ? "The first sync did not finish yet. Kenning tries again by itself."
+          : r.created
+            ? "Choose Join my synced data on your other devices, with the same passphrase."
+            : "Your data from your other devices is here.",
       );
       await qc.invalidateQueries();
     },
+    // Whatever happened, show what is set up now.
+    onSettled: () => qc.invalidateQueries({ queryKey: ["sync"] }),
   });
   const pick = useMutation({
     mutationFn: () => services.pickSyncFolder(),
@@ -246,6 +267,26 @@ function SetUp({ status, onRecovery }: { status: SyncStatus; onRecovery: (key: s
         Your words, texts, reviews and progress on every device. Everything is encrypted on this
         device with your passphrase before it leaves; the place you choose only stores sealed files.
       </p>
+      <fieldset className="sync-kinds">
+        <legend className="k-label">This device</legend>
+        {HOWS.map((h) => (
+          <label key={h.how} className="sync-kind">
+            <input
+              type="radio"
+              name="sync-how"
+              checked={how === h.how}
+              onChange={() => {
+                setHow(h.how);
+                start.reset();
+              }}
+            />
+            <span>
+              <span className="sync-kind-title">{h.title}</span>
+              <span className="k-hint">{h.sub}</span>
+            </span>
+          </label>
+        ))}
+      </fieldset>
       <fieldset className="sync-kinds">
         <legend className="k-label">Where</legend>
         {kinds.map((k) => (
@@ -331,12 +372,16 @@ function SetUp({ status, onRecovery }: { status: SyncStatus; onRecovery: (key: s
       <Input label="This device's name" value={name} onChange={(e) => setName(e.target.value)} />
       <div className="stack" style={{ gap: 4 }}>
         <Input
-          label="Passphrase"
+          label={how === "join" ? "Passphrase or recovery key" : "Passphrase"}
           type={show ? "text" : "password"}
           value={passphrase}
           onChange={(e) => setPassphrase(e.target.value)}
-          autoComplete="new-password"
-          hint="At least 8 characters; a few words are easy to remember. The same on every device. Kenning cannot recover it."
+          autoComplete={how === "join" ? "current-password" : "new-password"}
+          hint={
+            how === "join"
+              ? "The passphrase you chose on your first device, or your recovery key."
+              : "At least 8 characters; a few words are easy to remember. You type it on each of your devices. Only it or the recovery key opens your synced data, so keep both safe."
+          }
         />
         <label className="row k-hint" style={{ gap: 6 }}>
           <input type="checkbox" checked={show} onChange={(e) => setShow(e.target.checked)} />
@@ -346,7 +391,7 @@ function SetUp({ status, onRecovery }: { status: SyncStatus; onRecovery: (key: s
       <div className="row">
         <Button type="submit" variant="primary" disabled={!ready || start.isPending}>
           {start.isPending ? <Spinner label="Starting" /> : null}
-          Start syncing
+          {how === "join" ? "Join and sync" : "Start syncing"}
         </Button>
         {start.isPending && progress ? <span className="k-hint">{progress}</span> : null}
       </div>
@@ -408,8 +453,8 @@ function SyncOn({ status }: { status: SyncStatus }) {
         </ul>
       ) : null}
       <p className="k-hint" style={{ margin: 0 }}>
-        Kenning syncs by itself while it is open. On another device choose the same place and type
-        the same passphrase.
+        Kenning syncs by itself while it is open, and once more when you leave it. On another device
+        choose Join my synced data, the same place and the same passphrase.
       </p>
       <div className="row">
         <Button variant="primary" onClick={() => now.mutate()} disabled={now.isPending}>

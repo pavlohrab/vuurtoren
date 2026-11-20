@@ -9,6 +9,7 @@
  *   KENNING_HOST   bind address (default 127.0.0.1; the container sets 0.0.0.0)
  *   KENNING_PORT   port (default 8787)
  *   KENNING_NLP_URL  NLP service for the MCP endpoint's text analysis (e.g. http://nlp:8000)
+ *   KENNING_SYNC_QUOTA_MB  most space all sync files together may take (default 2048)
  *   Sign-in: KENNING_USER, KENNING_PASSWORD_HASH (or KENNING_PASSWORD),
  *   KENNING_TOKEN, KENNING_AUTH_DB, KENNING_COOKIE_SECURE, KENNING_TRUST_CF,
  *   KENNING_ALLOWED_ORIGINS; see auth/config.ts. With no password and no token, auth is off.
@@ -48,6 +49,14 @@ if (authDb !== ":memory:" && resolve(authDb) === resolve(dbPath)) {
   process.exit(1);
 }
 
+/** KENNING_SYNC_QUOTA_MB in bytes; unset or not a positive number keeps the default. */
+function syncQuota(mb: string | undefined): number | undefined {
+  const n = Number(mb?.trim() || NaN);
+  if (Number.isFinite(n) && n > 0) return Math.floor(n * 1024 * 1024);
+  if (mb?.trim()) console.warn(`[kenning-api] WARNING: KENNING_SYNC_QUOTA_MB "${mb}" is ignored.`);
+  return undefined;
+}
+
 mkdirSync(dirname(dbPath), { recursive: true });
 const store = await openStore(dbPath);
 const auth = createAuth(config.options);
@@ -55,6 +64,7 @@ const server = createApiServer({
   store,
   auth,
   nlpUrl: process.env["KENNING_NLP_URL"] || undefined,
+  syncQuotaBytes: syncQuota(process.env["KENNING_SYNC_QUOTA_MB"]),
 });
 server.listen(port, host, () => {
   console.log(

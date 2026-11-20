@@ -15,6 +15,8 @@
  *   GET  /api/sync/file?path=  a sync file                     devices that keep their own
  *   PUT  /api/sync/file?path=  write one (raw body)            data; also accepts a sync
  *   DELETE /api/sync/file?path=  remove one                    token, which opens nothing else)
+ *   A sync token writes only its own device's folder and images; with auth off, /api/sync
+ *   answers this site and KENNING_ALLOWED_ORIGINS only.
  *
  * When auth is on (password and/or token) every endpoint except health and the
  * sign-in routes needs a session cookie or `Authorization: Bearer <token>`. State-changing
@@ -35,11 +37,11 @@ import {
   isSchemaTooNew,
   validateRpcArgs,
 } from "@app/db";
-import { type Auth, createAuth } from "./auth/index.js";
+import { type Auth, type AuthScope, type Identity, createAuth } from "./auth/index.js";
 import { HttpFail, json, readBody, streamBodyToFile } from "./http-util.js";
 import { createMcpEndpoint, type McpEndpointOptions, nlpAnalyzer } from "./mcp.js";
 import type { Store } from "./store.js";
-import { MAX_SYNC_FILE_BYTES, SyncFiles, syncPath } from "./sync.js";
+import { MAX_SYNC_FILE_BYTES, SyncFiles, syncPath, syncWriteProblem } from "./sync.js";
 import { dirname, join } from "node:path";
 
 export interface ApiOptions {
@@ -58,12 +60,18 @@ export interface ApiOptions {
   analyze?: McpEndpointOptions["analyze"];
   /** Folder of the sync files (default: `sync` next to the database file). */
   syncDir?: string;
+  /** Most bytes all sync files together may take (KENNING_SYNC_QUOTA_MB; default 2 GB). */
+  syncQuotaBytes?: number | undefined;
 }
 
-/** Cross-origin access to `/api/sync` with a token (no cookies): browsers syncing from elsewhere. */
-function syncCors(req: IncomingMessage): Record<string, string> {
+/**
+ * Cross-origin access to `/api/sync` with a token (no cookies): browsers syncing from elsewhere.
+ * With auth off there is no token to ask for, so only the allowed origins are answered.
+ */
+function syncCors(req: IncomingMessage, auth: Auth): Record<string, string> {
   const origin = req.headers.origin;
   if (!origin) return {};
+  if (!auth.enabled && !auth.allowedOrigins.includes(origin.replace(/\/$/, ""))) return {};
   return {
     "access-control-allow-origin": origin,
     "access-control-allow-methods": "GET, PUT, DELETE, OPTIONS",
@@ -84,7 +92,10 @@ export function createApiServer(opts: ApiOptions): Server {
   const auth = opts.auth ?? createAuth({ token: opts.token });
   const maxBody = opts.maxBodyBytes ?? DEFAULT_MAX_IMPORT_BYTES;
   const maxRpc = Math.min(opts.maxRpcBytes ?? DEFAULT_MAX_RPC_BYTES, maxBody);
-  const sync = new SyncFiles(opts.syncDir ?? join(dirname(store.path), "sync"));
+  const sync = new SyncFiles(
+    opts.syncDir ?? join(dirname(store.path), "sync"),
+    opts.syncQuotaBytes,
+  );
   const mcp = createMcpEndpoint({
     store,
     analyze: opts.analyze ?? (opts.nlpUrl ? nlpAnalyzer(opts.nlpUrl) : undefined),
@@ -95,6 +106,7 @@ export function createApiServer(opts: ApiOptions): Server {
     res: ServerResponse,
     path: string,
     method: string,
+    who: Identity,
     headers: Record<string, string | string[]>,
   ): Promise<void> {
     const q = new URL(req.url ?? "/", "http://x").searchParams;
@@ -115,16 +127,39 @@ export function createApiServer(opts: ApiOptions): Server {
         res.end(bytes);
         return;
       }
-      if (method === "PUT") {
-        sync.put(parts, new Uint8Array(await readBody(req, MAX_SYNC_FILE_BYTES)));
-        return json(res, 200, { ok: true }, headers);
-      }
-      if (method === "DELETE") {
-        sync.remove(parts);
+      if (method === "PUT" || method === "DELETE") {
+        const done = mayWrite(who, parts, method);
+        if (method === "PUT")
+          sync.put(parts, new Uint8Array(await readBody(req, MAX_SYNC_FILE_BYTES)));
+        else sync.remove(parts);
+        done();
         return json(res, 200, { ok: true }, headers);
       }
     }
     throw new HttpFail(404, "Not found.");
+  }
+
+  /**
+   * Refuse (403) a write a sync token may not make; a session, the server's own token and an
+   * open server may write anything. A token's first device folder becomes its own here; the
+   * returned function notes, once the write went through, that the token made the vault.
+   */
+  function mayWrite(who: Identity, parts: string[], method: "PUT" | "DELETE"): () => void {
+    if (who.via !== "sync") return () => undefined;
+    const rights = auth.syncTokens.get(who.tokenId);
+    if (!rights) throw new HttpFail(401, "Sign-in required.");
+    const verdict = syncWriteProblem(parts, method, rights, sync.exists(parts));
+    if ("problem" in verdict) throw new HttpFail(403, verdict.problem);
+    if (verdict.claim) {
+      // Two first writes at once to different folders: one of them wins.
+      if (!auth.syncTokens.claimDevice(who.tokenId, verdict.claim)) {
+        throw new HttpFail(403, "This sync token belongs to another device.");
+      }
+      console.log(`[kenning-api] sync token ${who.tokenId} is now device ${verdict.claim}`);
+    }
+    return () => {
+      if (verdict.madeVault) auth.syncTokens.allowVault(who.tokenId);
+    };
   }
 
   async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> {
@@ -143,13 +178,26 @@ export function createApiServer(opts: ApiOptions): Server {
       });
     }
     if (!path.startsWith("/api/")) throw new HttpFail(404, "Not found.");
-    if (path.startsWith("/api/sync/") && method === "OPTIONS") {
-      res.writeHead(204, syncCors(req));
-      res.end();
-      return;
+    if (path.startsWith("/api/sync/")) {
+      // With auth off nothing tells a device from a page on another site: only this site and
+      // the allowed origins may sync.
+      const foreign = auth.enabled ? null : auth.foreignOrigin(req);
+      if (foreign) {
+        throw new HttpFail(
+          403,
+          `Sync from another site needs sign-in on this server, or KENNING_ALLOWED_ORIGINS (${foreign}).`,
+        );
+      }
+      if (method === "OPTIONS") {
+        res.writeHead(204, syncCors(req, auth));
+        res.end();
+        return;
+      }
     }
 
-    const csrf = auth.csrf(req);
+    const scope: AuthScope =
+      path === "/api/mcp" ? "mcp" : path.startsWith("/api/sync/") ? "sync" : "api";
+    const csrf = auth.csrf(req, scope);
     if (csrf) throw new HttpFail(403, `Request refused (${csrf}).`);
     if (await auth.route(req, res, path)) return;
 
@@ -159,10 +207,13 @@ export function createApiServer(opts: ApiOptions): Server {
     }
 
     if (path.startsWith("/api/sync/")) {
-      const cors = syncCors(req);
+      const cors = syncCors(req, auth);
       try {
         const who = auth.require(req, "sync");
-        return await handleSync(req, res, path, method, { ...cors, ...auth.responseHeaders(who) });
+        return await handleSync(req, res, path, method, who, {
+          ...cors,
+          ...auth.responseHeaders(who),
+        });
       } catch (e) {
         if (e instanceof HttpFail)
           throw new HttpFail(e.status, e.message, { ...e.headers, ...cors });

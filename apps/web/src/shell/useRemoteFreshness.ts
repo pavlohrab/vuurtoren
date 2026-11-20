@@ -18,7 +18,8 @@ import type { AppServices } from "../services/types.js";
  * whether another device changed the data (server mode: the server; a device with its own data:
  * a sync when one is due); if so every query is refetched (the services already dropped their
  * caches). Deferred while a practice session holds it. An unreachable server or sync place shows
- * in the degraded indicator; Retry checks again.
+ * in the degraded indicator; Retry checks again. When the app is hidden or closed, a device that
+ * syncs sends its last changes.
  */
 export function useRemoteFreshness(services: AppServices, queryClient: QueryClient): void {
   // Retry (any mode): refetch everything; sources that still fail report themselves again.
@@ -29,6 +30,21 @@ export function useRemoteFreshness(services: AppServices, queryClient: QueryClie
       }),
     [queryClient],
   );
+  // Leaving (hidden, or closing): send this device's last changes now rather than at the next
+  // start. Best effort: the page may be gone before it finishes.
+  useEffect(() => {
+    if (!services.syncBeforeLeaving) return;
+    const leave = () => void services.syncBeforeLeaving!();
+    const onHidden = () => {
+      if (document.visibilityState === "hidden") leave();
+    };
+    document.addEventListener("visibilitychange", onHidden);
+    addEventListener("pagehide", leave);
+    return () => {
+      document.removeEventListener("visibilitychange", onHidden);
+      removeEventListener("pagehide", leave);
+    };
+  }, [services]);
   useEffect(() => {
     if (!services.checkRemoteChanges) return;
     const check = () => services.checkRemoteChanges!();
