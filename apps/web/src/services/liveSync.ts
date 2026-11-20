@@ -15,7 +15,6 @@ import {
   VAULT_PATH,
   changePassphrase,
   createVault,
-  fromBase64,
   keyFromRaw,
   newRecoveryKey,
   readVault,
@@ -39,11 +38,6 @@ const LEAVE_EVERY_MS = 15_000;
 
 interface Saved {
   place: SyncPlace;
-  /**
-   * The 64 key bytes (base64), only in settings saved before the key store kept them: moved to
-   * the key store on the next sync. The passphrase itself is never kept.
-   */
-  key?: string;
   deviceName: string;
   last: SyncStatus["last"];
   error: string | null;
@@ -205,7 +199,7 @@ export function createLiveSync(deps: LiveSyncDeps) {
         ...saved,
         last: { at: now(), sent: r.sent, received: r.received },
         error: null,
-        devices: r.devices,
+        devices: r.devices ?? saved.devices,
       };
       write(next);
       syncedAt = (await repo.head()).seq;
@@ -222,16 +216,7 @@ export function createLiveSync(deps: LiveSyncDeps) {
   async function once(onProgress?: (m: string) => void) {
     const saved = read();
     if (!saved) throw new Error("Sync is not set up on this device.");
-    let raw = await keys.load();
-    if (!raw && saved.key) {
-      // Settings from before the key store: move the key there and out of local storage.
-      raw = fromBase64(saved.key);
-      await keys.save(raw);
-      const rest = { ...saved };
-      delete rest.key;
-      write(rest);
-      return run(rest, await keyFromRaw(raw), onProgress);
-    }
+    const raw = await keys.load();
     if (!raw) {
       throw new Error("This device no longer has its sync key. Join again with your passphrase.");
     }
