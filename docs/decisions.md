@@ -7,11 +7,11 @@ The rules the code follows, and why.
 - **Dutch only.** Reading, vocabulary, grammar A1–C1 and A2 inburgeringsexamen practice.
 - **Two modes, one owner of the schedule each.** The language profile's mode decides who holds
   the cards:
-  - **Native** (the default for new learners): Kenning holds the cards and runs the reviews.
+  - **Native** (the default for new learners): Vuurtoren holds the cards and runs the reviews.
     Anki is not needed.
-  - **Connected:** Anki is the record of known words and runs the reviews; Kenning reads your
+  - **Connected:** Anki is the record of known words and runs the reviews; Vuurtoren reads your
     decks through AnkiConnect.
-- Kenning never uses AnkiWeb and never links or copies Anki's code (rslib and AnkiDroid are
+- Vuurtoren never uses AnkiWeb and never links or copies Anki's code (rslib and AnkiDroid are
   AGPL). Package files are read from their file format only.
 - **Algorithms first, AI optional.** Every core feature works without AI. AI uses your own key.
 - **Licence:** MIT OR Apache-2.0.
@@ -19,10 +19,10 @@ The rules the code follows, and why.
 ## Modes
 
 - Onboarding asks "Do you use Anki?". No: native. Yes: either **Import from Anki and use
-  Kenning's scheduler** (the confirmed decks are imported once, then native) or **Keep using
+  Vuurtoren's scheduler** (the confirmed decks are imported once, then native) or **Keep using
   Anki** (connected).
 - A connected profile can switch in Settings → Language & decks with **Move from Anki to
-  Kenning**: a one-way import of the confirmed decks and Kenning's own destination decks, with
+  Vuurtoren**: a one-way import of the confirmed decks and Vuurtoren's own destination decks, with
   notes, cards and the full review history, through AnkiConnect. Anki is only read. The profile
   then becomes native.
 - In native mode an `.apkg` or `.colpkg` file can be imported at any time: one deck, several or
@@ -30,12 +30,12 @@ The rules the code follows, and why.
 - In native mode your decks can be exported to an `.apkg` at any time, with their schedule,
   memory and review history, to import in Anki or keep as a copy.
 - A native profile can move back once with **Move to Anki** (Settings → Language & decks):
-  words become notes of Kenning's note type in their own decks (notes that came from Anki stay
-  as they are there), cards reviewed in Kenning get their next due date with that gap as their
+  words become notes of Vuurtoren's note type in their own decks (notes that came from Anki stay
+  as they are there), cards reviewed in Vuurtoren get their next due date with that gap as their
   interval, and, as an experimental option, the review history goes in with real answer times,
   plus each card's exact interval, reviews and lapses. The profile then becomes connected.
   Notes of other types without a word stay out; the `.apkg` export carries them.
-- Apart from Move to Anki, Kenning never writes reviews or schedules to Anki. Imported notes and
+- Apart from Move to Anki, Vuurtoren never writes reviews or schedules to Anki. Imported notes and
   cards keep their Anki ids.
 - The automatic Anki import (on start and every 6 hours) runs only in connected mode.
 
@@ -46,9 +46,9 @@ and MCP all use it, and it acts by the profile's mode.
 
 ### Native mode
 
-| Action              | What Kenning does                                                                   |
+| Action              | What Vuurtoren does                                                                 |
 | ------------------- | ----------------------------------------------------------------------------------- |
-| **Add to my words** | adds a Kenning Word note with one card to the deck the language profile chooses     |
+| **Add to my words** | adds a Vuurtoren Word note with one card to the deck the language profile chooses   |
 | **Study first**     | moves the word's new cards to the front of the new queue and unsuspends them        |
 | **Mark known**      | gives the cards an interval of 21–35 days, adding the word first if it has no cards |
 
@@ -56,25 +56,25 @@ Nothing is written to Anki.
 
 ### Connected mode: Anki writes
 
-Kenning writes to Anki only when you click, and tags every note it touches.
+Vuurtoren writes to Anki only when you click, and tags every note it touches.
 
-| Situation                 | Action               | What Kenning does                                                  | Tag                |
-| ------------------------- | -------------------- | ------------------------------------------------------------------ | ------------------ |
-| not in Anki               | **Add to Anki**      | adds a note to the deck the language profile chooses               | `kenning`          |
-| new or suspended card     | **Study first**      | moves it to the front of its deck's new queue and unsuspends it    | `kenning::reading` |
-| any state, or not in Anki | **Mark known**       | adds the note if needed, then sets an interval of at least 21 days | `kenning::known`   |
-| manually marked           | **Use Anki's state** | nothing in Anki, the app-side mark is removed                      | —                  |
+| Situation                 | Action               | What Vuurtoren does                                                | Tag                  |
+| ------------------------- | -------------------- | ------------------------------------------------------------------ | -------------------- |
+| not in Anki               | **Add to Anki**      | adds a note to the deck the language profile chooses               | `vuurtoren`          |
+| new or suspended card     | **Study first**      | moves it to the front of its deck's new queue and unsuspends it    | `vuurtoren::reading` |
+| any state, or not in Anki | **Mark known**       | adds the note if needed, then sets an interval of at least 21 days | `vuurtoren::known`   |
+| manually marked           | **Use Anki's state** | nothing in Anki, the app-side mark is removed                      | —                    |
 
-- Kenning never answers cards, never writes review logs and never changes FSRS parameters.
-- Answers given in Kenning (practice, clozes, book exercises) are **app evidence**. They can make
-  a word "Learning (in Kenning)" but never "known", and they never reach Anki. The formula is in
-  [algorithms.md](algorithms.md#17-learning-in-kenning-app-evidence).
-- Answers given on the native review screen are reviews of Kenning's own cards, not app
+- Vuurtoren never answers cards, never writes review logs and never changes FSRS parameters.
+- Answers given in Vuurtoren (practice, clozes, book exercises) are **app evidence**. They can make
+  a word "Learning (in Vuurtoren)" but never "known", and they never reach Anki. The formula is in
+  [algorithms.md](algorithms.md#17-learning-in-vuurtoren-app-evidence).
+- Answers given on the native review screen are reviews of Vuurtoren's own cards, not app
   evidence.
 
 ## Language profile
 
-- One profile per language: its mode (native or connected), the decks Kenning reads (confirmed by you, detection only suggests),
+- One profile per language: its mode (native or connected), the decks Vuurtoren reads (confirmed by you, detection only suggests),
   where new words go (default, plus optional decks for reading, Talk, AI, MCP), and the deck rule
   for course words (per unit, per course or default).
 - Onboarding at `/welcome` creates it: language (only when there is more than one) → "Do you use
@@ -98,7 +98,7 @@ Kenning writes to Anki only when you click, and tags every note it touches.
 - **Media** of imported cards (images, sounds) are blobs, like covers: not in the log, kept by
   backups.
 - **Where it lives:**
-  - desktop app: one SQLite file in `Documents/Kenning`, with a lock file against two computers
+  - desktop app: one SQLite file in `Documents/Vuurtoren`, with a lock file against two computers
     writing at once;
   - server: one SQLite file behind `server/api`, shared by all your devices;
   - browser only: SQLite in OPFS, one tab at a time.
@@ -106,12 +106,12 @@ Kenning writes to Anki only when you click, and tags every note it touches.
   30 s, and refetches when another device wrote. The last write of a setting wins.
 - **Sync** (Settings → Sync), for devices that keep their own data (the desktop app, the browser's
   own storage): each device's events travel through a place you choose — your
-  Kenning server, a folder you already sync (desktop app), WebDAV or a private GitHub repository —
+  Vuurtoren server, a folder you already sync (desktop app), WebDAV or a private GitHub repository —
   encrypted on the device with your passphrase. The place only stores sealed files; each device
   writes only its own. The passphrase is never stored; the key it opens is kept on the device.
   The first device starts the sync data; every other device joins it, and joining never makes
   new data (a second vault would split your devices). Sync also runs when the app is hidden or
-  closed, so the last changes do not wait for the next start. On a Kenning server each sync
+  closed, so the last changes do not wait for the next start. On a Vuurtoren server each sync
   token belongs to one device and writes only that device's files.
 - Conflicts by kind of data: the log is replayed in clock order across devices, so the latest
   setting, word mark or profile wins; reviews and answers merge (an answer to a card another
@@ -128,11 +128,11 @@ Kenning writes to Anki only when you click, and tags every note it touches.
   events through a sync place, replay them in hybrid-clock order and reach the same state:
   latest wins for settings and marks, reviews and answers merge. This is the only way two copies
   of your data come together.
-- **Server mode is a thin client.** The web app opened on your Kenning server reads and writes
+- **Server mode is a thin client.** The web app opened on your Vuurtoren server reads and writes
   that server's database directly and keeps no copy, so there is nothing to merge.
-- **Words.** _Kenning server_ is the stack you host (web app, API, language server). _Server
+- **Words.** _Vuurtoren server_ is the stack you host (web app, API, language server). _Server
   mode_ is the web app working on that server's database. A _sync place_ is where devices
-  exchange events; your Kenning server is one, next to a synced folder, WebDAV and GitHub.
+  exchange events; your Vuurtoren server is one, next to a synced folder, WebDAV and GitHub.
 - **A data file belongs to one computer.** The desktop app's lock file only keeps two apps from
   writing at once; it is not a way to share data. Sharing one database file between computers
   (a cloud-synced Documents folder, a network drive) is not combined with event sync: the
@@ -165,7 +165,7 @@ change it:
 
 - **Content Security Policy** (`tauri.conf.json`): the app's own scripts and WebAssembly (SQLite,
   the optimizer), images and media from blobs and data URLs, and connections to the app itself,
-  its IPC, the bundled language server (`kenning-nlp:`) and http(s) for AI providers and GitHub.
+  its IPC, the bundled language server (`vuurtoren-nlp:`) and http(s) for AI providers and GitHub.
   No frames, plugins or form posts. Inline `style` attributes stay allowed (React uses them).
   `tauri dev` runs without it (Vite's dev server needs inline scripts).
 - **Database statements** (`db_exec`): the app's own SQL runs, but a statement may not open
@@ -178,7 +178,7 @@ change it:
   Redirects are followed only within the same address, the page cannot set Host, cookies or
   connection headers, no cookies are kept, and an answer is read only up to 64 MB.
 - **Sync folder**: links inside it are not followed (a device syncing the same folder could
-  otherwise point Kenning's reads and writes elsewhere); the chosen folder itself may be a link.
+  otherwise point Vuurtoren's reads and writes elsewhere); the chosen folder itself may be a link.
 - **Sync key**: `apps/web/src/sync/keyStore.ts` keeps the 64-byte data key in the system keychain
   (macOS Keychain, Windows Credential Manager, the Secret Service on Linux), or in a file only
   this user can read when there is no keychain. In a browser it keeps the key encrypted under a
@@ -191,21 +191,21 @@ change it:
   (`binding-wasm32-wasip1`, MIT). It runs in a worker on the device, also offline in the desktop
   app.
 - Package files are unzipped with `fflate` (MIT) and decompressed with `fzstd` (MIT); their
-  SQLite collection is read with the SQLite build Kenning already ships.
+  SQLite collection is read with the SQLite build Vuurtoren already ships.
 
 ## AI
 
 - Your own key: Anthropic, any OpenAI-compatible provider, or a local model. Requests go from your
   device straight to the provider. The key stays on the device, never in the data, backups or
   server.
-- Kenning never offers a Claude sign-in and never routes requests through a subscription.
+- Vuurtoren never offers a Claude sign-in and never routes requests through a subscription.
   Subscription users connect their own Claude client through MCP: `/api/mcp` on the server (with
   a per-user token) or the stdio server in `apps/mcp`. Over HTTP, MCP only suggests words. You add
   them in the app.
 
 ## Sign-in (public servers)
 
-- Single user. `KENNING_USER` + `KENNING_PASSWORD_HASH` (scrypt), session cookie (`HttpOnly`,
+- Single user. `VUURTOREN_USER` + `VUURTOREN_PASSWORD_HASH` (scrypt), session cookie (`HttpOnly`,
   `Secure`, `SameSite=Lax`), sessions stored hashed in a separate file so backups never hold them.
 - Brute-force delay per IP plus a global cap. CSRF checks on every non-GET request.
 - nginx gates `/api` and `/nlp` behind the session. If the api is unreachable, `/nlp` stays

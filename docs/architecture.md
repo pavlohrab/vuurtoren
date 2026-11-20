@@ -11,7 +11,7 @@ Dependencies point down; nothing in `packages/` imports from `apps/`.
 | --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------- |
 | `packages/core`       | Pure domain logic: learner model and evidence, token matching, reading planner and staircase, practice engine and FSRS, the native scheduler (FSRS-6, replay, card templates, training data), courses, language profile and its mode, the `InspectorEntry` DTO. No I/O. | —                                     |
 | `packages/content`    | Grammar topics and exam content (Markdown, generated and validated at build).                                                                                                                                                                                           | —                                     |
-| `packages/db`         | The append-only event log, projections (native cards included) and the `KenningRepository` API; drivers for browser SQLite (OPFS worker), Node and HTTP (server mode); sync (`sync/`: encryption, the sync engine, the store interface).                                | core                                  |
+| `packages/db`         | The append-only event log, projections (native cards included) and the `VuurtorenRepository` API; drivers for browser SQLite (OPFS worker), Node and HTTP (server mode); sync (`sync/`: encryption, the sync engine, the store interface).                              | core                                  |
 | `packages/anki`       | AnkiConnect client, deck detection, snapshots, package files (.apkg, .colpkg) and decks read through AnkiConnect turned into native cards, and the one command layer for word actions in both modes (add, study first, mark known).                                     | core                                  |
 | `packages/nlp-client` | HTTP client of `server/nlp` and the cached practice-data source.                                                                                                                                                                                                        | —                                     |
 | `packages/ai`         | Bring-your-own-key providers, prompts, story / sentence / exam generators and their checks, the per-device key store.                                                                                                                                                   | core                                  |
@@ -35,7 +35,7 @@ src/
     Home, Library, Import, ReaderPage, Practice, Progress, Converse, ...
   services/           everything the screens call (AppServices), see below
   storage/            startup mode, tab lock, local.ts (localStorage helpers)
-  auth/               sign-in client, MCP and sync tokens of a Kenning server
+  auth/               sign-in client, MCP and sync tokens of a Vuurtoren server
   desktop/            the desktop app's bridge, setup, data file and lock screens
   sync/               sync places (server, WebDAV, GitHub, folder) and the key store
   pwa/                service worker registration, update prompt, install button
@@ -49,7 +49,7 @@ Screens only talk to `AppServices` (`services/types.ts`) through `useServices()`
 import `@app/db`, `@app/anki` or `@app/nlp-client` directly.
 
 The service worker is `apps/web/sw/sw.js`, filled in and emitted as `/sw.js` by the
-`kenning-sw` plugin in `vite.config.ts` (built app only): it precaches the app shell (scripts,
+`vuurtoren-sw` plugin in `vite.config.ts` (built app only): it precaches the app shell (scripts,
 styles, SQLite wasm, latin fonts, icons, `offline.html`), answers navigations network first
 (offline: the cached shell), and never touches `/api`, `/nlp`, `/anki` or other origins.
 
@@ -82,7 +82,7 @@ composition root. Each domain module gets only what it needs:
 ```mermaid
 flowchart LR
   UI["screen"] -->|"AppServices call"| S["services/live*"]
-  S -->|"append(event)"| R["KenningRepository<br/>(@app/db)"]
+  S -->|"append(event)"| R["VuurtorenRepository<br/>(@app/db)"]
   R -->|"projections"| S
   S -->|"analyze, gloss, grammar"| N["NlpClient -> /nlp"]
   S -->|"explicit click only"| A["@app/anki -> AnkiConnect"]
@@ -130,7 +130,7 @@ Runtime 73 MB, models 32 MB), the `-slim` image has no OCR. `GET /health` report
 ## Language server data packs
 
 The NLP image holds code and libraries only; its data are versioned **data packs** on the
-`/data` volume (`server/nlp/src/kenning_nlp/packs.py`, manifest `packs.json` next to it):
+`/data` volume (`server/nlp/src/vuurtoren_nlp/packs.py`, manifest `packs.json` next to it):
 
 | pack                  | contents                              | archive | installed |
 | --------------------- | ------------------------------------- | ------- | --------- |
@@ -143,9 +143,9 @@ The NLP image holds code and libraries only; its data are versioned **data packs
   (deterministic tar.gz of one file or directory). A marker `<data>.pack.json` records what is
   installed (version, digest, source).
 - **Install** (at startup in a background thread, and on `POST /nlp/admin/packs`): each missing
-  or outdated pack comes from `KENNING_PACKS_DIR` (bundled archives: the `-full` image, the
-  desktop sidecar), else `KENNING_PACKS_URL` (release assets; optional `KENNING_PACKS_TOKEN`),
-  else, with `KENNING_PACKS=auto`, a local build from the pinned upstream sources with
+  or outdated pack comes from `VUURTOREN_PACKS_DIR` (bundled archives: the `-full` image, the
+  desktop sidecar), else `VUURTOREN_PACKS_URL` (release assets; optional `VUURTOREN_PACKS_TOKEN`),
+  else, with `VUURTOREN_PACKS=auto`, a local build from the pinned upstream sources with
   `scripts/`. Archives are size- and SHA-256-checked, unpacked next to the target and renamed into
   place; caches holding the old data are dropped. Data without a marker (a development build) is
   never replaced unless forced. Works offline once installed. `GET /health` shows
