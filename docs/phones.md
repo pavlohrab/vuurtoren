@@ -71,7 +71,7 @@ and hides what a device lacks.
    - analysis cached per text, so reading is offline once a text is added;
    - a server address and sync token set up together on first start ("Connect to your
      Vuurtoren server" with a QR code from the server's Settings → Sync).
-2. **Android** (below).
+2. **Android**: the details are in [Android](android.md).
 3. **iPhone** (below).
 
 ## Android
