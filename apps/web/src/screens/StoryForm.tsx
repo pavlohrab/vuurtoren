@@ -137,7 +137,7 @@ export function StoryForm({ preset = {} }: { preset?: StoryPreset }) {
     onSuccess: async (r) => {
       await qc.invalidateQueries({ queryKey: ["texts"] });
       toast(
-        `Saved “${r.title}” to your library`,
+        `Saved “${r.title}” to your Library`,
         r.missingTargets.length
           ? `It does not use: ${r.missingTargets.join(", ")}.`
           : r.coverage !== null
@@ -177,7 +177,7 @@ export function StoryForm({ preset = {} }: { preset?: StoryPreset }) {
         <Input
           label="Topic"
           value={topic}
-          placeholder="A day at the market, a lost cat, ..."
+          placeholder="A day at the market, a lost cat, …"
           disabled={create.isPending}
           onChange={(e) => setTopic(e.target.value)}
         />
@@ -234,7 +234,7 @@ export function StoryForm({ preset = {} }: { preset?: StoryPreset }) {
         <Input
           label="Words to use"
           value={ownWords ?? words.join(", ")}
-          placeholder={source === "grammar" ? "Optional" : "Comma separated"}
+          placeholder={source === "grammar" ? "Optional" : "Comma-separated"}
           hint="Up to 10. The story uses each of them; the check tells you if one is missing."
           disabled={create.isPending}
           onChange={(e) => setOwnWords(e.target.value)}

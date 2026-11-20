@@ -593,7 +593,7 @@ export function Welcome() {
                   void navigate({ to: "/library" });
                 }}
               >
-                Go to the library
+                Go to the Library
               </button>
             ) : (
               <button type="button" className="ob-skip" onClick={skip}>

@@ -2,7 +2,7 @@ import { pct } from "../../format.js";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { Button, CoverageMeter, Skeleton } from "@app/ui";
+import { Button, CoverageMeter, Skeleton, useNativeMode } from "@app/ui";
 import { useServices } from "../../services/context.js";
 import { PageHeader } from "../../shell/PageHeader.js";
 import type { UnitRow } from "../../services/courseTypes.js";
@@ -57,6 +57,7 @@ function UnitLine({ courseId, row }: { courseId: string; row: UnitRow }) {
 /** One course: its units with progress, and the way back to the outline editor. */
 export function CourseRoute({ courseId }: { courseId: string }) {
   const services = useServices();
+  const native = useNativeMode();
   const [adding, setAdding] = useState(false);
   const [exporting, setExporting] = useState(false);
   const course = useQuery({
@@ -110,7 +111,9 @@ export function CourseRoute({ courseId }: { courseId: string }) {
               </Link>
             ) : null}
             {missing > 0 ? (
-              <Button onClick={() => setAdding(true)}>Add all course words to Anki…</Button>
+              <Button onClick={() => setAdding(true)}>
+                Add all course words{native ? "" : " to Anki"}…
+              </Button>
             ) : null}
             <Link to="/courses/$courseId/edit" params={{ courseId }} className="k-btn k-btn--ghost">
               Edit outline

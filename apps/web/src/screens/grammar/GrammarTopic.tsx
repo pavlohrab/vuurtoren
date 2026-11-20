@@ -332,7 +332,7 @@ function TopicExamplesSection({
             <Skeleton style={{ height: 20, width: "80%" }} />
           </div>
         ) : error ? (
-          <ErrorNotice title="Examples could not be loaded." error={error} onRetry={onRetry} />
+          <ErrorNotice title="The examples could not be loaded." error={error} onRetry={onRetry} />
         ) : data && data.library.length ? (
           <ul className="grammar-found">
             {data.library.map((ex, i) => (

@@ -5,7 +5,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Sparkles } from "lucide-react";
 import { useState } from "react";
-import { AddToAnki, Button, useToast } from "@app/ui";
+import { AddToAnki, Button, deckName, useNativeMode, useToast } from "@app/ui";
 import { useServices } from "../../services/context.js";
 import { errorText } from "../../services/errors.js";
 import { useDeckChoice } from "../useDeckChoice.js";
@@ -14,6 +14,7 @@ export function SuggestedWords() {
   const services = useServices();
   const qc = useQueryClient();
   const toast = useToast();
+  const native = useNativeMode();
   const deckChoice = useDeckChoice("mcp");
   const [open, setOpen] = useState(false);
   const q = useQuery({ queryKey: ["suggested-words"], queryFn: () => services.suggestedWords() });
@@ -25,10 +26,11 @@ export function SuggestedWords() {
     mutationFn: (key: string) =>
       services.addSuggestedToAnki(key, deckChoice.chosen ? { deck: deckChoice.chosen } : undefined),
     onSuccess: ({ deck }) => {
-      toast("Added", deck.split("::").at(-1));
+      toast(native ? "Added to your words" : "Added to Anki", deckName(deck));
       refresh();
     },
-    onError: (e) => toast("Could not add the word", errorText(e)),
+    onError: (e) =>
+      toast(native ? "Could not add the word" : "Could not add to Anki", errorText(e)),
   });
   const dismiss = useMutation({
     mutationFn: (key: string) => services.dismissSuggestion(key),

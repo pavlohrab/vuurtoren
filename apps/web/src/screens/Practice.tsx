@@ -313,7 +313,7 @@ function StartView({
           }
           action={
             <Link to="/library" className="k-btn k-btn--primary">
-              Go to the library
+              Go to the Library
             </Link>
           }
         />

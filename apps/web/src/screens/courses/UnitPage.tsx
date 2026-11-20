@@ -12,6 +12,7 @@ import {
   Tabs,
   Tooltip,
   WordStateChip,
+  useNativeMode,
   useToast,
 } from "@app/ui";
 import { storySearch, useAIReady } from "../StoryForm.js";
@@ -26,13 +27,15 @@ import { AddWordsDialog } from "./AddWordsDialog.js";
 import { BookExercise } from "./BookExercise.js";
 import "./courses.css";
 
-/** Word state, or the Anki status for unit words that are not in Anki at all. */
+/** Word state, or the card status for unit words that have no card at all. */
 function UnitWordState({ state }: { state: UnitWordView["state"] }) {
   return state === "absent" ? <AnkiStatusChip status="absent" /> : <WordStateChip state={state} />;
 }
 
-const STUDY_FIRST_HINT =
-  "Moves the unit's new cards to the front of Anki's queue, so Anki shows them next.";
+const STUDY_FIRST_HINT = {
+  anki: "Moves the unit's new cards to the front of Anki's queue, so Anki shows them next.",
+  native: "Moves the unit's new cards to the front of your review queue, so they come next.",
+};
 
 function ReadTab({ unit }: { unit: UnitView }) {
   if (unit.texts.length === 0) {
@@ -66,7 +69,7 @@ function ReadTab({ unit }: { unit: UnitView }) {
 }
 
 /**
- * The unit's words: each opens the word inspector here; the Anki actions for the unit and the
+ * The unit's words: each opens the word inspector here; the card actions for the unit and the
  * ways on (Practice, Words) sit above the list.
  */
 function WordsTab({
@@ -82,11 +85,12 @@ function WordsTab({
   inspector: WordInspectorHandle;
   anki: ReactNode;
 }) {
+  const native = useNativeMode();
   if (unit.words.length === 0) {
     return (
       <p className="cs-note">
-        This unit has no word list yet. Map it to an Anki deck and its notes become the unit&rsquo;s
-        words.
+        This unit has no word list yet. Map it to {native ? "a deck" : "an Anki deck"} and its notes
+        become the unit&rsquo;s words.
       </p>
     );
   }
@@ -254,6 +258,9 @@ export function UnitRoute({ courseId, n }: { courseId: string; n: number }) {
   const navigate = useNavigate();
   const aiReady = useAIReady();
   const inspector = useWordInspector("course");
+  const native = useNativeMode();
+  const where = native ? "" : " in Anki";
+  const studyFirstHint = native ? STUDY_FIRST_HINT.native : STUDY_FIRST_HINT.anki;
   const [tab, setTab] = useState("exercises");
   const [adding, setAdding] = useState(false);
   const key = ["unit", courseId, n];
@@ -274,12 +281,14 @@ export function UnitRoute({ courseId, n }: { courseId: string; n: number }) {
     mutationFn: () => services.learnNextForUnit(courseId, n),
     onSuccess: (r) => {
       toast(
-        r.moved > 0 ? `${r.moved} words moved to the front in Anki` : "Nothing to move",
-        r.skipped > 0 ? `${r.skipped} words have no new card.` : undefined,
+        r.moved > 0 ? `${plural(r.moved, "word")} moved to the front${where}` : "Nothing to move",
+        r.skipped > 0
+          ? `${plural(r.skipped, "word")} ${r.skipped === 1 ? "has" : "have"} no new card.`
+          : undefined,
       );
       refresh();
     },
-    onError: (e) => toast("Could not move the cards in Anki", errorText(e)),
+    onError: (e) => toast(`Could not move the cards${where}`, errorText(e)),
   });
   if (unit.isPending) {
     return (
@@ -338,25 +347,26 @@ export function UnitRoute({ courseId, n }: { courseId: string; n: number }) {
         ]
       : []),
   ];
-  // The unit's Anki actions live with its words.
+  // The unit's card actions live with its words.
   const anki =
     s.total > 0 ? (
       <>
         {s.newInAnki > 0 ? (
-          <Tooltip content={STUDY_FIRST_HINT}>
+          <Tooltip content={studyFirstHint}>
             <Button
               size="sm"
               disabled={learn.isPending}
-              title={STUDY_FIRST_HINT}
+              title={studyFirstHint}
               onClick={() => learn.mutate()}
             >
-              {learn.isPending ? "Working…" : `Study first in Anki (${s.newInAnki})`}
+              {learn.isPending ? "Working…" : `Study first${where} (${s.newInAnki})`}
             </Button>
           </Tooltip>
         ) : null}
         {s.missing > 0 ? (
           <Button size="sm" onClick={() => setAdding(true)}>
-            Add {plural(s.missing, "word")} to Anki…
+            Add {plural(s.missing, "word")}
+            {native ? "" : " to Anki"}…
           </Button>
         ) : null}
       </>

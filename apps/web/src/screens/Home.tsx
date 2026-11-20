@@ -204,7 +204,7 @@ export function Home() {
             />
           ) : (
             <Empty
-              text="Your library is empty. Add an article, a web page or a PDF to start reading."
+              text="Your Library is empty. Add an article, a web page or a PDF to start reading."
               action={
                 <Link to="/import" className="k-btn k-btn--primary">
                   <Plus size={16} aria-hidden /> Add text

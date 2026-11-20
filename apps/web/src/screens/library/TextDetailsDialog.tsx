@@ -3,6 +3,7 @@ import { Button, Dialog, Input, Select, Textarea, useToast } from "@app/ui";
 import { type FormEvent, useState } from "react";
 import { useServices } from "../../services/context.js";
 import type { TextSummary } from "@app/db";
+import { errorText } from "../../services/errors.js";
 
 /** The fields of a text the details dialog edits. */
 export type EditableText = Pick<
@@ -60,7 +61,7 @@ function DetailsForm({ text, onClose }: { text: EditableText; onClose: () => voi
         qc.invalidateQueries({ queryKey: ["reading", text.id] }),
       ]);
     },
-    onError: (e) => toast("Could not save the details", e instanceof Error ? e.message : ""),
+    onError: (e) => toast("Could not save the details", errorText(e)),
   });
 
   const submit = (e: FormEvent) => {

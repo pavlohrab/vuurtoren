@@ -83,7 +83,7 @@ export function useRecordAttempt() {
   return useMutation({
     mutationFn: (input: ExamAttemptInput) => services.recordExamAttempt(input),
     onSuccess: () => void client.invalidateQueries({ queryKey: ["exam", "attempts"] }),
-    onError: (e) => toast("Your result could not be saved", errorText(e)),
+    onError: (e) => toast("Could not save your result", errorText(e)),
   });
 }
 
