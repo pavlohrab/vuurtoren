@@ -27,10 +27,10 @@ The clips are made once with the ElevenLabs API and ship as the `audio-nl` data 
 4. Speak one chunk in both voices:
 
    ```sh
-   ~/Downloads/vuurtoren-audio-jobs/run.sh 01   # the loop script that sits next to the chunks
+   server/nlp/scripts/tts_run.sh 01      # or: ./run.sh 01 in the jobs folder
    ```
 
-   Do one chunk per allowance of about 29,000 characters, or `run.sh all` on a paid plan. A run
+   Do one chunk per allowance of about 29,000 characters, or `tts_run.sh all` on a paid plan. A run
    can stop at any time; the next run skips every clip that exists.
 
 5. Listen to a few clips from each chunk. A bad clip: delete its file and run the chunk again.
