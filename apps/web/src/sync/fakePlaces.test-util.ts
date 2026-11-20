@@ -82,11 +82,22 @@ export function fakeGithub(files: Files): typeof fetch {
   let n = 0;
   return (async (input: RequestInfo | URL, init: RequestInit = {}) => {
     const url = new URL(String(input));
+    const headers = new Headers(init.headers);
+    if (headers.get("authorization") !== "Bearer ghp_x") return new Response("{}", { status: 401 });
+    // A folder's git tree (its sha here is "tree:<path>"): every entry.
+    const tree = /^\/repos\/anna\/kenning-sync\/git\/trees\/tree:(.+)$/.exec(url.pathname);
+    if (tree) {
+      const dir = decodeURIComponent(tree[1]!);
+      return Response.json({
+        tree: names(files, dir).map((name) => {
+          const p = `${dir}/${name}`;
+          return { path: name, type: files.has(p) ? "blob" : "tree", sha: shas.get(p) ?? "" };
+        }),
+      });
+    }
     const m = /^\/repos\/anna\/kenning-sync\/contents\/?(.*)$/.exec(url.pathname);
     if (!m) return new Response("{}", { status: 404 });
     const path = decodeURIComponent(m[1]!);
-    const headers = new Headers(init.headers);
-    if (headers.get("authorization") !== "Bearer ghp_x") return new Response("{}", { status: 401 });
     const method = init.method ?? "GET";
     if (method === "GET") {
       const file = files.get(path);
@@ -97,10 +108,13 @@ export function fakeGithub(files: Files): typeof fetch {
       }
       const list = names(files, path);
       if (!list.length) return Response.json({ message: "Not Found" }, { status: 404 });
+      // Like GitHub, at most 1000 entries.
       return Response.json(
-        list.map((name) => {
+        list.slice(0, 1000).map((name) => {
           const p = path ? `${path}/${name}` : name;
-          return { name, type: files.has(p) ? "file" : "dir", sha: shas.get(p) ?? "" };
+          return files.has(p)
+            ? { name, type: "file", sha: shas.get(p) ?? "" }
+            : { name, type: "dir", sha: `tree:${p}` };
         }),
       );
     }

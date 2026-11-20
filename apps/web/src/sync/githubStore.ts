@@ -7,6 +7,8 @@ import { base64 } from "./base64.js";
 import { SyncPlaceError, readError } from "./errors.js";
 
 const API = "https://api.github.com";
+/** Entries the contents API lists at most for one folder. */
+const CONTENTS_LIMIT = 1000;
 
 export function githubStore(
   repo: string,
@@ -31,7 +33,12 @@ export function githubStore(
   const call = async (url: string, init: RequestInit = {}) => {
     let res: Response;
     try {
-      res = await fetch(url, { ...init, headers: { ...headers, ...init.headers } });
+      // GitHub answers with max-age=60: a cached listing would hold an old sha.
+      res = await fetch(url, {
+        ...init,
+        cache: "no-store",
+        headers: { ...headers, ...init.headers },
+      });
     } catch {
       throw new SyncPlaceError("GitHub cannot be reached.", "offline");
     }
@@ -52,14 +59,41 @@ export function githubStore(
     return sha;
   };
 
+  /** Every entry of a folder through the Git trees API, or null when it cannot be read. */
+  const treeOf = async (
+    dir: string,
+  ): Promise<{ name: string; sha: string; type: string }[] | null> => {
+    const parts = dir.split("/").filter(Boolean);
+    const leaf = parts.pop();
+    if (!leaf) return null;
+    const res = await call(`${contents(parts.join("/"))}${ref}`);
+    if (!res.ok) return null;
+    const parent = (await res.json()) as { name: string; sha: string; type: string }[];
+    const sha = Array.isArray(parent)
+      ? parent.find((it) => it.name === leaf && it.type === "dir")?.sha
+      : undefined;
+    if (!sha) return null;
+    const tree = await call(`${API}/repos/${repo}/git/trees/${sha}`);
+    if (!tree.ok) return null;
+    const body = (await tree.json()) as { tree?: { path: string; sha: string; type: string }[] };
+    if (!Array.isArray(body.tree)) return null;
+    return body.tree.map((t) => ({
+      name: t.path,
+      sha: t.sha,
+      type: t.type === "blob" ? "file" : "dir",
+    }));
+  };
+
   return {
     label: `GitHub · ${repo}`,
     async list(dir) {
       const res = await call(`${contents(dir)}${ref}`);
       if (res.status === 404) return [];
       if (!res.ok) throw await readError(res);
-      const items = (await res.json()) as { name: string; sha: string; type: string }[];
+      let items = (await res.json()) as { name: string; sha: string; type: string }[];
       if (!Array.isArray(items)) return [];
+      // The contents API stops at 1000 entries; the folder's git tree holds them all.
+      if (items.length >= CONTENTS_LIMIT) items = (await treeOf(dir)) ?? items;
       for (const it of items)
         if (it.type === "file") shas.set(`${dir}/${it.name}`.replace(/^\//, ""), it.sha);
       return items.map((it) => it.name).sort();

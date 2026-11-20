@@ -8,7 +8,11 @@ export function serverStore(url: string, token: string, fetch: typeof globalThis
   const call = async (path: string, init: RequestInit = {}) => {
     let res: Response;
     try {
-      res = await fetch(`${base}${path}`, { ...init, headers: { ...auth, ...init.headers } });
+      res = await fetch(`${base}${path}`, {
+        ...init,
+        cache: "no-store",
+        headers: { ...auth, ...init.headers },
+      });
     } catch {
       throw new SyncPlaceError(`Kenning at ${new URL(base).host} cannot be reached.`, "offline");
     }
