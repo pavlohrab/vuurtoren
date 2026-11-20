@@ -25,6 +25,7 @@
   <a href="#a-tour">Tour</a> ·
   <a href="#how-it-works">How it works</a> ·
   <a href="#self-hosting">Self-hosting</a> ·
+  <a href="#sync">Sync</a> ·
   <a href="#development">Development</a>
 </p>
 
@@ -185,18 +186,11 @@ to Anki with the sentence you found it in.
 
 ## Download
 
-| System  | File                                                                                 |
-| ------- | ------------------------------------------------------------------------------------ |
-| Windows | [`.exe` installer](https://github.com/pavlohrab/Kenning/releases/latest)             |
-| Linux   | [`.AppImage` or `.deb`](https://github.com/pavlohrab/Kenning/releases/latest)        |
-| macOS   | [`.dmg` (Apple chip or Intel)](https://github.com/pavlohrab/Kenning/releases/latest) |
+Get Kenning for Windows, macOS or Linux from the
+[latest release](https://github.com/pavlohrab/Kenning/releases/latest).
 
-Open it, keep Anki open with [AnkiConnect](https://ankiweb.net/shared/info/2055492159) (add-on
-code `2055492159`), done. The `Kenning_offline_…` files include the Dutch data, for a computer
-without internet.
-
-The apps are not signed yet. **Windows:** click **More info → Run anyway**. **macOS:** right-click
-the app → **Open**. **AppImage:** make it executable (`chmod +x`), then run it.
+Step by step: **[Install](docs/guide/install.md)** · **[Self-host](docs/guide/self-host.md)** ·
+**[Sync your devices](docs/guide/sync.md)**
 
 ## How it works
 
@@ -219,15 +213,21 @@ the provider you chose, and the key never leaves the device.
 
 ## Self-hosting
 
-For one Kenning shared by all your devices:
+Run one Kenning for all your devices with Docker:
 
 ```sh
 git clone https://github.com/pavlohrab/Kenning.git && cd Kenning
 docker compose -f deploy/compose.yml up -d
 ```
 
-Open <http://localhost:8080>. HTTPS, sign-in, Dockge + Cloudflare Tunnel, updates and backups:
-[deploy/README.md](deploy/README.md).
+Open <http://localhost:8080>. The short guide is [Self-host](docs/guide/self-host.md); every setting
+is in [deploy/README.md](deploy/README.md).
+
+## Sync
+
+Keep your data the same on every device, locked with your passphrase. Sync through your own
+Kenning server, a folder you already sync, WebDAV or a private GitHub repository. Kenning Cloud
+is coming. See [Sync your devices](docs/guide/sync.md).
 
 ## Development
 
