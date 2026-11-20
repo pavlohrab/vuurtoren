@@ -673,3 +673,18 @@
   font-weight: 400;
   font-size: 12px;
 }
+
+/* "About this story" under a bundled story: quiet, after the text. */
+.reader-story-credit {
+  max-width: 68ch;
+  margin: var(--s-6) auto 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink-muted);
+}
+.reader-story-credit-label {
+  font-weight: 600;
+}
+.reader-story-credit a {
+  color: inherit;
+}

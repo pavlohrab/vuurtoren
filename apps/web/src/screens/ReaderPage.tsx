@@ -44,6 +44,7 @@ import { FocusChip, MarkCard } from "./reader/ReaderGrammar.js";
 import { type MenuView, ReaderMenu, ShortcutsDialog } from "./reader/ReaderMenu.js";
 import { TextDetailsDialog } from "./library/TextDetailsDialog.js";
 import { ReadingSettings } from "./reader/ReadingSettings.js";
+import { StoryCredit } from "./reader/StoryCredit.js";
 import { WordGrammar } from "./reader/WordGrammar.js";
 import { prefsStyle, useReaderPrefs } from "./reader/readerPrefs.js";
 import "./reader/reader.css";
@@ -824,6 +825,7 @@ export function ReaderPage({ textId }: { textId: string }) {
           onClozeAnswer={onClozeAnswer}
         />
       )}
+      <StoryCredit sourceRef={data.text.sourceRef} />
       <AnchoredPopover
         anchor={openMarkData ? (openMark?.el ?? null) : null}
         onClose={() => setOpenMark(null)}

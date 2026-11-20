@@ -118,8 +118,11 @@ export interface SentencePairs {
   /** Words and punctuation of `english`, with their [start, end) in it. */
   englishTokens: { start: number; end: number; text: string }[];
   pairs: WordPair[];
-  /** Where the English came from: the offline model or the learner's AI provider. */
-  source: "offline" | "ai";
+  /**
+   * Where the English came from: the offline model, the learner's AI provider, or the
+   * translation that ships with a bundled story.
+   */
+  source: "offline" | "ai" | "story";
 }
 
 export const DEFAULT_PLANNER: PlannerOptions = {

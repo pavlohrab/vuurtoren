@@ -5,6 +5,7 @@
  */
 import type {
   AnalyzedToken,
+  LearnerModel,
   PlannedToken,
   SegmentPlan,
   StaircaseState,
@@ -25,6 +26,15 @@ import { createMockProfile } from "./mockProfile.js";
 import { createMockNative } from "./mockNative.js";
 import { createMockGrammar } from "./mockGrammar.js";
 import { mockSentencePairs } from "./mockPairs.js";
+import { englishTokens } from "./livePairs.js";
+import {
+  type BundledStory,
+  loadStories,
+  storyCovers,
+  storyEnglish,
+  storyRef,
+  storySlugOf,
+} from "./stories.js";
 import { createMockPractice } from "./mockPractice.js";
 import { ImportCancelledError, type OcrReviewDoc } from "./ocrReview.js";
 import type { OcrFlag } from "@app/nlp-client";
@@ -618,6 +628,35 @@ export function createMockServices(
       return [...texts.values()].sort((a, b) => b.createdAt - a.createdAt).map(listItem);
     },
 
+    async storyShelf() {
+      await wait();
+      // The demo learner: the lexicon's words, and every very common word counts as known.
+      const model: LearnerModel = new Map(
+        [...lexicon.values()].map((e) => [e.key, { state: e.state, pKnown: e.pKnown }]),
+      );
+      const list = await loadStories();
+      for (const s of list) {
+        for (const t of s.tokens) {
+          if (t.is_word && t.zipf >= 5.5 && !model.has(t.lemma)) {
+            model.set(t.lemma, { state: "known", pKnown: 1 });
+          }
+        }
+      }
+      return storyCovers(list, model, [...texts.values()]);
+    },
+
+    async openStory(slug) {
+      await wait();
+      const had = [...texts.values()].find((t) => storySlugOf(t.sourceRef) === slug);
+      if (had) return had.id;
+      const story = (await loadStories()).find((s) => s.slug === slug);
+      if (!story) throw new Error(`There is no story "${slug}".`);
+      const id = addText(story.title, story.content, "paste", storyRef(slug));
+      const t = texts.get(id);
+      if (t) t.level = story.level;
+      return id;
+    },
+
     async getReading(textId): Promise<ReadingView | null> {
       await wait();
       const t = texts.get(textId);
@@ -682,14 +721,28 @@ export function createMockServices(
       await wait();
       const t = texts.get(textId);
       const tokens = t?.tokens ?? [];
-      return sentences.map((sent) =>
-        mockSentencePairs(
+      const slug = storySlugOf(t?.sourceRef);
+      const story: BundledStory | undefined = slug
+        ? (await loadStories()).find((s) => s.slug === slug)
+        : undefined;
+      const lines = story && t ? storyEnglish(story, t.content, tokens) : new Map<number, string>();
+      return sentences.map((sent) => {
+        const en = lines.get(sent);
+        if (en)
+          return {
+            sent,
+            english: en,
+            englishTokens: englishTokens(en),
+            pairs: [],
+            source: "story" as const,
+          };
+        return mockSentencePairs(
           t?.content ?? "",
           sent,
           tokens.filter((x) => x.sent === sent),
           opts.ai === true,
-        ),
-      );
+        );
+      });
     },
 
     async glosses(textId, tokenIndices) {

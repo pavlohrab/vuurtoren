@@ -3,7 +3,8 @@
  * `/translate/pairs` (offline OPUS-MT attention). With the AI option the English comes from the
  * learner's provider and the server pairs that English (forced decoding). Both are optional:
  * without the server a sentence has no English; without the provider the offline English is
- * used.
+ * used. A bundled story brings its own English (see stories.ts), which beats both: the server
+ * only pairs it, and without the server it is shown alone.
  */
 import type { AnalyzedToken, SentencePairs } from "@app/core";
 import type { NlpClient, PairItem, PairedText } from "@app/nlp-client";
@@ -18,6 +19,8 @@ export interface LivePairsDeps {
   aiReady: () => boolean;
   /** English from the AI provider, one per sentence ("" when it left one out). */
   aiTranslate: (sentences: string[]) => Promise<string[]>;
+  /** A bundled story's English per sentence of the text (empty for other texts). */
+  storyLines?: (view: ReadingView) => Promise<Map<number, string>>;
 }
 
 /** Words and punctuation of an English sentence (the server's tokenisation). */
@@ -95,12 +98,14 @@ export function createLivePairs(deps: LivePairsDeps) {
       sent,
       ...pairItem(v.text.content, bySent.get(sent) ?? []),
     }));
+    const story = (await deps.storyLines?.(v)) ?? new Map<number, string>();
     const useAI = opts.ai === true && deps.aiReady();
-    if (useAI) await fromAI(asked.map((s) => s.item.text));
+    if (useAI) await fromAI(asked.filter((s) => !story.has(s.sent)).map((s) => s.item.text));
     const items = asked.map((s) => {
-      const en = useAI ? aiEnglish.get(s.item.text) : undefined;
+      const en = story.get(s.sent) ?? (useAI ? aiEnglish.get(s.item.text) : undefined);
       return en ? { ...s.item, translation: en } : s.item;
     });
+    const sourceOf = (sent: number): SentencePairs["source"] => (story.has(sent) ? "story" : "ai");
     let paired: PairedText[] = [];
     try {
       paired = items.length ? await (await deps.nlp()).pairs(items) : [];
@@ -113,13 +118,13 @@ export function createLivePairs(deps: LivePairsDeps) {
       const r = paired[k];
       const given = items[k]?.translation;
       if (!r) {
-        // No server: the AI English alone, without pairs.
+        // No server: the story's or the AI's English alone, without pairs.
         return {
           sent: s.sent,
           english: given ?? "",
           englishTokens: given ? englishTokens(given) : [],
           pairs: [],
-          source: given ? "ai" : "offline",
+          source: given ? sourceOf(s.sent) : "offline",
         };
       }
       return {
@@ -131,7 +136,7 @@ export function createLivePairs(deps: LivePairsDeps) {
           en: p.en,
           confidence: p.confidence,
         })),
-        source: r.source === "given" ? "ai" : "offline",
+        source: r.source === "given" ? sourceOf(s.sent) : "offline",
       };
     });
   }

@@ -36,6 +36,7 @@ import {
   shelfRows,
   sortTexts,
 } from "./library/shelving.js";
+import { StoriesShelf } from "./library/StoriesShelf.js";
 import { TextDetailsDialog } from "./library/TextDetailsDialog.js";
 import { readLastText } from "../lastText.js";
 import "./library/library.css";
@@ -75,7 +76,8 @@ function draggedIds(e: DragEvent): string[] | null {
 /**
  * Library: a bookshelf. Rows of covers (Reading now, the learner's shelves, To read, Finished,
  * then by source) that scroll sideways, or every text in a grid; search, sort, multi-select,
- * and per-cover details, cover and shelf actions.
+ * and per-cover details, cover and shelf actions. Below the shelves, the Stories that come
+ * with the app.
  */
 export function Library() {
   const services = useServices();
@@ -425,6 +427,9 @@ export function Library() {
       ) : null}
 
       {body}
+
+      {/* The bundled stories: with the shelves, and on an empty Library. */}
+      {!searching && (view === "shelves" || texts.data?.length === 0) ? <StoriesShelf /> : null}
 
       {selecting ? (
         <div

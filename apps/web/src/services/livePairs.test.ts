@@ -124,4 +124,35 @@ describe("sentencePairs", () => {
     expect(b).toMatchObject({ english: "Tomorrow I will call.", source: "ai", pairs: [] });
     expect(b?.englishTokens.map((t) => t.text)).toEqual(["Tomorrow", "I", "will", "call", "."]);
   });
+
+  it("uses a bundled story's English: paired by the server, shown alone without it", async () => {
+    const { calls, nlp } = fakeNlp();
+    const aiTranslate = vi.fn(async (s: string[]) => s.map(() => "AI English."));
+    const storyLines = async () => new Map([[1, "Tomorrow I will ring."]]);
+    const pairs = createLivePairs({
+      view: async () => view,
+      nlp,
+      aiReady: () => true,
+      aiTranslate,
+      storyLines,
+    });
+    const [hallo, s] = await pairs.sentencePairs("t", [0, 1], { ai: true });
+    expect(calls[0]?.[1]?.translation).toBe("Tomorrow I will ring.");
+    expect(s).toMatchObject({ english: "Tomorrow I will ring.", source: "story" });
+    expect(s?.pairs[0]?.nl).toEqual([3, 5]);
+    // Only the sentence without the story's English goes to the provider.
+    expect(aiTranslate).toHaveBeenCalledWith(["Hallo."]);
+    expect(hallo).toMatchObject({ source: "ai" });
+
+    const down = fakeNlp(true);
+    const offline = createLivePairs({
+      view: async () => view,
+      nlp: down.nlp,
+      aiReady: () => false,
+      aiTranslate,
+      storyLines,
+    });
+    const [t] = await offline.sentencePairs("t", [1]);
+    expect(t).toMatchObject({ english: "Tomorrow I will ring.", source: "story", pairs: [] });
+  });
 });

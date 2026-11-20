@@ -19,6 +19,7 @@ import { workerOptimizer } from "../native/optimizer.js";
 import { browserSqlite } from "../native/openSqlite.js";
 import { createLearnerCache } from "./liveLearner.js";
 import { createLivePractice } from "./livePractice.js";
+import { createLiveStories } from "./liveStories.js";
 import { createLiveProfile } from "./liveProfile.js";
 import { createLiveSettings } from "./liveSettings.js";
 import { chunkText, createLiveTexts } from "./liveTexts.js";
@@ -151,11 +152,14 @@ export function createLiveServices(
     storage: platform.storage,
   });
 
+  const stories = createLiveStories({ repo, model, lang });
+
   const pairs = createLivePairs({
     view: texts.view,
     nlp,
     aiReady: ai.aiReady,
     aiTranslate: ai.translateSentences,
+    storyLines: (v) => stories.storyLines(v.text, v.tokens),
   });
 
   const exam = createLiveExam({ repo, lang, changed });
@@ -203,6 +207,7 @@ export function createLiveServices(
     ...ai,
     ...courses,
     ...exam,
+    ...stories.services,
     ...native.services,
     textGrammar: grammar.textGrammar,
     sentencePairs: pairs.sentencePairs,
