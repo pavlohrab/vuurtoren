@@ -8,7 +8,9 @@
 #             ~104 MB) are downloaded on first start from the public `packs-<version>` release;
 #   offline   the pack archives inside the installer (`Kenning_offline_*`, ~104 MB larger), for
 #             computers without internet at first start. Tags always build it; "Run workflow"
-#             asks.
+#             asks. On Linux it then runs `kenning --self-test` (hidden window under Xvfb: the
+#             language server starts, a sentence is analysed through the page, the database
+#             file exists) before the installers are attached.
 #
 # Secrets/variables (Settings > Secrets and variables > Actions):
 #   TAURI_SIGNING_PRIVATE_KEY           secret: the updater key (not a code-signing certificate)
@@ -118,6 +120,18 @@ jobs:
         env:
           KENNING_UPDATE_URL: ${{ vars.KENNING_UPDATE_URL }}
         run: pnpm tauri build ${{ matrix.args }} --config src-tauri/tauri.packs.conf.json
+      - name: Self-test (Linux)
+        if: runner.os == 'Linux'
+        shell: bash
+        env:
+          # No FUSE on the runner: the AppImage unpacks itself and runs.
+          APPIMAGE_EXTRACT_AND_RUN: "1"
+          WEBKIT_DISABLE_DMABUF_RENDERER: "1"
+        run: |
+          sudo apt-get install -y xvfb
+          app=$(find apps/desktop/src-tauri/target/release/bundle/appimage -name '*.AppImage' | head -n 1)
+          chmod +x "$app"
+          timeout 1200 xvfb-run -a "$app" --self-test
       - name: Attach to the release
         shell: bash
         env:
