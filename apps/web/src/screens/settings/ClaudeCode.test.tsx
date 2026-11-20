@@ -7,7 +7,7 @@ import { createMockServices } from "../../services/mock.js";
 import { ServicesProvider } from "../../services/context.js";
 import type { AppServices } from "../../services/types.js";
 import { type AppInfo, AppInfoProvider } from "../../shell/AppInfo.js";
-import { claudeCodeCommand, claudeDesktopConfig } from "../../auth/mcpTokens.js";
+import { claudeCodeCommand, claudeDesktopConfig } from "../../auth/tokens.js";
 import { ClaudeCodeSettings } from "./ClaudeCodeSettings.js";
 import { ModelPicker } from "./ModelPicker.js";
 

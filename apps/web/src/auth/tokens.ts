@@ -3,7 +3,8 @@
  * Claude Code, sync tokens for devices that keep their own data. List, make (the token is
  * returned once) and revoke. Only in server mode; the session cookie authorises the calls.
  */
-interface McpToken {
+/** A token as listed: never the secret itself. */
+interface TokenInfo {
   id: string;
   label: string;
   createdAt: number;
@@ -30,14 +31,14 @@ export function createSyncTokenClient(base = "", fetchImpl: FetchLike = ambient)
 
 function createTokenClient(kind: "mcp-tokens" | "sync-tokens", base: string, fetchImpl: FetchLike) {
   return {
-    async list(): Promise<McpToken[]> {
+    async list(): Promise<TokenInfo[]> {
       const res = await fetchImpl(`${base}/api/auth/${kind}`, {
         credentials: "same-origin",
         cache: "no-store",
       });
-      return (await ok<{ tokens: McpToken[] }>(res)).tokens;
+      return (await ok<{ tokens: TokenInfo[] }>(res)).tokens;
     },
-    async create(label: string): Promise<McpToken & { token: string }> {
+    async create(label: string): Promise<TokenInfo & { token: string }> {
       const res = await fetchImpl(`${base}/api/auth/${kind}`, {
         method: "POST",
         credentials: "same-origin",
