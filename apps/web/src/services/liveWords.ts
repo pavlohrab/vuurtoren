@@ -464,7 +464,11 @@ export function createLiveWords(deps: LiveWordsDeps) {
 
     async learnNext(entry: InspectorEntry): Promise<{ deck: string }> {
       const noteId = entry.anki.noteIds[0];
-      if (noteId === undefined) throw new Error("This word has no card in Anki");
+      if (noteId === undefined) {
+        throw new Error(
+          (await native()) ? "This word has no card yet" : "This word has no card in Anki",
+        );
+      }
       await studyFirst(await native(), anki, record, {
         lang: await lang(),
         key: entry.key,

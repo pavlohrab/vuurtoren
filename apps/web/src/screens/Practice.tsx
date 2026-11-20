@@ -22,6 +22,7 @@ import {
   type ExerciseSubmit,
   Skeleton,
   shortcutBlocked,
+  useNativeMode,
 } from "@app/ui";
 import { dutchVoiceAvailable, speakDutch } from "../practice/speech.js";
 import { useServices } from "../services/context.js";
@@ -603,7 +604,7 @@ function Summary({
   empty,
   onAgain,
   emptyTitle = "Practice",
-  emptyText = "Nothing to practise yet. Sync Anki in Settings, or read a text and start learning a few words.",
+  emptyText,
   actions,
   inspector,
 }: {
@@ -618,10 +619,16 @@ function Summary({
   /** Replaces the default next steps (Practise again, Review, Talk, Next text). */
   actions?: ReactNode;
 }) {
+  const native = useNativeMode();
   if (empty) {
+    const lede =
+      emptyText ??
+      (native
+        ? "Nothing to practise yet. Read a text and start learning a few words."
+        : "Nothing to practise yet. Sync Anki in Settings, or read a text and start learning a few words.");
     return (
       <>
-        <PageHeader title={emptyTitle} lede={emptyText} />
+        <PageHeader title={emptyTitle} lede={lede} />
         {actions ?? <Button onClick={onAgain}>Back</Button>}
       </>
     );
