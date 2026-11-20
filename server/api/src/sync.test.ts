@@ -11,9 +11,7 @@ import { openStore, type Store } from "./store.js";
 import { syncPath } from "./sync.js";
 import { type SyncStore, createRepository, openVault, syncOnce } from "@app/db";
 import { createNodeDriver } from "@app/db/node";
-
-/** A light Argon2id cost: tests stay fast. */
-const LIGHT = { memoryKiB: 64, iterations: 1, parallelism: 1 };
+import { LIGHT_ARGON2 } from "@app/db/testing";
 
 const PASSWORD = "correct horse battery";
 let dir: string;
@@ -171,14 +169,14 @@ describe("/api/sync", () => {
     const other = placeFor((await syncToken(cookie)).token);
     const a = await createRepository(await createNodeDriver(), { deviceId: "aaaaaaaaaaaa" });
     const b = await createRepository(await createNodeDriver(), { deviceId: "bbbbbbbbbbbb" });
-    const key = (await openVault(store, "lange zinnen lezen", true, LIGHT)).key;
+    const key = (await openVault(store, "lange zinnen lezen", true, LIGHT_ARGON2)).key;
     await a.append({ type: "WordStateSet", lang: "nl", key: "fiets", state: "known" });
     expect(await syncOnce(a, store, key, { deviceName: "Laptop" })).toMatchObject({ sent: 1 });
     expect(await syncOnce(b, other, key, { deviceName: "Phone" })).toMatchObject({ received: 1 });
     expect((await b.word("nl", "fiets"))?.state).toBe("known");
     // One token, one device: the laptop's token cannot write as the phone.
     await b.append({ type: "WordStateSet", lang: "nl", key: "huis", state: "known" });
-    await expect(syncOnce(b, store, key, { deviceName: "Phone" })).rejects.toThrow();
+    await expect(syncOnce(b, store, key, { deviceName: "Phone" })).rejects.toThrow("HTTP 403");
   });
 });
 
@@ -282,14 +280,14 @@ describe("/api/sync: what a sync token may write", () => {
       (await fetch(`${base}/api/sync/list?dir=`, { headers: { "sec-fetch-site": "cross-site" } }))
         .status,
     ).toBe(403);
-    // Any Authorization header used to skip the CSRF check; with nothing to verify it does not.
+    // An Authorization header with nothing to verify does not skip the CSRF check.
     const forged = await fetch(file("kenning/vault.json"), {
       method: "PUT",
       headers: { authorization: "Bearer anything" },
       body: "{}",
     });
     expect(forged.status).toBe(403);
-    // A device (no Origin; the X-Kenning header) syncs as before.
+    // A device (no Origin; the X-Kenning header) syncs.
     const device = await fetch(file("kenning/vault.json"), {
       method: "PUT",
       headers: { authorization: "Bearer ", "x-kenning": "1" },

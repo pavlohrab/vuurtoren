@@ -6,13 +6,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Button, Input } from "@app/ui";
-import {
-  claudeCodeCommand,
-  claudeDesktopConfig,
-  createMcpTokenClient,
-} from "../../auth/mcpTokens.js";
+import { claudeCodeCommand, claudeDesktopConfig, createMcpTokenClient } from "../../auth/tokens.js";
 import { relativeTime } from "../../format.js";
 import { useAppInfo } from "../../shell/AppInfo.js";
+import { CopyBlock, SELF_HOSTING_URL } from "./shared.js";
 
 const EXAMPLE_PROMPTS = [
   "Write me an A2 story using my words to learn about cycling and save it to Kenning.",
@@ -21,31 +18,6 @@ const EXAMPLE_PROMPTS = [
 ];
 
 const client = createMcpTokenClient();
-
-export function CopyBlock({ label, text }: { label: string; text: string }) {
-  const [copied, setCopied] = useState(false);
-  return (
-    <div className="stack" style={{ gap: 6 }}>
-      <div className="row" style={{ justifyContent: "space-between" }}>
-        <strong>{label}</strong>
-        <Button
-          variant="ghost"
-          onClick={() => {
-            void navigator.clipboard?.writeText(text).then(() => setCopied(true));
-          }}
-        >
-          {copied ? "Copied" : "Copy"}
-        </Button>
-      </div>
-      <pre className="mcp-command" aria-label={label}>
-        {text}
-      </pre>
-    </div>
-  );
-}
-
-/** The self-hosting guide on GitHub. */
-export const SELF_HOSTING_URL = "https://github.com/pavlohrab/Kenning/blob/main/deploy/README.md";
 
 export function ClaudeCodeSettings() {
   const { data, account } = useAppInfo();

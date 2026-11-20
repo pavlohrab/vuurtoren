@@ -15,7 +15,7 @@ import { nlpOutage } from "./liveSettings.js";
 
 afterEach(() => resetDegraded());
 
-describe("degraded signal (A17)", () => {
+describe("degraded signal", () => {
   it("keeps one entry per source with the first failure time", () => {
     const seen = vi.fn();
     const off = subscribeDegraded(seen);
@@ -63,7 +63,7 @@ describe("degraded signal (A17)", () => {
   });
 });
 
-describe("freshness holds (A7)", () => {
+describe("freshness holds", () => {
   it("runs the deferred check when the last hold is released", () => {
     const released = vi.fn();
     const off = onFreshnessReleased(released);

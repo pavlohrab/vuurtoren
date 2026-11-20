@@ -523,7 +523,7 @@ export function Words() {
         <Skeleton style={{ height: 160, borderRadius: 10 }} />
       ) : rows.isError ? (
         <ErrorNotice
-          title="Words could not be loaded."
+          title="Your words could not be loaded."
           error={rows.error}
           onRetry={() => void rows.refetch()}
           retryLabel="Try again"

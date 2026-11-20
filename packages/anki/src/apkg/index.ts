@@ -21,6 +21,5 @@ export {
   type PackageInput,
   type PackageSummary,
   type SqliteWriter,
-  ankiNotetypeId,
   writeAnkiPackage,
 } from "./write.js";

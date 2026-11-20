@@ -13,7 +13,9 @@ import {
   Skeleton,
   Spinner,
   WordText,
+  deckName,
   difficultyBand,
+  useNativeMode,
   useToast,
 } from "@app/ui";
 import { useServices } from "../services/context.js";
@@ -25,6 +27,7 @@ import { PageHeader } from "../shell/PageHeader.js";
 import { readLastText } from "../lastText.js";
 import { pickContinue } from "./Home.js";
 import "./converse.css";
+import { errorText } from "../services/errors.js";
 
 /** A suggested way to start a conversation. */
 interface TalkStart {
@@ -35,7 +38,6 @@ interface TalkStart {
   words: string[];
 }
 
-const message = (e: unknown) => (e instanceof Error && e.message ? e.message : "Try again.");
 const TONE = {
   comfortable: "success",
   stretch: "accent",
@@ -71,6 +73,8 @@ function PartnerMessage({
   addDeck?: AddDeckChoice | undefined;
   inspector: WordInspectorHandle;
 }) {
+  const native = useNativeMode();
+  const addLabel = native ? "Add to my words" : "Add to Anki";
   const glosses = Object.entries(m.glosses ?? {});
   const unknownWithout = (m.unknown ?? []).filter((u) => !(m.glosses ?? {})[u]);
   return (
@@ -119,9 +123,9 @@ function PartnerMessage({
               size="sm"
               disabled={added.has(w.lemma)}
               onClick={() => onAdd(w)}
-              aria-label={`Add ${w.lemma} to Anki`}
+              aria-label={`Add ${w.lemma}${native ? "" : " to Anki"}`}
             >
-              {added.has(w.lemma) ? "Added" : "Add to Anki"}
+              {added.has(w.lemma) ? "Added" : addLabel}
             </Button>
           )}
         </div>
@@ -195,6 +199,7 @@ export function Converse() {
   const [added, setAdded] = useState<Set<string>>(new Set());
   const endRef = useRef<HTMLDivElement>(null);
   const inspector = useWordInspector("converse");
+  const native = useNativeMode();
 
   useEffect(() => {
     endRef.current?.scrollIntoView?.({ block: "end" });
@@ -234,7 +239,7 @@ export function Converse() {
       toast("Saved to your Library", "Read it again later, with its new words highlighted.");
       await qc.invalidateQueries({ queryKey: ["texts"] });
     },
-    onError: (e) => toast("Could not save the conversation", message(e)),
+    onError: (e) => toast("Could not save the conversation", errorText(e)),
   });
   const deckChoice = useDeckChoice("converse");
   const add = useMutation({
@@ -242,9 +247,10 @@ export function Converse() {
       services.addConversationWord(w, deckChoice.chosen ? { deck: deckChoice.chosen } : undefined),
     onSuccess: (r, w) => {
       setAdded((s) => new Set(s).add(w.lemma));
-      toast(`Added “${w.lemma}” to ${r.deck}`);
+      toast(native ? "Added to your words" : "Added to Anki", deckName(r.deck));
     },
-    onError: (e) => toast("Could not add the word to Anki", message(e)),
+    onError: (e) =>
+      toast(native ? "Could not add the word" : "Could not add to Anki", errorText(e)),
   });
 
   if (!status.data) {
@@ -368,13 +374,13 @@ export function Converse() {
                 <Input
                   label="Topic"
                   value={topic}
-                  placeholder="Ordering coffee, my weekend, ..."
+                  placeholder="Ordering coffee, my weekend, …"
                   onChange={(e) => setTopic(e.target.value)}
                 />
                 <Input
                   label="Words to practise"
                   value={targets ?? words.join(", ")}
-                  hint="Comma separated. The partner works these in."
+                  hint="Comma-separated. The partner works these in."
                   onChange={(e) => setTargets(e.target.value)}
                 />
                 <div className="row">
@@ -387,7 +393,7 @@ export function Converse() {
             </details>
             {start.isError ? (
               <p role="alert" className="error-text" style={{ margin: 0 }}>
-                {message(start.error)}
+                {errorText(start.error)}
               </p>
             ) : null}
           </div>
@@ -499,7 +505,7 @@ export function Converse() {
           aria-label="Your message"
           value={draft}
           lang="nl"
-          placeholder="Schrijf in het Nederlands..."
+          placeholder="Schrijf in het Nederlands…"
           onChange={(e) => setDraft(e.target.value)}
         />
         <div className="row">
@@ -509,7 +515,7 @@ export function Converse() {
         </div>
         {send.isError ? (
           <p role="alert" className="error-text" style={{ margin: 0 }}>
-            {message(send.error)} Your message is still in the box.
+            {errorText(send.error)} Your message is still in the box.
           </p>
         ) : null}
       </form>

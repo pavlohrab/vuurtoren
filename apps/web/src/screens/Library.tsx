@@ -39,6 +39,7 @@ import {
 import { TextDetailsDialog } from "./library/TextDetailsDialog.js";
 import { readLastText } from "../lastText.js";
 import "./library/library.css";
+import { errorText } from "../services/errors.js";
 
 type View = "shelves" | "all";
 const VIEW_KEY = "kenning.library.view";
@@ -112,16 +113,15 @@ export function Library() {
       await qc.invalidateQueries({ queryKey: ["texts"] });
       toast("Text deleted");
     },
-    onError: (e) =>
-      toast("Could not delete the text", e instanceof Error ? e.message : "Try again."),
+    onError: (e) => toast("Could not delete the text", errorText(e)),
   });
   const dropShelf = useMutation({
     mutationFn: (id: string) => services.deleteShelf(id),
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: ["shelves"] });
-      toast("Shelf deleted", "Its texts are still in your library.");
+      toast("Shelf deleted", "Its texts are still in your Library.");
     },
-    onError: (e) => toast("Could not delete the shelf", e instanceof Error ? e.message : ""),
+    onError: (e) => toast("Could not delete the shelf", errorText(e)),
   });
   const shelve = useMutation({
     mutationFn: async (a: { shelf: { id: string; name: string }; ids: string[]; add: boolean }) => {
@@ -135,7 +135,7 @@ export function Library() {
         a.ids.length > 1 ? plural(a.ids.length, "text", "texts") : undefined,
       );
     },
-    onError: (e) => toast("Could not change the shelf", e instanceof Error ? e.message : ""),
+    onError: (e) => toast("Could not change the shelf", errorText(e)),
   });
 
   const all = useMemo(() => sortTexts(texts.data ?? [], sort), [texts.data, sort]);
@@ -259,7 +259,7 @@ export function Library() {
   } else if (texts.isError) {
     body = (
       <ErrorNotice
-        title="The library could not be loaded."
+        title="The Library could not be loaded."
         error={texts.error}
         onRetry={() => void texts.refetch()}
       />
@@ -268,7 +268,7 @@ export function Library() {
     body = (
       <EmptyState
         icon={<LibraryIcon size={20} />}
-        title="Your library is empty"
+        title="Your Library is empty"
         description="Paste a text, add a web page, or upload a PDF or photo to start reading."
         action={
           <Link to="/import" className="k-btn k-btn--primary">
@@ -478,7 +478,7 @@ export function Library() {
         }}
         title="Delete this text"
         description={
-          pendingDelete ? `"${pendingDelete.title}" will be removed from your library.` : ""
+          pendingDelete ? `"${pendingDelete.title}" will be removed from your Library.` : ""
         }
       >
         <div className="k-dialog-actions">
@@ -505,7 +505,7 @@ export function Library() {
         title="Delete this shelf"
         description={
           shelfToDelete
-            ? `"${shelfToDelete.name}" will be removed. Its texts stay in your library.`
+            ? `"${shelfToDelete.name}" will be removed. Its texts stay in your Library.`
             : ""
         }
       >

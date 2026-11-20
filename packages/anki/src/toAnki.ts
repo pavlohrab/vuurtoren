@@ -14,6 +14,8 @@ import {
   type NativeCard,
   type NativeNote,
   type NativeNotetype,
+  stripHtml,
+  studyDayStart,
 } from "@app/core";
 import { revlogRows } from "./apkg/write.js";
 import type { AnkiConnectClient } from "./client.js";
@@ -51,19 +53,7 @@ export interface ToAnkiResult {
   decks: string[];
 }
 
-const strip = (s: string) =>
-  s
-    .replace(/<[^>]*>/g, "")
-    .replace(/&nbsp;/g, " ")
-    .trim();
-
-/** Start of the study day (4:00 local time) that `ms` falls in. */
-function dayStart(ms: number): number {
-  const d = new Date(ms);
-  d.setHours(4, 0, 0, 0);
-  if (d.getTime() > ms) d.setDate(d.getDate() - 1);
-  return d.getTime();
-}
+const strip = (s: string) => stripHtml(s).trim();
 
 /** The fields of a Kenning Word note for a native note, or null when it holds no word. */
 export function wordFields(
@@ -207,12 +197,12 @@ export async function moveToAnki(
 
   // Schedules: due on the same study day, with that gap as the interval. Cards due today or
   // overdue are due today; "0!" would leave them a 1-day interval, so theirs is set after.
-  const today = dayStart(now);
+  const today = studyDayStart(now);
   const reviewed = pairs.filter((p) => p.native.schedule?.state === 2);
   const byDays = new Map<number, number[]>();
   for (const p of reviewed) {
     const s = p.native.schedule as CardSchedule;
-    const days = Math.max(0, Math.round((dayStart(s.due) - today) / DAY_MS));
+    const days = Math.max(0, Math.round((studyDayStart(s.due) - today) / DAY_MS));
     byDays.set(days, [...(byDays.get(days) ?? []), p.anki]);
   }
   if (byDays.size) onProgress?.("Setting due dates");

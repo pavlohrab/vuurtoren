@@ -60,7 +60,7 @@ function fakeBackend(opts: {
   const fetchFn = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
     const u = String(url);
     const body = JSON.parse(String(init?.body ?? "{}")) as Record<string, unknown>;
-    // Review A4: the reader asks the server's analyzer version once per session.
+    // The reader asks the server's analyzer version once per session.
     if (u.includes("/nlp/health")) return Response.json({ status: "ok", version: "test" });
     if (u.includes("/nlp/")) nlpCalls.push(u.slice(u.indexOf("/nlp/") + 4));
     if (u.includes("/nlp/translate/align")) {

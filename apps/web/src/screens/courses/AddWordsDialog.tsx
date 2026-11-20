@@ -1,14 +1,14 @@
 import { plural } from "../../format.js";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { AddToAnki, Button, Dialog, Lemma, Skeleton, useToast } from "@app/ui";
+import { AddToAnki, Button, Dialog, Lemma, Skeleton, useNativeMode, useToast } from "@app/ui";
 import { useServices } from "../../services/context.js";
 import { errorText } from "../../services/errors.js";
 import { useDeckChoice } from "../useDeckChoice.js";
 
 /**
- * "Add words to Anki" for a unit or the whole course: a preview of the words that are not in
- * Anki yet (with de/het, a gloss and a sentence from the book), known words and existing notes
+ * "Add words" for a unit or the whole course: a preview of the words that have no card yet
+ * (with de/het, a gloss and a sentence from the book), known words and existing notes
  * skipped, one deck picker (the shared AddToAnki control). Writes go through the shared
  * add-word command, one logged note per word.
  */
@@ -26,6 +26,8 @@ export function AddWordsDialog({
   const services = useServices();
   const qc = useQueryClient();
   const toast = useToast();
+  const native = useNativeMode();
+  const inCards = native ? "in your words" : "in Anki";
   const deckChoice = useDeckChoice(
     "course",
     scope === "all" ? undefined : { courseId, unitN: scope },
@@ -60,7 +62,7 @@ export function AddWordsDialog({
       await qc.invalidateQueries({ queryKey: ["add-words", courseId] });
       onOpenChange(false);
     },
-    onError: (e) => toast("Adding words did not work", errorText(e)),
+    onError: (e) => toast("Could not add the words", errorText(e)),
   });
 
   const toggle = (key: string) =>
@@ -75,8 +77,8 @@ export function AddWordsDialog({
     <Dialog
       open={open}
       onOpenChange={onOpenChange}
-      title={scope === "all" ? "Add the course's words to Anki" : "Add this unit's words to Anki"}
-      description="Words you know or already have in Anki are skipped. Each new note gets the sentence from your book."
+      title={`${scope === "all" ? "Add the course's words" : "Add this unit's words"}${native ? "" : " to Anki"}`}
+      description={`Words you know or already have ${inCards} are skipped. Each new note gets the sentence from your book.`}
     >
       {preview.isPending ? (
         <Skeleton style={{ height: 160, borderRadius: 8 }} />
@@ -88,11 +90,11 @@ export function AddWordsDialog({
         <>
           <p className="cs-meta" role="status">
             {fresh.length} new {fresh.length === 1 ? "word" : "words"}
-            {existing ? ` · ${existing} already in Anki` : ""}
+            {existing ? ` · ${existing} already ${inCards}` : ""}
             {known ? ` · ${known} known` : ""}
           </p>
           {fresh.length === 0 ? (
-            <p className="cs-note">Every word is in Anki already.</p>
+            <p className="cs-note">Every word is {inCards} already.</p>
           ) : (
             <ul className="cs-add-list" aria-label="Words to add">
               {fresh.map((r) => (

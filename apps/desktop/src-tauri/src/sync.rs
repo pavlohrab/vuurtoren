@@ -1,6 +1,6 @@
 //! Sync on this computer: a folder you already sync (Syncthing, Dropbox, iCloud Drive) as the
 //! place for Kenning's encrypted sync files, and requests to sync places the page cannot reach
-//! itself (WebDAV servers and other Kenning servers do not send CORS headers for the app).
+//! itself (many WebDAV servers send no CORS headers for the app).
 //!
 //! The web app only names a folder the user picked (kept in the config) and paths inside it;
 //! every path part is a plain file name and links are not followed, so nothing outside that

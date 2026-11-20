@@ -167,7 +167,7 @@ async function client(repo: KenningRepository) {
   return { server, http, services };
 }
 
-describe("server mode request counts (A8)", () => {
+describe("server mode request counts", () => {
   it("Library open, reader page open and practice start use a bounded number of RPCs", async () => {
     vi.stubGlobal("fetch", nlpFetch);
     const repo = (toClose = await seed());
@@ -196,7 +196,7 @@ describe("server mode request counts (A8)", () => {
     await c.services.startPractice({ size: 10 });
     counts["practice"] = c.server.calls.length;
 
-    console.info("[A8] RPCs per screen (cold caches):", JSON.stringify(counts));
+    console.info("RPCs per screen (cold caches):", JSON.stringify(counts));
     expect(counts["library"]).toBeLessThanOrEqual(8);
     expect(counts["libraryAgain"]).toBe(1);
     expect(counts["reader"]).toBeLessThanOrEqual(10);
@@ -204,7 +204,7 @@ describe("server mode request counts (A8)", () => {
   });
 });
 
-describe("batched results equal the per-text results (A8)", () => {
+describe("batched results equal the per-text results", () => {
   it("Library coverage equals the reader's plan of each text", async () => {
     vi.stubGlobal("fetch", nlpFetch);
     const repo = (toClose = await seed());
@@ -218,7 +218,7 @@ describe("batched results equal the per-text results (A8)", () => {
   });
 });
 
-describe("cross-device freshness (A7)", () => {
+describe("cross-device freshness", () => {
   it("sees another client's writes, not its own, and refreshes its caches", async () => {
     vi.stubGlobal("fetch", nlpFetch);
     const repo = (toClose = await seed());

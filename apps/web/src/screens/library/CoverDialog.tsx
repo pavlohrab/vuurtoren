@@ -6,6 +6,7 @@ import { useServices } from "../../services/context.js";
 import type { TextListItem } from "../../services/types.js";
 import { cropFor, loadImage, renderCover } from "./coverImage.js";
 import { useCoverUrl } from "./useCoverUrl.js";
+import { errorText } from "../../services/errors.js";
 
 /** Width of the crop frame on screen (4:5). */
 const FRAME_W = 200;
@@ -49,7 +50,7 @@ function CoverForm({ text, onClose }: { text: TextListItem; onClose: () => void 
       onClose();
       await qc.invalidateQueries({ queryKey: ["texts"] });
     },
-    onError: (e) => toast("Could not save the cover", e instanceof Error ? e.message : ""),
+    onError: (e) => toast("Could not save the cover", errorText(e)),
   });
 
   const pick = async (file: File | undefined) => {
@@ -60,7 +61,7 @@ function CoverForm({ text, onClose }: { text: TextListItem; onClose: () => void 
       setZoom(1);
       setPan({ x: 0.5, y: 0.5 });
     } catch (e) {
-      toast("Could not open the photo", e instanceof Error ? e.message : "");
+      toast("Could not open the photo", errorText(e));
     }
   };
 
@@ -180,8 +181,7 @@ function CoverForm({ text, onClose }: { text: TextListItem; onClose: () => void 
             onClick={() =>
               void renderCover(img, crop).then(
                 (b) => save.mutate(b),
-                (e: unknown) =>
-                  toast("Could not make the cover", e instanceof Error ? e.message : ""),
+                (e: unknown) => toast("Could not make the cover", errorText(e)),
               )
             }
           >

@@ -1,12 +1,6 @@
 /** Sync in demo mode: nothing leaves the page; a phone appears once sync is set up. */
-import type { SyncPlace, SyncServices, SyncStatus } from "./syncTypes.js";
-
-const LABEL: Record<SyncPlace["kind"], (p: SyncPlace) => string> = {
-  server: (p) => `Kenning server · ${new URL((p as { url: string }).url).host}`,
-  webdav: (p) => `WebDAV · ${new URL((p as { url: string }).url).host}`,
-  github: (p) => `GitHub · ${(p as { repo: string }).repo}`,
-  folder: (p) => `Folder · ${(p as { path: string }).path.split(/[\\/]/).filter(Boolean).at(-1)}`,
-};
+import { placeLabel } from "../sync/labels.js";
+import type { SyncServices, SyncStatus } from "./syncTypes.js";
 
 export function createMockSync(
   wait: () => Promise<void>,
@@ -16,7 +10,7 @@ export function createMockSync(
     available: true,
     folders: false,
     place: null,
-    deviceName: "This computer",
+    deviceName: "This device",
     last: null,
     error: null,
     devices: [],
@@ -38,7 +32,7 @@ export function createMockSync(
       const at = now();
       state = {
         ...state,
-        place: { kind: place.kind, label: LABEL[place.kind](place) },
+        place: { kind: place.kind, label: placeLabel(place) },
         deviceName: deviceName || state.deviceName,
         last: { at, sent: 12, received: how === "join" ? 40 : 0 },
         error: null,

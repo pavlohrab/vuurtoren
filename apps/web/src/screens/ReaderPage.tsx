@@ -83,8 +83,6 @@ const WIDGET_SELECTOR = [
 /** Overlays that own Esc (closing them must not also clear the selection). */
 const OVERLAY_SELECTOR = "[role=dialog],[role=listbox],[role=option],[role=combobox],[role=menu]";
 
-const errorMessage = (e: unknown): string => errorText(e);
-
 /**
  * Where a margin mark's popover goes: under the line of the last marked word, from the reading
  * column's left edge, so the underlined words stay visible above it.
@@ -335,7 +333,7 @@ export function ReaderPage({ textId }: { textId: string }) {
         setEpoch((n) => n + 1);
       }
     },
-    onError: (e) => toast("Could not save the reading setting", errorMessage(e)),
+    onError: (e) => toast("Could not save the reading setting", errorText(e)),
     onSettled: () => setHelpDraft(null),
   });
 
@@ -563,7 +561,7 @@ export function ReaderPage({ textId }: { textId: string }) {
       void qc.invalidateQueries({ queryKey: ["texts"], refetchType: "none" });
       await advance();
     } catch (e) {
-      toast("Could not save your progress", errorMessage(e));
+      toast("Could not save your progress", errorText(e));
     } finally {
       setFinishing(false);
     }
@@ -586,14 +584,14 @@ export function ReaderPage({ textId }: { textId: string }) {
       <div className="page">
         <EmptyState
           title="This text could not be opened"
-          description={errorMessage(reading.error)}
+          description={errorText(reading.error)}
           action={
             <div className="row">
               <Button variant="primary" onClick={() => void reading.refetch()}>
                 Retry
               </Button>
               <Link to="/library" className="k-btn">
-                Back to the library
+                Back to the Library
               </Link>
             </div>
           }
@@ -620,7 +618,7 @@ export function ReaderPage({ textId }: { textId: string }) {
           description={data ? "The text has no readable words." : "It may have been deleted."}
           action={
             <Link to="/library" className="k-btn k-btn--primary">
-              Back to the library
+              Back to the Library
             </Link>
           }
         />
@@ -850,7 +848,7 @@ export function ReaderPage({ textId }: { textId: string }) {
               <WordInspector
                 entry={entry}
                 loading={selected !== null && !entry && !inspect.isError}
-                error={selected !== null && inspect.isError ? errorMessage(inspect.error) : null}
+                error={selected !== null && inspect.isError ? errorText(inspect.error) : null}
                 onRetry={() => void inspect.refetch()}
                 {...actions.props(entry)}
               />

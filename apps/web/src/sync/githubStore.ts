@@ -2,9 +2,9 @@
  * Sync through a private GitHub repository (the contents API), with a fine-grained token that
  * may read and write that one repository's contents. Every write is a small commit.
  */
-import type { SyncStore } from "@app/db";
-import { base64 } from "./base64.js";
+import { type SyncStore, toBase64 } from "@app/db";
 import { SyncPlaceError, readError } from "./errors.js";
+import { placeLabel } from "./labels.js";
 
 const API = "https://api.github.com";
 /** Entries the contents API lists at most for one folder. */
@@ -40,11 +40,11 @@ export function githubStore(
         headers: { ...headers, ...init.headers },
       });
     } catch {
-      throw new SyncPlaceError("GitHub cannot be reached.", "offline");
+      throw new SyncPlaceError("GitHub cannot be reached.");
     }
-    if (res.status === 401) throw new SyncPlaceError("GitHub did not accept the token.", "auth");
+    if (res.status === 401) throw new SyncPlaceError("GitHub did not accept the token.");
     if (res.status === 403 && res.headers.get("x-ratelimit-remaining") === "0") {
-      throw new SyncPlaceError("GitHub asks to wait a while (rate limit).", "offline");
+      throw new SyncPlaceError("GitHub asks to wait a while (rate limit).");
     }
     return res;
   };
@@ -85,7 +85,7 @@ export function githubStore(
   };
 
   return {
-    label: `GitHub · ${repo}`,
+    label: placeLabel({ kind: "github", repo }),
     async list(dir) {
       const res = await call(`${contents(dir)}${ref}`);
       if (res.status === 404) return [];
@@ -113,7 +113,7 @@ export function githubStore(
           headers: { "content-type": "application/json" },
           body: JSON.stringify({
             message: `Kenning sync: ${path.split("/").pop()}`,
-            content: base64(bytes),
+            content: toBase64(bytes),
             ...(sha ? { sha } : {}),
             ...(branch ? { branch } : {}),
           }),

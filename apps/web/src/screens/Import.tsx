@@ -186,7 +186,7 @@ export function ImportScreen() {
       );
       await qc.invalidateQueries({ queryKey: ["texts"] });
       if (mounted.current) await navigate({ to: "/read/$textId", params: { textId: id } });
-      else toast("Text imported", "It is in your library.");
+      else toast("Text imported", "It is in your Library.");
     } catch (e) {
       if (e instanceof ImportCancelledError) {
         if (mounted.current) {
@@ -202,7 +202,7 @@ export function ImportScreen() {
         setProgress([]);
         setError(e ?? new Error("The import did not work."));
         setBusy(false);
-      } else toast("The import did not work", errorText(e));
+      } else toast("Could not import the text", errorText(e));
     }
   };
 

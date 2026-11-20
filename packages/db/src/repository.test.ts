@@ -71,7 +71,7 @@ describe("projections", () => {
     expect(await repo.getText("missing")).toBeNull();
   });
 
-  it("TextAnalyzed keeps the analyzer version; a new version drops the grammar hits (A4)", async () => {
+  it("TextAnalyzed keeps the analyzer version; a new version drops the grammar hits", async () => {
     const { repo } = await newRepo();
     const content = "De kat slaapt.";
     const hash = contentHash(content);

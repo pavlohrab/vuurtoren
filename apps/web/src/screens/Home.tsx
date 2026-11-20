@@ -88,7 +88,7 @@ const DATE_FMT = new Intl.DateTimeFormat("en-GB", {
 
 export function Home() {
   const services = useServices();
-  const inspector = useWordInspector();
+  const inspector = useWordInspector("reading");
   // The top bar shows today's date: the page's own heading is the greeting.
   usePageHeader(DATE_FMT.format(new Date()), { always: true });
   const texts = useQuery({ queryKey: ["texts"], queryFn: () => services.listTexts() });
@@ -204,7 +204,7 @@ export function Home() {
             />
           ) : (
             <Empty
-              text="Your library is empty. Add an article, a web page or a PDF to start reading."
+              text="Your Library is empty. Add an article, a web page or a PDF to start reading."
               action={
                 <Link to="/import" className="k-btn k-btn--primary">
                   <Plus size={16} aria-hidden /> Add text

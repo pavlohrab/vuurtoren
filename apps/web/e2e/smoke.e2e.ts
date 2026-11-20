@@ -90,7 +90,7 @@ test("native mode: add a word while reading, then review it", async ({ page }) =
   await page.getByRole("button", { name: "Continue" }).click();
   await page.getByRole("button", { name: "Save and continue" }).click();
   await page.getByRole("button", { name: "Skip this" }).click();
-  await page.getByRole("button", { name: "Go to the library" }).click();
+  await page.getByRole("button", { name: "Go to the Library" }).click();
   await importAndRead(page);
   await inspectWord(page);
   await expect(page.getByRole("group", { name: "Add to my words" })).toBeVisible();

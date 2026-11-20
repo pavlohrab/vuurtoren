@@ -90,7 +90,7 @@ One rule is used everywhere, in TypeScript (`normalizeKey` in `packages/core/src
 
 So a mature card that you have not reviewed for a year decays back to `learning`.
 
-**Limits.** The FSRS curve always uses decay 0.5 (FSRS-4.5/5). The code supports a per-preset FSRS-6 decay, but the Anki reader does not fetch it yet. The SM-2 estimate is an approximation, not Anki's own retrievability.
+**Limits.** The FSRS curve always uses decay 0.5 (FSRS-4.5/5). The code supports a per-preset FSRS-6 decay, but the Anki reader does not fetch it. The SM-2 estimate is an approximation, not Anki's own retrievability.
 
 ### 1.5 Merging decks
 
@@ -219,7 +219,7 @@ There are 39 separable particles (`aan`, `af`, `bij`, `door`, `in`, `mee`, `op`,
 
 A base is looked up with the spelling changes Dutch makes at a suffix: a linking `e`, `s`, `en` or `er` (`woord-e-loos`, `verkeer-s-loos`), an undoubled consonant (`rott-ig` → `rot`), a long vowel written single in an open syllable (`slap-e-loos` → `slaap`, `drie-tal-ig` → `taal`), and `v`/`z` for `f`/`s` (`slav-en-dom` → `slaaf`). Before a suffix that starts with a vowel a verb base is the infinitive minus `-en` (`lez-er` → `lezen`); before a consonant it is the present stem (`lees-baar` → `lezen`). Bases may be derived themselves, two levels deep (`on-` + `verdedigen` + `-baar` → undefendable).
 
-Every reading that resolves is scored by the length of its base, minus 1 for an inflected base, 3 for a derived base, 6 for a compound base and 1 for a linker; the highest score wins. The base's English is its first one-word sense (`"without feeling; numb"` → numb), and English spelling rules form the result (`use` → usable, `happy` → happiness, `stop` → stopping, `translate` → translator). Suffixes are never compound heads, so `woordeloos` is no longer `woord` + `loos` (the plural of `loo`).
+Every reading that resolves is scored by the length of its base, minus 1 for an inflected base, 3 for a derived base, 6 for a compound base and 1 for a linker; the highest score wins. The base's English is its first one-word sense (`"without feeling; numb"` → numb), and English spelling rules form the result (`use` → usable, `happy` → happiness, `stop` → stopping, `translate` → translator). Suffixes are never compound heads, so `woordeloos` is not read as `woord` + `loos` (the plural of `loo`).
 
 **Compounds** (`compound.py`). A dynamic-programming search tries every split into 2 or 3 dictionary parts, with optional linking elements `s`, `e`, `en`, `er` between them. Each split is scored as the sum of `len(part)²`, minus costs, so fewer and longer parts win. A head without an entry may be a derivation (`schoenen` + `poetser`).
 
@@ -434,7 +434,7 @@ Clozes never get a translation from the dial; they show their meaning as a hint 
 | otherwise                                                                | unchanged                | unchanged         |
 | Bounds                                                                   | [0.92, 0.99], start 0.98 | [1, 8], start 3   |
 
-**What it drives today.**
+**What it drives.**
 
 - **B** is the new-word budget of the planner, when the New words setting is "auto".
 - **T** is _not_ used by the non-AI planner. It is stored and is used only by the optional AI features: "Simplify this page" rewrites to T, and Converse aims at `max(0.9, T − 0.03)`.
@@ -728,7 +728,7 @@ In native mode, what you do with a word outside the review screen reaches its ca
 
 Front, then Space or **Show answer**, then Again / Hard / Good / Easy (keys 1–4; Space or Enter is Good), Z or **Undo** takes back the latest answer, then the one before, also after a reload or on another day (the newest answer given on the review screen of this device, `nativeLastReview`, as long as no later answer to that card came from another device). The card comes back with its answer hidden. When another device's answer to the card arrives after an undo, the card is replayed from its remaining answers in order, so that answer still counts. A vocabulary card whose template shows the word on the front is laid out by Kenning: the word and its sentence on the front, the meaning and the sentence translation on the back. Clozes and other templates are rendered from the note type's own template (fields, conditional sections, `FrontSide`, clozes, hints) and shown through an allow-list sanitiser: formatting tags only, no scripts, styles, frames, forms or event handlers, and only the card's own images. Sounds get a play button. After the answer, a sentence with the word from your own texts is shown when one exists.
 
-**Your words and your reviews.** In native mode Words has a **Due** view: the words with a card due now (`nativeDueKeys`), earliest first, each with how long ago it came due; with a source chosen, only that text's, unit's or session's words. The word inspector lists the word's latest eight answers under **Your reviews**: the day, the answer and the interval it gave (the card's history replayed; the latest answer shows the due date the card really got). Home's **This week** counts the reviews answered in Kenning per day; an undone answer no longer counts.
+**Your words and your reviews.** In native mode Words has a **Due** view: the words with a card due now (`nativeDueKeys`), earliest first, each with how long ago it came due; with a source chosen, only that text's, unit's or session's words. The word inspector lists the word's latest eight answers under **Your reviews**: the day, the answer and the interval it gave (the card's history replayed; the latest answer shows the due date the card really got). Home's **This week** counts the reviews answered in Kenning per day; an undone answer does not count.
 
 ### 9.7 Export to .apkg
 
@@ -785,7 +785,7 @@ Places: a Kenning server (`/api/sync`, a sync token made in that server's Settin
 
 ### 10.3 Encryption
 
-A random **data key** (64 bytes) seals every file: an AES-256-GCM key and an HMAC-SHA256 key for blob names, so the names do not reveal what a file holds. A file is `KSY2` + a random 12-byte IV + ciphertext (segments gzipped first), sealed with its path as additional data: a file copied or renamed by the place does not open. Files of the first format (`KSY1`, no path) still open. The vault holds the data key under two **locks**:
+A random **data key** (64 bytes) seals every file: an AES-256-GCM key and an HMAC-SHA256 key for blob names, so the names do not reveal what a file holds. A file is `KSY2` + a random 12-byte IV + ciphertext (segments gzipped first), sealed with its path as additional data: a file copied or renamed by the place does not open. Files in the first format (`KSY1`, no path) open too. The vault holds the data key under two **locks**:
 
 | Lock         | Key from                                                         |
 | ------------ | ---------------------------------------------------------------- |
@@ -794,9 +794,9 @@ A random **data key** (64 bytes) seals every file: an AES-256-GCM key and an HMA
 
 - **Changing the passphrase** re-locks the data key: no file is encrypted again and other devices keep syncing with the key they hold. It asks for the current passphrase or the recovery key first. A new recovery key replaces the old one.
 - The passphrase and the recovery key are never stored; the data key is kept in the device's own storage, like AI keys.
-- A passphrase is locked without the spaces around it. One that reads like a recovery key is refused; such a passphrase from before still opens (the recovery lock is tried first, then the passphrase lock).
+- A passphrase is locked without the spaces around it. One that reads like a recovery key is refused. To open the vault, the recovery lock is tried first, then the passphrase lock.
 - `vault.json` is checked before use: its shape, Argon2id at most 1 GiB and 10 passes, PBKDF2 at most 10 million rounds.
-- A vault of the first format (PBKDF2-SHA256, 600,000 rounds, the key derived from the passphrase) still opens. Changing its passphrase turns it into the current format with that key as its data key, so no file changes.
+- A vault in the first format (PBKDF2-SHA256, 600,000 rounds, the key derived from the passphrase) opens too. Changing its passphrase turns it into the current format with that key as its data key, so no file changes.
 - What the place can see: the number of devices, file sizes and when files were written. What it cannot: any content. A changed file is refused (GCM); a place can still delete files or serve older ones, so keep backups.
 
 ### 10.4 Order and conflicts
@@ -804,7 +804,7 @@ A random **data key** (64 bytes) seals every file: an AES-256-GCM key and an HMA
 Events carry a hybrid logical clock (milliseconds, a counter, the device). Imported events newer than the end of the log are applied there; otherwise the projections are rebuilt from the whole log in clock order, once per sync however many files came in (a replay cut short is done when the app next opens). Either way every device reaches the same state:
 
 - **Latest wins** for settings, the language profile, word marks, deck options and a text's details: the last event in clock order sets them.
-- **Merge** for reviews and answers: they add up. An answer to a native card stores the card's schedule before it; when the card has changed since (answered on another device), the answer is applied to the card as it is now (FSRS, without fuzz), so both answers count.
+- **Merge** for reviews and answers: they add up. An answer to a native card stores the card's schedule before it; when the card has changed since (answered on another device), the answer is applied to the card as it is then (FSRS, without fuzz), so both answers count.
 - **Intent** for other changes to native cards: a move from reading, new memory after tuning and an undo say what to do, and are applied to the card as it is when they apply (sections 9.3, 9.5.1 and 9.6), so none of them undoes an answer from another device. Mark known and Study first set the card (a mature schedule, a place in the new queue): the latest wins.
 - **Merged answers depend on the scheduler.** A merged answer is computed whenever the log is replayed, with this app's FSRS and the parameters in use then. Devices on app versions whose scheduler differs can disagree slightly on such a card until its next answer; an answer that is not merged stores its result and replays the same everywhere.
 - **Event versions.** Each event type has a payload version. An event newer than this app understands is stored and passed on, not applied; once the app is updated it applies it.

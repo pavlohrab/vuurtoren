@@ -133,8 +133,8 @@ export type AppEvent =
     }
   | {
       /**
-       * Read from older logs only: analyses now live in each device's analysis cache
-       * (`saveTextAnalysis`), outside the synced log. Replays still fill the cache from it.
+       * Not written: analyses live in each device's analysis cache (`saveTextAnalysis`),
+       * outside the synced log. A log that holds this event fills the cache from it.
        */
       type: "TextAnalyzed";
       textId: string;
@@ -147,8 +147,8 @@ export type AppEvent =
       /**
        * Grammar constructions found in a text (server `/grammar`), indices and offsets
        * relative to the whole text and its TextAnalyzed tokens. `version` is the client's
-       * GRAMMAR_VERSION: hits of an older version are recomputed. Read from older logs only,
-       * like TextAnalyzed (`saveTextGrammar`).
+       * GRAMMAR_VERSION: hits of an older version are recomputed. Not written, like TextAnalyzed
+       * (`saveTextGrammar`).
        */
       type: "TextGrammarDetected";
       textId: string;

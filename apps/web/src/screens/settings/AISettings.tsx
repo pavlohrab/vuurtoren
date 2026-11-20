@@ -7,8 +7,7 @@ import type { AISettings as AISettingsData } from "../../services/aiTypes.js";
 import { ModelPicker } from "./ModelPicker.js";
 import { SavedNote } from "./SavedNote.js";
 import { useAutosave } from "./useAutosave.js";
-
-const message = (e: unknown) => (e instanceof Error && e.message ? e.message : "Try again.");
+import { errorText } from "../../services/errors.js";
 
 /** Settings > AI: provider, model, key (stored on this device only), test and spend note. */
 export function AISettings() {
@@ -140,7 +139,7 @@ export function AISettings() {
       ) : null}
       {unlock.isError ? (
         <span role="alert" className="error-text">
-          {message(unlock.error)}
+          {errorText(unlock.error)}
         </span>
       ) : null}
       <Input
@@ -177,7 +176,7 @@ export function AISettings() {
       ) : null}
       {test.isError || saveKey.isError ? (
         <p role="alert" className="error-text" style={{ margin: 0 }}>
-          {message(test.error ?? saveKey.error)}
+          {errorText(test.error ?? saveKey.error)}
         </p>
       ) : null}
       {usage.data ? (

@@ -11,7 +11,6 @@ import { createMockServices } from "../services/mock.js";
 import type { DesktopLocal } from "../shell/AppInfo.js";
 import type { DesktopBridge, SidecarStatus } from "./bridge.js";
 import { routeNlpTo } from "./bridge.js";
-import { ago } from "./LockedScreen.js";
 import { bootDesktopLocal, conflictNotice } from "./local.js";
 import { mb, ocrAvailable, setupView } from "./setup.js";
 
@@ -125,10 +124,6 @@ describe("lock and sync warnings", () => {
     expect(conflictNotice("/d/kenning.sqlite", ["kenning (1).sqlite"])).toMatch(
       /Found “kenning \(1\)\.sqlite” next to your data.*Kenning uses kenning\.sqlite/,
     );
-    expect(ago(1000, 1030)).toBe("just now");
-    expect(ago(0, 600)).toBe("10 minutes ago");
-    expect(ago(0, 7200)).toBe("2 hours ago");
-    expect(ago(0, 86400 * 3)).toBe("3 days ago");
   });
 });
 

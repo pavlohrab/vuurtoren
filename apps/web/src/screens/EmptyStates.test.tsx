@@ -45,7 +45,7 @@ describe("empty states", () => {
 
   it("the main nav: Home first, no Read entry, Talk instead of Converse", async () => {
     setup("/library", { listTexts: async () => [] });
-    await screen.findByRole("heading", { name: "Your library is empty" });
+    await screen.findByRole("heading", { name: "Your Library is empty" });
     const nav = screen.getByRole("navigation", { name: "Main" });
     const names = within(nav)
       .getAllByRole("link")

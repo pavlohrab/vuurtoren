@@ -11,6 +11,7 @@ import { ImportPackDialog } from "./CoursePacks.js";
 import { MenuButton } from "../library/MenuButton.js";
 import { ErrorNotice } from "../../shell/ErrorNotice.js";
 import "./courses.css";
+import { errorText } from "../../services/errors.js";
 
 /** Courses: the books you study along, with progress and a way to continue. */
 export function Courses() {
@@ -27,7 +28,7 @@ export function Courses() {
       await qc.invalidateQueries({ queryKey: ["courses"] });
       toast("Course deleted");
     },
-    onError: (e) => toast("Could not delete the course", e instanceof Error ? e.message : ""),
+    onError: (e) => toast("Could not delete the course", errorText(e)),
   });
 
   return (

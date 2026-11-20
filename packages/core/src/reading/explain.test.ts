@@ -118,7 +118,7 @@ const TABLE: [string, string, string[], string | null][] = [
   ["Hij zou het boek kopen als hij geld had.", "kopen", ["verb.conditional"], null],
   ["Hij zou het boek kopen als hij geld had.", "zou", ["verb.conditional"], "order.v2"],
   ["Hij zal morgen komen.", "komen", ["verb.future"], null],
-  // gaan / laten + infinitive, aan het + infinitive (B9)
+  // gaan / laten + infinitive, aan het + infinitive
   [
     "Ik ga morgen boodschappen doen.",
     "ga",

@@ -1,6 +1,7 @@
 /** Sync through a Kenning server's `/api/sync`, with a sync token made on that server. */
 import type { SyncStore } from "@app/db";
 import { SyncPlaceError, readError } from "./errors.js";
+import { placeLabel } from "./labels.js";
 
 export function serverStore(url: string, token: string, fetch: typeof globalThis.fetch): SyncStore {
   const base = url.replace(/\/+$/, "");
@@ -15,16 +16,16 @@ export function serverStore(url: string, token: string, fetch: typeof globalThis
         headers: { ...auth, ...init.headers },
       });
     } catch {
-      throw new SyncPlaceError(`Kenning at ${new URL(base).host} cannot be reached.`, "offline");
+      throw new SyncPlaceError(`Kenning at ${new URL(base).host} cannot be reached.`);
     }
     if (res.status === 401) {
-      throw new SyncPlaceError("The server did not accept the sync token.", "auth");
+      throw new SyncPlaceError("The server did not accept the sync token.");
     }
     return res;
   };
   const file = (path: string) => `/api/sync/file?path=${encodeURIComponent(path)}`;
   return {
-    label: `Kenning server · ${new URL(base).host}`,
+    label: placeLabel({ kind: "server", url: base }),
     async list(dir) {
       const res = await call(`/api/sync/list?dir=${encodeURIComponent(dir)}`);
       if (!res.ok) throw await readError(res);

@@ -719,11 +719,6 @@ kbd {
   color: var(--ink);
   margin: 0;
 }
-.k-section-hint {
-  color: var(--ink-muted);
-  font-size: 13px;
-  margin: calc(-1 * var(--s-3)) 0 var(--s-4);
-}
 /* A list with hairline rows and no outer box. */
 .k-list {
   list-style: none;
@@ -815,12 +810,6 @@ button.k-row:hover .k-row-go {
 }
 .k-stats dd a:hover {
   color: var(--accent);
-}
-/* A surface: only to group interactive objects. */
-.k-surface {
-  background: var(--surface);
-  border: 1px solid var(--hairline);
-  border-radius: var(--radius-card);
 }
 /* A clickable Dutch word: Inter, article muted. */
 .k-word-chip {
@@ -2085,7 +2074,7 @@ svg.lucide {
   color: var(--ink);
 }
 
-/* Inspector actions (U23): primary full width, then Mark known and Ignore as one even row. */
+/* Inspector actions: primary full width, then Mark known and Ignore as one even row. */
 .k-inspector-actions {
   padding-top: 4px;
 }

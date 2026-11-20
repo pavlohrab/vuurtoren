@@ -153,24 +153,6 @@
 }
 
 /* ---------- Topic page ---------- */
-.grammar-back {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 14px;
-  color: var(--ink-muted);
-  text-decoration: none;
-  margin-bottom: 12px;
-}
-.grammar-back:hover {
-  color: var(--accent);
-}
-.grammar-topic-head {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-}
 .grammar-actions {
   display: flex;
   align-items: center;

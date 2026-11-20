@@ -7,12 +7,11 @@
 import { describe, expect, it } from "vitest";
 import { type SyncStore, createRepository, openVault, syncOnce } from "@app/db";
 import { createNodeDriver } from "@app/db/node";
+import { LIGHT_ARGON2 } from "@app/db/testing";
 import { githubStore } from "./githubStore.js";
 import { webdavStore } from "./webdavStore.js";
 
 const env = process.env;
-const LIGHT = { memoryKiB: 1024, iterations: 1, parallelism: 1 };
-
 /** A store whose paths all live under `prefix` (one run's own folder). */
 function under(store: SyncStore, prefix: string): SyncStore {
   const p = (path: string) => (path ? `${prefix}/${path}` : prefix);
@@ -37,7 +36,7 @@ async function roundTrip(store: SyncStore) {
   // Two devices with the real engine, folding included.
   const a = await createRepository(await createNodeDriver(), { deviceId: "aaaaaaaaaaaa" });
   const b = await createRepository(await createNodeDriver(), { deviceId: "bbbbbbbbbbbb" });
-  const { key } = await openVault(store, "lange zinnen lezen", true, LIGHT);
+  const { key } = await openVault(store, "lange zinnen lezen", true, LIGHT_ARGON2);
   const cover = await a.putBlob(
     new Uint8Array([0x89, 0x50, 0x4e, 0x47, 13, 10, 26, 10, 7]),
     "image/png",

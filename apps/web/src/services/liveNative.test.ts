@@ -8,7 +8,7 @@ import { createNodeDriver } from "@app/db/node";
 import type { NlpClient } from "@app/nlp-client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { RunOptimizer } from "../native/optimizer.js";
-import { createLiveNative, readingDelay, studyDayStart } from "./liveNative.js";
+import { createLiveNative, readingDelay } from "./liveNative.js";
 import { createLiveServices } from "./live.js";
 
 const DAY = 86_400_000;
@@ -495,11 +495,5 @@ describe("native services", () => {
       historySize: 0,
     });
     expect(await live.autoTune()).toBeNull();
-  });
-
-  it("starts the study day at 4:00", () => {
-    const d = new Date(2026, 5, 2, 3, 0).getTime();
-    expect(new Date(studyDayStart(d)).getDate()).toBe(1);
-    expect(new Date(studyDayStart(d + 2 * 3600_000)).getHours()).toBe(4);
   });
 });

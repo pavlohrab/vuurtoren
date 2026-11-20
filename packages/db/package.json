@@ -29,7 +29,11 @@
       "types": "./dist/web/index.d.ts",
       "import": "./dist/web/index.js"
     },
-    "./web/worker": "./dist/web/worker.js"
+    "./web/worker": "./dist/web/worker.js",
+    "./testing": {
+      "types": "./dist/testing.d.ts",
+      "import": "./dist/testing.js"
+    }
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",

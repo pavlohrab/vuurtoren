@@ -6,15 +6,14 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { type FormEvent, useState } from "react";
 import { Button, Input, Skeleton, Spinner, useToast } from "@app/ui";
-import { createSyncTokenClient } from "../../auth/mcpTokens.js";
+import { createSyncTokenClient } from "../../auth/tokens.js";
 import { relativeTime } from "../../format.js";
 import { useServices } from "../../services/context.js";
 import type { SetUpHow, SyncPlace, SyncStatus } from "../../services/syncTypes.js";
 import { useAppInfo } from "../../shell/AppInfo.js";
-import { CopyBlock } from "./ClaudeCodeSettings.js";
+import { CopyBlock } from "./shared.js";
+import { errorText } from "../../services/errors.js";
 
-const message = (e: unknown) =>
-  e instanceof Error && e.message ? e.message : "That did not work.";
 const tokens = createSyncTokenClient();
 
 type Kind = SyncPlace["kind"];
@@ -179,7 +178,7 @@ function Secrets({ onRecovery }: { onRecovery: (key: string) => void }) {
       )}
       {error ? (
         <p role="alert" className="error-text" style={{ margin: 0 }}>
-          {message(error)}
+          {errorText(error)}
         </p>
       ) : null}
     </section>
@@ -397,7 +396,7 @@ function SetUp({ status, onRecovery }: { status: SyncStatus; onRecovery: (key: s
       </div>
       {start.isError ? (
         <p role="alert" className="error-text" style={{ margin: 0 }}>
-          {message(start.error)}
+          {errorText(start.error)}
         </p>
       ) : null}
     </form>
@@ -470,7 +469,7 @@ function SyncOn({ status }: { status: SyncStatus }) {
       </div>
       {now.isError ? (
         <p role="alert" className="error-text" style={{ margin: 0 }}>
-          {message(now.error)}
+          {errorText(now.error)}
         </p>
       ) : null}
       {stopping ? (
@@ -543,7 +542,7 @@ function ServerTokens() {
       )}
       {make.isError ? (
         <p role="alert" className="error-text" style={{ margin: 0 }}>
-          {message(make.error)}
+          {errorText(make.error)}
         </p>
       ) : null}
       {fresh ? (

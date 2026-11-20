@@ -2,9 +2,9 @@
  * Sync through WebDAV (Nextcloud, ownCloud, a NAS, Fastmail Files…): PROPFIND to list,
  * GET/PUT/DELETE for files, MKCOL for folders. An app password is better than the account's.
  */
-import type { SyncStore } from "@app/db";
+import { type SyncStore, toBase64 } from "@app/db";
 import { SyncPlaceError, readError } from "./errors.js";
-import { base64 } from "./base64.js";
+import { placeLabel } from "./labels.js";
 
 /** File and folder names of a PROPFIND (Depth 1) answer, without the folder itself. */
 export function propfindNames(xml: string, dirUrl: string): string[] {
@@ -32,7 +32,7 @@ export function webdavStore(
 ): SyncStore {
   const root = url.replace(/\/+$/, "");
   const auth = {
-    authorization: `Basic ${base64(new TextEncoder().encode(`${user}:${password}`))}`,
+    authorization: `Basic ${toBase64(new TextEncoder().encode(`${user}:${password}`))}`,
   };
   const at = (path: string) =>
     `${root}/${path.split("/").filter(Boolean).map(encodeURIComponent).join("/")}`;
@@ -45,13 +45,10 @@ export function webdavStore(
         headers: { ...auth, ...init.headers },
       });
     } catch {
-      throw new SyncPlaceError(`${new URL(root).host} cannot be reached.`, "offline");
+      throw new SyncPlaceError(`${new URL(root).host} cannot be reached.`);
     }
     if (res.status === 401 || res.status === 403) {
-      throw new SyncPlaceError(
-        "The WebDAV server did not accept the user name or password.",
-        "auth",
-      );
+      throw new SyncPlaceError("The WebDAV server did not accept the user name or password.");
     }
     return res;
   };
@@ -64,7 +61,7 @@ export function webdavStore(
     }
   };
   return {
-    label: `WebDAV · ${new URL(root).host}`,
+    label: placeLabel({ kind: "webdav", url: root }),
     async list(dir) {
       const target = `${dir ? at(dir) : root}/`;
       const res = await call(target, {

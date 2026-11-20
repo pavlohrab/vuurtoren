@@ -1,4 +1,4 @@
-import { SELF_HOSTING_URL } from "./ClaudeCodeSettings.js";
+import { SELF_HOSTING_URL } from "./shared.js";
 import { useState } from "react";
 import { Button, Dialog } from "@app/ui";
 import { DesktopServer } from "../../desktop/DesktopServer.js";

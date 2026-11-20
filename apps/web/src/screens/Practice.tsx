@@ -83,7 +83,7 @@ function PracticeSession({ focus, autoStart }: { focus: string[] | null; autoSta
   const [error, setError] = useState<unknown>(null);
   const services = useServices();
   const client = useQueryClient();
-  const inspector = useWordInspector();
+  const inspector = useWordInspector("reading");
 
   const start = async (size: number, skills: Skill[], aiSentences: boolean) => {
     setError(null);
@@ -313,7 +313,7 @@ function StartView({
           }
           action={
             <Link to="/library" className="k-btn k-btn--primary">
-              Go to the library
+              Go to the Library
             </Link>
           }
         />
@@ -782,7 +782,7 @@ export function TopicPractice({ topicId }: { topicId: string }) {
   const [phase, setPhase] = useState<Phase>({ name: "loading" });
   const [error, setError] = useState<string | null>(null);
   const [run, setRun] = useState(0);
-  const inspector = useWordInspector();
+  const inspector = useWordInspector("reading");
   const aiStatus = useQuery({ queryKey: ["ai-status"], queryFn: () => services.aiStatus() });
   const aiKnown = aiStatus.isFetched || aiStatus.isError;
   const aiOn = aiStatus.data?.configured === true;

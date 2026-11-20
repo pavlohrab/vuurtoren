@@ -18,7 +18,7 @@ const SOURCE_LABEL: Record<DegradedEntry["source"], string> = {
 };
 
 const time = (ms: number) =>
-  new Date(ms).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+  new Date(ms).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
 
 /** The shared degraded signal: a quiet top-bar button with a details popover. */
 export function DegradedIndicator() {

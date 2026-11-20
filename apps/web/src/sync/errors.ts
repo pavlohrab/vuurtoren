@@ -1,13 +1,6 @@
 /** Why a sync place did not answer as expected, in words Settings can show. */
 export class SyncPlaceError extends Error {
   override readonly name = "SyncPlaceError";
-  constructor(
-    message: string,
-    /** offline: unreachable; auth: credentials refused; other: anything else. */
-    readonly kind: "offline" | "auth" | "other" = "other",
-  ) {
-    super(message);
-  }
 }
 
 /** A readable error from a failed response (a JSON `error`/`message`, or the status). */

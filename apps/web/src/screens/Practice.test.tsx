@@ -204,7 +204,7 @@ describe("Practice session", () => {
     // Everything was just practised: nothing is due or new, so there is no Start button.
     expect(await screen.findByRole("heading", { name: "All caught up" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: START })).not.toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Go to the library" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Go to the Library" })).toBeInTheDocument();
   });
 
   it("shows an empty state with one next step when there is nothing to practise", async () => {
@@ -226,7 +226,7 @@ describe("Practice session", () => {
       await screen.findByRole("heading", { name: "Nothing to practise yet" }),
     ).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: START })).not.toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Go to the library" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Go to the Library" })).toBeInTheDocument();
   });
 
   it("uses 1-4 for choices, shows the right answer after a miss and lists words to review", async () => {

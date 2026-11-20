@@ -21,12 +21,11 @@ function setup(
   return { history, services };
 }
 
-// The reader route is code-split (router.tsx). The first test of the file used to pay for the
-// cold dynamic import and transform of the reader's module graph inside its first findBy
-// (Testing Library waits 1 s by default): under a parallel `pnpm test` that ran out, and the
-// test failed on "Next segment" before the reader had rendered at all. Load the screen up
-// front, and give waits (and tests) a budget that holds on a loaded machine; a passing wait
-// still returns as soon as the element is there.
+// The reader route is code-split (router.tsx). Without loading it here, the first test would pay
+// for the cold import of the reader's module graph inside its first findBy (Testing Library
+// waits 1 s by default), which a parallel `pnpm test` can exceed. Load the screen up front, and
+// give waits (and tests) a budget that holds on a loaded machine; a passing wait returns as soon
+// as the element is there.
 beforeAll(async () => {
   configure({ asyncUtilTimeout: 5000 });
   await import("./screens/ReaderPage.js");
@@ -41,7 +40,7 @@ describe("ReaderPage", () => {
     await userEvent.click(await screen.findByText("trein"));
     // Let the selected word's inspector finish loading first, so no request of the previous
     // text is still in flight when the route changes, and wait for (rather than read) the
-    // state after the switch: both used to depend on timing.
+    // state after the switch, so the test does not depend on timing.
     expect(await screen.findByRole("heading", { name: /trein/ })).toBeInTheDocument();
     await act(async () => history.push("/read/t-markt"));
     expect(await screen.findByText("Page 1 of 2")).toBeInTheDocument();
