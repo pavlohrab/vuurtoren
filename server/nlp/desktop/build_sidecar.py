@@ -99,6 +99,9 @@ def main() -> None:
     env = {**os.environ, "UV_PROJECT_ENVIRONMENT": str(venv), "UV_LINK_MODE": "copy"}
     run(
         ["uv", "sync", "--locked", "--no-dev", "--no-editable", "--extra", "ocr"]
+        # Our own package keeps its version between builds, so uv would reuse a cached wheel of
+        # older code: always build it from the source tree.
+        + ["--reinstall-package", "vuurtoren-nlp"]
         + ["--python", PYTHON],
         cwd=NLP,
         env=env,
@@ -106,6 +109,11 @@ def main() -> None:
     py = venv / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
     run(["uv", "pip", "install", "--python", str(py), PYINSTALLER], cwd=NLP, env=env)
     trim(site_packages(venv))
+    built = site_packages(venv) / "vuurtoren_nlp" / "pairs.py"
+    if not built.is_file() and (NLP / "src" / "vuurtoren_nlp" / "pairs.py").is_file():
+        sys.exit(
+            "The build venv holds an old vuurtoren_nlp (no pairs.py); the sidecar would be stale."
+        )
 
     target = args.out / "vuurtoren-nlp"
     shutil.rmtree(target, ignore_errors=True)
