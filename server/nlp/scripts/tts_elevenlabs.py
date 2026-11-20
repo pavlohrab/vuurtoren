@@ -1,14 +1,15 @@
-"""Make the starter-word audio with the ElevenLabs API.
+"""Make the starter-word audio with the ElevenLabs API, in a female and a male voice.
 
-    python scripts/tts_elevenlabs.py manifest  --out ~/Downloads/vuurtoren-audio-manifest.json
+    python scripts/tts_elevenlabs.py manifest --out-dir ~/Downloads/vuurtoren-audio-jobs
     ELEVENLABS_API_KEY=… python scripts/tts_elevenlabs.py speak \
-        --manifest ~/Downloads/vuurtoren-audio-manifest.json --out ~/Downloads/vuurtoren-audio \
-        --word-voice <voice id> --sentence-voice <voice id> [--limit 100] [--max-chars 280000]
+        --chunk ~/Downloads/vuurtoren-audio-jobs/chunk-01.json --gender female --voice <voice id> \
+        --out ~/Downloads/vuurtoren-audio
 
-One clip per word (nouns with their article: "het huis") and one per example sentence. A clip's
-file name comes from its text, so a rebuilt list reuses every clip it still needs, and the run can
-stop and resume: existing files are skipped. --max-chars stops before the plan's characters run
-out.
+`manifest` splits every clip (nouns with their article, "het huis", and every example sentence)
+into chunks of about 14,500 characters: one chunk in both voices is about 29,000 characters.
+`speak` writes `<out>/<gender>/<id>.mp3`. A clip's id comes from its text, so a rebuilt list
+reuses every clip it still needs, and a run can stop and resume: existing files are skipped.
+How to run it: docs/audio.md.
 """
 
 from __future__ import annotations
@@ -70,49 +71,63 @@ def speak(clip: dict, voice: str, key: str, out: Path) -> None:
             raise SystemExit(f"{clip['id']}: HTTP {e.code} {e.read()[:300]!r}") from e
 
 
+def chunks(clips: list[dict], size: int) -> list[list[dict]]:
+    out: list[list[dict]] = [[]]
+    used = 0
+    for c in clips:
+        if out[-1] and used + len(c["text"]) > size:
+            out.append([])
+            used = 0
+        out[-1].append(c)
+        used += len(c["text"])
+    return out
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
     m = sub.add_parser("manifest")
-    m.add_argument("--out", type=Path, required=True)
+    m.add_argument("--out-dir", type=Path, required=True)
+    m.add_argument("--chunk-chars", type=int, default=14_500)
     s = sub.add_parser("speak")
-    s.add_argument("--manifest", type=Path, required=True)
+    s.add_argument("--chunk", type=Path, required=True)
+    s.add_argument("--gender", choices=["female", "male"], required=True)
+    s.add_argument("--voice", required=True, help="ElevenLabs voice id")
     s.add_argument("--out", type=Path, required=True)
-    s.add_argument("--word-voice", required=True)
-    s.add_argument("--sentence-voice", required=True)
-    s.add_argument("--limit", type=int, default=0, help="stop after this many new clips")
-    s.add_argument("--max-chars", type=int, default=0, help="stop before this many characters")
     a = ap.parse_args()
 
     if a.cmd == "manifest":
+        out = a.out_dir.expanduser()
+        out.mkdir(parents=True, exist_ok=True)
         clips = manifest()
-        a.out.expanduser().write_text(
-            json.dumps({"model": MODEL, "clips": clips}, ensure_ascii=False, indent=1)
-        )
-        chars = sum(len(c["text"]) for c in clips)
-        print(f"{len(clips)} clips, {chars} characters → {a.out}")
+        parts = chunks(clips, a.chunk_chars)
+        for i, part in enumerate(parts, 1):
+            chars = sum(len(c["text"]) for c in part)
+            (out / f"chunk-{i:02d}.json").write_text(
+                json.dumps(
+                    {"model": MODEL, "chars": chars, "clips": part}, ensure_ascii=False, indent=1
+                )
+            )
+        total = sum(len(c["text"]) for c in clips)
+        print(f"{len(clips)} clips, {total} characters, {len(parts)} chunks → {out}")
+        print(f"both voices: {2 * total} characters, about {2 * a.chunk_chars} per chunk")
         return
 
     key = os.environ.get("ELEVENLABS_API_KEY") or sys.exit("Set ELEVENLABS_API_KEY.")
-    clips = json.loads(a.manifest.expanduser().read_text())["clips"]
-    out = a.out.expanduser()
+    part = json.loads(a.chunk.expanduser().read_text())["clips"]
+    out = a.out.expanduser() / a.gender
     out.mkdir(parents=True, exist_ok=True)
     made = spent = 0
-    for c in clips:
+    for c in part:
         target = out / f"{c['id']}.mp3"
         if target.exists():
             continue
-        if a.limit and made >= a.limit:
-            break
-        if a.max_chars and spent + len(c["text"]) > a.max_chars:
-            print("Stopping before --max-chars.")
-            break
-        speak(c, a.word_voice if c["kind"] == "word" else a.sentence_voice, key, target)
+        speak(c, a.voice, key, target)
         made += 1
         spent += len(c["text"])
         if made % 50 == 0:
             print(f"{made} clips, {spent} characters")
-    print(f"done: {made} new clips, {spent} characters")
+    print(f"{a.chunk.name} {a.gender}: {made} new clips, {spent} characters")
 
 
 if __name__ == "__main__":
