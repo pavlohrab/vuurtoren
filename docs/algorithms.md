@@ -761,25 +761,31 @@ Your data on every device, with the event log as the unit of sync (`packages/db/
 
 ### 10.1 What travels
 
-Every change is an event in the append-only log ([decisions](decisions.md#data)). A device sends **its own** events, oldest first, in segments of at most 2,000, and imports the other devices' segments. Images and sounds the events refer to (covers, card media) travel as blobs. Per-device bookkeeping (what was sent, what was received from each device) stays on the device.
+Every change is an event in the append-only log ([decisions](decisions.md#data)). A device sends **its own** events, oldest first, in segments of at most 2,000 events and 4 MiB of JSON (a larger single event goes alone), and imports the other devices' files. Images and sounds the events refer to (covers, card media) travel as blobs. Per-device bookkeeping (what was sent, what was received from each device, blobs known to be in the place, files set aside) stays on the device.
 
 ### 10.2 The place
 
-| Path                                         | What it holds                                                                    |
-| -------------------------------------------- | -------------------------------------------------------------------------------- |
-| `kenning/vault.json`                         | how the passphrase becomes the key (salt, rounds) and a sealed value to check it |
-| `kenning/devices/<device>/<lastId>.kev`      | events of one device, up to `lastId`                                             |
-| `kenning/devices/<device>/<lastId>.base.kev` | all of a device's events up to `lastId` (folded)                                 |
-| `kenning/devices/<device>/device.kev`        | the device's name and last sync                                                  |
-| `kenning/blobs/<hmac>.kbl`                   | an image or sound                                                                |
+| Path                                         | What it holds                                                               |
+| -------------------------------------------- | --------------------------------------------------------------------------- |
+| `kenning/vault.json`                         | the data key under the passphrase and recovery-key locks, and a check value |
+| `kenning/devices/<device>/<lastId>.kev`      | events of one device after the previous file, up to `lastId`                |
+| `kenning/devices/<device>/<lastId>.base.kev` | a part of the device's folded events, up to `lastId`                        |
+| `kenning/devices/<device>/device.kev`        | the device's name and when it last wrote it                                 |
+| `kenning/blobs/<hmac>.kbl`                   | an image or sound                                                           |
 
-A device writes only its own folder and blobs (named by content), so places that copy files around (Syncthing, Dropbox, iCloud Drive) never see two devices write one file. Past 40 segment files a device folds its files into one base file (after compaction, 10.5) and removes the older ones; a device that already has those events skips them, a new device starts from the base file.
+A device writes only its own folder and blobs (named by content), so places that copy files around (Syncthing, Dropbox, iCloud Drive) never see two devices write one file. Each file names the range it holds (`after`, `last`); a reader checks it against the file's name and takes its cursor from it. A file whose earlier neighbour has not arrived yet waits (after a day it is taken anyway).
 
-Places: a Kenning server (`/api/sync`, a sync token made in that server's Settings → Sync opens it and nothing else), a folder (desktop app; writes go to a temporary file and are renamed, and links inside the folder are not followed), WebDAV (PROPFIND, PUT, MKCOL; through the desktop app no CORS setup is needed, and the app asks once before it sends to a new address) and a private GitHub repository (the contents API; each write is a commit).
+**Folding.** Past 100 segment files a device folds its older half (after compaction, 10.5) into parts of about 8 MiB that end where existing files end, and removes those segments. The parts before stay as they are; only when compaction removed something, and at most every tenth fold, everything is folded again. A device that keeps up reads the segments that stay and never a part; one that was away reads only the parts after its cursor; a new device reads all parts, then the segments.
+
+**Limits.** No file over 60 MiB of JSON is written (a single change that big stays on its device and is reported), unpacking stops at 64 MiB, and parts stay at most 16 MiB, so every place's 64 MiB limit holds. `device.kev` is written when something was sent, else at most hourly; names are cut at 64 characters.
+
+**When something is wrong.** A file that does not open is tried again on the next two syncs, then set aside: recorded with its reason in the sync state, reported in the sync's summary, and the other files of that device follow. The other devices go on meanwhile. An event a projection cannot apply stays in the log and is reported; the others apply. A file from a newer Kenning waits for the update.
+
+Places: a Kenning server (`/api/sync`, a sync token made in that server's Settings → Sync opens it and nothing else), a folder (desktop app; writes go to a temporary file and are renamed, and links inside the folder are not followed), WebDAV (PROPFIND, PUT, MKCOL; through the desktop app no CORS setup is needed, and the app asks once before it sends to a new address) and a private GitHub repository (the contents API, and the Git trees API for folders past 1,000 files; each write is a commit). Requests skip the browser cache.
 
 ### 10.3 Encryption
 
-A random **data key** (64 bytes) seals every file: an AES-256-GCM key (`KSY1` + a random 12-byte IV + ciphertext; segments are gzipped first) and an HMAC-SHA256 key for blob names, so the names do not reveal what a file holds. The vault holds the data key under two **locks**:
+A random **data key** (64 bytes) seals every file: an AES-256-GCM key and an HMAC-SHA256 key for blob names, so the names do not reveal what a file holds. A file is `KSY2` + a random 12-byte IV + ciphertext (segments gzipped first), sealed with its path as additional data: a file copied or renamed by the place does not open. Files of the first format (`KSY1`, no path) still open. The vault holds the data key under two **locks**:
 
 | Lock         | Key from                                                         |
 | ------------ | ---------------------------------------------------------------- |
@@ -788,18 +794,22 @@ A random **data key** (64 bytes) seals every file: an AES-256-GCM key (`KSY1` + 
 
 - **Changing the passphrase** re-locks the data key: no file is encrypted again and other devices keep syncing with the key they hold. It asks for the current passphrase or the recovery key first. A new recovery key replaces the old one.
 - The passphrase and the recovery key are never stored; the data key is kept in the device's own storage, like AI keys.
+- A passphrase is locked without the spaces around it. One that reads like a recovery key is refused; such a passphrase from before still opens (the recovery lock is tried first, then the passphrase lock).
+- `vault.json` is checked before use: its shape, Argon2id at most 1 GiB and 10 passes, PBKDF2 at most 10 million rounds.
 - A vault of the first format (PBKDF2-SHA256, 600,000 rounds, the key derived from the passphrase) still opens. Changing its passphrase turns it into the current format with that key as its data key, so no file changes.
 - What the place can see: the number of devices, file sizes and when files were written. What it cannot: any content. A changed file is refused (GCM); a place can still delete files or serve older ones, so keep backups.
 
 ### 10.4 Order and conflicts
 
-Events carry a hybrid logical clock (milliseconds, a counter, the device). Imported events newer than the end of the log are applied there; otherwise the projections are rebuilt from the whole log in clock order. Either way every device reaches the same state:
+Events carry a hybrid logical clock (milliseconds, a counter, the device). Imported events newer than the end of the log are applied there; otherwise the projections are rebuilt from the whole log in clock order, once per sync however many files came in (a replay cut short is done when the app next opens). Either way every device reaches the same state:
 
 - **Latest wins** for settings, the language profile, word marks, deck options and a text's details: the last event in clock order sets them.
 - **Merge** for reviews and answers: they add up. An answer to a native card stores the card's schedule before it; when the card has changed since (answered on another device), the answer is applied to the card as it is now (FSRS, without fuzz), so both answers count.
 - **Intent** for other changes to native cards: a move from reading, new memory after tuning and an undo say what to do, and are applied to the card as it is when they apply (sections 9.3, 9.5.1 and 9.6), so none of them undoes an answer from another device. Mark known and Study first set the card (a mature schedule, a place in the new queue): the latest wins.
 - **Merged answers depend on the scheduler.** A merged answer is computed whenever the log is replayed, with this app's FSRS and the parameters in use then. Devices on app versions whose scheduler differs can disagree slightly on such a card until its next answer; an answer that is not merged stores its result and replays the same everywhere.
 - **Event versions.** Each event type has a payload version. An event newer than this app understands is stored and passed on, not applied; once the app is updated it applies it.
+
+An incoming event needs an id and a clock as Kenning makes them (a ULID; a clock with 15 + 5 padded digits and the event's own device), at most a day ahead of this device's clock, and not this device's id. New ids follow this device's own newest event, never another device's.
 
 ### 10.5 Compaction
 

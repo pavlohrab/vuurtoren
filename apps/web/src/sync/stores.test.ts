@@ -59,6 +59,29 @@ describe.each(places)("%s", (_name, make) => {
   });
 });
 
+describe("GitHub", () => {
+  it("lists a folder past 1000 files and never asks the browser cache", async () => {
+    const files = new Map<string, Uint8Array>();
+    for (let i = 0; i < 1200; i++) {
+      files.set(`kenning/blobs/${String(i).padStart(4, "0")}.kbl`, new Uint8Array([i % 256]));
+    }
+    const caches: (RequestCache | undefined)[] = [];
+    const fake = fakeGithub(files);
+    const store = githubStore("anna/kenning-sync", "ghp_x", (async (input, init) => {
+      caches.push(init?.cache);
+      return fake(input, init);
+    }) as typeof fetch);
+    const names = await store.list("kenning/blobs");
+    expect(names).toHaveLength(1200);
+    expect(names[1199]).toBe("1199.kbl");
+    // The sha came with the listing: a file past the first 1000 can be replaced.
+    await store.put("kenning/blobs/1199.kbl", new Uint8Array([9]));
+    expect(await store.get("kenning/blobs/1199.kbl")).toEqual(new Uint8Array([9]));
+    expect(caches.length).toBeGreaterThan(2);
+    expect(caches.every((c) => c === "no-store")).toBe(true);
+  });
+});
+
 describe("credentials refused", () => {
   it("says so in plain words", async () => {
     const wrong = serverStore("https://kenning.example", "nope", fakeServer(new Map(), "ksync_t"));

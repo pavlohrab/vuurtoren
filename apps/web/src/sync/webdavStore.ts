@@ -39,7 +39,11 @@ export function webdavStore(
   const call = async (target: string, init: RequestInit) => {
     let res: Response;
     try {
-      res = await fetch(target, { ...init, headers: { ...auth, ...init.headers } });
+      res = await fetch(target, {
+        ...init,
+        cache: "no-store",
+        headers: { ...auth, ...init.headers },
+      });
     } catch {
       throw new SyncPlaceError(`${new URL(root).host} cannot be reached.`, "offline");
     }

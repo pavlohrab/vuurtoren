@@ -56,8 +56,9 @@ describe("sync between devices", () => {
     const out = await a.repo.exportEvents();
     expect(out).toHaveLength(1);
     expect(out[0]).toMatchObject({ deviceId: "A", v: 1, event: { type: "WordStateSet" } });
-    expect(await b.repo.importEvents(out)).toEqual({ added: 1, invalid: 0, rebuilt: false });
-    expect(await b.repo.importEvents(out)).toEqual({ added: 0, invalid: 0, rebuilt: false });
+    const done = { invalid: 0, rebuilt: false, failed: [] };
+    expect(await b.repo.importEvents(out)).toEqual({ added: 1, ...done });
+    expect(await b.repo.importEvents(out)).toEqual({ added: 0, ...done });
     expect((await b.repo.word("nl", "fiets"))?.state).toBe("known");
     // B only exports its own events; A's are not sent back.
     expect(await b.repo.exportEvents()).toEqual([]);
@@ -125,7 +126,7 @@ describe("sync between devices", () => {
     const future = {
       id: "01JZZZZZZZZZZZZZZZZZZZZZZZ",
       deviceId: "Z",
-      hlc: `${String(T0 + 10).padStart(15, "0")}-0000-Z`,
+      hlc: `${String(T0 + 10).padStart(15, "0")}-00000-Z`,
       createdAt: T0 + 10,
       v: 1,
       event: { type: "FromTheFuture", lang: "nl" },
@@ -179,6 +180,116 @@ describe("sync between devices", () => {
       "TextDeleted",
     ]);
     expect((sent[1]!.event as { content: string }).content).toBe("");
+  });
+
+  it("refuses events with ids or clocks this app would not make", async () => {
+    const a = await device("A", T0);
+    const hlcOf = (ms: number, dev: string) => `${String(ms).padStart(15, "0")}-00000-${dev}`;
+    const ok: SyncEvent = {
+      id: "01JZZZZZZZZZZZZZZZZZZZZZZZ",
+      deviceId: "B",
+      hlc: hlcOf(T0, "B"),
+      createdAt: T0,
+      v: 1,
+      event: { type: "WordStateSet", lang: "nl", key: "x", state: "known" },
+    };
+    const day = 86_400_000;
+    const bad: SyncEvent[] = [
+      // Ids past any time a ULID can hold, or far ahead of this device's clock.
+      { ...ok, id: "8ZZZZZZZZZZZZZZZZZZZZZZZZZ" },
+      { ...ok, id: "7ZZZZZZZZZZZZZZZZZZZZZZZZZ" },
+      // Clocks: not padded, of another device, far ahead.
+      { ...ok, hlc: `${T0}-0-B` },
+      { ...ok, hlc: hlcOf(T0, "C") },
+      { ...ok, hlc: hlcOf(T0 + 2 * day, "B") },
+      // Claiming to be this device.
+      { ...ok, deviceId: "A", hlc: hlcOf(T0, "A") },
+    ];
+    expect(await a.repo.importEvents(bad)).toMatchObject({ added: 0, invalid: bad.length });
+    expect(await a.repo.importEvents([ok])).toMatchObject({ added: 1, invalid: 0 });
+    // This device's clock did not move a day ahead: its next change sorts after B's.
+    const next = await a.repo.append({ type: "SettingChanged", key: "k", value: 1 });
+    expect(next.hlc < hlcOf(T0 + 3_600_000, "A")).toBe(true);
+  });
+
+  it("makes new ids after its own, whatever another device's look like", async () => {
+    const driver = await createNodeDriver();
+    const a = await createRepository(driver, { deviceId: "A", now: () => T0 });
+    await a.append({ type: "SettingChanged", key: "k", value: 1 });
+    // An id at the very end of the ULID range, stored before such ids were refused.
+    await driver.exec(
+      "INSERT INTO events (id, device_id, hlc, type, payload, created_at, v) VALUES (?,?,?,?,?,?,?)",
+      [
+        "7ZZZZZZZZZZZZZZZZZZZZZZZZZ",
+        "B",
+        `${String(T0).padStart(15, "0")}-00000-B`,
+        "SettingChanged",
+        JSON.stringify({ type: "SettingChanged", key: "k", value: 2 }),
+        T0,
+        1,
+      ],
+    );
+    const again = await createRepository(driver, { deviceId: "A", now: () => T0 + 1 });
+    const e = await again.append({ type: "SettingChanged", key: "k", value: 3 });
+    expect(e.id.startsWith("0")).toBe(true);
+    expect(await again.exportEvents()).toHaveLength(2);
+  });
+
+  it("replays once for many out-of-order imports, also after a restart", async () => {
+    const driver = await createNodeDriver();
+    let t = T0 + 10_000;
+    const b = await createRepository(driver, { deviceId: "B", now: () => t++ });
+    const a = await device("A", T0);
+    const c = await device("C", T0 + 1);
+    await b.append({ type: "WordStateSet", lang: "nl", key: "fiets", state: "learning" });
+    await a.repo.append({ type: "WordStateSet", lang: "nl", key: "huis", state: "known" });
+    await c.repo.append({ type: "WordStateSet", lang: "nl", key: "fiets", state: "known" });
+    // Both older than B's log end: noted, not replayed.
+    for (const from of [a.repo, c.repo]) {
+      expect(await b.importEvents(await from.exportEvents(), { deferReplay: true })).toMatchObject({
+        added: 1,
+        rebuilt: false,
+      });
+    }
+    expect(await b.word("nl", "huis")).toBeNull();
+    // The one replay: an empty import is enough.
+    expect(await b.importEvents([])).toMatchObject({ added: 0, rebuilt: true });
+    expect((await b.word("nl", "huis"))?.state).toBe("known");
+    expect((await b.word("nl", "fiets"))?.state).toBe("learning");
+    expect((await b.importEvents([])).rebuilt).toBe(false);
+
+    // Stopped before the replay: opening the repository does it.
+    const d = await device("D", T0 + 2);
+    await d.repo.append({ type: "WordStateSet", lang: "nl", key: "boom", state: "known" });
+    await b.importEvents(await d.repo.exportEvents(), { deferReplay: true });
+    const reopened = await createRepository(driver, { deviceId: "B", now: () => t++ });
+    expect((await reopened.word("nl", "boom"))?.state).toBe("known");
+  });
+
+  it("keeps an event a projection cannot apply, and applies the others", async () => {
+    const a = await device("A", T0);
+    const b = await device("B", T0 + 1000);
+    await a.repo.append({ type: "WordStateSet", lang: "nl", key: "huis", state: "known" });
+    await a.repo.append({ type: "WordStateSet", lang: "nl", key: "fiets", state: "known" });
+    const out = await a.repo.exportEvents();
+    // A text without a source (from a broken app): the texts projection throws on it.
+    out[0]!.event = {
+      type: "TextImported",
+      textId: "t1",
+      title: "Kapot",
+      lang: "nl",
+      source: null,
+      content: "x",
+    } as unknown as AppEvent;
+    const r = await b.repo.importEvents(out);
+    expect(r).toMatchObject({ added: 2, rebuilt: false });
+    expect(r.failed.map((f) => f.id)).toEqual([out[0]!.id]);
+    expect((await b.repo.word("nl", "fiets"))?.state).toBe("known");
+    expect(await b.repo.eventCount()).toBe(2);
+    // A replay does not stop at it either.
+    await b.repo.rebuild();
+    expect((await b.repo.word("nl", "fiets"))?.state).toBe("known");
+    expect(await b.repo.listTexts()).toEqual([]);
   });
 
   it("keeps per-device bookkeeping out of the log", async () => {

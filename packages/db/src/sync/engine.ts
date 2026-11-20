@@ -1,20 +1,25 @@
 /**
- * The sync engine: this device's new events go up as sealed segments, the other devices'
- * segments come down and are imported in clock order (`importEvents`). Images and sounds the
- * events refer to travel as sealed blobs under names that do not reveal them.
+ * The sync engine: this device's new events go up as sealed files, the other devices' files
+ * come down and are imported in clock order (`importEvents`), with at most one replay per
+ * sync. Images and sounds the events refer to travel as sealed blobs under names that do not
+ * reveal them.
  *
  * Layout under the place's root:
  *
- *   kenning/vault.json                         how the passphrase becomes the key
+ *   kenning/vault.json                         the data key under the passphrase and recovery locks
  *   kenning/devices/<device>/<lastId>.kev      events of one device, oldest first
- *   kenning/devices/<device>/<lastId>.base.kev all of a device's events up to lastId (folded)
- *   kenning/devices/<device>/device.kev        the device's name and last sync
+ *   kenning/devices/<device>/<lastId>.base.kev a part of the device's folded events
+ *   kenning/devices/<device>/device.kev        the device's name and when it last wrote
  *   kenning/blobs/<hmac>.kbl                   an image or sound
  *
- * A device only writes its own folder and blobs, so places that copy files around
- * (Syncthing, Dropbox) never see two devices write the same file.
+ * Each file holds a device's events after one id up to another (`after`, `last`), and every
+ * file is sealed with its path, so a file moved or renamed by the place does not open. A
+ * device only writes its own folder and blobs, so places that copy files around (Syncthing,
+ * Dropbox) never see two devices write the same file.
  */
-import { gunzipSync, gzipSync } from "fflate";
+import { Gunzip, gzipSync } from "fflate";
+import { isUlid } from "../ids.js";
+import { isBlobId } from "../library.js";
 import type { KenningRepository } from "../repository.js";
 import type { AppEvent, SyncEvent } from "../types.js";
 import {
@@ -26,6 +31,7 @@ import {
   createVault,
   newRecoveryKey,
   hiddenName,
+  parseVault,
   seal,
   unlockVault,
   unseal,
@@ -37,15 +43,51 @@ const ROOT = "kenning";
 export const VAULT_PATH = `${ROOT}/vault.json`;
 const DEVICES = `${ROOT}/devices`;
 const BLOBS = `${ROOT}/blobs`;
+const MiB = 1024 * 1024;
 /** Events per segment file. */
 const SEGMENT_EVENTS = 2000;
-/** A device's segment files are folded into one base file past this many. */
-const FOLD_AFTER = 40;
-const SEGMENT = /^([0-9A-HJKMNP-TV-Z]{26})(\.base)?\.kev$/;
+/** JSON bytes per segment file (a single larger event goes alone). */
+const SEGMENT_BYTES = 4 * MiB;
+/** A folded part closes at the first file end past this many JSON bytes. */
+const BASE_BYTES = 8 * MiB;
+/** No part grows past this, even inside one old file. */
+const BASE_MAX_BYTES = 16 * MiB;
+/**
+ * The most JSON one file may hold. Sealed and gzipped it stays under the 64 MiB a Kenning
+ * server and the desktop app accept; reading stops past 64 MiB.
+ */
+const MAX_FILE_BYTES = 60 * MiB;
+const MAX_READ_BYTES = 64 * MiB;
+/** A device's segment files are folded past this many. */
+const FOLD_AFTER = 100;
+/** Folds between two refolds of everything (only when compaction removed something). */
+const REFOLD_EVERY = 10;
+/** device.kev is written when something was sent, else at most this often. */
+const ANNOUNCE_MS = 3_600_000;
+/** Syncs a file may fail to open before it is left out. */
+const RETRIES = 3;
+/** How long a file waits for the one before it (still being copied) before it is taken anyway. */
+const GAP_WAIT_MS = 86_400_000;
+const GAP_TRIES = 10;
+/** Missing blobs: how many are remembered, how long, and how many are fetched per sync. */
+const MISSING_MAX = 1000;
+const MISSING_MS = 30 * 86_400_000;
+const MISSING_PER_SYNC = 200;
+/** Blob ids known to be in the place, remembered so blobs are not listed every sync. */
+const KNOWN_BLOBS = 1000;
+const PROBLEMS_KEPT = 50;
+const NAME_MAX = 64;
+const SEGMENT = /^([0-7][0-9A-HJKMNP-TV-Z]{25})(\.base)?\.kev$/;
+const DEVICE_ID = /^[0-9A-Za-z_]{1,64}$/;
 
 interface SegmentFile {
-  format: 1;
+  /** 1: the first format (no range); 2: with `after` and `last`. */
+  format: 1 | 2;
   device: string;
+  /** This device's events after this id ("" from the start)… */
+  after?: string;
+  /** …up to this one, the file's name. */
+  last?: string;
   events: SyncEvent[];
 }
 
@@ -53,22 +95,46 @@ interface SegmentFile {
 export interface SyncDevice {
   id: string;
   name: string;
-  /** Its last sync (ms). */
+  /** When it last wrote its name (ms): its last sync, give or take an hour. */
   at: number;
   /** This device. */
   self: boolean;
 }
 
+/** Something sync left out or is waiting on. */
+export interface SyncProblem {
+  /** A file of the place, or an event id. */
+  what: string;
+  /** Why, in plain words. */
+  error: string;
+  /**
+   * Left out for good (a file that never opened, a change too big to send), or kept but not
+   * applied (an event a projection cannot apply). Else it is tried again next sync.
+   */
+  leftOut: boolean;
+}
+
 /** Bookkeeping kept on this device only (`repo.syncState`). */
 interface SyncState {
-  /** The vault this state belongs to (its salt): another vault starts over. */
+  /** The vault this state belongs to (`vaultId`): another vault starts over. */
   vault: string;
   /** Last own event id sent. */
   sent?: string;
   /** Last event id imported, per other device. */
   received: Record<string, string>;
-  /** Blobs the events referred to that were not in the place yet. */
-  missing?: string[];
+  /** Blobs the events referred to that were not in the place yet, with when first missed. */
+  missing?: Record<string, number> | string[];
+  /** Blob ids known to be in the place, newest last. */
+  blobs?: string[];
+  /** The name and time last written to device.kev. */
+  announced?: { name: string; at: number };
+  /** Folds so far, and events compaction removed since the last refold. */
+  folds?: number;
+  compacted?: number;
+  /** Files that did not open yet or wait for an earlier file, by path. */
+  retries?: Record<string, { error: string; tries: number; since: number }>;
+  /** What was left out, newest last. */
+  problems?: SyncProblem[];
 }
 
 export interface SyncSummary {
@@ -77,6 +143,8 @@ export interface SyncSummary {
   /** The log was replayed because some events were older than its end. */
   rebuilt: boolean;
   devices: SyncDevice[];
+  /** What this sync left out or is waiting on. */
+  problems: SyncProblem[];
 }
 
 export interface SyncOptions {
@@ -86,7 +154,11 @@ export interface SyncOptions {
   onProgress?: (message: string) => void;
   /** Events per segment file (default 2000). */
   segmentEvents?: number;
-  /** Fold this device's files past this many (default 40). */
+  /** JSON bytes per segment file (default 4 MiB). */
+  segmentBytes?: number;
+  /** JSON bytes per folded part (default 8 MiB). */
+  baseBytes?: number;
+  /** Fold this device's segment files past this many (default 100). */
   foldAfter?: number;
 }
 
@@ -98,13 +170,20 @@ export class NoVaultError extends Error {
   }
 }
 
+/** A file written by a newer Kenning: waited on, never left out. */
+class NewerFileError extends Error {
+  override readonly name = "NewerFileError";
+}
+
 const encode = (v: unknown) => new TextEncoder().encode(JSON.stringify(v));
 const decode = <T>(b: Uint8Array): T => JSON.parse(new TextDecoder().decode(b)) as T;
+const jsonBytes = (v: unknown) => encode(v).length;
 const deviceDir = (id: string) => `${DEVICES}/${id}`;
+const message = (err: unknown) => (err instanceof Error ? err.message : String(err));
 
 export async function readVault(store: SyncStore): Promise<VaultFile | null> {
   const bytes = await store.get(VAULT_PATH);
-  return bytes ? decode<VaultFile>(bytes) : null;
+  return bytes ? parseVault(bytes) : null;
 }
 
 /**
@@ -153,35 +232,69 @@ export async function renewRecoveryKey(
 
 /** Blob ids an event refers to (a text's cover, the media of imported cards). */
 export function blobRefs(e: AppEvent): string[] {
-  if (e.type === "TextCoverSet") return e.blobId ? [e.blobId] : [];
-  if (e.type === "NativeNotesAdded") return Object.values(e.media ?? {});
-  return [];
+  const refs =
+    e.type === "TextCoverSet"
+      ? [e.blobId]
+      : e.type === "NativeNotesAdded"
+        ? Object.values(e.media ?? {})
+        : [];
+  return refs.filter(isBlobId);
 }
 
-async function pack(key: SyncKey, file: SegmentFile): Promise<Uint8Array> {
-  return seal(key, gzipSync(encode(file), { level: 6 }));
+/** Gunzip, refusing more than `max` bytes of output (a small file that unpacks to gigabytes). */
+function gunzipAtMost(bytes: Uint8Array, max: number): Uint8Array {
+  const parts: Uint8Array[] = [];
+  let total = 0;
+  const gunzip = new Gunzip((chunk) => {
+    total += chunk.length;
+    if (total > max) throw new Error("A synced file unpacks to more than Kenning reads.");
+    parts.push(chunk);
+  });
+  // Small steps: one step unpacks to at most about a thousand times its size.
+  const STEP = 4096;
+  for (let i = 0; i < bytes.length; i += STEP) {
+    gunzip.push(bytes.subarray(i, i + STEP), i + STEP >= bytes.length);
+  }
+  const out = new Uint8Array(total);
+  let at = 0;
+  for (const p of parts) {
+    out.set(p, at);
+    at += p.length;
+  }
+  return out;
 }
 
-async function unpack(key: SyncKey, bytes: Uint8Array): Promise<SegmentFile> {
-  return decode<SegmentFile>(gunzipSync(await unseal(key, bytes)));
+async function pack(key: SyncKey, path: string, file: SegmentFile): Promise<Uint8Array> {
+  return seal(key, gzipSync(encode(file), { level: 6 }), path);
 }
 
-async function packBlob(key: SyncKey, type: string, bytes: Uint8Array): Promise<Uint8Array> {
-  const head = new TextEncoder().encode(type);
+async function unpack(key: SyncKey, path: string, bytes: Uint8Array): Promise<SegmentFile> {
+  return decode<SegmentFile>(gunzipAtMost(await unseal(key, bytes, path), MAX_READ_BYTES));
+}
+
+async function packBlob(
+  key: SyncKey,
+  path: string,
+  type: string,
+  bytes: Uint8Array,
+): Promise<Uint8Array> {
+  const head = new TextEncoder().encode(type).slice(0, 255);
   const plain = new Uint8Array(2 + head.length + bytes.length);
   plain[0] = head.length >> 8;
   plain[1] = head.length & 0xff;
   plain.set(head, 2);
   plain.set(bytes, 2 + head.length);
-  return seal(key, plain);
+  return seal(key, plain, path);
 }
 
 async function unpackBlob(
   key: SyncKey,
+  path: string,
   sealed: Uint8Array,
 ): Promise<{ type: string; bytes: Uint8Array }> {
-  const plain = await unseal(key, sealed);
-  const n = (plain[0]! << 8) + plain[1]!;
+  const plain = await unseal(key, sealed, path);
+  const n = plain.length >= 2 ? (plain[0]! << 8) + plain[1]! : -1;
+  if (n < 0 || n > 255 || 2 + n > plain.length) throw new Error("A synced image is damaged.");
   return {
     type: new TextDecoder().decode(plain.slice(2, 2 + n)),
     bytes: plain.slice(2 + n),
@@ -194,28 +307,64 @@ interface Segment {
   base: boolean;
 }
 
+/** A device's event files, by last id; on the same id the smaller segment comes first. */
 function segments(names: string[]): Segment[] {
   return names
     .flatMap((name) => {
       const m = SEGMENT.exec(name);
       return m ? [{ name, lastId: m[1]!, base: !!m[2] }] : [];
     })
-    .sort((a, b) => (a.lastId < b.lastId ? -1 : a.lastId > b.lastId ? 1 : a.base ? -1 : 1));
+    .sort((a, b) =>
+      a.lastId < b.lastId ? -1 : a.lastId > b.lastId ? 1 : Number(a.base) - Number(b.base),
+    );
 }
 
 /**
- * The files of another device still to import after `cursor`: the newest base file that goes
- * past it (it holds everything up to its last id), then the segments after it.
+ * The files of another device that may hold events after `cursor`, in the order to read them.
+ * Reading skips a file that ends at or before what was read so far, so a device reads the
+ * small segment files while they are there, and the folded parts only for what is gone.
  */
 export function toImport(names: string[], cursor: string): string[] {
-  const after = segments(names).filter((s) => s.lastId > cursor);
-  const bases = after.filter((s) => s.base);
-  const base = bases[bases.length - 1];
-  const rest = after.filter((s) => !s.base && (!base || s.lastId > base.lastId));
-  return [...(base ? [base] : []), ...rest].map((s) => s.name);
+  return segments(names)
+    .filter((s) => s.lastId > cursor)
+    .map((s) => s.name);
 }
 
-/** Every device of the place, with its name and last sync. */
+/** A file's events, checked against its device and its name. Throws with the reason. */
+function checkFile(
+  file: SegmentFile,
+  dev: string,
+  seg: Segment,
+): { after: string | null; last: string; events: SyncEvent[] } {
+  if (!file || typeof file !== "object") throw new Error("This file is damaged.");
+  if (typeof file.format === "number" && file.format > 2) {
+    throw new NewerFileError("This file was written by a newer Kenning. Update Kenning.");
+  }
+  if (file.device !== dev) throw new Error("This file belongs to another device.");
+  if (!Array.isArray(file.events)) throw new Error("This file is damaged.");
+  const events = file.events.filter(
+    (e): e is SyncEvent => !!e && typeof e === "object" && (e as SyncEvent).deviceId === dev,
+  );
+  if (file.format === 2) {
+    const after = file.after;
+    if (file.last !== seg.lastId || typeof after !== "string" || (after && !isUlid(after))) {
+      throw new Error("This file does not hold what its name says.");
+    }
+    if (after >= seg.lastId || events.some((e) => !(e.id > after && e.id <= seg.lastId))) {
+      throw new Error("This file does not hold what its name says.");
+    }
+    return { after, last: seg.lastId, events };
+  }
+  if (file.format !== 1) throw new Error("This file is damaged.");
+  // The first format: the name is the last event's id; a base holds everything up to it.
+  const last = events[events.length - 1]?.id;
+  if (last !== undefined && last !== seg.lastId) {
+    throw new Error("This file does not hold what its name says.");
+  }
+  return { after: seg.base ? "" : null, last: seg.lastId, events };
+}
+
+/** Every device of the place, with its name and when it last wrote it. */
 export async function listDevices(
   store: SyncStore,
   key: SyncKey,
@@ -223,12 +372,21 @@ export async function listDevices(
 ): Promise<SyncDevice[]> {
   const out: SyncDevice[] = [];
   for (const id of await store.list(DEVICES)) {
-    const bytes = await store.get(`${deviceDir(id)}/device.kev`);
+    if (!DEVICE_ID.test(id)) continue;
+    const path = `${deviceDir(id)}/device.kev`;
+    const bytes = await store.get(path);
     // An empty or foreign folder (some places keep folders whose files are gone) is no device.
     if (!bytes) continue;
     let info = { name: "A device", at: 0 };
     try {
-      info = decode<{ name: string; at: number }>(await unseal(key, bytes));
+      const raw = decode<{ name?: unknown; at?: unknown }>(await unseal(key, bytes, path));
+      info = {
+        name:
+          typeof raw.name === "string" && raw.name.trim()
+            ? raw.name.trim().slice(0, NAME_MAX)
+            : "A device",
+        at: typeof raw.at === "number" && Number.isFinite(raw.at) ? raw.at : 0,
+      };
     } catch {
       // Unreadable: listed without a name.
     }
@@ -254,107 +412,307 @@ export async function syncOnce(
   const state: SyncState =
     saved && saved.vault === vaultId(vault) ? saved : { vault: vaultId(vault), received: {} };
   const me = repo.deviceId;
+  const problems: SyncProblem[] = [];
+  const leaveOut = (p: SyncProblem) => {
+    problems.push(p);
+    const others = (state.problems ?? []).filter((q) => q.what !== p.what);
+    state.problems = [...others, p].slice(-PROBLEMS_KEPT);
+  };
+  const retries = (state.retries ??= {});
 
-  // Send: blobs first, so a device that reads a segment finds what it refers to.
-  const remoteBlobs = new Set(await store.list(BLOBS));
+  // Send: blobs first, so a device that reads a segment finds what it refers to. Blobs known
+  // to be in the place are remembered; the place's blobs are listed only for one that is not.
+  const known = new Set(state.blobs ?? []);
+  let listed: Set<string> | null = null;
+  const segmentBytes = opts.segmentBytes ?? SEGMENT_BYTES;
   let sent = 0;
   for (;;) {
-    const events = await repo.exportEvents(state.sent, opts.segmentEvents ?? SEGMENT_EVENTS);
-    if (events.length === 0) break;
-    progress(`Sending ${sent + events.length} changes`);
-    for (const id of new Set(events.flatMap((e) => blobRefs(e.event)))) {
-      const name = `${await hiddenName(key, id)}.kbl`;
-      if (remoteBlobs.has(name)) continue;
-      const blob = await repo.getBlob(id);
-      if (!blob) continue;
-      await store.put(`${BLOBS}/${name}`, await packBlob(key, blob.type, blob.bytes));
-      remoteBlobs.add(name);
+    const page = await repo.exportEvents(state.sent, opts.segmentEvents ?? SEGMENT_EVENTS);
+    if (page.length === 0) break;
+    let events: SyncEvent[] = [];
+    let bytes = 0;
+    for (const e of page) {
+      const size = jsonBytes(e);
+      if (events.length > 0 && bytes + size > segmentBytes) break;
+      events.push(e);
+      bytes += size;
     }
     const last = events[events.length - 1]!.id;
+    if (bytes > MAX_FILE_BYTES) {
+      // One change bigger than any place takes: an empty file keeps the files in a row.
+      leaveOut({
+        what: last,
+        error: "This change is too big to sync. It stays on this device.",
+        leftOut: true,
+      });
+      events = [];
+    }
+    progress(`Sending ${sent + events.length} changes`);
+    for (const id of new Set(events.flatMap((e) => blobRefs(e.event)))) {
+      if (known.has(id)) continue;
+      const name = `${await hiddenName(key, id)}.kbl`;
+      listed ??= new Set(await store.list(BLOBS));
+      if (!listed.has(name)) {
+        const blob = await repo.getBlob(id);
+        if (!blob) continue;
+        const path = `${BLOBS}/${name}`;
+        const sealed = await packBlob(key, path, blob.type, blob.bytes);
+        if (sealed.length > MAX_FILE_BYTES) continue;
+        await store.put(path, sealed);
+        listed.add(name);
+      }
+      known.add(id);
+    }
+    const path = `${deviceDir(me)}/${last}.kev`;
     await store.put(
-      `${deviceDir(me)}/${last}.kev`,
-      await pack(key, { format: 1, device: me, events }),
+      path,
+      await pack(key, path, { format: 2, device: me, after: state.sent ?? "", last, events }),
     );
     state.sent = last;
+    state.blobs = [...known].slice(-KNOWN_BLOBS);
     sent += events.length;
     await repo.setSyncState(state);
   }
-  await store.put(
-    `${deviceDir(me)}/device.kev`,
-    await seal(key, encode({ name: opts.deviceName, at: now() })),
-  );
+  const name = opts.deviceName.trim().slice(0, NAME_MAX) || "A device";
+  const told = state.announced;
+  if (sent > 0 || !told || told.name !== name || Math.abs(now() - told.at) >= ANNOUNCE_MS) {
+    const path = `${deviceDir(me)}/device.kev`;
+    await store.put(path, await seal(key, encode({ name, at: now() }), path));
+    state.announced = { name, at: now() };
+    await repo.setSyncState(state);
+  }
 
-  // Receive.
+  // Receive: every new file of every device, imported without a replay; one replay at the
+  // end when some events were older than the log's end.
   let received = 0;
-  let rebuilt = false;
-  const missing = new Set(state.missing ?? []);
-  for (const dev of await store.list(DEVICES)) {
-    if (dev === me) continue;
-    const files = toImport(await store.list(deviceDir(dev)), state.received[dev] ?? "");
-    for (const name of files) {
-      const bytes = await store.get(`${deviceDir(dev)}/${name}`);
-      // Folded away since the listing: the base file comes next time.
-      if (!bytes) break;
-      const file = await unpack(key, bytes);
-      if (file.device !== dev) continue;
-      progress(`Receiving ${received + file.events.length} changes`);
-      for (const e of file.events) for (const id of blobRefs(e.event)) missing.add(id);
-      const r = await repo.importEvents(file.events);
-      received += r.added;
-      rebuilt ||= r.rebuilt;
-      state.received[dev] = SEGMENT.exec(name)![1]!;
-      await repo.setSyncState(state);
+  let rebuilt: boolean;
+  const missing = missingOf(state, now());
+  const noteFailed = (failed: { id: string; error: string }[]) => {
+    for (const f of failed) {
+      leaveOut({ what: f.id, error: `A change could not be applied: ${f.error}`, leftOut: true });
     }
+  };
+  try {
+    for (const dev of await store.list(DEVICES)) {
+      if (dev === me || !DEVICE_ID.test(dev)) continue;
+      let cursor = state.received[dev] ?? "";
+      for (const fileName of toImport(await store.list(deviceDir(dev)), cursor)) {
+        const seg = segments([fileName])[0]!;
+        if (seg.lastId <= cursor) continue;
+        const path = `${deviceDir(dev)}/${fileName}`;
+        const bytes = await store.get(path);
+        // Folded away since the listing: what replaced it comes next time.
+        if (!bytes) break;
+        let file: ReturnType<typeof checkFile>;
+        try {
+          file = checkFile(await unpack(key, path, bytes), dev, seg);
+        } catch (err) {
+          if (err instanceof NewerFileError) {
+            problems.push({ what: path, error: err.message, leftOut: false });
+            break;
+          }
+          // Tried again next sync (it may still be arriving); after a few tries, left out.
+          const r = (retries[path] = {
+            error: message(err),
+            tries: (retries[path]?.tries ?? 0) + 1,
+            since: retries[path]?.since ?? now(),
+          });
+          if (r.tries < RETRIES) {
+            problems.push({ what: path, error: r.error, leftOut: false });
+            break;
+          }
+          delete retries[path];
+          leaveOut({ what: path, error: r.error, leftOut: true });
+          cursor = seg.lastId;
+          state.received[dev] = cursor;
+          await repo.setSyncState(state);
+          continue;
+        }
+        if (file.after !== null && file.after > cursor) {
+          // A file before this one has not arrived yet. A later folded part may cover it;
+          // else this one waits, and after a day it is taken anyway.
+          const r = (retries[path] = {
+            error: "Waiting for an earlier file of this device.",
+            tries: (retries[path]?.tries ?? 0) + 1,
+            since: retries[path]?.since ?? now(),
+          });
+          if (r.tries < GAP_TRIES || now() - r.since < GAP_WAIT_MS) continue;
+          leaveOut({
+            what: path,
+            error: "Some changes of this device never arrived; the later ones were taken.",
+            leftOut: true,
+          });
+        }
+        delete retries[path];
+        const events = file.events.filter((e) => e.id > cursor);
+        progress(`Receiving ${received + events.length} changes`);
+        for (const e of events) {
+          for (const id of blobRefs(e.event)) if (!(id in missing)) missing[id] = now();
+        }
+        const r = await repo.importEvents(events, { deferReplay: true });
+        received += r.added;
+        noteFailed(r.failed);
+        cursor = file.last;
+        state.received[dev] = cursor;
+        await repo.setSyncState(state);
+      }
+      // Files waited on that what was read since has passed.
+      for (const path of Object.keys(retries)) {
+        const m = path.startsWith(`${deviceDir(dev)}/`) && SEGMENT.exec(path.split("/").pop()!);
+        if (m && m[1]! <= cursor) delete retries[path];
+      }
+    }
+  } finally {
+    // The one replay of this sync, also when it stopped early.
+    const r = await repo.importEvents([]);
+    rebuilt = r.rebuilt;
+    noteFailed(r.failed);
   }
-  for (const id of [...missing]) {
-    if (await repo.getBlob(id)) {
-      missing.delete(id);
-      continue;
-    }
-    const bytes = await store.get(`${BLOBS}/${await hiddenName(key, id)}.kbl`);
-    if (!bytes) continue;
-    const blob = await unpackBlob(key, bytes);
-    try {
-      if ((await repo.putBlob(blob.bytes, blob.type)) === id) missing.delete(id);
-    } catch {
-      // Not a kind of file this device keeps: left out.
-      missing.delete(id);
-    }
-  }
-  state.missing = [...missing];
+
+  await fetchMissing(repo, store, key, missing, known, now());
+  state.missing = missing;
+  state.blobs = [...known].slice(-KNOWN_BLOBS);
   await repo.setSyncState(state);
 
-  await foldOwn(repo, store, key, progress, opts.foldAfter ?? FOLD_AFTER);
-  return { sent, received, rebuilt, devices: await listDevices(store, key, me) };
+  await foldOwn(repo, store, key, state, progress, {
+    foldAfter: opts.foldAfter ?? FOLD_AFTER,
+    baseBytes: opts.baseBytes ?? BASE_BYTES,
+  });
+  return { sent, received, rebuilt, devices: await listDevices(store, key, me), problems };
+}
+
+/** The missing blobs of the state, without the oldest past the limits. */
+function missingOf(state: SyncState, now: number): Record<string, number> {
+  const raw = state.missing ?? {};
+  const entries: [string, number][] = Array.isArray(raw)
+    ? raw.map((id) => [id, now])
+    : Object.entries(raw);
+  return Object.fromEntries(
+    entries
+      .filter(([id, since]) => isBlobId(id) && now - since < MISSING_MS)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, MISSING_MAX),
+  );
+}
+
+/** Bring in blobs the events referred to; a few hundred per sync. */
+async function fetchMissing(
+  repo: KenningRepository,
+  store: SyncStore,
+  key: SyncKey,
+  missing: Record<string, number>,
+  known: Set<string>,
+  now: number,
+): Promise<void> {
+  let tries = 0;
+  for (const id of Object.keys(missing)) {
+    if (await repo.getBlob(id)) {
+      delete missing[id];
+      continue;
+    }
+    if (++tries > MISSING_PER_SYNC) break;
+    const path = `${BLOBS}/${await hiddenName(key, id)}.kbl`;
+    const bytes = await store.get(path);
+    if (!bytes) continue;
+    try {
+      const blob = await unpackBlob(key, path, bytes);
+      if ((await repo.putBlob(blob.bytes, blob.type)) === id) known.add(id);
+    } catch {
+      // Damaged, or not a kind of file this device keeps: left out.
+    }
+    delete missing[id];
+  }
+  // Ages out what never came.
+  for (const [id, since] of Object.entries(missing)) {
+    if (now - since >= MISSING_MS) delete missing[id];
+  }
 }
 
 /**
- * Past `FOLD_AFTER` segment files, this device's files become one base file (after compacting
- * the log), and the older files go. Devices that already have those events skip them.
+ * Past `foldAfter` segment files, this device's segments since its last folded part become a
+ * few larger parts, and the segments go. The parts before stay as they are, so no device
+ * downloads them again. Parts end where existing files end, so a device that has read up to
+ * any file reads on from there. Only after compaction removed events, and at most every
+ * tenth fold, everything is folded again, so what was removed leaves the place too.
  */
 async function foldOwn(
   repo: KenningRepository,
   store: SyncStore,
   key: SyncKey,
+  state: SyncState,
   progress: (m: string) => void,
-  foldAfter: number,
+  opts: { foldAfter: number; baseBytes: number },
 ): Promise<void> {
   const me = repo.deviceId;
-  const own = segments(await store.list(deviceDir(me)));
-  if (own.length <= foldAfter) return;
+  const dir = deviceDir(me);
+  const own = segments(await store.list(dir));
+  const small = own.filter((s) => !s.base && (!state.sent || s.lastId <= state.sent));
+  if (small.length <= opts.foldAfter) return;
+  // The newest half stays: a device that keeps up reads those, never a folded part.
+  const upTo = small[small.length - 1 - Math.floor(opts.foldAfter / 2)]!.lastId;
   progress("Tidying up the synced files");
-  await repo.compact();
-  const events: SyncEvent[] = [];
-  for (let after: string | undefined; ;) {
-    const page = await repo.exportEvents(after, 10_000);
+  const c = await repo.compact();
+  const compacted = (state.compacted ?? 0) + c.removed + c.emptied;
+  const folds = state.folds ?? 0;
+  const bases = own.filter((s) => s.base);
+  const all = bases.length === 0 || (compacted > 0 && folds % REFOLD_EVERY === 0);
+  const from = all ? "" : bases[bases.length - 1]!.lastId;
+  const bounds = [...new Set(own.map((s) => s.lastId))].filter((id) => id > from && id <= upTo);
+  const end = bounds[bounds.length - 1];
+  if (!end) return;
+
+  const written = new Set<string>();
+  let chunk: SyncEvent[] = [];
+  let bytes = 0;
+  let after = from;
+  let last = "";
+  const flush = async () => {
+    if (!last) return;
+    const name = `${last}.base.kev`;
+    const path = `${dir}/${name}`;
+    await store.put(
+      path,
+      await pack(key, path, { format: 2, device: me, after, last, events: chunk }),
+    );
+    written.add(name);
+    after = last;
+    chunk = [];
+    bytes = 0;
+    last = "";
+  };
+  let b = 0;
+  read: for (let cursor = from; ;) {
+    const page = await repo.exportEvents(cursor, SEGMENT_EVENTS);
     if (page.length === 0) break;
-    events.push(...page);
-    after = page[page.length - 1]!.id;
+    for (const e of page) {
+      if (e.id > end) break read;
+      // Close at file ends once the part is big enough.
+      while (b < bounds.length && bounds[b]! < e.id) {
+        last = bounds[b++]!;
+        if (bytes >= opts.baseBytes) await flush();
+      }
+      const size = jsonBytes(e);
+      // Too big for any place: it was left out when sent.
+      if (size > MAX_FILE_BYTES) continue;
+      if (bytes > 0 && bytes + size > Math.max(BASE_MAX_BYTES, opts.baseBytes * 2)) {
+        const lastEvent = chunk[chunk.length - 1]!.id;
+        last = last > lastEvent ? last : lastEvent;
+        await flush();
+      }
+      chunk.push(e);
+      bytes += size;
+    }
+    cursor = page[page.length - 1]!.id;
   }
-  const last = events[events.length - 1]?.id;
-  if (!last) return;
-  const name = `${last}.base.kev`;
-  await store.put(`${deviceDir(me)}/${name}`, await pack(key, { format: 1, device: me, events }));
-  for (const s of own)
-    if (s.lastId <= last && s.name !== name) await store.remove(`${deviceDir(me)}/${s.name}`);
+  last = end;
+  await flush();
+  // Then the files the parts replace (a part never replaces the parts before it, unless all
+  // were folded again).
+  for (const s of own) {
+    if (written.has(s.name) || s.lastId > end || (s.base && !all)) continue;
+    await store.remove(`${dir}/${s.name}`);
+  }
+  state.folds = folds + 1;
+  state.compacted = all ? 0 : compacted;
+  await repo.setSyncState(state);
 }
