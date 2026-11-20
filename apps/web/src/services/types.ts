@@ -23,6 +23,7 @@ import type { ExamServices } from "./examTypes.js";
 import type { LibraryServices } from "./libraryTypes.js";
 import type { AutoSync, SyncServices } from "./syncTypes.js";
 import type { NativeServices } from "./nativeTypes.js";
+import type { StoryCover } from "./stories.js";
 
 /** Defined in @app/ui (the WordInspector consumes it); re-exported here as part of the contract. */
 export type { InspectorEntry };
@@ -250,6 +251,13 @@ export interface AppServices
    */
   autoSync?(why: AutoSync): Promise<boolean>;
   listTexts(): Promise<TextListItem[]>;
+  /** The graded stories that ship with the app, with the learner's coverage (Library). */
+  storyShelf(): Promise<StoryCover[]>;
+  /**
+   * The Library text of a bundled story: added on first open with its bundled analysis, the
+   * same text on every later open. Returns the text id.
+   */
+  openStory(slug: string): Promise<string>;
   getReading(textId: string): Promise<ReadingView | null>;
   /**
    * Import a text. For a photo or a scanned PDF, `opts.review` is shown the recognised text and

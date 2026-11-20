@@ -323,7 +323,11 @@ export function SideBySide({
       english = (
         <span
           className="k-sbs-en-text"
-          {...(sp.source === "ai" ? { title: "Translated by your AI provider" } : {})}
+          {...(sp.source === "ai"
+            ? { title: "Translated by your AI provider" }
+            : sp.source === "story"
+              ? { title: "The story's own translation" }
+              : {})}
         >
           {renderEnglish(s, sp, structured)}
         </span>

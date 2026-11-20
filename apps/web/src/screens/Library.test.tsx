@@ -112,6 +112,27 @@ const openMenu = async (user: ReturnType<typeof userEvent.setup>, title: string)
 };
 
 describe("Library screen", () => {
+  it("shows the Stories shelf by level and opens a story once", async () => {
+    const { user, history, services } = setup();
+    const a1 = await screen.findByRole("region", { name: /A1 · Start here/ });
+    expect(screen.getByRole("region", { name: /^B2/ })).toBeInTheDocument();
+    const klaas = within(a1).getByRole("button", { name: /Klaas Vaak/ });
+    expect(klaas).toHaveTextContent(/You know \d+%/);
+    await user.click(klaas);
+    await waitFor(() => expect(history.location.pathname).toMatch(/^\/read\//));
+    const first = history.location.pathname;
+    // The reader credits the retelling and gives the licence.
+    expect(await screen.findByText(/The Dutch folk figure Klaas Vaak/)).toHaveTextContent(
+      /About this story:.*CC BY-SA 4\.0/,
+    );
+    // Opening it again finds the same Library text.
+    const again = await services.openStory("klaas-vaak");
+    expect(`/read/${again}`).toBe(first);
+    expect(
+      (await services.listTexts()).filter((t) => t.sourceRef === "story:klaas-vaak"),
+    ).toHaveLength(1);
+  });
+
   it("edits a text's details from the cover menu", async () => {
     const { user } = setup();
     await openMenu(user, "Het weer");
