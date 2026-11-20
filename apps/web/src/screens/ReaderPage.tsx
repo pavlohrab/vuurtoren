@@ -433,6 +433,8 @@ export function ReaderPage({ textId }: { textId: string }) {
     queryFn: () => services.sentencePairs(textId, sentenceList, { ai: englishAI }),
     enabled: side && sentenceList.length > 0,
     staleTime: Infinity,
+    // Without pairs because the language server was not ready: ask again until it answers.
+    refetchInterval: (q) => (q.state.data?.some((p) => p.retry) ? 4000 : false),
   });
   const sentencePairs = useMemo(
     () => new Map((pairsQ.data ?? []).map((p) => [p.sent, p])),

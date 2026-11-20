@@ -123,6 +123,8 @@ export interface SentencePairs {
    * translation that ships with a bundled story.
    */
   source: "offline" | "ai" | "story";
+  /** True when the language server could not be asked (still starting, or down): ask again. */
+  retry?: boolean;
 }
 
 export const DEFAULT_PLANNER: PlannerOptions = {

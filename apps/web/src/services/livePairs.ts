@@ -107,11 +107,13 @@ export function createLivePairs(deps: LivePairsDeps) {
     });
     const sourceOf = (sent: number): SentencePairs["source"] => (story.has(sent) ? "story" : "ai");
     let paired: PairedText[] = [];
+    let failed = false;
     try {
       paired = items.length ? await (await deps.nlp()).pairs(items) : [];
       clearDegraded("translate");
     } catch (e) {
-      // optional: model not fetched (503) or server down
+      // optional: model not fetched (503) or server down (or still starting): asked again later
+      failed = true;
       if (!nlpOutage(e)) reportDegraded("translate", DEGRADED_MESSAGES.translate, e);
     }
     return asked.map((s, k): SentencePairs => {
@@ -125,6 +127,7 @@ export function createLivePairs(deps: LivePairsDeps) {
           englishTokens: given ? englishTokens(given) : [],
           pairs: [],
           source: given ? sourceOf(s.sent) : "offline",
+          ...(failed ? { retry: true } : {}),
         };
       }
       return {

@@ -121,7 +121,13 @@ describe("sentencePairs", () => {
       aiTranslate: async (s) => s.map(() => "Tomorrow I will call."),
     });
     const [b] = await noServer.sentencePairs("t", [1], { ai: true });
-    expect(b).toMatchObject({ english: "Tomorrow I will call.", source: "ai", pairs: [] });
+    expect(b).toMatchObject({
+      english: "Tomorrow I will call.",
+      source: "ai",
+      pairs: [],
+      retry: true,
+    });
+    expect(a?.retry).toBeUndefined();
     expect(b?.englishTokens.map((t) => t.text)).toEqual(["Tomorrow", "I", "will", "call", "."]);
   });
 
