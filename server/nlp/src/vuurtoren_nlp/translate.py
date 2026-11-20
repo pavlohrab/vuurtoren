@@ -144,7 +144,9 @@ def translate_texts(source: str, target: str, texts: list[str]) -> list[dict[str
     """
     if (source, target) not in SUPPORTED_PAIRS:
         raise ServiceError(422, f"Unsupported language pair {source}->{target} (only nl->en).")
-    translations = get_engine().translate(texts)
+    translations = [
+        clean_output(t) for t in get_engine().translate([clean_source(t) for t in texts])
+    ]
     return [
         {"text": t, "translation": tr if plausible(t, tr) else ""}
         for t, tr in zip(texts, translations, strict=True)
@@ -161,6 +163,9 @@ def plausible(source: str, translation: str) -> bool:
         return False
     if len(translation) > 4 * len(source) + 40:
         return False
+    sentences = [x.strip().lower() for x in re.split(r"(?<=[.!?])\s+", translation) if x.strip()]
+    if len(sentences) > len(set(sentences)):
+        return False
     src = {w.lower() for w in _WORD.findall(source)}
     new = [w.lower() for w in _WORD.findall(translation) if w.lower() not in src]
     if len(new) < 3:
@@ -168,6 +173,26 @@ def plausible(source: str, translation: str) -> bool:
     en = sum(zipf_frequency(w, "en") for w in new) / len(new)
     nl = sum(zipf_frequency(w, "nl") for w in new) / len(new)
     return nl <= en + 0.5
+
+
+_LEADING_MARKS = re.compile(r"^[\s\-–—•·*]+")
+_PAUSE_DASH = re.compile(r"(?<=\s)[–—](?=\s)")
+_PADDING = re.compile(r"(?:\s+\.){3,}\s*$")
+
+
+def clean_source(text: str) -> str:
+    """What the model reads, with every character in place (alignment spans stay valid):
+    leading dashes and bullets become spaces, and a dash used as a pause (" – ") a comma.
+    A line that starts with a dash otherwise makes the model invent a sentence."""
+    lead = _LEADING_MARKS.match(text)
+    if lead:
+        text = " " * lead.end() + text[lead.end() :]
+    return _PAUSE_DASH.sub(",", text)
+
+
+def clean_output(translation: str) -> str:
+    """The model's output without the dot padding it sometimes adds (". . . . .")."""
+    return _PADDING.sub(".", translation).strip()
 
 
 _ALIGN_CACHE_SIZE = 256
@@ -205,14 +230,15 @@ def align_texts(
     if (source, target) not in SUPPORTED_PAIRS:
         raise ServiceError(422, f"Unsupported language pair {source}->{target} (only nl->en).")
     words = [text[a:b].strip() for text, spans in items for a, b in spans]
-    results = _attention([text for text, _ in items] + words)
+    results = _attention([clean_source(text) for text, _ in items] + words)
     alone = iter(r.translation for r in results[len(items) :])
     out: list[dict[str, Any]] = []
     for (text, spans), res in zip(items, results[: len(items)], strict=True):
         found_words = []
-        ok = plausible(text, res.translation)
+        translation = clean_output(res.translation)
+        ok = plausible(text, translation)
         for start, end in spans:
-            found = align_word(res, text, start, end) if res.target and ok else None
+            found = align_word(res, clean_source(text), start, end) if res.target and ok else None
             own = next(alone)
             confidence = 0.0
             if found:
@@ -226,9 +252,7 @@ def align_texts(
                     "confidence": confidence,
                 }
             )
-        out.append(
-            {"text": text, "translation": res.translation if ok else "", "words": found_words}
-        )
+        out.append({"text": text, "translation": translation if ok else "", "words": found_words})
     return out
 
 
