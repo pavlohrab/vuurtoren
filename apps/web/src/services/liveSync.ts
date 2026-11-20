@@ -21,7 +21,6 @@ import {
   readVault,
   unlockVault,
   syncOnce,
-  toBase64,
   vaultId,
 } from "@app/db";
 import type { DesktopSync } from "../desktop/bridge.js";
@@ -29,6 +28,7 @@ import { desktopFetch, folderStore } from "../sync/desktopStore.js";
 import { githubStore } from "../sync/githubStore.js";
 import { serverStore } from "../sync/serverStore.js";
 import { webdavStore } from "../sync/webdavStore.js";
+import { forgetSyncKey, loadSyncKey, saveSyncKey } from "../sync/keyStore.js";
 import type { SetUpHow, SyncPlace, SyncServices, SyncStatus } from "./syncTypes.js";
 
 const STORAGE_KEY = "kenning.sync";
@@ -39,17 +39,29 @@ const LEAVE_EVERY_MS = 15_000;
 
 interface Saved {
   place: SyncPlace;
-  /** The 64 key bytes (base64): the passphrase itself is never kept. */
-  key: string;
+  /**
+   * The 64 key bytes (base64), only in settings saved before the key store kept them: moved to
+   * the key store on the next sync. The passphrase itself is never kept.
+   */
+  key?: string;
   deviceName: string;
   last: SyncStatus["last"];
   error: string | null;
   devices: SyncStatus["devices"];
 }
 
+/** Where this device keeps the sync key (the OS keychain, or protected browser storage). */
+export interface SyncKeys {
+  save(raw: Uint8Array): Promise<unknown>;
+  load(): Promise<Uint8Array | null>;
+  forget(): Promise<void>;
+}
+
 export interface LiveSyncDeps {
   /** This device's own log; null on a page of a Kenning server (sync does not apply). */
   repo: KenningRepository | null;
+  /** Where the sync key is kept (default: the key store). */
+  keys?: SyncKeys;
   storage: KeyValueStorage;
   fetch: typeof globalThis.fetch;
   /** The desktop app's file and fetch bridge (folders; places without CORS). */
@@ -104,6 +116,12 @@ async function holdsKenningData(store: SyncStore): Promise<boolean> {
 
 export function createLiveSync(deps: LiveSyncDeps) {
   const now = deps.now ?? Date.now;
+  const keyDeps = { desktop: deps.desktop };
+  const keys: SyncKeys = deps.keys ?? {
+    save: (raw) => saveSyncKey(raw, keyDeps),
+    load: () => loadSyncKey(keyDeps),
+    forget: () => forgetSyncKey(keyDeps),
+  };
   let running: Promise<unknown> | null = null;
   let lastAttempt = 0;
   /** The log's position after the last sync that finished: unchanged means nothing to send. */
@@ -204,7 +222,20 @@ export function createLiveSync(deps: LiveSyncDeps) {
   async function once(onProgress?: (m: string) => void) {
     const saved = read();
     if (!saved) throw new Error("Sync is not set up on this device.");
-    return run(saved, await keyFromRaw(fromBase64(saved.key)), onProgress);
+    let raw = await keys.load();
+    if (!raw && saved.key) {
+      // Settings from before the key store: move the key there and out of local storage.
+      raw = fromBase64(saved.key);
+      await keys.save(raw);
+      const rest = { ...saved };
+      delete rest.key;
+      write(rest);
+      return run(rest, await keyFromRaw(raw), onProgress);
+    }
+    if (!raw) {
+      throw new Error("This device no longer has its sync key. Join again with your passphrase.");
+    }
+    return run(saved, await keyFromRaw(raw), onProgress);
   }
 
   /** The place and its vault and key, after `secret` (passphrase or recovery key) opened it. */
@@ -255,9 +286,9 @@ export function createLiveSync(deps: LiveSyncDeps) {
         const store = storeFor(place);
         onProgress?.(how === "join" ? "Opening your synced data" : "Starting your sync data");
         const { key, recoveryKey } = await connect(store, how, passphrase);
+        await keys.save(key.raw);
         const saved: Saved = {
           place,
-          key: toBase64(key.raw),
           deviceName: deviceName.trim().slice(0, 60) || defaultName(),
           last: null,
           error: null,
@@ -298,6 +329,7 @@ export function createLiveSync(deps: LiveSyncDeps) {
     async stopSync() {
       // After whatever runs (a setup too): nothing turns sync back on behind it.
       await exclusive(async () => {
+        await keys.forget();
         write(null);
         syncedAt = null;
       });

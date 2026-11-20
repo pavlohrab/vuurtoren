@@ -17,6 +17,19 @@ function memStorage(): KeyValueStorage & { m: Map<string, string> } {
   };
 }
 
+/** The key store in memory (the real one uses the OS keychain or IndexedDB). */
+function memKeys() {
+  let raw: Uint8Array | null = null;
+  return {
+    get raw() {
+      return raw;
+    },
+    save: async (r: Uint8Array) => void (raw = r.slice()),
+    load: async () => raw,
+    forget: async () => void (raw = null),
+  };
+}
+
 const PASS = "lange zinnen lezen";
 /** A light Argon2id cost: tests stay fast. */
 const LIGHT = { memoryKiB: 64, iterations: 1, parallelism: 1 };
@@ -25,8 +38,17 @@ async function device(id: string, fetch: typeof globalThis.fetch, clock: { t: nu
   const repo = await createRepository(await createNodeDriver(), { deviceId: id });
   const storage = memStorage();
   const changed = vi.fn();
-  const sync = createLiveSync({ repo, storage, fetch, changed, now: () => clock.t, cost: LIGHT });
-  return { repo, storage, changed, sync };
+  const keys = memKeys();
+  const sync = createLiveSync({
+    repo,
+    storage,
+    fetch,
+    changed,
+    now: () => clock.t,
+    cost: LIGHT,
+    keys,
+  });
+  return { repo, storage, changed, sync, keys };
 }
 
 describe("sync on a device", () => {
@@ -67,6 +89,33 @@ describe("sync on a device", () => {
     expect((await laptop.repo.word("nl", "huis"))?.state).toBe("known");
   });
 
+  it("keeps the key in the key store, moves an old saved key there, and forgets it on stop", async () => {
+    const clock = { t: Date.UTC(2026, 10, 20, 9) };
+    const fetch = fakeServer(new Map(), "ksync_t");
+    const place: SyncPlace = { kind: "server", url: "https://kenning.example", token: "ksync_t" };
+    const laptop = await device("aaaaaaaaaaaa", fetch, clock);
+    await laptop.sync.services.setUpSync(place, "start", PASS, "Laptop");
+    expect(laptop.keys.raw?.length).toBe(64);
+    // The key is not in local storage.
+    const saved = JSON.parse(laptop.storage.m.get("kenning.sync")!) as Record<string, unknown>;
+    expect(saved["key"]).toBeUndefined();
+
+    // Settings from before the key store: the key moves on the next sync.
+    const raw = laptop.keys.raw!;
+    await laptop.keys.forget();
+    laptop.storage.m.set(
+      "kenning.sync",
+      JSON.stringify({ ...saved, key: btoa(String.fromCharCode(...raw)) }),
+    );
+    clock.t += 61_000;
+    await laptop.sync.services.syncNow();
+    expect(laptop.keys.raw).toEqual(raw);
+    expect(JSON.parse(laptop.storage.m.get("kenning.sync")!)["key"]).toBeUndefined();
+
+    await laptop.sync.services.stopSync();
+    expect(laptop.keys.raw).toBeNull();
+  });
+
   it("keeps why a sync failed, and stops without touching the data", async () => {
     const clock = { t: Date.UTC(2026, 10, 20, 9) };
     let up = true;
@@ -91,6 +140,7 @@ describe("sync on a device", () => {
 
   it("is not available on a page of a Kenning server, and folders need the desktop app", async () => {
     const sync = createLiveSync({
+      keys: memKeys(),
       repo: null,
       storage: memStorage(),
       fetch: globalThis.fetch,
