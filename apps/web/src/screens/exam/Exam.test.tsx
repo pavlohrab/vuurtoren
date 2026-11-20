@@ -1,5 +1,5 @@
 import { createMemoryHistory } from "@tanstack/react-router";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { examBank } from "@app/content";
@@ -90,6 +90,15 @@ describe("Multiple-choice sessions", () => {
         passMark: 18,
       }),
     );
+  });
+
+  it("flags Luisteren on the overview and its page without a Dutch voice", async () => {
+    setup("/exam");
+    expect(await screen.findByText("Needs a Dutch voice")).toBeInTheDocument();
+    expect(screen.getByRole("note")).toHaveTextContent(/Listening needs a Dutch voice/);
+    cleanup();
+    setup("/exam/luisteren");
+    expect(await screen.findByRole("note")).toHaveTextContent(/Listening needs a Dutch voice/);
   });
 
   it("Luisteren: falls back to the transcript without a Dutch voice", async () => {

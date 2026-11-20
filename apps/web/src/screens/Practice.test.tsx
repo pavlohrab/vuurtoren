@@ -135,7 +135,7 @@ describe("Practice start view", () => {
     const chip = await screen.findByRole("button", { name: "Listening" });
     await waitFor(() => expect(chip).toHaveAttribute("aria-disabled", "true"));
     expect(chip).toHaveAttribute("aria-pressed", "false");
-    expect(screen.getByText(/no Dutch voice is available/)).toBeInTheDocument();
+    expect(screen.getByRole("note")).toHaveTextContent(/no Dutch voice is installed/);
     await begin(user);
     await waitFor(() => expect(services.startPractice).toHaveBeenCalled());
     const call = vi.mocked(services.startPractice).mock.calls[0]![0]!;

@@ -27,7 +27,8 @@ import { usePageHeader } from "../../shell/ShellContext.js";
 import { McSession } from "./McSession.js";
 import { SpeakingSession } from "./SpeakingSession.js";
 import { WritingSession } from "./WritingSession.js";
-import { useExamAttempts } from "./Exam.js";
+import { NoDutchVoice, useExamAttempts } from "./Exam.js";
+import { useDutchVoice } from "../../practice/speech.js";
 import { pct } from "../../format.js";
 import "./exam.css";
 
@@ -97,6 +98,7 @@ function ExamPartScreen({
 }) {
   const info = examPartInfo(part);
   const navigate = useNavigate();
+  const noVoice = useDutchVoice() === false && part === "luisteren";
   usePageHeader(info.nl, { parent: { label: "Exam", to: "/exam" } });
   const [generated, setGenerated] = useState<{ group: McGroup } | null>(null);
   const exit = () => {
@@ -204,6 +206,7 @@ function ExamPartScreen({
           Pass: {info.passRule}. {info.marking}
         </span>
       </p>
+      {noVoice ? <NoDutchVoice /> : null}
 
       <section aria-labelledby="exam-sets-h">
         <h2 id="exam-sets-h" className="exam-h2">

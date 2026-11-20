@@ -2,6 +2,7 @@
  * Text-to-speech for dictation exercises, via the browser's Web Speech API. Works only when the
  * browser offers a Dutch (nl-*) voice; callers skip dictation otherwise.
  */
+import { useQuery } from "@tanstack/react-query";
 
 function synth(): SpeechSynthesis | null {
   return typeof window !== "undefined" && "speechSynthesis" in window && window.speechSynthesis
@@ -32,6 +33,15 @@ export async function dutchVoiceAvailable(timeoutMs = 1000): Promise<boolean> {
     setTimeout(done, timeoutMs);
   });
   return dutchVoice() !== null;
+}
+
+/** Is a Dutch voice installed? Undefined while the check runs. Asked once per session. */
+export function useDutchVoice(): boolean | undefined {
+  return useQuery({
+    queryKey: ["dutch-voice"],
+    queryFn: () => dutchVoiceAvailable(),
+    staleTime: Infinity,
+  }).data;
 }
 
 /** Speak `text` in Dutch, cancelling anything still playing. No-op without a voice. */

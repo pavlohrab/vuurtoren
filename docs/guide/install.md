@@ -22,6 +22,10 @@ The apps are not signed yet, so your computer may warn you:
 - **macOS:** right-click the app and choose **Open**.
 - **Linux (AppImage):** make the file executable (`chmod +x Kenning*.AppImage`), then run it.
 
+Listening exercises and dictation read Dutch aloud with your system's Dutch voice. Windows and
+macOS can add one in their speech settings; many Linux systems have no Dutch voice, and then
+those exercises are off.
+
 ## The first start
 
 Kenning asks one question: **Do you use Anki?**
