@@ -6,6 +6,7 @@ import {
   type UnitWord,
   profileMode,
   resolveDeck,
+  shortGloss,
   suggestDecks,
 } from "@app/core";
 import type {
@@ -17,24 +18,6 @@ import type {
   LearnNextResult,
 } from "../courseTypes.js";
 import { type CourseContext, unitSentences } from "./context.js";
-
-/** A card-sized gloss: the first two senses without their explanations in brackets. */
-function shortGloss(senses: readonly string[]): string {
-  const clean = senses
-    .map((g) =>
-      g
-        .replace(/\s*\([^)]*\)/g, "")
-        .replace(/\s+/g, " ")
-        .trim(),
-    )
-    .filter(Boolean);
-  const out: string[] = [];
-  for (const g of clean) {
-    if (out.length >= 2 || [...out, g].join("; ").length > 60) break;
-    if (!out.includes(g)) out.push(g);
-  }
-  return out.join("; ") || (clean[0] ?? "").slice(0, 60);
-}
 
 export function createCourseAnki(ctx: CourseContext) {
   const { deps, repo, courseOrThrow, keyOf, wordMap, currentProfile } = ctx;
@@ -214,7 +197,7 @@ export function createCourseAnki(ctx: CourseContext) {
         for (const r of rows) {
           const g = found[r.lemma]?.[0];
           if (!g) continue;
-          if (!r.gloss && g.glosses[0]) r.gloss = shortGloss(g.glosses);
+          if (!r.gloss && g.glosses[0]) r.gloss = shortGloss(g.glosses, 2);
           if (!r.article && g.article && g.article !== "de/het") r.article = g.article;
         }
       } catch {

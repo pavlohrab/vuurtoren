@@ -418,6 +418,6 @@ describe("live word meanings", () => {
     const glosses = await services.glosses(textId, idx);
     expect(glosses[idx[0]!]).toEqual({ text: "scourer", note: "from schuren + -er" });
     expect(glosses[idx[1]!]).toEqual({ text: "bridge", note: "in this sentence" });
-    expect(glosses[idx[2]!]).toEqual({ text: "tuin (dictionary)" });
+    expect(glosses[idx[2]!]).toEqual({ text: "tuin" });
   });
 });

@@ -7,6 +7,7 @@
  * translation of its sentence. Order: derivation ("from woord + -loos"), a confident alignment
  * ("in this sentence"), compound, then a less confident alignment.
  */
+import { shortGloss } from "@app/core";
 import type { KenningRepository, WordInfo } from "@app/db";
 import type { NlpClient } from "@app/nlp-client";
 import { DEGRADED_MESSAGES, clearDegraded, reportDegraded } from "./degraded.js";
@@ -197,7 +198,7 @@ export function createLiveDictionary({ repo, lang, nlp }: LiveDictionaryDeps) {
         clearDegraded("translate");
         for (const it of needDict) {
           const ordered = orderByPos(dict[it.lemma] ?? [], it.pos);
-          const g = ordered.flatMap((e) => e.glosses).find((x) => !FORM_OF.test(x));
+          const g = shortGloss(ordered.flatMap((e) => e.glosses).filter((x) => !FORM_OF.test(x)));
           const note = partsNote(ordered[0]);
           const guess = note ? ordered[0]?.origin : undefined;
           glossCache.set(
