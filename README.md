@@ -45,7 +45,7 @@ is encrypted, and AI is optional, with your own key.
 - Built-in flashcards with FSRS, tuned to your own reviews
 - Anki: import and export `.apkg` files, or keep studying in Anki through AnkiConnect
 - Click any word for its meaning and forms, offline
-- Grammar in your texts: Kenning marks constructions like inversion, separable verbs and the perfect tense in what you read, and can underline one topic at a time
+- Grammar marked in your texts: inversion, separable verbs, the perfect tense and more
 - Practice: meaning, cloze, de/het, separable verbs, perfect tense, word forms, word order, dictation
 - Grammar topics from A1 to C1, with examples from your own texts
 - Courses: study along a textbook you own, unit by unit
