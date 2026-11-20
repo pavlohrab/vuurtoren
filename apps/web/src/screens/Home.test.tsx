@@ -116,7 +116,7 @@ describe("Home", () => {
       "href",
       "/progress",
     );
-    expect(within(words).getByRole("link", { name: "1,892" })).toHaveAttribute(
+    expect(within(words).getByRole("link", { name: "1,904" })).toHaveAttribute(
       "href",
       "/words?state=known",
     );

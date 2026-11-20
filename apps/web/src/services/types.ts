@@ -7,6 +7,7 @@ import type {
   GrammarHit,
   ItemState,
   SegmentPlan,
+  SentencePairs,
   Skill,
   StaircaseState,
   WordState,
@@ -339,6 +340,17 @@ export interface AppServices
    * with the analysis. Rejects when they are not stored and the server cannot be reached.
    */
   textGrammar(textId: string): Promise<GrammarHit[]>;
+  /**
+   * Side by side: the English of the given sentences (`AnalyzedToken.sent`) of a text, with
+   * their word pairs, in the order asked. Offline translation by default; with `ai` (and a
+   * provider set up) the English comes from the provider and is paired by the offline model.
+   * A sentence without English (no model, a rejected translation) has `english` "".
+   */
+  sentencePairs(
+    textId: string,
+    sentences: number[],
+    opts?: { ai?: boolean },
+  ): Promise<SentencePairs[]>;
   /** Hit counts per topic over the Library's analysed texts. */
   grammarOverview(): Promise<GrammarOverview>;
   /** Examples for a topic page: the learner's own texts first, then Tatoeba. */

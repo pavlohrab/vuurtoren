@@ -254,7 +254,7 @@ describe("Library screen", () => {
         within(grid)
           .getAllByRole("link", { name: /^(?!More)/ })
           .map((b) => b.getAttribute("aria-label")),
-      ).toEqual(["Een dag in Utrecht", "Het weer", "Op de markt"]),
+      ).toEqual(["Een dag in Utrecht", "Een regenachtige dag", "Het weer", "Op de markt"]),
     );
   });
 });
