@@ -10,6 +10,9 @@
 #             computers without internet at first start. Tags always build it; "Run workflow"
 #             asks.
 #
+# Releasing: `pnpm release 0.2.0` sets the version everywhere and tags v0.2.0; pushing the tag
+# builds a release. "Run workflow" builds a pre-release `desktop-v<version>` for testing.
+#
 # Secrets/variables (Settings > Secrets and variables > Actions):
 #   TAURI_SIGNING_PRIVATE_KEY           secret: the updater key (not a code-signing certificate)
 #   TAURI_SIGNING_PRIVATE_KEY_PASSWORD  secret, optional: only if the key has a password
@@ -82,8 +85,9 @@ jobs:
           releaseName: Kenning __VERSION__
           releaseBody: Desktop installers (unsigned). The `Kenning_offline_*` files include the language data (no download at first start).
           # Published (not draft) so releases/latest/download/latest.json resolves for the updater.
+          # A manual run is a test build: a pre-release, so it never becomes the latest release.
           releaseDraft: false
-          prerelease: false
+          prerelease: ${{ github.ref_type != 'tag' }}
           uploadUpdaterJson: true
 
   # Same app plus the data pack archives, renamed `Kenning_offline_*` and attached to the same
