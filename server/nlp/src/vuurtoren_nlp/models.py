@@ -257,6 +257,66 @@ class AlignedText(BaseModel):
     words: list[AlignedWord]
 
 
+class PairItem(BaseModel):
+    text: Annotated[str, StringConstraints(max_length=MT_MAX_TEXT_CHARS)]
+    spans: list[tuple[Annotated[int, Field(ge=0)], Annotated[int, Field(ge=0)]]] = Field(
+        max_length=ALIGN_MAX_SPANS
+    )
+    """``[start, end)`` character ranges of the sentence's words, in order."""
+    joins: list[tuple[Annotated[int, Field(ge=0)], Annotated[int, Field(ge=0)]]] = Field(
+        default_factory=list, max_length=ALIGN_MAX_SPANS
+    )
+    """Pairs of word indices (into ``spans``) that are one unit: a separable verb's particle and
+    its verb. They pair with the same English."""
+    translation: Annotated[str, StringConstraints(max_length=MT_MAX_TEXT_CHARS)] | None = None
+    """An English translation to pair with (from an AI provider). Without it the offline model
+    translates the sentence."""
+
+
+class PairRequest(BaseModel):
+    """``POST /translate/pairs``: sentences to translate and pair word by word."""
+
+    source: Literal["nl"]
+    target: Literal["en"]
+    items: list[PairItem] = Field(max_length=MT_MAX_TEXTS)
+
+
+class EnglishToken(BaseModel):
+    start: int
+    end: int
+    text: str
+
+
+class PairedWord(BaseModel):
+    start: int
+    end: int
+    en: list[int]
+    """Indices of the English tokens this word pairs with (empty when unpaired)."""
+    pair: int | None
+    """Index into ``pairs``; the parts of a separable verb share one pair."""
+    confidence: float
+
+
+class WordPair(BaseModel):
+    nl: list[int]
+    """Indices into the request's ``spans``."""
+    en: list[int]
+    """Indices into ``english``."""
+    confidence: float
+    """Mean attention of the English subwords to the Dutch words (0-1)."""
+
+
+class PairedText(BaseModel):
+    text: str
+    translation: str
+    """English; empty when the translation was rejected (then there are no pairs)."""
+    source: Literal["mt", "given"]
+    """``mt``: the offline model's translation; ``given``: the request's translation."""
+    english: list[EnglishToken]
+    words: list[PairedWord]
+    pairs: list[WordPair]
+
+
 # --------------------------------------------------------------------------- practice data
 
 PRACTICE_MAX_LEMMAS = 500
