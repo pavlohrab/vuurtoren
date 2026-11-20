@@ -68,7 +68,7 @@ const MODES = [
   { value: "read", label: "Read" },
   { value: "cloze", label: "Cloze" },
   { value: "gloss", label: "Gloss" },
-  { value: "side", label: "Side by side" },
+  { value: "side", label: "Side by side", short: "Side" },
 ] as const;
 
 /** Elements whose own keyboard handling the reader's global shortcuts must not steal. */

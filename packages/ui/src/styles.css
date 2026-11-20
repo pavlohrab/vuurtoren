@@ -549,6 +549,17 @@ kbd {
   cursor: pointer;
   transition: background var(--dur) var(--ease);
 }
+.k-tabs-short {
+  display: none;
+}
+@media (max-width: 899px) {
+  .k-tabs-long {
+    display: none;
+  }
+  .k-tabs-short {
+    display: inline;
+  }
+}
 .k-tabs-trigger[data-state="active"] {
   background: var(--surface);
   color: var(--ink);
@@ -2147,7 +2158,7 @@ svg.lucide {
   --pair-7: color-mix(in srgb, var(--pair-hue-7) 48%, var(--bg));
   --pair-8: color-mix(in srgb, var(--pair-hue-8) 36%, var(--bg));
   --pair-9: color-mix(in srgb, var(--pair-hue-9) 30%, var(--bg));
-  --pair-active-bg: var(--accent-soft);
+  --pair-active-bg: color-mix(in srgb, var(--accent) 24%, var(--bg));
   --pair-active-line: var(--accent);
   font-family: var(--font-reading);
   font-size: var(--reader-size, 19.5px);
@@ -2253,8 +2264,8 @@ svg.lucide {
   outline: 1.5px solid var(--accent);
   outline-offset: 1px;
 }
-.k-sbs-en-w:hover,
-.k-sbs-w.k-tok:hover {
+.k-sbs-en-w:not([data-active]):hover,
+.k-sbs-w.k-tok:not([data-active]):hover {
   background-color: color-mix(in srgb, var(--ink) 6%, transparent);
 }
 .k-sbs-show,
