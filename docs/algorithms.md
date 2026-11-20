@@ -270,7 +270,7 @@ The words were chosen because the dictionary misses them or the compound splitte
 
 ### 2.6 Offline sentence translation (OPUS-MT)
 
-**What.** A machine translation of the sentence a word appears in. It is shown in the word inspector and saved with a new Anki card as `SentenceTranslation`.
+**What.** A machine translation of the sentence a word appears in. It is shown in the word inspector, saved with a new Anki card as `SentenceTranslation`, and shown beside each sentence in Side by side (section 3.7).
 
 **How** (`server/nlp/src/vuurtoren_nlp/translate.py`): the Helsinki-NLP `opus-mt-nl-en` model, run with CTranslate2 on the CPU, weights stored as int8 (converted from the original Marian release by `scripts/fetch_mt_model.py`), beam size 4. It is a small (about 85 MB, the `mt-nl-en` data pack) neural MT model that runs offline. It is not a chat model and never sees anything but the sentence. The same model gives the meaning of a word the dictionary does not know in its sentence (section 2.4).
 
@@ -439,6 +439,28 @@ Clozes never get a translation from the dial; they show their meaning as a hint 
 - **B** is the new-word budget of the planner, when the New words setting is "auto".
 - **T** is _not_ used by the non-AI planner. It is stored and is used only by the optional AI features: "Simplify this page" rewrites to T, and Converse aims at `max(0.9, T − 0.03)`.
 - Neither value changes which texts you are offered. Text choice is up to you, guided by the coverage band.
+
+### 3.7 Side by side: word pairs
+
+**What.** The Side by side mode shows each sentence of the page with its English. Each Dutch word is paired with the English words it became, so pointing at _bel_ lights up _call_, and pointing at _rained_ lights up _regende_.
+
+**How** (`server/nlp/src/vuurtoren_nlp/pairs.py`, `POST /translate/pairs`). The app sends each sentence, the character spans of its words and the separable-verb links from section 2.3. The server translates the sentence with OPUS-MT (section 2.6) and keeps the decoder attention of the best translation: for every English subword, how much it looked at each Dutch subword.
+
+1. Dutch subwords are placed in the sentence by their characters and belong to the word they overlap. English subwords are placed in the translation the same way. English words are runs of letters and digits; a contraction is a word of its own (_I_ + _'ll_).
+2. The two parts of a split separable verb form one group: _bel … op_ pairs with _call_ as one unit, and pointing at either part lights up both.
+3. Each English subword points at the Dutch subword it attends to most. An English word belongs to the Dutch group most of its subwords point at. Punctuation is not paired.
+4. A pair is one Dutch group with all the English words that belong to it. Its confidence is the mean attention those English subwords give to the group (0–1). Pairs below 0.4 are dropped.
+5. A translation that fails the existing checks (`clean_source`, `clean_output`, `plausible` in `translate.py`: Dutch again, far too long, repeated sentences) is dropped: the sentence has no English and no pairs.
+
+Results are cached per sentence on the server (256 sentences) and per page in the app.
+
+**English from an AI provider.** With a provider set up and "English from AI" on (Aa menu), the provider translates the page's sentences (one numbered list per request) and the server pairs that English instead of its own: the given English is the decoder's forced prefix (CTranslate2 `target_prefix`), so the attention is the model reading that exact English. When the provider fails, the offline English is used; when the server is down, the AI English shows without pairs. The offline model stays the default and works without AI.
+
+**Which sentences show their English.** Always; only hard sentences (coverage below 0.85, as in section 3.3, over the sentence's counted words; the default); or Tap to show (a "Show English" button per sentence).
+
+**Structure view.** Every pair gets its own colour on both sides, and one note on the word order when the grammar detectors (section 5) found it in the sentence, in this order of preference: verb at the end after a subordinator, verb at the end of a relative clause, a split separable verb, a participle at the end (perfect tense), verb second (inversion) (`wordOrderNote` in `packages/core/src/reading/grammar.ts`).
+
+**Limits.** Attention is a soft signal, not a dictionary. Small function words (_the_, _to_, _will_) often attend to a neighbour and join its pair; an English particle may land on the wrong word (_ring **up** my mother_: _up_ goes with _mijn_). A Dutch word that no English word attends to stays unpaired (_er_, the _ge-_ participle when the model translated _heb gelezen_ as one verb). Idioms pair word by word, which can look odd. With AI English, the pairs are as good as the offline model's reading of a translation it did not write. On hand-checked sentences the pairs above 0.4 are mostly right; there is no measured accuracy yet.
 
 ---
 
@@ -633,7 +655,7 @@ spaCy attached `op` to `bel` as a particle, so rule 2.3(a) joined them into `opb
 
 Everything above (deck detection, the learner model, lemmatisation, separable verbs, derivation and compound glosses, meanings read off the sentence translation, the dictionary, offline sentence translation, OCR and cleanup, the reading planner, clozes, the staircase, practice scheduling and exercises, distractors, grammar detection, Anki writes, and native reviews with their tuning) runs **without any AI provider or API key**. The two models involved (spaCy and OPUS-MT) are small, local and deterministic for a given input. They never generate free text about you or for you.
 
-AI features are opt-in extras, hidden until you configure a provider: Converse, Explain this sentence and Simplify this page. See [ai.md](ai.md) for what they do, which providers work and what is sent.
+AI features are opt-in extras, hidden until you configure a provider: Converse, Explain this sentence, Simplify this page and the English of Side by side (its word pairs still come from the offline model, section 3.7). See [ai.md](ai.md) for what they do, which providers work and what is sent.
 
 ---
 

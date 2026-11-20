@@ -4,7 +4,8 @@ Without AI everything else works. With a provider set you also get:
 
 - **Talk**: a short chat in Dutch that stays within the words you know, corrects your messages and
   offers new words to add.
-- **Explain this sentence** and **Simplify this page** in the reader.
+- **Explain this sentence** and **Simplify this page** in the reader, and the English of **Side by
+  side** when "English from AI" is on (the word pairs still come from the offline model).
 - **Write a story** (Add text, a grammar topic, a course unit): a text at your level, saved to
   the Library.
 - **Fill gaps with AI sentences** in Practice, and **Generate exercises like this unit** in a course.
@@ -44,7 +45,8 @@ small models. Settings shows a local monthly tally; set a hard limit with your p
   An optional passphrase encrypts it (AES-GCM, PBKDF2 250,000 iterations).
 - Sent to the provider: the topic, target words, a grammar point, your vocabulary estimate and
   200–400 known lemmas. Some features also send the text they work on: **Explain this sentence**
-  sends the sentence, **Simplify this page** sends the page, Talk sends your messages, and exam
+  sends the sentence, **Simplify this page** sends the page, Side by side with "English from AI"
+  sends the sentences of the page, Talk sends your messages, and exam
   feedback sends your answers. Nothing else from your Library, no Anki content and no
   identifiers.
 - Conversations, stories and generated sentences are saved in your data, so backups include them.

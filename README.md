@@ -45,6 +45,7 @@ through unfamiliar water, and that is what I want this app to do for a text.
 ## Features
 
 - Reading at your level: Read, Cloze and Gloss modes, with a set number of new words per page
+- Side by side: each sentence with its English, word paired with word, and a structure view
 - Import from a web address, PDF, photo (OCR) or pasted text
 - Built-in flashcards with FSRS, tuned to your own reviews
 - Anki: import and export `.apkg` files, or keep studying in Anki through AnkiConnect
