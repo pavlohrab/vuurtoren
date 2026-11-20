@@ -48,16 +48,33 @@ pub fn save(key: &str, file: &Path) -> Result<Kept, String> {
     Ok(Kept::File)
 }
 
-/// The kept key, or None when there is none.
+/// The kept key, or None when there is none. A keychain that fails (locked, access refused)
+/// is an error, unless the fallback file holds the key.
 pub fn load(file: &Path) -> Result<Option<String>, String> {
-    // Otherwise (no keychain entry, or no keychain at all) the file may hold it.
-    if let Ok(key) = entry().and_then(|e| e.get_password()) {
+    let keychain = entry().and_then(|e| e.get_password());
+    if let Ok(key) = keychain {
         return Ok(Some(key));
     }
-    match std::fs::read_to_string(file) {
-        Ok(key) => Ok(Some(key.trim().to_string()).filter(|k| !k.is_empty())),
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(None),
-        Err(e) => Err(format!("Could not read the sync key: {e}")),
+    let from_file = match std::fs::read_to_string(file) {
+        Ok(key) => Some(key.trim().to_string()).filter(|k| !k.is_empty()),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => None,
+        Err(e) => return Err(format!("Could not read the sync key: {e}")),
+    };
+    keychain_answer(keychain, from_file)
+}
+
+/// What `load` answers from the keychain's failure and the fallback file.
+fn keychain_answer(
+    keychain: Result<String, keyring::Error>,
+    from_file: Option<String>,
+) -> Result<Option<String>, String> {
+    match (keychain, from_file) {
+        (Ok(key), _) => Ok(Some(key)),
+        (_, Some(key)) => Ok(Some(key)),
+        (Err(keyring::Error::NoEntry), None) => Ok(None),
+        (Err(e), None) => Err(format!(
+            "The system keychain did not give Kenning its sync key ({e}). Unlock the keychain, then sync again."
+        )),
     }
 }
 
@@ -130,6 +147,29 @@ mod tests {
             .map(|e| e.unwrap().file_name())
             .collect();
         assert_eq!(names, vec![std::ffi::OsString::from(KEY_FILE)]);
+    }
+
+    #[test]
+    fn a_failing_keychain_is_an_error_not_a_missing_key() {
+        let key = || Some("A".repeat(88));
+        assert_eq!(
+            keychain_answer(Err(keyring::Error::NoEntry), None),
+            Ok(None)
+        );
+        assert_eq!(
+            keychain_answer(Err(keyring::Error::NoEntry), key()),
+            Ok(key())
+        );
+        let locked = keychain_answer(Err(keyring::Error::NoStorageAccess("locked".into())), None);
+        assert!(locked.unwrap_err().contains("keychain"));
+        // No keychain on this system: the key is in the file.
+        assert_eq!(
+            keychain_answer(
+                Err(keyring::Error::PlatformFailure("no service".into())),
+                key()
+            ),
+            Ok(key())
+        );
     }
 
     #[test]
