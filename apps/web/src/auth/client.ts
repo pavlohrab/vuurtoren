@@ -39,7 +39,7 @@ const ambientFetch: FetchLike = (...args) => globalThis.fetch(...args);
 const JSON_POST = (body: unknown): RequestInit => ({
   method: "POST",
   credentials: "same-origin",
-  headers: { "content-type": "application/json", "x-kenning": "1" },
+  headers: { "content-type": "application/json", "x-vuurtoren": "1" },
   body: JSON.stringify(body),
 });
 
@@ -112,7 +112,7 @@ export function createAuthClient(
           kind: "refused",
           message:
             (await errorText(res)) ??
-            "The server refused the request. If you use a proxy, see KENNING_ALLOWED_ORIGINS.",
+            "The server refused the request. If you use a proxy, see VUURTOREN_ALLOWED_ORIGINS.",
         };
       }
       return {

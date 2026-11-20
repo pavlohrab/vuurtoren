@@ -61,7 +61,7 @@ export interface GrammarTopic {
   order?: number;
   /** Lines of the `### Pattern` box in the Explanation (Markdown), empty if there is none. */
   pattern: string[];
-  /** Detector topic ids (server `kenning_nlp.grammar.TOPICS`) whose hits belong to this page. */
+  /** Detector topic ids (server `vuurtoren_nlp.grammar.TOPICS`) whose hits belong to this page. */
   detects: string[];
   /** Exercise kinds (`ExerciseKind` in @app/core) that train this topic. */
   practice: string[];

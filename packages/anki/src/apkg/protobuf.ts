@@ -1,5 +1,5 @@
 /**
- * A small Protocol Buffers reader: enough to read the few fields Kenning needs from the
+ * A small Protocol Buffers reader: enough to read the few fields Vuurtoren needs from the
  * note type, template, deck and deck-options blobs and the media list of an Anki package.
  */
 

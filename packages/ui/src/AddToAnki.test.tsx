@@ -5,14 +5,14 @@ import { describe, expect, it, vi } from "vitest";
 import { AddToAnki, type DeckOption, deckName } from "./AddToAnki.js";
 
 const options: DeckOption[] = [
-  { deck: "Kenning::Nederlands::Reading", group: "kenning", hint: "Reading" },
-  { deck: "Kenning::Nederlands", group: "kenning", hint: "Default" },
-  { deck: "Kenning::Nederlands::Boek::Les 1", group: "course", hint: "Les 1" },
+  { deck: "Vuurtoren::Nederlands::Reading", group: "vuurtoren", hint: "Reading" },
+  { deck: "Vuurtoren::Nederlands", group: "vuurtoren", hint: "Default" },
+  { deck: "Vuurtoren::Nederlands::Boek::Les 1", group: "course", hint: "Les 1" },
   { deck: "Dutch 5000", group: "anki" },
 ];
 
 function Harness({ onAdd }: { onAdd: (deck: string) => void }) {
-  const [deck, setDeck] = useState("Kenning::Nederlands::Reading");
+  const [deck, setDeck] = useState("Vuurtoren::Nederlands::Reading");
   return (
     <AddToAnki deck={deck} options={options} onDeckChange={setDeck} onAdd={() => onAdd(deck)} />
   );
@@ -26,7 +26,7 @@ describe("AddToAnki", () => {
     expect(main).not.toHaveTextContent("Reading");
     expect(screen.getByRole("button", { name: "Choose the deck (now Reading)" })).toBeVisible();
     await userEvent.click(main);
-    expect(onAdd).toHaveBeenCalledWith("Kenning::Nederlands::Reading");
+    expect(onAdd).toHaveBeenCalledWith("Vuurtoren::Nederlands::Reading");
   });
 
   it("picks another deck from the grouped list", async () => {
@@ -34,7 +34,7 @@ describe("AddToAnki", () => {
     render(<Harness onAdd={onAdd} />);
     await userEvent.click(screen.getByRole("button", { name: /Choose the deck/ }));
     expect(screen.getByRole("group", { name: "Course decks" })).toBeInTheDocument();
-    expect(screen.getByRole("option", { name: /Kenning::Nederlands::Reading/ })).toHaveAttribute(
+    expect(screen.getByRole("option", { name: /Vuurtoren::Nederlands::Reading/ })).toHaveAttribute(
       "aria-selected",
       "true",
     );
@@ -50,18 +50,20 @@ describe("AddToAnki", () => {
     await userEvent.click(screen.getByRole("button", { name: /Choose the deck/ }));
     await userEvent.click(screen.getByRole("button", { name: /New deck/ }));
     const input = screen.getByRole("textbox", { name: "New deck name" });
-    expect(input).toHaveValue("Kenning::Nederlands::");
+    expect(input).toHaveValue("Vuurtoren::Nederlands::");
     await userEvent.type(input, "Podcasts{Enter}");
     await userEvent.click(screen.getByRole("button", { name: "Add to Anki" }));
-    expect(onAdd).toHaveBeenCalledWith("Kenning::Nederlands::Podcasts");
+    expect(onAdd).toHaveBeenCalledWith("Vuurtoren::Nederlands::Podcasts");
   });
 
   it("works as a picker only and shortens deep names", async () => {
     const onDeckChange = vi.fn();
-    render(<AddToAnki deck="Kenning::Nederlands" options={options} onDeckChange={onDeckChange} />);
+    render(
+      <AddToAnki deck="Vuurtoren::Nederlands" options={options} onDeckChange={onDeckChange} />,
+    );
     await userEvent.click(screen.getByRole("button", { name: "Add to Nederlands" }));
     await userEvent.click(screen.getByRole("option", { name: /Les 1/ }));
-    expect(onDeckChange).toHaveBeenCalledWith("Kenning::Nederlands::Boek::Les 1");
+    expect(onDeckChange).toHaveBeenCalledWith("Vuurtoren::Nederlands::Boek::Les 1");
     expect(deckName("A::B::C::D")).toBe("D");
   });
 });

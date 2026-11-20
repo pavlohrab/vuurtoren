@@ -7,9 +7,9 @@ import { AnkiConnectError, type AnkiConnectClient, type CardInfo } from "./clien
 import { type NewWordNote, addWordNote } from "./note.js";
 
 /** Tag put on notes whose cards were moved to the front of the new queue. */
-export const TAG_READING = "kenning::reading";
+export const TAG_READING = "vuurtoren::reading";
 /** Tag put on notes whose cards were marked known from the app. */
-export const TAG_KNOWN = "kenning::known";
+export const TAG_KNOWN = "vuurtoren::known";
 /** Anki's day syntax: "21-35!" sets the interval (not just the due date) to 21–35 days. */
 export const KNOWN_DUE_DATE = "21-35!";
 export type CardType = "new" | "learning" | "review" | "relearning";
@@ -136,7 +136,7 @@ const notesOf = (cards: CardInfo[]): number[] => [...new Set(cards.map((c) => c.
 
 /**
  * "Learn next": move the new cards among `cardIds` to the front of their deck's new queue,
- * unsuspending suspended ones, and tag their notes `kenning::reading`. Cards that are not
+ * unsuspending suspended ones, and tag their notes `vuurtoren::reading`. Cards that are not
  * new are ignored. Never shifts existing cards (that would force a full sync).
  *
  * @returns ids of the cards that were repositioned and of those that were unsuspended.
@@ -172,7 +172,7 @@ export async function learnNext(
 
 /**
  * "Mark known": give every card an interval of 21–35 days (so it reads back as mature),
- * unsuspend suspended ones and tag their notes `kenning::known`. Works on cards in any state;
+ * unsuspend suspended ones and tag their notes `vuurtoren::known`. Works on cards in any state;
  * it is the user's explicit statement that they know the word.
  *
  * @returns ids of the cards that were updated.
@@ -192,7 +192,7 @@ export async function markKnownInAnki(
 }
 
 /**
- * Mark known a word that is not in Anki yet: add the note (Kenning deck, Kenning Word type;
+ * Mark known a word that is not in Anki yet: add the note (Vuurtoren deck, Vuurtoren Word type;
  * an existing identical note is reused) and then mark its new card(s) known.
  */
 export async function addNoteAsKnown(

@@ -127,7 +127,7 @@ export interface LearnerSummary {
   vocabEstimate: number;
   lastSync: number | null;
   sources: string[];
-  /** Native mode: Kenning's own cards are the record (no Anki sync involved). */
+  /** Native mode: Vuurtoren's own cards are the record (no Anki sync involved). */
   native?: boolean;
 }
 

@@ -48,7 +48,7 @@ const SECTIONS: { id: SectionId; label: string; hint: string; icon: ReactNode }[
   {
     id: "language",
     label: "Language & decks",
-    hint: "Anki, the decks Kenning reads and where new words go.",
+    hint: "Anki, the decks Vuurtoren reads and where new words go.",
     icon: <Languages size={18} />,
   },
   {

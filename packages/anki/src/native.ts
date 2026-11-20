@@ -1,6 +1,6 @@
 /**
  * The word commands in native mode, next to their Anki versions: Add to my words, Mark known
- * and Study first act on the cards Kenning holds, and record their events. `addWord`,
+ * and Study first act on the cards Vuurtoren holds, and record their events. `addWord`,
  * `markKnown` and `studyFirst` pick the right one for the profile's mode, so every caller
  * (reader, Words, Talk, courses, MCP) goes through one command layer.
  */
@@ -32,9 +32,9 @@ import {
   addWordToAnki,
 } from "./profile.js";
 
-/** Kenning's own vocabulary note type in native mode (the same fields as in Anki). */
-export const KENNING_NOTETYPE: NativeNotetype = {
-  id: "kenning-word",
+/** Vuurtoren's own vocabulary note type in native mode (the same fields as in Anki). */
+export const VUURTOREN_NOTETYPE: NativeNotetype = {
+  id: "vuurtoren-word",
   name: NOTE_TYPE,
   kind: "standard",
   fields: [...NOTE_FIELDS],
@@ -52,7 +52,7 @@ export const KENNING_NOTETYPE: NativeNotetype = {
 export interface NativeWordAddedEvent {
   type: "NativeNotesAdded";
   lang: string;
-  origin: "kenning";
+  origin: "vuurtoren";
   notetypes: NativeNotetype[];
   decks: { name: string; options: typeof DEFAULT_DECK_OPTIONS }[];
   notes: NativeNote[];
@@ -79,7 +79,7 @@ export function nextNativeId(now: number = Date.now()): number {
   return lastId;
 }
 
-/** Add to my words: a note of Kenning's type with one card, in the profile's deck. */
+/** Add to my words: a note of Vuurtoren's type with one card, in the profile's deck. */
 export async function addWordToMyWords(
   record: RecordEvent<NativeWordAddedEvent>,
   req: AddWordRequest,
@@ -95,7 +95,7 @@ export async function addWordToMyWords(
   const gloss = req.gloss?.trim() ?? "";
   const note: NativeNote = {
     id: noteId,
-    notetypeId: KENNING_NOTETYPE.id,
+    notetypeId: VUURTOREN_NOTETYPE.id,
     fields: [
       escapeHtml(word),
       escapeHtml(gloss),
@@ -103,7 +103,7 @@ export async function addWordToMyWords(
       escapeHtml(req.sentenceTranslation ?? ""),
       escapeHtml(req.source ?? ""),
     ],
-    tags: ["kenning", ...noteTags(profile, req.context.source, req.extraTags)],
+    tags: ["vuurtoren", ...noteTags(profile, req.context.source, req.extraTags)],
     key,
     ...(gloss ? { gloss } : {}),
   };
@@ -115,8 +115,8 @@ export async function addWordToMyWords(
   await record({
     type: "NativeNotesAdded",
     lang: profile.lang,
-    origin: "kenning",
-    notetypes: [KENNING_NOTETYPE],
+    origin: "vuurtoren",
+    notetypes: [VUURTOREN_NOTETYPE],
     decks: [{ name: deck, options: DEFAULT_DECK_OPTIONS }],
     notes: [note],
     cards: [card],

@@ -33,7 +33,7 @@ const cont = () => screen.getByRole("button", { name: "Continue" });
 describe("onboarding", () => {
   it("a new learner confirms suggested decks and chooses where new words go", async () => {
     const { user, history, saveLanguageProfile } = setup();
-    expect(await screen.findByRole("heading", { name: "Welcome to Kenning" })).toBeVisible();
+    expect(await screen.findByRole("heading", { name: "Welcome to Vuurtoren" })).toBeVisible();
     expect(history.location.pathname).toBe("/welcome");
     // One language: no language step; the first question is under the welcome text.
     expect(screen.queryByRole("radio", { name: /Nederlands/ })).toBeNull();
@@ -50,14 +50,14 @@ describe("onboarding", () => {
     expect(await screen.findByRole("heading", { name: "Your Anki cards" })).toBeVisible();
     expect(parts()).toHaveLength(3);
     await user.click(screen.getByRole("radio", { name: /Keep using Anki/ }));
-    expect(screen.getByText(/Anki must be open for Kenning to send words to it/)).toBeVisible();
+    expect(screen.getByText(/Anki must be open for Vuurtoren to send words to it/)).toBeVisible();
     await user.click(cont());
 
     expect(await screen.findByRole("heading", { name: "Connect Anki" })).toBeVisible();
     expect(await screen.findByText(/Connected/)).toBeVisible();
     await user.click(cont());
 
-    expect(await screen.findByRole("heading", { name: "Decks Kenning reads" })).toBeVisible();
+    expect(await screen.findByRole("heading", { name: "Decks Vuurtoren reads" })).toBeVisible();
     const core = await screen.findByRole("checkbox", { name: /Dutch::Core 2k/ });
     expect(core).toBeChecked();
     expect(screen.getByRole("checkbox", { name: /Opmaat::Thema 01/ })).not.toBeChecked();
@@ -67,7 +67,7 @@ describe("onboarding", () => {
     await user.click(cont());
 
     expect(await screen.findByRole("heading", { name: "Where new words go" })).toBeVisible();
-    expect(screen.getByLabelText("Default deck")).toHaveValue("Kenning::Nederlands");
+    expect(screen.getByLabelText("Default deck")).toHaveValue("Vuurtoren::Nederlands");
     await user.click(screen.getByRole("radio", { name: "One deck per course" }));
     await user.click(screen.getByRole("button", { name: "Save and continue" }));
 
@@ -80,7 +80,7 @@ describe("onboarding", () => {
       modelName: "Basic (and reversed card)",
       wordField: "Front",
     });
-    expect(p.destinations.reading).toBe("Kenning::Nederlands::Reading");
+    expect(p.destinations.reading).toBe("Vuurtoren::Nederlands::Reading");
     expect(p.courseDecks).toBe("course");
     expect(p.tags).toEqual(["nl"]);
     expect(p.mode).toBe("connected");
@@ -105,7 +105,7 @@ describe("onboarding", () => {
     expect(screen.getByRole("button", { name: "Check again" })).toBeVisible();
     await user.click(screen.getByRole("button", { name: "Continue without Anki" }));
 
-    expect(await screen.findByText(/Kenning starts fresh/)).toBeVisible();
+    expect(await screen.findByText(/Vuurtoren starts fresh/)).toBeVisible();
     expect(suggestDecks).not.toHaveBeenCalled();
     await user.click(cont());
     await user.click(await screen.findByRole("button", { name: "Save and continue" }));
@@ -119,7 +119,7 @@ describe("onboarding", () => {
     expect(await screen.findByRole("heading", { name: "Your first text" })).toBeVisible();
   });
 
-  it("no Anki: Kenning holds the cards, no Anki steps", async () => {
+  it("no Anki: Vuurtoren holds the cards, no Anki steps", async () => {
     const ankiStatus = vi.fn(async () => ({ connected: true, state: "connected" as const }));
     const { user, saveLanguageProfile } = setup({ ankiStatus });
     await user.click(await screen.findByRole("radio", { name: /^No/ }));
@@ -132,7 +132,7 @@ describe("onboarding", () => {
     expect(ankiStatus).not.toHaveBeenCalled();
   });
 
-  it("import from Anki: confirmed decks are moved into Kenning", async () => {
+  it("import from Anki: confirmed decks are moved into Vuurtoren", async () => {
     const moveFromAnki = vi.fn(async () => ({
       notes: 10,
       cards: 20,
@@ -145,7 +145,7 @@ describe("onboarding", () => {
     await user.click(await screen.findByRole("radio", { name: /^Yes/ }));
     await user.click(cont());
     expect(
-      await screen.findByRole("radio", { name: /Import from Anki and use Kenning/ }),
+      await screen.findByRole("radio", { name: /Import from Anki and use Vuurtoren/ }),
     ).toBeChecked();
     await user.click(cont());
     expect(await screen.findByText(/Connected/)).toBeVisible();
@@ -163,12 +163,12 @@ describe("onboarding", () => {
   });
 
   it("resumes at the saved step and can be skipped", async () => {
-    localStorage.setItem("kenning.onboarding", JSON.stringify({ step: "anki" }));
+    localStorage.setItem("vuurtoren.onboarding", JSON.stringify({ step: "anki" }));
     const { user, history } = setup();
     expect(await screen.findByRole("heading", { name: "Connect Anki" })).toBeVisible();
     await user.click(screen.getByRole("button", { name: "Skip setup for now" }));
     await waitFor(() => expect(history.location.pathname).toBe("/library"));
-    expect(localStorage.getItem("kenning.onboarding.skipped")).toBe("1");
+    expect(localStorage.getItem("vuurtoren.onboarding.skipped")).toBe("1");
   });
 
   it("is never shown in demo mode or once a profile exists", async () => {

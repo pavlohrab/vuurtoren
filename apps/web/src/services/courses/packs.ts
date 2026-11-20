@@ -40,7 +40,7 @@ export function createCoursePacks(ctx: CourseContext, importer: CourseImport) {
     const pack = buildCoursePack(
       { course: plain, units, blocks: await repo.courseBlocks(courseId), exercises, words },
       mode,
-      { now: clock(), meta: { generator: "Kenning" } },
+      { now: clock(), meta: { generator: "Vuurtoren" } },
     );
     return { fileName: packFileName(course.title, mode), json: JSON.stringify(pack, null, 1) };
   }

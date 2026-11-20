@@ -1,5 +1,5 @@
 /**
- * From an Anki collection (read from a package file or from AnkiConnect) to Kenning's own cards:
+ * From an Anki collection (read from a package file or from AnkiConnect) to Vuurtoren's own cards:
  * the chosen decks' notes, cards and review history, with vocabulary fields detected the same
  * way as in connected mode and every reviewed card's memory rebuilt by replaying its history.
  * Notes and cards keep their Anki ids.
@@ -96,7 +96,7 @@ export interface NativeImport {
 
 const KIND = ["learn", "review", "relearn", "filtered"] as const;
 
-/** A review-log entry as a Kenning review. Manual changes carry rating 0. */
+/** A review-log entry as a Vuurtoren review. Manual changes carry rating 0. */
 export function toCardReview(r: AnkiReviewData): CardReview {
   const answered = r.ease >= 1 && r.ease <= 4 && r.type <= 3;
   return {

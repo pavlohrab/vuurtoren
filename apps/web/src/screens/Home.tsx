@@ -874,10 +874,10 @@ function Welcome({ hello }: { hello: string }) {
   const native = useNativeMode();
   return (
     <div className="page page--read home home-welcome">
-      <Logo variant="mark" size={48} title="Kenning" />
+      <Logo variant="mark" size={48} title="Vuurtoren" />
       <PageHeader
         title={hello}
-        lede="Kenning helps you read Dutch with the words you already know. Two steps to start:"
+        lede="Vuurtoren helps you read Dutch with the words you already know. Two steps to start:"
       />
       <ol className="k-list">
         <li>
@@ -894,7 +894,9 @@ function Welcome({ hello }: { hello: string }) {
               ) : (
                 <>
                   <span className="k-row-title">Connect Anki</span>
-                  <span className="k-row-hint">Your decks tell Kenning which words you know.</span>
+                  <span className="k-row-hint">
+                    Your decks tell Vuurtoren which words you know.
+                  </span>
                 </>
               )}
             </span>

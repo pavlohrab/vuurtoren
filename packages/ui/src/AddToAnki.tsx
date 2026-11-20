@@ -7,8 +7,8 @@ import { useNativeMode } from "./mode.js";
 /** One deck the picker offers. */
 export interface DeckOption {
   deck: string;
-  /** Kenning's destination decks, decks mapped to course units, or any other Anki deck. */
-  group: "kenning" | "course" | "anki";
+  /** Vuurtoren's destination decks, decks mapped to course units, or any other Anki deck. */
+  group: "vuurtoren" | "course" | "anki";
   /** Short note, e.g. "Reading" or the unit a course deck belongs to. */
   hint?: string;
 }
@@ -31,24 +31,24 @@ export interface AddToAnkiProps {
   subject?: string;
   variant?: "primary" | "secondary";
   size?: "md" | "sm";
-  /** Native mode: Kenning's own decks, worded without Anki. */
+  /** Native mode: Vuurtoren's own decks, worded without Anki. */
   native?: boolean;
 }
 
 const GROUPS: { id: DeckOption["group"]; title: string }[] = [
-  { id: "kenning", title: "Kenning decks" },
+  { id: "vuurtoren", title: "Vuurtoren decks" },
   { id: "course", title: "Course decks" },
   { id: "anki", title: "Other Anki decks" },
 ];
 
-/** The deck's own name, its last level: "Kenning::Nederlands::Reading" -> "Reading". */
+/** The deck's own name, its last level: "Vuurtoren::Nederlands::Reading" -> "Reading". */
 export function deckName(deck: string): string {
   return deck.split("::").at(-1)?.trim() || deck;
 }
 
 /**
  * The one Add to Anki control: a plain main button and a menu that shows where the word goes
- * and lets the learner pick another deck (Kenning's decks, course decks, any Anki deck, or a
+ * and lets the learner pick another deck (Vuurtoren's decks, course decks, any Anki deck, or a
  * new deck) before adding.
  */
 export function AddToAnki({
@@ -83,7 +83,7 @@ export function AddToAnki({
   };
   const seen = new Set<string>();
   const unique = options.filter((o) => (seen.has(o.deck) ? false : (seen.add(o.deck), true)));
-  if (!seen.has(deck)) unique.unshift({ deck, group: "kenning" });
+  if (!seen.has(deck)) unique.unshift({ deck, group: "vuurtoren" });
 
   const picker = (
     <RPopover.Root
@@ -147,7 +147,7 @@ export function AddToAnki({
               <input
                 className="k-input"
                 aria-label="New deck name"
-                placeholder="Kenning::Nederlands::…"
+                placeholder="Vuurtoren::Nederlands::…"
                 value={name}
                 autoFocus
                 onChange={(e) => setName(e.target.value)}

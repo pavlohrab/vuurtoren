@@ -5,7 +5,7 @@
 import { escapeHtml } from "@app/core";
 import { AnkiConnectError, type AnkiConnectClient } from "./client.js";
 
-export const NOTE_TYPE = "Kenning Word";
+export const NOTE_TYPE = "Vuurtoren Word";
 export const NOTE_FIELDS = ["Word", "Gloss", "Sentence", "SentenceTranslation", "Source"] as const;
 
 export const NOTE_CSS = `.card { font-family: "Literata", Georgia, serif; font-size: 22px; line-height: 1.5;
@@ -76,7 +76,7 @@ export async function addWordNote(anki: AnkiConnectClient, note: NewWordNote): P
         deckName: note.deck,
         modelName: NOTE_TYPE,
         fields,
-        tags: ["kenning", ...(note.tags ?? [])],
+        tags: ["vuurtoren", ...(note.tags ?? [])],
         options: { allowDuplicate: false, duplicateScope: "deck" },
       },
     });

@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { addWord, markNativeKnown, studyNativeFirst } from "./native.js";
 
 describe("native word commands", () => {
-  it("Add to my words records a Kenning note and card in the profile's deck", async () => {
+  it("Add to my words records a Vuurtoren note and card in the profile's deck", async () => {
     const events: unknown[] = [];
     const anki = () => Promise.reject(new Error("Anki must not be asked"));
     const res = await addWord(anki, async (e) => events.push(e), {
@@ -13,13 +13,17 @@ describe("native word commands", () => {
       gloss: "bicycle",
       sentence: "Ik pak de <b>fiets</b>.",
     });
-    expect(res).toMatchObject({ deck: "Kenning::Nederlands::Reading", key: "fiets", cardIds: [] });
+    expect(res).toMatchObject({
+      deck: "Vuurtoren::Nederlands::Reading",
+      key: "fiets",
+      cardIds: [],
+    });
     expect(events).toHaveLength(1);
     expect(events[0]).toMatchObject({
       type: "NativeNotesAdded",
-      origin: "kenning",
+      origin: "vuurtoren",
       notes: [{ key: "fiets", gloss: "bicycle", sentence: "Ik pak de fiets." }],
-      cards: [{ deck: "Kenning::Nederlands::Reading", ord: 0 }],
+      cards: [{ deck: "Vuurtoren::Nederlands::Reading", ord: 0 }],
     });
   });
 

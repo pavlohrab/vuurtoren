@@ -53,7 +53,7 @@ describe("sync on a device", () => {
   it("starts new data, a second device joins with the passphrase, changes travel both ways", async () => {
     const clock = { t: Date.UTC(2026, 10, 20, 9) };
     const fetch = fakeServer(new Map(), "ksync_t");
-    const place: SyncPlace = { kind: "server", url: "https://kenning.example", token: "ksync_t" };
+    const place: SyncPlace = { kind: "server", url: "https://vuurtoren.example", token: "ksync_t" };
     const laptop = await device("aaaaaaaaaaaa", fetch, clock);
     const phone = await device("bbbbbbbbbbbb", fetch, clock);
 
@@ -62,7 +62,7 @@ describe("sync on a device", () => {
     const first = await laptop.sync.services.setUpSync(place, "start", PASS, "Laptop");
     expect(first).toMatchObject({
       created: true,
-      place: { kind: "server", label: "Kenning server · kenning.example" },
+      place: { kind: "server", label: "Vuurtoren server · vuurtoren.example" },
       last: { sent: 1, received: 0 },
       error: null,
     });
@@ -90,12 +90,12 @@ describe("sync on a device", () => {
   it("keeps the key in the key store, and forgets it on stop", async () => {
     const clock = { t: Date.UTC(2026, 10, 20, 9) };
     const fetch = fakeServer(new Map(), "ksync_t");
-    const place: SyncPlace = { kind: "server", url: "https://kenning.example", token: "ksync_t" };
+    const place: SyncPlace = { kind: "server", url: "https://vuurtoren.example", token: "ksync_t" };
     const laptop = await device("aaaaaaaaaaaa", fetch, clock);
     await laptop.sync.services.setUpSync(place, "start", PASS, "Laptop");
     expect(laptop.keys.raw?.length).toBe(64);
     // The key is not in local storage.
-    const saved = JSON.parse(laptop.storage.m.get("kenning.sync")!) as Record<string, unknown>;
+    const saved = JSON.parse(laptop.storage.m.get("vuurtoren.sync")!) as Record<string, unknown>;
     expect(saved["key"]).toBeUndefined();
 
     await laptop.sync.services.stopSync();
@@ -111,7 +111,7 @@ describe("sync on a device", () => {
       return server(input, init);
     }) as typeof globalThis.fetch;
     const laptop = await device("aaaaaaaaaaaa", fetch, clock);
-    const place: SyncPlace = { kind: "server", url: "https://kenning.example", token: "ksync_t" };
+    const place: SyncPlace = { kind: "server", url: "https://vuurtoren.example", token: "ksync_t" };
     await laptop.sync.services.setUpSync(place, "start", PASS, "Laptop");
     up = false;
     clock.t += 61_000;
@@ -124,7 +124,7 @@ describe("sync on a device", () => {
     expect(await laptop.sync.tick()).toBe(false);
   });
 
-  it("is not available on a page of a Kenning server, and folders need the desktop app", async () => {
+  it("is not available on a page of a Vuurtoren server, and folders need the desktop app", async () => {
     const sync = createLiveSync({
       keys: memKeys(),
       repo: null,
@@ -141,14 +141,14 @@ describe("sync on a device", () => {
 });
 
 describe("joining or starting", () => {
-  const place: SyncPlace = { kind: "server", url: "https://kenning.example", token: "ksync_t" };
+  const place: SyncPlace = { kind: "server", url: "https://vuurtoren.example", token: "ksync_t" };
   const start = () => ({ t: Date.UTC(2026, 10, 20, 9) });
 
   it("joining never makes new data: before the first device's files arrive it waits", async () => {
     const files = new Map<string, Uint8Array>();
     const phone = await device("bbbbbbbbbbbb", fakeServer(files, "ksync_t"), start());
     await expect(phone.sync.services.setUpSync(place, "join", PASS, "Phone")).rejects.toThrow(
-      /no Kenning sync data in this place yet/,
+      /no Vuurtoren sync data in this place yet/,
     );
     expect(files.size).toBe(0);
     expect(phone.sync.configured()).toBe(false);
@@ -161,14 +161,14 @@ describe("joining or starting", () => {
     await laptop.sync.services.setUpSync(place, "start", PASS, "Laptop");
     const phone = await device("bbbbbbbbbbbb", fetch, start());
     await expect(phone.sync.services.setUpSync(place, "start", PASS, "Phone")).rejects.toThrow(
-      /already holds Kenning sync data/,
+      /already holds Vuurtoren sync data/,
     );
     // The device folders arrived, the vault not yet (a synced folder still copying).
-    files.delete("kenning/vault.json");
+    files.delete("vuurtoren/vault.json");
     await expect(phone.sync.services.setUpSync(place, "start", PASS, "Phone")).rejects.toThrow(
       /files from other devices/,
     );
-    expect(files.has("kenning/vault.json")).toBe(false);
+    expect(files.has("vuurtoren/vault.json")).toBe(false);
     expect(phone.sync.configured()).toBe(false);
   });
 

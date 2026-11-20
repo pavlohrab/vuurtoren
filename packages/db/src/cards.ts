@@ -241,7 +241,7 @@ export async function applyNativeEvent(
           e.rating,
           current ? REVIEW_KIND[current.state as 1 | 2 | 3] : "learn",
           Math.max(0, Math.round(e.durationMs)),
-          e.via ?? "kenning",
+          e.via ?? "vuurtoren",
           current ? JSON.stringify(current) : null,
         ],
       );
@@ -250,7 +250,7 @@ export async function applyNativeEvent(
     case "CardReviewUndone": {
       const rows = await driver.exec(
         `SELECT rowid AS seq, previous FROM native_reviews
-          WHERE id = ? AND card_id = ? AND source = 'kenning'`,
+          WHERE id = ? AND card_id = ? AND source = 'vuurtoren'`,
         [e.reviewId, e.cardId],
       );
       const row = rows[0];
@@ -456,7 +456,7 @@ export function nativeQueries(driver: SqlDriver) {
       for (const r of await driver.exec(
         `SELECT c.deck AS deck, count(DISTINCT r.card_id) AS n
            FROM native_reviews r JOIN native_cards c ON c.id = r.card_id
-          WHERE r.lang = ? AND r.source = 'kenning' AND r.previous IS NULL AND r.at >= ?
+          WHERE r.lang = ? AND r.source = 'vuurtoren' AND r.previous IS NULL AND r.at >= ?
           GROUP BY c.deck`,
         [lang, dayStart],
       )) {
@@ -598,7 +598,7 @@ export function nativeQueries(driver: SqlDriver) {
                   EXISTS (SELECT 1 FROM native_reviews o
                            WHERE o.card_id = r.card_id AND o.rowid > r.rowid) AS answered_since
              FROM native_reviews r JOIN events e ON e.id = r.id
-            WHERE r.lang = ? AND r.source = 'kenning'
+            WHERE r.lang = ? AND r.source = 'vuurtoren'
               AND e.device_id = (SELECT json_extract(value, '$') FROM meta WHERE key = 'device_id')
             ORDER BY r.at DESC, r.id DESC LIMIT 1`,
           [lang],
@@ -768,10 +768,10 @@ export function nativeQueries(driver: SqlDriver) {
   };
 }
 
-/** Per-word facts from the native cards, plus the notes added in Kenning not yet answered. */
+/** Per-word facts from the native cards, plus the notes added in Vuurtoren not yet answered. */
 export interface NativeWordFacts {
   entries: Map<string, AnkiWordEntry>;
-  /** Words added in Kenning whose cards are all new: "learning" until first answered. */
+  /** Words added in Vuurtoren whose cards are all new: "learning" until first answered. */
   pending: Map<string, { noteId: number; deck: string }>;
 }
 
@@ -838,7 +838,7 @@ export async function nativeWordEntries(
       }
       entries.set(key, entry);
       const fresh = own.length > 0 && own.every((c) => !c.schedule && !c.suspended);
-      if (r["origin"] === "kenning" && fresh && !pending.has(key)) {
+      if (r["origin"] === "vuurtoren" && fresh && !pending.has(key)) {
         pending.set(key, { noteId: note.id, deck: own[0]!.deck });
       }
     }

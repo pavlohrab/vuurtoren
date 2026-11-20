@@ -54,7 +54,7 @@ describe("textWordsActions", () => {
       message: "",
       ...(deck ? { deck } : {}),
     });
-    const added = Array.from({ length: 5 }, () => ok("added", "Kenning::Nederlands"));
+    const added = Array.from({ length: 5 }, () => ok("added", "Vuurtoren::Nederlands"));
     const moved = [ok("moved", "A"), ok("moved", "B")];
     expect(summarize([...added, ...moved])).toBe(
       "5 added to Nederlands, 2 moved to the front of their decks.",

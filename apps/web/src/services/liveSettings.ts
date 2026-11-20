@@ -8,20 +8,20 @@ import {
   requestAnkiPermission,
   type AnkiConnectionState,
 } from "@app/anki";
-import type { KenningRepository } from "@app/db";
+import type { VuurtorenRepository } from "@app/db";
 import { NlpClient, NlpError } from "@app/nlp-client";
 import { watchClient } from "./degraded.js";
 import type { Platform } from "./platform.js";
 import type { AnkiStatus, AppServices, Settings } from "./types.js";
 
-const ANKI_KEY_STORAGE = "kenning.ankiKey";
+const ANKI_KEY_STORAGE = "vuurtoren.ankiKey";
 
 export const DEFAULT_SETTINGS: Settings = {
   // Dev server proxies /anki and /nlp (vite.config.ts); nginx proxies /nlp in production.
   ankiUrl: import.meta.env.DEV ? "/anki" : "http://127.0.0.1:8765",
   nlpUrl: (import.meta.env["VITE_NLP_URL"] as string | undefined) ?? "/nlp",
   lang: "nl",
-  targetDeck: "Kenning::Nederlands",
+  targetDeck: "Vuurtoren::Nederlands",
   theme: "system",
   help: 0.25,
   newWords: "auto",
@@ -68,7 +68,7 @@ function toAnkiStatus(c: AnkiConnectionState): AnkiStatus {
 }
 
 export interface LiveSettingsDeps {
-  repo: KenningRepository;
+  repo: VuurtorenRepository;
   platform: Platform;
   /** Called when a change makes cached learner data stale (new-word budget, language). */
   changed: () => void;

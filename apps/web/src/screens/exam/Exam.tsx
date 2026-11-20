@@ -54,7 +54,7 @@ export function NoDutchVoice() {
   return (
     <p className="k-hint" role="note">
       Listening needs a Dutch voice, and none is installed. Add one in your system&rsquo;s speech
-      settings, then reload Kenning.
+      settings, then reload Vuurtoren.
     </p>
   );
 }
@@ -138,7 +138,7 @@ export function Exam() {
           ))}
         </ul>
         <p className="exam-muted">
-          Kenning's practice items are original, written in the official formats; they are not
+          Vuurtoren's practice items are original, written in the official formats; they are not
           official exam items. Pass marks are estimates. Always check{" "}
           <a href="https://www.inburgeren.nl/" target="_blank" rel="noreferrer">
             inburgeren.nl

@@ -54,9 +54,9 @@ function Steps({ step }: { step: Step }) {
 /** Where the book ends up, by storage mode (server, this browser, or the demo). */
 function privacyCopy(mode: "server" | "browser" | "desktop" | undefined): string {
   if (mode === "desktop")
-    return "It is read by the language tools on this computer and kept only in your Kenning data file. Nothing is shared.";
+    return "It is read by the language tools on this computer and kept only in your Vuurtoren data file. Nothing is shared.";
   if (mode === "server")
-    return "It is read on your own Kenning server and kept only in its storage. Nothing is shared.";
+    return "It is read on your own Vuurtoren server and kept only in its storage. Nothing is shared.";
   if (mode === "browser")
     return "Its pages are read by your language server, and the course is kept only in this browser. Nothing is shared.";
   return "This is the demo: nothing you upload is kept.";
@@ -285,7 +285,7 @@ export function CourseImportScreen({ courseId: existing }: { courseId?: string }
             <div className="banner cs-resume" role="note">
               <span>
                 You started reading <strong>{pending.title}</strong> ({pending.total} pages).
-                Kenning can pick it up where it is.
+                Vuurtoren can pick it up where it is.
               </span>
               <span className="cs-actions">
                 <Button variant="primary" size="sm" onClick={() => void resume()}>
@@ -308,7 +308,7 @@ export function CourseImportScreen({ courseId: existing }: { courseId?: string }
             {ocr
               ? "Upload your own copy of a textbook: a PDF (scanned or not), an EPUB, or photos of the pages."
               : "Upload your own copy of a textbook: a PDF with a text layer or an EPUB."}{" "}
-            Any textbook works; Kenning finds its units and you can correct them.{" "}
+            Any textbook works; Vuurtoren finds its units and you can correct them.{" "}
             {privacyCopy(storageMode)}
           </p>
           {ocr ? null : (
@@ -428,8 +428,8 @@ export function CourseImportScreen({ courseId: existing }: { courseId?: string }
       {step === "outline" ? (
         <>
           <p className="page-lede">
-            Kenning guessed the units from the table of contents, page footers and headings. Correct
-            titles and boundaries where needed: click the page where a unit starts.
+            Vuurtoren guessed the units from the table of contents, page footers and headings.
+            Correct titles and boundaries where needed: click the page where a unit starts.
           </p>
           <OutlineEditor rows={rows} onChange={setRows} pages={pages} />
           {outlineProblem && rows.length > 0 ? (

@@ -147,7 +147,7 @@ function PracticeSession({ focus, autoStart }: { focus: string[] | null; autoSta
             ? {
                 emptyTitle: "Nothing to practise for these words",
                 emptyText:
-                  "Kenning has no example sentences for them yet. Read a text that uses them, or practise the words that are due.",
+                  "Vuurtoren has no example sentences for them yet. Read a text that uses them, or practise the words that are due.",
               }
             : {})}
         />
@@ -198,7 +198,7 @@ function PracticeNote({ native }: { native: boolean }) {
   );
 }
 
-const OPTIONS_KEY = "kenning.practice.options";
+const OPTIONS_KEY = "vuurtoren.practice.options";
 
 interface StartOptions {
   skills: Skill[];

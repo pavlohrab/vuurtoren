@@ -1,7 +1,7 @@
 /**
- * The desktop app (apps/desktop, Tauri) injects `window.__KENNING_DESKTOP__` into every page
+ * The desktop app (apps/desktop, Tauri) injects `window.__VUURTOREN_DESKTOP__` into every page
  * its window loads: the bundled home page (the offline app, or the Connect screen) and the
- * user's Kenning server. In a normal browser it is absent and nothing here changes behaviour.
+ * user's Vuurtoren server. In a normal browser it is absent and nothing here changes behaviour.
  *
  */
 import type { NativeDb } from "@app/db/native";
@@ -22,7 +22,7 @@ export interface DbLock {
 }
 
 interface DbOpened {
-  /** The database file (`~/Documents/Kenning/kenning.sqlite` by default). */
+  /** The database file (`~/Documents/Vuurtoren/vuurtoren.sqlite` by default). */
   path: string;
   /** True on the very first start (the file was just created). */
   created: boolean;
@@ -57,7 +57,7 @@ export interface DesktopBridge {
     serverUrl: string | null;
     /** "local": this computer only (the default); "server": open `serverUrl`. */
     mode?: "local" | "server";
-    /** The bundled language server's address (`kenning-nlp:` protocol). */
+    /** The bundled language server's address (`vuurtoren-nlp:` protocol). */
     nlpBase?: string;
   }>;
   /** GET `<url>/api/health` from the app (home page only). Rejects with a readable message. */
@@ -72,7 +72,7 @@ export interface DesktopBridge {
     method: string;
     body?: string | undefined;
   }): Promise<{ status: number; body: string }>;
-  /** Use Kenning on this computer only (home page; reloads it in offline mode). */
+  /** Use Vuurtoren on this computer only (home page; reloads it in offline mode). */
   useLocal(): Promise<void>;
   /** The local database file (offline mode, home page only). */
   db: NativeDb & {
@@ -132,13 +132,13 @@ export interface DesktopSync {
 
 declare global {
   interface Window {
-    __KENNING_DESKTOP__?: DesktopBridge;
+    __VUURTOREN_DESKTOP__?: DesktopBridge;
   }
 }
 
 /** The desktop bridge, or null in a normal browser. */
 export function desktopBridge(): DesktopBridge | null {
-  return (typeof window !== "undefined" && window.__KENNING_DESKTOP__) || null;
+  return (typeof window !== "undefined" && window.__VUURTOREN_DESKTOP__) || null;
 }
 
 /** AnkiConnect on this machine: the only address the desktop bridge forwards. */

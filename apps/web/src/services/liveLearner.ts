@@ -11,7 +11,7 @@ import {
   profileMode,
   summarizeModel,
 } from "@app/core";
-import type { KenningRepository } from "@app/db";
+import type { VuurtorenRepository } from "@app/db";
 import type { LearnerSummary } from "./types.js";
 
 export const DEFAULT_STAIRCASE: StaircaseState = {
@@ -25,7 +25,7 @@ interface Cached<T> {
   value: Promise<T>;
 }
 
-export function createLearnerCache(repo: KenningRepository, lang: () => Promise<string>) {
+export function createLearnerCache(repo: VuurtorenRepository, lang: () => Promise<string>) {
   // Bumped whenever the learner model changes, so cached plans are recomputed.
   let version = 0;
   let modelCache: Cached<LearnerModel> | null = null;

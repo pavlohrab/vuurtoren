@@ -2,16 +2,16 @@ import type { AnalyzedToken } from "@app/core";
 import { afterEach, describe, expect, it } from "vitest";
 import { contentHash } from "./hash.js";
 import { createNodeDriver } from "./node.js";
-import { createRepository, type KenningRepository } from "./repository.js";
+import { createRepository, type VuurtorenRepository } from "./repository.js";
 import { validateRpcArgs } from "./rpc.js";
 import type { AppEvent } from "./types.js";
 
-const open: KenningRepository[] = [];
+const open: VuurtorenRepository[] = [];
 afterEach(async () => {
   for (const r of open.splice(0)) await r.close().catch(() => undefined);
 });
 
-async function newRepo(clock = { t: 1_000_000 }): Promise<KenningRepository> {
+async function newRepo(clock = { t: 1_000_000 }): Promise<VuurtorenRepository> {
   const repo = await createRepository(await createNodeDriver(), {
     deviceId: "dev1",
     now: () => clock.t++,

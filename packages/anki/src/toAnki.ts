@@ -1,6 +1,6 @@
 /**
  * Move to Anki: the one-time move from native mode back to Anki, through AnkiConnect. Words
- * become notes of Kenning's note type in their own deck; cards Kenning has reviewed get their
+ * become notes of Vuurtoren's note type in their own deck; cards Vuurtoren has reviewed get their
  * next due date with that gap as their interval. As an option (experimental), the review
  * history goes in too, with real answer times, and each card's interval, reviews and lapses.
  * Notes Anki already holds (cards that came from Anki keep their ids) are not added again.
@@ -24,7 +24,7 @@ import { NOTE_TYPE, ensureNoteType } from "./note.js";
 const DAY_MS = 86_400_000;
 const BATCH = 100;
 /** Tag on every note the move adds. */
-export const TAG_MOVED = "kenning::moved";
+export const TAG_MOVED = "vuurtoren::moved";
 
 export interface ToAnkiInput {
   notetypes: NativeNotetype[];
@@ -55,7 +55,7 @@ export interface ToAnkiResult {
 
 const strip = (s: string) => stripHtml(s).trim();
 
-/** The fields of a Kenning Word note for a native note, or null when it holds no word. */
+/** The fields of a Vuurtoren Word note for a native note, or null when it holds no word. */
 export function wordFields(
   note: NativeNote,
   type: NativeNotetype | undefined,
@@ -63,7 +63,7 @@ export function wordFields(
   if (!type) return null;
   const field = (name: string | undefined) =>
     name === undefined ? "" : (note.fields[type.fields.indexOf(name)] ?? "");
-  if (type.id === "kenning-word") {
+  if (type.id === "vuurtoren-word") {
     return Object.fromEntries(type.fields.map((f, i) => [f, note.fields[i] ?? ""]));
   }
   const v = type.vocab;
@@ -86,7 +86,7 @@ function leadCard(cards: NativeCard[]): NativeCard | undefined {
 
 const movedKey = (deck: string, word: string) => `${deck}\n${strip(word)}`;
 
-/** Notes a move already added (tagged, of Kenning's note type): deck and word → their card. */
+/** Notes a move already added (tagged, of Vuurtoren's note type): deck and word → their card. */
 async function movedNotes(anki: AnkiConnectClient): Promise<Map<string, number>> {
   const out = new Map<string, number>();
   const ids = await anki.findNotes(`tag:${TAG_MOVED} "note:${NOTE_TYPE}"`);
@@ -170,7 +170,7 @@ export async function moveToAnki(
             deckName: a.deck,
             modelName: NOTE_TYPE,
             fields: a.fields,
-            tags: [...new Set([...a.note.tags, "kenning", TAG_MOVED])],
+            tags: [...new Set([...a.note.tags, "vuurtoren", TAG_MOVED])],
             options: { allowDuplicate: false, duplicateScope: "deck" },
           },
         },

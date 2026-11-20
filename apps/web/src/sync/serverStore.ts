@@ -1,12 +1,12 @@
-/** Sync through a Kenning server's `/api/sync`, with a sync token made on that server. */
+/** Sync through a Vuurtoren server's `/api/sync`, with a sync token made on that server. */
 import type { SyncStore } from "@app/db";
 import { SyncPlaceError, readError } from "./errors.js";
 import { placeLabel } from "./labels.js";
 
 export function serverStore(url: string, token: string, fetch: typeof globalThis.fetch): SyncStore {
   const base = url.replace(/\/+$/, "");
-  // X-Kenning: a server with sign-in off has no token to check, and asks for it on writes.
-  const auth = { authorization: `Bearer ${token}`, "x-kenning": "1" };
+  // X-Vuurtoren: a server with sign-in off has no token to check, and asks for it on writes.
+  const auth = { authorization: `Bearer ${token}`, "x-vuurtoren": "1" };
   const call = async (path: string, init: RequestInit = {}) => {
     let res: Response;
     try {
@@ -16,7 +16,7 @@ export function serverStore(url: string, token: string, fetch: typeof globalThis
         headers: { ...auth, ...init.headers },
       });
     } catch {
-      throw new SyncPlaceError(`Kenning at ${new URL(base).host} cannot be reached.`);
+      throw new SyncPlaceError(`Vuurtoren at ${new URL(base).host} cannot be reached.`);
     }
     if (res.status === 401) {
       throw new SyncPlaceError("The server did not accept the sync token.");

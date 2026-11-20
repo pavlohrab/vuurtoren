@@ -13,16 +13,16 @@ function setup(native: boolean) {
 }
 
 describe("Settings → Language & decks: cards", { timeout: 20_000 }, () => {
-  it("moves a connected learner from Anki to Kenning", async () => {
+  it("moves a connected learner from Anki to Vuurtoren", async () => {
     const { services, user } = setup(false);
-    await user.click(await screen.findByRole("button", { name: "Move from Anki to Kenning" }));
+    await user.click(await screen.findByRole("button", { name: "Move from Anki to Vuurtoren" }));
     expect(screen.getByText(/Keep Anki open while it runs/)).toBeVisible();
-    await user.click(screen.getByRole("button", { name: "Move to Kenning" }));
-    expect(await screen.findByText(/Your reviews now happen in Kenning/)).toBeVisible();
+    await user.click(screen.getByRole("button", { name: "Move to Vuurtoren" }));
+    expect(await screen.findByText(/Your reviews now happen in Vuurtoren/)).toBeVisible();
     expect((await services.languageProfile())?.mode).toBe("native");
     // The native settings replace the Anki deck detection.
     expect(await screen.findByRole("heading", { name: "Your cards" })).toBeVisible();
-    expect(screen.queryByRole("heading", { name: "Decks Kenning reads" })).toBeNull();
+    expect(screen.queryByRole("heading", { name: "Decks Vuurtoren reads" })).toBeNull();
     const nav = screen.getByRole("navigation", { name: "Main" });
     expect(await within(nav).findByRole("link", { name: /Review/ })).toBeVisible();
   });
@@ -31,7 +31,7 @@ describe("Settings → Language & decks: cards", { timeout: 20_000 }, () => {
     const { user } = setup(true);
     expect(await screen.findByRole("heading", { name: "Your cards" })).toBeVisible();
     expect(
-      await screen.findByRole("combobox", { name: "Target recall for Kenning::Nederlands" }),
+      await screen.findByRole("combobox", { name: "Target recall for Vuurtoren::Nederlands" }),
     ).toHaveValue("0.9");
     const file = new File([new Uint8Array([1])], "deck.apkg");
     await user.upload(screen.getByLabelText("Choose a file"), file);
@@ -58,7 +58,7 @@ describe("Settings → Language & decks: cards", { timeout: 20_000 }, () => {
     await user.click(await screen.findByRole("button", { name: "Export to .apkg" }));
     expect(
       await screen.findByText(
-        /^Exported \d+ notes?, \d+ cards? and \d+ reviews? to Kenning\.apkg\.$/,
+        /^Exported \d+ notes?, \d+ cards? and \d+ reviews? to Vuurtoren\.apkg\.$/,
       ),
     ).toBeVisible();
     expect(created).toHaveBeenCalledTimes(1);

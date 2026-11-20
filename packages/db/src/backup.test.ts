@@ -9,13 +9,13 @@ import { createRepository } from "./repository.js";
 
 let dir: string;
 beforeEach(() => {
-  dir = mkdtempSync(join(tmpdir(), "kenning-backup-"));
+  dir = mkdtempSync(join(tmpdir(), "vuurtoren-backup-"));
 });
 afterEach(() => rmSync(dir, { recursive: true, force: true }));
 
 /** A database file on device `old` with three words, the first two of them already sent. */
 async function backup(synced: boolean) {
-  const file = join(dir, "kenning.sqlite");
+  const file = join(dir, "vuurtoren.sqlite");
   const driver = await createNodeDriver(file);
   const repo = await createRepository(driver, { deviceId: "oldoldoldold" });
   for (const key of ["fiets", "huis", "boom"])

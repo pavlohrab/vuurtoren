@@ -199,7 +199,7 @@ export function ImportPackDialog({
         onOpenChange(o);
       }}
       title="Import a course pack"
-      description="A .kenning-course.json file exported from Kenning."
+      description="A .vuurtoren-course.json file exported from Vuurtoren."
     >
       {result ? (
         <div className="stack" style={{ gap: 10 }}>

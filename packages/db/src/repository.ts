@@ -92,7 +92,7 @@ export interface RepositoryOptions {
 }
 
 /** `Repository` plus lifecycle, log access and snapshot metadata. */
-export interface KenningRepository extends Repository {
+export interface VuurtorenRepository extends Repository {
   /** Close the underlying driver. */
   close(): Promise<void>;
   /** Events with id > `sinceId` (all if omitted), in id order. */
@@ -251,7 +251,7 @@ function ankiEntry(r: Row): AnkiWordEntry {
 export async function createRepository(
   driver: SqlDriver,
   opts: RepositoryOptions = {},
-): Promise<KenningRepository> {
+): Promise<VuurtorenRepository> {
   const now = opts.now ?? Date.now;
 
   // Simple promise-chain mutex.
@@ -389,7 +389,7 @@ export async function createRepository(
       profileRow !== undefined &&
       profileMode(json<LanguageProfile>(profileRow["profile"])) === "native";
     if (native) {
-      // Native mode: Kenning's own cards are the record; Anki snapshots and notes added to Anki
+      // Native mode: Vuurtoren's own cards are the record; Anki snapshots and notes added to Anki
       // from connected days are left aside.
       const n = await nativeWordEntries(driver, lang, now(), keys ? new Set(keys) : undefined);
       for (const [key, entry] of n.entries) get(key).anki = entry;
@@ -457,7 +457,7 @@ export async function createRepository(
     return ids.flatMap((id) => byId.get(id) ?? []);
   }
 
-  const repo: KenningRepository = {
+  const repo: VuurtorenRepository = {
     deviceId,
 
     append: (event) =>
@@ -550,11 +550,11 @@ export async function createRepository(
             at: Number(r["created_at"]),
           }))
           .concat(
-            // Native reviews answered in Kenning (an undone answer is gone from the table).
+            // Native reviews answered in Vuurtoren (an undone answer is gone from the table).
             (
               await driver.exec(
                 `SELECT at FROM native_reviews
-                  WHERE source = 'kenning' AND rating > 0 AND at >= ? ORDER BY at`,
+                  WHERE source = 'vuurtoren' AND rating > 0 AND at >= ? ORDER BY at`,
                 [Math.max(0, Math.floor(sinceMs))],
               )
             ).map((r): ActivityEntry => ({ kind: "review", at: Number(r["at"]) })),

@@ -16,7 +16,7 @@ interface MockCard {
   schedule?: CardSchedule;
 }
 
-const DECK = "Kenning::Nederlands";
+const DECK = "Vuurtoren::Nederlands";
 const ctx = { options: DEFAULT_DECK_OPTIONS, params: DEFAULT_FSRS_PARAMS, fuzz: false };
 
 const vocab = (
@@ -207,7 +207,7 @@ export function createMockNative(
       return {
         // Demo data: an empty zip stands in for the package.
         bytes: new Uint8Array([0x50, 0x4b, 0x05, 0x06, ...new Array<number>(18).fill(0)]),
-        fileName: `${decks.length === 1 ? decks[0]!.replace(/::/g, "-") : "Kenning"}.apkg`,
+        fileName: `${decks.length === 1 ? decks[0]!.replace(/::/g, "-") : "Vuurtoren"}.apkg`,
         summary: { notes: cards.length, cards: cards.length, reviews: reviewed * 3, media: 0 },
       };
     },

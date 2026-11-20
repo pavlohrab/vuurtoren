@@ -19,7 +19,7 @@ import {
   updateStaircase,
 } from "@app/core";
 import {
-  type KenningRepository,
+  type VuurtorenRepository,
   type StoredText,
   type TextSource,
   contentHash,
@@ -93,7 +93,7 @@ function titleFrom(content: string): string {
 const nextUlid = createUlidGenerator();
 
 export interface LiveTextsDeps {
-  repo: KenningRepository;
+  repo: VuurtorenRepository;
   settings: () => Promise<Settings>;
   nlp: () => Promise<NlpClient>;
   learner: LearnerCache;

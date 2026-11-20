@@ -86,7 +86,7 @@ describe("Words", () => {
     expect(await within(panel).findByRole("button", { name: /Mark known/ })).toBeInTheDocument();
     expect(within(panel).getByRole("button", { name: "Ignore" })).toBeInTheDocument();
     // No deck path on the word; Recall only for words being learned.
-    expect(within(panel).queryByText(/Kenning::/)).toBeNull();
+    expect(within(panel).queryByText(/Vuurtoren::/)).toBeNull();
     expect(within(panel).queryByText(/Recall/)).toBeNull();
   });
 

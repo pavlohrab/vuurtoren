@@ -1,5 +1,5 @@
 /**
- * Kenning's service worker (installable web app). Built by the `kenning-sw` plugin in
+ * Vuurtoren's service worker (installable web app). Built by the `vuurtoren-sw` plugin in
  * vite.config.ts, which fills in PRECACHE (the app shell: index.html, every built script,
  * style sheet and the SQLite wasm, the latin fonts, icons, manifest and offline page) and
  * VERSION (a hash of that list).
@@ -11,9 +11,9 @@
  *   cookies, API data and language-server answers are never cached.
  * - A new version waits until the app asks it to take over ("A new version is ready — Reload").
  */
-const VERSION = "__KENNING_SW_VERSION__";
-const PRECACHE = /** @type {string[]} */ (__KENNING_SW_PRECACHE__);
-const CACHE = `kenning-shell-${VERSION}`;
+const VERSION = "__VUURTOREN_SW_VERSION__";
+const PRECACHE = /** @type {string[]} */ (__VUURTOREN_SW_PRECACHE__);
+const CACHE = `vuurtoren-shell-${VERSION}`;
 const SHELL = "/index.html";
 const OFFLINE = "/offline.html";
 const BYPASS = /^\/(api|nlp|anki)(\/|$)/;
@@ -32,14 +32,16 @@ self.addEventListener("activate", (event) => {
       .keys()
       .then((keys) =>
         Promise.all(
-          keys.filter((k) => k.startsWith("kenning-") && k !== CACHE).map((k) => caches.delete(k)),
+          keys
+            .filter((k) => k.startsWith("vuurtoren-") && k !== CACHE)
+            .map((k) => caches.delete(k)),
         ),
       ),
   );
 });
 
 self.addEventListener("message", (event) => {
-  if (event.data === "kenning-sw-update") void self.skipWaiting();
+  if (event.data === "vuurtoren-sw-update") void self.skipWaiting();
 });
 
 self.addEventListener("fetch", (event) => {

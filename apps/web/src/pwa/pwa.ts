@@ -39,7 +39,7 @@ export function usePwa(): PwaState {
 
 /** Switch to the waiting version; the page reloads once it has taken over. */
 export function applyUpdate(): void {
-  if (waiting) waiting.postMessage("kenning-sw-update");
+  if (waiting) waiting.postMessage("vuurtoren-sw-update");
   else location.reload();
 }
 

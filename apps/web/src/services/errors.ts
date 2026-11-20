@@ -65,7 +65,7 @@ export function describeError(e: unknown, fallback = "Something went wrong."): F
     if (/origin not allowed|forbidden|403/.test(raw)) {
       return withDetails({
         source: "anki",
-        message: "Anki refused the connection from Kenning.",
+        message: "Anki refused the connection from Vuurtoren.",
         next: "Allow this site in AnkiConnect's settings (webCorsOriginList) or set the API key in Settings.",
       });
     }
@@ -92,7 +92,7 @@ export function describeError(e: unknown, fallback = "Something went wrong."): F
   if (/Failed to fetch|NetworkError|Load failed|network error/i.test(raw)) {
     return withDetails({
       source: "network",
-      message: "Kenning could not reach its server.",
+      message: "Vuurtoren could not reach its server.",
       next: "Check your connection, then try again.",
     });
   }

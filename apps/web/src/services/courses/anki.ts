@@ -44,7 +44,7 @@ export function createCourseAnki(ctx: CourseContext) {
     let decks: string[] = [];
     const profile = await currentProfile();
     if (profileMode(profile) === "native") {
-      // Native mode: Kenning's own decks; Anki is not asked.
+      // Native mode: Vuurtoren's own decks; Anki is not asked.
       decks = (await repo.nativeDecks(profile.lang, ctx.clock())).map((d) => d.name).sort();
     } else {
       try {
@@ -264,7 +264,7 @@ export function createCourseAnki(ctx: CourseContext) {
           word: r.article ? `${r.article} ${r.lemma}` : r.lemma,
           key: r.key,
           source: course.title,
-          extraTags: [`kenning::course::${slug}::${r.unitN}`],
+          extraTags: [`vuurtoren::course::${slug}::${r.unitN}`],
           ...(r.gloss ? { gloss: r.gloss } : {}),
           ...(r.example ? { sentence: r.example } : {}),
         });

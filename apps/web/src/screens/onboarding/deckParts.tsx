@@ -1,6 +1,6 @@
 /**
  * Pieces shared by onboarding and Settings → Language & decks: the language choice, the list of
- * decks Kenning reads, and where new words go.
+ * decks Vuurtoren reads, and where new words go.
  */
 import {
   type CourseDeckMode,

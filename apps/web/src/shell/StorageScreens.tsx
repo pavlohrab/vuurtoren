@@ -22,7 +22,7 @@ function Page({ title, children }: { title: string; children: ReactNode }) {
   );
 }
 
-/** The stored database was written by a newer Kenning: never fall back to demo data. */
+/** The stored database was written by a newer Vuurtoren: never fall back to demo data. */
 export function BlockedScreen({
   message,
   download,
@@ -32,12 +32,12 @@ export function BlockedScreen({
 }) {
   const [error, setError] = useState<string | null>(null);
   return (
-    <Page title="Your data needs a newer Kenning">
+    <Page title="Your data needs a newer Vuurtoren">
       <p role="alert" style={{ margin: 0 }}>
         {message}
       </p>
       <p style={{ margin: 0, color: "var(--ink-muted)" }}>
-        Nothing was changed or deleted. Update Kenning (pull the newest version and rebuild or
+        Nothing was changed or deleted. Update Vuurtoren (pull the newest version and rebuild or
         redeploy it), then reload this page. You can save a copy of your data first.
       </p>
       <div className="row">
@@ -73,7 +73,7 @@ export function UnreachableScreen({
   onForget: () => void;
 }) {
   return (
-    <Page title="Can't reach your Kenning server">
+    <Page title="Can't reach your Vuurtoren server">
       <p role="alert" style={{ margin: 0 }}>
         {reason}
       </p>
@@ -89,11 +89,11 @@ export function UnreachableScreen({
       </div>
       <details style={{ color: "var(--ink-muted)", fontSize: 13 }}>
         <summary style={{ cursor: "pointer" }}>
-          This address no longer runs a Kenning server
+          This address no longer runs a Vuurtoren server
         </summary>
         <p style={{ margin: "8px 0" }}>
-          Then Kenning can keep data in this browser instead. That is a separate, empty collection;
-          your server data is not copied.
+          Then Vuurtoren can keep data in this browser instead. That is a separate, empty
+          collection; your server data is not copied.
         </p>
         <Button size="sm" onClick={onForget}>
           Use this browser's storage
@@ -107,7 +107,7 @@ export function UnreachableScreen({
 export function BusyTabScreen({ onUseHere }: { onUseHere: () => Promise<void> }) {
   const [state, setState] = useState<"idle" | "waiting" | "failed">("idle");
   return (
-    <Page title="Kenning is open in another tab">
+    <Page title="Vuurtoren is open in another tab">
       <p style={{ margin: 0 }}>
         The browser lets only one tab use your data at a time, so this tab is paused.
       </p>
@@ -136,7 +136,7 @@ export function BusyTabScreen({ onUseHere }: { onUseHere: () => Promise<void> })
 export function ElsewhereScreen() {
   return (
     <Page title="Opened in another tab">
-      <p style={{ margin: 0 }}>Kenning is now running in another tab. You can close this one.</p>
+      <p style={{ margin: 0 }}>Vuurtoren is now running in another tab. You can close this one.</p>
       <div className="row">
         <Button onClick={() => location.reload()}>Use here again</Button>
       </div>

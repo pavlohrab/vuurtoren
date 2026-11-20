@@ -31,7 +31,7 @@ import type {
 } from "../courseTypes.js";
 import type { CourseContext } from "./context.js";
 
-const PENDING_KEY = "kenning.course.pendingImport";
+const PENDING_KEY = "vuurtoren.course.pendingImport";
 
 /** "about 3 min left" from seconds. */
 function etaText(eta: number | null | undefined): string {

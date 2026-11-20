@@ -5,7 +5,7 @@
  */
 import { type AnalyzedToken, textDifficulty } from "@app/core";
 import {
-  type KenningRepository,
+  type VuurtorenRepository,
   contentHash,
   createRepository,
   encodeRpcResult,
@@ -89,7 +89,7 @@ const nlpFetch = vi.fn(async (url: string | URL | Request, init?: RequestInit) =
 });
 
 /** In-process API: /api/info and /api/rpc over `repo`, counting RPCs by method. */
-function inProcessServer(repo: KenningRepository) {
+function inProcessServer(repo: VuurtorenRepository) {
   const calls: string[] = [];
   const fetchImpl = (async (url: string | URL | Request, init?: RequestInit) => {
     const u = String(url);
@@ -107,7 +107,7 @@ function inProcessServer(repo: KenningRepository) {
   return { calls, fetchImpl };
 }
 
-async function seed(): Promise<KenningRepository> {
+async function seed(): Promise<VuurtorenRepository> {
   const repo = await createRepository(await createNodeDriver());
   for (let n = 0; n < 12; n++) {
     const content = textOf(n);
@@ -152,14 +152,14 @@ async function seed(): Promise<KenningRepository> {
   return repo;
 }
 
-let toClose: KenningRepository | null = null;
+let toClose: VuurtorenRepository | null = null;
 afterEach(async () => {
   vi.unstubAllGlobals();
   await toClose?.close();
   toClose = null;
 });
 
-async function client(repo: KenningRepository) {
+async function client(repo: VuurtorenRepository) {
   const server = inProcessServer(repo);
   const http = await createHttpRepository("", undefined, server.fetchImpl);
   const services = createLiveServices(http, { remoteChanged: () => http.remoteChanged() });

@@ -34,7 +34,7 @@ describe("LanguageProfileSet", () => {
     const newer = await repo.append({ type: "LanguageProfileSet", profile: defaultProfile("nl") });
     // Replaying the older event late must not win.
     await applyEvent(driver, { id: older.id, hlc: older.hlc, createdAt: 0, event: older.event });
-    expect((await repo.languageProfile("nl"))?.destinations.default).toBe("Kenning::Nederlands");
+    expect((await repo.languageProfile("nl"))?.destinations.default).toBe("Vuurtoren::Nederlands");
     expect(newer.hlc > older.hlc).toBe(true);
     await repo.close();
   });

@@ -9,7 +9,7 @@ import { randomDeviceId } from "./ids.js";
 import { SCHEMA_VERSION, SchemaTooNewError } from "./schema.js";
 import type { SqlDriver } from "./types.js";
 
-/** Tables every Kenning database has (schema v1 onwards); an upload without them is rejected. */
+/** Tables every Vuurtoren database has (schema v1 onwards); an upload without them is rejected. */
 export const REQUIRED_TABLES = ["meta", "events"] as const;
 
 /** First 16 bytes of every SQLite 3 file. */
@@ -67,7 +67,7 @@ export function checkBackupHeader(bytes: Uint8Array): number {
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   const userVersion = view.getUint32(USER_VERSION_OFFSET, false);
   if (userVersion > SCHEMA_VERSION) throw new SchemaTooNewError(userVersion);
-  if (userVersion < 1) throw new BackupError("This SQLite file is not a Kenning backup.");
+  if (userVersion < 1) throw new BackupError("This SQLite file is not a Vuurtoren backup.");
   return userVersion;
 }
 
@@ -82,7 +82,8 @@ export function inspectBackup(db: SyncDb): BackupFacts {
     db.exec("SELECT name FROM sqlite_master WHERE type = 'table'").map((r) => String(r["name"])),
   );
   for (const t of REQUIRED_TABLES) {
-    if (!names.has(t)) throw new BackupError(`This SQLite file is not a Kenning backup (no ${t}).`);
+    if (!names.has(t))
+      throw new BackupError(`This SQLite file is not a Vuurtoren backup (no ${t}).`);
   }
   const eventCount = Number(db.exec("SELECT count(*) AS c FROM events")[0]?.["c"] ?? 0);
   return { userVersion, eventCount };
@@ -138,10 +139,10 @@ export function prepareImported(db: SyncDb, deviceId: string = randomDeviceId())
   return deviceId;
 }
 
-/** `kenning-YYYY-MM-DD.sqlite` (local date). */
+/** `vuurtoren-YYYY-MM-DD.sqlite` (local date). */
 export function backupFilename(date: Date = new Date()): string {
   const p = (n: number): string => String(n).padStart(2, "0");
-  return `kenning-${date.getFullYear()}-${p(date.getMonth() + 1)}-${p(date.getDate())}.sqlite`;
+  return `vuurtoren-${date.getFullYear()}-${p(date.getMonth() + 1)}-${p(date.getDate())}.sqlite`;
 }
 
 /** Size (page count x page size) and event count of an open database. */
@@ -156,7 +157,7 @@ export async function databaseStats(
   try {
     eventCount = await num("SELECT count(*) AS c FROM events", "c");
   } catch {
-    // Not a Kenning database (no events table): report zero.
+    // Not a Vuurtoren database (no events table): report zero.
   }
   return { sizeBytes: pages * pageSize, eventCount };
 }

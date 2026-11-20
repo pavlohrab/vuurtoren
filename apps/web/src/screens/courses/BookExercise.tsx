@@ -248,7 +248,7 @@ function Item({
 export function BookExercise(props: Props) {
   const { courseId, unitN, exercise, generated: made = false } = props;
   const services = useServices();
-  const [notes, setNotes] = useNotes(`kenning.course.${courseId}.${unitN}.${exercise.number}`);
+  const [notes, setNotes] = useNotes(`vuurtoren.course.${courseId}.${unitN}.${exercise.number}`);
   const [generated, setGenerated] = useState<Exercise[] | null>(null);
   const [summary, setSummary] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);

@@ -1,11 +1,11 @@
 import { grammarTopics } from "@app/content";
 import type { AnalyzedToken } from "@app/core";
-import { createRepository, type KenningRepository } from "@app/db";
+import { createRepository, type VuurtorenRepository } from "@app/db";
 import { createNodeDriver } from "@app/db/node";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { beforeEach, describe, expect, it } from "vitest";
-import { createKenningMcpServer, createToolHandlers, MAX_TEXT_CHARS } from "./index.js";
+import { createVuurtorenMcpServer, createToolHandlers, MAX_TEXT_CHARS } from "./index.js";
 
 /** One token per letter run; each "." ends a sentence. Lemma = lower-cased word. */
 const tokenize = (text: string): Promise<AnalyzedToken[]> => {
@@ -38,7 +38,7 @@ const tokenize = (text: string): Promise<AnalyzedToken[]> => {
   return Promise.resolve(out);
 };
 
-let repo: KenningRepository;
+let repo: VuurtorenRepository;
 
 beforeEach(async () => {
   repo = await createRepository(await createNodeDriver());
@@ -90,7 +90,7 @@ describe("tool handlers", () => {
     expect(r.coverage).toBeCloseTo(0.6, 1);
     await expect(handlers().checkCoverage({ text: "  " })).rejects.toThrow(/empty/);
     const noNlp = createToolHandlers({ repo });
-    await expect(noNlp.checkCoverage({ text: "Ik" })).rejects.toThrow(/KENNING_NLP_URL/);
+    await expect(noNlp.checkCoverage({ text: "Ik" })).rejects.toThrow(/VUURTOREN_NLP_URL/);
   });
 
   it("lists and reads texts, truncating long ones", async () => {
@@ -273,7 +273,7 @@ describe("tool handlers", () => {
 describe("MCP server", () => {
   it("lists the shared tools and answers over the protocol, errors as isError", async () => {
     const [a, b] = InMemoryTransport.createLinkedPair();
-    await createKenningMcpServer(handlers()).connect(a);
+    await createVuurtorenMcpServer(handlers()).connect(a);
     const client = new Client({ name: "test", version: "0" });
     await client.connect(b);
     const tools = (await client.listTools()).tools.map((t) => t.name).sort();

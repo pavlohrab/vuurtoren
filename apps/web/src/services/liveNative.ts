@@ -43,7 +43,7 @@ import {
   studyDayStart,
   trainingSequences,
 } from "@app/core";
-import type { KenningRepository, NativeCardChange, NativeCardView } from "@app/db";
+import type { VuurtorenRepository, NativeCardChange, NativeCardView } from "@app/db";
 import type { NlpClient } from "@app/nlp-client";
 import type { RunOptimizer } from "../native/optimizer.js";
 import { MIN_TRAINING_REVIEWS } from "../native/optimize.js";
@@ -56,7 +56,7 @@ import type {
 } from "./nativeTypes.js";
 
 export interface LiveNativeDeps {
-  repo: KenningRepository;
+  repo: VuurtorenRepository;
   lang: () => Promise<"nl">;
   profile: () => Promise<LanguageProfile>;
   saveProfile: (p: LanguageProfile) => Promise<void>;
@@ -176,7 +176,7 @@ export function createLiveNative(deps: LiveNativeDeps) {
     const preview = previewCard(card.schedule, at, { options: v.options, params: p, fuzz: false });
     const intervals = {} as Record<CardRating, string>;
     for (const r of [1, 2, 3, 4] as const) intervals[r] = formatInterval(preview[r].due - at);
-    // Kenning lays out a vocabulary card itself when it shows the word on the front (a
+    // Vuurtoren lays out a vocabulary card itself when it shows the word on the front (a
     // recognition card); other templates (production cards, clozes) keep their own layout.
     const vocab = notetype.vocab;
     const wordShown =
@@ -227,7 +227,7 @@ export function createLiveNative(deps: LiveNativeDeps) {
   async function storeImport(lang: string, imp: NativeImport): Promise<ImportSummary> {
     for (const e of imp.events) await repo.append(e);
     if (imp.fsrsParams && !(await repo.fsrsParams(lang))) {
-      // Anki's own trained parameters until Kenning tunes on the history.
+      // Anki's own trained parameters until Vuurtoren tunes on the history.
       await repo.append({ type: "FsrsParamsSet", lang, params: imp.fsrsParams, reviews: 0 });
     }
     ownIndex = null;
@@ -268,7 +268,7 @@ export function createLiveNative(deps: LiveNativeDeps) {
   }
 
   function info(
-    rec: Awaited<ReturnType<KenningRepository["fsrsParams"]>>,
+    rec: Awaited<ReturnType<VuurtorenRepository["fsrsParams"]>>,
     history: number,
   ): TuningInfo {
     const out: TuningInfo = {
@@ -322,7 +322,7 @@ export function createLiveNative(deps: LiveNativeDeps) {
   async function recomputeMemory(
     lang: string,
     p: number[],
-    reviews: Awaited<ReturnType<KenningRepository["nativeReviews"]>>,
+    reviews: Awaited<ReturnType<VuurtorenRepository["nativeReviews"]>>,
   ): Promise<void> {
     const byCard = new Map<number, typeof reviews>();
     for (const r of reviews) byCard.set(r.cardId, [...(byCard.get(r.cardId) ?? []), r]);
@@ -535,7 +535,7 @@ export function createLiveNative(deps: LiveNativeDeps) {
           sqlite.create,
         );
         const day = new Date(at).toISOString().slice(0, 10);
-        const label = decks.length === 1 ? decks[0]!.replace(/::/g, "-") : "Kenning";
+        const label = decks.length === 1 ? decks[0]!.replace(/::/g, "-") : "Vuurtoren";
         const fileName = `${label.replace(/[^\p{L}\p{N}._-]+/gu, "_")}-${day}.apkg`;
         return { bytes, fileName, summary };
       } finally {
@@ -554,11 +554,11 @@ export function createLiveNative(deps: LiveNativeDeps) {
         { ...col, params: await params(lang), now: now(), withHistory },
         onProgress,
       );
-      // Kenning reads the moved decks: its own note type where words were added.
-      const kenningDecks = new Set(destinationDecks(profile));
+      // Vuurtoren reads the moved decks: its own note type where words were added.
+      const vuurtorenDecks = new Set(destinationDecks(profile));
       const sources = [...profile.sources];
       for (const deck of r.decks) {
-        if (sources.some((s) => s.deck === deck) || kenningDecks.has(deck)) continue;
+        if (sources.some((s) => s.deck === deck) || vuurtorenDecks.has(deck)) continue;
         sources.push({
           deck,
           modelName: NOTE_TYPE,

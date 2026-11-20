@@ -2,15 +2,15 @@ import type { Block, BookExercise, Course, Unit } from "@app/core";
 import { afterEach, describe, expect, it } from "vitest";
 import { createNodeDriver } from "./node.js";
 import { PROJECTION_TABLES } from "./schema.js";
-import { createRepository, type KenningRepository } from "./repository.js";
+import { createRepository, type VuurtorenRepository } from "./repository.js";
 import type { SqlDriver } from "./types.js";
 
-const open: KenningRepository[] = [];
+const open: VuurtorenRepository[] = [];
 afterEach(async () => {
   for (const r of open.splice(0)) await r.close().catch(() => undefined);
 });
 
-async function newRepo(): Promise<{ repo: KenningRepository; driver: SqlDriver }> {
+async function newRepo(): Promise<{ repo: VuurtorenRepository; driver: SqlDriver }> {
   let t = 5_000;
   const driver = await createNodeDriver();
   const repo = await createRepository(driver, { deviceId: "dev1", now: () => t++ });
@@ -52,7 +52,7 @@ const exercise = (number: number): BookExercise => ({
   ],
 });
 
-async function seed(repo: KenningRepository): Promise<void> {
+async function seed(repo: VuurtorenRepository): Promise<void> {
   await repo.append({ type: "CourseImported", course });
   await repo.append({ type: "UnitDefined", courseId: "c1", units });
   await repo.append({ type: "BlocksExtracted", courseId: "c1", blocks });

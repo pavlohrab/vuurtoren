@@ -93,7 +93,7 @@ export interface AnkiCollection {
   media: { name: string; bytes: () => Uint8Array | Promise<Uint8Array> }[];
 }
 
-/** The file is not an Anki package, or a layout Kenning cannot read. */
+/** The file is not an Anki package, or a layout Vuurtoren cannot read. */
 export class AnkiPackageError extends Error {
   override readonly name = "AnkiPackageError";
 }
@@ -107,7 +107,7 @@ const MAX_UNPACKED = 512 * 1024 * 1024;
 const MAX_UNPACKED_TOTAL = 1024 * 1024 * 1024;
 
 const tooLarge = () =>
-  new AnkiPackageError("This package unpacks to more than Kenning can open at once.");
+  new AnkiPackageError("This package unpacks to more than Vuurtoren can open at once.");
 
 const ZSTD_MAGIC = [0x28, 0xb5, 0x2f, 0xfd];
 const isZstd = (b: Uint8Array) => ZSTD_MAGIC.every((m, i) => b[i] === m);
@@ -290,11 +290,11 @@ function schemaSqlOffsets(b: Uint8Array): number[][] | null {
  * - Anki writes it in WAL journal mode (header bytes 18–19 are 2), which a database opened from
  *   bytes cannot use: the copy is marked as a rollback-journal file (1). The file is complete.
  * - The current schema declares text columns `COLLATE unicase`, a collation only Anki registers;
- *   without it SQLite refuses those tables. Neither SQLite Kenning uses (node:sqlite,
+ *   without it SQLite refuses those tables. Neither SQLite Vuurtoren uses (node:sqlite,
  *   sqlite-wasm through its worker) can add a collation, so the declaration is swapped for
  *   `COLLATE binary ` (the same length, so nothing moves) in the schema's SQL text only, found
  *   by walking the schema table's pages: note text that happens to say "COLLATE unicase" is
- *   left alone. Kenning never sorts or filters by those columns.
+ *   left alone. Vuurtoren never sorts or filters by those columns.
  */
 function openableCollection(bytes: Uint8Array): Uint8Array {
   const wal = bytes.length >= 20 && (bytes[18] === 2 || bytes[19] === 2);

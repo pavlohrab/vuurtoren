@@ -32,7 +32,7 @@ export { composeWord, countWords } from "./projections.js";
 export { nativeWordEntries } from "./cards.js";
 export type { WordFacts } from "./projections.js";
 export { PROJECTION_VERSION, createRepository } from "./repository.js";
-export type { KenningRepository, RepositoryOptions } from "./repository.js";
+export type { VuurtorenRepository, RepositoryOptions } from "./repository.js";
 export type { SyncDb, SqlRow } from "./driver-core.js";
 export { projectConversations } from "./conversations.js";
 export type { Conversation, ConversationMessage } from "./conversations.js";

@@ -15,7 +15,7 @@ import {
 
 /** Fake worker: runs the real request handler (on node:sqlite) with async message delivery. */
 function fakeWorker(persistent: boolean): WorkerLike & { requests: WorkerRequest[] } {
-  const file = join(mkdtempSync(join(tmpdir(), "kenning-w-")), "db.sqlite3");
+  const file = join(mkdtempSync(join(tmpdir(), "vuurtoren-w-")), "db.sqlite3");
   const handle = createRequestHandler(() =>
     Promise.resolve({
       db: createNodeSyncDb(file),
@@ -169,7 +169,7 @@ describe("web driver message protocol", () => {
       const repo = await createRepository(d);
       await repo.append({ type: "SettingChanged", key: "k", value: 1 });
       await expect(d.importFile(newer)).rejects.toThrow(/newer/);
-      await expect(d.importFile(foreign)).rejects.toThrow(/not a Kenning backup/);
+      await expect(d.importFile(foreign)).rejects.toThrow(/not a Vuurtoren backup/);
       expect(await repo.setting("k")).toBe(1);
       await repo.append({ type: "SettingChanged", key: "k", value: 2 });
       expect(await repo.setting("k")).toBe(2);

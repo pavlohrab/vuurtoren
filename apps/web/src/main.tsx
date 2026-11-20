@@ -42,10 +42,10 @@ const auth: AuthClient = createAuthClient();
 
 /**
  * Real services by default; `?demo` (or a failure to open the database) uses mock data.
- * Where the data lives: a Kenning API on the same origin (server mode, one SQLite file on the
+ * Where the data lives: a Vuurtoren API on the same origin (server mode, one SQLite file on the
  * server), else this browser (OPFS).
  */
-const DEMO_KEY = "kenning-demo";
+const DEMO_KEY = "vuurtoren-demo";
 
 /**
  * Demo mode is requested with `?demo` and remembered for the browser session, so in-app
@@ -95,7 +95,7 @@ type Boot =
   | Extract<LocalBoot, { kind: "locked" }>;
 
 const INSECURE_NOTICE =
-  "Kenning needs https or http://localhost to store data (you opened it over plain http from another device). Use https (see deploy/README.md) or run in server mode.";
+  "Vuurtoren needs https or http://localhost to store data (you opened it over plain http from another device). Use https (see deploy/README.md) or run in server mode.";
 
 /** Server mode: one SQLite file on the server, reached through /api (cookie session). */
 async function bootServer(health: ServerHealth, account: Account): Promise<Boot> {
@@ -106,7 +106,7 @@ async function bootServer(health: ServerHealth, account: Account): Promise<Boot>
     if (health.state === "schema-too-new") {
       return {
         kind: "blocked",
-        message: `The database on the server is from a newer Kenning (schema v${health.foundVersion ?? "?"}; this app supports v${health.schemaVersion}).`,
+        message: `The database on the server is from a newer Vuurtoren (schema v${health.foundVersion ?? "?"}; this app supports v${health.schemaVersion}).`,
         download: () => admin.exportBackup(),
       };
     }
@@ -153,7 +153,7 @@ async function bootBrowser(): Promise<Boot> {
 async function openBrowser(lock: HeldLock): Promise<Boot> {
   const [{ createRepository, isSchemaTooNew }, { createWebDriver }, { createLiveServices }] =
     await Promise.all([import("@app/db"), import("@app/db/web"), import("./services/live.js")]);
-  const driver = await createWebDriver("kenning");
+  const driver = await createWebDriver("vuurtoren");
   // Another tab may ask for the database ("Use here instead"): let go of OPFS at once.
   lock.onTakenOver(() => {
     driver.terminate();
@@ -204,7 +204,7 @@ async function openBrowser(lock: HeldLock): Promise<Boot> {
 /**
  * The desktop app's own page: on this computer only (the default; data in a
  * local SQLite file, the bundled language server), or the Connect screen when the user chose a
- * Kenning server (it then opens the server's page, which boots as usual).
+ * Vuurtoren server (it then opens the server's page, which boots as usual).
  */
 async function bootDesktop(bridge: DesktopBridge): Promise<Boot> {
   const info = await bridge.info().catch(() => null);
@@ -216,7 +216,7 @@ async function bootDesktop(bridge: DesktopBridge): Promise<Boot> {
     console.error("The local database could not be opened:", e);
     return {
       kind: "unreachable",
-      reason: `Kenning could not open its data file: ${e instanceof Error ? e.message : String(e)}`,
+      reason: `Vuurtoren could not open its data file: ${e instanceof Error ? e.message : String(e)}`,
     };
   }
 }
@@ -246,7 +246,7 @@ async function boot(): Promise<Boot> {
     default:
       break;
   }
-  // Browser mode (no Kenning API on this origin). Only here can a failure fall back to demo.
+  // Browser mode (no Vuurtoren API on this origin). Only here can a failure fall back to demo.
   try {
     return await bootBrowser();
   } catch (e) {

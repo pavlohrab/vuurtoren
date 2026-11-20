@@ -6,7 +6,7 @@ import { SignInScreen } from "../shell/SignIn.js";
 import { createAuthClient, type Credentials, type SignInResult } from "./client.js";
 import { installFetchWatch, SIGNED_IN_EVENT, watchesUrl } from "./watch.js";
 
-const ORIGIN = "https://kenning.example.com";
+const ORIGIN = "https://vuurtoren.example.com";
 
 function signInMock(...results: SignInResult[]) {
   const calls: Credentials[] = [];
@@ -118,7 +118,10 @@ describe("auth client", () => {
     expect(await c.signIn({ user: "anna", password: "pw" })).toEqual({ ok: true, user: "anna" });
     const init = f.mock.calls[0] as unknown as [string, RequestInit];
     expect(init[0]).toBe("/api/auth/login");
-    expect(init[1].headers).toMatchObject({ "content-type": "application/json", "x-kenning": "1" });
+    expect(init[1].headers).toMatchObject({
+      "content-type": "application/json",
+      "x-vuurtoren": "1",
+    });
     expect(init[1].credentials).toBe("same-origin");
   });
 

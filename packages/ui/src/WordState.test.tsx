@@ -18,9 +18,9 @@ describe("WordStateChip", () => {
     expect(screen.getByText("New")).toHaveAttribute("data-state", "unknown");
   });
 
-  it("names words learned only in Kenning", () => {
-    render(<WordStateChip state="learning" inKenning />);
-    expect(screen.getByText("Learning (in Kenning)")).toHaveAttribute("data-state", "learning");
+  it("names words learned only in Vuurtoren", () => {
+    render(<WordStateChip state="learning" inVuurtoren />);
+    expect(screen.getByText("Learning (in Vuurtoren)")).toHaveAttribute("data-state", "learning");
   });
 
   it("shows a count with the lowercased label", () => {

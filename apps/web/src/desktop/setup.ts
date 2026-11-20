@@ -36,7 +36,7 @@ export function setupView(status: SidecarStatus | null | undefined): SetupView |
       return {
         tone: "error",
         message:
-          "This build of Kenning has no language tools, so texts are not analysed. Install the release from GitHub.",
+          "This build of Vuurtoren has no language tools, so texts are not analysed. Install the release from GitHub.",
       };
     case "failed":
       return {

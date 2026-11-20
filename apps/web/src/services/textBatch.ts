@@ -1,4 +1,4 @@
-import type { KenningRepository, StoredText, TextSummary } from "@app/db";
+import type { VuurtorenRepository, StoredText, TextSummary } from "@app/db";
 
 /** Words of text (tokens) per batched `getTexts` call: bounds one server-mode response. */
 const TEXT_BATCH_WORDS = 150_000;
@@ -8,7 +8,7 @@ const TEXT_BATCH_WORDS = 150_000;
  * as possible: one `getTexts` per ~150k words instead of one `getText` per text.
  */
 export async function fetchTexts(
-  repo: Pick<KenningRepository, "getTexts">,
+  repo: Pick<VuurtorenRepository, "getTexts">,
   summaries: readonly Pick<TextSummary, "id" | "wordCount">[],
   maxWords: number = TEXT_BATCH_WORDS,
 ): Promise<StoredText[]> {

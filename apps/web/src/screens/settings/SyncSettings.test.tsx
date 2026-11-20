@@ -21,7 +21,7 @@ describe("Settings → Sync", { timeout: 20_000 }, () => {
     const start = screen.getByRole("button", { name: "Start syncing" });
     expect(start).toBeDisabled();
     await user.click(screen.getByRole("radio", { name: /Start new sync data here/ }));
-    await user.type(screen.getByLabelText("Server address"), "https://kenning.example.org");
+    await user.type(screen.getByLabelText("Server address"), "https://vuurtoren.example.org");
     await user.type(screen.getByLabelText("Sync token"), "ksync_abc");
     await user.type(screen.getByLabelText("Passphrase"), "short");
     expect(start).toBeDisabled();
@@ -59,7 +59,7 @@ describe("Settings → Sync", { timeout: 20_000 }, () => {
     await user.click(screen.getByRole("button", { name: "Make a new recovery key…" }));
     expect(screen.queryByRole("alert")).toBeNull();
     await user.click(screen.getByRole("button", { name: "Cancel" }));
-    expect(screen.getByText(/Kenning server · kenning\.example\.org/)).toBeVisible();
+    expect(screen.getByText(/Vuurtoren server · vuurtoren\.example\.org/)).toBeVisible();
     const devices = screen.getByRole("list", { name: "Devices" });
     expect(within(devices).getByText("Phone")).toBeVisible();
     expect(within(devices).getByText("this device")).toBeVisible();
@@ -75,7 +75,7 @@ describe("Settings → Sync", { timeout: 20_000 }, () => {
     const { user } = setup();
     await user.click(await screen.findByRole("radio", { name: /Join my synced data/ }));
     expect(screen.getByLabelText("Passphrase or recovery key")).toBeVisible();
-    await user.type(screen.getByLabelText("Server address"), "https://kenning.example.org");
+    await user.type(screen.getByLabelText("Server address"), "https://vuurtoren.example.org");
     await user.type(screen.getByLabelText("Sync token"), "ksync_abc");
     await user.type(screen.getByLabelText("Passphrase or recovery key"), "lange zinnen lezen");
     await user.click(screen.getByRole("button", { name: "Join and sync" }));

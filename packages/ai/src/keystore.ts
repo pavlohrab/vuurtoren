@@ -27,7 +27,7 @@ interface Stored {
   key?: string;
 }
 
-const PREFIX = "kenning.ai.key.";
+const PREFIX = "vuurtoren.ai.key.";
 const PBKDF2_ITERATIONS = 250_000;
 
 const b64 = (b: ArrayBuffer | Uint8Array): string => {

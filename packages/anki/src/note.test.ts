@@ -30,7 +30,7 @@ describe("addWordNote", () => {
   it("creates note type and deck, escapes fields, tags notes", async () => {
     const { anki, calls } = fake([]);
     const id = await addWordNote(anki, {
-      deck: "Kenning::NL",
+      deck: "Vuurtoren::NL",
       word: "de <fiets>",
       gloss: "bike",
       sentence: "De <b>fiets</b> is rood.",
@@ -50,7 +50,7 @@ describe("addWordNote", () => {
     expect(note.modelName).toBe(NOTE_TYPE);
     expect(note.fields["Word"]).toBe("de &lt;fiets&gt;");
     expect(note.fields["Sentence"]).toBe("De <b>fiets</b> is rood.");
-    expect(note.tags).toContain("kenning");
+    expect(note.tags).toContain("vuurtoren");
   });
 
   it("skips createModel when the note type exists and returns the existing id on duplicates", async () => {

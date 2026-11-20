@@ -1,10 +1,10 @@
 /** Errors of the language profile, kept apart so screens import them without the live services. */
 
-/** Kenning has no profile for this language yet: the learner should choose decks first. */
+/** Vuurtoren has no profile for this language yet: the learner should choose decks first. */
 export class DecksNotChosenError extends Error {
   override readonly name = "DecksNotChosenError";
   constructor() {
-    super("Choose which Anki decks Kenning reads first.");
+    super("Choose which Anki decks Vuurtoren reads first.");
   }
 }
 

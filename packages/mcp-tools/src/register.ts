@@ -13,20 +13,23 @@ export async function respond(run: () => Promise<unknown>) {
   }
 }
 
-const SERVER_INSTRUCTIONS = `Kenning is the learner's Dutch reading app. Use these tools to keep what you write at the learner's level:
+const SERVER_INSTRUCTIONS = `Vuurtoren is the learner's Dutch reading app. Use these tools to keep what you write at the learner's level:
 - Before writing Dutch for the learner, look at get_words_to_learn and get_known_words; afterwards run check_coverage (aim for 95-98%) and rewrite unknown words.
-- save_text puts a story, dialogue or exercise you wrote into their Kenning Library.
-- Never claim you added cards to Anki: suggest_words_for_anki only queues words; the learner confirms them in Kenning.`;
+- save_text puts a story, dialogue or exercise you wrote into their Vuurtoren Library.
+- Never claim you added cards to Anki: suggest_words_for_anki only queues words; the learner confirms them in Vuurtoren.`;
 
-/** A new MCP server named "kenning" with the shared tools registered. */
-export function createKenningMcpServer(h: ToolHandlers, version = "0.2.0"): McpServer {
-  const server = new McpServer({ name: "kenning", version }, { instructions: SERVER_INSTRUCTIONS });
-  registerKenningTools(server, h);
+/** A new MCP server named "vuurtoren" with the shared tools registered. */
+export function createVuurtorenMcpServer(h: ToolHandlers, version = "0.2.0"): McpServer {
+  const server = new McpServer(
+    { name: "vuurtoren", version },
+    { instructions: SERVER_INSTRUCTIONS },
+  );
+  registerVuurtorenTools(server, h);
   return server;
 }
 
-/** Register the shared Kenning tools on `server`. */
-function registerKenningTools(server: McpServer, h: ToolHandlers): void {
+/** Register the shared Vuurtoren tools on `server`. */
+function registerVuurtorenTools(server: McpServer, h: ToolHandlers): void {
   server.registerTool(
     "get_known_words",
     {
@@ -57,7 +60,7 @@ function registerKenningTools(server: McpServer, h: ToolHandlers): void {
   server.registerTool(
     "list_texts",
     {
-      description: "List the texts in the learner's Kenning Library (id, title, words).",
+      description: "List the texts in the learner's Vuurtoren Library (id, title, words).",
       inputSchema: {},
     },
     () => respond(() => h.listTexts()),
@@ -76,7 +79,7 @@ function registerKenningTools(server: McpServer, h: ToolHandlers): void {
     "get_words_to_learn",
     {
       description:
-        "The words Kenning highlights for the learner to learn next (the amber 'to learn' words of their Library texts), with a sentence each. Good targets for stories and quizzes.",
+        "The words Vuurtoren highlights for the learner to learn next (the amber 'to learn' words of their Library texts), with a sentence each. Good targets for stories and quizzes.",
       inputSchema: {
         textId: z.string().optional().describe("Only this text (default: recent texts)"),
         limit: z.number().int().min(1).max(200).optional().describe("Max words, default 40"),
@@ -117,7 +120,7 @@ function registerKenningTools(server: McpServer, h: ToolHandlers): void {
     "get_grammar_topic",
     {
       description:
-        "Kenning's grammar pages. Without an id: the list of topics (filter with query). With an id: the explanation the learner sees in the app, so your explanations match it.",
+        "Vuurtoren's grammar pages. Without an id: the list of topics (filter with query). With an id: the explanation the learner sees in the app, so your explanations match it.",
       inputSchema: {
         id: z.string().optional().describe("Topic id from the list"),
         query: z.string().optional().describe("Filter the list, e.g. 'perfect' or 'word order'"),
@@ -130,7 +133,7 @@ function registerKenningTools(server: McpServer, h: ToolHandlers): void {
     "save_text",
     {
       description:
-        "Save a Dutch text you wrote (story, dialogue, exercise) to the learner's Kenning Library, where they read it with Kenning's reader. Check coverage first.",
+        "Save a Dutch text you wrote (story, dialogue, exercise) to the learner's Vuurtoren Library, where they read it with Vuurtoren's reader. Check coverage first.",
       inputSchema: {
         title: z.string().describe("Short title"),
         content: z.string().describe("The Dutch text (plain text; blank lines between paragraphs)"),
@@ -146,7 +149,7 @@ function registerKenningTools(server: McpServer, h: ToolHandlers): void {
     "suggest_words_for_anki",
     {
       description:
-        "Suggest words for the learner's Anki deck. Does NOT add cards: the words wait in Kenning (Words → Suggested by Claude) until the learner adds or dismisses them. Skips words already known or in Anki.",
+        "Suggest words for the learner's Anki deck. Does NOT add cards: the words wait in Vuurtoren (Words → Suggested by Claude) until the learner adds or dismisses them. Skips words already known or in Anki.",
       inputSchema: {
         words: z
           .array(

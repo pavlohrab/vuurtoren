@@ -12,7 +12,7 @@ function folderName(path: string): string {
 export function placeLabel(p: PlaceRef): string {
   switch (p.kind) {
     case "server":
-      return `Kenning server · ${new URL(p.url).host}`;
+      return `Vuurtoren server · ${new URL(p.url).host}`;
     case "webdav":
       return `WebDAV · ${new URL(p.url).host}`;
     case "github":

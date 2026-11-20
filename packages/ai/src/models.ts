@@ -11,7 +11,7 @@ export interface ModelOption {
   id: string;
   /** Human name when the provider gives one (Anthropic's display_name). */
   label?: string;
-  /** The preset's default: cheap and fast enough for everything Kenning does. */
+  /** The preset's default: cheap and fast enough for everything Vuurtoren does. */
   recommended?: boolean;
 }
 

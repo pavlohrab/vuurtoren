@@ -117,7 +117,7 @@ export function WordInspector({
       </header>
 
       <div className="k-inspector-row">
-        <WordStateChip state={entry.state} inKenning={entry.appLearning} />
+        <WordStateChip state={entry.state} inVuurtoren={entry.appLearning} />
         {pos ? <span className="k-inspector-pos">{pos}</span> : null}
         {entry.state === "learning" ? (
           <span className="k-recall" style={{ color: "var(--ink-muted)", fontSize: 13 }}>
@@ -248,7 +248,7 @@ function AnkiActions({
 > & { entry: InspectorEntry }) {
   const { anki } = entry;
   const { status } = anki;
-  // Native mode: Kenning's own cards, worded without Anki.
+  // Native mode: Vuurtoren's own cards, worded without Anki.
   const native = anki.native === true;
   const ADD = native ? "Add to my words" : "Add to Anki";
   const unavailable = status === "unavailable";

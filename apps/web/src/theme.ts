@@ -3,7 +3,7 @@ import { readLocal, writeLocal } from "./storage/local.js";
 
 export type ThemeChoice = "system" | "light" | "dark";
 
-const KEY = "kenning-theme";
+const KEY = "vuurtoren-theme";
 const listeners = new Set<() => void>();
 
 function isTheme(v: unknown): v is ThemeChoice {

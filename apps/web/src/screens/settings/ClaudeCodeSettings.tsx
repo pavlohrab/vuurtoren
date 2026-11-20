@@ -1,7 +1,7 @@
 /**
  * Settings → AI → Use with Claude Code: connect Claude Code (or Claude Desktop) to this
  * server's MCP endpoint with a per-user token, so the learner's subscription can write
- * stories, quizzes and explanations from their Kenning data. No API key needed.
+ * stories, quizzes and explanations from their Vuurtoren data. No API key needed.
  */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
@@ -12,9 +12,9 @@ import { useAppInfo } from "../../shell/AppInfo.js";
 import { CopyBlock, SELF_HOSTING_URL } from "./shared.js";
 
 const EXAMPLE_PROMPTS = [
-  "Write me an A2 story using my words to learn about cycling and save it to Kenning.",
+  "Write me an A2 story using my words to learn about cycling and save it to Vuurtoren.",
   "Quiz me on Thema 3 words.",
-  "Explain the grammar of this sentence, the way Kenning's grammar pages do: …",
+  "Explain the grammar of this sentence, the way Vuurtoren's grammar pages do: …",
 ];
 
 const client = createMcpTokenClient();
@@ -48,17 +48,17 @@ export function ClaudeCodeSettings() {
     <section className="stack" aria-label="Use with Claude Code">
       <h3 style={{ margin: 0 }}>Use with Claude Code</h3>
       <p style={{ margin: 0, color: "var(--ink-muted)" }}>
-        No API key? Claude Code and Claude Desktop can use Kenning with your Claude subscription.
+        No API key? Claude Code and Claude Desktop can use Vuurtoren with your Claude subscription.
         Claude then reads your known words, words to learn, courses and grammar pages, saves the
         stories it writes to your Library and suggests words for Anki, which you confirm under
         Words. It never adds cards by itself.
       </p>
       {!server ? (
         <p className="k-hint" style={{ margin: 0 }}>
-          This needs Kenning running as a server, so your data is in one place Claude can reach.
+          This needs Vuurtoren running as a server, so your data is in one place Claude can reach.
           Here your data lives in this browser only.{" "}
           <a href={SELF_HOSTING_URL} target="_blank" rel="noreferrer">
-            How to run Kenning as a server
+            How to run Vuurtoren as a server
           </a>
         </p>
       ) : (
@@ -86,7 +86,7 @@ export function ClaudeCodeSettings() {
               {fresh ? (
                 <p role="status" style={{ margin: 0 }}>
                   Copy it now: the token is shown only once. It opens Claude&apos;s access to
-                  Kenning and nothing else.
+                  Vuurtoren and nothing else.
                 </p>
               ) : null}
               <CopyBlock

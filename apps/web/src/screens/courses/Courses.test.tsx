@@ -84,7 +84,7 @@ describe("Courses", () => {
   });
 
   it("adds a unit's words to Anki from a preview with the book's sentence", async () => {
-    const addUnitWords = vi.fn(async () => ({ added: 1, failed: 0, deck: "Kenning::Dutch" }));
+    const addUnitWords = vi.fn(async () => ({ added: 1, failed: 0, deck: "Vuurtoren::Dutch" }));
     const { user } = setup("/courses/demo-course/1", { addUnitWords });
     await user.click(await screen.findByRole("tab", { name: /Words/ }));
     await user.click(await screen.findByRole("button", { name: "Add 1 word to Anki…" }));
@@ -222,7 +222,7 @@ describe("Courses", () => {
     dialog = await screen.findByRole("dialog", { name: "Import a course pack" });
     await second.user.upload(
       within(dialog).getByLabelText("Course pack file"),
-      new File([json], "pack.kenning-course.json", { type: "application/json" }),
+      new File([json], "pack.vuurtoren-course.json", { type: "application/json" }),
     );
     expect(await within(dialog).findByTestId("pack-counts")).toHaveTextContent(
       /^4 units · \d+ words · \d+ exercises/,
@@ -239,8 +239,10 @@ describe("Courses", () => {
     dialog = await screen.findByRole("dialog", { name: "Import a course pack" });
     await second.user.upload(
       within(dialog).getByLabelText("Course pack file"),
-      new File([JSON.stringify({ format: "kenning-course-pack", version: 9 })], "x.json"),
+      new File([JSON.stringify({ format: "vuurtoren-course-pack", version: 9 })], "x.json"),
     );
-    expect(await within(dialog).findByRole("alert")).toHaveTextContent(/newer version of Kenning/);
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent(
+      /newer version of Vuurtoren/,
+    );
   });
 });

@@ -25,7 +25,7 @@ import {
   profileMode,
   reviewHistory,
 } from "@app/core";
-import type { KenningRepository, WordInfo } from "@app/db";
+import type { VuurtorenRepository, WordInfo } from "@app/db";
 import type { NlpClient, NlpLang } from "@app/nlp-client";
 import { activitySince, firstCard, groupActivity, knownByWeek } from "./activity.js";
 import { absentAnki, ankiFromStatus, unavailableAnki } from "./ankiState.js";
@@ -106,7 +106,7 @@ function describeWord(
 }
 
 export interface LiveWordsDeps {
-  repo: KenningRepository;
+  repo: VuurtorenRepository;
   lang: () => Promise<string>;
   anki: (timeoutMs?: number) => Promise<AnkiConnectClient>;
   learner: LearnerCache;
@@ -146,7 +146,7 @@ export function createLiveWords(deps: LiveWordsDeps) {
     };
   };
 
-  /** Native mode: Kenning holds the cards (read from the database, never from Anki). */
+  /** Native mode: Vuurtoren holds the cards (read from the database, never from Anki). */
   const native = async (): Promise<boolean> => profileMode(await deps.profile()) === "native";
 
   /** The state of words' cards in native mode, shaped like the live Anki state. */
@@ -506,7 +506,7 @@ export function createLiveWords(deps: LiveWordsDeps) {
 
     async syncAnki(onProgress?: (msg: string) => void): Promise<LearnerSummary> {
       if (await native()) {
-        throw new Error("Kenning holds your cards, so there is nothing to read from Anki.");
+        throw new Error("Vuurtoren holds your cards, so there is nothing to read from Anki.");
       }
       const l = await lang();
       // The confirmed sources of the language profile, plus destination and course decks.

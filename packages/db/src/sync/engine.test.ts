@@ -4,7 +4,7 @@ import { argon2id } from "hash-wasm";
 import { describe, expect, it } from "vitest";
 import { toBase64 } from "../base64.js";
 import { createNodeDriver } from "../node.js";
-import { type ImportResult, type KenningRepository, createRepository } from "../repository.js";
+import { type ImportResult, type VuurtorenRepository, createRepository } from "../repository.js";
 import type { SyncEvent } from "../types.js";
 import {
   SealedFileError,
@@ -105,7 +105,7 @@ describe("sync engine", () => {
       await a.append({ type: "WordStateSet", lang: "nl", key: `w${i}`, state: "known" });
       if (i % 2 === 1) await syncOnce(a, store, key, opts);
     }
-    const files = (await store.list("kenning/devices/aaaaaaaaaaaa")).filter(
+    const files = (await store.list("vuurtoren/devices/aaaaaaaaaaaa")).filter(
       (n) => n !== "device.kev",
     );
     expect(files.some((n) => n.endsWith(".base.kev"))).toBe(true);
@@ -141,13 +141,13 @@ describe("sync engine", () => {
     await syncOnce(a, store, key, { deviceName: "Laptop" });
     const junk = new Uint8Array([1, 2, 3]);
     await store.put(".stfolder/.keep", junk);
-    await store.put("kenning/devices/.stfolder", junk);
-    const [seg] = (await store.list("kenning/devices/aaaaaaaaaaaa")).filter(
+    await store.put("vuurtoren/devices/.stfolder", junk);
+    const [seg] = (await store.list("vuurtoren/devices/aaaaaaaaaaaa")).filter(
       (n) => n.endsWith(".kev") && n !== "device.kev",
     );
-    await store.put(`kenning/devices/aaaaaaaaaaaa/.syncthing.${seg}.tmp`, junk);
+    await store.put(`vuurtoren/devices/aaaaaaaaaaaa/.syncthing.${seg}.tmp`, junk);
     await store.put(
-      `kenning/devices/aaaaaaaaaaaa/${seg!.replace(".kev", ".sync-conflict-20261120-120000-ABCDEFG.kev")}`,
+      `vuurtoren/devices/aaaaaaaaaaaa/${seg!.replace(".kev", ".sync-conflict-20261120-120000-ABCDEFG.kev")}`,
       junk,
     );
     const got = await syncOnce(b, store, key, { deviceName: "Phone" });
@@ -236,7 +236,7 @@ describe("sync crypto", () => {
 const A = "aaaaaaaaaaaa";
 const B = "bbbbbbbbbbbb";
 const C = "cccccccccccc";
-const dirOf = (id: string) => `kenning/devices/${id}`;
+const dirOf = (id: string) => `vuurtoren/devices/${id}`;
 const eventFiles = async (store: SyncStore, id: string) =>
   (await store.list(dirOf(id))).filter((n) => n !== "device.kev");
 
@@ -259,7 +259,7 @@ async function rangelessFile(key: SyncKey, device: string, events: SyncEvent[], 
   return seal(key, gzipSync(json), path);
 }
 
-const mark = (repo: KenningRepository, key: string) =>
+const mark = (repo: VuurtorenRepository, key: string) =>
   repo.append({ type: "WordStateSet", lang: "nl", key, state: "known" });
 
 describe("sync engine, when things go wrong", () => {
@@ -407,7 +407,7 @@ describe("sync engine, when things go wrong", () => {
     await store.put(rangeless, await rangelessFile(key, E, events, rangeless));
     expect((await syncOnce(b, store, key, { deviceName: "Phone" })).problems).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ what: unbound, error: expect.stringMatching(/not a Kenning/) }),
+        expect.objectContaining({ what: unbound, error: expect.stringMatching(/not a Vuurtoren/) }),
         expect.objectContaining({ what: rangeless, error: expect.stringMatching(/damaged/) }),
       ]),
     );
@@ -478,7 +478,7 @@ describe("sync engine, when things go wrong", () => {
     await a.append({ type: "TextCoverSet", textId: "t1", blobId: cover });
     await syncOnce(a, store, key, opts);
     const named = () => calls.filter((c) => c === `put ${dirOf(A)}/device.kev`).length;
-    const blobLists = () => calls.filter((c) => c === "list kenning/blobs").length;
+    const blobLists = () => calls.filter((c) => c === "list vuurtoren/blobs").length;
     expect([named(), blobLists()]).toEqual([1, 1]);
     await syncOnce(a, store, key, opts);
     expect(named()).toBe(1);
@@ -526,7 +526,7 @@ describe("sync vault", () => {
     await store.put(VAULT_PATH, new TextEncoder().encode("not json"));
     await expect(openVault(store, PASS, false)).rejects.toThrow(/cannot use/);
     await put({ format: 3 });
-    await expect(openVault(store, PASS, false)).rejects.toThrow(/newer Kenning/);
+    await expect(openVault(store, PASS, false)).rejects.toThrow(/newer Vuurtoren/);
   });
 
   it("never mixes up a passphrase and a recovery key", async () => {

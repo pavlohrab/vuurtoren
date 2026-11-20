@@ -1,9 +1,9 @@
 /** Exam preparation over the repository: attempts as ExamAttempt events. */
-import type { KenningRepository } from "@app/db";
+import type { VuurtorenRepository } from "@app/db";
 import type { ExamServices } from "./examTypes.js";
 
 export interface LiveExamDeps {
-  repo: Pick<KenningRepository, "append" | "examAttempts">;
+  repo: Pick<VuurtorenRepository, "append" | "examAttempts">;
   lang: () => Promise<string>;
   /** Called after a write (invalidates cached derived data). */
   changed?: () => void;

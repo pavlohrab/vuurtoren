@@ -190,7 +190,7 @@ function GrammarTab({ unit, topics }: { unit: UnitView; topics: UnitGrammarTopic
               {g.topicId ? (
                 <p className="cs-meta">
                   <Link to="/grammar/$topic" params={{ topic: g.topicId }}>
-                    Kenning&rsquo;s page on this topic
+                    Vuurtoren&rsquo;s page on this topic
                   </Link>
                 </p>
               ) : null}

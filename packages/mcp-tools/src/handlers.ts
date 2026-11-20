@@ -1,5 +1,5 @@
 /**
- * Tool logic of the Kenning MCP tools, independent of the MCP transport so it can be tested
+ * Tool logic of the Vuurtoren MCP tools, independent of the MCP transport so it can be tested
  * directly. Used by the stdio server (apps/mcp, data over /api/rpc) and the API's own
  * Streamable HTTP endpoint (/api/mcp, data straight from the server's repository).
  *
@@ -18,10 +18,10 @@ import {
   readingTexts,
   wordKey,
 } from "@app/core";
-import { contentHash, countWords, type KenningRepository } from "@app/db";
+import { contentHash, countWords, type VuurtorenRepository } from "@app/db";
 
 export type ToolRepo = Pick<
-  KenningRepository,
+  VuurtorenRepository,
   | "append"
   | "courseBlocks"
   | "courses"
@@ -82,7 +82,7 @@ export function createToolHandlers(deps: ToolDeps) {
   function needAnalyze() {
     if (!deps.analyze) {
       throw new Error(
-        "No language server is configured for Kenning's MCP endpoint (KENNING_NLP_URL), so text cannot be analysed.",
+        "No language server is configured for Vuurtoren's MCP endpoint (VUURTOREN_NLP_URL), so text cannot be analysed.",
       );
     }
     return deps.analyze;
@@ -90,7 +90,7 @@ export function createToolHandlers(deps: ToolDeps) {
 
   async function findCourse(courseId: string | undefined) {
     const courses = await repo.courses();
-    if (courses.length === 0) throw new Error("The learner has no courses in Kenning.");
+    if (courses.length === 0) throw new Error("The learner has no courses in Vuurtoren.");
     if (!courseId) return courses[0]!;
     const q = courseId.toLowerCase();
     const c =
@@ -214,7 +214,7 @@ export function createToolHandlers(deps: ToolDeps) {
       return {
         note:
           texts.some((t) => !t.tokens) || texts.length === 0
-            ? "Only texts the learner has opened in Kenning (analysed) are included."
+            ? "Only texts the learner has opened in Vuurtoren (analysed) are included."
             : undefined,
         words: keys.map((key) => {
           const f = found.get(key)!;
@@ -357,12 +357,12 @@ export function createToolHandlers(deps: ToolDeps) {
         title,
         words: countWords(content),
         ...(coverage === undefined ? {} : { coverage }),
-        note: "Saved to the Kenning Library; the learner can open it in the reader now.",
+        note: "Saved to the Vuurtoren Library; the learner can open it in the reader now.",
       };
     },
 
     /**
-     * Queue words for the learner to confirm in Kenning (Words hub, "Suggested by Claude").
+     * Queue words for the learner to confirm in Vuurtoren (Words hub, "Suggested by Claude").
      * Never writes to Anki. Words already in Anki or known are skipped.
      */
     async suggestWordsForAnki(args: {

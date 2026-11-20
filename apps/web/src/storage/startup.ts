@@ -17,7 +17,7 @@ export type Startup =
 
 export interface StartupDeps {
   demo: boolean;
-  /** GET /api/health (null: no Kenning API answered). */
+  /** GET /api/health (null: no Vuurtoren API answered). */
   probe: () => Promise<ServerHealth | null>;
   /** GET /api/auth/me (null: 401, not signed in). */
   me: () => Promise<Account | null>;
@@ -33,7 +33,7 @@ export async function decideStartup(d: StartupDeps): Promise<Startup> {
   const health = await d.probe();
   if (!health) {
     return d.serverSeen()
-      ? { kind: "unreachable", reason: "The Kenning server at this address did not answer." }
+      ? { kind: "unreachable", reason: "The Vuurtoren server at this address did not answer." }
       : { kind: "browser" };
   }
   d.rememberServer();
@@ -50,9 +50,9 @@ export async function decideStartup(d: StartupDeps): Promise<Startup> {
   return account ? { kind: "server", health, account } : { kind: "signin", health };
 }
 
-const SERVER_KEY = "kenning-server-seen";
+const SERVER_KEY = "vuurtoren-server-seen";
 
-/** Remember that this origin is a Kenning server (so an outage is not mistaken for none). */
+/** Remember that this origin is a Vuurtoren server (so an outage is not mistaken for none). */
 export function rememberServer(): void {
   writeLocal(SERVER_KEY, "1");
 }
@@ -61,12 +61,12 @@ export function serverSeen(): boolean {
   return readLocal(SERVER_KEY) === "1";
 }
 
-/** The user says this address no longer runs a Kenning server. */
+/** The user says this address no longer runs a Vuurtoren server. */
 export function forgetServer(): void {
   writeLocal(SERVER_KEY, null);
 }
 
 /** Sessions are cookies now: drop the access token older versions kept here. */
 export function forgetLegacyToken(): void {
-  writeLocal("kenning-token", null);
+  writeLocal("vuurtoren-token", null);
 }

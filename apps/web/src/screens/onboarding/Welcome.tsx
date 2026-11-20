@@ -1,8 +1,8 @@
 /**
  * First-run onboarding: language → "Do you use Anki?".
- * - No: Kenning holds the cards (native mode) → where new words go → placement check → first
+ * - No: Vuurtoren holds the cards (native mode) → where new words go → placement check → first
  *   text.
- * - Yes, and move to Kenning: connect Anki → confirm decks → where new words go → the decks are
+ * - Yes, and move to Vuurtoren: connect Anki → confirm decks → where new words go → the decks are
  *   imported with their review history (native mode) → first text.
  * - Yes, and keep using Anki (connected mode): connect Anki → confirm decks → where new words
  *   go → (start fresh) placement check → first text.
@@ -30,7 +30,7 @@ import "./onboarding.css";
 import { readLocalJSON, writeLocalJSON } from "../../storage/local.js";
 import { runAnkiSync } from "../../shell/ankiSync.js";
 
-const STORAGE = "kenning.onboarding";
+const STORAGE = "vuurtoren.onboarding";
 
 type Step =
   | "language"
@@ -72,7 +72,7 @@ interface Draft {
   noAnki: boolean;
   /** The answer to "Do you use Anki?" (null: not answered yet). */
   usesAnki: boolean | null;
-  /** Import the Anki decks and review in Kenning (else keep using Anki). */
+  /** Import the Anki decks and review in Vuurtoren (else keep using Anki). */
   move: boolean;
   profile: LanguageProfile;
 }
@@ -281,11 +281,12 @@ export function Welcome() {
           {draft.step === "language" ? (
             <>
               <h1 ref={heading} tabIndex={-1}>
-                Welcome to Kenning
+                Welcome to Vuurtoren
               </h1>
               <p className="ob-lede">
-                Kenning helps you read real texts at the edge of what you know. A few choices first:
-                this takes about two minutes, and you can change everything later in Settings.
+                Vuurtoren helps you read real texts at the edge of what you know. A few choices
+                first: this takes about two minutes, and you can change everything later in
+                Settings.
               </p>
               <LanguageChoice value={draft.lang} onChange={(lang) => setDraft({ lang })} />
             </>
@@ -300,10 +301,10 @@ export function Welcome() {
               ) : (
                 <>
                   <h1 ref={heading} tabIndex={-1}>
-                    Welcome to Kenning
+                    Welcome to Vuurtoren
                   </h1>
                   <p className="ob-lede">
-                    Kenning helps you read real Dutch texts at the edge of what you know. A few
+                    Vuurtoren helps you read real Dutch texts at the edge of what you know. A few
                     choices first: this takes about two minutes, and you can change everything later
                     in Settings.
                   </p>
@@ -311,7 +312,7 @@ export function Welcome() {
                 </>
               )}
               <p className="ob-lede">
-                Kenning can keep your words and run your reviews itself, or work alongside Anki.
+                Vuurtoren can keep your words and run your reviews itself, or work alongside Anki.
               </p>
               <fieldset className="ob-choices">
                 <legend className="k-sr">Do you use Anki?</legend>
@@ -320,14 +321,14 @@ export function Welcome() {
                   checked={draft.usesAnki === false}
                   onChange={() => setDraft({ usesAnki: false, sources: [], noAnki: false })}
                   title="No"
-                  sub="Kenning keeps your words and schedules your reviews. You can import an Anki deck file later."
+                  sub="Vuurtoren keeps your words and schedules your reviews. You can import an Anki deck file later."
                 />
                 <Choice
                   name="uses"
                   checked={draft.usesAnki === true}
                   onChange={() => setDraft({ usesAnki: true })}
                   title="Yes"
-                  sub="Bring your Anki decks into Kenning, or keep using Anki."
+                  sub="Bring your Anki decks into Vuurtoren, or keep using Anki."
                 />
               </fieldset>
             </>
@@ -345,15 +346,15 @@ export function Welcome() {
                   name="move"
                   checked={draft.move}
                   onChange={() => setDraft({ move: true })}
-                  title="Import from Anki and use Kenning’s scheduler"
-                  sub="Your chosen decks come into Kenning once, with every card and its review history. Reviews then happen in Kenning; Anki is not changed."
+                  title="Import from Anki and use Vuurtoren’s scheduler"
+                  sub="Your chosen decks come into Vuurtoren once, with every card and its review history. Reviews then happen in Vuurtoren; Anki is not changed."
                 />
                 <Choice
                   name="move"
                   checked={!draft.move}
                   onChange={() => setDraft({ move: false })}
                   title="Keep using Anki"
-                  sub="Anki stays the record of what you know and runs your reviews. Anki must be open for Kenning to send words to it."
+                  sub="Anki stays the record of what you know and runs your reviews. Anki must be open for Vuurtoren to send words to it."
                 />
               </fieldset>
             </>
@@ -365,8 +366,8 @@ export function Welcome() {
                 Importing your decks
               </h1>
               <p className="ob-lede">
-                Kenning reads your chosen decks from Anki: notes, cards and the full review history.
-                Nothing in Anki changes.
+                Vuurtoren reads your chosen decks from Anki: notes, cards and the full review
+                history. Nothing in Anki changes.
               </p>
               {move.isPending ? (
                 <p role="status">
@@ -375,7 +376,7 @@ export function Welcome() {
               ) : move.isSuccess ? (
                 <p role="status">
                   Imported {move.data.cards} cards from {move.data.notes} notes, with{" "}
-                  {move.data.reviews} past reviews. Your reviews now happen in Kenning.
+                  {move.data.reviews} past reviews. Your reviews now happen in Vuurtoren.
                 </p>
               ) : move.isError ? (
                 <p role="alert" className="error-text">
@@ -393,8 +394,8 @@ export function Welcome() {
                 Connect Anki
               </h1>
               <p className="ob-lede">
-                Kenning reads your decks through the AnkiConnect add-on while Anki is open. It only
-                writes when you click a button such as Add to Anki.
+                Vuurtoren reads your decks through the AnkiConnect add-on while Anki is open. It
+                only writes when you click a button such as Add to Anki.
               </p>
               <AnkiStep
                 status={status.data}
@@ -410,15 +411,15 @@ export function Welcome() {
           {draft.step === "decks" ? (
             <>
               <h1 ref={heading} tabIndex={-1}>
-                Decks Kenning reads
+                Decks Vuurtoren reads
               </h1>
               <p className="ob-lede">
-                Words in the decks you tick count as known or learning. Kenning suggests the decks
+                Words in the decks you tick count as known or learning. Vuurtoren suggests the decks
                 that look like Dutch vocabulary; you decide.
               </p>
               {draft.noAnki || !connected ? (
                 <p className="ob-note">
-                  Without Anki, Kenning starts fresh: it creates {root} the first time you add a
+                  Without Anki, Vuurtoren starts fresh: it creates {root} the first time you add a
                   word, and you can connect Anki later in Settings.
                 </p>
               ) : decks.isPending ? (
@@ -463,7 +464,7 @@ export function Welcome() {
                     <span>
                       Start fresh
                       <span className="ob-choice-sub">
-                        Kenning creates {root} and fills it with the words you add while reading.
+                        Vuurtoren creates {root} and fills it with the words you add while reading.
                       </span>
                     </span>
                   </label>
@@ -478,7 +479,7 @@ export function Welcome() {
                 Where new words go
               </h1>
               <p className="ob-lede">
-                When you add a word, Kenning creates a card in this deck
+                When you add a word, Vuurtoren creates a card in this deck
                 {native ? "" : " in Anki"}. Every Add button shows the deck and lets you pick
                 another one.
               </p>
@@ -603,7 +604,7 @@ export function Welcome() {
             {draft.step === "anki" && !connected ? (
               <Button
                 onClick={() => {
-                  // Moving needs Anki; without it Kenning starts fresh with its own cards.
+                  // Moving needs Anki; without it Vuurtoren starts fresh with its own cards.
                   if (draft.move) {
                     setDraft({ usesAnki: false, sources: [], step: "destinations" });
                   } else {
@@ -711,7 +712,7 @@ function AnkiStep({
           {status.state === "not-allowed" ? (
             <Button variant="primary" disabled={connecting} onClick={onConnect}>
               {connecting ? <Spinner label="Waiting for Anki" /> : null}
-              Allow Kenning in Anki
+              Allow Vuurtoren in Anki
             </Button>
           ) : null}
           <Button disabled={checking} onClick={onCheck}>

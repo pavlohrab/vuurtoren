@@ -26,12 +26,12 @@ const messageOf = (e: unknown): string =>
   typeof e === "string" ? e : e instanceof Error ? e.message : "Something went wrong. Try again.";
 
 /**
- * "Connect to a Kenning server" in the desktop app; the app itself starts on
+ * "Connect to a Vuurtoren server" in the desktop app; the app itself starts on
  * this computer only, so this screen is the advanced route. The address is checked
  * (`/api/health`) by the app, then the window opens the server itself, which shows its own
  * sign-in screen when it needs one. Later starts open the saved server straight away; if it
  * does not answer, this screen says so and offers to retry, pick another, or go back to using
- * Kenning on this computer.
+ * Vuurtoren on this computer.
  */
 export function ConnectScreen({ bridge, changing }: ConnectProps) {
   const [phase, setPhase] = useState<Phase>({ kind: "loading" });
@@ -83,7 +83,7 @@ export function ConnectScreen({ bridge, changing }: ConnectProps) {
   const submit = async (): Promise<void> => {
     if (pending) return;
     if (!address.trim()) {
-      setProblem("Enter the address of your Kenning server.");
+      setProblem("Enter the address of your Vuurtoren server.");
       inputRef.current?.focus();
       return;
     }
@@ -116,12 +116,12 @@ export function ConnectScreen({ bridge, changing }: ConnectProps) {
         <header className="signin-brand">
           <LogoMark size={56} />
           <p className="signin-name" aria-hidden="true">
-            kenning
+            vuurtoren
           </p>
         </header>
         <section className="signin-card">
           <h1 id={ids.title} className="signin-title">
-            Connect to your Kenning server
+            Connect to your Vuurtoren server
           </h1>
           <p className="signin-lede">
             Your texts, words and progress live on your server. Enter the address you open in the
@@ -146,7 +146,7 @@ export function ConnectScreen({ bridge, changing }: ConnectProps) {
                 className="k-input signin-input"
                 type="url"
                 inputMode="url"
-                placeholder="kenning.example.com"
+                placeholder="vuurtoren.example.com"
                 autoComplete="url"
                 autoCapitalize="none"
                 autoCorrect="off"
@@ -194,7 +194,8 @@ export function ConnectScreen({ bridge, changing }: ConnectProps) {
             Use on this computer only
           </h2>
           <p className="signin-lede">
-            No server needed: your data stays in a file on this computer and Kenning works offline.
+            No server needed: your data stays in a file on this computer and Vuurtoren works
+            offline.
           </p>
           <Button
             disabled={pending}

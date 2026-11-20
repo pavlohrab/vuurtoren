@@ -13,8 +13,8 @@ export function AccountSettings() {
   if (!account) {
     return (
       <p className="k-hint" style={{ margin: 0 }}>
-        Kenning runs on this device here, so there is no account to sign in to. On a server of your
-        own, sign-in and sign-out live here.
+        Vuurtoren runs on this device here, so there is no account to sign in to. On a server of
+        your own, sign-in and sign-out live here.
       </p>
     );
   }

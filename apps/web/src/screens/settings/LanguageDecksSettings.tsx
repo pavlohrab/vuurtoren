@@ -34,7 +34,7 @@ export function LanguageDecksSettings() {
     async (p) => {
       const sourcesChanged =
         JSON.stringify(p.sources) !== JSON.stringify(saved.data?.sources ?? []);
-      // The mode is changed only by the move to Kenning, never by this form.
+      // The mode is changed only by the move to Vuurtoren, never by this form.
       await services.saveLanguageProfile({ ...p, mode: saved.data?.mode ?? p.mode ?? "connected" });
       await qc.invalidateQueries({ queryKey: ["languageProfile"] });
       await qc.invalidateQueries({ queryKey: ["deckChoices"] });
@@ -45,7 +45,7 @@ export function LanguageDecksSettings() {
 
   if (!profile) return <Skeleton style={{ height: 160 }} />;
   const rows = deckRows(detect.data ?? [], profile.sources);
-  // The saved mode decides (a move to Kenning changes it outside this form).
+  // The saved mode decides (a move to Vuurtoren changes it outside this form).
   const native = profileMode(saved.data ?? profile) === "native";
 
   return (
@@ -53,7 +53,7 @@ export function LanguageDecksSettings() {
       <SavedNote status={save.status} error={save.error} />
       {saved.data === null ? (
         <p className="ob-note">
-          Kenning does not know your decks yet. <Link to="/welcome">Set up step by step</Link>, or
+          Vuurtoren does not know your decks yet. <Link to="/welcome">Set up step by step</Link>, or
           choose them here.
         </p>
       ) : null}
@@ -63,9 +63,9 @@ export function LanguageDecksSettings() {
 
       {native ? null : (
         <>
-          <h3 className="settings-h3">Decks Kenning reads</h3>
+          <h3 className="settings-h3">Decks Vuurtoren reads</h3>
           <p className="k-hint" style={{ margin: 0 }}>
-            Words in these decks count as known or learning. Kenning&rsquo;s own decks are always
+            Words in these decks count as known or learning. Vuurtoren&rsquo;s own decks are always
             read.
           </p>
           {rows.length ? (

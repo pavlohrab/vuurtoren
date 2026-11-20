@@ -153,9 +153,9 @@ describe("reading comforts", () => {
   });
 
   it("falls back to the defaults when storage is broken or blocked", () => {
-    localStorage.setItem("kenning-reader-prefs", "{not json");
+    localStorage.setItem("vuurtoren-reader-prefs", "{not json");
     expect(readPrefs()).toEqual(DEFAULT_PREFS);
-    localStorage.setItem("kenning-reader-prefs", JSON.stringify({ size: 99, theme: "neon" }));
+    localStorage.setItem("vuurtoren-reader-prefs", JSON.stringify({ size: 99, theme: "neon" }));
     expect(readPrefs()).toEqual({ ...DEFAULT_PREFS, size: 4 });
     const orig = Storage.prototype.setItem;
     Storage.prototype.setItem = () => {

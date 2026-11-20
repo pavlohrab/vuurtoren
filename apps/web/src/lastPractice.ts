@@ -1,6 +1,6 @@
 import { readLocalJSON, writeLocalJSON } from "./storage/local.js";
 
-const KEY = "kenning-practice-again";
+const KEY = "vuurtoren-practice-again";
 
 /**
  * Words answered wrong in the last practice session: the Practice summary's "Review these

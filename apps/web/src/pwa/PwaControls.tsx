@@ -15,15 +15,15 @@ export function UpdateBanner() {
   );
 }
 
-/** Settings → Advanced: install Kenning as an app, when the browser offers it. */
+/** Settings → Advanced: install Vuurtoren as an app, when the browser offers it. */
 export function InstallApp() {
   const { canInstall } = usePwa();
   if (!canInstall) return null;
   return (
     <div className="settings-field">
-      <span className="k-label">Install Kenning</span>
+      <span className="k-label">Install Vuurtoren</span>
       <p className="k-hint">
-        Opens Kenning in its own window, with an icon in your app menu, and starts without a
+        Opens Vuurtoren in its own window, with an icon in your app menu, and starts without a
         connection.
       </p>
       <div>

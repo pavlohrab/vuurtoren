@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Button } from "@app/ui";
 
 /** The self-hosting guide on GitHub. */
-export const SELF_HOSTING_URL = "https://github.com/pavlohrab/Kenning/blob/main/deploy/README.md";
+export const SELF_HOSTING_URL = "https://github.com/pavlohrab/Vuurtoren/blob/main/deploy/README.md";
 
 /** A labelled block of text with a Copy button (a command, a token, a key). */
 export function CopyBlock({ label, text }: { label: string; text: string }) {

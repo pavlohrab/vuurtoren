@@ -1,5 +1,5 @@
 /**
- * Native mode: the cards Kenning holds itself. Pure data shared by the database projections,
+ * Native mode: the cards Vuurtoren holds itself. Pure data shared by the database projections,
  * the importers and the review screen.
  */
 
@@ -68,7 +68,7 @@ export interface NativeTemplate {
 
 /** A note type: field names, card templates and styling, as Anki defines them. */
 export interface NativeNotetype {
-  /** Stable id: `anki:<id>` for imported types, `kenning-word` for Kenning's own. */
+  /** Stable id: `anki:<id>` for imported types, `vuurtoren-word` for Vuurtoren's own. */
   id: string;
   name: string;
   kind: NotetypeKind;

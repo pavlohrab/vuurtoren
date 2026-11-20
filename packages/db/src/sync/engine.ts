@@ -6,11 +6,11 @@
  *
  * Layout under the place's root:
  *
- *   kenning/vault.json                         the data key under the passphrase and recovery locks
- *   kenning/devices/<device>/<lastId>.kev      events of one device, oldest first
- *   kenning/devices/<device>/<lastId>.base.kev a part of the device's folded events
- *   kenning/devices/<device>/device.kev        the device's name and when it last wrote
- *   kenning/blobs/<hmac>.kbl                   an image or sound
+ *   vuurtoren/vault.json                         the data key under the passphrase and recovery locks
+ *   vuurtoren/devices/<device>/<lastId>.kev      events of one device, oldest first
+ *   vuurtoren/devices/<device>/<lastId>.base.kev a part of the device's folded events
+ *   vuurtoren/devices/<device>/device.kev        the device's name and when it last wrote
+ *   vuurtoren/blobs/<hmac>.kbl                   an image or sound
  *
  * Each file holds a device's events after one id up to another (`after`, `last`), and every
  * file is sealed with its path, so a file moved or renamed by the place does not open. A
@@ -20,7 +20,7 @@
 import { Gunzip, gzipSync } from "fflate";
 import { isUlid } from "../ids.js";
 import { isBlobId } from "../library.js";
-import type { KenningRepository } from "../repository.js";
+import type { VuurtorenRepository } from "../repository.js";
 import type { AppEvent, SyncEvent } from "../types.js";
 import {
   type SyncKey,
@@ -39,7 +39,7 @@ import {
 } from "./crypto.js";
 import type { SyncStore } from "./store.js";
 
-const ROOT = "kenning";
+const ROOT = "vuurtoren";
 export const VAULT_PATH = `${ROOT}/vault.json`;
 const DEVICES = `${ROOT}/devices`;
 const BLOBS = `${ROOT}/blobs`;
@@ -53,7 +53,7 @@ const BASE_BYTES = 8 * MiB;
 /** No part grows past this, even inside one old file. */
 const BASE_MAX_BYTES = 16 * MiB;
 /**
- * The most JSON one file may hold. Sealed and gzipped it stays under the 64 MiB a Kenning
+ * The most JSON one file may hold. Sealed and gzipped it stays under the 64 MiB a Vuurtoren
  * server and the desktop app accept; reading stops past 64 MiB.
  */
 const MAX_FILE_BYTES = 60 * MiB;
@@ -181,15 +181,15 @@ export interface SyncOptions {
   testLimits?: Partial<SyncLimits>;
 }
 
-/** The place holds no Kenning data (yet). */
+/** The place holds no Vuurtoren data (yet). */
 export class NoVaultError extends Error {
   override readonly name = "NoVaultError";
   constructor() {
-    super("There is no Kenning data here yet.");
+    super("There is no Vuurtoren data here yet.");
   }
 }
 
-/** A file written by a newer Kenning: waited on, never left out. */
+/** A file written by a newer Vuurtoren: waited on, never left out. */
 class NewerFileError extends Error {
   override readonly name = "NewerFileError";
 }
@@ -266,7 +266,7 @@ function gunzipAtMost(bytes: Uint8Array, max: number): Uint8Array {
   let total = 0;
   const gunzip = new Gunzip((chunk) => {
     total += chunk.length;
-    if (total > max) throw new Error("A synced file unpacks to more than Kenning reads.");
+    if (total > max) throw new Error("A synced file unpacks to more than Vuurtoren reads.");
     parts.push(chunk);
   });
   // Small steps: one step unpacks to at most about a thousand times its size.
@@ -357,7 +357,7 @@ function checkFile(
 ): { after: string; last: string; events: SyncEvent[] } {
   if (!file || typeof file !== "object") throw new Error("This file is damaged.");
   if (typeof file.format === "number" && file.format > 2) {
-    throw new NewerFileError("This file was written by a newer Kenning. Update Kenning.");
+    throw new NewerFileError("This file was written by a newer Vuurtoren. Update Vuurtoren.");
   }
   if (file.format !== 2) throw new Error("This file is damaged.");
   if (file.device !== dev) throw new Error("This file belongs to another device.");
@@ -408,7 +408,7 @@ export async function listDevices(
 
 /** One sync: send what is new here, then bring in what is new elsewhere. */
 export async function syncOnce(
-  repo: KenningRepository,
+  repo: VuurtorenRepository,
   store: SyncStore,
   key: SyncKey,
   opts: SyncOptions,
@@ -418,7 +418,7 @@ export async function syncOnce(
   const limits = { ...LIMITS, ...opts.testLimits };
   const vault = await readVault(store);
   if (!vault)
-    throw new Error("The sync place no longer holds your Kenning data. Set up sync again.");
+    throw new Error("The sync place no longer holds your Vuurtoren data. Set up sync again.");
   await checkKey(vault, key);
   const saved = (await repo.syncState()) as SyncState | null;
   const state: SyncState =
@@ -609,7 +609,7 @@ function missingOf(state: SyncState, now: number): Record<string, number> {
 
 /** Bring in blobs the events referred to; a few hundred per sync. */
 async function fetchMissing(
-  repo: KenningRepository,
+  repo: VuurtorenRepository,
   store: SyncStore,
   key: SyncKey,
   missing: Record<string, number>,
@@ -648,7 +648,7 @@ async function fetchMissing(
  * tenth fold, everything is folded again, so what was removed leaves the place too.
  */
 async function foldOwn(
-  repo: KenningRepository,
+  repo: VuurtorenRepository,
   store: SyncStore,
   key: SyncKey,
   state: SyncState,

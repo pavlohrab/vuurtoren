@@ -1,6 +1,6 @@
 # @app/db
 
-Local-first persistence for Kenning. An append-only `events` table is the source of
+Local-first persistence for Vuurtoren. An append-only `events` table is the source of
 truth; every other table is a projection that `rebuild()` can recreate by replaying the log.
 
 ## Entry points
@@ -9,7 +9,7 @@ truth; every other table is a projection that `rebuild()` can recreate by replay
 | ---------------- | ----------------------------------------------------------------------------------------- |
 | `@app/db`        | `createRepository`, schema/migrations, ULID/HLC helpers, `contentHash`, types. No drivers |
 | `@app/db/node`   | `createNodeDriver(path = ":memory:")` on `node:sqlite` (tests, CLI)                       |
-| `@app/db/web`    | `createWebDriver(name = "kenning")`: sqlite-wasm + opfs-sahpool in a dedicated worker     |
+| `@app/db/web`    | `createWebDriver(name = "vuurtoren")`: sqlite-wasm + opfs-sahpool in a dedicated worker   |
 | `@app/db/native` | `createNativeDriver(native)`: the desktop app's SQLite file via its Rust commands         |
 
 The root export never imports `node:sqlite` or the web driver, so apps tree-shake cleanly.
@@ -54,7 +54,7 @@ Helpers: `contentHash(text)` (SHA-256 hex of UTF-8, synchronous, pure) is the ha
   2. Anki entry as imported
   3. app-created note (`NoteAddedToAnki`) -> `learning`, 0.2
   4. looked up only (`WordLookedUp`) -> `seen`, 0.1
-  5. answered in Kenning only (practice, cloze, book) -> `seen`
+  5. answered in Vuurtoren only (practice, cloze, book) -> `seen`
   6. otherwise absent
 
   Below the override, app evidence (`word_evidence`, from `ExerciseAnswered`, `ClozeAnswered`
@@ -75,7 +75,7 @@ Helpers: `contentHash(text)` (SHA-256 hex of UTF-8, synchronous, pure) is the ha
   `nativeCard`, `nativeReviews`, `nativeStats`, `fsrsParams`, `nativeMedia`, `nativeNoteStatus`.
 - **Mode**: when the language profile is native, the learner model takes its per-word facts from
   the native cards (`nativeWordEntries`, same classification as Anki cards) instead of
-  `anki_words`, and Kenning-added notes not yet answered count as pending (`learning`, 0.2);
+  `anki_words`, and Vuurtoren-added notes not yet answered count as pending (`learning`, 0.2);
   `notes_added` and `prioritized` (connected-mode Anki actions) are left aside. Without a profile,
   or with a profile saved before modes existed, the mode is connected.
 - **RPC** (`rpc.ts`): only allow-listed methods; `append` accepts known event types up to
@@ -89,7 +89,7 @@ Helpers: `contentHash(text)` (SHA-256 hex of UTF-8, synchronous, pure) is the ha
 import { createRepository } from "@app/db";
 import { createWebDriver } from "@app/db/web";
 
-const driver = await createWebDriver("kenning");
+const driver = await createWebDriver("vuurtoren");
 if (!driver.persistent) showBanner("Private mode: data will not be saved");
 export const repo = await createRepository(driver);
 ```
@@ -116,7 +116,7 @@ export default defineConfig({
 
 ```ts
 import { createNodeDriver } from "@app/db/node";
-const repo = await createRepository(await createNodeDriver("/path/to/kenning.db"));
+const repo = await createRepository(await createNodeDriver("/path/to/vuurtoren.db"));
 ```
 
 ## Limitations

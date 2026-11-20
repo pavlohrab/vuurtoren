@@ -3,7 +3,7 @@ import { DatabaseSync } from "node:sqlite";
 import { zipSync } from "fflate";
 import { AnkiConnectClient, type CreateSqlite, type OpenSqlite, readAnkiPackage } from "@app/anki";
 import { DEFAULT_FSRS_PARAMS, type LanguageProfile, defaultProfile } from "@app/core";
-import { type KenningRepository, createRepository } from "@app/db";
+import { type VuurtorenRepository, createRepository } from "@app/db";
 import { createNodeDriver } from "@app/db/node";
 import type { NlpClient } from "@app/nlp-client";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -152,7 +152,7 @@ const nlp = {
     terms.map((t) => ({ key: t.split(" ").at(-1)!, aliases: [], article: t.split(" ")[0]! })),
 } as unknown as NlpClient;
 
-let repo: KenningRepository | undefined;
+let repo: VuurtorenRepository | undefined;
 afterEach(async () => {
   await repo?.close();
   repo = undefined;
@@ -400,7 +400,7 @@ describe("native services", () => {
     const q = await live.reviewQueue();
     await live.answerReview(q.cards[0]!.cardId, 3, 2500);
     const { bytes, fileName, summary } = await live.exportPackage([]);
-    expect(fileName).toMatch(/^Kenning-\d{4}-\d\d-\d\d\.apkg$/);
+    expect(fileName).toMatch(/^Vuurtoren-\d{4}-\d\d-\d\d\.apkg$/);
     expect(summary).toMatchObject({ notes: 2, cards: 2, reviews: 6 });
     const col = await readAnkiPackage(bytes, sqlite().open);
     expect(col.decks.map((d) => d.name)).toContain("Dutch");

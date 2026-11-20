@@ -20,7 +20,7 @@ type Problem = { kind: "invalid" | "unavailable" | "refused"; message: string } 
 const clock = (s: number): string => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 
 /**
- * The sign-in screen for a public Kenning server. Calm and plain: one card, two fields,
+ * The sign-in screen for a public Vuurtoren server. Calm and plain: one card, two fields,
  * clear errors. Works with password managers (form, names, autocomplete) and the keyboard
  * (Enter submits, the show/hide toggle is a real button, errors move focus back).
  */
@@ -110,10 +110,10 @@ export function SignInScreen({ methods, signIn, onSignedIn, reason, defaultUser 
         <header className="signin-brand">
           <LogoMark size={56} />
           <p className="signin-name" aria-hidden="true">
-            kenning
+            vuurtoren
           </p>
           <p className="signin-pitch">
-            Read Dutch with the words you already know: Kenning uses your Anki decks to find texts
+            Read Dutch with the words you already know: Vuurtoren uses your Anki decks to find texts
             you can read and the next words worth learning.
           </p>
         </header>
@@ -244,7 +244,7 @@ export function SignInScreen({ methods, signIn, onSignedIn, reason, defaultUser 
         <p className="signin-foot">
           {mode === "password"
             ? "Forgot the password? Whoever runs this server can set a new one with hash-password."
-            : "The token is the KENNING_TOKEN set on the server."}
+            : "The token is the VUURTOREN_TOKEN set on the server."}
         </p>
       </main>
     </div>

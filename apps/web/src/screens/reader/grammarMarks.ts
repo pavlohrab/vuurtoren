@@ -119,7 +119,7 @@ export function topicsInText(
     .filter((t) => t.count > 0);
 }
 
-const RECENT_KEY = "kenning-grammar-recent";
+const RECENT_KEY = "vuurtoren-grammar-recent";
 
 /** Topic ids the learner focused on recently (newest first; [] when storage is unavailable). */
 export function readRecentTopics(): string[] {

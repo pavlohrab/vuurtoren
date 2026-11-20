@@ -1,5 +1,5 @@
 import type { AnalyzedToken } from "@app/core";
-import { type KenningRepository, contentHash, createRepository } from "@app/db";
+import { type VuurtorenRepository, contentHash, createRepository } from "@app/db";
 import { createNodeDriver } from "@app/db/node";
 import type { GrammarHit as ServerHit, NlpClient } from "@app/nlp-client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -58,7 +58,7 @@ function detect(text: string): ServerHit[] {
 
 const TEXT = "Morgen ga ik naar school.\n\nGisteren kocht hij een fiets.";
 
-let repo: KenningRepository;
+let repo: VuurtorenRepository;
 let grammarCalls: string[][];
 let fail: boolean;
 

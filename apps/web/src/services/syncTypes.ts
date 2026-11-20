@@ -15,7 +15,7 @@ export type SyncPlace =
 export type SetUpHow = "start" | "join";
 
 export interface SyncStatus {
-  /** Sync can run here: a device with its own data (not a page of a Kenning server). */
+  /** Sync can run here: a device with its own data (not a page of a Vuurtoren server). */
   available: boolean;
   /** A folder you already sync can be chosen (the desktop app). */
   folders: boolean;

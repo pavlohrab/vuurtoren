@@ -1,4 +1,4 @@
-/** The quiet line above every page while Kenning reads your Anki decks, or when that failed. */
+/** The quiet line above every page while Vuurtoren reads your Anki decks, or when that failed. */
 import { useQueryClient } from "@tanstack/react-query";
 import { Button, Spinner } from "@app/ui";
 import { useServices } from "../services/context.js";

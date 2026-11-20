@@ -1,5 +1,5 @@
 /**
- * The words textbooks use for their structure, in the languages Kenning's users learn and read
+ * The words textbooks use for their structure, in the languages Vuurtoren's users learn and read
  * instructions in. Course import recognises a unit ("Thema 3", "Chapter 3", "Lektion 3",
  * "Unité 3"), the contents page, exercise headers ("Oefening 4", "Exercise 4", "Übung 4") and
  * the appendices with these lists, so any book works, not only the Dutch example. Pure data.

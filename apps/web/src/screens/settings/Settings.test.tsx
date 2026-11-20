@@ -83,7 +83,7 @@ describe("Settings", () => {
       );
       setup("/settings?section=advanced");
       const status = await screen.findByRole("region", { name: "Server status" });
-      expect(within(status).getByText("Kenning")).toBeInTheDocument();
+      expect(within(status).getByText("Vuurtoren")).toBeInTheDocument();
       expect(within(status).getByText(/^\d+\.\d+\.\d+/)).toBeInTheDocument();
       expect(
         await within(status).findByText("9.9.9, missing: example sentences", {}, { timeout: 3000 }),

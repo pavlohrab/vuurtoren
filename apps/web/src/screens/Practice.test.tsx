@@ -261,7 +261,9 @@ describe("Practice session", () => {
     expect(
       await within(next).findByRole("link", { name: /Next text|Continue reading/ }),
     ).toHaveAttribute("href", expect.stringMatching(/^\/read\//));
-    expect(JSON.parse(localStorage.getItem("kenning-practice-again") ?? "[]")).toEqual(["gracht"]);
+    expect(JSON.parse(localStorage.getItem("vuurtoren-practice-again") ?? "[]")).toEqual([
+      "gracht",
+    ]);
   });
 
   it("practises only the words given in the URL", async () => {

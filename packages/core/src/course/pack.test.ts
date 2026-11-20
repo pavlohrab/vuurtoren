@@ -106,7 +106,7 @@ describe("course packs", () => {
   it("builds a full pack that validates and reads back to the same exercises", () => {
     const pack = buildCoursePack(content(), "full", { now: 0 });
     expect(pack).toMatchObject({
-      format: "kenning-course-pack",
+      format: "vuurtoren-course-pack",
       version: PACK_VERSION,
       mode: "full",
     });
@@ -183,9 +183,9 @@ describe("course packs", () => {
       string,
       unknown
     >;
-    expect(() => parseCoursePack({ hello: 1 })).toThrow("not a Kenning course pack");
+    expect(() => parseCoursePack({ hello: 1 })).toThrow("not a Vuurtoren course pack");
     expect(() => parseCoursePack({ ...good, version: PACK_VERSION + 1 })).toThrow(
-      /newer version of Kenning/,
+      /newer version of Vuurtoren/,
     );
     expect(() => parseCoursePack({ ...good, version: 0 })).toThrow(CoursePackError);
     expect(() => parseCoursePack({ ...good, mode: "half" })).toThrow("mode");
@@ -212,9 +212,9 @@ describe("course packs", () => {
   });
 
   it("names files after the course", () => {
-    expect(packFileName("De Opmaat A2", "full")).toBe("de-opmaat-a2.kenning-course.json");
+    expect(packFileName("De Opmaat A2", "full")).toBe("de-opmaat-a2.vuurtoren-course.json");
     expect(packFileName("De Opmaat A2", "structure")).toBe(
-      "de-opmaat-a2.structure.kenning-course.json",
+      "de-opmaat-a2.structure.vuurtoren-course.json",
     );
   });
 });

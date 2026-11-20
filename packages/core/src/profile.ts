@@ -1,5 +1,5 @@
 /**
- * The language profile: per language, which Anki decks Kenning reads (confirmed by
+ * The language profile: per language, which Anki decks Vuurtoren reads (confirmed by
  * the user; detection is only a suggestion) and where new words go. Pure data and rules, shared
  * by the web app, the database projections and the MCP server.
  */
@@ -29,14 +29,14 @@ export interface ProfileDestinations {
 
 /**
  * Where words added from a course go: one subdeck per unit
- * (`Kenning::<Lang>::<Course>::<Unit>`), one deck per course (`Kenning::<Lang>::<Course>`), or
+ * (`Vuurtoren::<Lang>::<Course>::<Unit>`), one deck per course (`Vuurtoren::<Lang>::<Course>`), or
  * the default deck.
  */
 export type CourseDeckMode = "unit" | "course" | "default";
 
 /**
  * Who holds the cards. `connected`: Anki is the record of known words and runs the reviews.
- * `native`: Kenning holds the cards and runs the reviews itself.
+ * `native`: Vuurtoren holds the cards and runs the reviews itself.
  */
 export type ProfileMode = "connected" | "native";
 
@@ -47,7 +47,7 @@ export interface LanguageProfile {
   sources: ProfileSource[];
   destinations: ProfileDestinations;
   courseDecks: CourseDeckMode;
-  /** Tags put on every note Kenning adds for this language (e.g. the language code). */
+  /** Tags put on every note Vuurtoren adds for this language (e.g. the language code). */
   tags: string[];
 }
 
@@ -64,9 +64,9 @@ function langName(lang: string): string {
   return PROFILE_LANGUAGES.find((l) => l.code === lang)?.name ?? lang.toUpperCase();
 }
 
-/** Root deck of a language: `Kenning::Nederlands`. */
+/** Root deck of a language: `Vuurtoren::Nederlands`. */
 export function rootDeck(lang: string): string {
-  return `Kenning::${langName(lang)}`;
+  return `Vuurtoren::${langName(lang)}`;
 }
 
 /** The mode of a profile; a profile without one is `connected`. */
@@ -77,8 +77,8 @@ export function profileMode(
 }
 
 /**
- * A fresh profile: everything goes to `Kenning::<Lang>` (reading/Converse/AI subdecks). New
- * learners hold their cards in Kenning unless they say they use Anki.
+ * A fresh profile: everything goes to `Vuurtoren::<Lang>` (reading/Converse/AI subdecks). New
+ * learners hold their cards in Vuurtoren unless they say they use Anki.
  */
 export function defaultProfile(
   lang: string,
@@ -159,13 +159,13 @@ export function destinationDecks(profile: LanguageProfile): string[] {
   ];
 }
 
-/** Tags for a note added from `source`: the profile's tags plus `kenning::from::<source>`. */
+/** Tags for a note added from `source`: the profile's tags plus `vuurtoren::from::<source>`. */
 export function noteTags(
   profile: LanguageProfile,
   source: AddSource,
   extra: string[] = [],
 ): string[] {
-  return [...new Set([...profile.tags, `kenning::from::${source}`, ...extra])];
+  return [...new Set([...profile.tags, `vuurtoren::from::${source}`, ...extra])];
 }
 
 const ARTICLES: Record<string, RegExp> = { nl: /^(de|het|een|'t)$/i };

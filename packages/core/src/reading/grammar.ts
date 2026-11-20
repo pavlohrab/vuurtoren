@@ -1,6 +1,6 @@
 /**
  * Grammar hits: constructions found by the NLP service's rule-based detectors
- * (server/nlp/src/kenning_nlp/grammar.py, `POST /grammar`), stored per text by packages/db and
+ * (server/nlp/src/vuurtoren_nlp/grammar.py, `POST /grammar`), stored per text by packages/db and
  * shown as reader spotlights. The topic ids name grammar pages in packages/content.
  */
 

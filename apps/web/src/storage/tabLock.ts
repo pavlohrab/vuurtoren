@@ -25,8 +25,8 @@ export interface TabLockDeps {
   openChannel: (name: string) => ChannelLike;
 }
 
-const LOCK_NAME = "kenning-db";
-const CHANNEL_NAME = "kenning-db";
+const LOCK_NAME = "vuurtoren-db";
+const CHANNEL_NAME = "vuurtoren-db";
 const RELEASE_MESSAGE = "release";
 
 /** This tab owns the database. */

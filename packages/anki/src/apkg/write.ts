@@ -1,5 +1,5 @@
 /**
- * Writing an Anki package (.apkg) from Kenning's own cards: note types, decks with their options,
+ * Writing an Anki package (.apkg) from Vuurtoren's own cards: note types, decks with their options,
  * notes, cards with their schedule and FSRS memory, the review history and the media the notes
  * use. The older layout is written (`collection.anki21`, schema 11, note types, decks and deck
  * options as JSON in the `col` row; `media` as JSON), which every Anki version since 2.1 imports.
@@ -54,8 +54,8 @@ export interface PackageSummary {
 }
 
 const DAY_MS = 86_400_000;
-/** Anki's id of Kenning's own note type ("kenning-word"), the same in every export. */
-export const KENNING_NOTETYPE_ANKI_ID = 1_761_000_000_000;
+/** Anki's id of Vuurtoren's own note type ("vuurtoren-word"), the same in every export. */
+export const VUURTOREN_NOTETYPE_ANKI_ID = 1_761_000_000_000;
 const FIRST_DECK_ID = 1_761_000_000_001;
 
 const SCHEMA_11 = [
@@ -84,11 +84,13 @@ const SCHEMA_11 = [
   `CREATE INDEX ix_notes_csum ON notes (csum)`,
 ];
 
-/** Anki's numeric id of a note type: its own for imported ones, a fixed one for Kenning's. */
+/** Anki's numeric id of a note type: its own for imported ones, a fixed one for Vuurtoren's. */
 function ankiNotetypeId(t: NativeNotetype, i: number): number {
   const m = /^anki:(\d+)$/.exec(t.id);
   if (m) return Number(m[1]);
-  return t.id === "kenning-word" ? KENNING_NOTETYPE_ANKI_ID : KENNING_NOTETYPE_ANKI_ID + 1000 + i;
+  return t.id === "vuurtoren-word"
+    ? VUURTOREN_NOTETYPE_ANKI_ID
+    : VUURTOREN_NOTETYPE_ANKI_ID + 1000 + i;
 }
 
 /** Anki's note checksum: the first 8 hex digits of the SHA-1 of the stripped sort field. */
@@ -102,7 +104,7 @@ async function checksum(field: string): Promise<number> {
 }
 
 /** A note's guid: stable for the note id, so importing the file twice updates, not doubles. */
-const guidOf = (noteId: number) => `kenning${noteId.toString(36)}`;
+const guidOf = (noteId: number) => `vuurtoren${noteId.toString(36)}`;
 
 /** Each deck and every parent of it ("A::B" also needs "A"), by name. */
 function withParents(names: string[]): string[] {
