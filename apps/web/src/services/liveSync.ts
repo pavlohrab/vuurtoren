@@ -51,7 +51,7 @@ interface Saved {
 }
 
 /** Where this device keeps the sync key (the OS keychain, or protected browser storage). */
-export interface SyncKeys {
+interface SyncKeys {
   save(raw: Uint8Array): Promise<unknown>;
   load(): Promise<Uint8Array | null>;
   forget(): Promise<void>;
