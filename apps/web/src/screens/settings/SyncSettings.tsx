@@ -1,6 +1,6 @@
 /**
  * Settings → Sync: your data on every device, through a place you choose, encrypted with a
- * passphrase before it leaves the device. On a page of a Kenning server (which holds the data
+ * passphrase before it leaves the device. On a page of a Vuurtoren server (which holds the data
  * itself) this section makes sync tokens for the devices that keep their own data.
  */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -32,8 +32,8 @@ const HOWS: { how: SetUpHow; title: string; sub: string }[] = [
 const KINDS: { kind: Kind; title: string; sub: string }[] = [
   {
     kind: "server",
-    title: "Your Kenning server",
-    sub: "A Kenning server you run. Make a sync token in its Settings → Sync.",
+    title: "Your Vuurtoren server",
+    sub: "A Vuurtoren server you run. Make a sync token in its Settings → Sync.",
   },
   {
     kind: "folder",
@@ -237,7 +237,7 @@ function SetUp({ status, onRecovery }: { status: SyncStatus; onRecovery: (key: s
       toast(
         r.error ? "Sync is set up" : r.created ? "Sync is on" : "This device is in sync",
         r.error
-          ? "The first sync did not finish yet. Kenning tries again by itself."
+          ? "The first sync did not finish yet. Vuurtoren tries again by itself."
           : r.created
             ? "Choose Join my synced data on your other devices, with the same passphrase."
             : "Your data from your other devices is here.",
@@ -308,7 +308,7 @@ function SetUp({ status, onRecovery }: { status: SyncStatus; onRecovery: (key: s
         <>
           <Input
             label="Server address"
-            placeholder="https://kenning.example.org"
+            placeholder="https://vuurtoren.example.org"
             value={f("url")}
             onChange={set("url")}
           />
@@ -324,7 +324,7 @@ function SetUp({ status, onRecovery }: { status: SyncStatus; onRecovery: (key: s
         <>
           <Input
             label="WebDAV address"
-            placeholder="https://cloud.example.org/remote.php/dav/files/you/Kenning"
+            placeholder="https://cloud.example.org/remote.php/dav/files/you/Vuurtoren"
             value={f("url")}
             onChange={set("url")}
           />
@@ -346,7 +346,7 @@ function SetUp({ status, onRecovery }: { status: SyncStatus; onRecovery: (key: s
         <>
           <Input
             label="Repository"
-            placeholder="you/kenning-sync"
+            placeholder="you/vuurtoren-sync"
             value={f("repo")}
             onChange={set("repo")}
           />
@@ -452,8 +452,8 @@ function SyncOn({ status }: { status: SyncStatus }) {
         </ul>
       ) : null}
       <p className="k-hint" style={{ margin: 0 }}>
-        Kenning syncs by itself while it is open, and once more when you leave it. On another device
-        choose Join my synced data, the same place and the same passphrase.
+        Vuurtoren syncs by itself while it is open, and once more when you leave it. On another
+        device choose Join my synced data, the same place and the same passphrase.
       </p>
       <div className="row">
         <Button variant="primary" onClick={() => now.mutate()} disabled={now.isPending}>
@@ -492,7 +492,7 @@ function SyncOn({ status }: { status: SyncStatus }) {
   );
 }
 
-/** On a page of a Kenning server: sync tokens for the devices that keep their own data. */
+/** On a page of a Vuurtoren server: sync tokens for the devices that keep their own data. */
 function ServerTokens() {
   const { data, account } = useAppInfo();
   const server = data?.mode === "server";
@@ -524,7 +524,7 @@ function ServerTokens() {
       <p className="k-hint" style={{ margin: 0 }}>
         This page uses your data on this server directly, so it is always up to date. The desktop
         app and phones keep their own data and sync through this server: in their Settings → Sync,
-        choose Your Kenning server and give this address and a sync token.
+        choose Your Vuurtoren server and give this address and a sync token.
       </p>
       <CopyBlock label="Server address" text={location.origin} />
       {authOn ? (

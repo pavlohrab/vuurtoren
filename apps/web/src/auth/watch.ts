@@ -62,4 +62,4 @@ export function onUnauthorized(fn: Listener): () => void {
 }
 
 /** Event the app listens to after a successful re-sign-in (refetches its data). */
-export const SIGNED_IN_EVENT = "kenning:signed-in";
+export const SIGNED_IN_EVENT = "vuurtoren:signed-in";

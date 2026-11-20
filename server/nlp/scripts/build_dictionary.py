@@ -17,7 +17,7 @@ from pathlib import Path
 
 from pinned_download import PinMismatchError, download_verified
 
-from kenning_nlp.dictionary import build_dictionary
+from vuurtoren_nlp.dictionary import build_dictionary
 
 KAIKKI_URL = "https://kaikki.org/dictionary/Dutch/kaikki.org-dictionary-Dutch.jsonl"
 # Kaikki only publishes a rolling "latest" file, so we pin the snapshot the data was built from
@@ -56,7 +56,7 @@ def main() -> int:
                     args.sha256 or None,
                     args.size or None,
                     args.accept_new_upstream,
-                    "kenning-build-dictionary",
+                    "vuurtoren-build-dictionary",
                 )
             except PinMismatchError as e:
                 print(f"error: {e}", file=sys.stderr)

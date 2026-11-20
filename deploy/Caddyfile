@@ -1,8 +1,8 @@
-# HTTPS front for Kenning (compose profile "https").
-#   Public domain:  KENNING_DOMAIN=kenning.example.com              -> Let's Encrypt, automatic
-#   LAN:            KENNING_DOMAIN=kenning.lan KENNING_TLS=internal -> local CA (trust it once)
-{$KENNING_DOMAIN:localhost} {
-	tls {$KENNING_TLS:}
+# HTTPS front for Vuurtoren (compose profile "https").
+#   Public domain:  VUURTOREN_DOMAIN=vuurtoren.example.com              -> Let's Encrypt, automatic
+#   LAN:            VUURTOREN_DOMAIN=vuurtoren.lan VUURTOREN_TLS=internal -> local CA (trust it once)
+{$VUURTOREN_DOMAIN:localhost} {
+	tls {$VUURTOREN_TLS:}
 	encode gzip
 	reverse_proxy web:80
 }

@@ -5,7 +5,7 @@
  */
 import type { TokenLike } from "../match.js";
 
-/** One token from server/nlp /analyze/text (mirrors kenning_nlp.models.Token). */
+/** One token from server/nlp /analyze/text (mirrors vuurtoren_nlp.models.Token). */
 export interface AnalyzedToken extends TokenLike {
   i: number;
   text: string;

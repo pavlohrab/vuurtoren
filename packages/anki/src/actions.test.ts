@@ -157,13 +157,13 @@ describe("markKnownInAnki", () => {
 describe("addNoteAsKnown", () => {
   it("adds the note then marks its card known", async () => {
     const { anki, col } = setup([]);
-    const res = await addNoteAsKnown(anki, { deck: "Kenning::Nederlands", word: "fiets" });
+    const res = await addNoteAsKnown(anki, { deck: "Vuurtoren::Nederlands", word: "fiets" });
     expect(res.cardIds).toHaveLength(1);
     const c = col.cards.find((x) => x.id === res.cardIds[0]);
     expect(c).toMatchObject({ type: 2, queue: 2 });
     expect(c!.interval).toBeGreaterThanOrEqual(21);
     expect(col.tags.get(res.noteId)).toContain(TAG_KNOWN);
-    expect(col.tags.get(res.noteId)).toContain("kenning");
+    expect(col.tags.get(res.noteId)).toContain("vuurtoren");
   });
 
   it("reuses an existing duplicate note", async () => {

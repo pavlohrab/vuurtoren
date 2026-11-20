@@ -59,7 +59,7 @@ export function Courses() {
         <EmptyState
           icon={<GraduationCap size={20} />}
           title="No courses yet"
-          description="Upload a scanned book or a PDF. Kenning finds its units, exercises and word lists, and ties them to your Anki decks."
+          description="Upload a scanned book or a PDF. Vuurtoren finds its units, exercises and word lists, and ties them to your Anki decks."
           action={
             <Button variant="primary" onClick={() => void navigate({ to: "/courses/import" })}>
               Add a course

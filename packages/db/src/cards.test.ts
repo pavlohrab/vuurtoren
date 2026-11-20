@@ -25,8 +25,8 @@ async function newRepo(start = T0) {
 }
 
 const WORD: NativeNotetype = {
-  id: "kenning-word",
-  name: "Kenning Word",
+  id: "vuurtoren-word",
+  name: "Vuurtoren Word",
   kind: "standard",
   fields: ["Word", "Gloss", "Sentence"],
   templates: [{ name: "Recognition", front: "{{Word}}", back: "{{FrontSide}}<hr>{{Gloss}}" }],
@@ -89,7 +89,7 @@ describe("native card store", () => {
     expect(q.cards.map((c) => c.card.id)).toEqual([102]);
     expect(q.fresh).toBe(1);
     const view = q.cards[0]!;
-    expect(view.notetype.id).toBe("kenning-word");
+    expect(view.notetype.id).toBe("vuurtoren-word");
     const schedule = answerCard(undefined, 3, T0, ctx);
     const stored = await repo.append({
       type: "CardReviewed",
@@ -133,17 +133,17 @@ describe("native card store", () => {
     expect(status.map((s) => s.cards[0]?.type)).toEqual(["review", "new"]);
   });
 
-  it("a word added in Kenning is learning until its first answer", async () => {
+  it("a word added in Vuurtoren is learning until its first answer", async () => {
     const { repo } = await newRepo();
     await repo.append({ type: "LanguageProfileSet", profile: defaultProfile("nl") });
     await repo.append({
       type: "NativeNotesAdded",
       lang: "nl",
-      origin: "kenning",
+      origin: "vuurtoren",
       notetypes: [WORD],
-      decks: [{ name: "Kenning::Nederlands", options: DEFAULT_DECK_OPTIONS }],
+      decks: [{ name: "Vuurtoren::Nederlands", options: DEFAULT_DECK_OPTIONS }],
       notes: [{ id: 5, notetypeId: WORD.id, fields: ["de kat", "", ""], tags: [], key: "kat" }],
-      cards: [{ id: 6, noteId: 5, ord: 0, deck: "Kenning::Nederlands", position: 0 }],
+      cards: [{ id: 6, noteId: 5, ord: 0, deck: "Vuurtoren::Nederlands", position: 0 }],
     });
     expect(await repo.word("nl", "kat")).toMatchObject({
       state: "learning",

@@ -253,7 +253,7 @@ export function createMockServices(
     synced?: boolean;
     /** Seed more texts, shelves and image covers for the bookshelf (the ?demo app). */
     demoLibrary?: boolean;
-    /** Start in native mode (Kenning holds the cards); connected to Anki by default. */
+    /** Start in native mode (Vuurtoren holds the cards); connected to Anki by default. */
     native?: boolean;
   } = {},
 ): AppServices {
@@ -365,7 +365,7 @@ export function createMockServices(
     ankiUrl: "http://127.0.0.1:8765",
     nlpUrl: "http://127.0.0.1:8000",
     lang: "nl",
-    targetDeck: "Kenning::Reading",
+    targetDeck: "Vuurtoren::Reading",
     theme: "system",
     help: 0.25,
     newWords: "auto",
@@ -910,7 +910,7 @@ export function createMockServices(
         for (let i = 0; i < pages!; i++) entries.push({ kind: "page", at });
         for (let i = 0; i < exercises!; i++) entries.push({ kind: "exercise", at });
         for (let i = 0; i < added!; i++) entries.push({ kind: "added", at });
-        // Native reviews only where Kenning holds the cards.
+        // Native reviews only where Vuurtoren holds the cards.
         if (options.native) for (let i = 0; i < reviews!; i++) entries.push({ kind: "review", at });
       });
       // Earlier weeks (Progress): a few pages on most days.

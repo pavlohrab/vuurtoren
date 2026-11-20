@@ -2,13 +2,13 @@
  * Library organisation over the repository: TextMetaUpdated / TextCoverSet / Shelf* events and
  * cover images as blobs (browser: in the OPFS database; server: /api/blobs).
  */
-import { type KenningRepository, createUlidGenerator } from "@app/db";
+import { type VuurtorenRepository, createUlidGenerator } from "@app/db";
 import type { NlpClient } from "@app/nlp-client";
 import type { LibraryServices } from "./libraryTypes.js";
 
 export interface LiveLibraryDeps {
   repo: Pick<
-    KenningRepository,
+    VuurtorenRepository,
     "append" | "shelves" | "putBlob" | "getBlob" | "getText" | "listTexts"
   >;
   /** Called with the text id after its details changed (drops cached reading views). */

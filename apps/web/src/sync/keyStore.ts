@@ -47,7 +47,7 @@ export interface SyncKeyStoreDeps {
   records?: WrappedKeyRecords;
 }
 
-const DB_NAME = "kenning-keys";
+const DB_NAME = "vuurtoren-keys";
 const STORE = "keys";
 const RECORD = "sync";
 

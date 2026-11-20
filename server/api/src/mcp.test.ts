@@ -45,9 +45,9 @@ const tokenize = (text: string): Promise<AnalyzedToken[]> =>
   );
 
 beforeEach(async () => {
-  dir = mkdtempSync(join(tmpdir(), "kenning-mcp-"));
+  dir = mkdtempSync(join(tmpdir(), "vuurtoren-mcp-"));
   hash ??= await hashPassword(PASSWORD, { N: 2 ** 10, r: 8, p: 1 });
-  store = await openStore(join(dir, "kenning.sqlite"));
+  store = await openStore(join(dir, "vuurtoren.sqlite"));
   auth = createAuth({
     user: "anna",
     password: parsePasswordHash(hash),
@@ -72,7 +72,7 @@ async function session(): Promise<string> {
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ user: "anna", password: PASSWORD }),
   });
-  return /kenning_session=[^;]+/.exec(res.headers.get("set-cookie") ?? "")![0];
+  return /vuurtoren_session=[^;]+/.exec(res.headers.get("set-cookie") ?? "")![0];
 }
 
 const jsonPost = (path: string, body: unknown, headers: Record<string, string>) =>
@@ -125,20 +125,20 @@ describe("MCP tokens", () => {
 
     const revoke = await fetch(`${base}/api/auth/mcp-tokens/${made.id}`, {
       method: "DELETE",
-      headers: { cookie, "x-kenning": "1" },
+      headers: { cookie, "x-vuurtoren": "1" },
     });
     expect(revoke.status).toBe(200);
     expect((await check("/api/mcp")).status).toBe(401);
     const again = await fetch(`${base}/api/auth/mcp-tokens/${made.id}`, {
       method: "DELETE",
-      headers: { cookie, "x-kenning": "1" },
+      headers: { cookie, "x-vuurtoren": "1" },
     });
     expect(again.status).toBe(404);
   });
 });
 
 describe("/api/mcp", () => {
-  it("serves the tools to an MCP client with an MCP token; KENNING_TOKEN works too", async () => {
+  it("serves the tools to an MCP client with an MCP token; VUURTOREN_TOKEN works too", async () => {
     const cookie = await session();
     const { token } = (await (await jsonPost("/api/auth/mcp-tokens", {}, { cookie })).json()) as {
       token: string;
@@ -193,10 +193,10 @@ describe("nginx template", () => {
     const here = dirname(fileURLToPath(import.meta.url));
     const conf = readFileSync(join(here, "../../../deploy/nginx.conf.template"), "utf8");
     const block = /location = \/api\/mcp \{([\s\S]*?)\n {4}\}/.exec(conf)?.[1] ?? "";
-    expect(block).toContain("auth_request /_kenning_auth;");
+    expect(block).toContain("auth_request /_vuurtoren_auth;");
     expect(block).toContain("proxy_buffering off;");
     expect(block).toContain("proxy_set_header Authorization $http_authorization;");
     // The gate passes the original URI, so the api can accept MCP tokens for /api/mcp only.
-    expect(conf).toMatch(/location = \/_kenning_auth \{[\s\S]*?X-Original-URI \$request_uri/);
+    expect(conf).toMatch(/location = \/_vuurtoren_auth \{[\s\S]*?X-Original-URI \$request_uri/);
   });
 });

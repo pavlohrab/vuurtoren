@@ -11,7 +11,7 @@ in ``photos/`` (``<name>-photo.jpg``: perspective tilt, uneven light, blur, JPEG
 Variants (``--variants``, comma-separated):
 
 * ``rapid-raw``    RapidOCR (bundled PP-OCRv6 small models) on the image as uploaded
-* ``rapid-clean``  RapidOCR on the cleaned page (:mod:`kenning_nlp.straighten`)
+* ``rapid-clean``  RapidOCR on the cleaned page (:mod:`vuurtoren_nlp.straighten`)
 * ``rapid5-clean`` RapidOCR with the PP-OCRv5 Latin recognition model (downloaded once)
 
 Reported per variant and image kind (scan, photo, curl): WER (word edit distance / words in
@@ -155,7 +155,7 @@ def _rapid5() -> None:
     """Swap this thread's RapidOCR engine for one with the PP-OCRv5 Latin recognition model."""
     from rapidocr import LangRec, ModelType, OCRVersion, RapidOCR
 
-    from kenning_nlp import rapid
+    from vuurtoren_nlp import rapid
 
     if getattr(rapid._local, "v5", False):
         return
@@ -173,7 +173,7 @@ def _rapid5() -> None:
 
 
 def variant(name: str) -> Callable[[Image.Image], str]:
-    from kenning_nlp.ocr import recognize, words_to_text
+    from vuurtoren_nlp.ocr import recognize, words_to_text
 
     engine, mode = name.rsplit("-", 1)
     clean = mode == "clean"
@@ -197,12 +197,12 @@ def main() -> None:
     ap.add_argument("--rapid-max-side", type=int, help="RapidOCR's long-side limit (pixels)")
     args = ap.parse_args()
     if args.rapid_max_side:
-        from kenning_nlp import rapid
+        from vuurtoren_nlp import rapid
 
         rapid.MAX_SIDE = args.rapid_max_side
     if args.threads:
         os.environ["OMP_THREAD_LIMIT"] = str(args.threads)
-        os.environ["KENNING_OCR_THREADS"] = str(args.threads)
+        os.environ["VUURTOREN_OCR_THREADS"] = str(args.threads)
 
     pages, gt = args.data / "pages", args.data / "gt"
     make_photos(pages, args.data / "photos")

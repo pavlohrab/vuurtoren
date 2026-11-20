@@ -24,10 +24,10 @@ import type {
   UnitWord,
 } from "./types.js";
 
-const PACK_FORMAT = "kenning-course-pack";
+const PACK_FORMAT = "vuurtoren-course-pack";
 export const PACK_VERSION = 1;
-/** File name suffix of a pack ("de-opmaat-a2.kenning-course.json"). */
-const PACK_SUFFIX = ".kenning-course.json";
+/** File name suffix of a pack ("de-opmaat-a2.vuurtoren-course.json"). */
+const PACK_SUFFIX = ".vuurtoren-course.json";
 
 export type PackMode = "full" | "structure";
 
@@ -81,7 +81,7 @@ export interface CoursePack {
   /** Full packs only: the OCR'd text of the book, as blocks. */
   blocks?: Block[];
   meta?: {
-    /** Who or what made the pack ("Kenning", a script name, ...). */
+    /** Who or what made the pack ("Vuurtoren", a script name, ...). */
     generator?: string;
     /** Hand corrections made to the pack, counted per category. */
     corrections?: Record<string, number>;
@@ -394,13 +394,13 @@ export function parseCoursePack(value: unknown): CoursePack {
     throw new CoursePackError(msg);
   };
   if (!isObj(value) || value["format"] !== PACK_FORMAT)
-    fail("This file is not a Kenning course pack.");
+    fail("This file is not a Vuurtoren course pack.");
   const v = value as Record<string, unknown>;
   const version = v["version"];
   if (!isInt(version) || version < 1) fail("This course pack has no valid version.");
   if ((version as number) > PACK_VERSION)
     fail(
-      `This course pack was made by a newer version of Kenning (pack version ${String(version)}; this app reads version ${PACK_VERSION}). Update Kenning and try again.`,
+      `This course pack was made by a newer version of Vuurtoren (pack version ${String(version)}; this app reads version ${PACK_VERSION}). Update Vuurtoren and try again.`,
     );
   const mode = v["mode"];
   if (mode !== "full" && mode !== "structure") fail("The pack's mode must be full or structure.");
@@ -529,7 +529,7 @@ export function summarizePack(pack: CoursePack): PackSummary {
   };
 }
 
-/** A file name for a pack: "de-opmaat-a2.kenning-course.json" / "...structure.kenning-course.json". */
+/** A file name for a pack: "de-opmaat-a2.vuurtoren-course.json" / "...structure.vuurtoren-course.json". */
 export function packFileName(title: string, mode: PackMode): string {
   const slug =
     title

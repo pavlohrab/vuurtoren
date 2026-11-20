@@ -1,6 +1,6 @@
 import { AnkiConnectClient } from "@app/anki";
 import { type AnalyzedToken, defaultProfile } from "@app/core";
-import { createRepository, type KenningRepository } from "@app/db";
+import { createRepository, type VuurtorenRepository } from "@app/db";
 import { createNodeDriver } from "@app/db/node";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
@@ -31,7 +31,7 @@ const tokenize = (text: string): Promise<AnalyzedToken[]> =>
     })),
   );
 
-let repo: KenningRepository;
+let repo: VuurtorenRepository;
 const notes: { deck: string; fields: Record<string, string>; tags: string[] }[] = [];
 const decks: string[] = [];
 
@@ -93,7 +93,7 @@ describe("handlers", () => {
   it("add_to_anki adds to my words in native mode, without Anki", async () => {
     await repo.append({ type: "LanguageProfileSet", profile: defaultProfile("nl") });
     const r = await handlers().addToAnki({ word: "de kat", gloss: "cat", sentence: "De kat." });
-    expect(r.deck).toBe("Kenning::Nederlands");
+    expect(r.deck).toBe("Vuurtoren::Nederlands");
     expect(notes).toEqual([]);
     expect((await repo.word("nl", "kat"))?.state).toBe("learning");
   });
@@ -103,7 +103,7 @@ describe("handlers", () => {
       type: "LanguageProfileSet",
       profile: {
         ...defaultProfile("nl", [], "connected"),
-        destinations: { default: "Kenning::Nederlands", mcp: "Kenning::Nederlands::Claude" },
+        destinations: { default: "Vuurtoren::Nederlands", mcp: "Vuurtoren::Nederlands::Claude" },
       },
     });
     const r = await handlers().addToAnki({
@@ -111,18 +111,18 @@ describe("handlers", () => {
       gloss: "bike",
       sentence: "De <b>fiets</b> is <i>rood</i>.",
     });
-    expect(r).toEqual({ noteId: 42, deck: "Kenning::Nederlands::Claude" });
-    expect(decks).toEqual(["Kenning::Nederlands::Claude"]);
+    expect(r).toEqual({ noteId: 42, deck: "Vuurtoren::Nederlands::Claude" });
+    expect(decks).toEqual(["Vuurtoren::Nederlands::Claude"]);
     expect(notes[0]?.fields["Word"]).toBe("de Fiets");
     expect(notes[0]?.fields["Sentence"]).toBe("De <b>fiets</b> is &lt;i>rood&lt;/i>.");
-    expect(notes[0]?.tags).toEqual(["kenning", "nl", "kenning::from::mcp"]);
+    expect(notes[0]?.tags).toEqual(["vuurtoren", "nl", "vuurtoren::from::mcp"]);
     expect((await repo.word("nl", "fiets"))?.addedNoteId).toBe(42);
   });
 
-  it("add_to_anki: default deck without a profile, KENNING_DECK overrides", async () => {
+  it("add_to_anki: default deck without a profile, VUURTOREN_DECK overrides", async () => {
     expect(await handlers().addToAnki({ word: "Gezellig", gloss: "", sentence: "" })).toEqual({
       noteId: 42,
-      deck: "Kenning::Nederlands",
+      deck: "Vuurtoren::Nederlands",
     });
     expect((await repo.word("nl", "gezellig"))?.addedNoteId).toBe(42);
     const o = await handlers("Mine").addToAnki({ word: "thee", gloss: "tea", sentence: "" });

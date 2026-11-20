@@ -1,19 +1,19 @@
 /**
  * Where the desktop app keeps its database on this computer, the same way the app finds it:
  * the file chosen under Settings → Your data (`database` in the app's `desktop.json`), else
- * `<Documents>/Kenning/kenning.sqlite`. `KENNING_DB` overrides both.
+ * `<Documents>/Vuurtoren/vuurtoren.sqlite`. `VUURTOREN_DB` overrides both.
  *
- * The app's settings folder (Tauri's config dir for `app.kenning.desktop`):
- *   Linux    $XDG_CONFIG_HOME/app.kenning.desktop (default ~/.config/…)
- *   macOS    ~/Library/Application Support/app.kenning.desktop
- *   Windows  %APPDATA%\app.kenning.desktop
+ * The app's settings folder (Tauri's config dir for `app.vuurtoren.desktop`):
+ *   Linux    $XDG_CONFIG_HOME/app.vuurtoren.desktop (default ~/.config/…)
+ *   macOS    ~/Library/Application Support/app.vuurtoren.desktop
+ *   Windows  %APPDATA%\app.vuurtoren.desktop
  * Documents: ~/Documents; on Linux XDG_DOCUMENTS_DIR from ~/.config/user-dirs.dirs when set;
  * on Windows %USERPROFILE%\Documents.
  */
 import { readFileSync } from "node:fs";
 import { posix, win32 } from "node:path";
 
-const APP_ID = "app.kenning.desktop";
+const APP_ID = "app.vuurtoren.desktop";
 
 export interface PathEnv {
   platform: NodeJS.Platform;
@@ -65,10 +65,10 @@ function documentsDir(e: PathEnv): string {
 /** The desktop app's database file and where that answer came from. */
 export function desktopDbPath(e: PathEnv = systemPathEnv()): {
   path: string;
-  from: "KENNING_DB" | "desktop app settings" | "default";
+  from: "VUURTOREN_DB" | "desktop app settings" | "default";
 } {
-  const given = e.env["KENNING_DB"]?.trim();
-  if (given) return { path: given, from: "KENNING_DB" };
+  const given = e.env["VUURTOREN_DB"]?.trim();
+  if (given) return { path: given, from: "VUURTOREN_DB" };
   const join = e.platform === "win32" ? win32.join : posix.join;
   const settings = e.read(join(configDir(e), "desktop.json"));
   if (settings) {
@@ -81,5 +81,5 @@ export function desktopDbPath(e: PathEnv = systemPathEnv()): {
       // A damaged settings file: the app falls back to the default too.
     }
   }
-  return { path: join(documentsDir(e), "Kenning", "kenning.sqlite"), from: "default" };
+  return { path: join(documentsDir(e), "Vuurtoren", "vuurtoren.sqlite"), from: "default" };
 }

@@ -1,8 +1,8 @@
 """OCR of photos and scanned pages: page clean-up, then RapidOCR.
 
-Every page first goes through :func:`kenning_nlp.straighten.straighten_page` (page found in a
+Every page first goes through :func:`vuurtoren_nlp.straighten.straighten_page` (page found in a
 photo and flattened, deskewed, dewarped; flat scans pass unchanged). Then RapidOCR
-(:mod:`kenning_nlp.rapid`, PaddleOCR models on ONNX Runtime) reads it. Its rows have the shape
+(:mod:`vuurtoren_nlp.rapid`, PaddleOCR models on ONNX Runtime) reads it. Its rows have the shape
 of an ``image_to_data`` table (one row per word with its block, paragraph, line, box and
 confidence), from which the text, layout blocks, word boxes and review flags are built.
 
@@ -19,10 +19,10 @@ from typing import Any
 
 from PIL import Image, ImageOps, UnidentifiedImageError
 
-from kenning_nlp import rapid
-from kenning_nlp.cleanup import clean_pages
-from kenning_nlp.errors import ServiceError
-from kenning_nlp.ocr_review import (
+from vuurtoren_nlp import rapid
+from vuurtoren_nlp.cleanup import clean_pages
+from vuurtoren_nlp.errors import ServiceError
+from vuurtoren_nlp.ocr_review import (
     PREVIEW_LONG_SIDE,
     OcrWord,
     data_url,
@@ -30,8 +30,8 @@ from kenning_nlp.ocr_review import (
     page_words,
     preview_webp,
 )
-from kenning_nlp.pdf import is_pdf, iter_pdf_pages
-from kenning_nlp.straighten import straighten_page
+from vuurtoren_nlp.pdf import is_pdf, iter_pdf_pages
+from vuurtoren_nlp.straighten import straighten_page
 
 OCR_LANGS = ("nl",)
 """Languages ``/ocr`` and ``/course/ocr`` read."""
@@ -41,8 +41,8 @@ Image.MAX_IMAGE_PIXELS = MAX_PIXELS
 
 INSTALL_HINT = (
     "Text recognition (RapidOCR) is not installed on the server. Install it with "
-    "`pip install 'kenning-nlp[ocr]'` or use the standard kenning-nlp Docker image (the `-slim` "
-    "variant has no OCR)."
+    "`pip install 'vuurtoren-nlp[ocr]'` or use the standard vuurtoren-nlp Docker image (the "
+    "`-slim` variant has no OCR)."
 )
 RAPID_PREFIX = "rapidocr-"
 
@@ -120,9 +120,9 @@ def ocr_image_data(
     img: Image.Image, code: str
 ) -> tuple[list[dict[str, object]], list[float], list[OcrWord], Image.Image]:
     """OCR one image into layout blocks (text + normalised bounding box), word confidences,
-    the words with their boxes (for review flags, :mod:`kenning_nlp.ocr_review`) and the
+    the words with their boxes (for review flags, :mod:`vuurtoren_nlp.ocr_review`) and the
     cleaned page image the boxes refer to."""
-    from kenning_nlp.course import data_to_blocks
+    from vuurtoren_nlp.course import data_to_blocks
 
     page = recognize(img, code)
     data = page.data
@@ -161,7 +161,7 @@ def iter_pages(
     data: bytes, previews: bool = False
 ) -> Iterator[tuple[str | None, Image.Image | None]]:
     """The pages of an upload as ``(text layer, image)``: PDF pages via
-    :func:`kenning_nlp.pdf.iter_pdf_pages` (text layer kept where usable), image frames as
+    :func:`vuurtoren_nlp.pdf.iter_pdf_pages` (text layer kept where usable), image frames as
     ``(None, frame)``."""
     if is_pdf(data):
         yield from iter_pdf_pages(data, preview_side=PREVIEW_LONG_SIDE if previews else 0)
@@ -173,15 +173,15 @@ def iter_pages(
 def run_ocr(data: bytes, lang: str, review: bool = False) -> dict[str, object]:
     """OCR an image/PDF upload. Returns ``{"text", "confidence", "pages"}``.
 
-    PDF pages with a usable text layer keep it (:func:`kenning_nlp.pdf.text_layer_ok`); the
+    PDF pages with a usable text layer keep it (:func:`vuurtoren_nlp.pdf.text_layer_ok`); the
     others are recognised. ``confidence`` is the mean word confidence of the recognised words
     in 0..1 (1 when every page had a text layer, 0 if no words were found). The text is
-    cleaned with :func:`kenning_nlp.cleanup.clean_pages` (de-hyphenation, re-flow, headers).
+    cleaned with :func:`vuurtoren_nlp.cleanup.clean_pages` (de-hyphenation, re-flow, headers).
 
     With ``review`` the result also has ``"review": {"pages": [...], "flags": [...]}``: per page
     its mean confidence, a downscaled image (WebP data URL) and its size, and the words of the
-    cleaned text that may be misread (:func:`kenning_nlp.ocr_review.find_flags`). Images and
-    word boxes show the cleaned page (:mod:`kenning_nlp.straighten`).
+    cleaned text that may be misread (:func:`vuurtoren_nlp.ocr_review.find_flags`). Images and
+    word boxes show the cleaned page (:mod:`vuurtoren_nlp.straighten`).
     """
     code = ensure_engine(lang)
     page_texts: list[str] = []

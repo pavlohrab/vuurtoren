@@ -1,11 +1,11 @@
 //! The local database of the offline app: one SQLite file in a folder the user can see
-//! (`~/Documents/Kenning/kenning.sqlite` by default), opened natively with rusqlite.
+//! (`~/Documents/Vuurtoren/vuurtoren.sqlite` by default), opened natively with rusqlite.
 //!
 //! The web app's `SqlDriver` (packages/db/src/native.ts) sends every statement here; schema,
 //! migrations and projections are the same TypeScript code as in the browser. Values cross the
 //! IPC boundary as JSON: blobs as `{"$b": base64}`, integers beyond 2^53 as `{"$i": "123"}`.
 //!
-//! Next to the file sits `kenning.sqlite.lock` (single-writer guard): it names the computer and
+//! Next to the file sits `vuurtoren.sqlite.lock` (single-writer guard): it names the computer and
 //! process that has the file open. A lock from another computer (the folder is synced by
 //! Dropbox, OneDrive, Syncthing, …) is reported instead of silently opening the file twice, and
 //! conflict copies made by sync tools are listed so the app can warn about them.
@@ -21,14 +21,14 @@ use rusqlite::{Connection, OpenFlags};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value as Json};
 
-pub const DB_FILE: &str = "kenning.sqlite";
+pub const DB_FILE: &str = "vuurtoren.sqlite";
 /// Largest integer a JS number holds exactly.
 const MAX_SAFE: i64 = (1 << 53) - 1;
 const B64: base64::engine::GeneralPurpose = base64::engine::general_purpose::STANDARD;
 
-/// The default database file: `<Documents>/Kenning/kenning.sqlite`.
+/// The default database file: `<Documents>/Vuurtoren/vuurtoren.sqlite`.
 pub fn default_path(documents: &Path) -> PathBuf {
-    documents.join("Kenning").join(DB_FILE)
+    documents.join("Vuurtoren").join(DB_FILE)
 }
 
 /// JSON parameter -> SQLite value (see the module docs for the encoding).
@@ -269,7 +269,7 @@ pub fn prepare_import(path: &Path, max_schema: i64, device_id: &str) -> Result<(
         .map_err(|_| "This file is not a SQLite database.".to_string())?;
     if version > max_schema {
         return Err(format!(
-            "This backup is from a newer Kenning (schema v{version}; this app supports v{max_schema})."
+            "This backup is from a newer Vuurtoren (schema v{version}; this app supports v{max_schema})."
         ));
     }
     for table in ["meta", "events"] {
@@ -282,7 +282,7 @@ pub fn prepare_import(path: &Path, max_schema: i64, device_id: &str) -> Result<(
             .map_err(|_| "This file is not a SQLite database.".to_string())?;
         if found == 0 {
             return Err(format!(
-                "This SQLite file is not a Kenning backup (no {table})."
+                "This SQLite file is not a Vuurtoren backup (no {table})."
             ));
         }
     }
@@ -363,9 +363,9 @@ pub fn release_lock(db: &Path, me: &LockInfo) {
 }
 
 /// Copies of the database that sync tools leave next to it when two computers changed it:
-/// Dropbox `kenning (Anna's conflicted copy 2026-11-18).sqlite`, Syncthing
-/// `kenning.sync-conflict-20261118-101010-ABCDEF.sqlite`, OneDrive `kenning-LAPTOP.sqlite`,
-/// Google Drive / Nextcloud `kenning (1).sqlite`, `kenning (conflicted copy ...).sqlite`.
+/// Dropbox `vuurtoren (Anna's conflicted copy 2026-11-18).sqlite`, Syncthing
+/// `vuurtoren.sync-conflict-20261118-101010-ABCDEF.sqlite`, OneDrive `vuurtoren-LAPTOP.sqlite`,
+/// Google Drive / Nextcloud `vuurtoren (1).sqlite`, `vuurtoren (conflicted copy ...).sqlite`.
 pub fn conflict_copies(db: &Path) -> Vec<String> {
     let Some(dir) = db.parent() else {
         return vec![];
@@ -473,7 +473,7 @@ mod tests {
         );
     }
 
-    fn kenning_db(path: &Path, version: i64) {
+    fn vuurtoren_db(path: &Path, version: i64) {
         let c = Connection::open(path).unwrap();
         c.execute_batch(
             "CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT);
@@ -488,7 +488,7 @@ mod tests {
     fn export_and_import_checks() {
         let dir = tempfile::tempdir().unwrap();
         let file = dir.path().join("k.sqlite");
-        kenning_db(&file, 2);
+        vuurtoren_db(&file, 2);
         let conn = open_conn(&file).unwrap();
         let bytes = export(&conn, &dir.path().join("scratch")).unwrap();
         assert!(bytes.starts_with(b"SQLite format 3\0"));
@@ -513,10 +513,10 @@ mod tests {
         assert_eq!(pv, 0);
 
         let newer = dir.path().join("newer.sqlite");
-        kenning_db(&newer, 9);
+        vuurtoren_db(&newer, 9);
         assert!(prepare_import(&newer, 5, "x")
             .unwrap_err()
-            .contains("newer Kenning"));
+            .contains("newer Vuurtoren"));
         let other = dir.path().join("other.sqlite");
         Connection::open(&other)
             .unwrap()
@@ -532,7 +532,7 @@ mod tests {
 
     fn me(host: &str, pid: u32) -> LockInfo {
         LockInfo {
-            app: "kenning".into(),
+            app: "vuurtoren".into(),
             host: host.into(),
             pid,
             since: 1,
@@ -544,10 +544,10 @@ mod tests {
     fn lock_file_guards_against_a_second_computer() {
         let dir = tempfile::tempdir().unwrap();
         // First start: the folder does not exist yet.
-        let db = dir.path().join("Kenning").join(DB_FILE);
+        let db = dir.path().join("Vuurtoren").join(DB_FILE);
         assert_eq!(
             lock_path(&db),
-            dir.path().join("Kenning").join("kenning.sqlite.lock")
+            dir.path().join("Vuurtoren").join("vuurtoren.sqlite.lock")
         );
 
         acquire_lock(&db, &me("laptop", 10), false).unwrap();
@@ -571,15 +571,15 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let db = dir.path().join(DB_FILE);
         for name in [
-            "kenning.sqlite",
-            "kenning.sqlite.lock",
-            "kenning.sqlite-journal",
-            "kenning.sqlite.before-restore",
-            "kenning (Anna's conflicted copy 2026-11-18).sqlite",
-            "kenning.sync-conflict-20261118-101010-ABCDEF.sqlite",
-            "kenning-LAPTOP.sqlite",
-            "kenning (1).sqlite",
-            "kenning-2026-11-18.sqlite.txt",
+            "vuurtoren.sqlite",
+            "vuurtoren.sqlite.lock",
+            "vuurtoren.sqlite-journal",
+            "vuurtoren.sqlite.before-restore",
+            "vuurtoren (Anna's conflicted copy 2026-11-18).sqlite",
+            "vuurtoren.sync-conflict-20261118-101010-ABCDEF.sqlite",
+            "vuurtoren-LAPTOP.sqlite",
+            "vuurtoren (1).sqlite",
+            "vuurtoren-2026-11-18.sqlite.txt",
             "notes.txt",
             "other.sqlite",
         ] {
@@ -588,10 +588,10 @@ mod tests {
         assert_eq!(
             conflict_copies(&db),
             vec![
-                "kenning (1).sqlite",
-                "kenning (Anna's conflicted copy 2026-11-18).sqlite",
-                "kenning-LAPTOP.sqlite",
-                "kenning.sync-conflict-20261118-101010-ABCDEF.sqlite",
+                "vuurtoren (1).sqlite",
+                "vuurtoren (Anna's conflicted copy 2026-11-18).sqlite",
+                "vuurtoren-LAPTOP.sqlite",
+                "vuurtoren.sync-conflict-20261118-101010-ABCDEF.sqlite",
             ]
         );
     }
@@ -657,10 +657,10 @@ mod tests {
     }
 
     #[test]
-    fn default_location_is_documents_kenning() {
+    fn default_location_is_documents_vuurtoren() {
         assert_eq!(
             default_path(Path::new("/home/a/Documents")),
-            PathBuf::from("/home/a/Documents/Kenning/kenning.sqlite")
+            PathBuf::from("/home/a/Documents/Vuurtoren/vuurtoren.sqlite")
         );
     }
 }

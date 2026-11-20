@@ -98,7 +98,7 @@ The reader stays calm: no decorative motion while reading, only the one-time to-
 
 The **bookmark k**: a lowercase k whose leg is a bookmark ribbon. Stem and arm are `--ink`; the leg is an `--accent` ribbon tucked under the arm (a hairline gap), hanging just below the baseline and ending in a level swallow-tail notch, the bookmark you leave in a text.
 
-- Component: `Logo` (mark + "kenning" wordmark in Instrument Sans 600, −0.02em, sitting on the k's baseline) and `LogoMark` from `@app/ui`. `variant="mark"` for the mark alone.
+- Component: `Logo` (mark + "vuurtoren" wordmark in Instrument Sans 600, −0.02em, sitting on the k's baseline) and `LogoMark` from `@app/ui`. `variant="mark"` for the mark alone.
 - `ProgressRing` (12 o'clock, counter-clockwise, round caps) is for data, not branding: the Home ring is `--known`.
 - Geometry, filled shapes with flat terminals (paths in `Logo.tsx`):
   - 48 grid (≥ 33px): stem x 12–18, y 5–40 (baseline 40); arm 6 wide at 45°, top cut level at the x-height (y 18), x 27.5–36; ribbon 7 wide at 60°, 1.5 below the arm, tails level at y 43.5, notch 3.5 deep.
@@ -224,7 +224,7 @@ Domain components:
 
 ```
 ┌──────────┬───────────────────────────────────────────┬──────────────────┐
-│ (k) kenning│ Top bar (reader: title · % known · mode · Aa · …) · ⌘K · ◐ │ Inspector │
+│ (k) vuurtoren│ Top bar (reader: title · % known · mode · Aa · …) · ⌘K · ◐ │ Inspector │
 │ Home     │                                           │  (slides in)     │
 │ Library  │      page content / reading column        │                  │
 │ Practice │                                           │                  │
@@ -245,7 +245,7 @@ Domain components:
 ## Screens
 
 - **Home** (`/`, first screen): calm and editorial, not a dashboard; four groups above the fold. (1) The page header: Dutch greeting, "You know N Dutch words", Add text. (2) Continue reading without a box (cover, Literata title, two-line excerpt, progress, the one primary button) next to a quiet column behind a hairline: the known-words ring and three numbers. (3) Today: two or three steps as one list with hairline dividers (practise, reviews due or words waiting for Anki, course unit; done steps get a check). (4) Words to learn now (Inter word chips) and Recent texts (covers). Below: one quiet "More for today" line (grammar topic in your texts, Talk about the text, this week). A brand-new learner sees two first steps instead: Add text, and a way to bring in words they already know (Connect Anki in connected mode; import a deck file or mark words known in native mode).
-- **Sign-in**: a small landing: the mark, the wordmark, one sentence on what Kenning does, then the form.
+- **Sign-in**: a small landing: the mark, the wordmark, one sentence on what Vuurtoren does, then the form.
 - **Onboarding** (`/welcome`): "Do you use Anki?" under the welcome text, then connect Anki, choose decks, where new words go, placement or import, first text. A stepper of three fixed parts (Getting started, Your words, First text) that never changes length.
 - **Library:** a bookshelf. Rows of covers that scroll sideways (snap, a hairline "shelf board" under each row, no boxes): Reading now, the learner's own shelves, To read, Finished. Where a text came from is a filter on All texts (Source: Course books, AI stories, Web, Photos & PDFs, Talk, Pasted), not more shelves, so a text appears at most twice. Under each cover one quiet line: page N of M / Finished / words, and "% known". Covers are links (middle-click opens a new tab). A "…" on each cover (on hover or focus with a pointer, always on touch) opens Open, Words from this text, Open its course unit (course texts), Edit details, Change cover, Add to shelf, Remove from this shelf, Delete. The toolbar: Shelves / All texts (segmented), Search, Sort (recent, title, coverage), Source (All texts only), New shelf, Select (multi-select with a floating bar: Add to shelf). All texts is the cover grid with words, new words, author/note and the coverage meter. Keyboard: one tab stop per row, arrow keys / Home / End inside it. Desktop: drag covers onto one of your shelves. Phones: rows stack, 128px covers, rows bleed to the screen edge.
 - **Add text** (`/import`, the one way in, labelled "Add text" everywhere): tabs Paste · Web · PDF · Photo (with OCR) · Write a story (with an AI provider). A grammar topic or a unit links to Write a story with its preset. The OCR check shows Cancel and Import; Edit the whole text, Accept all suggestions and Skip review are in "…".

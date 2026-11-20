@@ -5,7 +5,7 @@
  * This is the composition root: each domain lives in its own module and gets what it needs
  * from here (settings and clients, the learner-model cache, the dictionary, texts).
  */
-import type { KenningRepository } from "@app/db";
+import type { VuurtorenRepository } from "@app/db";
 import { createPracticeData } from "@app/nlp-client";
 import { createLiveAI } from "./liveAI.js";
 import { createLiveCourses } from "./liveCourses.js";
@@ -39,7 +39,7 @@ export interface LiveServicesOptions {
 }
 
 export function createLiveServices(
-  repo: KenningRepository,
+  repo: VuurtorenRepository,
   options: LiveServicesOptions = {},
 ): AppServices {
   const platform = options.platform ?? browserPlatform();
@@ -176,7 +176,7 @@ export function createLiveServices(
     invalidatePractice();
   };
 
-  // Sync applies to a device with its own data, not to a page of a Kenning server.
+  // Sync applies to a device with its own data, not to a page of a Vuurtoren server.
   const sync = createLiveSync({
     repo: options.remoteChanged ? null : repo,
     storage: platform.storage,

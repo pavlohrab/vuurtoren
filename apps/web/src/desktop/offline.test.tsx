@@ -100,7 +100,7 @@ describe("the /nlp route in offline mode", () => {
       seen.push(typeof input === "string" ? input : input instanceof URL ? input.href : input.url);
       return Promise.resolve(new Response("{}"));
     });
-    const f = routeNlpTo("kenning-nlp://localhost/", fallback);
+    const f = routeNlpTo("vuurtoren-nlp://localhost/", fallback);
     await f("/nlp/analyze/text", { method: "POST" });
     await f(`${location.origin}/nlp/grammar/examples?topic=x`);
     await f("/nlp");
@@ -108,9 +108,9 @@ describe("the /nlp route in offline mode", () => {
     await f("http://127.0.0.1:8765");
     await f("https://example.com/nlp/x");
     expect(seen).toEqual([
-      "kenning-nlp://localhost/analyze/text",
-      "kenning-nlp://localhost/grammar/examples?topic=x",
-      "kenning-nlp://localhost/",
+      "vuurtoren-nlp://localhost/analyze/text",
+      "vuurtoren-nlp://localhost/grammar/examples?topic=x",
+      "vuurtoren-nlp://localhost/",
       "/nlpx/other",
       "http://127.0.0.1:8765",
       "https://example.com/nlp/x",
@@ -120,9 +120,9 @@ describe("the /nlp route in offline mode", () => {
 
 describe("lock and sync warnings", () => {
   it("names conflict copies calmly", () => {
-    expect(conflictNotice("/d/kenning.sqlite", [])).toBeUndefined();
-    expect(conflictNotice("/d/kenning.sqlite", ["kenning (1).sqlite"])).toMatch(
-      /Found “kenning \(1\)\.sqlite” next to your data.*Kenning uses kenning\.sqlite/,
+    expect(conflictNotice("/d/vuurtoren.sqlite", [])).toBeUndefined();
+    expect(conflictNotice("/d/vuurtoren.sqlite", ["vuurtoren (1).sqlite"])).toMatch(
+      /Found “vuurtoren \(1\)\.sqlite” next to your data.*Vuurtoren uses vuurtoren\.sqlite/,
     );
   });
 });
@@ -166,29 +166,29 @@ afterEach(() => {
 
 describe("first start on this computer", () => {
   it("opens the data file through the app and reports where it is", async () => {
-    const file = join(mkdtempSync(join(tmpdir(), "kenning-desk-")), "kenning.sqlite");
+    const file = join(mkdtempSync(join(tmpdir(), "vuurtoren-desk-")), "vuurtoren.sqlite");
     const bridge = bridgeWith(nodeDb(file));
-    const boot = await bootDesktopLocal(bridge, "kenning-nlp://localhost");
+    const boot = await bootDesktopLocal(bridge, "vuurtoren-nlp://localhost");
     expect(boot.kind).toBe("app");
     if (boot.kind !== "app") return;
     expect(boot.data.mode).toBe("desktop");
     expect(boot.data.file?.path).toBe(file);
     expect(bridge.db.open).toHaveBeenCalledWith(false);
-    // Migrations ran on the file: it is a Kenning database now.
+    // Migrations ran on the file: it is a Vuurtoren database now.
     const info = await boot.data.admin.info();
     expect(info.deviceId).toBeTruthy();
     expect(boot.notice).toBeUndefined();
   });
 
   it("stops at the lock of another computer and opens on request", async () => {
-    const file = join(mkdtempSync(join(tmpdir(), "kenning-desk-")), "kenning.sqlite");
+    const file = join(mkdtempSync(join(tmpdir(), "vuurtoren-desk-")), "vuurtoren.sqlite");
     const db = nodeDb(file);
     const lock = { host: "laptop", pid: 9, since: 1, seen: 2 };
     db.open = vi.fn((force?: boolean) =>
       Promise.resolve({
         path: file,
         created: false,
-        conflicts: ["kenning (1).sqlite"],
+        conflicts: ["vuurtoren (1).sqlite"],
         locked: force ? null : lock,
       }),
     );
@@ -198,7 +198,7 @@ describe("first start on this computer", () => {
     const again = await boot.openAnyway();
     expect(db.open).toHaveBeenLastCalledWith(true);
     expect(again.kind).toBe("app");
-    if (again.kind === "app") expect(again.notice).toMatch(/kenning \(1\)\.sqlite/);
+    if (again.kind === "app") expect(again.notice).toMatch(/vuurtoren \(1\)\.sqlite/);
   });
 });
 
@@ -210,9 +210,9 @@ function renderOffline(path: string, status: SidecarStatus) {
   };
   const desktop: DesktopLocal = { nlp, connectServer: vi.fn(() => Promise.resolve()) };
   const file = {
-    path: "/home/a/Documents/Kenning/kenning.sqlite",
+    path: "/home/a/Documents/Vuurtoren/vuurtoren.sqlite",
     reveal: vi.fn(() => Promise.resolve()),
-    move: vi.fn(() => Promise.resolve("/mnt/sync/kenning.sqlite")),
+    move: vi.fn(() => Promise.resolve("/mnt/sync/vuurtoren.sqlite")),
   };
   const services = createMockServices({ latencyMs: 0 });
   render(
@@ -282,15 +282,15 @@ describe("offline app screens", () => {
   it("shows the data file in Settings with Show in folder and Move…", async () => {
     const { file, desktop } = renderOffline("/settings?section=data", ready({ ocr: false }));
     expect(await screen.findByTestId("data-file-path")).toHaveTextContent(
-      "/home/a/Documents/Kenning/kenning.sqlite",
+      "/home/a/Documents/Vuurtoren/vuurtoren.sqlite",
     );
     await userEvent.click(screen.getByRole("button", { name: "Show in folder" }));
     expect(file.reveal).toHaveBeenCalled();
     await userEvent.click(screen.getByRole("button", { name: "Move…" }));
     await waitFor(() =>
-      expect(screen.getByTestId("data-file-path")).toHaveTextContent("/mnt/sync/kenning.sqlite"),
+      expect(screen.getByTestId("data-file-path")).toHaveTextContent("/mnt/sync/vuurtoren.sqlite"),
     );
-    await userEvent.click(screen.getByRole("button", { name: "Connect to a Kenning server" }));
+    await userEvent.click(screen.getByRole("button", { name: "Connect to a Vuurtoren server" }));
     expect(desktop.connectServer).toHaveBeenCalled();
   });
 });

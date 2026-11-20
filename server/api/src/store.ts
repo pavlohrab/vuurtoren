@@ -1,5 +1,5 @@
 /**
- * The single database file of a Kenning server: one repository, one writer. Every operation
+ * The single database file of a Vuurtoren server: one repository, one writer. Every operation
  * (rpc, info, export, import) runs through one queue, so an import can swap the file
  * atomically while no request is in flight.
  */
@@ -16,7 +16,7 @@ import { dirname, join } from "node:path";
 import { randomBytes } from "node:crypto";
 import {
   type DataInfo,
-  type KenningRepository,
+  type VuurtorenRepository,
   type SqlDriver,
   SCHEMA_VERSION,
   SchemaTooNewError,
@@ -47,7 +47,7 @@ export interface Store {
   readonly state: "ready" | "schema-too-new";
   readonly foundVersion: number | undefined;
   /** Run `fn` with the repository, serialised with every other operation. */
-  withRepo<T>(fn: (repo: KenningRepository) => Promise<T>): Promise<T>;
+  withRepo<T>(fn: (repo: VuurtorenRepository) => Promise<T>): Promise<T>;
   info(): Promise<DataInfo>;
   /** Consistent snapshot as a file; call `cleanup` after streaming it. */
   snapshot(): Promise<{ file: string; cleanup: () => void }>;
@@ -72,7 +72,7 @@ export async function openStore(path: string): Promise<Store> {
     join(dirname(path), `.${tag}-${randomBytes(6).toString("hex")}.tmp`);
 
   let driver: SqlDriver | null = null;
-  let repo: KenningRepository | null = null;
+  let repo: VuurtorenRepository | null = null;
   let state: Store["state"] = "ready";
   let foundVersion: number | undefined;
 

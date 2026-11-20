@@ -95,7 +95,7 @@ export function createMockProfile(wait: () => Promise<void>, mode: ProfileMode =
         options: [
           ...Object.entries(profile.destinations).map(([k, v]) => ({
             deck: v,
-            group: "kenning" as const,
+            group: "vuurtoren" as const,
             hint: HINT[k] ?? k,
           })),
           ...(source === "course" ? [{ deck, group: "course" as const, hint: "This unit" }] : []),

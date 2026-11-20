@@ -1,12 +1,12 @@
 #!/bin/sh
-# Kenning doctor: checks a running Kenning from the outside, the way a browser sees it.
+# Vuurtoren doctor: checks a running Vuurtoren from the outside, the way a browser sees it.
 #
 #   scripts/doctor.sh                         http://127.0.0.1:8080
-#   scripts/doctor.sh https://kenning.example.com
+#   scripts/doctor.sh https://vuurtoren.example.com
 #
 # With sign-in on, the checks behind it need credentials (from the environment):
-#   KENNING_TOKEN=...                         the bearer token, or
-#   KENNING_USER=... KENNING_PASSWORD=...     signs in with a cookie and signs out again
+#   VUURTOREN_TOKEN=...                         the bearer token, or
+#   VUURTOREN_USER=... VUURTOREN_PASSWORD=...     signs in with a cookie and signs out again
 #
 # Needs only curl. Exit code 0 when everything works, 1 otherwise. CI runs it as the
 # smoke test against freshly built images (.github/workflows/ci.yml).
@@ -35,7 +35,7 @@ get() {
 body() { tr -d '\n' <"$TMP/body" | cut -c1-200; }
 field() { sed -nE "s/.*\"$1\":(\"[^\"]*\"|[^,}]*).*/\1/p" "$TMP/body" | tr -d '"'; }
 
-echo "Kenning doctor: $BASE"
+echo "Vuurtoren doctor: $BASE"
 
 echo "web"
 get /
@@ -63,20 +63,20 @@ AUTHED=1
 if [ "$AUTH" = true ]; then
   get /api/info
   if [ "$STATUS" = 401 ]; then ok "data is refused without a sign-in"; else fail "GET /api/info without sign-in -> $STATUS (expected 401)"; fi
-  if [ -n "${KENNING_TOKEN:-}" ]; then
-    printf 'header = "Authorization: Bearer %s"\n' "$KENNING_TOKEN" >"$TMP/auth.conf"
-  elif [ -n "${KENNING_USER:-}" ] && [ -n "${KENNING_PASSWORD:-}" ]; then
+  if [ -n "${VUURTOREN_TOKEN:-}" ]; then
+    printf 'header = "Authorization: Bearer %s"\n' "$VUURTOREN_TOKEN" >"$TMP/auth.conf"
+  elif [ -n "${VUURTOREN_USER:-}" ] && [ -n "${VUURTOREN_PASSWORD:-}" ]; then
     : >"$TMP/auth.conf"
     # JSON-escape backslashes and quotes in the credentials.
     esc() { printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'; }
     get /api/auth/login -X POST -H 'Content-Type: application/json' \
-      --data-binary "{\"user\":\"$(esc "$KENNING_USER")\",\"password\":\"$(esc "$KENNING_PASSWORD")\"}"
+      --data-binary "{\"user\":\"$(esc "$VUURTOREN_USER")\",\"password\":\"$(esc "$VUURTOREN_PASSWORD")\"}"
     if [ "$STATUS" = 200 ]; then ok "signed in as $(field user)"; else
       fail "sign-in -> $STATUS: $(body)"
       AUTHED=0
     fi
   else
-    warn "sign-in is on: set KENNING_TOKEN or KENNING_USER + KENNING_PASSWORD to check the rest"
+    warn "sign-in is on: set VUURTOREN_TOKEN or VUURTOREN_USER + VUURTOREN_PASSWORD to check the rest"
     AUTHED=0
   fi
 else
@@ -91,12 +91,12 @@ if [ "$AUTHED" = 1 ]; then
 
   echo "nlp"
   get /nlp/health -K "$TMP/auth.conf"
-  # Data packs install in the background after the first start; KENNING_DOCTOR_WAIT=<seconds>
+  # Data packs install in the background after the first start; VUURTOREN_DOCTOR_WAIT=<seconds>
   # waits until every data file is there (CI), otherwise missing data during an install is only
   # a warning.
   waited=0
   while [ "$STATUS" = 200 ] && [ "$(field busy)" = true ] && grep -q '"data":{[^}]*false' "$TMP/body" &&
-    [ "$waited" -lt "${KENNING_DOCTOR_WAIT:-0}" ]; do
+    [ "$waited" -lt "${VUURTOREN_DOCTOR_WAIT:-0}" ]; do
     sleep 10
     waited=$((waited + 10))
     get /nlp/health -K "$TMP/auth.conf"
@@ -111,7 +111,7 @@ if [ "$AUTHED" = 1 ]; then
       elif [ "$v" = false ] && [ "$BUSY" = true ]; then
         warn "data: $d is still being installed (data packs; see GET /nlp/admin/packs)"
       elif [ "$v" = false ]; then
-        fail "data missing: $d (data packs: check KENNING_PACKS_URL and docker compose logs nlp)"
+        fail "data missing: $d (data packs: check VUURTOREN_PACKS_URL and docker compose logs nlp)"
       fi
     done
     if grep -q '"activity":"error' "$TMP/body"; then
@@ -122,7 +122,7 @@ if [ "$AUTHED" = 1 ]; then
     fail "GET /nlp/health -> $STATUS (the language server needs up to a minute after start: docker compose logs nlp)"
   fi
 
-  if [ -s "$JAR" ] && [ -z "${KENNING_TOKEN:-}" ] && [ "$AUTH" = true ]; then
+  if [ -s "$JAR" ] && [ -z "${VUURTOREN_TOKEN:-}" ] && [ "$AUTH" = true ]; then
     get /api/auth/logout -X POST -H 'Content-Type: application/json' --data-binary '{}'
     if [ "$STATUS" = 200 ]; then ok "signed out"; else fail "sign-out -> $STATUS"; fi
   fi

@@ -28,24 +28,24 @@ describe("desktop sync", () => {
     const store = folderStore(sync, "/home/me/Sync");
     expect(store.label).toBe("Folder · Sync");
     expect(folderStore(sync, "C:\\Users\\me\\Dropbox\\").label).toBe("Folder · Dropbox");
-    await store.put("kenning/vault.json", new Uint8Array([1, 2]));
-    expect(await store.list("kenning")).toEqual(["vault.json"]);
-    expect(await store.get("kenning/vault.json")).toEqual(new Uint8Array([1, 2]));
-    await store.remove("kenning/vault.json");
-    expect(await store.get("kenning/vault.json")).toBeNull();
+    await store.put("vuurtoren/vault.json", new Uint8Array([1, 2]));
+    expect(await store.list("vuurtoren")).toEqual(["vault.json"]);
+    expect(await store.get("vuurtoren/vault.json")).toEqual(new Uint8Array([1, 2]));
+    await store.remove("vuurtoren/vault.json");
+    expect(await store.get("vuurtoren/vault.json")).toBeNull();
   });
 
   it("sends requests through the app and answers with a real Response", async () => {
     const sync = fakeSync();
     const f = desktopFetch(sync);
-    const res = await f("https://dav.example.org/kenning/", {
+    const res = await f("https://dav.example.org/vuurtoren/", {
       method: "propfind",
       headers: { Depth: "1" },
       body: "<propfind/>",
     });
     expect(res.status).toBe(207);
     expect(res.headers.get("content-type")).toBe("application/xml");
-    expect(await res.text()).toBe("PROPFIND https://dav.example.org/kenning/ 1");
+    expect(await res.text()).toBe("PROPFIND https://dav.example.org/vuurtoren/ 1");
     expect(new TextDecoder().decode(vi.mocked(sync.fetch).mock.calls[0]![0].body)).toBe(
       "<propfind/>",
     );

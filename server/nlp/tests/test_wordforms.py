@@ -8,10 +8,10 @@ from typing import Any
 import pytest
 from fastapi.testclient import TestClient
 
-from kenning_nlp import app as app_module
-from kenning_nlp.app import app
-from kenning_nlp.dictionary import build_dictionary, default_db_path
-from kenning_nlp.wordforms import (
+from vuurtoren_nlp import app as app_module
+from vuurtoren_nlp.app import app
+from vuurtoren_nlp.dictionary import build_dictionary, default_db_path
+from vuurtoren_nlp.wordforms import (
     WordFormsMissingError,
     WordFormsStore,
     curated_aux,

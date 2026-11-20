@@ -22,7 +22,7 @@ import {
   isLanguageProfile,
   profileMode,
 } from "@app/core";
-import type { KenningRepository } from "@app/db";
+import type { VuurtorenRepository } from "@app/db";
 import type { NlpClient } from "@app/nlp-client";
 import type { DeckOption } from "@app/ui";
 import { placementBands } from "./placementWords.js";
@@ -36,14 +36,14 @@ import { DecksNotChosenError } from "./profileErrors.js";
 import type { Settings } from "./types.js";
 
 export interface LiveProfileDeps {
-  repo: KenningRepository;
+  repo: VuurtorenRepository;
   settings: () => Promise<Settings>;
   anki: (timeoutMs?: number) => Promise<AnkiConnectClient>;
   nlp: () => Promise<NlpClient>;
   changed: () => void;
 }
 
-/** How long the picker waits for Anki's deck list before offering only Kenning's decks. */
+/** How long the picker waits for Anki's deck list before offering only Vuurtoren's decks. */
 const DECKS_TIMEOUT_MS = 3000;
 
 const DEST_HINT: Record<string, string> = {
@@ -140,7 +140,7 @@ export function createLiveProfile(deps: LiveProfileDeps) {
       const options: DeckOption[] = [];
       for (const [k, v] of Object.entries(profile.destinations)) {
         if (typeof v === "string" && v)
-          options.push({ deck: v, group: "kenning", hint: DEST_HINT[k] ?? k });
+          options.push({ deck: v, group: "vuurtoren", hint: DEST_HINT[k] ?? k });
       }
       if (source === "course" && ctx) {
         options.push({ deck, group: "course", hint: ctx.unitTitle ?? ctx.title });
@@ -151,7 +151,7 @@ export function createLiveProfile(deps: LiveProfileDeps) {
         }
       }
       if (profileMode(profile) === "native") {
-        // Native mode: Kenning's own decks; Anki is not asked.
+        // Native mode: Vuurtoren's own decks; Anki is not asked.
         for (const d of await repo.nativeDecks(profile.lang, Date.now())) {
           options.push({ deck: d.name, group: "anki" });
         }
@@ -161,7 +161,7 @@ export function createLiveProfile(deps: LiveProfileDeps) {
         const names = await (await deps.anki(DECKS_TIMEOUT_MS)).deckNames();
         for (const d of names.sort()) if (d !== "Default") options.push({ deck: d, group: "anki" });
       } catch {
-        // Anki unreachable: Kenning's own and course decks are still offered.
+        // Anki unreachable: Vuurtoren's own and course decks are still offered.
       }
       return { deck, options };
     },

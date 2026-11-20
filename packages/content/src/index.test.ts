@@ -15,7 +15,7 @@ import {
 /** Detector topic ids, read from the NLP service source (the single source of truth). */
 function detectorTopics(): Set<string> {
   const src = readFileSync(
-    join(import.meta.dirname, "../../../server/nlp/src/kenning_nlp/grammar.py"),
+    join(import.meta.dirname, "../../../server/nlp/src/vuurtoren_nlp/grammar.py"),
     "utf8",
   );
   const block = /TOPICS: frozenset\[str\] = frozenset\(\s*\{([\s\S]*?)\}/.exec(src)?.[1] ?? "";

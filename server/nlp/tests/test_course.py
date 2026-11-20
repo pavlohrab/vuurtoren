@@ -6,9 +6,9 @@ import time
 from fastapi.testclient import TestClient
 from PIL import Image
 
-import kenning_nlp.app as app_module
-from kenning_nlp.app import app
-from kenning_nlp.course import CourseOcr, data_to_blocks
+import vuurtoren_nlp.app as app_module
+from vuurtoren_nlp.app import app
+from vuurtoren_nlp.course import CourseOcr, data_to_blocks
 
 
 def tiff_pages(n: int) -> bytes:
@@ -116,7 +116,7 @@ def test_several_photos_are_one_book(monkeypatch) -> None:
 
 def test_too_many_pages_over_all_files(monkeypatch) -> None:
     monkeypatch.setattr(app_module, "_course_ocr", CourseOcr(fake_engine, check=False))
-    monkeypatch.setattr("kenning_nlp.course.MAX_COURSE_PAGES", 2)
+    monkeypatch.setattr("vuurtoren_nlp.course.MAX_COURSE_PAGES", 2)
     client = TestClient(app)
     files = [("file", (f"p{i}.tiff", tiff_pages(1), "image/tiff")) for i in range(3)]
     assert client.post("/course/ocr", files=files).status_code == 413
@@ -134,8 +134,8 @@ def test_decompression_bomb_is_413_not_500(monkeypatch) -> None:
 def test_load_images_rejects_a_decompression_bomb(monkeypatch) -> None:
     import pytest
 
-    from kenning_nlp.errors import ServiceError
-    from kenning_nlp.ocr import load_images
+    from vuurtoren_nlp.errors import ServiceError
+    from vuurtoren_nlp.ocr import load_images
 
     monkeypatch.setattr(Image, "MAX_IMAGE_PIXELS", 100)
     with pytest.raises(ServiceError) as e:
@@ -273,8 +273,8 @@ def test_disk_cache_survives_a_new_instance_and_order_is_kept(tmp_path, monkeypa
 
 
 def test_scanned_page_without_an_ocr_engine_reports_the_install_hint(monkeypatch) -> None:
-    import kenning_nlp.course as course_module
-    from kenning_nlp.errors import ServiceError
+    import vuurtoren_nlp.course as course_module
+    from vuurtoren_nlp.errors import ServiceError
 
     def missing(lang):
         raise ServiceError(503, "Text recognition (RapidOCR) is not installed on the server.")

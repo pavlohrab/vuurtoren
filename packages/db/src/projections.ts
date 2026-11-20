@@ -46,7 +46,7 @@ export function countWords(content: string): number {
   return content.match(/\p{L}+/gu)?.length ?? 0;
 }
 
-/** A language-server analysis of one text version (see `KenningRepository.saveTextAnalysis`). */
+/** A language-server analysis of one text version (see `VuurtorenRepository.saveTextAnalysis`). */
 interface TextAnalysisInput {
   textId: string;
   contentHash: string;
@@ -54,7 +54,7 @@ interface TextAnalysisInput {
   analyzerVersion?: string | null | undefined;
 }
 
-/** Grammar hits found in one text version (see `KenningRepository.saveTextGrammar`). */
+/** Grammar hits found in one text version (see `VuurtorenRepository.saveTextGrammar`). */
 interface TextGrammarInput {
   textId: string;
   contentHash: string;
@@ -223,7 +223,7 @@ export async function applyEvent(driver: SqlDriver, ctx: EventContext): Promise<
       }
       return;
     }
-    // Analyses held in the log fill the analysis cache. Kenning writes analyses to the cache
+    // Analyses held in the log fill the analysis cache. Vuurtoren writes analyses to the cache
     // directly, never as events (`saveTextAnalysis`).
     case "TextGrammarDetected":
       await writeTextGrammar(driver, e, ctx.createdAt);
@@ -403,7 +403,7 @@ export async function applyEvent(driver: SqlDriver, ctx: EventContext): Promise<
       // failing the whole rebuild. Appends of unknown types are rejected earlier (rpc.ts).
       const unknown: never = e;
       console.warn(
-        `[kenning-db] skipping unknown event type ${(unknown as { type?: unknown }).type}`,
+        `[vuurtoren-db] skipping unknown event type ${(unknown as { type?: unknown }).type}`,
       );
       return;
     }
@@ -420,7 +420,7 @@ export interface WordFacts {
   prioritizedNoteId?: number;
   /** The override was set by "Mark known" (written to Anki too). */
   markedKnownInAnki?: boolean;
-  /** Answers given in Kenning. */
+  /** Answers given in Vuurtoren. */
   evidence?: AppEvidence;
 }
 
@@ -434,7 +434,7 @@ export interface WordFacts {
  *
  * App evidence (`withAppEvidence`) is overlaid on everything below a manual override:
  * it can raise pKnown and turn an unknown / seen / absent word into "learning" ("Learning (in
- * Kenning)"), but never touches known or ignored words and never makes a word known.
+ * Vuurtoren)"), but never touches known or ignored words and never makes a word known.
  * `nowMs` only affects how much old evidence has faded.
  */
 export function composeWord(

@@ -1,6 +1,6 @@
 import { readLocal, writeLocal } from "./storage/local.js";
 
-const KEY = "kenning-last-text";
+const KEY = "vuurtoren-last-text";
 
 /** Remember the text the learner opened last (Home's "Continue reading" returns to it). */
 export function writeLastText(id: string): void {

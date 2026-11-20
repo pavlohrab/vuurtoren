@@ -1,6 +1,6 @@
 /**
  * A package exported by Anki 26.08 itself (current layout: collection.anki21b, zstd, protobuf
- * tables), holding three notes Kenning wrote to Anki: one reviewed, one new, one learning.
+ * tables), holding three notes Vuurtoren wrote to Anki: one reviewed, one new, one learning.
  */
 import { readFileSync } from "node:fs";
 import { DatabaseSync } from "node:sqlite";
@@ -22,8 +22,8 @@ describe("a package exported by Anki", () => {
       readFileSync(new URL("./fixtures/anki-26.08.apkg", import.meta.url)),
     );
     const col = await readAnkiPackage(bytes, open);
-    expect(col.notetypes.map((t) => t.name)).toContain("Kenning Word");
-    const deck = col.decks.find((d) => d.name === "Kenning::Nederlands")!;
+    expect(col.notetypes.map((t) => t.name)).toContain("Vuurtoren Word");
+    const deck = col.decks.find((d) => d.name === "Vuurtoren::Nederlands")!;
     expect(deck.options.desiredRetention).toBeCloseTo(0.85, 5);
     expect(deck.fsrsParams).toHaveLength(21);
     expect(col.notes.map((n) => n.fields[0]).sort()).toEqual(["boom", "fiets", "huis"]);

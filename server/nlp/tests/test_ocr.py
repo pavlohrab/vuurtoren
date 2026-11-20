@@ -4,9 +4,9 @@ import pytest
 from fastapi.testclient import TestClient
 from PIL import Image, ImageDraw, ImageFont
 
-from kenning_nlp import rapid
-from kenning_nlp.app import app
-from kenning_nlp.ocr import words_to_text
+from vuurtoren_nlp import rapid
+from vuurtoren_nlp.app import app
+from vuurtoren_nlp.ocr import words_to_text
 
 client = TestClient(app)
 HAS_RAPIDOCR = rapid.available()
@@ -35,7 +35,7 @@ def test_missing_rapidocr_returns_503(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(rapid, "available", lambda: False)
     r = client.post("/ocr", files={"file": ("a.png", png_bytes(), "image/png")})
     assert r.status_code == 503
-    assert "kenning-nlp[ocr]" in r.json()["detail"]
+    assert "vuurtoren-nlp[ocr]" in r.json()["detail"]
 
 
 def test_ocr_reads_dutch_only_422() -> None:

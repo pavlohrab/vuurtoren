@@ -4,7 +4,7 @@ Sync keeps your words, texts, reviews and progress the same on all your devices.
 
 ## Is it safe?
 
-Yes. Before anything leaves your device, Kenning locks it with your **passphrase**. The place
+Yes. Before anything leaves your device, Vuurtoren locks it with your **passphrase**. The place
 where your data is stored only sees locked files. It cannot read them.
 
 You also get a **recovery key**. Keep it somewhere safe. If you forget your passphrase, the
@@ -16,12 +16,12 @@ Choose one place. All your devices use the same place.
 
 | Place                       | Good for                                       |
 | --------------------------- | ---------------------------------------------- |
-| Your own Kenning server     | You [self-host](self-host.md) Kenning          |
+| Your own Vuurtoren server   | You [self-host](self-host.md) Vuurtoren        |
 | A folder you already sync   | Syncthing, Dropbox, iCloud Drive (desktop app) |
 | WebDAV                      | Nextcloud, ownCloud, a NAS                     |
 | A private GitHub repository | You already use GitHub                         |
 
-**Kenning Cloud** is coming: sync without setting anything up.
+**Vuurtoren Cloud** is coming: sync without setting anything up.
 
 ## Set it up
 
@@ -32,7 +32,7 @@ On the **first device**:
 3. Choose **Start new sync data here**.
 4. Type a passphrase: a few words that you will remember.
 5. Click **Start syncing**.
-6. Save the **recovery key** that Kenning shows you.
+6. Save the **recovery key** that Vuurtoren shows you.
 
 On **every other device**:
 
@@ -40,11 +40,11 @@ On **every other device**:
 2. Choose **Join my synced data**.
 3. Type the same passphrase and click **Join and sync**.
 
-After that, Kenning syncs by itself while it is open, and when you close it.
+After that, Vuurtoren syncs by itself while it is open, and when you close it.
 
 ## Details for each place
 
-**Your own Kenning server**
+**Your own Vuurtoren server**
 
 1. Open your server in a browser and go to **Settings → Sync**.
 2. Click **Make a sync token**. Make one token for each device.
@@ -53,7 +53,7 @@ After that, Kenning syncs by itself while it is open, and when you close it.
 **A folder you already sync** (desktop app)
 
 Click **Choose a folder** and pick a folder that Syncthing, Dropbox or iCloud Drive already
-syncs. Do not pick the folder where Kenning keeps its own data.
+syncs. Do not pick the folder where Vuurtoren keeps its own data.
 
 **WebDAV**
 
@@ -69,6 +69,6 @@ Nextcloud you find the address under **Files → Settings → WebDAV**.
 ## Good to know
 
 - **Change your passphrase** in Settings → Sync. Your other devices keep syncing.
-- **Lost your passphrase?** Use the recovery key where Kenning asks for the passphrase.
+- **Lost your passphrase?** Use the recovery key where Vuurtoren asks for the passphrase.
 - **Stop syncing** on one device in Settings → Sync. The data on that device stays.
 - Keep a backup now and then: Settings → **Data & backup → Download backup**.

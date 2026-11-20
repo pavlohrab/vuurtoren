@@ -43,8 +43,8 @@ import { errorText } from "../services/errors.js";
 import { plural } from "../format.js";
 
 type View = "shelves" | "all";
-const VIEW_KEY = "kenning.library.view";
-const SORT_KEY = "kenning.library.sort";
+const VIEW_KEY = "vuurtoren.library.view";
+const SORT_KEY = "vuurtoren.library.sort";
 
 function readPref<T extends string>(key: string, allowed: readonly T[], fallback: T): T {
   try {
@@ -343,7 +343,7 @@ export function Library() {
 
       {needsAnki ? (
         <div className="banner" role="note">
-          <span>Connect Anki and Kenning can tell how much of each text you already know.</span>
+          <span>Connect Anki and Vuurtoren can tell how much of each text you already know.</span>
           <Button variant="secondary" onClick={() => void navigate({ to: "/settings" })}>
             Connect Anki
           </Button>

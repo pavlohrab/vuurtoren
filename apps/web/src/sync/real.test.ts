@@ -1,7 +1,7 @@
 /**
  * Sync against real places, when their addresses are given (skipped otherwise):
- *   KENNING_TEST_WEBDAV_URL, KENNING_TEST_WEBDAV_USER, KENNING_TEST_WEBDAV_PASSWORD
- *   KENNING_TEST_GITHUB_REPO (owner/name, private, empty), KENNING_TEST_GITHUB_TOKEN
+ *   VUURTOREN_TEST_WEBDAV_URL, VUURTOREN_TEST_WEBDAV_USER, VUURTOREN_TEST_WEBDAV_PASSWORD
+ *   VUURTOREN_TEST_GITHUB_REPO (owner/name, private, empty), VUURTOREN_TEST_GITHUB_TOKEN
  * Each run writes under a fresh folder of the place and removes what it can afterwards.
  */
 import { describe, expect, it } from "vitest";
@@ -26,13 +26,13 @@ function under(store: SyncStore, prefix: string): SyncStore {
 
 async function roundTrip(store: SyncStore) {
   // Files: write, replace, list, read, remove.
-  await store.put("kenning/devices/abc/1.kev", new Uint8Array([1, 2]));
-  await store.put("kenning/devices/abc/1.kev", new Uint8Array([3]));
-  expect(await store.list("kenning/devices")).toEqual(["abc"]);
-  expect(await store.get("kenning/devices/abc/1.kev")).toEqual(new Uint8Array([3]));
-  expect(await store.get("kenning/devices/abc/none.kev")).toBeNull();
-  expect(await store.list("kenning/nothing")).toEqual([]);
-  await store.remove("kenning/devices/abc/1.kev");
+  await store.put("vuurtoren/devices/abc/1.kev", new Uint8Array([1, 2]));
+  await store.put("vuurtoren/devices/abc/1.kev", new Uint8Array([3]));
+  expect(await store.list("vuurtoren/devices")).toEqual(["abc"]);
+  expect(await store.get("vuurtoren/devices/abc/1.kev")).toEqual(new Uint8Array([3]));
+  expect(await store.get("vuurtoren/devices/abc/none.kev")).toBeNull();
+  expect(await store.list("vuurtoren/nothing")).toEqual([]);
+  await store.remove("vuurtoren/devices/abc/1.kev");
   // Two devices with the real engine, folding included.
   const a = await createRepository(await createNodeDriver(), { deviceId: "aaaaaaaaaaaa" });
   const b = await createRepository(await createNodeDriver(), { deviceId: "bbbbbbbbbbbb" });
@@ -66,25 +66,25 @@ async function roundTrip(store: SyncStore) {
   expect((await syncOnce(a, store, key, { deviceName: "Laptop" })).received).toBe(1);
 }
 
-const run = `kenning-test-${Date.now()}`;
+const run = `vuurtoren-test-${Date.now()}`;
 
-describe.runIf(env["KENNING_TEST_WEBDAV_URL"])("a real WebDAV server", () => {
+describe.runIf(env["VUURTOREN_TEST_WEBDAV_URL"])("a real WebDAV server", () => {
   it("syncs two devices", { timeout: 120_000 }, async () => {
     const store = webdavStore(
-      env["KENNING_TEST_WEBDAV_URL"]!,
-      env["KENNING_TEST_WEBDAV_USER"] ?? "",
-      env["KENNING_TEST_WEBDAV_PASSWORD"] ?? "",
+      env["VUURTOREN_TEST_WEBDAV_URL"]!,
+      env["VUURTOREN_TEST_WEBDAV_USER"] ?? "",
+      env["VUURTOREN_TEST_WEBDAV_PASSWORD"] ?? "",
       fetch,
     );
     await roundTrip(under(store, run));
   });
 });
 
-describe.runIf(env["KENNING_TEST_GITHUB_TOKEN"])("a real GitHub repository", () => {
+describe.runIf(env["VUURTOREN_TEST_GITHUB_TOKEN"])("a real GitHub repository", () => {
   it("syncs two devices", { timeout: 300_000 }, async () => {
     const store = githubStore(
-      env["KENNING_TEST_GITHUB_REPO"]!,
-      env["KENNING_TEST_GITHUB_TOKEN"]!,
+      env["VUURTOREN_TEST_GITHUB_REPO"]!,
+      env["VUURTOREN_TEST_GITHUB_TOKEN"]!,
       fetch,
     );
     await roundTrip(under(store, run));

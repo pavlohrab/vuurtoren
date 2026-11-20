@@ -25,7 +25,7 @@ export async function fakeAnki(page: Page): Promise<void> {
       requestPermission: { permission: "granted", requireApikey: false, version: 6 },
       deckNames: ["Default"],
       createDeck: 1,
-      modelNames: ["Basic", "Kenning"],
+      modelNames: ["Basic", "Vuurtoren"],
       modelFieldNames: ["Word", "Gloss", "Sentence", "SentenceTranslation", "Source"],
       findNotes: [],
       findCards: [],

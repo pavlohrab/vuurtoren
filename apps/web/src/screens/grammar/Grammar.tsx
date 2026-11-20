@@ -16,7 +16,7 @@ export { GrammarTopicPage, GrammarTopicRoute } from "./GrammarTopic.js";
 import { practiceOffer } from "./GrammarTopic.js";
 
 type View = "path" | "topic";
-const VIEW_KEY = "kenning.grammar.view";
+const VIEW_KEY = "vuurtoren.grammar.view";
 const VIEWS = [
   { value: "path", label: "Learning path" },
   { value: "topic", label: "By topic" },

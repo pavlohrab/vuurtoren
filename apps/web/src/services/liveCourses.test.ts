@@ -1,4 +1,4 @@
-import { type KenningRepository, createRepository } from "@app/db";
+import { type VuurtorenRepository, createRepository } from "@app/db";
 import { createNodeDriver } from "@app/db/node";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { defaultProfile, parseCoursePack } from "@app/core";
@@ -99,7 +99,7 @@ function fakeBackend() {
           return 6;
         case "deckNames":
           return [
-            "Kenning::Nederlands",
+            "Vuurtoren::Nederlands",
             "Opmaat::Thema 01 - Kennismaken",
             "Opmaat::Thema 02 - Wonen",
           ];
@@ -125,7 +125,7 @@ function fakeBackend() {
             due: 1,
           }));
         case "modelNames":
-          return ["Kenning Word"];
+          return ["Vuurtoren Word"];
         case "addNote":
           return 100;
         default:
@@ -138,7 +138,7 @@ function fakeBackend() {
   return { anki, uploads, state };
 }
 
-let repoToClose: KenningRepository | null = null;
+let repoToClose: VuurtorenRepository | null = null;
 afterEach(async () => {
   vi.unstubAllGlobals();
   await repoToClose?.close();
@@ -228,7 +228,7 @@ describe("live courses", () => {
     expect(courses[0]?.course.title).toBe("Mijn boek");
   });
 
-  it("maps units to Kenning's own decks in native mode without asking Anki", async () => {
+  it("maps units to Vuurtoren's own decks in native mode without asking Anki", async () => {
     const { backend, repo, services } = await setup();
     await repo.append({ type: "LanguageProfileSet", profile: defaultProfile("nl") });
     const id = await services.importCourse({ kind: "pdf", files: [new File(["%PDF"], "b.pdf")] });
@@ -237,7 +237,7 @@ describe("live courses", () => {
     expect(mapping.decks).not.toContain("Opmaat::Thema 01 - Kennismaken");
     expect(backend.anki.some((c) => c.action === "deckNames")).toBe(false);
     // Native mode has nothing to read from Anki.
-    await expect(services.syncAnki()).rejects.toThrow("Kenning holds your cards");
+    await expect(services.syncAnki()).rejects.toThrow("Vuurtoren holds your cards");
   });
 
   it("shows flagged pages to the review and applies its fixes before building the course", async () => {
@@ -288,7 +288,7 @@ describe("live courses", () => {
       tags: string[];
     };
     expect(note.fields.Word).toBe("de fiets");
-    expect(note.tags).toContain("kenning::course::b::1");
+    expect(note.tags).toContain("vuurtoren::course::b::1");
   });
 
   it("remembers a started import, so leaving the wizard does not lose the reading job", async () => {
@@ -324,13 +324,13 @@ describe("live courses", () => {
     expect(preview.options).toContain(preview.decks[1]);
 
     backend.anki.length = 0;
-    const r = await services.addUnitWords(id, "all", { deck: "Kenning::Nederlands" });
-    expect(r).toMatchObject({ added: 1, failed: 0, deck: "Kenning::Nederlands" });
+    const r = await services.addUnitWords(id, "all", { deck: "Vuurtoren::Nederlands" });
+    expect(r).toMatchObject({ added: 1, failed: 0, deck: "Vuurtoren::Nederlands" });
     const note = backend.anki.find((c) => c.action === "addNote")?.params["note"] as {
       deckName: string;
       fields: { Word: string; Sentence: string };
     };
-    expect(note.deckName).toBe("Kenning::Nederlands");
+    expect(note.deckName).toBe("Vuurtoren::Nederlands");
     expect(note.fields.Word).toBe("de fiets");
     expect(note.fields.Sentence).toContain("fietst elke dag");
   });
@@ -402,7 +402,7 @@ describe("course packs", () => {
 
   /** Everything a course is made of, without ids and times. */
   async function snapshot(
-    repo: KenningRepository,
+    repo: VuurtorenRepository,
     services: Awaited<ReturnType<typeof setup>>["services"],
     id: string,
   ) {
@@ -428,7 +428,7 @@ describe("course packs", () => {
     const a = await preparedCourse();
     const before = await snapshot(a.repo, a.services, a.id);
     const out = await a.services.exportCoursePack(a.id, "full");
-    expect(out.fileName).toBe("mijn-boek.kenning-course.json");
+    expect(out.fileName).toBe("mijn-boek.vuurtoren-course.json");
     await a.repo.close();
     repoToClose = null;
 
@@ -450,7 +450,7 @@ describe("course packs", () => {
   it("applies a structure pack, which holds none of the book's text, to your own copy of the book", async () => {
     const a = await preparedCourse();
     const out = await a.services.exportCoursePack(a.id, "structure");
-    expect(out.fileName).toBe("mijn-boek.structure.kenning-course.json");
+    expect(out.fileName).toBe("mijn-boek.structure.vuurtoren-course.json");
     expect(out.json).not.toContain("Nijmegen");
     expect(out.json).not.toContain("fietst");
     await a.repo.close();
@@ -473,7 +473,7 @@ describe("course packs", () => {
   it("refuses a structure pack made for another book", async () => {
     const b = await setup();
     const pack = parseCoursePack({
-      format: "kenning-course-pack",
+      format: "vuurtoren-course-pack",
       version: 1,
       mode: "structure",
       exported: "2026-01-01T00:00:00.000Z",

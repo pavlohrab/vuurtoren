@@ -27,7 +27,7 @@ const notes: FakeNote[] = [
   note("NL", "Woord", { Woord: "fiets", Betekenis: "bike" }),
   note("NL", "Woord", { Woord: "lopen", Betekenis: "walk" }),
   note("Freq", "Freq", { Word: "huis", Definition: "house" }),
-  note("Kenning::Nederlands", NOTE_TYPE, {
+  note("Vuurtoren::Nederlands", NOTE_TYPE, {
     Word: "boek",
     Gloss: "book",
     Sentence: "",
@@ -62,12 +62,12 @@ describe("profileSources", () => {
     expect([...byDeck.keys()].sort()).toEqual([
       "Course::U1",
       "Freq",
-      "Kenning::Nederlands",
       "Mixed",
       "NL",
+      "Vuurtoren::Nederlands",
     ]);
     expect(byDeck.get("NL")!.wordField).toBe("Woord");
-    expect(byDeck.get("Kenning::Nederlands")!.modelName).toBe(NOTE_TYPE);
+    expect(byDeck.get("Vuurtoren::Nederlands")!.modelName).toBe(NOTE_TYPE);
     expect(byDeck.get("Freq")!.glossField).toBe("Definition");
 
     const snap = await buildSnapshot(base(), sources);
@@ -100,10 +100,10 @@ describe("addWordToAnki", () => {
       word: "de fiets",
       gloss: "bike",
     });
-    expect(r.deck).toBe("Kenning::Nederlands::Converse");
+    expect(r.deck).toBe("Vuurtoren::Nederlands::Converse");
     expect(col.models.has(NOTE_TYPE)).toBe(true);
-    expect(col.decks.has("Kenning::Nederlands::Converse")).toBe(true);
-    expect([...col.tags.get(r.noteId)!]).toEqual(["kenning", "nl", "kenning::from::converse"]);
+    expect(col.decks.has("Vuurtoren::Nederlands::Converse")).toBe(true);
+    expect([...col.tags.get(r.noteId)!]).toEqual(["vuurtoren", "nl", "vuurtoren::from::converse"]);
     expect(events).toEqual([
       { type: "NoteAddedToAnki", lang: "nl", key: "fiets", noteId: r.noteId, deck: r.deck },
     ]);
@@ -122,9 +122,9 @@ describe("addWordToAnki", () => {
       context: { source: "course", course: { title: "Boek", unitTitle: "Les 1" } },
       word: "het huis",
       key: "Huis",
-      extraTags: ["kenning::course::boek::1"],
+      extraTags: ["vuurtoren::course::boek::1"],
     });
-    expect(c.deck).toBe("Kenning::Nederlands::Boek::Les 1");
+    expect(c.deck).toBe("Vuurtoren::Nederlands::Boek::Les 1");
     expect(c.key).toBe("huis");
     const p = await addWordToAnki(anki, record, {
       profile: migratedProfile("nl", "Old", []),
@@ -144,7 +144,7 @@ describe("addWordToAnki", () => {
       asKnown: true,
     });
     expect(r.cardIds.length).toBe(1);
-    expect(col.tags.get(r.noteId)!.has("kenning::known")).toBe(true);
+    expect(col.tags.get(r.noteId)!.has("vuurtoren::known")).toBe(true);
   });
 
   it("rejects an empty word", async () => {

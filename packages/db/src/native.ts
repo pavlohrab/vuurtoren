@@ -12,7 +12,7 @@ import { randomDeviceId } from "./ids.js";
 import { SCHEMA_VERSION } from "./schema.js";
 import type { SqlDriver, SqlValue } from "./types.js";
 
-/** What the app offers (`window.__KENNING_DESKTOP__.db`, apps/desktop/src-tauri/src/bridge.js). */
+/** What the app offers (`window.__VUURTOREN_DESKTOP__.db`, apps/desktop/src-tauri/src/bridge.js). */
 export interface NativeDb {
   exec(sql: string, params: unknown[]): Promise<unknown[]>;
   close(): Promise<void>;

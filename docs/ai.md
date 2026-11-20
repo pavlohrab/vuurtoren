@@ -31,7 +31,7 @@ from the provider; any name can be typed.
 | LM Studio (local) | `http://localhost:1234/v1`                                | `local-model`             |
 | Other             | any OpenAI-compatible address                             | your model                |
 
-Ollama needs `OLLAMA_ORIGINS` set to Kenning's address. LM Studio needs its local server and CORS
+Ollama needs `OLLAMA_ORIGINS` set to Vuurtoren's address. LM Studio needs its local server and CORS
 on.
 
 **Cost:** a 20-turn conversation, a story or a full sentence fill each cost well under a cent on
@@ -39,7 +39,7 @@ small models. Settings shows a local monthly tally; set a hard limit with your p
 
 ## Privacy
 
-- Requests go from your device straight to the provider. There is no Kenning proxy.
+- Requests go from your device straight to the provider. There is no Vuurtoren proxy.
 - The key is stored on this device only. It is never in your data, backups or the server.
   An optional passphrase encrypts it (AES-GCM, PBKDF2 250,000 iterations).
 - Sent to the provider: the topic, target words, a grammar point, your vocabulary estimate and
@@ -64,25 +64,25 @@ The AI writes, the algorithms check. Nothing generated is graded by the AI.
 - **Unit exercises:** gap fills, sentence building and a text with questions, each checked the
   same way, then graded by the book's own checkers.
 
-## Use Kenning from Claude Code
+## Use Vuurtoren from Claude Code
 
-Your own Claude Code or Claude Desktop calls Kenning's tools over MCP, under your own plan. No API
-key needed. Kenning never asks for a Claude login.
+Your own Claude Code or Claude Desktop calls Vuurtoren's tools over MCP, under your own plan. No API
+key needed. Vuurtoren never asks for a Claude login.
 
-This needs a Kenning server, because Claude must reach your data.
+This needs a Vuurtoren server, because Claude must reach your data.
 
 1. **Settings → AI → Use with Claude Code → Generate token.**
 2. Run the command shown, for example:
 
    ```sh
-   claude mcp add --transport http kenning https://kenning.example.com/api/mcp \
+   claude mcp add --transport http vuurtoren https://vuurtoren.example.com/api/mcp \
      --header "Authorization: Bearer kmcp_..."
    ```
 
    For Claude Desktop, copy the JSON shown into `claude_desktop_config.json`.
 
 3. Ask, for example: "Write me an A2 story with my words to learn about cycling and save it to
-   Kenning."
+   Vuurtoren."
 
 The token opens `/api/mcp` only; revoke it in the same card.
 
@@ -93,7 +93,7 @@ The token opens `/api/mcp` only; revoke it in the same card.
 | `check_coverage`           | share of a text you know, and the unknown words                     |
 | `list_texts`, `get_text`   | your Library                                                        |
 | `list_courses`, `get_unit` | your courses, a unit's words, grammar and texts                     |
-| `get_grammar_topic`        | Kenning's grammar pages                                             |
+| `get_grammar_topic`        | Vuurtoren's grammar pages                                           |
 | `save_text`                | saves a story or exercise to the Library                            |
 | `suggest_words_for_anki`   | queues words under **Words → Suggested by Claude**; you click Add   |
 
@@ -105,15 +105,15 @@ The server can't reach the AnkiConnect on your computer, so `/api/mcp` never wri
 `pnpm install && pnpm build`, then:
 
 ```sh
-claude mcp add kenning \
-  --env KENNING_URL=http://localhost:8080 --env KENNING_TOKEN=... \
-  -- node /path/to/kenning/apps/mcp/dist/main.js
+claude mcp add vuurtoren \
+  --env VUURTOREN_URL=http://localhost:8080 --env VUURTOREN_TOKEN=... \
+  -- node /path/to/vuurtoren/apps/mcp/dist/main.js
 ```
 
-| Variable           | Meaning                                                |
-| ------------------ | ------------------------------------------------------ |
-| `KENNING_URL`      | your Kenning server (required)                         |
-| `KENNING_TOKEN`    | the server's `KENNING_TOKEN`, when sign-in is on       |
-| `KENNING_NLP_URL`  | language server (default `$KENNING_URL/nlp`)           |
-| `KENNING_ANKI_URL` | AnkiConnect (default `http://127.0.0.1:8765`)          |
-| `KENNING_DECK`     | deck override; by default the language profile decides |
+| Variable             | Meaning                                                |
+| -------------------- | ------------------------------------------------------ |
+| `VUURTOREN_URL`      | your Vuurtoren server (required)                       |
+| `VUURTOREN_TOKEN`    | the server's `VUURTOREN_TOKEN`, when sign-in is on     |
+| `VUURTOREN_NLP_URL`  | language server (default `$VUURTOREN_URL/nlp`)         |
+| `VUURTOREN_ANKI_URL` | AnkiConnect (default `http://127.0.0.1:8765`)          |
+| `VUURTOREN_DECK`     | deck override; by default the language profile decides |

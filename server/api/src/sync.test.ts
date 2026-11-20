@@ -29,7 +29,7 @@ interface Serve {
 }
 
 async function serve(opts: Serve = {}) {
-  store = await openStore(join(dir, "kenning.sqlite"));
+  store = await openStore(join(dir, "vuurtoren.sqlite"));
   auth = createAuth({
     ...(opts.open ? {} : { user: "anna", password: parsePasswordHash(hash) }),
     sessionDb: join(dir, "auth.sqlite"),
@@ -54,7 +54,7 @@ async function restart(opts: Serve) {
 }
 
 beforeEach(async () => {
-  dir = mkdtempSync(join(tmpdir(), "kenning-sync-"));
+  dir = mkdtempSync(join(tmpdir(), "vuurtoren-sync-"));
   hash ??= await hashPassword(PASSWORD, { N: 2 ** 10, r: 8, p: 1 });
   await serve();
 });
@@ -69,7 +69,7 @@ async function session(): Promise<string> {
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ user: "anna", password: PASSWORD }),
   });
-  return /kenning_session=[^;]+/.exec(res.headers.get("set-cookie") ?? "")![0];
+  return /vuurtoren_session=[^;]+/.exec(res.headers.get("set-cookie") ?? "")![0];
 }
 
 async function syncToken(cookie: string): Promise<{ token: string; id: string }> {
@@ -91,28 +91,28 @@ describe("/api/sync", () => {
     const bearer = { authorization: `Bearer ${token}` };
     const bytes = new Uint8Array([1, 2, 3, 4]);
 
-    const put = await fetch(file("kenning/devices/abc/01J.kev"), {
+    const put = await fetch(file("vuurtoren/devices/abc/01J.kev"), {
       method: "PUT",
       headers: bearer,
       body: bytes,
     });
     expect(put.status).toBe(200);
-    const list = await fetch(`${base}/api/sync/list?dir=kenning/devices`, { headers: bearer });
+    const list = await fetch(`${base}/api/sync/list?dir=vuurtoren/devices`, { headers: bearer });
     expect(await list.json()).toEqual({ ok: true, names: ["abc"] });
-    const got = await fetch(file("kenning/devices/abc/01J.kev"), { headers: bearer });
+    const got = await fetch(file("vuurtoren/devices/abc/01J.kev"), { headers: bearer });
     expect(new Uint8Array(await got.arrayBuffer())).toEqual(bytes);
-    expect((await fetch(file("kenning/vault.json"), { headers: bearer })).status).toBe(404);
+    expect((await fetch(file("vuurtoren/vault.json"), { headers: bearer })).status).toBe(404);
     expect(
-      (await fetch(file("kenning/devices/abc/01J.kev"), { method: "DELETE", headers: bearer }))
+      (await fetch(file("vuurtoren/devices/abc/01J.kev"), { method: "DELETE", headers: bearer }))
         .status,
     ).toBe(200);
-    expect(existsSync(join(dir, "sync", "kenning", "devices", "abc", "01J.kev"))).toBe(false);
+    expect(existsSync(join(dir, "sync", "vuurtoren", "devices", "abc", "01J.kev"))).toBe(false);
 
     // A sync token opens nothing else; a revoked one nothing at all.
     expect((await fetch(`${base}/api/info`, { headers: bearer })).status).toBe(401);
     const revoked = await fetch(`${base}/api/auth/sync-tokens/${id}`, {
       method: "DELETE",
-      headers: { cookie, "x-kenning": "1" },
+      headers: { cookie, "x-vuurtoren": "1" },
     });
     expect(revoked.status).toBe(200);
     expect((await fetch(`${base}/api/sync/list?dir=`, { headers: bearer })).status).toBe(401);
@@ -120,13 +120,13 @@ describe("/api/sync", () => {
 
   it("works with a session on the same site, and refuses anyone else", async () => {
     const cookie = await session();
-    const ok = await fetch(file("kenning/vault.json"), {
+    const ok = await fetch(file("vuurtoren/vault.json"), {
       method: "PUT",
-      headers: { cookie, "x-kenning": "1" },
+      headers: { cookie, "x-vuurtoren": "1" },
       body: new TextEncoder().encode("{}"),
     });
     expect(ok.status).toBe(200);
-    expect((await fetch(`${base}/api/sync/list?dir=kenning`)).status).toBe(401);
+    expect((await fetch(`${base}/api/sync/list?dir=vuurtoren`)).status).toBe(401);
     const mcp = await fetch(`${base}/api/auth/mcp-tokens`, {
       method: "POST",
       headers: { "content-type": "application/json", cookie },
@@ -136,7 +136,7 @@ describe("/api/sync", () => {
     // An MCP token does not open sync.
     expect(
       (
-        await fetch(`${base}/api/sync/list?dir=kenning`, {
+        await fetch(`${base}/api/sync/list?dir=vuurtoren`, {
           headers: { authorization: `Bearer ${token}` },
         })
       ).status,
@@ -145,7 +145,7 @@ describe("/api/sync", () => {
 
   it("answers browsers elsewhere (CORS) and refuses paths outside its folder", async () => {
     const { token } = await syncToken(await session());
-    const pre = await fetch(file("kenning/vault.json"), {
+    const pre = await fetch(file("vuurtoren/vault.json"), {
       method: "OPTIONS",
       headers: { origin: "http://localhost:5173", "access-control-request-method": "PUT" },
     });
@@ -160,7 +160,7 @@ describe("/api/sync", () => {
       const r = await fetch(file(bad), { headers: { authorization: `Bearer ${token}` } });
       expect(r.status, bad).toBe(400);
     }
-    expect(() => syncPath("kenning/devices/a1/01J.base.kev")).not.toThrow();
+    expect(() => syncPath("vuurtoren/devices/a1/01J.base.kev")).not.toThrow();
   });
 
   it("carries two devices' changes with the real sync engine", async () => {
@@ -196,16 +196,16 @@ describe("/api/sync: what a sync token may write", () => {
     const cookie = await session();
     const { token, id } = await syncToken(cookie);
     // Not yet a device: removing anything in a device folder is refused.
-    expect(await del(token, "kenning/devices/aaa/01J.kev")).toBe(403);
-    expect(await put(token, "kenning/devices/aaa/01J.kev")).toBe(200);
-    expect(await put(token, "kenning/devices/aaa/device.kev")).toBe(200);
-    expect(await del(token, "kenning/devices/aaa/01J.kev")).toBe(200);
-    expect(await put(token, "kenning/devices/bbb/01J.kev")).toBe(403);
-    expect(await del(token, "kenning/devices/bbb/device.kev")).toBe(403);
-    expect(await put(token, "kenning/blobs/abc.kbl")).toBe(200);
-    expect(await del(token, "kenning/blobs/abc.kbl")).toBe(403);
+    expect(await del(token, "vuurtoren/devices/aaa/01J.kev")).toBe(403);
+    expect(await put(token, "vuurtoren/devices/aaa/01J.kev")).toBe(200);
+    expect(await put(token, "vuurtoren/devices/aaa/device.kev")).toBe(200);
+    expect(await del(token, "vuurtoren/devices/aaa/01J.kev")).toBe(200);
+    expect(await put(token, "vuurtoren/devices/bbb/01J.kev")).toBe(403);
+    expect(await del(token, "vuurtoren/devices/bbb/device.kev")).toBe(403);
+    expect(await put(token, "vuurtoren/blobs/abc.kbl")).toBe(200);
+    expect(await del(token, "vuurtoren/blobs/abc.kbl")).toBe(403);
     expect(await put(token, "elsewhere.txt")).toBe(403);
-    expect(await put(token, "kenning/devices")).toBe(403);
+    expect(await put(token, "vuurtoren/devices")).toBe(403);
     // Settings shows which device a token belongs to.
     const list = (await (
       await fetch(`${base}/api/auth/sync-tokens`, { headers: { cookie } })
@@ -217,13 +217,13 @@ describe("/api/sync: what a sync token may write", () => {
     const cookie = await session();
     const first = (await syncToken(cookie)).token;
     const second = (await syncToken(cookie)).token;
-    expect(await put(first, "kenning/vault.json", "{1}")).toBe(200);
-    expect(await put(second, "kenning/vault.json", "{2}")).toBe(403);
-    expect(await del(second, "kenning/vault.json")).toBe(403);
-    expect(await put(first, "kenning/vault.json", "{3}")).toBe(200);
-    const bySession = await fetch(file("kenning/vault.json"), {
+    expect(await put(first, "vuurtoren/vault.json", "{1}")).toBe(200);
+    expect(await put(second, "vuurtoren/vault.json", "{2}")).toBe(403);
+    expect(await del(second, "vuurtoren/vault.json")).toBe(403);
+    expect(await put(first, "vuurtoren/vault.json", "{3}")).toBe(200);
+    const bySession = await fetch(file("vuurtoren/vault.json"), {
       method: "PUT",
-      headers: { cookie, "x-kenning": "1" },
+      headers: { cookie, "x-vuurtoren": "1" },
       body: "{4}",
     });
     expect(bySession.status).toBe(200);
@@ -234,42 +234,42 @@ describe("/api/sync: what a sync token may write", () => {
       body: JSON.stringify({ label: "Tablet", vault: true }),
     });
     const { token: allowed } = (await made.json()) as { token: string };
-    expect(await put(allowed, "kenning/vault.json", "{5}")).toBe(200);
-    expect(readFileSync(join(dir, "sync", "kenning", "vault.json"), "utf8")).toBe("{5}");
+    expect(await put(allowed, "vuurtoren/vault.json", "{5}")).toBe(200);
+    expect(readFileSync(join(dir, "sync", "vuurtoren", "vault.json"), "utf8")).toBe("{5}");
   });
 
   it("keeps all files within the quota, and leaves no half-written file", async () => {
     await restart({ syncQuotaBytes: 10 });
     const { token } = await syncToken(await session());
-    expect(await put(token, "kenning/devices/aaa/a.kev", "12345678")).toBe(200);
-    const full = await fetch(file("kenning/devices/aaa/b.kev"), {
+    expect(await put(token, "vuurtoren/devices/aaa/a.kev", "12345678")).toBe(200);
+    const full = await fetch(file("vuurtoren/devices/aaa/b.kev"), {
       method: "PUT",
       headers: { authorization: `Bearer ${token}` },
       body: "12345678",
     });
     expect(full.status).toBe(507);
-    expect(((await full.json()) as { error: string }).error).toMatch(/KENNING_SYNC_QUOTA_MB/);
+    expect(((await full.json()) as { error: string }).error).toMatch(/VUURTOREN_SYNC_QUOTA_MB/);
     // Replacing a file counts its new size only; removing one makes room.
-    expect(await put(token, "kenning/devices/aaa/a.kev", "1234567890")).toBe(200);
-    expect(await del(token, "kenning/devices/aaa/a.kev")).toBe(200);
-    expect(await put(token, "kenning/devices/aaa/b.kev", "12345678")).toBe(200);
+    expect(await put(token, "vuurtoren/devices/aaa/a.kev", "1234567890")).toBe(200);
+    expect(await del(token, "vuurtoren/devices/aaa/a.kev")).toBe(200);
+    expect(await put(token, "vuurtoren/devices/aaa/b.kev", "12345678")).toBe(200);
 
     // A write that fails (a folder where the file should go) leaves no temporary file.
     await restart({});
     const cookie = await session();
-    const failed = await fetch(file("kenning/devices/aaa"), {
+    const failed = await fetch(file("vuurtoren/devices/aaa"), {
       method: "PUT",
-      headers: { cookie, "x-kenning": "1" },
+      headers: { cookie, "x-vuurtoren": "1" },
       body: "x",
     });
     expect(failed.status).toBe(500);
-    expect(readdirSync(join(dir, "sync", "kenning", "devices"))).toEqual(["aaa"]);
+    expect(readdirSync(join(dir, "sync", "vuurtoren", "devices"))).toEqual(["aaa"]);
   });
 
   it("with sign-in off answers this site only, and a made-up token skips no check", async () => {
     await restart({ open: true });
     const evil = { origin: "https://evil.example" };
-    const pre = await fetch(file("kenning/vault.json"), {
+    const pre = await fetch(file("vuurtoren/vault.json"), {
       method: "OPTIONS",
       headers: { ...evil, "access-control-request-method": "PUT" },
     });
@@ -281,22 +281,22 @@ describe("/api/sync: what a sync token may write", () => {
         .status,
     ).toBe(403);
     // An Authorization header with nothing to verify does not skip the CSRF check.
-    const forged = await fetch(file("kenning/vault.json"), {
+    const forged = await fetch(file("vuurtoren/vault.json"), {
       method: "PUT",
       headers: { authorization: "Bearer anything" },
       body: "{}",
     });
     expect(forged.status).toBe(403);
-    // A device (no Origin; the X-Kenning header) syncs.
-    const device = await fetch(file("kenning/vault.json"), {
+    // A device (no Origin; the X-Vuurtoren header) syncs.
+    const device = await fetch(file("vuurtoren/vault.json"), {
       method: "PUT",
-      headers: { authorization: "Bearer ", "x-kenning": "1" },
+      headers: { authorization: "Bearer ", "x-vuurtoren": "1" },
       body: "{}",
     });
     expect(device.status).toBe(200);
 
     await restart({ open: true, allowedOrigins: ["https://app.example"] });
-    const listed = await fetch(file("kenning/vault.json"), {
+    const listed = await fetch(file("vuurtoren/vault.json"), {
       method: "OPTIONS",
       headers: { origin: "https://app.example", "access-control-request-method": "PUT" },
     });
@@ -305,7 +305,7 @@ describe("/api/sync: what a sync token may write", () => {
   });
 
   it("with sign-in on, a wrong token does not skip the CSRF check", async () => {
-    const res = await fetch(file("kenning/vault.json"), {
+    const res = await fetch(file("vuurtoren/vault.json"), {
       method: "PUT",
       headers: { authorization: "Bearer ksync_wrong", origin: "https://evil.example" },
       body: "{}",

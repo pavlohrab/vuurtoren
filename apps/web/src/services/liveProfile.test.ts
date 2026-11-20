@@ -1,6 +1,6 @@
 import { AnkiConnectClient, addWordToAnki } from "@app/anki";
 import { defaultProfile } from "@app/core";
-import { type KenningRepository, createRepository } from "@app/db";
+import { type VuurtorenRepository, createRepository } from "@app/db";
 import { createNodeDriver } from "@app/db/node";
 import type { NlpClient } from "@app/nlp-client";
 import { afterEach, describe, expect, it } from "vitest";
@@ -93,7 +93,7 @@ const nlp = {
     terms.map((t) => ({ key: t.toLowerCase(), aliases: [], article: null })),
 } as unknown as NlpClient;
 
-let repo: KenningRepository | null = null;
+let repo: VuurtorenRepository | null = null;
 afterEach(async () => {
   await repo?.close();
   repo = null;
@@ -128,25 +128,25 @@ describe("live language profile", () => {
     await repo.append({
       type: "SettingChanged",
       key: "settings",
-      value: { targetDeck: "Kenning::Reading" },
+      value: { targetDeck: "Vuurtoren::Reading" },
     });
     await repo.append({
       type: "AnkiSnapshotImported",
       lang: "nl",
       entries: [],
-      sources: ["Dutch", "Kenning::Reading"],
+      sources: ["Dutch", "Vuurtoren::Reading"],
     });
     live.invalidate();
     const p = await live.services.languageProfile();
     expect(p).toMatchObject({
       lang: "nl",
       sources: [{ deck: "Dutch" }],
-      destinations: { default: "Kenning::Reading" },
+      destinations: { default: "Vuurtoren::Reading" },
       courseDecks: "default",
     });
     // Saved as an event, so it is stable and visible to the MCP server.
     expect(await repo.languageProfile("nl")).toEqual(p);
-    expect((await live.services.deckChoices("converse")).deck).toBe("Kenning::Reading");
+    expect((await live.services.deckChoices("converse")).deck).toBe("Vuurtoren::Reading");
   });
 
   it("the snapshot reads only confirmed sources plus course-mapped decks", async () => {
@@ -166,7 +166,7 @@ describe("live language profile", () => {
     expect(snap.entries.map((e) => e.key).sort()).toEqual(["boek", "fiets", "huis"]);
   });
 
-  it("deck choices: profile deck per source, course rule, Kenning, course and Anki decks", async () => {
+  it("deck choices: profile deck per source, course rule, Vuurtoren, course and Anki decks", async () => {
     const { repo, live } = await setup(collection());
     await live.services.saveLanguageProfile(defaultProfile("nl", [], "connected"));
     await repo.append({
@@ -179,13 +179,13 @@ describe("live language profile", () => {
       units: [{ n: 1, title: "Thema 1", pages: [1, 2], ankiDecks: ["Opmaat::1"] }] as never,
     });
     const reading = await live.services.deckChoices("reading");
-    expect(reading.deck).toBe("Kenning::Nederlands::Reading");
+    expect(reading.deck).toBe("Vuurtoren::Nederlands::Reading");
     const groups = (g: string) => reading.options.filter((o) => o.group === g).map((o) => o.deck);
-    expect(groups("kenning")).toContain("Kenning::Nederlands::Converse");
+    expect(groups("vuurtoren")).toContain("Vuurtoren::Nederlands::Converse");
     expect(groups("course")).toEqual(["Opmaat::1"]);
     expect(groups("anki")).toContain("Other NL");
     const unit = await live.services.deckChoices("course", { courseId: "c1", unitN: 1 });
-    expect(unit.deck).toBe("Kenning::Nederlands::Opmaat::Thema 1");
+    expect(unit.deck).toBe("Vuurtoren::Nederlands::Opmaat::Thema 1");
   });
 
   it("suggests detected decks with previews; placement is app-only", async () => {
@@ -211,13 +211,13 @@ describe("live language profile", () => {
       context: { source: "reading" },
       word: "de fiets",
     });
-    expect(r).toMatchObject({ deck: "Kenning::Nederlands::Reading", key: "fiets" });
+    expect(r).toMatchObject({ deck: "Vuurtoren::Nederlands::Reading", key: "fiets" });
     const add = anki.calls.find((c) => c.action === "addNote")!.params["note"] as {
       tags: string[];
     };
-    expect(add.tags).toEqual(["kenning", "nl", "kenning::from::reading"]);
+    expect(add.tags).toEqual(["vuurtoren", "nl", "vuurtoren::from::reading"]);
     expect(anki.calls.find((c) => c.action === "createDeck")?.params["deck"]).toBe(
-      "Kenning::Nederlands::Reading",
+      "Vuurtoren::Nederlands::Reading",
     );
     expect((await repo.word("nl", "fiets"))?.addedNoteId).toBe(r.noteId);
   });

@@ -246,7 +246,7 @@ export function createMockAI(
     async addConversationWord(word, opts) {
       await wait();
       added.push(word);
-      return { deck: opts?.deck ?? "Kenning::Nederlands::Converse" };
+      return { deck: opts?.deck ?? "Vuurtoren::Nederlands::Converse" };
     },
     async aiExplainSentence(sentence, grammar) {
       await wait();

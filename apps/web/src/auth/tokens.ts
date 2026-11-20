@@ -1,5 +1,5 @@
 /**
- * Tokens a Kenning server makes for one use (server/api/src/auth/tokens.ts): MCP tokens for
+ * Tokens a Vuurtoren server makes for one use (server/api/src/auth/tokens.ts): MCP tokens for
  * Claude Code, sync tokens for devices that keep their own data. List, make (the token is
  * returned once) and revoke. Only in server mode; the session cookie authorises the calls.
  */
@@ -13,7 +13,7 @@ interface TokenInfo {
 
 type FetchLike = typeof fetch;
 const ambient: FetchLike = (...a) => globalThis.fetch(...a);
-const HEADERS = { "content-type": "application/json", "x-kenning": "1" };
+const HEADERS = { "content-type": "application/json", "x-vuurtoren": "1" };
 
 async function ok<T>(res: Response): Promise<T> {
   const body = (await res.json().catch(() => ({}))) as { error?: string } & T;
@@ -61,7 +61,7 @@ function createTokenClient(kind: "mcp-tokens" | "sync-tokens", base: string, fet
 /** `claude mcp add` command for this server (no header when sign-in is off). */
 export function claudeCodeCommand(url: string, token: string | null): string {
   const header = token ? ` --header "Authorization: Bearer ${token}"` : "";
-  return `claude mcp add --transport http kenning ${url}${header}`;
+  return `claude mcp add --transport http vuurtoren ${url}${header}`;
 }
 
 /** Claude Desktop config (claude_desktop_config.json), via the mcp-remote bridge. */
@@ -69,9 +69,9 @@ export function claudeDesktopConfig(url: string, token: string | null): string {
   const server = token
     ? {
         command: "npx",
-        args: ["-y", "mcp-remote", url, "--header", "Authorization:${KENNING_AUTH}"],
-        env: { KENNING_AUTH: `Bearer ${token}` },
+        args: ["-y", "mcp-remote", url, "--header", "Authorization:${VUURTOREN_AUTH}"],
+        env: { VUURTOREN_AUTH: `Bearer ${token}` },
       }
     : { command: "npx", args: ["-y", "mcp-remote", url] };
-  return JSON.stringify({ mcpServers: { kenning: server } }, null, 2);
+  return JSON.stringify({ mcpServers: { vuurtoren: server } }, null, 2);
 }

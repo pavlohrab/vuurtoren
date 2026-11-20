@@ -30,7 +30,7 @@ export function Progress() {
         <EmptyState
           icon={<TrendingUp size={20} />}
           title="Nothing to measure yet"
-          description="Add words you know, or connect Anki, and Kenning can tell how many Dutch words you know."
+          description="Add words you know, or connect Anki, and Vuurtoren can tell how many Dutch words you know."
           action={
             <Link to="/settings" search={{ section: "language" }} className="k-btn k-btn--primary">
               Set up your words
@@ -47,7 +47,7 @@ export function Progress() {
         title="Progress"
         lede={
           s?.native
-            ? "Based on your cards in Kenning and your reading."
+            ? "Based on your cards in Vuurtoren and your reading."
             : s?.lastSync
               ? `Based on your Anki collection, synced ${relativeTime(s.lastSync)}.`
               : "Based on your reading so far. Connect Anki in Settings to include your decks."

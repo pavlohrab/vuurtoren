@@ -112,7 +112,7 @@ export function githubStore(
           method: "PUT",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({
-            message: `Kenning sync: ${path.split("/").pop()}`,
+            message: `Vuurtoren sync: ${path.split("/").pop()}`,
             content: toBase64(bytes),
             ...(sha ? { sha } : {}),
             ...(branch ? { branch } : {}),
@@ -132,7 +132,7 @@ export function githubStore(
         method: "DELETE",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          message: "Kenning sync: tidy up",
+          message: "Vuurtoren sync: tidy up",
           sha,
           ...(branch ? { branch } : {}),
         }),

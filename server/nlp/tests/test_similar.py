@@ -6,11 +6,11 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from kenning_nlp import app as app_module
-from kenning_nlp.app import app
-from kenning_nlp.dictionary import build_dictionary, default_db_path
-from kenning_nlp.pipeline import get_nlp
-from kenning_nlp.similar import SimilarIndex, SimilarMissingError, SimilarService, load_vocabulary
+from vuurtoren_nlp import app as app_module
+from vuurtoren_nlp.app import app
+from vuurtoren_nlp.dictionary import build_dictionary, default_db_path
+from vuurtoren_nlp.pipeline import get_nlp
+from vuurtoren_nlp.similar import SimilarIndex, SimilarMissingError, SimilarService, load_vocabulary
 
 client = TestClient(app)
 VOCAB = {
@@ -106,7 +106,7 @@ def test_endpoint_with_real_dictionary() -> None:
 
 
 def test_gloss_overlap_normalisation() -> None:
-    from kenning_nlp.similar import glosses_overlap
+    from vuurtoren_nlp.similar import glosses_overlap
 
     assert glosses_overlap(["house"], ["dwelling, house, residence"])
     assert glosses_overlap(["to stop"], ["(intransitive) to cease; to stop"])

@@ -4,7 +4,7 @@
   "private": true,
   "license": "MIT OR Apache-2.0",
   "type": "module",
-  "description": "Kenning API: one SQLite file on the server, JSON RPC over HTTP, backup export/import.",
+  "description": "Vuurtoren API: one SQLite file on the server, JSON RPC over HTTP, backup export/import.",
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "start": "node dist/main.js",

@@ -303,7 +303,7 @@ describe("Anki write actions in the inspector", () => {
     inspectorButtons("Mark known", "Ignore");
     expect(screen.getByText(/Mark known adds it to Anki as known/)).toBeInTheDocument();
     // No deck path on the word: the deck is named only in the Add menu.
-    expect(screen.queryByText(/Kenning::Nederlands/)).toBeNull();
+    expect(screen.queryByText(/Vuurtoren::Nederlands/)).toBeNull();
     await userEvent.click(screen.getByRole("button", { name: "Mark known" }));
     expect(await screen.findByText("Marked as known")).toBeInTheDocument();
     expect(await screen.findByText("Added to Anki, Reading")).toBeInTheDocument();

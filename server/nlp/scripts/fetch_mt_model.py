@@ -56,7 +56,9 @@ def main() -> int:
         if archive is None:
             archive = tmp / "opus.zip"
             try:
-                download_verified(URL, archive, "OPUS-MT nl-en", SHA256, SIZE, False, "kenning-mt")
+                download_verified(
+                    URL, archive, "OPUS-MT nl-en", SHA256, SIZE, False, "vuurtoren-mt"
+                )
             except PinMismatchError as e:
                 print(e, file=sys.stderr)
                 return 1

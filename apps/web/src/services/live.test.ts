@@ -1,5 +1,5 @@
 import { type AnalyzedToken, textDifficulty } from "@app/core";
-import { type KenningRepository, contentHash, createRepository } from "@app/db";
+import { type VuurtorenRepository, contentHash, createRepository } from "@app/db";
 import { createNodeDriver } from "@app/db/node";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createLiveServices } from "./live.js";
@@ -143,7 +143,7 @@ async function setup(
   backend: ReturnType<typeof fakeBackend>,
   known: string[] = KNOWN,
   ankiNotes: { key: string; noteIds: number[]; state?: "learning" | "unknown" }[] = [],
-): Promise<{ repo: KenningRepository; services: AppServices; textId: string }> {
+): Promise<{ repo: VuurtorenRepository; services: AppServices; textId: string }> {
   vi.stubGlobal("fetch", backend.fetchFn);
   const repo = await createRepository(await createNodeDriver());
   const tokens = tokenize(TEXT);
@@ -185,7 +185,7 @@ async function setup(
   return { repo, services: createLiveServices(repo), textId: "t1" };
 }
 
-let repoToClose: KenningRepository | null = null;
+let repoToClose: VuurtorenRepository | null = null;
 beforeEach(() => {
   repoToClose = null;
 });

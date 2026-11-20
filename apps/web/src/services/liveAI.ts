@@ -46,7 +46,7 @@ import {
 } from "@app/core";
 import {
   type GeneratedSentence,
-  type KenningRepository,
+  type VuurtorenRepository,
   type TextSource,
   projectConversations,
 } from "@app/db";
@@ -67,7 +67,7 @@ import type { GenerateUnitResult, UnitGrammarTopic } from "./courseTypes.js";
 import type { Settings } from "./types.js";
 
 export interface LiveAIDeps {
-  repo: KenningRepository;
+  repo: VuurtorenRepository;
   settings: () => Promise<Settings>;
   /** The language profile (deck routing); defaults to the old target deck for everything. */
   profile?: () => Promise<LanguageProfile>;
@@ -90,8 +90,8 @@ export interface LiveAIDeps {
   fetch?: typeof fetch;
 }
 
-const CONFIG_KEY = "kenning.ai.config";
-const USAGE_KEY = "kenning.ai.usage";
+const CONFIG_KEY = "vuurtoren.ai.config";
+const USAGE_KEY = "vuurtoren.ai.usage";
 /** Earlier messages sent to the model (older ones are dropped to bound the cost). */
 const HISTORY_LIMIT = 16;
 
@@ -744,7 +744,7 @@ export function createLiveAI(deps: LiveAIDeps): AIServices &
               sentence: at >= 0 ? highlightSentence(example, at, at + word.lemma.length) : example,
             }
           : {}),
-        source: "Kenning conversation",
+        source: "Vuurtoren conversation",
       });
       deps.changed();
       return { deck };

@@ -1,5 +1,5 @@
 /**
- * Sign-in sessions in their own small SQLite file (`KENNING_AUTH_DB`, default
+ * Sign-in sessions in their own small SQLite file (`VUURTOREN_AUTH_DB`, default
  * /data/auth.sqlite), separate from the user's data so a backup export or import never
  * contains or replaces them.
  *

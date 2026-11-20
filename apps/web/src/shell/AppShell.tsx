@@ -165,7 +165,7 @@ export function AppShell() {
   const title =
     header?.title ??
     PAGE_TITLES[pathname] ??
-    (pathname.startsWith("/courses/") ? "Courses" : "Kenning");
+    (pathname.startsWith("/courses/") ? "Courses" : "Vuurtoren");
   const showInspector = inspectorAvailable && inspectorOpen;
   const titleClass = header?.reader ? "topbar-title topbar-title--quiet" : "topbar-title";
   // The page's h1 already says it: the top bar shows the title once the h1 has scrolled away.
@@ -254,8 +254,8 @@ export function AppShell() {
           data-inspector={showInspector ? "open" : "closed"}
         >
           <nav className="sidebar" aria-label="Main">
-            <Link to="/" className="sidebar-brand" aria-label="Kenning, home">
-              <Logo size={26} className="brand-logo" title="Kenning" />
+            <Link to="/" className="sidebar-brand" aria-label="Vuurtoren, home">
+              <Logo size={26} className="brand-logo" title="Vuurtoren" />
             </Link>
             <NavLink to="/" label="Home" icon={<House size={18} />} exact />
             <NavLink to="/library" label="Library" icon={<Library size={18} />} />

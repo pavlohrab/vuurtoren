@@ -5,7 +5,7 @@ import type { AnalyzedToken } from "./types.js";
 import fixtures from "./fixtures/word-grammar.nl.json";
 
 /**
- * Fixture analyses captured from the real NLP server (spaCy nl_core_news, kenning_nlp
+ * Fixture analyses captured from the real NLP server (spaCy nl_core_news, vuurtoren_nlp
  * analyze_texts + detect_grammar), one sentence each, stored compactly as
  * [text, lemma, pos, morph, dep, head, particle_of] per token and [topic, tokens] per hit.
  */

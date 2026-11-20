@@ -25,7 +25,7 @@ import { SessionStore, type SessionOptions } from "./sessions.js";
 
 type AuthMethod = "password" | "token";
 
-const COOKIE_NAME = "kenning_session";
+const COOKIE_NAME = "vuurtoren_session";
 
 export interface AuthOptions {
   /** Username for password sign-in (required with `password`). */
@@ -34,7 +34,7 @@ export interface AuthOptions {
   password?: PasswordHash | undefined;
   /** Bearer token for scripts / MCP; can also be exchanged for a browser session. */
   token?: string | undefined;
-  /** Session database file (default ":memory:"; the server passes KENNING_AUTH_DB). */
+  /** Session database file (default ":memory:"; the server passes VUURTOREN_AUTH_DB). */
   sessionDb?: string;
   /** Mark the cookie `Secure` (default true; turn off only for plain-http LAN use). */
   cookieSecure?: boolean;
@@ -78,7 +78,7 @@ export interface Auth {
   csrf(req: IncomingMessage, scope?: AuthScope): string | null;
   /** Why the request comes from another site (not this host, not an allowed origin), or null. */
   foreignOrigin(req: IncomingMessage): string | null;
-  /** Extra origins allowed besides the server's own (KENNING_ALLOWED_ORIGINS). */
+  /** Extra origins allowed besides the server's own (VUURTOREN_ALLOWED_ORIGINS). */
   readonly allowedOrigins: readonly string[];
   /** The sync tokens (each bound to a device; see tokens.ts). */
   readonly syncTokens: TokenStore;
@@ -126,7 +126,7 @@ function originProblem(req: IncomingMessage, allowedOrigins: readonly string[]):
  *  - come from this site: `Origin`, when present, must match the Host (or an allowed origin),
  *    and `Sec-Fetch-Site` must not be "cross-site";
  *  - and be impossible for a plain HTML form: `Content-Type: application/json` or the
- *    `X-Kenning: 1` header (both force a CORS preflight, which this server never grants).
+ *    `X-Vuurtoren: 1` header (both force a CORS preflight, which this server never grants).
  * Requests with a valid bearer token (`bearerOk`) are exempt: browsers cannot attach one
  * cross-site without a preflight either, and scripts using a token send no Origin. Any other
  * Authorization header (auth off, a wrong token) is checked like everything else.
@@ -145,8 +145,8 @@ function csrfProblem(
   const foreign = originProblem(req, allowedOrigins);
   if (foreign) return foreign;
   const type = (req.headers["content-type"] ?? "").split(";")[0]!.trim().toLowerCase();
-  if (type !== "application/json" && req.headers["x-kenning"] !== "1") {
-    return "missing application/json or X-Kenning header";
+  if (type !== "application/json" && req.headers["x-vuurtoren"] !== "1") {
+    return "missing application/json or X-Vuurtoren header";
   }
   return null;
 }
@@ -154,7 +154,7 @@ function csrfProblem(
 /** Create the auth layer. */
 export function createAuth(opts: AuthOptions = {}): Auth {
   const hasPassword = Boolean(opts.password && opts.user);
-  if (opts.password && !opts.user) throw new Error("A password needs a username (KENNING_USER).");
+  if (opts.password && !opts.user) throw new Error("A password needs a username (VUURTOREN_USER).");
   const token = opts.token || undefined;
   const methods: AuthMethod[] = [
     ...(hasPassword ? (["password"] as const) : []),
@@ -316,7 +316,7 @@ export function createAuth(opts: AuthOptions = {}): Auth {
 
     if (user === null || credential === null) {
       limiter.fail(ip);
-      console.warn(`[kenning-api] failed sign-in from ${ip}`);
+      console.warn(`[vuurtoren-api] failed sign-in from ${ip}`);
       throw new HttpFail(
         401,
         typeof body.token === "string"
@@ -346,7 +346,7 @@ export function createAuth(opts: AuthOptions = {}): Auth {
     if (path === "/api/auth/logout-all" && method === "POST") {
       require(req);
       const ended = sessions.revokeAll();
-      console.log(`[kenning-api] signed out everywhere (${ended} sessions)`);
+      console.log(`[vuurtoren-api] signed out everywhere (${ended} sessions)`);
       json(res, 200, { ok: true, ended }, { "set-cookie": clearCookie() });
       return true;
     }
@@ -405,14 +405,14 @@ export function createAuth(opts: AuthOptions = {}): Auth {
         } catch (e) {
           throw new HttpFail(409, e instanceof Error ? e.message : "Could not make a token.");
         }
-        console.log(`[kenning-api] ${what} token ${made.id} created`);
+        console.log(`[vuurtoren-api] ${what} token ${made.id} created`);
         json(res, 200, { ok: true, ...made });
         return true;
       }
       const tokenId = path.slice(base.length + 1);
       if (method === "DELETE" && /^[0-9a-f]{12}$/.test(tokenId)) {
         if (!store.revoke(tokenId)) throw new HttpFail(404, "No such token.");
-        console.log(`[kenning-api] ${what} token ${tokenId} revoked`);
+        console.log(`[vuurtoren-api] ${what} token ${tokenId} revoked`);
         json(res, 200, { ok: true });
         return true;
       }

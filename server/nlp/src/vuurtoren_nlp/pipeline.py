@@ -8,11 +8,11 @@ from functools import lru_cache
 from itertools import accumulate
 from typing import TYPE_CHECKING
 
-from kenning_nlp import nl
-from kenning_nlp.errors import ServiceError
-from kenning_nlp.freq import token_zipf, zipf
-from kenning_nlp.lexicon import get_lexicon
-from kenning_nlp.models import MAX_TEXT_CHARS, TermAnalysis, TextAnalysis, Token
+from vuurtoren_nlp import nl
+from vuurtoren_nlp.errors import ServiceError
+from vuurtoren_nlp.freq import token_zipf, zipf
+from vuurtoren_nlp.lexicon import get_lexicon
+from vuurtoren_nlp.models import MAX_TEXT_CHARS, TermAnalysis, TextAnalysis, Token
 
 if TYPE_CHECKING:
     from spacy.language import Language

@@ -77,7 +77,7 @@ export interface WordColumns {
   recall: boolean;
   decks: boolean;
 }
-const COLUMNS_KEY = "kenning-words-columns";
+const COLUMNS_KEY = "vuurtoren-words-columns";
 function readColumns(): WordColumns {
   const v = readLocalJSON(COLUMNS_KEY) as Partial<WordColumns> | undefined;
   return { recall: v?.recall === true, decks: v?.decks === true };
@@ -109,7 +109,7 @@ export interface WordRow {
   pKnown: number | null;
   gloss?: string | undefined;
   decks: string[];
-  /** The word has a card (in Anki, or Kenning's own). */
+  /** The word has a card (in Anki, or Vuurtoren's own). */
   hasCard?: boolean | undefined;
   /** Inspector entry when the source has one (a text: with its sentence from that text). */
   entry?: InspectorEntry;
@@ -632,7 +632,7 @@ export function Words() {
                       </button>
                     </td>
                     <td>
-                      <WordStateChip state={w.state} inKenning={w.appLearning} />
+                      <WordStateChip state={w.state} inVuurtoren={w.appLearning} />
                       {w.due !== undefined ? (
                         <span className="words-due">{dueAgo(w.due)}</span>
                       ) : null}

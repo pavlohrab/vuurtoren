@@ -5,7 +5,7 @@
  * path as additional data: a copy under another name does not open. Values inside vault.json
  * (the check value, the locked data key) are `KSY1`: the same, without a path.
  *
- * The vault (`kenning/vault.json`) holds the data key under locks: one opened by your
+ * The vault (`vuurtoren/vault.json`) holds the data key under locks: one opened by your
  * passphrase (Argon2id), one by a recovery key (160 random bits, HKDF). Changing the passphrase
  * re-locks the data key; no file changes and other devices keep their key.
  */
@@ -17,7 +17,7 @@ const MAGIC_VALUE = new TextEncoder().encode("KSY1");
 /** A file of the place, sealed with its path as additional data. */
 const MAGIC_FILE = new TextEncoder().encode("KSY2");
 const MAGIC_LENGTH = 4;
-const CHECK = "kenning-sync";
+const CHECK = "vuurtoren-sync";
 /** What a vault may ask of this device: more is refused (a damaged or hostile vault.json). */
 const MAX_ARGON2_KIB = 1_048_576;
 const MAX_ARGON2_PASSES = 10;
@@ -37,7 +37,7 @@ interface Lock {
   sealed: string;
 }
 
-/** `kenning/vault.json`. */
+/** `vuurtoren/vault.json`. */
 export interface VaultFile {
   format: 2;
   /** Stays the same across passphrase changes (devices keep their sync state). */
@@ -112,7 +112,7 @@ const starts = (bytes: Uint8Array, magic: Uint8Array) => magic.every((b, i) => b
 export async function unseal(key: SyncKey, sealed: Uint8Array, path?: string): Promise<Uint8Array> {
   const magic = path !== undefined ? MAGIC_FILE : MAGIC_VALUE;
   if (sealed.length < MAGIC_LENGTH + 12 + 16 || !starts(sealed, magic)) {
-    throw new SealedFileError("This is not a Kenning sync file.");
+    throw new SealedFileError("This is not a Vuurtoren sync file.");
   }
   const params: AesGcmParams = {
     name: "AES-GCM",
@@ -173,11 +173,11 @@ export function parseRecovery(text: string): Uint8Array | null {
   return out;
 }
 
-/** The vault asks for more work than any Kenning sets, or is not a vault: it is not used. */
+/** The vault asks for more work than any Vuurtoren sets, or is not a vault: it is not used. */
 class DamagedVaultError extends Error {
   override readonly name = "DamagedVaultError";
   constructor() {
-    super("The sync place holds a vault.json Kenning cannot use. It may be damaged.");
+    super("The sync place holds a vault.json Vuurtoren cannot use. It may be damaged.");
   }
 }
 
@@ -201,7 +201,7 @@ function checkKdf(kdf: unknown): kdf is Argon2 | Hkdf {
 }
 
 /**
- * `kenning/vault.json` read from the place, checked before anything uses it: its shape, and
+ * `vuurtoren/vault.json` read from the place, checked before anything uses it: its shape, and
  * key derivation within bounds (Argon2id at most 1 GiB and 10 passes), so a damaged or hostile
  * file cannot make a device run out of memory.
  */
@@ -214,7 +214,7 @@ export function parseVault(bytes: Uint8Array): VaultFile {
   }
   if (!v || typeof v !== "object") throw new DamagedVaultError();
   if (typeof v["format"] === "number" && v["format"] > 2) {
-    throw new Error("This sync data was made by a newer Kenning. Update Kenning to use it.");
+    throw new Error("This sync data was made by a newer Vuurtoren. Update Vuurtoren to use it.");
   }
   if (!base64ish(v["check"])) throw new DamagedVaultError();
   if (v["format"] !== 2 || typeof v["id"] !== "string" || !Array.isArray(v["locks"])) {
@@ -260,7 +260,7 @@ async function lockKey(secret: string | Uint8Array, kdf: Argon2 | Hkdf): Promise
       name: "HKDF",
       hash: "SHA-256",
       salt: salt as BufferSource,
-      info: new TextEncoder().encode("kenning recovery key"),
+      info: new TextEncoder().encode("vuurtoren recovery key"),
     },
     base,
     512,

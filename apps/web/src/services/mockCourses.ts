@@ -39,7 +39,7 @@ const DEMO_DECKS = [
   "Nederlands voor beginners::Thema 1 - Kennismaken",
   "Nederlands voor beginners::Thema 2 - Winkelen",
   "Nederlands voor beginners::Thema 3 - Wonen",
-  "Kenning::Nederlands",
+  "Vuurtoren::Nederlands",
 ];
 
 const COURSE_ID = "demo-course";
@@ -354,7 +354,7 @@ export function createMockCourses(opts: { latencyMs?: number } = {}): CourseServ
           words,
         },
         mode,
-        { meta: { generator: "Kenning demo" } },
+        { meta: { generator: "Vuurtoren demo" } },
       );
       return { fileName: packFileName(course.title, mode), json: JSON.stringify(pack, null, 1) };
     },
@@ -556,7 +556,7 @@ export function createMockCourses(opts: { latencyMs?: number } = {}): CourseServ
         ns.map((n) => [
           n,
           units.find((u) => u.n === n)?.ankiDecks[0] ??
-            `Kenning::Dutch::Nederlands voor beginners::Thema ${n}`,
+            `Vuurtoren::Dutch::Nederlands voor beginners::Thema ${n}`,
         ]),
       );
       return { rows, decks, options: [...new Set([...Object.values(decks), ...DEMO_DECKS])] };
@@ -573,7 +573,11 @@ export function createMockCourses(opts: { latencyMs?: number } = {}): CourseServ
           states.set(wd.lemma, "learning");
           added++;
         }
-      return { added, failed: 0, deck: opts?.deck ?? "Kenning::Dutch::Nederlands voor beginners" };
+      return {
+        added,
+        failed: 0,
+        deck: opts?.deck ?? "Vuurtoren::Dutch::Nederlands voor beginners",
+      };
     },
     async unitGrammar(_id, n) {
       await wait(latency);
@@ -624,7 +628,7 @@ export function createMockCourses(opts: { latencyMs?: number } = {}): CourseServ
           added++;
         }
       }
-      return { added, failed: 0, deck: opts?.deck ?? `Kenning::Nederlands::Opmaat::Thema ${n}` };
+      return { added, failed: 0, deck: opts?.deck ?? `Vuurtoren::Nederlands::Opmaat::Thema ${n}` };
     },
     async unitPractice(): Promise<Exercise[]> {
       await wait(latency);

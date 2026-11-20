@@ -202,7 +202,7 @@ export const MIGRATIONS: readonly (readonly string[])[] = [
     `ALTER TABLE text_tokens ADD COLUMN analyzer_version TEXT`,
   ],
   [
-    // Native mode: the cards Kenning holds itself.
+    // Native mode: the cards Vuurtoren holds itself.
     `CREATE TABLE native_notetypes (
        id TEXT PRIMARY KEY,
        data TEXT NOT NULL
@@ -320,7 +320,7 @@ export class SchemaTooNewError extends Error {
     readonly supported: number = SCHEMA_VERSION,
   ) {
     super(
-      `Database schema v${found} is newer than supported v${supported}. Update Kenning to open it.`,
+      `Database schema v${found} is newer than supported v${supported}. Update Vuurtoren to open it.`,
     );
   }
 }

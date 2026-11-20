@@ -5,4 +5,4 @@ export {
   type ToolHandlers,
   type ToolRepo,
 } from "./handlers.js";
-export { createKenningMcpServer, respond } from "./register.js";
+export { createVuurtorenMcpServer, respond } from "./register.js";

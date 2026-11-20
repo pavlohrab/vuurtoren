@@ -8,7 +8,7 @@ import type { Plugin, ProxyOptions } from "vite";
 /**
  * Dev proxies keep the browser same-origin:
  *  - /nlp  -> the NLP service (docker/nginx does the same in production)
- *  - /api  -> the Kenning API (server storage mode), only when KENNING_API_TARGET is set, e.g.
+ *  - /api  -> the Vuurtoren API (server storage mode), only when VUURTOREN_API_TARGET is set, e.g.
  *    http://127.0.0.1:8787. Without it the dev server stays in browser (OPFS) mode.
  *  - /anki -> AnkiConnect on this machine. The Origin header is removed so AnkiConnect's
  *    default webCorsOriginList (http://localhost, no port) does not reject the dev server.
@@ -17,23 +17,23 @@ const stripOrigin: ProxyOptions["configure"] = (proxy) => {
   proxy.on("proxyReq", (req) => req.removeHeader("origin"));
 };
 
-const apiTarget = process.env["KENNING_API_TARGET"];
+const apiTarget = process.env["VUURTOREN_API_TARGET"];
 
-/** The product version (root package.json) and, in image builds, the commit (KENNING_COMMIT). */
+/** The product version (root package.json) and, in image builds, the commit (VUURTOREN_COMMIT). */
 const rootPackage = JSON.parse(
   readFileSync(new URL("../../package.json", import.meta.url), "utf8"),
 ) as { version: string };
-const commit = (process.env["KENNING_COMMIT"] ?? "").slice(0, 7);
+const commit = (process.env["VUURTOREN_COMMIT"] ?? "").slice(0, 7);
 
 /**
  * The service worker (installable app): sw/sw.js with the app shell's file list and a
  * version hash filled in, emitted as /sw.js on build. Fonts: only the latin subsets are
  * precached (the others load and are cached on first use). The dev server has no worker.
  */
-function kenningServiceWorker(): Plugin {
+function vuurtorenServiceWorker(): Plugin {
   const publicDir = new URL("./public/", import.meta.url);
   return {
-    name: "kenning-sw",
+    name: "vuurtoren-sw",
     apply: "build",
     enforce: "post",
     generateBundle(_options, bundle) {
@@ -51,30 +51,30 @@ function kenningServiceWorker(): Plugin {
       const index = bundle["index.html"];
       if (index?.type === "asset") hash.update(index.source);
       const source = readFileSync(new URL("./sw/sw.js", import.meta.url), "utf8")
-        .replace('"__KENNING_SW_VERSION__"', JSON.stringify(hash.digest("hex").slice(0, 12)))
-        .replace("__KENNING_SW_PRECACHE__", JSON.stringify(files.map((f) => `/${f}`)));
+        .replace('"__VUURTOREN_SW_VERSION__"', JSON.stringify(hash.digest("hex").slice(0, 12)))
+        .replace("__VUURTOREN_SW_PRECACHE__", JSON.stringify(files.map((f) => `/${f}`)));
       this.emitFile({ type: "asset", fileName: "sw.js", source });
     },
   };
 }
 
 export default defineConfig({
-  plugins: [react(), tailwindcss(), kenningServiceWorker()],
+  plugins: [react(), tailwindcss(), vuurtorenServiceWorker()],
   define: {
-    __KENNING_VERSION__: JSON.stringify(rootPackage.version),
-    __KENNING_COMMIT__: JSON.stringify(commit),
+    __VUURTOREN_VERSION__: JSON.stringify(rootPackage.version),
+    __VUURTOREN_COMMIT__: JSON.stringify(commit),
   },
   server: {
     port: 5173,
     proxy: {
       ...(apiTarget ? { "/api": { target: apiTarget } } : {}),
       "/nlp": {
-        target: process.env["KENNING_NLP_TARGET"] ?? "http://127.0.0.1:8000",
+        target: process.env["VUURTOREN_NLP_TARGET"] ?? "http://127.0.0.1:8000",
         rewrite: (p) => p.replace(/^\/nlp/, ""),
         configure: stripOrigin,
       },
       "/anki": {
-        target: process.env["KENNING_ANKI_TARGET"] ?? "http://127.0.0.1:8765",
+        target: process.env["VUURTOREN_ANKI_TARGET"] ?? "http://127.0.0.1:8765",
         rewrite: (p) => p.replace(/^\/anki/, ""),
         configure: stripOrigin,
       },

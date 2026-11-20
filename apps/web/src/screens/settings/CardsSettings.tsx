@@ -1,6 +1,6 @@
 /**
  * Settings → Language & decks, the cards part. Connected mode: one action, "Move from Anki to
- * Kenning". Native mode: what Kenning holds, importing a deck file, each deck's target retention
+ * Vuurtoren". Native mode: what Vuurtoren holds, importing a deck file, each deck's target retention
  * and limits, and FSRS tuning ("Optimise now").
  */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -41,7 +41,7 @@ function MoveFromAnki() {
     mutationFn: () => services.moveFromAnki(setProgress),
     onSuccess: async (summary) => {
       // This part of Settings is replaced by the native one: the result goes to a toast.
-      toast("Your reviews now happen in Kenning", summaryText(summary));
+      toast("Your reviews now happen in Vuurtoren", summaryText(summary));
       for (const k of AFFECTED) await qc.invalidateQueries({ queryKey: [k] });
     },
   });
@@ -52,23 +52,23 @@ function MoveFromAnki() {
       </h3>
       <p className="k-hint" style={{ margin: 0 }}>
         Anki is the record of the words you know and runs your reviews. You can bring your decks
-        into Kenning instead: the decks below are imported once, with every card and its review
-        history, and from then on Kenning schedules your reviews. Anki is not changed.
+        into Vuurtoren instead: the decks below are imported once, with every card and its review
+        history, and from then on Vuurtoren schedules your reviews. Anki is not changed.
       </p>
       {move.isSuccess ? (
         <p role="status" style={{ margin: 0 }}>
-          {summaryText(move.data)} Your reviews now happen in Kenning.
+          {summaryText(move.data)} Your reviews now happen in Vuurtoren.
         </p>
       ) : confirm ? (
         <div className="stack" style={{ gap: 8 }}>
           <p style={{ margin: 0 }}>
-            Import the decks Kenning reads from Anki and review in Kenning from now on? Keep Anki
-            open while it runs.
+            Import the decks Vuurtoren reads from Anki and review in Vuurtoren from now on? Keep
+            Anki open while it runs.
           </p>
           <div className="row">
             <Button variant="primary" disabled={move.isPending} onClick={() => move.mutate()}>
               {move.isPending ? <Spinner label="Importing" /> : null}
-              Move to Kenning
+              Move to Vuurtoren
             </Button>
             <Button variant="ghost" disabled={move.isPending} onClick={() => setConfirm(false)}>
               Cancel
@@ -82,7 +82,7 @@ function MoveFromAnki() {
         </div>
       ) : (
         <div className="row">
-          <Button onClick={() => setConfirm(true)}>Move from Anki to Kenning</Button>
+          <Button onClick={() => setConfirm(true)}>Move from Anki to Vuurtoren</Button>
         </div>
       )}
       {move.isError ? (
@@ -104,7 +104,7 @@ function NativeCards() {
           Your cards
         </h3>
         <p className="k-hint" style={{ margin: 0 }}>
-          Kenning keeps your words and schedules your reviews with FSRS.
+          Vuurtoren keeps your words and schedules your reviews with FSRS.
         </p>
         {decks.data ? (
           decks.data.length ? (
@@ -244,7 +244,7 @@ function ReviewWeek() {
         Review days
       </h3>
       <p className="k-hint" style={{ margin: 0 }}>
-        Days with fewer reviews. Kenning spreads due dates within the room each interval allows:
+        Days with fewer reviews. Vuurtoren spreads due dates within the room each interval allows:
         away from busy days, and away from reduced and minimum days.
       </p>
       <div className="cards-week">
@@ -295,7 +295,7 @@ function MoveToAnki() {
       </h3>
       <p className="k-hint" style={{ margin: 0 }}>
         Use Anki for your reviews from now on. Your words become notes in Anki, in the same decks;
-        cards you have reviewed come due on the same day. Kenning then reads your words from Anki
+        cards you have reviewed come due on the same day. Vuurtoren then reads your words from Anki
         again. Notes of other types stay out: export them to a deck file above.
       </p>
       {confirm ? (

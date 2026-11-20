@@ -80,46 +80,46 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 90
     env:
-      KENNING_IMAGE_OWNER: ci-local
-      KENNING_TAG: ci
+      VUURTOREN_IMAGE_OWNER: ci-local
+      VUURTOREN_TAG: ci
       # Test-only credentials; plain http, so the cookie must not be Secure-only.
-      KENNING_USER: smoke
-      KENNING_PASSWORD: smoke-test-password
-      KENNING_COOKIE_SECURE: "0"
+      VUURTOREN_USER: smoke
+      VUURTOREN_PASSWORD: smoke-test-password
+      VUURTOREN_COOKIE_SECURE: "0"
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
       # Reads the release cache of images.yml too; writes its own scope (amd64 only), so it never
       # replaces the multi-arch cache.
-      - name: Build kenning-web
+      - name: Build vuurtoren-web
         uses: docker/build-push-action@v6
         with:
           context: .
           file: deploy/web.Dockerfile
           load: true
-          build-args: KENNING_COMMIT=${{ github.sha }}
-          tags: ghcr.io/ci-local/kenning-web:ci
+          build-args: VUURTOREN_COMMIT=${{ github.sha }}
+          tags: ghcr.io/ci-local/vuurtoren-web:ci
           cache-from: |
             type=gha,scope=ci-web
             type=gha,scope=web
           cache-to: type=gha,mode=max,scope=ci-web
-      - name: Build kenning-api
+      - name: Build vuurtoren-api
         uses: docker/build-push-action@v6
         with:
           context: .
           file: server/api/Dockerfile
           load: true
-          tags: ghcr.io/ci-local/kenning-api:ci
+          tags: ghcr.io/ci-local/vuurtoren-api:ci
           cache-from: |
             type=gha,scope=ci-api
             type=gha,scope=api
           cache-to: type=gha,mode=max,scope=ci-api
-      - name: Build kenning-nlp
+      - name: Build vuurtoren-nlp
         uses: docker/build-push-action@v6
         with:
           context: server/nlp
           load: true
-          tags: ghcr.io/ci-local/kenning-nlp:ci
+          tags: ghcr.io/ci-local/vuurtoren-nlp:ci
           cache-from: |
             type=gha,scope=ci-nlp
             type=gha,scope=nlp
@@ -133,18 +133,18 @@ jobs:
         uses: actions/cache@v4
         with:
           path: server/nlp/dist/packs
-          key: nlp-packs-${{ hashFiles('server/nlp/src/kenning_nlp/packs.json', 'server/nlp/scripts/**', 'server/nlp/uv.lock') }}
+          key: nlp-packs-${{ hashFiles('server/nlp/src/vuurtoren_nlp/packs.json', 'server/nlp/scripts/**', 'server/nlp/uv.lock') }}
       - name: Build data packs
         if: steps.packs-cache.outputs.cache-hit != 'true'
         working-directory: server/nlp
         run: uv sync --locked --no-dev && uv run --no-dev python scripts/build_packs.py --out dist/packs
       # The "default" builder (docker driver) sees the image loaded above; the buildx container
       # builder would try to pull it.
-      - name: Build kenning-nlp (-full)
+      - name: Build vuurtoren-nlp (-full)
         run: >-
           docker buildx build --builder default --load -f server/nlp/full.Dockerfile
-          --build-arg BASE=ghcr.io/ci-local/kenning-nlp:ci --build-arg SKIP_BUILD=1
-          -t ghcr.io/ci-local/kenning-nlp:ci-full server/nlp
+          --build-arg BASE=ghcr.io/ci-local/vuurtoren-nlp:ci --build-arg SKIP_BUILD=1
+          -t ghcr.io/ci-local/vuurtoren-nlp:ci-full server/nlp
       - name: Image report
         run: |
           {
@@ -152,24 +152,24 @@ jobs:
             echo "| image | size | user |"
             echo "| --- | --- | --- |"
             for n in web api nlp nlp:ci-full; do
-              case $n in *:*) img=ghcr.io/ci-local/kenning-$n ;; *) img=ghcr.io/ci-local/kenning-$n:ci ;; esac
+              case $n in *:*) img=ghcr.io/ci-local/vuurtoren-$n ;; *) img=ghcr.io/ci-local/vuurtoren-$n:ci ;; esac
               size=$(docker image inspect -f '{{.Size}}' "$img" | numfmt --to=si --suffix=B)
               user=$(docker image inspect -f '{{.Config.User}}' "$img")
-              echo "| kenning-$n | $size | ${user:-root} |"
+              echo "| vuurtoren-$n | $size | ${user:-root} |"
               if [ -z "$user" ] || [ "$user" = root ] || [ "$user" = 0 ]; then
-                echo "::error::kenning-$n runs as root"; exit 1
+                echo "::error::vuurtoren-$n runs as root"; exit 1
               fi
             done
           } | tee -a "$GITHUB_STEP_SUMMARY"
       - name: Start the stack
         working-directory: deploy/dockge
         env:
-          KENNING_NLP_VARIANT: -full
+          VUURTOREN_NLP_VARIANT: -full
         run: docker compose up -d --pull never --wait --wait-timeout 420
       - name: Smoke test
         env:
           # Wait for the data packs to be unpacked (and the grammar examples built).
-          KENNING_DOCTOR_WAIT: "300"
+          VUURTOREN_DOCTOR_WAIT: "300"
         run: scripts/doctor.sh http://127.0.0.1:8080
       - name: Logs
         if: failure()

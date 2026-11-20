@@ -39,21 +39,21 @@ afterEach(() => vi.unstubAllGlobals());
 describe("Use with Claude Code", () => {
   it("builds the exact command and Desktop config", () => {
     expect(claudeCodeCommand("https://k.example/api/mcp", "kmcp_abc")).toBe(
-      'claude mcp add --transport http kenning https://k.example/api/mcp --header "Authorization: Bearer kmcp_abc"',
+      'claude mcp add --transport http vuurtoren https://k.example/api/mcp --header "Authorization: Bearer kmcp_abc"',
     );
     expect(claudeCodeCommand("http://localhost:8080/api/mcp", null)).toBe(
-      "claude mcp add --transport http kenning http://localhost:8080/api/mcp",
+      "claude mcp add --transport http vuurtoren http://localhost:8080/api/mcp",
     );
     const desktop = JSON.parse(claudeDesktopConfig("https://k/api/mcp", "kmcp_abc")) as {
-      mcpServers: { kenning: { args: string[]; env: Record<string, string> } };
+      mcpServers: { vuurtoren: { args: string[]; env: Record<string, string> } };
     };
-    expect(desktop.mcpServers.kenning.args).toContain("https://k/api/mcp");
-    expect(desktop.mcpServers.kenning.env["KENNING_AUTH"]).toBe("Bearer kmcp_abc");
+    expect(desktop.mcpServers.vuurtoren.args).toContain("https://k/api/mcp");
+    expect(desktop.mcpServers.vuurtoren.env["VUURTOREN_AUTH"]).toBe("Bearer kmcp_abc");
   });
 
   it("explains that browser mode needs a server", () => {
     wrap(<ClaudeCodeSettings />, { data: { mode: "browser" } as AppInfo["data"] });
-    expect(screen.getByText(/needs Kenning running as a server/)).toBeInTheDocument();
+    expect(screen.getByText(/needs Vuurtoren running as a server/)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Generate token" })).toBeNull();
     expect(screen.getByText(/Write me an A2 story/)).toBeInTheDocument();
   });
@@ -95,7 +95,7 @@ describe("Use with Claude Code", () => {
   it("with sign-in off shows the command without a token", () => {
     wrap(<ClaudeCodeSettings />, serverInfo(false));
     expect(screen.getByLabelText("Claude Code: run in a terminal").textContent).toBe(
-      `claude mcp add --transport http kenning ${location.origin}/api/mcp`,
+      `claude mcp add --transport http vuurtoren ${location.origin}/api/mcp`,
     );
   });
 });

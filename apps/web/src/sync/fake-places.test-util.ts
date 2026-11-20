@@ -1,4 +1,4 @@
-/** Fake sync places for tests: a Kenning server's /api/sync, a WebDAV server, GitHub. */
+/** Fake sync places for tests: a Vuurtoren server's /api/sync, a WebDAV server, GitHub. */
 export type Files = Map<string, Uint8Array>;
 const bytesOf = async (body: BodyInit | null | undefined) =>
   body ? new Uint8Array(await new Response(body).arrayBuffer()) : new Uint8Array();
@@ -10,7 +10,7 @@ const names = (files: Files, dir: string) => {
   return [...out].sort();
 };
 
-/** /api/sync of a Kenning server. */
+/** /api/sync of a Vuurtoren server. */
 export function fakeServer(files: Files, token: string): typeof fetch {
   return (async (input: RequestInfo | URL, init: RequestInit = {}) => {
     const url = new URL(String(input));
@@ -85,7 +85,7 @@ export function fakeGithub(files: Files): typeof fetch {
     const headers = new Headers(init.headers);
     if (headers.get("authorization") !== "Bearer ghp_x") return new Response("{}", { status: 401 });
     // A folder's git tree (its sha here is "tree:<path>"): every entry.
-    const tree = /^\/repos\/anna\/kenning-sync\/git\/trees\/tree:(.+)$/.exec(url.pathname);
+    const tree = /^\/repos\/anna\/vuurtoren-sync\/git\/trees\/tree:(.+)$/.exec(url.pathname);
     if (tree) {
       const dir = decodeURIComponent(tree[1]!);
       return Response.json({
@@ -95,7 +95,7 @@ export function fakeGithub(files: Files): typeof fetch {
         }),
       });
     }
-    const m = /^\/repos\/anna\/kenning-sync\/contents\/?(.*)$/.exec(url.pathname);
+    const m = /^\/repos\/anna\/vuurtoren-sync\/contents\/?(.*)$/.exec(url.pathname);
     if (!m) return new Response("{}", { status: 404 });
     const path = decodeURIComponent(m[1]!);
     const method = init.method ?? "GET";

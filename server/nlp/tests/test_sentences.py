@@ -6,11 +6,11 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from kenning_nlp import app as app_module
-from kenning_nlp.app import app
-from kenning_nlp.models import TextAnalysis
-from kenning_nlp.pipeline import analyze_texts
-from kenning_nlp.sentences import (
+from vuurtoren_nlp import app as app_module
+from vuurtoren_nlp.app import app
+from vuurtoren_nlp.models import TextAnalysis
+from vuurtoren_nlp.pipeline import analyze_texts
+from vuurtoren_nlp.sentences import (
     SentencesMissingError,
     SentenceStore,
     build_sentence_db,

@@ -1,5 +1,5 @@
 /**
- * Reading the confirmed Anki decks into Kenning. One import at a time, shared by onboarding,
+ * Reading the confirmed Anki decks into Vuurtoren. One import at a time, shared by onboarding,
  * Settings and the automatic import when the app opens; the shell shows its progress.
  */
 import type { QueryClient } from "@tanstack/react-query";
@@ -78,7 +78,7 @@ let lastTry = 0;
 /** Should the app import by itself now? Exported for tests. */
 export async function shouldAutoSync(services: AppServices, now = Date.now()): Promise<boolean> {
   const profile = await services.languageProfile();
-  // Native mode: Kenning holds the cards, Anki is not read.
+  // Native mode: Vuurtoren holds the cards, Anki is not read.
   if (!profile || profile.sources.length === 0 || profileMode(profile) === "native") return false;
   const summary = await services.learnerSummary();
   if (summary.lastSync !== null && now - summary.lastSync < STALE_MS) return false;

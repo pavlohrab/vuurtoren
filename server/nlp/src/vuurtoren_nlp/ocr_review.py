@@ -1,7 +1,7 @@
 """OCR review: find words the OCR engine may have misread and suggest fixes.
 
-Pure logic plus small Pillow helpers; no OCR calls here. :mod:`kenning_nlp.ocr` and
-:mod:`kenning_nlp.course` feed it RapidOCR's rows, shaped like an ``image_to_data`` table.
+Pure logic plus small Pillow helpers; no OCR calls here. :mod:`vuurtoren_nlp.ocr` and
+:mod:`vuurtoren_nlp.course` feed it RapidOCR's rows, shaped like an ``image_to_data`` table.
 
 A word is *flagged* when
 
@@ -29,8 +29,8 @@ from difflib import SequenceMatcher
 from functools import lru_cache
 from typing import Any
 
-from kenning_nlp.cleanup import normalize_text
-from kenning_nlp.freq import zipf
+from vuurtoren_nlp.cleanup import normalize_text
+from vuurtoren_nlp.freq import zipf
 
 LOW_CONF = 70.0
 """RapidOCR word score (0-100) below which a known word is still flagged. Its scores separate
@@ -117,7 +117,7 @@ def is_known(word: str, lang: str = "nl", compounds: bool = True) -> bool:
         return True
     if lang != "nl":
         return False
-    from kenning_nlp.lexicon import get_lexicon
+    from vuurtoren_nlp.lexicon import get_lexicon
 
     if get_lexicon().is_word(low):
         return True
@@ -245,8 +245,8 @@ class OcrWord:
 def page_words(data: dict[str, list[Any]], width: int, height: int, page: int) -> list[OcrWord]:
     """``image_to_data``-shaped rows -> words in reading order (block, paragraph, line).
 
-    The order is the one :func:`kenning_nlp.ocr.words_to_text` and
-    :func:`kenning_nlp.course.data_to_blocks` use to build the page text.
+    The order is the one :func:`vuurtoren_nlp.ocr.words_to_text` and
+    :func:`vuurtoren_nlp.course.data_to_blocks` use to build the page text.
     """
     rows: list[tuple[tuple[int, int, int], int, OcrWord]] = []
     for i, raw in enumerate(data["text"]):

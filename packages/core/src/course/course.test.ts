@@ -339,7 +339,7 @@ describe("deck mapping", () => {
     "De Opmaat A2::Thema 03 – Winkelen",
     "De Opmaat A2::Thema 01 – Kennismaken",
     "Spaans::Les 3",
-    "Kenning::Nederlands",
+    "Vuurtoren::Nederlands",
   ];
   it("matches unit numbers and title words, never clashing numbers", () => {
     const unit = { n: 3, title: "Thema 3 Boodschappen doen en winkelen" };

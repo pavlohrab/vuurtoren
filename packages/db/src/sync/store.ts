@@ -1,5 +1,5 @@
 /**
- * Where synced files live: a folder you already sync, WebDAV, a GitHub repository or a Kenning
+ * Where synced files live: a folder you already sync, WebDAV, a GitHub repository or a Vuurtoren
  * server. Paths are `/`-separated and relative to the place's root. Each device only writes its
  * own files (and blobs, named by content), so no two devices ever write the same path.
  */

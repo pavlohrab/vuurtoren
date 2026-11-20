@@ -13,7 +13,7 @@ const SOURCE_LABEL: Record<DegradedEntry["source"], string> = {
   translate: "Translation",
   anki: "Anki",
   ai: "AI provider",
-  storage: "Kenning server",
+  storage: "Vuurtoren server",
   sync: "Sync",
 };
 

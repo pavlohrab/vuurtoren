@@ -11,7 +11,7 @@ import {
 
 const health: ServerHealth = {
   ok: true,
-  service: "kenning-api",
+  service: "vuurtoren-api",
   state: "ready",
   authRequired: false,
   schemaVersion: 3,

@@ -18,7 +18,12 @@ import {
   normalizeKey,
   sharesMeaning,
 } from "@app/core";
-import type { GeneratedSentence, GeneratedSentenceSet, KenningRepository, WordInfo } from "@app/db";
+import type {
+  GeneratedSentence,
+  GeneratedSentenceSet,
+  VuurtorenRepository,
+  WordInfo,
+} from "@app/db";
 import type { GlossEntry } from "@app/nlp-client";
 import { buildTopicSession } from "@app/core";
 import {
@@ -45,7 +50,7 @@ import type {
 type DictEntries = GlossEntry[];
 
 export interface LivePracticeDeps {
-  repo: KenningRepository;
+  repo: VuurtorenRepository;
   lang: () => Promise<string>;
   model: () => Promise<LearnerModel>;
   /** Dictionary entries per lemma (empty when the dictionary is unavailable). */

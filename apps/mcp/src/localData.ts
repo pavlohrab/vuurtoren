@@ -9,7 +9,7 @@
  */
 import { existsSync } from "node:fs";
 import {
-  type KenningRepository,
+  type VuurtorenRepository,
   PROJECTION_VERSION,
   SCHEMA_VERSION,
   createRepository,
@@ -25,14 +25,14 @@ async function versionProblem(path: string): Promise<string | null> {
     const pv = (await driver.exec("SELECT value FROM meta WHERE key = 'projection_version'"))[0];
     const device = (await driver.exec("SELECT value FROM meta WHERE key = 'device_id'"))[0];
     if (schema === 0 || !device) {
-      return "Open the Kenning desktop app once, so it sets up its data file.";
+      return "Open the Vuurtoren desktop app once, so it sets up its data file.";
     }
     if (schema !== SCHEMA_VERSION || Number(pv?.["value"]) !== PROJECTION_VERSION) {
-      return `The Kenning desktop app and this MCP server are different versions (data schema ${schema}, this server knows ${SCHEMA_VERSION}). Update both to the same release, and open the app once.`;
+      return `The Vuurtoren desktop app and this MCP server are different versions (data schema ${schema}, this server knows ${SCHEMA_VERSION}). Update both to the same release, and open the app once.`;
     }
     return null;
   } catch (e) {
-    return `This file is not Kenning data: ${e instanceof Error ? e.message : String(e)}`;
+    return `This file is not Vuurtoren data: ${e instanceof Error ? e.message : String(e)}`;
   } finally {
     await driver.close();
   }
@@ -40,7 +40,7 @@ async function versionProblem(path: string): Promise<string | null> {
 
 export interface LocalData {
   /** The tools' view of the data: reads read-only, writes through a brief writable repository. */
-  repo: ToolRepo & Pick<KenningRepository, "languageProfile">;
+  repo: ToolRepo & Pick<VuurtorenRepository, "languageProfile">;
   close(): Promise<void>;
 }
 
@@ -48,7 +48,7 @@ export interface LocalData {
 export async function openLocalData(path: string): Promise<LocalData> {
   if (!existsSync(path)) {
     throw new Error(
-      `No Kenning data at ${path}. Install the Kenning desktop app and open it once, or set KENNING_DB to its data file (Settings → Your data shows where it is).`,
+      `No Vuurtoren data at ${path}. Install the Vuurtoren desktop app and open it once, or set VUURTOREN_DB to its data file (Settings → Your data shows where it is).`,
     );
   }
   const problem = await versionProblem(path);
@@ -57,7 +57,7 @@ export async function openLocalData(path: string): Promise<LocalData> {
 
   /** Run one write on a writable repository, then close it. One at a time. */
   let tail: Promise<unknown> = Promise.resolve();
-  const write = <T>(fn: (repo: KenningRepository) => Promise<T>): Promise<T> => {
+  const write = <T>(fn: (repo: VuurtorenRepository) => Promise<T>): Promise<T> => {
     const run = tail.then(async () => {
       const again = await versionProblem(path);
       if (again) throw new Error(again);

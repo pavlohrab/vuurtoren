@@ -10,12 +10,12 @@ import {
   migratedProfile,
   normalizeKey,
 } from "@app/core";
-import type { KenningRepository, WordInfo } from "@app/db";
+import type { VuurtorenRepository, WordInfo } from "@app/db";
 import { type NlpClient } from "@app/nlp-client";
 import type { ImportInput, Settings } from "../types.js";
 
 export interface LiveCoursesDeps {
-  repo: KenningRepository;
+  repo: VuurtorenRepository;
   settings: () => Promise<Settings>;
   /** The language profile (deck routing); defaults to the old target deck for everything. */
   profile?: () => Promise<LanguageProfile>;
@@ -40,11 +40,11 @@ export interface LiveCoursesDeps {
   deckOptions?: () => Promise<string[]>;
 }
 
-type CourseRecord = Awaited<ReturnType<KenningRepository["courses"]>>[number];
+type CourseRecord = Awaited<ReturnType<VuurtorenRepository["courses"]>>[number];
 
 export interface CourseContext {
   deps: LiveCoursesDeps;
-  repo: KenningRepository;
+  repo: VuurtorenRepository;
   clock: () => number;
   courseOrThrow: (courseId: string) => Promise<CourseRecord>;
   keyOf: (w: UnitWord) => string;

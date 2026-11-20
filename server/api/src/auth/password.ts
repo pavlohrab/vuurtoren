@@ -83,7 +83,7 @@ export function parsePasswordHash(stored: string): PasswordHash {
   if (parts[0] === "" && parts.length === 7) parts.shift(); // "$scrypt$..." (leading separator)
   const [alg, n, r, p, salt, hash] = parts;
   const bad = (why: string): never => {
-    throw new Error(`KENNING_PASSWORD_HASH is not a valid scrypt hash (${why}).`);
+    throw new Error(`VUURTOREN_PASSWORD_HASH is not a valid scrypt hash (${why}).`);
   };
   if (parts.length !== 6 || alg !== "scrypt") bad("expected scrypt:N:r:p:salt:hash");
   const N = Number(n);

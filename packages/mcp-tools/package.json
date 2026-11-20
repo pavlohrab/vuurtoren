@@ -4,7 +4,7 @@
   "private": true,
   "license": "MIT OR Apache-2.0",
   "type": "module",
-  "description": "The Kenning MCP tools, shared by the stdio server (apps/mcp) and the API's /api/mcp endpoint.",
+  "description": "The Vuurtoren MCP tools, shared by the stdio server (apps/mcp) and the API's /api/mcp endpoint.",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",

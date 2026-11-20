@@ -6,9 +6,9 @@
 # PyInstaller, one directory, with RapidOCR), then the app. Two variants:
 #   build     standard installers: the data packs (dictionary, sentences, translation model;
 #             ~104 MB) are downloaded on first start from the public `packs-<version>` release;
-#   offline   the pack archives inside the installer (`Kenning_offline_*`, ~104 MB larger), for
+#   offline   the pack archives inside the installer (`Vuurtoren_offline_*`, ~104 MB larger), for
 #             computers without internet at first start. Tags always build it; "Run workflow"
-#             asks. On Linux it then runs `kenning --self-test` (hidden window under Xvfb: the
+#             asks. On Linux it then runs `vuurtoren --self-test` (hidden window under Xvfb: the
 #             language server starts, a sentence is analysed through the page, the database
 #             file exists) before the installers are attached.
 #
@@ -18,7 +18,7 @@
 # Secrets/variables (Settings > Secrets and variables > Actions):
 #   TAURI_SIGNING_PRIVATE_KEY           secret: the updater key (not a code-signing certificate)
 #   TAURI_SIGNING_PRIVATE_KEY_PASSWORD  secret, optional: only if the key has a password
-#   KENNING_UPDATE_URL                  variable, optional: the latest.json URL built into the app
+#   VUURTOREN_UPDATE_URL                  variable, optional: the latest.json URL built into the app
 # Without TAURI_SIGNING_PRIVATE_KEY the installers are still built, just without update files.
 name: Desktop
 on:
@@ -56,7 +56,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
         run: |
-          version=$(python3 -c "import json;print(json.load(open('src/kenning_nlp/packs.json'))['packs']['dictionary-nl']['version'])")
+          version=$(python3 -c "import json;print(json.load(open('src/vuurtoren_nlp/packs.json'))['packs']['dictionary-nl']['version'])")
           tag="packs-$version"
           # The API also lists draft releases, which `gh release view <tag>` cannot find.
           id=$(gh api "repos/$REPO/releases?per_page=100" --jq ".[] | select(.tag_name == \"$tag\") | .id" | head -n1)
@@ -68,7 +68,7 @@ jobs:
             echo "Using the existing release $tag."
             gh api -X PATCH "repos/$REPO/releases/$id" -F draft=false >/dev/null
             gh release download "$tag" --repo "$REPO" --pattern packs.json --dir "$RUNNER_TEMP" --clobber
-            cp "$RUNNER_TEMP/packs.json" src/kenning_nlp/packs.json
+            cp "$RUNNER_TEMP/packs.json" src/vuurtoren_nlp/packs.json
           else
             echo "No complete release $tag yet: building the packs."
             uv sync --locked --no-dev
@@ -79,15 +79,15 @@ jobs:
               gh release create "$tag" --repo "$REPO" --title "Data packs $version" --prerelease \
                 --notes "Language server data packs. See docs/architecture.md, 'Language server data packs'."
             fi
-            gh release upload "$tag" --repo "$REPO" dist/packs/*.tar.gz src/kenning_nlp/packs.json --clobber
-            if ! git diff --quiet -- src/kenning_nlp/packs.json; then
-              echo "### New data pack checksums: commit server/nlp/src/kenning_nlp/packs.json from the release" >> "$GITHUB_STEP_SUMMARY"
+            gh release upload "$tag" --repo "$REPO" dist/packs/*.tar.gz src/vuurtoren_nlp/packs.json --clobber
+            if ! git diff --quiet -- src/vuurtoren_nlp/packs.json; then
+              echo "### New data pack checksums: commit server/nlp/src/vuurtoren_nlp/packs.json from the release" >> "$GITHUB_STEP_SUMMARY"
             fi
           fi
       - uses: actions/upload-artifact@v4
         with:
           name: packs-manifest
-          path: server/nlp/src/kenning_nlp/packs.json
+          path: server/nlp/src/vuurtoren_nlp/packs.json
 
   build:
     needs: packs
@@ -113,7 +113,7 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: packs-manifest
-          path: server/nlp/src/kenning_nlp
+          path: server/nlp/src/vuurtoren_nlp
       - uses: ./.github/actions/desktop-prep
         with:
           rust-targets: ${{ matrix.rust-targets }}
@@ -133,21 +133,21 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-          KENNING_UPDATE_URL: ${{ vars.KENNING_UPDATE_URL }}
+          VUURTOREN_UPDATE_URL: ${{ vars.VUURTOREN_UPDATE_URL }}
         with:
           projectPath: apps/desktop
           tauriScript: pnpm tauri
           args: ${{ matrix.args }} --config src-tauri/tauri.sidecar.conf.json ${{ steps.updater.outputs.config }}
           tagName: ${{ github.ref_type == 'tag' && github.ref_name || 'desktop-v__VERSION__' }}
-          releaseName: Kenning __VERSION__
-          releaseBody: Desktop installers (unsigned). The `Kenning_offline_*` files include the language data (no download at first start).
+          releaseName: Vuurtoren __VERSION__
+          releaseBody: Desktop installers (unsigned). The `Vuurtoren_offline_*` files include the language data (no download at first start).
           # Published (not draft) so releases/latest/download/latest.json resolves for the updater.
           # A manual run is a test build: a pre-release, so it never becomes the latest release.
           releaseDraft: false
           prerelease: ${{ github.ref_type != 'tag' }}
           uploadUpdaterJson: true
 
-  # Same app plus the data pack archives, renamed `Kenning_offline_*` and attached to the same
+  # Same app plus the data pack archives, renamed `Vuurtoren_offline_*` and attached to the same
   # release. No updater files: the updater feed belongs to the standard installers.
   offline:
     needs: packs
@@ -173,7 +173,7 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: packs-manifest
-          path: server/nlp/src/kenning_nlp
+          path: server/nlp/src/vuurtoren_nlp
       - uses: ./.github/actions/desktop-prep
         with:
           rust-targets: ${{ matrix.rust-targets }}
@@ -182,7 +182,7 @@ jobs:
         working-directory: apps/desktop
         shell: bash
         env:
-          KENNING_UPDATE_URL: ${{ vars.KENNING_UPDATE_URL }}
+          VUURTOREN_UPDATE_URL: ${{ vars.VUURTOREN_UPDATE_URL }}
         run: pnpm tauri build ${{ matrix.args }} --config src-tauri/tauri.packs.conf.json
       # Reported, not blocking: a failing self-test shows in the run but the installers still attach.
       - name: Self-test (Linux)
@@ -201,7 +201,7 @@ jobs:
           timeout 1200 xvfb-run -a "$app" --self-test || status=$?
           echo "self-test exit code: $status"
           echo "--- language server log ---"
-          cat ~/.cache/app.kenning.desktop/kenning-nlp.log 2>/dev/null | tail -n 80 || true
+          cat ~/.cache/app.vuurtoren.desktop/vuurtoren-nlp.log 2>/dev/null | tail -n 80 || true
           exit "$status"
       - name: Attach to the release
         shell: bash
@@ -217,7 +217,7 @@ jobs:
             \( -name '*.AppImage' -o -name '*.deb' -o -name '*.exe' -o -name '*.msi' -o -name '*.dmg' \) |
           while read -r f; do
             base=$(basename "$f")
-            cp "$f" "$RUNNER_TEMP/offline/${base/Kenning_/Kenning_offline_}"
+            cp "$f" "$RUNNER_TEMP/offline/${base/Vuurtoren_/Vuurtoren_offline_}"
           done
           ls -la "$RUNNER_TEMP/offline"
           # Find the release (the API also lists drafts), or make it: this job does not wait for
@@ -229,8 +229,8 @@ jobs:
           if [ -z "$id" ]; then
             pre=--prerelease
             [ -n "$TAG" ] && pre=
-            gh release create "$tag" --repo "$REPO" --target "$GITHUB_SHA" --title "Kenning $version" $pre \
-              --notes "Desktop installers (unsigned). The \`Kenning_offline_*\` files include the language data (no download at first start)." ||
+            gh release create "$tag" --repo "$REPO" --target "$GITHUB_SHA" --title "Vuurtoren $version" $pre \
+              --notes "Desktop installers (unsigned). The \`Vuurtoren_offline_*\` files include the language data (no download at first start)." ||
               true # the standard job may have made it at the same moment
             id=$(find_release)
           fi

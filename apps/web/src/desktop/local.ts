@@ -1,6 +1,6 @@
 /**
  * The desktop app on this computer only (the default): the data is a SQLite file the app
- * opens natively (`~/Documents/Kenning/kenning.sqlite`), the language server is the bundled
+ * opens natively (`~/Documents/Vuurtoren/vuurtoren.sqlite`), the language server is the bundled
  * sidecar. Everything above the driver (repository, services, screens) is the browser build's.
  *
  */
@@ -20,7 +20,7 @@ export type LocalBoot =
   | { kind: "locked"; path: string; lock: DbLock; openAnyway: () => Promise<LocalBoot> }
   | { kind: "blocked"; message: string; download: () => Promise<Uint8Array> };
 
-const DEFAULT_NLP_BASE = "kenning-nlp://localhost";
+const DEFAULT_NLP_BASE = "vuurtoren-nlp://localhost";
 
 const fileName = (path: string): string => path.split(/[\\/]/).pop() ?? path;
 
@@ -28,7 +28,7 @@ const fileName = (path: string): string => path.split(/[\\/]/).pop() ?? path;
 export function conflictNotice(path: string, conflicts: string[]): string | undefined {
   if (conflicts.length === 0) return undefined;
   const names = conflicts.map((c) => `“${c}”`).join(", ");
-  return `Found ${names} next to your data. A sync tool (Dropbox, OneDrive, Syncthing…) makes such copies when two computers change the file at the same time. Kenning uses ${fileName(path)}; the copy may hold changes from the other computer. Use Kenning on one computer at a time.`;
+  return `Found ${names} next to your data. A sync tool (Dropbox, OneDrive, Syncthing…) makes such copies when two computers change the file at the same time. Vuurtoren uses ${fileName(path)}; the copy may hold changes from the other computer. Use Vuurtoren on one computer at a time.`;
 }
 
 let routed = false;

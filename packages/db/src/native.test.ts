@@ -39,7 +39,7 @@ function rustParam(v: unknown): SqlValue {
 
 /** A stand-in for the app: node:sqlite on a file, with a JSON round trip like the IPC. */
 function fakeApp(): NativeDb & { file: string; calls: number } {
-  const file = join(mkdtempSync(join(tmpdir(), "kenning-native-")), "kenning.sqlite");
+  const file = join(mkdtempSync(join(tmpdir(), "vuurtoren-native-")), "vuurtoren.sqlite");
   let db = createNodeSyncDb(file);
   const app = {
     file,

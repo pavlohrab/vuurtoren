@@ -12,7 +12,7 @@ export interface ActivityDay {
   pages: number;
   exercises: number;
   added: number;
-  /** Native cards reviewed in Kenning. */
+  /** Native cards reviewed in Vuurtoren. */
   reviews: number;
 }
 
@@ -106,7 +106,7 @@ const EARLIEST_CARD = Date.UTC(2006, 0, 1);
 
 /**
  * Known words at the end of each of the last `weeks` weeks (oldest first, the last point is
- * today). Each known word is dated by when its first card was made (Anki and Kenning note ids
+ * today). Each known word is dated by when its first card was made (Anki and Vuurtoren note ids
  * are creation times in ms); words without a usable date count from the start.
  */
 export function knownByWeek(

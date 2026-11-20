@@ -1,4 +1,4 @@
-/** HTTP client for server/nlp. Types mirror server/nlp/src/kenning_nlp/models.py. */
+/** HTTP client for server/nlp. Types mirror server/nlp/src/vuurtoren_nlp/models.py. */
 
 export type NlpLang = "nl";
 

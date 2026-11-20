@@ -1,5 +1,5 @@
 /**
- * Writing a package and reading it back: what Kenning writes, Kenning (and Anki) reads.
+ * Writing a package and reading it back: what Vuurtoren writes, Vuurtoren (and Anki) reads.
  */
 import { DatabaseSync } from "node:sqlite";
 import { unzipSync } from "fflate";
@@ -11,9 +11,9 @@ import {
   type NativeNote,
   answerCard,
 } from "@app/core";
-import { KENNING_NOTETYPE } from "../native.js";
+import { VUURTOREN_NOTETYPE } from "../native.js";
 import { type OpenSqlite, readAnkiPackage } from "./read.js";
-import { type CreateSqlite, KENNING_NOTETYPE_ANKI_ID, writeAnkiPackage } from "./write.js";
+import { type CreateSqlite, VUURTOREN_NOTETYPE_ANKI_ID, writeAnkiPackage } from "./write.js";
 
 const create: CreateSqlite = async () => {
   const db = new DatabaseSync(":memory:");
@@ -41,9 +41,9 @@ const ctx = { options: DEFAULT_DECK_OPTIONS, params: [] as number[], fuzz: false
 function input() {
   const note = (id: number, word: string, gloss: string, extra = ""): NativeNote => ({
     id,
-    notetypeId: KENNING_NOTETYPE.id,
+    notetypeId: VUURTOREN_NOTETYPE.id,
     fields: [word, gloss, `Ik zie ${word}.${extra}`, "", ""],
-    tags: ["kenning"],
+    tags: ["vuurtoren"],
     key: word,
   });
   // A card learned 10 days ago and reviewed since; a new card; a suspended new card.
@@ -57,25 +57,25 @@ function input() {
   s = answerCard(s, 3, reviews[1]!.at, ctx);
   s = answerCard(s, 3, reviews[2]!.at, ctx);
   const cards: NativeCard[] = [
-    { id: 201, noteId: 101, ord: 0, deck: "Kenning::Nederlands", position: 0, schedule: s },
-    { id: 202, noteId: 102, ord: 0, deck: "Kenning::Nederlands", position: 5 },
+    { id: 201, noteId: 101, ord: 0, deck: "Vuurtoren::Nederlands", position: 0, schedule: s },
+    { id: 202, noteId: 102, ord: 0, deck: "Vuurtoren::Nederlands", position: 5 },
     {
       id: 203,
       noteId: 103,
       ord: 0,
-      deck: "Kenning::Nederlands::Talk",
+      deck: "Vuurtoren::Nederlands::Talk",
       position: 1,
       suspended: true,
     },
   ];
   return {
-    notetypes: [KENNING_NOTETYPE],
+    notetypes: [VUURTOREN_NOTETYPE],
     decks: [
       {
-        name: "Kenning::Nederlands",
+        name: "Vuurtoren::Nederlands",
         options: { ...DEFAULT_DECK_OPTIONS, desiredRetention: 0.85, newPerDay: 12 },
       },
-      { name: "Kenning::Nederlands::Talk", options: DEFAULT_DECK_OPTIONS },
+      { name: "Vuurtoren::Nederlands::Talk", options: DEFAULT_DECK_OPTIONS },
     ],
     notes: [
       note(101, "fiets", "bicycle", '<img src="fiets.png">'),
@@ -104,16 +104,16 @@ describe("writeAnkiPackage", () => {
 
     const col = await readAnkiPackage(bytes, open);
     expect(col.notetypes.map((t) => [t.id, t.name, t.fields])).toEqual([
-      [KENNING_NOTETYPE_ANKI_ID, KENNING_NOTETYPE.name, KENNING_NOTETYPE.fields],
+      [VUURTOREN_NOTETYPE_ANKI_ID, VUURTOREN_NOTETYPE.name, VUURTOREN_NOTETYPE.fields],
     ]);
     // Parent decks come along; options per deck.
     expect(col.decks.map((d) => d.name).sort()).toEqual([
       "Default",
-      "Kenning",
-      "Kenning::Nederlands",
-      "Kenning::Nederlands::Talk",
+      "Vuurtoren",
+      "Vuurtoren::Nederlands",
+      "Vuurtoren::Nederlands::Talk",
     ]);
-    const nl = col.decks.find((d) => d.name === "Kenning::Nederlands")!;
+    const nl = col.decks.find((d) => d.name === "Vuurtoren::Nederlands")!;
     expect(nl.options.desiredRetention).toBe(0.85);
     expect(nl.options.newPerDay).toBe(12);
     expect(col.notes.map((n) => n.fields[0])).toEqual(["fiets", "huis", "gezellig"]);
@@ -155,6 +155,6 @@ describe("writeAnkiPackage", () => {
     ).toBe(true);
     // Unique revlog ids, a stable guid per note.
     const guids = db.prepare("SELECT guid FROM notes ORDER BY id").all() as { guid: string }[];
-    expect(guids.map((g) => g.guid)).toEqual(["kenning2t", "kenning2u", "kenning2v"]);
+    expect(guids.map((g) => g.guid)).toEqual(["vuurtoren2t", "vuurtoren2u", "vuurtoren2v"]);
   });
 });

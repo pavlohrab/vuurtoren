@@ -341,7 +341,7 @@ export type AppEvent =
       keys?: string[];
     }
   /**
-   * Native mode: notes and cards entered Kenning (an .apkg file, a move from Anki, or Add to my
+   * Native mode: notes and cards entered Vuurtoren (an .apkg file, a move from Anki, or Add to my
    * words), with the note types and decks they need, their review history and their media
    * (file name → blob id). Notes and cards already present are kept as they are; note types
    * and decks are added when missing. Large imports arrive as several events.
@@ -349,7 +349,7 @@ export type AppEvent =
   | {
       type: "NativeNotesAdded";
       lang: string;
-      origin: "apkg" | "anki" | "kenning";
+      origin: "apkg" | "anki" | "vuurtoren";
       notetypes?: NativeNotetype[];
       decks?: NativeDeck[];
       notes: NativeNote[];
@@ -632,9 +632,9 @@ export interface WordInfo {
   markedKnownInAnki?: boolean;
   /** A manual state (set in the app) currently overrides Anki's. */
   overridden?: boolean;
-  /** Answers given in Kenning (practice, reader clozes, book exercises). */
+  /** Answers given in Vuurtoren (practice, reader clozes, book exercises). */
   evidence?: { correct: number; wrong: number; lastAt: number };
-  /** App evidence alone made this word "learning": shown as "Learning (in Kenning)". */
+  /** App evidence alone made this word "learning": shown as "Learning (in Vuurtoren)". */
   appLearning?: boolean;
 }
 
@@ -649,7 +649,7 @@ export interface TextGrammar {
 export interface ActivityEntry {
   /**
    * Pages read, exercises answered (in Practice or as a reader cloze), words added to Anki and
-   * native cards reviewed in Kenning.
+   * native cards reviewed in Vuurtoren.
    */
   kind: "page" | "exercise" | "added" | "review";
   at: number;
@@ -849,11 +849,11 @@ export interface Repository {
   nativeDueKeys(lang: string, now: number, limit: number): Promise<{ key: string; due: number }[]>;
   /** Native mode: the review history of some cards, oldest first. */
   nativeCardReviews(lang: string, cardIds: number[]): Promise<CardReview[]>;
-  /** Native mode: the latest answer given in Kenning (the one Undo takes back), or null. */
+  /** Native mode: the latest answer given in Vuurtoren (the one Undo takes back), or null. */
   nativeLastReview(lang: string): Promise<{ cardId: number; reviewId: string; at: number } | null>;
   /** Native mode: one card with its note, note type and deck options. */
   nativeCard(lang: string, cardId: number): Promise<NativeCardView | null>;
-  /** Native mode: the whole review history (imported and answered in Kenning), oldest first. */
+  /** Native mode: the whole review history (imported and answered in Vuurtoren), oldest first. */
   nativeReviews(lang: string): Promise<CardReview[]>;
   /**
    * Native mode: the note types, notes, cards, review history and media of some decks (and

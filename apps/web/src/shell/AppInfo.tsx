@@ -4,7 +4,7 @@ import type { DesktopBridge } from "../desktop/bridge.js";
 
 /** Desktop app, offline mode: the database file in a visible folder. */
 export interface DataFile {
-  /** Full path of `kenning.sqlite`. */
+  /** Full path of `vuurtoren.sqlite`. */
   path: string;
   /** Show the file in the system file manager. */
   reveal(): Promise<void>;
@@ -30,7 +30,7 @@ export interface DataControls {
 /** Desktop app in offline mode: the bundled language server and the way to a server. */
 export interface DesktopLocal {
   nlp: DesktopBridge["nlp"];
-  /** Open the Connect screen ("Connect to a Kenning server"). */
+  /** Open the Connect screen ("Connect to a Vuurtoren server"). */
   connectServer(): Promise<void>;
 }
 

@@ -14,7 +14,7 @@ from functools import lru_cache
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 
-from kenning_nlp import freq, grammar, lexicon, nl, pipeline
+from vuurtoren_nlp import freq, grammar, lexicon, nl, pipeline
 
 ANALYZER_FORMAT = "a1"
 _SOURCES = (pipeline, nl, lexicon, freq, grammar)
@@ -31,7 +31,7 @@ def _pkg(name: str) -> str:
 @lru_cache(maxsize=1)
 def analyzer_version() -> str:
     """``a1-`` + 12 hex digits, e.g. ``a1-3f2c9d0b1e4a``."""
-    from kenning_nlp import packs
+    from vuurtoren_nlp import packs
 
     h = hashlib.sha256()
     for name in _PACKAGES:

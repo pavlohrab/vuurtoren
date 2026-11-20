@@ -83,13 +83,13 @@ describe("reading an Anki package safely", () => {
   it("refuses packages that say they unpack to too much", async () => {
     const { open } = opener();
     const huge = zipClaiming("collection.anki2", new Uint8Array(10), 0xfff00000);
-    await expect(readAnkiPackage(huge, open)).rejects.toThrow(/more than Kenning can open/);
+    await expect(readAnkiPackage(huge, open)).rejects.toThrow(/more than Vuurtoren can open/);
     await expect(readAnkiPackage(huge, open)).rejects.toBeInstanceOf(AnkiPackageError);
 
     // A zstd frame that asks for a terabyte in one piece.
     const frame = new Uint8Array([0x28, 0xb5, 0x2f, 0xfd, 0xe0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0]);
     await expect(readAnkiPackage(zipSync({ "collection.anki21b": frame }), open)).rejects.toThrow(
-      /more than Kenning can open/,
+      /more than Vuurtoren can open/,
     );
   });
 });

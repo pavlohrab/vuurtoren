@@ -27,9 +27,9 @@ from pathlib import Path
 
 from pinned_download import PinMismatchError, download_verified
 
-from kenning_nlp.models import TextAnalysis
-from kenning_nlp.pipeline import analyze_doc, get_nlp
-from kenning_nlp.sentences import Analyzer, build_sentence_db
+from vuurtoren_nlp.models import TextAnalysis
+from vuurtoren_nlp.pipeline import analyze_doc, get_nlp
+from vuurtoren_nlp.sentences import Analyzer, build_sentence_db
 
 BASE_URL = "https://downloads.tatoeba.org/exports/per_language"
 # Tatoeba publishes only the current weekly export (no dated archive), so we pin the SHA-256 of
@@ -126,7 +126,7 @@ def main() -> int:
                     sha256,
                     size,
                     args.accept_new_upstream,
-                    "kenning-build-sentences",
+                    "vuurtoren-build-sentences",
                 )
             except PinMismatchError as e:
                 print(f"error: {e}", file=sys.stderr)

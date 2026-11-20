@@ -1,6 +1,6 @@
 import pytest
 
-from kenning_nlp.cleanup import (
+from vuurtoren_nlp.cleanup import (
     clean_pages,
     clean_text,
     is_page_number,

@@ -1,13 +1,13 @@
 [package]
-name = "kenning-desktop"
+name = "vuurtoren-desktop"
 version = "0.1.0"
-description = "Kenning desktop app"
+description = "Vuurtoren desktop app"
 license = "MIT OR Apache-2.0"
 edition = "2021"
 rust-version = "1.85"
 
 [lib]
-name = "kenning_desktop_lib"
+name = "vuurtoren_desktop_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]

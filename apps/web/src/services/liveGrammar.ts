@@ -17,7 +17,7 @@ import {
   matchToken,
   normalizeKey,
 } from "@app/core";
-import { type KenningRepository, type StoredText, contentHash } from "@app/db";
+import { type VuurtorenRepository, type StoredText, contentHash } from "@app/db";
 import { NlpError, type NlpClient } from "@app/nlp-client";
 import type {
   GrammarOverview,
@@ -40,7 +40,7 @@ export interface TopicMaterial {
 }
 
 export interface LiveGrammarDeps {
-  repo: KenningRepository;
+  repo: VuurtorenRepository;
   nlp: () => Promise<NlpClient>;
   /** The analysed text (analysing it first if needed). */
   view: (textId: string) => Promise<ReadingView | null>;
@@ -112,7 +112,7 @@ const WORD_POS = new Set(["NOUN", "VERB", "ADJ"]);
  */
 function reportGrammarFailure(e: unknown): void {
   if (!(e instanceof NlpError && (e.status === null || e.status === 502 || e.status === 504))) {
-    console.warn("[kenning] grammar request failed:", e);
+    console.warn("[vuurtoren] grammar request failed:", e);
   }
 }
 

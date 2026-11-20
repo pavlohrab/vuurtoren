@@ -8,7 +8,7 @@ import { readingState } from "./shelving.js";
 import { useCoverUrl } from "./useCoverUrl.js";
 
 /** MIME type of a dragged Library cover (JSON array of text ids). */
-export const DRAG_TYPE = "application/x-kenning-texts";
+export const DRAG_TYPE = "application/x-vuurtoren-texts";
 
 export interface LibraryItemProps {
   text: TextListItem;

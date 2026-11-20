@@ -1,6 +1,6 @@
 """Tatoeba examples per grammar topic (``GET /grammar/examples``), scanned lazily.
 
-The sentence database (:mod:`kenning_nlp.sentences`) is indexed by lemma, not by construction, so
+The sentence database (:mod:`vuurtoren_nlp.sentences`) is indexed by lemma, not by construction, so
 finding "sentences with an inversion" means running the detectors over the sentences. That costs a
 few milliseconds per sentence, so the scan is **incremental and cached**:
 
@@ -31,9 +31,9 @@ import threading
 import time
 from pathlib import Path
 
-from kenning_nlp import grammar
-from kenning_nlp.datadir import data_path
-from kenning_nlp.pipeline import analyze_texts
+from vuurtoren_nlp import grammar
+from vuurtoren_nlp.datadir import data_path
+from vuurtoren_nlp.pipeline import analyze_texts
 
 BATCH = 128
 """Sentences analysed per step."""
@@ -58,8 +58,8 @@ CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 
 
 def default_cache_path() -> Path:
-    """``$KENNING_GRAMMAR_CACHE_PATH`` or ``server/nlp/data/grammar-examples-nl.sqlite``."""
-    return data_path("KENNING_GRAMMAR_CACHE_PATH", "grammar-examples-nl.sqlite")
+    """``$VUURTOREN_GRAMMAR_CACHE_PATH`` or ``server/nlp/data/grammar-examples-nl.sqlite``."""
+    return data_path("VUURTOREN_GRAMMAR_CACHE_PATH", "grammar-examples-nl.sqlite")
 
 
 def detector_version() -> str:

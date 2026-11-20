@@ -5,7 +5,7 @@
   "license": "MIT OR Apache-2.0",
   "type": "module",
   "bin": {
-    "kenning-mcp": "./dist/main.js"
+    "vuurtoren-mcp": "./dist/main.js"
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",

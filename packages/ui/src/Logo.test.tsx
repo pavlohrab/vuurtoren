@@ -25,7 +25,7 @@ describe("Logo", () => {
 
   it("full logo has the wordmark and one accessible name", () => {
     render(<Logo />);
-    expect(screen.getByRole("img", { name: "Kenning" })).toHaveTextContent("kenning");
+    expect(screen.getByRole("img", { name: "Vuurtoren" })).toHaveTextContent("vuurtoren");
     render(<Logo variant="mark" title="Home" />);
     expect(screen.getByRole("img", { name: "Home" })).toBeInTheDocument();
   });

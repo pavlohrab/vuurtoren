@@ -2,5 +2,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
-    kenning_desktop_lib::run()
+    vuurtoren_desktop_lib::run()
 }

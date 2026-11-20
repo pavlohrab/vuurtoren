@@ -19,7 +19,12 @@ function fakeBridge(over: Partial<DesktopBridge> = {}): DesktopBridge {
     useLocal: vi.fn(() => Promise.resolve()),
     db: {
       open: vi.fn(() =>
-        Promise.resolve({ path: "/k/kenning.sqlite", created: true, conflicts: [], locked: null }),
+        Promise.resolve({
+          path: "/k/vuurtoren.sqlite",
+          created: true,
+          conflicts: [],
+          locked: null,
+        }),
       ),
       exec: vi.fn(() => Promise.resolve([])),
       close: vi.fn(() => Promise.resolve()),
@@ -38,7 +43,7 @@ function fakeBridge(over: Partial<DesktopBridge> = {}): DesktopBridge {
 }
 
 afterEach(() => {
-  delete window.__KENNING_DESKTOP__;
+  delete window.__VUURTOREN_DESKTOP__;
   vi.restoreAllMocks();
 });
 
@@ -49,7 +54,7 @@ describe("desktop bridge detection", () => {
 
   it("is found when the desktop app injected it", () => {
     const bridge = fakeBridge();
-    window.__KENNING_DESKTOP__ = bridge;
+    window.__VUURTOREN_DESKTOP__ = bridge;
     expect(desktopBridge()).toBe(bridge);
   });
 
@@ -117,7 +122,7 @@ describe("Anki through the desktop bridge", () => {
 
   it("is used by the platform fetch when the app runs in the desktop window", async () => {
     const bridge = fakeBridge({ home: false });
-    window.__KENNING_DESKTOP__ = bridge;
+    window.__VUURTOREN_DESKTOP__ = bridge;
     const res = await browserPlatform().fetch("http://127.0.0.1:8765", { method: "POST" });
     expect(res.status).toBe(200);
     expect(bridge.ankiFetch).toHaveBeenCalledTimes(1);
@@ -129,13 +134,13 @@ describe("ConnectScreen", () => {
     const bridge = fakeBridge();
     render(<ConnectScreen bridge={bridge} changing={false} />);
     const input = await screen.findByLabelText("Server address");
-    await userEvent.type(input, "kenning.example");
+    await userEvent.type(input, "vuurtoren.example");
     await userEvent.click(screen.getByRole("button", { name: "Connect" }));
-    await waitFor(() => expect(bridge.connect).toHaveBeenCalledWith("https://kenning.example/"));
-    expect(bridge.checkServer).toHaveBeenCalledWith("kenning.example");
+    await waitFor(() => expect(bridge.connect).toHaveBeenCalledWith("https://vuurtoren.example/"));
+    expect(bridge.checkServer).toHaveBeenCalledWith("vuurtoren.example");
   });
 
-  it("goes back to using Kenning on this computer", async () => {
+  it("goes back to using Vuurtoren on this computer", async () => {
     const bridge = fakeBridge();
     render(<ConnectScreen bridge={bridge} changing />);
     await userEvent.click(await screen.findByRole("button", { name: "Use on this computer" }));

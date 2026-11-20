@@ -2,17 +2,17 @@ import { afterEach, describe, expect, it } from "vitest";
 import { MAX_BLOB_BYTES, projectShelves } from "./library.js";
 import { createNodeDriver } from "./node.js";
 import { applyEvent } from "./projections.js";
-import { createRepository, type KenningRepository } from "./repository.js";
+import { createRepository, type VuurtorenRepository } from "./repository.js";
 import { migrate } from "./schema.js";
 import { validateRpcArgs } from "./rpc.js";
 import type { AppEvent, StoredEvent } from "./types.js";
 
-const open: KenningRepository[] = [];
+const open: VuurtorenRepository[] = [];
 afterEach(async () => {
   for (const r of open.splice(0)) await r.close().catch(() => undefined);
 });
 
-async function newRepo(): Promise<KenningRepository> {
+async function newRepo(): Promise<VuurtorenRepository> {
   let t = 1_000_000;
   const repo = await createRepository(await createNodeDriver(), {
     deviceId: "dev1",

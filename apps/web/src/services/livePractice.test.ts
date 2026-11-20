@@ -1,5 +1,5 @@
 import type { WordState } from "@app/core";
-import { type KenningRepository, createRepository } from "@app/db";
+import { type VuurtorenRepository, createRepository } from "@app/db";
 import { createNodeDriver } from "@app/db/node";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createLiveServices } from "./live.js";
@@ -68,7 +68,7 @@ function backend(
   return { fetchFn, paths };
 }
 
-let repoToClose: KenningRepository | null = null;
+let repoToClose: VuurtorenRepository | null = null;
 afterEach(async () => {
   vi.unstubAllGlobals();
   await repoToClose?.close();

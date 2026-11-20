@@ -2,7 +2,7 @@
 
 import pytest
 
-from kenning_nlp.pipeline import analyze_terms, analyze_texts
+from vuurtoren_nlp.pipeline import analyze_terms, analyze_texts
 
 
 @pytest.mark.parametrize(

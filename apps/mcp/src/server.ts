@@ -1,14 +1,14 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { createKenningMcpServer, respond, type ToolHandlers } from "@app/mcp-tools";
+import { createVuurtorenMcpServer, respond, type ToolHandlers } from "@app/mcp-tools";
 import { z } from "zod";
 import type { AddToAnki } from "./handlers.js";
 
 /**
- * The stdio server: the shared Kenning tools plus `add_to_anki` (local AnkiConnect), which
+ * The stdio server: the shared Vuurtoren tools plus `add_to_anki` (local AnkiConnect), which
  * the user must ask for explicitly.
  */
 export function buildServer(h: ToolHandlers, addToAnki: AddToAnki): McpServer {
-  const server = createKenningMcpServer(h);
+  const server = createVuurtorenMcpServer(h);
   server.registerTool(
     "add_to_anki",
     {

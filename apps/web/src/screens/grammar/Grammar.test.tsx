@@ -69,7 +69,7 @@ describe("Grammar index", () => {
     const inversion = within(order).getByText("Inversion").closest("a") as HTMLElement;
     expect(within(inversion).getByText(grammarTopic("inversion")!.level)).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: /A1\s+Beginner/ })).toBeNull();
-    expect(localStorage.getItem("kenning.grammar.view")).toBe("topic");
+    expect(localStorage.getItem("vuurtoren.grammar.view")).toBe("topic");
 
     await userEvent.type(screen.getByRole("searchbox", { name: "Search topics" }), "passive");
     const titles = [...document.querySelectorAll(".grammar-row-title")].map((e) => e.textContent);
@@ -81,7 +81,7 @@ describe("Grammar index", () => {
   });
 
   it("opens in the remembered view", async () => {
-    localStorage.setItem("kenning.grammar.view", "topic");
+    localStorage.setItem("vuurtoren.grammar.view", "topic");
     setup("/grammar");
     expect(await shelf("Word order")).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "By topic" })).toHaveAttribute("aria-selected", "true");

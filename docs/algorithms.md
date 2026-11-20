@@ -1,6 +1,6 @@
-# How Kenning works (no AI needed)
+# How Vuurtoren works (no AI needed)
 
-This page explains the algorithms behind Kenning's reader, flashcards, practice and Anki support. None of them uses a language model. They are deterministic rules, a few statistics and two offline tools: spaCy for Dutch analysis and a small translation model. The numbers below are copied from the code, and each section names the files it describes, so you can check them.
+This page explains the algorithms behind Vuurtoren's reader, flashcards, practice and Anki support. None of them uses a language model. They are deterministic rules, a few statistics and two offline tools: spaCy for Dutch analysis and a small translation model. The numbers below are copied from the code, and each section names the files it describes, so you can check them.
 
 Contents
 
@@ -9,27 +9,27 @@ Contents
 3. [Reading](#3-reading)
 4. [Practice](#4-practice)
 5. [Grammar detectors](#5-grammar-detectors)
-6. [What Kenning writes to Anki](#6-what-kenning-writes-to-anki)
+6. [What Vuurtoren writes to Anki](#6-what-vuurtoren-writes-to-anki)
 7. [Worked example: "Ik bel je morgen op."](#7-worked-example-ik-bel-je-morgen-op)
 8. [Where AI is optional](#8-where-ai-is-optional)
-9. [Native mode: Kenning's own cards](#9-native-mode-kennings-own-cards)
+9. [Native mode: Vuurtoren's own cards](#9-native-mode-vuurtorens-own-cards)
 10. [Sync](#10-sync)
 
 ---
 
 ## 1. Your words → learner model
 
-Your cards are the record of which Dutch words you know: Kenning's own cards in native mode (section 9), or your Anki decks in connected mode. Both are read with the same rules. This section describes the Anki side; section 9.4 applies it to Kenning's cards. Kenning reads your decks (read-only) and builds a **learner model**: for every word key, a state (`unknown`, `seen`, `learning`, `known`, `ignored`) and `pKnown`, the probability that you would recall it right now.
+Your cards are the record of which Dutch words you know: Vuurtoren's own cards in native mode (section 9), or your Anki decks in connected mode. Both are read with the same rules. This section describes the Anki side; section 9.4 applies it to Vuurtoren's cards. Vuurtoren reads your decks (read-only) and builds a **learner model**: for every word key, a state (`unknown`, `seen`, `learning`, `known`, `ignored`) and `pKnown`, the probability that you would recall it right now.
 
 ### 1.1 Finding your Dutch decks and fields
 
-**What.** Kenning works out which decks hold Dutch vocabulary, and which field of each note type holds the word, the example sentence, the English meaning and the sentence translation. You do not have to configure this.
+**What.** Vuurtoren works out which decks hold Dutch vocabulary, and which field of each note type holds the word, the example sentence, the English meaning and the sentence translation. You do not have to configure this.
 
 **How** (`packages/anki/src/snapshot.ts`, `packages/anki/src/detect.ts`):
 
-1. Every deck with at least 10 notes is sampled: up to 30 random notes per deck. Smaller decks are skipped unless you named them, or unless it is Kenning's own target deck.
+1. Every deck with at least 10 notes is sampled: up to 30 random notes per deck. Smaller decks are skipped unless you named them, or unless it is Vuurtoren's own target deck.
 2. Field values are cleaned of HTML, `[sound:…]` tags, cloze markup and furigana (`packages/anki/src/clean.ts`).
-3. Every cleaned value goes through language identification (`server/nlp/src/kenning_nlp/detect.py`): a small naive-Bayes classifier over the `wordfreq` "small" word lists of 10 languages (nl, en, de, fr, es, it, pt, pl; uk and ru after a Cyrillic-script check). Each word scores its log-frequency per language; a word missing from a list scores a floor plus a character-trigram estimate learnt from that list, so rare words still lean the right way. Only the first 400 characters are examined, and a result with confidence below 0.2 counts as "unknown language".
+3. Every cleaned value goes through language identification (`server/nlp/src/vuurtoren_nlp/detect.py`): a small naive-Bayes classifier over the `wordfreq` "small" word lists of 10 languages (nl, en, de, fr, es, it, pt, pl; uk and ru after a Cyrillic-script check). Each word scores its log-frequency per language; a word missing from a list scores a floor plus a character-trigram estimate learnt from that list, so rare words still lean the right way. Only the first 400 characters are examined, and a result with confidence below 0.2 counts as "unknown language".
 4. Per (deck, note type), each field gets statistics: the share of values detected as Dutch, the share detected as English, and the average number of words.
 5. Fields are scored:
 
@@ -49,7 +49,7 @@ Your cards are the record of which Dutch words you know: Kenning's own cards in 
 
 **What.** The cleaned word field (e.g. `de fiets`, `zich richten (op)`, `zij, ze`) is turned into a lookup key.
 
-**How** (`analyze_terms` in `server/nlp/src/kenning_nlp/pipeline.py`):
+**How** (`analyze_terms` in `server/nlp/src/vuurtoren_nlp/pipeline.py`):
 
 - Alternatives are split on `,` `;` `|` and on `/`. A slash between two function words (`en/of`, `dan/wel`) is kept whole.
 - Bracketed parts are removed. `(zich)` marks the word as reflexive. Everything after `-` or `=` (a gloss pasted into the word field) is cut off.
@@ -98,22 +98,22 @@ If the same key comes from several notes (two decks, a forward/reverse pair, or 
 
 ### 1.6 Manual marks and app-side states
 
-What you do in the app is stored as events in Kenning's local database, never as edits to Anki's history. The effective state of a word is computed by `composeWord` in `packages/db/src/projections.ts`, in this order:
+What you do in the app is stored as events in Vuurtoren's local database, never as edits to Anki's history. The effective state of a word is computed by `composeWord` in `packages/db/src/projections.ts`, in this order:
 
-| Priority | Source                                                                      | State and `pKnown`                                                                                                     |
-| -------- | --------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| 1        | Manual mark in the app (latest one wins, by clock)                          | known: `max(Anki pKnown, 0.95)` · learning: Anki's value if Anki also says learning, else 0.3 · ignored: 1 · seen: 0.1 |
-| 2        | Anki snapshot                                                               | as computed above                                                                                                      |
-| 3        | A note that Kenning added or moved forward, which Anki has not reviewed yet | learning, 0.2                                                                                                          |
-| 4        | You only looked the word up in the reader                                   | seen, 0.1                                                                                                              |
+| Priority | Source                                                                        | State and `pKnown`                                                                                                     |
+| -------- | ----------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| 1        | Manual mark in the app (latest one wins, by clock)                            | known: `max(Anki pKnown, 0.95)` · learning: Anki's value if Anki also says learning, else 0.3 · ignored: 1 · seen: 0.1 |
+| 2        | Anki snapshot                                                                 | as computed above                                                                                                      |
+| 3        | A note that Vuurtoren added or moved forward, which Anki has not reviewed yet | learning, 0.2                                                                                                          |
+| 4        | You only looked the word up in the reader                                     | seen, 0.1                                                                                                              |
 
 "Use Anki's state" removes the manual mark (it is stored as an empty mark, so the latest-wins rule still works when events sync out of order).
 
-Below the manual mark, **app evidence** (section 1.7) is laid over rows 2–4 and over words Kenning only knows from your answers.
+Below the manual mark, **app evidence** (section 1.7) is laid over rows 2–4 and over words Vuurtoren only knows from your answers.
 
-### 1.7 Learning in Kenning (app evidence)
+### 1.7 Learning in Vuurtoren (app evidence)
 
-**What.** What you show inside Kenning teaches the same learner model the reader and the Words list use. Mastering a word in Practice, filling it into reader clozes or answering it in a book exercise raises it, even before Anki has seen it. Anki stays the record of known words: app evidence never makes a word `known` and never lowers what Anki says.
+**What.** What you show inside Vuurtoren teaches the same learner model the reader and the Words list use. Mastering a word in Practice, filling it into reader clozes or answering it in a book exercise raises it, even before Anki has seen it. Anki stays the record of known words: app evidence never makes a word `known` and never lowers what Anki says.
 
 **Signals** (`packages/core/src/evidence.ts`, `packages/db/src/projections.ts`):
 
@@ -129,12 +129,12 @@ Below the manual mark, **app evidence** (section 1.7) is laid over rows 2–4 an
 pApp = 0.8 · c / (c + w + 1) · 0.5^(days since the newest answer / 30)     (× 0.5 if the newest answer was wrong)
 ```
 
-| Base state (after the manual mark, Anki, pending note, lookups) | Effect of app evidence                                                                                                                                                                                         |
-| --------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| manual mark (any)                                               | none: your explicit choice wins                                                                                                                                                                                |
-| `known`, `ignored`                                              | none: app evidence never demotes                                                                                                                                                                               |
-| `learning`                                                      | `pKnown = max(base, pApp)`                                                                                                                                                                                     |
-| `unknown`, `seen`, or nothing                                   | `pKnown = max(base, pApp)`; the state becomes **`learning`, shown as "Learning (in Kenning)"**, when `c ≥ 3`, the newest answer was correct and `pApp ≥ 0.5`. A word met only in exercises is otherwise `seen` |
+| Base state (after the manual mark, Anki, pending note, lookups) | Effect of app evidence                                                                                                                                                                                           |
+| --------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| manual mark (any)                                               | none: your explicit choice wins                                                                                                                                                                                  |
+| `known`, `ignored`                                              | none: app evidence never demotes                                                                                                                                                                                 |
+| `learning`                                                      | `pKnown = max(base, pApp)`                                                                                                                                                                                       |
+| `unknown`, `seen`, or nothing                                   | `pKnown = max(base, pApp)`; the state becomes **`learning`, shown as "Learning (in Vuurtoren)"**, when `c ≥ 3`, the newest answer was correct and `pApp ≥ 0.5`. A word met only in exercises is otherwise `seen` |
 
 | Constant                   | Value | Why                                                                                            |
 | -------------------------- | ----- | ---------------------------------------------------------------------------------------------- |
@@ -143,7 +143,7 @@ pApp = 0.8 · c / (c + w + 1) · 0.5^(days since the newest answer / 30)     (×
 | `APP_LEARNING_MIN_CORRECT` | 3     | one lucky answer is not learning; one pseudo-miss caps a single correct answer at 0.4          |
 | hinted cloze weight        | 0.5   | same as the cloze credit (section 3.5)                                                         |
 
-So three unaided correct answers today give `pKnown = 0.6`: the word counts as "Learning (in Kenning)", adds 0.6 to coverage and can become a cloze. Two months later, with no new answers, it is back to Anki's state with `pKnown ≈ 0.15`. Nothing is written to Anki: to make the word a card, use Add to Anki or Study first in Anki.
+So three unaided correct answers today give `pKnown = 0.6`: the word counts as "Learning (in Vuurtoren)", adds 0.6 to coverage and can become a cloze. Two months later, with no new answers, it is back to Anki's state with `pKnown ≈ 0.15`. Nothing is written to Anki: to make the word a card, use Add to Anki or Study first in Anki.
 
 **Limits.** In connected mode, exposure while reading (a word read without a lookup) is not evidence. Practice FSRS states are kept separately for scheduling exercises (section 4.1); only right/wrong feeds the learner model. In native mode reading, blanks and Practice also reach the word's card (section 9.5.1).
 
@@ -151,13 +151,13 @@ So three unaided correct answers today give `pKnown = 0.6`: the word counts as "
 
 ## 2. Dutch analysis (NLP service)
 
-Kenning's Python service (`server/nlp`) analyses texts and Anki headwords with the **same** pipeline. It runs locally, for example in Docker, and sends nothing to third parties.
+Vuurtoren's Python service (`server/nlp`) analyses texts and Anki headwords with the **same** pipeline. It runs locally, for example in Docker, and sends nothing to third parties.
 
 ### 2.1 The spaCy pipeline
 
 **What.** Each text is split into tokens. Each token gets a part of speech, morphology, a dependency relation, a sentence number, a lemma with alternatives, a word frequency and, for split separable verbs, a link from the particle to its verb (`particle_of`).
 
-**How.** `nl_core_news_md` (spaCy's medium Dutch model) does tokenisation, tagging, parsing and a first lemma. Word frequency is the **Zipf** value from the `wordfreq` package, for the lemma, or for the surface form when the lemma is unknown (`server/nlp/src/kenning_nlp/freq.py`). About 7 is very common and 1 is rare. Punctuation, numbers and symbols are not words (`is_word = false`).
+**How.** `nl_core_news_md` (spaCy's medium Dutch model) does tokenisation, tagging, parsing and a first lemma. Word frequency is the **Zipf** value from the `wordfreq` package, for the lemma, or for the surface form when the lemma is unknown (`server/nlp/src/vuurtoren_nlp/freq.py`). About 7 is very common and 1 is rare. Punctuation, numbers and symbols are not words (`is_word = false`).
 
 **Numbers.** Up to 200,000 characters per text (`models.py`). The web app sends long texts in chunks of at most 40,000 characters, cut at paragraph breaks (`chunkText` in `apps/web/src/services/live.ts`).
 
@@ -189,11 +189,11 @@ There are 39 separable particles (`aan`, `af`, `bij`, `door`, `in`, `mee`, `op`,
 
 ### 2.4 Words the dictionary does not have: derivations, compounds, the sentence
 
-**What.** Dutch builds new words from old ones: with affixes (`woord` + `-loos` = `woordeloos`, "wordless") and by writing compounds as one word (`souvenirwinkel`). When a word has no dictionary entry, Kenning builds its meaning from its parts, and failing that takes the English it became in the translation of its sentence.
+**What.** Dutch builds new words from old ones: with affixes (`woord` + `-loos` = `woordeloos`, "wordless") and by writing compounds as one word (`souvenirwinkel`). When a word has no dictionary entry, Vuurtoren builds its meaning from its parts, and failing that takes the English it became in the translation of its sentence.
 
 **Which meaning wins.** Dictionary entry (the word or a form of it), then a diminutive or plural of a known noun (`vriendinnetje` → `vriendin`), then a derivation, then the sentence when its alignment is confident, then a compound, then a less confident alignment (`Dictionary.lookup` in `dictionary.py`; the app adds the sentence). A confident alignment beats a compound guess because on the test set below it is right far more often (29 of 33 against 11 of 48 on the same words). A derivation loses to a compound only when the compound's parts are plain dictionary words and its head already contains the suffix: `berglandschap` is `berg` + `landschap`, not `bergland` + `-schap`; `brandgevaarlijk` is `brand` + `gevaarlijk`. When nothing at all resolves, a derivation of a compound is tried (`vastgoedmakelaar` + `-ster`).
 
-**Derivations** (`server/nlp/src/kenning_nlp/derive.py`). Each affix knows which bases it takes and how to say the result in English:
+**Derivations** (`server/nlp/src/vuurtoren_nlp/derive.py`). Each affix knows which bases it takes and how to say the result in English:
 
 | Affix                 | Base                       | Result     | English                                                       |
 | --------------------- | -------------------------- | ---------- | ------------------------------------------------------------- |
@@ -272,7 +272,7 @@ The words were chosen because the dictionary misses them or the compound splitte
 
 **What.** A machine translation of the sentence a word appears in. It is shown in the word inspector and saved with a new Anki card as `SentenceTranslation`.
 
-**How** (`server/nlp/src/kenning_nlp/translate.py`): the Helsinki-NLP `opus-mt-nl-en` model, run with CTranslate2 on the CPU, weights stored as int8 (converted from the original Marian release by `scripts/fetch_mt_model.py`), beam size 4. It is a small (about 85 MB, the `mt-nl-en` data pack) neural MT model that runs offline. It is not a chat model and never sees anything but the sentence. The same model gives the meaning of a word the dictionary does not know in its sentence (section 2.4).
+**How** (`server/nlp/src/vuurtoren_nlp/translate.py`): the Helsinki-NLP `opus-mt-nl-en` model, run with CTranslate2 on the CPU, weights stored as int8 (converted from the original Marian release by `scripts/fetch_mt_model.py`), beam size 4. It is a small (about 85 MB, the `mt-nl-en` data pack) neural MT model that runs offline. It is not a chat model and never sees anything but the sentence. The same model gives the meaning of a word the dictionary does not know in its sentence (section 2.4).
 
 **Numbers.** Input up to 1024 subword tokens, output up to 512. Per request: at most 64 texts, 2,000 characters each, 20,000 characters in total (`models.py`). Only Dutch → English. Without the model the feature is quietly unavailable.
 
@@ -308,7 +308,7 @@ The words were chosen because the dictionary misses them or the compound splitte
 | Tesseract 5, cleaned   | 24.7 / 21.0 / 3.7 %   | 28.4 / 24.4 / 17.9 %   | 35.5 / 31.4 / 21.4 %   | 1.4    |
 | RapidOCR, cleaned page | 4.8 / 2.5 / 1.7 %     | 5.4 / 2.6 / 2.1 %      | 8.1 / 5.2 / 2.4 %      | 6.7    |
 
-The Tesseract rows are for comparison only; Kenning does not use it. Most of its scan errors are reading order in tables and word lists, and on photos it loses whole boxes of text. The PP-OCRv5 Latin recognition model scored about the same as the bundled PP-OCRv6 model (4.4 / 2.9 / 1.2 % on scans) but missed one accent and needs a separate download.
+The Tesseract rows are for comparison only; Vuurtoren does not use it. Most of its scan errors are reading order in tables and word lists, and on photos it loses whole boxes of text. The PP-OCRv5 Latin recognition model scored about the same as the bundled PP-OCRv6 model (4.4 / 2.9 / 1.2 % on scans) but missed one accent and needs a separate download.
 
 After PDF and OCR extraction, `cleanup.py` repairs the text:
 
@@ -319,14 +319,14 @@ After PDF and OCR extraction, `cleanup.py` repairs the text:
 
 ### 2.8 Checking OCR text: which words get flagged
 
-After a photo or scanned page is recognised, you can check the text before it is imported. Kenning underlines the words that may be misread (`ocr_review.py`). A word is flagged when:
+After a photo or scanned page is recognised, you can check the text before it is imported. Vuurtoren underlines the words that may be misread (`ocr_review.py`). A word is flagged when:
 
 - **The OCR engine was unsure.** Its score for the word is below 70 %.
 - **It is not a Dutch word.** It is not in the word-frequency list (Zipf ≥ 2), the dictionary or simplemma, and it does not split into two common words (`fietsenstalling`). A capitalised word in mid-sentence is treated as a name and stays quiet unless a fix is found or the engine was unsure. Numbers and short all-caps abbreviations are never flagged.
 - **A hyphenation went wrong.** Two halves joined at a line end make no word, or a word stayed split (`groen-` … `ten`) when the halves together make one.
 - **It is a rare short word that looks like a very common one.** For example `ln` next to `in`, or `dc` next to `de`.
 
-**Suggestions** come from the mix-ups that print OCR typically makes: `rn` ↔ `m`, `cl` → `d`, `vv` → `w`, `l` / `I` / `1` / `i`, `0` → `o`, `ij` ↔ `y` / `ii`, `fi` ↔ `fl`, `c` ↔ `e`, accents (`e` → `é` / `ë`), a stray hyphen inside a word, and a lost space (`eenhuis` → `een huis`). Kenning applies up to two of these to the word and keeps only results that are real Dutch words. The commonest come first, and a candidate needing two changes ranks a little lower than one needing a single change. Suggestions that are far rarer than the best one are dropped. When the first letter itself was misread (`Iand`), the fix is capitalised only at the start of a sentence (`land`, or `Land` at the start of a sentence).
+**Suggestions** come from the mix-ups that print OCR typically makes: `rn` ↔ `m`, `cl` → `d`, `vv` → `w`, `l` / `I` / `1` / `i`, `0` → `o`, `ij` ↔ `y` / `ii`, `fi` ↔ `fl`, `c` ↔ `e`, accents (`e` → `é` / `ë`), a stray hyphen inside a word, and a lost space (`eenhuis` → `een huis`). Vuurtoren applies up to two of these to the word and keeps only results that are real Dutch words. The commonest come first, and a candidate needing two changes ranks a little lower than one needing a single change. Suggestions that are far rarer than the best one are dropped. When the first letter itself was misread (`Iand`), the fix is capitalised only at the start of a sentence (`land`, or `Land` at the start of a sentence).
 
 Each flag carries its position in the text and its box on the page, so the review screen can show the enlarged scan of the word next to the suggestions. Nothing is changed unless you accept a suggestion, type a fix, or press "Accept all suggestions".
 
@@ -425,7 +425,7 @@ Clozes never get a translation from the dial; they show their meaning as a hint 
 
 ### 3.6 The staircase controller
 
-**What it does** (`updateStaircase` in `packages/core/src/reading/staircase.ts`). When you finish a page, Kenning computes **cloze accuracy** (credit ÷ blanks shown) and **lookups per 100 words**, and nudges two values:
+**What it does** (`updateStaircase` in `packages/core/src/reading/staircase.ts`). When you finish a page, Vuurtoren computes **cloze accuracy** (credit ÷ blanks shown) and **lookups per 100 words**, and nudges two values:
 
 | Outcome                                                                  | Target coverage T        | New-word budget B |
 | ------------------------------------------------------------------------ | ------------------------ | ----------------- |
@@ -444,7 +444,7 @@ Clozes never get a translation from the dial; they show their meaning as a hint 
 
 ## 4. Practice
 
-Practice trains words you already study (Anki state `learning` or `known`) in context, and **never writes to Anki**. Results go to Kenning's own schedule, and every answer also counts as app evidence for the word (section 1.7).
+Practice trains words you already study (Anki state `learning` or `known`) in context, and **never writes to Anki**. Results go to Vuurtoren's own schedule, and every answer also counts as app evidence for the word (section 1.7).
 
 ### 4.1 Scheduling: FSRS per (word, skill)
 
@@ -491,7 +491,7 @@ Practice trains words you already study (Anki state `learning` or `known`) in co
 | scramble       | form        | a sentence of 4–9 words                                         | shuffled words (first word lowercased so it does not give itself away) → put them in order                              |
 | dictation      | listening   | none                                                            | text-to-speech of a sentence of ≤ 8 words containing the word, else the word itself → type what you hear                |
 
-Word forms and the perfect-tense auxiliary come from Wiktionary (`server/nlp/src/kenning_nlp/wordforms.py`). Wiktionary records the auxiliary for only about 3 % of verbs. For the rest, Kenning uses how often the participle appears with `hebben` vs `zijn` in the Tatoeba corpus, then a curated list of `zijn` verbs, and defaults to `hebben`.
+Word forms and the perfect-tense auxiliary come from Wiktionary (`server/nlp/src/vuurtoren_nlp/wordforms.py`). Wiktionary records the auxiliary for only about 3 % of verbs. For the rest, Vuurtoren uses how often the participle appears with `hebben` vs `zijn` in the Tatoeba corpus, then a curated list of `zijn` verbs, and defaults to `hebben`.
 
 ### 4.5 Choosing distractors
 
@@ -502,7 +502,7 @@ Word forms and the perfect-tense auxiliary come from Wiktionary (`server/nlp/src
 - They must have **similar frequency**: Zipf within ±1, widened step by step up to ±8 until there are enough.
 - **Words you know come first**, so that the options are real words to you.
 
-**Vector neighbours** (`server/nlp/src/kenning_nlp/similar.py`, `POST /similar`). When a word-choice exercise has fewer than 4 options, it is padded with related words from spaCy's word vectors:
+**Vector neighbours** (`server/nlp/src/vuurtoren_nlp/similar.py`, `POST /similar`). When a word-choice exercise has fewer than 4 options, it is padded with related words from spaCy's word vectors:
 
 | Rule                | Value                                                                                                                                                                                                           |
 | ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -524,7 +524,7 @@ The app checks the synonym rule again with its own dictionary before using a nei
 
 **Ranking.** A sentence of 5–15 words always beats one outside that range (scramble uses 4–9, dictation 3–8). Ties go to Anki, then your texts, then Tatoeba. A cloze skips sentences where the word appears twice.
 
-**How "easy" Tatoeba sentences are chosen** (`server/nlp/src/kenning_nlp/sentences.py`). Each stored sentence (3–25 words, ≤ 160 characters, no URLs or markup) gets a difficulty score: 0.5 per word, +2.0 per rare word (Zipf < 3), and +2.0 if it has fewer than 4 words. The lowest scores come first.
+**How "easy" Tatoeba sentences are chosen** (`server/nlp/src/vuurtoren_nlp/sentences.py`). Each stored sentence (3–25 words, ≤ 160 characters, no URLs or markup) gets a difficulty score: 0.5 per word, +2.0 per rare word (Zipf < 3), and +2.0 if it has fewer than 4 words. The lowest scores come first.
 
 **Limits.** This approximates "i+1" (a sentence where only the target word is new) with **general word frequency, not your own learner model**. A Tatoeba sentence can still contain a common word that you have not learned.
 
@@ -546,7 +546,7 @@ The app checks the synonym rule again with its own dictionary before using a nei
 
 ## 5. Grammar detectors
 
-**What.** `POST /grammar` finds grammar constructions in a text and underlines the tokens involved, with a one-line explanation (`server/nlp/src/kenning_nlp/grammar.py`). The grammar screens in the web app are being built; this section describes the server side only.
+**What.** `POST /grammar` finds grammar constructions in a text and underlines the tokens involved, with a one-line explanation (`server/nlp/src/vuurtoren_nlp/grammar.py`). The grammar screens in the web app are being built; this section describes the server side only.
 
 **How.** Each detector reads one analysed sentence: part of speech, morphology (e.g. `VerbForm=Part`, `Tense=Past`, `Degree=Cmp`), dependency relations (`nsubj`, `mark`, `aux`, `compound:prt`, …) and the separable-verb links from section 2.3. It never reads the raw text, so it also works on analyses that the app has already stored. Some examples:
 
@@ -585,20 +585,20 @@ The app checks the synonym rule again with its own dictionary before using a nei
 
 ---
 
-## 6. What Kenning writes to Anki
+## 6. What Vuurtoren writes to Anki
 
-This section is about connected mode. In native mode Kenning writes nothing to Anki: the same buttons act on its own cards (section 9.5).
+This section is about connected mode. In native mode Vuurtoren writes nothing to Anki: the same buttons act on its own cards (section 9.5).
 
-Kenning reads Anki freely but **writes only when you click** a button for one word (`packages/anki/src/actions.ts`, `packages/anki/src/note.ts`). Every write is tagged, so you can find and undo it in Anki's browser.
+Vuurtoren reads Anki freely but **writes only when you click** a button for one word (`packages/anki/src/actions.ts`, `packages/anki/src/note.ts`). Every write is tagged, so you can find and undo it in Anki's browser.
 
-| Button                               | Shown when                          | What happens in Anki                                                                                                                                                                                    | Tag                |
-| ------------------------------------ | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------ |
-| **Add to Anki**                      | the word is not in your decks       | A note of type **Kenning Word** (fields: Word, Gloss, Sentence with the word in bold, SentenceTranslation, Source) in the target deck, `Kenning::Nederlands` by default. No duplicate within that deck. | `kenning` (+ `nl`) |
-| **Study first in Anki** (learn next) | the card is new (even if suspended) | The card is unsuspended and moved to the front of its deck's new queue. Other cards are not shifted, which would force a full sync. Needs AnkiConnect's v1 API.                                         | `kenning::reading` |
-| **Mark known**                       | any state, or not in Anki           | (Adds the note first if needed.) Unsuspends the card and sets its interval to a random 21–35 days (`setDueDate "21-35!"`), so it reads back as mature, and therefore known.                             | `kenning::known`   |
-| **Use Anki's state**                 | after a manual mark                 | Nothing in Anki. Only the app-side mark is removed.                                                                                                                                                     | —                  |
+| Button                               | Shown when                          | What happens in Anki                                                                                                                                                                                        | Tag                  |
+| ------------------------------------ | ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------- |
+| **Add to Anki**                      | the word is not in your decks       | A note of type **Vuurtoren Word** (fields: Word, Gloss, Sentence with the word in bold, SentenceTranslation, Source) in the target deck, `Vuurtoren::Nederlands` by default. No duplicate within that deck. | `vuurtoren` (+ `nl`) |
+| **Study first in Anki** (learn next) | the card is new (even if suspended) | The card is unsuspended and moved to the front of its deck's new queue. Other cards are not shifted, which would force a full sync. Needs AnkiConnect's v1 API.                                             | `vuurtoren::reading` |
+| **Mark known**                       | any state, or not in Anki           | (Adds the note first if needed.) Unsuspends the card and sets its interval to a random 21–35 days (`setDueDate "21-35!"`), so it reads back as mature, and therefore known.                                 | `vuurtoren::known`   |
+| **Use Anki's state**                 | after a manual mark                 | Nothing in Anki. Only the app-side mark is removed.                                                                                                                                                         | —                    |
 
-Kenning **never** answers cards, writes review history, changes FSRS parameters, or touches cards you study in any way other than through Mark known. Practice, cloze and book-exercise results stay in Kenning (they feed the learner model, section 1.7). All four buttons are one shared command layer (`packages/anki/src/profile.ts` `addWordToAnki`, `packages/anki/src/commands.ts`: `studyWordFirst`, `studyWordsFirst`, `markWordKnown`, `resetToAnkiState`, `setAppWordState`) with one key rule (`wordKey`). In the app, Learn next is labelled **Study first in Anki**. Until Anki has reviews for an added or moved card, the reader treats the word as `learning` with `pKnown = 0.2` (section 1.6).
+Vuurtoren **never** answers cards, writes review history, changes FSRS parameters, or touches cards you study in any way other than through Mark known. Practice, cloze and book-exercise results stay in Vuurtoren (they feed the learner model, section 1.7). All four buttons are one shared command layer (`packages/anki/src/profile.ts` `addWordToAnki`, `packages/anki/src/commands.ts`: `studyWordFirst`, `studyWordsFirst`, `markWordKnown`, `resetToAnkiState`, `setAppWordState`) with one key rule (`wordKey`). In the app, Learn next is labelled **Study first in Anki**. Until Anki has reviews for an added or moved card, the reader treats the word as `learning` with `pKnown = 0.2` (section 1.6).
 
 ---
 
@@ -637,19 +637,19 @@ AI features are opt-in extras, hidden until you configure a provider: Converse, 
 
 ---
 
-## 9. Native mode: Kenning's own cards
+## 9. Native mode: Vuurtoren's own cards
 
-In native mode Kenning holds the cards and runs the reviews. The learner model, the reader, Words, Practice and courses read these cards exactly as they read Anki cards in connected mode.
+In native mode Vuurtoren holds the cards and runs the reviews. The learner model, the reader, Words, Practice and courses read these cards exactly as they read Anki cards in connected mode.
 
 ### 9.1 Where cards come from
 
-| Source                        | What comes in                                                                                                                                                                                                |
-| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Add to my words**           | a note of Kenning's own type (Word, Gloss, Sentence, SentenceTranslation, Source) with one card, in the deck the language profile chooses                                                                    |
-| **.apkg / .colpkg file**      | the chosen decks' notes, note types (fields, card templates, styling), cards, deck options, the full review log, and the images and sounds the notes use                                                     |
-| **Move from Anki to Kenning** | the same, read through AnkiConnect from the confirmed source decks and Kenning's destination decks (`notesInfo`, `cardsInfo`, `getReviewsOfCards`, `findModelsByName`, `getDeckConfig`, `retrieveMediaFile`) |
+| Source                          | What comes in                                                                                                                                                                                                  |
+| ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Add to my words**             | a note of Vuurtoren's own type (Word, Gloss, Sentence, SentenceTranslation, Source) with one card, in the deck the language profile chooses                                                                    |
+| **.apkg / .colpkg file**        | the chosen decks' notes, note types (fields, card templates, styling), cards, deck options, the full review log, and the images and sounds the notes use                                                       |
+| **Move from Anki to Vuurtoren** | the same, read through AnkiConnect from the confirmed source decks and Vuurtoren's destination decks (`notesInfo`, `cardsInfo`, `getReviewsOfCards`, `findModelsByName`, `getDeckConfig`, `retrieveMediaFile`) |
 
-**Package files** (`packages/anki/src/apkg/read.ts`). A package is a zip. The older layout holds `collection.anki2` or `collection.anki21`, a SQLite file whose `col` row carries note types, decks and deck options as JSON, and a `media` file mapping zip entries to names as JSON. The current layout holds `collection.anki21b`, compressed with zstd; note types, fields, templates, decks and deck options have their own tables with protobuf blobs (note type kind, CSS, template front and back, a deck's options id, learning steps, relearning steps, new cards per day, maximum interval, target retention, FSRS-6 parameters), and `media` is a zstd-compressed protobuf list; each media file is compressed too. Cards in a filtered deck are imported into their home deck. A review card's due day counts from the collection's creation day. The current schema declares text columns `COLLATE unicase`, a collation only Anki has; Kenning walks the schema table's pages and swaps it for `COLLATE binary ` (same length) in the schema's SQL only, never in note text. A package may unpack to at most 512 MB per file and 1 GB in all.
+**Package files** (`packages/anki/src/apkg/read.ts`). A package is a zip. The older layout holds `collection.anki2` or `collection.anki21`, a SQLite file whose `col` row carries note types, decks and deck options as JSON, and a `media` file mapping zip entries to names as JSON. The current layout holds `collection.anki21b`, compressed with zstd; note types, fields, templates, decks and deck options have their own tables with protobuf blobs (note type kind, CSS, template front and back, a deck's options id, learning steps, relearning steps, new cards per day, maximum interval, target retention, FSRS-6 parameters), and `media` is a zstd-compressed protobuf list; each media file is compressed too. Cards in a filtered deck are imported into their home deck. A review card's due day counts from the collection's creation day. The current schema declares text columns `COLLATE unicase`, a collation only Anki has; Vuurtoren walks the schema table's pages and swaps it for `COLLATE binary ` (same length) in the schema's SQL only, never in note text. A package may unpack to at most 512 MB per file and 1 GB in all.
 
 **Vocabulary fields** are found with the same detection as in connected mode (section 1.1), per deck and note type. When the language server is unreachable, field names decide (`Woord`/`Word`/`Front` for the word, `Betekenis`/`Meaning`/`Back` for the meaning, `Zin`/`Sentence`/`Example` for the sentence). Headwords become keys with the server's term analysis (section 1.2), or with `wordKey` without it. Notes of other types are imported and reviewed, but do not feed the learner model.
 
@@ -679,7 +679,7 @@ Imported decks bring their own steps, limits and target retention.
 
 #### 9.2.1 Workload
 
-- **Load balancing** (`balanceInterval` in `packages/core/src/native/workload.ts`). A review answer of 3 days or more can land anywhere in the range ts-fsrs's fuzz allows (`get_fuzz_range`, for 20 days about 17–23). Kenning picks the day with the fewest review cards already due (`nativeDueCounts`); ties go to the planned interval. Cards answered alike so spread by themselves, without randomness.
+- **Load balancing** (`balanceInterval` in `packages/core/src/native/workload.ts`). A review answer of 3 days or more can land anywhere in the range ts-fsrs's fuzz allows (`get_fuzz_range`, for 20 days about 17–23). Vuurtoren picks the day with the fewest review cards already due (`nativeDueCounts`); ties go to the planned interval. Cards answered alike so spread by themselves, without randomness.
 - **Review days** (Settings): each weekday takes its normal, reduced (half) or minimum share. The cost of a day is (cards due + 1) ÷ its share; a minimum day takes a card only when every day in the range is one.
 - **Expected load.** Next to each target recall, Settings shows about how many reviews a day it means for the cards you have now: for each review card, one review per interval at that recall (FSRS-6: t = S/F · (R^(−1/decay) − 1), F = 0.9^(−1/decay) − 1, capped by the maximum interval), plus the new cards a day while a deck has new cards.
 
@@ -687,7 +687,7 @@ Imported decks bring their own steps, limits and target retention.
 
 ### 9.3 Tuning to you
 
-The FSRS optimizer is `fsrs-rs` compiled to WebAssembly (`@open-spaced-repetition/binding-wasm32-wasip1`), run in a worker on the device (`apps/web/src/native/`). It trains on the whole review history: imported and answered in Kenning.
+The FSRS optimizer is `fsrs-rs` compiled to WebAssembly (`@open-spaced-repetition/binding-wasm32-wasip1`), run in a worker on the device (`apps/web/src/native/`). It trains on the whole review history: imported and answered in Vuurtoren.
 
 1. Each card's answers become a sequence of ratings with whole study days between them (a study day starts at 4:00 local time). A card counts only when its history starts with a learning answer; a reset starts a new sequence; manual entries are left out (`trainingSequences`).
 2. Every answer given on a later study day than the one before is one training item: that answer with the card's whole history before it, same-day learning steps included.
@@ -703,7 +703,7 @@ It runs by itself when the app opens: the first time once the history holds 400 
 
 ### 9.5 Word commands
 
-| Button              | What happens to Kenning's cards                                                        |
+| Button              | What happens to Vuurtoren's cards                                                      |
 | ------------------- | -------------------------------------------------------------------------------------- |
 | **Add to my words** | a new note and card (section 9.1), new in the queue's first place                      |
 | **Study first**     | the word's new cards move to the front of the new queue and are unsuspended            |
@@ -726,17 +726,17 @@ In native mode, what you do with a word outside the review screen reaches its ca
 
 ### 9.6 The review screen
 
-Front, then Space or **Show answer**, then Again / Hard / Good / Easy (keys 1–4; Space or Enter is Good), Z or **Undo** takes back the latest answer, then the one before, also after a reload or on another day (the newest answer given on the review screen of this device, `nativeLastReview`, as long as no later answer to that card came from another device). The card comes back with its answer hidden. When another device's answer to the card arrives after an undo, the card is replayed from its remaining answers in order, so that answer still counts. A vocabulary card whose template shows the word on the front is laid out by Kenning: the word and its sentence on the front, the meaning and the sentence translation on the back. Clozes and other templates are rendered from the note type's own template (fields, conditional sections, `FrontSide`, clozes, hints) and shown through an allow-list sanitiser: formatting tags only, no scripts, styles, frames, forms or event handlers, and only the card's own images. Sounds get a play button. After the answer, a sentence with the word from your own texts is shown when one exists.
+Front, then Space or **Show answer**, then Again / Hard / Good / Easy (keys 1–4; Space or Enter is Good), Z or **Undo** takes back the latest answer, then the one before, also after a reload or on another day (the newest answer given on the review screen of this device, `nativeLastReview`, as long as no later answer to that card came from another device). The card comes back with its answer hidden. When another device's answer to the card arrives after an undo, the card is replayed from its remaining answers in order, so that answer still counts. A vocabulary card whose template shows the word on the front is laid out by Vuurtoren: the word and its sentence on the front, the meaning and the sentence translation on the back. Clozes and other templates are rendered from the note type's own template (fields, conditional sections, `FrontSide`, clozes, hints) and shown through an allow-list sanitiser: formatting tags only, no scripts, styles, frames, forms or event handlers, and only the card's own images. Sounds get a play button. After the answer, a sentence with the word from your own texts is shown when one exists.
 
-**Your words and your reviews.** In native mode Words has a **Due** view: the words with a card due now (`nativeDueKeys`), earliest first, each with how long ago it came due; with a source chosen, only that text's, unit's or session's words. The word inspector lists the word's latest eight answers under **Your reviews**: the day, the answer and the interval it gave (the card's history replayed; the latest answer shows the due date the card really got). Home's **This week** counts the reviews answered in Kenning per day; an undone answer does not count.
+**Your words and your reviews.** In native mode Words has a **Due** view: the words with a card due now (`nativeDueKeys`), earliest first, each with how long ago it came due; with a source chosen, only that text's, unit's or session's words. The word inspector lists the word's latest eight answers under **Your reviews**: the day, the answer and the interval it gave (the card's history replayed; the latest answer shows the due date the card really got). Home's **This week** counts the reviews answered in Vuurtoren per day; an undone answer does not count.
 
 ### 9.7 Export to .apkg
 
 `writeAnkiPackage` (`packages/anki/src/apkg/write.ts`) writes the older package layout that every Anki since 2.1 imports: `collection.anki21` (schema 11; note types, decks and deck options as JSON in `col`) and `media` as JSON. What goes in:
 
-| Kenning                 | In the package                                                                                                                                                                  |
+| Vuurtoren               | In the package                                                                                                                                                                  |
 | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Note types              | imported ones keep their Anki id; Kenning's own word type has a fixed id, so exports and re-imports update the same type                                                        |
+| Note types              | imported ones keep their Anki id; Vuurtoren's own word type has a fixed id, so exports and re-imports update the same type                                                      |
 | Notes                   | their ids, fields and tags; a guid from the note id, so importing a newer export updates the notes instead of doubling them                                                     |
 | Decks and their parents | the deck options (steps, limits, maximum interval, target retention) and the FSRS-6 parameters in use, one preset per deck                                                      |
 | Cards                   | new cards in their new-queue order; learning cards with their step and due time; review cards with their due day and interval; FSRS stability and difficulty in the card's data |
@@ -750,10 +750,10 @@ Checked by importing the file into a fresh collection with Anki 26.08: cards, du
 `moveToAnki` (`packages/anki/src/toAnki.ts`), through AnkiConnect, once:
 
 1. `notesInfo` on every note: notes Anki already has (they came from Anki and kept their ids) are not added.
-2. The others are added as **Kenning Word** notes in their deck, tagged `kenning::moved`. A Kenning note keeps its fields; an imported vocabulary note maps its word, meaning, sentence and translation fields onto Kenning's. A note with several cards becomes one card, standing for its most advanced card. Notes of other types without a word are left out. If an earlier move stopped halfway, the words it already added are found again (tag `kenning::moved`, same deck and word) and are scheduled now instead of being added twice; so after a failure you can simply try again.
-3. Each card reviewed in Kenning gets `setDueDate "N!"`: due on the same study day, with that gap (N days) as its interval. A card due today or overdue gets `"0!"`, so it is due today in Anki too, and `setSpecificValueOfCard` then gives it back its interval from Kenning (Anki would leave it at 1 day). New and learning cards are new in Anki. Suspended cards are suspended. If Anki refuses the due dates, the move stops with an error and stays undone in Kenning.
+2. The others are added as **Vuurtoren Word** notes in their deck, tagged `vuurtoren::moved`. A Vuurtoren note keeps its fields; an imported vocabulary note maps its word, meaning, sentence and translation fields onto Vuurtoren's. A note with several cards becomes one card, standing for its most advanced card. Notes of other types without a word are left out. If an earlier move stopped halfway, the words it already added are found again (tag `vuurtoren::moved`, same deck and word) and are scheduled now instead of being added twice; so after a failure you can simply try again.
+3. Each card reviewed in Vuurtoren gets `setDueDate "N!"`: due on the same study day, with that gap (N days) as its interval. A card due today or overdue gets `"0!"`, so it is due today in Anki too, and `setSpecificValueOfCard` then gives it back its interval from Vuurtoren (Anki would leave it at 1 day). New and learning cards are new in Anki. Suspended cards are suspended. If Anki refuses the due dates, the move stops with an error and stays undone in Vuurtoren.
 4. **With history (experimental):** `setSpecificValueOfCard` sets the exact interval, reviews and lapses, and `insertReviews` writes every answer with its real time and the interval it gave (the history replayed without fuzz, as in the export). Answers Anki already holds (`getReviewsOfCards`) are not written twice. Anki computes FSRS memory from this history when its deck options are saved or optimised.
-5. The profile becomes connected and reads the moved decks (Kenning's note type and fields), and an Anki sync runs. Kenning's own cards stay in its database, unused.
+5. The profile becomes connected and reads the moved decks (Vuurtoren's note type and fields), and an Anki sync runs. Vuurtoren's own cards stay in its database, unused.
 
 ## 10. Sync
 
@@ -765,13 +765,13 @@ Every change is an event in the append-only log ([decisions](decisions.md#data))
 
 ### 10.2 The place
 
-| Path                                         | What it holds                                                               |
-| -------------------------------------------- | --------------------------------------------------------------------------- |
-| `kenning/vault.json`                         | the data key under the passphrase and recovery-key locks, and a check value |
-| `kenning/devices/<device>/<lastId>.kev`      | events of one device after the previous file, up to `lastId`                |
-| `kenning/devices/<device>/<lastId>.base.kev` | a part of the device's folded events, up to `lastId`                        |
-| `kenning/devices/<device>/device.kev`        | the device's name and when it last wrote it                                 |
-| `kenning/blobs/<hmac>.kbl`                   | an image or sound                                                           |
+| Path                                           | What it holds                                                               |
+| ---------------------------------------------- | --------------------------------------------------------------------------- |
+| `vuurtoren/vault.json`                         | the data key under the passphrase and recovery-key locks, and a check value |
+| `vuurtoren/devices/<device>/<lastId>.kev`      | events of one device after the previous file, up to `lastId`                |
+| `vuurtoren/devices/<device>/<lastId>.base.kev` | a part of the device's folded events, up to `lastId`                        |
+| `vuurtoren/devices/<device>/device.kev`        | the device's name and when it last wrote it                                 |
+| `vuurtoren/blobs/<hmac>.kbl`                   | an image or sound                                                           |
 
 A device writes only its own folder and blobs (named by content), so places that copy files around (Syncthing, Dropbox, iCloud Drive) never see two devices write one file. Each file names the range it holds (`after`, `last`); a reader checks it against the file's name and takes its cursor from it. A file whose earlier neighbour has not arrived yet waits (after a day it is taken anyway).
 
@@ -779,9 +779,9 @@ A device writes only its own folder and blobs (named by content), so places that
 
 **Limits.** No file over 60 MiB of JSON is written (a single change that big stays on its device and is reported), unpacking stops at 64 MiB, and parts stay at most 16 MiB, so every place's 64 MiB limit holds. `device.kev` is written when something was sent, else at most hourly; names are cut at 64 characters.
 
-**When something is wrong.** A file that does not open is tried again on the next two syncs, then set aside: recorded with its reason in the sync state, reported in the sync's summary, and the other files of that device follow. The other devices go on meanwhile. An event a projection cannot apply stays in the log and is reported; the others apply. A file from a newer Kenning waits for the update.
+**When something is wrong.** A file that does not open is tried again on the next two syncs, then set aside: recorded with its reason in the sync state, reported in the sync's summary, and the other files of that device follow. The other devices go on meanwhile. An event a projection cannot apply stays in the log and is reported; the others apply. A file from a newer Vuurtoren waits for the update.
 
-Places: a Kenning server (`/api/sync`, a sync token made in that server's Settings → Sync opens it and nothing else), a folder (desktop app; writes go to a temporary file and are renamed, and links inside the folder are not followed), WebDAV (PROPFIND, PUT, MKCOL; through the desktop app no CORS setup is needed, and the app asks once before it sends to a new address) and a private GitHub repository (the contents API, and the Git trees API for folders past 1,000 files; each write is a commit). Requests skip the browser cache.
+Places: a Vuurtoren server (`/api/sync`, a sync token made in that server's Settings → Sync opens it and nothing else), a folder (desktop app; writes go to a temporary file and are renamed, and links inside the folder are not followed), WebDAV (PROPFIND, PUT, MKCOL; through the desktop app no CORS setup is needed, and the app asks once before it sends to a new address) and a private GitHub repository (the contents API, and the Git trees API for folders past 1,000 files; each write is a commit). Requests skip the browser cache.
 
 ### 10.3 Encryption
 
@@ -809,7 +809,7 @@ Events carry a hybrid logical clock (milliseconds, a counter, the device). Impor
 - **Merged answers depend on the scheduler.** A merged answer is computed whenever the log is replayed, with this app's FSRS and the parameters in use then. Devices on app versions whose scheduler differs can disagree slightly on such a card until its next answer; an answer that is not merged stores its result and replays the same everywhere.
 - **Event versions.** Each event type has a payload version. An event newer than this app understands is stored and passed on, not applied; once the app is updated it applies it.
 
-An incoming event needs an id and a clock as Kenning makes them (a ULID; a clock with 15 + 5 padded digits and the event's own device), at most a day ahead of this device's clock, and not this device's id. New ids follow this device's own newest event, never another device's.
+An incoming event needs an id and a clock as Vuurtoren makes them (a ULID; a clock with 15 + 5 padded digits and the event's own device), at most a day ahead of this device's clock, and not this device's id. New ids follow this device's own newest event, never another device's.
 
 ### 10.5 Compaction
 
@@ -823,4 +823,4 @@ While the app is open: on focus, when it becomes visible and every 30 seconds, a
 
 **A restored backup** gets a new device id (two devices restored from one backup never share one). Its events not yet sent move to the new id (same event ids, so a device that has them skips them), so they still reach the other devices.
 
-**On a Kenning server** a sync token belongs to one device: the first device folder it writes is its own, and it writes only there and the blobs. It may create `vault.json` when there is none; replacing it needs a session, the server's token, the sync token that made it or one made for it. All sync files share a quota (`KENNING_SYNC_QUOTA_MB`, 2 GB). With sign-in off the server answers this site and `KENNING_ALLOWED_ORIGINS` only.
+**On a Vuurtoren server** a sync token belongs to one device: the first device folder it writes is its own, and it writes only there and the blobs. It may create `vault.json` when there is none; replacing it needs a session, the server's token, the sync token that made it or one made for it. All sync files share a quota (`VUURTOREN_SYNC_QUOTA_MB`, 2 GB). With sign-in off the server answers this site and `VUURTOREN_ALLOWED_ORIGINS` only.

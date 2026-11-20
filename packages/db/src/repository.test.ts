@@ -6,11 +6,11 @@ import { afterEach, describe, expect, it } from "vitest";
 import { contentHash } from "./hash.js";
 import { compareHlc } from "./ids.js";
 import { createNodeDriver } from "./node.js";
-import { createRepository, type KenningRepository } from "./repository.js";
+import { createRepository, type VuurtorenRepository } from "./repository.js";
 import { SCHEMA_VERSION } from "./schema.js";
 import type { AnkiWordEntry, AppEvent, SqlDriver } from "./types.js";
 
-const open: KenningRepository[] = [];
+const open: VuurtorenRepository[] = [];
 afterEach(async () => {
   for (const r of open.splice(0)) await r.close().catch(() => undefined);
 });
@@ -20,7 +20,7 @@ async function newRepo(
   driver?: SqlDriver,
   start = 1_000_000,
   clock: { t: number; frozen?: boolean } = { t: start },
-): Promise<{ repo: KenningRepository; driver: SqlDriver }> {
+): Promise<{ repo: VuurtorenRepository; driver: SqlDriver }> {
   const d = driver ?? (await createNodeDriver());
   const repo = await createRepository(d, {
     deviceId: "dev1",
@@ -522,7 +522,7 @@ describe("projections", () => {
   });
 
   it("rebuilds projections once when the projection version changes", async () => {
-    const dir = mkdtempSync(join(tmpdir(), "kenning-pv-"));
+    const dir = mkdtempSync(join(tmpdir(), "vuurtoren-pv-"));
     try {
       const path = join(dir, "db.sqlite");
       let repo = await createRepository(await createNodeDriver(path));
@@ -756,7 +756,7 @@ describe("rebuild equivalence", () => {
     };
   }
 
-  async function snapshot(repo: KenningRepository): Promise<unknown> {
+  async function snapshot(repo: VuurtorenRepository): Promise<unknown> {
     const texts = await repo.listTexts();
     return {
       texts,
@@ -877,7 +877,7 @@ describe("rebuild equivalence", () => {
 
 describe("file database", () => {
   it("migrations are idempotent across reopen and data persists", async () => {
-    const dir = mkdtempSync(join(tmpdir(), "kenning-db-"));
+    const dir = mkdtempSync(join(tmpdir(), "vuurtoren-db-"));
     try {
       const file = join(dir, "k.db");
       const first = await createNodeDriver(file);

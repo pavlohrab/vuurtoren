@@ -1,5 +1,5 @@
 /**
- * App evidence: what the learner showed inside Kenning (practice exercises, reader clozes,
+ * App evidence: what the learner showed inside Vuurtoren (practice exercises, reader clozes,
  * book exercises) feeding back into the learner model (docs/algorithms.md §1.7).
  *
  * Anki stays the record of known words. App evidence can only **raise** a word that Anki (or a
@@ -38,7 +38,7 @@ export const APP_MAX_P = 0.8;
 const APP_HALF_LIFE_DAYS = 30;
 /** Factor applied when the newest answer was wrong. */
 const APP_LAST_WRONG_FACTOR = 0.5;
-/** Weighted correct answers needed before a word shows as "Learning (in Kenning)". */
+/** Weighted correct answers needed before a word shows as "Learning (in Vuurtoren)". */
 const APP_LEARNING_MIN_CORRECT = 3;
 /** ... and the current estimate must be at least this. */
 const APP_LEARNING_MIN_P = 0.5;
@@ -91,7 +91,7 @@ export function evidenceRecall(e: AppEvidence, nowMs: number): number {
   return APP_MAX_P * accuracy * fade * (e.lastCorrect ? 1 : APP_LAST_WRONG_FACTOR);
 }
 
-/** True when the evidence is strong enough to call the word "Learning (in Kenning)". */
+/** True when the evidence is strong enough to call the word "Learning (in Vuurtoren)". */
 export function isAppLearning(e: AppEvidence, nowMs: number): boolean {
   return (
     e.lastCorrect &&
@@ -102,7 +102,7 @@ export function isAppLearning(e: AppEvidence, nowMs: number): boolean {
 
 /** Result of {@link withAppEvidence}. */
 export interface EvidenceOutcome extends WordKnowledge {
-  /** App evidence raised the state to "learning" ("Learning (in Kenning)"). */
+  /** App evidence raised the state to "learning" ("Learning (in Vuurtoren)"). */
   appLearning: boolean;
   /** App evidence raised pKnown above the base value. */
   raised: boolean;

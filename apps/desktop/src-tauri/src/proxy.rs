@@ -1,6 +1,6 @@
-//! The `kenning-nlp:` protocol: the web app's way to the bundled language server.
+//! The `vuurtoren-nlp:` protocol: the web app's way to the bundled language server.
 //!
-//! The page fetches `kenning-nlp://localhost/<path>` (Windows: `http://kenning-nlp.localhost/`);
+//! The page fetches `vuurtoren-nlp://localhost/<path>` (Windows: `http://vuurtoren-nlp.localhost/`);
 //! this handler forwards the request to the sidecar on 127.0.0.1 with the secret token, so the
 //! token never reaches JavaScript and no CORS setup is needed on the Python side. While the
 //! sidecar is still starting, requests wait for it; analysis also waits (up to a minute and a
@@ -13,7 +13,7 @@ use tauri::{AppHandle, Manager};
 
 use crate::sidecar::{NlpState, TOKEN_HEADER};
 
-pub const SCHEME: &str = "kenning-nlp";
+pub const SCHEME: &str = "vuurtoren-nlp";
 /// How long a request waits for the sidecar to come up.
 const WAIT_START: Duration = Duration::from_secs(120);
 /// How long `/analyze/...` waits for the dictionary download (the client gives up at 120 s).
@@ -24,13 +24,13 @@ const FORWARD_TIMEOUT: Duration = Duration::from_secs(600);
 /// The address the web app uses as its language server (`nlpBase` in `desktop_info`).
 pub fn base_url() -> &'static str {
     if cfg!(windows) {
-        "http://kenning-nlp.localhost"
+        "http://vuurtoren-nlp.localhost"
     } else {
-        "kenning-nlp://localhost"
+        "vuurtoren-nlp://localhost"
     }
 }
 
-/// Only the app's own pages may use the language server. Pages of a Kenning server (thin-client
+/// Only the app's own pages may use the language server. Pages of a Vuurtoren server (thin-client
 /// mode) or any other site the window shows send their http(s) origin and are refused.
 /// Custom-scheme pages report `tauri://localhost` or an opaque `null` origin.
 pub fn origin_allowed(origin: Option<&str>, home: &str) -> bool {
@@ -92,7 +92,7 @@ pub async fn handle(app: AppHandle, req: Request<Vec<u8>>) -> Response<Vec<u8>> 
             NlpState::Missing => {
                 return detail(
                     StatusCode::BAD_GATEWAY,
-                    "This build of Kenning has no language server.",
+                    "This build of Vuurtoren has no language server.",
                 )
             }
             NlpState::Failed { error } => return detail(StatusCode::BAD_GATEWAY, &error),
@@ -173,7 +173,7 @@ mod tests {
             Some("http://tauri.localhost"),
             "http://tauri.localhost"
         ));
-        assert!(!origin_allowed(Some("https://kenning.example.com"), home));
+        assert!(!origin_allowed(Some("https://vuurtoren.example.com"), home));
         assert!(!origin_allowed(Some("http://localhost:5173"), home));
         assert!(!origin_allowed(
             Some("http://tauri.localhost.evil.com"),
@@ -184,12 +184,12 @@ mod tests {
     #[test]
     fn path_and_query_are_forwarded() {
         let req = Request::builder()
-            .uri("kenning-nlp://localhost/grammar/examples?topic=x&limit=3")
+            .uri("vuurtoren-nlp://localhost/grammar/examples?topic=x&limit=3")
             .body(vec![])
             .unwrap();
         assert_eq!(upstream_path(&req), "/grammar/examples?topic=x&limit=3");
         let win = Request::builder()
-            .uri("http://kenning-nlp.localhost/health")
+            .uri("http://vuurtoren-nlp.localhost/health")
             .body(vec![])
             .unwrap();
         assert_eq!(upstream_path(&win), "/health");

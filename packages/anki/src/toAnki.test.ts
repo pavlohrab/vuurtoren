@@ -9,7 +9,7 @@ import {
 } from "@app/core";
 import { AnkiConnectClient } from "./client.js";
 import { fakeAnkiWrite, fakeCollection } from "./fake-anki-write.test-util.js";
-import { KENNING_NOTETYPE } from "./native.js";
+import { VUURTOREN_NOTETYPE } from "./native.js";
 import { NOTE_TYPE } from "./note.js";
 import { TAG_MOVED, moveToAnki, wordFields } from "./toAnki.js";
 
@@ -53,14 +53,14 @@ function collection() {
   const notes: NativeNote[] = [
     {
       id: 101,
-      notetypeId: "kenning-word",
+      notetypeId: "vuurtoren-word",
       fields: ["fiets", "bicycle", "", "", ""],
-      tags: ["kenning"],
+      tags: ["vuurtoren"],
       key: "fiets",
     },
     {
       id: 102,
-      notetypeId: "kenning-word",
+      notetypeId: "vuurtoren-word",
       fields: ["huis", "house", "", "", ""],
       tags: [],
       key: "huis",
@@ -70,15 +70,15 @@ function collection() {
     { id: 3, notetypeId: "anki:5", fields: ["kat", "cat", ""], tags: [], key: "kat" },
   ];
   const cards: NativeCard[] = [
-    { id: 201, noteId: 101, ord: 0, deck: "Kenning::Nederlands", position: 0, schedule: s },
-    { id: 202, noteId: 102, ord: 0, deck: "Kenning::Nederlands", position: 1, suspended: true },
+    { id: 201, noteId: 101, ord: 0, deck: "Vuurtoren::Nederlands", position: 0, schedule: s },
+    { id: 202, noteId: 102, ord: 0, deck: "Vuurtoren::Nederlands", position: 1, suspended: true },
     { id: 203, noteId: 103, ord: 0, deck: "Opmaat", position: 2 },
     { id: 204, noteId: 104, ord: 0, deck: "Opmaat", position: 3 },
     { id: 30, noteId: 3, ord: 0, deck: "Dutch", position: 4, schedule: t },
   ];
   return {
-    notetypes: [KENNING_NOTETYPE, IMPORTED, OTHER],
-    decks: [{ name: "Kenning::Nederlands", options: DEFAULT_DECK_OPTIONS }],
+    notetypes: [VUURTOREN_NOTETYPE, IMPORTED, OTHER],
+    decks: [{ name: "Vuurtoren::Nederlands", options: DEFAULT_DECK_OPTIONS }],
     notes,
     cards,
     reviews,
@@ -98,19 +98,19 @@ function anki() {
 }
 
 describe("moveToAnki", () => {
-  it("adds words as Kenning notes, keeps Anki's own, gives reviewed cards their due date", async () => {
+  it("adds words as Vuurtoren notes, keeps Anki's own, gives reviewed cards their due date", async () => {
     const c = collection();
     const { col, client } = anki();
     // Five days before fiets is due.
     const now = c.s.due - 5 * DAY;
     const r = await moveToAnki(client, { ...c, now, withHistory: false });
     expect(r).toMatchObject({ added: 3, existing: 1, skipped: 1, scheduled: 2, reviews: 0 });
-    expect(r.decks).toEqual(["Dutch", "Kenning::Nederlands", "Opmaat"]);
+    expect(r.decks).toEqual(["Dutch", "Opmaat", "Vuurtoren::Nederlands"]);
     expect(col.models.has(NOTE_TYPE)).toBe(true);
     const added = [...col.notes].filter(([id]) => id !== 3);
     expect(added.map(([, n]) => [n.deck, n.fields["Word"], n.fields["Gloss"]])).toEqual([
-      ["Kenning::Nederlands", "fiets", "bicycle"],
-      ["Kenning::Nederlands", "huis", "house"],
+      ["Vuurtoren::Nederlands", "fiets", "bicycle"],
+      ["Vuurtoren::Nederlands", "huis", "house"],
       ["Opmaat", "de boom", "tree"],
     ]);
     expect(col.tags.get(added[0]![0])?.has(TAG_MOVED)).toBe(true);
@@ -126,7 +126,7 @@ describe("moveToAnki", () => {
     const c = collection();
     const { col, client } = anki();
     const r = await moveToAnki(client, { ...c, withHistory: true });
-    // fiets: 3 answers on its new card; kat: only the answer given in Kenning.
+    // fiets: 3 answers on its new card; kat: only the answer given in Vuurtoren.
     expect(r.reviews).toBe(4);
     const fietsCard = col.cards.find(
       (x) => x.note === [...col.notes.keys()].find((id) => id !== 3),
@@ -166,7 +166,7 @@ describe("moveToAnki", () => {
     const client = new AnkiConnectClient({ fetch: fakeAnkiWrite(col) });
     const r = await moveToAnki(client, { ...c, withHistory: true });
     expect(r).toMatchObject({ added: 3, existing: 1, skipped: 1, scheduled: 2, reviews: 4 });
-    expect(r.decks).toEqual(["Dutch", "Kenning::Nederlands", "Opmaat"]);
+    expect(r.decks).toEqual(["Dutch", "Opmaat", "Vuurtoren::Nederlands"]);
     expect(col.notes.size).toBe(4);
     const [fiets, huis] = [...col.notes.keys()]
       .filter((id) => id !== 3)
@@ -182,7 +182,7 @@ describe("moveToAnki", () => {
     expect(col.revlog).toHaveLength(5);
   });
 
-  it("maps an imported word type onto Kenning's fields, and skips notes without a word", () => {
+  it("maps an imported word type onto Vuurtoren's fields, and skips notes without a word", () => {
     expect(wordFields(collection().notes[2]!, IMPORTED)).toEqual({
       Word: "de boom",
       Gloss: "tree",

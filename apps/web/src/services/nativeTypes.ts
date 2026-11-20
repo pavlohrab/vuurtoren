@@ -12,7 +12,7 @@ export interface ReviewCard {
   /** Never answered before. */
   isNew: boolean;
   /**
-   * vocab: Kenning's own layout from the note's word, meaning and sentence; cloze: the cloze
+   * vocab: Vuurtoren's own layout from the note's word, meaning and sentence; cloze: the cloze
    * text with its blank; template: the note type's own template, shown sanitised.
    */
   layout: "vocab" | "cloze" | "template";
@@ -84,7 +84,7 @@ export interface TuningInfo {
   at: number | null;
   /** Reviews used by the last tuning. */
   reviewsUsed: number;
-  /** Answers held now (imported and in Kenning). */
+  /** Answers held now (imported and in Vuurtoren). */
   history: number;
   logLoss?: number;
   rmse?: number;
@@ -123,7 +123,7 @@ export interface NativeServices {
     onProgress?: (msg: string) => void,
   ): Promise<ImportSummary>;
   /**
-   * Move from Anki to Kenning: import the confirmed decks from Anki (notes, cards, review
+   * Move from Anki to Vuurtoren: import the confirmed decks from Anki (notes, cards, review
    * history), then switch the profile to native. Nothing is written to Anki.
    */
   moveFromAnki(onProgress?: (msg: string) => void): Promise<ImportSummary>;
@@ -135,10 +135,10 @@ export interface NativeServices {
     decks: string[],
   ): Promise<{ bytes: Uint8Array; fileName: string; summary: ExportSummary }>;
   /**
-   * Move to Anki, once: words become notes of Kenning's type in Anki (cards that came from Anki
+   * Move to Anki, once: words become notes of Vuurtoren's type in Anki (cards that came from Anki
    * stay as they are there), reviewed cards get their due date, and with `withHistory`
    * (experimental) the review history and exact intervals too. The profile then switches to
-   * Keep using Anki and reads the moved decks. Kenning's own cards are kept, unused.
+   * Keep using Anki and reads the moved decks. Vuurtoren's own cards are kept, unused.
    */
   moveToAnki(withHistory: boolean, onProgress?: (msg: string) => void): Promise<MoveToAnkiSummary>;
   tuning(): Promise<TuningInfo>;
@@ -147,7 +147,7 @@ export interface NativeServices {
   /** Tune by itself when 30 days or 500 answers have passed; null when nothing was due. */
   autoTune(): Promise<TuningResult | null>;
   /**
-   * The latest answer given in Kenning, which Undo takes back when the review screen has none
+   * The latest answer given in Vuurtoren, which Undo takes back when the review screen has none
    * of its own (after a reload or on another day); null when there is none.
    */
   lastReview(): Promise<{ cardId: number; reviewId: string; at: number } | null>;

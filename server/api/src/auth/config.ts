@@ -1,15 +1,15 @@
 /**
  * Auth settings from the environment:
  *
- *   KENNING_USER            username for password sign-in
- *   KENNING_PASSWORD_HASH   scrypt hash from `hash-password` (recommended)
- *   KENNING_PASSWORD        plain password (accepted, hashed at startup; a warning is logged)
- *   KENNING_TOKEN           bearer token for scripts / the MCP server
- *   KENNING_AUTH_DB         session database (default auth.sqlite next to KENNING_DB, i.e.
+ *   VUURTOREN_USER            username for password sign-in
+ *   VUURTOREN_PASSWORD_HASH   scrypt hash from `hash-password` (recommended)
+ *   VUURTOREN_PASSWORD        plain password (accepted, hashed at startup; a warning is logged)
+ *   VUURTOREN_TOKEN           bearer token for scripts / the MCP server
+ *   VUURTOREN_AUTH_DB         session database (default auth.sqlite next to VUURTOREN_DB, i.e.
  *                           /data/auth.sqlite in Docker; in memory while auth is off)
- *   KENNING_COOKIE_SECURE   "0" to drop the Secure cookie flag (plain-http LAN only)
- *   KENNING_TRUST_CF        "1" behind a Cloudflare Tunnel: client IP from CF-Connecting-IP
- *   KENNING_ALLOWED_ORIGINS extra origins (comma-separated) for state-changing requests, and
+ *   VUURTOREN_COOKIE_SECURE   "0" to drop the Secure cookie flag (plain-http LAN only)
+ *   VUURTOREN_TRUST_CF        "1" behind a Cloudflare Tunnel: client IP from CF-Connecting-IP
+ *   VUURTOREN_ALLOWED_ORIGINS extra origins (comma-separated) for state-changing requests, and
  *                           with auth off the only other sites /api/sync answers
  *
  * With no password and no token, auth is off.
@@ -30,47 +30,47 @@ export async function authFromEnv(
 ): Promise<{ options: AuthOptions; log: string[]; warnings: string[] }> {
   const log: string[] = [];
   const warnings: string[] = [];
-  const user = env["KENNING_USER"]?.trim() || undefined;
-  const hashText = env["KENNING_PASSWORD_HASH"]?.trim() || undefined;
-  const plain = env["KENNING_PASSWORD"] || undefined;
-  const token = env["KENNING_TOKEN"]?.trim() || undefined;
+  const user = env["VUURTOREN_USER"]?.trim() || undefined;
+  const hashText = env["VUURTOREN_PASSWORD_HASH"]?.trim() || undefined;
+  const plain = env["VUURTOREN_PASSWORD"] || undefined;
+  const token = env["VUURTOREN_TOKEN"]?.trim() || undefined;
 
   let password;
   if (hashText) {
     password = parsePasswordHash(hashText);
-    if (plain) warnings.push("KENNING_PASSWORD is ignored because KENNING_PASSWORD_HASH is set.");
+    if (plain) warnings.push("VUURTOREN_PASSWORD is ignored because VUURTOREN_PASSWORD_HASH is set.");
   } else if (plain) {
     // A salt derived from the username keeps the hash (and so the sessions) stable across
     // restarts. Fine for this fallback; `hash-password` uses a random salt.
     const salt = createHash("sha256")
-      .update(`kenning-plain-password\0${user ?? ""}`)
+      .update(`vuurtoren-plain-password\0${user ?? ""}`)
       .digest();
     password = parsePasswordHash(
       await hashPasswordWithSalt(plain, salt.subarray(0, 16), DEFAULT_SCRYPT),
     );
     warnings.push(
-      "KENNING_PASSWORD is a plain-text password in the environment. Prefer KENNING_PASSWORD_HASH (create one with `hash-password`).",
+      "VUURTOREN_PASSWORD is a plain-text password in the environment. Prefer VUURTOREN_PASSWORD_HASH (create one with `hash-password`).",
     );
   }
   if (password && !user) {
-    throw new Error("KENNING_USER must be set together with KENNING_PASSWORD_HASH.");
+    throw new Error("VUURTOREN_USER must be set together with VUURTOREN_PASSWORD_HASH.");
   }
   if (token && token.length < 16) {
     warnings.push(
-      "KENNING_TOKEN is short; use at least 32 random characters (openssl rand -hex 32).",
+      "VUURTOREN_TOKEN is short; use at least 32 random characters (openssl rand -hex 32).",
     );
   }
 
-  const cookieSecure = flag(env["KENNING_COOKIE_SECURE"], true);
-  const trustCloudflare = flag(env["KENNING_TRUST_CF"], false);
-  const allowedOrigins = (env["KENNING_ALLOWED_ORIGINS"] ?? "")
+  const cookieSecure = flag(env["VUURTOREN_COOKIE_SECURE"], true);
+  const trustCloudflare = flag(env["VUURTOREN_TRUST_CF"], false);
+  const allowedOrigins = (env["VUURTOREN_ALLOWED_ORIGINS"] ?? "")
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean);
 
   if (!password && !token) {
     warnings.push(
-      "Auth is OFF: anyone who can reach this server has all the data. Fine for localhost; set KENNING_USER and KENNING_PASSWORD_HASH before exposing it.",
+      "Auth is OFF: anyone who can reach this server has all the data. Fine for localhost; set VUURTOREN_USER and VUURTOREN_PASSWORD_HASH before exposing it.",
     );
   } else {
     log.push(
@@ -79,8 +79,8 @@ export async function authFromEnv(
         .join(" + ")}`,
     );
     if (!cookieSecure)
-      warnings.push("KENNING_COOKIE_SECURE=0: the session cookie also travels over plain http.");
-    if (trustCloudflare) log.push("client IP taken from CF-Connecting-IP (KENNING_TRUST_CF=1)");
+      warnings.push("VUURTOREN_COOKIE_SECURE=0: the session cookie also travels over plain http.");
+    if (trustCloudflare) log.push("client IP taken from CF-Connecting-IP (VUURTOREN_TRUST_CF=1)");
   }
 
   return {
@@ -90,8 +90,8 @@ export async function authFromEnv(
       token,
       sessionDb:
         password || token
-          ? env["KENNING_AUTH_DB"] ||
-            join(dirname(env["KENNING_DB"] || "/data/kenning.sqlite"), "auth.sqlite")
+          ? env["VUURTOREN_AUTH_DB"] ||
+            join(dirname(env["VUURTOREN_DB"] || "/data/vuurtoren.sqlite"), "auth.sqlite")
           : ":memory:",
       cookieSecure,
       trustCloudflare,

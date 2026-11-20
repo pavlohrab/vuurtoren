@@ -6,7 +6,7 @@ const folderOf = (path: string): string => path.replace(/[\\/][^\\/]*$/, "") || 
 
 /**
  * Settings > Your data in the desktop app (offline mode): where the file is, "Show in folder",
- * "Move…" (copy to another folder and use it from there), and the way to a Kenning server.
+ * "Move…" (copy to another folder and use it from there), and the way to a Vuurtoren server.
  */
 export function DesktopDataFile({ file }: { file: DataFile }) {
   const { desktop } = useAppInfo();
@@ -27,7 +27,7 @@ export function DesktopDataFile({ file }: { file: DataFile }) {
         setPath(next);
         toast(
           "Data moved",
-          `Kenning now uses ${next}. The old file is still in ${folderOf(old)}; delete it when you no longer need it.`,
+          `Vuurtoren now uses ${next}. The old file is still in ${folderOf(old)}; delete it when you no longer need it.`,
         );
       }
     } catch (e) {
@@ -44,7 +44,7 @@ export function DesktopDataFile({ file }: { file: DataFile }) {
       </p>
       <p style={{ margin: 0, color: "var(--ink-muted)" }}>
         Copy this file to back up everything, or keep it in a synced folder (Dropbox, OneDrive,
-        Syncthing) to have it on another computer. Open Kenning on one computer at a time.
+        Syncthing) to have it on another computer. Open Vuurtoren on one computer at a time.
       </p>
       <div className="row">
         <Button onClick={() => void file.reveal().catch(fail)}>Show in folder</Button>
@@ -59,13 +59,13 @@ export function DesktopDataFile({ file }: { file: DataFile }) {
       ) : null}
       {desktop ? (
         <p style={{ margin: 0, color: "var(--ink-muted)" }}>
-          Have a Kenning server?{" "}
+          Have a Vuurtoren server?{" "}
           <button
             type="button"
             className="link-button"
             onClick={() => void desktop.connectServer().catch(fail)}
           >
-            Connect to a Kenning server
+            Connect to a Vuurtoren server
           </button>{" "}
           instead (your data here stays in this file).
         </p>

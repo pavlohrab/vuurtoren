@@ -9,9 +9,9 @@ import pytest
 from fastapi.testclient import TestClient
 from httpx import Response
 
-from kenning_nlp import translate as mt
-from kenning_nlp.align import AttentionResult, agrees, align_word
-from kenning_nlp.app import app
+from vuurtoren_nlp import translate as mt
+from vuurtoren_nlp.align import AttentionResult, agrees, align_word
+from vuurtoren_nlp.app import app
 
 client = TestClient(app)
 
@@ -69,7 +69,7 @@ def test_limits(fake: FakeEngine) -> None:
 def test_missing_model_gives_503_with_guidance(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    monkeypatch.setenv("KENNING_MT_DIR", str(tmp_path))
+    monkeypatch.setenv("VUURTOREN_MT_DIR", str(tmp_path))
     monkeypatch.setattr(mt, "_engine", None)
     r = post(["Hallo"])
     assert r.status_code == 503

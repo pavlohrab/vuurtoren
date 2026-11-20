@@ -5,8 +5,8 @@ from functools import cache
 import pytest
 from grammar_cases import CASES
 
-from kenning_nlp.grammar import DETECTORS, TOPICS, detect_grammar
-from kenning_nlp.pipeline import analyze_texts
+from vuurtoren_nlp.grammar import DETECTORS, TOPICS, detect_grammar
+from vuurtoren_nlp.pipeline import analyze_texts
 
 
 @cache

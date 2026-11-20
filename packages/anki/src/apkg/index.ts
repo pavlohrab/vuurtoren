@@ -17,7 +17,7 @@ export {
 export { collectionFromAnki } from "./connect.js";
 export {
   type CreateSqlite,
-  KENNING_NOTETYPE_ANKI_ID,
+  VUURTOREN_NOTETYPE_ANKI_ID,
   type PackageInput,
   type PackageSummary,
   type SqliteWriter,

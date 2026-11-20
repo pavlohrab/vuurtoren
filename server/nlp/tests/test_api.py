@@ -1,6 +1,6 @@
 from fastapi.testclient import TestClient
 
-from kenning_nlp.app import app
+from vuurtoren_nlp.app import app
 
 client = TestClient(app)
 
@@ -28,7 +28,7 @@ def test_detect_endpoint() -> None:
 
 
 def test_analyze_reports_analyzer_version() -> None:
-    from kenning_nlp.analyzer import analyzer_version
+    from vuurtoren_nlp.analyzer import analyzer_version
 
     r = client.post("/analyze/text", json={"lang": "nl", "texts": ["De kat slaapt."]})
     assert r.json()[0]["analyzerVersion"] == analyzer_version()

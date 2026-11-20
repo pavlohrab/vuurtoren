@@ -27,29 +27,29 @@ const WORD_STATE_HINT: Record<WordStateKind, string> = {
   ignored: "Left out of coverage and suggestions",
 };
 
-/** Label of a word that is "learning" only because of answers given in Kenning. */
-const IN_KENNING_LABEL = "Learning (in Kenning)";
+/** Label of a word that is "learning" only because of answers given in Vuurtoren. */
+const IN_VUURTOREN_LABEL = "Learning (in Vuurtoren)";
 
 export interface WordStateChipProps {
   state: WordStateKind;
-  /** The state comes from answers in Kenning, not from Anki: "Learning (in Kenning)". */
-  inKenning?: boolean | undefined;
+  /** The state comes from answers in Vuurtoren, not from Anki: "Learning (in Vuurtoren)". */
+  inVuurtoren?: boolean | undefined;
   /** Show a count instead of the bare label, e.g. "3 to learn". */
   count?: number;
   className?: string;
 }
 
 /** The one chip for a word's state, used everywhere a state is shown. */
-export function WordStateChip({ state, count, className, inKenning }: WordStateChipProps) {
-  const appOnly = inKenning === true && state === "learning";
-  const label = appOnly ? IN_KENNING_LABEL : WORD_STATE_LABEL[state];
+export function WordStateChip({ state, count, className, inVuurtoren }: WordStateChipProps) {
+  const appOnly = inVuurtoren === true && state === "learning";
+  const label = appOnly ? IN_VUURTOREN_LABEL : WORD_STATE_LABEL[state];
   return (
     <span
       className={cn("k-chip", "k-state", `k-state--${state}`, className)}
       data-state={state}
       title={
         appOnly
-          ? "You answered this word correctly in Kenning; it is not learned in Anki yet"
+          ? "You answered this word correctly in Vuurtoren; it is not learned in Anki yet"
           : WORD_STATE_HINT[state]
       }
     >
@@ -70,7 +70,7 @@ const ANKI_STATUS_LABEL: Record<AnkiStatus, string> = {
   unavailable: "Anki not reachable",
 };
 
-/** The same statuses for Kenning's own cards (native mode). */
+/** The same statuses for Vuurtoren's own cards (native mode). */
 const NATIVE_STATUS_LABEL: Record<AnkiStatus, string> = {
   absent: "Not in your words",
   new: "Card: new",
@@ -80,7 +80,7 @@ const NATIVE_STATUS_LABEL: Record<AnkiStatus, string> = {
   unavailable: "Card not available",
 };
 
-/** Chip for a word's card status (in Anki, or Kenning's own card with `native`). */
+/** Chip for a word's card status (in Anki, or Vuurtoren's own card with `native`). */
 export function AnkiStatusChip({
   status,
   className,

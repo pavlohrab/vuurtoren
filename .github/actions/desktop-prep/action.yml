@@ -50,7 +50,7 @@ runs:
         python3 - "$RUNNER_TEMP/packs" <<'PY'
         import hashlib, json, os, subprocess, sys
         out = sys.argv[1]
-        packs = json.load(open("server/nlp/src/kenning_nlp/packs.json"))["packs"]
+        packs = json.load(open("server/nlp/src/vuurtoren_nlp/packs.json"))["packs"]
         for name, p in packs.items():
             file = f"{name}-{p['version']}.tar.gz"
             tag = f"packs-{p['version']}"

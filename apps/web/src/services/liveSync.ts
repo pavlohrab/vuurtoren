@@ -8,7 +8,7 @@
 import type { KeyValueStorage } from "@app/ai";
 import {
   type Argon2Cost,
-  type KenningRepository,
+  type VuurtorenRepository,
   type SyncKey,
   type SyncStore,
   type VaultFile,
@@ -30,7 +30,7 @@ import { webdavStore } from "../sync/webdavStore.js";
 import { forgetSyncKey, loadSyncKey, saveSyncKey } from "../sync/keyStore.js";
 import type { SetUpHow, SyncPlace, SyncServices, SyncStatus } from "./syncTypes.js";
 
-const STORAGE_KEY = "kenning.sync";
+const STORAGE_KEY = "vuurtoren.sync";
 /** Sync by itself at most this often. */
 const AUTO_EVERY_MS = 60_000;
 /** Hiding the app syncs at most this often (switching windows back and forth does not). */
@@ -52,8 +52,8 @@ interface SyncKeys {
 }
 
 export interface LiveSyncDeps {
-  /** This device's own log; null on a page of a Kenning server (sync does not apply). */
-  repo: KenningRepository | null;
+  /** This device's own log; null on a page of a Vuurtoren server (sync does not apply). */
+  repo: VuurtorenRepository | null;
   /** Where the sync key is kept (default: the key store). */
   keys?: SyncKeys;
   storage: KeyValueStorage;
@@ -88,7 +88,7 @@ async function writeVault(store: SyncStore, vault: VaultFile): Promise<void> {
   const back = await readVault(store);
   if (!back) {
     throw new Error(
-      "The sync place did not keep the file just written. Check that Kenning may write there, then try again.",
+      "The sync place did not keep the file just written. Check that Vuurtoren may write there, then try again.",
     );
   }
   if (JSON.stringify(back) !== JSON.stringify(vault)) {
@@ -100,12 +100,12 @@ async function writeVault(store: SyncStore, vault: VaultFile): Promise<void> {
   }
 }
 
-/** Anything Kenning left in the place: device folders, images, a vault (or a copy of one). */
-async function holdsKenningData(store: SyncStore): Promise<boolean> {
-  const top = await store.list("kenning");
+/** Anything Vuurtoren left in the place: device folders, images, a vault (or a copy of one). */
+async function holdsVuurtorenData(store: SyncStore): Promise<boolean> {
+  const top = await store.list("vuurtoren");
   if (top.some((n) => n.startsWith("vault"))) return true;
-  if (top.includes("devices") && (await store.list("kenning/devices")).length > 0) return true;
-  return top.includes("blobs") && (await store.list("kenning/blobs")).length > 0;
+  if (top.includes("devices") && (await store.list("vuurtoren/devices")).length > 0) return true;
+  return top.includes("blobs") && (await store.list("vuurtoren/blobs")).length > 0;
 }
 
 export function createLiveSync(deps: LiveSyncDeps) {
@@ -182,7 +182,7 @@ export function createLiveSync(deps: LiveSyncDeps) {
     const counting = new Proxy(repo, {
       get(target, prop, receiver) {
         if (prop !== "importEvents") return Reflect.get(target, prop, receiver) as unknown;
-        return async (...args: Parameters<KenningRepository["importEvents"]>) => {
+        return async (...args: Parameters<VuurtorenRepository["importEvents"]>) => {
           const r = await target.importEvents(...args);
           applied += r.added;
           return r;
@@ -229,7 +229,7 @@ export function createLiveSync(deps: LiveSyncDeps) {
     if (!saved) throw new Error("Sync is not set up on this device.");
     const store = storeFor(saved.place);
     const vault = await readVault(store);
-    if (!vault) throw new Error("The sync place no longer holds your Kenning data.");
+    if (!vault) throw new Error("The sync place no longer holds your Vuurtoren data.");
     const key = await unlockVault(vault, secret);
     return { store, vault, key };
   }
@@ -240,19 +240,19 @@ export function createLiveSync(deps: LiveSyncDeps) {
     if (how === "join") {
       if (!vault) {
         throw new Error(
-          "There is no Kenning sync data in this place yet. If another device started it, check that this is the same place (folder, address, repository and branch); a synced folder can take a few minutes to bring the files. To begin here instead, choose Start new sync data here.",
+          "There is no Vuurtoren sync data in this place yet. If another device started it, check that this is the same place (folder, address, repository and branch); a synced folder can take a few minutes to bring the files. To begin here instead, choose Start new sync data here.",
         );
       }
       return { key: await unlockVault(vault, passphrase), recoveryKey: null };
     }
     if (vault) {
       throw new Error(
-        "This place already holds Kenning sync data. Choose Join my synced data and type its passphrase.",
+        "This place already holds Vuurtoren sync data. Choose Join my synced data and type its passphrase.",
       );
     }
-    if (await holdsKenningData(store)) {
+    if (await holdsVuurtorenData(store)) {
       throw new Error(
-        "This place already holds files from other devices, but not yet the file that opens them. If they sync here, wait until everything has arrived and choose Join my synced data. To start over, remove the kenning folder there first.",
+        "This place already holds files from other devices, but not yet the file that opens them. If they sync here, wait until everything has arrived and choose Join my synced data. To start over, remove the vuurtoren folder there first.",
       );
     }
     const made = await createVault(passphrase, deps.cost);

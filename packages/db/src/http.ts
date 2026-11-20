@@ -1,23 +1,23 @@
 /**
- * HTTP repository ("@app/db/http"): the `KenningRepository` contract over the API service
+ * HTTP repository ("@app/db/http"): the `VuurtorenRepository` contract over the API service
  * (server/api), for the self-hosted "one SQLite file on the server" mode. Same method names
  * and arguments as the local repository; results are JSON, with the learner model's Map
  * rebuilt from entries. No Node APIs: runs in the browser and in tests.
  */
 import { type DataAdmin, type DataInfo, backupFilename, checkBackupHeader } from "./backup.js";
-import type { KenningRepository } from "./repository.js";
+import type { VuurtorenRepository } from "./repository.js";
 import { type RpcMethod, type RpcResponse } from "./rpc.js";
 import type { WordKnowledge } from "@app/core";
 
 /** Sync is a device feature; in server mode the server holds the one log. */
-const SERVER_SYNC = "Sync runs on a device with its own data, not through a Kenning server.";
+const SERVER_SYNC = "Sync runs on a device with its own data, not through a Vuurtoren server.";
 
 export { backupFilename };
 
 /** Body of `GET /api/health` (never requires authentication). */
 export interface ServerHealth {
   ok: true;
-  service: "kenning-api";
+  service: "vuurtoren-api";
   /** "ready", or "schema-too-new" when the stored database needs a newer app. */
   state: "ready" | "schema-too-new";
   /** True when requests need a sign-in session (cookie) or `Authorization: Bearer <token>`. */
@@ -46,7 +46,7 @@ type FetchLike = typeof fetch;
 const ambientFetch: FetchLike = (...args) => globalThis.fetch(...args);
 
 /**
- * Ask a same-origin (or given) base URL whether a Kenning API answers. Any other answer
+ * Ask a same-origin (or given) base URL whether a Vuurtoren API answers. Any other answer
  * (404, an HTML page from a SPA fallback, a network error, a timeout) returns null.
  */
 export async function fetchServerHealth(
@@ -60,7 +60,7 @@ export async function fetchServerHealth(
     });
     if (!res.ok) return null;
     const body = (await res.json()) as Partial<ServerHealth> | null;
-    return body && body.ok === true && body.service === "kenning-api"
+    return body && body.ok === true && body.service === "vuurtoren-api"
       ? (body as ServerHealth)
       : null;
   } catch {
@@ -113,8 +113,8 @@ export function createHttpAdmin(
       checkBackupHeader(bytes); // fail fast, before uploading a large wrong file
       const res = await fetchImpl(`${baseUrl}/api/import`, {
         method: "POST",
-        // X-Kenning marks a deliberate request from the app (the server's CSRF guard).
-        headers: headers({ "content-type": "application/octet-stream", "x-kenning": "1" }),
+        // X-Vuurtoren marks a deliberate request from the app (the server's CSRF guard).
+        headers: headers({ "content-type": "application/octet-stream", "x-vuurtoren": "1" }),
         body: bytes as BodyInit,
       });
       if (!res.ok) throw await failure(res);
@@ -123,7 +123,7 @@ export function createHttpAdmin(
 }
 
 /** A repository backed by the API service, plus its backup/restore surface. */
-export type HttpRepository = KenningRepository &
+export type HttpRepository = VuurtorenRepository &
   DataAdmin & {
     /**
      * Cross-device freshness: true when someone else (another device or tab)
@@ -145,7 +145,7 @@ type Head = { deviceId: string; seq: number };
  * @param token bearer token when the server requires one
  *
  * @example
- * const repo = await createHttpRepository("", localStorage.getItem("kenning-token") ?? undefined);
+ * const repo = await createHttpRepository("", localStorage.getItem("vuurtoren-token") ?? undefined);
  */
 export async function createHttpRepository(
   baseUrl: string = "",
@@ -197,7 +197,7 @@ export async function createHttpRepository(
     append: async (event) => {
       appending++;
       try {
-        const stored = await call<Awaited<ReturnType<KenningRepository["append"]>>>(
+        const stored = await call<Awaited<ReturnType<VuurtorenRepository["append"]>>>(
           "append",
           event,
         );
@@ -283,7 +283,7 @@ export async function createHttpRepository(
         method: "POST",
         headers: {
           "content-type": type,
-          "x-kenning": "1",
+          "x-vuurtoren": "1",
           ...(token ? { authorization: `Bearer ${token}` } : {}),
         },
         body: bytes as BodyInit,

@@ -1,5 +1,5 @@
 /**
- * HTTP surface of the Kenning API (node:http, no framework).
+ * HTTP surface of the Vuurtoren API (node:http, no framework).
  *
  *   GET  /api/health   open; { ok, service, state, authRequired, authMethods, schemaVersion }
  *   *    /api/auth/*   sign-in, sign-out, session check (see auth/index.ts)
@@ -7,7 +7,7 @@
  *   POST /api/rpc      { method, args } -> { ok, result } (allow-listed repository methods)
  *   POST /api/blobs    raw image or sound body (images at most 2 MB, sounds 8 MB) -> { ok, id }
  *   GET  /api/blobs/:id  a stored image (cover photos; content-addressed, cached privately)
- *   GET  /api/export   consistent snapshot, kenning-YYYY-MM-DD.sqlite
+ *   GET  /api/export   consistent snapshot, vuurtoren-YYYY-MM-DD.sqlite
  *   POST /api/import   raw SQLite body replaces the database
  *   POST /api/mcp      MCP over Streamable HTTP (Claude Code; see mcp.ts). Also accepts a
  *                      per-user MCP token, which opens nothing else.
@@ -16,7 +16,7 @@
  *   PUT  /api/sync/file?path=  write one (raw body)            data; also accepts a sync
  *   DELETE /api/sync/file?path=  remove one                    token, which opens nothing else)
  *   A sync token writes only its own device's folder and images; with auth off, /api/sync
- *   answers this site and KENNING_ALLOWED_ORIGINS only.
+ *   answers this site and VUURTOREN_ALLOWED_ORIGINS only.
  *
  * When auth is on (password and/or token) every endpoint except health and the
  * sign-in routes needs a session cookie or `Authorization: Bearer <token>`. State-changing
@@ -54,13 +54,13 @@ export interface ApiOptions {
   maxBodyBytes?: number;
   /** Largest accepted `/api/rpc` body in bytes (default 32 MiB); held in memory. */
   maxRpcBytes?: number;
-  /** NLP service address for the MCP tools that analyse text (KENNING_NLP_URL). */
+  /** NLP service address for the MCP tools that analyse text (VUURTOREN_NLP_URL). */
   nlpUrl?: string | undefined;
   /** Analyser override (tests); defaults to the NLP service at `nlpUrl`. */
   analyze?: McpEndpointOptions["analyze"];
   /** Folder of the sync files (default: `sync` next to the database file). */
   syncDir?: string;
-  /** Most bytes all sync files together may take (KENNING_SYNC_QUOTA_MB; default 2 GB). */
+  /** Most bytes all sync files together may take (VUURTOREN_SYNC_QUOTA_MB; default 2 GB). */
   syncQuotaBytes?: number | undefined;
 }
 
@@ -75,7 +75,7 @@ function syncCors(req: IncomingMessage, auth: Auth): Record<string, string> {
   return {
     "access-control-allow-origin": origin,
     "access-control-allow-methods": "GET, PUT, DELETE, OPTIONS",
-    "access-control-allow-headers": "authorization, content-type, x-kenning",
+    "access-control-allow-headers": "authorization, content-type, x-vuurtoren",
     "access-control-max-age": "600",
     vary: "Origin",
   };
@@ -155,7 +155,7 @@ export function createApiServer(opts: ApiOptions): Server {
       if (!auth.syncTokens.claimDevice(who.tokenId, verdict.claim)) {
         throw new HttpFail(403, "This sync token belongs to another device.");
       }
-      console.log(`[kenning-api] sync token ${who.tokenId} is now device ${verdict.claim}`);
+      console.log(`[vuurtoren-api] sync token ${who.tokenId} is now device ${verdict.claim}`);
     }
     return () => {
       if (verdict.madeVault) auth.syncTokens.allowVault(who.tokenId);
@@ -169,7 +169,7 @@ export function createApiServer(opts: ApiOptions): Server {
     if (path === "/api/health" && method === "GET") {
       return json(res, 200, {
         ok: true,
-        service: "kenning-api",
+        service: "vuurtoren-api",
         state: store.state,
         authRequired: auth.enabled,
         authMethods: auth.methods,
@@ -185,7 +185,7 @@ export function createApiServer(opts: ApiOptions): Server {
       if (foreign) {
         throw new HttpFail(
           403,
-          `Sync from another site needs sign-in on this server, or KENNING_ALLOWED_ORIGINS (${foreign}).`,
+          `Sync from another site needs sign-in on this server, or VUURTOREN_ALLOWED_ORIGINS (${foreign}).`,
         );
       }
       if (method === "OPTIONS") {
@@ -321,7 +321,7 @@ export function createApiServer(opts: ApiOptions): Server {
       if (err instanceof BackupError || isSchemaTooNew(err)) {
         return json(res, 422, { ok: false, error: (err as Error).message });
       }
-      console.error("[kenning-api]", err);
+      console.error("[vuurtoren-api]", err);
       json(res, 500, { ok: false, error: err instanceof Error ? err.message : "Server error." });
     });
   });

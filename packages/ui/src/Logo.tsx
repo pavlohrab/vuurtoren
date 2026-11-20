@@ -2,7 +2,7 @@ import type * as React from "react";
 import { cn } from "./cn.js";
 
 /**
- * The Kenning mark: a lowercase k whose leg is a bookmark ribbon. Stem and arm are ink; the leg
+ * The Vuurtoren mark: a lowercase k whose leg is a bookmark ribbon. Stem and arm are ink; the leg
  * is a honey-accent ribbon tucked under the arm (a hairline gap) that hangs just below the
  * baseline and ends in a level swallow-tail notch, the bookmark you leave in a text.
  *
@@ -88,13 +88,13 @@ export interface LogoProps extends LogoMarkProps {
   variant?: "full" | "mark";
 }
 
-/** The Kenning logo: the bookmark-k mark with the "kenning" wordmark in Instrument Sans. */
+/** The Vuurtoren logo: the bookmark-k mark with the "vuurtoren" wordmark in Instrument Sans. */
 export function Logo({ variant = "full", size = 24, className, title, ...rest }: LogoProps) {
   if (variant === "mark") {
     return (
       <LogoMark
         size={size}
-        title={title ?? "Kenning"}
+        title={title ?? "Vuurtoren"}
         {...(className ? { className } : {})}
         {...rest}
       />
@@ -105,11 +105,11 @@ export function Logo({ variant = "full", size = 24, className, title, ...rest }:
       className={cn("k-logo", className)}
       style={{ ["--k-logo-size" as string]: `${size}px` }}
       role="img"
-      aria-label={title ?? "Kenning"}
+      aria-label={title ?? "Vuurtoren"}
     >
       <LogoMark size={size} {...rest} />
       <span className="k-logo-word" aria-hidden>
-        kenning
+        vuurtoren
       </span>
     </span>
   );

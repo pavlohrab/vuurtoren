@@ -37,7 +37,7 @@ export const DEFAULT_PREFS: ReaderPrefs = {
   clozeMeaning: true,
 };
 
-const KEY = "kenning-reader-prefs";
+const KEY = "vuurtoren-reader-prefs";
 
 const pick = <T extends string>(v: unknown, allowed: readonly T[], fallback: T): T =>
   typeof v === "string" && (allowed as readonly string[]).includes(v) ? (v as T) : fallback;

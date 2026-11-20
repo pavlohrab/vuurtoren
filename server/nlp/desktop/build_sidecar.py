@@ -1,10 +1,10 @@
-"""Build the desktop sidecar: `kenning_nlp` + Python as a PyInstaller one-directory bundle.
+"""Build the desktop sidecar: `vuurtoren_nlp` + Python as a PyInstaller one-directory bundle.
 
     uv run --no-project python server/nlp/desktop/build_sidecar.py [--out DIR] [--packs]
 
 Steps: a fresh build venv from uv.lock (no dev tools), trimmed like the slim Docker image
 (Dutch-only simplemma, the wordfreq lists /detect needs, no tests), then PyInstaller with
-kenning-nlp.spec. The result goes to ``apps/desktop/src-tauri/sidecar/kenning-nlp/`` (bundled as
+vuurtoren-nlp.spec. The result goes to ``apps/desktop/src-tauri/sidecar/vuurtoren-nlp/`` (bundled as
 a Tauri resource by ``tauri.sidecar.conf.json``). OCR is included: RapidOCR with its bundled
 PaddleOCR models (the ``ocr`` extra), so photo and scan import work offline from the first start
 and ``/health`` reports ``"ocr": true``.
@@ -65,7 +65,7 @@ def dir_size(path: Path) -> int:
 
 
 def copy_packs(src: Path, out: Path) -> None:
-    manifest = json.loads((NLP / "src" / "kenning_nlp" / "packs.json").read_text())["packs"]
+    manifest = json.loads((NLP / "src" / "vuurtoren_nlp" / "packs.json").read_text())["packs"]
     dest = out / "packs"
     shutil.rmtree(dest, ignore_errors=True)
     dest.mkdir(parents=True)
@@ -99,7 +99,7 @@ def main() -> None:
     run(["uv", "pip", "install", "--python", str(py), PYINSTALLER], cwd=NLP, env=env)
     trim(site_packages(venv))
 
-    target = args.out / "kenning-nlp"
+    target = args.out / "vuurtoren-nlp"
     shutil.rmtree(target, ignore_errors=True)
     run(
         [
@@ -114,7 +114,7 @@ def main() -> None:
             str(args.out),
             "--workpath",
             str(build / "pyinstaller"),
-            str(HERE / "kenning-nlp.spec"),
+            str(HERE / "vuurtoren-nlp.spec"),
         ],
         cwd=HERE,
         env=env,

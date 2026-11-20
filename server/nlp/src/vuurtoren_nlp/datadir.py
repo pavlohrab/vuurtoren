@@ -1,8 +1,8 @@
-"""Where the data packs live: ``$KENNING_DATA_DIR`` or ``server/nlp/data`` (development).
+"""Where the data packs live: ``$VUURTOREN_DATA_DIR`` or ``server/nlp/data`` (development).
 
-Each data file can still be pointed elsewhere with its own variable (``KENNING_DICT_PATH``,
-``KENNING_SENTENCES_PATH``, ``KENNING_MT_DIR``, ``KENNING_GRAMMAR_CACHE_PATH``); see
-:mod:`kenning_nlp.packs` for how the files get there.
+Each data file can still be pointed elsewhere with its own variable (``VUURTOREN_DICT_PATH``,
+``VUURTOREN_SENTENCES_PATH``, ``VUURTOREN_MT_DIR``, ``VUURTOREN_GRAMMAR_CACHE_PATH``); see
+:mod:`vuurtoren_nlp.packs` for how the files get there.
 """
 
 from __future__ import annotations
@@ -12,7 +12,7 @@ from pathlib import Path
 
 
 def data_dir() -> Path:
-    env = os.environ.get("KENNING_DATA_DIR")
+    env = os.environ.get("VUURTOREN_DATA_DIR")
     if env:
         return Path(env)
     return Path(__file__).resolve().parents[2] / "data"

@@ -10,7 +10,7 @@ import {
 } from "@app/core";
 import { describe, expect, it } from "vitest";
 import { createNodeDriver } from "./node.js";
-import { type KenningRepository, createRepository } from "./repository.js";
+import { type VuurtorenRepository, createRepository } from "./repository.js";
 import type { AppEvent, SyncEvent } from "./types.js";
 
 const DAY = 86_400_000;
@@ -23,13 +23,13 @@ async function device(id: string, start: number) {
 }
 
 /** Everything one device wrote that the other has not seen. */
-async function send(from: KenningRepository, to: KenningRepository) {
+async function send(from: VuurtorenRepository, to: VuurtorenRepository) {
   return to.importEvents(await from.exportEvents());
 }
 
 const WORD: NativeNotetype = {
-  id: "kenning-word",
-  name: "Kenning Word",
+  id: "vuurtoren-word",
+  name: "Vuurtoren Word",
   kind: "standard",
   fields: ["Word", "Gloss"],
   templates: [{ name: "R", front: "{{Word}}", back: "{{Gloss}}" }],
@@ -41,7 +41,7 @@ const learned = answerCard(answerCard(undefined, 3, T0 - 20 * DAY, ctx), 3, T0 -
 const cardAdded: AppEvent = {
   type: "NativeNotesAdded",
   lang: "nl",
-  origin: "kenning",
+  origin: "vuurtoren",
   notetypes: [WORD],
   decks: [{ name: "Dutch", options: DEFAULT_DECK_OPTIONS }],
   notes: [{ id: 1, notetypeId: WORD.id, fields: ["huis", "house"], tags: [], key: "huis" }],

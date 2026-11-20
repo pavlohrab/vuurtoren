@@ -2,7 +2,7 @@
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/images/logo-dark.svg">
     <source media="(prefers-color-scheme: light)" srcset="docs/images/logo-light.svg">
-    <img alt="kenning" src="docs/images/logo-light.svg" width="300">
+    <img alt="vuurtoren" src="docs/images/logo-light.svg" width="300">
   </picture>
 </p>
 
@@ -11,32 +11,36 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/pavlohrab/Kenning/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/pavlohrab/Kenning/actions/workflows/ci.yml/badge.svg"></a>
-  <a href="https://github.com/pavlohrab/Kenning/actions/workflows/images.yml"><img alt="Images" src="https://github.com/pavlohrab/Kenning/actions/workflows/images.yml/badge.svg"></a>
+  <a href="https://github.com/pavlohrab/Vuurtoren/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/pavlohrab/Vuurtoren/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="https://github.com/pavlohrab/Vuurtoren/actions/workflows/images.yml"><img alt="Images" src="https://github.com/pavlohrab/Vuurtoren/actions/workflows/images.yml/badge.svg"></a>
   <a href="#licence"><img alt="Licence: MIT OR Apache-2.0" src="https://img.shields.io/badge/licence-MIT%20OR%20Apache--2.0-c99a5b"></a>
   <a href="deploy/README.md"><img alt="Self-hosted" src="https://img.shields.io/badge/self--hosted-Docker%20%C2%B7%20Dockge-8f5a1f"></a>
 </p>
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/images/home-dark.webp">
-  <img alt="Kenning's Home: continue reading, today's steps and words to learn now" src="docs/images/home-light.webp">
+  <img alt="Vuurtoren's Home: continue reading, today's steps and words to learn now" src="docs/images/home-light.webp">
 </picture>
 
-## Why Kenning
+## Why Vuurtoren
 
 While learning Dutch I used two tools: reading and Anki. The problem is that they never talk to
 each other. My decks had no idea what I was reading, and the text had no idea which words I
 already knew.
 
-Kenning brings the two together. It knows your words, from its own flashcards or your Anki
+Vuurtoren brings the two together. It knows your words, from its own flashcards or your Anki
 decks, and uses them to make any text readable at your level: an article, a PDF, a photo of a
 page or your course book. Known words stay as they are, a few new ones are marked to learn, and
 the rest get a short translation. One click turns a word into a flashcard, with the sentence you
 found it in. There are also exercises, grammar from A1 to C1 and practice for the A2
 inburgeringsexamen.
 
-Kenning is local-first and self-hosted. Your data lives on your device or your own server, sync
+Vuurtoren is local-first and self-hosted. Your data lives on your device or your own server, sync
 is encrypted, and AI is optional, with your own key.
+
+About the name: vuurtoren is Dutch for lighthouse, literally a "fire-tower", one of those
+compound pictures Dutch builds so many of its words from. A lighthouse helps you find your way
+through unfamiliar water, and that is what I want this app to do for a text.
 
 ## Features
 
@@ -54,12 +58,12 @@ is encrypted, and AI is optional, with your own key.
 - Sync between devices through your own server, a synced folder, WebDAV or GitHub, encrypted
 - Desktop app for Windows, macOS and Linux, or self-host with Docker
 
-## Get Kenning
+## Get Vuurtoren
 
 <p align="center">
-  <a href="https://github.com/pavlohrab/Kenning/releases/latest"><img alt="Download for Windows" src="https://img.shields.io/badge/Download-Windows-8f5a1f?style=for-the-badge"></a>
-  <a href="https://github.com/pavlohrab/Kenning/releases/latest"><img alt="Download for macOS" src="https://img.shields.io/badge/Download-macOS-8f5a1f?style=for-the-badge"></a>
-  <a href="https://github.com/pavlohrab/Kenning/releases/latest"><img alt="Download for Linux" src="https://img.shields.io/badge/Download-Linux-8f5a1f?style=for-the-badge"></a>
+  <a href="https://github.com/pavlohrab/Vuurtoren/releases/latest"><img alt="Download for Windows" src="https://img.shields.io/badge/Download-Windows-8f5a1f?style=for-the-badge"></a>
+  <a href="https://github.com/pavlohrab/Vuurtoren/releases/latest"><img alt="Download for macOS" src="https://img.shields.io/badge/Download-macOS-8f5a1f?style=for-the-badge"></a>
+  <a href="https://github.com/pavlohrab/Vuurtoren/releases/latest"><img alt="Download for Linux" src="https://img.shields.io/badge/Download-Linux-8f5a1f?style=for-the-badge"></a>
 </p>
 
 <p align="center">
@@ -84,5 +88,5 @@ More: [architecture](docs/architecture.md) Â· [algorithms](docs/algorithms.md) Â
 
 ## Licence
 
-MIT or Apache-2.0, at your option. Kenning is an independent project; it talks to Anki through
+MIT or Apache-2.0, at your option. Vuurtoren is an independent project; it talks to Anki through
 the AnkiConnect add-on.

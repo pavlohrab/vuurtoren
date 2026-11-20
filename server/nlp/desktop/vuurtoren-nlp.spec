@@ -1,4 +1,4 @@
-# PyInstaller spec of the desktop sidecar: `kenning_nlp` as a one-directory bundle.
+# PyInstaller spec of the desktop sidecar: `vuurtoren_nlp` as a one-directory bundle.
 # Built by build_sidecar.py (it trims the venv first, like the slim Docker image). Run from server/nlp/desktop.
 # ruff: noqa
 import sys
@@ -8,7 +8,7 @@ from PyInstaller.utils.hooks import collect_all, copy_metadata
 datas, binaries, hiddenimports = [], [], []
 # Packages that load data files, plugins (entry points) or compiled modules at runtime.
 for pkg in (
-    "kenning_nlp",
+    "vuurtoren_nlp",
     "spacy",
     "spacy_legacy",
     "spacy_loggers",
@@ -47,7 +47,7 @@ for pkg in (
     binaries += b
     hiddenimports += h
 # importlib.metadata versions (the analyzer version hashes them) and entry points.
-for dist in ("spacy", "nl-core-news-md", "wordfreq", "simplemma", "thinc", "kenning-nlp"):
+for dist in ("spacy", "nl-core-news-md", "wordfreq", "simplemma", "thinc", "vuurtoren-nlp"):
     datas += copy_metadata(dist)
 
 a = Analysis(
@@ -58,7 +58,7 @@ a = Analysis(
     hiddenimports=hiddenimports,
     excludes=["tkinter", "matplotlib", "IPython", "pytest", "torch", "tensorflow"],
     # The analyzer version hashes the source of its modules: keep them as .py files.
-    module_collection_mode={"kenning_nlp": "py"},
+    module_collection_mode={"vuurtoren_nlp": "py"},
     noarchive=False,
 )
 pyz = PYZ(a.pure)
@@ -67,9 +67,9 @@ exe = EXE(
     a.scripts,
     [],
     exclude_binaries=True,
-    name="kenning-nlp",
+    name="vuurtoren-nlp",
     console=True,  # the app hides the window (CREATE_NO_WINDOW) and keeps stdin as a pipe
     strip=sys.platform != "win32",
     upx=False,
 )
-coll = COLLECT(exe, a.binaries, a.datas, strip=sys.platform != "win32", upx=False, name="kenning-nlp")
+coll = COLLECT(exe, a.binaries, a.datas, strip=sys.platform != "win32", upx=False, name="vuurtoren-nlp")

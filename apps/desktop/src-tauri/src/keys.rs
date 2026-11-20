@@ -9,7 +9,7 @@
 use std::path::{Path, PathBuf};
 
 /// The keychain entry: one sync key per user of this computer.
-const SERVICE: &str = "app.kenning.desktop";
+const SERVICE: &str = "app.vuurtoren.desktop";
 const ACCOUNT: &str = "sync-key";
 /// The fallback file's name in the app data folder.
 pub const KEY_FILE: &str = "sync-key";
@@ -73,7 +73,7 @@ fn keychain_answer(
         (_, Some(key)) => Ok(Some(key)),
         (Err(keyring::Error::NoEntry), None) => Ok(None),
         (Err(e), None) => Err(format!(
-            "The system keychain did not give Kenning its sync key ({e}). Unlock the keychain, then sync again."
+            "The system keychain did not give Vuurtoren its sync key ({e}). Unlock the keychain, then sync again."
         )),
     }
 }

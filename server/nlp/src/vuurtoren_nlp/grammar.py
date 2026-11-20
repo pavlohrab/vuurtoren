@@ -1,9 +1,9 @@
 """Rule-based grammar detectors for Dutch on top of the spaCy analysis (``POST /grammar``).
 
-Each detector looks at one sentence of a :class:`~kenning_nlp.models.TextAnalysis` (POS, morphology,
-dependencies, ``particle_of``) and yields :class:`Hit` objects: a topic id (the id of the grammar
-topic page in ``packages/content/grammar/nl``), the indices of the tokens that make up the
-construction and a short note in plain English.
+Each detector looks at one sentence of a :class:`~vuurtoren_nlp.models.TextAnalysis` (POS,
+morphology, dependencies, ``particle_of``) and yields :class:`Hit` objects: a topic id (the id of
+the grammar topic page in ``packages/content/grammar/nl``), the indices of the tokens that make up
+the construction and a short note in plain English.
 
 Design rules:
 
@@ -27,7 +27,7 @@ from collections import defaultdict
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 
-from kenning_nlp.models import GrammarHit, TextAnalysis, Token
+from vuurtoren_nlp.models import GrammarHit, TextAnalysis, Token
 
 # --------------------------------------------------------------------------------- vocabulary
 

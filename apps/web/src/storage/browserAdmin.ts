@@ -1,4 +1,4 @@
-import { type DataAdmin, type KenningRepository, databaseStats } from "@app/db";
+import { type DataAdmin, type VuurtorenRepository, databaseStats } from "@app/db";
 
 /** The part of the web driver backup needs (see `@app/db/web`). */
 export interface BackupDriver {
@@ -11,7 +11,7 @@ export interface BackupDriver {
  * Backup/restore of the browser (OPFS) database. Reads run under the repository's lock so
  * no transaction is open while the file is copied.
  */
-export function createBrowserAdmin(repo: KenningRepository, driver: BackupDriver): DataAdmin {
+export function createBrowserAdmin(repo: VuurtorenRepository, driver: BackupDriver): DataAdmin {
   return {
     info: () =>
       repo.exclusive(async () => ({

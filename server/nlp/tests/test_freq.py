@@ -1,7 +1,7 @@
 from fastapi.testclient import TestClient
 
-from kenning_nlp.app import app
-from kenning_nlp.freq import token_zipf, zipf
+from vuurtoren_nlp.app import app
+from vuurtoren_nlp.freq import token_zipf, zipf
 
 client = TestClient(app)
 

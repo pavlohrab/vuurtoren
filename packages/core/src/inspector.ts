@@ -25,7 +25,7 @@ export interface InspectorAnki {
   markedKnown: boolean;
   /** A manual state overrides Anki's (offer "Use Anki's state"). */
   overridden: boolean;
-  /** Native mode: the cards are Kenning's own, not Anki's (the inspector words it that way). */
+  /** Native mode: the cards are Vuurtoren's own, not Anki's (the inspector words it that way). */
   native?: boolean;
   /** Native mode: the word's latest answers, newest first, with the interval each gave. */
   reviews?: InspectorReview[];
@@ -49,7 +49,7 @@ export interface InspectorEntry {
   key: string;
   label: TokenLabel;
   state: WordState;
-  /** "learning" only because of answers in Kenning. */
+  /** "learning" only because of answers in Vuurtoren. */
   appLearning?: boolean;
   pKnown: number;
   pos: string;

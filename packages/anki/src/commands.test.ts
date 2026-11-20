@@ -75,7 +75,7 @@ describe("word commands", () => {
     expect(
       await markWordKnown(anki, record, { lang: "nl", key: "Kat", noteIds: [5], cardIds: [51] }),
     ).toEqual({ key: "kat" });
-    expect(col.tags.get(5)?.has("kenning::known")).toBe(true);
+    expect(col.tags.get(5)?.has("vuurtoren::known")).toBe(true);
     const r = await markWordKnown(anki, record, {
       lang: "nl",
       key: "huis",

@@ -47,7 +47,7 @@ export function writeLocalJSON(key: string, value: unknown): void {
  */
 export function deviceStorage(): KeyValueStorage {
   try {
-    const probe = "kenning.probe";
+    const probe = "vuurtoren.probe";
     localStorage.setItem(probe, "1");
     localStorage.removeItem(probe);
     return localStorage;

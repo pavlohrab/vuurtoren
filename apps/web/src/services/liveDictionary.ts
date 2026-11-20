@@ -8,7 +8,7 @@
  * ("in this sentence"), compound, then a less confident alignment.
  */
 import { shortGloss } from "@app/core";
-import type { KenningRepository, WordInfo } from "@app/db";
+import type { VuurtorenRepository, WordInfo } from "@app/db";
 import type { NlpClient } from "@app/nlp-client";
 import { DEGRADED_MESSAGES, clearDegraded, reportDegraded } from "./degraded.js";
 import { nlpOutage } from "./liveSettings.js";
@@ -136,7 +136,7 @@ function translationFailed(e: unknown): void {
 }
 
 export interface LiveDictionaryDeps {
-  repo: KenningRepository;
+  repo: VuurtorenRepository;
   lang: () => Promise<string>;
   nlp: () => Promise<NlpClient>;
 }

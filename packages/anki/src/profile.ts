@@ -42,8 +42,8 @@ function knownCandidate(
   };
 }
 
-/** Kenning's own note type in a destination deck. */
-const kenningCandidate = (deck: string): Candidate =>
+/** Vuurtoren's own note type in a destination deck. */
+const vuurtorenCandidate = (deck: string): Candidate =>
   knownCandidate(
     deck,
     NOTE_TYPE,
@@ -63,7 +63,7 @@ function withOverrides(c: Candidate, s: ProfileSource): Candidate {
 
 /**
  * The sources a snapshot reads for a profile: every confirmed source, every existing destination
- * deck (Kenning's note type) and every extra deck (decks mapped to course units). Detection only
+ * deck (Vuurtoren's note type) and every extra deck (decks mapped to course units). Detection only
  * fills in what the profile leaves open (note type and fields of a source confirmed by deck name,
  * and course decks); a confirmed deck is read even when detection would not have picked it.
  * Decks that do not exist in Anki (yet) are skipped.
@@ -79,7 +79,8 @@ export async function profileSources(
     const k = `${c.deck}\u0000${c.modelName}`;
     if (!out.has(k)) out.set(k, c);
   };
-  for (const deck of destinationDecks(profile)) if (existing.has(deck)) add(kenningCandidate(deck));
+  for (const deck of destinationDecks(profile))
+    if (existing.has(deck)) add(vuurtorenCandidate(deck));
 
   const toDetect: ProfileSource[] = [];
   for (const s of profile.sources) {
