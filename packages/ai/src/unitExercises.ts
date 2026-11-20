@@ -28,6 +28,7 @@ import {
 import { coverageReport, findTargets } from "./coverage.js";
 import type { SentenceGrammarHit } from "./examples.js";
 import { extractJson } from "./json.js";
+import { asString } from "./util.js";
 import type { AIProvider, SystemPrompt, Usage } from "./types.js";
 
 export type UnitExerciseKind = "gapfill" | "sentence-building" | "questions" | "matching";
@@ -152,8 +153,6 @@ export function sentenceChunks(sentence: string, max = 6): string[] {
   for (let i = 0; i < words.length; i += size) out.push(words.slice(i, i + size).join(" "));
   return out;
 }
-
-const asString = (v: unknown) => (typeof v === "string" ? v.trim() : "");
 
 interface Parsed {
   gapfill: { sentence: string; answer: string; lemma: string }[];

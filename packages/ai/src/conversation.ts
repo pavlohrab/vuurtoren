@@ -11,6 +11,7 @@ import type { AnalyzedToken, LearnerModel } from "@app/core";
 import { normalizeKey } from "@app/core";
 import { coverageReport } from "./coverage.js";
 import { extractJson } from "./json.js";
+import { addUsage, asString } from "./util.js";
 import type { AIProvider, ChatMessage, SystemPrompt, Usage } from "./types.js";
 
 export interface Correction {
@@ -115,8 +116,6 @@ export function buildSystemPrompt(s: ConversationSetup): SystemPrompt {
   return { cached: lines.join("\n") };
 }
 
-const asString = (v: unknown): string => (typeof v === "string" ? v.trim() : "");
-
 /** Validate the model's JSON; drops malformed list items instead of failing the whole turn. */
 export function parseTurn(
   text: string,
@@ -188,15 +187,6 @@ export interface TurnResult {
 
 const START_PROMPT =
   "(Start the conversation: greet me briefly and ask a first simple question about the topic.)";
-
-function addUsage(a: Usage, b: Usage | undefined): Usage {
-  if (!b) return a;
-  return {
-    inputTokens: a.inputTokens + b.inputTokens,
-    outputTokens: a.outputTokens + b.outputTokens,
-    cachedTokens: (a.cachedTokens ?? 0) + (b.cachedTokens ?? 0),
-  };
-}
 
 /**
  * One conversation turn: ask, check coverage, rewrite once if needed, gloss what is left.
