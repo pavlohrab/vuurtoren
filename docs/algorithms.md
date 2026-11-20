@@ -1,10 +1,10 @@
 # How Kenning works (no AI needed)
 
-This page explains the algorithms behind Kenning's reader, practice and Anki integration. None of them uses a language model. They are deterministic rules, a few statistics and two offline tools: spaCy for Dutch analysis and a small translation model. The numbers below are copied from the code, and each section names the files it describes, so you can check them.
+This page explains the algorithms behind Kenning's reader, flashcards, practice and Anki support. None of them uses a language model. They are deterministic rules, a few statistics and two offline tools: spaCy for Dutch analysis and a small translation model. The numbers below are copied from the code, and each section names the files it describes, so you can check them.
 
 Contents
 
-1. [Anki → learner model](#1-anki--learner-model)
+1. [Your words → learner model](#1-your-words--learner-model)
 2. [Dutch analysis (NLP service)](#2-dutch-analysis-nlp-service)
 3. [Reading](#3-reading)
 4. [Practice](#4-practice)
@@ -17,9 +17,9 @@ Contents
 
 ---
 
-## 1. Anki → learner model
+## 1. Your words → learner model
 
-In connected mode, your Anki collection is the record of which Dutch words you know. In native mode, Kenning's own cards are, read with the same rules (section 9.4). When you sync in connected mode, Kenning reads your decks (read-only) and builds a **learner model**: for every word key, a state (`unknown`, `seen`, `learning`, `known`, `ignored`) and `pKnown`, the probability that you would recall it right now.
+Your cards are the record of which Dutch words you know: Kenning's own cards in native mode (section 9), or your Anki decks in connected mode. Both are read with the same rules. This section describes the Anki side; section 9.4 applies it to Kenning's cards. Kenning reads your decks (read-only) and builds a **learner model**: for every word key, a state (`unknown`, `seen`, `learning`, `known`, `ignored`) and `pKnown`, the probability that you would recall it right now.
 
 ### 1.1 Finding your Dutch decks and fields
 

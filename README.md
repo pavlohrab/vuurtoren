@@ -8,7 +8,7 @@
 
 <p align="center">
   <strong>Read Dutch with the words you already know.</strong><br>
-  An open-source reader that knows your words: its own cards, or your Anki decks.
+  An open-source app for reading, flashcards and practice, built around the words you know.
 </p>
 
 <p align="center">
@@ -35,11 +35,10 @@
   <img alt="Kenning's Home: continue reading, today's steps, words to learn now and how much of your reading you already know" src="docs/images/home-light.webp">
 </picture>
 
-You already study Dutch words in Anki. Kenning reads your decks, works out which words you
-really know, and turns any text (an article, a PDF, a photo of a page, your textbook) into
-reading at the right level: words you know stay plain, a few words worth learning now are
-highlighted, and the rest are glossed. When you meet a word you want, one click sends it back
-to Anki with the sentence you found it in.
+Kenning turns any text (an article, a PDF, an EPUB, a photo of a page, your textbook) into
+reading at your level. Words you know stay plain, a few words worth learning now are
+highlighted, and the rest are glossed. Click a word to add it to your flashcards, with the
+sentence you found it in.
 
 ### Why "Kenning"?
 
@@ -49,25 +48,22 @@ to Anki with the sentence you found it in.
 > Dutch still thinks that way: its word for vocabulary is _woordenschat_, a "treasure of words".
 > Kenning is about growing yours.
 
-## Highlights
+## What it does
 
-- **Anki is optional.** Kenning can hold your cards and run your reviews itself, or work with
-  your Anki decks.
-- **Your Anki decks are the source of truth.** Dutch decks and fields are found automatically;
-  each card's interval (SM-2) or stability (FSRS) becomes a recall probability.
-- **Graded reading of your own texts.** Paste, a web address, a PDF, an EPUB or a photo.
-  Read, Cloze and Gloss modes, an exact new-words budget per page, and cloze hints.
-- **Real Dutch analysis.** spaCy plus rules for separable verbs (_bel … op_ → _opbellen_),
-  derivations and compounds glossed from their parts, an offline Wiktionary dictionary and offline sentence
-  translation.
-- **Practice, grammar, exam.** Exercises without AI on their own FSRS schedule, grammar topic
-  pages (A1–C1) with examples from what you read, and preparation for the A2 inburgeringsexamen.
-- **Study along your textbook.** Import the course book you own; units, word lists and
-  exercises are found and matched to your decks.
-- **No AI needed; bring your own key if you want it.** Talk, stories and explanations are
-  optional extras with Anthropic, any OpenAI-compatible provider, or a local model.
-- **Private.** Your data is one SQLite file on your computer or your own server. Kenning writes
-  to Anki only when you click.
+- **Reading at your level.** Paste a text, a web address, a PDF, an EPUB or a photo. Read,
+  Cloze and Gloss modes, and a set number of new words per page.
+- **Flashcards.** Built-in cards with FSRS reviews, made from what you read.
+- **Works with Anki.** Import an Anki deck file, export your cards as one, or keep studying in
+  Anki and let Kenning read your decks.
+- **Real Dutch analysis.** Separable verbs (_bel … op_ → _opbellen_), compounds, an offline
+  dictionary and offline sentence translation.
+- **Practice, grammar and exam.** Exercises on their own schedule, grammar topics from A1 to
+  C1 with examples from your texts, and preparation for the A2 inburgeringsexamen.
+- **Your textbook.** Import a course book you own and study it unit by unit.
+- **AI if you want it.** Talk, stories and explanations with your own key. Everything else works
+  without AI.
+- **Private, on all your devices.** Your data stays on your device or your own server. Sync is
+  encrypted with your passphrase.
 
 ## A tour
 
@@ -77,13 +73,12 @@ to Anki with the sentence you found it in.
       <h3>Reader</h3>
       Pages of about 150 words. Amber marks the few words worth learning now; the grammar
       focus underlines one topic at a time. Click a word for its dictionary form, meaning,
-      decks, live Anki state and the grammar it takes part in, then <b>Add to Anki</b>,
-      <b>Study first in Anki</b> or <b>Mark known</b>.
+      card and the grammar it takes part in, then add it to your words, study it first or
+      mark it known.
     </td>
     <td width="50%" valign="top">
       <h3>Words</h3>
-      The hub for everything Kenning knows about your vocabulary, from Anki and from your
-      reading. Filter by state or source (a text, a course unit, practice), open the same
+      Everything Kenning knows about your vocabulary. Filter by state or source (a text, a course unit, practice), open the same
       inspector, then add, practise or talk about a selection in bulk.
     </td>
   </tr>
@@ -105,13 +100,13 @@ to Anki with the sentence you found it in.
     <td width="50%" valign="top">
       <h3>Practice</h3>
       Meaning, cloze, de/het, separable verbs, perfect tense with hebben/zijn, forms, word order
-      and dictation, each scheduled per word and skill with FSRS. Practice never writes to
-      Anki; it counts as evidence that you are learning a word.
+      and dictation, each scheduled per word and skill with FSRS. Practice also counts
+      as evidence that you are learning a word.
     </td>
     <td width="50%" valign="top">
       <h3>Courses</h3>
       Study along a textbook you own: import a PDF, EPUB or page photos, get the outline, each
-      unit's texts and words matched to your Anki decks, and the book's exercises with checking.
+      unit's texts and words matched to the words you know, and the book's exercises with checking.
     </td>
   </tr>
   <tr>
@@ -158,12 +153,12 @@ to Anki with the sentence you found it in.
     <td width="50%" valign="top">
       <h3>Library</h3>
       Your shelf of texts, with how much of each you already know, where you left off, and
-      <b>Create a story</b> when an AI provider is set.
+      <b>Write a story</b> when an AI provider is set.
     </td>
     <td width="50%" valign="top">
       <h3>Talk <sup>optional AI</sup></h3>
       A short chat in Dutch that stays within the words you know, corrects your messages and
-      offers new words for Anki. Hidden until you add a provider.
+      offers new words to learn. Hidden until you add a provider.
     </td>
   </tr>
   <tr>
@@ -194,9 +189,8 @@ Step by step: **[Install](docs/guide/install.md)** · **[Self-host](docs/guide/s
 
 ## How it works
 
-**Kenning knows your words.** It keeps your cards and schedules your reviews with FSRS, or it
-reads your Anki decks. A word counts as known when its card is mature (21 days or more) and you
-are still likely to recall it.
+**Kenning knows your words.** Each word has a card, scheduled with FSRS. A word counts as known
+when you are likely to recall it. If you use Anki, Kenning reads the same thing from your decks.
 
 **Algorithms, not AI.** Texts are analysed by spaCy with rules for lemmas, separable verbs and
 compounds. Meanings come from an offline Wiktionary dictionary, sentences are translated by an
@@ -239,7 +233,7 @@ pnpm nlp     # language server on :8000
 pnpm dev     # web app on http://localhost:5173
 ```
 
-`http://localhost:5173/?demo` runs with demo data and no Anki. Desktop app:
+`http://localhost:5173/?demo` runs with demo data. Desktop app:
 `pnpm --filter @app/desktop tauri dev`.
 
 Checks: `pnpm build && pnpm typecheck && pnpm lint && pnpm test`, and
