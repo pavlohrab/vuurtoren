@@ -32,7 +32,7 @@ apps/web/src/platform/
 | Sync                                                     | the server place only (`/api/sync`), through Rust HTTP                                  | folder and WebDAV are desktop-only                              |
 | Sync key                                                 | Android Keystore (Kotlin plugin)                                                        | excluded from Android backups                                   |
 | Dictionary, short glosses, starter words                 | on the phone: the `dictionary-nl` pack (~14 MB) downloaded on first start, read by Rust | glosses work offline                                            |
-| Audio                                                    | the `audio-nl` pack (female or male), downloaded on first start or later in Settings    | played with the page's `<audio>` through Tauri's asset protocol |
+| Audio                                                    | the `audio-nl` pack, both voices (about 80 MB); Settings → Voice picks one              | played with the page's `<audio>` through Tauri's asset protocol |
 | Analysis of a new text, sentence translation, word pairs | the server's language server (`/nlp/`, with the device's sync token)                    | results cached per text; reading is offline afterwards          |
 | OCR (photo of a page)                                    | ML Kit text recognition, on device                                                      | no Google account, no network                                   |
 | Speech fallback                                          | Android text-to-speech through the WebView                                              | used only when a clip is missing                                |
