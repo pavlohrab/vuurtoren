@@ -4,8 +4,8 @@ import numpy as np
 import pytest
 from PIL import Image, ImageDraw, ImageFont
 
-from kenning_nlp import straighten
-from kenning_nlp.straighten import skew_angle, straighten_page
+from vuurtoren_nlp import straighten
+from vuurtoren_nlp.straighten import skew_angle, straighten_page
 
 cv2 = pytest.importorskip("cv2")
 

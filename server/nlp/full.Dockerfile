@@ -1,11 +1,11 @@
 # syntax=docker/dockerfile:1
-# kenning-nlp:<tag>-full — the standard image plus all data packs inside, for offline installs.
+# vuurtoren-nlp:<tag>-full — the standard image plus all data packs inside, for offline installs.
 #
-#   docker build -t kenning-nlp:local server/nlp
-#   docker build -f server/nlp/full.Dockerfile --build-arg BASE=kenning-nlp:local \
-#       -t kenning-nlp:local-full server/nlp
+#   docker build -t vuurtoren-nlp:local server/nlp
+#   docker build -f server/nlp/full.Dockerfile --build-arg BASE=vuurtoren-nlp:local \
+#       -t vuurtoren-nlp:local-full server/nlp
 #
-# The pack archives sit in /opt/kenning-packs (KENNING_PACKS_DIR); at first start the server
+# The pack archives sit in /opt/vuurtoren-packs (VUURTOREN_PACKS_DIR); at first start the server
 # unpacks them onto the /data volume (seconds, no network). Where the archives come from, first
 # match wins:
 #   1. server/nlp/dist/packs/*.tar.gz in the build context (made beforehand with
@@ -14,7 +14,7 @@
 #   2. --build-arg PACKS_URL=<release assets URL>: downloaded and checked against packs.json;
 #   3. otherwise built here from the pinned upstream sources (Kaikki, Tatoeba, OPUS-MT; ~10 min,
 #      ~1 GB of downloads). KAIKKI_* and TATOEBA_* build args work as before.
-ARG BASE=kenning-nlp:local
+ARG BASE=vuurtoren-nlp:local
 
 # ---- dictionary (standard library only) ----------------------------------------------------
 FROM python:3.12.16-slim AS dictionary
@@ -25,8 +25,8 @@ ARG KAIKKI_SHA256=-
 ARG KAIKKI_SIZE=-
 ARG KAIKKI_ACCEPT_NEW=0
 WORKDIR /build
-COPY src/kenning_nlp/__init__.py src/kenning_nlp/dictionary.py src/kenning_nlp/compound.py \
-    src/kenning_nlp/wordforms.py src/kenning_nlp/nl.py src/kenning_nlp/datadir.py src/kenning_nlp/
+COPY src/vuurtoren_nlp/__init__.py src/vuurtoren_nlp/dictionary.py src/vuurtoren_nlp/compound.py \
+    src/vuurtoren_nlp/wordforms.py src/vuurtoren_nlp/nl.py src/vuurtoren_nlp/datadir.py src/vuurtoren_nlp/
 COPY scripts/build_dictionary.py scripts/pinned_download.py scripts/
 # SKIP_BUILD=1 (CI, with dist/packs in the context) or PACKS_URL: nothing to build here.
 ARG SKIP_BUILD=0
@@ -44,29 +44,29 @@ ARG PACKS_URL=
 ARG TATOEBA_BASE_URL=https://downloads.tatoeba.org/exports/per_language
 ARG TATOEBA_ACCEPT_NEW=0
 USER root
-ENV KENNING_DATA_DIR=/out KENNING_PACKS=off
+ENV VUURTOREN_DATA_DIR=/out VUURTOREN_PACKS=off
 COPY --from=dictionary /out /out
 COPY . /ctx
 RUN set -eu; \
     if ls /ctx/dist/packs/*.tar.gz >/dev/null 2>&1; then \
-      mkdir -p /opt/kenning-packs && cp /ctx/dist/packs/*.tar.gz /opt/kenning-packs/; \
-      cp /ctx/src/kenning_nlp/packs.json /app/src/kenning_nlp/packs.json; \
+      mkdir -p /opt/vuurtoren-packs && cp /ctx/dist/packs/*.tar.gz /opt/vuurtoren-packs/; \
+      cp /ctx/src/vuurtoren_nlp/packs.json /app/src/vuurtoren_nlp/packs.json; \
       rm -rf /ctx /out; exit 0; \
     fi; \
     rm -rf /ctx; \
     if [ -n "$PACKS_URL" ]; then \
-      python scripts/build_packs.py --out /opt/kenning-packs --download "$PACKS_URL"; exit 0; \
+      python scripts/build_packs.py --out /opt/vuurtoren-packs --download "$PACKS_URL"; exit 0; \
     fi; \
     args=""; [ "$TATOEBA_ACCEPT_NEW" = "0" ] || args="--accept-new-upstream"; \
     python scripts/build_sentences.py --processes 4 --download-dir /tmp/tatoeba \
       --base-url "$TATOEBA_BASE_URL" $args --output /out/sentences-nl.sqlite; \
     python scripts/fetch_mt_model.py --output /out/mt-nl-en; \
-    python scripts/build_packs.py --out /opt/kenning-packs --from-data /out; \
+    python scripts/build_packs.py --out /opt/vuurtoren-packs --from-data /out; \
     rm -rf /tmp/tatoeba /out
 
 # ---- final -----------------------------------------------------------------------------------
 FROM ${BASE}
 # packs.json is rewritten by build_packs.py with the digests of the archives built above.
-COPY --from=packs /app/src/kenning_nlp/packs.json /app/src/kenning_nlp/packs.json
-COPY --from=packs /opt/kenning-packs /opt/kenning-packs
-ENV KENNING_PACKS_DIR=/opt/kenning-packs
+COPY --from=packs /app/src/vuurtoren_nlp/packs.json /app/src/vuurtoren_nlp/packs.json
+COPY --from=packs /opt/vuurtoren-packs /opt/vuurtoren-packs
+ENV VUURTOREN_PACKS_DIR=/opt/vuurtoren-packs

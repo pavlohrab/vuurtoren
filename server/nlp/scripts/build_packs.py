@@ -1,4 +1,4 @@
-"""Build the data pack archives and record their digests in ``src/kenning_nlp/packs.json``.
+"""Build the data pack archives and record their digests in ``src/vuurtoren_nlp/packs.json``.
 
 Usage (from server/nlp)::
 
@@ -30,7 +30,7 @@ import urllib.request
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-MANIFEST = ROOT / "src" / "kenning_nlp" / "packs.json"
+MANIFEST = ROOT / "src" / "vuurtoren_nlp" / "packs.json"
 # pack name -> data file/dir name inside the data directory
 TARGETS = {
     "dictionary-nl": "dictionary-nl.sqlite",
@@ -68,7 +68,7 @@ def make_archive(src: Path, dest: Path) -> None:
 def build(name: str, data: Path) -> None:
     """Run the pack's build script into ``data`` (dictionary first: the others read it)."""
     py = [sys.executable]
-    env = {**os.environ, "KENNING_DATA_DIR": str(data)}
+    env = {**os.environ, "VUURTOREN_DATA_DIR": str(data)}
     cmd = {
         "dictionary-nl": ["scripts/build_dictionary.py", "--output", str(data / TARGETS[name])],
         "sentences-nl": [
@@ -87,7 +87,9 @@ def download(manifest: dict, url: str, out: Path, names: list[str]) -> int:
         entry = manifest["packs"][name]
         file = f"{name}-{entry['version']}.tar.gz"
         dest = out / file
-        req = urllib.request.Request(f"{url.rstrip('/')}/{file}", headers={"User-Agent": "kenning"})
+        req = urllib.request.Request(
+            f"{url.rstrip('/')}/{file}", headers={"User-Agent": "vuurtoren"}
+        )
         with urllib.request.urlopen(req, timeout=60) as resp, dest.open("wb") as fh:  # noqa: S310
             while chunk := resp.read(1 << 20):
                 fh.write(chunk)

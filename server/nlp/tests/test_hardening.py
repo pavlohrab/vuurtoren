@@ -5,16 +5,16 @@ from __future__ import annotations
 import pytest
 from fastapi.testclient import TestClient
 
-from kenning_nlp.app import app, parse_origins
-from kenning_nlp.errors import ServiceError
-from kenning_nlp.models import (
+from vuurtoren_nlp.app import app, parse_origins
+from vuurtoren_nlp.errors import ServiceError
+from vuurtoren_nlp.models import (
     DETECT_SAMPLE_CHARS,
     MAX_TERM_CHARS,
     MAX_TEXT_CHARS,
     MAX_TOTAL_CHARS,
 )
-from kenning_nlp.nl import join_particle, strip_unattested_particle
-from kenning_nlp.pipeline import analyze_terms, analyze_texts, normalize_key, split_term
+from vuurtoren_nlp.nl import join_particle, strip_unattested_particle
+from vuurtoren_nlp.pipeline import analyze_terms, analyze_texts, normalize_key, split_term
 
 client = TestClient(app)
 

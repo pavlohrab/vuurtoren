@@ -4,9 +4,9 @@
 reports progress and returns the pages finished so far (``?after=N`` returns only pages with
 index >= N, so a client can poll cheaply). The upload and the rendered pages live only in memory
 for the job's lifetime; finished jobs are dropped after :data:`JOB_TTL_SECONDS`. Recognised page
-text is cached by file hash and page index (in memory, and in ``$KENNING_COURSE_CACHE_DIR`` when
+text is cached by file hash and page index (in memory, and in ``$VUURTOREN_COURSE_CACHE_DIR`` when
 set) so that re-importing the same book, or restarting a job, is fast. PDF pages with a usable
-text layer (:func:`kenning_nlp.pdf.text_layer_ok`) and EPUB chapters skip OCR. Scanned pages are
+text layer (:func:`vuurtoren_nlp.pdf.text_layer_ok`) and EPUB chapters skip OCR. Scanned pages are
 recognised by several workers at once.
 
 Each page is returned as layout *blocks* (OCR blocks with a normalised bounding box and the
@@ -35,17 +35,17 @@ from typing import Any
 
 from PIL import Image, UnidentifiedImageError
 
-from kenning_nlp import rapid
-from kenning_nlp.errors import ServiceError
-from kenning_nlp.ocr import (
+from vuurtoren_nlp import rapid
+from vuurtoren_nlp.errors import ServiceError
+from vuurtoren_nlp.ocr import (
     MAX_FRAMES,
     RAPID_PREFIX,
     ensure_engine,
     lang_of_code,
     ocr_image_data,
 )
-from kenning_nlp.ocr_review import COURSE_PREVIEW_LONG_SIDE, OcrWord, find_flags, preview_webp
-from kenning_nlp.pdf import OCR_DPI, PDFIUM_LOCK, _open, is_pdf, text_layer_ok
+from vuurtoren_nlp.ocr_review import COURSE_PREVIEW_LONG_SIDE, OcrWord, find_flags, preview_webp
+from vuurtoren_nlp.pdf import OCR_DPI, PDFIUM_LOCK, _open, is_pdf, text_layer_ok
 
 MAX_COURSE_PAGES = 400
 COURSE_MAX_UPLOAD_BYTES = 200 * 1024 * 1024
@@ -63,7 +63,7 @@ PageResult = tuple[list[dict[str, Any]], float, list[dict[str, Any]] | None]
 
 
 def ocr_engine(img: Image.Image, code: str) -> tuple[Any, ...]:
-    """Real engine: clean-up plus RapidOCR, via :func:`kenning_nlp.ocr.ocr_image_data`."""
+    """Real engine: clean-up plus RapidOCR, via :func:`vuurtoren_nlp.ocr.ocr_image_data`."""
     return ocr_image_data(img, code)
 
 
@@ -352,16 +352,16 @@ class Job:
 
 
 def default_workers() -> int:
-    """Pages read in parallel: ``$KENNING_OCR_WORKERS`` or half the CPUs (1..6)."""
-    env = os.environ.get("KENNING_OCR_WORKERS")
+    """Pages read in parallel: ``$VUURTOREN_OCR_WORKERS`` or half the CPUs (1..6)."""
+    env = os.environ.get("VUURTOREN_OCR_WORKERS")
     if env and env.isdigit() and int(env) > 0:
         return int(env)
     return max(1, min(6, (os.cpu_count() or 2) // 2))
 
 
 def default_cache_dir() -> Path | None:
-    """Disk cache of recognised pages: ``$KENNING_COURSE_CACHE_DIR`` (unset = memory only)."""
-    env = os.environ.get("KENNING_COURSE_CACHE_DIR")
+    """Disk cache of recognised pages: ``$VUURTOREN_COURSE_CACHE_DIR`` (unset = memory only)."""
+    env = os.environ.get("VUURTOREN_COURSE_CACHE_DIR")
     return Path(env) if env else None
 
 

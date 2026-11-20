@@ -50,11 +50,11 @@ def available() -> bool:
 
 def threads() -> int:
     """ONNX Runtime threads for this thread's engine: the :func:`limit_threads` budget, else
-    ``$KENNING_OCR_THREADS``, else all CPUs."""
+    ``$VUURTOREN_OCR_THREADS``, else all CPUs."""
     budget = getattr(_local, "threads", None)
     if budget:
         return int(budget)
-    env = os.environ.get("KENNING_OCR_THREADS")
+    env = os.environ.get("VUURTOREN_OCR_THREADS")
     if env and env.isdigit() and int(env) > 0:
         return int(env)
     return os.cpu_count() or 2
@@ -174,8 +174,8 @@ def split_glued(token: str, lang: str = "nl") -> list[str]:
 
 
 def _split_function_word(part: str) -> list[str]:
-    from kenning_nlp.freq import zipf
-    from kenning_nlp.ocr_review import is_known
+    from vuurtoren_nlp.freq import zipf
+    from vuurtoren_nlp.ocr_review import is_known
 
     start, end = 0, len(part)
     while start < end and part[start] in _EDGE:

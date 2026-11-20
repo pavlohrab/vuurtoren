@@ -13,8 +13,8 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from kenning_nlp import packs
-from kenning_nlp.app import app
+from vuurtoren_nlp import packs
+from vuurtoren_nlp.app import app
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 from build_packs import make_archive  # noqa: E402
@@ -24,11 +24,11 @@ from build_packs import make_archive  # noqa: E402
 def env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> dict[str, Path]:
     """Empty data dir, a dictionary-nl archive (a tiny SQLite file) and a manifest for it."""
     data = tmp_path / "data"
-    for var in ("KENNING_DICT_PATH", "KENNING_SENTENCES_PATH", "KENNING_MT_DIR"):
+    for var in ("VUURTOREN_DICT_PATH", "VUURTOREN_SENTENCES_PATH", "VUURTOREN_MT_DIR"):
         monkeypatch.delenv(var, raising=False)
-    monkeypatch.delenv("KENNING_GRAMMAR_CACHE_PATH", raising=False)
-    monkeypatch.setenv("KENNING_DATA_DIR", str(data))
-    for var in ("KENNING_PACKS_URL", "KENNING_PACKS_DIR", "KENNING_PACKS_TOKEN"):
+    monkeypatch.delenv("VUURTOREN_GRAMMAR_CACHE_PATH", raising=False)
+    monkeypatch.setenv("VUURTOREN_DATA_DIR", str(data))
+    for var in ("VUURTOREN_PACKS_URL", "VUURTOREN_PACKS_DIR", "VUURTOREN_PACKS_TOKEN"):
         monkeypatch.delenv(var, raising=False)
     src = tmp_path / "src" / "dictionary-nl.sqlite"
     src.parent.mkdir()
@@ -61,7 +61,7 @@ def test_missing_then_installed_from_bundled_dir(
     env: dict[str, Path], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     assert packs.status()["dictionary-nl"]["state"] == "missing"
-    monkeypatch.setenv("KENNING_PACKS_DIR", str(env["dist"]))
+    monkeypatch.setenv("VUURTOREN_PACKS_DIR", str(env["dist"]))
     hooks: list[int] = []
     monkeypatch.setattr(packs, "_reset_hooks", [lambda: hooks.append(1)])
     results = packs.ensure(allow_build=False)
@@ -81,7 +81,7 @@ def test_outdated_pack_is_replaced_and_unversioned_kept(
     target.parent.mkdir(parents=True)
     target.write_bytes(b"old")
     assert packs.status()["dictionary-nl"]["state"] == "unversioned"
-    monkeypatch.setenv("KENNING_PACKS_DIR", str(env["dist"]))
+    monkeypatch.setenv("VUURTOREN_PACKS_DIR", str(env["dist"]))
     assert packs.ensure(allow_build=False)["dictionary-nl"] == "ok"  # untouched
     assert target.read_bytes() == b"old"
     packs.marker_path(target).write_text(json.dumps({"version": "1.0.0"}))
@@ -105,7 +105,7 @@ def test_download_from_url_and_checksum_mismatch(
     server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Handler)
     threading.Thread(target=server.serve_forever, daemon=True).start()
     try:
-        monkeypatch.setenv("KENNING_PACKS_URL", f"http://127.0.0.1:{server.server_port}/")
+        monkeypatch.setenv("VUURTOREN_PACKS_URL", f"http://127.0.0.1:{server.server_port}/")
         # A tampered manifest digest: nothing is installed, the error is reported.
         manifest = json.loads(env["manifest"].read_text())
         good = manifest["packs"]["dictionary-nl"]["sha256"]
@@ -124,7 +124,7 @@ def test_download_from_url_and_checksum_mismatch(
 def test_no_source_is_an_error_not_a_crash(
     env: dict[str, Path], monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setenv("KENNING_PACKS_URL", "none")  # no default GitHub download in tests
+    monkeypatch.setenv("VUURTOREN_PACKS_URL", "none")  # no default GitHub download in tests
     assert "no source" in packs.ensure(allow_build=False)["dictionary-nl"]
 
 

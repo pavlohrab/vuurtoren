@@ -7,13 +7,13 @@ Only cheap checks: no model is loaded here.
 
 from __future__ import annotations
 
-from kenning_nlp import __version__, packs
-from kenning_nlp.analyzer import analyzer_version
-from kenning_nlp.dictionary import default_db_path as dictionary_path
-from kenning_nlp.grammar_examples import default_cache_path as grammar_examples_path
-from kenning_nlp.ocr import ocr_engine_name
-from kenning_nlp.sentences import default_db_path as sentences_path
-from kenning_nlp.translate import model_dir
+from vuurtoren_nlp import __version__, packs
+from vuurtoren_nlp.analyzer import analyzer_version
+from vuurtoren_nlp.dictionary import default_db_path as dictionary_path
+from vuurtoren_nlp.grammar_examples import default_cache_path as grammar_examples_path
+from vuurtoren_nlp.ocr import ocr_engine_name
+from vuurtoren_nlp.sentences import default_db_path as sentences_path
+from vuurtoren_nlp.translate import model_dir
 
 
 def health_report() -> dict[str, object]:

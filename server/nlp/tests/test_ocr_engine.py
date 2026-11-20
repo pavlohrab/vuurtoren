@@ -6,13 +6,13 @@ import pytest
 from fastapi.testclient import TestClient
 from PIL import Image, ImageDraw, ImageFont
 
-import kenning_nlp.ocr as ocr
-from kenning_nlp import rapid
-from kenning_nlp.app import app
-from kenning_nlp.errors import ServiceError
-from kenning_nlp.ocr import ensure_engine, lang_of_code, words_to_text
-from kenning_nlp.ocr_review import page_words
-from kenning_nlp.rapid import Line, Word, layout, to_data
+import vuurtoren_nlp.ocr as ocr
+from vuurtoren_nlp import rapid
+from vuurtoren_nlp.app import app
+from vuurtoren_nlp.errors import ServiceError
+from vuurtoren_nlp.ocr import ensure_engine, lang_of_code, words_to_text
+from vuurtoren_nlp.ocr_review import page_words
+from vuurtoren_nlp.rapid import Line, Word, layout, to_data
 
 client = TestClient(app)
 
@@ -169,7 +169,7 @@ def test_rapidocr_reads_dutch_with_diacritics() -> None:
 
 
 def test_glued_words_are_split_but_compounds_stay_whole() -> None:
-    from kenning_nlp.rapid import split_glued
+    from vuurtoren_nlp.rapid import split_glued
 
     assert split_glued("Komtu") == ["Komt", "u"]
     assert split_glued("zomooi,") == ["zo", "mooi,"]

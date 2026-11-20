@@ -22,16 +22,16 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-from kenning_nlp.compound import (
+from vuurtoren_nlp.compound import (
     CompoundAnalysis,
     PartEntry,
     inflection_candidates,
     real_glosses,
     split_compound,
 )
-from kenning_nlp.datadir import data_path
-from kenning_nlp.derive import Derivation, derive
-from kenning_nlp.wordforms import extract_word_forms
+from vuurtoren_nlp.datadir import data_path
+from vuurtoren_nlp.derive import Derivation, derive
+from vuurtoren_nlp.wordforms import extract_word_forms
 
 MAX_GLOSSES = 5
 MAX_GLOSS_CHARS = 160
@@ -62,8 +62,8 @@ CREATE INDEX idx_wordforms_lemma ON wordforms(lower(lemma));
 
 
 def default_db_path() -> Path:
-    """Database location: ``$KENNING_DICT_PATH`` or ``server/nlp/data/dictionary-nl.sqlite``."""
-    return data_path("KENNING_DICT_PATH", "dictionary-nl.sqlite")
+    """Database location: ``$VUURTOREN_DICT_PATH`` or ``server/nlp/data/dictionary-nl.sqlite``."""
+    return data_path("VUURTOREN_DICT_PATH", "dictionary-nl.sqlite")
 
 
 def _gloss_text(sense: dict[str, Any]) -> str | None:
@@ -288,8 +288,8 @@ class Dictionary:
         return Derivation(found.pos, found.article, found.gloss, parts, found.score)
 
     def analyze_unknown(self, word: str) -> dict[str, Any] | None:
-        """Entry for a word without one: a derivation or a compound (see :mod:`kenning_nlp.derive`
-        and :mod:`kenning_nlp.compound`).
+        """Entry for a word without one: a derivation or a compound (see :mod:`vuurtoren_nlp.derive`
+        and :mod:`vuurtoren_nlp.compound`).
 
         A derivation from a dictionary base wins (``woord`` + ``-loos``) unless the compound's
         head is a dictionary word that already ends in that suffix (``berg`` + ``landschap``,

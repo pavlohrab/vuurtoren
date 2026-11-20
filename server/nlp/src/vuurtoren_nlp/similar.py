@@ -32,7 +32,7 @@ from typing import Any
 
 import numpy as np
 
-from kenning_nlp.freq import zipf
+from vuurtoren_nlp.freq import zipf
 
 VOCAB_SIZE = 30_000
 """Number of most frequent dictionary lemmas that get a row in the similarity matrix."""
@@ -206,7 +206,7 @@ class SimilarService:
                         f"Dictionary database not found at {self.db_path}. "
                         "Build it once with: uv run python scripts/build_dictionary.py"
                     )
-                from kenning_nlp.pipeline import get_nlp
+                from vuurtoren_nlp.pipeline import get_nlp
 
                 self._index = SimilarIndex(
                     get_nlp("nl"), load_vocabulary(self.db_path), self._db_glosses
@@ -215,7 +215,7 @@ class SimilarService:
 
     def _db_glosses(self, lemma: str, kind: str) -> list[str]:
         """Real (non form-of) glosses of ``lemma`` with POS ``kind`` from the dictionary DB."""
-        from kenning_nlp.compound import real_glosses
+        from vuurtoren_nlp.compound import real_glosses
 
         con = sqlite3.connect(f"file:{self.db_path}?mode=ro", uri=True)
         try:

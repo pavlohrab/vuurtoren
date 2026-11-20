@@ -6,9 +6,9 @@ import httpx
 import pytest
 from fastapi.testclient import TestClient
 
-from kenning_nlp import extract_url
-from kenning_nlp.app import app
-from kenning_nlp.extract_url import is_public_ip
+from vuurtoren_nlp import extract_url
+from vuurtoren_nlp.app import app
+from vuurtoren_nlp.extract_url import is_public_ip
 
 client = TestClient(app)
 
@@ -30,7 +30,7 @@ class Net:
 
         def resolve(host: str, port: int):
             if host not in dns:
-                from kenning_nlp.errors import ServiceError
+                from vuurtoren_nlp.errors import ServiceError
 
                 raise ServiceError(422, f"Could not resolve host '{host}'.")
             return [ipaddress.ip_address(dns[host])]

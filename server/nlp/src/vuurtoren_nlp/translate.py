@@ -1,11 +1,11 @@
 """Offline Dutch -> English machine translation (OPUS-MT ``opus-mt-nl-en`` on CTranslate2).
 
-The model is a data pack (``mt-nl-en``, see :mod:`kenning_nlp.packs`): downloaded or built by
-``scripts/fetch_mt_model.py`` into ``$KENNING_DATA_DIR/mt-nl-en/`` (or ``$KENNING_MT_DIR``). It
+The model is a data pack (``mt-nl-en``, see :mod:`vuurtoren_nlp.packs`): downloaded or built by
+``scripts/fetch_mt_model.py`` into ``$VUURTOREN_DATA_DIR/mt-nl-en/`` (or ``$VUURTOREN_MT_DIR``). It
 is loaded lazily on the first request and cached for the process lifetime.
 Only ``ctranslate2`` and ``sentencepiece`` are needed (no torch).
 
-:func:`align_texts` also returns the decoder attention, from which :mod:`kenning_nlp.align` reads
+:func:`align_texts` also returns the decoder attention, from which :mod:`vuurtoren_nlp.align` reads
 the English of single words (their meaning in that sentence).
 """
 
@@ -18,9 +18,9 @@ from collections import OrderedDict
 from pathlib import Path
 from typing import Any, Protocol
 
-from kenning_nlp.align import DISAGREE_FACTOR, AttentionResult, agrees, align_word
-from kenning_nlp.datadir import data_path
-from kenning_nlp.errors import ServiceError
+from vuurtoren_nlp.align import DISAGREE_FACTOR, AttentionResult, agrees, align_word
+from vuurtoren_nlp.datadir import data_path
+from vuurtoren_nlp.errors import ServiceError
 
 SUPPORTED_PAIRS = {("nl", "en")}
 MODEL_FILES = ("model.bin", "shared_vocabulary.json", "source.spm", "target.spm")
@@ -29,7 +29,7 @@ MAX_OUTPUT_TOKENS = 512
 BEAM_SIZE = 4
 FETCH_HINT = (
     "The offline translation model (data pack mt-nl-en) is not installed yet. The server "
-    "installs it at startup when KENNING_PACKS is on (see GET /health); in development run "
+    "installs it at startup when VUURTOREN_PACKS is on (see GET /health); in development run "
     "`uv run python scripts/fetch_mt_model.py` in server/nlp (about 85 MB)."
 )
 
@@ -43,8 +43,8 @@ class Translator(Protocol):
 
 
 def model_dir() -> Path:
-    """Model location: ``$KENNING_MT_DIR`` or ``server/nlp/data/mt-nl-en``."""
-    return data_path("KENNING_MT_DIR", "mt-nl-en")
+    """Model location: ``$VUURTOREN_MT_DIR`` or ``server/nlp/data/mt-nl-en``."""
+    return data_path("VUURTOREN_MT_DIR", "mt-nl-en")
 
 
 class MtEngine:
@@ -172,7 +172,7 @@ def align_texts(
 
     Returns ``[{"text", "translation", "words": [{"start", "end", "text", "confidence"}]}]``;
     a word's ``text`` is None when its alignment is unclear. The confidence is lowered when the
-    word translated on its own disagrees (see :mod:`kenning_nlp.align`).
+    word translated on its own disagrees (see :mod:`vuurtoren_nlp.align`).
 
     Raises:
         ServiceError: 422 for an unsupported pair, 503 if the model is not installed.

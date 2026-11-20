@@ -7,7 +7,7 @@ semicolon-separated senses equals one of the accepted answers, ignoring case, hy
 parentheticals and a leading article or "to".
 
 The second test measures the meaning read off the sentence translation
-(:mod:`kenning_nlp.align`): how often it is confident enough to be used, and how often it is then
+(:mod:`vuurtoren_nlp.align`): how often it is confident enough to be used, and how often it is then
 right (an inflected form counts: the meaning is shown "in this sentence").
 
 The report is printed. Needs the real dictionary and, for alignment, the MT model (skipped
@@ -24,9 +24,9 @@ from pathlib import Path
 
 import pytest
 
-from kenning_nlp.align import MIN_CONFIDENCE, stems
-from kenning_nlp.dictionary import Dictionary, default_db_path
-from kenning_nlp.translate import MODEL_FILES, align_texts, model_dir
+from vuurtoren_nlp.align import MIN_CONFIDENCE, stems
+from vuurtoren_nlp.dictionary import Dictionary, default_db_path
+from vuurtoren_nlp.translate import MODEL_FILES, align_texts, model_dir
 
 FIXTURE = Path(__file__).parent / "fixtures" / "meanings-nl.tsv"
 needs_db = pytest.mark.skipif(not default_db_path().is_file(), reason="dictionary DB not built")

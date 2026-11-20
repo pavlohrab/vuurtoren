@@ -13,8 +13,8 @@ import threading
 from functools import lru_cache
 from pathlib import Path
 
-from kenning_nlp.dictionary import default_db_path
-from kenning_nlp.freq import zipf
+from vuurtoren_nlp.dictionary import default_db_path
+from vuurtoren_nlp.freq import zipf
 
 # spaCy UPOS -> Kaikki ``pos`` values. UPOS not listed here are not POS-filtered.
 _POS_MAP: dict[str, tuple[str, ...]] = {

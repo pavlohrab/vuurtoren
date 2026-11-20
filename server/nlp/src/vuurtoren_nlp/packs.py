@@ -13,19 +13,19 @@ of a pack is a marker next to its data (``dictionary-nl.sqlite.pack.json``). A p
 ``ensure()`` installs missing and outdated packs, one at a time, from the first source that has
 them:
 
-1. ``$KENNING_PACKS_DIR``: a directory of pack archives (the "all-in" image and the desktop
+1. ``$VUURTOREN_PACKS_DIR``: a directory of pack archives (the "all-in" image and the desktop
    sidecar bundle them; works offline);
-2. ``$KENNING_PACKS_URL``: ``<url>/<name>-<version>.tar.gz`` (GitHub release assets or any static
-   host; ``$KENNING_PACKS_TOKEN`` is sent as a bearer token when set);
+2. ``$VUURTOREN_PACKS_URL``: ``<url>/<name>-<version>.tar.gz`` (GitHub release assets or any static
+   host; ``$VUURTOREN_PACKS_TOKEN`` is sent as a bearer token when set);
 3. a local build with ``scripts/`` (downloads the pinned upstream sources: Kaikki, Tatoeba,
-   OPUS-MT; ~10 minutes). Only in ``KENNING_PACKS=auto`` mode.
+   OPUS-MT; ~10 minutes). Only in ``VUURTOREN_PACKS=auto`` mode.
 
 Archives are verified (size + SHA-256) before anything is replaced, extracted next to the target
 and swapped in with a rename, so a failed or interrupted update leaves the old data in use. The
 grammar-example cache is *derived*: it is built here from the sentence pack (under a minute) and
 is tied to the grammar detectors' code, so it is never downloaded.
 
-``KENNING_PACKS`` = ``off`` (default outside Docker: nothing runs by itself), ``download``
+``VUURTOREN_PACKS`` = ``off`` (default outside Docker: nothing runs by itself), ``download``
 (sources 1-2 only) or ``auto`` (1-3; the Docker image's default). The server runs ``ensure()``
 in a background thread at startup; ``GET /health`` shows the state, ``POST /admin/packs`` runs
 it again.
@@ -50,10 +50,10 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Literal
 
-from kenning_nlp.dictionary import default_db_path as dictionary_path
-from kenning_nlp.grammar_examples import default_cache_path as grammar_cache_path
-from kenning_nlp.sentences import default_db_path as sentences_path
-from kenning_nlp.translate import model_dir
+from vuurtoren_nlp.dictionary import default_db_path as dictionary_path
+from vuurtoren_nlp.grammar_examples import default_cache_path as grammar_cache_path
+from vuurtoren_nlp.sentences import default_db_path as sentences_path
+from vuurtoren_nlp.translate import model_dir
 
 log = logging.getLogger(__name__)
 
@@ -116,7 +116,7 @@ def manifest() -> dict[str, dict[str, Any]]:
 
 
 def mode() -> Mode:
-    raw = os.environ.get("KENNING_PACKS", "off").strip().lower()
+    raw = os.environ.get("VUURTOREN_PACKS", "off").strip().lower()
     return raw if raw in ("off", "download", "auto") else "off"  # type: ignore[return-value]
 
 
@@ -142,7 +142,7 @@ def _present(spec: PackSpec) -> bool:
 
 
 def _grammar_state() -> str:
-    from kenning_nlp.grammar_examples import GrammarExamples
+    from vuurtoren_nlp.grammar_examples import GrammarExamples
 
     if not grammar_cache_path().is_file():
         return "missing"
@@ -215,26 +215,26 @@ def _sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
-DEFAULT_PACKS_BASE = "https://github.com/pavlohrab/Kenning/releases/download"
+DEFAULT_PACKS_BASE = "https://github.com/pavlohrab/Vuurtoren/releases/download"
 """Where published packs live (the `packs` workflow uploads them as release assets)."""
 
 
 def _fetch(name: str, entry: dict[str, Any], dest: Path) -> str | None:
     """Put the verified archive at ``dest``; return its source, or None if no source has it."""
     file = archive_name(name, entry["version"])
-    local = os.environ.get("KENNING_PACKS_DIR")
+    local = os.environ.get("VUURTOREN_PACKS_DIR")
     if local and (Path(local) / file).is_file():
         shutil.copyfile(Path(local) / file, dest)
         source = "bundled"
     else:
-        url = os.environ.get("KENNING_PACKS_URL", "").strip()
+        url = os.environ.get("VUURTOREN_PACKS_URL", "").strip()
         if not url:
             # Default: the public GitHub release named after this pack's version.
             url = f"{DEFAULT_PACKS_BASE}/packs-{entry['version']}"
         elif url.lower() == "none":
             return None
-        headers = {"User-Agent": "kenning-nlp-packs"}
-        token = os.environ.get("KENNING_PACKS_TOKEN")
+        headers = {"User-Agent": "vuurtoren-nlp-packs"}
+        token = os.environ.get("VUURTOREN_PACKS_TOKEN")
         if token:
             headers["Authorization"] = f"Bearer {token}"
         req = urllib.request.Request(f"{url.rstrip('/')}/{file}", headers=headers)
@@ -309,8 +309,8 @@ def install(name: str, allow_build: bool) -> str:
             sha, source = None, "build"
         else:
             raise RuntimeError(
-                f"{name}: no source (set KENNING_PACKS_URL or KENNING_PACKS_DIR, "
-                "or KENNING_PACKS=auto to build it here)"
+                f"{name}: no source (set VUURTOREN_PACKS_URL or VUURTOREN_PACKS_DIR, "
+                "or VUURTOREN_PACKS=auto to build it here)"
             )
         _swap_in(spec, staged)
         _write_marker(spec, entry["version"], sha, source)
@@ -318,8 +318,8 @@ def install(name: str, allow_build: bool) -> str:
 
 
 def _build_grammar_cache() -> None:
-    from kenning_nlp.grammar import TOPICS
-    from kenning_nlp.grammar_examples import MAX_PER_TOPIC, GrammarExamples
+    from vuurtoren_nlp.grammar import TOPICS
+    from vuurtoren_nlp.grammar_examples import MAX_PER_TOPIC, GrammarExamples
 
     scanner = GrammarExamples(sentences_path())
     if not scanner.writable():
@@ -376,7 +376,7 @@ def ensure_in_background(force: bool = False) -> bool:
         if _thread is not None and _thread.is_alive():
             return False
         _thread = threading.Thread(
-            target=ensure, kwargs={"force": force}, name="kenning-packs", daemon=True
+            target=ensure, kwargs={"force": force}, name="vuurtoren-packs", daemon=True
         )
         _thread.start()
         return True

@@ -53,8 +53,8 @@ import re
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 
-from kenning_nlp import english as en
-from kenning_nlp.compound import PartEntry, Resolver, real_glosses
+from vuurtoren_nlp import english as en
+from vuurtoren_nlp.compound import PartEntry, Resolver, real_glosses
 
 MIN_WORD_LEN = 4
 MAX_DEPTH = 2
@@ -260,7 +260,7 @@ def _verb_phrase(english: str) -> str | None:
 def dutch_stems(infinitive: str) -> set[str]:
     """Present stems of a Dutch infinitive (``halen`` -> ``haal``, ``stappen`` -> ``stap``).
 
-    Stricter than :func:`kenning_nlp.compound.verb_stems`: ``hal`` is no stem of ``halen``. An
+    Stricter than :func:`vuurtoren_nlp.compound.verb_stems`: ``hal`` is no stem of ``halen``. An
     ``e`` or ``o`` before the last consonant may be a short vowel or a schwa (``wandelen`` ->
     ``wandel``, ``komen`` -> ``kom``), so both spellings are kept for those.
     """

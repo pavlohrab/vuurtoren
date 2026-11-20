@@ -19,7 +19,7 @@ Rules
   per linker and for less typical readings; so fewer, longer parts win.
 * Title-case words (possible names) need >= 9 letters, two parts >= 4 letters and a noun head.
 * A derivational suffix is never a head (:data:`SUFFIX_HEADS`: ``woordeloos`` is no
-  ``woord`` + ``loos``, the plural of ``loo``); :mod:`kenning_nlp.derive` handles those words.
+  ``woord`` + ``loos``, the plural of ``loo``); :mod:`vuurtoren_nlp.derive` handles those words.
 * A head without a dictionary entry may be a derivation (``schoenen`` + ``poetser``), through the
   optional ``derived`` resolver.
 * The compound's article/gender is the head's (Dutch rule).
@@ -136,7 +136,7 @@ class PartEntry:
     inflected: bool = False
     """True if the part is an inflected form of ``lemma`` (e.g. a plural), not the lemma."""
     derived: bool = False
-    """True if the reading is a derivation (:mod:`kenning_nlp.derive`), not a dictionary entry."""
+    """True if the reading is a derivation (:mod:`vuurtoren_nlp.derive`), not a dictionary entry."""
 
 
 Resolver = Callable[[str], Sequence[PartEntry]]

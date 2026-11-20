@@ -8,8 +8,8 @@ from __future__ import annotations
 
 import pytest
 
-from kenning_nlp.lexicon import get_lexicon
-from kenning_nlp.pipeline import analyze_texts
+from vuurtoren_nlp.lexicon import get_lexicon
+from vuurtoren_nlp.pipeline import analyze_texts
 
 db = pytest.mark.skipif(not get_lexicon().available, reason="Kaikki dictionary DB not built")
 

@@ -1,6 +1,6 @@
 """Example sentences (``POST /sentences``) from Tatoeba, with an inverted lemma index.
 
-Two halves, like :mod:`kenning_nlp.dictionary`:
+Two halves, like :mod:`vuurtoren_nlp.dictionary`:
 
 * :func:`build_sentence_db` writes ``data/sentences-nl.sqlite`` from (id, Dutch, English) triples
   and an analyser callable (``scripts/build_sentences.py`` passes the real spaCy pipeline, the
@@ -28,8 +28,8 @@ from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from pathlib import Path
 
-from kenning_nlp.datadir import data_path
-from kenning_nlp.models import TextAnalysis
+from vuurtoren_nlp.datadir import data_path
+from vuurtoren_nlp.models import TextAnalysis
 
 MIN_WORDS = 3
 MAX_WORDS = 25
@@ -61,8 +61,8 @@ Analyzer = Callable[[list[str]], list[TextAnalysis]]
 
 
 def default_db_path() -> Path:
-    """``$KENNING_SENTENCES_PATH`` or ``server/nlp/data/sentences-nl.sqlite``."""
-    return data_path("KENNING_SENTENCES_PATH", "sentences-nl.sqlite")
+    """``$VUURTOREN_SENTENCES_PATH`` or ``server/nlp/data/sentences-nl.sqlite``."""
+    return data_path("VUURTOREN_SENTENCES_PATH", "sentences-nl.sqlite")
 
 
 def is_usable(text: str) -> bool:

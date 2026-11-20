@@ -3,7 +3,7 @@ import io
 from fastapi.testclient import TestClient
 from reportlab.pdfgen import canvas
 
-from kenning_nlp.app import app
+from vuurtoren_nlp.app import app
 
 client = TestClient(app)
 
@@ -75,10 +75,10 @@ def test_empty_upload_400() -> None:
 
 
 def test_too_large_upload_413(monkeypatch) -> None:
-    from kenning_nlp import app as app_module
+    from vuurtoren_nlp import app as app_module
 
     async def small_limit(file, limit=1024):
-        from kenning_nlp.errors import read_upload
+        from vuurtoren_nlp.errors import read_upload
 
         return await read_upload(file, limit)
 
@@ -123,7 +123,7 @@ GARBLED = [
 
 
 def test_text_layer_judgement() -> None:
-    from kenning_nlp.pdf import text_layer_ok
+    from vuurtoren_nlp.pdf import text_layer_ok
 
     assert text_layer_ok(" ".join(DUTCH))
     assert not text_layer_ok(" ".join(GARBLED))  # a broken font encoding
@@ -132,8 +132,8 @@ def test_text_layer_judgement() -> None:
 
 
 def test_pages_without_a_usable_text_layer_are_ocrd(monkeypatch) -> None:
-    import kenning_nlp.pdf as pdf_module
-    from kenning_nlp.pdf import iter_pdf_pages
+    import vuurtoren_nlp.pdf as pdf_module
+    from vuurtoren_nlp.pdf import iter_pdf_pages
 
     data = make_pdf([DUTCH, [""], GARBLED])
     pages = list(iter_pdf_pages(data, dpi=36))
@@ -152,8 +152,8 @@ def test_pages_without_a_usable_text_layer_are_ocrd(monkeypatch) -> None:
 
 
 def test_ocr_of_a_mixed_pdf_keeps_the_text_layer(monkeypatch) -> None:
-    import kenning_nlp.ocr as ocr
-    from kenning_nlp.ocr import PageRows
+    import vuurtoren_nlp.ocr as ocr
+    from vuurtoren_nlp.ocr import PageRows
 
     monkeypatch.setattr(ocr, "ensure_engine", lambda lang: "rapidocr-nl")
     seen = []

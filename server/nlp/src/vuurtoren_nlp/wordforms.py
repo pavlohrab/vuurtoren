@@ -1,12 +1,12 @@
 """Morphology for practice exercises (``POST /forms``): the TypeScript ``WordForms`` shape.
 
-Two halves, like :mod:`kenning_nlp.dictionary`:
+Two halves, like :mod:`vuurtoren_nlp.dictionary`:
 
 * :func:`extract_word_forms` turns ONE Kaikki entry (raw JSON) into a ``WordForms`` dict. It is
   called by ``build_dictionary`` and stored in the ``wordforms`` table (so the 250 MB JSONL is
   only needed at build time) and by the tests with small fixtures.
 * :class:`WordFormsStore` is the read-only lookup. It also resolves the perfect-tense auxiliary
-  (see below) and falls back to the particle list in :mod:`kenning_nlp.nl` for separable verbs
+  (see below) and falls back to the particle list in :mod:`vuurtoren_nlp.nl` for separable verbs
   that Wiktionary has no entry for.
 
 Where each field comes from (English Wiktionary via Kaikki)::
@@ -37,7 +37,7 @@ from collections.abc import Iterable
 from pathlib import Path
 from typing import Any
 
-from kenning_nlp.nl import SEPARABLE_PARTICLES
+from vuurtoren_nlp.nl import SEPARABLE_PARTICLES
 
 # Form rows with any of these tags are not the plain textbook form.
 _EXCLUDED = frozenset(

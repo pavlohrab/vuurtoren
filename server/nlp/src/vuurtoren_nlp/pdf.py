@@ -15,8 +15,8 @@ import threading
 from collections.abc import Iterator
 from typing import TYPE_CHECKING
 
-from kenning_nlp.cleanup import clean_pages
-from kenning_nlp.errors import ServiceError
+from vuurtoren_nlp.cleanup import clean_pages
+from vuurtoren_nlp.errors import ServiceError
 
 if TYPE_CHECKING:
     from PIL.Image import Image
@@ -41,7 +41,7 @@ _WORD = re.compile(r"[^\W\d_]{2,}")
 
 def dutch_share(text: str) -> tuple[float, int]:
     """Share of the words (two or more letters) of ``text`` that are Dutch, and their count."""
-    from kenning_nlp.ocr_review import is_known
+    from vuurtoren_nlp.ocr_review import is_known
 
     words = _WORD.findall(text)[:SHARE_SAMPLE]
     if not words:
@@ -118,7 +118,7 @@ def extract_pdf(data: bytes) -> dict[str, object]:
 
 
 def _ocr_installed() -> bool:
-    from kenning_nlp.ocr import ocr_engine_name
+    from vuurtoren_nlp.ocr import ocr_engine_name
 
     return ocr_engine_name() is not None
 

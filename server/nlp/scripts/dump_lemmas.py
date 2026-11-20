@@ -18,7 +18,7 @@ from pathlib import Path
 
 
 def dump(path: Path) -> dict[str, list[list[object]]]:
-    from kenning_nlp.pipeline import analyze_texts
+    from vuurtoren_nlp.pipeline import analyze_texts
 
     sentences = [ln.strip() for ln in path.read_text(encoding="utf-8").splitlines() if ln.strip()]
     out: dict[str, list[list[object]]] = {}

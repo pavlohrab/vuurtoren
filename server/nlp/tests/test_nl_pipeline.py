@@ -1,7 +1,7 @@
 import pytest
 
-from kenning_nlp.nl import join_particle, strip_unattested_particle
-from kenning_nlp.pipeline import analyze_terms, analyze_texts, split_term
+from vuurtoren_nlp.nl import join_particle, strip_unattested_particle
+from vuurtoren_nlp.pipeline import analyze_terms, analyze_texts, split_term
 
 
 def lemmas(text: str) -> dict[str, str]:

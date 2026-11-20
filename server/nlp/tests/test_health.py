@@ -1,6 +1,6 @@
 from fastapi.testclient import TestClient
 
-from kenning_nlp.app import app
+from vuurtoren_nlp.app import app
 
 
 def test_health() -> None:

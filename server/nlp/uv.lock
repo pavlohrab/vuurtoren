@@ -664,7 +664,7 @@ wheels = [
 ]
 
 [[package]]
-name = "kenning-nlp"
+name = "vuurtoren-nlp"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
@@ -692,7 +692,7 @@ ocr = [
 
 [package.dev-dependencies]
 dev = [
-    { name = "kenning-nlp", extra = ["ocr"] },
+    { name = "vuurtoren-nlp", extra = ["ocr"] },
     { name = "pytest" },
     { name = "reportlab" },
     { name = "ruff" },
@@ -721,7 +721,7 @@ provides-extras = ["ocr"]
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "kenning-nlp", extras = ["ocr"] },
+    { name = "vuurtoren-nlp", extras = ["ocr"] },
     { name = "pytest", specifier = ">=9.2.0" },
     { name = "reportlab", specifier = ">=5.1.0" },
     { name = "ruff", specifier = ">=0.17.5" },

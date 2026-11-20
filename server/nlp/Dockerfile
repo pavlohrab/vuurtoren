@@ -1,16 +1,16 @@
 # syntax=docker/dockerfile:1
-# Kenning NLP service. Build context: server/nlp (see deploy/compose.yml).
+# Vuurtoren NLP service. Build context: server/nlp (see deploy/compose.yml).
 #
-#   docker build server/nlp                          -> kenning-nlp:<tag>       (with OCR)
-#   docker build --build-arg OCR=0 server/nlp        -> kenning-nlp:<tag>-slim  (no OCR)
-#   docker build -f server/nlp/full.Dockerfile ...   -> kenning-nlp:<tag>-full  (data packs inside)
+#   docker build server/nlp                          -> vuurtoren-nlp:<tag>       (with OCR)
+#   docker build --build-arg OCR=0 server/nlp        -> vuurtoren-nlp:<tag>-slim  (no OCR)
+#   docker build -f server/nlp/full.Dockerfile ...   -> vuurtoren-nlp:<tag>-full  (data packs inside)
 #
 # The image holds code and libraries only. The data (dictionary, Tatoeba sentences, translation
 # model; ~100 MB download, ~185 MB installed) are versioned *data packs* on the /data volume:
 # at startup the server installs missing or outdated packs in the background, from
-# KENNING_PACKS_DIR (bundled archives, the -full image), KENNING_PACKS_URL (release assets) or, with
+# VUURTOREN_PACKS_DIR (bundled archives, the -full image), VUURTOREN_PACKS_URL (release assets) or, with
 # neither, by building them here from the pinned upstream sources with scripts/ (~10 minutes,
-# once). See kenning_nlp/packs.py and docs/architecture.md ("Data packs").
+# once). See vuurtoren_nlp/packs.py and docs/architecture.md ("Data packs").
 #
 # Size: a small wordfreq-based language detector,
 # Dutch-only simplemma data, wordfreq lists only for the detected languages, no tests or bytecode
@@ -39,7 +39,7 @@ RUN extra=""; [ "$OCR" = 1 ] && extra="--extra ocr"; \
 # Trim what the service never loads:
 #   debug symbols of the compiled extensions (strip: ~220 MB, mostly ctranslate2 and spaCy);
 #   simplemma: Dutch only; wordfreq: Dutch (large, for frequencies) + the small lists of the
-#   languages /detect knows (kenning_nlp/detect.py); test suites; bytecode (compiled on first
+#   languages /detect knows (vuurtoren_nlp/detect.py); test suites; bytecode (compiled on first
 #   start into PYTHONPYCACHEPREFIX instead); setuptools (build-time only).
 # binutils (strip) stays in this throwaway stage.
 RUN apt-get update && apt-get install -y --no-install-recommends binutils \
@@ -65,8 +65,8 @@ FROM python:3.12.16-slim AS runtime
 ENV PATH="/opt/venv/bin:$PATH" \
     PYTHONUNBUFFERED=1 \
     PYTHONPYCACHEPREFIX=/cache/pycache \
-    KENNING_DATA_DIR=/data \
-    KENNING_PACKS=auto
+    VUURTOREN_DATA_DIR=/data \
+    VUURTOREN_PACKS=auto
 
 WORKDIR /app
 # The project is installed in editable mode, so /app (src, scripts) must sit next to /opt/venv.
@@ -74,9 +74,9 @@ COPY --from=venv /opt/venv /opt/venv
 COPY --from=venv /app /app
 
 # /data is the data-pack volume: owned by the service user so a fresh named volume inherits it.
-RUN useradd --system --uid 10001 kenning \
-    && mkdir -p /cache/course /cache/pycache /data && chown -R kenning /cache /data
-USER kenning
+RUN useradd --system --uid 10001 vuurtoren \
+    && mkdir -p /cache/course /cache/pycache /data && chown -R vuurtoren /cache /data
+USER vuurtoren
 
 EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=40s \
@@ -86,4 +86,4 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=40s \
 # cache and the data packs are written by one process. Blocking work runs in the threadpool, so
 # one worker still serves requests concurrently. Do not add --workers or WEB_CONCURRENCY; scale
 # with one container per user instead.
-CMD ["uvicorn", "kenning_nlp.app:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
+CMD ["uvicorn", "vuurtoren_nlp.app:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]

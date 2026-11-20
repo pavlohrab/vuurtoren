@@ -7,12 +7,12 @@ import pytest
 from fastapi.testclient import TestClient
 from PIL import Image, ImageDraw, ImageFont
 
-import kenning_nlp.app as app_module
-from kenning_nlp import rapid
-from kenning_nlp.app import app
-from kenning_nlp.cleanup import clean_pages
-from kenning_nlp.course import CourseOcr
-from kenning_nlp.ocr_review import OcrWord, align, assess, find_flags, page_words, suggestions
+import vuurtoren_nlp.app as app_module
+from vuurtoren_nlp import rapid
+from vuurtoren_nlp.app import app
+from vuurtoren_nlp.cleanup import clean_pages
+from vuurtoren_nlp.course import CourseOcr
+from vuurtoren_nlp.ocr_review import OcrWord, align, assess, find_flags, page_words, suggestions
 
 HAS_RAPIDOCR = rapid.available()
 

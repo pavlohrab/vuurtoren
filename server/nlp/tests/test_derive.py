@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import pytest
 
-from kenning_nlp import english as en
-from kenning_nlp.compound import PartEntry, split_compound
-from kenning_nlp.derive import derive, dutch_stems, english_of
+from vuurtoren_nlp import english as en
+from vuurtoren_nlp.compound import PartEntry, split_compound
+from vuurtoren_nlp.derive import derive, dutch_stems, english_of
 
 
 def _e(lemma: str, pos: str, *glosses: str, inflected: bool = False) -> PartEntry:

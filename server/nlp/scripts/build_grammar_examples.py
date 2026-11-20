@@ -6,8 +6,8 @@ Usage (from server/nlp)::
     uv run python scripts/build_grammar_examples.py --max 20000
 
 Scans the Tatoeba sentence DB with the grammar detectors and keeps the best examples per topic
-in ``data/grammar-examples-nl.sqlite`` (or ``$KENNING_GRAMMAR_CACHE_PATH``; see
-``kenning_nlp.grammar_examples``). The Docker image runs this at build time. Resumes where an
+in ``data/grammar-examples-nl.sqlite`` (or ``$VUURTOREN_GRAMMAR_CACHE_PATH``; see
+``vuurtoren_nlp.grammar_examples``). The Docker image runs this at build time. Resumes where an
 earlier run stopped; the cache is rebuilt automatically when the detectors change.
 """
 
@@ -17,9 +17,9 @@ import argparse
 import sys
 import time
 
-from kenning_nlp.grammar import TOPICS
-from kenning_nlp.grammar_examples import MAX_PER_TOPIC, GrammarExamples
-from kenning_nlp.sentences import default_db_path
+from vuurtoren_nlp.grammar import TOPICS
+from vuurtoren_nlp.grammar_examples import MAX_PER_TOPIC, GrammarExamples
+from vuurtoren_nlp.sentences import default_db_path
 
 
 def main() -> int:

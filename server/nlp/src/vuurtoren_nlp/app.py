@@ -14,17 +14,17 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
 from starlette.concurrency import run_in_threadpool
 
-from kenning_nlp import __version__, analyzer, lexicon, packs, translate
-from kenning_nlp.course import COURSE_MAX_UPLOAD_BYTES, CourseOcr
-from kenning_nlp.detect import detect
-from kenning_nlp.dictionary import Dictionary, DictionaryMissingError
-from kenning_nlp.dictionary import default_db_path as default_dictionary_path
-from kenning_nlp.errors import ServiceError, read_upload
-from kenning_nlp.extract_url import extract_from_url
-from kenning_nlp.grammar import detect_grammar
-from kenning_nlp.grammar_examples import GrammarExamples
-from kenning_nlp.health import health_report
-from kenning_nlp.models import (
+from vuurtoren_nlp import __version__, analyzer, lexicon, packs, translate
+from vuurtoren_nlp.course import COURSE_MAX_UPLOAD_BYTES, CourseOcr
+from vuurtoren_nlp.detect import detect
+from vuurtoren_nlp.dictionary import Dictionary, DictionaryMissingError
+from vuurtoren_nlp.dictionary import default_db_path as default_dictionary_path
+from vuurtoren_nlp.errors import ServiceError, read_upload
+from vuurtoren_nlp.extract_url import extract_from_url
+from vuurtoren_nlp.grammar import detect_grammar
+from vuurtoren_nlp.grammar_examples import GrammarExamples
+from vuurtoren_nlp.health import health_report
+from vuurtoren_nlp.models import (
     GRAMMAR_EXAMPLE_LIMIT,
     MAX_TOTAL_CHARS,
     MT_MAX_TOTAL_CHARS,
@@ -53,14 +53,14 @@ from kenning_nlp.models import (
     UrlExtraction,
     WordForms,
 )
-from kenning_nlp.ocr import OCR_LANGS, run_ocr
-from kenning_nlp.pdf import cover_thumbnail, extract_pdf
-from kenning_nlp.pipeline import analyze_terms, analyze_texts
-from kenning_nlp.sentences import SentencesMissingError, SentenceStore
-from kenning_nlp.sentences import default_db_path as default_sentences_path
-from kenning_nlp.similar import SimilarMissingError, SimilarService
-from kenning_nlp.translate import translate_texts
-from kenning_nlp.wordforms import WordFormsMissingError, WordFormsStore
+from vuurtoren_nlp.ocr import OCR_LANGS, run_ocr
+from vuurtoren_nlp.pdf import cover_thumbnail, extract_pdf
+from vuurtoren_nlp.pipeline import analyze_terms, analyze_texts
+from vuurtoren_nlp.sentences import SentencesMissingError, SentenceStore
+from vuurtoren_nlp.sentences import default_db_path as default_sentences_path
+from vuurtoren_nlp.similar import SimilarMissingError, SimilarService
+from vuurtoren_nlp.translate import translate_texts
+from vuurtoren_nlp.wordforms import WordFormsMissingError, WordFormsStore
 
 
 def parse_origins(raw: str) -> list[str]:
@@ -76,26 +76,26 @@ def check_total(texts: list[str], limit: int = MAX_TOTAL_CHARS) -> None:
 
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
-    # Data packs (kenning_nlp.packs): install missing/outdated ones in the background, so the
+    # Data packs (vuurtoren_nlp.packs): install missing/outdated ones in the background, so the
     # service answers /health at once and features light up as their data arrives.
     if packs.mode() != "off":
         packs.ensure_in_background()
     yield
 
 
-app = FastAPI(title="Kenning NLP", version=__version__, lifespan=lifespan)
+app = FastAPI(title="Vuurtoren NLP", version=__version__, lifespan=lifespan)
 
-TOKEN_HEADER = "x-kenning-token"
+TOKEN_HEADER = "x-vuurtoren-token"
 
 
 @app.middleware("http")
 async def require_token(request: Request, call_next):  # type: ignore[no-untyped-def]
-    """Desktop sidecar: with ``$KENNING_NLP_TOKEN`` set, every request must carry it.
+    """Desktop sidecar: with ``$VUURTOREN_NLP_TOKEN`` set, every request must carry it.
 
     The desktop app starts this server on a random localhost port and sends the token from its
     own process, so other programs and web pages on this computer cannot use the server.
     """
-    token = os.environ.get("KENNING_NLP_TOKEN")
+    token = os.environ.get("VUURTOREN_NLP_TOKEN")
     if token and not secrets.compare_digest(request.headers.get(TOKEN_HEADER, ""), token):
         return JSONResponse({"detail": "Missing or wrong token."}, status_code=401)
     return await call_next(request)
@@ -103,7 +103,7 @@ async def require_token(request: Request, call_next):  # type: ignore[no-untyped
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=parse_origins(os.environ.get("KENNING_CORS_ORIGINS", "http://localhost:5173")),
+    allow_origins=parse_origins(os.environ.get("VUURTOREN_CORS_ORIGINS", "http://localhost:5173")),
     allow_methods=["GET", "POST"],
     allow_headers=["Content-Type"],
 )
@@ -116,7 +116,7 @@ def service_error_handler(_: Request, exc: ServiceError) -> JSONResponse:
 
 @app.get("/health")
 def health() -> dict[str, object]:
-    """Liveness plus version and data presence (kenning_nlp.health)."""
+    """Liveness plus version and data presence (vuurtoren_nlp.health)."""
     return health_report()
 
 
@@ -130,7 +130,7 @@ def packs_status() -> dict[str, object]:
 def packs_update(force: bool = False) -> dict[str, object]:
     """Install missing or outdated data packs now (in the background; poll ``GET``).
 
-    ``force`` also replaces unversioned data. Works in every ``KENNING_PACKS`` mode except that
+    ``force`` also replaces unversioned data. Works in every ``VUURTOREN_PACKS`` mode except that
     local builds need ``auto``. Behind the sign-in like every /nlp/ route.
     """
     started = packs.ensure_in_background(force=force)
@@ -190,7 +190,7 @@ async def ocr_endpoint(
     """OCR an image (png/jpg/webp/tiff) or a PDF. 503 if RapidOCR is not installed.
 
     ``review=true`` adds ``review``: page images and the words that may be misread, with
-    suggestions (see :mod:`kenning_nlp.ocr_review`).
+    suggestions (see :mod:`vuurtoren_nlp.ocr_review`).
     """
     data = await read_upload(file)
     return OcrResult(**await run_in_threadpool(run_ocr, data, lang, review))
@@ -218,7 +218,7 @@ def gloss_endpoint(req: GlossRequest) -> dict[str, list[GlossEntry]]:
 @app.post("/translate/align")
 def align_endpoint(req: AlignRequest) -> list[AlignedText]:
     """Translate texts and give the English of the given words: the in-context meaning of a word
-    the dictionary does not know (see :mod:`kenning_nlp.align`). 503 without the model."""
+    the dictionary does not know (see :mod:`vuurtoren_nlp.align`). 503 without the model."""
     check_total([it.text for it in req.items], MT_MAX_TOTAL_CHARS)
     items = [(it.text, list(it.spans)) for it in req.items]
     return [AlignedText(**t) for t in translate.align_texts(req.source, req.target, items)]
@@ -357,7 +357,7 @@ def course_ocr_cancel(job_id: str) -> dict[str, str]:
 
 @app.post("/grammar")
 def grammar_endpoint(req: GrammarRequest) -> list[list[GrammarHit]]:
-    """Grammar constructions found in each text (rule-based, see :mod:`kenning_nlp.grammar`).
+    """Grammar constructions found in each text (rule-based, see :mod:`vuurtoren_nlp.grammar`).
 
     One list of hits per input text, in text order. ``tokens`` index the tokens that
     ``/analyze/text`` returns for the same text; ``start``/``end`` give the sentence span, so

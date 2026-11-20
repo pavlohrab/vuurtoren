@@ -8,10 +8,10 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from kenning_nlp import app as app_module
-from kenning_nlp.app import app
-from kenning_nlp.compound import PartEntry, is_form_of_gloss, split_compound
-from kenning_nlp.dictionary import Dictionary, build_dictionary, default_db_path
+from vuurtoren_nlp import app as app_module
+from vuurtoren_nlp.app import app
+from vuurtoren_nlp.compound import PartEntry, is_form_of_gloss, split_compound
+from vuurtoren_nlp.dictionary import Dictionary, build_dictionary, default_db_path
 
 FIXTURES = Path(__file__).parent / "fixtures"
 client = TestClient(app)
@@ -232,7 +232,7 @@ def test_real_db_coverage_on_news_text(capsys: pytest.CaptureFixture[str]):
 
 
 def test_inflection_candidates_pure() -> None:
-    from kenning_nlp.compound import inflection_candidates
+    from vuurtoren_nlp.compound import inflection_candidates
 
     assert ("diminutive", "vriendin") in inflection_candidates("vriendinnetje")
     assert ("diminutive", "man") in inflection_candidates("mannetje")

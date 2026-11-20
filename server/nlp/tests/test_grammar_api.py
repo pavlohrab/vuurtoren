@@ -6,11 +6,11 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from kenning_nlp import app as app_module
-from kenning_nlp.app import app
-from kenning_nlp.grammar_examples import GrammarExamples
-from kenning_nlp.pipeline import analyze_texts
-from kenning_nlp.sentences import build_sentence_db
+from vuurtoren_nlp import app as app_module
+from vuurtoren_nlp.app import app
+from vuurtoren_nlp.grammar_examples import GrammarExamples
+from vuurtoren_nlp.pipeline import analyze_texts
+from vuurtoren_nlp.sentences import build_sentence_db
 
 client = TestClient(app)
 
@@ -28,8 +28,8 @@ PAIRS = [
 def sentence_db(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     path = tmp_path / "sentences.sqlite"
     build_sentence_db(PAIRS, lambda texts: analyze_texts("nl", texts), path)
-    monkeypatch.setenv("KENNING_SENTENCES_PATH", str(path))
-    monkeypatch.setenv("KENNING_GRAMMAR_CACHE_PATH", str(tmp_path / "cache.sqlite"))
+    monkeypatch.setenv("VUURTOREN_SENTENCES_PATH", str(path))
+    monkeypatch.setenv("VUURTOREN_GRAMMAR_CACHE_PATH", str(tmp_path / "cache.sqlite"))
     return path
 
 
@@ -79,7 +79,7 @@ def test_examples_unknown_topic_and_bad_input(sentence_db: Path) -> None:
 
 
 def test_examples_missing_db(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("KENNING_SENTENCES_PATH", str(tmp_path / "nope.sqlite"))
+    monkeypatch.setenv("VUURTOREN_SENTENCES_PATH", str(tmp_path / "nope.sqlite"))
     res = client.get("/grammar/examples", params={"topic": "inversion"})
     assert res.status_code == 503
     assert "build_sentences" in res.json()["detail"]
@@ -104,7 +104,7 @@ def test_examples_scan_is_cached_and_incremental(sentence_db: Path, tmp_path: Pa
 def test_examples_cache_resets_when_detectors_change(
     sentence_db: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from kenning_nlp import grammar_examples
+    from vuurtoren_nlp import grammar_examples
 
     cache = tmp_path / "v.sqlite"
     GrammarExamples(sentence_db, cache).examples("inversion", 1)
@@ -120,7 +120,7 @@ def test_examples_read_only_cache(
     sentence_db: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """A precomputed cache in a read-only directory (the Docker /data) is read, never written."""
-    from kenning_nlp import grammar_examples
+    from vuurtoren_nlp import grammar_examples
 
     cache = tmp_path / "ro" / "cache.sqlite"
     cache.parent.mkdir()

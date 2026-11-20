@@ -18,8 +18,8 @@ from urllib.parse import urljoin, urlsplit
 
 import httpx
 
-from kenning_nlp.cleanup import normalize_text
-from kenning_nlp.errors import ServiceError
+from vuurtoren_nlp.cleanup import normalize_text
+from vuurtoren_nlp.errors import ServiceError
 
 MAX_REDIRECTS = 5
 TIMEOUT_SECONDS = 10.0
@@ -114,7 +114,7 @@ def _request_pinned(
     target = httpx.URL(url).copy_with(host=str(ip))
     headers = {
         "Host": host if parts.port is None else f"{host}:{port}",
-        "User-Agent": "Mozilla/5.0 (compatible; KenningReader/1.0)",
+        "User-Agent": "Mozilla/5.0 (compatible; VuurtorenReader/1.0)",
         "Accept": "text/html,application/xhtml+xml,text/plain;q=0.8,*/*;q=0.5",
     }
     ext = {"sni_hostname": host} if parts.scheme == "https" else {}

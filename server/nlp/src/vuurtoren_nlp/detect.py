@@ -14,7 +14,7 @@ import re
 from collections import Counter
 from functools import lru_cache
 
-from kenning_nlp.models import DETECT_SAMPLE_CHARS, Detection
+from vuurtoren_nlp.models import DETECT_SAMPLE_CHARS, Detection
 
 DETECTOR_VERSION = "wf1"
 """Bumped whenever the classifier changes (part of the analyzer version)."""
