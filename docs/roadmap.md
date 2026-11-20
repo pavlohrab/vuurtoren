@@ -6,8 +6,8 @@
    language server for phones.
 2. **Anki in the self-hosted stack.** Headless Anki with your AnkiWeb login, read-only.
 3. **Weave reading.** An English text with Dutch islands that grow as you learn.
-4. **Phone app.** Native mode and sync; OCR through the phone's own engine (ML Kit on Android,
-   Apple Vision on iOS).
+4. **Phone apps.** Android first, then iPhone, from the same Tauri project. See
+   [Phones](phones.md).
 
 ## Native mode
 
