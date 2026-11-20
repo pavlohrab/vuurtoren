@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { glossHead, shortGloss } from "./gloss.js";
+import { formOfTarget, glossHead, meaningSenses, shortGloss } from "./gloss.js";
 
 describe("shortGloss", () => {
   it("drops explanations in brackets and after a semicolon or colon", () => {
@@ -53,5 +53,17 @@ describe("shortGloss", () => {
 
   it("is empty for no senses", () => {
     expect(shortGloss([])).toBe("");
+  });
+
+  it("finds the word a form-of sense points to", () => {
+    expect(formOfTarget("unstressed form of zij")).toBe("zij");
+    expect(formOfTarget("neuter singular of de")).toBe("de");
+    expect(formOfTarget("first/second/third-person singular present indicative of zullen")).toBe(
+      "zullen",
+    );
+    expect(formOfTarget("adverbial form of met")).toBe("met");
+    expect(formOfTarget("to go, to move from one place to another")).toBeNull();
+    expect(formOfTarget("a house, home")).toBeNull();
+    expect(meaningSenses(["alternative form of heel", "whole, entire"])).toEqual(["whole, entire"]);
   });
 });

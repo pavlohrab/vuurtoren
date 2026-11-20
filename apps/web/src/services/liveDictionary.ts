@@ -7,7 +7,7 @@
  * translation of its sentence. Order: derivation ("from woord + -loos"), a confident alignment
  * ("in this sentence"), compound, then a less confident alignment.
  */
-import { shortGloss } from "@app/core";
+import { PARTICLE_GLOSSES, formOfTarget, meaningSenses, shortGloss } from "@app/core";
 import type { VuurtorenRepository, WordInfo } from "@app/db";
 import type { NlpClient } from "@app/nlp-client";
 import { DEGRADED_MESSAGES, clearDegraded, reportDegraded } from "./degraded.js";
@@ -196,9 +196,36 @@ export function createLiveDictionary({ repo, lang, nlp }: LiveDictionaryDeps) {
           Object.assign(dict, await (await nlp()).gloss("nl", lemmas.slice(i, i + GLOSS_BATCH)));
         }
         clearDegraded("translate");
+        // A word whose senses only say "form of X" ("ze": unstressed form of zij) borrows X's
+        // meaning: one more batched lookup for those targets.
+        const senses = (it: { lemma: string; pos?: string }) =>
+          orderByPos(dict[it.lemma] ?? [], it.pos).flatMap((e) => e.glosses);
+        const targets = new Map<string, string>();
+        for (const it of needDict) {
+          const all = senses(it);
+          if (meaningSenses(all).length) continue;
+          const target = all.map(formOfTarget).find((t): t is string => t !== null);
+          if (target) targets.set(it.lemma, target);
+        }
+        const missingTargets = [...new Set(targets.values())].filter((t) => !(t in dict));
+        for (let i = 0; i < missingTargets.length; i += GLOSS_BATCH) {
+          Object.assign(
+            dict,
+            await (await nlp()).gloss("nl", missingTargets.slice(i, i + GLOSS_BATCH)),
+          );
+        }
         for (const it of needDict) {
           const ordered = orderByPos(dict[it.lemma] ?? [], it.pos);
-          const g = shortGloss(ordered.flatMap((e) => e.glosses).filter((x) => !FORM_OF.test(x)));
+          const fixed = PARTICLE_GLOSSES[it.lemma];
+          if (fixed) {
+            glossCache.set(cacheKey(it), { text: fixed });
+            continue;
+          }
+          const target = targets.get(it.lemma);
+          const own = meaningSenses(senses(it).filter((x) => !FORM_OF.test(x)));
+          const g = shortGloss(
+            own.length || !target ? own : meaningSenses(senses({ lemma: target })),
+          );
           const note = partsNote(ordered[0]);
           const guess = note ? ordered[0]?.origin : undefined;
           glossCache.set(

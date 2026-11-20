@@ -57,3 +57,41 @@ export function shortGloss(senses: readonly string[], max = 1): string {
   const first = glossHead(senses[0] ?? "");
   return first.length <= MAX_CHARS ? first : `${first.slice(0, MAX_CHARS - 1).trimEnd()}…`;
 }
+
+/**
+ * Senses that describe a grammatical form instead of a meaning: "unstressed form of zij",
+ * "neuter singular of de", "third-person singular present indicative of kunnen".
+ */
+const FORM_OF_ANY =
+  /^[\p{L}\s/'’-]*?\b(?:form|singular|plural|participle|person|inflection|diminutive|comparative|superlative|imperative|infinitive)\b[\p{L}\s/'’-]*?\bof\s+(?:the\s+)?([\p{L}'’-]+)/iu;
+
+/** The word a form-of sense points to ("unstressed form of zij" → "zij"), or null. */
+export function formOfTarget(sense: string): string | null {
+  return FORM_OF_ANY.exec(stripBrackets(sense).trim())?.[1] ?? null;
+}
+
+/** The senses that carry a meaning, without the form-of descriptions. */
+export function meaningSenses(senses: readonly string[]): string[] {
+  return senses.filter((s) => formOfTarget(s) === null);
+}
+
+/**
+ * Short glosses for frequent words whose dictionary senses only describe their use
+ * ("modal particle indicating reassurance"). Keyed by lemma.
+ */
+export const PARTICLE_GLOSSES: Readonly<Record<string, string>> = {
+  zullen: "will, shall",
+  wel: "indeed, well",
+  hoor: "you know",
+  toch: "still, after all",
+  maar: "but, just",
+  nou: "well, now",
+  even: "just, for a moment",
+  eens: "once, just",
+  gewoon: "just, simply",
+  juist: "just, exactly",
+  zeker: "certainly, sure",
+  hè: "right?, huh",
+  hoe: "how",
+  er: "there",
+};
