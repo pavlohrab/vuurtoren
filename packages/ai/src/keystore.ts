@@ -1,6 +1,6 @@
 /**
  * Per-device API key storage. Keys NEVER enter the event log, the database, backups or sync:
- * they live in the browser's localStorage (also in server mode), optionally encrypted with a
+ * they live in the browser's localStorage, optionally encrypted with a
  * passphrase (PBKDF2 -> AES-GCM via WebCrypto). Without a passphrase the key is stored as plain
  * text, which protects nothing against someone with access to the browser profile.
  */

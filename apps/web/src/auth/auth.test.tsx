@@ -147,9 +147,11 @@ describe("auth client", () => {
 
 describe("session watch", () => {
   it("only watches same-origin /api and /nlp, not the sign-in endpoints or other sites", () => {
-    expect(watchesUrl("/api/rpc", ORIGIN)).toBe(true);
+    expect(watchesUrl("/api/auth/sync-tokens/x", ORIGIN)).toBe(false);
     expect(watchesUrl(`${ORIGIN}/nlp/analyze/text`, ORIGIN)).toBe(true);
-    expect(watchesUrl(new URL("/api/export", ORIGIN), ORIGIN)).toBe(true);
+    expect(watchesUrl(new URL("/api/elsewhere", ORIGIN), ORIGIN)).toBe(true);
+    // Sync carries its own token: a refused token is a sync problem, not a sign-out.
+    expect(watchesUrl("/api/sync/list?dir=", ORIGIN)).toBe(false);
     expect(watchesUrl("/api/auth/login", ORIGIN)).toBe(false);
     expect(watchesUrl("/api/health", ORIGIN)).toBe(false);
     expect(watchesUrl("http://127.0.0.1:8765/", ORIGIN)).toBe(false); // AnkiConnect
@@ -171,7 +173,7 @@ describe("session watch", () => {
           <p>Reading page 3 of Een dag in Utrecht</p>
         </SessionGate>,
       );
-      await act(() => target.fetch("/api/rpc"));
+      await act(() => target.fetch("/nlp/health"));
       expect(screen.queryByRole("heading", { name: "Sign in again" })).toBeNull();
 
       status = 401;

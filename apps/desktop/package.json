@@ -4,7 +4,7 @@
   "private": true,
   "license": "MIT OR Apache-2.0",
   "type": "module",
-  "description": "Vuurtoren desktop app (Tauri v2): the offline app with a bundled language server, or a thin client for a Vuurtoren server. Not part of `pnpm build`: build the sidecar (server/nlp/desktop/build_sidecar.py), then `pnpm --filter desktop bundle`.",
+  "description": "Vuurtoren desktop app (Tauri v2): the whole app on this computer, with a bundled language server. Not part of `pnpm build`: build the sidecar (server/nlp/desktop/build_sidecar.py), then `pnpm --filter desktop bundle`.",
   "scripts": {
     "tauri": "tauri",
     "sidecar": "uv run --no-project python ../../server/nlp/desktop/build_sidecar.py",

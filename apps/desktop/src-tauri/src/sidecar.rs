@@ -22,7 +22,7 @@ pub const START_TIMEOUT: Duration = Duration::from_secs(180);
 #[derive(Serialize, Clone, Debug, PartialEq)]
 #[serde(rename_all = "camelCase", tag = "state")]
 pub enum NlpState {
-    /// Not started yet (server mode, or before the first local start).
+    /// Not started yet.
     Idle,
     Starting,
     Ready,
