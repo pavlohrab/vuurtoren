@@ -14,7 +14,6 @@ Share-alike terms apply to the data, not to the application code.
 | simplemma | dictionary lemmas | MIT | |
 | PaddleOCR PP-OCRv6 small detection and recognition models, PP-OCR text-direction model (ONNX) | `POST /ocr`, `POST /course/ocr` | Apache-2.0 | Bundled in the `rapidocr` wheel (the `ocr` extra): in the standard Docker image and the desktop sidecar. |
 | RapidOCR / ONNX Runtime / OpenCV | OCR inference, page clean-up | Apache-2.0 / MIT / Apache-2.0 | |
-| Tesseract and `nld` / `ukr` / `eng` traineddata | `POST /ocr` (Ukrainian, fallback) | Apache-2.0 | Installed from Debian packages in the Docker image. |
 | Helsinki-NLP OPUS-MT `opus-mt-nl-en` (original Marian release `opus-2019-12-05`, converted to CTranslate2 int8) | `POST /translate`, `data/mt-nl-en/` (data pack `mt-nl-en`) | Apache-2.0 on the Hugging Face model card; OPUS-MT training data and recipes are CC BY 4.0 | Attribution below. Downloaded and converted by `scripts/fetch_mt_model.py` (SHA-256 pinned); shipped as a data pack, not committed. |
 | ctranslate2 / sentencepiece | MT inference | MIT / Apache-2.0 | |
 | trafilatura | `POST /extract/url` | Apache-2.0 | |

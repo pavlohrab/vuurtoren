@@ -1,4 +1,4 @@
-"""Course OCR job: fake engine, no Tesseract needed."""
+"""Course OCR job: fake engine, no OCR engine needed."""
 
 import io
 import time
@@ -200,7 +200,7 @@ def test_text_layer_pdf_needs_no_ocr(monkeypatch) -> None:
             ["Chapter 2 Shopping", "Exercise 1 Choose the right answer from the list below."],
         ]
     )
-    r = client.post("/course/ocr?lang=en", files={"file": ("b.pdf", data, "application/pdf")})
+    r = client.post("/course/ocr", files={"file": ("b.pdf", data, "application/pdf")})
     body = wait_done(client, r.json()["id"])
     assert body["status"] == "done" and body["cached"] == 2 and calls == []
     assert body["pages"][0]["text"].startswith("Chapter 1 Greetings")
@@ -272,19 +272,19 @@ def test_disk_cache_survives_a_new_instance_and_order_is_kept(tmp_path, monkeypa
     assert body["cached"] == 4 and len(calls) == 4 and body["eta"] is None
 
 
-def test_scanned_page_without_tesseract_reports_the_install_hint(monkeypatch) -> None:
+def test_scanned_page_without_an_ocr_engine_reports_the_install_hint(monkeypatch) -> None:
     import kenning_nlp.course as course_module
     from kenning_nlp.errors import ServiceError
 
     def missing(lang):
-        raise ServiceError(503, "Tesseract OCR is not available on the server.")
+        raise ServiceError(503, "Text recognition (RapidOCR) is not installed on the server.")
 
     monkeypatch.setattr(course_module, "ensure_engine", missing)
     monkeypatch.setattr(app_module, "_course_ocr", CourseOcr(fake_engine, check=True))
     client = TestClient(app)
-    # An EPUB needs no OCR: it works without Tesseract.
+    # An EPUB needs no OCR: it works without an OCR engine.
     ok = client.post("/course/ocr", files={"file": ("b.epub", epub(["<p>Hallo</p>"]), "x")})
     assert wait_done(client, ok.json()["id"])["status"] == "done"
     r = client.post("/course/ocr", files={"file": ("b.tiff", tiff_pages(1), "image/tiff")})
     body = wait_done(client, r.json()["id"])
-    assert body["status"] == "error" and "Tesseract" in body["error"]
+    assert body["status"] == "error" and "RapidOCR" in body["error"]

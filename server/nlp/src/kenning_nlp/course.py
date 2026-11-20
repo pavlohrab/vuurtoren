@@ -39,10 +39,9 @@ from kenning_nlp import rapid
 from kenning_nlp.errors import ServiceError
 from kenning_nlp.ocr import (
     MAX_FRAMES,
-    TESSERACT_LANGS,
+    RAPID_PREFIX,
     ensure_engine,
     lang_of_code,
-    low_conf,
     ocr_image_data,
 )
 from kenning_nlp.ocr_review import COURSE_PREVIEW_LONG_SIDE, OcrWord, find_flags, preview_webp
@@ -64,15 +63,14 @@ PageResult = tuple[list[dict[str, Any]], float, list[dict[str, Any]] | None]
 
 
 def ocr_engine(img: Image.Image, code: str) -> tuple[Any, ...]:
-    """Real engine: clean-up plus RapidOCR or Tesseract, via
-    :func:`kenning_nlp.ocr.ocr_image_data`."""
+    """Real engine: clean-up plus RapidOCR, via :func:`kenning_nlp.ocr.ocr_image_data`."""
     return ocr_image_data(img, code)
 
 
 def data_to_blocks(data: dict[str, list[Any]], width: int, height: int) -> list[dict[str, Any]]:
-    """Group Tesseract ``image_to_data`` rows into blocks with normalised bounding boxes.
+    """Group ``image_to_data``-shaped rows into blocks with normalised bounding boxes.
 
-    Returns blocks in Tesseract's reading order as ``{"text", "x", "y", "w", "h"}`` where the
+    Returns blocks in reading order as ``{"text", "x", "y", "w", "h"}`` where the
     box is a fraction (0..1) of the page. Pure; used by the engine and by tests.
     """
     blocks: dict[int, dict[str, Any]] = {}
@@ -354,7 +352,7 @@ class Job:
 
 
 def default_workers() -> int:
-    """Parallel Tesseract processes: ``$KENNING_OCR_WORKERS`` or half the CPUs (1..6)."""
+    """Pages read in parallel: ``$KENNING_OCR_WORKERS`` or half the CPUs (1..6)."""
     env = os.environ.get("KENNING_OCR_WORKERS")
     if env and env.isdigit() and int(env) > 0:
         return int(env)
@@ -410,7 +408,7 @@ class CourseOcr:
         total = sum(count_pages(d) for d in files)
         if total > MAX_COURSE_PAGES:
             raise ServiceError(413, f"Too many pages (limit {MAX_COURSE_PAGES}).")
-        code = TESSERACT_LANGS.get(lang, lang)
+        code = RAPID_PREFIX + lang
         missing: ServiceError | None = None
         if self.check:
             try:
@@ -527,7 +525,7 @@ class CourseOcr:
         preview = None
         if words:
             text = "\n\n".join(b["text"] for b in blocks)
-            flags = find_flags(text, words, lang_of_code(code), low_conf=low_conf(code)) or None
+            flags = find_flags(text, words, lang_of_code(code)) or None
             if flags:
                 preview = preview_webp(page_img, COURSE_PREVIEW_LONG_SIDE, quality=55)
         return (blocks, conf, flags), preview

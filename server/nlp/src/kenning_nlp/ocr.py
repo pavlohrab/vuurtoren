@@ -1,27 +1,18 @@
-"""OCR of photos and scanned pages: page clean-up, then RapidOCR or Tesseract.
+"""OCR of photos and scanned pages: page clean-up, then RapidOCR.
 
 Every page first goes through :func:`kenning_nlp.straighten.straighten_page` (page found in a
-photo and flattened, deskewed, dewarped; flat scans pass unchanged). Then one of two engines
-reads it:
+photo and flattened, deskewed, dewarped; flat scans pass unchanged). Then RapidOCR
+(:mod:`kenning_nlp.rapid`, PaddleOCR models on ONNX Runtime) reads it. Its rows have the shape
+of an ``image_to_data`` table (one row per word with its block, paragraph, line, box and
+confidence), from which the text, layout blocks, word boxes and review flags are built.
 
-* **RapidOCR** (:mod:`kenning_nlp.rapid`, PaddleOCR models on ONNX Runtime), the main engine,
-  for the languages its bundled model reads;
-* **Tesseract** (via pytesseract), when RapidOCR is not installed or for a language it does not
-  read (Ukrainian). Page segmentation is PSM 3 (fully automatic, detects columns), or
-  ``KENNING_OCR_PSM``.
-
-``KENNING_OCR_ENGINE`` (``auto``, ``rapidocr`` or ``tesseract``) forces one engine. Both engines
-produce rows shaped like Tesseract's ``image_to_data``, so the text, layout blocks, word boxes
-and review flags are built the same way.
-
-An *engine code* names the engine and language of a request: ``rapidocr-nl`` for RapidOCR, the
-Tesseract traineddata name (``nld``) for Tesseract. Course import keys its page cache by it.
+OCR reads Dutch only. An *engine code* names the engine and language of a request
+(``rapidocr-nl``); course import keys its page cache by it.
 """
 
 from __future__ import annotations
 
 import io
-import os
 from collections.abc import Iterator
 from dataclasses import dataclass
 from typing import Any
@@ -42,126 +33,47 @@ from kenning_nlp.ocr_review import (
 from kenning_nlp.pdf import is_pdf, iter_pdf_pages
 from kenning_nlp.straighten import straighten_page
 
-# Public language code -> Tesseract traineddata name.
-TESSERACT_LANGS = {
-    "nl": "nld",
-    "uk": "ukr",
-    "en": "eng",
-    "de": "deu",
-    "fr": "fra",
-    "es": "spa",
-    "it": "ita",
-    "pt": "por",
-    "sv": "swe",
-    "da": "dan",
-    "pl": "pol",
-}
-MIN_LONG_SIDE = 2000
-"""Images whose longer side is below this (pixels) are upscaled before OCR."""
-MAX_UPSCALE = 3.0
+OCR_LANGS = ("nl",)
+"""Languages ``/ocr`` and ``/course/ocr`` read."""
 MAX_PIXELS = 120_000_000
 MAX_FRAMES = 60
 Image.MAX_IMAGE_PIXELS = MAX_PIXELS
 
 INSTALL_HINT = (
-    "Tesseract OCR is not available on the server. Install it (Debian/Ubuntu: "
-    "`apt install tesseract-ocr tesseract-ocr-nld tesseract-ocr-ukr`) or use the standard "
-    "kenning-nlp Docker image (the `-slim` variant has no OCR)."
+    "Text recognition (RapidOCR) is not installed on the server. Install it with "
+    "`pip install 'kenning-nlp[ocr]'` or use the standard kenning-nlp Docker image (the `-slim` "
+    "variant has no OCR)."
 )
 RAPID_PREFIX = "rapidocr-"
-RAPID_LOW_CONF = 70.0
-"""RapidOCR word score (0-100) below which a known word is still flagged for review. Its scores
-separate right from wrong words weakly; at 70 about 1 % of correct words get a flag."""
-
-
-def engine_choice() -> str:
-    """``$KENNING_OCR_ENGINE``: ``auto`` (default), ``rapidocr`` or ``tesseract``."""
-    choice = os.environ.get("KENNING_OCR_ENGINE", "auto").strip().lower()
-    return choice if choice in ("rapidocr", "tesseract") else "auto"
 
 
 def ocr_engine_name() -> str | None:
-    """The engine Dutch pages are read with (``rapidocr`` or ``tesseract``), or None when no
-    OCR engine is installed. Cheap: nothing is loaded."""
-    import shutil
-
-    choice = engine_choice()
-    if choice != "tesseract" and rapid.available():
-        return "rapidocr"
-    if choice != "rapidocr" and shutil.which("tesseract") is not None:
-        return "tesseract"
-    return None
+    """``rapidocr`` when RapidOCR is installed, else None. Cheap: nothing is loaded."""
+    return "rapidocr" if rapid.available() else None
 
 
 def ensure_engine(lang: str) -> str:
-    """Pick the engine for ``lang`` and return its engine code (see the module docstring).
-
-    RapidOCR when it is installed and reads ``lang``, else Tesseract.
+    """The engine code for ``lang`` (see the module docstring).
 
     Raises:
-        ServiceError: 503 with install guidance when no engine can read ``lang``.
+        ServiceError: 503 with install guidance when RapidOCR is not installed.
     """
-    choice = engine_choice()
-    if choice != "tesseract" and lang in rapid.LANGS and rapid.available():
-        return RAPID_PREFIX + lang
-    if choice == "rapidocr" and lang in rapid.LANGS:
-        raise ServiceError(503, "RapidOCR is not installed on the server (pip install rapidocr).")
-    return ensure_tesseract(lang)
+    if not rapid.available():
+        raise ServiceError(503, INSTALL_HINT)
+    return RAPID_PREFIX + lang
 
 
 def lang_of_code(code: str) -> str:
-    """The language of an engine code (``rapidocr-nl`` -> ``nl``, ``nld`` -> ``nl``)."""
-    if code.startswith(RAPID_PREFIX):
-        return code[len(RAPID_PREFIX) :]
-    return {v: k for k, v in TESSERACT_LANGS.items()}.get(code, "nl")
-
-
-def low_conf(code: str) -> float:
-    """The word confidence below which review flags a known word, on the engine's scale."""
-    from kenning_nlp.ocr_review import LOW_CONF
-
-    return RAPID_LOW_CONF if code.startswith(RAPID_PREFIX) else LOW_CONF
-
-
-def ensure_tesseract(lang: str) -> str:
-    """Check that Tesseract and the traineddata for ``lang`` exist; return the Tesseract code.
-
-    Raises:
-        ServiceError: 503 with install guidance if the binary or language data is missing.
-    """
-    import pytesseract
-
-    code = TESSERACT_LANGS[lang]
-    try:
-        pytesseract.get_tesseract_version()
-    except pytesseract.TesseractNotFoundError as e:
-        raise ServiceError(503, INSTALL_HINT) from e
-    if code not in pytesseract.get_languages(config=""):
-        raise ServiceError(
-            503, f"Tesseract language data '{code}' is missing (apt install tesseract-ocr-{code})."
-        )
-    return code
-
-
-def preprocess(img: Image.Image) -> Image.Image:
-    """Grayscale, upscale small images, and stretch contrast (helps phone photos and thumbnails)."""
-    img = ImageOps.exif_transpose(img) or img
-    gray = ImageOps.grayscale(img)
-    long_side = max(gray.size)
-    if long_side < MIN_LONG_SIDE:
-        factor = min(MAX_UPSCALE, MIN_LONG_SIDE / long_side)
-        gray = gray.resize(
-            (round(gray.width * factor), round(gray.height * factor)), Image.Resampling.LANCZOS
-        )
-    return ImageOps.autocontrast(gray, cutoff=1)
+    """The language of an engine code (``rapidocr-nl`` -> ``nl``)."""
+    return code.removeprefix(RAPID_PREFIX)
 
 
 def words_to_text(data: dict[str, list[Any]]) -> tuple[str, list[float]]:
-    """Rebuild text from Tesseract ``image_to_data`` output (pure; easy to test).
+    """Rebuild text from ``image_to_data``-shaped rows (pure; easy to test).
 
     Lines are grouped by (block, paragraph, line); blocks/paragraphs are separated by blank
     lines, which keeps columns in reading order. Returns ``(text, word_confidences)`` with
-    confidences on Tesseract's 0-100 scale (negative = non-word rows, skipped).
+    confidences on a 0-100 scale (negative = non-word rows, skipped).
     """
     paragraphs: dict[tuple[int, int], dict[int, list[str]]] = {}
     confs: list[float] = []
@@ -182,7 +94,7 @@ def words_to_text(data: dict[str, list[Any]]) -> tuple[str, list[float]]:
 
 @dataclass
 class PageRows:
-    """One recognised page: Tesseract-shaped rows, the size their pixel boxes refer to, and
+    """One recognised page: ``image_to_data``-shaped rows, the size their pixel boxes refer to, and
     the cleaned page image (what review previews show, so the boxes line up)."""
 
     data: dict[str, list[Any]]
@@ -191,30 +103,12 @@ class PageRows:
     image: Image.Image
 
 
-def tesseract_data(img: Image.Image, code: str) -> tuple[dict[str, list[Any]], int, int]:
-    """Tesseract ``image_to_data`` rows of one image (preprocessed), plus the size they use."""
-    import pytesseract
-
-    psm = int(os.environ.get("KENNING_OCR_PSM", "3"))
-    prepared = preprocess(img)
-    data = pytesseract.image_to_data(
-        prepared,
-        lang=code,
-        config=f"--psm {psm}",
-        output_type=pytesseract.Output.DICT,
-    )
-    return data, prepared.width, prepared.height
-
-
 def recognize(img: Image.Image, code: str, clean: bool = True) -> PageRows:
-    """Clean up one page (unless ``clean`` is false) and read it with the engine of ``code``."""
+    """Clean up one page (unless ``clean`` is false) and read it with RapidOCR."""
     img = ImageOps.exif_transpose(img) or img
     if clean:
         img = straighten_page(img).image
-    if code.startswith(RAPID_PREFIX):
-        return PageRows(rapid.recognize(img, lang_of_code(code)), img.width, img.height, img)
-    data, width, height = tesseract_data(img, code)
-    return PageRows(data, width, height, img)
+    return PageRows(rapid.recognize(img, lang_of_code(code)), img.width, img.height, img)
 
 
 def ocr_image(img: Image.Image, code: str) -> tuple[str, list[float]]:
@@ -337,7 +231,7 @@ def run_ocr(data: bytes, lang: str, review: bool = False) -> dict[str, object]:
     if review:
         out["review"] = {
             "pages": pages,
-            "flags": find_flags(text, words, lang, low_conf=low_conf(code)),
+            "flags": find_flags(text, words, lang),
         }
     return out
 

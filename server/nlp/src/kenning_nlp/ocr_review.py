@@ -1,13 +1,11 @@
 """OCR review: find words the OCR engine may have misread and suggest fixes.
 
 Pure logic plus small Pillow helpers; no OCR calls here. :mod:`kenning_nlp.ocr` and
-:mod:`kenning_nlp.course` feed it rows shaped like Tesseract's ``image_to_data`` (RapidOCR
-results are converted to that shape).
+:mod:`kenning_nlp.course` feed it RapidOCR's rows, shaped like an ``image_to_data`` table.
 
 A word is *flagged* when
 
-* the engine's own confidence for it is low (below ``low_conf`` on a 0-100 scale:
-  :data:`LOW_CONF` for Tesseract, a higher one for RapidOCR, whose scores run higher), or
+* the engine's own confidence for it is low (below :data:`LOW_CONF` on a 0-100 scale), or
 * it is not a Dutch word: not in wordfreq, the Kaikki dictionary (when built) or simplemma, and
   not a plain two-part compound of known words, or
 * it was glued together from a line-end hyphenation and the result is not a word.
@@ -34,8 +32,9 @@ from typing import Any
 from kenning_nlp.cleanup import normalize_text
 from kenning_nlp.freq import zipf
 
-LOW_CONF = 55.0
-"""Tesseract word confidence (0-100) below which a known word is still flagged."""
+LOW_CONF = 70.0
+"""RapidOCR word score (0-100) below which a known word is still flagged. Its scores separate
+right from wrong words weakly; at 70 about 1 % of correct words get a flag."""
 KNOWN_ZIPF = 2.0
 """wordfreq Zipf at or above which a word counts as Dutch."""
 COMPOUND_PART_ZIPF = 2.5
@@ -45,7 +44,7 @@ MAX_FLAGS = 400
 PREVIEW_LONG_SIDE = 1400
 COURSE_PREVIEW_LONG_SIDE = 1100
 
-# One-way character confusions of print OCR: what Tesseract wrote -> what was printed.
+# One-way character confusions of print OCR: what the engine wrote -> what was printed.
 # Applied at every occurrence, one at a time (and at most two edits per candidate).
 CONFUSIONS: tuple[tuple[str, str], ...] = (
     ("rn", "m"),
@@ -231,7 +230,7 @@ def suggestions(
 
 @dataclass
 class OcrWord:
-    """One Tesseract word with its page and box (fractions of the page)."""
+    """One recognised word with its page and box (fractions of the page)."""
 
     text: str
     conf: float
@@ -244,7 +243,7 @@ class OcrWord:
 
 
 def page_words(data: dict[str, list[Any]], width: int, height: int, page: int) -> list[OcrWord]:
-    """Tesseract ``image_to_data`` rows -> words in reading order (block, paragraph, line).
+    """``image_to_data``-shaped rows -> words in reading order (block, paragraph, line).
 
     The order is the one :func:`kenning_nlp.ocr.words_to_text` and
     :func:`kenning_nlp.course.data_to_blocks` use to build the page text.
@@ -354,7 +353,7 @@ def _looks_like_number(s: str) -> bool:
 
 
 def _digit_confusable(s: str) -> bool:
-    """Mostly letters with a digit Tesseract may have put for a letter (``we1``, ``h0e``)."""
+    """Mostly letters with a digit the engine may have put for a letter (``we1``, ``h0e``)."""
     letters = sum(ch.isalpha() for ch in s)
     return letters >= 2 and any(ch in "01568|!" for ch in s)
 
@@ -371,7 +370,7 @@ def assess(
 
     ``reason`` is ``"unknown"`` (not a word), ``"hyphen"`` (a line-end hyphenation was joined
     into a non-word), ``"confusable"`` (a rare short word next to a very common reading:
-    ``ln`` -> ``in``) or ``"low"`` (a known word Tesseract was unsure about). ``joined`` holds
+    ``ln`` -> ``in``) or ``"low"`` (a known word the engine was unsure about). ``joined`` holds
     the OCR pieces when the word was glued from a hyphenated line end. ``low_conf`` is the
     engine's own threshold for an unsure word (on its 0-100 scale).
     """
@@ -409,7 +408,7 @@ def assess(
     found = suggestions(word, lang, sentence_start=sentence_start)
     capital = word[:1].isupper() and not word.isupper()
     if capital and not sentence_start and not found and not _digit_confusable(word):
-        # Probably a name: flag only when Tesseract itself was unsure.
+        # Probably a name: flag only when the engine itself was unsure.
         return ("low", []) if conf < low_conf else None
     if word.isupper() and len(word) <= 4 and not found:
         return None  # abbreviations: EU, NOS, KLM

@@ -1,4 +1,4 @@
-"""OCR engine choice (RapidOCR first, Tesseract as fallback) and RapidOCR's reading order."""
+"""The OCR engine (RapidOCR) and its reading order."""
 
 import io
 
@@ -17,53 +17,18 @@ from kenning_nlp.rapid import Line, Word, layout, to_data
 client = TestClient(app)
 
 
-@pytest.fixture
-def tesseract_ok(monkeypatch):
-    monkeypatch.setattr(ocr, "ensure_tesseract", lambda lang: ocr.TESSERACT_LANGS[lang])
-
-
-def _no_rapid(monkeypatch) -> None:
-    monkeypatch.setattr(rapid, "available", lambda: False)
-
-
-def test_rapidocr_is_the_main_engine(monkeypatch, tesseract_ok) -> None:
+def test_rapidocr_reads_the_pages(monkeypatch) -> None:
     monkeypatch.setattr(rapid, "available", lambda: True)
-    monkeypatch.delenv("KENNING_OCR_ENGINE", raising=False)
     assert ensure_engine("nl") == "rapidocr-nl"
-    assert ensure_engine("de") == "rapidocr-de"
-    # Ukrainian is not in the bundled model: Tesseract reads it.
-    assert ensure_engine("uk") == "ukr"
-
-
-def test_tesseract_is_the_fallback(monkeypatch, tesseract_ok) -> None:
-    _no_rapid(monkeypatch)
-    assert ensure_engine("nl") == "nld"
-    monkeypatch.setattr(rapid, "available", lambda: True)
-    monkeypatch.setenv("KENNING_OCR_ENGINE", "tesseract")
-    assert ensure_engine("nl") == "nld"
+    assert lang_of_code("rapidocr-nl") == "nl"
 
 
 def test_no_engine_is_a_503_with_install_hint(monkeypatch) -> None:
-    _no_rapid(monkeypatch)
-
-    def missing(lang):
-        raise ServiceError(503, ocr.INSTALL_HINT)
-
-    monkeypatch.setattr(ocr, "ensure_tesseract", missing)
-    with pytest.raises(ServiceError) as e:
-        ensure_engine("nl")
-    assert e.value.status_code == 503
-    monkeypatch.setenv("KENNING_OCR_ENGINE", "rapidocr")
+    monkeypatch.setattr(rapid, "available", lambda: False)
     with pytest.raises(ServiceError) as e:
         ensure_engine("nl")
     assert e.value.status_code == 503 and "RapidOCR" in e.value.detail
-
-
-def test_engine_codes_name_their_language() -> None:
-    assert lang_of_code("rapidocr-nl") == "nl"
-    assert lang_of_code("nld") == "nl"
-    assert lang_of_code("ukr") == "uk"
-    assert ocr.low_conf("rapidocr-nl") > ocr.low_conf("nld")
+    assert ocr.ocr_engine_name() is None
 
 
 def _png(img: Image.Image) -> bytes:
@@ -72,13 +37,13 @@ def _png(img: Image.Image) -> bytes:
     return buf.getvalue()
 
 
-def test_ocr_endpoint_falls_back_to_tesseract(monkeypatch, tesseract_ok) -> None:
-    _no_rapid(monkeypatch)
+def test_ocr_endpoint_reads_with_rapidocr(monkeypatch) -> None:
+    monkeypatch.setattr(rapid, "available", lambda: True)
     seen = {}
 
-    def fake_tesseract(img, code):
-        seen["code"] = code
-        data = {
+    def fake_recognize(img, lang):
+        seen["lang"] = lang
+        return {
             "text": ["Hallo", "wereld"],
             "conf": [91, 89],
             "block_num": [1, 1],
@@ -89,17 +54,15 @@ def test_ocr_endpoint_falls_back_to_tesseract(monkeypatch, tesseract_ok) -> None
             "width": [60, 70],
             "height": [20, 20],
         }
-        return data, img.width, img.height
 
-    monkeypatch.setattr(ocr, "tesseract_data", fake_tesseract)
+    monkeypatch.setattr(rapid, "recognize", fake_recognize)
     r = client.post("/ocr", files={"file": ("a.png", _png(Image.new("RGB", (300, 80), "white")))})
     assert r.status_code == 200
-    assert r.json()["text"] == "Hallo wereld" and seen["code"] == "nld"
+    assert r.json()["text"] == "Hallo wereld" and seen["lang"] == "nl"
 
 
 def test_health_reports_the_engine(monkeypatch) -> None:
     monkeypatch.setattr(rapid, "available", lambda: True)
-    monkeypatch.delenv("KENNING_OCR_ENGINE", raising=False)
     body = client.get("/health").json()
     assert body["ocr"] is True and body["ocrEngine"] == "rapidocr"
 

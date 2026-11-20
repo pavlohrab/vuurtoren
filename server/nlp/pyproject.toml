@@ -11,7 +11,6 @@ dependencies = [
     "nl-core-news-md",
     "pillow>=13.0.0",
     "pypdfium2>=5.15.2",
-    "pytesseract>=0.3.13",
     "python-multipart>=0.0.34",
     "sentencepiece>=0.2.3",
     "simplemma>=2.0.0",

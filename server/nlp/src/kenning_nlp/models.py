@@ -129,9 +129,9 @@ class OcrFlag(BaseModel):
     word: str
     reason: str
     """``unknown`` (not a word), ``hyphen`` (joined line-end hyphenation), ``confusable``
-    (rare short word next to a common reading), ``low`` (Tesseract was unsure)."""
+    (rare short word next to a common reading), ``low`` (the OCR engine was unsure)."""
     conf: float
-    """Tesseract's confidence for the word, 0..1."""
+    """The OCR engine's confidence for the word, 0..1."""
     suggestions: list[str]
     """Likely intended words, best first (may be empty)."""
     box: OcrBox

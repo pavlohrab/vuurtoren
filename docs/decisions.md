@@ -148,7 +148,7 @@ Kenning writes to Anki only when you click, and tags every note it touches.
 - Data (dictionary, sentences, translation model) are versioned packs, downloaded and checked on
   start. Analyses carry an analyzer version; a text is analysed again once when the device's
   analyzer is newer than its analysis.
-- OCR: RapidOCR (PaddleOCR models, bundled) on a straightened page, Tesseract as the fallback.
+- OCR: RapidOCR (PaddleOCR models, bundled) on a straightened page, Dutch only.
   A PDF page uses its text layer unless it has under 40 letters or under 70% Dutch words.
 - The desktop app bundles the same server, OCR included.
 

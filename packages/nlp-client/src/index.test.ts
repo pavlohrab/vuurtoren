@@ -32,8 +32,8 @@ describe("NlpClient import + gloss endpoints", () => {
     expect(form).toBeInstanceOf(FormData);
     expect(form.get("file")).toBeInstanceOf(Blob);
 
-    await client.ocr(new Blob(["img"]), "uk");
-    expect(calls[1]?.url).toBe("http://nlp.test/ocr?lang=uk");
+    await client.ocr(new Blob(["img"]));
+    expect(calls[1]?.url).toBe("http://nlp.test/ocr?lang=nl");
     await client.ocr(new Blob(["img"]), "nl", "p.png", { review: true });
     expect(calls[2]?.url).toBe("http://nlp.test/ocr?lang=nl&review=true");
   });
@@ -92,8 +92,8 @@ describe("NlpClient import + gloss endpoints", () => {
   });
 
   it("surfaces HTTP errors with the server detail", async () => {
-    const { client } = mockClient({ detail: "Tesseract OCR is not available" }, 503);
-    await expect(client.ocr(new Blob(["x"]))).rejects.toThrow(/503.*Tesseract/);
+    const { client } = mockClient({ detail: "Text recognition (RapidOCR) is not installed" }, 503);
+    await expect(client.ocr(new Blob(["x"]))).rejects.toThrow(/503.*RapidOCR/);
   });
 });
 
