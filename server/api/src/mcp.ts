@@ -1,8 +1,8 @@
 /**
- * `/api/mcp`: the Kenning MCP tools over Streamable HTTP, so Claude Code (or Claude Desktop, or
+ * `/api/mcp`: the Vuurtoren MCP tools over Streamable HTTP, so Claude Code (or Claude Desktop, or
  * any MCP client) can use the learner's data under the user's own subscription:
  *
- *   claude mcp add --transport http kenning https://<host>/api/mcp \
+ *   claude mcp add --transport http vuurtoren https://<host>/api/mcp \
  *     --header "Authorization: Bearer <MCP token from Settings → AI>"
  *
  * Stateless: every POST gets a fresh MCP server and transport (no session to keep), answers
@@ -12,9 +12,9 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import type { AnalyzedToken } from "@app/core";
-import type { KenningRepository } from "@app/db";
+import type { VuurtorenRepository } from "@app/db";
 import { NlpClient } from "@app/nlp-client";
-import { createKenningMcpServer, createToolHandlers, type ToolRepo } from "@app/mcp-tools";
+import { createVuurtorenMcpServer, createToolHandlers, type ToolRepo } from "@app/mcp-tools";
 import { HttpFail, readBody } from "./http-util.js";
 import type { Store } from "./store.js";
 
@@ -32,7 +32,7 @@ function queuedRepo(store: Store): ToolRepo {
   const via =
     <K extends keyof ToolRepo>(name: K) =>
     (...args: Parameters<ToolRepo[K]>) =>
-      store.withRepo((repo: KenningRepository) =>
+      store.withRepo((repo: VuurtorenRepository) =>
         (repo[name] as (...a: unknown[]) => Promise<unknown>).apply(repo, args),
       ) as ReturnType<ToolRepo[K]>;
   return {
@@ -53,7 +53,7 @@ function queuedRepo(store: Store): ToolRepo {
   };
 }
 
-/** NLP analysis through the NLP service (`KENNING_NLP_URL`), for the API process. */
+/** NLP analysis through the NLP service (`VUURTOREN_NLP_URL`), for the API process. */
 export function nlpAnalyzer(url: string): (text: string) => Promise<AnalyzedToken[]> {
   const client = new NlpClient({ url, timeoutMs: 60_000 });
   return async (text) =>
@@ -74,7 +74,7 @@ export function createMcpEndpoint(opts: McpEndpointOptions) {
       }
     }
     const handlers = createToolHandlers({ repo, analyze: opts.analyze });
-    const server = createKenningMcpServer(handlers);
+    const server = createVuurtorenMcpServer(handlers);
     // No sessionIdGenerator: stateless mode.
     const transport = new StreamableHTTPServerTransport({ enableJsonResponse: true });
     res.on("close", () => {

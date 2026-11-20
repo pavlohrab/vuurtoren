@@ -16,14 +16,14 @@ let server: ReturnType<typeof createApiServer>;
 let base: string;
 
 async function start(token?: string, caps: { maxBodyBytes?: number; maxRpcBytes?: number } = {}) {
-  store = await openStore(join(dir, "kenning.sqlite"));
+  store = await openStore(join(dir, "vuurtoren.sqlite"));
   server = createApiServer({ store, token, maxBodyBytes: 50 * 1024 * 1024, ...caps });
   await new Promise<void>((r) => server.listen(0, "127.0.0.1", r));
   base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
 }
 
 beforeEach(() => {
-  dir = mkdtempSync(join(tmpdir(), "kenning-api-"));
+  dir = mkdtempSync(join(tmpdir(), "vuurtoren-api-"));
 });
 afterEach(async () => {
   await new Promise((r) => server?.close(r));
@@ -74,7 +74,7 @@ describe("rpc allow-list", () => {
     });
   });
 
-  it("answers null for a non-Kenning origin", async () => {
+  it("answers null for a non-Vuurtoren origin", async () => {
     expect(await fetchServerHealth("http://127.0.0.1:1")).toBeNull();
   });
 });
@@ -275,7 +275,7 @@ describe("cover blobs and shelves (Library)", () => {
     await new Promise((r) => server.close(r));
     await store.close();
     rmSync(dir, { recursive: true });
-    dir = mkdtempSync(join(tmpdir(), "kenning-api-"));
+    dir = mkdtempSync(join(tmpdir(), "vuurtoren-api-"));
     await start();
     await createHttpAdmin(base).importBackup(backup);
     const b = await createHttpRepository(base);
@@ -295,7 +295,7 @@ describe("export / import", () => {
     const oldDevice = a.deviceId;
     const res = await fetch(`${base}/api/export`);
     expect(res.headers.get("content-disposition")).toMatch(
-      /filename="kenning-\d{4}-\d{2}-\d{2}\.sqlite"/,
+      /filename="vuurtoren-\d{4}-\d{2}-\d{2}\.sqlite"/,
     );
     const bytes = new Uint8Array(await res.arrayBuffer());
     expect(Buffer.from(bytes).subarray(0, 15).toString()).toBe("SQLite format 3");
@@ -307,7 +307,7 @@ describe("export / import", () => {
     await new Promise((r) => server.close(r));
     await store.close();
     rmSync(dir, { recursive: true });
-    dir = mkdtempSync(join(tmpdir(), "kenning-api-"));
+    dir = mkdtempSync(join(tmpdir(), "vuurtoren-api-"));
     await start();
     await createHttpAdmin(base).importBackup(bytes);
 
@@ -329,7 +329,7 @@ describe("export / import", () => {
     const post = (body: Uint8Array) =>
       fetch(`${base}/api/import`, {
         method: "POST",
-        headers: { "x-kenning": "1" },
+        headers: { "x-vuurtoren": "1" },
         body: Buffer.from(body),
       });
 
@@ -361,7 +361,7 @@ describe("export / import", () => {
 
 describe("database newer than the app", () => {
   it("serves health and export but no rpc", async () => {
-    const f = join(dir, "kenning.sqlite");
+    const f = join(dir, "vuurtoren.sqlite");
     const db = new DatabaseSync(f);
     db.exec(
       `CREATE TABLE meta (key TEXT, value TEXT); CREATE TABLE events (id TEXT); PRAGMA user_version = ${SCHEMA_VERSION + 5}`,
@@ -388,7 +388,7 @@ describe("body caps", () => {
     expect((await rpc("append", [big])).status).toBe(413);
     const res = await fetch(`${base}/api/import`, {
       method: "POST",
-      headers: { "x-kenning": "1" },
+      headers: { "x-vuurtoren": "1" },
       body: Buffer.alloc(8192, 1),
     });
     expect(res.status).toBe(413);

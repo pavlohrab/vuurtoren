@@ -1,5 +1,5 @@
 /**
- * `node dist/main.js hash-password`: print a KENNING_PASSWORD_HASH for a password.
+ * `node dist/main.js hash-password`: print a VUURTOREN_PASSWORD_HASH for a password.
  *
  * On a terminal the password is typed twice without echo; otherwise it is read from stdin
  * (one trailing newline removed), e.g. `printf %s "$PW" | node dist/main.js hash-password`.
@@ -67,7 +67,7 @@ export async function hashPasswordCommand(): Promise<number> {
   process.stdout.write(`${hash}\n`);
   process.stderr.write(
     "\nPut this in your .env (single quotes are not needed; the hash contains no $):\n" +
-      `  KENNING_PASSWORD_HASH=${hash}\n`,
+      `  VUURTOREN_PASSWORD_HASH=${hash}\n`,
   );
   return 0;
 }

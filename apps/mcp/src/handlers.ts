@@ -4,14 +4,14 @@
  */
 import { type AnkiConnectClient, addWord } from "@app/anki";
 import { defaultProfile, wordKey } from "@app/core";
-import type { KenningRepository } from "@app/db";
+import type { VuurtorenRepository } from "@app/db";
 
 export interface AnkiToolDeps {
-  repo: Pick<KenningRepository, "append" | "languageProfile">;
+  repo: Pick<VuurtorenRepository, "append" | "languageProfile">;
   /** AnkiConnect: new notes go through the shared add command. */
   anki: AnkiConnectClient;
   /**
-   * Deck override (KENNING_DECK). Without it the deck comes from the language profile's MCP
+   * Deck override (VUURTOREN_DECK). Without it the deck comes from the language profile's MCP
    * destination, or its default deck.
    */
   deck?: string | undefined;
@@ -35,7 +35,7 @@ export function createAnkiHandler(deps: AnkiToolDeps) {
         word,
         gloss: args.gloss,
         sentence: args.sentence,
-        source: "Kenning MCP",
+        source: "Vuurtoren MCP",
       },
     );
     return { noteId, deck };

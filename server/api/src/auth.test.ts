@@ -25,7 +25,7 @@ let clock: number;
 let hash: string;
 
 beforeEach(async () => {
-  dir = mkdtempSync(join(tmpdir(), "kenning-auth-"));
+  dir = mkdtempSync(join(tmpdir(), "vuurtoren-auth-"));
   clock = Date.UTC(2026, 0, 1);
   hash ??= await hashPassword(PASSWORD, FAST);
 });
@@ -43,7 +43,7 @@ async function stop(): Promise<void> {
 }
 
 async function start(opts: Partial<AuthOptions> = {}): Promise<void> {
-  store = await openStore(join(dir, "kenning.sqlite"));
+  store = await openStore(join(dir, "vuurtoren.sqlite"));
   auth = createAuth({
     user: "anna",
     password: parsePasswordHash(hash),
@@ -66,9 +66,9 @@ const post = (path: string, body: unknown, headers: Record<string, string> = {})
 const login = (user = "anna", password = PASSWORD, headers: Record<string, string> = {}) =>
   post("/api/auth/login", { user, password }, headers);
 
-/** "kenning_session=abc" from a login response. */
+/** "vuurtoren_session=abc" from a login response. */
 function sessionOf(res: Response): string {
-  const c = res.headers.getSetCookie().find((h) => h.startsWith("kenning_session="));
+  const c = res.headers.getSetCookie().find((h) => h.startsWith("vuurtoren_session="));
   if (!c) throw new Error("no session cookie");
   return c.split(";")[0]!;
 }
@@ -95,7 +95,7 @@ describe("password hashing", () => {
     "scrypt:1000:8:1:c2FsdHNhbHQ:aGFzaGhhc2hoYXNoaGFzaA",
     "scrypt:1024:8:1:!!:??",
   ])("refuses the malformed hash %j", (s) =>
-    expect(() => parsePasswordHash(s)).toThrow(/KENNING_PASSWORD_HASH/),
+    expect(() => parsePasswordHash(s)).toThrow(/VUURTOREN_PASSWORD_HASH/),
   );
 });
 
@@ -106,11 +106,11 @@ describe("configuration from the environment", () => {
     expect(c.warnings.join(" ")).toMatch(/Auth is OFF/);
   });
 
-  it("hashes a plain KENNING_PASSWORD stably (sessions survive restarts) and warns", async () => {
+  it("hashes a plain VUURTOREN_PASSWORD stably (sessions survive restarts) and warns", async () => {
     const env = {
-      KENNING_USER: "anna",
-      KENNING_PASSWORD: "pw-pw-pw-pw",
-      KENNING_DB: join(dir, "k.sqlite"),
+      VUURTOREN_USER: "anna",
+      VUURTOREN_PASSWORD: "pw-pw-pw-pw",
+      VUURTOREN_DB: join(dir, "k.sqlite"),
     };
     const a = await authFromEnv(env);
     const b = await authFromEnv(env);
@@ -121,16 +121,16 @@ describe("configuration from the environment", () => {
   });
 
   it("needs a username with a password", async () => {
-    await expect(authFromEnv({ KENNING_PASSWORD_HASH: hash })).rejects.toThrow(/KENNING_USER/);
+    await expect(authFromEnv({ VUURTOREN_PASSWORD_HASH: hash })).rejects.toThrow(/VUURTOREN_USER/);
   });
 
   it("reads the flags", async () => {
     const c = await authFromEnv({
-      KENNING_USER: "anna",
-      KENNING_PASSWORD_HASH: hash,
-      KENNING_COOKIE_SECURE: "0",
-      KENNING_TRUST_CF: "1",
-      KENNING_ALLOWED_ORIGINS: "https://a.example, https://b.example",
+      VUURTOREN_USER: "anna",
+      VUURTOREN_PASSWORD_HASH: hash,
+      VUURTOREN_COOKIE_SECURE: "0",
+      VUURTOREN_TRUST_CF: "1",
+      VUURTOREN_ALLOWED_ORIGINS: "https://a.example, https://b.example",
     });
     expect(c.options).toMatchObject({
       cookieSecure: false,
@@ -164,7 +164,7 @@ describe("sign-in", () => {
     expect(await res.json()).toEqual({ ok: true, user: "anna" });
     expect(res.headers.get("cache-control")).toBe("no-store");
     const set = res.headers.getSetCookie()[0]!;
-    expect(set).toMatch(/^kenning_session=[A-Za-z0-9_-]{43}; /);
+    expect(set).toMatch(/^vuurtoren_session=[A-Za-z0-9_-]{43}; /);
     expect(set).toContain("HttpOnly");
     expect(set).toContain("Secure");
     expect(set).toContain("SameSite=Lax");
@@ -202,8 +202,8 @@ describe("sign-in", () => {
 
   it("rejects malformed bodies and forged cookies", async () => {
     expect((await post("/api/auth/login", { user: 1 })).status).toBe(400);
-    expect((await rpc("kenning_session=" + "A".repeat(43))).status).toBe(401);
-    expect((await rpc("kenning_session=../../etc")).status).toBe(401);
+    expect((await rpc("vuurtoren_session=" + "A".repeat(43))).status).toBe(401);
+    expect((await rpc("vuurtoren_session=../../etc")).status).toBe(401);
   });
 
   it("can turn the Secure flag off for plain-http LAN use", async () => {
@@ -217,7 +217,7 @@ describe("sign-in", () => {
     const b = sessionOf(await login());
     const out = await post("/api/auth/logout", {}, { cookie: a });
     expect(out.status).toBe(200);
-    expect(out.headers.getSetCookie()[0]).toMatch(/^kenning_session=; .*Max-Age=0/);
+    expect(out.headers.getSetCookie()[0]).toMatch(/^vuurtoren_session=; .*Max-Age=0/);
     expect((await rpc(a)).status).toBe(401);
     expect((await rpc(b)).status).toBe(200);
   });
@@ -379,18 +379,18 @@ describe("CSRF", () => {
     expect((await rpc(cookie, { origin: base, "sec-fetch-site": "same-origin" })).status).toBe(200);
   });
 
-  it("accepts X-Kenning: 1 for non-JSON bodies, and listed origins", async () => {
+  it("accepts X-Vuurtoren: 1 for non-JSON bodies, and listed origins", async () => {
     const cookie = sessionOf(await login());
     const res = await fetch(`${base}/api/import`, {
       method: "POST",
-      headers: { cookie, "content-type": "application/octet-stream", "x-kenning": "1" },
+      headers: { cookie, "content-type": "application/octet-stream", "x-vuurtoren": "1" },
       body: "not a database",
     });
     expect(res.status).toBe(422); // passed the guard, then failed validation
     await stop();
-    await start({ allowedOrigins: ["https://kenning.example.com"] });
+    await start({ allowedOrigins: ["https://vuurtoren.example.com"] });
     const c2 = sessionOf(await login());
-    expect((await rpc(c2, { origin: "https://kenning.example.com" })).status).toBe(200);
+    expect((await rpc(c2, { origin: "https://vuurtoren.example.com" })).status).toBe(200);
   });
 
   it("guards with auth off too (a page on another site must not wipe local data)", async () => {

@@ -1,5 +1,5 @@
 /**
- * Sync files on a Kenning server: the place devices that keep their own data sync through
+ * Sync files on a Vuurtoren server: the place devices that keep their own data sync through
  * (`/api/sync`). The server only stores files: they are sealed on the devices, and it cannot
  * read them. Each device writes its own files; a file is replaced as a whole.
  *
@@ -24,7 +24,7 @@ import { HttpFail } from "./http-util.js";
 const PART = /^[A-Za-z0-9._-]+$/;
 /** Largest synced file (a device's folded events with an analysed book stay well below). */
 export const MAX_SYNC_FILE_BYTES = 64 * 1024 * 1024;
-/** All sync files together, unless KENNING_SYNC_QUOTA_MB says otherwise. */
+/** All sync files together, unless VUURTOREN_SYNC_QUOTA_MB says otherwise. */
 const DEFAULT_SYNC_QUOTA_BYTES = 2048 * 1024 * 1024;
 const TMP = ".tmp-";
 
@@ -51,10 +51,10 @@ export interface SyncTokenRights {
 
 /**
  * Why a sync token may not write (PUT) or remove (DELETE) `parts`, or null. A token writes:
- *  - its own device's folder, kenning/devices/<device>/… (the first folder it writes becomes
+ *  - its own device's folder, vuurtoren/devices/<device>/… (the first folder it writes becomes
  *    its own: `claim` is then set);
- *  - images, kenning/blobs/<name> (named by content; never removed);
- *  - kenning/vault.json when there is none yet (the first device; `madeVault` is then set),
+ *  - images, vuurtoren/blobs/<name> (named by content; never removed);
+ *  - vuurtoren/vault.json when there is none yet (the first device; `madeVault` is then set),
  *    or when the token may replace it.
  */
 export function syncWriteProblem(
@@ -64,7 +64,7 @@ export function syncWriteProblem(
   vaultExists: boolean,
 ): { problem: string } | { claim?: string; madeVault?: boolean } {
   const [root, area, device] = parts;
-  if (root === "kenning" && area === "devices" && device && parts.length >= 4) {
+  if (root === "vuurtoren" && area === "devices" && device && parts.length >= 4) {
     if (rights.device === device) return {};
     if (rights.device === null && method === "PUT") return { claim: device };
     return {
@@ -72,8 +72,8 @@ export function syncWriteProblem(
         "This sync token belongs to another device. Make a sync token for this device in the server's Settings → Sync.",
     };
   }
-  if (root === "kenning" && area === "blobs" && parts.length === 3 && method === "PUT") return {};
-  if (root === "kenning" && area === "vault.json" && parts.length === 2 && method === "PUT") {
+  if (root === "vuurtoren" && area === "blobs" && parts.length === 3 && method === "PUT") return {};
+  if (root === "vuurtoren" && area === "vault.json" && parts.length === 2 && method === "PUT") {
     if (!vaultExists) return { madeVault: true };
     if (rights.vault) return {};
     return {
@@ -168,7 +168,7 @@ export class SyncFiles {
     if (after > this.quotaBytes) {
       throw new HttpFail(
         507,
-        `The sync space on this server is full (${Math.round(this.quotaBytes / 1024 / 1024)} MB). Its owner can raise KENNING_SYNC_QUOTA_MB.`,
+        `The sync space on this server is full (${Math.round(this.quotaBytes / 1024 / 1024)} MB). Its owner can raise VUURTOREN_SYNC_QUOTA_MB.`,
       );
     }
     mkdirSync(dirname(target), { recursive: true });

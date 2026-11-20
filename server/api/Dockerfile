@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-# Kenning API: user data in ONE SQLite file on a volume. Build context: the repo root
+# Vuurtoren API: user data in ONE SQLite file on a volume. Build context: the repo root
 # (see deploy/compose.yml), because @app/api depends on the workspace packages.
 # Base images are pinned to a patch release; .github/dependabot.yml proposes updates.
 
@@ -22,10 +22,10 @@ RUN pnpm --filter @app/api deploy --prod /out
 # Alpine is enough: SQLite is WebAssembly (@sqlite.org/sqlite-wasm), there are no native modules.
 FROM node:26.13.1-alpine
 ENV NODE_ENV=production \
-    KENNING_DB=/data/kenning.sqlite \
-    KENNING_AUTH_DB=/data/auth.sqlite \
-    KENNING_HOST=0.0.0.0 \
-    KENNING_PORT=8787
+    VUURTOREN_DB=/data/vuurtoren.sqlite \
+    VUURTOREN_AUTH_DB=/data/auth.sqlite \
+    VUURTOREN_HOST=0.0.0.0 \
+    VUURTOREN_PORT=8787
 WORKDIR /app
 # Only what runs: the build output, production node_modules and the manifest (type: module).
 COPY --from=build /out/package.json /app/package.json

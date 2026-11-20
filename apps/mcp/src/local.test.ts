@@ -17,18 +17,18 @@ const env = (over: Partial<PathEnv>, files: Record<string, string> = {}): PathEn
 });
 
 describe("where the desktop app keeps its data", () => {
-  it("follows KENNING_DB, then the app's settings, then Documents/Kenning", () => {
-    expect(desktopDbPath(env({ env: { KENNING_DB: "/x/k.sqlite" } }))).toEqual({
+  it("follows VUURTOREN_DB, then the app's settings, then Documents/Vuurtoren", () => {
+    expect(desktopDbPath(env({ env: { VUURTOREN_DB: "/x/k.sqlite" } }))).toEqual({
       path: "/x/k.sqlite",
-      from: "KENNING_DB",
+      from: "VUURTOREN_DB",
     });
     const moved = env(
       {},
-      { "/home/anna/.config/app.kenning.desktop/desktop.json": '{"database":"/data/k.sqlite"}' },
+      { "/home/anna/.config/app.vuurtoren.desktop/desktop.json": '{"database":"/data/k.sqlite"}' },
     );
     expect(desktopDbPath(moved)).toEqual({ path: "/data/k.sqlite", from: "desktop app settings" });
     expect(desktopDbPath(env({}))).toEqual({
-      path: "/home/anna/Documents/Kenning/kenning.sqlite",
+      path: "/home/anna/Documents/Vuurtoren/vuurtoren.sqlite",
       from: "default",
     });
   });
@@ -38,21 +38,21 @@ describe("where the desktop app keeps its data", () => {
       {},
       { "/home/anna/.config/user-dirs.dirs": 'XDG_DOCUMENTS_DIR="$HOME/Dokumente"\n' },
     );
-    expect(desktopDbPath(xdg).path).toBe("/home/anna/Dokumente/Kenning/kenning.sqlite");
+    expect(desktopDbPath(xdg).path).toBe("/home/anna/Dokumente/Vuurtoren/vuurtoren.sqlite");
     const mac = env(
       { platform: "darwin", home: "/Users/anna" },
       {
-        "/Users/anna/Library/Application Support/app.kenning.desktop/desktop.json":
-          '{"database":"/Users/anna/K/kenning.sqlite"}',
+        "/Users/anna/Library/Application Support/app.vuurtoren.desktop/desktop.json":
+          '{"database":"/Users/anna/K/vuurtoren.sqlite"}',
       },
     );
-    expect(desktopDbPath(mac).path).toBe("/Users/anna/K/kenning.sqlite");
+    expect(desktopDbPath(mac).path).toBe("/Users/anna/K/vuurtoren.sqlite");
     const win = env({
       platform: "win32",
       home: "C:\\Users\\anna",
       env: { USERPROFILE: "C:\\Users\\anna", APPDATA: "C:\\Users\\anna\\AppData\\Roaming" },
     });
-    expect(desktopDbPath(win).path).toBe("C:\\Users\\anna\\Documents\\Kenning\\kenning.sqlite");
+    expect(desktopDbPath(win).path).toBe("C:\\Users\\anna\\Documents\\Vuurtoren\\vuurtoren.sqlite");
   });
 });
 
@@ -60,8 +60,8 @@ describe("the desktop app's database", () => {
   let dir: string;
   let file: string;
   beforeEach(() => {
-    dir = mkdtempSync(join(tmpdir(), "kenning-mcp-"));
-    file = join(dir, "kenning.sqlite");
+    dir = mkdtempSync(join(tmpdir(), "vuurtoren-mcp-"));
+    file = join(dir, "vuurtoren.sqlite");
   });
   afterEach(() => rmSync(dir, { recursive: true, force: true }));
 
