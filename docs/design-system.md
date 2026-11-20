@@ -96,17 +96,12 @@ The reader stays calm: no decorative motion while reading, only the one-time to-
 
 ## Logo
 
-The **bookmark k**: a lowercase k whose leg is a bookmark ribbon. Stem and arm are `--ink`; the leg is an `--accent` ribbon tucked under the arm (a hairline gap), hanging just below the baseline and ending in a level swallow-tail notch, the bookmark you leave in a text.
+The **lighthouse**: a small tower whose beam is an `--accent` highlight bar, beside three lines of text in which one word is lit the same way. The reader does the same thing: it lights up the few words worth learning now.
 
-- Component: `Logo` (mark + "vuurtoren" wordmark in Instrument Sans 600, −0.02em, sitting on the k's baseline) and `LogoMark` from `@app/ui`. `variant="mark"` for the mark alone.
+- Component: `Logo` (mark + "vuurtoren" wordmark, Literata 500, as outlined paths) and `LogoMark` from `@app/ui`. `variant="mark"` for the mark alone. The tower and text lines use `currentColor` (`--ink`), the lantern, beam and lit word `--accent`; the plain text lines are `--ink` at 30% opacity.
+- One 64 grid for every size (paths in `Logo.tsx`): lantern x 10–22, y 8–21; beam x 25–60, y 11.5–17.5; tower x 5.5–26.5, y 24–57 on a base at y 57–60.5; text lines at y 28, 37 and 46, the lit word x 44.5–60, y 36–41.5.
+- Icons (favicon, PWA, desktop) put the mark on a `#f6f0e6` paper tile, which stays readable at 16px on light and dark tab bars.
 - `ProgressRing` (12 o'clock, counter-clockwise, round caps) is for data, not branding: the Home ring is `--known`.
-- Geometry, filled shapes with flat terminals (paths in `Logo.tsx`):
-  - 48 grid (≥ 33px): stem x 12–18, y 5–40 (baseline 40); arm 6 wide at 45°, top cut level at the x-height (y 18), x 27.5–36; ribbon 7 wide at 60°, 1.5 below the arm, tails level at y 43.5, notch 3.5 deep.
-  - 24 grid (19–32px): stem x 6–9, y 2.5–20; arm 2.83 wide (whole-pixel steps), x-height 9; ribbon 3.5 wide, tails at 22, notch 2.
-  - 16 grid (favicons): stem x 3–5, y 1–13; arm 2.12 wide so both edges hit pixel corners; ribbon 3.2 wide at a steeper 72° so the 2px notch survives, tails at 15.
-- Clear space: one stem width on every side. Minimum size 16px. Wordmark size is 0.74 × the mark; the mark's right side bearing is the gap.
-- Don't: recolour the k, put the ribbon in ink, untuck the ribbon, rotate or mirror the mark, put it on the accent colour, or add effects.
-- Files in `apps/web/public`: `favicon.svg` (16 grid, light/dark through `prefers-color-scheme` inside the SVG), `favicon-16.png` / `favicon-32.png` (the 16 cut at 1× and exactly 2× on the dark rounded lamp tile, so it stays pixel-crisp on light and dark tab bars), `apple-touch-icon.png` (180, square dark tile), `icon-192.png` / `icon-512.png` (rounded tile), `icon-maskable-512.png` (mark inside the safe zone), `logo-mark.svg` (48 master, light/dark inside), `manifest.webmanifest`. README lockups (outlined wordmark): `docs/images/logo-dark.svg`, `docs/images/logo-light.svg`.
 
 ## Layout & composition
 
