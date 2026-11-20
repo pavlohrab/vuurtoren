@@ -97,6 +97,25 @@ export interface TuningResult extends TuningInfo {
   improved: boolean;
 }
 
+/** Starter word levels of 500 (1 = words 1–500). */
+interface StarterLevels {
+  /** Levels the learner has a deck for, lowest first. */
+  held: number[];
+  /** Levels added by default (1–6); the levels after them up to `all` are extended. */
+  core: number;
+  all: number;
+}
+
+/** What adding starter words did. */
+interface StarterAdded {
+  /** New cards. */
+  added: number;
+  /** Words marked known. */
+  known: number;
+  /** Words already in the learner's cards. */
+  skipped: number;
+}
+
 export interface NativeServices {
   /** Native mode and today's counts (the sidebar badge and Home); `native` false: connected. */
   reviewOverview(): Promise<{ native: boolean; due: number; fresh: number }>;
@@ -151,4 +170,11 @@ export interface NativeServices {
    * of its own (after a reload or on another day); null when there is none.
    */
   lastReview(): Promise<{ cardId: number; reviewId: string; at: number } | null>;
+  /** The starter word levels held. */
+  starterLevels(): Promise<StarterLevels>;
+  /**
+   * Add starter levels as new cards, in order of rank; with `knownThrough`, the words up to that
+   * rank become known (placement). Words already held are skipped.
+   */
+  addStarterLevels(req: { levels: number[]; knownThrough?: number }): Promise<StarterAdded>;
 }

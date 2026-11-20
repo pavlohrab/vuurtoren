@@ -12,7 +12,13 @@ import {
   buildNativeImport,
   NOTE_FIELDS,
   NOTE_TYPE,
+  STARTER_CORE_LEVELS,
+  STARTER_LEVELS,
+  addStarterWords,
   collectionFromAnki,
+  openStarterLevel,
+  starterKey,
+  starterLevelsHeld,
   moveToAnki,
   packageDecks,
   readAnkiPackage,
@@ -24,6 +30,7 @@ import {
   DEFAULT_FSRS_PARAMS,
   type Grade,
   type LanguageProfile,
+  type NativeCard,
   NORMAL_WEEK,
   type WeekLoad,
   answerCard,
@@ -47,6 +54,7 @@ import type { VuurtorenRepository, NativeCardChange, NativeCardView } from "@app
 import type { NlpClient } from "@app/nlp-client";
 import type { RunOptimizer } from "../native/optimizer.js";
 import { MIN_TRAINING_REVIEWS } from "../native/optimize.js";
+import { loadStarterWords } from "./starterWords.js";
 import type {
   ImportSummary,
   NativeServices,
@@ -389,6 +397,7 @@ export function createLiveNative(deps: LiveNativeDeps) {
       if (profileMode(await deps.profile()) !== "native")
         return { native: false, due: 0, fresh: 0 };
       const lang = await deps.lang();
+      await openStarter(lang);
       const at = now();
       const q = await repo.nativeQueue(lang, at, studyDayStart(at), 0);
       return { native: true, due: q.due, fresh: q.fresh };
@@ -396,6 +405,7 @@ export function createLiveNative(deps: LiveNativeDeps) {
 
     async reviewQueue() {
       const lang = await deps.lang();
+      await openStarter(lang);
       const at = now();
       const q = await repo.nativeQueue(lang, at, studyDayStart(at), QUEUE_LIMIT);
       const p = await params(lang);
@@ -455,6 +465,8 @@ export function createLiveNative(deps: LiveNativeDeps) {
         if (c.schedule?.state !== 2 || c.suspended) continue;
         stabilities.set(c.deck, [...(stabilities.get(c.deck) ?? []), c.schedule.stability]);
       }
+      // Numbers in their order: "Woorden 1–500" before "Woorden 501–1000".
+      decks.sort((a, b) => a.name.localeCompare(b.name, "en", { numeric: true }));
       return decks.map((d) => ({
         ...d,
         load: LOAD_RETENTIONS.map((retention) => ({
@@ -605,7 +617,43 @@ export function createLiveNative(deps: LiveNativeDeps) {
     async lastReview() {
       return repo.nativeLastReview(await deps.lang());
     },
+
+    async starterLevels() {
+      const held = starterLevelsHeld(await repo.nativeDecks(await deps.lang(), now()));
+      return { held, core: STARTER_CORE_LEVELS, all: STARTER_LEVELS };
+    },
+
+    async addStarterLevels({ levels, knownThrough }) {
+      const lang = await deps.lang();
+      const words = await loadStarterWords();
+      const at = now();
+      const held = new Map<string, NativeCard[]>();
+      for (const k of await repo.nativeKeyCards(lang, words.map(starterKey), studyDayStart(at)))
+        held.set(k.key, [...(held.get(k.key) ?? []), k.card]);
+      const profile = await deps.profile();
+      const result = await addStarterWords(
+        (e) => repo.append(e),
+        {
+          lang,
+          words,
+          levels,
+          held,
+          tags: profile.tags,
+          ...(knownThrough ? { knownThrough } : {}),
+        },
+        at,
+      );
+      await openStarter(lang);
+      deps.changed();
+      return { added: result.added, known: result.known, skipped: result.skipped };
+    },
   };
+
+  /** Starter levels bring new cards one at a time: open the next when one has none left. */
+  async function openStarter(lang: string): Promise<void> {
+    const next = openStarterLevel(await repo.nativeDecks(lang, now()));
+    if (next) await repo.append({ type: "NativeDeckOptionsSet", lang, ...next });
+  }
 
   /**
    * Native mode: an answer to a word outside the review screen (a Practice exercise, a reader
