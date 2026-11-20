@@ -1,4 +1,4 @@
-"""Data packs: the dictionary, the sentence DB, the MT model and the grammar-example cache.
+"""Data packs: the dictionary, the sentence DB, the MT model, the grammar-example cache, audio.
 
 The data is not part of the image. Each pack has a version in ``packs.json`` (next to this
 file: version, SHA-256 and size of its ``<name>-<version>.tar.gz`` archive). The installed state
@@ -28,6 +28,10 @@ in ``$VUURTOREN_PACKS_DIR`` (the offline installer and the ``-full`` image; made
 ``scripts/build_packs.py``) is unpacked when it fits the installed sentences and the current
 detectors; otherwise the cache is built here from the sentence pack (a few minutes).
 
+The audio pack (``audio-nl``, spoken starter words and sentences) is optional: ``packs.json``
+lists it only once its archive is published; until then it is skipped (the app uses the system
+voice).
+
 ``VUURTOREN_PACKS`` = ``off`` (default outside Docker: nothing runs by itself), ``download``
 (sources 1-2 only) or ``auto`` (1-3; the Docker image's default). The server runs ``ensure()``
 in a background thread at startup; ``GET /health`` shows the state, ``POST /admin/packs`` runs
@@ -53,6 +57,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Literal
 
+from vuurtoren_nlp.audio import audio_dir
 from vuurtoren_nlp.dictionary import default_db_path as dictionary_path
 from vuurtoren_nlp.grammar_examples import default_cache_path as grammar_cache_path
 from vuurtoren_nlp.sentences import default_db_path as sentences_path
@@ -109,6 +114,8 @@ SPECS: dict[str, PackSpec] = {
             "mt-nl-en", model_dir, "dir", lambda out: _py("fetch_mt_model.py", "--output", str(out))
         ),
         PackSpec("grammar-examples-nl", grammar_cache_path, "file", derived=True),
+        # Optional: in packs.json only once published (scripts/build_packs.py --audio-from).
+        PackSpec("audio-nl", audio_dir, "dir"),
     )
 }
 
@@ -375,6 +382,7 @@ def ensure(force: bool = False, allow_build: bool | None = None) -> dict[str, st
         allow_build = mode() == "auto"
     results: dict[str, str] = {}
     states = status()
+    published = manifest()
     for name, spec in SPECS.items():
         state = _grammar_state() if spec.derived else states[name]["state"]
         try:
@@ -388,6 +396,8 @@ def ensure(force: bool = False, allow_build: bool | None = None) -> dict[str, st
                         results[name] = "build"
                 else:
                     results[name] = "ok" if state == "ok" else "skipped: no sentences"
+            elif name not in published:
+                results[name] = "skipped: not published" if state == "missing" else "ok"
             elif state in ("missing", "outdated") or (force and state == "unversioned"):
                 results[name] = install(name, allow_build)
                 if name == "sentences-nl":

@@ -11,10 +11,11 @@ from typing import Annotated
 
 from fastapi import FastAPI, File, Query, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, Response
+from fastapi.responses import FileResponse, JSONResponse, Response
 from starlette.concurrency import run_in_threadpool
 
 from vuurtoren_nlp import __version__, analyzer, lexicon, packs, translate
+from vuurtoren_nlp.audio import clip_path
 from vuurtoren_nlp.course import COURSE_MAX_UPLOAD_BYTES, CourseOcr
 from vuurtoren_nlp.detect import detect
 from vuurtoren_nlp.dictionary import Dictionary, DictionaryMissingError
@@ -137,6 +138,18 @@ def packs_update(force: bool = False) -> dict[str, object]:
     """
     started = packs.ensure_in_background(force=force)
     return {"started": started, **packs_status()}
+
+
+@app.get("/audio/{voice}/{clip}.mp3")
+def audio_clip(voice: str, clip: str) -> Response:
+    """A spoken starter word or sentence from the ``audio-nl`` pack; 404 when there is none."""
+    path = clip_path(voice, clip)
+    if path is None:
+        return JSONResponse({"detail": "No such clip."}, status_code=404)
+    # A clip's id comes from its text: the same id is always the same sound.
+    return FileResponse(
+        path, media_type="audio/mpeg", headers={"Cache-Control": "max-age=31536000, immutable"}
+    )
 
 
 @app.post("/analyze/text")

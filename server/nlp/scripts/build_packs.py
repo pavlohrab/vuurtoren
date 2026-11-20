@@ -6,6 +6,7 @@ Usage (from server/nlp)::
     uv run python scripts/build_packs.py --out dist/packs --from-data data  # pack existing files
     uv run python scripts/build_packs.py --out dist/packs --download URL    # fetch + verify
     uv run python scripts/build_packs.py --grammar-from dist/packs          # grammar cache only
+    uv run python scripts/build_packs.py --out dist/packs --audio-from DIR  # audio pack only
 
 Each downloadable pack becomes ``<name>-<version>.tar.gz`` (deterministic: sorted, mtime 0,
 root-owned, so the same data gives the same SHA-256). Versions come from packs.json: bump a
@@ -19,6 +20,10 @@ hash>.tar.gz`` (not in packs.json: it is derived from the sentence pack and the 
 The offline installer and the ``-full`` image bundle it, so their first start does not build it;
 ``--grammar-from DIR`` makes it from the sentence pack archive in DIR (the offline installer's
 build, whose archives come from the release).
+
+``--audio-from DIR`` packs the spoken starter words and sentences (``DIR/{female,male}/<id>.mp3``,
+made by ``scripts/tts_elevenlabs.py``) as ``audio-nl-<version>.tar.gz`` and lists it in packs.json
+(version: ``--audio-version``, by default the dictionary's, so it goes in the same release).
 """
 
 from __future__ import annotations
@@ -56,13 +61,13 @@ def _info(name: str, size: int, is_dir: bool) -> tarfile.TarInfo:
     return ti
 
 
-def make_archive(src: Path, dest: Path) -> None:
-    """Deterministic tar.gz of ``src`` (a file or a directory) under its own name."""
+def make_archive(src: Path, dest: Path, root: str | None = None) -> None:
+    """Deterministic tar.gz of ``src`` (a file or a directory) under ``root`` (default its name)."""
     paths = [src] if src.is_file() else [src, *sorted(src.rglob("*"))]
     buf = io.BytesIO()
     with tarfile.open(fileobj=buf, mode="w", format=tarfile.PAX_FORMAT) as tar:
         for p in paths:
-            arc = str(p.relative_to(src.parent))
+            arc = str(Path(root or src.name) / p.relative_to(src))
             if p.is_dir():
                 tar.addfile(_info(arc, 0, True))
             else:
@@ -121,6 +126,32 @@ def grammar_from(manifest: dict, packs_dir: Path) -> int:
     return 0
 
 
+AUDIO_VOICES = ("female", "male")
+
+
+def audio_from(manifest: dict, src: Path, out: Path, version: str | None) -> int:
+    """Pack ``src/{female,male}/*.mp3`` as the ``audio-nl`` archive and record it in packs.json."""
+    voices = [v for v in AUDIO_VOICES if (src / v).is_dir()]
+    if not voices:
+        print(f"{src}: no female/ or male/ folder", file=sys.stderr)
+        return 1
+    files = [p for p in src.rglob("*") if p.is_file()]
+    stray = [p for p in files if p.suffix != ".mp3" or p.parent.parent != src]
+    if stray or any(p.parent.name not in voices for p in files):
+        print(f"{src}: not a clip: {(stray or files)[0]}", file=sys.stderr)
+        return 1
+    version = version or manifest["packs"]["dictionary-nl"]["version"]
+    dest = out / f"audio-nl-{version}.tar.gz"
+    make_archive(src, dest, root="audio-nl")
+    manifest["packs"]["audio-nl"] = {
+        "version": version,
+        "sha256": hashlib.sha256(dest.read_bytes()).hexdigest(),
+        "size": dest.stat().st_size,
+    }
+    print(f"{dest.name}: {len(files)} clips, {dest.stat().st_size / 1e6:.1f} MB")
+    return 0
+
+
 def download(manifest: dict, url: str, out: Path, names: list[str]) -> int:
     """Fetch ``<url>/<name>-<version>.tar.gz`` for each pack and verify it against packs.json."""
     for name in names:
@@ -151,6 +182,10 @@ def main() -> int:
     ap.add_argument(
         "--grammar-from", type=Path, metavar="DIR", help="only the grammar cache, from DIR"
     )
+    ap.add_argument(
+        "--audio-from", type=Path, metavar="DIR", help="only the audio pack, from DIR/{female,male}"
+    )
+    ap.add_argument("--audio-version", help="audio pack version (default: the dictionary's)")
     args = ap.parse_args()
     manifest = json.loads(MANIFEST.read_text())
     if args.grammar_from:
@@ -158,6 +193,12 @@ def main() -> int:
     if args.out is None:
         ap.error("--out is required")
     args.out.mkdir(parents=True, exist_ok=True)
+    if args.audio_from:
+        code = audio_from(manifest, args.audio_from.expanduser(), args.out, args.audio_version)
+        if code == 0:
+            MANIFEST.write_text(json.dumps(manifest, indent=1) + "\n")
+            print(f"Updated {MANIFEST.relative_to(ROOT)}")
+        return code
     if args.download:
         return download(manifest, args.download, args.out, args.only or list(TARGETS))
     with tempfile.TemporaryDirectory() as d:
