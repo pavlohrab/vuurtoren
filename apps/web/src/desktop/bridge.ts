@@ -21,7 +21,7 @@ export interface DbLock {
   seen: number;
 }
 
-export interface DbOpened {
+interface DbOpened {
   /** The database file (`~/Documents/Kenning/kenning.sqlite` by default). */
   path: string;
   /** True on the very first start (the file was just created). */
@@ -33,7 +33,7 @@ export interface DbOpened {
 }
 
 /** The bundled language server's `/health`, as far as the app uses it. */
-export interface SidecarHealth {
+interface SidecarHealth {
   ocr?: boolean;
   analyzerVersion?: string;
   packs?: {

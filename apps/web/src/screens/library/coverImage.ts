@@ -1,7 +1,7 @@
 /** Cover images in the browser: crop to 4:5, downscale to 600x750 and encode as WebP. */
 
-export const COVER_W = 600;
-export const COVER_H = 750;
+const COVER_W = 600;
+const COVER_H = 750;
 
 /** A crop of the source image, in source pixels, with a 4:5 aspect ratio. */
 export interface CropRect {

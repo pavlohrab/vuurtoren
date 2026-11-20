@@ -1,7 +1,7 @@
 /** Contract of the Library organisation services: text details, covers and shelves. */
 import type { Shelf, TextMetaPatch } from "@app/db";
 
-export type { Shelf, TextMetaPatch };
+export type { Shelf };
 
 export interface LibraryServices {
   /**

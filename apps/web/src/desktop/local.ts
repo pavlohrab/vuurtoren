@@ -34,7 +34,7 @@ export function conflictNotice(path: string, conflicts: string[]): string | unde
 let routed = false;
 
 /** Send `/nlp/...` to the bundled language server (once per page). */
-export function installNlpRoute(base: string): void {
+function installNlpRoute(base: string): void {
   if (routed) return;
   routed = true;
   globalThis.fetch = routeNlpTo(base, globalThis.fetch.bind(globalThis));

@@ -32,13 +32,13 @@ export interface EventContext {
 export type Row = Record<string, SqlValue>;
 
 /** pKnown assigned to words that were only looked up (state "seen"). */
-export const SEEN_P_KNOWN = 0.1;
+const SEEN_P_KNOWN = 0.1;
 /** pKnown for a word whose Anki note was created by the app but not yet in a snapshot. */
-export const NOTE_ADDED_P_KNOWN = 0.2;
+const NOTE_ADDED_P_KNOWN = 0.2;
 /** Minimum pKnown for a word the user manually marked known. */
-export const MARKED_KNOWN_P_KNOWN = 0.95;
+const MARKED_KNOWN_P_KNOWN = 0.95;
 /** pKnown for a manually "learning" word with no Anki learning evidence. */
-export const MARKED_LEARNING_P_KNOWN = 0.3;
+const MARKED_LEARNING_P_KNOWN = 0.3;
 
 /** Word count = number of Unicode letter runs. */
 export function countWords(content: string): number {

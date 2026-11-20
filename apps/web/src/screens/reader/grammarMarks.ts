@@ -17,7 +17,7 @@ import {
 import type { GrammarHit } from "@app/core";
 
 /** Detector topics that occur in nearly every sentence: focus mode only, never a margin mark. */
-export const FOCUS_ONLY = new Set([
+const FOCUS_ONLY = new Set([
   "inversion",
   "questions",
   "negation",

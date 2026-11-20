@@ -9,7 +9,7 @@ import { readingThemeStyle } from "@app/ui";
 export const TEXT_SIZES = [16, 17.5, 19.5, 22, 25] as const;
 export const LEADINGS = { compact: 1.5, normal: 1.7, relaxed: 1.95 } as const;
 export const WIDTHS = { narrow: "36rem", normal: "44rem", wide: "52rem" } as const;
-export const FONTS = {
+const FONTS = {
   literata: '"Literata Variable", Georgia, serif',
   inter: '"Inter Variable", system-ui, sans-serif',
   // Atkinson Hyperlegible Next has no Cyrillic: Cyrillic falls back to Inter glyph by glyph.

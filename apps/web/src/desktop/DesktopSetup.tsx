@@ -7,7 +7,7 @@ import { ocrAvailable, setupView } from "./setup.js";
 const KEY = ["desktop", "sidecar"] as const;
 
 /** The bundled language server's state (offline mode; null elsewhere). Polls while it sets up. */
-export function useSidecar(): SidecarStatus | null {
+function useSidecar(): SidecarStatus | null {
   const { desktop } = useAppInfo();
   const q = useQuery({
     queryKey: KEY,

@@ -23,5 +23,6 @@
       "project": ["src/**/*.{ts,tsx}"]
     }
   },
-  "ignoreBinaries": ["uv"]
+  "ignoreBinaries": ["uv"],
+  "ignore": ["apps/desktop/src-tauri/src/bridge.js"]
 }
