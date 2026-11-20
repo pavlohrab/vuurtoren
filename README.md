@@ -38,6 +38,21 @@ inburgeringsexamen.
 Kenning is local-first and self-hosted. Your data lives on your device or your own server, sync
 is encrypted, and AI is optional, with your own key.
 
+## Features
+
+- Reading at your level: Read, Cloze and Gloss modes, with a set number of new words per page
+- Import from a web address, PDF, EPUB, photo (OCR) or pasted text
+- Built-in flashcards with FSRS, tuned to your own reviews
+- Anki: import and export `.apkg` files, or keep studying in Anki through AnkiConnect
+- Dutch analysis: separable verbs, compounds, an offline dictionary and offline translation
+- Practice: meaning, cloze, de/het, separable verbs, perfect tense, word forms, word order, dictation
+- Grammar topics from A1 to C1, with examples from your own texts
+- Courses: study along a textbook you own, unit by unit
+- Practice and mock exams for the A2 inburgeringsexamen
+- Optional AI with your own key: Talk, stories at your level, explanations
+- Sync between devices through your own server, a synced folder, WebDAV or GitHub, encrypted
+- Desktop app for Windows, macOS and Linux, or self-host with Docker
+
 ## Get Kenning
 
 <p align="center">
