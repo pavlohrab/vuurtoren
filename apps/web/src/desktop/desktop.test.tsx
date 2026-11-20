@@ -1,22 +1,13 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import { AnkiConnectClient, probeAnki } from "@app/anki";
 import { browserPlatform } from "../services/platform.js";
 import { type DesktopBridge, desktopBridge, isLocalAnki, withDesktopAnki } from "./bridge.js";
-import { ConnectScreen } from "./ConnectScreen.js";
 
 function fakeBridge(over: Partial<DesktopBridge> = {}): DesktopBridge {
   return {
     home: true,
-    info: vi.fn(() => Promise.resolve({ version: "0.1.0", serverUrl: null })),
-    checkServer: vi.fn((url: string) =>
-      Promise.resolve({ url: `https://${url}/`, health: { schemaVersion: 9 } }),
-    ),
-    connect: vi.fn(() => Promise.resolve()),
-    changeServer: vi.fn(() => Promise.resolve()),
+    info: vi.fn(() => Promise.resolve({ version: "0.1.0" })),
     ankiFetch: vi.fn(() => Promise.resolve({ status: 200, body: '{"result":6,"error":null}' })),
-    useLocal: vi.fn(() => Promise.resolve()),
     db: {
       open: vi.fn(() =>
         Promise.resolve({
@@ -121,73 +112,10 @@ describe("Anki through the desktop bridge", () => {
   });
 
   it("is used by the platform fetch when the app runs in the desktop window", async () => {
-    const bridge = fakeBridge({ home: false });
+    const bridge = fakeBridge();
     window.__VUURTOREN_DESKTOP__ = bridge;
     const res = await browserPlatform().fetch("http://127.0.0.1:8765", { method: "POST" });
     expect(res.status).toBe(200);
     expect(bridge.ankiFetch).toHaveBeenCalledTimes(1);
-  });
-});
-
-describe("ConnectScreen", () => {
-  it("asks for a server, checks it and opens it", async () => {
-    const bridge = fakeBridge();
-    render(<ConnectScreen bridge={bridge} changing={false} />);
-    const input = await screen.findByLabelText("Server address");
-    await userEvent.type(input, "vuurtoren.example");
-    await userEvent.click(screen.getByRole("button", { name: "Connect" }));
-    await waitFor(() => expect(bridge.connect).toHaveBeenCalledWith("https://vuurtoren.example/"));
-    expect(bridge.checkServer).toHaveBeenCalledWith("vuurtoren.example");
-  });
-
-  it("goes back to using Vuurtoren on this computer", async () => {
-    const bridge = fakeBridge();
-    render(<ConnectScreen bridge={bridge} changing />);
-    await userEvent.click(await screen.findByRole("button", { name: "Use on this computer" }));
-    expect(bridge.useLocal).toHaveBeenCalledTimes(1);
-  });
-
-  it("shows why a server cannot be used and stays on the form", async () => {
-    const bridge = fakeBridge({
-      checkServer: vi.fn(() => Promise.reject("Could not reach nope.example.")),
-    });
-    render(<ConnectScreen bridge={bridge} changing={false} />);
-    await userEvent.type(await screen.findByLabelText("Server address"), "nope.example");
-    await userEvent.click(screen.getByRole("button", { name: "Connect" }));
-    expect(await screen.findByRole("alert")).toHaveTextContent("Could not reach nope.example.");
-    expect(bridge.connect).not.toHaveBeenCalled();
-    expect(screen.getByRole("button", { name: "Connect" })).toBeEnabled();
-  });
-
-  it("opens the saved server straight away on later starts", async () => {
-    const bridge = fakeBridge({
-      info: vi.fn(() => Promise.resolve({ version: "0.1.0", serverUrl: "https://k.example/" })),
-      checkServer: vi.fn(() =>
-        Promise.resolve({ url: "https://k.example/", health: { schemaVersion: 9 } }),
-      ),
-    });
-    render(<ConnectScreen bridge={bridge} changing={false} />);
-    expect(await screen.findByText(/Opening k\.example/)).toBeInTheDocument();
-    await waitFor(() => expect(bridge.connect).toHaveBeenCalledWith("https://k.example/"));
-  });
-
-  it("falls back to the form when the saved server is down", async () => {
-    const bridge = fakeBridge({
-      info: vi.fn(() => Promise.resolve({ version: "0.1.0", serverUrl: "https://k.example/" })),
-      checkServer: vi.fn(() => Promise.reject("k.example did not answer in time.")),
-    });
-    render(<ConnectScreen bridge={bridge} changing={false} />);
-    expect(await screen.findByRole("alert")).toHaveTextContent("did not answer");
-    expect(screen.getByLabelText("Server address")).toHaveValue("k.example");
-  });
-
-  it("does not reopen the saved server when the user asked to change it", async () => {
-    const bridge = fakeBridge({
-      info: vi.fn(() => Promise.resolve({ version: "0.1.0", serverUrl: "https://k.example/" })),
-    });
-    render(<ConnectScreen bridge={bridge} changing />);
-    expect(await screen.findByRole("button", { name: "Back to k.example" })).toBeInTheDocument();
-    expect(bridge.checkServer).not.toHaveBeenCalled();
-    expect(bridge.connect).not.toHaveBeenCalled();
   });
 });

@@ -30,8 +30,8 @@ pub fn base_url() -> &'static str {
     }
 }
 
-/// Only the app's own pages may use the language server. Pages of a Vuurtoren server (thin-client
-/// mode) or any other site the window shows send their http(s) origin and are refused.
+/// Only the app's own pages may use the language server. Any other site the window might show
+/// sends its http(s) origin and is refused.
 /// Custom-scheme pages report `tauri://localhost` or an opaque `null` origin.
 pub fn origin_allowed(origin: Option<&str>, home: &str) -> bool {
     match origin {

@@ -1,8 +1,7 @@
-// Injected into every page the Vuurtoren window loads (the bundled home page and the user's
-// server). The web app looks for `window.__VUURTOREN_DESKTOP__` (apps/web/src/desktop/bridge.ts).
-// Server pages may only use anki_fetch, change_server and desktop_info (runtime capability in
-// lib.rs); everything else (the offline app's database and language server) is rejected by
-// Tauri's ACL for them.
+// Injected into the page the Vuurtoren window loads (the bundled web build). The web app looks
+// for `window.__VUURTOREN_DESKTOP__` (apps/web/src/desktop/bridge.ts). Any other page the window
+// might show gets no commands: Tauri's ACL (capabilities/default.json) allows them for the
+// bundled page only.
 (function () {
   "use strict";
   if (window.__VUURTOREN_DESKTOP__) return;
@@ -10,6 +9,21 @@
   function invoke(cmd, args) {
     return window.__TAURI_INTERNALS__.invoke(cmd, args);
   }
+  // Closing the window (lib.rs calls this): run what the page asked for first (its last sync),
+  // at most a few seconds, then let the window close.
+  var beforeClose = null;
+  Object.defineProperty(window, "__VUURTOREN_CLOSING__", {
+    value: function () {
+      var close = function () {
+        invoke("close_now");
+      };
+      if (!beforeClose) return close();
+      var waited = new Promise(function (resolve) {
+        setTimeout(resolve, 4500);
+      });
+      Promise.race([Promise.resolve().then(beforeClose), waited]).then(close, close);
+    },
+  });
   function toBase64(bytes) {
     var s = "";
     for (var i = 0; i < bytes.length; i += 0x8000) {
@@ -30,21 +44,15 @@
       info: function () {
         return invoke("desktop_info");
       },
-      checkServer: function (url) {
-        return invoke("check_server", { url: url });
-      },
-      connect: function (url) {
-        return invoke("connect", { url: url });
-      },
-      changeServer: function () {
-        return invoke("change_server");
+      // What to do before the window closes (the page's last sync); returns its removal.
+      beforeClose: function (fn) {
+        beforeClose = fn;
+        return function () {
+          if (beforeClose === fn) beforeClose = null;
+        };
       },
       ankiFetch: function (req) {
         return invoke("anki_fetch", { req: req });
-      },
-      // Offline mode, home page only.
-      useLocal: function () {
-        return invoke("use_local");
       },
       db: Object.freeze({
         open: function (force) {
@@ -72,8 +80,8 @@
           return invoke("db_move");
         },
       }),
-      // Sync (offline mode, home page only): a folder you already sync, and requests to sync
-      // places the page cannot reach itself. Bytes travel as base64.
+      // Sync: a folder you already sync, and requests to sync places the page cannot reach
+      // itself. Bytes travel as base64.
       sync: Object.freeze({
         pickFolder: function () {
           return invoke("sync_pick_folder");

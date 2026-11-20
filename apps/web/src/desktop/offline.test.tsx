@@ -144,12 +144,8 @@ function nodeDb(file: string): DesktopBridge["db"] {
 function bridgeWith(db: DesktopBridge["db"], status: SidecarStatus = downloading): DesktopBridge {
   return {
     home: true,
-    info: () => Promise.resolve({ version: "0.2.0", serverUrl: null, mode: "local" }),
-    checkServer: vi.fn(),
-    connect: vi.fn(),
-    changeServer: vi.fn(() => Promise.resolve()),
+    info: () => Promise.resolve({ version: "0.2.0" }),
     ankiFetch: vi.fn(() => Promise.reject(new Error("not running"))),
-    useLocal: vi.fn(),
     db,
     nlp: {
       status: vi.fn(() => Promise.resolve(status)),
@@ -208,7 +204,7 @@ function renderOffline(path: string, status: SidecarStatus) {
     restart: vi.fn(() => Promise.resolve()),
     retryPacks: vi.fn(() => Promise.resolve()),
   };
-  const desktop: DesktopLocal = { nlp, connectServer: vi.fn(() => Promise.resolve()) };
+  const desktop: DesktopLocal = { nlp };
   const file = {
     path: "/home/a/Documents/Vuurtoren/vuurtoren.sqlite",
     reveal: vi.fn(() => Promise.resolve()),
@@ -280,7 +276,7 @@ describe("offline app screens", () => {
   });
 
   it("shows the data file in Settings with Show in folder and Move…", async () => {
-    const { file, desktop } = renderOffline("/settings?section=data", ready({ ocr: false }));
+    const { file } = renderOffline("/settings?section=data", ready({ ocr: false }));
     expect(await screen.findByTestId("data-file-path")).toHaveTextContent(
       "/home/a/Documents/Vuurtoren/vuurtoren.sqlite",
     );
@@ -290,7 +286,5 @@ describe("offline app screens", () => {
     await waitFor(() =>
       expect(screen.getByTestId("data-file-path")).toHaveTextContent("/mnt/sync/vuurtoren.sqlite"),
     );
-    await userEvent.click(screen.getByRole("button", { name: "Connect to a Vuurtoren server" }));
-    expect(desktop.connectServer).toHaveBeenCalled();
   });
 });

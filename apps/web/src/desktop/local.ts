@@ -1,8 +1,7 @@
 /**
- * The desktop app on this computer only (the default): the data is a SQLite file the app
- * opens natively (`~/Documents/Vuurtoren/vuurtoren.sqlite`), the language server is the bundled
- * sidecar. Everything above the driver (repository, services, screens) is the browser build's.
- *
+ * The desktop app: the data is a SQLite file the app opens natively
+ * (`~/Documents/Vuurtoren/vuurtoren.sqlite`), the language server is the bundled sidecar.
+ * Everything above the driver (repository, services, screens) is the browser build's.
  */
 import type { DataControls, DesktopLocal } from "../shell/AppInfo.js";
 import type { AppServices } from "../services/types.js";
@@ -85,6 +84,6 @@ export async function bootDesktopLocal(
         move: () => bridge.db.move(),
       },
     },
-    desktop: { nlp: bridge.nlp, connectServer: () => bridge.changeServer() },
+    desktop: { nlp: bridge.nlp },
   };
 }
