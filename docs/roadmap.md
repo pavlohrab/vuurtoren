@@ -2,8 +2,8 @@
 
 ## Next
 
-1. **Kenning Cloud.** The hosted service behind sync: accounts, payments and a hosted language
-   server for phones. Sync itself is built and works with your own server today.
+1. **Kenning Cloud** is coming: a hosted service behind sync, with accounts and a hosted
+   language server for phones.
 2. **Anki in the self-hosted stack.** Headless Anki with your AnkiWeb login, read-only.
 3. **Weave reading.** An English text with Dutch islands that grow as you learn.
 4. **Phone app.** Native mode and sync; OCR through the phone's own engine (ML Kit on Android,
@@ -11,32 +11,20 @@
 
 ## Native mode
 
-Built: the two modes and the onboarding choice, Move from Anki to Kenning and Move to Anki,
-`.apkg`/`.colpkg` import and `.apkg` export with history, the FSRS-6 scheduler tuned to you,
-workload (due dates on the lightest day, review days, related cards apart, the load of each
-target recall), reading and Practice as evidence for the cards, due words, review history per
-word, and the review screen with undo across sessions.
-
 **Not planned:** a general flashcard editor, Anki add-ons, a card browser beyond Words.
 
 ## Sync
 
-Built: your data on every device through your Kenning server, a folder you already sync (desktop
-app), WebDAV or a private GitHub repository, encrypted on the device with your passphrase;
-latest-wins for settings and marks, merged reviews and answers, event versions, compaction.
-
-- **Kenning Cloud** (paid, about €3–4 a month or €30 a year, lower for students and poorer
-  countries): the same sync and a hosted language server for devices that can't run one, such
-  as phones. Still to build: accounts, payments, storage limits per account.
+- **Kenning Cloud:** the same sync and a hosted language server for devices that can't run one,
+  such as phones. To build: accounts, storage limits per account.
 - **One device, one data file.** The desktop app refuses a sync folder that holds its own data
   folder, and warns when it sees another computer syncing under its device id (a data file
   copied or shared between computers).
 - **Server mode as a syncing client.** The web app on your Kenning server keeps its own copy in
   the browser and syncs with the server, like every other device.
-- **Before Kenning Cloud:** a run against a real GitHub repository and a real Nextcloud (the
-  test `apps/web/src/sync/real.test.ts` takes their addresses), and an outside review of the
-  encryption code. Argon2id, changing the passphrase and the recovery key are built; WebDAV is
-  checked against a real server (rclone).
+- **Checks before Kenning Cloud:** a run against a real GitHub repository and a real Nextcloud
+  (the test `apps/web/src/sync/real.test.ts` takes their addresses), and an outside review of
+  the encryption code.
 - **Hosting:** one stack of three containers: `kenning` (web app, API and sync), `kenning-nlp`
   (the language server; phones need it) and, only for Keep using Anki, `anki` (headless, read
   only). Self-hosting and Kenning Cloud run the same stack.
@@ -48,8 +36,8 @@ latest-wins for settings and marks, merged reviews and answers, event versions, 
   remove one.
 - **Storage.** Object storage (S3-compatible). Every account has its own prefix,
   `accounts/<account id>/`, holding the same layout as any sync place (`kenning/vault.json`,
-  `kenning/devices/…`, `kenning/blobs/…`). Files are sealed on the device as today: the service
-  stores them and cannot read them.
+  `kenning/devices/…`, `kenning/blobs/…`). Files are sealed on the device, as with every sync
+  place: the service stores them and cannot read them.
 - **Sync API.** The `/api/sync` of a self-hosted server, append-only: a device creates files in
   its own folder and in blobs, and removes only its own folded segments. Nothing overwrites
   another device's file.
@@ -69,7 +57,7 @@ latest-wins for settings and marks, merged reviews and answers, event versions, 
 
 ## Known issues
 
-- Windows and macOS installers are built by CI but not yet tested on a real machine.
+- Windows and macOS installers are built by CI but not tested on a real machine.
 - If the desktop data file can't be opened, the app shows the "Can't reach your Kenning server"
   screen instead of a file error.
 - In course import a page can merge into the previous one, and the outline then shows "No text
@@ -79,9 +67,7 @@ latest-wins for settings and marks, merged reviews and answers, event versions, 
 - Exercise recognition on scanned books misses gap fills whose blanks the OCR loses.
 - spaCy leaves some past tenses unchanged (_pleegden_, _wierpen_) and misses "hier/daar …
   particle" verbs (_groeien hier op_).
-- Every Anki sync stores a full snapshot in the event log, and deleted texts stay in it. The log
-  needs compaction before sync.
-- The staircase tracks a target coverage that the planner doesn't use yet.
+- The staircase tracks a target coverage that the planner doesn't use.
 - Connected mode doesn't read FSRS-6 decay per preset; 0.5 is assumed. Native mode uses the
   decay of its own parameters.
 - Anki's FSRS parameters are not read from older-format (JSON) deck packages.

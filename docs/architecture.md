@@ -18,9 +18,9 @@ Dependencies point down; nothing in `packages/` imports from `apps/`.
 | `packages/ui`         | Design-system components (reader, word inspector, cards, controls). Renders DTOs from core; no services.                                                                                                                                                                | core                                  |
 | `packages/mcp-tools`  | The MCP tools shared by `apps/mcp` (stdio) and `server/api` (HTTP).                                                                                                                                                                                                     | core, content, db, ai                 |
 | `apps/web`            | The React PWA.                                                                                                                                                                                                                                                          | all of the above                      |
-| `apps/desktop`        | Tauri v2 desktop app: local SQLite file, bundled language server, Anki bridge, updater.                                                                                                                                                                                 | (loads apps/web)                      |
+| `apps/desktop`        | Tauri v2 desktop app: local SQLite file, bundled language server, Anki bridge, sync folder and sync requests, key store, updater.                                                                                                                                       | (loads apps/web)                      |
 | `apps/mcp`            | stdio MCP server.                                                                                                                                                                                                                                                       | mcp-tools, core, db, anki, nlp-client |
-| `server/api`          | Server storage mode: sign-in, one SQLite file behind RPC, HTTP MCP.                                                                                                                                                                                                     | mcp-tools, core, db, nlp-client       |
+| `server/api`          | Server storage mode: sign-in, one SQLite file behind RPC, HTTP MCP, sync place (`/api/sync`) and sync tokens.                                                                                                                                                           | mcp-tools, core, db, nlp-client       |
 | `server/nlp`          | Python language server: analysis (spaCy), dictionary, forms, sentences, grammar detectors, OCR (RapidOCR, Tesseract), translation.                                                                                                                                      | —                                     |
 
 ## apps/web
@@ -35,10 +35,14 @@ src/
     Home, Library, Import, ReaderPage, Practice, Progress, Converse, ...
   services/           everything the screens call (AppServices), see below
   storage/            startup mode, tab lock, local.ts (localStorage helpers)
+  auth/               sign-in client, MCP and sync tokens of a Kenning server
+  desktop/            the desktop app's bridge, setup, data file and lock screens
+  sync/               sync places (server, WebDAV, GitHub, folder) and the key store
   pwa/                service worker registration, update prompt, install button
   practice/           practice engine glue (core generators, speech)
+  exam/               exam timer and helpers
   native/             workers: the FSRS optimizer (WebAssembly) and SQLite for package files
-  format.ts           pct, plural, formatBytes
+  format.ts           pct, plural, formatBytes, relativeTime
 ```
 
 Screens only talk to `AppServices` (`services/types.ts`) through `useServices()`. They never
@@ -165,5 +169,5 @@ The NLP image holds code and libraries only; its data are versioned **data packs
 - `pnpm e2e`: Playwright smoke test (`apps/web/e2e`) of import, reader, inspector, text size and
   practice, in demo and browser-storage mode, with the language server and AnkiConnect faked.
 - `pnpm knip`: unused files, exports and dependencies.
-- `npx madge@8.0.0 --circular --extensions ts,tsx <package>/src`: no import cycles (all clean).
+- `npx madge@8.0.0 --circular --extensions ts,tsx <package>/src`: no import cycles.
 - `server/nlp`: `uv run ruff check && uv run ruff format --check && uv run pytest -q`.

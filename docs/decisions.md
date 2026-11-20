@@ -9,8 +9,8 @@ The rules the code follows, and why.
   the cards:
   - **Native** (the default for new learners): Kenning holds the cards and runs the reviews.
     Anki is not needed.
-  - **Connected** (every profile from before modes existed): Anki is the record of known words
-    and runs the reviews; Kenning reads your decks through AnkiConnect.
+  - **Connected:** Anki is the record of known words and runs the reviews; Kenning reads your
+    decks through AnkiConnect.
 - Kenning never uses AnkiWeb and never links or copies Anki's code (rslib and AnkiDroid are
   AGPL). Package files are read from their file format only.
 - **Algorithms first, AI optional.** Every core feature works without AI. AI uses your own key.
@@ -93,9 +93,8 @@ Kenning writes to Anki only when you click, and tags every note it touches.
   language server, so they are derived data, not events: each device keeps its own (the server
   keeps them for server mode), one per text, valid for its content and analyzer version, and
   never synced. A text is analysed again when its device has no analysis of the current content,
-  or when the device's analyzer arrived after the analysis was made. Logs from earlier versions
-  still hold `TextAnalyzed` and `TextGrammarDetected` events; they fill the cache, so nothing is
-  analysed again after an update.
+  or when the device's analyzer is newer than the analysis. `TextAnalyzed` and
+  `TextGrammarDetected` events in a log fill the cache.
 - **Media** of imported cards (images, sounds) are blobs, like covers: not in the log, kept by
   backups.
 - **Where it lives:**
@@ -106,7 +105,7 @@ Kenning writes to Anki only when you click, and tags every note it touches.
 - **Several devices on one server:** each client checks a cheap change marker on focus and every
   30 s, and refetches when another device wrote. The last write of a setting wins.
 - **Sync** (Settings → Sync), for devices that keep their own data (the desktop app, the browser's
-  own storage, later phones): each device's events travel through a place you choose — your
+  own storage): each device's events travel through a place you choose — your
   Kenning server, a folder you already sync (desktop app), WebDAV or a private GitHub repository —
   encrypted on the device with your passphrase. The place only stores sealed files; each device
   writes only its own. The passphrase is never stored; the key it opens is kept on the device.
@@ -116,7 +115,7 @@ Kenning writes to Anki only when you click, and tags every note it touches.
   token belongs to one device and writes only that device's files.
 - Conflicts by kind of data: the log is replayed in clock order across devices, so the latest
   setting, word mark or profile wins; reviews and answers merge (an answer to a card another
-  device answered meanwhile applies to the card as it is now).
+  device answered meanwhile applies to the card as it is when the answer arrives).
 - Events carry a version: an older app keeps newer events without applying them until it is
   updated.
 - Backups export and import the whole file in every mode. A restore gives the device a new id;
@@ -130,8 +129,7 @@ Kenning writes to Anki only when you click, and tags every note it touches.
   latest wins for settings and marks, reviews and answers merge. This is the only way two copies
   of your data come together.
 - **Server mode is a thin client.** The web app opened on your Kenning server reads and writes
-  that server's database directly and keeps no copy, so there is nothing to merge. It will become
-  a syncing client: a copy in the browser that syncs with the server like any other device.
+  that server's database directly and keeps no copy, so there is nothing to merge.
 - **Words.** _Kenning server_ is the stack you host (web app, API, language server). _Server
   mode_ is the web app working on that server's database. A _sync place_ is where devices
   exchange events; your Kenning server is one, next to a synced folder, WebDAV and GitHub.
@@ -139,9 +137,7 @@ Kenning writes to Anki only when you click, and tags every note it touches.
   writing at once; it is not a way to share data. Sharing one database file between computers
   (a cloud-synced Documents folder, a network drive) is not combined with event sync: the
   computers would share one device id and one log. Keep the desktop data folder out of synced
-  folders, and use Sync to bring computers together. Two checks guard this rule (see the
-  roadmap): a sync folder that holds the data folder is refused, and two computers using one
-  device id get a warning.
+  folders, and use Sync to bring computers together.
 
 ## Language server
 
@@ -159,7 +155,7 @@ Kenning writes to Anki only when you click, and tags every note it touches.
 ## Platforms
 
 - One TypeScript core and one React UI for every platform.
-- Web (PWA) and desktop (Tauri v2) now. Browser extension and phone later.
+- Web (PWA) and desktop (Tauri v2).
 
 ## Desktop app security
 
@@ -172,9 +168,9 @@ change it:
   its IPC, the bundled language server (`kenning-nlp:`) and http(s) for AI providers and GitHub.
   No frames, plugins or form posts. Inline `style` attributes stay allowed (React uses them).
   `tauri dev` runs without it (Vite's dev server needs inline scripts).
-- **Database statements** (`db_exec`): the app's SQL runs as before, but a statement may not open
+- **Database statements** (`db_exec`): the app's own SQL runs, but a statement may not open
   other files (`ATTACH`, `VACUUM INTO`), drop the events table or its append-only trigger, rename
-  it or drop its columns, edit the schema by hand or load extensions. Compaction still deletes
+  it or drop its columns, edit the schema by hand or load extensions. Compaction deletes
   events, so this guards against reshaping the history and reaching past the file, not against
   every change.
 - **Sync requests** (`sync_fetch`) go only to addresses the user allowed: the app asks in its own
@@ -186,8 +182,7 @@ change it:
 - **Sync key**: `apps/web/src/sync/keyStore.ts` keeps the 64-byte data key in the system keychain
   (macOS Keychain, Windows Credential Manager, the Secret Service on Linux), or in a file only
   this user can read when there is no keychain. In a browser it keeps the key encrypted under a
-  non-extractable AES key in IndexedDB. Sync still keeps the key in local storage until it moves
-  to this store.
+  non-extractable AES key in IndexedDB.
 
 ## Native scheduler
 

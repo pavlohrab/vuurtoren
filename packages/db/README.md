@@ -65,9 +65,12 @@ Helpers: `contentHash(text)` (SHA-256 hex of UTF-8, synchronous, pure) is the ha
 - **Native cards** (`cards.ts`, native mode): `NativeNotesAdded` adds notes, cards, their
   review history and media names (blob ids); notes and cards already held are kept, note types
   and decks are added when missing. `CardReviewed` sets the card's schedule and logs the answer
-  with the schedule before it; `CardReviewUndone` restores that schedule and drops the answer.
-  `NativeCardsChanged` (mark known, study first, memory recomputed after tuning) sets schedule,
-  suspension or new-queue position. `NativeDeckOptionsSet` is last-write-wins per deck by HLC.
+  with the schedule before it; `CardReviewUndone` drops the answer and restores the schedule
+  before it, then replays any later answers to the card (from another device) on top.
+  `NativeCardsChanged` (mark known, study first, memory recomputed after tuning, a due date
+  moved by reading) sets schedule, suspension or new-queue position; memory and reading changes
+  apply to the card as it is then, and only while its last answer is still the one they were
+  made for, so they never undo an answer from another device. `NativeDeckOptionsSet` is last-write-wins per deck by HLC.
   `FsrsParamsSet` replaces the language's parameters. Queries: `nativeDecks`, `nativeQueue`,
   `nativeCard`, `nativeReviews`, `nativeStats`, `fsrsParams`, `nativeMedia`, `nativeNoteStatus`.
 - **Mode**: when the language profile is native, the learner model takes its per-word facts from

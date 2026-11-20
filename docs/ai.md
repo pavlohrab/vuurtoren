@@ -3,10 +3,10 @@
 Without AI everything else works. With a provider set you also get:
 
 - **Talk**: a short chat in Dutch that stays within the words you know, corrects your messages and
-  offers new words for Anki.
+  offers new words to add.
 - **Explain this sentence** and **Simplify this page** in the reader.
-- **Create a story** (Library, grammar topic, course unit): a text at your level, saved to the
-  Library.
+- **Write a story** (Add text, a grammar topic, a course unit): a text at your level, saved to
+  the Library.
 - **Fill gaps with AI sentences** in Practice, and **Generate exercises like this unit** in a course.
 - Examiner-style feedback on exam writing and speaking.
 
