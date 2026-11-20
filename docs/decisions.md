@@ -90,37 +90,33 @@ Vuurtoren writes to Anki only when you click, and tags every note it touches.
   too: notes added or imported, reviews (each carrying the card's schedule before and after),
   undos, deck options and FSRS parameters.
 - **Analyses are a cache on each device.** A text's tokens and grammar hits come from the
-  language server, so they are derived data, not events: each device keeps its own (the server
-  keeps them for server mode), one per text, valid for its content and analyzer version, and
-  never synced. A text is analysed again when its device has no analysis of the current content,
+  language server, so they are derived data, not events: each device keeps its own, one per
+  text, valid for its content and analyzer version, and never synced. A text is analysed again when its device has no analysis of the current content,
   or when the device's analyzer is newer than the analysis. `TextAnalyzed` and
   `TextGrammarDetected` events in a log fill the cache.
 - **Media** of imported cards (images, sounds) are blobs, like covers: not in the log, kept by
   backups.
-- **Where it lives:**
+- **Where it lives:** always on the device.
   - desktop app: one SQLite file in `Documents/Vuurtoren`, with a lock file against two computers
     writing at once;
-  - server: one SQLite file behind `server/api`, shared by all your devices;
-  - browser only: SQLite in OPFS, one tab at a time.
-- **Several devices on one server:** each client checks a cheap change marker on focus and every
-  30 s, and refetches when another device wrote. The last write of a setting wins.
-- **Sync** (Settings → Sync), for devices that keep their own data (the desktop app, the browser's
-  own storage): each device's events travel through a place you choose — your
-  Vuurtoren server, a folder you already sync (desktop app), WebDAV or a private GitHub repository —
-  encrypted on the device with your passphrase. The place only stores sealed files; each device
-  writes only its own. The passphrase is never stored; the key it opens is kept on the device.
-  The first device starts the sync data; every other device joins it, and joining never makes
-  new data (a second vault would split your devices). Sync also runs when the app is hidden or
-  closed, so the last changes do not wait for the next start. On a Vuurtoren server each sync
+  - browser (also the page served by a Vuurtoren server): SQLite in OPFS, one tab at a time.
+- **Sync** (Settings → Sync): each device's events travel through a place you choose — your
+  Vuurtoren server, or in the desktop app a folder you already sync or WebDAV — encrypted on the
+  device with your passphrase. The place only stores sealed files; each device writes only its
+  own. The passphrase is never stored; the key it opens is kept on the device, and is kept before
+  a new vault is written. The first device starts the sync data; every other device joins it,
+  and joining never makes new data (a second vault would split your devices). Sync runs at start,
+  a few seconds after a local change, every 15 seconds while the app is visible and when it is
+  hidden or closed, so two open devices agree within seconds. On a Vuurtoren server each sync
   token belongs to one device and writes only that device's files.
 - Conflicts by kind of data: the log is replayed in clock order across devices, so the latest
   setting, word mark or profile wins; reviews and answers merge (an answer to a card another
   device answered meanwhile applies to the card as it is when the answer arrives).
 - Events carry a version: an older app keeps newer events without applying them until it is
   updated.
-- Backups export and import the whole file in every mode. A restore gives the device a new id;
-  the backup's changes not yet synced still go out. A server's scheduled backups keep its sync
-  files too.
+- Backups export and import the whole file on every device. A restore gives the device a new
+  id; the backup's changes not yet synced still go out. A server's optional scheduled copies keep
+  its sync files.
 
 ## Several devices
 
@@ -128,11 +124,16 @@ Vuurtoren writes to Anki only when you click, and tags every note it touches.
   events through a sync place, replay them in hybrid-clock order and reach the same state:
   latest wins for settings and marks, reviews and answers merge. This is the only way two copies
   of your data come together.
-- **Server mode is a thin client.** The web app opened on your Vuurtoren server reads and writes
-  that server's database directly and keeps no copy, so there is nothing to merge.
-- **Words.** _Vuurtoren server_ is the stack you host (web app, API, language server). _Server
-  mode_ is the web app working on that server's database. A _sync place_ is where devices
-  exchange events; your Vuurtoren server is one, next to a synced folder, WebDAV and GitHub.
+- **A Vuurtoren server is a sync place and a language server.** It signs you in, serves the app,
+  stores sealed sync files and runs the language server; it holds no readable data. The app
+  opened from it keeps its own copy in the browser and syncs with it like every other device. It
+  chooses **This server** without typing a token: it makes a sync token for itself with its
+  session, so the per-device write rules of `/api/sync` hold for it too.
+- **Words.** _Vuurtoren server_ is the stack you host (web app, API, language server). A _sync
+  place_ is where devices exchange events: your Vuurtoren server, a synced folder or WebDAV.
+- **WebDAV and folders are for the desktop app.** A page cannot reach a folder, and WebDAV
+  servers rarely allow a page on another site (CORS); the desktop app sends those requests
+  itself.
 - **A data file belongs to one computer.** The desktop app's lock file only keeps two apps from
   writing at once; it is not a way to share data. Sharing one database file between computers
   (a cloud-synced Documents folder, a network drive) is not combined with event sync: the
@@ -151,6 +152,11 @@ Vuurtoren writes to Anki only when you click, and tags every note it touches.
 - OCR: RapidOCR (PaddleOCR models, bundled) on a straightened page, Dutch only.
   A PDF page uses its text layer unless it has under 40 letters or under 70% Dutch words.
 - The desktop app bundles the same server, OCR included.
+- **Behind the sign-in.** On a Vuurtoren server `/nlp/` answers a signed-in browser or a
+  device's sync token, so a phone that only syncs can use it too. `VUURTOREN_NLP_AUTH=off` opens
+  it to anyone; it is only for a setup without the api on a private network.
+- A browser that syncs with a Vuurtoren server uses that server's language server, with its sync
+  token, while its own address is the default `/nlp`. The desktop app keeps its bundled one.
 
 ## Platforms
 
@@ -165,7 +171,7 @@ change it:
 
 - **Content Security Policy** (`tauri.conf.json`): the app's own scripts and WebAssembly (SQLite,
   the optimizer), images and media from blobs and data URLs, and connections to the app itself,
-  its IPC, the bundled language server (`vuurtoren-nlp:`) and http(s) for AI providers and GitHub.
+  its IPC, the bundled language server (`vuurtoren-nlp:`) and http(s) for AI providers.
   No frames, plugins or form posts. Inline `style` attributes stay allowed (React uses them).
   `tauri dev` runs without it (Vite's dev server needs inline scripts).
 - **Database statements** (`db_exec`): the app's own SQL runs, but a statement may not open
@@ -182,7 +188,12 @@ change it:
 - **Sync key**: `apps/web/src/sync/keyStore.ts` keeps the 64-byte data key in the system keychain
   (macOS Keychain, Windows Credential Manager, the Secret Service on Linux), or in a file only
   this user can read when there is no keychain. In a browser it keeps the key encrypted under a
-  non-extractable AES key in IndexedDB.
+  non-extractable AES key in IndexedDB. A keychain that fails is an error; a key that is gone
+  makes Settings → Sync ask for the passphrase.
+- **Closing**: the window's close request is held until the page has sent its last changes, at
+  most 5 seconds.
+- **One page only**: the window shows the bundled app; the commands are granted to that page
+  alone.
 
 ## Native scheduler
 
@@ -199,14 +210,17 @@ change it:
   device straight to the provider. The key stays on the device, never in the data, backups or
   server.
 - Vuurtoren never offers a Claude sign-in and never routes requests through a subscription.
-  Subscription users connect their own Claude client through MCP: `/api/mcp` on the server (with
-  a per-user token) or the stdio server in `apps/mcp`. Over HTTP, MCP only suggests words. You add
-  them in the app.
+  Subscription users connect their own Claude client to the stdio MCP server in `apps/mcp`,
+  which opens the desktop app's data file on the same computer. A browser's data is out of
+  reach of other programs, so there it needs the desktop app.
 
 ## Sign-in (public servers)
 
 - Single user. `VUURTOREN_USER` + `VUURTOREN_PASSWORD_HASH` (scrypt), session cookie (`HttpOnly`,
   `Secure`, `SameSite=Lax`), sessions stored hashed in a separate file so backups never hold them.
 - Brute-force delay per IP plus a global cap. CSRF checks on every non-GET request.
-- nginx gates `/api` and `/nlp` behind the session. If the api is unreachable, `/nlp` stays
-  closed.
+- nginx gates `/api` and `/nlp` behind the session; a device's sync token opens `/api/sync` and
+  `/nlp` too, and nothing else. If the api is unreachable, `/nlp` stays closed.
+- Sync tokens are made in Settings → Sync on the server's page. A token may change the
+  passphrase and recovery key when it made the vault or was made with **May change the
+  passphrase and recovery key**.

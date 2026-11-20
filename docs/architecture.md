@@ -11,33 +11,33 @@ Dependencies point down; nothing in `packages/` imports from `apps/`.
 | --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------- |
 | `packages/core`       | Pure domain logic: learner model and evidence, token matching, reading planner and staircase, practice engine and FSRS, the native scheduler (FSRS-6, replay, card templates, training data), courses, language profile and its mode, the `InspectorEntry` DTO. No I/O. | —                                     |
 | `packages/content`    | Grammar topics and exam content (Markdown, generated and validated at build).                                                                                                                                                                                           | —                                     |
-| `packages/db`         | The append-only event log, projections (native cards included) and the `VuurtorenRepository` API; drivers for browser SQLite (OPFS worker), Node and HTTP (server mode); sync (`sync/`: encryption, the sync engine, the store interface).                              | core                                  |
+| `packages/db`         | The append-only event log, projections (native cards included) and the `VuurtorenRepository` API; drivers for browser SQLite (OPFS worker), Node and the desktop app's file; sync (`sync/`: encryption, the sync engine, the store interface).                          | core                                  |
 | `packages/anki`       | AnkiConnect client, deck detection, snapshots, package files (.apkg, .colpkg) and decks read through AnkiConnect turned into native cards, and the one command layer for word actions in both modes (add, study first, mark known).                                     | core                                  |
 | `packages/nlp-client` | HTTP client of `server/nlp` and the cached practice-data source.                                                                                                                                                                                                        | —                                     |
 | `packages/ai`         | Bring-your-own-key providers, prompts, story / sentence / exam generators and their checks, the per-device key store.                                                                                                                                                   | core                                  |
 | `packages/ui`         | Design-system components (reader, word inspector, cards, controls). Renders DTOs from core; no services.                                                                                                                                                                | core                                  |
-| `packages/mcp-tools`  | The MCP tools shared by `apps/mcp` (stdio) and `server/api` (HTTP).                                                                                                                                                                                                     | core, content, db, ai                 |
+| `packages/mcp-tools`  | The MCP tools of `apps/mcp`.                                                                                                                                                                                                                                            | core, content, db, ai                 |
 | `apps/web`            | The React PWA.                                                                                                                                                                                                                                                          | all of the above                      |
 | `apps/desktop`        | Tauri v2 desktop app: local SQLite file, bundled language server, Anki bridge, sync folder and sync requests, key store, updater.                                                                                                                                       | (loads apps/web)                      |
-| `apps/mcp`            | stdio MCP server.                                                                                                                                                                                                                                                       | mcp-tools, core, db, anki, nlp-client |
-| `server/api`          | Server storage mode: sign-in, one SQLite file behind RPC, HTTP MCP, sync place (`/api/sync`) and sync tokens.                                                                                                                                                           | mcp-tools, core, db, nlp-client       |
+| `apps/mcp`            | stdio MCP server on the desktop app's data file.                                                                                                                                                                                                                        | mcp-tools, core, db, anki, nlp-client |
+| `server/api`          | A Vuurtoren server: sign-in, sync tokens, the sync place (`/api/sync`) and the sign-in check of the language server (`/nlp/`). Holds no learner data.                                                                                                                   | —                                     |
 | `server/nlp`          | Python language server: analysis (spaCy), dictionary, forms, sentences, grammar detectors, OCR (RapidOCR), translation.                                                                                                                                                 | —                                     |
 
 ## apps/web
 
 ```
 src/
-  main.tsx            boot: demo / server mode / browser mode -> AppServices
+  main.tsx            boot: demo / desktop app / browser (signed in to the page's server) -> AppServices
   router.tsx          routes (lazy screens)
-  shell/              app shell, PageHeader, degraded indicator, sign-in, storage screens
+  shell/              app shell, PageHeader, degraded indicator, sign-in, start screens, auto sync
   screens/            one folder per area where it has several files:
     courses/ exam/ grammar/ onboarding/ reader/ review/ settings/ words/
     Home, Library, Import, ReaderPage, Practice, Progress, Converse, ...
   services/           everything the screens call (AppServices), see below
   storage/            startup mode, tab lock, local.ts (localStorage helpers)
-  auth/               sign-in client, MCP and sync tokens of a Vuurtoren server
+  auth/               sign-in client and sync tokens of a Vuurtoren server
   desktop/            the desktop app's bridge, setup, data file and lock screens
-  sync/               sync places (server, WebDAV, GitHub, folder) and the key store
+  sync/               sync places (server, WebDAV, folder) and the key store
   pwa/                service worker registration, update prompt, install button
   practice/           practice engine glue (core generators, speech)
   exam/               exam timer and helpers
@@ -72,7 +72,7 @@ composition root. Each domain module gets only what it needs:
 | `liveAI.ts`         | AI config and keys, stories, conversations, AI sentences, exam items.                                             |
 | `liveExam.ts`       | Exam attempts.                                                                                                    |
 | `liveNative.ts`     | Native mode: review queue, answers and undo, deck options, package import, the move from Anki, FSRS tuning.       |
-| `liveSync.ts`       | Sync: the place, its credentials and the key on this device; one sync at a time; syncs by itself once a minute.   |
+| `liveSync.ts`       | Sync: the place, its credentials and the key on this device; one sync at a time; syncs by itself (10.6).          |
 | `liveCourses.ts`    | Composition of `courses/`: `context` (shared lookups), `import`, `packs`, `views`, `anki`, `practice`, `grammar`. |
 
 `mock*.ts` implement the same `AppServices` for `?demo` and for screen tests.
@@ -95,13 +95,12 @@ flowchart LR
   the analysis cache below.
 - **Analysis cache.** Tokens and grammar hits from the language server are derived data:
   `saveTextAnalysis` and `saveTextGrammar` write them to `text_tokens` and `text_grammar` on
-  this device (in server mode, on the server through `/api/rpc`), never as events, so sync
-  never carries them. One row per text, valid for its content hash and analyzer version;
+  this device, never as events, so sync never carries them. One row per text, valid for its content hash and analyzer version;
   `analyzed_at` keeps a replayed `TextAnalyzed` event from an older log from overwriting a newer
   analysis. Rebuilds keep the cache; a text without an analysis is analysed when opened.
 - **Reads** go through repository queries; the services cache what is expensive (learner model,
-  reading plans, glosses) and drop the caches on `changed()` or when another device wrote
-  (server mode, `checkRemoteChanges`).
+  reading plans, glosses) and drop the caches on `changed()` or when sync brought another
+  device's changes (`autoSync`).
 - **Modes.** The language profile's mode decides who holds the cards. Connected: Anki is read
   for snapshots and live card state and written only by the commands in `@app/anki`, each of
   which also records its event. Native: the cards are events and projections in `@app/db`
@@ -113,6 +112,18 @@ flowchart LR
   another worker. Both work offline, in the browser and in the desktop app.
 - **Degraded modes** (NLP, Anki, AI, translation, storage) report to one signal
   (`services/degraded.ts`) shown in the top bar.
+
+## A Vuurtoren server
+
+A server gives devices sync and the language server; it keeps no learner data. nginx
+(`deploy/nginx.conf.template`) serves the app's files and proxies `/api/` to `server/api` and
+`/nlp/` to `server/nlp`, asking `/api/auth/check` first (`auth_request`). The check accepts a
+session cookie, the server's `VUURTOREN_TOKEN` or, for `/api/sync` and `/nlp/`, a device's sync
+token. The page served by a server boots in browser mode like any other device (its own copy in
+OPFS): it signs in first, can choose **This server** as its sync place (it makes a sync token for
+itself with its session) and reaches `/nlp/` with its session. A browser elsewhere that syncs
+with a server uses that server's `/nlp` with its sync token while its language-server address is
+the default; the desktop app uses its bundled one.
 
 ## Language server OCR
 

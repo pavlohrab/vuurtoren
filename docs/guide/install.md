@@ -40,4 +40,4 @@ Then add a text (paste it, give a web address, or choose a PDF or a photo) and s
 ## Use it on more devices
 
 - **Sync:** keep your data on every device. See [Sync](sync.md).
-- **Your own server:** run Vuurtoren for all your devices at home. See [Self-host](self-host.md).
+- **Your own server:** sync and the language server for all your devices. See [Self-host](self-host.md).

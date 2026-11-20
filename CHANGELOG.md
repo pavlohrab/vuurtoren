@@ -5,6 +5,21 @@ the data format; the app migrates it and never downgrades it.
 
 ## [Unreleased]
 
+- **A Vuurtoren server is a sync place and a language server.** Every device keeps its own data;
+  the app opened from the server keeps its copy in the browser and chooses **This server** in
+  Settings → Sync. `/api/rpc`, `/api/export`, `/api/import`, `/api/mcp` and MCP tokens are gone.
+  **Before you update a server that held your data,** open it and download a backup (Settings →
+  Data & backup); after the update, restore it in the browser (or the desktop app) and start
+  sync from there.
+- The language server accepts a device's sync token as well as a signed-in browser.
+- Sync tokens can be allowed to change the passphrase and recovery key.
+- The desktop app always runs on this computer; it no longer opens a server's page. Closing it
+  sends the last changes first.
+- Sync runs at start, a few seconds after a change, every 15 seconds while open and when you
+  leave; files that did not sync are listed; a device that lost its key asks for the passphrase.
+- GitHub is no longer a sync place. WebDAV is offered in the desktop app.
+- Use with Claude: the stdio MCP server opens the desktop app's data file.
+
 ## [0.1.0]
 
 First release.

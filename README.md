@@ -35,8 +35,8 @@ the rest get a short translation. One click turns a word into a flashcard, with 
 found it in. There are also exercises, grammar from A1 to C1 and practice for the A2
 inburgeringsexamen.
 
-Vuurtoren is local-first and self-hosted. Your data lives on your device or your own server, sync
-is encrypted, and AI is optional, with your own key.
+Vuurtoren is local-first. Your data lives on your devices, sync is encrypted (through your own
+server, a synced folder or WebDAV), and AI is optional, with your own key.
 
 About the name: vuurtoren is Dutch for lighthouse, literally a "fire-tower", one of those
 compound pictures Dutch builds so many of its words from. A lighthouse helps you find your way
@@ -55,7 +55,7 @@ through unfamiliar water, and that is what I want this app to do for a text.
 - Courses: study along a textbook you own (PDF, EPUB or photos), unit by unit
 - Practice and mock exams for the A2 inburgeringsexamen
 - Optional AI with your own key: Talk, stories at your level, explanations
-- Sync between devices through your own server, a synced folder, WebDAV or GitHub, encrypted
+- Sync between devices through your own server, a synced folder or WebDAV, encrypted
 - Desktop app for Windows, macOS and Linux, or self-host with Docker
 
 ## Get Vuurtoren

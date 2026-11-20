@@ -64,27 +64,28 @@ The AI writes, the algorithms check. Nothing generated is graded by the AI.
 - **Unit exercises:** gap fills, sentence building and a text with questions, each checked the
   same way, then graded by the book's own checkers.
 
-## Use Vuurtoren from Claude Code
+## Use Vuurtoren from Claude
 
 Your own Claude Code or Claude Desktop calls Vuurtoren's tools over MCP, under your own plan. No API
 key needed. Vuurtoren never asks for a Claude login.
 
-This needs a Vuurtoren server, because Claude must reach your data.
+The MCP server (`apps/mcp`) runs on your computer and opens the desktop app's data file, so this
+needs the desktop app. A browser keeps its data where no other program can read it: sync it with
+the desktop app and use Claude there. Settings → AI → **Use with Claude** shows the commands with
+your data file filled in.
 
-1. **Settings → AI → Use with Claude Code → Generate token.**
-2. Run the command shown, for example:
+1. Build the MCP server once: `pnpm install && pnpm build` in a copy of this repository.
+2. Add it to Claude Code:
 
    ```sh
-   claude mcp add --transport http vuurtoren https://vuurtoren.example.com/api/mcp \
-     --header "Authorization: Bearer kmcp_..."
+   claude mcp add vuurtoren --env VUURTOREN_DB="/home/anna/Documents/Vuurtoren/vuurtoren.sqlite" \
+     -- node /path/to/vuurtoren/apps/mcp/dist/main.js
    ```
 
-   For Claude Desktop, copy the JSON shown into `claude_desktop_config.json`.
+   For Claude Desktop, copy the JSON shown in Settings into `claude_desktop_config.json`.
 
 3. Ask, for example: "Write me an A2 story with my words to learn about cycling and save it to
    Vuurtoren."
-
-The token opens `/api/mcp` only; revoke it in the same card.
 
 | Tool                       | Does                                                                |
 | -------------------------- | ------------------------------------------------------------------- |
@@ -96,24 +97,15 @@ The token opens `/api/mcp` only; revoke it in the same card.
 | `get_grammar_topic`        | Vuurtoren's grammar pages                                           |
 | `save_text`                | saves a story or exercise to the Library                            |
 | `suggest_words_for_anki`   | queues words under **Words → Suggested by Claude**; you click Add   |
+| `add_to_anki`              | adds a card right away                                              |
 
-The server can't reach the AnkiConnect on your computer, so `/api/mcp` never writes to Anki.
+What Claude saves goes into the data file; the desktop app shows it and syncs it to your other
+devices.
 
-### Local stdio server
-
-`apps/mcp` offers the same tools plus `add_to_anki`, which adds a card right away. Build with
-`pnpm install && pnpm build`, then:
-
-```sh
-claude mcp add vuurtoren \
-  --env VUURTOREN_URL=http://localhost:8080 --env VUURTOREN_TOKEN=... \
-  -- node /path/to/vuurtoren/apps/mcp/dist/main.js
-```
-
-| Variable             | Meaning                                                |
-| -------------------- | ------------------------------------------------------ |
-| `VUURTOREN_URL`      | your Vuurtoren server (required)                       |
-| `VUURTOREN_TOKEN`    | the server's `VUURTOREN_TOKEN`, when sign-in is on     |
-| `VUURTOREN_NLP_URL`  | language server (default `$VUURTOREN_URL/nlp`)         |
-| `VUURTOREN_ANKI_URL` | AnkiConnect (default `http://127.0.0.1:8765`)          |
-| `VUURTOREN_DECK`     | deck override; by default the language profile decides |
+| Variable              | Meaning                                                                                        |
+| --------------------- | ---------------------------------------------------------------------------------------------- |
+| `VUURTOREN_DB`        | the desktop app's data file (default: where the app keeps it)                                  |
+| `VUURTOREN_NLP_URL`   | language server for `check_coverage` and `save_text`, e.g. `https://vuurtoren.example.com/nlp` |
+| `VUURTOREN_NLP_TOKEN` | a sync token of that server, sent as a bearer token                                            |
+| `VUURTOREN_ANKI_URL`  | AnkiConnect (default `http://127.0.0.1:8765`)                                                  |
+| `VUURTOREN_DECK`      | deck override; by default the language profile decides                                         |
