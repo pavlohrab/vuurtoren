@@ -18,7 +18,7 @@ import {
   UserRound,
 } from "lucide-react";
 import { useState, type ReactNode } from "react";
-import { Input, Select, Skeleton, Slider } from "@app/ui";
+import { Input, Select, Skeleton, Slider, useNativeMode } from "@app/ui";
 import { InstallApp } from "../../pwa/PwaControls.js";
 import { useServices } from "../../services/context.js";
 import type { Settings as SettingsData } from "../../services/types.js";
@@ -92,6 +92,8 @@ export function SettingsScreen() {
   // Wide screens always show a section; phones show the list until one is picked.
   const section = chosen ?? "language";
   const meta = SECTIONS.find((s) => s.id === section)!;
+  // Native mode has no Anki connection: Move to Anki and deck files live in Language & decks.
+  const native = useNativeMode();
   return (
     <div className="page page--list settings-page" data-picked={chosen ? "" : undefined}>
       <PageHeader
@@ -129,7 +131,7 @@ export function SettingsScreen() {
           </header>
           {section === "language" ? (
             <div className="stack settings-stack">
-              <AnkiConnection />
+              {native ? null : <AnkiConnection />}
               <LanguageDecksSettings />
             </div>
           ) : section === "reading" ? (

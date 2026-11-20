@@ -236,6 +236,8 @@ describe("live courses", () => {
     const mapping = await services.deckMapping(id);
     expect(mapping.decks).not.toContain("Opmaat::Thema 01 - Kennismaken");
     expect(backend.anki.some((c) => c.action === "deckNames")).toBe(false);
+    // Native mode has nothing to read from Anki.
+    await expect(services.syncAnki()).rejects.toThrow("Kenning holds your cards");
   });
 
   it("shows flagged pages to the review and applies its fixes before building the course", async () => {
