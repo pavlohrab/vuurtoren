@@ -39,7 +39,45 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # The data packs every installer needs: the release `packs-<version>` is used when it exists,
+  # otherwise it is built and published here. Its packs.json (the archives' checksums) goes to
+  # the build jobs, so the app always checks the archives that are really published.
+  packs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: server/nlp
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - name: Data packs release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          version=$(python3 -c "import json;print(json.load(open('src/kenning_nlp/packs.json'))['packs']['dictionary-nl']['version'])")
+          tag="packs-$version"
+          if gh release view "$tag" --repo "$REPO" >/dev/null 2>&1; then
+            echo "Using the existing release $tag."
+            gh release download "$tag" --repo "$REPO" --pattern packs.json --dir "$RUNNER_TEMP" --clobber
+            cp "$RUNNER_TEMP/packs.json" src/kenning_nlp/packs.json
+          else
+            echo "No release $tag yet: building the packs."
+            uv sync --locked --no-dev
+            uv run --no-dev python scripts/build_packs.py --out dist/packs
+            gh release create "$tag" --repo "$REPO" --title "Data packs $version" --prerelease \
+              --notes "Language server data packs. See docs/architecture.md, 'Language server data packs'."
+            gh release upload "$tag" --repo "$REPO" dist/packs/*.tar.gz src/kenning_nlp/packs.json --clobber
+            echo "### New data packs $version: commit server/nlp/src/kenning_nlp/packs.json from the release" >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: packs-manifest
+          path: server/nlp/src/kenning_nlp/packs.json
+
   build:
+    needs: packs
     strategy:
       fail-fast: false
       matrix:
@@ -59,6 +97,10 @@ jobs:
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: packs-manifest
+          path: server/nlp/src/kenning_nlp
       - uses: ./.github/actions/desktop-prep
         with:
           rust-targets: ${{ matrix.rust-targets }}
@@ -95,6 +137,7 @@ jobs:
   # Same app plus the data pack archives, renamed `Kenning_offline_*` and attached to the same
   # release. No updater files: the updater feed belongs to the standard installers.
   offline:
+    needs: packs
     if: github.event_name == 'push' || inputs.offline
     strategy:
       fail-fast: false
@@ -114,6 +157,10 @@ jobs:
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: packs-manifest
+          path: server/nlp/src/kenning_nlp
       - uses: ./.github/actions/desktop-prep
         with:
           rust-targets: ${{ matrix.rust-targets }}
