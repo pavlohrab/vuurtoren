@@ -280,14 +280,14 @@ describe("/api/sync: what a sync token may write", () => {
       (await fetch(`${base}/api/sync/list?dir=`, { headers: { "sec-fetch-site": "cross-site" } }))
         .status,
     ).toBe(403);
-    // Any Authorization header used to skip the CSRF check; with nothing to verify it does not.
+    // An Authorization header with nothing to verify does not skip the CSRF check.
     const forged = await fetch(file("kenning/vault.json"), {
       method: "PUT",
       headers: { authorization: "Bearer anything" },
       body: "{}",
     });
     expect(forged.status).toBe(403);
-    // A device (no Origin; the X-Kenning header) syncs as before.
+    // A device (no Origin; the X-Kenning header) syncs.
     const device = await fetch(file("kenning/vault.json"), {
       method: "PUT",
       headers: { authorization: "Bearer ", "x-kenning": "1" },

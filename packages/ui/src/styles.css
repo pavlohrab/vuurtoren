@@ -2074,7 +2074,7 @@ svg.lucide {
   color: var(--ink);
 }
 
-/* Inspector actions (U23): primary full width, then Mark known and Ignore as one even row. */
+/* Inspector actions: primary full width, then Mark known and Ignore as one even row. */
 .k-inspector-actions {
   padding-top: 4px;
 }

@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 export type SaveStatus = "idle" | "saving" | "saved" | "error";
 
 /**
- * Save `draft` a moment after the last change (Settings has no Save buttons, U17). Nothing is
+ * Save `draft` a moment after the last change (Settings has no Save buttons). Nothing is
  * saved while `draft` is null (untouched) or `valid` is false.
  */
 export function useAutosave<T>(

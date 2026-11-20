@@ -1,5 +1,5 @@
 /**
- * Settings (U17): sections with a sub-nav on the left (a list on phones), each saving itself a
+ * Settings: sections with a sub-nav on the left (a list on phones), each saving itself a
  * moment after a change. Account · Language & decks · Reading · AI · Data & backup · Sync ·
  * Advanced.
  * The theme lives only in the top bar.

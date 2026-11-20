@@ -168,7 +168,7 @@ export interface GlossEntry {
 /** Gloss lookup result: every requested word maps to its entries (empty if unknown). */
 export type GlossResult = Record<string, GlossEntry[]>;
 
-/** Languages `/translate` supports (offline OPUS-MT): Dutch to English only for now. */
+/** Languages `/translate` supports (offline OPUS-MT): Dutch to English only. */
 export interface TranslateOptions {
   source?: "nl";
   target?: "en";

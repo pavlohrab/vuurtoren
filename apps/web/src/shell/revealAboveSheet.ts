@@ -1,6 +1,6 @@
 /**
  * Below 900px the inspector is a bottom sheet. After selecting a word, scroll the content so
- * the word sits above the sheet instead of under it (U20). Runs after the sheet has laid out.
+ * the word sits above the sheet instead of under it. Runs after the sheet has laid out.
  */
 export function revealAboveSheet(target: Element | null): void {
   if (!target || typeof window.matchMedia !== "function") return;

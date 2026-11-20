@@ -170,7 +170,7 @@
 }
 .content {
   /* Positioned, so absolutely placed descendants (e.g. visually hidden labels) stay inside the
-     scroll area instead of stretching the document (U7). */
+     scroll area instead of stretching the document. */
   position: relative;
   flex: 1;
   min-height: 0;
@@ -367,7 +367,7 @@
     padding-bottom: 62vh;
   }
 }
-/* Phone width: a bottom tab bar replaces the icon rail (U20). */
+/* Phone width: a bottom tab bar replaces the icon rail. */
 @media (max-width: 699px) {
   .topbar-palette,
   .topbar-spacer,

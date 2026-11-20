@@ -238,8 +238,8 @@ export async function applyEvent(driver: SqlDriver, ctx: EventContext): Promise<
       }
       return;
     }
-    // Analyses written by older app versions: kept in the analysis cache, so nothing has to be
-    // analysed again after an upgrade. New analyses are not events (`saveTextAnalysis`).
+    // Analyses held in the log fill the analysis cache. Kenning writes analyses to the cache
+    // directly, never as events (`saveTextAnalysis`).
     case "TextGrammarDetected":
       await writeTextGrammar(driver, e, ctx.createdAt);
       return;
