@@ -11,6 +11,7 @@ export * from "./CoverageMeter.js";
 export * from "./Feedback.js";
 export * from "./CommandPalette.js";
 export * from "./Reader.js";
+export * from "./SideBySide.js";
 export * from "./WordText.js";
 export * from "./WordInspector.js";
 export * from "./TextCard.js";

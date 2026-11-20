@@ -1,7 +1,8 @@
 /**
  * Reading comforts, remembered per device (localStorage): text size, line spacing, line width,
- * reading font, reading theme and whether cloze blanks show their meaning. Every read and write is guarded: blocked storage just means
- * the defaults.
+ * reading font, reading theme, whether cloze blanks show their meaning, and when side by side
+ * shows the English and where it comes from. Every read and write is guarded: blocked storage
+ * just means the defaults.
  */
 import { useCallback, useState } from "react";
 import { readingThemeStyle } from "@app/ui";
@@ -16,6 +17,8 @@ const FONTS = {
   atkinson: '"Atkinson Hyperlegible Next Variable", "Inter Variable", system-ui, sans-serif',
 } as const;
 export const READING_THEMES = ["app", "paper", "sepia", "night"] as const;
+/** Side by side: always, only sentences you know less than 85% of, or on request. */
+export const ENGLISH_VISIBILITY = ["always", "hard", "tap"] as const;
 
 export interface ReaderPrefs {
   /** Index into TEXT_SIZES. */
@@ -26,6 +29,10 @@ export interface ReaderPrefs {
   theme: (typeof READING_THEMES)[number];
   /** Cloze: show the blank's meaning above it while it has focus (the first, free hint). */
   clozeMeaning: boolean;
+  /** Side by side: when a sentence's English shows. */
+  english: (typeof ENGLISH_VISIBILITY)[number];
+  /** Side by side: the English comes from the AI provider (when one is set up). */
+  englishAI: boolean;
 }
 
 export const DEFAULT_PREFS: ReaderPrefs = {
@@ -35,6 +42,8 @@ export const DEFAULT_PREFS: ReaderPrefs = {
   font: "literata",
   theme: "app",
   clozeMeaning: true,
+  english: "hard",
+  englishAI: false,
 };
 
 const KEY = "vuurtoren-reader-prefs";
@@ -55,6 +64,8 @@ export function readPrefs(): ReaderPrefs {
       font: pick(v["font"], Object.keys(FONTS) as ReaderPrefs["font"][], "literata"),
       theme: pick(v["theme"], READING_THEMES, "app"),
       clozeMeaning: typeof v["clozeMeaning"] === "boolean" ? v["clozeMeaning"] : true,
+      english: pick(v["english"], ENGLISH_VISIBILITY, "hard"),
+      englishAI: v["englishAI"] === true,
     };
   } catch {
     return { ...DEFAULT_PREFS };
