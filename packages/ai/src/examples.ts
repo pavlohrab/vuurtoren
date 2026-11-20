@@ -12,6 +12,7 @@ import type { AnalyzedToken, LearnerModel } from "@app/core";
 import { normalizeKey } from "@app/core";
 import { coverageReport, findTargets } from "./coverage.js";
 import { extractJson } from "./json.js";
+import { wordCount } from "./util.js";
 import type { AIProvider, SystemPrompt, Usage } from "./types.js";
 
 /** A grammar detector hit, as returned by the NLP server's `/grammar` (one sentence text). */
@@ -139,7 +140,6 @@ export function parseSentences(text: string): { text: string; translation?: stri
 }
 
 const norm = (s: string) => s.trim().replace(/\s+/g, " ").toLowerCase();
-const wordCount = (s: string) => s.match(/\p{L}+(?:['’-]\p{L}+)*/gu)?.length ?? 0;
 
 /**
  * Check one sentence.
