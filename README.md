@@ -44,7 +44,8 @@ is encrypted, and AI is optional, with your own key.
 - Import from a web address, PDF, EPUB, photo (OCR) or pasted text
 - Built-in flashcards with FSRS, tuned to your own reviews
 - Anki: import and export `.apkg` files, or keep studying in Anki through AnkiConnect
-- Dutch analysis: separable verbs, compounds, an offline dictionary and offline translation
+- Words looked up by their dictionary form, so _bel … op_ finds _opbellen_; compounds explained from their parts; offline dictionary and translation
+- Grammar in your texts: Kenning marks constructions like inversion, separable verbs and the perfect tense in what you read, and can underline one topic at a time
 - Practice: meaning, cloze, de/het, separable verbs, perfect tense, word forms, word order, dictation
 - Grammar topics from A1 to C1, with examples from your own texts
 - Courses: study along a textbook you own, unit by unit
