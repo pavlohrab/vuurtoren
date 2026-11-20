@@ -48,15 +48,11 @@ export interface Detection {
   confidence: number;
 }
 
-/**
- * Languages Tesseract can read via `/ocr` and `/course/ocr` (nl -> nld, uk -> ukr, en -> eng,
- * de -> deu, ...); the server reports a missing language pack with an install hint.
- */
-export type OcrLang = "nl" | "uk" | "en" | "de" | "fr" | "es" | "it" | "pt" | "sv" | "da" | "pl";
+/** The language `/ocr` and `/course/ocr` read (RapidOCR): Dutch only. */
+export type OcrLang = "nl";
 
 /** True when `lang` is a code the OCR endpoints accept. */
-export const isOcrLang = (lang: string): lang is OcrLang =>
-  ["nl", "uk", "en", "de", "fr", "es", "it", "pt", "sv", "da", "pl"].includes(lang);
+export const isOcrLang = (lang: string): lang is OcrLang => lang === "nl";
 
 export interface UrlExtraction {
   title: string;
@@ -83,10 +79,10 @@ export interface OcrFlag {
   word: string;
   /**
    * `unknown`: not a word; `hyphen`: a line-end hyphenation joined (or left split) wrongly;
-   * `confusable`: a rare short word next to a very common reading; `low`: Tesseract was unsure.
+   * `confusable`: a rare short word next to a very common reading; `low`: the OCR engine was unsure.
    */
   reason: "unknown" | "hyphen" | "confusable" | "low";
-  /** Tesseract's confidence for the word, 0..1. */
+  /** The OCR engine's confidence for the word, 0..1. */
   conf: number;
   /** Likely intended words, best first (may be empty). */
   suggestions: string[];
@@ -411,7 +407,13 @@ export class NlpClient {
     return out;
   }
 
-  health(): Promise<{ status: string; version: string; analyzerVersion?: string }> {
+  health(): Promise<{
+    status: string;
+    version: string;
+    analyzerVersion?: string;
+    /** True when the server can read photos and scanned pages. */
+    ocr?: boolean;
+  }> {
     return this.request("/health");
   }
 
@@ -500,7 +502,7 @@ export class NlpClient {
   }
 
   /**
-   * OCR an image (png/jpg/webp/tiff) or PDF. Rejects with HTTP 503 if Tesseract is missing.
+   * OCR an image (png/jpg/webp/tiff) or PDF. Rejects with HTTP 503 if the server has no OCR.
    * With `review` the result also has page pictures and the words that may be misread (older
    * servers ignore the option and leave `review` out).
    */

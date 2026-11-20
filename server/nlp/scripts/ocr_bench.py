@@ -10,10 +10,8 @@ in ``photos/`` (``<name>-photo.jpg``: perspective tilt, uneven light, blur, JPEG
 
 Variants (``--variants``, comma-separated):
 
-* ``tess-raw``     Tesseract on the image as uploaded (no page clean-up)
-* ``tess-clean``   Tesseract on the cleaned page (:mod:`kenning_nlp.straighten`)
 * ``rapid-raw``    RapidOCR (bundled PP-OCRv6 small models) on the image as uploaded
-* ``rapid-clean``  RapidOCR on the cleaned page
+* ``rapid-clean``  RapidOCR on the cleaned page (:mod:`kenning_nlp.straighten`)
 * ``rapid5-clean`` RapidOCR with the PP-OCRv5 Latin recognition model (downloaded once)
 
 Reported per variant and image kind (scan, photo, curl): WER (word edit distance / words in
@@ -179,7 +177,7 @@ def variant(name: str) -> Callable[[Image.Image], str]:
 
     engine, mode = name.rsplit("-", 1)
     clean = mode == "clean"
-    code = {"tess": "nld", "rapid": "rapidocr-nl", "rapid5": "rapidocr-nl"}[engine]
+    code = {"rapid": "rapidocr-nl", "rapid5": "rapidocr-nl"}[engine]
 
     def run(img: Image.Image) -> str:
         if engine == "rapid5":
@@ -192,7 +190,7 @@ def variant(name: str) -> Callable[[Image.Image], str]:
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("data", type=Path)
-    ap.add_argument("--variants", default="tess-raw,tess-clean,rapid-raw,rapid-clean")
+    ap.add_argument("--variants", default="rapid-raw,rapid-clean")
     ap.add_argument("--kinds", default=",".join(KINDS))
     ap.add_argument("--per-page", action="store_true")
     ap.add_argument("--threads", type=int, help="CPU threads per engine (default: all)")

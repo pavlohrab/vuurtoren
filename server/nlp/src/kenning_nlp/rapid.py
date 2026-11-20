@@ -3,8 +3,7 @@
 RapidOCR finds text lines (detection model), reads each line (recognition model) and gives
 every word a box and a score. The models are the PP-OCRv6 *small* detection and recognition
 models that come inside the ``rapidocr`` wheel; the recognition model is multilingual and
-reads Dutch with its diacritics (``ë``, ``é``, ``ï``) and the other Latin-script languages the
-service offers.
+reads Dutch with its diacritics (``ë``, ``é``, ``ï``).
 
 RapidOCR returns lines top to bottom across the whole page. :func:`layout` puts them into
 reading order with a recursive XY cut: the page is split at wide horizontal gaps (between
@@ -12,10 +11,10 @@ paragraphs and boxes), then at vertical gutters (between columns), until a regio
 neither. A region whose columns are tables (three or more columns, or a narrow label column)
 is read row by row instead of column by column.
 
-The result has the shape of Tesseract's ``image_to_data`` (``text``, ``conf``, ``block_num``,
-``par_num``, ``line_num``, ``left``, ``top``, ``width``, ``height``), so the text, layout blocks,
-word boxes and review flags are built by the same code for both engines. Confidences are
-RapidOCR's word scores times 100.
+The result has the shape of an ``image_to_data`` table (``text``, ``conf``, ``block_num``,
+``par_num``, ``line_num``, ``left``, ``top``, ``width``, ``height``), from which the text, layout
+blocks, word boxes and review flags are built. Confidences are RapidOCR's word scores times
+100.
 """
 
 from __future__ import annotations
@@ -29,8 +28,6 @@ from typing import Any
 
 from PIL import Image
 
-LANGS = frozenset({"nl", "en", "de", "fr", "es", "it", "pt", "sv", "da", "pl"})
-"""Languages the bundled multilingual recognition model reads."""
 MAX_SIDE = 2000
 """Pages are scaled down to this long side (pixels) before detection and recognition."""
 Y_GAP = 0.9
@@ -312,7 +309,7 @@ def layout(lines: list[Line]) -> list[list[list[Line]]]:
 
 
 def to_data(blocks: list[list[list[Line]]]) -> dict[str, list[Any]]:
-    """Blocks -> rows shaped like Tesseract's ``image_to_data`` output (one row per word)."""
+    """Blocks -> rows shaped like an ``image_to_data`` table (one row per word)."""
     keys = ("text", "conf", "block_num", "par_num", "line_num", "left", "top", "width", "height")
     data: dict[str, list[Any]] = {k: [] for k in keys}
     for b, rows in enumerate(blocks, start=1):
@@ -332,7 +329,8 @@ def to_data(blocks: list[list[list[Line]]]) -> dict[str, list[Any]]:
 
 
 def recognize(img: Image.Image, lang: str = "nl") -> dict[str, list[Any]]:
-    """OCR one page image; Tesseract-shaped rows in reading order (see the module docstring)."""
+    """OCR one page image; ``image_to_data``-shaped rows in reading order (see the module
+    docstring)."""
     import numpy as np
 
     arr = np.asarray(img.convert("RGB"))

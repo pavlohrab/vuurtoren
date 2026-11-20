@@ -532,7 +532,11 @@ export function Words() {
         <EmptyState
           icon={<Languages size={20} />}
           title="No words yet"
-          description="Words arrive when you sync your Anki decks or read a text. Start with a text you want to read."
+          description={
+            native
+              ? "Words arrive when you read a text or import a deck file. Start with a text you want to read."
+              : "Words arrive when you sync your Anki decks or read a text. Start with a text you want to read."
+          }
           action={
             <Link to="/import" className="k-btn k-btn--primary">
               Add text

@@ -155,7 +155,7 @@ def test_ocr_of_a_mixed_pdf_keeps_the_text_layer(monkeypatch) -> None:
     import kenning_nlp.ocr as ocr
     from kenning_nlp.ocr import PageRows
 
-    monkeypatch.setattr(ocr, "ensure_engine", lambda lang: "nld")
+    monkeypatch.setattr(ocr, "ensure_engine", lambda lang: "rapidocr-nl")
     seen = []
 
     def fake_recognize(img, code, clean=True):

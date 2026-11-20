@@ -4,6 +4,7 @@ import {
   type BookExercise,
   type Unit,
   type UnitWord,
+  profileMode,
   readingTexts,
   unitStatus,
 } from "@app/core";
@@ -21,7 +22,7 @@ import type {
 import type { CourseContext } from "./context.js";
 
 export function createCourseViews(ctx: CourseContext) {
-  const { repo, courseOrThrow, keyOf, wordMap } = ctx;
+  const { repo, courseOrThrow, keyOf, wordMap, currentProfile } = ctx;
 
   /** Words of a unit with the learner's live state (from the database; Anki live state is read on demand). */
   async function wordViews(
@@ -68,8 +69,11 @@ export function createCourseViews(ctx: CourseContext) {
     }
     const { units: _units, ...plain } = course;
     void _units;
-    const snapshot = await repo.lastSnapshot(course.lang);
-    return { course: plain, units, ankiReady: snapshot !== null };
+    // Native mode holds the cards itself; connected mode needs one import from Anki.
+    const ready =
+      profileMode(await currentProfile()) === "native" ||
+      (await repo.lastSnapshot(course.lang)) !== null;
+    return { course: plain, units, ankiReady: ready };
   }
 
   async function courseList(): Promise<CourseListItem[]> {

@@ -53,7 +53,7 @@ from kenning_nlp.models import (
     UrlExtraction,
     WordForms,
 )
-from kenning_nlp.ocr import TESSERACT_LANGS, run_ocr
+from kenning_nlp.ocr import OCR_LANGS, run_ocr
 from kenning_nlp.pdf import cover_thumbnail, extract_pdf
 from kenning_nlp.pipeline import analyze_terms, analyze_texts
 from kenning_nlp.sentences import SentencesMissingError, SentenceStore
@@ -184,10 +184,10 @@ async def thumbnail_endpoint(file: Annotated[UploadFile, File()]) -> Response:
 @app.post("/ocr", response_model_exclude_none=True)
 async def ocr_endpoint(
     file: Annotated[UploadFile, File()],
-    lang: Annotated[str, Query(pattern=f"^({'|'.join(TESSERACT_LANGS)})$")] = "nl",
+    lang: Annotated[str, Query(pattern=f"^({'|'.join(OCR_LANGS)})$")] = "nl",
     review: bool = False,
 ) -> OcrResult:
-    """OCR an image (png/jpg/webp/tiff) or a PDF. 503 if Tesseract is not installed.
+    """OCR an image (png/jpg/webp/tiff) or a PDF. 503 if RapidOCR is not installed.
 
     ``review=true`` adds ``review``: page images and the words that may be misread, with
     suggestions (see :mod:`kenning_nlp.ocr_review`).
@@ -308,7 +308,7 @@ _course_ocr = CourseOcr()
 @app.post("/course/ocr")
 async def course_ocr_start(
     file: Annotated[list[UploadFile], File()],
-    lang: Annotated[str, Query(pattern=f"^({'|'.join(TESSERACT_LANGS)})$")] = "nl",
+    lang: Annotated[str, Query(pattern=f"^({'|'.join(OCR_LANGS)})$")] = "nl",
 ) -> dict[str, object]:
     """Start a background OCR job over a PDF or page photos; poll ``GET /course/ocr/{id}``.
 
@@ -328,7 +328,7 @@ async def course_ocr_start(
             raise
         left -= len(data)
         datas.append(data)
-    # Validation opens every file (and checks Tesseract): blocking, so off the event loop.
+    # Validation opens every file (and checks the OCR engine): blocking, so off the event loop.
     job = await run_in_threadpool(_course_ocr.start, datas, lang)
     return {"id": job.id, "total": job.total}
 

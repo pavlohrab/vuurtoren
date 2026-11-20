@@ -21,7 +21,7 @@ Dependencies point down; nothing in `packages/` imports from `apps/`.
 | `apps/desktop`        | Tauri v2 desktop app: local SQLite file, bundled language server, Anki bridge, sync folder and sync requests, key store, updater.                                                                                                                                       | (loads apps/web)                      |
 | `apps/mcp`            | stdio MCP server.                                                                                                                                                                                                                                                       | mcp-tools, core, db, anki, nlp-client |
 | `server/api`          | Server storage mode: sign-in, one SQLite file behind RPC, HTTP MCP, sync place (`/api/sync`) and sync tokens.                                                                                                                                                           | mcp-tools, core, db, nlp-client       |
-| `server/nlp`          | Python language server: analysis (spaCy), dictionary, forms, sentences, grammar detectors, OCR (RapidOCR, Tesseract), translation.                                                                                                                                      | —                                     |
+| `server/nlp`          | Python language server: analysis (spaCy), dictionary, forms, sentences, grammar detectors, OCR (RapidOCR), translation.                                                                                                                                                 | —                                     |
 
 ## apps/web
 
@@ -119,13 +119,13 @@ flowchart LR
 `POST /ocr` (one upload) and `POST /course/ocr` (a whole book, as a background job) share one
 pipeline in `server/nlp`: PDF pages keep a usable text layer (`pdf.py`), other pages are
 cleaned up (`straighten.py`: page found in a photo, flattened, deskewed, dewarped) and read by
-RapidOCR (`rapid.py`, PaddleOCR models on ONNX Runtime), or by Tesseract for Ukrainian and when
-RapidOCR is not installed (`ocr.py`). Both engines produce words with boxes and confidences, from
-which the text, the layout blocks and the review flags (`ocr_review.py`) are built.
+RapidOCR (`rapid.py`, PaddleOCR models on ONNX Runtime; `ocr.py`), Dutch only. It produces
+words with boxes and confidences, from which the text, the layout blocks and the review flags
+(`ocr_review.py`) are built.
 RapidOCR and its models come with the `ocr` extra of the Python package: the standard image and
 the desktop sidecar have it (about 280 MB installed, 120 MB compressed: OpenCV 170 MB, ONNX
 Runtime 73 MB, models 32 MB), the `-slim` image has no OCR. `GET /health` reports `ocr` and
-`ocrEngine`; the web app shows photo import when `ocr` is true.
+`ocrEngine`; the web app offers photos and scanned PDFs only when `ocr` is true.
 
 ## Language server data packs
 

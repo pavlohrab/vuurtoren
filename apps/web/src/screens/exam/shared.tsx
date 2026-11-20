@@ -1,5 +1,5 @@
 /**
- * Pieces shared by the exam screens: the clock, the score card, words to learn (Add to Anki,
+ * Pieces shared by the exam screens: the clock, the score card, words to learn (Add,
  * Practice) and grammar links, plus recording an attempt.
  */
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -7,7 +7,7 @@ import { Link } from "@tanstack/react-router";
 import { Check, Clock, Dumbbell, Plus } from "lucide-react";
 import { useState } from "react";
 import { type ExamPart, type Score, grammarTopic } from "@app/content";
-import { AddToAnki, Button, Chip, useToast } from "@app/ui";
+import { AddToAnki, Button, Chip, useNativeMode, useToast } from "@app/ui";
 import { normalizeKey } from "@app/core";
 import { useServices } from "../../services/context.js";
 import type { ExamAttemptInput } from "../../services/examTypes.js";
@@ -87,7 +87,7 @@ export function useRecordAttempt() {
   });
 }
 
-/** Words worth learning from a session: add each to Anki, or practise them all. */
+/** Words worth learning from a session: add each to your cards, or practise them all. */
 export function WordsToLearn({ words }: { words: { lemma: string; en: string }[] }) {
   const deckChoice = useDeckChoice("reading");
   if (words.length === 0) return null;
@@ -125,6 +125,7 @@ function WordRow({
 }) {
   const services = useServices();
   const toast = useToast();
+  const native = useNativeMode();
   const [added, setAdded] = useState<string | null>(null);
   const key = normalizeKey(lemma);
   const add = useMutation({
@@ -159,7 +160,7 @@ function WordRow({
         />
       ) : (
         <Button size="sm" disabled={add.isPending} onClick={() => add.mutate()}>
-          <Plus size={14} aria-hidden /> Anki
+          <Plus size={14} aria-hidden /> {native ? "My words" : "Anki"}
         </Button>
       )}
     </li>

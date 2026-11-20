@@ -81,7 +81,7 @@ export function SuggestedWords() {
                     />
                   ) : (
                     <Button size="sm" disabled={add.isPending} onClick={() => add.mutate(s.key)}>
-                      Add to Anki
+                      {native ? "Add to my words" : "Add to Anki"}
                     </Button>
                   )}
                   <Button

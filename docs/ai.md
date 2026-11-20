@@ -10,7 +10,8 @@ Without AI everything else works. With a provider set you also get:
 - **Fill gaps with AI sentences** in Practice, and **Generate exercises like this unit** in a course.
 - Examiner-style feedback on exam writing and speaking.
 
-The buttons stay hidden until a provider is set.
+Without a provider these buttons are hidden. Talk stays in the menu and opens a short set-up
+screen instead.
 
 ## Providers
 
@@ -42,7 +43,10 @@ small models. Settings shows a local monthly tally; set a hard limit with your p
 - The key is stored on this device only. It is never in your data, backups or the server.
   An optional passphrase encrypts it (AES-GCM, PBKDF2 250,000 iterations).
 - Sent to the provider: the topic, target words, a grammar point, your vocabulary estimate and
-  200–400 known lemmas. Never your Library texts, Anki content or identifiers.
+  200–400 known lemmas. Some features also send the text they work on: **Explain this sentence**
+  sends the sentence, **Simplify this page** sends the page, Talk sends your messages, and exam
+  feedback sends your answers. Nothing else from your Library, no Anki content and no
+  identifiers.
 - Conversations, stories and generated sentences are saved in your data, so backups include them.
 
 ## How generated text is checked

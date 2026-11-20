@@ -3,10 +3,11 @@ import { Link } from "@tanstack/react-router";
 import { Check, UploadCloud } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { validateOutline } from "@app/core";
-import { Button, Chip, Input, Select, Spinner, Textarea } from "@app/ui";
+import { Button, Chip, Input, Select, Spinner, Textarea, useNativeMode } from "@app/ui";
 import { useServices } from "../../services/context.js";
 import { PageHeader } from "../../shell/PageHeader.js";
 import { useAppInfo } from "../../shell/AppInfo.js";
+import { useOcrAvailable } from "../../desktop/DesktopSetup.js";
 import type {
   DeckMapping,
   ImportProgress,
@@ -30,6 +31,7 @@ const STEPS: [Step, string][] = [
 ];
 
 function Steps({ step }: { step: Step }) {
+  const native = useNativeMode();
   const current = STEPS.findIndex(([s]) => s === step);
   return (
     <ol className="cs-steps" aria-label="Import steps">
@@ -42,7 +44,7 @@ function Steps({ step }: { step: Step }) {
           <span className="cs-step-n" aria-hidden>
             {i < current ? <Check size={12} /> : i + 1}
           </span>
-          {label}
+          {s === "decks" && native ? "Decks" : label}
         </li>
       ))}
     </ol>
@@ -89,6 +91,9 @@ export function ProgressBar({ p }: { p: ImportProgress | null }) {
 export function CourseImportScreen({ courseId: existing }: { courseId?: string }) {
   const services = useServices();
   const storageMode = useAppInfo().data?.mode;
+  const native = useNativeMode();
+  // Photos and scanned pages need text recognition on the language server.
+  const ocr = useOcrAvailable();
   const qc = useQueryClient();
   const mounted = useRef(true);
   useEffect(() => {
@@ -300,10 +305,18 @@ export function CourseImportScreen({ courseId: existing }: { courseId?: string }
             </div>
           ) : null}
           <p className="page-lede">
-            Upload your own copy of a textbook: a PDF (scanned or not), an EPUB, or photos of the
-            pages. Any textbook works; Kenning finds its units and you can correct them.{" "}
+            {ocr
+              ? "Upload your own copy of a textbook: a PDF (scanned or not), an EPUB, or photos of the pages."
+              : "Upload your own copy of a textbook: a PDF with a text layer or an EPUB."}{" "}
+            Any textbook works; Kenning finds its units and you can correct them.{" "}
             {privacyCopy(storageMode)}
           </p>
+          {ocr ? null : (
+            <p className="cs-note" role="note">
+              Photos and scanned PDFs need text recognition, which this language server does not
+              have.
+            </p>
+          )}
           <div className="cs-source" role="group" aria-label="What to import">
             <Button
               size="sm"
@@ -338,7 +351,9 @@ export function CourseImportScreen({ courseId: existing }: { courseId?: string }
               <UploadCloud size={24} aria-hidden />
               <span>
                 {files.length === 0
-                  ? "Choose a PDF or EPUB, or photos of the pages"
+                  ? ocr
+                    ? "Choose a PDF or EPUB, or photos of the pages"
+                    : "Choose a PDF or EPUB"
                   : files.length === 1
                     ? files[0]?.name
                     : `${files.length} photos, read in name order`}
@@ -346,7 +361,11 @@ export function CourseImportScreen({ courseId: existing }: { courseId?: string }
               <input
                 ref={fileInput}
                 type="file"
-                accept="application/pdf,application/epub+zip,.epub,image/*"
+                accept={
+                  ocr
+                    ? "application/pdf,application/epub+zip,.epub,image/*"
+                    : "application/pdf,application/epub+zip,.epub"
+                }
                 multiple
                 hidden
                 aria-label="Book file"
@@ -374,7 +393,7 @@ export function CourseImportScreen({ courseId: existing }: { courseId?: string }
             onChange={(e) => setTitle(e.target.value)}
             {...(source === "file" ? { hint: "Taken from the file name when left empty." } : {})}
           />
-          {source === "file" ? (
+          {source === "file" && ocr ? (
             <p className="cs-note">
               A scanned book of about 300 pages takes a few minutes to read. You can leave this
               page: the reading goes on, and you can continue here later.
@@ -450,12 +469,14 @@ export function CourseImportScreen({ courseId: existing }: { courseId?: string }
       {step === "decks" && mapping ? (
         <>
           <p className="page-lede">
-            Match each unit to the Anki decks that hold its words. Suggestions are filled in; change
-            them if they are wrong, or skip this step.
+            Match each unit to the {native ? "decks" : "Anki decks"} that hold its words.
+            Suggestions are filled in; change them if they are wrong, or skip this step.
           </p>
           {mapping.decks.length === 0 ? (
             <p className="cs-note" role="note">
-              Anki is not reachable, so no decks can be suggested. You can map them later.
+              {native
+                ? "You have no decks yet, so none can be suggested. You can map them later."
+                : "Anki is not reachable, so no decks can be suggested. You can map them later."}
             </p>
           ) : null}
           {rows

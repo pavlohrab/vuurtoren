@@ -464,7 +464,11 @@ export function createLiveWords(deps: LiveWordsDeps) {
 
     async learnNext(entry: InspectorEntry): Promise<{ deck: string }> {
       const noteId = entry.anki.noteIds[0];
-      if (noteId === undefined) throw new Error("This word has no card in Anki");
+      if (noteId === undefined) {
+        throw new Error(
+          (await native()) ? "This word has no card yet" : "This word has no card in Anki",
+        );
+      }
       await studyFirst(await native(), anki, record, {
         lang: await lang(),
         key: entry.key,
@@ -501,6 +505,9 @@ export function createLiveWords(deps: LiveWordsDeps) {
     },
 
     async syncAnki(onProgress?: (msg: string) => void): Promise<LearnerSummary> {
+      if (await native()) {
+        throw new Error("Kenning holds your cards, so there is nothing to read from Anki.");
+      }
       const l = await lang();
       // The confirmed sources of the language profile, plus destination and course decks.
       const snap = await deps.ankiSnapshot(onProgress);

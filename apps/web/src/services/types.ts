@@ -318,6 +318,8 @@ export interface AppServices
   ankiStatus(): Promise<AnkiStatus>;
   /** Show Anki's "allow this site?" dialog (user action only), then re-test the connection. */
   connectAnki(): Promise<AnkiConnectResult>;
+  /** Can the language server read photos and scanned pages? (its `/health` says; false when unreachable) */
+  ocrAvailable(): Promise<boolean>;
   syncAnki(onProgress?: (msg: string) => void): Promise<LearnerSummary>;
   learnerSummary(): Promise<LearnerSummary>;
   /** The last `days` (default 7) local days of pages read, exercises answered and words added. */

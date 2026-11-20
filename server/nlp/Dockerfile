@@ -58,17 +58,9 @@ RUN extra=""; [ "$OCR" = 1 ] && extra="--extra ocr"; \
 # ---- Stage 2: runtime ------------------------------------------------------------------
 FROM python:3.12.16-slim AS runtime
 
-# OCR=1 (default): RapidOCR (above) reads Dutch and the other Latin-script languages; Tesseract
-# reads Ukrainian and is the fallback (KENNING_OCR_ENGINE=tesseract). OCR=0 gives the -slim image:
+# OCR=1 (default): RapidOCR (installed above) reads Dutch pages. OCR=0 gives the -slim image:
 # everything else works, /ocr and /course/ocr answer 503 with an install hint (GET /health
 # shows "ocr": false).
-ARG OCR=1
-RUN if [ "$OCR" = 1 ]; then \
-      apt-get update \
-      && apt-get install -y --no-install-recommends \
-          tesseract-ocr tesseract-ocr-nld tesseract-ocr-ukr \
-      && rm -rf /var/lib/apt/lists/* /var/cache/apt/* /usr/share/doc/* /usr/share/man/*; \
-    fi
 
 ENV PATH="/opt/venv/bin:$PATH" \
     PYTHONUNBUFFERED=1 \

@@ -1,7 +1,6 @@
 """OCR review flags: confusion suggestions, alignment to the cleaned text, endpoints."""
 
 import io
-import shutil
 import time
 
 import pytest
@@ -9,16 +8,17 @@ from fastapi.testclient import TestClient
 from PIL import Image, ImageDraw, ImageFont
 
 import kenning_nlp.app as app_module
+from kenning_nlp import rapid
 from kenning_nlp.app import app
 from kenning_nlp.cleanup import clean_pages
 from kenning_nlp.course import CourseOcr
 from kenning_nlp.ocr_review import OcrWord, align, assess, find_flags, page_words, suggestions
 
-HAS_TESSERACT = shutil.which("tesseract") is not None
+HAS_RAPIDOCR = rapid.available()
 
 
 def words(lines: list[list[tuple[str, float]]], page: int = 1) -> list[OcrWord]:
-    """Fake OCR words: one Tesseract line per inner list, boxes laid out left to right."""
+    """Fake OCR words: one line per inner list, boxes laid out left to right."""
     out = []
     for li, line in enumerate(lines):
         for wi, (text, conf) in enumerate(line):
@@ -147,12 +147,8 @@ def test_ocr_without_review_has_no_review_field(monkeypatch) -> None:
     assert r.status_code == 200 and "review" not in r.json()
 
 
-@pytest.mark.skipif(not HAS_TESSERACT, reason="tesseract binary not installed")
+@pytest.mark.skipif(not HAS_RAPIDOCR, reason="rapidocr not installed")
 def test_ocr_review_integration() -> None:
-    import pytesseract
-
-    if "nld" not in pytesseract.get_languages(config=""):
-        pytest.skip("Dutch traineddata missing")
     data = png(["Het was een rnooie dag in Amsterdarn.", "Wij gingen sarnen naar de markt."])
     r = TestClient(app).post(
         "/ocr?lang=nl&review=true", files={"file": ("p.png", data, "image/png")}

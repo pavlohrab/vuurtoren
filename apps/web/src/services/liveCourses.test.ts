@@ -1,7 +1,7 @@
 import { type KenningRepository, createRepository } from "@app/db";
 import { createNodeDriver } from "@app/db/node";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { parseCoursePack } from "@app/core";
+import { defaultProfile, parseCoursePack } from "@app/core";
 import { createLiveServices } from "./live.js";
 
 /** A two-page invented book: one theme with an exercise and a text, then the word list. */
@@ -226,6 +226,18 @@ describe("live courses", () => {
     expect(courses).toHaveLength(1);
     expect(courses[0]).toMatchObject({ unitCount: 2, continueUnit: 1 });
     expect(courses[0]?.course.title).toBe("Mijn boek");
+  });
+
+  it("maps units to Kenning's own decks in native mode without asking Anki", async () => {
+    const { backend, repo, services } = await setup();
+    await repo.append({ type: "LanguageProfileSet", profile: defaultProfile("nl") });
+    const id = await services.importCourse({ kind: "pdf", files: [new File(["%PDF"], "b.pdf")] });
+    backend.anki.length = 0;
+    const mapping = await services.deckMapping(id);
+    expect(mapping.decks).not.toContain("Opmaat::Thema 01 - Kennismaken");
+    expect(backend.anki.some((c) => c.action === "deckNames")).toBe(false);
+    // Native mode has nothing to read from Anki.
+    await expect(services.syncAnki()).rejects.toThrow("Kenning holds your cards");
   });
 
   it("shows flagged pages to the review and applies its fixes before building the course", async () => {

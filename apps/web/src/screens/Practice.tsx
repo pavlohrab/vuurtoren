@@ -22,8 +22,9 @@ import {
   type ExerciseSubmit,
   Skeleton,
   shortcutBlocked,
+  useNativeMode,
 } from "@app/ui";
-import { dutchVoiceAvailable, speakDutch } from "../practice/speech.js";
+import { dutchVoiceAvailable, speakDutch, useDutchVoice } from "../practice/speech.js";
 import { useServices } from "../services/context.js";
 import type { AnswerResult } from "../services/types.js";
 import { usePageHeader } from "../shell/ShellContext.js";
@@ -262,11 +263,7 @@ function StartView({
     queryFn: () => services.reviewOverview(),
     staleTime: 60_000,
   });
-  const voice = useQuery({
-    queryKey: ["practice", "voice"],
-    queryFn: () => dutchVoiceAvailable(),
-    staleTime: Infinity,
-  });
+  const voice = useDutchVoice();
   const [skills, setSkills] = useState<Skill[]>(initial.skills);
   const [size, setSize] = useState(initial.size);
   useEffect(() => {
@@ -274,12 +271,12 @@ function StartView({
   }, [skills, size, aiFill]);
   const o = overview.data;
   // Listening needs a Dutch voice; while the check runs it stays available.
-  const noVoice = voice.data === false;
+  const noVoice = voice === false;
   const effective = skills.filter((s) => !(s === "listening" && noVoice));
 
   // ?start=1 (the command palette's "Start practice"): start once, then drop the flag so
   // "Practise again" from the summary shows this view instead of starting by itself.
-  const ready = !!o && voice.data !== undefined && (o.due > 0 || o.newAvailable > 0 || !!focus);
+  const ready = !!o && voice !== undefined && (o.due > 0 || o.newAvailable > 0 || !!focus);
   const autoStarted = useRef(false);
   useEffect(() => {
     if (!autoStart || autoStarted.current || !ready || loading || effective.length === 0) return;
@@ -374,6 +371,12 @@ function StartView({
         {error ? (
           <ErrorNotice error={error} title="The session could not be prepared." onRetry={go} />
         ) : null}
+        {noVoice ? (
+          <p className="k-hint practice-note" role="note">
+            Listening and dictation are off: no Dutch voice is installed. Add one in your system's
+            speech settings to practise them.
+          </p>
+        ) : null}
 
         <details className="k-disclosure practice-more">
           <summary>
@@ -402,11 +405,6 @@ function StartView({
                   );
                 })}
               </div>
-              {noVoice ? (
-                <p className="k-hint practice-note">
-                  Listening is off: no Dutch voice is available in this browser.
-                </p>
-              ) : null}
             </fieldset>
 
             <fieldset className="practice-group">
@@ -603,7 +601,7 @@ function Summary({
   empty,
   onAgain,
   emptyTitle = "Practice",
-  emptyText = "Nothing to practise yet. Sync Anki in Settings, or read a text and start learning a few words.",
+  emptyText,
   actions,
   inspector,
 }: {
@@ -618,10 +616,16 @@ function Summary({
   /** Replaces the default next steps (Practise again, Review, Talk, Next text). */
   actions?: ReactNode;
 }) {
+  const native = useNativeMode();
   if (empty) {
+    const lede =
+      emptyText ??
+      (native
+        ? "Nothing to practise yet. Read a text and start learning a few words."
+        : "Nothing to practise yet. Sync Anki in Settings, or read a text and start learning a few words.");
     return (
       <>
-        <PageHeader title={emptyTitle} lede={emptyText} />
+        <PageHeader title={emptyTitle} lede={lede} />
         {actions ?? <Button onClick={onAgain}>Back</Button>}
       </>
     );

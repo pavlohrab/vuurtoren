@@ -661,6 +661,7 @@ function KnownWords({
   learning: number;
   vocab: number | null;
 }) {
+  const native = useNativeMode();
   return (
     <div className="home-known-body">
       <div className="home-known-top">
@@ -696,7 +697,9 @@ function KnownWords({
           </dd>
         </div>
         <div>
-          <dt title="Estimated from your Anki collection">Vocabulary</dt>
+          <dt title={native ? "Estimated from your words" : "Estimated from your Anki collection"}>
+            Vocabulary
+          </dt>
           <dd className="k-num">{vocab === null ? "–" : fmt(vocab)}</dd>
         </div>
       </dl>

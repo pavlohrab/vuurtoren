@@ -7,6 +7,7 @@ import { Link } from "@tanstack/react-router";
 import { ArrowRight, ExternalLink } from "lucide-react";
 import { A2_EXAM, type ExamPart } from "@app/content";
 import { Chip, Skeleton } from "@app/ui";
+import { useDutchVoice } from "../../practice/speech.js";
 import { useServices } from "../../services/context.js";
 import type { ExamAttemptRecord } from "../../services/examTypes.js";
 import { PageHeader } from "../../shell/PageHeader.js";
@@ -48,9 +49,20 @@ export const checkedDate = (iso: string) =>
     year: "numeric",
   });
 
+/** Listening reads its fragments aloud with the system's Dutch voice. */
+export function NoDutchVoice() {
+  return (
+    <p className="k-hint" role="note">
+      Listening needs a Dutch voice, and none is installed. Add one in your system&rsquo;s speech
+      settings, then reload Kenning.
+    </p>
+  );
+}
+
 export function Exam() {
   usePageHeader("Exam");
   const attempts = useExamAttempts();
+  const noVoice = useDutchVoice() === false;
   return (
     <div className="page page--narrow exam">
       <PageHeader
@@ -72,6 +84,7 @@ export function Exam() {
         <h2 id="exam-parts-h" className="exam-h2">
           The five parts
         </h2>
+        {noVoice ? <NoDutchVoice /> : null}
         <ul className="exam-parts">
           {A2_EXAM.parts.map((p) => {
             const prog = attempts.data ? partProgress(attempts.data, p.part) : null;
@@ -87,6 +100,9 @@ export function Exam() {
                     <Chip>{p.minutes} min</Chip>
                     <Chip>{p.items}</Chip>
                     <span className="exam-muted">Pass: {p.passRule}</span>
+                    {noVoice && p.part === "luisteren" ? (
+                      <Chip tone="warm">Needs a Dutch voice</Chip>
+                    ) : null}
                   </span>
                   <span className="exam-part-progress">
                     {attempts.isPending ? (

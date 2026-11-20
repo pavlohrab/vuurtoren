@@ -73,7 +73,7 @@ export function setupView(status: SidecarStatus | null | undefined): SetupView |
   return null;
 }
 
-/** The language server is up but cannot read photos (no Tesseract in the desktop app). */
+/** The bundled language server is up and can read photos and scanned pages. */
 export function ocrAvailable(status: SidecarStatus | null | undefined): boolean {
   return status?.health?.ocr === true;
 }
