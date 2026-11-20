@@ -51,6 +51,18 @@ apps/web/src/platform/
 4. Downloads, with progress and sizes: dictionary (14 MB, needed), audio with both voices
    (about 80 MB, optional).
 
+## Connecting with a QR code
+
+1. On the server: Settings → Sync → **Add a phone** shows a QR code with the server's address and
+   a **one-time pairing code** (valid about 10 minutes, used once).
+2. On the phone, at first start: **Connect to your server → Scan**. The app sends the pairing code
+   to `/api/sync/pair` and gets its own sync token back, which goes into the Android Keystore. The
+   server becomes the phone's sync place and its language server.
+3. The phone asks for the **sync passphrase** to open your data. The passphrase is never in the QR
+   code, so a photo of the code cannot read anything, and an old code no longer works.
+
+The token appears in the server's sync-token list as "Phone (Pixel 8)" and can be revoked there.
+
 ## Design
 
 The phone layout from the redesign; the colours, type and logo stay as on desktop.
@@ -81,6 +93,11 @@ The phone layout from the redesign; the colours, type and logo stay as on deskto
 - **Start:** `pnpm --filter @app/desktop tauri android init`, then `tauri android dev` with a phone
   connected (USB debugging) or the emulator.
 - **Minimum Android:** 8.0 (API 26); target the latest API level Google Play requires.
+- **Without Google Play:** a signed `.apk` installs on any phone ("Install unknown apps" for the
+  browser once). ML Kit is part of the app, so OCR works the same. Sign every build with the same
+  key, kept outside the repository: Android accepts an update only with the same key, and the key
+  can later be the Google Play upload key. The app checks GitHub releases on start and shows "A
+  new version is available" with a link to the `.apk`.
 - **Release build:** `tauri android build --aab` for Google Play, `--apk` for sideloading. Signed
   with an upload key kept outside the repository (Play App Signing holds the app key).
 - **CI:** a Linux runner (the cheapest) builds the `.apk` and `.aab` on a `v*` tag and attaches
