@@ -1,31 +1,26 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { LOGO_GRID_48, Logo, LogoMark, ProgressRing, logoGrid, ringArc } from "./Logo.js";
+import { Logo, LogoMark, ProgressRing, ringArc } from "./Logo.js";
 
 describe("Logo", () => {
-  it("the mark is an ink k with an accent bookmark ribbon for a leg", () => {
+  it("the mark is a lighthouse whose beam, lamp and one lit word are accent", () => {
     const { container } = render(<LogoMark size={48} />);
     const svg = container.querySelector("svg")!;
     expect(svg).toHaveAttribute("aria-hidden", "true");
-    expect(svg).toHaveAttribute("viewBox", "0 0 48 48");
-    expect(container.querySelector(".k-logo-k")).toHaveAttribute("d", LOGO_GRID_48.ink);
-    // The ribbon is drawn first (it tucks under the arm) and ends in a swallow-tail: five points.
-    const ribbon = container.querySelector(".k-logo-ribbon")!;
-    expect(svg.firstElementChild).toBe(ribbon);
-    expect(ribbon.getAttribute("d")!.match(/[ML]/g)).toHaveLength(5);
-  });
-
-  it("uses the small-size cuts at favicon and rail sizes", () => {
-    const { container, rerender } = render(<LogoMark size={16} />);
-    expect(container.querySelector("svg")).toHaveAttribute("viewBox", "0 0 16 16");
-    rerender(<LogoMark size={24} />);
-    expect(container.querySelector("svg")).toHaveAttribute("viewBox", "0 0 24 24");
-    expect(logoGrid(33)).toBe(LOGO_GRID_48);
+    expect(svg).toHaveAttribute("viewBox", "0 0 64 64");
+    expect(svg).toHaveAttribute("width", "48");
+    expect(container.querySelectorAll(".k-logo-beam")).toHaveLength(3);
+    // Housing, tower, base and three faint text lines are ink.
+    expect(container.querySelectorAll(".k-logo-ink")).toHaveLength(6);
+    expect(container.querySelectorAll('[opacity="0.3"]')).toHaveLength(3);
   });
 
   it("full logo has the wordmark and one accessible name", () => {
     render(<Logo />);
-    expect(screen.getByRole("img", { name: "Vuurtoren" })).toHaveTextContent("vuurtoren");
+    const full = screen.getByRole("img", { name: "Vuurtoren" });
+    // The wordmark is outlined (no web font needed) and hidden from assistive tech.
+    expect(full.querySelector("svg.k-logo-word path")).toHaveAttribute("d");
+    expect(full.querySelector(".k-logo-word")).toHaveAttribute("aria-hidden", "true");
     render(<Logo variant="mark" title="Home" />);
     expect(screen.getByRole("img", { name: "Home" })).toBeInTheDocument();
   });
