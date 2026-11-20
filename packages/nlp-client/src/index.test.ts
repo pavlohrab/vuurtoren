@@ -91,6 +91,38 @@ describe("NlpClient import + gloss endpoints", () => {
     });
   });
 
+  it("pairs posts sentences with spans, joins and an optional translation", async () => {
+    const paired = [
+      {
+        text: "Ik bel op.",
+        translation: "I call.",
+        source: "given",
+        english: [{ start: 0, end: 1, text: "I" }],
+        words: [],
+        pairs: [{ nl: [1, 2], en: [1], confidence: 0.8 }],
+      },
+    ];
+    const { client, calls } = mockClient(paired);
+    const item = {
+      text: "Ik bel op.",
+      spans: [
+        [0, 2],
+        [3, 6],
+        [7, 9],
+      ] as [number, number][],
+      joins: [[2, 1]] as [number, number][],
+      translation: "I call.",
+    };
+    const res = await client.pairs([item]);
+    expect(res[0]?.pairs[0]?.nl).toEqual([1, 2]);
+    expect(calls[0]?.url).toBe("http://nlp.test/translate/pairs");
+    expect(JSON.parse(String(calls[0]?.init.body))).toEqual({
+      source: "nl",
+      target: "en",
+      items: [item],
+    });
+  });
+
   it("surfaces HTTP errors with the server detail", async () => {
     const { client } = mockClient({ detail: "Text recognition (RapidOCR) is not installed" }, 503);
     await expect(client.ocr(new Blob(["x"]))).rejects.toThrow(/503.*RapidOCR/);

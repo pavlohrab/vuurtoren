@@ -99,6 +99,29 @@ export interface ReadingOutcome {
   lookupsPer100: number;
 }
 
+/** A Dutch word group and the English words it became (side-by-side reader). */
+export interface WordPair {
+  /** Dutch token indices (`AnalyzedToken.i`); both parts of a split separable verb share one. */
+  nl: number[];
+  /** Indices into `SentencePairs.englishTokens`. */
+  en: number[];
+  /** 0-1, from the translation model's attention. */
+  confidence: number;
+}
+
+/** One sentence's English translation and its word pairs. */
+export interface SentencePairs {
+  /** Sentence number (`AnalyzedToken.sent`). */
+  sent: number;
+  /** English; "" when there is none (no translation model, or the translation was rejected). */
+  english: string;
+  /** Words and punctuation of `english`, with their [start, end) in it. */
+  englishTokens: { start: number; end: number; text: string }[];
+  pairs: WordPair[];
+  /** Where the English came from: the offline model or the learner's AI provider. */
+  source: "offline" | "ai";
+}
+
 export const DEFAULT_PLANNER: PlannerOptions = {
   targetCoverage: 0.98,
   newWordBudget: 3,
