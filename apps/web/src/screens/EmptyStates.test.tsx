@@ -60,6 +60,7 @@ describe("empty states", () => {
       "Grammar",
       "Talk",
       "Exam",
+      "Progress",
       "Settings",
     ]);
     expect(within(nav).getByRole("link", { name: "Library" })).toHaveAttribute(
@@ -67,7 +68,6 @@ describe("empty states", () => {
       "active",
     );
     expect(within(nav).queryByRole("link", { name: "Read" })).toBeNull();
-    expect(within(nav).queryByRole("link", { name: "Progress" })).toBeNull();
   });
 
   it("the demo (synced) shows no Connect Anki banner", async () => {
