@@ -53,15 +53,23 @@ function fakeBackend(opts: {
   dict?: Record<string, unknown[]>;
   /** English per Dutch word for /translate/align (confidence 0.9). */
   aligned?: Record<string, string>;
+  /** The language server's `/health` OCR flag; a PDF upload then reads as a scan. */
+  ocr?: boolean;
 }) {
   const calls: string[] = [];
   const glossRequests: string[][] = [];
   const nlpCalls: string[] = [];
   const fetchFn = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
     const u = String(url);
-    const body = JSON.parse(String(init?.body ?? "{}")) as Record<string, unknown>;
+    const body = (typeof init?.body === "string" ? JSON.parse(init.body) : {}) as Record<
+      string,
+      unknown
+    >;
     // The reader asks the server's analyzer version once per session.
-    if (u.includes("/nlp/health")) return Response.json({ status: "ok", version: "test" });
+    if (u.includes("/nlp/health"))
+      return Response.json({ status: "ok", version: "test", ocr: opts.ocr ?? true });
+    if (u.includes("/nlp/extract/pdf"))
+      return Response.json({ text: "", title: "", pages: 1, needs_ocr: true });
     if (u.includes("/nlp/")) nlpCalls.push(u.slice(u.indexOf("/nlp/") + 4));
     if (u.includes("/nlp/translate/align")) {
       const items = body["items"] as { text: string; spans: [number, number][] }[];
@@ -314,6 +322,18 @@ describe("live textWords", () => {
     const { repo, services } = await setup(backend);
     repoToClose = repo;
     await expect(services.textWords("nope")).rejects.toThrow(/not found/);
+  });
+});
+
+describe("live text import", () => {
+  it("explains that a scanned PDF needs text recognition the server does not have", async () => {
+    const { repo, services } = await setup(fakeBackend({ ocr: false }));
+    repoToClose = repo;
+    const file = new File(["%PDF"], "scan.pdf", { type: "application/pdf" });
+    await expect(services.importText({ kind: "pdf", file })).rejects.toThrow(
+      /needs text recognition/,
+    );
+    expect(await services.ocrAvailable()).toBe(false);
   });
 });
 

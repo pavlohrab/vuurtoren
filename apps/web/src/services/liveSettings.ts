@@ -116,38 +116,48 @@ export function createLiveSettings({ repo, platform, changed }: LiveSettingsDeps
   };
   const anki = async (timeoutMs?: number) => new AnkiConnectClient(await ankiOptions(timeoutMs));
 
-  const services: Pick<AppServices, "getSettings" | "saveSettings" | "ankiStatus" | "connectAnki"> =
-    {
-      getSettings: settings,
+  const services: Pick<
+    AppServices,
+    "getSettings" | "saveSettings" | "ankiStatus" | "connectAnki" | "ocrAvailable"
+  > = {
+    getSettings: settings,
 
-      async saveSettings(patch: Partial<Settings>): Promise<void> {
-        const next = { ...(await settings()), ...patch };
-        // Secrets never go into the append-only (later: synced) event log.
-        if ("ankiKey" in patch) {
-          try {
-            if (patch.ankiKey) platform.storage.setItem(ANKI_KEY_STORAGE, patch.ankiKey);
-            else platform.storage.removeItem(ANKI_KEY_STORAGE);
-          } catch {
-            // storage full or blocked: the key lasts for this session only
-          }
+    async saveSettings(patch: Partial<Settings>): Promise<void> {
+      const next = { ...(await settings()), ...patch };
+      // Secrets never go into the append-only (later: synced) event log.
+      if ("ankiKey" in patch) {
+        try {
+          if (patch.ankiKey) platform.storage.setItem(ANKI_KEY_STORAGE, patch.ankiKey);
+          else platform.storage.removeItem(ANKI_KEY_STORAGE);
+        } catch {
+          // storage full or blocked: the key lasts for this session only
         }
-        const persisted: Partial<Settings> = { ...next };
-        delete persisted.ankiKey;
-        await repo.append({ type: "SettingChanged", key: "settings", value: persisted });
-        cache = next;
-        if ("newWords" in patch || "lang" in patch) changed();
-      },
+      }
+      const persisted: Partial<Settings> = { ...next };
+      delete persisted.ankiKey;
+      await repo.append({ type: "SettingChanged", key: "settings", value: persisted });
+      cache = next;
+      if ("newWords" in patch || "lang" in patch) changed();
+    },
 
-      async ankiStatus(): Promise<AnkiStatus> {
-        return toAnkiStatus(await probeAnki(await ankiOptions()));
-      },
+    async ankiStatus(): Promise<AnkiStatus> {
+      return toAnkiStatus(await probeAnki(await ankiOptions()));
+    },
 
-      async connectAnki() {
-        const outcome = await requestAnkiPermission(await ankiOptions());
-        const status = toAnkiStatus(await probeAnki(await ankiOptions()));
-        return { denied: outcome.outcome === "denied", status };
-      },
-    };
+    async connectAnki() {
+      const outcome = await requestAnkiPermission(await ankiOptions());
+      const status = toAnkiStatus(await probeAnki(await ankiOptions()));
+      return { denied: outcome.outcome === "denied", status };
+    },
+
+    async ocrAvailable(): Promise<boolean> {
+      try {
+        return (await (await nlp()).health()).ocr === true;
+      } catch {
+        return false;
+      }
+    },
+  };
 
   return {
     settings,

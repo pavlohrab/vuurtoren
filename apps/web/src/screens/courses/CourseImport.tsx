@@ -7,6 +7,7 @@ import { Button, Chip, Input, Select, Spinner, Textarea, useNativeMode } from "@
 import { useServices } from "../../services/context.js";
 import { PageHeader } from "../../shell/PageHeader.js";
 import { useAppInfo } from "../../shell/AppInfo.js";
+import { useOcrAvailable } from "../../desktop/DesktopSetup.js";
 import type {
   DeckMapping,
   ImportProgress,
@@ -91,6 +92,8 @@ export function CourseImportScreen({ courseId: existing }: { courseId?: string }
   const services = useServices();
   const storageMode = useAppInfo().data?.mode;
   const native = useNativeMode();
+  // Photos and scanned pages need text recognition on the language server.
+  const ocr = useOcrAvailable();
   const qc = useQueryClient();
   const mounted = useRef(true);
   useEffect(() => {
@@ -302,10 +305,18 @@ export function CourseImportScreen({ courseId: existing }: { courseId?: string }
             </div>
           ) : null}
           <p className="page-lede">
-            Upload your own copy of a textbook: a PDF (scanned or not), an EPUB, or photos of the
-            pages. Any textbook works; Kenning finds its units and you can correct them.{" "}
+            {ocr
+              ? "Upload your own copy of a textbook: a PDF (scanned or not), an EPUB, or photos of the pages."
+              : "Upload your own copy of a textbook: a PDF with a text layer or an EPUB."}{" "}
+            Any textbook works; Kenning finds its units and you can correct them.{" "}
             {privacyCopy(storageMode)}
           </p>
+          {ocr ? null : (
+            <p className="cs-note" role="note">
+              Photos and scanned PDFs need text recognition, which this language server does not
+              have.
+            </p>
+          )}
           <div className="cs-source" role="group" aria-label="What to import">
             <Button
               size="sm"
@@ -340,7 +351,9 @@ export function CourseImportScreen({ courseId: existing }: { courseId?: string }
               <UploadCloud size={24} aria-hidden />
               <span>
                 {files.length === 0
-                  ? "Choose a PDF or EPUB, or photos of the pages"
+                  ? ocr
+                    ? "Choose a PDF or EPUB, or photos of the pages"
+                    : "Choose a PDF or EPUB"
                   : files.length === 1
                     ? files[0]?.name
                     : `${files.length} photos, read in name order`}
@@ -348,7 +361,11 @@ export function CourseImportScreen({ courseId: existing }: { courseId?: string }
               <input
                 ref={fileInput}
                 type="file"
-                accept="application/pdf,application/epub+zip,.epub,image/*"
+                accept={
+                  ocr
+                    ? "application/pdf,application/epub+zip,.epub,image/*"
+                    : "application/pdf,application/epub+zip,.epub"
+                }
                 multiple
                 hidden
                 aria-label="Book file"
@@ -376,7 +393,7 @@ export function CourseImportScreen({ courseId: existing }: { courseId?: string }
             onChange={(e) => setTitle(e.target.value)}
             {...(source === "file" ? { hint: "Taken from the file name when left empty." } : {})}
           />
-          {source === "file" ? (
+          {source === "file" && ocr ? (
             <p className="cs-note">
               A scanned book of about 300 pages takes a few minutes to read. You can leave this
               page: the reading goes on, and you can continue here later.

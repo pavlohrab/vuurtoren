@@ -353,6 +353,11 @@ export function createLiveTexts({
         onProgress?.("Reading the PDF…");
         const pdf = await client.extractPdf(input.file, input.file.name);
         if (pdf.needs_ocr) {
+          if ((await client.health().catch(() => null))?.ocr === false) {
+            throw new Error(
+              "This PDF is scanned: it has no text layer. Reading scanned pages needs text recognition, which this language server does not have.",
+            );
+          }
           onProgress?.("The PDF has no text layer — running OCR (this can take a while)…");
           content = await recognise(input.file);
         } else content = pdf.text;

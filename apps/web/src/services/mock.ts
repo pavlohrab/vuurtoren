@@ -868,6 +868,10 @@ export function createMockServices(
       return { connected: true, state: "connected", version: 6 };
     },
 
+    async ocrAvailable() {
+      return true;
+    },
+
     async connectAnki() {
       await delay(latency * 4);
       return { denied: false, status: { connected: true, state: "connected", version: 6 } };

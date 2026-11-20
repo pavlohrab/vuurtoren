@@ -381,7 +381,13 @@ export class NlpClient {
     return out;
   }
 
-  health(): Promise<{ status: string; version: string; analyzerVersion?: string }> {
+  health(): Promise<{
+    status: string;
+    version: string;
+    analyzerVersion?: string;
+    /** True when the server can read photos and scanned pages. */
+    ocr?: boolean;
+  }> {
     return this.request("/health");
   }
 

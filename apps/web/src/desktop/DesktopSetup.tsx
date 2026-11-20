@@ -1,5 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button, Spinner } from "@app/ui";
+import { useServices } from "../services/context.js";
 import { useAppInfo } from "../shell/AppInfo.js";
 import type { SidecarStatus } from "./bridge.js";
 import { ocrAvailable, setupView } from "./setup.js";
@@ -20,13 +21,21 @@ export function useSidecar(): SidecarStatus | null {
 }
 
 /**
- * Can photos be read here? Always in the browser and server modes (the server says so when it
- * cannot); in the desktop app only when its language server found Tesseract.
+ * Can photos and scanned pages be read here? The language server's `/health` says: the bundled
+ * one's status in the desktop app, the configured one elsewhere. True until the answer arrives.
  */
 export function useOcrAvailable(): boolean {
   const { desktop } = useAppInfo();
+  const services = useServices();
   const status = useSidecar();
-  return desktop ? ocrAvailable(status) : true;
+  const remote = useQuery({
+    queryKey: ["ocr-available"],
+    queryFn: () => services.ocrAvailable(),
+    enabled: !desktop,
+    staleTime: 5 * 60_000,
+    retry: false,
+  });
+  return desktop ? ocrAvailable(status) : (remote.data ?? true);
 }
 
 /**
