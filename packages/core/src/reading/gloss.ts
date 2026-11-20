@@ -77,7 +77,8 @@ export function meaningSenses(senses: readonly string[]): string[] {
 
 /**
  * Short glosses for frequent words whose dictionary senses only describe their use
- * ("modal particle indicating reassurance"). Keyed by lemma.
+ * ("modal particle indicating reassurance"). Keyed by lemma. Kept equal to
+ * `particle-glosses.json`, which the starter word list build (server/nlp) reads.
  */
 export const PARTICLE_GLOSSES: Readonly<Record<string, string>> = {
   zullen: "will, shall",

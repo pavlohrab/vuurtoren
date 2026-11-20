@@ -1,5 +1,26 @@
 import { describe, expect, it } from "vitest";
-import { formOfTarget, glossHead, meaningSenses, shortGloss } from "./gloss.js";
+import cases from "./fixtures/gloss-cases.json";
+import particles from "./particle-glosses.json";
+import { PARTICLE_GLOSSES, formOfTarget, glossHead, meaningSenses, shortGloss } from "./gloss.js";
+
+// The same cases run against the Python port (server/nlp vuurtoren_nlp.starter).
+describe("shared gloss cases", () => {
+  it.each(cases.glossHead as [string, string][])("glossHead(%j)", (sense, want) => {
+    expect(glossHead(sense)).toBe(want);
+  });
+  it.each(cases.shortGloss as [string[], number, string][])(
+    "shortGloss(%j, %i)",
+    (senses, max, want) => {
+      expect(shortGloss(senses, max)).toBe(want);
+    },
+  );
+  it.each(cases.formOfTarget as [string, string | null][])("formOfTarget(%j)", (sense, want) => {
+    expect(formOfTarget(sense)).toBe(want);
+  });
+  it("particle glosses match the JSON the Python build reads", () => {
+    expect(PARTICLE_GLOSSES).toEqual(particles);
+  });
+});
 
 describe("shortGloss", () => {
   it("drops explanations in brackets and after a semicolon or colon", () => {

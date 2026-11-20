@@ -11,3 +11,5 @@ test-results
 playwright-report
 apps/desktop/src-tauri/target
 apps/desktop/src-tauri/gen
+# generated (server/nlp/scripts/build_starter.py)
+content/starter/*.json

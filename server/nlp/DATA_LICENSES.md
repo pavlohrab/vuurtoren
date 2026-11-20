@@ -12,6 +12,7 @@ Share-alike terms apply to the data, not to the application code.
 | wordfreq | `zipf` token frequency | Data CC BY-SA 4.0, code Apache-2.0 | Wordfreq bundles data from Wikipedia, subtitles, news, books, Twitter, Reddit and others. |
 | spaCy `nl_core_news_md` | tagging, parsing, lemmas | CC BY-SA 4.0 (trained on Dutch UD treebanks) | Downloaded from the explosion/spacy-models release as a locked dependency. |
 | simplemma | dictionary lemmas | MIT | |
+| Starter word list (`content/starter/nl-5000.json`) | native mode's "most common words" decks | CC BY-SA 4.0 | Built by `scripts/build_starter.py` from wordfreq, the dictionary and sentence packs and spaCy; committed, with its attribution in `content/starter/README.md`. |
 | PaddleOCR PP-OCRv6 small detection and recognition models, PP-OCR text-direction model (ONNX) | `POST /ocr`, `POST /course/ocr` | Apache-2.0 | Bundled in the `rapidocr` wheel (the `ocr` extra): in the standard Docker image and the desktop sidecar. |
 | RapidOCR / ONNX Runtime / OpenCV | OCR inference, page clean-up | Apache-2.0 / MIT / Apache-2.0 | |
 | Helsinki-NLP OPUS-MT `opus-mt-nl-en` (original Marian release `opus-2019-12-05`, converted to CTranslate2 int8) | `POST /translate`, `data/mt-nl-en/` (data pack `mt-nl-en`) | Apache-2.0 on the Hugging Face model card; OPUS-MT training data and recipes are CC BY 4.0 | Attribution below. Downloaded and converted by `scripts/fetch_mt_model.py` (SHA-256 pinned); shipped as a data pack, not committed. |
