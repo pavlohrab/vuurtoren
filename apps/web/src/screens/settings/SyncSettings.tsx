@@ -1,7 +1,7 @@
 /**
  * Settings → Sync: your data on every device, through a place you choose, encrypted with a
- * passphrase before it leaves the device. On a page of a Vuurtoren server (which holds the data
- * itself) this section makes sync tokens for the devices that keep their own data.
+ * passphrase before it leaves the device. On a page served by a Vuurtoren server, that server
+ * is offered as the place, and this section also makes sync tokens for your other devices.
  */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { type FormEvent, useState } from "react";
@@ -17,6 +17,8 @@ import { errorText } from "../../services/errors.js";
 const tokens = createSyncTokenClient();
 
 type Kind = SyncPlace["kind"];
+/** A choice under Where: this page's own server, another server, a folder or WebDAV. */
+type Choice = "this" | Kind;
 const HOWS: { how: SetUpHow; title: string; sub: string }[] = [
   {
     how: "join",
@@ -29,43 +31,82 @@ const HOWS: { how: SetUpHow; title: string; sub: string }[] = [
     sub: "This is your first device to sync. You choose a passphrase and get a recovery key.",
   },
 ];
-const KINDS: { kind: Kind; title: string; sub: string }[] = [
-  {
-    kind: "server",
-    title: "Your Vuurtoren server",
-    sub: "A Vuurtoren server you run. Make a sync token in its Settings → Sync.",
-  },
-  {
-    kind: "folder",
-    title: "A folder you already sync",
-    sub: "Syncthing, Dropbox, iCloud Drive, OneDrive. The desktop app writes into it.",
-  },
-  {
-    kind: "webdav",
-    title: "WebDAV",
-    sub: "Nextcloud, ownCloud, a NAS. Use an app password.",
-  },
-  {
-    kind: "github",
-    title: "A private GitHub repository",
-    sub: "A fine-grained token that may read and write this repository's contents.",
-  },
-];
+/** The places this device can choose. */
+function choices(status: SyncStatus): { id: Choice; title: string; sub: string }[] {
+  const here = status.thisServer ? new URL(status.thisServer).host : null;
+  return [
+    ...(here
+      ? [
+          {
+            id: "this" as const,
+            title: "This server",
+            sub: `${here}, where this page comes from. It makes its own sync token.`,
+          },
+        ]
+      : []),
+    {
+      id: "server",
+      title: here ? "Another Vuurtoren server" : "Your Vuurtoren server",
+      sub: "A Vuurtoren server you run. Make a sync token in its Settings → Sync.",
+    },
+    ...(status.desktop
+      ? [
+          {
+            id: "folder" as const,
+            title: "A folder you already sync",
+            sub: "Syncthing, Dropbox, iCloud Drive, OneDrive. The desktop app writes into it.",
+          },
+          {
+            id: "webdav" as const,
+            title: "WebDAV",
+            sub: "Nextcloud, ownCloud, a NAS. Use an app password.",
+          },
+        ]
+      : []),
+  ];
+}
+
+/** The recovery key waiting to be saved: it stays across reloads of this tab until confirmed. */
+const RECOVERY_KEY = "vuurtoren.sync.recovery";
+function readPending(): string | null {
+  try {
+    return sessionStorage.getItem(RECOVERY_KEY);
+  } catch {
+    return null;
+  }
+}
+function writePending(key: string | null): void {
+  try {
+    if (key) sessionStorage.setItem(RECOVERY_KEY, key);
+    else sessionStorage.removeItem(RECOVERY_KEY);
+  } catch {
+    // Kept in the page only.
+  }
+}
 
 export function SyncSettings() {
   const services = useServices();
+  const { account } = useAppInfo();
   const status = useQuery({ queryKey: ["sync", "status"], queryFn: () => services.syncStatus() });
-  const [recovery, setRecovery] = useState<string | null>(null);
+  const [recovery, setRecoveryState] = useState<string | null>(readPending);
+  const setRecovery = (key: string | null) => {
+    writePending(key);
+    setRecoveryState(key);
+  };
   if (!status.data) return <Skeleton style={{ height: 120 }} />;
-  if (!status.data.available) return <ServerTokens />;
-  return status.data.place ? (
+  return (
     <div className="stack settings-stack">
       {recovery ? <RecoveryKey value={recovery} onDone={() => setRecovery(null)} /> : null}
-      <SyncOn status={status.data} />
-      <Secrets onRecovery={setRecovery} />
+      {status.data.place ? (
+        <>
+          <SyncOn status={status.data} />
+          <Secrets onRecovery={setRecovery} />
+        </>
+      ) : (
+        <SetUp status={status.data} onRecovery={setRecovery} />
+      )}
+      {account ? <ServerTokens authOn={account.authEnabled} /> : null}
     </div>
-  ) : (
-    <SetUp status={status.data} onRecovery={setRecovery} />
   );
 }
 
@@ -191,7 +232,9 @@ function SetUp({ status, onRecovery }: { status: SyncStatus; onRecovery: (key: s
   const qc = useQueryClient();
   const toast = useToast();
   const [how, setHow] = useState<SetUpHow | null>(null);
-  const [kind, setKind] = useState<Kind>("server");
+  const options = choices(status);
+  const [choice, setChoice] = useState<Choice>(options[0]!.id);
+  const kind: Kind = choice === "this" ? "server" : choice;
   const [fields, setFields] = useState<Record<string, string>>({});
   const [passphrase, setPassphrase] = useState("");
   const [show, setShow] = useState(false);
@@ -204,16 +247,11 @@ function SetUp({ status, onRecovery }: { status: SyncStatus; onRecovery: (key: s
   const place = (): SyncPlace => {
     switch (kind) {
       case "server":
-        return { kind, url: f("url").trim(), token: f("token").trim() };
+        return choice === "this"
+          ? { kind, url: status.thisServer!, token: "" }
+          : { kind, url: f("url").trim(), token: f("token").trim() };
       case "webdav":
         return { kind, url: f("url").trim(), user: f("user").trim(), password: f("password") };
-      case "github":
-        return {
-          kind,
-          repo: f("repo").trim(),
-          token: f("token").trim(),
-          ...(f("branch").trim() ? { branch: f("branch").trim() } : {}),
-        };
       case "folder":
         return { kind, path: f("path") };
     }
@@ -221,12 +259,12 @@ function SetUp({ status, onRecovery }: { status: SyncStatus; onRecovery: (key: s
   const ready =
     how !== null &&
     passphrase.trim().length >= 8 &&
-    (kind === "server"
-      ? /^https?:\/\/./.test(f("url").trim())
-      : kind === "webdav"
-        ? /^https?:\/\/./.test(f("url").trim()) && !!f("user").trim()
-        : kind === "github"
-          ? /^[\w.-]+\/[\w.-]+$/.test(f("repo").trim()) && !!f("token").trim()
+    (choice === "this"
+      ? true
+      : kind === "server"
+        ? /^https?:\/\/./.test(f("url").trim())
+        : kind === "webdav"
+          ? /^https?:\/\/./.test(f("url").trim()) && !!f("user").trim()
           : !!f("path"));
 
   const start = useMutation({
@@ -255,7 +293,6 @@ function SetUp({ status, onRecovery }: { status: SyncStatus; onRecovery: (key: s
     e.preventDefault();
     if (ready && !start.isPending) start.mutate();
   };
-  const kinds = KINDS.filter((k) => k.kind !== "folder" || status.folders);
 
   return (
     <form className="stack" onSubmit={submit} aria-labelledby="sync-h">
@@ -288,13 +325,13 @@ function SetUp({ status, onRecovery }: { status: SyncStatus; onRecovery: (key: s
       </fieldset>
       <fieldset className="sync-kinds">
         <legend className="k-label">Where</legend>
-        {kinds.map((k) => (
-          <label key={k.kind} className="sync-kind">
+        {options.map((k) => (
+          <label key={k.id} className="sync-kind">
             <input
               type="radio"
               name="sync-kind"
-              checked={kind === k.kind}
-              onChange={() => setKind(k.kind)}
+              checked={choice === k.id}
+              onChange={() => setChoice(k.id)}
             />
             <span>
               <span className="sync-kind-title">{k.title}</span>
@@ -304,7 +341,7 @@ function SetUp({ status, onRecovery }: { status: SyncStatus; onRecovery: (key: s
         ))}
       </fieldset>
 
-      {kind === "server" ? (
+      {choice === "this" ? null : kind === "server" ? (
         <>
           <Input
             label="Server address"
@@ -341,23 +378,6 @@ function SetUp({ status, onRecovery }: { status: SyncStatus; onRecovery: (key: s
             onChange={set("password")}
             autoComplete="off"
           />
-        </>
-      ) : kind === "github" ? (
-        <>
-          <Input
-            label="Repository"
-            placeholder="you/vuurtoren-sync"
-            value={f("repo")}
-            onChange={set("repo")}
-          />
-          <Input
-            label="Token"
-            placeholder="github_pat_…"
-            value={f("token")}
-            onChange={set("token")}
-            autoComplete="off"
-          />
-          <Input label="Branch (optional)" value={f("branch")} onChange={set("branch")} />
         </>
       ) : (
         <div className="row" style={{ alignItems: "center" }}>
@@ -433,7 +453,9 @@ function SyncOn({ status }: { status: SyncStatus }) {
           </span>
         ) : null}
       </p>
-      {status.error ? (
+      {status.needsKey ? (
+        <Unlock />
+      ) : status.error ? (
         <p role="alert" className="error-text" style={{ margin: 0 }}>
           The last sync did not finish: {status.error} Your changes stay on this device until it
           does.
@@ -451,9 +473,11 @@ function SyncOn({ status }: { status: SyncStatus }) {
           ))}
         </ul>
       ) : null}
+      {status.problems.length ? <Problems problems={status.problems} /> : null}
       <p className="k-hint" style={{ margin: 0 }}>
-        Vuurtoren syncs by itself while it is open, and once more when you leave it. On another
-        device choose Join my synced data, the same place and the same passphrase.
+        Vuurtoren syncs by itself while it is open: a few seconds after you change something, and
+        every 15 seconds for changes from your other devices. It sends what is left when you close
+        it. On another device choose Join my synced data, the same place and the same passphrase.
       </p>
       <div className="row">
         <Button variant="primary" onClick={() => now.mutate()} disabled={now.isPending}>
@@ -492,21 +516,87 @@ function SyncOn({ status }: { status: SyncStatus }) {
   );
 }
 
-/** On a page of a Vuurtoren server: sync tokens for the devices that keep their own data. */
-function ServerTokens() {
-  const { data, account } = useAppInfo();
-  const server = data?.mode === "server";
-  const authOn = account?.authEnabled ?? false;
+/** This device lost its sync key: the passphrase or the recovery key brings it back. */
+function Unlock() {
+  const services = useServices();
+  const qc = useQueryClient();
+  const [secret, setSecret] = useState("");
+  const unlock = useMutation({
+    mutationFn: () => services.unlockSync(secret),
+    onSuccess: () => setSecret(""),
+    onSettled: () => qc.invalidateQueries(),
+  });
+  return (
+    <form
+      className="stack"
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (secret.trim() && !unlock.isPending) unlock.mutate();
+      }}
+    >
+      <p role="alert" style={{ margin: 0 }}>
+        This device does not have its sync key. Type your passphrase to unlock sync; nothing else
+        changes.
+      </p>
+      <Input
+        label="Enter passphrase"
+        type="password"
+        value={secret}
+        onChange={(e) => setSecret(e.target.value)}
+        autoComplete="current-password"
+        hint="The passphrase of your synced data, or your recovery key."
+      />
+      <div className="row">
+        <Button type="submit" variant="primary" disabled={!secret.trim() || unlock.isPending}>
+          {unlock.isPending ? <Spinner label="Unlocking" /> : null}
+          Unlock sync
+        </Button>
+      </div>
+      {unlock.isError ? (
+        <p role="alert" className="error-text" style={{ margin: 0 }}>
+          {errorText(unlock.error)}
+        </p>
+      ) : null}
+    </form>
+  );
+}
+
+/** Files and changes sync left out, or still waits for. */
+function Problems({ problems }: { problems: SyncStatus["problems"] }) {
+  return (
+    <details className="sync-problems">
+      <summary>
+        {problems.length === 1 ? "1 file or change" : `${problems.length} files or changes`} not
+        synced
+      </summary>
+      <ul aria-label="Not synced">
+        {problems.map((p) => (
+          <li key={p.what}>
+            <code>{p.what}</code>{" "}
+            <span className="k-hint">
+              {p.leftOut ? "left out: " : "waiting: "}
+              {p.error}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </details>
+  );
+}
+
+/** On a page of a Vuurtoren server: sync tokens for your other devices. */
+function ServerTokens({ authOn }: { authOn: boolean }) {
   const qc = useQueryClient();
   const [label, setLabel] = useState("Phone");
+  const [vault, setVault] = useState(false);
   const [fresh, setFresh] = useState<string | null>(null);
   const list = useQuery({
     queryKey: ["sync-tokens"],
     queryFn: () => tokens.list(),
-    enabled: server && authOn,
+    enabled: authOn,
   });
   const make = useMutation({
-    mutationFn: () => tokens.create(label),
+    mutationFn: () => tokens.create(label, vault),
     onSuccess: async (t) => {
       setFresh(t.token);
       await qc.invalidateQueries({ queryKey: ["sync-tokens"] });
@@ -517,23 +607,34 @@ function ServerTokens() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["sync-tokens"] }),
   });
   return (
-    <section className="stack" aria-labelledby="sync-h">
-      <h3 className="settings-h3" id="sync-h">
-        Sync your devices
+    <section className="stack" aria-labelledby="sync-tokens-h">
+      <h3 className="settings-h3" id="sync-tokens-h">
+        Sync tokens
       </h3>
       <p className="k-hint" style={{ margin: 0 }}>
-        This page uses your data on this server directly, so it is always up to date. The desktop
-        app and phones keep their own data and sync through this server: in their Settings → Sync,
-        choose Your Vuurtoren server and give this address and a sync token.
+        Your other devices sync through this server too: in their Settings → Sync, choose Your
+        Vuurtoren server and give this address and a sync token. A token also opens this
+        server&apos;s language server, and nothing else.
       </p>
       <CopyBlock label="Server address" text={location.origin} />
       {authOn ? (
-        <div className="row" style={{ alignItems: "flex-end" }}>
-          <Input label="Device" value={label} onChange={(e) => setLabel(e.target.value)} />
-          <Button variant="primary" onClick={() => make.mutate()} disabled={make.isPending}>
-            Make a sync token
-          </Button>
-        </div>
+        <>
+          <div className="row" style={{ alignItems: "flex-end" }}>
+            <Input label="Device" value={label} onChange={(e) => setLabel(e.target.value)} />
+            <Button variant="primary" onClick={() => make.mutate()} disabled={make.isPending}>
+              Make a sync token
+            </Button>
+          </div>
+          <label className="settings-check">
+            <input type="checkbox" checked={vault} onChange={(e) => setVault(e.target.checked)} />
+            <span>
+              May change the passphrase and recovery key
+              <small>
+                Without it, the device syncs but cannot replace the file that opens your data.
+              </small>
+            </span>
+          </label>
+        </>
       ) : (
         <p className="k-hint" style={{ margin: 0 }}>
           Sign-in is off on this server, so devices need no token. Turn sign-in on before this
@@ -548,7 +649,8 @@ function ServerTokens() {
       {fresh ? (
         <>
           <p role="status" style={{ margin: 0 }}>
-            Copy it now: the token is shown only once. It opens sync and nothing else.
+            Copy it now: the token is shown only once. It opens sync and the language server, and
+            nothing else.
           </p>
           <CopyBlock label="Sync token" text={fresh} />
         </>
@@ -562,6 +664,7 @@ function ServerTokens() {
                 <span className="k-hint">
                   made {relativeTime(t.createdAt)}
                   {t.lastUsedAt ? `, last used ${relativeTime(t.lastUsedAt)}` : ", not used yet"}
+                  {t.vault ? ", may change the passphrase" : ""}
                 </span>
               </span>
               <Button

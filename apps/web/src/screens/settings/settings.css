@@ -438,3 +438,12 @@
   min-height: 44px;
   border-bottom: 1px solid var(--hairline);
 }
+.sync-problems summary {
+  cursor: pointer;
+  color: var(--ink-muted);
+}
+.sync-problems ul {
+  margin: var(--s-2) 0 0;
+  padding-left: var(--s-4);
+  overflow-wrap: anywhere;
+}

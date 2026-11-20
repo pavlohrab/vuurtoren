@@ -1,27 +1,23 @@
 import { type QueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
-import {
-  DEGRADED_MESSAGES,
-  clearDegraded,
-  onDegradedRetry,
-  reportDegraded,
-} from "../services/degraded.js";
-import {
-  FRESHNESS_INTERVAL_MS,
-  freshnessHeld,
-  onFreshnessReleased,
-} from "../services/freshness.js";
+import { desktopBridge } from "../desktop/bridge.js";
+import { onDegradedRetry } from "../services/degraded.js";
+import { freshnessHeld, onFreshnessReleased } from "../services/freshness.js";
+import type { AutoSync } from "../services/syncTypes.js";
 import type { AppServices } from "../services/types.js";
 
+/** How often the timer pulls while the app is visible (the services decide what is due). */
+const PULL_TICK_MS = 15_000;
+/** How often the log's head is looked at for local changes to send. */
+const LOCAL_TICK_MS = 5_000;
+
 /**
- * Cross-device freshness: on focus, on becoming visible and every ~30 s while visible, ask
- * whether another device changed the data (server mode: the server; a device with its own data:
- * a sync when one is due); if so every query is refetched (the services already dropped their
- * caches). Deferred while a practice session holds it. An unreachable server or sync place shows
- * in the degraded indicator; Retry checks again. When the app is hidden or closed, a device that
- * syncs sends its last changes.
+ * Sync while the app is open: once at start, when the app comes back into view, every 15 s
+ * while it is visible, and soon after a local change. When changes came in every query is
+ * refetched (the services already dropped their caches). Deferred while a practice session
+ * holds it. When the app is hidden, or the desktop window closes, the last changes go out.
  */
-export function useRemoteFreshness(services: AppServices, queryClient: QueryClient): void {
+export function useAutoSync(services: AppServices, queryClient: QueryClient): void {
   // Retry (any mode): refetch everything; sources that still fail report themselves again.
   useEffect(
     () =>
@@ -30,63 +26,61 @@ export function useRemoteFreshness(services: AppServices, queryClient: QueryClie
       }),
     [queryClient],
   );
-  // Leaving (hidden, or closing): send this device's last changes now rather than at the next
-  // start. Best effort: the page may be gone before it finishes.
+  // Leaving: hidden in a browser (the page's own pagehide waits for it before letting go of
+  // the database, see main.tsx), or the desktop window closing (the app waits for it).
   useEffect(() => {
     if (!services.syncBeforeLeaving) return;
-    const leave = () => void services.syncBeforeLeaving!();
+    const leave = () => services.syncBeforeLeaving!();
     const onHidden = () => {
-      if (document.visibilityState === "hidden") leave();
+      if (document.visibilityState === "hidden") void leave();
     };
     document.addEventListener("visibilitychange", onHidden);
-    addEventListener("pagehide", leave);
+    const offClose = desktopBridge()?.beforeClose?.(leave);
     return () => {
       document.removeEventListener("visibilitychange", onHidden);
-      removeEventListener("pagehide", leave);
+      offClose?.();
     };
   }, [services]);
   useEffect(() => {
-    if (!services.checkRemoteChanges) return;
-    const check = () => services.checkRemoteChanges!();
-    let pending = false;
+    if (!services.autoSync) return;
+    const autoSync = services.autoSync.bind(services);
+    let pending: AutoSync | null = null;
     let running = false;
-    const run = async (): Promise<void> => {
-      if (document.visibilityState === "hidden" || running) return;
+    const run = async (why: AutoSync): Promise<void> => {
+      if (running || (why !== "start" && document.visibilityState === "hidden")) return;
       if (freshnessHeld()) {
-        pending = true;
+        pending = pending === "start" ? pending : why;
         return;
       }
       running = true;
-      pending = false;
+      pending = null;
       try {
-        const changed = await check();
-        clearDegraded("storage");
-        if (changed) await queryClient.invalidateQueries();
-      } catch (e) {
-        // 401: the session ended; the sign-in watch takes over (not a degraded mode).
-        if ((e as { status?: unknown }).status !== 401) {
-          reportDegraded("storage", DEGRADED_MESSAGES.storage, e);
-        }
+        if (await autoSync(why)) await queryClient.invalidateQueries();
+      } catch {
+        // A failed sync shows in the degraded indicator and Settings → Sync.
       } finally {
         running = false;
       }
     };
-    const onFocus = () => void run();
+    void run("start");
+    const onFocus = () => void run("focus");
     const onVisible = () => {
-      if (document.visibilityState === "visible") void run();
+      if (document.visibilityState === "visible") void run("focus");
     };
     addEventListener("focus", onFocus);
     document.addEventListener("visibilitychange", onVisible);
-    // Ticks while hidden do nothing (run returns early): polling pauses with the page.
-    const timer = setInterval(() => void run(), FRESHNESS_INTERVAL_MS);
+    // Ticks while hidden do nothing (run returns early): pulling pauses with the page.
+    const pull = setInterval(() => void run("timer"), PULL_TICK_MS);
+    const local = setInterval(() => void run("local"), LOCAL_TICK_MS);
     const offRelease = onFreshnessReleased(() => {
-      if (pending) void run();
+      if (pending) void run(pending);
     });
-    const offRetry = onDegradedRetry(() => void run());
+    const offRetry = onDegradedRetry(() => void run("start"));
     return () => {
       removeEventListener("focus", onFocus);
       document.removeEventListener("visibilitychange", onVisible);
-      clearInterval(timer);
+      clearInterval(pull);
+      clearInterval(local);
       offRelease();
       offRetry();
     };

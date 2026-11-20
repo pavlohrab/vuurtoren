@@ -1,4 +1,4 @@
-/** Sync as a device sees it: set up, a second device joins, sync by itself, stop. */
+/** Sync as a device sees it: set up, a second device joins, sync by itself, leave, stop. */
 import { describe, expect, it, vi } from "vitest";
 import type { KeyValueStorage } from "@app/ai";
 import { createRepository } from "@app/db";
@@ -32,22 +32,26 @@ function memKeys() {
 }
 
 const PASS = "lange zinnen lezen";
-async function device(id: string, fetch: typeof globalThis.fetch, clock: { t: number }) {
+async function device(
+  id: string,
+  fetch: typeof globalThis.fetch,
+  clock: { t: number },
+  over: Partial<Parameters<typeof createLiveSync>[0]> = {},
+) {
   const repo = await createRepository(await createNodeDriver(), { deviceId: id });
   const storage = memStorage();
   const changed = vi.fn();
   const keys = memKeys();
-  const sync = createLiveSync({
-    repo,
-    storage,
-    fetch,
-    changed,
-    now: () => clock.t,
-    cost: LIGHT_ARGON2,
-    keys,
-  });
-  return { repo, storage, changed, sync, keys };
+  const deps = { repo, storage, fetch, changed, now: () => clock.t, cost: LIGHT_ARGON2, keys };
+  const sync = createLiveSync({ ...deps, ...over });
+  /** The app opened again: the same data, storage and key store, nothing in memory. */
+  const reopen = () => createLiveSync({ ...deps, ...over });
+  return { repo, storage, changed, sync, keys, reopen };
 }
+
+/** This device's segment files in the place. */
+const segments = (files: Map<string, Uint8Array>, id: string) =>
+  [...files.keys()].filter((k) => new RegExp(`devices/${id}/[0-9A-Z]+\\.kev$`).test(k)).length;
 
 describe("sync on a device", () => {
   it("starts new data, a second device joins with the passphrase, changes travel both ways", async () => {
@@ -57,7 +61,7 @@ describe("sync on a device", () => {
     const laptop = await device("aaaaaaaaaaaa", fetch, clock);
     const phone = await device("bbbbbbbbbbbb", fetch, clock);
 
-    expect(await laptop.sync.services.syncStatus()).toMatchObject({ available: true, place: null });
+    expect(await laptop.sync.services.syncStatus()).toMatchObject({ desktop: false, place: null });
     await laptop.repo.append({ type: "WordStateSet", lang: "nl", key: "fiets", state: "known" });
     const first = await laptop.sync.services.setUpSync(place, "start", PASS, "Laptop");
     expect(first).toMatchObject({
@@ -78,13 +82,17 @@ describe("sync on a device", () => {
     expect(phone.changed).toHaveBeenCalled();
     expect((await phone.repo.word("nl", "fiets"))?.state).toBe("known");
 
-    // Sync by itself: at most once a minute, true when changes came in.
+    // Sync by itself: the timer pulls every 15 s; changed when changes came in.
     await phone.repo.append({ type: "WordStateSet", lang: "nl", key: "huis", state: "known" });
     await phone.sync.services.syncNow();
-    clock.t += 61_000;
-    expect(await laptop.sync.tick()).toBe(true);
-    expect(await laptop.sync.tick()).toBe(false);
+    clock.t += 16_000;
+    expect(await laptop.sync.auto("timer")).toEqual({ ran: true, changed: true, error: null });
+    expect(await laptop.sync.auto("timer")).toMatchObject({ ran: false });
     expect((await laptop.repo.word("nl", "huis"))?.state).toBe("known");
+    // Coming back into view pulls too, unless a sync just ran.
+    expect(await laptop.sync.auto("focus")).toMatchObject({ ran: false });
+    clock.t += 6_000;
+    expect(await laptop.sync.auto("focus")).toMatchObject({ ran: true, changed: false });
   });
 
   it("keeps the key in the key store, and forgets it on stop", async () => {
@@ -114,29 +122,57 @@ describe("sync on a device", () => {
     const place: SyncPlace = { kind: "server", url: "https://vuurtoren.example", token: "ksync_t" };
     await laptop.sync.services.setUpSync(place, "start", PASS, "Laptop");
     up = false;
-    clock.t += 61_000;
-    await expect(laptop.sync.tick()).rejects.toThrow(/cannot be reached/);
+    clock.t += 16_000;
+    const failed = await laptop.sync.auto("timer");
+    expect(failed.ran).toBe(true);
+    expect(String(failed.error)).toMatch(/cannot be reached/);
     expect((await laptop.sync.services.syncStatus()).error).toMatch(/cannot be reached/);
+    // After a failure nothing runs by itself for a while.
+    clock.t += 6_000;
+    expect(await laptop.sync.auto("focus")).toMatchObject({ ran: false });
     up = true;
     expect((await laptop.sync.services.syncNow()).error).toBeNull();
     await laptop.sync.services.stopSync();
     expect((await laptop.sync.services.syncStatus()).place).toBeNull();
-    expect(await laptop.sync.tick()).toBe(false);
+    expect(await laptop.sync.auto("start")).toMatchObject({ ran: false });
   });
 
-  it("is not available on a page of a Vuurtoren server, and folders need the desktop app", async () => {
-    const sync = createLiveSync({
-      keys: memKeys(),
-      repo: null,
-      storage: memStorage(),
-      fetch: globalThis.fetch,
-      changed: () => undefined,
-    });
-    expect(await sync.services.syncStatus()).toMatchObject({ available: false, folders: false });
+  it("a folder and WebDAV need the desktop app", async () => {
+    const clock = { t: Date.UTC(2026, 10, 20, 9) };
+    const { sync } = await device("aaaaaaaaaaaa", globalThis.fetch, clock);
     await expect(
       sync.services.setUpSync({ kind: "folder", path: "/x" }, "start", PASS, "Laptop"),
-    ).rejects.toThrow(/its own data/);
+    ).rejects.toThrow(/desktop app/);
+    await expect(
+      sync.services.setUpSync(
+        { kind: "webdav", url: "https://dav.example", user: "a", password: "b" },
+        "start",
+        PASS,
+        "Laptop",
+      ),
+    ).rejects.toThrow(/desktop app/);
     expect(await sync.services.pickSyncFolder()).toBeNull();
+  });
+
+  it("on the page of a Vuurtoren server, that server is the place with a token of its own", async () => {
+    const clock = { t: Date.UTC(2026, 10, 20, 9) };
+    const files = new Map<string, Uint8Array>();
+    const newToken = vi.fn(async () => "ksync_page");
+    const page = await device("aaaaaaaaaaaa", fakeServer(files, "ksync_page"), clock, {
+      server: { origin: "https://vuurtoren.example", newToken },
+    });
+    expect((await page.sync.services.syncStatus()).thisServer).toBe("https://vuurtoren.example");
+    const r = await page.sync.services.setUpSync(
+      { kind: "server", url: "https://vuurtoren.example", token: "" },
+      "start",
+      PASS,
+      "Laptop",
+    );
+    expect(r.error).toBeNull();
+    expect(newToken).toHaveBeenCalledWith("Laptop (this browser)");
+    expect(files.has("vuurtoren/vault.json")).toBe(true);
+    // Its own language server is reached with its sign-in, not through sync.
+    expect(page.sync.languageServer()).toBeNull();
   });
 });
 
@@ -182,6 +218,23 @@ describe("joining or starting", () => {
       /did not keep/,
     );
     expect(laptop.sync.configured()).toBe(false);
+    // The key was kept before the vault was written, and goes again with the failed vault.
+    expect(laptop.keys.raw).toBeNull();
+  });
+
+  it("keeps the new key before it writes the vault: no vault that no device can open", async () => {
+    const files = new Map<string, Uint8Array>();
+    const laptop = await device("aaaaaaaaaaaa", fakeServer(files, "ksync_t"), start(), {
+      keys: {
+        save: () => Promise.reject(new Error("The keychain is locked.")),
+        load: async () => null,
+        forget: async () => undefined,
+      },
+    });
+    await expect(laptop.sync.services.setUpSync(place, "start", PASS, "Laptop")).rejects.toThrow(
+      /keychain is locked/,
+    );
+    expect(files.size).toBe(0);
   });
 
   it("keeps the recovery key and sync set up when the first sync fails", async () => {
@@ -230,30 +283,177 @@ describe("joining or starting", () => {
     const stopping = laptop.sync.services.stopSync();
     // A sync by itself does not run next to the setup.
     clock.t += 61_000;
-    expect(await laptop.sync.tick()).toBe(false);
+    expect(await laptop.sync.auto("timer")).toMatchObject({ ran: false });
     await setting;
     await stopping;
     expect((await laptop.sync.services.syncStatus()).place).toBeNull();
   });
+});
 
-  it("sends the last changes when the app is left, only when there are any", async () => {
+describe("while the app is open", () => {
+  const place: SyncPlace = { kind: "server", url: "https://vuurtoren.example", token: "ksync_t" };
+  const start = () => ({ t: Date.UTC(2026, 10, 20, 9) });
+
+  it("syncs once when the app opens", async () => {
+    const clock = start();
+    const fetch = fakeServer(new Map(), "ksync_t");
+    const laptop = await device("aaaaaaaaaaaa", fetch, clock);
+    const phone = await device("bbbbbbbbbbbb", fetch, clock);
+    await laptop.sync.services.setUpSync(place, "start", PASS, "Laptop");
+    await phone.sync.services.setUpSync(place, "join", PASS, "Phone");
+    await phone.repo.append({ type: "WordStateSet", lang: "nl", key: "fiets", state: "known" });
+    await phone.sync.services.syncNow();
+    // The laptop opens again: right away, with nothing in memory.
+    const again = laptop.reopen();
+    expect(await again.auto("start")).toEqual({ ran: true, changed: true, error: null });
+    expect((await laptop.repo.word("nl", "fiets"))?.state).toBe("known");
+  });
+
+  it("sends a local change once the log has been quiet for a few seconds", async () => {
     const clock = start();
     const files = new Map<string, Uint8Array>();
     const laptop = await device("aaaaaaaaaaaa", fakeServer(files, "ksync_t"), clock);
     await laptop.sync.services.setUpSync(place, "start", PASS, "Laptop");
-    const segments = () =>
-      [...files.keys()].filter((k) => /devices\/aaaaaaaaaaaa\/[0-9A-Z]+\.kev$/.test(k)).length;
-    expect(segments()).toBe(0);
+    // Nothing changed: the head is looked at, nothing runs.
+    expect(await laptop.sync.auto("local")).toMatchObject({ ran: false });
     await laptop.repo.append({ type: "WordStateSet", lang: "nl", key: "fiets", state: "known" });
-    // Just synced: switching windows right away does not sync again.
-    await laptop.sync.services.syncBeforeLeaving!();
-    expect(segments()).toBe(0);
-    clock.t += 20_000;
-    await laptop.sync.services.syncBeforeLeaving!();
-    expect(segments()).toBe(1);
+    clock.t += 5_000;
+    expect(await laptop.sync.auto("local")).toMatchObject({ ran: false });
+    // Another change: the quiet time starts again.
+    await laptop.repo.append({ type: "WordStateSet", lang: "nl", key: "huis", state: "known" });
+    clock.t += 5_000;
+    expect(await laptop.sync.auto("local")).toMatchObject({ ran: false });
+    clock.t += 3_000;
+    expect(await laptop.sync.auto("local")).toMatchObject({ ran: false });
+    clock.t += 2_000;
+    expect(await laptop.sync.auto("local")).toMatchObject({ ran: true });
+    expect(segments(files, "aaaaaaaaaaaa")).toBe(1);
+    expect((await laptop.sync.services.syncStatus()).last).toMatchObject({ sent: 2 });
+    clock.t += 5_000;
+    expect(await laptop.sync.auto("local")).toMatchObject({ ran: false });
+  });
+
+  it("sends what is not sent when the app is left, also right after a sync", async () => {
+    const clock = start();
+    const files = new Map<string, Uint8Array>();
+    const laptop = await device("aaaaaaaaaaaa", fakeServer(files, "ksync_t"), clock);
+    await laptop.sync.services.setUpSync(place, "start", PASS, "Laptop");
+    expect(segments(files, "aaaaaaaaaaaa")).toBe(0);
+    await laptop.repo.append({ type: "WordStateSet", lang: "nl", key: "fiets", state: "known" });
+    // Hidden, then closed: both ask, one sync answers.
+    await Promise.all([
+      laptop.sync.services.syncBeforeLeaving!(),
+      laptop.sync.services.syncBeforeLeaving!(),
+    ]);
+    expect(segments(files, "aaaaaaaaaaaa")).toBe(1);
     const at = (await laptop.sync.services.syncStatus()).last!.at;
-    clock.t += 20_000;
+    clock.t += 1_000;
+    // Nothing new: nothing runs.
     await laptop.sync.services.syncBeforeLeaving!();
     expect((await laptop.sync.services.syncStatus()).last!.at).toBe(at);
+  });
+
+  it("keeps what did not sync in the status", async () => {
+    const clock = start();
+    const files = new Map<string, Uint8Array>();
+    const laptop = await device("aaaaaaaaaaaa", fakeServer(files, "ksync_t"), clock);
+    await laptop.sync.services.setUpSync(place, "start", PASS, "Laptop");
+    files.set("vuurtoren/devices/bbbbbbbbbbbb/01J0000000000000000000000A.kev", new Uint8Array([1]));
+    const s = await laptop.sync.services.syncNow();
+    expect(s.problems).toEqual([
+      expect.objectContaining({
+        what: "vuurtoren/devices/bbbbbbbbbbbb/01J0000000000000000000000A.kev",
+      }),
+    ]);
+    expect((await laptop.sync.services.syncStatus()).problems).toHaveLength(1);
+  });
+});
+
+describe("passphrase, recovery key and a lost key", () => {
+  const place: SyncPlace = { kind: "server", url: "https://vuurtoren.example", token: "ksync_t" };
+  const start = () => ({ t: Date.UTC(2026, 10, 20, 9) });
+
+  it("a new passphrase opens the data on a new device; the others keep syncing", async () => {
+    const clock = start();
+    const fetch = fakeServer(new Map(), "ksync_t");
+    const laptop = await device("aaaaaaaaaaaa", fetch, clock);
+    const phone = await device("bbbbbbbbbbbb", fetch, clock);
+    await laptop.sync.services.setUpSync(place, "start", PASS, "Laptop");
+    await phone.sync.services.setUpSync(place, "join", PASS, "Phone");
+    await expect(
+      laptop.sync.services.changeSyncPassphrase("verkeerd wachtwoord", "nieuwe lange zin"),
+    ).rejects.toThrow();
+    await laptop.sync.services.changeSyncPassphrase(PASS, "nieuwe lange zin");
+    // The phone keeps its key: no file changed.
+    await laptop.repo.append({ type: "WordStateSet", lang: "nl", key: "fiets", state: "known" });
+    await laptop.sync.services.syncNow();
+    expect((await phone.sync.services.syncNow()).error).toBeNull();
+    expect((await phone.repo.word("nl", "fiets"))?.state).toBe("known");
+    // A new device: only the new passphrase opens it.
+    const tablet = await device("cccccccccccc", fetch, clock);
+    await expect(tablet.sync.services.setUpSync(place, "join", PASS, "Tablet")).rejects.toThrow();
+    const joined = await tablet.sync.services.setUpSync(
+      place,
+      "join",
+      "nieuwe lange zin",
+      "Tablet",
+    );
+    expect(joined.error).toBeNull();
+    expect((await tablet.repo.word("nl", "fiets"))?.state).toBe("known");
+  });
+
+  it("joins with the recovery key, and a new recovery key replaces the old one", async () => {
+    const clock = start();
+    const fetch = fakeServer(new Map(), "ksync_t");
+    const laptop = await device("aaaaaaaaaaaa", fetch, clock);
+    const first = await laptop.sync.services.setUpSync(place, "start", PASS, "Laptop");
+    const recovery = first.recoveryKey!;
+    const phone = await device("bbbbbbbbbbbb", fetch, clock);
+    expect(
+      (await phone.sync.services.setUpSync(place, "join", recovery, "Phone")).error,
+    ).toBeNull();
+    const next = await laptop.sync.services.newSyncRecoveryKey(recovery);
+    expect(next).not.toBe(recovery);
+    const tablet = await device("cccccccccccc", fetch, clock);
+    await expect(
+      tablet.sync.services.setUpSync(place, "join", recovery, "Tablet"),
+    ).rejects.toThrow();
+    expect((await tablet.sync.services.setUpSync(place, "join", next, "Tablet")).error).toBeNull();
+  });
+
+  it("asks for the passphrase when the key is gone, and unlocks with it", async () => {
+    const clock = start();
+    const laptop = await device("aaaaaaaaaaaa", fakeServer(new Map(), "ksync_t"), clock);
+    await laptop.sync.services.setUpSync(place, "start", PASS, "Laptop");
+    await laptop.keys.forget();
+    const missing = await laptop.sync.auto("start");
+    expect(String(missing.error)).toMatch(/does not have its sync key/);
+    expect(await laptop.sync.services.syncStatus()).toMatchObject({ needsKey: true });
+    // Nothing runs by itself until it is unlocked.
+    clock.t += 60_000;
+    expect(await laptop.sync.auto("timer")).toMatchObject({ ran: false });
+    await expect(laptop.sync.services.unlockSync("verkeerd wachtwoord")).rejects.toThrow();
+    const back = await laptop.sync.services.unlockSync(PASS);
+    expect(back).toMatchObject({ needsKey: false, error: null });
+    expect(laptop.keys.raw?.length).toBe(64);
+  });
+});
+
+describe("the language server of a sync server", () => {
+  it("is the place's /nlp with its token in a browser, never in the desktop app", async () => {
+    const clock = { t: Date.UTC(2026, 10, 20, 9) };
+    const fetch = fakeServer(new Map(), "ksync_t");
+    const place: SyncPlace = {
+      kind: "server",
+      url: "https://vuurtoren.example/",
+      token: "ksync_t",
+    };
+    const phone = await device("bbbbbbbbbbbb", fetch, clock);
+    expect(phone.sync.languageServer()).toBeNull();
+    await phone.sync.services.setUpSync(place, "start", PASS, "Phone");
+    expect(phone.sync.languageServer()).toEqual({
+      url: "https://vuurtoren.example/nlp",
+      token: "ksync_t",
+    });
   });
 });

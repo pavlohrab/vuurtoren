@@ -1,15 +1,14 @@
 /**
- * The three places behind fake servers: the same behaviour from each, and two devices syncing
+ * The places behind fake servers: the same behaviour from each, and two devices syncing
  * through each with the real engine.
  */
 import { describe, expect, it } from "vitest";
 import { type SyncStore, createRepository, openVault, syncOnce } from "@app/db";
 import { createNodeDriver } from "@app/db/node";
 import { LIGHT_ARGON2 } from "@app/db/testing";
-import { githubStore } from "./githubStore.js";
 import { propfindNames, webdavStore } from "./webdavStore.js";
 import { serverStore } from "./serverStore.js";
-import { fakeDav, fakeGithub, fakeServer } from "./fake-places.test-util.js";
+import { fakeDav, fakeServer } from "./fake-places.test-util.js";
 
 const places: [string, () => SyncStore][] = [
   [
@@ -26,7 +25,6 @@ const places: [string, () => SyncStore][] = [
         fakeDav(new Map(), new Set()),
       ),
   ],
-  ["GitHub", () => githubStore("anna/vuurtoren-sync", "ghp_x", fakeGithub(new Map()))],
 ];
 
 describe.each(places)("%s", (_name, make) => {
@@ -57,26 +55,18 @@ describe.each(places)("%s", (_name, make) => {
   });
 });
 
-describe("GitHub", () => {
-  it("lists a folder past 1000 files and never asks the browser cache", async () => {
-    const files = new Map<string, Uint8Array>();
-    for (let i = 0; i < 1200; i++) {
-      files.set(`vuurtoren/blobs/${String(i).padStart(4, "0")}.kbl`, new Uint8Array([i % 256]));
-    }
+describe("a Vuurtoren server", () => {
+  it("never asks the browser cache", async () => {
     const caches: (RequestCache | undefined)[] = [];
-    const fake = fakeGithub(files);
-    const store = githubStore("anna/vuurtoren-sync", "ghp_x", (async (input, init) => {
+    const fake = fakeServer(new Map(), "ksync_t");
+    const store = serverStore("https://vuurtoren.example", "ksync_t", (async (input, init) => {
       caches.push(init?.cache);
       return fake(input, init);
     }) as typeof fetch);
-    const names = await store.list("vuurtoren/blobs");
-    expect(names).toHaveLength(1200);
-    expect(names[1199]).toBe("1199.kbl");
-    // The sha came with the listing: a file past the first 1000 can be replaced.
-    await store.put("vuurtoren/blobs/1199.kbl", new Uint8Array([9]));
-    expect(await store.get("vuurtoren/blobs/1199.kbl")).toEqual(new Uint8Array([9]));
-    expect(caches.length).toBeGreaterThan(2);
-    expect(caches.every((c) => c === "no-store")).toBe(true);
+    await store.put("vuurtoren/blobs/a.kbl", new Uint8Array([9]));
+    expect(await store.get("vuurtoren/blobs/a.kbl")).toEqual(new Uint8Array([9]));
+    expect(await store.list("vuurtoren/blobs")).toEqual(["a.kbl"]);
+    expect(caches).toEqual(["no-store", "no-store", "no-store"]);
   });
 });
 
@@ -92,7 +82,6 @@ describe("credentials refused", () => {
       throw new TypeError("network");
     }) as typeof fetch);
     await expect(offline.get("a")).rejects.toThrow(/cannot be reached/);
-    expect(() => githubStore("not a repo", "t", fetch)).toThrow(/owner\/name/);
   });
 
   it("reads Nextcloud's PROPFIND answer", () => {

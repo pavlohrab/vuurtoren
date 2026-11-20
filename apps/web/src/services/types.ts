@@ -20,7 +20,7 @@ import type { AddOptions, ProfileServices } from "./profileTypes.js";
 import type { ActivityDay, KnownPoint } from "./activity.js";
 import type { ExamServices } from "./examTypes.js";
 import type { LibraryServices } from "./libraryTypes.js";
-import type { SyncServices } from "./syncTypes.js";
+import type { AutoSync, SyncServices } from "./syncTypes.js";
 import type { NativeServices } from "./nativeTypes.js";
 
 /** Defined in @app/ui (the WordInspector consumes it); re-exported here as part of the contract. */
@@ -235,12 +235,11 @@ export interface AppServices
     NativeServices,
     SyncServices {
   /**
-   * Ask whether another device changed the data; if so, drop the service caches and return
-   * true (the caller then refetches its queries). Server mode: asks the server (rejects when it
-   * is unreachable). A device with its own data: syncs when sync is set up and due. Absent in
-   * demo mode.
+   * Sync by itself when `why` makes it due (sync set up on this device). True when changes came
+   * in from another device: the service caches are dropped, and the caller refetches its
+   * queries. Absent in demo mode.
    */
-  checkRemoteChanges?(): Promise<boolean>;
+  autoSync?(why: AutoSync): Promise<boolean>;
   listTexts(): Promise<TextListItem[]>;
   getReading(textId: string): Promise<ReadingView | null>;
   /**

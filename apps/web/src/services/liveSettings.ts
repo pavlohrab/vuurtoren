@@ -72,9 +72,29 @@ export interface LiveSettingsDeps {
   platform: Platform;
   /** Called when a change makes cached learner data stale (new-word budget, language). */
   changed: () => void;
+  /**
+   * The language server of the Vuurtoren server this device syncs with, used while the address
+   * is the default `/nlp` (a device without a language server of its own); null otherwise.
+   */
+  languageServer?: () => { url: string; token: string } | null;
 }
 
-export function createLiveSettings({ repo, platform, changed }: LiveSettingsDeps) {
+/**
+ * `fetch` that sends `token` as a bearer token to `base` and its paths only (the sync token
+ * opens that server's language server).
+ */
+function withBearer(fetch: typeof globalThis.fetch, base: string, token: string) {
+  const root = base.replace(/\/+$/, "");
+  return ((input, init) => {
+    const target = input instanceof Request ? input.url : String(input);
+    if (target !== root && !target.startsWith(`${root}/`)) return fetch(input, init);
+    const headers = new Headers(init?.headers);
+    headers.set("authorization", `Bearer ${token}`);
+    return fetch(input, { ...init, headers });
+  }) as typeof globalThis.fetch;
+}
+
+export function createLiveSettings({ repo, platform, changed, languageServer }: LiveSettingsDeps) {
   let cache: Settings | null = null;
 
   async function settings(): Promise<Settings> {
@@ -98,12 +118,17 @@ export function createLiveSettings({ repo, platform, changed }: LiveSettingsDeps
   const lang = async () => (await settings()).lang;
 
   // Every language-server call feeds the shared degraded signal.
-  const nlp = async () =>
-    watchClient(
-      new NlpClient({ url: (await settings()).nlpUrl, fetch: platform.fetch }),
-      "nlp",
-      nlpOutage,
-    );
+  const nlp = async () => {
+    const url = (await settings()).nlpUrl;
+    const theirs = url === DEFAULT_SETTINGS.nlpUrl ? (languageServer?.() ?? null) : null;
+    const client = theirs
+      ? new NlpClient({
+          url: theirs.url,
+          fetch: withBearer(platform.fetch, theirs.url, theirs.token),
+        })
+      : new NlpClient({ url, fetch: platform.fetch });
+    return watchClient(client, "nlp", nlpOutage);
+  };
 
   const ankiOptions = async (timeoutMs?: number) => {
     const s = await settings();

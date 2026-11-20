@@ -7,13 +7,15 @@ export function createMockSync(
   now: () => number = Date.now,
 ): SyncServices {
   let state: SyncStatus = {
-    available: true,
-    folders: false,
+    desktop: false,
+    thisServer: null,
     place: null,
     deviceName: "This device",
     last: null,
     error: null,
+    needsKey: false,
     devices: [],
+    problems: [],
   };
   const devices = (name: string, at: number) => [
     { id: "demo-self", name, at, self: true },
@@ -52,6 +54,13 @@ export function createMockSync(
         last: { at, sent: 0, received: 0 },
         devices: devices(state.deviceName, at),
       };
+      return state;
+    },
+    async unlockSync(secret) {
+      await wait();
+      if (secret.trim().length < 8)
+        throw new Error("This passphrase does not open your synced data.");
+      state = { ...state, needsKey: false, error: null };
       return state;
     },
     async changeSyncPassphrase(current, next) {

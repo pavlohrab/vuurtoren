@@ -1,13 +1,8 @@
 /**
- * Cross-device freshness: in server mode the shell asks the server for a change
- * marker on focus, on becoming visible and every ~30 s while visible. A screen that must not
- * change under the learner's hands (a practice session mid-answer) holds the check; it runs
- * when the last hold is released.
+ * Holding sync: a screen that must not change under the learner's hands (a practice session
+ * mid-answer) holds it; sync by itself waits and runs when the last hold is released.
  */
 import { useEffect } from "react";
-
-/** Seconds between checks while the page is visible. */
-export const FRESHNESS_INTERVAL_MS = 30_000;
 
 let holds = 0;
 const releaseListeners = new Set<() => void>();
