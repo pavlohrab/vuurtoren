@@ -791,6 +791,12 @@ export function ReaderPage({ textId }: { textId: string }) {
           Leave focus mode <kbd>Esc</kbd>
         </button>
       ) : null}
+      {mode === "cloze" && plan.clozes.length === 0 ? (
+        <p className="reader-cloze-empty" role="status">
+          No blanks on this page yet. Cloze hides words you know or are learning, so they come once
+          you mark words you know (I know it) or review a few cards.
+        </p>
+      ) : null}
       {side ? (
         <SideBySide
           key={`${current}-${epoch}`}
