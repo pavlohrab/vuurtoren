@@ -64,6 +64,9 @@ describe("starter words", () => {
       "The house is big.",
     ]);
     expect(huis.article).toBe("het");
+    // The audio pack's clip ids, kept on the note (sha1 of "het huis" and of the sentence).
+    expect(huis.audio).toBe("word-7f3acd97cd7cde99");
+    expect(huis.sentenceAudio).toMatch(/^sentence-[0-9a-f]{16}$/);
     const first = events[0] as NativeWordAddedEvent;
     expect(first.decks[0]!.options.newPerDay).toBe(0);
   });

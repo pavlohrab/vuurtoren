@@ -18,6 +18,7 @@ import {
 } from "@app/core";
 import type { RecordEvent } from "./commands.js";
 import { type NativeWordAddedEvent, VUURTOREN_NOTETYPE } from "./native.js";
+import { clipId, wordClipText } from "./audio.js";
 import { highlightSentence } from "./note.js";
 
 /** One word of the starter list. */
@@ -69,7 +70,7 @@ export const starterKey = (w: Pick<StarterWord, "word">) => normalizeKey(w.word)
 /** A starter deck adds no new cards until it opens (`openStarterLevel`). */
 const CLOSED: DeckOptions = { ...DEFAULT_DECK_OPTIONS, newPerDay: 0 };
 
-function starterNote(w: StarterWord, tags: string[]): NativeNote {
+async function starterNote(w: StarterWord, tags: string[]): Promise<NativeNote> {
   const single = w.article && !w.article.includes("/") ? w.article : undefined;
   const headword = single ? `${single} ${w.word}` : w.word;
   const sentence =
@@ -91,6 +92,10 @@ function starterNote(w: StarterWord, tags: string[]): NativeNote {
   if (w.article) note.article = w.article;
   if (w.sentence) note.sentence = w.sentence;
   if (w.sentence && w.translation) note.sentenceTranslation = w.translation;
+  // The clips' ids from the texts they say (as server/nlp/scripts/tts_elevenlabs.py names them),
+  // kept so that editing the note later does not lose its sound.
+  note.audio = await clipId("word", wordClipText(w.word, w.article));
+  if (w.sentence) note.sentenceAudio = await clipId("sentence", w.sentence);
   return note;
 }
 
@@ -134,7 +139,7 @@ export async function addStarterWords(
       skipped++;
       continue;
     }
-    const note = starterNote(w, tags);
+    const note = await starterNote(w, tags);
     notes.push(note);
     cards.push({
       id: note.id + 1,

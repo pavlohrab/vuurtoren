@@ -162,6 +162,7 @@ async function setup(
   profile: LanguageProfile,
   optimizer?: RunOptimizer,
   reviewWeek: readonly number[] = [],
+  audioClip?: (id: string) => Promise<Blob | null>,
 ) {
   let t = NOW;
   const r = await createRepository(await createNodeDriver(), { deviceId: "d", now: () => t });
@@ -183,6 +184,7 @@ async function setup(
     optimizer: optimizer ?? (async () => Promise.reject(new Error("no optimizer"))),
     sqlite,
     reviewWeek: async () => reviewWeek,
+    ...(audioClip ? { audioClip } : {}),
     now: () => t,
   });
   return {
@@ -540,5 +542,26 @@ describe("starter words", () => {
     await live.setStarterFrom(1);
     expect(await open()).toEqual(["Vuurtoren · Woorden 1–500"]);
     expect((await live.starterLevels()).from).toBe(1);
+  });
+
+  it("exports the audio pack's clips as Anki sounds when they exist", async () => {
+    // A fake pack with the clip of "de" (rank 1) only.
+    const pack = vi.fn(async (id: string) =>
+      id === "word-600ccd1b71569232" ? new Blob([new Uint8Array([9, 9])]) : null,
+    );
+    const { live } = await setup(native(), undefined, [], pack);
+    await live.addStarterLevels({ levels: [1] });
+    const queue = await live.reviewQueue();
+    expect(queue.cards[0]).toMatchObject({
+      word: "de",
+      spoken: "de",
+      wordAudio: "word-600ccd1b71569232",
+    });
+    const { bytes, summary } = await live.exportPackage(["Vuurtoren · Woorden 1–500"]);
+    expect(summary.media).toBe(1);
+    const col = await readAnkiPackage(bytes, sqlite().open);
+    const de = col.notes.find((n) => n.fields[0]?.startsWith("de["))!;
+    expect(de.fields[0]).toBe("de[sound:word-600ccd1b71569232.mp3]");
+    expect(col.notes.filter((n) => n.fields.join("").includes("[sound:"))).toHaveLength(1);
   });
 });

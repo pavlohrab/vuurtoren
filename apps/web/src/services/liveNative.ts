@@ -20,6 +20,9 @@ import {
   starterLevelsHeld,
   startStarterFrom,
   moveToAnki,
+  noteClipIds,
+  withClipSounds,
+  wordClipText,
   packageDecks,
   readAnkiPackage,
   writeAnkiPackage,
@@ -75,6 +78,8 @@ export interface LiveNativeDeps {
   optimizer: RunOptimizer;
   /** SQLite for reading package files. */
   sqlite: () => { open: OpenSqlite; create: CreateSqlite; dispose: () => void };
+  /** A clip of the audio pack (Settings' voice), for exports; absent: no clips. */
+  audioClip?: (id: string) => Promise<Blob | null>;
   /** How much of the usual load each weekday takes, Monday first (Settings). */
   reviewWeek?: () => Promise<readonly number[]>;
   now?: () => number;
@@ -413,7 +418,14 @@ export function createLiveNative(deps: LiveNativeDeps) {
       const cards: ReviewCard[] = [];
       for (const v of q.cards) {
         const media = await repo.nativeMedia(lang, mediaNames(v));
-        cards.push(reviewCard(v, p, at, own, media));
+        const card = reviewCard(v, p, at, own, media);
+        if (card.word) {
+          card.spoken = wordClipText(card.word, card.article);
+          const ids = await noteClipIds(v.note, card.word);
+          if (ids.word) card.wordAudio = ids.word;
+          if (ids.sentence && card.sentence) card.sentenceAudio = ids.sentence;
+        }
+        cards.push(card);
       }
       return { cards, due: q.due, fresh: q.fresh };
     },
@@ -534,14 +546,39 @@ export function createLiveNative(deps: LiveNativeDeps) {
       const at = now();
       const sqlite = deps.sqlite();
       try {
+        // The audio pack's clips of the word notes go along as Anki sounds.
+        const types = new Map(col.notetypes.map((t) => [t.id, t]));
+        const spoken = await withClipSounds(
+          col.notes,
+          async (id) => {
+            const blob = await deps.audioClip?.(id).catch(() => null);
+            return blob ? new Uint8Array(await blob.arrayBuffer()) : null;
+          },
+          (n) => {
+            const vocab = types.get(n.notetypeId)?.vocab;
+            const fields = types.get(n.notetypeId)?.fields ?? [];
+            const field = vocab ? fields.indexOf(vocab.word) : -1;
+            if (!vocab || field < 0) return null;
+            const sentenceField = vocab.sentence ? fields.indexOf(vocab.sentence) : -1;
+            return {
+              text: stripHtml(n.fields[field] ?? "").trim(),
+              field,
+              ...(sentenceField >= 0 ? { sentenceField } : {}),
+            };
+          },
+        );
         const { bytes, summary } = await writeAnkiPackage(
           {
             ...col,
+            notes: spoken.notes,
             params: await params(lang),
-            media: Object.entries(col.media).map(([name, blobId]) => ({
-              name,
-              bytes: async () => (await repo.getBlob(blobId))?.bytes ?? null,
-            })),
+            media: [
+              ...Object.entries(col.media).map(([name, blobId]) => ({
+                name,
+                bytes: async () => (await repo.getBlob(blobId))?.bytes ?? null,
+              })),
+              ...spoken.media,
+            ],
             now: at,
           },
           sqlite.create,

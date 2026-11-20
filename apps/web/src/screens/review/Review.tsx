@@ -2,6 +2,8 @@
  * The review screen (native mode): front, then Space or "Show answer" for the back, then
  * Again / Hard / Good / Easy with the next interval on each button (keys 1–4; Space is Good).
  * Answers can be taken back one by one (Undo or Z), also after a reload or on another day.
+ * Vocabulary cards say their word (R replays it) and sentence: the audio pack's clip, else the
+ * system voice; the word plays as the front shows, the sentence on reveal (Settings).
  */
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
@@ -17,6 +19,8 @@ import { usePageHeader } from "../../shell/ShellContext.js";
 import { sanitizeCardHtml } from "./sanitize.js";
 import { useMediaUrls } from "./useMedia.js";
 import { ErrorNotice } from "../../shell/ErrorNotice.js";
+import { PlayButton, useSay } from "../../audio/useSay.js";
+import type { Saying } from "../../audio/play.js";
 import "./review.css";
 
 const RATINGS: { rating: CardRating; label: string }[] = [
@@ -68,6 +72,27 @@ export function Review() {
   useEffect(() => {
     shownAt.current = Date.now();
   }, [cardKey]);
+
+  // Sound: the word as the front shows, the sentence as the answer shows (each a setting).
+  const speech = useSay();
+  const { play } = speech;
+  const audio = speech.settings;
+  const wordSaying = useMemo<Saying | null>(
+    () => (card?.spoken ? { clip: card.wordAudio, text: card.spoken } : null),
+    [card],
+  );
+  const sentenceSaying = useMemo<Saying | null>(
+    () => (card?.sentence ? { clip: card.sentenceAudio, text: card.sentence } : null),
+    [card],
+  );
+  const autoWord = audio?.autoplayWord ?? false;
+  const autoSentence = audio?.autoplaySentence ?? false;
+  useEffect(() => {
+    if (cardKey && autoWord && wordSaying) void play("word", wordSaying);
+  }, [cardKey, autoWord, wordSaying, play]);
+  useEffect(() => {
+    if (shown && autoSentence && sentenceSaying) void play("sentence", sentenceSaying);
+  }, [shown, autoSentence, sentenceSaying, play]);
 
   const refresh = useCallback(async () => {
     await queue.refetch();
@@ -142,6 +167,11 @@ export function Review() {
         return;
       }
       if (!card) return;
+      if (e.key === "r" || e.key === "R") {
+        e.preventDefault();
+        if (wordSaying) void play("word", wordSaying);
+        return;
+      }
       if (!shown) {
         if (e.key === " " || e.key === "Enter") {
           e.preventDefault();
@@ -160,7 +190,7 @@ export function Review() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [card, shown, setShown, answer, takeBack]);
+  }, [card, shown, setShown, answer, takeBack, wordSaying, play]);
 
   const counts = queue.data
     ? `${plural(queue.data.due, "card")} due · ${queue.data.fresh} new`
@@ -189,7 +219,16 @@ export function Review() {
         />
       ) : card ? (
         <>
-          <CardView key={cardKey} card={card} shown={shown} />
+          <CardView
+            key={cardKey}
+            card={card}
+            shown={shown}
+            playing={speech.playing}
+            onPlay={(which) => {
+              const what = which === "word" ? wordSaying : sentenceSaying;
+              if (what) void play(which, what);
+            }}
+          />
           <div className="review-actions">
             {shown ? (
               <div className="review-ratings" role="group" aria-label="How well did you know it?">
@@ -246,7 +285,17 @@ export function Review() {
   );
 }
 
-function CardView({ card, shown }: { card: ReviewCard; shown: boolean }) {
+function CardView({
+  card,
+  shown,
+  playing,
+  onPlay,
+}: {
+  card: ReviewCard;
+  shown: boolean;
+  playing: string | null;
+  onPlay: (which: "word" | "sentence") => void;
+}) {
   const urls = useMediaUrls(card.media);
   const front = useMemo(() => sanitizeCardHtml(card.front, urls), [card.front, urls]);
   const back = useMemo(() => sanitizeCardHtml(card.back, urls), [card.back, urls]);
@@ -259,14 +308,30 @@ function CardView({ card, shown }: { card: ReviewCard; shown: boolean }) {
       </div>
       {card.layout === "vocab" ? (
         <>
-          <p className="review-word" lang="nl">
-            {card.article ? <span className="review-article">{card.article} </span> : null}
-            {card.word}
-          </p>
-          {card.sentence ? (
-            <p className="review-sentence" lang="nl">
-              {card.sentence}
+          <div className="review-said">
+            <p className="review-word" lang="nl">
+              {card.article ? <span className="review-article">{card.article} </span> : null}
+              {card.word}
             </p>
+            {card.spoken ? (
+              <PlayButton
+                label="Play the word (R)"
+                playing={playing === "word"}
+                onPlay={() => onPlay("word")}
+              />
+            ) : null}
+          </div>
+          {card.sentence ? (
+            <div className="review-said">
+              <p className="review-sentence" lang="nl">
+                {card.sentence}
+              </p>
+              <PlayButton
+                label="Play the sentence"
+                playing={playing === "sentence"}
+                onPlay={() => onPlay("sentence")}
+              />
+            </div>
           ) : null}
           {shown ? (
             <div className="review-back">

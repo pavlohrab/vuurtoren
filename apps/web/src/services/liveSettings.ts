@@ -28,6 +28,10 @@ export const DEFAULT_SETTINGS: Settings = {
   glossClozes: false,
   grammarMarks: true,
   reviewWeek: [1, 1, 1, 1, 1, 1, 1],
+  voice: "female",
+  autoplayWord: true,
+  autoplaySentence: false,
+  audioRate: 1,
 };
 
 /** The language server is down or unreachable (not: it refused one request). */
@@ -141,9 +145,13 @@ export function createLiveSettings({ repo, platform, changed, languageServer }: 
   };
   const anki = async (timeoutMs?: number) => new AnkiConnectClient(await ankiOptions(timeoutMs));
 
+  // Clips by voice and id: the same id is always the same sound, and a missing one stays missing
+  // for the session (the pack is installed with the app or not at all).
+  const clips = new Map<string, Promise<Blob | null>>();
+
   const services: Pick<
     AppServices,
-    "getSettings" | "saveSettings" | "ankiStatus" | "connectAnki" | "ocrAvailable"
+    "getSettings" | "saveSettings" | "ankiStatus" | "connectAnki" | "ocrAvailable" | "audioClip"
   > = {
     getSettings: settings,
 
@@ -173,6 +181,19 @@ export function createLiveSettings({ repo, platform, changed, languageServer }: 
       const outcome = await requestAnkiPermission(await ankiOptions());
       const status = toAnkiStatus(await probeAnki(await ankiOptions()));
       return { denied: outcome.outcome === "denied", status };
+    },
+
+    async audioClip(id: string): Promise<Blob | null> {
+      const voice = (await settings()).voice ?? DEFAULT_SETTINGS.voice;
+      const key = `${voice}/${id}`;
+      let clip = clips.get(key);
+      if (!clip) {
+        clip = (async () => (await nlp()).audioClip(voice, id))();
+        clips.set(key, clip);
+        // An unreachable server is not an answer: ask again next time.
+        clip.catch(() => clips.delete(key));
+      }
+      return clip.catch(() => null);
     },
 
     async ocrAvailable(): Promise<boolean> {

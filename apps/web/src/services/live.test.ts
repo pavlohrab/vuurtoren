@@ -421,3 +421,42 @@ describe("live word meanings", () => {
     expect(glosses[idx[2]!]).toEqual({ text: "tuin" });
   });
 });
+
+describe("live audio", () => {
+  it("keeps the voice settings and fetches clips in that voice, a missing one once", async () => {
+    const asked: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string | URL | Request) => {
+        const u = String(url);
+        asked.push(u);
+        return u.endsWith("/audio/male/word-7f3acd97cd7cde99.mp3")
+          ? new Response(new Uint8Array([1, 2, 3]), { headers: { "content-type": "audio/mpeg" } })
+          : Response.json({ detail: "No such clip." }, { status: 404 });
+      }),
+    );
+    const repo = await createRepository(await createNodeDriver());
+    repoToClose = repo;
+    const first = createLiveServices(repo);
+    expect(await first.getSettings()).toMatchObject({
+      voice: "female",
+      autoplayWord: true,
+      autoplaySentence: false,
+      audioRate: 1,
+    });
+    await first.saveSettings({ voice: "male", audioRate: 0.8, autoplaySentence: true });
+    // Read back from the event log, as after a reload.
+    const services = createLiveServices(repo);
+    expect(await services.getSettings()).toMatchObject({
+      voice: "male",
+      audioRate: 0.8,
+      autoplaySentence: true,
+    });
+    const clip = await services.audioClip("word-7f3acd97cd7cde99");
+    expect(clip?.size).toBe(3);
+    expect(await services.audioClip("sentence-0000000000000000")).toBeNull();
+    expect(await services.audioClip("sentence-0000000000000000")).toBeNull();
+    expect(asked.filter((u) => u.includes("sentence-")).length).toBe(1);
+    expect(asked.some((u) => u.includes("/audio/female/"))).toBe(false);
+  });
+});

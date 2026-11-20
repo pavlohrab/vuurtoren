@@ -30,6 +30,9 @@ if (typeof window !== "undefined") {
     onchange: null,
     dispatchEvent: () => false,
   })) as typeof window.matchMedia;
+  // jsdom cannot play media (it only logs "Not implemented"): the player falls back quietly.
+  HTMLMediaElement.prototype.play = () => Promise.reject(new Error("No audio in tests."));
+  HTMLMediaElement.prototype.pause = () => {};
   // Radix Select uses pointer capture, which jsdom lacks.
   Element.prototype.hasPointerCapture ??= () => false;
   Element.prototype.setPointerCapture ??= () => {};

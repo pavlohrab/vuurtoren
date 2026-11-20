@@ -33,6 +33,10 @@ const vocab = (
     word,
     gloss,
     sentence,
+    // The demo's audio pack has the words' clips (silent) and no sentence clips.
+    spoken: word,
+    wordAudio: `word-demo${cardId}`,
+    sentenceAudio: `sentence-demo${cardId}`,
     front: "",
     back: "",
     audioFront: [],

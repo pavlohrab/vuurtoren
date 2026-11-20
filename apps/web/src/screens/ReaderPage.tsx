@@ -55,6 +55,7 @@ import { TextComplete } from "./TextComplete.js";
 import { errorText } from "../services/errors.js";
 import { usePageHeader, useShell } from "../shell/ShellContext.js";
 import { revealAboveSheet } from "../shell/revealAboveSheet.js";
+import { useReaderAudio } from "../audio/ReaderAudio.js";
 
 const HELP_LABEL: Record<HelpLevel, string> = {
   off: "Off",
@@ -423,6 +424,7 @@ export function ReaderPage({ textId }: { textId: string }) {
   // Side by side: the page's sentences with their English and word pairs, and a word-order
   // note per sentence for the structure view.
   const side = mode === "side";
+  const audio = useReaderAudio(side);
   const englishAI = prefs.englishAI && aiReady;
   const sentenceList = useMemo(() => [...pageSentences].sort((a, b) => a - b), [pageSentences]);
   const pairsQ = useQuery({
@@ -799,6 +801,7 @@ export function ReaderPage({ textId }: { textId: string }) {
           notes={orderNotes}
           selectedToken={selected}
           onTokenClick={onTokenClick}
+          sentenceAction={audio.sentenceButton}
         />
       ) : (
         <Reader
@@ -897,6 +900,7 @@ export function ReaderPage({ textId }: { textId: string }) {
                 loading={selected !== null && !entry && !inspect.isError}
                 error={selected !== null && inspect.isError ? errorText(inspect.error) : null}
                 onRetry={() => void inspect.refetch()}
+                headerAction={audio.wordButton(entry)}
                 {...actions.props(entry)}
               />
               {entry ? (

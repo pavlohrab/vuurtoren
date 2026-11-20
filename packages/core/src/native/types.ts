@@ -93,6 +93,9 @@ export interface NativeNote {
   gloss?: string;
   sentence?: string;
   sentenceTranslation?: string;
+  /** Clip ids (`word-…`, `sentence-…`) of the audio pack, kept from when the note was made. */
+  audio?: string;
+  sentenceAudio?: string;
 }
 
 export interface NativeCard {

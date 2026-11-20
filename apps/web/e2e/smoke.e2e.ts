@@ -12,7 +12,8 @@ import { SAMPLE_TEXT, fakeNlp } from "./fakeNlp.js";
 function watchErrors(page: Page): string[] {
   const errors: string[] = [];
   page.on("console", (m) => {
-    if (m.type() === "error") errors.push(m.text());
+    // A word without a recorded clip is a 404 the browser logs; the app then uses the system voice.
+    if (m.type() === "error" && !m.location().url.includes("/nlp/audio/")) errors.push(m.text());
   });
   page.on("pageerror", (e) => errors.push(e.message));
   return errors;
@@ -122,11 +123,11 @@ test("native mode: start with the most common words, offline data in the app", a
   await page.getByRole("radio", { name: /^No/ }).check();
   await page.getByRole("button", { name: "Continue" }).click();
   await page.getByRole("button", { name: "Save and continue" }).click();
-  await page.getByRole("radio", { name: /About 500 words/ }).check();
+  await page.getByRole("radio", { name: /^Level 2/ }).check();
   await page.getByRole("button", { name: "Continue" }).click();
   await page.getByRole("button", { name: "Go to the Library" }).click();
   await page.goto("/review");
-  // Words 1–500 are known; the first new card is the most common word after them.
+  // New words start at level 2: the first new card is the most common word after 500.
   await expect(page.locator(".review-word")).toBeVisible();
   await expect(page.locator(".review-word")).not.toContainText(/^(de|zijn|van)$/);
   expect(errors).toEqual([]);

@@ -48,7 +48,8 @@ through unfamiliar water, and that is what I want this app to do for a text.
 - Side by side: each sentence with its English, word paired with word, and a structure view
 - Import from a web address, PDF, photo (OCR) or pasted text
 - Built-in flashcards with FSRS, tuned to your own reviews
-- Start with the 5000 most common Dutch words, with meanings and example sentences, from your level
+- Start with the 5000 most common Dutch words, with meanings and example sentences, from the level you choose
+- Hear words and sentences: recorded clips (female or male voice) where there are any, else your system's voice
 - Anki: import and export `.apkg` files, or keep studying in Anki through AnkiConnect
 - Click any word for its meaning and forms, offline
 - Grammar marked in your texts: inversion, separable verbs, the perfect tense and more

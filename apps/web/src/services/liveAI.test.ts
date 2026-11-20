@@ -76,6 +76,10 @@ async function setup() {
     glossClozes: false,
     grammarMarks: true,
     reviewWeek: [1, 1, 1, 1, 1, 1, 1],
+    voice: "female",
+    autoplayWord: true,
+    autoplaySentence: false,
+    audioRate: 1,
   };
   const ai = createLiveAI({
     repo,

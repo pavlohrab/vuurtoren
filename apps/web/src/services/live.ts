@@ -174,6 +174,7 @@ export function createLiveServices(
     optimizer: workerOptimizer,
     sqlite: browserSqlite,
     reviewWeek: async () => (await settings()).reviewWeek ?? [],
+    audioClip: (id) => config.services.audioClip(id),
   });
 
   /** Another device changed the data: drop everything derived from it. */

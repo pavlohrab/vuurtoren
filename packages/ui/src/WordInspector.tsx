@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import type { WordState } from "@app/core";
 import { AddToAnki, type DeckOption, deckName } from "./AddToAnki.js";
 import { Button } from "./Button.js";
@@ -30,6 +31,8 @@ export interface WordInspectorProps {
   addDeck?: AddDeckChoice | undefined;
   /** What to say when no word is selected. */
   emptyText?: string;
+  /** Shown beside the headword (a play button). */
+  headerAction?: ReactNode;
 }
 
 /** Destination deck of Add to Anki with the picker's options. */
@@ -74,6 +77,7 @@ export function WordInspector({
   onRetry,
   addDeck,
   emptyText = "Select a word in the text to see its details.",
+  headerAction,
 }: WordInspectorProps) {
   if (!entry && error) {
     return (
@@ -101,14 +105,17 @@ export function WordInspector({
   return (
     <div className="k-inspector" aria-label="Word details">
       <header>
-        <h2 className="k-inspector-surface" lang="nl">
-          {entry.article ? (
-            <>
-              <span style={{ color: "var(--ink-muted)" }}>{entry.article}</span>{" "}
-            </>
-          ) : null}
-          {entry.surface}
-        </h2>
+        <div className="k-inspector-head">
+          <h2 className="k-inspector-surface" lang="nl">
+            {entry.article ? (
+              <>
+                <span style={{ color: "var(--ink-muted)" }}>{entry.article}</span>{" "}
+              </>
+            ) : null}
+            {entry.surface}
+          </h2>
+          {headerAction}
+        </div>
         {entry.surface.toLocaleLowerCase() !== entry.lemma.toLocaleLowerCase() ? (
           <div className="k-inspector-lemma">
             from <span lang="nl">{entry.lemma}</span>

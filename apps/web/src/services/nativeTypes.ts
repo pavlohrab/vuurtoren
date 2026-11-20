@@ -22,6 +22,11 @@ export interface ReviewCard {
   gloss?: string;
   sentence?: string;
   sentenceTranslation?: string;
+  /** Vocabulary notes: what the word's clip says ("het huis"), for the system voice too. */
+  spoken?: string;
+  /** Clip ids of the audio pack (`word-…`, `sentence-…`); the clip itself may not exist. */
+  wordAudio?: string;
+  sentenceAudio?: string;
   /** Rendered sides (HTML, not yet sanitised): clozes and templates; vocab notes' extra fields. */
   front: string;
   back: string;
