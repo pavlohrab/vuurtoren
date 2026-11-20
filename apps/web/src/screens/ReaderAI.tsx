@@ -1,18 +1,12 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
 import { Button, Spinner } from "@app/ui";
 import type { ExplainGrammar } from "../services/aiTypes.js";
 import { useServices } from "../services/context.js";
 import { errorText } from "../services/errors.js";
+import { useAIReady } from "./StoryForm.js";
 
 const pct = (v: number | null) => (v === null ? "not scored" : `${(v * 100).toFixed(1)}%`);
-
-/** True once an AI provider is usable; the helpers below render nothing otherwise. */
-export function useAIReady(): boolean {
-  const services = useServices();
-  const q = useQuery({ queryKey: ["ai-status"], queryFn: () => services.aiStatus() });
-  return q.data?.configured === true;
-}
 
 /** "Explain this sentence" for the sentence of the selected word (shown under the inspector). */
 export function ExplainSentence({

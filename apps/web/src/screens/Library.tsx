@@ -40,6 +40,7 @@ import { TextDetailsDialog } from "./library/TextDetailsDialog.js";
 import { readLastText } from "../lastText.js";
 import "./library/library.css";
 import { errorText } from "../services/errors.js";
+import { plural } from "../format.js";
 
 type View = "shelves" | "all";
 const VIEW_KEY = "kenning.library.view";
@@ -70,8 +71,6 @@ function draggedIds(e: DragEvent): string[] | null {
     return null;
   }
 }
-
-const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
 /**
  * Library: a bookshelf. Rows of covers (Reading now, the learner's shelves, To read, Finished,

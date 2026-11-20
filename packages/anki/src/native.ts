@@ -7,6 +7,7 @@
 import {
   DEFAULT_DECK_OPTIONS,
   type NativeCard,
+  escapeHtml,
   type NativeNote,
   type NativeNotetype,
   knownSchedule,
@@ -23,15 +24,7 @@ import {
   markWordKnown,
   studyWordFirst,
 } from "./commands.js";
-import {
-  NOTE_BACK,
-  NOTE_CSS,
-  NOTE_FIELDS,
-  NOTE_FRONT,
-  NOTE_TYPE,
-  escapeHtml,
-  onlyBoldTags,
-} from "./note.js";
+import { NOTE_BACK, NOTE_CSS, NOTE_FIELDS, NOTE_FRONT, NOTE_TYPE, onlyBoldTags } from "./note.js";
 import {
   type AddWordRequest,
   type AddWordResult,

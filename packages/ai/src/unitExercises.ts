@@ -28,6 +28,7 @@ import {
 import { coverageReport, findTargets } from "./coverage.js";
 import type { SentenceGrammarHit } from "./examples.js";
 import { extractJson } from "./json.js";
+import { asString, wordCount } from "./util.js";
 import type { AIProvider, SystemPrompt, Usage } from "./types.js";
 
 export type UnitExerciseKind = "gapfill" | "sentence-building" | "questions" | "matching";
@@ -80,8 +81,6 @@ export interface UnitExerciseResult {
 const MIN_WORDS = 4;
 const MAX_WORDS = 14;
 const MAX_TARGETS = 12;
-
-const wordCount = (s: string) => s.match(/\p{L}+(?:['’-]\p{L}+)*/gu)?.length ?? 0;
 
 function buildUnitExercisePrompt(s: UnitExerciseSetup): SystemPrompt {
   const lang = s.language ?? "Dutch";
@@ -152,8 +151,6 @@ export function sentenceChunks(sentence: string, max = 6): string[] {
   for (let i = 0; i < words.length; i += size) out.push(words.slice(i, i + size).join(" "));
   return out;
 }
-
-const asString = (v: unknown) => (typeof v === "string" ? v.trim() : "");
 
 interface Parsed {
   gapfill: { sentence: string; answer: string; lemma: string }[];

@@ -6,6 +6,7 @@
 import type { AnalyzedToken, LearnerModel } from "@app/core";
 import { coverageReport, type CoverageReport } from "./coverage.js";
 import { extractJson } from "./json.js";
+import { addUsage, asString } from "./util.js";
 import type { AIProvider, ChatMessage, Usage } from "./types.js";
 
 export type ExamItemPart = "lezen" | "luisteren";
@@ -89,8 +90,6 @@ export function buildExamItemPrompt(s: ExamItemSetup): string {
   ].join("\n");
 }
 
-const asString = (v: unknown): string => (typeof v === "string" ? v.trim() : "");
-
 /** Validate the model's JSON into an item, or null when it is not usable. */
 export function parseExamItem(text: string, part: ExamItemPart): GeneratedExamItem | null {
   const j = extractJson(text);
@@ -136,15 +135,6 @@ export function parseExamItem(text: string, part: ExamItemPart): GeneratedExamIt
 /** The Dutch text whose coverage is checked: the text, or the spoken lines. */
 function itemText(item: GeneratedExamItem, part: ExamItemPart): string {
   return part === "luisteren" ? item.lines.map((l) => l.text).join("\n") : item.text;
-}
-
-function addUsage(a: Usage, b: Usage | undefined): Usage {
-  if (!b) return a;
-  return {
-    inputTokens: a.inputTokens + b.inputTokens,
-    outputTokens: a.outputTokens + b.outputTokens,
-    cachedTokens: (a.cachedTokens ?? 0) + (b.cachedTokens ?? 0),
-  };
 }
 
 /** Write one practice item: ask, check coverage, rewrite once if needed (kept if not worse). */

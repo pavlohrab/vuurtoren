@@ -1,6 +1,6 @@
 /**
- * Pieces shared by every driver: a synchronous-engine interface, and the generic
- * transaction logic that turns an `exec` function into a full `SqlDriver`.
+ * Pieces shared by every driver: a synchronous-engine interface, the generic transaction
+ * logic that turns an `exec` function into a full `SqlDriver`, and chunked inserts.
  */
 import type { SqlDriver, SqlValue } from "./types.js";
 
@@ -61,4 +61,20 @@ export function driverFromSync(db: SyncDb): SqlDriver {
       return Promise.resolve();
     },
   );
+}
+
+const INSERT_CHUNK = 100;
+
+/** Multi-row INSERT in chunks (keeps worker round trips low for big Anki snapshots). */
+export async function insertMany(
+  driver: SqlDriver,
+  head: string,
+  cols: number,
+  rows: readonly SqlValue[][],
+): Promise<void> {
+  for (let i = 0; i < rows.length; i += INSERT_CHUNK) {
+    const chunk = rows.slice(i, i + INSERT_CHUNK);
+    const ph = `(${Array(cols).fill("?").join(",")})`;
+    await driver.exec(`${head} VALUES ${Array(chunk.length).fill(ph).join(",")}`, chunk.flat());
+  }
 }
