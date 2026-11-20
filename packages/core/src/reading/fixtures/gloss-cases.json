@@ -1,0 +1,30 @@
+{
+  "_comment": "Shared by gloss.test.ts and server/nlp/tests/test_starter.py: the TypeScript gloss rules and their Python port (vuurtoren_nlp.starter) must agree.",
+  "glossHead": [
+    ["what (asking for a subject complement)", "what"],
+    ["to call; to telephone someone", "to call"],
+    ["what: e.g. asking for an object", "what"],
+    ["house [building]", "house"]
+  ],
+  "shortGloss": [
+    [["what (asking for a subject complement)", "what (asking for a sentence object)", "something"], 1, "what"],
+    [["to go, to move from one place to another", "to lead"], 1, "to go"],
+    [["having an inviting and friendly ambiance; cosy, nice, pleasant, sociable"], 1, "cosy, nice"],
+    [["also, too, moreover"], 1, "also, too"],
+    [["used to introduce a clause that expresses a reason or cause", "because"], 1, "because"],
+    [["to call (on the phone)", "to ring", "to phone"], 2, "to call, to ring"],
+    [["a small boat, especially one used on canals in the past"], 1, "a small boat"],
+    [["a person who takes care of the lighthouse and its lamp at night"], 1, "a person who takes care of the…"],
+    [["the opposite of not, used to add positive emphasis"], 1, "the opposite of not"],
+    [[], 1, ""]
+  ],
+  "formOfTarget": [
+    ["unstressed form of zij", "zij"],
+    ["neuter singular of de", "de"],
+    ["first/second/third-person singular present indicative of zullen", "zullen"],
+    ["adverbial form of met", "met"],
+    ["inflection of huizen: first-person singular present indicative", "huizen"],
+    ["to go, to move from one place to another", null],
+    ["a house, home", null]
+  ]
+}

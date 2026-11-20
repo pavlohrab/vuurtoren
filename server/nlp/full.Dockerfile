@@ -55,7 +55,8 @@ RUN set -eu; \
     fi; \
     rm -rf /ctx; \
     if [ -n "$PACKS_URL" ]; then \
-      python scripts/build_packs.py --out /opt/vuurtoren-packs --download "$PACKS_URL"; exit 0; \
+      python scripts/build_packs.py --out /opt/vuurtoren-packs --download "$PACKS_URL"; \
+      python scripts/build_packs.py --grammar-from /opt/vuurtoren-packs; exit 0; \
     fi; \
     args=""; [ "$TATOEBA_ACCEPT_NEW" = "0" ] || args="--accept-new-upstream"; \
     python scripts/build_sentences.py --processes 4 --download-dir /tmp/tatoeba \

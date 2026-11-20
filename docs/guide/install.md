@@ -30,7 +30,8 @@ those exercises are off.
 
 Vuurtoren asks one question: **Do you use Anki?**
 
-- **No:** Vuurtoren keeps your words and your reviews. You need nothing else.
+- **No:** Vuurtoren keeps your words and your reviews. You need nothing else. It offers cards for
+  the most common Dutch words, starting from how much Dutch you already know.
 - **Yes:** Vuurtoren can bring your Anki decks in, or keep working with Anki. To work with Anki,
   keep Anki open with the [AnkiConnect](https://ankiweb.net/shared/info/2055492159) add-on
   (code `2055492159`).

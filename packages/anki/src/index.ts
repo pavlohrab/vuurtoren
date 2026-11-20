@@ -11,3 +11,4 @@ export * from "./commands.js";
 export * from "./apkg/index.js";
 export * from "./native.js";
 export * from "./toAnki.js";
+export * from "./starter.js";

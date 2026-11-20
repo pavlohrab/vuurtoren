@@ -126,10 +126,46 @@ describe("onboarding", () => {
     await user.click(cont());
     expect(await screen.findByRole("heading", { name: "Where new words go" })).toBeVisible();
     await user.click(screen.getByRole("button", { name: "Save and continue" }));
-    expect(await screen.findByRole("heading", { name: "Words you already know" })).toBeVisible();
+    expect(await screen.findByRole("heading", { name: "The most common words" })).toBeVisible();
     const p = saveLanguageProfile.mock.calls[0]![0];
     expect(p).toMatchObject({ mode: "native", sources: [] });
     expect(ankiStatus).not.toHaveBeenCalled();
+    expect(screen.queryByText(/Anki/)).toBeNull();
+  });
+
+  it("no Anki: starts with the most common words from the learner's level", async () => {
+    const addStarterLevels = vi.fn(async () => ({ added: 2000, known: 1000, skipped: 0 }));
+    const { user } = setup({ addStarterLevels });
+    await user.click(await screen.findByRole("radio", { name: /^No/ }));
+    await user.click(cont());
+    await user.click(await screen.findByRole("button", { name: "Save and continue" }));
+    expect(await screen.findByRole("heading", { name: "The most common words" })).toBeVisible();
+    expect(
+      screen.getByRole("checkbox", { name: /Start with the most common words/ }),
+    ).toBeChecked();
+    expect(screen.getByRole("radio", { name: /Just starting/ })).toBeChecked();
+    await user.click(screen.getByRole("radio", { name: /About 1000 words/ }));
+    expect(screen.getByText(/words 1001–3000 come as new cards/)).toBeVisible();
+    await user.click(cont());
+    await waitFor(() =>
+      expect(addStarterLevels).toHaveBeenCalledWith({ levels: [3, 4, 5, 6], knownThrough: 1000 }),
+    );
+    expect(await screen.findByRole("heading", { name: "Your first text" })).toBeVisible();
+  });
+
+  it("no Anki: the most common words can be left out", async () => {
+    const addStarterLevels = vi.fn(async () => ({ added: 0, known: 0, skipped: 0 }));
+    const { user } = setup({ addStarterLevels });
+    await user.click(await screen.findByRole("radio", { name: /^No/ }));
+    await user.click(cont());
+    await user.click(await screen.findByRole("button", { name: "Save and continue" }));
+    await user.click(
+      await screen.findByRole("checkbox", { name: /Start with the most common words/ }),
+    );
+    expect(screen.queryByRole("radio", { name: /Just starting/ })).toBeNull();
+    await user.click(cont());
+    expect(await screen.findByRole("heading", { name: "Your first text" })).toBeVisible();
+    expect(addStarterLevels).not.toHaveBeenCalled();
   });
 
   it("import from Anki: confirmed decks are moved into Vuurtoren", async () => {

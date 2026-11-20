@@ -47,6 +47,7 @@ through unfamiliar water, and that is what I want this app to do for a text.
 - Reading at your level: Read, Cloze and Gloss modes, with a set number of new words per page
 - Import from a web address, PDF, photo (OCR) or pasted text
 - Built-in flashcards with FSRS, tuned to your own reviews
+- Start with the 5000 most common Dutch words, with meanings and example sentences, from your level
 - Anki: import and export `.apkg` files, or keep studying in Anki through AnkiConnect
 - Click any word for its meaning and forms, offline
 - Grammar marked in your texts: inversion, separable verbs, the perfect tense and more
@@ -88,5 +89,6 @@ More: [architecture](docs/architecture.md) Â· [algorithms](docs/algorithms.md) Â
 
 ## Licence
 
-MIT or Apache-2.0, at your option. Vuurtoren is an independent project; it talks to Anki through
-the AnkiConnect add-on.
+MIT or Apache-2.0, at your option. The content in `content/` (the starter word list) is CC BY-SA
+4.0; see [content/LICENSE](content/LICENSE). Vuurtoren is an independent project; it talks to Anki
+through the AnkiConnect add-on.
