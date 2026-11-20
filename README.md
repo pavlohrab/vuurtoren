@@ -24,33 +24,19 @@
 
 ## Why Kenning
 
-Language learners have relied on two tools for a long time. The first is reading: books,
-articles, graded readers. The second is flashcards, which for many of us means Anki. Both work,
-and while learning Dutch I used both. The problem is that they never talk to each other. My
-decks knew a few thousand words but had no idea what I was reading, and the article in front of
-me had no idea which of its words I already knew. So reading meant reaching for a dictionary
-every other line, and flashcards meant learning words without the sentences I had met them in.
+While learning Dutch I used two tools: reading and Anki. The problem is that they never talk to
+each other. My decks had no idea what I was reading, and the text had no idea which words I
+already knew.
 
-Kenning is my attempt to bring the two together. It keeps track of the words you know, either in
-its own flashcards or in your Anki decks, and uses them to make any text readable at your level.
-Words you know are left alone. A few new words on each page are marked for you to learn, and the
-rest get a short translation, so you can keep going. When a word is worth keeping, one click
-turns it into a flashcard, together with the sentence you found it in. Reviews are scheduled with
-FSRS, and the next time that word shows up in a text, you will probably not need the
-translation.
+Kenning brings the two together. It knows your words, from its own flashcards or your Anki
+decks, and uses them to make any text readable at your level: an article, a PDF, a photo of a
+page or your course book. Known words stay as they are, a few new ones are marked to learn, and
+the rest get a short translation. One click turns a word into a flashcard, with the sentence you
+found it in. There are also exercises, grammar from A1 to C1 and practice for the A2
+inburgeringsexamen.
 
-The text can be almost anything: an article, a PDF, an EPUB, a photo of a page, or the textbook
-from your Dutch course. Around the reader there are exercises (de/het, separable verbs, the
-perfect tense, word order), grammar topics from A1 to C1 with examples taken from your own
-texts, and practice for the A2 inburgeringsexamen.
-
-## Your data
-
-Kenning is local-first and self-hosted. Everything lives in one file on your device, or on your
-own server if you want the same data on all your devices. Sync is encrypted with your passphrase
-before anything leaves the device, so the place you sync through cannot read it. The dictionary
-and the translation model run offline. AI is optional: if you would like conversation practice
-or stories written at your level, you bring your own key.
+Kenning is local-first and self-hosted. Your data lives on your device or your own server, sync
+is encrypted, and AI is optional, with your own key.
 
 ## Get Kenning
 
