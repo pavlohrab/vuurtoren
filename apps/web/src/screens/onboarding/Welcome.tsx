@@ -19,6 +19,7 @@ import {
   defaultProfile,
   rootDeck,
 } from "@app/core";
+import { STARTER_LEVELS } from "@app/anki";
 import { Button, Spinner, Logo } from "@app/ui";
 import { useServices } from "../../services/context.js";
 import type { AnkiStatus } from "../../services/types.js";
@@ -79,22 +80,15 @@ interface Draft {
   profile: LanguageProfile;
   /** Native: start with the most common words (starter levels). */
   starter: boolean;
-  /** Native: how much Dutch the learner knows (a key of PLACEMENT). */
-  level: Placement;
+  /** Native: the starter level new words start from (one of START_LEVELS). */
+  from: number;
 }
 
 /**
- * The placement question of native mode: the words through `known` count as known (Mark known),
- * and these starter levels (500 words each) become new cards.
+ * Native mode: where new words start. Every level is added; the levels below the start get no
+ * new cards until the learner turns them on (Settings). Nothing is marked known.
  */
-const PLACEMENT = {
-  start: { label: "Just starting", known: 0, levels: [1, 2, 3, 4, 5, 6] },
-  "500": { label: "About 500 words", known: 500, levels: [2, 3, 4, 5, 6] },
-  "1000": { label: "About 1000 words", known: 1000, levels: [3, 4, 5, 6] },
-  "2000": { label: "About 2000 words", known: 2000, levels: [5, 6] },
-  more: { label: "More", known: 3000, levels: [7, 8, 9, 10] },
-} as const;
-type Placement = keyof typeof PLACEMENT;
+const START_LEVELS = [1, 2, 3, 5, 7] as const;
 
 const fresh = (): Draft => ({
   step: PICK_LANGUAGE ? "language" : "uses",
@@ -106,7 +100,7 @@ const fresh = (): Draft => ({
   move: true,
   profile: defaultProfile("nl"),
   starter: true,
-  level: "start",
+  from: 1,
 });
 
 function readDraft(): Draft {
@@ -253,12 +247,13 @@ export function Welcome() {
     },
   });
 
-  // ---- Native: the most common words, from the learner's level
+  // ---- Native: the most common words, all levels, new cards from the chosen one
   const starter = useMutation({
-    mutationFn: () => {
-      const p = PLACEMENT[draft.level];
-      return services.addStarterLevels({ levels: [...p.levels], knownThrough: p.known });
-    },
+    mutationFn: () =>
+      services.addStarterLevels({
+        levels: Array.from({ length: STARTER_LEVELS }, (_, i) => i + 1),
+        from: draft.from,
+      }),
     onSuccess: async () => {
       for (const k of ["learner", "review", "words", "home"]) {
         await qc.invalidateQueries({ queryKey: [k] });
@@ -583,8 +578,9 @@ export function Welcome() {
                 The most common words
               </h1>
               <p className="ob-lede">
-                Vuurtoren can give you cards for the 3000 most common Dutch words, 500 at a time,
-                each with an example sentence. New cards come 20 a day; you can change that later.
+                Vuurtoren can give you cards for the almost 5000 most common Dutch words, in levels
+                of 500, each with an example sentence. New cards come 20 a day, one level at a time;
+                you can change that later.
               </p>
               <label className="ob-check">
                 <input
@@ -601,15 +597,15 @@ export function Welcome() {
               </label>
               {draft.starter ? (
                 <fieldset className="ob-choices">
-                  <legend className="ob-question">How much Dutch do you know?</legend>
-                  {(Object.keys(PLACEMENT) as Placement[]).map((key) => (
+                  <legend className="ob-question">Where should new words start?</legend>
+                  {START_LEVELS.map((level) => (
                     <Choice
-                      key={key}
-                      name="level"
-                      checked={draft.level === key}
-                      onChange={() => setDraft({ level: key })}
-                      title={PLACEMENT[key].label}
-                      sub={placementLine(key)}
+                      key={level}
+                      name="from"
+                      checked={draft.from === level}
+                      onChange={() => setDraft({ from: level })}
+                      title={`Level ${level}`}
+                      sub={startLine(level)}
                     />
                   ))}
                 </fieldset>
@@ -747,13 +743,11 @@ export function Welcome() {
 }
 
 /** What a placement answer does, in one line. */
-function placementLine(key: Placement): string {
-  const p = PLACEMENT[key];
-  const from = (p.levels[0] - 1) * 500 + 1;
-  const to = p.levels[p.levels.length - 1]! * 500;
-  return p.known === 0
-    ? `Words 1–${to} come as new cards.`
-    : `Words 1–${p.known} count as known; words ${from}–${to} come as new cards.`;
+function startLine(level: number): string {
+  const from = (level - 1) * 500 + 1;
+  return level === 1
+    ? "Words 1–500 first: just starting."
+    : `Words ${from}–${level * 500} first. Words 1–${from - 1} wait until you turn them on; the words you know get marked as you read.`;
 }
 
 /** One radio choice with a title and a line under it. */

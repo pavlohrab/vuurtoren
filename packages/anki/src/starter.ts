@@ -1,8 +1,8 @@
 /**
  * Starter words in native mode: the most common Dutch words (`content/starter/nl-5000.json`) as
  * Vuurtoren's own cards, in levels of 500 ("Vuurtoren · Woorden 1–500" …). Notes are the same
- * type as Add to my words, new cards are ordered by rank, and a placement marks the words below
- * a rank known with the Mark known schedule.
+ * type as Add to my words and new cards are ordered by rank. Nothing is marked known here: the
+ * reader's evidence does that as the learner reads.
  *
  * Idempotent: a word the learner already has a card for is skipped, and starter notes and cards
  * have fixed ids (from the rank), so adding a level twice, or on two devices before they sync,
@@ -14,15 +14,10 @@ import {
   type NativeCard,
   type NativeNote,
   escapeHtml,
-  knownSchedule,
   normalizeKey,
 } from "@app/core";
 import type { RecordEvent } from "./commands.js";
-import {
-  type NativeCardsChangedEvent,
-  type NativeWordAddedEvent,
-  VUURTOREN_NOTETYPE,
-} from "./native.js";
+import { type NativeWordAddedEvent, VUURTOREN_NOTETYPE } from "./native.js";
 import { highlightSentence } from "./note.js";
 
 /** One word of the starter list. */
@@ -43,9 +38,7 @@ export interface StarterWord {
 }
 
 export const STARTER_LEVEL_SIZE = 500;
-/** Levels added by default (1–3000). */
-export const STARTER_CORE_LEVELS = 6;
-/** All levels (1–5000); 7–10 are the extended levels. */
+/** All levels: the list's words in levels of 500 (the last one may be shorter). */
 export const STARTER_LEVELS = 10;
 /** Notes per event, as in a package import. */
 const NOTES_PER_EVENT = 300;
@@ -107,8 +100,6 @@ export interface AddStarterRequest {
   words: readonly StarterWord[];
   /** Levels (1-based) whose words become new cards. */
   levels: readonly number[];
-  /** Words up to this rank become known (placement): added as known, or their new cards marked. */
-  knownThrough?: number;
   /** The cards the learner already has, by word key. */
   held: ReadonlyMap<string, readonly NativeCard[]>;
   /** Tags of the notes (the profile's tags). */
@@ -118,8 +109,6 @@ export interface AddStarterRequest {
 export interface AddStarterResult {
   /** New cards added. */
   added: number;
-  /** Words marked known (added as known, or their new cards marked). */
-  known: number;
   /** Words skipped because the learner already has them. */
   skipped: number;
   /** Decks that received notes. */
@@ -127,52 +116,33 @@ export interface AddStarterResult {
 }
 
 /**
- * Add starter levels and the placement as events: new notes in batches of 300 per
- * `NativeNotesAdded` (new decks start closed, see `openStarterLevel`), and one
- * `NativeCardsChanged` that marks known the new cards the learner already had below the
- * placement. Words already held are not added again.
+ * Add starter levels as events: new notes in batches of 300 per `NativeNotesAdded`; new decks
+ * start closed (see `openStarterLevel`). Words already held are not added again.
  */
 export async function addStarterWords(
-  record: RecordEvent<NativeWordAddedEvent | NativeCardsChangedEvent>,
+  record: RecordEvent<NativeWordAddedEvent>,
   req: AddStarterRequest,
-  now: number = Date.now(),
 ): Promise<AddStarterResult> {
-  const knownThrough = req.knownThrough ?? 0;
   const levels = new Set(req.levels);
   const tags = ["vuurtoren", ...(req.tags ?? []), "vuurtoren::starter"];
   const notes: NativeNote[] = [];
   const cards: NativeCard[] = [];
-  const marks: NativeCardsChangedEvent["changes"] = [];
   let skipped = 0;
-  let known = 0;
-  let added = 0;
   for (const w of [...req.words].sort((a, b) => a.rank - b.rank)) {
-    const asKnown = w.rank <= knownThrough;
-    if (!asKnown && !levels.has(levelOfRank(w.rank))) continue;
-    const held = req.held.get(starterKey(w));
-    if (held?.length) {
-      const fresh = held.filter((c) => !c.schedule);
-      if (asKnown && fresh.length) {
-        known++;
-        for (const c of fresh)
-          marks.push({ cardId: c.id, schedule: knownSchedule(undefined, now), suspended: false });
-      } else skipped++;
+    if (!levels.has(levelOfRank(w.rank))) continue;
+    if (req.held.get(starterKey(w))?.length) {
+      skipped++;
       continue;
     }
     const note = starterNote(w, tags);
-    const card: NativeCard = {
+    notes.push(note);
+    cards.push({
       id: note.id + 1,
       noteId: note.id,
       ord: 0,
       deck: starterDeck(levelOfRank(w.rank)),
       position: w.rank,
-    };
-    if (asKnown) {
-      card.schedule = knownSchedule(undefined, now);
-      known++;
-    } else added++;
-    notes.push(note);
-    cards.push(card);
+    });
   }
   const decks = [...new Set(cards.map((c) => c.deck))];
   for (let i = 0; i < notes.length; i += NOTES_PER_EVENT) {
@@ -187,29 +157,54 @@ export async function addStarterWords(
       cards: chunk,
     });
   }
-  if (marks.length) {
-    await record({ type: "NativeCardsChanged", lang: req.lang, reason: "known", changes: marks });
-  }
-  return { added, known, skipped, decks };
+  return { added: notes.length, skipped, decks };
+}
+
+type StarterDeckState = { name: string; options: DeckOptions; fresh: number };
+
+/** Starter decks with new cards left, lowest level first. */
+function waitingLevels(decks: readonly StarterDeckState[]) {
+  return decks
+    .map((d) => ({ ...d, level: starterLevelOf(d.name) }))
+    .filter((d): d is StarterDeckState & { level: number } => d.fresh > 0 && d.level !== null)
+    .sort((a, b) => a.level - b.level);
+}
+
+const opened = (d: StarterDeckState) => ({
+  deck: d.name,
+  options: { ...d.options, newPerDay: DEFAULT_DECK_OPTIONS.newPerDay },
+});
+
+/**
+ * Which starter deck to open: starter levels bring new cards one at a time, in order, from the
+ * learner's start level (`from`; the levels below it get no new cards). When no starter deck
+ * from there with new cards left adds any a day, the lowest such deck gets the usual new cards
+ * a day. Null when nothing changes (one is open already, or none has new cards).
+ */
+export function openStarterLevel(
+  decks: readonly StarterDeckState[],
+  from = 1,
+): { deck: string; options: DeckOptions } | null {
+  const waiting = waitingLevels(decks).filter((d) => d.level >= from);
+  if (!waiting.length || waiting.some((d) => d.options.newPerDay > 0)) return null;
+  return opened(waiting[0]!);
 }
 
 /**
- * Which starter deck to open: starter levels bring new cards one at a time, in order. When no
- * starter deck with new cards left adds any a day, the lowest such deck gets the usual new
- * cards a day. Null when nothing changes (one is open already, or none has new cards).
+ * A new start level: the first level from `from` with new cards left opens now, and every other
+ * starter deck that adds new cards closes, so one level at a time still holds.
  */
-export function openStarterLevel(
-  decks: readonly { name: string; options: DeckOptions; fresh: number }[],
-): { deck: string; options: DeckOptions } | null {
-  const waiting = decks
-    .filter((d) => d.fresh > 0 && starterLevelOf(d.name) !== null)
-    .sort((a, b) => starterLevelOf(a.name)! - starterLevelOf(b.name)!);
-  if (!waiting.length || waiting.some((d) => d.options.newPerDay > 0)) return null;
-  const first = waiting[0]!;
-  return {
-    deck: first.name,
-    options: { ...first.options, newPerDay: DEFAULT_DECK_OPTIONS.newPerDay },
-  };
+export function startStarterFrom(
+  decks: readonly StarterDeckState[],
+  from: number,
+): { deck: string; options: DeckOptions }[] {
+  const waiting = waitingLevels(decks);
+  const first = waiting.find((d) => d.level >= from);
+  const changes = waiting
+    .filter((d) => d !== first && d.options.newPerDay > 0)
+    .map((d) => ({ deck: d.name, options: { ...d.options, newPerDay: 0 } }));
+  if (first && first.options.newPerDay === 0) changes.push(opened(first));
+  return changes;
 }
 
 /** The levels a learner has, from their deck names. */

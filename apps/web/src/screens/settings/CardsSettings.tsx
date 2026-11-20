@@ -126,7 +126,10 @@ function NativeCards() {
   );
 }
 
-/** The most common words, 500 a level: add the next level, or the extended levels (3001–5000). */
+/**
+ * The most common words, 500 a level: add the levels, and choose the level new words start
+ * from (the levels below it get no new cards).
+ */
 function StarterWords() {
   const services = useServices();
   const qc = useQueryClient();
@@ -135,21 +138,29 @@ function StarterWords() {
     queryKey: ["review", "starter"],
     queryFn: () => services.starterLevels(),
   });
+  const refresh = async () => {
+    for (const k of AFFECTED) await qc.invalidateQueries({ queryKey: [k] });
+  };
   const add = useMutation({
     mutationFn: (which: number[]) => services.addStarterLevels({ levels: which }),
     onSuccess: async (r) => {
-      for (const k of AFFECTED) await qc.invalidateQueries({ queryKey: [k] });
+      await refresh();
       toast(
         "Words added",
         `${plural(r.added, "new card")}${r.skipped ? `; ${plural(r.skipped, "word")} you already had` : ""}.`,
       );
     },
   });
+  const start = useMutation({
+    mutationFn: (level: number) => services.setStarterFrom(level),
+    onSuccess: async () => {
+      await refresh();
+      toast("Saved");
+    },
+  });
   if (!levels.data) return null;
-  const { held, core, all } = levels.data;
+  const { held, all, from } = levels.data;
   const missing = Array.from({ length: all }, (_, i) => i + 1).filter((l) => !held.includes(l));
-  const next = missing[0] ?? null;
-  const extended = missing.filter((l) => l > core);
   const range = (l: number) => `${(l - 1) * 500 + 1}–${l * 500}`;
   return (
     <section className="stack" aria-labelledby="starter-h">
@@ -161,23 +172,32 @@ function StarterWords() {
           ? `You have ${held.length} of the ${all} levels of 500 words. A level starts when the one before it has no new cards left.`
           : "Cards for the most common Dutch words, 500 at a time, each with an example sentence. A level starts when the one before it has no new cards left."}
       </p>
-      <div className="row">
-        {next !== null ? (
-          <Button disabled={add.isPending} onClick={() => add.mutate([next])}>
+      {held.length ? (
+        <div style={{ maxWidth: 320 }}>
+          <Select
+            label="Start new words from level"
+            value={String(from)}
+            disabled={start.isPending}
+            options={Array.from({ length: all }, (_, i) => ({
+              value: String(i + 1),
+              label: `Level ${i + 1} (words ${range(i + 1)})`,
+            }))}
+            onValueChange={(v) => start.mutate(Number(v))}
+          />
+          <p className="k-hint">The levels below it get no new cards.</p>
+        </div>
+      ) : null}
+      {missing.length ? (
+        <div className="row">
+          <Button disabled={add.isPending} onClick={() => add.mutate(missing)}>
             {add.isPending ? <Spinner label="Adding words" /> : null}
-            {held.length ? `Add the next level (words ${range(next)})` : `Add words ${range(next)}`}
+            {held.length ? "Add the missing levels" : "Add the most common words"}
           </Button>
-        ) : null}
-        {extended.length && next !== null && next <= core ? (
-          <Button variant="ghost" disabled={add.isPending} onClick={() => add.mutate(extended)}>
-            Add the extended levels (words {core * 500 + 1}–{all * 500})
-          </Button>
-        ) : null}
-        {next === null ? <span className="k-hint">You have all {all * 500} words.</span> : null}
-      </div>
-      {add.isError ? (
+        </div>
+      ) : null}
+      {add.isError || start.isError ? (
         <p role="alert" className="error-text" style={{ margin: 0 }}>
-          Could not add the words. {errorText(add.error)}
+          Could not change the words. {errorText(add.error ?? start.error)}
         </p>
       ) : null}
     </section>

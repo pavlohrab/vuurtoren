@@ -133,8 +133,8 @@ describe("onboarding", () => {
     expect(screen.queryByText(/Anki/)).toBeNull();
   });
 
-  it("no Anki: starts with the most common words from the learner's level", async () => {
-    const addStarterLevels = vi.fn(async () => ({ added: 2000, known: 1000, skipped: 0 }));
+  it("no Anki: adds every level of the most common words, new words from the chosen one", async () => {
+    const addStarterLevels = vi.fn(async () => ({ added: 4930, skipped: 0 }));
     const { user } = setup({ addStarterLevels });
     await user.click(await screen.findByRole("radio", { name: /^No/ }));
     await user.click(cont());
@@ -143,18 +143,23 @@ describe("onboarding", () => {
     expect(
       screen.getByRole("checkbox", { name: /Start with the most common words/ }),
     ).toBeChecked();
-    expect(screen.getByRole("radio", { name: /Just starting/ })).toBeChecked();
-    await user.click(screen.getByRole("radio", { name: /About 1000 words/ }));
-    expect(screen.getByText(/words 1001–3000 come as new cards/)).toBeVisible();
+    expect(screen.getByText("Where should new words start?")).toBeVisible();
+    expect(screen.getByRole("radio", { name: /^Level 1/ })).toBeChecked();
+    expect(screen.queryByText(/How much Dutch/)).toBeNull();
+    await user.click(screen.getByRole("radio", { name: /^Level 3/ }));
+    expect(screen.getByText(/Words 1001–1500 first/)).toBeVisible();
     await user.click(cont());
     await waitFor(() =>
-      expect(addStarterLevels).toHaveBeenCalledWith({ levels: [3, 4, 5, 6], knownThrough: 1000 }),
+      expect(addStarterLevels).toHaveBeenCalledWith({
+        levels: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+        from: 3,
+      }),
     );
     expect(await screen.findByRole("heading", { name: "Your first text" })).toBeVisible();
   });
 
   it("no Anki: the most common words can be left out", async () => {
-    const addStarterLevels = vi.fn(async () => ({ added: 0, known: 0, skipped: 0 }));
+    const addStarterLevels = vi.fn(async () => ({ added: 0, skipped: 0 }));
     const { user } = setup({ addStarterLevels });
     await user.click(await screen.findByRole("radio", { name: /^No/ }));
     await user.click(cont());
@@ -162,7 +167,7 @@ describe("onboarding", () => {
     await user.click(
       await screen.findByRole("checkbox", { name: /Start with the most common words/ }),
     );
-    expect(screen.queryByRole("radio", { name: /Just starting/ })).toBeNull();
+    expect(screen.queryByRole("radio", { name: /^Level 1/ })).toBeNull();
     await user.click(cont());
     expect(await screen.findByRole("heading", { name: "Your first text" })).toBeVisible();
     expect(addStarterLevels).not.toHaveBeenCalled();

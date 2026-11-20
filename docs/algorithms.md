@@ -788,21 +788,11 @@ A new learner in native mode can start with the most common Dutch words. The lis
 3. **Filters.** Out go: words with digits, single letters (except _u_), names (read as a proper noun more than half the time, unless the dictionary has them as an ordinary word: _september_, _maandag_, _Engels_), abbreviations, interjections other than everyday ones (_ja_, _nee_, _hallo_, _dank_ …), English words (at least 0.5 Zipf more frequent in English and hardly in the Dutch sentences), very short words never met in context, and lemmas without a dictionary entry or meaning. Number words (_twee_, _nul_) stay.
 4. **What each word gets.** The 5000 highest lemmas are kept with their rank, part of speech (the commonest reading), article (nouns, from the dictionary), the reader's short gloss (the same rules as `shortGloss`, form-of senses resolved, the hand-written particle glosses; one test file holds both versions to the same cases) and one example sentence with its English: of the word's Tatoeba sentences, one of 5–10 words whose other words all rank at most 1000 after the word itself and that shows the word as its lemma, with the lowest practice score; otherwise the shortest. About 9 % of words have no sentence.
 
-**Levels** (`packages/anki/src/starter.ts`). Ranks 1–500, 501–1000 … are levels of 500 words, each a deck "Vuurtoren · Woorden 1–500" and so on. Levels 1–6 (words 1–3000) are the default; levels 7–10 (3001–5000) are the extended levels, added only on request. A word becomes a note of Vuurtoren's word type (word with its article, gloss, sentence with the word in bold, translation, and the Tatoeba sentence number as source) with one new card, in order of rank. Notes and cards have fixed ids from the rank, so adding a level again, or on two devices before they sync, gives the same cards once; a word the learner already has a card for is skipped.
+**Levels** (`packages/anki/src/starter.ts`). Ranks 1–500, 501–1000 … are levels of 500 words, each a deck "Vuurtoren · Woorden 1–500" and so on. The list has 4,930 words after review, so there are ten levels (the last one shorter); "Start with the most common words" adds all of them. A word becomes a note of Vuurtoren's word type (word with its article, gloss, sentence with the word in bold, translation, and the Tatoeba sentence number as source) with one new card, in order of rank. Notes and cards have fixed ids from the rank, so adding a level again, or on two devices before they sync, gives the same cards once; a word the learner already has a card for is skipped.
 
 **One level at a time.** Starter decks are created with no new cards a day. When no starter deck that still has new cards adds any, the lowest such deck gets the default 20 a day (checked when the review counts are read). So the levels come in order, and the learner can change a deck's limit as usual.
 
-**Placement.** Onboarding asks "How much Dutch do you know?":
-
-| Answer           | Known (Mark known) | New cards                         |
-| ---------------- | ------------------ | --------------------------------- |
-| Just starting    | —                  | words 1–3000                      |
-| About 500 words  | words 1–500        | words 501–3000                    |
-| About 1000 words | words 1–1000       | words 1001–3000                   |
-| About 2000 words | words 1–2000       | words 2001–3000                   |
-| More             | words 1–3000       | words 3001–5000 (extended levels) |
-
-Known words are added with Mark known's schedule (an interval of 21–35 days, 9.5) in their level's deck, so they come back once to be checked; a word the learner already has as a new card gets that schedule instead. Settings → Language & decks adds the next level, or all the extended levels.
+**Where new words start.** Nothing is marked known: no placement, no known cards in bulk. Onboarding asks "Where should new words start?" (level 1, 2, 3, 5 or 7) and keeps the answer in the language profile (`starterFrom`). The levels below it are there but get no new cards; the one-level-at-a-time rule above only opens levels from the start level on. Settings → Language & decks, "Start new words from level N", changes it: the first level from there with new cards left opens at once, and any other open starter deck closes. Words the learner already knows get marked known by the reader's evidence as they read (section 1.7). Settings also adds any level that is missing.
 
 ## 10. Sync
 

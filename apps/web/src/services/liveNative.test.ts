@@ -501,45 +501,44 @@ describe("native services", () => {
 describe("starter words", () => {
   const native = () => ({ ...defaultProfile("nl"), mode: "native" as const });
 
-  it("adds the six levels once, in order of rank, one level open at a time", async () => {
+  const ALL = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+
+  it("adds every level once, in order of rank, one level open at a time", async () => {
     const { live } = await setup(native());
-    const first = await live.addStarterLevels({ levels: [1, 2, 3, 4, 5, 6] });
-    expect(first).toEqual({ added: 3000, known: 0, skipped: 0 });
-    expect(await live.starterLevels()).toEqual({ held: [1, 2, 3, 4, 5, 6], core: 6, all: 10 });
+    const first = await live.addStarterLevels({ levels: ALL });
+    expect(first).toEqual({ added: 4930, skipped: 0 });
+    expect(await live.starterLevels()).toEqual({ held: ALL, all: 10, from: 1 });
     const decks = await live.nativeDecks();
-    expect(decks.map((d) => [d.name, d.fresh, d.options.newPerDay])).toEqual([
+    expect(decks.map((d) => [d.name, d.fresh, d.options.newPerDay]).slice(0, 3)).toEqual([
       ["Vuurtoren · Woorden 1–500", 500, 20],
       ["Vuurtoren · Woorden 501–1000", 500, 0],
       ["Vuurtoren · Woorden 1001–1500", 500, 0],
-      ["Vuurtoren · Woorden 1501–2000", 500, 0],
-      ["Vuurtoren · Woorden 2001–2500", 500, 0],
-      ["Vuurtoren · Woorden 2501–3000", 500, 0],
     ]);
+    expect(decks.at(-1)!.fresh).toBe(430);
     const queue = await live.reviewQueue();
     expect(queue.fresh).toBe(20);
     expect(queue.cards.slice(0, 3).map((c) => c.word)).toEqual(["de", "zijn", "van"]);
+    // Nothing is marked known.
+    expect(queue.due).toBe(0);
 
     // Twice: nothing new.
-    expect(await live.addStarterLevels({ levels: [1, 2, 3, 4, 5, 6] })).toEqual({
-      added: 0,
-      known: 0,
-      skipped: 3000,
-    });
-    expect((await repo!.nativeStats("nl")).cards).toBe(3000);
+    expect(await live.addStarterLevels({ levels: ALL })).toEqual({ added: 0, skipped: 4930 });
+    expect((await repo!.nativeStats("nl")).cards).toBe(4930);
   });
 
-  it("places: words below the level are known, the levels above it are new cards", async () => {
+  it("starts new words from the chosen level; the levels below wait until turned on", async () => {
     const { live } = await setup(native());
-    // The learner already has "huis" (rank 155) as a new card.
-    await live.addStarterLevels({ levels: [1] });
-    const r = await live.addStarterLevels({ levels: [3, 4, 5, 6], knownThrough: 1000 });
-    expect(r).toEqual({ added: 2000, known: 1000, skipped: 0 });
-    const huis = (await repo!.nativeKeyCards("nl", ["huis"], 0))[0]!;
-    expect(huis.card.schedule?.scheduledDays).toBeGreaterThanOrEqual(21);
-    expect(huis.card.deck).toBe("Vuurtoren · Woorden 1–500");
-    expect((await live.starterLevels()).held).toEqual([1, 2, 3, 4, 5, 6]);
-    // Nothing new below the placement; the first level above it is open.
-    const open = (await live.nativeDecks()).filter((d) => d.fresh > 0 && d.options.newPerDay > 0);
-    expect(open.map((d) => d.name)).toEqual(["Vuurtoren · Woorden 1001–1500"]);
+    await live.addStarterLevels({ levels: ALL, from: 3 });
+    expect((await live.starterLevels()).from).toBe(3);
+    const open = async () =>
+      (await live.nativeDecks())
+        .filter((d) => d.fresh > 0 && d.options.newPerDay > 0)
+        .map((d) => d.name);
+    expect(await open()).toEqual(["Vuurtoren · Woorden 1001–1500"]);
+    // No card is known or scheduled: the reader's evidence marks words known.
+    expect((await live.reviewQueue()).due).toBe(0);
+    await live.setStarterFrom(1);
+    expect(await open()).toEqual(["Vuurtoren · Woorden 1–500"]);
+    expect((await live.starterLevels()).from).toBe(1);
   });
 });

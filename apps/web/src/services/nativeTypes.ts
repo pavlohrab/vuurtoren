@@ -101,17 +101,15 @@ export interface TuningResult extends TuningInfo {
 interface StarterLevels {
   /** Levels the learner has a deck for, lowest first. */
   held: number[];
-  /** Levels added by default (1–6); the levels after them up to `all` are extended. */
-  core: number;
   all: number;
+  /** The level new words start from; the levels below it get no new cards. */
+  from: number;
 }
 
 /** What adding starter words did. */
 interface StarterAdded {
   /** New cards. */
   added: number;
-  /** Words marked known. */
-  known: number;
   /** Words already in the learner's cards. */
   skipped: number;
 }
@@ -173,8 +171,10 @@ export interface NativeServices {
   /** The starter word levels held. */
   starterLevels(): Promise<StarterLevels>;
   /**
-   * Add starter levels as new cards, in order of rank; with `knownThrough`, the words up to that
-   * rank become known (placement). Words already held are skipped.
+   * Add starter levels as new cards, in order of rank; with `from`, new words start from that
+   * level (see `setStarterFrom`). Words already held are skipped. Nothing is marked known.
    */
-  addStarterLevels(req: { levels: number[]; knownThrough?: number }): Promise<StarterAdded>;
+  addStarterLevels(req: { levels: number[]; from?: number }): Promise<StarterAdded>;
+  /** New words start from this level: it opens now, and the levels below get no new cards. */
+  setStarterFrom(level: number): Promise<void>;
 }

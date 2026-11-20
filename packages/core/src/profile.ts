@@ -49,6 +49,11 @@ export interface LanguageProfile {
   courseDecks: CourseDeckMode;
   /** Tags put on every note Vuurtoren adds for this language (e.g. the language code). */
   tags: string[];
+  /**
+   * Native mode: the starter level new words start from (1 = words 1–500). The levels below it
+   * get no new cards. Absent: 1.
+   */
+  starterFrom?: number;
 }
 
 /** Languages the app knows about; only the enabled ones can be chosen. */

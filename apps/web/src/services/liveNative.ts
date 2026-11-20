@@ -12,13 +12,13 @@ import {
   buildNativeImport,
   NOTE_FIELDS,
   NOTE_TYPE,
-  STARTER_CORE_LEVELS,
   STARTER_LEVELS,
   addStarterWords,
   collectionFromAnki,
   openStarterLevel,
   starterKey,
   starterLevelsHeld,
+  startStarterFrom,
   moveToAnki,
   packageDecks,
   readAnkiPackage,
@@ -620,10 +620,10 @@ export function createLiveNative(deps: LiveNativeDeps) {
 
     async starterLevels() {
       const held = starterLevelsHeld(await repo.nativeDecks(await deps.lang(), now()));
-      return { held, core: STARTER_CORE_LEVELS, all: STARTER_LEVELS };
+      return { held, all: STARTER_LEVELS, from: (await deps.profile()).starterFrom ?? 1 };
     },
 
-    async addStarterLevels({ levels, knownThrough }) {
+    async addStarterLevels({ levels, from }) {
       const lang = await deps.lang();
       const words = await loadStarterWords();
       const at = now();
@@ -631,27 +631,34 @@ export function createLiveNative(deps: LiveNativeDeps) {
       for (const k of await repo.nativeKeyCards(lang, words.map(starterKey), studyDayStart(at)))
         held.set(k.key, [...(held.get(k.key) ?? []), k.card]);
       const profile = await deps.profile();
-      const result = await addStarterWords(
-        (e) => repo.append(e),
-        {
-          lang,
-          words,
-          levels,
-          held,
-          tags: profile.tags,
-          ...(knownThrough ? { knownThrough } : {}),
-        },
-        at,
-      );
+      if (from !== undefined && from !== (profile.starterFrom ?? 1))
+        await deps.saveProfile({ ...profile, starterFrom: from });
+      const result = await addStarterWords((e) => repo.append(e), {
+        lang,
+        words,
+        levels,
+        held,
+        tags: profile.tags,
+      });
       await openStarter(lang);
       deps.changed();
-      return { added: result.added, known: result.known, skipped: result.skipped };
+      return { added: result.added, skipped: result.skipped };
+    },
+
+    async setStarterFrom(level) {
+      const lang = await deps.lang();
+      const profile = await deps.profile();
+      await deps.saveProfile({ ...profile, starterFrom: level });
+      for (const change of startStarterFrom(await repo.nativeDecks(lang, now()), level))
+        await repo.append({ type: "NativeDeckOptionsSet", lang, ...change });
+      deps.changed();
     },
   };
 
   /** Starter levels bring new cards one at a time: open the next when one has none left. */
   async function openStarter(lang: string): Promise<void> {
-    const next = openStarterLevel(await repo.nativeDecks(lang, now()));
+    const from = (await deps.profile()).starterFrom ?? 1;
+    const next = openStarterLevel(await repo.nativeDecks(lang, now()), from);
     if (next) await repo.append({ type: "NativeDeckOptionsSet", lang, ...next });
   }
 

@@ -99,6 +99,7 @@ export function createMockNative(
 ): NativeServices {
   const cards = demoCards(now());
   const starter = new Set<number>();
+  let starterFrom = 1;
   const undo = new Map<
     string,
     { cardId: number; schedule: CardSchedule | undefined; at: number }
@@ -253,15 +254,18 @@ export function createMockNative(
     },
     async starterLevels() {
       await wait();
-      return { held: [...starter].sort((a, b) => a - b), core: 6, all: 10 };
+      return { held: [...starter].sort((a, b) => a - b), all: 10, from: starterFrom };
     },
-    async addStarterLevels({ levels, knownThrough = 0 }) {
+    async addStarterLevels({ levels, from }) {
       await wait();
       const fresh = levels.filter((l) => !starter.has(l));
-      const below = Math.ceil(knownThrough / 500);
-      for (let l = 1; l <= below; l++) starter.add(l);
       for (const l of fresh) starter.add(l);
-      return { added: fresh.length * 500, known: knownThrough, skipped: 0 };
+      if (from !== undefined) starterFrom = from;
+      return { added: fresh.length * 500, skipped: 0 };
+    },
+    async setStarterFrom(level) {
+      await wait();
+      starterFrom = level;
     },
   };
 }
