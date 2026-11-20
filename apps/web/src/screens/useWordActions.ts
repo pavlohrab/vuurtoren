@@ -17,7 +17,7 @@ type ActionProps = Pick<
 >;
 
 /** Cached views that show word states; refreshed after any word action. */
-const WORD_VIEWS = ["texts", "words", "learner", "textWords", "home", "practice"];
+const WORD_VIEWS = ["texts", "words", "learner", "textWords", "home", "practice", "reading"];
 
 /**
  * Mutations for the inspector. `refresh` runs after a successful action (e.g. the reader
