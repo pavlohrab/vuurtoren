@@ -25,7 +25,7 @@ const PART = /^[A-Za-z0-9._-]+$/;
 /** Largest synced file (a device's folded events with an analysed book stay well below). */
 export const MAX_SYNC_FILE_BYTES = 64 * 1024 * 1024;
 /** All sync files together, unless KENNING_SYNC_QUOTA_MB says otherwise. */
-export const DEFAULT_SYNC_QUOTA_BYTES = 2048 * 1024 * 1024;
+const DEFAULT_SYNC_QUOTA_BYTES = 2048 * 1024 * 1024;
 const TMP = ".tmp-";
 
 /** The parts of a relative sync path, or a 400 for anything else. */
