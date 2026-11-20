@@ -42,10 +42,16 @@ export function createCourseAnki(ctx: CourseContext) {
   async function deckMapping(courseId: string): Promise<DeckMapping> {
     const course = await courseOrThrow(courseId);
     let decks: string[] = [];
-    try {
-      decks = (await (await deps.anki()).deckNames()).sort();
-    } catch {
-      // Anki not reachable: the user can still continue without a mapping.
+    const profile = await currentProfile();
+    if (profileMode(profile) === "native") {
+      // Native mode: Kenning's own decks; Anki is not asked.
+      decks = (await repo.nativeDecks(profile.lang, ctx.clock())).map((d) => d.name).sort();
+    } else {
+      try {
+        decks = (await (await deps.anki()).deckNames()).sort();
+      } catch {
+        // Anki not reachable: the user can still continue without a mapping.
+      }
     }
     const themes = course.units.filter((u) => u.kind === "theme");
     const sug = suggestDecks(themes, decks);

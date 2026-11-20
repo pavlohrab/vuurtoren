@@ -176,7 +176,7 @@ export interface OutlineRow {
 }
 
 export interface DeckMapping {
-  /** All Anki deck names (empty when Anki is unreachable). */
+  /** All deck names: Kenning's own in native mode, Anki's in connected mode (empty when Anki is unreachable). */
   decks: string[];
   /** Suggested decks per unit number. */
   suggested: Record<number, string[]>;
