@@ -1,8 +1,8 @@
-//! The bundled language server: `kenning-nlp`, a PyInstaller build of server/nlp, started
+//! The bundled language server: `vuurtoren-nlp`, a PyInstaller build of server/nlp, started
 //! as a child process on a free 127.0.0.1 port with a random token. The web app never talks to
-//! it directly: its `/nlp/...` requests go to the `kenning-nlp:` protocol (see `proxy`), which
+//! it directly: its `/nlp/...` requests go to the `vuurtoren-nlp:` protocol (see `proxy`), which
 //! adds the token in Rust. The process is stopped when the app exits; if the app dies, the
-//! sidecar sees its stdin close and exits by itself (kenning_nlp/sidecar.py).
+//! sidecar sees its stdin close and exits by itself (vuurtoren_nlp/sidecar.py).
 
 use std::net::TcpListener;
 use std::path::{Path, PathBuf};
@@ -13,9 +13,9 @@ use std::time::{Duration, Instant};
 use serde::Serialize;
 use serde_json::Value as Json;
 
-pub const TOKEN_HEADER: &str = "x-kenning-token";
-/// Name of the bundled folder and executable (`sidecar/kenning-nlp/kenning-nlp[.exe]`).
-const NAME: &str = "kenning-nlp";
+pub const TOKEN_HEADER: &str = "x-vuurtoren-token";
+/// Name of the bundled folder and executable (`sidecar/vuurtoren-nlp/vuurtoren-nlp[.exe]`).
+const NAME: &str = "vuurtoren-nlp";
 /// First start of a fresh install can be slow (unpacking, antivirus scans on Windows).
 pub const START_TIMEOUT: Duration = Duration::from_secs(180);
 
@@ -36,7 +36,7 @@ pub enum NlpState {
 /// Where the language server runs and how to reach it.
 pub struct Sidecar {
     pub state: Mutex<NlpState>,
-    /// `http://127.0.0.1:<port>` (or `KENNING_NLP_URL` in development).
+    /// `http://127.0.0.1:<port>` (or `VUURTOREN_NLP_URL` in development).
     pub base: Mutex<Option<String>>,
     pub token: String,
     child: Mutex<Option<Child>>,
@@ -65,10 +65,10 @@ fn exe_name() -> String {
     format!("{NAME}{}", std::env::consts::EXE_SUFFIX)
 }
 
-/// The sidecar executable: `$KENNING_SIDECAR`, else `<resources>/sidecar/kenning-nlp/…`, else
-/// (development) `src-tauri/sidecar/kenning-nlp/…` next to the sources.
+/// The sidecar executable: `$VUURTOREN_SIDECAR`, else `<resources>/sidecar/vuurtoren-nlp/…`, else
+/// (development) `src-tauri/sidecar/vuurtoren-nlp/…` next to the sources.
 pub fn locate(resource_dir: Option<&Path>) -> Option<PathBuf> {
-    if let Some(p) = std::env::var_os("KENNING_SIDECAR") {
+    if let Some(p) = std::env::var_os("VUURTOREN_SIDECAR") {
         return Some(PathBuf::from(p)).filter(|p| p.is_file());
     }
     let mut candidates = vec![];
@@ -92,7 +92,7 @@ pub fn bundled_packs(resource_dir: Option<&Path>) -> Option<PathBuf> {
     dir.is_dir().then_some(dir)
 }
 
-/// Everything the sidecar is started with (kenning_nlp/sidecar.py documents the variables).
+/// Everything the sidecar is started with (vuurtoren_nlp/sidecar.py documents the variables).
 pub struct Launch<'a> {
     pub exe: &'a Path,
     pub port: u16,
@@ -104,21 +104,21 @@ pub struct Launch<'a> {
 
 pub fn command(l: &Launch<'_>) -> Command {
     let mut cmd = Command::new(l.exe);
-    cmd.env("KENNING_PORT", l.port.to_string())
-        .env("KENNING_NLP_TOKEN", l.token)
-        .env("KENNING_DATA_DIR", l.data_dir)
-        .env("KENNING_PACKS", "download")
-        .env("KENNING_COURSE_CACHE_DIR", l.cache_dir.join("course"))
+    cmd.env("VUURTOREN_PORT", l.port.to_string())
+        .env("VUURTOREN_NLP_TOKEN", l.token)
+        .env("VUURTOREN_DATA_DIR", l.data_dir)
+        .env("VUURTOREN_PACKS", "download")
+        .env("VUURTOREN_COURSE_CACHE_DIR", l.cache_dir.join("course"))
         .env("PYTHONPYCACHEPREFIX", l.cache_dir.join("pycache"))
         .env("PYTHONUNBUFFERED", "1")
-        .env_remove("KENNING_CORS_ORIGINS")
+        .env_remove("VUURTOREN_CORS_ORIGINS")
         .env_remove("PYTHONHOME")
         .env_remove("PYTHONPATH")
         .stdin(Stdio::piped())
         .stdout(Stdio::null());
     match l.packs_dir {
-        Some(dir) => cmd.env("KENNING_PACKS_DIR", dir),
-        None => cmd.env_remove("KENNING_PACKS_DIR"),
+        Some(dir) => cmd.env("VUURTOREN_PACKS_DIR", dir),
+        None => cmd.env_remove("VUURTOREN_PACKS_DIR"),
     };
     if let Some(dir) = l.exe.parent() {
         cmd.current_dir(dir);
@@ -278,14 +278,14 @@ mod tests {
 
     #[test]
     fn launch_environment() {
-        let exe = Path::new("/opt/kenning/sidecar/kenning-nlp/kenning-nlp");
+        let exe = Path::new("/opt/vuurtoren/sidecar/vuurtoren-nlp/vuurtoren-nlp");
         let cmd = command(&Launch {
             exe,
             port: 4321,
             token: "tok",
             data_dir: Path::new("/data"),
             cache_dir: Path::new("/cache"),
-            packs_dir: Some(Path::new("/opt/kenning/sidecar/packs")),
+            packs_dir: Some(Path::new("/opt/vuurtoren/sidecar/packs")),
         });
         let env: std::collections::HashMap<_, _> = cmd
             .get_envs()
@@ -297,13 +297,13 @@ mod tests {
             })
             .collect();
         let get = |k: &str| env.get(k).cloned().flatten();
-        assert_eq!(get("KENNING_PORT").as_deref(), Some("4321"));
-        assert_eq!(get("KENNING_NLP_TOKEN").as_deref(), Some("tok"));
-        assert_eq!(get("KENNING_DATA_DIR").as_deref(), Some("/data"));
-        assert_eq!(get("KENNING_PACKS").as_deref(), Some("download"));
+        assert_eq!(get("VUURTOREN_PORT").as_deref(), Some("4321"));
+        assert_eq!(get("VUURTOREN_NLP_TOKEN").as_deref(), Some("tok"));
+        assert_eq!(get("VUURTOREN_DATA_DIR").as_deref(), Some("/data"));
+        assert_eq!(get("VUURTOREN_PACKS").as_deref(), Some("download"));
         assert_eq!(
-            get("KENNING_PACKS_DIR").as_deref(),
-            Some("/opt/kenning/sidecar/packs")
+            get("VUURTOREN_PACKS_DIR").as_deref(),
+            Some("/opt/vuurtoren/sidecar/packs")
         );
         assert_eq!(
             get("PYTHONPYCACHEPREFIX").as_deref(),
@@ -376,7 +376,7 @@ mod tests {
                 let mut buf = [0u8; 2048];
                 let n = s.read(&mut buf).unwrap_or(0);
                 let req = String::from_utf8_lossy(&buf[..n]).to_lowercase();
-                let (status, body) = if req.contains("x-kenning-token: secret") {
+                let (status, body) = if req.contains("x-vuurtoren-token: secret") {
                     (
                         "200 OK",
                         r#"{"status":"ok","packs":{"items":{"dictionary-nl":{"activity":"downloading"}}}}"#,

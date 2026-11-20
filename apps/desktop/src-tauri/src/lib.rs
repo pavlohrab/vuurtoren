@@ -1,15 +1,15 @@
-//! Kenning desktop: the offline app (the default) and a thin client for a Kenning server.
+//! Vuurtoren desktop: the offline app (the default) and a thin client for a Vuurtoren server.
 //!
 //! The window starts on the bundled web build (the "home" page).
 //!
 //! * **On this computer** (default): the home page runs the whole app. Its data is one SQLite
-//!   file in a visible folder (`db.rs`, `~/Documents/Kenning/kenning.sqlite`) and its language
-//!   server is the bundled sidecar (`sidecar.rs`), reached through the `kenning-nlp:` protocol
+//!   file in a visible folder (`db.rs`, `~/Documents/Vuurtoren/vuurtoren.sqlite`) and its language
+//!   server is the bundled sidecar (`sidecar.rs`), reached through the `vuurtoren-nlp:` protocol
 //!   (`proxy.rs`).
 //! * **Connected to a server**: once a server is chosen the window navigates to it, so the page,
 //!   its cookies, CSP and CSRF checks are exactly those of the server in a browser.
 //!
-//! Both get `window.__KENNING_DESKTOP__` (see `bridge.js`): AnkiConnect requests sent from Rust
+//! Both get `window.__VUURTOREN_DESKTOP__` (see `bridge.js`): AnkiConnect requests sent from Rust
 //! (no webCorsOriginList setup), and the commands each mode may use.
 
 mod db;
@@ -36,10 +36,10 @@ const MAIN: &str = "main";
 const ANKI_HOSTS: [&str; 2] = ["127.0.0.1", "localhost"];
 const ANKI_PORT: u16 = 8765;
 /// Update feed: the `latest.json` of the newest GitHub release (public repo). CI may override it
-/// at build time with the `KENNING_UPDATE_URL` repository variable.
+/// at build time with the `VUURTOREN_UPDATE_URL` repository variable.
 const DEFAULT_UPDATE_URL: &str =
-    "https://github.com/pavlohrab/Kenning/releases/latest/download/latest.json";
-const BUILD_UPDATE_URL: Option<&str> = match option_env!("KENNING_UPDATE_URL") {
+    "https://github.com/pavlohrab/Vuurtoren/releases/latest/download/latest.json";
+const BUILD_UPDATE_URL: Option<&str> = match option_env!("VUURTOREN_UPDATE_URL") {
     Some(url) if !url.is_empty() => Some(url),
     _ => Some(DEFAULT_UPDATE_URL),
 };
@@ -48,14 +48,14 @@ const BUILD_UPDATE_URL: Option<&str> = match option_env!("KENNING_UPDATE_URL") {
 #[derive(Default, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase", default)]
 struct Config {
-    /// The Kenning server this app opens, as an origin with a trailing slash.
+    /// The Vuurtoren server this app opens, as an origin with a trailing slash.
     server_url: Option<String>,
     /// Overrides the update feed (a `latest.json` URL); empty string turns updates off.
     update_url: Option<String>,
     /// "local" (this computer) or "server". Unset: "server" if a server was saved (thin-client
     /// installs), else "local".
     mode: Option<String>,
-    /// The database file (local mode); unset: `<Documents>/Kenning/kenning.sqlite`.
+    /// The database file (local mode); unset: `<Documents>/Vuurtoren/vuurtoren.sqlite`.
     database: Option<String>,
     /// Folders the user picked to sync through; the page may only reach files inside these.
     sync_roots: Vec<String>,
@@ -93,7 +93,7 @@ struct State {
     key_file: PathBuf,
     db: Mutex<Option<OpenDb>>,
     sidecar: sidecar::Sidecar,
-    /// The default database file (`<Documents>/Kenning/kenning.sqlite`).
+    /// The default database file (`<Documents>/Vuurtoren/vuurtoren.sqlite`).
     default_db: PathBuf,
 }
 
@@ -111,7 +111,7 @@ impl State {
 fn normalize_server(input: &str) -> Result<Url, String> {
     let trimmed = input.trim();
     if trimmed.is_empty() {
-        return Err("Enter the address of your Kenning server.".into());
+        return Err("Enter the address of your Vuurtoren server.".into());
     }
     let with_scheme = if trimmed.contains("://") {
         trimmed.to_string()
@@ -167,7 +167,7 @@ struct DesktopInfo {
     server_url: Option<String>,
     /// "local" (this computer, the default) or "server".
     mode: &'static str,
-    /// Base URL of the bundled language server (the `kenning-nlp:` protocol).
+    /// Base URL of the bundled language server (the `vuurtoren-nlp:` protocol).
     nlp_base: &'static str,
 }
 
@@ -214,9 +214,9 @@ async fn check_server(url: String, state: tauri::State<'_, State>) -> Result<Ser
     let health: serde_json::Value = res
         .json()
         .await
-        .map_err(|_| format!("{host} answered, but it is not a Kenning server (HTTP {status})."))?;
+        .map_err(|_| format!("{host} answered, but it is not a Vuurtoren server (HTTP {status})."))?;
     if health.get("schemaVersion").is_none() {
-        return Err(format!("{host} answered, but it is not a Kenning server."));
+        return Err(format!("{host} answered, but it is not a Vuurtoren server."));
     }
     Ok(ServerCheck {
         url: server.to_string(),
@@ -247,7 +247,7 @@ fn connect(
     window.navigate(server).map_err(|e| e.to_string())
 }
 
-/// Use Kenning on this computer only (the default; also "Back to this computer").
+/// Use Vuurtoren on this computer only (the default; also "Back to this computer").
 #[tauri::command]
 fn use_local(
     app: AppHandle,
@@ -353,7 +353,7 @@ fn db_path(state: &State) -> PathBuf {
 fn this_process() -> db::LockInfo {
     let now = db::now();
     db::LockInfo {
-        app: "kenning".into(),
+        app: "vuurtoren".into(),
         host: db::hostname(),
         pid: std::process::id(),
         since: now,
@@ -456,7 +456,7 @@ async fn db_export(
 }
 
 /// Replace the database with a backup (raw bytes; headers `x-device-id`, `x-max-schema`). The
-/// file is checked first; the old one stays next to it as `kenning.sqlite.before-restore`.
+/// file is checked first; the old one stays next to it as `vuurtoren.sqlite.before-restore`.
 #[tauri::command]
 async fn db_import(
     request: tauri::ipc::Request<'_>,
@@ -531,7 +531,7 @@ async fn db_reveal(app: AppHandle, state: tauri::State<'_, State>) -> Result<(),
 #[tauri::command]
 async fn db_move(app: AppHandle, state: tauri::State<'_, State>) -> Result<Option<String>, String> {
     let current = db_path(&state);
-    let mut picker = app.dialog().file().set_title("Move the Kenning data to…");
+    let mut picker = app.dialog().file().set_title("Move the Vuurtoren data to…");
     if let Some(dir) = current.parent() {
         picker = picker.set_directory(dir);
     }
@@ -571,7 +571,7 @@ async fn sync_pick_folder(
     let picker = app
         .dialog()
         .file()
-        .set_title("Choose the folder to sync Kenning through");
+        .set_title("Choose the folder to sync Vuurtoren through");
     let Some(dir) = picker.blocking_pick_folder() else {
         return Ok(None);
     };
@@ -669,7 +669,7 @@ async fn sync_allow_host(
     let host = parsed.host_str().unwrap_or_default().to_string();
     // Asked once per start: automatic syncs do not bring the question back every minute.
     let not_allowed = || {
-        format!("Sync with {host} was not allowed. To allow it after all, restart Kenning and sync again.")
+        format!("Sync with {host} was not allowed. To allow it after all, restart Vuurtoren and sync again.")
     };
     if state.sync_declined.lock().unwrap().contains(&origin) {
         return Err(not_allowed());
@@ -682,7 +682,7 @@ async fn sync_allow_host(
     let dialog = app
         .dialog()
         .message(format!(
-            "Kenning will send your encrypted sync files to {origin}.{plain}\n\nAllow this only for a sync place you set up yourself."
+            "Vuurtoren will send your encrypted sync files to {origin}.{plain}\n\nAllow this only for a sync place you set up yourself."
         ))
         .title(format!("Sync with {host}?"))
         .buttons(MessageDialogButtons::OkCancelCustom(
@@ -704,7 +704,7 @@ async fn sync_allow_host(
     Ok(())
 }
 
-/// A request to a sync place (WebDAV, a Kenning server), sent from Rust: no browser Origin, so
+/// A request to a sync place (WebDAV, a Vuurtoren server), sent from Rust: no browser Origin, so
 /// no CORS setup on that server. Only to addresses the user allowed (`sync_allow_host`); no
 /// cookies, no redirects to another address, and the answer is read only up to `MAX_BODY`.
 #[tauri::command]
@@ -791,7 +791,7 @@ async fn sync_key_forget(state: tauri::State<'_, State>) -> Result<(), String> {
 fn move_target(current: &Path, dir: &Path) -> Result<PathBuf, String> {
     let target = dir.join(db::DB_FILE);
     if target == current {
-        return Err("Kenning's data is already in this folder.".into());
+        return Err("Vuurtoren's data is already in this folder.".into());
     }
     if target.exists() {
         return Err(format!(
@@ -817,7 +817,7 @@ fn ensure_sidecar(app: &AppHandle) {
         *current = sidecar::NlpState::Starting;
     }
     // Development: an NLP server you run yourself (`pnpm nlp`).
-    if let Ok(url) = std::env::var("KENNING_NLP_URL") {
+    if let Ok(url) = std::env::var("VUURTOREN_NLP_URL") {
         *sc.base.lock().unwrap() = Some(url.trim_end_matches('/').to_string());
     } else {
         let resources = app.path().resource_dir().ok();
@@ -849,7 +849,7 @@ fn ensure_sidecar(app: &AppHandle) {
             cache_dir: &cache,
             packs_dir: packs.as_deref(),
         };
-        if sc.spawn(&launch, &cache.join("kenning-nlp.log")).is_err() {
+        if sc.spawn(&launch, &cache.join("vuurtoren-nlp.log")).is_err() {
             return;
         }
     }
@@ -962,7 +962,7 @@ async fn check_for_update(app: AppHandle) {
     let install = app
         .dialog()
         .message(format!(
-            "Kenning {} is available (you have {}). Install it now? Kenning restarts afterwards.",
+            "Vuurtoren {} is available (you have {}). Install it now? Vuurtoren restarts afterwards.",
             update.version, update.current_version
         ))
         .title("Update available")
@@ -1080,10 +1080,10 @@ pub fn run() {
                 allow_server(&handle, &server)?;
             }
             let client = reqwest::Client::builder()
-                .user_agent(concat!("Kenning-Desktop/", env!("CARGO_PKG_VERSION")))
+                .user_agent(concat!("Vuurtoren-Desktop/", env!("CARGO_PKG_VERSION")))
                 .build()?;
             let sync_client = reqwest::Client::builder()
-                .user_agent(concat!("Kenning-Desktop/", env!("CARGO_PKG_VERSION")))
+                .user_agent(concat!("Vuurtoren-Desktop/", env!("CARGO_PKG_VERSION")))
                 .redirect(sync::redirect_policy())
                 .build()?;
             let key_file = app.path().app_data_dir()?.join(keys::KEY_FILE);
@@ -1112,7 +1112,7 @@ pub fn run() {
 
             let downloads = app.path().download_dir().ok();
             WebviewWindowBuilder::new(app, MAIN, WebviewUrl::App("index.html".into()))
-                .title("Kenning")
+                .title("Vuurtoren")
                 .inner_size(1200.0, 820.0)
                 .min_inner_size(380.0, 520.0)
                 .visible(!self_test)
@@ -1130,7 +1130,7 @@ pub fn run() {
                         let name = destination
                             .file_name()
                             .map(|n| n.to_os_string())
-                            .unwrap_or_else(|| "kenning-download".into());
+                            .unwrap_or_else(|| "vuurtoren-download".into());
                         *destination = dir.join(name);
                     }
                     true
@@ -1146,7 +1146,7 @@ pub fn run() {
             Ok(())
         })
         .build(tauri::generate_context!())
-        .expect("error while building Kenning")
+        .expect("error while building Vuurtoren")
         .run(|app, event| {
             if let RunEvent::Exit = event {
                 // Stop the language server and give the database file back.
@@ -1185,8 +1185,8 @@ fn self_test_report(report: String) {
     }
 }
 
-/// `kenning --self-test`: start with a hidden window, wait for the language server and its data
-/// packs, analyse a sentence through the page's own `/nlp` route (the `kenning-nlp:` protocol)
+/// `vuurtoren --self-test`: start with a hidden window, wait for the language server and its data
+/// packs, analyse a sentence through the page's own `/nlp` route (the `vuurtoren-nlp:` protocol)
 /// and check the database file, then print one JSON line and exit (0 = all good).
 async fn self_test_run(app: AppHandle) {
     let state = app.state::<State>();
@@ -1277,8 +1277,8 @@ mod tests {
     #[test]
     fn server_addresses_are_normalized_to_origins() {
         assert_eq!(
-            normalize_server("kenning.example").unwrap().as_str(),
-            "https://kenning.example/"
+            normalize_server("vuurtoren.example").unwrap().as_str(),
+            "https://vuurtoren.example/"
         );
         assert_eq!(
             normalize_server(" http://10.0.0.5:8080/library?x ")
@@ -1296,7 +1296,7 @@ mod tests {
         let fresh = Config::default();
         assert!(fresh.local());
         let thin: Config =
-            serde_json::from_str(r#"{"serverUrl":"https://kenning.example/"}"#).unwrap();
+            serde_json::from_str(r#"{"serverUrl":"https://vuurtoren.example/"}"#).unwrap();
         assert!(!thin.local());
         let back = Config {
             mode: Some("local".into()),
@@ -1326,7 +1326,7 @@ mod tests {
         std::fs::write(free.join(db::DB_FILE), b"x").unwrap();
         assert!(move_target(&current, &free)
             .unwrap_err()
-            .contains("already a kenning.sqlite"));
+            .contains("already a vuurtoren.sqlite"));
     }
 
     #[test]

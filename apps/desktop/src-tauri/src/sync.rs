@@ -1,5 +1,5 @@
 //! Sync on this computer: a folder you already sync (Syncthing, Dropbox, iCloud Drive) as the
-//! place for Kenning's encrypted sync files, and requests to sync places the page cannot reach
+//! place for Vuurtoren's encrypted sync files, and requests to sync places the page cannot reach
 //! itself (many WebDAV servers send no CORS headers for the app).
 //!
 //! The web app only names a folder the user picked (kept in the config) and paths inside it;
@@ -84,7 +84,7 @@ pub fn allowed_root(root: &str, roots: &[String]) -> Result<PathBuf, String> {
 
 /// `path` inside the sync folder, refusing symbolic links on the way: a device that syncs the
 /// same folder (a Syncthing peer, a shared Dropbox folder) could otherwise place a link that
-/// sends Kenning's reads and writes elsewhere on this computer. Parts that do not exist yet
+/// sends Vuurtoren's reads and writes elsewhere on this computer. Parts that do not exist yet
 /// are fine (`put` creates them as plain folders); what exists must resolve inside the folder.
 pub fn inside(root: &Path, path: &str, allow_empty: bool) -> Result<PathBuf, String> {
     let rel = relative(path, allow_empty)?;
@@ -97,7 +97,7 @@ pub fn inside(root: &Path, path: &str, allow_empty: bool) -> Result<PathBuf, Str
         match std::fs::symlink_metadata(&at) {
             Ok(meta) if meta.file_type().is_symlink() => {
                 return Err(format!(
-                    "{} is a link to another place. Kenning only uses plain files and folders inside the sync folder.",
+                    "{} is a link to another place. Vuurtoren only uses plain files and folders inside the sync folder.",
                     at.display()
                 ));
             }
@@ -277,8 +277,8 @@ mod tests {
     #[test]
     fn paths_stay_inside_the_folder() {
         assert_eq!(
-            relative("kenning/devices/ab12/01J.kev", false).unwrap(),
-            PathBuf::from("kenning")
+            relative("vuurtoren/devices/ab12/01J.kev", false).unwrap(),
+            PathBuf::from("vuurtoren")
                 .join("devices")
                 .join("ab12")
                 .join("01J.kev")
@@ -294,7 +294,7 @@ mod tests {
             "a\\b",
             "C:/x",
             "a b",
-            "kenning/ü",
+            "vuurtoren/ü",
             ".",
         ] {
             assert!(relative(bad, false).is_err(), "{bad} should be refused");
@@ -313,34 +313,34 @@ mod tests {
     fn files_are_written_whole_listed_read_and_removed() {
         let dir = tempfile::tempdir().unwrap();
         let root = dir.path();
-        assert_eq!(list(root, "kenning").unwrap(), Vec::<String>::new());
-        assert_eq!(get(root, "kenning/vault.json").unwrap(), None);
-        put(root, "kenning/devices/ab/1.kev", b"one").unwrap();
-        put(root, "kenning/vault.json", b"{}").unwrap();
+        assert_eq!(list(root, "vuurtoren").unwrap(), Vec::<String>::new());
+        assert_eq!(get(root, "vuurtoren/vault.json").unwrap(), None);
+        put(root, "vuurtoren/devices/ab/1.kev", b"one").unwrap();
+        put(root, "vuurtoren/vault.json", b"{}").unwrap();
         assert_eq!(
-            list(root, "kenning").unwrap(),
+            list(root, "vuurtoren").unwrap(),
             vec!["devices", "vault.json"]
         );
-        assert_eq!(list(root, "kenning/devices/ab").unwrap(), vec!["1.kev"]);
+        assert_eq!(list(root, "vuurtoren/devices/ab").unwrap(), vec!["1.kev"]);
         assert_eq!(
-            get(root, "kenning/devices/ab/1.kev").unwrap(),
+            get(root, "vuurtoren/devices/ab/1.kev").unwrap(),
             Some(b"one".to_vec())
         );
         // No temporary file is left behind; a hidden one would not be listed anyway.
-        std::fs::write(root.join("kenning/.x.writing"), b"half").unwrap();
+        std::fs::write(root.join("vuurtoren/.x.writing"), b"half").unwrap();
         assert_eq!(
-            list(root, "kenning").unwrap(),
+            list(root, "vuurtoren").unwrap(),
             vec!["devices", "vault.json"]
         );
-        put(root, "kenning/devices/ab/1.kev", b"two").unwrap();
+        put(root, "vuurtoren/devices/ab/1.kev", b"two").unwrap();
         assert_eq!(
-            get(root, "kenning/devices/ab/1.kev").unwrap(),
+            get(root, "vuurtoren/devices/ab/1.kev").unwrap(),
             Some(b"two".to_vec())
         );
-        remove(root, "kenning/devices/ab/1.kev").unwrap();
-        remove(root, "kenning/devices/ab/1.kev").unwrap();
+        remove(root, "vuurtoren/devices/ab/1.kev").unwrap();
+        remove(root, "vuurtoren/devices/ab/1.kev").unwrap();
         assert_eq!(
-            list(root, "kenning/devices/ab").unwrap(),
+            list(root, "vuurtoren/devices/ab").unwrap(),
             Vec::<String>::new()
         );
         assert!(put(root, "../outside", b"x").is_err());
@@ -348,7 +348,7 @@ mod tests {
 
     #[test]
     fn requests_are_http_with_sync_methods() {
-        assert!(check_request("https://dav.example.org/kenning/", "propfind").is_ok());
+        assert!(check_request("https://dav.example.org/vuurtoren/", "propfind").is_ok());
         assert_eq!(
             check_request("http://192.168.1.4:8080/x", "MKCOL")
                 .unwrap()
@@ -369,44 +369,44 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let root = dir.path().join("Sync");
         let elsewhere = dir.path().join("elsewhere");
-        std::fs::create_dir_all(root.join("kenning")).unwrap();
+        std::fs::create_dir_all(root.join("vuurtoren")).unwrap();
         std::fs::create_dir_all(&elsewhere).unwrap();
         std::fs::write(elsewhere.join("secret"), b"private").unwrap();
 
         // A folder that is a link: nothing is listed, read or written through it.
-        symlink(&elsewhere, root.join("kenning").join("devices")).unwrap();
-        assert!(list(&root, "kenning/devices").is_err());
-        assert!(get(&root, "kenning/devices/secret").is_err());
-        assert!(put(&root, "kenning/devices/new.kev", b"x").is_err());
-        assert!(remove(&root, "kenning/devices/secret").is_err());
+        symlink(&elsewhere, root.join("vuurtoren").join("devices")).unwrap();
+        assert!(list(&root, "vuurtoren/devices").is_err());
+        assert!(get(&root, "vuurtoren/devices/secret").is_err());
+        assert!(put(&root, "vuurtoren/devices/new.kev", b"x").is_err());
+        assert!(remove(&root, "vuurtoren/devices/secret").is_err());
         assert!(!elsewhere.join("new.kev").exists());
         assert!(elsewhere.join("secret").exists());
 
         // A file that is a link is not read; writing replaces the link, not its target.
         symlink(
             elsewhere.join("secret"),
-            root.join("kenning").join("vault.json"),
+            root.join("vuurtoren").join("vault.json"),
         )
         .unwrap();
-        assert!(get(&root, "kenning/vault.json").is_err());
-        assert!(put(&root, "kenning/vault.json", b"{}").is_err());
+        assert!(get(&root, "vuurtoren/vault.json").is_err());
+        assert!(put(&root, "vuurtoren/vault.json", b"{}").is_err());
         assert_eq!(std::fs::read(elsewhere.join("secret")).unwrap(), b"private");
 
         // A planted temporary file that is a link is removed, not written through.
         symlink(
             elsewhere.join("secret"),
-            root.join("kenning").join(".a.kev.writing"),
+            root.join("vuurtoren").join(".a.kev.writing"),
         )
         .unwrap();
-        put(&root, "kenning/a.kev", b"mine").unwrap();
+        put(&root, "vuurtoren/a.kev", b"mine").unwrap();
         assert_eq!(std::fs::read(elsewhere.join("secret")).unwrap(), b"private");
-        assert_eq!(get(&root, "kenning/a.kev").unwrap(), Some(b"mine".to_vec()));
+        assert_eq!(get(&root, "vuurtoren/a.kev").unwrap(), Some(b"mine".to_vec()));
 
         // The chosen folder itself may be a link (a synced folder kept on another disk).
         let alias = dir.path().join("SyncAlias");
         symlink(&root, &alias).unwrap();
         assert_eq!(
-            get(&alias, "kenning/a.kev").unwrap(),
+            get(&alias, "vuurtoren/a.kev").unwrap(),
             Some(b"mine".to_vec())
         );
     }

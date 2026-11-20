@@ -1,11 +1,11 @@
-// Injected into every page the Kenning window loads (the bundled home page and the user's
-// server). The web app looks for `window.__KENNING_DESKTOP__` (apps/web/src/desktop/bridge.ts).
+// Injected into every page the Vuurtoren window loads (the bundled home page and the user's
+// server). The web app looks for `window.__VUURTOREN_DESKTOP__` (apps/web/src/desktop/bridge.ts).
 // Server pages may only use anki_fetch, change_server and desktop_info (runtime capability in
 // lib.rs); everything else (the offline app's database and language server) is rejected by
 // Tauri's ACL for them.
 (function () {
   "use strict";
-  if (window.__KENNING_DESKTOP__) return;
+  if (window.__VUURTOREN_DESKTOP__) return;
   var HOME = "__HOME_ORIGIN__";
   function invoke(cmd, args) {
     return window.__TAURI_INTERNALS__.invoke(cmd, args);
@@ -23,7 +23,7 @@
     for (var i = 0; i < s.length; i++) out[i] = s.charCodeAt(i);
     return out;
   }
-  Object.defineProperty(window, "__KENNING_DESKTOP__", {
+  Object.defineProperty(window, "__VUURTOREN_DESKTOP__", {
     value: Object.freeze({
       // Not `location.origin`: custom schemes (tauri://) can report an opaque "null" origin.
       home: location.protocol + "//" + location.host === HOME,
