@@ -24,11 +24,25 @@ NON_WORD_POS = {"PUNCT", "SPACE", "SYM", "X", "NUM"}
 DIMINUTIVE_SUFFIXES = ("je", "tje", "etje", "pje", "kje")
 
 
+def _paragraph_breaks(doc: Doc) -> Doc:
+    """A blank line always starts a sentence: the parser otherwise joins a paragraph that starts
+    with a name, or a heading without a full stop, to the sentence before it."""
+    for t in doc[1:]:
+        prev = doc[t.i - 1]
+        if not t.is_space and (prev.is_space and prev.text.count("\n") >= 2):
+            t.is_sent_start = True
+    return doc
+
+
 @lru_cache(maxsize=4)
 def get_nlp(lang: str) -> Language:
     import spacy
+    from spacy.language import Language
 
+    if not Language.has_factory("paragraph_breaks"):
+        Language.component("paragraph_breaks", func=_paragraph_breaks)
     nlp = spacy.load(MODELS[lang])
+    nlp.add_pipe("paragraph_breaks", before="parser")
     # Larger than the API's per-text limit; anything above raises E088 -> HTTP 413.
     nlp.max_length = MAX_TEXT_CHARS + 1000
     return nlp
