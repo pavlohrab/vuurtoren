@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { KeyboardEvent, ReactNode } from "react";
 import type { AnalyzedToken, PlannedToken, SegmentPlan, TokenLabel } from "@app/core";
+import { stripAccents } from "@app/core";
 import { cn } from "./cn.js";
 import type { ReaderMode } from "./types.js";
 
@@ -74,11 +75,6 @@ export function learningOpacity(pKnown: number): number {
 
 /** Lower-case, NFC-normalised, trimmed form used to compare an answer with the word. */
 const normalize = (s: string) => s.normalize("NFC").trim().toLocaleLowerCase();
-/** Same, with diacritics removed ("een" matches "één"). */
-const stripAccents = (s: string) =>
-  normalize(s)
-    .normalize("NFD")
-    .replace(/\p{M}+/gu, "");
 
 /**
  * How an answer compares with the target word. Matching is case-insensitive and
@@ -88,7 +84,9 @@ const stripAccents = (s: string) =>
  */
 export function matchAnswer(answer: string, target: string): "exact" | "accents" | "incorrect" {
   if (normalize(answer) === normalize(target)) return "exact";
-  return stripAccents(answer) === stripAccents(target) ? "accents" : "incorrect";
+  return stripAccents(normalize(answer)) === stripAccents(normalize(target))
+    ? "accents"
+    : "incorrect";
 }
 
 /** Renders analysed text with word-state treatments, cloze blanks and keyboard navigation. */
