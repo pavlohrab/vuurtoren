@@ -1788,22 +1788,20 @@ svg.lucide {
   line-height: 1;
 }
 .k-logo-word {
-  font-family: var(--font-display);
-  font-weight: 600;
-  font-size: calc(var(--k-logo-size, 24px) * 0.74);
-  letter-spacing: -0.02em;
-  /* optical: the word sits on the k's baseline; the mark's right side bearing is the gap */
-  margin-left: calc(var(--k-logo-size, 24px) * -0.12);
-  transform: translateY(0.09em);
+  flex: none;
+  display: block;
+  fill: currentColor;
+  /* the word starts 12 grid units (of 64) past the end of the beam */
+  margin-left: calc(var(--k-logo-size, 24px) * 0.125);
 }
 .k-logo-mark {
   flex: none;
   display: block;
 }
-.k-logo-ribbon {
+.k-logo-beam {
   fill: var(--accent);
 }
-.k-logo-k {
+.k-logo-ink {
   fill: currentColor;
 }
 .k-ring-value {
