@@ -15,31 +15,3 @@ export interface SyncStore {
   /** Remove a file; nothing happens when it does not exist. */
   remove(path: string): Promise<void>;
 }
-
-/** A store in memory (tests, and to try sync without a place). */
-export function memoryStore(label = "Memory"): SyncStore & { files: Map<string, Uint8Array> } {
-  const files = new Map<string, Uint8Array>();
-  return {
-    label,
-    files,
-    async list(dir) {
-      const prefix = dir ? `${dir.replace(/\/$/, "")}/` : "";
-      const names = new Set<string>();
-      for (const path of files.keys()) {
-        if (!path.startsWith(prefix)) continue;
-        names.add(path.slice(prefix.length).split("/")[0]!);
-      }
-      return [...names].sort();
-    },
-    async get(path) {
-      const b = files.get(path);
-      return b ? b.slice() : null;
-    },
-    async put(path, bytes) {
-      files.set(path, bytes.slice());
-    },
-    async remove(path) {
-      files.delete(path);
-    },
-  };
-}

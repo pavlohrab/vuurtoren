@@ -30,10 +30,8 @@ import {
   syncOnce,
   toImport,
 } from "./engine.js";
-import { type SyncStore, memoryStore } from "./store.js";
-
-/** A light Argon2id cost: tests stay fast. */
-const LIGHT = { memoryKiB: 64, iterations: 1, parallelism: 1 };
+import { LIGHT_ARGON2, memoryStore } from "../testing.js";
+import type { SyncStore } from "./store.js";
 
 const T0 = Date.UTC(2026, 10, 1, 12);
 const PASS = "lange zinnen lezen";
@@ -51,7 +49,7 @@ describe("sync engine", () => {
     const a = await device("aaaaaaaaaaaa", T0);
     const b = await device("bbbbbbbbbbbb", T0 + 1000);
     await expect(openVault(store, PASS, false)).rejects.toBeInstanceOf(NoVaultError);
-    const keyA = (await openVault(store, PASS, true, LIGHT)).key;
+    const keyA = (await openVault(store, PASS, true, LIGHT_ARGON2)).key;
     await expect(openVault(store, "something else", false)).rejects.toBeInstanceOf(
       WrongPassphraseError,
     );
@@ -103,7 +101,7 @@ describe("sync engine", () => {
   it("folds a device's many files into one base; a new device still gets everything", async () => {
     const store = memoryStore();
     const a = await device("aaaaaaaaaaaa", T0);
-    const key = (await openVault(store, PASS, true, LIGHT)).key;
+    const key = (await openVault(store, PASS, true, LIGHT_ARGON2)).key;
     const opts = { deviceName: "Laptop", segmentEvents: 2, foldAfter: 3 };
     for (let i = 0; i < 10; i++) {
       await a.append({ type: "WordStateSet", lang: "nl", key: `w${i}`, state: "known" });
@@ -124,11 +122,11 @@ describe("sync engine", () => {
     const store = memoryStore();
     const a = await device("aaaaaaaaaaaa", T0);
     await a.append({ type: "WordStateSet", lang: "nl", key: "x", state: "known" });
-    const key = (await openVault(store, PASS, true, LIGHT)).key;
+    const key = (await openVault(store, PASS, true, LIGHT_ARGON2)).key;
     expect((await syncOnce(a, store, key, { deviceName: "L" })).sent).toBe(1);
     // The place was emptied and set up again: everything goes up again.
     store.files.clear();
-    const fresh = (await openVault(store, PASS, true, LIGHT)).key;
+    const fresh = (await openVault(store, PASS, true, LIGHT_ARGON2)).key;
     expect((await syncOnce(a, store, fresh, { deviceName: "L" })).sent).toBe(1);
     // The old key no longer opens it.
     await expect(syncOnce(a, store, key, { deviceName: "L" })).rejects.toBeInstanceOf(
@@ -140,7 +138,7 @@ describe("sync engine", () => {
     const store = memoryStore();
     const a = await device("aaaaaaaaaaaa", T0);
     const b = await device("bbbbbbbbbbbb", T0 + 1000);
-    const key = (await openVault(store, PASS, true, LIGHT)).key;
+    const key = (await openVault(store, PASS, true, LIGHT_ARGON2)).key;
     await a.append({ type: "WordStateSet", lang: "nl", key: "x", state: "known" });
     await syncOnce(a, store, key, { deviceName: "Laptop" });
     const junk = new Uint8Array([1, 2, 3]);
@@ -190,7 +188,7 @@ describe("sync engine", () => {
 
 describe("sync crypto", () => {
   it("seals and opens, names blobs without revealing them, refuses other keys", async () => {
-    const { key, vault } = await createVault(PASS, LIGHT);
+    const { key, vault } = await createVault(PASS, LIGHT_ARGON2);
     expect(vault).toMatchObject({
       format: 2,
       locks: [{ kind: "passphrase", kdf: { name: "argon2id" } }, { kind: "recovery" }],
@@ -209,7 +207,7 @@ describe("sync crypto", () => {
   it("opens with the recovery key, written any way, and the passphrase changes without touching files", async () => {
     const store = memoryStore();
     const a = await device("aaaaaaaaaaaa", T0);
-    const made = await openVault(store, PASS, true, LIGHT);
+    const made = await openVault(store, PASS, true, LIGHT_ARGON2);
     expect(made.recoveryKey).toMatch(/^([0-9A-HJKMNP-TV-Z]{4}-){7}[0-9A-HJKMNP-TV-Z]{4}$/);
     await a.append({ type: "WordStateSet", lang: "nl", key: "x", state: "known" });
     await syncOnce(a, store, made.key, { deviceName: "Laptop" });
@@ -218,7 +216,7 @@ describe("sync crypto", () => {
     const sloppy = made.recoveryKey!.toLowerCase().replace(/-/g, " ");
     expect((await openVault(store, sloppy, false)).key.raw).toEqual(made.key.raw);
 
-    await changeVaultPassphrase(store, made.key, "een nieuwe zin", LIGHT);
+    await changeVaultPassphrase(store, made.key, "een nieuwe zin", LIGHT_ARGON2);
     await expect(openVault(store, PASS, false)).rejects.toBeInstanceOf(WrongPassphraseError);
     expect((await openVault(store, "een nieuwe zin", false)).key.raw).toEqual(made.key.raw);
     // The recovery key still works, no synced file changed, devices keep their key.
@@ -228,7 +226,7 @@ describe("sync crypto", () => {
     expect(await syncOnce(a, store, made.key, { deviceName: "Laptop" })).toMatchObject({ sent: 0 });
 
     // A new recovery key: the old one stops working.
-    const fresh = await renewRecoveryKey(store, made.key, LIGHT);
+    const fresh = await renewRecoveryKey(store, made.key, LIGHT_ARGON2);
     await expect(openVault(store, made.recoveryKey!, false)).rejects.toBeInstanceOf(
       WrongPassphraseError,
     );
@@ -262,13 +260,13 @@ describe("sync crypto", () => {
     const store = memoryStore();
     await store.put(VAULT_PATH, new TextEncoder().encode(JSON.stringify(old)));
     expect((await openVault(store, PASS, false)).key.raw).toEqual(raw);
-    await expect(renewRecoveryKey(store, key, LIGHT)).rejects.toThrow(/passphrase first/);
-    await changeVaultPassphrase(store, key, "een nieuwe zin", LIGHT);
+    await expect(renewRecoveryKey(store, key, LIGHT_ARGON2)).rejects.toThrow(/passphrase first/);
+    await changeVaultPassphrase(store, key, "een nieuwe zin", LIGHT_ARGON2);
     expect((await openVault(store, "een nieuwe zin", false)).key.raw).toEqual(raw);
     // Same vault for the devices' sync state.
     const vault = JSON.parse(new TextDecoder().decode((await store.get(VAULT_PATH))!)) as VaultFile;
     expect(vaultId(vault)).toBe(vaultId(old));
-    expect(await renewRecoveryKey(store, key, LIGHT)).toMatch(/-/);
+    expect(await renewRecoveryKey(store, key, LIGHT_ARGON2)).toMatch(/-/);
   });
 });
 
@@ -304,7 +302,7 @@ const mark = (repo: KenningRepository, key: string) =>
 describe("sync engine, when things go wrong", () => {
   it("brings in many files with one replay", async () => {
     const store = memoryStore();
-    const key = (await openVault(store, PASS, true, LIGHT)).key;
+    const key = (await openVault(store, PASS, true, LIGHT_ARGON2)).key;
     const a = await device(A, T0);
     const b = await device(B, T0 + 50_000);
     for (let i = 0; i < 4; i++) await mark(a, `a${i}`);
@@ -328,7 +326,7 @@ describe("sync engine, when things go wrong", () => {
 
   it("caps segments by size", async () => {
     const store = memoryStore();
-    const key = (await openVault(store, PASS, true, LIGHT)).key;
+    const key = (await openVault(store, PASS, true, LIGHT_ARGON2)).key;
     const a = await device(A, T0);
     for (let i = 0; i < 5; i++) {
       await a.append({
@@ -349,7 +347,7 @@ describe("sync engine, when things go wrong", () => {
   it("folds only what is new; a device that keeps up never downloads a folded part", async () => {
     const base = memoryStore();
     const { store, calls } = counted(base);
-    const key = (await openVault(store, PASS, true, LIGHT)).key;
+    const key = (await openVault(store, PASS, true, LIGHT_ARGON2)).key;
     const a = await device(A, T0);
     const b = await device(B, T0 + 500_000);
     const opts = { deviceName: "Laptop", foldAfter: 3, baseBytes: 1 };
@@ -381,7 +379,7 @@ describe("sync engine, when things go wrong", () => {
 
   it("leaves out a file that never opens, after a few tries, and goes on", async () => {
     const store = memoryStore();
-    const key = (await openVault(store, PASS, true, LIGHT)).key;
+    const key = (await openVault(store, PASS, true, LIGHT_ARGON2)).key;
     const a = await device(A, T0);
     const c = await device(C, T0 + 1);
     await mark(a, "eerste");
@@ -412,7 +410,7 @@ describe("sync engine, when things go wrong", () => {
 
   it("binds files to their path; files of the first format still open", async () => {
     const store = memoryStore();
-    const key = (await openVault(store, PASS, true, LIGHT)).key;
+    const key = (await openVault(store, PASS, true, LIGHT_ARGON2)).key;
     const a = await device(A, T0);
     await mark(a, "eerste");
     const old = await a.exportEvents();
@@ -455,7 +453,7 @@ describe("sync engine, when things go wrong", () => {
 
   it("refuses a file that unpacks to more than it may", async () => {
     const store = memoryStore();
-    const key = (await openVault(store, PASS, true, LIGHT)).key;
+    const key = (await openVault(store, PASS, true, LIGHT_ARGON2)).key;
     const path = `${dirOf(A)}/01JAAAAAAAAAAAAAAAAAAAAAAA.kev`;
     await store.put(path, await seal(key, gzipSync(new Uint8Array(70 * 1024 * 1024)), path));
     const b = await device(B, T0 + 50_000);
@@ -466,7 +464,7 @@ describe("sync engine, when things go wrong", () => {
 
   it("waits for a file that has not arrived before taking the ones after it", async () => {
     const store = memoryStore();
-    const key = (await openVault(store, PASS, true, LIGHT)).key;
+    const key = (await openVault(store, PASS, true, LIGHT_ARGON2)).key;
     const a = await device(A, T0);
     await mark(a, "eerste");
     await syncOnce(a, store, key, { deviceName: "Laptop" });
@@ -485,7 +483,7 @@ describe("sync engine, when things go wrong", () => {
 
   it("writes its name when it sent something or an hour passed; lists blobs only when needed", async () => {
     const { store, calls } = counted(memoryStore());
-    const key = (await openVault(store, PASS, true, LIGHT)).key;
+    const key = (await openVault(store, PASS, true, LIGHT_ARGON2)).key;
     const a = await device(A, T0);
     let t = T0;
     const opts = { deviceName: "L".repeat(500), now: () => t };
@@ -519,7 +517,7 @@ describe("sync engine, when things go wrong", () => {
 
   it("asks only for blobs with a real id", async () => {
     const store = memoryStore();
-    const key = (await openVault(store, PASS, true, LIGHT)).key;
+    const key = (await openVault(store, PASS, true, LIGHT_ARGON2)).key;
     const a = await device(A, T0);
     await a.append({ type: "TextCoverSet", textId: "t1", blobId: "../../vault.json" });
     await syncOnce(a, store, key, { deviceName: "Laptop" });
@@ -532,7 +530,7 @@ describe("sync engine, when things go wrong", () => {
 describe("sync vault", () => {
   it("refuses a vault.json that asks too much or is not one", async () => {
     const store = memoryStore();
-    const { vault } = await createVault(PASS, LIGHT);
+    const { vault } = await createVault(PASS, LIGHT_ARGON2);
     const put = (v: unknown) => store.put(VAULT_PATH, new TextEncoder().encode(JSON.stringify(v)));
     const v2 = vault as Extract<VaultFile, { format: 2 }>;
     await put({
@@ -554,9 +552,9 @@ describe("sync vault", () => {
 
   it("never mixes up a passphrase and a recovery key", async () => {
     const odd = "abcd efgh jkmn pqrs tvwx yz01 2345 6789";
-    await expect(createVault(odd, LIGHT)).rejects.toThrow(/recovery key/);
+    await expect(createVault(odd, LIGHT_ARGON2)).rejects.toThrow(/recovery key/);
     // A vault from before such passphrases were refused: its passphrase lock opens with it.
-    const made = await createVault(PASS, LIGHT);
+    const made = await createVault(PASS, LIGHT_ARGON2);
     const vault = made.vault as Extract<VaultFile, { format: 2 }>;
     const salt = new Uint8Array(16).fill(5);
     const lockKey = await keyFromRaw(
@@ -573,7 +571,7 @@ describe("sync vault", () => {
     const locks = [
       {
         kind: "passphrase",
-        kdf: { name: "argon2id", salt: toBase64(salt), ...LIGHT },
+        kdf: { name: "argon2id", salt: toBase64(salt), ...LIGHT_ARGON2 },
         sealed: toBase64(await seal(lockKey, made.key.raw)),
       },
       ...vault.locks.filter((l) => l.kind === "recovery"),
@@ -586,7 +584,7 @@ describe("sync vault", () => {
 
   it("takes the passphrase without the spaces around it", async () => {
     const store = memoryStore();
-    const made = await openVault(store, `  ${PASS} `, true, LIGHT);
+    const made = await openVault(store, `  ${PASS} `, true, LIGHT_ARGON2);
     expect((await openVault(store, PASS, false)).key.raw).toEqual(made.key.raw);
     expect((await openVault(store, `${PASS}\n`, false)).key.raw).toEqual(made.key.raw);
   });

@@ -3,7 +3,8 @@ import { describe, expect, it, vi } from "vitest";
 import type { KeyValueStorage } from "@app/ai";
 import { createRepository } from "@app/db";
 import { createNodeDriver } from "@app/db/node";
-import { fakeServer } from "../sync/fakePlaces.test-util.js";
+import { LIGHT_ARGON2 } from "@app/db/testing";
+import { fakeServer } from "../sync/fake-places.test-util.js";
 import { createLiveSync } from "./liveSync.js";
 import type { SyncPlace } from "./syncTypes.js";
 
@@ -18,14 +19,18 @@ function memStorage(): KeyValueStorage & { m: Map<string, string> } {
 }
 
 const PASS = "lange zinnen lezen";
-/** A light Argon2id cost: tests stay fast. */
-const LIGHT = { memoryKiB: 64, iterations: 1, parallelism: 1 };
-
 async function device(id: string, fetch: typeof globalThis.fetch, clock: { t: number }) {
   const repo = await createRepository(await createNodeDriver(), { deviceId: id });
   const storage = memStorage();
   const changed = vi.fn();
-  const sync = createLiveSync({ repo, storage, fetch, changed, now: () => clock.t, cost: LIGHT });
+  const sync = createLiveSync({
+    repo,
+    storage,
+    fetch,
+    changed,
+    now: () => clock.t,
+    cost: LIGHT_ARGON2,
+  });
   return { repo, storage, changed, sync };
 }
 

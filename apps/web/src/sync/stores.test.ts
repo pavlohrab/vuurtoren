@@ -5,13 +5,11 @@
 import { describe, expect, it } from "vitest";
 import { type SyncStore, createRepository, openVault, syncOnce } from "@app/db";
 import { createNodeDriver } from "@app/db/node";
+import { LIGHT_ARGON2 } from "@app/db/testing";
 import { githubStore } from "./githubStore.js";
 import { propfindNames, webdavStore } from "./webdavStore.js";
 import { serverStore } from "./serverStore.js";
-import { fakeDav, fakeGithub, fakeServer } from "./fakePlaces.test-util.js";
-
-/** A light Argon2id cost: tests stay fast. */
-const LIGHT = { memoryKiB: 64, iterations: 1, parallelism: 1 };
+import { fakeDav, fakeGithub, fakeServer } from "./fake-places.test-util.js";
 
 const places: [string, () => SyncStore][] = [
   [
@@ -51,7 +49,7 @@ describe.each(places)("%s", (_name, make) => {
     const store = make();
     const a = await createRepository(await createNodeDriver(), { deviceId: "aaaaaaaaaaaa" });
     const b = await createRepository(await createNodeDriver(), { deviceId: "bbbbbbbbbbbb" });
-    const key = (await openVault(store, "lange zinnen lezen", true, LIGHT)).key;
+    const key = (await openVault(store, "lange zinnen lezen", true, LIGHT_ARGON2)).key;
     await a.append({ type: "WordStateSet", lang: "nl", key: "fiets", state: "known" });
     await syncOnce(a, store, key, { deviceName: "Laptop" });
     expect(await syncOnce(b, store, key, { deviceName: "Phone" })).toMatchObject({ received: 1 });
@@ -85,11 +83,11 @@ describe("GitHub", () => {
 describe("credentials refused", () => {
   it("says so in plain words", async () => {
     const wrong = serverStore("https://kenning.example", "nope", fakeServer(new Map(), "ksync_t"));
-    await expect(wrong.list("")).rejects.toMatchObject({ kind: "auth" });
+    await expect(wrong.list("")).rejects.toThrow(/did not accept the sync token/);
     const offline = webdavStore("https://dav.example/x", "a", "b", (async () => {
       throw new TypeError("network");
     }) as typeof fetch);
-    await expect(offline.get("a")).rejects.toMatchObject({ kind: "offline" });
+    await expect(offline.get("a")).rejects.toThrow(/cannot be reached/);
     expect(() => githubStore("not a repo", "t", fetch)).toThrow(/owner\/name/);
   });
 
