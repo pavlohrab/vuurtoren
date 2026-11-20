@@ -98,6 +98,12 @@ const DATE_FMT = new Intl.DateTimeFormat("en-GB", {
 export function Home() {
   const services = useServices();
   const inspector = useWordInspector("reading");
+  // Setup skipped: no language profile yet, so there are no cards or starter levels.
+  const profileQ = useQuery({
+    queryKey: ["languageProfile"],
+    queryFn: () => services.languageProfile(),
+    staleTime: Infinity,
+  });
   // The top bar shows today's date: the page's own heading is the greeting.
   usePageHeader(DATE_FMT.format(new Date()), { always: true });
   const texts = useQuery({ queryKey: ["texts"], queryFn: () => services.listTexts() });
@@ -171,6 +177,15 @@ export function Home() {
 
   return (
     <div className="page home">
+      {profileQ.data === null ? (
+        <Link to="/welcome" className="home-setup">
+          <span className="home-setup-title">Finish setting up</span>
+          <span className="home-setup-hint">
+            Choose how you study and add the starter words: your flashcards appear under Review.
+          </span>
+          <ArrowRight size={16} aria-hidden />
+        </Link>
+      ) : null}
       <PageHeader
         title={hello}
         lede={

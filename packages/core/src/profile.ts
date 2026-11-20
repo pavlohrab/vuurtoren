@@ -74,11 +74,14 @@ export function rootDeck(lang: string): string {
   return `Vuurtoren::${langName(lang)}`;
 }
 
-/** The mode of a profile; a profile without one is `connected`. */
+/** The mode of a profile: no profile yet is `native` (the default for new learners); a profile without a mode is `connected`. */
 export function profileMode(
   profile: Pick<LanguageProfile, "mode"> | null | undefined,
 ): ProfileMode {
-  return profile?.mode === "native" ? "native" : "connected";
+  // No profile yet: a new learner, and Vuurtoren's own cards are the default. A profile from
+  // before modes existed (no `mode`) was made with Anki and stays connected.
+  if (!profile) return "native";
+  return profile.mode === "native" ? "native" : "connected";
 }
 
 /**
