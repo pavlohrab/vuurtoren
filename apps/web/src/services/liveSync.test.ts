@@ -87,7 +87,7 @@ describe("sync on a device", () => {
     expect((await laptop.repo.word("nl", "huis"))?.state).toBe("known");
   });
 
-  it("keeps the key in the key store, moves an old saved key there, and forgets it on stop", async () => {
+  it("keeps the key in the key store, and forgets it on stop", async () => {
     const clock = { t: Date.UTC(2026, 10, 20, 9) };
     const fetch = fakeServer(new Map(), "ksync_t");
     const place: SyncPlace = { kind: "server", url: "https://kenning.example", token: "ksync_t" };
@@ -97,18 +97,6 @@ describe("sync on a device", () => {
     // The key is not in local storage.
     const saved = JSON.parse(laptop.storage.m.get("kenning.sync")!) as Record<string, unknown>;
     expect(saved["key"]).toBeUndefined();
-
-    // Settings from before the key store: the key moves on the next sync.
-    const raw = laptop.keys.raw!;
-    await laptop.keys.forget();
-    laptop.storage.m.set(
-      "kenning.sync",
-      JSON.stringify({ ...saved, key: btoa(String.fromCharCode(...raw)) }),
-    );
-    clock.t += 61_000;
-    await laptop.sync.services.syncNow();
-    expect(laptop.keys.raw).toEqual(raw);
-    expect(JSON.parse(laptop.storage.m.get("kenning.sync")!)["key"]).toBeUndefined();
 
     await laptop.sync.services.stopSync();
     expect(laptop.keys.raw).toBeNull();

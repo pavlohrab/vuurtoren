@@ -1,8 +1,6 @@
 /**
- * The stdio-only tool: `add_to_anki` writes a card through the learner's local AnkiConnect.
- * It exists here and not on the server's /api/mcp endpoint, which cannot reach the learner's
- * Anki (and only queues suggestions instead). The shared tools live in
- * @app/mcp-tools.
+ * `add_to_anki` writes a card through the learner's local AnkiConnect and records it in the
+ * learner's data. The other tools live in @app/mcp-tools.
  */
 import { type AnkiConnectClient, addWord } from "@app/anki";
 import { defaultProfile, wordKey } from "@app/core";

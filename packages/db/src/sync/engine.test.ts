@@ -17,7 +17,6 @@ import {
   parseRecovery,
   seal,
   unseal,
-  vaultId,
 } from "./crypto.js";
 import {
   NoVaultError,
@@ -25,7 +24,6 @@ import {
   changeVaultPassphrase,
   listDevices,
   openVault,
-  readVault,
   renewRecoveryKey,
   syncOnce,
   toImport,
@@ -79,7 +77,7 @@ describe("sync engine", () => {
     expect(got).toMatchObject({ sent: 0, received: 2 });
     expect((await b.listTexts()).map((t) => t.title)).toEqual(["De verloren fiets"]);
     expect((await b.getBlob(cover))?.bytes).toEqual(PNG);
-    expect(got.devices.map((d) => [d.name, d.self])).toEqual([
+    expect(got.devices!.map((d) => [d.name, d.self])).toEqual([
       ["Phone", true],
       ["Laptop", false],
     ]);
@@ -102,7 +100,7 @@ describe("sync engine", () => {
     const store = memoryStore();
     const a = await device("aaaaaaaaaaaa", T0);
     const key = (await openVault(store, PASS, true, LIGHT_ARGON2)).key;
-    const opts = { deviceName: "Laptop", segmentEvents: 2, foldAfter: 3 };
+    const opts = { deviceName: "Laptop", testLimits: { segmentEvents: 2, foldAfter: 3 } };
     for (let i = 0; i < 10; i++) {
       await a.append({ type: "WordStateSet", lang: "nl", key: `w${i}`, state: "known" });
       if (i % 2 === 1) await syncOnce(a, store, key, opts);
@@ -154,7 +152,7 @@ describe("sync engine", () => {
     );
     const got = await syncOnce(b, store, key, { deviceName: "Phone" });
     expect(got.received).toBe(1);
-    expect(got.devices.map((d) => d.name)).toEqual(["Phone", "Laptop"]);
+    expect(got.devices!.map((d) => d.name)).toEqual(["Phone", "Laptop"]);
     // A segment listed before it has arrived (still being copied) comes next time.
     await a.append({ type: "WordStateSet", lang: "nl", key: "y", state: "known" });
     await syncOnce(a, store, key, { deviceName: "Laptop" });
@@ -233,41 +231,6 @@ describe("sync crypto", () => {
     expect((await openVault(store, fresh, false)).key.raw).toEqual(made.key.raw);
     expect(parseRecovery("not a key")).toBeNull();
   });
-
-  it("still opens a vault of the first format, and upgrades it on a passphrase change", async () => {
-    // A first-format vault: the key is the passphrase's PBKDF2 output.
-    const salt = new Uint8Array(16).fill(3);
-    const base = await crypto.subtle.importKey(
-      "raw",
-      new TextEncoder().encode(PASS),
-      "PBKDF2",
-      false,
-      ["deriveBits"],
-    );
-    const raw = new Uint8Array(
-      await crypto.subtle.deriveBits(
-        { name: "PBKDF2", hash: "SHA-256", salt, iterations: 1000 },
-        base,
-        512,
-      ),
-    );
-    const key = await keyFromRaw(raw);
-    const old: VaultFile = {
-      format: 1,
-      kdf: { name: "PBKDF2-SHA256", iterations: 1000, salt: toBase64(salt) },
-      check: toBase64(await seal(key, new TextEncoder().encode("kenning-sync"))),
-    };
-    const store = memoryStore();
-    await store.put(VAULT_PATH, new TextEncoder().encode(JSON.stringify(old)));
-    expect((await openVault(store, PASS, false)).key.raw).toEqual(raw);
-    await expect(renewRecoveryKey(store, key, LIGHT_ARGON2)).rejects.toThrow(/passphrase first/);
-    await changeVaultPassphrase(store, key, "een nieuwe zin", LIGHT_ARGON2);
-    expect((await openVault(store, "een nieuwe zin", false)).key.raw).toEqual(raw);
-    // Same vault for the devices' sync state.
-    const vault = JSON.parse(new TextDecoder().decode((await store.get(VAULT_PATH))!)) as VaultFile;
-    expect(vaultId(vault)).toBe(vaultId(old));
-    expect(await renewRecoveryKey(store, key, LIGHT_ARGON2)).toMatch(/-/);
-  });
 });
 
 const A = "aaaaaaaaaaaa";
@@ -290,10 +253,10 @@ function counted(store: ReturnType<typeof memoryStore>) {
   return { calls, store: counting };
 }
 
-/** A file as the first version of sync wrote it: no range, sealed without its path. */
-async function firstFormatFile(key: SyncKey, device: string, events: SyncEvent[]) {
+/** A file without a range, sealed with `path` or without one. */
+async function rangelessFile(key: SyncKey, device: string, events: SyncEvent[], path?: string) {
   const json = new TextEncoder().encode(JSON.stringify({ format: 1, device, events }));
-  return seal(key, gzipSync(json));
+  return seal(key, gzipSync(json), path);
 }
 
 const mark = (repo: KenningRepository, key: string) =>
@@ -306,7 +269,7 @@ describe("sync engine, when things go wrong", () => {
     const a = await device(A, T0);
     const b = await device(B, T0 + 50_000);
     for (let i = 0; i < 4; i++) await mark(a, `a${i}`);
-    await syncOnce(a, store, key, { deviceName: "Laptop", segmentEvents: 1 });
+    await syncOnce(a, store, key, { deviceName: "Laptop", testLimits: { segmentEvents: 1 } });
     expect(await eventFiles(store, A)).toHaveLength(4);
     // B's own change is newer than all of A's: A's events land before the log's end.
     await b.append({ type: "WordStateSet", lang: "nl", key: "a0", state: "learning" });
@@ -338,7 +301,7 @@ describe("sync engine, when things go wrong", () => {
         content: "Een zin over de gracht. ".repeat(100),
       });
     }
-    await syncOnce(a, store, key, { deviceName: "Laptop", segmentBytes: 5000 });
+    await syncOnce(a, store, key, { deviceName: "Laptop", testLimits: { segmentBytes: 5000 } });
     expect((await eventFiles(store, A)).length).toBeGreaterThanOrEqual(3);
     const b = await device(B, T0 + 50_000);
     expect(await syncOnce(b, store, key, { deviceName: "Phone" })).toMatchObject({ received: 5 });
@@ -350,7 +313,7 @@ describe("sync engine, when things go wrong", () => {
     const key = (await openVault(store, PASS, true, LIGHT_ARGON2)).key;
     const a = await device(A, T0);
     const b = await device(B, T0 + 500_000);
-    const opts = { deviceName: "Laptop", foldAfter: 3, baseBytes: 1 };
+    const opts = { deviceName: "Laptop", testLimits: { foldAfter: 3, baseBytes: 1 } };
     const early = new Map<string, Uint8Array>();
     for (let i = 0; i < 12; i++) {
       await mark(a, `w${i}`);
@@ -377,8 +340,10 @@ describe("sync engine, when things go wrong", () => {
     expect(await syncOnce(c, base, key, { deviceName: "Tablet" })).toMatchObject({ received: 12 });
   });
 
-  it("leaves out a file that never opens, after a few tries, and goes on", async () => {
+  it("leaves out a file that does not open for an hour, and goes on", async () => {
     const store = memoryStore();
+    let t = T0 + 60_000;
+    const later = { deviceName: "Phone", now: () => t };
     const key = (await openVault(store, PASS, true, LIGHT_ARGON2)).key;
     const a = await device(A, T0);
     const c = await device(C, T0 + 1);
@@ -393,41 +358,36 @@ describe("sync engine, when things go wrong", () => {
     store.files.set(path, new TextEncoder().encode("KSY2 this is not what was written"));
 
     const b = await device(B, T0 + 50_000);
-    for (let i = 0; i < 2; i++) {
-      const r = await syncOnce(b, store, key, { deviceName: "Phone" });
+    for (const wait of [0, 59 * 60_000]) {
+      t += wait;
+      const r = await syncOnce(b, store, key, later);
       // The other device's changes still come.
-      expect(r.received).toBe(i === 0 ? 1 : 0);
+      expect(r.received).toBe(wait === 0 ? 1 : 0);
       expect(r.problems).toEqual([expect.objectContaining({ what: path, leftOut: false })]);
     }
-    const r = await syncOnce(b, store, key, { deviceName: "Phone" });
+    t += 2 * 60_000;
+    const r = await syncOnce(b, store, key, later);
     expect(r.problems).toEqual([expect.objectContaining({ what: path, leftOut: true })]);
     expect(r.received).toBe(1);
     expect((await b.word("nl", "tweede"))?.state).toBe("known");
     expect(await b.word("nl", "eerste")).toBeNull();
     expect(await b.syncState()).toMatchObject({ problems: [{ what: path, leftOut: true }] });
-    expect((await syncOnce(b, store, key, { deviceName: "Phone" })).problems).toEqual([]);
+    expect((await syncOnce(b, store, key, later)).problems).toEqual([]);
   });
 
-  it("binds files to their path; files of the first format still open", async () => {
+  it("binds files to their path, and opens only files with their range", async () => {
     const store = memoryStore();
     const key = (await openVault(store, PASS, true, LIGHT_ARGON2)).key;
     const a = await device(A, T0);
-    await mark(a, "eerste");
-    const old = await a.exportEvents();
-    // A first-format file, named by its last event id.
-    await store.put(`${dirOf(A)}/${old[0]!.id}.kev`, await firstFormatFile(key, A, old));
     const b = await device(B, T0 + 50_000);
+    await mark(a, "eerste");
+    await syncOnce(a, store, key, { deviceName: "Laptop" });
     expect(await syncOnce(b, store, key, { deviceName: "Phone" })).toMatchObject({ received: 1 });
 
-    // A current file copied into another device's folder does not open there.
-    await mark(a, "tweede");
-    const vault = vaultId((await readVault(store))!);
-    await a.setSyncState({ vault, sent: old[0]!.id, received: {} });
-    await syncOnce(a, store, key, { deviceName: "Laptop" });
-    const [, name] = await eventFiles(store, A);
+    // A file copied into another device's folder does not open there.
+    const [name] = await eventFiles(store, A);
     await store.put(`${dirOf(C)}/${name}`, (await store.get(`${dirOf(A)}/${name}`))!);
     const r = await syncOnce(b, store, key, { deviceName: "Phone" });
-    expect(r.received).toBe(1);
     expect(r.problems).toEqual([
       expect.objectContaining({
         what: `${dirOf(C)}/${name}`,
@@ -435,20 +395,39 @@ describe("sync engine, when things go wrong", () => {
       }),
     ]);
 
-    // A first-format file under a name that is not its last event's id is refused.
+    // A file sealed without its path, or without a range, is not a sync file.
     const D = "dddddddddddd";
     const d = await device(D, T0 + 2);
     await mark(d, "vierde");
-    const fake = `${"7".padEnd(26, "0")}.kev`;
-    await store.put(`${dirOf(D)}/${fake}`, await firstFormatFile(key, D, await d.exportEvents()));
+    const events = await d.exportEvents();
+    const unbound = `${dirOf(D)}/${events[0]!.id}.kev`;
+    await store.put(unbound, await rangelessFile(key, D, events));
+    const E = "eeeeeeeeeeee";
+    const rangeless = `${dirOf(E)}/${events[0]!.id}.kev`;
+    await store.put(rangeless, await rangelessFile(key, E, events, rangeless));
     expect((await syncOnce(b, store, key, { deviceName: "Phone" })).problems).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({
-          what: `${dirOf(D)}/${fake}`,
-          error: expect.stringMatching(/name says/),
-        }),
+        expect.objectContaining({ what: unbound, error: expect.stringMatching(/not a Kenning/) }),
+        expect.objectContaining({ what: rangeless, error: expect.stringMatching(/damaged/) }),
       ]),
     );
+    expect(await b.word("nl", "vierde")).toBeNull();
+  });
+
+  it("reads the devices' names only when something came in or went out, or hourly", async () => {
+    const { store, calls } = counted(memoryStore());
+    const key = (await openVault(store, PASS, true, LIGHT_ARGON2)).key;
+    const a = await device(A, T0);
+    let t = T0;
+    const opts = { deviceName: "Laptop", now: () => t };
+    await mark(a, "eerste");
+    expect((await syncOnce(a, store, key, opts)).devices).toHaveLength(1);
+    const reads = () => calls.filter((c) => c.endsWith("/device.kev") && c.startsWith("get"));
+    const before = reads().length;
+    expect((await syncOnce(a, store, key, opts)).devices).toBeNull();
+    expect(reads()).toHaveLength(before);
+    t += 3_600_000;
+    expect((await syncOnce(a, store, key, opts)).devices).toHaveLength(1);
   });
 
   it("refuses a file that unpacks to more than it may", async () => {

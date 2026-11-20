@@ -64,11 +64,12 @@ const FOLD_AFTER = 100;
 const REFOLD_EVERY = 10;
 /** device.kev is written when something was sent, else at most this often. */
 const ANNOUNCE_MS = 3_600_000;
-/** Syncs a file may fail to open before it is left out. */
-const RETRIES = 3;
+/** The devices' names are read when something came in or went out, else at most this often. */
+const DEVICES_EVERY_MS = 3_600_000;
+/** How long a file that does not open is tried again before it is left out. */
+const RETRY_FOR_MS = 3_600_000;
 /** How long a file waits for the one before it (still being copied) before it is taken anyway. */
 const GAP_WAIT_MS = 86_400_000;
-const GAP_TRIES = 10;
 /** Missing blobs: how many are remembered, how long, and how many are fetched per sync. */
 const MISSING_MAX = 1000;
 const MISSING_MS = 30 * 86_400_000;
@@ -81,13 +82,12 @@ const SEGMENT = /^([0-7][0-9A-HJKMNP-TV-Z]{25})(\.base)?\.kev$/;
 const DEVICE_ID = /^[0-9A-Za-z_]{1,64}$/;
 
 interface SegmentFile {
-  /** 1: the first format (no range); 2: with `after` and `last`. */
-  format: 1 | 2;
+  format: 2;
   device: string;
   /** This device's events after this id ("" from the start)… */
-  after?: string;
+  after: string;
   /** …up to this one, the file's name. */
-  last?: string;
+  last: string;
   events: SyncEvent[];
 }
 
@@ -123,7 +123,7 @@ interface SyncState {
   /** Last event id imported, per other device. */
   received: Record<string, string>;
   /** Blobs the events referred to that were not in the place yet, with when first missed. */
-  missing?: Record<string, number> | string[];
+  missing?: Record<string, number>;
   /** Blob ids known to be in the place, newest last. */
   blobs?: string[];
   /** The name and time last written to device.kev. */
@@ -131,8 +131,10 @@ interface SyncState {
   /** Folds so far, and events compaction removed since the last refold. */
   folds?: number;
   compacted?: number;
-  /** Files that did not open yet or wait for an earlier file, by path. */
-  retries?: Record<string, { error: string; tries: number; since: number }>;
+  /** When the devices' names were last read. */
+  listedAt?: number;
+  /** Files that did not open yet or wait for an earlier file, by path, with since when. */
+  retries?: Record<string, { error: string; since: number }>;
   /** What was left out, newest last. */
   problems?: SyncProblem[];
 }
@@ -142,24 +144,41 @@ export interface SyncSummary {
   received: number;
   /** The log was replayed because some events were older than its end. */
   rebuilt: boolean;
-  devices: SyncDevice[];
+  /**
+   * Every device of the place, read when something came in or went out and at least hourly;
+   * null when this sync did not read them.
+   */
+  devices: SyncDevice[] | null;
   /** What this sync left out or is waiting on. */
   problems: SyncProblem[];
 }
+
+/** File sizes the engine works with; tests make them small. */
+export interface SyncLimits {
+  /** Events per segment file. */
+  segmentEvents: number;
+  /** JSON bytes per segment file (a single larger event goes alone). */
+  segmentBytes: number;
+  /** A folded part closes at the first file end past this many JSON bytes. */
+  baseBytes: number;
+  /** A device's segment files are folded past this many. */
+  foldAfter: number;
+}
+
+const LIMITS: SyncLimits = {
+  segmentEvents: SEGMENT_EVENTS,
+  segmentBytes: SEGMENT_BYTES,
+  baseBytes: BASE_BYTES,
+  foldAfter: FOLD_AFTER,
+};
 
 export interface SyncOptions {
   /** This device's name, shown on the others ("Laptop", "Phone"). */
   deviceName: string;
   now?: () => number;
   onProgress?: (message: string) => void;
-  /** Events per segment file (default 2000). */
-  segmentEvents?: number;
-  /** JSON bytes per segment file (default 4 MiB). */
-  segmentBytes?: number;
-  /** JSON bytes per folded part (default 8 MiB). */
-  baseBytes?: number;
-  /** Fold this device's segment files past this many (default 100). */
-  foldAfter?: number;
+  /** Tests only: smaller files. */
+  testLimits?: Partial<SyncLimits>;
 }
 
 /** The place holds no Kenning data (yet). */
@@ -335,33 +354,25 @@ function checkFile(
   file: SegmentFile,
   dev: string,
   seg: Segment,
-): { after: string | null; last: string; events: SyncEvent[] } {
+): { after: string; last: string; events: SyncEvent[] } {
   if (!file || typeof file !== "object") throw new Error("This file is damaged.");
   if (typeof file.format === "number" && file.format > 2) {
     throw new NewerFileError("This file was written by a newer Kenning. Update Kenning.");
   }
+  if (file.format !== 2) throw new Error("This file is damaged.");
   if (file.device !== dev) throw new Error("This file belongs to another device.");
   if (!Array.isArray(file.events)) throw new Error("This file is damaged.");
   const events = file.events.filter(
     (e): e is SyncEvent => !!e && typeof e === "object" && (e as SyncEvent).deviceId === dev,
   );
-  if (file.format === 2) {
-    const after = file.after;
-    if (file.last !== seg.lastId || typeof after !== "string" || (after && !isUlid(after))) {
-      throw new Error("This file does not hold what its name says.");
-    }
-    if (after >= seg.lastId || events.some((e) => !(e.id > after && e.id <= seg.lastId))) {
-      throw new Error("This file does not hold what its name says.");
-    }
-    return { after, last: seg.lastId, events };
-  }
-  if (file.format !== 1) throw new Error("This file is damaged.");
-  // The first format: the name is the last event's id; a base holds everything up to it.
-  const last = events[events.length - 1]?.id;
-  if (last !== undefined && last !== seg.lastId) {
+  const after = file.after;
+  if (file.last !== seg.lastId || typeof after !== "string" || (after && !isUlid(after))) {
     throw new Error("This file does not hold what its name says.");
   }
-  return { after: seg.base ? "" : null, last: seg.lastId, events };
+  if (after >= seg.lastId || events.some((e) => !(e.id > after && e.id <= seg.lastId))) {
+    throw new Error("This file does not hold what its name says.");
+  }
+  return { after, last: seg.lastId, events };
 }
 
 /** Every device of the place, with its name and when it last wrote it. */
@@ -404,6 +415,7 @@ export async function syncOnce(
 ): Promise<SyncSummary> {
   const now = opts.now ?? Date.now;
   const progress = opts.onProgress ?? (() => undefined);
+  const limits = { ...LIMITS, ...opts.testLimits };
   const vault = await readVault(store);
   if (!vault)
     throw new Error("The sync place no longer holds your Kenning data. Set up sync again.");
@@ -424,10 +436,10 @@ export async function syncOnce(
   // to be in the place are remembered; the place's blobs are listed only for one that is not.
   const known = new Set(state.blobs ?? []);
   let listed: Set<string> | null = null;
-  const segmentBytes = opts.segmentBytes ?? SEGMENT_BYTES;
+  const segmentBytes = limits.segmentBytes;
   let sent = 0;
   for (;;) {
-    const page = await repo.exportEvents(state.sent, opts.segmentEvents ?? SEGMENT_EVENTS);
+    const page = await repo.exportEvents(state.sent, limits.segmentEvents);
     if (page.length === 0) break;
     let events: SyncEvent[] = [];
     let bytes = 0;
@@ -511,13 +523,12 @@ export async function syncOnce(
             problems.push({ what: path, error: err.message, leftOut: false });
             break;
           }
-          // Tried again next sync (it may still be arriving); after a few tries, left out.
+          // Tried again on the next syncs (it may still be arriving); after an hour, left out.
           const r = (retries[path] = {
             error: message(err),
-            tries: (retries[path]?.tries ?? 0) + 1,
             since: retries[path]?.since ?? now(),
           });
-          if (r.tries < RETRIES) {
+          if (now() - r.since < RETRY_FOR_MS) {
             problems.push({ what: path, error: r.error, leftOut: false });
             break;
           }
@@ -528,15 +539,17 @@ export async function syncOnce(
           await repo.setSyncState(state);
           continue;
         }
-        if (file.after !== null && file.after > cursor) {
+        if (file.after > cursor) {
           // A file before this one has not arrived yet. A later folded part may cover it;
           // else this one waits, and after a day it is taken anyway.
           const r = (retries[path] = {
             error: "Waiting for an earlier file of this device.",
-            tries: (retries[path]?.tries ?? 0) + 1,
             since: retries[path]?.since ?? now(),
           });
-          if (r.tries < GAP_TRIES || now() - r.since < GAP_WAIT_MS) continue;
+          if (now() - r.since < GAP_WAIT_MS) {
+            problems.push({ what: path, error: r.error, leftOut: false });
+            continue;
+          }
           leaveOut({
             what: path,
             error: "Some changes of this device never arrived; the later ones were taken.",
@@ -574,21 +587,20 @@ export async function syncOnce(
   state.blobs = [...known].slice(-KNOWN_BLOBS);
   await repo.setSyncState(state);
 
-  await foldOwn(repo, store, key, state, progress, {
-    foldAfter: opts.foldAfter ?? FOLD_AFTER,
-    baseBytes: opts.baseBytes ?? BASE_BYTES,
-  });
-  return { sent, received, rebuilt, devices: await listDevices(store, key, me), problems };
+  await foldOwn(repo, store, key, state, progress, limits);
+  let devices: SyncDevice[] | null = null;
+  if (sent > 0 || received > 0 || !state.listedAt || now() - state.listedAt >= DEVICES_EVERY_MS) {
+    devices = await listDevices(store, key, me);
+    state.listedAt = now();
+    await repo.setSyncState(state);
+  }
+  return { sent, received, rebuilt, devices, problems };
 }
 
 /** The missing blobs of the state, without the oldest past the limits. */
 function missingOf(state: SyncState, now: number): Record<string, number> {
-  const raw = state.missing ?? {};
-  const entries: [string, number][] = Array.isArray(raw)
-    ? raw.map((id) => [id, now])
-    : Object.entries(raw);
   return Object.fromEntries(
-    entries
+    Object.entries(state.missing ?? {})
       .filter(([id, since]) => isBlobId(id) && now - since < MISSING_MS)
       .sort((a, b) => b[1] - a[1])
       .slice(0, MISSING_MAX),

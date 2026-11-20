@@ -52,12 +52,15 @@ async function roundTrip(store: SyncStore) {
   await a.append({ type: "TextCoverSet", textId: "t1", blobId: cover });
   for (let i = 0; i < 6; i++) {
     await a.append({ type: "WordStateSet", lang: "nl", key: `w${i}`, state: "known" });
-    await syncOnce(a, store, key, { deviceName: "Laptop", segmentEvents: 2, foldAfter: 3 });
+    await syncOnce(a, store, key, {
+      deviceName: "Laptop",
+      testLimits: { segmentEvents: 2, foldAfter: 3 },
+    });
   }
   const got = await syncOnce(b, store, key, { deviceName: "Phone" });
   expect(got.received).toBe(8);
   expect((await b.getBlob(cover))?.type).toBe("image/png");
-  expect(got.devices.map((d) => d.name).sort()).toEqual(["Laptop", "Phone"]);
+  expect(got.devices!.map((d) => d.name).sort()).toEqual(["Laptop", "Phone"]);
   await b.append({ type: "WordStateSet", lang: "nl", key: "terug", state: "known" });
   await syncOnce(b, store, key, { deviceName: "Phone" });
   expect((await syncOnce(a, store, key, { deviceName: "Laptop" })).received).toBe(1);
