@@ -24,6 +24,9 @@ Kenning is an app for learning Dutch by reading. Give it any text, and it shows 
 you know, which few to learn next, and turns them into flashcards. Free and open source, works
 offline, no AI needed.
 
+Kenning is local-first and self-hosted. Your data stays on your device, or on your own server
+for all your devices.
+
 ## Why Kenning
 
 Reading is how you meet words in real use. But a text full of unknown words is tiring, and
