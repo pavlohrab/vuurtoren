@@ -116,12 +116,71 @@ function NativeCards() {
           <Skeleton style={{ height: 80 }} />
         )}
       </section>
+      <StarterWords />
       <ImportPackage />
       {decks.data?.length ? <ExportPackage decks={decks.data.map((d) => d.name)} /> : null}
       {decks.data?.length ? <ReviewWeek /> : null}
       <Tuning />
       {decks.data?.length ? <MoveToAnki /> : null}
     </>
+  );
+}
+
+/** The most common words, 500 a level: add the next level, or the extended levels (3001–5000). */
+function StarterWords() {
+  const services = useServices();
+  const qc = useQueryClient();
+  const toast = useToast();
+  const levels = useQuery({
+    queryKey: ["review", "starter"],
+    queryFn: () => services.starterLevels(),
+  });
+  const add = useMutation({
+    mutationFn: (which: number[]) => services.addStarterLevels({ levels: which }),
+    onSuccess: async (r) => {
+      for (const k of AFFECTED) await qc.invalidateQueries({ queryKey: [k] });
+      toast(
+        "Words added",
+        `${plural(r.added, "new card")}${r.skipped ? `; ${plural(r.skipped, "word")} you already had` : ""}.`,
+      );
+    },
+  });
+  if (!levels.data) return null;
+  const { held, core, all } = levels.data;
+  const missing = Array.from({ length: all }, (_, i) => i + 1).filter((l) => !held.includes(l));
+  const next = missing[0] ?? null;
+  const extended = missing.filter((l) => l > core);
+  const range = (l: number) => `${(l - 1) * 500 + 1}–${l * 500}`;
+  return (
+    <section className="stack" aria-labelledby="starter-h">
+      <h3 className="settings-h3" id="starter-h">
+        The most common words
+      </h3>
+      <p className="k-hint" style={{ margin: 0 }}>
+        {held.length
+          ? `You have ${held.length} of the ${all} levels of 500 words. A level starts when the one before it has no new cards left.`
+          : "Cards for the most common Dutch words, 500 at a time, each with an example sentence. A level starts when the one before it has no new cards left."}
+      </p>
+      <div className="row">
+        {next !== null ? (
+          <Button disabled={add.isPending} onClick={() => add.mutate([next])}>
+            {add.isPending ? <Spinner label="Adding words" /> : null}
+            {held.length ? `Add the next level (words ${range(next)})` : `Add words ${range(next)}`}
+          </Button>
+        ) : null}
+        {extended.length && next !== null && next <= core ? (
+          <Button variant="ghost" disabled={add.isPending} onClick={() => add.mutate(extended)}>
+            Add the extended levels (words {core * 500 + 1}–{all * 500})
+          </Button>
+        ) : null}
+        {next === null ? <span className="k-hint">You have all {all * 500} words.</span> : null}
+      </div>
+      {add.isError ? (
+        <p role="alert" className="error-text" style={{ margin: 0 }}>
+          Could not add the words. {errorText(add.error)}
+        </p>
+      ) : null}
+    </section>
   );
 }
 

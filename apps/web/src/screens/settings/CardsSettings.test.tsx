@@ -27,6 +27,23 @@ describe("Settings → Language & decks: cards", { timeout: 20_000 }, () => {
     expect(await within(nav).findByRole("link", { name: /Review/ })).toBeVisible();
   });
 
+  it("adds the most common words level by level, and the extended levels", async () => {
+    const { services, user } = setup(true);
+    expect(await screen.findByRole("heading", { name: "The most common words" })).toBeVisible();
+    await user.click(screen.getByRole("button", { name: "Add words 1–500" }));
+    await user.click(
+      await screen.findByRole("button", { name: "Add the next level (words 501–1000)" }),
+    );
+    await screen.findByRole("button", { name: "Add the next level (words 1001–1500)" });
+    expect((await services.starterLevels()).held).toEqual([1, 2]);
+    await user.click(screen.getByRole("button", { name: /Add the extended levels/ }));
+    await waitFor(async () =>
+      expect((await services.starterLevels()).held).toEqual([1, 2, 7, 8, 9, 10]),
+    );
+    const section = screen.getByRole("region", { name: "The most common words" });
+    expect(within(section).queryByText(/Anki/)).toBeNull();
+  });
+
   it("imports chosen decks of a file, sets target recall and optimises", async () => {
     const { user } = setup(true);
     expect(await screen.findByRole("heading", { name: "Your cards" })).toBeVisible();

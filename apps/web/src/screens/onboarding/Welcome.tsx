@@ -1,7 +1,7 @@
 /**
  * First-run onboarding: language → "Do you use Anki?".
- * - No: Vuurtoren holds the cards (native mode) → where new words go → placement check → first
- *   text.
+ * - No: Vuurtoren holds the cards (native mode) → where new words go → the most common words
+ *   (starter levels, with a placement question) → first text.
  * - Yes, and move to Vuurtoren: connect Anki → confirm decks → where new words go → the decks are
  *   imported with their review history (native mode) → first text.
  * - Yes, and keep using Anki (connected mode): connect Anki → confirm decks → where new words
@@ -41,6 +41,7 @@ type Step =
   | "destinations"
   | "moving"
   | "placement"
+  | "starter"
   | "first";
 /** The language step is shown only when there is more than one language to choose. */
 const PICK_LANGUAGE = PROFILE_LANGUAGES.filter((l) => l.enabled).length > 1;
@@ -59,6 +60,7 @@ const PART: Record<Step, number> = {
   destinations: 1,
   moving: 1,
   placement: 1,
+  starter: 1,
   first: 2,
 };
 
@@ -75,7 +77,24 @@ interface Draft {
   /** Import the Anki decks and review in Vuurtoren (else keep using Anki). */
   move: boolean;
   profile: LanguageProfile;
+  /** Native: start with the most common words (starter levels). */
+  starter: boolean;
+  /** Native: how much Dutch the learner knows (a key of PLACEMENT). */
+  level: Placement;
 }
+
+/**
+ * The placement question of native mode: the words through `known` count as known (Mark known),
+ * and these starter levels (500 words each) become new cards.
+ */
+const PLACEMENT = {
+  start: { label: "Just starting", known: 0, levels: [1, 2, 3, 4, 5, 6] },
+  "500": { label: "About 500 words", known: 500, levels: [2, 3, 4, 5, 6] },
+  "1000": { label: "About 1000 words", known: 1000, levels: [3, 4, 5, 6] },
+  "2000": { label: "About 2000 words", known: 2000, levels: [5, 6] },
+  more: { label: "More", known: 3000, levels: [7, 8, 9, 10] },
+} as const;
+type Placement = keyof typeof PLACEMENT;
 
 const fresh = (): Draft => ({
   step: PICK_LANGUAGE ? "language" : "uses",
@@ -86,6 +105,8 @@ const fresh = (): Draft => ({
   usesAnki: null,
   move: true,
   profile: defaultProfile("nl"),
+  starter: true,
+  level: "start",
 });
 
 function readDraft(): Draft {
@@ -117,7 +138,7 @@ export function Welcome() {
   const moving = draft.usesAnki === true && draft.move && !draft.noAnki && !startFresh;
   const start: Step[] = PICK_LANGUAGE ? ["language", "uses"] : ["uses"];
   const steps: Step[] = native
-    ? [...start, "destinations", "placement", "first"]
+    ? [...start, "destinations", "starter", "first"]
     : draft.usesAnki === null
       ? [...start, "first"]
       : [
@@ -232,6 +253,20 @@ export function Welcome() {
     },
   });
 
+  // ---- Native: the most common words, from the learner's level
+  const starter = useMutation({
+    mutationFn: () => {
+      const p = PLACEMENT[draft.level];
+      return services.addStarterLevels({ levels: [...p.levels], knownThrough: p.known });
+    },
+    onSuccess: async () => {
+      for (const k of ["learner", "review", "words", "home"]) {
+        await qc.invalidateQueries({ queryKey: [k] });
+      }
+      next();
+    },
+  });
+
   // ---- First text
   const sample = useMutation({
     mutationFn: () =>
@@ -256,7 +291,10 @@ export function Welcome() {
       if (move.isSuccess) next();
       else if (!move.isPending) move.mutate();
     } else if (draft.step === "placement") placement.mutate();
-    else if (draft.step !== "first") next();
+    else if (draft.step === "starter") {
+      if (draft.starter) starter.mutate();
+      else next();
+    } else if (draft.step !== "first") next();
   };
 
   const errorOf = (e: unknown) => (e instanceof Error && e.message ? e.message : "Try again.");
@@ -539,6 +577,56 @@ export function Welcome() {
             </>
           ) : null}
 
+          {draft.step === "starter" ? (
+            <>
+              <h1 ref={heading} tabIndex={-1}>
+                The most common words
+              </h1>
+              <p className="ob-lede">
+                Vuurtoren can give you cards for the 3000 most common Dutch words, 500 at a time,
+                each with an example sentence. New cards come 20 a day; you can change that later.
+              </p>
+              <label className="ob-check">
+                <input
+                  type="checkbox"
+                  checked={draft.starter}
+                  onChange={(e) => setDraft({ starter: e.target.checked })}
+                />
+                <span>
+                  Start with the most common words
+                  <span className="ob-choice-sub">
+                    Without them, your cards are the words you add while reading.
+                  </span>
+                </span>
+              </label>
+              {draft.starter ? (
+                <fieldset className="ob-choices">
+                  <legend className="ob-question">How much Dutch do you know?</legend>
+                  {(Object.keys(PLACEMENT) as Placement[]).map((key) => (
+                    <Choice
+                      key={key}
+                      name="level"
+                      checked={draft.level === key}
+                      onChange={() => setDraft({ level: key })}
+                      title={PLACEMENT[key].label}
+                      sub={placementLine(key)}
+                    />
+                  ))}
+                </fieldset>
+              ) : null}
+              {starter.isPending ? (
+                <p role="status">
+                  <Spinner label="Adding words" /> Adding the words
+                </p>
+              ) : null}
+              {starter.isError ? (
+                <p role="alert" className="error-text">
+                  Could not add the words. {errorOf(starter.error)}
+                </p>
+              ) : null}
+            </>
+          ) : null}
+
           {draft.step === "first" ? (
             <>
               <h1 ref={heading} tabIndex={-1}>
@@ -628,6 +716,7 @@ export function Welcome() {
                 disabled={
                   save.isPending ||
                   placement.isPending ||
+                  starter.isPending ||
                   move.isPending ||
                   (draft.step === "uses" && draft.usesAnki === null) ||
                   (draft.step === "decks" && connected && !draft.noAnki && decks.isPending) ||
@@ -655,6 +744,16 @@ export function Welcome() {
       </main>
     </div>
   );
+}
+
+/** What a placement answer does, in one line. */
+function placementLine(key: Placement): string {
+  const p = PLACEMENT[key];
+  const from = (p.levels[0] - 1) * 500 + 1;
+  const to = p.levels[p.levels.length - 1]! * 500;
+  return p.known === 0
+    ? `Words 1–${to} come as new cards.`
+    : `Words 1–${p.known} count as known; words ${from}–${to} come as new cards.`;
 }
 
 /** One radio choice with a title and a line under it. */
