@@ -281,6 +281,7 @@ export function AppShell() {
             <NavLink to="/grammar" label="Grammar" icon={<BookText size={18} />} secondary />
             <NavLink to="/talk" label="Talk" icon={<MessagesSquare size={18} />} secondary />
             <NavLink to="/exam" label="Exam" icon={<ClipboardCheck size={18} />} secondary />
+            <NavLink to="/progress" label="Progress" icon={<TrendingUp size={18} />} secondary />
             <div className="nav-spacer" />
             <NavLink to="/settings" label="Settings" icon={<SettingsIcon size={18} />} secondary />
             <button
