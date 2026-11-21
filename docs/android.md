@@ -107,8 +107,8 @@ sign-in.
 
 The phone layout from the redesign; the colours, type and logo stay as on desktop.
 
-- **Navigation:** a bottom bar with Home, Library, Review, Words. Settings sit behind the round
-  button at the top of Home. The Android **back gesture** goes back in the app's history
+- **Navigation:** a bottom bar with Read, Words, Review and More (Grammar, Exam, Courses, Talk,
+  Progress, Settings). The Android **back gesture** goes back in the app's history
   (predictive back where the system offers it) and closes sheets first.
 - **Edge to edge:** content runs under the status and navigation bars; padding comes from the
   insets. The status bar follows the theme (light or dark).
