@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 import type { WordState } from "@app/core";
 import { AddToAnki, type DeckOption, deckName } from "./AddToAnki.js";
 import { Button } from "./Button.js";
@@ -33,6 +33,13 @@ export interface WordInspectorProps {
   emptyText?: string;
   /** Shown beside the headword (a play button). */
   headerAction?: ReactNode;
+  /** More about the word under its details (the reader's grammar of this word). */
+  wordExtra?: ReactNode;
+  /**
+   * The Sentence tab (the sentence's translation, structure and "Explain"). With it, the details
+   * have two tabs, Word and Sentence.
+   */
+  sentencePanel?: ReactNode;
 }
 
 /** Destination deck of Add to Anki with the picker's options. */
@@ -78,7 +85,10 @@ export function WordInspector({
   addDeck,
   emptyText = "Select a word in the text to see its details.",
   headerAction,
+  wordExtra,
+  sentencePanel,
 }: WordInspectorProps) {
+  const [tab, setTab] = useState<"word" | "sentence">("word");
   if (!entry && error) {
     return (
       <div className="k-inspector" role="alert">
@@ -141,60 +151,8 @@ export function WordInspector({
         {/* The short meaning, drawn from its attribute (styles.css): the full list below is
             what screen readers and searches find, so the word is not said twice. */}
         <p className="k-inspector-short" data-short={short ?? "No meaning yet"} aria-hidden />
-        {actions.quick}
-      </div>
-
-      <div className="k-inspector-more">
-        <div className="k-inspector-row">
-          <WordStateChip state={entry.state} inVuurtoren={entry.appLearning} />
-          {pos ? <span className="k-inspector-pos">{pos}</span> : null}
-          {entry.state === "learning" ? (
-            <span className="k-recall" style={{ color: "var(--ink-muted)", fontSize: 13 }}>
-              Recall {recall}%
-            </span>
-          ) : null}
-        </div>
-
-        {entry.glosses.length === 0 && !entry.sentenceGloss ? (
-          <p className="k-inspector-nomeaning">No meaning yet</p>
-        ) : (
-          <section>
-            <div className="k-overline">Meaning</div>
-            <ul className="k-inspector-glosses">
-              {entry.glosses.map((g, i) => (
-                <li key={g}>
-                  {g}
-                  {i === 0 && entry.glossNote ? (
-                    <span className="k-gloss-note"> · {entry.glossNote}</span>
-                  ) : null}
-                </li>
-              ))}
-              {entry.sentenceGloss ? (
-                <li key="in-sentence">
-                  {entry.sentenceGloss}
-                  <span className="k-gloss-note"> · in this sentence</span>
-                </li>
-              ) : null}
-            </ul>
-          </section>
-        )}
-
-        {entry.decks.length > 0 ? (
-          <section>
-            <div className="k-overline">In your decks</div>
-            <div className="k-inspector-row" style={{ marginTop: 4 }}>
-              {entry.decks.map((d) => (
-                <Chip key={d} title={d}>
-                  {deckName(d)}
-                </Chip>
-              ))}
-            </div>
-          </section>
-        ) : null}
-
         {s ? (
-          <section>
-            <div className="k-overline">In context</div>
+          <div className="k-inspector-context">
             <p className="k-inspector-sentence" lang="nl">
               {s.slice(0, from)}
               <mark>{s.slice(from, to)}</mark>
@@ -205,11 +163,104 @@ export function WordInspector({
                 {entry.sentenceTranslation}
               </p>
             ) : null}
-          </section>
+          </div>
         ) : null}
-
-        {actions.details}
+        {actions.quick}
       </div>
+
+      {sentencePanel ? (
+        <div className="k-inspector-tabs" role="tablist" aria-label="Details">
+          <button
+            type="button"
+            role="tab"
+            id="k-tab-word"
+            aria-selected={tab === "word"}
+            aria-controls="k-panel-word"
+            onClick={() => setTab("word")}
+          >
+            Word
+          </button>
+          <button
+            type="button"
+            role="tab"
+            id="k-tab-sentence"
+            aria-selected={tab === "sentence"}
+            aria-controls="k-panel-sentence"
+            onClick={() => setTab("sentence")}
+          >
+            Sentence
+          </button>
+        </div>
+      ) : null}
+
+      {sentencePanel && tab === "sentence" ? (
+        <div
+          className="k-inspector-more"
+          role="tabpanel"
+          id="k-panel-sentence"
+          aria-labelledby="k-tab-sentence"
+        >
+          {sentencePanel}
+        </div>
+      ) : (
+        <div
+          className="k-inspector-more"
+          {...(sentencePanel
+            ? { role: "tabpanel", id: "k-panel-word", "aria-labelledby": "k-tab-word" }
+            : {})}
+        >
+          <div className="k-inspector-row">
+            <WordStateChip state={entry.state} inVuurtoren={entry.appLearning} />
+            {pos ? <span className="k-inspector-pos">{pos}</span> : null}
+            {entry.state === "learning" ? (
+              <span className="k-recall" style={{ color: "var(--ink-muted)", fontSize: 13 }}>
+                Recall {recall}%
+              </span>
+            ) : null}
+          </div>
+
+          {entry.glosses.length === 0 && !entry.sentenceGloss ? (
+            <p className="k-inspector-nomeaning">No meaning yet</p>
+          ) : (
+            <section>
+              <div className="k-overline">Meaning</div>
+              <ul className="k-inspector-glosses">
+                {entry.glosses.map((g, i) => (
+                  <li key={g}>
+                    {g}
+                    {i === 0 && entry.glossNote ? (
+                      <span className="k-gloss-note"> · {entry.glossNote}</span>
+                    ) : null}
+                  </li>
+                ))}
+                {entry.sentenceGloss ? (
+                  <li key="in-sentence">
+                    {entry.sentenceGloss}
+                    <span className="k-gloss-note"> · in this sentence</span>
+                  </li>
+                ) : null}
+              </ul>
+            </section>
+          )}
+
+          {entry.decks.length > 0 ? (
+            <section>
+              <div className="k-overline">In your decks</div>
+              <div className="k-inspector-row" style={{ marginTop: 4 }}>
+                {entry.decks.map((d) => (
+                  <Chip key={d} title={d}>
+                    {deckName(d)}
+                  </Chip>
+                ))}
+              </div>
+            </section>
+          ) : null}
+
+          {wordExtra}
+
+          {actions.details}
+        </div>
+      )}
     </div>
   );
 }

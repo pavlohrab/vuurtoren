@@ -42,6 +42,44 @@ export async function explainSentence(
   return res.text.trim();
 }
 
+/** One turn of a conversation about a sentence: the learner's question and the answer. */
+export interface SentenceTurn {
+  question: string;
+  answer: string;
+}
+
+/**
+ * A follow-up question about a sentence already explained: the explanation and the earlier
+ * questions are the context. The answer is short Markdown, in the learner's language.
+ */
+export async function askAboutSentence(
+  provider: AIProvider,
+  sentence: string,
+  explanation: string,
+  turns: readonly SentenceTurn[],
+  question: string,
+  opts: { vocabEstimate: number; explainIn?: string } = { vocabEstimate: 1000 },
+): Promise<string> {
+  const lang = opts.explainIn ?? "English";
+  const res = await provider.chat({
+    system:
+      `You are a concise Dutch tutor. The learner knows about ${opts.vocabEstimate} Dutch words. ` +
+      `They are asking about one Dutch sentence you explained. Answer in ${lang}, in at most 100 words, ` +
+      "with Dutch examples where they help. Stay on this sentence and its grammar or words.",
+    messages: [
+      { role: "user", content: sentence },
+      { role: "assistant", content: explanation },
+      ...turns.flatMap((t) => [
+        { role: "user" as const, content: t.question },
+        { role: "assistant" as const, content: t.answer },
+      ]),
+      { role: "user", content: question },
+    ],
+    maxTokens: 1024,
+  });
+  return res.text.trim();
+}
+
 export interface SimplifyResult {
   simplified: string;
   /** Coverage of the original and of the rewrite (null when analysis was unavailable). */

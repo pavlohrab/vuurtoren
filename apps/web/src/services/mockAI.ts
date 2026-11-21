@@ -255,6 +255,10 @@ export function createMockAI(
         : "- Word order: verb second.";
       return `Meaning of "${sentence}": a mock explanation.\n${points}`;
     },
+    async aiAskAboutSentence(_sentence, _explanation, turns, question) {
+      await wait();
+      return `Answer ${turns.length + 1}: about "${question}", **keek** comes second.`;
+    },
     async aiSimplify(text): Promise<SimplifyView> {
       await wait();
       return { simplified: `Simpel: ${text.slice(0, 80)}`, before: 0.88, after: 0.97, unknown: [] };

@@ -2478,3 +2478,42 @@ svg.lucide {
   background: var(--accent);
   border-radius: var(--radius-chip);
 }
+
+/* The word in its sentence, with the translation, right under the word (peek and panel). */
+.k-inspector-context {
+  display: grid;
+  gap: 2px;
+  padding: var(--s-2) var(--s-3);
+  border-radius: var(--radius-control);
+  background: var(--surface-2);
+}
+/* Word | Sentence: two tabs over the details. */
+.k-inspector-tabs {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+}
+.k-inspector-tabs button {
+  flex: 1;
+  min-height: 36px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink-muted);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.k-inspector-tabs button[aria-selected="true"] {
+  background: var(--accent-soft);
+  color: var(--ink);
+  font-weight: 600;
+}
+.k-inspector-tabs button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}

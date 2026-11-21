@@ -51,7 +51,7 @@ import { StoryCredit } from "./reader/StoryCredit.js";
 import { WordGrammar } from "./reader/WordGrammar.js";
 import { prefsStyle, useReaderPrefs } from "./reader/readerPrefs.js";
 import "./reader/reader.css";
-import { ExplainSentence, SimplifyPage } from "./ReaderAI.js";
+import { SentencePanel, SimplifyPage } from "./ReaderAI.js";
 import { useAIReady } from "./StoryForm.js";
 import { writeLastText } from "../lastText.js";
 import { useWordActions } from "./useWordActions.js";
@@ -936,17 +936,21 @@ export function ReaderPage({ textId }: { textId: string }) {
                 onRetry={() => void inspect.refetch()}
                 headerAction={audio.wordButton(entry)}
                 {...actions.props(entry)}
+                wordExtra={
+                  entry ? (
+                    <WordGrammar
+                      tokens={data.tokens}
+                      index={entry.tokenIndex}
+                      hits={hits}
+                      article={entry.article}
+                      onFocus={chooseFocus}
+                    />
+                  ) : null
+                }
+                sentencePanel={
+                  <SentencePanel sentence={entry?.sentence} grammar={sentenceGrammar} />
+                }
               />
-              {entry ? (
-                <WordGrammar
-                  tokens={data.tokens}
-                  index={entry.tokenIndex}
-                  hits={hits}
-                  article={entry.article}
-                  onFocus={chooseFocus}
-                />
-              ) : null}
-              <ExplainSentence sentence={entry?.sentence} grammar={sentenceGrammar} />
             </>,
             inspectorEl,
           )

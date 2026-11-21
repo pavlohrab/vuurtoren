@@ -1,47 +1,113 @@
 import { useMutation } from "@tanstack/react-query";
-import { useEffect, useRef } from "react";
-import { Button, Spinner } from "@app/ui";
+import { useEffect, useRef, useState } from "react";
+import { Sparkles } from "lucide-react";
+import type { SentenceTurn } from "@app/ai";
+import { Button, Input, Spinner } from "@app/ui";
 import type { ExplainGrammar } from "../services/aiTypes.js";
 import { useServices } from "../services/context.js";
 import { errorText } from "../services/errors.js";
+import { Markdown } from "./Markdown.js";
 import { useAIReady } from "./StoryForm.js";
 
 const pct = (v: number | null) => (v === null ? "not scored" : `${(v * 100).toFixed(1)}%`);
 
-/** "Explain this sentence" for the sentence of the selected word (shown under the inspector). */
-export function ExplainSentence({
+/**
+ * The word sheet's Sentence tab: the grammar found in the sentence, and "Explain this sentence"
+ * as a short chat. The explanation and the answers are formatted (headings, bold, lists); the
+ * learner can ask follow-up questions about the same sentence. Nothing is kept: a new sentence
+ * starts clean.
+ */
+export function SentencePanel({
   sentence,
   grammar,
 }: {
   sentence: string | null | undefined;
-  /** Grammar detected in the sentence, sent along as context. */
+  /** Grammar detected in the sentence: listed, and sent along as context. */
   grammar?: ExplainGrammar[];
 }) {
+  if (!sentence) return <p className="k-hint">No sentence for this word.</p>;
+  // Keyed by sentence so a new selection starts clean.
+  return <SentenceChat key={sentence} sentence={sentence} grammar={grammar ?? []} />;
+}
+
+function SentenceChat({ sentence, grammar }: { sentence: string; grammar: ExplainGrammar[] }) {
   const services = useServices();
   const ready = useAIReady();
-  const explain = useMutation({
-    mutationFn: (s: string) => services.aiExplainSentence(s, grammar),
+  const [turns, setTurns] = useState<SentenceTurn[]>([]);
+  const [question, setQuestion] = useState("");
+  const explain = useMutation({ mutationFn: () => services.aiExplainSentence(sentence, grammar) });
+  const ask = useMutation({
+    mutationFn: (q: string) => services.aiAskAboutSentence(sentence, explain.data ?? "", turns, q),
+    onSuccess: (answer, q) => setTurns((t) => [...t, { question: q, answer }]),
+    onError: (_e, q) => setQuestion((d) => d || q),
   });
-  if (!ready || !sentence) return null;
   return (
-    // Keyed by sentence so a new selection starts clean.
-    <div key={sentence} className="stack" style={{ paddingTop: 12 }}>
-      <Button
-        onClick={() => explain.mutate(sentence)}
-        disabled={explain.isPending}
-        aria-label="Explain this sentence"
-      >
-        {explain.isPending ? <Spinner label="Explaining" /> : null}
-        Explain this sentence
-      </Button>
-      {explain.data ? (
-        <p role="status" style={{ margin: 0, whiteSpace: "pre-wrap" }}>
-          {explain.data}
-        </p>
+    <div className="sentence-panel">
+      {grammar.length > 0 ? (
+        <section>
+          <div className="k-overline">Grammar in this sentence</div>
+          <ul className="sentence-grammar">
+            {grammar.map((g) => (
+              <li key={g.title}>
+                <strong>{g.title}</strong>: {g.note}
+              </li>
+            ))}
+          </ul>
+        </section>
       ) : null}
-      {explain.isError ? (
+      {!ready ? (
+        <p className="k-hint">
+          Add an AI provider and key in Settings → AI to have sentences explained.
+        </p>
+      ) : !explain.data ? (
+        <Button onClick={() => explain.mutate()} disabled={explain.isPending}>
+          {explain.isPending ? <Spinner label="Explaining" /> : <Sparkles size={16} aria-hidden />}
+          Explain this sentence
+        </Button>
+      ) : (
+        <div className="sentence-chat" aria-live="polite">
+          <div className="sentence-answer">
+            <Markdown source={explain.data} />
+          </div>
+          {turns.map((t, i) => (
+            <div key={i} className="sentence-turn">
+              <p className="sentence-question">{t.question}</p>
+              <div className="sentence-answer">
+                <Markdown source={t.answer} />
+              </div>
+            </div>
+          ))}
+          {ask.isPending ? (
+            <div className="sentence-turn">
+              <p className="sentence-question">{ask.variables}</p>
+              <Spinner label="Thinking" />
+            </div>
+          ) : null}
+          <form
+            className="sentence-ask"
+            onSubmit={(e) => {
+              e.preventDefault();
+              const q = question.trim();
+              if (!q || ask.isPending) return;
+              setQuestion("");
+              ask.mutate(q);
+            }}
+          >
+            <Input
+              aria-label="Ask about this sentence"
+              placeholder="Ask about this sentence…"
+              value={question}
+              onChange={(e) => setQuestion(e.target.value)}
+            />
+            <Button type="submit" disabled={!question.trim() || ask.isPending}>
+              Ask
+            </Button>
+          </form>
+        </div>
+      )}
+      {explain.isError || ask.isError ? (
         <p role="alert" className="error-text" style={{ margin: 0 }}>
-          {errorText(explain.error)}
+          {errorText(explain.error ?? ask.error)}
         </p>
       ) : null}
     </div>

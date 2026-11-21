@@ -1,6 +1,7 @@
 /** Contract of the AI services. Keys never appear here except as write-only arguments. */
 import type { GenerateUnitResult } from "./courseTypes.js";
 import type {
+  SentenceTurn,
   Correction,
   ModelOption,
   NewWord,
@@ -120,6 +121,13 @@ export interface AIServices {
    * the model as context.
    */
   aiExplainSentence(sentence: string, grammar?: ExplainGrammar[]): Promise<string>;
+  /** A follow-up question about an explained sentence; `turns` are the earlier questions. */
+  aiAskAboutSentence(
+    sentence: string,
+    explanation: string,
+    turns: readonly SentenceTurn[],
+    question: string,
+  ): Promise<string>;
   aiSimplify(text: string): Promise<SimplifyView>;
   /** Suggested target words for a story (empty for a grammar topic: it features the topic). */
   storyTargets(source: StoryTargetSource): Promise<string[]>;

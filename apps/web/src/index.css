@@ -485,8 +485,15 @@
     transition: opacity var(--dur-slow) var(--ease-out);
   }
   .inspector-panel[data-sheet="peek"]:not([data-dragging]) .k-inspector-more,
+  .inspector-panel[data-sheet="peek"]:not([data-dragging]) .k-inspector-tabs,
   .inspector-panel[data-sheet="peek"]:not([data-dragging]) .inspector-body > :not(.k-inspector) {
     opacity: 0;
+  }
+  .inspector-panel .k-inspector-tabs {
+    margin-top: var(--s-4);
+  }
+  .inspector-panel .k-inspector-context .k-inspector-sentence {
+    font-size: 16px;
   }
   .inspector-head .k-overline {
     display: none;
@@ -1687,4 +1694,62 @@
 }
 :root[data-focus] .main {
   padding-bottom: var(--safe-bottom);
+}
+
+/* The word sheet's Sentence tab: grammar of the sentence, then Explain as a short chat. */
+.sentence-panel {
+  display: grid;
+  gap: var(--s-4);
+}
+.sentence-grammar {
+  margin: 4px 0 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 4px;
+  font-size: 14px;
+}
+.sentence-chat {
+  display: grid;
+  gap: var(--s-3);
+}
+.sentence-answer {
+  font-size: 15px;
+  line-height: 1.55;
+}
+.sentence-answer > :first-child {
+  margin-top: 0;
+}
+.sentence-answer h3,
+.sentence-answer h4 {
+  margin: var(--s-3) 0 4px;
+  font-size: 15px;
+}
+.sentence-answer p,
+.sentence-answer ul,
+.sentence-answer ol {
+  margin: 0 0 var(--s-2);
+}
+.sentence-answer ul,
+.sentence-answer ol {
+  padding-left: 18px;
+}
+.sentence-turn {
+  display: grid;
+  gap: var(--s-2);
+}
+.sentence-question {
+  justify-self: end;
+  max-width: 85%;
+  margin: 0;
+  padding: 6px 12px;
+  border-radius: 14px;
+  background: var(--accent-soft);
+}
+.sentence-ask {
+  display: flex;
+  gap: var(--s-2);
+}
+.sentence-ask > :first-child {
+  flex: 1;
+  min-width: 0;
 }

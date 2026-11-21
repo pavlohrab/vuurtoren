@@ -1,12 +1,13 @@
 /**
- * A small, safe Markdown renderer for the app's own content (grammar topic pages): paragraphs,
- * `-` and `1.` lists, `**bold**`, `_italic_` and `` `code` ``. It builds React elements (no
+ * A small, safe Markdown renderer for the app's own content (grammar topic pages) and AI answers:
+ * `#` headings, paragraphs, `-` and `1.` lists, `**bold**`, `_italic_` or `*italic*` and
+ * `` `code` ``. Headings and lists need no blank line before them (AI answers rarely have one). It builds React elements (no
  * HTML strings), so nothing in the content can inject markup. Italic text in the topic pages is
  * Dutch, so it is marked `lang="nl"`.
  */
 import type { ReactNode } from "react";
 
-const INLINE = /(\*\*[^*]+\*\*|_[^_\s][^_]*_|`[^`]+`)/g;
+const INLINE = /(\*\*[^*]+\*\*|_[^_\s][^_]*_|\*[^*\s][^*]*\*|`[^`]+`)/g;
 
 /** Render inline Markdown (bold, italic, code) to React nodes. */
 export function inline(text: string, key = ""): ReactNode[] {
@@ -39,15 +40,31 @@ type Block =
   | { kind: "ul" | "ol"; items: string[] }
   | { kind: "h"; level: 3 | 4; text: string };
 
+const LIST_LINE = /^\s*([-*]|\d+[.)])\s+/;
+
+/** Blank lines around headings and before a list that follows text, so each is its own block. */
+function separate(md: string): string {
+  const out: string[] = [];
+  let prev = "";
+  for (const line of md.replace(/\r\n?/g, "\n").split("\n")) {
+    if (/^\s*#{1,6}\s/.test(line)) out.push("", line, "");
+    else if (LIST_LINE.test(line) && prev.trim() && !LIST_LINE.test(prev)) out.push("", line);
+    else out.push(line);
+    prev = line;
+  }
+  return out.join("\n");
+}
+
 function blocks(md: string): Block[] {
   const out: Block[] = [];
-  for (const chunk of md.replace(/\r\n?/g, "\n").split(/\n\s*\n/)) {
+  for (const chunk of separate(md).split(/\n\s*\n/)) {
     const lines = chunk.split("\n").filter((l) => l.trim());
     if (!lines.length) continue;
     const first = lines[0]!.trim();
-    const heading = /^(#{3,4})\s+(.+)$/.exec(first);
+    const heading = /^(#{1,6})\s+(.+)$/.exec(first);
     if (heading) {
-      out.push({ kind: "h", level: heading[1]!.length as 3 | 4, text: heading[2]! });
+      // Topic pages use ### and ####; an AI answer's # and ## are kept as small headings too.
+      out.push({ kind: "h", level: heading[1]!.length <= 3 ? 3 : 4, text: heading[2]! });
       continue;
     }
     const ul = /^[-*]\s+/;

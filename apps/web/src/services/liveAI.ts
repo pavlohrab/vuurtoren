@@ -17,6 +17,7 @@ import {
   clearKey,
   createProvider,
   examFeedback,
+  askAboutSentence,
   explainSentence,
   generateExamItem,
   generateSentences,
@@ -760,6 +761,11 @@ export function createLiveAI(deps: LiveAIDeps): AIServices &
       return explainSentence(await provider(), sentence, {
         vocabEstimate: await deps.vocabEstimate(),
         ...(grammar?.length ? { grammar } : {}),
+      });
+    },
+    async aiAskAboutSentence(sentence, explanation, turns, question) {
+      return askAboutSentence(await provider(), sentence, explanation, turns, question, {
+        vocabEstimate: await deps.vocabEstimate(),
       });
     },
     async aiSimplify(text) {
