@@ -7,7 +7,16 @@ export type SyncPlace =
    * A Vuurtoren server's `/api/sync` with a sync token. On the page of that same server the
    * token may be empty: the page makes one for itself with its sign-in.
    */
-  | { kind: "server"; url: string; token: string }
+  | {
+      kind: "server";
+      url: string;
+      token: string;
+      /**
+       * The token is in this device's key store (connected with a pairing code), not here: the
+       * place keeps an empty `token`.
+       */
+      kept?: boolean;
+    }
   /** WebDAV (the desktop app). */
   | { kind: "webdav"; url: string; user: string; password: string }
   /** A folder you already sync (the desktop app). */
@@ -25,6 +34,15 @@ export type AutoSync = "start" | "focus" | "timer" | "local";
 export interface SyncStatus {
   /** The desktop app: a folder and WebDAV can be chosen. */
   desktop: boolean;
+  /** The places this device can use (a phone: a server only). */
+  places: SyncPlace["kind"][];
+  /** This device can scan the QR code of a server's Add a phone. */
+  scan: boolean;
+  /**
+   * The server this device connected to with a pairing code, while sync is not set up yet: the
+   * passphrase joins it. Null otherwise.
+   */
+  paired: string | null;
   /** The address of the Vuurtoren server this page comes from (it can be the place), or null. */
   thisServer: string | null;
   /** The place in use, or null when sync is off. */
@@ -70,6 +88,20 @@ export interface SyncServices {
   newSyncRecoveryKey(current: string): Promise<string>;
   /** Stop syncing on this device; the data here and in the place stay. */
   stopSync(): Promise<void>;
+  /**
+   * Connect to a Vuurtoren server with a pairing code (scanned, from a link, or typed): the
+   * server gives this device its own sync token, which goes into the device's key store. The
+   * server becomes the place to join (`paired`) and, on a device without its own language
+   * server, the language server. Set up then joins it with the passphrase.
+   */
+  connectServer(link: { server: string; code: string }, deviceName: string): Promise<SyncStatus>;
+  /** Read a `vuurtoren://connect` link with the camera; null when cancelled or not available. */
+  scanConnectLink(): Promise<string | null>;
+  /**
+   * The newest `vuurtoren://connect` link that opened the app, until connecting with it
+   * succeeds; null when there is none.
+   */
+  pendingConnectLink(): Promise<string | null>;
   /** Choose a folder (desktop app); null when cancelled or not available. */
   pickSyncFolder(): Promise<string | null>;
   /**

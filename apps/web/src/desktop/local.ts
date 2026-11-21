@@ -1,6 +1,7 @@
 /**
- * The desktop app: the data is a SQLite file the app opens natively
- * (`~/Documents/Vuurtoren/vuurtoren.sqlite`), the language server is the bundled sidecar.
+ * The app: the data is a SQLite file the app opens natively (on a computer
+ * `~/Documents/Vuurtoren/vuurtoren.sqlite`, on a phone in the app's private storage). On a
+ * computer the language server is the bundled sidecar; a phone uses its sync server's.
  * Everything above the driver (repository, services, screens) is the browser build's.
  */
 import type { DataControls, DesktopLocal } from "../shell/AppInfo.js";
@@ -13,7 +14,8 @@ export type LocalBoot =
       services: AppServices;
       notice?: string;
       data: DataControls;
-      desktop: DesktopLocal;
+      /** A computer (a phone has no bundled language server). */
+      desktop?: DesktopLocal;
     }
   /** Another computer has the file open (synced folder): ask before opening it here too. */
   | { kind: "locked"; path: string; lock: DbLock; openAnyway: () => Promise<LocalBoot> }
@@ -41,10 +43,12 @@ function installNlpRoute(base: string): void {
 
 export async function bootDesktopLocal(
   bridge: DesktopBridge,
-  nlpBase: string | undefined,
+  nlpBase: string | null | undefined,
   force = false,
 ): Promise<LocalBoot> {
-  installNlpRoute(nlpBase ?? DEFAULT_NLP_BASE);
+  const phone = bridge.os === "android";
+  // A phone has no language server of its own: `/nlp` stays the sync server's (liveSync).
+  if (!phone) installNlpRoute(nlpBase ?? DEFAULT_NLP_BASE);
   const opened = await bridge.db.open(force);
   if (opened.locked) {
     return {
@@ -73,17 +77,22 @@ export async function bootDesktopLocal(
     services: createLiveServices(repo),
     ...(notice ? { notice } : {}),
     data: {
-      mode: "desktop",
+      mode: phone ? "phone" : "desktop",
       persisted: true,
       persistent: true,
       secure: true,
       admin: createBrowserAdmin(repo, driver),
-      file: {
-        path: opened.path,
-        reveal: () => bridge.db.reveal(),
-        move: () => bridge.db.move(),
-      },
+      // The file of a phone's app is private: nothing to show or move.
+      ...(phone
+        ? {}
+        : {
+            file: {
+              path: opened.path,
+              reveal: () => bridge.db.reveal(),
+              move: () => bridge.db.move(),
+            },
+          }),
     },
-    desktop: { nlp: bridge.nlp },
+    ...(phone ? {} : { desktop: { nlp: bridge.nlp } }),
   };
 }

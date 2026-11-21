@@ -20,6 +20,9 @@ function setup(
 
 const OFF: SyncStatus = {
   desktop: false,
+  places: ["server"],
+  scan: false,
+  paired: null,
   thisServer: null,
   place: null,
   deviceName: "Laptop",
@@ -132,7 +135,9 @@ describe("Settings → Sync", { timeout: 20_000 }, () => {
     expect(screen.queryByRole("radio", { name: /WebDAV/ })).toBeNull();
     expect(screen.queryByRole("radio", { name: /folder you already sync/ })).toBeNull();
     unmount();
-    setup({ syncStatus: async () => ({ ...OFF, desktop: true }) });
+    setup({
+      syncStatus: async () => ({ ...OFF, desktop: true, places: ["server", "folder", "webdav"] }),
+    });
     await user.click(await screen.findByRole("radio", { name: /WebDAV/ }));
     expect(screen.getByLabelText("App password")).toBeVisible();
     expect(screen.getByRole("radio", { name: /folder you already sync/ })).toBeVisible();
@@ -179,6 +184,67 @@ describe("Settings → Sync", { timeout: 20_000 }, () => {
     await user.click(screen.getByRole("button", { name: "Make a sync token" }));
     expect(await screen.findByText("ksync_new")).toBeVisible();
     expect(posted).toEqual([{ label: "Phone", vault: true }]);
+  });
+
+  it("connects to a server with a pairing code, then joins with the passphrase", async () => {
+    const connectServer = vi.fn(async (link: { server: string; code: string }) => ({
+      ...OFF,
+      paired: link.server,
+    }));
+    let status: SyncStatus = OFF;
+    const setUpSync = vi.fn(createMockServices({ latencyMs: 0 }).setUpSync);
+    const { user } = setup({
+      syncStatus: async () => status,
+      connectServer: async (link, name) => {
+        status = await connectServer(link);
+        void name;
+        return status;
+      },
+      setUpSync,
+    });
+    const address = await screen.findByLabelText("Link or server address");
+    expect(screen.queryByRole("button", { name: "Scan the QR code" })).toBeNull();
+    await user.type(address, "vuurtoren.example.org");
+    await user.type(screen.getByLabelText("Pairing code"), "abcde fghjk");
+    await user.click(screen.getByRole("button", { name: "Connect" }));
+    expect(connectServer).toHaveBeenCalledWith({
+      server: "https://vuurtoren.example.org",
+      code: "ABCDE-FGHJK",
+    });
+    const paired = await screen.findByRole("radio", { name: /connected with a pairing code/ });
+    expect(paired).toBeChecked();
+    expect(screen.getByRole("radio", { name: /Join my synced data/ })).toBeChecked();
+    expect(screen.queryByLabelText("Link or server address")).toBeNull();
+    await user.type(screen.getByLabelText("Passphrase or recovery key"), "lange zinnen lezen");
+    await user.click(screen.getByRole("button", { name: "Join and sync" }));
+    expect(setUpSync).toHaveBeenCalledWith(
+      { kind: "server", url: "https://vuurtoren.example.org", token: "", kept: true },
+      "join",
+      "lange zinnen lezen",
+      "Laptop",
+      expect.any(Function),
+    );
+  });
+
+  it("shows a QR code that connects a phone on a page of the server", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) =>
+        url === "/api/sync/pair-code"
+          ? Response.json({ ok: true, code: "ABCDE-FGHJK", expiresAt: 1, validMs: 600_000 })
+          : Response.json({ ok: true, tokens: [] }),
+      ),
+    );
+    const { user } = setup(
+      { syncStatus: async () => ({ ...OFF, thisServer: "https://vuurtoren.example.org" }) },
+      anna,
+    );
+    await user.click(await screen.findByRole("button", { name: "Show a QR code" }));
+    expect(await screen.findByRole("img", { name: "QR code to connect a phone" })).toBeVisible();
+    expect(screen.getByText("ABCDE-FGHJK")).toBeVisible();
+    expect(
+      screen.getByText(/^vuurtoren:\/\/connect\?server=.*&code=ABCDE-FGHJK$/),
+    ).toBeInTheDocument();
   });
 
   it("asks for the passphrase when this device lost its key, and lists what did not sync", async () => {

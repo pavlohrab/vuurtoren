@@ -61,15 +61,27 @@ export function DataSettings() {
     setPending(null);
   };
 
-  const where = data.mode === "desktop" ? "Stored on this computer" : "Stored in this browser";
-  const place = data.mode === "desktop" ? "in your data file" : "in this browser";
+  const where =
+    data.mode === "desktop"
+      ? "Stored on this computer"
+      : data.mode === "phone"
+        ? "Stored on this phone"
+        : "Stored in this browser";
+  const place =
+    data.mode === "desktop"
+      ? "in your data file"
+      : data.mode === "phone"
+        ? "in this app"
+        : "in this browser";
   return (
     <section className="stack" aria-label="Your data">
       <p style={{ margin: 0 }}>
         <strong>{where}.</strong>{" "}
         {data.mode === "desktop"
           ? "One file you can see, copy and back up like any other document."
-          : "Only this browser on this device sees it. Sync it with your other devices, or download a backup now and then."}
+          : data.mode === "phone"
+            ? "Only this app on this phone sees it. Sync it with your other devices, or download a backup now and then."
+            : "Only this browser on this device sees it. Sync it with your other devices, or download a backup now and then."}
       </p>
       {data.file ? <DesktopDataFile file={data.file} /> : null}
       {data.mode === "browser" ? (

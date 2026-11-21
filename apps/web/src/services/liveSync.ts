@@ -27,13 +27,24 @@ import {
   vaultId,
 } from "@app/db";
 import type { DesktopSync } from "../desktop/bridge.js";
+import { pairWithServer, pairedLabel, parseConnectLink } from "../sync/connect.js";
 import { desktopFetch, folderStore } from "../sync/desktopStore.js";
-import { forgetSyncKey, loadSyncKey, saveSyncKey } from "../sync/keyStore.js";
+import {
+  forgetSyncKey,
+  forgetSyncToken,
+  loadSyncKey,
+  loadSyncToken,
+  saveSyncKey,
+  saveSyncToken,
+} from "../sync/keyStore.js";
+import { placeLabel } from "../sync/labels.js";
 import { serverStore } from "../sync/serverStore.js";
 import { webdavStore } from "../sync/webdavStore.js";
 import type { AutoSync, SetUpHow, SyncPlace, SyncServices, SyncStatus } from "./syncTypes.js";
 
 const STORAGE_KEY = "vuurtoren.sync";
+/** The server connected with a pairing code, until sync is set up with it. */
+const PAIRED_KEY = "vuurtoren.sync.paired";
 /** The timer pulls at most this often; after a failed sync nothing runs sooner. */
 const PULL_EVERY_MS = 15_000;
 /** Coming back into view right after a sync does not sync again. */
@@ -62,6 +73,13 @@ interface SyncKeys {
   forget(): Promise<void>;
 }
 
+/** Where this device keeps a server's sync token (connected with a pairing code). */
+interface TokenKeeper {
+  save(token: string): Promise<unknown>;
+  load(): Promise<string | null>;
+  forget(): Promise<void>;
+}
+
 /** The Vuurtoren server this page comes from: it can be the place. */
 export interface ThisServer {
   origin: string;
@@ -75,8 +93,20 @@ export interface LiveSyncDeps {
   keys?: SyncKeys;
   storage: KeyValueStorage;
   fetch: typeof globalThis.fetch;
-  /** The desktop app's file and fetch bridge (folders, WebDAV). */
+  /** The app's file and fetch bridge (folders and WebDAV on a computer, requests and keys). */
   desktop?: DesktopSync | undefined;
+  /** The places this device can use (default: every place in the app, else a server). */
+  places?: readonly SyncPlace["kind"][];
+  /** The app brings its own language server (default: in the app). */
+  bundledLanguageServer?: boolean;
+  /** A phone: the token is listed as "Phone (<model>)". */
+  phone?: boolean;
+  /** The camera's QR scanner (phones). */
+  scanQr?: (() => Promise<string | null>) | null | undefined;
+  /** `vuurtoren://` links that opened the app (phones). */
+  links?: { take(): Promise<string[]> } | null | undefined;
+  /** Where a paired server's token is kept (default: the key store). */
+  tokens?: TokenKeeper;
   /** The page comes from a Vuurtoren server, which can be the place. */
   server?: ThisServer | undefined;
   /** Changes came in from another device: drop what is derived from the data. */
@@ -159,6 +189,17 @@ export function createLiveSync(deps: LiveSyncDeps) {
     load: () => loadSyncKey(keyDeps),
     forget: () => forgetSyncKey(keyDeps),
   };
+  const tokens: TokenKeeper = deps.tokens ?? {
+    save: (t) => saveSyncToken(t, keyDeps),
+    load: () => loadSyncToken(keyDeps),
+    forget: () => forgetSyncToken(keyDeps),
+  };
+  const places = deps.places ?? (deps.desktop ? ["server", "folder", "webdav"] : ["server"]);
+  const bundledNlp = deps.bundledLanguageServer ?? !!deps.desktop;
+  /** The kept token once read (the key store is asked once per start). */
+  let keptToken: string | null = null;
+  /** A connect link that opened the app, until connecting with it succeeds. */
+  let pendingLink: string | null = null;
   let running: Promise<unknown> | null = null;
   let lastAttempt = 0;
   let lastFailed = false;
@@ -181,6 +222,30 @@ export function createLiveSync(deps: LiveSyncDeps) {
   };
   const write = (s: Saved | null) =>
     s ? deps.storage.setItem(STORAGE_KEY, JSON.stringify(s)) : deps.storage.removeItem(STORAGE_KEY);
+  const readPaired = (): string | null => {
+    try {
+      const raw = deps.storage.getItem(PAIRED_KEY);
+      return raw ? ((JSON.parse(raw) as { url?: string }).url ?? null) : null;
+    } catch {
+      return null;
+    }
+  };
+  const writePaired = (url: string | null) =>
+    url
+      ? deps.storage.setItem(PAIRED_KEY, JSON.stringify({ url }))
+      : deps.storage.removeItem(PAIRED_KEY);
+
+  /** The place with its token: a kept one comes from the key store. */
+  async function withToken(place: SyncPlace): Promise<SyncPlace> {
+    if (place.kind !== "server" || !place.kept) return place;
+    keptToken ??= await tokens.load();
+    if (!keptToken) {
+      throw new Error(
+        "This device no longer has its sync token for the server. Stop syncing, then connect to the server again (Settings → Sync).",
+      );
+    }
+    return { ...place, token: keptToken };
+  }
 
   /** Run one thing at a time: a call waits for the one running, then runs. */
   async function exclusive<T>(fn: () => Promise<T>): Promise<T> {
@@ -194,6 +259,11 @@ export function createLiveSync(deps: LiveSyncDeps) {
     }
   }
 
+  /** The place's store (made once per place), with a kept token read first. */
+  async function storeOf(place: SyncPlace): Promise<SyncStore> {
+    return storeFor(await withToken(place));
+  }
+
   function storeFor(place: SyncPlace): SyncStore {
     const id = JSON.stringify(place);
     if (built?.id === id) return built.store;
@@ -205,11 +275,13 @@ export function createLiveSync(deps: LiveSyncDeps) {
         store = serverStore(place.url, place.token, fetch);
         break;
       case "webdav":
-        if (!deps.desktop) throw new Error("WebDAV can be chosen in the desktop app.");
+        if (!deps.desktop || !places.includes("webdav"))
+          throw new Error("WebDAV can be chosen in the desktop app.");
         store = webdavStore(place.url, place.user, place.password, fetch);
         break;
       case "folder":
-        if (!deps.desktop) throw new Error("A folder can be chosen in the desktop app.");
+        if (!deps.desktop || !places.includes("folder"))
+          throw new Error("A folder can be chosen in the desktop app.");
         store = folderStore(deps.desktop, place.path);
         break;
     }
@@ -219,7 +291,7 @@ export function createLiveSync(deps: LiveSyncDeps) {
 
   /** The place as it is kept: on the page of that same server, with a token made for it. */
   async function keptPlace(place: SyncPlace, deviceName: string): Promise<SyncPlace> {
-    if (place.kind !== "server" || place.token || !deps.server) return place;
+    if (place.kind !== "server" || place.token || place.kept || !deps.server) return place;
     if (!sameOrigin(place.url, deps.server.origin)) return place;
     const token = await deps.server.newToken(`${deviceName} (this browser)`);
     return { ...place, url: deps.server.origin, token };
@@ -227,9 +299,12 @@ export function createLiveSync(deps: LiveSyncDeps) {
 
   function status(s: Saved | null): SyncStatus {
     return {
-      desktop: !!deps.desktop,
+      desktop: places.includes("folder") || places.includes("webdav"),
+      places: [...places],
+      scan: !!deps.scanQr,
+      paired: s ? null : readPaired(),
       thisServer: deps.server?.origin ?? null,
-      place: s ? { kind: s.place.kind, label: storeFor(s.place).label } : null,
+      place: s ? { kind: s.place.kind, label: placeLabel(s.place) } : null,
       deviceName: s?.deviceName ?? defaultName(),
       last: s?.last ?? null,
       error: s?.error ?? null,
@@ -256,7 +331,7 @@ export function createLiveSync(deps: LiveSyncDeps) {
       },
     });
     try {
-      const r = await syncOnce(counting, storeFor(saved.place), key, {
+      const r = await syncOnce(counting, await storeOf(saved.place), key, {
         deviceName: saved.deviceName,
         now,
         ...(onProgress ? { onProgress } : {}),
@@ -315,7 +390,7 @@ export function createLiveSync(deps: LiveSyncDeps) {
   async function opened(secret: string) {
     const saved = read();
     if (!saved) throw new Error("Sync is not set up on this device.");
-    const store = storeFor(saved.place);
+    const store = await storeOf(saved.place);
     const vault = await readVault(store);
     if (!vault) throw new Error("The sync place no longer holds your Vuurtoren data.");
     const key = await unlockVault(vault, secret);
@@ -368,7 +443,7 @@ export function createLiveSync(deps: LiveSyncDeps) {
       return exclusive(async () => {
         const name = deviceName.trim().slice(0, 60) || defaultName();
         const kept = await keptPlace(place, name);
-        const store = storeFor(kept);
+        const store = await storeOf(kept);
         onProgress?.(how === "join" ? "Opening your synced data" : "Starting your sync data");
         const { key, recoveryKey } = await connect(store, how, passphrase);
         const saved: Saved = {
@@ -379,6 +454,7 @@ export function createLiveSync(deps: LiveSyncDeps) {
           devices: [],
         };
         write(saved);
+        writePaired(null);
         // Sync is set up from here on: a first sync that does not finish is kept as the error
         // (it tries again by itself), and a new recovery key is still shown.
         try {
@@ -428,11 +504,41 @@ export function createLiveSync(deps: LiveSyncDeps) {
       // After whatever runs (a setup too): nothing turns sync back on behind it.
       await exclusive(async () => {
         await keys.forget();
+        const place = read()?.place;
+        if ((place?.kind === "server" && place.kept) || readPaired()) await tokens.forget();
+        keptToken = null;
+        writePaired(null);
         write(null);
         syncedAt = null;
         watched = null;
         built = null;
       });
+    },
+
+    async connectServer(link, deviceName) {
+      return exclusive(async () => {
+        if (read()) throw new Error("Stop syncing first, then connect to another server.");
+        // In the app the request goes through it (no CORS setup on the server).
+        const fetch = deps.desktop ? desktopFetch(deps.desktop) : deps.fetch;
+        const ua = typeof navigator === "undefined" ? "" : navigator.userAgent;
+        const label = pairedLabel(deviceName || defaultName(), ua, deps.phone ?? false);
+        const paired = await pairWithServer(link, label, fetch);
+        await tokens.save(paired.token);
+        keptToken = paired.token;
+        writePaired(paired.url);
+        pendingLink = null;
+        return status(null);
+      });
+    },
+
+    async scanConnectLink() {
+      return deps.scanQr ? deps.scanQr() : null;
+    },
+
+    async pendingConnectLink() {
+      const links = (await deps.links?.take()) ?? [];
+      pendingLink = links.filter((l) => parseConnectLink(l)).at(-1) ?? pendingLink;
+      return pendingLink;
     },
 
     async pickSyncFolder() {
@@ -505,12 +611,31 @@ export function createLiveSync(deps: LiveSyncDeps) {
    * own: the place's `/nlp` and its sync token. Null for other places and on the page of that
    * same server (it reaches `/nlp` with its sign-in).
    */
-  function languageServer(): { url: string; token: string } | null {
-    const place = read()?.place;
-    if (place?.kind !== "server" || deps.desktop) return null;
+  async function languageServer(): Promise<{
+    url: string;
+    token: string;
+    fetch?: typeof globalThis.fetch;
+  } | null> {
+    if (bundledNlp) return null;
+    const saved = read()?.place;
+    const pairedUrl = saved ? null : readPaired();
+    const place: SyncPlace | undefined =
+      saved ?? (pairedUrl ? { kind: "server", url: pairedUrl, token: "", kept: true } : undefined);
+    if (place?.kind !== "server") return null;
     const here = deps.server?.origin ?? (typeof location === "undefined" ? "" : location.origin);
     if (sameOrigin(place.url, here)) return null;
-    return { url: `${place.url.replace(/\/+$/, "")}/nlp`, token: place.token };
+    let token: string;
+    try {
+      token = place.kept ? ((await withToken(place)) as { token: string }).token : place.token;
+    } catch {
+      return null;
+    }
+    return {
+      url: `${place.url.replace(/\/+$/, "")}/nlp`,
+      token,
+      // In the app the requests go through it, like sync's (no CORS setup on the server).
+      ...(deps.desktop ? { fetch: desktopFetch(deps.desktop) } : {}),
+    };
   }
 
   return { services, auto, languageServer, configured: () => read() !== null };

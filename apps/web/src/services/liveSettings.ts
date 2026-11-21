@@ -80,7 +80,10 @@ export interface LiveSettingsDeps {
    * The language server of the Vuurtoren server this device syncs with, used while the address
    * is the default `/nlp` (a device without a language server of its own); null otherwise.
    */
-  languageServer?: () => { url: string; token: string } | null;
+  languageServer?: () =>
+    | Promise<{ url: string; token: string; fetch?: typeof globalThis.fetch } | null>
+    | { url: string; token: string; fetch?: typeof globalThis.fetch }
+    | null;
 }
 
 /**
@@ -124,11 +127,11 @@ export function createLiveSettings({ repo, platform, changed, languageServer }: 
   // Every language-server call feeds the shared degraded signal.
   const nlp = async () => {
     const url = (await settings()).nlpUrl;
-    const theirs = url === DEFAULT_SETTINGS.nlpUrl ? (languageServer?.() ?? null) : null;
+    const theirs = url === DEFAULT_SETTINGS.nlpUrl ? ((await languageServer?.()) ?? null) : null;
     const client = theirs
       ? new NlpClient({
           url: theirs.url,
-          fetch: withBearer(platform.fetch, theirs.url, theirs.token),
+          fetch: withBearer(theirs.fetch ?? platform.fetch, theirs.url, theirs.token),
         })
       : new NlpClient({ url, fetch: platform.fetch });
     return watchClient(client, "nlp", nlpOutage);

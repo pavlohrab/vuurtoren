@@ -20,7 +20,7 @@ import { createHash } from "node:crypto";
 import { HttpFail, json, readJson, safeEqual } from "../http-util.js";
 import { type PasswordHash, verifyPassword } from "./password.js";
 import { LoginLimiter, type LimiterOptions } from "./ratelimit.js";
-import { TokenStore } from "./tokens.js";
+import { PAIR_CODE_MS, TokenStore } from "./tokens.js";
 import { SessionStore, type SessionOptions } from "./sessions.js";
 
 type AuthMethod = "password" | "token";
@@ -335,7 +335,7 @@ export function createAuth(opts: AuthOptions = {}): Auth {
     const id = require(req);
     const made = syncTokens.newPairCode();
     console.log("[vuurtoren-api] pairing code made");
-    json(res, 200, { ok: true, ...made }, responseHeaders(id));
+    json(res, 200, { ok: true, ...made, validMs: PAIR_CODE_MS }, responseHeaders(id));
   }
 
   async function pair(

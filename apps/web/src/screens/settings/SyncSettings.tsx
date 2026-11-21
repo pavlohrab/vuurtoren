@@ -1,24 +1,37 @@
 /**
  * Settings → Sync: your data on every device, through a place you choose, encrypted with a
  * passphrase before it leaves the device. On a page served by a Vuurtoren server, that server
- * is offered as the place, and this section also makes sync tokens for your other devices.
+ * is offered as the place, and this section also makes sync tokens for your other devices and
+ * shows the QR code that connects a phone (Add a phone). Elsewhere, Connect to your server
+ * trades such a code (scanned, pasted as a link, or typed) for this device's own token.
  */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useEffect, useRef, useState } from "react";
 import { Button, Input, Skeleton, Spinner, useToast } from "@app/ui";
 import { createSyncTokenClient } from "../../auth/tokens.js";
+import {
+  type ConnectLink,
+  connectLink,
+  pairingCode,
+  parseConnectLink,
+  serverAddress,
+} from "../../sync/connect.js";
 import { relativeTime } from "../../format.js";
 import { useServices } from "../../services/context.js";
 import type { SetUpHow, SyncPlace, SyncStatus } from "../../services/syncTypes.js";
 import { useAppInfo } from "../../shell/AppInfo.js";
+import { QrCode } from "./QrCode.js";
 import { CopyBlock } from "./shared.js";
 import { errorText } from "../../services/errors.js";
 
 const tokens = createSyncTokenClient();
 
 type Kind = SyncPlace["kind"];
-/** A choice under Where: this page's own server, another server, a folder or WebDAV. */
-type Choice = "this" | Kind;
+/**
+ * A choice under Where: this page's own server, the server connected with a pairing code,
+ * another server, a folder or WebDAV.
+ */
+type Choice = "this" | "paired" | Kind;
 const HOWS: { how: SetUpHow; title: string; sub: string }[] = [
   {
     how: "join",
@@ -35,6 +48,15 @@ const HOWS: { how: SetUpHow; title: string; sub: string }[] = [
 function choices(status: SyncStatus): { id: Choice; title: string; sub: string }[] {
   const here = status.thisServer ? new URL(status.thisServer).host : null;
   return [
+    ...(status.paired
+      ? [
+          {
+            id: "paired" as const,
+            title: "Your Vuurtoren server",
+            sub: `${new URL(status.paired).host}, connected with a pairing code.`,
+          },
+        ]
+      : []),
     ...(here
       ? [
           {
@@ -49,13 +71,17 @@ function choices(status: SyncStatus): { id: Choice; title: string; sub: string }
       title: here ? "Another Vuurtoren server" : "Your Vuurtoren server",
       sub: "A Vuurtoren server you run. Make a sync token in its Settings → Sync.",
     },
-    ...(status.desktop
+    ...(status.places.includes("folder")
       ? [
           {
             id: "folder" as const,
             title: "A folder you already sync",
             sub: "Syncthing, Dropbox, iCloud Drive, OneDrive. The desktop app writes into it.",
           },
+        ]
+      : []),
+    ...(status.places.includes("webdav")
+      ? [
           {
             id: "webdav" as const,
             title: "WebDAV",
@@ -103,8 +129,14 @@ export function SyncSettings() {
           <Secrets onRecovery={setRecovery} />
         </>
       ) : (
-        <SetUp status={status.data} onRecovery={setRecovery} />
+        <>
+          {status.data.thisServer || status.data.paired ? null : (
+            <ConnectServer status={status.data} />
+          )}
+          <SetUp key={status.data.paired ?? ""} status={status.data} onRecovery={setRecovery} />
+        </>
       )}
+      {account ? <AddPhone authOn={account.authEnabled} /> : null}
       {account ? <ServerTokens authOn={account.authEnabled} /> : null}
     </div>
   );
@@ -231,10 +263,11 @@ function SetUp({ status, onRecovery }: { status: SyncStatus; onRecovery: (key: s
   const services = useServices();
   const qc = useQueryClient();
   const toast = useToast();
-  const [how, setHow] = useState<SetUpHow | null>(null);
+  // A server connected with a pairing code already holds the data of another device.
+  const [how, setHow] = useState<SetUpHow | null>(status.paired ? "join" : null);
   const options = choices(status);
   const [choice, setChoice] = useState<Choice>(options[0]!.id);
-  const kind: Kind = choice === "this" ? "server" : choice;
+  const kind: Kind = choice === "this" || choice === "paired" ? "server" : choice;
   const [fields, setFields] = useState<Record<string, string>>({});
   const [passphrase, setPassphrase] = useState("");
   const [show, setShow] = useState(false);
@@ -249,7 +282,9 @@ function SetUp({ status, onRecovery }: { status: SyncStatus; onRecovery: (key: s
       case "server":
         return choice === "this"
           ? { kind, url: status.thisServer!, token: "" }
-          : { kind, url: f("url").trim(), token: f("token").trim() };
+          : choice === "paired"
+            ? { kind, url: status.paired!, token: "", kept: true }
+            : { kind, url: f("url").trim(), token: f("token").trim() };
       case "webdav":
         return { kind, url: f("url").trim(), user: f("user").trim(), password: f("password") };
       case "folder":
@@ -259,7 +294,7 @@ function SetUp({ status, onRecovery }: { status: SyncStatus; onRecovery: (key: s
   const ready =
     how !== null &&
     passphrase.trim().length >= 8 &&
-    (choice === "this"
+    (choice === "this" || choice === "paired"
       ? true
       : kind === "server"
         ? /^https?:\/\/./.test(f("url").trim())
@@ -341,7 +376,7 @@ function SetUp({ status, onRecovery }: { status: SyncStatus; onRecovery: (key: s
         ))}
       </fieldset>
 
-      {choice === "this" ? null : kind === "server" ? (
+      {choice === "this" || choice === "paired" ? null : kind === "server" ? (
         <>
           <Input
             label="Server address"
@@ -581,6 +616,189 @@ function Problems({ problems }: { problems: SyncStatus["problems"] }) {
         ))}
       </ul>
     </details>
+  );
+}
+
+/**
+ * Connect to your server: the QR code of its Settings → Sync → Add a phone (scanned on a phone),
+ * the link under it, or its address and pairing code typed. This device gets its own sync token;
+ * the passphrase then joins the data (Set up, below).
+ */
+function ConnectServer({ status }: { status: SyncStatus }) {
+  const services = useServices();
+  const qc = useQueryClient();
+  const [text, setText] = useState("");
+  const [code, setCode] = useState("");
+  const [problem, setProblem] = useState<string | null>(null);
+  const tried = useRef<string | null>(null);
+  const connect = useMutation({
+    mutationFn: (link: ConnectLink) => services.connectServer(link, status.deviceName),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["sync"] }),
+  });
+  const start = (link: ConnectLink) => {
+    setProblem(null);
+    connect.mutate(link);
+  };
+  const scan = useMutation({
+    mutationFn: () => services.scanConnectLink(),
+    onSuccess: (read) => {
+      if (!read) return;
+      const link = parseConnectLink(read);
+      if (link) start(link);
+      else setProblem("This QR code is not a Vuurtoren connect code. Use the one in Add a phone.");
+    },
+  });
+  // A vuurtoren://connect link opened the app: connect with it once.
+  useEffect(() => {
+    let live = true;
+    void services.pendingConnectLink().then((pending) => {
+      const link = pending ? parseConnectLink(pending) : null;
+      if (!live || !link || tried.current === pending) return;
+      tried.current = pending;
+      setText(pending!);
+      start(link);
+    });
+    return () => {
+      live = false;
+    };
+    // Asked again whenever the status is fetched again (the shell does so when a link arrives).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status]);
+
+  const fromLink = parseConnectLink(text);
+  const server = fromLink ? null : serverAddress(text);
+  const typedCode = pairingCode(code);
+  const link: ConnectLink | null =
+    fromLink ?? (server && typedCode ? { server, code: typedCode } : null);
+  const busy = connect.isPending || scan.isPending;
+  const error = problem ?? (connect.error ? errorText(connect.error) : null);
+  return (
+    <form
+      className="stack"
+      aria-labelledby="connect-h"
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (link && !busy) start(link);
+      }}
+    >
+      <h3 className="settings-h3" id="connect-h">
+        Connect to your server
+      </h3>
+      <p className="k-hint" style={{ margin: 0 }}>
+        On your Vuurtoren server, open Settings → Sync → Add a phone.{" "}
+        {status.scan
+          ? "Scan its QR code, or type the address and the pairing code under it."
+          : "Paste the link under its QR code, or type the address and the pairing code."}{" "}
+        This device gets its own sync token; your passphrase is never in the code.
+      </p>
+      {status.scan ? (
+        <div className="row">
+          <Button type="button" variant="primary" onClick={() => scan.mutate()} disabled={busy}>
+            {scan.isPending ? <Spinner label="Scanning" /> : null}
+            Scan the QR code
+          </Button>
+        </div>
+      ) : null}
+      <Input
+        label="Link or server address"
+        placeholder="vuurtoren://connect?… or https://vuurtoren.example.org"
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        autoComplete="off"
+      />
+      {fromLink ? null : (
+        <Input
+          label="Pairing code"
+          placeholder="ABCDE-FGHJK"
+          value={code}
+          onChange={(e) => setCode(e.target.value)}
+          autoComplete="off"
+          hint="Works once, for 10 minutes."
+        />
+      )}
+      <div className="row">
+        <Button type="submit" disabled={!link || busy}>
+          {connect.isPending ? <Spinner label="Connecting" /> : null}
+          Connect
+        </Button>
+      </div>
+      {error ? (
+        <p role="alert" className="error-text" style={{ margin: 0 }}>
+          {error}
+        </p>
+      ) : null}
+    </form>
+  );
+}
+
+/**
+ * On a page of a Vuurtoren server: a QR code that connects a phone. It holds this server's
+ * address and a one-time pairing code (10 minutes, used once; a new one appears when it
+ * expires), never the passphrase.
+ */
+function AddPhone({ authOn }: { authOn: boolean }) {
+  const qc = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const code = useQuery({
+    queryKey: ["pair-code"],
+    queryFn: () => tokens.pairCode(),
+    enabled: open,
+    staleTime: Infinity,
+    gcTime: 0,
+    retry: false,
+  });
+  const fetchedAt = code.dataUpdatedAt;
+  const validMs = code.data?.validMs;
+  // A new code when this one expires; the token list shows the phone once it connected.
+  useEffect(() => {
+    if (!open || !validMs) return;
+    const left = Math.max(1_000, fetchedAt + validMs - Date.now());
+    const renew = setTimeout(() => void code.refetch(), left);
+    const list = setInterval(() => void qc.invalidateQueries({ queryKey: ["sync-tokens"] }), 5_000);
+    return () => {
+      clearTimeout(renew);
+      clearInterval(list);
+    };
+  }, [open, fetchedAt, validMs, code, qc]);
+  const link = code.data ? connectLink(location.origin, code.data.code) : null;
+  return (
+    <section className="stack" aria-labelledby="add-phone-h">
+      <h3 className="settings-h3" id="add-phone-h">
+        Add a phone
+      </h3>
+      <p className="k-hint" style={{ margin: 0 }}>
+        In the Vuurtoren app on your phone, choose Connect to your server and scan this code. The
+        phone gets its own sync token{authOn ? " (listed below, where you can revoke it)" : ""};
+        then it asks for your passphrase.
+      </p>
+      {!open ? (
+        <div className="row">
+          <Button onClick={() => setOpen(true)}>Show a QR code</Button>
+        </div>
+      ) : code.isError ? (
+        <p role="alert" className="error-text" style={{ margin: 0 }}>
+          {errorText(code.error)}
+        </p>
+      ) : !link || !code.data ? (
+        <Skeleton style={{ height: 224, width: 224 }} />
+      ) : (
+        <>
+          <QrCode text={link} label="QR code to connect a phone" />
+          <p style={{ margin: 0 }}>
+            Pairing code <code>{code.data.code}</code>{" "}
+            <span className="k-hint">
+              works once, until {new Date(fetchedAt + code.data.validMs).toLocaleTimeString()}
+            </span>
+          </p>
+          <CopyBlock label="Link (to paste on another device)" text={link} />
+          <div className="row">
+            <Button variant="ghost" onClick={() => setOpen(false)}>
+              Hide the code
+            </Button>
+          </div>
+        </>
+      )}
+    </section>
   );
 }
 

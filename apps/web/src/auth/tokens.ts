@@ -1,7 +1,8 @@
 /**
  * Sync tokens of a Vuurtoren server (server/api/src/auth/tokens.ts): what a device sends to
  * sync through the server and to use its language server. List, make (the token is returned
- * once) and revoke, on a page served by that server; its sign-in authorises the calls.
+ * once) and revoke, on a page served by that server; its sign-in authorises the calls. A
+ * pairing code (`pairCode`) lets a phone fetch a token of its own (Settings → Sync → Add a phone).
  */
 /** A token as listed: never the secret itself. */
 interface TokenInfo {
@@ -37,6 +38,17 @@ export function createSyncTokenClient(fetchImpl: FetchLike = ambient) {
         credentials: "same-origin",
         headers: HEADERS,
         body: JSON.stringify({ label, vault }),
+      });
+      return ok(res);
+    },
+    /** A one-time pairing code; it works once, for `validMs`. */
+    async pairCode(): Promise<{ code: string; expiresAt: number; validMs: number }> {
+      const res = await fetchImpl("/api/sync/pair-code", {
+        method: "POST",
+        credentials: "same-origin",
+        cache: "no-store",
+        headers: HEADERS,
+        body: "{}",
       });
       return ok(res);
     },

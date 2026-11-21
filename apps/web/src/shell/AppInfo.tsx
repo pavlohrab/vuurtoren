@@ -14,8 +14,11 @@ export interface DataFile {
 
 /** What "Your data" in Settings needs: where data lives and how to back it up. */
 export interface DataControls {
-  /** "desktop": the desktop app's SQLite file; "browser": SQLite in this browser (OPFS). */
-  mode: "browser" | "desktop";
+  /**
+   * "desktop": the app's SQLite file on a computer; "phone": the app's SQLite file in its
+   * private storage on a phone; "browser": SQLite in this browser (OPFS).
+   */
+  mode: "browser" | "desktop" | "phone";
   /** Browser mode: did `navigator.storage.persist()` succeed (null = not asked/unsupported). */
   persisted: boolean | null;
   /** Browser mode: false when the database is in memory only. */
@@ -27,7 +30,7 @@ export interface DataControls {
   file?: DataFile | undefined;
 }
 
-/** Desktop app: the bundled language server. */
+/** The app on a computer: the bundled language server. */
 export interface DesktopLocal {
   nlp: DesktopBridge["nlp"];
 }

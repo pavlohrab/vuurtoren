@@ -52,13 +52,15 @@ function Steps({ step }: { step: Step }) {
 }
 
 /** Where the book ends up, by storage mode (server, this browser, or the demo). */
-function privacyCopy(mode: "server" | "browser" | "desktop" | undefined): string {
+function privacyCopy(mode: "server" | "browser" | "desktop" | "phone" | undefined): string {
   if (mode === "desktop")
     return "It is read by the language tools on this computer and kept only in your Vuurtoren data file. Nothing is shared.";
   if (mode === "server")
     return "It is read on your own Vuurtoren server and kept only in its storage. Nothing is shared.";
   if (mode === "browser")
     return "Its pages are read by your language server, and the course is kept only in this browser. Nothing is shared.";
+  if (mode === "phone")
+    return "Its pages are read by your language server, and the course is kept only in this app. Nothing is shared.";
   return "This is the demo: nothing you upload is kept.";
 }
 

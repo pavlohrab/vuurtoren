@@ -8,6 +8,9 @@ export function createMockSync(
 ): SyncServices {
   let state: SyncStatus = {
     desktop: false,
+    places: ["server"],
+    scan: false,
+    paired: null,
     thisServer: null,
     place: null,
     deviceName: "This device",
@@ -35,6 +38,7 @@ export function createMockSync(
       state = {
         ...state,
         place: { kind: place.kind, label: placeLabel(place) },
+        paired: null,
         deviceName: deviceName || state.deviceName,
         last: { at, sent: 12, received: how === "join" ? 40 : 0 },
         error: null,
@@ -77,7 +81,20 @@ export function createMockSync(
     },
     async stopSync() {
       await wait();
-      state = { ...state, place: null, last: null, devices: [] };
+      state = { ...state, place: null, paired: null, last: null, devices: [] };
+    },
+    async connectServer(link) {
+      await wait();
+      if (link.code.replace("-", "").length !== 10)
+        throw new Error("This pairing code does not work.");
+      state = { ...state, paired: link.server };
+      return state;
+    },
+    async scanConnectLink() {
+      return null;
+    },
+    async pendingConnectLink() {
+      return null;
     },
     async pickSyncFolder() {
       return null;

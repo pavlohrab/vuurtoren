@@ -27,7 +27,7 @@ import { assumedFamiliarKeys } from "./assumedFamiliar.js";
 import { loadStarterWords } from "./starterWords.js";
 import { createLiveWords } from "./liveWords.js";
 import { type ThisServer, createLiveSync } from "./liveSync.js";
-import { desktopBridge } from "../desktop/bridge.js";
+import { currentDevice } from "../platform/index.js";
 import { DEGRADED_MESSAGES, clearDegraded, reportDegraded } from "./degraded.js";
 import { type Platform, browserPlatform } from "./platform.js";
 import type { AppServices } from "./types.js";
@@ -201,11 +201,17 @@ export function createLiveServices(
     invalidatePractice();
   };
 
+  const device = currentDevice();
   const sync = createLiveSync({
     repo,
     storage: platform.storage,
     fetch: platform.fetch,
-    desktop: desktopBridge()?.sync,
+    desktop: device.bridge?.sync,
+    places: device.syncPlaces,
+    bundledLanguageServer: device.languageServer === "bundled",
+    phone: device.kind === "android",
+    scanQr: device.scanQr,
+    links: device.links,
     server: options.server,
     changed: dropCaches,
   });

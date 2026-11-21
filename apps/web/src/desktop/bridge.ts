@@ -1,6 +1,7 @@
 /**
- * The desktop app (apps/desktop, Tauri) injects `window.__VUURTOREN_DESKTOP__` into its bundled
- * page. In a normal browser it is absent and nothing here changes behaviour.
+ * The app (apps/desktop, Tauri: a computer or an Android phone) injects
+ * `window.__VUURTOREN_DESKTOP__` into its bundled page. In a normal browser it is absent and
+ * nothing here changes behaviour. What a device offers is read through `../platform/`.
  */
 import type { NativeDb } from "@app/db/native";
 
@@ -44,10 +45,12 @@ export type SidecarStatus = (
 export interface DesktopBridge {
   /** True on the bundled page. */
   readonly home: boolean;
+  /** The device: "linux", "macos", "windows", "android" (absent in older builds: a computer). */
+  readonly os?: string;
   info(): Promise<{
     version: string;
-    /** The bundled language server's address (`vuurtoren-nlp:` protocol). */
-    nlpBase?: string;
+    /** The bundled language server's address (`vuurtoren-nlp:` protocol); null on a phone. */
+    nlpBase?: string | null;
   }>;
   /**
    * What to do before the window closes (the last sync): the app waits for it, at most a few
@@ -79,7 +82,18 @@ export interface DesktopBridge {
    * places the page cannot reach itself (no CORS for the app).
    */
   sync?: DesktopSync;
+  /** `vuurtoren://` links that opened the app (phones); taken once. */
+  links?: {
+    take(): Promise<string[]>;
+    /** Called when a new link arrived; returns its removal. */
+    onArrive(fn: () => void): () => void;
+  };
+  /** A QR code read with the camera (phones): its text, or null when cancelled or not allowed. */
+  scanQr?: () => Promise<string | null>;
 }
+
+/** The secrets the device's key store keeps for the page. */
+export type SecretName = "sync-key" | "sync-token";
 
 /** What the desktop app offers for sync (see `apps/web/src/sync/desktopStore.ts`). */
 export interface DesktopSync {
@@ -98,12 +112,14 @@ export interface DesktopSync {
    */
   allowHost?(url: string): Promise<void>;
   /**
-   * The sync key (base64) in the system keychain, or a file only this user can read when the
-   * system has none; resolves with where it went. Use `../sync/keyStore.ts` rather than these.
+   * A secret in the device's key store: the sync key (base64; `name` absent) or a server's sync
+   * token (`name` "sync-token"). The system keychain, or a file only this user can read when the
+   * system has none, or the Android Keystore; resolves with where it went. Use
+   * `../sync/keyStore.ts` rather than these.
    */
-  saveKey?(key: string): Promise<"keychain" | "file">;
-  loadKey?(): Promise<string | null>;
-  forgetKey?(): Promise<void>;
+  saveKey?(key: string, name?: SecretName): Promise<"keychain" | "file" | "keystore">;
+  loadKey?(name?: SecretName): Promise<string | null>;
+  forgetKey?(name?: SecretName): Promise<void>;
   /**
    * An HTTP request sent by the app (http/https, the methods a sync place needs), only to an
    * allowed address; redirects to another address come back as they are, and no cookies.

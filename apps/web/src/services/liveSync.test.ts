@@ -172,7 +172,7 @@ describe("sync on a device", () => {
     expect(newToken).toHaveBeenCalledWith("Laptop (this browser)");
     expect(files.has("vuurtoren/vault.json")).toBe(true);
     // Its own language server is reached with its sign-in, not through sync.
-    expect(page.sync.languageServer()).toBeNull();
+    expect(await page.sync.languageServer()).toBeNull();
   });
 });
 
@@ -449,11 +449,134 @@ describe("the language server of a sync server", () => {
       token: "ksync_t",
     };
     const phone = await device("bbbbbbbbbbbb", fetch, clock);
-    expect(phone.sync.languageServer()).toBeNull();
+    expect(await phone.sync.languageServer()).toBeNull();
     await phone.sync.services.setUpSync(place, "start", PASS, "Phone");
-    expect(phone.sync.languageServer()).toEqual({
+    expect(await phone.sync.languageServer()).toEqual({
       url: "https://vuurtoren.example/nlp",
       token: "ksync_t",
     });
+  });
+});
+
+/** A Vuurtoren server that pairs: one code, used once, buys the token `token`. */
+function pairingServer(files: Map<string, Uint8Array>, token: string, code: string) {
+  const sync = fakeServer(files, token);
+  const paired: { name: string }[] = [];
+  let used = false;
+  const fetch = (async (input: RequestInfo | URL, init: RequestInit = {}) => {
+    const url = new URL(String(input));
+    if (url.pathname === "/api/sync/pair") {
+      const body = JSON.parse(String(init.body)) as { code: string; name: string };
+      if (used || body.code !== code) {
+        return Response.json(
+          { ok: false, error: "This pairing code does not work." },
+          { status: 403 },
+        );
+      }
+      used = true;
+      paired.push({ name: body.name });
+      return Response.json({ ok: true, token, id: "abc", label: body.name });
+    }
+    return sync(input, init);
+  }) as typeof globalThis.fetch;
+  return { fetch, paired };
+}
+
+/** The token keeper in memory (the real one is the key store). */
+function memTokens() {
+  let token: string | null = null;
+  return {
+    get token() {
+      return token;
+    },
+    save: async (t: string) => void (token = t),
+    load: async () => token,
+    forget: async () => void (token = null),
+  };
+}
+
+const SERVER = "https://vuurtoren.example";
+
+describe("connecting to a server with a pairing code", () => {
+  it("keeps the token in the key store, joins with the passphrase, and uses the server's /nlp", async () => {
+    const clock = { t: Date.UTC(2026, 10, 20, 9) };
+    const files = new Map<string, Uint8Array>();
+    const server = pairingServer(files, "ksync_phone", "ABCDE-FGHJK");
+    const laptopPlace: SyncPlace = { kind: "server", url: SERVER, token: "ksync_phone" };
+    const laptop = await device("aaaaaaaaaaaa", server.fetch, clock);
+    await laptop.repo.append({ type: "WordStateSet", lang: "nl", key: "fiets", state: "known" });
+    await laptop.sync.services.setUpSync(laptopPlace, "start", PASS, "Laptop");
+
+    const tokens = memTokens();
+    const link = `vuurtoren://connect?server=${encodeURIComponent(SERVER)}&code=ABCDE-FGHJK`;
+    const links = { take: vi.fn(async () => [link]) };
+    const phone = await device("bbbbbbbbbbbb", server.fetch, clock, {
+      tokens,
+      links,
+      phone: true,
+      scanQr: async () => null,
+    });
+    const before = await phone.sync.services.syncStatus();
+    expect(before).toMatchObject({ scan: true, paired: null, places: ["server"] });
+    expect(await phone.sync.services.pendingConnectLink()).toBe(link);
+    // Taken from the app once, kept until connecting succeeds.
+    links.take.mockResolvedValue([]);
+    expect(await phone.sync.services.pendingConnectLink()).toBe(link);
+
+    await expect(
+      phone.sync.services.connectServer({ server: SERVER, code: "ZZZZZ-ZZZZZ" }, "Phone"),
+    ).rejects.toThrow(/does not work/);
+    const connected = await phone.sync.services.connectServer(
+      { server: SERVER, code: "ABCDE-FGHJK" },
+      "Phone",
+    );
+    expect(connected.paired).toBe(SERVER);
+    expect(server.paired[0]!.name).toMatch(/^Phone/);
+    expect(tokens.token).toBe("ksync_phone");
+    // The token is in the key store, never in the device's storage.
+    expect([...phone.storage.m.values()].join()).not.toContain("ksync_phone");
+    expect(await phone.sync.services.pendingConnectLink()).toBeNull();
+    // The server is the language server already, before sync is set up.
+    expect(await phone.sync.languageServer()).toEqual({
+      url: `${SERVER}/nlp`,
+      token: "ksync_phone",
+    });
+
+    const joined = await phone.sync.services.setUpSync(
+      { kind: "server", url: connected.paired!, token: "", kept: true },
+      "join",
+      PASS,
+      "Phone",
+    );
+    expect(joined).toMatchObject({ error: null, paired: null, last: { received: 1 } });
+    expect((await phone.repo.word("nl", "fiets"))?.state).toBe("known");
+    expect([...phone.storage.m.values()].join()).not.toContain("ksync_phone");
+
+    // Opened again: the token comes from the key store.
+    const again = phone.reopen();
+    await phone.repo.append({ type: "WordStateSet", lang: "nl", key: "huis", state: "known" });
+    expect((await again.services.syncNow()).error).toBeNull();
+    await laptop.sync.services.syncNow();
+    expect((await laptop.repo.word("nl", "huis"))?.state).toBe("known");
+
+    await again.services.stopSync();
+    expect(tokens.token).toBeNull();
+    expect(await again.services.syncStatus()).toMatchObject({ place: null, paired: null });
+  });
+
+  it("asks to connect again when the key store lost the token", async () => {
+    const clock = { t: Date.UTC(2026, 10, 20, 9) };
+    const server = pairingServer(new Map(), "ksync_phone", "ABCDE-FGHJK");
+    const tokens = memTokens();
+    const phone = await device("bbbbbbbbbbbb", server.fetch, clock, { tokens });
+    await phone.sync.services.connectServer({ server: SERVER, code: "ABCDE-FGHJK" }, "Phone");
+    await phone.sync.services.setUpSync(
+      { kind: "server", url: SERVER, token: "", kept: true },
+      "start",
+      PASS,
+      "Phone",
+    );
+    await tokens.forget();
+    await expect(phone.reopen().services.syncNow()).rejects.toThrow(/connect to the server again/);
   });
 });

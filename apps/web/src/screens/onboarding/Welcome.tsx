@@ -164,6 +164,13 @@ export function Welcome() {
     }
     void navigate({ to: "/library" });
   };
+  // A phone: your data may be on your server already. Joining brings the profile with it.
+  const sync = useQuery({ queryKey: ["sync", "status"], queryFn: () => services.syncStatus() });
+  const offerServer = !!sync.data?.scan && !sync.data.place;
+  const connectServer = () => {
+    setSkipped(true);
+    void navigate({ to: "/settings", search: { section: "sync" } });
+  };
   const finish = () => {
     writeDraft(null);
     setSkipped(false);
@@ -375,6 +382,14 @@ export function Welcome() {
                   sub="Bring your Anki decks into Vuurtoren, or keep using Anki."
                 />
               </fieldset>
+              {offerServer ? (
+                <p className="ob-lede">
+                  Already use Vuurtoren on a computer?{" "}
+                  <Button variant="ghost" onClick={connectServer}>
+                    Connect to your server
+                  </Button>
+                </p>
+              ) : null}
             </>
           ) : null}
 

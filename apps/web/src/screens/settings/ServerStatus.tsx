@@ -89,11 +89,11 @@ export function ServerStatus({ nlpUrl }: { nlpUrl: string }) {
       ? ` · ${formatBytes(info.data.sizeBytes)}, ${info.data.eventCount.toLocaleString()} events`
       : "";
     rows.push(
-      data.mode === "desktop"
+      data.mode !== "browser"
         ? {
             label: "Your data",
             tone: "ok",
-            value: `${data.file?.path ?? "On this computer"}${size}`,
+            value: `${data.file?.path ?? (data.mode === "phone" ? "On this phone" : "On this computer")}${size}`,
           }
         : {
             label: "Your data",

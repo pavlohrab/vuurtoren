@@ -45,6 +45,7 @@ import { useAnkiAutoSync } from "./ankiSync.js";
 import { useAutoTune } from "./autoTune.js";
 import { ShellContext, type PageHeader, type ShellState } from "./ShellContext.js";
 import { useAutoSync } from "./useAutoSync.js";
+import { useConnectLinks } from "./useConnectLinks.js";
 import { useDebounced } from "../useDebounced.js";
 
 const PAGE_TITLES: Record<string, string> = {
@@ -84,6 +85,7 @@ export function AppShell() {
   const { notice, demo, onLeaveDemo, desktop } = useAppInfo();
   const qc = useQueryClient();
   useAutoSync(services, qc);
+  useConnectLinks(services, qc);
   useAnkiAutoSync(services, qc, !demo);
 
   const [header, setHeader] = useState<PageHeader | null>(null);
