@@ -118,3 +118,35 @@ test("side by side follows the window as it is resized, with the word panel open
     await expectColumnsFit(page);
   }
 });
+
+for (const size of [
+  { width: 760, height: 320 },
+  { width: 800, height: 360 },
+]) {
+  test(`a dialog fits a short landscape screen (${size.width}×${size.height}): Save stays reachable`, async ({
+    page,
+  }) => {
+    await page.setViewportSize(size);
+    await page.goto("/?demo");
+    await page.goto("/read/t-regen");
+    await page.getByRole("button", { name: "More reading options" }).click();
+    await page.getByRole("menuitem", { name: "Edit details…" }).click();
+    const dialog = page.getByRole("dialog", { name: "Edit details" });
+    await expect(dialog).toBeVisible();
+    await page.waitForTimeout(300);
+    const box = (await dialog.boundingBox())!;
+    expect(box.y).toBeGreaterThanOrEqual(0);
+    expect(box.y + box.height).toBeLessThanOrEqual(size.height);
+    const save = dialog.getByRole("button", { name: "Save" });
+    const cancel = dialog.getByRole("button", { name: "Cancel" });
+    await expect(save).toBeInViewport({ ratio: 1 });
+    await expect(cancel).toBeInViewport({ ratio: 1 });
+    // The fields scroll under the actions; the actions stay put.
+    await dialog.evaluate((el) => el.scrollTo(0, el.scrollHeight));
+    await expect(save).toBeInViewport({ ratio: 1 });
+    await dialog.evaluate((el) => el.scrollTo(0, 0));
+    await expect(save).toBeInViewport({ ratio: 1 });
+    await cancel.click();
+    await expect(dialog).toBeHidden();
+  });
+}

@@ -590,13 +590,28 @@ kbd {
 }
 .k-dialog {
   position: fixed;
-  top: 50%;
+  /* Centred between the system bars. */
+  top: calc(50% + (var(--safe-top, 0px) - var(--safe-bottom, 0px)) / 2);
   left: 50%;
   transform: translate(-50%, -50%);
   width: min(480px, calc(100vw - 32px));
+  /* Bounded by the visible screen (the keyboard and the system bars too): the body scrolls and
+     the actions stay in view at its bottom (below). */
+  max-height: calc(100dvh - var(--safe-top, 0px) - var(--safe-bottom, 0px) - 24px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 24px;
   z-index: 51;
   animation: k-dialog-in var(--dur) var(--ease-out);
+}
+/* In a dialog the actions stick to the bottom while the rest scrolls under them. */
+.k-dialog .k-dialog-actions {
+  position: sticky;
+  bottom: -24px;
+  margin-bottom: -24px;
+  padding-block: var(--s-3) 24px;
+  background: var(--surface);
+  z-index: 1;
 }
 @keyframes k-dialog-in {
   from {
