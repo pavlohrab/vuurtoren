@@ -58,7 +58,7 @@ Browsers need `https://` for Vuurtoren. Pick one:
 
 ## Sync your devices through it
 
-1. Open your server in a browser, sign in and go to **Settings → Sync**.
+1. Open your server in a browser, sign in and go to **Settings → Your devices**.
 2. To sync this browser, choose **This server**. Nothing else to fill in.
 3. For every other device, click **Make a sync token** and give that device the server address
    and its token. Tick **May change the passphrase and recovery key** for a device you want to

@@ -43,7 +43,7 @@ export function DesktopDataFile({ file }: { file: DataFile }) {
       </p>
       <p style={{ margin: 0, color: "var(--ink-muted)" }}>
         Copy this file to back up everything. To have your data on another device too, use Settings
-        → Sync; keep this file out of folders that Dropbox, OneDrive or Syncthing copy.
+        → Your devices; keep this file out of folders that Dropbox, OneDrive or Syncthing copy.
       </p>
       <div className="row">
         <Button onClick={() => void file.reveal().catch(fail)}>Show in folder</Button>

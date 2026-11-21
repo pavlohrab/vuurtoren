@@ -66,11 +66,16 @@ function choices(status: SyncStatus): { id: Choice; title: string; sub: string }
           },
         ]
       : []),
-    {
-      id: "server",
-      title: here ? "Another Vuurtoren server" : "Your Vuurtoren server",
-      sub: "A Vuurtoren server you run. Make a sync token in its Settings → Sync.",
-    },
+    // A phone connected with a pairing code has its server: Change server starts over instead.
+    ...(status.paired && status.scan
+      ? []
+      : [
+          {
+            id: "server" as const,
+            title: here ? "Another Vuurtoren server" : "Your Vuurtoren server",
+            sub: "A Vuurtoren server you run. Make a sync token in its Settings → Your devices.",
+          },
+        ]),
     ...(status.places.includes("folder")
       ? [
           {
@@ -129,12 +134,7 @@ export function SyncSettings() {
           <Secrets onRecovery={setRecovery} />
         </>
       ) : (
-        <>
-          {status.data.thisServer || status.data.paired ? null : (
-            <ConnectServer status={status.data} />
-          )}
-          <SetUp key={status.data.paired ?? ""} status={status.data} onRecovery={setRecovery} />
-        </>
+        <NotSyncing status={status.data} onRecovery={setRecovery} />
       )}
       {account ? <AddPhone authOn={account.authEnabled} /> : null}
       {account ? <ServerTokens authOn={account.authEnabled} /> : null}
@@ -178,11 +178,100 @@ export function ConnectYourServer({
         <p role="status" style={{ margin: 0 }}>
           Connected{host ? ` to ${host}` : ""}. Sync is on.
         </p>
-      ) : status.data.paired ? (
-        <SetUp key={status.data.paired} status={status.data} onRecovery={setRecovery} />
       ) : (
-        <ConnectServer status={status.data} bare />
+        <NotSyncing status={status.data} onRecovery={setRecovery} bare />
       )}
+    </div>
+  );
+}
+
+/**
+ * Not syncing yet. On a phone (it scans) there is one way in: Scan QR code first, with Enter
+ * pairing code and Use an existing sync token under Connect manually; once paired, the
+ * connected server and the passphrase. Elsewhere Connect to your server sits above every place.
+ */
+function NotSyncing({
+  status,
+  onRecovery,
+  bare = false,
+}: {
+  status: SyncStatus;
+  onRecovery: (key: string) => void;
+  bare?: boolean;
+}) {
+  const [withToken, setWithToken] = useState(false);
+  const phone = status.scan && !status.thisServer;
+  if (status.paired || status.thisServer) {
+    return <SetUp key={status.paired ?? ""} status={status} onRecovery={onRecovery} />;
+  }
+  if (phone && withToken) {
+    return (
+      <div className="stack settings-stack">
+        <SetUp key="token" status={status} onRecovery={onRecovery} />
+        <div className="row">
+          <Button variant="ghost" onClick={() => setWithToken(false)}>
+            Scan a QR code instead
+          </Button>
+        </div>
+      </div>
+    );
+  }
+  if (phone)
+    return <ConnectServer status={status} bare={bare} onUseToken={() => setWithToken(true)} />;
+  if (bare) return <ConnectServer status={status} bare />;
+  return (
+    <>
+      <ConnectServer status={status} />
+      <SetUp key="" status={status} onRecovery={onRecovery} />
+    </>
+  );
+}
+
+/**
+ * Connected with a pairing code but not syncing yet: start over with another server. The
+ * stored sync token is deleted, so this asks first.
+ */
+function ChangeServer({ host }: { host: string }) {
+  const services = useServices();
+  const qc = useQueryClient();
+  const [asking, setAsking] = useState(false);
+  const forget = useMutation({
+    mutationFn: () => services.stopSync(),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["sync"] }),
+  });
+  if (!asking) {
+    return (
+      <div className="row">
+        <Button type="button" variant="ghost" onClick={() => setAsking(true)}>
+          Change server…
+        </Button>
+      </div>
+    );
+  }
+  return (
+    <div className="stack sync-confirm" role="group" aria-label="Change server">
+      <p style={{ margin: 0 }}>
+        Forget {host}? This device&apos;s sync token for it is deleted; to come back, connect again
+        with a new pairing code.
+      </p>
+      <div className="row">
+        <Button
+          type="button"
+          variant="primary"
+          onClick={() => forget.mutate()}
+          disabled={forget.isPending}
+        >
+          Forget and change server
+        </Button>
+        <Button type="button" variant="ghost" onClick={() => setAsking(false)}>
+          Cancel
+        </Button>
+      </div>
+      {forget.isError ? (
+        <p role="alert" className="error-text" style={{ margin: 0 }}>
+          {errorText(forget.error)}
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -403,23 +492,29 @@ function SetUp({ status, onRecovery }: { status: SyncStatus; onRecovery: (key: s
           </label>
         ))}
       </fieldset>
-      <fieldset className="sync-kinds">
-        <legend className="k-label">Where</legend>
-        {options.map((k) => (
-          <label key={k.id} className="sync-kind">
-            <input
-              type="radio"
-              name="sync-kind"
-              checked={choice === k.id}
-              onChange={() => setChoice(k.id)}
-            />
-            <span>
-              <span className="sync-kind-title">{k.title}</span>
-              <span className="k-hint">{k.sub}</span>
-            </span>
-          </label>
-        ))}
-      </fieldset>
+      {options.length === 1 && choice === "paired" ? (
+        <p className="sync-connected" role="status" style={{ margin: 0 }}>
+          Connected to <strong>{new URL(status.paired!).host}</strong> with a pairing code.
+        </p>
+      ) : (
+        <fieldset className="sync-kinds">
+          <legend className="k-label">Where</legend>
+          {options.map((k) => (
+            <label key={k.id} className="sync-kind">
+              <input
+                type="radio"
+                name="sync-kind"
+                checked={choice === k.id}
+                onChange={() => setChoice(k.id)}
+              />
+              <span>
+                <span className="sync-kind-title">{k.title}</span>
+                <span className="k-hint">{k.sub}</span>
+              </span>
+            </label>
+          ))}
+        </fieldset>
+      )}
 
       {choice === "this" || choice === "paired" ? null : kind === "server" ? (
         <>
@@ -499,6 +594,7 @@ function SetUp({ status, onRecovery }: { status: SyncStatus; onRecovery: (key: s
           {errorText(start.error)}
         </p>
       ) : null}
+      {status.paired ? <ChangeServer host={new URL(status.paired).host} /> : null}
     </form>
   );
 }
@@ -669,7 +765,16 @@ function Problems({ problems }: { problems: SyncStatus["problems"] }) {
  * the link under it, or its address and pairing code typed. This device gets its own sync token;
  * the passphrase then joins the data (Set up, below).
  */
-function ConnectServer({ status, bare = false }: { status: SyncStatus; bare?: boolean }) {
+function ConnectServer({
+  status,
+  bare = false,
+  onUseToken,
+}: {
+  status: SyncStatus;
+  bare?: boolean;
+  /** On a phone: Connect manually also offers a sync token made on the server. */
+  onUseToken?: () => void;
+}) {
   const services = useServices();
   const qc = useQueryClient();
   const [text, setText] = useState("");
@@ -717,35 +822,8 @@ function ConnectServer({ status, bare = false }: { status: SyncStatus; bare?: bo
     fromLink ?? (server && typedCode ? { server, code: typedCode } : null);
   const busy = connect.isPending || scan.isPending;
   const error = problem ?? (connect.error ? errorText(connect.error) : null);
-  return (
-    <form
-      className="stack"
-      {...(bare ? { "aria-label": "Connect to your server" } : { "aria-labelledby": "connect-h" })}
-      onSubmit={(e) => {
-        e.preventDefault();
-        if (link && !busy) start(link);
-      }}
-    >
-      {bare ? null : (
-        <h3 className="settings-h3" id="connect-h">
-          Connect to your server
-        </h3>
-      )}
-      <p className="k-hint" style={{ margin: 0 }}>
-        On your Vuurtoren server, open Settings → Sync → Add a phone.{" "}
-        {status.scan
-          ? "Scan its QR code, or type the address and the pairing code under it."
-          : "Paste the link under its QR code, or type the address and the pairing code."}{" "}
-        This device gets its own sync token; your passphrase is never in the code.
-      </p>
-      {status.scan ? (
-        <div className="row">
-          <Button type="button" variant="primary" onClick={() => scan.mutate()} disabled={busy}>
-            {scan.isPending ? <Spinner label="Scanning" /> : null}
-            Scan the QR code
-          </Button>
-        </div>
-      ) : null}
+  const manual = (
+    <>
       <Input
         label="Link or server address"
         placeholder="vuurtoren://connect?… or https://vuurtoren.example.org"
@@ -769,6 +847,61 @@ function ConnectServer({ status, bare = false }: { status: SyncStatus; bare?: bo
           Connect
         </Button>
       </div>
+    </>
+  );
+  return (
+    <form
+      className="stack"
+      {...(bare ? { "aria-label": "Connect to your server" } : { "aria-labelledby": "connect-h" })}
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (link && !busy) start(link);
+      }}
+    >
+      {bare ? null : (
+        <h3 className="settings-h3" id="connect-h">
+          Connect to your server
+        </h3>
+      )}
+      <p className="k-hint" style={{ margin: 0 }}>
+        On your Vuurtoren server, open Settings → Your devices → Add a phone.{" "}
+        {status.scan
+          ? "Scan its QR code."
+          : "Paste the link under its QR code, or type the address and the pairing code."}{" "}
+        This device gets its own sync token; your passphrase is never in the code.
+      </p>
+      {status.scan ? (
+        <div className="row">
+          <Button type="button" variant="primary" onClick={() => scan.mutate()} disabled={busy}>
+            {scan.isPending ? <Spinner label="Scanning" /> : null}
+            Scan QR code
+          </Button>
+        </div>
+      ) : null}
+      {status.scan ? (
+        <details className="sync-manual">
+          <summary>Connect manually</summary>
+          <div className="stack">
+            <h4 className="settings-h4">Enter pairing code</h4>
+            {manual}
+            {onUseToken ? (
+              <>
+                <h4 className="settings-h4">Use an existing sync token</h4>
+                <p className="k-hint" style={{ margin: 0 }}>
+                  A token made in the server&apos;s Settings → Your devices → Sync tokens.
+                </p>
+                <div className="row">
+                  <Button type="button" onClick={onUseToken}>
+                    Use a sync token…
+                  </Button>
+                </div>
+              </>
+            ) : null}
+          </div>
+        </details>
+      ) : (
+        manual
+      )}
       {error ? (
         <p role="alert" className="error-text" style={{ margin: 0 }}>
           {error}
@@ -877,8 +1010,8 @@ function ServerTokens({ authOn }: { authOn: boolean }) {
         Sync tokens
       </h3>
       <p className="k-hint" style={{ margin: 0 }}>
-        Your other devices sync through this server too: in their Settings → Sync, choose Your
-        Vuurtoren server and give this address and a sync token. A token also opens this
+        Your other devices sync through this server too: in their Settings → Your devices, choose
+        Your Vuurtoren server and give this address and a sync token. A token also opens this
         server&apos;s language server, and nothing else.
       </p>
       <CopyBlock label="Server address" text={location.origin} />

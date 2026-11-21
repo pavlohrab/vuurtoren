@@ -71,7 +71,7 @@ and hides what a device lacks.
    - the dictionary pack read on the device, without the language server;
    - analysis cached per text, so reading is offline once a text is added;
    - a server address and sync token set up together on first start ("Connect to your
-     Vuurtoren server" with a QR code from the server's Settings → Sync).
+     Vuurtoren server" with a QR code from the server's Settings → Your devices).
 2. **Android**: the details are in [Android](android.md).
 3. **iPhone** (below).
 

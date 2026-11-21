@@ -120,25 +120,26 @@ status), keeps the database file private (no Show or Move), scans QR codes and r
 
 ## Connecting with a QR code
 
-1. On the server: Settings → Sync → **Add a phone** shows a QR code of
+1. On the server: Settings → Your devices → **Add a phone** shows a QR code of
    `vuurtoren://connect?server=<address>&code=<code>`, the same link as text, and the code. The
    **pairing code** (`POST /api/sync/pair-code`, signed in) is 10 characters without 0/O or
    1/I/L, works once for 10 minutes, and only its SHA-256 is stored; at most five work at once.
    The page asks for a new one when it expires. The QR code is drawn from `qrcode-generator`
    (MIT, no dependencies) as an SVG.
-2. On the phone, at first start (the welcome's **Connect to your server**) or in Settings → Sync:
-   **Connect to your server → Scan the QR code**. The app asks once whether it may send sync
+2. On the phone, at first start (the welcome's **Connect to your server**) or in Settings → Your devices:
+   **Scan QR code** (or, under **Connect manually**, **Enter pairing code** or **Use an existing sync token**). The app asks once whether it may send sync
    files to that address, then sends the code and its name to `POST /api/sync/pair` (through
    Rust, so the server needs no CORS setup) and gets its own sync token back, which goes into the
    key store as `sync-token`. The server becomes the place to join and, at once, the phone's
    language server (`<server>/nlp` with the token).
-3. Set up shows **Your Vuurtoren server, connected with a pairing code** and **Join my synced
-   data**: the phone asks for the **sync passphrase**. The passphrase is never in the QR code, so
+3. Set up shows **Connected to <server> with a pairing code** and **Join my synced data**: the
+   phone asks for the **sync passphrase** or recovery key, never the address or a token again.
+   **Change server…** (after a confirmation) forgets the pairing to start over. The passphrase is never in the QR code, so
    a photo of the code cannot read anything, and a used or old code no longer works.
 
 The token appears in the server's sync-token list as "Phone (Pixel 8)" (the model from the
 WebView's user agent) and can be revoked there. Opening a `vuurtoren://connect` link does the
-same as scanning (`tauri-plugin-deep-link`; the app goes to Settings → Sync and connects). On a
+same as scanning (`tauri-plugin-deep-link`; the app goes to Settings → Your devices and connects). On a
 computer or in a browser, paste the link or type the address and the code. Stop syncing forgets
 the token.
 

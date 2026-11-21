@@ -226,6 +226,54 @@ describe("Settings → Sync", { timeout: 20_000 }, () => {
     );
   });
 
+  it("on a phone: one way in, Scan QR code first, the rest under Connect manually", async () => {
+    const PHONE: SyncStatus = { ...OFF, scan: true, deviceName: "Pixel 8" };
+    let status: SyncStatus = PHONE;
+    const stopSync = vi.fn(async () => {
+      status = PHONE;
+    });
+    const scanConnectLink = vi.fn(
+      async () => "vuurtoren://connect?server=https%3A%2F%2Fhome.example.org&code=ABCDE-FGHJK",
+    );
+    const connectServer = vi.fn(async (link: { server: string }) => {
+      status = { ...PHONE, paired: link.server };
+      return status;
+    });
+    const { user } = setup({
+      syncStatus: async () => status,
+      scanConnectLink,
+      connectServer,
+      stopSync,
+    });
+    await screen.findByRole("button", { name: "Scan QR code" });
+    // The server's section is called Your devices.
+    expect(screen.getByText(/Settings → Your devices → Add a phone/)).toBeVisible();
+    // No second form for the same server: address and token wait under Connect manually.
+    expect(screen.queryByLabelText("Sync token")).toBeNull();
+    expect(screen.queryByRole("radio", { name: /Your Vuurtoren server/ })).toBeNull();
+    const manual = screen.getByText("Connect manually").closest("details")!;
+    expect(manual).not.toHaveAttribute("open");
+    expect(within(manual).getByLabelText("Pairing code")).toBeInTheDocument();
+    await user.click(screen.getByText("Connect manually"));
+    await user.click(within(manual).getByRole("button", { name: "Use a sync token…" }));
+    expect(screen.getByLabelText("Sync token")).toBeVisible();
+    await user.click(screen.getByRole("button", { name: "Scan a QR code instead" }));
+    // Scan: then the connected server and the passphrase, nothing about the address again.
+    await user.click(await screen.findByRole("button", { name: "Scan QR code" }));
+    expect(await screen.findByText(/Connected to/)).toHaveTextContent(
+      "Connected to home.example.org with a pairing code.",
+    );
+    expect(screen.queryByLabelText("Server address")).toBeNull();
+    expect(screen.queryByLabelText("Sync token")).toBeNull();
+    expect(screen.getByLabelText("Passphrase or recovery key")).toBeVisible();
+    // Change server asks first, then forgets the pairing.
+    await user.click(screen.getByRole("button", { name: "Change server…" }));
+    expect(stopSync).not.toHaveBeenCalled();
+    await user.click(screen.getByRole("button", { name: "Forget and change server" }));
+    expect(stopSync).toHaveBeenCalledOnce();
+    expect(await screen.findByRole("button", { name: "Scan QR code" })).toBeVisible();
+  });
+
   it("shows a QR code that connects a phone on a page of the server", async () => {
     vi.stubGlobal(
       "fetch",

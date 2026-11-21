@@ -447,3 +447,25 @@
   padding-left: var(--s-4);
   overflow-wrap: anywhere;
 }
+
+/* Phones: Connect manually folds the pairing code and the sync token under Scan QR code. */
+.sync-manual summary {
+  cursor: pointer;
+  color: var(--ink-muted);
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+}
+.sync-manual > .stack {
+  margin-top: var(--s-2);
+}
+.settings-h4 {
+  font-size: 14px;
+  font-weight: 600;
+  margin: var(--s-2) 0 0;
+}
+.sync-confirm {
+  padding: var(--s-3);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-control);
+}

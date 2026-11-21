@@ -241,7 +241,7 @@ export function createLiveSync(deps: LiveSyncDeps) {
     keptToken ??= await tokens.load();
     if (!keptToken) {
       throw new Error(
-        "This device no longer has its sync token for the server. Stop syncing, then connect to the server again (Settings → Sync).",
+        "This device no longer has its sync token for the server. Stop syncing, then connect to the server again (Settings → Your devices).",
       );
     }
     return { ...place, token: keptToken };
