@@ -130,6 +130,9 @@ test("native mode: start with the most common words, offline data in the app", a
   // Three questions, then the story at the learner's level opens in the reader.
   await page.getByRole("button", { name: "Start reading" }).click();
   await expect(page).toHaveURL(/\/read\//);
+  // The walkthrough follows the welcome once; it can be skipped.
+  await expect(page.getByRole("dialog", { name: "Read" })).toBeVisible();
+  await page.getByRole("button", { name: "Skip the tour" }).click();
   await expect(page.locator(".k-reader .k-tok").first()).toBeVisible();
   await page.goto("/review");
   // New words start at level 2: the first new card is the most common word after 500.
@@ -150,6 +153,9 @@ test("native mode: add a word while reading, then review it", async ({ page }) =
   await page.getByRole("button", { name: "Continue" }).click();
   await page.getByRole("button", { name: "Start reading" }).click();
   await expect(page).toHaveURL(/\/read\//);
+  // The walkthrough follows the welcome once; it can be skipped.
+  await expect(page.getByRole("dialog", { name: "Read" })).toBeVisible();
+  await page.getByRole("button", { name: "Skip the tour" }).click();
   await importAndRead(page);
   await inspectWord(page);
   await expect(page.getByRole("group", { name: "Add to my words" })).toBeVisible();

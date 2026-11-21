@@ -32,6 +32,7 @@ import { DictionaryPack } from "../settings/DictionaryPack.js";
 import "../settings/settings.css";
 import { currentDevice } from "../../platform/index.js";
 import { storyToStart } from "../../services/stories.js";
+import { startTour } from "../../shell/Tour.js";
 import { DeckChecklist, DestinationFields, LanguageChoice, deckRows } from "./deckParts.js";
 import { setSkipped } from "./skip.js";
 import "./onboarding.css";
@@ -302,6 +303,8 @@ export function Welcome() {
     mutationFn: async () => (story.data ? services.openStory(story.data.slug) : null),
     onSettled: async (textId) => {
       finish();
+      // A short walkthrough of the app follows, once.
+      startTour();
       await Promise.all([
         qc.invalidateQueries({ queryKey: ["stories"] }),
         qc.invalidateQueries({ queryKey: ["texts"] }),

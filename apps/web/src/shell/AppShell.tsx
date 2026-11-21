@@ -14,6 +14,7 @@ import {
   Monitor,
   Moon,
   PanelLeft,
+  Compass,
   Settings as SettingsIcon,
   Sun,
   TrendingUp,
@@ -44,6 +45,7 @@ import { useAnkiAutoSync } from "./ankiSync.js";
 import { useAutoTune } from "./autoTune.js";
 import { ShellContext, type PageHeader, type ShellState } from "./ShellContext.js";
 import { useBottomSheet } from "./useBottomSheet.js";
+import { Tour, startTour } from "./Tour.js";
 import { useAutoSync } from "./useAutoSync.js";
 import { useConnectLinks } from "./useConnectLinks.js";
 import { useDebounced } from "../useDebounced.js";
@@ -325,6 +327,18 @@ export function AppShell() {
                 ) : null}
                 <MoreLink to="/progress" label="Progress" icon={<TrendingUp size={18} />} />
                 <MoreLink to="/settings" label="Settings" icon={<SettingsIcon size={18} />} />
+                <button
+                  type="button"
+                  className="nav-more-item"
+                  role="menuitem"
+                  onClick={() => {
+                    setMoreOpen(false);
+                    startTour();
+                  }}
+                >
+                  <Compass size={18} />
+                  <span>Show the tour</span>
+                </button>
                 {/* On phones the theme lives here: the top bar keeps its room for the page. */}
                 <button
                   type="button"
@@ -476,6 +490,7 @@ export function AppShell() {
             </div>
           </div>
         </div>
+        <Tour />
         <CommandPalette
           open={paletteOpen}
           onOpenChange={(o) => {

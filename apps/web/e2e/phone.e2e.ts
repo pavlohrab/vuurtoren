@@ -107,6 +107,14 @@ for (const size of SIZES) {
       await page.getByRole("button", { name: "Start reading" }).click();
       await expect(page).toHaveURL(/[/]read[/]/);
       await expect(page.locator(".k-reader .k-tok").first()).toBeVisible();
+      // The walkthrough: a spotlight on Read in the tab bar, then a word, then on.
+      await expect(page.getByRole("dialog", { name: "Read" })).toBeVisible();
+      await shot(page, `tour-${size.width}`);
+      await page.getByRole("dialog").getByRole("button", { name: "Next" }).click();
+      await expect(page.getByRole("dialog", { name: "Tap a word" })).toBeVisible();
+      await shot(page, `tour-word-${size.width}`);
+      await page.getByRole("button", { name: "Skip the tour" }).click();
+      await expect(page.getByRole("dialog")).toHaveCount(0);
       expect(await overflowing(page, ".topbar button, .topbar [role=tab], .topbar span")).toEqual(
         [],
       );

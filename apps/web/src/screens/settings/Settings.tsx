@@ -5,7 +5,7 @@
  * The theme lives only in the top bar.
  */
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link, useSearch } from "@tanstack/react-router";
+import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import {
   ArrowLeft,
   BookOpen,
@@ -16,7 +16,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { useState, type ReactNode } from "react";
-import { Input, Select, Skeleton, Slider, useNativeMode } from "@app/ui";
+import { Button, Input, Select, Skeleton, Slider, useNativeMode } from "@app/ui";
 import { InstallApp } from "../../pwa/PwaControls.js";
 import { useServices } from "../../services/context.js";
 import type { Settings as SettingsData } from "../../services/types.js";
@@ -31,6 +31,7 @@ import { AnkiConnection } from "./AnkiSettings.js";
 import { DataSettings } from "./DataSettings.js";
 import { LanguageDecksSettings } from "./LanguageDecksSettings.js";
 import { DictionaryPack } from "./DictionaryPack.js";
+import { startTour } from "../../shell/Tour.js";
 import { SavedNote } from "./SavedNote.js";
 import { SyncSettings } from "./SyncSettings.js";
 import { ServerStatus } from "./ServerStatus.js";
@@ -217,6 +218,7 @@ const NEW_WORD_OPTIONS = [
 ];
 
 function ReadingSettings() {
+  const navigate = useNavigate();
   const { form, set, save } = useSettingsDraft();
   // Per device, shared with the reader's Aa menu.
   const [prefs, setPrefs] = useReaderPrefs();
@@ -224,6 +226,22 @@ function ReadingSettings() {
   return (
     <div className="stack settings-stack">
       <SavedNote status={save.status} error={save.error} />
+      <div className="settings-field">
+        <span className="k-label">The tour</span>
+        <div className="row">
+          <Button
+            onClick={() => {
+              startTour();
+              void navigate({ to: "/" });
+            }}
+          >
+            Show the tour again
+          </Button>
+        </div>
+        <p className="k-hint">
+          A short walk past Read, a word, the reading help, Words and Review.
+        </p>
+      </div>
       <div className="settings-field">
         <span className="k-label" id="help-dial">
           Help while reading
