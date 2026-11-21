@@ -65,6 +65,10 @@ def dir_size(path: Path) -> int:
     return sum(f.stat().st_size for f in path.rglob("*") if f.is_file())
 
 
+#: Packs an offline build may leave out (it then works without them).
+OPTIONAL_PACKS = {"audio-nl"}
+
+
 def copy_packs(src: Path, out: Path) -> None:
     manifest = json.loads((NLP / "src" / "vuurtoren_nlp" / "packs.json").read_text())["packs"]
     dest = out / "packs"
@@ -73,6 +77,10 @@ def copy_packs(src: Path, out: Path) -> None:
     for name, entry in manifest.items():
         file = f"{name}-{entry['version']}.tar.gz"
         if not (src / file).is_file():
+            if name in OPTIONAL_PACKS:
+                # The audio pack is large and optional: the app downloads it, or plays the voice.
+                print(f"leaving out the optional {name} pack (not in {src})")
+                continue
             sys.exit(f"missing pack archive {src / file}")
         shutil.copyfile(src / file, dest / file)
     # The grammar-example cache (scripts/build_packs.py --grammar-from), so the offline app does
