@@ -9,6 +9,19 @@
 4. **Phone apps.** Android first, then iPhone, from the same Tauri project. See
    [Phones](phones.md).
 
+## Later
+
+From the Android app review (`reports/android-app-review.md`), deferred:
+
+- **Review reminders.** Opt-in local notifications driven by the due queue, at most one a day,
+  with snooze and a hidden-count option (review: "First notification design").
+- **Gamification tied to recall.** An optional weekly goal such as "Review on 3 days", no XP or
+  streak loss (review: "Gamification tied to recall").
+- **Screen-sized pages.** One screenful per swipe in paged mode, kept across rotation and font
+  size (review: "Reader pages follow text segments").
+- **On-device performance.** Measure cold start, first word sheet, answer-to-next-card and
+  bridge bytes on a representative phone before more optimising (review: "Measure phone costs").
+
 ## Native mode
 
 **Not planned:** a general flashcard editor, Anki add-ons, a card browser beyond Words.
