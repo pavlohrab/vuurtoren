@@ -661,7 +661,7 @@ export function createLiveNative(deps: LiveNativeDeps) {
       return { held, all: STARTER_LEVELS, from: (await deps.profile()).starterFrom ?? 1 };
     },
 
-    async addStarterLevels({ levels, from }) {
+    async addStarterLevels({ levels, from }, onProgress) {
       const lang = await deps.lang();
       const words = await loadStarterWords();
       const at = now();
@@ -677,6 +677,7 @@ export function createLiveNative(deps: LiveNativeDeps) {
         levels,
         held,
         tags: profile.tags,
+        ...(onProgress ? { onProgress } : {}),
       });
       await openStarter(lang);
       deps.changed();

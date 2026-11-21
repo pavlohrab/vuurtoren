@@ -265,9 +265,10 @@ export function createMockNative(
       await wait();
       return { held: [...starter].sort((a, b) => a - b), all: 10, from: starterFrom };
     },
-    async addStarterLevels({ levels, from }) {
+    async addStarterLevels({ levels, from }, onProgress) {
       await wait();
       const fresh = levels.filter((l) => !starter.has(l));
+      for (let i = 1; i <= fresh.length; i++) onProgress?.(i * 500, fresh.length * 500);
       for (const l of fresh) starter.add(l);
       if (from !== undefined) starterFrom = from;
       return { added: fresh.length * 500, skipped: 0 };

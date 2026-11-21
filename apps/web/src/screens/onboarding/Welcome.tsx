@@ -308,12 +308,16 @@ export function Welcome() {
   });
 
   // ---- Native: the most common words, all levels, new cards from the chosen one
+  const [added, setAdded] = useState<{ done: number; total: number } | null>(null);
   const starter = useMutation({
     mutationFn: () =>
-      services.addStarterLevels({
-        levels: Array.from({ length: STARTER_LEVELS }, (_, i) => i + 1),
-        from: draft.from,
-      }),
+      services.addStarterLevels(
+        {
+          levels: Array.from({ length: STARTER_LEVELS }, (_, i) => i + 1),
+          from: draft.from,
+        },
+        (done, total) => setAdded({ done, total }),
+      ),
     onSuccess: async () => {
       for (const k of ["learner", "review", "words", "home"]) {
         await qc.invalidateQueries({ queryKey: [k] });
@@ -701,6 +705,7 @@ export function Welcome() {
                   <input
                     type="checkbox"
                     checked={draft.starter}
+                    disabled={starter.isPending}
                     onChange={(e) => setDraft({ starter: e.target.checked })}
                   />
                   <span>
@@ -711,7 +716,7 @@ export function Welcome() {
                   </span>
                 </label>
                 {draft.starter ? (
-                  <fieldset className="ob-choices">
+                  <fieldset className="ob-choices" disabled={starter.isPending}>
                     <legend className="ob-question">Where should new words start?</legend>
                     <p className="ob-choices-note">
                       Lower levels wait until you turn them on; the words you know get marked as you
@@ -731,7 +736,10 @@ export function Welcome() {
                 ) : null}
                 {starter.isPending ? (
                   <p role="status">
-                    <Spinner label="Adding words" /> Adding the words
+                    <Spinner label="Adding words" />{" "}
+                    {added
+                      ? `Adding words… ${added.done.toLocaleString("en")} of ${added.total.toLocaleString("en")}`
+                      : "Adding the words…"}
                   </p>
                 ) : null}
                 {starter.isError ? (
@@ -786,7 +794,7 @@ export function Welcome() {
 
             <div className="ob-nav">
               {at > 0 && draft.step !== "first" ? (
-                <Button variant="ghost" onClick={back}>
+                <Button variant="ghost" onClick={back} disabled={starter.isPending}>
                   Back
                 </Button>
               ) : null}

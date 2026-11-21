@@ -110,6 +110,8 @@ export interface AddStarterRequest {
   held: ReadonlyMap<string, readonly NativeCard[]>;
   /** Tags of the notes (the profile's tags). */
   tags?: readonly string[];
+  /** After each batch of notes is stored: how many so far, of how many. */
+  onProgress?: (done: number, total: number) => void;
 }
 
 export interface AddStarterResult {
@@ -162,6 +164,7 @@ export async function addStarterWords(
       notes: notes.slice(i, i + NOTES_PER_EVENT),
       cards: chunk,
     });
+    req.onProgress?.(Math.min(notes.length, i + NOTES_PER_EVENT), notes.length);
   }
   return { added: notes.length, skipped, decks };
 }

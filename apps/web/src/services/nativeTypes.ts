@@ -181,7 +181,11 @@ export interface NativeServices {
    * Add starter levels as new cards, in order of rank; with `from`, new words start from that
    * level (see `setStarterFrom`). Words already held are skipped. Nothing is marked known.
    */
-  addStarterLevels(req: { levels: number[]; from?: number }): Promise<StarterAdded>;
+  /** `onProgress` hears how many words are added so far, of how many. */
+  addStarterLevels(
+    req: { levels: number[]; from?: number },
+    onProgress?: (done: number, total: number) => void,
+  ): Promise<StarterAdded>;
   /** New words start from this level: it opens now, and the levels below get no new cards. */
   setStarterFrom(level: number): Promise<void>;
 }

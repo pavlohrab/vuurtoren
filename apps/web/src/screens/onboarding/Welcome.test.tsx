@@ -1,5 +1,5 @@
 import { createMemoryHistory } from "@tanstack/react-router";
-import { configure, render, screen, waitFor, within } from "@testing-library/react";
+import { act, configure, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { LanguageProfile } from "@app/core";
@@ -165,11 +165,36 @@ describe("onboarding", () => {
     expect(screen.getByRole("button", { name: "Skip setup for now" })).toBeVisible();
     await user.click(cont());
     await waitFor(() =>
-      expect(addStarterLevels).toHaveBeenCalledWith({
-        levels: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
-        from: 3,
-      }),
+      expect(addStarterLevels).toHaveBeenCalledWith(
+        { levels: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], from: 3 },
+        expect.any(Function),
+      ),
     );
+    expect(await screen.findByRole("heading", { name: "You are ready" })).toBeVisible();
+  });
+
+  it("while the words are added, the choices wait and the count shows", async () => {
+    let finish: () => void = () => {};
+    const addStarterLevels = vi.fn(
+      (_req: unknown, onProgress?: (done: number, total: number) => void) =>
+        new Promise<{ added: number; skipped: number }>((resolve) => {
+          onProgress?.(1500, 4930);
+          finish = () => resolve({ added: 4930, skipped: 0 });
+        }),
+    );
+    const { user } = setup({ addStarterLevels });
+    await user.click(await screen.findByRole("radio", { name: /^No/ }));
+    await user.click(cont());
+    await screen.findByRole("heading", { name: "The most common words" });
+    await user.click(cont());
+    expect(await screen.findByText("Adding words… 1,500 of 4,930")).toBeVisible();
+    expect(
+      screen.getByRole("checkbox", { name: /Start with the most common words/ }),
+    ).toBeDisabled();
+    expect(screen.getByRole("radio", { name: /^Level 2/ })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Back" })).toBeDisabled();
+    expect(cont()).toBeDisabled();
+    act(() => finish());
     expect(await screen.findByRole("heading", { name: "You are ready" })).toBeVisible();
   });
 
