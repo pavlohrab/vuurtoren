@@ -5,7 +5,7 @@
  */
 import { plural } from "../../format.js";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Check, Sparkles } from "lucide-react";
+import { ArrowLeft, Sparkles } from "lucide-react";
 import { useState } from "react";
 import { type WritingTask, countAnswerWords, examBank, scoreRubric } from "@app/content";
 import { Button, Input, Textarea } from "@app/ui";
@@ -13,7 +13,7 @@ import { useServices } from "../../services/context.js";
 import type { ExamFeedback } from "../../services/examTypes.js";
 import { errorText } from "../../services/errors.js";
 import { useExamClock } from "../../exam/timer.js";
-import { ExamClock, GrammarLinks, ScoreCard, useRecordAttempt } from "./shared.js";
+import { ExamClock, GrammarLinks, SaveScore, ScoreCard, useRecordAttempt } from "./shared.js";
 
 type Answer = { text: string; fields: string[] };
 
@@ -51,7 +51,6 @@ export function WritingSession({
   );
   const [phase, setPhase] = useState<"write" | "check">("write");
   const [ticks, setTicks] = useState<Record<string, boolean[]>>({});
-  const [saved, setSaved] = useState(false);
   const clock = useExamClock(mode === "exam" ? limitMs : null, phase === "write", () => handIn());
   const [took, setTook] = useState(0);
   const recordAttempt = useRecordAttempt();
@@ -82,8 +81,9 @@ export function WritingSession({
   const ticked = Object.values(ticks).reduce((n, l) => n + l.filter(Boolean).length, 0);
   const score = scoreRubric("schrijven", ticked, total);
 
+  // Saving or saved: the checklist is locked, so the stored score is the one on screen.
+  const scoreLocked = recordAttempt.isPending || recordAttempt.isSuccess;
   const save = () => {
-    setSaved(true);
     recordAttempt.mutate({
       part: "schrijven",
       mode,
@@ -128,7 +128,10 @@ export function WritingSession({
           phase={phase}
           ticks={ticks[t.id] ?? []}
           onAnswer={(a) => setAnswers((all) => ({ ...all, [t.id]: a }))}
-          onTicks={(l) => setTicks((all) => ({ ...all, [t.id]: l }))}
+          checklistLocked={scoreLocked}
+          onTicks={(l) => {
+            if (!scoreLocked) setTicks((all) => ({ ...all, [t.id]: l }));
+          }}
         />
       ))}
 
@@ -140,14 +143,8 @@ export function WritingSession({
           <Button variant="primary" onClick={handIn}>
             {mode === "exam" ? "Hand in" : "Check my answer"}
           </Button>
-        ) : saved ? (
-          <span className="exam-saved">
-            <Check size={16} aria-hidden /> Result saved
-          </span>
         ) : (
-          <Button variant="primary" onClick={save}>
-            Save my score ({score.correct}/{score.total})
-          </Button>
+          <SaveScore attempt={recordAttempt} score={score} onSave={save} />
         )}
       </div>
     </div>
@@ -160,6 +157,7 @@ function TaskBlock({
   answer,
   phase,
   ticks,
+  checklistLocked,
   onAnswer,
   onTicks,
 }: {
@@ -168,6 +166,7 @@ function TaskBlock({
   answer: Answer;
   phase: "write" | "check";
   ticks: boolean[];
+  checklistLocked: boolean;
   onAnswer: (a: Answer) => void;
   onTicks: (t: boolean[]) => void;
 }) {
@@ -274,6 +273,7 @@ function TaskBlock({
                 <input
                   type="checkbox"
                   checked={ticks[i] ?? false}
+                  disabled={checklistLocked}
                   onChange={(e) => {
                     const next = list.map((_, k) => ticks[k] ?? false);
                     next[i] = e.target.checked;

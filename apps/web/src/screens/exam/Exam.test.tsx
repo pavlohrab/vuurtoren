@@ -139,6 +139,30 @@ describe("Writing and speaking", () => {
     );
   });
 
+  it("Schrijven: says saved only after the write succeeds, offers Try again, then locks the checklist", async () => {
+    const task = bank.schrijven.tasks.find((t) => t.kind === "email")!;
+    const base = createMockServices({ latencyMs: 0 });
+    let fail = true;
+    const recordExamAttempt = vi.fn((input: Parameters<AppServices["recordExamAttempt"]>[0]) =>
+      fail ? Promise.reject(new Error("disk full")) : base.recordExamAttempt(input),
+    );
+    const { user } = setup(`/exam/schrijven?mode=practice&theme=${task.id}`, {
+      recordExamAttempt,
+    });
+    await user.type(await screen.findByLabelText("Your text"), "Beste meneer.");
+    await user.click(screen.getAllByRole("button", { name: "Check my answer" })[0]!);
+    await user.click(screen.getByRole("button", { name: /Save my score/ }));
+    expect(await screen.findByRole("button", { name: "Try again" })).toBeInTheDocument();
+    expect(screen.queryByText("Result saved")).toBeNull();
+    const checklist = screen.getByRole("group", { name: "Check your answer" });
+    expect(within(checklist).getAllByRole("checkbox")[0]).toBeEnabled();
+    fail = false;
+    await user.click(screen.getByRole("button", { name: "Try again" }));
+    expect(await screen.findByText("Result saved")).toBeInTheDocument();
+    expect(recordExamAttempt).toHaveBeenCalledTimes(2);
+    for (const box of within(checklist).getAllByRole("checkbox")) expect(box).toBeDisabled();
+  });
+
   it("Spreken: answer against the clock, then the model answer (no recording in tests)", async () => {
     const { user } = setup("/exam/spreken?mode=practice&set=1");
     const p = bank.spreken.prompts[0]!;

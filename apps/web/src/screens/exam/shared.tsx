@@ -87,6 +87,48 @@ export function useRecordAttempt() {
   });
 }
 
+/**
+ * Save a self-checked score (Writing, Speaking): "Result saved" only once the write succeeded,
+ * "Saving…" while it runs, and Try again after a failure. While saving and after, the caller
+ * locks its checklist, so the saved score is the one on screen.
+ */
+export function SaveScore({
+  attempt,
+  score,
+  onSave,
+}: {
+  attempt: ReturnType<typeof useRecordAttempt>;
+  score: Score;
+  onSave: () => void;
+}) {
+  if (attempt.isSuccess) {
+    return (
+      <span className="exam-saved" role="status">
+        <Check size={16} aria-hidden /> Result saved
+      </span>
+    );
+  }
+  if (attempt.isPending) {
+    return (
+      <Button variant="primary" disabled>
+        Saving…
+      </Button>
+    );
+  }
+  return (
+    <>
+      {attempt.isError ? (
+        <span className="exam-error" role="alert">
+          Not saved yet.
+        </span>
+      ) : null}
+      <Button variant="primary" onClick={onSave}>
+        {attempt.isError ? "Try again" : `Save my score (${score.correct}/${score.total})`}
+      </Button>
+    </>
+  );
+}
+
 /** Words worth learning from a session: add each to your cards, or practise them all. */
 export function WordsToLearn({ words }: { words: { lemma: string; en: string }[] }) {
   const deckChoice = useDeckChoice("reading");

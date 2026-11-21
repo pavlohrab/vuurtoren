@@ -19,7 +19,7 @@ import {
   startRecording,
 } from "../../exam/recorder.js";
 import { formatClock, useExamClock } from "../../exam/timer.js";
-import { GrammarLinks, ScoreCard, useRecordAttempt } from "./shared.js";
+import { GrammarLinks, SaveScore, ScoreCard, useRecordAttempt } from "./shared.js";
 import { FeedbackView } from "./WritingSession.js";
 
 function speakingChecklist(p: SpeakingPrompt): string[] {
@@ -45,7 +45,6 @@ export function SpeakingSession({
   const [ticks, setTicks] = useState<Record<string, boolean[]>>({});
   const [record, setRecord] = useState(recordingSupported());
   const [review, setReview] = useState(false);
-  const [saved, setSaved] = useState(false);
   const [startedAt] = useState(() => Date.now());
   const recordAttempt = useRecordAttempt();
   const urls = useRef<string[]>([]);
@@ -71,8 +70,9 @@ export function SpeakingSession({
   const total = prompts.reduce((n, p) => n + speakingChecklist(p).length, 0);
   const ticked = Object.values(ticks).reduce((n, l) => n + l.filter(Boolean).length, 0);
   const score = scoreRubric("spreken", ticked, total);
+  // Saving or saved: the checklist is locked, so the stored score is the one on screen.
+  const scoreLocked = recordAttempt.isPending || recordAttempt.isSuccess;
   const save = () => {
-    setSaved(true);
     recordAttempt.mutate({
       part: "spreken",
       mode,
@@ -111,22 +111,17 @@ export function SpeakingSession({
             prompt={p}
             audio={audio[p.id]}
             ticks={ticks[p.id] ?? []}
-            onTicks={(l) => setTicks((t) => ({ ...t, [p.id]: l }))}
+            locked={scoreLocked}
+            onTicks={(l) => {
+              if (!scoreLocked) setTicks((t) => ({ ...t, [p.id]: l }));
+            }}
           />
         ))}
         <div className="exam-nav">
           <Button variant="ghost" onClick={onExit}>
             <ArrowLeft size={16} aria-hidden /> Back
           </Button>
-          {saved ? (
-            <span className="exam-saved">
-              <Check size={16} aria-hidden /> Result saved
-            </span>
-          ) : (
-            <Button variant="primary" onClick={save}>
-              Save my score ({score.correct}/{score.total})
-            </Button>
-          )}
+          <SaveScore attempt={recordAttempt} score={score} onSave={save} />
         </div>
       </div>
     );
@@ -278,6 +273,7 @@ function PromptReview({
   prompt,
   audio,
   ticks,
+  locked = false,
   onTicks,
   hideQuestion = false,
 }: {
@@ -285,6 +281,7 @@ function PromptReview({
   prompt: SpeakingPrompt;
   audio: string | undefined;
   ticks: boolean[];
+  locked?: boolean;
   onTicks: (t: boolean[]) => void;
   hideQuestion?: boolean;
 }) {
@@ -340,6 +337,7 @@ function PromptReview({
             <input
               type="checkbox"
               checked={ticks[i] ?? false}
+              disabled={locked}
               onChange={(e) => {
                 const next = list.map((_, k) => ticks[k] ?? false);
                 next[i] = e.target.checked;
