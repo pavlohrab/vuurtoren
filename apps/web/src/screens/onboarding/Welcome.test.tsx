@@ -206,6 +206,45 @@ describe("onboarding", () => {
     }
   });
 
+  it("on a phone, Yes to Anki offers a deck file (.apkg) or Vuurtoren's cards, not AnkiConnect", async () => {
+    const real = currentDevice();
+    vi.mocked(currentDevice).mockReturnValue({ ...real, kind: "android" });
+    try {
+      const { user, saveLanguageProfile } = setup();
+      await user.click(await screen.findByRole("radio", { name: /^Yes/ }));
+      await user.click(cont());
+      expect(await screen.findByRole("heading", { name: "Connect to your server" })).toBeVisible();
+      expect(saveLanguageProfile.mock.calls[0]![0].mode).toBe("native");
+      await user.click(screen.getByRole("button", { name: "Not now" }));
+      expect(await screen.findByRole("heading", { name: "Your Anki cards" })).toBeVisible();
+      expect(screen.getByText(/works only with Anki on a computer/)).toBeVisible();
+      expect(screen.getByLabelText("Choose a file")).toHaveAttribute("accept", ".apkg,.colpkg");
+      expect(screen.queryByRole("heading", { name: "Connect Anki" })).toBeNull();
+      await user.click(cont());
+      expect(await screen.findByRole("heading", { name: "The most common words" })).toBeVisible();
+    } finally {
+      vi.mocked(currentDevice).mockImplementation(() => real);
+    }
+  });
+
+  it("saving a step the flow no longer shows goes forward, not back to the server step", async () => {
+    const real = currentDevice();
+    vi.mocked(currentDevice).mockReturnValue({ ...real, kind: "android" });
+    // Where an older build left a phone: Where new words go, after Continue without Anki.
+    localStorage.setItem(
+      "vuurtoren.onboarding",
+      JSON.stringify({ step: "destinations", usesAnki: false, move: true }),
+    );
+    try {
+      const { user } = setup();
+      await user.click(await screen.findByRole("button", { name: "Save and continue" }));
+      expect(await screen.findByRole("heading", { name: "The most common words" })).toBeVisible();
+      expect(screen.queryByRole("heading", { name: "Connect to your server" })).toBeNull();
+    } finally {
+      vi.mocked(currentDevice).mockImplementation(() => real);
+    }
+  });
+
   it("not on a phone: no server step", async () => {
     const { user } = setup();
     await user.click(await screen.findByRole("radio", { name: /^No/ }));

@@ -28,6 +28,7 @@ import { useServices } from "../../services/context.js";
 import type { AnkiStatus } from "../../services/types.js";
 import { AnkiConnectionHelp } from "../settings/AnkiSettings.js";
 import { ConnectYourServer } from "../settings/SyncSettings.js";
+import { ImportPackage } from "../settings/CardsSettings.js";
 import { DictionaryPack } from "../settings/DictionaryPack.js";
 import "../settings/settings.css";
 import { currentDevice } from "../../platform/index.js";
@@ -48,6 +49,7 @@ type Step =
   | "choice"
   | "anki"
   | "decks"
+  | "apkg"
   | "destinations"
   | "moving"
   | "placement"
@@ -68,12 +70,29 @@ const PART: Record<Step, number> = {
   choice: 0,
   anki: 0,
   decks: 0,
+  apkg: 1,
   destinations: 1,
   moving: 1,
   placement: 1,
   starter: 1,
   first: 2,
 };
+
+/** Every step in the order the welcome can show them (each flow shows some of them). */
+const ORDER: Step[] = [
+  "language",
+  "uses",
+  "server",
+  "choice",
+  "anki",
+  "decks",
+  "apkg",
+  "destinations",
+  "moving",
+  "placement",
+  "starter",
+  "first",
+];
 
 interface Draft {
   step: Step;
@@ -138,34 +157,43 @@ export function Welcome() {
   useEffect(() => heading.current?.focus(), [draft.step]);
 
   const startFresh = draft.sources.length === 0;
-  const native = draft.usesAnki === false;
-  const moving = draft.usesAnki === true && draft.move && !draft.noAnki && !startFresh;
   // A phone without sync yet: its server brings new texts and translations (after the Anki question).
   const sync = useQuery({ queryKey: ["sync", "status"], queryFn: () => services.syncStatus() });
   const [phone] = useState(() => currentDevice().kind === "android");
+  // AnkiConnect needs Anki on a computer: a phone brings Anki decks in as a file instead, so
+  // its cards are Vuurtoren's own either way.
+  const phoneAnki = phone && draft.usesAnki === true;
+  const native = draft.usesAnki === false || phoneAnki;
+  const moving =
+    !phoneAnki && draft.usesAnki === true && draft.move && !draft.noAnki && !startFresh;
   const askServer = phone && (draft.step === "server" || (!!sync.data && !sync.data.place));
   const start: Step[] = [
     ...(PICK_LANGUAGE ? (["language", "uses"] as const) : (["uses"] as const)),
     ...(askServer ? (["server"] as const) : []),
   ];
   // No Anki: the default decks are fine to start with (Settings changes them), so no deck step.
-  const steps: Step[] = native
-    ? [...start, "starter", "first"]
-    : draft.usesAnki === null
-      ? [...start, "first"]
-      : [
-          ...start,
-          "choice",
-          "anki",
-          "decks",
-          "destinations",
-          ...(moving ? (["moving"] as const) : startFresh ? (["placement"] as const) : []),
-          "first",
-        ];
+  const steps: Step[] = phoneAnki
+    ? [...start, "apkg", "starter", "first"]
+    : native
+      ? [...start, "starter", "first"]
+      : draft.usesAnki === null
+        ? [...start, "first"]
+        : [
+            ...start,
+            "choice",
+            "anki",
+            "decks",
+            "destinations",
+            ...(moving ? (["moving"] as const) : startFresh ? (["placement"] as const) : []),
+            "first",
+          ];
   const at = Math.max(0, steps.indexOf(draft.step));
   const go = (step: Step) => setDraft({ step });
-  const next = () => go(steps[at + 1] ?? "first");
-  const back = () => go(steps[at - 1] ?? steps[0]!);
+  // Relative to the overall order, so a step the current flow does not show (after an answer
+  // changed the flow) still goes on forward, never back to the start.
+  const rank = ORDER.indexOf(draft.step);
+  const next = () => go(steps.find((s) => ORDER.indexOf(s) > rank) ?? "first");
+  const back = () => go(steps.findLast((s) => ORDER.indexOf(s) < rank) ?? steps[0]!);
 
   // Skipping still sets the learner up with Vuurtoren's own cards, so Review and the word
   // actions work; Settings can switch to Anki later.
@@ -231,13 +259,14 @@ export function Welcome() {
 
   // ---- Save the profile when leaving "where new words go"
   const save = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (opts: { native?: boolean }) => {
+      const own = opts.native ?? native;
       // Native from the start, or connected until the move has imported the decks.
       const profile: LanguageProfile = {
         ...draft.profile,
         lang: draft.lang,
-        mode: native ? "native" : "connected",
-        sources: native ? [] : draft.sources,
+        mode: own ? "native" : "connected",
+        sources: own ? [] : draft.sources,
         tags: [draft.lang],
       };
       await services.saveLanguageProfile(profile);
@@ -317,10 +346,11 @@ export function Welcome() {
   const submit = (e: FormEvent) => {
     e.preventDefault();
     if (draft.step === "uses") {
-      if (draft.usesAnki === true) next();
-      // No Anki: save the profile now (Vuurtoren's cards, default decks) and go on.
-      else if (draft.usesAnki === false) save.mutate();
-    } else if (draft.step === "destinations") save.mutate();
+      if (draft.usesAnki === true && !phone) next();
+      // No Anki (or a phone, where Anki decks come as a file): save the profile now
+      // (Vuurtoren's cards, default decks) and go on.
+      else if (draft.usesAnki !== null) save.mutate({});
+    } else if (draft.step === "destinations") save.mutate({});
     else if (draft.step === "moving") {
       if (move.isSuccess) next();
       else if (!move.isPending) move.mutate();
@@ -422,7 +452,11 @@ export function Welcome() {
                     checked={draft.usesAnki === true}
                     onChange={() => setDraft({ usesAnki: true })}
                     title="Yes"
-                    sub="Bring your Anki decks into Vuurtoren, or keep using Anki."
+                    sub={
+                      phone
+                        ? "Bring your Anki decks in as a deck file (.apkg)."
+                        : "Bring your Anki decks into Vuurtoren, or keep using Anki."
+                    }
                   />
                 </fieldset>
               </>
@@ -565,6 +599,25 @@ export function Welcome() {
                     </label>
                   </div>
                 )}
+              </>
+            ) : null}
+
+            {draft.step === "apkg" ? (
+              <>
+                <h1 ref={heading} tabIndex={-1}>
+                  Your Anki cards
+                </h1>
+                <p className="ob-lede">
+                  Anki&apos;s connection (AnkiConnect) works only with Anki on a computer. On this
+                  phone, bring your decks in as a file: in Anki, choose File → Export → Anki Deck
+                  Package (.apkg), with scheduling information, then choose that file here. Your
+                  reviews then happen in Vuurtoren.
+                </p>
+                <ImportPackage />
+                <p className="ob-note">
+                  No file at hand? Continue and start with Vuurtoren&apos;s cards; Settings → Your
+                  words imports a deck file any time.
+                </p>
               </>
             ) : null}
 
@@ -743,7 +796,8 @@ export function Welcome() {
                   onClick={() => {
                     // Moving needs Anki; without it Vuurtoren starts fresh with its own cards.
                     if (draft.move) {
-                      setDraft({ usesAnki: false, sources: [], step: "destinations" });
+                      setDraft({ usesAnki: false, sources: [], noAnki: false });
+                      save.mutate({ native: true });
                     } else {
                       setDraft({ noAnki: true, sources: [] });
                       go("decks");

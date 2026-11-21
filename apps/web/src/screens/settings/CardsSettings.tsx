@@ -493,7 +493,7 @@ function ExportPackage({ decks }: { decks: string[] }) {
   );
 }
 
-function ImportPackage() {
+export function ImportPackage() {
   const services = useServices();
   const qc = useQueryClient();
   const [chosen, setChosen] = useState<Set<string>>(new Set());
