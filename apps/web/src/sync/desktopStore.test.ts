@@ -1,3 +1,5 @@
+// @vitest-environment node
+import { NlpClient } from "@app/nlp-client";
 import { describe, expect, it, vi } from "vitest";
 import type { DesktopSync } from "../desktop/bridge.js";
 import { desktopFetch, folderStore } from "./desktopStore.js";
@@ -77,5 +79,66 @@ describe("desktop sync", () => {
       "other.example.org",
     ]);
     expect(sync.fetch).toHaveBeenCalledTimes(3);
+  });
+
+  it("keeps the multipart Content-Type of uploads (PDF, photo, course OCR, thumbnail)", async () => {
+    const sync = fakeSync();
+    vi.mocked(sync.fetch).mockImplementation(async () => ({
+      status: 200,
+      headers: { "content-type": "application/json" },
+      body: new TextEncoder().encode("{}"),
+    }));
+    const nlp = new NlpClient({ url: "https://home.example.org/nlp", fetch: desktopFetch(sync) });
+    const pdf = new File([new Uint8Array([37, 80, 68, 70])], "book.pdf", {
+      type: "application/pdf",
+    });
+    const photo = new File([new Uint8Array([255, 216, 255])], "page.jpg", {
+      type: "image/jpeg",
+    });
+    await nlp.extractPdf(pdf, "book.pdf");
+    await nlp.ocr(photo, "nl", "page.jpg");
+    await nlp.courseOcrStart([photo, photo]);
+    await nlp.thumbnail(pdf, "book.pdf").catch(() => undefined);
+    const calls = vi.mocked(sync.fetch).mock.calls.map((c) => c[0]);
+    expect(calls.map((c) => new URL(c.url).pathname)).toEqual([
+      "/nlp/extract/pdf",
+      "/nlp/ocr",
+      "/nlp/course/ocr",
+      "/nlp/thumbnail",
+    ]);
+    // What the server receives parses as a form with the files in it.
+    for (const c of calls) {
+      expect(c.method).toBe("POST");
+      expect(c.headers?.["content-type"]).toMatch(/^multipart\/form-data; boundary=/);
+      const form = await new Request(c.url, {
+        method: "POST",
+        headers: c.headers,
+        body: c.body as BodyInit,
+      }).formData();
+      const files = form.getAll("file") as File[];
+      expect(files.length).toBeGreaterThan(0);
+      expect(files[0]!.size).toBeGreaterThan(0);
+    }
+    const course = await new Request(calls[2]!.url, {
+      method: "POST",
+      headers: calls[2]!.headers,
+      body: calls[2]!.body as BodyInit,
+    }).formData();
+    expect(course.getAll("file").map((f) => (f as File).name)).toEqual(["page.jpg", "page.jpg"]);
+  });
+
+  it("forwards a Request's own headers and a JSON body unchanged", async () => {
+    const sync = fakeSync();
+    await desktopFetch(sync)(
+      new Request("https://x.org/api", { method: "POST", headers: { "X-A": "1" }, body: "{}" }),
+      { headers: { "Content-Type": "application/json", Authorization: "Bearer t" } },
+    );
+    const sent = vi.mocked(sync.fetch).mock.calls[0]![0];
+    expect(sent.method).toBe("POST");
+    expect(sent.headers).toMatchObject({
+      "content-type": "application/json",
+      authorization: "Bearer t",
+    });
+    expect(new TextDecoder().decode(sent.body)).toBe("{}");
   });
 });

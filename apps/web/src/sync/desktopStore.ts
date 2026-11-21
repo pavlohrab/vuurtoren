@@ -20,20 +20,30 @@ export function folderStore(sync: DesktopSync, root: string): SyncStore {
 const urlOf = (input: RequestInfo | URL): string =>
   typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
 
-/** Request headers as a plain object (whatever form `init.headers` takes). */
-function headersOf(
-  init: RequestInit | undefined,
-  input: RequestInfo | URL,
-): Record<string, string> {
-  const h = new Headers(input instanceof Request ? input.headers : undefined);
-  new Headers(init?.headers).forEach((v, k) => h.set(k, v));
-  return Object.fromEntries(h.entries());
+interface WireRequest {
+  url: string;
+  method: string;
+  headers: Record<string, string>;
+  body?: Uint8Array;
 }
 
-async function bodyOf(init: RequestInit | undefined): Promise<Uint8Array | undefined> {
-  const body = init?.body;
-  if (body === undefined || body === null) return undefined;
-  return new Uint8Array(await new Response(body).arrayBuffer());
+/**
+ * The request as the app sends it: method, headers and body bytes. It goes through one `Request`
+ * built from the caller's input and init, so the headers a body makes for itself (a FormData's
+ * `multipart/form-data; boundary=…`, a Blob's type, URLSearchParams) travel with its bytes.
+ */
+async function wireRequest(
+  input: RequestInfo | URL,
+  init: RequestInit | undefined,
+): Promise<WireRequest> {
+  const url = urlOf(input);
+  // The app's request cannot be cancelled, so the signal stays with the caller.
+  const { signal: _signal, ...rest } = init ?? {};
+  const req = new Request(input instanceof Request ? input : url, rest);
+  const method = req.method.toUpperCase();
+  const headers = Object.fromEntries(req.headers.entries());
+  if (req.body === null) return { url, method, headers };
+  return { url, method, headers, body: new Uint8Array(await req.arrayBuffer()) };
 }
 
 /** Addresses the app already allowed in this session, per bridge (one question per address). */
@@ -68,19 +78,13 @@ function allowHost(sync: DesktopSync, url: string): Promise<void> {
  */
 export function desktopFetch(sync: DesktopSync): typeof fetch {
   return async (input, init) => {
-    const method = (
-      init?.method ?? (input instanceof Request ? input.method : "GET")
-    ).toUpperCase();
+    let method = "GET";
     let res: Awaited<ReturnType<DesktopSync["fetch"]>>;
     try {
       await allowHost(sync, urlOf(input));
-      const body = await bodyOf(init);
-      res = await sync.fetch({
-        url: urlOf(input),
-        method,
-        headers: headersOf(init, input),
-        ...(body ? { body } : {}),
-      });
+      const req = await wireRequest(input, init);
+      method = req.method;
+      res = await sync.fetch(req);
     } catch (e) {
       throw new TypeError(e instanceof Error ? e.message : String(e), { cause: e });
     }
