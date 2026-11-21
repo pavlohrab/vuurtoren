@@ -110,6 +110,7 @@ test("browser storage mode", async ({ page }) => {
   await inspectWord(page);
   await page.getByRole("button", { name: /^Add to / }).click();
   await expect(page.getByText("Added to your words").first()).toBeVisible();
+  await expect(page.locator(".inspector-panel")).toContainText("Your card");
   await changeTextSize(page);
   // Skipping setup means Vuurtoren keeps the cards: the word is waiting in Review.
   await page.goto("/review");
