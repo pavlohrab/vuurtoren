@@ -130,12 +130,15 @@ AUDIO_VOICES = ("female", "male")
 
 
 def audio_from(manifest: dict, src: Path, out: Path, version: str | None) -> int:
-    """Pack ``src/{female,male}/*.mp3`` as the ``audio-nl`` archive and record it in packs.json."""
+    """Pack ``src/{female,male}/*.mp3`` (and ``src/stories.json``, the stories' sentence and
+    paragraph clips in order) as the ``audio-nl`` archive and record it in packs.json."""
     voices = [v for v in AUDIO_VOICES if (src / v).is_dir()]
     if not voices:
         print(f"{src}: no female/ or male/ folder", file=sys.stderr)
         return 1
-    files = [p for p in src.rglob("*") if p.is_file()]
+    # Clips in the voice folders, and the stories' clip index (stories.json) beside them.
+    index = src / "stories.json"
+    files = [p for p in src.rglob("*") if p.is_file() and p != index]
     stray = [p for p in files if p.suffix != ".mp3" or p.parent.parent != src]
     if stray or any(p.parent.name not in voices for p in files):
         print(f"{src}: not a clip: {(stray or files)[0]}", file=sys.stderr)

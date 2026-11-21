@@ -15,6 +15,11 @@
    "version": "2026.11.1",
    "sha256": "7406706d390fa8dbb54e536c4a48c8f5048a4e7daccd782978fd9f09f637807f",
    "size": 69717438
+  },
+  "audio-nl": {
+   "version": "2026.11.1",
+   "sha256": "24a90f4325f51576d34bcca3a96a49c7db757dc3da4fe19a2ffba604719204c2",
+   "size": 229959398
   }
  }
 }

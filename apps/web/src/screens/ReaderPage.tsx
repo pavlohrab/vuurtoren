@@ -428,7 +428,7 @@ export function ReaderPage({ textId }: { textId: string }) {
   // Side by side: the page's sentences with their English and word pairs, and a word-order
   // note per sentence for the structure view.
   const side = mode === "side";
-  const audio = useReaderAudio(side);
+  const audio = useReaderAudio();
   const englishAI = prefs.englishAI && aiReady;
   const sentenceList = useMemo(() => [...pageSentences].sort((a, b) => a - b), [pageSentences]);
   const pairsQ = useQuery({
