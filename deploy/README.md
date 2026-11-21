@@ -115,6 +115,10 @@ progress.
 | `VUURTOREN_NLP_VARIANT=-slim` | no OCR, smaller image                               |
 | `VUURTOREN_PACKS_URL=<url>`   | download the data from another host                 |
 
+Paired phones fetch their dictionary from here (`/nlp/packs/<archive>`, with their sync token):
+the language server keeps the checked archive of `dictionary-nl` when it installs it. Without a
+copy the phone takes the public packs release instead.
+
 ## Sync for your devices
 
 Every device keeps its own data and syncs through your server. The server stores locked files

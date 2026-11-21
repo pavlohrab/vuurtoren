@@ -140,6 +140,20 @@ def packs_update(force: bool = False) -> dict[str, object]:
     return {"started": started, **packs_status()}
 
 
+@app.get("/packs/{file}")
+def phone_pack(file: str) -> Response:
+    """The archive of a pack the Android app keeps (``dictionary-nl-<version>.tar.gz``).
+
+    Behind the sign-in like every /nlp/ route, so a paired phone fetches it with its sync token.
+    Ranges work, so a broken download goes on where it stopped. 404 when this server has no copy
+    at the manifest version (the phone then uses the public packs release).
+    """
+    path = packs.phone_archive(file)
+    if path is None:
+        return JSONResponse({"detail": "This server has no copy of that pack."}, status_code=404)
+    return FileResponse(path, media_type="application/gzip", filename=file)
+
+
 @app.get("/audio/{voice}/{clip}.mp3")
 def audio_clip(voice: str, clip: str) -> Response:
     """A spoken starter word or sentence from the ``audio-nl`` pack; 404 when there is none."""

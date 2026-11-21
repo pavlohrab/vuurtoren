@@ -175,8 +175,9 @@
               gloss: function (words) {
                 return invoke("dictionary_gloss", { words: words });
               },
-              install: function () {
-                return invoke("dictionary_install");
+              // from: { nlp: "<server>/nlp", token } (the connected server) or null.
+              install: function (from) {
+                return invoke("dictionary_install", { from: from || null });
               },
             })
           : undefined,

@@ -103,18 +103,25 @@ interface GlossEntry {
 
 /** The `dictionary-nl` pack kept on the device (`dictionary.rs`). */
 interface DeviceDictionary {
-  /** Is it there, its size, and the size of its download (bytes). */
+  /**
+   * Is it there, its size, the size of its download, whether it is downloading and the bytes
+   * on disk so far (also those of a download that stopped; the next one goes on from there).
+   */
   status(): Promise<{
     installed: boolean;
     bytes: number;
     download: number;
-    /** The dictionary the app carries is being unpacked (first start; absent in older apps). */
-    unpacking?: boolean;
+    downloading?: boolean;
+    received?: number;
   }>;
   /** Entries per word; null when the pack is not on the device. */
   gloss(words: string[]): Promise<Record<string, GlossEntry[]> | null>;
-  /** Download it (from the public packs release), checked, and put it in place. */
-  install(): Promise<void>;
+  /**
+   * Download it, checked against packs.json, and put it in place: from the connected server
+   * (`from`: its language server and the device's sync token) when it has a copy, else from the
+   * public packs release. Says where it came from.
+   */
+  install(from?: { nlp: string; token: string } | null): Promise<"server" | "release">;
 }
 
 /** The secrets the device's key store keeps for the page. */

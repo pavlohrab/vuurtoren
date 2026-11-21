@@ -138,6 +138,46 @@ def archive_name(name: str, version: str) -> str:
     return f"{name}-{version}.tar.gz"
 
 
+PHONE_PACKS = ("dictionary-nl",)
+"""Packs the Android app keeps on the phone; this server hands their archives on (``GET
+/packs/<archive>``, behind the sign-in, so a paired phone fetches them with its sync token)."""
+
+
+def _kept_archive(name: str, version: str) -> Path:
+    """Where the verified archive of a phone pack is kept after it was installed here."""
+    return SPECS[name].target().parent / ".archives" / archive_name(name, version)
+
+
+def phone_archive(file: str) -> Path | None:
+    """The archive of a phone pack at the manifest version, if this server has it.
+
+    From ``$VUURTOREN_PACKS_DIR`` (bundled) or the copy kept when the pack was installed here;
+    only when its size matches the manifest (the phone checks the SHA-256 itself).
+    """
+    entries = manifest()
+    for name in PHONE_PACKS:
+        entry = entries.get(name)
+        if not entry or file != archive_name(name, entry["version"]):
+            continue
+        local = os.environ.get("VUURTOREN_PACKS_DIR")
+        for path in (Path(local) / file if local else None, _kept_archive(name, entry["version"])):
+            if path is not None and path.is_file() and path.stat().st_size == int(entry["size"]):
+                return path
+    return None
+
+
+def _keep_archive(name: str, version: str, archive: Path) -> None:
+    """Keep a phone pack's verified archive (and drop older ones) so phones can fetch it here."""
+    kept = _kept_archive(name, version)
+    kept.parent.mkdir(parents=True, exist_ok=True)
+    for old in kept.parent.glob(f"{name}-*.tar.gz"):
+        if old != kept:
+            old.unlink(missing_ok=True)
+    tmp = kept.with_suffix(".part")
+    shutil.copyfile(archive, tmp)
+    os.replace(tmp, kept)
+
+
 def installed(name: str) -> dict[str, Any] | None:
     """The marker of an installed pack, or None."""
     try:
@@ -312,6 +352,8 @@ def install(name: str, allow_build: bool) -> str:
             if not staged.exists():
                 raise ValueError(f"{name} archive has no {target.name}")
             sha: str | None = entry["sha256"]
+            if name in PHONE_PACKS:
+                _keep_archive(name, entry["version"], archive)
         elif allow_build and spec.build is not None:
             _set(name, "building")
             staged = work / target.name

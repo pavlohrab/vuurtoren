@@ -241,6 +241,10 @@ export function createLiveServices(
     ...config.services,
 
     ...sync.services,
+    async packSource() {
+      const server = await sync.languageServer();
+      return server ? { nlp: server.url, token: server.token } : null;
+    },
     async autoSync(why) {
       // Sync when it is due (the caches drop on new changes, also when it failed after them).
       const r = await sync.auto(why);

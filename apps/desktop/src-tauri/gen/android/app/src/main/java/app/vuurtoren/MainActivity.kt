@@ -13,8 +13,6 @@ class MainActivity : TauriActivity() {
 
   override fun onCreate(savedInstanceState: Bundle?) {
     enableEdgeToEdge()
-    // First start only (a quick file copy): the dictionary the APK carries, for Rust to unpack.
-    BundledPacks.copyOut(this)
     super.onCreate(savedInstanceState)
   }
 

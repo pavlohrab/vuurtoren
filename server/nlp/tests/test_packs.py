@@ -74,6 +74,27 @@ def test_missing_then_installed_from_bundled_dir(
     assert packs.ensure(allow_build=False)["dictionary-nl"] == "ok"
 
 
+def test_phones_fetch_the_dictionary_archive_here(
+    env: dict[str, Path], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    client = TestClient(app)
+    file = "dictionary-nl-9.9.9.tar.gz"
+    assert client.get(f"/packs/{file}").status_code == 404
+    # Installed here from a bundled dir: the verified archive is kept and handed on.
+    monkeypatch.setenv("VUURTOREN_PACKS_DIR", str(env["dist"]))
+    packs.ensure(allow_build=False)
+    monkeypatch.delenv("VUURTOREN_PACKS_DIR")
+    archive = (env["dist"] / file).read_bytes()
+    got = client.get(f"/packs/{file}")
+    assert got.status_code == 200 and got.content == archive
+    # A broken download goes on where it stopped.
+    part = client.get(f"/packs/{file}", headers={"Range": "bytes=10-"})
+    assert part.status_code == 206 and part.content == archive[10:]
+    # Only phone packs, only at the manifest version.
+    assert client.get("/packs/dictionary-nl-1.0.0.tar.gz").status_code == 404
+    assert client.get("/packs/sentences-nl-9.9.9.tar.gz").status_code == 404
+
+
 def test_outdated_pack_is_replaced_and_unversioned_kept(
     env: dict[str, Path], monkeypatch: pytest.MonkeyPatch
 ) -> None:

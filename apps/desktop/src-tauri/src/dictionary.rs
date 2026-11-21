@@ -8,12 +8,15 @@
 //! analysis of unknown words) are not done here: such a word comes back with no entries.
 //!
 //! The file lives at `<app data>/packs/dictionary-nl.sqlite`. Without it, `gloss` answers
-//! `None` and the page asks the server as before. `install` puts it there: the archive of the
-//! version in `packs.json` (the language server's manifest, built in), from the public packs
-//! release, checked by size and SHA-256 before it replaces anything.
+//! `None` and the page asks the server as before. `download` puts it there: the archive of the
+//! version in `packs.json` (the language server's manifest, built in), from the connected
+//! Vuurtoren server (`<server>/nlp/packs/<archive>`, with the device's sync token) or else the
+//! public packs release, resumed where an earlier try stopped, and checked by size and SHA-256
+//! before it replaces anything. The APK carries no pack: it stays small.
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use rusqlite::{Connection, OpenFlags};
 use serde::Serialize;
@@ -91,36 +94,6 @@ impl Pack {
 
 /// The pack's file name inside the app's `packs` folder.
 pub const FILE: &str = "dictionary-nl.sqlite";
-/// The archive the app carries (an Android asset), copied next to the pack at first start by
-/// `MainActivity.kt` and unpacked by `unpack_bundled`.
-pub const BUNDLED: &str = "dictionary-nl.bundled.tar.gz";
-
-/// Where the copied archive waits to be unpacked.
-pub fn bundled_in(app_data: &Path) -> PathBuf {
-    app_data.join("packs").join(BUNDLED)
-}
-
-/// Unpack the archive the app carries into place, checked like a download, and remove it
-/// (also when it is damaged, so the download takes over). `Ok(false)` when there is nothing to
-/// do: no archive, or the pack is there already.
-pub fn unpack_bundled(app_data: &Path) -> Result<bool, String> {
-    let archive = bundled_in(app_data);
-    if !archive.exists() {
-        return Ok(false);
-    }
-    let dest = path_in(app_data);
-    let res = if open(&dest).is_some() {
-        Ok(false)
-    } else {
-        let pack = Pack::wanted().ok_or("This build names no dictionary pack.")?;
-        std::fs::read(&archive)
-            .map_err(|e| e.to_string())
-            .and_then(|bytes| pack.install(&bytes, &dest))
-            .map(|()| true)
-    };
-    let _ = std::fs::remove_file(&archive);
-    res
-}
 
 /// At most this many words per call (the server's limit).
 const MAX_WORDS: usize = 2000;
@@ -135,6 +108,125 @@ pub struct Entry {
 /// Where the pack goes on this device.
 pub fn path_in(app_data: &Path) -> PathBuf {
     app_data.join("packs").join(FILE)
+}
+
+/// Where an unfinished download waits, so the next try goes on where it stopped.
+pub fn part_in(app_data: &Path, pack: &Pack) -> PathBuf {
+    app_data
+        .join("packs")
+        .join(format!("{NAME}-{}.tar.gz.part", pack.version))
+}
+
+/// One place to fetch the archive from: the connected Vuurtoren server
+/// (`<server>/nlp/packs/<archive>` with the device's sync token), or the public packs release.
+pub struct Source {
+    pub url: String,
+    pub token: Option<String>,
+    /// "server" or "release": said back to the page.
+    pub name: &'static str,
+}
+
+impl Pack {
+    /// The archive's file name (`dictionary-nl-<version>.tar.gz`).
+    pub fn file_name(&self) -> String {
+        format!("{NAME}-{}.tar.gz", self.version)
+    }
+
+    /// The server's copy of the archive, under its language server (`…/nlp`).
+    pub fn server_url(&self, nlp: &str) -> String {
+        format!("{}/packs/{}", nlp.trim_end_matches('/'), self.file_name())
+    }
+}
+
+/// Download the archive into `part`, going on from the bytes already there (a Range request;
+/// a source that ignores it starts again). `received` follows the bytes on disk.
+async fn fetch_into(
+    client: &reqwest::Client,
+    source: &Source,
+    part: &Path,
+    size: u64,
+    received: &AtomicU64,
+) -> Result<(), String> {
+    use std::io::Write as _;
+    let mut have = std::fs::metadata(part).map_or(0, |m| m.len());
+    if have > size {
+        let _ = std::fs::remove_file(part);
+        have = 0;
+    }
+    received.store(have, Ordering::Relaxed);
+    if have == size {
+        return Ok(());
+    }
+    let mut req = client.get(&source.url);
+    if let Some(token) = &source.token {
+        req = req.bearer_auth(token);
+    }
+    if have > 0 {
+        req = req.header(reqwest::header::RANGE, format!("bytes={have}-"));
+    }
+    let mut res = req
+        .send()
+        .await
+        .map_err(|e| format!("Cannot reach {}: {e}", source.name))?;
+    let status = res.status();
+    if !status.is_success() {
+        return Err(format!("The download failed ({status})."));
+    }
+    let resume = have > 0 && status == reqwest::StatusCode::PARTIAL_CONTENT;
+    let mut file = if resume {
+        std::fs::OpenOptions::new().append(true).open(part)
+    } else {
+        have = 0;
+        std::fs::File::create(part)
+    }
+    .map_err(|e| e.to_string())?;
+    let mut got = have;
+    received.store(got, Ordering::Relaxed);
+    while let Some(chunk) = res
+        .chunk()
+        .await
+        .map_err(|e| format!("The download stopped ({e}). Try again to go on from here."))?
+    {
+        got += chunk.len() as u64;
+        if got > size {
+            drop(file);
+            let _ = std::fs::remove_file(part);
+            return Err("The download is larger than this app expects.".into());
+        }
+        file.write_all(&chunk).map_err(|e| e.to_string())?;
+        received.store(got, Ordering::Relaxed);
+    }
+    if got != size {
+        return Err("The download stopped early. Try again to go on from here.".into());
+    }
+    Ok(())
+}
+
+/// Fetch the archive from the first source that has it (resuming a part already on disk),
+/// check its size and SHA-256 against `packs.json` and put the dictionary in place. Says which
+/// source it came from. A damaged download is removed, so the next try starts clean.
+pub async fn download(
+    client: &reqwest::Client,
+    sources: &[Source],
+    pack: &Pack,
+    app_data: &Path,
+    received: &AtomicU64,
+) -> Result<&'static str, String> {
+    let part = part_in(app_data, pack);
+    std::fs::create_dir_all(part.parent().ok_or("No folder for the dictionary.")?)
+        .map_err(|e| e.to_string())?;
+    let mut last = String::from("No place to download the dictionary from.");
+    for source in sources {
+        if let Err(e) = fetch_into(client, source, &part, pack.size, received).await {
+            last = e;
+            continue;
+        }
+        let bytes = std::fs::read(&part).map_err(|e| e.to_string())?;
+        let res = pack.install(&bytes, &path_in(app_data));
+        let _ = std::fs::remove_file(&part);
+        return res.map(|()| source.name);
+    }
+    Err(last)
 }
 
 /// Open the pack read-only; `None` when it is not there (or not a dictionary).
@@ -281,23 +373,100 @@ mod tests {
         );
     }
 
+    /// A small HTTP server for one file at `/pack`: Range requests get the rest (206); the first
+    /// full answer stops halfway (a dropped connection); any other path is 404.
+    fn serve(body: Vec<u8>) -> String {
+        use std::io::{Read as _, Write as _};
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let addr = listener.local_addr().unwrap();
+        std::thread::spawn(move || {
+            let mut cut = true;
+            for stream in listener.incoming() {
+                let mut stream = stream.unwrap();
+                let mut req = Vec::new();
+                let mut buf = [0u8; 1024];
+                while !req.windows(4).any(|w| w == b"\r\n\r\n") {
+                    let n = stream.read(&mut buf).unwrap();
+                    if n == 0 {
+                        break;
+                    }
+                    req.extend_from_slice(&buf[..n]);
+                }
+                let req = String::from_utf8_lossy(&req).to_lowercase();
+                if !req.starts_with("get /pack ") {
+                    let _ = stream.write_all(
+                        b"HTTP/1.1 404 Not Found\r\ncontent-length: 0\r\nconnection: close\r\n\r\n",
+                    );
+                    continue;
+                }
+                let from = req
+                    .lines()
+                    .find_map(|l| l.strip_prefix("range: bytes="))
+                    .and_then(|r| r.trim_end_matches('-').parse::<usize>().ok());
+                let head = match from {
+                    Some(from) => format!(
+                        "HTTP/1.1 206 Partial Content\r\ncontent-length: {}\r\ncontent-range: bytes {from}-{}/{}\r\nconnection: close\r\n\r\n",
+                        body.len() - from,
+                        body.len() - 1,
+                        body.len()
+                    ),
+                    None => format!(
+                        "HTTP/1.1 200 OK\r\ncontent-length: {}\r\nconnection: close\r\n\r\n",
+                        body.len()
+                    ),
+                };
+                let _ = stream.write_all(head.as_bytes());
+                let rest = &body[from.unwrap_or(0)..];
+                if from.is_none() && cut {
+                    cut = false;
+                    let _ = stream.write_all(&rest[..rest.len() / 2]);
+                } else {
+                    let _ = stream.write_all(rest);
+                }
+            }
+        });
+        format!("http://{addr}")
+    }
+
     #[test]
-    fn the_bundled_archive_is_unpacked_once_and_removed() {
+    fn a_download_falls_back_resumes_and_is_checked() {
         let dir = tempfile::tempdir().unwrap();
+        let (archive, pack) = archive(dir.path());
+        let base = serve(archive.clone());
         let app = dir.path().join("app");
-        // Nothing carried: nothing to do.
-        assert_eq!(unpack_bundled(&app), Ok(false));
-        // A damaged archive is refused and removed, so the download takes over.
-        std::fs::create_dir_all(app.join("packs")).unwrap();
-        std::fs::write(bundled_in(&app), b"not a pack").unwrap();
-        assert!(unpack_bundled(&app).is_err());
-        assert!(!bundled_in(&app).exists());
-        assert!(open(&path_in(&app)).is_none());
-        // With the pack in place, a carried archive is just removed.
-        std::fs::copy(sample(dir.path()), path_in(&app)).unwrap();
-        std::fs::write(bundled_in(&app), b"old").unwrap();
-        assert_eq!(unpack_bundled(&app), Ok(false));
-        assert!(!bundled_in(&app).exists());
+        let sources = [
+            Source {
+                url: format!("{base}/nlp/packs/none"),
+                token: Some("t".into()),
+                name: "server",
+            },
+            Source {
+                url: format!("{base}/pack"),
+                token: None,
+                name: "release",
+            },
+        ];
+        let _ = rustls::crypto::ring::default_provider().install_default();
+        let client = reqwest::Client::new();
+        let received = AtomicU64::new(0);
+        let rt = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+        // The server has no copy; the release breaks off halfway: part of it waits on disk.
+        assert!(rt
+            .block_on(download(&client, &sources, &pack, &app, &received))
+            .is_err());
+        let part = std::fs::metadata(part_in(&app, &pack)).unwrap().len();
+        assert!(part > 0 && part < pack.size);
+        // The next try asks for the rest only, checks the whole and puts it in place.
+        assert_eq!(
+            rt.block_on(download(&client, &sources, &pack, &app, &received)),
+            Ok("release")
+        );
+        assert_eq!(received.load(Ordering::Relaxed), pack.size);
+        assert!(!part_in(&app, &pack).exists());
+        assert!(open(&path_in(&app)).is_some());
     }
 
     #[test]

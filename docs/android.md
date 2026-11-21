@@ -49,23 +49,31 @@ a form of. The web dictionary service asks it first on a phone; words it does no
 (compounds, derivations) still come from the server when there is one, and without the pack
 everything works as before.
 
-**The dictionary in the APK.** The APK carries the pack's archive (`dictionary-nl-<version>.tar.gz`,
-14 MB compressed, about 40 MB unpacked) as the asset `packs/dictionary-nl.tar.gz`, stored
-without compression, so words without a card have meanings offline from the first start with no
-download. At first start `BundledPacks.kt` copies it out of the APK (before Tauri starts, a
-quick file copy) to `<app data>/packs/dictionary-nl.bundled.tar.gz`; Rust
-(`dictionary::unpack_bundled`, in the background from setup) checks it against `packs.json`
-like a download, unpacks it to `dictionary-nl.sqlite` and removes the copy. While that runs,
-`dictionary_status` says `unpacking` and the page shows "Setting up the dictionary that came with
-the app (first start only)" instead of starting a download. A damaged archive is removed and the
-download takes over.
+**Language data is a separate download.** The APK carries no data pack, so it stays small.
+The phone keeps one pack, `dictionary-nl` (about 14 MB compressed, 40 MB unpacked); grammar
+examples, sentence translation and word pairs come from the server's language server, so the
+phone has no use for the grammar-example or sentence packs and does not fetch them.
+`dictionary_install` downloads the version named in `packs.json` (built into the app):
 
-**Download as the update path.** `dictionary_install` downloads the version named in
-`packs.json` (built into the app) from the public packs release, checks its size and SHA-256 and
-moves it in place. The end of the welcome starts it when the dictionary is neither there nor
-being unpacked (an APK built without the archive); Settings → Your words shows its size and
-state. Still to do: the download from the connected server instead of GitHub, progress in bytes,
-and an update when `packs.json` names a newer version.
+1. from the connected Vuurtoren server, `<server>/nlp/packs/dictionary-nl-<version>.tar.gz`,
+   with the device's sync token (only an address the user allowed for sync). The language
+   server keeps the verified archive of each phone pack it installs (and hands on one from
+   `VUURTOREN_PACKS_DIR`); without a copy it answers 404;
+2. else from the public packs release on GitHub.
+
+The download goes to `<app data>/packs/dictionary-nl-<version>.tar.gz.part`; a try that stops
+(no network, the app closed) leaves it there and the next one asks for the rest (a Range
+request; both sources answer them). The whole archive is checked against the size and SHA-256
+in `packs.json` before it replaces anything; a damaged one is removed, so the next try starts
+clean. `dictionary_status` reports the bytes so far, and the page shows them as a progress bar.
+
+The end of the welcome starts the download by itself on Wi-Fi; on mobile data it waits and
+offers "Download now on mobile data". "Also download on mobile data" (per device) lifts that.
+Settings → Your words shows the size, the progress, "Go on with the download" after a stop, and
+the state. The page tells Wi-Fi from mobile data with the WebView's `navigator.connection`
+(unknown counts as Wi-Fi). Without the dictionary the app keeps working: meanings come from the
+cards and the server, and the stories carry their own analysis and English. Still to do: an
+update when `packs.json` names a newer version.
 
 **Safe areas.** Edge to edge, the page reads the system bars as `--safe-*` (`styles.css`): the
 larger of `env(safe-area-inset-*)` and the insets `MainActivity.kt` passes in from
@@ -84,20 +92,20 @@ status), keeps the database file private (no Show or Move), scans QR codes and r
 
 ## What runs where
 
-| Need                                                     | On the phone                                                                                      | Notes                                                           |
-| -------------------------------------------------------- | ------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
-| Your data                                                | SQLite file in the app's private storage, opened by Rust (`rusqlite`, bundled SQLite)             | the same event log and projections as desktop                   |
-| Sync                                                     | the server place only (`/api/sync`), through Rust HTTP                                            | folder and WebDAV are desktop-only                              |
-| Sync key                                                 | Android Keystore (Kotlin plugin)                                                                  | excluded from Android backups                                   |
-| Dictionary, short glosses, starter words                 | on the phone: the `dictionary-nl` pack (~14 MB) in the APK, unpacked at first start, read by Rust | glosses work offline                                            |
-| Audio                                                    | the `audio-nl` pack, both voices (about 80 MB); Settings → Voice picks one                        | played with the page's `<audio>` through Tauri's asset protocol |
-| Analysis of a new text, sentence translation, word pairs | the server's language server (`/nlp/`, with the device's sync token)                              | results cached per text; reading is offline afterwards          |
-| OCR (photo of a page)                                    | ML Kit text recognition, on device                                                                | no Google account, no network                                   |
-| Speech fallback                                          | Android text-to-speech through the WebView                                                        | used only when a clip is missing                                |
-| Reminders                                                | `tauri-plugin-notification`                                                                       | "24 reviews due" once a day, at a time you choose               |
-| Haptics                                                  | `tauri-plugin-haptics`                                                                            | a light tick on each review answer                              |
-| Connect to a server                                      | `tauri-plugin-barcode-scanner` reads a QR code from the server's Settings → Sync                  | the QR holds the address and a new sync token                   |
-| Links                                                    | `tauri-plugin-deep-link`: `vuurtoren://connect?…`                                                 | the same as the QR code                                         |
+| Need                                                     | On the phone                                                                          | Notes                                                           |
+| -------------------------------------------------------- | ------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| Your data                                                | SQLite file in the app's private storage, opened by Rust (`rusqlite`, bundled SQLite) | the same event log and projections as desktop                   |
+| Sync                                                     | the server place only (`/api/sync`), through Rust HTTP                                | folder and WebDAV are desktop-only                              |
+| Sync key                                                 | Android Keystore (Kotlin plugin)                                                      | excluded from Android backups                                   |
+| Dictionary, short glosses, starter words                 | on the phone: the `dictionary-nl` pack (~14 MB), a separate download, read by Rust    | glosses work offline                                            |
+| Audio                                                    | the `audio-nl` pack, both voices (about 80 MB); Settings → Voice picks one            | played with the page's `<audio>` through Tauri's asset protocol |
+| Analysis of a new text, sentence translation, word pairs | the server's language server (`/nlp/`, with the device's sync token)                  | results cached per text; reading is offline afterwards          |
+| OCR (photo of a page)                                    | ML Kit text recognition, on device                                                    | no Google account, no network                                   |
+| Speech fallback                                          | Android text-to-speech through the WebView                                            | used only when a clip is missing                                |
+| Reminders                                                | `tauri-plugin-notification`                                                           | "24 reviews due" once a day, at a time you choose               |
+| Haptics                                                  | `tauri-plugin-haptics`                                                                | a light tick on each review answer                              |
+| Connect to a server                                      | `tauri-plugin-barcode-scanner` reads a QR code from the server's Settings → Sync      | the QR holds the address and a new sync token                   |
+| Links                                                    | `tauri-plugin-deep-link`: `vuurtoren://connect?…`                                     | the same as the QR code                                         |
 
 ## First start
 
@@ -106,7 +114,8 @@ status), keeps the database file private (no Show or Move), scans QR codes and r
    Without a server the app still works: the starter words, reviews and the demo text. Adding a
    new text asks for a server.
 3. The starter words: where new words start (level 1, 2, 3, 5 or 7).
-4. Downloads, with progress and sizes: the dictionary only when the APK came without it (14 MB), audio with both voices
+4. Downloads, with progress and sizes: the dictionary (14 MB, on Wi-Fi unless mobile data is
+   allowed; from your server, else GitHub), audio with both voices
    (about 80 MB, optional).
 
 ## Connecting with a QR code
@@ -189,15 +198,6 @@ The phone layout from the redesign; the colours, type and logo stay as on deskto
   The APK is
   `apps/desktop/src-tauri/gen/android/app/build/outputs/apk/universal/debug/app-universal-debug.apk`;
   `--target aarch64` builds for 64-bit ARM phones only, which is quicker.
-- **The dictionary in the APK:** the Gradle task `vuurtorenPacks` (`app/build.gradle.kts`, run
-  before every build) puts the `dictionary-nl` archive that `server/nlp/src/vuurtoren_nlp/packs.json`
-  names into `app/build/generated/vuurtoren-packs/packs/`, an assets folder of the app. It takes
-  `server/nlp/dist/packs/dictionary-nl-<version>.tar.gz` when the packs were built on this
-  computer (`server/nlp/scripts/build_packs.py`), else downloads it from the public packs release
-  (`packs-<version>`), and keeps it only when its size and SHA-256 match the manifest.
-  `VUURTOREN_PACKS_OFFLINE=1` skips the download. When the archive is not at hand, the build
-  says so and goes on: that APK downloads the dictionary at first start, as before.
-  `./gradlew :app:vuurtorenPacks` in `gen/android` runs the step alone.
 - **Install:** `adb install -r <the apk>` with the phone connected (Developer options → USB
   debugging), or copy the file to the phone and open it ("Install unknown apps" for the file
   manager once).

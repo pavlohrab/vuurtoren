@@ -28,7 +28,7 @@ mod sidecar;
 mod sync;
 
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
@@ -85,8 +85,9 @@ struct State {
     closing: AtomicBool,
     /// `vuurtoren://` links that opened the app, until the page takes them (`links_take`).
     links: Mutex<Vec<String>>,
-    /// The dictionary pack is being put in place (unpacked from the app, or downloaded).
+    /// The dictionary pack is downloading (phones), and its bytes on disk so far.
     dictionary_busy: AtomicBool,
+    dictionary_received: AtomicU64,
 }
 
 impl State {
@@ -208,44 +209,26 @@ struct DictionaryStatus {
     bytes: u64,
     /// The size of the download (the archive this build wants).
     download: u64,
-    /// The dictionary the app carries is being unpacked (first start on a phone).
-    unpacking: bool,
-}
-
-/// Unpack the dictionary the app carries (`MainActivity.kt` copies it out of the APK at first
-/// start), in the background. Nothing to do without that archive. A damaged one is removed, so
-/// the download takes over.
-fn unpack_bundled_dictionary(app: &AppHandle) {
-    let Ok(dir) = app.path().app_data_dir() else {
-        return;
-    };
-    if !dictionary::bundled_in(&dir).exists() {
-        return;
-    }
-    let state = app.state::<State>();
-    if state.dictionary_busy.swap(true, Ordering::SeqCst) {
-        return;
-    }
-    let handle = app.clone();
-    tauri::async_runtime::spawn_blocking(move || {
-        if let Err(e) = dictionary::unpack_bundled(&dir) {
-            eprintln!("The dictionary in the app did not unpack: {e}");
-        }
-        handle
-            .state::<State>()
-            .dictionary_busy
-            .store(false, Ordering::SeqCst);
-    });
+    /// Downloading now.
+    downloading: bool,
+    /// Bytes of the download on disk (while downloading, or left by one that stopped).
+    received: u64,
 }
 
 #[tauri::command]
 fn dictionary_status(app: AppHandle, state: tauri::State<'_, State>) -> DictionaryStatus {
-    unpack_bundled_dictionary(&app);
-    let unpacking = state.dictionary_busy.load(Ordering::SeqCst)
-        && app
-            .path()
-            .app_data_dir()
-            .is_ok_and(|d| dictionary::bundled_in(&d).exists());
+    let downloading = state.dictionary_busy.load(Ordering::SeqCst);
+    let wanted = dictionary::Pack::wanted();
+    let received = if downloading {
+        state.dictionary_received.load(Ordering::Relaxed)
+    } else {
+        match (app.path().app_data_dir(), &wanted) {
+            (Ok(dir), Some(pack)) => {
+                std::fs::metadata(dictionary::part_in(&dir, pack)).map_or(0, |m| m.len())
+            }
+            _ => 0,
+        }
+    };
     let path = app
         .path()
         .app_data_dir()
@@ -258,8 +241,9 @@ fn dictionary_status(app: AppHandle, state: tauri::State<'_, State>) -> Dictiona
     DictionaryStatus {
         installed,
         bytes,
-        download: dictionary::Pack::wanted().map_or(0, |p| p.size),
-        unpacking,
+        download: wanted.map_or(0, |p| p.size),
+        downloading,
+        received,
     }
 }
 
@@ -283,37 +267,63 @@ async fn dictionary_gloss(
     .map_err(|e| e.to_string())?
 }
 
-/// Download the dictionary pack (the version this build wants) and put it in place; the size
-/// is in `dictionary_status` before, so the page can say how much it fetches.
-#[tauri::command]
-async fn dictionary_install(app: AppHandle, state: tauri::State<'_, State>) -> Result<(), String> {
-    let pack = dictionary::Pack::wanted().ok_or("This build names no dictionary pack.")?;
-    let dest = dictionary::path_in(&app.path().app_data_dir().map_err(|e| e.to_string())?);
-    if state.dictionary_busy.swap(true, Ordering::SeqCst) {
-        return Err("The dictionary is being set up already.".into());
-    }
-    let res = download_dictionary(&state.client, pack, dest).await;
-    state.dictionary_busy.store(false, Ordering::SeqCst);
-    res
+/// The connected Vuurtoren server's language server and the device's sync token: the first
+/// place to fetch the dictionary from.
+#[derive(Deserialize)]
+struct DictionaryFrom {
+    /// `<server>/nlp`.
+    nlp: String,
+    token: String,
 }
 
-async fn download_dictionary(
-    client: &reqwest::Client,
-    pack: dictionary::Pack,
-    dest: PathBuf,
-) -> Result<(), String> {
-    let res = client
-        .get(pack.url())
-        .send()
-        .await
-        .map_err(|e| e.to_string())?;
-    if !res.status().is_success() {
-        return Err(format!("The download failed ({}).", res.status()));
+/// Download the dictionary pack (the version this build wants) and put it in place: from the
+/// connected server when there is one (only an address the user allowed for sync), else from the
+/// public packs release. Resumes an unfinished download; `dictionary_status` reports the bytes
+/// so far. Says where it came from ("server" or "release").
+#[tauri::command]
+async fn dictionary_install(
+    from: Option<DictionaryFrom>,
+    app: AppHandle,
+    state: tauri::State<'_, State>,
+) -> Result<&'static str, String> {
+    let pack = dictionary::Pack::wanted().ok_or("This build names no dictionary pack.")?;
+    let dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    let mut sources = Vec::new();
+    if let Some(from) = from {
+        let allowed = Url::parse(&from.nlp).is_ok_and(|u| {
+            state
+                .config
+                .lock()
+                .unwrap()
+                .sync_hosts
+                .contains(&sync::origin(&u))
+        });
+        if allowed {
+            sources.push(dictionary::Source {
+                url: pack.server_url(&from.nlp),
+                token: Some(from.token),
+                name: "server",
+            });
+        }
     }
-    let bytes = res.bytes().await.map_err(|e| e.to_string())?;
-    tauri::async_runtime::spawn_blocking(move || pack.install(&bytes, &dest))
-        .await
-        .map_err(|e| e.to_string())?
+    sources.push(dictionary::Source {
+        url: pack.url(),
+        token: None,
+        name: "release",
+    });
+    if state.dictionary_busy.swap(true, Ordering::SeqCst) {
+        return Err("The dictionary is downloading already.".into());
+    }
+    let res = dictionary::download(
+        &state.client,
+        &sources,
+        &pack,
+        &dir,
+        &state.dictionary_received,
+    )
+    .await;
+    state.dictionary_busy.store(false, Ordering::SeqCst);
+    res
 }
 
 /// Open (or create) the database file. With `force`, a lock held by another computer is taken
@@ -782,8 +792,8 @@ pub fn run() {
                 closing: AtomicBool::new(false),
                 links: Mutex::new(Vec::new()),
                 dictionary_busy: AtomicBool::new(false),
+                dictionary_received: AtomicU64::new(0),
             });
-            unpack_bundled_dictionary(&handle);
             #[cfg(desktop)]
             desktop::before_window(&handle);
 

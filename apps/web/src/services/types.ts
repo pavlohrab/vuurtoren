@@ -250,6 +250,11 @@ export interface AppServices
    * queries. Absent in demo mode.
    */
   autoSync?(why: AutoSync): Promise<boolean>;
+  /**
+   * The connected Vuurtoren server's language server (`<server>/nlp`) and this device's sync
+   * token: where a phone fetches its data packs first. Null without one; absent in demo mode.
+   */
+  packSource?(): Promise<{ nlp: string; token: string } | null>;
   listTexts(): Promise<TextListItem[]>;
   /** The graded stories that ship with the app, with the learner's coverage (Library). */
   storyShelf(): Promise<StoryCover[]>;
