@@ -272,15 +272,28 @@ export function AppShell() {
             </Link>
             {/* The two rooms, then the quieter places; on a phone: Read · Words · Review · More. */}
             <NavLink to="/" label="Read" icon={<BookOpen size={18} />} active={room === "read"} />
+            {/* With Vuurtoren's own cards, Words opens on Review on wide screens: today's cards
+                first, the levels and the list one tab away. On a phone Review has its own tab,
+                so Words there is the word list. */}
             <NavLink
-              to="/words"
+              to={native ? "/review" : "/words"}
               label="Words"
               icon={<Languages size={18} />}
               active={room === "words"}
               badge={wordsDue}
               badgeNoun={native ? "card" : "exercise"}
               badgeWhere={native ? "Review" : "Practice"}
+              wideOnly={native}
             />
+            {native ? (
+              <NavLink
+                to="/words"
+                label="Words"
+                icon={<Languages size={18} />}
+                active={room === "words" && pathname !== "/review"}
+                phoneOnly
+              />
+            ) : null}
             {native ? (
               <NavLink
                 to="/review"
@@ -525,6 +538,7 @@ function NavLink({
   active,
   secondary,
   phoneOnly,
+  wideOnly,
 }: {
   to: FixedRoute;
   label: string;
@@ -539,11 +553,14 @@ function NavLink({
   secondary?: boolean;
   /** Only in the phone tab bar (on wider screens it is a tab of its room). */
   phoneOnly?: boolean;
+  /** Only in the sidebar on wider screens (the phone tab bar has its own entry). */
+  wideOnly?: boolean | undefined;
 }) {
   const className = [
     "nav-link",
     secondary ? "nav-link--secondary" : "",
     phoneOnly ? "nav-link--phone" : "",
+    wideOnly ? "nav-link--wide" : "",
   ]
     .filter(Boolean)
     .join(" ");
