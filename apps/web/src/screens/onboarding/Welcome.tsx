@@ -1,7 +1,8 @@
 /**
  * First-run onboarding: language → "Do you use Anki?".
- * - No: Vuurtoren holds the cards (native mode) → where new words go → the most common words
- *   (starter levels, with a placement question) → first text.
+ * - No (the easy start, three steps): Vuurtoren holds the cards (native mode, saved at once with
+ *   the default decks) → where new words start (starter levels) → ready: Read opens with a story
+ *   at the learner's level.
  * - Yes, and move to Vuurtoren: connect Anki → confirm decks → where new words go → the decks are
  *   imported with their review history (native mode) → first text.
  * - Yes, and keep using Anki (connected mode): connect Anki → confirm decks → where new words
@@ -25,7 +26,6 @@ import { useServices } from "../../services/context.js";
 import type { AnkiStatus } from "../../services/types.js";
 import { AnkiConnectionHelp } from "../settings/AnkiSettings.js";
 import { DeckChecklist, DestinationFields, LanguageChoice, deckRows } from "./deckParts.js";
-import { SAMPLE_TEXT } from "./sample.js";
 import { setSkipped } from "./skip.js";
 import "./onboarding.css";
 import { readLocalJSON, writeLocalJSON } from "../../storage/local.js";
@@ -51,7 +51,7 @@ const PICK_LANGUAGE = PROFILE_LANGUAGES.filter((l) => l.enabled).length > 1;
  * The stepper shows three fixed parts, whatever the answers add or skip inside them, so it
  * never changes length mid-flow.
  */
-const PARTS = ["Getting started", "Your words", "First text"] as const;
+const PARTS = ["Getting started", "Your words", "Start reading"] as const;
 const PART: Record<Step, number> = {
   language: 0,
   uses: 0,
@@ -131,8 +131,9 @@ export function Welcome() {
   const native = draft.usesAnki === false;
   const moving = draft.usesAnki === true && draft.move && !draft.noAnki && !startFresh;
   const start: Step[] = PICK_LANGUAGE ? ["language", "uses"] : ["uses"];
+  // No Anki: the default decks are fine to start with (Settings changes them), so no deck step.
   const steps: Step[] = native
-    ? [...start, "destinations", "starter", "first"]
+    ? [...start, "starter", "first"]
     : draft.usesAnki === null
       ? [...start, "first"]
       : [
@@ -273,25 +274,19 @@ export function Welcome() {
     },
   });
 
-  // ---- First text
-  const sample = useMutation({
-    mutationFn: () =>
-      services.importText({
-        kind: "paste",
-        title: SAMPLE_TEXT.title,
-        content: SAMPLE_TEXT.content,
-      }),
-    onSuccess: (textId) => {
-      finish();
-      void qc.invalidateQueries({ queryKey: ["texts"] });
-      void navigate({ to: "/read/$textId", params: { textId } });
-    },
-  });
+  // ---- Ready: Read opens with a story at the learner's level (Today, Stories for you).
+  const startReading = () => {
+    finish();
+    void qc.invalidateQueries({ queryKey: ["stories"] });
+    void navigate({ to: "/" });
+  };
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
     if (draft.step === "uses") {
-      if (draft.usesAnki !== null) go(draft.usesAnki ? "choice" : "destinations");
+      if (draft.usesAnki === true) go("choice");
+      // No Anki: save the profile now (Vuurtoren's cards, default decks) and go on.
+      else if (draft.usesAnki === false) save.mutate();
     } else if (draft.step === "destinations") save.mutate();
     else if (draft.step === "moving") {
       if (move.isSuccess) next();
@@ -637,39 +632,27 @@ export function Welcome() {
           {draft.step === "first" ? (
             <>
               <h1 ref={heading} tabIndex={-1}>
-                Your first text
+                You are ready
               </h1>
               <p className="ob-lede">
-                You are set up. Start with something you want to read, or try a short sample.
+                A short story at your level is waiting on Read. Tap any word you do not know to see
+                what it means, and keep it with Add to my words.
               </p>
-              <div className="ob-first">
-                <div className="ob-first-card">
-                  <h2>Add a text</h2>
-                  <p>Paste an article, open a web page, or a PDF or photo of a page.</p>
-                  <Button
-                    variant="primary"
-                    onClick={() => {
-                      finish();
-                      void navigate({ to: "/import" });
-                    }}
-                  >
-                    Add text
-                  </Button>
-                </div>
-                <div className="ob-first-card">
-                  <h2>Read a sample</h2>
-                  <p>{SAMPLE_TEXT.blurb}</p>
-                  <Button disabled={sample.isPending} onClick={() => sample.mutate()}>
-                    {sample.isPending ? <Spinner label="Preparing" /> : null}
-                    Read the sample
-                  </Button>
-                </div>
+              <div className="ob-first-actions">
+                <Button variant="primary" onClick={startReading}>
+                  Start reading
+                </Button>
+                <button
+                  type="button"
+                  className="ob-skip"
+                  onClick={() => {
+                    finish();
+                    void navigate({ to: "/import" });
+                  }}
+                >
+                  Add a text of your own
+                </button>
               </div>
-              {sample.isError ? (
-                <p role="alert" className="error-text">
-                  Could not prepare the sample. {errorOf(sample.error)}
-                </p>
-              ) : null}
             </>
           ) : null}
 
@@ -680,18 +663,7 @@ export function Welcome() {
               </Button>
             ) : null}
             <span className="ob-nav-spacer" />
-            {draft.step === "first" ? (
-              <button
-                type="button"
-                className="ob-skip"
-                onClick={() => {
-                  finish();
-                  void navigate({ to: "/" });
-                }}
-              >
-                Go to Read
-              </button>
-            ) : (
+            {draft.step === "first" ? null : (
               <button type="button" className="ob-skip" onClick={skip}>
                 Skip setup for now
               </button>
