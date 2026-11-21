@@ -5,24 +5,48 @@ milestones to get there. The overview for both phones is in [Phones](phones.md).
 
 ## Shape of the app
 
-The Android app is the Tauri v2 app (`apps/desktop`, renamed `apps/app` with this work) built for
-Android. The UI is the same React app (`apps/web`) inside the Android System WebView; Rust runs
-the database and the sync files; a few Kotlin plugins reach what only Android offers.
+The Android app is the Tauri v2 app in `apps/desktop` built for Android. The folder keeps its
+name for now: the desktop CI, the release script and the language server's sidecar build
+(`server/nlp/desktop/build_sidecar.py`) use the path, and `apps/app` is the name once those move
+together. The UI is the same React app (`apps/web`) inside the Android System WebView; Rust runs
+the database and the sync requests; a Kotlin plugin reaches the Android Keystore.
 
 ```
-apps/app/
-  src-tauri/
-    src/            shared Rust: database (rusqlite), sync files, key store trait, packs
-    capabilities/   per platform: desktop.json, mobile.json (what the page may call)
-    gen/android/    generated Android project (Gradle); our Kotlin plugins live beside it
-  plugins/
-    keystore/       Kotlin: sync key in the Android Keystore
-    ocr/            Kotlin: ML Kit text recognition (on device)
-    share/          Kotlin: "Share to Vuurtoren" intent → import
+apps/desktop/src-tauri/
+  src/
+    lib.rs          shared: database commands, sync requests, key store commands, the window
+    keys.rs         the KeyStore trait; SystemKeys (keychain, desktop), FileKeys (iOS)
+    desktop.rs      computers only: sidecar, AnkiConnect, sync folders, updates, close request
+    mobile.rs       phones only: QR scanner, vuurtoren:// links, AndroidKeys (Kotlin plugin)
+    bridge.js       window.__VUURTOREN_DESKTOP__ (the name stays on phones), with `os`
+  capabilities/     desktop.json (linux, macOS, windows), mobile.json (android, iOS)
+  tauri.android.conf.json   identifier app.vuurtoren, minimum API 26, the vuurtoren scheme
+  gen/android/      the Android project (Gradle), committed
+    app/src/main/java/app/vuurtoren/KeystorePlugin.kt   sync key and token in the Keystore
+    app/src/main/res/xml/  backup rules: the sealed secrets never go into a backup
 apps/web/src/platform/
-  index.ts          the capability interface the UI asks
-  android.ts        the Android implementation (invoke → Rust / plugins)
+  index.ts          currentDevice(): the capability interface the UI asks
+  device.ts         the Device type
+  browser.ts, desktop.ts, android.ts   one per device
 ```
+
+The parts only a computer has are behind `#[cfg(desktop)]` and in target-specific dependencies
+(single instance, window state, updater, keyring); the phone's plugins
+(`tauri-plugin-barcode-scanner`, `tauri-plugin-deep-link`) are phone-only dependencies.
+
+**Key store.** A `KeyStore` trait (`keys.rs`) keeps named secrets: `sync-key` (the data key) and
+`sync-token` (a paired server's token). On a computer it is the system keychain with a private
+file as fallback; on Android, `KeystorePlugin.kt` makes an AES-256 key inside the Android
+Keystore (it never leaves it) and seals each secret with it (AES-GCM) into the app's private
+preferences, which the backup rules exclude. A small Kotlin plugin rather than
+`tauri-plugin-stronghold`: the Keystore is hardware-backed where the phone has it, needs no
+password of its own, and adds no large dependency.
+
+**Platform layer.** `currentDevice()` reads the bridge's `os`. The browser and the desktop app
+behave as before; on Android the device offers a server as its only sync place (Settings shows
+no folder or WebDAV), has no bundled language server (no `vuurtoren-nlp:` route, no sidecar
+status), keeps the database file private (no Show or Move), scans QR codes and receives
+`vuurtoren://` links. Haptics and reminders are in the interface as stubs.
 
 ## What runs where
 
@@ -53,15 +77,31 @@ apps/web/src/platform/
 
 ## Connecting with a QR code
 
-1. On the server: Settings → Sync → **Add a phone** shows a QR code with the server's address and
-   a **one-time pairing code** (valid about 10 minutes, used once).
-2. On the phone, at first start: **Connect to your server → Scan**. The app sends the pairing code
-   to `/api/sync/pair` and gets its own sync token back, which goes into the Android Keystore. The
-   server becomes the phone's sync place and its language server.
-3. The phone asks for the **sync passphrase** to open your data. The passphrase is never in the QR
-   code, so a photo of the code cannot read anything, and an old code no longer works.
+1. On the server: Settings → Sync → **Add a phone** shows a QR code of
+   `vuurtoren://connect?server=<address>&code=<code>`, the same link as text, and the code. The
+   **pairing code** (`POST /api/sync/pair-code`, signed in) is 10 characters without 0/O or
+   1/I/L, works once for 10 minutes, and only its SHA-256 is stored; at most five work at once.
+   The page asks for a new one when it expires. The QR code is drawn from `qrcode-generator`
+   (MIT, no dependencies) as an SVG.
+2. On the phone, at first start (the welcome's **Connect to your server**) or in Settings → Sync:
+   **Connect to your server → Scan the QR code**. The app asks once whether it may send sync
+   files to that address, then sends the code and its name to `POST /api/sync/pair` (through
+   Rust, so the server needs no CORS setup) and gets its own sync token back, which goes into the
+   key store as `sync-token`. The server becomes the place to join and, at once, the phone's
+   language server (`<server>/nlp` with the token).
+3. Set up shows **Your Vuurtoren server, connected with a pairing code** and **Join my synced
+   data**: the phone asks for the **sync passphrase**. The passphrase is never in the QR code, so
+   a photo of the code cannot read anything, and a used or old code no longer works.
 
-The token appears in the server's sync-token list as "Phone (Pixel 8)" and can be revoked there.
+The token appears in the server's sync-token list as "Phone (Pixel 8)" (the model from the
+WebView's user agent) and can be revoked there. Opening a `vuurtoren://connect` link does the
+same as scanning (`tauri-plugin-deep-link`; the app goes to Settings → Sync and connects). On a
+computer or in a browser, paste the link or type the address and the code. Stop syncing forgets
+the token.
+
+`POST /api/sync/pair` needs no sign-in (the code is the credential), takes JSON only, answers
+other sites through CORS, and counts wrong codes per address like wrong passwords, apart from
+sign-in.
 
 ## Design
 
@@ -88,10 +128,41 @@ The phone layout from the redesign; the colours, type and logo stay as on deskto
 
 ## Building
 
-- **Tools:** Android Studio (or the command-line SDK), JDK 17, the NDK, and Rust targets
-  `aarch64-linux-android`, `armv7-linux-androideabi`, `x86_64-linux-android`.
-- **Start:** `pnpm --filter @app/desktop tauri android init`, then `tauri android dev` with a phone
-  connected (USB debugging) or the emulator.
+- **Tools:** JDK 17, the Android SDK with platform 37 (what `gen/android` compiles against) and
+  build tools, the NDK (27 or newer), and the Rust targets `aarch64-linux-android`,
+  `armv7-linux-androideabi`, `i686-linux-android`, `x86_64-linux-android`.
+- **Set up on Linux** (once):
+
+  ```sh
+  # the command-line tools, if Android Studio is not installed (the current file name is on
+  # developer.android.com/studio, under "Command line tools only")
+  mkdir -p ~/Android/Sdk/cmdline-tools && cd ~/Android/Sdk/cmdline-tools
+  curl -LO https://dl.google.com/android/repository/commandlinetools-linux-13114758_latest.zip
+  unzip commandlinetools-linux-*_latest.zip && mv cmdline-tools latest
+  export ANDROID_HOME=~/Android/Sdk
+  export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH
+  sdkmanager --licenses
+  sdkmanager "platforms;android-37" "build-tools;36.1.0" "platform-tools" "ndk;28.2.13676358"
+  export NDK_HOME=$ANDROID_HOME/ndk/28.2.13676358
+  rustup target add aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android
+  ```
+
+- **Debug APK:** `pnpm install`, then
+  `pnpm --filter @app/desktop tauri android build --apk --debug` (it builds the web app first).
+  The APK is
+  `apps/desktop/src-tauri/gen/android/app/build/outputs/apk/universal/debug/app-universal-debug.apk`;
+  `--target aarch64` builds for 64-bit ARM phones only, which is quicker.
+- **Install:** `adb install -r <the apk>` with the phone connected (Developer options → USB
+  debugging), or copy the file to the phone and open it ("Install unknown apps" for the file
+  manager once).
+- **Develop:** `pnpm --filter @app/desktop tauri android dev` with a phone connected or the
+  emulator; the page comes from Vite on this computer.
+- **Check the Rust code without the NDK:** `cargo check --target aarch64-linux-android` builds
+  the Rust code; the C parts (SQLite, ring) need the NDK's compiler, or, for a check only, any
+  stand-in that writes empty objects (`CC_aarch64_linux_android`, `AR_aarch64_linux_android`).
+- **Generated project:** `gen/android` comes from `tauri android init` and is committed with the
+  Keystore plugin and the backup rules. The deep-link plugin adds its intent filter for
+  `vuurtoren://` to `AndroidManifest.xml` when the app is built.
 - **Minimum Android:** 8.0 (API 26); target the latest API level Google Play requires.
 - **Without Google Play:** a signed `.apk` installs on any phone ("Install unknown apps" for the
   browser once). ML Kit is part of the app, so OCR works the same. Sign every build with the same
@@ -105,7 +176,11 @@ The phone layout from the redesign; the colours, type and logo stay as on deskto
 
 ## Milestones
 
-Each one ends with something you can install and try.
+Each one ends with something you can install and try. Milestones 1 and 2 are in the code: the
+Rust app builds for Android (checked with `cargo check` and `cargo clippy` for
+`aarch64-linux-android`), the platform layer and pairing are tested in the web app and the
+server. Still to check on a phone: the demo offline, the Keystore plugin, the scanner, a
+`vuurtoren://connect` link, and a review on the phone showing on the desktop within 20 seconds.
 
 1. **It runs.** `tauri android init`; the app opens on a phone with the demo; Rust database on
    device; the platform layer with `android.ts`. _Check:_ the demo works offline on a phone.

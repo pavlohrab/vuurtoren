@@ -122,6 +122,11 @@ in `sync/` on the `vuurtoren-data` volume; it cannot read them.
 
 - **The app opened from the server:** sign in, then Settings → Sync → **This server**. The page
   makes its own sync token.
+- **A phone:** in the server's Settings → Sync → **Add a phone**, show the QR code and scan it in
+  the phone's Settings → Sync → **Connect to your server**. The code (`POST /api/sync/pair-code`,
+  signed in) works once, for 10 minutes; the phone trades it at `POST /api/sync/pair` for a sync
+  token of its own, labelled with its model. The pairing endpoint needs no sign-in (the code is
+  the credential) and wrong codes are rate limited like sign-ins.
 - **Other devices** (the desktop app, a phone's browser on another address): in the server's
   Settings → Sync make a **sync token** for each device, then on the device choose Settings →
   Sync → **Your Vuurtoren server** with the server's address and the token.

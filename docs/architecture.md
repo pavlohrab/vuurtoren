@@ -18,7 +18,7 @@ Dependencies point down; nothing in `packages/` imports from `apps/`.
 | `packages/ui`         | Design-system components (reader, word inspector, cards, controls). Renders DTOs from core; no services.                                                                                                                                                                | core                                  |
 | `packages/mcp-tools`  | The MCP tools of `apps/mcp`.                                                                                                                                                                                                                                            | core, content, db, ai                 |
 | `apps/web`            | The React PWA.                                                                                                                                                                                                                                                          | all of the above                      |
-| `apps/desktop`        | Tauri v2 desktop app: local SQLite file, bundled language server, Anki bridge, sync folder and sync requests, key store, updater.                                                                                                                                       | (loads apps/web)                      |
+| `apps/desktop`        | Tauri v2 app for computers and Android: local SQLite file, sync requests, key store; on a computer also the bundled language server, Anki bridge, sync folders, updater ([android.md](android.md)).                                                                     | (loads apps/web)                      |
 | `apps/mcp`            | stdio MCP server on the desktop app's data file.                                                                                                                                                                                                                        | mcp-tools, core, db, anki, nlp-client |
 | `server/api`          | A Vuurtoren server: sign-in, sync tokens, the sync place (`/api/sync`) and the sign-in check of the language server (`/nlp/`). Holds no learner data.                                                                                                                   | —                                     |
 | `server/nlp`          | Python language server: analysis (spaCy), dictionary, forms, sentences, grammar detectors, OCR (RapidOCR), translation.                                                                                                                                                 | —                                     |
@@ -55,8 +55,9 @@ src/
   services/           everything the screens call (AppServices), see below
   storage/            startup mode, tab lock, local.ts (localStorage helpers)
   auth/               sign-in client and sync tokens of a Vuurtoren server
-  desktop/            the desktop app's bridge, setup, data file and lock screens
-  sync/               sync places (server, WebDAV, folder) and the key store
+  desktop/            the app's bridge, setup, data file and lock screens
+  platform/           what each device can do: browser, desktop, android (currentDevice())
+  sync/               sync places (server, WebDAV, folder), the key store, pairing links
   pwa/                service worker registration, update prompt, install button
   practice/           practice engine glue (core generators, speech)
   exam/               exam timer and helpers
@@ -91,7 +92,7 @@ composition root. Each domain module gets only what it needs:
 | `liveAI.ts`         | AI config and keys, stories, conversations, AI sentences, exam items.                                             |
 | `liveExam.ts`       | Exam attempts.                                                                                                    |
 | `liveNative.ts`     | Native mode: review queue, answers and undo, deck options, package import, the move from Anki, FSRS tuning.       |
-| `liveSync.ts`       | Sync: the place, its credentials and the key on this device; one sync at a time; syncs by itself (10.6).          |
+| `liveSync.ts`       | Sync: the place, its credentials and the key on this device; pairing; one sync at a time; syncs by itself (10.6). |
 | `liveCourses.ts`    | Composition of `courses/`: `context` (shared lookups), `import`, `packs`, `views`, `anki`, `practice`, `grammar`. |
 
 `mock*.ts` implement the same `AppServices` for `?demo` and for screen tests.

@@ -14,11 +14,11 @@ recovery key opens your data.
 
 Choose one place. All your devices use the same place.
 
-| Place                     | Good for                                       |
-| ------------------------- | ---------------------------------------------- |
-| Your own Vuurtoren server | You [self-host](self-host.md) Vuurtoren        |
-| A folder you already sync | Syncthing, Dropbox, iCloud Drive (desktop app) |
-| WebDAV                    | Nextcloud, ownCloud, a NAS (desktop app)       |
+| Place                     | Good for                                        |
+| ------------------------- | ----------------------------------------------- |
+| Your own Vuurtoren server | You [self-host](self-host.md) Vuurtoren; phones |
+| A folder you already sync | Syncthing, Dropbox, iCloud Drive (desktop app)  |
+| WebDAV                    | Nextcloud, ownCloud, a NAS (desktop app)        |
 
 **Vuurtoren Cloud** is coming: sync without setting anything up.
 
@@ -51,12 +51,35 @@ While Vuurtoren is open on two devices, a change on one shows on the other withi
 
 During a practice session it waits until the session ends, so nothing changes under your hands.
 
+## Add a phone
+
+1. On your computer, open your Vuurtoren server in a browser and sign in.
+2. Go to **Settings → Sync → Add a phone** and click **Show a QR code**.
+3. On the phone, open Vuurtoren. On the first start, tap **Connect to your server** (later:
+   **Settings → Sync → Connect to your server**).
+4. Tap **Scan the QR code** and point the camera at the code. Vuurtoren asks once whether it may
+   send your sync files to the server: tap **Allow**.
+5. Type your **passphrase** and tap **Join and sync**.
+
+The phone gets its own sync token and keeps it in its key store. It appears in the server's list
+of sync tokens as "Phone (your phone's model)", where you can revoke it. The same server is also
+the phone's language server, for adding new texts.
+
+The QR code holds the server's address and a **pairing code**. The code works once, for 10
+minutes; a new one appears when it expires. Your passphrase is never in the code, so a photo of
+it cannot open your data.
+
+No camera? Copy the link under the QR code (`vuurtoren://connect?…`) and paste it under
+**Connect to your server**, or type the server's address and the pairing code. This works on a
+computer too.
+
 ## Details for each place
 
 **Your own Vuurtoren server**
 
 - In a browser on that server: choose **This server**. Nothing else to fill in.
-- On any other device: open the server in a browser, go to **Settings → Sync** and click
+- On a phone (or any other device): see **Add a phone** above.
+- Or make a token yourself: open the server in a browser, go to **Settings → Sync** and click
   **Make a sync token**. Make one token for each device. On the device, give the server address
   and that token.
 

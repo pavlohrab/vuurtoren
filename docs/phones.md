@@ -11,7 +11,7 @@ data and syncs like every other device.
 
 ```
 apps/web        the UI: one code base, laid out for phone, tablet and computer
-apps/app        Tauri v2: Windows, macOS, Linux, Android, iOS
+apps/desktop    Tauri v2: Windows, macOS, Linux, Android, iOS
   src-tauri/      shared Rust: database, sync files, key store, updater (desktop only)
   gen/android/    Android project (Kotlin plugins: OCR, key store, share target)
   gen/apple/      Xcode project (Swift plugins: OCR, key store, share extension)
@@ -19,7 +19,8 @@ packages/       core, db, ui, anki, ai … (unchanged)
 server/         sync and the language server, used by phones
 ```
 
-`apps/desktop` becomes `apps/app` when the first mobile target lands.
+The Tauri project is still in `apps/desktop` (its CI, release script and sidecar build use the
+path); `apps/app` is its name once they move together.
 
 ## What runs where
 
