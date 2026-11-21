@@ -22,7 +22,7 @@ function watchErrors(page: Page): string[] {
 async function importAndRead(page: Page): Promise<void> {
   await page.goto("/import");
   await page.getByLabel("Text", { exact: true }).fill(SAMPLE_TEXT);
-  await page.getByRole("button", { name: "Add to Library" }).click();
+  await page.getByRole("button", { name: "Add to my texts" }).click();
   await expect(page).toHaveURL(/\/read\//);
   await expect(page.locator(".k-reader .k-tok").first()).toBeVisible();
 }
@@ -128,7 +128,7 @@ test("native mode: start with the most common words, offline data in the app", a
   await page.getByRole("button", { name: "Save and continue" }).click();
   await page.getByRole("radio", { name: /^Level 2/ }).check();
   await page.getByRole("button", { name: "Continue" }).click();
-  await page.getByRole("button", { name: "Go to the Library" }).click();
+  await page.getByRole("button", { name: "Go to Read" }).click();
   await page.goto("/review");
   // New words start at level 2: the first new card is the most common word after 500.
   await expect(page.locator(".review-word")).toBeVisible();
@@ -145,7 +145,7 @@ test("native mode: add a word while reading, then review it", async ({ page }) =
   await page.getByRole("button", { name: "Continue" }).click();
   await page.getByRole("button", { name: "Save and continue" }).click();
   await page.getByRole("button", { name: "Skip this" }).click();
-  await page.getByRole("button", { name: "Go to the Library" }).click();
+  await page.getByRole("button", { name: "Go to Read" }).click();
   await importAndRead(page);
   await inspectWord(page);
   await expect(page.getByRole("group", { name: "Add to my words" })).toBeVisible();

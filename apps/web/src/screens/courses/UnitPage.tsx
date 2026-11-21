@@ -60,7 +60,7 @@ function ReadTab({ unit }: { unit: UnitView }) {
               </Link>
             </>
           ) : (
-            <span className="cs-gloss">not in your Library</span>
+            <span className="cs-gloss">not in your texts</span>
           )}
         </li>
       ))}

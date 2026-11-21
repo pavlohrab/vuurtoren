@@ -18,8 +18,8 @@
 </p>
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/images/home-dark.webp">
-  <img alt="Vuurtoren's Home: continue reading, today's steps and words to learn now" src="docs/images/home-light.webp">
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/read-dark.webp">
+  <img alt="Vuurtoren's Read page: today's text and reviews, stories at your level and your own texts" src="docs/images/read-light.webp">
 </picture>
 
 ## Why Vuurtoren

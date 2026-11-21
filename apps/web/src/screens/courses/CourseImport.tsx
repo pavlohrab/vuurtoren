@@ -533,7 +533,7 @@ export function CourseImportScreen({ courseId: existing }: { courseId?: string }
       {step === "analyze" ? (
         <>
           <p className="page-lede">
-            Recognising exercises, working out answers and adding the reading texts to your Library.
+            Recognising exercises, working out answers and adding the reading texts to Your texts.
           </p>
           <ProgressBar p={progress} />
         </>

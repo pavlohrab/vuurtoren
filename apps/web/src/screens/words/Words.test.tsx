@@ -116,7 +116,7 @@ describe("Words", () => {
     render(<App services={native} history={history} />);
     expect(await screen.findByRole("link", { name: /Add the starter levels/ })).toHaveAttribute(
       "href",
-      "/settings?section=language",
+      "/settings?section=words",
     );
   });
 

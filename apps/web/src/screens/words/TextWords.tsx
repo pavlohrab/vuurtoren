@@ -201,8 +201,8 @@ export function TextWords({ textId }: { textId: string }) {
               <Link to="/read/$textId" params={{ textId }} className="k-btn k-btn--primary">
                 <ArrowLeft size={16} aria-hidden /> Back to the text
               </Link>
-              <Link to="/library" className="k-btn k-btn--ghost">
-                Library
+              <Link to="/" className="k-btn k-btn--ghost">
+                Read
               </Link>
             </>
           }

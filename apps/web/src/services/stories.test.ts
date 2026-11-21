@@ -10,6 +10,7 @@ import {
   storyCovers,
   storyEnglish,
   storyRows,
+  storyToStart,
   storySlugOf,
 } from "./stories.js";
 
@@ -105,10 +106,15 @@ describe("stories", () => {
     expect(by.mid).toMatchObject({ coverage: 1, textId: "t1" });
     expect(by.hard).toMatchObject({ coverage: 0, stretch: true });
     expect(storyRows(covers).map((r) => [r.name, r.covers.map((c) => c.slug)])).toEqual([
-      ["A1 · Start here", ["easy"]],
-      ["A2", ["mid"]],
+      ["A2 · Your level", ["mid"]],
+      ["A1", ["easy"]],
       ["B1", ["hard"]],
     ]);
+    // The story to start with: the learner's level, not opened yet.
+    expect(storyToStart(covers)).toBeNull();
+    const beginner = storyCovers([hard, easy, mid], known(), []);
+    expect(storyRows(beginner)[0]?.name).toBe("A1 · Start here");
+    expect(storyToStart(beginner)?.slug).toBe("easy");
   });
 
   it("bundles every level, with one English line per Dutch sentence", async () => {

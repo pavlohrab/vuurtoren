@@ -92,7 +92,7 @@ describe("Talk entry points and the Library", () => {
     expect(
       await screen.findByRole("heading", { level: 1, name: "Een dag in utrecht" }),
     ).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: /Save to Library/ }));
+    await user.click(screen.getByRole("button", { name: /Save to my texts/ }));
     await waitFor(() => expect(imported).toHaveLength(1));
     expect(imported[0]).toMatchObject({
       kind: "talk",
@@ -100,7 +100,7 @@ describe("Talk entry points and the Library", () => {
       ref: expect.stringMatching(/^talk:/),
       content: expect.stringMatching(/^— /),
     });
-    expect(await screen.findByRole("button", { name: "Read in Library" })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Read it now" })).toBeInTheDocument();
   });
 });
 

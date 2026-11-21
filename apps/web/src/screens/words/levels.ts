@@ -128,3 +128,11 @@ export function levelProgress(
 export function progressText(p: LevelProgress): string {
   return `${p.known} of ${p.size} known${p.learning ? ` · ${p.learning} learning` : ""}`;
 }
+
+/**
+ * The level the learner is working on: the first one with fewer than 80% of its words known,
+ * else the last. Null without levels.
+ */
+export function currentLevel(progress: readonly LevelProgress[]): LevelProgress | null {
+  return progress.find((p) => p.known < p.size * 0.8) ?? progress.at(-1) ?? null;
+}

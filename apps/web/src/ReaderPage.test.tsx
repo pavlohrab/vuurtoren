@@ -430,8 +430,8 @@ describe("AppShell notices", () => {
   });
 
   it("shows no banner by default", async () => {
-    setup("/library");
-    await screen.findByText("Een dag in Utrecht");
+    setup("/");
+    await screen.findAllByText("Een dag in Utrecht");
     expect(screen.queryByText("Demo data")).toBeNull();
   });
 });

@@ -162,7 +162,7 @@ export function Welcome() {
       });
       await qc.invalidateQueries();
     }
-    void navigate({ to: "/library" });
+    void navigate({ to: "/" });
   };
   const finish = () => {
     writeDraft(null);
@@ -686,10 +686,10 @@ export function Welcome() {
                 className="ob-skip"
                 onClick={() => {
                   finish();
-                  void navigate({ to: "/library" });
+                  void navigate({ to: "/" });
                 }}
               >
-                Go to the Library
+                Go to Read
               </button>
             ) : (
               <button type="button" className="ob-skip" onClick={skip}>

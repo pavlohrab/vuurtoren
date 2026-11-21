@@ -11,15 +11,20 @@ function renderApp(path: string) {
 }
 
 describe("App with mock services", () => {
-  it("opens Home at /, and the library lists texts", async () => {
-    renderApp("/");
-    expect(await screen.findByRole("heading", { level: 1, name: /^Goede/ })).toBeInTheDocument();
+  it("opens Read at /, with Today and your texts; /library and /home lead there", async () => {
+    renderApp("/library");
+    expect(await screen.findByRole("heading", { level: 1, name: "Read" })).toBeInTheDocument();
+    expect(await screen.findByRole("region", { name: /^Goede/ })).toBeInTheDocument();
     await userEvent.click(
       within(screen.getByRole("navigation", { name: "Main" })).getByRole("link", {
-        name: "Library",
+        name: /^Words/,
       }),
     );
-    expect(await screen.findByRole("heading", { level: 1, name: "Library" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { level: 1, name: "Your words" })).toBeVisible();
+    await userEvent.click(
+      within(screen.getByRole("navigation", { name: "Main" })).getByRole("link", { name: "Read" }),
+    );
+    expect(await screen.findByRole("heading", { level: 1, name: "Read" })).toBeInTheDocument();
     expect(
       (await screen.findAllByRole("link", { name: "Een dag in Utrecht" }))[0],
     ).toBeInTheDocument();

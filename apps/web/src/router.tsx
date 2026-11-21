@@ -65,9 +65,10 @@ function searchScreen<P extends string, K extends string>(
   });
 }
 
-const homeRoute = screen("/", () => import("./screens/Home.js"), "Home");
+/** Read: the landing page (Today, Stories for you, Your texts). /home and /library lead here. */
+const readHomeRoute = screen("/", () => import("./screens/Read.js"), "Read");
 const homeAlias = alias("/home", "/");
-const libraryRoute = screen("/library", () => import("./screens/Library.js"), "Library");
+const libraryAlias = alias("/library", "/");
 const readRoute = screen("/read/$textId", () => import("./screens/ReaderPage.js"), "ReaderRoute");
 const wordsOfTextRoute = screen(
   "/read/$textId/words",
@@ -115,7 +116,7 @@ const topicPracticeRoute = screen(
 );
 const reviewRoute = screen("/review", () => import("./screens/review/Review.js"), "Review");
 const progressRoute = screen("/progress", () => import("./screens/Progress.js"), "Progress");
-/** /settings?section=account|language|reading|ai|data|advanced */
+/** /settings?section=words|reading|devices|ai|data (older names: language, sync, account, advanced) */
 const settingsRoute = searchScreen(
   "/settings",
   () => import("./screens/settings/Settings.js"),
@@ -155,9 +156,9 @@ const unitRoute = screen(
 );
 
 const routeTree = rootRoute.addChildren([
-  homeRoute,
+  readHomeRoute,
   homeAlias,
-  libraryRoute,
+  libraryAlias,
   readRoute,
   wordsOfTextRoute,
   importRoute,

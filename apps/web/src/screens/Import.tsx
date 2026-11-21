@@ -186,7 +186,7 @@ export function ImportScreen() {
       );
       await qc.invalidateQueries({ queryKey: ["texts"] });
       if (mounted.current) await navigate({ to: "/read/$textId", params: { textId: id } });
-      else toast("Text imported", "It is in your Library.");
+      else toast("Text added", "It is in Your texts on Read.");
     } catch (e) {
       if (e instanceof ImportCancelledError) {
         if (mounted.current) {
@@ -317,8 +317,8 @@ export function ImportScreen() {
     <div className="page page--list import-page">
       <PageHeader
         back={
-          <Link to="/library">
-            <ArrowLeft size={14} aria-hidden /> Library
+          <Link to="/">
+            <ArrowLeft size={14} aria-hidden /> Read
           </Link>
         }
         title="Add text"
@@ -374,7 +374,7 @@ export function ImportScreen() {
           <div className="row">
             <Button type="submit" variant="primary" disabled={!ready || busy}>
               {busy ? <Spinner label="Adding" /> : null}
-              {busy ? "Adding…" : "Add to Library"}
+              {busy ? "Adding…" : "Add to my texts"}
             </Button>
           </div>
         </form>

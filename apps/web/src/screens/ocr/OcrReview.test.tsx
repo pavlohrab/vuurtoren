@@ -15,7 +15,7 @@ async function toReview() {
     screen.getByLabelText("Choose a photo or drop it here"),
     new File(["x"], "page.jpg", { type: "image/jpeg" }),
   );
-  await user.click(screen.getByRole("button", { name: "Add to Library" }));
+  await user.click(screen.getByRole("button", { name: "Add to my texts" }));
   await screen.findByRole("heading", { name: "Check the text" });
   return { services, history, user };
 }

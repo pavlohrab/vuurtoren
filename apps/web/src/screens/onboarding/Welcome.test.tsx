@@ -208,17 +208,17 @@ describe("onboarding", () => {
     const { user, history } = setup();
     expect(await screen.findByRole("heading", { name: "Connect Anki" })).toBeVisible();
     await user.click(screen.getByRole("button", { name: "Skip setup for now" }));
-    await waitFor(() => expect(history.location.pathname).toBe("/library"));
+    await waitFor(() => expect(history.location.pathname).toBe("/"));
     expect(localStorage.getItem("vuurtoren.onboarding.skipped")).toBe("1");
   });
 
   it("is never shown in demo mode or once a profile exists", async () => {
     const base = createMockServices({ latencyMs: 0 });
-    const history = createMemoryHistory({ initialEntries: ["/library"] });
+    const history = createMemoryHistory({ initialEntries: ["/words"] });
     render(
       <App services={{ ...base, languageProfile: async () => null }} history={history} demo />,
     );
     expect(await screen.findByRole("navigation", { name: "Main" })).toBeVisible();
-    expect(history.location.pathname).toBe("/library");
+    expect(history.location.pathname).toBe("/words");
   });
 });

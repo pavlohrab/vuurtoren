@@ -1,5 +1,5 @@
 import { createMemoryHistory } from "@tanstack/react-router";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { App } from "../App.js";
@@ -43,42 +43,58 @@ describe("empty states", () => {
     expect(screen.getByRole("link", { name: "Add text" })).toBeInTheDocument();
   });
 
-  it("the main nav: Home first, no Read entry, Talk instead of Converse", async () => {
-    setup("/library", { listTexts: async () => [] });
-    await screen.findByRole("heading", { name: "Your Library is empty" });
+  it("the main nav: the two rooms, then the quieter places; Talk only with AI", async () => {
+    setup("/", { listTexts: async () => [] });
+    await screen.findByRole("heading", { name: "No texts of your own yet" });
     const nav = screen.getByRole("navigation", { name: "Main" });
-    const names = within(nav)
-      .getAllByRole("link")
-      .map((l) => l.getAttribute("title"))
-      .filter(Boolean);
-    expect(names).toEqual([
-      "Home",
-      "Library",
-      "Practice",
-      "Words",
-      "Courses",
-      "Grammar",
-      "Talk",
-      "Exam",
-      "Progress",
-      "Settings",
-    ]);
-    expect(within(nav).getByRole("link", { name: "Library" })).toHaveAttribute(
-      "data-status",
-      "active",
+    const names = () =>
+      within(nav)
+        .getAllByRole("link")
+        .map((l) => l.getAttribute("title"))
+        .filter(Boolean);
+    // Practice is the phone tab bar's third tab here (connected to Anki); the sidebar hides it.
+    await waitFor(() =>
+      expect(names()).toEqual([
+        "Read",
+        "Words",
+        "Practice",
+        "Grammar",
+        "Exam",
+        "Courses",
+        "Talk",
+        "Settings",
+      ]),
     );
-    expect(within(nav).queryByRole("link", { name: "Read" })).toBeNull();
+    expect(within(nav).getByRole("link", { name: "Read" })).toHaveAttribute("data-active");
+    expect(within(nav).queryByRole("link", { name: "Library" })).toBeNull();
+    expect(within(nav).queryByRole("link", { name: "Progress" })).toBeNull();
+  });
+
+  it("Words is the room of Review, Practice and Progress; Talk hides without AI", async () => {
+    setup("/progress", {
+      aiStatus: async () => ({ configured: false, provider: null, model: null }) as never,
+    });
+    const nav = await screen.findByRole("navigation", { name: "Main" });
+    await waitFor(() =>
+      expect(within(nav).getByRole("link", { name: /^Words/ })).toHaveAttribute("data-active"),
+    );
+    expect(within(nav).queryByRole("link", { name: "Talk" })).toBeNull();
+    const tabs = await screen.findByRole("navigation", { name: "Words" });
+    expect(within(tabs).getByRole("link", { name: "Progress" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
   });
 
   it("the demo (synced) shows no Connect Anki banner", async () => {
-    setup("/library", {}, true);
+    setup("/", {}, true);
     await screen.findAllByRole("link", { name: "Het weer" });
     expect(screen.queryByRole("button", { name: "Connect Anki" })).toBeNull();
   });
 
   it("one h1 per page: the top-bar title is not a heading", async () => {
-    setup("/library");
-    await screen.findByRole("heading", { level: 1, name: "Library" });
+    setup("/");
+    await screen.findByRole("heading", { level: 1, name: "Read" });
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
   });
 });
@@ -92,7 +108,7 @@ describe("plain errors", () => {
       },
     });
     await user.type(await screen.findByLabelText("Text"), "Ik bel mijn zus op.");
-    await user.click(screen.getByRole("button", { name: "Add to Library" }));
+    await user.click(screen.getByRole("button", { name: "Add to my texts" }));
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent("The import did not work.");
     expect(alert).toHaveTextContent(/language server is not reachable/);

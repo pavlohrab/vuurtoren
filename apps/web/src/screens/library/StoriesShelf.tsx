@@ -13,20 +13,19 @@ const KIND_LABEL: Record<StoryCover["kind"], string> = {
   original: "New story",
 };
 
-/**
- * Stories: the graded stories that come with Vuurtoren, in a row per level (A1 first). Each
- * cover shows how much of the story the learner knows; a story below the comfortable coverage
- * stays visible, marked "A stretch". Opening one adds it to the Library (once) and reads it.
- */
-export function StoriesShelf() {
+/** The bundled stories with the learner's coverage (shared by the shelf and Today). */
+export function useStoryShelf() {
+  const services = useServices();
+  return useQuery({ queryKey: ["stories"], queryFn: () => services.storyShelf() });
+}
+
+/** Open a bundled story: it joins Your texts (once) and the reader opens it. */
+export function useOpenStory() {
   const services = useServices();
   const navigate = useNavigate();
   const qc = useQueryClient();
   const toast = useToast();
-  const shelf = useQuery({ queryKey: ["stories"], queryFn: () => services.storyShelf() });
-  const rows = useMemo(() => storyRows(shelf.data ?? []), [shelf.data]);
-
-  const open = useMutation({
+  return useMutation({
     mutationFn: (slug: string) => services.openStory(slug),
     onSuccess: async (textId) => {
       await Promise.all([
@@ -37,16 +36,27 @@ export function StoriesShelf() {
     },
     onError: (e) => toast("Could not open the story", errorText(e)),
   });
+}
+
+/**
+ * Stories for you: the graded stories that come with Vuurtoren, in a row per level, the
+ * learner's level first. Each cover shows how much of the story the learner knows; a story
+ * below the comfortable coverage stays visible, marked "A stretch".
+ */
+export function StoriesShelf() {
+  const shelf = useStoryShelf();
+  const rows = useMemo(() => storyRows(shelf.data ?? []), [shelf.data]);
+  const open = useOpenStory();
 
   if (shelf.isError) return null;
   return (
     <section className="lib-stories" aria-labelledby="lib-stories-title">
       <header className="lib-stories-head">
         <h2 className="lib-stories-title" id="lib-stories-title">
-          Stories
+          Stories for you
         </h2>
         <p className="lib-stories-lede">
-          Graded stories that come with Vuurtoren: Dutch legends, retold classics and new stories.
+          Short graded stories that come with Vuurtoren, your level first.
         </p>
       </header>
       {shelf.isPending ? (
@@ -85,7 +95,7 @@ export function StoriesShelf() {
                     <span className="lib-story-meta">
                       <span className="lib-known">You know {Math.round(c.coverage * 100)}%</span>
                       {c.stretch ? <span className="lib-story-stretch">A stretch</span> : null}
-                      {c.textId ? <span className="lib-story-added">In your Library</span> : null}
+                      {c.textId ? <span className="lib-story-added">In your texts</span> : null}
                     </span>
                   </button>
                 </li>

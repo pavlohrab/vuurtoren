@@ -120,9 +120,7 @@ export function Grammar() {
         </p>
       ) : null}
       {o && o.texts === 0 && o.missing === 0 ? (
-        <p className="k-hint grammar-note">
-          Open a text from your Library to see which topics it uses.
-        </p>
+        <p className="k-hint grammar-note">Open one of your texts to see which topics it uses.</p>
       ) : null}
 
       <div className="grammar-tools">
@@ -204,10 +202,7 @@ function TopicRow({
         </span>
         <span className="grammar-row-meta">
           {count && count.hits > 0 ? (
-            <span
-              className="grammar-row-seen"
-              title={`In ${plural(count.texts, "text")} of your Library`}
-            >
+            <span className="grammar-row-seen" title={`In ${plural(count.texts, "text")} of yours`}>
               seen {count.hits}× in your texts
             </span>
           ) : null}

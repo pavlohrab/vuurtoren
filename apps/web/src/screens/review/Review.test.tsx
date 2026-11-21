@@ -117,12 +117,18 @@ describe("Review", () => {
     expect(await screen.findByText(/We walk to school/)).toBeVisible();
   });
 
-  it("is in the sidebar with the due count, and on Home", async () => {
+  it("counts its cards on Words in the sidebar, in the Words tabs and in Today on Read", async () => {
     setup("/");
     const nav = await screen.findByRole("navigation", { name: "Main" });
-    const link = await within(nav).findByRole("link", { name: /Review/ });
-    expect(within(link).getByLabelText("2 cards due")).toBeVisible();
-    expect(await screen.findByRole("link", { name: /Review.*2 due · 2 new/ })).toBeVisible();
+    const words = await within(nav).findByRole("link", { name: /^Words/ });
+    expect(await within(words).findByLabelText("2 cards due")).toBeVisible();
+    expect(await screen.findByRole("link", { name: /^4 reviews · ~1 min/ })).toHaveAttribute(
+      "href",
+      "/review",
+    );
+    await userEvent.click(words);
+    const tabs = await screen.findByRole("navigation", { name: "Words" });
+    expect(await within(tabs).findByRole("link", { name: /^Review/ })).toHaveTextContent("4");
   });
 
   it("strips scripts, handlers and foreign images from card HTML", () => {

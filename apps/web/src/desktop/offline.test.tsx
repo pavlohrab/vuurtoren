@@ -245,7 +245,7 @@ describe("offline app screens", () => {
         },
       },
     });
-    expect(await screen.findByRole("heading", { level: 1, name: "Library" })).toBeVisible();
+    expect(await screen.findByRole("heading", { level: 1, name: "Read" })).toBeVisible();
     expect(await screen.findByText(/Could not download the translation model/)).toBeVisible();
     await userEvent.click(screen.getByRole("button", { name: "Try again" }));
     expect(nlp.retryPacks).toHaveBeenCalled();

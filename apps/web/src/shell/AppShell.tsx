@@ -2,15 +2,14 @@ import { plural } from "../format.js";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
+  BookOpen,
   BookText,
   ClipboardCheck,
   Ellipsis,
-  House,
   Layers,
   Command as CommandIcon,
   FileText,
   Languages,
-  Library,
   MessagesSquare,
   Monitor,
   Moon,
@@ -48,8 +47,7 @@ import { useAutoSync } from "./useAutoSync.js";
 import { useDebounced } from "../useDebounced.js";
 
 const PAGE_TITLES: Record<string, string> = {
-  "/": "Home",
-  "/library": "Library",
+  "/": "Read",
   "/import": "Add text",
   "/words": "Words",
   "/practice": "Practice",
@@ -74,6 +72,13 @@ const THEME_ICON: Record<ThemeChoice, ReactNode> = {
 };
 
 const isMac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
+
+/** The two rooms: which one a path belongs to (the nav marks it), or null for the others. */
+function roomOf(pathname: string): "read" | "words" | null {
+  if (pathname === "/" || pathname === "/import" || pathname.startsWith("/read/")) return "read";
+  if (/^\/(words|review|practice|progress)(\/|$)/.test(pathname)) return "words";
+  return null;
+}
 
 /** The three-column app frame: sidebar, top bar with content, and the inspector panel. */
 export function AppShell() {
@@ -135,6 +140,11 @@ export function AppShell() {
   });
   const native = review.data?.native === true;
   useAutoTune(services, qc, native && !demo);
+  // Talk needs an AI provider: without one it stays out of the navigation.
+  const ai = useQuery({ queryKey: ["ai-status"], queryFn: () => services.aiStatus() });
+  const talk = ai.data?.configured === true;
+  const room = roomOf(pathname);
+  const wordsDue = native ? review.data?.due : practice.data?.due;
 
   // ⌘K / Ctrl+K opens the palette from anywhere.
   useEffect(() => {
@@ -178,18 +188,19 @@ export function AppShell() {
 
   const groups: CommandGroup[] = useMemo(() => {
     const pages: [string, string, ReactNode][] = [
-      ["/", "Home", <House key="h" size={16} />],
-      ["/library", "Library", <Library key="l" size={16} />],
+      ["/", "Read", <BookOpen key="h" size={16} />],
+      ["/words", "Words", <Languages key="w" size={16} />],
       ...(native
         ? [["/review", "Review", <Layers key="r" size={16} />] as [string, string, ReactNode]]
         : []),
       ["/practice", "Practice", <Dumbbell key="p" size={16} />],
-      ["/courses", "Courses", <GraduationCap key="co" size={16} />],
-      ["/talk", "Talk", <MessagesSquare key="c" size={16} />],
-      ["/words", "Words", <Languages key="w" size={16} />],
+      ["/progress", "Progress", <TrendingUp key="pr" size={16} />],
       ["/grammar", "Grammar", <BookText key="g" size={16} />],
       ["/exam", "Exam", <ClipboardCheck key="e" size={16} />],
-      ["/progress", "Progress", <TrendingUp key="pr" size={16} />],
+      ["/courses", "Courses", <GraduationCap key="co" size={16} />],
+      ...(talk
+        ? [["/talk", "Talk", <MessagesSquare key="c" size={16} />] as [string, string, ReactNode]]
+        : []),
       ["/settings", "Settings", <SettingsIcon key="s" size={16} />],
     ];
     const words = wordQuery.length >= 2 ? (paletteWords.data ?? []) : [];
@@ -243,7 +254,7 @@ export function AppShell() {
         })),
       },
     ].filter((g) => g.entries.length > 0);
-  }, [texts.data, goto, navigate, native, wordQuery, paletteWords.data]);
+  }, [texts.data, goto, navigate, native, talk, wordQuery, paletteWords.data]);
 
   return (
     <NativeModeContext.Provider value={native}>
@@ -254,34 +265,44 @@ export function AppShell() {
           data-inspector={showInspector ? "open" : "closed"}
         >
           <nav className="sidebar" aria-label="Main">
-            <Link to="/" className="sidebar-brand" aria-label="Vuurtoren, home">
+            <Link to="/" className="sidebar-brand" aria-label="Vuurtoren, Read">
               <Logo size={26} className="brand-logo" title="Vuurtoren" />
             </Link>
-            <NavLink to="/" label="Home" icon={<House size={18} />} exact />
-            <NavLink to="/library" label="Library" icon={<Library size={18} />} />
+            {/* The two rooms, then the quieter places; on a phone: Read · Words · Review · More. */}
+            <NavLink to="/" label="Read" icon={<BookOpen size={18} />} active={room === "read"} />
+            <NavLink
+              to="/words"
+              label="Words"
+              icon={<Languages size={18} />}
+              active={room === "words"}
+              badge={wordsDue}
+              badgeNoun={native ? "card" : "exercise"}
+              badgeWhere={native ? "Review" : "Practice"}
+            />
             {native ? (
               <NavLink
                 to="/review"
                 label="Review"
                 icon={<Layers size={18} />}
-                badge={review.data?.due}
-                badgeNoun="card"
-                badgeWhere="Review"
+                active={pathname === "/review"}
+                phoneOnly
               />
-            ) : null}
-            <NavLink
-              to="/practice"
-              label="Practice"
-              icon={<Dumbbell size={18} />}
-              badge={practice.data?.due}
-              secondary={native}
-            />
-            <NavLink to="/words" label="Words" icon={<Languages size={18} />} />
-            <NavLink to="/courses" label="Courses" icon={<GraduationCap size={18} />} secondary />
+            ) : (
+              <NavLink
+                to="/practice"
+                label="Practice"
+                icon={<Dumbbell size={18} />}
+                active={pathname === "/practice"}
+                phoneOnly
+              />
+            )}
+            <div className="nav-divider" role="separator" />
             <NavLink to="/grammar" label="Grammar" icon={<BookText size={18} />} secondary />
-            <NavLink to="/talk" label="Talk" icon={<MessagesSquare size={18} />} secondary />
             <NavLink to="/exam" label="Exam" icon={<ClipboardCheck size={18} />} secondary />
-            <NavLink to="/progress" label="Progress" icon={<TrendingUp size={18} />} secondary />
+            <NavLink to="/courses" label="Courses" icon={<GraduationCap size={18} />} secondary />
+            {talk ? (
+              <NavLink to="/talk" label="Talk" icon={<MessagesSquare size={18} />} secondary />
+            ) : null}
             <div className="nav-spacer" />
             <NavLink to="/settings" label="Settings" icon={<SettingsIcon size={18} />} secondary />
             <button
@@ -299,13 +320,12 @@ export function AppShell() {
             <>
               <div className="nav-more-scrim" onClick={() => setMoreOpen(false)} aria-hidden />
               <div className="nav-more-sheet" id="nav-more-sheet" role="menu" aria-label="More">
-                {native ? (
-                  <MoreLink to="/practice" label="Practice" icon={<Dumbbell size={18} />} />
-                ) : null}
-                <MoreLink to="/courses" label="Courses" icon={<GraduationCap size={18} />} />
                 <MoreLink to="/grammar" label="Grammar" icon={<BookText size={18} />} />
-                <MoreLink to="/talk" label="Talk" icon={<MessagesSquare size={18} />} />
                 <MoreLink to="/exam" label="Exam" icon={<ClipboardCheck size={18} />} />
+                <MoreLink to="/courses" label="Courses" icon={<GraduationCap size={18} />} />
+                {talk ? (
+                  <MoreLink to="/talk" label="Talk" icon={<MessagesSquare size={18} />} />
+                ) : null}
                 <MoreLink to="/progress" label="Progress" icon={<TrendingUp size={18} />} />
                 <MoreLink to="/settings" label="Settings" icon={<SettingsIcon size={18} />} />
               </div>
@@ -483,7 +503,6 @@ function usePageTitleInView(contentEl: HTMLElement | null): boolean {
 
 type FixedRoute =
   | "/"
-  | "/library"
   | "/practice"
   | "/review"
   | "/courses"
@@ -501,8 +520,9 @@ function NavLink({
   badge,
   badgeNoun = "exercise",
   badgeWhere = "Practice",
-  exact,
+  active,
   secondary,
+  phoneOnly,
 }: {
   to: FixedRoute;
   label: string;
@@ -511,16 +531,28 @@ function NavLink({
   /** What the badge counts ("exercise", "card") and where they are due. */
   badgeNoun?: string;
   badgeWhere?: string;
-  exact?: boolean;
+  /** Marked as the current place (a room spans several routes); else by its own route. */
+  active?: boolean;
   /** Folded into the phone tab bar's More sheet. */
   secondary?: boolean;
+  /** Only in the phone tab bar (on wider screens it is a tab of its room). */
+  phoneOnly?: boolean;
 }) {
+  const className = [
+    "nav-link",
+    secondary ? "nav-link--secondary" : "",
+    phoneOnly ? "nav-link--phone" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
   return (
     <Link
       to={to}
-      className={secondary ? "nav-link nav-link--secondary" : "nav-link"}
+      className={className}
       title={label}
-      activeOptions={{ exact: exact ?? false, includeSearch: false }}
+      activeOptions={{ exact: active !== undefined, includeSearch: false }}
+      data-active={active || undefined}
+      aria-current={active ? "page" : undefined}
     >
       {icon}
       <span className="nav-label">{label}</span>

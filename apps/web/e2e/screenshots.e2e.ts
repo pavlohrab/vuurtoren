@@ -19,19 +19,18 @@ const nav = (page: Page, label: string) =>
 
 const SHOTS: Shot[] = [
   {
-    name: "home",
+    name: "read",
     height: 900,
     open: async (page) => {
-      await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
-      await expect(page.getByRole("meter").first()).toBeVisible();
+      await expect(page.getByRole("heading", { level: 1, name: "Read" })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Stories for you" })).toBeVisible();
     },
   },
   {
     name: "reader",
     height: 740,
     open: async (page) => {
-      await nav(page, "Library");
-      await page.getByRole("link", { name: "Een dag in Utrecht" }).click();
+      await page.getByRole("link", { name: "Een dag in Utrecht" }).first().click();
       await expect(page).toHaveURL(/\/read\//);
       await page.locator(".k-reader .k-tok", { hasText: /^bel$/ }).first().click();
       await expect(page.locator(".inspector-panel")).toContainText("bel");
@@ -49,7 +48,11 @@ const SHOTS: Shot[] = [
     name: "practice",
     height: 640,
     open: async (page) => {
-      await nav(page, "Practice");
+      await nav(page, "Words");
+      await page
+        .getByRole("navigation", { name: "Words" })
+        .getByRole("link", { name: /^Practice/ })
+        .click();
       await page.getByRole("button", { name: /^Start/ }).click();
       await expect(page.getByText(/^1 of \d+$/)).toBeVisible();
     },
@@ -78,14 +81,6 @@ const SHOTS: Shot[] = [
     open: async (page) => {
       await nav(page, "Exam");
       await expect(page.getByText("The five parts")).toBeVisible();
-    },
-  },
-  {
-    name: "library",
-    height: 620,
-    open: async (page) => {
-      await nav(page, "Library");
-      await expect(page.getByRole("link", { name: "Een dag in Utrecht" })).toBeVisible();
     },
   },
   {

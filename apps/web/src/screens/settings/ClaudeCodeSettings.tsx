@@ -39,7 +39,7 @@ export function ClaudeCodeSettings() {
       <p style={{ margin: 0, color: "var(--ink-muted)" }}>
         No API key? Claude Code and Claude Desktop can use Vuurtoren with your Claude subscription.
         Claude then reads your known words, words to learn, courses and grammar pages, saves the
-        stories it writes to your Library and suggests words, which you confirm under Words.
+        stories it writes to Your texts and suggests words, which you confirm under Words.
       </p>
       {dbPath ? (
         <>

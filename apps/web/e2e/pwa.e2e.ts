@@ -51,7 +51,7 @@ test("service worker registers, caches the shell and starts offline", async ({ p
 
   await context.setOffline(true);
   await page.goto("/library");
-  await expect(page.getByRole("heading", { name: "Library" }).first()).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Read" })).toBeVisible();
   await context.setOffline(false);
   expect(errors).toEqual([]);
 });

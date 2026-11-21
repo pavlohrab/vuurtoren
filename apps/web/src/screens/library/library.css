@@ -404,14 +404,20 @@
 
 /* ---------- Stories: graded stories that ship with the app, a row per level ---------- */
 .lib-stories {
-  margin-top: var(--s-7, 48px);
+  margin-bottom: var(--s-7);
+}
+@media (max-width: 699px) {
+  .lib-stories {
+    margin-bottom: var(--s-6);
+  }
 }
 .lib-stories-head {
   margin-bottom: var(--s-4);
 }
 .lib-stories-title {
   margin: 0;
-  font-size: 20px;
+  font-family: var(--font-display);
+  font-size: 17px;
   font-weight: 600;
 }
 .lib-stories-lede {
