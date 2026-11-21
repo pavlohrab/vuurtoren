@@ -24,7 +24,10 @@ describe("Settings → Your words: cards", { timeout: 20_000 }, () => {
     expect(await screen.findByRole("heading", { name: "Your cards" })).toBeVisible();
     expect(screen.queryByRole("heading", { name: "Decks Vuurtoren reads" })).toBeNull();
     const nav = screen.getByRole("navigation", { name: "Main" });
-    expect(await within(nav).findByRole("link", { name: /Review/ })).toBeVisible();
+    // Words now opens on Review, Vuurtoren's own cards.
+    await waitFor(() =>
+      expect(within(nav).getByRole("link", { name: /^Words/ })).toHaveAttribute("href", "/review"),
+    );
   });
 
   it("adds the most common words, and sets the level new words start from", async () => {
