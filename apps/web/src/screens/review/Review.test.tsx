@@ -33,6 +33,26 @@ describe("Review", () => {
     expect(screen.getByRole("button", { name: "Play the word (R)" })).toBeVisible();
   });
 
+  it("comes again when a card becomes due while the screen is open, and on returning to the app", async () => {
+    const base = createMockServices({ latencyMs: 0, synced: true, native: true });
+    const full = await base.reviewQueue();
+    let calls = 0;
+    const reviewQueue = vi.fn(async () => {
+      calls++;
+      // First nothing yet, with a learning step due in a moment; then the card is there.
+      if (calls === 1) return { cards: [], due: 0, fresh: 0, nextDue: Date.now() + 100 };
+      return full;
+    });
+    setup("/review", { reviewQueue });
+    expect(await screen.findByRole("heading", { name: "Nothing to review" })).toBeVisible();
+    expect(await screen.findByText("de fiets", {}, { timeout: 4000 })).toBeVisible();
+    // Back in the foreground: the queue is asked again, the card on screen stays.
+    const before = reviewQueue.mock.calls.length;
+    document.dispatchEvent(new Event("visibilitychange"));
+    await waitFor(() => expect(reviewQueue.mock.calls.length).toBeGreaterThan(before));
+    expect(screen.getByText("de fiets")).toBeVisible();
+  });
+
   it("plays nothing by itself with autoplay off", async () => {
     const audioClip = vi.fn<(id: string) => Promise<Blob | null>>(async () => null);
     const base = createMockServices({ latencyMs: 0, synced: true, native: true });

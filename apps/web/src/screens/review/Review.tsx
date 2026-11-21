@@ -100,6 +100,34 @@ export function Review() {
     void qc.invalidateQueries({ queryKey: ["review", "overview"] });
   }, [queue, qc]);
 
+  // The queue comes again when its next card becomes due (a learning step while the screen is
+  // open) and when the app comes back to the foreground. The card on screen stays first.
+  const latest = useRef({ refresh, card });
+  useEffect(() => {
+    latest.current = { refresh, card };
+  });
+  const refreshKeeping = useCallback(() => {
+    const { refresh: again, card: current } = latest.current;
+    if (current) setFirst(current.cardId);
+    void again();
+  }, []);
+  const nextDue = queue.data?.nextDue ?? null;
+  useEffect(() => {
+    if (nextDue === null) return;
+    const wait = Math.max(0, nextDue - Date.now()) + 1000;
+    // Beyond what a timer can hold (about 24 days): coming back to the app refreshes instead.
+    if (wait > 2_000_000_000) return;
+    const t = window.setTimeout(refreshKeeping, wait);
+    return () => window.clearTimeout(t);
+  }, [nextDue, refreshKeeping]);
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === "visible") refreshKeeping();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [refreshKeeping]);
+
   const answer = useCallback(
     async (rating: CardRating) => {
       if (!card || busy) return;
