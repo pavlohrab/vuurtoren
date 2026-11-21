@@ -24,6 +24,8 @@ class MainActivity : TauriActivity() {
    * the two (`--safe-*` in packages/ui/src/styles.css).
    */
   override fun onWebViewCreate(webView: WebView) {
+    // A card says its word as it shows, without a tap: the WebView would block that sound.
+    webView.settings.mediaPlaybackRequiresUserGesture = false
     webView.addJavascriptInterface(InsetsBridge(), "VuurtorenInsets")
     ViewCompat.setOnApplyWindowInsetsListener(webView) { view, windowInsets ->
       val bars =

@@ -19,3 +19,9 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
+# ML Kit (the QR scanner of tauri-plugin-barcode-scanner) finds its parts by reflection: its
+# component registrars need their no-argument constructors, or the release build crashes as
+# soon as the camera opens ("Could not instantiate ...BarcodeRegistrar").
+-keep class com.google.mlkit.** { *; }
+-keep class * implements com.google.firebase.components.ComponentRegistrar { <init>(); }
+-keep class app.tauri.barcodescanner.** { *; }

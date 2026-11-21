@@ -93,6 +93,7 @@ export function createMockSync(
     async scanConnectLink() {
       return null;
     },
+    async cancelScan() {},
     async pendingConnectLink() {
       return null;
     },

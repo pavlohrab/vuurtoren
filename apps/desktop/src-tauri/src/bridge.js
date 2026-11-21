@@ -186,9 +186,11 @@
               return invoke("plugin:barcode-scanner|request_permissions")
                 .then(function (p) {
                   if (p && p.camera !== "granted") return null;
+                  // Windowed: the camera shows behind a see-through page, which draws its own
+                  // frame, hint and Cancel over it (the page's ScanOverlay).
                   return invoke("plugin:barcode-scanner|scan", {
                     formats: ["QR_CODE"],
-                    windowed: false,
+                    windowed: true,
                   }).then(function (r) {
                     return (r && r.content) || null;
                   });
@@ -197,6 +199,13 @@
                   if (String(e).indexOf("cancel") >= 0) return null;
                   throw e;
                 });
+            }
+          : undefined,
+      // Stop a running scan (the overlay's Cancel); the scan then gives null.
+      cancelScan:
+        OS === "android" || OS === "ios"
+          ? function () {
+              return invoke("plugin:barcode-scanner|cancel").then(function () {});
             }
           : undefined,
       // The dictionary pack on a phone (dictionary.rs): meanings without a server.

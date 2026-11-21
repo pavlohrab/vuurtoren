@@ -1,5 +1,5 @@
 import { createMemoryHistory } from "@tanstack/react-router";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { App } from "../../App.js";
@@ -224,6 +224,24 @@ describe("Settings → Sync", { timeout: 20_000 }, () => {
       "Laptop",
       expect.any(Function),
     );
+  });
+
+  it("on a phone: the scanner shows a frame over the camera, and Cancel stops it", async () => {
+    const PHONE: SyncStatus = { ...OFF, scan: true, deviceName: "Pixel 8" };
+    let finish: (read: string | null) => void = () => {};
+    const scanConnectLink = vi.fn(
+      () => new Promise<string | null>((resolve) => (finish = resolve)),
+    );
+    const cancelScan = vi.fn(async () => finish(null));
+    const { user } = setup({ syncStatus: async () => PHONE, scanConnectLink, cancelScan });
+    await user.click(await screen.findByRole("button", { name: "Scan QR code" }));
+    const frame = await screen.findByRole("dialog", { name: "Scan the QR code" });
+    expect(document.documentElement).toHaveAttribute("data-scanning");
+    expect(frame.querySelectorAll(".scan-corner")).toHaveLength(4);
+    await user.click(within(frame).getByRole("button", { name: "Cancel" }));
+    expect(cancelScan).toHaveBeenCalledOnce();
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(document.documentElement).not.toHaveAttribute("data-scanning");
   });
 
   it("on a phone: one way in, Scan QR code first, the rest under Connect manually", async () => {

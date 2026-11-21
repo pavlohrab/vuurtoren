@@ -219,6 +219,7 @@ export function createLiveServices(
     bundledLanguageServer: device.languageServer === "bundled",
     phone: device.kind === "android",
     scanQr: device.scanQr,
+    cancelScan: device.cancelScan,
     links: device.links,
     server: options.server,
     changed: dropCaches,

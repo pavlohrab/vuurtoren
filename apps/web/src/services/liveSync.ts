@@ -103,6 +103,7 @@ export interface LiveSyncDeps {
   phone?: boolean;
   /** The camera's QR scanner (phones). */
   scanQr?: (() => Promise<string | null>) | null | undefined;
+  cancelScan?: (() => Promise<void>) | null | undefined;
   /** `vuurtoren://` links that opened the app (phones). */
   links?: { take(): Promise<string[]> } | null | undefined;
   /** Where a paired server's token is kept (default: the key store). */
@@ -533,6 +534,10 @@ export function createLiveSync(deps: LiveSyncDeps) {
 
     async scanConnectLink() {
       return deps.scanQr ? deps.scanQr() : null;
+    },
+
+    async cancelScan() {
+      await deps.cancelScan?.();
     },
 
     async pendingConnectLink() {

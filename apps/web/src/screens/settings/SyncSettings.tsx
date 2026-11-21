@@ -5,6 +5,7 @@
  * shows the QR code that connects a phone (Add a phone). Elsewhere, Connect to your server
  * trades such a code (scanned, pasted as a link, or typed) for this device's own token.
  */
+import { ScanOverlay } from "./ScanOverlay.js";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { Button, Input, Skeleton, Spinner, useToast } from "@app/ui";
@@ -870,6 +871,9 @@ function ConnectServer({
           : "Paste the link under its QR code, or type the address and the pairing code."}{" "}
         This device gets its own sync token; your passphrase is never in the code.
       </p>
+      {scan.isPending ? (
+        <ScanOverlay onCancel={() => void services.cancelScan().catch(() => undefined)} />
+      ) : null}
       {status.scan ? (
         <div className="row">
           <Button type="button" variant="primary" onClick={() => scan.mutate()} disabled={busy}>

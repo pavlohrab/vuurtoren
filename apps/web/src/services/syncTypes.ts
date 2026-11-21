@@ -97,6 +97,8 @@ export interface SyncServices {
   connectServer(link: { server: string; code: string }, deviceName: string): Promise<SyncStatus>;
   /** Read a `vuurtoren://connect` link with the camera; null when cancelled or not available. */
   scanConnectLink(): Promise<string | null>;
+  /** Stop a running scan (Cancel on the scanner's frame); the scan then gives null. */
+  cancelScan(): Promise<void>;
   /**
    * The newest `vuurtoren://connect` link that opened the app, until connecting with it
    * succeeds; null when there is none.

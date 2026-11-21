@@ -12,6 +12,7 @@ export function desktopDevice(bridge: DesktopBridge): Device {
     languageServer: "bundled",
     bridge,
     scanQr: null,
+    cancelScan: null,
     links: null,
     haptic: () => undefined,
     notifications: false,

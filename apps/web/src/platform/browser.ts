@@ -8,6 +8,7 @@ export function browserDevice(): Device {
     languageServer: "server",
     bridge: null,
     scanQr: null,
+    cancelScan: null,
     links: null,
     haptic: () => undefined,
     notifications: false,

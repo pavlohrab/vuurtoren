@@ -90,6 +90,8 @@ export interface DesktopBridge {
   };
   /** A QR code read with the camera (phones): its text, or null when cancelled or not allowed. */
   scanQr?: () => Promise<string | null>;
+  /** Stop a running scan (its promise then gives null). */
+  cancelScan?: () => Promise<void>;
   /** The dictionary pack on the device (phones): meanings without a server. */
   dictionary?: DeviceDictionary;
   /**

@@ -18,6 +18,8 @@ export interface Device {
   bridge: DesktopBridge | null;
   /** Read a QR code with the camera; null where the device has no scanner. */
   scanQr: (() => Promise<string | null>) | null;
+  /** Stop a running scan; null where the device has no scanner. */
+  cancelScan: (() => Promise<void>) | null;
   /** `vuurtoren://` links that opened the app; null where links do not reach it. */
   links: DesktopBridge["links"] | null;
   /** A light tick (a review answer); does nothing where the device cannot. */
