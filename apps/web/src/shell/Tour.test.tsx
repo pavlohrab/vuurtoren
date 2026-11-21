@@ -72,4 +72,21 @@ describe("the walkthrough", () => {
       document.removeEventListener("pointerdown", seen);
     }
   });
+
+  it("opens the current story for the reader steps when started elsewhere; focus follows the step", async () => {
+    const history = createMemoryHistory({ initialEntries: ["/grammar"] });
+    render(<App services={createMockServices({ latencyMs: 0 })} history={history} />);
+    await screen.findByRole("heading", { level: 1, name: "Grammar" });
+    act(() => startTour());
+    const user = userEvent.setup();
+    const first = await screen.findByRole("group", { name: "Read" });
+    await waitFor(() => expect(first).toHaveFocus());
+    await user.click(screen.getByRole("button", { name: "Next" }));
+    await waitFor(() => expect(history.location.pathname).toMatch(/^\/read\//), {
+      timeout: 5000,
+    });
+    const tap = await screen.findByRole("group", { name: "Tap a word" }, { timeout: 5000 });
+    await waitFor(() => expect(tap).toHaveFocus());
+    expect(screen.getByText("2 of 5")).toBeVisible();
+  }, 20_000);
 });

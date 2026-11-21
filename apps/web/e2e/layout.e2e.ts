@@ -150,3 +150,34 @@ for (const size of [
     await expect(dialog).toBeHidden();
   });
 }
+
+for (const size of [
+  { width: 760, height: 320 },
+  { width: 360, height: 640 },
+]) {
+  test(`the tour keeps Next and Skip on screen from Read to the end (${size.width}×${size.height})`, async ({
+    page,
+  }) => {
+    await page.setViewportSize(size);
+    await page.addInitScript(() => localStorage.setItem("vuurtoren.tour", "pending"));
+    await page.goto("/?demo");
+    for (let step = 1; step <= 5; step++) {
+      const card = page.locator(".tour-card");
+      await expect(card).toContainText(/\d of 5/, { timeout: 10_000 });
+      await expect(page.getByRole("button", { name: "Skip the tour" })).toBeInViewport({
+        ratio: 1,
+      });
+      const next = card.getByRole("button", { name: /^(Next|Done)$/ });
+      await expect(next).toBeInViewport({ ratio: 1 });
+      const n = Number((await page.locator(".tour-count").textContent())!.split(" ")[0]);
+      if (n === 5) break;
+      // The reader steps bring the story themselves; a tap on the word also goes on.
+      await next.click();
+    }
+    await page
+      .locator(".tour-card")
+      .getByRole("button", { name: /^(Next|Done)$/ })
+      .click();
+    await expect(page.locator(".tour-card")).toHaveCount(0);
+  });
+}

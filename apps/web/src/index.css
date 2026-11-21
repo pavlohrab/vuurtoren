@@ -1577,6 +1577,15 @@
   border-radius: var(--radius-card);
   box-shadow: var(--shadow-pop);
   animation: k-fade-in var(--dur) var(--ease-out);
+  /* Bounded by the safe box (max-height from Tour.tsx): the text scrolls, the buttons stay. */
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.tour-card:focus {
+  outline: none;
+}
+.tour-card:focus-visible {
+  outline: 2px solid var(--accent);
 }
 .tour-count {
   margin: 0 0 var(--s-1);
@@ -1597,6 +1606,11 @@
   justify-content: space-between;
   gap: var(--s-3);
   margin-top: var(--s-4);
+  position: sticky;
+  bottom: calc(-1 * var(--s-4));
+  margin-bottom: calc(-1 * var(--s-4));
+  padding-block: var(--s-2) var(--s-4);
+  background: var(--surface);
 }
 .tour-skip {
   padding: 0;
