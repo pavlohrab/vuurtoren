@@ -1618,3 +1618,10 @@
     animation: none;
   }
 }
+
+/* Touch targets: the More sheet's rows. */
+@media (pointer: coarse) {
+  .nav-more-item {
+    height: 48px;
+  }
+}

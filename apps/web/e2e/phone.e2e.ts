@@ -395,5 +395,46 @@ for (const size of SIZES) {
       await drag(page, grip, 160);
       await expect(page.locator(".shell")).toHaveAttribute("data-inspector", "closed");
     });
+
+    test("controls used often have finger-sized targets (44px, menu rows 48px)", async ({
+      page,
+    }) => {
+      /** Visible matches smaller than `min` in either direction, with their sizes. */
+      const small = (selector: string, min: number, which: "both" | "height" = "both") =>
+        page.evaluate(
+          ([sel, min, which]) => {
+            const out: string[] = [];
+            for (const el of document.querySelectorAll<HTMLElement>(sel)) {
+              const r = el.getBoundingClientRect();
+              if (r.width === 0 || r.height === 0) continue;
+              if (r.height < min - 0.5 || (which === "both" && r.width < min - 0.5)) {
+                const name = el.getAttribute("aria-label") ?? el.textContent?.trim() ?? "";
+                out.push(`${name.slice(0, 30)} ${Math.round(r.width)}×${Math.round(r.height)}`);
+              }
+            }
+            return out;
+          },
+          [selector, min, which] as const,
+        );
+      await page.goto("/?demo");
+      // Library: the "…" of each cover.
+      await expect(page.locator(".lib-menu-btn").first()).toBeVisible();
+      expect(await small(".lib-menu-btn", 44)).toEqual([]);
+      await page.getByRole("link", { name: "Een dag in Utrecht" }).first().click();
+      await expect(page.locator(".k-reader .k-tok").first()).toBeVisible();
+      // The reader bar's buttons.
+      expect(await small(".topbar-page button", 44, "height")).toEqual([]);
+      expect(await small(".topbar-page .rbar-btn", 44)).toEqual([]);
+      // The reader's menu rows.
+      await page.getByRole("button", { name: "More reading options" }).click();
+      // The menu scales in: measure once it has.
+      await page.waitForTimeout(400);
+      expect(await small(".rmenu-item", 48, "height")).toEqual([]);
+      await page.keyboard.press("Escape");
+      // The word sheet's close button.
+      await page.locator(".k-reader .k-tok", { hasText: /^bel$/ }).first().click();
+      await expect(page.locator(".shell")).toHaveAttribute("data-inspector", "open");
+      expect(await small(".inspector-head button", 44)).toEqual([]);
+    });
   });
 }

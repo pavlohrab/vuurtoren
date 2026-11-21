@@ -2393,3 +2393,17 @@ svg.lucide {
     }
   }
 }
+
+/* ---------- Touch targets ----------
+   With a finger (coarse pointer) the small controls get a 44px hit area (Android asks for
+   48dp; 44px is the least) and menu rows 48px; the icons stay their size inside. */
+@media (pointer: coarse) {
+  .k-btn--icon,
+  .k-btn--icon.k-btn--sm {
+    min-width: 44px;
+    min-height: 44px;
+  }
+  .k-select-item {
+    min-height: 48px;
+  }
+}
