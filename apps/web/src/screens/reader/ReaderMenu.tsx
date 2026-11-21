@@ -24,14 +24,22 @@ function onMenuKey(e: KeyboardEvent<HTMLDivElement>) {
 function Item({
   onSelect,
   kbd,
+  keyboardOnly = false,
   children,
 }: {
   onSelect: () => void;
   kbd?: string;
+  /** Only with a keyboard (the list of shortcuts): hidden on a touch screen. */
+  keyboardOnly?: boolean;
   children: ReactNode;
 }) {
   return (
-    <button type="button" role="menuitem" className="rmenu-item" onClick={onSelect}>
+    <button
+      type="button"
+      role="menuitem"
+      className={keyboardOnly ? "rmenu-item k-keyhint" : "rmenu-item"}
+      onClick={onSelect}
+    >
       <span className="rmenu-label">{children}</span>
       {kbd ? (
         <kbd className="rmenu-kbd" aria-hidden>
@@ -161,8 +169,8 @@ export function ReaderMenu({
               <span className="rmenu-label">Words from this text</span>
             </Link>
             <Item onSelect={close(onEditDetails)}>Edit details…</Item>
-            <hr className="rmenu-sep" />
-            <Item onSelect={close(onShortcuts)} kbd="?">
+            <hr className="rmenu-sep k-keyhint" />
+            <Item onSelect={close(onShortcuts)} kbd="?" keyboardOnly>
               Keyboard shortcuts
             </Item>
           </div>

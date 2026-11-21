@@ -2422,3 +2422,19 @@ svg.lucide {
     min-height: 48px;
   }
 }
+
+/* ---------- Keyboard hints ----------
+   Key caps (<kbd>) and lines about keys (.k-keyhint) show with a mouse and keyboard, or once a
+   hardware keyboard was used (html[data-keyboard], set by the app); on a touch screen the
+   concise touch line (.k-touchhint) shows instead. The keys work either way. */
+.k-touchhint {
+  display: none;
+}
+@media not ((hover: hover) and (pointer: fine)) {
+  :root:not([data-keyboard]) :is(kbd, .k-keyhint) {
+    display: none !important;
+  }
+  :root:not([data-keyboard]) .k-touchhint {
+    display: revert;
+  }
+}

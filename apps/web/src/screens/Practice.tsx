@@ -195,7 +195,8 @@ function PracticeNote({ native }: { native: boolean }) {
       {native
         ? "Practice trains what flashcards don’t: forms, gender, word order and listening."
         : "Practice trains what Anki doesn’t: forms, gender, word order and listening. Your Anki reviews stay in Anki."}{" "}
-      Keys: 1–4 to choose, Enter to check and go on, Esc to end.
+      <span className="k-keyhint">Keys: 1–4 to choose, Enter to check and go on, Esc to end.</span>
+      <span className="k-touchhint">Tap an answer, then Check.</span>
     </p>
   );
 }

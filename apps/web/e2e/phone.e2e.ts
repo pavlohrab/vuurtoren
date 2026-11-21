@@ -436,5 +436,24 @@ for (const size of SIZES) {
       await expect(page.locator(".shell")).toHaveAttribute("data-inspector", "open");
       expect(await small(".inspector-head button", 44)).toEqual([]);
     });
+
+    test("keyboard hints wait for a hardware keyboard; touch hints show instead", async ({
+      page,
+    }) => {
+      await page.goto("/?demo");
+      await page.goto("/practice");
+      const about = page.locator(".practice-about");
+      await expect(about).toContainText("Tap an answer, then Check.");
+      await expect(about.locator(".k-keyhint")).toBeHidden();
+      await page.goto("/read/t-regen");
+      await page.getByRole("button", { name: "More reading options" }).click();
+      await expect(page.getByRole("menuitem", { name: /Focus mode/ })).toBeVisible();
+      await expect(page.locator(".rmenu-kbd").first()).toBeHidden();
+      await expect(page.getByRole("menuitem", { name: /Keyboard shortcuts/ })).toBeHidden();
+      // A key from a hardware keyboard: the caps and the shortcuts come back.
+      await page.keyboard.press("Shift");
+      await expect(page.locator(".rmenu-kbd").first()).toBeVisible();
+      await expect(page.getByRole("menuitem", { name: /Keyboard shortcuts/ })).toBeVisible();
+    });
   });
 }

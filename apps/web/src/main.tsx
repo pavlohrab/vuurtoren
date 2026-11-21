@@ -31,10 +31,12 @@ import { acquireTabLock, type HeldLock } from "./storage/tabLock.js";
 import { initTheme } from "./theme.js";
 import { initPwa } from "./pwa/pwa.js";
 import { installNativeInsets } from "./platform/insets.js";
+import { watchKeyboard } from "./keyboardHints.js";
 
 initTheme();
 initPwa();
 installNativeInsets();
+watchKeyboard();
 // Before any service exists (the NLP client binds fetch when created): a 401 from /api or
 // /nlp later on means the session ended, and the sign-in screen comes back.
 installFetchWatch();

@@ -422,7 +422,7 @@ export function OcrReview({
                 )}
               </div>
               {total > 0 ? (
-                <p className="ocr-review__keys">
+                <p className="ocr-review__keys k-keyhint">
                   <kbd>←</kbd> <kbd>→</kbd> move between words · <kbd>1</kbd>–<kbd>3</kbd> take a
                   suggestion · <kbd>E</kbd> edit · <kbd>K</kbd> keep
                 </p>
