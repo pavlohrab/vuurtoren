@@ -122,8 +122,11 @@ sign-in.
 
 The phone layout from the redesign; the colours, type and logo stay as on desktop.
 
-- **Navigation:** a bottom bar with Read, Words, Review and More (Grammar, Exam, Courses, Talk,
-  Progress, Settings). The Android **back gesture** goes back in the app's history
+- **Navigation:** a bottom bar with three tabs, Read, Words and More (Grammar, Exam, Courses,
+  Talk, Progress, Settings, the theme). Words opens on Review with Vuurtoren's own cards (its badge
+  is the cards due; Your words, Practice and Progress are the room's tabs), on the word list with
+  Anki. Each tab is 56px tall with a 24px icon and a 12px label; the current one is amber with a
+  pill behind its icon; the bar sits 8px above the gesture handle. The Android **back gesture** goes back in the app's history
   (predictive back where the system offers it) and closes sheets first.
 - **Edge to edge:** content runs under the status and navigation bars; padding comes from the
   insets. The status bar follows the theme (light or dark).

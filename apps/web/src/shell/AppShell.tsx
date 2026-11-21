@@ -280,11 +280,10 @@ export function AppShell() {
             <Link to="/" className="sidebar-brand" aria-label="Vuurtoren, Read">
               <Logo size={26} className="brand-logo" title="Vuurtoren" />
             </Link>
-            {/* The two rooms, then the quieter places; on a phone: Read · Words · Review · More. */}
+            {/* The two rooms, then the quieter places; on a phone: Read · Words · More. */}
             <NavLink to="/" label="Read" icon={<BookOpen size={18} />} active={room === "read"} />
-            {/* With Vuurtoren's own cards, Words opens on Review on wide screens: today's cards
-                first, the levels and the list one tab away. On a phone Review has its own tab,
-                so Words there is the word list. */}
+            {/* With Vuurtoren's own cards, Words opens on Review: today's cards first, the levels
+                and the list one tab away (the room's tabs). With Anki it opens the word list. */}
             <NavLink
               to={native ? "/review" : "/words"}
               label="Words"
@@ -293,34 +292,7 @@ export function AppShell() {
               badge={wordsDue}
               badgeNoun={native ? "card" : "exercise"}
               badgeWhere={native ? "Review" : "Practice"}
-              wideOnly={native}
             />
-            {native ? (
-              <NavLink
-                to="/words"
-                label="Words"
-                icon={<Languages size={18} />}
-                active={room === "words" && pathname !== "/review"}
-                phoneOnly
-              />
-            ) : null}
-            {native ? (
-              <NavLink
-                to="/review"
-                label="Review"
-                icon={<Layers size={18} />}
-                active={pathname === "/review"}
-                phoneOnly
-              />
-            ) : (
-              <NavLink
-                to="/practice"
-                label="Practice"
-                icon={<Dumbbell size={18} />}
-                active={pathname === "/practice"}
-                phoneOnly
-              />
-            )}
             <div className="nav-divider" role="separator" />
             <NavLink to="/grammar" label="Grammar" icon={<BookText size={18} />} secondary />
             <NavLink to="/exam" label="Exam" icon={<ClipboardCheck size={18} />} secondary />
@@ -576,8 +548,6 @@ function NavLink({
   badgeWhere = "Practice",
   active,
   secondary,
-  phoneOnly,
-  wideOnly,
 }: {
   to: FixedRoute;
   label: string;
@@ -590,19 +560,8 @@ function NavLink({
   active?: boolean;
   /** Folded into the phone tab bar's More sheet. */
   secondary?: boolean;
-  /** Only in the phone tab bar (on wider screens it is a tab of its room). */
-  phoneOnly?: boolean;
-  /** Only in the sidebar on wider screens (the phone tab bar has its own entry). */
-  wideOnly?: boolean | undefined;
 }) {
-  const className = [
-    "nav-link",
-    secondary ? "nav-link--secondary" : "",
-    phoneOnly ? "nav-link--phone" : "",
-    wideOnly ? "nav-link--wide" : "",
-  ]
-    .filter(Boolean)
-    .join(" ");
+  const className = secondary ? "nav-link nav-link--secondary" : "nav-link";
   return (
     <Link
       to={to}

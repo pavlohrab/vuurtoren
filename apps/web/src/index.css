@@ -67,8 +67,7 @@
 .nav-link[data-active] svg {
   color: var(--accent);
 }
-.nav-more,
-.nav-link--phone {
+.nav-more {
   display: none;
 }
 /* Between the two rooms and the quieter places. */
@@ -457,6 +456,10 @@
 }
 /* Phone width: a bottom tab bar replaces the icon rail. */
 @media (max-width: 699px) {
+  :root {
+    /* The tab bar: 64px of tabs, lifted 8px clear of the gesture handle. */
+    --tabbar-h: calc(64px + var(--s-2) + var(--safe-bottom));
+  }
   .topbar-theme,
   .topbar-palette,
   .topbar-spacer,
@@ -475,7 +478,7 @@
     grid-template-rows: 100dvh;
   }
   .main {
-    padding-bottom: calc(56px + var(--safe-bottom));
+    padding-bottom: var(--tabbar-h);
     padding-left: var(--safe-left);
   }
   .sidebar {
@@ -485,8 +488,9 @@
     flex-direction: row;
     justify-content: space-around;
     align-items: center;
-    height: calc(56px + var(--safe-bottom));
-    padding: 4px calc(4px + var(--safe-right)) var(--safe-bottom) calc(4px + var(--safe-left));
+    height: var(--tabbar-h);
+    padding: 4px calc(8px + var(--safe-right)) calc(var(--safe-bottom) + var(--s-2))
+      calc(8px + var(--safe-left));
     gap: 0;
     border-right: 0;
     border-top: 1px solid var(--hairline);
@@ -496,35 +500,46 @@
   .sidebar-brand,
   .nav-spacer,
   .nav-divider,
-  .sidebar .nav-link--secondary,
-  .sidebar .nav-link--wide {
+  .sidebar .nav-link--secondary {
     display: none;
   }
+  /* Three tabs (Read · Words · More), thumb-sized: 56px tall, a 24px icon, a 12px label. */
   .nav-link,
   .nav-more {
     position: relative;
     display: flex;
     flex-direction: column;
+    align-items: center;
     justify-content: center;
-    gap: 2px;
+    gap: 4px;
     flex: 1 1 0;
     min-width: 0;
-    height: 48px;
+    height: 56px;
     padding: 0;
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 500;
+  }
+  .nav-link svg,
+  .nav-more svg {
+    box-sizing: content-box;
+    width: 24px;
+    height: 24px;
+    padding: 2px 18px;
+    border-radius: var(--radius-chip);
+    transition: background-color var(--dur-fast) var(--ease);
+  }
+  .nav-link:hover {
+    background: none;
   }
   .nav-link[data-status="active"],
   .nav-link[data-active] {
     background: none;
     color: var(--accent);
   }
-  /* On Review, the Review tab is the current one, not Words before it. */
-  .nav-link[data-active]:has(+ .nav-link--phone[data-active]) {
-    color: var(--ink-muted);
-  }
-  .nav-link[data-active]:has(+ .nav-link--phone[data-active]) svg {
-    color: inherit;
+  /* The current tab: amber icon and label, a small pill behind the icon. */
+  .nav-link[data-status="active"] svg,
+  .nav-link[data-active] svg {
+    background: var(--accent-soft);
   }
   .shell .nav-label,
   .shell[data-sidebar="collapsed"] .nav-label {
@@ -534,8 +549,8 @@
   .shell[data-sidebar="collapsed"] .nav-badge {
     display: block;
     position: absolute;
-    top: 6px;
-    right: calc(50% - 16px);
+    top: 4px;
+    right: calc(50% - 20px);
     min-width: 0;
     width: 7px;
     height: 7px;
@@ -545,9 +560,9 @@
     border: 0;
   }
   .inspector-panel {
-    --sheet-h: min(88dvh, calc(100dvh - 56px - var(--safe-bottom) - var(--safe-top) - var(--s-5)));
+    --sheet-h: min(88dvh, calc(100dvh - var(--tabbar-h) - var(--safe-top) - var(--s-5)));
     --sheet-peek: 42dvh;
-    bottom: calc(56px + var(--safe-bottom));
+    bottom: var(--tabbar-h);
     padding-bottom: 0;
   }
   /* Nothing may widen the page sideways: a phone would zoom out and fixed sheets overflow. */
@@ -557,7 +572,7 @@
   }
   /* Toasts sit above the tab bar. */
   .k-toast-viewport {
-    bottom: calc(64px + var(--safe-bottom));
+    bottom: calc(var(--tabbar-h) + var(--s-2));
   }
   /* The demo notice stays on one line. */
   .shell-notice.shell-notice--demo {
@@ -594,7 +609,7 @@
   position: fixed;
   left: 8px;
   right: 8px;
-  bottom: calc(64px + var(--safe-bottom));
+  bottom: calc(var(--tabbar-h) + var(--s-2));
   z-index: 32;
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));

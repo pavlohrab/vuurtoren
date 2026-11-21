@@ -119,7 +119,7 @@ for (const size of SIZES) {
     test("safe areas from the app keep the bars clear of the system bars", async ({ page }) => {
       await page.addInitScript(() => {
         (window as { VuurtorenInsets?: { get(): string } }).VuurtorenInsets = {
-          get: () => '{"top":32,"right":0,"bottom":24,"left":0}',
+          get: () => '{"top":32,"right":0,"bottom":34,"left":0}',
         };
       });
       await page.goto("/?demo");
@@ -129,10 +129,16 @@ for (const size of SIZES) {
         return first.getBoundingClientRect().top;
       });
       expect(notices).toBeGreaterThanOrEqual(32);
-      const bar = await page
-        .getByRole("navigation", { name: "Main" })
-        .evaluate((el) => getComputedStyle(el.closest(".sidebar") ?? el).paddingBottom);
-      expect(bar).toBe("24px");
+      // Three thumb-sized tabs, all of them 8px or more above the gesture handle (34px here).
+      const nav = page.getByRole("navigation", { name: "Main" });
+      const tabs = nav.locator(".nav-link:visible, .nav-more");
+      await expect(tabs).toHaveCount(3);
+      for (const box of await tabs.evaluateAll((els) =>
+        els.map((el) => el.getBoundingClientRect().toJSON() as DOMRect),
+      )) {
+        expect(box.height).toBeGreaterThanOrEqual(56);
+        expect(box.bottom).toBeLessThanOrEqual(size.height - 34 - 8);
+      }
       await shot(page, `insets-${size.width}`);
     });
   });

@@ -34,6 +34,26 @@ describe("App with mock services", () => {
     expect(screen.getByRole("navigation", { name: "Main" })).toBeInTheDocument();
   });
 
+  it("one Words entry: Review first with Vuurtoren's cards, the list with Anki", async () => {
+    const history = createMemoryHistory({ initialEntries: ["/"] });
+    const { unmount } = render(
+      <App services={createMockServices({ latencyMs: 0, native: true })} history={history} />,
+    );
+    const nav = await screen.findByRole("navigation", { name: "Main" });
+    await waitFor(() =>
+      expect(within(nav).getByRole("link", { name: /^Words/ })).toHaveAttribute("href", "/review"),
+    );
+    expect(within(nav).getAllByRole("link", { name: /^Words/ })).toHaveLength(1);
+    expect(within(nav).queryByRole("link", { name: /^(Review|Practice)/ })).toBeNull();
+    unmount();
+    renderApp("/");
+    const connected = await screen.findByRole("navigation", { name: "Main" });
+    expect(within(connected).getByRole("link", { name: /^Words/ })).toHaveAttribute(
+      "href",
+      "/words",
+    );
+  });
+
   it("opens a text and inspects a word", async () => {
     renderApp("/read/t-utrecht");
     const word = await screen.findByText("zus");

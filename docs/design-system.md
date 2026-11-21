@@ -237,7 +237,10 @@ Domain components:
 - ⌘K / Ctrl+K: Actions (Add text, Start practice), Words (two letters or more; opens the word in Words with the inspector), Go to (every page) and Texts.
 - The rail collapses to icons below 1200px; the inspector becomes a bottom sheet below 900px.
 - The inspector is closed by default and takes no space: choosing a word slides it in over the content's right edge, and the reading column moves aside (transform only, so the text never re-wraps; between 900 and 1100px it makes room instead). Esc or × closes it and the focus returns to the word.
-- Below 700px a bottom tab bar replaces the rail: **Read · Words · Review · More** (Practice in place of Review when Anki runs the reviews). More opens a sheet with Grammar, Exam, Courses, Talk, Progress and Settings. On Review the Review tab is the current one.
+- Below 700px a bottom tab bar replaces the rail: **Read · Words · More**. Words, as on the rail, opens on Review in native mode (the room's tabs Review · Your words · Practice · Progress sit at its top) and on the word list with Anki. More opens a sheet with Grammar, Exam, Courses, Talk, Progress, Settings and the theme (the top bar has no theme button on phones). Tabs are 56px tall, a 24px icon over a 12px label; the current tab is amber with an `--accent-soft` pill behind the icon. The bar sits 8px above the bottom safe area (`--tabbar-h`).
+- **Safe areas** (edge to edge on phones): `--safe-top/right/bottom/left` are the larger of `env(safe-area-inset-*)` and the insets the Android app passes in. The top bar sits below `--safe-top`; the tab bar, sheets and toasts above `--safe-bottom`.
+- **Word sheet** (below 900px): a grab handle on top; it opens at a peek (`--sheet-peek`, 42% of the screen), a drag up or a tap on the handle shows everything, a drag down goes back and then closes, a tap outside closes. Transform only with `--ease-spring`; no motion under reduced motion.
+- **Reading mode on phones**: one button in the reader bar ("Gloss ▾") opens the four modes, each with one line on what it does; from 700px the segmented control.
 
 ## Screens
 

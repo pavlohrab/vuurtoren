@@ -42,7 +42,7 @@ sentence and the side-by-side mode need the server.
 
 The redesign sets the phone layout; the desktop keeps its layout and gains the same motion.
 
-- **Navigation:** a bottom bar with Read, Words, Review and More (Grammar, Exam, Courses, Talk, Progress, Settings).
+- **Navigation:** a bottom bar with Read, Words and More (Grammar, Exam, Courses, Talk, Progress, Settings). Words opens on Review when Vuurtoren keeps the cards.
 - **Reader:** large Literata text, a sheet for the word inspector, the interlinear English mode
   (English under each sentence, tap a word on either line to see its partner, a structure view per
   sentence), side by side when the phone is turned sideways.

@@ -176,7 +176,7 @@
     position: fixed;
     left: 8px;
     right: 8px;
-    bottom: calc(64px + var(--safe-bottom));
+    bottom: calc(var(--tabbar-h, 64px) + var(--s-2));
     margin: 0;
     width: auto;
   }
