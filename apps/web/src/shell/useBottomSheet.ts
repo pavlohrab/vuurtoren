@@ -1,14 +1,23 @@
 /**
- * The word panel as a bottom sheet below 900px: it opens at a peek (the word, its meaning and
- * play), a drag up (or the handle) expands it to the full details, a drag down goes back to the
- * peek and then closes it, and a tap outside it closes it (a tap on another word just shows
- * that word). Wider screens keep the side panel: nothing here runs there.
+ * The word panel as a bottom sheet below 900px: it opens at a small peek (the word with its
+ * article, the short meaning, play, and the two main buttons: `.k-inspector-peek`), a drag up
+ * (or the handle) expands it to the full details, a drag down goes back to the peek and then
+ * closes it, and a tap outside it closes it (a tap on another word just shows that word).
+ * Wider screens keep the side panel: nothing here runs there.
+ *
+ * The peek's height is measured, not guessed: the bottom of `.k-inspector-peek` in the sheet,
+ * a gap, and the sheet's bottom padding (`--safe-bottom`), so the buttons always end above the
+ * gesture line. It is written to `--sheet-peek` on the panel.
  */
 import { type RefObject, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 
 export type SheetSize = "peek" | "full";
 
 const SHEET_QUERY = "(max-width: 899px)";
+/** Space (px) between the peek's buttons and the bottom of the sheet's visible part. */
+const PEEK_GAP = 16;
+/** Without a peek part (loading, an error) the sheet shows at most this share of the screen. */
+const PEEK_FALLBACK = 0.3;
 /** A drag this far (px) is a decision; less springs back. */
 const DRAG_DECIDES = 56;
 /** Taps on these keep the sheet open: other words, and menus the sheet opened. */
@@ -41,6 +50,43 @@ export function useBottomSheet(
   useLayoutEffect(() => {
     sizeRef.current = size;
   }, [size]);
+
+  // The peek's height, measured from its content (and again whenever the content changes).
+  useEffect(() => {
+    const el = panel.current;
+    if (!el || !open) return;
+    const measure = () => {
+      if (!isSheet()) {
+        el.style.removeProperty("--sheet-peek");
+        return;
+      }
+      const top = el.getBoundingClientRect().top;
+      const offset = el.querySelector(".inspector-scroll")?.scrollTop ?? 0;
+      const pad = parseFloat(getComputedStyle(el).paddingBottom) || 0;
+      const peek = el.querySelector(".k-inspector-peek");
+      const end = peek ?? el.querySelector(".inspector-body");
+      if (!end) return;
+      let height = end.getBoundingClientRect().bottom - top + offset + PEEK_GAP + pad;
+      if (!peek) height = Math.min(height, window.innerHeight * PEEK_FALLBACK);
+      el.style.setProperty("--sheet-peek", `${Math.ceil(height)}px`);
+    };
+    measure();
+    const ro = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(measure);
+    const body = el.querySelector(".inspector-body");
+    if (ro && body) ro.observe(body);
+    window.addEventListener("resize", measure);
+    return () => {
+      ro?.disconnect();
+      window.removeEventListener("resize", measure);
+    };
+  }, [open, panel]);
+
+  // Back at the peek, the details start from their top again.
+  useEffect(() => {
+    if (size !== "peek") return;
+    const scroll = panel.current?.querySelector(".inspector-scroll");
+    if (scroll) scroll.scrollTop = 0;
+  }, [size, panel]);
 
   // A tap outside the sheet closes it.
   useEffect(() => {

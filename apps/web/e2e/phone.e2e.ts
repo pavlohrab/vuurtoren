@@ -4,7 +4,7 @@
  * status bar and the tab bar above the gesture handle. `PHONE_SHOTS=<dir>` also saves a
  * screenshot of each screen there.
  */
-import { type Page, expect, test } from "@playwright/test";
+import { type Locator, type Page, expect, test } from "@playwright/test";
 import { fakeAnki } from "./fakeAnki.js";
 import { fakeNlp } from "./fakeNlp.js";
 
@@ -30,6 +30,43 @@ async function overflowing(page: Page, selector: string): Promise<string[]> {
     }
     return out;
   }, selector);
+}
+
+/** The insets the Android app reports: a 32px status bar and a 34px gesture line. */
+async function withInsets(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    (window as { VuurtorenInsets?: { get(): string } }).VuurtorenInsets = {
+      get: () => '{"top":32,"right":0,"bottom":34,"left":0}',
+    };
+  });
+}
+
+/** A touch drag on an element, as pointer events (vertical by `dy`, or sideways by `dx`). */
+async function drag(page: Page, target: Locator, dy: number, dx = 0): Promise<void> {
+  await target.evaluate(
+    (el, [dy, dx]) => {
+      const r = el.getBoundingClientRect();
+      const x0 = r.left + r.width / 2;
+      const y0 = r.top + r.height / 2;
+      const at = (type: string, x: number, y: number) =>
+        new PointerEvent(type, {
+          pointerType: "touch",
+          isPrimary: true,
+          pointerId: 9,
+          button: 0,
+          buttons: type === "pointerup" ? 0 : 1,
+          clientX: x,
+          clientY: y,
+          bubbles: true,
+        } as PointerEventInit);
+      el.dispatchEvent(at("pointerdown", x0, y0));
+      for (let i = 1; i <= 5; i++) {
+        el.dispatchEvent(at("pointermove", x0 + (dx * i) / 5, y0 + (dy * i) / 5));
+      }
+      el.dispatchEvent(at("pointerup", x0 + dx, y0 + dy));
+    },
+    [dy, dx] as const,
+  );
 }
 
 async function shot(page: Page, name: string): Promise<void> {
@@ -168,6 +205,41 @@ for (const size of SIZES) {
         expect(box.bottom).toBeLessThanOrEqual(size.height - 34 - 8);
       }
       await shot(page, `insets-${size.width}`);
+    });
+
+    test("the word sheet opens as a small peek above the gesture line", async ({ page }) => {
+      await withInsets(page);
+      await page.goto("/?demo");
+      await page.getByRole("link", { name: "Een dag in Utrecht" }).first().click();
+      await page.locator(".k-reader .k-tok", { hasText: /^bel$/ }).first().click();
+      const sheet = page.locator(".inspector-panel");
+      await expect(sheet).toHaveAttribute("data-sheet", "peek");
+      await page.waitForTimeout(500);
+      const seen = await sheet.evaluate((el) => el.getBoundingClientRect().top);
+      // About 28–32% of the screen (a little more on the shorter one).
+      expect(size.height - seen).toBeLessThanOrEqual(size.height * 0.34);
+      expect(size.height - seen).toBeGreaterThanOrEqual(size.height * 0.2);
+      // The two main buttons, fully above the 34px gesture line; the details wait below.
+      const known = sheet.getByRole("button", { name: "I know it" });
+      const box = await known.boundingBox();
+      expect(box).not.toBeNull();
+      expect(box!.y + box!.height).toBeLessThanOrEqual(size.height - 34);
+      expect(box!.y).toBeGreaterThan(seen);
+      const context = await sheet
+        .getByText("In context")
+        .evaluate((el) => el.getBoundingClientRect().top);
+      expect(context).toBeGreaterThanOrEqual(size.height - 34);
+      await shot(page, `sheet-small-peek-${size.width}`);
+
+      // A drag up shows the details; a drag down goes back, and once more closes it.
+      const grip = sheet.locator(".sheet-grip");
+      await drag(page, grip, -160);
+      await expect(sheet).toHaveAttribute("data-sheet", "full");
+      await expect(sheet.getByText("In context")).toBeInViewport();
+      await drag(page, grip, 160);
+      await expect(sheet).toHaveAttribute("data-sheet", "peek");
+      await drag(page, grip, 160);
+      await expect(page.locator(".shell")).toHaveAttribute("data-inspector", "closed");
     });
   });
 }

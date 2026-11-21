@@ -102,100 +102,114 @@ export function WordInspector({
   const recall = Math.round(entry.pKnown * 100);
   const pos = posName(entry.pos);
 
+  const short = entry.glosses[0] ?? entry.sentenceGloss ?? null;
+  const actions = ankiActions({
+    entry,
+    busy,
+    onAddToAnki,
+    onLearnNext,
+    onMarkKnown,
+    onReset,
+    onSetState,
+    addDeck,
+  });
+
+  // Two parts: the peek (the word, its short meaning, play, the two main buttons) and the
+  // details. Below 900px the bottom sheet opens showing only the peek (useBottomSheet.ts); the
+  // side panel lays both out as one column in the order it always had (styles.css).
   return (
     <div className="k-inspector" aria-label="Word details">
-      <header>
-        <div className="k-inspector-head">
-          <h2 className="k-inspector-surface" lang="nl">
-            {entry.article ? (
-              <>
-                <span style={{ color: "var(--ink-muted)" }}>{entry.article}</span>{" "}
-              </>
-            ) : null}
-            {entry.surface}
-          </h2>
-          {headerAction}
-        </div>
-        {entry.surface.toLocaleLowerCase() !== entry.lemma.toLocaleLowerCase() ? (
-          <div className="k-inspector-lemma">
-            from <span lang="nl">{entry.lemma}</span>
+      <div className="k-inspector-peek">
+        <header>
+          <div className="k-inspector-head">
+            <h2 className="k-inspector-surface" lang="nl">
+              {entry.article ? (
+                <>
+                  <span style={{ color: "var(--ink-muted)" }}>{entry.article}</span>{" "}
+                </>
+              ) : null}
+              {entry.surface}
+            </h2>
+            {headerAction}
           </div>
-        ) : null}
-      </header>
-
-      <div className="k-inspector-row">
-        <WordStateChip state={entry.state} inVuurtoren={entry.appLearning} />
-        {pos ? <span className="k-inspector-pos">{pos}</span> : null}
-        {entry.state === "learning" ? (
-          <span className="k-recall" style={{ color: "var(--ink-muted)", fontSize: 13 }}>
-            Recall {recall}%
-          </span>
-        ) : null}
+          {entry.surface.toLocaleLowerCase() !== entry.lemma.toLocaleLowerCase() ? (
+            <div className="k-inspector-lemma">
+              from <span lang="nl">{entry.lemma}</span>
+            </div>
+          ) : null}
+        </header>
+        {/* The short meaning, drawn from its attribute (styles.css): the full list below is
+            what screen readers and searches find, so the word is not said twice. */}
+        <p className="k-inspector-short" data-short={short ?? "No meaning yet"} aria-hidden />
+        {actions.quick}
       </div>
 
-      {entry.glosses.length === 0 && !entry.sentenceGloss ? (
-        <p className="k-inspector-nomeaning">No meaning yet</p>
-      ) : (
-        <section>
-          <div className="k-overline">Meaning</div>
-          <ul className="k-inspector-glosses">
-            {entry.glosses.map((g, i) => (
-              <li key={g}>
-                {g}
-                {i === 0 && entry.glossNote ? (
-                  <span className="k-gloss-note"> · {entry.glossNote}</span>
-                ) : null}
-              </li>
-            ))}
-            {entry.sentenceGloss ? (
-              <li key="in-sentence">
-                {entry.sentenceGloss}
-                <span className="k-gloss-note"> · in this sentence</span>
-              </li>
-            ) : null}
-          </ul>
-        </section>
-      )}
-
-      {entry.decks.length > 0 ? (
-        <section>
-          <div className="k-overline">In your decks</div>
-          <div className="k-inspector-row" style={{ marginTop: 4 }}>
-            {entry.decks.map((d) => (
-              <Chip key={d} title={d}>
-                {deckName(d)}
-              </Chip>
-            ))}
-          </div>
-        </section>
-      ) : null}
-
-      {s ? (
-        <section>
-          <div className="k-overline">In context</div>
-          <p className="k-inspector-sentence" lang="nl">
-            {s.slice(0, from)}
-            <mark>{s.slice(from, to)}</mark>
-            {s.slice(to)}
-          </p>
-          {entry.sentenceTranslation ? (
-            <p className="k-inspector-translation" lang="en">
-              {entry.sentenceTranslation}
-            </p>
+      <div className="k-inspector-more">
+        <div className="k-inspector-row">
+          <WordStateChip state={entry.state} inVuurtoren={entry.appLearning} />
+          {pos ? <span className="k-inspector-pos">{pos}</span> : null}
+          {entry.state === "learning" ? (
+            <span className="k-recall" style={{ color: "var(--ink-muted)", fontSize: 13 }}>
+              Recall {recall}%
+            </span>
           ) : null}
-        </section>
-      ) : null}
+        </div>
 
-      <AnkiActions
-        entry={entry}
-        busy={busy}
-        onAddToAnki={onAddToAnki}
-        onLearnNext={onLearnNext}
-        onMarkKnown={onMarkKnown}
-        onReset={onReset}
-        onSetState={onSetState}
-        addDeck={addDeck}
-      />
+        {entry.glosses.length === 0 && !entry.sentenceGloss ? (
+          <p className="k-inspector-nomeaning">No meaning yet</p>
+        ) : (
+          <section>
+            <div className="k-overline">Meaning</div>
+            <ul className="k-inspector-glosses">
+              {entry.glosses.map((g, i) => (
+                <li key={g}>
+                  {g}
+                  {i === 0 && entry.glossNote ? (
+                    <span className="k-gloss-note"> · {entry.glossNote}</span>
+                  ) : null}
+                </li>
+              ))}
+              {entry.sentenceGloss ? (
+                <li key="in-sentence">
+                  {entry.sentenceGloss}
+                  <span className="k-gloss-note"> · in this sentence</span>
+                </li>
+              ) : null}
+            </ul>
+          </section>
+        )}
+
+        {entry.decks.length > 0 ? (
+          <section>
+            <div className="k-overline">In your decks</div>
+            <div className="k-inspector-row" style={{ marginTop: 4 }}>
+              {entry.decks.map((d) => (
+                <Chip key={d} title={d}>
+                  {deckName(d)}
+                </Chip>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
+        {s ? (
+          <section>
+            <div className="k-overline">In context</div>
+            <p className="k-inspector-sentence" lang="nl">
+              {s.slice(0, from)}
+              <mark>{s.slice(from, to)}</mark>
+              {s.slice(to)}
+            </p>
+            {entry.sentenceTranslation ? (
+              <p className="k-inspector-translation" lang="en">
+                {entry.sentenceTranslation}
+              </p>
+            ) : null}
+          </section>
+        ) : null}
+
+        {actions.details}
+      </div>
     </div>
   );
 }
@@ -239,8 +253,12 @@ const NATIVE_STATUS_TEXT: Record<InspectorAnki["status"], string> = {
   unavailable: "Card not available",
 };
 
-/** Status line and action buttons for the word's state in Anki (or its own card). */
-function AnkiActions({
+/**
+ * The action buttons for the word's state in Anki (or its own card), in two parts: `quick`
+ * (the main button and I know it, in the peek) and `details` (the card's status, its reviews,
+ * Ignore, the hints and Use Anki's state).
+ */
+function ankiActions({
   entry,
   busy = false,
   onAddToAnki,
@@ -252,7 +270,7 @@ function AnkiActions({
 }: Pick<
   WordInspectorProps,
   "busy" | "onAddToAnki" | "onLearnNext" | "onMarkKnown" | "onReset" | "onSetState" | "addDeck"
-> & { entry: InspectorEntry }) {
+> & { entry: InspectorEntry }): { quick: ReactNode; details: ReactNode } {
   const { anki } = entry;
   const { status } = anki;
   // Native mode: Vuurtoren's own cards, worded without Anki.
@@ -284,7 +302,31 @@ function AnkiActions({
     primary = { label: ADD, onClick: onAddToAnki };
   }
 
-  return (
+  const quick = (
+    <div className="k-inspector-actions k-inspector-quick">
+      {primary && addDeck && primary.label === ADD ? (
+        <AddToAnki
+          native={native}
+          deck={addDeck.deck}
+          options={addDeck.options}
+          onDeckChange={addDeck.onDeckChange}
+          onAdd={() => primary.onClick?.()}
+          disabled={disabled}
+        />
+      ) : primary ? (
+        <Button variant="primary" disabled={disabled} onClick={() => primary.onClick?.()}>
+          {primary.label}
+        </Button>
+      ) : null}
+      {canMarkKnown ? (
+        <Button disabled={disabled} onClick={() => onMarkKnown?.()}>
+          I know it
+        </Button>
+      ) : null}
+    </div>
+  );
+
+  const details = (
     <>
       {status !== "absent" ? (
         <section>
@@ -300,37 +342,14 @@ function AnkiActions({
         </section>
       ) : null}
       {anki.reviews?.length ? <ReviewList reviews={anki.reviews} /> : null}
-      <div className="k-inspector-actions">
-        {primary && addDeck && primary.label === ADD ? (
-          <AddToAnki
-            native={native}
-            deck={addDeck.deck}
-            options={addDeck.options}
-            onDeckChange={addDeck.onDeckChange}
-            onAdd={() => primary.onClick?.()}
-            disabled={disabled}
-          />
-        ) : primary ? (
-          <>
-            <Button variant="primary" disabled={disabled} onClick={() => primary.onClick?.()}>
-              {primary.label}
-            </Button>
-            {primary.hint && !unavailable ? <p style={hintStyle}>{primary.hint}</p> : null}
-          </>
-        ) : null}
-        <div className="k-inspector-secondary">
-          {canMarkKnown ? (
-            <Button disabled={disabled} onClick={() => onMarkKnown?.()}>
-              I know it
-            </Button>
-          ) : null}
-          <Button
-            disabled={busy || entry.state === "ignored"}
-            onClick={() => onSetState?.("ignored")}
-          >
-            {entry.state === "ignored" ? "Ignored" : "Ignore"}
-          </Button>
-        </div>
+      <div className="k-inspector-actions k-inspector-rest">
+        {primary?.hint && !unavailable ? <p style={hintStyle}>{primary.hint}</p> : null}
+        <Button
+          disabled={busy || entry.state === "ignored"}
+          onClick={() => onSetState?.("ignored")}
+        >
+          {entry.state === "ignored" ? "Ignored" : "Ignore"}
+        </Button>
         {canMarkKnown && status === "absent" ? (
           <p style={hintStyle}>
             &ldquo;I know it&rdquo;{" "}
@@ -346,4 +365,5 @@ function AnkiActions({
       </div>
     </>
   );
+  return { quick, details };
 }

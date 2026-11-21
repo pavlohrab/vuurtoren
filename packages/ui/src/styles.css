@@ -1535,6 +1535,29 @@ button.k-word-chip {
   margin: 0;
   color: var(--ink-muted);
 }
+/* The peek (word, short meaning, the two main buttons) and the details. The side panel lays
+   them out as one column in its usual order: header, state, meanings, decks, context, card,
+   then the buttons. The bottom sheet (apps/web index.css) shows the peek alone at first. */
+.k-inspector-peek,
+.k-inspector-more {
+  display: contents;
+}
+.k-inspector-more > * {
+  order: 1;
+}
+.k-inspector-quick {
+  order: 2;
+}
+.k-inspector-more > .k-inspector-rest {
+  order: 3;
+}
+.k-inspector-short {
+  display: none;
+  margin: 0;
+}
+.k-inspector-short::before {
+  content: attr(data-short);
+}
 
 /* ---------- Text card ---------- */
 .k-card {

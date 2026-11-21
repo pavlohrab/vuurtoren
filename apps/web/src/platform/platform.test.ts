@@ -11,7 +11,8 @@ function withBridge(bridge: Partial<DesktopBridge> | undefined, tauri: boolean):
     value: bridge,
     configurable: true,
   });
-  if (tauri) Object.defineProperty(window, "__TAURI_INTERNALS__", { value: {}, configurable: true });
+  if (tauri)
+    Object.defineProperty(window, "__TAURI_INTERNALS__", { value: {}, configurable: true });
 }
 
 afterEach(() => {

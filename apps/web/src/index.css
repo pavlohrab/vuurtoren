@@ -358,7 +358,9 @@
      everything, a drag down closes it (useBottomSheet.ts). Transform only, with a spring. */
   .inspector-panel {
     --sheet-h: min(88dvh, calc(100dvh - var(--safe-top) - var(--s-5)));
-    --sheet-peek: 42dvh;
+    /* Measured from the peek's content plus --safe-bottom (useBottomSheet.ts); this is the
+       first frame's guess. */
+    --sheet-peek: 30dvh;
     --sheet-rest: calc(var(--sheet-h) - min(var(--sheet-h), var(--sheet-peek)));
     position: fixed;
     inset: auto 0 0 0;
@@ -392,13 +394,50 @@
     transition: none;
   }
   @media (prefers-reduced-motion: reduce) {
-    .shell[data-inspector="open"] .inspector-panel {
+    .shell[data-inspector="open"] .inspector-panel,
+    .inspector-panel .k-inspector-more {
       transition: none;
     }
   }
   /* At the peek the details wait below the fold: a drag up shows them. */
   .inspector-panel[data-sheet="peek"] .inspector-scroll {
     overflow: hidden;
+  }
+  /* The peek: the word with its article and play, the short meaning on one line, and the two
+     main buttons side by side, thumb-sized. The details follow below the fold. */
+  .inspector-panel .k-inspector-peek {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-2);
+  }
+  .inspector-panel .k-inspector-more {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding-top: var(--s-4);
+  }
+  .inspector-panel .k-inspector-surface {
+    font-size: 24px;
+  }
+  .inspector-panel .k-inspector-head {
+    padding-right: 40px;
+  }
+  .inspector-panel .k-inspector-short {
+    display: block;
+    overflow: hidden;
+    font-size: 16px;
+    color: var(--ink);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .inspector-panel .k-inspector-quick {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+    gap: var(--s-2);
+    padding-top: var(--s-1);
+  }
+  .inspector-panel .k-inspector-quick .k-btn {
+    min-height: 48px;
   }
   .sheet-grip {
     display: grid;
@@ -418,9 +457,30 @@
     border-radius: 999px;
     background: var(--line-strong);
   }
+  /* The close button sits in the sheet's corner; the "Word" label would cost the peek a row. */
   .inspector-head {
-    padding-top: 0;
+    position: absolute;
+    top: 20px;
+    right: calc(var(--safe-right) + var(--s-2));
+    z-index: 1;
+    padding: 0;
+    border-bottom: 0;
     touch-action: none;
+  }
+  /* At the peek the details fade out of the strip above the gesture line; they fade in as the
+     sheet rises. */
+  .inspector-panel .k-inspector-more {
+    transition: opacity var(--dur-slow) var(--ease-out);
+  }
+  .inspector-panel[data-sheet="peek"]:not([data-dragging]) .k-inspector-more,
+  .inspector-panel[data-sheet="peek"]:not([data-dragging]) .inspector-body > :not(.k-inspector) {
+    opacity: 0;
+  }
+  .inspector-head .k-overline {
+    display: none;
+  }
+  .inspector-panel .inspector-body {
+    padding-top: 4px;
   }
   .topbar {
     gap: 8px;
@@ -451,7 +511,7 @@
   }
   /* Keep the end of the reader page clear of the open bottom sheet. */
   .shell[data-inspector="open"] .content {
-    padding-bottom: 44dvh;
+    padding-bottom: 36dvh;
   }
 }
 /* Phone width: a bottom tab bar replaces the icon rail. */
@@ -559,12 +619,8 @@
     background: var(--accent);
     border: 0;
   }
-  .inspector-panel {
-    --sheet-h: min(88dvh, calc(100dvh - var(--tabbar-h) - var(--safe-top) - var(--s-5)));
-    --sheet-peek: 42dvh;
-    bottom: var(--tabbar-h);
-    padding-bottom: 0;
-  }
+  /* The word sheet covers the tab bar (it sits above it, z-index 40), so its peek ends at the
+     gesture line: --safe-bottom is part of the measured peek. */
   /* Nothing may widen the page sideways: a phone would zoom out and fixed sheets overflow. */
   html,
   body {
