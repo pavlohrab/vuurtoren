@@ -44,13 +44,25 @@ describe("Review", () => {
       return full;
     });
     setup("/review", { reviewQueue });
-    expect(await screen.findByRole("heading", { name: "Nothing to review" })).toBeVisible();
+    expect(await screen.findByRole("heading", { name: "Nothing due" })).toBeVisible();
     expect(await screen.findByText("de fiets", {}, { timeout: 4000 })).toBeVisible();
     // Back in the foreground: the queue is asked again, the card on screen stays.
     const before = reviewQueue.mock.calls.length;
     document.dispatchEvent(new Event("visibilitychange"));
     await waitFor(() => expect(reviewQueue.mock.calls.length).toBeGreaterThan(before));
     expect(screen.getByText("de fiets")).toBeVisible();
+  });
+
+  it("after the day's cards, goes on with new words or learning words on request", async () => {
+    const reviewQueue = vi.fn(async () => ({ cards: [], due: 0, fresh: 0, nextDue: null }));
+    const { user } = setup("/review", { reviewQueue });
+    expect(await screen.findByRole("heading", { name: "Nothing due" })).toBeVisible();
+    await user.click(screen.getByRole("link", { name: "Continue with new words" }));
+    await waitFor(() => expect(reviewQueue).toHaveBeenLastCalledWith({ kind: "new", count: 10 }));
+    await user.click(screen.getByRole("link", { name: "Continue with learning words" }));
+    await waitFor(() =>
+      expect(reviewQueue).toHaveBeenLastCalledWith({ kind: "learning", count: 20 }),
+    );
   });
 
   it("plays nothing by itself with autoplay off", async () => {
@@ -137,7 +149,7 @@ describe("Review", () => {
     expect(await screen.findByText(/We walk to school/)).toBeVisible();
   });
 
-  it("counts its cards on Words in the sidebar, in the Words tabs and in Today on Read", async () => {
+  it("counts its cards on Words in the sidebar, in Due today and in Today on Read", async () => {
     setup("/");
     const nav = await screen.findByRole("navigation", { name: "Main" });
     const words = await within(nav).findByRole("link", { name: /^Words/ });
@@ -147,8 +159,8 @@ describe("Review", () => {
       "/review",
     );
     await userEvent.click(words);
-    const tabs = await screen.findByRole("navigation", { name: "Words" });
-    expect(await within(tabs).findByRole("link", { name: /^Review/ })).toHaveTextContent("4");
+    const today = await screen.findByRole("region", { name: "Due today" });
+    expect(await within(today).findByText("4 cards")).toBeVisible();
   });
 
   it("strips scripts, handlers and foreign images from card HTML", () => {

@@ -20,7 +20,7 @@ describe("App with mock services", () => {
         name: /^Words/,
       }),
     );
-    expect(await screen.findByRole("heading", { level: 1, name: "Your words" })).toBeVisible();
+    expect(await screen.findByRole("heading", { level: 1, name: "Words" })).toBeVisible();
     await userEvent.click(
       within(screen.getByRole("navigation", { name: "Main" })).getByRole("link", { name: "Read" }),
     );
@@ -34,14 +34,14 @@ describe("App with mock services", () => {
     expect(screen.getByRole("navigation", { name: "Main" })).toBeInTheDocument();
   });
 
-  it("one Words entry: Review first with Vuurtoren's cards, the list with Anki", async () => {
+  it("one Words entry, opening the Words home with either kind of cards", async () => {
     const history = createMemoryHistory({ initialEntries: ["/"] });
     const { unmount } = render(
       <App services={createMockServices({ latencyMs: 0, native: true })} history={history} />,
     );
     const nav = await screen.findByRole("navigation", { name: "Main" });
     await waitFor(() =>
-      expect(within(nav).getByRole("link", { name: /^Words/ })).toHaveAttribute("href", "/review"),
+      expect(within(nav).getByRole("link", { name: /^Words/ })).toHaveAttribute("href", "/words"),
     );
     expect(within(nav).getAllByRole("link", { name: /^Words/ })).toHaveLength(1);
     expect(within(nav).queryByRole("link", { name: /^(Review|Practice)/ })).toBeNull();
@@ -62,8 +62,20 @@ describe("App with mock services", () => {
     expect(screen.getByText("sister")).toBeInTheDocument();
   });
 
+  it("shows Due today on the Words home, and Start opens the review alone", async () => {
+    const history = createMemoryHistory({ initialEntries: ["/words"] });
+    render(<App services={createMockServices({ latencyMs: 0, native: true })} history={history} />);
+    expect(await screen.findByRole("heading", { name: "Due today" })).toBeInTheDocument();
+    await userEvent.click(await screen.findByRole("link", { name: "Start" }));
+    await waitFor(() => expect(history.location.pathname).toBe("/review"));
+    await waitFor(() => expect(document.documentElement).toHaveAttribute("data-focus"));
+    await userEvent.click(await screen.findByRole("link", { name: "Close the review" }));
+    await waitFor(() => expect(history.location.pathname).toBe("/words"));
+    expect(document.documentElement).not.toHaveAttribute("data-focus");
+  });
+
   it("shows the words table", async () => {
-    renderApp("/words?layout=list");
+    renderApp("/words/all?layout=list");
     await waitFor(() => expect(screen.getByText("gracht")).toBeInTheDocument());
   });
 });

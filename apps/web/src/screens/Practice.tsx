@@ -120,7 +120,7 @@ function PracticeSession({ focus, autoStart }: { focus: string[] | null; autoSta
 
   return (
     <div className="page page--list practice">
-      {phase.name === "start" || phase.name === "loading" ? <WordsRoom tab="practice" /> : null}
+      {phase.name === "start" || phase.name === "loading" ? <WordsRoom /> : null}
       {phase.name === "start" || phase.name === "loading" ? (
         <StartView
           loading={phase.name === "loading"}
@@ -719,7 +719,7 @@ function NextSteps({
         Practise again
       </Button>
       <Link
-        to="/words"
+        to="/words/all"
         search={again.length ? { source: "practice-again" } : { state: "learning" }}
         className="practice-next-link"
       >

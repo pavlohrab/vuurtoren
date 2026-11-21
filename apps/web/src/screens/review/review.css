@@ -6,11 +6,37 @@
   align-items: stretch;
   max-width: 720px;
 }
+.review {
+  margin-inline: auto;
+  width: 100%;
+  padding-top: calc(var(--s-3) + var(--safe-top, 0px));
+}
 .review-top {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  min-height: 32px;
+  gap: var(--s-3);
+  min-height: 48px;
+}
+.review-close {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  color: var(--ink-muted);
+}
+.review-close:hover {
+  color: var(--ink);
+  background: var(--surface-2);
+}
+.review-progress {
+  font-size: 14px;
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+.review-top-spacer {
+  width: 44px;
 }
 .review-card {
   background: var(--surface);
@@ -172,5 +198,66 @@
   }
   .review-rating .ex-key {
     display: none;
+  }
+}
+
+/* Swiping: the card follows the finger; the answer it would give tints its edge. */
+.review-card {
+  transition: transform var(--dur) var(--ease-out);
+  user-select: none;
+}
+.review-card[data-swipe="left"] {
+  border-color: var(--danger, #9a3b2c);
+}
+.review-card[data-swipe="right"] {
+  border-color: var(--success);
+}
+.review-card[data-swipe="up"] {
+  border-color: var(--accent);
+}
+.review-swipe-hint {
+  display: none;
+  grid-column: 1 / -1;
+  margin: 0 0 var(--s-1);
+  font-size: 13px;
+  color: var(--ink-muted);
+  text-align: center;
+}
+@media (pointer: coarse) {
+  .review-swipe-hint {
+    display: block;
+  }
+}
+.review-end {
+  display: grid;
+  gap: var(--s-3);
+  justify-items: start;
+  padding: var(--s-6) 0;
+}
+.review-end-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 30px;
+  font-weight: 600;
+}
+.review-end-lede {
+  margin: 0;
+  color: var(--ink-muted);
+}
+.review-end-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+  margin-top: var(--s-3);
+}
+@media (max-width: 699px) {
+  .review-end-actions > * {
+    flex: 1 1 100%;
+    min-height: 48px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .review-card {
+    transition: none;
   }
 }

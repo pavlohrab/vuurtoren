@@ -1,0 +1,107 @@
+/* Words home: Due today on top, then one list of rows (lists, Practice, the level check). */
+.words-home {
+  display: grid;
+  gap: var(--s-5);
+  max-width: 640px;
+}
+.due-today {
+  display: grid;
+  justify-items: start;
+  gap: var(--s-1);
+  padding: var(--s-5);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+}
+.due-today-label {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.due-today-count {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 34px;
+  font-weight: 600;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+}
+.due-today-parts {
+  margin: 0;
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+.due-today-start {
+  margin-top: var(--s-3);
+  min-width: 160px;
+  min-height: 48px;
+  font-size: 16px;
+}
+.due-today-more {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+  margin-top: var(--s-3);
+}
+.words-home-list {
+  display: grid;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  overflow: hidden;
+  background: var(--surface);
+}
+.words-home-row {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  min-height: 64px;
+  padding: var(--s-3) var(--s-4);
+  color: var(--ink);
+  text-decoration: none;
+}
+.words-home-row + .words-home-row {
+  border-top: 1px solid var(--hairline);
+}
+.words-home-row:hover,
+.words-home-row:focus-visible {
+  background: var(--accent-soft);
+}
+.words-home-icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+.words-home-text {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+}
+.words-home-title {
+  font-size: 16px;
+  font-weight: 600;
+}
+.words-home-detail {
+  font-size: 14px;
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+.words-home-chevron {
+  flex: none;
+  color: var(--ink-muted);
+}
+@media (max-width: 699px) {
+  .due-today-start {
+    width: 100%;
+  }
+  .due-today-more > * {
+    flex: 1 1 100%;
+  }
+}

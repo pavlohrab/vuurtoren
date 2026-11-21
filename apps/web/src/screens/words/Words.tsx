@@ -301,7 +301,7 @@ export function Words() {
   const toast = useToast();
   const native = useNativeMode();
   const qc = useQueryClient();
-  const params: WordsSearch = useSearch({ from: "/words" });
+  const params: WordsSearch = useSearch({ from: "/words/all" });
   const navigate = useNavigate();
   const { inspectorEl, setInspectorAvailable, setInspectorOpen } = useShell();
 
@@ -322,7 +322,7 @@ export function Words() {
     const clean: WordsSearch = {};
     for (const k of ["state", "source", "level", "group", "q", "word", "layout"] as const)
       if (next[k]) clean[k] = next[k];
-    void navigate({ to: "/words", search: clean, replace: true });
+    void navigate({ to: "/words/all", search: clean, replace: true });
   };
 
   // Search as the learner pauses typing; the URL follows.
@@ -522,7 +522,7 @@ export function Words() {
   if (!asList) {
     return (
       <div className="page page--list words-page">
-        <WordsRoom tab="words" />
+        <WordsRoom />
         <PageHeader
           title="Your words"
           lede="One word at a time: swipe right if you know it, left to keep learning it, tap for more."
@@ -543,7 +543,7 @@ export function Words() {
 
   return (
     <div className="page page--list words-page">
-      <WordsRoom tab="words" />
+      <WordsRoom />
       <PageHeader
         title="Your words"
         lede="New words from your reading wait here. Open one to add it to your words, mark it known or leave it."
@@ -718,7 +718,7 @@ export function Words() {
                   ...(word ? { word } : {}),
                   ...(params.group ? { group: params.group } : {}),
                 };
-                void navigate({ to: "/words", search: keep, replace: true });
+                void navigate({ to: "/words/all", search: keep, replace: true });
               }}
             >
               Clear filters

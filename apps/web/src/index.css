@@ -1674,3 +1674,17 @@
   color: var(--color-success);
   font-weight: 500;
 }
+
+/* Focus mode (a review session): no sidebar, tab bar or top bar; the page alone. */
+:root[data-focus] .sidebar,
+:root[data-focus] .topbar,
+:root[data-focus] .shell-notices {
+  display: none;
+}
+:root[data-focus] .shell {
+  grid-template-columns: minmax(0, 1fr);
+  --sb-w: 0px;
+}
+:root[data-focus] .main {
+  padding-bottom: var(--safe-bottom);
+}

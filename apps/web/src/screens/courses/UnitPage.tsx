@@ -108,7 +108,7 @@ function WordsTab({
         </Link>
         {anki}
         <Link
-          to="/words"
+          to="/words/all"
           search={{ source: `unit:${courseId}/${n}` }}
           className="k-btn k-btn--ghost k-btn--sm"
         >

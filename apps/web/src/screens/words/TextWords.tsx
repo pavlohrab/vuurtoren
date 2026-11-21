@@ -172,7 +172,7 @@ export function TextWords({ textId }: { textId: string }) {
 
       <div className="tw-toolbar">
         <span className="tw-links">
-          <Link to="/words" search={{ source: `text:${textId}` }} className="k-link">
+          <Link to="/words/all" search={{ source: `text:${textId}` }} className="k-link">
             Open in Words <ArrowRight size={14} aria-hidden />
           </Link>
         </span>

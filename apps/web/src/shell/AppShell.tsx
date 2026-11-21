@@ -55,6 +55,7 @@ const PAGE_TITLES: Record<string, string> = {
   "/": "Read",
   "/import": "Add text",
   "/words": "Words",
+  "/words/all": "Words",
   "/practice": "Practice",
   "/review": "Review",
   "/courses": "Courses",
@@ -264,7 +265,7 @@ export function AppShell() {
           label: [w.article ? `${w.article} ${w.key}` : w.key, w.gloss].filter(Boolean).join(" · "),
           keywords: [w.key],
           icon: <Languages size={16} />,
-          onSelect: () => void navigate({ to: "/words", search: { word: w.key } }),
+          onSelect: () => void navigate({ to: "/words/all", search: { word: w.key } }),
         })),
       },
       {
@@ -303,10 +304,9 @@ export function AppShell() {
             </Link>
             {/* The two rooms, then the quieter places; on a phone: Read · Words · More. */}
             <NavLink to="/" label="Read" icon={<BookOpen size={18} />} active={room === "read"} />
-            {/* With Vuurtoren's own cards, Words opens on Review: today's cards first, the levels
-                and the list one tab away (the room's tabs). With Anki it opens the word list. */}
+            {/* Words opens on its home: Due today first, then the word lists and Practice. */}
             <NavLink
-              to={native ? "/review" : "/words"}
+              to="/words"
               label="Words"
               icon={<Languages size={18} />}
               active={room === "words"}

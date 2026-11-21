@@ -183,7 +183,7 @@ function WordRow({
   });
   return (
     <li className="exam-word">
-      <Link to="/words" search={{ word: key }} className="exam-word-lemma" lang="nl">
+      <Link to="/words/all" search={{ word: key }} className="exam-word-lemma" lang="nl">
         {lemma}
       </Link>
       <span className="exam-word-gloss">{en}</span>

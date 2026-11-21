@@ -8,7 +8,7 @@ import type { AppServices, InspectorEntry } from "../../services/types.js";
 import { saveAnswer } from "./WordStack.js";
 import { loadStarterIndex } from "./WordsRoom.js";
 
-function setup(url = "/words") {
+function setup(url = "/words/all") {
   const services: AppServices = createMockServices({ latencyMs: 0, native: true });
   const markKnown = vi.spyOn(services, "markKnown");
   const learnNext = vi.spyOn(services, "learnNext");
@@ -117,7 +117,7 @@ describe("the word stack's first set and order", () => {
       wordsToDecide: async () => [],
     };
     render(
-      <App services={services} history={createMemoryHistory({ initialEntries: ["/words"] })} />,
+      <App services={services} history={createMemoryHistory({ initialEntries: ["/words/all"] })} />,
     );
     const level = await screen.findByRole("radio", { name: /^Level \d+$/, checked: true });
     expect(screen.getByRole("radio", { name: "Met while reading" })).not.toBeChecked();
@@ -144,7 +144,7 @@ describe("the word stack's first set and order", () => {
     render(
       <App
         services={{ ...base, words }}
-        history={createMemoryHistory({ initialEntries: ["/words"] })}
+        history={createMemoryHistory({ initialEntries: ["/words/all"] })}
       />,
     );
     const user = userEvent.setup();

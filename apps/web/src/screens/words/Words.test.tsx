@@ -27,7 +27,7 @@ describe("parseSource", () => {
 describe("Words", () => {
   it("has a Due view in native mode only: words due now, earliest first, with how overdue", async () => {
     const native = { ...createMockServices({ latencyMs: 0, native: true }) };
-    const history = createMemoryHistory({ initialEntries: ["/words?state=due"] });
+    const history = createMemoryHistory({ initialEntries: ["/words/all?state=due"] });
     render(<App services={native} history={history} />);
     const due = await native.dueWords();
     expect(due.length).toBeGreaterThan(0);
@@ -42,13 +42,13 @@ describe("Words", () => {
   });
 
   it("has no Due view in connected mode", async () => {
-    setup("/words?layout=list");
+    setup("/words/all?layout=list");
     await screen.findByRole("radio", { name: "To decide" });
     expect(screen.queryByRole("radio", { name: "Due" })).toBeNull();
   });
 
   it("shows Claude's suggestions behind a chip: add one to Anki, dismiss another", async () => {
-    const { services, user } = setup("/words?layout=list");
+    const { services, user } = setup("/words/all?layout=list");
     const chip = await screen.findByRole("button", { name: /Suggested \(2\)/ });
     await user.click(chip);
     const list = screen.getByRole("list", { name: "Suggested words" });
@@ -63,7 +63,7 @@ describe("Words", () => {
   });
 
   it("filters by state from the URL and shows a removable chip", async () => {
-    const { history, user } = setup("/words?state=learning");
+    const { history, user } = setup("/words/all?state=learning");
     const table = await screen.findByRole("table");
     await waitFor(() => expect(within(table).getAllByRole("row").length).toBeGreaterThan(1));
     for (const chip of within(table).getAllByText(/^Learning/)) expect(chip).toBeVisible();
@@ -76,7 +76,7 @@ describe("Words", () => {
   });
 
   it("filters by starter level from the URL, by the word's rank", async () => {
-    const { history, user } = setup("/words?state=all&level=2");
+    const { history, user } = setup("/words/all?state=all&level=2");
     const table = await screen.findByRole("table");
     // ranks 501–1000: hond is there, boek (rank 243) and gracht (not a starter word) are not
     expect(await within(table).findByRole("button", { name: "Open hond" })).toBeVisible();
@@ -91,7 +91,7 @@ describe("Words", () => {
   });
 
   it("groups by level with each level's progress; other words last", async () => {
-    const { history, user } = setup("/words?state=new");
+    const { history, user } = setup("/words/all?state=new");
     await screen.findByRole("table");
     await user.click(screen.getByRole("button", { name: /Group by level/ }));
     await waitFor(() => expect(history.location.search).toMatch(/group=level/));
@@ -112,7 +112,7 @@ describe("Words", () => {
 
   it("points native learners without starter decks to Settings from the level view", async () => {
     const native = createMockServices({ latencyMs: 0, native: true });
-    const history = createMemoryHistory({ initialEntries: ["/words?state=all&group=level"] });
+    const history = createMemoryHistory({ initialEntries: ["/words/all?state=all&group=level"] });
     render(<App services={native} history={history} />);
     expect(await screen.findByRole("link", { name: /Add the starter levels/ })).toHaveAttribute(
       "href",
@@ -121,7 +121,7 @@ describe("Words", () => {
   });
 
   it("lists the words of a text and opens the shared inspector with its actions", async () => {
-    const { history, user } = setup("/words?source=text:t-utrecht");
+    const { history, user } = setup("/words/all?source=text:t-utrecht");
     expect(
       await screen.findByText(/From: Een dag in Utrecht/, undefined, { timeout: 3000 }),
     ).toBeInTheDocument();
@@ -136,7 +136,7 @@ describe("Words", () => {
   });
 
   it("opens on the words to decide, without the optional columns", async () => {
-    setup("/words?layout=list");
+    setup("/words/all?layout=list");
     expect(await screen.findByRole("radio", { name: "To decide" })).toBeChecked();
     const table = await screen.findByRole("table");
     expect(within(table).queryByRole("columnheader", { name: "Recall" })).toBeNull();
@@ -146,13 +146,13 @@ describe("Words", () => {
   });
 
   it("opens a word outside any text by key", async () => {
-    setup("/words?word=boek");
+    setup("/words/all?word=boek");
     const panel = await screen.findByRole("complementary", { name: "Inspector" });
     expect(await within(panel).findByText(/book/)).toBeInTheDocument();
   });
 
   it("sends a selection to Practice and Talk", async () => {
-    const { user } = setup("/words?source=text:t-utrecht");
+    const { user } = setup("/words/all?source=text:t-utrecht");
     // Checkboxes appear only in Select mode.
     await screen.findByRole("button", { name: "Open gracht" });
     expect(screen.queryByRole("checkbox", { name: "Select gracht" })).toBeNull();

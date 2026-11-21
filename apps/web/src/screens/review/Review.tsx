@@ -1,27 +1,29 @@
 /**
- * The review screen (native mode): front, then Space or "Show answer" for the back, then
- * Again / Hard / Good / Easy with the next interval on each button (keys 1–4; Space is Good).
+ * The review session (native mode), in focus mode: no menus, the card alone. Front, then a tap,
+ * Space or "Show answer" for the back, then Again / Hard / Good / Easy with the next interval on
+ * each button (keys 1–4; Space is Good) or a swipe: left Again, right Good, up Easy.
+ * Today's cards are the queue (due first, then new words within the daily limit). When they are
+ * done, the session can go on with more new words or learning words ahead of time (`?more=`).
  * Answers can be taken back one by one (Undo or Z), also after a reload or on another day.
  * Vocabulary cards say their word (R replays it) and sentence: the audio pack's clip, else the
  * system voice; the word plays as the front shows, the sentence on reveal (Settings).
  */
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
-import { Undo2, Volume2 } from "lucide-react";
+import { Link, useSearch } from "@tanstack/react-router";
+import { Undo2, Volume2, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button, Skeleton } from "@app/ui";
 import { plural } from "../../format.js";
 import { useServices } from "../../services/context.js";
 import { errorText } from "../../services/errors.js";
 import type { CardRating, ReviewCard } from "../../services/nativeTypes.js";
-import { PageHeader } from "../../shell/PageHeader.js";
 import { usePageHeader } from "../../shell/ShellContext.js";
 import { sanitizeCardHtml } from "./sanitize.js";
 import { useMediaUrls } from "./useMedia.js";
 import { ErrorNotice } from "../../shell/ErrorNotice.js";
 import { PlayButton, useSay } from "../../audio/useSay.js";
 import type { Saying } from "../../audio/play.js";
-import { WordsRoom } from "../words/WordsRoom.js";
+import { useSwipe } from "./useSwipe.js";
 import "./review.css";
 
 const RATINGS: { rating: CardRating; label: string }[] = [
@@ -37,13 +39,28 @@ interface Answered {
   reviewId: string;
 }
 
+/** How many extra cards one "Continue" asks for. */
+const MORE = { new: 10, learning: 20 } as const;
+
 export function Review() {
   usePageHeader("Review");
   const services = useServices();
   const qc = useQueryClient();
+  const { more: moreParam }: { more?: string } = useSearch({ from: "/review" });
+  const more: "new" | "learning" | null =
+    moreParam === "new" || moreParam === "learning" ? moreParam : null;
+  // Extra cards still to give in this session (each answer uses one up).
+  const [extraLeft, setExtraLeft] = useState<number>(more ? MORE[more] : 0);
+  const [extraFor, setExtraFor] = useState(more);
+  if (extraFor !== more) {
+    setExtraFor(more);
+    setExtraLeft(more ? MORE[more] : 0);
+  }
+  const extra = more && extraLeft > 0 ? { kind: more, count: extraLeft } : undefined;
+  useFocusMode();
   const queue = useQuery({
-    queryKey: ["review", "queue"],
-    queryFn: () => services.reviewQueue(),
+    queryKey: ["review", "queue", more, extraLeft],
+    queryFn: () => services.reviewQueue(extra),
     staleTime: Infinity,
     gcTime: 0,
   });
@@ -142,6 +159,7 @@ export function Review() {
         setUndo((u) => [...u.slice(-19), { cardId: card.cardId, reviewId }]);
         setFirst(null);
         setDone((d) => d + 1);
+        if (more && (more === "learning" || card.isNew)) setExtraLeft((n) => Math.max(0, n - 1));
         setTurn((t) => t + 1);
         await refresh();
       } catch (e) {
@@ -221,23 +239,30 @@ export function Review() {
     return () => window.removeEventListener("keydown", onKey);
   }, [card, shown, setShown, answer, takeBack, wordSaying, play]);
 
-  const counts = queue.data
-    ? `${plural(queue.data.due, "card")} due · ${queue.data.fresh} new`
-    : null;
+  const left = queue.data ? queue.data.cards.length : 0;
+  const swipe = useSwipe({
+    enabled: !!card && shown && !busy,
+    onLeft: () => void answer(1),
+    onRight: () => void answer(3),
+    onUp: () => void answer(4),
+  });
 
   return (
     <div className="page page--list review">
-      <WordsRoom tab="review" />
       <div className="review-top">
-        <span className="k-hint" role="status">
-          {counts}
-          {done ? ` · ${done} done` : ""}
+        <Link to="/words" className="review-close" aria-label="Close the review">
+          <X size={22} aria-hidden />
+        </Link>
+        <span className="review-progress" role="status">
+          {card ? `${done} done · ${plural(left, "card")} to go` : done ? `${done} done` : ""}
         </span>
         {canUndo ? (
           <Button variant="ghost" size="sm" onClick={() => void takeBack()} disabled={busy}>
             <Undo2 size={14} aria-hidden /> Undo <kbd className="ex-key">Z</kbd>
           </Button>
-        ) : null}
+        ) : (
+          <span className="review-top-spacer" />
+        )}
       </div>
       {queue.isPending ? (
         <Skeleton style={{ height: 280, width: "100%" }} />
@@ -253,6 +278,8 @@ export function Review() {
             key={cardKey}
             card={card}
             shown={shown}
+            swipe={swipe}
+            onReveal={() => setShown(true)}
             playing={speech.playing}
             onPlay={(which) => {
               const what = which === "word" ? wordSaying : sentenceSaying;
@@ -262,6 +289,7 @@ export function Review() {
           <div className="review-actions">
             {shown ? (
               <div className="review-ratings" role="group" aria-label="How well did you know it?">
+                <p className="review-swipe-hint">Swipe: ← Again · Good → · ↑ Easy</p>
                 {RATINGS.map(({ rating, label }) => (
                   <button
                     key={rating}
@@ -292,37 +320,64 @@ export function Review() {
           ) : null}
         </>
       ) : (
-        <>
-          <PageHeader
-            title={done ? "Done for now" : "Nothing to review"}
-            lede={
-              done
-                ? `You reviewed ${plural(done, "card")}. Cards come back when they are due.`
-                : "No cards are due. Add words while you read, or import a deck in Settings."
-            }
-          />
-          <div className="row">
-            <Link to="/" className="k-btn k-btn--primary">
-              Read something
+        <section className="review-end" aria-labelledby="review-end-title">
+          <h1 id="review-end-title" className="review-end-title">
+            {done ? "Done for today" : "Nothing due"}
+          </h1>
+          <p className="review-end-lede">
+            {done
+              ? `You reviewed ${plural(done, "card")}. They come back when they are due.`
+              : "Cards come back when they are due. You can go on with more."}
+          </p>
+          <div className="review-end-actions">
+            <Link
+              to="/review"
+              search={{ more: "new" }}
+              className="k-btn k-btn--primary"
+              onClick={() => setExtraLeft(MORE.new)}
+            >
+              Continue with new words
             </Link>
-            <Link to="/settings" search={{ section: "words" }} className="k-btn k-btn--ghost">
-              Import a deck
+            <Link
+              to="/review"
+              search={{ more: "learning" }}
+              className="k-btn k-btn--secondary"
+              onClick={() => setExtraLeft(MORE.learning)}
+            >
+              Continue with learning words
+            </Link>
+            <Link to="/words" className="k-btn k-btn--ghost">
+              Back to Words
             </Link>
           </div>
-        </>
+        </section>
       )}
     </div>
   );
 }
 
+/** While mounted, the app shows the page alone (no sidebar, tab bar or top bar). */
+function useFocusMode() {
+  useEffect(() => {
+    document.documentElement.dataset["focus"] = "";
+    return () => {
+      delete document.documentElement.dataset["focus"];
+    };
+  }, []);
+}
+
 function CardView({
   card,
   shown,
+  swipe,
+  onReveal,
   playing,
   onPlay,
 }: {
   card: ReviewCard;
   shown: boolean;
+  swipe: ReturnType<typeof useSwipe>;
+  onReveal: () => void;
   playing: string | null;
   onPlay: (which: "word" | "sentence") => void;
 }) {
@@ -331,7 +386,18 @@ function CardView({
   const back = useMemo(() => sanitizeCardHtml(card.back, urls), [card.back, urls]);
   const audio = shown ? [...new Set([...card.audioFront, ...card.audioBack])] : card.audioFront;
   return (
-    <article className="review-card" aria-live="polite" data-layout={card.layout}>
+    <article
+      className="review-card"
+      aria-live="polite"
+      data-layout={card.layout}
+      data-swipe={swipe.direction ?? undefined}
+      style={swipe.style}
+      {...swipe.handlers}
+      onClick={(e) => {
+        // A tap on the front shows the answer; buttons inside keep their own action.
+        if (!shown && !(e.target as HTMLElement).closest("button")) onReveal();
+      }}
+    >
       <div className="review-meta k-overline">
         {card.isNew ? "New · " : ""}
         {card.deck}

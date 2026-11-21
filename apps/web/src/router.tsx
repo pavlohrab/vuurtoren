@@ -83,8 +83,10 @@ const importRoute = searchScreen("/import", () => import("./screens/Import.js"),
   "course",
   "unit",
 ]);
-/** /words?layout=cards|list&state=&source=text:<id>|unit:<course>/<n>|practice-again&level=1…10|other&group=level&q=&word=<key> */
-const wordsRoute = searchScreen("/words", () => import("./screens/words/Words.js"), "Words", [
+/** /words: the Words home (Due today, then the word lists, Practice and the level check). */
+const wordsHomeRoute = screen("/words", () => import("./screens/words/WordsHome.js"), "WordsHome");
+/** /words/all?layout=cards|list&state=&source=text:<id>|unit:<course>/<n>|practice-again&level=1…10|other&group=level&q=&word=<key> */
+const wordsRoute = searchScreen("/words/all", () => import("./screens/words/Words.js"), "Words", [
   "state",
   "source",
   "level",
@@ -115,7 +117,10 @@ const topicPracticeRoute = screen(
   () => import("./screens/Practice.js"),
   "TopicPracticeRoute",
 );
-const reviewRoute = screen("/review", () => import("./screens/review/Review.js"), "Review");
+/** /review?more=new|learning: today's cards, or more of them after the day's cards are done. */
+const reviewRoute = searchScreen("/review", () => import("./screens/review/Review.js"), "Review", [
+  "more",
+]);
 const progressRoute = screen("/progress", () => import("./screens/Progress.js"), "Progress");
 /** /settings?section=words|reading|devices|ai|data (older names: language, sync, account, advanced) */
 const settingsRoute = searchScreen(
@@ -163,6 +168,7 @@ const routeTree = rootRoute.addChildren([
   readRoute,
   wordsOfTextRoute,
   importRoute,
+  wordsHomeRoute,
   wordsRoute,
   practiceRoute,
   talkRoute,

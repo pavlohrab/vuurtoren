@@ -42,7 +42,7 @@ export function Progress() {
   if (s && !synced && s.known + s.learning === 0) {
     return (
       <div className="page page--list">
-        <WordsRoom tab="progress" />
+        <WordsRoom />
         <PageHeader title="Progress" />
         <EmptyState
           icon={<TrendingUp size={20} />}
@@ -60,7 +60,7 @@ export function Progress() {
 
   return (
     <div className="page page--list progress">
-      <WordsRoom tab="progress" />
+      <WordsRoom />
       <PageHeader
         title="Progress"
         lede={
@@ -110,7 +110,7 @@ function Stat({
 }) {
   if (state) {
     return (
-      <Link to="/words" search={{ state }} className="stat stat--link">
+      <Link to="/words/all" search={{ state }} className="stat stat--link">
         <div className="stat-value">{value}</div>
         <div className="stat-label">
           {label} <ArrowRight size={12} aria-hidden />
