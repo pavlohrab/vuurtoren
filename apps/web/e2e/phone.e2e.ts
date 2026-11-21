@@ -309,7 +309,7 @@ for (const size of SIZES) {
       expect(asked).toEqual([]);
     });
 
-    test("Your words as cards: swipe right for I know it, Undo, swipe left to keep learning", async ({
+    test("Check your level as cards: swipe right for I know it, Undo, swipe left to keep learning", async ({
       page,
     }) => {
       await withInsets(page);
@@ -319,7 +319,7 @@ for (const size of SIZES) {
         .getByRole("navigation", { name: "Main" })
         .getByRole("link", { name: /^Words/ })
         .click();
-      await page.getByRole("link", { name: "Your words" }).click();
+      await page.getByRole("link", { name: /Check your level/ }).click();
       const card = page.getByRole("group", { name: /Swipe right/ });
       await expect(card).toBeVisible();
       await expect(card.locator(".word-stack-meaning")).not.toBeEmpty();
@@ -361,7 +361,9 @@ for (const size of SIZES) {
       expect(await word()).toBe(second);
     });
 
-    test("the word sheet opens as a small peek above the gesture line", async ({ page }) => {
+    test("the word sheet opens as a peek with the sentence, above the gesture line", async ({
+      page,
+    }) => {
       await withInsets(page);
       await page.goto("/?demo");
       await page.getByRole("link", { name: "Een dag in Utrecht" }).first().click();
@@ -370,8 +372,8 @@ for (const size of SIZES) {
       await expect(sheet).toHaveAttribute("data-sheet", "peek");
       await page.waitForTimeout(500);
       const seen = await sheet.evaluate((el) => el.getBoundingClientRect().top);
-      // About 28–32% of the screen (a little more on the shorter one).
-      expect(size.height - seen).toBeLessThanOrEqual(size.height * 0.34);
+      // Under half the screen: the word, its meaning, the sentence with its translation, buttons.
+      expect(size.height - seen).toBeLessThanOrEqual(size.height * 0.5);
       expect(size.height - seen).toBeGreaterThanOrEqual(size.height * 0.2);
       // The two main buttons, fully above the 34px gesture line; the details wait below.
       const known = sheet.getByRole("button", { name: "I know it" });
@@ -379,17 +381,19 @@ for (const size of SIZES) {
       expect(box).not.toBeNull();
       expect(box!.y + box!.height).toBeLessThanOrEqual(size.height - 34);
       expect(box!.y).toBeGreaterThan(seen);
-      const context = await sheet
-        .getByText("In context")
+      // The sentence shows at once; the Word and Sentence tabs wait below.
+      await expect(sheet.locator(".k-inspector-context")).toBeInViewport();
+      const tabs = await sheet
+        .getByRole("tablist", { name: "Details" })
         .evaluate((el) => el.getBoundingClientRect().top);
-      expect(context).toBeGreaterThanOrEqual(size.height - 34);
+      expect(tabs).toBeGreaterThanOrEqual(size.height - 34);
       await shot(page, `sheet-small-peek-${size.width}`);
 
       // A drag up shows the details; a drag down goes back, and once more closes it.
       const grip = sheet.locator(".sheet-grip");
       await drag(page, grip, -160);
       await expect(sheet).toHaveAttribute("data-sheet", "full");
-      await expect(sheet.getByText("In context")).toBeInViewport();
+      await expect(sheet.getByRole("tab", { name: "Sentence" })).toBeInViewport();
       await drag(page, grip, 160);
       await expect(sheet).toHaveAttribute("data-sheet", "peek");
       await drag(page, grip, 160);

@@ -166,6 +166,6 @@ test("native mode: add a word while reading, then review it", async ({ page }) =
   await page.keyboard.press("Space");
   await expect(page.getByRole("button", { name: /Easy/ })).toBeVisible();
   await page.keyboard.press("4");
-  await expect(page.getByRole("heading", { name: "Done for now" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Done for today" })).toBeVisible();
   expect(errors).toEqual([]);
 });
