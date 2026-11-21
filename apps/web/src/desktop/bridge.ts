@@ -104,7 +104,13 @@ interface GlossEntry {
 /** The `dictionary-nl` pack kept on the device (`dictionary.rs`). */
 interface DeviceDictionary {
   /** Is it there, its size, and the size of its download (bytes). */
-  status(): Promise<{ installed: boolean; bytes: number; download: number }>;
+  status(): Promise<{
+    installed: boolean;
+    bytes: number;
+    download: number;
+    /** The dictionary the app carries is being unpacked (first start; absent in older apps). */
+    unpacking?: boolean;
+  }>;
   /** Entries per word; null when the pack is not on the device. */
   gloss(words: string[]): Promise<Record<string, GlossEntry[]> | null>;
   /** Download it (from the public packs release), checked, and put it in place. */

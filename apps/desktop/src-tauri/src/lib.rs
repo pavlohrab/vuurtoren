@@ -28,8 +28,7 @@ mod sidecar;
 mod sync;
 
 use std::path::PathBuf;
-#[cfg(desktop)]
-use std::sync::atomic::AtomicBool;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
@@ -86,6 +85,8 @@ struct State {
     closing: AtomicBool,
     /// `vuurtoren://` links that opened the app, until the page takes them (`links_take`).
     links: Mutex<Vec<String>>,
+    /// The dictionary pack is being put in place (unpacked from the app, or downloaded).
+    dictionary_busy: AtomicBool,
 }
 
 impl State {
@@ -207,10 +208,44 @@ struct DictionaryStatus {
     bytes: u64,
     /// The size of the download (the archive this build wants).
     download: u64,
+    /// The dictionary the app carries is being unpacked (first start on a phone).
+    unpacking: bool,
+}
+
+/// Unpack the dictionary the app carries (`MainActivity.kt` copies it out of the APK at first
+/// start), in the background. Nothing to do without that archive. A damaged one is removed, so
+/// the download takes over.
+fn unpack_bundled_dictionary(app: &AppHandle) {
+    let Ok(dir) = app.path().app_data_dir() else {
+        return;
+    };
+    if !dictionary::bundled_in(&dir).exists() {
+        return;
+    }
+    let state = app.state::<State>();
+    if state.dictionary_busy.swap(true, Ordering::SeqCst) {
+        return;
+    }
+    let handle = app.clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        if let Err(e) = dictionary::unpack_bundled(&dir) {
+            eprintln!("The dictionary in the app did not unpack: {e}");
+        }
+        handle
+            .state::<State>()
+            .dictionary_busy
+            .store(false, Ordering::SeqCst);
+    });
 }
 
 #[tauri::command]
-fn dictionary_status(app: AppHandle) -> DictionaryStatus {
+fn dictionary_status(app: AppHandle, state: tauri::State<'_, State>) -> DictionaryStatus {
+    unpack_bundled_dictionary(&app);
+    let unpacking = state.dictionary_busy.load(Ordering::SeqCst)
+        && app
+            .path()
+            .app_data_dir()
+            .is_ok_and(|d| dictionary::bundled_in(&d).exists());
     let path = app
         .path()
         .app_data_dir()
@@ -224,6 +259,7 @@ fn dictionary_status(app: AppHandle) -> DictionaryStatus {
         installed,
         bytes,
         download: dictionary::Pack::wanted().map_or(0, |p| p.size),
+        unpacking,
     }
 }
 
@@ -253,8 +289,20 @@ async fn dictionary_gloss(
 async fn dictionary_install(app: AppHandle, state: tauri::State<'_, State>) -> Result<(), String> {
     let pack = dictionary::Pack::wanted().ok_or("This build names no dictionary pack.")?;
     let dest = dictionary::path_in(&app.path().app_data_dir().map_err(|e| e.to_string())?);
-    let res = state
-        .client
+    if state.dictionary_busy.swap(true, Ordering::SeqCst) {
+        return Err("The dictionary is being set up already.".into());
+    }
+    let res = download_dictionary(&state.client, pack, dest).await;
+    state.dictionary_busy.store(false, Ordering::SeqCst);
+    res
+}
+
+async fn download_dictionary(
+    client: &reqwest::Client,
+    pack: dictionary::Pack,
+    dest: PathBuf,
+) -> Result<(), String> {
+    let res = client
         .get(pack.url())
         .send()
         .await
@@ -733,7 +781,9 @@ pub fn run() {
                 #[cfg(desktop)]
                 closing: AtomicBool::new(false),
                 links: Mutex::new(Vec::new()),
+                dictionary_busy: AtomicBool::new(false),
             });
+            unpack_bundled_dictionary(&handle);
             #[cfg(desktop)]
             desktop::before_window(&handle);
 

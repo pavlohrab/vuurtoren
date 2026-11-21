@@ -91,6 +91,36 @@ impl Pack {
 
 /// The pack's file name inside the app's `packs` folder.
 pub const FILE: &str = "dictionary-nl.sqlite";
+/// The archive the app carries (an Android asset), copied next to the pack at first start by
+/// `MainActivity.kt` and unpacked by `unpack_bundled`.
+pub const BUNDLED: &str = "dictionary-nl.bundled.tar.gz";
+
+/// Where the copied archive waits to be unpacked.
+pub fn bundled_in(app_data: &Path) -> PathBuf {
+    app_data.join("packs").join(BUNDLED)
+}
+
+/// Unpack the archive the app carries into place, checked like a download, and remove it
+/// (also when it is damaged, so the download takes over). `Ok(false)` when there is nothing to
+/// do: no archive, or the pack is there already.
+pub fn unpack_bundled(app_data: &Path) -> Result<bool, String> {
+    let archive = bundled_in(app_data);
+    if !archive.exists() {
+        return Ok(false);
+    }
+    let dest = path_in(app_data);
+    let res = if open(&dest).is_some() {
+        Ok(false)
+    } else {
+        let pack = Pack::wanted().ok_or("This build names no dictionary pack.")?;
+        std::fs::read(&archive)
+            .map_err(|e| e.to_string())
+            .and_then(|bytes| pack.install(&bytes, &dest))
+            .map(|()| true)
+    };
+    let _ = std::fs::remove_file(&archive);
+    res
+}
 
 /// At most this many words per call (the server's limit).
 const MAX_WORDS: usize = 2000;
@@ -210,10 +240,9 @@ mod tests {
         assert!(found["onbekend"].is_empty());
     }
 
-    #[test]
-    fn installs_a_checked_archive_and_refuses_a_damaged_one() {
-        let dir = tempfile::tempdir().unwrap();
-        let db = std::fs::read(sample(dir.path())).unwrap();
+    /// The sample dictionary as a pack archive, with its manifest entry.
+    fn archive(dir: &Path) -> (Vec<u8>, Pack) {
+        let db = std::fs::read(sample(dir)).unwrap();
         let mut tar = tar::Builder::new(Vec::new());
         let mut header = tar::Header::new_gnu();
         header.set_size(db.len() as u64);
@@ -232,6 +261,13 @@ mod tests {
             sha256: sum,
             size: archive.len() as u64,
         };
+        (archive, pack)
+    }
+
+    #[test]
+    fn installs_a_checked_archive_and_refuses_a_damaged_one() {
+        let dir = tempfile::tempdir().unwrap();
+        let (archive, pack) = archive(dir.path());
         let dest = path_in(&dir.path().join("app"));
         let mut damaged = archive.clone();
         damaged[20] ^= 1;
@@ -243,6 +279,25 @@ mod tests {
             lookup(&conn, &["huis".into()]).unwrap()["huis"][0].glosses[0],
             "house"
         );
+    }
+
+    #[test]
+    fn the_bundled_archive_is_unpacked_once_and_removed() {
+        let dir = tempfile::tempdir().unwrap();
+        let app = dir.path().join("app");
+        // Nothing carried: nothing to do.
+        assert_eq!(unpack_bundled(&app), Ok(false));
+        // A damaged archive is refused and removed, so the download takes over.
+        std::fs::create_dir_all(app.join("packs")).unwrap();
+        std::fs::write(bundled_in(&app), b"not a pack").unwrap();
+        assert!(unpack_bundled(&app).is_err());
+        assert!(!bundled_in(&app).exists());
+        assert!(open(&path_in(&app)).is_none());
+        // With the pack in place, a carried archive is just removed.
+        std::fs::copy(sample(dir.path()), path_in(&app)).unwrap();
+        std::fs::write(bundled_in(&app), b"old").unwrap();
+        assert_eq!(unpack_bundled(&app), Ok(false));
+        assert!(!bundled_in(&app).exists());
     }
 
     #[test]
