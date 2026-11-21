@@ -838,7 +838,10 @@ export async function nativeWordEntries(
       }
       entries.set(key, entry);
       const fresh = own.length > 0 && own.every((c) => !c.schedule && !c.suspended);
-      if (r["origin"] === "vuurtoren" && fresh && !pending.has(key)) {
+      // A word the learner added counts as being learned from the start; a starter word they have
+      // not met yet does not (otherwise 5000 untouched cards make every text "20% known").
+      const starter = note.tags?.includes("vuurtoren::starter") ?? false;
+      if (r["origin"] === "vuurtoren" && fresh && !starter && !pending.has(key)) {
         pending.set(key, { noteId: note.id, deck: own[0]!.deck });
       }
     }

@@ -496,7 +496,8 @@
   .sidebar-brand,
   .nav-spacer,
   .nav-divider,
-  .sidebar .nav-link--secondary {
+  .sidebar .nav-link--secondary,
+  .sidebar .nav-link--wide {
     display: none;
   }
   .nav-link,

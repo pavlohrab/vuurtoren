@@ -86,6 +86,8 @@ export function createLiveServices(
   });
   const model = learner.model;
 
+  const stories = createLiveStories({ repo, model, lang });
+
   const grammar = createLiveGrammar({
     repo,
     nlp,
@@ -93,6 +95,7 @@ export function createLiveServices(
     model,
     chunkText,
     translate: dictionary.translateSentences,
+    storyGrammar: (t) => stories.storyGrammar(t, t.tokens ?? []),
   });
 
   const profile = createLiveProfile({ repo, settings, anki, nlp, changed });
@@ -166,14 +169,13 @@ export function createLiveServices(
     storage: platform.storage,
   });
 
-  const stories = createLiveStories({ repo, model, lang });
-
   const pairs = createLivePairs({
     view: texts.view,
     nlp,
     aiReady: ai.aiReady,
     aiTranslate: ai.translateSentences,
     storyLines: (v) => stories.storyLines(v.text, v.tokens),
+    storyPairs: (v) => stories.storyPairs(v.text, v.tokens),
   });
 
   const exam = createLiveExam({ repo, lang, changed });

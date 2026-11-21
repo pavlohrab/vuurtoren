@@ -7,6 +7,9 @@ Usage (from server/nlp)::
     uv run python scripts/check_stories.py --set-words  # also write each story's word count
     uv run python scripts/check_stories.py --write      # check, then write the app bundle
 
+``--write`` also adds each sentence's word pairs and the grammar hits (``build_story_extras.py``),
+so it needs the translation model.
+
 Each story is analysed with the app's spaCy pipeline. The report gives per story: running
 words (and whether they fit the level's length), coverage against the starter list within the
 level's limit (names and numbers excepted), the lemmas outside it, the number of Dutch
@@ -22,6 +25,8 @@ import json
 import re
 import sys
 from pathlib import Path
+
+from build_story_extras import add_extras, write_bundle
 
 from vuurtoren_nlp.stories import (
     KINDS,
@@ -194,9 +199,8 @@ def main() -> int:
             "licence": "CC BY-SA 4.0",
             "stories": entries,
         }
-        OUT.write_text(
-            json.dumps(bundle, ensure_ascii=False, separators=(",", ":")) + "\n", encoding="utf-8"
-        )
+        add_extras(bundle, verify=False)  # just analysed
+        write_bundle(bundle)
         print(f"wrote {OUT.relative_to(REPO)}")
     return 1 if failed else 0
 

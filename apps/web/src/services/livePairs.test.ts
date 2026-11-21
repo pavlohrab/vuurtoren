@@ -161,4 +161,39 @@ describe("sentencePairs", () => {
     const [t] = await offline.sentencePairs("t", [1]);
     expect(t).toMatchObject({ english: "Tomorrow I will ring.", source: "story", pairs: [] });
   });
+
+  it("takes a story's precomputed pairs without a request, and asks only for the rest", async () => {
+    const { calls, nlp } = fakeNlp();
+    const pairs = createLivePairs({
+      view: async () => view,
+      nlp,
+      aiReady: () => false,
+      aiTranslate: vi.fn(),
+      storyPairs: async () =>
+        new Map([
+          [1, { english: "Tomorrow I ring.", pairs: [{ nl: [1, 3], en: [2], confidence: 0.9 }] }],
+        ]),
+    });
+    const [hallo, s] = await pairs.sentencePairs("t", [0, 1]);
+    expect(calls).toHaveLength(1);
+    expect(calls[0]?.map((it) => it.text)).toEqual(["Hallo."]);
+    expect(hallo).toMatchObject({ sent: 0, source: "offline" });
+    // Word indices of the sentence on token indices, like the server's pairs.
+    expect(s).toMatchObject({ sent: 1, english: "Tomorrow I ring.", source: "story" });
+    expect(s?.pairs).toEqual([{ nl: [3, 5], en: [2], confidence: 0.9 }]);
+    expect(s?.englishTokens.map((t) => t.text)).toEqual(["Tomorrow", "I", "ring", "."]);
+
+    // Every sentence precomputed: no request, even with the server down.
+    const down = fakeNlp(true);
+    const offline = createLivePairs({
+      view: async () => view,
+      nlp: down.nlp,
+      aiReady: () => false,
+      aiTranslate: vi.fn(),
+      storyPairs: async () => new Map([[1, { english: "Tomorrow I ring.", pairs: [] }]]),
+    });
+    const [t] = await offline.sentencePairs("t", [1]);
+    expect(down.calls).toHaveLength(0);
+    expect(t?.retry).toBeUndefined();
+  });
 });

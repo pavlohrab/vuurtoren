@@ -151,6 +151,30 @@ describe("native card store", () => {
     });
   });
 
+  it("a starter word not met yet is not counted as being learned", async () => {
+    const { repo } = await newRepo();
+    await repo.append({ type: "LanguageProfileSet", profile: defaultProfile("nl") });
+    await repo.append({
+      type: "NativeNotesAdded",
+      lang: "nl",
+      origin: "vuurtoren",
+      notetypes: [WORD],
+      decks: [{ name: "Vuurtoren::Woorden 1–500", options: DEFAULT_DECK_OPTIONS }],
+      notes: [
+        {
+          id: 5,
+          notetypeId: WORD.id,
+          fields: ["de kat", "", ""],
+          tags: ["vuurtoren", "vuurtoren::starter"],
+          key: "kat",
+        },
+      ],
+      cards: [{ id: 6, noteId: 5, ord: 0, deck: "Vuurtoren::Woorden 1–500", position: 1 }],
+    });
+    const kat = await repo.word("nl", "kat");
+    expect(kat).toMatchObject({ state: "unknown", pKnown: 0, noteIds: [5] });
+  });
+
   it("without a profile (setup skipped) a word added in Vuurtoren has its card", async () => {
     const { repo } = await newRepo();
     await repo.append({
