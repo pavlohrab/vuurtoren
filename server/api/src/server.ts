@@ -8,6 +8,8 @@
  *   GET  /api/sync/file?path=  a sync file                     your devices; also accepts a
  *   PUT  /api/sync/file?path=  write one (raw body)            sync token, which opens
  *   DELETE /api/sync/file?path=  remove one                    nothing else)
+ *   POST /api/sync/pair-code   a one-time pairing code for a phone (signed in)
+ *   POST /api/sync/pair        {code, name}: the code buys the phone its own sync token
  *   A sync token writes only its own device's folder and images; with auth off, /api/sync
  *   answers this site and VUURTOREN_ALLOWED_ORIGINS only.
  *
@@ -41,7 +43,7 @@ function syncCors(req: IncomingMessage, auth: Auth): Record<string, string> {
   if (!auth.enabled && !auth.allowedOrigins.includes(origin.replace(/\/$/, ""))) return {};
   return {
     "access-control-allow-origin": origin,
-    "access-control-allow-methods": "GET, PUT, DELETE, OPTIONS",
+    "access-control-allow-methods": "GET, PUT, POST, DELETE, OPTIONS",
     "access-control-allow-headers": "authorization, content-type, x-vuurtoren",
     "access-control-max-age": "600",
     vary: "Origin",
@@ -145,10 +147,25 @@ export function createApiServer(opts: ApiOptions): Server {
       }
     }
 
+    // The pairing code is the credential (no cookie is read), so it may come from anywhere.
+    if (path === "/api/sync/pair" && method === "POST") {
+      const cors = syncCors(req, auth);
+      try {
+        return await auth.pair(req, res, cors);
+      } catch (e) {
+        if (e instanceof HttpFail)
+          throw new HttpFail(e.status, e.message, { ...e.headers, ...cors });
+        throw e;
+      }
+    }
     const csrf = auth.csrf(req, isSync ? "sync" : "api");
     if (csrf) throw new HttpFail(403, `Request refused (${csrf}).`);
     if (await auth.route(req, res, path)) return;
 
+    if (path === "/api/sync/pair-code" && method === "POST") {
+      // Signed in: a session or the server's token, never a sync token.
+      return auth.pairCode(req, res);
+    }
     if (isSync) {
       const cors = syncCors(req, auth);
       try {

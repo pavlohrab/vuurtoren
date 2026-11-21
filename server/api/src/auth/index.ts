@@ -9,6 +9,8 @@
  *   GET  /api/auth/sync-tokens       list sync tokens (devices that sync; see tokens.ts)
  *   POST /api/auth/sync-tokens       {label?, vault?} -> { token, id, ... } (token shown once)
  *   DELETE /api/auth/sync-tokens/:id revoke one
+ *   POST /api/sync/pair-code         a one-time pairing code (signed in; see tokens.ts)
+ *   POST /api/sync/pair              {code, name} -> { token, id, label } (no sign-in: the code)
  *
  * Credentials: a password (scrypt hash) for people, an optional bearer token for scripts.
  * With neither, auth is off (localhost / trusted network use).
@@ -78,6 +80,13 @@ export interface Auth {
   readonly allowedOrigins: readonly string[];
   /** The sync tokens (each bound to a device; see tokens.ts). */
   readonly syncTokens: TokenStore;
+  /** `POST /api/sync/pair-code`: a pairing code for a phone (needs to be signed in). */
+  pairCode(req: IncomingMessage, res: ServerResponse): void;
+  /**
+   * `POST /api/sync/pair` with `{code, name}`: the code buys a new sync token labelled `name`.
+   * Needs no sign-in (the code is the credential) and is rate limited like sign-in.
+   */
+  pair(req: IncomingMessage, res: ServerResponse, headers: Record<string, string>): Promise<void>;
   /** Headers to add to a response for this identity (renewed session cookie). */
   responseHeaders(id: Identity): Record<string, string | string[]>;
   close(): void;
@@ -178,6 +187,8 @@ export function createAuth(opts: AuthOptions = {}): Auth {
     ...opts.sessions,
   });
   const limiter = new LoginLimiter({ now, ...opts.limiter });
+  // Wrong pairing codes: their own limit, so guessing codes does not lock out sign-in.
+  const pairLimiter = new LoginLimiter({ now, ...opts.limiter });
   const syncTokens = new TokenStore(opts.sessionDb ?? ":memory:", now);
   const pruneTimer = setInterval(() => sessions.prune(), 3600_000);
   pruneTimer.unref();
@@ -320,6 +331,53 @@ export function createAuth(opts: AuthOptions = {}): Auth {
     json(res, 200, { ok: true, user }, { "set-cookie": sessionCookie(s.id, s.expiresAt) });
   }
 
+  function pairCode(req: IncomingMessage, res: ServerResponse): void {
+    const id = require(req);
+    const made = syncTokens.newPairCode();
+    console.log("[vuurtoren-api] pairing code made");
+    json(res, 200, { ok: true, ...made }, responseHeaders(id));
+  }
+
+  async function pair(
+    req: IncomingMessage,
+    res: ServerResponse,
+    headers: Record<string, string>,
+  ): Promise<void> {
+    // JSON only: a plain HTML form cannot send it, and a browser asks first (CORS).
+    const type = (req.headers["content-type"] ?? "").split(";")[0]!.trim().toLowerCase();
+    if (type !== "application/json") throw new HttpFail(415, "Send the pairing code as JSON.");
+    const ip = clientIp(req);
+    const verdict = pairLimiter.check(ip);
+    if (!verdict.ok) {
+      const s = Math.max(1, Math.ceil(verdict.retryAfterMs / 1000));
+      throw new HttpFail(429, "Too many pairing attempts. Wait a moment and try again.", {
+        "retry-after": String(s),
+      });
+    }
+    const body = await readJson<{ code?: unknown; name?: unknown }>(req, 4 * 1024);
+    if (typeof body.code !== "string") throw new HttpFail(400, "Send {code, name}.");
+    let made;
+    try {
+      made = syncTokens.pair(
+        body.code.slice(0, 64),
+        typeof body.name === "string" ? body.name : "Phone",
+      );
+    } catch (e) {
+      throw new HttpFail(409, e instanceof Error ? e.message : "Could not make a token.");
+    }
+    if (!made) {
+      pairLimiter.fail(ip);
+      console.warn(`[vuurtoren-api] wrong pairing code from ${ip}`);
+      throw new HttpFail(
+        403,
+        "This pairing code does not work: it was used already, it expired, or a character is wrong. Make a new one in the server's Settings → Sync → Add a phone.",
+      );
+    }
+    pairLimiter.success(ip);
+    console.log(`[vuurtoren-api] sync token ${made.id} created by pairing`);
+    json(res, 200, { ok: true, token: made.token, id: made.id, label: made.label }, headers);
+  }
+
   async function route(req: IncomingMessage, res: ServerResponse, path: string): Promise<boolean> {
     if (!path.startsWith("/api/auth/")) return false;
     const method = req.method ?? "GET";
@@ -431,6 +489,8 @@ export function createAuth(opts: AuthOptions = {}): Auth {
     foreignOrigin: (req) => originProblem(req, allowed),
     allowedOrigins: allowed,
     syncTokens,
+    pairCode,
+    pair,
     responseHeaders,
     close() {
       clearInterval(pruneTimer);

@@ -9,6 +9,10 @@
  * (`device`), and it may write only there and to the shared images. It may replace vault.json
  * (a passphrase change, a new recovery key) only when it made that vault or was made with
  * `vault` allowed.
+ *
+ * Pairing codes connect a phone without copying a token: a signed-in page asks for a one-time
+ * code (`newPairCode`, valid `PAIR_CODE_MS`, shown as a QR code), and the phone trades it for a
+ * token of its own (`pair`). Only the SHA-256 of a code is kept, and a code works once.
  */
 import { createHash, randomBytes } from "node:crypto";
 import { DatabaseSync } from "node:sqlite";
@@ -30,6 +34,30 @@ const PATTERN = /^ksync_[A-Za-z0-9_-]{43}$/;
 
 /** Most tokens kept at once (one per computer or phone is the expected use). */
 const MAX_TOKENS = 20;
+
+/** How long a pairing code works. */
+export const PAIR_CODE_MS = 10 * 60_000;
+/** Most pairing codes that work at once (a newer one drops the oldest). */
+const MAX_PAIR_CODES = 5;
+/** Pairing codes: no 0/O, 1/I/L, so they can be typed from the screen too. */
+const PAIR_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+const PAIR_LENGTH = 10;
+
+/** A code as typed or scanned: case, spaces and dashes do not matter. */
+export function normalizePairCode(code: string): string {
+  return code.toUpperCase().replace(/[\s-]/g, "");
+}
+
+function newCode(): string {
+  // 31 symbols: a rejection keeps every symbol equally likely.
+  let out = "";
+  while (out.length < PAIR_LENGTH) {
+    for (const b of randomBytes(PAIR_LENGTH * 2)) {
+      if (b < 248 && out.length < PAIR_LENGTH) out += PAIR_ALPHABET[b % PAIR_ALPHABET.length];
+    }
+  }
+  return `${out.slice(0, 5)}-${out.slice(5)}`;
+}
 
 interface Row {
   id: string;
@@ -71,6 +99,11 @@ export class TokenStore {
         last_used  INTEGER,
         device     TEXT,
         vault      INTEGER NOT NULL DEFAULT 0
+      );
+      CREATE TABLE IF NOT EXISTS pair_codes (
+        code_hash  BLOB PRIMARY KEY,
+        created_at INTEGER NOT NULL,
+        expires_at INTEGER NOT NULL
       );
     `);
     // A table without the device columns: its tokens get a device at their next write.
@@ -142,6 +175,39 @@ export class TokenStore {
     return (
       Number(this.db.prepare(`DELETE FROM sync_tokens WHERE id = ?`).run(id).changes) > 0
     );
+  }
+
+  /** A one-time pairing code (shown once; only its hash is kept), valid `PAIR_CODE_MS`. */
+  newPairCode(): { code: string; expiresAt: number } {
+    const now = this.now();
+    const code = newCode();
+    const expiresAt = now + PAIR_CODE_MS;
+    this.db.prepare(`DELETE FROM pair_codes WHERE expires_at <= ?`).run(now);
+    this.db
+      .prepare(`INSERT INTO pair_codes (code_hash, created_at, expires_at) VALUES (?,?,?)`)
+      .run(digest(normalizePairCode(code)), now, expiresAt);
+    this.db
+      .prepare(
+        `DELETE FROM pair_codes WHERE code_hash NOT IN (SELECT code_hash FROM pair_codes ORDER BY created_at DESC, rowid DESC LIMIT ?)`,
+      )
+      .run(MAX_PAIR_CODES);
+    return { code, expiresAt };
+  }
+
+  /**
+   * Trade a pairing code for a new token labelled `label`: null when the code is unknown,
+   * used or expired. The code is gone afterwards, also when no token could be made.
+   */
+  pair(code: string, label: string): (TokenInfo & { token: string }) | null {
+    const clean = normalizePairCode(code);
+    if (clean.length !== PAIR_LENGTH || [...clean].some((c) => !PAIR_ALPHABET.includes(c))) {
+      return null;
+    }
+    const taken = this.db
+      .prepare(`DELETE FROM pair_codes WHERE code_hash = ? AND expires_at > ?`)
+      .run(digest(clean), this.now());
+    if (Number(taken.changes) !== 1) return null;
+    return this.create(label);
   }
 
   /** The id of a valid token, or null. Looked up by hash, so timing reveals nothing. */
