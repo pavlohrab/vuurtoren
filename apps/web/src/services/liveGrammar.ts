@@ -3,7 +3,9 @@
  *
  * Grammar hits are computed once per text content by `POST /grammar` and stored in this
  * device's analysis cache next to the tokens (same content hash, so editing a text invalidates
- * both; a new analyzer version drops the hits). Like the tokens they are not events. The server analyses each chunk
+ * both; a new analyzer version drops the hits). Like the tokens they are not events. A bundled
+ * story brings its hits, computed at build time by the same detectors, so it needs no request
+ * (and gets marks without the server). The server analyses each chunk
  * again, so its token indices and offsets are rebased exactly like the analysis chunks
  * (`chunkText` / `mergeChunkTokens`) and checked against the stored tokens.
  */
@@ -49,6 +51,8 @@ export interface LiveGrammarDeps {
   chunkText: (text: string, max?: number) => { start: number; text: string }[];
   /** Offline sentence translation; missing entries when unavailable. */
   translate: (sentences: string[]) => Promise<Map<string, string>>;
+  /** A bundled story's precomputed hits for its analysed text, else null (see stories.ts). */
+  storyGrammar?: (text: StoredText) => Promise<GrammarHit[] | null>;
 }
 
 /**
@@ -137,11 +141,7 @@ export function createLiveGrammar(deps: LiveGrammarDeps) {
     return v ? { ...v.text, tokens: v.tokens } : null;
   }
 
-  async function compute(textId: string): Promise<GrammarHit[]> {
-    const stored = await repo.textGrammar(textId);
-    if (stored && stored.version === GRAMMAR_VERSION) return stored.hits;
-    const text = await analysed(textId);
-    if (!text?.tokens) return [];
+  async function fromServer(text: StoredText, tokens: AnalyzedToken[]): Promise<GrammarHit[]> {
     const chunks = deps.chunkText(text.content, CHUNK_CHARS);
     const perChunk = await (
       await deps.nlp()
@@ -149,7 +149,15 @@ export function createLiveGrammar(deps: LiveGrammarDeps) {
       "nl",
       chunks.map((c) => c.text),
     );
-    const hits = rebaseHits(chunks, perChunk, text.tokens);
+    return rebaseHits(chunks, perChunk, tokens);
+  }
+
+  async function compute(textId: string): Promise<GrammarHit[]> {
+    const stored = await repo.textGrammar(textId);
+    if (stored && stored.version === GRAMMAR_VERSION) return stored.hits;
+    const text = await analysed(textId);
+    if (!text?.tokens) return [];
+    const hits = (await deps.storyGrammar?.(text)) ?? (await fromServer(text, text.tokens));
     await repo.saveTextGrammar({
       textId,
       contentHash: contentHash(text.content),

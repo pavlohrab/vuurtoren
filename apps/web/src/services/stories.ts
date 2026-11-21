@@ -3,9 +3,18 @@
  * `server/nlp/scripts/check_stories.py --write`): a chunk of its own, loaded on first use and
  * cached, so the Stories shelf works offline. Each story carries its spaCy analysis, so its
  * coverage is known before it is opened and it reads without the language server, and an
- * English line per Dutch sentence for side by side.
+ * English line per Dutch sentence for side by side. The build also ships each sentence's word
+ * pairs (the language server's `/translate/pairs` with the story's English given) and the
+ * text's grammar hits (`/grammar`), so side by side, its structure view and the grammar marks
+ * work without the server too (see `storyExtras`).
  */
-import { type AnalyzedToken, type LearnerModel, classifyTokens, coverageOf } from "@app/core";
+import {
+  type AnalyzedToken,
+  type GrammarHit,
+  type LearnerModel,
+  classifyTokens,
+  coverageOf,
+} from "@app/core";
 
 export const STORY_LEVELS = ["A1", "A2", "B1", "B2"] as const;
 export type StoryLevel = (typeof STORY_LEVELS)[number];
@@ -31,6 +40,34 @@ export interface BundledStory {
   sentences: [number, number, string][];
   analyzerVersion: string;
   tokens: AnalyzedToken[];
+  /**
+   * Precomputed word pairs per sentence (`AnalyzedToken.sent`), as the server answers them:
+   * `nl` indexes the sentence's word tokens, `en` the English tokens. Null for a sentence with
+   * words the build had no English for; missing when the bundle has none (or they are stale).
+   */
+  pairs?: (StoryPair[] | null)[];
+  /** The English the pairs index where it differs from the story's ("" when rejected). */
+  pairsEnglish?: Record<string, string>;
+  /** Precomputed grammar hits of the text (`/grammar`); missing like `pairs`. */
+  grammar?: GrammarHit[];
+}
+
+/** A precomputed word pair: indices into the sentence's words and into its English tokens. */
+export interface StoryPair {
+  nl: number[];
+  en: number[];
+  confidence: number;
+}
+
+/** The layout of the bundle's pairs and grammar hits this app reads (`story_extras.py`). */
+const EXTRAS_FORMAT = 1;
+
+/** The versions the bundle's pairs and hits were computed with. */
+interface ExtrasMeta {
+  format: number;
+  analyzerVersion: string;
+  model: string;
+  pairer: string;
 }
 
 /** A token as bundled: AnalyzedToken without `i` and `text` (index and content slice). */
@@ -49,15 +86,42 @@ type PackedToken = [
   zipf: number,
 ];
 
-interface PackedStory extends Omit<BundledStory, "tokens" | "level" | "kind" | "sentences"> {
+interface PackedStory extends Omit<
+  BundledStory,
+  "tokens" | "level" | "kind" | "sentences" | "pairs" | "grammar"
+> {
   level: string;
   kind: string;
   sentences: (string | number)[][];
   tokens: PackedToken[];
+  /** Per sentence: [nl word indices, en token indices, confidence] per pair, or null. */
+  pairs?: ([number[], number[], number][] | null)[];
+  /** [topic, token indices, note?] per hit. */
+  grammar?: [string, number[], string?][];
 }
 
-/** Unpack a bundled story. */
-function unpackStory(p: PackedStory): BundledStory {
+/** The grammar hits of a story, their sentence and its span taken from the tokens. */
+function unpackGrammar(
+  packed: NonNullable<PackedStory["grammar"]>,
+  tokens: readonly AnalyzedToken[],
+): GrammarHit[] {
+  const span = new Map<number, [number, number]>();
+  for (const t of tokens) {
+    const had = span.get(t.sent);
+    span.set(t.sent, had ? [had[0], t.end] : [t.start, t.end]);
+  }
+  const out: GrammarHit[] = [];
+  for (const [topic, idx, note] of packed) {
+    const sent = tokens[idx[0] ?? -1]?.sent;
+    const s = sent === undefined ? undefined : span.get(sent);
+    if (sent === undefined || !s || !idx.every((i) => tokens[i]?.sent === sent)) continue;
+    out.push({ topic, tokens: idx, sent, start: s[0], end: s[1], note: note ?? "" });
+  }
+  return out;
+}
+
+/** Unpack a bundled story; its pairs and hits only when computed for its own analysis. */
+function unpackStory(p: PackedStory, extras?: ExtrasMeta): BundledStory {
   const tokens = p.tokens.map(
     ([lemma, alt, pos, morph, dep, head, sent, start, end, flags, particleOf, zipf], i) => ({
       i,
@@ -78,12 +142,23 @@ function unpackStory(p: PackedStory): BundledStory {
       zipf,
     }),
   );
+  const { pairs, grammar, pairsEnglish, ...rest } = p;
+  const fresh = extras?.format === EXTRAS_FORMAT && extras.analyzerVersion === p.analyzerVersion;
   return {
-    ...p,
+    ...rest,
     level: p.level as StoryLevel,
     kind: p.kind as BundledStory["kind"],
     sentences: p.sentences.map(([a, b, en]) => [Number(a), Number(b), String(en)]),
     tokens,
+    ...(fresh && pairs
+      ? {
+          pairs: pairs.map(
+            (ps) => ps?.map(([nl, en, confidence]) => ({ nl, en, confidence })) ?? null,
+          ),
+          ...(pairsEnglish ? { pairsEnglish } : {}),
+        }
+      : {}),
+    ...(fresh && grammar ? { grammar: unpackGrammar(grammar, tokens) } : {}),
   };
 }
 
@@ -91,9 +166,10 @@ let stories: Promise<BundledStory[]> | null = null;
 
 /** Every bundled story, by level (A1 first), then legend, classic, original. */
 export function loadStories(): Promise<BundledStory[]> {
-  stories ??= import("../../../../content/stories/stories.json").then((m) =>
-    (m.default as unknown as { stories: PackedStory[] }).stories.map(unpackStory),
-  );
+  stories ??= import("../../../../content/stories/stories.json").then((m) => {
+    const bundle = m.default as unknown as { stories: PackedStory[]; extras?: ExtrasMeta };
+    return bundle.stories.map((p) => unpackStory(p, bundle.extras));
+  });
   return stories;
 }
 
@@ -127,6 +203,63 @@ export function storyEnglish(
     out.set(first.sent, had ? `${had} ${en}` : en);
   }
   return out;
+}
+
+/**
+ * Whether `tokens` are the story's own analysis, which the precomputed pairs and hits index (a
+ * text analysed again by a newer language server may split it differently).
+ */
+function sameAnalysis(
+  story: Pick<BundledStory, "content" | "tokens">,
+  content: string,
+  tokens: readonly AnalyzedToken[],
+): boolean {
+  if (content !== story.content || tokens.length !== story.tokens.length) return false;
+  return tokens.every((t, k) => {
+    const b = story.tokens[k]!;
+    return (
+      t.start === b.start &&
+      t.end === b.end &&
+      t.sent === b.sent &&
+      t.is_word === b.is_word &&
+      t.particle_of === b.particle_of
+    );
+  });
+}
+
+/** One sentence's precomputed English and pairs (`nl` = word indices within the sentence). */
+export interface StorySentencePairs {
+  english: string;
+  pairs: StoryPair[];
+}
+
+/**
+ * The precomputed English and pairs per sentence of an analysis of the story's text: empty for
+ * another text or analysis, and without the sentences the build had no English for.
+ */
+export function storyPairs(
+  story: Pick<BundledStory, "content" | "sentences" | "tokens" | "pairs" | "pairsEnglish">,
+  content: string,
+  tokens: readonly AnalyzedToken[],
+): Map<number, StorySentencePairs> {
+  const out = new Map<number, StorySentencePairs>();
+  if (!story.pairs || !sameAnalysis(story, content, tokens)) return out;
+  const english = storyEnglish(story, content, tokens);
+  story.pairs.forEach((pairs, sent) => {
+    const en = story.pairsEnglish?.[String(sent)] ?? english.get(sent);
+    // A sentence without a line has no words (a quote on its own): no English, nothing to ask.
+    if (pairs) out.set(sent, { english: en ?? "", pairs: en ? pairs : [] });
+  });
+  return out;
+}
+
+/** The precomputed grammar hits of an analysis of the story's text, or null (ask the server). */
+export function storyGrammar(
+  story: Pick<BundledStory, "content" | "tokens" | "grammar">,
+  content: string,
+  tokens: readonly AnalyzedToken[],
+): GrammarHit[] | null {
+  return story.grammar && sameAnalysis(story, content, tokens) ? story.grammar : null;
 }
 
 /** Share of the story's words the learner knows (the reader's coverage rule). */
