@@ -6,9 +6,12 @@
 import { plural } from "../../format.js";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Sparkles } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { type WritingTask, countAnswerWords, examBank, scoreRubric } from "@app/content";
-import { Button, Input, Textarea } from "@app/ui";
+import { Button, Dialog, Input, Textarea } from "@app/ui";
+import { useBlocker } from "@tanstack/react-router";
+import { readLocalJSON, writeLocalJSON } from "../../storage/local.js";
+import { useBackClose } from "../../shell/backStack.js";
 import { useServices } from "../../services/context.js";
 import type { ExamFeedback } from "../../services/examTypes.js";
 import { errorText } from "../../services/errors.js";
@@ -44,16 +47,57 @@ export function WritingSession({
   limitMs: number;
   onExit: () => void;
 }) {
-  const [answers, setAnswers] = useState<Record<string, Answer>>(() =>
-    Object.fromEntries(
-      tasks.map((t) => [t.id, { text: "", fields: (t.fields ?? []).map(() => "") }]),
-    ),
-  );
+  // Answers are kept as a draft on this device (per set and mode) until the result is saved,
+  // so Back, another tab or a closed app never loses them.
+  const draftKey = `vuurtoren.exam.schrijven.${mode}.${setId}`;
+  const [answers, setAnswersState] = useState<Record<string, Answer>>(() => {
+    const kept = readLocalJSON(draftKey) as Record<string, Answer> | undefined;
+    return Object.fromEntries(
+      tasks.map((t) => {
+        const a = kept?.[t.id];
+        const blank = { text: "", fields: (t.fields ?? []).map(() => "") };
+        return [t.id, a && typeof a.text === "string" && Array.isArray(a.fields) ? a : blank];
+      }),
+    );
+  });
+  const setAnswers = (update: (all: Record<string, Answer>) => Record<string, Answer>) =>
+    setAnswersState((all) => {
+      const next = update(all);
+      writeLocalJSON(draftKey, next);
+      return next;
+    });
   const [phase, setPhase] = useState<"write" | "check">("write");
   const [ticks, setTicks] = useState<Record<string, boolean[]>>({});
   const clock = useExamClock(mode === "exam" ? limitMs : null, phase === "write", () => handIn());
   const [took, setTook] = useState(0);
   const recordAttempt = useRecordAttempt();
+  // A timed attempt with something written: leaving it (Back on screen or on the phone, another
+  // tab) asks first. The answers stay in the draft either way.
+  const written = Object.values(answers).some(
+    (a) => a.text.trim() || a.fields.some((f) => f.trim()),
+  );
+  const guarded = mode === "exam" && phase === "write" && written;
+  const allowLeave = useRef(false);
+  const leave = useBlocker({
+    shouldBlockFn: () => guarded && !allowLeave.current,
+    enableBeforeUnload: () => guarded,
+    withResolver: true,
+  });
+  // Android Back reaches the session before any navigation: it asks the same question.
+  const [asking, setAsking] = useState(false);
+  useBackClose(guarded, () => setAsking(true));
+  const stay = () => {
+    setAsking(false);
+    leave.reset?.();
+  };
+  const go = () => {
+    setAsking(false);
+    if (leave.status === "blocked") leave.proceed?.();
+    else {
+      allowLeave.current = true;
+      onExit();
+    }
+  };
 
   function handIn() {
     setTook(clock.elapsed);
@@ -84,20 +128,24 @@ export function WritingSession({
   // Saving or saved: the checklist is locked, so the stored score is the one on screen.
   const scoreLocked = recordAttempt.isPending || recordAttempt.isSuccess;
   const save = () => {
-    recordAttempt.mutate({
-      part: "schrijven",
-      mode,
-      setId,
-      correct: score.correct,
-      total: score.total,
-      passMark: score.passMark,
-      durationMs: took,
-      missed: tasks.flatMap((t) =>
-        checklist(t)
-          .map((_, i) => (ticks[t.id]?.[i] ? null : `${t.id}#${i}`))
-          .filter((x): x is string => x !== null),
-      ),
-    });
+    recordAttempt.mutate(
+      {
+        part: "schrijven",
+        mode,
+        setId,
+        correct: score.correct,
+        total: score.total,
+        passMark: score.passMark,
+        durationMs: took,
+        missed: tasks.flatMap((t) =>
+          checklist(t)
+            .map((_, i) => (ticks[t.id]?.[i] ? null : `${t.id}#${i}`))
+            .filter((x): x is string => x !== null),
+        ),
+      },
+      // Stored: the draft has done its work.
+      { onSuccess: () => writeLocalJSON(draftKey, null) },
+    );
   };
 
   return (
@@ -134,6 +182,24 @@ export function WritingSession({
           }}
         />
       ))}
+
+      <Dialog
+        open={asking || leave.status === "blocked"}
+        onOpenChange={(open) => {
+          if (!open) stay();
+        }}
+        title="Leave the timed exam?"
+        description="The clock stops and this attempt ends without a score. Your answers stay here as a draft for next time."
+      >
+        <div className="k-dialog-actions">
+          <Button variant="ghost" onClick={stay}>
+            Keep writing
+          </Button>
+          <Button variant="primary" onClick={go}>
+            Leave
+          </Button>
+        </div>
+      </Dialog>
 
       <div className="exam-nav">
         <Button variant="ghost" onClick={onExit}>

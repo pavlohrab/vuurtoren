@@ -1,10 +1,11 @@
 import { createMemoryHistory } from "@tanstack/react-router";
-import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { examBank } from "@app/content";
 import { App } from "../../App.js";
 import { createMockServices } from "../../services/mock.js";
+import { systemBack } from "../../shell/backStack.js";
 import type { AppServices } from "../../services/types.js";
 
 function setup(path: string, patch: Partial<AppServices> = {}) {
@@ -137,6 +138,48 @@ describe("Writing and speaking", () => {
         expect.objectContaining({ part: "schrijven", setId: `task:${task.id}` }),
       ),
     );
+  });
+
+  it("Schrijven: an answer survives Back as a draft; a timed attempt asks before leaving", async () => {
+    const task = bank.schrijven.tasks.find((t) => t.kind === "email")!;
+    const practice = `/exam/schrijven?mode=practice&theme=${task.id}`;
+    const history = createMemoryHistory({ initialEntries: ["/exam", practice] });
+    const base = createMockServices({ latencyMs: 0 });
+    render(<App services={base} history={history} />);
+    const user = userEvent.setup();
+    await user.type(await screen.findByLabelText("Your text"), "Beste meneer");
+    // Practice: Back leaves at once, and coming back finds the text.
+    await user.click(screen.getByRole("button", { name: "Back" }));
+    await waitFor(() => expect(history.location.search).toBe(""));
+    act(() => history.push(practice));
+    expect(await screen.findByLabelText("Your text")).toHaveValue("Beste meneer");
+    cleanup();
+    localStorage.clear();
+
+    // A timed attempt: Back on screen, Back on the phone and another tab all ask first.
+    const exam = createMemoryHistory({
+      initialEntries: ["/exam", "/exam/schrijven?mode=exam&set=1"],
+    });
+    render(<App services={base} history={exam} />);
+    const [first] = await screen.findAllByRole("textbox");
+    await user.type(first!, "Ik kom morgen");
+    await user.click(screen.getByRole("button", { name: "Back" }));
+    const ask = await screen.findByRole("dialog", { name: "Leave the timed exam?" });
+    await user.click(within(ask).getByRole("button", { name: "Keep writing" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(exam.location.search).toContain("mode=exam");
+    // Android Back.
+    act(() => void systemBack(true, { back: () => exam.back(), exit: () => {} }));
+    expect(await screen.findByRole("dialog", { name: "Leave the timed exam?" })).toBeVisible();
+    await user.click(screen.getByRole("button", { name: "Keep writing" }));
+    await user.click(screen.getAllByRole("link", { name: /Grammar/ })[0]!);
+    await user.click(
+      within(await screen.findByRole("dialog", { name: "Leave the timed exam?" })).getByRole(
+        "button",
+        { name: "Leave" },
+      ),
+    );
+    await waitFor(() => expect(exam.location.pathname).toBe("/grammar"));
   });
 
   it("Schrijven: says saved only after the write succeeds, offers Try again, then locks the checklist", async () => {
