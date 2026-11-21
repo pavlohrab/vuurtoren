@@ -519,3 +519,11 @@
 .lib-story-added {
   color: var(--ink-muted);
 }
+
+/* Phones: the summaries and their line under each story at the supporting size, 14px. */
+@media (max-width: 699px) {
+  .lib-story-summary,
+  .lib-story-meta {
+    font-size: 14px;
+  }
+}

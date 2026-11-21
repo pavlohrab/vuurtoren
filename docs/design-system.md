@@ -14,12 +14,12 @@ Dark-first and focused, like reading under a lamp: warm charcoal, soft off-white
 
 All faces are self-hosted via Fontsource (no Google CDN, for privacy).
 
-| Role               | Face                                     | Size / leading           | Scripts                     |
-| ------------------ | ---------------------------------------- | ------------------------ | --------------------------- |
-| Headings, wordmark | **Instrument Sans** (variable, 600)      | 20–40px / 1.15, −0.012em | Latin only → Inter fallback |
-| UI                 | **Inter** (variable, `tnum` for numbers) | 14–15px / 1.45           | Latin + Cyrillic            |
-| Reading text       | **Literata** (variable serif)            | 19–20px / 1.7, max 66ch  | Latin + Cyrillic            |
-| Data / mono        | **JetBrains Mono**                       | 13px                     | Latin + Cyrillic            |
+| Role               | Face                                     | Size / leading            | Scripts                     |
+| ------------------ | ---------------------------------------- | ------------------------- | --------------------------- |
+| Headings, wordmark | **Instrument Sans** (variable, 600)      | 20–40px / 1.15, −0.012em  | Latin only → Inter fallback |
+| UI                 | **Inter** (variable, `tnum` for numbers) | 14–15px / 1.45 (16 phone) | Latin + Cyrillic            |
+| Reading text       | **Literata** (variable serif)            | 19–20px / 1.7, max 66ch   | Latin + Cyrillic            |
+| Data / mono        | **JetBrains Mono**                       | 13px                      | Latin + Cyrillic            |
 
 - `--font-display` is `"Instrument Sans Variable", "Inter Variable", system-ui`.
 - Scale: 12 · 14 · 16 · 20 · 24 · 30 · 40. Headings never all caps except the tiny overline labels (`.k-overline`, 11px, +0.06em). Literata is **only** for Dutch reading text (the reader, excerpts, example sentences, chat bubbles) and text titles (covers, Continue reading). Single Dutch words in UI (chips, table lemmas, the inspector headword) are Inter 500, never serif. See _Type roles_ below.

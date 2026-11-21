@@ -455,5 +455,31 @@ for (const size of SIZES) {
       await expect(page.locator(".rmenu-kbd").first()).toBeVisible();
       await expect(page.getByRole("menuitem", { name: /Keyboard shortcuts/ })).toBeVisible();
     });
+
+    test("phone type: 16px text, 14px supporting lines, nothing wider than the screen", async ({
+      page,
+    }) => {
+      await page.goto("/?demo");
+      await expect(page.getByRole("heading", { level: 1, name: "Read" })).toBeVisible();
+      const fontOf = (sel: string) =>
+        page
+          .locator(sel)
+          .first()
+          .evaluate((el) => parseFloat(getComputedStyle(el).fontSize));
+      expect(await fontOf("body")).toBe(16);
+      expect(await fontOf(".lib-story-summary")).toBe(14);
+      for (const path of ["/", "/settings?section=reading", "/words", "/exam", "/grammar"]) {
+        await page.goto(path);
+        await page.waitForTimeout(300);
+        if (path.startsWith("/settings")) expect(await fontOf(".k-hint")).toBe(14);
+        expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+          size.width,
+        );
+        // Shelves scroll sideways on purpose; headings, hints and fields must not.
+        expect(await overflowing(page, ".content h1, .content .k-hint, .content label")).toEqual(
+          [],
+        );
+      }
+    });
   });
 }

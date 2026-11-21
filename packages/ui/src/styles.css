@@ -2438,3 +2438,16 @@ svg.lucide {
     display: revert;
   }
 }
+
+/* ---------- Phone type scale ----------
+   Below 700px: 16px body text, 14px labels and supporting lines (rem stays 14.5px, so widths
+   built on it do not grow). The reader keeps its own size control (--reader-size). */
+@media (max-width: 699px) {
+  body {
+    font-size: 16px;
+  }
+  .k-label,
+  .k-hint {
+    font-size: 14px;
+  }
+}
