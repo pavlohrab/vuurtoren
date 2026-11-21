@@ -5,7 +5,7 @@
  */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { type ChangeEvent, useRef, useState } from "react";
-import { DEFAULT_DECK_OPTIONS, type DeckOptions } from "@app/core";
+import { DEFAULT_DECK_OPTIONS, type DeckOptions, defaultProfile } from "@app/core";
 import { Button, Select, Skeleton, Spinner, useToast } from "@app/ui";
 import { plural, relativeTime } from "../../format.js";
 import { useServices } from "../../services/context.js";
@@ -37,6 +37,21 @@ function MoveFromAnki() {
   const [progress, setProgress] = useState<string | null>(null);
   const [confirm, setConfirm] = useState(false);
   const toast = useToast();
+  // Without Anki: Vuurtoren holds the cards from now on; nothing is imported.
+  const fresh = useMutation({
+    mutationFn: async () => {
+      const current = await services.languageProfile();
+      const lang = current?.lang ?? (await services.getSettings()).lang;
+      const base = current ?? defaultProfile(lang, [], "native");
+      await services.saveLanguageProfile({ ...base, mode: "native" });
+    },
+    onSuccess: async () => {
+      toast("Vuurtoren keeps your cards now", "Review is in the sidebar.");
+      for (const k of [...AFFECTED, "languageProfile", "review"])
+        await qc.invalidateQueries({ queryKey: [k] });
+    },
+    onError: (e) => toast("Could not switch", errorText(e)),
+  });
   const move = useMutation({
     mutationFn: () => services.moveFromAnki(setProgress),
     onSuccess: async (summary) => {
@@ -83,6 +98,9 @@ function MoveFromAnki() {
       ) : (
         <div className="row">
           <Button onClick={() => setConfirm(true)}>Move from Anki to Vuurtoren</Button>
+          <Button variant="ghost" disabled={fresh.isPending} onClick={() => fresh.mutate()}>
+            I don&apos;t use Anki: keep my cards in Vuurtoren
+          </Button>
         </div>
       )}
       {move.isError ? (

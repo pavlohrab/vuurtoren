@@ -81,7 +81,7 @@ export function createLiveProfile(deps: LiveProfileDeps) {
    * Anki as before modes existed.
    */
   async function current(): Promise<LanguageProfile> {
-    return (await load()) ?? defaultProfile((await deps.settings()).lang, [], "connected");
+    return (await load()) ?? defaultProfile((await deps.settings()).lang, [], "native");
   }
 
   async function courseContext(c?: CourseDeckContext): Promise<AddContext["course"]> {
