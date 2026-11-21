@@ -149,8 +149,19 @@ export function Welcome() {
   const next = () => go(steps[at + 1] ?? "first");
   const back = () => go(steps[at - 1] ?? steps[0]!);
 
-  const skip = () => {
+  // Skipping still sets the learner up with Vuurtoren's own cards, so Review and the word
+  // actions work; Settings can switch to Anki later.
+  const skip = async () => {
     setSkipped(true);
+    const current = await services.languageProfile();
+    if (current?.mode !== "native") {
+      const lang = current?.lang ?? (await services.getSettings()).lang;
+      await services.saveLanguageProfile({
+        ...(current ?? defaultProfile(lang, [], "native")),
+        mode: "native",
+      });
+      await qc.invalidateQueries();
+    }
     void navigate({ to: "/library" });
   };
   const finish = () => {

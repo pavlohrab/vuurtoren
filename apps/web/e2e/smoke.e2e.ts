@@ -109,9 +109,11 @@ test("browser storage mode", async ({ page }) => {
   await importAndRead(page);
   await inspectWord(page);
   await page.getByRole("button", { name: /^Add to / }).click();
-  await expect(page.locator(".inspector-panel")).toContainText("Learning");
+  await expect(page.getByText("Added to your words").first()).toBeVisible();
   await changeTextSize(page);
-  await answerOneExercise(page);
+  // Skipping setup means Vuurtoren keeps the cards: the word is waiting in Review.
+  await page.goto("/review");
+  await expect(page.locator(".review-word")).toContainText("buurvrouw");
   expect(errors).toEqual([]);
 });
 
