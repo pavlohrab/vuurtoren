@@ -65,6 +65,8 @@ export interface ChatMessageView {
   newWords?: NewWord[];
   /** User: corrections of this message (given in the partner's next reply). */
   corrections?: Correction[];
+  /** User: the whole message, corrected (with corrections only). */
+  corrected?: string;
   parseFailed?: boolean;
 }
 

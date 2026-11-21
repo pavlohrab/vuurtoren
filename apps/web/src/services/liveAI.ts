@@ -354,6 +354,7 @@ export function createLiveAI(deps: LiveAIDeps): AIServices &
         : assistantHistoryMessage({
             reply: m.text,
             corrections: [],
+            corrected: "",
             newWords: (m.meta?.["newWords"] as NewWord[] | undefined) ?? [],
           }),
     );
@@ -390,6 +391,7 @@ export function createLiveAI(deps: LiveAIDeps): AIServices &
         unknown: result.unknown,
         glosses: result.glosses,
         corrections: result.turn.corrections,
+        correctedMessage: result.turn.corrected,
         newWords: result.turn.newWords,
         parseFailed: result.parseFailed,
       },

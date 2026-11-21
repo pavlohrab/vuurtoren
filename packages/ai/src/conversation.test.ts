@@ -39,6 +39,19 @@ describe("json extraction and turn parsing", () => {
       { original: "ik is", corrected: "ik ben", explanation: "zijn" },
     ]);
     expect(r.turn.newWords).toHaveLength(1);
+    expect(r.turn.corrected).toBe("");
+  });
+  it("keeps the whole corrected message only when there are corrections", () => {
+    const fixed = parseTurn(
+      JSON.stringify({
+        reply: "Leuk!",
+        corrections: [{ original: "ik is", corrected: "ik ben", explanation: "zijn" }],
+        corrected_message: "Ik ben moe vandaag.",
+      }),
+    );
+    expect(fixed.turn.corrected).toBe("Ik ben moe vandaag.");
+    const fine = parseTurn(JSON.stringify({ reply: "Leuk!", corrected_message: "Ik ben moe." }));
+    expect(fine.turn.corrected).toBe("");
   });
   it("falls back to the raw text on invalid JSON", () => {
     const r = parseTurn("Hallo daar");
@@ -139,7 +152,7 @@ describe("runTurn", () => {
 
   it("opens the conversation when the user text is empty and replays JSON history", async () => {
     const p = fakeProvider([out("Ik drink koffie")]);
-    const hist = [assistantHistoryMessage({ reply: "Hoi", corrections: [], newWords: [] })];
+    const hist = [assistantHistoryMessage({ reply: "Hoi", corrections: [], corrected: "", newWords: [] })];
     await runTurn({ provider: p, analyze: fakeAnalyze, model }, setup, hist, "");
     expect(p.calls[0]!.messages.at(-1)!.content).toContain("Start the conversation");
     expect(hist[0]!.content).toContain('"reply"');

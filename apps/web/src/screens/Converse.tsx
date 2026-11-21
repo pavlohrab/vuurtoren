@@ -138,6 +138,14 @@ function UserMessage({ m, inspector }: { m: ChatMessageView; inspector: WordInsp
   return (
     <div className="cv-msg cv-msg--user">
       <Bubble text={m.text} inspector={inspector} />
+      {m.corrected ? (
+        <div className="cv-fix cv-fix--whole" role="note">
+          <span>Better:</span>{" "}
+          <span lang="nl">
+            <ins>{m.corrected}</ins>
+          </span>
+        </div>
+      ) : null}
       {(m.corrections ?? []).map((c, i) => (
         <div className="cv-fix" key={i} role="note">
           <span lang="nl">
@@ -218,12 +226,12 @@ export function Converse() {
   const send = useMutation({
     mutationFn: (text: string) => {
       setPending(text);
+      // The box empties at once; a failed send puts the message back.
+      setDraft("");
       return services.sendConversationMessage(conv!.id, text);
     },
-    onSuccess: (c) => {
-      setConv(c);
-      setDraft("");
-    },
+    onSuccess: (c) => setConv(c),
+    onError: (_e, text) => setDraft((d) => d || text),
     onSettled: () => setPending(null),
   });
   const save = useMutation({

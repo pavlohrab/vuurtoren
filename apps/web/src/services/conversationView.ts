@@ -27,7 +27,11 @@ export function toConversationView(c: Conversation): ConversationView {
     if (m.role !== "assistant") return;
     const corrections = arr<Correction>(m.meta?.["corrections"]);
     const prev = messages[i - 1];
-    if (corrections.length && prev?.role === "user") prev.corrections = corrections;
+    if (corrections.length && prev?.role === "user") {
+      prev.corrections = corrections;
+      const whole = m.meta?.["correctedMessage"];
+      if (typeof whole === "string" && whole.trim()) prev.corrected = whole.trim();
+    }
   });
   return { id: c.id, topic: c.topic, targetWords: c.targetWords, messages };
 }

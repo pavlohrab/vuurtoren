@@ -28,6 +28,8 @@ export interface NewWord {
 export interface TurnOutput {
   reply: string;
   corrections: Correction[];
+  /** The learner's whole last message, corrected; empty when it had no mistakes. */
+  corrected: string;
   newWords: NewWord[];
 }
 
@@ -104,11 +106,11 @@ export function buildSystemPrompt(s: ConversationSetup): SystemPrompt {
     "- Write Dutch only, 1 to 3 short sentences, then ask one simple question to keep the conversation going.",
     "- Use ONLY words from the learner's vocabulary list below plus very common function words (articles, pronouns, prepositions, basic verbs). Names and numbers are fine.",
     `- You may introduce at most ${maxNew} new words per reply, always from the target words if they fit. List every new word in new_words.`,
-    "- Check the learner's last message. If it contains mistakes, give each correction; otherwise leave corrections empty. Keep it kind and brief.",
+    "- Check the learner's last message. If it contains mistakes, give each correction and the whole message rewritten correctly in corrected_message; otherwise leave both empty. Keep it kind and brief.",
     `- Write glosses and explanations in ${explain}.`,
     "",
     "Answer with ONE JSON object and nothing else, exactly in this shape:",
-    '{"reply": "Dutch text", "corrections": [{"original": "...", "corrected": "...", "explanation": "..."}], "new_words": [{"lemma": "dictionary form", "gloss": "short meaning", "example": "short Dutch example"}]}',
+    '{"reply": "Dutch text", "corrections": [{"original": "...", "corrected": "...", "explanation": "..."}], "corrected_message": "the whole message corrected, or empty", "new_words": [{"lemma": "dictionary form", "gloss": "short meaning", "example": "short Dutch example"}]}',
     "",
     `Learner vocabulary (${s.knownLemmas.length} words): ${s.knownLemmas.join(", ")}`,
   ];
@@ -126,7 +128,7 @@ export function parseTurn(
     // Show the raw text rather than nothing: a partly useful reply beats an error.
     return {
       ok: false,
-      turn: { reply: text.trim(), corrections: [], newWords: [] },
+      turn: { reply: text.trim(), corrections: [], corrected: "", newWords: [] },
       error: j ? "The reply had no text." : "The reply was not valid JSON.",
     };
   }
@@ -148,7 +150,9 @@ export function parseTurn(
       example: asString(w["example"]),
     }))
     .filter((w) => w.lemma);
-  return { ok: true, turn: { reply, corrections, newWords } };
+  // Only a real change counts; with no corrections the message was fine.
+  const corrected = corrections.length ? asString(j["corrected_message"]).trim() : "";
+  return { ok: true, turn: { reply, corrections, corrected, newWords } };
 }
 
 /** How an assistant turn is replayed to the model, so it keeps answering in JSON. */
