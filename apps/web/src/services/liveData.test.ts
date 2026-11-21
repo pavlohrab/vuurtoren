@@ -140,8 +140,14 @@ describe("batched results equal the per-text results", () => {
   it("Library coverage equals the reader's plan of each text", async () => {
     vi.stubGlobal("fetch", nlpFetch);
     const repo = (toClose = await seed());
-    const list = await (await client(repo)).services.listTexts();
-    const single = await client(repo);
+    const lib = client(repo).services;
+    // Older texts are planned in the background (in batches too): wait for all of them.
+    let list = await lib.listTexts();
+    await vi.waitFor(async () => {
+      list = await lib.listTexts();
+      expect(list.some((t) => t.planning)).toBe(false);
+    });
+    const single = client(repo);
     for (const t of list) {
       const v = await single.services.getReading(t.id);
       const d = textDifficulty(v!.plans);
