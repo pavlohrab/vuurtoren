@@ -165,6 +165,21 @@
                 });
             }
           : undefined,
+      // The dictionary pack on a phone (dictionary.rs): meanings without a server.
+      dictionary:
+        OS === "android" || OS === "ios"
+          ? Object.freeze({
+              status: function () {
+                return invoke("dictionary_status");
+              },
+              gloss: function (words) {
+                return invoke("dictionary_gloss", { words: words });
+              },
+              install: function () {
+                return invoke("dictionary_install");
+              },
+            })
+          : undefined,
       nlp: Object.freeze({
         status: function () {
           return invoke("nlp_status");

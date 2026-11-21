@@ -30,6 +30,7 @@ import { ClaudeCodeSettings } from "./ClaudeCodeSettings.js";
 import { AnkiConnection } from "./AnkiSettings.js";
 import { DataSettings } from "./DataSettings.js";
 import { LanguageDecksSettings } from "./LanguageDecksSettings.js";
+import { DictionaryPack } from "./DictionaryPack.js";
 import { SavedNote } from "./SavedNote.js";
 import { SyncSettings } from "./SyncSettings.js";
 import { ServerStatus } from "./ServerStatus.js";
@@ -133,6 +134,7 @@ export function SettingsScreen() {
             <div className="stack settings-stack">
               {native ? null : <AnkiConnection />}
               <LanguageDecksSettings />
+              <DictionaryPack />
             </div>
           ) : section === "reading" ? (
             <ReadingSettings />

@@ -90,6 +90,25 @@ export interface DesktopBridge {
   };
   /** A QR code read with the camera (phones): its text, or null when cancelled or not allowed. */
   scanQr?: () => Promise<string | null>;
+  /** The dictionary pack on the device (phones): meanings without a server. */
+  dictionary?: DeviceDictionary;
+}
+
+/** One dictionary entry, as the language server's `/gloss` gives it. */
+interface GlossEntry {
+  pos: string;
+  article: string | null;
+  glosses: string[];
+}
+
+/** The `dictionary-nl` pack kept on the device (`dictionary.rs`). */
+interface DeviceDictionary {
+  /** Is it there, its size, and the size of its download (bytes). */
+  status(): Promise<{ installed: boolean; bytes: number; download: number }>;
+  /** Entries per word; null when the pack is not on the device. */
+  gloss(words: string[]): Promise<Record<string, GlossEntry[]> | null>;
+  /** Download it (from the public packs release), checked, and put it in place. */
+  install(): Promise<void>;
 }
 
 /** The secrets the device's key store keeps for the page. */

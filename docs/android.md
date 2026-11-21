@@ -42,6 +42,21 @@ preferences, which the backup rules exclude. A small Kotlin plugin rather than
 `tauri-plugin-stronghold`: the Keystore is hardware-backed where the phone has it, needs no
 password of its own, and adds no large dependency.
 
+**Dictionary pack.** `dictionary.rs` reads the language server's `dictionary-nl` SQLite file
+from `<app data>/packs/dictionary-nl.sqlite` (rusqlite, read-only) and answers
+`dictionary_gloss` in the shape of `/gloss`: a word's own entries, else those of the lemma it is
+a form of. The web dictionary service asks it first on a phone; words it does not know
+(compounds, derivations) still come from the server when there is one, and without the pack
+everything works as before. `dictionary_install` downloads the version named in `packs.json`
+(built into the app) from the public packs release, checks its size and SHA-256 and moves it in
+place. The end of the welcome starts the download; Settings → Your words shows its size and
+state. Still to do: the download from the connected server instead of GitHub, progress in bytes,
+and an update when `packs.json` names a newer version.
+
+**Safe areas.** Edge to edge, the page reads the system bars as `--safe-*` (`styles.css`): the
+larger of `env(safe-area-inset-*)` and the insets `MainActivity.kt` passes in from
+`WindowInsets` (`platform/insets.ts`), since not every WebView reports them.
+
 **Platform layer.** `currentDevice()` reads the bridge's `os`. The browser and the desktop app
 behave as before; on Android the device offers a server as its only sync place (Settings shows
 no folder or WebDAV), has no bundled language server (no `vuurtoren-nlp:` route, no sidecar

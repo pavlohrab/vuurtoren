@@ -17,6 +17,7 @@
 mod db;
 #[cfg(desktop)]
 mod desktop;
+mod dictionary;
 mod keys;
 #[cfg(mobile)]
 mod mobile;
@@ -67,8 +68,7 @@ struct OpenDb {
 struct State {
     config: Mutex<Config>,
     path: PathBuf,
-    /// AnkiConnect and the bundled language server.
-    #[cfg(desktop)]
+    /// AnkiConnect and the bundled language server; the dictionary pack's download (phones).
     client: reqwest::Client,
     /// For sync places: redirects only within the same address (`sync::redirect_policy`).
     sync_client: reqwest::Client,
@@ -193,6 +193,75 @@ fn close_db(state: &State) {
         drop(open.conn);
         db::release_lock(&open.path, &open.me);
     }
+}
+
+/// The dictionary pack on this device (phones: `<app data>/packs/dictionary-nl.sqlite`): is it
+/// there, and how large.
+#[derive(Serialize)]
+struct DictionaryStatus {
+    installed: bool,
+    bytes: u64,
+    /// The size of the download (the archive this build wants).
+    download: u64,
+}
+
+#[tauri::command]
+fn dictionary_status(app: AppHandle) -> DictionaryStatus {
+    let path = app
+        .path()
+        .app_data_dir()
+        .map(|d| dictionary::path_in(&d))
+        .ok();
+    let installed = path.as_deref().and_then(dictionary::open).is_some();
+    let bytes = path
+        .and_then(|p| std::fs::metadata(p).ok())
+        .map_or(0, |m| m.len());
+    DictionaryStatus {
+        installed,
+        bytes,
+        download: dictionary::Pack::wanted().map_or(0, |p| p.size),
+    }
+}
+
+/// Meanings from the dictionary pack on this device, in the shape of the language server's
+/// `/gloss`; `None` without the pack (the page then asks the server).
+#[tauri::command]
+async fn dictionary_gloss(
+    words: Vec<String>,
+    app: AppHandle,
+) -> Result<Option<std::collections::HashMap<String, Vec<dictionary::Entry>>>, String> {
+    let dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    tauri::async_runtime::spawn_blocking(move || {
+        let Some(conn) = dictionary::open(&dictionary::path_in(&dir)) else {
+            return Ok(None);
+        };
+        dictionary::lookup(&conn, &words)
+            .map(Some)
+            .map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+/// Download the dictionary pack (the version this build wants) and put it in place; the size
+/// is in `dictionary_status` before, so the page can say how much it fetches.
+#[tauri::command]
+async fn dictionary_install(app: AppHandle, state: tauri::State<'_, State>) -> Result<(), String> {
+    let pack = dictionary::Pack::wanted().ok_or("This build names no dictionary pack.")?;
+    let dest = dictionary::path_in(&app.path().app_data_dir().map_err(|e| e.to_string())?);
+    let res = state
+        .client
+        .get(pack.url())
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
+    if !res.status().is_success() {
+        return Err(format!("The download failed ({}).", res.status()));
+    }
+    let bytes = res.bytes().await.map_err(|e| e.to_string())?;
+    tauri::async_runtime::spawn_blocking(move || pack.install(&bytes, &dest))
+        .await
+        .map_err(|e| e.to_string())?
 }
 
 /// Open (or create) the database file. With `force`, a lock held by another computer is taken
@@ -603,6 +672,9 @@ pub fn run() {
             db_close,
             db_export,
             db_import,
+            dictionary_status,
+            dictionary_gloss,
+            dictionary_install,
             #[cfg(desktop)]
             desktop::close_now,
             #[cfg(desktop)]
@@ -646,7 +718,6 @@ pub fn run() {
             app.manage(State {
                 config: Mutex::new(config),
                 path,
-                #[cfg(desktop)]
                 client: reqwest::Client::builder().user_agent(USER_AGENT).build()?,
                 sync_client,
                 sync_declined: Mutex::new(Vec::new()),

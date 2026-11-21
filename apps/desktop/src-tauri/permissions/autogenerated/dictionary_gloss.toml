@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-dictionary-gloss"
+description = "Enables the dictionary_gloss command without any pre-configured scope."
+commands.allow = ["dictionary_gloss"]
+
+[[permission]]
+identifier = "deny-dictionary-gloss"
+description = "Denies the dictionary_gloss command without any pre-configured scope."
+commands.deny = ["dictionary_gloss"]

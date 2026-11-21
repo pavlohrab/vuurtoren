@@ -28,6 +28,7 @@ import { useServices } from "../../services/context.js";
 import type { AnkiStatus } from "../../services/types.js";
 import { AnkiConnectionHelp } from "../settings/AnkiSettings.js";
 import { ConnectYourServer } from "../settings/SyncSettings.js";
+import { DictionaryPack } from "../settings/DictionaryPack.js";
 import "../settings/settings.css";
 import { currentDevice } from "../../platform/index.js";
 import { storyToStart } from "../../services/stories.js";
@@ -702,6 +703,8 @@ export function Welcome() {
                   Tap any word you do not know to see what it means, and keep it with Add to my
                   words.
                 </p>
+                {/* A phone: the dictionary comes down now, so meanings work without a server. */}
+                <DictionaryPack autoStart />
                 <div className="ob-first-actions">
                   <Button
                     variant="primary"

@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-dictionary-status"
+description = "Enables the dictionary_status command without any pre-configured scope."
+commands.allow = ["dictionary_status"]
+
+[[permission]]
+identifier = "deny-dictionary-status"
+description = "Denies the dictionary_status command without any pre-configured scope."
+commands.deny = ["dictionary_status"]

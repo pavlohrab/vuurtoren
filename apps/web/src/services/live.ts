@@ -55,7 +55,12 @@ export function createLiveServices(
   });
   const { settings, lang, nlp, anki } = config;
   const learner = createLearnerCache(repo, lang);
-  const dictionary = createLiveDictionary({ repo, lang, nlp });
+  const dictionary = createLiveDictionary({
+    repo,
+    lang,
+    nlp,
+    localGloss: currentDevice().bridge?.dictionary?.gloss,
+  });
   // Resolved at call time: the texts are created next.
   const { autoCover, ...library } = createLiveLibrary({
     repo,

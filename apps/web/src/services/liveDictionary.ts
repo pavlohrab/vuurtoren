@@ -145,6 +145,11 @@ export interface LiveDictionaryDeps {
   repo: VuurtorenRepository;
   lang: () => Promise<string>;
   nlp: () => Promise<NlpClient>;
+  /**
+   * The dictionary pack on the device (phones): entries per word, or null when it is not
+   * there. Asked before the language server, which then only adds what the pack lacks.
+   */
+  localGloss?: ((words: string[]) => Promise<Dictionary | null>) | undefined;
 }
 
 /** An inline meaning; `note` marks a guess ("from woord + -loos", "in this sentence"). */
@@ -155,7 +160,25 @@ export interface FoundGloss {
   guess?: "derivation" | "compound";
 }
 
-export function createLiveDictionary({ repo, lang, nlp }: LiveDictionaryDeps) {
+export function createLiveDictionary({ repo, lang, nlp, localGloss }: LiveDictionaryDeps) {
+  /**
+   * Dictionary entries: from the pack on the device when it is there (words it does not know,
+   * such as compounds, from the server when it can be reached), else from the server.
+   */
+  async function gloss(words: string[]): Promise<Dictionary> {
+    const local = localGloss ? await localGloss(words).catch(() => null) : null;
+    if (!local) return (await nlp()).gloss("nl", words);
+    const unknown = words.filter((w) => !local[w]?.length);
+    if (unknown.length) {
+      try {
+        Object.assign(local, await (await nlp()).gloss("nl", unknown));
+      } catch {
+        // The pack answered; the server would only have added the words it does not know.
+      }
+    }
+    return local;
+  }
+
   // Translation per lemma key: Anki gloss first, then the Wiktionary dictionary; null = none.
   const glossCache = new Map<string, FoundGloss | null>();
   const translationCache = new Map<string, string>();
@@ -199,7 +222,7 @@ export function createLiveDictionary({ repo, lang, nlp }: LiveDictionaryDeps) {
         const lemmas = [...new Set(needDict.map((it) => it.lemma))];
         const dict: Dictionary = {};
         for (let i = 0; i < lemmas.length; i += GLOSS_BATCH) {
-          Object.assign(dict, await (await nlp()).gloss("nl", lemmas.slice(i, i + GLOSS_BATCH)));
+          Object.assign(dict, await gloss(lemmas.slice(i, i + GLOSS_BATCH)));
         }
         clearDegraded("translate");
         // A word whose senses only say "form of X" ("ze": unstressed form of zij) borrows X's
@@ -215,10 +238,7 @@ export function createLiveDictionary({ repo, lang, nlp }: LiveDictionaryDeps) {
         }
         const missingTargets = [...new Set(targets.values())].filter((t) => !(t in dict));
         for (let i = 0; i < missingTargets.length; i += GLOSS_BATCH) {
-          Object.assign(
-            dict,
-            await (await nlp()).gloss("nl", missingTargets.slice(i, i + GLOSS_BATCH)),
-          );
+          Object.assign(dict, await gloss(missingTargets.slice(i, i + GLOSS_BATCH)));
         }
         for (const it of needDict) {
           const ordered = orderByPos(dict[it.lemma] ?? [], it.pos);
@@ -325,7 +345,7 @@ export function createLiveDictionary({ repo, lang, nlp }: LiveDictionaryDeps) {
   async function dictionaryFor(lemmas: string[]): Promise<Dictionary> {
     if (lemmas.length === 0) return {};
     try {
-      const dict = await (await nlp()).gloss("nl", lemmas);
+      const dict = await gloss(lemmas);
       clearDegraded("translate");
       return dict;
     } catch (e) {
