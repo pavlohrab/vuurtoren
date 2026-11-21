@@ -1522,12 +1522,26 @@
 }
 
 /* ---------- First-run walkthrough (shell/Tour.tsx) ---------- */
-/* The page stays usable: only the card takes taps; the spotlight dims the rest around its
-   target with a soft edge. */
+/* A transparent scrim takes every tap while a step shows (with a hole over the target only for
+   a step that asks for a tap); the spotlight dims the rest around its target with a soft edge.
+   Above sheets, dialogs and popovers; below toasts. */
 .tour {
   position: fixed;
   inset: 0;
-  z-index: 70;
+  z-index: 75;
+  pointer-events: none;
+}
+.tour-scrim {
+  position: fixed;
+  pointer-events: auto;
+  background: transparent;
+  touch-action: none;
+}
+/* The safe box (inside the system bars) the bubble stays in; measured, never seen. */
+.tour-safe {
+  position: fixed;
+  inset: var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left);
+  visibility: hidden;
   pointer-events: none;
 }
 .tour-spot {

@@ -47,4 +47,29 @@ describe("the walkthrough", () => {
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     expect(localStorage.getItem("vuurtoren.tour")).toBe("done");
   }, 20_000);
+
+  it("takes taps outside the bubble: the page under it never sees them", async () => {
+    renderApp();
+    expect(await screen.findByRole("heading", { level: 1, name: "Read" })).toBeVisible();
+    act(() => startTour());
+    expect(await screen.findByRole("dialog", { name: "Read" })).toBeVisible();
+    const seen = vi.fn();
+    document.addEventListener("click", seen);
+    document.addEventListener("pointerdown", seen);
+    try {
+      const scrims = screen.getAllByTestId("tour-scrim");
+      // A step that asks for no tap: one scrim over the whole screen.
+      expect(scrims).toHaveLength(1);
+      const user = userEvent.setup();
+      await user.click(scrims[0]!);
+      expect(seen).not.toHaveBeenCalled();
+      expect(screen.getByRole("dialog", { name: "Read" })).toBeVisible();
+      // The bubble's own buttons still work.
+      await user.click(screen.getByRole("button", { name: "Next" }));
+      expect(screen.queryByRole("dialog", { name: "Read" })).toBeNull();
+    } finally {
+      document.removeEventListener("click", seen);
+      document.removeEventListener("pointerdown", seen);
+    }
+  });
 });

@@ -147,6 +147,12 @@ for (const size of SIZES) {
       // The walkthrough: a spotlight on Read in the tab bar, then a word, then on.
       await expect(page.getByRole("dialog", { name: "Read" })).toBeVisible();
       await shot(page, `tour-${size.width}`);
+      // Taps outside the bubble stay with the walkthrough: the Words tab does not open.
+      const words = page.getByRole("navigation", { name: "Main" }).getByRole("link").last();
+      const tab = await words.boundingBox();
+      await page.touchscreen.tap(tab!.x + tab!.width / 2, tab!.y + tab!.height / 2);
+      await expect(page).toHaveURL(/[/]read[/]/);
+      await expect(page.getByRole("dialog", { name: "Read" })).toBeVisible();
       await page.getByRole("dialog").getByRole("button", { name: "Next" }).click();
       await expect(page.getByRole("dialog", { name: "Tap a word" })).toBeVisible();
       await shot(page, `tour-word-${size.width}`);

@@ -3,8 +3,22 @@
  * reading help, Words, Review), each with a soft spotlight on its target. Shown once
  * (`vuurtoren.tour`), skippable at every step, and started again from Settings → Reading or
  * the More sheet (`startTour`). A step whose target is not on screen is passed over.
+ *
+ * While a step shows, a transparent scrim over the whole screen takes every tap, so nothing
+ * reaches the page under it; only a step that asks for it (`tap`) leaves its target open, and a
+ * tap there goes on to the next step. The bubble sits above sheets (it is rendered into
+ * `document.body`, above everything but toasts) and inside the safe areas.
  */
-import { useEffect, useLayoutEffect, useState } from "react";
+import {
+  type CSSProperties,
+  type PointerEvent as ReactPointerEvent,
+  type SyntheticEvent,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
+import { createPortal } from "react-dom";
 import { Button } from "@app/ui";
 import { readLocal, writeLocal } from "../storage/local.js";
 
@@ -16,6 +30,8 @@ interface Step {
   target: string;
   title: string;
   text: string;
+  /** The target takes taps (the scrim has a hole there); a tap on it goes to the next step. */
+  tap?: boolean;
 }
 
 const STEPS: Step[] = [
@@ -28,6 +44,7 @@ const STEPS: Step[] = [
     target: ".k-reader .k-tok",
     title: "Tap a word",
     text: "See what it means, hear it, and keep it with Add to my words.",
+    tap: true,
   },
   {
     target: ".rbar-mode, .rbar-modes, [aria-label='Reading settings']",
@@ -46,6 +63,10 @@ const STEPS: Step[] = [
   },
 ];
 
+/** Room (px) between the bubble and the screen's edges or safe areas. */
+const EDGE = 16;
+const PAD = 6;
+
 /** Show the walkthrough after the welcome (once), or again when asked. */
 export function startTour(): void {
   writeLocal(STATE, "pending");
@@ -60,11 +81,21 @@ function visible(selector: string): Element | null {
   return null;
 }
 
+/** A tap on the scrim stops there: the page under the walkthrough never sees it. */
+function swallow(e: SyntheticEvent): void {
+  e.preventDefault();
+  e.stopPropagation();
+}
+
 export function Tour() {
   const [on, setOn] = useState(() => readLocal(STATE) === "pending");
   const [at, setAt] = useState(0);
   // The target's box, with the step it belongs to (a new step waits for its own target).
   const [spot, setSpot] = useState<{ at: number; rect: DOMRect } | null>(null);
+  // The safe box (inside --safe-*) and the bubble's height, to keep the bubble on screen.
+  const safeRef = useRef<HTMLDivElement>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
+  const [fit, setFit] = useState<{ safe: DOMRect; card: number } | null>(null);
 
   useEffect(() => {
     const start = () => {
@@ -78,6 +109,10 @@ export function Tour() {
   const end = () => {
     writeLocal(STATE, "done");
     setOn(false);
+  };
+  const next = () => {
+    if (at + 1 < STEPS.length) setAt(at + 1);
+    else end();
   };
 
   // Follow the target (pages load, sheets move, the window turns); pass over a missing one
@@ -93,7 +128,11 @@ export function Tour() {
         missing = 0;
         const r = el.getBoundingClientRect();
         setSpot((old) =>
-          old?.at === at && old.rect.x === r.x && old.rect.y === r.y && old.rect.width === r.width
+          old?.at === at &&
+          old.rect.x === r.x &&
+          old.rect.y === r.y &&
+          old.rect.width === r.width &&
+          old.rect.height === r.height
             ? old
             : { at, rect: r },
         );
@@ -114,6 +153,35 @@ export function Tour() {
     };
   }, [on, at]);
 
+  // Measure the safe box and the bubble once they are on screen (and when they change).
+  useLayoutEffect(() => {
+    const safe = safeRef.current?.getBoundingClientRect();
+    const card = cardRef.current?.offsetHeight ?? 0;
+    if (!safe) return;
+    setFit((old) =>
+      old &&
+      old.card === card &&
+      old.safe.top === safe.top &&
+      old.safe.bottom === safe.bottom &&
+      old.safe.left === safe.left &&
+      old.safe.right === safe.right
+        ? old
+        : { safe, card },
+    );
+  }, [on, at, spot]);
+
+  // A tap on the target of a `tap` step goes on (the tap itself still reaches the target).
+  useEffect(() => {
+    const step = STEPS[at];
+    if (!on || !step?.tap) return;
+    const onClick = (e: MouseEvent) => {
+      const target = e.target as Element | null;
+      if (target?.closest(step.target)) setAt((a) => (a === at ? a + 1 : a));
+    };
+    document.addEventListener("click", onClick, true);
+    return () => document.removeEventListener("click", onClick, true);
+  }, [on, at]);
+
   useEffect(() => {
     if (!on) return;
     const onKey = (e: KeyboardEvent) => {
@@ -129,37 +197,73 @@ export function Tour() {
   const step = STEPS[at];
   const rect = spot?.at === at ? spot.rect : null;
   if (!on || !step || !rect) return null;
-  const pad = 6;
-  const below = rect.top + rect.height / 2 < window.innerHeight / 2;
-  const width = Math.min(320, window.innerWidth - 32);
+
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  const safe = fit?.safe ?? { top: 0, bottom: vh, left: 0, right: vw };
+  const width = Math.min(320, safe.right - safe.left - 2 * EDGE);
   const left = Math.min(
-    Math.max(16, rect.left + rect.width / 2 - width / 2),
-    window.innerWidth - width - 16,
+    Math.max(safe.left + EDGE, rect.left + rect.width / 2 - width / 2),
+    safe.right - width - EDGE,
   );
+  // Below the target when it is in the top half, else above it; always inside the safe box.
+  const below = rect.top + rect.height / 2 < vh / 2;
+  const height = fit?.card ?? 0;
+  const wanted = below ? rect.bottom + PAD + 12 : rect.top - PAD - 12 - height;
+  const top = Math.max(safe.top + EDGE, Math.min(wanted, safe.bottom - EDGE - height));
   const last = at === STEPS.length - 1;
-  return (
-    <div className="tour" role="dialog" aria-modal="false" aria-labelledby="tour-title">
+  const hole = {
+    top: rect.top - PAD,
+    left: rect.left - PAD,
+    right: rect.right + PAD,
+    bottom: rect.bottom + PAD,
+  };
+  const scrim = (style: CSSProperties, key: string) => (
+    <div
+      key={key}
+      className="tour-scrim"
+      data-testid="tour-scrim"
+      style={style}
+      onPointerDown={(e: ReactPointerEvent) => swallow(e)}
+      onPointerUp={swallow}
+      onClick={swallow}
+      onTouchStart={(e) => e.stopPropagation()}
+    />
+  );
+
+  return createPortal(
+    <div className="tour" role="dialog" aria-modal="true" aria-labelledby="tour-title">
+      <div className="tour-safe" ref={safeRef} aria-hidden />
+      {step.tap
+        ? [
+            scrim({ top: 0, left: 0, right: 0, height: Math.max(0, hole.top) }, "t"),
+            scrim({ top: hole.bottom, left: 0, right: 0, bottom: 0 }, "b"),
+            scrim(
+              {
+                top: hole.top,
+                left: 0,
+                width: Math.max(0, hole.left),
+                height: hole.bottom - hole.top,
+              },
+              "l",
+            ),
+            scrim(
+              { top: hole.top, left: hole.right, right: 0, height: hole.bottom - hole.top },
+              "r",
+            ),
+          ]
+        : scrim({ inset: 0 }, "all")}
       <div
         className="tour-spot"
         aria-hidden
         style={{
-          top: rect.top - pad,
-          left: rect.left - pad,
-          width: rect.width + 2 * pad,
-          height: rect.height + 2 * pad,
+          top: hole.top,
+          left: hole.left,
+          width: hole.right - hole.left,
+          height: hole.bottom - hole.top,
         }}
       />
-      <div
-        key={at}
-        className="tour-card"
-        style={{
-          left,
-          width,
-          ...(below
-            ? { top: rect.bottom + pad + 12 }
-            : { bottom: window.innerHeight - rect.top + pad + 12 }),
-        }}
-      >
+      <div key={at} ref={cardRef} className="tour-card" style={{ left, width, top }}>
         <p className="tour-count">
           {at + 1} of {STEPS.length}
         </p>
@@ -171,16 +275,12 @@ export function Tour() {
           <button type="button" className="tour-skip" onClick={end}>
             Skip the tour
           </button>
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={() => (last ? end() : setAt(at + 1))}
-            autoFocus
-          >
+          <Button variant="primary" size="sm" onClick={next} autoFocus>
             {last ? "Done" : "Next"}
           </Button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
