@@ -1,0 +1,40 @@
+# Vuurtoren on a home server (TrueNAS, a NAS, a small box) with Dockge, behind a Cloudflare Tunnel.
+# The data packs are read from a folder on the same machine: no download, no pack host.
+# Settings go in .env (see .env.example). Point the tunnel's public hostname at
+# http://<server-ip>:<VUURTOREN_WEB_PORT>.
+name: vuurtoren
+
+services:
+  web:
+    image: ghcr.io/${VUURTOREN_IMAGE_OWNER:-pavlohrab}/vuurtoren-web:${VUURTOREN_TAG:-latest}
+    restart: unless-stopped
+    depends_on: [api, nlp]
+    ports:
+      - "${VUURTOREN_WEB_PORT:-18080}:80"
+
+  # Sign-in, sync tokens and the sealed sync files of your devices.
+  api:
+    image: ghcr.io/${VUURTOREN_IMAGE_OWNER:-pavlohrab}/vuurtoren-api:${VUURTOREN_TAG:-latest}
+    restart: unless-stopped
+    environment:
+      VUURTOREN_USER: ${VUURTOREN_USER:?set VUURTOREN_USER}
+      VUURTOREN_PASSWORD_HASH: ${VUURTOREN_PASSWORD_HASH:?set VUURTOREN_PASSWORD_HASH}
+      # Behind Cloudflare: the sign-in rate limit uses the visitor's real address.
+      VUURTOREN_TRUST_CF: "1"
+    volumes:
+      - api-data:/data
+
+  # The language server: analysis, translation, dictionary, audio.
+  nlp:
+    image: ghcr.io/${VUURTOREN_IMAGE_OWNER:-pavlohrab}/vuurtoren-nlp:${VUURTOREN_TAG:-latest}
+    restart: unless-stopped
+    environment:
+      VUURTOREN_PACKS: auto
+      VUURTOREN_PACKS_DIR: /packs
+    volumes:
+      - nlp-data:/data
+      - ${VUURTOREN_PACKS_FOLDER:?set VUURTOREN_PACKS_FOLDER}:/packs:ro
+
+volumes:
+  api-data:
+  nlp-data:
