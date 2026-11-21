@@ -1,19 +1,26 @@
 /**
  * The Stories shelf over the repository: the bundled graded stories with the learner's coverage,
  * and opening one, which adds it to the Library as a normal text (once) with its bundled
- * analysis, so it reads at once and offline.
+ * analysis, so it reads at once and offline, and the bundle's word pairs and grammar hits for
+ * side by side and the grammar marks.
  */
-import type { LearnerModel } from "@app/core";
+import type { AnalyzedToken, GrammarHit, LearnerModel } from "@app/core";
 import { type VuurtorenRepository, contentHash, createUlidGenerator } from "@app/db";
 import {
   type BundledStory,
   type StoryCover,
+  type StorySentencePairs,
   loadStories,
   storyCovers,
   storyEnglish,
+  storyGrammar,
+  storyPairs,
   storyRef,
   storySlugOf,
 } from "./stories.js";
+
+/** A Library text, as far as finding its story goes. */
+type StoryTextRef = { content: string; sourceRef?: string | undefined };
 
 export interface LiveStoriesDeps {
   repo: VuurtorenRepository;
@@ -84,5 +91,34 @@ export function createLiveStories(deps: LiveStoriesDeps) {
     return story ? storyEnglish(story, text.content, tokens) : new Map();
   }
 
-  return { services: { storyShelf, openStory }, storyLines };
+  async function storyOf(text: StoryTextRef): Promise<BundledStory | null> {
+    const slug = storySlugOf(text.sourceRef);
+    if (!slug) return null;
+    return (await stories()).find((s) => s.slug === slug) ?? null;
+  }
+
+  /** The bundle's English and word pairs per sentence of a story text (empty otherwise). */
+  async function storySentencePairs(
+    text: StoryTextRef,
+    tokens: readonly AnalyzedToken[],
+  ): Promise<Map<number, StorySentencePairs>> {
+    const story = await storyOf(text);
+    return story ? storyPairs(story, text.content, tokens) : new Map();
+  }
+
+  /** The bundle's grammar hits of a story text, or null (another text: ask the server). */
+  async function storyTextGrammar(
+    text: StoryTextRef,
+    tokens: readonly AnalyzedToken[],
+  ): Promise<GrammarHit[] | null> {
+    const story = await storyOf(text);
+    return story ? storyGrammar(story, text.content, tokens) : null;
+  }
+
+  return {
+    services: { storyShelf, openStory },
+    storyLines,
+    storyPairs: storySentencePairs,
+    storyGrammar: storyTextGrammar,
+  };
 }

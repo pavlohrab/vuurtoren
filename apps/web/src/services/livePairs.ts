@@ -3,13 +3,16 @@
  * `/translate/pairs` (offline OPUS-MT attention). With the AI option the English comes from the
  * learner's provider and the server pairs that English (forced decoding). Both are optional:
  * without the server a sentence has no English; without the provider the offline English is
- * used. A bundled story brings its own English (see stories.ts), which beats both: the server
- * only pairs it, and without the server it is shown alone.
+ * used. A bundled story brings its own English (see stories.ts), which beats both, and its
+ * pairs, computed at build time exactly as the server pairs that English: those sentences need
+ * no request at all, so side by side works offline. The server pairs the rest; without it the
+ * story's English is shown alone.
  */
-import type { AnalyzedToken, SentencePairs } from "@app/core";
+import type { AnalyzedToken, SentencePairs, WordPair } from "@app/core";
 import type { NlpClient, PairItem, PairedText } from "@app/nlp-client";
 import { DEGRADED_MESSAGES, clearDegraded, reportDegraded } from "./degraded.js";
 import { nlpOutage } from "./liveSettings.js";
+import type { StoryPair, StorySentencePairs } from "./stories.js";
 import type { ReadingView } from "./types.js";
 
 export interface LivePairsDeps {
@@ -21,6 +24,8 @@ export interface LivePairsDeps {
   aiTranslate: (sentences: string[]) => Promise<string[]>;
   /** A bundled story's English per sentence of the text (empty for other texts). */
   storyLines?: (view: ReadingView) => Promise<Map<number, string>>;
+  /** A bundled story's precomputed English and pairs per sentence (empty for other texts). */
+  storyPairs?: (view: ReadingView) => Promise<Map<number, StorySentencePairs>>;
 }
 
 /** Words and punctuation of an English sentence (the server's tokenisation). */
@@ -62,6 +67,15 @@ function pairItem(content: string, tokens: readonly AnalyzedToken[]): Omit<Sente
   };
 }
 
+/** Pairs as the server gives them (`nl` = word indices of the sentence) on token indices. */
+function onTokens(words: readonly AnalyzedToken[], pairs: readonly StoryPair[]): WordPair[] {
+  return pairs.map((p) => ({
+    nl: p.nl.map((w) => words[w]?.i ?? -1).filter((i) => i >= 0),
+    en: p.en,
+    confidence: p.confidence,
+  }));
+}
+
 export function createLivePairs(deps: LivePairsDeps) {
   /** AI English per Dutch sentence, for this session (each costs a provider call). */
   const aiEnglish = new Map<string, string>();
@@ -94,11 +108,28 @@ export function createLivePairs(deps: LivePairsDeps) {
       if (list) list.push(t);
       else bySent.set(t.sent, [t]);
     }
-    const asked: Sentence[] = sentences.map((sent) => ({
+    const all: Sentence[] = sentences.map((sent) => ({
       sent,
       ...pairItem(v.text.content, bySent.get(sent) ?? []),
     }));
-    const story = (await deps.storyLines?.(v)) ?? new Map<number, string>();
+    // Precomputed for a bundled story: no request for these.
+    const ready = (await deps.storyPairs?.(v)) ?? new Map<number, StorySentencePairs>();
+    const fromStory = new Map<number, SentencePairs>();
+    for (const s of all) {
+      const r = ready.get(s.sent);
+      if (!r) continue;
+      fromStory.set(s.sent, {
+        sent: s.sent,
+        english: r.english,
+        englishTokens: englishTokens(r.english),
+        pairs: onTokens(s.words, r.pairs),
+        source: "story",
+      });
+    }
+    const asked = all.filter((s) => !fromStory.has(s.sent));
+    const story = asked.length
+      ? ((await deps.storyLines?.(v)) ?? new Map<number, string>())
+      : new Map<number, string>();
     const useAI = opts.ai === true && deps.aiReady();
     if (useAI) await fromAI(asked.filter((s) => !story.has(s.sent)).map((s) => s.item.text));
     const items = asked.map((s) => {
@@ -116,7 +147,7 @@ export function createLivePairs(deps: LivePairsDeps) {
       failed = true;
       if (!nlpOutage(e)) reportDegraded("translate", DEGRADED_MESSAGES.translate, e);
     }
-    return asked.map((s, k): SentencePairs => {
+    const answered = asked.map((s, k): SentencePairs => {
       const r = paired[k];
       const given = items[k]?.translation;
       if (!r) {
@@ -134,14 +165,12 @@ export function createLivePairs(deps: LivePairsDeps) {
         sent: s.sent,
         english: r.translation,
         englishTokens: r.english,
-        pairs: r.pairs.map((p) => ({
-          nl: p.nl.map((w) => s.words[w]?.i ?? -1).filter((i) => i >= 0),
-          en: p.en,
-          confidence: p.confidence,
-        })),
+        pairs: onTokens(s.words, r.pairs),
         source: r.source === "given" ? sourceOf(s.sent) : "offline",
       };
     });
+    const bySentence = new Map(answered.map((p) => [p.sent, p]));
+    return all.map((s) => fromStory.get(s.sent) ?? bySentence.get(s.sent)!);
   }
 
   return { sentencePairs };
