@@ -1,11 +1,11 @@
 /**
  * Today, on top of Read: one slim strip with the text to continue (or a story at the learner's
- * level to start with), the reviews due and where the learner stands in their words. The
+ * level to start with) and what is due today in Words. The
  * greeting is its heading. "Finish setting up" sits above it while there is no language profile.
  */
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { ArrowRight, BookOpen, Check, Dumbbell, Languages, Layers } from "lucide-react";
+import { ArrowRight, BookOpen, Check, Dumbbell, Layers } from "lucide-react";
 import type { ReactNode } from "react";
 import { Button, Skeleton, TextCover, coverKind, useNativeMode } from "@app/ui";
 import { readLastText } from "../../lastText.js";
@@ -13,7 +13,6 @@ import { useServices } from "../../services/context.js";
 import { storyToStart } from "../../services/stories.js";
 import { pickContinue, pagesOf } from "../../textPages.js";
 import { plural } from "../../format.js";
-import { useCurrentLevel } from "../words/WordsRoom.js";
 import { useOpenStory, useStoryShelf } from "./StoriesShelf.js";
 import "./today.css";
 
@@ -64,7 +63,6 @@ export function TodayStrip() {
           <ContinueSlot />
           <ul className="today-steps" aria-label="Today">
             <ReviewStep />
-            <LevelStep />
           </ul>
         </div>
       </section>
@@ -183,13 +181,13 @@ function ReviewStep() {
   if (native) {
     if (!review.data) return <PendingStep />;
     const n = review.data.due + review.data.fresh;
-    if (n === 0) return <DoneStep icon={<Layers size={16} />} text="No reviews due" />;
+    if (n === 0) return <DoneStep icon={<Layers size={16} />} text="Nothing due today" />;
     return (
       <Step
         to="/review"
         icon={<Layers size={16} />}
-        text={`${plural(n, "review")} · ~${reviewMinutes(n)} min`}
-        go="Review"
+        text={`Due today · ${plural(n, "card")} · ~${reviewMinutes(n)} min`}
+        go="Start"
       />
     );
   }
@@ -206,27 +204,13 @@ function ReviewStep() {
   );
 }
 
-/** Where the learner stands: the current starter level, in one line. */
-function LevelStep() {
-  const level = useCurrentLevel();
-  if (!level) return <PendingStep />;
-  return (
-    <Step
-      to="/words"
-      icon={<Languages size={16} />}
-      text={`Level ${level.level} · ${fmt(level.known)} of ${fmt(level.size)} known`}
-      go="Your words"
-    />
-  );
-}
-
 function Step({
   to,
   icon,
   text,
   go,
 }: {
-  to: "/review" | "/practice" | "/words";
+  to: "/review" | "/practice";
   icon: ReactNode;
   text: string;
   go: string;

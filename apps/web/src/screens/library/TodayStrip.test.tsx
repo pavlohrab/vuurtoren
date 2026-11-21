@@ -88,16 +88,14 @@ describe("Today helpers", () => {
 });
 
 describe("Read: the Today strip", () => {
-  it("opens on Read with the text to continue, the level and one primary action", async () => {
+  it("opens on Read with the text to continue, what is due, and one primary action", async () => {
     setup();
     expect(await screen.findByRole("heading", { level: 1, name: "Read" })).toBeVisible();
     const today = await screen.findByRole("region", { name: /^Goede/ });
     const go = await within(today).findByRole("link", { name: /^(Continue|Start reading)/ });
     expect(go).toHaveAttribute("href", expect.stringMatching(/^\/read\//));
     const steps = within(today).getByRole("list", { name: "Today" });
-    expect(
-      await within(steps).findByRole("link", { name: /Level \d+ · .* known/ }),
-    ).toHaveAttribute("href", "/words");
+    expect(within(steps).queryByText(/Level \d+/)).toBeNull();
     // Connected to Anki: the exercises due stand in for reviews.
     expect(await within(steps).findByText(/exercises? due/)).toBeInTheDocument();
     expect(document.querySelectorAll(".library .k-btn--primary")).toHaveLength(1);
@@ -106,10 +104,12 @@ describe("Read: the Today strip", () => {
     expect(screen.getByRole("heading", { level: 2, name: "Your texts" })).toBeVisible();
   });
 
-  it("shows the reviews due and about how long they take (native)", async () => {
+  it("shows what is due today and about how long it takes (native)", async () => {
     setup({}, { native: true });
     const today = await screen.findByRole("region", { name: /^Goede/ });
-    const review = await within(today).findByRole("link", { name: /\d+ reviews? · ~\d+ min/ });
+    const review = await within(today).findByRole("link", {
+      name: /^Due today · \d+ cards? · ~\d+ min/,
+    });
     expect(review).toHaveAttribute("href", "/review");
   });
 

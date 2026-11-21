@@ -154,10 +154,9 @@ describe("Review", () => {
     const nav = await screen.findByRole("navigation", { name: "Main" });
     const words = await within(nav).findByRole("link", { name: /^Words/ });
     expect(await within(words).findByLabelText("2 cards due")).toBeVisible();
-    expect(await screen.findByRole("link", { name: /^4 reviews · ~1 min/ })).toHaveAttribute(
-      "href",
-      "/review",
-    );
+    expect(
+      await screen.findByRole("link", { name: /^Due today · 4 cards · ~1 min/ }),
+    ).toHaveAttribute("href", "/review");
     await userEvent.click(words);
     const today = await screen.findByRole("region", { name: "Due today" });
     expect(await within(today).findByText("4 cards")).toBeVisible();
