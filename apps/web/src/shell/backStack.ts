@@ -1,12 +1,14 @@
 /**
  * Back, overlay first: the system Back (Android's button or gesture) closes what is open on top
- * (a dialog, a menu, the word sheet, the More sheet, the tour) before the app goes back a page,
- * and leaves the app only when there is nothing to close and no page to go back to.
+ * (a dialog, a menu, the word sheet, the More sheet, the tour); with nothing open it goes to the
+ * start of the current tab (Read or Words; everything under More counts as Read), and from a
+ * tab's start it leaves the app. Back never walks through the pages visited before.
  *
  * Overlays of the app say so with `useBackClose` while they are open; the last one opened is on
  * top. Dialogs, popovers and menus of `@app/ui` (Radix) are found in the page and closed with
  * Escape, as they would be from a keyboard: they always sit above the rest.
  */
+import { useRouter } from "@tanstack/react-router";
 import { useEffect, useLayoutEffect, useRef } from "react";
 import { desktopBridge } from "../desktop/bridge.js";
 
@@ -68,14 +70,27 @@ export function closeTopmost(): boolean {
 }
 
 /** What one system Back did. */
-export type BackResult = "overlay" | "page" | "exit";
+export type BackResult = "overlay" | "tab" | "exit";
 
-/** One system Back: the topmost overlay, else the previous page, else out of the app. */
-export function systemBack(canGoBack: boolean, nav: { back(): void; exit(): void }): BackResult {
+/** The start of the bottom-bar tab a path belongs to: Words for the word screens, else Read. */
+export function tabRoot(pathname: string): "/" | "/words" {
+  return /^\/(words|review|practice)(\/|$)/.test(pathname) ? "/words" : "/";
+}
+
+/** Pages Back leaves the app from: a tab's start, and the welcome steps. */
+function isRoot(pathname: string): boolean {
+  return pathname === "/" || pathname === "/words" || pathname.startsWith("/welcome");
+}
+
+/** One system Back: the topmost overlay, else the start of the tab, else out of the app. */
+export function systemBack(
+  pathname: string,
+  nav: { toTab(root: "/" | "/words"): void; exit(): void },
+): BackResult {
   if (closeTopmost()) return "overlay";
-  if (canGoBack) {
-    nav.back();
-    return "page";
+  if (!isRoot(pathname)) {
+    nav.toTab(tabRoot(pathname));
+    return "tab";
   }
   nav.exit();
   return "exit";
@@ -83,14 +98,15 @@ export function systemBack(canGoBack: boolean, nav: { back(): void; exit(): void
 
 /** Take the Android Back for the app while the shell is mounted (no-op elsewhere). */
 export function useSystemBack(): void {
+  const router = useRouter();
   useEffect(() => {
     const back = desktopBridge()?.back;
     if (!back) return;
-    return back.listen(({ canGoBack }) => {
-      systemBack(canGoBack, {
-        back: () => window.history.back(),
+    return back.listen(() => {
+      systemBack(router.state.location.pathname, {
+        toTab: (to) => void router.navigate({ to, replace: true }),
         exit: () => void back.exit(),
       });
     });
-  }, []);
+  }, [router]);
 }

@@ -4,28 +4,41 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { App } from "../App.js";
 import { createMockServices } from "../services/mock.js";
-import { closeTopmost, pushBack, systemBack, useSystemBack } from "./backStack.js";
+import { closeTopmost, pushBack, systemBack, tabRoot } from "./backStack.js";
 
 afterEach(() => {
   Reflect.deleteProperty(window, "__VUURTOREN_DESKTOP__");
 });
 
 describe("Back, overlay first", () => {
-  it("closes the last opened overlay first, then goes back a page, then leaves", () => {
+  it("closes the last opened overlay first, then goes to the tab's start, then leaves", () => {
     const closed: string[] = [];
-    const nav = { back: vi.fn(), exit: vi.fn() };
+    const nav = { toTab: vi.fn(), exit: vi.fn() };
     const offSheet = pushBack(() => closed.push("sheet"));
     const offTour = pushBack(() => closed.push("tour"));
-    expect(systemBack(true, nav)).toBe("overlay");
+    expect(systemBack("/read/t1", nav)).toBe("overlay");
     offTour();
-    expect(systemBack(true, nav)).toBe("overlay");
+    expect(systemBack("/read/t1", nav)).toBe("overlay");
     offSheet();
     expect(closed).toEqual(["tour", "sheet"]);
-    expect(nav.back).not.toHaveBeenCalled();
-    expect(systemBack(true, nav)).toBe("page");
-    expect(nav.back).toHaveBeenCalledOnce();
-    expect(systemBack(false, nav)).toBe("exit");
+    expect(nav.toTab).not.toHaveBeenCalled();
+    expect(systemBack("/read/t1", nav)).toBe("tab");
+    expect(nav.toTab).toHaveBeenLastCalledWith("/");
+    expect(systemBack("/", nav)).toBe("exit");
     expect(nav.exit).toHaveBeenCalledOnce();
+  });
+
+  it("knows which tab a page belongs to; More's pages count as Read", () => {
+    expect(tabRoot("/grammar/word-order")).toBe("/");
+    expect(tabRoot("/settings")).toBe("/");
+    expect(tabRoot("/read/t1/words")).toBe("/");
+    expect(tabRoot("/review")).toBe("/words");
+    expect(tabRoot("/practice")).toBe("/words");
+    expect(tabRoot("/words")).toBe("/words");
+    const nav = { toTab: vi.fn(), exit: vi.fn() };
+    expect(systemBack("/review", nav)).toBe("tab");
+    expect(nav.toTab).toHaveBeenLastCalledWith("/words");
+    expect(systemBack("/words", nav)).toBe("exit");
   });
 
   it("closes an open dialog (Radix layer) with Escape before the app's own overlays", () => {
@@ -48,7 +61,7 @@ describe("Back, overlay first", () => {
     expect(closeTopmost()).toBe(false);
   });
 
-  it("listens to Android Back through the app bridge while mounted", () => {
+  it("listens to Android Back through the app bridge while mounted", async () => {
     let fire: ((e: { canGoBack: boolean }) => void) | null = null;
     const unlisten = vi.fn();
     const exit = vi.fn(() => Promise.resolve());
@@ -64,16 +77,18 @@ describe("Back, overlay first", () => {
         },
       },
     });
-    function Probe() {
-      useSystemBack();
-      return null;
-    }
-    const { unmount } = render(<Probe />);
-    expect(fire).not.toBeNull();
-    act(() => fire!({ canGoBack: false }));
+    const history = createMemoryHistory({ initialEntries: ["/grammar"] });
+    const { unmount } = render(
+      <App services={createMockServices({ latencyMs: 0 })} history={history} />,
+    );
+    await waitFor(() => expect(fire).not.toBeNull());
+    act(() => fire!({ canGoBack: true }));
+    await waitFor(() => expect(history.location.pathname).toBe("/"));
+    expect(exit).not.toHaveBeenCalled();
+    act(() => fire!({ canGoBack: true }));
     expect(exit).toHaveBeenCalledOnce();
     unmount();
-    expect(unlisten).toHaveBeenCalledOnce();
+    expect(unlisten).toHaveBeenCalled();
   });
 });
 
@@ -86,7 +101,7 @@ describe("the More sheet", () => {
     await user.click(more);
     expect(screen.getByRole("menu", { name: "More" })).toBeVisible();
     // System Back closes the sheet (and nothing else), focus returns to its button.
-    act(() => void systemBack(true, { back: () => history.back(), exit: () => {} }));
+    act(() => void systemBack("/", { toTab: () => {}, exit: () => {} }));
     expect(screen.queryByRole("menu", { name: "More" })).toBeNull();
     expect(more).toHaveFocus();
     expect(history.location.pathname).toBe("/");
