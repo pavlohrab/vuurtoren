@@ -66,8 +66,25 @@ long for the level, and where spaCy splits the text differently from the lines (
 the English with spaCy's sentences). A colon before a quote or a name at the start of a sentence
 can make spaCy split a line: rephrase the line. It exits with 1 while a story misses a target.
 
-`stories.json` is the bundle the app loads: every story with its text, its English per sentence
-and its analysis. Run `--write` after any change to a story and commit both.
+`stories.json` is the bundle the app loads: every story with its text, its English per sentence,
+its analysis, the word pairs of each sentence with its English and the grammar hits. Run
+`--write` after any change to a story and commit both.
+
+The pairs and hits are what the language server would answer (`/translate/pairs` with the
+story's English given, and `/grammar`), worked out once at build time so side by side, its
+structure view and the grammar marks work on a phone and before the desktop's server is ready.
+`--write` computes them itself (`scripts/build_story_extras.py`), so it needs the translation
+model (`uv run python scripts/fetch_mt_model.py`, or point `VUURTOREN_MT_DIR` at an installed
+`mt-nl-en` pack). After a change to the pairing code, the model or the grammar detectors, redo
+only this step:
+
+```sh
+uv run python scripts/build_story_extras.py          # check the analysis, redo pairs and hits
+```
+
+It stops when a story's bundled analysis no longer matches a fresh one (run `--write`). The
+bundle records the versions it used under `extras`; the app ignores pairs and hits made for
+another analysis and asks the server instead.
 
 ## Licence
 
