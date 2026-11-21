@@ -8,6 +8,7 @@ renumbered; fixed fields replace the built ones. A sentence from the review is t
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -17,14 +18,31 @@ DROP = {"remove", "not_useful"}
 
 
 def mark_of(sentence: str, form: str | None, lemma: str) -> list[int] | None:
-    """Where the word stands in the sentence: the reviewed form, else the lemma."""
-    low = sentence.lower()
+    """Where the word stands in the sentence, as a whole word: the reviewed form, else the
+    lemma ("om" in "Ik kom om acht uur." is the second "om", not the one inside "kom")."""
     for needle in (form, lemma):
         if needle:
-            i = low.find(needle.lower())
-            if i >= 0:
-                return [i, i + len(needle)]
+            m = re.search(rf"(?<!\w){re.escape(needle)}(?!\w)", sentence, re.IGNORECASE)
+            if m:
+                return [m.start(), m.end()]
     return None
+
+
+def repair_marks(words: list[dict]) -> int:
+    """Move every mark that does not cover a whole word onto the word itself; count the moves."""
+    moved = 0
+    for w in words:
+        s, m = w.get("sentence"), w.get("mark")
+        if not s or not m:
+            continue
+        a, b = m
+        whole = (a == 0 or not s[a - 1].isalnum()) and (b >= len(s) or not s[b].isalnum())
+        if not whole:
+            w["mark"] = (
+                mark_of(s, s[a:b], w["word"]) if s[a:b].strip() else mark_of(s, None, w["word"])
+            )
+            moved += 1
+    return moved
 
 
 def apply(words: list[dict], review: dict[str, dict]) -> list[dict]:
@@ -58,9 +76,11 @@ def main() -> None:
     review = json.loads(REVIEW.read_text())["entries"]
     before = len(data["words"])
     data["words"] = apply(data["words"], review)
+    moved = repair_marks(data["words"])
     data["reviewed"] = True
     LIST.write_text(json.dumps(data, ensure_ascii=False, indent=1) + "\n")
-    print(f"{before} → {len(data['words'])} words; {len(review)} reviewed entries applied")
+    words = len(data["words"])
+    print(f"{before} → {words} words; {len(review)} reviews applied; {moved} marks moved")
 
 
 if __name__ == "__main__":

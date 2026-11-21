@@ -87,9 +87,15 @@ export function composeGlosses(
   for (const e of ordered)
     for (const g of e.glosses)
       if (!FORM_OF.test(g) && !PLACE_SENSE.test(g) && !glosses.includes(g)) glosses.push(g);
+  // An article only for a word used as a noun, and only from a noun sense: "haar" (her) must not
+  // borrow "het haar" (hair), nor "ons" (us) "het ons" (an ounce).
+  const asNoun = pos ? /^(NOUN|PROPN)$/i.test(pos) : ordered[0]?.pos === "noun";
   const article =
     info?.article ??
-    ordered.find((e) => e.article === "de" || e.article === "het")?.article ??
+    (asNoun
+      ? ordered.find((e) => e.pos === "noun" && (e.article === "de" || e.article === "het"))
+          ?.article
+      : undefined) ??
     undefined;
   const note = info?.gloss ? undefined : partsNote(ordered[0]);
   const guess = note ? ordered[0]?.origin : undefined;

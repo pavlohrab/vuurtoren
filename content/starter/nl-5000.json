@@ -303,8 +303,8 @@
    "sentence": "Ik kom om acht uur.",
    "translation": "I am coming at eight.",
    "mark": [
-    4,
-    6
+    7,
+    9
    ],
    "tatoeba": null
   },
@@ -511,8 +511,8 @@
    "sentence": "Wil je koffie of thee?",
    "translation": "Do you want coffee or tea?",
    "mark": [
-    8,
-    10
+    14,
+    16
    ],
    "tatoeba": null
   },
@@ -1677,8 +1677,8 @@
    "sentence": "De les duurt een uur.",
    "translation": "The lesson lasts an hour.",
    "mark": [
-    8,
-    11
+    17,
+    20
    ],
    "tatoeba": null
   },
@@ -4607,10 +4607,7 @@
    "gloss": "some",
    "sentence": "Sommige winkels zijn dicht.",
    "translation": "Some shops are closed.",
-   "mark": [
-    0,
-    6
-   ],
+   "mark": null,
    "tatoeba": null
   },
   {
@@ -9319,10 +9316,7 @@
    "gloss": "certain",
    "sentence": "Op bepaalde dagen is de winkel dicht.",
    "translation": "The shop is closed on certain days.",
-   "mark": [
-    3,
-    10
-   ],
+   "mark": null,
    "tatoeba": null
   },
   {
@@ -10108,10 +10102,7 @@
    "gloss": "Russian",
    "sentence": "Ze leest een Russische roman.",
    "translation": "She's reading a Russian novel.",
-   "mark": [
-    13,
-    21
-   ],
+   "mark": null,
    "tatoeba": null
   },
   {
@@ -15860,10 +15851,7 @@
    "gloss": "Olympic",
    "sentence": "Haar droom is een olympische medaille winnen.",
    "translation": "Her dream is to win an Olympic medal.",
-   "mark": [
-    18,
-    27
-   ],
+   "mark": null,
    "tatoeba": null
   },
   {
@@ -17980,10 +17968,7 @@
    "gloss": "Turkish",
    "sentence": "Mijn buurman leert de Turkse taal.",
    "translation": "My neighbour is learning Turkish.",
-   "mark": [
-    22,
-    27
-   ],
+   "mark": null,
    "tatoeba": null
   },
   {
@@ -20560,10 +20545,7 @@
    "gloss": "remaining",
    "sentence": "De overige gasten komen later.",
    "translation": "The remaining guests are coming later.",
-   "mark": [
-    3,
-    9
-   ],
+   "mark": null,
    "tatoeba": null
   },
   {
@@ -25310,10 +25292,7 @@
    "gloss": "emotion",
    "sentence": "Ik vind het belangrijk om eerlijk te zijn over mijn emoties.",
    "translation": "I think it's important to be honest about my emotions.",
-   "mark": [
-    52,
-    58
-   ],
+   "mark": null,
    "tatoeba": null
   },
   {
@@ -27340,10 +27319,7 @@
    "gloss": "mental, concerning the mind",
    "sentence": "Voldoende slaap is goed voor je geestelijke gezondheid.",
    "translation": "Getting enough sleep is good for your mental health.",
-   "mark": [
-    32,
-    42
-   ],
+   "mark": null,
    "tatoeba": null
   },
   {
@@ -29507,10 +29483,7 @@
    "gloss": "file",
    "sentence": "We spitten alle dossiers zorgvuldig door.",
    "translation": "We carefully comb through all the files.",
-   "mark": [
-    16,
-    23
-   ],
+   "mark": null,
    "tatoeba": null
   },
   {
@@ -39433,10 +39406,7 @@
    "gloss": "daily newspaper",
    "sentence": "Verkoopt u ook Nederlandse dagbladen?",
    "translation": "Do you also sell Dutch daily newspapers?",
-   "mark": [
-    27,
-    34
-   ],
+   "mark": null,
    "tatoeba": null
   },
   {
@@ -39652,10 +39622,7 @@
    "gloss": "random, arbitrary",
    "sentence": "Kies een willekeurige kaart uit het spel.",
    "translation": "Choose any card from the deck at random.",
-   "mark": [
-    9,
-    20
-   ],
+   "mark": null,
    "tatoeba": null
   },
   {
@@ -40303,8 +40270,8 @@
    "sentence": "De eerste letter van het Griekse alfabet is de alfa.",
    "tatoeba": null,
    "mark": [
-    33,
-    37
+    47,
+    51
    ]
   },
   {
@@ -42546,10 +42513,7 @@
    "gloss": "ticket",
    "sentence": "Twee kaartjes naar Arnhem, alstublieft.",
    "translation": "Two tickets to Arnhem, please.",
-   "mark": [
-    5,
-    12
-   ],
+   "mark": null,
    "tatoeba": null
   },
   {
@@ -42588,10 +42552,7 @@
    "gloss": "negotiation",
    "sentence": "De onderhandelingen duurden dagen.",
    "translation": "The negotiations lasted for days.",
-   "mark": [
-    3,
-    17
-   ],
+   "mark": null,
    "tatoeba": null
   },
   {
@@ -46128,10 +46089,7 @@
    "gloss": "colorful",
    "sentence": "De markt staat vol kleurrijke kramen.",
    "translation": "The market is full of colourful stalls.",
-   "mark": [
-    19,
-    28
-   ],
+   "mark": null,
    "tatoeba": null
   },
   {
@@ -46314,10 +46272,7 @@
    "gloss": "graphical",
    "sentence": "Gisteravond ging mijn grafische kaart kapot.",
    "translation": "My graphics card broke last night.",
-   "mark": [
-    22,
-    30
-   ],
+   "mark": null,
    "tatoeba": null
   },
   {
@@ -46644,10 +46599,7 @@
    "gloss": "compulsory, mandatory",
    "sentence": "Ik wil graag komen, maar ik heb vanavond een verplichte les.",
    "translation": "I'd like to come, but I have a compulsory class this evening.",
-   "mark": [
-    45,
-    54
-   ],
+   "mark": null,
    "tatoeba": null
   },
   {
@@ -47907,10 +47859,7 @@
    "gloss": "eastern",
    "sentence": "De ingang ligt aan de oostelijke kant van het gebouw.",
    "translation": "The entrance is on the eastern side of the building.",
-   "mark": [
-    22,
-    31
-   ],
+   "mark": null,
    "tatoeba": null
   },
   {
@@ -48788,10 +48737,7 @@
    "gloss": "subsequent",
    "sentence": "De storm duurde een uur, maar de daaropvolgende stroomstoring duurde de hele nacht.",
    "translation": "The storm lasted an hour, but the power cut that followed lasted all night.",
-   "mark": [
-    33,
-    46
-   ],
+   "mark": null,
    "tatoeba": null
   },
   {
@@ -49832,10 +49778,7 @@
    "gloss": "frequent",
    "sentence": "Door de veelvuldige storingen koos het bedrijf voor een nieuw systeem.",
    "translation": "Because of the frequent breakdowns, the company chose a new system.",
-   "mark": [
-    8,
-    18
-   ],
+   "mark": null,
    "tatoeba": null
   },
   {
@@ -50809,10 +50752,7 @@
    "gloss": "failed",
    "sentence": "Na een mislukte poging lukte het wel.",
    "translation": "After a failed attempt it worked.",
-   "mark": [
-    7,
-    14
-   ],
+   "mark": null,
    "tatoeba": null
   },
   {
@@ -52707,10 +52647,7 @@
    "gloss": "Dutch East Indies",
    "sentence": "In dit museum vertellen families over hun Indische achtergrond.",
    "translation": "In this museum, families talk about their roots in the former Dutch East Indies.",
-   "mark": [
-    42,
-    49
-   ],
+   "mark": null,
    "tatoeba": null
   },
   {
@@ -53423,10 +53360,7 @@
    "gloss": "Palestinian",
    "sentence": "We lazen een verhaal van een Palestijnse schrijver.",
    "translation": "We read a story by a Palestinian writer.",
-   "mark": [
-    29,
-    39
-   ],
+   "mark": null,
    "tatoeba": null
   },
   {
@@ -54261,10 +54195,7 @@
    "gloss": "Roman",
    "sentence": "In het museum liggen Romeinse munten.",
    "translation": "There are Roman coins in the museum.",
-   "mark": [
-    21,
-    28
-   ],
+   "mark": null,
    "tatoeba": null
   },
   {
@@ -56027,10 +55958,7 @@
    "gloss": "successful",
    "sentence": "Het was een geslaagde avond.",
    "translation": "It was a successful evening.",
-   "mark": [
-    12,
-    20
-   ],
+   "mark": null,
    "tatoeba": null
   },
   {
@@ -60747,10 +60675,7 @@
    "gloss": "terrorist",
    "sentence": "De krant berichtte over een terroristische aanslag.",
    "translation": "The newspaper reported a terrorist attack.",
-   "mark": [
-    28,
-    41
-   ],
+   "mark": null,
    "tatoeba": null
   },
   {
@@ -60774,10 +60699,7 @@
    "gloss": "convicted",
    "sentence": "De veroordeelde man ging in beroep.",
    "translation": "The convicted man appealed.",
-   "mark": [
-    3,
-    14
-   ],
+   "mark": null,
    "tatoeba": null
   },
   {
@@ -63888,10 +63810,7 @@
    "gloss": "prominent",
    "sentence": "Hij is er trots op dat zijn vader een vooraanstaande wetenschapper was.",
    "translation": "He is proud that his father was a prominent scientist.",
-   "mark": [
-    38,
-    51
-   ],
+   "mark": null,
    "tatoeba": null
   },
   {
