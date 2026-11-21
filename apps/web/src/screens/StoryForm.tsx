@@ -28,8 +28,6 @@ const STYLES: { value: StoryStyle; label: string }[] = [
 /** Known words sent with the prompt (see liveAI createStory). */
 const PROMPT_LEMMAS = 300;
 
-type Source = "learn-now" | "unit" | "grammar" | "own";
-
 export interface StoryPreset {
   topic?: string;
   /** Grammar topic page id: the story features it. */
@@ -75,45 +73,56 @@ export function WriteStoryLink({
 const tokensText = (n: number) =>
   n >= 1000 ? `${(Math.round(n / 100) / 10).toLocaleString("en")}K` : String(n);
 
+/** Learning and new words together stay under this share of the story. */
+const MIX_MAX = 50;
+
+type Focus = "learning" | "unit" | "grammar";
+
 export function StoryForm({ preset = {} }: { preset?: StoryPreset }) {
   const services = useServices();
   const qc = useQueryClient();
   const navigate = useNavigate();
   const toast = useToast();
-  const [topic, setTopic] = useState(preset.topic ?? "");
-  const [length, setLength] = useState<StoryLength>("short");
+  const [length, setLength] = useState<StoryLength>("medium");
   const [style, setStyle] = useState<StoryStyle>("story");
-  const [source, setSource] = useState<Source>(
-    preset.unit ? "unit" : preset.grammarTopic ? "grammar" : "learn-now",
+  const [focus, setFocus] = useState<Focus>(
+    preset.unit ? "unit" : preset.grammarTopic ? "grammar" : "learning",
   );
   const [grammarId, setGrammarId] = useState(preset.grammarTopic ?? "");
-  const [ownWords, setOwnWords] = useState<string | null>(null);
+  const [ownTopic, setOwnTopic] = useState(Boolean(preset.topic));
+  const [topic, setTopic] = useState(preset.topic ?? "");
+  const [notes, setNotes] = useState("");
+  // Percentages of the story's words; known words are the rest.
+  const [learning, setLearning] = useState(15);
+  const [fresh, setFresh] = useState(5);
   const [progress, setProgress] = useState<string | null>(null);
-  const pickSource = (s: Source) => {
-    setSource(s);
-    setOwnWords(null);
+  // Two linked sliders: moving one past the 50% cap takes the room from the other.
+  const setLearningPct = (v: number) => {
+    setLearning(v);
+    if (v + fresh > MIX_MAX) setFresh(MIX_MAX - v);
   };
+  const setFreshPct = (v: number) => {
+    setFresh(v);
+    if (learning + v > MIX_MAX) setLearning(MIX_MAX - v);
+  };
+  const known = 100 - learning - fresh;
 
+  const storyWords = STORY_WORDS[length];
+  // About one learning word per three uses of the share, so each comes back a few times.
+  const targetCount = Math.max(3, Math.min(20, Math.round((storyWords * learning) / 100 / 3)));
   const targetSource: StoryTargetSource | null =
-    source === "learn-now"
-      ? { kind: "learn-now" }
-      : source === "unit" && preset.unit
+    learning === 0
+      ? null
+      : focus === "unit" && preset.unit
         ? { kind: "unit", ...preset.unit }
-        : null;
-  const suggested = useQuery({
+        : { kind: "learn-now", limit: targetCount };
+  const targets = useQuery({
     queryKey: ["story-targets", targetSource],
     queryFn: () => services.storyTargets(targetSource!),
     enabled: targetSource !== null,
   });
-  const words = (
-    ownWords ?? (source === "own" || source === "grammar" ? "" : (suggested.data ?? []).join(", "))
-  )
-    .split(/[,\n]/)
-    .map((w) => w.trim())
-    .filter(Boolean);
-  // A unit's story also features the unit's main grammar point (preset from its texts).
   const topicPage =
-    (source === "grammar" || (source === "unit" && preset.grammarTopic)) && grammarId
+    (focus === "grammar" || (focus === "unit" && preset.grammarTopic)) && grammarId
       ? grammarTopic(grammarId)
       : undefined;
 
@@ -126,10 +135,12 @@ export function StoryForm({ preset = {} }: { preset?: StoryPreset }) {
     mutationFn: () =>
       services.createStory(
         {
-          topic: topic.trim() || topicPage?.title || "everyday life",
+          topic: ownTopic ? topic.trim() : "",
           length,
           style,
-          targetWords: words,
+          targetWords: learning > 0 ? (targets.data ?? []) : [],
+          mix: { learning: learning / 100, fresh: fresh / 100 },
+          ...(notes.trim() ? { notes: notes.trim() } : {}),
           ...(topicPage ? { grammarTopic: topicPage.id } : {}),
         },
         setProgress,
@@ -165,80 +176,175 @@ export function StoryForm({ preset = {} }: { preset?: StoryPreset }) {
   return (
     <>
       <p className="k-hint import-story-lede">
-        A new text written for you, kept to words you know, with a few words to learn.
+        A new text written for your level, from words you know, with your learning words and a few
+        new ones.
       </p>
       <form
-        className="stack"
+        className="stack story-form"
         onSubmit={(e) => {
           e.preventDefault();
           create.mutate();
         }}
       >
-        <Input
-          label="Topic"
-          value={topic}
-          placeholder="A day at the market, a lost cat, …"
-          disabled={create.isPending}
-          onChange={(e) => setTopic(e.target.value)}
-        />
         <fieldset className="practice-group">
           <legend className="k-label">Length</legend>
           <div className="practice-options">
             {LENGTHS.map((l) =>
-              option(l.value, length, setLength, `${l.label} (~${STORY_WORDS[l.value]} words)`),
+              option(l.value, length, setLength, `${l.label} · ~${STORY_WORDS[l.value]} words`),
             )}
           </div>
         </fieldset>
+
         <fieldset className="practice-group">
-          <legend className="k-label">Kind of text</legend>
-          <div className="practice-options">
-            {STYLES.map((s) => option(s.value, style, setStyle, s.label))}
+          <legend className="k-label">Words in the story</legend>
+          <div
+            className="story-mix"
+            role="img"
+            aria-label={`${known}% known words, ${learning}% learning words, ${fresh}% new words`}
+          >
+            <span className="story-mix-known" style={{ flexBasis: `${known}%` }}>
+              Known {known}%
+            </span>
+            {learning > 0 ? (
+              <span className="story-mix-learning" style={{ flexBasis: `${learning}%` }}>
+                {learning >= 10 ? `${learning}%` : ""}
+              </span>
+            ) : null}
+            {fresh > 0 ? (
+              <span className="story-mix-new" style={{ flexBasis: `${fresh}%` }}>
+                {fresh >= 10 ? `${fresh}%` : ""}
+              </span>
+            ) : null}
           </div>
+          <label className="story-slider">
+            <span>
+              Learning words <b>{learning}%</b>
+            </span>
+            <input
+              type="range"
+              min={0}
+              max={MIX_MAX}
+              step={5}
+              value={learning}
+              disabled={create.isPending}
+              onChange={(e) => setLearningPct(Number(e.target.value))}
+            />
+          </label>
+          <label className="story-slider">
+            <span>
+              New words <b>{fresh}%</b>
+            </span>
+            <input
+              type="range"
+              min={0}
+              max={MIX_MAX}
+              step={5}
+              value={fresh}
+              disabled={create.isPending}
+              onChange={(e) => setFreshPct(Number(e.target.value))}
+            />
+          </label>
+          <p className="k-hint" style={{ margin: 0 }}>
+            About {Math.round((storyWords * known) / 100)} known,{" "}
+            {Math.round((storyWords * learning) / 100)} learning and{" "}
+            {Math.round((storyWords * fresh) / 100)} new words. Learning and new words together stay
+            under {MIX_MAX}%.
+          </p>
         </fieldset>
+
         <fieldset className="practice-group">
           <legend className="k-label">Focus</legend>
           <div className="practice-options">
-            {option<Source>("learn-now", source, pickSource, "Words to learn now")}
+            {option<Focus>("learning", focus, setFocus, "My learning words")}
             {preset.unit
-              ? option<Source>(
+              ? option<Focus>(
                   "unit",
-                  source,
-                  pickSource,
+                  focus,
+                  setFocus,
                   preset.grammarTopic && grammarTopic(preset.grammarTopic)
-                    ? `This unit's new words and ${grammarTopic(preset.grammarTopic)?.title}`
-                    : "This unit's new words",
+                    ? `This unit's words and ${grammarTopic(preset.grammarTopic)?.title}`
+                    : "This unit's words",
                 )
               : null}
-            {option<Source>("grammar", source, pickSource, "A grammar topic")}
-            {option<Source>("own", source, pickSource, "My own words")}
+            {option<Focus>("grammar", focus, setFocus, "A grammar topic")}
+          </div>
+          {focus === "grammar" ? (
+            <label className="k-field">
+              <span className="k-label">Grammar topic</span>
+              <select
+                className="k-input"
+                value={grammarId}
+                disabled={create.isPending}
+                onChange={(e) => setGrammarId(e.target.value)}
+              >
+                <option value="">Choose a topic</option>
+                {grammarTopics().map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.title} ({t.level})
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
+          {learning > 0 && targets.data?.length ? (
+            <p className="k-hint" style={{ margin: 0 }}>
+              Learning words it uses: {targets.data.join(", ")}
+            </p>
+          ) : null}
+        </fieldset>
+
+        <fieldset className="practice-group">
+          <legend className="k-label">Topic</legend>
+          <div className="practice-options">
+            <button
+              type="button"
+              className="practice-option"
+              aria-pressed={!ownTopic}
+              disabled={create.isPending}
+              onClick={() => setOwnTopic(false)}
+            >
+              AI chooses
+            </button>
+            <button
+              type="button"
+              className="practice-option"
+              aria-pressed={ownTopic}
+              disabled={create.isPending}
+              onClick={() => setOwnTopic(true)}
+            >
+              My topic
+            </button>
+          </div>
+          {ownTopic ? (
+            <Input
+              label="Topic"
+              value={topic}
+              placeholder="A day at the market, a lost cat, …"
+              disabled={create.isPending}
+              onChange={(e) => setTopic(e.target.value)}
+            />
+          ) : null}
+        </fieldset>
+
+        <fieldset className="practice-group">
+          <legend className="k-label">Kind of text</legend>
+          <div className="practice-options">
+            {STYLES.map((st) => option(st.value, style, setStyle, st.label))}
           </div>
         </fieldset>
-        {source === "grammar" ? (
-          <label className="k-field">
-            <span className="k-label">Grammar topic</span>
-            <select
-              className="k-input"
-              value={grammarId}
-              disabled={create.isPending}
-              onChange={(e) => setGrammarId(e.target.value)}
-            >
-              <option value="">Choose a topic</option>
-              {grammarTopics().map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.title} ({t.level})
-                </option>
-              ))}
-            </select>
-          </label>
-        ) : null}
-        <Input
-          label="Words to use"
-          value={ownWords ?? words.join(", ")}
-          placeholder={source === "grammar" ? "Optional" : "Comma-separated"}
-          hint="Up to 10. The story uses each of them; the check tells you if one is missing."
-          disabled={create.isPending}
-          onChange={(e) => setOwnWords(e.target.value)}
-        />
+
+        <label className="k-field">
+          <span className="k-label">Anything else for the AI? (optional)</span>
+          <textarea
+            className="k-input story-notes"
+            rows={2}
+            value={notes}
+            placeholder="Make it funny, set it in Amsterdam, …"
+            disabled={create.isPending}
+            onChange={(e) => setNotes(e.target.value)}
+          />
+        </label>
+
         <p className="k-hint" style={{ margin: 0 }}>
           About {tokensText(est.input)} tokens in and {tokensText(est.output)} out (with one
           rewrite): well under a cent on small models, a few cents on larger ones. Your key, your
@@ -253,7 +359,9 @@ export function StoryForm({ preset = {} }: { preset?: StoryPreset }) {
           <Button
             type="submit"
             variant="primary"
-            disabled={create.isPending || (source === "grammar" && !topicPage)}
+            disabled={
+              create.isPending || (focus === "grammar" && !topicPage) || (ownTopic && !topic.trim())
+            }
           >
             {create.isPending ? <Spinner label="Writing" /> : null}
             Write the story

@@ -1,5 +1,5 @@
 import { createMemoryHistory } from "@tanstack/react-router";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { App } from "../App.js";
@@ -21,20 +21,31 @@ describe("Write a story", () => {
     await user.click(await screen.findByRole("tab", { name: "Write a story" }));
     const dialog = await screen.findByRole("main");
     expect(within(dialog).getByText(/tokens in/)).toBeInTheDocument();
+    // The AI chooses the topic unless the learner gives one.
+    await user.click(within(dialog).getByRole("button", { name: "My topic" }));
     await user.type(within(dialog).getByLabelText("Topic"), "de markt");
-    await user.click(within(dialog).getByRole("button", { name: /Medium/ }));
+    await user.click(within(dialog).getByRole("button", { name: /Long/ }));
     await user.click(within(dialog).getByRole("button", { name: "Dialogue" }));
-    // "Words to learn now" are suggested and editable
-    const words = within(dialog).getByLabelText("Words to use");
-    await waitFor(() => expect(words).toHaveValue("gezellig, kraam, afspraak"));
+    // Two linked sliders: learning and new words stay under 50% together.
+    const learning = within(dialog).getByRole("slider", { name: /Learning words/ });
+    const fresh = within(dialog).getByRole("slider", { name: /New words/ });
+    fireEvent.change(fresh, { target: { value: "20" } });
+    fireEvent.change(learning, { target: { value: "40" } });
+    expect(fresh).toHaveValue("10");
+    expect(within(dialog).getByRole("img", { name: /50% known words/ })).toBeInTheDocument();
+    // The learning words it uses are shown, not edited.
+    expect(await within(dialog).findByText(/Learning words it uses: gezellig/)).toBeVisible();
+    await user.type(within(dialog).getByLabelText(/Anything else for the AI/), "Maak het grappig");
     await user.click(within(dialog).getByRole("button", { name: "Write the story" }));
     await waitFor(() => expect(history.location.pathname).toMatch(/^\/read\//));
     expect(services.createStory).toHaveBeenCalledWith(
       {
         topic: "de markt",
-        length: "medium",
+        length: "long",
         style: "dialogue",
         targetWords: ["gezellig", "kraam", "afspraak"],
+        mix: { learning: 0.4, fresh: 0.1 },
+        notes: "Maak het grappig",
       },
       expect.any(Function),
     );
@@ -53,8 +64,7 @@ describe("Write a story", () => {
     const { services, user } = setup("/grammar/inversion");
     await user.click(await screen.findByRole("link", { name: /Write a story/ }));
     const dialog = await screen.findByRole("main");
-    await within(dialog).findByLabelText("Words to use");
-    expect(within(dialog).getByRole("button", { name: "A grammar topic" })).toHaveAttribute(
+    expect(await within(dialog).findByRole("button", { name: "A grammar topic" })).toHaveAttribute(
       "aria-pressed",
       "true",
     );
@@ -62,7 +72,7 @@ describe("Write a story", () => {
     await waitFor(() => expect(services.createStory).toHaveBeenCalled());
     expect(vi.mocked(services.createStory).mock.calls[0]![0]).toMatchObject({
       grammarTopic: "inversion",
-      targetWords: [],
+      topic: "",
     });
   });
 

@@ -98,7 +98,7 @@ const USAGE_KEY = "vuurtoren.ai.usage";
 const HISTORY_LIMIT = 16;
 
 /** Target words sent with a story request. */
-const MAX_STORY_TARGETS = 10;
+const MAX_STORY_TARGETS = 20;
 /** Sentences asked for per word / topic. */
 const SENTENCES_PER_REQUEST = 5;
 
@@ -531,7 +531,10 @@ export function createLiveAI(deps: LiveAIDeps): AIServices &
       const learning = all
         .filter((w) => w.state === "learning" && !w.prioritized)
         .sort((a, b) => a.pKnown - b.pKnown);
-      return [...new Set([...prioritized, ...seen, ...learning].map((w) => w.key))].slice(0, 6);
+      return [...new Set([...prioritized, ...seen, ...learning].map((w) => w.key))].slice(
+        0,
+        source.limit ?? 6,
+      );
     },
     async createStory(input, onProgress) {
       const { lang } = await deps.settings();
@@ -542,7 +545,7 @@ export function createLiveAI(deps: LiveAIDeps): AIServices &
         repo.words(lang),
         threshold(lang),
       ]);
-      const topic = input.topic.trim() || "everyday life";
+      const topic = input.topic.trim();
       const targets = [...new Set(input.targetWords.map((w) => w.trim()).filter(Boolean))].slice(
         0,
         MAX_STORY_TARGETS,
@@ -553,7 +556,8 @@ export function createLiveAI(deps: LiveAIDeps): AIServices &
           provider: p,
           analyze,
           model,
-          threshold: thr,
+          // New words asked for are not a reason to rewrite.
+          threshold: Math.min(thr, 1 - (input.mix?.fresh ?? 0) - 0.03),
           onProgress: (step) => onProgress?.(STORY_STEP[step]),
         },
         {
@@ -564,6 +568,8 @@ export function createLiveAI(deps: LiveAIDeps): AIServices &
           knownLemmas: selectKnownLemmas(words, `${topic} ${targets.join(" ")}`, 300),
           targetWords: targets,
           ...(grammar ? { grammar: { title: grammar.title, summary: grammar.summary } } : {}),
+          ...(input.mix ? { mix: input.mix } : {}),
+          ...(input.notes?.trim() ? { notes: input.notes.trim() } : {}),
         },
       );
       if (!result.text.trim()) throw new AIError("The provider returned an empty text.", "server");
@@ -576,7 +582,7 @@ export function createLiveAI(deps: LiveAIDeps): AIServices &
           provider: p.config.provider,
           model: p.config.model,
           targets,
-          topic,
+          topic: topic || result.title,
           ...(grammar ? { grammarTopic: grammar.id } : {}),
         },
       });

@@ -1,6 +1,7 @@
 /** Contract of the AI services. Keys never appear here except as write-only arguments. */
 import type { GenerateUnitResult } from "./courseTypes.js";
 import type {
+  StoryMix,
   SentenceTurn,
   Correction,
   ModelOption,
@@ -150,18 +151,23 @@ export interface AIServices {
 
 /** Where a story's target words come from. */
 export type StoryTargetSource =
-  | { kind: "learn-now" }
+  | { kind: "learn-now"; limit?: number }
   | { kind: "unit"; courseId: string; unitN: number }
   | { kind: "grammar"; topicId: string };
 
 export interface StoryInput {
+  /** The topic; empty: the AI chooses one. */
   topic: string;
   length: StoryLength;
   style?: StoryStyle;
-  /** Words the story should use (at most 10 are sent). */
+  /** Words the story should use (at most 20 are sent). */
   targetWords: string[];
   /** Grammar topic page id to feature. */
   grammarTopic?: string;
+  /** Share of learning and new words (0–1 each); the rest are known words. */
+  mix?: StoryMix;
+  /** The learner's note for the writer. */
+  notes?: string;
 }
 
 export interface StoryView {

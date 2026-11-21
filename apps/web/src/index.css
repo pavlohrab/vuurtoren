@@ -1753,3 +1753,47 @@
   flex: 1;
   min-width: 0;
 }
+
+/* Write a story: the words-in-the-story bar and its two linked sliders. */
+.story-mix {
+  display: flex;
+  height: 28px;
+  overflow: hidden;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.story-mix > span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  transition: flex-basis var(--dur) var(--ease-out);
+}
+.story-mix-known {
+  background: color-mix(in srgb, var(--success) 22%, var(--surface));
+}
+.story-mix-learning {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.story-mix-new {
+  background: color-mix(in srgb, var(--accent) 35%, var(--surface));
+}
+.story-slider {
+  display: grid;
+  gap: 4px;
+  font-size: 14px;
+}
+.story-slider input {
+  width: 100%;
+  min-height: 32px;
+  accent-color: var(--accent);
+}
+.story-notes {
+  min-height: 64px;
+  resize: vertical;
+}

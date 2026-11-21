@@ -27,6 +27,20 @@ describe("story prompt and parsing", () => {
     expect(p.cached).toContain("dialogue");
     expect(p.cached).toContain('"used_targets"');
   });
+  it("leaves the topic to the model, asks for the mix, and passes the learner's note", () => {
+    const p = buildStoryPrompt({
+      ...setup,
+      topic: "",
+      mix: { learning: 0.2, fresh: 0.1 },
+      notes: "Maak het grappig",
+    }).cached;
+    expect(p).toContain("Choose an engaging everyday topic yourself");
+    expect(p).toContain("About 10% of the words may be new");
+    expect(p).toContain("about 20% of the words");
+    expect(p).toContain("The learner asks: Maak het grappig");
+    expect(buildStoryPrompt(setup).cached).toContain("Use ONLY words");
+  });
+
   it("falls back to the raw text and the topic as title on invalid JSON", () => {
     expect(parseStory("Ik ga naar de markt.", "markt")).toEqual({
       ok: false,

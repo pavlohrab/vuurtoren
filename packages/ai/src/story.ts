@@ -22,7 +22,7 @@ export type StoryLength = "short" | "medium" | "long";
 export type StoryStyle = "story" | "dialogue" | "news" | "letter";
 
 /** Approximate word counts per length. */
-export const STORY_WORDS: Record<StoryLength, number> = { short: 150, medium: 300, long: 600 };
+export const STORY_WORDS: Record<StoryLength, number> = { short: 150, medium: 400, long: 900 };
 
 const STYLE_TEXT: Record<StoryStyle, string> = {
   story: "a short story with a clear beginning and end",
@@ -31,7 +31,17 @@ const STYLE_TEXT: Record<StoryStyle, string> = {
   letter: "a personal letter or e-mail",
 };
 
+/**
+ * The share of the story's words (0–1) that are the learner's learning words (the targets,
+ * repeated) and words new to them. The rest are words they know.
+ */
+export interface StoryMix {
+  learning: number;
+  fresh: number;
+}
+
 export interface StorySetup {
+  /** The topic; empty: the model chooses one. */
   topic: string;
   length: StoryLength;
   style?: StoryStyle;
@@ -43,6 +53,10 @@ export interface StorySetup {
   targetWords: string[];
   /** A grammar construction to feature, e.g. {title: "Inversion", summary: "..."}. */
   grammar?: { title: string; summary?: string };
+  /** How many learning and new words; without it, only known words plus the targets. */
+  mix?: StoryMix;
+  /** The learner's own note for the writer (tone, setting, …). */
+  notes?: string;
 }
 
 export interface StoryDeps {
@@ -88,12 +102,19 @@ export function buildStoryPrompt(s: StorySetup): SystemPrompt {
     "",
     "Rules:",
     `- Write ${STYLE_TEXT[s.style ?? "story"]} of about ${words} words, in Dutch only.`,
-    "- Use ONLY words from the learner's vocabulary list below plus very common function words (articles, pronouns, prepositions, basic verbs). Names and numbers are fine.",
+    s.topic.trim()
+      ? `- Topic: ${s.topic.trim()}.`
+      : "- Choose an engaging everyday topic yourself, with a small surprise or a funny turn.",
+    s.mix && s.mix.fresh > 0
+      ? `- Build it from the learner's vocabulary list below plus very common function words (articles, pronouns, prepositions, basic verbs). About ${pct(s.mix.fresh)} of the words may be new to the learner: common, useful words just above their level, each used at least twice in a context that makes its meaning clear.`
+      : "- Use ONLY words from the learner's vocabulary list below plus very common function words (articles, pronouns, prepositions, basic verbs). Names and numbers are fine.",
     "- Short sentences, everyday language, paragraphs separated by a blank line.",
   ];
   if (s.targetWords.length) {
     lines.push(
-      "- Use every target word at least once, in a context that makes its meaning clear; use each again later if it fits.",
+      s.mix && s.mix.learning > 0
+        ? `- The target words are words the learner is learning: together they should make up about ${pct(s.mix.learning)} of the words. Use each of them, several times, in contexts that make the meaning clear.`
+        : "- Use every target word at least once, in a context that makes its meaning clear; use each again later if it fits.",
     );
   }
   if (s.grammar) {
@@ -101,6 +122,7 @@ export function buildStoryPrompt(s: StorySetup): SystemPrompt {
       `- Feature this grammar point in several sentences: ${s.grammar.title}${s.grammar.summary ? ` (${s.grammar.summary})` : ""}.`,
     );
   }
+  if (s.notes?.trim()) lines.push(`- The learner asks: ${s.notes.trim().slice(0, 500)}`);
   lines.push(
     "",
     "Answer with ONE JSON object and nothing else, exactly in this shape:",
@@ -111,6 +133,8 @@ export function buildStoryPrompt(s: StorySetup): SystemPrompt {
   if (s.targetWords.length) lines.push("", `Target words: ${s.targetWords.join(", ")}`);
   return { cached: lines.join("\n") };
 }
+
+const pct = (share: number) => `${Math.round(share * 100)}%`;
 
 /** Validate the model's JSON. Invalid JSON: the raw text becomes the story (never lose a paid answer). */
 export function parseStory(
@@ -153,7 +177,9 @@ export async function generateStory(deps: StoryDeps, setup: StorySetup): Promise
 
   const request: ChatMessage = {
     role: "user",
-    content: `Write the text now. Topic: ${setup.topic.trim() || "everyday life"}.`,
+    content: setup.topic.trim()
+      ? `Write the text now. Topic: ${setup.topic.trim()}.`
+      : "Write the text now, on a topic you choose.",
   };
   const ask = async (messages: ChatMessage[]) => {
     const res = await deps.provider.chat({
