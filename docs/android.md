@@ -57,7 +57,12 @@ and an update when `packs.json` names a newer version.
 larger of `env(safe-area-inset-*)` and the insets `MainActivity.kt` passes in from
 `WindowInsets` (`platform/insets.ts`), since not every WebView reports them.
 
-**Platform layer.** `currentDevice()` reads the bridge's `os`. The browser and the desktop app
+**Platform layer.** `currentDevice()` reads the bridge's `os`; when an older bridge has none,
+`isAndroidApp()` takes a user agent with "Android" inside Tauri (`__TAURI_INTERNALS__`) for
+the phone, so a phone's browser is still a browser. The bridge is there only on the bundled
+page: Rust compares the page with the home address, and that is the dev server only under
+`tauri dev` (`tauri::is_dev()`), not in every debug build, so a debug APK has its bridge and the
+Connect step. The browser and the desktop app
 behave as before; on Android the device offers a server as its only sync place (Settings shows
 no folder or WebDAV), has no bundled language server (no `vuurtoren-nlp:` route, no sidecar
 status), keeps the database file private (no Show or Move), scans QR codes and receives

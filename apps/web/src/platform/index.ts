@@ -17,9 +17,31 @@ import type { Device } from "./device.js";
 
 export type { Device } from "./device.js";
 
+/**
+ * Whether the app runs on an Android phone. The bridge's `os` says so; the user agent is the
+ * fallback (an older bridge without `os`): the Android System WebView always puts "Android" in
+ * it, and inside Tauri `__TAURI_INTERNALS__` is there too, so a desktop browser that fakes a
+ * phone's user agent is not taken for the app.
+ */
+export function isAndroidApp(
+  bridge: { readonly os?: string | undefined } | null,
+  env: { tauri: boolean; userAgent: string } = runtimeEnv(),
+): boolean {
+  if (bridge?.os === "android") return true;
+  return env.tauri && /\bAndroid\b/i.test(env.userAgent);
+}
+
+function runtimeEnv(): { tauri: boolean; userAgent: string } {
+  if (typeof window === "undefined") return { tauri: false, userAgent: "" };
+  return {
+    tauri: "__TAURI_INTERNALS__" in window,
+    userAgent: typeof navigator === "undefined" ? "" : navigator.userAgent,
+  };
+}
+
 /** This device, from what the page was given at start. */
 export function currentDevice(): Device {
   const bridge = desktopBridge();
   if (!bridge?.home) return browserDevice();
-  return bridge.os === "android" ? androidDevice(bridge) : desktopDevice(bridge);
+  return isAndroidApp(bridge) ? androidDevice(bridge) : desktopDevice(bridge);
 }

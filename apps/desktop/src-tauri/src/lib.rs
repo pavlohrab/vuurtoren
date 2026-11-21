@@ -99,11 +99,15 @@ impl State {
     }
 }
 
-/// The bundled web build's address (the dev server under `tauri dev`).
+/// The bundled web build's address (the dev server under `tauri dev`). Not `debug_assertions`:
+/// a debug build (`tauri android build --debug`) serves the bundled page too, and taking the
+/// dev server's address there left the page without its bridge (seen as a browser, so no
+/// Connect step on a phone).
 fn home_url(app: &AppHandle) -> Url {
-    #[cfg(debug_assertions)]
-    if let Some(dev) = app.config().build.dev_url.clone() {
-        return dev;
+    if tauri::is_dev() {
+        if let Some(dev) = app.config().build.dev_url.clone() {
+            return dev;
+        }
     }
     let _ = app;
     let home = if cfg!(any(windows, target_os = "android")) {
