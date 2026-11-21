@@ -2181,9 +2181,15 @@ svg.lucide {
 }
 
 /* ---------- Side by side (reading mode) ----------
-   Sentence rows: two columns from 900px (Dutch in the reading face, English in the UI face,
-   muted), interlinear below. A pair lights up amber with an underline on both sides; the
-   structure view gives every pair its own soft colour. */
+   Sentence rows: two columns when the reader has at least 640px (Dutch in the reading face,
+   English in the UI face, muted), English under each sentence below. The width is the reader's
+   own (a container query on .k-sbs-box), so the sidebar and the word panel narrow it. A pair
+   lights up amber with an underline on both sides; the structure view gives every pair its
+   own soft colour. */
+.k-sbs-box {
+  container: k-sbs / inline-size;
+  min-width: 0;
+}
 .k-sbs {
   /* Mixed here, not on :root, so a reading theme's page colour is used. */
   --pair-1: color-mix(in srgb, var(--pair-hue-1) 34%, var(--bg));
@@ -2356,7 +2362,7 @@ svg.lucide {
   border-radius: 4px;
   background: color-mix(in srgb, var(--ink) 8%, transparent);
 }
-@media (min-width: 900px) {
+@container k-sbs (min-width: 640px) {
   .k-sbs {
     max-width: calc(var(--measure) * 1.75);
   }
@@ -2377,11 +2383,13 @@ svg.lucide {
     font-size: 0.75rem;
   }
 }
-@media (min-width: 900px) and (hover: hover) {
-  .k-sbs-row:not(:hover, :focus-within) .k-sbs-struct[aria-pressed="false"] {
-    opacity: 0;
-  }
-  .k-sbs-struct {
-    transition: opacity var(--dur) var(--ease);
+@container k-sbs (min-width: 640px) {
+  @media (hover: hover) {
+    .k-sbs-row:not(:hover, :focus-within) .k-sbs-struct[aria-pressed="false"] {
+      opacity: 0;
+    }
+    .k-sbs-struct {
+      transition: opacity var(--dur) var(--ease);
+    }
   }
 }

@@ -281,26 +281,38 @@
   transform: none;
   transition: transform var(--dur-slow) var(--ease-out);
 }
-/* The reading column moves aside by half the panel, as far as the margin allows. */
-.reader-page {
-  --reader-col: min(var(--measure), 100vw - var(--sb-w, 220px) - 48px);
-  --reader-shift: min(
-    var(--inspector-w) / 2,
-    max(0px, (100vw - var(--sb-w, 220px) - var(--reader-col)) / 2 - 8px)
-  );
-  transition: transform var(--dur-slow) var(--ease-in-out);
-}
-.shell[data-sidebar="collapsed"] {
-  --sb-w: 56px;
-}
-.shell[data-inspector="open"] .reader-page {
-  transform: translateX(calc(-1 * var(--reader-shift)));
-}
-@media (max-width: 1099px) and (min-width: 900px) {
-  /* Too narrow to slide the column aside: keep the text clear of the panel instead. */
-  .shell[data-inspector="open"] .reader-page {
+/* From 900px the word panel is a column of the layout, not a layer over the text: the content
+   (min-width 0) takes what the sidebar and the panel leave, and the reader, side by side
+   included, reflows into it. Closed, the column has no width; it widens when a word is chosen.
+   Below 900px it is the bottom sheet further down. */
+@media (min-width: 900px) {
+  .main-body {
+    flex-direction: row;
+  }
+  .content {
+    min-width: 0;
+  }
+  .inspector-panel {
+    position: relative;
+    inset: auto;
+    z-index: auto;
+    flex: none;
+    width: 0;
+    border-left-width: 0;
     transform: none;
-    padding-right: calc(24px + var(--inspector-w));
+    transition:
+      width var(--dur-slow) var(--ease-in-out),
+      visibility 0s linear var(--dur-slow);
+  }
+  .shell[data-inspector="open"] .inspector-panel {
+    width: var(--inspector-w);
+    border-left-width: 1px;
+    transform: none;
+    transition: width var(--dur-slow) var(--ease-out);
+  }
+  /* The panel's insides keep their width while the column opens and closes. */
+  .inspector-panel > * {
+    min-width: calc(var(--inspector-w) - 1px);
   }
 }
 @media (prefers-reduced-motion: reduce) {

@@ -391,22 +391,26 @@ export function SideBySide({
     );
   };
 
+  // The box is a size container: the two columns follow the width the reader really has
+  // (beside the sidebar and the word panel), not the window's.
   return (
-    <div
-      ref={rootRef}
-      className="k-sbs"
-      onMouseLeave={() => setHover(null)}
-      aria-describedby="k-sbs-help"
-    >
-      <p id="k-sbs-help" className="k-sr">
-        Each Dutch sentence with its English. Arrow keys move along a side; up and down jump to the
-        partner word on the other side.
-      </p>
-      {paragraphs.map((para, k) => (
-        <div key={k} className="k-sbs-para">
-          {para.map(renderRow)}
-        </div>
-      ))}
+    <div className="k-sbs-box">
+      <div
+        ref={rootRef}
+        className="k-sbs"
+        onMouseLeave={() => setHover(null)}
+        aria-describedby="k-sbs-help"
+      >
+        <p id="k-sbs-help" className="k-sr">
+          Each Dutch sentence with its English. Arrow keys move along a side; up and down jump to
+          the partner word on the other side.
+        </p>
+        {paragraphs.map((para, k) => (
+          <div key={k} className="k-sbs-para">
+            {para.map(renderRow)}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
