@@ -1,0 +1,27 @@
+{
+  "$schema": "../gen/schemas/mobile-schema.json",
+  "identifier": "mobile",
+  "description": "The bundled page on a phone: the local database, sync with a server, its key store, the QR scanner and vuurtoren:// links.",
+  "windows": ["main"],
+  "platforms": ["android", "iOS"],
+  "permissions": [
+    "core:default",
+    "allow-desktop-info",
+    "allow-links-take",
+    "allow-sync-fetch",
+    "allow-sync-allow-host",
+    "allow-sync-key-save",
+    "allow-sync-key-load",
+    "allow-sync-key-forget",
+    "allow-db-open",
+    "allow-db-exec",
+    "allow-db-close",
+    "allow-db-export",
+    "allow-db-import",
+    "barcode-scanner:allow-scan",
+    "barcode-scanner:allow-cancel",
+    "barcode-scanner:allow-check-permissions",
+    "barcode-scanner:allow-request-permissions",
+    "deep-link:default"
+  ]
+}

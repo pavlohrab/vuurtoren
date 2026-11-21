@@ -1,9 +1,10 @@
 fn main() {
     tauri_build::try_build(tauri_build::Attributes::new().app_manifest(
         // One permission per command (`allow-<command>`): the bundled page gets them in
-        // capabilities/default.json, and no other page gets any.
+        // capabilities/desktop.json and mobile.json, and no other page gets any.
         tauri_build::AppManifest::new().commands(&[
             "desktop_info",
+            "links_take",
             "close_now",
             "anki_fetch",
             "sync_pick_folder",

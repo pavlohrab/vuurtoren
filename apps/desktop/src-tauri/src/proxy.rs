@@ -81,7 +81,7 @@ pub async fn handle(app: AppHandle, req: Request<Vec<u8>>) -> Response<Vec<u8>> 
             .expect("valid response");
     }
     let state = app.state::<crate::State>();
-    crate::ensure_sidecar(&app);
+    crate::desktop::ensure_sidecar(&app);
     let started = Instant::now();
     loop {
         match state.sidecar.state() {

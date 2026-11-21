@@ -1,4 +1,4 @@
-//! Sync on this computer: a folder you already sync (Syncthing, Dropbox, iCloud Drive) as the
+//! Sync on this device: on a computer a folder you already sync (Syncthing, Dropbox, iCloud Drive) as the
 //! place for Vuurtoren's encrypted sync files, and requests to sync places the page cannot reach
 //! itself (many WebDAV servers send no CORS headers for the app).
 //!
@@ -8,7 +8,11 @@
 //!
 //! Requests go only to addresses the user allowed (a question from the app the first time a
 //! sync place's address is used), never follow a redirect to another address, carry no
-//! cookies, and stop reading an answer as soon as it is larger than a sync file can be.
+//! cookies, and stop reading an answer as soon as it is larger than a sync file can be. A phone
+//! syncs with a server only, so the folder half is for computers.
+
+// Phones have no sync folders.
+#![cfg_attr(mobile, allow(dead_code))]
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -400,7 +404,10 @@ mod tests {
         .unwrap();
         put(&root, "vuurtoren/a.kev", b"mine").unwrap();
         assert_eq!(std::fs::read(elsewhere.join("secret")).unwrap(), b"private");
-        assert_eq!(get(&root, "vuurtoren/a.kev").unwrap(), Some(b"mine".to_vec()));
+        assert_eq!(
+            get(&root, "vuurtoren/a.kev").unwrap(),
+            Some(b"mine".to_vec())
+        );
 
         // The chosen folder itself may be a link (a synced folder kept on another disk).
         let alias = dir.path().join("SyncAlias");

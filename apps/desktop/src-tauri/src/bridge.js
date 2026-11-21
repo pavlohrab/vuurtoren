@@ -1,11 +1,13 @@
 // Injected into the page the Vuurtoren window loads (the bundled web build). The web app looks
 // for `window.__VUURTOREN_DESKTOP__` (apps/web/src/desktop/bridge.ts). Any other page the window
-// might show gets no commands: Tauri's ACL (capabilities/default.json) allows them for the
+// might show gets no commands: Tauri's ACL (capabilities/desktop.json, mobile.json) allows them for the
 // bundled page only.
 (function () {
   "use strict";
   if (window.__VUURTOREN_DESKTOP__) return;
   var HOME = "__HOME_ORIGIN__";
+  // The device: "linux", "macos", "windows" or "android" (lib.rs fills it in).
+  var OS = "__OS__";
   function invoke(cmd, args) {
     return window.__TAURI_INTERNALS__.invoke(cmd, args);
   }
@@ -41,6 +43,7 @@
     value: Object.freeze({
       // Not `location.origin`: custom schemes (tauri://) can report an opaque "null" origin.
       home: location.protocol + "//" + location.host === HOME,
+      os: OS,
       info: function () {
         return invoke("desktop_info");
       },
@@ -105,15 +108,16 @@
         allowHost: function (url) {
           return invoke("sync_allow_host", { url: url });
         },
-        // The sync key (base64) in the system keychain, or a private file when there is none.
-        saveKey: function (key) {
-          return invoke("sync_key_save", { key: key });
+        // The sync key (base64; name absent) or a server's sync token (name "sync-token") in the
+        // device's key store: the system keychain or a private file, the Android Keystore.
+        saveKey: function (key, name) {
+          return invoke("sync_key_save", { key: key, name: name || null });
         },
-        loadKey: function () {
-          return invoke("sync_key_load");
+        loadKey: function (name) {
+          return invoke("sync_key_load", { name: name || null });
         },
-        forgetKey: function () {
-          return invoke("sync_key_forget");
+        forgetKey: function (name) {
+          return invoke("sync_key_forget", { name: name || null });
         },
         fetch: function (req) {
           return invoke("sync_fetch", {
@@ -128,6 +132,39 @@
           });
         },
       }),
+      // vuurtoren:// links that opened the app (phones): taken once; "vuurtoren-link" says a
+      // new one arrived.
+      links: Object.freeze({
+        take: function () {
+          return invoke("links_take");
+        },
+        onArrive: function (fn) {
+          window.addEventListener("vuurtoren-link", fn);
+          return function () {
+            window.removeEventListener("vuurtoren-link", fn);
+          };
+        },
+      }),
+      // A QR code from the camera (phones): its text, or null when cancelled or not allowed.
+      scanQr:
+        OS === "android" || OS === "ios"
+          ? function () {
+              return invoke("plugin:barcode-scanner|request_permissions")
+                .then(function (p) {
+                  if (p && p.camera !== "granted") return null;
+                  return invoke("plugin:barcode-scanner|scan", {
+                    formats: ["QR_CODE"],
+                    windowed: false,
+                  }).then(function (r) {
+                    return (r && r.content) || null;
+                  });
+                })
+                .catch(function (e) {
+                  if (String(e).indexOf("cancel") >= 0) return null;
+                  throw e;
+                });
+            }
+          : undefined,
       nlp: Object.freeze({
         status: function () {
           return invoke("nlp_status");
