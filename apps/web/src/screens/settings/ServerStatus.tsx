@@ -169,7 +169,7 @@ export function ServerStatus({ nlpUrl }: { nlpUrl: string }) {
       tone: s?.connected ? "ok" : "warn",
       value: s?.connected
         ? `Reachable from this browser${s.version ? `, AnkiConnect ${s.version}` : ""}`
-        : `Not reachable from this browser (${s?.state ?? why(anki.error)}): see Language & decks`,
+        : `Not reachable from this browser (${s?.state ?? why(anki.error)}): see Your words`,
     });
   }
 
