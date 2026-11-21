@@ -142,6 +142,51 @@ export function SyncSettings() {
   );
 }
 
+/**
+ * The welcome's Connect to your server (phones): the same steps as here, without the rest of
+ * Settings. First the pairing code (scanned, a link or typed), then the passphrase to join the
+ * synced data; once sync is on, one line says so. `onState` tells the welcome how far it got.
+ */
+export function ConnectYourServer({
+  onState,
+}: {
+  onState?: (state: "none" | "paired" | "on") => void;
+}) {
+  const services = useServices();
+  const status = useQuery({ queryKey: ["sync", "status"], queryFn: () => services.syncStatus() });
+  const [recovery, setRecoveryState] = useState<string | null>(readPending);
+  const setRecovery = (key: string | null) => {
+    writePending(key);
+    setRecoveryState(key);
+  };
+  const state = !status.data
+    ? null
+    : status.data.place
+      ? "on"
+      : status.data.paired
+        ? "paired"
+        : "none";
+  useEffect(() => {
+    if (state) onState?.(state);
+  }, [state, onState]);
+  if (!status.data) return <Skeleton style={{ height: 120 }} />;
+  const host = status.data.paired ? new URL(status.data.paired).host : null;
+  return (
+    <div className="stack settings-stack">
+      {recovery ? <RecoveryKey value={recovery} onDone={() => setRecovery(null)} /> : null}
+      {status.data.place ? (
+        <p role="status" style={{ margin: 0 }}>
+          Connected{host ? ` to ${host}` : ""}. Sync is on.
+        </p>
+      ) : status.data.paired ? (
+        <SetUp key={status.data.paired} status={status.data} onRecovery={setRecovery} />
+      ) : (
+        <ConnectServer status={status.data} bare />
+      )}
+    </div>
+  );
+}
+
 /** A recovery key, shown once: it opens the synced data when the passphrase is forgotten. */
 function RecoveryKey({ value, onDone }: { value: string; onDone: () => void }) {
   return (
@@ -624,7 +669,7 @@ function Problems({ problems }: { problems: SyncStatus["problems"] }) {
  * the link under it, or its address and pairing code typed. This device gets its own sync token;
  * the passphrase then joins the data (Set up, below).
  */
-function ConnectServer({ status }: { status: SyncStatus }) {
+function ConnectServer({ status, bare = false }: { status: SyncStatus; bare?: boolean }) {
   const services = useServices();
   const qc = useQueryClient();
   const [text, setText] = useState("");
@@ -675,15 +720,17 @@ function ConnectServer({ status }: { status: SyncStatus }) {
   return (
     <form
       className="stack"
-      aria-labelledby="connect-h"
+      {...(bare ? { "aria-label": "Connect to your server" } : { "aria-labelledby": "connect-h" })}
       onSubmit={(e) => {
         e.preventDefault();
         if (link && !busy) start(link);
       }}
     >
-      <h3 className="settings-h3" id="connect-h">
-        Connect to your server
-      </h3>
+      {bare ? null : (
+        <h3 className="settings-h3" id="connect-h">
+          Connect to your server
+        </h3>
+      )}
       <p className="k-hint" style={{ margin: 0 }}>
         On your Vuurtoren server, open Settings → Sync → Add a phone.{" "}
         {status.scan

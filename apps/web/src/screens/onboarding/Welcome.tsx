@@ -1,5 +1,5 @@
 /**
- * First-run onboarding: language → "Do you use Anki?".
+ * First-run onboarding: language → "Do you use Anki?" → (on a phone) Connect to your server.
  * - No (the easy start, three steps): Vuurtoren holds the cards (native mode, saved at once with
  *   the default decks) → where new words start (starter levels) → ready: Read opens with a story
  *   at the learner's level.
@@ -7,12 +7,14 @@
  *   imported with their review history (native mode) → first text.
  * - Yes, and keep using Anki (connected mode): connect Anki → confirm decks → where new words
  *   go → (start fresh) placement check → first text.
+ * On a phone, Connect to your server comes after "Do you use Anki?": new texts and translations
+ * come from the server ("Not now" goes on without one).
  * Skippable; the step and choices are kept in localStorage so a reload resumes where the learner
  * was. Nothing is written to Anki here.
  */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
-import { type FormEvent, useEffect, useRef, useState } from "react";
+import { type FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import {
   type LanguageProfile,
   PROFILE_LANGUAGES,
@@ -25,6 +27,10 @@ import { Button, Spinner, Logo } from "@app/ui";
 import { useServices } from "../../services/context.js";
 import type { AnkiStatus } from "../../services/types.js";
 import { AnkiConnectionHelp } from "../settings/AnkiSettings.js";
+import { ConnectYourServer } from "../settings/SyncSettings.js";
+import "../settings/settings.css";
+import { currentDevice } from "../../platform/index.js";
+import { storyToStart } from "../../services/stories.js";
 import { DeckChecklist, DestinationFields, LanguageChoice, deckRows } from "./deckParts.js";
 import { setSkipped } from "./skip.js";
 import "./onboarding.css";
@@ -36,6 +42,7 @@ const STORAGE = "vuurtoren.onboarding";
 type Step =
   | "language"
   | "uses"
+  | "server"
   | "choice"
   | "anki"
   | "decks"
@@ -55,6 +62,7 @@ const PARTS = ["Getting started", "Your words", "Start reading"] as const;
 const PART: Record<Step, number> = {
   language: 0,
   uses: 0,
+  server: 0,
   choice: 0,
   anki: 0,
   decks: 0,
@@ -130,7 +138,14 @@ export function Welcome() {
   const startFresh = draft.sources.length === 0;
   const native = draft.usesAnki === false;
   const moving = draft.usesAnki === true && draft.move && !draft.noAnki && !startFresh;
-  const start: Step[] = PICK_LANGUAGE ? ["language", "uses"] : ["uses"];
+  // A phone without sync yet: its server brings new texts and translations (after the Anki question).
+  const sync = useQuery({ queryKey: ["sync", "status"], queryFn: () => services.syncStatus() });
+  const [phone] = useState(() => currentDevice().kind === "android");
+  const askServer = phone && (draft.step === "server" || (!!sync.data && !sync.data.place));
+  const start: Step[] = [
+    ...(PICK_LANGUAGE ? (["language", "uses"] as const) : (["uses"] as const)),
+    ...(askServer ? (["server"] as const) : []),
+  ];
   // No Anki: the default decks are fine to start with (Settings changes them), so no deck step.
   const steps: Step[] = native
     ? [...start, "starter", "first"]
@@ -165,13 +180,8 @@ export function Welcome() {
     }
     void navigate({ to: "/" });
   };
-  // A phone: your data may be on your server already. Joining brings the profile with it.
-  const sync = useQuery({ queryKey: ["sync", "status"], queryFn: () => services.syncStatus() });
-  const offerServer = !!sync.data?.scan && !sync.data.place;
-  const connectServer = () => {
-    setSkipped(true);
-    void navigate({ to: "/settings", search: { section: "sync" } });
-  };
+  const [server, setServer] = useState<"none" | "paired" | "on">("none");
+  const onServerState = useCallback((s: "none" | "paired" | "on") => setServer(s), []);
   const finish = () => {
     writeDraft(null);
     setSkipped(false);
@@ -281,17 +291,29 @@ export function Welcome() {
     },
   });
 
-  // ---- Ready: Read opens with a story at the learner's level (Today, Stories for you).
-  const startReading = () => {
-    finish();
-    void qc.invalidateQueries({ queryKey: ["stories"] });
-    void navigate({ to: "/" });
-  };
+  // ---- Ready: the story at the learner's level opens in the reader (Read when there is none).
+  const story = useQuery({
+    queryKey: ["onboarding", "story"],
+    queryFn: async () => storyToStart(await services.storyShelf()),
+    enabled: draft.step === "first",
+  });
+  const startReading = useMutation({
+    mutationFn: async () => (story.data ? services.openStory(story.data.slug) : null),
+    onSettled: async (textId) => {
+      finish();
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["stories"] }),
+        qc.invalidateQueries({ queryKey: ["texts"] }),
+      ]);
+      if (textId) void navigate({ to: "/read/$textId", params: { textId } });
+      else void navigate({ to: "/" });
+    },
+  });
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
     if (draft.step === "uses") {
-      if (draft.usesAnki === true) go("choice");
+      if (draft.usesAnki === true) next();
       // No Anki: save the profile now (Vuurtoren's cards, default decks) and go on.
       else if (draft.usesAnki === false) save.mutate();
     } else if (draft.step === "destinations") save.mutate();
@@ -323,429 +345,456 @@ export function Welcome() {
             </li>
           ))}
         </ol>
-        <form onSubmit={submit}>
-          {draft.step === "language" ? (
-            <>
-              <h1 ref={heading} tabIndex={-1}>
-                Welcome to Vuurtoren
-              </h1>
-              <p className="ob-lede">
-                Vuurtoren helps you read real texts at the edge of what you know. A few choices
-                first: this takes about two minutes, and you can change everything later in
-                Settings.
-              </p>
-              <LanguageChoice value={draft.lang} onChange={(lang) => setDraft({ lang })} />
-            </>
-          ) : null}
-
-          {draft.step === "uses" ? (
-            <>
-              {PICK_LANGUAGE ? (
-                <h1 ref={heading} tabIndex={-1}>
-                  Do you use Anki?
-                </h1>
-              ) : (
-                <>
-                  <h1 ref={heading} tabIndex={-1}>
-                    Welcome to Vuurtoren
-                  </h1>
-                  <p className="ob-lede">
-                    Vuurtoren helps you read real Dutch texts at the edge of what you know. A few
-                    choices first: this takes about two minutes, and you can change everything later
-                    in Settings.
-                  </p>
-                  <h2 className="ob-question">Do you use Anki?</h2>
-                </>
-              )}
-              <p className="ob-lede">
-                Vuurtoren can keep your words and run your reviews itself, or work alongside Anki.
-              </p>
-              <fieldset className="ob-choices">
-                <legend className="k-sr">Do you use Anki?</legend>
-                <Choice
-                  name="uses"
-                  checked={draft.usesAnki === false}
-                  onChange={() => setDraft({ usesAnki: false, sources: [], noAnki: false })}
-                  title="No"
-                  sub="Vuurtoren keeps your words and schedules your reviews. You can import an Anki deck file later."
-                />
-                <Choice
-                  name="uses"
-                  checked={draft.usesAnki === true}
-                  onChange={() => setDraft({ usesAnki: true })}
-                  title="Yes"
-                  sub="Bring your Anki decks into Vuurtoren, or keep using Anki."
-                />
-              </fieldset>
-              {offerServer ? (
-                <p className="ob-lede">
-                  Already use Vuurtoren on a computer?{" "}
-                  <Button variant="ghost" onClick={connectServer}>
-                    Connect to your server
-                  </Button>
-                </p>
-              ) : null}
-            </>
-          ) : null}
-
-          {draft.step === "choice" ? (
-            <>
-              <h1 ref={heading} tabIndex={-1}>
-                Your Anki cards
-              </h1>
-              <p className="ob-lede">Choose who schedules your reviews from now on.</p>
-              <fieldset className="ob-choices">
-                <legend className="k-sr">Who schedules your reviews</legend>
-                <Choice
-                  name="move"
-                  checked={draft.move}
-                  onChange={() => setDraft({ move: true })}
-                  title="Import from Anki and use Vuurtoren’s scheduler"
-                  sub="Your chosen decks come into Vuurtoren once, with every card and its review history. Reviews then happen in Vuurtoren; Anki is not changed."
-                />
-                <Choice
-                  name="move"
-                  checked={!draft.move}
-                  onChange={() => setDraft({ move: false })}
-                  title="Keep using Anki"
-                  sub="Anki stays the record of what you know and runs your reviews. Anki must be open for Vuurtoren to send words to it."
-                />
-              </fieldset>
-            </>
-          ) : null}
-
-          {draft.step === "moving" ? (
-            <>
-              <h1 ref={heading} tabIndex={-1}>
-                Importing your decks
-              </h1>
-              <p className="ob-lede">
-                Vuurtoren reads your chosen decks from Anki: notes, cards and the full review
-                history. Nothing in Anki changes.
-              </p>
-              {move.isPending ? (
-                <p role="status">
-                  <Spinner label="Importing" /> {moveMsg ?? "Starting"}
-                </p>
-              ) : move.isSuccess ? (
-                <p role="status">
-                  Imported {move.data.cards} cards from {move.data.notes} notes, with{" "}
-                  {move.data.reviews} past reviews. Your reviews now happen in Vuurtoren.
-                </p>
-              ) : move.isError ? (
-                <p role="alert" className="error-text">
-                  The import did not finish. {errorOf(move.error)}
-                </p>
-              ) : (
-                <p>This can take a minute for a large collection.</p>
-              )}
-            </>
-          ) : null}
-
-          {draft.step === "anki" ? (
-            <>
-              <h1 ref={heading} tabIndex={-1}>
-                Connect Anki
-              </h1>
-              <p className="ob-lede">
-                Vuurtoren reads your decks through the AnkiConnect add-on while Anki is open. It
-                only writes when you click a button such as Add to Anki.
-              </p>
-              <AnkiStep
-                status={status.data}
-                checking={status.isFetching}
-                denied={denied}
-                connecting={connect.isPending}
-                onConnect={() => connect.mutate()}
-                onCheck={() => void status.refetch()}
-              />
-            </>
-          ) : null}
-
-          {draft.step === "decks" ? (
-            <>
-              <h1 ref={heading} tabIndex={-1}>
-                Decks Vuurtoren reads
-              </h1>
-              <p className="ob-lede">
-                Words in the decks you tick count as known or learning. Vuurtoren suggests the decks
-                that look like Dutch vocabulary; you decide.
-              </p>
-              {draft.noAnki || !connected ? (
-                <p className="ob-note">
-                  Without Anki, Vuurtoren starts fresh: it creates {root} the first time you add a
-                  word, and you can connect Anki later in Settings.
-                </p>
-              ) : decks.isPending ? (
-                <p role="status">
-                  <Spinner label="Looking at your decks" /> Looking at your decks. With large
-                  collections this takes a moment.
-                </p>
-              ) : decks.isError ? (
-                <div className="stack" style={{ gap: 8 }}>
-                  <p role="alert" className="error-text" style={{ margin: 0 }}>
-                    Could not look at your decks. {errorOf(decks.error)}
-                  </p>
-                  <div className="row">
-                    <Button onClick={() => void decks.refetch()}>Try again</Button>
-                  </div>
-                </div>
-              ) : (
-                <div className="stack" style={{ gap: 12 }}>
-                  {decks.data.length ? (
-                    <DeckChecklist
-                      rows={deckRows(decks.data, draft.sources)}
-                      chosen={draft.sources}
-                      onChange={(sources) => setDraft({ sources })}
-                    />
-                  ) : (
-                    <p className="ob-note">No Dutch vocabulary decks found in your collection.</p>
-                  )}
-                  <label className="ob-check">
-                    <input
-                      type="checkbox"
-                      checked={startFresh}
-                      onChange={(e) =>
-                        setDraft({
-                          sources: e.target.checked
-                            ? []
-                            : deckRows(decks.data, [])
-                                .filter((r) => r.suggested)
-                                .map((r) => r.source),
-                        })
-                      }
-                    />
-                    <span>
-                      Start fresh
-                      <span className="ob-choice-sub">
-                        Vuurtoren creates {root} and fills it with the words you add while reading.
-                      </span>
-                    </span>
-                  </label>
-                </div>
-              )}
-            </>
-          ) : null}
-
-          {draft.step === "destinations" ? (
-            <>
-              <h1 ref={heading} tabIndex={-1}>
-                Where new words go
-              </h1>
-              <p className="ob-lede">
-                When you add a word, Vuurtoren creates a card in this deck
-                {native ? "" : " in Anki"}. Every Add button shows the deck and lets you pick
-                another one.
-              </p>
-              <DestinationFields
-                compact
-                profile={{ ...draft.profile, lang: draft.lang }}
-                onChange={(profile) => setDraft({ profile })}
-              />
-              {save.isError ? (
-                <p role="alert" className="error-text">
-                  Could not save your choices. {errorOf(save.error)}
-                </p>
-              ) : null}
-            </>
-          ) : null}
-
-          {draft.step === "placement" ? (
-            <>
-              <h1 ref={heading} tabIndex={-1}>
-                Words you already know
-              </h1>
-              <p className="ob-lede">
-                Tick the words you know, so the first texts are not too easy or too hard. This only
-                marks them known; no cards are made.
-              </p>
-              {bands.data ? (
-                <div className="ob-bands">
-                  {bands.data.map((b) => (
-                    <section key={b.label} className="ob-band" aria-label={b.label}>
-                      <h2>{b.label}</h2>
-                      <div className="ob-words">
-                        {b.words.map((w) => (
-                          <label key={w.key} className="ob-word">
-                            <input
-                              type="checkbox"
-                              checked={known.has(w.key)}
-                              onChange={(e) =>
-                                setKnown((s) => {
-                                  const n = new Set(s);
-                                  if (e.target.checked) n.add(w.key);
-                                  else n.delete(w.key);
-                                  return n;
-                                })
-                              }
-                            />
-                            <span lang={draft.lang}>{w.word}</span>
-                            <span className="ob-word-gloss">{w.gloss}</span>
-                          </label>
-                        ))}
-                      </div>
-                    </section>
-                  ))}
-                </div>
-              ) : (
-                <Spinner label="Loading words" />
-              )}
-            </>
-          ) : null}
-
-          {draft.step === "starter" ? (
-            <>
-              <h1 ref={heading} tabIndex={-1}>
-                The most common words
-              </h1>
-              <p className="ob-lede">
-                Vuurtoren can give you cards for the almost 5000 most common Dutch words, in levels
-                of 500, each with an example sentence. New cards come 20 a day, one level at a time;
-                you can change that later.
-              </p>
-              <label className="ob-check">
-                <input
-                  type="checkbox"
-                  checked={draft.starter}
-                  onChange={(e) => setDraft({ starter: e.target.checked })}
-                />
-                <span>
-                  Start with the most common words
-                  <span className="ob-choice-sub">
-                    Without them, your cards are the words you add while reading.
-                  </span>
-                </span>
-              </label>
-              {draft.starter ? (
-                <fieldset className="ob-choices">
-                  <legend className="ob-question">Where should new words start?</legend>
-                  {START_LEVELS.map((level) => (
-                    <Choice
-                      key={level}
-                      name="from"
-                      checked={draft.from === level}
-                      onChange={() => setDraft({ from: level })}
-                      title={`Level ${level}`}
-                      sub={startLine(level)}
-                    />
-                  ))}
-                </fieldset>
-              ) : null}
-              {starter.isPending ? (
-                <p role="status">
-                  <Spinner label="Adding words" /> Adding the words
-                </p>
-              ) : null}
-              {starter.isError ? (
-                <p role="alert" className="error-text">
-                  Could not add the words. {errorOf(starter.error)}
-                </p>
-              ) : null}
-            </>
-          ) : null}
-
-          {draft.step === "first" ? (
-            <>
-              <h1 ref={heading} tabIndex={-1}>
-                You are ready
-              </h1>
-              <p className="ob-lede">
-                A short story at your level is waiting on Read. Tap any word you do not know to see
-                what it means, and keep it with Add to my words.
-              </p>
-              <div className="ob-first-actions">
-                <Button variant="primary" onClick={startReading}>
-                  Start reading
-                </Button>
-                <button
-                  type="button"
-                  className="ob-skip"
-                  onClick={() => {
-                    finish();
-                    void navigate({ to: "/import" });
-                  }}
-                >
-                  Add a text of your own
-                </button>
-              </div>
-            </>
-          ) : null}
-
-          <div className="ob-nav">
-            {at > 0 && draft.step !== "first" ? (
+        {draft.step === "server" ? (
+          <section aria-labelledby="ob-server-h">
+            <h1 id="ob-server-h" ref={heading} tabIndex={-1}>
+              Connect to your server
+            </h1>
+            <p className="ob-lede">
+              New texts and translations come from your Vuurtoren server, and your words stay in
+              sync with your computer.
+            </p>
+            <ConnectYourServer onState={onServerState} />
+            <div className="ob-nav">
               <Button variant="ghost" onClick={back}>
                 Back
               </Button>
+              <span className="ob-nav-spacer" />
+              <Button variant={server === "on" ? "primary" : "secondary"} onClick={next}>
+                {server === "on" ? "Continue" : "Not now"}
+              </Button>
+            </div>
+            <SkipSetup onSkip={skip} />
+          </section>
+        ) : (
+          <form onSubmit={submit}>
+            {draft.step === "language" ? (
+              <>
+                <h1 ref={heading} tabIndex={-1}>
+                  Welcome to Vuurtoren
+                </h1>
+                <p className="ob-lede">
+                  Vuurtoren helps you read real texts at the edge of what you know. A few choices
+                  first: this takes about two minutes, and you can change everything later in
+                  Settings.
+                </p>
+                <LanguageChoice value={draft.lang} onChange={(lang) => setDraft({ lang })} />
+              </>
             ) : null}
-            <span className="ob-nav-spacer" />
-            {draft.step === "first" ? null : (
-              <button type="button" className="ob-skip" onClick={skip}>
-                Skip setup for now
-              </button>
-            )}
-            {draft.step === "anki" && !connected ? (
-              <Button
-                onClick={() => {
-                  // Moving needs Anki; without it Vuurtoren starts fresh with its own cards.
-                  if (draft.move) {
-                    setDraft({ usesAnki: false, sources: [], step: "destinations" });
-                  } else {
-                    setDraft({ noAnki: true, sources: [] });
-                    go("decks");
+
+            {draft.step === "uses" ? (
+              <>
+                {PICK_LANGUAGE ? (
+                  <h1 ref={heading} tabIndex={-1}>
+                    Do you use Anki?
+                  </h1>
+                ) : (
+                  <>
+                    <h1 ref={heading} tabIndex={-1}>
+                      Welcome to Vuurtoren
+                    </h1>
+                    <p className="ob-lede">
+                      Vuurtoren helps you read real Dutch texts at the edge of what you know. A few
+                      choices first: this takes about two minutes, and you can change everything
+                      later in Settings.
+                    </p>
+                    <h2 className="ob-question">Do you use Anki?</h2>
+                  </>
+                )}
+                <p className="ob-lede">
+                  Vuurtoren can keep your words and run your reviews itself, or work alongside Anki.
+                </p>
+                <fieldset className="ob-choices">
+                  <legend className="k-sr">Do you use Anki?</legend>
+                  <Choice
+                    name="uses"
+                    checked={draft.usesAnki === false}
+                    onChange={() => setDraft({ usesAnki: false, sources: [], noAnki: false })}
+                    title="No"
+                    sub="Vuurtoren keeps your words and schedules your reviews. You can import an Anki deck file later."
+                  />
+                  <Choice
+                    name="uses"
+                    checked={draft.usesAnki === true}
+                    onChange={() => setDraft({ usesAnki: true })}
+                    title="Yes"
+                    sub="Bring your Anki decks into Vuurtoren, or keep using Anki."
+                  />
+                </fieldset>
+              </>
+            ) : null}
+
+            {draft.step === "choice" ? (
+              <>
+                <h1 ref={heading} tabIndex={-1}>
+                  Your Anki cards
+                </h1>
+                <p className="ob-lede">Choose who schedules your reviews from now on.</p>
+                <fieldset className="ob-choices">
+                  <legend className="k-sr">Who schedules your reviews</legend>
+                  <Choice
+                    name="move"
+                    checked={draft.move}
+                    onChange={() => setDraft({ move: true })}
+                    title="Import from Anki and use Vuurtoren’s scheduler"
+                    sub="Your chosen decks come into Vuurtoren once, with every card and its review history. Reviews then happen in Vuurtoren; Anki is not changed."
+                  />
+                  <Choice
+                    name="move"
+                    checked={!draft.move}
+                    onChange={() => setDraft({ move: false })}
+                    title="Keep using Anki"
+                    sub="Anki stays the record of what you know and runs your reviews. Anki must be open for Vuurtoren to send words to it."
+                  />
+                </fieldset>
+              </>
+            ) : null}
+
+            {draft.step === "moving" ? (
+              <>
+                <h1 ref={heading} tabIndex={-1}>
+                  Importing your decks
+                </h1>
+                <p className="ob-lede">
+                  Vuurtoren reads your chosen decks from Anki: notes, cards and the full review
+                  history. Nothing in Anki changes.
+                </p>
+                {move.isPending ? (
+                  <p role="status">
+                    <Spinner label="Importing" /> {moveMsg ?? "Starting"}
+                  </p>
+                ) : move.isSuccess ? (
+                  <p role="status">
+                    Imported {move.data.cards} cards from {move.data.notes} notes, with{" "}
+                    {move.data.reviews} past reviews. Your reviews now happen in Vuurtoren.
+                  </p>
+                ) : move.isError ? (
+                  <p role="alert" className="error-text">
+                    The import did not finish. {errorOf(move.error)}
+                  </p>
+                ) : (
+                  <p>This can take a minute for a large collection.</p>
+                )}
+              </>
+            ) : null}
+
+            {draft.step === "anki" ? (
+              <>
+                <h1 ref={heading} tabIndex={-1}>
+                  Connect Anki
+                </h1>
+                <p className="ob-lede">
+                  Vuurtoren reads your decks through the AnkiConnect add-on while Anki is open. It
+                  only writes when you click a button such as Add to Anki.
+                </p>
+                <AnkiStep
+                  status={status.data}
+                  checking={status.isFetching}
+                  denied={denied}
+                  connecting={connect.isPending}
+                  onConnect={() => connect.mutate()}
+                  onCheck={() => void status.refetch()}
+                />
+              </>
+            ) : null}
+
+            {draft.step === "decks" ? (
+              <>
+                <h1 ref={heading} tabIndex={-1}>
+                  Decks Vuurtoren reads
+                </h1>
+                <p className="ob-lede">
+                  Words in the decks you tick count as known or learning. Vuurtoren suggests the
+                  decks that look like Dutch vocabulary; you decide.
+                </p>
+                {draft.noAnki || !connected ? (
+                  <p className="ob-note">
+                    Without Anki, Vuurtoren starts fresh: it creates {root} the first time you add a
+                    word, and you can connect Anki later in Settings.
+                  </p>
+                ) : decks.isPending ? (
+                  <p role="status">
+                    <Spinner label="Looking at your decks" /> Looking at your decks. With large
+                    collections this takes a moment.
+                  </p>
+                ) : decks.isError ? (
+                  <div className="stack" style={{ gap: 8 }}>
+                    <p role="alert" className="error-text" style={{ margin: 0 }}>
+                      Could not look at your decks. {errorOf(decks.error)}
+                    </p>
+                    <div className="row">
+                      <Button onClick={() => void decks.refetch()}>Try again</Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="stack" style={{ gap: 12 }}>
+                    {decks.data.length ? (
+                      <DeckChecklist
+                        rows={deckRows(decks.data, draft.sources)}
+                        chosen={draft.sources}
+                        onChange={(sources) => setDraft({ sources })}
+                      />
+                    ) : (
+                      <p className="ob-note">No Dutch vocabulary decks found in your collection.</p>
+                    )}
+                    <label className="ob-check">
+                      <input
+                        type="checkbox"
+                        checked={startFresh}
+                        onChange={(e) =>
+                          setDraft({
+                            sources: e.target.checked
+                              ? []
+                              : deckRows(decks.data, [])
+                                  .filter((r) => r.suggested)
+                                  .map((r) => r.source),
+                          })
+                        }
+                      />
+                      <span>
+                        Start fresh
+                        <span className="ob-choice-sub">
+                          Vuurtoren creates {root} and fills it with the words you add while
+                          reading.
+                        </span>
+                      </span>
+                    </label>
+                  </div>
+                )}
+              </>
+            ) : null}
+
+            {draft.step === "destinations" ? (
+              <>
+                <h1 ref={heading} tabIndex={-1}>
+                  Where new words go
+                </h1>
+                <p className="ob-lede">
+                  When you add a word, Vuurtoren creates a card in this deck
+                  {native ? "" : " in Anki"}. Every Add button shows the deck and lets you pick
+                  another one.
+                </p>
+                <DestinationFields
+                  compact
+                  profile={{ ...draft.profile, lang: draft.lang }}
+                  onChange={(profile) => setDraft({ profile })}
+                />
+                {save.isError ? (
+                  <p role="alert" className="error-text">
+                    Could not save your choices. {errorOf(save.error)}
+                  </p>
+                ) : null}
+              </>
+            ) : null}
+
+            {draft.step === "placement" ? (
+              <>
+                <h1 ref={heading} tabIndex={-1}>
+                  Words you already know
+                </h1>
+                <p className="ob-lede">
+                  Tick the words you know, so the first texts are not too easy or too hard. This
+                  only marks them known; no cards are made.
+                </p>
+                {bands.data ? (
+                  <div className="ob-bands">
+                    {bands.data.map((b) => (
+                      <section key={b.label} className="ob-band" aria-label={b.label}>
+                        <h2>{b.label}</h2>
+                        <div className="ob-words">
+                          {b.words.map((w) => (
+                            <label key={w.key} className="ob-word">
+                              <input
+                                type="checkbox"
+                                checked={known.has(w.key)}
+                                onChange={(e) =>
+                                  setKnown((s) => {
+                                    const n = new Set(s);
+                                    if (e.target.checked) n.add(w.key);
+                                    else n.delete(w.key);
+                                    return n;
+                                  })
+                                }
+                              />
+                              <span lang={draft.lang}>{w.word}</span>
+                              <span className="ob-word-gloss">{w.gloss}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </section>
+                    ))}
+                  </div>
+                ) : (
+                  <Spinner label="Loading words" />
+                )}
+              </>
+            ) : null}
+
+            {draft.step === "starter" ? (
+              <>
+                <h1 ref={heading} tabIndex={-1}>
+                  The most common words
+                </h1>
+                <p className="ob-lede">
+                  Vuurtoren can give you cards for the almost 5000 most common Dutch words, in
+                  levels of 500, each with an example sentence. New cards come 20 a day, one level
+                  at a time; you can change that later.
+                </p>
+                <label className="ob-check">
+                  <input
+                    type="checkbox"
+                    checked={draft.starter}
+                    onChange={(e) => setDraft({ starter: e.target.checked })}
+                  />
+                  <span>
+                    Start with the most common words
+                    <span className="ob-choice-sub">
+                      Without them, your cards are the words you add while reading.
+                    </span>
+                  </span>
+                </label>
+                {draft.starter ? (
+                  <fieldset className="ob-choices">
+                    <legend className="ob-question">Where should new words start?</legend>
+                    <p className="ob-choices-note">
+                      Lower levels wait until you turn them on; the words you know get marked as you
+                      read.
+                    </p>
+                    {START_LEVELS.map((level) => (
+                      <Choice
+                        key={level}
+                        name="from"
+                        checked={draft.from === level}
+                        onChange={() => setDraft({ from: level })}
+                        title={`Level ${level}`}
+                        sub={`Words ${(level - 1) * 500 + 1}–${level * 500}`}
+                      />
+                    ))}
+                  </fieldset>
+                ) : null}
+                {starter.isPending ? (
+                  <p role="status">
+                    <Spinner label="Adding words" /> Adding the words
+                  </p>
+                ) : null}
+                {starter.isError ? (
+                  <p role="alert" className="error-text">
+                    Could not add the words. {errorOf(starter.error)}
+                  </p>
+                ) : null}
+              </>
+            ) : null}
+
+            {draft.step === "first" ? (
+              <>
+                <h1 ref={heading} tabIndex={-1}>
+                  You are ready
+                </h1>
+                <p className="ob-lede">
+                  {story.data ? (
+                    <>
+                      A short story at your level is ready:{" "}
+                      <cite lang="nl">{story.data.title}</cite>.
+                    </>
+                  ) : (
+                    "A short story at your level is waiting on Read."
+                  )}{" "}
+                  Tap any word you do not know to see what it means, and keep it with Add to my
+                  words.
+                </p>
+                <div className="ob-first-actions">
+                  <Button
+                    variant="primary"
+                    disabled={story.isPending || startReading.isPending}
+                    onClick={() => startReading.mutate()}
+                  >
+                    {startReading.isPending ? <Spinner label="Opening the story" /> : null}
+                    Start reading
+                  </Button>
+                  <button
+                    type="button"
+                    className="ob-skip"
+                    onClick={() => {
+                      finish();
+                      void navigate({ to: "/import" });
+                    }}
+                  >
+                    Add a text of your own
+                  </button>
+                </div>
+              </>
+            ) : null}
+
+            <div className="ob-nav">
+              {at > 0 && draft.step !== "first" ? (
+                <Button variant="ghost" onClick={back}>
+                  Back
+                </Button>
+              ) : null}
+              <span className="ob-nav-spacer" />
+              {draft.step === "anki" && !connected ? (
+                <Button
+                  onClick={() => {
+                    // Moving needs Anki; without it Vuurtoren starts fresh with its own cards.
+                    if (draft.move) {
+                      setDraft({ usesAnki: false, sources: [], step: "destinations" });
+                    } else {
+                      setDraft({ noAnki: true, sources: [] });
+                      go("decks");
+                    }
+                  }}
+                >
+                  Continue without Anki
+                </Button>
+              ) : null}
+              {draft.step !== "first" && !(draft.step === "anki" && !connected) ? (
+                <Button
+                  type="submit"
+                  variant="primary"
+                  disabled={
+                    save.isPending ||
+                    placement.isPending ||
+                    starter.isPending ||
+                    move.isPending ||
+                    (draft.step === "uses" && draft.usesAnki === null) ||
+                    (draft.step === "decks" && connected && !draft.noAnki && decks.isPending) ||
+                    (draft.step === "destinations" && !draft.profile.destinations.default.trim())
                   }
-                }}
-              >
-                Continue without Anki
-              </Button>
-            ) : null}
-            {draft.step === "placement" || draft.step === "starter" ? (
-              <Button variant="ghost" onClick={next}>
-                Skip this
-              </Button>
-            ) : null}
-            {draft.step !== "first" && !(draft.step === "anki" && !connected) ? (
-              <Button
-                type="submit"
-                variant="primary"
-                disabled={
-                  save.isPending ||
-                  placement.isPending ||
-                  starter.isPending ||
-                  move.isPending ||
-                  (draft.step === "uses" && draft.usesAnki === null) ||
-                  (draft.step === "decks" && connected && !draft.noAnki && decks.isPending) ||
-                  (draft.step === "destinations" && !draft.profile.destinations.default.trim())
-                }
-                onClick={() => {
-                  if (draft.step === "anki") setDraft({ noAnki: false });
-                }}
-              >
-                {draft.step === "destinations"
-                  ? "Save and continue"
-                  : draft.step === "moving"
-                    ? move.isSuccess
-                      ? "Continue"
-                      : move.isError
-                        ? "Try again"
-                        : "Import"
-                    : draft.step === "placement"
-                      ? `Continue${known.size ? ` with ${known.size} known` : ""}`
-                      : "Continue"}
-              </Button>
-            ) : null}
-          </div>
-        </form>
+                  onClick={() => {
+                    if (draft.step === "anki") setDraft({ noAnki: false });
+                  }}
+                >
+                  {draft.step === "destinations"
+                    ? "Save and continue"
+                    : draft.step === "moving"
+                      ? move.isSuccess
+                        ? "Continue"
+                        : move.isError
+                          ? "Try again"
+                          : "Import"
+                      : draft.step === "placement"
+                        ? `Continue${known.size ? ` with ${known.size} known` : ""}`
+                        : "Continue"}
+                </Button>
+              ) : null}
+            </div>
+            {draft.step === "first" ? null : <SkipSetup onSkip={() => void skip()} />}
+          </form>
+        )}
       </main>
     </div>
   );
 }
 
-/** What a placement answer does, in one line. */
-function startLine(level: number): string {
-  const from = (level - 1) * 500 + 1;
-  return level === 1
-    ? "Words 1–500 first: just starting."
-    : `Words ${from}–${level * 500} first. Words 1–${from - 1} wait until you turn them on; the words you know get marked as you read.`;
+/** "Skip setup for now", one quiet link under the buttons. */
+function SkipSetup({ onSkip }: { onSkip: () => void }) {
+  return (
+    <p className="ob-skip-row">
+      <button type="button" className="ob-skip" onClick={onSkip}>
+        Skip setup for now
+      </button>
+    </p>
+  );
 }
 
 /** One radio choice with a title and a line under it. */

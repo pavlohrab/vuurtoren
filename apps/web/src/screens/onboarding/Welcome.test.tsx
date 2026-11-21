@@ -4,8 +4,14 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { LanguageProfile } from "@app/core";
 import { App } from "../../App.js";
+import { currentDevice } from "../../platform/index.js";
 import { createMockServices } from "../../services/mock.js";
 import type { AppServices } from "../../services/types.js";
+
+vi.mock("../../platform/index.js", async (load) => {
+  const real = await load<typeof import("../../platform/index.js")>();
+  return { ...real, currentDevice: vi.fn(real.currentDevice) };
+});
 
 // The wizard is a lazy route: allow for a slow first import when the whole suite runs at once.
 configure({ asyncUtilTimeout: 4000 });
@@ -132,11 +138,10 @@ describe("onboarding", () => {
     expect(screen.queryByText(/Anki/)).toBeNull();
     await user.click(cont());
     expect(await screen.findByRole("heading", { name: "You are ready" })).toBeVisible();
+    // The story at the learner's level opens in the reader, not Read.
+    expect(await screen.findByText(/A short story at your level is ready/)).toBeVisible();
     await user.click(screen.getByRole("button", { name: "Start reading" }));
-    await waitFor(() => expect(history.location.pathname).toBe("/"));
-    expect(
-      await screen.findByText(/A story at your level|Continue reading|Next to read/),
-    ).toBeVisible();
+    await waitFor(() => expect(history.location.pathname).toMatch(/^\/read\//));
   });
 
   it("no Anki: adds every level of the most common words, new words from the chosen one", async () => {
@@ -152,7 +157,12 @@ describe("onboarding", () => {
     expect(screen.getByRole("radio", { name: /^Level 1/ })).toBeChecked();
     expect(screen.queryByText(/How much Dutch/)).toBeNull();
     await user.click(screen.getByRole("radio", { name: /^Level 3/ }));
-    expect(screen.getByText(/Words 1001–1500 first/)).toBeVisible();
+    expect(screen.getByRole("radio", { name: /Words 1001–1500/ })).toBeChecked();
+    // One shared line for every level; Back and Continue, no separate "Skip this".
+    expect(screen.getAllByText(/Lower levels wait until you turn them on/)).toHaveLength(1);
+    expect(screen.getByRole("button", { name: "Back" })).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Skip this" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Skip setup for now" })).toBeVisible();
     await user.click(cont());
     await waitFor(() =>
       expect(addStarterLevels).toHaveBeenCalledWith({
@@ -175,6 +185,32 @@ describe("onboarding", () => {
     await user.click(cont());
     expect(await screen.findByRole("heading", { name: "You are ready" })).toBeVisible();
     expect(addStarterLevels).not.toHaveBeenCalled();
+  });
+
+  it("on a phone: Connect to your server after the Anki question, Not now goes on", async () => {
+    const real = currentDevice();
+    vi.mocked(currentDevice).mockReturnValue({ ...real, kind: "android" });
+    try {
+      const { user } = setup();
+      await user.click(await screen.findByRole("radio", { name: /^No/ }));
+      await user.click(cont());
+      expect(await screen.findByRole("heading", { name: "Connect to your server" })).toBeVisible();
+      expect(screen.getByText(/New texts and translations come from your Vuurtoren server/));
+      expect(await screen.findByLabelText("Pairing code")).toBeVisible();
+      await user.click(screen.getByRole("button", { name: "Not now" }));
+      expect(await screen.findByRole("heading", { name: "The most common words" })).toBeVisible();
+      await user.click(screen.getByRole("button", { name: "Back" }));
+      expect(await screen.findByRole("heading", { name: "Connect to your server" })).toBeVisible();
+    } finally {
+      vi.mocked(currentDevice).mockImplementation(() => real);
+    }
+  });
+
+  it("not on a phone: no server step", async () => {
+    const { user } = setup();
+    await user.click(await screen.findByRole("radio", { name: /^No/ }));
+    await user.click(cont());
+    expect(await screen.findByRole("heading", { name: "The most common words" })).toBeVisible();
   });
 
   it("import from Anki: confirmed decks are moved into Vuurtoren", async () => {
