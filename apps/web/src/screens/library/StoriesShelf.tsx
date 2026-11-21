@@ -102,10 +102,20 @@ function StoryRow({
   row: ReturnType<typeof storyRows>[number];
   open: ReturnType<typeof useOpenStory>;
 }) {
+  // "A1 · Start here": the separator gets room of its own on both sides.
+  const [level, tag] = row.name.split(" · ");
   return (
-    <section className="lib-story-level" aria-labelledby={`stories-${row.level}`}>
+    <section className="lib-story-level" aria-label={row.name}>
       <h3 className="lib-story-level-title" id={`stories-${row.level}`}>
-        {row.name}
+        <span>
+          {level}
+          {tag ? (
+            <>
+              {" "}
+              <span className="lib-story-sep">·</span> {tag}
+            </>
+          ) : null}
+        </span>
         <span className="lib-shelf-count">{plural(row.covers.length, "story", "stories")}</span>
       </h3>
       <ul className="lib-story-row">

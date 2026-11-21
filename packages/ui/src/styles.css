@@ -38,6 +38,13 @@
   --w-wide: 75rem; /* dashboards and shelves: 1200px */
   --w-list: 60rem; /* lists and forms: 960px */
   --w-read: var(--measure); /* reading: ~68ch */
+  /* Safe areas (edge to edge on phones): the system bars and cutouts. The browser's env()
+     values, or the app's own (--native-safe-*, set from Android's window insets where its
+     WebView reports none). */
+  --safe-top: max(env(safe-area-inset-top, 0px), var(--native-safe-top, 0px));
+  --safe-right: max(env(safe-area-inset-right, 0px), var(--native-safe-right, 0px));
+  --safe-bottom: max(env(safe-area-inset-bottom, 0px), var(--native-safe-bottom, 0px));
+  --safe-left: max(env(safe-area-inset-left, 0px), var(--native-safe-left, 0px));
   /* Hairline: the low-contrast divider for sections, list rows and quiet edges. */
   --hairline: color-mix(in srgb, var(--ink) 9%, transparent);
 
@@ -57,6 +64,8 @@
   --ease-out: cubic-bezier(0.2, 0.7, 0.2, 1);
   --ease-in-out: cubic-bezier(0.45, 0, 0.2, 1);
   --ease-pop: cubic-bezier(0.3, 1.4, 0.5, 1);
+  /* Sheets: a soft spring, a few pixels past the rest and back. */
+  --ease-spring: cubic-bezier(0.25, 1.12, 0.4, 1);
   --ease: var(--ease-out);
 }
 
@@ -638,8 +647,8 @@ kbd {
 /* ---------- Toast ---------- */
 .k-toast-viewport {
   position: fixed;
-  bottom: 16px;
-  left: 16px;
+  bottom: calc(16px + var(--safe-bottom));
+  left: calc(16px + var(--safe-left));
   display: flex;
   flex-direction: column;
   gap: 8px;

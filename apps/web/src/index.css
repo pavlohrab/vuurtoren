@@ -93,6 +93,9 @@
   flex-direction: column;
   min-width: 0;
   min-height: 0;
+  /* Edge to edge on phones: the top bar starts under the status bar, not behind it. */
+  padding-top: var(--safe-top);
+  padding-right: var(--safe-right);
 }
 .topbar {
   display: flex;
@@ -262,9 +265,12 @@
   bottom: 0;
   z-index: 10;
   width: var(--inspector-w);
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
   background: var(--surface);
   border-left: 1px solid var(--hairline);
-  overflow: auto;
+  overflow: hidden;
   visibility: hidden;
   transform: translateX(100%);
   transition:
@@ -312,8 +318,25 @@
   padding: 10px 16px;
   border-bottom: 1px solid var(--hairline);
 }
+.inspector-panel[hidden] {
+  display: none;
+}
+.inspector-head {
+  flex: none;
+}
+.inspector-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
 .inspector-body {
   padding: 16px;
+  min-width: 0;
+}
+/* The bottom sheet's grab handle: only where the panel is a sheet (below 900px). */
+.sheet-grip {
+  display: none;
 }
 
 /* Below 1200px the sidebar collapses to icons. */
@@ -332,17 +355,73 @@
 
 /* Below 900px the inspector becomes a bottom sheet. */
 @media (max-width: 899px) {
+  /* A bottom sheet: it opens at a peek (--sheet-peek, revealAboveSheet.ts), a drag up shows
+     everything, a drag down closes it (useBottomSheet.ts). Transform only, with a spring. */
   .inspector-panel {
+    --sheet-h: min(88dvh, calc(100dvh - var(--safe-top) - var(--s-5)));
+    --sheet-peek: 42dvh;
+    --sheet-rest: calc(var(--sheet-h) - min(var(--sheet-h), var(--sheet-peek)));
     position: fixed;
     inset: auto 0 0 0;
-    width: auto;
-    max-height: 60vh;
+    width: 100%;
+    max-width: 100vw;
+    height: var(--sheet-h);
     transform: translateY(100%);
     border-left: 0;
     border-top: 1px solid var(--hairline);
     border-radius: var(--radius-card) var(--radius-card) 0 0;
     box-shadow: var(--shadow-pop);
     z-index: 40;
+    padding: 0 var(--safe-right) var(--safe-bottom) var(--safe-left);
+  }
+  .shell[data-inspector="open"] .inspector-panel {
+    transform: translateY(calc(var(--sheet-rest) + var(--sheet-drag, 0px)));
+    transition: transform var(--dur-slow) var(--ease-spring);
+  }
+  /* The surface goes on below the sheet, so the spring never shows a gap under it. */
+  .inspector-panel::after {
+    content: "";
+    position: absolute;
+    inset: 100% 0 auto;
+    height: var(--s-7);
+    background: var(--surface);
+  }
+  .shell[data-inspector="open"] .inspector-panel[data-sheet="full"] {
+    transform: translateY(max(0px, var(--sheet-drag, 0px)));
+  }
+  .shell[data-inspector="open"] .inspector-panel[data-dragging] {
+    transition: none;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .shell[data-inspector="open"] .inspector-panel {
+      transition: none;
+    }
+  }
+  /* At the peek the details wait below the fold: a drag up shows them. */
+  .inspector-panel[data-sheet="peek"] .inspector-scroll {
+    overflow: hidden;
+  }
+  .sheet-grip {
+    display: grid;
+    place-items: center;
+    flex: none;
+    width: 100%;
+    height: 20px;
+    padding: 0;
+    border: 0;
+    background: none;
+    cursor: grab;
+    touch-action: none;
+  }
+  .sheet-grip-bar {
+    width: 36px;
+    height: 4px;
+    border-radius: 999px;
+    background: var(--line-strong);
+  }
+  .inspector-head {
+    padding-top: 0;
+    touch-action: none;
   }
   .topbar {
     gap: 8px;
@@ -373,11 +452,12 @@
   }
   /* Keep the end of the reader page clear of the open bottom sheet. */
   .shell[data-inspector="open"] .content {
-    padding-bottom: 62vh;
+    padding-bottom: 44dvh;
   }
 }
 /* Phone width: a bottom tab bar replaces the icon rail. */
 @media (max-width: 699px) {
+  .topbar-theme,
   .topbar-palette,
   .topbar-spacer,
   .topbar-crumb-sep,
@@ -395,7 +475,8 @@
     grid-template-rows: 100dvh;
   }
   .main {
-    padding-bottom: calc(56px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(56px + var(--safe-bottom));
+    padding-left: var(--safe-left);
   }
   .sidebar {
     position: fixed;
@@ -404,8 +485,8 @@
     flex-direction: row;
     justify-content: space-around;
     align-items: center;
-    height: calc(56px + env(safe-area-inset-bottom, 0px));
-    padding: 4px 4px env(safe-area-inset-bottom, 0px);
+    height: calc(56px + var(--safe-bottom));
+    padding: 4px calc(4px + var(--safe-right)) var(--safe-bottom) calc(4px + var(--safe-left));
     gap: 0;
     border-right: 0;
     border-top: 1px solid var(--hairline);
@@ -463,7 +544,19 @@
     border: 0;
   }
   .inspector-panel {
-    bottom: calc(56px + env(safe-area-inset-bottom, 0px));
+    --sheet-h: min(88dvh, calc(100dvh - 56px - var(--safe-bottom) - var(--safe-top) - var(--s-5)));
+    --sheet-peek: 42dvh;
+    bottom: calc(56px + var(--safe-bottom));
+    padding-bottom: 0;
+  }
+  /* Nothing may widen the page sideways: a phone would zoom out and fixed sheets overflow. */
+  html,
+  body {
+    overflow-x: clip;
+  }
+  /* Toasts sit above the tab bar. */
+  .k-toast-viewport {
+    bottom: calc(64px + var(--safe-bottom));
   }
   /* The demo notice stays on one line. */
   .shell-notice.shell-notice--demo {
@@ -500,7 +593,7 @@
   position: fixed;
   left: 8px;
   right: 8px;
-  bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+  bottom: calc(64px + var(--safe-bottom));
   z-index: 32;
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
@@ -513,6 +606,10 @@
   animation: k-fade-in var(--dur) var(--ease);
 }
 .nav-more-item {
+  font: inherit;
+  background: none;
+  border: 0;
+  cursor: pointer;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -833,7 +930,7 @@
   min-height: 100dvh;
   display: grid;
   place-items: center;
-  padding: 48px 16px;
+  padding: calc(48px + var(--safe-top)) 16px calc(48px + var(--safe-bottom));
   box-sizing: border-box;
   background:
     radial-gradient(60rem 30rem at 50% -10rem, var(--accent-soft), transparent 70%), var(--bg);
@@ -1343,8 +1440,8 @@
 /* ---------- New version waiting (pwa/PwaControls.tsx) ---------- */
 .pwa-update {
   position: fixed;
-  right: 16px;
-  bottom: 16px;
+  right: calc(16px + var(--safe-right));
+  bottom: calc(16px + var(--safe-bottom));
   z-index: 85;
   display: flex;
   align-items: center;

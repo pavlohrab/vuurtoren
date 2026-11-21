@@ -436,6 +436,10 @@
   font-size: 15px;
   font-weight: 600;
 }
+.lib-story-sep {
+  margin-inline: var(--s-1);
+  color: var(--ink-muted);
+}
 /* One level: a row of story cards that scrolls sideways (snap), so Your texts stays near. */
 .lib-story-row {
   display: grid;

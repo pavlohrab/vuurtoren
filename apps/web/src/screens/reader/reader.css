@@ -57,9 +57,70 @@
   outline: 2px solid var(--accent);
   outline-offset: 1px;
 }
+/* The mode as one button on phones (ModeMenu.tsx); the segmented control from 700px. */
+.rbar-mode {
+  display: none;
+  align-items: center;
+  gap: 2px;
+  height: 36px;
+  padding: 0 8px 0 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.mode-pop {
+  width: min(320px, calc(100vw - 32px));
+  padding: var(--s-2);
+}
+.mode-list {
+  display: grid;
+  gap: var(--s-1);
+}
+.mode-opt {
+  position: relative;
+  display: grid;
+  gap: 2px;
+  min-height: 56px;
+  padding: var(--s-2) 40px var(--s-2) var(--s-3);
+  border: 0;
+  border-radius: var(--radius-control);
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.mode-opt:hover,
+.mode-opt[aria-checked="true"] {
+  background: var(--accent-soft);
+}
+.mode-opt-title {
+  font-weight: 600;
+}
+.mode-opt-sub {
+  font-size: 13px;
+  color: var(--ink-muted);
+}
+.mode-opt-check {
+  position: absolute;
+  right: var(--s-3);
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--accent);
+}
 @media (max-width: 699px) {
-  .rbar-known {
+  .rbar-known,
+  .rbar-modes {
     display: none;
+  }
+  .rbar-mode {
+    display: inline-flex;
   }
   /* No room in the phone's bar: the grammar focus chip floats just under it. */
   .topbar {
@@ -539,7 +600,7 @@
   --sb-w: 0px;
 }
 :root[data-reading-focus] .main {
-  padding-bottom: 0;
+  padding-bottom: var(--safe-bottom);
 }
 :root[data-reading-focus] .reader-footer {
   opacity: 0.55;
@@ -551,8 +612,8 @@
 }
 .reader-focus-exit {
   position: fixed;
-  top: var(--s-3);
-  right: var(--s-4);
+  top: calc(var(--s-3) + var(--safe-top));
+  right: calc(var(--s-4) + var(--safe-right));
   z-index: 20;
   display: inline-flex;
   align-items: center;

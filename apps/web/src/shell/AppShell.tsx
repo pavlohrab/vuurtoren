@@ -22,7 +22,7 @@ import {
   Plus,
   X,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import {
   Button,
@@ -43,6 +43,7 @@ import { AnkiSyncLine } from "./AnkiSyncLine.js";
 import { useAnkiAutoSync } from "./ankiSync.js";
 import { useAutoTune } from "./autoTune.js";
 import { ShellContext, type PageHeader, type ShellState } from "./ShellContext.js";
+import { useBottomSheet } from "./useBottomSheet.js";
 import { useAutoSync } from "./useAutoSync.js";
 import { useConnectLinks } from "./useConnectLinks.js";
 import { useDebounced } from "../useDebounced.js";
@@ -70,6 +71,12 @@ const THEME_ICON: Record<ThemeChoice, ReactNode> = {
   system: <Monitor size={16} />,
   light: <Sun size={16} />,
   dark: <Moon size={16} />,
+};
+
+const THEME_LABEL: Record<ThemeChoice, string> = {
+  system: "as the phone",
+  light: "light",
+  dark: "dark",
 };
 
 const isMac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
@@ -179,6 +186,9 @@ export function AppShell() {
     PAGE_TITLES[pathname] ??
     (pathname.startsWith("/courses/") ? "Courses" : "Vuurtoren");
   const showInspector = inspectorAvailable && inspectorOpen;
+  const sheetRef = useRef<HTMLElement>(null);
+  const closeSheet = useCallback(() => setInspectorOpen(false), []);
+  const sheet = useBottomSheet(sheetRef, showInspector, closeSheet);
   const titleClass = header?.reader ? "topbar-title topbar-title--quiet" : "topbar-title";
   // The page's h1 already says it: the top bar shows the title once the h1 has scrolled away.
   const headingHidden = pageTitleInView && !header?.always && !header?.reader;
@@ -330,6 +340,16 @@ export function AppShell() {
                 ) : null}
                 <MoreLink to="/progress" label="Progress" icon={<TrendingUp size={18} />} />
                 <MoreLink to="/settings" label="Settings" icon={<SettingsIcon size={18} />} />
+                {/* On phones the theme lives here: the top bar keeps its room for the page. */}
+                <button
+                  type="button"
+                  className="nav-more-item"
+                  role="menuitem"
+                  onClick={() => setTheme(THEME_NEXT[theme])}
+                >
+                  {THEME_ICON[theme]}
+                  <span>Theme: {THEME_LABEL[theme]}</span>
+                </button>
               </div>
             </>
           ) : null}
@@ -415,6 +435,7 @@ export function AppShell() {
                     variant="ghost"
                     size="sm"
                     icon
+                    className="topbar-theme"
                     aria-label={`Theme: ${theme}. Switch theme`}
                     onClick={() => setTheme(THEME_NEXT[theme])}
                   >
@@ -430,11 +451,27 @@ export function AppShell() {
               {/* Over the content, not beside it: closed it takes no space, open it slides in and
                 the reader column moves aside (transform only, no reflow). */}
               <aside
+                ref={sheetRef}
                 className="inspector-panel"
                 aria-label="Inspector"
                 hidden={!inspectorAvailable}
                 inert={!showInspector}
+                data-sheet={sheet.size}
               >
+                {/* Phones and tablets: the grab handle of the bottom sheet (also a button). */}
+                <button
+                  type="button"
+                  className="sheet-grip"
+                  aria-label={
+                    sheet.size === "peek"
+                      ? "Show all of the word panel"
+                      : "Show less of the word panel"
+                  }
+                  aria-expanded={sheet.size === "full"}
+                  onClick={sheet.toggle}
+                >
+                  <span className="sheet-grip-bar" aria-hidden />
+                </button>
                 <div className="inspector-head">
                   <span className="k-overline">Word</span>
                   <Button
@@ -447,7 +484,9 @@ export function AppShell() {
                     <X size={16} />
                   </Button>
                 </div>
-                <div className="inspector-body" ref={setInspectorEl} />
+                <div className="inspector-scroll">
+                  <div className="inspector-body" ref={setInspectorEl} />
+                </div>
               </aside>
             </div>
           </div>

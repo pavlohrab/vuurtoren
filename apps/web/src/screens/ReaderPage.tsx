@@ -3,6 +3,7 @@ import { Link, useParams } from "@tanstack/react-router";
 import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { ModeMenu } from "./reader/ModeMenu.js";
 import {
   type HelpLevel,
   type SegmentPlan,
@@ -711,12 +712,15 @@ export function ReaderPage({ textId }: { textId: string }) {
                 />
               ) : null}
               <span className="rbar-spacer" />
-              <Tabs
-                aria-label="Reading mode"
-                items={MODES}
-                value={mode}
-                onValueChange={(v) => setMode(v as ReaderMode)}
-              />
+              <span className="rbar-modes">
+                <Tabs
+                  aria-label="Reading mode"
+                  items={MODES}
+                  value={mode}
+                  onValueChange={(v) => setMode(v as ReaderMode)}
+                />
+              </span>
+              <ModeMenu modes={MODES} value={mode} onChange={(v) => setMode(v as ReaderMode)} />
               <span className="rbar-tools">
                 <ReadingSettings
                   prefs={prefs}
