@@ -106,7 +106,12 @@ export function Read() {
   const [pendingDelete, setPendingDelete] = useState<TextListItem | null>(null);
   const [shelfToDelete, setShelfToDelete] = useState<Shelf | null>(null);
 
-  const texts = useQuery({ queryKey: ["texts"], queryFn: () => services.listTexts() });
+  const texts = useQuery({
+    queryKey: ["texts"],
+    queryFn: () => services.listTexts(),
+    // Plans of older texts follow in the background: ask again until they are all there.
+    refetchInterval: (q) => (q.state.data?.some((t) => t.planning) ? 1500 : false),
+  });
   const shelves = useQuery({ queryKey: ["shelves"], queryFn: () => services.shelves() });
   const summary = useQuery({ queryKey: ["learner"], queryFn: () => services.learnerSummary() });
 

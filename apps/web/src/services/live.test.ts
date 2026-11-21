@@ -267,6 +267,37 @@ describe("live textWords", () => {
     expect(item!.newTypes).toBe(words.length);
   });
 
+  it("lists titles at once, plans the first texts, and the rest in the background", async () => {
+    const backend = fakeBackend({ notes: NOTES });
+    const { repo, services } = await setup(backend, KNOWN, ANKI_WORDS);
+    repoToClose = repo;
+    for (let i = 2; i <= 12; i++) {
+      await repo.append({
+        type: "TextImported",
+        textId: `t${i}`,
+        title: `Tekst ${i}`,
+        lang: "nl",
+        source: { kind: "paste" },
+        content: TEXT,
+      });
+      await repo.append({
+        type: "TextAnalyzed",
+        textId: `t${i}`,
+        contentHash: contentHash(TEXT),
+        tokens: tokenize(TEXT),
+      });
+    }
+    const first = await services.listTexts();
+    expect(first).toHaveLength(12);
+    const planned = first.filter((t) => t.pages !== null);
+    expect(planned).toHaveLength(8);
+    expect(first.filter((t) => t.planning)).toHaveLength(4);
+    // Every title is there either way; the others follow without asking for them.
+    await vi.waitFor(async () =>
+      expect((await services.listTexts()).every((t) => t.pages !== null && !t.planning)).toBe(true),
+    );
+  });
+
   it("lets reader cloze answers teach the learner model", async () => {
     const backend = fakeBackend({ notes: NOTES });
     const { repo, services, textId } = await setup(backend, KNOWN, ANKI_WORDS);

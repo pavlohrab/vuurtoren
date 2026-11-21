@@ -21,6 +21,7 @@ import {
 import {
   type VuurtorenRepository,
   type StoredText,
+  type TextSummary,
   type TextSource,
   contentHash,
   createUlidGenerator,
@@ -41,6 +42,9 @@ import type {
 
 /** Max characters per /analyze/text request (server limit is higher; keeps requests snappy). */
 const CHUNK_CHARS = 40_000;
+
+/** Texts the list plans before it answers (the rest follow in the background, as many at once). */
+const PLAN_FIRST = 8;
 
 /** Split at paragraph (or line) boundaries into chunks of at most `max` chars. */
 export function chunkText(text: string, max = CHUNK_CHARS): { start: number; text: string }[] {
@@ -203,6 +207,22 @@ export function createLiveTexts({
     return p;
   }
 
+  /** Texts waiting to be planned in the background (one run at a time). */
+  let backlog: Promise<void> | null = null;
+  function planLater(texts: TextSummary[]): void {
+    if (backlog) return;
+    backlog = (async () => {
+      for (let i = 0; i < texts.length; i += PLAN_FIRST) {
+        const batch = texts.slice(i, i + PLAN_FIRST).filter((t) => !cachedView(t.id));
+        if (batch.length) await computeViews(await fetchTexts(repo, batch));
+      }
+    })()
+      .catch(() => undefined)
+      .finally(() => {
+        backlog = null;
+      });
+  }
+
   /** A fresh cached view (same learner-model version), if any. */
   function cachedView(textId: string): ReadingView | null {
     const cached = planCache.get(textId);
@@ -301,12 +321,23 @@ export function createLiveTexts({
   > = {
     async listTexts(): Promise<TextListItem[]> {
       const texts = await repo.listTexts();
-      // Plan the analysed texts without a fresh cached plan together: batched text reads and
-      // one gloss lookup instead of several calls per text.
-      const stale = texts.filter((t) => t.analyzed && !cachedView(t.id));
+      // Titles and progress come at once; plans (coverage, pages) only for the texts the
+      // learner sees first: those being read, then the newest. The rest are planned after the
+      // list is back, a batch at a time, and say so (`planning`) until then.
+      const stale = texts
+        .filter((t) => t.analyzed && !cachedView(t.id))
+        .sort(
+          (a, b) =>
+            Number(b.lastSegment > 0) - Number(a.lastSegment > 0) || b.createdAt - a.createdAt,
+        );
+      const now = stale.slice(0, PLAN_FIRST);
+      const later = stale.slice(PLAN_FIRST);
+      // Batched text reads and one gloss lookup for the batch instead of several per text.
       const planned = new Map(
-        (await computeViews(await fetchTexts(repo, stale))).map((v) => [v.text.id, v]),
+        (await computeViews(await fetchTexts(repo, now))).map((v) => [v.text.id, v]),
       );
+      if (later.length) planLater(later);
+      const waiting = new Set(later.map((t) => t.id));
       return texts.map((t) => {
         const v = t.analyzed ? (cachedView(t.id) ?? planned.get(t.id)) : undefined;
         const d = v ? textDifficulty(v.plans) : null;
@@ -315,6 +346,7 @@ export function createLiveTexts({
           coverage: d?.coverage ?? null,
           newTypes: d?.newTypes ?? null,
           pages: v ? v.plans.length : null,
+          ...(waiting.has(t.id) && !v ? { planning: true } : {}),
         };
       });
     },

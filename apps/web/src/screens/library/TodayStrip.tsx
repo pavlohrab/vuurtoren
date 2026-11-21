@@ -75,7 +75,12 @@ export function TodayStrip() {
 /** The text to continue, else a story at the learner's level, with the page's one primary. */
 function ContinueSlot() {
   const services = useServices();
-  const texts = useQuery({ queryKey: ["texts"], queryFn: () => services.listTexts() });
+  const texts = useQuery({
+    queryKey: ["texts"],
+    queryFn: () => services.listTexts(),
+    // Plans of older texts follow in the background: ask again until they are all there.
+    refetchInterval: (q) => (q.state.data?.some((t) => t.planning) ? 1500 : false),
+  });
   const stories = useStoryShelf();
   const openStory = useOpenStory();
   const cont = texts.data ? pickContinue(texts.data, readLastText()) : null;

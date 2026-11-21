@@ -140,7 +140,12 @@ export function AppShell() {
     return () => window.removeEventListener("keydown", onKey);
   }, [moreOpen, dismissMore]);
 
-  const texts = useQuery({ queryKey: ["texts"], queryFn: () => services.listTexts() });
+  // The palette's Texts group: read when the palette opens, not at every start.
+  const texts = useQuery({
+    queryKey: ["texts"],
+    queryFn: () => services.listTexts(),
+    enabled: paletteOpen,
+  });
   // The palette's Words group: looked up as the learner types (two letters or more).
   const [paletteSearch, setPaletteSearch] = useState("");
   const wordQuery = useDebounced(paletteSearch.trim(), 150);

@@ -60,6 +60,8 @@ export interface TextListItem extends TextSummary {
   newTypes: number | null;
   /** Reader pages (the reading plan's segments); null until analysed. */
   pages: number | null;
+  /** Its plan (coverage, pages) is still being made in the background: ask again soon. */
+  planning?: boolean;
 }
 export interface Settings {
   ankiUrl: string;
