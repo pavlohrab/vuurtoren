@@ -248,7 +248,11 @@ export function Review() {
   });
 
   return (
-    <div className="page page--list review">
+    <div
+      className="page page--list review"
+      data-answering={card && shown ? "" : undefined}
+      {...swipe.handlers}
+    >
       <div className="review-top">
         <Link to="/words" className="review-close" aria-label="Close the review">
           <X size={22} aria-hidden />
@@ -392,7 +396,6 @@ function CardView({
       data-layout={card.layout}
       data-swipe={swipe.direction ?? undefined}
       style={swipe.style}
-      {...swipe.handlers}
       onClick={(e) => {
         // A tap on the front shows the answer; buttons inside keep their own action.
         if (!shown && !(e.target as HTMLElement).closest("button")) onReveal();

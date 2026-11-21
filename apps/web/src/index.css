@@ -415,6 +415,11 @@
   .inspector-panel[data-sheet="peek"] .inspector-scroll {
     overflow: hidden;
   }
+  /* At the peek nothing scrolls, so a finger moving up anywhere on the sheet is the drag: the
+     browser must not take it as a page scroll (it would cancel the drag on a touch screen). */
+  .inspector-panel[data-sheet="peek"] {
+    touch-action: none;
+  }
   /* The peek: the word with its article and play, the short meaning on one line, and the two
      main buttons side by side, thumb-sized. The details follow below the fold. */
   .inspector-panel .k-inspector-peek {
@@ -456,7 +461,7 @@
     place-items: center;
     flex: none;
     width: 100%;
-    height: 20px;
+    height: 32px;
     padding: 0;
     border: 0;
     background: none;

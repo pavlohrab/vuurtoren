@@ -172,11 +172,35 @@
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
-.review-rating[data-rating="1"] .review-rating-label {
-  color: var(--danger);
+/* One colour per answer, on its button and on the card's edge while a swipe points at it:
+   Again red, Hard amber, Good green, Easy blue. */
+.review {
+  --rate-1: var(--danger);
+  --rate-2: #b7791f;
+  --rate-3: var(--success);
+  --rate-4: #2f6fa8;
+}
+.review-rating[data-rating] {
+  border-color: color-mix(in srgb, var(--rate) 55%, var(--line-strong));
+  border-width: 1.5px;
+}
+.review-rating[data-rating] .review-rating-label {
+  color: var(--rate);
+}
+.review-rating[data-rating]:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--rate) 12%, var(--surface));
+}
+.review-rating[data-rating="1"] {
+  --rate: var(--rate-1);
+}
+.review-rating[data-rating="2"] {
+  --rate: var(--rate-2);
 }
 .review-rating[data-rating="3"] {
-  border-color: var(--accent);
+  --rate: var(--rate-3);
+}
+.review-rating[data-rating="4"] {
+  --rate: var(--rate-4);
 }
 .review-rating-label {
   font-weight: 600;
@@ -206,14 +230,19 @@
   transition: transform var(--dur) var(--ease-out);
   user-select: none;
 }
+.review-card[data-swipe] {
+  border-width: 2px;
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--swipe) 18%, transparent);
+  border-color: var(--swipe);
+}
 .review-card[data-swipe="left"] {
-  border-color: var(--danger, #9a3b2c);
+  --swipe: var(--rate-1);
 }
 .review-card[data-swipe="right"] {
-  border-color: var(--success);
+  --swipe: var(--rate-3);
 }
 .review-card[data-swipe="up"] {
-  border-color: var(--accent);
+  --swipe: var(--rate-4);
 }
 .review-swipe-hint {
   display: none;
@@ -259,5 +288,24 @@
 @media (prefers-reduced-motion: reduce) {
   .review-card {
     transition: none;
+  }
+}
+
+/* Phones: the card in the middle of the screen, the answer buttons at the bottom where the
+   thumb is; a swipe can start anywhere on the screen. */
+@media (max-width: 699px) {
+  .review {
+    min-height: calc(100dvh - var(--safe-bottom, 0px));
+    padding-bottom: calc(var(--s-4) + var(--safe-bottom, 0px));
+  }
+  .review[data-answering] {
+    touch-action: none;
+  }
+  .review > .review-card {
+    margin-block: auto;
+  }
+  .review .review-actions {
+    position: sticky;
+    bottom: calc(var(--s-3) + var(--safe-bottom, 0px));
   }
 }

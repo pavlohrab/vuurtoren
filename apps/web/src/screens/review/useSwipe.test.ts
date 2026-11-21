@@ -26,17 +26,28 @@ describe("swiping a card", () => {
     expect(result.current.direction).toBe("left");
     act(() => result.current.handlers.onPointerUp(ev(80, 310)));
     expect(on.onLeft).toHaveBeenCalledOnce();
-    act(() => result.current.handlers.onPointerDown(ev(200, 300)));
+    drag(result.current.handlers, 130, -10);
     act(() => result.current.handlers.onPointerUp(ev(330, 290)));
     expect(on.onRight).toHaveBeenCalledOnce();
-    act(() => result.current.handlers.onPointerDown(ev(200, 300)));
+    drag(result.current.handlers, 10, -150);
     act(() => result.current.handlers.onPointerUp(ev(210, 150)));
     expect(on.onUp).toHaveBeenCalledOnce();
-    act(() => result.current.handlers.onPointerDown(ev(200, 300)));
+    drag(result.current.handlers, 40, 0);
     act(() => result.current.handlers.onPointerUp(ev(240, 300)));
     expect(on.onLeft).toHaveBeenCalledOnce();
     expect(on.onRight).toHaveBeenCalledOnce();
     expect(result.current.direction).toBeNull();
+  });
+
+  it("a tap is not a swipe, wherever it starts (a button keeps its click)", () => {
+    const on = { onLeft: vi.fn(), onRight: vi.fn(), onUp: vi.fn() };
+    const { result } = renderHook(() => useSwipe({ enabled: true, ...on }));
+    act(() => result.current.handlers.onPointerDown(ev(200, 300)));
+    act(() => result.current.handlers.onPointerMove(ev(204, 302)));
+    act(() => result.current.handlers.onPointerUp(ev(204, 302)));
+    expect(result.current.direction).toBeNull();
+    expect(on.onLeft).not.toHaveBeenCalled();
+    expect(on.onRight).not.toHaveBeenCalled();
   });
 
   it("does nothing while the answer is hidden", () => {

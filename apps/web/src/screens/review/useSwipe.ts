@@ -1,12 +1,15 @@
 /**
  * Swipe a card to answer: left, right or up past a threshold calls the matching action; a
- * shorter drag springs back. The card follows the finger (or mouse) and tilts a little, and
+ * shorter drag springs back. The handlers go on the whole screen, so a swipe can start anywhere,
+ * on a button too: the pointer is captured only once it moves, so a tap stays a tap. The card follows the finger (or mouse) and tilts a little, and
  * `direction` names the answer it would give, so the screen can show it before letting go.
  */
 import { type CSSProperties, type PointerEvent, useRef, useState } from "react";
 
 /** How far (px) a drag must go to count as a swipe. */
 const THRESHOLD = 90;
+/** Below this (px) a press is a tap. */
+const MOVES = 10;
 
 type Direction = "left" | "right" | "up";
 
@@ -16,7 +19,7 @@ export function useSwipe(opts: {
   onRight: () => void;
   onUp: () => void;
 }) {
-  const start = useRef<{ x: number; y: number; id: number } | null>(null);
+  const start = useRef<{ x: number; y: number; id: number; moved: boolean } | null>(null);
   const [offset, setOffset] = useState<{ x: number; y: number } | null>(null);
 
   const directionOf = (x: number, y: number, at: number): Direction | null => {
@@ -27,19 +30,25 @@ export function useSwipe(opts: {
 
   const handlers = {
     onPointerDown(e: PointerEvent<HTMLElement>) {
-      if (!opts.enabled || (e.target as HTMLElement).closest("button, a")) return;
-      start.current = { x: e.clientX, y: e.clientY, id: e.pointerId };
-      e.currentTarget.setPointerCapture?.(e.pointerId);
+      if (!opts.enabled) return;
+      start.current = { x: e.clientX, y: e.clientY, id: e.pointerId, moved: false };
     },
     onPointerMove(e: PointerEvent<HTMLElement>) {
       const s = start.current;
       if (!s || s.id !== e.pointerId) return;
-      setOffset({ x: e.clientX - s.x, y: Math.min(0, e.clientY - s.y) });
+      const x = e.clientX - s.x;
+      const y = e.clientY - s.y;
+      if (!s.moved) {
+        if (Math.hypot(x, y) < MOVES) return;
+        s.moved = true;
+        e.currentTarget.setPointerCapture?.(e.pointerId);
+      }
+      setOffset({ x, y: Math.min(0, y) });
     },
     onPointerUp(e: PointerEvent<HTMLElement>) {
       const s = start.current;
       start.current = null;
-      if (!s || s.id !== e.pointerId) return;
+      if (!s || s.id !== e.pointerId || !s.moved) return;
       const dir = directionOf(e.clientX - s.x, e.clientY - s.y, THRESHOLD);
       setOffset(null);
       if (dir === "left") opts.onLeft();
@@ -54,7 +63,6 @@ export function useSwipe(opts: {
 
   const style: CSSProperties | undefined = opts.enabled
     ? {
-        touchAction: "none",
         ...(offset
           ? {
               transform: `translate(${offset.x}px, ${offset.y}px) rotate(${offset.x / 30}deg)`,
