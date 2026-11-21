@@ -1,7 +1,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { ArrowLeft, Camera, FileText, UploadCloud } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { DragEvent, ReactNode } from "react";
 import { Button, Input, Spinner, Tabs, Textarea, useToast } from "@app/ui";
 import { useOcrAvailable } from "../desktop/DesktopSetup.js";
@@ -67,16 +67,19 @@ function FilePick({ kind, file, onFile }: FilePickProps) {
   const pick = useRef<HTMLInputElement>(null);
   const camera = useRef<HTMLInputElement>(null);
   const [active, setActive] = useState(false);
-  const [preview, setPreview] = useState<string | null>(null);
-  useEffect(() => {
-    if (!file || kind !== "image" || typeof URL.createObjectURL !== "function") {
-      setPreview(null);
-      return;
-    }
-    const url = URL.createObjectURL(file);
-    setPreview(url);
-    return () => URL.revokeObjectURL(url);
-  }, [file, kind]);
+  const preview = useMemo(
+    () =>
+      file && kind === "image" && typeof URL.createObjectURL === "function"
+        ? URL.createObjectURL(file)
+        : null,
+    [file, kind],
+  );
+  useEffect(
+    () => () => {
+      if (preview) URL.revokeObjectURL(preview);
+    },
+    [preview],
+  );
   const accept = kind === "pdf" ? "application/pdf" : "image/*";
   const noun = kind === "pdf" ? "PDF" : "photo";
   const inputs = (
