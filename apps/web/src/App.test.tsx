@@ -63,7 +63,7 @@ describe("App with mock services", () => {
   });
 
   it("shows the words table", async () => {
-    renderApp("/words");
+    renderApp("/words?layout=list");
     await waitFor(() => expect(screen.getByText("gracht")).toBeInTheDocument());
   });
 });

@@ -309,6 +309,58 @@ for (const size of SIZES) {
       expect(asked).toEqual([]);
     });
 
+    test("Your words as cards: swipe right for I know it, Undo, swipe left to keep learning", async ({
+      page,
+    }) => {
+      await withInsets(page);
+      await page.goto("/?demo");
+      await expect(page.getByText("Demo data")).toBeVisible();
+      await page
+        .getByRole("navigation", { name: "Main" })
+        .getByRole("link", { name: /^Words/ })
+        .click();
+      await page.getByRole("link", { name: "Your words" }).click();
+      const card = page.getByRole("group", { name: /Swipe right/ });
+      await expect(card).toBeVisible();
+      await expect(card.locator(".word-stack-meaning")).not.toBeEmpty();
+      // The chips scroll sideways in their row; nothing else sticks out.
+      expect(
+        await overflowing(page, ".word-stack-card, .word-stack-actions *, .word-stack-chips"),
+      ).toEqual([]);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+        size.width,
+      );
+      await shot(page, `words-stack-${size.width}`);
+      // The two buttons sit above the tab bar without scrolling.
+      const knownBox = (await page.getByRole("button", { name: "I know it" }).boundingBox())!;
+      expect(knownBox.y + knownBox.height).toBeLessThanOrEqual(size.height - 34 - 64);
+      const word = () => card.locator("h2").textContent();
+      const first = await word();
+      // Let the page transition end: during it the page itself takes every touch.
+      await page.waitForTimeout(600);
+      const box = (await card.boundingBox())!;
+      const y = box.y + box.height / 2;
+      const [left, right] = [box.x + box.width * 0.25, box.x + box.width * 0.85];
+
+      await swipe(page, [left, y], [right, y + 6]);
+      await expect(page.getByRole("status").filter({ hasText: "Marked as known" })).toBeVisible();
+      await expect.poll(word).not.toBe(first);
+      // The Undo toast sits above the tab bar, and Undo brings the word back.
+      const undo = page.getByRole("button", { name: "Undo" });
+      expect((await undo.boundingBox())!.y).toBeLessThan(size.height - 34 - 64);
+      await undo.click();
+      await expect.poll(word).toBe(first);
+
+      await swipe(page, [right, y], [left, y]);
+      await expect(page.getByRole("status").filter({ hasText: "Kept for learning" })).toBeVisible();
+      await expect.poll(word).not.toBe(first);
+      // A short drag springs back: still the same card.
+      const second = await word();
+      await swipe(page, [box.x + box.width / 2, y], [box.x + box.width / 2 + 40, y]);
+      await page.waitForTimeout(400);
+      expect(await word()).toBe(second);
+    });
+
     test("the word sheet opens as a small peek above the gesture line", async ({ page }) => {
       await withInsets(page);
       await page.goto("/?demo");

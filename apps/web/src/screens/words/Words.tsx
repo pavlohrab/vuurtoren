@@ -12,13 +12,15 @@ import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import {
   Columns3,
   Dumbbell,
+  GalleryHorizontalEnd,
   Languages,
   Layers,
+  List,
   MessagesSquare,
   SquareCheck,
   X,
 } from "lucide-react";
-import { Fragment, useEffect, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { WordState } from "@app/core";
 import {
@@ -60,6 +62,7 @@ import {
 } from "./levels.js";
 import { ALL_WORDS, WordsRoom, loadStarterIndex, useLevelProgress } from "./WordsRoom.js";
 import { useWordActions } from "../useWordActions.js";
+import { WordStack } from "./WordStack.js";
 import "./words.css";
 
 const PAGE_SIZE = 50;
@@ -264,6 +267,32 @@ interface WordsSearch {
   group?: string;
   q?: string;
   word?: string;
+  /** "cards" (the stack) or "list" (the table). */
+  layout?: string;
+}
+
+/**
+ * The stack unless the list is asked for: by `layout=list`, or by a list's own filters in the
+ * URL (a state, source, level, grouping or search), so links into the list keep working.
+ */
+export function showsList(params: WordsSearch): boolean {
+  if (params.layout === "list") return true;
+  if (params.layout === "cards") return false;
+  return Boolean(params.state || params.source || params.level || params.group || params.q);
+}
+
+/** Cards or List: the two ways to see Your words. */
+function LayoutToggle({ list, onChange }: { list: boolean; onChange: (list: boolean) => void }) {
+  return (
+    <div className="words-layout" role="group" aria-label="Show your words as">
+      <Button variant="ghost" size="sm" aria-pressed={!list} onClick={() => onChange(false)}>
+        <GalleryHorizontalEnd size={14} aria-hidden /> Cards
+      </Button>
+      <Button variant="ghost" size="sm" aria-pressed={list} onClick={() => onChange(true)}>
+        <List size={14} aria-hidden /> List
+      </Button>
+    </div>
+  );
 }
 
 /** Words: filterable table of lemmas; rows open the inspector; selections go on to Anki, Practice or Talk. */
@@ -280,10 +309,18 @@ export function Words() {
   const view = parseView(params.state, source !== null);
   const defaultView: WordsView = source ? "all" : "decide";
   const word = params.word;
+  const asList = showsList(params);
+  // The stack's search icon opens the list with its search field ready.
+  const focusSearch = useRef(false);
+  useEffect(() => {
+    if (!asList || !focusSearch.current) return;
+    focusSearch.current = false;
+    document.querySelector<HTMLInputElement>(".words-search input")?.focus();
+  }, [asList]);
   const setSearch = (patch: Partial<Record<keyof WordsSearch, string | undefined>>) => {
     const next: Record<string, string | undefined> = { ...params, ...patch };
     const clean: WordsSearch = {};
-    for (const k of ["state", "source", "level", "group", "q", "word"] as const)
+    for (const k of ["state", "source", "level", "group", "q", "word", "layout"] as const)
       if (next[k]) clean[k] = next[k];
     void navigate({ to: "/words", search: clean, replace: true });
   };
@@ -339,6 +376,7 @@ export function Words() {
           )
         : loadRows(services, source, { view, query: params.q, limit }),
     placeholderData: keepPreviousData,
+    enabled: asList,
   });
   const progress = useLevelProgress(grouped);
   // Native learners whose profile predates the starter words have no starter decks.
@@ -460,6 +498,49 @@ export function Words() {
     ...(source?.kind === "unit" ? [{ value: params.source!, label: sourceLabel ?? "Unit" }] : []),
   ];
 
+  const inspectorPortal =
+    inspectorEl && word
+      ? createPortal(
+          <WordInspector
+            entry={entry}
+            loading={!entry && !inspect.isError}
+            error={inspect.isError ? errorText(inspect.error) : null}
+            onRetry={() => void inspect.refetch()}
+            emptyText="Select a word to see its details."
+            {...actions.props(entry)}
+          />,
+          inspectorEl,
+        )
+      : null;
+  const layoutToggle = (
+    <LayoutToggle
+      list={asList}
+      onChange={(toList) => setSearch({ layout: toList ? "list" : "cards" })}
+    />
+  );
+
+  if (!asList) {
+    return (
+      <div className="page page--list words-page">
+        <WordsRoom tab="words" />
+        <PageHeader
+          title="Your words"
+          lede="One word at a time: swipe right if you know it, left to keep learning it, tap for more."
+          actions={layoutToggle}
+        />
+        <WordStack
+          levels={index.data?.levels.map((l) => l.level) ?? []}
+          onOpen={(key) => open(key)}
+          onSearch={() => {
+            focusSearch.current = true;
+            setSearch({ layout: "list" });
+          }}
+        />
+        {inspectorPortal}
+      </div>
+    );
+  }
+
   return (
     <div className="page page--list words-page">
       <WordsRoom tab="words" />
@@ -467,15 +548,18 @@ export function Words() {
         title="Your words"
         lede="New words from your reading wait here. Open one to add it to your words, mark it known or leave it."
         actions={
-          list.length > 0 ? (
-            <Link
-              to="/practice"
-              search={filtered ? { words: practiseKeys.join(",") } : {}}
-              className="k-btn k-btn--primary"
-            >
-              <Dumbbell size={16} aria-hidden /> {filtered ? "Practise these words" : "Practise"}
-            </Link>
-          ) : null
+          <>
+            {layoutToggle}
+            {list.length > 0 ? (
+              <Link
+                to="/practice"
+                search={filtered ? { words: practiseKeys.join(",") } : {}}
+                className="k-btn k-btn--primary"
+              >
+                <Dumbbell size={16} aria-hidden /> {filtered ? "Practise these words" : "Practise"}
+              </Link>
+            ) : null}
+          </>
         }
       />
 
@@ -842,19 +926,7 @@ export function Words() {
         </div>
       ) : null}
 
-      {inspectorEl && word
-        ? createPortal(
-            <WordInspector
-              entry={entry}
-              loading={!entry && !inspect.isError}
-              error={inspect.isError ? errorText(inspect.error) : null}
-              onRetry={() => void inspect.refetch()}
-              emptyText="Select a word to see its details."
-              {...actions.props(entry)}
-            />,
-            inspectorEl,
-          )
-        : null}
+      {inspectorPortal}
     </div>
   );
 }

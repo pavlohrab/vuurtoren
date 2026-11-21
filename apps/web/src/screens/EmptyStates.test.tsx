@@ -38,7 +38,7 @@ describe("empty states", () => {
   });
 
   it("Words: a real empty state when there are no words at all", async () => {
-    setup("/words", { words: async () => [], wordsToDecide: async () => [] });
+    setup("/words?layout=list", { words: async () => [], wordsToDecide: async () => [] });
     expect(await screen.findByRole("heading", { name: "No words yet" })).toBeVisible();
     expect(screen.getByRole("link", { name: "Add text" })).toBeInTheDocument();
   });

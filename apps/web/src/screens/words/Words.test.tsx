@@ -42,13 +42,13 @@ describe("Words", () => {
   });
 
   it("has no Due view in connected mode", async () => {
-    setup("/words");
+    setup("/words?layout=list");
     await screen.findByRole("radio", { name: "To decide" });
     expect(screen.queryByRole("radio", { name: "Due" })).toBeNull();
   });
 
   it("shows Claude's suggestions behind a chip: add one to Anki, dismiss another", async () => {
-    const { services, user } = setup("/words");
+    const { services, user } = setup("/words?layout=list");
     const chip = await screen.findByRole("button", { name: /Suggested \(2\)/ });
     await user.click(chip);
     const list = screen.getByRole("list", { name: "Suggested words" });
@@ -136,7 +136,7 @@ describe("Words", () => {
   });
 
   it("opens on the words to decide, without the optional columns", async () => {
-    setup("/words");
+    setup("/words?layout=list");
     expect(await screen.findByRole("radio", { name: "To decide" })).toBeChecked();
     const table = await screen.findByRole("table");
     expect(within(table).queryByRole("columnheader", { name: "Recall" })).toBeNull();

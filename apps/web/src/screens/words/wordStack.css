@@ -1,0 +1,260 @@
+/* ---------- Your words as a stack of cards (WordStack.tsx) ---------- */
+/* Cards · List: the two ways to see Your words (in the page header). */
+.words-layout {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+}
+.words-layout .k-btn {
+  border-radius: 999px;
+}
+.words-layout .k-btn[aria-pressed="true"] {
+  background: var(--accent-soft);
+  color: var(--ink);
+}
+
+.word-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+  max-width: 520px;
+  margin: 0 auto;
+}
+.word-stack-top {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+}
+/* The sets of words: one row of chips that scrolls sideways on a phone. */
+.word-stack-chips {
+  display: flex;
+  flex: 1 1 auto;
+  gap: var(--s-2);
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding: 2px;
+}
+.word-stack-chip {
+  flex: none;
+  min-height: 36px;
+  padding: 0 var(--s-3);
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink-muted);
+  font: inherit;
+  font-size: 14px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.word-stack-chip[aria-checked="true"] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--ink);
+  font-weight: 600;
+}
+.word-stack-chip:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.word-stack-skeleton {
+  height: 320px;
+  border-radius: var(--radius-card);
+}
+
+/* The deck: the top card over the edge of the next one. */
+.word-stack-deck {
+  position: relative;
+  min-height: 300px;
+}
+.word-stack-card {
+  --drag-x: 0px;
+  --drag-r: 0deg;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+  min-height: 300px;
+  padding: var(--s-5);
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-pop);
+  cursor: grab;
+  touch-action: pan-y;
+  user-select: none;
+  transform: translateX(var(--drag-x)) rotate(var(--drag-r));
+  transition: transform var(--dur-slow) var(--ease-spring);
+  animation: word-stack-in var(--dur-slow) var(--ease-out);
+}
+.word-stack-card:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+.word-stack-card[data-dragging] {
+  cursor: grabbing;
+  transition: none;
+}
+.word-stack-card[data-leaving="known"] {
+  transform: translateX(120vw) rotate(18deg);
+  transition: transform 220ms var(--ease-out);
+}
+.word-stack-card[data-leaving="learn"] {
+  transform: translateX(-120vw) rotate(-18deg);
+  transition: transform 220ms var(--ease-out);
+}
+.word-stack-card--under {
+  position: absolute;
+  inset: 0;
+  min-height: 0;
+  box-shadow: none;
+  transform: translateY(10px) scale(0.96);
+  animation: none;
+  cursor: default;
+}
+@keyframes word-stack-in {
+  from {
+    transform: translateY(10px) scale(0.96);
+  }
+}
+/* While dragged, the card says what letting go does. */
+.word-stack-stamp {
+  position: absolute;
+  top: var(--s-4);
+  padding: 2px var(--s-2);
+  border: 2px solid currentColor;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  opacity: 0;
+  transition: opacity var(--dur) var(--ease-out);
+}
+.word-stack-stamp--known {
+  left: var(--s-4);
+  color: var(--success);
+}
+.word-stack-stamp--learn {
+  right: var(--s-4);
+  color: var(--accent);
+}
+.word-stack-card[data-lean="known"] .word-stack-stamp--known,
+.word-stack-card[data-leaving="known"] .word-stack-stamp--known,
+.word-stack-card[data-lean="learn"] .word-stack-stamp--learn,
+.word-stack-card[data-leaving="learn"] .word-stack-stamp--learn {
+  opacity: 1;
+}
+.word-stack-head {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  margin-top: var(--s-5);
+}
+.word-stack-word {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 34px;
+  font-weight: 600;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+.word-stack-article {
+  color: var(--ink-muted);
+  font-weight: 500;
+}
+.word-stack-meaning {
+  margin: 0;
+  font-size: 18px;
+  color: var(--ink);
+}
+.word-stack-sentence {
+  margin: 0;
+  font-family: var(--font-reading);
+  font-size: 17px;
+  line-height: 1.55;
+  color: var(--ink);
+}
+.word-stack-sentence mark {
+  background: var(--state-new-bg);
+  color: inherit;
+  border-radius: 3px;
+  padding: 0 2px;
+}
+.word-stack-hint {
+  margin: auto 0 0;
+  font-size: 13px;
+  color: var(--ink-muted);
+}
+.word-stack-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--s-3);
+}
+.word-stack-actions .k-btn {
+  min-height: 48px;
+}
+.word-stack-count {
+  margin: 0;
+  text-align: center;
+  font-size: 13px;
+  color: var(--ink-muted);
+}
+/* The Undo toast: above the tab bar on a phone, bottom-left on a computer. */
+.word-stack-undo {
+  position: fixed;
+  left: max(var(--s-4), var(--safe-left));
+  bottom: calc(var(--tabbar-h, 0px) + var(--s-4) + var(--safe-bottom));
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  max-width: calc(100vw - 2 * var(--s-4));
+  padding: var(--s-2) var(--s-2) var(--s-2) var(--s-4);
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-pop);
+  font-size: 14px;
+  animation: k-fade-in var(--dur) var(--ease-out);
+}
+@media (max-width: 699px) {
+  .word-stack-undo {
+    bottom: calc(var(--tabbar-h) + var(--s-3));
+  }
+}
+/* A phone: the card and its two buttons fit above the tab bar without scrolling. */
+@media (max-width: 699px) {
+  .word-stack {
+    gap: var(--s-3);
+  }
+  .word-stack-deck,
+  .word-stack-card {
+    min-height: 200px;
+  }
+  .word-stack-card {
+    padding: var(--s-4);
+    gap: var(--s-2);
+  }
+  .word-stack-head {
+    margin-top: var(--s-4);
+  }
+  .word-stack-word {
+    font-size: 28px;
+  }
+  .words-page:has(.word-stack) .page-lede {
+    display: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .word-stack-card,
+  .word-stack-card[data-leaving],
+  .word-stack-stamp,
+  .word-stack-undo {
+    transition: none;
+    animation: none;
+  }
+}

@@ -83,7 +83,7 @@ const importRoute = searchScreen("/import", () => import("./screens/Import.js"),
   "course",
   "unit",
 ]);
-/** /words?state=&source=text:<id>|unit:<course>/<n>|practice-again&level=1…10|other&group=level&q=&word=<key> */
+/** /words?layout=cards|list&state=&source=text:<id>|unit:<course>/<n>|practice-again&level=1…10|other&group=level&q=&word=<key> */
 const wordsRoute = searchScreen("/words", () => import("./screens/words/Words.js"), "Words", [
   "state",
   "source",
@@ -91,6 +91,7 @@ const wordsRoute = searchScreen("/words", () => import("./screens/words/Words.js
   "group",
   "q",
   "word",
+  "layout",
 ]);
 /** /practice?words=a,b,c (practise these words) &start=1 (start at once, with the last options) */
 const practiceRoute = searchScreen("/practice", () => import("./screens/Practice.js"), "Practice", [
