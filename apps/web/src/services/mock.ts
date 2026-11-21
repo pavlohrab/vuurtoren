@@ -398,6 +398,7 @@ export function createMockServices(
     glossClozes: false,
     grammarMarks: true,
     reviewWeek: [1, 1, 1, 1, 1, 1, 1],
+    newWordsPerDay: 10,
     voice: "female",
     autoplayWord: true,
     autoplaySentence: false,

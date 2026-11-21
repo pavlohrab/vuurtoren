@@ -1,5 +1,5 @@
 import { createMemoryHistory } from "@tanstack/react-router";
-import { configure, render, screen, within } from "@testing-library/react";
+import { configure, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { grammarTopic, grammarTopics } from "@app/content";
@@ -304,7 +304,18 @@ describe("Reader grammar", () => {
     await userEvent.click(await screen.findByRole("button", { name: "Next" }));
     await screen.findAllByText("staat");
     await userEvent.click(tok("staat"));
+    // Explain sits in the word sheet's Sentence tab, which lists the grammar found as well.
+    await userEvent.click(await screen.findByRole("tab", { name: "Sentence" }));
+    expect(await screen.findByText(/«Vandaag» comes first/)).toBeInTheDocument();
     await userEvent.click(await screen.findByRole("button", { name: "Explain this sentence" }));
-    expect(await screen.findByText(/- Inversion: «Vandaag» comes first/)).toBeInTheDocument();
+    expect(await screen.findByText(/a mock explanation/)).toBeInTheDocument();
+    // The answer's grammar list arrives formatted: an item, not a "- " line.
+    await waitFor(() =>
+      expect(
+        [...document.querySelectorAll(".sentence-answer li")].some((li) =>
+          /Inversion: «Vandaag» comes first/.test(li.textContent ?? ""),
+        ),
+      ).toBe(true),
+    );
   });
 });

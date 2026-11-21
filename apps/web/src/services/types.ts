@@ -90,6 +90,11 @@ export interface Settings {
    * 0.5 reduced, 0 as little as possible). Due dates spread away from lighter days.
    */
   reviewWeek: number[];
+  /**
+   * Native mode: new words a day, across all decks together (words added while reading first,
+   * then the starter level). Each deck's own limit still applies within it.
+   */
+  newWordsPerDay: number;
   /** Spoken words and sentences (the audio pack): which voice. */
   voice: "female" | "male";
   /** Review: say the word when a card's front shows (on by default). */

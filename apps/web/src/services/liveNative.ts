@@ -82,6 +82,8 @@ export interface LiveNativeDeps {
   audioClip?: (id: string) => Promise<Blob | null>;
   /** How much of the usual load each weekday takes, Monday first (Settings). */
   reviewWeek?: () => Promise<readonly number[]>;
+  /** New words a day across all decks (Settings); absent: only the decks' own limits. */
+  newPerDay?: () => Promise<number>;
   now?: () => number;
 }
 
@@ -405,7 +407,7 @@ export function createLiveNative(deps: LiveNativeDeps) {
       await openStarter(lang);
       const at = now();
       // Counts only: the badge never reads the cards themselves.
-      const q = await repo.nativeQueueCounts(lang, at, studyDayStart(at));
+      const q = await repo.nativeQueueCounts(lang, at, studyDayStart(at), await deps.newPerDay?.());
       return { native: true, due: q.due, fresh: q.fresh };
     },
 
@@ -413,7 +415,14 @@ export function createLiveNative(deps: LiveNativeDeps) {
       const lang = await deps.lang();
       await openStarter(lang);
       const at = now();
-      const q = await repo.nativeQueue(lang, at, studyDayStart(at), QUEUE_LIMIT, extra);
+      const q = await repo.nativeQueue(
+        lang,
+        at,
+        studyDayStart(at),
+        QUEUE_LIMIT,
+        extra,
+        await deps.newPerDay?.(),
+      );
       const p = await params(lang);
       const own = await ownSentences(lang);
       const cards: ReviewCard[] = [];

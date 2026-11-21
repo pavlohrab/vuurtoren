@@ -123,6 +123,29 @@ describe("native card store", () => {
     expect(ahead.cards.map((c) => c.card.id)).toEqual([102, 101]);
   });
 
+  it("keeps new cards of all decks together under one daily limit, lowest position first", async () => {
+    const { repo } = await newRepo();
+    await repo.append({
+      ...imported,
+      decks: [
+        { name: "Starter", options: { ...DEFAULT_DECK_OPTIONS, newPerDay: 20 } },
+        { name: "Reading", options: { ...DEFAULT_DECK_OPTIONS, newPerDay: 20 } },
+      ],
+      cards: [
+        { id: 101, noteId: 11, ord: 0, deck: "Starter", position: 5 },
+        { id: 102, noteId: 12, ord: 0, deck: "Starter", position: 6 },
+        { id: 103, noteId: 13, ord: 0, deck: "Reading", position: -1 },
+      ],
+      reviews: [],
+    });
+    const day = T0 - 3600_000;
+    // Each deck alone would give all three; one limit of two keeps the reading word and rank 5.
+    expect((await repo.nativeQueue("nl", T0, day, 50)).fresh).toBe(3);
+    const q = await repo.nativeQueue("nl", T0, day, 50, undefined, 2);
+    expect(q.cards.map((c) => c.card.id)).toEqual([103, 101]);
+    expect((await repo.nativeQueueCounts("nl", T0, day, 2)).fresh).toBe(2);
+  });
+
   it("gives more new cards by position across decks (frequency rank), not by deck name", async () => {
     const { repo } = await newRepo();
     await repo.append({

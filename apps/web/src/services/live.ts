@@ -194,6 +194,7 @@ export function createLiveServices(
     optimizer: workerOptimizer,
     sqlite: browserSqlite,
     reviewWeek: async () => (await settings()).reviewWeek ?? [],
+    newPerDay: async () => (await settings()).newWordsPerDay ?? 10,
     audioClip: (id) => config.services.audioClip(id),
   });
 

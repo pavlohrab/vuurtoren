@@ -6,7 +6,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { type ChangeEvent, useRef, useState } from "react";
 import { DEFAULT_DECK_OPTIONS, type DeckOptions, defaultProfile } from "@app/core";
-import { Button, Select, Skeleton, Spinner, useToast } from "@app/ui";
+import { Button, Input, Select, Skeleton, Spinner, useToast } from "@app/ui";
 import { plural, relativeTime } from "../../format.js";
 import { useServices } from "../../services/context.js";
 import { saveFile } from "../../saveFile.js";
@@ -138,7 +138,12 @@ function NativeCards() {
       <StarterWords />
       <ImportPackage />
       {decks.data?.length ? <ExportPackage decks={decks.data.map((d) => d.name)} /> : null}
-      {decks.data?.length ? <ReviewWeek /> : null}
+      {decks.data?.length ? (
+        <>
+          <NewWordsPerDay />
+          <ReviewWeek />
+        </>
+      ) : null}
       <Tuning />
       {decks.data?.length ? <MoveToAnki /> : null}
     </>
@@ -312,6 +317,44 @@ const DAY_LOAD = [
 ];
 
 /** Lighter days: weekdays with fewer reviews; due dates spread away from them. */
+/** New words a day, for all decks together: the one number most learners change. */
+function NewWordsPerDay() {
+  const services = useServices();
+  const qc = useQueryClient();
+  const settings = useQuery({ queryKey: ["settings"], queryFn: () => services.getSettings() });
+  const save = useMutation({
+    mutationFn: (newWordsPerDay: number) => services.saveSettings({ newWordsPerDay }),
+    onSettled: async () => {
+      await qc.invalidateQueries({ queryKey: ["settings"] });
+      await qc.invalidateQueries({ queryKey: ["review"] });
+    },
+  });
+  if (!settings.data) return null;
+  return (
+    <section className="stack" aria-labelledby="new-words-h">
+      <h3 className="settings-h3" id="new-words-h">
+        New words a day
+      </h3>
+      <p className="k-hint" style={{ margin: 0 }}>
+        How many new words join your reviews each day, from all your decks together: words you added
+        while reading first, then your level. After your reviews you can always go on with more.
+      </p>
+      <Input
+        type="number"
+        min={0}
+        max={200}
+        aria-label="New words a day"
+        className="cards-new-per-day"
+        defaultValue={settings.data.newWordsPerDay}
+        onBlur={(e) => {
+          const n = Math.max(0, Math.min(200, Math.round(Number(e.target.value))));
+          if (Number.isFinite(n) && n !== settings.data?.newWordsPerDay) save.mutate(n);
+        }}
+      />
+    </section>
+  );
+}
+
 function ReviewWeek() {
   const services = useServices();
   const qc = useQueryClient();

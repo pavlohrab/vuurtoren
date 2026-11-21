@@ -447,6 +447,7 @@ async function queuePlan(
   now: number,
   dayStart: number,
   options: Map<string, DeckOptions>,
+  newCap?: number,
 ): Promise<{ dueIds: number[]; freshIds: number[] }> {
   const dueRows = (
     await driver.exec(
@@ -486,6 +487,12 @@ async function queuePlan(
     fresh.push(...rows.map(toQueueRow));
   }
   fresh.sort((a, b) => a.position - b.position || a.id - b.id);
+  // One limit for all decks together: what is left of it today, words added while reading first.
+  if (newCap !== undefined) {
+    let today = 0;
+    for (const n of introduced.values()) today += n;
+    fresh.splice(Math.max(0, newCap - today));
+  }
   // Related cards apart: after one card of a note (or of the same word) was answered today,
   // its other new and review cards wait for another day. Learning steps go on.
   const answered = new Set<number>();
@@ -593,9 +600,10 @@ export function nativeQueries(driver: SqlDriver) {
       dayStart: number,
       limit: number,
       extra?: QueueExtra,
+      newCap?: number,
     ): Promise<NativeQueue> {
       const options = await deckOptions(driver, lang);
-      const { dueIds, freshIds } = await queuePlan(driver, lang, now, dayStart, options);
+      const { dueIds, freshIds } = await queuePlan(driver, lang, now, dayStart, options, newCap);
       const today = new Set([...dueIds, ...freshIds]);
       const more =
         extra && extra.count > 0
@@ -641,9 +649,10 @@ export function nativeQueries(driver: SqlDriver) {
       lang: string,
       now: number,
       dayStart: number,
+      newCap?: number,
     ): Promise<NativeQueueCounts> {
       const options = await deckOptions(driver, lang);
-      const { dueIds, freshIds } = await queuePlan(driver, lang, now, dayStart, options);
+      const { dueIds, freshIds } = await queuePlan(driver, lang, now, dayStart, options, newCap);
       return {
         due: dueIds.length,
         fresh: freshIds.length,
