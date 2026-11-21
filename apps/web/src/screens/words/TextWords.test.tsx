@@ -33,17 +33,17 @@ describe("textWordsActions", () => {
     expect(defaultAction("review")).toBe("skip");
     expect(actionOptions("absent").map((o) => o.label)).toEqual([
       "Add to Anki",
-      "Mark known",
+      "I know it",
       "Skip",
     ]);
     expect(actionOptions("suspended")[0]?.label).toBe("Unsuspend & study first");
-    expect(actionOptions("review").map((o) => o.label)).toEqual(["Skip", "Mark known"]);
+    expect(actionOptions("review").map((o) => o.label)).toEqual(["Skip", "I know it"]);
     // a word that was only translated starts as Skip
     expect(defaultAction("absent", "gloss")).toBe("skip");
     expect(actionOptions("absent", "gloss", true).map((o) => o.label)).toEqual([
       "Skip",
       "Add to my words",
-      "Mark known",
+      "I know it",
     ]);
   });
 
@@ -144,7 +144,7 @@ describe("TextWords page", () => {
     setup(URL);
     await screen.findByText("vertrekken");
     await userEvent.click(row("gracht"));
-    await userEvent.click(await screen.findByRole("option", { name: "Mark known" }));
+    await userEvent.click(await screen.findByRole("option", { name: "I know it" }));
     expect(screen.getByRole("button", { name: "Apply 4 actions" })).toBeVisible();
     await userEvent.click(row("vertrekken"));
     await userEvent.click(await screen.findByRole("option", { name: "Skip" }));

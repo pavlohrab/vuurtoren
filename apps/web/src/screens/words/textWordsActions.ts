@@ -37,7 +37,7 @@ export function defaultAction(status: AnkiStatus, source?: TextWordItem["source"
 const LABEL: Record<WordAction, string> = {
   add: "Add to Anki",
   learn: "Study first in Anki",
-  known: "Mark known",
+  known: "I know it",
   skip: "Skip",
 };
 

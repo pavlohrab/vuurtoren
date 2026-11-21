@@ -95,8 +95,8 @@ export function CourseRoute({ courseId }: { courseId: string }) {
         title={c.title}
         lede={
           <>
-            Progress is the state of each unit&rsquo;s words in your Anki decks, plus the exercises
-            you have done.
+            Progress is how many of each unit&rsquo;s words you know
+            {native ? "" : " in your Anki decks"}, plus the exercises you have done.
           </>
         }
         actions={
