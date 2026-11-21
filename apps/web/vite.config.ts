@@ -91,5 +91,8 @@ export default defineConfig({
     environment: "jsdom",
     setupFiles: ["./src/test-setup.ts"],
     css: false,
+    // Screen tests render whole pages (stories and their data included); on a busy machine 5 s is
+    // too tight. A real hang still fails.
+    testTimeout: 15_000,
   },
 });
