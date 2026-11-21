@@ -1,7 +1,7 @@
 /**
- * Settings: sections with a sub-nav on the left (a list on phones), each saving itself a
- * moment after a change. Account · Language & decks · Reading & audio · AI · Data & backup · Sync ·
- * Advanced.
+ * Settings: five sections with a sub-nav on the left (a list on phones), each saving itself a
+ * moment after a change: Your words · Reading · Your devices · AI (optional) · Data (backups,
+ * account and the advanced addresses). Old section names in links still open their new home.
  * The theme lives only in the top bar.
  */
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -13,9 +13,7 @@ import {
   Database,
   Languages,
   RefreshCw,
-  SlidersHorizontal,
   Sparkles,
-  UserRound,
 } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { Input, Select, Skeleton, Slider, useNativeMode } from "@app/ui";
@@ -23,6 +21,8 @@ import { InstallApp } from "../../pwa/PwaControls.js";
 import { useServices } from "../../services/context.js";
 import type { Settings as SettingsData } from "../../services/types.js";
 import { PageHeader } from "../../shell/PageHeader.js";
+import { useAppInfo } from "../../shell/AppInfo.js";
+import { ENGLISH_VISIBILITY, type ReaderPrefs, useReaderPrefs } from "../reader/readerPrefs.js";
 import { useTheme } from "../../theme.js";
 import { AccountSettings } from "./AccountSettings.js";
 import { AISettings } from "./AISettings.js";
@@ -36,69 +36,69 @@ import { ServerStatus } from "./ServerStatus.js";
 import { useAutosave } from "./useAutosave.js";
 import "./settings.css";
 
-export type SectionId = "language" | "reading" | "ai" | "data" | "sync" | "account" | "advanced";
+export type SectionId = "words" | "reading" | "devices" | "ai" | "data";
 
 const SECTIONS: { id: SectionId; label: string; hint: string; icon: ReactNode }[] = [
   {
-    id: "account",
-    label: "Account",
-    hint: "Who is signed in on this server.",
-    icon: <UserRound size={18} />,
-  },
-  {
-    id: "language",
-    label: "Language & decks",
-    hint: "Anki, the decks Vuurtoren reads and where new words go.",
+    id: "words",
+    label: "Your words",
+    hint: "Where your cards live, the starter words, how many new words a day, and deck files.",
     icon: <Languages size={18} />,
   },
   {
     id: "reading",
-    label: "Reading & audio",
-    hint: "Translations, words to learn per page, blanks, grammar and the voice.",
+    label: "Reading",
+    hint: "How much help you get while you read, and the voice that reads to you.",
     icon: <BookOpen size={18} />,
   },
   {
+    id: "devices",
+    label: "Your devices",
+    hint: "The same words and texts on your phone and computer, locked with your passphrase.",
+    icon: <RefreshCw size={18} />,
+  },
+  {
     id: "ai",
-    label: "AI",
-    hint: "Your own provider, or Claude Code with your subscription.",
+    label: "AI (optional)",
+    hint: "Stories, Talk and simpler pages with your own AI provider. Everything else works without it.",
     icon: <Sparkles size={18} />,
   },
   {
     id: "data",
-    label: "Data & backup",
-    hint: "Where your data lives; download and restore a backup.",
+    label: "Data",
+    hint: "Backups, your account and the technical details.",
     icon: <Database size={18} />,
-  },
-  {
-    id: "sync",
-    label: "Sync",
-    hint: "Your data on every device, encrypted with your passphrase.",
-    icon: <RefreshCw size={18} />,
-  },
-  {
-    id: "advanced",
-    label: "Advanced",
-    hint: "Server status, version, language server and AnkiConnect addresses, install the app.",
-    icon: <SlidersHorizontal size={18} />,
   },
 ];
 
-const isSection = (v: string | undefined): v is SectionId => SECTIONS.some((s) => s.id === v);
+/** Section names in older links and bookmarks, and where they live now. */
+const OLD_SECTIONS: Record<string, SectionId> = {
+  language: "words",
+  sync: "devices",
+  account: "data",
+  advanced: "data",
+};
+
+function sectionOf(v: string | undefined): SectionId | null {
+  if (!v) return null;
+  if (SECTIONS.some((s) => s.id === v)) return v as SectionId;
+  return OLD_SECTIONS[v] ?? null;
+}
 
 /** Settings: a section list and the chosen section. */
 export function SettingsScreen() {
   const { section: raw }: { section?: string } = useSearch({ from: "/settings" });
-  const chosen = isSection(raw) ? raw : null;
+  const chosen = sectionOf(raw);
   // Wide screens always show a section; phones show the list until one is picked.
-  const section = chosen ?? "language";
+  const section = chosen ?? "words";
   const meta = SECTIONS.find((s) => s.id === section)!;
-  // Native mode has no Anki connection: Move to Anki and deck files live in Language & decks.
+  // Native mode has no Anki connection: Move to Anki and deck files live in Your words.
   const native = useNativeMode();
   return (
     <div className="page page--list settings-page" data-picked={chosen ? "" : undefined}>
       <PageHeader
         title="Settings"
-        lede="Everything stays on your device unless you point it elsewhere. Changes save themselves."
+        lede="Everything stays on your device unless you choose otherwise. Changes save themselves."
       />
       <div className="settings-layout">
         <nav className="settings-nav" aria-label="Settings sections">
@@ -129,7 +129,7 @@ export function SettingsScreen() {
             <h2 id="settings-section-h">{meta.label}</h2>
             <p className="k-hint">{meta.hint}</p>
           </header>
-          {section === "language" ? (
+          {section === "words" ? (
             <div className="stack settings-stack">
               {native ? null : <AnkiConnection />}
               <LanguageDecksSettings />
@@ -141,14 +141,10 @@ export function SettingsScreen() {
               <AISettings />
               <ClaudeCodeSettings />
             </div>
-          ) : section === "data" ? (
-            <DataSettings />
-          ) : section === "sync" ? (
+          ) : section === "devices" ? (
             <SyncSettings />
-          ) : section === "account" ? (
-            <AccountSettings />
           ) : (
-            <AdvancedSettings />
+            <DataSection />
           )}
         </section>
       </div>
@@ -176,6 +172,43 @@ function useSettingsDraft() {
   return { form, set, setDraft, save };
 }
 
+/** Data: backups, then the account (on a server), then the technical details folded away. */
+function DataSection() {
+  const { account } = useAppInfo();
+  return (
+    <div className="stack settings-stack">
+      <DataSettings />
+      {account ? (
+        <section className="stack" aria-labelledby="account-h">
+          <h3 className="settings-h3" id="account-h">
+            Account
+          </h3>
+          <p className="k-hint" style={{ margin: 0 }}>
+            Who is signed in on this server, and signing out.
+          </p>
+          <AccountSettings />
+        </section>
+      ) : null}
+      <details className="k-disclosure">
+        <summary>
+          <ChevronRight size={16} className="k-disclosure-icon" aria-hidden />
+          Advanced
+          <span className="k-disclosure-hint">Addresses, server status, install the app</span>
+        </summary>
+        <div className="k-disclosure-body">
+          <AdvancedSettings />
+        </div>
+      </details>
+    </div>
+  );
+}
+
+const ENGLISH_LABEL: Record<ReaderPrefs["english"], string> = {
+  always: "Under every sentence",
+  hard: "Only under hard sentences",
+  tap: "Only when I tap",
+};
+
 const NEW_WORD_OPTIONS = [
   { value: "auto", label: "Auto (adapts to how you read)" },
   ...[0, 1, 2, 3, 4, 5, 6, 8].map((n) => ({ value: String(n), label: String(n) })),
@@ -183,31 +216,48 @@ const NEW_WORD_OPTIONS = [
 
 function ReadingSettings() {
   const { form, set, save } = useSettingsDraft();
+  // Per device, shared with the reader's Aa menu.
+  const [prefs, setPrefs] = useReaderPrefs();
   if (!form) return <Skeleton style={{ height: 160 }} />;
   return (
     <div className="stack settings-stack">
       <SavedNote status={save.status} error={save.error} />
       <div className="settings-field">
         <span className="k-label" id="help-dial">
-          Translations in Gloss mode
+          Help while reading
         </span>
         <Slider
-          aria-label="Translations in Gloss mode"
+          aria-label="Help while reading"
           value={Math.round(form.help * 100)}
           onValueChange={(v) => set({ help: v / 100 })}
         />
         <p className="k-hint">
-          Left: only new words get a translation. Right: most words do. The reader has the same
-          dial.
+          How many words show their English above them in Gloss mode. Left: only new words. Right:
+          most words. The reader&rsquo;s Aa menu has the same dial.
         </p>
       </div>
       <div style={{ maxWidth: 320 }}>
         <Select
-          label="Words to learn per page"
+          label="New words to learn per page"
           value={String(form.newWords)}
           options={NEW_WORD_OPTIONS}
           onValueChange={(v) => set({ newWords: v === "auto" ? "auto" : Number(v) })}
         />
+        <p className="k-hint">The words marked to learn on each page of a text.</p>
+      </div>
+      <div style={{ maxWidth: 320 }}>
+        <Select
+          label="English under sentences"
+          value={prefs.english}
+          options={ENGLISH_VISIBILITY.map((v) => ({ value: v, label: ENGLISH_LABEL[v] }))}
+          onValueChange={(v) =>
+            setPrefs({ english: ENGLISH_VISIBILITY.find((x) => x === v) ?? "hard" })
+          }
+        />
+        <p className="k-hint">
+          In Side by side. Hard sentences are the ones where you know less than 85% of the words.
+          Saved on this device.
+        </p>
       </div>
       <label className="settings-check">
         <input
@@ -216,8 +266,19 @@ function ReadingSettings() {
           onChange={(e) => set({ glossClozes: e.target.checked })}
         />
         <span>
-          Blanks in Gloss mode
-          <small>Also ask for a few words while translations are shown.</small>
+          Fill-in blanks while you read
+          <small>In Gloss mode, a few known words become blanks for you to fill in.</small>
+        </span>
+      </label>
+      <label className="settings-check">
+        <input
+          type="checkbox"
+          checked={prefs.clozeMeaning}
+          onChange={(e) => setPrefs({ clozeMeaning: e.target.checked })}
+        />
+        <span>
+          Show the meaning above blanks
+          <small>In Cloze mode, the English of each missing word. Saved on this device.</small>
         </span>
       </label>
       <label className="settings-check">
@@ -228,12 +289,10 @@ function ReadingSettings() {
         />
         <span>
           Grammar marks
-          <small>
-            A quiet mark in the margin beside sentences with grammar worth noticing at your level.
-          </small>
+          <small>A thin line beside sentences with grammar worth noticing at your level.</small>
         </span>
       </label>
-      <h3 className="settings-h3">Audio</h3>
+      <h3 className="settings-h3">Voice</h3>
       <div className="row" style={{ alignItems: "flex-start" }}>
         <div style={{ minWidth: 160 }}>
           <Select
@@ -266,7 +325,9 @@ function ReadingSettings() {
         />
         <span>
           Say the word when a card shows
-          <small>Recorded starter words; other words use your system's Dutch voice.</small>
+          <small>
+            Starter words have a recording; other words use your device&rsquo;s Dutch voice.
+          </small>
         </span>
       </label>
       <label className="settings-check">
@@ -277,7 +338,7 @@ function ReadingSettings() {
         />
         <span>
           Say the sentence when the answer shows
-          <small>R replays the word during review.</small>
+          <small>Press R during review to hear the word again.</small>
         </span>
       </label>
     </div>
@@ -293,19 +354,20 @@ function AdvancedSettings() {
       <Input
         label="Language server address"
         value={form.nlpUrl}
-        hint="The Dutch analysis, dictionary and translation server."
+        hint="The server that reads Dutch grammar and looks up words. Change it only if you run your own."
         onChange={(e) => set({ nlpUrl: e.target.value })}
       />
       <Input
         label="AnkiConnect address"
         value={form.ankiUrl}
+        hint="Where Anki listens on this computer (the AnkiConnect add-on)."
         onChange={(e) => set({ ankiUrl: e.target.value })}
       />
       <Input
         label="AnkiConnect key"
         type="password"
         value={form.ankiKey ?? ""}
-        hint="Only needed if you set an API key in the AnkiConnect add-on."
+        hint="Only if you set a key in the AnkiConnect add-on."
         onChange={(e) => {
           if (e.target.value) set({ ankiKey: e.target.value });
           else {

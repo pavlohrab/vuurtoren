@@ -10,14 +10,6 @@ import { type AnalyzedToken, type LearnerModel, classifyTokens, coverageOf } fro
 export const STORY_LEVELS = ["A1", "A2", "B1", "B2"] as const;
 export type StoryLevel = (typeof STORY_LEVELS)[number];
 
-/** Shelf names per level: A1 is where a beginner starts. */
-const STORY_LEVEL_NAME: Record<StoryLevel, string> = {
-  A1: "A1 · Start here",
-  A2: "A2",
-  B1: "B1",
-  B2: "B2",
-};
-
 /** Below this coverage a story is "a stretch" (the reader's graded threshold). */
 const STRETCH_BELOW = 0.95;
 
@@ -187,13 +179,39 @@ export function storyCovers(
   });
 }
 
-/** The shelf's rows: one per level that has stories, A1 first, in the given order. */
+/**
+ * The learner's story level: the highest level with a story that is not a stretch for them (A1
+ * when every story is still a stretch).
+ */
+function learnerStoryLevel(covers: readonly StoryCover[]): StoryLevel {
+  const easy = covers.filter((c) => !c.stretch).map((c) => STORY_LEVELS.indexOf(c.level));
+  return STORY_LEVELS[easy.length ? Math.max(...easy) : 0]!;
+}
+
+/**
+ * The shelf's rows: one per level that has stories, the learner's level first ("A1 · Start
+ * here" for a beginner, else "A2 · Your level"), then the others from A1 up.
+ */
 export function storyRows(
   covers: readonly StoryCover[],
 ): { level: StoryLevel; name: string; covers: StoryCover[] }[] {
-  return STORY_LEVELS.map((level) => ({
-    level,
-    name: STORY_LEVEL_NAME[level],
-    covers: covers.filter((c) => c.level === level),
-  })).filter((r) => r.covers.length > 0);
+  const mine = learnerStoryLevel(covers);
+  const order = [mine, ...STORY_LEVELS.filter((l) => l !== mine)];
+  return order
+    .map((level) => ({
+      level,
+      name: level !== mine ? level : level === "A1" ? "A1 · Start here" : `${level} · Your level`,
+      covers: covers.filter((c) => c.level === level),
+    }))
+    .filter((r) => r.covers.length > 0);
+}
+
+/**
+ * The story to start with: the first story of the learner's level not opened yet, a comfortable
+ * one before a stretch. Null when every story of that level is in the Library.
+ */
+export function storyToStart(covers: readonly StoryCover[]): StoryCover | null {
+  const level = learnerStoryLevel(covers);
+  const open = covers.filter((c) => c.level === level && c.textId === null);
+  return open.find((c) => !c.stretch) ?? open[0] ?? null;
 }

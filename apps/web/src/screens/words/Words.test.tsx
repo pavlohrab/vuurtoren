@@ -116,7 +116,7 @@ describe("Words", () => {
     render(<App services={native} history={history} />);
     expect(await screen.findByRole("link", { name: /Add the starter levels/ })).toHaveAttribute(
       "href",
-      "/settings?section=language",
+      "/settings?section=words",
     );
   });
 
@@ -128,7 +128,7 @@ describe("Words", () => {
     await user.click(await screen.findByRole("button", { name: "Open gracht" }));
     await waitFor(() => expect(history.location.search).toMatch(/word=gracht/));
     const panel = screen.getByRole("complementary", { name: "Inspector" });
-    expect(await within(panel).findByRole("button", { name: /Mark known/ })).toBeInTheDocument();
+    expect(await within(panel).findByRole("button", { name: /I know it/ })).toBeInTheDocument();
     expect(within(panel).getByRole("button", { name: "Ignore" })).toBeInTheDocument();
     // No deck path on the word; Recall only for words being learned.
     expect(within(panel).queryByText(/Vuurtoren::/)).toBeNull();

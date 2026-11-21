@@ -151,6 +151,24 @@ describe("native card store", () => {
     });
   });
 
+  it("without a profile (setup skipped) a word added in Vuurtoren has its card", async () => {
+    const { repo } = await newRepo();
+    await repo.append({
+      type: "NativeNotesAdded",
+      lang: "nl",
+      origin: "vuurtoren",
+      notetypes: [WORD],
+      decks: [{ name: "Vuurtoren::Nederlands", options: DEFAULT_DECK_OPTIONS }],
+      notes: [{ id: 5, notetypeId: WORD.id, fields: ["de kat", "", ""], tags: [], key: "kat" }],
+      cards: [{ id: 6, noteId: 5, ord: 0, deck: "Vuurtoren::Nederlands", position: 0 }],
+    });
+    expect(await repo.word("nl", "kat")).toMatchObject({
+      state: "learning",
+      noteIds: [5],
+      addedNoteId: 5,
+    });
+  });
+
   it("rebuilds to the same tables", async () => {
     const { repo } = await newRepo();
     await repo.append({ type: "LanguageProfileSet", profile: defaultProfile("nl") });

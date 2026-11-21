@@ -25,7 +25,7 @@ import { type WordInspectorHandle, useWordInspector } from "./useWordInspector.j
 import { sentenceWith } from "../sentence.js";
 import { PageHeader } from "../shell/PageHeader.js";
 import { readLastText } from "../lastText.js";
-import { pickContinue } from "./Home.js";
+import { pickContinue } from "../textPages.js";
 import "./converse.css";
 import { errorText } from "../services/errors.js";
 
@@ -236,7 +236,7 @@ export function Converse() {
       }),
     onSuccess: async (textId, c) => {
       setSavedAs({ conv: c.id, textId });
-      toast("Saved to your Library", "Read it again later, with its new words highlighted.");
+      toast("Saved to Your texts", "Read it again later, with its new words highlighted.");
       await qc.invalidateQueries({ queryKey: ["texts"] });
     },
     onError: (e) => toast("Could not save the conversation", errorText(e)),
@@ -290,7 +290,7 @@ export function Converse() {
             {
               id: "text",
               title: `About ${reading.text.title}`,
-              hint: reading.started ? "The text you are reading" : "The next text in your Library",
+              hint: reading.started ? "The text you are reading" : "The next of your texts",
               topic: reading.text.title,
               words: words.slice(0, 5),
             },
@@ -453,7 +453,7 @@ export function Converse() {
                   void navigate({ to: "/read/$textId", params: { textId: savedAs.textId } })
                 }
               >
-                Read in Library
+                Read it now
               </Button>
             ) : (
               <Button
@@ -462,7 +462,7 @@ export function Converse() {
                 onClick={() => save.mutate(conv)}
               >
                 <BookmarkPlus size={16} aria-hidden />{" "}
-                {save.isPending ? "Saving…" : "Save to Library"}
+                {save.isPending ? "Saving…" : "Save to my texts"}
               </Button>
             )}
           </>

@@ -625,8 +625,8 @@ export function ReaderPage({ textId }: { textId: string }) {
               <Button variant="primary" onClick={() => void reading.refetch()}>
                 Retry
               </Button>
-              <Link to="/library" className="k-btn">
-                Back to the Library
+              <Link to="/" className="k-btn">
+                Back to Read
               </Link>
             </div>
           }
@@ -652,8 +652,8 @@ export function ReaderPage({ textId }: { textId: string }) {
           title={data ? "There is nothing to read here yet" : "This text was not found"}
           description={data ? "The text has no readable words." : "It may have been deleted."}
           action={
-            <Link to="/library" className="k-btn k-btn--primary">
-              Back to the Library
+            <Link to="/" className="k-btn k-btn--primary">
+              Back to Read
             </Link>
           }
         />
@@ -662,7 +662,7 @@ export function ReaderPage({ textId }: { textId: string }) {
   }
 
   const allAnswered = plan.clozes.every((i) => credits.has(i) || revealed.has(i));
-  // The whole text's coverage, the same number as Home and the Library.
+  // The whole text's coverage, the same number as on Read.
   const known = Math.round(textDifficulty(plans ?? [plan]).coverage * 100);
   // The highlighted (amber) words to learn, not every unknown word.
   const toLearn = plan.introduce.length;

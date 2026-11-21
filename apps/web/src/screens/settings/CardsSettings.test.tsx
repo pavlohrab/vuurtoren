@@ -12,7 +12,7 @@ function setup(native: boolean) {
   return { services, user: userEvent.setup() };
 }
 
-describe("Settings → Language & decks: cards", { timeout: 20_000 }, () => {
+describe("Settings → Your words: cards", { timeout: 20_000 }, () => {
   it("moves a connected learner from Anki to Vuurtoren", async () => {
     const { services, user } = setup(false);
     await user.click(await screen.findByRole("button", { name: "Move from Anki to Vuurtoren" }));
@@ -29,7 +29,7 @@ describe("Settings → Language & decks: cards", { timeout: 20_000 }, () => {
 
   it("adds the most common words, and sets the level new words start from", async () => {
     const { services, user } = setup(true);
-    expect(await screen.findByRole("heading", { name: "The most common words" })).toBeVisible();
+    expect(await screen.findByRole("heading", { name: "Starter words" })).toBeVisible();
     expect(screen.queryByText(/extended/)).toBeNull();
     await user.click(screen.getByRole("button", { name: "Add the most common words" }));
     await waitFor(async () =>
@@ -38,7 +38,7 @@ describe("Settings → Language & decks: cards", { timeout: 20_000 }, () => {
     await user.click(await screen.findByRole("combobox", { name: "Start new words from level" }));
     await user.click(await screen.findByRole("option", { name: /Level 3/ }));
     await waitFor(async () => expect((await services.starterLevels()).from).toBe(3));
-    const section = screen.getByRole("region", { name: "The most common words" });
+    const section = screen.getByRole("region", { name: "Starter words" });
     expect(within(section).queryByText(/Anki/)).toBeNull();
   });
 

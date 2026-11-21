@@ -123,11 +123,11 @@ export function TextComplete({
             <ArrowRight size={16} aria-hidden />
           </Link>
         ) : (
-          <Link to="/library" className="practice-next-link">
+          <Link to="/" className="practice-next-link">
             <BookOpen size={18} aria-hidden />
             <span>
               Next text
-              <small>Pick something from the Library</small>
+              <small>Pick a story or one of your texts</small>
             </span>
             <ArrowRight size={16} aria-hidden />
           </Link>

@@ -198,27 +198,12 @@
   color: var(--ink-muted);
   font-size: 12px;
 }
-.ob-first {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 12px;
-}
-.ob-first-card {
-  display: grid;
-  gap: 8px;
-  padding: 16px;
-  border: 1px solid var(--hairline);
-  border-radius: 10px;
-  background: var(--surface);
-}
-.ob-first-card h2 {
-  font-size: 16px;
-  margin: 0;
-}
-.ob-first-card p {
-  margin: 0;
-  color: var(--ink-muted);
-  font-size: 14px;
+/* Ready: one primary (Start reading) and a quiet way to bring a text of your own. */
+.ob-first-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-3) var(--s-5);
 }
 @media (max-width: 480px) {
   .ob-shell {

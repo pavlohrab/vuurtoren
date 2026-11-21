@@ -49,7 +49,7 @@ export function LanguageDecksSettings() {
   const native = profileMode(saved.data ?? profile) === "native";
 
   return (
-    <section className="stack" aria-label="Language and decks">
+    <section className="stack" aria-label="Your words">
       <SavedNote status={save.status} error={save.error} />
       {saved.data === null ? (
         <p className="ob-note">
@@ -95,6 +95,9 @@ export function LanguageDecksSettings() {
       )}
 
       <h3 className="settings-h3">Where new words go</h3>
+      <p className="k-hint" style={{ margin: 0 }}>
+        The deck a word joins when you add it, by where you found it.
+      </p>
       <DestinationFields profile={profile} onChange={setDraft} />
       {draft && !profile.destinations.default.trim() ? (
         <p className="error-text" role="alert" style={{ margin: 0 }}>

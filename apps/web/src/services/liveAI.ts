@@ -564,7 +564,7 @@ export function createLiveAI(deps: LiveAIDeps): AIServices &
         },
       );
       if (!result.text.trim()) throw new AIError("The provider returned an empty text.", "server");
-      onProgress?.("Saving it to your Library…");
+      onProgress?.("Saving it to Your texts…");
       const textId = await saveText({
         title: result.title,
         content: result.text,

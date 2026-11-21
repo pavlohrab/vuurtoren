@@ -22,7 +22,7 @@ function watchErrors(page: Page): string[] {
 async function importAndRead(page: Page): Promise<void> {
   await page.goto("/import");
   await page.getByLabel("Text", { exact: true }).fill(SAMPLE_TEXT);
-  await page.getByRole("button", { name: "Add to Library" }).click();
+  await page.getByRole("button", { name: "Add to my texts" }).click();
   await expect(page).toHaveURL(/\/read\//);
   await expect(page.locator(".k-reader .k-tok").first()).toBeVisible();
 }
@@ -110,6 +110,7 @@ test("browser storage mode", async ({ page }) => {
   await inspectWord(page);
   await page.getByRole("button", { name: /^Add to / }).click();
   await expect(page.getByText("Added to your words").first()).toBeVisible();
+  await expect(page.locator(".inspector-panel")).toContainText("Your card");
   await changeTextSize(page);
   // Skipping setup means Vuurtoren keeps the cards: the word is waiting in Review.
   await page.goto("/review");
@@ -124,10 +125,12 @@ test("native mode: start with the most common words, offline data in the app", a
   await page.goto("/");
   await page.getByRole("radio", { name: /^No/ }).check();
   await page.getByRole("button", { name: "Continue" }).click();
-  await page.getByRole("button", { name: "Save and continue" }).click();
   await page.getByRole("radio", { name: /^Level 2/ }).check();
   await page.getByRole("button", { name: "Continue" }).click();
-  await page.getByRole("button", { name: "Go to the Library" }).click();
+  await page.getByRole("button", { name: "Start reading" }).click();
+  await expect(page.getByRole("heading", { level: 1, name: "Read" })).toBeVisible();
+  // Three questions, then a story at the learner's level is ready on Read.
+  await expect(page.getByText(/A story at your level/)).toBeVisible();
   await page.goto("/review");
   // New words start at level 2: the first new card is the most common word after 500.
   await expect(page.locator(".review-word")).toBeVisible();
@@ -142,9 +145,9 @@ test("native mode: add a word while reading, then review it", async ({ page }) =
   await page.goto("/");
   await page.getByRole("radio", { name: /^No/ }).check();
   await page.getByRole("button", { name: "Continue" }).click();
-  await page.getByRole("button", { name: "Save and continue" }).click();
   await page.getByRole("button", { name: "Skip this" }).click();
-  await page.getByRole("button", { name: "Go to the Library" }).click();
+  await page.getByRole("button", { name: "Start reading" }).click();
+  await expect(page.getByRole("heading", { level: 1, name: "Read" })).toBeVisible();
   await importAndRead(page);
   await inspectWord(page);
   await expect(page.getByRole("group", { name: "Add to my words" })).toBeVisible();

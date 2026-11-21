@@ -261,7 +261,7 @@ function AnkiActions({
   const unavailable = status === "unavailable";
   const reason = anki.detail ?? "";
   const inProgress = status === "learning" || status === "review";
-  // Words already known (mature in Anki, or marked) need no "Mark known"; words not studied
+  // Words already known (mature in Anki, or marked) need no "I know it"; words not studied
   // yet always get it, because it also writes to Anki.
   const canMarkKnown = !anki.markedKnown && !(inProgress && entry.state === "known");
   const disabled = busy || unavailable;
@@ -321,7 +321,7 @@ function AnkiActions({
         <div className="k-inspector-secondary">
           {canMarkKnown ? (
             <Button disabled={disabled} onClick={() => onMarkKnown?.()}>
-              Mark known
+              I know it
             </Button>
           ) : null}
           <Button
@@ -333,8 +333,9 @@ function AnkiActions({
         </div>
         {canMarkKnown && status === "absent" ? (
           <p style={hintStyle}>
-            Mark known {native ? "adds it to your words as known" : "adds it to Anki as known"}.
-            Ignore leaves it out of coverage and suggestions.
+            &ldquo;I know it&rdquo;{" "}
+            {native ? "adds it to your words as known" : "adds it to Anki as known"}. Ignore leaves
+            it out of the counts and suggestions.
           </p>
         ) : null}
         {anki.overridden ? (

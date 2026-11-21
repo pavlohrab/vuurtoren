@@ -1,6 +1,7 @@
 import type { StarterWord } from "@app/anki";
 import { describe, expect, it } from "vitest";
 import {
+  currentLevel,
   groupByLevel,
   inLevel,
   levelLabel,
@@ -72,5 +73,15 @@ describe("starter levels", () => {
     ]);
     expect(progressText(p[0]!)).toBe("2 of 500 known · 1 learning");
     expect(progressText(p[1]!)).toBe("0 of 500 known");
+  });
+});
+
+describe("currentLevel", () => {
+  it("is the first level under 80% known, else the last", () => {
+    const p = (level: number, known: number) => ({ level, size: 500, known, learning: 0 });
+    expect(currentLevel([p(1, 450), p(2, 10), p(3, 0)])?.level).toBe(2);
+    expect(currentLevel([p(1, 0), p(2, 0)])?.level).toBe(1);
+    expect(currentLevel([p(1, 500), p(2, 400)])?.level).toBe(2);
+    expect(currentLevel([])).toBeNull();
   });
 });

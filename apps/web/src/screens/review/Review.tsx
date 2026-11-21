@@ -21,6 +21,7 @@ import { useMediaUrls } from "./useMedia.js";
 import { ErrorNotice } from "../../shell/ErrorNotice.js";
 import { PlayButton, useSay } from "../../audio/useSay.js";
 import type { Saying } from "../../audio/play.js";
+import { WordsRoom } from "../words/WordsRoom.js";
 import "./review.css";
 
 const RATINGS: { rating: CardRating; label: string }[] = [
@@ -198,6 +199,7 @@ export function Review() {
 
   return (
     <div className="page page--list review">
+      <WordsRoom tab="review" />
       <div className="review-top">
         <span className="k-hint" role="status">
           {counts}
@@ -272,11 +274,11 @@ export function Review() {
             }
           />
           <div className="row">
-            <Link to="/library" className="k-btn k-btn--primary">
+            <Link to="/" className="k-btn k-btn--primary">
               Read something
             </Link>
-            <Link to="/settings" search={{ section: "language" }} className="k-btn k-btn--ghost">
-              Decks and import
+            <Link to="/settings" search={{ section: "words" }} className="k-btn k-btn--ghost">
+              Import a deck
             </Link>
           </div>
         </>

@@ -699,7 +699,7 @@ Imported decks bring their own steps, limits and target retention.
 
 **Queue** (`nativeQueue` in `packages/db/src/cards.ts`): cards due now first (learning, relearning and review, earliest first), then new cards in each deck's order within its daily limit. When nothing else is left, learning cards due within 20 minutes come forward.
 
-**Related cards apart.** Once a card of a note, or of another note of the same word (same key), is answered on a study day, that note's and word's other new and review cards wait for the next day. In one session only the first of them is offered. Learning and relearning steps go on. The counts on the badge and Home follow the same rule.
+**Related cards apart.** Once a card of a note, or of another note of the same word (same key), is answered on a study day, that note's and word's other new and review cards wait for the next day. In one session only the first of them is offered. Learning and relearning steps go on. The counts on the Words badge and in Today on Read follow the same rule.
 
 #### 9.2.1 Workload
 
@@ -752,7 +752,7 @@ In native mode, what you do with a word outside the review screen reaches its ca
 
 Front, then Space or **Show answer**, then Again / Hard / Good / Easy (keys 1–4; Space or Enter is Good), Z or **Undo** takes back the latest answer, then the one before, also after a reload or on another day (the newest answer given on the review screen of this device, `nativeLastReview`, as long as no later answer to that card came from another device). The card comes back with its answer hidden. When another device's answer to the card arrives after an undo, the card is replayed from its remaining answers in order, so that answer still counts. A vocabulary card whose template shows the word on the front is laid out by Vuurtoren: the word and its sentence on the front, the meaning and the sentence translation on the back. Clozes and other templates are rendered from the note type's own template (fields, conditional sections, `FrontSide`, clozes, hints) and shown through an allow-list sanitiser: formatting tags only, no scripts, styles, frames, forms or event handlers, and only the card's own images. Sounds get a play button. After the answer, a sentence with the word from your own texts is shown when one exists.
 
-**Your words and your reviews.** In native mode Words has a **Due** view: the words with a card due now (`nativeDueKeys`), earliest first, each with how long ago it came due; with a source chosen, only that text's, unit's or session's words. The word inspector lists the word's latest eight answers under **Your reviews**: the day, the answer and the interval it gave (the card's history replayed; the latest answer shows the due date the card really got). Home's **This week** counts the reviews answered in Vuurtoren per day; an undone answer does not count.
+**Your words and your reviews.** In native mode Words has a **Due** view: the words with a card due now (`nativeDueKeys`), earliest first, each with how long ago it came due; with a source chosen, only that text's, unit's or session's words. The word inspector lists the word's latest eight answers under **Your reviews**: the day, the answer and the interval it gave (the card's history replayed; the latest answer shows the due date the card really got). The activity behind Progress counts the reviews answered in Vuurtoren per day; an undone answer does not count.
 
 ### 9.7 Export to .apkg
 

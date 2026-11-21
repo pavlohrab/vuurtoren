@@ -47,7 +47,6 @@ import { ErrorNotice } from "../../shell/ErrorNotice.js";
 import { useShell } from "../../shell/ShellContext.js";
 import { revealAboveSheet } from "../../shell/revealAboveSheet.js";
 import { useDebounced } from "../../useDebounced.js";
-import { loadStarterWords } from "../../services/starterWords.js";
 import { SuggestedWords } from "./SuggestedWords.js";
 import {
   type LevelFilter,
@@ -56,24 +55,14 @@ import {
   groupByLevel,
   inLevel,
   levelLabel,
-  levelProgress,
   parseLevel,
   progressText,
-  starterIndex,
 } from "./levels.js";
+import { ALL_WORDS, WordsRoom, loadStarterIndex, useLevelProgress } from "./WordsRoom.js";
 import { useWordActions } from "../useWordActions.js";
 import "./words.css";
 
 const PAGE_SIZE = 50;
-/** With a level filter or grouping, every word is read and then narrowed here. */
-const ALL_WORDS = 100_000;
-
-let starterIndexCache: Promise<StarterIndex> | null = null;
-/** The starter list's ranks by key (loaded on first use). */
-function loadStarterIndex(): Promise<StarterIndex> {
-  starterIndexCache ??= loadStarterWords().then(starterIndex);
-  return starterIndexCache;
-}
 
 /**
  * Rows narrowed to a starter level and/or ordered by level (`loadRows` reads them all first, so
@@ -329,7 +318,14 @@ export function Words() {
     staleTime: Infinity,
   });
   const level = parseLevel(params.level, index.data);
-  const grouped = params.group === "level";
+  // Native learners with the starter decks see their words by level unless they turn it off.
+  const starterDecks = useQuery({
+    queryKey: ["starter-levels"],
+    queryFn: () => services.starterLevels(),
+    enabled: native,
+  });
+  const hasStarter = native && (starterDecks.data?.held.length ?? 0) > 0;
+  const grouped = params.group === "level" || (params.group === undefined && hasStarter);
   const rows = useQuery({
     queryKey: ["words", "rows", params.source ?? null, view, params.q ?? "", limit, level, grouped],
     queryFn: async () =>
@@ -344,21 +340,8 @@ export function Words() {
         : loadRows(services, source, { view, query: params.q, limit }),
     placeholderData: keepPreviousData,
   });
-  const progress = useQuery({
-    queryKey: ["words", "level-progress"],
-    queryFn: async () => {
-      const idx = await loadStarterIndex();
-      const keys = [...idx.rank.keys()];
-      return levelProgress(idx, await services.words({ keys, limit: ALL_WORDS }));
-    },
-    enabled: grouped,
-  });
+  const progress = useLevelProgress(grouped);
   // Native learners whose profile predates the starter words have no starter decks.
-  const starterDecks = useQuery({
-    queryKey: ["starter-levels"],
-    queryFn: () => services.starterLevels(),
-    enabled: grouped && native,
-  });
   const noStarterDecks = grouped && native && starterDecks.data?.held.length === 0;
   const texts = useQuery({ queryKey: ["texts"], queryFn: () => services.listTexts() });
   const unitKey = source?.kind === "unit" ? source : null;
@@ -479,9 +462,10 @@ export function Words() {
 
   return (
     <div className="page page--list words-page">
+      <WordsRoom tab="words" />
       <PageHeader
-        title="Words"
-        lede="New words from your reading wait here for you to decide: learn them, mark them known or leave them. Open one to act on it."
+        title="Your words"
+        lede="New words from your reading wait here. Open one to add it to your words, mark it known or leave it."
         actions={
           list.length > 0 ? (
             <Link
@@ -582,7 +566,17 @@ export function Words() {
               variant={grouped ? "secondary" : "ghost"}
               size="sm"
               aria-pressed={grouped}
-              onClick={() => setSearch({ group: grouped ? undefined : "level" })}
+              onClick={() =>
+                setSearch({
+                  group: grouped
+                    ? hasStarter
+                      ? "none"
+                      : undefined
+                    : hasStarter
+                      ? undefined
+                      : "level",
+                })
+              }
             >
               <Layers size={14} aria-hidden /> Group by level
             </Button>
@@ -636,7 +630,10 @@ export function Words() {
               onClick={() => {
                 setDraft("");
                 // Grouping is a way of showing the list, not a filter: it stays.
-                const keep = { ...(word ? { word } : {}), ...(grouped ? { group: "level" } : {}) };
+                const keep = {
+                  ...(word ? { word } : {}),
+                  ...(params.group ? { group: params.group } : {}),
+                };
                 void navigate({ to: "/words", search: keep, replace: true });
               }}
             >
@@ -648,8 +645,8 @@ export function Words() {
 
       {noStarterDecks ? (
         <p className="words-levels-hint">
-          <Link to="/settings" search={{ section: "language" }}>
-            Add the starter levels in Settings → Language &amp; decks
+          <Link to="/settings" search={{ section: "words" }}>
+            Add the starter levels in Settings → Your words
           </Link>
         </p>
       ) : null}
@@ -684,7 +681,7 @@ export function Words() {
           title="Nothing to decide"
           description="Every new word from your texts has a card or a decision. New words appear here as you read."
           action={
-            <Link to="/library" className="k-btn k-btn--secondary">
+            <Link to="/" className="k-btn k-btn--secondary">
               Find something to read
             </Link>
           }
@@ -695,7 +692,7 @@ export function Words() {
           title="Nothing due"
           description="Every card is up to date. Words come back here when their next review is due."
           action={
-            <Link to="/library" className="k-btn k-btn--secondary">
+            <Link to="/" className="k-btn k-btn--secondary">
               Find something to read
             </Link>
           }

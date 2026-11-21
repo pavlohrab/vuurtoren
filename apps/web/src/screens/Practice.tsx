@@ -37,7 +37,8 @@ import { writePracticeAgain } from "../lastPractice.js";
 import { readLastText } from "../lastText.js";
 import { readLocalJSON, writeLocalJSON } from "../storage/local.js";
 import { type WordInspectorHandle, useWordInspector } from "./useWordInspector.js";
-import { pickContinue } from "./Home.js";
+import { pickContinue } from "../textPages.js";
+import { WordsRoom } from "./words/WordsRoom.js";
 
 export const SKILLS: { skill: Skill; label: string }[] = [
   { skill: "recognition", label: "Recognition" },
@@ -119,6 +120,7 @@ function PracticeSession({ focus, autoStart }: { focus: string[] | null; autoSta
 
   return (
     <div className="page page--list practice">
+      {phase.name === "start" || phase.name === "loading" ? <WordsRoom tab="practice" /> : null}
       {phase.name === "start" || phase.name === "loading" ? (
         <StartView
           loading={phase.name === "loading"}
@@ -309,8 +311,8 @@ function StartView({
               : "No exercises are due right now. Read something new and come back later."
           }
           action={
-            <Link to="/library" className="k-btn k-btn--primary">
-              Go to the Library
+            <Link to="/" className="k-btn k-btn--primary">
+              Find something to read
             </Link>
           }
         />
@@ -753,11 +755,11 @@ function NextSteps({
           <ArrowRight size={16} aria-hidden />
         </Link>
       ) : (
-        <Link to="/library" className="practice-next-link">
+        <Link to="/" className="practice-next-link">
           <BookOpen size={18} aria-hidden />
           <span>
             Next text
-            <small>Pick something from the Library</small>
+            <small>Pick a story or one of your texts</small>
           </span>
           <ArrowRight size={16} aria-hidden />
         </Link>

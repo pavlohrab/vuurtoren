@@ -6,7 +6,9 @@ import { EmptyState, Skeleton } from "@app/ui";
 import { useServices } from "../services/context.js";
 import { groupWeeks, type ActivityWeek, type KnownPoint } from "../services/activity.js";
 import { PageHeader, SectionHeader } from "../shell/PageHeader.js";
-import { relativeTime } from "../format.js";
+import { pct, relativeTime } from "../format.js";
+import type { TextListItem } from "../services/types.js";
+import { WordsRoom } from "./words/WordsRoom.js";
 import { ErrorNotice } from "../shell/ErrorNotice.js";
 import "./progress.css";
 
@@ -15,24 +17,39 @@ const WEEKS = 12;
 const DAY_FMT = new Intl.DateTimeFormat(undefined, { day: "numeric", month: "short" });
 const dayOf = (iso: string) => DAY_FMT.format(new Date(`${iso}T12:00:00`));
 
-/** Progress: your words and your reading over the last weeks, in calm charts. */
+/** Coverage of the library: analysed texts weighted by length. Null when nothing is analysed. */
+export function libraryCoverage(texts: readonly TextListItem[]): number | null {
+  let words = 0;
+  let known = 0;
+  for (const t of texts) {
+    if (t.coverage === null) continue;
+    words += t.wordCount;
+    known += t.coverage * t.wordCount;
+  }
+  return words > 0 ? known / words : null;
+}
+
+/** Progress (a tab of Words): your words and your reading over the last weeks, in calm charts. */
 export function Progress() {
   const services = useServices();
   const q = useQuery({ queryKey: ["learner"], queryFn: () => services.learnerSummary() });
+  const texts = useQuery({ queryKey: ["texts"], queryFn: () => services.listTexts() });
+  const coverage = texts.data ? libraryCoverage(texts.data) : null;
   const s = q.data;
   const synced = Boolean(s?.lastSync) || s?.native === true;
 
   // Nothing synced and nothing read yet: one next step instead of a wall of zeros.
   if (s && !synced && s.known + s.learning === 0) {
     return (
-      <div className="page">
+      <div className="page page--list">
+        <WordsRoom tab="progress" />
         <PageHeader title="Progress" />
         <EmptyState
           icon={<TrendingUp size={20} />}
           title="Nothing to measure yet"
-          description="Add words you know, or connect Anki, and Vuurtoren can tell how many Dutch words you know."
+          description="Read a story and add a few words, and Vuurtoren can tell how many Dutch words you know."
           action={
-            <Link to="/settings" search={{ section: "language" }} className="k-btn k-btn--primary">
+            <Link to="/settings" search={{ section: "words" }} className="k-btn k-btn--primary">
               Set up your words
             </Link>
           }
@@ -42,7 +59,8 @@ export function Progress() {
   }
 
   return (
-    <div className="page progress">
+    <div className="page page--list progress">
+      <WordsRoom tab="progress" />
       <PageHeader
         title="Progress"
         lede={
@@ -51,11 +69,6 @@ export function Progress() {
             : s?.lastSync
               ? `Based on your Anki collection, synced ${relativeTime(s.lastSync)}.`
               : "Based on your reading so far. Connect Anki in Settings to include your decks."
-        }
-        actions={
-          <Link to="/words" className="k-btn k-btn--secondary">
-            All words
-          </Link>
         }
       />
       {q.isPending ? (
@@ -67,6 +80,7 @@ export function Progress() {
           <Stat value={fmt(s.known)} label="Known words" state="known" />
           <Stat value={fmt(s.learning)} label="Learning" state="learning" />
           <Stat value={fmt(s.unknown)} label="New words" state="unknown" />
+          {coverage !== null ? <Stat value={pct(coverage)} label="Known in your texts" /> : null}
         </div>
       ) : (
         <ErrorNotice

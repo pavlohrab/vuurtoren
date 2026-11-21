@@ -1,7 +1,7 @@
 import type { TextListItem } from "./services/types.js";
 
 /** Words per reader page (the reader's segment target, packages/core reading/segment.ts). */
-export const WORDS_PER_PAGE = 150;
+const WORDS_PER_PAGE = 150;
 
 type PageFields = Pick<TextListItem, "wordCount" | "lastSegment"> & {
   pages?: number | null | undefined;

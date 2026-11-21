@@ -158,7 +158,7 @@ export function GrammarTopicPage({ topicId }: { topicId: string }) {
         ) : null}
         {count && count.hits > 0 ? (
           <span>
-            Seen {plural(count.hits, "time")} in {plural(count.texts, "text")} of your Library
+            Seen {plural(count.hits, "time")} in {plural(count.texts, "text")} of yours
           </span>
         ) : null}
       </p>

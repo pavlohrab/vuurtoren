@@ -21,24 +21,37 @@ function setup(url: string) {
 }
 
 describe("Settings", () => {
-  it("has sections in a sub-nav, with Anki's connection at the top of Language & decks", async () => {
+  it("has five sections in plain words, with Anki's connection at the top of Your words", async () => {
     setup("/settings");
     const nav = await screen.findByRole("navigation", { name: "Settings sections" });
-    for (const name of [
-      "Account",
-      "Language & decks",
-      "Reading & audio",
-      "AI",
-      "Data & backup",
-      "Advanced",
-    ])
-      expect(within(nav).getByRole("link", { name: new RegExp(name) })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { level: 2, name: "Language & decks" })).toBeVisible();
+    const names = within(nav)
+      .getAllByRole("link")
+      .map((l) => l.firstChild?.nextSibling?.firstChild?.textContent);
+    expect(names).toEqual(["Your words", "Reading", "Your devices", "AI (optional)", "Data"]);
+    expect(screen.getByRole("heading", { level: 2, name: "Your words" })).toBeVisible();
     const anki = screen.getByRole("group", { name: "Anki connection" });
     expect(await within(anki).findByText(/Anki is (connected|not connected)/)).toBeInTheDocument();
     // No theme picker here: the theme lives in the top bar only.
     expect(screen.queryByLabelText("Theme")).toBeNull();
     expect(screen.queryByRole("button", { name: /Save settings/ })).toBeNull();
+  });
+
+  it("opens old section links in their new home", async () => {
+    setup("/settings?section=sync");
+    expect(await screen.findByRole("heading", { level: 2, name: "Your devices" })).toBeVisible();
+  });
+
+  it("explains each reading switch in a line, and English under sentences is on this device", async () => {
+    const { user } = setup("/settings?section=reading");
+    expect(
+      await screen.findByRole("checkbox", { name: /Fill-in blanks while you read/ }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("checkbox", { name: /Show the meaning above blanks/ })).toBeChecked();
+    await user.click(screen.getByRole("checkbox", { name: /Show the meaning above blanks/ }));
+    expect(JSON.parse(localStorage.getItem("vuurtoren-reader-prefs") ?? "{}")).toMatchObject({
+      clozeMeaning: false,
+    });
+    expect(screen.getByRole("combobox", { name: "English under sentences" })).toBeInTheDocument();
   });
 
   it("saves reading settings on their own and says so quietly", async () => {

@@ -66,9 +66,9 @@ function MoveFromAnki() {
         Reviews
       </h3>
       <p className="k-hint" style={{ margin: 0 }}>
-        Anki is the record of the words you know and runs your reviews. You can bring your decks
-        into Vuurtoren instead: the decks below are imported once, with every card and its review
-        history, and from then on Vuurtoren schedules your reviews. Anki is not changed.
+        Anki keeps your cards and runs your reviews. You can bring your decks into Vuurtoren
+        instead: they come over once, with every card and its past reviews, and from then on
+        Vuurtoren plans your reviews. Anki itself is not changed.
       </p>
       {move.isSuccess ? (
         <p role="status" style={{ margin: 0 }}>
@@ -122,7 +122,8 @@ function NativeCards() {
           Your cards
         </h3>
         <p className="k-hint" style={{ margin: 0 }}>
-          Vuurtoren keeps your words and schedules your reviews with FSRS.
+          Vuurtoren keeps your cards and plans your reviews with spaced review (FSRS): each word
+          comes back just before you would forget it.
         </p>
         {decks.data ? (
           decks.data.length ? (
@@ -183,12 +184,12 @@ function StarterWords() {
   return (
     <section className="stack" aria-labelledby="starter-h">
       <h3 className="settings-h3" id="starter-h">
-        The most common words
+        Starter words
       </h3>
       <p className="k-hint" style={{ margin: 0 }}>
         {held.length
-          ? `You have ${held.length} of the ${all} levels of 500 words. A level starts when the one before it has no new cards left.`
-          : "Cards for the most common Dutch words, 500 at a time, each with an example sentence. A level starts when the one before it has no new cards left."}
+          ? `The most common Dutch words, 500 to a level. You have ${held.length} of the ${all} levels; a level starts when the one before it has no new words left.`
+          : "The most common Dutch words, 500 to a level, each with an example sentence. A level starts when the one before it has no new words left."}
       </p>
       {held.length ? (
         <div style={{ maxWidth: 320 }}>
@@ -296,8 +297,8 @@ function DeckTable({ decks }: { decks: DeckWithLoad[] }) {
         </tbody>
       </table>
       <p className="k-hint" style={{ margin: 0 }}>
-        Target recall is how likely you are to remember a card when it comes back. Higher means more
-        reviews a day: each choice shows about how many, for the cards you have now.
+        Target recall: how likely you are to still know a card when it comes back. Higher means more
+        reviews a day; each choice shows about how many.
       </p>
     </div>
   );
@@ -341,8 +342,7 @@ function ReviewWeek() {
         Review days
       </h3>
       <p className="k-hint" style={{ margin: 0 }}>
-        Days with fewer reviews. Vuurtoren spreads due dates within the room each interval allows:
-        away from busy days, and away from reduced and minimum days.
+        Days you want fewer reviews. Vuurtoren moves cards away from them where it can.
       </p>
       <div className="cards-week">
         {WEEKDAYS.map((day, i) => (
@@ -391,9 +391,9 @@ function MoveToAnki() {
         Move to Anki
       </h3>
       <p className="k-hint" style={{ margin: 0 }}>
-        Use Anki for your reviews from now on. Your words become notes in Anki, in the same decks;
-        cards you have reviewed come due on the same day. Vuurtoren then reads your words from Anki
-        again. Notes of other types stay out: export them to a deck file above.
+        Review in Anki from now on. Your words become notes in Anki, in the same decks, and each
+        card comes due on the same day as here. Vuurtoren then reads your words from Anki. Cards of
+        other kinds stay here: export them to a deck file above.
       </p>
       {confirm ? (
         <div className="stack" style={{ gap: 8 }}>
@@ -457,8 +457,8 @@ function ExportPackage({ decks }: { decks: string[] }) {
         Export to a deck file
       </h3>
       <p className="k-hint" style={{ margin: 0 }}>
-        An Anki deck file (.apkg) with your notes, cards, their schedule and memory, deck options,
-        review history, images and sounds. Import it in Anki with File › Import.
+        A deck file (.apkg) Anki can open, with your cards, their past reviews, images and sounds.
+        In Anki: File › Import.
       </p>
       <div className="row" style={{ alignItems: "flex-end" }}>
         {tops.length > 1 ? (
@@ -519,8 +519,8 @@ function ImportPackage() {
         Import a deck file
       </h3>
       <p className="k-hint" style={{ margin: 0 }}>
-        An Anki deck (.apkg) or collection (.colpkg): notes, cards, review history, images and
-        sounds. Cards you already have are kept as they are.
+        Bring in an Anki deck (.apkg) or collection (.colpkg), with past reviews, images and sounds.
+        Cards you already have stay as they are.
       </p>
       <label className="k-btn k-btn--secondary cards-file">
         Choose a file
@@ -618,8 +618,8 @@ function Tuning() {
         Tuned to you
       </h3>
       <p className="k-hint" style={{ margin: 0 }}>
-        The FSRS optimizer learns how you forget from your review history and sets the scheduler to
-        match. It runs by itself every 30 days or after 500 new reviews, on this device.
+        Vuurtoren learns how quickly you forget from your past reviews and times your cards to
+        match. It does this by itself every 30 days or after 500 new reviews, on this device.
       </p>
       {t ? (
         <p style={{ margin: 0 }} role="status">

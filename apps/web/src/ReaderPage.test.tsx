@@ -65,7 +65,7 @@ describe("ReaderPage", () => {
     expect(await screen.findByText("In review · due in 41 days")).toBeInTheDocument();
     await userEvent.click(screen.getByText("stad"));
     expect(await screen.findByText("Loading the word")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Mark known" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "I know it" })).toBeNull();
     await act(async () => release());
     expect(await screen.findByRole("heading", { name: /stad/ })).toBeInTheDocument();
   });
@@ -300,15 +300,15 @@ describe("Anki write actions in the inspector", () => {
     setup("/read/t-utrecht");
     await userEvent.click(await screen.findByText("grachten"));
     await screen.findByRole("button", { name: ADD });
-    inspectorButtons("Mark known", "Ignore");
-    expect(screen.getByText(/Mark known adds it to Anki as known/)).toBeInTheDocument();
+    inspectorButtons("I know it", "Ignore");
+    expect(screen.getByText(/I know it” adds it to Anki as known/)).toBeInTheDocument();
     // No deck path on the word: the deck is named only in the Add menu.
     expect(screen.queryByText(/Vuurtoren::Nederlands/)).toBeNull();
-    await userEvent.click(screen.getByRole("button", { name: "Mark known" }));
+    await userEvent.click(screen.getByRole("button", { name: "I know it" }));
     expect(await screen.findByText("Marked as known")).toBeInTheDocument();
     expect(await screen.findByText("Added to Anki, Reading")).toBeInTheDocument();
     expect(await screen.findByText("In review · due in 28 days")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Mark known" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "I know it" })).toBeNull();
     await userEvent.click(screen.getByRole("button", { name: /Use Anki.s state/ }));
     expect(await screen.findByText(/Using Anki.s state/)).toBeInTheDocument();
     await waitFor(() =>
@@ -360,7 +360,7 @@ describe("Anki write actions in the inspector", () => {
     setup("/read/t-utrecht");
     await openSecondSegment();
     await userEvent.click(await screen.findByText("reis"));
-    inspectorButtons("Unsuspend & study first", "Mark known");
+    inspectorButtons("Unsuspend & study first", "I know it");
     expect(screen.getByText("Suspended")).toBeInTheDocument();
   });
 
@@ -369,7 +369,7 @@ describe("Anki write actions in the inspector", () => {
     await openSecondSegment();
     await userEvent.click(await screen.findByText("trein"));
     expect(await screen.findByText("In review · due in 6 days")).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "Mark known" }));
+    await userEvent.click(screen.getByRole("button", { name: "I know it" }));
     expect(await screen.findByText("Marked as known")).toBeInTheDocument();
   });
 
@@ -380,7 +380,7 @@ describe("Anki write actions in the inspector", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "Anki not reachable. cannot reach http://127.0.0.1:8765",
     );
-    expect(screen.getByRole("button", { name: "Mark known" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "I know it" })).toBeDisabled();
   });
 
   it("explains a failed Study first in Anki in plain words", async () => {
@@ -430,8 +430,8 @@ describe("AppShell notices", () => {
   });
 
   it("shows no banner by default", async () => {
-    setup("/library");
-    await screen.findByText("Een dag in Utrecht");
+    setup("/");
+    await screen.findAllByText("Een dag in Utrecht");
     expect(screen.queryByText("Demo data")).toBeNull();
   });
 });

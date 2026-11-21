@@ -372,6 +372,15 @@ export async function createRepository(
   });
 
   /** Gather facts for all words (or only `keys`) of a language and compose them. */
+  /** Anki was synced or written to for `lang`. */
+  async function usedAnki(lang: string): Promise<boolean> {
+    const rows = await driver.exec(
+      `SELECT 1 FROM meta WHERE key = ? UNION ALL SELECT 1 FROM notes_added WHERE lang = ? LIMIT 1`,
+      [`snapshot:${lang}`, lang],
+    );
+    return rows.length > 0;
+  }
+
   async function loadWords(lang: string, keys?: string[]): Promise<Map<string, WordInfo>> {
     // One JSON parameter instead of one per key: no SQLite variable limit for large batches.
     const k = keys === undefined ? "" : " AND key IN (SELECT value FROM json_each(?))";
@@ -385,9 +394,11 @@ export async function createRepository(
     const profileRow = (
       await driver.exec("SELECT profile FROM language_profiles WHERE lang = ?", [lang])
     )[0];
-    const native =
-      profileRow !== undefined &&
-      profileMode(json<LanguageProfile>(profileRow["profile"])) === "native";
+    // No profile yet: Vuurtoren's own cards, like profileMode, unless Anki was used before
+    // profiles existed (synced or written to; that learner stays connected).
+    const native = profileRow
+      ? profileMode(json<LanguageProfile>(profileRow["profile"])) === "native"
+      : !(await usedAnki(lang));
     if (native) {
       // Native mode: Vuurtoren's own cards are the record; Anki snapshots and notes added to Anki
       // from connected days are left aside.

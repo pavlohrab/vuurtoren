@@ -119,7 +119,7 @@ export function Courses() {
         title="Delete this course"
         description={
           pendingDelete
-            ? `"${pendingDelete.course.title}" and its exercises are removed. Texts already in your Library stay.`
+            ? `"${pendingDelete.course.title}" and its exercises are removed. Its texts stay in Your texts.`
             : ""
         }
       >

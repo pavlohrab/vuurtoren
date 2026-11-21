@@ -1,5 +1,5 @@
 /**
- * "Write a story": an AI-written text at your level, saved to the Library (docs/ai.md, Stories).
+ * "Write a story": an AI-written text at your level, saved to Your texts (docs/ai.md, Stories).
  * The form is the last tab of Add text; a grammar topic page and a course unit link to it with
  * their topic or words preset. Shown only when an AI provider is configured (`useAIReady`).
  */
@@ -137,7 +137,7 @@ export function StoryForm({ preset = {} }: { preset?: StoryPreset }) {
     onSuccess: async (r) => {
       await qc.invalidateQueries({ queryKey: ["texts"] });
       toast(
-        `Saved “${r.title}” to your Library`,
+        `Saved “${r.title}” to Your texts`,
         r.missingTargets.length
           ? `It does not use: ${r.missingTargets.join(", ")}.`
           : r.coverage !== null

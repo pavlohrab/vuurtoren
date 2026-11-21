@@ -6,7 +6,6 @@ import { examBank } from "@app/content";
 import { App } from "../../App.js";
 import { createMockServices } from "../../services/mock.js";
 import type { AppServices } from "../../services/types.js";
-import { examNextStep } from "../Home.js";
 
 function setup(path: string, patch: Partial<AppServices> = {}) {
   const base = createMockServices({ latencyMs: 0 });
@@ -149,38 +148,6 @@ describe("Writing and speaking", () => {
     await user.click(screen.getByRole("button", { name: /I'm done/ }));
     expect(await screen.findByText(p.model)).toBeInTheDocument();
     expect(screen.getByText("No recording for this answer.")).toBeInTheDocument();
-  });
-});
-
-describe("Home exam step", () => {
-  it("suggests the first untried part, then the weakest; null before starting", () => {
-    const now = Date.UTC(2026, 10, 18, 12);
-    const a = (part: string, correct: number, at = now - 2 * 86_400_000) => ({
-      id: part,
-      exam: "nl-a2",
-      part,
-      mode: "practice" as const,
-      setId: "set:1",
-      correct,
-      total: 10,
-      passMark: 7,
-      durationMs: 1,
-      at,
-      missed: [],
-      words: [],
-    });
-    expect(examNextStep([], now)).toBeNull();
-    expect(examNextStep([a("lezen", 8)], now)).toMatchObject({
-      part: "luisteren",
-      label: "Try Luisteren",
-      doneToday: 0,
-    });
-    const all = ["lezen", "luisteren", "schrijven", "spreken", "knm"].map((p, i) => a(p, 9 - i));
-    expect(examNextStep(all, now)).toMatchObject({ part: "knm", label: "Practise KNM" });
-    expect(examNextStep([...all, a("knm", 9, now)], now)).toMatchObject({
-      part: "spreken",
-      doneToday: 1,
-    });
   });
 });
 

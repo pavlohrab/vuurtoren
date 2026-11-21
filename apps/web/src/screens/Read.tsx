@@ -18,7 +18,7 @@ import { Button, Dialog, EmptyState, Input, Select, Skeleton, useToast } from "@
 import { useServices } from "../services/context.js";
 import type { Shelf } from "../services/libraryTypes.js";
 import type { TextListItem } from "../services/types.js";
-import { PageHeader } from "../shell/PageHeader.js";
+import { PageHeader, SectionHeader } from "../shell/PageHeader.js";
 import { ErrorNotice } from "../shell/ErrorNotice.js";
 import { CoverDialog } from "./library/CoverDialog.js";
 import { DRAG_TYPE, LibraryItem } from "./library/LibraryItem.js";
@@ -37,6 +37,7 @@ import {
   sortTexts,
 } from "./library/shelving.js";
 import { StoriesShelf } from "./library/StoriesShelf.js";
+import { TodayStrip } from "./library/TodayStrip.js";
 import { TextDetailsDialog } from "./library/TextDetailsDialog.js";
 import { readLastText } from "../lastText.js";
 import "./library/library.css";
@@ -74,12 +75,13 @@ function draggedIds(e: DragEvent): string[] | null {
 }
 
 /**
- * Library: a bookshelf. Rows of covers (Reading now, the learner's shelves, To read, Finished,
- * then by source) that scroll sideways, or every text in a grid; search, sort, multi-select,
- * and per-cover details, cover and shelf actions. Below the shelves, the Stories that come
- * with the app.
+ * Read: the landing page. Today on top (continue reading, reviews due, the current level), then
+ * Stories for you (the bundled stories, the learner's level first), then Your texts: a bookshelf
+ * of rows of covers (Reading now, the learner's shelves, To read, Finished) that scroll
+ * sideways, or every text in a grid; search, sort, multi-select, and per-cover details, cover
+ * and shelf actions.
  */
-export function Library() {
+export function Read() {
   const services = useServices();
   const navigate = useNavigate();
   const qc = useQueryClient();
@@ -120,7 +122,7 @@ export function Library() {
     mutationFn: (id: string) => services.deleteShelf(id),
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: ["shelves"] });
-      toast("Shelf deleted", "Its texts are still in your Library.");
+      toast("Shelf deleted", "Its texts are still in Your texts.");
     },
     onError: (e) => toast("Could not delete the shelf", errorText(e)),
   });
@@ -260,7 +262,7 @@ export function Library() {
   } else if (texts.isError) {
     body = (
       <ErrorNotice
-        title="The Library could not be loaded."
+        title="Your texts could not be loaded."
         error={texts.error}
         onRetry={() => void texts.refetch()}
       />
@@ -269,10 +271,10 @@ export function Library() {
     body = (
       <EmptyState
         icon={<LibraryIcon size={20} />}
-        title="Your Library is empty"
-        description="Paste a text, add a web page, or upload a PDF or photo to start reading."
+        title="No texts of your own yet"
+        description="Start with a story above, or paste an article, add a web page, a PDF or a photo."
         action={
-          <Link to="/import" className="k-btn k-btn--primary">
+          <Link to="/import" className="k-btn k-btn--secondary">
             <Plus size={16} aria-hidden /> Add text
           </Link>
         }
@@ -332,104 +334,109 @@ export function Library() {
   return (
     <div className="page library" data-selecting={selecting ? "" : undefined}>
       <PageHeader
-        title="Library"
-        lede="Your bookshelf: texts on shelves, with how much of each you already know."
+        title="Read"
+        lede="Stories at your level and texts of your own. Tap a word while you read to keep it."
         actions={
-          <>
-            <Link to="/import" className="k-btn k-btn--primary">
-              <Plus size={16} aria-hidden /> Add text
-            </Link>
-          </>
+          <Link to="/import" className="k-btn k-btn--secondary">
+            <Plus size={16} aria-hidden /> Add text
+          </Link>
         }
       />
+
+      <TodayStrip />
 
       {needsAnki ? (
         <div className="banner" role="note">
           <span>Connect Anki and Vuurtoren can tell how much of each text you already know.</span>
-          <Button variant="secondary" onClick={() => void navigate({ to: "/settings" })}>
+          <Button
+            variant="secondary"
+            onClick={() => void navigate({ to: "/settings", search: { section: "words" } })}
+          >
             Connect Anki
           </Button>
         </div>
       ) : null}
 
-      {texts.data && texts.data.length > 0 ? (
-        <div className="lib-toolbar" role="group" aria-label="Library view">
-          <div className="lib-seg" role="radiogroup" aria-label="View">
-            {(["shelves", "all"] as const).map((v) => (
-              <button
-                key={v}
-                type="button"
-                role="radio"
-                aria-checked={view === v}
-                className="lib-seg-btn"
-                onClick={() => {
-                  setView(v);
-                  writePref(VIEW_KEY, v);
-                }}
-              >
-                {v === "shelves" ? "Shelves" : "All texts"}
-              </button>
-            ))}
-          </div>
-          <div className="lib-toolbar-fields">
-            <div className="lib-search">
-              <Input
-                label="Search"
-                type="search"
-                value={query}
-                placeholder="Title, author, note"
-                onChange={(e) => setQuery(e.target.value)}
-              />
+      <StoriesShelf />
+
+      <section className="lib-own" aria-labelledby="lib-own-h">
+        <SectionHeader id="lib-own-h" title="Your texts" />
+        {texts.data && texts.data.length > 0 ? (
+          <div className="lib-toolbar" role="group" aria-label="View of your texts">
+            <div className="lib-seg" role="radiogroup" aria-label="View">
+              {(["shelves", "all"] as const).map((v) => (
+                <button
+                  key={v}
+                  type="button"
+                  role="radio"
+                  aria-checked={view === v}
+                  className="lib-seg-btn"
+                  onClick={() => {
+                    setView(v);
+                    writePref(VIEW_KEY, v);
+                  }}
+                >
+                  {v === "shelves" ? "Shelves" : "All texts"}
+                </button>
+              ))}
             </div>
-            <div className="lib-sort">
-              <Select
-                label="Sort"
-                value={sort}
-                onValueChange={(v) => {
-                  setSort(v as SortKey);
-                  writePref(SORT_KEY, v);
-                }}
-                options={(Object.keys(SORT_LABEL) as SortKey[]).map((k) => ({
-                  value: k,
-                  label: SORT_LABEL[k],
-                }))}
-              />
-            </div>
-            {view === "all" ? (
-              <div className="lib-sort">
-                <Select
-                  label="Source"
-                  value={source}
-                  onValueChange={(v) => setSource(v as SourceId)}
-                  options={SOURCES.map((s) => ({ value: s.id, label: s.name }))}
+            <div className="lib-toolbar-fields">
+              <div className="lib-search">
+                <Input
+                  label="Search"
+                  type="search"
+                  value={query}
+                  placeholder="Title, author, note"
+                  onChange={(e) => setQuery(e.target.value)}
                 />
               </div>
-            ) : null}
-            <div className="lib-toolbar-buttons">
-              <Button
-                variant="ghost"
-                aria-label="New shelf"
-                onClick={() => setNaming({ open: true })}
-              >
-                <FolderPlus size={16} aria-hidden /> <span className="lib-wide">New shelf</span>
-              </Button>
-              <button
-                type="button"
-                className="k-toggle"
-                aria-pressed={selecting}
-                onClick={() => (selecting ? stopSelecting() : setSelecting(true))}
-              >
-                <SquareCheck size={14} aria-hidden /> Select
-              </button>
+              <div className="lib-sort">
+                <Select
+                  label="Sort"
+                  value={sort}
+                  onValueChange={(v) => {
+                    setSort(v as SortKey);
+                    writePref(SORT_KEY, v);
+                  }}
+                  options={(Object.keys(SORT_LABEL) as SortKey[]).map((k) => ({
+                    value: k,
+                    label: SORT_LABEL[k],
+                  }))}
+                />
+              </div>
+              {view === "all" ? (
+                <div className="lib-sort">
+                  <Select
+                    label="Source"
+                    value={source}
+                    onValueChange={(v) => setSource(v as SourceId)}
+                    options={SOURCES.map((s) => ({ value: s.id, label: s.name }))}
+                  />
+                </div>
+              ) : null}
+              <div className="lib-toolbar-buttons">
+                <Button
+                  variant="ghost"
+                  aria-label="New shelf"
+                  onClick={() => setNaming({ open: true })}
+                >
+                  <FolderPlus size={16} aria-hidden /> <span className="lib-wide">New shelf</span>
+                </Button>
+                <button
+                  type="button"
+                  className="k-toggle"
+                  aria-pressed={selecting}
+                  onClick={() => (selecting ? stopSelecting() : setSelecting(true))}
+                >
+                  <SquareCheck size={14} aria-hidden /> Select
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      ) : null}
+        ) : null}
 
-      {body}
-
-      {/* The bundled stories: with the shelves, and on an empty Library. */}
-      {!searching && (view === "shelves" || texts.data?.length === 0) ? <StoriesShelf /> : null}
+        {body}
+      </section>
 
       {selecting ? (
         <div
@@ -482,7 +489,7 @@ export function Library() {
         }}
         title="Delete this text"
         description={
-          pendingDelete ? `"${pendingDelete.title}" will be removed from your Library.` : ""
+          pendingDelete ? `"${pendingDelete.title}" will be removed from Your texts.` : ""
         }
       >
         <div className="k-dialog-actions">
@@ -509,7 +516,7 @@ export function Library() {
         title="Delete this shelf"
         description={
           shelfToDelete
-            ? `"${shelfToDelete.name}" will be removed. Its texts stay in your Library.`
+            ? `"${shelfToDelete.name}" will be removed. Its texts stay in Your texts.`
             : ""
         }
       >
