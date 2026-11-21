@@ -1664,3 +1664,13 @@
   margin: 0;
   overflow-wrap: anywhere;
 }
+
+/* A check that passed (an AI key that works): green, with its icon. */
+.ok-note {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--color-success);
+  font-weight: 500;
+}

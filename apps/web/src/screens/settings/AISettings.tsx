@@ -1,3 +1,4 @@
+import { CircleCheck } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { PRESETS, presetFor, type ProviderId } from "@app/ai";
@@ -164,14 +165,15 @@ export function AISettings() {
           </Button>
         ) : null}
       </div>
-      {saveKey.isSuccess && !saveKey.isPending ? (
-        <p role="status" style={{ margin: 0 }}>
-          Key saved on this device.
+      {saveKey.isSuccess && !saveKey.isPending && !test.isSuccess ? (
+        <p role="status" className="ok-note">
+          <CircleCheck size={18} aria-hidden /> Key saved on this device.
         </p>
       ) : null}
       {test.isSuccess ? (
-        <p role="status" style={{ margin: 0 }}>
-          Works: the model answered “{test.data.text}” in {test.data.ms} ms.
+        <p role="status" className="ok-note">
+          <CircleCheck size={18} aria-hidden /> Works: the model answered “{test.data.text}” in{" "}
+          {test.data.ms} ms.
         </p>
       ) : null}
       {test.isError || saveKey.isError ? (
