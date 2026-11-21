@@ -1639,3 +1639,28 @@
     height: 48px;
   }
 }
+
+/* Add text: a chosen PDF or photo stays in view, a photo as a preview, with Replace / Remove. */
+.file-chosen {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  padding: var(--s-3);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-card);
+}
+.file-chosen-preview {
+  display: block;
+  max-width: 100%;
+  max-height: 240px;
+  object-fit: contain;
+  border-radius: var(--radius-control);
+  background: var(--surface-2);
+}
+.file-chosen-name {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  margin: 0;
+  overflow-wrap: anywhere;
+}

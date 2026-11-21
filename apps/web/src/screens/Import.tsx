@@ -1,6 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
-import { ArrowLeft, UploadCloud } from "lucide-react";
+import { ArrowLeft, Camera, FileText, UploadCloud } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { DragEvent, ReactNode } from "react";
 import { Button, Input, Spinner, Tabs, Textarea, useToast } from "@app/ui";
@@ -42,17 +42,112 @@ const PARAM_OF: Record<Tab, string> = {
   story: "story",
 };
 
-interface FileDropProps {
-  accept: string;
-  label: string;
+/** A finger, not a mouse: no drag and drop, and a camera may be at hand. */
+function useTouch(): boolean {
+  const [touch] = useState(
+    () =>
+      typeof window !== "undefined" && window.matchMedia?.("(pointer: coarse)").matches === true,
+  );
+  return touch;
+}
+
+interface FilePickProps {
+  kind: "pdf" | "image";
   file: File | null;
   onFile: (f: File | null) => void;
 }
 
-/** Click-or-drop file picker. */
-function FileDrop({ accept, label, file, onFile }: FileDropProps) {
-  const inputRef = useRef<HTMLInputElement>(null);
+/**
+ * Choose a PDF or a photo. With a mouse: a box to click or drop on. With a finger: Choose PDF,
+ * or Choose photo and Take photo (the camera). Once chosen, the file stays in view (a photo as
+ * a preview) with Replace and Remove, also when the import fails, until it is removed.
+ */
+function FilePick({ kind, file, onFile }: FilePickProps) {
+  const touch = useTouch();
+  const pick = useRef<HTMLInputElement>(null);
+  const camera = useRef<HTMLInputElement>(null);
   const [active, setActive] = useState(false);
+  const [preview, setPreview] = useState<string | null>(null);
+  useEffect(() => {
+    if (!file || kind !== "image" || typeof URL.createObjectURL !== "function") {
+      setPreview(null);
+      return;
+    }
+    const url = URL.createObjectURL(file);
+    setPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [file, kind]);
+  const accept = kind === "pdf" ? "application/pdf" : "image/*";
+  const noun = kind === "pdf" ? "PDF" : "photo";
+  const inputs = (
+    <>
+      <input
+        ref={pick}
+        type="file"
+        accept={accept}
+        hidden
+        aria-label={touch ? `Choose ${noun}` : `Choose a ${noun} or drop it here`}
+        onChange={(e) => {
+          onFile(e.target.files?.[0] ?? null);
+          e.target.value = "";
+        }}
+      />
+      {kind === "image" ? (
+        <input
+          ref={camera}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          hidden
+          aria-label="Take photo"
+          onChange={(e) => {
+            onFile(e.target.files?.[0] ?? null);
+            e.target.value = "";
+          }}
+        />
+      ) : null}
+    </>
+  );
+  if (file) {
+    return (
+      <div className="file-chosen">
+        {inputs}
+        {preview ? (
+          <img
+            className="file-chosen-preview"
+            src={preview}
+            alt={`The chosen photo, ${file.name}`}
+          />
+        ) : null}
+        <p className="file-chosen-name">
+          <FileText size={16} aria-hidden /> {file.name}
+        </p>
+        <div className="row">
+          <Button size="sm" onClick={() => pick.current?.click()}>
+            Replace
+          </Button>
+          <Button size="sm" variant="ghost" onClick={() => onFile(null)}>
+            Remove
+          </Button>
+        </div>
+      </div>
+    );
+  }
+  if (touch) {
+    return (
+      <div className="file-picks row">
+        {inputs}
+        <Button variant="primary" onClick={() => pick.current?.click()}>
+          <UploadCloud size={16} aria-hidden /> Choose {noun}
+        </Button>
+        {kind === "image" ? (
+          <Button onClick={() => camera.current?.click()}>
+            <Camera size={16} aria-hidden /> Take photo
+          </Button>
+        ) : null}
+      </div>
+    );
+  }
   const onDrop = (e: DragEvent) => {
     e.preventDefault();
     setActive(false);
@@ -64,11 +159,11 @@ function FileDrop({ accept, label, file, onFile }: FileDropProps) {
       data-active={active}
       role="button"
       tabIndex={0}
-      onClick={() => inputRef.current?.click()}
+      onClick={() => pick.current?.click()}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
-          inputRef.current?.click();
+          pick.current?.click();
         }
       }}
       onDragOver={(e) => {
@@ -79,15 +174,8 @@ function FileDrop({ accept, label, file, onFile }: FileDropProps) {
       onDrop={onDrop}
     >
       <UploadCloud size={24} aria-hidden />
-      <span>{file ? file.name : label}</span>
-      <input
-        ref={inputRef}
-        type="file"
-        accept={accept}
-        hidden
-        aria-label={label}
-        onChange={(e) => onFile(e.target.files?.[0] ?? null)}
-      />
+      <span>{`Choose a ${noun} or drop it here`}</span>
+      {inputs}
     </div>
   );
 }
@@ -292,23 +380,13 @@ export function ImportScreen() {
     pdf: (
       <div className="stack">
         {titleField}
-        <FileDrop
-          accept="application/pdf"
-          label="Choose a PDF or drop it here"
-          file={pdfFile}
-          onFile={setPdfFile}
-        />
+        <FilePick kind="pdf" file={pdfFile} onFile={setPdfFile} />
       </div>
     ),
     image: (
       <div className="stack">
         {titleField}
-        <FileDrop
-          accept="image/*"
-          label="Choose a photo or drop it here"
-          file={imageFile}
-          onFile={setImageFile}
-        />
+        <FilePick kind="image" file={imageFile} onFile={setImageFile} />
       </div>
     ),
   };
