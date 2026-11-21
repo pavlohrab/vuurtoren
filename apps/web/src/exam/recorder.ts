@@ -16,6 +16,21 @@ export interface Recording {
   stop(): Promise<Blob>;
 }
 
+/**
+ * What to tell the learner when the microphone could not start: a refusal (the Android
+ * permission prompt or the browser's) says where to allow it; anything else, that there is none.
+ */
+export function micErrorText(e: unknown): string {
+  const name = e instanceof Error || e instanceof DOMException ? e.name : "";
+  if (name === "NotAllowedError" || name === "SecurityError") {
+    return "Vuurtoren may not use the microphone. To record, allow it in your device's settings (on Android: Apps → Vuurtoren → Permissions → Microphone), then start the next question. Answer aloud anyway; nothing is recorded.";
+  }
+  if (name === "NotFoundError" || name === "OverconstrainedError") {
+    return "No microphone was found. Answer aloud anyway; nothing is recorded.";
+  }
+  return "The microphone is not available. Answer aloud anyway; nothing is recorded.";
+}
+
 /** Ask for the microphone and start recording. Rejects when access is denied. */
 export async function startRecording(): Promise<Recording> {
   const stream = await navigator.mediaDevices.getUserMedia({ audio: true });

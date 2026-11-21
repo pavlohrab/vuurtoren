@@ -149,6 +149,31 @@ describe("Writing and speaking", () => {
     expect(await screen.findByText(p.model)).toBeInTheDocument();
     expect(screen.getByText("No recording for this answer.")).toBeInTheDocument();
   });
+
+  it("Spreken: a refused microphone says where to allow it and the answer goes on", async () => {
+    const getUserMedia = vi.fn(() =>
+      Promise.reject(new DOMException("Permission denied", "NotAllowedError")),
+    );
+    vi.stubGlobal("MediaRecorder", class {});
+    Object.defineProperty(navigator, "mediaDevices", {
+      configurable: true,
+      value: { getUserMedia },
+    });
+    try {
+      const { user } = setup("/exam/spreken?mode=practice&set=1");
+      expect(await screen.findByLabelText("Record my answers")).toBeChecked();
+      await user.click(screen.getByRole("button", { name: /Start answering/ }));
+      expect(getUserMedia).toHaveBeenCalledWith({ audio: true });
+      expect(await screen.findByRole("status")).toHaveTextContent(
+        /may not use the microphone.*Permissions → Microphone/,
+      );
+      expect(screen.getByRole("timer")).toBeInTheDocument();
+      expect(screen.getByText("Speak now")).toBeInTheDocument();
+    } finally {
+      vi.unstubAllGlobals();
+      Reflect.deleteProperty(navigator, "mediaDevices");
+    }
+  });
 });
 
 function escape(s: string) {

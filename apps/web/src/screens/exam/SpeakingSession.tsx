@@ -12,7 +12,12 @@ import { Button, Textarea } from "@app/ui";
 import { useServices } from "../../services/context.js";
 import type { ExamFeedback } from "../../services/examTypes.js";
 import { errorText } from "../../services/errors.js";
-import { type Recording, recordingSupported, startRecording } from "../../exam/recorder.js";
+import {
+  type Recording,
+  micErrorText,
+  recordingSupported,
+  startRecording,
+} from "../../exam/recorder.js";
 import { formatClock, useExamClock } from "../../exam/timer.js";
 import { GrammarLinks, ScoreCard, useRecordAttempt } from "./shared.js";
 import { FeedbackView } from "./WritingSession.js";
@@ -201,8 +206,8 @@ function PromptRunner({
       try {
         rec.current = await startRecording();
         setRecording(true);
-      } catch {
-        setMicError("The microphone is not available. Answer aloud anyway; nothing is recorded.");
+      } catch (e) {
+        setMicError(micErrorText(e));
       }
     }
     setPhase("answering");
@@ -258,7 +263,11 @@ function PromptRunner({
             phase === "answering" ? `${(left / (prompt.seconds * 1000)) * 100}%` : "0%",
         }}
       />
-      {micError ? <p className="exam-muted">{micError}</p> : null}
+      {micError ? (
+        <p className="exam-muted" role="status">
+          {micError}
+        </p>
+      ) : null}
     </section>
   );
 }
