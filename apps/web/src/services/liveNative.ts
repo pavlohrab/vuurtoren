@@ -409,11 +409,11 @@ export function createLiveNative(deps: LiveNativeDeps) {
       return { native: true, due: q.due, fresh: q.fresh };
     },
 
-    async reviewQueue() {
+    async reviewQueue(extra) {
       const lang = await deps.lang();
       await openStarter(lang);
       const at = now();
-      const q = await repo.nativeQueue(lang, at, studyDayStart(at), QUEUE_LIMIT);
+      const q = await repo.nativeQueue(lang, at, studyDayStart(at), QUEUE_LIMIT, extra);
       const p = await params(lang);
       const own = await ownSentences(lang);
       const cards: ReviewCard[] = [];

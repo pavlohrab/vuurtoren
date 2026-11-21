@@ -33,6 +33,7 @@ import type {
   NativeKeyCard,
   NativeNoteStatus,
   NativeQueue,
+  QueueExtra,
   NativeQueueCounts,
   SqlDriver,
   SqlValue,
@@ -517,6 +518,36 @@ async function queuePlan(
   return { dueIds, freshIds: apart(fresh) };
 }
 
+/**
+ * Cards beyond today's queue (custom study): new cards past the daily limits, in deck order and
+ * position; or learned cards not due yet and not answered today, the soonest due first.
+ */
+async function extraIds(
+  driver: SqlDriver,
+  lang: string,
+  now: number,
+  dayStart: number,
+  extra: QueueExtra,
+): Promise<number[]> {
+  const rows =
+    extra.kind === "new"
+      ? await driver.exec(
+          `SELECT id FROM native_cards
+            WHERE lang = ? AND suspended = 0 AND schedule IS NULL
+            ORDER BY deck, position, id LIMIT ?`,
+          [lang, extra.count + 200],
+        )
+      : await driver.exec(
+          `SELECT c.id AS id FROM native_cards c
+            WHERE c.lang = ? AND c.suspended = 0 AND c.schedule IS NOT NULL AND c.due > ?
+              AND NOT EXISTS (SELECT 1 FROM native_reviews r
+                               WHERE r.card_id = c.id AND r.at >= ? AND r.rating > 0)
+            ORDER BY c.due, c.id LIMIT ?`,
+          [lang, now, dayStart, extra.count],
+        );
+  return rows.map((r) => Number(r["id"]));
+}
+
 /** When the next card not due yet becomes due (a learning step, tomorrow's reviews), or null. */
 async function nextDue(driver: SqlDriver, lang: string, now: number): Promise<number | null> {
   const [r] = await driver.exec(
@@ -561,12 +592,20 @@ export function nativeQueries(driver: SqlDriver) {
       now: number,
       dayStart: number,
       limit: number,
+      extra?: QueueExtra,
     ): Promise<NativeQueue> {
       const options = await deckOptions(driver, lang);
       const { dueIds, freshIds } = await queuePlan(driver, lang, now, dayStart, options);
-      const ids = [...dueIds, ...freshIds].slice(0, Math.max(0, limit));
+      const today = new Set([...dueIds, ...freshIds]);
+      const more =
+        extra && extra.count > 0
+          ? (await extraIds(driver, lang, now, dayStart, extra))
+              .filter((id) => !today.has(id))
+              .slice(0, extra.count)
+          : [];
+      const ids = [...dueIds, ...freshIds, ...more].slice(0, Math.max(0, limit));
       let cards: NativeCard[];
-      if (dueIds.length + freshIds.length === 0 && limit > 0) {
+      if (ids.length === 0 && limit > 0) {
         // Nothing else today: learning cards due within the next minutes come forward.
         cards = (
           await driver.exec(

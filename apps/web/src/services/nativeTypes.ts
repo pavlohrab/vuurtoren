@@ -1,7 +1,7 @@
 /** Contract of native mode: reviews, decks, imports and FSRS tuning. */
 import type { CardRating, DeckOptions } from "@app/core";
 import type { PackageDeck } from "@app/anki";
-import type { NativeDeckSummary } from "@app/db";
+import type { NativeDeckSummary, QueueExtra } from "@app/db";
 
 export type { CardRating, NativeDeckSummary };
 
@@ -124,8 +124,11 @@ interface StarterAdded {
 export interface NativeServices {
   /** Native mode and today's counts (the sidebar badge and Home); `native` false: connected. */
   reviewOverview(): Promise<{ native: boolean; due: number; fresh: number }>;
-  /** The next cards to review, due first, then today's new cards. */
-  reviewQueue(): Promise<ReviewSession>;
+  /**
+   * The next cards to review, due first, then today's new cards; with `extra`, also up to
+   * `extra.count` new cards past the daily limit or learned cards ahead of their date.
+   */
+  reviewQueue(extra?: QueueExtra): Promise<ReviewSession>;
   /** Answer a card; returns the id that `undoReview` takes back. */
   answerReview(
     cardId: number,

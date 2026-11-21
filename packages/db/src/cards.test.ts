@@ -110,6 +110,19 @@ describe("native card store", () => {
     expect((await repo.nativeReviews("nl")).length).toBe(2);
   });
 
+  it("continues past today's cards: more new cards, or learned cards ahead of time", async () => {
+    const { repo } = await newRepo();
+    await repo.append(imported);
+    const day = T0 - 3600_000;
+    // Today: one new card (the deck's limit). Two more new cards on request, no repeats.
+    const more = await repo.nativeQueue("nl", T0, day, 50, { kind: "new", count: 5 });
+    expect(more.cards.map((c) => c.card.id)).toEqual([102, 103]);
+    expect(more.fresh).toBe(1);
+    // The mature card is not due: it comes forward only when asked for learned cards.
+    const ahead = await repo.nativeQueue("nl", T0, day, 50, { kind: "learning", count: 5 });
+    expect(ahead.cards.map((c) => c.card.id)).toEqual([102, 101]);
+  });
+
   it("feeds the learner model in native mode only", async () => {
     const { repo } = await newRepo();
     await repo.append(imported);

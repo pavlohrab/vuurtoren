@@ -125,9 +125,17 @@ export function createMockNative(
       const due = cards.filter((c) => c.schedule && isDue(c)).length;
       return { native: true, due, fresh: cards.filter((c) => !c.schedule).length };
     },
-    async reviewQueue() {
+    async reviewQueue(extra) {
       await wait();
-      const queue = cards.filter(isDue);
+      const today = cards.filter(isDue);
+      const more = extra
+        ? cards
+            .filter((c) =>
+              extra.kind === "new" ? !c.schedule && !today.includes(c) : c.schedule && !isDue(c),
+            )
+            .slice(0, extra.count)
+        : [];
+      const queue = [...today, ...more];
       return {
         cards: queue.map(view),
         due: queue.filter((c) => c.schedule).length,

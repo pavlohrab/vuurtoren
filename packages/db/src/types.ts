@@ -722,6 +722,15 @@ export interface NativeCollection {
 }
 
 /** Native mode: the cards of one review session, in order, and what is left today. */
+/**
+ * More than today's cards, as Anki's custom study does: `new` new cards beyond the decks' daily
+ * limits (in deck order), or `learning` cards already learned, reviewed ahead of their date.
+ */
+export interface QueueExtra {
+  kind: "new" | "learning";
+  count: number;
+}
+
 export interface NativeQueue {
   /** Due (re)learning and review cards first, then today's new cards. */
   cards: NativeCardView[];
@@ -841,7 +850,13 @@ export interface Repository {
    * Native mode: the cards to review at `now`: due cards, then new cards within each deck's
    * daily limit (counted from `dayStart`, the start of the learner's study day), at most `limit`.
    */
-  nativeQueue(lang: string, now: number, dayStart: number, limit: number): Promise<NativeQueue>;
+  nativeQueue(
+    lang: string,
+    now: number,
+    dayStart: number,
+    limit: number,
+    extra?: QueueExtra,
+  ): Promise<NativeQueue>;
   /** Native mode: the counts of `nativeQueue` (same rules), without reading the cards. */
   nativeQueueCounts(lang: string, now: number, dayStart: number): Promise<NativeQueueCounts>;
   /**
