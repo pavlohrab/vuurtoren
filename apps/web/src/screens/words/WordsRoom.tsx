@@ -45,7 +45,6 @@ export function useCurrentLevel(): { level: number; known: number; size: number 
   return l ? { level: l.level, known: l.known, size: l.size } : null;
 }
 
-
 const fmt = (n: number) => n.toLocaleString("en");
 
 /**

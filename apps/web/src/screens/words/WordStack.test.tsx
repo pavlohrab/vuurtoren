@@ -45,6 +45,24 @@ describe("the word stack", () => {
     expect(markKnown.mock.calls[0]![0].key).toBe(first.replace(/^(de|het) /, ""));
   });
 
+  it("opens the word's details again after they were closed", async () => {
+    const { user } = setup();
+    await ready();
+    const sheet = () => document.querySelector(".shell")?.getAttribute("data-inspector");
+    await user.keyboard("{Enter}");
+    await waitFor(() => expect(sheet()).toBe("open"));
+    const close = () => user.click(screen.getByRole("button", { name: /Close the word panel/ }));
+    await close();
+    await waitFor(() => expect(sheet()).toBe("closed"));
+    (await card()).focus();
+    await user.keyboard("{Enter}");
+    await waitFor(() => expect(sheet()).toBe("open"));
+    await close();
+    await waitFor(() => expect(sheet()).toBe("closed"));
+    await user.pointer([{ keys: "[MouseLeft>]", target: await card() }, { keys: "[/MouseLeft]" }]);
+    await waitFor(() => expect(sheet()).toBe("open"));
+  });
+
   it("Undo brings the card back and saves nothing", async () => {
     const { markKnown, learnNext, addToAnki, user, view } = setup();
     const first = await wordOf();

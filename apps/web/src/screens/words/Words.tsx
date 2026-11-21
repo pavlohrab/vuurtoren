@@ -524,8 +524,8 @@ export function Words() {
       <div className="page page--list words-page">
         <WordsRoom />
         <PageHeader
-          title="Your words"
-          lede="One word at a time: swipe right if you know it, left to keep learning it, tap for more."
+          title="Check your level"
+          lede="Go through words to set where you stand: swipe right if you already know one, left to leave it for learning. Tap a word for more."
           actions={layoutToggle}
         />
         <WordStack
