@@ -14,8 +14,12 @@ interface Shot {
   open: (page: Page) => Promise<void>;
 }
 
+/** A main navigation link (its name may carry a due count after the label). */
 const nav = (page: Page, label: string) =>
-  page.getByRole("navigation").getByRole("link", { name: label, exact: true }).click();
+  page
+    .getByRole("navigation", { name: "Main" })
+    .getByRole("link", { name: new RegExp(`^${label}`) })
+    .click();
 
 const SHOTS: Shot[] = [
   {

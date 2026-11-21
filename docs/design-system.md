@@ -83,12 +83,13 @@ CSS only, `transform` and `opacity` (plus the SVG ring's dash offset), 150–300
 | Route change                   | cross-fade through the View Transitions API (`defaultViewTransition`; browsers without it just switch)                                    |
 | To-learn word in the reader    | the amber line draws in left to right, once, when the page appears                                                                        |
 | Word state changes (inspector) | the state chip pops (scale .88 → 1), each state its own keyframe so a change restarts it                                                  |
-| Library card hover             | lifts 2px with a soft shadow (pointer devices only)                                                                                       |
-| Progress rings and bars        | fill once on mount (Home ring, coverage bars, Continue reading bar)                                                                       |
+| Cover hover (Your texts)       | lifts 2px with a soft shadow (pointer devices only)                                                                                       |
+| Progress rings and bars        | fill once on mount (coverage bars and meters)                                                                                             |
+| Words tabs                     | the current tab's 2px accent line grows in from the centre (`--dur`)                                                                      |
 | Dialogs, toasts, More sheet    | fade + 6px rise in; dialogs and the palette fade out (`--dur-fast`)                                                                       |
 | Popovers, menus, tooltips      | scale-fade (.96 → 1) from the side they open on (`--dur-fast`)                                                                            |
 | Inspector                      | slides in from the right over the content (`--dur-slow`, transform); the reading column moves aside by half its width; bottom sheet rises |
-| Library covers, Words rows     | appear once in a short cascade (30 ms steps, at most 150 ms); rows fade only, so filters never jump                                       |
+| Text covers, Words rows        | appear once in a short cascade (30 ms steps, at most 150 ms); rows fade only, so filters never jump                                       |
 | Buttons, toggle chips          | 1px press on `:active`                                                                                                                    |
 | Loading skeleton               | invisible for the first 150 ms (fast loads never flash), then a soft 1.2 s sweep while loading                                            |
 
@@ -101,7 +102,7 @@ The **lighthouse**: a small tower whose beam is an `--accent` highlight bar, bes
 - Component: `Logo` (mark + "vuurtoren" wordmark, Literata 500, as outlined paths) and `LogoMark` from `@app/ui`. `variant="mark"` for the mark alone. The tower and text lines use `currentColor` (`--ink`), the lantern, beam and lit word `--accent`; the plain text lines are `--ink` at 30% opacity.
 - One 64 grid for every size (paths in `Logo.tsx`): lantern x 10–22, y 8–21; beam x 25–60, y 11.5–17.5; tower x 5.5–26.5, y 24–57 on a base at y 57–60.5; text lines at y 28, 37 and 46, the lit word x 44.5–60, y 36–41.5.
 - Icons (favicon, PWA, desktop) put the mark on a `#f6f0e6` paper tile, which stays readable at 16px on light and dark tab bars.
-- `ProgressRing` (12 o'clock, counter-clockwise, round caps) is for data, not branding: the Home ring is `--known`.
+- `ProgressRing` (12 o'clock, counter-clockwise, round caps) is for data, not branding: its fill is `--known`.
 
 ## Layout & composition
 
@@ -124,11 +125,11 @@ An 8px scale with one 4px half-step. Tokens on `:root`: `--s-1` 4 · `--s-2` 8 �
 
 A 12-column grid, 24px gutters (16px on phones). Every page sits in one `.page` column whose width depends on the page type. All page types start on the left edge of the wide column, so headers line up across the app; only the right edge moves:
 
-| Page type         | Width                   | Screens                                                                |
-| ----------------- | ----------------------- | ---------------------------------------------------------------------- |
-| Dashboard / shelf | `--w-wide` 1200px       | Home, Library, Progress, Courses                                       |
-| List / form       | `--w-list` 960px        | Words, Practice, Grammar, Talk, Settings, Import, Words from this text |
-| Reading           | `--w-read` 68ch (44rem) | Reader, Grammar topic prose column, onboarding, sign-in card           |
+| Page type         | Width                   | Screens                                                                        |
+| ----------------- | ----------------------- | ------------------------------------------------------------------------------ |
+| Dashboard / shelf | `--w-wide` 1200px       | Read, Courses                                                                  |
+| List / form       | `--w-list` 960px        | Words (all four tabs), Grammar, Talk, Settings, Add text, Words from this text |
+| Reading           | `--w-read` 68ch (44rem) | Reader, Grammar topic prose column, onboarding, sign-in card                   |
 
 Inside a page, split the grid only as 12, 8 + 4, 7 + 5 or 6 + 6. No rows with different splits stacked on one another without a section header between them. Below 900px everything is one column.
 
@@ -138,9 +139,9 @@ A surface (`--surface` fill, hairline edge, 14px radius) only **groups interacti
 
 ### Page header (`PageHeader`)
 
-Every top-level screen, Home included: h1 (Instrument Sans 600, 28px, 24 on phones), one muted line on what the page is for (max 62ch), actions on the right (at most one primary, plus up to two secondary or ghost). No border under it. Home's h1 is the greeting. Sub-pages (Grammar topic, Words from this text, Check the text) use the same header with a back link above the title.
+Every top-level screen, Read included: h1 (Instrument Sans 600, 28px, 24 on phones), one muted line on what the page is for (max 62ch), actions on the right (at most one primary, plus up to two secondary or ghost). No border under it. Sub-pages (Grammar topic, Words from this text, Check the text) use the same header with a back link above the title.
 
-The top bar does not repeat the h1: its title fades in only once the h1 has scrolled out of view (Home keeps the date there, the reader its text title).
+The top bar does not repeat the h1: its title fades in only once the h1 has scrolled out of view (the reader keeps its text title there).
 
 ### Disclosure (`.k-disclosure`)
 
@@ -160,7 +161,7 @@ h2 in Instrument Sans 600, 17px, ink; optional quiet link on the right (`.k-link
 
 ### Buttons and links
 
-- **Primary** (filled accent): one per view — the thing most people came to do (Continue reading on Home, Add text on Library, "Start · N due" on Practice, Apply on Words from this text).
+- **Primary** (filled accent): one per view — the thing most people came to do (Continue or Start reading in Today on Read, "Start · N due" on Practice, Apply on Words from this text). Add text on Read is secondary.
 - **Secondary** (hairline outline): other actions in the header or a form.
 - **Ghost**: tools in rows (icons), cancel in dialogs next to a primary.
 - **Quiet link** (`.k-link`): navigation to another place ("All words →"). One style everywhere.
@@ -184,7 +185,7 @@ One shape: 24px tall, pill, Inter 12.5px, hairline edge. Tones: neutral, accent,
 
 ### Covers
 
-`TextCover` is typographic: a flat tint by source kind (paste and AI: honey, web and photo: sage, PDF and course: apricot, talk: neutral) with a darker spine on the left, the source icon and kind at the top, the title in Literata at the bottom and the coverage as a thin sage line on the bottom edge (with the percentage when there is no meter next to it). Portrait 4:5 everywhere: Library shelf, Home hero and Recent texts. No generated patterns.
+`TextCover` is typographic: a flat tint by source kind (paste and AI: honey, web and photo: sage, PDF and course: apricot, talk: neutral) with a darker spine on the left, the source icon and kind at the top, the title in Literata at the bottom and the coverage as a thin sage line on the bottom edge (with the percentage when there is no meter next to it). Portrait 4:5 everywhere: the Your texts shelves and the Today strip. No generated patterns.
 
 An **image cover** (a PDF's first page, the photo of an import, or the learner's own photo, cropped to 4:5 and stored as a 600px WebP) fills the frame; the kind shrinks to its icon on a small surface plate, and the title sits on a quiet surface band at the bottom (2 lines). Without an image the typographic cover stays.
 
@@ -218,47 +219,52 @@ Domain components:
 ## Layout
 
 ```
-┌──────────┬───────────────────────────────────────────┬──────────────────┐
+┌──────────────┬───────────────────────────────────────────┬──────────────────┐
 │ (k) vuurtoren│ Top bar (reader: title · % known · mode · Aa · …) · ⌘K · ◐ │ Inspector │
-│ Home     │                                           │  (slides in)     │
-│ Library  │      page content / reading column        │                  │
-│ Practice │                                           │                  │
-│ Words    │                                           │                  │
-│ Courses  │                                           │                  │
-│ Grammar  │                                           │                  │
-│ Talk     │                                           │                  │
-│ ⚙ Settings│                                          │                  │
-└──────────┴───────────────────────────────────────────┴──────────────────┘
+│ Read         │                                           │  (slides in)     │
+│ Words     24 │      page content / reading column        │                  │
+│ ──────────── │                                           │                  │
+│ Grammar      │                                           │                  │
+│ Exam         │                                           │                  │
+│ Courses      │                                           │                  │
+│ Talk         │                                           │                  │
+│ ⚙ Settings   │                                           │                  │
+└──────────────┴───────────────────────────────────────────┴──────────────────┘
 ```
 
-- Navigation: Home · Library · Practice · Words · Courses · Grammar · Talk, Settings at the bottom of the rail. There is no "Read" item: Continue reading on Home and the Library cards open texts. Progress is reached from Home (and ⌘K), not the rail.
-- ⌘K / Ctrl+K: Actions (Add text, Start practice), Words (two letters or more; opens the word in Words with the inspector), Go to (every page, Exam included) and Texts.
+- **Two rooms.** Navigation is built around **Read** (`/`, the landing page) and **Words** (everything about vocabulary). Read is marked on the rail for `/`, the reader and Add text; Words for `/words`, `/review`, `/practice` and `/progress`. Words carries the due count: cards due in Review in native mode, exercises due in Practice with Anki. A hairline divider, then the quieter places: Grammar, Exam, Courses, Talk (only once an AI provider is set up) and Settings at the bottom.
+- Old addresses keep working: `/home` and `/library` lead to Read; `/review`, `/practice` and `/progress` are the Words tabs.
+- ⌘K / Ctrl+K: Actions (Add text, Start practice), Words (two letters or more; opens the word in Words with the inspector), Go to (every page) and Texts.
 - The rail collapses to icons below 1200px; the inspector becomes a bottom sheet below 900px.
 - The inspector is closed by default and takes no space: choosing a word slides it in over the content's right edge, and the reading column moves aside (transform only, so the text never re-wraps; between 900 and 1100px it makes room instead). Esc or × closes it and the focus returns to the word.
-- Below 700px a bottom tab bar replaces the rail: Home, Library, Practice, Words, More. More opens a sheet with Courses, Grammar, Talk, Progress and Settings.
+- Below 700px a bottom tab bar replaces the rail: **Read · Words · Review · More** (Practice in place of Review when Anki runs the reviews). More opens a sheet with Grammar, Exam, Courses, Talk, Progress and Settings. On Review the Review tab is the current one.
 
 ## Screens
 
-- **Home** (`/`, first screen): calm and editorial, not a dashboard; four groups above the fold. (1) The page header: Dutch greeting, "You know N Dutch words", Add text. (2) Continue reading without a box (cover, Literata title, two-line excerpt, progress, the one primary button) next to a quiet column behind a hairline: the known-words ring and three numbers. (3) Today: two or three steps as one list with hairline dividers (practise, reviews due or words waiting for Anki, course unit; done steps get a check). (4) Words to learn now (Inter word chips) and Recent texts (covers). Below: one quiet "More for today" line (grammar topic in your texts, Talk about the text, this week). A brand-new learner sees two first steps instead: Add text, and a way to bring in words they already know (Connect Anki in connected mode; import a deck file or mark words known in native mode).
+- **Read** (`/`, the first screen): the old Home and Library in one page. The page header ("Read", one line, Add text as a secondary button), then:
+  1. **Today**, one slim strip between hairlines, its heading the Dutch greeting with the date: the text to continue (small cover, Literata title, "Page 2 of 5", the page's one primary button, Continue or Start reading); without one, a story at the learner's level ("A story at your level · A2", Start reading). Beside it, behind a hairline, two lines: reviews due with about how long they take ("24 reviews · ~6 min" → Review; with Anki: exercises due → Practise) and the current level ("Level 2 · 312 of 500 known" → Your words). Done lines show a check instead of a link. Without a language profile a "Finish setting up" bar sits above it. Below 900px the lines go under the text.
+  2. **Stories for you**: the bundled graded stories. The learner's level comes first ("A1 · Start here", else "A2 · Your level": the highest level with a story that is not a stretch) as one row of cards that scrolls sideways; the other levels fold into an "Other levels" disclosure. Each card: kind and length, title, one-line summary, "You know 82%", "A stretch" when below 95%, "In your texts" once opened.
+  3. **Your texts**: a bookshelf. Rows of covers that scroll sideways (snap, a hairline "shelf board" under each row, no boxes): Reading now, the learner's own shelves, To read, Finished. Where a text came from is a filter on All texts (Source: Course books, AI stories, Web, Photos & PDFs, Talk, Pasted), not more shelves, so a text appears at most twice. Under each cover one quiet line: page N of M / Finished / words, and "% known". Covers are links (middle-click opens a new tab). A "…" on each cover (on hover or focus with a pointer, always on touch) opens Open, Words from this text, Open its course unit (course texts), Edit details, Change cover, Add to shelf, Remove from this shelf, Delete. The toolbar: Shelves / All texts (segmented), Search, Sort (recent, title, coverage), Source (All texts only), New shelf, Select (multi-select with a floating bar: Add to shelf). Keyboard: one tab stop per row, arrow keys / Home / End inside it. Desktop: drag covers onto one of your shelves. Phones: rows stack, 128px covers, rows bleed to the screen edge. Empty: "No texts of your own yet", pointing at the stories above and Add text.
+- **Words** (the room): four tabs that are their own routes, **Your words** (`/words`) · **Review** (`/review`, native mode, with its count) · **Practice** (`/practice`, with the exercises due) · **Progress** (`/progress`). One strip on top of all four: the tabs (underlined, a 2px accent line under the current one, counts as quiet pills) and, on the right, where the learner stands in one row ("Level 2 · 312 of 500 known", then "1,904 known · 86 learning", muted). Below 700px the summary sits above the tabs. Then each tab's own page header. A running Practice session hides the strip.
+- **Your words** (`/words`): state / source / search filters live in the URL with removable chips; rows open the shared inspector; a selection goes to your words (or Anki), Practice or Talk. In native mode a **Due** view lists the words due now, each with a quiet "due 3 days ago" after its state. **Levels:** a Level filter (in the URL, with its chip) narrows the list to one starter level ("Level 1 · 1–500" …) or to Other words, and **Group by level** (a toggle next to Columns) splits the table with a header row per level: the level name in 600 weight, a muted "312 of 500 known · 48 learning" (tabular figures) and a thin known-colour bar (the coverage meter's track, at most 240px). Grouping is on by default once the starter decks exist (`group=none` turns it off, `group=level` turns it on without them). Words outside the starter list come last under Other words. A native learner without the starter decks sees one muted line above a grouped table: "Add the starter levels in Settings → Your words". Clear filters keeps the grouping.
+- **Review** (`/review`, a Words tab in native mode): one card at a time, Show answer, then Again / Hard / Good / Easy with the next interval on each (keys 1–4, Space), Undo (Z). Nothing due: "Read something" (primary) and "Import a deck".
+- **Progress** (`/progress`, a Words tab): the numbers (estimated vocabulary once there is a record, known, learning, new, and "Known in your texts", the length-weighted coverage of the learner's texts), then two calm charts side by side — known words over 12 weeks (a 2px `--known` line, faint area, last value labelled) and pages read per week (thin `--known` bars, this week full strength) — and Practice with "By skill" in a disclosure. Times are relative ("synced 1 hour ago").
 - **Sign-in**: a small landing: the mark, the wordmark, one sentence on what Vuurtoren does, then the form.
-- **Onboarding** (`/welcome`): "Do you use Anki?" under the welcome text, then connect Anki, choose decks, where new words go, placement or import, first text. A stepper of three fixed parts (Getting started, Your words, First text) that never changes length.
-- **Library:** a bookshelf. Rows of covers that scroll sideways (snap, a hairline "shelf board" under each row, no boxes): Reading now, the learner's own shelves, To read, Finished. Where a text came from is a filter on All texts (Source: Course books, AI stories, Web, Photos & PDFs, Talk, Pasted), not more shelves, so a text appears at most twice. Under each cover one quiet line: page N of M / Finished / words, and "% known". Covers are links (middle-click opens a new tab). A "…" on each cover (on hover or focus with a pointer, always on touch) opens Open, Words from this text, Open its course unit (course texts), Edit details, Change cover, Add to shelf, Remove from this shelf, Delete. The toolbar: Shelves / All texts (segmented), Search, Sort (recent, title, coverage), Source (All texts only), New shelf, Select (multi-select with a floating bar: Add to shelf). All texts is the cover grid with words, new words, author/note and the coverage meter. Keyboard: one tab stop per row, arrow keys / Home / End inside it. Desktop: drag covers onto one of your shelves. Phones: rows stack, 128px covers, rows bleed to the screen edge.
-- **Add text** (`/import`, the one way in, labelled "Add text" everywhere): tabs Paste · Web · PDF · Photo (with OCR) · Write a story (with an AI provider). A grammar topic or a unit links to Write a story with its preset. The OCR check shows Cancel and Import; Edit the whole text, Accept all suggestions and Skip review are in "…".
-- **Reader:** read / cloze / gloss / side-by-side modes; the end of a text shows a calm completion panel (new words met, in Anki, still to decide) leading to Words from this text, Practise these words, Talk about this text and Next text.
+- **Onboarding** (`/welcome`): an easy start of at most three steps before reading. "Do you use Anki?" under the welcome text. **No** (the default path): Vuurtoren keeps the cards (the profile is saved with the default decks at once) → where new words start (the starter levels, Level 1/2/3/5/7) → "You are ready": Start reading opens Read with a story at that level in Today, "Add a text of your own" opens Add text. **Yes**: keep using Anki or bring the decks in → connect Anki → choose decks → where new words go → (import, or a placement check) → ready. A stepper of three fixed parts (Getting started, Your words, Start reading) that never changes length. "Skip setup for now" still sets Vuurtoren up to keep the cards.
+- **Add text** (`/import`, the one way in, labelled "Add text" everywhere): tabs Paste · Web · PDF · Photo (with OCR) · Write a story (with an AI provider); the form's button is "Add to my texts". A grammar topic or a unit links to Write a story with its preset. The OCR check shows Cancel and Import; Edit the whole text, Accept all suggestions and Skip review are in "…".
+- **Reader:** read / cloze / gloss / side-by-side modes; the end of a text shows a calm completion panel (new words met, in your words or in Anki, still to decide) leading to Words from this text, Practise these words, Talk about this text and Next text.
 - **Practice:** the header's primary is "Start · N due"; skills, length and AI sentences in Options. One exercise per screen; keys 1–4, Enter, Esc. The summary and the end of a text share one flat pattern: numbers between hairlines, one primary, the next steps as a hairline list.
-- **Course unit:** a back link to the course, one primary "Continue the unit" (its first text in the reader, else the exercises) and a "…" with Talk and Write a story. Tabs: Read · Exercises · Words · Grammar. The unit's Anki actions (Study first, Add N words) sit in Words; its words open the inspector there. A book exercise has one "Check answers"; Fix answer is in each item's "…".
-- **One inspector:** every Dutch word opens the same inspector, wherever it is: the reader, Words, Talk messages and new words, Practice feedback and summary, Home's word chips and a unit's words. Outside the reader, words in running text use the reader's token style with one tab stop per text.
-- **Talk** (`/talk`): starts from a short list (the text you are reading, your words to learn, everyday life), your own topic behind a disclosure, earlier conversations beside it; then chat with coverage chips, inline corrections and new-word chips.
-- **Words:** the hub. State / source / search filters live in the URL with removable chips; rows open the shared inspector; a selection goes to your words (or Anki), Practice or Talk. In native mode a **Due** view lists the words due now, each with a quiet "due 3 days ago" after its state. **Levels:** a Level filter (in the URL, with its chip) narrows the list to one starter level ("Level 1 · 1–500" …) or to Other words, and **Group by level** (`group=level`, a toggle next to Columns) splits the table with a header row per level: the level name in 600 weight, a muted "312 of 500 known · 48 learning" (tabular figures) and a thin known-colour bar (the coverage meter's track, at most 240px). Words outside the starter list come last under Other words. A word's level is its rank in the starter list, so levels show whether or not the starter decks exist; a native learner without them sees one muted line above the table: "Add the starter levels in Settings → Language & decks", a link there. Clear filters keeps the grouping.
+- **Course unit:** a back link to the course, one primary "Continue the unit" (its first text in the reader, else the exercises) and a "…" with Talk and Write a story. Tabs: Read · Exercises · Words · Grammar. The unit's card actions (Study first, Add N words) sit in Words; its words open the inspector there. A book exercise has one "Check answers"; Fix answer is in each item's "…".
+- **One inspector:** every Dutch word opens the same inspector, wherever it is: the reader, Words, Talk messages and new words, Practice feedback and summary, and a unit's words. Outside the reader, words in running text use the reader's token style with one tab stop per text. Its actions read the same everywhere: **Add to my words** (Add to Anki with Anki), **I know it**, **Ignore**; after Add the panel shows "Your card" at once.
 - **Inspector, your reviews** (native mode): under the card's status, a quiet "Your reviews" list with hairline rows: day, answer (Again in the danger colour) and the interval it gave.
+- **Talk** (`/talk`, with an AI provider): starts from a short list (the text you are reading, your words to learn, everyday life), your own topic behind a disclosure, earlier conversations beside it; then chat with coverage chips, inline corrections and new-word chips.
 - **Grammar:** topics with "seen in your texts" examples.
-- **Progress:** the numbers, then two calm charts side by side — known words over 12 weeks (a 2px `--known` line, faint area, last value labelled) and pages read per week (thin `--known` bars, this week full strength) — and Practice with "By skill" in a disclosure. Times are relative ("synced 1 hour ago"). Reached from Home ("View progress", "This week"), ⌘K and the phone's More sheet; it stays off the rail because it is a place to look back, not a daily task.
-- **Settings:** sections with a sub-nav (a list on phones): Account, Language & decks (Anki connection first), Reading, AI, Data & backup, Sync (start new sync data on the first device or join it on the others, with a place and a passphrase; the devices, Sync now; on a server's page: sync tokens for devices), Advanced. Changes save themselves with a quiet "Saved" note; the theme is only in the top bar.
+- **Settings:** five sections with a sub-nav (a list on phones), each heading and each switch with one plain line under it: **Your words** (Anki's connection first when Anki runs the reviews; where your cards live, Starter words, new words a day per deck, review days, import and export a deck file, "Tuned to you"; FSRS is named once as "spaced review"), **Reading** (help while reading, new words per page, English under sentences, fill-in blanks, the meaning above blanks, grammar marks, the voice and its speed), **Your devices** (sync), **AI (optional)** and **Data** (backup and restore, the account on a server, and Advanced folded away: addresses, server status, install the app). Old links (`language`, `sync`, `account`, `advanced`) open the new section. Changes save themselves with a quiet "Saved" note; the theme is only in the top bar.
 - **Page header:** every top-level screen opens with the same header: title (h1), one line on what the page is for, the primary action on the right.
 
 ## Voice & copy
 
-Plain, precise and kind. "You know 96% of this text." No exclamation marks or cheerleading.
+Plain, precise and kind. "You know 96% of this text." No exclamation marks or cheerleading. Write for a new learner: short words, no jargon (say "spaced review", "your cards", "the words you know"), and in native mode never mention Anki except where the learner chooses it. One name for one thing: Read, Your texts, Stories for you, Your words, Add to my words, I know it, Review.
 
 ## Reader annotations and reading comforts
 
