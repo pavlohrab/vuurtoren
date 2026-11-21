@@ -65,6 +65,26 @@ for (const size of SIZES) {
       await page.waitForTimeout(400);
       expect(await overflowing(page, ".inspector-panel, .inspector-panel button")).toEqual([]);
       await shot(page, `word-${size.width}`);
+
+      // A swipe to the left turns to the next page.
+      await page.keyboard.press("Escape");
+      const count = page.locator(".reader-pager-count [aria-hidden]");
+      const before = await count.textContent();
+      await page.locator(".reader-turn").evaluate((el) => {
+        const at = (type: string, x: number, t: number) =>
+          new PointerEvent(type, {
+            pointerType: "touch",
+            isPrimary: true,
+            pointerId: 7,
+            clientX: x,
+            clientY: 300,
+            bubbles: true,
+            timeStamp: t,
+          } as PointerEventInit);
+        el.dispatchEvent(at("pointerdown", 300, 0));
+        el.dispatchEvent(at("pointerup", 80, 100));
+      });
+      await expect(count).not.toHaveText(before ?? "");
     });
 
     test("a new learner: the welcome, the story in the reader, the word sheet", async ({

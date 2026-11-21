@@ -4,6 +4,7 @@ import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { ModeMenu } from "./reader/ModeMenu.js";
+import { useSwipePages } from "./reader/useSwipePages.js";
 import {
   type HelpLevel,
   type SegmentPlan,
@@ -613,6 +614,13 @@ export function ReaderPage({ textId }: { textId: string }) {
   useEffect(() => {
     stepRef.current = stepPage;
   });
+  // Touch: swipe left or right turns the page, with a short slide of the new page.
+  const [pageEl, setPageEl] = useState<HTMLDivElement | null>(null);
+  const [turn, setTurn] = useState<"next" | "prev" | null>(null);
+  useSwipePages(pageEl, (dir) => {
+    setTurn(dir === 1 ? "next" : "prev");
+    stepPage(dir);
+  });
 
   // A failed background refetch keeps the text on screen; only a failed first load is an error page.
   if (reading.isError && !data) {
@@ -687,6 +695,7 @@ export function ReaderPage({ textId }: { textId: string }) {
 
   return (
     <div
+      ref={setPageEl}
       className="reader-page"
       style={prefsStyle(prefs)}
       {...(prefs.theme !== "app" ? { "data-reading-theme": prefs.theme } : {})}
@@ -802,43 +811,52 @@ export function ReaderPage({ textId }: { textId: string }) {
           Cloze uses only words you know well, and there are none on this page yet.
         </p>
       ) : null}
-      {side ? (
-        <SideBySide
-          key={`${current}-${epoch}`}
-          text={data.text.content}
-          tokens={data.tokens}
-          plan={plan}
-          pairs={sentencePairs}
-          visibility={prefs.english}
-          notes={orderNotes}
-          selectedToken={selected}
-          onTokenClick={onTokenClick}
-          sentenceAction={audio.sentenceButton}
-        />
-      ) : (
-        <Reader
-          key={`${current}-${epoch}`}
-          text={data.text.content}
-          tokens={data.tokens}
-          plans={[plan]}
-          selectedToken={selected}
-          revealed={revealed}
-          mode={mode}
-          blanks={blanks}
-          glosses={glosses}
-          glossNotes={glossNotes}
-          {...(spotlights ? { spotlights } : {})}
-          spotlightCurrent={currentHitTokens}
-          marks={markLabels}
-          openMark={openMark?.sent ?? null}
-          onMarkClick={(sent, el) =>
-            setOpenMark((cur) => (cur?.sent === sent ? null : { sent, el }))
-          }
-          focusParagraphs={readingFocus}
-          onTokenClick={onTokenClick}
-          onClozeAnswer={onClozeAnswer}
-        />
-      )}
+      <div
+        key={current}
+        className="reader-turn"
+        data-turn={turn ?? undefined}
+        onAnimationEnd={(e) => {
+          if (e.target === e.currentTarget) setTurn(null);
+        }}
+      >
+        {side ? (
+          <SideBySide
+            key={`${current}-${epoch}`}
+            text={data.text.content}
+            tokens={data.tokens}
+            plan={plan}
+            pairs={sentencePairs}
+            visibility={prefs.english}
+            notes={orderNotes}
+            selectedToken={selected}
+            onTokenClick={onTokenClick}
+            sentenceAction={audio.sentenceButton}
+          />
+        ) : (
+          <Reader
+            key={`${current}-${epoch}`}
+            text={data.text.content}
+            tokens={data.tokens}
+            plans={[plan]}
+            selectedToken={selected}
+            revealed={revealed}
+            mode={mode}
+            blanks={blanks}
+            glosses={glosses}
+            glossNotes={glossNotes}
+            {...(spotlights ? { spotlights } : {})}
+            spotlightCurrent={currentHitTokens}
+            marks={markLabels}
+            openMark={openMark?.sent ?? null}
+            onMarkClick={(sent, el) =>
+              setOpenMark((cur) => (cur?.sent === sent ? null : { sent, el }))
+            }
+            focusParagraphs={readingFocus}
+            onTokenClick={onTokenClick}
+            onClozeAnswer={onClozeAnswer}
+          />
+        )}
+      </div>
       <StoryCredit sourceRef={data.text.sourceRef} />
       <AnchoredPopover
         anchor={openMarkData ? (openMark?.el ?? null) : null}

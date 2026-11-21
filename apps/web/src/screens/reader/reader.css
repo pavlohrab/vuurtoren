@@ -760,3 +760,34 @@
   font-size: 0.875rem;
   line-height: 1.5;
 }
+
+/* Touch: a swipe turns the page (useSwipePages.ts); the new page slides in from that side.
+   Horizontal moves on the page are ours, vertical ones scroll. */
+@media (pointer: coarse) {
+  .reader-turn {
+    touch-action: pan-y pinch-zoom;
+  }
+}
+.reader-turn[data-turn="next"] {
+  animation: reader-turn-next var(--dur) var(--ease-out);
+}
+.reader-turn[data-turn="prev"] {
+  animation: reader-turn-prev var(--dur) var(--ease-out);
+}
+@keyframes reader-turn-next {
+  from {
+    opacity: 0;
+    transform: translateX(var(--s-6));
+  }
+}
+@keyframes reader-turn-prev {
+  from {
+    opacity: 0;
+    transform: translateX(calc(-1 * var(--s-6)));
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .reader-turn[data-turn] {
+    animation: none;
+  }
+}
