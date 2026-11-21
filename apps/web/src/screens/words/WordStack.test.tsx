@@ -6,6 +6,7 @@ import { App } from "../../App.js";
 import { createMockServices } from "../../services/mock.js";
 import type { AppServices, InspectorEntry } from "../../services/types.js";
 import { saveAnswer } from "./WordStack.js";
+import { loadStarterIndex } from "./WordsRoom.js";
 
 function setup(url = "/words") {
   const services: AppServices = createMockServices({ latencyMs: 0, native: true });
@@ -106,5 +107,62 @@ describe("saveAnswer", () => {
     await saveAnswer(s, entry("review"), "learn", undefined);
     expect(s.learnNext).toHaveBeenCalledTimes(2);
     expect(s.markKnown).not.toHaveBeenCalled();
+  });
+});
+
+describe("the word stack's first set and order", () => {
+  it("with nothing met while reading yet, opens on the current starter level", async () => {
+    const services: AppServices = {
+      ...createMockServices({ latencyMs: 0, native: true }),
+      wordsToDecide: async () => [],
+    };
+    render(
+      <App services={services} history={createMemoryHistory({ initialEntries: ["/words"] })} />,
+    );
+    const level = await screen.findByRole("radio", { name: /^Level \d+$/, checked: true });
+    expect(screen.getByRole("radio", { name: "Met while reading" })).not.toBeChecked();
+    const summary = await screen.findByLabelText("Where you are");
+    await waitFor(() => expect(summary).toHaveTextContent(level.textContent!));
+  });
+
+  it("New is most common first (starter rank), not alphabetical", async () => {
+    const index = await loadStarterIndex();
+    const byRank = [...index.rank.entries()].sort((a, b) => a[1] - b[1]);
+    const common = byRank[3]![0];
+    const rarer = byRank[400]![0];
+    const base = createMockServices({ latencyMs: 0, native: true });
+    const words: AppServices["words"] = async (opts = {}) =>
+      opts.state === "unknown"
+        ? [
+            { key: "zzz-niet-in-de-lijst", state: "unknown" },
+            { key: rarer, state: "unknown" },
+            { key: common, state: "unknown" },
+          ].map((w) => ({ ...w, gloss: "" }) as Awaited<ReturnType<AppServices["words"]>>[number])
+        : opts.state === "seen"
+          ? []
+          : base.words(opts);
+    render(
+      <App
+        services={{ ...base, words }}
+        history={createMemoryHistory({ initialEntries: ["/words"] })}
+      />,
+    );
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("radio", { name: "New" }));
+    await waitFor(async () => expect(await wordOf()).toMatch(new RegExp(`${common}$`)));
+  });
+
+  it("the header follows a saved answer and says known once", async () => {
+    const { user } = setup();
+    const summary = await screen.findByLabelText("Where you are");
+    await waitFor(() => expect(summary).toHaveTextContent(/of [\d,]+ known/));
+    expect(summary.textContent!.match(/known/g)).toHaveLength(1);
+    const before = summary.textContent;
+    await ready();
+    await user.keyboard("{ArrowRight}");
+    await ready();
+    // The next answer saves the first at once; then the header is asked again.
+    await user.keyboard("{ArrowLeft}");
+    await waitFor(() => expect(summary.textContent).not.toBe(before));
   });
 });

@@ -110,11 +110,7 @@ export function WordsRoom({ tab }: { tab: WordsTab }) {
         ) : (
           <Skeleton style={{ height: 16, width: 140 }} />
         )}
-        {s ? (
-          <span className="words-room-quiet">
-            {fmt(s.known)} known · {fmt(s.learning)} learning
-          </span>
-        ) : null}
+        {s ? <span className="words-room-quiet"> · {fmt(s.learning)} learning</span> : null}
       </p>
     </div>
   );

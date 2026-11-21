@@ -31,7 +31,7 @@ import { errorText } from "../../services/errors.js";
 import type { AppServices, InspectorEntry } from "../../services/types.js";
 import { useDeckChoice } from "../useDeckChoice.js";
 import { type StarterIndex, levelOf } from "./levels.js";
-import { ALL_WORDS, loadStarterIndex } from "./WordsRoom.js";
+import { ALL_WORDS, loadStarterIndex, useCurrentLevel } from "./WordsRoom.js";
 import "./wordStack.css";
 
 /** Which words the stack holds. */
@@ -55,7 +55,10 @@ const STACK_SIZE = 200;
 
 const LIVE_STATES = new Set(["unknown", "seen", "learning"]);
 
-/** The cards of a choice: words met while reading first, by level in starter order. */
+/**
+ * The cards of a choice: words met while reading as they come, the others most common first
+ * (by their starter rank; words outside the starter list after them).
+ */
 async function loadStack(
   services: AppServices,
   choice: StackChoice,
@@ -69,17 +72,20 @@ async function loadStack(
   if (choice === "reading") return (await services.wordsToDecide({ limit: STACK_SIZE })).map(card);
   if (choice === "learning")
     return (await services.words({ state: "learning", limit: STACK_SIZE })).map(card);
+  const rank = (k: string) => index?.rank.get(k) ?? Number.MAX_SAFE_INTEGER;
   if (choice === "new") {
     const [seen, fresh] = await Promise.all([
-      services.words({ state: "seen", limit: STACK_SIZE }),
-      services.words({ state: "unknown", limit: STACK_SIZE }),
+      services.words({ state: "seen", limit: ALL_WORDS }),
+      services.words({ state: "unknown", limit: ALL_WORDS }),
     ]);
-    return [...seen, ...fresh].map(card);
+    return [...seen, ...fresh]
+      .sort((a, b) => rank(a.key) - rank(b.key) || a.key.localeCompare(b.key))
+      .slice(0, STACK_SIZE)
+      .map(card);
   }
   const level = Number(choice.slice("level:".length));
   if (!index) return [];
   const keys = [...index.rank.keys()].filter((k) => levelOf(index, k) === level);
-  const rank = (k: string) => index.rank.get(k) ?? 0;
   return (await services.words({ keys, limit: ALL_WORDS }))
     .filter((w) => LIVE_STATES.has(w.state))
     .sort((a, b) => rank(a.key) - rank(b.key))
@@ -146,7 +152,9 @@ export function WordStack({
   const toast = useToast();
   const deckChoice = useDeckChoice("reading");
   const { play, playing } = useSay();
-  const [choice, setChoice] = useState<StackChoice>("reading");
+  // Opens on the words met while reading; with none yet, on the learner's current level.
+  const [picked, setChoice] = useState<StackChoice | null>(null);
+  const current = useCurrentLevel();
   /** Keys answered in this visit (saved or waiting), so they leave the stack at once. */
   const [answered, setAnswered] = useState<readonly string[]>([]);
   const [pending, setPending] = useState<Pending | null>(null);
@@ -158,10 +166,22 @@ export function WordStack({
     queryFn: loadStarterIndex,
     staleTime: Infinity,
   });
+  const reading = useQuery({
+    queryKey: ["words", "stack", "reading", "none"],
+    queryFn: () => loadStack(services, "reading", undefined),
+    enabled: picked === null,
+  });
+  const [opened, setOpened] = useState<StackChoice | null>(null);
+  if (picked === null && opened === null && reading.data) {
+    if (reading.data.length > 0) setOpened("reading");
+    else if (current) setOpened(`level:${current.level}`);
+    else if (levels.length === 0) setOpened("reading");
+  }
+  const choice: StackChoice = picked ?? opened ?? "reading";
   const stack = useQuery({
     queryKey: ["words", "stack", choice, index.data ? "index" : "none"],
     queryFn: () => loadStack(services, choice, index.data),
-    enabled: !choice.startsWith("level:") || !!index.data,
+    enabled: (picked !== null || opened !== null) && (!choice.startsWith("level:") || !!index.data),
   });
   const cards = (stack.data ?? []).filter((c) => !answered.includes(c.key));
   const top = cards[0] ?? null;
