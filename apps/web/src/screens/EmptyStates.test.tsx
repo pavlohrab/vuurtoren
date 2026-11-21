@@ -38,7 +38,7 @@ describe("empty states", () => {
   });
 
   it("Words: a real empty state when there are no words at all", async () => {
-    setup("/words?layout=list", { words: async () => [], wordsToDecide: async () => [] });
+    setup("/words/all?layout=list", { words: async () => [], wordsToDecide: async () => [] });
     expect(await screen.findByRole("heading", { name: "No words yet" })).toBeVisible();
     expect(screen.getByRole("link", { name: "Add text" })).toBeInTheDocument();
   });
@@ -61,7 +61,7 @@ describe("empty states", () => {
     expect(within(nav).queryByRole("link", { name: "Progress" })).toBeNull();
   });
 
-  it("Words is the room of Review, Practice and Progress; Talk hides without AI", async () => {
+  it("Progress belongs to Words, with the way back to it; Talk hides without AI", async () => {
     setup("/progress", {
       aiStatus: async () => ({ configured: false, provider: null, model: null }) as never,
     });
@@ -70,11 +70,7 @@ describe("empty states", () => {
       expect(within(nav).getByRole("link", { name: /^Words/ })).toHaveAttribute("data-active"),
     );
     expect(within(nav).queryByRole("link", { name: "Talk" })).toBeNull();
-    const tabs = await screen.findByRole("navigation", { name: "Words" });
-    expect(within(tabs).getByRole("link", { name: "Progress" })).toHaveAttribute(
-      "aria-current",
-      "page",
-    );
+    expect(await screen.findByRole("link", { name: "Words" })).toHaveAttribute("href", "/words");
   });
 
   it("the demo (synced) shows no Connect Anki banner", async () => {
