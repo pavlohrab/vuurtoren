@@ -11,7 +11,7 @@ import {
 } from "./types.js";
 
 interface CompletionBody {
-  choices?: { message?: { content?: string | null } }[];
+  choices?: { message?: { content?: string | null }; finish_reason?: string }[];
   usage?: {
     prompt_tokens?: number;
     completion_tokens?: number;
@@ -52,8 +52,12 @@ export function createOpenAICompatible(
         body,
         req.signal,
       )) as CompletionBody;
-      const text = res.choices?.[0]?.message?.content;
-      if (typeof text !== "string") throw new AIError("The model returned no text.", "server");
+      const choice = res.choices?.[0];
+      const text = choice?.message?.content;
+      if (typeof text !== "string" || !text.trim()) {
+        if (choice?.finish_reason === "length") throw new AIError("The model used its whole answer length before writing any text (reasoning models think first). Choose a model without long thinking, or try again.", "server");
+        throw new AIError("The model returned no text.", "server");
+      }
       const u = res.usage;
       return {
         text,

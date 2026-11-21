@@ -14,6 +14,7 @@ export const ANTHROPIC_VERSION = "2023-06-01";
 
 interface MessagesBody {
   content?: { type: string; text?: string }[];
+  stop_reason?: string;
   usage?: {
     input_tokens?: number;
     output_tokens?: number;
@@ -62,7 +63,12 @@ export function createAnthropic(
         .filter((b) => b.type === "text" && typeof b.text === "string")
         .map((b) => b.text)
         .join("");
-      if (!text) throw new AIError("The model returned no text.", "server");
+      if (!text) {
+        if (res.stop_reason === "max_tokens") throw new AIError("The model used its whole answer length before writing any text (reasoning models think first). Choose a model without long thinking, or try again.", "server");
+        if (res.stop_reason === "refusal")
+          throw new AIError("The model declined to write this. Try another topic.", "server");
+        throw new AIError("The model returned no text.", "server");
+      }
       const u = res.usage;
       return {
         text,

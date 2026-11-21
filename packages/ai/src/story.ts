@@ -147,7 +147,8 @@ export async function generateStory(deps: StoryDeps, setup: StorySetup): Promise
   const allowed = new Set(targetKeys);
   const fallbackTitle = setup.topic.trim() || "Verhaal";
   const words = STORY_WORDS[setup.length];
-  const maxTokens = Math.max(1024, Math.round(words * 4));
+  // Room for the story in JSON plus a model's thinking: a short story still gets 4,096.
+  const maxTokens = Math.max(4096, Math.round(words * 6));
   let usage: Usage = { inputTokens: 0, outputTokens: 0, cachedTokens: 0 };
 
   const request: ChatMessage = {

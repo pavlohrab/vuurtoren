@@ -57,6 +57,28 @@ describe("Anthropic adapter", () => {
     expect((err as AIError).kind).toBe("auth");
     expect((err as AIError).message).toContain("bad key");
   });
+
+  it("says when the answer ran out of room before any text", async () => {
+    const { f } = stubFetch({ content: [{ type: "thinking" }], stop_reason: "max_tokens" });
+    const err = await createProvider(cfg, f)
+      .chat({ system: "s", messages: [{ role: "user", content: "x" }] })
+      .catch((e: unknown) => e);
+    expect((err as AIError).message).toContain("whole answer length");
+  });
+});
+
+describe("OpenAI-compatible adapter, empty answers", () => {
+  it("says when a reasoning model spent the whole length thinking", async () => {
+    const { f } = stubFetch({ choices: [{ message: { content: "" }, finish_reason: "length" }] });
+    const err = await createProvider(
+      { provider: "openai", baseUrl: "https://api.openai.com/v1", model: "gpt-x", apiKey: "k" },
+      f,
+    )
+      .chat({ system: "s", messages: [{ role: "user", content: "x" }] })
+      .catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(AIError);
+    expect((err as AIError).message).toContain("whole answer length");
+  });
 });
 
 describe("OpenAI-compatible adapter", () => {
