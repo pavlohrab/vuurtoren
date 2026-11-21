@@ -92,6 +92,14 @@ export interface DesktopBridge {
   scanQr?: () => Promise<string | null>;
   /** The dictionary pack on the device (phones): meanings without a server. */
   dictionary?: DeviceDictionary;
+  /**
+   * Android Back (button or gesture): while the page listens, every Back comes to it (with
+   * whether the WebView has a page to go back to) and nothing happens on its own; `exit` leaves.
+   */
+  back?: {
+    listen(fn: (e: { canGoBack: boolean }) => void): () => void;
+    exit(): Promise<void>;
+  };
 }
 
 /** One dictionary entry, as the language server's `/gloss` gives it. */

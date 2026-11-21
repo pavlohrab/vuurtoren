@@ -112,7 +112,7 @@ describe("desktop sync", () => {
       expect(c.headers?.["content-type"]).toMatch(/^multipart\/form-data; boundary=/);
       const form = await new Request(c.url, {
         method: "POST",
-        headers: c.headers,
+        headers: c.headers ?? {},
         body: c.body as BodyInit,
       }).formData();
       const files = form.getAll("file") as File[];
@@ -121,7 +121,7 @@ describe("desktop sync", () => {
     }
     const course = await new Request(calls[2]!.url, {
       method: "POST",
-      headers: calls[2]!.headers,
+      headers: calls[2]!.headers ?? {},
       body: calls[2]!.body as BodyInit,
     }).formData();
     expect(course.getAll("file").map((f) => (f as File).name)).toEqual(["page.jpg", "page.jpg"]);

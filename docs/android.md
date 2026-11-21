@@ -154,8 +154,11 @@ The phone layout from the redesign; the colours, type and logo stay as on deskto
   Talk, Progress, Settings, the theme). Words opens on Review with Vuurtoren's own cards (its badge
   is the cards due; Your words, Practice and Progress are the room's tabs), on the word list with
   Anki. Each tab is 56px tall with a 24px icon and a 12px label; the current one is amber with a
-  pill behind its icon; the bar sits 8px above the gesture handle. The Android **back gesture** goes back in the app's history
-  (predictive back where the system offers it) and closes sheets first.
+  pill behind its icon; the bar sits 8px above the gesture handle. The Android **back gesture** closes the topmost
+  overlay first (a dialog or menu, the tour, the word sheet, the More sheet), then goes back a
+  page, and leaves the app only from the first page: the page listens to Tauri's `back-button`
+  event (`bridge.back`, `shell/backStack.ts`; overlays register with `useBackClose`) and calls
+  `app_exit` at the end. The More sheet is transient: choosing an item or changing page closes it.
 - **Edge to edge:** content runs under the status and navigation bars; padding comes from the
   insets. The status bar follows the theme (light or dark).
 - **Reader:** large Literata text; a tap on a word opens a bottom sheet (meaning, play, Add to my

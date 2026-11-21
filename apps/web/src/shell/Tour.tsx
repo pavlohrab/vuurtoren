@@ -21,6 +21,7 @@ import {
 import { createPortal } from "react-dom";
 import { Button } from "@app/ui";
 import { readLocal, writeLocal } from "../storage/local.js";
+import { useBackClose } from "./backStack.js";
 
 const STATE = "vuurtoren.tour";
 const START = "vuurtoren-tour";
@@ -114,6 +115,8 @@ export function Tour() {
     if (at + 1 < STEPS.length) setAt(at + 1);
     else end();
   };
+  // Android Back ends the walkthrough before it closes anything under it.
+  useBackClose(on, end);
 
   // Follow the target (pages load, sheets move, the window turns); pass over a missing one
   // after a moment.

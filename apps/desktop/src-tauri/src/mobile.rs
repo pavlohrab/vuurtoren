@@ -9,6 +9,13 @@ use tauri_plugin_deep_link::DeepLinkExt;
 
 use crate::keys;
 
+/// Leave the app: the page's answer to Android Back when nothing is open and there is no page to
+/// go back to (the page listens for Back itself, so the system no longer does this on its own).
+#[tauri::command]
+pub fn app_exit(app: AppHandle) {
+    app.exit(0);
+}
+
 /// The phone's plugins: the QR scanner, links, and the key store.
 pub fn plugins(builder: tauri::Builder<Wry>) -> tauri::Builder<Wry> {
     let builder = builder

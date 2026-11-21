@@ -38,8 +38,7 @@ async function wireRequest(
 ): Promise<WireRequest> {
   const url = urlOf(input);
   // The app's request cannot be cancelled, so the signal stays with the caller.
-  const { signal: _signal, ...rest } = init ?? {};
-  const req = new Request(input instanceof Request ? input : url, rest);
+  const req = new Request(input instanceof Request ? input : url, { ...init, signal: null });
   const method = req.method.toUpperCase();
   const headers = Object.fromEntries(req.headers.entries());
   if (req.body === null) return { url, method, headers };
@@ -78,7 +77,7 @@ function allowHost(sync: DesktopSync, url: string): Promise<void> {
  */
 export function desktopFetch(sync: DesktopSync): typeof fetch {
   return async (input, init) => {
-    let method = "GET";
+    let method: string;
     let res: Awaited<ReturnType<DesktopSync["fetch"]>>;
     try {
       await allowHost(sync, urlOf(input));

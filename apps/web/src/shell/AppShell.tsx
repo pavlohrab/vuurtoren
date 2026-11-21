@@ -47,6 +47,7 @@ import { ShellContext, type PageHeader, type ShellState } from "./ShellContext.j
 import { useBottomSheet } from "./useBottomSheet.js";
 import { Tour, startTour } from "./Tour.js";
 import { useAutoSync } from "./useAutoSync.js";
+import { useBackClose, useSystemBack } from "./backStack.js";
 import { useConnectLinks } from "./useConnectLinks.js";
 import { useDebounced } from "../useDebounced.js";
 
@@ -113,19 +114,31 @@ export function AppShell() {
   const [inspectorOpen, setInspectorOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
-  // Phone tab bar: the "More" sheet with the secondary destinations.
-  // Remembered with the path it was opened on, so navigating closes it.
-  const [moreAt, setMoreAt] = useState<string | null>(null);
-  const moreOpen = moreAt === pathname;
-  const setMoreOpen = useCallback((open: boolean) => setMoreAt(open ? pathname : null), [pathname]);
+  // Phone tab bar: the "More" sheet with the secondary destinations. Transient: choosing an
+  // item or any change of page closes it, and going back never brings it back.
+  const [moreOpen, setMoreOpenState] = useState(false);
+  const [morePath, setMorePath] = useState(pathname);
+  if (morePath !== pathname) {
+    setMorePath(pathname);
+    if (moreOpen) setMoreOpenState(false);
+  }
+  const moreButton = useRef<HTMLButtonElement>(null);
+  const setMoreOpen = useCallback((open: boolean) => setMoreOpenState(open), []);
+  /** Dismissed without choosing (Esc, Back, the scrim): focus goes back to the More button. */
+  const dismissMore = useCallback(() => {
+    setMoreOpenState(false);
+    moreButton.current?.focus();
+  }, []);
+  useBackClose(moreOpen, dismissMore);
+  useSystemBack();
   useEffect(() => {
     if (!moreOpen) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setMoreOpen(false);
+      if (e.key === "Escape") dismissMore();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [moreOpen, setMoreOpen]);
+  }, [moreOpen, dismissMore]);
 
   const texts = useQuery({ queryKey: ["texts"], queryFn: () => services.listTexts() });
   // The palette's Words group: looked up as the learner types (two letters or more).
@@ -191,6 +204,7 @@ export function AppShell() {
   const sheetRef = useRef<HTMLElement>(null);
   const closeSheet = useCallback(() => setInspectorOpen(false), []);
   const sheet = useBottomSheet(sheetRef, showInspector, closeSheet);
+  useBackClose(showInspector, closeSheet);
   const titleClass = header?.reader ? "topbar-title topbar-title--quiet" : "topbar-title";
   // The page's h1 already says it: the top bar shows the title once the h1 has scrolled away.
   const headingHidden = pageTitleInView && !header?.always && !header?.reader;
@@ -305,6 +319,7 @@ export function AppShell() {
             <div className="nav-spacer" />
             <NavLink to="/settings" label="Settings" icon={<SettingsIcon size={18} />} secondary />
             <button
+              ref={moreButton}
               type="button"
               className="nav-link nav-more"
               aria-expanded={moreOpen}
@@ -317,16 +332,28 @@ export function AppShell() {
           </nav>
           {moreOpen ? (
             <>
-              <div className="nav-more-scrim" onClick={() => setMoreOpen(false)} aria-hidden />
+              <div className="nav-more-scrim" onClick={dismissMore} aria-hidden />
               <div className="nav-more-sheet" id="nav-more-sheet" role="menu" aria-label="More">
-                <MoreLink to="/grammar" label="Grammar" icon={<BookText size={18} />} />
-                <MoreLink to="/exam" label="Exam" icon={<ClipboardCheck size={18} />} />
-                <MoreLink to="/courses" label="Courses" icon={<GraduationCap size={18} />} />
-                {talk ? (
-                  <MoreLink to="/talk" label="Talk" icon={<MessagesSquare size={18} />} />
-                ) : null}
-                <MoreLink to="/progress" label="Progress" icon={<TrendingUp size={18} />} />
-                <MoreLink to="/settings" label="Settings" icon={<SettingsIcon size={18} />} />
+                {(
+                  [
+                    ["/grammar", "Grammar", <BookText key="g" size={18} />],
+                    ["/exam", "Exam", <ClipboardCheck key="e" size={18} />],
+                    ["/courses", "Courses", <GraduationCap key="c" size={18} />],
+                    ...(talk
+                      ? [["/talk", "Talk", <MessagesSquare key="t" size={18} />] as const]
+                      : []),
+                    ["/progress", "Progress", <TrendingUp key="p" size={18} />],
+                    ["/settings", "Settings", <SettingsIcon key="s" size={18} />],
+                  ] as const
+                ).map(([to, label, icon]) => (
+                  <MoreLink
+                    key={to}
+                    to={to}
+                    label={label}
+                    icon={icon}
+                    onSelect={() => setMoreOpen(false)}
+                  />
+                ))}
                 <button
                   type="button"
                   className="nav-more-item"
@@ -601,9 +628,19 @@ function NavLink({
   );
 }
 
-function MoreLink({ to, label, icon }: { to: FixedRoute; label: string; icon: ReactNode }) {
+function MoreLink({
+  to,
+  label,
+  icon,
+  onSelect,
+}: {
+  to: FixedRoute;
+  label: string;
+  icon: ReactNode;
+  onSelect: () => void;
+}) {
   return (
-    <Link to={to} className="nav-more-item" role="menuitem">
+    <Link to={to} className="nav-more-item" role="menuitem" onClick={onSelect}>
       {icon}
       <span>{label}</span>
     </Link>

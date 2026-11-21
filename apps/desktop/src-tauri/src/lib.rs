@@ -762,7 +762,9 @@ pub fn run() {
             #[cfg(desktop)]
             desktop::nlp_retry_packs,
             #[cfg(desktop)]
-            desktop::self_test_report
+            desktop::self_test_report,
+            #[cfg(mobile)]
+            mobile::app_exit
         ])
         .setup(|app| {
             let handle = app.handle().clone();

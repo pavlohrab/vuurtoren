@@ -145,6 +145,40 @@
           };
         },
       }),
+      // Android Back (button or gesture). While the page listens, Tauri's app plugin hands every
+      // Back to it instead of going back in the WebView or closing the app; `exit` leaves.
+      back:
+        OS === "android"
+          ? Object.freeze({
+              listen: function (fn) {
+                var internals = window.__TAURI_INTERNALS__;
+                var id = internals.transformCallback(function (e) {
+                  var data = e && typeof e === "object" && "message" in e ? e.message : e;
+                  fn({ canGoBack: !!(data && data.canGoBack) });
+                });
+                var registered = invoke("plugin:app|register_listener", {
+                  event: "back-button",
+                  handler: "__CHANNEL__:" + id,
+                });
+                return function () {
+                  registered
+                    .then(function () {
+                      return invoke("plugin:app|remove_listener", {
+                        event: "back-button",
+                        channelId: id,
+                      });
+                    })
+                    .catch(function () {})
+                    .then(function () {
+                      internals.unregisterCallback(id);
+                    });
+                };
+              },
+              exit: function () {
+                return invoke("app_exit");
+              },
+            })
+          : undefined,
       // A QR code from the camera (phones): its text, or null when cancelled or not allowed.
       scanQr:
         OS === "android" || OS === "ios"
