@@ -8,6 +8,7 @@ import { useSwipePages } from "./reader/useSwipePages.js";
 import {
   type HelpLevel,
   type SegmentPlan,
+  relabelKey,
   glossTargets,
   helpLevel,
   hitsInSentence,
@@ -545,8 +546,11 @@ export function ReaderPage({ textId }: { textId: string }) {
     }
   };
 
-  const actions = useWordActions(reading.data?.text.sourceKind === "ai" ? "ai" : "reading", () =>
-    qc.invalidateQueries({ queryKey: ["reading", textId] }),
+  const actions = useWordActions(
+    reading.data?.text.sourceKind === "ai" ? "ai" : "reading",
+    () => qc.invalidateQueries({ queryKey: ["reading", textId] }),
+    (key, change) =>
+      setFrozen((f) => (f ? { ...f, plan: relabelKey(f.plan, key, change) } : f)),
   );
 
   const isLast = plans ? current >= plans.length - 1 : true;

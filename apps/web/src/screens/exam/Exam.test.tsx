@@ -169,7 +169,7 @@ describe("Writing and speaking", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(exam.location.search).toContain("mode=exam");
     // Android Back.
-    act(() => void systemBack(true, { back: () => exam.back(), exit: () => {} }));
+    act(() => void systemBack("/exam/writing", { toTab: () => {}, exit: () => {} }));
     expect(await screen.findByRole("dialog", { name: "Leave the timed exam?" })).toBeVisible();
     await user.click(screen.getByRole("button", { name: "Keep writing" }));
     await user.click(screen.getAllByRole("link", { name: /Grammar/ })[0]!);

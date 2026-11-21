@@ -3,7 +3,7 @@
  * Mark known, Ignore, Use Anki's state), shared by every screen that opens the inspector.
  */
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import type { WordState } from "@app/core";
+import type { WordChange, WordState } from "@app/core";
 import { type WordInspectorProps, deckName, useNativeMode, useToast } from "@app/ui";
 import { useServices } from "../services/context.js";
 import { errorText } from "../services/errors.js";
@@ -21,9 +21,14 @@ const WORD_VIEWS = ["texts", "words", "learner", "textWords", "home", "practice"
 
 /**
  * Mutations for the inspector. `refresh` runs after a successful action (e.g. the reader
- * refetches its plan); the word lists and summaries are marked stale either way.
+ * refetches its plan); the word lists and summaries are marked stale either way. `changed`
+ * hears the word's new state at once, so a screen can update every place the word shows.
  */
-export function useWordActions(source: AddSource, refresh?: () => Promise<unknown>) {
+export function useWordActions(
+  source: AddSource,
+  refresh?: () => Promise<unknown>,
+  changed?: (key: string, change: WordChange) => void,
+) {
   const services = useServices();
   const qc = useQueryClient();
   const toast = useToast();
@@ -43,7 +48,8 @@ export function useWordActions(source: AddSource, refresh?: () => Promise<unknow
   // The mutations take the entry they act on as a variable, never "whatever is loaded now".
   const addToAnki = useMutation({
     mutationFn: (e: InspectorEntry) => services.addToAnki(e, deckOpts),
-    onSuccess: async ({ deck }) => {
+    onSuccess: async ({ deck }, e) => {
+      changed?.(e.key, "learning");
       toast(native ? "Added to your words" : "Added to Anki", deckName(deck));
       await done();
     },
@@ -60,7 +66,8 @@ export function useWordActions(source: AddSource, refresh?: () => Promise<unknow
   });
   const markKnown = useMutation({
     mutationFn: (e: InspectorEntry) => services.markKnown(e, deckOpts),
-    onSuccess: async ({ addedToDeck }) => {
+    onSuccess: async ({ addedToDeck }, e) => {
+      changed?.(e.key, "known");
       toast(
         "Marked as known",
         addedToDeck
@@ -82,7 +89,8 @@ export function useWordActions(source: AddSource, refresh?: () => Promise<unknow
   const setState = useMutation({
     mutationFn: ({ e, state }: { e: InspectorEntry; state: WordState }) =>
       services.setWordState(e.key, state),
-    onSuccess: async (_r, { state }) => {
+    onSuccess: async (_r, { e, state }) => {
+      if (state === "known" || state === "ignored" || state === "learning") changed?.(e.key, state);
       toast(state === "ignored" ? "Word ignored" : "Word updated");
       await done();
     },

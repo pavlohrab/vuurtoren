@@ -6,7 +6,14 @@ import type { LearnerModel } from "../learner.js";
 import { classifyTokens, coverageOf, isCounted } from "./classify.js";
 import { segmentTokens } from "./segment.js";
 import type { WeightedSegmentPlan } from "./staircase.js";
-import type { AnalyzedToken, PlannedToken, PlannerOptions, Segment } from "./types.js";
+import type {
+  AnalyzedToken,
+  PlannedToken,
+  PlannerOptions,
+  Segment,
+  SegmentPlan,
+  TokenLabel,
+} from "./types.js";
 
 /** Words with pKnown below this are "unknown" for planning. */
 export const UNKNOWN_THRESHOLD = 0.5;
@@ -233,4 +240,30 @@ export function planText(
   return segmentTokens(tokens, undefined, text).map((s) =>
     planFromClassified(tokens, classified, s, opts),
   );
+}
+
+/** A word's new state after a word action while a page is open. */
+export type WordChange = "known" | "learning" | "ignored";
+
+/**
+ * The page's plan after the learner changed one word: every token of `key` takes the new state
+ * at once (underline, gloss and counts), while clozes stay where they are, since answers are
+ * keyed by token index. Returns the same plan when the key is not on the page.
+ */
+export function relabelKey<P extends SegmentPlan>(plan: P, key: string, change: WordChange): P {
+  if (!plan.tokens.some((t) => t.key === key)) return plan;
+  const cloze = new Set(plan.clozes);
+  const label: TokenLabel = change;
+  const pKnown = change === "learning" ? 0.2 : 1;
+  const tokens = plan.tokens.map((t) =>
+    t.key === key && !cloze.has(t.i) ? { ...t, label, pKnown } : t,
+  );
+  const drop = (keys: string[]) => keys.filter((k) => k !== key);
+  return {
+    ...plan,
+    tokens,
+    introduce: drop(plan.introduce),
+    gloss: drop(plan.gloss),
+    newTypes: change === "learning" ? plan.newTypes : drop(plan.newTypes),
+  };
 }

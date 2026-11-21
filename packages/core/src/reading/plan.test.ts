@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { WordKnowledge } from "../memory.js";
-import { planSegment, planText, zipfFloor } from "./plan.js";
+import { planSegment, planText, relabelKey, zipfFloor } from "./plan.js";
 import { segmentTokens } from "./segment.js";
 import { filler, known, learning, model, tokenize, type Overrides } from "./testutil.js";
 import { DEFAULT_PLANNER, type AnalyzedToken, type PlannerOptions } from "./types.js";
@@ -388,5 +388,34 @@ describe("clozes skip function words", () => {
     );
     for (const i of p.clozes) expect(["ADP", "DET", "PRON"]).not.toContain(toks[i]!.pos);
     expect(p.clozes.length).toBeGreaterThan(0);
+  });
+});
+
+describe("relabelKey", () => {
+  const plan = {
+    segment: { index: 0, tokenStart: 0, tokenEnd: 4, charStart: 0, charEnd: 20 },
+    tokens: [
+      { i: 0, label: "introduce" as const, key: "toren", pKnown: 0 },
+      { i: 1, label: "known" as const, key: "de", pKnown: 1 },
+      { i: 2, label: "introduce" as const, key: "toren", pKnown: 0 },
+      { i: 3, label: "cloze" as const, key: "toren", pKnown: 0.6 },
+    ],
+    coverage: 0.5,
+    newTypes: ["toren"],
+    introduce: ["toren"],
+    gloss: [],
+    clozes: [3],
+  };
+
+  it("marks every token of the word known at once, and leaves clozes where they are", () => {
+    const next = relabelKey(plan, "toren", "known");
+    expect(next.tokens.map((t) => t.label)).toEqual(["known", "known", "known", "cloze"]);
+    expect(next.introduce).toEqual([]);
+    expect(next.newTypes).toEqual([]);
+    expect(next.clozes).toEqual([3]);
+  });
+
+  it("returns the same plan when the word is not on the page", () => {
+    expect(relabelKey(plan, "koe", "known")).toBe(plan);
   });
 });
