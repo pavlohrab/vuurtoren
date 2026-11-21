@@ -38,7 +38,7 @@ describe("command palette", () => {
       name: new RegExp(`(^|\\s)${word!.key}( ·|$)`),
     });
     await user.click(option);
-    await waitFor(() => expect(history.location.pathname).toBe("/words"));
+    await waitFor(() => expect(history.location.pathname).toBe("/words/all"));
     expect(history.location.search).toContain(`word=${word!.key}`);
   });
 });

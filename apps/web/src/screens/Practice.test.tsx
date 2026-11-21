@@ -252,7 +252,7 @@ describe("Practice session", () => {
     const next = screen.getByRole("navigation", { name: "Next steps" });
     expect(within(next).getByRole("link", { name: /Review these words/ })).toHaveAttribute(
       "href",
-      "/words?source=practice-again",
+      "/words/all?source=practice-again",
     );
     expect(within(next).getByRole("link", { name: /Talk about these words/ })).toHaveAttribute(
       "href",
