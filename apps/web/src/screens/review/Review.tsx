@@ -105,9 +105,15 @@ export function Review() {
   );
   const autoWord = audio?.autoplayWord ?? false;
   const autoSentence = audio?.autoplaySentence ?? false;
+  // A vocabulary card shows the word on its front, so the word plays as it shows; a card of an
+  // imported deck may ask for the word (English on the front), so its word plays with the answer.
+  const wordFirst = card?.layout === "vocab";
   useEffect(() => {
-    if (cardKey && autoWord && wordSaying) void play("word", wordSaying);
-  }, [cardKey, autoWord, wordSaying, play]);
+    if (cardKey && autoWord && wordSaying && wordFirst) void play("word", wordSaying);
+  }, [cardKey, autoWord, wordSaying, wordFirst, play]);
+  useEffect(() => {
+    if (shown && autoWord && wordSaying && !wordFirst) void play("word", wordSaying);
+  }, [shown, autoWord, wordSaying, wordFirst, play]);
   useEffect(() => {
     if (shown && autoSentence && sentenceSaying) void play("sentence", sentenceSaying);
   }, [shown, autoSentence, sentenceSaying, play]);
@@ -168,7 +174,7 @@ export function Review() {
         setBusy(false);
       }
     },
-    [card, busy, services, refresh],
+    [card, busy, services, refresh, more],
   );
 
   // Beyond this session (after a reload, on another day): the latest answer stored.
@@ -442,12 +448,26 @@ function CardView({
           ) : null}
         </>
       ) : (
-        <div
-          className="review-html"
-          lang="nl"
-          // Sanitised above: formatting tags only, no scripts or event handlers.
-          dangerouslySetInnerHTML={{ __html: shown ? back : front }}
-        />
+        <>
+          <div
+            className="review-html"
+            lang="nl"
+            // Sanitised above: formatting tags only, no scripts or event handlers.
+            dangerouslySetInnerHTML={{ __html: shown ? back : front }}
+          />
+          {shown && card.spoken ? (
+            <div className="review-said">
+              <span className="review-spoken" lang="nl">
+                {card.spoken}
+              </span>
+              <PlayButton
+                label="Play the word (R)"
+                playing={playing === "word"}
+                onPlay={() => onPlay("word")}
+              />
+            </div>
+          ) : null}
+        </>
       )}
       {audio.length ? (
         <div className="row review-audio">

@@ -500,6 +500,50 @@ describe("native services", () => {
   });
 });
 
+describe("audio on cards of an imported deck", () => {
+  it("says the note's word with the answer, unless the card has its own sound", async () => {
+    const { live } = await setup({ ...defaultProfile("nl"), mode: "native" });
+    const tmpl = { name: "Card 1", front: "{{Front}}", back: "{{Back}}" };
+    await repo!.append({
+      type: "NativeNotesAdded",
+      lang: "nl",
+      origin: "apkg",
+      notetypes: [
+        {
+          id: "t",
+          name: "Basic",
+          kind: "standard",
+          fields: ["Front", "Back"],
+          templates: [tmpl],
+          css: "",
+        },
+      ],
+      notes: [
+        {
+          id: 1,
+          notetypeId: "t",
+          fields: ["house", "huis"],
+          tags: [],
+          key: "huis",
+          article: "het",
+        },
+        { id: 2, notetypeId: "t", fields: ["bike [sound:f.mp3]", "fiets"], tags: [], key: "fiets" },
+      ],
+      cards: [
+        { id: 1, noteId: 1, ord: 0, deck: "D", position: 0 },
+        { id: 2, noteId: 2, ord: 0, deck: "D", position: 1 },
+      ],
+      reviews: [],
+    });
+    const { cards } = await live.reviewQueue();
+    const house = cards.find((c) => c.cardId === 1)!;
+    expect(house.layout).toBe("template");
+    expect(house.spoken).toBe("het huis");
+    expect(house.wordAudio).toMatch(/^word-[0-9a-f]{16}$/);
+    expect(cards.find((c) => c.cardId === 2)!.spoken).toBeUndefined();
+  });
+});
+
 describe("starter words", () => {
   const native = () => ({ ...defaultProfile("nl"), mode: "native" as const });
 

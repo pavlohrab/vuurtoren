@@ -20,6 +20,7 @@ import {
   starterLevelsHeld,
   startStarterFrom,
   moveToAnki,
+  clipId,
   noteClipIds,
   withClipSounds,
   wordClipText,
@@ -434,6 +435,15 @@ export function createLiveNative(deps: LiveNativeDeps) {
           const ids = await noteClipIds(v.note, card.word);
           if (ids.word) card.wordAudio = ids.word;
           if (ids.sentence && card.sentence) card.sentenceAudio = ids.sentence;
+        } else if (
+          card.layout === "template" &&
+          v.note.key &&
+          card.audioFront.length + card.audioBack.length === 0
+        ) {
+          // A card of an imported deck without its own sound: the word of its note (its
+          // dictionary form) is said from the audio pack when the pack has it, else by the voice.
+          card.spoken = wordClipText(v.note.key, v.note.article);
+          card.wordAudio = await clipId("word", card.spoken);
         }
         cards.push(card);
       }

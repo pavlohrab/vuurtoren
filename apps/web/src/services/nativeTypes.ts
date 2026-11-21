@@ -22,7 +22,10 @@ export interface ReviewCard {
   gloss?: string;
   sentence?: string;
   sentenceTranslation?: string;
-  /** Vocabulary notes: what the word's clip says ("het huis"), for the system voice too. */
+  /**
+   * What the word's clip says ("het huis"), for the system voice too: vocabulary notes, and
+   * cards of imported decks with a word key and no sound of their own (said with the answer).
+   */
   spoken?: string;
   /** Clip ids of the audio pack (`word-…`, `sentence-…`); the clip itself may not exist. */
   wordAudio?: string;
