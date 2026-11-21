@@ -14,8 +14,14 @@ vi.mock("../../platform/index.js", async (load) => {
 
 const SERVER = { nlp: "https://vuur.example/nlp", token: "tok" };
 
-function onPhone(opts: { received?: number; connection?: string } = {}) {
-  const install = vi.fn(() => Promise.resolve("server" as const));
+function onPhone(
+  opts: {
+    received?: number;
+    connection?: string;
+    install?: () => Promise<"server" | "release">;
+  } = {},
+) {
+  const install = vi.fn(opts.install ?? (() => Promise.resolve("server" as const)));
   const real = currentDevice();
   const dictionary = {
     status: vi.fn(() =>
@@ -50,6 +56,7 @@ function onPhone(opts: { received?: number; connection?: string } = {}) {
 }
 
 afterEach(() => {
+  vi.restoreAllMocks();
   vi.mocked(currentDevice).mockReset();
   localStorage.clear();
   Reflect.deleteProperty(navigator, "connection");
@@ -77,5 +84,34 @@ describe("DictionaryPack", () => {
     expect(
       screen.getByRole("checkbox", { name: "Also download on mobile data" }),
     ).not.toBeChecked();
+  });
+
+  it("a download that fails says why in one line, with Retry", async () => {
+    let fail = true;
+    const install = onPhone({
+      connection: "wifi",
+      install: () =>
+        fail ? Promise.reject(new Error("HTTP 404 from the server")) : new Promise(() => {}),
+    });
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("The dictionary did not download: HTTP 404 from the server");
+    expect(screen.queryByText(/0 B of/)).toBeNull();
+    fail = false;
+    await userEvent.click(screen.getByRole("button", { name: "Retry" }));
+    expect(install).toHaveBeenCalledTimes(2);
+    expect(await screen.findByText(/Starting the download/)).toBeVisible();
+    expect(screen.getByRole("progressbar", { name: "Dictionary download" })).toHaveClass(
+      "k-progress",
+    );
+  });
+
+  it("offline: says so instead of starting, with Retry", async () => {
+    vi.spyOn(navigator, "onLine", "get").mockReturnValue(false);
+    const install = onPhone({ connection: "wifi" });
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "No connection: the dictionary downloads once you are online.",
+    );
+    expect(install).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Retry" })).toBeVisible();
   });
 });

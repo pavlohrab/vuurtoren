@@ -2451,3 +2451,30 @@ svg.lucide {
     font-size: 14px;
   }
 }
+
+/* ---------- Progress bar ----------
+   A thin bar on the design tokens (the browser's own is a grey block on Android). */
+.k-progress {
+  appearance: none;
+  display: block;
+  width: 100%;
+  height: 6px;
+  border: 0;
+  border-radius: var(--radius-chip);
+  background: var(--surface-2);
+  overflow: hidden;
+  color: var(--accent);
+}
+.k-progress::-webkit-progress-bar {
+  background: var(--surface-2);
+  border-radius: var(--radius-chip);
+}
+.k-progress::-webkit-progress-value {
+  background: var(--accent);
+  border-radius: var(--radius-chip);
+  transition: width var(--dur) var(--ease);
+}
+.k-progress::-moz-progress-bar {
+  background: var(--accent);
+  border-radius: var(--radius-chip);
+}

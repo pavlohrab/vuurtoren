@@ -21,6 +21,21 @@ import { readLocal, writeLocal } from "../../storage/local.js";
 /** "1": the language data may also download over mobile data (per device). */
 const MOBILE_DATA_KEY = "vuurtoren-packs-mobile-data";
 
+/** Nothing arrived this long after the download started: say so, with Retry. */
+const STALL_MS = 20_000;
+
+/** Offline, as far as the WebView can tell. */
+function offline(): boolean {
+  return typeof navigator !== "undefined" && navigator.onLine === false;
+}
+
+/** The app's own words for a failed download (its messages are plain), else the general text. */
+function installError(e: unknown): string {
+  if (typeof e === "string" && e) return e;
+  if (e instanceof Error && e.message) return e.message;
+  return errorText(e);
+}
+
 /** On mobile data now, as far as the WebView can tell (unknown counts as Wi-Fi). */
 function onMobileData(): boolean {
   const c = (navigator as Navigator & { connection?: { type?: string } }).connection;
@@ -41,13 +56,36 @@ export function DictionaryPack({ autoStart = false }: { autoStart?: boolean }) {
     queryFn: () => pack!.status(),
     enabled: !!pack,
     // While it downloads, the bytes so far.
-    refetchInterval: install.isPending ? 500 : false,
+    refetchInterval: (q) => (install.isPending || q.state.data?.downloading ? 500 : false),
   });
+  // A download that brings nothing for a while (no network, a server that does not answer).
+  const [stalled, setStalled] = useState(false);
+  const receivedNow = status.data?.received ?? 0;
+  const busy = install.isPending || !!status.data?.downloading;
+  useEffect(() => {
+    if (!busy) return;
+    const t = window.setTimeout(() => setStalled(true), STALL_MS);
+    return () => {
+      window.clearTimeout(t);
+      setStalled(false);
+    };
+  }, [busy, receivedNow]);
+  // Back online: the button's words follow.
+  const [, setOnline] = useState(0);
+  useEffect(() => {
+    const on = () => setOnline((n) => n + 1);
+    window.addEventListener("online", on);
+    window.addEventListener("offline", on);
+    return () => {
+      window.removeEventListener("online", on);
+      window.removeEventListener("offline", on);
+    };
+  }, []);
   const started = useRef(false);
   const waitingForWifi = !mobileOk && onMobileData();
   const missing = status.data && !status.data.installed && !status.data.downloading;
   useEffect(() => {
-    if (autoStart && missing && !waitingForWifi && !started.current) {
+    if (autoStart && missing && !waitingForWifi && !offline() && !started.current) {
       started.current = true;
       install.mutate();
     }
@@ -71,12 +109,38 @@ export function DictionaryPack({ autoStart = false }: { autoStart?: boolean }) {
         <p className="k-hint" style={{ margin: 0 }}>
           Installed ({formatBytes(s.bytes)}). Words get their meaning without a server.
         </p>
-      ) : install.isPending || s.downloading ? (
+      ) : (install.isPending || s.downloading) && !stalled ? (
         <div role="status" className="stack" style={{ gap: 4 }}>
           <span>
-            Downloading the dictionary: {formatBytes(received)} of {size}
+            {received > 0
+              ? `Downloading the dictionary: ${formatBytes(received)} of ${size}`
+              : `Starting the download (${size})…`}
           </span>
-          <progress max={total || 1} value={received} aria-label="Dictionary download" />
+          <progress
+            className="k-progress"
+            max={total || 1}
+            value={received}
+            aria-label="Dictionary download"
+          />
+        </div>
+      ) : stalled || install.isError || offline() ? (
+        <div className="row" role="alert">
+          <span className="dict-problem">
+            {install.isError
+              ? `The dictionary did not download: ${installError(install.error)}`
+              : offline()
+                ? "No connection: the dictionary downloads once you are online."
+                : "The download is not getting anywhere: check the connection."}
+          </span>
+          <Button
+            size="sm"
+            onClick={() => {
+              setStalled(false);
+              install.mutate();
+            }}
+          >
+            Retry
+          </Button>
         </div>
       ) : (
         <>
@@ -109,12 +173,6 @@ export function DictionaryPack({ autoStart = false }: { autoStart?: boolean }) {
           />
           Also download on mobile data
         </label>
-      ) : null}
-      {install.isError ? (
-        <p role="alert" className="error-text" style={{ margin: 0 }}>
-          The download did not finish. {errorText(install.error)} Try again to go on from where it
-          stopped.
-        </p>
       ) : null}
     </section>
   );
