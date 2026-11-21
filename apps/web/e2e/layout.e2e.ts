@@ -167,7 +167,7 @@ for (const size of [
       await expect(page.getByRole("button", { name: "Skip the tour" })).toBeInViewport({
         ratio: 1,
       });
-      const next = card.getByRole("button", { name: /^(Next|Done)$/ });
+      const next = card.getByRole("button", { name: /^(Next|Done|Go to Words)$/ });
       await expect(next).toBeInViewport({ ratio: 1 });
       const n = Number((await page.locator(".tour-count").textContent())!.split(" ")[0]);
       if (n === 5) break;

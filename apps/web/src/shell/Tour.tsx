@@ -1,6 +1,8 @@
 /**
  * The first-run walkthrough: five short coach marks after the welcome (Read, a word, the
- * reading help, Words, Review), each with a soft spotlight on its target. Shown once
+ * reading help, Words, and Due today on the Words page), each with a soft spotlight on its
+ * target. The Words step can be followed: a tap on Words, or "Go to Words", opens the page the
+ * last step is about. Shown once
  * (`vuurtoren.tour`), skippable at every step, and started again from Settings → Reading or
  * the More sheet (`startTour`). It has a known start wherever it begins: the reader steps open
  * the learner's current story themselves (Continue reading, else the story at their level) when
@@ -23,7 +25,7 @@ import {
   useState,
 } from "react";
 import { createPortal } from "react-dom";
-import { Button } from "@app/ui";
+import { Button, useNativeMode } from "@app/ui";
 import { useNavigate } from "@tanstack/react-router";
 import { readLocal, writeLocal } from "../storage/local.js";
 import { readLastText } from "../lastText.js";
@@ -45,18 +47,25 @@ interface Step {
   tap?: boolean;
   /** The step is about the reader: without one on screen, the current story opens. */
   reader?: boolean;
+  /** The step is about this page: the walkthrough opens it when the target is not on screen. */
+  route?: "/words";
+  /** The Next button's label (it goes where the step points). */
+  go?: string;
+  /** The title and text with Anki keeping the cards (reviews happen in Anki). */
+  ankiTitle?: string;
+  ankiText?: string;
 }
 
 const STEPS: Step[] = [
   {
     target: ".sidebar .nav-link[href='/']",
     title: "Read",
-    text: "Your stories and texts: the story at your level first, then your own.",
+    text: "Stories at your level and your own texts. On top: what to continue and what is due today.",
   },
   {
     target: ".k-reader .k-tok",
     title: "Tap a word",
-    text: "See what it means, hear it, and keep it with Add to my words.",
+    text: "See its meaning in its sentence, and hear it. Pull the sheet up for its grammar and Explain this sentence.",
     tap: true,
     reader: true,
   },
@@ -67,14 +76,19 @@ const STEPS: Step[] = [
     text: "Choose how to read (English above hard words, blanks, side by side) and set the text in Aa.",
   },
   {
-    target: ".sidebar .nav-link[href='/review'], .sidebar .nav-link[href='/words']",
-    title: "Your words",
-    text: "Every word you keep, by level, with how many you know.",
+    target: ".sidebar .nav-link[href='/words']",
+    title: "Words",
+    text: "Your daily cards and all your words, in one place. The dot says cards are waiting.",
+    tap: true,
+    go: "Go to Words",
   },
   {
-    target: ".sidebar .nav-link[href='/review'], .sidebar .nav-link[href='/words']",
-    title: "Review",
-    text: "Your daily cards, a few minutes a day. The dot on Words says cards are waiting.",
+    target: ".due-today",
+    route: "/words",
+    title: "Due today",
+    text: "Your cards for today: reviews first, then a few new words. Press Start, then swipe: left Again, right Good, up Easy. Done early? Go on with more.",
+    ankiTitle: "Your words",
+    ankiText: "Your cards are reviewed in Anki. Here are your word lists, Practice and your level.",
   },
 ];
 
@@ -118,6 +132,9 @@ function swallow(e: SyntheticEvent): void {
 export function Tour() {
   const services = useServices();
   const navigate = useNavigate();
+  const native = useNativeMode();
+  // The step whose page the walkthrough opened (once per step).
+  const routed = useRef(-1);
   // The reader steps open a story once per start of the tour (then wait for it to load).
   const opening = useRef<"no" | "busy" | "done">("no");
   const [on, setOn] = useState(() => readLocal(STATE) === "pending");
@@ -132,6 +149,7 @@ export function Tour() {
   useEffect(() => {
     const start = () => {
       opening.current = "no";
+      routed.current = -1;
       setAt(0);
       setOn(true);
     };
@@ -159,6 +177,15 @@ export function Tour() {
       const step = STEPS[at];
       if (!step) return;
       const el = visible(step.target);
+      if (!el && step.route) {
+        if (routed.current !== at) {
+          routed.current = at;
+          void navigate({ to: step.route });
+        }
+        missing = 0;
+        setSpot(null);
+        return;
+      }
       if (!el && step.reader && !document.querySelector(".k-reader")) {
         // A known start: the reader steps bring their own story.
         if (opening.current === "no") {
@@ -336,17 +363,17 @@ export function Tour() {
           {at + 1} of {STEPS.length}
         </p>
         <h2 className="tour-title" id="tour-title">
-          {step.title}
+          {!native && step.ankiTitle ? step.ankiTitle : step.title}
         </h2>
         <p className="tour-text" id="tour-text">
-          {step.text}
+          {!native && step.ankiText ? step.ankiText : step.text}
         </p>
         <div className="tour-actions">
           <button type="button" className="tour-skip" onClick={end}>
             Skip the tour
           </button>
           <Button variant="primary" size="sm" onClick={next}>
-            {last ? "Done" : "Next"}
+            {last ? "Done" : (step.go ?? "Next")}
           </Button>
         </div>
       </div>
