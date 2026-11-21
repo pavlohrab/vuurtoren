@@ -47,7 +47,7 @@ export interface StackCard {
 export type StackAnswer = "known" | "learn";
 
 /** How long (ms) an answer waits for Undo before it is saved. */
-export const UNDO_MS = 5000;
+const UNDO_MS = 5000;
 /** A drag this far (px) sideways is an answer; less springs back. */
 const DECIDES = 96;
 /** Cards loaded per choice. */
@@ -56,7 +56,7 @@ const STACK_SIZE = 200;
 const LIVE_STATES = new Set(["unknown", "seen", "learning"]);
 
 /** The cards of a choice: words met while reading first, by level in starter order. */
-export async function loadStack(
+async function loadStack(
   services: AppServices,
   choice: StackChoice,
   index: StarterIndex | undefined,
