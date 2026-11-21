@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from "react";
-import type { KeyboardEvent, MouseEvent, ReactNode } from "react";
+import type { KeyboardEvent, MouseEvent, PointerEvent, ReactNode } from "react";
 import type {
   AnalyzedToken,
   PlannedToken,
@@ -184,8 +184,15 @@ export function SideBySide({
   const pairHandlers = (ref: PairRef | null) =>
     ref
       ? {
-          onMouseEnter: () => setHover(ref),
-          onMouseLeave: () => setHover(null),
+          // A mouse only: after a tap a phone sends mouse events too, and once the page
+          // scrolls (the word sheet opening) they would light whatever word is under the
+          // finger's old place instead of the tapped one (which stays pinned).
+          onPointerEnter: (e: PointerEvent) => {
+            if (e.pointerType === "mouse") setHover(ref);
+          },
+          onPointerLeave: (e: PointerEvent) => {
+            if (e.pointerType === "mouse") setHover(null);
+          },
           onFocus: () => setHover(ref),
           onBlur: () => setHover(null),
         }

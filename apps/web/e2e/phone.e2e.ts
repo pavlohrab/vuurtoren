@@ -69,6 +69,23 @@ async function drag(page: Page, target: Locator, dy: number, dx = 0): Promise<vo
   );
 }
 
+/**
+ * A real finger swipe (Chromium's touch input over CDP): the browser turns it into touch
+ * pointer events, and decides itself whether the page may pan instead (touch-action).
+ */
+async function swipe(page: Page, from: [number, number], to: [number, number]): Promise<void> {
+  const cdp = await page.context().newCDPSession(page);
+  const point = (x: number, y: number) => [{ x, y, id: 1, radiusX: 4, radiusY: 4, force: 1 }];
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: point(...from) });
+  for (let i = 1; i <= 6; i++) {
+    const x = from[0] + ((to[0] - from[0]) * i) / 6;
+    const y = from[1] + ((to[1] - from[1]) * i) / 6;
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: point(x, y) });
+  }
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+  await cdp.detach();
+}
+
 async function shot(page: Page, name: string): Promise<void> {
   if (!SHOTS) return;
   await page.evaluate(() => document.fonts.ready);
@@ -211,6 +228,85 @@ for (const size of SIZES) {
         expect(box.bottom).toBeLessThanOrEqual(size.height - 34 - 8);
       }
       await shot(page, `insets-${size.width}`);
+    });
+
+    test("a finger swipe turns the page both ways (34px gesture line)", async ({ page }) => {
+      await withInsets(page);
+      await page.goto("/?demo");
+      await page.getByRole("link", { name: "Een dag in Utrecht" }).first().click();
+      await expect(page.locator(".k-reader .k-tok").first()).toBeVisible();
+      const count = page.locator(".reader-pager-count [aria-hidden]");
+      await expect(count).toHaveText(/^1 \/ \d+$/);
+      // Let the cover-to-reader transition end: during it the page itself takes every touch.
+      await page.waitForTimeout(600);
+      const box = (await page.locator(".reader-turn").boundingBox())!;
+      const y = box.y + Math.min(box.height / 2, 120);
+      const [left, right] = [size.width * 0.2, size.width * 0.8];
+      await swipe(page, [right, y], [left, y + 8]);
+      await expect(count).toHaveText(/^2 \/ \d+$/);
+      await swipe(page, [left, y], [right, y]);
+      await expect(count).toHaveText(/^1 \/ \d+$/);
+      // A mostly vertical drag is a scroll, not a page turn.
+      await swipe(page, [size.width / 2, y + 100], [size.width / 2 + 30, y - 60]);
+      await page.waitForTimeout(300);
+      await expect(count).toHaveText(/^1 \/ \d+$/);
+    });
+
+    test("side by side on a bundled story: English under each sentence, pairs, structure", async ({
+      page,
+    }) => {
+      test.setTimeout(120_000);
+      await withInsets(page);
+      // No language server at all: the story's English and pairs ship with the app.
+      const asked: string[] = [];
+      await page.route("**/nlp/**", (route) => {
+        if (route.request().url().includes("/translate/pairs")) asked.push(route.request().url());
+        return route.abort();
+      });
+      await page.addInitScript(() =>
+        localStorage.setItem("vuurtoren-reader-prefs", JSON.stringify({ english: "always" })),
+      );
+      await page.goto("/");
+      await page.getByRole("button", { name: "Skip setup for now" }).click({ timeout: 40_000 });
+      await page
+        .getByRole("button", { name: /De koe op de toren/ })
+        .first()
+        .click();
+      await expect(page.locator(".k-reader .k-tok").first()).toBeVisible();
+      await page.getByRole("button", { name: /^Reading mode:/ }).click();
+      await page.getByRole("radio", { name: /^Side by side/ }).click();
+
+      const row = page.locator(".k-sbs-row").first();
+      const nl = row.locator(".k-sbs-nl");
+      const en = row.locator(".k-sbs-en");
+      await expect(en).toBeVisible();
+      await expect(en.locator('[data-side="en"]').first()).toBeVisible();
+      // Narrow: the English sits under its Dutch sentence, and nothing sticks out.
+      const [a, b] = [(await nl.boundingBox())!, (await en.boundingBox())!];
+      expect(b.y).toBeGreaterThanOrEqual(a.y + a.height - 1);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+        size.width,
+      );
+      await shot(page, `sbs-${size.width}`);
+
+      // A tap on a Dutch word lights its English partner.
+      const word = row.locator('[data-side="nl"][data-pair]').first();
+      const pair = await word.getAttribute("data-pair");
+      await word.tap();
+      await expect(row.locator(`[data-side="en"][data-pair="${pair}"]`).first()).toHaveAttribute(
+        "data-active",
+        "",
+      );
+      await page.keyboard.press("Escape");
+
+      // The structure view: colours on every pair and the word-order note, then off again.
+      const structure = row.getByRole("button", { name: "Structure" });
+      await structure.tap();
+      await expect(row.locator("[data-pc]").first()).toBeVisible();
+      await shot(page, `sbs-structure-${size.width}`);
+      await structure.tap();
+      await expect(row.locator("[data-pc]")).toHaveCount(0);
+      expect(asked).toEqual([]);
     });
 
     test("the word sheet opens as a small peek above the gesture line", async ({ page }) => {
