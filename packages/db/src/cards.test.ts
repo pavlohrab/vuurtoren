@@ -123,6 +123,25 @@ describe("native card store", () => {
     expect(ahead.cards.map((c) => c.card.id)).toEqual([102, 101]);
   });
 
+  it("gives more new cards by position across decks (frequency rank), not by deck name", async () => {
+    const { repo } = await newRepo();
+    await repo.append({
+      ...imported,
+      decks: [
+        { name: "Woorden 1001–1500", options: { ...DEFAULT_DECK_OPTIONS, newPerDay: 0 } },
+        { name: "Woorden 501–1000", options: { ...DEFAULT_DECK_OPTIONS, newPerDay: 0 } },
+      ],
+      cards: [
+        { id: 101, noteId: 11, ord: 0, deck: "Woorden 1001–1500", position: 1200 },
+        { id: 102, noteId: 12, ord: 0, deck: "Woorden 501–1000", position: 600 },
+        { id: 103, noteId: 13, ord: 0, deck: "Woorden 501–1000", position: 700 },
+      ],
+      reviews: [],
+    });
+    const q = await repo.nativeQueue("nl", T0, T0 - 3600_000, 50, { kind: "new", count: 3 });
+    expect(q.cards.map((c) => c.card.id)).toEqual([102, 103, 101]);
+  });
+
   it("feeds the learner model in native mode only", async () => {
     const { repo } = await newRepo();
     await repo.append(imported);

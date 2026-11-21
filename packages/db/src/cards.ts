@@ -519,8 +519,8 @@ async function queuePlan(
 }
 
 /**
- * Cards beyond today's queue (custom study): new cards past the daily limits, in deck order and
- * position; or learned cards not due yet and not answered today, the soonest due first.
+ * Cards beyond today's queue (custom study): new cards past the daily limits by position (words
+ * added while reading first, then the starter words by frequency rank, across levels); or learned cards not due yet and not answered today, the soonest due first.
  */
 async function extraIds(
   driver: SqlDriver,
@@ -534,7 +534,7 @@ async function extraIds(
       ? await driver.exec(
           `SELECT id FROM native_cards
             WHERE lang = ? AND suspended = 0 AND schedule IS NULL
-            ORDER BY deck, position, id LIMIT ?`,
+            ORDER BY position, id LIMIT ?`,
           [lang, extra.count + 200],
         )
       : await driver.exec(
