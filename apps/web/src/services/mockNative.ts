@@ -132,6 +132,11 @@ export function createMockNative(
         cards: queue.map(view),
         due: queue.filter((c) => c.schedule).length,
         fresh: queue.filter((c) => !c.schedule).length,
+        nextDue:
+          cards
+            .filter((c) => c.schedule && !isDue(c))
+            .map((c) => c.schedule!.due)
+            .sort((a, b) => a - b)[0] ?? null,
       };
     },
     async answerReview(cardId, rating) {

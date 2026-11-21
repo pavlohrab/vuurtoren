@@ -282,6 +282,22 @@ describe("native card store", () => {
     expect(q.cards.map((c) => c.card.id)).toEqual([204, 201]);
     q = await repo.nativeQueue("nl", T0 + DAY, start + DAY, 10);
     expect(q.cards.map((c) => c.card.id)).toContain(202);
+    // The badge's count-only query follows the same rules (limits, related cards apart).
+    for (const [at, from] of [
+      [T0, start],
+      [T0 + 3_600_000, start],
+      [T0 + DAY, start + DAY],
+    ] as const) {
+      const full = await repo.nativeQueue("nl", at, from, 10);
+      expect(await repo.nativeQueueCounts("nl", at, from)).toEqual({
+        due: full.due,
+        fresh: full.fresh,
+        nextDue: full.nextDue,
+      });
+    }
+    // The relearning card answered at T0 is the next to come due, within the hour.
+    const soon = await repo.nativeQueueCounts("nl", T0 + 1, start);
+    expect(soon.nextDue).toBe(relearn.due);
   });
 
   it("counts reviews due on each coming study day", async () => {

@@ -33,6 +33,7 @@ import type {
   NativeKeyCard,
   NativeNoteStatus,
   NativeQueue,
+  NativeQueueCounts,
   SqlDriver,
   SqlValue,
 } from "./types.js";
@@ -410,6 +411,123 @@ function dueText(due: number, now: number): string {
 
 const CARD_TYPE = { 1: "learning", 2: "review", 3: "relearning" } as const;
 
+/** What the queue needs of a card to choose it: no schedule JSON, no fields. */
+interface QueueRow {
+  id: number;
+  noteId: number;
+  /** FSRS state, null for a new card. */
+  state: number | null;
+  key: string | null;
+  position: number;
+}
+
+const QUEUE_COLUMNS = `c.id AS id, c.note_id AS note_id, c.position AS position,
+  json_extract(c.schedule, '$.state') AS state, n.key AS key
+  FROM native_cards c LEFT JOIN native_notes n ON n.id = c.note_id AND n.lang = c.lang`;
+
+function toQueueRow(r: Row): QueueRow {
+  return {
+    id: Number(r["id"]),
+    noteId: Number(r["note_id"]),
+    state: r["state"] === null || r["state"] === undefined ? null : Number(r["state"]),
+    key: r["key"] === null || r["key"] === undefined ? null : String(r["key"]),
+    position: Number(r["position"]),
+  };
+}
+
+/**
+ * Which cards are in today's queue, in order (the ids only): due (re)learning and review cards,
+ * then each deck's new cards within its daily limit, with related cards apart. Both the queue
+ * and its counts (the Words badge) come from here, so they always agree.
+ */
+async function queuePlan(
+  driver: SqlDriver,
+  lang: string,
+  now: number,
+  dayStart: number,
+  options: Map<string, DeckOptions>,
+): Promise<{ dueIds: number[]; freshIds: number[] }> {
+  const dueRows = (
+    await driver.exec(
+      `SELECT ${QUEUE_COLUMNS}
+        WHERE c.lang = ? AND c.suspended = 0 AND c.schedule IS NOT NULL AND c.due <= ?
+        ORDER BY c.due, c.id`,
+      [lang, now],
+    )
+  ).map(toQueueRow);
+  // New cards introduced today per deck (answered for the first time since dayStart).
+  const introduced = new Map<string, number>();
+  for (const r of await driver.exec(
+    `SELECT c.deck AS deck, count(DISTINCT r.card_id) AS n
+       FROM native_reviews r JOIN native_cards c ON c.id = r.card_id
+      WHERE r.lang = ? AND r.source = 'vuurtoren' AND r.previous IS NULL AND r.at >= ?
+      GROUP BY c.deck`,
+    [lang, dayStart],
+  )) {
+    introduced.set(String(r["deck"]), Number(r["n"]));
+  }
+  const fresh: QueueRow[] = [];
+  for (const r of await driver.exec(
+    `SELECT deck, count(*) AS n FROM native_cards
+      WHERE lang = ? AND suspended = 0 AND schedule IS NULL GROUP BY deck ORDER BY deck`,
+    [lang],
+  )) {
+    const deck = String(r["deck"]);
+    const perDay = (options.get(deck) ?? DEFAULT_DECK_OPTIONS).newPerDay;
+    const allowed = Math.min(Number(r["n"]), Math.max(0, perDay - (introduced.get(deck) ?? 0)));
+    if (allowed === 0) continue;
+    const rows = await driver.exec(
+      `SELECT ${QUEUE_COLUMNS}
+        WHERE c.lang = ? AND c.deck = ? AND c.suspended = 0 AND c.schedule IS NULL
+        ORDER BY c.position, c.id LIMIT ?`,
+      [lang, deck, allowed],
+    );
+    fresh.push(...rows.map(toQueueRow));
+  }
+  fresh.sort((a, b) => a.position - b.position || a.id - b.id);
+  // Related cards apart: after one card of a note (or of the same word) was answered today,
+  // its other new and review cards wait for another day. Learning steps go on.
+  const answered = new Set<number>();
+  const busy = new Set<string>();
+  for (const r of await driver.exec(
+    `SELECT DISTINCT r.card_id AS card, c.note_id AS note, n.key AS key
+       FROM native_reviews r JOIN native_cards c ON c.id = r.card_id
+       JOIN native_notes n ON n.id = c.note_id
+      WHERE r.lang = ? AND r.at >= ? AND r.rating > 0`,
+    [lang, dayStart],
+  )) {
+    answered.add(Number(r["card"]));
+    busy.add(`n${String(r["note"])}`);
+    if (r["key"] !== null) busy.add(`k${String(r["key"])}`);
+  }
+  const apart = (list: QueueRow[]) =>
+    list
+      .filter((c) => {
+        if (c.state !== null && c.state !== 2) return true;
+        if (answered.has(c.id)) return true;
+        const tags = [`n${c.noteId}`];
+        if (c.key) tags.push(`k${c.key}`);
+        if (tags.some((t) => busy.has(t))) return false;
+        // One of them per session: the next comes once this one is answered (then tomorrow).
+        for (const t of tags) busy.add(t);
+        return true;
+      })
+      .map((c) => c.id);
+  const dueIds = apart(dueRows);
+  return { dueIds, freshIds: apart(fresh) };
+}
+
+/** When the next card not due yet becomes due (a learning step, tomorrow's reviews), or null. */
+async function nextDue(driver: SqlDriver, lang: string, now: number): Promise<number | null> {
+  const [r] = await driver.exec(
+    `SELECT min(due) AS due FROM native_cards
+      WHERE lang = ? AND suspended = 0 AND schedule IS NOT NULL AND due > ?`,
+    [lang, now],
+  );
+  const due = r?.["due"];
+  return due === null || due === undefined ? null : Number(due);
+}
+
 export function nativeQueries(driver: SqlDriver) {
   return {
     async nativeDecks(lang: string, now: number): Promise<NativeDeckSummary[]> {
@@ -445,96 +563,52 @@ export function nativeQueries(driver: SqlDriver) {
       limit: number,
     ): Promise<NativeQueue> {
       const options = await deckOptions(driver, lang);
-      const dueRows = await driver.exec(
-        `SELECT * FROM native_cards
-          WHERE lang = ? AND suspended = 0 AND schedule IS NOT NULL AND due <= ?
-          ORDER BY due, id`,
-        [lang, now],
-      );
-      // New cards introduced today per deck (answered for the first time since dayStart).
-      const introduced = new Map<string, number>();
-      for (const r of await driver.exec(
-        `SELECT c.deck AS deck, count(DISTINCT r.card_id) AS n
-           FROM native_reviews r JOIN native_cards c ON c.id = r.card_id
-          WHERE r.lang = ? AND r.source = 'vuurtoren' AND r.previous IS NULL AND r.at >= ?
-          GROUP BY c.deck`,
-        [lang, dayStart],
-      )) {
-        introduced.set(String(r["deck"]), Number(r["n"]));
-      }
-      const fresh: NativeCard[] = [];
-      for (const r of await driver.exec(
-        `SELECT deck, count(*) AS n FROM native_cards
-          WHERE lang = ? AND suspended = 0 AND schedule IS NULL GROUP BY deck ORDER BY deck`,
-        [lang],
-      )) {
-        const deck = String(r["deck"]);
-        const perDay = (options.get(deck) ?? DEFAULT_DECK_OPTIONS).newPerDay;
-        const allowed = Math.min(Number(r["n"]), Math.max(0, perDay - (introduced.get(deck) ?? 0)));
-        if (allowed === 0) continue;
-        const rows = await driver.exec(
-          `SELECT * FROM native_cards WHERE lang = ? AND deck = ? AND suspended = 0
-             AND schedule IS NULL ORDER BY position, id LIMIT ?`,
-          [lang, deck, allowed],
-        );
-        fresh.push(...rows.map(toCard));
-      }
-      fresh.sort((a, b) => a.position - b.position || a.id - b.id);
-      // Related cards apart: after one card of a note (or of the same word) was answered today,
-      // its other new and review cards wait for another day. Learning steps go on.
-      const keyOf = new Map<number, string | null>();
-      const cand = [...dueRows.map(toCard), ...fresh];
-      for (const r of await driver.exec(
-        "SELECT id, key FROM native_notes WHERE lang = ? AND id IN (SELECT value FROM json_each(?))",
-        [lang, JSON.stringify([...new Set(cand.map((c) => c.noteId))])],
-      )) {
-        keyOf.set(Number(r["id"]), r["key"] === null ? null : String(r["key"]));
-      }
-      const answered = new Set<number>();
-      const busy = new Set<string>();
-      for (const r of await driver.exec(
-        `SELECT DISTINCT r.card_id AS card, c.note_id AS note, n.key AS key
-           FROM native_reviews r JOIN native_cards c ON c.id = r.card_id
-           JOIN native_notes n ON n.id = c.note_id
-          WHERE r.lang = ? AND r.at >= ? AND r.rating > 0`,
-        [lang, dayStart],
-      )) {
-        answered.add(Number(r["card"]));
-        busy.add(`n${String(r["note"])}`);
-        if (r["key"] !== null) busy.add(`k${String(r["key"])}`);
-      }
-      const apart = (list: NativeCard[]) =>
-        list.filter((c) => {
-          const s = c.schedule;
-          if (s && s.state !== 2) return true;
-          if (answered.has(c.id)) return true;
-          const tags = [`n${c.noteId}`];
-          const key = keyOf.get(c.noteId);
-          if (key) tags.push(`k${key}`);
-          if (tags.some((t) => busy.has(t))) return false;
-          // One of them per session: the next comes once this one is answered (then tomorrow).
-          for (const t of tags) busy.add(t);
-          return true;
-        });
-      const dueCards = apart(dueRows.map(toCard));
-      const freshCards = apart(fresh);
-      let cards = [...dueCards, ...freshCards];
-      if (cards.length === 0) {
+      const { dueIds, freshIds } = await queuePlan(driver, lang, now, dayStart, options);
+      const ids = [...dueIds, ...freshIds].slice(0, Math.max(0, limit));
+      let cards: NativeCard[];
+      if (dueIds.length + freshIds.length === 0 && limit > 0) {
         // Nothing else today: learning cards due within the next minutes come forward.
         cards = (
           await driver.exec(
             `SELECT * FROM native_cards
               WHERE lang = ? AND suspended = 0 AND schedule IS NOT NULL AND due <= ?
                 AND json_extract(schedule, '$.state') IN (1, 3)
-              ORDER BY due, id`,
-            [lang, now + LEARN_AHEAD_MS],
+              ORDER BY due, id LIMIT ?`,
+            [lang, now + LEARN_AHEAD_MS, limit],
           )
         ).map(toCard);
+      } else {
+        const byId = new Map<number, NativeCard>();
+        if (ids.length > 0) {
+          for (const r of await driver.exec(
+            "SELECT * FROM native_cards WHERE lang = ? AND id IN (SELECT value FROM json_each(?))",
+            [lang, JSON.stringify(ids)],
+          )) {
+            const c = toCard(r);
+            byId.set(c.id, c);
+          }
+        }
+        cards = ids.flatMap((id) => byId.get(id) ?? []);
       }
       return {
-        cards: await views(driver, lang, cards.slice(0, Math.max(0, limit)), options),
-        due: dueCards.length,
-        fresh: freshCards.length,
+        cards: await views(driver, lang, cards, options),
+        due: dueIds.length,
+        fresh: freshIds.length,
+        nextDue: await nextDue(driver, lang, now),
+      };
+    },
+
+    async nativeQueueCounts(
+      lang: string,
+      now: number,
+      dayStart: number,
+    ): Promise<NativeQueueCounts> {
+      const options = await deckOptions(driver, lang);
+      const { dueIds, freshIds } = await queuePlan(driver, lang, now, dayStart, options);
+      return {
+        due: dueIds.length,
+        fresh: freshIds.length,
+        nextDue: await nextDue(driver, lang, now),
       };
     },
 

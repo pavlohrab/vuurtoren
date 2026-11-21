@@ -47,6 +47,8 @@ interface ReviewSession {
   due: number;
   /** New cards still allowed today. */
   fresh: number;
+  /** When the next card not due yet becomes due (a learning step), or null: refresh then. */
+  nextDue: number | null;
 }
 
 /** What an import brought. */

@@ -729,7 +729,12 @@ export interface NativeQueue {
   due: number;
   /** New cards still allowed today. */
   fresh: number;
+  /** When the next card not due yet becomes due (a learning step, tomorrow's reviews). */
+  nextDue: number | null;
 }
+
+/** Native mode: the queue's counts without its cards (the Words badge). */
+export type NativeQueueCounts = Omit<NativeQueue, "cards">;
 
 /** Native mode: the live state of a note's cards, shaped like @app/anki NoteCardStatus. */
 export interface NativeNoteStatus {
@@ -837,6 +842,8 @@ export interface Repository {
    * daily limit (counted from `dayStart`, the start of the learner's study day), at most `limit`.
    */
   nativeQueue(lang: string, now: number, dayStart: number, limit: number): Promise<NativeQueue>;
+  /** Native mode: the counts of `nativeQueue` (same rules), without reading the cards. */
+  nativeQueueCounts(lang: string, now: number, dayStart: number): Promise<NativeQueueCounts>;
   /**
    * Native mode: review cards due on each of `days` study days from `from` (the start of a
    * study day), for spreading new due dates.

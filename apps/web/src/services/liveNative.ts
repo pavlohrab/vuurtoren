@@ -404,7 +404,8 @@ export function createLiveNative(deps: LiveNativeDeps) {
       const lang = await deps.lang();
       await openStarter(lang);
       const at = now();
-      const q = await repo.nativeQueue(lang, at, studyDayStart(at), 0);
+      // Counts only: the badge never reads the cards themselves.
+      const q = await repo.nativeQueueCounts(lang, at, studyDayStart(at));
       return { native: true, due: q.due, fresh: q.fresh };
     },
 
@@ -427,7 +428,7 @@ export function createLiveNative(deps: LiveNativeDeps) {
         }
         cards.push(card);
       }
-      return { cards, due: q.due, fresh: q.fresh };
+      return { cards, due: q.due, fresh: q.fresh, nextDue: q.nextDue };
     },
 
     async answerReview(cardId, rating, durationMs) {
