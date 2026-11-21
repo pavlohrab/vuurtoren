@@ -152,7 +152,9 @@ describe("runTurn", () => {
 
   it("opens the conversation when the user text is empty and replays JSON history", async () => {
     const p = fakeProvider([out("Ik drink koffie")]);
-    const hist = [assistantHistoryMessage({ reply: "Hoi", corrections: [], corrected: "", newWords: [] })];
+    const hist = [
+      assistantHistoryMessage({ reply: "Hoi", corrections: [], corrected: "", newWords: [] }),
+    ];
     await runTurn({ provider: p, analyze: fakeAnalyze, model }, setup, hist, "");
     expect(p.calls[0]!.messages.at(-1)!.content).toContain("Start the conversation");
     expect(hist[0]!.content).toContain('"reply"');

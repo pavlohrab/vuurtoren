@@ -64,7 +64,11 @@ export function createAnthropic(
         .map((b) => b.text)
         .join("");
       if (!text) {
-        if (res.stop_reason === "max_tokens") throw new AIError("The model used its whole answer length before writing any text (reasoning models think first). Choose a model without long thinking, or try again.", "server");
+        if (res.stop_reason === "max_tokens")
+          throw new AIError(
+            "The model used its whole answer length before writing any text (reasoning models think first). Choose a model without long thinking, or try again.",
+            "server",
+          );
         if (res.stop_reason === "refusal")
           throw new AIError("The model declined to write this. Try another topic.", "server");
         throw new AIError("The model returned no text.", "server");

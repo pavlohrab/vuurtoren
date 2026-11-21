@@ -55,7 +55,11 @@ export function createOpenAICompatible(
       const choice = res.choices?.[0];
       const text = choice?.message?.content;
       if (typeof text !== "string" || !text.trim()) {
-        if (choice?.finish_reason === "length") throw new AIError("The model used its whole answer length before writing any text (reasoning models think first). Choose a model without long thinking, or try again.", "server");
+        if (choice?.finish_reason === "length")
+          throw new AIError(
+            "The model used its whole answer length before writing any text (reasoning models think first). Choose a model without long thinking, or try again.",
+            "server",
+          );
         throw new AIError("The model returned no text.", "server");
       }
       const u = res.usage;
