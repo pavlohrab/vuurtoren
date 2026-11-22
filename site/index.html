@@ -1377,6 +1377,211 @@
         }
       }
     </style>
+
+    <style>
+      /* The name: the logo draws itself, as in the app's start screen, and its parts are named. */
+      .nv-mark {
+        width: min(100%, 340px);
+        aspect-ratio: 1;
+        margin: 0 auto;
+      }
+      .nv-mark svg {
+        width: 100%;
+        height: 100%;
+      }
+      .nv-p {
+        transform-box: fill-box;
+        transform-origin: left;
+        transform: scaleX(0);
+        transition: transform 0.7s cubic-bezier(0.2, 0.8, 0.2, 1);
+      }
+      .nv-p.nv-up {
+        transform-origin: bottom;
+        transform: scaleY(0);
+      }
+      .lit .nv-p {
+        transform: none;
+      }
+      .nv2 {
+        transition-delay: 0.25s;
+      }
+      .nv3 {
+        transition-delay: 0.5s;
+      }
+      .nv4 {
+        transition-delay: 0.75s;
+      }
+      .nv5 {
+        transition-delay: 0.95s;
+      }
+      .nv-tags {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 14px;
+        margin-top: 22px;
+      }
+      .nv-tag {
+        font: 500 13px / 1.4 var(--f-ui);
+        color: var(--muted);
+        border-top: 2px solid var(--line-strong);
+        padding-top: 8px;
+        opacity: 0;
+        transition: opacity 0.6s 1.2s;
+      }
+      .nv-tag.nv-ac {
+        border-color: var(--accent);
+      }
+      .nv-tag b {
+        display: block;
+        color: var(--ink);
+        font-family: var(--f-display);
+        font-size: 15px;
+      }
+      .lit .nv-tag {
+        opacity: 1;
+      }
+      .namev .copy p {
+        color: var(--muted);
+        font-size: 18px;
+        max-width: 50ch;
+      }
+      .namev .copy p b {
+        color: var(--ink);
+        font-weight: 600;
+      }
+      @media (max-width: 560px) {
+        .nv-tags {
+          grid-template-columns: 1fr;
+        }
+      }
+      /* Reading: the modes follow the scroll on wide screens. */
+      @media (min-width: 900px) {
+        .scrolly {
+          height: 240vh;
+          padding-block: 0;
+        }
+        .scrolly .pin {
+          position: sticky;
+          top: calc(env(safe-area-inset-top, 0px) + 64px);
+          min-height: calc(100vh - 64px);
+          align-content: center;
+          padding-block: 48px;
+        }
+      }
+      /* Grammar: one sentence with its marks. */
+      .gram-card {
+        align-self: center;
+        align-content: start;
+        background: var(--sheet);
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        padding: 26px 28px;
+        display: grid;
+        gap: 16px;
+        box-shadow: 0 24px 50px -30px rgb(0 0 0 / 0.35);
+      }
+      .gram-card .reader {
+        font: 400 21px / 2 var(--f-read);
+        margin: 0;
+      }
+      .gmark {
+        border-bottom: 2px dotted var(--pair2);
+      }
+      .gmark.gm2 {
+        border-bottom-color: var(--pair1);
+      }
+      .gram-notes {
+        display: grid;
+        gap: 8px;
+      }
+      .gnote {
+        font-size: 14.5px;
+        color: var(--muted);
+        border-left: 3px solid var(--pair2);
+        padding-left: 10px;
+        opacity: 0;
+        transition: opacity 0.6s 0.3s;
+      }
+      .gnote.gn2 {
+        border-left-color: var(--pair1);
+        transition-delay: 0.7s;
+      }
+      .gnote b {
+        display: block;
+        color: var(--ink);
+        font-family: var(--f-display);
+      }
+      .lit .gnote {
+        opacity: 1;
+      }
+      /* On every device: two cards to the device pages. */
+      .dev-head {
+        display: grid;
+        gap: 14px;
+        max-width: 720px;
+      }
+      .dev-cards {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 18px;
+        margin-top: 32px;
+      }
+      .dev-card {
+        display: grid;
+        gap: 8px;
+        align-content: start;
+        padding: 26px;
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        background: var(--sheet);
+        text-decoration: none;
+        transition:
+          border-color 0.2s,
+          transform 0.2s;
+      }
+      .dev-card:hover {
+        border-color: var(--accent);
+        transform: translateY(-2px);
+      }
+      .dev-card b {
+        font: 700 24px / 1.15 var(--f-display);
+        letter-spacing: -0.015em;
+      }
+      .dev-card span:not(.eyebrow) {
+        color: var(--muted);
+      }
+      .dev-card .go {
+        color: var(--accent) !important;
+        font-weight: 600;
+        margin-top: 6px;
+      }
+      @media (max-width: 760px) {
+        .dev-cards {
+          grid-template-columns: 1fr;
+        }
+      }
+      /* Why I made it: signed, with the support line. */
+      .why .sign {
+        font: italic 400 20px var(--f-read);
+        color: var(--ink);
+      }
+      .support-line {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 12px 16px;
+        color: var(--muted);
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .nv-tag,
+        .gnote {
+          opacity: 1;
+        }
+        .nv-p {
+          transform: none;
+        }
+      }
+    </style>
   </head>
   <body>
     <svg width="0" height="0" style="position: absolute" aria-hidden="true">
@@ -1577,26 +1782,113 @@
       </div>
     </header>
 
-    <section class="sec alt why band" aria-labelledby="why-h">
-      <div class="in">
-        <h2 id="why-h">Why I made it</h2>
-        <div>
+    <section class="sec alt band namev" id="name" aria-labelledby="name-h" data-lit>
+      <div class="in split">
+        <div class="nv-art">
+          <div class="nv-mark">
+            <svg viewBox="0 0 64 64" aria-hidden="true">
+              <rect
+                class="nv-p nv1"
+                style="fill: var(--tower)"
+                x="3"
+                y="57"
+                width="26"
+                height="3.5"
+                rx="1.2"
+              />
+              <path class="nv-p nv-up nv2" style="fill: var(--tower)" d="M9 24h14l3.5 33h-21z" />
+              <rect
+                class="nv-p nv-up nv2"
+                style="fill: var(--tower)"
+                x="10"
+                y="8"
+                width="12"
+                height="13"
+                rx="2.5"
+              />
+              <rect
+                class="nv-p nv3"
+                style="fill: var(--accent)"
+                x="13"
+                y="11"
+                width="6"
+                height="7"
+                rx="1.2"
+              />
+              <rect
+                class="nv-p nv3"
+                style="fill: var(--accent)"
+                x="25"
+                y="11.5"
+                width="35"
+                height="6"
+                rx="3"
+              />
+              <rect
+                class="nv-p nv4"
+                style="fill: var(--tower); opacity: 0.32"
+                x="32"
+                y="28"
+                width="28"
+                height="3.5"
+                rx="1.75"
+              />
+              <rect
+                class="nv-p nv4"
+                style="fill: var(--tower); opacity: 0.32"
+                x="32"
+                y="37"
+                width="10"
+                height="3.5"
+                rx="1.75"
+              />
+              <rect
+                class="nv-p nv5"
+                style="fill: var(--accent)"
+                x="44.5"
+                y="36"
+                width="15.5"
+                height="5.5"
+                rx="2.75"
+              />
+              <rect
+                class="nv-p nv5"
+                style="fill: var(--tower); opacity: 0.32"
+                x="32"
+                y="46"
+                width="23"
+                height="3.5"
+                rx="1.75"
+              />
+            </svg>
+          </div>
+          <div class="nv-tags">
+            <span class="nv-tag"><b lang="nl">vuur · toren</b>fire on a tower</span>
+            <span class="nv-tag nv-ac"><b>The beam</b>reaching out over the page</span>
+            <span class="nv-tag nv-ac"><b>One word, lit</b>the one you don't know yet</span>
+          </div>
+        </div>
+        <div class="copy">
+          <span class="eyebrow">The name</span>
+          <h2 id="name-h">Why a lighthouse?</h2>
           <p>
-            While learning Dutch, I ran into a problem: there were hardly any texts suited to a
-            beginner reader. On top of that, learning the words from them was tedious.
+            Vuurtoren is Dutch for lighthouse, and like many Dutch words it is built from smaller
+            ones: <b lang="nl">vuur</b>, fire, on top of a <b lang="nl">toren</b>, a tower. Dutch
+            does this a lot, so a long word is often just a few short ones standing in a row.
           </p>
           <p>
-            So Vuurtoren adapts any text to the words you know, and one tap turns a new word into a
-            flashcard with the sentence you found it in. Vuurtoren is Dutch for lighthouse. A
-            lighthouse helps you find your way through unfamiliar water, and that is what I want
-            this app to do for a text.
+            I liked the name because it describes what I wanted the app to do. A lighthouse does not
+            take you across the water; it only shows you where the coast is, and the rest of the way
+            you sail yourself. The logo is drawn the same way: the beam goes out over a few lines of
+            text and lights up one word on them, the one you don't know yet, while the rest of the
+            page is left for you to read.
           </p>
         </div>
       </div>
     </section>
 
-    <section class="sec band" id="read" aria-labelledby="read-h">
-      <div class="in split">
+    <section class="sec band scrolly" id="read" aria-labelledby="read-h">
+      <div class="in split pin">
         <div class="copy">
           <span class="eyebrow">Reading</span>
           <h2 id="read-h">Four ways to read the same page.</h2>
@@ -1606,7 +1898,7 @@
           </p>
           <ul class="facts">
             <li>Stories from A1 to B2, recorded in two voices.</li>
-            <li>Your own texts: a web page, a PDF, a photo of a book.</li>
+            <li>Your own texts: a web page, a PDF, a photo of a page, your course book.</li>
             <li>Tap a word for its meaning in that sentence and its grammar.</li>
           </ul>
         </div>
@@ -1630,13 +1922,13 @@
           aria-label="A review card in Vuurtoren: the word and its sentence, then the answer and four buttons"
         >
           <div class="rcard">
-            <span class="deck">New · Woorden 1–500</span>
+            <span class="deck">New · Woorden 501–1000</span>
             <span class="word"
-              ><span><span class="art">de</span> gracht</span
+              ><span><span class="art">het</span> schip</span
               ><svg class="spk"><use href="#spk" /></svg
             ></span>
-            <span class="snt" lang="nl">Utrecht heeft veel mooie grachten.</span>
-            <div class="ans"><b>canal</b><span>Utrecht has many beautiful canals.</span></div>
+            <span class="snt" lang="nl">In de verte ziet hij een klein schip.</span>
+            <div class="ans"><b>ship</b><span>In the distance he sees a small ship.</span></div>
           </div>
           <div class="flip">
             <div class="rates">
@@ -1661,6 +1953,67 @@
             <li>Hear the word, then its sentence. Swipe or tap to answer.</li>
             <li>Your Anki decks come in and go out as .apkg files.</li>
           </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="sec band" id="grammar" aria-labelledby="grammar-h">
+      <div class="in split">
+        <div class="copy">
+          <span class="eyebrow">Grammar and the exam</span>
+          <h2 id="grammar-h">Grammar, where it happens.</h2>
+          <p class="big">
+            Inversion, separable verbs and the perfect tense are marked in the texts you read, and
+            explained on your own sentences.
+          </p>
+          <ul class="facts">
+            <li>Topics from A1 to C1, each with exercises.</li>
+            <li>Exercises made from what you read.</li>
+            <li>Mock exams for the A2 inburgeringsexamen.</li>
+            <li>A chat partner who keeps to words you know, if you add your own AI key.</li>
+          </ul>
+        </div>
+        <div class="gram-card" data-lit aria-label="A sentence with its grammar marked">
+          <p class="reader" lang="nl">
+            Elke avond <span class="gmark">beklimt Jan</span> de trap. Hij zet het licht
+            <span class="gmark gm2">aan</span>.
+          </p>
+          <div class="gram-notes">
+            <span class="gnote"
+              ><b>Inversion</b> The sentence starts with "Elke avond", so the verb comes before
+              "Jan".</span
+            >
+            <span class="gnote gn2"
+              ><b>Separable verb</b> "zet … aan" is aanzetten, to switch on.</span
+            >
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="sec alt band" id="devices" aria-labelledby="devices-h">
+      <div class="in">
+        <div class="dev-head">
+          <span class="eyebrow">On every device</span>
+          <h2 id="devices-h">Add it on your computer. Read it on the train.</h2>
+          <p class="big">
+            Your computer prepares every text you add, and sync brings it to your phone, ready to
+            read offline.
+          </p>
+        </div>
+        <div class="dev-cards">
+          <a class="dev-card" href="desktop.html">
+            <span class="eyebrow">Desktop</span>
+            <b>The whole app on your computer.</b>
+            <span>Reads any text itself, works with Anki, no server or account.</span>
+            <span class="go">Windows · macOS · Linux →</span>
+          </a>
+          <a class="dev-card" href="phone.html">
+            <span class="eyebrow">Phone</span>
+            <b>Your words in your pocket.</b>
+            <span>Reviews by swiping, stories offline, and the texts your computer prepared.</span>
+            <span class="go">Android →</span>
+          </a>
         </div>
       </div>
     </section>
@@ -1709,16 +2062,30 @@
           </div>
         </div>
       </div>
+    </section>
+
+    <section class="sec alt why band" aria-labelledby="why-h">
       <div class="in">
-        <div class="also" aria-label="Also inside">
-          <span>Grammar from A1 to C1, marked in your texts</span
-          ><span>A2 inburgeringsexamen practice</span><span>Courses along your own textbook</span
-          ><span>Exercises from what you read</span><span>Talk with an AI partner</span>
+        <h2 id="why-h">Why I made it</h2>
+        <div>
+          <p>
+            While learning Dutch, I ran into a problem: there were hardly any texts suited to a
+            beginner reader. On top of that, learning the words from them was tedious.
+          </p>
+          <p>
+            So I made the app I wanted: one that adapts any text to the words you know, and turns a
+            new word into a flashcard with the sentence you found it in. It is free and open.
+          </p>
+          <p class="sign">Pavlo</p>
+          <p class="support-line">
+            If it helps you, you can support it.
+            <a class="btn" href="#">Support on Ko-fi</a>
+          </p>
         </div>
       </div>
     </section>
 
-    <section class="sec alt band" id="roadmap" aria-labelledby="r-h">
+    <section class="sec band" id="roadmap" aria-labelledby="r-h">
       <div class="in">
         <span class="eyebrow">Roadmap</span>
         <h2 id="r-h" style="margin-top: 10px">Where it is going.</h2>
@@ -1830,19 +2197,19 @@
         const views = {
           read: {
             say: "Known words stay plain. A few words to learn are tinted; words you are learning are dotted.",
-            html: `<p class="reader" lang="nl">Ze woont in Utrecht, een mooie stad met veel ${intro("grachten")}. Elke ochtend ${S("learning", "fietst")} ze ${S("gloss", "langs")} het water naar haar werk.</p>`,
+            html: `<p class="reader" lang="nl">Op het eiland staat een oude ${intro("vuurtoren")}. Elke avond ${S("learning", "beklimt")} Jan de ${S("gloss", "trap")} en kijkt naar de zee.</p>`,
           },
           gloss: {
             say: "A short translation sits after the words you do not know yet, so you never stop reading.",
-            html: `<p class="reader" lang="nl">Ze woont in Utrecht, een mooie stad met veel ${intro("grachten")}${sup("canals")}. Elke ochtend ${S("learning", "fietst")} ze ${S("gloss", "langs", sup("along"))} het water naar haar werk.</p>`,
+            html: `<p class="reader" lang="nl">Op het eiland staat een oude ${intro("vuurtoren")}${sup("lighthouse")}. Elke avond ${S("learning", "beklimt")} Jan de ${S("gloss", "trap", sup("stairs"))} en kijkt naar de zee.</p>`,
           },
           cloze: {
             say: "Words you know well become blanks to fill in, with a hint if you need one.",
-            html: `<p class="reader" lang="nl">Ze <span class="cloze">w…</span> in Utrecht, een mooie <span class="cloze">s…</span> met veel ${intro("grachten")}. Elke ochtend ${S("learning", "fietst")} ze langs het <span class="cloze">w…</span> naar haar werk.</p>`,
+            html: `<p class="reader" lang="nl">Op het <span class="cloze">e…</span> staat een oude ${intro("vuurtoren")}. Elke <span class="cloze">a…</span> ${S("learning", "beklimt")} Jan de trap en kijkt naar de <span class="cloze">z…</span>.</p>`,
           },
           sbs: {
             say: "Each sentence beside its English. Tap a word and its partner lights up on the other side.",
-            html: `<div class="sbs"><div class="row"><span class="nl" lang="nl">Ze <span class="p2">woont</span> in Utrecht, een mooie <span class="p3">stad</span> met veel <span class="p1 lit">grachten</span>.</span><span class="en">She <span class="p2">lives</span> in Utrecht, a beautiful <span class="p3">city</span> with many <span class="p1 lit">canals</span>.</span></div><div class="row"><span class="nl" lang="nl">Elke ochtend <span class="p2">fietst</span> ze langs het <span class="p3">water</span> naar haar werk.</span><span class="en">Every morning she <span class="p2">cycles</span> along the <span class="p3">water</span> to her work.</span></div></div>`,
+            html: `<div class="sbs"><div class="row"><span class="nl" lang="nl">Op het <span class="p2">eiland</span> staat een <span class="p3">oude</span> <span class="p1 lit">vuurtoren</span>.</span><span class="en">On the <span class="p2">island</span> stands an <span class="p3">old</span> <span class="p1 lit">lighthouse</span>.</span></div><div class="row"><span class="nl" lang="nl">Elke avond <span class="p2">beklimt</span> Jan de <span class="p3">trap</span>.</span><span class="en">Every evening Jan <span class="p2">climbs</span> the <span class="p3">stairs</span>.</span></div></div>`,
           },
         };
         const tabs = [...document.querySelectorAll(".modes button")];
@@ -1863,16 +2230,39 @@
           }),
         );
         show("read");
-        // It turns through the modes by itself until someone picks one.
+        // On a wide screen the modes follow the scroll through the section; on a phone they
+        // take turns by themselves. Either stops once someone picks one.
+        const order = ["read", "gloss", "cloze", "sbs"];
+        const wide = matchMedia("(min-width: 900px)");
+        const section = document.getElementById("read");
+        addEventListener(
+          "scroll",
+          () => {
+            if (touched || !wide.matches) return;
+            const r = section.getBoundingClientRect();
+            const span = section.offsetHeight - innerHeight;
+            if (span <= 0) return;
+            const k = Math.min(3, Math.max(0, Math.floor((-r.top / span) * 4)));
+            if (order[k] !== mode) show(order[k]);
+          },
+          { passive: true },
+        );
         if (!matchMedia("(prefers-reduced-motion: reduce)").matches) {
-          const order = ["read", "gloss", "cloze", "sbs"];
           setInterval(() => {
-            if (!touched) show(order[(order.indexOf(mode) + 1) % order.length]);
+            if (!touched && !wide.matches) show(order[(order.indexOf(mode) + 1) % order.length]);
           }, 4200);
         }
       })();
     </script>
     <script>
+      // Sections marked data-lit play their entrance once, when they come into view.
+      (() => {
+        const io = new IntersectionObserver(
+          (es) => es.forEach((e) => e.isIntersecting && e.target.classList.add("lit")),
+          { threshold: 0.35 },
+        );
+        document.querySelectorAll("[data-lit]").forEach((el) => io.observe(el));
+      })();
       document.addEventListener("click", (e) => {
         const d = document.querySelector(".prod");
         if (d && !d.contains(e.target)) d.open = false;

@@ -1182,6 +1182,176 @@
           opacity: 0;
         }
       }
+
+      /* Device pages: what the app has on board, the bridge to the phone, notes, install steps */
+      .ready {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: grid;
+        gap: 10px;
+        width: 82%;
+      }
+      .ready li {
+        display: grid;
+        grid-template-columns: 26px minmax(0, 1fr);
+        gap: 2px 10px;
+        align-items: baseline;
+        background: var(--sheet);
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 10px 14px;
+      }
+      .ready li::before {
+        content: "✓";
+        color: var(--known);
+        font-weight: 700;
+        grid-row: span 2;
+      }
+      .ready li b {
+        font-family: var(--f-display);
+      }
+      .ready li span {
+        grid-column: 2;
+        font-size: 13.5px;
+        color: var(--muted);
+      }
+      .play .ready li::before {
+        animation: tick 3.2s ease-out infinite;
+      }
+      .play .ready li:nth-child(2)::before {
+        animation-delay: 0.25s;
+      }
+      .play .ready li:nth-child(3)::before {
+        animation-delay: 0.5s;
+      }
+      .play .ready li:nth-child(4)::before {
+        animation-delay: 0.75s;
+      }
+      @keyframes tick {
+        0% {
+          opacity: 0.2;
+          transform: scale(0.6);
+        }
+        20%,
+        100% {
+          opacity: 1;
+          transform: none;
+        }
+      }
+      .bridge {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 0 18px;
+        flex-wrap: wrap;
+        justify-content: center;
+      }
+      .bcard {
+        display: grid;
+        gap: 4px;
+        background: var(--sheet);
+        border: 1px solid var(--line-strong);
+        border-radius: 14px;
+        padding: 14px 16px;
+        min-width: 0;
+        max-width: 180px;
+      }
+      .bcard .pos {
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .bcard b {
+        font-family: var(--f-display);
+        font-size: 15px;
+      }
+      .bcard .ok {
+        font-size: 13px;
+        color: var(--known);
+        font-weight: 600;
+      }
+      .bcard .ok::before {
+        content: "✓ ";
+      }
+      .barrow {
+        font-size: 26px;
+        color: var(--accent);
+      }
+      .play .barrow {
+        animation: nudge 1.6s ease-in-out infinite;
+      }
+      @keyframes nudge {
+        0%,
+        100% {
+          transform: translateX(-4px);
+        }
+        50% {
+          transform: translateX(4px);
+        }
+      }
+      .note-card {
+        display: grid;
+        gap: 8px;
+        width: 80%;
+        background: var(--sheet);
+        border: 1px solid var(--line-strong);
+        border-left: 4px solid var(--accent);
+        border-radius: 12px;
+        padding: 16px 18px;
+        font-size: 14.5px;
+        color: var(--muted);
+      }
+      .note-card b {
+        color: var(--ink);
+        font-family: var(--f-display);
+      }
+      .more {
+        color: var(--accent);
+        font-weight: 600;
+        text-decoration: none;
+      }
+      .see {
+        color: var(--muted);
+        padding-top: 32px;
+        border-top: 1px solid var(--line);
+      }
+      .see a {
+        color: var(--accent);
+      }
+      .steps-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 14px;
+      }
+      .os {
+        display: grid;
+        gap: 6px;
+        align-content: start;
+        background: var(--sheet);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 18px;
+        font-size: 15px;
+        color: var(--muted);
+      }
+      .os b {
+        color: var(--ink);
+        font-family: var(--f-display);
+        font-size: 17px;
+      }
+      .os code,
+      .tbl-sec .sub code {
+        font-size: 0.9em;
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 5px;
+        padding: 0 4px;
+      }
+      @media (max-width: 760px) {
+        .steps-grid {
+          grid-template-columns: 1fr;
+        }
+      }
     </style>
   </head>
   <body data-page="desktop">
@@ -1237,10 +1407,9 @@
               >
             </div>
           </details>
-          <a href="index.html#read">Reading</a><a href="index.html#words">Words</a
-          ><a href="index.html#yours">Your data</a><a href="#">Docs</a>
+          <a href="#">Docs</a>
         </div>
-        <a class="btn primary" href="index.html#get">Download</a>
+        <a class="btn primary" href="#install">Download</a>
       </div>
     </nav>
 
@@ -1252,13 +1421,12 @@
           </div>
           <h1>The whole app, on your computer.</h1>
           <p class="lead">
-            Vuurtoren reads every text on your own computer: no server and no account. After the
-            first start (or with the offline installer) it needs no internet. With your Anki decks,
-            or without Anki at all.
+            Your computer reads every text itself, with no server and no account. Use it with your
+            Anki decks, or without Anki at all.
           </p>
           <div class="cta">
-            <a class="btn primary" href="index.html#get">Download</a
-            ><span class="muted" style="font-size: 14px">Windows · macOS · Linux</span>
+            <a class="btn primary" href="#install">Download</a
+            ><span class="muted" style="font-size: 14px">Windows · macOS · Linux · free</span>
           </div>
         </div>
         <div class="demo" data-loop>
@@ -1270,15 +1438,15 @@
             </div>
             <div class="main" style="position: relative">
               <div class="read">
-                <div class="title">Klaas Vaak</div>
-                Het is al laat. Sam ligt in bed, maar hij
-                <ruby class="w">slaapt<rt class="g">sleeps</rt></ruby> niet. Dan hoort hij een
-                <span class="w new">zacht</span> geluid bij het raam.
+                <div class="title">De vuurtoren van Texel</div>
+                Op het eiland staat een oude <span class="w new">vuurtoren</span>. Elke avond
+                <ruby class="w">beklimt<rt class="g">climbs</rt></ruby> Jan de trap en kijkt naar de
+                zee.
               </div>
               <div class="sheet" style="left: 14px; right: 14px">
-                <span class="hw">zacht</span><span class="pos">adjective · soft, quiet</span
-                ><span class="sen">Dan hoort hij een zacht geluid bij het raam.</span
-                ><span class="keep">Keep</span>
+                <span class="hw">de vuurtoren</span><span class="pos">noun · lighthouse</span
+                ><span class="sen">Op het eiland staat een oude vuurtoren.</span
+                ><span class="keep">+ Add to my words</span>
               </div>
             </div>
           </div>
@@ -1286,90 +1454,38 @@
       </div>
     </header>
 
-    <section class="band">
+    <section class="rows band">
       <div class="in">
-        <div class="scrolly" id="scrolly">
-          <div class="pin">
-            <div class="steps">
-              <span class="eyebrow">Reading</span>
-              <h2>One page, four ways to read it.</h2>
-              <div class="step on" data-step="0">
-                <b>Read</b>The text as it is. A few new words a page are marked to learn, and
-                grammar is underlined.
-              </div>
-              <div class="step" data-step="1">
-                <b>Gloss</b>A short translation above the words you don't know yet. A dial sets how
-                many.
-              </div>
-              <div class="step" data-step="2">
-                <b>Cloze</b>The words you are learning become gaps, with a hint. Fill them as you
-                read.
-              </div>
-              <div class="step" data-step="3">
-                <b>Side by side</b>Each sentence next to its English, word paired with word.
-              </div>
-            </div>
-            <div class="demo">
-              <div class="win">
-                <div class="tb"><i></i><i></i><i></i></div>
-                <div class="side"><b>Read</b><span>Words</span><span>Grammar</span></div>
-                <div class="main">
-                  <div class="modes">
-                    <span data-m="0" class="on">Read</span><span data-m="1">Gloss</span
-                    ><span data-m="2">Cloze</span><span data-m="3">Side by side</span>
-                  </div>
-                  <div class="pane on" data-m="0">
-                    <div class="read">
-                      Het hele dorp kijkt omhoog. Daar staat de koe, boven op de
-                      <span class="new">toren</span>. <span class="gm">Hoe komt</span> ze daar?
-                    </div>
-                  </div>
-                  <div class="pane" data-m="1">
-                    <div class="read">
-                      Het hele <ruby class="w">dorp<rt class="g">village</rt></ruby> kijkt
-                      <ruby class="w">omhoog<rt class="g">up</rt></ruby
-                      >. Daar staat de koe, boven op de <span class="new">toren</span>. Hoe komt ze
-                      daar?
-                    </div>
-                  </div>
-                  <div class="pane" data-m="2">
-                    <div class="read">
-                      Het hele <span class="blank">d___</span> kijkt omhoog. Daar staat de koe,
-                      boven op de <span class="blank">t____</span>. Hoe komt ze daar?
-                    </div>
-                  </div>
-                  <div class="pane" data-m="3">
-                    <div class="sbs">
-                      <div class="nl">
-                        <span class="p1">Het hele dorp</span> <span class="p2">kijkt</span>
-                        <span class="p3">omhoog</span>.
-                      </div>
-                      <div class="en">
-                        <span class="p1">The whole village</span> <span class="p2">looks</span>
-                        <span class="p3">up</span>.
-                      </div>
-                      <div class="div"></div>
-                      <div class="nl">Daar staat de koe, boven op de toren.</div>
-                      <div class="en">There stands the cow, up on the tower.</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
+        <div class="row">
+          <div class="copy">
+            <span class="eyebrow">Everything on your computer</span>
+            <h2>No server, no account.</h2>
+            <p>
+              The Dutch language model, the dictionary, the translation model and the recordings all
+              live on your computer. The app downloads them on the first start, or brings them along
+              in the offline installer, and after that it works without internet.
+            </p>
+          </div>
+          <div class="demo" data-loop>
+            <div class="stage">
+              <ul class="ready" aria-label="What the desktop app has on board">
+                <li><b>Reading</b><span>finds the words and the grammar of any text</span></li>
+                <li><b>Dictionary</b><span>a meaning for each word, in its sentence</span></li>
+                <li><b>Translation</b><span>each sentence in English, offline</span></li>
+                <li>
+                  <b>Recordings</b><span>the common words and the stories, in two voices</span>
+                </li>
+              </ul>
             </div>
           </div>
         </div>
-      </div>
-    </section>
-
-    <section class="rows band">
-      <div class="in">
         <div class="row">
           <div class="copy">
             <span class="eyebrow">Any text</span>
             <h2>Read what you want to read.</h2>
             <p>
-              A web page, a PDF or a photo of a page. Follow your own course book unit by unit, from
-              a PDF, an EPUB or photos. Your computer reads it in a few seconds and keeps it.
+              A web page, a PDF or a photo of a page, or your own course book, unit by unit, from a
+              PDF, an EPUB or photos. Your computer reads it in a few seconds and keeps it.
             </p>
           </div>
           <div class="demo" data-loop>
@@ -1404,39 +1520,10 @@
         </div>
         <div class="row">
           <div class="copy">
-            <span class="eyebrow">Words</span>
-            <h2>The words you meet come back.</h2>
-            <p>
-              One click keeps a word with the sentence you found it in. Reviews use FSRS, the
-              scheduler Anki uses: a few minutes a day, with the keys 1 to 4.
-            </p>
-          </div>
-          <div class="demo" data-loop>
-            <div class="stage">
-              <div>
-                <div class="deck">
-                  <div class="card back">
-                    <span class="word">de dijk</span
-                    ><span class="sent">De dijk houdt het water tegen.</span>
-                  </div>
-                  <div class="card front">
-                    <span class="stamp">GOOD</span><span class="word">zacht</span
-                    ><span class="sent">Dan hoort hij een zacht geluid.</span>
-                  </div>
-                </div>
-                <div class="grades">
-                  <span>1 Again</span><span>2 Hard</span><span>3 Good</span><span>4 Easy</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="row">
-          <div class="copy">
             <span class="eyebrow">Anki</span>
             <h2>Bring your decks, or keep Anki.</h2>
             <p>
-              Import your .apkg files and Vuurtoren knows your level from the first day. Or keep
+              Import your .apkg files, and Vuurtoren knows your level from the first day. Or keep
               reviewing in Anki: with the AnkiConnect add-on, Vuurtoren reads your progress and adds
               new words to your deck.
             </p>
@@ -1446,7 +1533,7 @@
               <div style="display: grid; gap: 10px; justify-items: center">
                 <span class="req" style="font-size: 14px">Dutch::Woorden · 1,240 cards</span
                 ><span style="font-size: 28px; color: var(--muted)">↓</span>
-                <div class="read" style="text-align: center; padding: 0 24px">
+                <div class="read" style="text-align: center; padding: 0 24px; line-height: 1.8">
                   You know <b>1,240</b> words. This story is <b>94%</b> words you know.
                 </div>
               </div>
@@ -1455,26 +1542,73 @@
         </div>
         <div class="row">
           <div class="copy">
-            <span class="eyebrow">Grammar</span>
-            <h2>Grammar, where it happens.</h2>
+            <span class="eyebrow">For your phone</span>
+            <h2>It prepares your texts for your phone.</h2>
             <p>
-              Inversion, separable verbs and the perfect tense are marked in your own texts. Lessons
-              from A1 to C1 explain them on your sentences, and mock exams prepare the A2
-              inburgeringsexamen.
+              Every text you add on the computer is prepared once: the meaning of each word in its
+              sentence, each sentence in English, the grammar. Sync takes it to your phone, which
+              can then read it offline, without a server of its own.
             </p>
+            <a class="more" href="phone.html">Vuurtoren on your phone →</a>
           </div>
           <div class="demo" data-loop>
             <div class="stage">
-              <div class="read" style="text-align: center; padding: 0 24px">
-                Van der Decken <span class="gm">lachte</span> hem
-                <span class="gm">uit</span>.<br /><span
-                  class="req"
-                  style="color: var(--pair2); border-color: var(--pair2)"
-                  >Separable verb · uitlachen, to laugh at</span
-                >
+              <div class="bridge">
+                <div class="bcard">
+                  <span class="pos">On your computer</span><b>Brief van de gemeente</b
+                  ><span class="ok">prepared</span>
+                </div>
+                <span class="barrow" aria-hidden="true">→</span>
+                <div class="bcard">
+                  <span class="pos">On your phone</span><b>Brief van de gemeente</b
+                  ><span class="ok">ready to read, offline</span>
+                </div>
               </div>
             </div>
           </div>
+        </div>
+        <p class="see">
+          How a page reads at your level, how words come back, the grammar and the exam:
+          <a href="index.html#read">see the four ways to read</a>.
+        </p>
+      </div>
+    </section>
+
+    <section class="tbl-sec band" id="install">
+      <div class="in">
+        <span class="eyebrow">Install</span>
+        <h2>Download and open it.</h2>
+        <div class="steps-grid">
+          <div class="os">
+            <b>Windows</b
+            ><span
+              >Take the <code>.exe</code>. Windows may warn you, because the app is not signed yet:
+              click <i>More info</i>, then <i>Run anyway</i>.</span
+            >
+          </div>
+          <div class="os">
+            <b>macOS</b
+            ><span
+              >Take the <code>.dmg</code> for your Mac (Apple chip or Intel). The first time,
+              right-click the app and choose <i>Open</i>.</span
+            >
+          </div>
+          <div class="os">
+            <b>Linux</b
+            ><span
+              >Take the <code>.AppImage</code> or the <code>.deb</code>. Make the AppImage
+              executable, then run it.</span
+            >
+          </div>
+        </div>
+        <p class="sub">
+          No internet on that computer? Take the file that starts with
+          <code>Vuurtoren_offline_</code>: the language data is inside.
+        </p>
+        <div class="cta">
+          <a class="btn primary" href="https://github.com/pavlohrab/Vuurtoren/releases/latest"
+            >All downloads</a
+          ><a class="btn" href="#">Install guide</a>
         </div>
       </div>
     </section>

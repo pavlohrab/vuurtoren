@@ -1182,6 +1182,176 @@
           opacity: 0;
         }
       }
+
+      /* Device pages: what the app has on board, the bridge to the phone, notes, install steps */
+      .ready {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: grid;
+        gap: 10px;
+        width: 82%;
+      }
+      .ready li {
+        display: grid;
+        grid-template-columns: 26px minmax(0, 1fr);
+        gap: 2px 10px;
+        align-items: baseline;
+        background: var(--sheet);
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 10px 14px;
+      }
+      .ready li::before {
+        content: "✓";
+        color: var(--known);
+        font-weight: 700;
+        grid-row: span 2;
+      }
+      .ready li b {
+        font-family: var(--f-display);
+      }
+      .ready li span {
+        grid-column: 2;
+        font-size: 13.5px;
+        color: var(--muted);
+      }
+      .play .ready li::before {
+        animation: tick 3.2s ease-out infinite;
+      }
+      .play .ready li:nth-child(2)::before {
+        animation-delay: 0.25s;
+      }
+      .play .ready li:nth-child(3)::before {
+        animation-delay: 0.5s;
+      }
+      .play .ready li:nth-child(4)::before {
+        animation-delay: 0.75s;
+      }
+      @keyframes tick {
+        0% {
+          opacity: 0.2;
+          transform: scale(0.6);
+        }
+        20%,
+        100% {
+          opacity: 1;
+          transform: none;
+        }
+      }
+      .bridge {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 0 18px;
+        flex-wrap: wrap;
+        justify-content: center;
+      }
+      .bcard {
+        display: grid;
+        gap: 4px;
+        background: var(--sheet);
+        border: 1px solid var(--line-strong);
+        border-radius: 14px;
+        padding: 14px 16px;
+        min-width: 0;
+        max-width: 180px;
+      }
+      .bcard .pos {
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .bcard b {
+        font-family: var(--f-display);
+        font-size: 15px;
+      }
+      .bcard .ok {
+        font-size: 13px;
+        color: var(--known);
+        font-weight: 600;
+      }
+      .bcard .ok::before {
+        content: "✓ ";
+      }
+      .barrow {
+        font-size: 26px;
+        color: var(--accent);
+      }
+      .play .barrow {
+        animation: nudge 1.6s ease-in-out infinite;
+      }
+      @keyframes nudge {
+        0%,
+        100% {
+          transform: translateX(-4px);
+        }
+        50% {
+          transform: translateX(4px);
+        }
+      }
+      .note-card {
+        display: grid;
+        gap: 8px;
+        width: 80%;
+        background: var(--sheet);
+        border: 1px solid var(--line-strong);
+        border-left: 4px solid var(--accent);
+        border-radius: 12px;
+        padding: 16px 18px;
+        font-size: 14.5px;
+        color: var(--muted);
+      }
+      .note-card b {
+        color: var(--ink);
+        font-family: var(--f-display);
+      }
+      .more {
+        color: var(--accent);
+        font-weight: 600;
+        text-decoration: none;
+      }
+      .see {
+        color: var(--muted);
+        padding-top: 32px;
+        border-top: 1px solid var(--line);
+      }
+      .see a {
+        color: var(--accent);
+      }
+      .steps-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 14px;
+      }
+      .os {
+        display: grid;
+        gap: 6px;
+        align-content: start;
+        background: var(--sheet);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 18px;
+        font-size: 15px;
+        color: var(--muted);
+      }
+      .os b {
+        color: var(--ink);
+        font-family: var(--f-display);
+        font-size: 17px;
+      }
+      .os code,
+      .tbl-sec .sub code {
+        font-size: 0.9em;
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 5px;
+        padding: 0 4px;
+      }
+      @media (max-width: 760px) {
+        .steps-grid {
+          grid-template-columns: 1fr;
+        }
+      }
     </style>
   </head>
   <body data-page="phone">
@@ -1237,10 +1407,9 @@
               >
             </div>
           </details>
-          <a href="index.html#read">Reading</a><a href="index.html#words">Words</a
-          ><a href="index.html#yours">Your data</a><a href="#">Docs</a>
+          <a href="#">Docs</a>
         </div>
-        <a class="btn primary" href="index.html#get">Download</a>
+        <a class="btn primary" href="#install">Get the APK</a>
       </div>
     </nav>
 
@@ -1256,7 +1425,7 @@
             along from your computer, and it works offline.
           </p>
           <div class="cta">
-            <a class="btn primary" href="index.html#get">Download for Android</a
+            <a class="btn primary" href="#install">Get the app for Android</a
             ><span class="muted" style="font-size: 14px">iPhone: not yet</span>
           </div>
         </div>
@@ -1265,20 +1434,22 @@
             <div class="bar"></div>
             <div class="scr">
               <div class="read">
-                <div class="title">De koe op de toren</div>
-                Op een dag <ruby class="w">klimt<rt class="g">climbs</rt></ruby> een koe op de
-                <span class="w new tapme">toren<i class="tap"></i></span>. Het hele
-                <ruby class="w">dorp<rt class="g">village</rt></ruby> kijkt omhoog.
+                <div class="title">De vuurtoren van Texel</div>
+                Op het eiland staat een oude
+                <span class="w new tapme">vuurtoren<i class="tap"></i></span>. Elke avond
+                <ruby class="w">beklimt<rt class="g">climbs</rt></ruby> Jan de trap en kijkt naar de
+                zee.
                 <p style="margin-top: 10px">
-                  „Hoe komt ze daar?” vraagt de <ruby class="w">bakker<rt class="g">baker</rt></ruby
-                  >. Niemand weet het. De koe kijkt rustig naar de zee.
+                  Vannacht is het stil, maar in de verte ziet hij een klein
+                  <ruby class="w">schip<rt class="g">ship</rt></ruby
+                  >.
                 </p>
               </div>
             </div>
             <div class="tabs"><b>Read</b><span>Words</span><span>More</span></div>
             <div class="sheet">
-              <span class="hw">de toren</span><span class="pos">noun · tower</span
-              ><span class="sen">Op een dag klimt een koe op de toren.</span
+              <span class="hw">de vuurtoren</span><span class="pos">noun · lighthouse</span
+              ><span class="sen">Op het eiland staat een oude vuurtoren.</span
               ><span class="keep">Keep</span>
             </div>
           </div>
@@ -1293,8 +1464,8 @@
             <span class="eyebrow">Words</span>
             <h2>Swipe through your reviews.</h2>
             <p>
-              Right for good, left for again. The same cards as on your computer, with the sentence
-              you found each word in.
+              Right for good, left for again, up for easy, even before you turn the card. They are
+              the same cards as on your computer, with the sentence you found each word in.
             </p>
             <span class="req">Works on the phone alone</span>
           </div>
@@ -1303,12 +1474,11 @@
               <div>
                 <div class="deck">
                   <div class="card back">
-                    <span class="word">de dijk</span
-                    ><span class="sent">De dijk houdt het water tegen.</span>
+                    <span class="word">de trap</span><span class="sent">Jan beklimt de trap.</span>
                   </div>
                   <div class="card front">
-                    <span class="stamp">GOOD</span><span class="word">lachen</span
-                    ><span class="sent">Iedereen moest lachen.</span>
+                    <span class="stamp">GOOD</span><span class="word">het schip</span
+                    ><span class="sent">In de verte ziet hij een klein schip.</span>
                   </div>
                   <span class="hand"></span>
                 </div>
@@ -1336,16 +1506,16 @@
                 <div class="scr">
                   <div class="sbs" data-pairs>
                     <div class="nl">
-                      <span data-p="1">Het hele dorp</span> <span data-p="2">kijkt</span>
-                      <span data-p="3">omhoog</span>.
+                      <span data-p="1">Op het eiland</span> <span data-p="2">staat</span> een oude
+                      <span data-p="3">vuurtoren</span>.
                     </div>
                     <div class="en">
-                      <span data-p="1">The whole village</span> <span data-p="2">looks</span>
-                      <span data-p="3">up</span>.
+                      <span data-p="1">On the island</span> <span data-p="2">stands</span> an old
+                      <span data-p="3">lighthouse</span>.
                     </div>
                     <div class="div"></div>
-                    <div class="nl">Daar staat de koe, boven op de toren.</div>
-                    <div class="en">There stands the cow, up on the tower.</div>
+                    <div class="nl">Elke avond beklimt Jan de trap.</div>
+                    <div class="en">Every evening Jan climbs the stairs.</div>
                   </div>
                 </div>
               </div>
@@ -1355,11 +1525,11 @@
         <div class="row">
           <div class="copy">
             <span class="eyebrow">Your own texts</span>
-            <h2>Add it on your computer. Read it on the train.</h2>
+            <h2>It reads what your computer prepared.</h2>
             <p>
-              Your computer prepares every text you add: each word's meaning in its sentence, the
-              English of each sentence, the grammar. Sync brings it all to your phone, and it works
-              offline there.
+              Your computer prepares every text you add on it: each word's meaning in its sentence,
+              the English of each sentence, the grammar. Sync brings it all to your phone, and it
+              works offline there.
             </p>
             <span class="req">Works with every way to sync</span>
           </div>
@@ -1381,6 +1551,65 @@
               </div>
             </div>
           </div>
+        </div>
+        <div class="row">
+          <div class="copy">
+            <span class="eyebrow">Adding texts on the phone</span>
+            <h2>New texts need a language server.</h2>
+            <p>
+              To add a text on the phone itself, from a paste, a link or a photo, the phone needs a
+              language server: your own (one small Docker stack), or later Vuurtoren Sync. Without
+              one, the text waits until your computer has prepared it.
+            </p>
+            <span class="req">Needs a language server</span>
+          </div>
+          <div class="demo" data-loop>
+            <div class="stage">
+              <div class="note-card">
+                <b>Brief van de gemeente</b
+                ><span
+                  >This text hasn't been prepared on this device yet. Open Vuurtoren on your
+                  computer (it prepares the text and syncs it here), or connect a language server in
+                  Settings → Your devices.</span
+                >
+              </div>
+            </div>
+          </div>
+        </div>
+        <p class="see">
+          How a page reads at your level, how words come back, the grammar and the exam:
+          <a href="index.html#read">see the four ways to read</a>.
+        </p>
+      </div>
+    </section>
+
+    <section class="tbl-sec band" id="install">
+      <div class="in">
+        <span class="eyebrow">Install</span>
+        <h2>Three steps on Android.</h2>
+        <div class="steps-grid">
+          <div class="os">
+            <b>1 · Download</b
+            ><span>Open the latest release on your phone and take the <code>.apk</code> file.</span>
+          </div>
+          <div class="os">
+            <b>2 · Install</b
+            ><span
+              >Open the file. Android asks once to allow installs from your browser: allow it.</span
+            >
+          </div>
+          <div class="os">
+            <b>3 · Connect</b
+            ><span
+              >In the app, Settings → Your devices: join your computer's sync data with your
+              passphrase.</span
+            >
+          </div>
+        </div>
+        <div class="cta">
+          <a class="btn primary" href="https://github.com/pavlohrab/Vuurtoren/releases/latest"
+            >Get the APK</a
+          ><a class="btn" href="#">Phone guide</a>
         </div>
       </div>
     </section>
