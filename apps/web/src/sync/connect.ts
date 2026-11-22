@@ -14,7 +14,7 @@ export interface ConnectLink {
 }
 
 /** A server and its user name and password: the device signs in by itself. */
-export interface ServerSignIn {
+interface ServerSignIn {
   server: string;
   user: string;
   password: string;
