@@ -386,11 +386,12 @@ export function Welcome() {
         {draft.step === "server" ? (
           <section aria-labelledby="ob-server-h">
             <h1 id="ob-server-h" ref={heading} tabIndex={-1}>
-              Connect to your server
+              Sync with your other devices
             </h1>
             <p className="ob-lede">
-              New texts and translations come from your Vuurtoren server, and your words stay in
-              sync with your computer.
+              Connect to your Vuurtoren server to keep your words and texts the same here and on
+              your computer; it also analyses texts you add on this phone. No server yet? Choose Not
+              now and connect later in Settings → Your devices.
             </p>
             <ConnectYourServer onState={onServerState} />
             <div className="ob-nav">

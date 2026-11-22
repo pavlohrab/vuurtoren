@@ -219,13 +219,19 @@ describe("onboarding", () => {
       const { user } = setup();
       await user.click(await screen.findByRole("radio", { name: /^No/ }));
       await user.click(cont());
-      expect(await screen.findByRole("heading", { name: "Connect to your server" })).toBeVisible();
-      expect(screen.getByText(/New texts and translations come from your Vuurtoren server/));
+      expect(
+        await screen.findByRole("heading", { name: "Sync with your other devices" }),
+      ).toBeVisible();
+      expect(
+        screen.getByText(/Connect to your Vuurtoren server to keep your words and texts the same/),
+      );
       expect(await screen.findByLabelText("Pairing code")).toBeVisible();
       await user.click(screen.getByRole("button", { name: "Not now" }));
       expect(await screen.findByRole("heading", { name: "The most common words" })).toBeVisible();
       await user.click(screen.getByRole("button", { name: "Back" }));
-      expect(await screen.findByRole("heading", { name: "Connect to your server" })).toBeVisible();
+      expect(
+        await screen.findByRole("heading", { name: "Sync with your other devices" }),
+      ).toBeVisible();
     } finally {
       vi.mocked(currentDevice).mockImplementation(() => real);
     }
@@ -238,7 +244,9 @@ describe("onboarding", () => {
       const { user, saveLanguageProfile } = setup();
       await user.click(await screen.findByRole("radio", { name: /^Yes/ }));
       await user.click(cont());
-      expect(await screen.findByRole("heading", { name: "Connect to your server" })).toBeVisible();
+      expect(
+        await screen.findByRole("heading", { name: "Sync with your other devices" }),
+      ).toBeVisible();
       expect(saveLanguageProfile.mock.calls[0]![0].mode).toBe("native");
       await user.click(screen.getByRole("button", { name: "Not now" }));
       expect(await screen.findByRole("heading", { name: "Your Anki cards" })).toBeVisible();
@@ -264,7 +272,7 @@ describe("onboarding", () => {
       const { user } = setup();
       await user.click(await screen.findByRole("button", { name: "Save and continue" }));
       expect(await screen.findByRole("heading", { name: "The most common words" })).toBeVisible();
-      expect(screen.queryByRole("heading", { name: "Connect to your server" })).toBeNull();
+      expect(screen.queryByRole("heading", { name: "Sync with your other devices" })).toBeNull();
     } finally {
       vi.mocked(currentDevice).mockImplementation(() => real);
     }
