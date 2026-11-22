@@ -1380,8 +1380,15 @@
 
     <style>
       /* The name: the logo draws itself, as in the app's start screen, and its parts are named. */
+      .namev {
+        padding-block: 64px;
+      }
+      .namev .split {
+        grid-template-columns: minmax(0, 2fr) minmax(0, 5fr);
+        gap: 48px;
+      }
       .nv-mark {
-        width: min(100%, 340px);
+        width: min(100%, 180px);
         aspect-ratio: 1;
         margin: 0 auto;
       }
@@ -1414,45 +1421,14 @@
       .nv5 {
         transition-delay: 0.95s;
       }
-      .nv-tags {
-        display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 14px;
-        margin-top: 22px;
-      }
-      .nv-tag {
-        font: 500 13px / 1.4 var(--f-ui);
-        color: var(--muted);
-        border-top: 2px solid var(--line-strong);
-        padding-top: 8px;
-        opacity: 0;
-        transition: opacity 0.6s 1.2s;
-      }
-      .nv-tag.nv-ac {
-        border-color: var(--accent);
-      }
-      .nv-tag b {
-        display: block;
-        color: var(--ink);
-        font-family: var(--f-display);
-        font-size: 15px;
-      }
-      .lit .nv-tag {
-        opacity: 1;
-      }
       .namev .copy p {
         color: var(--muted);
         font-size: 18px;
-        max-width: 50ch;
+        max-width: 56ch;
       }
       .namev .copy p b {
         color: var(--ink);
         font-weight: 600;
-      }
-      @media (max-width: 560px) {
-        .nv-tags {
-          grid-template-columns: 1fr;
-        }
       }
       /* Reading: the modes follow the scroll on wide screens. */
       @media (min-width: 900px) {
@@ -1573,7 +1549,6 @@
         color: var(--muted);
       }
       @media (prefers-reduced-motion: reduce) {
-        .nv-tag,
         .gnote {
           opacity: 1;
         }
@@ -1862,26 +1837,14 @@
               />
             </svg>
           </div>
-          <div class="nv-tags">
-            <span class="nv-tag"><b lang="nl">vuur · toren</b>fire on a tower</span>
-            <span class="nv-tag nv-ac"><b>The beam</b>reaching out over the page</span>
-            <span class="nv-tag nv-ac"><b>One word, lit</b>the one you don't know yet</span>
-          </div>
         </div>
         <div class="copy">
           <span class="eyebrow">The name</span>
           <h2 id="name-h">Why a lighthouse?</h2>
           <p>
-            Vuurtoren is Dutch for lighthouse, and like many Dutch words it is built from smaller
-            ones: <b lang="nl">vuur</b>, fire, on top of a <b lang="nl">toren</b>, a tower. Dutch
-            does this a lot, so a long word is often just a few short ones standing in a row.
-          </p>
-          <p>
-            I liked the name because it describes what I wanted the app to do. A lighthouse does not
-            take you across the water; it only shows you where the coast is, and the rest of the way
-            you sail yourself. The logo is drawn the same way: the beam goes out over a few lines of
-            text and lights up one word on them, the one you don't know yet, while the rest of the
-            page is left for you to read.
+            Vuurtoren is Dutch for lighthouse: <b lang="nl">vuur</b>, fire, on a
+            <b lang="nl">toren</b>, a tower. A lighthouse doesn't take you across the water, it
+            shows you where the coast is. That is what I wanted the app to do for a text.
           </p>
         </div>
       </div>
@@ -1962,15 +1925,12 @@
         <div class="copy">
           <span class="eyebrow">Grammar and the exam</span>
           <h2 id="grammar-h">Grammar, where it happens.</h2>
-          <p class="big">
-            Inversion, separable verbs and the perfect tense are marked in the texts you read, and
-            explained on your own sentences.
-          </p>
+          <p class="big">Marked in the texts you read, explained on your own sentences.</p>
           <ul class="facts">
             <li>Topics from A1 to C1, each with exercises.</li>
             <li>Exercises made from what you read.</li>
             <li>Mock exams for the A2 inburgeringsexamen.</li>
-            <li>A chat partner who keeps to words you know, if you add your own AI key.</li>
+            <li>A chat partner, with your own AI key.</li>
           </ul>
         </div>
         <div class="gram-card" data-lit aria-label="A sentence with its grammar marked">
@@ -1996,10 +1956,7 @@
         <div class="dev-head">
           <span class="eyebrow">On every device</span>
           <h2 id="devices-h">Add it on your computer. Read it on the train.</h2>
-          <p class="big">
-            Your computer prepares every text you add, and sync brings it to your phone, ready to
-            read offline.
-          </p>
+          <p class="big">Your phone reads what your computer prepared, offline.</p>
         </div>
         <div class="dev-cards">
           <a class="dev-card" href="desktop.html">
