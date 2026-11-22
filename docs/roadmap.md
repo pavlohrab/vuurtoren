@@ -2,12 +2,15 @@
 
 ## Next
 
-1. **Vuurtoren Cloud** is coming: a hosted service behind sync, with accounts and a hosted
-   language server for phones.
-2. **Anki in the self-hosted stack.** Headless Anki with your AnkiWeb login, read-only.
-3. **Weave reading.** An English text with Dutch islands that grow as you learn.
-4. **Phone apps.** Android first, then iPhone, from the same Tauri project. See
-   [Phones](phones.md).
+1. **Vuurtoren Sync** at sync.vuurtoren.app: a paid sync place. Sign in, buy, and the device
+   becomes the first one to sync; every other device signs in and its data downloads. The same
+   flow as a self-hosted server, without hosting anything.
+2. **Audio on phones without a server.** One audio pack per voice (about 115 MB) downloaded from
+   data.vuurtoren.app and played on the phone; choose female, male or both.
+3. **Speech for words without a recording,** made once with your own speech API key (Google
+   Cloud, Gemini, OpenAI, ElevenLabs, Azure) and kept with your cards.
+4. **Weave reading.** An English text with Dutch islands that grow as you learn.
+5. **iPhone,** from the same Tauri project. See [Phones](phones.md).
 
 ## Later
 
@@ -28,45 +31,37 @@ From the Android app review (`reports/android-app-review.md`), deferred:
 
 ## Sync
 
-- **Vuurtoren Cloud:** the same sync and a hosted language server for devices that can't run one,
-  such as phones. To build: accounts, storage limits per account.
 - **One device, one data file.** The desktop app refuses a sync folder that holds its own data
-  folder, and warns when it sees another computer syncing under its device id (a data file
-  copied or shared between computers).
+  folder, and warns when it sees another computer syncing under its device id.
 - **Live push.** Devices pull every 15 seconds while open; a server could tell them at once when
   another device wrote.
-- **Checks before Vuurtoren Cloud:** a run against a real Nextcloud (the test
+- **Checks before Vuurtoren Sync:** a run against a real Nextcloud (the test
   `apps/web/src/sync/real.test.ts` takes its address), and an outside review of the encryption
   code.
-- **Hosting:** one stack of three containers: `vuurtoren` (web app, sign-in and sync),
-  `vuurtoren-nlp` (the language server; phones need it) and, only for Keep using Anki, `anki`
-  (headless, read only). Self-hosting and Vuurtoren Cloud run the same stack.
+- **Texts added on a phone** need the language server. With your own server it analyses them;
+  without one, they wait until your desktop app is open and it analyses them, then the result
+  syncs back. A hosted language server at vuurtoren.app is possible later, if people ask for it.
 
-## Vuurtoren Cloud design
+## vuurtoren.app
 
-- **Accounts.** One account is one learner, signed in with email and password (scrypt) or a
-  passkey. Signing in a device gives it a sync token; the account page lists devices and can
-  remove one.
-- **Storage.** Object storage (S3-compatible). Every account has its own prefix,
-  `accounts/<account id>/`, holding the same layout as any sync place (`vuurtoren/vault.json`,
-  `vuurtoren/devices/…`, `vuurtoren/blobs/…`). Files are sealed on the device, as with every sync
-  place: the service stores them and cannot read them.
-- **Sync API.** The `/api/sync` of a self-hosted server, append-only: a device creates files in
-  its own folder and in blobs, and removes only its own folded segments. Nothing overwrites
-  another device's file.
-- **Tokens bound to devices.** Each token belongs to one device id and one account. It reads the
-  whole account and writes only that device's folder and blobs. Removing a device revokes its
-  token.
-- **Quotas.** Storage per account and requests per minute. Over the storage quota, sending is
-  refused with a clear message in Settings → Sync; receiving keeps working, so no device falls
-  behind.
-- **Hosted language server.** Phones send texts to it for analysis, grammar, translation and
-  OCR. Texts sent to the hosted language server are processed and not stored: they live in
-  memory for the request, are never written to disk or logs, and the results go straight back
-  to the device, which keeps them in its own analysis cache. Requests are counted per account for
-  the quota, by size only.
-- **Same stack.** Vuurtoren Cloud runs the self-hosted stack with accounts and object storage
-  switched on; self-hosting stays single-user and free.
+- **data.vuurtoren.app:** the language packs as plain files
+  (`packs-<version>/<name>-<version>.tar.gz`). For now a file server on a home server behind a
+  Cloudflare Tunnel (`deploy/data-host`); later Cloudflare R2, which charges nothing for
+  downloads.
+- **sync.vuurtoren.app:** accounts and the sealed sync files.
+  - **Sign-in** with an email code (passkeys later): no passwords to store or reset. Signing in
+    a device gives it a sync token of its own.
+  - **One page,** Your devices: the devices, add one (QR code), remove one, the subscription.
+  - **Storage:** every account has its own prefix, `accounts/<account id>/`, with the same layout
+    as any sync place. Files are sealed on the device; the service cannot read them.
+  - **Sync API:** the `/api/sync` of a self-hosted server, append-only: a device writes only its
+    own folder and blobs. Tokens belong to one device and one account.
+  - **Quotas:** storage per account and requests per minute. Over the quota, sending is refused
+    with a clear message; receiving keeps working.
+- **Hosting that scales by itself:** Cloudflare Workers for the API, R2 for the sync files, D1
+  for accounts and devices. No servers to run; the cost follows use.
+- **Payments:** Paddle or Lemon Squeezy as the merchant of record, so EU VAT and invoices are
+  handled for a one-person business.
 
 ## Known issues
 

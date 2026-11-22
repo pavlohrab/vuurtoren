@@ -128,16 +128,22 @@ Vuurtoren writes to Anki only when you click, and tags every note it touches.
   events through a sync place, replay them in hybrid-clock order and reach the same state:
   latest wins for settings and marks, reviews and answers merge. This is the only way two copies
   of your data come together.
-- **A Vuurtoren server is a sync place and a language server.** It signs you in, serves the app,
-  stores sealed sync files and runs the language server; it holds no readable data. The app
-  opened from it keeps its own copy in the browser and syncs with it like every other device. It
-  chooses **This server** without typing a token: it makes a sync token for itself with its
-  session, so the per-device write rules of `/api/sync` hold for it too.
-- **Words.** _Vuurtoren server_ is the stack you host (web app, API, language server). A _sync
-  place_ is where devices exchange events: your Vuurtoren server, a synced folder or WebDAV.
-- **WebDAV and folders are for the desktop app.** A page cannot reach a folder, and WebDAV
-  servers rarely allow a page on another site (CORS); the desktop app sends those requests
-  itself.
+- **A Vuurtoren server is a sync place and a language server, with one page.** It stores sealed
+  sync files and runs the language server; it holds no readable data and serves no app. Its
+  address shows **Your devices**: sign in, add a device (a pairing code as a QR code and a link),
+  remove one. The first device to sync is a computer or a phone, never the server.
+- **A device gets its own access.** It connects with the server's user name and password, or
+  with a pairing code; either way the server makes it a sync token of its own, which is kept in
+  the device's key store (the password is not). Removing the device revokes the token.
+- **Words.** _Vuurtoren server_ is the stack you host (the devices page, API, language server).
+  A _sync place_ is where devices exchange events: your Vuurtoren server, WebDAV or a synced
+  folder.
+- **WebDAV works in the apps, folders on computers.** The desktop and phone apps send WebDAV
+  requests themselves, so no CORS setup is needed; a synced folder needs the desktop app.
+- **Language data comes from the data host.** The dictionary, sentences, translation model and
+  audio are plain files at data.vuurtoren.app (`packs-<version>/<name>-<version>.tar.gz`),
+  checked by size and SHA-256. Servers and apps download them from there; nothing about the
+  learner is on it.
 - **A data file belongs to one computer.** The desktop app's lock file only keeps two apps from
   writing at once; it is not a way to share data. Sharing one database file between computers
   (a cloud-synced Documents folder, a network drive) is not combined with event sync: the

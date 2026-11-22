@@ -18,7 +18,7 @@ updates:
       base-images:
         patterns: ["*"]
   - package-ecosystem: docker-compose
-    directories: ["/deploy", "/deploy/dockge"]
+    directories: ["/deploy", "/deploy/data-host"]
     schedule:
       interval: monthly
     groups:

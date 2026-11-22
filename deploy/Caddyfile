@@ -1,8 +1,0 @@
-# HTTPS front for Vuurtoren (compose profile "https").
-#   Public domain:  VUURTOREN_DOMAIN=vuurtoren.example.com              -> Let's Encrypt, automatic
-#   LAN:            VUURTOREN_DOMAIN=vuurtoren.lan VUURTOREN_TLS=internal -> local CA (trust it once)
-{$VUURTOREN_DOMAIN:localhost} {
-	tls {$VUURTOREN_TLS:}
-	encode gzip
-	reverse_proxy web:80
-}

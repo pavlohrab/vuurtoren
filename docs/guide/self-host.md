@@ -1,88 +1,79 @@
 # Self-host Vuurtoren
 
-Run Vuurtoren on your own computer or server. It gives your devices two things:
+Your own Vuurtoren server does two things:
 
-- **Sync:** your phone, laptop and desktop app keep the same words, texts and progress.
-- **The language server:** Dutch analysis, the dictionary, translation and reading photos, for
-  every device that has none of its own.
+- **Sync.** Your devices pass their changes through it, sealed with your passphrase. It cannot
+  read them and keeps no words or texts of its own: your devices do.
+- **A language server for phones.** It analyses and translates texts you add on a phone.
 
-Every device keeps its own copy of your data. The server only stores locked files it cannot
-read. You can also open the app from the server in a browser: it then keeps its data in that
-browser and syncs through the server like any other device.
+Its address shows one page, **Your devices**: sign in, add a device, remove one. The app itself
+runs on your computer and your phone, not on the server.
+
+The dictionaries, the translation model and the audio come from `data.vuurtoren.app`. The server
+downloads what it needs once, by itself.
 
 ## What you need
 
-- A computer that stays on (a home server, a NAS, a small cloud server).
-- [Docker](https://docs.docker.com/get-docker/) with Docker Compose.
+- A computer that stays on (a NAS, a mini PC, a small cloud server) with Docker.
+- HTTPS in front of it. The simplest is a Cloudflare Tunnel; any reverse proxy with a
+  certificate works too. Phones only connect over HTTPS.
 
 ## Start it
 
-```sh
-git clone https://github.com/pavlohrab/Vuurtoren.git
-cd Vuurtoren
-docker compose -f deploy/compose.yml up -d
-```
-
-Open <http://localhost:8080> and follow the welcome steps.
-
-## Set a password
-
-Do this before other devices can reach Vuurtoren.
-
-1. Make a password hash:
+1. Get `deploy/compose.yml` and `deploy/.env.example` from the repository.
+2. Make a password hash:
 
    ```sh
-   docker compose -f deploy/compose.yml run --rm -it api hash-password
+   docker run --rm -it ghcr.io/pavlohrab/vuurtoren-api:latest hash-password
    ```
 
-2. Put the two printed lines in `deploy/.env`:
+3. Copy `.env.example` to `.env` and fill in your user name, the hash and a free port.
+4. Start it:
 
    ```sh
-   VUURTOREN_USER=anna
-   VUURTOREN_PASSWORD_HASH=scrypt:...
+   docker compose -f compose.yml up -d
    ```
 
-3. Restart: `docker compose -f deploy/compose.yml up -d`.
+   In Dockge: a new stack, paste `compose.yml` and the `.env`, then **Deploy**.
 
-The language server then answers only a signed-in browser or a device with a sync token. Keep it
-that way: **never set `VUURTOREN_NLP_AUTH=off` on a server that the internet can reach.**
+5. Point your HTTPS address at `http://<server-ip>:<port>`. With a Cloudflare Tunnel: Zero Trust
+   → Networks → Tunnels → your tunnel → Public hostnames → Add.
 
-## Reach it from other devices
+On the first start the language server downloads its data (about 330 MB) and prepares the
+grammar examples, a few minutes in all. `docker compose logs -f nlp` shows it.
 
-Browsers need `https://` for Vuurtoren. Pick one:
+## Connect your devices
 
-- **Tailscale** (easiest at home): run `tailscale serve --bg 8080`.
-- **Your own domain:** put `VUURTOREN_DOMAIN=vuurtoren.example.com` in `deploy/.env`, then run
-  `docker compose -f deploy/compose.yml --profile https up -d`.
-- **Cloudflare Tunnel:** see the [full self-hosting guide](../../deploy/README.md).
+1. Open your server's address in a browser and sign in. You see **Your devices**.
+2. **First device** (your computer or your phone): in the app, Settings → Your devices → Connect
+   to your server. Type the address, your user name and password. Then choose **Start new sync
+   data here** and a passphrase. Keep the recovery key it shows.
+3. **Every other device:** connect the same way, or scan the QR code from **Add a device** on the
+   server's page with the phone. Then **Join my synced data** with the same passphrase. Your words
+   and texts download.
 
-## Sync your devices through it
+Remove a lost device on the server's page: it can no longer sync.
 
-1. Open your server in a browser, sign in and go to **Settings → Your devices**.
-2. To sync this browser, choose **This server**. Nothing else to fill in.
-3. For every other device, click **Make a sync token** and give that device the server address
-   and its token. Tick **May change the passphrase and recovery key** for a device you want to
-   do that from.
+## Back it up
 
-A device that syncs with your server also uses its language server. See [Sync](sync.md).
-
-## Copies of the sync files
-
-Your devices hold your data. To keep copies of the locked sync files too:
-
-```sh
-docker compose -f deploy/compose.yml --profile backup up -d
-```
-
-They go to `deploy/backups` once a day. Copy that folder somewhere else from time to time.
+The sealed sync files are in the `api-data` volume. Copy it now and then, for example with
+`docker run --rm -v vuurtoren_api-data:/data -v "$PWD":/out alpine tar czf /out/vuurtoren-sync.tgz /data`.
+Every device also keeps a full copy of your data.
 
 ## Update
 
 ```sh
-git pull
-docker compose -f deploy/compose.yml pull
-docker compose -f deploy/compose.yml up -d
+docker compose -f compose.yml pull && docker compose -f compose.yml up -d
 ```
 
-More settings (other ports, Dockge, Cloudflare) are in the
-[full self-hosting guide](../../deploy/README.md).
+In Dockge: **Update**. Your devices and sync files stay.
+
+## Before images are published
+
+Build the images on your computer and load them on the server:
+
+```sh
+deploy/push-images.sh user@server
+```
+
+Then use **Restart** in Dockge instead of **Update**.

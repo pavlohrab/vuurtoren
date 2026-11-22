@@ -40,7 +40,7 @@ describe("currentDevice", () => {
   it("is android in the Android WebView", () => {
     withBridge({ home: true, os: "android" }, true);
     expect(currentDevice().kind).toBe("android");
-    expect(currentDevice().syncPlaces).toEqual(["server"]);
+    expect(currentDevice().syncPlaces).toEqual(["server", "webdav"]);
   });
 
   it("is android when an older bridge has no os but the user agent says Android", () => {

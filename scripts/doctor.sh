@@ -39,7 +39,7 @@ echo "Vuurtoren doctor: $BASE"
 
 echo "web"
 get /
-if [ "$STATUS" = 200 ] && grep -q 'id="root"' "$TMP/body"; then ok "app page loads"; else fail "GET / -> $STATUS (is the web container up? docker compose ps)"; fi
+if [ "$STATUS" = 200 ] && grep -q 'id="devices"' "$TMP/body"; then ok "the Your devices page loads"; else fail "GET / -> $STATUS (is the web container up? docker compose ps)"; fi
 if curl -sS -m 10 -I "$BASE/" 2>/dev/null | grep -qi '^content-security-policy:'; then
   ok "security headers present"
 else

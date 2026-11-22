@@ -3,7 +3,7 @@ name: images
 # Publishes ghcr.io/<owner>/vuurtoren-{web,nlp,api} for amd64 and arm64, plus the language server
 # variants vuurtoren-nlp:<tag>-slim (no OCR) and vuurtoren-nlp:<tag>-full (data packs inside):
 #   push to main  -> :edge and :sha-<short>      (every merged change; for testing)
-#   tag v1.2.3    -> :1.2.3, :1.2 and :latest    (releases; what deploy/dockge uses by default)
+#   tag v1.2.3    -> :1.2.3, :1.2 and :latest    (releases; what deploy/compose.yml uses by default)
 #   manual run    -> :edge/:sha on main, or the tag's versions when run on a tag
 on:
   push:

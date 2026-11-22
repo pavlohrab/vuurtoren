@@ -60,7 +60,7 @@ through unfamiliar water, and that is what I want this app to do for a text.
 - Practice and mock exams for the A2 inburgeringsexamen
 - Optional AI with your own key: Talk, stories at your level, explanations
 - Sync between devices through your own server, a synced folder or WebDAV, encrypted
-- Desktop app for Windows, macOS and Linux, or self-host with Docker
+- Apps for Windows, macOS, Linux and Android; your own sync server with Docker
 
 ## Get Vuurtoren
 

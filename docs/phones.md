@@ -24,15 +24,15 @@ path); `apps/app` is its name once they move together.
 
 ## What runs where
 
-| Part                                               | Computer                                | Phone                                                                                           |
-| -------------------------------------------------- | --------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| Your data (SQLite event log)                       | on the device                           | on the device                                                                                   |
-| Sync                                               | folder, WebDAV, server                  | server (folder and WebDAV are not available on phones)                                          |
-| Dictionary and short glosses                       | on the device (data pack)               | on the device (the same dictionary pack, ~14 MB)                                                |
-| Analysis (spaCy), sentence translation, word pairs | bundled language server                 | the server's language server (self-hosted or Vuurtoren Cloud); results are cached on the device |
-| OCR                                                | RapidOCR in the bundled language server | the phone's own engine: ML Kit on Android, Vision on iOS                                        |
-| Audio                                              | audio pack, system voice as fallback    | the same                                                                                        |
-| Sync key                                           | system key store                        | Android Keystore, iOS Keychain                                                                  |
+| Part                                               | Computer                                | Phone                                                                                                   |
+| -------------------------------------------------- | --------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| Your data (SQLite event log)                       | on the device                           | on the device                                                                                           |
+| Sync                                               | folder, WebDAV, server                  | server (folder and WebDAV are not available on phones)                                                  |
+| Dictionary and short glosses                       | on the device (data pack)               | on the device (the same dictionary pack, ~14 MB)                                                        |
+| Analysis (spaCy), sentence translation, word pairs | bundled language server                 | the server's language server (self-hosted), or your desktop app later; results are cached on the device |
+| OCR                                                | RapidOCR in the bundled language server | the phone's own engine: ML Kit on Android, Vision on iOS                                                |
+| Audio                                              | audio pack, system voice as fallback    | the same                                                                                                |
+| Sync key                                           | system key store                        | Android Keystore, iOS Keychain                                                                          |
 
 A text is analysed once, when it is added, and the analysis is stored on the device. Reading,
 glosses, reviews and practice then work offline. Only adding a new text, translating a new

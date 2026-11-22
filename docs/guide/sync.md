@@ -1,112 +1,94 @@
 # Sync your devices
 
-Sync keeps your words, texts, reviews and progress the same on all your devices.
+Sync keeps your words, texts, reviews and progress the same on all your devices. Each device
+keeps a full copy; the sync place only passes changes between them.
 
 ## Is it safe?
 
-Yes. Before anything leaves your device, Vuurtoren locks it with your **passphrase**. The place
-where your data is stored only sees locked files. It cannot read them.
+Yes. Before anything leaves your device, Vuurtoren locks it with your **passphrase**. The sync
+place only sees locked files and cannot read them.
 
-You also get a **recovery key**. Keep it somewhere safe. If you forget your passphrase, the
-recovery key opens your data.
+You also get a **recovery key**. Keep it somewhere safe: it opens your data if you forget the
+passphrase.
 
 ## Where your data can sync through
 
-Choose one place. All your devices use the same place.
+All your devices use the same place.
 
-| Place                     | Good for                                        |
-| ------------------------- | ----------------------------------------------- |
-| Your own Vuurtoren server | You [self-host](self-host.md) Vuurtoren; phones |
-| A folder you already sync | Syncthing, Dropbox, iCloud Drive (desktop app)  |
-| WebDAV                    | Nextcloud, ownCloud, a NAS (desktop app)        |
+| Place                     | Devices                | Good for                               |
+| ------------------------- | ---------------------- | -------------------------------------- |
+| Your own Vuurtoren server | computer and phone     | You [self-host](self-host.md) a server |
+| WebDAV                    | computer and phone     | Nextcloud, ownCloud, a NAS             |
+| A folder you already sync | computer (desktop app) | Syncthing, Dropbox, iCloud Drive       |
 
-**Vuurtoren Cloud** is coming: sync without setting anything up.
+**Vuurtoren Sync** (sync.vuurtoren.app) is planned: sign in, and your devices sync without
+setting anything up.
 
 ## Set it up
 
-On the **first device**:
+In the app: **Settings → Your devices**.
 
-1. Open **Settings → Sync**.
-2. Choose the place and fill in its details (see below).
-3. Choose **Start new sync data here**.
-4. Type a passphrase: a few words that you will remember.
-5. Click **Start syncing**.
-6. Save the **recovery key** that Vuurtoren shows you, then click **I have saved it**.
+**The first device** (a computer or a phone, never the server):
 
-On **every other device**:
+1. Choose the place and fill in its details (see below).
+2. Choose **Start new sync data here** and type a passphrase: a few words you will remember.
+3. Save the **recovery key** it shows.
 
-1. Open **Settings → Sync** and choose the same place.
-2. Choose **Join my synced data**.
-3. Type the same passphrase and click **Join and sync**.
+**Every other device:**
+
+1. Choose the same place.
+2. Choose **Join my synced data** and type the same passphrase. Your data downloads.
+
+## Your own server
+
+- **Connect manually:** type the server's address, its user name and password. The device gets
+  its own access; the password is not kept.
+- **Or with a code:** open the server's address in a browser, sign in, and press **Add a device**.
+  On a phone, scan the QR code. On a computer, paste the link under it. The code works once, for
+  10 minutes, and never holds your passphrase.
+- Remove a device on the server's **Your devices** page.
+
+A phone that syncs with your server also uses it as its language server, to analyse texts you add
+on the phone. The desktop app has its own.
+
+## WebDAV (Nextcloud)
+
+1. In Nextcloud Files, make a folder named `Vuurtoren`.
+2. Copy the WebDAV address from Files → Files settings, and add `/Vuurtoren` to it.
+3. Make an app password: Settings → Security → Devices & sessions → Create new app password.
+4. In Vuurtoren, choose WebDAV and give the address, your user name and the app password.
+
+## A synced folder (Syncthing)
+
+1. Make a folder, for example `~/Sync/Vuurtoren`, and share it in Syncthing with your other
+   computers.
+2. In Vuurtoren on each computer, choose **A folder you already sync** and pick it. Do not pick
+   the folder where Vuurtoren keeps its own data.
+
+Phones cannot share a folder this way: use your server or WebDAV there.
+
+## When two devices change the same thing
+
+Every change is saved with a time from a hybrid clock (the device's time and a counter, so the
+order holds even when clocks differ). Each device replays all changes in that order and ends up
+with the same result:
+
+- **Settings, word marks, your profile:** the latest change wins.
+- **Reviews and answers:** none is lost. Both count, each applied to the card as it is when it
+  arrives.
+- **Added words and texts:** both are kept. The same word added on two devices is one word.
 
 ## How fast
 
-While Vuurtoren is open on two devices, a change on one shows on the other within about 5 to
-20 seconds:
-
-- Vuurtoren syncs when it opens.
-- It sends your changes a few seconds after you stop making them.
-- It looks for changes from your other devices every 15 seconds, and when you come back to it.
-- It sends what is left when you close it.
-
-During a practice session it waits until the session ends, so nothing changes under your hands.
-
-## Add a phone
-
-1. On your computer, open your Vuurtoren server in a browser and sign in.
-2. Go to **Settings → Sync → Add a phone** and click **Show a QR code**.
-3. On the phone, open Vuurtoren. On the first start, tap **Connect to your server** (later:
-   **Settings → Sync → Connect to your server**).
-4. Tap **Scan the QR code** and point the camera at the code. Vuurtoren asks once whether it may
-   send your sync files to the server: tap **Allow**.
-5. Type your **passphrase** and tap **Join and sync**.
-
-The phone gets its own sync token and keeps it in its key store. It appears in the server's list
-of sync tokens as "Phone (your phone's model)", where you can revoke it. The same server is also
-the phone's language server, for adding new texts.
-
-The QR code holds the server's address and a **pairing code**. The code works once, for 10
-minutes; a new one appears when it expires. Your passphrase is never in the code, so a photo of
-it cannot open your data.
-
-No camera? Copy the link under the QR code (`vuurtoren://connect?…`) and paste it under
-**Connect to your server**, or type the server's address and the pairing code. This works on a
-computer too.
-
-## Details for each place
-
-**Your own Vuurtoren server**
-
-- In a browser on that server: choose **This server**. Nothing else to fill in.
-- On a phone (or any other device): see **Add a phone** above.
-- Or make a token yourself: open the server in a browser, go to **Settings → Sync** and click
-  **Make a sync token**. Make one token for each device. On the device, give the server address
-  and that token.
-
-A device that syncs with your server also uses its language server, unless it has its own (the
-desktop app does).
-
-**A folder you already sync** (desktop app)
-
-Click **Choose a folder** and pick a folder that Syncthing, Dropbox or iCloud Drive already
-syncs. Do not pick the folder where Vuurtoren keeps its own data.
-
-**WebDAV** (desktop app)
-
-Give the WebDAV address, your user name and an **app password** (not your main password). In
-Nextcloud you find the address under **Files → Settings → WebDAV**.
+While Vuurtoren is open on two devices, a change on one shows on the other within about 5 to 20
+seconds. It syncs when it opens, a few seconds after a change, every 15 seconds and when you
+come back to it, and sends what is left when you close it.
 
 ## Good to know
 
-- **Change your passphrase** in Settings → Sync. Your other devices keep syncing.
-- **Lost your passphrase?** Use the recovery key where Vuurtoren asks for the passphrase.
-- **A device forgot its key** (for example after a system update): Settings → Sync asks for the
-  passphrase. Type it and sync goes on.
-- **Files that do not sync** are listed in Settings → Sync.
-- **Stop syncing** on one device in Settings → Sync. The data on that device stays.
-- **Lost a device?** On a Vuurtoren server, revoke its sync token first. The device still holds
-  the key to your data, so to be safe start new sync data in a new place: on one device choose
-  **Stop syncing**, then **Start new sync data here** with a new passphrase in a new folder or
-  WebDAV address (on your server: after you remove the `sync` folder on its data volume). Then
-  join it from your other devices.
+- **Change your passphrase** in Settings → Your devices. Your other devices keep syncing.
+- **Lost your passphrase?** Type the recovery key where Vuurtoren asks for the passphrase.
+- **Stop syncing** on one device in Settings → Your devices. Its data stays.
+- **Lost a device?** Remove it on your server's page. To be safe, start new sync data with a new
+  passphrase and join it from your other devices.
 - Keep a backup now and then: Settings → **Data & backup → Download backup**.

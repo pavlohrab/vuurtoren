@@ -162,10 +162,10 @@ jobs:
             done
           } | tee -a "$GITHUB_STEP_SUMMARY"
       - name: Start the stack
-        working-directory: deploy/dockge
         env:
           VUURTOREN_NLP_VARIANT: -full
-        run: docker compose up -d --pull never --wait --wait-timeout 420
+          VUURTOREN_COOKIE_SECURE: "0"
+        run: docker compose -f deploy/compose.yml up -d --pull never --wait --wait-timeout 420
       - name: Smoke test
         env:
           # Wait for the data packs to be unpacked (and the grammar examples built).
@@ -173,9 +173,7 @@ jobs:
         run: scripts/doctor.sh http://127.0.0.1:8080
       - name: Logs
         if: failure()
-        working-directory: deploy/dockge
-        run: docker compose ps -a && docker compose logs --no-color
+        run: docker compose -f deploy/compose.yml ps -a && docker compose -f deploy/compose.yml logs --no-color
       - name: Stop the stack
         if: always()
-        working-directory: deploy/dockge
-        run: docker compose down -v
+        run: docker compose -f deploy/compose.yml down -v

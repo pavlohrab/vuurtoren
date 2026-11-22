@@ -535,6 +535,20 @@ function SetUp({ status, onRecovery }: { status: SyncStatus; onRecovery: (key: s
         </>
       ) : kind === "webdav" ? (
         <>
+          <details className="sync-help">
+            <summary>How to set it up with Nextcloud</summary>
+            <ol>
+              <li>In Nextcloud Files, make a folder named Vuurtoren.</li>
+              <li>
+                Copy the WebDAV address from Files → Files settings (bottom left) and add /Vuurtoren
+                to it.
+              </li>
+              <li>
+                Make an app password: Settings → Security → Devices &amp; sessions → Create new app
+                password. Use it here, not your main password.
+              </li>
+            </ol>
+          </details>
           <Input
             label="WebDAV address"
             placeholder="https://cloud.example.org/remote.php/dav/files/you/Vuurtoren"
@@ -556,12 +570,22 @@ function SetUp({ status, onRecovery }: { status: SyncStatus; onRecovery: (key: s
           />
         </>
       ) : (
-        <div className="row" style={{ alignItems: "center" }}>
-          <Button type="button" onClick={() => pick.mutate()} disabled={pick.isPending}>
-            Choose a folder
-          </Button>
-          <span className="k-hint">{f("path") || "No folder chosen"}</span>
-        </div>
+        <>
+          <details className="sync-help">
+            <summary>How to set it up with Syncthing</summary>
+            <ol>
+              <li>Make a folder, for example ~/Sync/Vuurtoren.</li>
+              <li>In Syncthing, share that folder with your other computers.</li>
+              <li>Choose it here on each computer. Phones sync through your server or WebDAV.</li>
+            </ol>
+          </details>
+          <div className="row" style={{ alignItems: "center" }}>
+            <Button type="button" onClick={() => pick.mutate()} disabled={pick.isPending}>
+              Choose a folder
+            </Button>
+            <span className="k-hint">{f("path") || "No folder chosen"}</span>
+          </div>
+        </>
       )}
 
       <Input label="This device's name" value={name} onChange={(e) => setName(e.target.value)} />

@@ -1,160 +1,53 @@
-# Vuurtoren self-host stack.
-#   docker compose -f deploy/compose.yml up -d        (pulls published images; add --build to build)
-#   open http://localhost:8080
-# HTTPS for LAN/VPS:  docker compose -f deploy/compose.yml --profile https up -d   (see README)
+# Vuurtoren server: the sync place for your devices and the language server for phones.
+# It keeps no words or texts: your devices do. Its one page, Your devices, adds and removes them.
+#
+#   docker compose -f deploy/compose.yml up -d      (or paste this file into Dockge)
+#
+# Settings go in a .env next to it (see .env.example). Put HTTPS in front of the port, for
+# example a Cloudflare Tunnel hostname pointing at http://<server-ip>:<VUURTOREN_PORT>.
 name: vuurtoren
 
 services:
-  nlp:
-    image: ghcr.io/${VUURTOREN_IMAGE_OWNER:-vuurtoren}/vuurtoren-nlp:${VUURTOREN_TAG:-latest}${VUURTOREN_NLP_VARIANT:-}
-    # One replica, one worker: OCR jobs are held in memory (see server/nlp/Dockerfile).
-    deploy:
-      replicas: 1
+  # The front door: the Your devices page, and the routes to the two services below.
+  web:
+    image: ghcr.io/${VUURTOREN_IMAGE_OWNER:-pavlohrab}/vuurtoren-web:${VUURTOREN_TAG:-latest}
     build:
-      context: ../server/nlp
+      context: ..
+      dockerfile: deploy/web.Dockerfile
     restart: unless-stopped
-    # Reached only through the web container's same-origin /nlp/ proxy, so no ports and no CORS.
-    # (Direct access for development: see compose.dev.yml.)
-    environment:
-      # Origins of pages on other sites that use this language server with a sync token
-      # (comma-separated). Leave empty for the app served here.
-      VUURTOREN_CORS_ORIGINS: ${VUURTOREN_CORS_ORIGINS:-}
-      # Recognised course pages, so re-importing a book (or resuming after a restart) skips OCR.
-      VUURTOREN_COURSE_CACHE_DIR: /cache/course
-      # Parallel OCR workers for course imports (default: half the CPUs, at most 6).
-      VUURTOREN_OCR_WORKERS: ${VUURTOREN_OCR_WORKERS:-}
-      # Data packs on the vuurtoren-nlp-data volume (see deploy/README.md, "Language data").
-      VUURTOREN_PACKS: ${VUURTOREN_PACKS:-auto}
-      VUURTOREN_PACKS_URL: ${VUURTOREN_PACKS_URL:-}
-      VUURTOREN_PACKS_TOKEN: ${VUURTOREN_PACKS_TOKEN:-}
-    volumes:
-      - vuurtoren-ocr-cache:/cache
-      - vuurtoren-nlp-data:/data
-    networks: [internal]
+    depends_on: [api, nlp]
+    ports:
+      - "${VUURTOREN_PORT:-8080}:80"
 
-  # Sign-in, sync tokens and the sealed sync files of your devices, on the vuurtoren-data
-  # volume. It holds nothing readable: every device keeps its own copy and syncs through here.
-  # Sign-in is off unless a password or token is set; set one before the app is
-  # reachable from anywhere but this computer. Create the hash with:
-  #   docker compose -f deploy/compose.yml run --rm -it api hash-password
+  # Sign-in, your devices and their sealed sync files (on the api-data volume).
   api:
-    image: ghcr.io/${VUURTOREN_IMAGE_OWNER:-vuurtoren}/vuurtoren-api:${VUURTOREN_TAG:-latest}
+    image: ghcr.io/${VUURTOREN_IMAGE_OWNER:-pavlohrab}/vuurtoren-api:${VUURTOREN_TAG:-latest}
     build:
       context: ..
       dockerfile: server/api/Dockerfile
     restart: unless-stopped
     environment:
-      VUURTOREN_USER: ${VUURTOREN_USER:-}
+      VUURTOREN_USER: ${VUURTOREN_USER:?set VUURTOREN_USER}
       VUURTOREN_PASSWORD_HASH: ${VUURTOREN_PASSWORD_HASH:-}
-      # Plain password: accepted, but prefer the hash (it is logged as a warning).
       VUURTOREN_PASSWORD: ${VUURTOREN_PASSWORD:-}
-      # Bearer token for scripts (optional; also a sign-in on servers without a password).
-      VUURTOREN_TOKEN: ${VUURTOREN_TOKEN:-}
-      # 0 only when you open the app over plain http from another device (LAN).
-      VUURTOREN_COOKIE_SECURE: ${VUURTOREN_COOKIE_SECURE:-1}
-      # 1 only behind a Cloudflare Tunnel (client IP from CF-Connecting-IP).
       VUURTOREN_TRUST_CF: ${VUURTOREN_TRUST_CF:-0}
-      VUURTOREN_ALLOWED_ORIGINS: ${VUURTOREN_ALLOWED_ORIGINS:-}
-      # Most space the sync files of your devices may take together, in MB (default 2048).
-      VUURTOREN_SYNC_QUOTA_MB: ${VUURTOREN_SYNC_QUOTA_MB:-}
+      VUURTOREN_COOKIE_SECURE: ${VUURTOREN_COOKIE_SECURE:-1}
     volumes:
-      - vuurtoren-data:/data
-    networks: [internal]
-    healthcheck:
-      test:
-        - CMD
-        - node
-        - -e
-        - "fetch('http://127.0.0.1:8787/api/health').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"
-      interval: 30s
-      timeout: 5s
-      start_period: 10s
-      retries: 3
+      - api-data:/data
 
-  web:
-    image: ghcr.io/${VUURTOREN_IMAGE_OWNER:-vuurtoren}/vuurtoren-web:${VUURTOREN_TAG:-latest}
+  # The language server: analysis and translation of texts added on a phone, and the
+  # dictionary and audio for phones. It downloads its data from data.vuurtoren.app once.
+  nlp:
+    image: ghcr.io/${VUURTOREN_IMAGE_OWNER:-pavlohrab}/vuurtoren-nlp:${VUURTOREN_TAG:-latest}${VUURTOREN_NLP_VARIANT:-}
     build:
-      context: ..
-      dockerfile: deploy/web.Dockerfile
-    restart: unless-stopped
-    depends_on: [nlp, api]
-    environment:
-      # /nlp/ needs a signed-in browser or a device's sync token (checked by api). "off" opens
-      # it to anyone: only without the api, on a private network. Never on a public server.
-      VUURTOREN_NLP_AUTH: ${VUURTOREN_NLP_AUTH:-on}
-    networks: [internal]
-    ports:
-      # Loopback only: http://localhost is a secure context, so everything works for one user.
-      # To share on your LAN use the https profile below (plain http on a LAN address is not a
-      # secure context: no persistent storage, no AnkiConnect permission).
-      - "127.0.0.1:${VUURTOREN_WEB_PORT:-8080}:80"
-    healthcheck:
-      test: ["CMD", "wget", "-qO", "/dev/null", "http://127.0.0.1/"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-
-  # Scheduled copies (optional, profile "backup"): every VUURTOREN_BACKUP_INTERVAL_HOURS the
-  # sealed sync files of your devices (/data/sync) are written to VUURTOREN_BACKUP_DIR as
-  # vuurtoren-sync-YYYY-MM-DD-HHMM.tar.gz; files older than VUURTOREN_BACKUP_KEEP_DAYS are
-  # deleted. Put a copy back under /data/sync to bring back files the place lost.
-  backup:
-    image: alpine:3.24
-    profiles: [backup]
+      context: ../server/nlp
     restart: unless-stopped
     environment:
-      INTERVAL_HOURS: ${VUURTOREN_BACKUP_INTERVAL_HOURS:-24}
-      KEEP_DAYS: ${VUURTOREN_BACKUP_KEEP_DAYS:-14}
+      VUURTOREN_PACKS: download
+      VUURTOREN_PACKS_URL: ${VUURTOREN_PACKS_URL:-}
     volumes:
-      - ${VUURTOREN_BACKUP_DIR:-./backups}:/backups
-      - vuurtoren-data:/data:ro
-    network_mode: none
-    command:
-      - sh
-      - -c
-      - |
-        set -u
-        umask 077
-        while :; do
-          # Sync files are written whole (a new file, then a rename): a copy never holds half
-          # of one.
-          if [ -d /data/sync ]; then
-            s="/backups/vuurtoren-sync-$$(date +%Y-%m-%d-%H%M).tar.gz"
-            if tar -czf "$$s.part" -C /data sync; then
-              mv "$$s.part" "$$s"
-              echo "backup: $$s ($$(du -h "$$s" | cut -f1))"
-              find /backups -name 'vuurtoren-sync-*.tar.gz' -mtime +"$$KEEP_DAYS" -delete
-            else
-              rm -f "$$s.part"
-              echo "backup of the sync files FAILED" >&2
-            fi
-          fi
-          sleep "$$((INTERVAL_HOURS * 3600))"
-        done
-
-  # Optional HTTPS front (profile "https"): automatic certificates for a public domain, or a
-  # local CA with `tls internal` for LAN use. Set VUURTOREN_DOMAIN in deploy/.env.
-  caddy:
-    image: caddy:2-alpine
-    profiles: [https]
-    restart: unless-stopped
-    depends_on: [web]
-    networks: [internal]
-    environment:
-      VUURTOREN_DOMAIN: ${VUURTOREN_DOMAIN:-localhost}
-      VUURTOREN_TLS: ${VUURTOREN_TLS:-}
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy-data:/data
-    ports:
-      - "80:80"
-      - "443:443"
-
-networks:
-  internal: {}
+      - nlp-data:/data
 
 volumes:
-  caddy-data: {}
-  vuurtoren-data: {}
-  vuurtoren-ocr-cache: {}
-  vuurtoren-nlp-data: {}
+  api-data:
+  nlp-data:
