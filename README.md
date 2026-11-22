@@ -52,7 +52,7 @@ each word together with its translation.
 **Words.** Every word you tap while reading can become a card, with the sentence you found it
 in. Cards are reviewed with FSRS, the same scheduler [Anki](https://apps.ankiweb.net/) uses. Import
 the Anki decks you already have, so the app knows your level, or keep reviewing in Anki and use
-Vuurtoren only for reading. Starting from zero? Vuurtoren comes with the 5000 most common Dutch
+Vuurtoren only for reading. Starting from zero? Vuurtoren comes with about 5000 of the most common Dutch
 words.
 
 **Grammar and the exam.** Grammar such as inversion, separable verbs and the perfect tense is

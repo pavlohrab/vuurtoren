@@ -5,7 +5,7 @@ The starter pack that ships with Vuurtoren: the words and the stories a new lear
 ```
 content/
   starter/
-    nl-5000.json   the 5000 most common Dutch words, with meanings and example sentences
+    nl-5000.json   about 5000 of the most common Dutch words, with meanings and example sentences
     README.md      the format and the sources
   stories/
     A1/ A2/ B1/ B2/   one story per file

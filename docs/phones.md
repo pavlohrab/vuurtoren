@@ -7,16 +7,16 @@ Vuurtoren Sync.
 
 ## What works where
 
-| What                                          | Phone alone | Phone + a language server |
-| --------------------------------------------- | :---------: | :-----------------------: |
-| Words: reviews, new words, the 5000           |      ✓      |             ✓             |
-| Stories, with side by side and grammar marks  |      ✓      |             ✓             |
-| Grammar lessons                               |      ✓      |             ✓             |
-| A word's meaning from the dictionary          |      ✓      |             ✓             |
-| Texts you added on your computer, fully       |      ✓      |             ✓             |
-| Recorded audio of words and stories           | phone voice |             ✓             |
-| Adding a new text on the phone (paste, photo) |             |             ✓             |
-| Sync with your other devices                  |   WebDAV    |             ✓             |
+| What                                               | Phone alone | Phone + a language server |
+| -------------------------------------------------- | :---------: | :-----------------------: |
+| Words: reviews, new words, about 5000 common words |      ✓      |             ✓             |
+| Stories, with side by side and grammar marks       |      ✓      |             ✓             |
+| Grammar lessons                                    |      ✓      |             ✓             |
+| A word's meaning from the dictionary               |      ✓      |             ✓             |
+| Texts you added on your computer, fully            |      ✓      |             ✓             |
+| Recorded audio of words and stories                | phone voice |             ✓             |
+| Adding a new text on the phone (paste, photo)      |             |             ✓             |
+| Sync with your other devices                       |   WebDAV    |             ✓             |
 
 "Fully" means with the meaning of each word in its sentence, the translation of each sentence,
 side by side and the grammar marks.

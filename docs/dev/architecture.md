@@ -24,7 +24,7 @@ Dependencies point down; nothing in `packages/` imports from `apps/`.
 | `server/nlp`          | Python language server: analysis (spaCy), dictionary, forms, sentences, grammar detectors, OCR (RapidOCR), translation.                                                                                                                                                 | —                                     |
 
 Content that is data, not code, lives in `content/` under CC BY-SA 4.0 (`content/LICENSE`):
-`content/starter/nl-5000.json`, the 5000 most common Dutch words with a gloss and an example
+`content/starter/nl-5000.json`, about 5000 of the most common Dutch words (4,930) with a gloss and an example
 sentence, built by `server/nlp/scripts/build_starter.py` and committed. The web app imports it as
 a chunk of its own (`apps/web/src/services/starterWords.ts`), loaded on first use and precached by
 the service worker, so starter decks work offline in the browser and the desktop app.

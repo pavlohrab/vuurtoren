@@ -7,7 +7,7 @@ import type { StarterWord } from "@app/anki";
 
 let words: Promise<StarterWord[]> | null = null;
 
-/** The 5000 most common Dutch words, most common first. */
+/** About 5000 of the most common Dutch words (4,930), most common first. */
 export function loadStarterWords(): Promise<StarterWord[]> {
   words ??= import("../../../../content/starter/nl-5000.json").then(
     (m) => (m.default as unknown as { words: StarterWord[] }).words,

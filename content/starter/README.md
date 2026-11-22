@@ -1,6 +1,6 @@
 # Starter words
 
-The starter pack: `nl-5000.json` holds the 5000 most common Dutch words, each with its part of
+The starter pack: `nl-5000.json` holds about 5000 of the most common Dutch words (4,930 after the review), each with its part of
 speech, a short English meaning and, for most, an example sentence. One entry of `words`:
 
 ```json

@@ -698,7 +698,7 @@ export function Welcome() {
                   The most common words
                 </h1>
                 <p className="ob-lede">
-                  Vuurtoren can give you cards for the almost 5000 most common Dutch words, in
+                  Vuurtoren can give you cards for about 5000 of the most common Dutch words, in
                   levels of 500, each with an example sentence. Ten new words a day, one level at a
                   time; you can change that later.
                 </p>

@@ -40,9 +40,12 @@ The app plays the clip when the pack has it, else the system's Dutch voice, else
 
 ## Where the pack lives
 
-- **Desktop app:** the built-in language server reads it from its data folder
-  (`~/.local/share/app.vuurtoren.desktop/nlp-data/audio-nl` on Linux). The offline build bundles
-  it.
+- **Desktop app:** the built-in language server downloads it with the other packs on the first
+  start and reads it from its data folder
+  (`~/.local/share/app.vuurtoren.desktop/nlp-data/audio-nl` on Linux). The offline installer
+  bundles every pack `packs.json` lists, audio included, so its release (`packs-<version>` on
+  GitHub, where CI fetches the archives) must hold `audio-nl-<version>.tar.gz`. A local build
+  bundles what its `--packs` folder holds.
 - **Server:** the language server downloads it with the other packs, or reads it from
   `$VUURTOREN_AUDIO_DIR`.
 - **Phone:** it asks your server for each clip; without a server it uses the system voice.
