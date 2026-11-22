@@ -258,8 +258,7 @@ mod tests {
     use super::*;
 
     fn http() -> reqwest::Client {
-        let _ = rustls::crypto::ring::default_provider().install_default();
-        reqwest::Client::new()
+        crate::http_builder().build().expect("an HTTP client")
     }
 
     #[test]

@@ -5211,6 +5211,7 @@ dependencies = [
  "tauri-plugin-window-state",
  "tempfile",
  "tokio",
+ "webpki-root-certs",
 ]
 
 [[package]]

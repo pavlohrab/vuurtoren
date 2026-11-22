@@ -46,6 +46,9 @@ keyring = { version = "=3.6.3", features = ["apple-native", "windows-native", "s
 [target.'cfg(any(target_os = "android", target_os = "ios"))'.dependencies]
 tauri-plugin-barcode-scanner = "=2.5.3"
 tauri-plugin-deep-link = "=2.6.2"
+# Mozilla's root certificates, for https on phones: the system's own certificate check
+# (rustls-platform-verifier) needs setting up through Java first and aborts the app otherwise.
+webpki-root-certs = "1"
 
 [dev-dependencies]
 tempfile = "3"

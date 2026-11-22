@@ -39,6 +39,9 @@ interface Answered {
   reviewId: string;
 }
 
+/** The pause between a card's word and its sentence. */
+const SENTENCE_PAUSE_MS = 600;
+
 /** How many extra cards one "Continue" asks for. */
 const MORE = { new: 10, learning: 20 } as const;
 
@@ -108,15 +111,23 @@ export function Review() {
   // A vocabulary card shows the word on its front, so the word plays as it shows; a card of an
   // imported deck may ask for the word (English on the front), so its word plays with the answer.
   const wordFirst = card?.layout === "vocab";
+  // A vocabulary card says its word as it shows, then (a short pause) its sentence.
   useEffect(() => {
-    if (cardKey && autoWord && wordSaying && wordFirst) void play("word", wordSaying);
-  }, [cardKey, autoWord, wordSaying, wordFirst, play]);
+    if (!cardKey || !wordFirst) return;
+    let stopped = false;
+    void (async () => {
+      if (autoWord && wordSaying) await play("word", wordSaying);
+      if (stopped || !autoSentence || !sentenceSaying) return;
+      await new Promise((r) => setTimeout(r, SENTENCE_PAUSE_MS));
+      if (!stopped) await play("sentence", sentenceSaying);
+    })();
+    return () => {
+      stopped = true;
+    };
+  }, [cardKey, autoWord, autoSentence, wordSaying, sentenceSaying, wordFirst, play]);
   useEffect(() => {
     if (shown && autoWord && wordSaying && !wordFirst) void play("word", wordSaying);
   }, [shown, autoWord, wordSaying, wordFirst, play]);
-  useEffect(() => {
-    if (shown && autoSentence && sentenceSaying) void play("sentence", sentenceSaying);
-  }, [shown, autoSentence, sentenceSaying, play]);
 
   const refresh = useCallback(async () => {
     await queue.refetch();

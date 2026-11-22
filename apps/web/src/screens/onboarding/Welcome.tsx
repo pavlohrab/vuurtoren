@@ -698,8 +698,8 @@ export function Welcome() {
                 </h1>
                 <p className="ob-lede">
                   Vuurtoren can give you cards for the almost 5000 most common Dutch words, in
-                  levels of 500, each with an example sentence. New cards come 20 a day, one level
-                  at a time; you can change that later.
+                  levels of 500, each with an example sentence. Ten new words a day, one level at a
+                  time; you can change that later.
                 </p>
                 <label className="ob-check">
                   <input

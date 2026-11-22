@@ -401,7 +401,7 @@ export function createMockServices(
     newWordsPerDay: 10,
     voice: "female",
     autoplayWord: true,
-    autoplaySentence: false,
+    autoplaySentence: true,
     audioRate: 1,
   };
   let staircase: StaircaseState = { targetCoverage: 0.98, newWordBudget: 3 };

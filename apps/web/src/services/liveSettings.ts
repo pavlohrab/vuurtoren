@@ -31,7 +31,7 @@ export const DEFAULT_SETTINGS: Settings = {
   newWordsPerDay: 10,
   voice: "female",
   autoplayWord: true,
-  autoplaySentence: false,
+  autoplaySentence: true,
   audioRate: 1,
 };
 

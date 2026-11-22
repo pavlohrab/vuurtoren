@@ -446,8 +446,7 @@ mod tests {
                 name: "release",
             },
         ];
-        let _ = rustls::crypto::ring::default_provider().install_default();
-        let client = reqwest::Client::new();
+        let client = crate::http_builder().build().expect("an HTTP client");
         let received = AtomicU64::new(0);
         let rt = tokio::runtime::Builder::new_current_thread()
             .enable_all()

@@ -1895,6 +1895,7 @@
     calc(var(--s-6) + var(--safe-bottom, 0px)) max(var(--s-4), var(--safe-left, 0px));
   color: #fff;
   text-align: center;
+  text-shadow: 0 1px 3px rgb(0 0 0 / 0.6);
 }
 .scan-title {
   align-self: end;
@@ -1908,7 +1909,7 @@
   height: var(--scan-size);
   border-radius: 20px;
   /* The dark layer around the square: everything outside the hole. */
-  box-shadow: 0 0 0 100vmax rgb(0 0 0 / 0.62);
+  box-shadow: 0 0 0 100vmax rgb(0 0 0 / 0.72);
 }
 .scan-corner {
   position: absolute;
@@ -1950,8 +1951,13 @@
   font-size: 15px;
   line-height: 1.45;
 }
-.scan-cancel {
+.scan .scan-cancel {
   align-self: start;
   min-width: 160px;
   min-height: 48px;
+  border: 0;
+  background: #fff;
+  color: #1b140d;
+  font-weight: 600;
+  text-shadow: none;
 }

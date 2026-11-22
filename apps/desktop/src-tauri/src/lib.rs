@@ -684,6 +684,24 @@ const USER_AGENT: &str = if cfg!(target_os = "android") {
     concat!("Vuurtoren-Desktop/", env!("CARGO_PKG_VERSION"))
 };
 
+/**
+ * Every HTTP client of the app starts here. On a phone, https is checked against Mozilla's
+ * root certificates (webpki-root-certs) instead of the system's: reqwest's default system check
+ * needs a Java-side setup on Android and aborts the app on the first https request without it
+ * (the dictionary download, sync).
+ */
+pub(crate) fn http_builder() -> reqwest::ClientBuilder {
+    let _ = rustls::crypto::ring::default_provider().install_default();
+    let builder = reqwest::Client::builder();
+    #[cfg(mobile)]
+    let builder = builder.tls_certs_only(
+        webpki_root_certs::TLS_SERVER_ROOT_CERTS
+            .iter()
+            .filter_map(|der| reqwest::Certificate::from_der(der).ok()),
+    );
+    builder
+}
+
 /// Where the sync key is kept on this device.
 #[cfg(desktop)]
 fn key_store(app: &tauri::App) -> tauri::Result<Arc<dyn keys::KeyStore>> {
@@ -773,7 +791,7 @@ pub fn run() {
                 .ok()
                 .and_then(|b| serde_json::from_slice(&b).ok())
                 .unwrap_or_default();
-            let sync_client = reqwest::Client::builder()
+            let sync_client = http_builder()
                 .user_agent(USER_AGENT)
                 .redirect(sync::redirect_policy())
                 .build()?;
@@ -782,7 +800,7 @@ pub fn run() {
             app.manage(State {
                 config: Mutex::new(config),
                 path,
-                client: reqwest::Client::builder().user_agent(USER_AGENT).build()?,
+                client: http_builder().user_agent(USER_AGENT).build()?,
                 sync_client,
                 sync_declined: Mutex::new(Vec::new()),
                 keys,

@@ -65,6 +65,19 @@ describe("Review", () => {
     );
   });
 
+  it("says the word as a card shows, then its sentence after a short pause", async () => {
+    const asked: string[] = [];
+    const audioClip = vi.fn<(id: string) => Promise<Blob | null>>(async (id) => {
+      asked.push(id.split("-")[0]!);
+      return null;
+    });
+    const base = createMockServices({ latencyMs: 0, synced: true, native: true });
+    const history = createMemoryHistory({ initialEntries: ["/review"] });
+    render(<App services={{ ...base, audioClip }} history={history} />);
+    await screen.findByText("de fiets");
+    await waitFor(() => expect(asked).toEqual(["word", "sentence"]), { timeout: 3000 });
+  });
+
   it("plays nothing by itself with autoplay off", async () => {
     const audioClip = vi.fn<(id: string) => Promise<Blob | null>>(async () => null);
     const base = createMockServices({ latencyMs: 0, synced: true, native: true });

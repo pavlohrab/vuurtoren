@@ -99,7 +99,7 @@ export interface Settings {
   voice: "female" | "male";
   /** Review: say the word when a card's front shows (on by default). */
   autoplayWord: boolean;
-  /** Review: say the sentence when the answer shows (off by default). */
+  /** Review: after the word, say the card's sentence (on by default). */
   autoplaySentence: boolean;
   /** Playback speed of spoken words and sentences. */
   audioRate: 0.8 | 1;

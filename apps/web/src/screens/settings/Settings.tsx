@@ -357,8 +357,10 @@ function ReadingSettings() {
           onChange={(e) => set({ autoplaySentence: e.target.checked })}
         />
         <span>
-          Say the sentence when the answer shows
-          <small>Press R during review to hear the word again.</small>
+          Then say its sentence
+          <small>
+            After the word, with a short pause. Press R during review to hear the word again.
+          </small>
         </span>
       </label>
     </div>

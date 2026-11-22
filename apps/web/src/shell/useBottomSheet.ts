@@ -144,11 +144,29 @@ export function useBottomSheet(
         else close();
       }
     };
+    // On a touch screen the browser takes a downward swipe as a scroll and cancels the drag. With
+    // the details at their top (or at the peek, where nothing scrolls) the sheet keeps it: no
+    // scroll starts, so the drag above goes on and the sheet follows the finger down.
+    let touchY: number | null = null;
+    const onTouchStart = (e: TouchEvent) => {
+      touchY = e.touches.length === 1 ? (e.touches[0]?.clientY ?? null) : null;
+    };
+    const onTouchMove = (e: TouchEvent) => {
+      if (touchY === null || !isSheet() || !e.cancelable) return;
+      const y = e.touches[0]?.clientY ?? touchY;
+      const body = el.querySelector(".inspector-scroll");
+      const atTop = !body || body.scrollTop <= 0;
+      if (sizeRef.current === "peek" || (atTop && y > touchY)) e.preventDefault();
+    };
+    el.addEventListener("touchstart", onTouchStart, { passive: true });
+    el.addEventListener("touchmove", onTouchMove, { passive: false });
     el.addEventListener("pointerdown", onDown);
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);
     window.addEventListener("pointercancel", onUp);
     return () => {
+      el.removeEventListener("touchstart", onTouchStart);
+      el.removeEventListener("touchmove", onTouchMove);
       el.removeEventListener("pointerdown", onDown);
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);
