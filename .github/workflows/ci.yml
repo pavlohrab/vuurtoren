@@ -8,9 +8,9 @@ jobs:
   js:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: pnpm
@@ -27,9 +27,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: pnpm
@@ -39,7 +39,7 @@ jobs:
         run: echo "version=$(pnpm --filter @app/web exec playwright --version | awk '{print $2}')" >> "$GITHUB_OUTPUT"
       - name: Cache Playwright browsers
         id: pw-cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}
@@ -54,7 +54,7 @@ jobs:
           CI: "true"
       - name: Traces
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-traces
           path: apps/web/test-results
@@ -66,8 +66,8 @@ jobs:
       run:
         working-directory: server/nlp
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
       - run: uv sync --locked
       - run: uv run ruff check .
       - run: uv run ruff format --check .
@@ -87,12 +87,12 @@ jobs:
       VUURTOREN_PASSWORD: smoke-test-password
       VUURTOREN_COOKIE_SECURE: "0"
     steps:
-      - uses: actions/checkout@v4
-      - uses: docker/setup-buildx-action@v3
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v4
       # Reads the release cache of images.yml too; writes its own scope (amd64 only), so it never
       # replaces the multi-arch cache.
       - name: Build vuurtoren-web
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: deploy/web.Dockerfile
@@ -104,7 +104,7 @@ jobs:
             type=gha,scope=web
           cache-to: type=gha,mode=max,scope=ci-web
       - name: Build vuurtoren-api
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: server/api/Dockerfile
@@ -115,7 +115,7 @@ jobs:
             type=gha,scope=api
           cache-to: type=gha,mode=max,scope=ci-api
       - name: Build vuurtoren-nlp
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: server/nlp
           load: true
@@ -127,10 +127,10 @@ jobs:
       # Data packs: built natively once and cached (the data change only with packs.json,
       # the build scripts or the locked libraries), then baked into the -full image the smoke
       # test runs, which also exercises the bundled-pack install at startup.
-      - uses: astral-sh/setup-uv@v6
+      - uses: astral-sh/setup-uv@v7
       - name: Cache data packs
         id: packs-cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: server/nlp/dist/packs
           key: nlp-packs-${{ hashFiles('server/nlp/src/vuurtoren_nlp/packs.json', 'server/nlp/scripts/**', 'server/nlp/uv.lock') }}
