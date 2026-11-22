@@ -1,0 +1,16 @@
+# The data host (data.vuurtoren.app): the language packs as plain files, for the apps and
+# servers to download. No sign-in and nothing about anyone: the same files for everybody.
+#
+# Put the archives in <folder>/packs-<version>/ (for example packs-2026.11.1/dictionary-nl-
+# 2026.11.1.tar.gz) and point a Cloudflare Tunnel hostname at http://<server-ip>:<port>.
+name: vuurtoren-data
+
+services:
+  files:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    command: caddy file-server --root /srv --listen :80
+    volumes:
+      - ${VUURTOREN_DATA_FOLDER:?set VUURTOREN_DATA_FOLDER}:/srv:ro
+    ports:
+      - "${VUURTOREN_DATA_PORT:-18081}:80"

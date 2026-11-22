@@ -11,7 +11,7 @@
 //! `None` and the page asks the server as before. `download` puts it there: the archive of the
 //! version in `packs.json` (the language server's manifest, built in), from the connected
 //! Vuurtoren server (`<server>/nlp/packs/<archive>`, with the device's sync token) or else the
-//! public packs release, resumed where an earlier try stopped, and checked by size and SHA-256
+//! data host (data.vuurtoren.app), resumed where an earlier try stopped, and checked by size and SHA-256
 //! before it replaces anything. The APK carries no pack: it stays small.
 
 use std::collections::HashMap;
@@ -24,8 +24,12 @@ use sha2::{Digest, Sha256};
 
 /// The language server's pack manifest: versions, sizes and checksums of the archives.
 const MANIFEST: &str = include_str!("../../../../server/nlp/src/vuurtoren_nlp/packs.json");
-/// Where the published packs are (`packs-<version>/<name>-<version>.tar.gz`).
-const RELEASES: &str = "https://github.com/pavlohrab/Vuurtoren/releases/download";
+/// Where the published packs are (`packs-<version>/<name>-<version>.tar.gz`): the data host,
+/// or another address given when the app is built (`VUURTOREN_DATA_URL`).
+const DATA_HOST: &str = match option_env!("VUURTOREN_DATA_URL") {
+    Some(url) => url,
+    None => "https://data.vuurtoren.app",
+};
 const NAME: &str = "dictionary-nl";
 
 /// The dictionary pack this build wants.
@@ -48,9 +52,9 @@ impl Pack {
         })
     }
 
-    /// The archive's address in the public packs release.
+    /// The archive's address on the data host.
     pub fn url(&self) -> String {
-        format!("{RELEASES}/packs-{v}/{NAME}-{v}.tar.gz", v = self.version)
+        format!("{DATA_HOST}/packs-{v}/{NAME}-{v}.tar.gz", v = self.version)
     }
 
     /// Check the archive (size, SHA-256), unpack its file next to `dest` and move it into place.
@@ -118,7 +122,7 @@ pub fn part_in(app_data: &Path, pack: &Pack) -> PathBuf {
 }
 
 /// One place to fetch the archive from: the connected Vuurtoren server
-/// (`<server>/nlp/packs/<archive>` with the device's sync token), or the public packs release.
+/// (`<server>/nlp/packs/<archive>` with the device's sync token), or the data host.
 pub struct Source {
     pub url: String,
     pub token: Option<String>,

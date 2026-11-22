@@ -3,7 +3,7 @@
  * `dictionary-nl` pack kept on the device gives words their meanings without a server. The APK
  * carries none (it stays small), so this offers the download with its size and shows its
  * progress. It comes from the connected Vuurtoren server when there is one (with the device's
- * sync token), else from the public packs release; the app checks it against packs.json. On
+ * sync token), else from the data host (data.vuurtoren.app); the app checks it against packs.json. On
  * Wi-Fi only unless the learner allows mobile data; a download that stopped goes on from where
  * it was. Without it the app keeps working: meanings from cards and the server, stories in
  * full. Renders nothing where the device has no such pack (computers use their bundled

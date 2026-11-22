@@ -15,7 +15,7 @@ them:
 
 1. ``$VUURTOREN_PACKS_DIR``: a directory of pack archives (the "all-in" image and the desktop
    sidecar bundle them; works offline);
-2. ``$VUURTOREN_PACKS_URL``: ``<url>/<name>-<version>.tar.gz`` (GitHub release assets or any static
+2. ``$VUURTOREN_PACKS_URL``: ``<url>/<name>-<version>.tar.gz`` (the data host, data.vuurtoren.app, or any static
    host; ``$VUURTOREN_PACKS_TOKEN`` is sent as a bearer token when set);
 3. a local build with ``scripts/`` (downloads the pinned upstream sources: Kaikki, Tatoeba,
    OPUS-MT; ~10 minutes). Only in ``VUURTOREN_PACKS=auto`` mode.
@@ -265,8 +265,8 @@ def _sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
-DEFAULT_PACKS_BASE = "https://github.com/pavlohrab/Vuurtoren/releases/download"
-"""Where published packs live (the `packs` workflow uploads them as release assets)."""
+DEFAULT_PACKS_BASE = "https://data.vuurtoren.app"
+"""Where published packs live: the data host, ``packs-<version>/<name>-<version>.tar.gz``."""
 
 
 def _fetch(name: str, entry: dict[str, Any], dest: Path) -> str | None:
@@ -279,7 +279,7 @@ def _fetch(name: str, entry: dict[str, Any], dest: Path) -> str | None:
     else:
         url = os.environ.get("VUURTOREN_PACKS_URL", "").strip()
         if not url:
-            # Default: the public GitHub release named after this pack's version.
+            # Default: the data host's folder for this pack's version.
             url = f"{DEFAULT_PACKS_BASE}/packs-{entry['version']}"
         elif url.lower() == "none":
             return None

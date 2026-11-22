@@ -129,7 +129,7 @@ interface DeviceDictionary {
   /**
    * Download it, checked against packs.json, and put it in place: from the connected server
    * (`from`: its language server and the device's sync token) when it has a copy, else from the
-   * public packs release. Says where it came from.
+   * data host (data.vuurtoren.app). Says where it came from.
    */
   install(from?: { nlp: string; token: string } | null): Promise<"server" | "release">;
 }
