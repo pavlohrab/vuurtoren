@@ -374,8 +374,25 @@
         color: var(--muted);
       }
 
+      :root {
+        --sec: 96px;
+        --sec-s: 64px;
+        --row: 48px;
+      }
+      @media (max-width: 860px) {
+        :root {
+          --sec: 64px;
+          --sec-s: 48px;
+          --row: 32px;
+        }
+      }
       .hero {
-        padding-block: 64px 56px;
+        padding-block: 72px var(--sec);
+      }
+      @media (max-width: 860px) {
+        .hero {
+          padding-block: 48px var(--sec);
+        }
       }
       .hero .in {
         display: grid;
@@ -429,14 +446,14 @@
       }
 
       .rows {
-        padding-block: 8px 64px;
+        padding-block: 0 var(--sec);
       }
       .row {
         display: grid;
         grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
         gap: 56px;
         align-items: center;
-        padding-block: 44px;
+        padding-block: var(--row);
         border-top: 1px solid var(--line);
       }
       .row:nth-child(even) .demo {
@@ -994,7 +1011,7 @@
 
       /* tables */
       .tbl-sec {
-        padding-block: 64px;
+        padding-block: var(--sec);
         background: var(--surface);
         border-block: 1px solid var(--line);
       }
@@ -1093,7 +1110,7 @@
 
       /* ending */
       .end {
-        padding-block: 72px;
+        padding-block: var(--sec);
       }
       .end .in {
         display: grid;
@@ -1123,7 +1140,7 @@
         }
       }
       .support {
-        padding-block: 40px 56px;
+        padding-block: var(--sec-s);
         border-top: 1px solid var(--line);
       }
       .support .in {
@@ -1312,7 +1329,7 @@
       }
       .see {
         color: var(--muted);
-        padding-top: 32px;
+        padding-top: var(--row);
         border-top: 1px solid var(--line);
       }
       .see a {

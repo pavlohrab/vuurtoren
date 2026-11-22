@@ -322,7 +322,7 @@
 
       /* hero */
       .hero {
-        padding-block: 80px 88px;
+        padding-block: 72px 96px;
       }
       .hero .in {
         display: grid;
@@ -355,7 +355,7 @@
           gap: 44px;
         }
         .hero {
-          padding-block: 48px 56px;
+          padding-block: 48px 64px;
         }
       }
 
@@ -1382,6 +1382,11 @@
       /* The name: the logo draws itself, as in the app's start screen, and its parts are named. */
       .namev {
         padding-block: 64px;
+      }
+      @media (max-width: 900px) {
+        .namev {
+          padding-block: 48px;
+        }
       }
       .namev .split {
         grid-template-columns: minmax(0, 2fr) minmax(0, 5fr);
