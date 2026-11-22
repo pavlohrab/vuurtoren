@@ -28,6 +28,7 @@ import {
   applyEvent,
   composeWord,
   writeTextAnalysis,
+  writeTextExtras,
   writeTextGrammar,
 } from "./projections.js";
 import { courseQueries } from "./course.js";
@@ -52,6 +53,8 @@ import type {
   StoredEvent,
   StoredText,
   SyncEvent,
+  TextExtraSentence,
+  TextExtras,
   TextGrammar,
   TextSummary,
   WordInfo,
@@ -212,6 +215,16 @@ const TEXT_FROM = `FROM texts t
   LEFT JOIN text_meta m ON m.text_id = t.id
   LEFT JOIN text_tokens tt ON tt.text_id = t.id
   LEFT JOIN reading_progress rp ON rp.text_id = t.id`;
+
+function textExtrasOf(r: Row): TextExtras {
+  return {
+    textId: String(r["text_id"]),
+    contentHash: String(r["content_hash"]),
+    analyzerVersion: r["analyzer_version"] == null ? null : String(r["analyzer_version"]),
+    madeAt: Number(r["made_at"]),
+    sentences: json<TextExtraSentence[]>(r["data"]),
+  };
+}
 
 function textGrammar(r: Row): TextGrammar {
   return {
@@ -625,6 +638,132 @@ export async function createRepository(
     saveTextAnalysis: (analysis) => serial(() => writeTextAnalysis(driver, analysis, now(), true)),
 
     saveTextGrammar: (grammar) => serial(() => writeTextGrammar(driver, grammar, now(), true)),
+
+    textExtras: (textId) =>
+      serial(async () => {
+        const r = (
+          await driver.exec(
+            `SELECT x.text_id, x.content_hash, x.analyzer_version, x.made_at, x.data
+               FROM text_extras x JOIN texts t ON t.id = x.text_id AND t.content_hash = x.content_hash
+              WHERE x.text_id = ?`,
+            [textId],
+          )
+        )[0];
+        return r ? textExtrasOf(r) : null;
+      }),
+
+    saveTextExtras: (extras) => serial(() => writeTextExtras(driver, extras)),
+
+    analysisStates: () =>
+      serial(async () =>
+        (
+          await driver.exec(
+            `SELECT tt.text_id, tt.content_hash, tt.analyzer_version, tt.analyzed_at,
+                    g.version AS grammar, x.made_at AS extras_at
+               FROM text_tokens tt
+               JOIN texts t ON t.id = tt.text_id AND t.content_hash = tt.content_hash
+               LEFT JOIN text_grammar g ON g.text_id = tt.text_id AND g.content_hash = tt.content_hash
+               LEFT JOIN text_extras x ON x.text_id = tt.text_id AND x.content_hash = tt.content_hash
+              ORDER BY t.created_at DESC, t.id DESC`,
+          )
+        ).map((r) => ({
+          textId: String(r["text_id"]),
+          contentHash: String(r["content_hash"]),
+          analyzerVersion: r["analyzer_version"] == null ? null : String(r["analyzer_version"]),
+          analyzedAt: Number(r["analyzed_at"]),
+          grammar: r["grammar"] == null ? null : Number(r["grammar"]),
+          extrasAt: r["extras_at"] == null ? null : Number(r["extras_at"]),
+        })),
+      ),
+
+    unanalysedTexts: () =>
+      serial(async () =>
+        (
+          await driver.exec(
+            `SELECT t.id, t.content_hash FROM texts t
+               LEFT JOIN text_tokens tt ON tt.text_id = t.id AND tt.content_hash = t.content_hash
+              WHERE tt.text_id IS NULL
+              ORDER BY t.created_at DESC, t.id DESC`,
+          )
+        ).map((r) => ({ textId: String(r["id"]), contentHash: String(r["content_hash"]) })),
+      ),
+
+    textBundle: (textId) =>
+      serial(async () => {
+        const r = (
+          await driver.exec(
+            `SELECT tt.content_hash, tt.tokens, tt.analyzer_version, tt.analyzed_at
+               FROM text_tokens tt JOIN texts t ON t.id = tt.text_id AND t.content_hash = tt.content_hash
+              WHERE tt.text_id = ?`,
+            [textId],
+          )
+        )[0];
+        if (!r) return null;
+        const hash = String(r["content_hash"]);
+        const g = (
+          await driver.exec(
+            "SELECT version, hits FROM text_grammar WHERE text_id = ? AND content_hash = ?",
+            [textId, hash],
+          )
+        )[0];
+        const x = (
+          await driver.exec(
+            "SELECT text_id, content_hash, analyzer_version, made_at, data FROM text_extras WHERE text_id = ? AND content_hash = ?",
+            [textId, hash],
+          )
+        )[0];
+        const analyzerVersion =
+          r["analyzer_version"] == null ? null : String(r["analyzer_version"]);
+        const extras = x ? textExtrasOf(x) : null;
+        return {
+          textId,
+          contentHash: hash,
+          analyzerVersion,
+          analyzedAt: Number(r["analyzed_at"]),
+          tokens: json<AnalyzedToken[]>(r["tokens"]),
+          grammar: g
+            ? { version: Number(g["version"]), hits: json<GrammarHit[]>(g["hits"]) }
+            : null,
+          extras:
+            extras && extras.analyzerVersion === analyzerVersion
+              ? { madeAt: extras.madeAt, sentences: extras.sentences }
+              : null,
+        };
+      }),
+
+    saveTextBundle: (b) =>
+      serial(() =>
+        driver.transaction(async () => {
+          // As an analysis from another device: never over a newer one of this device.
+          const stored = await writeTextAnalysis(
+            driver,
+            {
+              textId: b.textId,
+              contentHash: b.contentHash,
+              tokens: b.tokens,
+              analyzerVersion: b.analyzerVersion,
+            },
+            b.analyzedAt,
+          );
+          if (!stored) return false;
+          if (b.grammar) {
+            await writeTextGrammar(
+              driver,
+              { textId: b.textId, contentHash: b.contentHash, ...b.grammar },
+              b.analyzedAt,
+            );
+          }
+          if (b.extras) {
+            await writeTextExtras(driver, {
+              textId: b.textId,
+              contentHash: b.contentHash,
+              analyzerVersion: b.analyzerVersion,
+              ...b.extras,
+            });
+          }
+          return true;
+        }),
+      ),
 
     analyzerSeen: (version) =>
       serial(async () => {

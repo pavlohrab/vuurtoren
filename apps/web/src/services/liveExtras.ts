@@ -1,0 +1,166 @@
+/**
+ * A text's extras: what the language server says about each sentence (its English, the word
+ * pairs of side by side, each word's English in that sentence), made once on a device that has
+ * a language server and kept with the analysis (`repo.saveTextExtras`). Sync carries them, with
+ * the analysis and the grammar hits, to the other devices as the text's bundle, so a phone
+ * without a language server reads a text added on the computer with every help.
+ *
+ * Making them is background work: after a text is analysed, and for older texts now and then,
+ * one text at a time, stopping when the language server is not there.
+ */
+import type { AnalyzedToken } from "@app/core";
+import {
+  type TextExtraSentence,
+  type TextExtras,
+  type VuurtorenRepository,
+  contentHash,
+} from "@app/db";
+import type { NlpClient } from "@app/nlp-client";
+import type { LiveDictionary } from "./liveDictionary.js";
+import { pairItem } from "./livePairs.js";
+import type { StorySentencePairs } from "./stories.js";
+
+export interface LiveExtrasDeps {
+  repo: VuurtorenRepository;
+  nlp: () => Promise<NlpClient>;
+  dictionary: Pick<LiveDictionary, "seedSentences">;
+  /** Wait between two texts of the background run (ms). */
+  pauseMs?: number;
+}
+
+/** The tokens of each sentence, by sentence index, in order. */
+function bySentence(tokens: readonly AnalyzedToken[]): Map<number, AnalyzedToken[]> {
+  const out = new Map<number, AnalyzedToken[]>();
+  for (const t of tokens) {
+    const list = out.get(t.sent);
+    if (list) list.push(t);
+    else out.set(t.sent, [t]);
+  }
+  return out;
+}
+
+/** Ask the language server for the extras of analysed tokens. */
+async function makeExtras(
+  client: NlpClient,
+  content: string,
+  tokens: readonly AnalyzedToken[],
+): Promise<TextExtraSentence[]> {
+  const sentences = [...bySentence(tokens)]
+    .map(([sent, toks]) => ({ sent, ...pairItem(content, toks) }))
+    .filter((s) => s.words.length > 0);
+  if (sentences.length === 0) return [];
+  const paired = await client.pairs(sentences.map((s) => s.item));
+  const aligned = await client.align(
+    sentences.map((s) => ({ text: s.item.text, spans: s.item.spans })),
+  );
+  return sentences.map((s, k) => {
+    const p = paired[k];
+    const a = aligned[k];
+    const tokenAt = new Map(s.item.spans.map(([b, e], j) => [`${b}:${e}`, s.words[j]!.i]));
+    return {
+      sent: s.sent,
+      english: p?.translation ?? a?.translation ?? "",
+      pairs: (p?.pairs ?? []).map((w) => ({ nl: w.nl, en: w.en, confidence: w.confidence })),
+      align: (a?.words ?? []).flatMap((w): [number, string, number][] => {
+        const i = tokenAt.get(`${w.start}:${w.end}`);
+        return i !== undefined && w.text ? [[i, w.text, w.confidence]] : [];
+      }),
+    };
+  });
+}
+
+/** The extras of `text` if they index these tokens (same content and analyzer), else null. */
+async function extrasFor(
+  repo: VuurtorenRepository,
+  text: { id: string; content: string; analyzerVersion?: string | null | undefined },
+): Promise<TextExtras | null> {
+  const x = await repo.textExtras(text.id);
+  if (!x || x.contentHash !== contentHash(text.content)) return null;
+  return (x.analyzerVersion ?? null) === (text.analyzerVersion ?? null) ? x : null;
+}
+
+export function createLiveExtras({ repo, nlp, dictionary, pauseMs = 1500 }: LiveExtrasDeps) {
+  /** Make and store a text's extras; false when it has no analysis or the server is not there. */
+  async function make(textId: string): Promise<boolean> {
+    const text = await repo.getText(textId);
+    if (!text?.tokens) return false;
+    const sentences = await makeExtras(await nlp(), text.content, text.tokens);
+    return repo.saveTextExtras({
+      textId,
+      contentHash: contentHash(text.content),
+      analyzerVersion: text.analyzerVersion ?? null,
+      madeAt: Date.now(),
+      sentences,
+    });
+  }
+
+  let running: Promise<void> | null = null;
+  /** Make the extras of every analysed text that lacks them, in the background. */
+  function fillLater(): void {
+    running ??= (async () => {
+      try {
+        for (;;) {
+          const next = (await repo.analysisStates()).find((s) => s.extrasAt === null);
+          if (!next) return;
+          await make(next.textId);
+          await new Promise((r) => setTimeout(r, pauseMs));
+        }
+      } catch {
+        // No language server (a phone on its own, or it is starting): another time.
+      } finally {
+        running = null;
+      }
+    })();
+  }
+
+  /**
+   * Put a text's stored English and in-context meanings where the word sheet looks first, so
+   * they need no language server.
+   */
+  async function seed(
+    text: { id: string; content: string; analyzerVersion?: string | null | undefined },
+    tokens: readonly AnalyzedToken[],
+  ): Promise<void> {
+    const x = await extrasFor(repo, text);
+    if (!x) return;
+    const sents = bySentence(tokens);
+    dictionary.seedSentences(
+      x.sentences.flatMap((s) => {
+        const toks = sents.get(s.sent);
+        if (!toks?.length) return [];
+        const start = toks[0]!.start;
+        const sentence = text.content.slice(start, toks[toks.length - 1]!.end);
+        const at = new Map(toks.map((t) => [t.i, t]));
+        return [
+          {
+            sentence,
+            english: s.english,
+            words: s.align.flatMap(([i, en, confidence]) => {
+              const t = at.get(i);
+              return t
+                ? [{ start: t.start - start, end: t.end - start, text: en, confidence }]
+                : [];
+            }),
+          },
+        ];
+      }),
+    );
+  }
+
+  /** Side by side's English and pairs per sentence, from the stored extras (empty if none). */
+  async function pairs(text: {
+    id: string;
+    content: string;
+    analyzerVersion?: string | null | undefined;
+  }): Promise<Map<number, StorySentencePairs>> {
+    const x = await extrasFor(repo, text);
+    const out = new Map<number, StorySentencePairs>();
+    for (const s of x?.sentences ?? []) {
+      if (s.english) out.set(s.sent, { english: s.english, pairs: s.pairs });
+    }
+    return out;
+  }
+
+  return { make, fillLater, seed, pairs };
+}
+

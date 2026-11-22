@@ -30,6 +30,7 @@ import type { NlpClient } from "@app/nlp-client";
 import { IN_SENTENCE, type LiveDictionary } from "./liveDictionary.js";
 import { DEFAULT_STAIRCASE, type LearnerCache } from "./liveLearner.js";
 import { fetchTexts } from "./textBatch.js";
+import { nlpOutage } from "./liveSettings.js";
 import { ImportCancelledError } from "./ocrReview.js";
 import type {
   AppServices,
@@ -108,7 +109,16 @@ export interface LiveTextsDeps {
   evidence?: () => ReadingEvidence;
   /** Keys that may become clozes without evidence (assumedFamiliar.ts). */
   assumedFamiliar?: () => Promise<ReadonlySet<string>>;
+  /** A text's stored extras: seeded into the word sheet on opening; made after an analysis. */
+  extras?: {
+    seed: (text: StoredText, tokens: readonly AnalyzedToken[]) => Promise<void>;
+    fillLater: () => void;
+  };
 }
+
+/** Said when a text has no analysis here and no language server can make one. */
+const WAITING_FOR_ANALYSIS =
+  "This text hasn't been prepared on this device yet. Open Vuurtoren on your computer (it prepares the text and syncs it here), or connect a language server in Settings → Your devices.";
 
 /** What reading tells the native cards (see liveNative `evidence`). */
 interface ReadingEvidence {
@@ -130,6 +140,7 @@ export function createLiveTexts({
   autoCover,
   evidence,
   assumedFamiliar,
+  extras,
 }: LiveTextsDeps) {
   // Text content never changes under an id within this client (imports get new ids); another
   // device's changes clear the cache through `autoSync`.
@@ -151,10 +162,16 @@ export function createLiveTexts({
   async function analyze(text: StoredText): Promise<AnalyzedToken[]> {
     const client = await nlp();
     const chunks = chunkText(text.content);
-    const analyses = await client.analyzeText(
-      "nl",
-      chunks.map((c) => c.text),
-    );
+    let analyses: Awaited<ReturnType<NlpClient["analyzeText"]>>;
+    try {
+      analyses = await client.analyzeText(
+        "nl",
+        chunks.map((c) => c.text),
+      );
+    } catch (e) {
+      if (nlpOutage(e) && !text.tokens) throw new Error(WAITING_FOR_ANALYSIS, { cause: e });
+      throw e;
+    }
     const tokens = mergeChunkTokens(
       chunks.map((c, k) => ({ start: c.start, tokens: analyses[k]!.tokens as AnalyzedToken[] })),
     );
@@ -165,6 +182,8 @@ export function createLiveTexts({
       tokens,
       analyzerVersion: analyses[0]?.analyzerVersion ?? null,
     });
+    // Its English and in-context meanings, for this device and the ones it syncs with.
+    extras?.fillLater();
     return tokens;
   }
 
@@ -251,6 +270,7 @@ export function createLiveTexts({
     for (const text of texts) {
       if (text.tokens) refreshIfStale(text);
       const tokens = text.tokens ?? (await analyze(text));
+      await extras?.seed(text, tokens).catch(() => undefined);
       const plans: SegmentPlan[] = planText(tokens, m, opts, text.content);
       views.push({ text: { ...text, tokens }, tokens, plans, staircase });
     }

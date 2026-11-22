@@ -355,7 +355,32 @@ export function createLiveDictionary({ repo, lang, nlp, localGloss }: LiveDictio
     }
   }
 
+  /**
+   * Sentence translations and in-context meanings already known (a text's stored extras): the
+   * word sheet then needs no language server for them.
+   */
+  function seedSentences(
+    items: {
+      sentence: string;
+      english: string;
+      words: { start: number; end: number; text: string; confidence: number }[];
+    }[],
+  ): void {
+    for (const it of items) {
+      if (it.english && !translationCache.has(it.sentence)) {
+        translationCache.set(it.sentence, it.english);
+      }
+      for (const w of it.words) {
+        const k = alignKey({ sentence: it.sentence, start: w.start, end: w.end });
+        if (!alignCache.has(k)) {
+          alignCache.set(k, { text: w.text, confident: w.confidence >= ALIGN_MIN_CONFIDENCE });
+        }
+      }
+    }
+  }
+
   return {
+    seedSentences,
     lookupGlosses,
     translateSentences,
     alignWords,

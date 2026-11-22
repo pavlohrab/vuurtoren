@@ -26,6 +26,11 @@ export interface LivePairsDeps {
   storyLines?: (view: ReadingView) => Promise<Map<number, string>>;
   /** A bundled story's precomputed English and pairs per sentence (empty for other texts). */
   storyPairs?: (view: ReadingView) => Promise<Map<number, StorySentencePairs>>;
+  /**
+   * The offline English and pairs stored with the text (its extras, made on a device with a
+   * language server, maybe another one): used when there is no story English, before asking.
+   */
+  textPairs?: (view: ReadingView) => Promise<Map<number, StorySentencePairs>>;
 }
 
 /** Words and punctuation of an English sentence (the server's tokenisation). */
@@ -47,7 +52,10 @@ interface Sentence {
 }
 
 /** The sentence's text, word spans and separable-verb joins, as `/translate/pairs` takes them. */
-function pairItem(content: string, tokens: readonly AnalyzedToken[]): Omit<Sentence, "sent"> {
+export function pairItem(
+  content: string,
+  tokens: readonly AnalyzedToken[],
+): Omit<Sentence, "sent"> {
   const start = tokens[0]?.start ?? 0;
   const end = tokens[tokens.length - 1]?.end ?? start;
   const words = tokens.filter((t) => t.is_word);
@@ -124,6 +132,23 @@ export function createLivePairs(deps: LivePairsDeps) {
         englishTokens: englishTokens(r.english),
         pairs: onTokens(s.words, r.pairs),
         source: "story",
+      });
+    }
+    // Stored with the text (offline English): no request either, unless the AI's is wanted.
+    const useAIFirst = opts.ai === true && deps.aiReady();
+    const stored =
+      useAIFirst || fromStory.size === all.length
+        ? new Map<number, StorySentencePairs>()
+        : ((await deps.textPairs?.(v)) ?? new Map<number, StorySentencePairs>());
+    for (const s of all) {
+      const r = stored.get(s.sent);
+      if (!r || fromStory.has(s.sent)) continue;
+      fromStory.set(s.sent, {
+        sent: s.sent,
+        english: r.english,
+        englishTokens: englishTokens(r.english),
+        pairs: onTokens(s.words, r.pairs),
+        source: "offline",
       });
     }
     const asked = all.filter((s) => !fromStory.has(s.sent));

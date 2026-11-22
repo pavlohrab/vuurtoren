@@ -1,7 +1,8 @@
 /**
  * Schema and versioned migrations (tracked with `PRAGMA user_version`).
  * `events` is the append-only source of truth; every other table is a rebuildable projection,
- * except `blobs` and the per-device text analysis cache (`text_tokens`, `text_grammar`).
+ * except `blobs` and the per-device text analysis cache (`text_tokens`, `text_grammar`,
+ * `text_extras`).
  */
 import type { SqlDriver } from "./types.js";
 
@@ -270,6 +271,18 @@ export const MIGRATIONS: readonly (readonly string[])[] = [
     // Text analyses are a local cache, not projections: when the stored tokens were made
     // (a replayed old TextAnalyzed event never overwrites a newer analysis).
     `ALTER TABLE text_tokens ADD COLUMN analyzed_at INTEGER NOT NULL DEFAULT 0`,
+  ],
+  [
+    // Per text, what a language server says about each sentence (its English, word pairs, a
+    // word's English in context), so a device without one can read with every help. Part of
+    // the analysis cache: kept by rebuilds, travels as a text bundle (sync/bundles.ts).
+    `CREATE TABLE text_extras (
+       text_id TEXT PRIMARY KEY,
+       content_hash TEXT NOT NULL,
+       analyzer_version TEXT,
+       made_at INTEGER NOT NULL,
+       data TEXT NOT NULL
+     )`,
   ],
 ];
 

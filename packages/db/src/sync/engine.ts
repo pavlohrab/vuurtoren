@@ -11,17 +11,24 @@
  *   vuurtoren/devices/<device>/<lastId>.base.kev a part of the device's folded events
  *   vuurtoren/devices/<device>/device.kev        the device's name and when it last wrote
  *   vuurtoren/blobs/<hmac>.kbl                   an image or sound
+ *   vuurtoren/devices/<device>/analyses/<hmac>.kan  a text's analysis, as this device made it
  *
  * Each file holds a device's events after one id up to another (`after`, `last`), and every
  * file is sealed with its path, so a file moved or renamed by the place does not open. A
  * device only writes its own folder and blobs, so places that copy files around (Syncthing,
  * Dropbox) never see two devices write the same file.
+ *
+ * Text bundles: a text's analysis, grammar hits and per-sentence extras are derived data, never
+ * events. A device that made them (it has a language server) puts them in its own `analyses`
+ * folder; a device with a text it has no analysis of looks there, so a phone without a language
+ * server reads what the computer analysed. Their names hide the text (HMAC of its id and content
+ * hash), and like everything else they are sealed with the passphrase.
  */
 import { Gunzip, gzipSync } from "fflate";
 import { isUlid } from "../ids.js";
 import { isBlobId } from "../library.js";
 import type { VuurtorenRepository } from "../repository.js";
-import type { AppEvent, SyncEvent } from "../types.js";
+import type { AppEvent, SyncEvent, TextAnalysisState, TextBundle } from "../types.js";
 import {
   type SyncKey,
   type Argon2Cost,
@@ -74,6 +81,11 @@ const GAP_WAIT_MS = 86_400_000;
 const MISSING_MAX = 1000;
 const MISSING_MS = 30 * 86_400_000;
 const MISSING_PER_SYNC = 200;
+/** Text bundles sent and fetched per sync, so a sync stays quick; the rest come next time. */
+const BUNDLES_OUT_PER_SYNC = 20;
+const BUNDLES_IN_PER_SYNC = 20;
+/** A text with an analysis but no extras looks for another device's at most this often. */
+const EXTRAS_RETRY_MS = 15 * 60_000;
 /** Blob ids known to be in the place, remembered so blobs are not listed every sync. */
 const KNOWN_BLOBS = 1000;
 const PROBLEMS_KEPT = 50;
@@ -137,6 +149,10 @@ interface SyncState {
   retries?: Record<string, { error: string; since: number }>;
   /** What was left out, newest last. */
   problems?: SyncProblem[];
+  /** Per text, the bundle sent from or taken into this device (`bundleStamp`). */
+  bundles?: Record<string, string>;
+  /** Texts with an analysis but no extras, with when another device's bundle was last asked. */
+  extrasAsked?: Record<string, number>;
 }
 
 export interface SyncSummary {
@@ -493,6 +509,7 @@ export async function syncOnce(
     state.announced = { name, at: now() };
     await repo.setSyncState(state);
   }
+  await sendBundles(repo, store, key, state, leaveOut);
 
   // Receive: every new file of every device, imported without a replay; one replay at the
   // end when some events were older than the log's end.
@@ -586,6 +603,8 @@ export async function syncOnce(
   state.missing = missing;
   state.blobs = [...known].slice(-KNOWN_BLOBS);
   await repo.setSyncState(state);
+  // Texts that became readable count as received, so the screens refresh.
+  received += await fetchBundles(repo, store, key, state, now());
 
   await foldOwn(repo, store, key, state, progress, limits);
   let devices: SyncDevice[] | null = null;
@@ -595,6 +614,136 @@ export async function syncOnce(
     await repo.setSyncState(state);
   }
   return { sent, received, rebuilt, devices, problems };
+}
+
+/** Format of a text bundle file. */
+interface BundleFile extends TextBundle {
+  format: 1;
+}
+
+/** What a bundle holds, in one string: a changed analysis, grammar or extras is sent again. */
+export function bundleStamp(
+  s: Pick<TextAnalysisState, "contentHash" | "analyzedAt" | "grammar" | "extrasAt">,
+): string {
+  return `${s.contentHash}:${s.analyzedAt}:${s.grammar ?? "-"}:${s.extrasAt ?? "-"}`;
+}
+
+const stampOf = (b: TextBundle) =>
+  bundleStamp({
+    contentHash: b.contentHash,
+    analyzedAt: b.analyzedAt,
+    grammar: b.grammar?.version ?? null,
+    extrasAt: b.extras?.madeAt ?? null,
+  });
+
+async function bundleName(key: SyncKey, textId: string, hash: string): Promise<string> {
+  return `${await hiddenName(key, `bundle:${textId}:${hash}`)}.kan`;
+}
+
+/**
+ * Send the bundles of texts this device analysed (or whose grammar or extras it added) since it
+ * last sent them. A bundle this device took from another is not sent back.
+ */
+async function sendBundles(
+  repo: VuurtorenRepository,
+  store: SyncStore,
+  key: SyncKey,
+  state: SyncState,
+  leaveOut: (p: SyncProblem) => void,
+): Promise<void> {
+  const done = (state.bundles ??= {});
+  const todo = (await repo.analysisStates())
+    .filter((s) => done[s.textId] !== bundleStamp(s))
+    .slice(0, BUNDLES_OUT_PER_SYNC);
+  for (const s of todo) {
+    const bundle = await repo.textBundle(s.textId);
+    if (!bundle) continue;
+    const json = encode({ format: 1, ...bundle } satisfies BundleFile);
+    if (json.length > MAX_FILE_BYTES) {
+      leaveOut({
+        what: s.textId,
+        error: "This text is too long to send its analysis. Other devices analyse it themselves.",
+        leftOut: true,
+      });
+      done[s.textId] = bundleStamp(s);
+      continue;
+    }
+    const path = `${deviceDir(repo.deviceId)}/analyses/${await bundleName(key, s.textId, s.contentHash)}`;
+    await store.put(path, await seal(key, gzipSync(json, { level: 6 }), path));
+    done[s.textId] = bundleStamp(s);
+    await repo.setSyncState(state);
+  }
+}
+
+/**
+ * Take other devices' bundles of texts this device has no analysis of. Returns how many texts
+ * became readable.
+ */
+async function fetchBundles(
+  repo: VuurtorenRepository,
+  store: SyncStore,
+  key: SyncKey,
+  state: SyncState,
+  at: number,
+): Promise<number> {
+  // Texts with no analysis, then texts whose analysis came without extras (asked again now
+  // and then: the other device may have made them since).
+  const asked = (state.extrasAsked ??= {});
+  const noExtras = (await repo.analysisStates()).filter((s) => s.extrasAt === null);
+  for (const id of Object.keys(asked)) {
+    if (!noExtras.some((s) => s.textId === id)) delete asked[id];
+  }
+  const wanted = [
+    ...(await repo.unanalysedTexts()),
+    ...noExtras.filter((s) => at - (asked[s.textId] ?? 0) >= EXTRAS_RETRY_MS),
+  ];
+  for (const s of noExtras) if (wanted.includes(s)) asked[s.textId] = at;
+  if (wanted.length === 0) return 0;
+  const me = repo.deviceId;
+  const where = new Map<string, string>();
+  for (const dev of await store.list(DEVICES)) {
+    if (dev === me || !DEVICE_ID.test(dev)) continue;
+    for (const name of await store.list(`${deviceDir(dev)}/analyses`)) {
+      if (!where.has(name)) where.set(name, dev);
+    }
+  }
+  if (where.size === 0) return 0;
+  const done = (state.bundles ??= {});
+  let took = 0;
+  let tried = 0;
+  for (const w of wanted) {
+    if (tried >= BUNDLES_IN_PER_SYNC) break;
+    const name = await bundleName(key, w.textId, w.contentHash);
+    const dev = where.get(name);
+    if (!dev) continue;
+    tried++;
+    const path = `${deviceDir(dev)}/analyses/${name}`;
+    try {
+      const bytes = await store.get(path);
+      if (!bytes) continue;
+      const file = decode<BundleFile>(gunzipAtMost(await unseal(key, bytes, path), MAX_READ_BYTES));
+      if (file.format !== 1 || file.textId !== w.textId || file.contentHash !== w.contentHash) {
+        continue;
+      }
+      const bundle: TextBundle = {
+        textId: file.textId,
+        contentHash: file.contentHash,
+        analyzerVersion: file.analyzerVersion,
+        analyzedAt: file.analyzedAt,
+        tokens: file.tokens,
+        grammar: file.grammar,
+        extras: file.extras,
+      };
+      if (await repo.saveTextBundle(bundle)) {
+        done[w.textId] = stampOf(bundle);
+        took++;
+      }
+    } catch {
+      // A damaged or newer file: this device analyses the text itself when it can.
+    }
+  }
+  await repo.setSyncState(state);
+  return took;
 }
 
 /** The missing blobs of the state, without the oldest past the limits. */

@@ -645,6 +645,54 @@ export interface TextGrammar {
   hits: GrammarHit[];
 }
 
+/** One sentence of a text, as a language server sees it (`TextExtras`). */
+export interface TextExtraSentence {
+  /** The sentence's index (`AnalyzedToken.sent`). */
+  sent: number;
+  /** Its English (offline translation). */
+  english: string;
+  /** Word pairs: `nl` = word indices within the sentence, `en` = English token indices. */
+  pairs: { nl: number[]; en: number[]; confidence: number }[];
+  /** A word's English in this sentence: [token index, English, confidence 0–1]. */
+  align: [number, string, number][];
+}
+
+/**
+ * What a language server says about each sentence of a text: made once on a device that has
+ * one, kept in the analysis cache, and sent to the other devices in the text's bundle. Valid
+ * for the text's content and the analysis (`analyzerVersion`) it indexes.
+ */
+export interface TextExtras {
+  textId: string;
+  contentHash: string;
+  analyzerVersion: string | null;
+  madeAt: number;
+  sentences: TextExtraSentence[];
+}
+
+/** A text's analysis as it stands on this device, for its bundle (sync/bundles.ts). */
+export interface TextAnalysisState {
+  textId: string;
+  contentHash: string;
+  analyzerVersion: string | null;
+  analyzedAt: number;
+  /** Grammar version of the stored hits, or null. */
+  grammar: number | null;
+  /** When the extras were made, or null. */
+  extrasAt: number | null;
+}
+
+/** A text's analysis, grammar hits and extras together, as they travel between devices. */
+export interface TextBundle {
+  textId: string;
+  contentHash: string;
+  analyzerVersion: string | null;
+  analyzedAt: number;
+  tokens: AnalyzedToken[];
+  grammar: { version: number; hits: GrammarHit[] } | null;
+  extras: Omit<TextExtras, "textId" | "contentHash" | "analyzerVersion"> | null;
+}
+
 /** One learning event, as listed by `activity` (Home's week strip). */
 export interface ActivityEntry {
   /**
@@ -819,6 +867,21 @@ export interface Repository {
     version: number;
     hits: GrammarHit[];
   }): Promise<boolean>;
+  /** The stored extras of a text (null when none, or made for other content). */
+  textExtras(textId: string): Promise<TextExtras | null>;
+  /** Store a text's extras (false: the text is gone or its content changed). */
+  saveTextExtras(extras: TextExtras): Promise<boolean>;
+  /** Texts with an analysis on this device, with what is stored for them. */
+  analysisStates(): Promise<TextAnalysisState[]>;
+  /** Texts with no analysis on this device: their id and content hash, newest first. */
+  unanalysedTexts(): Promise<{ textId: string; contentHash: string }[]>;
+  /** A text's analysis, grammar and extras as one bundle (null when it has no analysis). */
+  textBundle(textId: string): Promise<TextBundle | null>;
+  /**
+   * Store a bundle another device made: its analysis (unless this device's is newer), grammar
+   * hits and extras. False when the text is gone, its content changed, or nothing was newer.
+   */
+  saveTextBundle(bundle: TextBundle): Promise<boolean>;
   /**
    * When this device's language server first reported analyzer `version` (ms; recorded now
    * when new). An analysis made before that time is older than the analyzer.

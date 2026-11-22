@@ -16,7 +16,14 @@ import { insertMany } from "./driver-core.js";
 import { contentHash } from "./hash.js";
 import { compareHlc } from "./ids.js";
 import { applyTextMeta, metaPatchFields } from "./library.js";
-import type { AnkiWordEntry, AppEvent, SqlDriver, SqlValue, WordInfo } from "./types.js";
+import type {
+  AnkiWordEntry,
+  AppEvent,
+  SqlDriver,
+  SqlValue,
+  TextExtras,
+  WordInfo,
+} from "./types.js";
 import { canApply } from "./types.js";
 
 /** An event plus the metadata the projections need. */
@@ -142,6 +149,33 @@ export async function writeTextGrammar(
   return true;
 }
 
+/**
+ * Write a text's extras. They index the cached tokens, so they are stored only for the text's
+ * current content and the analyzer of its stored tokens, and never over newer extras.
+ * @returns true when stored
+ */
+export async function writeTextExtras(driver: SqlDriver, x: TextExtras): Promise<boolean> {
+  if ((await currentHash(driver, x.textId)) !== x.contentHash) return false;
+  const tokens = (
+    await driver.exec("SELECT content_hash, analyzer_version FROM text_tokens WHERE text_id = ?", [
+      x.textId,
+    ])
+  )[0];
+  if (!tokens || tokens["content_hash"] !== x.contentHash) return false;
+  if ((tokens["analyzer_version"] ?? null) !== (x.analyzerVersion ?? null)) return false;
+  const old = (
+    await driver.exec("SELECT content_hash, made_at FROM text_extras WHERE text_id = ?", [x.textId])
+  )[0];
+  if (old && old["content_hash"] === x.contentHash && Number(old["made_at"]) > x.madeAt) {
+    return false;
+  }
+  await driver.exec(
+    "INSERT OR REPLACE INTO text_extras (text_id, content_hash, analyzer_version, made_at, data) VALUES (?,?,?,?,?)",
+    [x.textId, x.contentHash, x.analyzerVersion ?? null, x.madeAt, JSON.stringify(x.sentences)],
+  );
+  return true;
+}
+
 /** Last-write-wins (by HLC, independent of arrival order) write of a word's manual state. */
 async function setOverride(
   driver: SqlDriver,
@@ -215,7 +249,7 @@ export async function applyEvent(driver: SqlDriver, ctx: EventContext): Promise<
         ],
       );
       // Tokens and grammar hits computed for different content are stale.
-      for (const t of ["text_tokens", "text_grammar"]) {
+      for (const t of ["text_tokens", "text_grammar", "text_extras"]) {
         await driver.exec(`DELETE FROM ${t} WHERE text_id = ? AND content_hash <> ?`, [
           e.textId,
           hash,
@@ -238,7 +272,14 @@ export async function applyEvent(driver: SqlDriver, ctx: EventContext): Promise<
       await applyTextMeta(driver, ctx.hlc, e.textId, { cover: e.blobId ?? null });
       return;
     case "TextDeleted":
-      for (const t of ["texts", "text_meta", "text_tokens", "text_grammar", "reading_progress"]) {
+      for (const t of [
+        "texts",
+        "text_meta",
+        "text_tokens",
+        "text_grammar",
+        "text_extras",
+        "reading_progress",
+      ]) {
         await driver.exec(`DELETE FROM ${t} WHERE ${t === "texts" ? "id" : "text_id"} = ?`, [
           e.textId,
         ]);

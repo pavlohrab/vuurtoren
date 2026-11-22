@@ -11,6 +11,7 @@ import { createLiveAI } from "./liveAI.js";
 import { createLiveCourses } from "./liveCourses.js";
 import { composeGlosses, createLiveDictionary } from "./liveDictionary.js";
 import { createLiveExam } from "./liveExam.js";
+import { createLiveExtras } from "./liveExtras.js";
 import { createLiveGrammar } from "./liveGrammar.js";
 import { createLiveLibrary } from "./liveLibrary.js";
 import { createLiveNative } from "./liveNative.js";
@@ -66,6 +67,9 @@ export function createLiveServices(
     repo,
     forget: (textId) => texts.forget(textId),
   });
+  // A text's English and in-context meanings, made where there is a language server and
+  // synced with the text's analysis (liveExtras.ts).
+  const extras = createLiveExtras({ repo, nlp, dictionary });
   // Native evidence is bound late: native mode is created after texts and practice.
   const evidence = () => native.evidence;
   const texts = createLiveTexts({
@@ -76,6 +80,7 @@ export function createLiveServices(
     dictionary,
     autoCover,
     evidence,
+    extras,
     // The stored profile, read as it is: planning never migrates or saves one.
     assumedFamiliar: () =>
       assumedFamiliarKeys({
@@ -176,6 +181,7 @@ export function createLiveServices(
     aiTranslate: ai.translateSentences,
     storyLines: (v) => stories.storyLines(v.text, v.tokens),
     storyPairs: (v) => stories.storyPairs(v.text, v.tokens),
+    textPairs: (v) => extras.pairs(v.text),
   });
 
   const exam = createLiveExam({ repo, lang, changed });
@@ -250,6 +256,8 @@ export function createLiveServices(
     async autoSync(why) {
       // Sync when it is due (the caches drop on new changes, also when it failed after them).
       const r = await sync.auto(why);
+      // Texts analysed here (or arrived) may still need their English: made in the background.
+      extras.fillLater();
       if (r.error) reportDegraded("sync", DEGRADED_MESSAGES.sync, r.error);
       else if (r.ran || !sync.configured()) clearDegraded("sync");
       return r.changed;
