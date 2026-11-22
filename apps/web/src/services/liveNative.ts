@@ -438,10 +438,11 @@ export function createLiveNative(deps: LiveNativeDeps) {
         } else if (
           card.layout === "template" &&
           v.note.key &&
-          card.audioFront.length + card.audioBack.length === 0
+          ![...card.audioFront, ...card.audioBack].some((name) => card.media[name])
         ) {
-          // A card of an imported deck without its own sound: the word of its note (its
-          // dictionary form) is said from the audio pack when the pack has it, else by the voice.
+          // A card of an imported deck with no sound of its own (none named, or the files did not
+          // come with the deck): the word of its note (its dictionary form) is said from the audio
+          // pack when the pack has it, else by the voice.
           card.spoken = wordClipText(v.note.key, v.note.article);
           card.wordAudio = await clipId("word", card.spoken);
         }

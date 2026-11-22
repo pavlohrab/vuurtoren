@@ -421,6 +421,13 @@ export function WordStack({
                 <PlayButton
                   label={`Play “${lemma}”`}
                   playing={playing === `stack:${top.key}`}
+                  check={{
+                    key: `word:${lemma}:${article ?? ""}`,
+                    what: async () => ({
+                      clip: await clipId("word", wordClipText(lemma, article ?? undefined)),
+                      text: lemma,
+                    }),
+                  }}
                   onPlay={() =>
                     void (async () =>
                       play(`stack:${top.key}`, {

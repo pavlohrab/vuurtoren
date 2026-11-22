@@ -433,6 +433,10 @@ function CardView({
               <PlayButton
                 label="Play the word (R)"
                 playing={playing === "word"}
+                check={{
+                  key: `word:${card.wordAudio ?? ""}:${card.spoken}`,
+                  what: () => ({ clip: card.wordAudio, text: card.spoken }),
+                }}
                 onPlay={() => onPlay("word")}
               />
             ) : null}
@@ -445,6 +449,10 @@ function CardView({
               <PlayButton
                 label="Play the sentence"
                 playing={playing === "sentence"}
+                check={{
+                  key: `sentence:${card.sentenceAudio ?? ""}:${card.sentence}`,
+                  what: () => ({ clip: card.sentenceAudio, text: card.sentence }),
+                }}
                 onPlay={() => onPlay("sentence")}
               />
             </div>
@@ -474,6 +482,10 @@ function CardView({
               <PlayButton
                 label="Play the word (R)"
                 playing={playing === "word"}
+                check={{
+                  key: `word:${card.wordAudio ?? ""}:${card.spoken}`,
+                  what: () => ({ clip: card.wordAudio, text: card.spoken }),
+                }}
                 onPlay={() => onPlay("word")}
               />
             </div>

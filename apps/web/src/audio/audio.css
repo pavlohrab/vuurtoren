@@ -31,3 +31,8 @@
     height: 44px;
   }
 }
+
+/* Nothing to play (no recording, no Dutch voice): the speaker crossed out, in red. */
+.play-btn.play-btn--none {
+  color: var(--danger);
+}

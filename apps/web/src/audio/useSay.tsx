@@ -3,20 +3,17 @@
  * speed from Settings and says which item is playing, for `PlayButton`'s pulse.
  */
 import { useQuery } from "@tanstack/react-query";
-import { Volume2 } from "lucide-react";
+import { Volume2, VolumeX } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button, useToast } from "@app/ui";
 import { useServices } from "../services/context.js";
 import type { Settings } from "../services/types.js";
+import { dutchVoiceAvailable } from "../practice/speech.js";
 import { type PlayerDeps, type Saying, browserPlayer, say, stopSaying } from "./play.js";
 import "./audio.css";
 
-/** The "nothing to play" note was shown in this session. */
-let toldSilent = false;
-
 export function useSay(player?: PlayerDeps) {
   const services = useServices();
-  const toast = useToast();
   const settings = useQuery({ queryKey: ["settings"], queryFn: () => services.getSettings() });
   const deps = useMemo(
     () => player ?? browserPlayer((id) => services.audioClip(id)),
@@ -36,52 +33,81 @@ export function useSay(player?: PlayerDeps) {
     async (key: string, what: Saying) => {
       setPlaying(key);
       try {
-        const how = await say(what, rate, deps);
-        // Nothing could play: say so once per session, not on every tap.
-        if (how === "none" && !toldSilent) {
-          toldSilent = true;
-          toast(
-            "No recording for this one",
-            "There is no Dutch voice on this device for words and sentences without a recording.",
-          );
-        }
-        return how;
+        return await say(what, rate, deps);
       } finally {
         if (alive.current) setPlaying((p) => (p === key ? null : p));
       }
     },
-    [rate, deps, toast],
+    [rate, deps],
   );
   return { play, playing, settings: settings.data as Settings | undefined };
 }
 
-/** An icon button that plays something; pulses while it plays. */
+/**
+ * Whether there is anything to play for `what`: its recording (fetched once and kept, so the
+ * play itself is instant) or a Dutch system voice. Undefined while it checks.
+ */
+export function useCanSay(
+  key: string | null,
+  what: () => Promise<Saying | null> | Saying | null,
+): boolean | undefined {
+  const services = useServices();
+  return useQuery({
+    queryKey: ["can-say", key],
+    enabled: key !== null,
+    staleTime: Infinity,
+    queryFn: async () => {
+      const w = await what();
+      if (!w) return false;
+      if (w.clip && (await services.audioClip(w.clip).catch(() => null))) return true;
+      return !!w.text && (await dutchVoiceAvailable());
+    },
+  }).data;
+}
+
+/**
+ * An icon button that plays something; pulses while it plays. With `check`, it finds out first
+ * whether there is anything to play: when there is not, the speaker shows crossed out in red,
+ * and every tap says why.
+ */
 export function PlayButton({
   label,
   playing,
   onPlay,
   size = "sm",
+  check,
 }: {
   label: string;
   playing: boolean;
   onPlay: () => void;
   size?: "sm" | "md";
+  check?: { key: string; what: () => Promise<Saying | null> | Saying | null };
 }) {
+  const toast = useToast();
+  const available = useCanSay(check?.key ?? null, check?.what ?? (() => null));
+  const silent = check !== undefined && available === false;
   return (
     <Button
       variant="ghost"
       size={size}
       icon
-      className="play-btn"
-      aria-label={label}
-      title={label}
+      className={silent ? "play-btn play-btn--none" : "play-btn"}
+      aria-label={silent ? `${label}: no sound` : label}
+      title={silent ? "No sound for this one" : label}
       data-playing={playing || undefined}
       onClick={(e) => {
         e.stopPropagation();
+        if (silent) {
+          toast(
+            "No sound for this one",
+            "It has no recording, and this device has no Dutch voice to read it aloud.",
+          );
+          return;
+        }
         onPlay();
       }}
     >
-      <Volume2 size={16} aria-hidden />
+      {silent ? <VolumeX size={16} aria-hidden /> : <Volume2 size={16} aria-hidden />}
     </Button>
   );
 }
