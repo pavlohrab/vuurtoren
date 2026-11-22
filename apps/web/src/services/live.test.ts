@@ -530,16 +530,16 @@ describe("live audio", () => {
     expect(await first.getSettings()).toMatchObject({
       voice: "female",
       autoplayWord: true,
-      autoplaySentence: false,
+      autoplaySentence: true,
       audioRate: 1,
     });
-    await first.saveSettings({ voice: "male", audioRate: 0.8, autoplaySentence: true });
+    await first.saveSettings({ voice: "male", audioRate: 0.8, autoplaySentence: false });
     // Read back from the event log, as after a reload.
     const services = createLiveServices(repo);
     expect(await services.getSettings()).toMatchObject({
       voice: "male",
       audioRate: 0.8,
-      autoplaySentence: true,
+      autoplaySentence: false,
     });
     const clip = await services.audioClip("word-7f3acd97cd7cde99");
     expect(clip?.size).toBe(3);
