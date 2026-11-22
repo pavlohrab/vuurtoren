@@ -38,6 +38,11 @@ const text = (over: Partial<TextListItem>): TextListItem => ({
 });
 
 describe("Today helpers", () => {
+  it("times the reviews: four cards a minute, at least a minute", () => {
+    expect(reviewMinutes(24)).toBe(6);
+    expect(reviewMinutes(1)).toBe(1);
+  });
+
   it("continues a text in progress, never a finished one; else the next to read", () => {
     const a = text({ id: "a", coverage: 0.8 });
     const b = text({ id: "b", coverage: 0.95 });
