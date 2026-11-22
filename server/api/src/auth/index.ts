@@ -11,6 +11,7 @@
  *   DELETE /api/auth/sync-tokens/:id revoke one
  *   POST /api/sync/pair-code         a one-time pairing code (signed in; see tokens.ts)
  *   POST /api/sync/pair              {code, name} -> { token, id, label } (no sign-in: the code)
+ *                                    or {user, password, name}: a device signs in by itself
  *
  * Credentials: a password (scrypt hash) for people, an optional bearer token for scripts.
  * With neither, auth is off (localhost / trusted network use).
@@ -331,6 +332,27 @@ export function createAuth(opts: AuthOptions = {}): Auth {
     json(res, 200, { ok: true, user }, { "set-cookie": sessionCookie(s.id, s.expiresAt) });
   }
 
+  /** A device's own sign-in: the server's user and password, under the sign-in limit. */
+  async function deviceSignIn(ip: string, user: string, password: string): Promise<void> {
+    if (!enabled || !hasPassword) {
+      throw new HttpFail(400, "This server has no password to sign in with. Use a pairing code.");
+    }
+    const verdict = limiter.check(ip);
+    if (!verdict.ok) throw tooMany(verdict.retryAfterMs);
+    const ok =
+      user.length <= 256 &&
+      password.length <= 1024 &&
+      // Always run scrypt, so a wrong username costs the same time as a wrong password.
+      (await verifySerial(password, opts.password!)) &&
+      safeEqual(user.normalize("NFC"), opts.user!.normalize("NFC"));
+    if (!ok) {
+      limiter.fail(ip);
+      console.warn(`[vuurtoren-api] failed device sign-in from ${ip}`);
+      throw new HttpFail(401, "Wrong username or password.");
+    }
+    limiter.success(ip);
+  }
+
   function pairCode(req: IncomingMessage, res: ServerResponse): void {
     const id = require(req);
     const made = syncTokens.newPairCode();
@@ -354,14 +376,26 @@ export function createAuth(opts: AuthOptions = {}): Auth {
         "retry-after": String(s),
       });
     }
-    const body = await readJson<{ code?: unknown; name?: unknown }>(req, 4 * 1024);
+    const body = await readJson<{
+      code?: unknown;
+      user?: unknown;
+      password?: unknown;
+      name?: unknown;
+    }>(req, 8 * 1024);
+    const name = typeof body.name === "string" ? body.name : "Phone";
+    // A device signs in with the server's user name and password: checked as at sign-in (and
+    // limited the same way), then it gets a token of its own, as with a pairing code.
+    if (typeof body.user === "string" && typeof body.password === "string") {
+      await deviceSignIn(ip, body.user, body.password);
+      const made = syncTokens.pair(syncTokens.newPairCode().code, name);
+      if (!made) throw new HttpFail(500, "Could not make a token.");
+      console.log(`[vuurtoren-api] sync token ${made.id} created by signing in`);
+      return json(res, 200, { ok: true, token: made.token, id: made.id, label: made.label }, headers);
+    }
     if (typeof body.code !== "string") throw new HttpFail(400, "Send {code, name}.");
     let made;
     try {
-      made = syncTokens.pair(
-        body.code.slice(0, 64),
-        typeof body.name === "string" ? body.name : "Phone",
-      );
+      made = syncTokens.pair(body.code.slice(0, 64), name);
     } catch (e) {
       throw new HttpFail(409, e instanceof Error ? e.message : "Could not make a token.");
     }
@@ -370,7 +404,7 @@ export function createAuth(opts: AuthOptions = {}): Auth {
       console.warn(`[vuurtoren-api] wrong pairing code from ${ip}`);
       throw new HttpFail(
         403,
-        "This pairing code does not work: it was used already, it expired, or a character is wrong. Make a new one in the server's Settings → Sync → Add a phone.",
+        "This pairing code does not work: it was used already, it expired, or a character is wrong. Make a new one on the server's Your devices page.",
       );
     }
     pairLimiter.success(ip);

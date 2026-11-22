@@ -92,6 +92,20 @@ describe("pairing with a server", () => {
     });
   });
 
+  it("signs in with the server's user name and password instead of a code", async () => {
+    const fetch = vi.fn<(url: RequestInfo | URL, init?: RequestInit) => Promise<Response>>(
+      async () => Response.json({ ok: true, token: "ksync_y", id: "a2", label: "Desktop" }),
+    );
+    const signIn = { server: "https://vuurtoren.example", user: "anna", password: "s3cret" };
+    const paired = await pairWithServer(signIn, "Desktop", fetch as typeof globalThis.fetch);
+    expect(paired.token).toBe("ksync_y");
+    expect(JSON.parse(String(fetch.mock.calls[0]![1]?.body))).toEqual({
+      user: "anna",
+      password: "s3cret",
+      name: "Desktop",
+    });
+  });
+
   it("says why it did not work", async () => {
     const answer = (status: number, body: object) =>
       (async () => Response.json(body, { status })) as unknown as typeof globalThis.fetch;

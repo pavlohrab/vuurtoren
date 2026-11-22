@@ -85,8 +85,10 @@ export function createMockSync(
     },
     async connectServer(link) {
       await wait();
-      if (link.code.replace("-", "").length !== 10)
+      if ("code" in link && link.code.replace("-", "").length !== 10)
         throw new Error("This pairing code does not work.");
+      if ("password" in link && link.password !== "demo")
+        throw new Error("Wrong username or password.");
       state = { ...state, paired: link.server };
       return state;
     },

@@ -11,7 +11,7 @@ import { type FormEvent, useEffect, useRef, useState } from "react";
 import { Button, Input, Skeleton, Spinner, useToast } from "@app/ui";
 import { createSyncTokenClient } from "../../auth/tokens.js";
 import {
-  type ConnectLink,
+  type ServerAccess,
   connectLink,
   pairingCode,
   parseConnectLink,
@@ -762,9 +762,10 @@ function Problems({ problems }: { problems: SyncStatus["problems"] }) {
 }
 
 /**
- * Connect to your server: the QR code of its Settings → Sync → Add a phone (scanned on a phone),
- * the link under it, or its address and pairing code typed. This device gets its own sync token;
- * the passphrase then joins the data (Set up, below).
+ * Connect to your server: the QR code of its Your devices page (scanned on a phone), the link
+ * under it, its address with a pairing code, or its address with the server's user name and
+ * password. This device gets its own sync token; the passphrase then starts or joins the data
+ * (Set up, below).
  */
 function ConnectServer({
   status,
@@ -780,13 +781,16 @@ function ConnectServer({
   const qc = useQueryClient();
   const [text, setText] = useState("");
   const [code, setCode] = useState("");
+  const [withPassword, setWithPassword] = useState(false);
+  const [user, setUser] = useState("");
+  const [password, setPassword] = useState("");
   const [problem, setProblem] = useState<string | null>(null);
   const tried = useRef<string | null>(null);
   const connect = useMutation({
-    mutationFn: (link: ConnectLink) => services.connectServer(link, status.deviceName),
+    mutationFn: (link: ServerAccess) => services.connectServer(link, status.deviceName),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["sync"] }),
   });
-  const start = (link: ConnectLink) => {
+  const start = (link: ServerAccess) => {
     setProblem(null);
     connect.mutate(link);
   };
@@ -819,8 +823,13 @@ function ConnectServer({
   const fromLink = parseConnectLink(text);
   const server = fromLink ? null : serverAddress(text);
   const typedCode = pairingCode(code);
-  const link: ConnectLink | null =
-    fromLink ?? (server && typedCode ? { server, code: typedCode } : null);
+  const link: ServerAccess | null =
+    fromLink ??
+    (server && withPassword && user.trim() && password
+      ? { server, user: user.trim(), password }
+      : server && !withPassword && typedCode
+        ? { server, code: typedCode }
+        : null);
   const busy = connect.isPending || scan.isPending;
   const error = problem ?? (connect.error ? errorText(connect.error) : null);
   const manual = (
@@ -833,13 +842,54 @@ function ConnectServer({
         autoComplete="off"
       />
       {fromLink ? null : (
+        <div className="practice-options" role="radiogroup" aria-label="Connect with">
+          <button
+            type="button"
+            role="radio"
+            aria-checked={!withPassword}
+            className="practice-option"
+            aria-pressed={!withPassword}
+            onClick={() => setWithPassword(false)}
+          >
+            A pairing code
+          </button>
+          <button
+            type="button"
+            role="radio"
+            aria-checked={withPassword}
+            className="practice-option"
+            aria-pressed={withPassword}
+            onClick={() => setWithPassword(true)}
+          >
+            User name and password
+          </button>
+        </div>
+      )}
+      {fromLink ? null : withPassword ? (
+        <>
+          <Input
+            label="User name"
+            value={user}
+            onChange={(e) => setUser(e.target.value)}
+            autoComplete="username"
+          />
+          <Input
+            label="Password"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            autoComplete="current-password"
+            hint="The server's sign-in. This device gets its own access; the password is not kept."
+          />
+        </>
+      ) : (
         <Input
           label="Pairing code"
           placeholder="ABCDE-FGHJK"
           value={code}
           onChange={(e) => setCode(e.target.value)}
           autoComplete="off"
-          hint="Works once, for 10 minutes."
+          hint="From the server's Your devices page. Works once, for 10 minutes."
         />
       )}
       <div className="row">
@@ -865,11 +915,10 @@ function ConnectServer({
         </h3>
       )}
       <p className="k-hint" style={{ margin: 0 }}>
-        On your Vuurtoren server, open Settings → Your devices → Add a phone.{" "}
         {status.scan
-          ? "Scan its QR code."
-          : "Paste the link under its QR code, or type the address and the pairing code."}{" "}
-        This device gets its own sync token; your passphrase is never in the code.
+          ? "Open your server's address in a browser, sign in, and scan the QR code under Add a device. Or connect manually with its address and your user name and password."
+          : "Type your server's address with its user name and password, or the pairing code from its Your devices page."}{" "}
+        This device gets its own access; your passphrase never leaves your devices.
       </p>
       {scan.isPending ? (
         <ScanOverlay onCancel={() => void services.cancelScan().catch(() => undefined)} />

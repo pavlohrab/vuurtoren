@@ -30,7 +30,8 @@ export function ScanOverlay({ onCancel }: { onCancel: () => void }) {
         <span className="scan-corner scan-corner--br" />
       </div>
       <p className="scan-hint">
-        On your server, open Settings → Your devices → Add a phone, and fit its code in the square.
+        Open your server&apos;s Your devices page, and fit the code under Add a device in the
+        square.
       </p>
       <Button className="scan-cancel" onClick={onCancel}>
         Cancel

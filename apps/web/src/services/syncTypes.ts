@@ -1,5 +1,6 @@
 /** Contract of sync: your data on every device, through a place you choose, encrypted. */
 import type { SyncDevice, SyncProblem } from "@app/db";
+import type { ServerAccess } from "../sync/connect.js";
 
 /** Where synced files live, with what this device needs to reach it. */
 export type SyncPlace =
@@ -89,12 +90,13 @@ export interface SyncServices {
   /** Stop syncing on this device; the data here and in the place stay. */
   stopSync(): Promise<void>;
   /**
-   * Connect to a Vuurtoren server with a pairing code (scanned, from a link, or typed): the
+   * Connect to a Vuurtoren server with a pairing code (scanned, from a link, or typed) or by
+   * signing in with the server's user name and password: the
    * server gives this device its own sync token, which goes into the device's key store. The
    * server becomes the place to join (`paired`) and, on a device without its own language
    * server, the language server. Set up then joins it with the passphrase.
    */
-  connectServer(link: { server: string; code: string }, deviceName: string): Promise<SyncStatus>;
+  connectServer(link: ServerAccess, deviceName: string): Promise<SyncStatus>;
   /** Read a `vuurtoren://connect` link with the camera; null when cancelled or not available. */
   scanConnectLink(): Promise<string | null>;
   /** Stop a running scan (Cancel on the scanner's frame); the scan then gives null. */

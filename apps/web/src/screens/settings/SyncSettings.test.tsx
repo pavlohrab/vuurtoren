@@ -187,7 +187,7 @@ describe("Settings → Sync", { timeout: 20_000 }, () => {
   });
 
   it("connects to a server with a pairing code, then joins with the passphrase", async () => {
-    const connectServer = vi.fn(async (link: { server: string; code: string }) => ({
+    const connectServer = vi.fn(async (link: { server: string }) => ({
       ...OFF,
       paired: link.server,
     }));
@@ -265,7 +265,7 @@ describe("Settings → Sync", { timeout: 20_000 }, () => {
     });
     await screen.findByRole("button", { name: "Scan QR code" });
     // The server's section is called Your devices.
-    expect(screen.getByText(/Settings → Your devices → Add a phone/)).toBeVisible();
+    expect(screen.getByText(/scan the QR code under Add a device/)).toBeVisible();
     // No second form for the same server: address and token wait under Connect manually.
     expect(screen.queryByLabelText("Sync token")).toBeNull();
     expect(screen.queryByRole("radio", { name: /Your Vuurtoren server/ })).toBeNull();

@@ -156,6 +156,36 @@ describe("pairing", () => {
   });
 });
 
+describe("a device signing in by itself", () => {
+  const signIn = (user: string, password: string) =>
+    fetch(`${base}/api/sync/pair`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ user, password, name: "Desktop (Arch)" }),
+    });
+
+  it("gets its own sync token with the server's user name and password", async () => {
+    await serve();
+    const res = await signIn("anna", PASSWORD);
+    expect(res.status).toBe(200);
+    const made = (await res.json()) as { token: string; label: string };
+    expect(made.token).toMatch(/^ksync_/);
+    expect(made.label).toBe("Desktop (Arch)");
+    const list = await fetch(`${base}/api/sync/list?dir=`, {
+      headers: { authorization: `Bearer ${made.token}` },
+    });
+    expect(list.status).toBe(200);
+  });
+
+  it("is refused with a wrong password, and slowed down like sign-in", async () => {
+    await serve({ freeFailures: 2 });
+    expect((await signIn("anna", "wrong")).status).toBe(401);
+    expect((await signIn("bob", PASSWORD)).status).toBe(401);
+    expect((await signIn("anna", "wrong")).status).toBe(401);
+    expect((await signIn("anna", PASSWORD)).status).toBe(429);
+  });
+});
+
 describe("pairing codes in the token store", () => {
   it("keeps only the hash, at most five codes, and ignores case and dashes", () => {
     const store = new TokenStore(":memory:", () => clock);

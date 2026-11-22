@@ -13,6 +13,16 @@ export interface ConnectLink {
   code: string;
 }
 
+/** A server and its user name and password: the device signs in by itself. */
+export interface ServerSignIn {
+  server: string;
+  user: string;
+  password: string;
+}
+
+/** How a device gets its sync token: a pairing code, or signing in. */
+export type ServerAccess = ConnectLink | ServerSignIn;
+
 /** The symbols of a code: no 0/O, 1/I/L (server/api/src/auth/tokens.ts). */
 const CODE = /^[ABCDEFGHJKMNPQRSTUVWXYZ2-9]{5}-?[ABCDEFGHJKMNPQRSTUVWXYZ2-9]{5}$/;
 
@@ -81,24 +91,28 @@ export interface Paired {
 
 /** Trade the pairing code for a sync token (`POST <server>/api/sync/pair`). */
 export async function pairWithServer(
-  link: ConnectLink,
+  link: ServerAccess,
   label: string,
   fetchImpl: typeof fetch,
 ): Promise<Paired> {
+  const body =
+    "code" in link
+      ? { code: link.code, name: label }
+      : { user: link.user, password: link.password, name: label };
   let res: Response;
   try {
     res = await fetchImpl(`${link.server}/api/sync/pair`, {
       method: "POST",
       cache: "no-store",
       headers: { "content-type": "application/json", "x-vuurtoren": "1" },
-      body: JSON.stringify({ code: link.code, name: label }),
+      body: JSON.stringify(body),
     });
   } catch {
     throw new Error(
       `Vuurtoren at ${new URL(link.server).host} cannot be reached. Check the address and that this device is online.`,
     );
   }
-  const body = (await res.json().catch(() => ({}))) as {
+  const answer = (await res.json().catch(() => ({}))) as {
     token?: string;
     label?: string;
     error?: string;
@@ -108,8 +122,8 @@ export async function pairWithServer(
       `${new URL(link.server).host} does not answer like a Vuurtoren server that can pair devices. Check the address, or update the server.`,
     );
   }
-  if (!res.ok || !body.token) {
-    throw new Error(body.error ?? `The server answered ${res.status}.`);
+  if (!res.ok || !answer.token) {
+    throw new Error(answer.error ?? `The server answered ${res.status}.`);
   }
-  return { url: link.server, token: body.token, label: body.label ?? label };
+  return { url: link.server, token: answer.token, label: answer.label ?? label };
 }
