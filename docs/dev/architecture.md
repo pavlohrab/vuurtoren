@@ -136,15 +136,18 @@ flowchart LR
 
 ## A Vuurtoren server
 
-A server gives devices sync and the language server; it keeps no learner data. nginx
-(`deploy/nginx.conf.template`) serves the app's files and proxies `/api/` to `server/api` and
+A server gives devices sync and the language server; it keeps no learner data and serves no
+app. nginx (`deploy/nginx.conf.template`) serves one page, **Your devices** (`deploy/devices`:
+sign in, add a device with a pairing code, remove one), and proxies `/api/` to `server/api` and
 `/nlp/` to `server/nlp`, asking `/api/auth/check` first (`auth_request`). The check accepts a
 session cookie, the server's `VUURTOREN_TOKEN` or, for `/api/sync` and `/nlp/`, a device's sync
-token. The page served by a server boots in browser mode like any other device (its own copy in
-OPFS): it signs in first, can choose **This server** as its sync place (it makes a sync token for
-itself with its session) and reaches `/nlp/` with its session. A browser elsewhere that syncs
-with a server uses that server's `/nlp` with its sync token while its language-server address is
-the default; the desktop app uses its bundled one.
+token. A phone that syncs with a server uses that server's `/nlp` with its sync token; the
+desktop app uses its bundled one.
+
+Text bundles: a text's analysis, grammar hits and per-sentence extras (`text_extras`: English,
+word pairs, in-context meanings) are derived data, never events. The device that made them puts
+them in its own sync folder (`devices/<id>/analyses/`, sealed); a device with no analysis of a
+text takes them from there (`packages/db/src/sync/engine.ts`, `apps/web/src/services/liveExtras.ts`).
 
 ## Language server OCR
 

@@ -22,11 +22,11 @@ The apps are not signed yet, so your computer may warn you:
 - **macOS:** right-click the app and choose **Open**.
 - **Linux (AppImage):** make the file executable (`chmod +x Vuurtoren*.AppImage`), then run it.
 
-The most common words and their sentences come with recorded speech (Settings → Reading & audio:
-female or male voice) once the audio pack is out; other words and sentences use your system's
-voice. Listening exercises and dictation read Dutch aloud with your system's Dutch voice. Windows and
+The most common words, their sentences and the stories come with recorded speech, in a female and
+a male voice (Settings → Reading → Voice). The app downloads the recordings by itself (about
+230 MB) when it is online. Other words and sentences use your system's Dutch voice. Windows and
 macOS can add one in their speech settings; many Linux systems have no Dutch voice, and then
-those exercises are off.
+those words stay silent and the speaker shows crossed out.
 
 ## The first start
 
