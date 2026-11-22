@@ -19,6 +19,7 @@ export default tseslint.config(
   ...tseslint.configs.recommended,
   // The desktop app's injected bridge script (plain browser JS).
   { files: ["apps/desktop/src-tauri/src/*.js"], languageOptions: { globals: globals.browser } },
+  { files: ["deploy/devices/*.js"], languageOptions: { globals: globals.browser } },
   { files: ["scripts/**/*.mjs"], languageOptions: { globals: globals.node } },
   {
     files: ["apps/web/**/*.{ts,tsx}"],
