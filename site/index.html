@@ -1393,7 +1393,7 @@
         gap: 48px;
       }
       .nv-mark {
-        width: min(100%, 180px);
+        width: min(100%, 170px);
         aspect-ratio: 1;
         margin: 0 auto;
       }
@@ -1428,8 +1428,25 @@
       }
       .namev .copy p {
         color: var(--muted);
-        font-size: 18px;
+        font-size: 17px;
         max-width: 56ch;
+      }
+      /* An aside between the hero and the features: a quieter heading than the sections. */
+      .namev h2 {
+        font-size: clamp(24px, 2.6vw, 30px);
+      }
+      .namev .copy {
+        gap: 10px;
+      }
+      @media (max-width: 760px) {
+        .namev .split {
+          grid-template-columns: 1fr;
+          gap: 20px;
+        }
+        .nv-mark {
+          width: 96px;
+          margin: 0;
+        }
       }
       .namev .copy p b {
         color: var(--ink);
@@ -1855,8 +1872,11 @@
           <h2 id="name-h">Why a lighthouse?</h2>
           <p>
             Vuurtoren is Dutch for lighthouse: <b lang="nl">vuur</b>, fire, on a
-            <b lang="nl">toren</b>, a tower. A lighthouse doesn't take you across the water, it
-            shows you where the coast is. That is what I wanted the app to do for a text.
+            <b lang="nl">toren</b>, a tower.
+          </p>
+          <p>
+            The name is a metaphor: the app doesn't take you through the dark waters of Dutch, but
+            it lights up the path and makes it easier to find your way.
           </p>
         </div>
       </div>
