@@ -72,9 +72,9 @@ describe("Settings", () => {
     await user.click(screen.getByRole("combobox", { name: "Speed" }));
     await user.click(await screen.findByRole("option", { name: "0.8×" }));
     const word = screen.getByRole("checkbox", { name: /Say the word/ });
-    const sentence = screen.getByRole("checkbox", { name: /Say the sentence/ });
+    const sentence = screen.getByRole("checkbox", { name: /Then say its sentence/ });
     expect(word).toBeChecked();
-    expect(sentence).not.toBeChecked();
+    expect(sentence).toBeChecked();
     await user.click(word);
     await user.click(sentence);
     await waitFor(
@@ -83,7 +83,7 @@ describe("Settings", () => {
           voice: "male",
           audioRate: 0.8,
           autoplayWord: false,
-          autoplaySentence: true,
+          autoplaySentence: false,
         }),
       { timeout: 2000 },
     );
