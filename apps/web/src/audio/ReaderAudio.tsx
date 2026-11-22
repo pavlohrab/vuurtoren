@@ -1,6 +1,6 @@
 /**
- * Sound in the reader: a play button for the inspected word (the starter clip when the word
- * stands in its dictionary form, else the system voice says it as written) and, side by side,
+ * Sound in the reader: a play button for the inspected word (the recording of its dictionary
+ * form, else the system voice says it as written) and, side by side,
  * one per sentence (the recorded clip of a starter or story sentence, else the system voice).
  */
 import { useCallback } from "react";
@@ -19,10 +19,9 @@ export function useReaderAudio() {
         onPlay={() =>
           void (async () =>
             play(`word:${entry.tokenIndex}`, {
-              clip:
-                entry.surface.toLocaleLowerCase() === entry.lemma.toLocaleLowerCase()
-                  ? await clipId("word", wordClipText(entry.lemma, entry.article))
-                  : undefined,
+              // The recording says the dictionary form ("de gracht" for grachten); the system
+              // voice, where there is one, says the word as written.
+              clip: await clipId("word", wordClipText(entry.lemma, entry.article)),
               text: entry.surface,
             }))()
         }

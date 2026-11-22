@@ -1,3 +1,4 @@
+import { finishBoot } from "./bootSplash.js";
 import { StrictMode, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import "./index.css";
@@ -301,6 +302,7 @@ function show(b: Boot): Promise<void> {
       break;
   }
   reactRoot.render(<StrictMode>{node}</StrictMode>);
+  finishBoot();
   return Promise.resolve();
 }
 
