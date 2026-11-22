@@ -13,7 +13,7 @@ root-owned, so the same data gives the same SHA-256). Versions come from packs.j
 pack's version when its data changes (new upstream snapshot, schema change), rebuild, upload the
 archives as release assets (``gh release upload packs-<version> dist/packs/*``) and commit the
 updated packs.json. Servers then install the new version at their next start (or via
-``POST /admin/packs``). See docs/architecture.md, "Data packs".
+``POST /admin/packs``). See docs/dev/architecture.md, "Data packs".
 
 Next to them goes the grammar-example cache, ``grammar-examples-nl-<sentences version>-<detector
 hash>.tar.gz`` (not in packs.json: it is derived from the sentence pack and the grammar detectors).

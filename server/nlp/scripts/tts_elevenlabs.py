@@ -9,7 +9,7 @@
 into chunks of about 14,500 characters: one chunk in both voices is about 29,000 characters.
 `speak` writes `<out>/<gender>/<id>.mp3`. A clip's id comes from its text, so a rebuilt list
 reuses every clip it still needs, and a run can stop and resume: existing files are skipped.
-How to run it: docs/audio.md.
+How to run it: docs/dev/audio.md.
 """
 
 from __future__ import annotations

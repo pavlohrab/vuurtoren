@@ -1,5 +1,5 @@
 /* Reader toolbar chips, grammar marks popover, focus picker, "Aa" settings and focus mode
-   (docs/design-system.md, Reader annotations). */
+   (docs/dev/design-system.md, Reader annotations). */
 
 /* A reading theme paints the whole reading surface (its tokens are inline on .reader-page). */
 .reader-page[data-reading-theme] {

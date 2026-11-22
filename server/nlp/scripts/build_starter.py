@@ -9,7 +9,7 @@ Inputs, all pinned: the ``dictionary-nl`` and ``sentences-nl`` packs at the vers
 ``src/vuurtoren_nlp/packs.json`` (their install markers are checked against its digests), the
 ``wordfreq`` data and the spaCy model locked in ``uv.lock``. The same inputs give the same file.
 
-Steps (rules in :mod:`vuurtoren_nlp.starter`, documented in docs/algorithms.md, "Starter words"):
+Steps (rules in :mod:`vuurtoren_nlp.starter`, documented in docs/dev/algorithms.md, "Starter words"):
 
 1. The ``--forms`` most frequent Dutch word forms of wordfreq.
 2. How each form is read in context: every Tatoeba sentence of the sentence pack is analysed

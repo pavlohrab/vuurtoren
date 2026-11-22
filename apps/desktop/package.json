@@ -2,7 +2,7 @@
   "name": "@app/desktop",
   "version": "0.1.0",
   "private": true,
-  "license": "MIT OR Apache-2.0",
+  "license": "MIT",
   "type": "module",
   "description": "Vuurtoren desktop app (Tauri v2): the whole app on this computer, with a bundled language server. Not part of `pnpm build`: build the sidecar (server/nlp/desktop/build_sidecar.py), then `pnpm --filter desktop bundle`.",
   "scripts": {

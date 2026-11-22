@@ -1,7 +1,7 @@
 /**
  * "Why is this word like this?" — plain-English notes on the form of any word in a text, read
  * from the stored analysis (spaCy lemma, POS, morph, dependency tree) with no server round trip.
- * Rules are listed in docs/algorithms.md ("Word-form explainer").
+ * Rules are listed in docs/dev/algorithms.md ("Word-form explainer").
  *
  * Precision first: every rule checks that the form agrees with what it is about to say (a weak
  * past must really be stem + -te/-de, a "-t after hij" must really end in -t, …). When a check

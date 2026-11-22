@@ -2,7 +2,7 @@
   "name": "@app/anki-report",
   "version": "0.0.0",
   "private": true,
-  "license": "MIT OR Apache-2.0",
+  "license": "MIT",
   "type": "module",
   "description": "M1 gate: auto-detect the Dutch deck, map cards to lemmas, write a review sample.",
   "scripts": {

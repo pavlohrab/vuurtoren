@@ -71,7 +71,7 @@ export interface TextCoverProps {
 }
 
 /**
- * The cover of a text, typographic (design-system.md, Covers): a flat tint per source kind with
+ * The cover of a text, typographic (docs/dev/design-system.md, Covers): a flat tint per source kind with
  * a spine, the source icon and kind at the top, the title in Literata at the bottom and the
  * coverage as a thin known-colour line on the bottom edge. With `imageUrl` the image fills it.
  */

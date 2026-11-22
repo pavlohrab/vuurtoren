@@ -1,4 +1,4 @@
-/* Progress: calm charts (design-system.md, Charts). One series each, thin marks, recessive
+/* Progress: calm charts (docs/dev/design-system.md, Charts). One series each, thin marks, recessive
    axis text, the last value labelled. */
 .progress-charts {
   display: grid;

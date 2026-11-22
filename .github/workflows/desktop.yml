@@ -77,7 +77,7 @@ jobs:
               gh api -X PATCH "repos/$REPO/releases/$id" -F draft=false -F prerelease=true >/dev/null
             else
               gh release create "$tag" --repo "$REPO" --title "Data packs $version" --prerelease \
-                --notes "Language server data packs. See docs/architecture.md, 'Language server data packs'."
+                --notes "Language server data packs. See docs/dev/architecture.md, 'Language server data packs'."
             fi
             gh release upload "$tag" --repo "$REPO" dist/packs/*.tar.gz src/vuurtoren_nlp/packs.json --clobber
             if ! git diff --quiet -- src/vuurtoren_nlp/packs.json; then

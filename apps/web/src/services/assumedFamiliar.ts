@@ -1,7 +1,7 @@
 /**
  * Cloze for beginners: the starter words below the learner's start level (`starterFrom`; start
  * level 3 means ranks 1–1000) are taken as familiar, so the reader may blank them before there
- * is any evidence. Only cloze candidacy uses this (see docs/algorithms.md §3.4): glossing,
+ * is any evidence. Only cloze candidacy uses this (see docs/dev/algorithms.md §3.4): glossing,
  * coverage and the known count stay with the evidence, and nothing is recorded.
  */
 import { STARTER_LEVEL_SIZE, type StarterWord, starterKey } from "@app/anki";

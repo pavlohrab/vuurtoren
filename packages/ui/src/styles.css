@@ -1,5 +1,5 @@
 /*
- * Vuurtoren design tokens and component styles (docs/design-system.md).
+ * Vuurtoren design tokens and component styles (docs/dev/design-system.md).
  * Direction "Night lamp": dark-first and focused, like reading under a lamp. The light theme
  * is designed on its own (cool, violet-tinted paper), not an inversion.
  *
@@ -26,7 +26,7 @@
      everything aligned to it (tools, footer, AI panel), whatever their font size. */
   --measure: 44rem;
 
-  /* Layout (design-system.md, Layout & composition): the 8px scale and the three page widths. */
+  /* Layout (docs/dev/design-system.md, Layout & composition): the 8px scale and the three page widths. */
   --s-1: 4px;
   --s-2: 8px;
   --s-3: 12px;
@@ -53,7 +53,7 @@
   --font-display: "Instrument Sans Variable", "Inter Variable", system-ui, sans-serif;
   --font-mono: "JetBrains Mono Variable", ui-monospace, "SFMono-Regular", Menlo, monospace;
 
-  /* Motion budget (docs/design-system.md): CSS only, transform/opacity, 150–300 ms,
+  /* Motion budget (docs/dev/design-system.md): CSS only, transform/opacity, 150–300 ms,
      nothing loops (except the busy spinner and loading skeletons), all off under
      prefers-reduced-motion. Use these tokens, never raw durations or easings. */
   --dur-fast: 150ms;
@@ -708,7 +708,7 @@ kbd {
 }
 
 /* ---------- Chip ---------- */
-/* One shape (design-system.md, Chips): 22px pill, Inter 12.5px, hairline edge. */
+/* One shape (docs/dev/design-system.md, Chips): 22px pill, Inter 12.5px, hairline edge. */
 .k-chip {
   display: inline-flex;
   align-items: center;
@@ -739,7 +739,7 @@ kbd {
   border-color: color-mix(in srgb, var(--known) 32%, transparent);
 }
 
-/* ---------- Layout primitives (design-system.md, Layout & composition) ---------- */
+/* ---------- Layout primitives (docs/dev/design-system.md, Layout & composition) ---------- */
 /* Quiet link: navigation to another place. Accent text, small arrow, no underline until hover. */
 .k-link {
   display: inline-flex;
@@ -1025,7 +1025,7 @@ button.k-word-chip {
   color: var(--danger);
   border-color: color-mix(in srgb, var(--danger) 40%, var(--line));
 }
-/* A single Dutch word in UI: Inter, never the reading serif (design-system.md, Type roles). */
+/* A single Dutch word in UI: Inter, never the reading serif (docs/dev/design-system.md, Type roles). */
 .k-lemma {
   font-family: var(--font-ui);
   font-size: 15px;

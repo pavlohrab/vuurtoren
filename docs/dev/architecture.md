@@ -1,6 +1,6 @@
 # Architecture
 
-Which package owns what and how a click reaches the data. Rules: [decisions.md](decisions.md).
+Which package owns what and how a click reaches the data.
 Algorithms: [algorithms.md](algorithms.md).
 
 ## Packages
@@ -18,7 +18,7 @@ Dependencies point down; nothing in `packages/` imports from `apps/`.
 | `packages/ui`         | Design-system components (reader, word inspector, cards, controls). Renders DTOs from core; no services.                                                                                                                                                                | core                                  |
 | `packages/mcp-tools`  | The MCP tools of `apps/mcp`.                                                                                                                                                                                                                                            | core, content, db, ai                 |
 | `apps/web`            | The React PWA.                                                                                                                                                                                                                                                          | all of the above                      |
-| `apps/desktop`        | Tauri v2 app for computers and Android: local SQLite file, sync requests, key store; on a computer also the bundled language server, Anki bridge, sync folders, updater ([android.md](android.md)).                                                                     | (loads apps/web)                      |
+| `apps/desktop`        | Tauri v2 app for computers and Android: local SQLite file, sync requests, key store; on a computer also the bundled language server, Anki bridge, sync folders, updater.                                                                                                | (loads apps/web)                      |
 | `apps/mcp`            | stdio MCP server on the desktop app's data file.                                                                                                                                                                                                                        | mcp-tools, core, db, anki, nlp-client |
 | `server/api`          | A Vuurtoren server: sign-in, sync tokens, the sync place (`/api/sync`) and the sign-in check of the language server (`/nlp/`). Holds no learner data.                                                                                                                   | —                                     |
 | `server/nlp`          | Python language server: analysis (spaCy), dictionary, forms, sentences, grammar detectors, OCR (RapidOCR), translation.                                                                                                                                                 | —                                     |

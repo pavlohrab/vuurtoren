@@ -10,7 +10,7 @@
 # at startup the server installs missing or outdated packs in the background, from
 # VUURTOREN_PACKS_DIR (bundled archives, the -full image), VUURTOREN_PACKS_URL (release assets) or, with
 # neither, by building them here from the pinned upstream sources with scripts/ (~10 minutes,
-# once). See vuurtoren_nlp/packs.py and docs/architecture.md ("Data packs").
+# once). See vuurtoren_nlp/packs.py and docs/dev/architecture.md ("Data packs").
 #
 # Size: a small wordfreq-based language detector,
 # Dutch-only simplemma data, wordfreq lists only for the detected languages, no tests or bytecode

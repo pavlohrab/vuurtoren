@@ -1,6 +1,6 @@
 # Data licences (server/nlp)
 
-The service code is MIT OR Apache-2.0. The data and models it uses carry their own licences.
+The service code is MIT. The data and models it uses carry their own licences.
 Share-alike terms apply to the data, not to the application code.
 
 | Data / model | Used for | Licence | Notes |

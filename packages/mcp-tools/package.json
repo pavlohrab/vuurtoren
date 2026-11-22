@@ -2,7 +2,7 @@
   "name": "@app/mcp-tools",
   "version": "0.0.0",
   "private": true,
-  "license": "MIT OR Apache-2.0",
+  "license": "MIT",
   "type": "module",
   "description": "The Vuurtoren MCP tools of the stdio server (apps/mcp).",
   "exports": {

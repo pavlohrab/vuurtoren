@@ -659,7 +659,7 @@ spaCy attached `op` to `bel` as a particle, so rule 2.3(a) joined them into `opb
 
 Everything above (deck detection, the learner model, lemmatisation, separable verbs, derivation and compound glosses, meanings read off the sentence translation, the dictionary, offline sentence translation, OCR and cleanup, the reading planner, clozes, the staircase, practice scheduling and exercises, distractors, grammar detection, Anki writes, and native reviews with their tuning) runs **without any AI provider or API key**. The two models involved (spaCy and OPUS-MT) are small, local and deterministic for a given input. They never generate free text about you or for you.
 
-AI features are opt-in extras, hidden until you configure a provider: Converse, Explain this sentence, Simplify this page and the English of Side by side (its word pairs still come from the offline model, section 3.7). See [ai.md](ai.md) for what they do, which providers work and what is sent.
+AI features are opt-in extras, hidden until you configure a provider: Converse, Explain this sentence, Simplify this page and the English of Side by side (its word pairs still come from the offline model, section 3.7). See [ai.md](../ai.md) for what they do, which providers work and what is sent.
 
 ---
 
@@ -806,7 +806,7 @@ Your data on every device, with the event log as the unit of sync (`packages/db/
 
 ### 10.1 What travels
 
-Every change is an event in the append-only log ([decisions](decisions.md#data)). A device sends **its own** events, oldest first, in segments of at most 2,000 events and 4 MiB of JSON (a larger single event goes alone), and imports the other devices' files. Images and sounds the events refer to (covers, card media) travel as blobs. Per-device bookkeeping (what was sent, what was received from each device, blobs known to be in the place, files set aside) stays on the device.
+Every change is an event in the append-only log. A device sends **its own** events, oldest first, in segments of at most 2,000 events and 4 MiB of JSON (a larger single event goes alone), and imports the other devices' files. Images and sounds the events refer to (covers, card media) travel as blobs. Per-device bookkeeping (what was sent, what was received from each device, blobs known to be in the place, files set aside) stays on the device.
 
 ### 10.2 The place
 

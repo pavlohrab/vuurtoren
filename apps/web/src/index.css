@@ -2,7 +2,7 @@
 @import "@app/ui/styles.css";
 @import "@app/ui/add-to-anki.css";
 
-/* ---------- App shell layout (docs/design-system.md, Layout) ---------- */
+/* ---------- App shell layout (docs/dev/design-system.md, Layout) ---------- */
 .shell {
   --inspector-w: 340px;
   display: grid;
@@ -187,7 +187,7 @@
   min-height: 0;
   overflow: auto;
 }
-/* One page column per page type (design-system.md, Grid and content widths). Every type
+/* One page column per page type (docs/dev/design-system.md, Grid and content widths). Every type
    starts on the left edge of the wide column; only the right edge moves. */
 .page {
   --page-w: var(--w-wide);
@@ -1489,7 +1489,7 @@
   overflow-wrap: anywhere;
 }
 
-/* ---------- Motion (docs/design-system.md, Motion budget) ---------- */
+/* ---------- Motion (docs/dev/design-system.md, Motion budget) ---------- */
 /* The word panel slides in (transform) and the reader column moves aside with it: see
    .inspector-panel above. */
 .shell:not([data-sidebar="collapsed"]) .nav-label {

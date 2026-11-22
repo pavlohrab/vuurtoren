@@ -30,7 +30,7 @@ jobs:
           version=$(python3 -c "import json;print(json.load(open('src/vuurtoren_nlp/packs.json'))['packs']['dictionary-nl']['version'])")
           tag="packs-$version"
           gh release view "$tag" >/dev/null 2>&1 ||
-            gh release create "$tag" --title "Data packs $version" --notes "Language server data packs. See docs/architecture.md, 'Language server data packs'." --prerelease
+            gh release create "$tag" --title "Data packs $version" --notes "Language server data packs. See docs/dev/architecture.md, 'Language server data packs'." --prerelease
           gh release upload "$tag" dist/packs/*.tar.gz src/vuurtoren_nlp/packs.json --clobber
           {
             echo "### Data packs $version"

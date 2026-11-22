@@ -6,7 +6,7 @@ import { cn } from "./cn.js";
  * of text where one word is lit the same way (the reader highlights the few words worth learning).
  * Lamp housing, tower, base and text lines are ink (`currentColor`); lamp, beam and the lit word
  * are `--accent`. Drawn on a 64 grid; the same shapes are in `apps/web/public/logo-mark.svg`,
- * `favicon.svg`, the app icons and the README lockups (docs/design-system.md, Logo).
+ * `favicon.svg`, the app icons and the README lockups (docs/dev/design-system.md, Logo).
  */
 type Shape = { ink?: true; x: number; y: number; w: number; h: number; rx: number; faint?: true };
 const MARK_RECTS: readonly Shape[] = [

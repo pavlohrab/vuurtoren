@@ -38,8 +38,8 @@
     "shortDescription": "Read Dutch, learn from what you read",
     "longDescription": "Vuurtoren is an open-source reading app for learning Dutch. Everything runs on this computer: your texts and words in one file under Documents/Vuurtoren, a bundled Dutch language server, and Anki through AnkiConnect without extra setup. It syncs with your other devices through a folder, WebDAV or your own Vuurtoren server.",
     "publisher": "Vuurtoren",
-    "copyright": "MIT OR Apache-2.0",
-    "license": "MIT OR Apache-2.0",
+    "copyright": "MIT",
+    "license": "MIT",
     "homepage": "https://github.com/",
     "icon": [
       "icons/32x32.png",

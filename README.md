@@ -7,13 +7,14 @@
 </p>
 
 <p align="center">
-  <strong>Read Dutch at your level. Keep the words you meet.</strong>
+  <strong>Flashcards meet reading. Read Dutch at your level.</strong><br>
+  Local-first, open, and works with <a href="https://apps.ankiweb.net/">Anki</a>.
 </p>
 
 <p align="center">
   <a href="https://github.com/pavlohrab/Vuurtoren/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/pavlohrab/Vuurtoren/actions/workflows/ci.yml/badge.svg"></a>
   <a href="https://github.com/pavlohrab/Vuurtoren/actions/workflows/images.yml"><img alt="Images" src="https://github.com/pavlohrab/Vuurtoren/actions/workflows/images.yml/badge.svg"></a>
-  <a href="#licence"><img alt="Licence: MIT OR Apache-2.0" src="https://img.shields.io/badge/licence-MIT%20OR%20Apache--2.0-c99a5b"></a>
+  <a href="#licence"><img alt="Licence: MIT" src="https://img.shields.io/badge/licence-MIT-c99a5b"></a>
   <a href="docs/guide/self-host.md"><img alt="Self-hosted sync" src="https://img.shields.io/badge/self--hosted-sync-8f5a1f"></a>
 </p>
 
@@ -24,46 +25,45 @@
 
 ## Why Vuurtoren
 
-While learning Dutch I used two tools: reading and Anki. The problem is that they never talk to
-each other. My decks had no idea what I was reading, and the text had no idea which words I
-already knew.
+While learning Dutch, I ran into a problem: there were hardly any texts suited to a beginner
+reader. On top of that, learning the words from them was tedious.
 
-Vuurtoren brings the two together. It knows your words, from its own flashcards or your Anki
-decks, and uses them to make any text readable at your level: an article, a PDF, a photo of a
-page or your course book. Known words stay as they are, a few new ones are marked to learn, and
-the rest get a short translation. One click turns a word into a flashcard, with the sentence you
-found it in. There are also exercises, grammar from A1 to C1 and practice for the A2
-inburgeringsexamen.
+Vuurtoren tries to solve both:
 
-About the name: vuurtoren is Dutch for lighthouse, literally a "fire-tower", one of those
-compound pictures Dutch builds so many of its words from. A lighthouse helps you find your way
-through unfamiliar water, and that is what I want this app to do for a text.
+1. It adapts any text to your level, from the words you have learnt: an article, a PDF, a photo
+   of a page or your course book.
+2. It makes learning the words from that text easy. One tap turns a word into a flashcard with
+   the sentence you found it in, and the cards are scheduled with FSRS, the same algorithm
+   [Anki](https://apps.ankiweb.net/) uses.
+
+Your data stays on your devices, in an open format, and exports to Anki.
+
+About the name: vuurtoren is Dutch for lighthouse. A lighthouse helps you find your way through
+unfamiliar water, and that is what I want this app to do for a text.
 
 ## What it does
 
-**Reading.** Open a story at your level (there are 35, from A1 to B2, with recorded audio), a web
-page, a PDF or a photo of a page from your course book. Vuurtoren keeps a set number of new words
-per page and translates the rest above the line, so the text stays readable. Tap a word for its
-meaning in that sentence, its grammar and its forms; side by side puts each sentence next to its
-English, word paired with word. A course book you own (PDF, EPUB or photos) can be followed unit
-by unit.
+**Reading.** Open a story at your level, a web page, a PDF or a photo of a page from your course
+book. Vuurtoren picks a few new words on each page to focus on and, based on the words you know,
+translates the rest, so the text stays readable. Tap a word to see its meaning in that sentence,
+its grammar and its forms. Side by side puts each sentence next to its English and highlights
+each word together with its translation.
 
-**Words.** One tap keeps a word, with the sentence you found it in. Your cards are reviewed with
-FSRS, the same scheduler Anki uses, a few minutes a day: due cards first, then new words, swiped
-or tapped. If you start from nothing, the 5000 most common Dutch words are there from the level
-you choose. If you already use Anki, bring your decks in as `.apkg` files, or keep reviewing in
-Anki.
+**Words.** Every word you tap while reading can become a card, with the sentence you found it
+in. Cards are reviewed with FSRS, the same scheduler [Anki](https://apps.ankiweb.net/) uses. Import
+the Anki decks you already have, so the app knows your level, or keep reviewing in Anki and use
+Vuurtoren only for reading. Starting from zero? Vuurtoren comes with the 5000 most common Dutch
+words.
 
-**Grammar and the exam.** Inversion, separable verbs, the perfect tense and the rest are marked
-where they appear in your texts, with topics from A1 to C1 explained on your own sentences.
-Exercises practise what you read, and mock exams prepare the A2 inburgeringsexamen. AI is there
-only if you want it, with your own key: stories at your level, sentences explained, a chat
-partner who keeps to words you know.
+**Grammar and the exam.** Grammar such as inversion, separable verbs and the perfect tense is
+marked where it appears in your texts, and the Grammar section explains topics from A1 to C1.
+Exercises practise what you read, and mock exams prepare you for the A2 inburgeringsexamen. AI is
+there only if you want it, with your own key: stories at your level, sentences explained, a chat
+partner who keeps to words you know. See [AI](docs/ai.md) for the setup.
 
-**Your data.** Everything lives on your devices and works offline. Sync passes changes between
-them locked with your passphrase, through your own server, WebDAV or a folder Syncthing already
-keeps in sync. **Vuurtoren Sync** is coming: sign in on each device and they sync, with nothing to
-set up.
+**Your data.** Everything lives on your devices and works offline. Sync is encrypted with your
+passphrase and goes through your own server, WebDAV or a Syncthing folder. Can't self-host?
+**Vuurtoren Sync** is coming: sign in on each device and they sync, with nothing to set up.
 
 ## Get Vuurtoren
 
@@ -78,25 +78,13 @@ set up.
   <a href="https://vuurtoren.app">vuurtoren.app</a> ·
   <a href="docs/guide/install.md">Install</a> ·
   <a href="docs/guide/sync.md">Sync your devices</a> ·
-  <a href="docs/guide/self-host.md">Your own sync server</a>
+  <a href="docs/phones.md">On your phone</a> ·
+  <a href="docs/guide/self-host.md">Your own sync server</a> ·
+  <a href="docs/dev/README.md">For developers</a>
 </p>
-
-## Development
-
-Node ≥ 22, pnpm, [uv](https://docs.astral.sh/uv/), Python ≥ 3.12.
-
-```sh
-pnpm install && pnpm build
-cd server/nlp && uv run python scripts/build_dictionary.py && uv run python scripts/fetch_mt_model.py && cd -
-pnpm nlp     # language server on :8000
-pnpm dev     # web app on http://localhost:5173 (add ?demo for demo data)
-```
-
-More: [architecture](docs/architecture.md) · [algorithms](docs/algorithms.md) ·
-[decisions](docs/decisions.md). Issues and pull requests are welcome.
 
 ## Licence
 
-MIT or Apache-2.0, at your option. The content in `content/` (the starter word list) is CC BY-SA
-4.0; see [content/LICENSE](content/LICENSE). Vuurtoren is an independent project; it talks to Anki
+The code is MIT. The content in `content/` (the starter words and the stories) is CC BY-SA
+4.0, because the dictionary and sentence sources it is built from are; see [content/LICENSE](content/LICENSE). Vuurtoren is an independent project; it talks to Anki
 through the AnkiConnect add-on.

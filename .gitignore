@@ -35,3 +35,6 @@ playwright-report/
 # desktop sidecar build (server/nlp/desktop/build_sidecar.py)
 server/nlp/build/
 apps/desktop/src-tauri/sidecar/
+
+# internal plan and mocks (not published)
+.plan/

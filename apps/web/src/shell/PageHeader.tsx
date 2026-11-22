@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 /**
- * The one page header (design-system.md, Page header): the title (the page's h1), one line on
+ * The one page header (docs/dev/design-system.md, Page header): the title (the page's h1), one line on
  * what the page is for, and the actions on the right (at most one primary). Sub-pages pass a
  * `back` link that sits above the title. Every top-level screen uses it, Home included, so
  * edges and baselines line up.
@@ -32,7 +32,7 @@ export function PageHeader({
 }
 
 /**
- * The one section header (design-system.md, Section header): an h2 and an optional quiet link
+ * The one section header (docs/dev/design-system.md, Section header): an h2 and an optional quiet link
  * on the right. Wrap the section in `<section className="k-section" aria-labelledby={id}>`.
  */
 export function SectionHeader({

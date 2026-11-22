@@ -1,11 +1,7 @@
 # Starter words
 
-`nl-5000.json` holds the 5000 most common Dutch words, most common first, each with its part of
-speech, its article (nouns), a short English meaning and, for most words, an example sentence
-with its English translation. Vuurtoren ships it inside the app and turns it into cards in native
-mode, in levels of 500 words ("Vuurtoren · Woorden 1–500" …).
-
-Each word is one line of the `words` array, like this:
+The starter pack: `nl-5000.json` holds the 5000 most common Dutch words, each with its part of
+speech, a short English meaning and, for most, an example sentence. One entry of `words`:
 
 ```json
 {
@@ -23,19 +19,8 @@ Each word is one line of the `words` array, like this:
 
 `mark` is where the word stands in the sentence (UTF-16 offsets), `tatoeba` the sentence's id on
 tatoeba.org. How the list is made (ranking, filters, glosses, sentences) is in
-[docs/algorithms.md](../../docs/algorithms.md), "Starter words".
-
-## Building it
-
-From `server/nlp`, with the `dictionary-nl` and `sentences-nl` data packs installed at the
-versions in `src/vuurtoren_nlp/packs.json`:
-
-```sh
-uv run python scripts/build_starter.py --data <directory with the packs>
-```
-
-The inputs are pinned (the two packs by their digests, wordfreq and the spaCy model by
-`uv.lock`), so the same inputs give the same file. It takes about four minutes.
+[algorithms](../../docs/dev/algorithms.md), "Starter words"; how to build it is in
+[For developers](../../docs/dev/README.md).
 
 ## Licence and sources
 

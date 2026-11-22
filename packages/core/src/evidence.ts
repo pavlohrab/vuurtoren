@@ -1,6 +1,6 @@
 /**
  * App evidence: what the learner showed inside Vuurtoren (practice exercises, reader clozes,
- * book exercises) feeding back into the learner model (docs/algorithms.md §1.7).
+ * book exercises) feeding back into the learner model (docs/dev/algorithms.md §1.7).
  *
  * Anki stays the record of known words. App evidence can only **raise** a word that Anki (or a
  * manual mark) does not already call known: it never demotes, never makes a word "known" on its
