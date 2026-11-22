@@ -1888,14 +1888,9 @@
           <span class="eyebrow">Reading</span>
           <h2 id="read-h">Four ways to read the same page.</h2>
           <p class="big">
-            Every text adapts to what you know. Choose how much help you want, and change it on any
-            page.
+            Pick how much help you want on each page. Read the stories that come with the app, or
+            your own texts.
           </p>
-          <ul class="facts">
-            <li>Stories from A1 to B2, recorded in two voices.</li>
-            <li>Your own texts: a web page, a PDF, a photo of a page, your course book.</li>
-            <li>Tap a word for its meaning in that sentence and its grammar.</li>
-          </ul>
         </div>
         <div>
           <div class="modes" role="tablist" aria-label="Reading modes">
@@ -2189,19 +2184,19 @@
         const intro = (w) => `<span class="tok introduce" style="--d:0">${w}</span>`;
         const views = {
           read: {
-            say: "Known words stay plain. A few words to learn are tinted; words you are learning are dotted.",
+            say: "The next new words are highlighted, the words you're learning are underlined.",
             html: `<p class="reader" lang="nl">Op het eiland staat een oude ${intro("vuurtoren")}. Elke avond ${S("learning", "beklimt")} Jan de ${S("gloss", "trap")} en kijkt naar de zee.</p>`,
           },
           gloss: {
-            say: "A short translation sits after the words you do not know yet, so you never stop reading.",
+            say: "A translation is near the word, so that you don't get out of the reading flow.",
             html: `<p class="reader" lang="nl">Op het eiland staat een oude ${intro("vuurtoren")}${sup("lighthouse")}. Elke avond ${S("learning", "beklimt")} Jan de ${S("gloss", "trap", sup("stairs"))} en kijkt naar de zee.</p>`,
           },
           cloze: {
-            say: "Words you know well become blanks to fill in, with a hint if you need one.",
+            say: "The known words become blanks, so you can practise them.",
             html: `<p class="reader" lang="nl">Op het <span class="cloze">e…</span> staat een oude ${intro("vuurtoren")}. Elke <span class="cloze">a…</span> ${S("learning", "beklimt")} Jan de trap en kijkt naar de <span class="cloze">z…</span>.</p>`,
           },
           sbs: {
-            say: "Each sentence beside its English. Tap a word and its partner lights up on the other side.",
+            say: "Each sentence has an English translation, with the same words highlighted on both sides.",
             html: `<div class="sbs"><div class="row"><span class="nl" lang="nl">Op het <span class="p2">eiland</span> staat een <span class="p3">oude</span> <span class="p1 lit">vuurtoren</span>.</span><span class="en">On the <span class="p2">island</span> stands an <span class="p3">old</span> <span class="p1 lit">lighthouse</span>.</span></div><div class="row"><span class="nl" lang="nl">Elke avond <span class="p2">beklimt</span> Jan de <span class="p3">trap</span>.</span><span class="en">Every evening Jan <span class="p2">climbs</span> the <span class="p3">stairs</span>.</span></div></div>`,
           },
         };
