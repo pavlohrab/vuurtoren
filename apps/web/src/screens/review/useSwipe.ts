@@ -1,15 +1,32 @@
 /**
- * Swipe a card to answer: left, right or up past a threshold calls the matching action; a
- * shorter drag springs back. The handlers go on the whole screen, so a swipe can start anywhere,
- * on a button too: the pointer is captured only once it moves, so a tap stays a tap. The card follows the finger (or mouse) and tilts a little, and
+ * Swipe a card to answer: left, right or up past a threshold, or a quick flick a shorter way,
+ * calls the matching action; a slow, short drag springs back. The handlers go on the whole
+ * screen, so a swipe can start anywhere, on a button too: the pointer is captured only once it
+ * moves, so a tap stays a tap. The card follows the finger (or mouse) and tilts a little, and
  * `direction` names the answer it would give, so the screen can show it before letting go.
+ *
+ * On letting go the card stays where the finger left it and flies off the way it was thrown;
+ * the action runs once it is gone, so even a quick flick shows the card leave.
  */
-import { type CSSProperties, type PointerEvent, useRef, useState } from "react";
+import {
+  type CSSProperties,
+  type PointerEvent,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 
 /** How far (px) a drag must go to count as a swipe. */
 const THRESHOLD = 90;
+/** A flick: at least this far (px) … */
+const FLICK_MIN = 28;
+/** … and this fast (px per ms) at the end. */
+const FLICK_SPEED = 0.45;
 /** Below this (px) a press is a tap. */
 const MOVES = 10;
+/** How long the card takes to fly off (ms). */
+const LEAVE_MS = 220;
 
 type Direction = "left" | "right" | "up";
 
@@ -20,7 +37,32 @@ export function useSwipe(opts: {
   onUp: () => void;
 }) {
   const start = useRef<{ x: number; y: number; id: number; moved: boolean } | null>(null);
+  /** The last two moves, for the speed at letting go. */
+  const trail = useRef<{ x: number; y: number; t: number }[]>([]);
   const [offset, setOffset] = useState<{ x: number; y: number } | null>(null);
+  /** Flying off: where to, and the answer to give once there. */
+  const [leaving, setLeaving] = useState<{ x: number; y: number; dir: Direction } | null>(null);
+  const actions = useRef(opts);
+  useLayoutEffect(() => {
+    actions.current = opts;
+  });
+
+  useEffect(() => {
+    if (!leaving) return;
+    const still = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+    const t = window.setTimeout(
+      () => {
+        setLeaving(null);
+        setOffset(null);
+        const a = actions.current;
+        if (leaving.dir === "left") a.onLeft();
+        else if (leaving.dir === "right") a.onRight();
+        else a.onUp();
+      },
+      still ? 0 : LEAVE_MS,
+    );
+    return () => window.clearTimeout(t);
+  }, [leaving]);
 
   const directionOf = (x: number, y: number, at: number): Direction | null => {
     if (Math.abs(x) >= at && Math.abs(x) > Math.abs(y)) return x < 0 ? "left" : "right";
@@ -30,8 +72,9 @@ export function useSwipe(opts: {
 
   const handlers = {
     onPointerDown(e: PointerEvent<HTMLElement>) {
-      if (!opts.enabled) return;
+      if (!opts.enabled || leaving) return;
       start.current = { x: e.clientX, y: e.clientY, id: e.pointerId, moved: false };
+      trail.current = [{ x: e.clientX, y: e.clientY, t: e.timeStamp }];
     },
     onPointerMove(e: PointerEvent<HTMLElement>) {
       const s = start.current;
@@ -43,38 +86,60 @@ export function useSwipe(opts: {
         s.moved = true;
         e.currentTarget.setPointerCapture?.(e.pointerId);
       }
+      trail.current = [...trail.current.slice(-1), { x: e.clientX, y: e.clientY, t: e.timeStamp }];
       setOffset({ x, y: Math.min(0, y) });
     },
     onPointerUp(e: PointerEvent<HTMLElement>) {
       const s = start.current;
       start.current = null;
       if (!s || s.id !== e.pointerId || !s.moved) return;
-      const dir = directionOf(e.clientX - s.x, e.clientY - s.y, THRESHOLD);
-      setOffset(null);
-      if (dir === "left") opts.onLeft();
-      else if (dir === "right") opts.onRight();
-      else if (dir === "up") opts.onUp();
+      const x = e.clientX - s.x;
+      const y = Math.min(0, e.clientY - s.y);
+      const [a, b] = trail.current;
+      const dt = a && b ? Math.max(1, b.t - a.t) : 0;
+      // Fast at the end, and let go while still moving (not after holding still).
+      const fast =
+        !!dt &&
+        e.timeStamp - b!.t < 100 &&
+        Math.hypot(b!.x - a!.x, b!.y - a!.y) / dt >= FLICK_SPEED;
+      const dir = directionOf(x, y, THRESHOLD) ?? (fast ? directionOf(x, y, FLICK_MIN) : null);
+      if (!dir) {
+        setOffset(null);
+        return;
+      }
+      // Off screen along the throw: far enough that it is gone, from where it was let go.
+      const far = Math.max(window.innerWidth, window.innerHeight) * 1.1;
+      setOffset({ x, y });
+      setLeaving(
+        dir === "up"
+          ? { x: x * 0.5, y: -far, dir }
+          : { x: Math.sign(x) * far, y: y + (y / Math.max(1, Math.abs(x))) * far * 0.3, dir },
+      );
     },
     onPointerCancel() {
       start.current = null;
-      setOffset(null);
+      if (!leaving) setOffset(null);
     },
   };
 
-  const style: CSSProperties | undefined = opts.enabled
+  const style: CSSProperties | undefined = leaving
     ? {
-        ...(offset
-          ? {
-              transform: `translate(${offset.x}px, ${offset.y}px) rotate(${offset.x / 30}deg)`,
-              transition: "none",
-            }
-          : {}),
+        transform: `translate(${leaving.x}px, ${leaving.y}px) rotate(${leaving.x / 30}deg)`,
+        transition: `transform ${LEAVE_MS}ms cubic-bezier(0.3, 0.6, 0.4, 1)`,
+        pointerEvents: "none",
       }
-    : undefined;
+    : opts.enabled && offset
+      ? {
+          transform: `translate(${offset.x}px, ${offset.y}px) rotate(${offset.x / 30}deg)`,
+          transition: "none",
+        }
+      : undefined;
 
+  const shown = leaving ?? offset;
   return {
     handlers,
     style,
-    direction: offset ? directionOf(offset.x, offset.y, THRESHOLD / 2) : null,
+    leaving: !!leaving,
+    direction: leaving ? leaving.dir : shown ? directionOf(shown.x, shown.y, THRESHOLD / 2) : null,
   };
 }

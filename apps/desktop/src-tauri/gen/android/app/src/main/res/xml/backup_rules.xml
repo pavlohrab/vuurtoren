@@ -1,5 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Android 11 and older: the sealed sync key never goes into a backup (KeystorePlugin.kt). -->
+<!-- Android 11 and older: no backups (allowBackup="false" in the manifest). A reinstall starts
+     clean; your data comes back through sync or Settings → Data & backup. -->
 <full-backup-content>
-  <exclude domain="sharedpref" path="vuurtoren-keys.xml" />
+  <exclude domain="root" path="." />
+  <exclude domain="file" path="." />
+  <exclude domain="database" path="." />
+  <exclude domain="sharedpref" path="." />
+  <exclude domain="external" path="." />
 </full-backup-content>

@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { App } from "../App.js";
 import { createMockServices } from "../services/mock.js";
-import { closeTopmost, pushBack, systemBack, tabRoot } from "./backStack.js";
+import { closeTopmost, levelUp, pushBack, systemBack, tabRoot } from "./backStack.js";
 
 afterEach(() => {
   Reflect.deleteProperty(window, "__VUURTOREN_DESKTOP__");
@@ -113,5 +113,27 @@ describe("the More sheet", () => {
     act(() => history.back());
     await waitFor(() => expect(history.location.pathname).toBe("/"));
     expect(screen.queryByRole("menu", { name: "More" })).toBeNull();
+  });
+
+  it("goes one level up before the tab's start: a Settings section to the list", () => {
+    const up = vi.fn();
+    const nav = { toTab: vi.fn(), exit: vi.fn(), up };
+    expect(systemBack({ pathname: "/settings", search: { section: "devices" } }, nav)).toBe("up");
+    expect(up).toHaveBeenCalledWith({ to: "/settings" });
+    expect(systemBack({ pathname: "/settings", search: {} }, nav)).toBe("tab");
+    expect(nav.toTab).toHaveBeenCalledWith("/");
+  });
+
+  it("knows the level above each page", () => {
+    expect(levelUp("/grammar/word-order")).toEqual({ to: "/grammar" });
+    expect(levelUp("/grammar/word-order/practice")).toEqual({ to: "/grammar/word-order" });
+    expect(levelUp("/exam/reading")).toEqual({ to: "/exam" });
+    expect(levelUp("/courses/c1/u2")).toEqual({ to: "/courses/c1" });
+    expect(levelUp("/courses/c1")).toEqual({ to: "/courses" });
+    expect(levelUp("/courses/import")).toEqual({ to: "/courses" });
+    expect(levelUp("/read/t1/words")).toEqual({ to: "/read/t1" });
+    expect(levelUp("/read/t1")).toBeNull();
+    expect(levelUp("/settings")).toBeNull();
+    expect(levelUp("/words/all")).toBeNull();
   });
 });

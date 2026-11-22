@@ -5,9 +5,9 @@
  * screen goes. With reduced motion it just fades.
  */
 
-/** The drawing ends at about this time after the page starts (index.html's delays), plus a
- * moment to look at it before it moves. */
-const DRAWN_MS = 4000;
+/** The drawing ends at about this time after the page starts (index.html's delays: the last
+ * line ends at 3.1 s), plus a moment to look at it before it moves. */
+const DRAWN_MS = 3500;
 
 let done = false;
 
@@ -47,7 +47,7 @@ export function finishBoot(): void {
 function leave(boot: HTMLElement, still: boolean): void {
   // The app's own frame may need a moment to lay out its sidebar.
   window.requestAnimationFrame(() => {
-    const logo = boot.querySelector("svg");
+    const logo = boot.querySelector<HTMLElement>(".logo");
     const target = document.querySelector<SVGElement>(".sidebar-brand svg");
     const box = target?.getBoundingClientRect();
     const canAnimate = typeof boot.animate === "function" && !still && logo;

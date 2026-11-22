@@ -1,8 +1,10 @@
 /**
  * Back, overlay first: the system Back (Android's button or gesture) closes what is open on top
- * (a dialog, a menu, the word sheet, the More sheet, the tour); with nothing open it goes to the
- * start of the current tab (Read or Words; everything under More counts as Read), and from a
- * tab's start it leaves the app. Back never walks through the pages visited before.
+ * (a dialog, a menu, the word sheet, the More sheet, the tour); with nothing open it goes one
+ * level up (a Settings section to the Settings list, a grammar topic to Grammar, a course unit
+ * to its course), from a page with no level above to the start of the current tab (Read or
+ * Words; everything under More counts as Read), and from a tab's start it leaves the app. Back
+ * never walks through the pages visited before.
  *
  * Overlays of the app say so with `useBackClose` while they are open; the last one opened is on
  * top. Dialogs, popovers and menus of `@app/ui` (Radix) are found in the page and closed with
@@ -70,7 +72,7 @@ export function closeTopmost(): boolean {
 }
 
 /** What one system Back did. */
-export type BackResult = "overlay" | "tab" | "exit";
+export type BackResult = "overlay" | "up" | "tab" | "exit";
 
 /** The start of the bottom-bar tab a path belongs to: Words for the word screens, else Read. */
 export function tabRoot(pathname: string): "/" | "/words" {
@@ -82,12 +84,39 @@ function isRoot(pathname: string): boolean {
   return pathname === "/" || pathname === "/words" || pathname.startsWith("/welcome");
 }
 
-/** One system Back: the topmost overlay, else the start of the tab, else out of the app. */
-export function systemBack(
+/** Where a page goes one level up, or null when it has no level above (the tab's start then). */
+export function levelUp(
   pathname: string,
-  nav: { toTab(root: "/" | "/words"): void; exit(): void },
+  search: Record<string, unknown> = {},
+): { to: string; search?: Record<string, unknown> } | null {
+  if (pathname === "/settings" && search.section) return { to: "/settings" };
+  const parts = pathname.split("/").filter(Boolean);
+  const [area, id, sub] = parts;
+  if (area === "grammar" && id) return { to: sub ? `/grammar/${id}` : "/grammar" };
+  if (area === "exam" && id) return { to: "/exam" };
+  if (area === "courses" && id)
+    return { to: sub && id !== "import" ? `/courses/${id}` : "/courses" };
+  if (area === "read" && id && sub) return { to: `/read/${id}` };
+  return null;
+}
+
+/** One system Back: the topmost overlay, else a level up, else the start of the tab, else out. */
+export function systemBack(
+  location: string | { pathname: string; search?: Record<string, unknown> },
+  nav: {
+    toTab(root: "/" | "/words"): void;
+    exit(): void;
+    up?(to: { to: string; search?: Record<string, unknown> }): void;
+  },
 ): BackResult {
+  const { pathname, search } =
+    typeof location === "string" ? { pathname: location, search: {} } : location;
   if (closeTopmost()) return "overlay";
+  const up = nav.up ? levelUp(pathname, search) : null;
+  if (up && nav.up) {
+    nav.up(up);
+    return "up";
+  }
   if (!isRoot(pathname)) {
     nav.toTab(tabRoot(pathname));
     return "tab";
@@ -103,10 +132,16 @@ export function useSystemBack(): void {
     const back = desktopBridge()?.back;
     if (!back) return;
     return back.listen(() => {
-      systemBack(router.state.location.pathname, {
-        toTab: (to) => void router.navigate({ to, replace: true }),
-        exit: () => void back.exit(),
-      });
+      const loc = router.state.location;
+      systemBack(
+        { pathname: loc.pathname, search: loc.search as Record<string, unknown> },
+        {
+          toTab: (to) => void router.navigate({ to, replace: true }),
+          up: ({ to, search }) =>
+            void router.navigate({ to, ...(search ? { search } : {}), replace: true }),
+          exit: () => void back.exit(),
+        },
+      );
     });
   }, [router]);
 }

@@ -35,60 +35,115 @@
         place-items: center;
         background: #ece5d9;
       }
-      .boot svg {
-        width: min(56vmin, 360px);
-        height: min(56vmin, 360px);
+      /* The logo is drawn from plain boxes, not SVG shapes: browsers animate the transform and
+         opacity of boxes on the GPU, so the drawing stays smooth while the app starts on the
+         main thread (SVG shapes would wait for it and stutter). One unit = 1/64 of the logo. */
+      .boot .logo {
+        --u: calc(min(56vmin, 360px) / 64);
+        position: relative;
+        width: calc(var(--u) * 64);
+        height: calc(var(--u) * 64);
       }
       .boot .p {
-        transform-box: fill-box;
-        animation: boot-draw 680ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+        position: absolute;
+        will-change: transform, opacity;
+        animation: boot-draw 620ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
       }
       .boot .base {
+        left: calc(var(--u) * 3);
+        top: calc(var(--u) * 57);
+        width: calc(var(--u) * 26);
+        height: calc(var(--u) * 3.5);
+        border-radius: calc(var(--u) * 1.2);
         transform-origin: center;
         --from: scaleX(0);
-        animation-delay: 80ms;
+        animation-delay: 70ms;
       }
       .boot .tower {
+        left: calc(var(--u) * 5.5);
+        top: calc(var(--u) * 24);
+        width: calc(var(--u) * 21);
+        height: calc(var(--u) * 33);
+        border-radius: calc(var(--u) * 0);
         transform-origin: bottom;
         --from: scaleY(0);
-        animation-duration: 960ms;
-        animation-delay: 320ms;
+        animation-delay: 270ms;
+        animation-duration: 860ms;
       }
       .boot .house {
+        left: calc(var(--u) * 10);
+        top: calc(var(--u) * 8);
+        width: calc(var(--u) * 12);
+        height: calc(var(--u) * 13);
+        border-radius: calc(var(--u) * 2.5);
         transform-origin: bottom;
         --from: scaleY(0);
-        animation-delay: 1120ms;
+        animation-delay: 960ms;
       }
       .boot .lamp {
+        left: calc(var(--u) * 13);
+        top: calc(var(--u) * 11);
+        width: calc(var(--u) * 6);
+        height: calc(var(--u) * 7);
+        border-radius: calc(var(--u) * 1.2);
         transform-origin: center;
         --from: scale(0);
-        animation-delay: 1520ms;
+        animation-delay: 1300ms;
       }
       .boot .beam {
+        left: calc(var(--u) * 25);
+        top: calc(var(--u) * 11.5);
+        width: calc(var(--u) * 35);
+        height: calc(var(--u) * 6);
+        border-radius: calc(var(--u) * 3);
         transform-origin: left;
         --from: scaleX(0);
-        animation-duration: 832ms;
-        animation-delay: 1840ms;
+        animation-delay: 1570ms;
+        animation-duration: 740ms;
       }
       .boot .l1 {
+        left: calc(var(--u) * 32);
+        top: calc(var(--u) * 28);
+        width: calc(var(--u) * 28);
+        height: calc(var(--u) * 3.5);
+        border-radius: calc(var(--u) * 1.75);
         transform-origin: left;
         --from: scaleX(0);
-        animation-delay: 2400ms;
+        animation-delay: 2050ms;
       }
       .boot .l2 {
+        left: calc(var(--u) * 32);
+        top: calc(var(--u) * 37);
+        width: calc(var(--u) * 10);
+        height: calc(var(--u) * 3.5);
+        border-radius: calc(var(--u) * 1.75);
         transform-origin: left;
         --from: scaleX(0);
-        animation-delay: 2592ms;
+        animation-delay: 2210ms;
       }
       .boot .l3 {
+        left: calc(var(--u) * 44.5);
+        top: calc(var(--u) * 36);
+        width: calc(var(--u) * 15.5);
+        height: calc(var(--u) * 5.5);
+        border-radius: calc(var(--u) * 2.75);
         transform-origin: left;
         --from: scaleX(0);
-        animation-delay: 2752ms;
+        animation-delay: 2350ms;
       }
       .boot .l4 {
+        left: calc(var(--u) * 32);
+        top: calc(var(--u) * 46);
+        width: calc(var(--u) * 23);
+        height: calc(var(--u) * 3.5);
+        border-radius: calc(var(--u) * 1.75);
         transform-origin: left;
         --from: scaleX(0);
-        animation-delay: 2912ms;
+        animation-delay: 2480ms;
+      }
+      /* The tower narrows to the top: x 9–23 at the top, 5.5–26.5 at the bottom. */
+      .boot .tower {
+        clip-path: polygon(16.667% 0, 83.333% 0, 100% 100%, 0 100%);
       }
       @keyframes boot-draw {
         from {
@@ -97,13 +152,25 @@
         }
       }
       .boot .r {
-        fill: #8f5a1f;
+        background: #8f5a1f;
       }
       .boot .k {
-        fill: #2e2721;
+        background: #2e2721;
       }
       .boot .faint {
-        fill-opacity: 0.3;
+        opacity: 0.3;
+      }
+      @keyframes boot-draw-faint {
+        from {
+          transform: var(--from);
+          opacity: 0;
+        }
+        to {
+          opacity: 0.3;
+        }
+      }
+      .boot .faint.p {
+        animation-name: boot-draw-faint;
       }
       @media (prefers-color-scheme: dark) {
         :where(html:not([data-theme="light"]), html:not([data-theme="light"]) body) {
@@ -113,10 +180,10 @@
           background: #151210;
         }
         html:not([data-theme="light"]) .boot .r {
-          fill: #c99a5b;
+          background: #c99a5b;
         }
         html:not([data-theme="light"]) .boot .k {
-          fill: #d6cdbf;
+          background: #d6cdbf;
         }
       }
       @media (prefers-reduced-motion: reduce) {
@@ -128,17 +195,17 @@
   </head>
   <body>
     <div class="boot" id="boot" role="status" aria-label="Vuurtoren is loading">
-      <svg viewBox="0 0 64 64" aria-hidden="true">
-        <rect class="k p base" x="3" y="57" width="26" height="3.5" rx="1.2" />
-        <path class="k p tower" d="M9 24h14l3.5 33h-21z" />
-        <rect class="k p house" x="10" y="8" width="12" height="13" rx="2.5" />
-        <rect class="r p lamp" x="13" y="11" width="6" height="7" rx="1.2" />
-        <rect class="r p beam" x="25" y="11.5" width="35" height="6" rx="3" />
-        <rect class="k faint p l1" x="32" y="28" width="28" height="3.5" rx="1.75" />
-        <rect class="k faint p l2" x="32" y="37" width="10" height="3.5" rx="1.75" />
-        <rect class="r p l3" x="44.5" y="36" width="15.5" height="5.5" rx="2.75" />
-        <rect class="k faint p l4" x="32" y="46" width="23" height="3.5" rx="1.75" />
-      </svg>
+      <div class="logo" aria-hidden="true">
+        <i class="k p base"></i>
+        <i class="k p tower"></i>
+        <i class="k p house"></i>
+        <i class="r p lamp"></i>
+        <i class="r p beam"></i>
+        <i class="k faint p l1"></i>
+        <i class="k faint p l2"></i>
+        <i class="r p l3"></i>
+        <i class="k faint p l4"></i>
+      </div>
     </div>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>

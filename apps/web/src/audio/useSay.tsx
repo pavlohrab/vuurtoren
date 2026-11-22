@@ -47,7 +47,7 @@ export function useSay(player?: PlayerDeps) {
  * Whether there is anything to play for `what`: its recording (fetched once and kept, so the
  * play itself is instant) or a Dutch system voice. Undefined while it checks.
  */
-export function useCanSay(
+function useCanSay(
   key: string | null,
   what: () => Promise<Saying | null> | Saying | null,
 ): boolean | undefined {

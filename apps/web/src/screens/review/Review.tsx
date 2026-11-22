@@ -11,7 +11,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useSearch } from "@tanstack/react-router";
 import { Undo2, Volume2, X } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Button, Skeleton } from "@app/ui";
 import { plural } from "../../format.js";
 import { useServices } from "../../services/context.js";
@@ -162,6 +162,8 @@ export function Review() {
     return () => document.removeEventListener("visibilitychange", onVisible);
   }, [refreshKeeping]);
 
+  /** A swiped card is flying off: keys wait, so the next card is not answered by mistake. */
+  const leavingRef = useRef(false);
   const answer = useCallback(
     async (rating: CardRating) => {
       if (!card || busy) return;
@@ -230,7 +232,7 @@ export function Review() {
         void takeBack();
         return;
       }
-      if (!card) return;
+      if (!card || leavingRef.current) return;
       if (e.key === "r" || e.key === "R") {
         e.preventDefault();
         if (wordSaying) void play("word", wordSaying);
@@ -257,11 +259,15 @@ export function Review() {
   }, [card, shown, setShown, answer, takeBack, wordSaying, play]);
 
   const left = queue.data ? queue.data.cards.length : 0;
+  // A swipe answers on the front too: no need to show the answer first.
   const swipe = useSwipe({
-    enabled: !!card && shown && !busy,
+    enabled: !!card && !busy,
     onLeft: () => void answer(1),
     onRight: () => void answer(3),
     onUp: () => void answer(4),
+  });
+  useLayoutEffect(() => {
+    leavingRef.current = swipe.leaving;
   });
 
   return (
@@ -329,9 +335,12 @@ export function Review() {
                 ))}
               </div>
             ) : (
-              <Button variant="primary" onClick={() => setShown(true)}>
-                Show answer <kbd className="ex-key">Space</kbd>
-              </Button>
+              <>
+                <p className="review-swipe-hint">Sure already? Swipe: ← Again · Good → · ↑ Easy</p>
+                <Button variant="primary" onClick={() => setShown(true)}>
+                  Show answer <kbd className="ex-key">Space</kbd>
+                </Button>
+              </>
             )}
           </div>
           {error ? (

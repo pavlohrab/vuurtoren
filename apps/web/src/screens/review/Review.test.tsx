@@ -1,11 +1,28 @@
 import { createMemoryHistory } from "@tanstack/react-router";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "../../App.js";
 import { createMockServices } from "../../services/mock.js";
 import type { AppServices } from "../../services/types.js";
 import { sanitizeCardHtml } from "./sanitize.js";
+
+// What was played, in order ("word-demo1", "sentence-demo1"). The play buttons also fetch clips
+// ahead to know whether there is anything to play, so fetching is not playing.
+const said = vi.hoisted(() => [] as string[]);
+vi.mock("../../audio/play.js", async (importOriginal) => {
+  const real = await importOriginal<typeof import("../../audio/play.js")>();
+  return {
+    ...real,
+    say: (...args: Parameters<typeof real.say>) => {
+      said.push(args[0].clip ?? args[0].text ?? "");
+      return real.say(...args);
+    },
+  };
+});
+beforeEach(() => {
+  said.length = 0;
+});
 
 function setup(path = "/review", patch: Partial<AppServices> = {}) {
   const base = createMockServices({ latencyMs: 0, synced: true, native: true });
@@ -17,19 +34,24 @@ function setup(path = "/review", patch: Partial<AppServices> = {}) {
 
 describe("Review", () => {
   it("says the word as the front shows, the sentence on request, and R replays", async () => {
-    const audioClip = vi.fn<(id: string) => Promise<Blob | null>>(async () => null);
-    const { user } = setup("/review", { audioClip });
+    const base = createMockServices({ latencyMs: 0, synced: true, native: true });
+    await base.saveSettings({ autoplaySentence: false });
+    // Every clip exists, so the play buttons are live.
+    const audioClip = async () => new Blob(["x"], { type: "audio/mpeg" });
+    const history = createMemoryHistory({ initialEntries: ["/review"] });
+    render(<App services={{ ...base, audioClip }} history={history} />);
+    const user = userEvent.setup();
     await screen.findByText("de fiets");
-    // Autoplay of the word is on by default; the sentence waits for a click (its autoplay is off).
-    await waitFor(() => expect(audioClip).toHaveBeenCalledWith("word-demo1"));
+    // The word plays as the front shows; with sentence autoplay off, the sentence waits for a click.
+    await waitFor(() => expect(said).toContain("word-demo1"));
     await user.keyboard(" ");
     await screen.findByText("bicycle");
-    expect(audioClip).not.toHaveBeenCalledWith("sentence-demo1");
+    expect(said).not.toContain("sentence-demo1");
     await user.click(screen.getByRole("button", { name: "Play the sentence" }));
-    await waitFor(() => expect(audioClip).toHaveBeenCalledWith("sentence-demo1"));
-    audioClip.mockClear();
+    await waitFor(() => expect(said).toContain("sentence-demo1"));
+    said.length = 0;
     await user.keyboard("r");
-    await waitFor(() => expect(audioClip).toHaveBeenCalledWith("word-demo1"));
+    await waitFor(() => expect(said).toContain("word-demo1"));
     expect(screen.getByRole("button", { name: "Play the word (R)" })).toBeVisible();
   });
 
@@ -66,27 +88,19 @@ describe("Review", () => {
   });
 
   it("says the word as a card shows, then its sentence after a short pause", async () => {
-    const asked: string[] = [];
-    const audioClip = vi.fn<(id: string) => Promise<Blob | null>>(async (id) => {
-      asked.push(id.split("-")[0]!);
-      return null;
-    });
-    const base = createMockServices({ latencyMs: 0, synced: true, native: true });
-    const history = createMemoryHistory({ initialEntries: ["/review"] });
-    render(<App services={{ ...base, audioClip }} history={history} />);
+    setup("/review");
     await screen.findByText("de fiets");
-    await waitFor(() => expect(asked).toEqual(["word", "sentence"]), { timeout: 3000 });
+    await waitFor(() => expect(said).toEqual(["word-demo1", "sentence-demo1"]), { timeout: 3000 });
   });
 
   it("plays nothing by itself with autoplay off", async () => {
-    const audioClip = vi.fn<(id: string) => Promise<Blob | null>>(async () => null);
     const base = createMockServices({ latencyMs: 0, synced: true, native: true });
     await base.saveSettings({ autoplayWord: false });
     const history = createMemoryHistory({ initialEntries: ["/review"] });
-    render(<App services={{ ...base, audioClip }} history={history} />);
+    render(<App services={base} history={history} />);
     await screen.findByText("de fiets");
     await new Promise((r) => setTimeout(r, 50));
-    expect(audioClip).not.toHaveBeenCalled();
+    expect(said).toEqual([]);
   });
 
   it("shows the front, then the answer and four buttons with intervals; keys answer", async () => {
