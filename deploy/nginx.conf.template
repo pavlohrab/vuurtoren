@@ -1,4 +1,4 @@
-# Vuurtoren web container: the app's static files, the sync place (/api/sync), the language
+# Vuurtoren web container: the Your devices page, the sync place (/api/sync), the language
 # server (/nlp/) and the sign-in gate in front of them.
 #
 # This is an nginx *template*: the official image's entrypoint copies it to
@@ -15,6 +15,8 @@ map $uri $vuurtoren_cache_control {
     default        "";
     ~^/assets/     "public, max-age=31536000, immutable";
     /index.html    "no-cache";
+    /devices.js    "no-cache";
+    /devices.css   "no-cache";
 }
 
 server {
@@ -195,14 +197,14 @@ server {
         client_max_body_size 64k;
     }
 
-    # ---- Static app ------------------------------------------------------------------------
+    # ---- The Your devices page -------------------------------------------------------------
     # Hashed build assets are immutable (Cache-Control from the map above).
     location /assets/ {
         try_files $uri =404;
     }
 
-    # SPA fallback: unknown paths are client-side routes (served as /index.html: no-cache).
+    # The Your devices page; any other path shows it too.
     location / {
-        try_files $uri $uri/ /index.html;
+        try_files $uri /index.html;
     }
 }

@@ -1,28 +1,12 @@
 # syntax=docker/dockerfile:1
-# Vuurtoren web app: static Vite build served by nginx. Build context: the repo root
-# (see deploy/compose.yml), because @app/web depends on the other workspace packages.
+# The server's front door: nginx with the Your devices page (deploy/devices), the sync place
+# (/api, the api service) and the language server (/nlp/, the nlp service). The app itself is
+# not served here: it runs on your devices. Build context: the repo root.
 # Base images are pinned to a patch release; .github/dependabot.yml proposes updates.
 
-# ---- Stage 1: build --------------------------------------------------------------------
-FROM node:26.13.1-slim AS build
-# The exact pnpm version comes from the "packageManager" field in package.json.
-# Node 25+ no longer bundles corepack; install the pnpm version pinned in package.json.
-RUN npm install -g pnpm@12.21.0 --no-fund --no-audit
-WORKDIR /repo
-
-# Layer caching: `pnpm fetch` needs only the lockfile, so the dependency download stays cached
-# until pnpm-lock.yaml changes; a source edit only re-runs the offline install and the build.
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-RUN pnpm fetch
-COPY . .
-RUN pnpm install --frozen-lockfile --offline
-# Optional: bake the NLP service URL into the bundle (default: same-origin /nlp/ proxy).
-ARG VITE_NLP_URL=/nlp
-ENV VITE_NLP_URL=$VITE_NLP_URL
-# Shown next to the version in Settings > Advanced (CI passes the commit SHA).
-ARG VUURTOREN_COMMIT=
-ENV VUURTOREN_COMMIT=$VUURTOREN_COMMIT
-RUN pnpm --filter @app/web... build
+# ---- Stage 1: the QR code library of the devices page ------------------------------------
+FROM node:26.13.1-slim AS qr
+RUN npm install --prefix /qr --no-save --no-fund --no-audit qrcode-generator@2.0.4
 
 # ---- Stage 2: serve --------------------------------------------------------------------
 FROM nginx:1.30.6-alpine
@@ -49,7 +33,8 @@ RUN sed -i -e '/^user /d' -e 's,^pid .*;,pid /tmp/nginx.pid;,' /etc/nginx/nginx.
     && nginx -t \
     && rm -rf /tmp/* \
     && chown -R nginx:nginx /etc/nginx/conf.d /var/cache/nginx
-COPY --from=build /repo/apps/web/dist /usr/share/nginx/html
+COPY deploy/devices/ /usr/share/nginx/html/
+COPY --from=qr /qr/node_modules/qrcode-generator/dist/qrcode.js /usr/share/nginx/html/qrcode.js
 USER nginx
 EXPOSE 80
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \

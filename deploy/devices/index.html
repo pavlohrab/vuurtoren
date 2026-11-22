@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="robots" content="noindex" />
+    <title>Your devices · Vuurtoren</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/devices.css" />
+    <script src="/qrcode.js" defer></script>
+    <script src="/devices.js" defer></script>
+  </head>
+  <body>
+    <main class="page">
+      <header class="head">
+        <img src="/favicon.svg" alt="" width="28" height="28" />
+        <span class="brand">vuurtoren</span>
+        <button type="button" id="sign-out" class="link" hidden>Sign out</button>
+      </header>
+
+      <!-- Signed out: the server's user name and password. -->
+      <section id="sign-in" hidden>
+        <h1>Your devices</h1>
+        <p class="lede">
+          This server keeps your devices in sync. Sign in to add a device or remove one.
+        </p>
+        <form id="sign-in-form" class="card stack">
+          <label>User name <input id="user" name="user" autocomplete="username" required /></label>
+          <label
+            >Password
+            <input
+              id="password"
+              name="password"
+              type="password"
+              autocomplete="current-password"
+              required
+          /></label>
+          <button type="submit" class="primary">Sign in</button>
+          <p id="sign-in-error" class="error" role="alert" hidden></p>
+        </form>
+      </section>
+
+      <!-- Signed in: the devices, and adding one. -->
+      <section id="devices" hidden>
+        <h1>Your devices</h1>
+        <p class="lede">
+          Your words and texts live on your devices. This server only passes them between them,
+          sealed with your passphrase: it cannot read them.
+        </p>
+
+        <div class="card">
+          <h2>Add a device</h2>
+          <p class="hint">
+            In the Vuurtoren app: Settings → Your devices → Connect to your server. On a phone, scan
+            this code. On a computer, paste the link, or sign in there with this server's address,
+            user name and password.
+          </p>
+          <button type="button" id="make-code" class="primary">Show a code</button>
+          <div id="code" class="code" hidden>
+            <div id="qr" class="qr" role="img" aria-label="QR code to connect a device"></div>
+            <div class="stack">
+              <p class="big" id="code-text"></p>
+              <p class="hint" id="code-valid"></p>
+              <label
+                >Link for a computer
+                <input id="code-link" readonly />
+              </label>
+              <button type="button" id="copy-link">Copy the link</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>Devices</h2>
+          <ul id="list" class="list"></ul>
+          <p id="empty" class="hint" hidden>
+            No device syncs yet. Add your first one above: it starts the sync with its words and
+            texts.
+          </p>
+        </div>
+        <p id="error" class="error" role="alert" hidden></p>
+      </section>
+    </main>
+  </body>
+</html>
