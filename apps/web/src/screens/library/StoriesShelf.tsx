@@ -56,9 +56,6 @@ export function StoriesShelf() {
         <h2 className="lib-stories-title" id="lib-stories-title">
           Stories for you
         </h2>
-        <p className="lib-stories-lede">
-          Short graded stories that come with Vuurtoren, your level first.
-        </p>
       </header>
       {shelf.isPending ? (
         <div className="lib-story-row" aria-busy>

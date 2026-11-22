@@ -1,7 +1,7 @@
 /**
- * Today, on top of Read: one slim strip with the text to continue (or a story at the learner's
- * level to start with) and what is due today in Words. The
- * greeting is its heading. "Finish setting up" sits above it while there is no language profile.
+ * Today, on top of Read: the text to continue (or a story at the learner's level to start with)
+ * as one card with the page's primary button, and what is due today in Words as one row. Its
+ * heading is for screen readers only. "Finish setting up" sits above it while there is no language profile.
  */
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
@@ -16,25 +16,12 @@ import { plural } from "../../format.js";
 import { useOpenStory, useStoryShelf } from "./StoriesShelf.js";
 import "./today.css";
 
-/** Dutch greeting for the time of day. */
-export function greeting(hour: number): string {
-  if (hour < 5 || hour >= 18) return "Goedenavond";
-  if (hour < 12) return "Goedemorgen";
-  return "Goedemiddag";
-}
-
 /** About how long the reviews take: four cards a minute, at least a minute. */
 export function reviewMinutes(cards: number): number {
   return Math.max(1, Math.round(cards / 4));
 }
 
 const fmt = (n: number) => n.toLocaleString("en");
-const DATE_FMT = new Intl.DateTimeFormat("en-GB", {
-  weekday: "long",
-  day: "numeric",
-  month: "long",
-});
-
 export function TodayStrip() {
   const services = useServices();
   const profile = useQuery({
@@ -42,7 +29,6 @@ export function TodayStrip() {
     queryFn: () => services.languageProfile(),
     staleTime: Infinity,
   });
-  const now = new Date();
   return (
     <>
       {profile.data === null ? (
@@ -55,9 +41,8 @@ export function TodayStrip() {
         </Link>
       ) : null}
       <section className="today" aria-labelledby="today-h">
-        <h2 className="today-title" id="today-h">
-          {greeting(now.getHours())}
-          <span className="today-date"> · {DATE_FMT.format(now)}</span>
+        <h2 className="k-sr" id="today-h">
+          Today
         </h2>
         <div className="today-row">
           <ContinueSlot />

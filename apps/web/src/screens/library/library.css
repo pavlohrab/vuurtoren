@@ -527,3 +527,25 @@
     font-size: 14px;
   }
 }
+
+/* Your texts on Read: covers first; view, search, sort, shelves and select behind one control. */
+.lib-tools > summary {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  margin-bottom: var(--s-2);
+  color: var(--ink-muted);
+  font-size: 14px;
+  cursor: pointer;
+  list-style: none;
+}
+.lib-tools > summary::-webkit-details-marker {
+  display: none;
+}
+.lib-tools > summary::before {
+  content: "⌕";
+  margin-right: 6px;
+}
+.lib-tools[open] > summary {
+  color: var(--ink);
+}

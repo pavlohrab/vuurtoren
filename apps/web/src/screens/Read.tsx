@@ -75,7 +75,7 @@ function draggedIds(e: DragEvent): string[] | null {
 }
 
 /**
- * Read: the landing page. Today on top (continue reading, reviews due, the current level), then
+ * Read: the landing page. Today on top (the text to continue, what is due today), then
  * Stories for you (the bundled stories, the learner's level first), then Your texts: a bookshelf
  * of rows of covers (Reading now, the learner's shelves, To read, Finished) that scroll
  * sideways, or every text in a grid; search, sort, multi-select, and per-cover details, cover
@@ -92,6 +92,8 @@ export function Read() {
     readPref(SORT_KEY, ["recent", "title", "coverage"], "recent"),
   );
   const [query, setQuery] = useState("");
+  // The tools of Your texts (view, search, sort, shelves, select) wait behind one control.
+  const [toolsOpen, setToolsOpen] = useState(false);
   const [source, setSource] = useState<SourceId>("all");
   const [selecting, setSelecting] = useState(false);
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
@@ -340,7 +342,6 @@ export function Read() {
     <div className="page library" data-selecting={selecting ? "" : undefined}>
       <PageHeader
         title="Read"
-        lede="Stories at your level and texts of your own. Tap a word while you read to keep it."
         actions={
           <Link to="/import" className="k-btn k-btn--secondary">
             <Plus size={16} aria-hidden /> Add text
@@ -367,77 +368,87 @@ export function Read() {
       <section className="lib-own" aria-labelledby="lib-own-h">
         <SectionHeader id="lib-own-h" title="Your texts" />
         {texts.data && texts.data.length > 0 ? (
-          <div className="lib-toolbar" role="group" aria-label="View of your texts">
-            <div className="lib-seg" role="radiogroup" aria-label="View">
-              {(["shelves", "all"] as const).map((v) => (
-                <button
-                  key={v}
-                  type="button"
-                  role="radio"
-                  aria-checked={view === v}
-                  className="lib-seg-btn"
-                  onClick={() => {
-                    setView(v);
-                    writePref(VIEW_KEY, v);
-                  }}
-                >
-                  {v === "shelves" ? "Shelves" : "All texts"}
-                </button>
-              ))}
-            </div>
-            <div className="lib-toolbar-fields">
-              <div className="lib-search">
-                <Input
-                  label="Search"
-                  type="search"
-                  value={query}
-                  placeholder="Title, author, note"
-                  onChange={(e) => setQuery(e.target.value)}
-                />
+          <details className="lib-tools" open={toolsOpen || selecting || searching}>
+            <summary
+              onClick={(e) => {
+                e.preventDefault();
+                setToolsOpen((o) => !o);
+              }}
+            >
+              Search, sort and shelves
+            </summary>
+            <div className="lib-toolbar" role="group" aria-label="View of your texts">
+              <div className="lib-seg" role="radiogroup" aria-label="View">
+                {(["shelves", "all"] as const).map((v) => (
+                  <button
+                    key={v}
+                    type="button"
+                    role="radio"
+                    aria-checked={view === v}
+                    className="lib-seg-btn"
+                    onClick={() => {
+                      setView(v);
+                      writePref(VIEW_KEY, v);
+                    }}
+                  >
+                    {v === "shelves" ? "Shelves" : "All texts"}
+                  </button>
+                ))}
               </div>
-              <div className="lib-sort">
-                <Select
-                  label="Sort"
-                  value={sort}
-                  onValueChange={(v) => {
-                    setSort(v as SortKey);
-                    writePref(SORT_KEY, v);
-                  }}
-                  options={(Object.keys(SORT_LABEL) as SortKey[]).map((k) => ({
-                    value: k,
-                    label: SORT_LABEL[k],
-                  }))}
-                />
-              </div>
-              {view === "all" ? (
-                <div className="lib-sort">
-                  <Select
-                    label="Source"
-                    value={source}
-                    onValueChange={(v) => setSource(v as SourceId)}
-                    options={SOURCES.map((s) => ({ value: s.id, label: s.name }))}
+              <div className="lib-toolbar-fields">
+                <div className="lib-search">
+                  <Input
+                    label="Search"
+                    type="search"
+                    value={query}
+                    placeholder="Title, author, note"
+                    onChange={(e) => setQuery(e.target.value)}
                   />
                 </div>
-              ) : null}
-              <div className="lib-toolbar-buttons">
-                <Button
-                  variant="ghost"
-                  aria-label="New shelf"
-                  onClick={() => setNaming({ open: true })}
-                >
-                  <FolderPlus size={16} aria-hidden /> <span className="lib-wide">New shelf</span>
-                </Button>
-                <button
-                  type="button"
-                  className="k-toggle"
-                  aria-pressed={selecting}
-                  onClick={() => (selecting ? stopSelecting() : setSelecting(true))}
-                >
-                  <SquareCheck size={14} aria-hidden /> Select
-                </button>
+                <div className="lib-sort">
+                  <Select
+                    label="Sort"
+                    value={sort}
+                    onValueChange={(v) => {
+                      setSort(v as SortKey);
+                      writePref(SORT_KEY, v);
+                    }}
+                    options={(Object.keys(SORT_LABEL) as SortKey[]).map((k) => ({
+                      value: k,
+                      label: SORT_LABEL[k],
+                    }))}
+                  />
+                </div>
+                {view === "all" ? (
+                  <div className="lib-sort">
+                    <Select
+                      label="Source"
+                      value={source}
+                      onValueChange={(v) => setSource(v as SourceId)}
+                      options={SOURCES.map((s) => ({ value: s.id, label: s.name }))}
+                    />
+                  </div>
+                ) : null}
+                <div className="lib-toolbar-buttons">
+                  <Button
+                    variant="ghost"
+                    aria-label="New shelf"
+                    onClick={() => setNaming({ open: true })}
+                  >
+                    <FolderPlus size={16} aria-hidden /> <span className="lib-wide">New shelf</span>
+                  </Button>
+                  <button
+                    type="button"
+                    className="k-toggle"
+                    aria-pressed={selecting}
+                    onClick={() => (selecting ? stopSelecting() : setSelecting(true))}
+                  >
+                    <SquareCheck size={14} aria-hidden /> Select
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
+          </details>
         ) : null}
 
         {body}

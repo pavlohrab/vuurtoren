@@ -1,22 +1,11 @@
-/* Today on Read (screens/library/TodayStrip.tsx): one slim strip between hairlines, no box. */
+/* Today on Read (screens/library/TodayStrip.tsx): the text to continue as one card, then what
+   is due today as one row. */
 .today {
   margin-bottom: var(--s-7);
-  padding: var(--s-4) 0;
-  border-top: 1px solid var(--hairline);
-  border-bottom: 1px solid var(--hairline);
-}
-.today-title {
-  margin: 0 0 var(--s-3);
-  font-family: var(--font-display);
-  font-size: 17px;
-  font-weight: 600;
-  color: var(--ink);
-}
-.today-date {
-  font-family: var(--font-ui, inherit);
-  font-size: 13px;
-  font-weight: 400;
-  color: var(--ink-muted);
+  padding: var(--s-4);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  background: var(--surface);
 }
 .today-row {
   display: grid;
@@ -160,6 +149,7 @@ a.today-step:hover .today-step-text {
 @media (max-width: 699px) {
   .today {
     margin-bottom: var(--s-6);
+    padding: var(--s-3);
   }
   .today-continue {
     grid-template-columns: 56px minmax(0, 1fr);
@@ -168,12 +158,11 @@ a.today-step:hover .today-step-text {
   .today-icon {
     width: 56px;
   }
-  .today-cover {
-    grid-row: span 2;
-  }
   .today-go {
-    grid-column: 2;
-    justify-self: start;
+    grid-column: 1 / -1;
+    justify-self: stretch;
+    min-height: 48px;
+    font-size: 16px;
   }
   .today-text-title {
     font-size: 17px;

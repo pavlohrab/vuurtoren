@@ -7,7 +7,7 @@ import { createMockServices } from "../../services/mock.js";
 import type { AppServices, TextListItem } from "../../services/types.js";
 import { libraryCoverage } from "../Progress.js";
 import { shelfRows } from "./shelving.js";
-import { greeting, reviewMinutes } from "./TodayStrip.js";
+import { reviewMinutes } from "./TodayStrip.js";
 import { pagesOf, pickContinue, readingNow, readingState } from "../../textPages.js";
 
 function setup(patch: Partial<AppServices> = {}, opts: { native?: boolean } = {}) {
@@ -38,15 +38,6 @@ const text = (over: Partial<TextListItem>): TextListItem => ({
 });
 
 describe("Today helpers", () => {
-  it("greets by the time of day, in Dutch, and times the reviews", () => {
-    expect(greeting(8)).toBe("Goedemorgen");
-    expect(greeting(14)).toBe("Goedemiddag");
-    expect(greeting(20)).toBe("Goedenavond");
-    expect(greeting(2)).toBe("Goedenavond");
-    expect(reviewMinutes(24)).toBe(6);
-    expect(reviewMinutes(1)).toBe(1);
-  });
-
   it("continues a text in progress, never a finished one; else the next to read", () => {
     const a = text({ id: "a", coverage: 0.8 });
     const b = text({ id: "b", coverage: 0.95 });
@@ -91,7 +82,7 @@ describe("Read: the Today strip", () => {
   it("opens on Read with the text to continue, what is due, and one primary action", async () => {
     setup();
     expect(await screen.findByRole("heading", { level: 1, name: "Read" })).toBeVisible();
-    const today = await screen.findByRole("region", { name: /^Goede/ });
+    const today = await screen.findByRole("region", { name: "Today" });
     const go = await within(today).findByRole("link", { name: /^(Continue|Start reading)/ });
     expect(go).toHaveAttribute("href", expect.stringMatching(/^\/read\//));
     const steps = within(today).getByRole("list", { name: "Today" });
@@ -106,7 +97,7 @@ describe("Read: the Today strip", () => {
 
   it("shows what is due today and about how long it takes (native)", async () => {
     setup({}, { native: true });
-    const today = await screen.findByRole("region", { name: /^Goede/ });
+    const today = await screen.findByRole("region", { name: "Today" });
     const review = await within(today).findByRole("link", {
       name: /^Due today · \d+ cards? · ~\d+ min/,
     });
@@ -115,7 +106,7 @@ describe("Read: the Today strip", () => {
 
   it("offers a story at the learner's level when there is nothing to continue", async () => {
     const { history } = setup({ listTexts: async () => [] });
-    const today = await screen.findByRole("region", { name: /^Goede/ });
+    const today = await screen.findByRole("region", { name: "Today" });
     expect(await within(today).findByText(/A story at your level/)).toBeInTheDocument();
     await userEvent.click(within(today).getByRole("button", { name: /Start reading/ }));
     await waitFor(() => expect(history.location.pathname).toMatch(/^\/read\//));

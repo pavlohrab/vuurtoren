@@ -14,7 +14,7 @@ describe("App with mock services", () => {
   it("opens Read at /, with Today and your texts; /library and /home lead there", async () => {
     renderApp("/library");
     expect(await screen.findByRole("heading", { level: 1, name: "Read" })).toBeInTheDocument();
-    expect(await screen.findByRole("region", { name: /^Goede/ })).toBeInTheDocument();
+    expect(await screen.findByRole("region", { name: "Today" })).toBeInTheDocument();
     await userEvent.click(
       within(screen.getByRole("navigation", { name: "Main" })).getByRole("link", {
         name: /^Words/,
