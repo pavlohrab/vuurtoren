@@ -1,13 +1,8 @@
 <p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/images/logo-dark.svg">
-    <source media="(prefers-color-scheme: light)" srcset="docs/images/logo-light.svg">
-    <img alt="vuurtoren" src="docs/images/logo-light.svg" width="300">
-  </picture>
+  <img alt="Vuurtoren, read Dutch at your level: a lighthouse drawn as a blueprint, its beam lighting the name" src="docs/images/banner.webp">
 </p>
 
 <p align="center">
-  <strong>Read Dutch at your level.</strong><br>
   Vuurtoren helps you learn Dutch by reading. It translates the new words in any text, helps you
   learn them and explains the grammar as you read.
 </p>
@@ -18,10 +13,9 @@
   <a href="https://ko-fi.com/pavlohrab"><img alt="Support on Ko-fi" src="https://img.shields.io/badge/support-Ko--fi-8f5a1f"></a>
 </p>
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/images/reader-dark.webp">
-  <img alt="Reading in Vuurtoren: a Dutch text with its new words marked, and the card of the word bel, from opbellen, with its meaning, context and grammar" src="docs/images/reader-light.webp">
-</picture>
+<p align="center">
+  <img alt="A Dutch page in Vuurtoren: a lighthouse's beam passes over it, and the new words get their translations" src="docs/images/demo-reading.webp" width="560">
+</p>
 
 <p align="center">
   <a href="https://github.com/pavlohrab/Vuurtoren/releases/latest"><img alt="Download for Windows" src="https://img.shields.io/badge/Download-Windows-8f5a1f?style=for-the-badge"></a>
@@ -61,11 +55,19 @@ translates the rest, so the text stays readable. Tap a word to see its meaning i
 its grammar and its forms. Side by side puts each sentence next to its English and highlights
 each word together with its translation.
 
+<p align="center">
+  <img alt="The same page in the four reading modes: Read, Gloss, Cloze and Side by side" src="docs/images/demo-modes.webp">
+</p>
+
 **Words.** Every word you tap while reading can become a card, with the sentence you found it
 in. Cards are reviewed with FSRS, the scheduler [Anki](https://apps.ankiweb.net/) also offers. Import
 the Anki decks you already have, so the app knows your level, or keep reviewing in Anki and use
 Vuurtoren only for reading. Starting from zero? Vuurtoren comes with about 5000 of the most common
 Dutch words.
+
+<p align="center">
+  <img alt="A review card swiped to the right: Good" src="docs/images/demo-swipe.webp" width="420">
+</p>
 
 **Grammar and the exam.** Grammar such as inversion, separable verbs and the perfect tense is
 marked where it appears in your texts, and the Grammar section explains 63 topics from A1 to C1.
@@ -82,10 +84,10 @@ planned: sign in on each device and they sync, with nothing to set up.
   <tr>
     <td width="50%" valign="top">
       <picture>
-        <source media="(prefers-color-scheme: dark)" srcset="docs/images/read-dark.webp">
-        <img alt="The Read page: the text to continue, reviews due, and stories at your level" src="docs/images/read-light.webp">
+        <source media="(prefers-color-scheme: dark)" srcset="docs/images/reader-dark.webp">
+        <img alt="Reading: a Dutch text with its new words marked, and the card of the word bel, from opbellen" src="docs/images/reader-light.webp">
       </picture>
-      <br><sub>Read: your texts, and stories at your level</sub>
+      <br><sub>Tap a word: its meaning here, and its grammar</sub>
     </td>
     <td width="50%" valign="top">
       <picture>
