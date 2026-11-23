@@ -1048,6 +1048,22 @@
         border-style: dashed;
         background: transparent;
       }
+      a.place {
+        color: inherit;
+        text-decoration: none;
+        transition: border-color 0.15s;
+      }
+      a.place:hover,
+      a.place:focus-visible {
+        border-color: var(--accent);
+      }
+      .places-more {
+        justify-self: start;
+        margin-top: 4px;
+        font-size: 15px;
+        font-weight: 600;
+        color: var(--accent);
+      }
       .place.soon .dot {
         background: transparent;
         border: 2px solid var(--accent);
@@ -1884,7 +1900,7 @@
                 ><b>Phone</b><span>Android. Reviews and stories in your pocket.</span></a
               >
               <a class="soon" href="#"
-                ><b>Vuurtoren Sync<span class="tag">Coming soon</span></b
+                ><b>Vuurtoren Sync<span class="tag">Planned</span></b
                 ><span>Sign in and your devices sync.</span></a
               >
             </div>
@@ -2257,14 +2273,17 @@
           </ul>
         </div>
         <div class="places">
-          <div class="place soon">
+          <a class="place soon" href="#roadmap">
             <span class="dot"></span
             ><span
-              ><b>Vuurtoren Sync <span class="tag">Coming</span></b
+              ><b>Vuurtoren Sync <span class="tag">Planned</span></b
               ><span>Sign in on each device and they sync. Nothing to set up.</span></span
             >
-          </div>
-          <div class="place">
+          </a>
+          <a
+            class="place"
+            href="https://github.com/pavlohrab/Vuurtoren/blob/main/docs/guide/self-host.md"
+          >
             <span class="dot"></span
             ><span
               ><b>Your own server</b
@@ -2272,18 +2291,27 @@
                 >One small Docker stack, which also helps your phone read new texts.</span
               ></span
             >
-          </div>
-          <div class="place">
+          </a>
+          <a
+            class="place"
+            href="https://github.com/pavlohrab/Vuurtoren/blob/main/docs/guide/sync.md#webdav-nextcloud"
+          >
             <span class="dot"></span
             ><span><b>WebDAV</b><span>Nextcloud, ownCloud or a NAS.</span></span>
-          </div>
-          <div class="place">
+          </a>
+          <a
+            class="place"
+            href="https://github.com/pavlohrab/Vuurtoren/blob/main/docs/guide/sync.md#a-synced-folder-syncthing"
+          >
             <span class="dot"></span
             ><span
               ><b>A synced folder</b
               ><span>Syncthing, Dropbox or iCloud Drive, on your computers.</span></span
             >
-          </div>
+          </a>
+          <a class="places-more" href="phone.html#compare"
+            >What each one gives you, side by side →</a
+          >
         </div>
       </div>
     </section>
