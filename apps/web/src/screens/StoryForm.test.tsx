@@ -26,13 +26,16 @@ describe("Write a story", () => {
     await user.type(within(dialog).getByLabelText("Topic"), "de markt");
     await user.click(within(dialog).getByRole("button", { name: /Long/ }));
     await user.click(within(dialog).getByRole("button", { name: "Dialogue" }));
-    // Two linked sliders: learning and new words stay under 50% together.
+    // New words go up to 5%; above the suggested 3% the form says so.
     const learning = within(dialog).getByRole("slider", { name: /Learning words/ });
     const fresh = within(dialog).getByRole("slider", { name: /New words/ });
+    expect(fresh).toHaveValue("3");
+    expect(within(dialog).queryByText(/We suggest at most 3% new words/)).not.toBeInTheDocument();
     fireEvent.change(fresh, { target: { value: "20" } });
+    expect(fresh).toHaveValue("5");
+    expect(within(dialog).getByText(/We suggest at most 3% new words/)).toBeVisible();
     fireEvent.change(learning, { target: { value: "40" } });
-    expect(fresh).toHaveValue("10");
-    expect(within(dialog).getByRole("img", { name: /50% known words/ })).toBeInTheDocument();
+    expect(within(dialog).getByRole("img", { name: /55% known words/ })).toBeInTheDocument();
     // The learning words it uses are shown, not edited.
     expect(await within(dialog).findByText(/Learning words it uses: gezellig/)).toBeVisible();
     await user.type(within(dialog).getByLabelText(/Anything else for the AI/), "Maak het grappig");
@@ -44,7 +47,7 @@ describe("Write a story", () => {
         length: "long",
         style: "dialogue",
         targetWords: ["gezellig", "kraam", "afspraak"],
-        mix: { learning: 0.4, fresh: 0.1 },
+        mix: { learning: 0.4, fresh: 0.05 },
         notes: "Maak het grappig",
       },
       expect.any(Function),

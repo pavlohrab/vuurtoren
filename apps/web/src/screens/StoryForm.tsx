@@ -75,6 +75,12 @@ const tokensText = (n: number) =>
 
 /** Learning and new words together stay under this share of the story. */
 const MIX_MAX = 50;
+/**
+ * New words: up to 5%, 3% suggested. Reading research advises keeping words left to guess
+ * under about 2–3% (Nation 2014); past that they start to get in the way of reading.
+ */
+const FRESH_MAX = 5;
+const FRESH_SUGGESTED = 3;
 
 type Focus = "learning" | "unit" | "grammar";
 
@@ -94,9 +100,8 @@ export function StoryForm({ preset = {} }: { preset?: StoryPreset }) {
   const [notes, setNotes] = useState("");
   // Percentages of the story's words; known words are the rest.
   const [learning, setLearning] = useState(15);
-  // New words: 3% by default, a few per page, as reading research advises keeping words left
-  // to guess under 2–3% (Nation 2014); each is used twice or more (story.ts).
-  const [fresh, setFresh] = useState(3);
+  // New words: a few per page; each is used twice or more (story.ts).
+  const [fresh, setFresh] = useState(FRESH_SUGGESTED);
   const [progress, setProgress] = useState<string | null>(null);
   // Two linked sliders: moving one past the 50% cap takes the room from the other.
   const setLearningPct = (v: number) => {
@@ -239,13 +244,19 @@ export function StoryForm({ preset = {} }: { preset?: StoryPreset }) {
             <input
               type="range"
               min={0}
-              max={MIX_MAX}
+              max={FRESH_MAX}
               step={1}
               value={fresh}
               disabled={create.isPending}
-              onChange={(e) => setFreshPct(Number(e.target.value))}
+              onChange={(e) => setFreshPct(Math.min(FRESH_MAX, Number(e.target.value)))}
             />
           </label>
+          {fresh > FRESH_SUGGESTED ? (
+            <p className="k-hint story-warn" role="status" style={{ margin: 0 }}>
+              We suggest at most {FRESH_SUGGESTED}% new words. More than that starts to get in the
+              way of reading.
+            </p>
+          ) : null}
           <p className="k-hint" style={{ margin: 0 }}>
             About {Math.round((storyWords * known) / 100)} known,{" "}
             {Math.round((storyWords * learning) / 100)} learning and{" "}

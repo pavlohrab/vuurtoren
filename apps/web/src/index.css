@@ -1788,6 +1788,9 @@
 .story-mix-new {
   background: color-mix(in srgb, var(--accent) 35%, var(--surface));
 }
+.story-warn {
+  color: var(--learn-ink);
+}
 .story-slider {
   display: grid;
   gap: 4px;
