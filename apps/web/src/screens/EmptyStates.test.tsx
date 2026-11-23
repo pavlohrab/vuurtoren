@@ -54,7 +54,16 @@ describe("empty states", () => {
         .filter(Boolean);
     // One Words entry (the phone tab bar: Read · Words · More); Practice is a tab of Words.
     await waitFor(() =>
-      expect(names()).toEqual(["Read", "Words", "Grammar", "Exam", "Courses", "Talk", "Settings"]),
+      expect(names()).toEqual([
+        "Read",
+        "Words",
+        "Grammar",
+        "Exam",
+        "Courses",
+        "Talk",
+        "Support Vuurtoren",
+        "Settings",
+      ]),
     );
     expect(within(nav).getByRole("link", { name: "Read" })).toHaveAttribute("data-active");
     expect(within(nav).queryByRole("link", { name: "Library" })).toBeNull();

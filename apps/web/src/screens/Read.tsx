@@ -38,6 +38,7 @@ import {
 } from "./library/shelving.js";
 import { StoriesShelf } from "./library/StoriesShelf.js";
 import { TodayStrip } from "./library/TodayStrip.js";
+import { SupportCard } from "./library/SupportCard.js";
 import { TextDetailsDialog } from "./library/TextDetailsDialog.js";
 import { readLastText } from "../lastText.js";
 import "./library/library.css";
@@ -350,6 +351,7 @@ export function Read() {
       />
 
       <TodayStrip />
+      <SupportCard />
 
       {needsAnki ? (
         <div className="banner" role="note">

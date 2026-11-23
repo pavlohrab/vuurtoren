@@ -1,4 +1,5 @@
 import { plural } from "../format.js";
+import { SUPPORT_URL, recordUse } from "../support.js";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
@@ -20,6 +21,7 @@ import {
   TrendingUp,
   Dumbbell,
   GraduationCap,
+  Heart,
   Plus,
   X,
 } from "lucide-react";
@@ -124,6 +126,8 @@ export function AppShell() {
     if (moreOpen) setMoreOpenState(false);
   }
   const moreButton = useRef<HTMLButtonElement>(null);
+  // A day of use, for the support card's timing (counted on this device only).
+  useEffect(() => recordUse(), []);
   const setMoreOpen = useCallback((open: boolean) => setMoreOpenState(open), []);
   /** Dismissed without choosing (Esc, Back, the scrim): focus goes back to the More button. */
   const dismissMore = useCallback(() => {
@@ -322,6 +326,17 @@ export function AppShell() {
               <NavLink to="/talk" label="Talk" icon={<MessagesSquare size={18} />} secondary />
             ) : null}
             <div className="nav-spacer" />
+            {/* Support: a plain link out, also in the phone's More sheet. */}
+            <a
+              href={SUPPORT_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="nav-link nav-link--secondary"
+              title="Support Vuurtoren"
+            >
+              <Heart size={18} />
+              <span className="nav-label">Support</span>
+            </a>
             <NavLink to="/settings" label="Settings" icon={<SettingsIcon size={18} />} secondary />
             <button
               ref={moreButton}
@@ -359,6 +374,17 @@ export function AppShell() {
                     onSelect={() => setMoreOpen(false)}
                   />
                 ))}
+                <a
+                  href={SUPPORT_URL}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="nav-more-item"
+                  role="menuitem"
+                  onClick={() => setMoreOpen(false)}
+                >
+                  <Heart size={18} />
+                  <span>Support Vuurtoren</span>
+                </a>
                 <button
                   type="button"
                   className="nav-more-item"

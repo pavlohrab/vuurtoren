@@ -171,3 +171,46 @@ a.today-step:hover .today-step-text {
     flex-wrap: wrap;
   }
 }
+
+/* The support card: quiet, below Today, only now and then (support.ts). */
+.support-card {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  margin-bottom: var(--s-5);
+  padding: var(--s-3) var(--s-4);
+  border: 1px solid var(--hairline);
+  border-radius: 12px;
+  color: var(--ink);
+}
+.support-card-icon {
+  flex: none;
+  color: var(--accent);
+}
+.support-card-text {
+  flex: 1;
+  min-width: 0;
+}
+.support-card-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+.support-card-hint {
+  margin: 0;
+  color: var(--ink-muted);
+  font-size: 14px;
+}
+.support-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+}
+@media (max-width: 699px) {
+  .support-card {
+    flex-wrap: wrap;
+  }
+  .support-card-actions {
+    width: 100%;
+  }
+}
