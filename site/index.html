@@ -1193,6 +1193,14 @@
         color: var(--muted);
         border-top: 1px solid var(--line);
       }
+      .foot-links {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px 20px;
+      }
+      .foot a {
+        color: inherit;
+      }
       .foot .in {
         display: flex;
         flex-wrap: wrap;
@@ -2441,14 +2449,14 @@
               <a href="phone.html"
                 ><b>Phone</b><span>Android. Reviews and stories in your pocket.</span></a
               >
-              <a class="soon" href="#"
+              <a class="soon" href="#roadmap"
                 ><b>Vuurtoren Sync<span class="tag">Planned</span></b
                 ><span>Sign in and your devices sync.</span></a
               >
             </div>
           </details>
           <a href="#read">Reading</a><a href="#words">Words</a><a href="#yours">Your data</a
-          ><a href="#">Docs</a>
+          ><a href="https://github.com/pavlohrab/Vuurtoren/tree/main/docs/guide">Docs</a>
         </div>
         <button
           class="theme-btn"
@@ -3059,7 +3067,12 @@
 
     <footer class="foot band">
       <div class="in">
-        <span>Vuurtoren · vuurtoren.app</span><span>Made while learning Dutch.</span>
+        <span class="foot-links"
+          ><a href="index.html">vuurtoren.app</a><a href="desktop.html">Desktop</a
+          ><a href="phone.html">Phone</a
+          ><a href="https://github.com/pavlohrab/Vuurtoren/tree/main/docs/guide">Docs</a
+          ><a href="https://github.com/pavlohrab/Vuurtoren">GitHub</a></span
+        ><span>MIT · content CC BY-SA</span>
       </div>
     </footer>
 
