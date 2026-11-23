@@ -1,22 +1,20 @@
 # Self-host Vuurtoren
 
-Your own Vuurtoren server does two things:
+Your own Vuurtoren server does two things. Your devices sync through it, with everything locked
+with your passphrase, so the server can't read your data and keeps no words or texts of its own.
+And it's a language server for your phone: it prepares and translates the texts you add on the
+phone.
 
-- **Sync.** Your devices pass their changes through it, sealed with your passphrase. It cannot
-  read them and keeps no words or texts of its own: your devices do.
-- **A language server for phones.** It analyses and translates texts you add on a phone.
-
-Its address shows one page, **Your devices**: sign in, add a device, remove one. The app itself
-runs on your computer and your phone, not on the server.
-
-The dictionaries, the translation model and the audio come from `data.vuurtoren.app`. The server
-downloads what it needs once, by itself.
+The app itself runs on your computer and your phone, not on the server. The server's address only
+shows one page, **Your devices**, where you sign in and add or remove devices. The dictionaries,
+the translation model and the recordings come from `data.vuurtoren.app`, and the server downloads
+what it needs by itself, once.
 
 ## What you need
 
-- A computer that stays on (a NAS, a mini PC, a small cloud server) with Docker.
-- HTTPS in front of it. The simplest is a Cloudflare Tunnel; any reverse proxy with a
-  certificate works too. Phones only connect over HTTPS.
+You need a computer that stays on, like a NAS, a mini PC or a small cloud server, with Docker on
+it. It also needs HTTPS in front of it, because phones only connect over HTTPS. The simplest way is
+a Cloudflare Tunnel, but any reverse proxy with a certificate works too.
 
 ## Start it
 

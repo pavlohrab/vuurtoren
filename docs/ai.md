@@ -1,23 +1,24 @@
 # AI (optional, your own key)
 
-Without AI everything else works. With a provider set you also get:
+Everything in Vuurtoren works without AI. If you add a key from an AI provider, you get a few
+extras on top.
 
-- **Talk**: a short chat in Dutch that stays within the words you know, corrects your messages and
-  offers new words to add.
-- **Explain this sentence** and **Simplify this page** in the reader, and the English of **Side by
-  side** when "English from AI" is on (the word pairs still come from the offline model).
-- **Write a story** (Add text, a grammar topic, a course unit): a text at your level, saved to
-  the Library.
-- **Fill gaps with AI sentences** in Practice, and **Generate exercises like this unit** in a course.
-- Examiner-style feedback on exam writing and speaking.
+In **Talk** you can have a short chat in Dutch that stays within the words you know. It corrects
+your messages and offers new words to add. In the reader you get **Explain this sentence** and
+**Simplify this page**, and Side by side can take its English from the AI when you turn on
+"English from AI" (the word pairs still come from the offline model). **Write a story** makes a text
+at your level, from Add text, a grammar topic or a course unit, and saves it to your Library. In
+Practice the AI can fill gaps with new example sentences, and in a course it can make more
+exercises like the unit. For the exam it gives feedback on your writing and speaking, in the style
+of an examiner.
 
-Without a provider these buttons are hidden. Talk stays in the menu and opens a short set-up
-screen instead.
+Without a provider these buttons are hidden. Talk stays in the menu and opens a short set-up screen
+instead.
 
 ## Providers
 
-Settings → AI: pick a provider, paste the key, pick a model, press **Test**. The model list comes
-from the provider; any name can be typed.
+Go to Settings → AI, pick a provider, paste your key, pick a model and press **Test**. The list of
+models comes from the provider, and you can also type any model name yourself.
 
 | Provider          | Address                                                   | Default model             |
 | ----------------- | --------------------------------------------------------- | ------------------------- |
@@ -40,31 +41,36 @@ small models. Settings shows a local monthly tally; set a hard limit with your p
 
 ## Privacy
 
-- Requests go from your device straight to the provider. There is no Vuurtoren proxy.
-- The key is stored on this device only. It is never in your data, backups or the server.
-  An optional passphrase encrypts it (AES-GCM, PBKDF2 250,000 iterations).
-- Sent to the provider: the topic, target words, a grammar point, your vocabulary estimate and
-  200–400 known lemmas. Some features also send the text they work on: **Explain this sentence**
-  sends the sentence, **Simplify this page** sends the page, Side by side with "English from AI"
-  sends the sentences of the page, Talk sends your messages, and exam
-  feedback sends your answers. Nothing else from your Library, no Anki content and no
-  identifiers.
-- Conversations, stories and generated sentences are saved in your data, so backups include them.
+Requests go from your device straight to the provider. There is no Vuurtoren server in between. The
+key is stored on this device only, so it's never in your data, your backups or on your server. If
+you want, a passphrase encrypts it (AES-GCM, PBKDF2 with 250,000 iterations).
+
+What the provider gets is the topic, the target words, a grammar point, your vocabulary estimate
+and 200 to 400 words you know. Some features also send the text they work on: **Explain this
+sentence** sends the sentence, **Simplify this page** sends the page, Side by side with "English
+from AI" sends the sentences of the page, Talk sends your messages, and exam feedback sends your
+answers. Nothing else from your Library is sent, no Anki content and nothing that identifies you.
+
+Conversations, stories and generated sentences are saved in your data, so your backups include
+them.
 
 ## How generated text is checked
 
-The AI writes, the algorithms check. Nothing generated is graded by the AI.
+The AI writes, and Vuurtoren's own algorithms check what it wrote. The AI never grades anything.
 
-- **Talk and stories:** the language server analyses the text and the reader's matcher scores
-  coverage against your words. Below your target minus 3 points (at least 90%), one rewrite is
-  asked, naming the offending words. It is kept only if coverage doesn't drop. Words still
-  unknown are glossed.
-- **Example sentences** (up to 8 words per Practice session, 5 sentences each): kept only if the
-  target word is really there, coverage is at least 90% with at most one unknown word, no other
-  target leaks in, the length is 4–14 words, and for a grammar topic the rule-based detector fires.
-  Failed attempts are stored too, so a hard word isn't retried every session.
-- **Unit exercises:** gap fills, sentence building and a text with questions, each checked the
-  same way, then graded by the book's own checkers.
+For **Talk and stories**, the language server analyses the text and Vuurtoren works out how much of
+it you know. If it's more than 3 points below your target (and never below 90%), it asks for one
+rewrite and names the words that were too hard. For a story, the new words you asked for don't
+count against it. The rewrite is only kept if it's better, and words you still don't know get a
+translation.
+
+**Example sentences** (up to 8 words per Practice session, 5 sentences each) are only kept if the
+word is really in them, you know at least 90% of the sentence with at most one unknown word, no
+other target word slips in, the sentence has 4 to 14 words, and for a grammar topic the grammar
+detector finds the rule. Failed tries are saved too, so a hard word isn't tried again every session.
+
+**Unit exercises** (gap fills, sentence building, a text with questions) are checked the same way,
+and then graded by the book's own checkers.
 
 ## Use Vuurtoren from Claude
 
