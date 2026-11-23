@@ -1667,9 +1667,9 @@
         margin-top: 32px;
       }
       .dev-card {
-        display: grid;
+        display: flex;
+        flex-direction: column;
         gap: 8px;
-        align-content: start;
         padding: 26px;
         border: 1px solid var(--line);
         border-radius: 18px;
@@ -1690,10 +1690,12 @@
       .dev-card span:not(.eyebrow) {
         color: var(--muted);
       }
+      /* The platforms line sits at the bottom, level on both cards. */
       .dev-card .go {
         color: var(--accent) !important;
         font-weight: 600;
-        margin-top: 6px;
+        margin-top: auto;
+        padding-top: 6px;
       }
       @media (max-width: 760px) {
         .dev-cards {
@@ -2205,6 +2207,42 @@
         }
         .hbeam {
           transform: rotate(var(--angle));
+        }
+      }
+
+      /* Phones: the ways to sync as one quiet list instead of four boxes. */
+      @media (max-width: 700px) {
+        .places {
+          gap: 0;
+          border: 1px solid var(--line);
+          border-radius: 14px;
+          background: var(--bg);
+          overflow: hidden;
+        }
+        .place,
+        .place.soon {
+          gap: 12px;
+          padding: 13px 16px;
+          border: 0;
+          border-radius: 0;
+          background: transparent;
+        }
+        .place + .place,
+        .places-more {
+          border-top: 1px solid var(--line);
+        }
+        .place span {
+          font-size: 14px;
+        }
+        .place .tag {
+          font-size: 11px;
+          padding: 1px 7px;
+        }
+        .places-more {
+          margin: 0;
+          padding: 13px 16px;
+          justify-self: stretch;
+          font-size: 14px;
         }
       }
     </style>
