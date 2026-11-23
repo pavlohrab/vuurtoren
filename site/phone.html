@@ -507,6 +507,13 @@
         box-shadow: 0 1px 2px rgb(0 0 0 / 0.12);
         font-weight: 600;
       }
+      /* Both heroes are as tall as the phone picture, so the text stays in the same place when
+   switching between Desktop and Phone. */
+      @media (min-width: 861px) {
+        .hero .in {
+          min-height: 540px;
+        }
+      }
       @media (max-width: 860px) {
         .hero .in {
           grid-template-columns: 1fr;
