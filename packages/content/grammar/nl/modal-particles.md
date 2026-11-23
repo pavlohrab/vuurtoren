@@ -12,6 +12,8 @@ sources:
   [
     e-ANS 21.4.9.4 | https://e-ans.ivdnt.org/topics/pid/ans21040904lingtopic,
     Taaladvies (weleens / wel eens) | https://taaladvies.net/weleens-of-wel-eens/,
+    Donaldson 2008 (2nd ed.) §10.8 pp. 162–168 | https://doi.org/10.4324/9780203895320,
+    Shetter & Ham 2007 (9th ed.) §16.1–16.2 pp. 125–133 | https://doi.org/10.4324/9780203935712,
   ]
 ---
 

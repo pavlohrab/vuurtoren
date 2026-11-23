@@ -8,7 +8,12 @@ summary: Linking adverbs such as daarom, toch, bovendien and anders connect sent
 detects: [inversion]
 practice: [scramble]
 related: [conjunctions, subordinate-clauses, inversion, modal-particles]
-sources: [e-ANS 8.5 | https://e-ans.ivdnt.org/topics/pid/ans0805lingtopic]
+sources:
+  [
+    e-ANS 8.5 | https://e-ans.ivdnt.org/topics/pid/ans0805lingtopic,
+    Donaldson 2008 (2nd ed.) §12.3 pp. 304–305 | https://doi.org/10.4324/9780203895320,
+    Donaldson 2008 (2nd ed.) §12.1 pp. 290–293 | https://doi.org/10.4324/9780203895320,
+  ]
 ---
 
 ## Explanation

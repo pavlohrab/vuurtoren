@@ -8,7 +8,13 @@ summary: Modal verbs and a few others take a bare infinitive; most other verbs, 
 detects: [te-infinitive]
 practice: [scramble]
 related: [om-te-infinitive, modal-verbs, separable-verbs, progressive, verb-clusters]
-sources: [e-ANS 18.5.4 | https://e-ans.ivdnt.org/topics/pid/ans180504lingtopic]
+sources:
+  [
+    e-ANS 18.5.4 | https://e-ans.ivdnt.org/topics/pid/ans180504lingtopic,
+    Donaldson 2008 (2nd ed.) §11.9.2 pp. 231–235 | https://doi.org/10.4324/9780203895320,
+    Shetter & Ham 2007 (9th ed.) §14.5 pp. 113–114 | https://doi.org/10.4324/9780203935712,
+    Shetter & Ham 2007 (9th ed.) §14.7 p. 116 | https://doi.org/10.4324/9780203935712,
+  ]
 ---
 
 ## Explanation

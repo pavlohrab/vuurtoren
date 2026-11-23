@@ -8,7 +8,13 @@ summary: Every noun is a de-word or a het-word; all plurals and most nouns take 
 detects: [diminutives, demonstratives]
 practice: [gender]
 related: [diminutives, demonstratives, adjective-inflection, plural-nouns, word-formation]
-sources: [e-ANS 3.3.2 | https://e-ans.ivdnt.org/topics/pid/ans030302lingtopic]
+sources:
+  [
+    e-ANS 3.3.2 | https://e-ans.ivdnt.org/topics/pid/ans030302lingtopic,
+    Donaldson 2008 (2nd ed.) §5.1–5.2 pp. 25–31 | https://doi.org/10.4324/9780203895320,
+    Donaldson 2008 (2nd ed.) §7.1 pp. 34–43 | https://doi.org/10.4324/9780203895320,
+    Shetter & Ham 2007 (9th ed.) §4.1–4.2 pp. 28–29 | https://doi.org/10.4324/9780203935712,
+  ]
 ---
 
 ## Explanation

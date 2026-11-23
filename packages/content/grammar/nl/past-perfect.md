@@ -9,7 +9,14 @@ detects: [past-perfect]
 practice: [perfect]
 related:
   [perfect-tense, hebben-or-zijn, imperfect-tense, conditional-perfect, conditional-inversion]
-sources: [e-ANS 2.4.8.8 | https://e-ans.ivdnt.org/topics/pid/ans02040808lingtopic]
+sources:
+  [
+    e-ANS 2.4.8.8 | https://e-ans.ivdnt.org/topics/pid/ans02040808lingtopic,
+    Donaldson 2008 (2nd ed.) §11.1.4 pp. 179–180 | https://doi.org/10.4324/9780203895320,
+    Donaldson 2008 (2nd ed.) §11.2.4 p. 188 | https://doi.org/10.4324/9780203895320,
+    Shetter & Ham 2007 (9th ed.) §13.2 p. 102 | https://doi.org/10.4324/9780203935712,
+    Shetter & Ham 2007 (9th ed.) §13.3.3 p. 104 | https://doi.org/10.4324/9780203935712,
+  ]
 ---
 
 ## Explanation

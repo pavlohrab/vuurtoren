@@ -8,7 +8,13 @@ summary: Zou/zouden + infinitive means "would"; it is used for wishes, polite re
 detects: [conditional]
 practice: [scramble]
 related: [future, conditional-perfect, modal-verbs, conditional-inversion]
-sources: [e-ANS 2.4.8.9 | https://e-ans.ivdnt.org/topics/pid/ans02040809lingtopic]
+sources:
+  [
+    e-ANS 2.4.8.9 | https://e-ans.ivdnt.org/topics/pid/ans02040809lingtopic,
+    Donaldson 2008 (2nd ed.) §11.1.7 pp. 182–183 | https://doi.org/10.4324/9780203895320,
+    Donaldson 2008 (2nd ed.) §11.2.7 pp. 189–191 | https://doi.org/10.4324/9780203895320,
+    Shetter & Ham 2007 (9th ed.) §14.1.7 pp. 109–110 | https://doi.org/10.4324/9780203935712,
+  ]
 ---
 
 ## Explanation
@@ -19,7 +25,7 @@ Uses:
 
 - **Polite wishes and requests**: _Ik zou graag een kamer willen reserveren._ _Zou je het raam even dicht willen doen?_
 - **Advice**: _Ik zou dat niet doen._ (I wouldn't do that.)
-- **Unreal situations** with _als_: _Als ik meer tijd had, zou ik vaker sporten._ The als-clause uses the simple past (_had_, _was_, _kon_), the main clause uses _zou_.
+- **Unreal situations** with _als_: _Als ik meer tijd had, zou ik vaker sporten._ The als-clause usually uses the simple past (_had_, _was_, _kon_), the main clause uses _zou_.
 - **The future seen from the past**: _Hij zei dat hij zou bellen._ (He said he would call.)
 - **Rumours / unconfirmed news**: _De minister zou ontslag nemen._ (The minister is said to be resigning.)
 - **Planned but uncertain**: _We zouden om acht uur vertrekken._ (We were supposed to leave at eight.)
@@ -45,6 +51,6 @@ For "should" as advice, Dutch also uses _zou moeten_: _Je zou meer moeten slapen
 
 ## Common mistakes
 
-- _zou_ in the als-clause: _Als ik rijk zou zijn, zou ik reizen._ This is heard, but the simple past is better: _Als ik rijk was, …_
+- _zou_ in both halves: _Als ik rijk zou zijn, zou ik reizen._ This is correct, but two _zou_'s sound heavy; the simple past is shorter and more usual: _Als ik rijk was, …_
 - The infinitive in the middle: _Ik zou willen graag koffie._ It goes at the end: _Ik zou graag koffie willen._
 - _Ik zou_ with "will" meaning: _Morgen zou ik je bellen._ That means "I was supposed to call you tomorrow". For a plain promise: _Morgen bel ik je._

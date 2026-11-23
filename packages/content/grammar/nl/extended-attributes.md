@@ -7,7 +7,12 @@ order: 59
 summary: Written Dutch can pack a whole description between the article and the noun (het in 1900 gebouwde huis); to read it, find the article, jump to the noun, and read the middle as a relative clause.
 practice: [scramble]
 related: [participles, adjective-inflection, relative-pronouns, register]
-sources: [e-ANS 14.5.1 | https://e-ans.ivdnt.org/topics/pid/ans140501lingtopic]
+sources:
+  [
+    e-ANS 14.5.1 | https://e-ans.ivdnt.org/topics/pid/ans140501lingtopic,
+    Donaldson 2008 (2nd ed.) §8.5.10 pp. 93–95 | https://doi.org/10.4324/9780203895320,
+    Donaldson 2008 (2nd ed.) §11.12.4.7 pp. 246–247 | https://doi.org/10.4324/9780203895320,
+  ]
 ---
 
 ## Explanation

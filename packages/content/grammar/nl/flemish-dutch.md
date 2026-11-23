@@ -12,6 +12,10 @@ sources:
     e-ANS 1.1.2.1 | https://e-ans.ivdnt.org/topics/pid/topic-16043939199233545,
     e-ANS 18.5.7.3 | https://e-ans.ivdnt.org/topics/pid/ans18050703lingtopic,
     Taaladvies (hebben gedaan / gedaan hebben) | https://www.vlaanderen.be/team-taaladvies/taaladviezen/hebben-gedaan-gedaan-hebben,
+    Donaldson 2008 (2nd ed.) §1.3.4 pp. 7–8 | https://doi.org/10.4324/9780203895320,
+    Donaldson 2008 (2nd ed.) §7.5.1.7 p. 60 | https://doi.org/10.4324/9780203895320,
+    Donaldson 2008 (2nd ed.) §8.1.2.1 pp. 70–72 | https://doi.org/10.4324/9780203895320,
+    Shetter & Ham 2007 (9th ed.) §0.1 pp. 1–5 | https://doi.org/10.4324/9780203935712,
   ]
 ---
 

@@ -12,6 +12,8 @@ sources:
   [
     e-ANS 5.8 | https://e-ans.ivdnt.org/topics/pid/ans0508lingtopic,
     Taaladvies (dat / wat) | https://www.vlaanderen.be/team-taaladvies/taaladviezen/dat-wat,
+    Donaldson 2008 (2nd ed.) §8.5 pp. 86–95 | https://doi.org/10.4324/9780203895320,
+    Shetter & Ham 2007 (9th ed.) §18.3 pp. 146–148 | https://doi.org/10.4324/9780203935712,
   ]
 ---
 

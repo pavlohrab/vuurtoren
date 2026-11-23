@@ -7,7 +7,12 @@ order: 48
 summary: Most adjectives work as adverbs without any ending; small adverbs of degree, time and place (heel, al, nog, pas, hier, daar) have meanings that are worth learning one by one.
 practice: [cloze-choice]
 related: [comparison, time-manner-place, modal-particles, pronominal-adverbs]
-sources: [e-ANS 8.3 | https://e-ans.ivdnt.org/topics/pid/ans0803lingtopic]
+sources:
+  [
+    e-ANS 8.3 | https://e-ans.ivdnt.org/topics/pid/ans0803lingtopic,
+    Donaldson 2008 (2nd ed.) §10.2–10.3 pp. 137–155 | https://doi.org/10.4324/9780203895320,
+    Shetter & Ham 2007 (9th ed.) §7.3 p. 52 | https://doi.org/10.4324/9780203935712,
+  ]
 ---
 
 ## Explanation

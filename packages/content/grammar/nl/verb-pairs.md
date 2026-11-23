@@ -7,7 +7,11 @@ order: 47
 summary: Several English verbs have two Dutch equivalents: kennen and weten (know), wonen and leven (live), verstaan and begrijpen (understand), and more.
 practice: [cloze-choice]
 related: [position-verbs, reflexive-verbs, verbs-with-prepositions]
-sources: [Woordenlijst | https://woordenlijst.org/]
+sources:
+  [
+    Woordenlijst | https://woordenlijst.org/,
+    Shetter & Ham 2007 (9th ed.) §24.2.2–24.3 pp. 199–204 | https://doi.org/10.4324/9780203935712,
+  ]
 ---
 
 ## Explanation

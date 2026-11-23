@@ -8,7 +8,13 @@ summary: For things, Dutch replaces "preposition + it/that/this/what" with er-, 
 detects: [pronominal-adverbs, er, relative-pronouns]
 practice: [scramble]
 related: [er, verbs-with-prepositions, relative-pronouns, questions, er-combined]
-sources: [e-ANS 8.7 | https://e-ans.ivdnt.org/topics/pid/ans0807lingtopic]
+sources:
+  [
+    e-ANS 8.7 | https://e-ans.ivdnt.org/topics/pid/ans0807lingtopic,
+    Donaldson 2008 (2nd ed.) §15.3 pp. 368–370 | https://doi.org/10.4324/9780203895320,
+    Donaldson 2008 (2nd ed.) §8.5.3 pp. 87–88 | https://doi.org/10.4324/9780203895320,
+    Shetter & Ham 2007 (9th ed.) §21.2–21.3 pp. 175–180 | https://doi.org/10.4324/9780203935712,
+  ]
 ---
 
 ## Explanation

@@ -7,7 +7,14 @@ order: 50
 summary: Dutch builds long compound words, takes the gender from the last part, and uses a small set of endings and prefixes to make nouns, adjectives and opposites.
 practice: [gender]
 related: [de-het, diminutives, inseparable-prefixes, spelling-rules]
-sources: [e-ANS 12 | https://e-ans.ivdnt.org/topics/pid/topic-16402164761856575]
+sources:
+  [
+    e-ANS 12 | https://e-ans.ivdnt.org/topics/pid/topic-16402164761856575,
+    Donaldson 2008 (2nd ed.) §7.1.3 p. 41 | https://doi.org/10.4324/9780203895320,
+    Donaldson 2008 (2nd ed.) §7.3 pp. 54–56 | https://doi.org/10.4324/9780203895320,
+    Donaldson 2008 (2nd ed.) §9.7 pp. 123–130 | https://doi.org/10.4324/9780203895320,
+    Shetter & Ham 2007 (9th ed.) ch. 25 pp. 205–210 | https://doi.org/10.4324/9780203935712,
+  ]
 ---
 
 ## Explanation

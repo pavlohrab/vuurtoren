@@ -8,7 +8,12 @@ summary: When a clause has two verb parts, the conjugated verb stays second and 
 detects: [modal-verbs, perfect-tense, separable-verbs]
 practice: [scramble]
 related: [word-order-v2, modal-verbs, perfect-tense, separable-verbs, verb-clusters]
-sources: [e-ANS 21.1.1 | https://e-ans.ivdnt.org/topics/pid/ans210101lingtopic]
+sources:
+  [
+    e-ANS 21.1.1 | https://e-ans.ivdnt.org/topics/pid/ans210101lingtopic,
+    Shetter & Ham 2007 (9th ed.) §20.1.2 pp. 162–163 | https://doi.org/10.4324/9780203935712,
+    Shetter & Ham 2007 (9th ed.) §20.4 pp. 167–168 | https://doi.org/10.4324/9780203935712,
+  ]
 ---
 
 ## Explanation

@@ -12,6 +12,9 @@ sources:
   [
     e-ANS 6.2.4 | https://e-ans.ivdnt.org/topics/pid/topic-14469067579132942,
     Taaladvies (meest) | https://www.vlaanderen.be/team-taaladvies/taaladviezen/meest-in-overtreffende-trap,
+    Donaldson 2008 (2nd ed.) §9.2–9.3 pp. 111–116 | https://doi.org/10.4324/9780203895320,
+    Donaldson 2008 (2nd ed.) §10.1 pp. 133–137 | https://doi.org/10.4324/9780203895320,
+    Shetter & Ham 2007 (9th ed.) §7.4–7.5 pp. 52–55 | https://doi.org/10.4324/9780203935712,
   ]
 ---
 
@@ -28,7 +31,7 @@ Spelling follows the spelling rules: _groot → groter_, _dik → dikker_, _vies
 
 **Before a noun**, the forms take -e like any adjective: _een grotere kamer_, _de grootste kamer_. **After a verb** or as an adverb, the superlative usually has _het_: _Deze kamer is het grootst._ _Wie loopt het snelst?_
 
-Long or foreign words and words ending in -st can also use _meer_ / _meest_: _meer ervaren_, _het meest bekend_. Short words usually take the ending, but _meest_ is possible with some of them too: _meest vers_, _meest gelezen_, _meer dood dan levend_.
+Long or foreign words and words ending in -isch or -st can also use _meer_ / _meest_: _meer ervaren_, _het meest bekend_, _meest typisch_. Short words usually take the ending, but _meest_ is possible with some of them too: _meest vers_, _meest gelezen_, _meer dood dan levend_.
 
 ### Pattern
 

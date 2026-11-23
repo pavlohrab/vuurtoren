@@ -12,6 +12,8 @@ sources:
   [
     e-ANS 29 | https://e-ans.ivdnt.org/topics/pid/topic-16249577360247367,
     e-ANS 29.3.3 | https://e-ans.ivdnt.org/topics/pid/topic-16249591180070110,
+    Donaldson 2008 (2nd ed.) §16.1.4 pp. 377–381 | https://doi.org/10.4324/9780203895320,
+    Shetter & Ham 2007 (9th ed.) §20.5.3 p. 170 | https://doi.org/10.4324/9780203935712,
   ]
 ---
 

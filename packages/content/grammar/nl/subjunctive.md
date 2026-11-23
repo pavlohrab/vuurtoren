@@ -7,7 +7,11 @@ order: 61
 summary: Dutch once had a subjunctive (stem + -e); today it survives only in fixed phrases, wishes, slogans and old-style instructions, which you should recognise and use as set expressions.
 practice: [meaning-choice]
 related: [register, conditional, imperative]
-sources: [e-ANS 2.4.3 | https://e-ans.ivdnt.org/topics/pid/ans020403lingtopic]
+sources:
+  [
+    e-ANS 2.4.3 | https://e-ans.ivdnt.org/topics/pid/ans020403lingtopic,
+    Donaldson 2008 (2nd ed.) §11.11 pp. 240–241 | https://doi.org/10.4324/9780203895320,
+  ]
 ---
 
 ## Explanation

@@ -12,6 +12,9 @@ sources:
   [
     e-ANS 2.4.8.10 | https://e-ans.ivdnt.org/topics/pid/ans02040810lingtopic,
     e-ANS 2.4.8.6 | https://e-ans.ivdnt.org/topics/pid/ans02040806lingtopic,
+    Donaldson 2008 (2nd ed.) §11.1.6–11.1.8 pp. 181–184 | https://doi.org/10.4324/9780203895320,
+    Donaldson 2008 (2nd ed.) §11.2.6–11.2.8 pp. 189–191 | https://doi.org/10.4324/9780203895320,
+    Shetter & Ham 2007 (9th ed.) §15.4 p. 124 | https://doi.org/10.4324/9780203935712,
   ]
 ---
 
@@ -49,5 +52,5 @@ The future perfect also expresses a **guess about the past**, often with _wel_: 
 ## Common mistakes
 
 - hebben with a zijn-verb: _Ik zou gekomen hebben._ Komen takes zijn: _Ik zou gekomen zijn_ or _Ik zou zijn gekomen._
-- Using _zou_ in the als-clause: _Als ik het zou hebben geweten, …_ It is heard, but _Als ik het had geweten, …_ is better.
+- _zou_ in the als-clause: _Als ik het zou hebben geweten, …_ This is correct, but heavy; _Als ik het had geweten, …_ is shorter and more usual.
 - An infinitive instead of the participle: _Ik zou het hebben doen._ Use the participle: _Ik zou het hebben gedaan._

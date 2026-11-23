@@ -11,6 +11,10 @@ sources:
   [
     e-ANS 5.8.5.7 | https://e-ans.ivdnt.org/topics/pid/ans05080507lingtopic,
     Taaladvies (hun / zij hebben) | https://taaladvies.net/hun-of-zij-hebben-het-gedaan/,
+    Donaldson 2008 (2nd ed.) §9.1.6 p. 111 | https://doi.org/10.4324/9780203895320,
+    Donaldson 2008 (2nd ed.) §8.5.9 pp. 92–93 | https://doi.org/10.4324/9780203895320,
+    Donaldson 2008 (2nd ed.) Appendix 1 pp. 383–389 | https://doi.org/10.4324/9780203895320,
+    Shetter & Ham 2007 (9th ed.) §16.3 pp. 133–134 | https://doi.org/10.4324/9780203935712,
   ]
 ---
 

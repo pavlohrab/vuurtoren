@@ -8,7 +8,12 @@ summary: Most verbs take hebben; verbs of change, of going somewhere, and blijve
 detects: [perfect-tense]
 practice: [perfect]
 related: [perfect-tense, past-perfect, irregular-verbs]
-sources: [e-ANS 2.3.2.8.iv | https://e-ans.ivdnt.org/topics/pid/ans0203020804lingtopic]
+sources:
+  [
+    e-ANS 2.3.2.8.iv | https://e-ans.ivdnt.org/topics/pid/ans0203020804lingtopic,
+    Donaldson 2008 (2nd ed.) §11.7.2.1–11.7.2.2 pp. 211–218 | https://doi.org/10.4324/9780203895320,
+    Shetter & Ham 2007 (9th ed.) §12.3 pp. 96–99 | https://doi.org/10.4324/9780203935712,
+  ]
 ---
 
 ## Explanation

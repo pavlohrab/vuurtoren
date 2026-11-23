@@ -8,7 +8,13 @@ summary: Worden + past participle says that something is being done; zijn + part
 detects: [passive]
 practice: [scramble]
 related: [impersonal-passive, perfect-tense, participles, modal-verbs]
-sources: [e-ANS 22.2 | https://e-ans.ivdnt.org/topics/pid/ans2202lingtopic]
+sources:
+  [
+    e-ANS 22.2 | https://e-ans.ivdnt.org/topics/pid/ans2202lingtopic,
+    Donaldson 2008 (2nd ed.) §11.12 pp. 242–247 | https://doi.org/10.4324/9780203895320,
+    Shetter & Ham 2007 (9th ed.) §23.1–23.4 pp. 187–191 | https://doi.org/10.4324/9780203935712,
+    Shetter & Ham 2007 (9th ed.) §23.6 pp. 193–194 | https://doi.org/10.4324/9780203935712,
+  ]
 ---
 
 ## Explanation

@@ -8,7 +8,13 @@ summary: Laten + infinitive means "let" or "have something done"; laten we … m
 detects: [laten, verb-clusters]
 practice: [scramble]
 related: [modal-verbs, verb-clusters, imperative, te-infinitive]
-sources: [e-ANS 18.5.4.10 | https://e-ans.ivdnt.org/topics/pid/ans18050410lingtopic]
+sources:
+  [
+    e-ANS 18.5.4.10 | https://e-ans.ivdnt.org/topics/pid/ans18050410lingtopic,
+    Donaldson 2008 (2nd ed.) §11.9.2.5 pp. 233–235 | https://doi.org/10.4324/9780203895320,
+    Donaldson 2008 (2nd ed.) §11.10.5 p. 240 | https://doi.org/10.4324/9780203895320,
+    Shetter & Ham 2007 (9th ed.) §14.5 pp. 113–114 | https://doi.org/10.4324/9780203935712,
+  ]
 ---
 
 ## Explanation

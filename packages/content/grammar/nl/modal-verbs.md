@@ -12,6 +12,9 @@ sources:
   [
     e-ANS 18.5.4.4 | https://e-ans.ivdnt.org/topics/pid/ans18050404lingtopic,
     Taaladvies (hoeven / moeten) | https://www.vlaanderen.be/team-taaladvies/taaladviezen/hoeven-moeten,
+    Donaldson 2008 (2nd ed.) §11.8 pp. 219–231 | https://doi.org/10.4324/9780203895320,
+    Shetter & Ham 2007 (9th ed.) §14.1 pp. 107–110 | https://doi.org/10.4324/9780203935712,
+    Shetter & Ham 2007 (9th ed.) §14.3 pp. 111–112 | https://doi.org/10.4324/9780203935712,
   ]
 ---
 

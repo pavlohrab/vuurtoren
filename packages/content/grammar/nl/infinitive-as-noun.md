@@ -11,6 +11,8 @@ sources:
   [
     e-ANS 2.4.2 | https://e-ans.ivdnt.org/topics/pid/ans020402lingtopic,
     e-ANS 14.8 | https://e-ans.ivdnt.org/topics/pid/ans1408lingtopic,
+    Donaldson 2008 (2nd ed.) §11.9.4 p. 237 | https://doi.org/10.4324/9780203895320,
+    Shetter & Ham 2007 (9th ed.) §15.4 pp. 123–124 | https://doi.org/10.4324/9780203935712,
   ]
 ---
 

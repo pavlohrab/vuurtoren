@@ -8,7 +8,13 @@ summary: Er + worden + participle, with no subject at all, describes an activity
 detects: [impersonal-passive]
 practice: [scramble]
 related: [passive, er, modal-verbs]
-sources: [e-ANS 22.3 | https://e-ans.ivdnt.org/topics/pid/ans2203lingtopic]
+sources:
+  [
+    e-ANS 22.3 | https://e-ans.ivdnt.org/topics/pid/ans2203lingtopic,
+    Donaldson 2008 (2nd ed.) §11.12 pp. 242–247 | https://doi.org/10.4324/9780203895320,
+    Donaldson 2008 (2nd ed.) §15.1 pp. 366–367 | https://doi.org/10.4324/9780203895320,
+    Shetter & Ham 2007 (9th ed.) §23.5 pp. 191–193 | https://doi.org/10.4324/9780203935712,
+  ]
 ---
 
 ## Explanation

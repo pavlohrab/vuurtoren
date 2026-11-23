@@ -8,7 +8,11 @@ summary: When two uses of er meet in the same clause, Dutch normally says er onl
 detects: [er]
 practice: [scramble]
 related: [er, pronominal-adverbs, impersonal-passive]
-sources: [e-ANS 8.6.6.2 | https://e-ans.ivdnt.org/topics/pid/ans08060602lingtopic]
+sources:
+  [
+    e-ANS 8.6.6.2 | https://e-ans.ivdnt.org/topics/pid/ans08060602lingtopic,
+    Donaldson 2008 (2nd ed.) §15.5 pp. 371–373 | https://doi.org/10.4324/9780203895320,
+  ]
 ---
 
 ## Explanation

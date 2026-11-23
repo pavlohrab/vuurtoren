@@ -12,6 +12,8 @@ sources:
   [
     e-ANS 12.4.2.2 | https://e-ans.ivdnt.org/topics/pid/topic-11299340926936582,
     e-ANS 1.4.5.2 | https://e-ans.ivdnt.org/topics/pid/topic-15820319650226409,
+    Donaldson 2008 (2nd ed.) §7.5 pp. 57–65 | https://doi.org/10.4324/9780203895320,
+    Shetter & Ham 2007 (9th ed.) ch. 22 pp. 181–186 | https://doi.org/10.4324/9780203935712,
   ]
 ---
 
@@ -27,7 +29,7 @@ The ending depends on the end of the word:
 - **-tje** after a vowel (single vowels double: _auto → autootje_, _oma → omaatje_), after **-l, -n, -r, -w** following a long vowel or two vowels (_stoel → stoeltje_, _deur → deurtje_), and after unstressed -el, -en, -er (_tafel → tafeltje_, _deken → dekentje_).
 - **-pje** after **-m** following a long vowel or an unstressed syllable, and after **-lm, -rm** (_boom → boompje_, _bezem → bezempje_, _film → filmpje_, _arm → armpje_).
 - **-etje** after a **short vowel + l, m, n, r, ng** (the consonant doubles, but _ng_ stays): _bal → balletje_, _kam → kammetje_, _pen → pennetje_, _ding → dingetje_.
-- **-kje** after unstressed **-ing**: _koning → koninkje_.
+- **-kje** after unstressed **-ing**: _koning → koninkje_. But words in **-ling** take -etje: _leerling → leerlingetje_.
 
 Some words are almost always diminutives: _het meisje_ (girl), _het kopje_ (cup), _het koekje_ (biscuit), _het ijsje_ (ice cream), _het broodje_ (roll). Adverbs can take a diminutive in speech too: _even zachtjes_ (nice and quietly), _eventjes_.
 

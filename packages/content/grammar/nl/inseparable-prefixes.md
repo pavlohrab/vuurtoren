@@ -8,7 +8,12 @@ summary: Verbs with an unstressed prefix such as be-, ge-, her-, ont-, ver- or e
 practice: [perfect]
 related: [separable-verbs, perfect-tense, word-formation]
 detects: [inseparable-prefixes]
-sources: [e-ANS 12.3.2.1 | https://e-ans.ivdnt.org/topics/pid/topic-14428052248902267]
+sources:
+  [
+    e-ANS 12.3.2.1 | https://e-ans.ivdnt.org/topics/pid/topic-14428052248902267,
+    Donaldson 2008 (2nd ed.) §11.20.2 pp. 272–277 | https://doi.org/10.4324/9780203895320,
+    Shetter & Ham 2007 (9th ed.) §17.3–17.4 pp. 139–140 | https://doi.org/10.4324/9780203935712,
+  ]
 ---
 
 ## Explanation
@@ -39,7 +44,7 @@ Sometimes the same pair has two meanings: _DOORlopen_ (keep walking) vs _doorLOP
 
 - `be- ge- her- ont- ver- er-` + verb: never split, no ge- → _verkopen – verkocht_
 - stressed `door- over- om- onder- voor-`: separable → _Ik stap over._ / _overgestapt_
-- unstressed `door- over- om- onder- voor-`: inseparable → _Ik overleg met haar._ / _overleefd_
+- unstressed `door- over- om- onder- voor-`: inseparable → _Ik overleg met haar._ / _overlegd_
 
 ## Examples
 

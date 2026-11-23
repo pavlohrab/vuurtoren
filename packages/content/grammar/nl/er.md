@@ -8,7 +8,12 @@ summary: Er introduces something new ("there is"), stands for a known place, rep
 detects: [er]
 practice: [scramble]
 related: [pronominal-adverbs, er-combined, impersonal-passive, numbers]
-sources: [e-ANS 8.6 | https://e-ans.ivdnt.org/topics/pid/ans0806lingtopic]
+sources:
+  [
+    e-ANS 8.6 | https://e-ans.ivdnt.org/topics/pid/ans0806lingtopic,
+    Donaldson 2008 (2nd ed.) §15.1–15.4 pp. 366–371 | https://doi.org/10.4324/9780203895320,
+    Shetter & Ham 2007 (9th ed.) §21.1–21.2 pp. 172–177 | https://doi.org/10.4324/9780203935712,
+  ]
 ---
 
 ## Explanation
@@ -23,7 +28,7 @@ The small unstressed word **er** is everywhere in Dutch. It has four jobs.
 
 **4. With a number or amount, without the noun**: _Hoeveel kinderen heb je? Ik heb er twee._ Also with _veel, weinig, een paar, genoeg, geen_: _Ik heb er geen._
 
-**Where does er go?** Early: right after the conjugated verb in a main clause (_Morgen is er een feest_), or after the subject (_Ik heb er twee_). In a subordinate clause it follows the subject (_…omdat er niemand thuis was_).
+**Where does er go?** Early: right after the conjugated verb in a main clause (_Morgen is er een feest_), or after the subject (_Ik heb er twee_). In a subordinate clause it comes right after the conjunction when the subject is new (_…omdat er niemand thuis was_), and after a known subject (_…omdat ik er woon_).
 
 ### Pattern
 

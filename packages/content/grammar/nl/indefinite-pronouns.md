@@ -7,7 +7,12 @@ order: 32
 summary: Words like iemand, niemand, iets, niets, alles, iedereen, elk and sommige talk about people and things without naming them.
 practice: [cloze-choice]
 related: [negation, adjective-inflection, personal-pronouns]
-sources: [e-ANS 5.9 | https://e-ans.ivdnt.org/topics/pid/ans0509lingtopic]
+sources:
+  [
+    e-ANS 5.9 | https://e-ans.ivdnt.org/topics/pid/ans0509lingtopic,
+    Donaldson 2008 (2nd ed.) §8.6 pp. 95–102 | https://doi.org/10.4324/9780203895320,
+    Shetter & Ham 2007 (9th ed.) §8.5 pp. 61–65 | https://doi.org/10.4324/9780203935712,
+  ]
 ---
 
 ## Explanation

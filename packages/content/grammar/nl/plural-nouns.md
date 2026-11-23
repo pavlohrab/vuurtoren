@@ -8,7 +8,12 @@ summary: Most nouns add -en, nouns ending in an unstressed -el, -em, -en, -er or
 detects: [plural-nouns]
 practice: [scramble]
 related: [spelling-rules, de-het, diminutives]
-sources: [e-ANS 3.5 | https://e-ans.ivdnt.org/topics/pid/ans0305lingtopic]
+sources:
+  [
+    e-ANS 3.5 | https://e-ans.ivdnt.org/topics/pid/ans0305lingtopic,
+    Donaldson 2008 (2nd ed.) §7.2 pp. 43–54 | https://doi.org/10.4324/9780203895320,
+    Shetter & Ham 2007 (9th ed.) ch. 3 pp. 23–27 | https://doi.org/10.4324/9780203935712,
+  ]
 ---
 
 ## Explanation
