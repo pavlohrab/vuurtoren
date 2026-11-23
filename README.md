@@ -83,6 +83,11 @@ passphrase and goes through your own server, WebDAV or a Syncthing folder. Can't
   <a href="docs/dev/README.md">For developers</a>
 </p>
 
+## Support
+
+Vuurtoren is free and made by one person. If it helps you, you can support it on
+[Ko-fi](https://ko-fi.com/pavlohrab).
+
 ## Licence
 
 The code is MIT. The content in `content/` (the starter words and the stories) is CC BY-SA
