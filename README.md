@@ -30,11 +30,12 @@ reader. On top of that, learning the words from them was tedious.
 
 Vuurtoren tries to solve both:
 
-1. It adapts any text to your level, from the words you have learnt: an article, a PDF, a photo
-   of a page or your course book.
+1. It helps you read any text at your level, from the words you have learnt: an article, a PDF,
+   a photo of a page or your course book. The new words are translated, and a few are left for
+   you to learn.
 2. It makes learning the words from that text easy. One tap turns a word into a flashcard with
-   the sentence you found it in, and the cards are scheduled with FSRS, the same algorithm
-   [Anki](https://apps.ankiweb.net/) uses.
+   the sentence you found it in, and the cards are scheduled with FSRS, the algorithm
+   [Anki](https://apps.ankiweb.net/) also offers.
 
 Your data stays on your devices, in an open format, and exports to Anki.
 
@@ -50,7 +51,7 @@ its grammar and its forms. Side by side puts each sentence next to its English a
 each word together with its translation.
 
 **Words.** Every word you tap while reading can become a card, with the sentence you found it
-in. Cards are reviewed with FSRS, the same scheduler [Anki](https://apps.ankiweb.net/) uses. Import
+in. Cards are reviewed with FSRS, the scheduler [Anki](https://apps.ankiweb.net/) also offers. Import
 the Anki decks you already have, so the app knows your level, or keep reviewing in Anki and use
 Vuurtoren only for reading. Starting from zero? Vuurtoren comes with about 5000 of the most common Dutch
 words.
@@ -63,7 +64,7 @@ partner who keeps to words you know. See [AI](docs/ai.md) for the setup.
 
 **Your data.** Everything lives on your devices and works offline. Sync is encrypted with your
 passphrase and goes through your own server, WebDAV or a Syncthing folder. Can't self-host?
-**Vuurtoren Sync** is coming: sign in on each device and they sync, with nothing to set up.
+**Vuurtoren Sync** is planned: sign in on each device and they sync, with nothing to set up.
 
 ## Get Vuurtoren
 

@@ -26,6 +26,17 @@ If you don't bring your own decks, Vuurtoren gives you about 5000 of the most co
 levels of 500, each with an example sentence. At the start you choose where new words begin, so if
 you already know some Dutch you can skip the first levels.
 
+## Practice and the exam
+
+**Practice** trains the words you're learning with short exercises: choose the meaning, fill in a
+blank, de or het, the right verb form, put the words in order, or write what you hear. Every word
+has its own schedule for each kind of exercise, so an exercise comes back just before you would
+forget it, and a right answer also counts towards knowing the word.
+
+**Exam** is for the A2 inburgeringsexamen. It explains the parts of the exam, and has practice tests
+for reading, listening, writing, speaking and KNM. With your own AI key you also get feedback on
+your writing and speaking, the way an examiner would give it.
+
 ## Your list
 
 Below the review are all your words, as cards or as a list, with filters for new, learning and known
