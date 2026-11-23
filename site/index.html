@@ -1596,6 +1596,73 @@
       .sources a {
         color: inherit;
       }
+      /* Follow the goal: a textbook exercise answered in the app, and a mock exam. */
+      .book-card {
+        background: var(--sheet);
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        padding: 24px 26px;
+        display: grid;
+        gap: 12px;
+        box-shadow: 0 24px 50px -30px rgb(0 0 0 / 0.35);
+      }
+      .book-tag {
+        font-size: 13px;
+        color: var(--muted);
+        letter-spacing: 0.04em;
+      }
+      .book-ex {
+        margin: 0;
+        font: 400 19px / 1.7 var(--f-read);
+      }
+      .gap {
+        display: inline-block;
+        min-width: 4.2em;
+        text-align: center;
+        border-bottom: 2px solid var(--known);
+        color: var(--known);
+        font-weight: 500;
+        opacity: 0;
+        transition: opacity 0.4s;
+      }
+      .book-ex + .book-ex .gap {
+        transition-delay: 0.5s;
+      }
+      .lit .gap {
+        opacity: 1;
+      }
+      .book-ok {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--known);
+      }
+      .exam-chip {
+        display: grid;
+        gap: 2px;
+        margin-top: 6px;
+        padding: 12px 14px;
+        border: 1px solid var(--line-strong);
+        border-left: 4px solid var(--accent);
+        border-radius: 10px;
+        background: var(--surface);
+        font-size: 14px;
+        color: var(--muted);
+      }
+      .exam-chip b {
+        color: var(--ink);
+        font-family: var(--f-display);
+        font-size: 15px;
+      }
+      .more-link {
+        color: var(--accent);
+        font-weight: 600;
+        text-decoration: none;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .gap {
+          opacity: 1;
+        }
+      }
       /* Bring your own AI: a short chat, the messages arriving one by one. */
       .chat-card {
         background: var(--sheet);
@@ -2085,7 +2152,37 @@
       </div>
     </section>
 
-    <section class="sec alt band" id="ai" aria-labelledby="ai-h">
+    <section class="sec alt band" id="goal" aria-labelledby="goal-h">
+      <div class="in split rev">
+        <div
+          class="book-card"
+          data-lit
+          aria-label="A photographed textbook exercise, answered in Vuurtoren, and a mock exam score"
+        >
+          <span class="book-tag">Course book · Unit 4 · Oefening 3</span>
+          <p class="book-ex" lang="nl">
+            Vul in: Ik <span class="gap">woon</span> (wonen) in Utrecht.
+          </p>
+          <p class="book-ex" lang="nl">
+            Vul in: Wij <span class="gap">werken</span> (werken) bij de gemeente.
+          </p>
+          <span class="book-ok">2 of 2 correct</span>
+          <div class="exam-chip">
+            <b>Mock exam · Lezen</b><span>A2 inburgeringsexamen · 12 of 15</span>
+          </div>
+        </div>
+        <div class="copy">
+          <span class="eyebrow">Follow the goal</span>
+          <h2 id="goal-h">Bring your own textbook and practise the A2 inburgeringsexamen.</h2>
+          <ul class="facts">
+            <li>Upload a photo of your textbook and get help with its exercises.</li>
+            <li>Prepare for the A2 inburgeringsexamen with mock tests in the app.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="sec band" id="ai" aria-labelledby="ai-h">
       <div class="in split rev">
         <div
           class="chat-card"
@@ -2109,11 +2206,13 @@
             With your own AI key, you can ask it to explain any sentence, write stories at your
             level, or chat with a partner who knows your level and corrects you.
           </p>
+          <!-- W7: the How Vuurtoren works page; this link points to its AI stories part. -->
+          <a class="more-link" href="how.html#ai-stories">How the AI stories are made →</a>
         </div>
       </div>
     </section>
 
-    <section class="sec band" id="devices" aria-labelledby="devices-h">
+    <section class="sec alt band" id="devices" aria-labelledby="devices-h">
       <div class="in">
         <div class="dev-head">
           <span class="eyebrow">On every device</span>
@@ -2137,7 +2236,7 @@
       </div>
     </section>
 
-    <section class="sec alt band" id="yours" aria-labelledby="yours-h">
+    <section class="sec band" id="yours" aria-labelledby="yours-h">
       <div class="in split">
         <div class="copy">
           <span class="eyebrow">Open, and yours</span>
@@ -2183,7 +2282,7 @@
       </div>
     </section>
 
-    <section class="sec why band" aria-labelledby="why-h">
+    <section class="sec alt why band" aria-labelledby="why-h">
       <div class="in">
         <h2 id="why-h">Why I made it</h2>
         <div>
@@ -2204,7 +2303,7 @@
       </div>
     </section>
 
-    <section class="sec alt band" id="roadmap" aria-labelledby="r-h">
+    <section class="sec band" id="roadmap" aria-labelledby="r-h">
       <div class="in">
         <span class="eyebrow">Roadmap</span>
         <h2 id="r-h" style="margin-top: 10px">Where it is going.</h2>
