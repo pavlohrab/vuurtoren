@@ -1632,6 +1632,20 @@
           opacity: 0;
         }
       }
+
+      /* A small pill next to a heading, e.g. Optional. */
+      .badge {
+        display: inline-block;
+        margin-left: 8px;
+        font: 600 10.5px var(--f-ui);
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--muted);
+        border: 1px solid var(--line-strong);
+        border-radius: 999px;
+        padding: 1px 8px;
+        vertical-align: 2px;
+      }
     </style>
   </head>
   <body data-page="phone">
@@ -2077,8 +2091,14 @@
         <h2>Three steps on Android.</h2>
         <div class="steps-grid">
           <div class="os">
-            <b>1 · Download</b
-            ><span>Open the latest release on your phone and take the <code>.apk</code> file.</span>
+            <b>1 · Download</b><span>Download the <code>.apk</code> file on your phone.</span>
+            <div class="os-dl">
+              <a
+                class="btn primary"
+                href="https://github.com/pavlohrab/Vuurtoren/releases/latest/download/Vuurtoren-android.apk"
+                >Get the APK</a
+              >
+            </div>
           </div>
           <div class="os">
             <b>2 · Install</b
@@ -2087,17 +2107,19 @@
             >
           </div>
           <div class="os">
-            <b>3 · Connect</b
+            <b>3 · Connect <span class="badge">Optional</span></b
             ><span
-              >In the app, Settings → Your devices: join your computer's sync data with your
-              passphrase.</span
+              >To read the texts from your computer, join its sync data in Settings → Your devices,
+              with your passphrase.</span
             >
           </div>
         </div>
         <div class="cta">
-          <a class="btn primary" href="https://github.com/pavlohrab/Vuurtoren/releases/latest"
-            >Get the APK</a
-          ><a class="btn" href="#">Phone guide</a>
+          <a class="btn" href="https://github.com/pavlohrab/Vuurtoren/releases/latest"
+            >All downloads</a
+          ><a class="btn" href="https://github.com/pavlohrab/Vuurtoren/blob/main/docs/phones.md"
+            >Phone guide</a
+          >
         </div>
       </div>
     </section>
