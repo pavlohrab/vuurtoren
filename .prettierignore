@@ -16,3 +16,5 @@ content/starter/*.json
 # generated (server/nlp/scripts/check_stories.py --write); stories keep one line per sentence
 content/stories/stories.json
 content/stories/*/*.md
+# generated (pnpm site:docs) from docs/*.md
+site/docs/

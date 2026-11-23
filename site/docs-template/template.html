@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>{{TITLE}} · Vuurtoren docs</title>
+    <meta name="description" content="{{SUMMARY}}" />
+    <link rel="icon" href="../favicon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@500;600;700&family=Literata:opsz,wght@7..72,400;7..72,500&family=Inter:wght@400;500;600&display=swap"
+    />
+    <link rel="stylesheet" href="docs.css" />
+  </head>
+  <body>
+    <!-- Made by site/build-docs.mjs from docs/*.md. Edit the Markdown, not this file. -->
+    <nav class="nav band" aria-label="Main">
+      <div class="in">
+        <a class="brand" href="index.html"
+          ><svg aria-hidden="true" viewBox="0 0 64 64">
+            <rect style="fill: var(--tower)" x="10" y="8" width="12" height="13" rx="2.5" />
+            <rect style="fill: var(--accent)" x="13" y="11" width="6" height="7" rx="1.2" />
+            <rect style="fill: var(--accent)" x="25" y="11.5" width="35" height="6" rx="3" />
+            <path style="fill: var(--tower)" d="M9 24h14l3.5 33h-21z" />
+            <rect style="fill: var(--tower)" x="3" y="57" width="26" height="3.5" rx="1.2" />
+            <rect
+              style="fill: var(--tower); opacity: 0.32"
+              x="32"
+              y="28"
+              width="28"
+              height="3.5"
+              rx="1.75"
+            />
+            <rect
+              style="fill: var(--tower); opacity: 0.32"
+              x="32"
+              y="37"
+              width="10"
+              height="3.5"
+              rx="1.75"
+            />
+            <rect style="fill: var(--accent)" x="44.5" y="36" width="15.5" height="5.5" rx="2.75" />
+            <rect
+              style="fill: var(--tower); opacity: 0.32"
+              x="32"
+              y="46"
+              width="23"
+              height="3.5"
+              rx="1.75"
+            /></svg
+          >vuurtoren <span class="muted">docs</span></a
+        >
+        <div class="search" role="search">
+          <span aria-hidden="true">⌕</span
+          ><input
+            id="q"
+            type="search"
+            placeholder="Search the docs"
+            aria-label="Search the docs"
+            autocomplete="off"
+          /><kbd>/</kbd>
+          <div class="results" id="results" hidden></div>
+        </div>
+        <button
+          class="theme-btn"
+          type="button"
+          id="theme-btn"
+          aria-label="Theme: as your device"
+          title="Theme: as your device"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <g class="ti ti-system">
+              <rect x="3" y="4" width="18" height="12" rx="2" />
+              <path d="M8 20h8M12 16v4" />
+            </g>
+            <g class="ti ti-light">
+              <circle cx="12" cy="12" r="4" />
+              <path
+                d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"
+              />
+            </g>
+            <g class="ti ti-dark"><path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5z" /></g>
+          </svg>
+        </button>
+        <script>
+          // Theme: as your device, light or dark; remembered on this browser only.
+          (() => {
+            const root = document.documentElement,
+              btn = document.getElementById("theme-btn");
+            const names = { system: "as your device", light: "light", dark: "dark" };
+            const next = { system: "light", light: "dark", dark: "system" };
+            let t = "system";
+            try {
+              t = localStorage.getItem("vuurtoren-theme") || "system";
+            } catch {}
+            if (!(t in names)) t = "system";
+            const show = () => {
+              if (t === "system") delete root.dataset.theme;
+              else root.dataset.theme = t;
+              btn.dataset.mode = t;
+              btn.setAttribute("aria-label", "Theme: " + names[t]);
+              btn.title = "Theme: " + names[t];
+            };
+            show();
+            btn.addEventListener("click", () => {
+              t = next[t];
+              try {
+                localStorage.setItem("vuurtoren-theme", t);
+              } catch {}
+              show();
+            });
+          })();
+        </script>
+        <a class="btn" href="../index.html" style="min-height: 38px">vuurtoren.app</a>
+      </div>
+    </nav>
+
+    <div class="band">
+      <div class="frame">
+        <aside class="toc" aria-label="Chapters">
+          <details open id="tocd">
+            <summary>Menu</summary>
+            <div class="groups">{{NAV}}</div>
+          </details>
+        </aside>
+
+        <article>
+          {{CONTENT}} {{PAGER}}
+          <div class="foot">
+            <a href="{{EDIT}}">Fix this page on GitHub</a><a href="../how.html">How it works</a
+            ><a href="https://github.com/pavlohrab/Vuurtoren">GitHub</a>
+          </div>
+        </article>
+
+        <aside class="onpage" aria-label="On this page">{{ONPAGE}}</aside>
+      </div>
+    </div>
+
+    <script>
+      (() => {
+        // On a phone the chapters start folded behind Menu.
+        if (matchMedia("(max-width: 800px)").matches) document.getElementById("tocd").open = false;
+        // Search: titles, headings and text of every page, filtered as you type.
+        const pages = {{INDEX}};
+        const q = document.getElementById("q"), box = document.getElementById("results");
+        const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+        q.addEventListener("input", () => {
+          const t = q.value.trim().toLowerCase();
+          if (t.length < 2) { box.hidden = true; return; }
+          const hits = pages
+            .map((p) => ({ p, s: (p.title.toLowerCase().includes(t) ? 3 : 0) + (p.heads.toLowerCase().includes(t) ? 2 : 0) + (p.text.includes(t) ? 1 : 0) }))
+            .filter((h) => h.s > 0).sort((a, b) => b.s - a.s).slice(0, 8);
+          box.innerHTML = hits.length
+            ? hits.map((h) => `<a href="${h.p.href}"><b>${esc(h.p.title)}</b><span>${esc(h.p.summary)}</span></a>`).join("")
+            : "<p>Nothing found.</p>";
+          box.hidden = false;
+        });
+        document.addEventListener("keydown", (e) => {
+          if (e.key === "/" && document.activeElement !== q) { e.preventDefault(); q.focus(); }
+          if (e.key === "Escape") box.hidden = true;
+        });
+        document.addEventListener("click", (e) => { if (!e.target.closest(".search")) box.hidden = true; });
+      })();
+    </script>
+  </body>
+</html>

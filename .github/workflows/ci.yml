@@ -16,6 +16,8 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm format:check
+      # The docs website is made from docs/*.md: fail if the committed pages are out of date.
+      - run: pnpm site:docs && git diff --exit-code -- site/docs
       - run: pnpm lint
       - run: pnpm knip
       - run: pnpm typecheck
