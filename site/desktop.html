@@ -1496,6 +1496,18 @@
           border-color: var(--accent);
           color: var(--accent-ink);
         }
+        .tbl-tabs button .tag {
+          display: inline-block;
+          margin-left: 6px;
+          font: 600 10px var(--f-ui);
+          letter-spacing: 0.06em;
+          text-transform: uppercase;
+          border: 1px solid currentColor;
+          border-radius: 999px;
+          padding: 0 6px;
+          vertical-align: 1px;
+          opacity: 0.8;
+        }
         #compare table {
           min-width: 0;
         }
@@ -1801,7 +1813,9 @@
           <button type="button" data-col="1">Computer</button
           ><button type="button" data-col="2">Phone alone</button
           ><button type="button" data-col="3">Your server</button
-          ><button type="button" data-col="4">Vuurtoren Sync</button>
+          ><button type="button" data-col="4" class="soon">
+            Vuurtoren Sync <span class="tag">Planned</span>
+          </button>
         </div>
         <div class="scrollx">
           <table>
@@ -1847,7 +1861,7 @@
                 <td class="y soon">✓</td>
               </tr>
               <tr>
-                <td>Translation of the words and sentences in your texts, and their grammar</td>
+                <td>Translation and grammar in your texts</td>
                 <td class="y">✓</td>
                 <td class="y">✓*</td>
                 <td class="y">✓</td>
