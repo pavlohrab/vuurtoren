@@ -2,17 +2,20 @@
 
 ## Next
 
-1. **Speech for words without a recording,** made once with your own speech API key (Google
-   Cloud, Gemini, OpenAI, ElevenLabs, Azure) and kept locally.
-2. **Weave reading.** An English text with Dutch islands that grow as you learn.
+- **Voice for the cards you create,** made once with your own speech API key (Google Cloud,
+  Gemini, OpenAI, ElevenLabs, Azure) and kept locally.
+
+## Then
+
+- **Review reminders.** Opt-in local notifications driven by the due queue, at most one a day,
+  with snooze and a hidden-count option.
+- **Optional gamification tied to recall.** A weekly goal such as "Review on 3 days", no XP or
+  streak loss.
 
 ## Later
 
+- **Weave reading.** An English text with Dutch islands that grow as you learn.
 - **Vuurtoren Sync.** Sign in on each device and they sync, with nothing to set up.
-- **Review reminders.** Opt-in local notifications driven by the due queue, at most one a day,
-  with snooze and a hidden-count option.
-- **Gamification tied to recall.** An optional weekly goal such as "Review on 3 days", no XP or
-  streak loss.
 - **Screen-sized pages.** One screenful per swipe in paged mode, kept across rotation and font
   size.
 
