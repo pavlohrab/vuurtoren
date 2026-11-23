@@ -10,7 +10,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 const require = createRequire(join(here, "..", "apps", "web", "package.json"));
 const { chromium } = require("@playwright/test");
 
-const pages = ["index.html", "desktop.html", "phone.html"];
+const pages = ["index.html", "desktop.html", "phone.html", "how.html"];
 const widths = [390, 768, 1280];
 const problems = [];
 

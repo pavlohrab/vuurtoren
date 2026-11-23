@@ -1646,6 +1646,141 @@
         padding: 1px 8px;
         vertical-align: 2px;
       }
+
+      /* How it works */
+      .how-hero .in {
+        min-height: 0;
+      }
+      .pts {
+        margin: 0;
+        padding-left: 18px;
+        display: grid;
+        gap: 8px;
+        color: var(--muted);
+        max-width: 48ch;
+      }
+      .pts li::marker {
+        color: var(--accent);
+      }
+      .why {
+        font-size: 15px;
+        color: var(--muted);
+        max-width: 52ch;
+      }
+      .why sup,
+      .src sup {
+        font-size: 0.7em;
+        color: var(--accent);
+      }
+      .src {
+        font-size: 13px;
+        color: var(--muted);
+        max-width: 56ch;
+        line-height: 1.6;
+      }
+      .src a {
+        color: inherit;
+      }
+      .meter {
+        width: 80%;
+        display: grid;
+        gap: 10px;
+      }
+      .meter-num {
+        font: 700 64px/1 var(--f-display);
+        letter-spacing: -0.03em;
+        color: var(--ink);
+      }
+      .meter-bar {
+        height: 12px;
+        border-radius: 6px;
+        background: var(--learn-soft);
+        overflow: hidden;
+      }
+      .meter-bar i {
+        display: block;
+        height: 100%;
+        background: var(--known);
+        border-radius: 6px;
+      }
+      .meter-cap {
+        color: var(--muted);
+        font-size: 15px;
+      }
+      .meter-keys {
+        display: grid;
+        gap: 6px;
+        margin-top: 8px;
+        font-size: 14px;
+        color: var(--muted);
+      }
+      .meter-keys span {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .meter-keys b {
+        width: 12px;
+        height: 12px;
+        border-radius: 3px;
+        flex: none;
+      }
+      .k-known {
+        background: var(--known);
+      }
+      .k-new {
+        background: var(--learn-soft);
+        box-shadow: inset 0 -2px 0 var(--learn);
+      }
+      .k-gloss {
+        border: 1px dashed var(--accent);
+      }
+      .recall {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        width: 82%;
+        display: grid;
+        gap: 14px;
+      }
+      .recall li {
+        display: grid;
+        grid-template-columns: 7.5em minmax(0, 1fr) 3em;
+        gap: 12px;
+        align-items: center;
+        font-size: 15px;
+      }
+      .recall span {
+        font-family: var(--f-read);
+        color: var(--ink);
+      }
+      .recall i {
+        height: 10px;
+        border-radius: 5px;
+        background: var(--line);
+        overflow: hidden;
+      }
+      .recall i b {
+        display: block;
+        height: 100%;
+        background: var(--known);
+        border-radius: 5px;
+      }
+      .recall i b.low {
+        background: var(--learn);
+      }
+      .recall em {
+        font-style: normal;
+        color: var(--muted);
+        font-variant-numeric: tabular-nums;
+        text-align: right;
+      }
+      .page-demo {
+        width: 84%;
+      }
+      .how-end {
+        text-align: left;
+      }
     </style>
   </head>
   <body data-page="desktop">
@@ -2185,7 +2320,7 @@
     <footer class="ft band">
       <div class="in">
         <a href="index.html">vuurtoren.app</a><a href="desktop.html">Desktop</a
-        ><a href="phone.html">Phone</a
+        ><a href="phone.html">Phone</a><a href="how.html">How it works</a
         ><a href="https://github.com/pavlohrab/Vuurtoren/tree/main/docs/guide">Docs</a
         ><a href="https://github.com/pavlohrab/Vuurtoren">GitHub</a
         ><span>MIT · content CC BY-SA</span>
