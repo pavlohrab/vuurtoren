@@ -2,6 +2,12 @@
 
 This page explains the algorithms behind Vuurtoren's reader, flashcards, practice and Anki support. None of them uses a language model. They are deterministic rules, a few statistics and two offline tools: spaCy for Dutch analysis and a small translation model. The numbers below are copied from the code, and each section names the files it describes, so you can check them.
 
+## In plain words
+
+Vuurtoren keeps one number for every Dutch word: how likely you are to remember it right now. It reads that number from your cards (Anki's or its own) and from what you do in the app. When you open a text, a local language tool works out the words and the grammar of every sentence. Then each page of about 150 words is planned around your numbers: a few new words worth learning stay untranslated, the other unknown words get a translation next to them, and words you know can become blanks to practise. How you read each page (how often you look a word up, how many blanks you get right) decides how many new words the next pages get. All of it runs on your computer.
+
+Each section below starts with a short summary in plain words, then gives the rules and the numbers.
+
 Contents
 
 1. [Your words → learner model](#1-your-words--learner-model)
@@ -18,6 +24,8 @@ Contents
 ---
 
 ## 1. Your words → learner model
+
+**In short.** Vuurtoren keeps one number per word: how likely you are to remember it right now. It reads that number from your cards, Anki's or its own, and raises it a little when you show you know a word in its exercises. Everything else (which words to teach, which to translate, how hard a text is for you) is decided from these numbers.
 
 Your cards are the record of which Dutch words you know: Vuurtoren's own cards in native mode (section 9), or your Anki decks in connected mode. Both are read with the same rules. This section describes the Anki side; section 9.4 applies it to Vuurtoren's cards. Vuurtoren reads your decks (read-only) and builds a **learner model**: for every word key, a state (`unknown`, `seen`, `learning`, `known`, `ignored`) and `pKnown`, the probability that you would recall it right now.
 
@@ -150,6 +158,8 @@ So three unaided correct answers today give `pKnown = 0.6`: the word counts as "
 ---
 
 ## 2. Dutch analysis (NLP service)
+
+**In short.** Before you read a text, a local language tool (spaCy) splits it into sentences and words, finds each word's dictionary form and part of speech, and links the parts of separable verbs such as _bel … op_. A dictionary built from open data gives the meanings, and a small offline model translates each sentence. Nothing is sent anywhere.
 
 Vuurtoren's Python service (`server/nlp`) analyses texts and Anki headwords with the **same** pipeline. It runs locally, for example in Docker, and sends nothing to third parties.
 
@@ -334,6 +344,8 @@ Each flag carries its position in the text and its box on the page, so the revie
 
 ## 3. Reading
 
+**In short.** A text is cut into pages of about 150 words. For each page Vuurtoren checks every word against what you know, picks about three new words worth learning (common words, preferably ones that come back in the text), translates the other unknown words in place, and can turn words you know into blanks. After each page it looks at how often you looked a word up and how many blanks you got right, and gives the next pages one new word more or fewer, between 1 and 5.
+
 ### 3.1 Pages (segmentation)
 
 **What.** A text is read page by page. A page is about 150 words and never cuts a sentence.
@@ -470,6 +482,8 @@ Results are cached per sentence on the server (256 sentences) and per page in th
 
 ## 4. Practice
 
+**In short.** Practice trains the words you are already learning with short exercises built from sentences: choose the meaning, fill in the blank, de or het, put the words in order, write what you hear. Every word and skill has its own schedule (FSRS), so an exercise comes back just before you would forget it. Practice never changes your Anki cards.
+
 Practice trains words you already study (Anki state `learning` or `known`) in context, and **never writes to Anki**. Results go to Vuurtoren's own schedule, and every answer also counts as app evidence for the word (section 1.7).
 
 ### 4.1 Scheduling: FSRS per (word, skill)
@@ -572,6 +586,8 @@ The app checks the synonym rule again with its own dictionary before using a nei
 
 ## 5. Grammar detectors
 
+**In short.** Vuurtoren finds grammar patterns in your texts, such as inversion or the perfect tense, from the analysed sentence, and underlines them with a short explanation and a link to the topic. It marks a pattern only when it is sure: missing one costs nothing, but marking a wrong one would teach the wrong thing.
+
 **What.** `POST /grammar` finds grammar constructions in a text and underlines the tokens involved, with a one-line explanation (`server/nlp/src/vuurtoren_nlp/grammar.py`). The grammar screens in the web app are being built; this section describes the server side only.
 
 **How.** Each detector reads one analysed sentence: part of speech, morphology (e.g. `VerbForm=Part`, `Tense=Past`, `Degree=Cmp`), dependency relations (`nsubj`, `mark`, `aux`, `compound:prt`, …) and the separable-verb links from section 2.3. It never reads the raw text, so it also works on analyses that the app has already stored. Some examples:
@@ -615,6 +631,8 @@ The app checks the synonym rule again with its own dictionary before using a nei
 
 ## 6. What Vuurtoren writes to Anki
 
+**In short.** Vuurtoren reads your Anki decks, but writes to Anki only when you press a button for one word, and tags every note it writes so you can find it.
+
 This section is about connected mode. In native mode Vuurtoren writes nothing to Anki: the same buttons act on its own cards (section 9.5).
 
 Vuurtoren reads Anki freely but **writes only when you click** a button for one word (`packages/anki/src/actions.ts`, `packages/anki/src/note.ts`). Every write is tagged, so you can find and undo it in Anki's browser.
@@ -631,6 +649,8 @@ Vuurtoren **never** answers cards, writes review history, changes FSRS parameter
 ---
 
 ## 7. Worked example: "Ik bel je morgen op."
+
+**In short.** One sentence, followed through the steps above.
 
 This is the real output of the pipeline for this sentence (`analyze_texts`, with the dictionary installed; Zipf values from wordfreq 3.1.1):
 
@@ -659,6 +679,8 @@ spaCy attached `op` to `bel` as a particle, so rule 2.3(a) joined them into `opb
 
 ## 8. Where AI is optional
 
+**In short.** Nothing above uses AI. AI features appear only when you add your own key.
+
 Everything above (deck detection, the learner model, lemmatisation, separable verbs, derivation and compound glosses, meanings read off the sentence translation, the dictionary, offline sentence translation, OCR and cleanup, the reading planner, clozes, the staircase, practice scheduling and exercises, distractors, grammar detection, Anki writes, and native reviews with their tuning) runs **without any AI provider or API key**. The two models involved (spaCy and OPUS-MT) are small, local and deterministic for a given input. They never generate free text about you or for you.
 
 AI features are opt-in extras, hidden until you configure a provider: Converse, Explain this sentence, Simplify this page and the English of Side by side (its word pairs still come from the offline model, section 3.7). See [ai.md](../ai.md) for what they do, which providers work and what is sent.
@@ -666,6 +688,8 @@ AI features are opt-in extras, hidden until you configure a provider: Converse, 
 ---
 
 ## 9. Native mode: Vuurtoren's own cards
+
+**In short.** If you don't use Anki, Vuurtoren keeps the cards itself and schedules the reviews with FSRS, tuned to your own answers. Reading counts too: a word you read without looking it up waits a little longer for its next review, and a word you had to look up comes back today.
 
 In native mode Vuurtoren holds the cards and runs the reviews. The learner model, the reader, Words, Practice and courses read these cards exactly as they read Anki cards in connected mode.
 
@@ -803,6 +827,8 @@ A new learner in native mode can start with the most common Dutch words. The lis
 **Audio.** Every word and example sentence of the list, and every sentence and paragraph of the bundled stories, has a recorded clip in the `audio-nl` pack, in a female and a male voice. A clip is named by its text, so nothing maps words to files: `word-<first 16 hex digits of sha1(text)>` for a word, where the text is "<article> <word>" for nouns ("het huis", "de/het idee") and the word alone otherwise, and `sentence-<sha1(sentence)[:16]>` for the example sentence as written (`server/nlp/scripts/tts_elevenlabs.py`, `packages/anki/src/audio.ts`; the app hashes with WebCrypto, and one fixture, `server/nlp/tests/fixtures/audio-ids.json`, holds both to the same ids). Starter notes keep the ids they were made with (`audio`, `sentenceAudio`), so editing a note's text later keeps its sound; other notes get ids from their word and sentence, which find a clip only when the text is a starter word or sentence. The reader asks for a clip for every sentence: story sentences have one. Playback: the clip in the chosen voice, else the system's Dutch voice, else nothing. In the reader, the inspected word uses the clip only when it stands in its dictionary form.
 
 ## 10. Sync
+
+**In short.** Every change you make is saved as a small event. Each device writes its own events to the place you sync through, locked with your passphrase before they leave, and reads the other devices' events. Reviews from different devices add up instead of overwriting each other.
 
 Your data on every device, with the event log as the unit of sync (`packages/db/src/sync/`).
 
