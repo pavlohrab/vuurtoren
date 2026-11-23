@@ -2309,6 +2309,12 @@
           justify-content: center;
         }
       }
+      /* Tablets: the section links make room for Products, How it works and Docs. */
+      @media (max-width: 1000px) {
+        .nav-sec {
+          display: none;
+        }
+      }
     </style>
   </head>
   <body>
@@ -2455,7 +2461,8 @@
               >
             </div>
           </details>
-          <a href="#read">Reading</a><a href="#words">Words</a><a href="#yours">Your data</a
+          <a class="nav-sec" href="#read">Reading</a><a class="nav-sec" href="#words">Words</a
+          ><a class="nav-sec" href="#yours">Your data</a><a href="how.html">How it works</a
           ><a href="https://github.com/pavlohrab/Vuurtoren/tree/main/docs/guide">Docs</a>
         </div>
         <button
@@ -2531,7 +2538,7 @@
           </p>
           <div class="cta">
             <a class="btn primary" href="#get">Download Vuurtoren</a
-            ><a class="btn" href="#read">See how it reads</a>
+            ><a class="btn" href="how.html">See how it works</a>
           </div>
           <p class="platforms">Windows · macOS · Linux · Android · free and open source</p>
         </div>
