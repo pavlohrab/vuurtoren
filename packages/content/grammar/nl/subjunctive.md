@@ -7,6 +7,7 @@ order: 61
 summary: Dutch once had a subjunctive (stem + -e); today it survives only in fixed phrases, wishes, slogans and old-style instructions, which you should recognise and use as set expressions.
 practice: [meaning-choice]
 related: [register, conditional, imperative]
+sources: [e-ANS 2.4.3 | https://e-ans.ivdnt.org/topics/pid/ans020403lingtopic]
 ---
 
 ## Explanation
@@ -17,7 +18,7 @@ Look at these:
 - _Het **zij** zo._ — So be it.
 - _God **zegene** je._ — God bless you.
 
-These verbs have an old form, the **subjunctive** (_aanvoegende wijs_): the stem + **-e** (_leve, zegene, kome, moge_), with **zij** for _zijn_ and **ware** for "were". It expresses a **wish**, a **command** in a formal tone, or something **unreal**. Modern Dutch no longer makes new subjunctives. Use _zou_, _moge_ or a normal sentence instead. But the old forms live on in many fixed phrases.
+These verbs have an old form, the **subjunctive** (_aanvoegende wijs_): the stem + **-e** (_leve, zegene, kome, moge_), with **zij** for _zijn_ and **ware** for "were". It expresses a **wish**, a **command** in a formal tone, or something **unreal**. Modern Dutch no longer makes new subjunctives. Use _zou_ or a normal sentence instead. But the old forms live on in many fixed phrases.
 
 ### Phrases to recognise
 
@@ -28,7 +29,7 @@ These verbs have an old form, the **subjunctive** (_aanvoegende wijs_): the stem
 - _Moge … _ — may …: _Moge het nieuwe jaar je veel geluk brengen._
 - _Ware het niet dat …_ — were it not that … (formal)
 - _Koste wat het kost._ — whatever it costs, at any price.
-- _Godzijdank_ / _God zij dank_ — thank God.
+- _godzijdank_ / _God zij dank_ — thank God.
 - _Men neme…_ — take … (old recipes and instructions): _Men neme twee eieren._
 - _Het ga je goed!_ — fare well, all the best.
 - _dankzij_ (thanks to) comes from _dank zij_.

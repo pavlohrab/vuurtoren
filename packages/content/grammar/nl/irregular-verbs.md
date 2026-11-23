@@ -8,6 +8,11 @@ summary: Strong verbs change their vowel in the past (lopen – liep – gelopen
 detects: [imperfect-tense]
 practice: [verb-form]
 related: [imperfect-tense, perfect-tense, hebben-or-zijn]
+sources:
+  [
+    e-ANS 2.3.4 | https://e-ans.ivdnt.org/topics/pid/ans020304lingtopic,
+    e-ANS 2.3.5 | https://e-ans.ivdnt.org/topics/pid/ans020305lingtopic,
+  ]
 ---
 
 ## Explanation
@@ -41,7 +46,7 @@ They follow a few patterns. Knowing one verb helps with the others in its group.
 - We **dronken** koffie op het terras. | We drank coffee on the terrace.
 - Hij **gaf** mij een boek dat ik al **had gelezen**. | He gave me a book that I had already read.
 - Zij **is** de hele dag thuis **gebleven**. | She stayed at home all day.
-- Ik **ging** naar bed en **sliep** meteen. | I went to bed and fell asleep at once.
+- Ik **ging** naar bed en **sliep** meteen. | I went to bed and slept straight away.
 - Wie **heeft** die taart **gebakken**? | Who baked that cake?
 
 ## Common mistakes

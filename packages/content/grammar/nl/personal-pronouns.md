@@ -7,6 +7,7 @@ order: 2
 summary: Dutch has a stressed and an unstressed form of most subject pronouns, and a polite u next to informal jij/je.
 practice: [scramble]
 related: [object-pronouns, present-tense, possessive-pronouns, reflexive-verbs]
+sources: [e-ANS 5.2 | https://e-ans.ivdnt.org/topics/pid/ans0502lingtopic]
 ---
 
 ## Explanation

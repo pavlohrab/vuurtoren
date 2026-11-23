@@ -411,7 +411,7 @@ function perfectNote(pair: string, aux: string, verb: string): WordNote {
       }
     : {
         key: "verb.perfect",
-        text: `${pair}: present perfect (hebben + past participle at the end); most verbs take hebben, zijn is only for a change of place or state.`,
+        text: `${pair}: present perfect (hebben + past participle at the end); most verbs take hebben, zijn is mainly for a change of place or state.`,
         topic: "perfect-tense",
       };
 }

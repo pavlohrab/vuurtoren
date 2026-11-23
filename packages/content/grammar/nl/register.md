@@ -7,6 +7,11 @@ order: 62
 summary: Written and formal Dutch uses words and forms you rarely hear (hetgeen, welke, men, derhalve, ten slotte), while speech shortens and simplifies; learn to recognise the first and to use the second naturally.
 practice: [meaning-choice]
 related: [flemish-dutch, subjunctive, relative-pronouns, extended-attributes, modal-particles]
+sources:
+  [
+    e-ANS 5.8.5.7 | https://e-ans.ivdnt.org/topics/pid/ans05080507lingtopic,
+    Taaladvies (hun / zij hebben) | https://taaladvies.net/hun-of-zij-hebben-het-gedaan/,
+  ]
 ---
 
 ## Explanation

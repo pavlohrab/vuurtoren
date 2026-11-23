@@ -8,6 +8,7 @@ summary: Many verbs and adjectives always go with one preposition (wachten op, d
 practice: [cloze-choice]
 related: [prepositions, pronominal-adverbs, reflexive-verbs, er]
 detects: [verbs-with-prepositions]
+sources: [e-ANS 20.6 | https://e-ans.ivdnt.org/topics/pid/topic-17618368998230287]
 ---
 
 ## Explanation

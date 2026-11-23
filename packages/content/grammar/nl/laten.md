@@ -8,6 +8,7 @@ summary: Laten + infinitive means "let" or "have something done"; laten we … m
 detects: [laten, verb-clusters]
 practice: [scramble]
 related: [modal-verbs, verb-clusters, imperative, te-infinitive]
+sources: [e-ANS 18.5.4.10 | https://e-ans.ivdnt.org/topics/pid/ans18050410lingtopic]
 ---
 
 ## Explanation
@@ -18,7 +19,7 @@ _laten_ is a very useful verb with an infinitive at the end (no _te_).
 2. **Have something done** by someone else: _Ik laat mijn haar knippen._ (I am having my hair cut.) _We laten een nieuwe keuken plaatsen._ English needs "have/get + participle"; Dutch just uses _laten + infinitive_.
 3. **Let's**: _Laten we gaan!_ (Let's go!) _Laten we morgen afspreken._ Use the form _laten we_ for "let's" and _laat … maar_ for "let someone": _Laat hem maar slapen._
 4. **Leave** (something somewhere or as it is): _Ik heb mijn jas thuis gelaten._ _Laat dat maar!_ (Leave that!)
-5. **Make someone do / cause**: _Die film liet me huilen._ (That film made me cry.)
+5. **Make someone do / cause**: _Hij liet ons lang wachten._ (He kept us waiting a long time.) For feelings, Dutch uses _doen_ or another sentence: _Die film deed me huilen_ / _Door die film moest ik huilen._ (That film made me cry.)
 
 **Forms**: _ik laat, jij laat, hij laat, wij laten_; past _liet, lieten_; participle _gelaten_.
 

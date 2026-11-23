@@ -8,6 +8,7 @@ summary: Modal verbs and a few others take a bare infinitive; most other verbs, 
 detects: [te-infinitive]
 practice: [scramble]
 related: [om-te-infinitive, modal-verbs, separable-verbs, progressive, verb-clusters]
+sources: [e-ANS 18.5.4 | https://e-ans.ivdnt.org/topics/pid/ans180504lingtopic]
 ---
 
 ## Explanation
@@ -17,7 +18,7 @@ When one verb is followed by another verb in the infinitive, you need to know wh
 **No te** after:
 
 - the modals _kunnen, mogen, moeten, willen_, and _zullen_;
-- _gaan, komen, blijven_ (+ position verbs): _Ik ga zwemmen. Hij komt eten. Ze blijft wonen._
+- _gaan, komen, blijven_ (also _blijven zitten/staan_): _Ik ga zwemmen. Hij komt eten. Ze blijft wonen._
 - _laten, zien, horen, voelen, helpen, leren_ (often): _Ik laat mijn haar knippen._
 
 **te** after:

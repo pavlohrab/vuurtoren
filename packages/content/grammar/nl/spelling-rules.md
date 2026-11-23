@@ -7,6 +7,7 @@ order: 1
 summary: Whether a long vowel is written with one letter or two depends on the syllable, and this explains many changes in verbs, plurals and adjectives.
 practice: [dictation]
 related: [plural-nouns, present-tense, adjective-inflection, comparison]
+sources: [Woordenlijst Leidraad | https://woordenlijst.org/leidraad]
 ---
 
 ## Explanation

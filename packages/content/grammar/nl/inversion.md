@@ -8,6 +8,11 @@ summary: When something other than the subject comes first, the verb stays in se
 detects: [inversion]
 practice: [scramble]
 related: [word-order-v2, questions, subordinate-clauses, conjunctional-adverbs]
+sources:
+  [
+    e-ANS 21.3 | https://e-ans.ivdnt.org/topics/pid/ans2103lingtopic,
+    e-ANS 21.4.3 | https://e-ans.ivdnt.org/topics/pid/ans210403lingtopic,
+  ]
 ---
 
 ## Explanation
@@ -20,7 +25,7 @@ A subordinate clause at the start counts as **one element**. So the main verb co
 
 Remember the jij-rule: after inversion, _jij/je_ makes the verb lose its -t: _Morgen werk je thuis._
 
-These do **not** cause inversion, because they stand outside the clause: _en, maar, of, want, dus_ (dus may), and _ja, nee, nou_.
+These do **not** cause inversion, because they stand outside the clause: _en, maar, of, want, dus_ (dus may), and _ja, nee, nou_ as interjections (_Nou, ik ga._). When _nou_ means "now", it inverts like any adverb: _Nou ga ik._
 
 ### Pattern
 

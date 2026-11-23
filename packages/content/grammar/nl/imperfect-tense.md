@@ -8,6 +8,11 @@ summary: Weak verbs add -te(n) or -de(n) to the stem ('t kofschip again); strong
 detects: [imperfect-tense]
 practice: [verb-form]
 related: [perfect-tense, irregular-verbs, past-perfect]
+sources:
+  [
+    e-ANS 2.4.8.7 | https://e-ans.ivdnt.org/topics/pid/ans02040807lingtopic,
+    e-ANS 2.3.3 | https://e-ans.ivdnt.org/topics/pid/ans020303lingtopic,
+  ]
 ---
 
 ## Explanation

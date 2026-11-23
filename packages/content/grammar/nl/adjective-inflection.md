@@ -8,6 +8,11 @@ summary: An adjective before a noun gets -e, except with a singular het-word aft
 detects: [adjective-inflection]
 practice: [adjective-e]
 related: [de-het, comparison, possessive-pronouns, spelling-rules, participles]
+sources:
+  [
+    e-ANS 6.2.1 | https://e-ans.ivdnt.org/topics/pid/topic-19594917003262946,
+    e-ANS 6.2.2 | https://e-ans.ivdnt.org/topics/pid/topic-19032694776035295,
+  ]
 ---
 
 ## Explanation

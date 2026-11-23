@@ -8,6 +8,11 @@ summary: In a normal statement the conjugated verb is always the second element,
 detects: [inversion]
 practice: [scramble]
 related: [inversion, questions, verb-bracket, subordinate-clauses]
+sources:
+  [
+    e-ANS 21.1 | https://e-ans.ivdnt.org/topics/pid/ans2101lingtopic,
+    e-ANS 21.3 | https://e-ans.ivdnt.org/topics/pid/ans2103lingtopic,
+  ]
 ---
 
 ## Explanation

@@ -8,6 +8,7 @@ summary: When a clause has two verb parts, the conjugated verb stays second and 
 detects: [modal-verbs, perfect-tense, separable-verbs]
 practice: [scramble]
 related: [word-order-v2, modal-verbs, perfect-tense, separable-verbs, verb-clusters]
+sources: [e-ANS 21.1.1 | https://e-ans.ivdnt.org/topics/pid/ans210101lingtopic]
 ---
 
 ## Explanation
@@ -26,7 +27,7 @@ The end part can be:
 - the **particle** of a separable verb: _Ik **bel** je morgen **op**._
 - with _te_ verbs: _Ik **probeer** vroeg **te slapen**._
 
-Only a few things may come after the bracket, mostly a subordinate clause (_…, omdat…_) or a long prepositional phrase in speech.
+Only a few things may come after the bracket, mostly a subordinate clause (_…, omdat…_) or a prepositional phrase, in speech and in writing.
 
 ### Pattern
 

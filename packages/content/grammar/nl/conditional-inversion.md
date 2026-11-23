@@ -1,13 +1,18 @@
 ---
 id: conditional-inversion
 title: Conditions without als (Had je gebeld, dan…)
-level: C1
+level: B2
 group: clauses
-order: 59
+order: 58
 summary: A condition can start with the verb instead of als (Heb je vragen, dan…; Had ik het geweten, dan…; Mocht u…); the result clause usually starts with dan.
 detects: [conditional-inversion]
 practice: [scramble]
 related: [subordinate-clauses, conditional, past-perfect, conditional-perfect, register]
+sources:
+  [
+    e-ANS 21.2.3 | https://e-ans.ivdnt.org/topics/pid/ans210203lingtopic,
+    e-ANS 10.3.8 | https://e-ans.ivdnt.org/topics/pid/ans100308lingtopic,
+  ]
 ---
 
 ## Explanation

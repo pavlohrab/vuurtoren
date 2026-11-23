@@ -8,6 +8,7 @@ summary: Niet goes after the verb and its definite objects, but before adjective
 detects: [niet-position, negation]
 practice: [scramble]
 related: [negation, verb-bracket, time-manner-place]
+sources: [e-ANS 21.4.9.2 | https://e-ans.ivdnt.org/topics/pid/ans21040902lingtopic]
 ---
 
 ## Explanation

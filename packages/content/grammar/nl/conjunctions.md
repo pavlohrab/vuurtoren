@@ -8,6 +8,11 @@ summary: En, maar, want, of and dus join two main clauses without changing the w
 detects: [conjunctions]
 practice: [scramble]
 related: [subordinate-clauses, conjunctional-adverbs, inversion]
+sources:
+  [
+    e-ANS 10.2 | https://e-ans.ivdnt.org/topics/pid/ans1002lingtopic,
+    e-ANS 25 | https://e-ans.ivdnt.org/topics/pid/ans25lingtopic,
+  ]
 ---
 
 ## Explanation

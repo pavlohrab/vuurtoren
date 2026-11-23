@@ -246,6 +246,10 @@
 .grammar-credit {
   margin: 8px 0 0;
 }
+.grammar-sources {
+  max-width: var(--w-read);
+  margin: var(--s-6) 0 0;
+}
 /* The pattern box: the one tinted surface on the page (docs/dev/design-system.md, Surfaces). */
 .grammar-pattern {
   margin: var(--s-5) 0 0;

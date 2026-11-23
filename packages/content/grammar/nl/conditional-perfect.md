@@ -3,11 +3,16 @@ id: conditional-perfect
 title: would have and will have (zou hebben gedaan, zal hebben gedaan)
 level: B2
 group: verbs
-order: 52
+order: 54
 summary: Zou + hebben/zijn + participle says what would have happened but did not; zal + hebben/zijn + participle says what will have happened or what probably happened.
 detects: [conditional-perfect]
 practice: [scramble]
 related: [conditional, past-perfect, future, conditional-inversion, verb-clusters]
+sources:
+  [
+    e-ANS 2.4.8.10 | https://e-ans.ivdnt.org/topics/pid/ans02040810lingtopic,
+    e-ANS 2.4.8.6 | https://e-ans.ivdnt.org/topics/pid/ans02040806lingtopic,
+  ]
 ---
 
 ## Explanation

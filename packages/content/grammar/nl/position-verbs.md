@@ -8,6 +8,11 @@ summary: Dutch says where things are with staan (upright), liggen (flat) or zitt
 practice: [cloze-choice]
 related: [progressive, prepositions, verb-pairs]
 detects: [position-verbs]
+sources:
+  [
+    e-ANS 18.5.4.2 | https://e-ans.ivdnt.org/topics/pid/ans18050402lingtopic,
+    e-ANS 18.5.4.23 | https://e-ans.ivdnt.org/topics/pid/ans18050423lingtopic,
+  ]
 ---
 
 ## Explanation

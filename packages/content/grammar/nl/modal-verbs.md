@@ -8,6 +8,11 @@ summary: Kunnen, willen, moeten, mogen and hoeven combine with an infinitive at 
 detects: [modal-verbs]
 practice: [scramble]
 related: [verb-bracket, future, te-infinitive, verb-clusters, conditional]
+sources:
+  [
+    e-ANS 18.5.4.4 | https://e-ans.ivdnt.org/topics/pid/ans18050404lingtopic,
+    Taaladvies (hoeven / moeten) | https://www.vlaanderen.be/team-taaladvies/taaladviezen/hoeven-moeten,
+  ]
 ---
 
 ## Explanation
@@ -18,7 +23,7 @@ Modal verbs say whether you **can**, **want**, **must** or **may** do something.
 - **willen** = want to. _Ik wil graag…_ is a friendly way to order something.
 - **moeten** = must, have to.
 - **mogen** = may, be allowed to.
-- **hoeven** + _te_ = need to. It is only used with a negative: _Je hoeft niet te komen_ (you do not need to come). "Not have to" is _niet hoeven te_, never _niet moeten_.
+- **hoeven** + _te_ = need to. It is used with a negative, or with words like _alleen (maar), pas, weinig_: _Je hoeft niet te komen_ (you do not need to come), _Je hoeft alleen te tekenen_ (you only need to sign). In the Netherlands, "not have to" is _niet hoeven te_, not _niet moeten_; in Belgium _niet moeten_ is also used.
 
 Watch out: _Je mag dat niet doen_ means "you must not do that" (it is not allowed).
 
@@ -43,4 +48,4 @@ The infinitive can be left out when the meaning is clear: _Ik moet naar huis_ (I
 
 - Putting the infinitive next to the modal: _Ik kan zwemmen goed._ The infinitive goes last: _Ik kan goed zwemmen._
 - Adding te: _Ik wil te slapen._ Modals take no te: _Ik wil slapen._ Only hoeven does: _Je hoeft niet te slapen._
-- _Je moet niet komen_ for "you don't have to come". That means "you must not come". Say _Je hoeft niet te komen._
+- _Je moet niet komen_ for "you don't have to come". In the Netherlands that means "you must not come". Say _Je hoeft niet te komen._

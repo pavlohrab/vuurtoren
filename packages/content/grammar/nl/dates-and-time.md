@@ -7,6 +7,11 @@ order: 10
 summary: Half past is counted towards the next hour (half drie = 2:30), dates put the day first, and days and months are written in small letters.
 practice: [dictation]
 related: [numbers, prepositions, time-manner-place]
+sources:
+  [
+    e-ANS 4.6.5.1 | https://e-ans.ivdnt.org/topics/pid/ans04060501lingtopic,
+    e-ANS 7.1.2 | https://e-ans.ivdnt.org/topics/pid/topic-17359564871307642,
+  ]
 ---
 
 ## Explanation
@@ -30,7 +35,7 @@ Dates put the **day first**: _op 5 mei_ (spoken _vijf mei_), _maandag 3 juni 202
 
 ### Little time words
 
-- _op maandag_ (on Monday), _'s maandags_ (on Mondays), _in juni_, _in 2020_ (or just _2020_), _om acht uur_.
+- _op maandag_ (on Monday), _'s maandags_ (on Mondays), _in juni_, _in 2020_, _om acht uur_.
 - _'s ochtends / 's morgens_ (in the morning), _'s middags_, _'s avonds_, _'s nachts_.
 - _vandaag, morgen, gisteren, overmorgen, eergisteren_; _volgende week_, _vorig jaar_.
 - Age: _Ik ben dertig (jaar)._ _Hoe oud ben je?_

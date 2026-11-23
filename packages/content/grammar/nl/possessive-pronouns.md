@@ -8,6 +8,11 @@ summary: Mijn, jouw, zijn, haar, ons/onze, jullie, hun and uw say whose somethin
 detects: [possessive-pronouns]
 practice: [scramble]
 related: [personal-pronouns, object-pronouns, adjective-inflection, demonstratives]
+sources:
+  [
+    e-ANS 5.5 | https://e-ans.ivdnt.org/topics/pid/ans0505lingtopic,
+    e-ANS 3.4.1 | https://e-ans.ivdnt.org/topics/pid/ans030401lingtopic,
+  ]
 ---
 
 ## Explanation
@@ -21,7 +26,7 @@ An adjective after a possessive always takes **-e**: _mijn nieuwe fiets_, _ons o
 ### Other ways to show possession
 
 - **van** + person: _de fiets van Anna_, _die jas is van mij_ (that coat is mine).
-- **-s** after a name: _Pieters fiets_, _Ellens verjaardag_ (no apostrophe). A name ending in a, i, o, u or y gets **'s**: _Anna's fiets_.
+- **-s** after a name: _Pieters fiets_, _Ellens verjaardag_ (no apostrophe). A name ending in a, i, o, u or y gets **'s**: _Anna's fiets_. A name ending in an s-sound (s, x, z) gets only an apostrophe: _Kees' fiets_, _Max' jas_.
 - In speech: name + **z'n / d'r**: _Pieter z'n fiets_, _Anna d'r jas_. Common but informal.
 - **de/het mijne** stands without a noun ("mine"): _Is dit jouw pen of de mijne?_ Use _de_ or _het_ to match the noun. In speech, _van mij_ is more usual.
 
@@ -49,5 +54,5 @@ An adjective after a possessive always takes **-e**: _mijn nieuwe fiets_, _ons o
 
 - _Onze huis_. Huis is a het-word: _ons huis_.
 - _Hun_ for "they" as a subject: _Hun hebben honger._ This is heard but seen as wrong. Say _Zij hebben honger._
-- An apostrophe after every name: _Pieter's fiets_. Write _Pieters fiets_; the apostrophe is only for names ending in a vowel such as _Anna's_.
+- An apostrophe after every name: _Pieter's fiets_. Write _Pieters fiets_; the apostrophe is only for names ending in a vowel (_Anna's_) or an s-sound (_Kees'_).
 - No -e after a possessive: _mijn nieuw fiets_. Say _mijn nieuwe fiets_.

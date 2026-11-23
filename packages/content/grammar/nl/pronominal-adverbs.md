@@ -1,13 +1,14 @@
 ---
 id: pronominal-adverbs
 title: erop, daarmee, waarover (er/daar/hier/waar + preposition)
-level: B2
+level: B1
 group: small-words
-order: 57
+order: 52
 summary: For things, Dutch replaces "preposition + it/that/this/what" with er-, daar-, hier- or waar- + preposition, and the two parts usually split around the middle of the clause.
 detects: [pronominal-adverbs, er, relative-pronouns]
 practice: [scramble]
 related: [er, verbs-with-prepositions, relative-pronouns, questions, er-combined]
+sources: [e-ANS 8.7 | https://e-ans.ivdnt.org/topics/pid/ans0807lingtopic]
 ---
 
 ## Explanation

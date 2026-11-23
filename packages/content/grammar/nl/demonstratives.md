@@ -8,6 +8,7 @@ summary: Deze and die go with de-words and plurals, dit and dat with singular he
 detects: [demonstratives]
 practice: [gender, scramble]
 related: [de-het, relative-pronouns, adjective-inflection]
+sources: [e-ANS 5.6.3 | https://e-ans.ivdnt.org/topics/pid/ans050603lingtopic]
 ---
 
 ## Explanation

@@ -7,6 +7,12 @@ order: 9
 summary: From 21 to 99 the ones come first (eenentwintig); ordinals end in -de or -ste, and amounts, fractions and sums follow simple patterns.
 practice: [dictation]
 related: [dates-and-time, er, adjective-inflection]
+sources:
+  [
+    e-ANS 7.1 | https://e-ans.ivdnt.org/topics/pid/topic-12313431801729408,
+    e-ANS 7.2 | https://e-ans.ivdnt.org/topics/pid/topic-18391806794561092,
+    e-ANS 7.4 | https://e-ans.ivdnt.org/topics/pid/topic-16976121812507965,
+  ]
 ---
 
 ## Explanation

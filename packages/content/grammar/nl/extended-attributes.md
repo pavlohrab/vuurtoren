@@ -3,10 +3,11 @@ id: extended-attributes
 title: Long phrases before a noun (de door hem geschreven brief)
 level: C1
 group: infinitives
-order: 58
+order: 59
 summary: Written Dutch can pack a whole description between the article and the noun (het in 1900 gebouwde huis); to read it, find the article, jump to the noun, and read the middle as a relative clause.
 practice: [scramble]
 related: [participles, adjective-inflection, relative-pronouns, register]
+sources: [e-ANS 14.5.1 | https://e-ans.ivdnt.org/topics/pid/ans140501lingtopic]
 ---
 
 ## Explanation

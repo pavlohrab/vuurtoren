@@ -173,6 +173,22 @@ describe("Grammar topic page", () => {
     expect(screen.queryByRole("link", { name: /^Practise/ })).toBeNull();
   });
 
+  it("ends with the topic's sources, each opening in a new tab", async () => {
+    setup("/grammar/relative-pronouns");
+    const link = await screen.findByRole("link", { name: "e-ANS 5.8" });
+    expect(link).toHaveAttribute("href", "https://e-ans.ivdnt.org/topics/pid/ans0508lingtopic");
+    expect(link).toHaveAttribute("target", "_blank");
+    const line = link.closest("p")!;
+    expect(line).toHaveTextContent(/^Sources:/);
+    expect(within(line).getAllByRole("link")).toHaveLength(
+      grammarTopic("relative-pronouns")!.sources.length,
+    );
+    expect(within(line).getByRole("link", { name: "Taaladvies (dat / wat)" })).toHaveAttribute(
+      "rel",
+      "noreferrer",
+    );
+  });
+
   it("handles an unknown topic", async () => {
     setup("/grammar/nope");
     expect(await screen.findByText("This topic was not found")).toBeInTheDocument();

@@ -7,11 +7,17 @@ order: 63
 summary: Belgian (Flemish) and Netherlands Dutch share one standard language and spelling, but differ in pronunciation, some words, forms of address and a few grammar habits.
 practice: [meaning-choice]
 related: [register, personal-pronouns, diminutives, verb-clusters]
+sources:
+  [
+    e-ANS 1.1.2.1 | https://e-ans.ivdnt.org/topics/pid/topic-16043939199233545,
+    e-ANS 18.5.7.3 | https://e-ans.ivdnt.org/topics/pid/ans18050703lingtopic,
+    Taaladvies (hebben gedaan / gedaan hebben) | https://www.vlaanderen.be/team-taaladvies/taaladviezen/hebben-gedaan-gedaan-hebben,
+  ]
 ---
 
 ## Explanation
 
-Dutch is the official language of the Netherlands, of Flanders (northern Belgium) and of Suriname. There is **one standard language** with **one spelling**. A Fleming and a Dutch person understand each other easily, but you will notice differences, a bit like British and American English.
+Dutch is an official language of the Netherlands, of Flanders (northern Belgium), of Suriname, and of Aruba, Curaçao and Sint Maarten. There is **one standard language** with **one spelling**. A Fleming and a Dutch person understand each other easily, but you will notice differences, a bit like British and American English.
 
 ### Pronunciation
 
@@ -36,7 +42,7 @@ Some everyday differences (Flanders → Netherlands):
 
 - **Diminutives**: Flemish speech often uses **-ke** / **-eke** (_een manneke, een kindeke_) where standard Dutch uses -je.
 - **Articles**: in Flemish speech, _een_ can become _ne / nen_ before masculine words (_ne goeie mens_).
-- **Verb order** in clusters: Flemings more often put the finite verb first (_…dat hij het heeft gedaan_), Netherlanders more often last (_…dat hij het gedaan heeft_). Both are standard.
+- **Verb order** in clusters: with two verbs, both _…dat hij het heeft gedaan_ and _…dat hij het gedaan heeft_ are standard everywhere. Speech prefers _gedaan heeft_, writing leans to _heeft gedaan_, and Flemings use _gedaan heeft_ even more than Netherlanders. The real Belgian habit is in clusters of three: the participle in the middle, _…dat hij het zou gedaan hebben_ (in the Netherlands _zou hebben gedaan_ or _gedaan zou hebben_).
 - **Let's**: Flemish _laat ons gaan_, Netherlands _laten we gaan_.
 - In Flemish speech, question words may be followed by an extra _dat_: _Ik weet niet wie dat er komt._ Do not copy this in writing.
 
@@ -49,7 +55,7 @@ Learn the standard language. Then get used to the accent of the region where you
 - Flemish speech `ge/gij` = standard `jij`
 - Flemish `-ke` = standard `-je`
 - Flemish `laat ons` = Netherlands `laten we`
-- cluster order: Flanders mostly `heeft gedaan`, Netherlands often `gedaan heeft`
+- cluster order: `heeft gedaan` and `gedaan heeft` both standard; Flemish `zou gedaan hebben` = Netherlands `zou hebben gedaan`
 
 ## Examples
 

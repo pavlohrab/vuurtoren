@@ -8,6 +8,7 @@ summary: Zou/zouden + infinitive means "would"; it is used for wishes, polite re
 detects: [conditional]
 practice: [scramble]
 related: [future, conditional-perfect, modal-verbs, conditional-inversion]
+sources: [e-ANS 2.4.8.9 | https://e-ans.ivdnt.org/topics/pid/ans02040809lingtopic]
 ---
 
 ## Explanation

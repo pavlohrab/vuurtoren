@@ -3,18 +3,23 @@ id: verb-clusters
 title: Verb clusters and "infinitive instead of participle"
 level: B2
 group: word-order
-order: 51
+order: 53
 summary: When three or more verbs meet at the end of a clause, the conjugated verb usually comes first in the group; and a modal, laten, zien and similar verbs use their infinitive instead of a participle (heeft moeten werken).
 detects: [verb-clusters]
 practice: [scramble]
 related: [verb-bracket, modal-verbs, laten, subordinate-clauses, perfect-tense, progressive]
+sources:
+  [
+    e-ANS 18.5.7 | https://e-ans.ivdnt.org/topics/pid/ans180507lingtopic,
+    e-ANS 18.5.2.1.ii | https://e-ans.ivdnt.org/topics/pid/ans1805020102lingtopic,
+  ]
 ---
 
 ## Explanation
 
 Look at these examples first:
 
-- _Ik **heb** gisteren lang **moeten werken**._ (I had to work late yesterday.)
+- _Ik **heb** gisteren lang **moeten werken**._ (I had to work for a long time yesterday.)
 - _…omdat ik gisteren lang **heb moeten werken**._
 - _Ik **had** het **kunnen weten**._ (I could have known.)
 
@@ -27,7 +32,7 @@ Normally the perfect uses a participle: _Ik heb gewerkt._ But when a **modal** (
 - _Ik heb het **gewild**._ (no other verb → participle)
 - _Ik heb het **willen doen**._ (other verb → infinitive)
 
-Verbs that do this: the modals (_kunnen, mogen, moeten, willen, hoeven_), **laten**, **zien, horen, voelen**, **helpen, leren**, **gaan, komen, blijven**, and **zitten, staan, liggen, lopen** (the progressive). _hoeven_ and the position verbs drop their _te_: _Je had niet hoeven komen._ _We hebben zitten wachten._
+Verbs that do this: the modals (_kunnen, mogen, moeten, willen, hoeven_), **laten**, **zien, horen, voelen**, **helpen, leren**, **gaan, komen, blijven**, and **zitten, staan, liggen, lopen** (the progressive). _hoeven_ and the position verbs usually drop their _te_: _Je had niet hoeven komen._ _We hebben zitten (te) wachten._ Only _hoeven_, in a cluster of three or more verbs, must drop it.
 
 Zijn-verbs keep _zijn_: _Hij **is** blijven **slapen**._ _Ze **zijn** komen **eten**._
 

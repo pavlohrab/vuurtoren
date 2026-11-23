@@ -8,6 +8,11 @@ summary: Add -er for "more" (groter dan) and -st for "most" (het grootst); a few
 detects: [comparison]
 practice: [scramble]
 related: [adjective-inflection, adverbs, spelling-rules]
+sources:
+  [
+    e-ANS 6.2.4 | https://e-ans.ivdnt.org/topics/pid/topic-14469067579132942,
+    Taaladvies (meest) | https://www.vlaanderen.be/team-taaladvies/taaladviezen/meest-in-overtreffende-trap,
+  ]
 ---
 
 ## Explanation
@@ -23,7 +28,7 @@ Spelling follows the spelling rules: _groot → groter_, _dik → dikker_, _vies
 
 **Before a noun**, the forms take -e like any adjective: _een grotere kamer_, _de grootste kamer_. **After a verb** or as an adverb, the superlative usually has _het_: _Deze kamer is het grootst._ _Wie loopt het snelst?_
 
-Long or foreign words and words ending in -st can also use _meer_ / _meest_: _meer ervaren_, _het meest bekend_. But short words never do.
+Long or foreign words and words ending in -st can also use _meer_ / _meest_: _meer ervaren_, _het meest bekend_. Short words usually take the ending, but _meest_ is possible with some of them too: _meest vers_, _meest gelezen_, _meer dood dan levend_.
 
 ### Pattern
 
@@ -44,7 +49,7 @@ Long or foreign words and words ending in -st can also use _meer_ / _meest_: _me
 
 ## Common mistakes
 
-- _meer groot_. Short words take the ending: _groter_.
+- _meer groot_. Most short words take the ending: _groter_.
 - _duurer_. After r, add -der: _duurder_.
 - _groter als_. In good Dutch, use dan after a comparative: _groter dan_ (_als_ is common in speech but seen as incorrect).
 - _even groot dan_. Use als here: _even groot als_.

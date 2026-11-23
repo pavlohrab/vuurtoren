@@ -8,6 +8,11 @@ summary: After a verb or a preposition, use object forms such as mij/me, jou/je,
 practice: [scramble]
 related: [personal-pronouns, reflexive-verbs, possessive-pronouns, pronominal-adverbs]
 detects: [object-pronouns]
+sources:
+  [
+    e-ANS 5.2.6 | https://e-ans.ivdnt.org/topics/pid/ans050206lingtopic,
+    e-ANS 5.2.5 | https://e-ans.ivdnt.org/topics/pid/ans050205lingtopic,
+  ]
 ---
 
 ## Explanation

@@ -8,6 +8,11 @@ summary: After words like omdat, dat, als, toen and of, the conjugated verb goes
 detects: [subordinate-clauses]
 practice: [scramble]
 related: [conjunctions, inversion, indirect-speech, relative-pronouns, verb-clusters]
+sources:
+  [
+    e-ANS 10.3 | https://e-ans.ivdnt.org/topics/pid/ans1003lingtopic,
+    e-ANS 21.2.4 | https://e-ans.ivdnt.org/topics/pid/ans210204lingtopic,
+  ]
 ---
 
 ## Explanation

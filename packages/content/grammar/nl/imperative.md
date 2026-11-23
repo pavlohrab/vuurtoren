@@ -8,6 +8,11 @@ summary: For a command, use the stem of the verb at the start of the sentence, w
 detects: [imperative]
 practice: [scramble]
 related: [present-tense, separable-verbs, modal-particles, modal-verbs]
+sources:
+  [
+    e-ANS 2.4.4 | https://e-ans.ivdnt.org/topics/pid/ans020404lingtopic,
+    e-ANS 23.4 | https://e-ans.ivdnt.org/topics/pid/ans2304lingtopic,
+  ]
 ---
 
 ## Explanation

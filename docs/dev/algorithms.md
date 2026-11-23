@@ -582,6 +582,8 @@ The app checks the synonym rule again with its own dictionary before using a nei
 
 **Topics (22).** inversion · questions · subordinate clauses · separable verbs · perfect tense · modal verbs · imperfect (simple past) · future (`zullen`/`gaan` + infinitive) · reflexive verbs · `om … te` + infinitive · `te` + infinitive · adjective inflection (-e) · comparison · negation (`niet`/`geen`) · demonstratives · `er` (existential, quantitative, prepositional, place) · relative pronouns · de/het (diminutives are always `het`) · plural nouns · imperative · indirect speech · conjunctions (`en/maar/want/of`).
 
+**Topic pages.** The grammar topics a hit links to (`packages/content/grammar/nl/*.md`) follow the e-ANS (Algemene Nederlandse Spraakkunst) and Taaladvies, simplified for learners, and each topic lists its sources in a `sources` front-matter field, shown at the end of the topic page.
+
 **Precision over recall.** A detector fires only when the parse and the word forms agree. A missed example costs nothing; a wrong underline teaches the wrong thing. One construction gives one hit, but a token may belong to hits of several topics.
 
 **Example cache** (`grammar_examples.py`, `GET /grammar/examples`). The Tatoeba sentence database is indexed by word, not by construction. To find sentences "with an inversion", the detectors are run over sentences of 5–14 words, in a fixed pseudo-random order, so rare constructions turn up as early as common ones. Each request scans batches of 128 sentences until the topic has enough examples or a 4-second budget is spent. Up to 40 examples per topic are cached, and the best (lowest difficulty score) are returned, 10 by default. The cache is discarded whenever `grammar.py` changes (it stores a hash of the file).

@@ -7,6 +7,11 @@ order: 3
 summary: Take the stem of the verb, add -t for jij, u and hij/zij/het, and -en for all plurals; hebben and zijn are irregular.
 practice: [verb-form]
 related: [spelling-rules, personal-pronouns, questions, imperative]
+sources:
+  [
+    e-ANS 2.4.8.3 | https://e-ans.ivdnt.org/topics/pid/ans02040803lingtopic,
+    e-ANS 2.3.3 | https://e-ans.ivdnt.org/topics/pid/ans020303lingtopic,
+  ]
 ---
 
 ## Explanation

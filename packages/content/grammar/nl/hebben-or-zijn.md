@@ -8,6 +8,7 @@ summary: Most verbs take hebben; verbs of change, of going somewhere, and blijve
 detects: [perfect-tense]
 practice: [perfect]
 related: [perfect-tense, past-perfect, irregular-verbs]
+sources: [e-ANS 2.3.2.8.iv | https://e-ans.ivdnt.org/topics/pid/ans0203020804lingtopic]
 ---
 
 ## Explanation
@@ -25,7 +26,7 @@ Most verbs make the perfect with **hebben**. A smaller group uses **zijn**. You 
 - **zijn** when you say **where to** (a goal): _Ik ben naar huis gefietst._
 - **hebben** when you only talk about the activity: _Ik heb vandaag veel gefietst._
 
-Transitive verbs (with an object) always take hebben: _Ik heb een fiets gekocht._
+Verbs with a direct object almost always take hebben: _Ik heb een fiets gekocht._ Common exceptions are _beginnen, vergeten, tegenkomen, kwijtraken_: _Ik ben mijn sleutels kwijtgeraakt._
 
 ### Pattern
 
@@ -37,7 +38,7 @@ Transitive verbs (with an object) always take hebben: _Ik heb een fiets gekocht.
 ## Examples
 
 - Wij **zijn** gisteren naar Antwerpen **gegaan**. | We went to Antwerp yesterday.
-- Ik **ben** het hele weekend thuis **gebleven**. | I stayed at home all weekend.
+- Ik **ben** het hele weekend **thuisgebleven**. | I stayed at home all weekend.
 - Wat **is** er **gebeurd**? | What happened?
 - Hij **is** naar de supermarkt **gefietst**. | He cycled to the supermarket.
 - Zij **heeft** een uur **gefietst**. | She cycled for an hour.
@@ -46,5 +47,5 @@ Transitive verbs (with an object) always take hebben: _Ik heb een fiets gekocht.
 ## Common mistakes
 
 - _Ik heb naar huis gegaan._ Gaan takes zijn: _Ik ben naar huis gegaan._
-- _Ik heb thuis gebleven._ Blijven takes zijn: _Ik ben thuis gebleven._
+- _Ik heb thuisgebleven._ Blijven takes zijn: _Ik ben thuisgebleven._
 - _Ik ben gisteren geweest ziek._ The participle goes last: _Ik ben gisteren ziek geweest._

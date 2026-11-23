@@ -8,13 +8,18 @@ summary: Some verbs need a pronoun that points back to the subject, such as me, 
 detects: [reflexive-verbs]
 practice: [scramble]
 related: [object-pronouns, personal-pronouns, perfect-tense]
+sources:
+  [
+    e-ANS 2.2.4 | https://e-ans.ivdnt.org/topics/pid/ans020204lingtopic,
+    e-ANS 5.3 | https://e-ans.ivdnt.org/topics/pid/ans0503lingtopic,
+  ]
 ---
 
 ## Explanation
 
-A **reflexive** pronoun refers back to the **subject**: _Ik was me_ (I wash myself). Some Dutch verbs are **always** reflexive, even when English has no "myself": _zich vergissen_ (to be mistaken), _zich herinneren_ (to remember), _zich haasten_ (to hurry), _zich voelen_ (to feel), _zich vervelen_ (to be bored), _zich verheugen op_ (to look forward to).
+A **reflexive** pronoun refers back to the **subject**: _Ik was me_ (I wash myself). Some Dutch verbs are **always** reflexive, even when English has no "myself": _zich vergissen_ (to be mistaken), _zich herinneren_ (to remember), _zich haasten_ (to hurry), _zich vervelen_ (to be bored), _zich verheugen op_ (to look forward to).
 
-Other verbs can be used with or without it: _Ik was de auto_ / _Ik was me._ Dictionaries show reflexive verbs with **zich**.
+Other verbs can be used with or without it: _Ik was de auto_ / _Ik was me._ _Ik voel de wind_ / _Ik voel me goed_ (I feel well). Dictionaries show reflexive verbs with **zich**.
 
 The pronoun goes right after the conjugated verb, or after the subject when the subject comes after the verb: _Ik voel me goed._ _Morgen haast ik me niet._
 
@@ -22,7 +27,7 @@ The pronoun goes right after the conjugated verb, or after the subject when the 
 
 **elkaar** means "each other": _Wij zien elkaar morgen._
 
-Reflexive verbs take **hebben** in the perfect: _Ik heb me vergist._
+Reflexive verbs almost always take **hebben** in the perfect: _Ik heb me vergist._ A rare exception is _zich rot schrikken_: _Ik ben me rot geschrokken._
 
 ### Pattern
 
@@ -44,4 +49,4 @@ Reflexive verbs take **hebben** in the perfect: _Ik heb me vergist._
 
 - Leaving out the pronoun: _Ik vergis._ Say _Ik vergis me._
 - _zich_ for every person: _Ik voel zich goed._ Use the matching form: _Ik voel me goed._
-- _Ik ben me vergist._ Reflexive verbs take hebben: _Ik heb me vergist._
+- _Ik ben me vergist._ Reflexive verbs almost always take hebben: _Ik heb me vergist._

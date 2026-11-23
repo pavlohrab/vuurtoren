@@ -80,7 +80,10 @@ export function GrammarTopicRoute() {
   return <GrammarTopicPage key={topic} topicId={topic} />;
 }
 
-/** One topic: explanation, pattern, examples (yours, then Tatoeba), mistakes, the path. */
+/**
+ * One topic: explanation, pattern, examples (yours, then Tatoeba), mistakes, related topics,
+ * its sources (e-ANS, Taaladvies), the path.
+ */
 export function GrammarTopicPage({ topicId }: { topicId: string }) {
   const services = useServices();
   const topic = grammarTopic(topicId);
@@ -241,6 +244,20 @@ export function GrammarTopicPage({ topicId }: { topicId: string }) {
             ))}
           </ul>
         </section>
+      ) : null}
+
+      {topic.sources.length ? (
+        <p className="k-hint grammar-sources">
+          Sources:{" "}
+          {topic.sources.map((src, i) => (
+            <span key={src.url}>
+              {i > 0 ? <span aria-hidden> · </span> : null}
+              <a href={src.url} target="_blank" rel="noreferrer">
+                {src.label}
+              </a>
+            </span>
+          ))}
+        </p>
       ) : null}
 
       {prev || next ? (

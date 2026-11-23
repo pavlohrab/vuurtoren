@@ -7,6 +7,7 @@ order: 18
 summary: In the middle of a Dutch sentence the usual order is time, then manner (how, with whom), then place (where).
 practice: [scramble]
 related: [word-order-v2, verb-bracket, niet-position, adverbs]
+sources: [e-ANS 21.4.8 | https://e-ans.ivdnt.org/topics/pid/ans210408lingtopic]
 ---
 
 ## Explanation

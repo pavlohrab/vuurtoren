@@ -8,6 +8,11 @@ summary: Small unstressed words such as even, maar, toch, wel, eens, hoor, nou a
 practice: [cloze-choice]
 related: [imperative, adverbs, negation, register]
 detects: [modal-particles]
+sources:
+  [
+    e-ANS 21.4.9.4 | https://e-ans.ivdnt.org/topics/pid/ans21040904lingtopic,
+    Taaladvies (weleens / wel eens) | https://taaladvies.net/weleens-of-wel-eens/,
+  ]
 ---
 
 ## Explanation
@@ -16,7 +21,7 @@ Spoken Dutch is full of tiny words that **colour** a sentence. They do not add f
 
 - **even** — "just (quickly)". Makes a request small and friendly: _Kun je even helpen?_ _Wacht even._
 - **maar** — "go ahead, feel free". Encourages or gives permission: _Kom maar binnen._ _Neem maar._ It can also sound resigned: _Doe maar._ With a wish: _Was het maar vrijdag!_ (If only it were Friday!)
-- **eens** (spoken _'s_) — "why don't you, for once". Softens a suggestion: _Kijk eens._ _Probeer het eens._ In questions it means "ever" with _wel_: _Ben je wel eens in Rome geweest?_
+- **eens** (spoken _'s_) — "why don't you, for once". Softens a suggestion: _Kijk eens._ _Probeer het eens._ In questions it means "ever" with _wel_: _Ben je weleens in Rome geweest?_
 - **toch** — "after all, surely, don't you think?". Asks for agreement or shows mild surprise or impatience: _Je komt toch ook?_ (You are coming too, aren't you?) _Doe toch niet zo moeilijk!_ At the end of a sentence: _Mooi, toch?_
 - **wel** — "really, actually, though". Contrasts with a negative or reassures: _Ik heb geen auto, maar wel een fiets._ _Het komt wel goed._ With _zullen_: _Hij zal wel moe zijn._ (I suppose he is tired.)
 - **hoor** — at the end, makes a statement friendlier or reassuring: _Het is niet erg, hoor._ _Dank je wel, hoor!_

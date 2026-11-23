@@ -237,7 +237,7 @@ const perfect: Generator = (word, _pool, rng) => {
   if (word.glosses[0]) prompt.hint = word.glosses[0];
   const explanations = {
     zijn: "zijn: verbs of motion to a destination and of change of state take zijn.",
-    hebben: "hebben is the default auxiliary: most verbs, including all transitive ones, use it.",
+    hebben: "hebben is the default auxiliary: most verbs, and almost all with an object, use it.",
     both: "Both hebben and zijn occur; zijn stresses motion or change, hebben the activity.",
   } as const;
   const ex = base("perfect", word, rng, {

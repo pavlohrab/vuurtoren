@@ -8,6 +8,7 @@ summary: Every noun is a de-word or a het-word; all plurals and most nouns take 
 detects: [diminutives, demonstratives]
 practice: [gender]
 related: [diminutives, demonstratives, adjective-inflection, plural-nouns, word-formation]
+sources: [e-ANS 3.3.2 | https://e-ans.ivdnt.org/topics/pid/ans030302lingtopic]
 ---
 
 ## Explanation
@@ -29,7 +30,7 @@ related: [diminutives, demonstratives, adjective-inflection, plural-nouns, word-
 
 There is no rule that covers everything, but these help:
 
-- **het**: diminutives (_het meisje_), words with _-ment_, _-isme_, _-um_ (_het moment_, _het museum_), infinitives used as nouns (_het eten_), languages (_het Nederlands_), most metals, and most words starting with _ge-_ or _be-_ (_het gebouw_, _het begin_).
+- **het**: diminutives (_het meisje_), words with _-ment_, _-isme_, _-um_ (_het moment_, _het museum_), infinitives used as nouns (_het eten_), languages (_het Nederlands_, though you usually say _Ik leer Nederlands_ without an article), most metals, and most words starting with _ge-_ or _be-_ (_het gebouw_, _het begin_), unless they end in _-ing_, _-nis_ or _-te_ (_de betaling_, _de betekenis_, _de gedachte_).
 - **de**: words ending in _-heid_, _-ing_, _-ie_, _-teit_, _-schap_ (mostly), _-nis_ (mostly), people (_de man_, _de vrouw_, _de leraar_), trees, fruit, rivers and numbers as nouns.
 
 ### When there is no article
@@ -43,7 +44,7 @@ Unlike English, Dutch leaves out _een_ before a job, a nationality or a religion
 - **De** kinderen spelen buiten. | The children are playing outside.
 - **Het** meisje leest **een** boek. | The girl is reading a book.
 - Mijn vader is **kok**. | My father is a cook.
-- Ik leer **het** Nederlands. | I am learning Dutch.
+- **Het** Nederlands van Vlaanderen klinkt zachter. | The Dutch of Flanders sounds softer.
 
 ## Common mistakes
 

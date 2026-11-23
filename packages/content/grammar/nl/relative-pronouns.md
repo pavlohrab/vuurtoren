@@ -8,6 +8,11 @@ summary: A relative clause describes a noun; it starts with die (de-words, plura
 detects: [relative-pronouns]
 practice: [scramble]
 related: [subordinate-clauses, demonstratives, pronominal-adverbs, register]
+sources:
+  [
+    e-ANS 5.8 | https://e-ans.ivdnt.org/topics/pid/ans0508lingtopic,
+    Taaladvies (dat / wat) | https://www.vlaanderen.be/team-taaladvies/taaladviezen/dat-wat,
+  ]
 ---
 
 ## Explanation
@@ -18,7 +23,7 @@ Choose the relative pronoun by the noun it describes:
 
 - **die** — after a de-word or a plural: _de fiets die ik heb gekocht_, _de mensen die hier wonen_.
 - **dat** — after a singular het-word: _het huis dat te koop staat_.
-- **wat** — after _alles, iets, niets, veel_, after a superlative used as a noun (_het mooiste wat ik ken_), and when it refers to a whole sentence: _Hij kwam te laat, wat ik vervelend vond._
+- **wat** — after _alles, iets, niets, veel_ and after a superlative used as a noun (_het mooiste wat ik ken_); _dat_ is possible there too, but _wat_ is most usual. Always _wat_ when it refers to a whole sentence: _Hij kwam te laat, wat ik vervelend vond._
 - **wie** — after a preposition, for **people**: _de vrouw met wie ik werk_ (the woman I work with). Also "whoever": _Wie wil, mag mee._
 
 **Prepositions and things.** For things, Dutch does not say _met die_ or _met wat_. It uses **waar + preposition**: _de pen waarmee ik schrijf_ (the pen I write with). In speech the two parts are often split: _de pen waar ik mee schrijf_. _met_ becomes _mee_, _tot_ becomes _toe_. For people, _waar-_ is common in speech too, but _met wie_ is better in writing.
@@ -46,5 +51,4 @@ English can leave out "that/who" (_the book I read_). Dutch cannot: _het boek da
 
 - _het boek die ik lees_. Boek is a het-word: _het boek dat ik lees_.
 - Leaving out the pronoun: _de film ik zag_. Say _de film die ik zag_.
-- _alles dat hij zegt_. After alles, use wat: _alles wat hij zegt_ (in speech _dat_ is heard, but _wat_ is standard).
 - _de pen met die ik schrijf_. For things use waar-: _de pen waarmee ik schrijf_.

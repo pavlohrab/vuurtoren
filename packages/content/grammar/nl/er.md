@@ -8,6 +8,7 @@ summary: Er introduces something new ("there is"), stands for a known place, rep
 detects: [er]
 practice: [scramble]
 related: [pronominal-adverbs, er-combined, impersonal-passive, numbers]
+sources: [e-ANS 8.6 | https://e-ans.ivdnt.org/topics/pid/ans0806lingtopic]
 ---
 
 ## Explanation

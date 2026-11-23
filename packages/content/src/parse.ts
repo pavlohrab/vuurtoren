@@ -11,6 +11,9 @@
  *
  * Optional curriculum keys: `group` (one of GRAMMAR_GROUPS) and `order` (position on the
  * suggested learning path, a positive integer).
+ *
+ * `sources` lists the references the page follows (e-ANS sections, Taaladvies pages), each as
+ * `Label | https://url`, like the example lines.
  */
 
 export type CefrLevel = "A1" | "A2" | "B1" | "B2" | "C1" | "C2";
@@ -31,6 +34,12 @@ export const GRAMMAR_GROUPS = [
   { id: "style", title: "Register & variation" },
 ] as const;
 export type GrammarGroup = (typeof GRAMMAR_GROUPS)[number]["id"];
+
+/** A reference a topic page follows: an e-ANS section, a Taaladvies page, the Woordenlijst. */
+export interface TopicSource {
+  label: string;
+  url: string;
+}
 
 /** One `## Heading` section of a topic page. */
 export interface TopicSection {
@@ -67,6 +76,8 @@ export interface GrammarTopic {
   practice: string[];
   /** Ids of related topic pages (may name pages that do not exist yet). */
   related: string[];
+  /** References the page follows, in the order given; empty if none. */
+  sources: TopicSource[];
   /** The page body (everything after the front matter), Markdown. */
   body: string;
   sections: TopicSection[];
@@ -78,7 +89,7 @@ class TopicParseError extends Error {
   override readonly name = "TopicParseError";
 }
 
-const LIST_KEYS = new Set(["detects", "practice", "related"]);
+const LIST_KEYS = new Set(["detects", "practice", "related", "sources"]);
 const REQUIRED = ["id", "title", "level", "summary"] as const;
 
 /** URL-style slug of a heading: "Common mistakes" -> "common-mistakes". */
@@ -165,6 +176,12 @@ export function parseTopic(source: string, file: string, lang: string): GrammarT
     }
   }
 
+  const sources: TopicSource[] = list("sources").map((item) => {
+    const src = /^(.+?)\s+\|\s+(https:\/\/\S+)$/.exec(item);
+    if (!src) throw new TopicParseError(`${file}: source "${item}" must read "Label | https://…"`);
+    return { label: src[1] ?? "", url: src[2] ?? "" };
+  });
+
   const body = (m[2] ?? "").trim();
   const sections: TopicSection[] = [];
   for (const part of body.split(/^## /m).slice(1)) {
@@ -198,6 +215,7 @@ export function parseTopic(source: string, file: string, lang: string): GrammarT
     detects: list("detects"),
     practice: list("practice"),
     related: list("related"),
+    sources,
     body,
     sections,
     examples,

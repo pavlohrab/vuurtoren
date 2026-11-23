@@ -8,6 +8,11 @@ summary: Report what someone says or asks with a dat-clause, an of-clause or a q
 detects: [indirect-speech]
 practice: [scramble]
 related: [subordinate-clauses, questions, personal-pronouns]
+sources:
+  [
+    e-ANS 10.3.2.1 | https://e-ans.ivdnt.org/topics/pid/ans10030201lingtopic,
+    e-ANS 2.4.8.11 | https://e-ans.ivdnt.org/topics/pid/ans02040811lingtopic,
+  ]
 ---
 
 ## Explanation

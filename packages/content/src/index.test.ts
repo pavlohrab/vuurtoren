@@ -111,6 +111,20 @@ describe("curriculum", () => {
     expect([...seen].sort((a, b) => a - b)).toEqual(seen);
   });
 
+  it("every page lists its sources", () => {
+    for (const t of topics) {
+      expect(t.sources.length, t.id).toBeGreaterThan(0);
+      for (const s of t.sources) {
+        expect(s.label.length, t.id).toBeGreaterThan(3);
+        expect(s.url, t.id).toMatch(/^https:\/\/\S+$/);
+      }
+    }
+    expect(grammarTopic("hebben-or-zijn")?.sources[0]).toEqual({
+      label: "e-ANS 2.3.2.8.iv",
+      url: "https://e-ans.ivdnt.org/topics/pid/ans0203020804lingtopic",
+    });
+  });
+
   it("related ids point at existing pages and pages have a pattern box", () => {
     for (const t of topics) {
       for (const r of t.related) expect(ids, `${t.id} -> ${r}`).toContain(r);
@@ -157,6 +171,21 @@ Some **bold** text.
     expect(t.group).toBeUndefined();
     expect(t.order).toBeUndefined();
     expect(t.pattern).toEqual([]);
+    expect(t.sources).toEqual([]);
+  });
+
+  it("reads sources as label | url", () => {
+    const withSources = page.replace(
+      "practice: [scramble]\n",
+      "practice: [scramble]\nsources:\n  [\n    e-ANS 21.3 | https://e-ans.ivdnt.org/x,\n    Taaladvies (dat / wat) | https://taaladvies.net/y,\n  ]\n",
+    );
+    expect(parseTopic(withSources, "demo.md", "nl").sources).toEqual([
+      { label: "e-ANS 21.3", url: "https://e-ans.ivdnt.org/x" },
+      { label: "Taaladvies (dat / wat)", url: "https://taaladvies.net/y" },
+    ]);
+    expect(() =>
+      parseTopic(page.replace("practice: [scramble]", "sources: [no url]"), "demo.md", "nl"),
+    ).toThrow(/source/);
   });
 
   it("joins wrapped front-matter lines", () => {

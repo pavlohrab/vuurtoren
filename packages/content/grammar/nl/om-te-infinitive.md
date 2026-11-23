@@ -8,6 +8,11 @@ summary: Om … te + infinitive expresses a purpose ("in order to") or completes
 detects: [om-te-infinitive]
 practice: [scramble]
 related: [te-infinitive, subordinate-clauses, infinitive-as-noun]
+sources:
+  [
+    e-ANS 19.3.3 | https://e-ans.ivdnt.org/topics/pid/ans190303lingtopic,
+    e-ANS 18.5.6 | https://e-ans.ivdnt.org/topics/pid/ans180506lingtopic,
+  ]
 ---
 
 ## Explanation

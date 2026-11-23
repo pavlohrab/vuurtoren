@@ -8,6 +8,7 @@ summary: Verbs with an unstressed prefix such as be-, ge-, her-, ont-, ver- or e
 practice: [perfect]
 related: [separable-verbs, perfect-tense, word-formation]
 detects: [inseparable-prefixes]
+sources: [e-ANS 12.3.2.1 | https://e-ans.ivdnt.org/topics/pid/topic-14428052248902267]
 ---
 
 ## Explanation

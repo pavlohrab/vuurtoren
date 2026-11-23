@@ -8,6 +8,11 @@ summary: Use geen for a noun with een or without an article, and niet for everyt
 detects: [negation]
 practice: [scramble]
 related: [niet-position, word-order-v2, indefinite-pronouns]
+sources:
+  [
+    e-ANS 29 | https://e-ans.ivdnt.org/topics/pid/topic-16249577360247367,
+    e-ANS 29.3.3 | https://e-ans.ivdnt.org/topics/pid/topic-16249591180070110,
+  ]
 ---
 
 ## Explanation
@@ -20,7 +25,7 @@ Dutch has two words for "not".
 
 Where does _niet_ go? The short version: at the end of the clause, but **before** an adjective after _zijn_, before a place or a preposition phrase, and before verbs and particles that stand at the end. See the topic on the position of niet for details.
 
-Other negative words work the same way as _niet_: _nooit_ (never), _nergens_ (nowhere), _niemand_ (nobody), _niets_ (nothing).
+Other negative words make the sentence negative on their own, so never add _niet_. _nooit_ (never) and _nergens_ (nowhere) stand where _niet_ would; _niemand_ (nobody) and _niets_ (nothing) are pronouns and take the place of a subject or object: _Ik zie niemand._ _Niets is gratis._
 
 ### Pattern
 

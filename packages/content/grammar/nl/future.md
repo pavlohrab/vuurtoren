@@ -8,6 +8,11 @@ summary: Dutch uses the present tense with a time word, gaan + infinitive for pl
 detects: [future]
 practice: [scramble]
 related: [present-tense, modal-verbs, conditional, conditional-perfect]
+sources:
+  [
+    e-ANS 2.4.8.5 | https://e-ans.ivdnt.org/topics/pid/ans02040805lingtopic,
+    e-ANS 2.4.8.3 | https://e-ans.ivdnt.org/topics/pid/ans02040803lingtopic,
+  ]
 ---
 
 ## Explanation
@@ -22,7 +27,7 @@ With _gaan_ and _zullen_, the infinitive goes to the end, like with modal verbs.
 
 _zullen_ also expresses that you **think** something is probably true, often with _wel_: _Hij zal wel moe zijn_ (he must be tired, I suppose).
 
-For something that will be finished at a later moment, use _zullen + hebben/zijn + participle_ (see conditional perfect and the future perfect): _Om zes uur zal ik het af hebben._
+For something that will be finished at a later moment, use _zullen + hebben/zijn + participle_ (see conditional perfect and the future perfect): _Om zes uur zal ik het werk hebben afgemaakt._
 
 ### Pattern
 

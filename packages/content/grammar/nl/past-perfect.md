@@ -9,6 +9,7 @@ detects: [past-perfect]
 practice: [perfect]
 related:
   [perfect-tense, hebben-or-zijn, imperfect-tense, conditional-perfect, conditional-inversion]
+sources: [e-ANS 2.4.8.8 | https://e-ans.ivdnt.org/topics/pid/ans02040808lingtopic]
 ---
 
 ## Explanation

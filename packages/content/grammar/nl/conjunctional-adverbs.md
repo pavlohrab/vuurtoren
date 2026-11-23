@@ -3,11 +3,12 @@ id: conjunctional-adverbs
 title: Linking adverbs (daarom, toch, dus, immers)
 level: B2
 group: clauses
-order: 56
+order: 57
 summary: Linking adverbs such as daarom, toch, bovendien and anders connect sentences like conjunctions, but they are part of the clause, so they cause inversion when they come first.
 detects: [inversion]
 practice: [scramble]
 related: [conjunctions, subordinate-clauses, inversion, modal-particles]
+sources: [e-ANS 8.5 | https://e-ans.ivdnt.org/topics/pid/ans0805lingtopic]
 ---
 
 ## Explanation

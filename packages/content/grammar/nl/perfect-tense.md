@@ -9,6 +9,11 @@ detects: [perfect-tense]
 practice: [perfect]
 related:
   [hebben-or-zijn, imperfect-tense, irregular-verbs, verb-bracket, past-perfect, verb-clusters]
+sources:
+  [
+    e-ANS 2.4.8.4 | https://e-ans.ivdnt.org/topics/pid/ans02040804lingtopic,
+    e-ANS 2.3.2.7 | https://e-ans.ivdnt.org/topics/pid/ans02030207lingtopic,
+  ]
 ---
 
 ## Explanation
@@ -41,7 +46,7 @@ Strong verbs have their own participles, mostly ending in **-en**: _lezen → ge
 
 ## Examples
 
-- Ik **heb** gisteren lang **gewerkt**. | I worked late yesterday.
+- Ik **heb** gisteren lang **gewerkt**. | I worked for a long time yesterday.
 - **Heb** jij die film al **gezien**? | Have you seen that film yet?
 - Wij **hebben** in Frankrijk veel **gefietst**. | We cycled a lot in France.
 - Zij **is** naar huis **gegaan**. | She went home.

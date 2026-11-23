@@ -8,6 +8,11 @@ summary: To stress that something is going on right now, use zijn + aan het + in
 detects: [progressive]
 practice: [scramble]
 related: [present-tense, position-verbs, te-infinitive]
+sources:
+  [
+    e-ANS 18.5.5 | https://e-ans.ivdnt.org/topics/pid/ans180505lingtopic,
+    e-ANS 18.5.4.2 | https://e-ans.ivdnt.org/topics/pid/ans18050402lingtopic,
+  ]
 ---
 
 ## Explanation
@@ -20,7 +25,7 @@ Dutch has no "-ing" tense. The simple present usually does the job: _Ik kook_ = 
 
 **3. bezig zijn met / bezig zijn te** — "be busy with": _Ik ben bezig met mijn huiswerk._
 
-In the perfect, _zitten/staan/liggen_ take the infinitive instead of a participle and drop _te_: _Ik heb de hele avond zitten lezen._ (See verb clusters.)
+In the perfect, _zitten/staan/liggen_ take the infinitive instead of a participle, and _te_ is usually dropped: _Ik heb de hele avond zitten (te) lezen._ (See verb clusters.)
 
 **gaan** and **blijven** + infinitive add a start or a continuation: _Ik ga even liggen._ (I am going to lie down.) _Blijf maar zitten._ (Don't get up.)
 
@@ -28,7 +33,7 @@ In the perfect, _zitten/staan/liggen_ take the infinitive instead of a participl
 
 - `zijn` … `aan het + infinitive` → _We zijn aan het eten._
 - `zitten / staan / liggen / lopen` … `te + infinitive` → _Ze zit te werken._
-- perfect: `hebben … zitten + infinitive` → _Ik heb zitten wachten._
+- perfect: `hebben … zitten + (te) infinitive` → _Ik heb zitten wachten._
 
 ## Examples
 
@@ -43,4 +48,3 @@ In the perfect, _zitten/staan/liggen_ take the infinitive instead of a participl
 
 - Translating "-ing" word for word: _Ik ben koken._ Use the present (_Ik kook_) or _Ik ben aan het koken._
 - _Hij zit lezen._ Zitten needs te here: _Hij zit te lezen._
-- _Ik heb zitten te wachten._ In the perfect, te drops: _Ik heb zitten wachten._

@@ -3,10 +3,15 @@ id: participles
 title: Participles as adjectives (de gestolen fiets, lachend)
 level: B2
 group: infinitives
-order: 54
+order: 56
 summary: The past participle (gestolen) and the present participle (lachend) can describe a noun like an adjective, or describe how something is done.
 practice: [adjective-e]
 related: [adjective-inflection, passive, extended-attributes, infinitive-as-noun, progressive]
+sources:
+  [
+    e-ANS 6.2.3 | https://e-ans.ivdnt.org/topics/pid/topic-17874470710348463,
+    e-ANS 2.4.5 | https://e-ans.ivdnt.org/topics/pid/ans020405lingtopic,
+  ]
 ---
 
 ## Explanation

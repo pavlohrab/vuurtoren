@@ -8,6 +8,11 @@ summary: A yes/no question starts with the verb; an open question starts with a 
 detects: [questions]
 practice: [scramble]
 related: [word-order-v2, present-tense, indirect-speech, pronominal-adverbs]
+sources:
+  [
+    e-ANS 23.3 | https://e-ans.ivdnt.org/topics/pid/ans2303lingtopic,
+    e-ANS 5.7 | https://e-ans.ivdnt.org/topics/pid/ans0507lingtopic,
+  ]
 ---
 
 ## Explanation

@@ -8,6 +8,11 @@ summary: Many verbs start with a stressed particle such as op, mee, aan or uit, 
 detects: [separable-verbs]
 practice: [separable]
 related: [inseparable-prefixes, verb-bracket, perfect-tense, te-infinitive]
+sources:
+  [
+    e-ANS 12.3.4 | https://e-ans.ivdnt.org/topics/pid/topic-11721585681016076,
+    e-ANS 21.6.2.2 | https://e-ans.ivdnt.org/topics/pid/ans21060202lingtopic,
+  ]
 ---
 
 ## Explanation

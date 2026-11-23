@@ -7,6 +7,11 @@ order: 28
 summary: In, op, aan, bij, naar, uit, van, met and voor have core meanings for place, direction and time, but many uses are fixed and best learned in phrases.
 practice: [cloze-choice]
 related: [verbs-with-prepositions, pronominal-adverbs, dates-and-time, time-manner-place]
+sources:
+  [
+    e-ANS 9.1 | https://e-ans.ivdnt.org/topics/pid/topic-16249634411997549,
+    e-ANS 9.2 | https://e-ans.ivdnt.org/topics/pid/topic-16249636388982621,
+  ]
 ---
 
 ## Explanation
