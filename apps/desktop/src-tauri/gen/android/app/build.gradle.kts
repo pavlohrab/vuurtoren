@@ -25,6 +25,20 @@ android {
         versionCode = tauriProperties.getProperty("tauri.android.versionCode", "1").toInt()
         versionName = tauriProperties.getProperty("tauri.android.versionName", "1.0")
     }
+    // Release builds are signed with the one Vuurtoren key when the environment names it (the
+    // release workflow decodes it from the repository secrets). Without it, a release build stays
+    // unsigned, as before. Every update must carry the same key, or Android refuses to install it.
+    val keystorePath = System.getenv("VUURTOREN_KEYSTORE")
+    signingConfigs {
+        if (!keystorePath.isNullOrEmpty()) {
+            create("vuurtoren") {
+                storeFile = file(keystorePath)
+                storePassword = System.getenv("VUURTOREN_KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("VUURTOREN_KEY_ALIAS")
+                keyPassword = System.getenv("VUURTOREN_KEY_PASSWORD")
+            }
+        }
+    }
     buildTypes {
         getByName("debug") {
             manifestPlaceholders["usesCleartextTraffic"] = "true"
@@ -39,6 +53,9 @@ android {
             }
         }
         getByName("release") {
+            if (!keystorePath.isNullOrEmpty()) {
+                signingConfig = signingConfigs.getByName("vuurtoren")
+            }
             optimization {
                enable = true
             }

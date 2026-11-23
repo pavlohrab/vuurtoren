@@ -19,7 +19,12 @@
 #   TAURI_SIGNING_PRIVATE_KEY           secret: the updater key (not a code-signing certificate)
 #   TAURI_SIGNING_PRIVATE_KEY_PASSWORD  secret, optional: only if the key has a password
 #   VUURTOREN_UPDATE_URL                  variable, optional: the latest.json URL built into the app
+#   ANDROID_KEYSTORE_BASE64             secret: the Android release keystore, base64 (`base64 -w0`)
+#   ANDROID_KEYSTORE_PASSWORD           secret: its store password
+#   ANDROID_KEY_ALIAS                   secret: the key's alias (e.g. vuurtoren)
+#   ANDROID_KEY_PASSWORD                secret: the key's password
 # Without TAURI_SIGNING_PRIVATE_KEY the installers are still built, just without update files.
+# Without the ANDROID_* secrets the android job builds nothing (see the job).
 name: Desktop
 on:
   push:
@@ -238,11 +243,95 @@ jobs:
           gh api -X PATCH "repos/$REPO/releases/$id" -F draft=false >/dev/null
           gh release upload "$tag" --repo "$REPO" "$RUNNER_TEMP"/offline/* --clobber
 
+  # The Android APK, signed with the one Vuurtoren key from the repository secrets
+  # (ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD),
+  # attached to the same release as Vuurtoren_<version>_arm64.apk and Vuurtoren-android.apk.
+  # Without the secrets it stops with a warning: an unsigned or differently signed APK could not
+  # update the ones people already have.
+  android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Signing key present?
+        id: key
+        env:
+          KEY: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          if [ -z "$KEY" ]; then
+            echo "::warning::ANDROID_KEYSTORE_BASE64 not set: no APK built"
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          fi
+      - if: steps.key.outputs.ok == 'true'
+        uses: pnpm/action-setup@v4
+      - if: steps.key.outputs.ok == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - if: steps.key.outputs.ok == 'true'
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - if: steps.key.outputs.ok == 'true'
+        uses: android-actions/setup-android@v3
+      - if: steps.key.outputs.ok == 'true'
+        name: Android NDK
+        run: |
+          sdkmanager --install "ndk;27.2.12479018" "platforms;android-36" "build-tools;36.0.0"
+          echo "NDK_HOME=$ANDROID_SDK_ROOT/ndk/27.2.12479018" >> "$GITHUB_ENV"
+      - if: steps.key.outputs.ok == 'true'
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android
+      - if: steps.key.outputs.ok == 'true'
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/desktop/src-tauri -> target
+          key: android
+      - if: steps.key.outputs.ok == 'true'
+        run: pnpm install --frozen-lockfile
+      - if: steps.key.outputs.ok == 'true'
+        name: Build the signed APK
+        working-directory: apps/desktop
+        env:
+          KEY: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          VUURTOREN_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          VUURTOREN_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          VUURTOREN_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          echo "$KEY" | base64 -d > "$RUNNER_TEMP/vuurtoren.jks"
+          export VUURTOREN_KEYSTORE="$RUNNER_TEMP/vuurtoren.jks"
+          pnpm tauri android build --apk --target aarch64
+          rm -f "$RUNNER_TEMP/vuurtoren.jks"
+      - if: steps.key.outputs.ok == 'true'
+        name: Attach to the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
+        run: |
+          version=$(node -p "require('./package.json').version")
+          tag="${TAG:-desktop-v$version}"
+          apk=$(find apps/desktop/src-tauri/gen/android/app/build/outputs/apk -name '*-release.apk' | head -n1)
+          [ -n "$apk" ] || { echo "No signed release APK found."; exit 1; }
+          mkdir -p "$RUNNER_TEMP/apk"
+          cp "$apk" "$RUNNER_TEMP/apk/Vuurtoren_${version}_arm64.apk"
+          cp "$apk" "$RUNNER_TEMP/apk/Vuurtoren-android.apk"
+          # The release may not exist yet: the desktop jobs make it, and this job does not wait.
+          for i in $(seq 1 60); do
+            gh release view "$tag" --repo "$REPO" >/dev/null 2>&1 && break
+            sleep 30
+          done
+          gh release upload "$tag" --repo "$REPO" "$RUNNER_TEMP"/apk/* --clobber
+
   # The same installers under names that never change, so the website can link straight to
   # releases/latest/download/<name>: Vuurtoren-windows-setup.exe, Vuurtoren-macos-apple-silicon.dmg,
   # Vuurtoren-macos-intel.dmg, Vuurtoren-linux.AppImage and Vuurtoren-linux.deb. Tags only: a
-  # manual run is a pre-release and never "latest". The Android APK is attached by hand as
-  # Vuurtoren-android.apk until Android builds here.
+  # manual run is a pre-release and never "latest". The android job attaches Vuurtoren-android.apk.
   fixed-names:
     needs: build
     if: github.ref_type == 'tag'
