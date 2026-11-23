@@ -19,7 +19,7 @@
 The apps are not signed yet, so your computer may warn you:
 
 - **Windows:** click **More info**, then **Run anyway**.
-- **macOS:** right-click the app and choose **Open**.
+- **macOS:** the first time, macOS blocks it. Close the warning, then go to **System Settings → Privacy & Security** and click **Open Anyway**.
 - **Linux (AppImage):** make the file executable (`chmod +x Vuurtoren*.AppImage`), then run it.
 
 The most common words, their sentences and the stories come with recorded speech, in a female and

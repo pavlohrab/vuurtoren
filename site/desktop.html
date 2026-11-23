@@ -1417,9 +1417,9 @@
         gap: 14px;
       }
       .os {
-        display: grid;
+        display: flex;
+        flex-direction: column;
         gap: 6px;
-        align-content: start;
         background: var(--sheet);
         border: 1px solid var(--line);
         border-radius: 14px;
@@ -1532,6 +1532,20 @@
       .tbl-sec .sub.everywhere {
         font-size: 15px;
         margin-top: 0;
+      }
+
+      /* Each install card ends with its download buttons, level on all three. */
+      .os-dl {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: auto;
+        padding-top: 10px;
+      }
+      .os-dl .btn {
+        min-height: 40px;
+        padding: 0 14px;
+        font-size: 15px;
       }
     </style>
   </head>
@@ -1996,30 +2010,66 @@
           <div class="os">
             <b>Windows</b
             ><span
-              >Take the <code>.exe</code>. Windows may warn you, because the app is not signed yet:
-              click <i>More info</i>, then <i>Run anyway</i>.</span
+              >Windows may warn you, because the app is not signed yet: click <i>More info</i>, then
+              <i>Run anyway</i>.</span
             >
+            <div class="os-dl">
+              <a
+                class="btn primary"
+                href="https://github.com/pavlohrab/Vuurtoren/releases/latest/download/Vuurtoren-windows-setup.exe"
+                >Download for Windows</a
+              >
+            </div>
           </div>
           <div class="os">
             <b>macOS</b
             ><span
-              >Take the <code>.dmg</code> for your Mac (Apple chip or Intel). The first time,
-              right-click the app and choose <i>Open</i>.</span
+              >The first time, macOS blocks it: close the warning, then go to
+              <i>System Settings → Privacy &amp; Security</i> and click <i>Open Anyway</i>.</span
             >
+            <div class="os-dl">
+              <a
+                class="btn primary"
+                href="https://github.com/pavlohrab/Vuurtoren/releases/latest/download/Vuurtoren-macos-apple-silicon.dmg"
+                >Apple chip</a
+              ><a
+                class="btn"
+                href="https://github.com/pavlohrab/Vuurtoren/releases/latest/download/Vuurtoren-macos-intel.dmg"
+                >Intel</a
+              >
+            </div>
           </div>
           <div class="os">
             <b>Linux</b
             ><span
-              >Take the <code>.AppImage</code> or the <code>.deb</code>. Make the AppImage
-              executable, then run it.</span
+              >Make the AppImage executable, then run it. The <code>.deb</code> installs like any
+              other package.</span
             >
+            <div class="os-dl">
+              <a
+                class="btn primary"
+                href="https://github.com/pavlohrab/Vuurtoren/releases/latest/download/Vuurtoren-linux.AppImage"
+                >AppImage</a
+              ><a
+                class="btn"
+                href="https://github.com/pavlohrab/Vuurtoren/releases/latest/download/Vuurtoren-linux.deb"
+                >.deb</a
+              >
+            </div>
           </div>
         </div>
-        <p class="sub">No internet there? Take <code>Vuurtoren_offline_</code>.</p>
+        <p class="sub">
+          We also offer offline installers, with the language server and the dictionary bundled in.
+          Otherwise those are downloaded on the first launch (about 330 MB).
+        </p>
         <div class="cta">
-          <a class="btn primary" href="https://github.com/pavlohrab/Vuurtoren/releases/latest"
-            >All downloads</a
-          ><a class="btn" href="#">Install guide</a>
+          <a class="btn" href="https://github.com/pavlohrab/Vuurtoren/releases/latest"
+            >All downloads, offline installers too</a
+          ><a
+            class="btn"
+            href="https://github.com/pavlohrab/Vuurtoren/blob/main/docs/guide/install.md"
+            >Install guide</a
+          >
         </div>
       </div>
     </section>

@@ -1417,9 +1417,9 @@
         gap: 14px;
       }
       .os {
-        display: grid;
+        display: flex;
+        flex-direction: column;
         gap: 6px;
-        align-content: start;
         background: var(--sheet);
         border: 1px solid var(--line);
         border-radius: 14px;
@@ -1532,6 +1532,20 @@
       .tbl-sec .sub.everywhere {
         font-size: 15px;
         margin-top: 0;
+      }
+
+      /* Each install card ends with its download buttons, level on all three. */
+      .os-dl {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: auto;
+        padding-top: 10px;
+      }
+      .os-dl .btn {
+        min-height: 40px;
+        padding: 0 14px;
+        font-size: 15px;
       }
     </style>
   </head>
