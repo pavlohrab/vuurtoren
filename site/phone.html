@@ -931,7 +931,7 @@
       }
       @media (max-width: 560px) {
         .win {
-          grid-template-columns: 0 minmax(0, 1fr);
+          grid-template-columns: minmax(0, 1fr);
           aspect-ratio: auto;
           min-height: 280px;
         }
@@ -1369,6 +1369,72 @@
           grid-template-columns: 1fr;
         }
       }
+
+      /* Phones: demo boxes grow with their content (a peeking phone keeps its crop) */
+      @media (max-width: 860px) {
+        .stage:not(.peek) {
+          height: auto;
+          min-height: 240px;
+          padding-block: 28px;
+        }
+        .stage:not(.peek) .ready,
+        .stage:not(.peek) .note-card {
+          width: calc(100% - 32px);
+        }
+        .stage:not(.peek) > div[style*="width:78%"] {
+          width: calc(100% - 32px) !important;
+        }
+      }
+      @media (max-width: 560px) {
+        .bridge {
+          flex-direction: column;
+        }
+        .barrow {
+          transform: rotate(90deg);
+        }
+        .play .barrow {
+          animation: none;
+        }
+      }
+      /* The table on a phone: one device at a time, chosen with the tabs above it */
+      .tbl-tabs {
+        display: none;
+      }
+      @media (max-width: 760px) {
+        .tbl-tabs {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 6px;
+        }
+        .tbl-tabs button {
+          font: 600 14px var(--f-ui);
+          border: 1px solid var(--line-strong);
+          background: var(--sheet);
+          color: var(--muted);
+          border-radius: 999px;
+          padding: 7px 14px;
+          cursor: pointer;
+        }
+        .tbl-tabs button[aria-pressed="true"] {
+          background: var(--accent);
+          border-color: var(--accent);
+          color: var(--accent-ink);
+        }
+        #compare table {
+          min-width: 0;
+        }
+        #compare th.off,
+        #compare td.off {
+          display: none;
+        }
+        #compare th:first-child,
+        #compare td:first-child {
+          width: 62%;
+        }
+        #compare .soon {
+          opacity: 1;
+        }
+      }
     </style>
   </head>
   <body data-page="phone">
@@ -1623,6 +1689,12 @@
           does the daily things alone, reads what your computer prepared, and adds new texts with a
           language server.
         </p>
+        <div class="tbl-tabs" role="group" aria-label="Show the column of">
+          <button type="button" data-col="1">Computer</button
+          ><button type="button" data-col="2">Phone alone</button
+          ><button type="button" data-col="3">Your server</button
+          ><button type="button" data-col="4">Vuurtoren Sync</button>
+        </div>
         <div class="scrollx">
           <table>
             <thead>
@@ -1900,6 +1972,19 @@
           });
         }
         document.querySelector(".prod")?.classList.add("here");
+        // The table on a phone: one device column at a time; the page's own device first.
+        const tabs = [...document.querySelectorAll(".tbl-tabs button")];
+        if (tabs.length) {
+          const show = (col) => {
+            tabs.forEach((b) => b.setAttribute("aria-pressed", String(+b.dataset.col === col)));
+            document.querySelectorAll("#compare tr").forEach((tr) => {
+              if (tr.classList.contains("grp")) return;
+              [...tr.children].forEach((c, i) => c.classList.toggle("off", i > 0 && i !== col));
+            });
+          };
+          tabs.forEach((b) => b.addEventListener("click", () => show(+b.dataset.col)));
+          show(page === "phone" ? 2 : 1);
+        }
         // Scroll-driven reading modes.
         const sc = document.getElementById("scrolly");
         if (sc) {

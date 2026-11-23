@@ -1481,6 +1481,7 @@
       .gram-card .reader {
         font: 400 21px / 2 var(--f-read);
         margin: 0;
+        padding: 0;
       }
       .gmark {
         border-bottom: 2px dotted var(--pair2);
@@ -1558,12 +1559,42 @@
           grid-template-columns: 1fr;
         }
       }
+      @media (max-width: 560px) {
+        .get .cta {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          width: 100%;
+          max-width: 360px;
+        }
+      }
       .get-links {
         display: flex;
         flex-wrap: wrap;
         justify-content: center;
         gap: 6px 10px;
         margin: 0;
+      }
+      /* Words: the research behind the reviews, as small numbered sources. */
+      .cite {
+        font-size: 0.7em;
+        margin-left: 1px;
+      }
+      .facts a {
+        color: inherit;
+        text-decoration-color: var(--accent);
+      }
+      .cite a {
+        color: var(--accent);
+        text-decoration: none;
+      }
+
+      .sources {
+        font-size: 13px;
+        color: var(--muted);
+        margin: 0;
+      }
+      .sources a {
+        color: inherit;
       }
       /* Why I made it: signed, with the support line. */
       .why .sign {
@@ -1932,17 +1963,36 @@
         </div>
         <div class="copy">
           <span class="eyebrow">Words</span>
-          <h2 id="words-h">The words you meet come back.</h2>
-          <p class="big">
-            One tap keeps a word with the sentence you found it in. A few minutes a day brings it
-            back just before you would forget it.
-          </p>
+          <h2 id="words-h">Learn the words you meet.</h2>
+          <p class="big">Create flashcards with ease, keeping the context you found the word in.</p>
           <ul class="facts">
-            <li>Scheduled with FSRS, the same algorithm Anki uses.</li>
-            <li>About 5000 of the most common Dutch words, from the level you choose.</li>
-            <li>Hear the word, then its sentence. Swipe or tap to answer.</li>
-            <li>Your Anki decks come in and go out as .apkg files.</li>
+            <li>
+              <span
+                >Reviews timed by a scientifically backed algorithm,
+                <a href="https://github.com/open-spaced-repetition/fsrs4anki/wiki/The-Algorithm"
+                  >FSRS</a
+                >, the one Anki uses<sup class="cite"
+                  ><a href="#src-1">1</a>,<a href="#src-2">2</a>,<a href="#src-3">3</a>,<a
+                    href="#src-4"
+                    >4</a
+                  ></sup
+                >.</span
+              >
+            </li>
+            <li>A ready deck of about 5000 of the most frequent Dutch words.</li>
+            <li>Your data is always yours: move it to Anki, an open-source app, at any time.</li>
           </ul>
+          <p class="sources">
+            Research:
+            <a id="src-1" href="https://doi.org/10.1037/0033-2909.132.3.354">Cepeda 2006</a> ·
+            <a id="src-2" href="https://doi.org/10.1145/3534678.3539081">Ye 2022</a> ·
+            <a id="src-3" href="https://doi.org/10.1109/TKDE.2023.3251721">Su 2023</a> ·
+            <a
+              id="src-4"
+              href="https://github.com/open-spaced-repetition/fsrs4anki/wiki/The-Algorithm"
+              >FSRS-6</a
+            >
+          </p>
         </div>
       </div>
     </section>
