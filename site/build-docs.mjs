@@ -18,7 +18,13 @@ const REPO = "https://github.com/pavlohrab/Vuurtoren";
 
 /** The chapters, in reading order: each page's Markdown file and its name in the menu. */
 const CHAPTERS = [
-  { title: "Start here", pages: [["guide/install.md", "Install Vuurtoren"]] },
+  {
+    title: "Start here",
+    pages: [
+      ["guide/quick-start.md", "Quick start"],
+      ["guide/install.md", "Install Vuurtoren"],
+    ],
+  },
   {
     title: "Use it",
     pages: [
@@ -47,12 +53,12 @@ const CHAPTERS = [
 
 /** The home page's task cards: what people come to do, and the page that does it. */
 const TASKS = [
+  ["guide/quick-start.md", "Quick start", "From installing to your first text, in five steps."],
   ["guide/install.md", "Install Vuurtoren", "On Windows, Mac, Linux or Android."],
   ["guide/reading.md", "Read a text", "Paste it, give a link, or add a PDF or a photo."],
   ["guide/words.md", "Learn new words every day", "The daily review, and how many new words."],
   ["guide/anki.md", "Use my Anki decks", "Bring them in, or keep using Anki."],
   ["phones.md", "Use it on my phone too", "What works on a phone, and how to connect it."],
-  ["guide/sync.md", "Sync my devices", "The same words on your computer and your phone."],
 ];
 
 const pages = CHAPTERS.flatMap((c) =>

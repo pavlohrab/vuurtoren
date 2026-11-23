@@ -26,13 +26,9 @@
 
 <p align="center">
   <a href="https://vuurtoren.app">vuurtoren.app</a> ·
+  <a href="docs/guide/quick-start.md">Quick start</a> ·
   <a href="docs/guide/install.md">Install</a> ·
-  <a href="docs/guide/reading.md">Reading</a> ·
-  <a href="docs/guide/words.md">Your words</a> ·
-  <a href="docs/guide/anki.md">Anki</a> ·
-  <a href="docs/phones.md">On your phone</a> ·
-  <a href="docs/guide/sync.md">Sync</a> ·
-  <a href="docs/dev/README.md">For developers</a>
+  <a href="docs/README.md">Docs</a>
 </p>
 
 ## Why I made it
