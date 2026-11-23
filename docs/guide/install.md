@@ -2,46 +2,53 @@
 
 ## On your computer
 
-1. Go to the [latest release](https://github.com/pavlohrab/Vuurtoren/releases/latest).
-2. Download the file for your computer:
+Go to the [latest release](https://github.com/pavlohrab/Vuurtoren/releases/latest) and download the
+file for your computer. On Windows it's the `.exe`, on a Mac the `.dmg` (there is one for the new
+Macs with an Apple chip and one for the older Intel Macs), and on Linux the `.AppImage` or the
+`.deb`. Then open the file and install Vuurtoren like any other app.
 
-   | Computer | File                                  |
-   | -------- | ------------------------------------- |
-   | Windows  | `.exe`                                |
-   | macOS    | `.dmg` (for Apple chips or for Intel) |
-   | Linux    | `.AppImage` or `.deb`                 |
+The app is not signed yet, so your computer may warn you the first time. On Windows, click
+**More info** and then **Run anyway**. On a Mac, close the warning, go to **System Settings →
+Privacy & Security** and click **Open Anyway**. On Linux, make the AppImage executable
+(`chmod +x Vuurtoren*.AppImage`) and run it.
 
-   No internet on that computer? Take the file whose name starts with `Vuurtoren_offline_`. It has
-   all the Dutch data inside.
+When Vuurtoren starts for the first time, it downloads its language data, which is about 330 MB:
+the dictionary, the example sentences, the translation model and the recordings. If that computer has no internet, take the
+installer whose name starts with `Vuurtoren_offline_` instead. It has all of this inside.
 
-3. Open the file and install Vuurtoren.
+The common words, their example sentences and the stories are recorded in a female and a male
+voice, and you can switch between them in Settings → Reading → Voice. Other words and sentences
+use your computer's own Dutch voice. Windows and macOS can add one in their speech settings. Many
+Linux systems don't have a Dutch voice, and then those words stay silent and the speaker icon is
+crossed out.
 
-The apps are not signed yet, so your computer may warn you:
+## On your phone
 
-- **Windows:** click **More info**, then **Run anyway**.
-- **macOS:** the first time, macOS blocks it. Close the warning, then go to **System Settings → Privacy & Security** and click **Open Anyway**.
-- **Linux (AppImage):** make the file executable (`chmod +x Vuurtoren*.AppImage`), then run it.
-
-The most common words, their sentences and the stories come with recorded speech, in a female and
-a male voice (Settings → Reading → Voice). The app downloads the recordings by itself (about
-230 MB) when it is online. Other words and sentences use your system's Dutch voice. Windows and
-macOS can add one in their speech settings; many Linux systems have no Dutch voice, and then
-those words stay silent and the speaker shows crossed out.
+Vuurtoren works on Android. Download `Vuurtoren-android.apk` from the
+[latest release](https://github.com/pavlohrab/Vuurtoren/releases/latest) on your phone and open it.
+Android asks once if your browser may install apps, so allow it. What the phone can do on its own,
+and what it needs your computer for, is on [On your phone](../phones.md).
 
 ## The first start
 
-Vuurtoren asks one question: **Do you use Anki?**
+First Vuurtoren asks which language you're learning, and then: **Do you use Anki?**
 
-- **No:** Vuurtoren keeps your words and your reviews. You need nothing else. It offers cards for
-  the most common Dutch words, starting from the level you choose; words you know get marked as
-  you read.
-- **Yes:** Vuurtoren can bring your Anki decks in, or keep working with Anki. To work with Anki,
-  keep Anki open with the [AnkiConnect](https://ankiweb.net/shared/info/2055492159) add-on
-  (code `2055492159`).
+If you say **no**, Vuurtoren keeps your words and your reviews itself, and you don't need anything
+else. It asks where new words should start (from the most common words, or a bit further if you
+already know some Dutch), and then it opens with a story at your level.
 
-Then add a text (paste it, give a web address, or choose a PDF or a photo) and start reading.
+If you say **yes**, you can move your decks into Vuurtoren with their review history, or keep using
+Anki and read here. To keep using Anki, keep Anki open with the
+[AnkiConnect](https://ankiweb.net/shared/info/2055492159) add-on (code `2055492159`). This works
+on a computer only for now.
+
+On a phone, Vuurtoren also asks if you have your own server. You can say "Not now" and add it
+later.
+
+After that, add a text of your own whenever you like: paste it, give a web address, or choose a
+PDF or a photo.
 
 ## Use it on more devices
 
-- **Sync:** keep your data on every device. See [Sync](sync.md).
-- **Your own server:** sync and the language server for all your devices. See [Self-host](self-host.md).
+To have your words on every device, see [Sync](sync.md). If you want your own server, for sync and
+for preparing texts on the phone, see [Self-host](self-host.md).
