@@ -1906,7 +1906,10 @@
         <div class="copy">
           <span class="eyebrow">How it works</span>
           <h1>It measures what you know.</h1>
-          <p class="lead">Then it gives you just enough help to read, without AI.</p>
+          <p class="lead">
+            Vuurtoren keeps track of every word you know, and plans each page around them: a few new
+            words to learn, and help with the rest. All of it runs on your computer, without AI.
+          </p>
         </div>
         <div class="demo">
           <div class="stage">
@@ -1932,7 +1935,10 @@
             <span class="eyebrow">Your words</span>
             <h2>It knows which words you know.</h2>
             <p>
-              Every review and your Anki decks tell it how well you know each word<sup>1–4</sup>.
+              Each time you review a word, Vuurtoren updates how likely you are to still remember
+              it, with FSRS, the algorithm Anki also offers<sup>1–4</sup>. Your Anki decks count
+              too. So for every word it knows how well you know it, and from all of them, how many
+              words you know.
             </p>
             <p class="src">
               <sup>1</sup
@@ -1976,12 +1982,17 @@
             <span class="eyebrow">Every page</span>
             <h2>Just enough help on every page.</h2>
             <p>
-              About 3 new words per page to learn<sup>1</sup>; every other word you don't know is
-              translated<sup>2</sup>.
+              Before you read a page of about 150 words, Vuurtoren plans it. It picks about three
+              new words for you to learn, from the most common words you don't know yet, and leaves
+              them untranslated<sup>1</sup>. Every other word you don't know gets its translation
+              next to it, so you don't get stuck<sup>2</sup>. When reading goes well, the next pages
+              get a few more new words; when you look up a lot, fewer.
             </p>
             <p class="why">
-              You follow a text when you know about 95% of its words, and read it comfortably at
-              98%<sup>3–5</sup>. A word needs about 10 meetings to stick<sup>6</sup>.
+              This follows reading research. You can follow a text when you know about 95% of its
+              words, and read it comfortably at 98%<sup>3–5</sup>. A new word needs about ten
+              meetings before it sticks<sup>6</sup>, so Vuurtoren prefers new words that come back
+              later in the text.
             </p>
             <p class="src">
               <sup>1</sup
@@ -2028,7 +2039,12 @@
           <div class="copy">
             <span class="eyebrow">Offline</span>
             <h2>It runs on your computer.</h2>
-            <p>spaCy for the grammar, OPUS-MT for the translation, and open dictionaries.</p>
+            <p>
+              To find the words and the grammar in a text, Vuurtoren uses spaCy, a language analysis
+              tool, and a small translation model, OPUS-MT. The meanings and example sentences come
+              from open dictionaries. All of it is on your computer, so it works offline and your
+              texts stay with you.
+            </p>
             <p class="src">
               <a href="https://spacy.io/">spaCy</a> ·
               <a href="https://github.com/Helsinki-NLP/Opus-MT">OPUS-MT</a> ·
@@ -2058,8 +2074,11 @@
             <span class="eyebrow">Optional · AI</span>
             <h2>How the AI stories are made.</h2>
             <p>
-              With your own AI key, it writes a story from your words: about 3% new words, each used
-              at least twice. If you would know less than 95% of it, it is rewritten.
+              If you add your own AI key, Vuurtoren can also write stories for you. It gives the
+              writer the words you know and the words you're learning, and asks for about 3% new
+              words, each used at least twice, so you can work out what they mean. Then it checks
+              the story against your words: if you would know less than 95% of it, it asks for a
+              rewrite.
             </p>
             <a
               class="more"
@@ -2084,7 +2103,8 @@
       <div class="in">
         <h2>AI is there if you want it.</h2>
         <p class="sub">
-          With your own key, for explanations, stories and conversation. Nothing above needs it.
+          With your own key, it can explain a sentence, write a story or talk with you. Nothing
+          above depends on it.
         </p>
         <div class="cta">
           <a
