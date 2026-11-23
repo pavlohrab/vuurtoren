@@ -447,6 +447,17 @@
       .hero {
         padding-block: 72px var(--sec);
       }
+      /* The same faint blueprint grid as the home hero; the app window stays the picture. */
+      .hero {
+        --bp-a: color-mix(in srgb, var(--line) 70%, transparent);
+        --bp-b: color-mix(in srgb, var(--line-strong) 55%, transparent);
+        background:
+          linear-gradient(var(--bp-b) 1px, transparent 1px) 0 0 / 120px 120px,
+          linear-gradient(90deg, var(--bp-b) 1px, transparent 1px) 0 0 / 120px 120px,
+          linear-gradient(var(--bp-a) 1px, transparent 1px) 0 0 / 24px 24px,
+          linear-gradient(90deg, var(--bp-a) 1px, transparent 1px) 0 0 / 24px 24px,
+          var(--bg);
+      }
       @media (max-width: 860px) {
         .hero {
           padding-block: 48px var(--sec);
@@ -1608,7 +1619,7 @@
             });
           })();
         </script>
-        <a class="btn primary" href="#install">Get the APK</a>
+        <a class="btn primary" href="#install">Download</a>
       </div>
     </nav>
 
@@ -1762,37 +1773,6 @@
           </div>
         </div>
         <p class="see"><a href="index.html#read">How reading works →</a></p>
-      </div>
-    </section>
-
-    <section class="tbl-sec band" id="install">
-      <div class="in">
-        <span class="eyebrow">Install</span>
-        <h2>Three steps on Android.</h2>
-        <div class="steps-grid">
-          <div class="os">
-            <b>1 · Download</b
-            ><span>Open the latest release on your phone and take the <code>.apk</code> file.</span>
-          </div>
-          <div class="os">
-            <b>2 · Install</b
-            ><span
-              >Open the file. Android asks once to allow installs from your browser: allow it.</span
-            >
-          </div>
-          <div class="os">
-            <b>3 · Connect</b
-            ><span
-              >In the app, Settings → Your devices: join your computer's sync data with your
-              passphrase.</span
-            >
-          </div>
-        </div>
-        <div class="cta">
-          <a class="btn primary" href="https://github.com/pavlohrab/Vuurtoren/releases/latest"
-            >Get the APK</a
-          ><a class="btn" href="#">Phone guide</a>
-        </div>
       </div>
     </section>
 
@@ -2037,6 +2017,37 @@
             WebDAV or a Syncthing folder, locked with your passphrase.
             <span style="opacity: 0.6">Vuurtoren Sync: planned.</span>
           </p>
+        </div>
+      </div>
+    </section>
+
+    <section class="tbl-sec band" id="install">
+      <div class="in">
+        <span class="eyebrow">Install</span>
+        <h2>Three steps on Android.</h2>
+        <div class="steps-grid">
+          <div class="os">
+            <b>1 · Download</b
+            ><span>Open the latest release on your phone and take the <code>.apk</code> file.</span>
+          </div>
+          <div class="os">
+            <b>2 · Install</b
+            ><span
+              >Open the file. Android asks once to allow installs from your browser: allow it.</span
+            >
+          </div>
+          <div class="os">
+            <b>3 · Connect</b
+            ><span
+              >In the app, Settings → Your devices: join your computer's sync data with your
+              passphrase.</span
+            >
+          </div>
+        </div>
+        <div class="cta">
+          <a class="btn primary" href="https://github.com/pavlohrab/Vuurtoren/releases/latest"
+            >Get the APK</a
+          ><a class="btn" href="#">Phone guide</a>
         </div>
       </div>
     </section>
