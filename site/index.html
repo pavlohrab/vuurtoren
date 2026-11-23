@@ -1947,6 +1947,43 @@
           font-size: 14px;
         }
       }
+      /* A tapped word in the reading demo: its translation and what the mark means. */
+      #stage .tok,
+      #stage .cloze,
+      #stage .sbs [class^="p"] {
+        cursor: pointer;
+      }
+      #stage .tok:focus-visible,
+      #stage .cloze:focus-visible,
+      #stage .sbs [class^="p"]:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
+      .word-tip {
+        position: fixed;
+        z-index: 30;
+        display: grid;
+        gap: 2px;
+        max-width: min(280px, calc(100vw - 16px));
+        padding: 10px 14px;
+        border: 1px solid var(--line-strong);
+        border-radius: 12px;
+        background: var(--sheet);
+        color: var(--ink);
+        box-shadow: 0 8px 24px rgb(0 0 0 / 0.12);
+        font: 14px/1.4 var(--f-ui);
+      }
+      .word-tip b {
+        font: 500 17px var(--f-read);
+      }
+      .word-tip-en {
+        color: var(--accent);
+        font-weight: 500;
+      }
+      .word-tip-note {
+        color: var(--muted);
+        font-size: 13px;
+      }
     </style>
   </head>
   <body>
@@ -2238,7 +2275,7 @@
             <g class="bp-fade bp-d0">
               <rect x="1" y="1" width="358" height="298" rx="12" fill="url(#bp-grid)" />
               <rect x="1" y="1" width="358" height="298" rx="12" fill="url(#bp-grid5)" />
-              <text class="bp-t" x="18" y="28">fig. 1 vuurtoren, elevation</text>
+              <text class="bp-t" x="18" y="28">vuurtoren</text>
             </g>
             <path
               class="bp-beamshape"
@@ -2740,6 +2777,98 @@
           }),
         );
         show("read");
+        // Tap a marked word, as in the app: a small card with the translation and what the mark
+        // means. Picking a word also stops the modes from moving on by themselves.
+        const EN = {
+          vuurtoren: "lighthouse",
+          beklimt: "climbs",
+          trap: "stairs",
+          eiland: "island",
+          oude: "old",
+          avond: "evening",
+          zee: "sea",
+          lighthouse: "vuurtoren",
+          island: "eiland",
+          old: "oude",
+          climbs: "beklimt",
+          stairs: "trap",
+        };
+        const CLOZE = { "e…": "eiland", "a…": "avond", "z…": "zee" };
+        const tip = document.createElement("div");
+        tip.className = "word-tip";
+        tip.setAttribute("role", "status");
+        tip.hidden = true;
+        document.body.append(tip);
+        const word = (el) => el.firstChild?.textContent?.trim() ?? el.textContent.trim();
+        const explain = (el) => {
+          if (el.classList.contains("cloze")) {
+            const w = CLOZE[el.textContent.trim()];
+            return [w, EN[w], "A word you know, left blank to practise. In the app you type it."];
+          }
+          const w = word(el);
+          if (el.closest(".sbs")) {
+            const en = el.closest(".en");
+            return [
+              w,
+              EN[w],
+              en
+                ? "The same word in the Dutch sentence has the same colour."
+                : "The same word in the English sentence has the same colour.",
+            ];
+          }
+          if (el.classList.contains("introduce"))
+            return [w, EN[w], "A new word: highlighted the first times you meet it."];
+          if (el.classList.contains("learning"))
+            return [w, EN[w], "A word you're learning: underlined until you know it."];
+          return [w, EN[w], "A word with its translation close by."];
+        };
+        const hide = () => (tip.hidden = true);
+        const open = (el) => {
+          const [w, en, note] = explain(el);
+          tip.innerHTML = `<b lang="nl"></b><span class="word-tip-en"></span><span class="word-tip-note"></span>`;
+          tip.children[0].textContent = w;
+          tip.children[1].textContent = en ?? "";
+          tip.children[2].textContent = note;
+          tip.hidden = false;
+          const r = el.getBoundingClientRect();
+          const t = tip.getBoundingClientRect();
+          const left = Math.min(
+            Math.max(8, r.left + r.width / 2 - t.width / 2),
+            innerWidth - t.width - 8,
+          );
+          const below = r.top - t.height - 10 < 8;
+          tip.style.left = left + "px";
+          tip.style.top = (below ? r.bottom + 10 : r.top - t.height - 10) + "px";
+        };
+        const MARKED = ".tok, .cloze, .sbs .p1, .sbs .p2, .sbs .p3";
+        stage.addEventListener("click", (e) => {
+          const el = e.target.closest(MARKED);
+          if (!el) return hide();
+          touched = true;
+          open(el);
+          e.stopPropagation();
+        });
+        stage.addEventListener("keydown", (e) => {
+          const el = e.target.closest?.(MARKED);
+          if (el && (e.key === "Enter" || e.key === " ")) {
+            e.preventDefault();
+            el.click();
+          }
+        });
+        new MutationObserver(() => {
+          hide();
+          stage.querySelectorAll(MARKED).forEach((el) => {
+            el.tabIndex = 0;
+            el.setAttribute("role", "button");
+          });
+        }).observe(stage, { childList: true });
+        stage.querySelectorAll(MARKED).forEach((el) => {
+          el.tabIndex = 0;
+          el.setAttribute("role", "button");
+        });
+        document.addEventListener("click", hide);
+        document.addEventListener("keydown", (e) => e.key === "Escape" && hide());
+        addEventListener("scroll", hide, { passive: true });
         // On a wide screen the modes follow the scroll through the section; on a phone they
         // take turns by themselves. Either stops once someone picks one.
         const order = ["read", "gloss", "cloze", "sbs"];
