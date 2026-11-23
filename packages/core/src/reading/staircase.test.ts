@@ -13,38 +13,38 @@ const S = (t: number, b: number): StaircaseState => ({ targetCoverage: t, newWor
 
 describe("updateStaircase", () => {
   it.each([
-    ["easy", S(0.98, 6), { clozeAccuracy: 0.9, lookupsPer100: 1 }, S(0.975, 7)],
-    ["easy without clozes", S(0.98, 6), { clozeAccuracy: null, lookupsPer100: 0 }, S(0.975, 7)],
+    ["easy", S(0.98, 3), { clozeAccuracy: 0.9, lookupsPer100: 1 }, S(0.975, 4)],
+    ["easy without clozes", S(0.98, 3), { clozeAccuracy: null, lookupsPer100: 0 }, S(0.975, 4)],
     [
       "boundary accuracy 0.85",
-      S(0.98, 6),
+      S(0.98, 3),
       { clozeAccuracy: 0.85, lookupsPer100: 1.9 },
-      S(0.975, 7),
+      S(0.975, 4),
     ],
     [
       "lookups exactly 2 is neutral",
-      S(0.98, 6),
+      S(0.98, 3),
       { clozeAccuracy: 0.9, lookupsPer100: 2 },
-      S(0.98, 6),
+      S(0.98, 3),
     ],
-    ["middling", S(0.98, 6), { clozeAccuracy: 0.75, lookupsPer100: 3 }, S(0.98, 6)],
-    ["low accuracy", S(0.98, 6), { clozeAccuracy: 0.6, lookupsPer100: 1 }, S(0.985, 5)],
+    ["middling", S(0.98, 3), { clozeAccuracy: 0.75, lookupsPer100: 3 }, S(0.98, 3)],
+    ["low accuracy", S(0.98, 3), { clozeAccuracy: 0.6, lookupsPer100: 1 }, S(0.985, 2)],
     [
       "boundary accuracy 0.70 is neutral",
-      S(0.98, 6),
+      S(0.98, 3),
       { clozeAccuracy: 0.7, lookupsPer100: 1 },
-      S(0.98, 6),
+      S(0.98, 3),
     ],
-    ["many lookups", S(0.98, 6), { clozeAccuracy: 0.95, lookupsPer100: 7 }, S(0.985, 5)],
+    ["many lookups", S(0.98, 3), { clozeAccuracy: 0.95, lookupsPer100: 7 }, S(0.985, 2)],
     [
       "many lookups, no clozes",
-      S(0.98, 6),
+      S(0.98, 3),
       { clozeAccuracy: null, lookupsPer100: 6.5 },
-      S(0.985, 5),
+      S(0.985, 2),
     ],
-    ["floor T and cap B", S(0.92, 8), { clozeAccuracy: 1, lookupsPer100: 0 }, S(0.92, 8)],
+    ["floor T and cap B", S(0.92, 5), { clozeAccuracy: 1, lookupsPer100: 0 }, S(0.92, 5)],
     ["cap T and floor B", S(0.99, 1), { clozeAccuracy: 0.1, lookupsPer100: 9 }, S(0.99, 1)],
-    ["near floor", S(0.922, 7), { clozeAccuracy: 1, lookupsPer100: 0 }, S(0.92, 8)],
+    ["near floor", S(0.922, 4), { clozeAccuracy: 1, lookupsPer100: 0 }, S(0.92, 5)],
   ])("%s", (_name, state, outcome, expected) => {
     expect(updateStaircase(state, outcome)).toEqual(expected);
   });
@@ -52,7 +52,7 @@ describe("updateStaircase", () => {
   it("does not accumulate float error over many steps", () => {
     let s = S(0.98, 1);
     for (let i = 0; i < 12; i++) s = updateStaircase(s, { clozeAccuracy: 1, lookupsPer100: 0 });
-    expect(s).toEqual(S(0.92, 8));
+    expect(s).toEqual(S(0.92, 5));
     for (let i = 0; i < 20; i++) s = updateStaircase(s, { clozeAccuracy: 0, lookupsPer100: 0 });
     expect(s).toEqual(S(0.99, 1));
   });

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { WordKnowledge } from "../memory.js";
-import { planSegment, planText, relabelKey, zipfFloor } from "./plan.js";
+import { learningWindow, planSegment, planText, relabelKey, zipfFloor } from "./plan.js";
 import { segmentTokens } from "./segment.js";
 import { filler, known, learning, model, tokenize, type Overrides } from "./testutil.js";
 import { DEFAULT_PLANNER, type AnalyzedToken, type PlannerOptions } from "./types.js";
@@ -24,11 +24,35 @@ function plan(text: string, except: string[], over: Overrides, opts: PlannerOpti
   return { toks, plan: planSegment(toks, seg, knownExcept(toks, except), opts) };
 }
 
+describe("learningWindow", () => {
+  it.each([
+    [500, 3000],
+    [3000, 3000],
+    [5000, 2000],
+    [6000, 1500],
+    [20000, 1500],
+  ])("vocab %i -> the next %i ranks", (v, w) => expect(learningWindow(v)).toBe(w));
+});
+
+describe("recurrence across the text", () => {
+  it("prefers a word that comes back on later pages over one repeated only here", () => {
+    // Page 1: alpha once, beta twice. Later pages: alpha three more times, beta never.
+    const text = `Alpha beta beta. ${filler(28, 6)} Alpha alpha alpha. ${filler(28, 6)}`;
+    const toks = tokenize(text, { alpha: { zipf: 5 }, beta: { zipf: 5 } });
+    const plans = planText(toks, knownExcept(toks, ["alpha", "beta"]), {
+      ...noClozes,
+      newWordBudget: 1,
+    });
+    expect(plans.length).toBeGreaterThan(1);
+    expect(plans[0]!.introduce).toEqual(["alpha"]);
+  });
+});
+
 describe("zipfFloor", () => {
   it.each([
     [300, 4.43],
     [1000, 4.36],
-    [8000, 3.96],
+    [8000, 4.02],
   ])("vocab %i -> %f", (v, f) => expect(zipfFloor(v)).toBeCloseTo(f, 2));
   it("is monotonically non-increasing and clamped", () => {
     expect(zipfFloor(1)).toBeLessThanOrEqual(5);
@@ -60,7 +84,7 @@ describe("planSegment: unknown words", () => {
     const t = `${filler(1, 6)} Beta gamma gamma ${filler(1, 4)}`;
     const over = { beta: { zipf: 4.1 }, gamma: { zipf: 3.2 } };
     const opts = { ...noClozes, newWordBudget: 1 };
-    // vocab 8000 -> floor 3.96: beta is "worth learning now", preferred over gamma
+    // vocab 8000 -> floor 4.02: beta is "worth learning now", preferred over gamma
     expect(
       plan(t, ["beta", "gamma"], over, { ...opts, vocabEstimate: 8000 }).plan.introduce,
     ).toEqual(["beta"]);

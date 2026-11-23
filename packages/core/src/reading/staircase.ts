@@ -7,13 +7,18 @@ import type { ReadingOutcome, SegmentPlan, StaircaseState } from "./types.js";
 const MIN_TARGET_COVERAGE = 0.92;
 const MAX_TARGET_COVERAGE = 0.99;
 const MIN_BUDGET = 1;
-const MAX_BUDGET = 8;
+/**
+ * At most 5 new words per page of 150 (about 3% left to learn, untranslated): reading research
+ * puts the minimum for understanding at about 95% of words known (Laufer & Ravenhorst-Kalovski
+ * 2010) and advises keeping words left to guess well under 2–3% (Nation 2014).
+ */
+const MAX_BUDGET = 5;
 const COVERAGE_STEP = 0.005;
 
 /**
  * Staircase controller. Easy (accuracy >= 0.85 or no clozes, and < 2 lookups/100 words):
  * lower T by 0.005 and raise B by 1. Hard (accuracy < 0.70 or > 6 lookups/100): raise T, lower B.
- * Otherwise unchanged. Bounds: T in [0.92, 0.99], B in [1, 8] (per page); T is rounded to 3 decimals.
+ * Otherwise unchanged. Bounds: T in [0.92, 0.99], B in [1, 5] (per page); T is rounded to 3 decimals.
  */
 export function updateStaircase(state: StaircaseState, outcome: ReadingOutcome): StaircaseState {
   const { clozeAccuracy: acc, lookupsPer100: lookups } = outcome;

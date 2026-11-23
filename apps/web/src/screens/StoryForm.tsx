@@ -94,7 +94,9 @@ export function StoryForm({ preset = {} }: { preset?: StoryPreset }) {
   const [notes, setNotes] = useState("");
   // Percentages of the story's words; known words are the rest.
   const [learning, setLearning] = useState(15);
-  const [fresh, setFresh] = useState(5);
+  // New words: 3% by default, a few per page, as reading research advises keeping words left
+  // to guess under 2–3% (Nation 2014); each is used twice or more (story.ts).
+  const [fresh, setFresh] = useState(3);
   const [progress, setProgress] = useState<string | null>(null);
   // Two linked sliders: moving one past the 50% cap takes the room from the other.
   const setLearningPct = (v: number) => {
@@ -238,7 +240,7 @@ export function StoryForm({ preset = {} }: { preset?: StoryPreset }) {
               type="range"
               min={0}
               max={MIX_MAX}
-              step={5}
+              step={1}
               value={fresh}
               disabled={create.isPending}
               onChange={(e) => setFreshPct(Number(e.target.value))}

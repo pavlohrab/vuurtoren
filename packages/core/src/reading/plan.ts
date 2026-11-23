@@ -40,13 +40,24 @@ const BUDGET_WORDS = 150;
 const ABSOLUTE_MIN_ZIPF = 3.0;
 
 /**
+ * How far above the learner's vocabulary new words may come from (frequency ranks): the next
+ * 3000 up to a vocabulary of 3000, then narrowing to the next 1500 (vocabulary 6000 and more),
+ * closer to the "next 1,000-word level" reading research suggests (Nation 2014).
+ */
+export function learningWindow(vocabEstimate: number): number {
+  const v = Math.max(1, vocabEstimate);
+  return Math.round(Math.max(1500, Math.min(3000, 3000 - (v - 3000) / 2)));
+}
+
+/**
  * Lowest Zipf frequency worth introducing for a learner with `vocabEstimate` known words:
- * words within roughly the next 3000 frequency ranks are worth learning now. Zipf ≈ 7.6 − 0.9·log10(rank) approximates Dutch wordfreq
- * (rank 1000 → 4.9, 3000 → 4.5, 10000 → 4.0), clamped to [2.5, 5.0].
- * Examples: vocab 300 → 4.43, 1000 → 4.36, 8000 → 3.96. Rarer words are glossed, not taught.
+ * words within the next `learningWindow` frequency ranks are worth learning now. Zipf ≈ 7.6 −
+ * 0.9·log10(rank) approximates Dutch wordfreq (rank 1000 → 4.9, 3000 → 4.5, 10000 → 4.0),
+ * clamped to [2.5, 5.0]. Examples: vocab 300 → 4.43, 1000 → 4.36, 8000 → 4.02. Rarer words are
+ * glossed, not taught.
  */
 export function zipfFloor(vocabEstimate: number): number {
-  const rank = Math.max(1, vocabEstimate) + 3000;
+  const rank = Math.max(1, vocabEstimate) + learningWindow(vocabEstimate);
   const floor = 7.6 - 0.9 * Math.log10(rank);
   return Math.min(5.0, Math.max(2.5, Math.round(floor * 100) / 100));
 }
@@ -128,11 +139,33 @@ function pickClozes(
   return best.slice(0, maxClozes).map((c) => toks[c.k]!.i);
 }
 
+/** Weight of a word's meetings elsewhere in the text, against its meetings on this page. */
+const ELSEWHERE_WEIGHT = 0.5;
+
+/**
+ * How often each unknown key occurs in the whole text (counted tokens). A word that comes back
+ * on later pages is a better word to learn: one meeting rarely teaches a word, about ten do
+ * (Webb 2007; Uchihara, Webb & Yanagisawa 2019).
+ */
+function textRepeats(
+  tokens: readonly AnalyzedToken[],
+  base: readonly PlannedToken[],
+): Map<string, number> {
+  const n = new Map<string, number>();
+  tokens.forEach((t, k) => {
+    const p = base[k]!;
+    if (!isCounted(t, p) || p.key === null || p.label !== "new") return;
+    n.set(p.key, (n.get(p.key) ?? 0) + 1);
+  });
+  return n;
+}
+
 function planFromClassified(
   tokens: readonly AnalyzedToken[],
   baseAll: readonly PlannedToken[],
   segment: Segment,
   opts: PlannerOptions,
+  inText?: ReadonlyMap<string, number>,
 ): WeightedSegmentPlan {
   const { tokenStart: a, tokenEnd: b } = segment;
   const toks = tokens.slice(a, b);
@@ -155,7 +188,10 @@ function planFromClassified(
   });
 
   const floor = zipfFloor(opts.vocabEstimate);
-  const score = (u: UnknownKey) => u.repeats * usefulness(u.zipf);
+  // Meetings on this page count fully, meetings on the text's other pages half.
+  const meetings = (u: UnknownKey) =>
+    u.repeats + ELSEWHERE_WEIGHT * Math.max(0, (inText?.get(u.key) ?? u.repeats) - u.repeats);
+  const score = (u: UnknownKey) => meetings(u) * usefulness(u.zipf);
   const ranked = [...unknown.values()].sort(
     (x, y) => score(y) - score(x) || y.zipf - x.zipf || x.key.localeCompare(y.key),
   );
@@ -237,8 +273,9 @@ export function planText(
   text?: string,
 ): WeightedSegmentPlan[] {
   const classified = classifyTokens(tokens, model);
+  const inText = textRepeats(tokens, classified);
   return segmentTokens(tokens, undefined, text).map((s) =>
-    planFromClassified(tokens, classified, s, opts),
+    planFromClassified(tokens, classified, s, opts, inText),
   );
 }
 

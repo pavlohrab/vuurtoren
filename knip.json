@@ -24,5 +24,6 @@
     }
   },
   "ignoreBinaries": ["uv"],
-  "ignore": ["apps/desktop/src-tauri/src/bridge.js", "deploy/devices/devices.js"]
+  "ignore": ["apps/desktop/src-tauri/src/bridge.js", "deploy/devices/devices.js"],
+  "ignoreDependencies": ["@playwright/test"]
 }

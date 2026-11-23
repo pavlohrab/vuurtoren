@@ -380,9 +380,9 @@ A very long sentence stays whole, so a page can be longer than 150 words.
 **Introduce or gloss.**
 
 1. Collect the page's unknown words: label `new` and `pKnown < 0.5`. Words that Anki already calls `learning` are not "new", even when overdue.
-2. Rank them by `repeats on this page × Zipf frequency` (ties: more frequent, then alphabetical).
+2. Rank them by `(repeats on this page + ½ × repeats on the text's other pages) × Zipf frequency` (ties: more frequent, then alphabetical): a word that comes back later in the text is a better word to learn, since one meeting rarely teaches a word (Webb 2007).
 3. Work out the **frequency floor** for your level. Words within about the next 3000 frequency ranks after your vocabulary size are worth learning now:
-   `zipfFloor = 7.6 − 0.9 · log10(vocabulary + 3000)`, clamped to [2.5, 5.0]. For example, vocabulary 1000 → 4.36 and vocabulary 8000 → 3.96.
+   `zipfFloor = 7.6 − 0.9 · log10(vocabulary + W)`, clamped to [2.5, 5.0], where the window `W` is 3000 up to a vocabulary of 3000 and narrows to 1500 by a vocabulary of 6000 (`learningWindow`; closer to the "next 1,000-word level" of Nation 2014). For example, vocabulary 1000 → 4.36 and vocabulary 8000 → 4.02.
    Your vocabulary estimate is the sum of `pKnown` over known and learning words, at least 200 (`estimateVocabulary` in `staircase.ts`).
 4. Candidates are the words at or above the floor, then (to fill a larger budget) words between Zipf 3.0 and the floor. **Words below Zipf 3.0 (about rank 20,000 and beyond) are never introduced**, only glossed.
 5. **Budget.** `B` new words per page of 150 words, scaled up for longer pages: `max(1, round(B × max(words, 150) / 150))` when there is at least one candidate. `B` defaults to 3. It comes from the **New words** setting (0 = none, a fixed number, or "auto", which follows the staircase in 3.6).
@@ -434,7 +434,7 @@ Clozes never get a translation from the dial; they show their meaning as a hint 
 | **Hard**: accuracy < 0.70 **or** > 6 lookups per 100 words               | +0.005                   | −1                |
 | **Easy**: (accuracy ≥ 0.85 **or** no clozes) **and** < 2 lookups per 100 | −0.005                   | +1                |
 | otherwise                                                                | unchanged                | unchanged         |
-| Bounds                                                                   | [0.92, 0.99], start 0.98 | [1, 8], start 3   |
+| Bounds                                                                   | [0.92, 0.99], start 0.98 | [1, 5], start 3   |
 
 **What it drives.**
 
