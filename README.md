@@ -1,20 +1,13 @@
 <p align="center">
-  <img alt="Vuurtoren, read Dutch at your level: a lighthouse drawn as a blueprint, its beam lighting the name" src="docs/images/banner.webp">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/images/banner-dark.webp">
+    <img alt="Vuurtoren, read Dutch at your level: a lighthouse drawn as a blueprint, its beam lighting the name" src="docs/images/banner-light.webp">
+  </picture>
 </p>
 
 <p align="center">
   Vuurtoren helps you learn Dutch by reading. It translates the new words in any text, helps you
   learn them and explains the grammar as you read.
-</p>
-
-<p align="center">
-  <a href="https://github.com/pavlohrab/Vuurtoren/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/pavlohrab/Vuurtoren/actions/workflows/ci.yml/badge.svg"></a>
-  <a href="#licence"><img alt="Licence: MIT" src="https://img.shields.io/badge/licence-MIT-c99a5b"></a>
-  <a href="https://ko-fi.com/pavlohrab"><img alt="Support on Ko-fi" src="https://img.shields.io/badge/support-Ko--fi-8f5a1f"></a>
-</p>
-
-<p align="center">
-  <img alt="A Dutch page in Vuurtoren: a lighthouse's beam passes over it, and the new words get their translations" src="docs/images/demo-reading.webp" width="560">
 </p>
 
 <p align="center">
@@ -26,9 +19,9 @@
 
 <p align="center">
   <a href="https://vuurtoren.app">vuurtoren.app</a> ·
-  <a href="docs/guide/quick-start.md">Quick start</a> ·
-  <a href="docs/guide/install.md">Install</a> ·
-  <a href="docs/README.md">Docs</a>
+  <a href="https://vuurtoren.app/docs/quick-start.html">Quick start</a> ·
+  <a href="https://vuurtoren.app/docs/install.html">Install</a> ·
+  <a href="https://vuurtoren.app/docs/">Docs</a>
 </p>
 
 ## Why I made it
@@ -43,38 +36,45 @@ Vuurtoren is Dutch for lighthouse: _vuur_, fire, on a _toren_, a tower. The name
 app doesn't take you through the dark waters of Dutch, but it lights up the path and makes it easier
 to find your way.
 
-## What it does
+## Reading and words
 
-**Reading.** Open a story at your level, a web page, a PDF or a photo of a page from your course
-book. Vuurtoren picks a few new words on each page to focus on and, based on the words you know,
-translates the rest, so the text stays readable. Tap a word to see its meaning in that sentence,
-its grammar and its forms. Side by side puts each sentence next to its English and highlights
-each word together with its translation.
+<table>
+  <tr>
+    <td width="50%" valign="middle"><b>Read at your level.</b><br><br>You can read the stories that come with the app, or add your own text: paste it, give a web address, or choose a PDF or a photo of a page. Every page is planned around the words you know. About three new words are left for you to learn, and every other word you don't know gets its English next to it, so you don't get stuck. Tap a word to see what it means in that sentence and the grammar around it.</td>
+    <td width="50%" align="center" valign="middle">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="docs/images/demo-reading-dark.webp">
+        <img alt="A Dutch page in Vuurtoren: a lighthouse's beam passes over it, and the new words get their translations" src="docs/images/demo-reading-light.webp" width="400">
+      </picture>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center" valign="middle">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="docs/images/demo-modes-dark.webp">
+        <img alt="The same page in the four reading modes: Read, Gloss, Cloze and Side by side" src="docs/images/demo-modes-light.webp" width="420">
+      </picture>
+    </td>
+    <td width="50%" valign="middle"><b>Four ways to read.</b><br><br>There are four ways to read the same page: plain, with the translations next to the words, with some words you know turned into blanks, or side by side with the English, where the same words have the same colour.</td>
+  </tr>
+  <tr>
+    <td width="50%" valign="middle"><b>Learn the words.</b><br><br>A word you tap while reading can become a card, with the sentence you found it in. Every day a short review brings back the cards you're about to forget, scheduled with FSRS, the algorithm <a href="https://apps.ankiweb.net/">Anki</a> also offers. On a phone you just swipe. If you're starting from zero, Vuurtoren comes with about 5000 of the most common Dutch words, and if you already use Anki, you can bring your decks in or keep reviewing in Anki.</td>
+    <td width="50%" align="center" valign="middle">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="docs/images/demo-swipe-dark.webp">
+        <img alt="A review card swiped to the right: Good" src="docs/images/demo-swipe-light.webp" width="300">
+      </picture>
+    </td>
+  </tr>
+</table>
 
-<p align="center">
-  <img alt="The same page in the four reading modes: Read, Gloss, Cloze and Side by side" src="docs/images/demo-modes.webp">
-</p>
+## Grammar, practice and the exam
 
-**Words.** Every word you tap while reading can become a card, with the sentence you found it
-in. Cards are reviewed with FSRS, the scheduler [Anki](https://apps.ankiweb.net/) also offers. Import
-the Anki decks you already have, so the app knows your level, or keep reviewing in Anki and use
-Vuurtoren only for reading. Starting from zero? Vuurtoren comes with about 5000 of the most common
-Dutch words.
-
-<p align="center">
-  <img alt="A review card swiped to the right: Good" src="docs/images/demo-swipe.webp" width="420">
-</p>
-
-**Grammar and the exam.** Grammar such as inversion, separable verbs and the perfect tense is
-marked where it appears in your texts, and the Grammar section explains 63 topics from A1 to C1.
-Exercises practise what you read, and mock exams prepare you for the A2 inburgeringsexamen. AI is
-there only if you want it, with your own key: stories at your level, sentences explained, a chat
-partner who keeps to words you know. See [AI](docs/ai.md) for the setup.
-
-**Your data.** Local-first, open source, with encrypted sync. Your words and texts stay on your
-devices and work offline, with no account. When you sync, they are locked with your passphrase
-before they leave, through your own server, WebDAV or a synced folder. **Vuurtoren Sync** is
-planned: sign in on each device and they sync, with nothing to set up.
+Grammar like inversion, separable verbs or the perfect tense is marked where it appears in your
+texts, and 63 topics from A1 to C1 explain it with examples. Practice turns the words you're
+learning into short exercises, and the exam part prepares you for the A2 inburgeringsexamen. AI is
+only there if you want it, with your own key: stories at your level, a sentence explained, or a
+chat partner who keeps to the words you know.
 
 <table>
   <tr>
@@ -111,9 +111,16 @@ planned: sign in on each device and they sync, with nothing to set up.
   </tr>
 </table>
 
-How it works, from the words you know to the help on each page, is on
-[vuurtoren.app/how](https://vuurtoren.app/how.html), and in full detail in
-[docs/dev/algorithms.md](docs/dev/algorithms.md).
+## Your data
+
+Local-first, open source, with encrypted sync. Your words and texts stay on your devices and work
+offline, with no account. When you sync, they're locked with your passphrase before they leave,
+through your own server, WebDAV or a synced folder. Vuurtoren Sync, where you just sign in, is
+planned.
+
+How it all works, from the words you know to the help on each page, is on
+[vuurtoren.app/how](https://vuurtoren.app/how.html), with the research behind it. The full
+technical story is in [docs/dev](docs/dev/README.md).
 
 ## Support
 
