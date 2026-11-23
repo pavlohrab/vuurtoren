@@ -1547,6 +1547,91 @@
         padding: 0 14px;
         font-size: 15px;
       }
+
+      /* Your own texts (Phone): a letter added on the phone waits, the computer prepares it, sync
+   brings it, and it opens with every help. At rest (and with reduced motion) it shows ready. */
+      .gem {
+        position: relative;
+        padding: 0;
+      }
+      .gem-wait,
+      .gem-ready {
+        position: absolute;
+        inset: 0;
+        padding: 14px 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      .gem-wait {
+        justify-content: flex-start;
+        padding-top: 22px;
+        opacity: 0;
+      }
+      .gem-wait .note-card {
+        width: 100%;
+      }
+      .gem-sync {
+        color: var(--known);
+        font-weight: 600;
+        opacity: 0;
+      }
+      .gem-t {
+        font-family: var(--f-display);
+        font-size: 17px;
+        color: var(--ink);
+      }
+      .play .gem-wait {
+        animation: gemwait 8s ease infinite;
+      }
+      .play .gem-ready {
+        animation: gemready 8s ease infinite;
+      }
+      .play .gem-sync {
+        animation: gemsync 8s ease infinite;
+      }
+      @keyframes gemwait {
+        0%,
+        42% {
+          opacity: 1;
+        }
+        50%,
+        96% {
+          opacity: 0;
+        }
+        100% {
+          opacity: 1;
+        }
+      }
+      @keyframes gemready {
+        0%,
+        44% {
+          opacity: 0;
+          transform: translateY(8px);
+        }
+        52%,
+        94% {
+          opacity: 1;
+          transform: none;
+        }
+        100% {
+          opacity: 0;
+        }
+      }
+      @keyframes gemsync {
+        0%,
+        18% {
+          opacity: 0;
+        }
+        24%,
+        42% {
+          opacity: 1;
+        }
+        48%,
+        100% {
+          opacity: 0;
+        }
+      }
     </style>
   </head>
   <body data-page="desktop">

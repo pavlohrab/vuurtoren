@@ -1547,6 +1547,91 @@
         padding: 0 14px;
         font-size: 15px;
       }
+
+      /* Your own texts (Phone): a letter added on the phone waits, the computer prepares it, sync
+   brings it, and it opens with every help. At rest (and with reduced motion) it shows ready. */
+      .gem {
+        position: relative;
+        padding: 0;
+      }
+      .gem-wait,
+      .gem-ready {
+        position: absolute;
+        inset: 0;
+        padding: 14px 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      .gem-wait {
+        justify-content: flex-start;
+        padding-top: 22px;
+        opacity: 0;
+      }
+      .gem-wait .note-card {
+        width: 100%;
+      }
+      .gem-sync {
+        color: var(--known);
+        font-weight: 600;
+        opacity: 0;
+      }
+      .gem-t {
+        font-family: var(--f-display);
+        font-size: 17px;
+        color: var(--ink);
+      }
+      .play .gem-wait {
+        animation: gemwait 8s ease infinite;
+      }
+      .play .gem-ready {
+        animation: gemready 8s ease infinite;
+      }
+      .play .gem-sync {
+        animation: gemsync 8s ease infinite;
+      }
+      @keyframes gemwait {
+        0%,
+        42% {
+          opacity: 1;
+        }
+        50%,
+        96% {
+          opacity: 0;
+        }
+        100% {
+          opacity: 1;
+        }
+      }
+      @keyframes gemready {
+        0%,
+        44% {
+          opacity: 0;
+          transform: translateY(8px);
+        }
+        52%,
+        94% {
+          opacity: 1;
+          transform: none;
+        }
+        100% {
+          opacity: 0;
+        }
+      }
+      @keyframes gemsync {
+        0%,
+        18% {
+          opacity: 0;
+        }
+        24%,
+        42% {
+          opacity: 1;
+        }
+        48%,
+        100% {
+          opacity: 0;
+        }
+      }
     </style>
   </head>
   <body data-page="phone">
@@ -1770,47 +1855,31 @@
           <div class="copy">
             <span class="eyebrow">Your own texts</span>
             <h2>It reads what your computer prepared.</h2>
-            <p>Add a text on your computer, and your phone reads it offline, with every help.</p>
-            <span class="req">Works with every way to sync</span>
+            <p>
+              Add a text on your computer, and your phone gets it when you sync. Adding a text on
+              the phone itself needs your own server; without one, it waits for your computer.
+            </p>
           </div>
           <div class="demo" data-loop>
             <div class="stage peek">
-              <div class="phone withsheet" style="position: relative">
+              <div class="phone" style="position: relative">
                 <div class="bar"></div>
-                <div class="scr">
-                  <div class="read">
-                    De trein <span class="gm">heeft</span> twintig minuten
-                    <span class="w new">vertraging</span>.
+                <div class="scr gem">
+                  <div class="gem-wait">
+                    <div class="note-card">
+                      <b>Brief van de gemeente</b
+                      ><span>Waiting for your computer to prepare it.</span
+                      ><span class="gem-sync">↻ Prepared on your computer. Syncing…</span>
+                    </div>
+                  </div>
+                  <div class="gem-ready">
+                    <b class="gem-t">Brief van de gemeente</b>
+                    <div class="read">
+                      Uw <span class="w new">afspraak</span> is op dinsdag om tien uur. Neem uw
+                      paspoort <span class="gm">mee</span>.
+                    </div>
                   </div>
                 </div>
-                <div class="sheet">
-                  <span class="hw">de vertraging</span><span class="pos">noun · delay</span
-                  ><span class="ctx">The train is twenty minutes late.</span
-                  ><span class="keep">Keep</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="row">
-          <div class="copy">
-            <span class="eyebrow">Adding texts on the phone</span>
-            <h2>New texts need a language server.</h2>
-            <p>
-              Adding a text on the phone itself needs your own server. Without one, it waits for
-              your computer.
-            </p>
-            <span class="req">Needs a language server</span>
-          </div>
-          <div class="demo" data-loop>
-            <div class="stage">
-              <div class="note-card">
-                <b>Brief van de gemeente</b
-                ><span
-                  >This text hasn't been prepared on this device yet. Open Vuurtoren on your
-                  computer (it prepares the text and syncs it here), or connect a language server in
-                  Settings → Your devices.</span
-                >
               </div>
             </div>
           </div>
