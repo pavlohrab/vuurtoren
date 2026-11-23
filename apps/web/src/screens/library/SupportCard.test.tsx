@@ -12,12 +12,12 @@ describe("SupportCard", () => {
     expect(screen.queryByText("Vuurtoren is made by one person.")).toBeNull();
   });
 
-  it("shows after 10 days, links to Ko-fi, and Not now waits for the next ask", () => {
+  it("shows after 10 days, links to the website, and Not now waits for the next ask", () => {
     writeSupport({ days: 10, lastDay: "2026-11-23", askedAt: null, never: false });
     render(<SupportCard />);
     expect(screen.getByRole("link", { name: "Support" })).toHaveAttribute(
       "href",
-      "https://ko-fi.com/pavlohrab",
+      "https://vuurtoren.app/#why",
     );
     fireEvent.click(screen.getByRole("button", { name: "Not now" }));
     expect(screen.queryByText("Vuurtoren is made by one person.")).toBeNull();

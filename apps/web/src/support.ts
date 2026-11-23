@@ -6,8 +6,11 @@
  */
 import { readLocalJSON, writeLocalJSON } from "./storage/local.js";
 
-/** Where Support goes: the Ko-fi page. */
-export const SUPPORT_URL = "https://ko-fi.com/pavlohrab";
+/**
+ * Where Support goes: "Why I made it" on the website, which has the Ko-fi button. Not Ko-fi
+ * itself: Google Play does not allow an app to link to another way of paying.
+ */
+export const SUPPORT_URL = "https://vuurtoren.app/#why";
 
 /** Days of use before the first ask, and between asks. */
 export const FIRST_ASK_DAYS = 10;
