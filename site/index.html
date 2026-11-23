@@ -1596,6 +1596,66 @@
       .sources a {
         color: inherit;
       }
+      /* Bring your own AI: a short chat, the messages arriving one by one. */
+      .chat-card {
+        background: var(--sheet);
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        padding: 22px;
+        display: grid;
+        gap: 12px;
+        box-shadow: 0 24px 50px -30px rgb(0 0 0 / 0.35);
+      }
+      .msg {
+        margin: 0;
+        max-width: 85%;
+        padding: 10px 14px;
+        border-radius: 14px;
+        font: 400 17px / 1.5 var(--f-read);
+        opacity: 0;
+        transform: translateY(6px);
+        transition:
+          opacity 0.4s,
+          transform 0.4s;
+      }
+      .msg.me {
+        justify-self: end;
+        background: var(--accent-soft);
+        border-bottom-right-radius: 4px;
+      }
+      .msg.ai {
+        justify-self: start;
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-bottom-left-radius: 4px;
+        transition-delay: 0.5s;
+      }
+      .msg.me + .msg.ai + .msg.me {
+        transition-delay: 1s;
+      }
+      .msg .fix {
+        display: block;
+        margin-top: 8px;
+        padding-top: 8px;
+        border-top: 1px solid var(--line);
+        font: 400 14px / 1.45 var(--f-ui);
+        color: var(--muted);
+      }
+      .msg .fix b {
+        color: var(--known);
+        font-family: var(--f-read);
+        font-weight: 500;
+      }
+      .lit .msg {
+        opacity: 1;
+        transform: none;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .msg {
+          opacity: 1;
+          transform: none;
+        }
+      }
       /* Why I made it: signed, with the support line. */
       .why .sign {
         font: italic 400 20px var(--f-read);
@@ -2000,15 +2060,12 @@
     <section class="sec band" id="grammar" aria-labelledby="grammar-h">
       <div class="in split">
         <div class="copy">
-          <span class="eyebrow">Grammar and the exam</span>
-          <h2 id="grammar-h">Grammar, where it happens.</h2>
-          <p class="big">Marked in the texts you read, explained on your own sentences.</p>
-          <ul class="facts">
-            <li>Topics from A1 to C1, each with exercises.</li>
-            <li>Exercises made from what you read.</li>
-            <li>Mock exams for the A2 inburgeringsexamen.</li>
-            <li>A chat partner, with your own AI key.</li>
-          </ul>
+          <span class="eyebrow">Grammar</span>
+          <h2 id="grammar-h">Learn the grammar the proper way.</h2>
+          <p class="big">
+            Vuurtoren has 63 grammar topics, from A1 to C1. The grammar is highlighted in the texts
+            you read and explained under each word.
+          </p>
         </div>
         <div class="gram-card" data-lit aria-label="A sentence with its grammar marked">
           <p class="reader" lang="nl">
@@ -2028,7 +2085,35 @@
       </div>
     </section>
 
-    <section class="sec alt band" id="devices" aria-labelledby="devices-h">
+    <section class="sec alt band" id="ai" aria-labelledby="ai-h">
+      <div class="in split rev">
+        <div
+          class="chat-card"
+          data-lit
+          aria-label="A chat in Dutch: the partner answers and corrects a mistake"
+        >
+          <p class="msg me" lang="nl">Gisteren ik ben naar de markt gegaan.</p>
+          <p class="msg ai" lang="nl">
+            Leuk! Wat heb je gekocht?
+            <span class="fix"
+              ><b>Gisteren ben ik</b> naar de markt gegaan: after "gisteren" the verb comes
+              first.</span
+            >
+          </p>
+          <p class="msg me" lang="nl">Ik heb appels gekocht.</p>
+        </div>
+        <div class="copy">
+          <span class="eyebrow">Optional</span>
+          <h2 id="ai-h">Bring your own AI.</h2>
+          <p class="big">
+            With your own AI key, you can ask it to explain any sentence, write stories at your
+            level, or chat with a partner who knows your level and corrects you.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section class="sec band" id="devices" aria-labelledby="devices-h">
       <div class="in">
         <div class="dev-head">
           <span class="eyebrow">On every device</span>
@@ -2052,7 +2137,7 @@
       </div>
     </section>
 
-    <section class="sec band" id="yours" aria-labelledby="yours-h">
+    <section class="sec alt band" id="yours" aria-labelledby="yours-h">
       <div class="in split">
         <div class="copy">
           <span class="eyebrow">Open, and yours</span>
@@ -2098,7 +2183,7 @@
       </div>
     </section>
 
-    <section class="sec alt why band" aria-labelledby="why-h">
+    <section class="sec why band" aria-labelledby="why-h">
       <div class="in">
         <h2 id="why-h">Why I made it</h2>
         <div>
@@ -2119,7 +2204,7 @@
       </div>
     </section>
 
-    <section class="sec band" id="roadmap" aria-labelledby="r-h">
+    <section class="sec alt band" id="roadmap" aria-labelledby="r-h">
       <div class="in">
         <span class="eyebrow">Roadmap</span>
         <h2 id="r-h" style="margin-top: 10px">Where it is going.</h2>
