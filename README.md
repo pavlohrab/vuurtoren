@@ -70,44 +70,33 @@ to find your way.
 
 ## Grammar, practice and the exam
 
-Grammar like inversion, separable verbs or the perfect tense is marked where it appears in your
-texts, and 63 topics from A1 to C1 explain it with examples. Practice turns the words you're
-learning into short exercises, and the exam part prepares you for the A2 inburgeringsexamen. AI is
-only there if you want it, with your own key: stories at your level, a sentence explained, or a
-chat partner who keeps to the words you know.
-
 <table>
   <tr>
-    <td width="50%" valign="top">
+    <td width="50%" align="center" valign="middle">
       <picture>
-        <source media="(prefers-color-scheme: dark)" srcset="docs/images/reader-dark.webp">
-        <img alt="Reading: a Dutch text with its new words marked, and the card of the word bel, from opbellen" src="docs/images/reader-light.webp">
+        <source media="(prefers-color-scheme: dark)" srcset="docs/images/card-grammar-dark.webp">
+        <img alt="A Dutch sentence with inversion and a separable verb marked and explained" src="docs/images/card-grammar-light.webp" width="380">
       </picture>
-      <br><sub>Tap a word: its meaning here, and its grammar</sub>
     </td>
-    <td width="50%" valign="top">
+    <td width="50%" valign="middle"><b>Grammar in your texts.</b><br><br>Grammar like inversion, separable verbs or the perfect tense is marked where it appears in your texts, and explained under each word. 63 topics from A1 to C1 explain it with examples, following the e-ANS, the reference grammar of Dutch.</td>
+  </tr>
+  <tr>
+    <td width="50%" valign="middle"><b>Your textbook and the A2 exam.</b><br><br>Add your textbook as a PDF or photos of the pages, and read and practise it unit by unit, with help for its exercises. Practice turns the words you're learning into short exercises, and mock tests prepare you for the A2 inburgeringsexamen.</td>
+    <td width="50%" align="center" valign="middle">
       <picture>
-        <source media="(prefers-color-scheme: dark)" srcset="docs/images/words-dark.webp">
-        <img alt="Your words: the review of the day and the word list" src="docs/images/words-light.webp">
+        <source media="(prefers-color-scheme: dark)" srcset="docs/images/card-goal-dark.webp">
+        <img alt="A textbook exercise answered in Vuurtoren, and a mock exam score" src="docs/images/card-goal-light.webp" width="380">
       </picture>
-      <br><sub>Your words and the daily review</sub>
     </td>
   </tr>
   <tr>
-    <td width="50%" valign="top">
+    <td width="50%" align="center" valign="middle">
       <picture>
-        <source media="(prefers-color-scheme: dark)" srcset="docs/images/grammar-dark.webp">
-        <img alt="A grammar topic explained with examples" src="docs/images/grammar-light.webp">
+        <source media="(prefers-color-scheme: dark)" srcset="docs/images/card-ai-dark.webp">
+        <img alt="A chat in Dutch where the partner answers and corrects word order after gisteren" src="docs/images/card-ai-light.webp" width="380">
       </picture>
-      <br><sub>Grammar topics, from A1 to C1</sub>
     </td>
-    <td width="50%" valign="top">
-      <picture>
-        <source media="(prefers-color-scheme: dark)" srcset="docs/images/exam-dark.webp">
-        <img alt="The A2 inburgeringsexamen at a glance, with practice per part" src="docs/images/exam-light.webp">
-      </picture>
-      <br><sub>Practice for the A2 inburgeringsexamen</sub>
-    </td>
+    <td width="50%" valign="middle"><b>Bring your own AI.</b><br><br>AI is only there if you want it, with your own key. It can explain a sentence, write a story at your level, or chat with you in Dutch, keeping to the words you know and correcting your mistakes. Vuurtoren checks what it writes against your words.</td>
   </tr>
 </table>
 
