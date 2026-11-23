@@ -256,6 +256,64 @@
         }
       }
 
+      /* The theme button in the top bar: as your device, light, dark. */
+      .theme-btn {
+        flex: none;
+        display: grid;
+        place-items: center;
+        width: 40px;
+        height: 40px;
+        padding: 0;
+        border: 1px solid var(--line-strong);
+        border-radius: 999px;
+        background: transparent;
+        color: var(--ink);
+        cursor: pointer;
+      }
+      .theme-btn:hover {
+        border-color: var(--accent);
+      }
+      .theme-btn:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
+      .theme-btn svg {
+        width: 18px;
+        height: 18px;
+      }
+      .theme-btn .ti {
+        display: none;
+      }
+      .theme-btn:not([data-mode]) .ti-system,
+      .theme-btn[data-mode="system"] .ti-system,
+      .theme-btn[data-mode="light"] .ti-light,
+      .theme-btn[data-mode="dark"] .ti-dark {
+        display: inline;
+      }
+
+      /* Narrow phones: the top bar keeps the wordmark, the menu, the theme and the download. */
+      @media (max-width: 430px) {
+        html .nav .in {
+          gap: 6px;
+        }
+        .brand {
+          font-size: 18px;
+          gap: 7px;
+        }
+        .brand svg {
+          width: 26px;
+          height: 26px;
+        }
+        .theme-btn {
+          width: 36px;
+          height: 36px;
+        }
+        html .nav .btn {
+          padding: 0 10px;
+          font-size: 14px;
+        }
+      }
+
       /* Product pages (Desktop, Phone). Layout: hero with the device; feature rows whose demos play
    only while on screen (at rest they show a finished frame); the reading modes as a
    scroll-driven sequence; a fair feature table; the shared ending. */
@@ -1492,6 +1550,64 @@
           </details>
           <a href="#">Docs</a>
         </div>
+        <button
+          class="theme-btn"
+          type="button"
+          id="theme-btn"
+          aria-label="Theme: as your device"
+          title="Theme: as your device"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <g class="ti ti-system">
+              <rect x="3" y="4" width="18" height="12" rx="2" />
+              <path d="M8 20h8M12 16v4" />
+            </g>
+            <g class="ti ti-light">
+              <circle cx="12" cy="12" r="4" />
+              <path
+                d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"
+              />
+            </g>
+            <g class="ti ti-dark"><path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5z" /></g>
+          </svg>
+        </button>
+        <script>
+          // Theme: as your device, light or dark; remembered on this browser only.
+          (() => {
+            const root = document.documentElement,
+              btn = document.getElementById("theme-btn");
+            const names = { system: "as your device", light: "light", dark: "dark" };
+            const next = { system: "light", light: "dark", dark: "system" };
+            let t = "system";
+            try {
+              t = localStorage.getItem("vuurtoren-theme") || "system";
+            } catch {}
+            if (!(t in names)) t = "system";
+            const show = () => {
+              if (t === "system") delete root.dataset.theme;
+              else root.dataset.theme = t;
+              btn.dataset.mode = t;
+              btn.setAttribute("aria-label", "Theme: " + names[t]);
+              btn.title = "Theme: " + names[t];
+            };
+            show();
+            btn.addEventListener("click", () => {
+              t = next[t];
+              try {
+                localStorage.setItem("vuurtoren-theme", t);
+              } catch {}
+              show();
+            });
+          })();
+        </script>
         <a class="btn primary" href="#install">Get the APK</a>
       </div>
     </nav>
