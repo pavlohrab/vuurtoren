@@ -237,3 +237,37 @@ jobs:
           [ -n "$id" ] || { echo "Could not find or create the release $tag."; exit 1; }
           gh api -X PATCH "repos/$REPO/releases/$id" -F draft=false >/dev/null
           gh release upload "$tag" --repo "$REPO" "$RUNNER_TEMP"/offline/* --clobber
+
+  # The same installers under names that never change, so the website can link straight to
+  # releases/latest/download/<name>: Vuurtoren-windows-setup.exe, Vuurtoren-macos-apple-silicon.dmg,
+  # Vuurtoren-macos-intel.dmg, Vuurtoren-linux.AppImage and Vuurtoren-linux.deb. Tags only: a
+  # manual run is a pre-release and never "latest". The Android APK is attached by hand as
+  # Vuurtoren-android.apk until Android builds here.
+  fixed-names:
+    needs: build
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Copy the installers under fixed names
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          dir="$RUNNER_TEMP/fixed"
+          mkdir -p "$dir"
+          assets=$(gh release view "$TAG" --repo "$REPO" --json assets --jq '.assets[].name' | grep -v '^Vuurtoren_offline_')
+          pick() { # pattern, fixed name
+            name=$(printf '%s\n' "$assets" | grep -E "$1" | head -n1 || true)
+            if [ -z "$name" ]; then echo "::warning::No asset matches $1"; return; fi
+            gh release download "$TAG" --repo "$REPO" --pattern "$name" --dir "$dir" --clobber
+            mv "$dir/$name" "$dir/$2"
+          }
+          pick '_x64-setup\.exe$' Vuurtoren-windows-setup.exe
+          pick '_aarch64\.dmg$' Vuurtoren-macos-apple-silicon.dmg
+          pick '_x64\.dmg$' Vuurtoren-macos-intel.dmg
+          pick '_amd64\.AppImage$' Vuurtoren-linux.AppImage
+          pick '_amd64\.deb$' Vuurtoren-linux.deb
+          ls -la "$dir"
+          gh release upload "$TAG" --repo "$REPO" "$dir"/* --clobber
