@@ -21,6 +21,11 @@ export default tseslint.config(
   { files: ["apps/desktop/src-tauri/src/*.js"], languageOptions: { globals: globals.browser } },
   { files: ["deploy/devices/*.js"], languageOptions: { globals: globals.browser } },
   { files: ["scripts/**/*.mjs"], languageOptions: { globals: globals.node } },
+  // The website check runs in Node and hands functions to the browser (page.evaluate).
+  {
+    files: ["site/*.mjs"],
+    languageOptions: { globals: { ...globals.node, ...globals.browser } },
+  },
   {
     files: ["apps/web/**/*.{ts,tsx}"],
     languageOptions: { globals: globals.browser },
