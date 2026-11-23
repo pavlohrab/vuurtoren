@@ -2069,14 +2069,13 @@
         fill: var(--muted);
       }
       /* The beam: from the lamp across the page, under nothing, tinting the words it passes. */
-      /* The beam: an even cone from the lamp that sweeps down the page like a turning light,
-         reaching each new word as it gets its translation. */
+      /* The beam: an even cone from the lamp, pointed up across the text, growing left to right
+         as the new words get their translations. */
       .hbeam {
         --lx: 57px;
         --ly: 196px;
-        --bh: 220px;
-        --from: -30deg;
-        --to: 7deg;
+        --bh: 300px;
+        --angle: -13deg;
         position: absolute;
         z-index: 3;
         left: var(--lx);
@@ -2111,23 +2110,16 @@
       }
       @keyframes hbeam {
         0% {
-          transform: rotate(var(--from));
-          opacity: 0;
-        }
-        8% {
-          transform: rotate(var(--from));
+          transform: rotate(var(--angle)) scaleX(0);
           opacity: 1;
         }
-        50% {
-          transform: rotate(var(--to));
-          opacity: 1;
-        }
-        88% {
-          transform: rotate(var(--to));
+        38%,
+        90% {
+          transform: rotate(var(--angle)) scaleX(1);
           opacity: 1;
         }
         100% {
-          transform: rotate(var(--to));
+          transform: rotate(var(--angle)) scaleX(1);
           opacity: 0;
         }
       }
@@ -2170,6 +2162,7 @@
         }
         .hbeam {
           left: 35px;
+          --angle: 0deg;
           right: -16px;
           top: 0;
           bottom: 0;
@@ -2209,6 +2202,9 @@
         .hbeam,
         .hl-fire {
           animation: none;
+        }
+        .hbeam {
+          transform: rotate(var(--angle));
         }
       }
     </style>
