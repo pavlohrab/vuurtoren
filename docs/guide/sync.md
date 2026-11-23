@@ -89,4 +89,4 @@ syncing on one device, use Settings → Your devices; its data stays on it.
 If you lose a device, remove it on your server's page. To be safe, start new sync data with a new
 passphrase and join it again from your other devices.
 
-And keep a backup now and then, in Settings → **Data & backup → Download backup**.
+And keep a backup now and then, in Settings → **Data → Download backup**.

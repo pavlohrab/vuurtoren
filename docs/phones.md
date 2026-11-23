@@ -1,9 +1,9 @@
 # Vuurtoren on your phone
 
 The phone app is the same app as on your computer. It keeps its own copy of your data and works
-offline. What it can't do by itself is prepare a new text, because the Dutch language model is
-too big for a phone. Your computer does that for it, or a language server: your own, or later
-Vuurtoren Sync.
+offline. The one thing it can't do by itself is prepare a new text, because that needs about 330 MB
+of language data that only runs on a computer or a server. So your computer does it for the phone,
+or your own server does, and later Vuurtoren Sync will too.
 
 ## What works where
 
@@ -40,4 +40,4 @@ iPhone: not yet.
 Settings → Your devices. See [Sync](guide/sync.md).
 
 Deleting the app deletes its data on the phone. When you install it again it starts fresh; your
-data comes back through sync, or from a backup file (Settings → Data & backup).
+data comes back through sync, or from a backup file (Settings → Data).
