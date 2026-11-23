@@ -16,7 +16,7 @@ const pages = [
   "phone.html",
   "how.html",
   "docs/index.html",
-  "docs/first-review.html",
+  "docs/reading.html",
   "docs/ai.html",
 ];
 const widths = [390, 768, 1280];

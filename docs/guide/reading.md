@@ -1,43 +1,53 @@
 # Reading
 
-Vuurtoren shows a text one page at a time, and every page is planned around the words you know.
-This page explains what you see while reading and what you can change.
+Add a Dutch text, and Vuurtoren plans every page of it around the words you know: about three new
+words to learn, and a translation for the rest.
 
-## New words on a page
+## Add a text
 
-A page has about 150 words. On each page Vuurtoren leaves about three new words for you to learn,
-and it underlines them without a translation, so you can try to work them out from the sentence.
-Every other word you don't know gets its English above it, so you don't get stuck.
+Open **Read** and press **Add text**. You can paste a text, give the address of a web page (only
+the article is taken, not the menus), or choose a PDF or a photo. A photo is read with text
+recognition, and you check the words it wasn't sure about before the text is added. With your own
+AI key there is also **Write a story**, a new text at your level about a topic you choose.
 
-The number of new words follows how your reading goes. When you look up very little, the next pages
-get one more new word, and when you look up a lot, one fewer, somewhere between 1 and 5. You can
-also set it yourself in the reading settings under **Words to learn per page**, where **Auto** is
-the default.
+A textbook goes in **Courses → Add a course**, as a PDF, an EPUB, photos of the pages or a list of
+web pages. Vuurtoren splits it into units, and you read and practise it unit by unit.
 
-## Tap a word
+The stories on **Read** are ready to open, 35 of them from A1 to B2.
 
-Tap any word to open its card. It shows what the word means in this sentence, its dictionary form
-and the grammar of the sentence. From there you can add it to your words, mark it as known with
-**I know it**, or **Ignore** it if it's a name or a word you don't need.
+On a phone, a new text has to be prepared on your computer or your own server first, so it waits
+until you sync. See [On your phone](../phones.md).
+
+## What you see on a page
+
+A page is about 150 words. About three new words are underlined and not translated, so you can work
+them out from the sentence. Every other word you don't know has its English above it. The number of
+new words follows how you read: if you look up fewer than 2 words per 100, the next pages get one
+more, and if you look up more than 6, one fewer, between 1 and 5. You can also fix the number in the
+reading settings, under **Words to learn per page**.
+
+Tap a word to see what it means in this sentence, its dictionary form and the grammar around it.
+**Add to my words** puts it in your reviews (**Add to Anki** if you work with Anki), **I know it**
+stops Vuurtoren from translating and teaching it, and **Ignore** is for names and words you don't
+need.
 
 ## Four ways to read
 
-The reading mode is in the menu at the top of the page.
+The reading mode is in the menu at the top of the page. **Read** is the page as described above.
+**Gloss** puts the translations next to the words, so you can read on without stopping. **Cloze**
+turns some words you know into blanks to fill in, and a right answer counts as practice for that
+word. **Side by side** shows each sentence with its English, and the same words have the same colour
+on both sides.
 
-- **Read** is the normal page, with the new words and translations described above.
-- **Gloss** puts the translation right next to the words, so you can read on without stopping.
-- **Cloze** turns some words you already know into blanks, so you practise them while you read.
-- **Side by side** shows every sentence with its English, and the matching words have the same
-  colour on both sides.
+**Translations** in the reading settings sets how much is translated: nothing, only new words, or
+also words you're still learning. **Focus mode** hides everything except the page.
 
-## Translations
+## Grammar and sound
 
-In the reading settings, **Translations** sets how much help you get. You can turn them off, show
-them only for new words, or also for words you're learning but don't know well yet. **Focus mode**
-hides everything around the page, so it's just you and the text.
+Grammar like inversion or a separable verb is marked in the text and explained in the word card, and
+every mark links to its topic in **Grammar** (63 topics, A1 to C1).
 
-## Grammar
-
-Vuurtoren marks grammar in the text, like inversion or a separable verb, and explains it under each
-word in the word card. Every mark links to its topic in **Grammar**, where it's explained in plain
-words with examples.
+The common words, their example sentences and the stories are recorded in a female and a male voice
+(Settings → Reading → **Voice**). Other words use your device's own Dutch voice. A crossed-out
+speaker means your device has no Dutch voice, which happens mostly on Linux; add one in your
+system's speech settings.

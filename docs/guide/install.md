@@ -16,12 +16,6 @@ When Vuurtoren starts for the first time, it downloads its language data, which 
 the dictionary, the example sentences, the translation model and the recordings. If that computer has no internet, take the
 installer whose name starts with `Vuurtoren_offline_` instead. It has all of this inside.
 
-The common words, their example sentences and the stories are recorded in a female and a male
-voice, and you can switch between them in Settings → Reading → Voice. Other words and sentences
-use your computer's own Dutch voice. Windows and macOS can add one in their speech settings. Many
-Linux systems don't have a Dutch voice, and then those words stay silent and the speaker icon is
-crossed out.
-
 ## On your phone
 
 Vuurtoren works on Android. Download `Vuurtoren-android.apk` from the

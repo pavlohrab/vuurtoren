@@ -18,24 +18,11 @@ const REPO = "https://github.com/pavlohrab/Vuurtoren";
 
 /** The chapters, in reading order: each page's Markdown file and its name in the menu. */
 const CHAPTERS = [
+  { title: "Start here", pages: [["guide/install.md", "Install Vuurtoren"]] },
   {
-    title: "Start here",
-    pages: [
-      ["guide/install.md", "Install Vuurtoren"],
-      ["guide/first-text.md", "Your first text"],
-      ["guide/first-review.md", "Your first review"],
-    ],
-  },
-  {
-    title: "Reading",
+    title: "Use it",
     pages: [
       ["guide/reading.md", "Reading"],
-      ["guide/add-texts.md", "Add texts"],
-    ],
-  },
-  {
-    title: "Words",
-    pages: [
       ["guide/words.md", "Your words"],
       ["guide/anki.md", "Anki"],
     ],
@@ -49,9 +36,8 @@ const CHAPTERS = [
     ],
   },
   {
-    title: "Extras",
+    title: "More",
     pages: [
-      ["guide/sound.md", "Sound"],
       ["ai.md", "Add your AI"],
       ["how-it-works.md", "How Vuurtoren works"],
       ["roadmap.md", "Roadmap"],
@@ -62,11 +48,11 @@ const CHAPTERS = [
 /** The home page's task cards: what people come to do, and the page that does it. */
 const TASKS = [
   ["guide/install.md", "Install Vuurtoren", "On Windows, Mac, Linux or Android."],
-  ["guide/first-text.md", "Read my first text", "Paste a text and start reading."],
-  ["guide/first-review.md", "Learn new words every day", "Your daily review, and how it works."],
+  ["guide/reading.md", "Read a text", "Paste it, give a link, or add a PDF or a photo."],
+  ["guide/words.md", "Learn new words every day", "The daily review, and how many new words."],
   ["guide/anki.md", "Use my Anki decks", "Bring them in, or keep using Anki."],
   ["phones.md", "Use it on my phone too", "What works on a phone, and how to connect it."],
-  ["guide/add-texts.md", "Read a book I own", "A PDF, an EPUB or photos of the pages."],
+  ["guide/sync.md", "Sync my devices", "The same words on your computer and your phone."],
 ];
 
 const pages = CHAPTERS.flatMap((c) =>

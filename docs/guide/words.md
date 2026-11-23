@@ -1,34 +1,35 @@
 # Your words
 
-**Words** is where your words live: the ones you're learning, the ones you know and the review of
-the day.
+Every word you learn gets a card, and every day a short review brings back the cards you're about
+to forget.
 
 ## The daily review
 
-Every day the words that are due come back for a short review. How it works is on
-[Your first review](first-review.md). After your reviews you can always go on with more if you
-want.
+Open **Words**. At the top it says how many cards are due and about how long they take. In the
+review you see the word, try to remember it, show the answer and say how well you knew it:
+**Again**, **Hard**, **Good** or **Easy**. On a computer that's the keys 1 to 4 (Space is Good, Z is
+**Undo**). On a phone you swipe: right if you know it, left if you don't, up if you can recall it
+easily, also before you show the answer.
 
-## How many new words a day
+Your answer decides when the card comes back, with FSRS, the algorithm Anki also offers. A word you
+knew easily comes back after a long time, a word you forgot comes back soon, and the schedule adapts
+to your own memory over time. Reading counts too: a word you read without tapping it waits a little
+longer, and a word you had to look up comes back today.
 
-New words join your reviews every day, ten unless you change it. First come the words you added
-while reading, and then the next common words of your level. You set the number in Settings → Your
-words → **New words a day**, for all your decks together.
+## New words
 
-## About 5000 common words
+Ten new words join your reviews every day, unless you change it in Settings → Your words → **New
+words a day**. The words you added while reading come first, then the next common words of your
+level.
 
-If you don't bring your own decks, Vuurtoren can give you cards for about 5000 of the most common
-Dutch words. They come in levels of 500, each word with an example sentence, and you go through
-them one level at a time. When you start, you choose where new words begin, so if you already know
-some Dutch you can skip the first levels.
+If you don't bring your own decks, Vuurtoren gives you about 5000 of the most common Dutch words, in
+levels of 500, each with an example sentence. At the start you choose where new words begin, so if
+you already know some Dutch you can skip the first levels.
 
 ## Your list
 
-Below the review you find all your words, as cards or as a list. You can filter them by state (new,
-learning, known) and search for a word. Tap a word to see its meaning, its sentences and how your
-reviews went.
+Below the review are all your words, as cards or as a list, with filters for new, learning and known
+and a search. Tap a word to see its meaning, its sentences and how your reviews went. Words you
+already know you can mark with **I know it**, here or while reading, and they leave your reviews.
 
-## Words you already know
-
-You don't have to review words you already know. Mark them with **I know it** while reading or in
-your list, and Vuurtoren stops teaching and translating them.
+If you use Anki, see [Anki](anki.md).
