@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { createLiveDictionary } from "./liveDictionary.js";
 import { createLiveExtras } from "./liveExtras.js";
 import { createLivePairs, englishTokens } from "./livePairs.js";
+import { storyRef } from "./stories.js";
 import type { ReadingView } from "./types.js";
 
 const TEXT = "De kat slaapt. Morgen bel ik op.";
@@ -121,6 +122,33 @@ describe("text extras", () => {
     extras.fillLater();
     await new Promise((r) => setTimeout(r, 20));
     expect(server.asked).toEqual(before);
+  });
+
+  it("are never made for a bundled story: it brings its own English and pairs", async () => {
+    const repo = await repoWithText();
+    await repo.append({
+      type: "TextImported",
+      textId: "s1",
+      title: "De koe op de toren",
+      lang: "nl",
+      source: { kind: "paste", ref: storyRef("de-koe-op-de-toren") },
+      content: TEXT,
+    });
+    await repo.saveTextAnalysis({
+      textId: "s1",
+      contentHash: contentHash(TEXT),
+      tokens: TOKENS,
+      analyzerVersion: "v1",
+    });
+    const server = fakeServer();
+    const dictionary = createLiveDictionary({ repo, lang: async () => "nl", nlp: server.nlp });
+    const extras = createLiveExtras({ repo, nlp: server.nlp, dictionary, pauseMs: 0 });
+    extras.fillLater();
+    // The own text gets its extras; the story is passed over, and nothing is asked for it.
+    await vi.waitFor(async () => expect(await repo.textExtras("t1")).not.toBeNull());
+    await new Promise((r) => setTimeout(r, 20));
+    expect(await repo.textExtras("s1")).toBeNull();
+    expect(server.asked.pairs).toBe(1);
   });
 
   it("let a device without a language server read: the word sheet and side by side", async () => {

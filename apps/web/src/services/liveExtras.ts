@@ -18,7 +18,7 @@ import {
 import type { NlpClient } from "@app/nlp-client";
 import type { LiveDictionary } from "./liveDictionary.js";
 import { pairItem } from "./livePairs.js";
-import type { StorySentencePairs } from "./stories.js";
+import { type StorySentencePairs, storySlugOf } from "./stories.js";
 
 export interface LiveExtrasDeps {
   repo: VuurtorenRepository;
@@ -94,15 +94,31 @@ export function createLiveExtras({ repo, nlp, dictionary, pauseMs = 1500 }: Live
     });
   }
 
+  /** Texts that never need extras made: bundled stories bring their own English and pairs. */
+  const notNeeded = new Set<string>();
+  /** The next analysed text without extras that needs them, or null. */
+  async function nextToMake(): Promise<string | null> {
+    for (const s of await repo.analysisStates()) {
+      if (s.extrasAt !== null || notNeeded.has(s.textId)) continue;
+      const text = await repo.getText(s.textId);
+      if (text && storySlugOf(text.sourceRef)) {
+        notNeeded.add(s.textId);
+        continue;
+      }
+      return s.textId;
+    }
+    return null;
+  }
+
   let running: Promise<void> | null = null;
   /** Make the extras of every analysed text that lacks them, in the background. */
   function fillLater(): void {
     running ??= (async () => {
       try {
         for (;;) {
-          const next = (await repo.analysisStates()).find((s) => s.extrasAt === null);
+          const next = await nextToMake();
           if (!next) return;
-          await make(next.textId);
+          await make(next);
           await new Promise((r) => setTimeout(r, pauseMs));
         }
       } catch {
