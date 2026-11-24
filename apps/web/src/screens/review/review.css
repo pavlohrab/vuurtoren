@@ -142,9 +142,11 @@
   font-weight: 600;
   color: var(--accent);
 }
+/* The hint above the button, like the hint above the answers. */
 .review-actions {
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
 }
 .review-ratings {
   display: grid;
@@ -225,7 +227,18 @@
   }
 }
 
-/* Swiping: the card follows the finger; the answer it would give tints its edge. */
+/* Swiping: the card follows the finger; the answer it would give tints its edge. A drag anywhere
+   on the screen is a swipe, never a scroll: without this Android scrolls and cancels the
+   pointer, so a swipe off the card, or on the front, did nothing. The card is set too: it is a
+   scroll area of its own on phones, and the rule does not reach through one. A long card
+   scrolls up and down inside. */
+.review,
+.review-card {
+  touch-action: none;
+}
+.review-card[data-long] {
+  touch-action: pan-y;
+}
 .review-card {
   transition: transform var(--dur) var(--ease-out);
   user-select: none;
@@ -255,6 +268,23 @@
 @media (pointer: coarse) {
   .review-swipe-hint {
     display: block;
+  }
+}
+/* Phones: the screen fits exactly and never moves; a long card scrolls inside itself. */
+@media (max-width: 699px) {
+  .content:has(.review-card) {
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
+  .review:has(.review-card) {
+    box-sizing: border-box;
+    height: 100%;
+    padding-bottom: var(--s-4);
+  }
+  .review-card {
+    flex: 0 1 auto;
+    overflow-y: auto;
+    overscroll-behavior: contain;
   }
 }
 .review-end {

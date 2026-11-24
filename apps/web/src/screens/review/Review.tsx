@@ -415,9 +415,24 @@ function CardView({
   const front = useMemo(() => sanitizeCardHtml(card.front, urls), [card.front, urls]);
   const back = useMemo(() => sanitizeCardHtml(card.back, urls), [card.back, urls]);
   const audio = shown ? [...new Set([...card.audioFront, ...card.audioBack])] : card.audioFront;
+  // The screen takes every drag as a swipe; a card too long for the screen scrolls up and down
+  // inside itself instead, and still swipes left and right.
+  const ref = useRef<HTMLElement>(null);
+  const [long, setLong] = useState(false);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const check = () => setLong(el.scrollHeight > el.clientHeight + 1);
+    check();
+    const ro = new ResizeObserver(check);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [shown, front, back]);
   return (
     <article
+      ref={ref}
       className="review-card"
+      data-long={long ? "" : undefined}
       aria-live="polite"
       data-layout={card.layout}
       data-swipe={swipe.direction ?? undefined}
