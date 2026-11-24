@@ -150,12 +150,14 @@ for (const size of SIZES) {
       await fakeAnki(page);
       await page.goto("/");
       // The first start sets up the database in the browser first: allow for it.
-      await expect(page.getByRole("heading", { name: "Welcome to Vuurtoren" })).toBeVisible({
+      await expect(page.getByRole("heading", { name: "Do you use Anki?" })).toBeVisible({
         timeout: 40_000,
       });
       await page.getByRole("radio", { name: /^No/ }).check();
       await page.getByRole("button", { name: "Continue" }).click();
-      await expect(page.getByRole("heading", { name: "The most common words" })).toBeVisible();
+      await expect(
+        page.getByRole("heading", { name: "You start with the 500 most common words" }),
+      ).toBeVisible();
       expect(await overflowing(page, ".ob-card *")).toEqual([]);
       await shot(page, `welcome-words-${size.width}`);
       await page.getByRole("button", { name: "Continue" }).click();

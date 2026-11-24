@@ -22,7 +22,7 @@ import {
   defaultProfile,
   rootDeck,
 } from "@app/core";
-import { STARTER_LEVELS, starterBand } from "@app/anki";
+import { STARTER_LEVELS } from "@app/anki";
 import { Button, Spinner, Logo } from "@app/ui";
 import { useServices } from "../../services/context.js";
 import type { AnkiStatus } from "../../services/types.js";
@@ -109,18 +109,7 @@ interface Draft {
   /** Import the Anki decks and review in Vuurtoren (else keep using Anki). */
   move: boolean;
   profile: LanguageProfile;
-  /** Native: start with the most common words (starter levels). */
-  starter: boolean;
-  /** Native: the starter level new words start from (one of START_LEVELS). */
-  from: number;
 }
-
-/**
- * Native mode: where new words start. Every level is added; the levels below the start get no
- * new cards until the learner turns them on (Settings). Nothing is marked known.
- */
-/** One start per CEFR band: the first 500 words of A1, A2, B1 and B2. */
-const START_LEVELS = [1, 3, 5, 8] as const;
 
 const fresh = (): Draft => ({
   step: PICK_LANGUAGE ? "language" : "uses",
@@ -131,8 +120,6 @@ const fresh = (): Draft => ({
   usesAnki: null,
   move: true,
   profile: defaultProfile("nl"),
-  starter: true,
-  from: 1,
 });
 
 function readDraft(): Draft {
@@ -293,14 +280,15 @@ export function Welcome() {
     },
   });
 
-  // ---- Native: the most common words, all levels, new cards from the chosen one
+  // ---- Native: the most common words, all levels, new cards from the first 500 (no level
+  // question: Check your level in Words marks what you know, m5)
   const [added, setAdded] = useState<{ done: number; total: number } | null>(null);
   const starter = useMutation({
     mutationFn: () =>
       services.addStarterLevels(
         {
           levels: Array.from({ length: STARTER_LEVELS }, (_, i) => i + 1),
-          from: draft.from,
+          from: 1,
         },
         (done, total) => setAdded({ done, total }),
       ),
@@ -345,10 +333,8 @@ export function Welcome() {
       if (move.isSuccess) next();
       else if (!move.isPending) move.mutate();
     } else if (draft.step === "placement") placement.mutate();
-    else if (draft.step === "starter") {
-      if (draft.starter) starter.mutate();
-      else next();
-    } else if (draft.step !== "first") next();
+    else if (draft.step === "starter") starter.mutate();
+    else if (draft.step !== "first") next();
   };
 
   const errorOf = (e: unknown) => (e instanceof Error && e.message ? e.message : "Try again.");
@@ -372,13 +358,9 @@ export function Welcome() {
         {draft.step === "server" ? (
           <section aria-labelledby="ob-server-h">
             <h1 id="ob-server-h" ref={heading} tabIndex={-1}>
-              Sync with your other devices
+              Connect your phone
             </h1>
-            <p className="ob-lede">
-              Connect to your Vuurtoren server to keep your words and texts the same here and on
-              your computer; it also analyses texts you add on this phone. No server yet? Choose Not
-              now and connect later in Settings → Your devices.
-            </p>
+            <p className="ob-lede">Your phone needs a computer or a server to read new texts.</p>
             <ConnectYourServer onState={onServerState} />
             <div className="ob-nav">
               <Button variant="ghost" onClick={back}>
@@ -408,45 +390,23 @@ export function Welcome() {
 
             {draft.step === "uses" ? (
               <>
-                {PICK_LANGUAGE ? (
-                  <h1 ref={heading} tabIndex={-1}>
-                    Do you use Anki?
-                  </h1>
-                ) : (
-                  <>
-                    <h1 ref={heading} tabIndex={-1}>
-                      Welcome to Vuurtoren
-                    </h1>
-                    <p className="ob-lede">
-                      Vuurtoren helps you read real Dutch texts at the edge of what you know. A few
-                      choices first: this takes about two minutes, and you can change everything
-                      later in Settings.
-                    </p>
-                    <h2 className="ob-question">Do you use Anki?</h2>
-                  </>
-                )}
-                <p className="ob-lede">
-                  Vuurtoren can keep your words and run your reviews itself, or work alongside Anki.
-                </p>
+                {/* One question, nothing to explain: Anki users know Anki, others don't need it. */}
+                <h1 ref={heading} tabIndex={-1}>
+                  Do you use Anki?
+                </h1>
                 <fieldset className="ob-choices">
                   <legend className="k-sr">Do you use Anki?</legend>
-                  <Choice
-                    name="uses"
-                    checked={draft.usesAnki === false}
-                    onChange={() => setDraft({ usesAnki: false, sources: [], noAnki: false })}
-                    title="No"
-                    sub="Vuurtoren keeps your words and schedules your reviews. You can import an Anki deck file later."
-                  />
                   <Choice
                     name="uses"
                     checked={draft.usesAnki === true}
                     onChange={() => setDraft({ usesAnki: true })}
                     title="Yes"
-                    sub={
-                      phone
-                        ? "Bring your Anki decks in as a deck file (.apkg)."
-                        : "Bring your Anki decks into Vuurtoren, or keep using Anki."
-                    }
+                  />
+                  <Choice
+                    name="uses"
+                    checked={draft.usesAnki === false}
+                    onChange={() => setDraft({ usesAnki: false, sources: [], noAnki: false })}
+                    title="No"
                   />
                 </fieldset>
               </>
@@ -680,46 +640,12 @@ export function Welcome() {
             {draft.step === "starter" ? (
               <>
                 <h1 ref={heading} tabIndex={-1}>
-                  The most common words
+                  You start with the 500 most common words
                 </h1>
                 <p className="ob-lede">
-                  Vuurtoren can give you cards for about 5000 of the most common Dutch words, from
-                  A1 to B2, 500 at a time, each with an example sentence. Ten new words a day, one
-                  level at a time; you can change that later.
+                  Already know some? In Words, use Check your level. Words you know still come back
+                  now and then. If you forgot one, press Again.
                 </p>
-                <label className="ob-check">
-                  <input
-                    type="checkbox"
-                    checked={draft.starter}
-                    disabled={starter.isPending}
-                    onChange={(e) => setDraft({ starter: e.target.checked })}
-                  />
-                  <span>
-                    Start with the most common words
-                    <span className="ob-choice-sub">
-                      Without them, your cards are the words you add while reading.
-                    </span>
-                  </span>
-                </label>
-                {draft.starter ? (
-                  <fieldset className="ob-choices" disabled={starter.isPending}>
-                    <legend className="ob-question">Where should new words start?</legend>
-                    <p className="ob-choices-note">
-                      Lower levels wait until you turn them on; the words you know get marked as you
-                      read.
-                    </p>
-                    {START_LEVELS.map((level) => (
-                      <Choice
-                        key={level}
-                        name="from"
-                        checked={draft.from === level}
-                        onChange={() => setDraft({ from: level })}
-                        title={starterBand(level)}
-                        sub={`Words ${(level - 1) * 500 + 1}–${level * 500}`}
-                      />
-                    ))}
-                  </fieldset>
-                ) : null}
                 {starter.isPending ? (
                   <p role="status">
                     <Spinner label="Adding words" />{" "}
@@ -750,13 +676,12 @@ export function Welcome() {
                   ) : (
                     "A short story at your level is waiting on Read."
                   )}{" "}
-                  Tap any word you do not know to see what it means, and keep it with Add to my
-                  words.
+                  Tap a word you don't know to see what it means.
                 </p>
                 {/* A phone: the dictionary comes down now, so meanings work without a server. */}
                 <DictionaryPack autoStart />
-                {/* Then the recordings, so a new phone speaks with them from the start. */}
-                <RecordingsPack autoStart />
+                {/* Then one yes or no for the recordings (230 MB): never a big download unasked. */}
+                <RecordingsPack ask />
                 <div className="ob-first-actions">
                   <Button
                     variant="primary"
@@ -855,14 +780,14 @@ function Choice({
   checked: boolean;
   onChange: () => void;
   title: string;
-  sub: string;
+  sub?: string;
 }) {
   return (
     <label className="ob-choice">
       <input type="radio" name={name} checked={checked} onChange={onChange} />
       <span>
         <span className="ob-choice-title">{title}</span>
-        <span className="ob-choice-sub">{sub}</span>
+        {sub ? <span className="ob-choice-sub">{sub}</span> : null}
       </span>
     </label>
   );

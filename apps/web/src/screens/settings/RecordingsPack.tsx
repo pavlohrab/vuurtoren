@@ -77,7 +77,15 @@ export function VoiceTest({ rate }: { rate: number }) {
  * on Wi-Fi only unless mobile data is allowed: a new phone gets the recordings without a visit to
  * Settings.
  */
-export function RecordingsPack({ autoStart = false }: { autoStart?: boolean }) {
+export function RecordingsPack({
+  autoStart = false,
+  ask = false,
+}: {
+  autoStart?: boolean;
+  /** Onboarding: one plain question, Download or Not now (m5). */
+  ask?: boolean;
+}) {
+  const [dismissed, setDismissed] = useState(false);
   const pack = currentDevice().bridge?.audio ?? null;
   const dictionary = currentDevice().bridge?.dictionary ?? null;
   const services = useServices();
@@ -115,7 +123,7 @@ export function RecordingsPack({ autoStart = false }: { autoStart?: boolean }) {
     started.current = true;
     install.mutate();
   }, [autoStart, missing, dictReady, mobileOk, install]);
-  if (!pack || !status.data) return null;
+  if (!pack || !status.data || dismissed) return null;
   const s = status.data;
   const size = formatBytes(s.download || s.bytes);
   const received = s.received ?? 0;
@@ -124,7 +132,9 @@ export function RecordingsPack({ autoStart = false }: { autoStart?: boolean }) {
   return (
     <section className="stack" aria-labelledby="audio-pack-h" style={{ gap: 8 }}>
       <h4 className="settings-h4" id="audio-pack-h">
-        Recordings on this phone
+        {ask && !s.installed && !busy
+          ? "Download recordings of the words?"
+          : "Recordings on this phone"}
       </h4>
       {s.installed ? (
         <>
@@ -155,8 +165,9 @@ export function RecordingsPack({ autoStart = false }: { autoStart?: boolean }) {
       ) : (
         <>
           <p className="k-hint" style={{ margin: 0 }}>
-            These are the recorded words, sentences and stories, in both voices. Without them your
-            phone reads with its own Dutch voice.
+            {ask
+              ? `${size}, best on Wi-Fi.`
+              : "These are the recorded words, sentences and stories, in both voices. Without them your phone reads with its own Dutch voice."}
           </p>
           {install.isError ? (
             <p className="error-text" role="alert" style={{ margin: 0 }}>
@@ -173,8 +184,15 @@ export function RecordingsPack({ autoStart = false }: { autoStart?: boolean }) {
             <Button onClick={() => install.mutate()}>
               {received > 0
                 ? `Go on with the download (${formatBytes(received)} of ${size})`
-                : `Download the recordings (~${size})`}
+                : ask
+                  ? "Download"
+                  : `Download the recordings (~${size})`}
             </Button>
+            {ask ? (
+              <Button variant="ghost" onClick={() => setDismissed(true)}>
+                Not now
+              </Button>
+            ) : null}
           </div>
         </>
       )}

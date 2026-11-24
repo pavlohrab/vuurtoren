@@ -39,11 +39,10 @@ const cont = () => screen.getByRole("button", { name: "Continue" });
 describe("onboarding", () => {
   it("a new learner confirms suggested decks and chooses where new words go", async () => {
     const { user, history, saveLanguageProfile } = setup();
-    expect(await screen.findByRole("heading", { name: "Welcome to Vuurtoren" })).toBeVisible();
+    // One question first, nothing to explain (m5).
+    expect(await screen.findByRole("heading", { name: "Do you use Anki?" })).toBeVisible();
     expect(history.location.pathname).toBe("/welcome");
-    // One language: no language step; the first question is under the welcome text.
     expect(screen.queryByRole("radio", { name: /Nederlands/ })).toBeNull();
-    expect(screen.getByRole("heading", { name: "Do you use Anki?" })).toBeVisible();
     // Three fixed parts, whatever the answers add.
     const parts = () =>
       within(screen.getByRole("list", { name: "Setup steps" }))
@@ -130,7 +129,9 @@ describe("onboarding", () => {
     const { user, saveLanguageProfile, history } = setup({ ankiStatus });
     await user.click(await screen.findByRole("radio", { name: /^No/ }));
     await user.click(cont());
-    expect(await screen.findByRole("heading", { name: "The most common words" })).toBeVisible();
+    expect(
+      await screen.findByRole("heading", { name: "You start with the 500 most common words" }),
+    ).toBeVisible();
     expect(screen.queryByRole("heading", { name: "Where new words go" })).toBeNull();
     const p = saveLanguageProfile.mock.calls[0]![0];
     expect(p).toMatchObject({ mode: "native", sources: [] });
@@ -144,29 +145,25 @@ describe("onboarding", () => {
     await waitFor(() => expect(history.location.pathname).toMatch(/^\/read\//));
   });
 
-  it("no Anki: adds every level of the most common words, new words from the chosen one", async () => {
+  it("no Anki: adds every level of the most common words, new words from the first 500", async () => {
     const addStarterLevels = vi.fn(async () => ({ added: 4930, skipped: 0 }));
     const { user } = setup({ addStarterLevels });
     await user.click(await screen.findByRole("radio", { name: /^No/ }));
     await user.click(cont());
-    expect(await screen.findByRole("heading", { name: "The most common words" })).toBeVisible();
     expect(
-      screen.getByRole("checkbox", { name: /Start with the most common words/ }),
-    ).toBeChecked();
-    expect(screen.getByText("Where should new words start?")).toBeVisible();
-    expect(screen.getByRole("radio", { name: /^A1/ })).toBeChecked();
-    expect(screen.queryByText(/How much Dutch/)).toBeNull();
-    await user.click(screen.getByRole("radio", { name: /^A2/ }));
-    expect(screen.getByRole("radio", { name: /Words 1001–1500/ })).toBeChecked();
-    // One shared line for every level; Back and Continue, no separate "Skip this".
-    expect(screen.getAllByText(/Lower levels wait until you turn them on/)).toHaveLength(1);
+      await screen.findByRole("heading", { name: "You start with the 500 most common words" }),
+    ).toBeVisible();
+    // No level question and nothing to untick: Check your level in Words does that (m5).
+    expect(screen.queryByText("Where should new words start?")).toBeNull();
+    expect(screen.queryByRole("checkbox")).toBeNull();
+    expect(screen.getByText(/In Words, use Check your level/)).toBeVisible();
     expect(screen.getByRole("button", { name: "Back" })).toBeVisible();
     expect(screen.queryByRole("button", { name: "Skip this" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Skip setup for now" })).toBeNull();
     await user.click(cont());
     await waitFor(() =>
       expect(addStarterLevels).toHaveBeenCalledWith(
-        { levels: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], from: 3 },
+        { levels: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], from: 1 },
         expect.any(Function),
       ),
     );
@@ -185,31 +182,13 @@ describe("onboarding", () => {
     const { user } = setup({ addStarterLevels });
     await user.click(await screen.findByRole("radio", { name: /^No/ }));
     await user.click(cont());
-    await screen.findByRole("heading", { name: "The most common words" });
+    await screen.findByRole("heading", { name: "You start with the 500 most common words" });
     await user.click(cont());
     expect(await screen.findByText("Adding words… 1,500 of 4,930")).toBeVisible();
-    expect(
-      screen.getByRole("checkbox", { name: /Start with the most common words/ }),
-    ).toBeDisabled();
-    expect(screen.getByRole("radio", { name: /^A2/ })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Back" })).toBeDisabled();
     expect(cont()).toBeDisabled();
     act(() => finish());
     expect(await screen.findByRole("heading", { name: "You are ready" })).toBeVisible();
-  });
-
-  it("no Anki: the most common words can be left out", async () => {
-    const addStarterLevels = vi.fn(async () => ({ added: 0, skipped: 0 }));
-    const { user } = setup({ addStarterLevels });
-    await user.click(await screen.findByRole("radio", { name: /^No/ }));
-    await user.click(cont());
-    await user.click(
-      await screen.findByRole("checkbox", { name: /Start with the most common words/ }),
-    );
-    expect(screen.queryByRole("radio", { name: /^A1/ })).toBeNull();
-    await user.click(cont());
-    expect(await screen.findByRole("heading", { name: "You are ready" })).toBeVisible();
-    expect(addStarterLevels).not.toHaveBeenCalled();
   });
 
   it("on a phone: Connect to your server after the Anki question, Not now goes on", async () => {
@@ -219,19 +198,15 @@ describe("onboarding", () => {
       const { user } = setup();
       await user.click(await screen.findByRole("radio", { name: /^No/ }));
       await user.click(cont());
-      expect(
-        await screen.findByRole("heading", { name: "Sync with your other devices" }),
-      ).toBeVisible();
-      expect(
-        screen.getByText(/Connect to your Vuurtoren server to keep your words and texts the same/),
-      );
+      expect(await screen.findByRole("heading", { name: "Connect your phone" })).toBeVisible();
+      expect(screen.getByText("Your phone needs a computer or a server to read new texts."));
       expect(await screen.findByLabelText("Pairing code")).toBeVisible();
       await user.click(screen.getByRole("button", { name: "Not now" }));
-      expect(await screen.findByRole("heading", { name: "The most common words" })).toBeVisible();
-      await user.click(screen.getByRole("button", { name: "Back" }));
       expect(
-        await screen.findByRole("heading", { name: "Sync with your other devices" }),
+        await screen.findByRole("heading", { name: "You start with the 500 most common words" }),
       ).toBeVisible();
+      await user.click(screen.getByRole("button", { name: "Back" }));
+      expect(await screen.findByRole("heading", { name: "Connect your phone" })).toBeVisible();
     } finally {
       vi.mocked(currentDevice).mockImplementation(() => real);
     }
@@ -244,9 +219,7 @@ describe("onboarding", () => {
       const { user, saveLanguageProfile } = setup();
       await user.click(await screen.findByRole("radio", { name: /^Yes/ }));
       await user.click(cont());
-      expect(
-        await screen.findByRole("heading", { name: "Sync with your other devices" }),
-      ).toBeVisible();
+      expect(await screen.findByRole("heading", { name: "Connect your phone" })).toBeVisible();
       expect(saveLanguageProfile.mock.calls[0]![0].mode).toBe("native");
       await user.click(screen.getByRole("button", { name: "Not now" }));
       expect(await screen.findByRole("heading", { name: "Your Anki cards" })).toBeVisible();
@@ -254,7 +227,9 @@ describe("onboarding", () => {
       expect(screen.getByLabelText("Choose a file")).toHaveAttribute("accept", ".apkg,.colpkg");
       expect(screen.queryByRole("heading", { name: "Connect Anki" })).toBeNull();
       await user.click(cont());
-      expect(await screen.findByRole("heading", { name: "The most common words" })).toBeVisible();
+      expect(
+        await screen.findByRole("heading", { name: "You start with the 500 most common words" }),
+      ).toBeVisible();
     } finally {
       vi.mocked(currentDevice).mockImplementation(() => real);
     }
@@ -271,8 +246,10 @@ describe("onboarding", () => {
     try {
       const { user } = setup();
       await user.click(await screen.findByRole("button", { name: "Save and continue" }));
-      expect(await screen.findByRole("heading", { name: "The most common words" })).toBeVisible();
-      expect(screen.queryByRole("heading", { name: "Sync with your other devices" })).toBeNull();
+      expect(
+        await screen.findByRole("heading", { name: "You start with the 500 most common words" }),
+      ).toBeVisible();
+      expect(screen.queryByRole("heading", { name: "Connect your phone" })).toBeNull();
     } finally {
       vi.mocked(currentDevice).mockImplementation(() => real);
     }
@@ -282,7 +259,9 @@ describe("onboarding", () => {
     const { user } = setup();
     await user.click(await screen.findByRole("radio", { name: /^No/ }));
     await user.click(cont());
-    expect(await screen.findByRole("heading", { name: "The most common words" })).toBeVisible();
+    expect(
+      await screen.findByRole("heading", { name: "You start with the 500 most common words" }),
+    ).toBeVisible();
   });
 
   it("import from Anki: confirmed decks are moved into Vuurtoren", async () => {
