@@ -162,7 +162,7 @@ describe("onboarding", () => {
     expect(screen.getAllByText(/Lower levels wait until you turn them on/)).toHaveLength(1);
     expect(screen.getByRole("button", { name: "Back" })).toBeVisible();
     expect(screen.queryByRole("button", { name: "Skip this" })).toBeNull();
-    expect(screen.getByRole("button", { name: "Skip setup for now" })).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Skip setup for now" })).toBeNull();
     await user.click(cont());
     await waitFor(() =>
       expect(addStarterLevels).toHaveBeenCalledWith(
@@ -315,13 +315,23 @@ describe("onboarding", () => {
     expect(await screen.findByRole("heading", { name: "You are ready" })).toBeVisible();
   });
 
-  it("resumes at the saved step and can be skipped", async () => {
+  it("resumes at the saved step and can't be skipped", async () => {
     localStorage.setItem("vuurtoren.onboarding", JSON.stringify({ step: "anki" }));
-    const { user, history } = setup();
+    setup();
     expect(await screen.findByRole("heading", { name: "Connect Anki" })).toBeVisible();
-    await user.click(screen.getByRole("button", { name: "Skip setup for now" }));
-    await waitFor(() => expect(history.location.pathname).toBe("/"));
-    expect(localStorage.getItem("vuurtoren.onboarding.skipped")).toBe("1");
+    expect(screen.queryByRole("button", { name: "Skip setup for now" })).toBeNull();
+  });
+
+  it("brings the learner back to an unfinished onboarding, even with a profile saved", async () => {
+    // The profile is saved after "Do you use Anki?"; leaving later must not land in the app.
+    localStorage.setItem(
+      "vuurtoren.onboarding",
+      JSON.stringify({ step: "starter", usesAnki: false }),
+    );
+    const base = createMockServices({ latencyMs: 0 });
+    const history = createMemoryHistory({ initialEntries: ["/words"] });
+    render(<App services={base} history={history} />);
+    await waitFor(() => expect(history.location.pathname).toBe("/welcome"));
   });
 
   it("is never shown in demo mode or once a profile exists", async () => {

@@ -38,3 +38,6 @@ apps/desktop/src-tauri/sidecar/
 
 # internal plan and mocks (not published)
 .plan/
+
+# starter 15000 add-on review (work in progress, not published yet)
+content/starter/addon-review/

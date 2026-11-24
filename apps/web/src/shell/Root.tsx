@@ -1,12 +1,13 @@
 /**
- * Root route: the app shell, or the full-page onboarding at /welcome. A new learner (no language
- * profile, not in ?demo, has not skipped setup) is sent to onboarding once.
+ * Root route: the app shell, or the full-page onboarding at /welcome. A learner with no language
+ * profile, or with an onboarding they started and didn't finish, is sent to onboarding (never in
+ * ?demo). Onboarding can't be skipped.
  */
 import { useQuery } from "@tanstack/react-query";
 import { Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { useServices } from "../services/context.js";
-import { onboardingSkipped } from "../screens/onboarding/skip.js";
+import { onboardingUnfinished } from "../screens/onboarding/unfinished.js";
 import { AppShell } from "./AppShell.js";
 import { useAppInfo } from "./AppInfo.js";
 
@@ -27,7 +28,7 @@ export function Root() {
     enabled: !demo,
     staleTime: Infinity,
   });
-  const needsSetup = !demo && profile.data === null && !onboardingSkipped();
+  const needsSetup = !demo && (profile.data === null || onboardingUnfinished());
   useEffect(() => {
     if (needsSetup && path !== "/welcome") void navigate({ to: "/welcome", replace: true });
   }, [needsSetup, path, navigate]);

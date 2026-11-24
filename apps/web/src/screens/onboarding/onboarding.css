@@ -246,8 +246,3 @@
   font-size: 13px;
   color: var(--ink-muted);
 }
-/* "Skip setup for now": one quiet link under Back and Continue. */
-.ob-skip-row {
-  margin: var(--s-4) 0 0;
-  text-align: right;
-}

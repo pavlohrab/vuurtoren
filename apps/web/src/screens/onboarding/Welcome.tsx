@@ -9,8 +9,8 @@
  *   go → (start fresh) placement check → first text.
  * On a phone, Connect to your server comes after "Do you use Anki?": new texts and translations
  * come from the server ("Not now" goes on without one).
- * Skippable; the step and choices are kept in localStorage so a reload resumes where the learner
- * was. Nothing is written to Anki here.
+ * Not skippable: the step and choices are kept in localStorage until the last step, so leaving
+ * the app (or a reload) brings the learner back where they were. Nothing is written to Anki here.
  */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
@@ -36,13 +36,13 @@ import { currentDevice } from "../../platform/index.js";
 import { storyToStart } from "../../services/stories.js";
 import { startTour } from "../../shell/Tour.js";
 import { DeckChecklist, DestinationFields, LanguageChoice, deckRows } from "./deckParts.js";
-import { setSkipped } from "./skip.js";
+import { ONBOARDING_DRAFT } from "./unfinished.js";
 import "./onboarding.css";
 import { readLocalJSON, writeLocalJSON } from "../../storage/local.js";
 import { runAnkiSync } from "../../shell/ankiSync.js";
 import { useCanAddTexts } from "../../platform/canAddTexts.js";
 
-const STORAGE = "vuurtoren.onboarding";
+const STORAGE = ONBOARDING_DRAFT;
 
 type Step =
   | "language"
@@ -199,27 +199,9 @@ export function Welcome() {
   const next = () => go(steps.find((s) => ORDER.indexOf(s) > rank) ?? "first");
   const back = () => go(steps.findLast((s) => ORDER.indexOf(s) < rank) ?? steps[0]!);
 
-  // Skipping still sets the learner up with Vuurtoren's own cards, so Review and the word
-  // actions work; Settings can switch to Anki later.
-  const skip = async () => {
-    setSkipped(true);
-    const current = await services.languageProfile();
-    if (current?.mode !== "native") {
-      const lang = current?.lang ?? (await services.getSettings()).lang;
-      await services.saveLanguageProfile({
-        ...(current ?? defaultProfile(lang, [], "native")),
-        mode: "native",
-      });
-      await qc.invalidateQueries();
-    }
-    void navigate({ to: "/" });
-  };
   const [server, setServer] = useState<"none" | "paired" | "on">("none");
   const onServerState = useCallback((s: "none" | "paired" | "on") => setServer(s), []);
-  const finish = () => {
-    writeDraft(null);
-    setSkipped(false);
-  };
+  const finish = () => writeDraft(null);
 
   // ---- Anki
   const status = useQuery({
@@ -407,7 +389,6 @@ export function Welcome() {
                 {server === "on" ? "Continue" : "Not now"}
               </Button>
             </div>
-            <SkipSetup onSkip={skip} />
           </section>
         ) : (
           <form onSubmit={submit}>
@@ -855,22 +836,10 @@ export function Welcome() {
                 </Button>
               ) : null}
             </div>
-            {draft.step === "first" ? null : <SkipSetup onSkip={() => void skip()} />}
           </form>
         )}
       </main>
     </div>
-  );
-}
-
-/** "Skip setup for now", one quiet link under the buttons. */
-function SkipSetup({ onSkip }: { onSkip: () => void }) {
-  return (
-    <p className="ob-skip-row">
-      <button type="button" className="ob-skip" onClick={onSkip}>
-        Skip setup for now
-      </button>
-    </p>
   );
 }
 

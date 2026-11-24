@@ -5,6 +5,7 @@
  * screenshot of each screen there.
  */
 import { type Locator, type Page, expect, test } from "@playwright/test";
+import { finishOnboarding } from "./onboarding.js";
 import { fakeAnki } from "./fakeAnki.js";
 import { fakeNlp } from "./fakeNlp.js";
 
@@ -267,7 +268,8 @@ for (const size of SIZES) {
         localStorage.setItem("vuurtoren-reader-prefs", JSON.stringify({ english: "always" })),
       );
       await page.goto("/");
-      await page.getByRole("button", { name: "Skip setup for now" }).click({ timeout: 40_000 });
+      await finishOnboarding(page);
+      await page.goto("/");
       await page
         .getByRole("button", { name: /De koe op de toren/ })
         .first()

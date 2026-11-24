@@ -5,6 +5,7 @@
  * answer one practice exercise; in native mode, add a word and review it.
  */
 import { type Page, expect, test } from "@playwright/test";
+import { finishOnboarding } from "./onboarding.js";
 import { fakeAnki } from "./fakeAnki.js";
 import { SAMPLE_TEXT, fakeNlp } from "./fakeNlp.js";
 
@@ -105,14 +106,14 @@ test("browser storage mode", async ({ page }) => {
   await fakeNlp(page);
   await fakeAnki(page);
   await page.goto("/");
-  await page.getByRole("button", { name: "Skip setup for now" }).click();
+  await finishOnboarding(page);
   await importAndRead(page);
   await inspectWord(page);
   await page.getByRole("button", { name: /^Add to / }).click();
   await expect(page.getByText("Added to your words").first()).toBeVisible();
   await expect(page.locator(".inspector-panel")).toContainText("Your card");
   await changeTextSize(page);
-  // Skipping setup means Vuurtoren keeps the cards: the word is waiting in Review.
+  // Without Anki, Vuurtoren keeps the cards: the word is waiting in Review.
   await page.goto("/review");
   await expect(page.locator(".review-word")).toContainText("buurvrouw");
   expect(errors).toEqual([]);
