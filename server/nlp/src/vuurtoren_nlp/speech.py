@@ -66,14 +66,14 @@ def _load():  # noqa: ANN202 (PiperVoice is optional at import time)
 
 
 def synthesize(text: str, rate: float = 1.0) -> bytes:
-    """``text`` said in Dutch, as a WAV file; ``rate`` 0.5-2 (1 is normal)."""
+    """``text`` said in Dutch, as a WAV file; ``rate`` 0.1-2 (1 is normal)."""
     text = " ".join(text.split())[:MAX_CHARS]
     if not text:
         raise ServiceError(422, "Nothing to say.")
     voice = _load()
     from piper import SynthesisConfig
 
-    config = SynthesisConfig(length_scale=SLOWER / max(0.5, min(2.0, rate)))
+    config = SynthesisConfig(length_scale=SLOWER / max(0.1, min(2.0, rate)))
     buf = io.BytesIO()
     with _lock, wave.open(buf, "wb") as out:
         voice.synthesize_wav(text, out, syn_config=config)

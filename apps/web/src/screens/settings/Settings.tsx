@@ -39,6 +39,14 @@ import { ServerStatus } from "./ServerStatus.js";
 import { useAutosave } from "./useAutosave.js";
 import "./settings.css";
 
+/** Voice speeds, slowest first: 1 is normal, the same pace for the recordings and every voice. */
+const AUDIO_RATES = [0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1] as const;
+
+function audioRateOf(v: string): number {
+  const n = Number(v);
+  return AUDIO_RATES.find((r) => r === n) ?? 1;
+}
+
 export type SectionId = "words" | "reading" | "devices" | "ai" | "data";
 
 const SECTIONS: { id: SectionId; label: string; hint: string; icon: ReactNode }[] = [
@@ -330,11 +338,8 @@ function ReadingSettings() {
           <Select
             label="Speed"
             value={String(form.audioRate)}
-            options={[
-              { value: "0.8", label: "0.8×" },
-              { value: "1", label: "1×" },
-            ]}
-            onValueChange={(v) => set({ audioRate: v === "0.8" ? 0.8 : 1 })}
+            options={AUDIO_RATES.map((r) => ({ value: String(r), label: `${r}×` }))}
+            onValueChange={(v) => set({ audioRate: audioRateOf(v) })}
           />
         </div>
       </div>

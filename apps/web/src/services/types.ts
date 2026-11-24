@@ -104,7 +104,7 @@ export interface Settings {
   /** Review: after the word, say the card's sentence (on by default). */
   autoplaySentence: boolean;
   /** Playback speed of spoken words and sentences. */
-  audioRate: 0.8 | 1;
+  audioRate: number;
 }
 export interface ImportOptions {
   review?: OcrReviewHandler;
