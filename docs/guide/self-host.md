@@ -1,14 +1,17 @@
 # Self-host Vuurtoren
 
-Your own Vuurtoren server does two things. Your devices sync through it, with everything locked
-with your passphrase, so the server can't read your data and keeps no words or texts of its own.
-And it's a language server for your phone: it prepares and translates the texts you add on the
-phone.
+Most people don't need a server. The desktop app does everything by itself: it keeps your words,
+reads your texts and prepares them, all on your computer. Your phone is for reading. It gets the
+texts your computer prepared through sync, by WebDAV (Nextcloud, a NAS) or through your own server
+(see [Sync your devices](sync.md)), and reads them offline.
 
-The app itself runs on your computer and your phone, not on the server. The server's address only
-shows one page, **Your devices**, where you sign in and add or remove devices. The dictionaries,
-the translation model and the recordings come from `data.vuurtoren.app`, and the server downloads
-what it needs by itself, once.
+Your own server is for when you want more. Your devices sync through it, with everything locked
+with your passphrase, so the server can't read your data. And it prepares texts for your phone, so
+you can add a text on the phone, or take a photo of a page, without your computer.
+
+The server doesn't run the app itself. Its address shows one page, **Your devices**, where you sign
+in and add or remove devices. The dictionaries, the translation model and the recordings come from
+`data.vuurtoren.app`, and the server downloads what it needs by itself, once.
 
 ## No computer that stays on?
 
@@ -17,6 +20,9 @@ a month, and that's enough: the language server keeps its dictionaries and the t
 memory, so don't go below 2 GB. When you create it, choose the **Docker CE** app, so Docker is
 already there, and log in with SSH. From there it works the same as on a NAS, so follow the steps
 below.
+
+Don't want to run anything? **Vuurtoren Cloud** is planned: the same server, run for you, and you
+just sign in.
 
 ## What you need
 
