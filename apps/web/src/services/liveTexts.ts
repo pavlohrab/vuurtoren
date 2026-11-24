@@ -32,7 +32,12 @@ import { DEFAULT_STAIRCASE, type LearnerCache } from "./liveLearner.js";
 import { fetchTexts } from "./textBatch.js";
 import { nlpOutage } from "./liveSettings.js";
 import { ImportCancelledError } from "./ocrReview.js";
-import { contextGloss, hasDetachedParticle, meaningInSentence } from "./contextGloss.js";
+import {
+  contextGloss,
+  hasDetachedParticle,
+  meaningInSentence,
+  oneMeaning,
+} from "./contextGloss.js";
 import { pageTitle, pdfTitle } from "./importTitle.js";
 import type {
   AppServices,
@@ -534,14 +539,16 @@ export function createLiveTexts({
               : { text: chosen.text };
           else {
             const note = notes.get(it.key);
-            out[it.i] = note ? { text: usual, note } : { text: usual };
+            const one = oneMeaning(usual);
+            out[it.i] = note ? { text: one, note } : { text: one };
           }
         } else if (a && (a.confident || !usual)) {
           // No meaning, or only a compound guess: the English it became in its sentence.
           out[it.i] = { text: a.text, note: IN_SENTENCE };
         } else if (usual) {
           const note = notes.get(it.key);
-          out[it.i] = note ? { text: usual, note } : { text: usual };
+          const one = oneMeaning(usual);
+          out[it.i] = note ? { text: one, note } : { text: one };
         }
       }
       return out;

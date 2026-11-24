@@ -1,6 +1,6 @@
 import type { AnalyzedToken } from "@app/core";
 import { describe, expect, it } from "vitest";
-import { contextGloss, meaningInSentence, withoutArticle } from "./contextGloss.js";
+import { contextGloss, meaningInSentence, oneMeaning, withoutArticle } from "./contextGloss.js";
 
 /** Tokens of one sentence: [text, lemma, pos, morph?]. */
 function sentence(words: [string, string, string, string?][]): AnalyzedToken[] {
@@ -94,13 +94,22 @@ describe("meaningInSentence", () => {
     translation: string,
   ) => meaningInSentence({ pos, usual, meanings, aligned: { text, confidence }, translation });
 
-  it("keeps the usual meaning when the sentence says it (walks → to walk, kids → child, kid)", () => {
+  it("shows the usual meaning as the sentence says it (to walk → walks, child, kid → kids)", () => {
     expect(
       pick("VERB", "to walk", ["to walk"], "walks", 0.24, "Every morning he walks his dog."),
-    ).toBeNull();
+    ).toEqual({ text: "walks", inSentence: false });
     expect(
       pick("NOUN", "child, kid", ["child, kid"], "kids", 0.36, "The kids come by a lot."),
-    ).toBeNull();
+    ).toEqual({ text: "kids", inSentence: false });
+    expect(
+      pick("VERB", "to say, to tell", ["to say, to tell"], "says", 0.4, '"Well," says the mayor.'),
+    ).toEqual({ text: "says", inSentence: false });
+  });
+
+  it("one meaning for the page, never a list", () => {
+    expect(oneMeaning("child, kid")).toBe("child");
+    expect(oneMeaning("to say, to tell")).toBe("to say");
+    expect(oneMeaning("the house")).toBe("house");
   });
 
   it("picks the meaning the sentence uses among the word's own ('bank': couch, not bank)", () => {

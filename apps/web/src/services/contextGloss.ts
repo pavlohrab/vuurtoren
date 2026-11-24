@@ -152,17 +152,26 @@ export function meaningInSentence(opts: {
   const { pos, usual, meanings, aligned, translation, separable = false } = opts;
   // A separable verb ("komen … langs") means more than the part the alignment sees.
   if (!CONTENT_POS.has(pos) || separable || !aligned?.text) return null;
-  // The usual meaning is what the sentence says: keep it.
-  if (usual && alternatives(usual).some((alt) => says(aligned.text, alt))) return null;
+  // One of the word's meanings is what the sentence says: show it as the sentence says it
+  // ("zegt" → "says", not "to say, to tell"), so the page reads easily (m5, RD4).
+  const asSaid = { text: lowerFirst(aligned.text), inSentence: false };
+  if (usual && alternatives(usual).some((alt) => says(aligned.text, alt))) return asSaid;
   if (aligned.confidence >= PICK_MIN) {
     for (const m of meanings)
-      for (const alt of alternatives(m))
-        if (says(aligned.text, alt)) return { text: alt, inSentence: false };
+      for (const alt of alternatives(m)) if (says(aligned.text, alt)) return asSaid;
   }
   const strayed = !!usual && !!translation && !inTranslation(usual, translation);
   if (aligned.confidence >= REPLACE_MIN || strayed || !usual)
     return { text: lowerFirst(aligned.text), inSentence: true };
   return null;
+}
+
+/**
+ * One meaning for the page, never a list: the first alternative ("child, kid" → "child",
+ * "to say, to tell" → "to say"). The word sheet still shows them all.
+ */
+export function oneMeaning(meaning: string): string {
+  return alternatives(meaning)[0] ?? meaning;
 }
 
 /** "Children" at the start of the English sentence → "children" (not "TV" or "I"). */
