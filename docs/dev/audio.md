@@ -38,11 +38,12 @@ SHA-1 of its exact text. The app finds a clip from the text alone:
 
 The app plays the clip when the pack has it, else the system's Dutch voice, else nothing.
 
-A computer without a Dutch system voice (Linux: WebKitGTK has no speech engine) gets Vuurtoren's
-own: the `tts-nl` pack (Piper `nl_NL-mls-medium`, CC BY 4.0, 72 MB, from
-`server/nlp/scripts/fetch_tts_voice.py`), said by the language server at `GET /speech?text=&rate=`
-(WAV). The app turns it into `speechSynthesis` (`apps/web/src/platform/ownVoice.ts`) only when
-no system Dutch voice shows up and `/health` reports `data.speech`.
+Most Linux computers have no Dutch system voice, because WebKitGTK has no speech engine. For them
+there is one more pack, `tts-nl`. It is Piper's `nl_NL-mls-medium` voice (CC BY 4.0, 72 MB), and
+`server/nlp/scripts/fetch_tts_voice.py` downloads it. The language server reads text with it at
+`GET /speech?text=&rate=` and sends back a WAV. The app only uses it when no Dutch system voice
+shows up and `/health` says `data.speech` is true. Then `apps/web/src/platform/ownVoice.ts` puts
+it in place of `speechSynthesis`, so the rest of the app works the same as with a system voice.
 
 ## Where the pack lives
 
@@ -54,8 +55,8 @@ no system Dutch voice shows up and `/health` reports `data.speech`.
   bundles what its `--packs` folder holds.
 - **Server:** the language server downloads it with the other packs, or reads it from
   `$VUURTOREN_AUDIO_DIR`.
-- **Phone:** it reads the clips it downloaded (Settings → Reading → Voice), else asks your server;
-  without either it uses the phone's voice.
+- **Phone:** it plays the clips it downloaded in Settings → Reading → Voice. If it doesn't have
+  them it asks your server, and without either it uses the phone's own voice.
 
 ## Make the clips again
 

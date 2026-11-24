@@ -47,10 +47,11 @@ also words you're still learning. **Focus mode** hides everything except the pag
 Grammar like inversion or a separable verb is marked in the text and explained in the word card, and
 every mark links to its topic in **Grammar** (63 topics, A1 to C1).
 
-The common words, their example sentences and the stories are recorded in a female and a male voice
-(Settings → Reading → **Voice**). Other words use your device's own Dutch voice. A computer
-without one (most Linux desktops) uses Vuurtoren's own Dutch voice instead, downloaded with the
-other language data on the first start. On a phone the recordings are a download in the same
-place (about 230 MB); until then the phone's voice speaks. **Test the voice** plays a word and
-says which voice you heard. A crossed-out speaker on a phone means it has no Dutch voice; add one
-in its speech settings.
+The common words, their example sentences and the stories are recorded in a female and a male
+voice, and you can pick one in Settings → Reading → **Voice**. For other words the app uses the
+Dutch voice of your computer or phone. Most Linux computers don't have one, so there Vuurtoren
+uses its own Dutch voice, which it downloads with the rest of the language data when you start it
+the first time. On a phone you download the recordings in the same place in Settings. It's about
+230 MB, and until it's there the phone's own voice reads everything. If you want to know which
+voice you hear, press **Test the voice**. If the speaker is crossed out on your phone, the phone
+has no Dutch voice, and you can add one in its speech settings.

@@ -286,7 +286,7 @@ export function Read() {
         description={
           canAdd
             ? "Start with a story above, or paste an article, add a web page, a PDF or a photo."
-            : "Start with a story above. Your own texts come from your computer: add them there and they arrive here when you sync. With your own server you can add them on the phone too."
+            : "Start with a story above. Your own texts come from your computer, so add them there and they come to the phone when you sync. If you have your own server, you can add them on the phone too."
         }
         action={
           canAdd ? (

@@ -21,10 +21,11 @@ or your own server does, and later Vuurtoren Sync will too.
 "Fully" means with the meaning of each word in its sentence, the translation of each sentence,
 side by side and the grammar marks.
 
-**The recordings** of the common words, their sentences and the stories are a download on the
-phone (about 230 MB, in Settings → Reading → **Voice**). Without them, and for words that have no
-recording, your phone's own Dutch voice speaks. **Test the voice** plays a word and tells you which
-voice you heard.
+**The recordings** of the common words, their sentences and the stories you download on the phone,
+in Settings → Reading → **Voice**. It's about 230 MB, and on the first start the app begins the
+download by itself if you are on Wi-Fi. Until it's done, and for words that were never recorded,
+the phone reads with its own Dutch voice. **Test the voice** plays one word and tells you which
+voice it was.
 
 **How the computer helps the phone.** When the desktop app reads a new text, it also prepares
 everything the phone needs for it, and sync brings it over with the text. So add a text on your

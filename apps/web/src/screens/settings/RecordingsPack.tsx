@@ -61,12 +61,12 @@ export function VoiceTest({ rate }: { rate: number }) {
       {result ? (
         <p className="k-hint" role="status" style={{ margin: 0 }}>
           {result === "clip"
-            ? "You heard a recording."
+            ? "That was a recording."
             : result === "voice"
               ? ownVoiceInUse()
-                ? "You heard Vuurtoren's own Dutch voice: words without a recording sound like this."
-                : "You heard your device's own Dutch voice: words without a recording sound like this."
-              : "No sound: there is no recording here and your device has no Dutch voice. Add one in your device's speech settings (on Android: Settings → System → Languages → Text-to-speech)."}
+                ? "That was Vuurtoren's own Dutch voice. Words without a recording sound like this."
+                : "That was your device's own Dutch voice. Words without a recording sound like this."
+              : "Nothing played, because there is no recording here and your device has no Dutch voice. You can add one in your device's speech settings. On Android it's in Settings → System → Languages → Text-to-speech."}
         </p>
       ) : null}
     </div>
@@ -130,8 +130,8 @@ export function RecordingsPack({ autoStart = false }: { autoStart?: boolean }) {
       {s.installed ? (
         <>
           <p className="k-hint" style={{ margin: 0 }}>
-            Installed ({formatBytes(s.bytes)}). Words and sentences use the recordings, also without
-            a server.
+            The recordings are on this phone ({formatBytes(s.bytes)}), so words and sentences play
+            even without a server.
           </p>
           <div className="row">
             <Button variant="ghost" onClick={() => remove.mutate()} disabled={remove.isPending}>
@@ -156,8 +156,8 @@ export function RecordingsPack({ autoStart = false }: { autoStart?: boolean }) {
       ) : (
         <>
           <p className="k-hint" style={{ margin: 0 }}>
-            The recorded words, sentences and stories, in both voices. Without them your
-            phone&rsquo;s own Dutch voice speaks.
+            These are the recorded words, sentences and stories, in both voices. Without them your
+            phone reads with its own Dutch voice.
           </p>
           {install.isError ? (
             <p className="error-text" role="alert" style={{ margin: 0 }}>
@@ -167,7 +167,7 @@ export function RecordingsPack({ autoStart = false }: { autoStart?: boolean }) {
           ) : null}
           {waitingForWifi ? (
             <p className="k-hint" style={{ margin: 0 }}>
-              You are on mobile data: this is a large download.
+              You are on mobile data, and this is a big download.
             </p>
           ) : null}
           <div className="row">
