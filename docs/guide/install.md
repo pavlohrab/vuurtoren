@@ -12,9 +12,10 @@ The app is not signed yet, so your computer may warn you the first time. On Wind
 Privacy & Security** and click **Open Anyway**. On Linux, make the AppImage executable
 (`chmod +x Vuurtoren*.AppImage`) and run it.
 
-When Vuurtoren starts for the first time, it downloads its language data, which is about 330 MB:
-the dictionary, the example sentences, the translation model and the recordings. If that computer has no internet, take the
-installer whose name starts with `Vuurtoren_offline_` instead. It has all of this inside.
+When Vuurtoren starts for the first time, it downloads its language data, about 390 MB. That's the
+dictionary, the example sentences, the translation model, the recordings and a Dutch voice for
+computers that don't have one. If that computer has no internet, take the installer whose name
+starts with `Vuurtoren_offline_` instead, because it has all of this inside.
 
 ## On your phone
 
@@ -25,7 +26,7 @@ and what it needs your computer for, is on [On your phone](../phones.md).
 
 ## The first start
 
-First Vuurtoren asks which language you're learning, and then: **Do you use Anki?**
+Vuurtoren first asks: **Do you use Anki?**
 
 If you say **no**, Vuurtoren keeps your words and your reviews itself, and you don't need anything
 else. It asks where new words should start (from the most common words, or a bit further if you

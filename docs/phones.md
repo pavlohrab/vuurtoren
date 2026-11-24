@@ -1,9 +1,9 @@
 # Vuurtoren on your phone
 
 The phone app is the same app as on your computer. It keeps its own copy of your data and works
-offline. The one thing it can't do by itself is prepare a new text, because that needs about 330 MB
-of language data that only runs on a computer or a server. So your computer does it for the phone,
-or your own server does, and later Vuurtoren Sync will too.
+offline. The one thing it can't do by itself is prepare a new text, because that needs the language
+server, and that only runs on a computer or a server. So your computer does it for the phone, or
+your own server does, and later Vuurtoren Sync will too.
 
 ## What works where
 
@@ -21,9 +21,9 @@ or your own server does, and later Vuurtoren Sync will too.
 "Fully" means with the meaning of each word in its sentence, the translation of each sentence,
 side by side and the grammar marks.
 
-**The recordings** of the common words, their sentences and the stories you download on the phone,
-in Settings → Reading → **Voice**. It's about 230 MB, and on the first start the app begins the
-download by itself if you are on Wi-Fi. Until it's done, and for words that were never recorded,
+**The recordings** of the common words, their sentences and the stories are a download on the
+phone, in Settings → Reading → **Voice**. It's about 230 MB, and on the first start the app begins
+the download by itself if you are on Wi-Fi. Until it's done, and for words that were never recorded,
 the phone reads with its own Dutch voice. **Test the voice** plays one word and tells you which
 voice it was.
 
@@ -43,7 +43,8 @@ iPhone: not yet.
 
 ## Connect it
 
-Settings → Your devices. See [Sync](guide/sync.md).
+Connect your phone to your other devices in Settings → Your devices. How that works is on
+[Sync your devices](guide/sync.md).
 
-Deleting the app deletes its data on the phone. When you install it again it starts fresh; your
-data comes back through sync, or from a backup file (Settings → Data).
+Deleting the app deletes its data on the phone. When you install it again it starts fresh, and your
+data comes back through sync or from a backup file (Settings → Data).

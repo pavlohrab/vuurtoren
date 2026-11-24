@@ -7,9 +7,9 @@ to forget.
 
 Open **Words**. At the top it says how many cards are due and about how long they take. In the
 review you see the word, try to remember it, show the answer and say how well you knew it:
-**Again**, **Hard**, **Good** or **Easy**. On a computer that's the keys 1 to 4 (Space is Good, Z is
-**Undo**). On a phone you swipe: right if you know it, left if you don't, up if you can recall it
-easily, also before you show the answer.
+**Again**, **Hard**, **Good** or **Easy**. On a computer you can use the keys 1 to 4, Space for Good and Z
+to undo. On a phone you swipe right if you know it, left if you don't, and up if it was easy. You
+can swipe before you show the answer too.
 
 Your answer decides when the card comes back, with FSRS, the algorithm Anki also offers. A word you
 knew easily comes back after a long time, a word you forgot comes back soon, and the schedule adapts
@@ -20,7 +20,7 @@ longer, and a word you had to look up comes back today.
 
 Ten new words join your reviews every day, unless you change it in Settings → Your words → **New
 words a day**. The words you added while reading come first, then the next common words of your
-level. They are mixed in between your reviews, not saved for the end.
+level. They come in between your reviews, so you don't get them all at the end.
 
 You get at most 200 reviews a day. If you were away for a week, the rest waits for the next days,
 so you don't come back to a mountain of cards. You can change it in Settings → Your words →

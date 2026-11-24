@@ -76,9 +76,9 @@ added on two devices are both kept, and the same word added twice is one word.
 
 ## How fast
 
-While Vuurtoren is open on two devices, a change on one shows up on the other within about 5 to 20
-seconds. It syncs when it opens, a few seconds after a change, every 15 seconds and when you come
-back to it, and it sends what's left when you close it.
+While Vuurtoren is open on two devices, a change on one shows up on the other within about 20
+seconds, often sooner. It also syncs when you open it or come back to it, and it sends what's left
+when you close it.
 
 ## Good to know
 

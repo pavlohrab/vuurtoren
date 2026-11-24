@@ -2,22 +2,22 @@
 
 ## Next
 
-- **Voice for the cards you create,** made once with your own speech API key (Google Cloud,
-  Gemini, OpenAI, ElevenLabs, Azure) and kept locally.
+- **Voice for the cards you create.** Recordings for the words you add, made once with your own
+  speech key (Google Cloud, Gemini, OpenAI, ElevenLabs or Azure) and kept on your device.
 
 ## Then
 
-- **Review reminders.** Opt-in local notifications driven by the due queue, at most one a day,
-  with snooze and a hidden-count option.
-- **Optional gamification tied to recall.** A weekly goal such as "Review on 3 days", no XP or
-  streak loss.
+- **Review reminders.** If you turn them on, the app reminds you when you have cards to review, at
+  most once a day. You can snooze it, and hide how many cards are waiting.
+- **Optional gamification.** A weekly goal, like reviewing on 3 days, without points or a streak
+  you can lose.
 
 ## Later
 
 - **Weave reading.** An English text with Dutch islands that grow as you learn.
 - **Vuurtoren Sync.** Sign in on each device and they sync, with nothing to set up.
-- **Screen-sized pages.** One screenful per swipe in paged mode, kept across rotation and font
-  size.
+- **Screen-sized pages.** In paged mode, one swipe moves one screen, also when you turn the phone
+  or change the text size.
 
 ## Known issues
 
@@ -26,8 +26,8 @@ We're working on these:
 - The Windows and macOS installers are built but not yet tested on a real machine.
 - When you import a course book, a page can join the page before it, and the outline then says
   "No text on this page".
-- A text added on a phone without a language server waits until your computer has prepared
-  it. See [On your phone](phones.md).
+- A text added on a phone without a language server waits until your computer has prepared it.
+  See [On your phone](phones.md).
 
 Hard to fix, because they come from the tools Vuurtoren builds on:
 

@@ -1,7 +1,7 @@
 # How Vuurtoren works
 
 Vuurtoren keeps track of the words you know, and plans each page you read around them. None of it
-uses AI, and all of it runs on your computer. Here is the short version. The full story, with the
+uses AI, and all of it runs on your computer. This page is the short version. The full story, with the
 rules and the numbers, is in [the developer docs](dev/algorithms.md).
 
 ## It knows which words you know
@@ -15,9 +15,9 @@ its next review, and a word you had to look up comes back today.
 
 Before you read a page of about 150 words, Vuurtoren plans it. It picks about three new words for
 you to learn, from the most common words you don't know yet, preferably ones that come back later in
-the text, and leaves them untranslated. Every other word you don't know gets its translation next to
-it. When reading goes well, the next pages get a few more new words, and when you look up a lot,
-fewer.
+the text, and leaves them untranslated. You can tap any other word to see what it means, and in
+Gloss mode the words you may not know get their English above them. When reading goes well, the
+next pages get a few more new words, and when you look up a lot, they get fewer.
 
 This follows reading research. You can follow a text when you know about 95% of its words, and read
 it comfortably at 98% (Laufer & Ravenhorst-Kalovski 2010; Schmitt, Jiang & Grabe 2011), and a new

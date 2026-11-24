@@ -40,7 +40,7 @@ to find your way.
 
 <table>
   <tr>
-    <td width="50%" valign="middle"><b>Read at your level.</b><br><br>You can read the stories that come with the app, or add your own text: paste it, give a web address, or choose a PDF or a photo of a page. Every page is planned around the words you know. About three new words are left for you to learn, and every other word you don't know gets its English next to it, so you don't get stuck. Tap a word to see what it means in that sentence and the grammar around it.</td>
+    <td width="50%" valign="middle"><b>Read at your level.</b><br><br>You can read the stories that come with the app, or add your own text: paste it, give a web address, or choose a PDF or a photo of a page. Every page is planned around the words you know, and about three new words are left for you to learn. Tap any word to see what it means in that sentence and the grammar around it, so you don't get stuck.</td>
     <td width="50%" align="center" valign="middle">
       <picture>
         <source media="(prefers-color-scheme: dark)" srcset="docs/images/demo-reading-dark.webp">
@@ -55,7 +55,7 @@ to find your way.
         <img alt="The same page in the four reading modes: Read, Gloss, Cloze and Side by side" src="docs/images/demo-modes-light.webp" width="420">
       </picture>
     </td>
-    <td width="50%" valign="middle"><b>Four ways to read.</b><br><br>There are four ways to read the same page: plain, with the translations next to the words, with some words you know turned into blanks, or side by side with the English, where the same words have the same colour.</td>
+    <td width="50%" valign="middle"><b>Four ways to read.</b><br><br>There are four ways to read the same page: plain, with English above the words you may not know, with some words you know turned into blanks, or side by side with the English, where the same words have the same colour.</td>
   </tr>
   <tr>
     <td width="50%" valign="middle"><b>Learn the words.</b><br><br>A word you tap while reading can become a card, with the sentence you found it in. Every day a short review brings back the cards you're about to forget, scheduled with FSRS, the algorithm <a href="https://apps.ankiweb.net/">Anki</a> also offers. On a phone you just swipe. If you're starting from zero, Vuurtoren comes with about 5000 of the most common Dutch words, and if you already use Anki, you can bring your decks in or keep reviewing in Anki.</td>
@@ -120,5 +120,5 @@ Vuurtoren is free and made by one person. If it helps you, you can support it on
 ## Licence
 
 The code is MIT. The content in `content/` (the starter words and the stories) is CC BY-SA
-4.0, because the dictionary and sentence sources it is built from are; see [content/LICENSE](content/LICENSE). Vuurtoren is an independent project; it talks to Anki
+4.0, because the dictionary and sentence sources it is built from are; see [content/LICENSE](content/LICENSE). Vuurtoren is an independent project, and it talks to Anki
 through the AnkiConnect add-on.

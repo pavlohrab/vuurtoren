@@ -37,8 +37,8 @@ a Cloudflare Tunnel, but any reverse proxy with a certificate works too.
 5. Point your HTTPS address at `http://<server-ip>:<port>`. With a Cloudflare Tunnel: Zero Trust
    → Networks → Tunnels → your tunnel → Public hostnames → Add.
 
-On the first start the language server downloads its data (about 330 MB) and prepares the
-grammar examples, a few minutes in all. `docker compose logs -f nlp` shows it.
+On the first start the language server downloads its data and prepares the grammar examples,
+which takes a few minutes. You can watch it with `docker compose logs -f nlp`.
 
 ## Connect your devices
 
@@ -50,7 +50,7 @@ grammar examples, a few minutes in all. `docker compose logs -f nlp` shows it.
    server's page with the phone. Then **Join my synced data** with the same passphrase. Your words
    and texts download.
 
-Remove a lost device on the server's page: it can no longer sync.
+If you lose a device, remove it on the server's page, and it can no longer sync.
 
 ## Back it up
 
