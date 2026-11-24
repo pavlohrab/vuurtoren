@@ -94,6 +94,8 @@ export interface DesktopBridge {
   cancelScan?: () => Promise<void>;
   /** The dictionary pack on the device (phones): meanings without a server. */
   dictionary?: DeviceDictionary;
+  /** The recordings pack on the device (phones): recorded words and sentences without a server. */
+  audio?: DeviceAudio;
   /**
    * Android Back (button or gesture): while the page listens, every Back comes to it (with
    * whether the WebView has a page to go back to) and nothing happens on its own; `exit` leaves.
@@ -102,6 +104,23 @@ export interface DesktopBridge {
     listen(fn: (e: { canGoBack: boolean }) => void): () => void;
     exit(): Promise<void>;
   };
+}
+
+/** The `audio-nl` pack kept on the device (`audio.rs`). */
+export interface DeviceAudio {
+  status(): Promise<{
+    installed: boolean;
+    bytes: number;
+    download: number;
+    downloading?: boolean;
+    received?: number;
+  }>;
+  /** A clip's mp3 bytes; empty when the pack is not there or has no such clip. */
+  clip(voice: string, id: string): Promise<ArrayBuffer>;
+  /** Download and unpack it (the connected server first, else the data host). */
+  install(from?: { nlp: string; token: string } | null): Promise<"server" | "release">;
+  /** Remove it from the device. */
+  remove(): Promise<void>;
 }
 
 /** One dictionary entry, as the language server's `/gloss` gives it. */

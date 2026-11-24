@@ -224,6 +224,25 @@
               },
             })
           : undefined,
+      // The recordings pack on a phone (audio.rs): recorded words and sentences without a server.
+      audio:
+        OS === "android" || OS === "ios"
+          ? Object.freeze({
+              status: function () {
+                return invoke("audio_status");
+              },
+              // An mp3 as an ArrayBuffer (empty when the pack has no such clip).
+              clip: function (voice, id) {
+                return invoke("audio_clip", { voice: voice, id: id });
+              },
+              install: function (from) {
+                return invoke("audio_install", { from: from || null });
+              },
+              remove: function () {
+                return invoke("audio_remove");
+              },
+            })
+          : undefined,
       nlp: Object.freeze({
         status: function () {
           return invoke("nlp_status");

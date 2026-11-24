@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/mobile-schema.json",
   "identifier": "mobile",
-  "description": "The bundled page on a phone: the local database, the dictionary pack, sync with a server, its key store, the QR scanner and vuurtoren:// links.",
+  "description": "The bundled page on a phone: the local database, the dictionary and recordings packs, sync with a server, its key store, the QR scanner and vuurtoren:// links.",
   "windows": ["main"],
   "platforms": ["android", "iOS"],
   "permissions": [
@@ -21,6 +21,10 @@
     "allow-dictionary-status",
     "allow-dictionary-gloss",
     "allow-dictionary-install",
+    "allow-audio-status",
+    "allow-audio-clip",
+    "allow-audio-install",
+    "allow-audio-remove",
     "allow-app-exit",
     "barcode-scanner:allow-scan",
     "barcode-scanner:allow-cancel",

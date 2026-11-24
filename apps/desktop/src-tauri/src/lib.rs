@@ -14,6 +14,7 @@
 //! The page gets `window.__VUURTOREN_DESKTOP__` (see `bridge.js`; the name is kept on phones):
 //! the database, sync and, on a computer, AnkiConnect and the language server.
 
+mod audio;
 mod db;
 #[cfg(desktop)]
 mod desktop;
@@ -88,6 +89,9 @@ struct State {
     /// The dictionary pack is downloading (phones), and its bytes on disk so far.
     dictionary_busy: AtomicBool,
     dictionary_received: AtomicU64,
+    /// The same for the recordings pack (phones).
+    audio_busy: AtomicBool,
+    audio_received: AtomicU64,
 }
 
 impl State {
@@ -324,6 +328,112 @@ async fn dictionary_install(
     .await;
     state.dictionary_busy.store(false, Ordering::SeqCst);
     res
+}
+
+/// The recordings pack on this device (phones: `<app data>/packs/audio-nl/`).
+#[derive(Serialize)]
+struct AudioStatus {
+    installed: bool,
+    bytes: u64,
+    download: u64,
+    downloading: bool,
+    received: u64,
+}
+
+#[tauri::command]
+fn audio_status(app: AppHandle, state: tauri::State<'_, State>) -> AudioStatus {
+    let downloading = state.audio_busy.load(Ordering::SeqCst);
+    let wanted = audio::Pack::wanted();
+    let dir = app.path().app_data_dir().ok();
+    let received = if downloading {
+        state.audio_received.load(Ordering::Relaxed)
+    } else {
+        match (&dir, &wanted) {
+            (Some(dir), Some(pack)) => {
+                std::fs::metadata(audio::part_in(dir, pack)).map_or(0, |m| m.len())
+            }
+            _ => 0,
+        }
+    };
+    let installed = !downloading && dir.as_deref().and_then(audio::installed).is_some();
+    AudioStatus {
+        installed,
+        bytes: if installed {
+            dir.as_deref().map_or(0, audio::bytes)
+        } else {
+            0
+        },
+        download: wanted.map_or(0, |p| p.size),
+        downloading,
+        received,
+    }
+}
+
+/// A recorded clip from the pack on this device, as raw bytes (an mp3); empty without it.
+#[tauri::command]
+async fn audio_clip(
+    voice: String,
+    id: String,
+    app: AppHandle,
+) -> Result<tauri::ipc::Response, String> {
+    let dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    let bytes = tauri::async_runtime::spawn_blocking(move || audio::clip(&dir, &voice, &id))
+        .await
+        .map_err(|e| e.to_string())?
+        .unwrap_or_default();
+    Ok(tauri::ipc::Response::new(bytes))
+}
+
+/// Download the recordings pack and unpack it: from the connected server when there is one
+/// (an address allowed for sync), else from the data host. Resumes; says where it came from.
+#[tauri::command]
+async fn audio_install(
+    from: Option<DictionaryFrom>,
+    app: AppHandle,
+    state: tauri::State<'_, State>,
+) -> Result<&'static str, String> {
+    let pack = audio::Pack::wanted().ok_or("This build names no recordings pack.")?;
+    let dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    let mut sources = Vec::new();
+    if let Some(from) = from {
+        let allowed = Url::parse(&from.nlp).is_ok_and(|u| {
+            state
+                .config
+                .lock()
+                .unwrap()
+                .sync_hosts
+                .contains(&sync::origin(&u))
+        });
+        if allowed {
+            sources.push(dictionary::Source {
+                url: pack.server_url(&from.nlp),
+                token: Some(from.token),
+                name: "server",
+            });
+        }
+    }
+    sources.push(dictionary::Source {
+        url: pack.url(),
+        token: None,
+        name: "release",
+    });
+    if state.audio_busy.swap(true, Ordering::SeqCst) {
+        return Err("The recordings are downloading already.".into());
+    }
+    let res = audio::download(&state.client, &sources, &pack, &dir, &state.audio_received).await;
+    state.audio_busy.store(false, Ordering::SeqCst);
+    res
+}
+
+/// Remove the recordings from this device (the phone voice speaks instead).
+#[tauri::command]
+fn audio_remove(app: AppHandle, state: tauri::State<'_, State>) -> Result<(), String> {
+    if state.audio_busy.load(Ordering::SeqCst) {
+        return Err("The recordings are downloading: wait until it is done.".into());
+    }
+    let dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    audio::remove(&dir);
+    Ok(())
 }
 
 /// Open (or create) the database file. With `force`, a lock held by another computer is taken
@@ -755,6 +865,10 @@ pub fn run() {
             dictionary_status,
             dictionary_gloss,
             dictionary_install,
+            audio_status,
+            audio_clip,
+            audio_install,
+            audio_remove,
             #[cfg(desktop)]
             desktop::close_now,
             #[cfg(desktop)]
@@ -813,6 +927,8 @@ pub fn run() {
                 links: Mutex::new(Vec::new()),
                 dictionary_busy: AtomicBool::new(false),
                 dictionary_received: AtomicU64::new(0),
+                audio_busy: AtomicBool::new(false),
+                audio_received: AtomicU64::new(0),
             });
             #[cfg(desktop)]
             desktop::before_window(&handle);

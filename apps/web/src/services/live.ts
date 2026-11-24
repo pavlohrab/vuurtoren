@@ -29,6 +29,7 @@ import { loadStarterWords } from "./starterWords.js";
 import { createLiveWords } from "./liveWords.js";
 import { type ThisServer, createLiveSync } from "./liveSync.js";
 import { currentDevice } from "../platform/index.js";
+import type { DeviceAudio } from "../desktop/bridge.js";
 import { DEGRADED_MESSAGES, clearDegraded, reportDegraded } from "./degraded.js";
 import { type Platform, browserPlatform } from "./platform.js";
 import type { AppServices } from "./types.js";
@@ -38,6 +39,15 @@ export interface LiveServicesOptions {
   platform?: Platform;
   /** The page comes from a Vuurtoren server, which can be its sync place. */
   server?: ThisServer | undefined;
+}
+
+/** The phone's recordings as clips: an mp3 Blob, or null when the pack has none. */
+function localClipOf(audio: DeviceAudio | undefined) {
+  if (!audio) return undefined;
+  return async (voice: string, id: string): Promise<Blob | null> => {
+    const bytes = await audio.clip(voice, id);
+    return bytes && bytes.byteLength > 0 ? new Blob([bytes], { type: "audio/mpeg" }) : null;
+  };
 }
 
 export function createLiveServices(
@@ -53,6 +63,7 @@ export function createLiveServices(
     platform,
     changed,
     languageServer: () => sync.languageServer(),
+    localClip: localClipOf(currentDevice().bridge?.audio),
     noOwnLanguageServer:
       currentDevice().languageServer !== "bundled" && currentDevice().kind === "android",
   });

@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-audio-remove"
+description = "Enables the audio_remove command without any pre-configured scope."
+commands.allow = ["audio_remove"]
+
+[[permission]]
+identifier = "deny-audio-remove"
+description = "Denies the audio_remove command without any pre-configured scope."
+commands.deny = ["audio_remove"]

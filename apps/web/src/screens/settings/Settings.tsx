@@ -31,6 +31,7 @@ import { AnkiConnection } from "./AnkiSettings.js";
 import { DataSettings } from "./DataSettings.js";
 import { LanguageDecksSettings } from "./LanguageDecksSettings.js";
 import { DictionaryPack } from "./DictionaryPack.js";
+import { RecordingsPack, VoiceTest } from "./RecordingsPack.js";
 import { startTour } from "../../shell/Tour.js";
 import { SavedNote } from "./SavedNote.js";
 import { SyncSettings } from "./SyncSettings.js";
@@ -337,6 +338,8 @@ function ReadingSettings() {
           />
         </div>
       </div>
+      <VoiceTest rate={form.audioRate} />
+      <RecordingsPack />
       <label className="settings-check">
         <input
           type="checkbox"

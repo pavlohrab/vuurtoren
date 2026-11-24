@@ -144,7 +144,7 @@ impl Pack {
 
 /// Download the archive into `part`, going on from the bytes already there (a Range request;
 /// a source that ignores it starts again). `received` follows the bytes on disk.
-async fn fetch_into(
+pub(crate) async fn fetch_into(
     client: &reqwest::Client,
     source: &Source,
     part: &Path,

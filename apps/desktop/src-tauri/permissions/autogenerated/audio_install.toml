@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-audio-install"
+description = "Enables the audio_install command without any pre-configured scope."
+commands.allow = ["audio_install"]
+
+[[permission]]
+identifier = "deny-audio-install"
+description = "Denies the audio_install command without any pre-configured scope."
+commands.deny = ["audio_install"]

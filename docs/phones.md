@@ -14,12 +14,17 @@ or your own server does, and later Vuurtoren Sync will too.
 | Grammar lessons                                    |      ✓      |             ✓             |
 | A word's meaning from the dictionary               |      ✓      |             ✓             |
 | Texts you added on your computer, fully            |      ✓      |             ✓             |
-| Recorded audio of words and stories                | phone voice |             ✓             |
+| Recorded words, sentences and stories              |  download   |             ✓             |
 | Adding a new text on the phone (paste, photo)      |             |             ✓             |
 | Sync with your other devices                       |   WebDAV    |             ✓             |
 
 "Fully" means with the meaning of each word in its sentence, the translation of each sentence,
 side by side and the grammar marks.
+
+**The recordings** of the common words, their sentences and the stories are a download on the
+phone (about 230 MB, in Settings → Reading → **Voice**). Without them, and for words that have no
+recording, your phone's own Dutch voice speaks. **Test the voice** plays a word and tells you which
+voice you heard.
 
 **How the computer helps the phone.** When the desktop app reads a new text, it also prepares
 everything the phone needs for it, and sync brings it over with the text. So add a text on your

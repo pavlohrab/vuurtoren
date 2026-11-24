@@ -90,6 +90,8 @@ export interface LiveSettingsDeps {
    * `/nlp` is only the app's own page. Its calls then fail at once with a plain reason.
    */
   noOwnLanguageServer?: boolean;
+  /** A recorded clip kept on this device (a phone's recordings pack), else null. */
+  localClip?: ((voice: string, id: string) => Promise<Blob | null>) | undefined;
 }
 
 /** What a phone's language-server calls fail with before it is connected to a server. */
@@ -116,6 +118,7 @@ export function createLiveSettings({
   changed,
   languageServer,
   noOwnLanguageServer = false,
+  localClip,
 }: LiveSettingsDeps) {
   let cache: Settings | null = null;
 
@@ -211,7 +214,9 @@ export function createLiveSettings({
       const key = `${voice}/${id}`;
       let clip = clips.get(key);
       if (!clip) {
-        clip = (async () => (await nlp()).audioClip(voice, id))();
+        // The recordings on this phone first, then the server's.
+        clip = (async () =>
+          (await localClip?.(voice, id).catch(() => null)) ?? (await nlp()).audioClip(voice, id))();
         clips.set(key, clip);
         // An unreachable server is not an answer: ask again next time.
         clip.catch(() => clips.delete(key));
