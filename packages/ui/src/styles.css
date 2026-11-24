@@ -1345,9 +1345,18 @@ button.k-word-chip {
     transition: none;
   }
 }
-.k-tok[data-selected="true"] {
+/* The word whose sheet is open. Also while it has the focus from the click: the global
+   ":focus:not(:focus-visible)" reset would hide it otherwise (it did, m5). The other half of a
+   split verb ("doet … open") gets a lighter, dashed outline. */
+.k-tok[data-selected="true"],
+.k-tok[data-selected="true"]:focus {
   outline: 1.5px solid var(--accent);
   outline-offset: 1px;
+}
+.k-tok[data-selected="true"][data-partner],
+.k-tok[data-selected="true"][data-partner]:focus {
+  outline-style: dashed;
+  outline-color: color-mix(in srgb, var(--accent) 65%, transparent);
 }
 .k-gloss-mark {
   font-family: var(--font-ui);

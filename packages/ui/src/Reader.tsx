@@ -381,6 +381,7 @@ export function Reader({
         {...(repeat ? { "data-repeat": "" } : {})}
         {...(probable ? { "data-probable": "" } : {})}
         data-selected={isSelected}
+        {...(isSelected && t.i !== selectedToken ? { "data-partner": "" } : {})}
         className={cn(
           "k-tok",
           t.particle_of != null && "k-tok--particle",
