@@ -21,7 +21,7 @@ memory, so don't go below 2 GB. When you create it, choose the **Docker CE** app
 already there, and log in with SSH. From there it works the same as on a NAS, so follow the steps
 below.
 
-Don't want to run anything? **Vuurtoren Cloud** is planned: the same server, run for you, and you
+Don't want to run anything? **Vuurtoren Sync** is planned: the same server, run for you, and you
 just sign in.
 
 ## What you need
