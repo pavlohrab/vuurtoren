@@ -1999,6 +1999,12 @@
       .hero {
         overflow-x: clip;
       }
+      /* Out of sight the hero's loop pauses (and picks up where it was when it comes back). */
+      .hero-off *,
+      .hero-off *::before,
+      .hero-off *::after {
+        animation-play-state: paused !important;
+      }
       .hero-art {
         position: relative;
         min-width: 0;
@@ -3151,18 +3157,39 @@
     </script>
     <script>
       // Sections marked data-lit play their entrance once, when they come into view. The
-      // lighthouse blueprint (#name) also waits for the hero to build its first picture (the word
-      // card rises last, about 5 s in), so the two never play at the same time.
+      // lighthouse blueprint (#name) never plays while the hero is still building in view: it
+      // starts as soon as the hero's picture is mostly out of sight (a quick scroll: at once), or
+      // once the hero's first picture is done (the word card rises last, about 5 s in), whichever
+      // comes first. Out of sight the hero's loop pauses.
       (() => {
         const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
         const heroDone = still ? 0 : 5000;
+        const hero = document.querySelector("#top .hero-art");
+        let heroInView = !!hero;
+        let waiting = null;
+        const light = (el) => el.classList.add("lit");
+        const release = () => {
+          if (waiting) light(waiting);
+          waiting = null;
+        };
+        if (hero) {
+          new IntersectionObserver(
+            ([e]) => {
+              heroInView = e.intersectionRatio >= 0.5;
+              hero.classList.toggle("hero-off", !e.isIntersecting);
+              if (!heroInView) release();
+            },
+            { threshold: [0, 0.5] },
+          ).observe(hero);
+        }
         const io = new IntersectionObserver(
           (es) =>
             es.forEach((e) => {
               if (!e.isIntersecting) return;
               io.unobserve(e.target);
-              const wait = e.target.id === "name" ? heroDone - performance.now() : 0;
-              setTimeout(() => e.target.classList.add("lit"), Math.max(0, wait));
+              if (e.target.id !== "name" || !heroInView || still) return light(e.target);
+              waiting = e.target;
+              setTimeout(release, Math.max(0, heroDone - performance.now()));
             }),
           { threshold: 0.35 },
         );
