@@ -60,10 +60,16 @@ export function Review() {
     setExtraLeft(more ? MORE[more] : 0);
   }
   const extra = more && extraLeft > 0 ? { kind: more, count: extraLeft } : undefined;
+  // Read when the queue is fetched, not part of its key: a key that changes with every answer
+  // showed the loading placeholder between cards (the counter and Show answer blinked).
+  const extraRef = useRef(extra);
+  useLayoutEffect(() => {
+    extraRef.current = extra;
+  });
   useFocusMode();
   const queue = useQuery({
-    queryKey: ["review", "queue", more, extraLeft],
-    queryFn: () => services.reviewQueue(extra),
+    queryKey: ["review", "queue", more],
+    queryFn: () => services.reviewQueue(extraRef.current),
     staleTime: Infinity,
     gcTime: 0,
   });
@@ -75,12 +81,18 @@ export function Review() {
   const [first, setFirst] = useState<number | null>(null);
   const shownAt = useRef(0);
 
+  /**
+   * Cards answered while the queue is still being fetched again: they leave at once, so the next
+   * card shows straight away instead of the answered one coming back for a moment.
+   */
+  const [gone, setGone] = useState<ReadonlySet<number>>(new Set());
   const cards = useMemo(() => {
-    const list = queue.data?.cards ?? [];
+    const all = queue.data?.cards ?? [];
+    const list = gone.size ? all.filter((c) => !gone.has(c.cardId)) : all;
     if (first === null) return list;
     const i = list.findIndex((c) => c.cardId === first);
     return i > 0 ? [list[i]!, ...list.slice(0, i), ...list.slice(i + 1)] : list;
-  }, [queue.data, first]);
+  }, [queue.data, first, gone]);
   const card = cards[0];
 
   // The answer is shown for one card at a time: a new card (or the same one again, after an
@@ -169,6 +181,11 @@ export function Review() {
       if (!card || busy) return;
       setBusy(true);
       setError(null);
+      // The next card shows now; the answer is saved and the queue fetched behind it.
+      const answered = card.cardId;
+      setGone((g) => new Set(g).add(answered));
+      setFirst(null);
+      setTurn((t) => t + 1);
       try {
         const { reviewId } = await services.answerReview(
           card.cardId,
@@ -176,18 +193,26 @@ export function Review() {
           Date.now() - shownAt.current,
         );
         setUndo((u) => [...u.slice(-19), { cardId: card.cardId, reviewId }]);
-        setFirst(null);
         setDone((d) => d + 1);
-        if (more && (more === "learning" || card.isNew)) setExtraLeft((n) => Math.max(0, n - 1));
-        setTurn((t) => t + 1);
+        if (more && (more === "learning" || card.isNew)) {
+          const left = Math.max(0, extraLeft - 1);
+          extraRef.current = more && left > 0 ? { kind: more, count: left } : undefined;
+          setExtraLeft(left);
+        }
         await refresh();
       } catch (e) {
         setError(errorText(e, "The answer could not be saved."));
       } finally {
+        // The fetched queue decides now (a card due again soon comes back in its place).
+        setGone((g) => {
+          const next = new Set(g);
+          next.delete(answered);
+          return next;
+        });
         setBusy(false);
       }
     },
-    [card, busy, services, refresh, more],
+    [card, busy, services, refresh, more, extraLeft],
   );
 
   // Beyond this session (after a reload, on another day): the latest answer stored.
