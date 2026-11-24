@@ -63,7 +63,7 @@ afterEach(() => {
 });
 
 describe("DictionaryPack", () => {
-  it("on Wi-Fi: downloads by itself, from the connected server first", async () => {
+  it("on Wi-Fi: downloads by itself, with the connected server as the second source", async () => {
     const install = onPhone({ connection: "wifi" });
     await vi.waitFor(() => expect(install).toHaveBeenCalledWith(SERVER));
   });

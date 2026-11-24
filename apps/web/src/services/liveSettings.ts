@@ -172,8 +172,10 @@ export function createLiveSettings({
   };
   const anki = async (timeoutMs?: number) => new AnkiConnectClient(await ankiOptions(timeoutMs));
 
-  // Clips by voice and id: the same id is always the same sound, and a missing one stays missing
-  // for the session (the pack is installed with the app or not at all).
+  // Clips by voice and id: the same id is always the same sound. A missing one stays missing for
+  // the session on a computer (the pack comes with the language server), but not on a phone: its
+  // recordings arrive by download, maybe while the app is open, and a word asked for before then
+  // would otherwise stay silent (or in the phone's own voice) until the app restarts.
   const clips = new Map<string, Promise<Blob | null>>();
 
   const services: Pick<
@@ -227,6 +229,11 @@ export function createLiveSettings({
         clips.set(key, clip);
         // An unreachable server is not an answer: ask again next time.
         clip.catch(() => clips.delete(key));
+        if (localClip)
+          void clip.then(
+            (blob) => blob ?? clips.delete(key),
+            () => undefined,
+          );
       }
       return clip.catch(() => null);
     },

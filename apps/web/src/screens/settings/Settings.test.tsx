@@ -67,7 +67,7 @@ describe("Settings", () => {
 
   it("saves the voice, the speed and the autoplay choices", async () => {
     const { saves, user } = setup("/settings?section=reading");
-    await user.click(await screen.findByRole("combobox", { name: "Voice" }));
+    await user.click(await screen.findByRole("combobox", { name: "Recordings" }));
     await user.click(await screen.findByRole("option", { name: "Male" }));
     await user.click(screen.getByRole("combobox", { name: "Speed" }));
     await user.click(await screen.findByRole("option", { name: "0.8×" }));

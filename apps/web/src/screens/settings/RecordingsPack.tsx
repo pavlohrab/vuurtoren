@@ -2,8 +2,7 @@
  * Voice on a phone (Settings → Reading → Voice): the recordings pack (`audio-nl`, the recorded
  * words, example sentences and stories in both voices, about 230 MB) kept on the device, so a
  * phone without a server says words with the recordings. Without it the phone's own Dutch voice
- * speaks. Like the dictionary, it comes from the connected server when there is one, else from
- * the data host; on Wi-Fi only unless mobile data is allowed; a stopped download goes on from
+ * speaks. Like the dictionary, it comes from the data host, else from the connected server; on Wi-Fi only unless mobile data is allowed; a stopped download goes on from
  * where it was. "Test the voice" plays a word and says which voice it used.
  *
  * The test is shown everywhere; the download only on a device with such a pack (phones).

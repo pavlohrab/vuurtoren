@@ -280,9 +280,8 @@ struct DictionaryFrom {
     token: String,
 }
 
-/// Download the dictionary pack (the version this build wants) and put it in place: from the
-/// connected server when there is one (only an address the user allowed for sync), else from the
-/// public packs release. Resumes an unfinished download; `dictionary_status` reports the bytes
+/// Download the dictionary pack (the version this build wants) and put it in place: from the data
+/// host, else from the connected server (only an address the user allowed for sync). Resumes an unfinished download; `dictionary_status` reports the bytes
 /// so far. Says where it came from ("server" or "release").
 #[tauri::command]
 async fn dictionary_install(
@@ -292,7 +291,13 @@ async fn dictionary_install(
 ) -> Result<&'static str, String> {
     let pack = dictionary::Pack::wanted().ok_or("This build names no dictionary pack.")?;
     let dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
-    let mut sources = Vec::new();
+    // The data host first: Cloudflare keeps a copy close by, so it is fast. The connected server
+    // only when that fails (a home server sends it through the home upload, much slower).
+    let mut sources = vec![dictionary::Source {
+        url: pack.url(),
+        token: None,
+        name: "release",
+    }];
     if let Some(from) = from {
         let allowed = Url::parse(&from.nlp).is_ok_and(|u| {
             state
@@ -310,11 +315,6 @@ async fn dictionary_install(
             });
         }
     }
-    sources.push(dictionary::Source {
-        url: pack.url(),
-        token: None,
-        name: "release",
-    });
     if state.dictionary_busy.swap(true, Ordering::SeqCst) {
         return Err("The dictionary is downloading already.".into());
     }
@@ -384,8 +384,8 @@ async fn audio_clip(
     Ok(tauri::ipc::Response::new(bytes))
 }
 
-/// Download the recordings pack and unpack it: from the connected server when there is one
-/// (an address allowed for sync), else from the data host. Resumes; says where it came from.
+/// Download the recordings pack and unpack it: from the data host, else from the connected server
+/// (an address allowed for sync). Resumes; says where it came from.
 #[tauri::command]
 async fn audio_install(
     from: Option<DictionaryFrom>,
@@ -394,7 +394,13 @@ async fn audio_install(
 ) -> Result<&'static str, String> {
     let pack = audio::Pack::wanted().ok_or("This build names no recordings pack.")?;
     let dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
-    let mut sources = Vec::new();
+    // The data host first: Cloudflare keeps a copy close by, so it is fast. The connected server
+    // only when that fails (a home server sends it through the home upload, much slower).
+    let mut sources = vec![dictionary::Source {
+        url: pack.url(),
+        token: None,
+        name: "release",
+    }];
     if let Some(from) = from {
         let allowed = Url::parse(&from.nlp).is_ok_and(|u| {
             state
@@ -412,11 +418,6 @@ async fn audio_install(
             });
         }
     }
-    sources.push(dictionary::Source {
-        url: pack.url(),
-        token: None,
-        name: "release",
-    });
     if state.audio_busy.swap(true, Ordering::SeqCst) {
         return Err("The recordings are downloading already.".into());
     }

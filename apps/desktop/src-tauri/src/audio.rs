@@ -3,9 +3,9 @@
 //! speaks with the system's own Dutch voice.
 //!
 //! The clips live at `<app data>/packs/audio-nl/<voice>/<clip>.mp3`. `download` fetches the
-//! archive of the version in `packs.json` the same way as the dictionary (the connected
-//! Vuurtoren server first, else the data host; resumed; size and SHA-256 checked), but checks and
-//! unpacks it from the file instead of memory, since it is large for a phone. The new folder
+//! archive of the version in `packs.json` the same way as the dictionary (the data host first,
+//! else the connected Vuurtoren server; resumed; size and SHA-256 checked), but checks and unpacks
+//! it from the file instead of memory, since it is large for a phone. The new folder
 //! replaces the old one only once it is complete.
 
 use std::io::Read as _;

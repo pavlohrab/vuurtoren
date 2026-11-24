@@ -322,10 +322,15 @@ function ReadingSettings() {
         </span>
       </label>
       <h3 className="settings-h3">Voice</h3>
+      <p className="k-hint" style={{ margin: 0 }}>
+        The common words, their sentences and the stories are recorded by a woman and by a man:
+        choose whose recordings you hear. Other words are read by your device&rsquo;s own Dutch
+        voice. The speed is for both.
+      </p>
       <div className="row" style={{ alignItems: "flex-start" }}>
         <div style={{ minWidth: 160 }}>
           <Select
-            label="Voice"
+            label="Recordings"
             value={form.voice}
             options={[
               { value: "female", label: "Female" },
