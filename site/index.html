@@ -230,6 +230,12 @@
           grid-template-columns: 1fr;
           gap: 40px;
         }
+        /* Stacked, every section reads the same way: its label, heading and text first, then
+           its picture (on wide screens the pictures alternate sides; here a picture first sat
+           under the previous section's picture and seemed to belong to it). */
+        .split > .copy {
+          order: -1;
+        }
         .sec {
           padding-block: 64px;
         }
