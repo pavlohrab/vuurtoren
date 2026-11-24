@@ -80,10 +80,11 @@ const THEME_ICON: Record<ThemeChoice, ReactNode> = {
   dark: <Moon size={16} />,
 };
 
+/** The phone's More sheet: short enough for two columns at 360 px, nothing cut off. */
 const THEME_LABEL: Record<ThemeChoice, string> = {
-  system: "as the phone",
-  light: "light",
-  dark: "dark",
+  system: "Device theme",
+  light: "Light theme",
+  dark: "Dark theme",
 };
 
 const isMac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
@@ -391,7 +392,7 @@ export function AppShell() {
                   onClick={() => setMoreOpen(false)}
                 >
                   <Heart size={18} />
-                  <span>Support Vuurtoren</span>
+                  <span>Support</span>
                 </a>
                 <button
                   type="button"
@@ -413,7 +414,7 @@ export function AppShell() {
                   onClick={() => setTheme(THEME_NEXT[theme])}
                 >
                   {THEME_ICON[theme]}
-                  <span>Theme: {THEME_LABEL[theme]}</span>
+                  <span>{THEME_LABEL[theme]}</span>
                 </button>
               </div>
             </>
