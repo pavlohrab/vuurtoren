@@ -648,6 +648,48 @@
 }
 
 /* "Grammar of this word" in the inspector: quiet lines with a hairline above. */
+/* The word card's forms and related words (WordEntry.tsx): a small table, then short lines. */
+.word-entry {
+  display: grid;
+  gap: 8px;
+  padding-block: 4px 10px;
+  border-bottom: 1px solid var(--hairline);
+}
+.word-entry-forms dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2px 14px;
+  margin: 4px 0 0;
+  font-size: 14px;
+}
+.word-entry-forms dl > div {
+  display: contents;
+}
+.word-entry-forms dt {
+  color: var(--ink-muted);
+}
+.word-entry-forms dd {
+  margin: 0;
+  font-family: var(--font-reading);
+}
+.word-entry-forms dd[data-here] {
+  font-weight: 600;
+}
+.word-entry-all {
+  margin-top: 4px;
+  font-size: 13px;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+.word-entry-line {
+  margin: 0;
+  font-size: 14px;
+}
+.word-entry-line .k-overline {
+  margin-right: 6px;
+}
 .word-grammar {
   margin-top: var(--s-4);
   padding-top: var(--s-4);

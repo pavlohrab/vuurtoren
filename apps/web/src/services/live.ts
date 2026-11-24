@@ -264,6 +264,7 @@ export function createLiveServices(
     ...config.services,
 
     ...sync.services,
+    wordEntry: (word, pos) => dictionary.entry(word, pos),
     async packSource() {
       const server = await sync.languageServer();
       return server ? { nlp: server.url, token: server.token } : null;

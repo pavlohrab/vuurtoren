@@ -14,6 +14,7 @@ import type {
 } from "@app/core";
 import type { StoredText, SuggestedWord, TextSummary, WordInfo } from "@app/db";
 import type { InspectorEntry } from "@app/core";
+import type { EntryResult } from "@app/nlp-client";
 import type { CourseServices } from "./courseTypes.js";
 import type { OcrReviewHandler } from "./ocrReview.js";
 import type { AIServices, AISentenceReport } from "./aiTypes.js";
@@ -264,6 +265,12 @@ export interface AppServices
    * token: where a phone fetches its data packs first. Null without one; absent in demo mode.
    */
   packSource?(): Promise<{ nlp: string; token: string } | null>;
+  /**
+   * Everything the word card shows about one word (dictionary v2): its forms, base verb and
+   * family, synonyms and opposites, examples. From the device's pack, else the language
+   * server; null when neither can answer.
+   */
+  wordEntry?(word: string, pos?: string): Promise<EntryResult | null>;
   listTexts(): Promise<TextListItem[]>;
   /** The graded stories that ship with the app, with the learner's coverage (Library). */
   storyShelf(): Promise<StoryCover[]>;

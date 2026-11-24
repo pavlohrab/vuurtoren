@@ -139,6 +139,29 @@ async function handle(route: Route): Promise<void> {
       return json(texts.map((text) => ({ text, translation: `[en] ${text}` })));
     case "/grammar":
       return json(texts.map(() => []));
+    case "/entry":
+      // The word card's dictionary part: a verb with forms, else nothing.
+      return json(
+        body["word"] === "staan"
+          ? {
+              word: "staan",
+              entries: [
+                {
+                  pos: "verb",
+                  article: null,
+                  glosses: ["to stand"],
+                  forms: {
+                    present: { ik: "sta", hij: "staat" },
+                    past: ["stond"],
+                    participle: "gestaan",
+                  },
+                  extras: { senses: [{ gloss: "to stand", synonyms: ["rechtop staan"] }] },
+                  family: ["opstaan", "toestaan"],
+                },
+              ],
+            }
+          : { word: body["word"], entries: [] },
+      );
     case "/forms":
     case "/sentences":
     case "/similar":

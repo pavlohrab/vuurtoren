@@ -62,6 +62,7 @@ import { revealAboveSheet } from "../shell/revealAboveSheet.js";
 import { useReaderAudio } from "../audio/ReaderAudio.js";
 import { readLocal, writeLocal } from "../storage/local.js";
 import { ReaderLeave, rememberReader, takeReaderReturn } from "./reader/readerReturn.js";
+import { WordEntry } from "./reader/WordEntry.js";
 import { contextGloss } from "../services/contextGloss.js";
 
 /**
@@ -998,13 +999,16 @@ export function ReaderPage({ textId }: { textId: string }) {
                   {...actions.props(entry)}
                   wordExtra={
                     entry ? (
-                      <WordGrammar
-                        tokens={data.tokens}
-                        index={entry.tokenIndex}
-                        hits={hits}
-                        article={entry.article}
-                        onFocus={chooseFocus}
-                      />
+                      <>
+                        <WordEntry lemma={entry.lemma} pos={entry.pos} surface={entry.surface} />
+                        <WordGrammar
+                          tokens={data.tokens}
+                          index={entry.tokenIndex}
+                          hits={hits}
+                          article={entry.article}
+                          onFocus={chooseFocus}
+                        />
+                      </>
                     ) : null
                   }
                   sentencePanel={
