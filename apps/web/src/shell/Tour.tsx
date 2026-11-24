@@ -75,7 +75,7 @@ const STEPS: Step[] = [
     target: ".rbar-mode, .rbar-modes, [aria-label='Reading settings']",
     reader: true,
     title: "Help while reading",
-    text: "Choose how to read (English above hard words, blanks, side by side) and set the text in Aa.",
+    text: "Choose how to read (English next to hard words, blanks, side by side) and set the text in Aa. A short line in the margin marks grammar worth a look: tap it.",
   },
   {
     target: ".sidebar .nav-link[href='/words']",

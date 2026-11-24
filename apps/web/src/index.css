@@ -540,6 +540,24 @@
 }
 /* Phone width: a bottom tab bar replaces the icon rail. */
 @media (max-width: 699px) {
+  /* Outside the reader the top bar takes no room: the page has its own heading. It floats over
+     the top and shows once that heading has scrolled away (with the page title), so nothing
+     jumps when it comes. */
+  .main {
+    position: relative;
+  }
+  .topbar:not([data-reader]) {
+    position: absolute;
+    top: var(--safe-top);
+    left: 0;
+    right: var(--safe-right);
+    z-index: 6;
+    transition: opacity var(--dur) var(--ease);
+  }
+  .topbar[data-bare]:not([data-reader]) {
+    opacity: 0;
+    pointer-events: none;
+  }
   :root {
     /* The tab bar: 64px of tabs, lifted 8px clear of the gesture handle. */
     --tabbar-h: calc(64px + var(--s-2) + var(--safe-bottom));

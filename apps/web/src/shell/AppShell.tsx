@@ -436,7 +436,11 @@ export function AppShell() {
                 ) : null}
               </div>
             ) : null}
-            <header className="topbar">
+            <header
+              className="topbar"
+              {...(header?.reader ? { "data-reader": "" } : {})}
+              {...(headingHidden ? { "data-bare": "" } : {})}
+            >
               <Button
                 variant="ghost"
                 size="sm"

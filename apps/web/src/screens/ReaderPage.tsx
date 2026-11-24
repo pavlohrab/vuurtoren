@@ -835,18 +835,10 @@ export function ReaderPage({ textId }: { textId: string }) {
       !hardSeen &&
       !data.text.sourceRef?.startsWith("story:") ? (
         <div className="reader-hard" role="note">
-          <span>
-            This text is hard for you: you know about {known}% of its words. Gloss mode puts the
-            English next to the rest, or <Link to="/">read a story at your level</Link>.
-          </span>
-          <span className="reader-hard-actions">
-            <Button size="sm" variant="secondary" onClick={() => setMode("gloss")}>
-              Use Gloss
-            </Button>
-            <Button size="sm" variant="ghost" onClick={closeHard}>
-              Not now
-            </Button>
-          </span>
+          <span>This text is hard for you: you know about {known}% of its words.</span>
+          <Button size="sm" variant="ghost" onClick={closeHard}>
+            Not now
+          </Button>
         </div>
       ) : null}
       {mode === "cloze" && plan.clozes.length === 0 ? (
