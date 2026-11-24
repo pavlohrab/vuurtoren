@@ -60,6 +60,14 @@ import { errorText } from "../services/errors.js";
 import { usePageHeader, useShell } from "../shell/ShellContext.js";
 import { revealAboveSheet } from "../shell/revealAboveSheet.js";
 import { useReaderAudio } from "../audio/ReaderAudio.js";
+import { readLocal, writeLocal } from "../storage/local.js";
+
+/**
+ * Below this share of known words (%) the first page says the text is hard for the learner
+ * (a Wikipedia page for an A1 learner), with Gloss mode or a story at their level.
+ */
+const HARD_TEXT = 80;
+const HARD_SEEN = "vuurtoren-hard-seen:";
 
 const HELP_LABEL: Record<HelpLevel, string> = {
   off: "Off",
@@ -154,6 +162,8 @@ export function ReaderPage({ textId }: { textId: string }) {
   const [finishing, setFinishing] = useState(false);
   /** The last page was finished: show the calm completion panel with the next steps. */
   const [complete, setComplete] = useState(false);
+  /** The "this text is hard for you" note was closed for this text. */
+  const [hardSeen, setHardSeen] = useState(() => readLocal(`${HARD_SEEN}${textId}`) === "1");
   /** Bumped when the plan is deliberately recomputed (new-word budget changed). */
   const [epoch, setEpoch] = useState(0);
   /** Grammar: the focus topic, the open margin mark and the focus hit jumped to. */
@@ -674,6 +684,10 @@ export function ReaderPage({ textId }: { textId: string }) {
   }
 
   const allAnswered = plan.clozes.every((i) => credits.has(i) || revealed.has(i));
+  const closeHard = () => {
+    writeLocal(`${HARD_SEEN}${textId}`, "1");
+    setHardSeen(true);
+  };
   // The whole text's coverage, the same number as on Read.
   const known = Math.round(textDifficulty(plans ?? [plan]).coverage * 100);
   // The highlighted (amber) words to learn, not every unknown word.
@@ -808,6 +822,26 @@ export function ReaderPage({ textId }: { textId: string }) {
         <button type="button" className="reader-focus-exit" onClick={() => setReadingFocus(false)}>
           Leave focus mode <kbd>Esc</kbd>
         </button>
+      ) : null}
+      {current === 0 &&
+      known < HARD_TEXT &&
+      mode !== "gloss" &&
+      !hardSeen &&
+      !data.text.sourceRef?.startsWith("story:") ? (
+        <div className="reader-hard" role="note">
+          <span>
+            This text is hard for you: you know about {known}% of its words. Gloss mode puts the
+            English next to the rest, or <Link to="/">read a story at your level</Link>.
+          </span>
+          <span className="reader-hard-actions">
+            <Button size="sm" variant="secondary" onClick={() => setMode("gloss")}>
+              Use Gloss
+            </Button>
+            <Button size="sm" variant="ghost" onClick={closeHard}>
+              Not now
+            </Button>
+          </span>
+        </div>
       ) : null}
       {mode === "cloze" && plan.clozes.length === 0 ? (
         <p className="reader-cloze-empty" role="status">

@@ -34,6 +34,16 @@ describe("describeError", () => {
     ).toMatch(/refused/);
   });
 
+  it("shows the language server's own reason for a 4xx, and keeps JSON out of it", () => {
+    const f = describeError(
+      new Error("NLP /extract/url: HTTP 422 The page could not be fetched (HTTP 404)."),
+    );
+    expect(f.message).toBe("The page could not be fetched (HTTP 404).");
+    expect(f.details).toMatch(/extract\/url/);
+    const raw = describeError(new Error('NLP /analyze/text: HTTP 422 [{"loc":["body"]}]'));
+    expect(raw.message).toBe("The language server could not process this.");
+  });
+
   it("keeps plain messages as they are, without details", () => {
     const f = describeError(new Error("Its card is no longer new in Anki"));
     expect(f).toEqual({ source: "other", message: "Its card is no longer new in Anki" });

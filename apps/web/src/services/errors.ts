@@ -55,6 +55,12 @@ export function describeError(e: unknown, fallback = "Something went wrong."): F
         next: "Check that it is running and its address in Settings is right, then try again.",
       });
     }
+    // The server said why in words ("The page could not be fetched (HTTP 404).", "The PDF is
+    // password-protected."): show that, not a general line.
+    const said = /^NLP \S+: HTTP 4\d\d (.{8,200})$/s.exec(raw)?.[1]?.trim();
+    if (said && /^[A-Z][^{}<>]*[.!]$/.test(said)) {
+      return withDetails({ source: "nlp", message: said, next: "Check it and try again." });
+    }
     return withDetails({
       source: "nlp",
       message: "The language server could not process this.",

@@ -146,6 +146,21 @@ def _ends_paragraph(prev: str, longest: int) -> bool:
     return bool(prev) and prev[-1] in ".!?\u2026" and longest >= 40 and len(prev) < 0.6 * longest
 
 
+def _is_heading(line: str, prev: str | None, longest: int) -> bool:
+    """A heading inside a block: short, no sentence end, at the block's start or after one.
+
+    "De trein naar Amsterdam" above its first paragraph, with no blank line between them (PDF
+    text layers often have none), must not be joined into the paragraph's first sentence.
+    """
+    return (
+        (prev is None or prev[-1] in ".!?\u2026")
+        and longest >= 40
+        and len(line) <= min(80, 0.6 * longest)
+        and line[-1] not in _TERMINAL + ",;"
+        and line[:1].isupper()
+    )
+
+
 def reflow_paragraph(block: str) -> str:
     """Merge the hard-wrapped lines of one blank-line-delimited block into paragraph(s).
 
@@ -158,8 +173,17 @@ def reflow_paragraph(block: str) -> str:
     longest = max(len(ln) for ln in lines)
     paragraphs: list[str] = []
     current = lines[0]
-    for prev_line, line in zip(lines, lines[1:], strict=False):
-        if _ends_paragraph(prev_line, longest) and line[:1].isupper():
+    headings = {
+        k
+        for k, ln in enumerate(lines)
+        if k + 1 < len(lines)
+        and lines[k + 1][:1].isupper()
+        and _is_heading(ln, lines[k - 1] if k else None, longest)
+    }
+    for k, (prev_line, line) in enumerate(zip(lines, lines[1:], strict=False)):
+        # A new paragraph after a heading, before one, or after a short sentence-ending line.
+        split = k in headings or (k + 1) in headings
+        if split or (_ends_paragraph(prev_line, longest) and line[:1].isupper()):
             paragraphs.append(current)
             current = line
         else:

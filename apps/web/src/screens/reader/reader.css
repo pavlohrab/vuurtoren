@@ -806,3 +806,24 @@
     flex-shrink: 0;
   }
 }
+
+/* "This text is hard for you": first page only, quiet, closable. */
+.reader-hard {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  margin: 0 auto 16px;
+  max-width: 42rem;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: var(--accent-soft);
+  color: var(--ink);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+.reader-hard-actions {
+  display: flex;
+  gap: 4px;
+}

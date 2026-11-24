@@ -33,6 +33,7 @@ import { fetchTexts } from "./textBatch.js";
 import { nlpOutage } from "./liveSettings.js";
 import { ImportCancelledError } from "./ocrReview.js";
 import { contextGloss, hasDetachedParticle, meaningInSentence } from "./contextGloss.js";
+import { pageTitle, pdfTitle } from "./importTitle.js";
 import type {
   AppServices,
   ImportInput,
@@ -404,7 +405,7 @@ export function createLiveTexts({
         onProgress?.("Fetching the page…");
         const page = await client.extractUrl(input.url);
         content = page.text;
-        title = page.title || titleFrom(content);
+        title = (page.title && pageTitle(page.title, page.url)) || titleFrom(content);
         ref = page.url;
       } else if (input.kind === "pdf") {
         onProgress?.("Reading the PDF…");
@@ -418,7 +419,7 @@ export function createLiveTexts({
           onProgress?.("The PDF has no text layer — running OCR (this can take a while)…");
           content = await recognise(input.file);
         } else content = pdf.text;
-        title = input.title?.trim() || pdf.title || input.file.name.replace(/\.pdf$/i, "");
+        title = input.title?.trim() || pdfTitle(pdf.title, content, input.file.name);
         ref = input.file.name;
       } else {
         onProgress?.("Recognising text in the photo…");

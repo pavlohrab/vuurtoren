@@ -103,3 +103,28 @@ def test_clean_text_form_feed_pages_and_empty() -> None:
     assert clean_text("") == ""
     assert clean_text("een\n\ntwee") == "een\n\ntwee"
     assert clean_text("een\n\n\n\ntwee.\x0cdrie") == "een\n\ntwee.\n\ndrie"
+
+
+def test_reflow_keeps_a_heading_without_a_blank_line_apart() -> None:
+    block = (
+        "De trein naar Amsterdam\n"
+        "Elke maandag neem ik de trein naar Amsterdam. De reis duurt\n"
+        "ongeveer een uur. Ik lees een boek of ik kijk naar buiten.\n"
+        "Hoofdstuk twee\n"
+        "In de trein zitten veel studenten. Ze praten, lachen en drinken koffie."
+    )
+    assert reflow_paragraph(block).split("\n\n") == [
+        "De trein naar Amsterdam",
+        "Elke maandag neem ik de trein naar Amsterdam. De reis duurt ongeveer een uur. "
+        "Ik lees een boek of ik kijk naar buiten.",
+        "Hoofdstuk twee",
+        "In de trein zitten veel studenten. Ze praten, lachen en drinken koffie.",
+    ]
+
+
+def test_reflow_does_not_take_a_wrapped_name_for_a_heading() -> None:
+    block = (
+        "Elke maandag neem ik de trein naar het station van\n"
+        "Amsterdam Centraal en daarna loop ik naar mijn werk aan de gracht."
+    )
+    assert "\n\n" not in reflow_paragraph(block)
