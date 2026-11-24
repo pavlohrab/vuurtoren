@@ -2,6 +2,9 @@ package app.vuurtoren
 
 import android.content.Intent
 import android.os.Bundle
+import android.speech.tts.TextToSpeech
+import android.speech.tts.UtteranceProgressListener
+import java.util.Locale
 import android.webkit.JavascriptInterface
 import android.webkit.WebView
 import androidx.activity.enableEdgeToEdge
@@ -55,7 +58,9 @@ class MainActivity : TauriActivity() {
     webView.settings.mediaPlaybackRequiresUserGesture = false
     webView.addJavascriptInterface(InsetsBridge(), "VuurtorenInsets")
     webView.addJavascriptInterface(ShareBridge(), "VuurtorenShare")
+    webView.addJavascriptInterface(TtsBridge(), "VuurtorenTts")
     this.webView = webView
+    startTts()
     ViewCompat.setOnApplyWindowInsetsListener(webView) { view, windowInsets ->
       val bars =
         windowInsets.getInsets(
@@ -79,6 +84,60 @@ class MainActivity : TauriActivity() {
       ViewCompat.onApplyWindowInsets(view, windowInsets)
     }
     ViewCompat.requestApplyInsets(webView)
+  }
+
+  /**
+   * Android's own text-to-speech for the Dutch voice: the WebView has no speechSynthesis, so
+   * without a server (no recordings) the phone was silent. apps/web/src/platform/androidSpeech.ts
+   * turns this into speechSynthesis for the page.
+   */
+  private var tts: TextToSpeech? = null
+  @Volatile private var dutch = false
+
+  private fun js(code: String) {
+    webView?.post { webView?.evaluateJavascript(code, null) }
+  }
+
+  private fun startTts() {
+    if (tts != null) return
+    tts = TextToSpeech(this) { status ->
+      val engine = tts
+      if (status == TextToSpeech.SUCCESS && engine != null) {
+        val nl = engine.setLanguage(Locale("nl", "NL"))
+        dutch = nl != TextToSpeech.LANG_MISSING_DATA && nl != TextToSpeech.LANG_NOT_SUPPORTED
+        engine.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
+          override fun onStart(id: String) {}
+          override fun onDone(id: String) = js("window.__vuurtorenTtsDone && window.__vuurtorenTtsDone(${org.json.JSONObject.quote(id)}, true)")
+          @Deprecated("Deprecated in Java")
+          override fun onError(id: String) = js("window.__vuurtorenTtsDone && window.__vuurtorenTtsDone(${org.json.JSONObject.quote(id)}, false)")
+          override fun onStop(id: String, interrupted: Boolean) = js("window.__vuurtorenTtsDone && window.__vuurtorenTtsDone(${org.json.JSONObject.quote(id)}, true)")
+        })
+      }
+      js("window.__vuurtorenTtsReady && window.__vuurtorenTtsReady($dutch)")
+    }
+  }
+
+  override fun onDestroy() {
+    tts?.shutdown()
+    tts = null
+    super.onDestroy()
+  }
+
+  private inner class TtsBridge {
+    /** A Dutch voice is installed and ready. */
+    @JavascriptInterface fun hasDutch(): Boolean = dutch
+
+    /** Say `text` (replacing anything still speaking); `done` is reported by id. */
+    @JavascriptInterface
+    fun speak(id: String, text: String, rate: Float) {
+      val engine = tts ?: return
+      engine.setSpeechRate(rate.coerceIn(0.3f, 2.5f))
+      engine.speak(text, TextToSpeech.QUEUE_FLUSH, null, id)
+    }
+
+    @JavascriptInterface fun stop() {
+      tts?.stop()
+    }
   }
 
   private inner class ShareBridge {
