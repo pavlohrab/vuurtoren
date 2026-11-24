@@ -12,6 +12,7 @@
  */
 import { useRouter } from "@tanstack/react-router";
 import { useEffect, useLayoutEffect, useRef } from "react";
+import { readerReturnFor } from "../screens/reader/readerReturn.js";
 import { desktopBridge } from "../desktop/bridge.js";
 
 type Close = () => void;
@@ -92,7 +93,12 @@ export function levelUp(
   if (pathname === "/settings" && search.section) return { to: "/settings" };
   const parts = pathname.split("/").filter(Boolean);
   const [area, id, sub] = parts;
-  if (area === "grammar" && id) return { to: sub ? `/grammar/${id}` : "/grammar" };
+  if (area === "grammar" && id) {
+    // A topic opened from the reader goes back to the text, as it was (RD5).
+    const fromReader = sub ? null : readerReturnFor(id);
+    if (fromReader) return { to: `/read/${fromReader.textId}` };
+    return { to: sub ? `/grammar/${id}` : "/grammar" };
+  }
   if (area === "exam" && id) return { to: "/exam" };
   if (area === "courses" && id)
     return { to: sub && id !== "import" ? `/courses/${id}` : "/courses" };

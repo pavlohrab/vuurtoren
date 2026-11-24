@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { App } from "../App.js";
 import { createMockServices } from "../services/mock.js";
+import { rememberReader, takeReaderReturn } from "../screens/reader/readerReturn.js";
 import { closeTopmost, levelUp, pushBack, systemBack, tabRoot } from "./backStack.js";
 
 afterEach(() => {
@@ -135,5 +136,33 @@ describe("the More sheet", () => {
     expect(levelUp("/read/t1")).toBeNull();
     expect(levelUp("/settings")).toBeNull();
     expect(levelUp("/words/all")).toBeNull();
+  });
+});
+
+describe("Back from a grammar topic the reader opened (RD5)", () => {
+  afterEach(() => sessionStorage.clear());
+  const saved = {
+    textId: "t1",
+    segment: 2,
+    selected: 14,
+    focusTopic: null,
+    topic: "separable-verbs",
+  };
+
+  it("goes back to the text, not to Grammar", () => {
+    rememberReader(saved);
+    expect(levelUp("/grammar/separable-verbs")).toEqual({ to: "/read/t1" });
+  });
+
+  it("only for the topic the reader opened", () => {
+    rememberReader(saved);
+    expect(levelUp("/grammar/inversion")).toEqual({ to: "/grammar" });
+  });
+
+  it("the reader takes its place once, for its own text", () => {
+    rememberReader(saved);
+    expect(takeReaderReturn("t2")).toBeNull();
+    expect(takeReaderReturn("t1")).toEqual(saved);
+    expect(takeReaderReturn("t1")).toBeNull();
   });
 });

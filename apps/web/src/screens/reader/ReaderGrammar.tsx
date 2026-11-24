@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { useReaderLeave } from "./readerReturn.js";
 import { ChevronLeft, ChevronRight, Search, X } from "lucide-react";
 import { useState } from "react";
 import type { GrammarTopic } from "@app/content";
@@ -17,6 +18,7 @@ export function MarkCard({
   note: string | undefined;
   onFocus: () => void;
 }) {
+  const leave = useReaderLeave();
   return (
     <div className="gmark-card">
       <p className="gmark-card-title">
@@ -29,7 +31,12 @@ export function MarkCard({
         <button type="button" className="k-btn k-btn--sm" onClick={onFocus}>
           Focus on this
         </button>
-        <Link to="/grammar/$topic" params={{ topic: topic.id }} className="k-link">
+        <Link
+          to="/grammar/$topic"
+          params={{ topic: topic.id }}
+          className="k-link"
+          onClick={() => leave?.(topic.id)}
+        >
           Open the topic
         </Link>
       </div>

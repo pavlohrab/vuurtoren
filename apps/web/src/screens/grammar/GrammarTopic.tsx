@@ -18,6 +18,7 @@ import {
 } from "./GrammarCommon.js";
 import { plural } from "../../format.js";
 import { ErrorNotice } from "../../shell/ErrorNotice.js";
+import { readerReturnFor } from "../reader/readerReturn.js";
 import "./grammar.css";
 
 /** The Explanation without its `### Pattern` subsection (shown as a box instead). */
@@ -118,6 +119,8 @@ export function GrammarTopicPage({ topicId }: { topicId: string }) {
   const count = topicCount(topic, overview.data);
   const related = topic.related.map((id) => grammarTopic(id)).filter((t): t is GrammarTopic => !!t);
   const offer = practiceOffer(topic, aiReady);
+  // Opened from the reader: its back link returns to the text (RD5).
+  const fromReader = readerReturnFor(topic.id);
   const path = curriculum();
   const at = path.findIndex((t) => t.id === topic.id);
   const prev = at > 0 ? path[at - 1] : undefined;
@@ -128,9 +131,15 @@ export function GrammarTopicPage({ topicId }: { topicId: string }) {
     <div className="page page--list grammar grammar-topic">
       <PageHeader
         back={
-          <Link to="/grammar">
-            <ArrowLeft size={14} aria-hidden /> Grammar
-          </Link>
+          fromReader ? (
+            <Link to="/read/$textId" params={{ textId: fromReader.textId }}>
+              <ArrowLeft size={14} aria-hidden /> Back to the text
+            </Link>
+          ) : (
+            <Link to="/grammar">
+              <ArrowLeft size={14} aria-hidden /> Grammar
+            </Link>
+          )
         }
         title={topic.title}
         lede={inline(topic.summary)}

@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { useReaderLeave } from "./readerReturn.js";
 import { useMemo } from "react";
 import {
   type AnalyzedToken,
@@ -65,6 +66,7 @@ export function WordGrammar({
   article?: string | undefined;
   onFocus: (topic: GrammarTopic) => void;
 }) {
+  const leave = useReaderLeave();
   const { lines, order } = useMemo(
     () => wordGrammarLines(tokens, index, hits, article),
     [tokens, index, hits, article],
@@ -85,6 +87,7 @@ export function WordGrammar({
             to="/grammar/$topic"
             params={{ topic: l.topic.id }}
             className="k-link"
+            onClick={() => leave?.(l.topic!.id)}
             aria-label={`Open the topic: ${l.topic.title}`}
           >
             {l.topic.title}

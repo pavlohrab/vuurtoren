@@ -15,7 +15,7 @@ import {
   textDifficulty,
   wordOrderNote,
 } from "@app/core";
-import type { GrammarTopic } from "@app/content";
+import { type GrammarTopic, grammarTopic } from "@app/content";
 import {
   AnchoredPopover,
   Button,
@@ -61,6 +61,7 @@ import { usePageHeader, useShell } from "../shell/ShellContext.js";
 import { revealAboveSheet } from "../shell/revealAboveSheet.js";
 import { useReaderAudio } from "../audio/ReaderAudio.js";
 import { readLocal, writeLocal } from "../storage/local.js";
+import { ReaderLeave, rememberReader, takeReaderReturn } from "./reader/readerReturn.js";
 import { contextGloss } from "../services/contextGloss.js";
 
 /**
@@ -152,8 +153,12 @@ export function ReaderPage({ textId }: { textId: string }) {
     queryFn: () => services.getReading(textId),
   });
 
-  const [segment, setSegment] = useState<number | null>(null);
-  const [selected, setSelected] = useState<number | null>(null);
+  // Back from a grammar topic this reader opened: the same page, the same word (RD5).
+  const [back] = useState(() => takeReaderReturn(textId));
+  const [segment, setSegment] = useState<number | null>(back?.segment ?? null);
+  const [selected, setSelected] = useState<number | null>(back?.selected ?? null);
+  /** The restored word's sheet has not opened yet: closing logic must not clear it. */
+  const restoring = useRef(back?.selected != null);
   const [revealed, setRevealed] = useState<ReadonlySet<number>>(new Set());
   /** Credit per answered cloze token: 1 unaided, 0.5 with the letter hint, 0 wrong or revealed. */
   const [credits, setCredits] = useState<ReadonlyMap<number, number>>(new Map());
@@ -168,7 +173,9 @@ export function ReaderPage({ textId }: { textId: string }) {
   /** Bumped when the plan is deliberately recomputed (new-word budget changed). */
   const [epoch, setEpoch] = useState(0);
   /** Grammar: the focus topic, the open margin mark and the focus hit jumped to. */
-  const [focusTopic, setFocusTopic] = useState<GrammarTopic | null>(null);
+  const [focusTopic, setFocusTopic] = useState<GrammarTopic | null>(() =>
+    back?.focusTopic ? (grammarTopic(back.focusTopic) ?? null) : null,
+  );
   const [openMark, setOpenMark] = useState<{ sent: number; el: HTMLElement } | null>(null);
   const [hitIndex, setHitIndex] = useState<number | null>(null);
 
@@ -181,6 +188,15 @@ export function ReaderPage({ textId }: { textId: string }) {
   const resume = Math.min(data?.text.lastSegment ?? 0, Math.max(0, (plans?.length ?? 1) - 1));
   if (segment === null && settled) setSegment(resume);
   const current = segment ?? resume;
+  /** Save where we are before a grammar link leaves the reader (Back returns here, RD5). */
+  const leaveFor = (topic: string) =>
+    rememberReader({
+      textId,
+      segment: current,
+      selected,
+      focusTopic: focusTopic?.id ?? null,
+      topic,
+    });
 
   // The plan of the current segment is frozen when the segment starts: answers are keyed by
   // token index, so word actions or a window-focus refetch must not move clozes or amber
@@ -209,11 +225,13 @@ export function ReaderPage({ textId }: { textId: string }) {
 
   useEffect(() => {
     setInspectorAvailable(true);
+    // Back from a grammar topic with a word selected: its sheet opens again, as it was.
+    if (back?.selected != null) setInspectorOpen(true);
     return () => {
       setInspectorAvailable(false);
       setInspectorOpen(false);
     };
-  }, [setInspectorAvailable, setInspectorOpen]);
+  }, [setInspectorAvailable, setInspectorOpen, back?.selected]);
   useEffect(() => writeLastText(textId), [textId]);
 
   const resetSegmentState = useCallback(() => {
@@ -316,7 +334,12 @@ export function ReaderPage({ textId }: { textId: string }) {
   // Closing the word panel (Esc or its close button) clears the selection and gives the focus
   // back to the word, so reading continues where it was.
   useEffect(() => {
-    if (inspectorOpen) return;
+    if (inspectorOpen) {
+      restoring.current = false;
+      return;
+    }
+    // Back from grammar: the sheet is about to open again for the restored word.
+    if (restoring.current) return;
     const i = keyState.current.selected;
     if (i === null) return;
     setSelected(null);
@@ -717,276 +740,282 @@ export function ReaderPage({ textId }: { textId: string }) {
   }
 
   return (
-    <div
-      ref={setPageEl}
-      className="reader-page"
-      style={prefsStyle(prefs)}
-      {...(prefs.theme !== "app" ? { "data-reading-theme": prefs.theme } : {})}
-      {...(readingFocus ? { "data-focus": "" } : {})}
-    >
-      {toolbarEl
-        ? createPortal(
-            <>
-              <span className="rbar-known" title={knownTitle}>
-                {known}% known
-              </span>
-              {focusTopic ? (
-                <FocusChip
-                  topic={focusTopic}
-                  count={focusHits.length}
-                  current={hitIndex}
-                  onStep={stepHit}
-                  onClear={() => chooseFocus(null)}
-                  onChange={() => {
-                    setMenuView("grammar");
-                    setMenuOpen(true);
-                  }}
-                />
-              ) : null}
-              <span className="rbar-spacer" />
-              <span className="rbar-modes">
-                <Tabs
-                  aria-label="Reading mode"
-                  items={MODES}
-                  value={mode}
-                  onValueChange={(v) => setMode(v as ReaderMode)}
-                />
-              </span>
-              <ModeMenu modes={MODES} value={mode} onChange={(v) => setMode(v as ReaderMode)} />
-              <span className="rbar-tools">
-                <ReadingSettings
-                  prefs={prefs}
-                  onChange={setPrefs}
-                  settings={{
-                    mode,
-                    ...(mode === "gloss"
-                      ? {
-                          help: {
-                            value: Math.round(help * 100),
-                            label: HELP_LABEL[helpLevel(help)],
-                            onChange: (v: number) => setHelpDraft(v / 100),
-                            onCommit: (v: number) => saveSettings.mutate({ help: v / 100 }),
-                          },
-                        }
-                      : {}),
-                    ...(mode === "gloss" && plan.clozes.length > 0
-                      ? {
-                          blanks: {
-                            on: blanks,
-                            onToggle: () => saveSettings.mutate({ glossClozes: !blanks }),
-                          },
-                        }
-                      : {}),
-                    newWords: {
-                      value: String(settingsQ.data?.newWords ?? "auto"),
-                      onChange: (v: string) =>
-                        saveSettings.mutate({ newWords: v === "auto" ? "auto" : Number(v) }),
-                    },
-                    marks: {
-                      on: marksOn,
-                      onToggle: () => saveSettings.mutate({ grammarMarks: !marksOn }),
-                    },
-                    aiReady,
-                  }}
-                />
-                <ReaderMenu
-                  open={menuOpen}
-                  onOpenChange={setMenuOpen}
-                  view={menuView}
-                  onViewChange={setMenuView}
-                  textId={textId}
-                  summary={knownTitle}
-                  grammar={{
-                    value: focusTopic,
-                    topics: pickerTopics,
-                    suggested: suggestedTopics,
-                    onChange: chooseFocus,
-                    unavailable: grammarQ.isError,
-                  }}
-                  readingFocus={readingFocus}
-                  onFocusMode={() => setReadingFocus((v) => !v)}
-                  onShowAnswers={
-                    blanks && plan.clozes.length > 0 && !allAnswered
-                      ? () => setRevealed(new Set(plan.clozes))
-                      : undefined
-                  }
-                  onSimplify={aiReady ? () => setSimplifyAt(current) : undefined}
-                  onEditDetails={() => setDetailsOpen(true)}
-                  onShortcuts={() => setShortcutsOpen(true)}
-                />
-              </span>
-            </>,
-            toolbarEl,
-          )
-        : null}
-      <ShortcutsDialog open={shortcutsOpen} onOpenChange={setShortcutsOpen} />
-      <TextDetailsDialog
-        text={detailsOpen ? data.text : null}
-        onClose={() => setDetailsOpen(false)}
-      />
-      {readingFocus ? (
-        <button type="button" className="reader-focus-exit" onClick={() => setReadingFocus(false)}>
-          Leave focus mode <kbd>Esc</kbd>
-        </button>
-      ) : null}
-      {current === 0 &&
-      known < HARD_TEXT &&
-      mode !== "gloss" &&
-      !hardSeen &&
-      !data.text.sourceRef?.startsWith("story:") ? (
-        <div className="reader-hard" role="note">
-          <span>This text is hard for you: you know about {known}% of its words.</span>
-          <Button size="sm" variant="ghost" onClick={closeHard}>
-            Not now
-          </Button>
-        </div>
-      ) : null}
-      {mode === "cloze" && plan.clozes.length === 0 ? (
-        <p className="reader-cloze-empty" role="status">
-          Cloze uses only words you know well, and there are none on this page yet.
-        </p>
-      ) : null}
+    <ReaderLeave.Provider value={leaveFor}>
       <div
-        key={current}
-        className="reader-turn"
-        data-turn={turn ?? undefined}
-        onAnimationEnd={(e) => {
-          if (e.target === e.currentTarget) setTurn(null);
-        }}
+        ref={setPageEl}
+        className="reader-page"
+        style={prefsStyle(prefs)}
+        {...(prefs.theme !== "app" ? { "data-reading-theme": prefs.theme } : {})}
+        {...(readingFocus ? { "data-focus": "" } : {})}
       >
-        {side ? (
-          <SideBySide
-            key={`${current}-${epoch}`}
-            text={data.text.content}
-            tokens={data.tokens}
-            plan={plan}
-            pairs={sentencePairs}
-            visibility={prefs.english}
-            notes={orderNotes}
-            selectedToken={selected}
-            onTokenClick={onTokenClick}
-            sentenceAction={audio.sentenceButton}
-          />
-        ) : (
-          <Reader
-            key={`${current}-${epoch}`}
-            text={data.text.content}
-            tokens={data.tokens}
-            plans={[plan]}
-            selectedToken={selected}
-            revealed={revealed}
-            mode={mode}
-            blanks={blanks}
-            glosses={glosses}
-            glossNotes={glossNotes}
-            {...(spotlights ? { spotlights } : {})}
-            spotlightCurrent={currentHitTokens}
-            marks={markLabels}
-            openMark={openMark?.sent ?? null}
-            onMarkClick={(sent, el) =>
-              setOpenMark((cur) => (cur?.sent === sent ? null : { sent, el }))
-            }
-            focusParagraphs={readingFocus}
-            onTokenClick={onTokenClick}
-            onClozeAnswer={onClozeAnswer}
-          />
-        )}
-      </div>
-      <StoryCredit sourceRef={data.text.sourceRef} />
-      <AnchoredPopover
-        anchor={openMarkData ? (openMark?.el ?? null) : null}
-        onClose={() => setOpenMark(null)}
-        label={openMarkData ? `Grammar: ${openMarkData.topic.title}` : "Grammar"}
-        measure={() => belowHits(openMarkData?.hits.flatMap((h) => h.tokens) ?? [])}
-        side="bottom"
-        className="gmark-pop"
-      >
-        {openMarkData ? (
-          <MarkCard
-            topic={openMarkData.topic}
-            note={openMarkData.hits[0]?.note}
-            onFocus={() => chooseFocus(openMarkData.topic)}
+        {toolbarEl
+          ? createPortal(
+              <>
+                <span className="rbar-known" title={knownTitle}>
+                  {known}% known
+                </span>
+                {focusTopic ? (
+                  <FocusChip
+                    topic={focusTopic}
+                    count={focusHits.length}
+                    current={hitIndex}
+                    onStep={stepHit}
+                    onClear={() => chooseFocus(null)}
+                    onChange={() => {
+                      setMenuView("grammar");
+                      setMenuOpen(true);
+                    }}
+                  />
+                ) : null}
+                <span className="rbar-spacer" />
+                <span className="rbar-modes">
+                  <Tabs
+                    aria-label="Reading mode"
+                    items={MODES}
+                    value={mode}
+                    onValueChange={(v) => setMode(v as ReaderMode)}
+                  />
+                </span>
+                <ModeMenu modes={MODES} value={mode} onChange={(v) => setMode(v as ReaderMode)} />
+                <span className="rbar-tools">
+                  <ReadingSettings
+                    prefs={prefs}
+                    onChange={setPrefs}
+                    settings={{
+                      mode,
+                      ...(mode === "gloss"
+                        ? {
+                            help: {
+                              value: Math.round(help * 100),
+                              label: HELP_LABEL[helpLevel(help)],
+                              onChange: (v: number) => setHelpDraft(v / 100),
+                              onCommit: (v: number) => saveSettings.mutate({ help: v / 100 }),
+                            },
+                          }
+                        : {}),
+                      ...(mode === "gloss" && plan.clozes.length > 0
+                        ? {
+                            blanks: {
+                              on: blanks,
+                              onToggle: () => saveSettings.mutate({ glossClozes: !blanks }),
+                            },
+                          }
+                        : {}),
+                      newWords: {
+                        value: String(settingsQ.data?.newWords ?? "auto"),
+                        onChange: (v: string) =>
+                          saveSettings.mutate({ newWords: v === "auto" ? "auto" : Number(v) }),
+                      },
+                      marks: {
+                        on: marksOn,
+                        onToggle: () => saveSettings.mutate({ grammarMarks: !marksOn }),
+                      },
+                      aiReady,
+                    }}
+                  />
+                  <ReaderMenu
+                    open={menuOpen}
+                    onOpenChange={setMenuOpen}
+                    view={menuView}
+                    onViewChange={setMenuView}
+                    textId={textId}
+                    summary={knownTitle}
+                    grammar={{
+                      value: focusTopic,
+                      topics: pickerTopics,
+                      suggested: suggestedTopics,
+                      onChange: chooseFocus,
+                      unavailable: grammarQ.isError,
+                    }}
+                    readingFocus={readingFocus}
+                    onFocusMode={() => setReadingFocus((v) => !v)}
+                    onShowAnswers={
+                      blanks && plan.clozes.length > 0 && !allAnswered
+                        ? () => setRevealed(new Set(plan.clozes))
+                        : undefined
+                    }
+                    onSimplify={aiReady ? () => setSimplifyAt(current) : undefined}
+                    onEditDetails={() => setDetailsOpen(true)}
+                    onShortcuts={() => setShortcutsOpen(true)}
+                  />
+                </span>
+              </>,
+              toolbarEl,
+            )
+          : null}
+        <ShortcutsDialog open={shortcutsOpen} onOpenChange={setShortcutsOpen} />
+        <TextDetailsDialog
+          text={detailsOpen ? data.text : null}
+          onClose={() => setDetailsOpen(false)}
+        />
+        {readingFocus ? (
+          <button
+            type="button"
+            className="reader-focus-exit"
+            onClick={() => setReadingFocus(false)}
+          >
+            Leave focus mode <kbd>Esc</kbd>
+          </button>
+        ) : null}
+        {current === 0 &&
+        known < HARD_TEXT &&
+        mode !== "gloss" &&
+        !hardSeen &&
+        !data.text.sourceRef?.startsWith("story:") ? (
+          <div className="reader-hard" role="note">
+            <span>This text is hard for you: you know about {known}% of its words.</span>
+            <Button size="sm" variant="ghost" onClick={closeHard}>
+              Not now
+            </Button>
+          </div>
+        ) : null}
+        {mode === "cloze" && plan.clozes.length === 0 ? (
+          <p className="reader-cloze-empty" role="status">
+            Cloze uses only words you know well, and there are none on this page yet.
+          </p>
+        ) : null}
+        <div
+          key={current}
+          className="reader-turn"
+          data-turn={turn ?? undefined}
+          onAnimationEnd={(e) => {
+            if (e.target === e.currentTarget) setTurn(null);
+          }}
+        >
+          {side ? (
+            <SideBySide
+              key={`${current}-${epoch}`}
+              text={data.text.content}
+              tokens={data.tokens}
+              plan={plan}
+              pairs={sentencePairs}
+              visibility={prefs.english}
+              notes={orderNotes}
+              selectedToken={selected}
+              onTokenClick={onTokenClick}
+              sentenceAction={audio.sentenceButton}
+            />
+          ) : (
+            <Reader
+              key={`${current}-${epoch}`}
+              text={data.text.content}
+              tokens={data.tokens}
+              plans={[plan]}
+              selectedToken={selected}
+              revealed={revealed}
+              mode={mode}
+              blanks={blanks}
+              glosses={glosses}
+              glossNotes={glossNotes}
+              {...(spotlights ? { spotlights } : {})}
+              spotlightCurrent={currentHitTokens}
+              marks={markLabels}
+              openMark={openMark?.sent ?? null}
+              onMarkClick={(sent, el) =>
+                setOpenMark((cur) => (cur?.sent === sent ? null : { sent, el }))
+              }
+              focusParagraphs={readingFocus}
+              onTokenClick={onTokenClick}
+              onClozeAnswer={onClozeAnswer}
+            />
+          )}
+        </div>
+        <StoryCredit sourceRef={data.text.sourceRef} />
+        <AnchoredPopover
+          anchor={openMarkData ? (openMark?.el ?? null) : null}
+          onClose={() => setOpenMark(null)}
+          label={openMarkData ? `Grammar: ${openMarkData.topic.title}` : "Grammar"}
+          measure={() => belowHits(openMarkData?.hits.flatMap((h) => h.tokens) ?? [])}
+          side="bottom"
+          className="gmark-pop"
+        >
+          {openMarkData ? (
+            <MarkCard
+              topic={openMarkData.topic}
+              note={openMarkData.hits[0]?.note}
+              onFocus={() => chooseFocus(openMarkData.topic)}
+            />
+          ) : null}
+        </AnchoredPopover>
+        {simplifyAt === current ? (
+          <SimplifyPage
+            key={current}
+            text={data.text.content.slice(plan.segment.charStart, plan.segment.charEnd)}
+            onClose={() => setSimplifyAt(null)}
           />
         ) : null}
-      </AnchoredPopover>
-      {simplifyAt === current ? (
-        <SimplifyPage
-          key={current}
-          text={data.text.content.slice(plan.segment.charStart, plan.segment.charEnd)}
-          onClose={() => setSimplifyAt(null)}
-        />
-      ) : null}
-      <nav className="reader-footer" aria-label="Pages">
-        <div className="reader-pager">
-          <button
-            type="button"
-            className="reader-pager-btn"
-            aria-label="Previous page"
-            title="Previous page (←)"
-            disabled={current === 0 || finishing}
-            onClick={() => stepPage(-1)}
-          >
-            <ChevronLeft size={18} aria-hidden />
-          </button>
-          <span className="reader-pager-count">
-            <span aria-hidden>
-              {current + 1} / {plans?.length}
+        <nav className="reader-footer" aria-label="Pages">
+          <div className="reader-pager">
+            <button
+              type="button"
+              className="reader-pager-btn"
+              aria-label="Previous page"
+              title="Previous page (←)"
+              disabled={current === 0 || finishing}
+              onClick={() => stepPage(-1)}
+            >
+              <ChevronLeft size={18} aria-hidden />
+            </button>
+            <span className="reader-pager-count">
+              <span aria-hidden>
+                {current + 1} / {plans?.length}
+              </span>
+              <span className="k-sr">
+                Page {current + 1} of {plans?.length}
+              </span>
             </span>
-            <span className="k-sr">
-              Page {current + 1} of {plans?.length}
-            </span>
-          </span>
-          <button
-            type="button"
-            className="reader-pager-btn"
-            aria-label="Next page"
-            title="Next page (→)"
-            disabled={isLast || finishing}
-            onClick={() => stepPage(1)}
-          >
-            <ChevronRight size={18} aria-hidden />
-          </button>
-        </div>
-        <Button variant="primary" disabled={finishing} onClick={() => void finish()}>
-          {isLast ? (
-            "Finish"
-          ) : (
-            <>
-              Next
-              <ArrowRight size={16} aria-hidden />
-            </>
-          )}
-        </Button>
-      </nav>
-      {inspectorEl
-        ? createPortal(
-            <>
-              <WordInspector
-                entry={entry}
-                loading={selected !== null && !entry && !inspect.isError}
-                error={selected !== null && inspect.isError ? errorText(inspect.error) : null}
-                onRetry={() => void inspect.refetch()}
-                headerAction={audio.wordButton(entry)}
-                {...actions.props(entry)}
-                wordExtra={
-                  entry ? (
-                    <WordGrammar
-                      tokens={data.tokens}
-                      index={entry.tokenIndex}
-                      hits={hits}
-                      article={entry.article}
-                      onFocus={chooseFocus}
-                    />
-                  ) : null
-                }
-                sentencePanel={
-                  <SentencePanel sentence={entry?.sentence} grammar={sentenceGrammar} />
-                }
-              />
-            </>,
-            inspectorEl,
-          )
-        : null}
-    </div>
+            <button
+              type="button"
+              className="reader-pager-btn"
+              aria-label="Next page"
+              title="Next page (→)"
+              disabled={isLast || finishing}
+              onClick={() => stepPage(1)}
+            >
+              <ChevronRight size={18} aria-hidden />
+            </button>
+          </div>
+          <Button variant="primary" disabled={finishing} onClick={() => void finish()}>
+            {isLast ? (
+              "Finish"
+            ) : (
+              <>
+                Next
+                <ArrowRight size={16} aria-hidden />
+              </>
+            )}
+          </Button>
+        </nav>
+        {inspectorEl
+          ? createPortal(
+              <>
+                <WordInspector
+                  entry={entry}
+                  loading={selected !== null && !entry && !inspect.isError}
+                  error={selected !== null && inspect.isError ? errorText(inspect.error) : null}
+                  onRetry={() => void inspect.refetch()}
+                  headerAction={audio.wordButton(entry)}
+                  {...actions.props(entry)}
+                  wordExtra={
+                    entry ? (
+                      <WordGrammar
+                        tokens={data.tokens}
+                        index={entry.tokenIndex}
+                        hits={hits}
+                        article={entry.article}
+                        onFocus={chooseFocus}
+                      />
+                    ) : null
+                  }
+                  sentencePanel={
+                    <SentencePanel sentence={entry?.sentence} grammar={sentenceGrammar} />
+                  }
+                />
+              </>,
+              inspectorEl,
+            )
+          : null}
+      </div>
+    </ReaderLeave.Provider>
   );
 }
