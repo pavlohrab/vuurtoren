@@ -1786,6 +1786,23 @@
       .how-end {
         text-align: left;
       }
+
+      /* Phones: the desktop demo's window grows with its text, and the word sheet rises into room
+   below the text instead of covering it. Button pairs that stack are one width. */
+      @media (max-width: 560px) {
+        .win {
+          aspect-ratio: auto;
+        }
+        .win .main {
+          padding-bottom: 150px;
+        }
+        .support-ways .btn,
+        section .cta .btn {
+          flex: 1 1 100%;
+          justify-content: center;
+          text-align: center;
+        }
+      }
     </style>
   </head>
   <body data-page="desktop">
