@@ -9,6 +9,7 @@ import type { AppServices } from "./services/types.js";
 import type { RouterHistory } from "@tanstack/react-router";
 import { SIGNED_IN_EVENT } from "./auth/watch.js";
 import { UpdateBanner } from "./pwa/PwaControls.js";
+import { installShare } from "./platform/share.js";
 
 export interface AppProps extends AppInfo {
   services: AppServices;
@@ -41,6 +42,18 @@ export function App({
       }),
   );
   const [router] = useState(() => createAppRouter(history));
+  // Android: a text or link shared to Vuurtoren opens Add text with it (platform/share.ts).
+  useEffect(
+    () =>
+      installShare((shared, id) => {
+        void router.navigate({
+          to: "/import",
+          // A new id each time, so a second share while Add text is open fills it again.
+          search: { tab: shared.kind === "url" ? "web" : "paste", shared: id },
+        });
+      }),
+    [router],
+  );
   // After signing in again over the app (the session had ended), refetch what failed.
   useEffect(() => {
     const refetch = (): void => void queryClient.invalidateQueries();

@@ -6,6 +6,7 @@ import type { DragEvent, ReactNode } from "react";
 import { Button, Input, Spinner, Tabs, Textarea, useToast } from "@app/ui";
 import { useOcrAvailable } from "../desktop/DesktopSetup.js";
 import { currentDevice } from "../platform/index.js";
+import { sharedFor } from "../platform/share.js";
 import { useServices } from "../services/context.js";
 import type { ImportInput } from "../services/types.js";
 import {
@@ -191,8 +192,14 @@ function FilePick({ kind, file, onFile }: FilePickProps) {
 export function ImportScreen() {
   const services = useServices();
   const navigate = useNavigate();
-  const search: { tab?: string; topic?: string; grammar?: string; course?: string; unit?: string } =
-    useSearch({ from: "/import" });
+  const search: {
+    tab?: string;
+    topic?: string;
+    grammar?: string;
+    course?: string;
+    unit?: string;
+    shared?: string;
+  } = useSearch({ from: "/import" });
   const aiReady = useAIReady();
   const qc = useQueryClient();
   const toast = useToast();
@@ -235,6 +242,16 @@ export function ImportScreen() {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [url, setUrl] = useState("");
+  // Shared from another app (Android): fill the link or the text in, for the learner to add.
+  // Each share has its own id; it fills the fields once (state set while rendering, as React
+  // recommends for state that follows a prop).
+  const [sharedSeen, setSharedSeen] = useState<string | undefined>(undefined);
+  if (search.shared && search.shared !== sharedSeen) {
+    setSharedSeen(search.shared);
+    const shared = sharedFor(search.shared);
+    if (shared?.kind === "url") setUrl(shared.url);
+    else if (shared?.kind === "paste") setContent(shared.text);
+  }
   // One file per tab, so a PDF can never be submitted as a photo (or the other way round).
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);

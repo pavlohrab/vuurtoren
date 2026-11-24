@@ -75,9 +75,13 @@ const wordsOfTextRoute = screen(
   () => import("./screens/words/TextWords.js"),
   "TextWordsRoute",
 );
-/** /import?tab=paste|web|pdf|photo|story (story presets: topic, grammar, course + unit) */
+/**
+ * /import?tab=paste|web|pdf|photo|story (story presets: topic, grammar, course + unit;
+ * shared: a text or link shared from another Android app waits in platform/share.ts)
+ */
 const importRoute = searchScreen("/import", () => import("./screens/Import.js"), "ImportScreen", [
   "tab",
+  "shared",
   "topic",
   "grammar",
   "course",

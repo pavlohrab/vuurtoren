@@ -1,5 +1,6 @@
 package app.vuurtoren
 
+import android.content.Intent
 import android.os.Bundle
 import android.webkit.JavascriptInterface
 import android.webkit.WebView
@@ -12,9 +13,34 @@ class MainActivity : TauriActivity() {
   /** The system bars and cutout in CSS pixels, as JSON: {"top":…,"right":…,"bottom":…,"left":…}. */
   @Volatile private var insets = "{\"top\":0,\"right\":0,\"bottom\":0,\"left\":0}"
 
+  /** A text or link shared to Vuurtoren from another app, until the page takes it. */
+  @Volatile private var shared: String? = null
+  private var webView: WebView? = null
+
   override fun onCreate(savedInstanceState: Bundle?) {
     enableEdgeToEdge()
     super.onCreate(savedInstanceState)
+    readShare(intent)
+  }
+
+  /** Shared while the app is open: keep it and tell the page (apps/web/src/platform/share.ts). */
+  override fun onNewIntent(intent: Intent) {
+    super.onNewIntent(intent)
+    if (readShare(intent)) {
+      webView?.post {
+        webView?.evaluateJavascript("window.__vuurtorenShare && window.__vuurtorenShare()", null)
+      }
+    }
+  }
+
+  /** Keep the text of a "Share" (ACTION_SEND, text/plain), with its subject when separate. */
+  private fun readShare(intent: Intent?): Boolean {
+    if (intent?.action != Intent.ACTION_SEND || intent.type?.startsWith("text/") != true) return false
+    val text = intent.getStringExtra(Intent.EXTRA_TEXT)?.trim()
+    if (text.isNullOrEmpty()) return false
+    val subject = intent.getStringExtra(Intent.EXTRA_SUBJECT)?.trim()
+    shared = if (!subject.isNullOrEmpty() && !text.contains(subject)) "$subject\n$text" else text
+    return true
   }
 
   /**
@@ -28,6 +54,8 @@ class MainActivity : TauriActivity() {
     // A card says its word as it shows, without a tap: the WebView would block that sound.
     webView.settings.mediaPlaybackRequiresUserGesture = false
     webView.addJavascriptInterface(InsetsBridge(), "VuurtorenInsets")
+    webView.addJavascriptInterface(ShareBridge(), "VuurtorenShare")
+    this.webView = webView
     ViewCompat.setOnApplyWindowInsetsListener(webView) { view, windowInsets ->
       val bars =
         windowInsets.getInsets(
@@ -51,6 +79,16 @@ class MainActivity : TauriActivity() {
       ViewCompat.onApplyWindowInsets(view, windowInsets)
     }
     ViewCompat.requestApplyInsets(webView)
+  }
+
+  private inner class ShareBridge {
+    /** The shared text, once (empty when there is none). */
+    @JavascriptInterface
+    fun take(): String {
+      val text = shared ?: ""
+      shared = null
+      return text
+    }
   }
 
   private inner class InsetsBridge {

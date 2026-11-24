@@ -1685,6 +1685,10 @@
   }
 }
 
+/* Add text on a phone without its server: the note keeps its distance from the tabs. */
+.import-needs-server {
+  margin: 0 0 var(--s-4);
+}
 /* Add text: a chosen PDF or photo stays in view, a photo as a preview, with Replace / Remove. */
 .file-chosen {
   display: flex;
