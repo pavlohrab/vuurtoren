@@ -90,7 +90,28 @@ PRECISION: list = [
     ("Ik denk er niet aan.", "denk", "denken"),
     # noun particle the parser leaves as an object
     ("Hij nam deel aan de wedstrijd.", "nam", "deelnemen"),
+    # a particle joins only into a verb the dictionary has: no "wegmoeten"
+    pytest.param("Dat moet weg.", "moet", "moeten", marks=db),
+    pytest.param("Na een tijdje doet ze haar mond open.", "doet", "opendoen", marks=db),
+    ("Hij doet zijn werk.", "doet", "doen"),
+    pytest.param("De soldaten lachten mee.", "lachten", "meelachen", marks=db),
+    pytest.param("Ik blijf drie jaar weg.", "blijf", "wegblijven", marks=db),
+    pytest.param("Wil je met me mee?", "Wil", "meewillen", marks=db),  # OpenTaal has it
+    pytest.param("Maria ging na een tijd naar hem toe.", "ging", "gaan", marks=db),
+    pytest.param("Het water stroomde het land in.", "stroomde", "instromen", marks=db),
+    pytest.param("Hij keek om zich heen.", "keek", "kijken", marks=db),
+    pytest.param("Eerst deed zijn vinger pijn.", "deed", "doen", marks=db),
+    pytest.param("Schippers gebruikten hem om hun weg te vinden.", "vinden", "vinden", marks=db),
 ]
+
+
+@db
+def test_no_partner_without_a_dictionary_verb() -> None:
+    # "weg" stays its own word: no split verb, so nothing lights up as its partner
+    assert all(t.particle_of is None for t in analyse("Dat moet weg."))
+    toks = analyse("Na een tijdje doet ze haar mond open.")
+    doet = next(t for t in toks if t.text == "doet")
+    assert next(t for t in toks if t.text == "open").particle_of == doet.i
 
 
 def analyse(sentence: str):

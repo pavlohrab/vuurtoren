@@ -54,6 +54,16 @@ SEPARABLE_PARTICLES: tuple[str, ...] = tuple(
 ARTICLES = {"de", "het", "een", "'t"}
 # Non-particle first parts of separable verbs seen in te-infinitives: "waar te nemen".
 TE_PARTICLES = {"waar", "plaats", "deel", "teleur", "gade", "kennis"}
+
+# Circumpositions: the second word belongs to the preposition, not to the verb. "Ze ging naar
+# hem toe" is gaan (no toegaan), "Hij keek om zich heen" is kijken, "van de grond af".
+CIRCUMPOSITIONS: dict[str, set[str]] = {
+    "toe": {"naar", "tot"},
+    "heen": {"om", "door", "over", "langs", "naar"},
+    "af": {"op", "van"},
+    "uit": {"van"},
+    "aan": {"achter"},
+}
 # "z'n" is a possessive ("z'n best doen"), not a reflexive marker.
 REFLEXIVES = {"zich"}
 # Fixed expressions that start with an article and must not lose it ("de facto" is not "facto").

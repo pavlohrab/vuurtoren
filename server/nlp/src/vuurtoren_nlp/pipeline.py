@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import gzip
 import re
 import unicodedata
 from functools import lru_cache
 from itertools import accumulate
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from vuurtoren_nlp import nl
@@ -275,6 +277,44 @@ def _stranded(doc: Doc, particle: Token_) -> bool:
     return any(nl.is_r_pronoun(w.text) for w in doc[sent_start : particle.i])
 
 
+@lru_cache(maxsize=1)
+def _compound_verbs() -> frozenset[str]:
+    """OpenTaal's separable and compound verbs (``scripts/build_compound_verbs.py``)."""
+    path = Path(__file__).with_name("compound-verbs-nl.txt.gz")
+    with gzip.open(path, "rt", encoding="utf-8") as f:
+        return frozenset(w for w in (line.strip() for line in f) if w and not w.startswith("#"))
+
+
+def _joinable(joined: str) -> bool:
+    """May a particle and its verb be read as one verb, ``joined``?
+
+    Only when it is a real word: in the dictionary (Kaikki) or in OpenTaal's word list, which
+    has the separable verbs Wiktionary misses (meegeven, wegblijven). "Dat moet weg" stays
+    moeten ("must go"), "Eerst deed zijn vinger pijn" stays doen. Without the dictionary the
+    parser decides, as before.
+    """
+    known = get_lexicon().is_headword(joined)
+    return known is not False or joined in _compound_verbs()
+
+
+def _circumposition(particle: Token_) -> bool:
+    """Does ``particle`` close a circumposition opened shortly before it ("naar hem toe")?
+
+    The preposition must come at most four words earlier in the sentence, with no verb in
+    between, so "Hij ging naar huis en deed de deur toe" still reads toedoen.
+    """
+    opens = nl.CIRCUMPOSITIONS.get(particle.lower_)
+    if not opens:
+        return False
+    start = max(particle.sent.start, particle.i - 5)
+    for w in reversed(particle.doc[start : particle.i]):
+        if w.pos_ in {"VERB", "AUX"}:
+            return False
+        if w.lower_ in opens:
+            return True
+    return False
+
+
 def _lemmas(doc: Doc, lang: str = "nl") -> tuple[list[str], list[list[str]], dict[int, int]]:
     """Corrected lemma per token, alternative lemmas, and a map particle index -> verb index.
 
@@ -332,7 +372,9 @@ def _lemmas(doc: Doc, lang: str = "nl") -> tuple[list[str], list[list[str]], dic
             bases.sort(key=lambda b: not b.endswith("n"))
         joined = [nl.join_particle(particle.text, b, verb.text) for b in bases]
         base_set = {b.lower() for b in bases}
-        new = [j for j in joined if j not in base_set]
+        if _circumposition(particle):
+            return
+        new = [j for j in joined if j not in base_set and _joinable(j)]
         if not new:
             return
         # extra joined forms must look like infinitives (…n): no stems such as "opbel"/"bijstaat"
