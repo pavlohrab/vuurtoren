@@ -31,7 +31,7 @@ Contents
 
 **In short.** For every word Vuurtoren keeps one number, the chance that you remember it right now. It reads this from your cards, either your Anki decks or its own cards, and it can raise it a bit when you answer a word right in its exercises. Everything else in the app is decided from these numbers, like which words to teach you, which ones to translate and how hard a text will be for you.
 
-Your cards are the record of which Dutch words you know: Vuurtoren's own cards in native mode (section 9), or your Anki decks in connected mode. Both are read with the same rules. This section describes the Anki side; section 9.4 applies it to Vuurtoren's cards. Vuurtoren reads your decks (read-only) and builds a **learner model**: for every word key, a state (`unknown`, `seen`, `learning`, `known`, `ignored`) and `pKnown`, the probability that you would recall it right now.
+Your cards are the record of which Dutch words you know. They are Vuurtoren's own cards in native mode (section 9), or your Anki decks in connected mode, and both are read with the same rules. This section describes the Anki side, and section 9.4 applies it to Vuurtoren's cards. Vuurtoren reads your decks (read-only) and builds a **learner model**. For every word key it holds a state (`unknown`, `seen`, `learning`, `known`, `ignored`) and `pKnown`, the probability that you would recall it right now.
 
 ### 1.1 Finding your Dutch decks and fields
 
@@ -41,7 +41,7 @@ Your cards are the record of which Dutch words you know: Vuurtoren's own cards i
 
 1. Every deck with at least 10 notes is sampled: up to 30 random notes per deck. Smaller decks are skipped unless you named them, or unless it is Vuurtoren's own target deck.
 2. Field values are cleaned of HTML, `[sound:…]` tags, cloze markup and furigana (`packages/anki/src/clean.ts`).
-3. Every cleaned value goes through language identification (`server/nlp/src/vuurtoren_nlp/detect.py`): a small naive-Bayes classifier over the `wordfreq` "small" word lists of 10 languages (nl, en, de, fr, es, it, pt, pl; uk and ru after a Cyrillic-script check). Each word scores its log-frequency per language; a word missing from a list scores a floor plus a character-trigram estimate learnt from that list, so rare words still lean the right way. Only the first 400 characters are examined, and a result with confidence below 0.2 counts as "unknown language".
+3. Every cleaned value goes through language identification (`server/nlp/src/vuurtoren_nlp/detect.py`). This is a small naive-Bayes classifier over the `wordfreq` "small" word lists of 10 languages (nl, en, de, fr, es, it, pt, pl, and uk and ru after a Cyrillic-script check). Each word scores its log-frequency per language. A word missing from a list scores a floor plus a character-trigram estimate learnt from that list, so rare words still lean the right way. Only the first 400 characters are examined, and a result with confidence below 0.2 counts as "unknown language".
 4. Per (deck, note type), each field gets statistics: the share of values detected as Dutch, the share detected as English, and the average number of words.
 5. Fields are scored:
 
@@ -72,7 +72,7 @@ Your cards are the record of which Dutch words you know: Vuurtoren's own cards i
 
 ### 1.3 Key normalisation
 
-One rule is used everywhere, in TypeScript (`normalizeKey` in `packages/core/src/match.ts`) and in Python (`normalize_key` in `pipeline.py`): Unicode NFKC, curly quotes and backtick → `'`, lowercase (not casefold, so `ß` stays `ß`), and trimmed whitespace.
+A key from a card and a key from a text must match, so they are normalised the same way. One rule is used everywhere, in TypeScript (`normalizeKey` in `packages/core/src/match.ts`) and in Python (`normalize_key` in `pipeline.py`). It applies Unicode NFKC, turns curly quotes and backtick into `'`, lowercases (not casefold, so `ß` stays `ß`), and trims whitespace.
 
 ### 1.4 How well do you know the card? (SM-2 decay vs FSRS stability)
 
@@ -110,7 +110,7 @@ If the same key comes from several notes (two decks, a forward/reverse pair, or 
 
 ### 1.6 Manual marks and app-side states
 
-What you do in the app is stored as events in Vuurtoren's local database, never as edits to Anki's history. The effective state of a word is computed by `composeWord` in `packages/db/src/projections.ts`, in this order:
+What you do in the app is stored as events in Vuurtoren's local database, never as edits to Anki's history. So a word's state can come from several places, and `composeWord` in `packages/db/src/projections.ts` picks the effective one in this order:
 
 | Priority | Source                                                                        | State and `pKnown`                                                                                                     |
 | -------- | ----------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
@@ -119,7 +119,7 @@ What you do in the app is stored as events in Vuurtoren's local database, never 
 | 3        | A note that Vuurtoren added or moved forward, which Anki has not reviewed yet | learning, 0.2                                                                                                          |
 | 4        | You only looked the word up in the reader                                     | seen, 0.1                                                                                                              |
 
-"Use Anki's state" removes the manual mark (it is stored as an empty mark, so the latest-wins rule still works when events sync out of order).
+"Use Anki's state" removes the manual mark. It is stored as an empty mark, so the latest-wins rule still works when events sync out of order.
 
 Below the manual mark, **app evidence** (section 1.7) is laid over rows 2–4 and over words Vuurtoren only knows from your answers.
 
@@ -135,7 +135,7 @@ Below the manual mark, **app evidence** (section 1.7) is laid over rows 2–4 an
 | `ClozeAnswered`        | the first answer per reader blank and page visit | 1 correct (0.5 after a letter hint), or 1 wrong (also when the hints revealed the whole word)                                                                    |
 | `BookExerciseAnswered` | a marked book item, with the word keys it tests  | 1 correct or 1 wrong per key (the bracketed lemma hint, else the answer's words that are unit or learner-model words; none for sentence building and open tasks) |
 
-**How.** The projection `word_evidence` keeps, per (language, key), the weighted correct count `c`, the wrong count `w`, the time of the newest answer and whether it was correct (a tie goes to "wrong"). Sums and maxima do not depend on the order events arrive in, so replays and late arrivals give the same table. At read time, with the current clock:
+**How.** The projection `word_evidence` keeps four things per (language, key): the weighted correct count `c`, the wrong count `w`, the time of the newest answer, and whether it was correct (a tie goes to "wrong"). Sums and maxima do not depend on the order events arrive in, so replays and late arrivals give the same table. At read time, with the current clock:
 
 ```
 pApp = 0.8 · c / (c + w + 1) · 0.5^(days since the newest answer / 30)     (× 0.5 if the newest answer was wrong)
@@ -155,9 +155,9 @@ pApp = 0.8 · c / (c + w + 1) · 0.5^(days since the newest answer / 30)     (×
 | `APP_LEARNING_MIN_CORRECT` | 3     | one lucky answer is not learning; one pseudo-miss caps a single correct answer at 0.4          |
 | hinted cloze weight        | 0.5   | same as the cloze credit (section 3.5)                                                         |
 
-So three unaided correct answers today give `pKnown = 0.6`: the word counts as "Learning (in Vuurtoren)", adds 0.6 to coverage and can become a cloze. Two months later, with no new answers, it is back to Anki's state with `pKnown ≈ 0.15`. Nothing is written to Anki: to make the word a card, use Add to Anki or Study first in Anki.
+So three unaided correct answers today give `pKnown = 0.6`. The word then counts as "Learning (in Vuurtoren)", adds 0.6 to coverage and can become a cloze. Two months later, with no new answers, it is back to Anki's state with `pKnown ≈ 0.15`. Nothing is written to Anki, so to make the word a card, use Add to Anki or Study first in Anki.
 
-**Limits.** In connected mode, exposure while reading (a word read without a lookup) is not evidence. Practice FSRS states are kept separately for scheduling exercises (section 4.1); only right/wrong feeds the learner model. In native mode reading, blanks and Practice also reach the word's card (section 9.5.1).
+**Limits.** In connected mode, exposure while reading (a word read without a lookup) is not evidence. Practice FSRS states are kept separately for scheduling exercises (section 4.1), and only right/wrong feeds the learner model. In native mode reading, blanks and Practice also reach the word's card (section 9.5.1).
 
 ---
 
@@ -205,7 +205,16 @@ There are 39 separable particles (`aan`, `af`, `bij`, `door`, `in`, `mee`, `op`,
 
 **What.** Dutch builds new words from old ones: with affixes (`woord` + `-loos` = `woordeloos`, "wordless") and by writing compounds as one word (`souvenirwinkel`). When a word has no dictionary entry, Vuurtoren builds its meaning from its parts, and failing that takes the English it became in the translation of its sentence.
 
-**Which meaning wins.** Dictionary entry (the word or a form of it), then a diminutive or plural of a known noun (`vriendinnetje` → `vriendin`), then a derivation, then the sentence when its alignment is confident, then a compound, then a less confident alignment (`Dictionary.lookup` in `dictionary.py`; the app adds the sentence). A confident alignment beats a compound guess because on the test set below it is right far more often (29 of 33 against 11 of 48 on the same words). A derivation loses to a compound only when the compound's parts are plain dictionary words and its head already contains the suffix: `berglandschap` is `berg` + `landschap`, not `bergland` + `-schap`; `brandgevaarlijk` is `brand` + `gevaarlijk`. When nothing at all resolves, a derivation of a compound is tried (`vastgoedmakelaar` + `-ster`).
+**Which meaning wins.** Vuurtoren tries the sources in this order and takes the first that gives a meaning (`Dictionary.lookup` in `dictionary.py`, and the app adds the sentence):
+
+1. a dictionary entry, for the word or a form of it;
+2. a diminutive or plural of a known noun (`vriendinnetje` → `vriendin`);
+3. a derivation;
+4. the sentence, when its alignment is confident;
+5. a compound;
+6. a less confident alignment.
+
+A confident alignment beats a compound guess because on the test set below it is right far more often (29 of 33, against 11 of 48 on the same words). A derivation loses to a compound only when the compound's parts are plain dictionary words and its head already contains the suffix. So `berglandschap` is `berg` + `landschap`, not `bergland` + `-schap`, and `brandgevaarlijk` is `brand` + `gevaarlijk`. When nothing at all resolves, a derivation of a compound is tried (`vastgoedmakelaar` + `-ster`).
 
 **Derivations** (`server/nlp/src/vuurtoren_nlp/derive.py`). Each affix knows which bases it takes and how to say the result in English:
 
@@ -231,9 +240,9 @@ There are 39 separable particles (`aan`, `af`, `bij`, `door`, `in`, `mee`, `op`,
 
 `ver-`, `be-` and `ont-` change a verb in ways that cannot be guessed, so they are never split off: a base that starts with them must be a dictionary verb. Diminutives (`-je`, `-tje`, `-pje`, `-etje`, `-kje`) are resolved through the noun they come from, which may itself be a derivation or a compound.
 
-A base is looked up with the spelling changes Dutch makes at a suffix: a linking `e`, `s`, `en` or `er` (`woord-e-loos`, `verkeer-s-loos`), an undoubled consonant (`rott-ig` → `rot`), a long vowel written single in an open syllable (`slap-e-loos` → `slaap`, `drie-tal-ig` → `taal`), and `v`/`z` for `f`/`s` (`slav-en-dom` → `slaaf`). Before a suffix that starts with a vowel a verb base is the infinitive minus `-en` (`lez-er` → `lezen`); before a consonant it is the present stem (`lees-baar` → `lezen`). Bases may be derived themselves, two levels deep (`on-` + `verdedigen` + `-baar` → undefendable).
+Dutch changes the spelling of a base when a suffix follows, so a base is looked up with those changes undone. They are a linking `e`, `s`, `en` or `er` (`woord-e-loos`, `verkeer-s-loos`), an undoubled consonant (`rott-ig` → `rot`), a long vowel written single in an open syllable (`slap-e-loos` → `slaap`, `drie-tal-ig` → `taal`), and `v`/`z` for `f`/`s` (`slav-en-dom` → `slaaf`). Before a suffix that starts with a vowel, a verb base is the infinitive minus `-en` (`lez-er` → `lezen`). Before a consonant it is the present stem (`lees-baar` → `lezen`). Bases may be derived themselves, two levels deep (`on-` + `verdedigen` + `-baar` → undefendable).
 
-Every reading that resolves is scored by the length of its base, minus 1 for an inflected base, 3 for a derived base, 6 for a compound base and 1 for a linker; the highest score wins. The base's English is its first one-word sense (`"without feeling; numb"` → numb), and English spelling rules form the result (`use` → usable, `happy` → happiness, `stop` → stopping, `translate` → translator). Suffixes are never compound heads, so `woordeloos` is not read as `woord` + `loos` (the plural of `loo`).
+A word can often be read in more than one way. Every reading that resolves is scored by the length of its base, minus 1 for an inflected base, 3 for a derived base, 6 for a compound base and 1 for a linker, and the highest score wins. The base's English is its first one-word sense (`"without feeling; numb"` → numb), and English spelling rules form the result (`use` → usable, `happy` → happiness, `stop` → stopping, `translate` → translator). Suffixes are never compound heads, so `woordeloos` is not read as `woord` + `loos` (the plural of `loo`).
 
 **Compounds** (`compound.py`). A dynamic-programming search tries every split into 2 or 3 dictionary parts, with optional linking elements `s`, `e`, `en`, `er` between them. Each split is scored as the sum of `len(part)²`, minus costs, so fewer and longer parts win. A head without an entry may be a derivation (`schoenen` + `poetser`).
 
@@ -249,13 +258,13 @@ Every reading that resolves is scored by the length of its base, minus 1 for an 
 | Dictionary lookups per word        | at most 400                                                                                                                                                      |
 | Diminutives (`-je`, `-tje`, …)     | never split; resolved through the noun they come from                                                                                                            |
 
-The compound takes the article of its head (`de souvenirwinkel` because `de winkel`). Its meaning is the English of each part, e.g. **souvenir shop**. Each part's English is the first sense of at most 3 words; when no sense is that short, the Dutch lemma is used. A plural head is pluralised, and a female head comes first (`zwaardvechtster` → female sword fighter).
+The compound takes the article of its head (`de souvenirwinkel` because `de winkel`). Its meaning is the English of each part, e.g. **souvenir shop**. Each part's English is its first sense of at most 3 words, and when no sense is that short, the Dutch lemma is used. A plural head is pluralised, and a female head comes first (`zwaardvechtster` → female sword fighter).
 
 **Where a guess came from.** `/gloss` marks these entries with `origin` (`derivation` or `compound`) and `formed` (`woord + -loos`, `souvenir + winkel`). The word inspector shows the note after the meaning, small and muted: "wordless · from woord + -loos". In Gloss mode a guessed meaning is lighter and italic, with the note in its tooltip.
 
-**The sentence** (`align.py`, `POST /translate/align`). OPUS-MT's decoder attends to the source subwords it is translating; CTranslate2 returns that attention for the best translation. A target word belongs to the Dutch word when one of its subwords attends most to one of the Dutch word's subwords. Neighbouring target words form runs; the run that gives the Dutch word the most attention wins, without articles, possessives, `to` and the like at its edges, and with at most 3 words. A word copied unchanged from the Dutch is no meaning. Attention alone hardly separates right from wrong, so the word is also translated on its own: the alignment is confident only when the two share an English word stem.
+**The sentence** (`align.py`, `POST /translate/align`). When nothing else works, the translation of the sentence can say what the word means there. OPUS-MT's decoder attends to the source subwords it is translating, and CTranslate2 returns that attention for the best translation. A target word belongs to the Dutch word when one of its subwords attends most to one of the Dutch word's subwords. Neighbouring target words form runs. The run that gives the Dutch word the most attention wins, trimmed of articles, possessives, `to` and the like at its edges, and with at most 3 words. A word copied unchanged from the Dutch is not a meaning. Attention alone hardly separates right from wrong, so the word is also translated on its own, and the alignment is confident only when the two share an English word stem.
 
-The app shows the meaning in the sentence marked "in this sentence". A confident one comes before a compound guess, which stays as the second meaning; after a derivation it is a second line when it differs ("speechless · in this sentence"). A less confident one is used only for a word with no other meaning. Words the dictionary knows are never aligned. The alignment request also returns the sentence translation, so the inspector needs no second request.
+The app shows this meaning marked "in this sentence". A confident one comes before a compound guess, which then stays as the second meaning. After a derivation it is a second line, when it differs ("speechless · in this sentence"). A less confident one is used only for a word with no other meaning. Words the dictionary knows are never aligned. The alignment request also returns the sentence translation, so the inspector needs no second request.
 
 **Numbers.** A test set of 244 Dutch words without a dictionary entry (192 derivations, 51 compounds and derived compounds, 1 other), each in a Tatoeba sentence, with the English meanings that count as right (`server/nlp/tests/fixtures/meanings-nl.tsv`, `test_meanings.py`):
 
@@ -292,6 +301,8 @@ The words were chosen because the dictionary misses them or the compound splitte
 
 ### 2.7 Getting text in: OCR, PDF and URL cleanup
 
+**What.** A text comes in from a web address, a PDF or a photo. Each kind has its own way in, described below, and after that one clean-up step repairs the text the same way for all of them.
+
 | Input            | How                                                                                                                                                                             | Numbers                                                                                        |
 | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
 | **URL**          | `trafilatura` extracts the main article (no comments, no tables, precision mode) (`extract_url.py`). Only public IP addresses are fetched.                                      | ≤ 5 redirects, 10 s timeout, ≤ 5 MB, needs ≥ 40 characters of text                             |
@@ -300,7 +311,7 @@ The words were chosen because the dictionary misses them or the compound splitte
 
 **Text layer check.** A PDF page keeps its text layer when it has at least 40 letters and digits and at least 70 % of its words (the first 300 words of two or more letters) are Dutch words in the server's lexicon: wordfreq (Zipf ≥ 2), the dictionary, simplemma, or a two-part compound of known words. Pages with fewer than 12 words are not judged by that share. Real Dutch pages score 0.97 to 1.0; broken font encodings and poor scanner OCR layers score 0.1 to 0.45. Without an OCR engine only a whole-file scan (< 25 letters/digits per page) asks for OCR. Course import uses the same check.
 
-**Page clean-up** (`straighten.py`, OpenCV). Geometry only: no binarisation and no contrast change, so a flat, straight scan comes out unchanged, pixel for pixel. Three steps, each skipped when it would change nothing:
+**Page clean-up** (`straighten.py`, OpenCV). The clean-up only changes the geometry of the page. It does no binarisation and no contrast change, so a flat, straight scan comes out unchanged, pixel for pixel. There are three steps, and each is skipped when it would change nothing:
 
 1. **Page in a photo.** The largest bright or edge-bounded four-sided shape covering at least 20 % of the image is the page. It is cut out and warped to a rectangle, unless it is an upright rectangle filling more than 85 % of the image (a scan or tight crop).
 2. **Deskew.** The rotation between −10° and +10° that makes the rows of dark pixels sharpest (horizontal projection profile, 0.5° then 0.1° steps) is applied when it is at least 0.5°.
@@ -308,13 +319,13 @@ The words were chosen because the dictionary misses them or the compound splitte
 
 **Recognition.** RapidOCR runs the PaddleOCR PP-OCRv6 _small_ models on ONNX Runtime (CPU): a detection model finds the text lines, a text-direction model turns upside-down lines, and the multilingual recognition model reads each line, with Dutch diacritics (ë, é, ï) and a box and score per word. Pages are scaled to at most 2000 px on the long side. The models ship inside the `rapidocr` package (about 30 MB), so OCR works offline from the first start. OCR reads Dutch only. Without the `ocr` extra (the `-slim` image) the OCR endpoints answer 503 and `/health` reports `"ocr": false`.
 
-**Reading order** (`rapid.py`). RapidOCR returns lines top to bottom across the page. A recursive XY cut puts them in order: a region is split at horizontal gaps of at least 0.9 line heights (paragraphs, boxes), else at vertical gutters of at least one line height (columns). Two columns are read one after the other; three or more columns, or a label column narrower than 20 % of the region, are a table and are read row by row.
+**Reading order** (`rapid.py`). RapidOCR returns lines top to bottom across the page, so a recursive XY cut puts them in reading order. A region is split at horizontal gaps of at least 0.9 line heights (paragraphs, boxes), and otherwise at vertical gutters of at least one line height (columns). Two columns are read one after the other. Three or more columns, or a label column narrower than 20 % of the region, are taken as a table and read row by row.
 
 **Lost spaces.** The recognition model sometimes drops a space. A token is split after sentence punctuation before a capital (`woning.De`), after `?` or `!` before a letter, after a digit before a capitalised word (`3Fietsen`), and around a short Dutch function word when the token is not a word itself and the rest is (`Komtu` → `Komt u`). There is no compound guess, so real compounds stay whole.
 
-**Review flags** use RapidOCR's own score: a known word is flagged when its score is below 70 (out of 100). The scores separate right from wrong words only weakly (at 70, about 1 % of correct words get a flag); most misreads are caught by the lexicon instead.
+**Review flags** use RapidOCR's own score, and a known word is flagged when its score is below 70 (out of 100). The scores separate right from wrong words only weakly (at 70, about 1 % of correct words get a flag), so most misreads are caught by the lexicon instead (section 2.8).
 
-**Benchmark** (`server/nlp/scripts/ocr_bench.py`). Six pages of a scanned A2 textbook (reading text, word list, exercises, a menu table, a grammar table; 1,685 words transcribed by hand), each also as two synthetic phone photos: tilted with uneven light and blur, and the same with a page curl. Word error rate (WER), character error rate (CER), WER ignoring word order (bag), and seconds per scanned page on one CPU thread (the clean-up itself takes about 0.2 s):
+**Benchmark** (`server/nlp/scripts/ocr_bench.py`). The test set is six pages of a scanned A2 textbook, with a reading text, a word list, exercises, a menu table and a grammar table, 1,685 words transcribed by hand. Each page is also made into two synthetic phone photos, one tilted with uneven light and blur, and the same with a page curl. The table gives the word error rate (WER), the character error rate (CER), the WER ignoring word order (bag), and seconds per scanned page on one CPU thread. The clean-up itself takes about 0.2 s.
 
 | Variant                | Scans WER / CER / bag | Photos WER / CER / bag | Curled WER / CER / bag | s/page |
 | ---------------------- | --------------------- | ---------------------- | ---------------------- | ------ |
@@ -322,7 +333,7 @@ The words were chosen because the dictionary misses them or the compound splitte
 | Tesseract 5, cleaned   | 24.7 / 21.0 / 3.7 %   | 28.4 / 24.4 / 17.9 %   | 35.5 / 31.4 / 21.4 %   | 1.4    |
 | RapidOCR, cleaned page | 4.8 / 2.5 / 1.7 %     | 5.4 / 2.6 / 2.1 %      | 8.1 / 5.2 / 2.4 %      | 6.7    |
 
-The Tesseract rows are for comparison only; Vuurtoren does not use it. Most of its scan errors are reading order in tables and word lists, and on photos it loses whole boxes of text. The PP-OCRv5 Latin recognition model scored about the same as the bundled PP-OCRv6 model (4.4 / 2.9 / 1.2 % on scans) but missed one accent and needs a separate download.
+The Tesseract rows are for comparison only, because Vuurtoren does not use it. Most of its scan errors are reading order in tables and word lists, and on photos it loses whole boxes of text. The PP-OCRv5 Latin recognition model scored about the same as the bundled PP-OCRv6 model (4.4 / 2.9 / 1.2 % on scans) but missed one accent and needs a separate download.
 
 After PDF and OCR extraction, `cleanup.py` repairs the text:
 
@@ -348,7 +359,7 @@ Each flag carries its position in the text and its box on the page, so the revie
 
 ## 3. Reading
 
-**In short.** A text is split into pages of about 150 words. For each page Vuurtoren checks every word against what you know and picks about three new words that are worth learning. Those are common words, and if possible ones that come back later in the text. They stay untranslated, and the other words you don't know get a translation next to them. In Cloze mode some words you already know become blanks. When you finish a page, Vuurtoren looks at how often you looked words up and how many blanks you got right, and the next pages get one new word more or one fewer, somewhere between 1 and 5.
+**In short.** A text is split into pages of about 150 words. For each page Vuurtoren checks every word against what you know and picks about three new words that are worth learning. Those are common words, and if possible ones that come back later in the text. They stay untranslated. In Gloss mode the other words you don't know get a translation above them, and in Cloze mode some words you already know become blanks. When you finish a page, Vuurtoren looks at how often you looked words up and how many blanks you got right, and the next pages get one new word more or one fewer, somewhere between 1 and 5.
 
 ### 3.1 Pages (segmentation)
 
@@ -380,6 +391,8 @@ A very long sentence stays whole, so a page can be longer than 150 words.
 
 ### 3.3 Coverage
 
+Coverage says how much of a page or a text you know, as one number between 0 and 1.
+
 **Coverage** = sum of `pKnown` over the counted words ÷ the number of counted words. Non-words, ignored tokens and detached particles are not counted. A learning word with `pKnown = 0.4` contributes 0.4, not 1. Whole-text coverage is the word-weighted average over pages. The library labels texts by coverage (`bandOf` in `staircase.ts`):
 
 | Coverage | Band        |
@@ -402,7 +415,7 @@ A very long sentence stays whole, so a page can be longer than 150 words.
    Your vocabulary estimate is the sum of `pKnown` over known and learning words, at least 200 (`estimateVocabulary` in `staircase.ts`).
 4. Candidates are the words at or above the floor, then (to fill a larger budget) words between Zipf 3.0 and the floor. **Words below Zipf 3.0 (about rank 20,000 and beyond) are never introduced**, only glossed.
 5. **Budget.** `B` new words per page of 150 words, scaled up for longer pages: `max(1, round(B × max(words, 150) / 150))` when there is at least one candidate. `B` defaults to 3. It comes from the **New words** setting (0 = none, a fixed number, or "auto", which follows the staircase in 3.6).
-6. The top candidates within the budget are `introduce`. Every other unknown word is `gloss`. Introduced words are highlighted and listed in the end-of-text word review, where you can add them to Anki. Glossed words are only listed there if you ask for them.
+6. The top candidates within the budget are `introduce`. Every other unknown word is `gloss`, which means it may get a translation in Gloss mode (section 3.5). Introduced words are highlighted and listed in the end-of-text word review, where you can add them to Anki. Glossed words are only listed there if you ask for them.
 
 **Clozes.**
 
@@ -418,7 +431,9 @@ A very long sentence stays whole, so a page can be longer than 150 words.
 
 If a verb is blanked, its detached particle stays visible.
 
-**Assumed-familiar words (cloze for beginners).** A learner who starts the starter words at a later level (`starterFrom` on the language profile; start level 3 means ranks 1–1000 are skipped) most likely knows the words below it, but has no evidence for them yet, so Cloze would have nothing to blank. These words therefore count as cloze candidates without evidence: the planner option `assumedFamiliar` holds their keys, and a `new` word among them is treated as `learning` with `pKnown` 0.6 for the cloze rules above. The other rules still apply, and a word is left out when the learner ignored it, set it back to new in the app, or when the page introduces it. Only cloze candidacy changes: the word keeps its label, is glossed or introduced as before, counts towards coverage and the known count as before, and nothing is recorded because of the assumption. Answering the blank is evidence like any other cloze answer (3.5). Learners who start at level 1, or whose profile has no start level, get no assumed-familiar words (`apps/web/src/services/assumedFamiliar.ts`).
+**Assumed-familiar words (cloze for beginners).** A learner can start the starter words at a later level (`starterFrom` on the language profile, where start level 3 means ranks 1–1000 are skipped). That learner most likely knows the words below the start level, but has no evidence for them yet, so Cloze would have nothing to blank. These words therefore count as cloze candidates without evidence. The planner option `assumedFamiliar` holds their keys, and a `new` word among them is treated as `learning` with `pKnown` 0.6 for the cloze rules above. The other rules still apply. A word is left out when the learner ignored it or set it back to new in the app, or when the page introduces it.
+
+Only cloze candidacy changes. The word keeps its label, is glossed or introduced as before, and counts towards coverage and the known count as before. Nothing is recorded because of the assumption, but answering the blank is evidence like any other cloze answer (3.5). Learners who start at level 1, or whose profile has no start level, get no assumed-familiar words (`apps/web/src/services/assumedFamiliar.ts`).
 
 ### 3.5 Translations dial, cloze hints and cloze credit
 
@@ -430,7 +445,7 @@ If a verb is blanked, its detached particle stays visible.
 | ≤ 1/3      | words you have not studied (`new`, `gloss`, `introduce`); default 0.25                                                |
 | > 1/3      | also known and learning words whose `pKnown` is below `(dial − 1/3) / (2/3) × 0.95`, which rises to 0.95 at full dial |
 
-Clozes never get a translation from the dial; they show their meaning as a hint instead. Read mode shows no translations (click a word to see its meaning). Cloze mode shows only the clozes' meanings.
+Clozes never get a translation from the dial, because they show their meaning as a hint instead. Read mode shows no translations (click a word to see its meaning). Cloze mode shows only the clozes' meanings.
 
 **Cloze hints and credit** (`packages/ui/src/Reader.tsx`, `apps/web/src/screens/ReaderPage.tsx`). Each blank has a help ladder: meaning (tooltip) → first letter and length → first half of the word → reveal. Answers are compared case-insensitively after Unicode normalisation. A missing accent (`een` for `één`) still counts, with a quiet note.
 
@@ -443,7 +458,7 @@ Clozes never get a translation from the dial; they show their meaning as a hint 
 
 ### 3.6 The staircase controller
 
-**What it does** (`updateStaircase` in `packages/core/src/reading/staircase.ts`). When you finish a page, Vuurtoren computes **cloze accuracy** (credit ÷ blanks shown) and **lookups per 100 words**, and nudges two values:
+**What it does** (`updateStaircase` in `packages/core/src/reading/staircase.ts`). The staircase makes the reading a little harder when it goes well and a little easier when it doesn't. When you finish a page, Vuurtoren computes **cloze accuracy** (credit ÷ blanks shown) and **lookups per 100 words**, and nudges two values:
 
 | Outcome                                                                  | Target coverage T        | New-word budget B |
 | ------------------------------------------------------------------------ | ------------------------ | ----------------- |
@@ -462,7 +477,7 @@ Clozes never get a translation from the dial; they show their meaning as a hint 
 
 **What.** The Side by side mode shows each sentence of the page with its English. Each Dutch word is paired with the English words it became, so pointing at _bel_ lights up _call_, and pointing at _rained_ lights up _regende_.
 
-**How** (`server/nlp/src/vuurtoren_nlp/pairs.py`, `POST /translate/pairs`). The app sends each sentence, the character spans of its words and the separable-verb links from section 2.3. The server translates the sentence with OPUS-MT (section 2.6) and keeps the decoder attention of the best translation: for every English subword, how much it looked at each Dutch subword.
+**How** (`server/nlp/src/vuurtoren_nlp/pairs.py`, `POST /translate/pairs`). The app sends each sentence, the character spans of its words and the separable-verb links from section 2.3. The server translates the sentence with OPUS-MT (section 2.6) and keeps the decoder attention of the best translation. That attention says, for every English subword, how much it looked at each Dutch subword.
 
 1. Dutch subwords are placed in the sentence by their characters and belong to the word they overlap. English subwords are placed in the translation the same way. English words are runs of letters and digits; a contraction is a word of its own (_I_ + _'ll_).
 2. The two parts of a split separable verb form one group: _bel … op_ pairs with _call_ as one unit, and pointing at either part lights up both.
@@ -472,15 +487,19 @@ Clozes never get a translation from the dial; they show their meaning as a hint 
 
 Results are cached per sentence on the server (256 sentences) and per page in the app.
 
-**English from an AI provider.** With a provider set up and "English from AI" on (Aa menu), the provider translates the page's sentences (one numbered list per request) and the server pairs that English instead of its own: the given English is the decoder's forced prefix (CTranslate2 `target_prefix`), so the attention is the model reading that exact English. When the provider fails, the offline English is used; when the server is down, the AI English shows without pairs. The offline model stays the default and works without AI.
+**English from an AI provider.** With a provider set up and "English from AI" on (Aa menu), the provider translates the page's sentences, as one numbered list per request. The server then pairs that English instead of its own. The given English is the decoder's forced prefix (CTranslate2 `target_prefix`), so the attention is the model reading that exact English. When the provider fails, the offline English is used, and when the server is down, the AI English shows without pairs. The offline model stays the default and works without AI.
 
-**Precomputed for the bundled stories.** A story ships with its own English (one line per Dutch sentence), and the build pairs it once, exactly as the server would: `server/nlp/scripts/build_story_extras.py` (run by `check_stories.py --write`) sends every sentence of the story's bundled analysis, with its word spans, its separable-verb joins and the story's English, through the same `pair_texts` with forced decoding, and writes the pairs into `content/stories/stories.json` (per sentence `[Dutch word indices, English token indices, confidence]`, confidence to 2 decimals). It writes the story's grammar hits from the same detectors too (section 5). The app (`storyPairs`/`storyGrammar` in `apps/web/src/services/stories.ts`) uses them first, without a request, as long as the text is the story's and its analysis is the bundled one; it maps the word indices to tokens with the same code as the server's answer (`livePairs.ts`), and only a sentence the bundle has nothing for goes to the server. So on a phone, or before the desktop's server is ready, a story's Side by side lights up partners, the structure view colours its pairs and notes the word order, and the reader shows its grammar marks. The bundle records the analyzer version (it covers the detectors), the model pack (`mt-nl-en 2026.11.1`) and a hash of the pairing code (`extras`), and the app ignores pairs and hits made for another analysis. The build is deterministic (beam 1, one batch per story).
+**Precomputed for the bundled stories.** A story ships with its own English, one line per Dutch sentence, and the build pairs it once, exactly as the server would. `server/nlp/scripts/build_story_extras.py` (run by `check_stories.py --write`) takes every sentence of the story's bundled analysis, with its word spans, its separable-verb joins and the story's English. It sends them through the same `pair_texts` with forced decoding, and writes the pairs into `content/stories/stories.json` (per sentence `[Dutch word indices, English token indices, confidence]`, confidence to 2 decimals). It also writes the story's grammar hits from the same detectors (section 5).
 
-**Which sentences show their English.** Always; only hard sentences (coverage below 0.85, as in section 3.3, over the sentence's counted words; the default); or Tap to show (a "Show English" button per sentence).
+The app (`storyPairs`/`storyGrammar` in `apps/web/src/services/stories.ts`) uses these first, without a request, as long as the text is the story's and its analysis is the bundled one. It maps the word indices to tokens with the same code as the server's answer (`livePairs.ts`), and only a sentence the bundle has nothing for goes to the server. So on a phone, or before the desktop's server is ready, a story's Side by side lights up partners, the structure view colours its pairs and notes the word order, and the reader shows its grammar marks.
 
-**Structure view.** Every pair gets its own colour on both sides, and one note on the word order when the grammar detectors (section 5) found it in the sentence, in this order of preference: verb at the end after a subordinator, verb at the end of a relative clause, a split separable verb, a participle at the end (perfect tense), verb second (inversion) (`wordOrderNote` in `packages/core/src/reading/grammar.ts`).
+The bundle records the analyzer version (which covers the detectors), the model pack (`mt-nl-en 2026.11.1`) and a hash of the pairing code (`extras`). The app ignores pairs and hits made for another analysis. The build is deterministic (beam 1, one batch per story).
 
-**Limits.** Attention is a soft signal, not a dictionary. Small function words (_the_, _to_, _will_) often attend to a neighbour and join its pair; an English particle may land on the wrong word (_ring **up** my mother_: _up_ goes with _mijn_). A Dutch word that no English word attends to stays unpaired (_er_, the _ge-_ participle when the model translated _heb gelezen_ as one verb). Idioms pair word by word, which can look odd. With AI English, the pairs are as good as the offline model's reading of a translation it did not write. On hand-checked sentences the pairs above 0.4 are mostly right; there is no measured accuracy yet.
+**Which sentences show their English.** There are three choices. Always, or only hard sentences (the default), or Tap to show, which puts a "Show English" button on each sentence. A hard sentence is one whose coverage is below 0.85, as in section 3.3, over the sentence's counted words.
+
+**Structure view.** Every pair gets its own colour on both sides. The sentence also gets one note on its word order, when the grammar detectors (section 5) found something in it (`wordOrderNote` in `packages/core/src/reading/grammar.ts`). The note is picked in this order of preference: verb at the end after a subordinator, verb at the end of a relative clause, a split separable verb, a participle at the end (perfect tense), and verb second (inversion).
+
+**Limits.** Attention is a soft signal, not a dictionary. Small function words (_the_, _to_, _will_) often attend to a neighbour and join its pair, and an English particle may land on the wrong word (_ring **up** my mother_: _up_ goes with _mijn_). A Dutch word that no English word attends to stays unpaired (_er_, the _ge-_ participle when the model translated _heb gelezen_ as one verb). Idioms pair word by word, which can look odd. With AI English, the pairs are as good as the offline model's reading of a translation it did not write. On hand-checked sentences the pairs above 0.4 are mostly right, but there is no measured accuracy yet.
 
 ---
 
@@ -498,7 +517,7 @@ Practice trains words you already study (Anki state `learning` or `known`) in co
 
 ### 4.2 Grading an answer
 
-`packages/core/src/practice/grade.ts` turns an attempt into an FSRS rating:
+Every answer becomes one of the four FSRS ratings, so an answer that needed help brings the exercise back sooner than a quick one. `packages/core/src/practice/grade.ts` does this:
 
 | Attempt                                                         | Rating |
 | --------------------------------------------------------------- | ------ |
@@ -511,7 +530,7 @@ Practice trains words you already study (Anki state `learning` or `known`) in co
 
 ### 4.3 Checking answers (leniency)
 
-`packages/core/src/practice/check.ts`:
+An answer is checked leniently, so small slips like capitals or a full stop don't make it wrong (`packages/core/src/practice/check.ts`):
 
 - **Multiple choice**: exact match with the answer, after Unicode normalisation and trimming.
 - **Typed words**: case-insensitive, whitespace collapsed, curly quotes normalised, punctuation at the edges ignored (`loopt.` = `loopt`). Any accepted variant counts (e.g. both auxiliaries for verbs that take `hebben` and `zijn`). A **missing accent is still correct**, with a note ("Mind the accents: één").
@@ -519,7 +538,7 @@ Practice trains words you already study (Anki state `learning` or `known`) in co
 
 ### 4.4 Exercise generators
 
-`packages/core/src/practice/generate.ts`. Each generator returns an exercise, or nothing when the word lacks the needed data. In that case the session tries another kind.
+Each kind of exercise has its own generator in `packages/core/src/practice/generate.ts`. A generator returns an exercise, or nothing when the word lacks the data it needs, and then the session tries another kind.
 
 | Exercise       | Skill       | Needs                                                           | How it is built                                                                                                         |
 | -------------- | ----------- | --------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
@@ -538,6 +557,8 @@ Practice trains words you already study (Anki state `learning` or `known`) in co
 Word forms and the perfect-tense auxiliary come from Wiktionary (`server/nlp/src/vuurtoren_nlp/wordforms.py`). Wiktionary records the auxiliary for only about 3 % of verbs. For the rest, Vuurtoren uses how often the participle appears with `hebben` vs `zijn` in the Tatoeba corpus, then a curated list of `zijn` verbs, and defaults to `hebben`.
 
 ### 4.5 Choosing distractors
+
+The wrong options in a choice exercise should be real words to you, and clearly wrong. They come from two places.
 
 **Local pool** (`packages/core/src/practice/distractors.ts`). Wrong options come from the other words in the session:
 
@@ -560,6 +581,8 @@ The app checks the synonym rule again with its own dictionary before using a nei
 
 ### 4.6 Example sentences
 
+Most exercises need a sentence with the word in it, so Vuurtoren looks for good example sentences.
+
 **Where they come from**, best first (`packages/core/src/practice/sentences.ts`, `apps/web/src/services/livePractice.ts`):
 
 1. **Your Anki card's example sentence**, if the word can be found in it: as the lemma, a form from Wiktionary, or a regular ending (`-s/-en/-je` for nouns, `-e` for adjectives, `-t/-te/-ten/-de/-den` and `ge…d/t` for verbs). There is no prefix guessing: _Zij_ is not _zijn_, and _manier_ is not _man_.
@@ -574,7 +597,7 @@ The app checks the synonym rule again with its own dictionary before using a nei
 
 ### 4.7 Building a session
 
-`packages/core/src/practice/session.ts`, `apps/web/src/services/livePractice.ts`:
+A session first picks the words, then the (word, skill) pairs that are due or new, and then an exercise kind for each (`packages/core/src/practice/session.ts`, `apps/web/src/services/livePractice.ts`):
 
 | Step          | Rule                                                                                                                                                                                                        |
 | ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -602,15 +625,17 @@ The app checks the synonym rule again with its own dictionary before using a nei
 
 **Topics (22).** inversion · questions · subordinate clauses · separable verbs · perfect tense · modal verbs · imperfect (simple past) · future (`zullen`/`gaan` + infinitive) · reflexive verbs · `om … te` + infinitive · `te` + infinitive · adjective inflection (-e) · comparison · negation (`niet`/`geen`) · demonstratives · `er` (existential, quantitative, prepositional, place) · relative pronouns · de/het (diminutives are always `het`) · plural nouns · imperative · indirect speech · conjunctions (`en/maar/want/of`).
 
-**Topic pages.** The grammar topics a hit links to (`packages/content/grammar/nl/*.md`) follow the e-ANS (Algemene Nederlandse Spraakkunst) and Taaladvies, simplified for learners, and each topic lists its sources in a `sources` front-matter field, shown at the end of the topic page.
+**Topic pages.** The grammar topics a hit links to (`packages/content/grammar/nl/*.md`) follow the e-ANS (Algemene Nederlandse Spraakkunst) and Taaladvies, simplified for learners. Each topic lists its sources in a `sources` front-matter field, which is shown at the end of the topic page.
 
-**Precision over recall.** A detector fires only when the parse and the word forms agree. A missed example costs nothing; a wrong underline teaches the wrong thing. One construction gives one hit, but a token may belong to hits of several topics.
+**Precision over recall.** A detector fires only when the parse and the word forms agree. A missed example costs nothing, but a wrong underline teaches the wrong thing. One construction gives one hit, but a token may belong to hits of several topics.
 
-**Example cache** (`grammar_examples.py`, `GET /grammar/examples`). The Tatoeba sentence database is indexed by word, not by construction. To find sentences "with an inversion", the detectors are run over sentences of 5–14 words, in a fixed pseudo-random order, so rare constructions turn up as early as common ones. Each request scans batches of 128 sentences until the topic has enough examples or a 4-second budget is spent. Up to 40 examples per topic are cached, and the best (lowest difficulty score) are returned, 10 by default. The cache is discarded whenever `grammar.py` changes (it stores a hash of the file).
+**Example cache** (`grammar_examples.py`, `GET /grammar/examples`). The Tatoeba sentence database is indexed by word, not by construction. So to find sentences "with an inversion", the detectors are run over sentences of 5–14 words, in a fixed pseudo-random order, and rare constructions turn up as early as common ones. Each request scans batches of 128 sentences until the topic has enough examples or a 4-second budget is spent. Up to 40 examples per topic are cached, and the best (lowest difficulty score) are returned, 10 by default. The cache is discarded whenever `grammar.py` changes (it stores a hash of the file).
 
 ### 5.1 Word-form explainer
 
-**What.** "Why is this word like this?" for any word in the reader, not only the ones a detector marked. `explainWord(tokens, index, { hits, article })` in `packages/core/src/reading/explain.ts` returns short plain-English notes, each with the id of its grammar page, plus a word-order line when the word is a finite verb. It runs in the browser on the stored analysis (lemma, POS, morph, dependency tree of the clicked word's sentence), so it needs no server call. The inspector's "Grammar of this word" section (`apps/web/src/screens/reader/WordGrammar.tsx`) shows up to three notes and the order line, then the detector notes of topics the explainer did not cover; more lines and the topic rules sit under "More about this word".
+**What.** The explainer answers "Why is this word like this?" for any word in the reader, not only the ones a detector marked. `explainWord(tokens, index, { hits, article })` in `packages/core/src/reading/explain.ts` returns short plain-English notes, each with the id of its grammar page. When the word is a finite verb, it adds a word-order line. It runs in the browser on the stored analysis (lemma, POS, morph, and the dependency tree of the clicked word's sentence), so it needs no server call.
+
+The inspector's "Grammar of this word" section (`apps/web/src/screens/reader/WordGrammar.tsx`) shows up to three notes and the order line. After them come the detector notes of topics the explainer did not cover. More lines and the topic rules sit under "More about this word".
 
 **Rules** (spaCy features in brackets):
 
@@ -627,9 +652,9 @@ The app checks the synonym rule again with its own dictionary before using a nei
 | Others                           | er/daar/hier/waar + preposition (also split, from the detector hit), te/om, subordinating and coordinating conjunctions, articles, geen.                                                                                                                                                                                                                                                  |
 | Word order (finite verb)         | subordinate (SCONJ `mark`) or relative clause (`acl:relcl`) → verb last; main clause: yes/no question, question word first, imperative, V2 (only subject words before the verb) or inversion (something else first, subject after the verb; a whole fronted clause is named as such). Coordinated or embedded clauses without a mark get no line.                                         |
 
-**Precision first.** A rule fires only when the form agrees with the analysis; when it does not (a wrong lemma, a -t with _ik_, a lemma that is not an infinitive), the note is dropped and the word gets just "lemma: part of speech", with "words like this do not change form" for adverbs, prepositions and conjunctions. Known parser errors still leak through: spaCy reads _De kinderen spelen buiten_ as separable _buitenspelen_, and gives _nagedacht_ the lemma _nadachten_ (the explainer then calls it an irregular participle of that lemma).
+**Precision first.** A rule fires only when the form agrees with the analysis. When it does not (a wrong lemma, a -t with _ik_, a lemma that is not an infinitive), the note is dropped, and the word gets just "lemma: part of speech". Adverbs, prepositions and conjunctions also get "words like this do not change form". Known parser errors still leak through: spaCy reads _De kinderen spelen buiten_ as separable _buitenspelen_, and gives _nagedacht_ the lemma _nadachten_ (the explainer then calls it an irregular participle of that lemma).
 
-**Tests.** `explain.test.ts` checks 87 word/sentence pairs against analyses captured from the NLP server (`fixtures/word-grammar.nl.json`, 69 sentences); a web test checks that every linked topic id has a page.
+**Tests.** `explain.test.ts` checks 87 word/sentence pairs against analyses captured from the NLP server (`fixtures/word-grammar.nl.json`, 69 sentences). A web test checks that every linked topic id has a page.
 
 ---
 
@@ -637,7 +662,7 @@ The app checks the synonym rule again with its own dictionary before using a nei
 
 **In short.** Vuurtoren reads your Anki decks, but it only writes to Anki when you press a button for a word. Every note it writes gets a tag, so you can always find it.
 
-This section is about connected mode. In native mode Vuurtoren writes nothing to Anki: the same buttons act on its own cards (section 9.5).
+This section is about connected mode. In native mode Vuurtoren writes nothing to Anki, and the same buttons act on its own cards instead (section 9.5).
 
 Vuurtoren reads Anki freely but **writes only when you click** a button for one word (`packages/anki/src/actions.ts`, `packages/anki/src/note.ts`). Every write is tagged, so you can find and undo it in Anki's browser.
 
@@ -648,7 +673,9 @@ Vuurtoren reads Anki freely but **writes only when you click** a button for one 
 | **Mark known**                       | any state, or not in Anki           | (Adds the note first if needed.) Unsuspends the card and sets its interval to a random 21–35 days (`setDueDate "21-35!"`), so it reads back as mature, and therefore known.                                 | `vuurtoren::known`   |
 | **Use Anki's state**                 | after a manual mark                 | Nothing in Anki. Only the app-side mark is removed.                                                                                                                                                         | —                    |
 
-Vuurtoren **never** answers cards, writes review history, changes FSRS parameters, or touches cards you study in any way other than through Mark known. Practice, cloze and book-exercise results stay in Vuurtoren (they feed the learner model, section 1.7). All four buttons are one shared command layer (`packages/anki/src/profile.ts` `addWordToAnki`, `packages/anki/src/commands.ts`: `studyWordFirst`, `studyWordsFirst`, `markWordKnown`, `resetToAnkiState`, `setAppWordState`) with one key rule (`wordKey`). In the app, Learn next is labelled **Study first in Anki**. Until Anki has reviews for an added or moved card, the reader treats the word as `learning` with `pKnown = 0.2` (section 1.6).
+Vuurtoren **never** answers cards, writes review history or changes FSRS parameters, and it touches cards you study only through Mark known. Practice, cloze and book-exercise results stay in Vuurtoren, where they feed the learner model (section 1.7).
+
+All four buttons go through one shared command layer with one key rule (`wordKey`). The layer is `addWordToAnki` in `packages/anki/src/profile.ts`, and `studyWordFirst`, `studyWordsFirst`, `markWordKnown`, `resetToAnkiState` and `setAppWordState` in `packages/anki/src/commands.ts`. In the app, Learn next is labelled **Study first in Anki**. Until Anki has reviews for an added or moved card, the reader treats the word as `learning` with `pKnown = 0.2` (section 1.6).
 
 ---
 
@@ -685,9 +712,17 @@ spaCy attached `op` to `bel` as a particle, so rule 2.3(a) joined them into `opb
 
 **In short.** Nothing above uses AI. The AI features only show up when you add your own key.
 
-Everything above (deck detection, the learner model, lemmatisation, separable verbs, derivation and compound glosses, meanings read off the sentence translation, the dictionary, offline sentence translation, OCR and cleanup, the reading planner, clozes, the staircase, practice scheduling and exercises, distractors, grammar detection, Anki writes, and native reviews with their tuning) runs **without any AI provider or API key**. The two models involved (spaCy and OPUS-MT) are small, local and deterministic for a given input. They never generate free text about you or for you.
+Everything in the sections above runs **without any AI provider or API key**. That is deck detection, the learner model, lemmatisation, separable verbs, derivation and compound glosses, meanings read off the sentence translation, the dictionary, offline sentence translation, OCR and cleanup, the reading planner, clozes, the staircase, practice scheduling and exercises, distractors, grammar detection, Anki writes, and native reviews with their tuning. The two models involved (spaCy and OPUS-MT) are small, local and deterministic for a given input. They never generate free text about you or for you.
 
 AI features are opt-in extras, hidden until you configure a provider: Converse, Explain this sentence, Simplify this page and the English of Side by side (its word pairs still come from the offline model, section 3.7). See [ai.md](../ai.md) for what they do, which providers work and what is sent.
+
+**How generated text is checked.** The AI writes, and Vuurtoren's own algorithms check what it wrote, so the AI never grades anything (`packages/ai/src`).
+
+- **Talk and stories** (`conversation.ts`, `story.ts`). The language server analyses the text, and Vuurtoren works out how much of it you know. If that is more than 3 points below your target (and never below 90%), it asks for one rewrite and names the words that were too hard. For a story, the new words you asked for don't count against it. The rewrite is only kept if it's better, and words you still don't know get a translation.
+- **Example sentences** (`examples.ts`), up to 8 words per Practice session and 5 sentences each. A sentence is only kept if the word is really in it, you know at least 90% of it with at most one unknown word, no other target word slips in, and it has 4 to 14 words. For a grammar topic, the grammar detector must also find the rule. Failed tries are saved too, so a hard word isn't tried again every session.
+- **Unit exercises** (`unitExercises.ts`: gap fills, sentence building, a text with questions) are checked the same way, and then graded by the book's own checkers.
+
+**The key.** The provider key is stored on the device only. With a passphrase it is encrypted with AES-GCM, with a key from PBKDF2 (SHA-256, 250,000 iterations) (`keystore.ts`).
 
 ---
 
@@ -699,21 +734,25 @@ In native mode Vuurtoren holds the cards and runs the reviews. The learner model
 
 ### 9.1 Where cards come from
 
+Cards come in three ways: a word you add while reading, an Anki package file, or a move from Anki through AnkiConnect.
+
 | Source                          | What comes in                                                                                                                                                                                                  |
 | ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Add to my words**             | a note of Vuurtoren's own type (Word, Gloss, Sentence, SentenceTranslation, Source) with one card, in the deck the language profile chooses                                                                    |
 | **.apkg / .colpkg file**        | the chosen decks' notes, note types (fields, card templates, styling), cards, deck options, the full review log, and the images and sounds the notes use                                                       |
 | **Move from Anki to Vuurtoren** | the same, read through AnkiConnect from the confirmed source decks and Vuurtoren's destination decks (`notesInfo`, `cardsInfo`, `getReviewsOfCards`, `findModelsByName`, `getDeckConfig`, `retrieveMediaFile`) |
 
-**Package files** (`packages/anki/src/apkg/read.ts`). A package is a zip. The older layout holds `collection.anki2` or `collection.anki21`, a SQLite file whose `col` row carries note types, decks and deck options as JSON, and a `media` file mapping zip entries to names as JSON. The current layout holds `collection.anki21b`, compressed with zstd; note types, fields, templates, decks and deck options have their own tables with protobuf blobs (note type kind, CSS, template front and back, a deck's options id, learning steps, relearning steps, new cards per day, maximum interval, target retention, FSRS-6 parameters), and `media` is a zstd-compressed protobuf list; each media file is compressed too. Cards in a filtered deck are imported into their home deck. A review card's due day counts from the collection's creation day. The current schema declares text columns `COLLATE unicase`, a collation only Anki has; Vuurtoren walks the schema table's pages and swaps it for `COLLATE binary ` (same length) in the schema's SQL only, never in note text. A package may unpack to at most 512 MB per file and 1 GB in all.
+**Package files** (`packages/anki/src/apkg/read.ts`). A package is a zip, and it comes in two layouts. The older layout holds `collection.anki2` or `collection.anki21`, a SQLite file whose `col` row carries note types, decks and deck options as JSON, and a `media` file mapping zip entries to names as JSON. The current layout holds `collection.anki21b`, compressed with zstd. In it, note types, fields, templates, decks and deck options have their own tables with protobuf blobs (note type kind, CSS, template front and back, a deck's options id, learning steps, relearning steps, new cards per day, maximum interval, target retention, FSRS-6 parameters). Its `media` is a zstd-compressed protobuf list, and each media file is compressed too.
+
+Cards in a filtered deck are imported into their home deck. A review card's due day counts from the collection's creation day. The current schema declares text columns `COLLATE unicase`, a collation only Anki has. So Vuurtoren walks the schema table's pages and swaps it for `COLLATE binary ` (same length), in the schema's SQL only, never in note text. A package may unpack to at most 512 MB per file and 1 GB in all.
 
 **Vocabulary fields** are found with the same detection as in connected mode (section 1.1), per deck and note type. When the language server is unreachable, field names decide (`Woord`/`Word`/`Front` for the word, `Betekenis`/`Meaning`/`Back` for the meaning, `Zin`/`Sentence`/`Example` for the sentence). Headwords become keys with the server's term analysis (section 1.2), or with `wordKey` without it. Notes of other types are imported and reviewed, but do not feed the learner model.
 
-Notes and cards keep their Anki ids. A card that is already held keeps its state and history when the same deck is imported again. Images up to 2 MB and sounds up to 8 MB are kept; the import reports any it could not keep.
+Notes and cards keep their Anki ids. A card that is already held keeps its state and history when the same deck is imported again. Images up to 2 MB and sounds up to 8 MB are kept, and the import reports any it could not keep.
 
 ### 9.2 The scheduler
 
-`packages/core/src/native/schedule.ts`, on `ts-fsrs` (FSRS-6, 21 parameters):
+The scheduler decides when each card comes back, and in what order the cards of a day are shown. It is `packages/core/src/native/schedule.ts`, on `ts-fsrs` (FSRS-6, 21 parameters):
 
 | Setting          | Value                                                                                                                                                    |
 | ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -727,37 +766,43 @@ Notes and cards keep their Anki ids. A card that is already held keeps its state
 
 Imported decks bring their own steps, limits and target retention.
 
-**Imported memory.** Each card's review log is replayed through the scheduler, oldest first, without fuzz, so stability and difficulty are what FSRS makes of the whole history. Manual changes (rescheduling, set due date) are not answers and are skipped; a manual entry followed by learning answers is a reset and starts the card over. A review card keeps the due date and interval Anki gave it. A reviewed card without any history gets its interval as stability and difficulty 5.
+**Imported memory.** Each card's review log is replayed through the scheduler, oldest first, without fuzz, so stability and difficulty are what FSRS makes of the whole history. Manual changes (rescheduling, set due date) are not answers and are skipped. A manual entry followed by learning answers is a reset, and it starts the card over. A review card keeps the due date and interval Anki gave it. A reviewed card without any history gets its interval as stability and difficulty 5.
 
-**Queue** (`nativeQueue` in `packages/db/src/cards.ts`). It works like Anki's. A word you are still learning comes first as soon as its step is due, so a word you pressed Again on comes back after its minute. Then come today's reviews, with the new words spread evenly between them. A review is due for the whole day it falls on (the day starts at 4:00), and within a day the order is shuffled, but the same all day so the queue doesn't jump around between answers. There are at most 200 reviews a day (Settings → Cards → **Reviews a day**), so after days away the rest waits for the next days. When nothing else is left, learning words due in the next 20 minutes come forward. Hard on a learning step also works as in Anki: halfway between the first two steps on the first step, and the same step again on a later one (`ankiLearningSteps` in `packages/core/src/native/schedule.ts`).
+**Queue** (`nativeQueue` in `packages/db/src/cards.ts`). It works like Anki's. A word you are still learning comes first as soon as its step is due, so a word you pressed Again on comes back after its minute. Then come today's reviews, with the new words spread evenly between them. A review is due for the whole day it falls on (the day starts at 4:00), and within a day the order is shuffled, but the same all day so the queue doesn't jump around between answers. There are at most 200 reviews a day (Settings → Your words → **Reviews a day**), so after days away the rest waits for the next days. When nothing else is left, learning words due in the next 20 minutes come forward. Hard on a learning step also works as in Anki: halfway between the first two steps on the first step, and the same step again on a later one (`ankiLearningSteps` in `packages/core/src/native/schedule.ts`).
 
 **Related cards apart.** Once a card of a note, or of another note of the same word (same key), is answered on a study day, that note's and word's other new and review cards wait for the next day. In one session only the first of them is offered. Learning and relearning steps go on. The counts on the Words badge and in Today on Read follow the same rule.
 
 #### 9.2.1 Workload
 
-- **Load balancing** (`balanceInterval` in `packages/core/src/native/workload.ts`). A review answer of 3 days or more can land anywhere in the range ts-fsrs's fuzz allows (`get_fuzz_range`, for 20 days about 17–23). Vuurtoren picks the day with the fewest review cards already due (`nativeDueCounts`); ties go to the planned interval. Cards answered alike so spread by themselves, without randomness.
-- **Review days** (Settings): each weekday takes its normal, reduced (half) or minimum share. The cost of a day is (cards due + 1) ÷ its share; a minimum day takes a card only when every day in the range is one.
-- **Expected load.** Next to each target recall, Settings shows about how many reviews a day it means for the cards you have now: for each review card, one review per interval at that recall (FSRS-6: t = S/F · (R^(−1/decay) − 1), F = 0.9^(−1/decay) − 1, capped by the maximum interval), plus the new cards a day while a deck has new cards.
+The workload rules keep the number of reviews even from day to day.
 
-**Answering** (`answerCard`): Again, Hard, Good, Easy are FSRS ratings 1–4. The event stores the card's schedule before and after the answer, so the log replays without the scheduler and an undo restores the earlier state exactly (when another device answered the card after it, the card is replayed instead, 9.6). The buttons show the interval each rating would give.
+- **Load balancing** (`balanceInterval` in `packages/core/src/native/workload.ts`). A review answer of 3 days or more can land anywhere in the range ts-fsrs's fuzz allows (`get_fuzz_range`, for 20 days about 17–23). Vuurtoren picks the day with the fewest review cards already due (`nativeDueCounts`), and ties go to the planned interval. So cards answered alike spread out by themselves, without randomness.
+- **Review days** (Settings): each weekday takes its normal, reduced (half) or minimum share. The cost of a day is (cards due + 1) ÷ its share. A minimum day takes a card only when every day in the range is one.
+- **Expected load.** Next to each target recall, Settings shows about how many reviews a day it means for the cards you have now. That is, for each review card, one review per interval at that recall (FSRS-6: t = S/F · (R^(−1/decay) − 1), F = 0.9^(−1/decay) − 1, capped by the maximum interval), plus the new cards a day while a deck has new cards.
+
+**Answering** (`answerCard`): Again, Hard, Good, Easy are FSRS ratings 1–4. The event stores the card's schedule before and after the answer. So the log replays without the scheduler, and an undo restores the earlier state exactly. When another device answered the card after it, the card is replayed instead (9.6). The buttons show the interval each rating would give.
 
 ### 9.3 Tuning to you
 
-The FSRS optimizer is `fsrs-rs` compiled to WebAssembly (`@open-spaced-repetition/binding-wasm32-wasip1`), run in a worker on the device (`apps/web/src/native/`). It trains on the whole review history: imported and answered in Vuurtoren.
+**In short.** FSRS has parameters that describe how your memory works. Vuurtoren learns them from your own review history, so the schedule fits you better over time.
 
-1. Each card's answers become a sequence of ratings with whole study days between them (a study day starts at 4:00 local time). A card counts only when its history starts with a learning answer; a reset starts a new sequence; manual entries are left out (`trainingSequences`).
+The FSRS optimizer is `fsrs-rs` compiled to WebAssembly (`@open-spaced-repetition/binding-wasm32-wasip1`), run in a worker on the device (`apps/web/src/native/`). It trains on the whole review history, both imported and answered in Vuurtoren.
+
+1. Each card's answers become a sequence of ratings with whole study days between them (a study day starts at 4:00 local time). A card counts only when its history starts with a learning answer. A reset starts a new sequence, and manual entries are left out (`trainingSequences`).
 2. Every answer given on a later study day than the one before is one training item: that answer with the card's whole history before it, same-day learning steps included.
 3. The optimizer trains FSRS-6 parameters with short-term memory enabled. It needs at least 50 such answers.
-4. The new and the current parameters are scored on the same items: log loss and RMSE (binned), lower is better. The new ones are used only when their log loss is lower; otherwise the current ones stay.
-5. With new parameters, every card with a complete history is replayed again for its stability and difficulty. Due dates stay as they are. Only the new stability and difficulty are recorded, with the parameters and the card's last answer; a card answered since (on another device) keeps that answer, and a card whose parameters were replaced meanwhile (another device tuned too) is left as it is.
+4. The new and the current parameters are scored on the same items, with log loss and RMSE (binned), where lower is better. The new ones are used only when their log loss is lower, and otherwise the current ones stay.
+5. With new parameters, every card with a complete history is replayed again for its stability and difficulty. Due dates stay as they are. Only the new stability and difficulty are recorded, with the parameters and the card's last answer. A card answered since (on another device) keeps that answer, and a card whose parameters were replaced meanwhile (another device tuned too) is left as it is.
 
-It runs by itself when the app opens: the first time once the history holds 400 answers, then every 30 days (when there are new answers) or after 500 new answers, but not within a day of the last tuning on any device. **Optimise now** in Settings runs it at once and shows the reviews used and the log loss and RMSE before and after.
+It runs by itself when the app opens. The first time is once the history holds 400 answers. After that it runs every 30 days (when there are new answers) or after 500 new answers, but not within a day of the last tuning on any device. **Optimise now** in Settings runs it at once and shows the reviews used and the log loss and RMSE before and after.
 
 ### 9.4 What you know
 
-`nativeWordEntries` in `packages/db/src/cards.ts` gives the learner model the same per-word facts an Anki snapshot gives (section 1.5): each note's strongest card, read with `classifyCard` (section 1.4) from its FSRS stability, the time of its last answer and the decay of the parameters in use (FSRS-6 learns it; the default is 0.1542). So **known** means stability ≥ 21 days and recall ≥ 0.6 now; a suspended mature card stays known. A word added with **Add to my words** is `learning` with `pKnown = 0.2` until its card is first answered, as in connected mode. Manual marks and app evidence apply on top as in sections 1.6 and 1.7.
+Vuurtoren's own cards tell the learner model which words you know, the same way Anki cards do. `nativeWordEntries` in `packages/db/src/cards.ts` gives the learner model the same per-word facts an Anki snapshot gives (section 1.5). It takes each note's strongest card and reads it with `classifyCard` (section 1.4), from its FSRS stability, the time of its last answer and the decay of the parameters in use (FSRS-6 learns it, and the default is 0.1542). So **known** means stability ≥ 21 days and recall ≥ 0.6 now, and a suspended mature card stays known. A word added with **Add to my words** is `learning` with `pKnown = 0.2` until its card is first answered, as in connected mode. Manual marks and app evidence apply on top as in sections 1.6 and 1.7.
 
 ### 9.5 Word commands
+
+The word buttons are the same as in connected mode (section 6), but they act on Vuurtoren's own cards.
 
 | Button              | What happens to Vuurtoren's cards                                                      |
 | ------------------- | -------------------------------------------------------------------------------------- |
@@ -776,19 +821,23 @@ In native mode, what you do with a word outside the review screen reaches its ca
 | **Finish a page** and not look the word up | a due card moves later by 15 % of its interval (1–7 days): light evidence, not an answer                                           |
 | **Look the word up** while reading         | a card not due yet becomes due now                                                                                                 |
 
-- A word gets at most one answer a day, from wherever it comes first (the review screen included). New cards are never introduced this way; suspended cards are left alone.
-- Answers from Practice and blanks are reviews (source `practice` or `cloze`): the optimizer trains on them. Moves from reading are not reviews and stay out of its training data.
-- A move from reading is recorded as what to do (later by so many days, or due now) with the card's last answer, and done to the card as it is when the change applies: a card answered since, here or on another device, is left as answered, and a card another device already moved is not moved twice.
+- A word gets at most one answer a day, from wherever it comes first (the review screen included). New cards are never introduced this way, and suspended cards are left alone.
+- Answers from Practice and blanks are reviews (source `practice` or `cloze`), so the optimizer trains on them. Moves from reading are not reviews and stay out of its training data.
+- A move from reading is recorded as what to do (later by so many days, or due now), together with the card's last answer. It is done to the card as it is when the change applies. So a card answered since, here or on another device, is left as answered, and a card another device already moved is not moved twice.
 
 ### 9.6 The review screen
 
-Front, then Space or **Show answer**, then Again / Hard / Good / Easy (keys 1–4; Space or Enter is Good), Z or **Undo** takes back the latest answer, then the one before, also after a reload or on another day (the newest answer given on the review screen of this device, `nativeLastReview`, as long as no later answer to that card came from another device). The card comes back with its answer hidden. When another device's answer to the card arrives after an undo, the card is replayed from its remaining answers in order, so that answer still counts. A vocabulary card whose template shows the word on the front is laid out by Vuurtoren: the word and its sentence on the front, the meaning and the sentence translation on the back. Clozes and other templates are rendered from the note type's own template (fields, conditional sections, `FrontSide`, clozes, hints) and shown through an allow-list sanitiser: formatting tags only, no scripts, styles, frames, forms or event handlers, and only the card's own images. Sounds get a play button. After the answer, a sentence with the word from your own texts is shown when one exists.
+You see the front, then press Space or **Show answer**, then Again / Hard / Good / Easy (keys 1–4, and Space or Enter is Good).
 
-**Your words and your reviews.** In native mode Words has a **Due** view: the words with a card due now (`nativeDueKeys`), earliest first, each with how long ago it came due; with a source chosen, only that text's, unit's or session's words. The word inspector lists the word's latest eight answers under **Your reviews**: the day, the answer and the interval it gave (the card's history replayed; the latest answer shows the due date the card really got). The activity behind Progress counts the reviews answered in Vuurtoren per day; an undone answer does not count.
+Z or **Undo** takes back the latest answer, then the one before, also after a reload or on another day. It takes back the newest answer given on the review screen of this device (`nativeLastReview`), as long as no later answer to that card came from another device. The card comes back with its answer hidden. When another device's answer to the card arrives after an undo, the card is replayed from its remaining answers in order, so that answer still counts.
+
+A vocabulary card whose template shows the word on the front is laid out by Vuurtoren, with the word and its sentence on the front, and the meaning and the sentence translation on the back. Clozes and other templates are rendered from the note type's own template (fields, conditional sections, `FrontSide`, clozes, hints). They are shown through an allow-list sanitiser that keeps formatting tags only, with no scripts, styles, frames, forms or event handlers, and only the card's own images. Sounds get a play button. After the answer, a sentence with the word from your own texts is shown when one exists.
+
+**Your words and your reviews.** In native mode Words has a **Due** view. It lists the words with a card due now (`nativeDueKeys`), earliest first, each with how long ago it came due. With a source chosen, it shows only that text's, unit's or session's words. The word inspector lists the word's latest eight answers under **Your reviews**, with the day, the answer and the interval it gave. These come from the card's history replayed, and the latest answer shows the due date the card really got. The activity behind Progress counts the reviews answered in Vuurtoren per day; an undone answer does not count.
 
 ### 9.7 Export to .apkg
 
-`writeAnkiPackage` (`packages/anki/src/apkg/write.ts`) writes the older package layout that every Anki since 2.1 imports: `collection.anki21` (schema 11; note types, decks and deck options as JSON in `col`) and `media` as JSON. What goes in:
+You can take your cards back to Anki as a package file. `writeAnkiPackage` (`packages/anki/src/apkg/write.ts`) writes the older package layout, which every Anki since 2.1 imports. That is `collection.anki21` (schema 11, with note types, decks and deck options as JSON in `col`) and `media` as JSON. What goes in:
 
 | Vuurtoren               | In the package                                                                                                                                                                  |
 | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -803,11 +852,11 @@ Checked by importing the file into a fresh collection with Anki 26.08: cards, du
 
 ### 9.8 Move to Anki
 
-`moveToAnki` (`packages/anki/src/toAnki.ts`), through AnkiConnect, once:
+A learner who started in native mode can move to Anki and keep going there. `moveToAnki` (`packages/anki/src/toAnki.ts`) does it once, through AnkiConnect:
 
-1. `notesInfo` on every note: notes Anki already has (they came from Anki and kept their ids) are not added.
-2. The others are added as **Vuurtoren Word** notes in their deck, tagged `vuurtoren::moved`. A Vuurtoren note keeps its fields; an imported vocabulary note maps its word, meaning, sentence and translation fields onto Vuurtoren's. A note with several cards becomes one card, standing for its most advanced card. Notes of other types without a word are left out. If an earlier move stopped halfway, the words it already added are found again (tag `vuurtoren::moved`, same deck and word) and are scheduled now instead of being added twice; so after a failure you can simply try again.
-3. Each card reviewed in Vuurtoren gets `setDueDate "N!"`: due on the same study day, with that gap (N days) as its interval. A card due today or overdue gets `"0!"`, so it is due today in Anki too, and `setSpecificValueOfCard` then gives it back its interval from Vuurtoren (Anki would leave it at 1 day). New and learning cards are new in Anki. Suspended cards are suspended. If Anki refuses the due dates, the move stops with an error and stays undone in Vuurtoren.
+1. `notesInfo` runs on every note, and notes Anki already has (they came from Anki and kept their ids) are not added.
+2. The others are added as **Vuurtoren Word** notes in their deck, tagged `vuurtoren::moved`. A Vuurtoren note keeps its fields, and an imported vocabulary note maps its word, meaning, sentence and translation fields onto Vuurtoren's. A note with several cards becomes one card, standing for its most advanced card. Notes of other types without a word are left out. If an earlier move stopped halfway, the words it already added are found again (tag `vuurtoren::moved`, same deck and word), and they are scheduled now instead of being added twice. So after a failure you can simply try again.
+3. Each card reviewed in Vuurtoren gets `setDueDate "N!"`, which makes it due on the same study day, with that gap (N days) as its interval. A card due today or overdue gets `"0!"`, so it is due today in Anki too, and `setSpecificValueOfCard` then gives it back its interval from Vuurtoren (Anki would leave it at 1 day). New and learning cards are new in Anki. Suspended cards are suspended. If Anki refuses the due dates, the move stops with an error and stays undone in Vuurtoren.
 4. **With history (experimental):** `setSpecificValueOfCard` sets the exact interval, reviews and lapses, and `insertReviews` writes every answer with its real time and the interval it gave (the history replayed without fuzz, as in the export). Answers Anki already holds (`getReviewsOfCards`) are not written twice. Anki computes FSRS memory from this history when its deck options are saved or optimised.
 5. The profile becomes connected and reads the moved decks (Vuurtoren's note type and fields), and an Anki sync runs. Vuurtoren's own cards stay in its database, unused.
 
@@ -820,27 +869,31 @@ A new learner in native mode can start with the most common Dutch words. The lis
 1. **Ranking.** The 12,000 most frequent Dutch word forms of `wordfreq` (frequency per word form, from subtitles, Wikipedia, web text and more).
 2. **Forms to lemmas.** Every Tatoeba sentence of the sentence pack is analysed with the app's own spaCy pipeline, so each form gets its readings in context: "was" is read mostly as _zijn_ and now and then as _wassen_. A form's frequency is shared among its readings in proportion and summed per lemma. A form that never occurs in the sentences is analysed on its own and takes the part of speech of its dictionary entry. A lemma without a dictionary entry takes the lemma the dictionary's forms table gives for the form; a word that is only an inflection of another ("Nederlanders", plural of _Nederlander_) becomes that word.
 3. **Filters.** Out go: words with digits, single letters (except _u_), names (read as a proper noun more than half the time, unless the dictionary has them as an ordinary word: _september_, _maandag_, _Engels_), abbreviations, interjections other than everyday ones (_ja_, _nee_, _hallo_, _dank_ …), English words (at least 0.5 Zipf more frequent in English and hardly in the Dutch sentences), very short words never met in context, and lemmas without a dictionary entry or meaning. Number words (_twee_, _nul_) stay.
-4. **What each word gets.** The 5000 highest lemmas are kept with their rank, part of speech (the commonest reading), article (nouns, from the dictionary), the reader's short gloss (the same rules as `shortGloss`, form-of senses resolved, the hand-written particle glosses; one test file holds both versions to the same cases) and one example sentence with its English: of the word's Tatoeba sentences, one of 5–10 words whose other words all rank at most 1000 after the word itself and that shows the word as its lemma, with the lowest practice score; otherwise the shortest. About 9 % of words have no sentence.
+4. **What each word gets.** The 5000 highest lemmas are kept with their rank, part of speech (the commonest reading) and article (nouns, from the dictionary). Each also gets the reader's short gloss, made with the same rules as `shortGloss`, with form-of senses resolved and the hand-written particle glosses (one test file holds both versions to the same cases). And each gets one example sentence with its English. Of the word's Tatoeba sentences, that is one of 5–10 words whose other words all rank at most 1000 after the word itself, and that shows the word as its lemma, with the lowest practice score. If there is none, it is the shortest. About 9 % of words have no sentence.
 
-**Levels** (`packages/anki/src/starter.ts`). Ranks 1–500, 501–1000 … are levels of 500 words, each a deck "Vuurtoren · Woorden 1–500" and so on. The list has 4,930 words after review, so there are ten levels (the last one shorter); "Start with the most common words" adds all of them. A word becomes a note of Vuurtoren's word type (word with its article, gloss, sentence with the word in bold, translation, and the Tatoeba sentence number as source) with one new card, in order of rank. Notes and cards have fixed ids from the rank, so adding a level again, or on two devices before they sync, gives the same cards once; a word the learner already has a card for is skipped.
+**Levels** (`packages/anki/src/starter.ts`). Ranks 1–500, 501–1000 … are levels of 500 words, each a deck "Vuurtoren · Woorden 1–500" and so on. The list has 4,930 words after review, so there are ten levels (the last one shorter), and "Start with the most common words" adds all of them. A word becomes a note of Vuurtoren's word type with one new card, in order of rank. The note holds the word with its article, the gloss, the sentence with the word in bold, the translation, and the Tatoeba sentence number as source. Notes and cards have fixed ids from the rank, so adding a level again, or on two devices before they sync, gives the same cards once. A word the learner already has a card for is skipped.
 
 **One level at a time.** Starter decks are created with no new cards a day. When no starter deck that still has new cards adds any, the lowest such deck gets the default 20 a day (checked when the review counts are read). So the levels come in order, and the learner can change a deck's limit as usual.
 
-**Where new words start.** Nothing is marked known: no placement, no known cards in bulk. Onboarding asks "Where should new words start?" (level 1, 2, 3, 5 or 7) and keeps the answer in the language profile (`starterFrom`). The levels below it are there but get no new cards; the one-level-at-a-time rule above only opens levels from the start level on. Settings → Language & decks, "Start new words from level N", changes it: the first level from there with new cards left opens at once, and any other open starter deck closes. Words the learner already knows get marked known by the reader's evidence as they read (section 1.7). Settings also adds any level that is missing.
+**Where new words start.** Nothing is marked known, so there is no placement and no known cards in bulk. Onboarding asks "Where should new words start?" (level 1, 2, 3, 5 or 7) and keeps the answer in the language profile (`starterFrom`). The levels below it are there but get no new cards, because the one-level-at-a-time rule above only opens levels from the start level on. Settings → Language & decks, "Start new words from level N", changes it. Then the first level from there with new cards left opens at once, and any other open starter deck closes. Words the learner already knows get marked known by the reader's evidence as they read (section 1.7). Settings also adds any level that is missing.
 
-**Audio.** Every word and example sentence of the list, and every sentence and paragraph of the bundled stories, has a recorded clip in the `audio-nl` pack, in a female and a male voice. A clip is named by its text, so nothing maps words to files: `word-<first 16 hex digits of sha1(text)>` for a word, where the text is "<article> <word>" for nouns ("het huis", "de/het idee") and the word alone otherwise, and `sentence-<sha1(sentence)[:16]>` for the example sentence as written (`server/nlp/scripts/tts_elevenlabs.py`, `packages/anki/src/audio.ts`; the app hashes with WebCrypto, and one fixture, `server/nlp/tests/fixtures/audio-ids.json`, holds both to the same ids). Starter notes keep the ids they were made with (`audio`, `sentenceAudio`), so editing a note's text later keeps its sound; other notes get ids from their word and sentence, which find a clip only when the text is a starter word or sentence. The reader asks for a clip for every sentence: story sentences have one. Playback: the clip in the chosen voice, else the system's Dutch voice, else nothing. In the reader, the inspected word uses the clip only when it stands in its dictionary form.
+**Audio.** Every word and example sentence of the list, and every sentence and paragraph of the bundled stories, has a recorded clip in the `audio-nl` pack, in a female and a male voice. A clip is named by its text, so nothing needs to map words to files. A word's clip is `word-<first 16 hex digits of sha1(text)>`, where the text is "<article> <word>" for nouns ("het huis", "de/het idee") and the word alone otherwise. An example sentence's clip is `sentence-<sha1(sentence)[:16]>`, for the sentence as written (`server/nlp/scripts/tts_elevenlabs.py`, `packages/anki/src/audio.ts`). The app hashes with WebCrypto, and one fixture, `server/nlp/tests/fixtures/audio-ids.json`, holds both sides to the same ids.
+
+Starter notes keep the ids they were made with (`audio`, `sentenceAudio`), so editing a note's text later keeps its sound. Other notes get ids from their word and sentence, and those find a clip only when the text is a starter word or sentence. The reader asks for a clip for every sentence, and story sentences have one. Playback uses the clip in the chosen voice, else the system's Dutch voice, else nothing. In the reader, the inspected word uses the clip only when it stands in its dictionary form.
 
 ## 10. Sync
 
 **In short.** Every change you make is saved as a small event. Each device writes its own events to the place you sync through, locked with your passphrase before they leave, and reads the events of your other devices. If you review on two devices, the reviews are added together, so one doesn't overwrite the other.
 
-Your data on every device, with the event log as the unit of sync (`packages/db/src/sync/`).
+Sync keeps your data on every device, and the event log is the unit of sync (`packages/db/src/sync/`).
 
 ### 10.1 What travels
 
-Every change is an event in the append-only log. A device sends **its own** events, oldest first, in segments of at most 2,000 events and 4 MiB of JSON (a larger single event goes alone), and imports the other devices' files. Images and sounds the events refer to (covers, card media) travel as blobs. Per-device bookkeeping (what was sent, what was received from each device, blobs known to be in the place, files set aside) stays on the device.
+Every change is an event in the append-only log, and the events are what sync carries. A device sends **its own** events, oldest first, in segments of at most 2,000 events and 4 MiB of JSON (a larger single event goes alone). It imports the other devices' files. Images and sounds the events refer to (covers, card media) travel as blobs. Per-device bookkeeping (what was sent, what was received from each device, blobs known to be in the place, files set aside) stays on the device.
 
 ### 10.2 The place
+
+The place is wherever the devices meet: a Vuurtoren server, a synced folder or WebDAV. Every place holds the same files:
 
 | Path                                           | What it holds                                                               |
 | ---------------------------------------------- | --------------------------------------------------------------------------- |
@@ -850,49 +903,57 @@ Every change is an event in the append-only log. A device sends **its own** even
 | `vuurtoren/devices/<device>/device.kev`        | the device's name and when it last wrote it                                 |
 | `vuurtoren/blobs/<hmac>.kbl`                   | an image or sound                                                           |
 
-A device writes only its own folder and blobs (named by content), so places that copy files around (Syncthing, Dropbox, iCloud Drive) never see two devices write one file. Each file names the range it holds (`after`, `last`); a reader checks it against the file's name and takes its cursor from it. A file whose earlier neighbour has not arrived yet waits (after a day it is taken anyway).
+A device writes only its own folder and blobs (named by content), so places that copy files around (Syncthing, Dropbox, iCloud Drive) never see two devices write one file. Each file names the range it holds (`after`, `last`). A reader checks it against the file's name and takes its cursor from it. A file whose earlier neighbour has not arrived yet waits, and after a day it is taken anyway.
 
-**Folding.** Past 100 segment files a device folds its older half (after compaction, 10.5) into parts of about 8 MiB that end where existing files end, and removes those segments. The parts before stay as they are; only when compaction removed something, and at most every tenth fold, everything is folded again. A device that keeps up reads the segments that stay and never a part; one that was away reads only the parts after its cursor; a new device reads all parts, then the segments.
+**Folding.** Without folding, a device's folder would grow forever. Past 100 segment files, a device folds its older half (after compaction, 10.5) into parts of about 8 MiB that end where existing files end, and removes those segments. The parts before stay as they are. Only when compaction removed something, and at most every tenth fold, everything is folded again. A device that keeps up reads the segments that stay and never a part. One that was away reads only the parts after its cursor, and a new device reads all parts, then the segments.
 
-**Limits.** No file over 60 MiB of JSON is written (a single change that big stays on its device and is reported), unpacking stops at 64 MiB, and parts stay at most 16 MiB, so every place's 64 MiB limit holds. `device.kev` is written when something was sent, else at most hourly; names are cut at 64 characters.
+**Limits.** No file over 60 MiB of JSON is written (a single change that big stays on its device and is reported). Unpacking stops at 64 MiB, and parts stay at most 16 MiB, so every place's 64 MiB limit holds. `device.kev` is written when something was sent, and otherwise at most hourly. Names are cut at 64 characters.
 
-**When something is wrong.** A file that does not open is tried again for an hour, then set aside: recorded with its reason in the sync state, reported in the sync's summary and listed in Settings → Sync, and the other files of that device follow. The other devices go on meanwhile. An event a projection cannot apply stays in the log and is reported; the others apply. A file from a newer Vuurtoren waits for the update.
+**When something is wrong.** A file that does not open is tried again for an hour, and then set aside. It is recorded with its reason in the sync state, reported in the sync's summary and listed in Settings → Your devices, and the other files of that device follow. The other devices go on meanwhile. An event a projection cannot apply stays in the log and is reported, and the others apply. A file from a newer Vuurtoren waits for the update.
 
-Places: a Vuurtoren server (`/api/sync`; a sync token made in that server's Settings → Sync opens it and the server's language server, nothing else; the page served by that server makes its own token with its session; a phone trades a one-time pairing code from Add a phone for its own token, kept in its key store), a folder (desktop app; writes go to a temporary file and are renamed, and links inside the folder are not followed) and WebDAV (desktop app; PROPFIND, PUT, MKCOL; the app sends the requests itself, so no CORS setup is needed, and it asks once before it sends to a new address). Requests skip the browser cache. The store of a place is built once and kept while the place stays the same.
+There are three kinds of place:
+
+- **A Vuurtoren server** (`/api/sync`). A sync token made on that server's Your devices page opens it and the server's language server, and nothing else. The page served by that server makes its own token with its session. A phone trades a one-time pairing code from Add a device for its own token, which it keeps in its key store.
+- **A folder** (desktop app). Writes go to a temporary file and are renamed, and links inside the folder are not followed.
+- **WebDAV** (desktop app), with PROPFIND, PUT and MKCOL. The app sends the requests itself, so no CORS setup is needed, and it asks once before it sends to a new address.
+
+Requests skip the browser cache. The store of a place is built once and kept while the place stays the same.
 
 ### 10.3 Encryption
 
-A random **data key** (64 bytes) seals every file: an AES-256-GCM key and an HMAC-SHA256 key for blob names, so the names do not reveal what a file holds. A file is `KSY2` + a random 12-byte IV + ciphertext (segments gzipped first), sealed with its path as additional data: a file copied or renamed by the place does not open. Files in the first format (`KSY1`, no path) open too. The vault holds the data key under two **locks**:
+Everything is locked on the device before it goes to the place, so the place never sees any content. A random **data key** (64 bytes) seals every file. It is an AES-256-GCM key and an HMAC-SHA256 key for blob names, so the names do not reveal what a file holds. A file is `KSY2` + a random 12-byte IV + ciphertext (segments gzipped first), sealed with its path as additional data, so a file copied or renamed by the place does not open. Files in the first format (`KSY1`, no path) open too. The vault holds the data key under two **locks**:
 
 | Lock         | Key from                                                         |
 | ------------ | ---------------------------------------------------------------- |
 | passphrase   | Argon2id, 64 MiB, 3 passes, one lane, a random 16-byte salt      |
 | recovery key | 160 random bits (32 letters and digits, shown once), HKDF-SHA256 |
 
-- **Changing the passphrase** re-locks the data key: no file is encrypted again and other devices keep syncing with the key they hold. It asks for the current passphrase or the recovery key first. A new recovery key replaces the old one.
-- The passphrase and the recovery key are never stored; the data key is kept in the device's key store (10.6). A new vault is written only after its data key is kept, so no vault exists that no device can open. A recovery key that is not confirmed as saved waits in the tab's session storage, so a reload shows it again.
+- **Changing the passphrase** re-locks the data key. No file is encrypted again, and other devices keep syncing with the key they hold. It asks for the current passphrase or the recovery key first. A new recovery key replaces the old one.
+- The passphrase and the recovery key are never stored, and the data key is kept in the device's key store (10.6). A new vault is written only after its data key is kept, so no vault exists that no device can open. A recovery key that is not confirmed as saved waits in the tab's session storage, so a reload shows it again.
 - A passphrase is locked without the spaces around it. One that reads like a recovery key is refused. To open the vault, the recovery lock is tried first, then the passphrase lock.
 - `vault.json` is checked before use: its shape, Argon2id at most 1 GiB and 10 passes, PBKDF2 at most 10 million rounds.
 - A vault in the first format (PBKDF2-SHA256, 600,000 rounds, the key derived from the passphrase) opens too. Changing its passphrase turns it into the current format with that key as its data key, so no file changes.
-- What the place can see: the number of devices, file sizes and when files were written. What it cannot: any content. A changed file is refused (GCM); a place can still delete files or serve older ones, so keep backups.
+- The place can see the number of devices, file sizes and when files were written, but not any content. A changed file is refused (GCM). A place can still delete files or serve older ones, so keep backups.
 
 ### 10.4 Order and conflicts
 
-Events carry a hybrid logical clock (milliseconds, a counter, the device). Imported events newer than the end of the log are applied there; otherwise the projections are rebuilt from the whole log in clock order, once per sync however many files came in (a replay cut short is done when the app next opens). Either way every device reaches the same state:
+Devices change things at the same time, so every device needs to put all events in the same order and reach the same state. Events carry a hybrid logical clock (milliseconds, a counter, the device). Imported events newer than the end of the log are applied there. Otherwise the projections are rebuilt from the whole log in clock order, once per sync however many files came in (a replay cut short is done when the app next opens). Either way every device reaches the same state:
 
-- **Latest wins** for settings, the language profile, word marks, deck options and a text's details: the last event in clock order sets them.
-- **Merge** for reviews and answers: they add up. An answer to a native card stores the card's schedule before it; when the card has changed since (answered on another device), the answer is applied to the card as it is then (FSRS, without fuzz), so both answers count.
-- **Intent** for other changes to native cards: a move from reading, new memory after tuning and an undo say what to do, and are applied to the card as it is when they apply (sections 9.3, 9.5.1 and 9.6), so none of them undoes an answer from another device. Mark known and Study first set the card (a mature schedule, a place in the new queue): the latest wins.
-- **Merged answers depend on the scheduler.** A merged answer is computed whenever the log is replayed, with this app's FSRS and the parameters in use then. Devices on app versions whose scheduler differs can disagree slightly on such a card until its next answer; an answer that is not merged stores its result and replays the same everywhere.
-- **Event versions.** Each event type has a payload version. An event newer than this app understands is stored and passed on, not applied; once the app is updated it applies it.
+- **Latest wins** for settings, the language profile, word marks, deck options and a text's details. The last event in clock order sets them.
+- **Merge** for reviews and answers, which add up. An answer to a native card stores the card's schedule before it. When the card has changed since (answered on another device), the answer is applied to the card as it is then (FSRS, without fuzz), so both answers count.
+- **Intent** for other changes to native cards. A move from reading, new memory after tuning and an undo say what to do, and they are applied to the card as it is when they apply (sections 9.3, 9.5.1 and 9.6). So none of them undoes an answer from another device. Mark known and Study first set the card (a mature schedule, a place in the new queue), and the latest wins.
+- **Merged answers depend on the scheduler.** A merged answer is computed whenever the log is replayed, with this app's FSRS and the parameters in use then. Devices on app versions whose scheduler differs can disagree slightly on such a card until its next answer. An answer that is not merged stores its result and replays the same everywhere.
+- **Event versions.** Each event type has a payload version. An event newer than this app understands is stored and passed on, but not applied, and once the app is updated it applies it.
 
-An incoming event needs an id and a clock as Vuurtoren makes them (a ULID; a clock with 15 + 5 padded digits and the event's own device), at most a day ahead of this device's clock, and not this device's id. New ids follow this device's own newest event, never another device's.
+An incoming event must have an id and a clock as Vuurtoren makes them (a ULID, and a clock with 15 + 5 padded digits and the event's own device). It must be at most a day ahead of this device's clock, and it must not carry this device's id. New ids follow this device's own newest event, never another device's.
 
 ### 10.5 Compaction
 
-`compact()` removes what later events made useless without changing any projection: Anki snapshots older than the newest of their language (each replaces the last), and of deleted texts the analyses and the content (the import stays, emptied).
+`compact()` keeps the log small. It removes what later events made useless, without changing any projection. That is Anki snapshots older than the newest of their language (each replaces the last), and the analyses and the content of deleted texts (the import stays, emptied).
 
 ### 10.6 When it runs
+
+Sync runs by itself, often enough that an open device sees another device's changes quickly:
 
 | When                     | What                                                                               |
 | ------------------------ | ---------------------------------------------------------------------------------- |
@@ -902,14 +963,14 @@ An incoming event needs an id and a clock as Vuurtoren makes them (a ULID; a clo
 | every 15 s while visible | a sync, to pull what other devices sent                                            |
 | hidden or closed         | a sync whenever something is not sent yet                                          |
 
-So a change on one open device shows on another open device within about 5 to 20 seconds. After a failed sync nothing runs by itself for 15 seconds. During a practice session (a screen holds sync) nothing runs; what was asked runs when the hold ends. Closing: the desktop app holds the window's close request, the page syncs (at most about 5 s) and then lets it close; in a browser the sync starts when the page is hidden, and the page lets go of its database only after it (at most 3 s). Hidden and closed both ask; one sync answers.
+So a change on one open device shows on another open device within about 5 to 20 seconds. After a failed sync nothing runs by itself for 15 seconds. During a practice session (a screen holds sync) nothing runs, and what was asked runs when the hold ends. On closing, the desktop app holds the window's close request, the page syncs (at most about 5 s), and then it lets the window close. In a browser the sync starts when the page is hidden, and the page lets go of its database only after it (at most 3 s). Hidden and closed both ask for a sync, and one sync answers both.
 
-When changes came in, the services drop their caches and every screen refetches, also when the sync failed after some files came in. A sync that fails keeps its reason for Settings and shows in the top bar's indicator; changes stay on the device until the next sync. Files sync waits for or left out are kept with the status and listed in Settings → Sync. When the key store has no key for the place, sync stops by itself and Settings asks for the passphrase (or recovery key), which brings the key back. Setting up, a sync, unlocking, a passphrase change and Stop run one at a time, so Stop during a setup stays stopped.
+When changes came in, the services drop their caches and every screen refetches, also when the sync failed after some files came in. A sync that fails keeps its reason for Settings and shows in the top bar's indicator, and changes stay on the device until the next sync. Files that sync waits for or left out are kept with the status and listed in Settings → Your devices. When the key store has no key for the place, sync stops by itself and Settings asks for the passphrase (or recovery key), which brings the key back. Setting up, a sync, unlocking, a passphrase change and Stop run one at a time, so Stop during a setup stays stopped.
 
-**Setting up** asks which device this is. **Start new sync data here** (the first device) refuses a place that already holds a vault or device folders, writes `vault.json`, reads it back and only then shows the recovery key. **Join my synced data** never writes a vault: before the first device's files arrive (a synced folder still copying, another folder, address or branch) it says so. Once the place is open sync stays set up even when the first sync does not finish; the recovery key is shown all the same. Passphrase changes and new recovery keys read `vault.json` back too.
+**Setting up** asks which device this is. **Start new sync data here** (the first device) refuses a place that already holds a vault or device folders. It writes `vault.json`, reads it back, and only then shows the recovery key. **Join my synced data** never writes a vault. If the first device's files haven't arrived yet (a synced folder still copying, or another folder, address or branch), it says so. Once the place is open, sync stays set up even when the first sync does not finish, and the recovery key is shown all the same. Passphrase changes and new recovery keys read `vault.json` back too.
 
 **A restored backup** gets a new device id (two devices restored from one backup never share one). Its events not yet sent move to the new id (same event ids, so a device that has them skips them), so they still reach the other devices.
 
-**On a Vuurtoren server** a sync token belongs to one device: the first device folder it writes is its own, and it writes only there and the blobs. It may create `vault.json` when there is none; replacing it needs a session, the server's token, the sync token that made it or one made with `vault` allowed (**May change the passphrase and recovery key**; the page's own token has it). All sync files share a quota (`VUURTOREN_SYNC_QUOTA_MB`, 2 GB). With sign-in off the server answers this site and `VUURTOREN_ALLOWED_ORIGINS` only.
+**On a Vuurtoren server** a sync token belongs to one device. The first device folder it writes is its own, and it writes only there and the blobs. It may create `vault.json` when there is none. Replacing it needs a session, the server's token, the sync token that made it, or one made with `vault` allowed (**May change the passphrase and recovery key**, which the page's own token has). All sync files share a quota (`VUURTOREN_SYNC_QUOTA_MB`, 2 GB). With sign-in off the server answers this site and `VUURTOREN_ALLOWED_ORIGINS` only.
 
-**A lost device** keeps the data key. Revoking its sync token closes a Vuurtoren server to it; to be safe, start new sync data in a new place with a new passphrase and join it from the other devices (a new vault starts every device's bookkeeping over).
+**A lost device** keeps the data key. Revoking its sync token closes a Vuurtoren server to it. To be safe, start new sync data in a new place with a new passphrase and join it from the other devices (a new vault starts every device's bookkeeping over).
