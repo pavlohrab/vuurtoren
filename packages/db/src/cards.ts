@@ -897,6 +897,9 @@ export interface NativeWordFacts {
   pending: Map<string, { noteId: number; deck: string }>;
 }
 
+/** Up to this many words are looked up in SQL; more read every note (one pass is cheaper). */
+const FEW_KEYS = 500;
+
 /**
  * The learner model's view of the native cards, with the same rules as an Anki snapshot: each
  * note's strongest card, read with the FSRS forgetting curve of the parameters in use, merged
@@ -910,10 +913,34 @@ export async function nativeWordEntries(
 ): Promise<NativeWordFacts> {
   const params = await paramsOf(driver, lang);
   const decay = paramsDecay(params?.params ?? DEFAULT_FSRS_PARAMS);
+  // A few words (a word sheet, a page's glosses): only their notes and cards come back, chosen
+  // in SQL by key or alias. Reading every note and card for one word cost 70–110 ms (A9).
+  const few = keys !== undefined && keys.size <= FEW_KEYS;
+  const wanted = few ? JSON.stringify([...keys]) : "";
+  const noteRows = few
+    ? await driver.exec(
+        `SELECT n.id, n.data, n.origin FROM native_notes n
+         WHERE n.lang = ? AND n.key IS NOT NULL
+           AND (n.key IN (SELECT value FROM json_each(?))
+             OR EXISTS (SELECT 1 FROM json_each(n.data, '$.aliases') a
+                        WHERE a.value IN (SELECT value FROM json_each(?))))
+         ORDER BY n.id`,
+        [lang, wanted, wanted],
+      )
+    : await driver.exec(
+        "SELECT id, data, origin FROM native_notes WHERE lang = ? AND key IS NOT NULL ORDER BY id",
+        [lang],
+      );
   const cards = new Map<number, NativeCard[]>();
-  for (const r of await driver.exec("SELECT * FROM native_cards WHERE lang = ? ORDER BY ord, id", [
-    lang,
-  ])) {
+  const cardRows = few
+    ? noteRows.length
+      ? await driver.exec(
+          "SELECT * FROM native_cards WHERE note_id IN (SELECT value FROM json_each(?)) ORDER BY ord, id",
+          [JSON.stringify(noteRows.map((r) => r["id"]))],
+        )
+      : []
+    : await driver.exec("SELECT * FROM native_cards WHERE lang = ? ORDER BY ord, id", [lang]);
+  for (const r of cardRows) {
     const c = toCard(r);
     const list = cards.get(c.noteId);
     if (list) list.push(c);
@@ -922,10 +949,7 @@ export async function nativeWordEntries(
   const entries = new Map<string, AnkiWordEntry>();
   const knowledge = new Map<string, WordKnowledge>();
   const pending = new Map<string, { noteId: number; deck: string }>();
-  for (const r of await driver.exec(
-    "SELECT id, data, origin FROM native_notes WHERE lang = ? AND key IS NOT NULL ORDER BY id",
-    [lang],
-  )) {
+  for (const r of noteRows) {
     const note = json<NativeNote>(r["data"]);
     const own = cards.get(note.id) ?? [];
     let best: WordKnowledge = { state: "unknown", pKnown: 0 };

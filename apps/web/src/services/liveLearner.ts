@@ -88,6 +88,24 @@ export function createLearnerCache(repo: VuurtorenRepository, lang: () => Promis
     refreshModel: () => {
       modelCache = null;
     },
+    /**
+     * One word changed (a lookup, a cloze answer): re-read that word alone and update it in the
+     * cached model, keeping plans. Re-reading the whole model cost 70–110 ms per tap (A9).
+     */
+    refreshWord: (key: string) => {
+      const entry = modelCache;
+      if (!entry) return;
+      entry.value = entry.value.then(async (m) => {
+        const [w] = await repo.wordsByKeys(entry.lang, [key]);
+        const next: LearnerModel = new Map(m);
+        if (w) next.set(key, { state: w.state, pKnown: w.pKnown });
+        else next.delete(key);
+        return next;
+      });
+      entry.value.catch(() => {
+        if (modelCache === entry) modelCache = null;
+      });
+    },
     /** Another device changed the data: drop everything cached. */
     invalidate: () => {
       modelCache = null;

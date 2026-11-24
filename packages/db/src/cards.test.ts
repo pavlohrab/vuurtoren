@@ -187,6 +187,28 @@ describe("native card store", () => {
     expect(status.map((s) => s.cards[0]?.type)).toEqual(["review", "new"]);
   });
 
+  it("finds a few words by key or alias without reading every note, the same as the full model", async () => {
+    const { repo } = await newRepo();
+    await repo.append({
+      ...imported,
+      notes:
+        imported.type === "NativeNotesAdded"
+          ? imported.notes.map((n) => (n.id === 11 ? { ...n, aliases: ["huizen"] } : n))
+          : [],
+    } as AppEvent);
+    await repo.append({ type: "LanguageProfileSet", profile: defaultProfile("nl") });
+    const model = await repo.learnerModel("nl");
+    const some = await repo.wordsByKeys("nl", ["huizen", "fiets", "nergens"]);
+    expect(some.map((w) => w.key).sort()).toEqual(["fiets", "huizen"]);
+    const huizen = some.find((w) => w.key === "huizen")!;
+    expect(huizen).toMatchObject({
+      state: model.get("huizen")!.state,
+      noteIds: [11],
+      decks: ["Dutch"],
+    });
+    expect(await repo.word("nl", "huis")).toMatchObject({ gloss: "house", noteIds: [11] });
+  });
+
   it("a word added in Vuurtoren is learning until its first answer", async () => {
     const { repo } = await newRepo();
     await repo.append({ type: "LanguageProfileSet", profile: defaultProfile("nl") });

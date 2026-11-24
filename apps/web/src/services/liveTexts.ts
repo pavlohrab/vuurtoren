@@ -550,16 +550,17 @@ export function createLiveTexts({
     async recordLookup(textId: string, key: string): Promise<void> {
       await repo.append({ type: "WordLookedUp", lang: (await settings()).lang, key, textId });
       await quietly(evidence?.().lookup(key));
-      // The word becomes "seen": refresh counts, but keep the current page's plan stable.
-      learner.refreshModel();
+      // The word becomes "seen": update it in the model (that word only; its note's other forms
+      // follow at the next full read), and keep the current page's plan stable.
+      learner.refreshWord(key);
     },
 
     async recordClozeAnswer(key: string, correct: boolean, hinted: boolean): Promise<void> {
       const { lang } = await settings();
       await repo.append({ type: "ClozeAnswered", lang, key, correct, hinted, at: Date.now() });
       await quietly(evidence?.().cloze(key, correct, hinted));
-      // Like a lookup: refresh counts later, keep the current page's plan stable.
-      learner.refreshModel();
+      // Like a lookup: update that word in the model, keep the current page's plan stable.
+      learner.refreshWord(key);
     },
 
     async finishSegment(textId, segment, outcome): Promise<StaircaseState> {
