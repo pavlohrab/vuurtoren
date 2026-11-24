@@ -316,7 +316,7 @@ export function Review() {
           <div className="review-actions">
             {shown ? (
               <div className="review-ratings" role="group" aria-label="How well did you know it?">
-                <p className="review-swipe-hint">Swipe: ← Again · Good → · ↑ Easy</p>
+                <p className="review-swipe-hint">Swipe: ←&nbsp;Again · Good&nbsp;→ · ↑&nbsp;Easy</p>
                 {RATINGS.map(({ rating, label }) => (
                   <button
                     key={rating}
@@ -336,7 +336,9 @@ export function Review() {
               </div>
             ) : (
               <>
-                <p className="review-swipe-hint">Sure already? Swipe: ← Again · Good → · ↑ Easy</p>
+                <p className="review-swipe-hint">
+                  Sure already? Swipe: ←&nbsp;Again · Good&nbsp;→ · ↑&nbsp;Easy
+                </p>
                 <Button variant="primary" onClick={() => setShown(true)}>
                   Show answer <kbd className="ex-key">Space</kbd>
                 </Button>

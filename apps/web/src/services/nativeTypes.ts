@@ -62,6 +62,8 @@ export interface ImportSummary {
   vocabNotes: number;
   media: number;
   skippedMedia: number;
+  /** Cards of the file this collection already had (they stay as they were). */
+  alreadyHad?: number;
 }
 
 /** A deck, with about how many reviews a day each target recall would mean. */

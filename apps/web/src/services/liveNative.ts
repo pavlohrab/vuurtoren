@@ -241,6 +241,8 @@ export function createLiveNative(deps: LiveNativeDeps) {
   };
 
   async function storeImport(lang: string, imp: NativeImport): Promise<ImportSummary> {
+    // Cards already here stay as they are: count the new ones, not the file's.
+    const before = (await repo.nativeStats(lang)).cards;
     for (const e of imp.events) await repo.append(e);
     if (imp.fsrsParams && !(await repo.fsrsParams(lang))) {
       // Anki's own trained parameters until Vuurtoren tunes on the history.
@@ -248,6 +250,7 @@ export function createLiveNative(deps: LiveNativeDeps) {
     }
     ownIndex = null;
     deps.changed();
+    const added = Math.max(0, (await repo.nativeStats(lang)).cards - before);
     return {
       notes: imp.notes,
       cards: imp.cards,
@@ -255,6 +258,7 @@ export function createLiveNative(deps: LiveNativeDeps) {
       vocabNotes: imp.vocabNotes,
       media: imp.media,
       skippedMedia: imp.skippedMedia,
+      alreadyHad: Math.max(0, imp.cards - added),
     };
   }
 

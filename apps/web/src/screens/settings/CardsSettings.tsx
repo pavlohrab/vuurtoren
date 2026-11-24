@@ -17,12 +17,16 @@ import { errorText } from "../../services/errors.js";
 const AFFECTED = ["languageProfile", "learner", "review", "words", "texts", "home"];
 
 function summaryText(s: ImportSummary): string {
+  const had = s.alreadyHad ?? 0;
+  if (had >= s.cards && s.cards > 0)
+    return `You already have all ${plural(s.cards, "card")} of this file: nothing changed.`;
   const parts = [
-    `${plural(s.cards, "card")} from ${plural(s.notes, "note")}`,
+    `${plural(s.cards - had, "card")} from ${plural(s.notes, "note")}`,
     `${plural(s.reviews, "past review")}`,
   ];
   if (s.media) parts.push(`${plural(s.media, "media file")}`);
   let text = `Imported ${parts.join(", ")}. ${plural(s.vocabNotes, "note")} feed your word list.`;
+  if (had) text += ` ${plural(had, "card")} you already had stayed as they were.`;
   if (s.skippedMedia) text += ` ${plural(s.skippedMedia, "media file")} could not be kept.`;
   return text;
 }

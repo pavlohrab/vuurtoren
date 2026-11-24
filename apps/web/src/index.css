@@ -1384,7 +1384,6 @@
   max-width: 40rem;
   margin: 0 auto;
   padding: var(--s-6) 0 0;
-  border-top: 1px solid var(--hairline);
   animation: k-fade-in var(--dur-slow) var(--ease);
 }
 .text-done .k-overline {
