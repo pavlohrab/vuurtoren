@@ -11,6 +11,13 @@ Schema::
     entries(id, word, pos, article, gender, glosses JSON, forms JSON, ipa)   -- index lower(word)
     forms(form, lemma, pos)                                                  -- index lower(form)
     wordforms(lemma, pos, data JSON)                                         -- index lower(lemma)
+    extras(entry_id, data JSON)    -- dictionary v2: senses with examples, synonyms, antonyms,
+                                   -- derived and related words, hyphenation, recording file
+    family(stem, word)             -- separable family both ways: doen -> opendoen, dichtdoen
+                                   -- index lower(stem)
+
+``extras`` and ``family`` are new in pack 2026.12 (m5, WC1); older packs lack them and
+:meth:`Dictionary.entry` then answers without them.
 """
 
 from __future__ import annotations
@@ -53,11 +60,14 @@ CREATE TABLE entries (
 );
 CREATE TABLE forms (form TEXT NOT NULL, lemma TEXT NOT NULL, pos TEXT NOT NULL);
 CREATE TABLE wordforms (lemma TEXT NOT NULL, pos TEXT NOT NULL, data TEXT NOT NULL);
+CREATE TABLE extras (entry_id INTEGER PRIMARY KEY, data TEXT NOT NULL);
+CREATE TABLE family (stem TEXT NOT NULL, word TEXT NOT NULL);
 """
 INDEXES = """
 CREATE INDEX idx_entries_word ON entries(lower(word));
 CREATE INDEX idx_forms_form ON forms(lower(form));
 CREATE INDEX idx_wordforms_lemma ON wordforms(lower(lemma));
+CREATE INDEX idx_family_stem ON family(lower(stem));
 """
 
 
@@ -158,6 +168,66 @@ def iter_jsonl(path: Path) -> Iterator[dict[str, Any]]:
                 continue
 
 
+MAX_EXAMPLES = 3
+MAX_RELATED = 60
+
+
+def _words(items: Any, limit: int = MAX_RELATED) -> list[str]:
+    """The ``word`` of each Kaikki link (synonyms, derived …), in order, without repeats."""
+    out: list[str] = []
+    for it in items or []:
+        w = it.get("word") if isinstance(it, dict) else None
+        if isinstance(w, str) and w.strip() and w.strip() not in out:
+            out.append(w.strip())
+        if len(out) >= limit:
+            break
+    return out
+
+
+def entry_extras(entry: dict[str, Any]) -> dict[str, Any]:
+    """Dictionary v2 fields of a Kaikki entry; only the ones that have something.
+
+    ``senses``: each sense's gloss with up to three examples (Dutch + English), its synonyms and
+    antonyms. Plus entry-wide ``synonyms``, ``antonyms``, ``derived`` (where a separable verb's
+    family lives: doen -> opendoen), ``related``, ``hyphenation`` and ``audio`` (the Wikimedia
+    Commons file name of a recording; played on demand, never bundled).
+    """
+    senses: list[dict[str, Any]] = []
+    for s in entry.get("senses", []):
+        gloss = _gloss_text(s)
+        if not gloss:
+            continue
+        item: dict[str, Any] = {"gloss": gloss}
+        examples = [
+            {"nl": e["text"], "en": e.get("english") or e.get("translation")}
+            for e in s.get("examples", [])
+            if isinstance(e, dict) and isinstance(e.get("text"), str)
+        ][:MAX_EXAMPLES]
+        if examples:
+            item["examples"] = examples
+        for key in ("synonyms", "antonyms"):
+            words = _words(s.get(key))
+            if words:
+                item[key] = words
+        senses.append(item)
+    out: dict[str, Any] = {}
+    if any(len(s) > 1 for s in senses):
+        out["senses"] = senses
+    for key in ("synonyms", "antonyms", "derived", "related"):
+        words = _words(entry.get(key))
+        if words:
+            out[key] = words
+    hyph = entry.get("hyphenations") or []
+    if hyph and isinstance(hyph[0], dict) and hyph[0].get("parts"):
+        out["hyphenation"] = "·".join(hyph[0]["parts"])
+    for snd in entry.get("sounds", []):
+        name = snd.get("audio") if isinstance(snd, dict) else None
+        if isinstance(name, str) and name:
+            out["audio"] = name
+            break
+    return out
+
+
 def build_dictionary(jsonl_path: Path, db_path: Path) -> dict[str, int]:
     """Build the SQLite dictionary from a Kaikki JSONL file (replaces ``db_path``).
 
@@ -179,7 +249,7 @@ def build_dictionary(jsonl_path: Path, db_path: Path) -> dict[str, int]:
                 continue
             gender, article = _gender_article(entry)
             forms = _form_words(entry)
-            con.execute(
+            cur = con.execute(
                 "INSERT INTO entries(word, pos, article, gender, glosses, forms, ipa)"
                 " VALUES (?,?,?,?,?,?,?)",
                 (
@@ -193,12 +263,26 @@ def build_dictionary(jsonl_path: Path, db_path: Path) -> dict[str, int]:
                 ),
             )
             n_entries += 1
+            extras = entry_extras(entry)
+            if extras:
+                con.execute(
+                    "INSERT INTO extras(entry_id, data) VALUES (?,?)",
+                    (cur.lastrowid, json.dumps(extras, ensure_ascii=False)),
+                )
             morph = extract_word_forms(entry)
             if morph:
                 con.execute(
                     "INSERT INTO wordforms(lemma, pos, data) VALUES (?,?,?)",
                     (word, pos, json.dumps(morph, ensure_ascii=False)),
                 )
+            # The separable family, from both ends: opendoen names its stem doen, and doen
+            # lists opendoen among its derived verbs.
+            sep = (morph or {}).get("separable") or {}
+            family = {(sep["stem"], word)} if pos == "verb" and sep.get("stem") else set()
+            if pos == "verb":
+                derived = extras.get("derived", [])
+                family |= {(word, d) for d in derived if " " not in d and d.endswith("en")}
+            con.executemany("INSERT INTO family(stem, word) VALUES (?,?)", sorted(family))
             pairs: set[tuple[str, str]] = {(f, word) for f in forms}
             pairs |= {(word, lemma) for lemma in _form_of_targets(entry)}
             con.executemany(
@@ -237,6 +321,81 @@ class Dictionary:
         con = sqlite3.connect(f"file:{self.db_path}?mode=ro", uri=True)
         con.row_factory = sqlite3.Row
         return con
+
+    def entry(self, word: str, pos: str | None = None) -> dict[str, Any]:
+        """Everything the word card shows about ``word`` (dictionary v2, ``POST /entry``).
+
+        ``{"word": headword, "entries": [...]}``; each entry has ``pos``, ``article``,
+        ``glosses``, ``ipa``, its ``forms`` table (verbs: present per person, past, participle,
+        hebben/zijn, the separable split), the v2 ``extras`` and, for verbs, ``family`` (the
+        separable verbs made from it) and ``base`` (the verb it is made from: opendoen -> doen).
+        A form ("doet") finds its lemma's entries. Unknown word: ``entries`` is empty. Older
+        packs without the v2 tables answer without ``extras``, ``family`` and ``base``.
+        """
+        key = word.strip().lower()
+        con = self._connect()
+        try:
+            v2 = {
+                r[0]
+                for r in con.execute(
+                    "SELECT name FROM sqlite_master"
+                    " WHERE type='table' AND name IN ('extras', 'family')"
+                )
+            }
+            cols = "SELECT id, word, pos, article, gender, glosses, ipa FROM entries"
+            rows = con.execute(cols + " WHERE lower(word) = ? ORDER BY id", (key,)).fetchall()
+            # "doet" has an entry of its own that only says "inflection of doen": the card
+            # wants doen.
+            if not any(real_glosses(json.loads(r["glosses"])) for r in rows):
+                lemma_rows = con.execute(
+                    cols + " WHERE lower(word) IN"
+                    " (SELECT lower(lemma) FROM forms WHERE lower(form) = ?)"
+                    " AND lower(word) != ? ORDER BY id",
+                    (key, key),
+                ).fetchall()
+                rows = lemma_rows or rows
+            if pos:
+                rows = [r for r in rows if r["pos"] == pos] or rows
+            out: list[dict[str, Any]] = []
+            for r in rows:
+                e: dict[str, Any] = {
+                    "pos": r["pos"],
+                    "article": r["article"],
+                    "glosses": json.loads(r["glosses"]),
+                }
+                if r["ipa"]:
+                    e["ipa"] = r["ipa"]
+                wf = con.execute(
+                    "SELECT data FROM wordforms WHERE lower(lemma) = ? AND pos = ? LIMIT 1",
+                    (r["word"].lower(), r["pos"]),
+                ).fetchone()
+                if wf:
+                    e["forms"] = json.loads(wf["data"])
+                if "extras" in v2:
+                    x = con.execute(
+                        "SELECT data FROM extras WHERE entry_id = ?", (r["id"],)
+                    ).fetchone()
+                    if x:
+                        e["extras"] = json.loads(x["data"])
+                if "family" in v2 and r["pos"] == "verb":
+                    fam = [
+                        f["word"]
+                        for f in con.execute(
+                            "SELECT DISTINCT word FROM family WHERE lower(stem) = ? ORDER BY word",
+                            (r["word"].lower(),),
+                        )
+                        if f["word"].lower() != r["word"].lower()
+                    ]
+                    if fam:
+                        e["family"] = fam
+                    stem = ((e.get("forms") or {}).get("separable") or {}).get("stem")
+                    if stem:
+                        e["base"] = stem
+                out.append(e)
+            head = rows[0]["word"] if rows else word.strip()
+            return {"word": head, "entries": out}
+        finally:
+            con.close()
 
     @staticmethod
     def _rows_to_entries(rows: Iterable[sqlite3.Row]) -> list[dict[str, Any]]:

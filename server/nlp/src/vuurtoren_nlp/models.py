@@ -165,6 +165,13 @@ class GlossRequest(BaseModel):
     words: list[str] = Field(max_length=2000)
 
 
+class EntryRequest(BaseModel):
+    lang: Lang
+    word: str = Field(min_length=1, max_length=100)
+    pos: str | None = Field(default=None, max_length=20)
+    """Prefer the entry of this part of speech (Kaikki's: verb, noun, adj …)."""
+
+
 class GlossPart(BaseModel):
     part: str
     """Surface text of the compound part."""

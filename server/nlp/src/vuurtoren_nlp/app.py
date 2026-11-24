@@ -9,7 +9,7 @@ import time
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from functools import lru_cache
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import FastAPI, File, Query, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
@@ -37,6 +37,7 @@ from vuurtoren_nlp.models import (
     AnalyzeTermsRequest,
     Detection,
     DetectRequest,
+    EntryRequest,
     ExampleSentence,
     ExtractUrlRequest,
     FormsRequest,
@@ -279,6 +280,17 @@ def gloss_endpoint(req: GlossRequest) -> dict[str, list[GlossEntry]]:
     except DictionaryMissingError as e:
         raise ServiceError(503, str(e)) from e
     return {w: [GlossEntry(**e) for e in es] for w, es in entries.items()}
+
+
+@app.post("/entry")
+def entry_endpoint(req: EntryRequest) -> dict[str, Any]:
+    """Everything the word card shows about one word: meanings with examples, the forms table,
+    synonyms and antonyms, the separable family and base verb, a recording's file name
+    (dictionary v2; older packs answer with less). A form finds its lemma ("doet" -> doen)."""
+    try:
+        return _dictionary().entry(req.word, req.pos)
+    except DictionaryMissingError as e:
+        raise ServiceError(503, str(e)) from e
 
 
 @app.post("/translate/align")
