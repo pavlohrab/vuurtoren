@@ -45,6 +45,9 @@ const SENTENCE_PAUSE_MS = 600;
 /** How many extra cards one "Continue" asks for. */
 const MORE = { new: 10, learning: 20 } as const;
 
+/** Where each answer throws the card: Again left, Hard down, Good right, Easy up. */
+const FLING = { 1: "left", 2: "down", 3: "right", 4: "up" } as const;
+
 export function Review() {
   usePageHeader("Review");
   const services = useServices();
@@ -291,6 +294,7 @@ export function Review() {
     onLeft: () => void answer(1),
     onRight: () => void answer(3),
     onUp: () => void answer(4),
+    onDown: () => void answer(2),
     // A tap that moved a little: show the answer, as a click on the card does.
     onTap: (target) => {
       if (shown || !(target instanceof Element) || target.closest("button")) return;
@@ -355,7 +359,8 @@ export function Review() {
                     className="review-rating"
                     data-rating={rating}
                     disabled={busy}
-                    onClick={() => void answer(rating)}
+                    // The card flies off the way this answer goes, as a swipe would.
+                    onClick={() => swipe.fling(FLING[rating])}
                   >
                     <span className="review-rating-label">{label}</span>
                     <span className="review-rating-ivl">{card.intervals[rating]}</span>

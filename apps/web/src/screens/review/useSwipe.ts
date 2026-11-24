@@ -31,7 +31,7 @@ const STILL_A_TAP = 24;
 /** How long the card takes to fly off (ms). */
 const LEAVE_MS = 220;
 
-type Direction = "left" | "right" | "up";
+type Direction = "left" | "right" | "up" | "down";
 
 export function useSwipe(opts: {
   enabled: boolean;
@@ -44,6 +44,8 @@ export function useSwipe(opts: {
    * answer). `target` is where the press started.
    */
   onTap?: (target: EventTarget | null) => void;
+  /** The card thrown down (only by `fling`, for Hard: no swipe goes down). */
+  onDown?: () => void;
 }) {
   const start = useRef<{
     x: number;
@@ -73,6 +75,7 @@ export function useSwipe(opts: {
         const a = actions.current;
         if (leaving.dir === "left") a.onLeft();
         else if (leaving.dir === "right") a.onRight();
+        else if (leaving.dir === "down") a.onDown?.();
         else a.onUp();
       },
       still ? 0 : LEAVE_MS,
@@ -146,6 +149,23 @@ export function useSwipe(opts: {
     },
   };
 
+  /**
+   * Throw the card the way an answer goes (a button or a key), as if it had been swiped: the
+   * same flight, then the same action. Hard goes down.
+   */
+  const fling = (dir: Direction) => {
+    if (!opts.enabled || leaving) return;
+    const far = Math.max(window.innerWidth, window.innerHeight) * 1.1;
+    setOffset(null);
+    setLeaving(
+      dir === "up"
+        ? { x: 0, y: -far, dir }
+        : dir === "down"
+          ? { x: 0, y: far, dir }
+          : { x: (dir === "left" ? -1 : 1) * far, y: 0, dir },
+    );
+  };
+
   const style: CSSProperties | undefined = leaving
     ? {
         transform: `translate(${leaving.x}px, ${leaving.y}px) rotate(${leaving.x / 30}deg)`,
@@ -162,6 +182,7 @@ export function useSwipe(opts: {
   const shown = leaving ?? offset;
   return {
     handlers,
+    fling,
     style,
     leaving: !!leaving,
     direction: leaving ? leaving.dir : shown ? directionOf(shown.x, shown.y, THRESHOLD / 2) : null,

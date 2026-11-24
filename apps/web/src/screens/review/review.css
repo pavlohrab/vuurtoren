@@ -257,6 +257,9 @@
 .review-card[data-swipe="up"] {
   --swipe: var(--rate-4);
 }
+.review-card[data-swipe="down"] {
+  --swipe: var(--rate-2);
+}
 .review-swipe-hint {
   display: none;
   /* At a large font it wraps between the answers, never inside one ("↑" / "Easy"). */
