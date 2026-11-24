@@ -1226,6 +1226,11 @@
         align-items: center;
         justify-content: space-between;
       }
+      .support-ways {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px 12px;
+      }
       footer.ft {
         padding-block: 28px;
         border-top: 1px solid var(--line);
@@ -2262,7 +2267,10 @@
           <b>Vuurtoren is made by one person.</b>
           <span class="muted">If it helps you learn, you can support it.</span>
         </p>
-        <a class="btn" href="https://ko-fi.com/pavlohrab">Support on Ko-fi</a>
+        <div class="support-ways">
+          <a class="btn" href="https://bunq.me/vuurtorenapp">iDEAL or card (bunq.me)</a
+          ><a class="btn" href="https://ko-fi.com/pavlohrab">PayPal (Ko-fi)</a>
+        </div>
       </div>
     </section>
     <footer class="ft band">

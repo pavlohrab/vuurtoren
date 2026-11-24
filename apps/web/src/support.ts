@@ -7,8 +7,9 @@
 import { readLocalJSON, writeLocalJSON } from "./storage/local.js";
 
 /**
- * Where Support goes: "Why I made it" on the website, which has the Ko-fi button. Not Ko-fi
- * itself: Google Play does not allow an app to link to another way of paying.
+ * Where Support goes: "Why I made it" on the website, which has the bunq.me and Ko-fi
+ * links. Not those links themselves: Google Play does not allow an app to link to another way
+ * of paying.
  */
 export const SUPPORT_URL = "https://vuurtoren.app/#why";
 

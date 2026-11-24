@@ -1725,6 +1725,15 @@
         gap: 6px 10px;
         margin: 0;
       }
+      /* On a phone the links wrap, so they drop the dots between them. */
+      @media (max-width: 560px) {
+        .get-links {
+          gap: 8px 20px;
+        }
+        .get-links .sep {
+          display: none;
+        }
+      }
       /* Words: the research behind the reviews, as small numbered sources. */
       .cite {
         font-size: 0.7em;
@@ -1880,11 +1889,62 @@
         color: var(--ink);
       }
       .support-line {
-        display: flex;
-        flex-wrap: wrap;
-        align-items: center;
-        gap: 12px 16px;
         color: var(--muted);
+      }
+      /* Two equal ways to support; the QR code is for a computer screen only. */
+      .why .support-ways {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, max-content));
+        gap: 16px 28px;
+        margin-top: 16px;
+      }
+      .why .way {
+        display: grid;
+        justify-items: start;
+        align-content: start;
+        gap: 8px;
+        font-size: 15px;
+      }
+      .why .qr {
+        margin: 8px 0 0;
+        display: grid;
+        justify-items: start;
+        gap: 6px;
+      }
+      .why .qr svg {
+        width: 112px;
+        height: 112px;
+        padding: 12px;
+        border-radius: 10px;
+        border: 1px solid var(--line);
+        background: var(--qr-paper);
+        color: var(--qr-dots);
+      }
+      .why .qr figcaption {
+        font-size: 13px;
+      }
+      @media (max-width: 760px) {
+        .why .support-ways {
+          grid-template-columns: 1fr;
+        }
+        .why .qr {
+          display: none;
+        }
+      }
+      /* The QR code stays dark on light in both themes, so any phone can read it. */
+      :root {
+        --qr-paper: var(--sheet);
+        --qr-dots: var(--ink);
+      }
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme="light"]) {
+          --qr-paper: var(--ink);
+          --qr-dots: var(--bg);
+        }
+      }
+      :root[data-theme="dark"] {
+        --qr-paper: var(--ink);
+        --qr-dots: var(--bg);
       }
       @media (prefers-reduced-motion: reduce) {
         .gnote {
@@ -2954,10 +3014,24 @@
           </p>
           <p>That's why I made Vuurtoren. It's free and open source.</p>
           <p class="sign">Pavlo</p>
-          <p class="support-line">
-            If it helps you, you can support it.
-            <a class="btn" href="https://ko-fi.com/pavlohrab">Support on Ko-fi</a>
-          </p>
+          <p class="support-line">If it helps you, you can support it.</p>
+          <div class="support-ways">
+            <div class="way">
+              <a class="btn" href="https://bunq.me/vuurtorenapp">iDEAL or card (bunq.me)</a>
+              <figure class="qr">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 29 29" aria-hidden="true">
+                  <path
+                    stroke="currentColor"
+                    d="M0 0.5h7m3 0h5m1 0h2m4 0h7m-29 1h1m5 0h1m2 0h2m2 0h1m1 0h1m1 0h1m1 0h2m1 0h1m5 0h1m-29 1h1m1 0h3m1 0h1m1 0h4m2 0h1m1 0h2m4 0h1m1 0h3m1 0h1m-29 1h1m1 0h3m1 0h1m7 0h1m3 0h1m3 0h1m1 0h3m1 0h1m-29 1h1m1 0h3m1 0h1m1 0h2m2 0h2m1 0h2m5 0h1m1 0h3m1 0h1m-29 1h1m5 0h1m1 0h1m2 0h3m2 0h1m1 0h2m2 0h1m5 0h1m-29 1h7m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h7m-19 1h1m4 0h3m2 0h1m-20 1h1m2 0h1m1 0h1m1 0h1m1 0h3m1 0h1m1 0h1m1 0h2m1 0h1m1 0h2m1 0h1m-27 1h1m2 0h3m1 0h1m1 0h4m1 0h1m1 0h1m1 0h1m2 0h4m1 0h3m-29 1h1m4 0h6m1 0h2m1 0h1m1 0h1m2 0h2m2 0h2m2 0h1m-28 1h1m1 0h1m3 0h1m1 0h1m1 0h1m2 0h1m1 0h3m2 0h1m2 0h2m1 0h2m-29 1h3m3 0h4m1 0h1m1 0h2m2 0h3m3 0h1m4 0h1m-24 1h1m1 0h2m2 0h5m2 0h1m3 0h1m1 0h1m1 0h3m-29 1h3m1 0h9m1 0h1m2 0h1m3 0h2m1 0h1m3 0h1m-25 1h1m2 0h1m4 0h1m1 0h4m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m-28 1h1m2 0h2m1 0h1m3 0h1m2 0h3m2 0h4m5 0h1m-28 1h1m3 0h1m2 0h4m3 0h1m1 0h3m3 0h3m1 0h1m1 0h1m-23 1h1m1 0h3m1 0h3m1 0h1m1 0h1m4 0h1m1 0h1m2 0h1m-26 1h1m1 0h1m1 0h6m4 0h1m1 0h2m4 0h1m1 0h2m-29 1h3m2 0h2m2 0h1m1 0h5m1 0h1m2 0h5m2 0h2m-21 1h5m2 0h1m1 0h4m3 0h1m1 0h3m-29 1h7m2 0h4m1 0h2m2 0h3m1 0h1m1 0h1m3 0h1m-29 1h1m5 0h1m4 0h5m3 0h2m3 0h2m-26 1h1m1 0h3m1 0h1m1 0h1m1 0h2m2 0h1m1 0h1m2 0h6m2 0h2m-29 1h1m1 0h3m1 0h1m3 0h2m5 0h2m4 0h1m1 0h3m-28 1h1m1 0h3m1 0h1m2 0h1m1 0h1m2 0h2m1 0h5m4 0h3m-29 1h1m5 0h1m1 0h2m4 0h5m1 0h1m1 0h2m1 0h1m1 0h2m-29 1h7m2 0h1m2 0h1m4 0h1m2 0h2m2 0h1m2 0h1"
+                  />
+                </svg>
+                <figcaption class="muted">Scan with your phone</figcaption>
+              </figure>
+            </div>
+            <div class="way">
+              <a class="btn" href="https://ko-fi.com/pavlohrab">PayPal (Ko-fi)</a>
+            </div>
+          </div>
         </div>
       </div>
     </section>
@@ -3046,7 +3120,9 @@
         </div>
         <p class="get-links">
           <a class="muted" href="https://github.com/pavlohrab/Vuurtoren">Source code on GitHub</a>
-          <span class="muted" aria-hidden="true">·</span>
+          <span class="muted sep" aria-hidden="true">·</span>
+          <a class="muted" href="https://bunq.me/vuurtorenapp">Support on bunq.me</a>
+          <span class="muted sep" aria-hidden="true">·</span>
           <a class="muted" href="https://ko-fi.com/pavlohrab">Support on Ko-fi</a>
         </p>
       </div>

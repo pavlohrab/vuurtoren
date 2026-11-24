@@ -114,7 +114,8 @@ technical story is in [docs/dev](docs/dev/README.md).
 ## Support
 
 Vuurtoren is free and made by one person. If it helps you, you can support it on
-[Ko-fi](https://ko-fi.com/pavlohrab).
+[bunq.me](https://bunq.me/vuurtorenapp) with iDEAL or a card, or on
+[Ko-fi](https://ko-fi.com/pavlohrab) with PayPal.
 
 ## Licence
 
