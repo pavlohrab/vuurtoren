@@ -27,8 +27,6 @@ for (const width of widths) {
   for (const page of pages) {
     const p = await browser.newPage({ viewport: { width, height: 900 } });
     await p.goto("file://" + join(here, page));
-    await p.evaluate(() => sessionStorage.setItem("vt-splash", "1"));
-    await p.reload();
     // Let every section play its entrance, as a reader scrolling down would.
     for (const el of await p.$$("section, header")) {
       await el.scrollIntoViewIfNeeded();
