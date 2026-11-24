@@ -135,3 +135,16 @@ export function knownByWeek(
 /** The first card of a word, from its note ids (null without one). */
 export const firstCard = (noteIds: readonly number[]): number | null =>
   noteIds.length ? Math.min(...noteIds) : null;
+
+/**
+ * Days in a row with any activity, up to today: today counts once something happened today,
+ * and a streak that reached yesterday is still going while today is empty.
+ */
+export function streak(days: readonly ActivityDay[]): number {
+  const active = (d: ActivityDay) => d.pages + d.exercises + d.added + d.reviews > 0;
+  let i = days.length - 1;
+  if (i >= 0 && !active(days[i]!)) i--;
+  let n = 0;
+  for (; i >= 0 && active(days[i]!); i--) n++;
+  return n;
+}

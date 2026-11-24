@@ -9,7 +9,14 @@ import { ChevronLeft } from "lucide-react";
 import { Skeleton } from "@app/ui";
 import { useServices } from "../../services/context.js";
 import { loadStarterWords } from "../../services/starterWords.js";
-import { type StarterIndex, currentLevel, levelProgress, starterIndex } from "./levels.js";
+import {
+  type LevelProgress,
+  type StarterIndex,
+  currentLevel,
+  levelProgress,
+  progressText,
+  starterIndex,
+} from "./levels.js";
 import "./wordsRoom.css";
 
 /** With a level filter or grouping, every word is read and then narrowed. */
@@ -39,13 +46,10 @@ export function useLevelProgress(enabled = true) {
 }
 
 /** "Level 2 · 312 of 500 known": the level the learner is working on, or null while loading. */
-export function useCurrentLevel(): { level: number; known: number; size: number } | null {
+export function useCurrentLevel(): LevelProgress | null {
   const q = useLevelProgress();
-  const l = q.data ? currentLevel(q.data) : null;
-  return l ? { level: l.level, known: l.known, size: l.size } : null;
+  return q.data ? currentLevel(q.data) : null;
 }
-
-const fmt = (n: number) => n.toLocaleString("en");
 
 /**
  * The strip on top of the Words sub-pages (the lists, Practice, Progress): the way back to the
@@ -62,10 +66,9 @@ export function WordsRoom() {
         {level ? (
           <Link to="/words/all" search={{ group: "level" }} className="words-room-level">
             Level {level.level}
-            <span className="words-room-quiet">
-              {" "}
-              · {fmt(level.known)} of {fmt(level.size)} known
-            </span>
+            {/* The learning part too: a word is "known" only three weeks on, like in Anki, so
+                early on "0 of 500 known" alone looked like nothing was happening. */}
+            <span className="words-room-quiet"> · {progressText(level)}</span>
           </Link>
         ) : (
           <Skeleton style={{ height: 16, width: 140 }} />

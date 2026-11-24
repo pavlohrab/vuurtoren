@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  streak,
   activeDays,
   activitySince,
   firstCard,
@@ -70,5 +71,15 @@ describe("activity", () => {
     expect(points[2]!.date).toBe(localDate(now));
     expect(firstCard([1_700_000_000_002, 1_700_000_000_001])).toBe(1_700_000_000_001);
     expect(firstCard([])).toBeNull();
+  });
+});
+
+describe("streak", () => {
+  const day = (reviews: number) => ({ date: "", pages: 0, exercises: 0, added: 0, reviews });
+  it("counts days in a row up to today, or up to yesterday while today is still empty", () => {
+    expect(streak([day(1), day(0), day(3), day(2), day(5)])).toBe(3);
+    expect(streak([day(1), day(2), day(4), day(0)])).toBe(3);
+    expect(streak([day(1), day(0), day(0)])).toBe(0);
+    expect(streak([])).toBe(0);
   });
 });

@@ -15,6 +15,7 @@ import { PageHeader } from "../../shell/PageHeader.js";
 import { usePageHeader } from "../../shell/ShellContext.js";
 import { useCurrentLevel } from "./WordsRoom.js";
 import "./wordsHome.css";
+import { progressText } from "./levels.js";
 
 const fmt = (n: number) => n.toLocaleString("en");
 
@@ -72,9 +73,7 @@ export function WordsHome() {
           search={level ? { layout: "cards", level: String(level.level) } : { layout: "cards" }}
           icon={<Gauge size={18} />}
           title="Check your level"
-          detail={
-            level ? `Level ${level.level} · ${fmt(level.known)} of ${fmt(level.size)} known` : null
-          }
+          detail={level ? `Level ${level.level} · ${progressText(level)}` : null}
         />
       </nav>
     </div>

@@ -4,7 +4,7 @@ import { ArrowRight, ChevronRight, TrendingUp } from "lucide-react";
 import type { ReactNode } from "react";
 import { EmptyState, Skeleton } from "@app/ui";
 import { useServices } from "../services/context.js";
-import { groupWeeks, type ActivityWeek, type KnownPoint } from "../services/activity.js";
+import { groupWeeks, streak, type ActivityWeek, type KnownPoint } from "../services/activity.js";
 import { PageHeader, SectionHeader } from "../shell/PageHeader.js";
 import { pct, relativeTime } from "../format.js";
 import type { TextListItem } from "../services/types.js";
@@ -14,6 +14,8 @@ import "./progress.css";
 
 const fmt = (n: number) => n.toLocaleString();
 const WEEKS = 12;
+/** The known-words line is drawn from this many known words (below it is a flat line). */
+const KNOWN_CHART_MIN = 20;
 const DAY_FMT = new Intl.DateTimeFormat(undefined, { day: "numeric", month: "short" });
 const dayOf = (iso: string) => DAY_FMT.format(new Date(`${iso}T12:00:00`));
 
@@ -92,9 +94,19 @@ export function Progress() {
           onRetry={() => void q.refetch()}
         />
       )}
+      {s && s.learning > 0 && s.known < s.learning ? (
+        <p className="progress-note">
+          A word counts as known once you still remember it three weeks after learning it, like a
+          mature card in Anki. Until then it is learning.
+        </p>
+      ) : null}
+      <ThisWeek />
       <div className="progress-charts">
-        <KnownChart />
-        <ReadingChart />
+        {/* Known words grow only from three weeks on: the reviews show the work from day one,
+            and the known line joins once there are enough known words to draw. */}
+        <WeeklyChart kind="reviews" />
+        <WeeklyChart kind="pages" />
+        {s && s.known >= KNOWN_CHART_MIN ? <KnownChart /> : null}
       </div>
       <PracticeSection />
     </div>
@@ -259,8 +271,25 @@ function LineChart({ points }: { points: KnownPoint[] }) {
   );
 }
 
-/** Pages read per week: thin bars, this week labelled. */
-function ReadingChart() {
+const WEEKLY = {
+  pages: {
+    title: "Reading per week",
+    note: "Pages read, week by week.",
+    unit: ["page", "pages"],
+    none: "Nothing read yet",
+    error: "Your reading could not be loaded.",
+  },
+  reviews: {
+    title: "Reviews per week",
+    note: "Cards you answered, week by week.",
+    unit: ["review", "reviews"],
+    none: "No reviews yet",
+    error: "Your reviews could not be loaded.",
+  },
+} as const;
+
+/** One count per week (pages read, cards reviewed): thin bars, this week labelled. */
+function WeeklyChart({ kind }: { kind: keyof typeof WEEKLY }) {
   const services = useServices();
   const q = useQuery({
     queryKey: ["activity", WEEKS * 7],
@@ -268,16 +297,17 @@ function ReadingChart() {
     staleTime: 60_000,
   });
   const weeks = q.data ? groupWeeks(q.data) : [];
+  const c = WEEKLY[kind];
   return (
     <ChartSection
-      id="progress-reading-h"
-      title="Reading per week"
-      note="Pages read, week by week."
+      id={`progress-${kind}-h`}
+      title={c.title}
+      note={c.note}
       table={
         q.data
           ? {
-              head: ["Week from", "Pages"],
-              rows: weeks.map((w) => [dayOf(w.start), fmt(w.pages)]),
+              head: ["Week from", c.unit[1].replace(/^./, (x) => x.toUpperCase())],
+              rows: weeks.map((w) => [dayOf(w.start), fmt(w[kind])]),
             }
           : null
       }
@@ -285,22 +315,21 @@ function ReadingChart() {
       {q.isPending ? (
         <Skeleton style={{ height: 160 }} />
       ) : q.isError ? (
-        <ErrorNotice
-          title="Your reading could not be loaded."
-          error={q.error}
-          onRetry={() => void q.refetch()}
-        />
+        <ErrorNotice title={c.error} error={q.error} onRetry={() => void q.refetch()} />
       ) : (
-        <BarChart weeks={weeks} />
+        <BarChart weeks={weeks} kind={kind} />
       )}
     </ChartSection>
   );
 }
 
-function BarChart({ weeks }: { weeks: ActivityWeek[] }) {
+function BarChart({ weeks, kind }: { weeks: ActivityWeek[]; kind: keyof typeof WEEKLY }) {
   if (weeks.length === 0) return null;
-  const max = Math.max(1, ...weeks.map((w) => w.pages));
-  const total = weeks.reduce((n, w) => n + w.pages, 0);
+  const c = WEEKLY[kind];
+  const n = (w: ActivityWeek) => w[kind];
+  const max = Math.max(1, ...weeks.map(n));
+  const total = weeks.reduce((sum, w) => sum + n(w), 0);
+  const unit = (v: number) => (v === 1 ? c.unit[0] : c.unit[1]);
   return (
     <figure className="pchart" aria-hidden>
       <div className="pchart-plot pchart-bars">
@@ -309,18 +338,43 @@ function BarChart({ weeks }: { weeks: ActivityWeek[] }) {
             key={w.start}
             className="pchart-bar"
             data-now={i === weeks.length - 1 || undefined}
-            title={`Week from ${dayOf(w.start)}: ${w.pages} ${w.pages === 1 ? "page" : "pages"}`}
+            title={`Week from ${dayOf(w.start)}: ${n(w)} ${unit(n(w))}`}
           >
-            <span style={{ height: `${(w.pages / max) * 100}%` }} />
+            <span style={{ height: `${(n(w) / max) * 100}%` }} />
           </span>
         ))}
       </div>
       <figcaption className="pchart-axis">
         <span>{dayOf(weeks[0]!.start)}</span>
-        <span>{total ? `${fmt(total)} pages in ${WEEKS} weeks` : "Nothing read yet"}</span>
-        <span>This week · {fmt(weeks.at(-1)!.pages)}</span>
+        <span>{total ? `${fmt(total)} ${unit(total)} in ${WEEKS} weeks` : c.none}</span>
+        <span>This week · {fmt(n(weeks.at(-1)!))}</span>
       </figcaption>
     </figure>
+  );
+}
+
+/** The last seven days: what moved, from the first day on. */
+function ThisWeek() {
+  const services = useServices();
+  const q = useQuery({
+    queryKey: ["activity", WEEKS * 7],
+    queryFn: () => services.activity(WEEKS * 7),
+    staleTime: 60_000,
+  });
+  if (!q.data) return null;
+  const week = q.data.slice(-7);
+  const sum = (k: "reviews" | "added" | "pages") => week.reduce((n, d) => n + d[k], 0);
+  const days = streak(q.data);
+  return (
+    <section className="k-section progress-section" aria-labelledby="progress-week-h">
+      <SectionHeader id="progress-week-h" title="This week" />
+      <div className="stat-grid">
+        <Stat value={fmt(sum("reviews"))} label="Cards reviewed" />
+        <Stat value={fmt(sum("added"))} label="Words added" />
+        <Stat value={fmt(sum("pages"))} label="Pages read" />
+        <Stat value={fmt(days)} label={days === 1 ? "Day in a row" : "Days in a row"} />
+      </div>
+    </section>
   );
 }
 
