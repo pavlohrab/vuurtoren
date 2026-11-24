@@ -15,7 +15,7 @@ interface Insets {
 
 declare global {
   interface Window {
-    VuurtorenInsets?: { get(): string };
+    VuurtorenInsets?: { get(): string; setDarkBars?(dark: boolean): void };
     __vuurtorenInsets?: (insets: Insets) => void;
   }
 }

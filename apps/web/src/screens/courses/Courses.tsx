@@ -41,9 +41,12 @@ export function Courses() {
             <Button onClick={() => setImporting(true)}>
               <FileUp size={16} aria-hidden /> Import a course pack
             </Button>
-            <Link to="/courses/import" className="k-btn k-btn--primary">
-              <Plus size={16} aria-hidden /> Add a course
-            </Link>
+            {/* With no courses yet the empty state below has the button: not twice. */}
+            {courses.data?.length ? (
+              <Link to="/courses/import" className="k-btn k-btn--primary">
+                <Plus size={16} aria-hidden /> Add a course
+              </Link>
+            ) : null}
           </>
         }
       />
@@ -59,7 +62,7 @@ export function Courses() {
         <EmptyState
           icon={<GraduationCap size={20} />}
           title="No courses yet"
-          description="Upload a scanned book or a PDF. Vuurtoren finds its units, exercises and word lists, and ties them to your Anki decks."
+          description="Upload a scanned book or a PDF. Vuurtoren finds its units, exercises and word lists, and ties them to your words."
           action={
             <Button variant="primary" onClick={() => void navigate({ to: "/courses/import" })}>
               Add a course

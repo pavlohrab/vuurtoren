@@ -16,11 +16,30 @@ function readTheme(): ThemeChoice {
   return isTheme(v) ? v : "system";
 }
 
+const darkQuery = (): MediaQueryList | undefined =>
+  typeof window.matchMedia === "function"
+    ? window.matchMedia("(prefers-color-scheme: dark)")
+    : undefined;
+
+/**
+ * The Android app draws the status bar's clock and icons itself, dark or light by the phone's
+ * theme, not the app's: with the app dark on a light phone they were black on black. Tell it.
+ */
+function tellStatusBar(theme: ThemeChoice): void {
+  const dark = theme === "dark" || (theme === "system" && !!darkQuery()?.matches);
+  try {
+    window.VuurtorenInsets?.setDarkBars?.(dark);
+  } catch {
+    // Not in the Android app, or an older one without it.
+  }
+}
+
 /** Apply a theme to <html>; "system" removes the override so prefers-color-scheme decides. */
 function applyTheme(theme: ThemeChoice): void {
   const root = document.documentElement;
   if (theme === "system") delete root.dataset.theme;
   else root.dataset.theme = theme;
+  tellStatusBar(theme);
 }
 
 let current: ThemeChoice = readTheme();
@@ -37,6 +56,8 @@ function setTheme(theme: ThemeChoice): void {
 export function initTheme(): void {
   current = readTheme();
   applyTheme(current);
+  // "As the phone": follow the phone when it switches between light and dark.
+  darkQuery()?.addEventListener?.("change", () => tellStatusBar(current));
 }
 
 /** React hook returning the current theme and a setter. */

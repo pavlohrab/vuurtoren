@@ -85,7 +85,15 @@ export interface LiveSettingsDeps {
     | Promise<{ url: string; token: string; fetch?: typeof globalThis.fetch } | null>
     | { url: string; token: string; fetch?: typeof globalThis.fetch }
     | null;
+  /**
+   * A phone: no language server of its own, so without a server to sync with the default
+   * `/nlp` is only the app's own page. Its calls then fail at once with a plain reason.
+   */
+  noOwnLanguageServer?: boolean;
 }
+
+/** What a phone's language-server calls fail with before it is connected to a server. */
+export const NO_LANGUAGE_SERVER = "no language server on this phone";
 
 /**
  * `fetch` that sends `token` as a bearer token to `base` and its paths only (the sync token
@@ -102,7 +110,13 @@ function withBearer(fetch: typeof globalThis.fetch, base: string, token: string)
   }) as typeof globalThis.fetch;
 }
 
-export function createLiveSettings({ repo, platform, changed, languageServer }: LiveSettingsDeps) {
+export function createLiveSettings({
+  repo,
+  platform,
+  changed,
+  languageServer,
+  noOwnLanguageServer = false,
+}: LiveSettingsDeps) {
   let cache: Settings | null = null;
 
   async function settings(): Promise<Settings> {
@@ -134,7 +148,12 @@ export function createLiveSettings({ repo, platform, changed, languageServer }: 
           url: theirs.url,
           fetch: withBearer(theirs.fetch ?? platform.fetch, theirs.url, theirs.token),
         })
-      : new NlpClient({ url, fetch: platform.fetch });
+      : noOwnLanguageServer && url === DEFAULT_SETTINGS.nlpUrl
+        ? new NlpClient({
+            url,
+            fetch: (() => Promise.reject(new Error(NO_LANGUAGE_SERVER))) as typeof fetch,
+          })
+        : new NlpClient({ url, fetch: platform.fetch });
     return watchClient(client, "nlp", nlpOutage);
   };
 

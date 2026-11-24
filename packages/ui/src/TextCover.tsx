@@ -1,4 +1,5 @@
 import {
+  BookOpen,
   ClipboardPaste,
   FileText,
   Globe,
@@ -11,12 +12,14 @@ import type { ReactNode } from "react";
 import { cn } from "./cn.js";
 
 /** Where a text came from, as its Library cover shows it. */
-export type CoverKind = "paste" | "url" | "pdf" | "image" | "ai" | "course" | "talk";
+export type CoverKind = "paste" | "url" | "pdf" | "image" | "ai" | "course" | "talk" | "story";
 
 /** The cover kind of a text: course texts are pasted with a "course:" reference. */
 export function coverKind(sourceKind: string, sourceRef?: string | null): CoverKind {
   if (sourceRef?.startsWith("course:")) return "course";
   if (sourceRef?.startsWith("talk:")) return "talk";
+  // One of the stories that come with Vuurtoren: not something the learner pasted.
+  if (sourceRef?.startsWith("story:")) return "story";
   switch (sourceKind) {
     case "url":
     case "pdf":
@@ -37,6 +40,7 @@ export const COVER_LABEL: Record<CoverKind, string> = {
   ai: "AI story",
   course: "Course text",
   talk: "Conversation",
+  story: "Story",
 };
 
 const COVER_ICON: Record<CoverKind, (size: number) => ReactNode> = {
@@ -47,6 +51,7 @@ const COVER_ICON: Record<CoverKind, (size: number) => ReactNode> = {
   ai: (s) => <Sparkles size={s} aria-hidden />,
   course: (s) => <GraduationCap size={s} aria-hidden />,
   talk: (s) => <MessagesSquare size={s} aria-hidden />,
+  story: (s) => <BookOpen size={s} aria-hidden />,
 };
 
 export interface TextCoverProps {

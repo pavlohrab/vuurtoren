@@ -127,10 +127,16 @@ export function DictionaryPack({ autoStart = false }: { autoStart?: boolean }) {
         <div className="row" role="alert">
           <span className="dict-problem">
             {install.isError
-              ? `The dictionary did not download: ${installError(install.error)}`
+              ? "The dictionary did not download. Check the connection and try again."
               : offline()
                 ? "No connection: the dictionary downloads once you are online."
                 : "The download is not getting anywhere: check the connection."}
+            {install.isError ? (
+              <details className="dict-details">
+                <summary>Technical details</summary>
+                <code>{installError(install.error)}</code>
+              </details>
+            ) : null}
           </span>
           <Button
             size="sm"

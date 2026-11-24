@@ -17,6 +17,7 @@ import { Button, LogoMark, Skeleton, useNativeMode } from "@app/ui";
 import { readLastText } from "../lastText.js";
 import { useServices } from "../services/context.js";
 import { pickContinue } from "../textPages.js";
+import { useAIReady } from "./StoryForm.js";
 
 const fmt = (n: number) => n.toLocaleString("en");
 
@@ -33,6 +34,8 @@ export function TextComplete({
 }) {
   const services = useServices();
   const native = useNativeMode();
+  // Talk needs the learner's own AI: without one the link would lead to a setup page.
+  const aiReady = useAIReady();
   const words = useQuery({
     queryKey: ["textWords", textId],
     queryFn: () => services.textWords(textId),
@@ -101,18 +104,20 @@ export function TextComplete({
           </span>
           <ArrowRight size={16} aria-hidden />
         </Link>
-        <Link
-          to="/talk"
-          search={{ topic: title, ...(talkWords.length ? { words: talkWords.join(",") } : {}) }}
-          className="practice-next-link"
-        >
-          <MessagesSquare size={18} aria-hidden />
-          <span>
-            Talk about this text
-            <small>A short chat in Dutch about it</small>
-          </span>
-          <ArrowRight size={16} aria-hidden />
-        </Link>
+        {aiReady ? (
+          <Link
+            to="/talk"
+            search={{ topic: title, ...(talkWords.length ? { words: talkWords.join(",") } : {}) }}
+            className="practice-next-link"
+          >
+            <MessagesSquare size={18} aria-hidden />
+            <span>
+              Talk about this text
+              <small>A short chat in Dutch about it</small>
+            </span>
+            <ArrowRight size={16} aria-hidden />
+          </Link>
+        ) : null}
         {next ? (
           <Link to="/read/$textId" params={{ textId: next.text.id }} className="practice-next-link">
             <BookOpen size={18} aria-hidden />

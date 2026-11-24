@@ -1092,6 +1092,7 @@ button.k-word-chip {
 /* Loading placeholder: invisible for the first 150 ms (fast loads never flash), then a soft
    sweep. The sweep is one of the two loops the motion budget allows, and only while loading. */
 .k-skeleton {
+  display: block;
   background: linear-gradient(
     90deg,
     var(--surface-2) 30%,

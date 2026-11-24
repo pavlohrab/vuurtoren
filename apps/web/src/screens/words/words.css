@@ -162,15 +162,30 @@
   }
 }
 @media (max-width: 699px) {
-  .words-filter-fields,
+  /* Phones: Source and Level side by side, then the search, then the tools, so the words
+     start sooner. */
+  .words-filter-fields {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    width: 100%;
+  }
   .words-source,
   .words-search {
     width: 100%;
+  }
+  .words-search,
+  .words-tools {
+    grid-column: 1 / -1;
   }
   .words-states {
     width: 100%;
     overflow-x: auto;
     flex-wrap: nowrap;
+    scrollbar-width: none;
+  }
+  .words-state {
+    flex: none;
+    white-space: nowrap;
   }
   .words-bulk {
     position: fixed;

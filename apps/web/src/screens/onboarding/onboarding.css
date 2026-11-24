@@ -8,6 +8,26 @@
   padding: calc(48px + var(--safe-top)) calc(16px + var(--safe-right))
     calc(64px + var(--safe-bottom)) calc(16px + var(--safe-left));
 }
+/* Edge to edge on phones: a solid strip under the status bar, so the page never scrolls
+   behind its clock and icons. */
+.ob-shell::before {
+  content: "";
+  position: fixed;
+  inset: 0 0 auto;
+  height: var(--safe-top, 0px);
+  background: var(--bg);
+  z-index: 20;
+  pointer-events: none;
+}
+/* "Adding words… 2,700 of 4,930": the spinner on the line, beside its words. */
+.ob-card p[role="status"] {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+}
+.ob-check + .ob-choices {
+  margin-top: var(--s-4);
+}
 .ob-card {
   width: 100%;
   max-width: var(--w-read);
@@ -201,6 +221,7 @@
 }
 /* Ready: one primary (Start reading) and a quiet way to bring a text of your own. */
 .ob-first-actions {
+  margin-top: var(--s-4);
   display: flex;
   flex-wrap: wrap;
   align-items: center;

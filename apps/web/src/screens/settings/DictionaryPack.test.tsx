@@ -86,7 +86,7 @@ describe("DictionaryPack", () => {
     ).not.toBeChecked();
   });
 
-  it("a download that fails says why in one line, with Retry", async () => {
+  it("a download that fails says so in plain words, the reason folded away, with Retry", async () => {
     let fail = true;
     const install = onPhone({
       connection: "wifi",
@@ -94,7 +94,9 @@ describe("DictionaryPack", () => {
         fail ? Promise.reject(new Error("HTTP 404 from the server")) : new Promise(() => {}),
     });
     const alert = await screen.findByRole("alert");
-    expect(alert).toHaveTextContent("The dictionary did not download: HTTP 404 from the server");
+    expect(alert).toHaveTextContent("The dictionary did not download. Check the connection");
+    // The technical reason is there for a bug report, behind Technical details.
+    expect(alert.querySelector("details code")).toHaveTextContent("HTTP 404 from the server");
     expect(screen.queryByText(/0 B of/)).toBeNull();
     fail = false;
     await userEvent.click(screen.getByRole("button", { name: "Retry" }));

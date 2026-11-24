@@ -48,7 +48,7 @@ interface Step {
   /** The step is about the reader: without one on screen, the current story opens. */
   reader?: boolean;
   /** The step is about this page: the walkthrough opens it when the target is not on screen. */
-  route?: "/words";
+  route?: "/" | "/words";
   /** The Next button's label (it goes where the step points). */
   go?: string;
   /** The title and text with Anki keeping the cards (reviews happen in Anki). */
@@ -58,7 +58,9 @@ interface Step {
 
 const STEPS: Step[] = [
   {
-    target: ".sidebar .nav-link[href='/']",
+    // The Read page itself, where "on top" is: from the first story the walkthrough opens it.
+    target: ".today-continue",
+    route: "/",
     title: "Read",
     text: "Stories at your level and your own texts. On top: what to continue and what is due today.",
   },

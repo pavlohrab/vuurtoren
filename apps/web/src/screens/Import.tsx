@@ -1,10 +1,11 @@
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { ArrowLeft, Camera, FileText, UploadCloud } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { DragEvent, ReactNode } from "react";
 import { Button, Input, Spinner, Tabs, Textarea, useToast } from "@app/ui";
 import { useOcrAvailable } from "../desktop/DesktopSetup.js";
+import { currentDevice } from "../platform/index.js";
 import { useServices } from "../services/context.js";
 import type { ImportInput } from "../services/types.js";
 import {
@@ -206,6 +207,15 @@ export function ImportScreen() {
 
   // Photo import needs text recognition on the language server.
   const ocr = useOcrAvailable();
+  // A phone has no language server of its own: without its server a new text cannot be
+  // prepared here, so say so before anything is typed.
+  const phone = currentDevice().kind === "android";
+  const sync = useQuery({
+    queryKey: ["sync", "status"],
+    queryFn: () => services.syncStatus(),
+    enabled: phone,
+  });
+  const noServer = phone && sync.isSuccess && sync.data.place === null;
   const asked = TAB_OF[search.tab ?? "paste"] ?? "paste";
   const tab: Tab = (asked === "image" && !ocr) || (asked === "story" && !aiReady) ? "paste" : asked;
   const kind: Kind = tab === "story" ? "paste" : tab;
@@ -403,8 +413,21 @@ export function ImportScreen() {
           </Link>
         }
         title="Add text"
-        lede="Something you want to read in Dutch: paste it, add a web page or a PDF, or have a story written for you."
+        lede={
+          aiReady
+            ? "Something you want to read in Dutch: paste it, add a web page or a PDF, or have a story written for you."
+            : "Something you want to read in Dutch: paste it, or add a web page or a PDF."
+        }
       />
+      {noServer ? (
+        <div className="k-hint import-needs-server" role="note">
+          On a phone, a new text is prepared by your server or your computer.{" "}
+          <Link to="/settings" search={{ section: "devices" }}>
+            Connect your server
+          </Link>
+          , or add the text on your computer: it comes here when you sync.
+        </div>
+      ) : null}
       <Tabs
         aria-label="Add text from"
         value={tab}

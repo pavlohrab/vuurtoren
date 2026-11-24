@@ -486,3 +486,16 @@
   display: grid;
   gap: 4px;
 }
+
+/* A download that failed: the plain reason, the technical one folded away. */
+.dict-details {
+  margin-top: 4px;
+  font-size: 13px;
+  color: var(--ink-muted);
+}
+.dict-details code {
+  display: block;
+  margin-top: 4px;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}

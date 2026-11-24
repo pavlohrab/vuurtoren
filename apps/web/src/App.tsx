@@ -28,7 +28,17 @@ export function App({
   desktop,
 }: AppProps) {
   const [queryClient] = useState(
-    () => new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: 5_000 } } }),
+    () =>
+      new QueryClient({
+        defaultOptions: {
+          // Local first: the data is on this device, so a query runs whether or not the phone
+          // is online. React Query's default ("online") paused every query when the network
+          // dropped while the app was open: the reader then waited forever in airplane mode.
+          // Calls that need the network fail on their own and say why.
+          queries: { retry: false, staleTime: 5_000, networkMode: "always" },
+          mutations: { networkMode: "always" },
+        },
+      }),
   );
   const [router] = useState(() => createAppRouter(history));
   // After signing in again over the app (the session had ended), refetch what failed.

@@ -75,8 +75,11 @@ export function Progress() {
         <Skeleton style={{ height: 110, borderRadius: 10 }} />
       ) : s ? (
         <div className="stat-grid">
-          {/* The estimate is only meaningful once there is a collection to read. */}
-          {synced ? <Stat value={fmt(s.vocabEstimate)} label="Estimated vocabulary" /> : null}
+          {/* The estimate is only meaningful once there is a collection to read, and words in
+              it: below 200 it shows its floor (200), which read as 200 words beside 0 known. */}
+          {synced && s.known + s.learning >= 200 ? (
+            <Stat value={fmt(s.vocabEstimate)} label="Estimated vocabulary" />
+          ) : null}
           <Stat value={fmt(s.known)} label="Known words" state="known" />
           <Stat value={fmt(s.learning)} label="Learning" state="learning" />
           <Stat value={fmt(s.unknown)} label="New words" state="unknown" />

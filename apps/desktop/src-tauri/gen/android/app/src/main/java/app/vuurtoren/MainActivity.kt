@@ -5,6 +5,7 @@ import android.webkit.JavascriptInterface
 import android.webkit.WebView
 import androidx.activity.enableEdgeToEdge
 import androidx.core.view.ViewCompat
+import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 
 class MainActivity : TauriActivity() {
@@ -54,5 +55,19 @@ class MainActivity : TauriActivity() {
 
   private inner class InsetsBridge {
     @JavascriptInterface fun get(): String = insets
+
+    /**
+     * The page's theme, for the clock and icons in the status bar and the gesture handle:
+     * edge to edge they follow the phone's theme, so a dark page on a light phone got black
+     * icons on black. Called by apps/web/src/theme.ts whenever the theme changes.
+     */
+    @JavascriptInterface
+    fun setDarkBars(dark: Boolean) {
+      runOnUiThread {
+        val bars = WindowCompat.getInsetsController(window, window.decorView)
+        bars.isAppearanceLightStatusBars = !dark
+        bars.isAppearanceLightNavigationBars = !dark
+      }
+    }
   }
 }

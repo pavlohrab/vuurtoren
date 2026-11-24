@@ -53,6 +53,8 @@ export function createLiveServices(
     platform,
     changed,
     languageServer: () => sync.languageServer(),
+    noOwnLanguageServer:
+      currentDevice().languageServer !== "bundled" && currentDevice().kind === "android",
   });
   const { settings, lang, nlp, anki } = config;
   const learner = createLearnerCache(repo, lang);

@@ -546,7 +546,11 @@ export function Words() {
       <WordsRoom />
       <PageHeader
         title="Your words"
-        lede="New words from your reading wait here. Open one to add it to your words, mark it known or leave it."
+        lede={
+          view === "decide"
+            ? "New words from your reading wait here. Open one to add it to your words, mark it known or leave it."
+            : undefined
+        }
         actions={
           <>
             {layoutToggle}

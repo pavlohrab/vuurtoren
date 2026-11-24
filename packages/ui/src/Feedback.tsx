@@ -9,7 +9,8 @@ export function Spinner({ label = "Loading" }: { label?: string }) {
 /** Placeholder block shown while content loads. */
 export function Skeleton({ className, style }: { className?: string; style?: CSSProperties }) {
   return (
-    <div className={cn("k-skeleton", className)} style={{ height: 16, ...style }} aria-hidden />
+    // A span (styled as a block): it also stands in for text inside a paragraph.
+    <span className={cn("k-skeleton", className)} style={{ height: 16, ...style }} aria-hidden />
   );
 }
 

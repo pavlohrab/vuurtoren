@@ -33,6 +33,13 @@ export function describeError(e: unknown, fallback = "Something went wrong."): F
   const withDetails = (f: Omit<FriendlyError, "details">): FriendlyError =>
     details ? { ...f, details } : f;
 
+  if (raw.includes("no language server on this phone")) {
+    return withDetails({
+      source: "nlp",
+      message: "On a phone, a new text is prepared by your server or your computer.",
+      next: "Connect your server in Settings → Your devices, or add the text on your computer: it comes here when you sync.",
+    });
+  }
   if (/^NLP\b/.test(raw) || /NLP service/.test(raw)) {
     if (/no answer within/.test(raw)) {
       return withDetails({
