@@ -2,8 +2,9 @@
 
 Computers with a Dutch system voice (Windows, macOS with the voice installed) use their own; a
 computer without one (most Linux desktops: the app's WebKitGTK has no speech engine) asks this
-server instead. The voice model is the ``tts-nl`` pack (``nl_NL-mls-medium``, CC BY 4.0, from the
-MLS corpus). It loads on first use (about 0.5 s) and says a word in about 60 ms.
+server instead. The voice model is the ``tts-nl`` pack (``nl_NL-alex-medium``, one speaker, trained
+on CC0 data). It loads on first use (about 0.5 s) and says a word in about 60 ms. Alex reads fast
+for a learner, so his normal speed is ``SLOWER`` times slower; the app's speed setting comes on top.
 """
 
 from __future__ import annotations
@@ -15,6 +16,11 @@ from pathlib import Path
 
 from vuurtoren_nlp.datadir import data_path
 from vuurtoren_nlp.errors import ServiceError
+
+SLOWER = 1.08
+"""Alex's normal speed, matched to the recordings: they take about 1.2 times as long as alex by
+himself (measured on 60 words and 60 sentences). The app asks for 0.9 of normal, as for system
+voices, so 1.08 here gives 1.2 in the app."""
 
 MAX_CHARS = 600
 """Longer texts are cut: this is for a word or a sentence, not a page."""
@@ -67,7 +73,7 @@ def synthesize(text: str, rate: float = 1.0) -> bytes:
     voice = _load()
     from piper import SynthesisConfig
 
-    config = SynthesisConfig(length_scale=1 / max(0.5, min(2.0, rate)))
+    config = SynthesisConfig(length_scale=SLOWER / max(0.5, min(2.0, rate)))
     buf = io.BytesIO()
     with _lock, wave.open(buf, "wb") as out:
         voice.synthesize_wav(text, out, syn_config=config)

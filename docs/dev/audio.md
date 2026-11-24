@@ -39,7 +39,7 @@ SHA-1 of its exact text. The app finds a clip from the text alone:
 The app plays the clip when the pack has it, else the system's Dutch voice, else nothing.
 
 Most Linux computers have no Dutch system voice, because WebKitGTK has no speech engine. For them
-there is one more pack, `tts-nl`. It is Piper's `nl_NL-mls-medium` voice (CC BY 4.0, 72 MB), and
+there is one more pack, `tts-nl`. It is Piper's `nl_NL-alex-medium` voice (one speaker, trained on CC0 data, 58 MB), and
 `server/nlp/scripts/fetch_tts_voice.py` downloads it. The language server reads text with it at
 `GET /speech?text=&rate=` and sends back a WAV. The app only uses it when no Dutch system voice
 shows up and `/health` says `data.speech` is true. Then `apps/web/src/platform/ownVoice.ts` puts

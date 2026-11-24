@@ -1,4 +1,4 @@
-"""Fetch the Dutch Piper voice (nl_NL-mls-medium, CC BY 4.0) into a folder: the tts-nl pack.
+"""Fetch the Dutch Piper voice (nl_NL-alex-medium, trained on CC0 data) into a folder: the tts-nl pack.
 
 Usage (from server/nlp)::
 
@@ -11,8 +11,8 @@ import argparse
 import urllib.request
 from pathlib import Path
 
-BASE = "https://huggingface.co/rhasspy/piper-voices/resolve/main/nl/nl_NL/mls/medium"
-FILES = ("nl_NL-mls-medium.onnx", "nl_NL-mls-medium.onnx.json", "MODEL_CARD")
+BASE = "https://huggingface.co/rhasspy/piper-voices/resolve/main/nl/nl_NL/alex/medium"
+FILES = ("nl_NL-alex-medium.onnx", "nl_NL-alex-medium.onnx.json", "MODEL_CARD")
 
 
 def main() -> None:
