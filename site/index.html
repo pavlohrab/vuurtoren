@@ -367,6 +367,54 @@
         }
       }
 
+      /* FULL-SCREEN HERO (on computers): the hero fills the first screen under the nav, with a
+         quiet "scroll" hint at its foot. To undo it, remove the class "hero--full" from the
+         hero's <header> (or delete this block and the .hero-more link). Phones keep the hero
+         as it was. */
+      @media (min-width: 901px) and (min-height: 600px) {
+        .hero--full {
+          position: relative;
+          display: grid;
+          align-content: center;
+          min-height: calc(100svh - 64px - env(safe-area-inset-top, 0px));
+          padding-block: 48px 88px;
+        }
+        .hero--full .in {
+          width: 100%;
+        }
+        .hero--full .hero-more {
+          display: grid;
+        }
+      }
+      .hero-more {
+        display: none;
+        position: absolute;
+        left: 50%;
+        bottom: 24px;
+        translate: -50% 0;
+        place-items: center;
+        gap: 2px;
+        color: var(--muted);
+        font-size: 13px;
+        text-decoration: none;
+      }
+      .hero-more:hover {
+        color: var(--ink);
+      }
+      .hero-more svg {
+        animation: hero-more 2.4s ease-in-out infinite;
+      }
+      @keyframes hero-more {
+        50% {
+          translate: 0 4px;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .hero-more svg {
+          animation: none;
+        }
+      }
+
       /* the app's reader, drawn as the app draws it */
       .app {
         position: relative;
@@ -2435,7 +2483,7 @@
       </div>
     </nav>
 
-    <header class="hero band" id="top">
+    <header class="hero hero--full band" id="top">
       <div class="in">
         <div class="hero-copy">
           <span class="eyebrow">For Dutch learners</span>
@@ -2503,6 +2551,21 @@
           </figure>
         </div>
       </div>
+      <a class="hero-more" href="#name" aria-label="Scroll down to more">
+        <svg
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <path d="m6 9 6 6 6-6" />
+        </svg>
+      </a>
     </header>
 
     <section class="sec alt band namev" id="name" aria-labelledby="name-h" data-lit>
