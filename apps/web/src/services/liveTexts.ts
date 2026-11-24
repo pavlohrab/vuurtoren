@@ -32,6 +32,7 @@ import { DEFAULT_STAIRCASE, type LearnerCache } from "./liveLearner.js";
 import { fetchTexts } from "./textBatch.js";
 import { nlpOutage } from "./liveSettings.js";
 import { ImportCancelledError } from "./ocrReview.js";
+import { contextGloss } from "./contextGloss.js";
 import type {
   AppServices,
   ImportInput,
@@ -465,17 +466,26 @@ export function createLiveTexts({
       const v = await view(textId);
       if (!v) return {};
       const m = await learner.model();
+      const out: Record<number, { text: string; note?: string }> = {};
       const items = tokenIndices.flatMap((i) => {
         const clicked = v.tokens[i];
         if (!clicked) return [];
         const t =
           clicked.particle_of !== null ? (v.tokens[clicked.particle_of] ?? clicked) : clicked;
-        return [
-          { i, t, key: matchToken(t, m) ?? normalizeKey(t.lemma), lemma: t.lemma, pos: t.pos },
-        ];
+        // Its meaning in this sentence where the card or lemma would mislead ("zijn hond").
+        const here = contextGloss(v.tokens, t);
+        if (here.fixed) {
+          out[i] = { text: here.fixed };
+          return [];
+        }
+        const lemma = here.lemma ?? t.lemma;
+        // A key no card has: the dictionary answers for this form, not the lemma's card.
+        const key = here.notTheCard
+          ? `form:${normalizeKey(lemma)}`
+          : (matchToken(t, m) ?? normalizeKey(t.lemma));
+        return [{ i, t, key, lemma, pos: t.pos }];
       });
       const { found, notes, guesses } = await dictionary.lookupGlosses(items);
-      const out: Record<number, { text: string; note?: string }> = {};
       for (const it of items) {
         const g = found.get(it.key);
         const note = notes.get(it.key);

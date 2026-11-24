@@ -12,6 +12,7 @@ import type { VuurtorenRepository, WordInfo } from "@app/db";
 import type { NlpClient } from "@app/nlp-client";
 import { DEGRADED_MESSAGES, clearDegraded, reportDegraded } from "./degraded.js";
 import { nlpOutage } from "./liveSettings.js";
+import { withoutArticle } from "./contextGloss.js";
 
 export type Dictionary = Awaited<ReturnType<NlpClient["gloss"]>>;
 
@@ -37,6 +38,9 @@ const GLOSS_BATCH = 500;
 
 /** Dictionary entries with senses of the token's part of speech first. */
 function orderByPos<T extends { pos: string }>(entries: T[], pos?: string): T[] {
+  // A name is only a name: "Joost" is "a male given name", not also "Satan, the Devil".
+  if (pos === "PROPN" && entries.some((e) => e.pos === "name"))
+    return entries.filter((e) => e.pos === "name");
   const wanted = pos ? (KAIKKI_POS[pos] ?? []) : [];
   return [
     ...entries.filter((e) => wanted.includes(e.pos)),
@@ -82,7 +86,7 @@ export function composeGlosses(
   guess?: "derivation" | "compound";
 } {
   const glosses: string[] = [];
-  if (info?.gloss) glosses.push(info.gloss);
+  if (info?.gloss) glosses.push(withoutArticle(info.gloss));
   const ordered = orderByPos(entries ?? [], pos);
   for (const e of ordered)
     for (const g of e.glosses)
@@ -213,7 +217,7 @@ export function createLiveDictionary({ repo, lang, nlp, localGloss }: LiveDictio
     );
     for (const it of missing) {
       const gloss = infos.get(it.key)?.gloss;
-      if (gloss) glossCache.set(cacheKey(it), { text: gloss });
+      if (gloss) glossCache.set(cacheKey(it), { text: withoutArticle(gloss) });
       else needDict.push(it);
     }
     let complete = true;
@@ -249,9 +253,14 @@ export function createLiveDictionary({ repo, lang, nlp, localGloss }: LiveDictio
           }
           const target = targets.get(it.lemma);
           const own = meaningSenses(senses(it).filter((x) => !FORM_OF.test(x)));
-          const g = shortGloss(
+          const short = shortGloss(
             own.length || !target ? own : meaningSenses(senses({ lemma: target })),
           );
+          // "a sweet" → "sweet"; a person's name gets no gloss over it ("a male given name").
+          const g =
+            it.pos === "PROPN" && /\b(given name|surname|family name)\b/i.test(short)
+              ? ""
+              : withoutArticle(short);
           const note = partsNote(ordered[0]);
           const guess = note ? ordered[0]?.origin : undefined;
           glossCache.set(

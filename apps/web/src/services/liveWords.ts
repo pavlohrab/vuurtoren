@@ -43,6 +43,7 @@ import type { LiveTexts } from "./liveTexts.js";
 import type { AddOptions } from "./profileTypes.js";
 import { suggestionEntry } from "./suggestions.js";
 import { pickTextWords } from "./textWordSet.js";
+import { contextGloss } from "./contextGloss.js";
 import type {
   AppServices,
   InspectorEntry,
@@ -343,7 +344,22 @@ export function createLiveWords(deps: LiveWordsDeps) {
         dict,
         anki: ankiState,
       });
-      await addSentenceMeaning(entry, composeGlosses(info, dict[t.lemma], t.pos).guess);
+      // Its meaning here where the card or lemma would mislead: "zijn hond" is "his", not the
+      // verb card's "to be"; "Kampen" is a town, not "kamp"; "bankje" is not "bank".
+      const here = contextGloss(v.tokens, t);
+      if (here.fixed) {
+        entry.glosses = [here.fixed, ...entry.glosses.filter((g) => g !== here.fixed)];
+        entry.glossNote = IN_SENTENCE;
+      } else if (here.notTheCard && here.lemma) {
+        const own = await dictionary.dictionaryFor([here.lemma]);
+        // Its own meanings, or none (then the sentence's translation gives it below).
+        entry.glosses = composeGlosses(null, own[here.lemma], t.pos).glosses;
+        delete entry.glossNote;
+      }
+      await addSentenceMeaning(
+        entry,
+        here.fixed ? undefined : composeGlosses(info, dict[t.lemma], t.pos).guess,
+      );
       const tr = (await dictionary.translateSentences([entry.sentence])).get(entry.sentence);
       if (tr) entry.sentenceTranslation = tr;
       return entry;
