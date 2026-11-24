@@ -5,8 +5,8 @@
 # Every job builds the language-server sidecar for its OS first (.github/actions/desktop-prep:
 # PyInstaller, one directory, with RapidOCR), then the app. Two variants:
 #   build     standard installers: the data packs (dictionary, sentences, translation model,
-#             audio; ~334 MB) are downloaded on first start from data.vuurtoren.app;
-#   offline   the pack archives inside the installer (`Vuurtoren_offline_*`, ~334 MB larger), for
+#             audio; ~390 MB) are downloaded on first start from data.vuurtoren.app;
+#   offline   the pack archives inside the installer (`Vuurtoren_offline_*`, ~390 MB larger), for
 #             computers without internet at first start. Tags always build it; "Run workflow"
 #             asks. On Linux it then runs `vuurtoren --self-test` (hidden window under Xvfb: the
 #             language server starts, a sentence is analysed through the page, the database
