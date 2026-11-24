@@ -26,6 +26,30 @@ describe("Reader", () => {
     expect(screen.getByText("Ik")).toHaveAttribute("data-label", "known");
   });
 
+  it("a not-yet-studied word that is probably known reads plain; an unknown one is marked", () => {
+    const f = fixture(TEXT, { 3: "new", 6: "new" });
+    // "morgen" probably known (0.9), "huis" not (0.2).
+    const huis = f.tokens.find((t) => t.text === "huis")!.i;
+    f.plans[0]!.tokens.find((p) => p.i === huis)!.pKnown = 0.2;
+    render(<Reader {...f} />);
+    expect(screen.getByText("morgen")).toHaveAttribute("data-probable");
+    expect(screen.getByText("huis")).not.toHaveAttribute("data-probable");
+  });
+
+  it("marks a word to learn strongly once a page, then lightly; Gloss gives its English once", () => {
+    const f = fixture("De hond blaft. Mijn hond slaapt.", { 1: "introduce", 4: "introduce" });
+    const [first, again] = f.tokens.filter((t) => t.text === "hond");
+    const { container } = render(
+      <Reader {...f} mode="gloss" glosses={{ [first!.i]: "dog", [again!.i]: "dog" }} />,
+    );
+    const hond = container.querySelectorAll('[data-label="introduce"]');
+    expect(hond[0]).not.toHaveAttribute("data-repeat");
+    expect(hond[1]).toHaveAttribute("data-repeat");
+    expect(container.querySelectorAll(".k-gloss-mark")).toHaveLength(1);
+    // The second one still says its meaning on hover.
+    expect(hond[1]).toHaveAttribute("title", "dog");
+  });
+
   it("styles a detached particle like its verb", () => {
     const f = fixture(TEXT, { 1: "introduce" }, { 4: 1 });
     render(<Reader {...f} />);

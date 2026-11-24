@@ -29,6 +29,12 @@ describe("help dial", () => {
     expect(glossTargets(toks, 0.25)).toEqual([0, 1]);
   });
 
+  it("a not-yet-studied word gets English when probably unknown; probably known only at high help", () => {
+    expect(wantsGloss(tok(0, "new", 0.2), 0.25)).toBe(true);
+    expect(wantsGloss(tok(1, "new", 0.8), 0.25)).toBe(false);
+    expect(wantsGloss(tok(1, "new", 0.8), 1)).toBe(true);
+  });
+
   it("higher help adds shaky studied words, never clozes or ignored", () => {
     expect(wantsGloss({ label: "learning", pKnown: 0.4 }, 0.7)).toBe(true);
     expect(wantsGloss({ label: "learning", pKnown: 0.6 }, 0.7)).toBe(false);

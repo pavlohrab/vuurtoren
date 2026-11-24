@@ -4,6 +4,8 @@ import type { AnalyzedToken, PlannedToken, SegmentPlan, TokenLabel } from "@app/
 import { stripAccents } from "@app/core";
 import { cn } from "./cn.js";
 import type { ReaderMode } from "./types.js";
+/** A not-yet-studied word from this recall on reads as probably known (plan's UNKNOWN_THRESHOLD). */
+const PROBABLY_KNOWN = 0.5;
 
 export interface ReaderProps {
   /** Source text; whitespace between tokens is taken from here. */
@@ -182,6 +184,24 @@ export function Reader({
     return m;
   }, [plans]);
 
+  /**
+   * Tokens whose word already came earlier on this page: a word to learn is marked strongly
+   * once, then lightly, and Gloss mode gives its English once (a tap still shows it).
+   */
+  const repeats = useMemo(() => {
+    const seen = new Set<string>();
+    const out = new Set<number>();
+    for (const pl of plans)
+      for (const p of pl.tokens) {
+        const t = tokens[p.i];
+        if (p.key === null || !t?.is_word || t.particle_of != null) continue;
+        if (p.label === "nonword" || p.label === "ignored" || p.label === "cloze") continue;
+        if (seen.has(p.key)) out.add(p.i);
+        else seen.add(p.key);
+      }
+    return out;
+  }, [plans, tokens]);
+
   const clickable = (t: AnalyzedToken) => {
     const p = planned.get(t.i);
     return p !== undefined && p.label !== "nonword" && t.is_word;
@@ -346,6 +366,9 @@ export function Reader({
     const shownLabel: TokenLabel = label === "cloze" ? "known" : label;
     const spot = spotlights?.get(t.i);
     const glossNote = glossNotes?.[t.i];
+    const repeat = repeats.has(t.i);
+    // Not studied yet but probably known (recall ≥ 50%): plain, not a loud "new".
+    const probable = shownLabel === "new" && p.pKnown >= PROBABLY_KNOWN;
     const glossTitle = gloss && glossNote ? `${gloss} · ${glossNote}` : gloss;
     const title =
       gloss && mode === "gloss" ? (spot ? `${glossTitle} · ${spot}` : glossTitle) : spot;
@@ -355,6 +378,8 @@ export function Reader({
         data-tok=""
         data-i={t.i}
         data-label={shownLabel}
+        {...(repeat ? { "data-repeat": "" } : {})}
+        {...(probable ? { "data-probable": "" } : {})}
         data-selected={isSelected}
         className={cn(
           "k-tok",
@@ -377,7 +402,7 @@ export function Reader({
         onKeyDown={(e) => onKeyDown(e, t.i)}
       >
         {surface}
-        {gloss && mode === "gloss" ? (
+        {gloss && mode === "gloss" && !repeat ? (
           <sup className={cn("k-gloss-mark", glossNote && "k-gloss-mark--guess")}>{gloss}</sup>
         ) : null}
       </span>

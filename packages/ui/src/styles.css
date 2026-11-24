@@ -1226,6 +1226,12 @@ button.k-word-chip {
   text-decoration-thickness: 1px;
   text-underline-offset: 3px;
 }
+/* Not studied yet, but probably known (recall ≥ 50%: the starter's common words before their
+   first review): plain like a known word, so only real signals stand out. Still tappable. */
+.k-tok[data-label="new"][data-probable] {
+  background-color: transparent;
+  text-decoration: none;
+}
 /* Words to learn: amber tint plus a 2px line that draws in once when the page appears. */
 .k-tok[data-label="introduce"] {
   position: relative;
@@ -1244,6 +1250,15 @@ button.k-word-chip {
   transform-origin: left;
   animation: k-fill-x var(--dur-slow) var(--ease-out) both;
   pointer-events: none;
+}
+/* The same word to learn again on this page: no tint, a thin line that does not draw in. */
+.k-tok[data-label="introduce"][data-repeat] {
+  background-color: transparent;
+}
+.k-tok[data-label="introduce"][data-repeat]::after {
+  height: 1px;
+  opacity: 0.6;
+  animation: none;
 }
 .k-tok[data-label="learning"] {
   text-decoration: underline dotted var(--state-learning-line);

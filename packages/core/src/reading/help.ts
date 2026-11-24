@@ -27,8 +27,11 @@ export function wantsGloss(p: Pick<PlannedToken, "label" | "pKnown">, help: numb
   switch (p.label) {
     case "gloss":
     case "introduce":
-    case "new":
       return true;
+    case "new":
+      // Not studied yet: English when probably unknown, else like a word being learned (a
+      // probably-known word only at a high help setting).
+      return p.pKnown < 0.5 || p.pKnown < helpRecallThreshold(help);
     case "learning":
     case "known":
       return p.pKnown < helpRecallThreshold(help);
