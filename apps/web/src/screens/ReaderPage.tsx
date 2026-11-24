@@ -61,6 +61,7 @@ import { usePageHeader, useShell } from "../shell/ShellContext.js";
 import { revealAboveSheet } from "../shell/revealAboveSheet.js";
 import { useReaderAudio } from "../audio/ReaderAudio.js";
 import { readLocal, writeLocal } from "../storage/local.js";
+import { contextGloss } from "../services/contextGloss.js";
 
 /**
  * Below this share of known words (%) the first page says the text is hard for the learner
@@ -531,7 +532,12 @@ export function ReaderPage({ textId }: { textId: string }) {
     // On a phone the inspector is a bottom sheet: keep the word visible above it.
     revealAboveSheet(document.querySelector(`.k-tok[data-i="${i}"]`));
     const key = plan?.tokens.find((t) => t.i === i)?.key;
-    if (key) {
+    const tok = data?.tokens[i];
+    const t = tok && tok.particle_of !== null ? (data?.tokens[tok.particle_of] ?? tok) : tok;
+    // A word that is another word here ("zijn hond" is not the verb "zijn"; a name; a
+    // diminutive) counts as help on this page, but must not bring the lemma's card back.
+    if (key && t && contextGloss(t).notTheCard) lookups.current += 1;
+    else if (key) {
       lookups.current += 1;
       // Fire and forget: a failed lookup count is not worth interrupting the reading.
       services.recordLookup(textId, key).catch((e: unknown) => {

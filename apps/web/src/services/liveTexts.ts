@@ -576,13 +576,20 @@ export function createLiveTexts({
 
   /** The words of a page met without a lookup in this text (blanks are answers, not reading). */
   async function pageWords(lang: string, textId: string, segment: number): Promise<string[]> {
-    const plan = (await view(textId))?.plans[segment];
-    if (!plan) return [];
+    const v = await view(textId);
+    const plan = v?.plans[segment];
+    if (!v || !plan) return [];
     const looked = new Set(await repo.lookedUpKeys(lang, textId));
+    // A word that is another word here (a possessive, a name, a diminutive) is no evidence for
+    // its lemma's card: reading "zijn hond" says nothing about the verb "zijn".
+    const another = (i: number) => {
+      const t = v.tokens[i];
+      return t ? contextGloss(t).notTheCard : false;
+    };
     return [
       ...new Set(
         plan.tokens
-          .filter((t) => (t.label === "known" || t.label === "learning") && t.key)
+          .filter((t) => (t.label === "known" || t.label === "learning") && t.key && !another(t.i))
           .map((t) => t.key!)
           .filter((k) => !looked.has(k)),
       ),
