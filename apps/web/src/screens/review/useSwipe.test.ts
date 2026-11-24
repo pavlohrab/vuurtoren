@@ -87,6 +87,24 @@ describe("swiping a card", () => {
     expect(on.onRight).not.toHaveBeenCalled();
   });
 
+  it("a finger that moves a little while tapping is still a tap (the answer shows on one tap)", () => {
+    const on = { onLeft: vi.fn(), onRight: vi.fn(), onUp: vi.fn(), onTap: vi.fn() };
+    const { result } = renderHook(() => useSwipe({ enabled: true, ...on }));
+    const touch = (x: number, y: number) =>
+      ({ ...ev(x, y), pointerType: "touch" }) as unknown as PointerEvent<HTMLElement>;
+    // 12 px: under the touch threshold, nothing moves (the click comes as usual).
+    act(() => result.current.handlers.onPointerDown(touch(200, 300)));
+    act(() => result.current.handlers.onPointerMove(touch(212, 300)));
+    expect(result.current.style).toBeUndefined();
+    act(() => result.current.handlers.onPointerUp(touch(212, 300)));
+    // 20 px: the card follows, then lets go close by: a tap after all, not a swipe.
+    act(() => result.current.handlers.onPointerDown(touch(200, 300)));
+    act(() => result.current.handlers.onPointerMove(touch(220, 300)));
+    act(() => result.current.handlers.onPointerUp(touch(218, 302)));
+    expect(on.onTap).toHaveBeenCalledOnce();
+    expect(on.onRight).not.toHaveBeenCalled();
+  });
+
   it("does nothing while it is turned off", () => {
     const on = { onLeft: vi.fn(), onRight: vi.fn(), onUp: vi.fn() };
     const { result } = renderHook(() => useSwipe({ enabled: false, ...on }));

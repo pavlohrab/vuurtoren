@@ -291,6 +291,11 @@ export function Review() {
     onLeft: () => void answer(1),
     onRight: () => void answer(3),
     onUp: () => void answer(4),
+    // A tap that moved a little: show the answer, as a click on the card does.
+    onTap: (target) => {
+      if (shown || !(target instanceof Element) || target.closest("button")) return;
+      if (target.closest(".review-card")) setShown(true);
+    },
   });
   useLayoutEffect(() => {
     leavingRef.current = swipe.leaving;

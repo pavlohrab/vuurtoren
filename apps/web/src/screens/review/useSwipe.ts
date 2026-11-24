@@ -23,8 +23,11 @@ const THRESHOLD = 90;
 const FLICK_MIN = 28;
 /** … and this fast (px per ms) at the end. */
 const FLICK_SPEED = 0.45;
-/** Below this (px) a press is a tap. */
+/** Below this (px) a press is a tap; a finger moves more than a mouse while it taps. */
 const MOVES = 10;
+const MOVES_TOUCH = 16;
+/** A drag that ends this close to where it started, without a swipe, was a tap after all. */
+const STILL_A_TAP = 24;
 /** How long the card takes to fly off (ms). */
 const LEAVE_MS = 220;
 
@@ -35,8 +38,21 @@ export function useSwipe(opts: {
   onLeft: () => void;
   onRight: () => void;
   onUp: () => void;
+  /**
+   * A press that moved a little but was no swipe: on a phone the finger moves while it taps,
+   * and once the pointer was captured the card's own click never came (two taps to show the
+   * answer). `target` is where the press started.
+   */
+  onTap?: (target: EventTarget | null) => void;
 }) {
-  const start = useRef<{ x: number; y: number; id: number; moved: boolean } | null>(null);
+  const start = useRef<{
+    x: number;
+    y: number;
+    id: number;
+    moved: boolean;
+    touch: boolean;
+    target: EventTarget | null;
+  } | null>(null);
   /** The last two moves, for the speed at letting go. */
   const trail = useRef<{ x: number; y: number; t: number }[]>([]);
   const [offset, setOffset] = useState<{ x: number; y: number } | null>(null);
@@ -73,7 +89,14 @@ export function useSwipe(opts: {
   const handlers = {
     onPointerDown(e: PointerEvent<HTMLElement>) {
       if (!opts.enabled || leaving) return;
-      start.current = { x: e.clientX, y: e.clientY, id: e.pointerId, moved: false };
+      start.current = {
+        x: e.clientX,
+        y: e.clientY,
+        id: e.pointerId,
+        moved: false,
+        touch: e.pointerType === "touch",
+        target: e.target,
+      };
       trail.current = [{ x: e.clientX, y: e.clientY, t: e.timeStamp }];
     },
     onPointerMove(e: PointerEvent<HTMLElement>) {
@@ -82,7 +105,7 @@ export function useSwipe(opts: {
       const x = e.clientX - s.x;
       const y = e.clientY - s.y;
       if (!s.moved) {
-        if (Math.hypot(x, y) < MOVES) return;
+        if (Math.hypot(x, y) < (s.touch ? MOVES_TOUCH : MOVES)) return;
         s.moved = true;
         e.currentTarget.setPointerCapture?.(e.pointerId);
       }
@@ -105,6 +128,7 @@ export function useSwipe(opts: {
       const dir = directionOf(x, y, THRESHOLD) ?? (fast ? directionOf(x, y, FLICK_MIN) : null);
       if (!dir) {
         setOffset(null);
+        if (Math.hypot(e.clientX - s.x, e.clientY - s.y) < STILL_A_TAP) opts.onTap?.(s.target);
         return;
       }
       // Off screen along the throw: far enough that it is gone, from where it was let go.
