@@ -443,14 +443,14 @@ describe("live word meanings", () => {
   const aligned = { schuur: "barn", brug: "bridge", tuin: "garden" };
   const tokenOf = (text: string) => tokenize(TEXT).find((t) => t.text === text)!.i;
 
-  it("notes a meaning built from the word's parts and adds the meaning in the sentence", async () => {
+  it("puts the sentence's meaning above a guess from the word's parts that it contradicts", async () => {
     const backend = fakeBackend({ dict, aligned });
     const { repo, services, textId } = await setup(backend);
     repoToClose = repo;
     const entry = await services.inspect(textId, tokenOf("schuur"));
-    expect(entry.glosses).toEqual(["scourer"]);
-    expect(entry.glossNote).toBe("from schuren + -er");
-    expect(entry.sentenceGloss).toBe("barn");
+    // "schuren + -er" guessed "scourer"; the sentence says "barn" (and schuur is a barn).
+    expect(entry.glosses).toEqual(["barn", "scourer"]);
+    expect(entry.glossNote).toBe("in this sentence");
     // the alignment request also brought the sentence translation: no second request
     expect(entry.sentenceTranslation).toBe("EN: De schuur is mooi.");
     expect(backend.nlpCalls.filter((c) => c === "/translate")).toHaveLength(0);
@@ -489,14 +489,14 @@ describe("live word meanings", () => {
     expect(entry.sentenceGloss).toBeUndefined();
   });
 
-  it("does not align words the dictionary knows", async () => {
+  it("lets the sentence pick the meaning of a word the dictionary knows too", async () => {
     const backend = fakeBackend({ dict, aligned });
     const { repo, services, textId } = await setup(backend);
     repoToClose = repo;
     const entry = await services.inspect(textId, tokenOf("tuin"));
-    expect(entry.glosses).toEqual(["tuin (dictionary)"]);
-    expect(entry.glossNote).toBeUndefined();
-    expect(backend.nlpCalls).not.toContain("/translate/align");
+    // The dictionary's meaning is nowhere in the sentence's English; the aligned word is.
+    expect(entry.glosses).toEqual(["garden", "tuin (dictionary)"]);
+    expect(entry.glossNote).toBe("in this sentence");
   });
 
   it("gives inline glosses with a note for guesses", async () => {
@@ -505,9 +505,9 @@ describe("live word meanings", () => {
     repoToClose = repo;
     const idx = ["schuur", "brug", "tuin"].map(tokenOf);
     const glosses = await services.glosses(textId, idx);
-    expect(glosses[idx[0]!]).toEqual({ text: "scourer", note: "from schuren + -er" });
+    expect(glosses[idx[0]!]).toEqual({ text: "barn", note: "in this sentence" });
     expect(glosses[idx[1]!]).toEqual({ text: "bridge", note: "in this sentence" });
-    expect(glosses[idx[2]!]).toEqual({ text: "tuin" });
+    expect(glosses[idx[2]!]).toEqual({ text: "garden", note: "in this sentence" });
   });
 });
 

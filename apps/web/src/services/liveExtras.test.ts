@@ -141,7 +141,7 @@ describe("text extras", () => {
       (await dictionary.translateSentences(["Morgen bel ik op."])).get("Morgen bel ik op."),
     ).toBe("EN 1");
     const word = { sentence: "De kat slaapt.", start: 3, end: 6 };
-    expect((await dictionary.alignWords([word])).get(dictionary.alignKey(word))).toEqual({
+    expect((await dictionary.alignWords([word])).get(dictionary.alignKey(word))).toMatchObject({
       text: "w3",
       confident: true,
     });

@@ -27,12 +27,12 @@ import {
   createUlidGenerator,
 } from "@app/db";
 import type { NlpClient } from "@app/nlp-client";
-import { IN_SENTENCE, type LiveDictionary } from "./liveDictionary.js";
+import { IN_SENTENCE, composeGlosses, type LiveDictionary } from "./liveDictionary.js";
 import { DEFAULT_STAIRCASE, type LearnerCache } from "./liveLearner.js";
 import { fetchTexts } from "./textBatch.js";
 import { nlpOutage } from "./liveSettings.js";
 import { ImportCancelledError } from "./ocrReview.js";
-import { contextGloss } from "./contextGloss.js";
+import { contextGloss, hasDetachedParticle, meaningInSentence } from "./contextGloss.js";
 import type {
   AppServices,
   ImportInput,
@@ -472,8 +472,8 @@ export function createLiveTexts({
         if (!clicked) return [];
         const t =
           clicked.particle_of !== null ? (v.tokens[clicked.particle_of] ?? clicked) : clicked;
-        // Its meaning in this sentence where the card or lemma would mislead ("zijn hond").
-        const here = contextGloss(v.tokens, t);
+        // Grammar and structure first (contextGloss.ts): possessives, names, diminutives.
+        const here = contextGloss(t);
         if (here.fixed) {
           out[i] = { text: here.fixed };
           return [];
@@ -485,39 +485,62 @@ export function createLiveTexts({
           : (matchToken(t, m) ?? normalizeKey(t.lemma));
         return [{ i, t, key, lemma, pos: t.pos }];
       });
+      if (!items.length) return out;
       const { found, notes, guesses } = await dictionary.lookupGlosses(items);
-      for (const it of items) {
-        const g = found.get(it.key);
-        const note = notes.get(it.key);
-        if (g) out[it.i] = note ? { text: g, note } : { text: g };
+
+      // Every word in its sentence: the English it became in the sentence's translation (kept
+      // with the text, so usually no request), and that translation.
+      const spans = new Map<number, [number, number]>();
+      for (const t of v.tokens) {
+        const s = spans.get(t.sent);
+        if (s) s[1] = t.end;
+        else spans.set(t.sent, [t.start, t.end]);
       }
-      // Words without a meaning or with only a compound guess: the English they became in their
-      // sentence's translation (above a compound guess only when the alignment is confident).
-      const missing = items.filter(
-        (it) => (!found.has(it.key) || guesses.get(it.key) === "compound") && it.t.is_word,
-      );
-      if (missing.length) {
-        const spans = new Map<number, [number, number]>();
-        for (const t of v.tokens) {
-          const s = spans.get(t.sent);
-          if (s) s[1] = t.end;
-          else spans.set(t.sent, [t.start, t.end]);
-        }
-        const words = missing.map((it) => {
-          const hasGuess = found.has(it.key);
-          const [s0, s1] = spans.get(it.t.sent) ?? [it.t.start, it.t.end];
-          return {
-            i: it.i,
-            hasGuess,
-            sentence: v.text.content.slice(s0, s1),
-            start: it.t.start - s0,
-            end: it.t.end - s0,
-          };
-        });
-        const aligned = await dictionary.alignWords(words);
-        for (const w of words) {
-          const a = aligned.get(dictionary.alignKey(w));
-          if (a && (a.confident || !w.hasGuess)) out[w.i] = { text: a.text, note: IN_SENTENCE };
+      const inSentence = (it: (typeof items)[number]) => {
+        const [s0, s1] = spans.get(it.t.sent) ?? [it.t.start, it.t.end];
+        return {
+          sentence: v.text.content.slice(s0, s1),
+          start: it.t.start - s0,
+          end: it.t.end - s0,
+        };
+      };
+      const words = items.filter((it) => it.t.is_word).map((it) => ({ it, w: inSentence(it) }));
+      const aligned = await dictionary.alignWords(words.map((x) => x.w));
+      const translations = await dictionary.translateSentences([
+        ...new Set(words.map((x) => x.w.sentence)),
+      ]);
+      // All of a word's meanings, for the sentence to choose from (one dictionary request).
+      const dict = await dictionary
+        .dictionaryFor([...new Set(items.map((it) => it.lemma))])
+        .catch(() => ({}) as Awaited<ReturnType<LiveDictionary["dictionaryFor"]>>);
+
+      for (const { it, w } of words) {
+        const usual = found.get(it.key) ?? undefined;
+        const a = aligned.get(dictionary.alignKey(w));
+        const guess = guesses.get(it.key);
+        if (usual && guess !== "compound") {
+          const chosen = meaningInSentence({
+            pos: it.t.pos,
+            usual,
+            meanings: [usual, ...composeGlosses(null, dict[it.lemma], it.pos).glosses],
+            aligned: a,
+            translation: translations.get(w.sentence),
+            separable: hasDetachedParticle(v.tokens, it.t),
+          });
+          if (chosen)
+            out[it.i] = chosen.inSentence
+              ? { text: chosen.text, note: IN_SENTENCE }
+              : { text: chosen.text };
+          else {
+            const note = notes.get(it.key);
+            out[it.i] = note ? { text: usual, note } : { text: usual };
+          }
+        } else if (a && (a.confident || !usual)) {
+          // No meaning, or only a compound guess: the English it became in its sentence.
+          out[it.i] = { text: a.text, note: IN_SENTENCE };
+        } else if (usual) {
+          const note = notes.get(it.key);
+          out[it.i] = note ? { text: usual, note } : { text: usual };
         }
       }
       return out;

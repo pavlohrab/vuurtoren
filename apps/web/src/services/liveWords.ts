@@ -43,7 +43,7 @@ import type { LiveTexts } from "./liveTexts.js";
 import type { AddOptions } from "./profileTypes.js";
 import { suggestionEntry } from "./suggestions.js";
 import { pickTextWords } from "./textWordSet.js";
-import { contextGloss } from "./contextGloss.js";
+import { contextGloss, hasDetachedParticle, meaningInSentence } from "./contextGloss.js";
 import type {
   AppServices,
   InspectorEntry,
@@ -344,9 +344,10 @@ export function createLiveWords(deps: LiveWordsDeps) {
         dict,
         anki: ankiState,
       });
-      // Its meaning here where the card or lemma would mislead: "zijn hond" is "his", not the
-      // verb card's "to be"; "Kampen" is a town, not "kamp"; "bankje" is not "bank".
-      const here = contextGloss(v.tokens, t);
+      // Its meaning in this sentence (contextGloss.ts): the grammar fixes a possessive ("zijn
+      // hond" is "his"), a name or a diminutive is its own word, and for the rest the sentence's
+      // translation picks among the meanings or gives its own.
+      const here = contextGloss(t);
       if (here.fixed) {
         entry.glosses = [here.fixed, ...entry.glosses.filter((g) => g !== here.fixed)];
         entry.glossNote = IN_SENTENCE;
@@ -355,6 +356,26 @@ export function createLiveWords(deps: LiveWordsDeps) {
         // Its own meanings, or none (then the sentence's translation gives it below).
         entry.glosses = composeGlosses(null, own[here.lemma], t.pos).glosses;
         delete entry.glossNote;
+      } else if (entry.glosses.length && entry.sentence) {
+        const [start, end] = entry.sentenceHighlight;
+        const w = { sentence: entry.sentence, start, end };
+        const aligned = (await dictionary.alignWords([w])).get(dictionary.alignKey(w));
+        const translation = (await dictionary.translateSentences([entry.sentence])).get(
+          entry.sentence,
+        );
+        const chosen = meaningInSentence({
+          pos: t.pos,
+          usual: entry.glosses[0],
+          meanings: entry.glosses,
+          aligned,
+          translation,
+          separable: hasDetachedParticle(v.tokens, t),
+        });
+        if (chosen) {
+          entry.glosses = [chosen.text, ...entry.glosses.filter((g) => g !== chosen.text)];
+          if (chosen.inSentence) entry.glossNote = IN_SENTENCE;
+          else delete entry.glossNote;
+        }
       }
       await addSentenceMeaning(
         entry,

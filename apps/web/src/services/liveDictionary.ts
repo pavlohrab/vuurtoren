@@ -132,6 +132,8 @@ export interface WordInSentence {
 export interface AlignedMeaning {
   text: string;
   confident: boolean;
+  /** The aligner's confidence, 0–1 (confident: at least ALIGN_MIN_CONFIDENCE). */
+  confidence: number;
 }
 
 const alignKey = (w: WordInSentence) => `${w.start}:${w.end}:${w.sentence}`;
@@ -311,7 +313,11 @@ export function createLiveDictionary({ repo, lang, nlp, localGloss }: LiveDictio
             alignCache.set(
               alignKey({ sentence: r.text, start: word.start, end: word.end }),
               word.text
-                ? { text: word.text, confident: word.confidence >= ALIGN_MIN_CONFIDENCE }
+                ? {
+                    text: word.text,
+                    confident: word.confidence >= ALIGN_MIN_CONFIDENCE,
+                    confidence: word.confidence,
+                  }
                 : null,
             );
           }
@@ -382,7 +388,11 @@ export function createLiveDictionary({ repo, lang, nlp, localGloss }: LiveDictio
       for (const w of it.words) {
         const k = alignKey({ sentence: it.sentence, start: w.start, end: w.end });
         if (!alignCache.has(k)) {
-          alignCache.set(k, { text: w.text, confident: w.confidence >= ALIGN_MIN_CONFIDENCE });
+          alignCache.set(k, {
+            text: w.text,
+            confident: w.confidence >= ALIGN_MIN_CONFIDENCE,
+            confidence: w.confidence,
+          });
         }
       }
     }
