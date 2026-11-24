@@ -9,7 +9,7 @@
  * The test is shown everywhere; the download only on a device with such a pack (phones).
  */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { clipId, wordClipText } from "@app/anki";
 import { Button } from "@app/ui";
 import { browserPlayer, say } from "../../audio/play.js";
@@ -70,8 +70,14 @@ export function VoiceTest({ rate }: { rate: number }) {
   );
 }
 
-export function RecordingsPack() {
+/**
+ * With `autoStart` (the first start), the download begins by itself once the dictionary is in,
+ * on Wi-Fi only unless mobile data is allowed: a new phone gets the recordings without a visit to
+ * Settings.
+ */
+export function RecordingsPack({ autoStart = false }: { autoStart?: boolean }) {
   const pack = currentDevice().bridge?.audio ?? null;
+  const dictionary = currentDevice().bridge?.dictionary ?? null;
   const services = useServices();
   const qc = useQueryClient();
   const install = useMutation({
@@ -90,6 +96,23 @@ export function RecordingsPack() {
     enabled: !!pack,
     refetchInterval: (q) => (install.isPending || q.state.data?.downloading ? 500 : false),
   });
+  // The dictionary first (small, meanings matter more), then the recordings.
+  const dict = useQuery({
+    queryKey: ["dictionary-pack"],
+    queryFn: () => dictionary!.status(),
+    enabled: autoStart && !!dictionary,
+    refetchInterval: (q) => (autoStart && !q.state.data?.installed ? 2000 : false),
+  });
+  const started = useRef(false);
+  const dictReady = !dictionary || dict.data?.installed === true;
+  const missing = !!status.data && !status.data.installed && !status.data.downloading;
+  const mobileOk = readLocal(MOBILE_DATA_KEY) === "1";
+  useEffect(() => {
+    if (!autoStart || started.current || !missing || !dictReady) return;
+    if ((!mobileOk && onMobileData()) || navigator.onLine === false) return;
+    started.current = true;
+    install.mutate();
+  }, [autoStart, missing, dictReady, mobileOk, install]);
   if (!pack || !status.data) return null;
   const s = status.data;
   const size = formatBytes(s.download || s.bytes);

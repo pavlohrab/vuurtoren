@@ -44,6 +44,7 @@ import { readLastText } from "../lastText.js";
 import "./library/library.css";
 import { errorText } from "../services/errors.js";
 import { plural } from "../format.js";
+import { useCanAddTexts } from "../platform/canAddTexts.js";
 
 type View = "shelves" | "all";
 const VIEW_KEY = "vuurtoren.library.view";
@@ -83,6 +84,8 @@ function draggedIds(e: DragEvent): string[] | null {
  * and shelf actions.
  */
 export function Read() {
+  // A phone without its server cannot prepare a text (A45): its texts come from the computer.
+  const canAdd = useCanAddTexts();
   const services = useServices();
   const navigate = useNavigate();
   const qc = useQueryClient();
@@ -280,11 +283,21 @@ export function Read() {
       <EmptyState
         icon={<LibraryIcon size={20} />}
         title="No texts of your own yet"
-        description="Start with a story above, or paste an article, add a web page, a PDF or a photo."
+        description={
+          canAdd
+            ? "Start with a story above, or paste an article, add a web page, a PDF or a photo."
+            : "Start with a story above. Your own texts come from your computer: add them there and they arrive here when you sync. With your own server you can add them on the phone too."
+        }
         action={
-          <Link to="/import" className="k-btn k-btn--secondary">
-            <Plus size={16} aria-hidden /> Add text
-          </Link>
+          canAdd ? (
+            <Link to="/import" className="k-btn k-btn--secondary">
+              <Plus size={16} aria-hidden /> Add text
+            </Link>
+          ) : (
+            <Link to="/settings" search={{ section: "devices" }} className="k-btn k-btn--secondary">
+              Connect a server
+            </Link>
+          )
         }
       />
     );
@@ -344,9 +357,11 @@ export function Read() {
       <PageHeader
         title="Read"
         actions={
-          <Link to="/import" className="k-btn k-btn--secondary">
-            <Plus size={16} aria-hidden /> Add text
-          </Link>
+          canAdd ? (
+            <Link to="/import" className="k-btn k-btn--secondary">
+              <Plus size={16} aria-hidden /> Add text
+            </Link>
+          ) : undefined
         }
       />
 

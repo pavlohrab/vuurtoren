@@ -30,6 +30,7 @@ import { AnkiConnectionHelp } from "../settings/AnkiSettings.js";
 import { ConnectYourServer } from "../settings/SyncSettings.js";
 import { ImportPackage } from "../settings/CardsSettings.js";
 import { DictionaryPack } from "../settings/DictionaryPack.js";
+import { RecordingsPack } from "../settings/RecordingsPack.js";
 import "../settings/settings.css";
 import { currentDevice } from "../../platform/index.js";
 import { storyToStart } from "../../services/stories.js";
@@ -39,6 +40,7 @@ import { setSkipped } from "./skip.js";
 import "./onboarding.css";
 import { readLocalJSON, writeLocalJSON } from "../../storage/local.js";
 import { runAnkiSync } from "../../shell/ankiSync.js";
+import { useCanAddTexts } from "../../platform/canAddTexts.js";
 
 const STORAGE = "vuurtoren.onboarding";
 
@@ -144,6 +146,7 @@ function writeDraft(d: Draft | null): void {
 }
 
 export function Welcome() {
+  const canAdd = useCanAddTexts();
   const services = useServices();
   const qc = useQueryClient();
   const navigate = useNavigate();
@@ -771,6 +774,8 @@ export function Welcome() {
                 </p>
                 {/* A phone: the dictionary comes down now, so meanings work without a server. */}
                 <DictionaryPack autoStart />
+                {/* Then the recordings, so a new phone speaks with them from the start. */}
+                <RecordingsPack autoStart />
                 <div className="ob-first-actions">
                   <Button
                     variant="primary"
@@ -780,16 +785,18 @@ export function Welcome() {
                     {startReading.isPending ? <Spinner label="Opening the story" /> : null}
                     Start reading
                   </Button>
-                  <button
-                    type="button"
-                    className="ob-skip"
-                    onClick={() => {
-                      finish();
-                      void navigate({ to: "/import" });
-                    }}
-                  >
-                    Add a text of your own
-                  </button>
+                  {canAdd ? (
+                    <button
+                      type="button"
+                      className="ob-skip"
+                      onClick={() => {
+                        finish();
+                        void navigate({ to: "/import" });
+                      }}
+                    >
+                      Add a text of your own
+                    </button>
+                  ) : null}
                 </div>
               </>
             ) : null}

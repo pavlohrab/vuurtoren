@@ -65,6 +65,7 @@ import { ALL_WORDS, WordsRoom, loadStarterIndex, useLevelProgress } from "./Word
 import { useWordActions } from "../useWordActions.js";
 import { WordStack } from "./WordStack.js";
 import "./words.css";
+import { useCanAddTexts } from "../../platform/canAddTexts.js";
 
 const PAGE_SIZE = 50;
 
@@ -298,6 +299,7 @@ function LayoutToggle({ list, onChange }: { list: boolean; onChange: (list: bool
 
 /** Words: filterable table of lemmas; rows open the inspector; selections go on to Anki, Practice or Talk. */
 export function Words() {
+  const canAdd = useCanAddTexts();
   const services = useServices();
   const toast = useToast();
   const native = useNativeMode();
@@ -763,9 +765,11 @@ export function Words() {
               : "Words arrive when you sync your Anki decks or read a text. Start with a text you want to read."
           }
           action={
-            <Link to="/import" className="k-btn k-btn--primary">
-              Add text
-            </Link>
+            canAdd ? (
+              <Link to="/import" className="k-btn k-btn--primary">
+                Add text
+              </Link>
+            ) : undefined
           }
         />
       ) : list.length === 0 && view === "decide" && !source && !params.q ? (

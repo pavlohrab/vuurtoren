@@ -52,6 +52,7 @@ import { useAutoSync } from "./useAutoSync.js";
 import { useBackClose, useSystemBack } from "./backStack.js";
 import { useConnectLinks } from "./useConnectLinks.js";
 import { useDebounced } from "../useDebounced.js";
+import { useCanAddTexts } from "../platform/canAddTexts.js";
 
 const PAGE_TITLES: Record<string, string> = {
   "/": "Read",
@@ -100,6 +101,7 @@ export function AppShell() {
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [theme, setTheme] = useTheme();
+  const canAdd = useCanAddTexts();
   const { notice, demo, onLeaveDemo, desktop } = useAppInfo();
   const qc = useQueryClient();
   useAutoSync(services, qc);
@@ -248,13 +250,17 @@ export function AppShell() {
       {
         heading: "Actions",
         entries: [
-          {
-            id: "action:add-text",
-            label: "Add text",
-            keywords: ["import", "paste", "web", "pdf", "photo", "story"],
-            icon: <Plus size={16} />,
-            onSelect: () => goto("/import"),
-          },
+          ...(canAdd
+            ? [
+                {
+                  id: "action:add-text",
+                  label: "Add text",
+                  keywords: ["import", "paste", "web", "pdf", "photo", "story"],
+                  icon: <Plus size={16} />,
+                  onSelect: () => goto("/import"),
+                },
+              ]
+            : []),
           {
             id: "action:practice",
             label: "Start practice",
@@ -294,7 +300,7 @@ export function AppShell() {
         })),
       },
     ].filter((g) => g.entries.length > 0);
-  }, [texts.data, goto, navigate, native, talk, wordQuery, paletteWords.data]);
+  }, [texts.data, goto, navigate, native, talk, wordQuery, paletteWords.data, canAdd]);
 
   return (
     <NativeModeContext.Provider value={native}>
