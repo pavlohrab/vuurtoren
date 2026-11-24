@@ -359,10 +359,13 @@ export function createLiveWords(deps: LiveWordsDeps) {
       } else if (entry.glosses.length && entry.sentence) {
         const [start, end] = entry.sentenceHighlight;
         const w = { sentence: entry.sentence, start, end };
-        const aligned = (await dictionary.alignWords([w])).get(dictionary.alignKey(w));
-        const translation = (await dictionary.translateSentences([entry.sentence])).get(
-          entry.sentence,
-        );
+        // Both at once: each can be a request to the language server (A9).
+        const [alignedAll, translations] = await Promise.all([
+          dictionary.alignWords([w]),
+          dictionary.translateSentences([entry.sentence]),
+        ]);
+        const aligned = alignedAll.get(dictionary.alignKey(w));
+        const translation = translations.get(entry.sentence);
         const chosen = meaningInSentence({
           pos: t.pos,
           usual: entry.glosses[0],
