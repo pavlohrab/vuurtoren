@@ -44,3 +44,32 @@ test("a grammar topic opened from the reader goes back to the text, the word sti
     "true",
   );
 });
+
+test("the word panel and the sidebar can be made wider or narrower", async ({ page }) => {
+  await page.setViewportSize({ width: 1400, height: 900 });
+  await fakeNlp(page);
+  await fakeAnki(page);
+  await page.goto("/");
+  await finishOnboarding(page);
+  await page.goto("/");
+  await page.getByRole("button", { name: /^Legend .*De koe op de toren/ }).click();
+  await page.locator(".k-reader .k-tok[data-i]").nth(3).click();
+  const panel = page.locator(".inspector-panel");
+  await expect(panel).toHaveCSS("width", "340px");
+  const handle = page.getByRole("separator", { name: "Word panel width" });
+  const box = (await handle.boundingBox())!;
+  await page.mouse.move(box.x + 3, box.y + 200);
+  await page.mouse.down();
+  await page.mouse.move(box.x - 117, box.y + 200, { steps: 5 });
+  await page.mouse.up();
+  await expect(panel).toHaveCSS("width", "460px");
+  // The keyboard works too, and the sidebar has its own handle.
+  const side = page.getByRole("separator", { name: "Sidebar width" });
+  await side.focus();
+  await page.keyboard.press("ArrowRight");
+  await expect(page.locator(".sidebar")).toHaveCSS("width", "236px");
+  // Kept for the next visit.
+  await page.reload();
+  await page.locator(".k-reader .k-tok[data-i]").nth(3).click();
+  await expect(panel).toHaveCSS("width", "460px");
+});

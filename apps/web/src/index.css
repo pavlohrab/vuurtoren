@@ -6,7 +6,7 @@
 .shell {
   --inspector-w: 340px;
   display: grid;
-  grid-template-columns: 220px minmax(0, 1fr);
+  grid-template-columns: var(--sidebar-w, 220px) minmax(0, 1fr);
   grid-template-rows: 100vh;
   height: 100vh;
 }
@@ -14,6 +14,63 @@
   grid-template-columns: 56px minmax(0, 1fr);
 }
 
+/* Drag strips on the panels' inner edges (computers only, see PanelResize.tsx). */
+.panel-resize {
+  display: none;
+}
+@media (min-width: 900px) {
+  .sidebar,
+  .inspector-panel {
+    position: relative;
+  }
+  .panel-resize {
+    display: block;
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    z-index: 5;
+    width: 7px;
+    cursor: col-resize;
+    touch-action: none;
+  }
+  /* Just inside the edge: both panels clip what sticks out. */
+  .panel-resize--end {
+    right: 0;
+  }
+  .panel-resize--start {
+    left: 0;
+  }
+  .panel-resize--end::after {
+    right: 0;
+  }
+  .panel-resize--start::after {
+    left: 0;
+  }
+  .panel-resize::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background: transparent;
+    transition: background var(--dur) var(--ease);
+  }
+  .panel-resize:hover::after,
+  .panel-resize:focus-visible::after,
+  .shell[data-resizing] .panel-resize::after {
+    background: var(--accent);
+  }
+  .panel-resize:focus-visible {
+    outline: none;
+  }
+  /* While dragging: no width animation, and no text gets selected. */
+  .shell[data-resizing],
+  .shell[data-resizing] * {
+    transition: none !important;
+    user-select: none;
+    cursor: col-resize;
+  }
+}
 .sidebar {
   background: var(--bg);
   border-right: 1px solid var(--hairline);

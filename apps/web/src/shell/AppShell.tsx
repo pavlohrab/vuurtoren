@@ -26,7 +26,7 @@ import {
   X,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import {
   Button,
   Chip,
@@ -51,6 +51,7 @@ import { Tour, startTour } from "./Tour.js";
 import { useAutoSync } from "./useAutoSync.js";
 import { useBackClose, useSystemBack } from "./backStack.js";
 import { useConnectLinks } from "./useConnectLinks.js";
+import { ResizeHandle, usePanelWidth } from "./PanelResize.js";
 import { useDebounced } from "../useDebounced.js";
 import { useCanAddTexts } from "../platform/canAddTexts.js";
 
@@ -112,6 +113,10 @@ export function AppShell() {
   const [header, setHeader] = useState<PageHeader | null>(null);
   const [mode, setMode] = useState<ReaderMode>("read");
   const [inspectorEl, setInspectorEl] = useState<HTMLElement | null>(null);
+  // Resizable panels on a computer (UI2): widths kept per device.
+  const sidebarSize = usePanelWidth("vuurtoren.sidebar-w", 220, 180, 360);
+  const inspectorSize = usePanelWidth("vuurtoren.inspector-w", 340, 300, 640);
+  const [resizing, setResizing] = useState(false);
   const [toolbarEl, setToolbarEl] = useState<HTMLElement | null>(null);
   const [contentEl, setContentEl] = useState<HTMLElement | null>(null);
   const pageTitleInView = usePageTitleInView(contentEl);
@@ -310,8 +315,23 @@ export function AppShell() {
           className="shell"
           data-sidebar={sidebarCollapsed ? "collapsed" : "expanded"}
           data-inspector={showInspector ? "open" : "closed"}
+          {...(resizing ? { "data-resizing": "" } : {})}
+          style={
+            {
+              "--sidebar-w": `${sidebarSize.width}px`,
+              "--inspector-w": `${inspectorSize.width}px`,
+            } as CSSProperties
+          }
         >
           <nav className="sidebar" aria-label="Main">
+            {sidebarCollapsed ? null : (
+              <ResizeHandle
+                size={sidebarSize}
+                grows="right"
+                label="Sidebar width"
+                onResizing={setResizing}
+              />
+            )}
             <Link to="/" className="sidebar-brand" aria-label="Vuurtoren, Read">
               <Logo size={26} className="brand-logo" title="Vuurtoren" />
             </Link>
@@ -528,6 +548,14 @@ export function AppShell() {
                 inert={!showInspector}
                 data-sheet={sheet.size}
               >
+                {showInspector ? (
+                  <ResizeHandle
+                    size={inspectorSize}
+                    grows="left"
+                    label="Word panel width"
+                    onResizing={setResizing}
+                  />
+                ) : null}
                 {/* Phones and tablets: the grab handle of the bottom sheet (also a button). */}
                 <button
                   type="button"

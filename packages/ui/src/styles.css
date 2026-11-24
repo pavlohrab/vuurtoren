@@ -2406,9 +2406,10 @@ svg.lucide {
   .k-sbs {
     max-width: calc(var(--measure) * 1.75);
   }
-  /* The structure button has a narrow column at the row's end, shown on hover or focus. */
+  /* The structure button has a narrow column at the row's end, shown on hover or focus. The
+     two text columns are equal, so the gap between Dutch and English sits in the middle. */
   .k-sbs-row {
-    grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr) 4.75rem;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 4.75rem;
     grid-template-areas: "nl en tools" "note note .";
     column-gap: 2rem;
     padding-block: 0.25em;
@@ -2421,6 +2422,14 @@ svg.lucide {
   .k-sbs-struct {
     margin: 0.35em 0 0;
     font-size: 0.75rem;
+  }
+}
+/* With room to spare, an empty column on the left as wide as the tools column on the right:
+   the two texts are then centred on the page, not pushed left (m5). */
+@container k-sbs (min-width: 960px) {
+  .k-sbs-row {
+    grid-template-columns: 4.75rem minmax(0, 1fr) minmax(0, 1fr) 4.75rem;
+    grid-template-areas: ". nl en tools" ". note note .";
   }
 }
 @container k-sbs (min-width: 640px) {
