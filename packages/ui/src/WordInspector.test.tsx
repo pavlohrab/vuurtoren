@@ -107,16 +107,13 @@ describe("WordInspector", () => {
   it("fires actions", async () => {
     const onAdd = vi.fn();
     const onMark = vi.fn();
-    const onSet = vi.fn();
-    render(
-      <WordInspector entry={entry} onAddToAnki={onAdd} onMarkKnown={onMark} onSetState={onSet} />,
-    );
+    render(<WordInspector entry={entry} onAddToAnki={onAdd} onMarkKnown={onMark} />);
     await userEvent.click(screen.getByRole("button", { name: "Add to Anki" }));
     await userEvent.click(screen.getByRole("button", { name: "I know it" }));
-    await userEvent.click(screen.getByRole("button", { name: "Ignore" }));
     expect(onAdd).toHaveBeenCalledOnce();
     expect(onMark).toHaveBeenCalledOnce();
-    expect(onSet).toHaveBeenCalledExactlyOnceWith("ignored");
+    // No Ignore button (m5): it said nothing and confused people.
+    expect(screen.queryByRole("button", { name: "Ignore" })).toBeNull();
   });
 });
 
@@ -128,10 +125,16 @@ describe("WordInspector Anki states", () => {
   });
   const names = () => screen.getAllByRole("button").map((b) => b.textContent);
 
-  it("absent: Add to Anki, Mark known (with its hint), Ignore", () => {
+  it("absent: Add to Anki and I know it, nothing more", () => {
     render(<WordInspector entry={entry} />);
-    expect(names()).toEqual(["Add to Anki", "I know it", "Ignore"]);
-    expect(screen.getByText(/I know it” adds it to Anki as known/)).toBeInTheDocument();
+    expect(names()).toEqual(["Add to Anki", "I know it"]);
+  });
+
+  it("a word ignored earlier can be brought back", async () => {
+    const onReset = vi.fn();
+    render(<WordInspector entry={{ ...entry, state: "ignored" }} onReset={onReset} />);
+    await userEvent.click(screen.getByRole("button", { name: "Stop ignoring" }));
+    expect(onReset).toHaveBeenCalledOnce();
   });
 
   it("new: Study first in Anki with the deck hint", async () => {
@@ -148,8 +151,7 @@ describe("WordInspector Anki states", () => {
         onLearnNext={onLearn}
       />,
     );
-    expect(names()).toEqual(["Study first in Anki", "I know it", "Ignore"]);
-    expect(screen.getByText("Moves its card to the front of the queue")).toBeInTheDocument();
+    expect(names()).toEqual(["Study first in Anki", "I know it"]);
     expect(screen.getByText("New card · in A Frequency Dictionary of Dutch")).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Study first in Anki" }));
     expect(onLearn).toHaveBeenCalledOnce();
@@ -161,7 +163,7 @@ describe("WordInspector Anki states", () => {
         entry={withAnki({ status: "suspended", detail: "Suspended", noteIds: [1] })}
       />,
     );
-    expect(names()).toEqual(["Unsuspend & study first", "I know it", "Ignore"]);
+    expect(names()).toEqual(["Unsuspend & study first", "I know it"]);
   });
 
   it("learning and young review: status line and Mark known; mature or known: no Mark known", () => {
@@ -174,7 +176,7 @@ describe("WordInspector Anki states", () => {
       />,
     );
     expect(screen.getByText("In review · due in 6 days")).toBeInTheDocument();
-    expect(names()).toEqual(["I know it", "Ignore"]);
+    expect(names()).toEqual(["I know it"]);
     unmount();
     render(
       <WordInspector
@@ -184,7 +186,7 @@ describe("WordInspector Anki states", () => {
         )}
       />,
     );
-    expect(names()).toEqual(["Ignore"]);
+    expect(screen.queryAllByRole("button")).toEqual([]);
   });
 
   it("marked known: no Mark known, and a link back to Anki's state", async () => {
@@ -198,7 +200,7 @@ describe("WordInspector Anki states", () => {
         onReset={onReset}
       />,
     );
-    expect(names()).toEqual(["Ignore", "Use Anki\u2019s state"]);
+    expect(names()).toEqual(["Use Anki\u2019s state"]);
     await userEvent.click(screen.getByRole("button", { name: /Use Anki.s state/ }));
     expect(onReset).toHaveBeenCalledOnce();
   });
@@ -218,7 +220,6 @@ describe("WordInspector Anki states", () => {
     );
     expect(screen.getByRole("button", { name: "Study first in Anki" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "I know it" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Ignore" })).toBeEnabled();
   });
 
   it("disables the Anki actions while busy", () => {

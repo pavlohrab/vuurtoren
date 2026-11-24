@@ -1,5 +1,4 @@
 import { type ReactNode, useState } from "react";
-import type { WordState } from "@app/core";
 import { AddToAnki, type DeckOption, deckName } from "./AddToAnki.js";
 import { Button } from "./Button.js";
 import { Chip } from "./Chip.js";
@@ -15,8 +14,6 @@ export interface WordInspectorProps {
   onMarkKnown?: (() => void) | undefined;
   /** Drop a manual state so Anki's applies again. */
   onReset?: (() => void) | undefined;
-  /** App-only states (Ignore). */
-  onSetState?: ((state: WordState) => void) | undefined;
   /** Disables the action buttons while a request is in flight. */
   busy?: boolean | undefined;
   /** The entry is being fetched (e.g. a different word was just selected). */
@@ -77,7 +74,6 @@ export function WordInspector({
   onLearnNext,
   onMarkKnown,
   onReset,
-  onSetState,
   busy = false,
   loading = false,
   error = null,
@@ -120,7 +116,6 @@ export function WordInspector({
     onLearnNext,
     onMarkKnown,
     onReset,
-    onSetState,
     addDeck,
   });
 
@@ -306,8 +301,8 @@ const NATIVE_STATUS_TEXT: Record<InspectorAnki["status"], string> = {
 
 /**
  * The action buttons for the word's state in Anki (or its own card), in two parts: `quick`
- * (the main button and I know it, in the peek) and `details` (the card's status, its reviews,
- * Ignore, the hints and Use Anki's state).
+ * (the main button and I know it, in the peek) and `details` (the card's status, its reviews
+ * and Use Anki's state, or Stop ignoring for a word ignored earlier).
  */
 function ankiActions({
   entry,
@@ -316,11 +311,10 @@ function ankiActions({
   onLearnNext,
   onMarkKnown,
   onReset,
-  onSetState,
   addDeck,
 }: Pick<
   WordInspectorProps,
-  "busy" | "onAddToAnki" | "onLearnNext" | "onMarkKnown" | "onReset" | "onSetState" | "addDeck"
+  "busy" | "onAddToAnki" | "onLearnNext" | "onMarkKnown" | "onReset" | "addDeck"
 > & { entry: InspectorEntry }): { quick: ReactNode; details: ReactNode } {
   const { anki } = entry;
   const { status } = anki;
@@ -335,7 +329,7 @@ function ankiActions({
   const canMarkKnown = !anki.markedKnown && !(inProgress && entry.state === "known");
   const disabled = busy || unavailable;
 
-  let primary: { label: string; hint?: string; onClick?: (() => void) | undefined } | null = null;
+  let primary: { label: string; onClick?: (() => void) | undefined } | null = null;
   if (status === "absent") {
     primary = { label: ADD, onClick: onAddToAnki };
   } else if (status === "new" || status === "suspended" || (unavailable && anki.noteIds.length)) {
@@ -346,7 +340,6 @@ function ankiActions({
           : native
             ? "Study first"
             : "Study first in Anki",
-      hint: "Moves its card to the front of the queue",
       onClick: onLearnNext,
     };
   } else if (unavailable) {
@@ -394,21 +387,12 @@ function ankiActions({
       ) : null}
       {anki.reviews?.length ? <ReviewList reviews={anki.reviews} /> : null}
       <div className="k-inspector-actions k-inspector-rest">
-        {primary?.hint && !unavailable ? <p style={hintStyle}>{primary.hint}</p> : null}
-        <Button
-          disabled={busy || entry.state === "ignored"}
-          onClick={() => onSetState?.("ignored")}
-        >
-          {entry.state === "ignored" ? "Ignored" : "Ignore"}
-        </Button>
-        {canMarkKnown && status === "absent" ? (
-          <p style={hintStyle}>
-            &ldquo;I know it&rdquo;{" "}
-            {native ? "adds it to your words as known" : "adds it to Anki as known"}. Ignore leaves
-            it out of the counts and suggestions.
-          </p>
-        ) : null}
-        {anki.overridden ? (
+        {/* No Ignore button (m5): words ignored earlier can still be brought back here. */}
+        {entry.state === "ignored" ? (
+          <Button variant="ghost" disabled={busy} onClick={() => onReset?.()}>
+            Stop ignoring
+          </Button>
+        ) : anki.overridden ? (
           <Button variant="ghost" disabled={busy} onClick={() => onReset?.()}>
             {native ? "Use the card’s state" : "Use Anki’s state"}
           </Button>

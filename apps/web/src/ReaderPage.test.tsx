@@ -286,7 +286,6 @@ describe("the reader bar, footer and word panel", () => {
 });
 
 describe("Anki write actions in the inspector", () => {
-  const buttons = () => screen.getAllByRole("button").map((b) => b.textContent);
   const ADD = "Add to Anki";
   const inspectorButtons = (...names: string[]) =>
     names.forEach((n) => expect(screen.getByRole("button", { name: n })).toBeInTheDocument());
@@ -300,8 +299,7 @@ describe("Anki write actions in the inspector", () => {
     setup("/read/t-utrecht");
     await userEvent.click(await screen.findByText("grachten"));
     await screen.findByRole("button", { name: ADD });
-    inspectorButtons("I know it", "Ignore");
-    expect(screen.getByText(/I know it” adds it to Anki as known/)).toBeInTheDocument();
+    inspectorButtons("I know it");
     // No deck path on the word: the deck is named only in the Add menu.
     expect(screen.queryByText(/Vuurtoren::Nederlands/)).toBeNull();
     await userEvent.click(screen.getByRole("button", { name: "I know it" }));
@@ -346,8 +344,7 @@ describe("Anki write actions in the inspector", () => {
     }));
     await openSecondSegment();
     await userEvent.click(await screen.findByText("neemt"));
-    expect(await screen.findByText("Moves its card to the front of the queue")).toBeInTheDocument();
-    expect(buttons()).toContain("Study first in Anki");
+    await screen.findByRole("button", { name: "Study first in Anki" });
     await userEvent.click(screen.getByRole("button", { name: "Study first in Anki" }));
     expect(await screen.findByText("Moved to the front of the queue")).toBeInTheDocument();
     expect(learn).toHaveBeenCalledWith("new");
@@ -398,20 +395,11 @@ describe("Anki write actions in the inspector", () => {
     ).toBeInTheDocument();
   });
 
-  it("Ignore stays app-only and can be reset", async () => {
-    const setWordState = vi.fn();
-    setup("/read/t-utrecht", (s) => ({
-      ...s,
-      setWordState: async (...a) => {
-        setWordState(...a);
-        return s.setWordState(...a);
-      },
-    }));
+  it("has no Ignore button on the word", async () => {
+    setup("/read/t-utrecht");
     await userEvent.click(await screen.findByText("grachten"));
-    await userEvent.click(screen.getByRole("button", { name: "Ignore" }));
-    expect(await screen.findByText("Word ignored")).toBeInTheDocument();
-    expect(setWordState).toHaveBeenCalledWith("gracht", "ignored");
-    expect(await screen.findByRole("button", { name: /Use Anki.s state/ })).toBeInTheDocument();
+    await screen.findByRole("button", { name: ADD });
+    expect(screen.queryByRole("button", { name: "Ignore" })).toBeNull();
   });
 });
 

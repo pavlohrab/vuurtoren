@@ -3,7 +3,7 @@
  * Mark known, Ignore, Use Anki's state), shared by every screen that opens the inspector.
  */
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import type { WordChange, WordState } from "@app/core";
+import type { WordChange } from "@app/core";
 import { type WordInspectorProps, deckName, useNativeMode, useToast } from "@app/ui";
 import { useServices } from "../services/context.js";
 import { errorText } from "../services/errors.js";
@@ -13,7 +13,7 @@ import { useDeckChoice } from "./useDeckChoice.js";
 
 type ActionProps = Pick<
   WordInspectorProps,
-  "busy" | "addDeck" | "onAddToAnki" | "onLearnNext" | "onMarkKnown" | "onReset" | "onSetState"
+  "busy" | "addDeck" | "onAddToAnki" | "onLearnNext" | "onMarkKnown" | "onReset"
 >;
 
 /** Cached views that show word states; refreshed after any word action. */
@@ -90,23 +90,8 @@ export function useWordActions(
     },
     onError: (e) => toast("Could not reset the word", errorText(e)),
   });
-  const setState = useMutation({
-    mutationFn: ({ e, state }: { e: InspectorEntry; state: WordState }) =>
-      services.setWordState(e.key, state),
-    onSuccess: async (_r, { e, state }) => {
-      if (state === "known" || state === "ignored" || state === "learning") changed?.(e.key, state);
-      toast(state === "ignored" ? "Word ignored" : "Word updated");
-      await done();
-    },
-    onError: (e) => toast("Could not update the word", errorText(e)),
-  });
-
   const busy =
-    addToAnki.isPending ||
-    learnNext.isPending ||
-    markKnown.isPending ||
-    resetState.isPending ||
-    setState.isPending;
+    addToAnki.isPending || learnNext.isPending || markKnown.isPending || resetState.isPending;
 
   return {
     deckChoice,
@@ -119,7 +104,6 @@ export function useWordActions(
         onLearnNext: () => entry && learnNext.mutate(entry),
         onMarkKnown: () => entry && markKnown.mutate(entry),
         onReset: () => entry && resetState.mutate(entry),
-        onSetState: (state: WordState) => entry && setState.mutate({ e: entry, state }),
       };
     },
   };

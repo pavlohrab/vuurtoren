@@ -131,7 +131,7 @@ describe("Words", () => {
     await waitFor(() => expect(history.location.search).toMatch(/word=gracht/));
     const panel = screen.getByRole("complementary", { name: "Inspector" });
     expect(await within(panel).findByRole("button", { name: /I know it/ })).toBeInTheDocument();
-    expect(within(panel).getByRole("button", { name: "Ignore" })).toBeInTheDocument();
+    expect(within(panel).queryByRole("button", { name: "Ignore" })).toBeNull();
     // No deck path on the word; Recall only for words being learned.
     expect(within(panel).queryByText(/Vuurtoren::/)).toBeNull();
     expect(within(panel).queryByText(/Recall/)).toBeNull();
