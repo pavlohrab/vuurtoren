@@ -910,8 +910,9 @@ export interface Repository {
   /** Native mode: decks with their options and card counts at `now`. */
   nativeDecks(lang: string, now: number): Promise<NativeDeckSummary[]>;
   /**
-   * Native mode: the cards to review at `now`: due cards, then new cards within each deck's
-   * daily limit and `newCap` for all decks together (counted from `dayStart`, the start of the
+   * Native mode: the cards to review at `now`: learning cards whose step is due, then today's
+   * reviews (at most `reviewCap` a day) with the new cards mixed in, within each deck's daily
+   * limit and `newCap` for all decks together (counted from `dayStart`, the start of the
    * learner's study day), at most `limit`.
    */
   nativeQueue(
@@ -921,6 +922,7 @@ export interface Repository {
     limit: number,
     extra?: QueueExtra,
     newCap?: number,
+    reviewCap?: number,
   ): Promise<NativeQueue>;
   /** Native mode: the counts of `nativeQueue` (same rules), without reading the cards. */
   nativeQueueCounts(
@@ -928,6 +930,7 @@ export interface Repository {
     now: number,
     dayStart: number,
     newCap?: number,
+    reviewCap?: number,
   ): Promise<NativeQueueCounts>;
   /**
    * Native mode: review cards due on each of `days` study days from `from` (the start of a

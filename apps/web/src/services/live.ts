@@ -214,6 +214,7 @@ export function createLiveServices(
     sqlite: browserSqlite,
     reviewWeek: async () => (await settings()).reviewWeek ?? [],
     newPerDay: async () => (await settings()).newWordsPerDay ?? 10,
+    reviewsPerDay: async () => (await settings()).reviewsPerDay ?? 200,
     audioClip: (id) => config.services.audioClip(id),
   });
 

@@ -95,6 +95,8 @@ export interface Settings {
    * then the starter level). Each deck's own limit still applies within it.
    */
   newWordsPerDay: number;
+  /** Native mode: reviews a day at most, all decks together (Anki's default is 200). */
+  reviewsPerDay: number;
   /** Spoken words and sentences (the audio pack): which voice. */
   voice: "female" | "male";
   /** Review: say the word when a card's front shows (on by default). */

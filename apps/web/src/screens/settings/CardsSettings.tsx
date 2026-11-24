@@ -146,6 +146,7 @@ function NativeCards() {
       {decks.data?.length ? (
         <>
           <NewWordsPerDay />
+          <ReviewsPerDay />
           <ReviewWeek />
         </>
       ) : null}
@@ -374,6 +375,44 @@ function NewWordsPerDay() {
         onBlur={(e) => {
           const n = Math.max(0, Math.min(200, Math.round(Number(e.target.value))));
           if (Number.isFinite(n) && n !== settings.data?.newWordsPerDay) save.mutate(n);
+        }}
+      />
+    </section>
+  );
+}
+
+/** Reviews a day at most: after days away the backlog comes over several days, as in Anki. */
+function ReviewsPerDay() {
+  const services = useServices();
+  const qc = useQueryClient();
+  const settings = useQuery({ queryKey: ["settings"], queryFn: () => services.getSettings() });
+  const save = useMutation({
+    mutationFn: (reviewsPerDay: number) => services.saveSettings({ reviewsPerDay }),
+    onSettled: async () => {
+      await qc.invalidateQueries({ queryKey: ["settings"] });
+      await qc.invalidateQueries({ queryKey: ["review"] });
+    },
+  });
+  if (!settings.data) return null;
+  return (
+    <section className="stack" aria-labelledby="reviews-a-day-h">
+      <h3 className="settings-h3" id="reviews-a-day-h">
+        Reviews a day
+      </h3>
+      <p className="k-hint" style={{ margin: 0 }}>
+        The most reviews you get in one day. If you were away for a while, the rest waits for the
+        next days, so you don&rsquo;t come back to a mountain of cards.
+      </p>
+      <Input
+        type="number"
+        min={0}
+        max={9999}
+        aria-label="Reviews a day"
+        className="cards-new-per-day"
+        defaultValue={settings.data.reviewsPerDay ?? 200}
+        onBlur={(e) => {
+          const n = Math.max(0, Math.min(9999, Math.round(Number(e.target.value))));
+          if (Number.isFinite(n) && n !== settings.data?.reviewsPerDay) save.mutate(n);
         }}
       />
     </section>

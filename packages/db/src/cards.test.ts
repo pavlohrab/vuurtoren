@@ -7,6 +7,7 @@ import {
   studyDayStart,
 } from "@app/core";
 import { describe, expect, it } from "vitest";
+import { mixIn } from "./cards.js";
 import { createNodeDriver } from "./node.js";
 import { createRepository } from "./repository.js";
 import type { AppEvent } from "./types.js";
@@ -142,6 +143,56 @@ describe("native card store", () => {
     expect(later.cards.map((c) => c.card.id)).toEqual([102, 101]);
     const [deck] = await repo.nativeDecks("nl", morning);
     expect(deck?.due).toBe(1);
+  });
+
+  it("caps reviews a day, mixes new cards in, and keeps one order all day", async () => {
+    const { repo } = await newRepo();
+    const dayStart = studyDayStart(T0);
+    const n = 12;
+    const notes = Array.from({ length: n + 3 }, (_, i) => ({
+      id: 500 + i,
+      notetypeId: WORD.id,
+      fields: [`w${i}`, "x", ""],
+      tags: [],
+      key: `w${i}`,
+    }));
+    await repo.append({
+      type: "NativeNotesAdded",
+      lang: "nl",
+      origin: "apkg",
+      notetypes: [WORD],
+      decks: [{ name: "Dutch", options: DEFAULT_DECK_OPTIONS }],
+      notes,
+      cards: notes.map((note, i) => ({
+        id: 900 + i,
+        noteId: note.id,
+        ord: 0,
+        deck: "Dutch",
+        position: i,
+        ...(i < n ? { schedule: { ...mature, due: dayStart - (i % 3) * DAY } } : {}),
+      })),
+    });
+    const at = dayStart + 3600_000;
+    const q = await repo.nativeQueue("nl", at, dayStart, 100, undefined, 10, 8);
+    const ids = q.cards.map((c) => c.card.id);
+    expect(q.due).toBe(8);
+    expect(q.fresh).toBe(3);
+    // New cards spread through the reviews, not all at the end.
+    const fresh = ids.map((id, i) => (id >= 900 + n ? i : -1)).filter((i) => i >= 0);
+    expect(fresh.length).toBe(3);
+    expect(fresh[0]!).toBeLessThan(ids.length - 3);
+    // The most overdue day first; the same order on the next call.
+    const days = q.cards.filter((c) => c.card.id < 900 + n).map((c) => c.card.schedule!.due);
+    expect([...days].sort((a, b) => a - b)).toEqual(days);
+    const again = await repo.nativeQueue("nl", at + 60_000, dayStart, 100, undefined, 10, 8);
+    expect(again.cards.map((c) => c.card.id)).toEqual(ids);
+    expect((await repo.nativeQueueCounts("nl", at, dayStart, 10, 8)).due).toBe(8);
+  });
+
+  it("mixIn spreads new cards evenly", () => {
+    expect(mixIn([1, 2, 3, 4, 5, 6], [7, 8])).toEqual([1, 2, 7, 3, 4, 8, 5, 6]);
+    expect(mixIn([], [7])).toEqual([7]);
+    expect(mixIn([1], [])).toEqual([1]);
   });
 
   it("continues past today's cards: more new cards, or learned cards ahead of time", async () => {

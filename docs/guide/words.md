@@ -20,7 +20,11 @@ longer, and a word you had to look up comes back today.
 
 Ten new words join your reviews every day, unless you change it in Settings → Your words → **New
 words a day**. The words you added while reading come first, then the next common words of your
-level.
+level. They are mixed in between your reviews, not saved for the end.
+
+You get at most 200 reviews a day. If you were away for a week, the rest waits for the next days,
+so you don't come back to a mountain of cards. You can change it in Settings → Your words →
+**Reviews a day**.
 
 If you don't bring your own decks, Vuurtoren gives you about 5000 of the most common Dutch words, in
 levels of 500, each with an example sentence. At the start you choose where new words begin, so if

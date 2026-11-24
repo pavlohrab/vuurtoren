@@ -85,6 +85,8 @@ export interface LiveNativeDeps {
   reviewWeek?: () => Promise<readonly number[]>;
   /** New words a day across all decks (Settings); absent: only the decks' own limits. */
   newPerDay?: () => Promise<number>;
+  /** Reviews a day at most, all decks together (Settings). */
+  reviewsPerDay?: () => Promise<number>;
   now?: () => number;
 }
 
@@ -412,7 +414,13 @@ export function createLiveNative(deps: LiveNativeDeps) {
       await openStarter(lang);
       const at = now();
       // Counts only: the badge never reads the cards themselves.
-      const q = await repo.nativeQueueCounts(lang, at, studyDayStart(at), await deps.newPerDay?.());
+      const q = await repo.nativeQueueCounts(
+        lang,
+        at,
+        studyDayStart(at),
+        await deps.newPerDay?.(),
+        await deps.reviewsPerDay?.(),
+      );
       return { native: true, due: q.due, fresh: q.fresh };
     },
 
@@ -427,6 +435,7 @@ export function createLiveNative(deps: LiveNativeDeps) {
         QUEUE_LIMIT,
         extra,
         await deps.newPerDay?.(),
+        await deps.reviewsPerDay?.(),
       );
       const p = await params(lang);
       const own = await ownSentences(lang);

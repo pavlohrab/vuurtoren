@@ -421,9 +421,11 @@ interface QueueRow {
   state: number | null;
   key: string | null;
   position: number;
+  /** Due time, null for a new card. */
+  due: number | null;
 }
 
-const QUEUE_COLUMNS = `c.id AS id, c.note_id AS note_id, c.position AS position,
+const QUEUE_COLUMNS = `c.id AS id, c.note_id AS note_id, c.position AS position, c.due AS due,
   json_extract(c.schedule, '$.state') AS state, n.key AS key
   FROM native_cards c LEFT JOIN native_notes n ON n.id = c.note_id AND n.lang = c.lang`;
 
@@ -434,6 +436,7 @@ function toQueueRow(r: Row): QueueRow {
     state: r["state"] === null || r["state"] === undefined ? null : Number(r["state"]),
     key: r["key"] === null || r["key"] === undefined ? null : String(r["key"]),
     position: Number(r["position"]),
+    due: r["due"] === null || r["due"] === undefined ? null : Number(r["due"]),
   };
 }
 
@@ -453,7 +456,8 @@ async function queuePlan(
   dayStart: number,
   options: Map<string, DeckOptions>,
   newCap?: number,
-): Promise<{ dueIds: number[]; freshIds: number[] }> {
+  reviewCap?: number,
+): Promise<{ learnIds: number[]; reviewIds: number[]; dueIds: number[]; freshIds: number[] }> {
   const dueRows = (
     await driver.exec(
       `SELECT ${QUEUE_COLUMNS}
@@ -527,8 +531,59 @@ async function queuePlan(
         return true;
       })
       .map((c) => c.id);
-  const dueIds = apart(dueRows);
-  return { dueIds, freshIds: apart(fresh) };
+  const learnIds = apart(dueRows.filter((c) => c.state !== 2));
+  // Reviews by the day they fell due (the most overdue first), shuffled within a day the same way
+  // all day long, so the queue stays put between answers (Anki: "due date, then random").
+  const dayOf = (c: QueueRow) => Math.floor(((c.due ?? 0) - dayStart) / DAY_MS);
+  const shuffled = dueRows
+    .filter((c) => c.state === 2)
+    .sort((a, b) => dayOf(a) - dayOf(b) || dayHash(a.id, dayStart) - dayHash(b.id, dayStart));
+  let reviewIds = apart(shuffled);
+  // At most `reviewCap` reviews a day, counting the ones already done today (Anki's 200).
+  if (reviewCap !== undefined) {
+    const [done] = await driver.exec(
+      `SELECT count(DISTINCT card_id) AS n FROM native_reviews
+        WHERE lang = ? AND at >= ? AND rating > 0 AND kind = 'review'`,
+      [lang, dayStart],
+    );
+    reviewIds = reviewIds.slice(0, Math.max(0, reviewCap - Number(done?.["n"] ?? 0)));
+  }
+  return {
+    learnIds,
+    reviewIds,
+    dueIds: [...learnIds, ...reviewIds],
+    freshIds: apart(fresh),
+  };
+}
+
+/** A number from a card id and the day, the same all day: the order of a day's reviews. */
+function dayHash(id: number, day: number): number {
+  let h = Math.imul(id ^ Math.floor(day / DAY_MS), 2654435761);
+  h ^= h >>> 15;
+  h = Math.imul(h, 2246822519);
+  return (h ^ (h >>> 13)) >>> 0;
+}
+
+/**
+ * New cards spread evenly through the reviews, as Anki does by default ("mix with reviews"):
+ * with 100 reviews and 20 new cards, a new card about every sixth card.
+ */
+export function mixIn(reviews: readonly number[], fresh: readonly number[]): number[] {
+  if (fresh.length === 0) return [...reviews];
+  if (reviews.length === 0) return [...fresh];
+  const out: number[] = [];
+  const total = reviews.length + fresh.length;
+  let r = 0;
+  let f = 0;
+  for (let i = 0; i < total; i++) {
+    // Put the next new card where its even share says it belongs.
+    const wantNew =
+      f < fresh.length &&
+      (r >= reviews.length || (f + 1) / (fresh.length + 1) <= (i + 1) / (total + 1));
+    if (wantNew) out.push(fresh[f++]!);
+    else out.push(reviews[r++]!);
+  }
+  return out;
 }
 
 /**
@@ -608,9 +663,18 @@ export function nativeQueries(driver: SqlDriver) {
       limit: number,
       extra?: QueueExtra,
       newCap?: number,
+      reviewCap?: number,
     ): Promise<NativeQueue> {
       const options = await deckOptions(driver, lang);
-      const { dueIds, freshIds } = await queuePlan(driver, lang, now, dayStart, options, newCap);
+      const { learnIds, reviewIds, dueIds, freshIds } = await queuePlan(
+        driver,
+        lang,
+        now,
+        dayStart,
+        options,
+        newCap,
+        reviewCap,
+      );
       const today = new Set([...dueIds, ...freshIds]);
       const more =
         extra && extra.count > 0
@@ -618,7 +682,10 @@ export function nativeQueries(driver: SqlDriver) {
               .filter((id) => !today.has(id))
               .slice(0, extra.count)
           : [];
-      const ids = [...dueIds, ...freshIds, ...more].slice(0, Math.max(0, limit));
+      const ids = [...learnIds, ...mixIn(reviewIds, freshIds), ...more].slice(
+        0,
+        Math.max(0, limit),
+      );
       let cards: NativeCard[];
       if (ids.length === 0 && limit > 0) {
         // Nothing else today: learning cards due within the next minutes come forward.
@@ -657,9 +724,18 @@ export function nativeQueries(driver: SqlDriver) {
       now: number,
       dayStart: number,
       newCap?: number,
+      reviewCap?: number,
     ): Promise<NativeQueueCounts> {
       const options = await deckOptions(driver, lang);
-      const { dueIds, freshIds } = await queuePlan(driver, lang, now, dayStart, options, newCap);
+      const { dueIds, freshIds } = await queuePlan(
+        driver,
+        lang,
+        now,
+        dayStart,
+        options,
+        newCap,
+        reviewCap,
+      );
       return {
         due: dueIds.length,
         fresh: freshIds.length,

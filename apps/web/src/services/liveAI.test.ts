@@ -77,6 +77,7 @@ async function setup() {
     grammarMarks: true,
     reviewWeek: [1, 1, 1, 1, 1, 1, 1],
     newWordsPerDay: 10,
+    reviewsPerDay: 200,
     voice: "female",
     autoplayWord: true,
     autoplaySentence: false,
