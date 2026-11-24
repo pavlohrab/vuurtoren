@@ -21,7 +21,9 @@ cd "$(dirname "$0")/.."
 
 if [[ ${2:-} != --no-build ]]; then
   echo "Building ${IMAGES[*]}"
-  VUURTOREN_IMAGE_OWNER=$OWNER VUURTOREN_TAG=$TAG \
+  # The server's own settings (sign-in) are required to run the stack, not to build it: a
+  # placeholder keeps compose from refusing to build without a .env here.
+  VUURTOREN_IMAGE_OWNER=$OWNER VUURTOREN_TAG=$TAG VUURTOREN_USER=${VUURTOREN_USER:-build} \
     docker compose -f deploy/compose.yml build web api nlp
 fi
 for image in "${IMAGES[@]}"; do
