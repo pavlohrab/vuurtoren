@@ -27,8 +27,8 @@ describe("starter levels", () => {
     expect(levelOf(index, "w500")).toBe(1);
     expect(levelOf(index, "w501")).toBe(2);
     expect(levelOf(index, "huis")).toBeNull();
-    expect(levelLabel(index, 1)).toBe("Level 1 · 1–500");
-    expect(levelLabel(index, 3)).toBe("Level 3 · 1001–1200");
+    expect(levelLabel(index, 1)).toBe("A1 · 1–500");
+    expect(levelLabel(index, 3)).toBe("A2 · 1001–1200");
     expect(levelLabel(index, null)).toBe("Other words");
   });
 

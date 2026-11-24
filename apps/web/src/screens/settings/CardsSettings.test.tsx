@@ -39,7 +39,7 @@ describe("Settings → Your words: cards", { timeout: 20_000 }, () => {
       expect((await services.starterLevels()).held).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]),
     );
     await user.click(await screen.findByRole("combobox", { name: "Start new words from level" }));
-    await user.click(await screen.findByRole("option", { name: /Level 3/ }));
+    await user.click(await screen.findByRole("option", { name: /^A2 \(words 1001/ }));
     await waitFor(async () => expect((await services.starterLevels()).from).toBe(3));
     const section = screen.getByRole("region", { name: "Starter words" });
     expect(within(section).queryByText(/Anki/)).toBeNull();

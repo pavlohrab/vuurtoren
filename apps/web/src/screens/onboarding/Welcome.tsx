@@ -22,7 +22,7 @@ import {
   defaultProfile,
   rootDeck,
 } from "@app/core";
-import { STARTER_LEVELS } from "@app/anki";
+import { STARTER_LEVELS, starterBand } from "@app/anki";
 import { Button, Spinner, Logo } from "@app/ui";
 import { useServices } from "../../services/context.js";
 import type { AnkiStatus } from "../../services/types.js";
@@ -117,7 +117,8 @@ interface Draft {
  * Native mode: where new words start. Every level is added; the levels below the start get no
  * new cards until the learner turns them on (Settings). Nothing is marked known.
  */
-const START_LEVELS = [1, 2, 3, 5, 7] as const;
+/** One start per CEFR band: the first 500 words of A1, A2, B1 and B2. */
+const START_LEVELS = [1, 3, 5, 8] as const;
 
 const fresh = (): Draft => ({
   step: PICK_LANGUAGE ? "language" : "uses",
@@ -698,9 +699,9 @@ export function Welcome() {
                   The most common words
                 </h1>
                 <p className="ob-lede">
-                  Vuurtoren can give you cards for about 5000 of the most common Dutch words, in
-                  levels of 500, each with an example sentence. Ten new words a day, one level at a
-                  time; you can change that later.
+                  Vuurtoren can give you cards for about 5000 of the most common Dutch words, from
+                  A1 to B2, 500 at a time, each with an example sentence. Ten new words a day, one
+                  level at a time; you can change that later.
                 </p>
                 <label className="ob-check">
                   <input
@@ -729,7 +730,7 @@ export function Welcome() {
                         name="from"
                         checked={draft.from === level}
                         onChange={() => setDraft({ from: level })}
-                        title={`Level ${level}`}
+                        title={starterBand(level)}
                         sub={`Words ${(level - 1) * 500 + 1}–${level * 500}`}
                       />
                     ))}

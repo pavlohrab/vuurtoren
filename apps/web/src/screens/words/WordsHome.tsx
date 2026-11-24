@@ -16,6 +16,7 @@ import { usePageHeader } from "../../shell/ShellContext.js";
 import { useCurrentLevel } from "./WordsRoom.js";
 import "./wordsHome.css";
 import { progressText } from "./levels.js";
+import { starterBand } from "@app/anki";
 
 const fmt = (n: number) => n.toLocaleString("en");
 
@@ -73,7 +74,7 @@ export function WordsHome() {
           search={level ? { layout: "cards", level: String(level.level) } : { layout: "cards" }}
           icon={<Gauge size={18} />}
           title="Check your level"
-          detail={level ? `Level ${level.level} · ${progressText(level)}` : null}
+          detail={level ? `${starterBand(level.level)} · ${progressText(level)}` : null}
         />
       </nav>
     </div>

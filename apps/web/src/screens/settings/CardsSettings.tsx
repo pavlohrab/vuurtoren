@@ -3,6 +3,7 @@
  * Vuurtoren". Native mode: what Vuurtoren holds, importing a deck file, each deck's target retention
  * and limits, and FSRS tuning ("Optimise now").
  */
+import { starterBand } from "@app/anki";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { type ChangeEvent, useRef, useState } from "react";
 import { DEFAULT_DECK_OPTIONS, type DeckOptions, defaultProfile } from "@app/core";
@@ -208,7 +209,7 @@ function StarterWords() {
             disabled={start.isPending}
             options={Array.from({ length: all }, (_, i) => ({
               value: String(i + 1),
-              label: `Level ${i + 1} (words ${range(i + 1)})`,
+              label: `${starterBand(i + 1)} (words ${range(i + 1)})`,
             }))}
             onValueChange={(v) => start.mutate(Number(v))}
           />

@@ -9,6 +9,8 @@ import {
   starterLevelOf,
   starterLevelsHeld,
   startStarterFrom,
+  starterBand,
+  starterLevelName,
 } from "./starter.js";
 
 const WORDS: StarterWord[] = Array.from({ length: 1500 }, (_, i) => ({
@@ -122,5 +124,24 @@ describe("starter words", () => {
       { deck: starterDeck(1), options: DEFAULT_DECK_OPTIONS },
     ]);
     expect(startStarterFrom(open, 3)).toEqual([]);
+  });
+});
+
+describe("starter bands", () => {
+  it("names levels by the stories' CEFR bands, at the edges", () => {
+    const bandOfRank = (rank: number) => starterBand(Math.ceil(rank / 500));
+    expect([500, 501, 1000, 1001, 2000, 2001, 3500, 3501, 4930].map(bandOfRank)).toEqual([
+      "A1",
+      "A1",
+      "A1",
+      "A2",
+      "A2",
+      "B1",
+      "B1",
+      "B2",
+      "B2",
+    ]);
+    expect(starterLevelName(1)).toBe("A1 · 1–500");
+    expect(starterLevelName(10, 4930)).toBe("B2 · 4501–4930");
   });
 });

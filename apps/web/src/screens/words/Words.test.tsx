@@ -84,7 +84,7 @@ describe("Words", () => {
     expect(within(table).queryByRole("button", { name: "Open gracht" })).toBeNull();
     const chips = screen.getByRole("list", { name: "Active filters" });
     await user.click(
-      within(chips).getByRole("button", { name: "Remove filter Level: Level 2 · 501–1000" }),
+      within(chips).getByRole("button", { name: "Remove filter Level: A1 · 501–1000" }),
     );
     await waitFor(() => expect(history.location.search).not.toMatch(/level=/));
     expect(await within(table).findByRole("button", { name: "Open boek" })).toBeVisible();
@@ -96,16 +96,18 @@ describe("Words", () => {
     await user.click(screen.getByRole("button", { name: /Group by level/ }));
     await waitFor(() => expect(history.location.search).toMatch(/group=level/));
     const table = screen.getByRole("table");
-    const headers = await within(table).findAllByRole("columnheader", { name: /^Level|^Other/ });
-    expect(headers[0]).toHaveTextContent(/^Level 1 · 1–500/);
+    const headers = await within(table).findAllByRole("columnheader", {
+      name: /^(A1|A2|B1|B2) ·|^Other/,
+    });
+    expect(headers[0]).toHaveTextContent(/^A1 · 1–500/);
     expect(headers.at(-1)).toHaveTextContent("Other words");
     // within a level, rows follow the starter ranks; gracht is not a starter word
     const rows = within(table).getAllByRole("button", { name: /^Open / });
     expect(rows.at(-1)).toHaveAccessibleName(/Open (blaffen|gracht|weerman)/);
     // the counts cover the whole level, not only the words shown (duren, lucht, trein learn)
-    const level2 = headers.find((h) => h.textContent?.startsWith("Level 2"))!;
+    const level2 = headers.find((h) => h.textContent?.startsWith("A1 · 501"))!;
     await waitFor(() => expect(level2).toHaveTextContent(/\d+ of 500 known · 3 learning/));
-    expect(within(level2).getByRole("meter", { name: "Level 2 · 501–1000: known" })).toBeVisible();
+    expect(within(level2).getByRole("meter", { name: "A1 · 501–1000: known" })).toBeVisible();
     // no hint in connected mode: starter decks are Vuurtoren's own
     expect(screen.queryByRole("link", { name: /Add the starter levels/ })).toBeNull();
   });

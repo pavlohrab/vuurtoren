@@ -65,6 +65,27 @@ export function starterLevelOf(deck: string): number | null {
 /** The level (1-based) of a starter word's rank: ranks 1–500 are level 1. */
 export const starterLevelOfRank = (rank: number) => Math.ceil(rank / STARTER_LEVEL_SIZE);
 
+/** The CEFR band a starter level's words belong to. */
+export type StarterBand = "A1" | "A2" | "B1" | "B2";
+
+/**
+ * A starter level's band, the same as the stories' (content/stories/README.md): A1 stays
+ * within the first 1000 words, A2 within 2000, B1 within 3500, B2 the rest. The words you meet
+ * most at that level, not a claim that you are at it. Display only: levels stay numbers.
+ */
+export function starterBand(level: number): StarterBand {
+  if (level <= 2) return "A1";
+  if (level <= 4) return "A2";
+  if (level <= 7) return "B1";
+  return "B2";
+}
+
+/** "A1 · 1–500": a starter level as the app shows it (`to` caps the last level's range). */
+export function starterLevelName(level: number, to?: number): string {
+  const from = (level - 1) * STARTER_LEVEL_SIZE + 1;
+  return `${starterBand(level)} · ${from}–${to ?? level * STARTER_LEVEL_SIZE}`;
+}
+
 /** The learner-model key of a starter word. */
 export const starterKey = (w: Pick<StarterWord, "word">) => normalizeKey(w.word);
 

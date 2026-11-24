@@ -23,7 +23,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { clipId, wordClipText } from "@app/anki";
+import { clipId, starterLevelName, wordClipText } from "@app/anki";
 import { Button, EmptyState, Skeleton, useNativeMode, useToast } from "@app/ui";
 import { PlayButton, useSay } from "../../audio/useSay.js";
 import { useServices } from "../../services/context.js";
@@ -342,7 +342,7 @@ export function WordStack({
     { id: "reading", label: "Met while reading" },
     { id: "learning", label: "Learning" },
     { id: "new", label: "New" },
-    ...levels.map((l) => ({ id: `level:${l}` as StackChoice, label: `Level ${l}` })),
+    ...levels.map((l) => ({ id: `level:${l}` as StackChoice, label: starterLevelName(l) })),
   ];
   const e = loaded;
   const [from, to] = e?.sentenceHighlight ?? [0, 0];

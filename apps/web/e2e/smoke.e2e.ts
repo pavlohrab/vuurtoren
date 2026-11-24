@@ -125,7 +125,7 @@ test("native mode: start with the most common words, offline data in the app", a
   await page.goto("/");
   await page.getByRole("radio", { name: /^No/ }).check();
   await page.getByRole("button", { name: "Continue" }).click();
-  await page.getByRole("radio", { name: /^Level 2/ }).check();
+  await page.getByRole("radio", { name: /^A2/ }).check();
   await page.getByRole("button", { name: "Continue" }).click();
   // Three questions, then the story at the learner's level opens in the reader.
   await page.getByRole("button", { name: "Start reading" }).click();

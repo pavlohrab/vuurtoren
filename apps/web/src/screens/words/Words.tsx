@@ -6,6 +6,7 @@
  * &word=<key>`). Grouped by level, each level shows how many of its words are known. A row
  * opens the shared word inspector; in Select mode a selection goes to Anki, Practice or Talk.
  */
+import { starterLevelName } from "@app/anki";
 import { pct, plural } from "../../format.js";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
@@ -482,7 +483,11 @@ export function Words() {
     { value: "other", label: "Other words" },
   ];
   const levelName = (l: LevelFilter) =>
-    l === "other" ? "Other words" : index.data ? levelLabel(index.data, l) : `Level ${l}`;
+    l === "other"
+      ? "Other words"
+      : index.data
+        ? levelLabel(index.data, l)
+        : starterLevelName(Number(l));
   // Grouped: a header row per level (null: Other words); otherwise one group without a header.
   const groups: { level?: number | null; rows: WordRow[] }[] =
     grouped && index.data ? groupByLevel(list, index.data) : [{ rows: list }];

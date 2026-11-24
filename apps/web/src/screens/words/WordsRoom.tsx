@@ -6,6 +6,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { ChevronLeft } from "lucide-react";
+import { starterBand } from "@app/anki";
 import { Skeleton } from "@app/ui";
 import { useServices } from "../../services/context.js";
 import { loadStarterWords } from "../../services/starterWords.js";
@@ -65,7 +66,7 @@ export function WordsRoom() {
       <p className="words-room-summary" aria-label="Where you are">
         {level ? (
           <Link to="/words/all" search={{ group: "level" }} className="words-room-level">
-            Level {level.level}
+            {starterBand(level.level)}
             {/* The learning part too: a word is "known" only three weeks on, like in Anki, so
                 early on "0 of 500 known" alone looked like nothing was happening. */}
             <span className="words-room-quiet"> · {progressText(level)}</span>

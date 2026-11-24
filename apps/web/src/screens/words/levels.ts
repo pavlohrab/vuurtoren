@@ -3,7 +3,7 @@
  * (`content/starter/nl-5000.json`; ranks 1–500 are level 1), looked up by lemma key, so it works
  * whether or not the starter decks exist. Words outside the list are "Other words".
  */
-import { type StarterWord, starterKey, starterLevelOfRank } from "@app/anki";
+import { type StarterWord, starterKey, starterLevelName, starterLevelOfRank } from "@app/anki";
 import type { WordState } from "@app/core";
 
 /** Ranks and levels of the starter list, by key. */
@@ -40,11 +40,11 @@ export function levelOf(index: StarterIndex, key: string): number | null {
   return r === undefined ? null : starterLevelOfRank(r);
 }
 
-/** "Level 1 · 1–500"; null: "Other words". */
+/** "A1 · 1–500" (the starter level's CEFR band and its words); null: "Other words". */
 export function levelLabel(index: StarterIndex, level: number | null): string {
   const l = level === null ? undefined : index.levels.find((x) => x.level === level);
-  if (!l) return level === null ? "Other words" : `Level ${level}`;
-  return `Level ${l.level} · ${l.from}–${l.to}`;
+  if (!l) return level === null ? "Other words" : starterLevelName(level);
+  return starterLevelName(l.level, l.to);
 }
 
 /** The `level` search param: "1"…"10" or "other"; anything else is no filter. */

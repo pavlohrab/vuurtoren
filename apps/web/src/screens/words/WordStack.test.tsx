@@ -137,10 +137,14 @@ describe("the word stack's first set and order", () => {
     render(
       <App services={services} history={createMemoryHistory({ initialEntries: ["/words/all"] })} />,
     );
-    const level = await screen.findByRole("radio", { name: /^Level \d+$/, checked: true });
+    const level = await screen.findByRole("radio", {
+      name: /^(A1|A2|B1|B2) · \d+–\d+$/,
+      checked: true,
+    });
     expect(screen.getByRole("radio", { name: "Met while reading" })).not.toBeChecked();
     const summary = await screen.findByLabelText("Where you are");
-    await waitFor(() => expect(summary).toHaveTextContent(level.textContent!));
+    // The strip names the same band ("A1 · 0 of 500 known").
+    await waitFor(() => expect(summary).toHaveTextContent(level.textContent!.split(" · ")[0]!));
   });
 
   it("New is most common first (starter rank), not alphabetical", async () => {

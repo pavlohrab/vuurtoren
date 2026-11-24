@@ -154,9 +154,9 @@ describe("onboarding", () => {
       screen.getByRole("checkbox", { name: /Start with the most common words/ }),
     ).toBeChecked();
     expect(screen.getByText("Where should new words start?")).toBeVisible();
-    expect(screen.getByRole("radio", { name: /^Level 1/ })).toBeChecked();
+    expect(screen.getByRole("radio", { name: /^A1/ })).toBeChecked();
     expect(screen.queryByText(/How much Dutch/)).toBeNull();
-    await user.click(screen.getByRole("radio", { name: /^Level 3/ }));
+    await user.click(screen.getByRole("radio", { name: /^A2/ }));
     expect(screen.getByRole("radio", { name: /Words 1001–1500/ })).toBeChecked();
     // One shared line for every level; Back and Continue, no separate "Skip this".
     expect(screen.getAllByText(/Lower levels wait until you turn them on/)).toHaveLength(1);
@@ -191,7 +191,7 @@ describe("onboarding", () => {
     expect(
       screen.getByRole("checkbox", { name: /Start with the most common words/ }),
     ).toBeDisabled();
-    expect(screen.getByRole("radio", { name: /^Level 2/ })).toBeDisabled();
+    expect(screen.getByRole("radio", { name: /^A2/ })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Back" })).toBeDisabled();
     expect(cont()).toBeDisabled();
     act(() => finish());
@@ -206,7 +206,7 @@ describe("onboarding", () => {
     await user.click(
       await screen.findByRole("checkbox", { name: /Start with the most common words/ }),
     );
-    expect(screen.queryByRole("radio", { name: /^Level 1/ })).toBeNull();
+    expect(screen.queryByRole("radio", { name: /^A1/ })).toBeNull();
     await user.click(cont());
     expect(await screen.findByRole("heading", { name: "You are ready" })).toBeVisible();
     expect(addStarterLevels).not.toHaveBeenCalled();
