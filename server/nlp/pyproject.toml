@@ -30,9 +30,15 @@ ocr = [
     "rapidocr>=3.10.0",
 ]
 
+# A Dutch voice for words without a recording (Piper, offline; its model is the tts-nl pack).
+# For computers without a Dutch system voice (Linux): the desktop sidecar and the Docker image.
+speech = [
+    "piper-tts>=1.3.0",
+]
+
 [dependency-groups]
 dev = [
-    "vuurtoren-nlp[ocr]",
+    "vuurtoren-nlp[ocr,speech]",
     "pytest>=9.2.0",
     "reportlab>=5.1.0",
     "ruff>=0.17.5",

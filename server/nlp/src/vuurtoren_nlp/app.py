@@ -193,6 +193,16 @@ def audio_clip(voice: str, clip: str) -> Response:
     )
 
 
+@app.get("/speech")
+def speech(text: str, rate: float = 1.0) -> Response:
+    """``text`` said by the Dutch voice (Piper) as WAV: for words without a recording on a computer
+    without a Dutch system voice. 503 when the voice is not installed."""
+    from vuurtoren_nlp.speech import synthesize
+
+    audio = synthesize(text, rate)
+    return Response(audio, media_type="audio/wav", headers={"Cache-Control": "max-age=86400"})
+
+
 @app.post("/analyze/text")
 def analyze_text_endpoint(req: AnalyzeRequest) -> list[TextAnalysis]:
     check_total(req.texts)

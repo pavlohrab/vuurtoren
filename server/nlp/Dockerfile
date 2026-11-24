@@ -34,7 +34,7 @@ WORKDIR /app
 # Dependencies first (cached unless pyproject/uv.lock change). The spaCy model is a locked
 # wheel dependency (nl-core-news-md), so no separate `spacy download` is needed.
 COPY pyproject.toml uv.lock ./
-RUN extra=""; [ "$OCR" = 1 ] && extra="--extra ocr"; \
+RUN extra=""; [ "$OCR" = 1 ] && extra="--extra ocr --extra speech"; \
     uv sync --locked --no-dev --no-install-project $extra
 # Trim what the service never loads:
 #   debug symbols of the compiled extensions (strip: ~220 MB, mostly ctranslate2 and spaCy);
@@ -52,7 +52,7 @@ RUN set -eu; sp=/opt/venv/lib/python3.12/site-packages; \
     rm -rf "$sp/setuptools" "$sp"/setuptools-*.dist-info "$sp/pkg_resources" "$sp/_distutils_hack"
 COPY src ./src
 COPY scripts ./scripts
-RUN extra=""; [ "$OCR" = 1 ] && extra="--extra ocr"; \
+RUN extra=""; [ "$OCR" = 1 ] && extra="--extra ocr --extra speech"; \
     uv sync --locked --no-dev $extra && find /opt/venv /app -depth -name __pycache__ -exec rm -rf {} +
 
 # ---- Stage 2: runtime ------------------------------------------------------------------

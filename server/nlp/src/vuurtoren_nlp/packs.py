@@ -61,6 +61,7 @@ from vuurtoren_nlp.audio import audio_dir
 from vuurtoren_nlp.dictionary import default_db_path as dictionary_path
 from vuurtoren_nlp.grammar_examples import default_cache_path as grammar_cache_path
 from vuurtoren_nlp.sentences import default_db_path as sentences_path
+from vuurtoren_nlp.speech import tts_dir
 from vuurtoren_nlp.translate import model_dir
 
 log = logging.getLogger(__name__)
@@ -116,6 +117,13 @@ SPECS: dict[str, PackSpec] = {
         PackSpec("grammar-examples-nl", grammar_cache_path, "file", derived=True),
         # Optional: in packs.json only once published (scripts/build_packs.py --audio-from).
         PackSpec("audio-nl", audio_dir, "dir"),
+        # The Dutch voice for words without a recording (speech.py).
+        PackSpec(
+            "tts-nl",
+            tts_dir,
+            "dir",
+            lambda out: _py("fetch_tts_voice.py", "--output", str(out)),
+        ),
     )
 }
 

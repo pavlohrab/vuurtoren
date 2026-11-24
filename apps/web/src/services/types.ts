@@ -351,6 +351,15 @@ export interface AppServices
    * the audio pack on the language server; null when there is none.
    */
   audioClip(id: string): Promise<Blob | null>;
+  /**
+   * Vuurtoren's own Dutch voice (Piper, the `tts-nl` pack from data.vuurtoren.app), said by the
+   * local language server: for a computer without a Dutch system voice. `available` asks its
+   * health, `say` returns the WAV. Absent in demo mode.
+   */
+  ownVoice?: {
+    available(): Promise<boolean>;
+    say(text: string, rate: number): Promise<Blob>;
+  };
   /** Can the language server read photos and scanned pages? (its `/health` says; false when unreachable) */
   ocrAvailable(): Promise<boolean>;
   syncAnki(onProgress?: (msg: string) => void): Promise<LearnerSummary>;

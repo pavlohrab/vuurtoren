@@ -9,6 +9,7 @@ import type { AppServices } from "./services/types.js";
 import type { RouterHistory } from "@tanstack/react-router";
 import { SIGNED_IN_EVENT } from "./auth/watch.js";
 import { UpdateBanner } from "./pwa/PwaControls.js";
+import { installOwnVoice } from "./platform/ownVoice.js";
 import { installShare } from "./platform/share.js";
 
 export interface AppProps extends AppInfo {
@@ -54,6 +55,12 @@ export function App({
       }),
     [router],
   );
+  // A computer without a Dutch voice (most Linux desktops) speaks with the language server's.
+  useEffect(() => {
+    void installOwnVoice(services.ownVoice, {
+      onReady: () => void queryClient.invalidateQueries({ queryKey: ["dutch-voice"] }),
+    });
+  }, [services, queryClient]);
   // After signing in again over the app (the session had ended), refetch what failed.
   useEffect(() => {
     const refetch = (): void => void queryClient.invalidateQueries();

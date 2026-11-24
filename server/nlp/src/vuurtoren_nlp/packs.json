@@ -20,6 +20,11 @@
    "version": "2026.11.1",
    "sha256": "24a90f4325f51576d34bcca3a96a49c7db757dc3da4fe19a2ffba604719204c2",
    "size": 229959398
+  },
+  "tts-nl": {
+   "version": "2026.11.1",
+   "sha256": "a0539503af8c6bd4b0a517d830009ed8b3abf3b4196afd697a28b3f5b8372c55",
+   "size": 71481397
   }
  }
 }

@@ -37,6 +37,8 @@ for pkg in (
     "pyclipper",
     "shapely",
     "omegaconf",
+    # Speech: Piper and its espeak-ng data (phonemes) live in its package folder.
+    "piper",
 ):
     try:
         d, b, h = collect_all(pkg)

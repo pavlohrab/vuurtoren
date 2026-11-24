@@ -177,7 +177,13 @@ export function createLiveSettings({
 
   const services: Pick<
     AppServices,
-    "getSettings" | "saveSettings" | "ankiStatus" | "connectAnki" | "ocrAvailable" | "audioClip"
+    | "getSettings"
+    | "saveSettings"
+    | "ankiStatus"
+    | "connectAnki"
+    | "ocrAvailable"
+    | "audioClip"
+    | "ownVoice"
   > = {
     getSettings: settings,
 
@@ -222,6 +228,17 @@ export function createLiveSettings({
         clip.catch(() => clips.delete(key));
       }
       return clip.catch(() => null);
+    },
+
+    ownVoice: {
+      async available() {
+        try {
+          return (await (await nlp()).health()).data?.["speech"] === true;
+        } catch {
+          return false;
+        }
+      },
+      say: async (text, rate) => (await nlp()).speech(text, rate),
     },
 
     async ocrAvailable(): Promise<boolean> {

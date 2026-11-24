@@ -18,6 +18,7 @@ import { currentDevice } from "../../platform/index.js";
 import { useServices } from "../../services/context.js";
 import { errorText } from "../../services/errors.js";
 import { readLocal } from "../../storage/local.js";
+import { ownVoiceInUse } from "../../platform/ownVoice.js";
 
 /** The same choice as the dictionary's: "1" allows mobile data for the language data. */
 const MOBILE_DATA_KEY = "vuurtoren-packs-mobile-data";
@@ -62,7 +63,9 @@ export function VoiceTest({ rate }: { rate: number }) {
           {result === "clip"
             ? "You heard a recording."
             : result === "voice"
-              ? "You heard your device's own Dutch voice: words without a recording sound like this."
+              ? ownVoiceInUse()
+                ? "You heard Vuurtoren's own Dutch voice: words without a recording sound like this."
+                : "You heard your device's own Dutch voice: words without a recording sound like this."
               : "No sound: there is no recording here and your device has no Dutch voice. Add one in your device's speech settings (on Android: Settings → System → Languages → Text-to-speech)."}
         </p>
       ) : null}

@@ -106,7 +106,7 @@ def main() -> None:
         shutil.rmtree(venv, ignore_errors=True)
     env = {**os.environ, "UV_PROJECT_ENVIRONMENT": str(venv), "UV_LINK_MODE": "copy"}
     run(
-        ["uv", "sync", "--locked", "--no-dev", "--no-editable", "--extra", "ocr"]
+        ["uv", "sync", "--locked", "--no-dev", "--no-editable", "--extra", "ocr", "--extra", "speech"]
         # Our own package keeps its version between builds, so uv would reuse a cached wheel of
         # older code: always build it from the source tree.
         + ["--reinstall-package", "vuurtoren-nlp"]

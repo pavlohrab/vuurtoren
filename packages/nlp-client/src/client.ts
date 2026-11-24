@@ -448,6 +448,8 @@ export class NlpClient {
     analyzerVersion?: string;
     /** True when the server can read photos and scanned pages. */
     ocr?: boolean;
+    /** What data is installed; `speech` is the Dutch voice behind `speech()`. */
+    data?: Record<string, boolean>;
   }> {
     return this.request("/health");
   }
@@ -514,6 +516,24 @@ export class NlpClient {
     }
     if (res.status === 404) return null;
     if (!res.ok) throw new NlpError(`NLP ${path}: HTTP ${res.status}`, res.status);
+    return res.blob();
+  }
+
+  /**
+   * `text` said by the server's Dutch voice (Piper), as WAV; `rate` 0.5-2. For a computer without a
+   * Dutch system voice. Rejects with NlpError when the server has no voice (503).
+   */
+  async speech(text: string, rate = 1): Promise<Blob> {
+    const path = `/speech?text=${encodeURIComponent(text)}&rate=${rate}`;
+    let res: Response;
+    try {
+      res = await this.fetchImpl(`${this.url}${path}`, {
+        signal: AbortSignal.timeout(this.timeoutMs),
+      });
+    } catch (e) {
+      throw new NlpError(`NLP service unreachable at ${this.url} (${String(e)})`, null);
+    }
+    if (!res.ok) throw new NlpError(`NLP /speech: HTTP ${res.status}`, res.status);
     return res.blob();
   }
 

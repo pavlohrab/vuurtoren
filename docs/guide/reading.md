@@ -48,8 +48,9 @@ Grammar like inversion or a separable verb is marked in the text and explained i
 every mark links to its topic in **Grammar** (63 topics, A1 to C1).
 
 The common words, their example sentences and the stories are recorded in a female and a male voice
-(Settings → Reading → **Voice**). Other words use your device's own Dutch voice. On a phone the
-recordings are a download in the same place (about 230 MB); until then the phone's voice speaks.
-**Test the voice** plays a word and says which voice you heard. A crossed-out
-speaker means your device has no Dutch voice, which happens mostly on Linux; add one in your
-system's speech settings.
+(Settings → Reading → **Voice**). Other words use your device's own Dutch voice. A computer
+without one (most Linux desktops) uses Vuurtoren's own Dutch voice instead, downloaded with the
+other language data on the first start. On a phone the recordings are a download in the same
+place (about 230 MB); until then the phone's voice speaks. **Test the voice** plays a word and
+says which voice you heard. A crossed-out speaker on a phone means it has no Dutch voice; add one
+in its speech settings.
