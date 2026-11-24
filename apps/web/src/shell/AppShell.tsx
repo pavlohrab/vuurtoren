@@ -160,12 +160,6 @@ export function AppShell() {
     enabled: paletteOpen && wordQuery.length >= 2,
     staleTime: 30_000,
   });
-  // Due count for the sidebar badge; failures just hide the badge.
-  const practice = useQuery({
-    queryKey: ["practice", "overview"],
-    queryFn: () => services.practiceOverview(),
-    staleTime: 60_000,
-  });
   // Native mode: cards due in Review (the badge), and tuning by itself when it is time.
   const review = useQuery({
     queryKey: ["review", "overview"],
@@ -173,6 +167,14 @@ export function AppShell() {
     staleTime: 60_000,
   });
   const native = review.data?.native === true;
+  // With Anki the badge counts practice instead; failures just hide the badge. Not asked in
+  // native mode, where the badge is Review's: it read every card at each start and word action.
+  const practice = useQuery({
+    queryKey: ["practice", "overview"],
+    queryFn: () => services.practiceOverview(),
+    staleTime: 60_000,
+    enabled: review.isSuccess && !native,
+  });
   useAutoTune(services, qc, native && !demo);
   // Talk needs an AI provider: without one it stays out of the navigation.
   const ai = useQuery({ queryKey: ["ai-status"], queryFn: () => services.aiStatus() });

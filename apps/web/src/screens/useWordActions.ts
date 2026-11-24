@@ -42,7 +42,11 @@ export function useWordActions(
       qc.invalidateQueries({ queryKey: ["inspect"] }),
       qc.invalidateQueries({ queryKey: ["inspect-word"] }),
     ]);
-    for (const k of WORD_VIEWS) void qc.invalidateQueries({ queryKey: [k] });
+    // The reader's own `refresh` has just refetched its page: not a second time (A9).
+    for (const k of WORD_VIEWS) {
+      if (refresh && k === "reading") continue;
+      void qc.invalidateQueries({ queryKey: [k] });
+    }
   };
 
   // The mutations take the entry they act on as a variable, never "whatever is loaded now".
