@@ -3,6 +3,10 @@
  * app is on screen and the drawing is done, the logo drifts into the sidebar's logo (wide
  * screens), or shrinks and fades where there is none (a phone, the welcome steps), and the
  * screen goes. With reduced motion it just fades.
+ *
+ * Only the first start plays the whole drawing. Every later start leaves as soon as the app is
+ * ready (about 0.6 s), with a short fade: the drawing used to hold a ready app for 3.5–5.5 s
+ * on every launch (A9).
  */
 
 /** The drawing ends at about this time after the page starts (index.html's delays: the last
@@ -10,6 +14,25 @@
 const DRAWN_MS = 3500;
 
 let done = false;
+
+/** Remembered once the drawing has been seen in full. */
+const SEEN_KEY = "vuurtoren-boot-seen";
+
+function seenBefore(): boolean {
+  try {
+    return localStorage.getItem(SEEN_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function markSeen(): void {
+  try {
+    localStorage.setItem(SEEN_KEY, "1");
+  } catch {
+    // No storage: the drawing plays again next time, nothing worse.
+  }
+}
 
 /**
  * A moment of silence, played muted while the logo draws: it starts the system's media player
@@ -40,8 +63,29 @@ export function finishBoot(): void {
     return;
   }
   const still = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+  const first = !seenBefore();
+  markSeen();
+  if (!first) {
+    quickLeave(boot, still);
+    return;
+  }
   const wait = still ? 0 : Math.max(0, DRAWN_MS - performance.now());
   window.setTimeout(() => leave(boot, still), wait);
+}
+
+/** A later start: the app is ready, the start screen fades in a moment. */
+function quickLeave(boot: HTMLElement, still: boolean): void {
+  boot.style.pointerEvents = "none";
+  if (still || typeof boot.animate !== "function") {
+    boot.remove();
+    return;
+  }
+  const fade = boot.animate([{ opacity: 1 }, { opacity: 0 }], {
+    duration: 250,
+    easing: "ease",
+    fill: "forwards",
+  });
+  void fade.finished.then(() => boot.remove());
 }
 
 function leave(boot: HTMLElement, still: boolean): void {

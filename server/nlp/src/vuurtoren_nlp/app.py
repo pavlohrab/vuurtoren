@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import os
 import secrets
+import threading
+import time
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from functools import lru_cache
@@ -77,12 +79,37 @@ def check_total(texts: list[str], limit: int = MAX_TOTAL_CHARS) -> None:
         raise ServiceError(413, f"Request too large (limit {limit} characters in total).")
 
 
+WARMUP_TEXT = "Ik lees elke avond een boek."
+
+
+def warm_up() -> None:
+    """Load the analysis and translation models before the first request needs them.
+
+    They load on first use, which made the first analysis after a start take 1.6-2 s and the
+    first word tap about 1.2 s (A9). This runs once, in the background, after any pack install
+    has finished; a missing model is simply skipped (it loads, or fails, on first use as before).
+    """
+    while packs.busy():
+        time.sleep(0.5)
+    for step in (
+        lambda: analyze_texts("nl", [WARMUP_TEXT]),
+        lambda: translate_texts("nl", "en", [WARMUP_TEXT]),
+    ):
+        try:
+            step()
+        except Exception:  # noqa: BLE001 - a warm-up must never take the server down
+            continue
+
+
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     # Data packs (vuurtoren_nlp.packs): install missing/outdated ones in the background, so the
     # service answers /health at once and features light up as their data arrives.
     if packs.mode() != "off":
         packs.ensure_in_background()
+    # Then the models, also in the background (not in tests, and not when switched off).
+    if os.environ.get("VUURTOREN_WARMUP", "1") != "0" and "PYTEST_CURRENT_TEST" not in os.environ:
+        threading.Thread(target=warm_up, name="vuurtoren-warmup", daemon=True).start()
     yield
 
 
