@@ -59,6 +59,7 @@ class MainActivity : TauriActivity() {
     webView.addJavascriptInterface(InsetsBridge(), "VuurtorenInsets")
     webView.addJavascriptInterface(ShareBridge(), "VuurtorenShare")
     webView.addJavascriptInterface(TtsBridge(), "VuurtorenTts")
+    webView.addJavascriptInterface(LinksBridge(), "VuurtorenLinks")
     this.webView = webView
     startTts()
     ViewCompat.setOnApplyWindowInsetsListener(webView) { view, windowInsets ->
@@ -137,6 +138,24 @@ class MainActivity : TauriActivity() {
 
     @JavascriptInterface fun stop() {
       tts?.stop()
+    }
+  }
+
+  /**
+   * Links that open a new tab (Support, dictionary sites, story credits) in the phone's browser.
+   * The WebView ignores target="_blank" by itself, so these links did nothing.
+   */
+  private inner class LinksBridge {
+    @JavascriptInterface
+    fun open(url: String): Boolean {
+      val uri = android.net.Uri.parse(url)
+      if (uri.scheme !in setOf("http", "https", "mailto")) return false
+      return try {
+        startActivity(Intent(Intent.ACTION_VIEW, uri).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        true
+      } catch (e: android.content.ActivityNotFoundException) {
+        false
+      }
     }
   }
 
