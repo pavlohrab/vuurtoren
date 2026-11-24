@@ -45,6 +45,17 @@ describe("native scheduler", () => {
     expect(graduated.scheduledDays).toBeGreaterThanOrEqual(1);
   });
 
+  it("Hard waits like Anki: halfway on the first step, the step itself on a later one", () => {
+    const first = previewCard(undefined, T0, ctx);
+    expect(first[2].due - T0).toBe(5.5 * 60_000);
+    const second = answerCard(undefined, 3, T0, ctx);
+    const t = second.due;
+    const p = previewCard(second, t, ctx);
+    expect(p[2].due - t).toBe(10 * 60_000);
+    expect(p[2].state).toBe(1);
+    expect(p[1].due - t).toBe(60_000);
+  });
+
   it("previews all four buttons, in increasing order", () => {
     const s = answerCard(answerCard(undefined, 3, T0, ctx), 3, T0 + 600_000, ctx);
     const p = previewCard(s, T0 + 5 * DAY, ctx);

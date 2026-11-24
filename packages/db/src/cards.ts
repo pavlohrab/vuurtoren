@@ -19,6 +19,7 @@ import {
   mergeKnowledge,
   paramsDecay,
   scheduleMemory,
+  studyDayStart,
 } from "@app/core";
 import { insertMany } from "./driver-core.js";
 import { compareHlc } from "./ids.js";
@@ -437,8 +438,12 @@ function toQueueRow(r: Row): QueueRow {
 }
 
 /**
- * Which cards are in today's queue, in order (the ids only): due (re)learning and review cards,
- * then each deck's new cards within its daily limit, with related cards apart. Both the queue
+ * Which cards are in today's queue, in order (the ids only): (re)learning cards whose step is due,
+ * then review cards due today, then each deck's new cards within its daily limit, with related
+ * cards apart. As in Anki, a review card is due for the whole day it falls on (the study day
+ * starts at 4:00), not from the minute it was answered on an earlier day, and a learning card
+ * comes before the reviews as soon as its step is due, so a word answered Again comes back after
+ * its minute instead of after all of today's reviews. Both the queue
  * and its counts (the Words badge) come from here, so they always agree.
  */
 async function queuePlan(
@@ -452,9 +457,10 @@ async function queuePlan(
   const dueRows = (
     await driver.exec(
       `SELECT ${QUEUE_COLUMNS}
-        WHERE c.lang = ? AND c.suspended = 0 AND c.schedule IS NOT NULL AND c.due <= ?
-        ORDER BY c.due, c.id`,
-      [lang, now],
+        WHERE c.lang = ? AND c.suspended = 0 AND c.schedule IS NOT NULL
+          AND (c.due <= ? OR (json_extract(c.schedule, '$.state') = 2 AND c.due < ?))
+        ORDER BY json_extract(c.schedule, '$.state') = 2, c.due, c.id`,
+      [lang, now, dayStart + DAY_MS],
     )
   ).map(toQueueRow);
   // New cards introduced today per deck (answered for the first time since dayStart).
@@ -574,10 +580,11 @@ export function nativeQueries(driver: SqlDriver) {
         `SELECT deck,
                 count(*) AS total,
                 sum(schedule IS NULL) AS fresh,
-                sum(schedule IS NOT NULL AND suspended = 0 AND due <= ?) AS due,
+                sum(schedule IS NOT NULL AND suspended = 0 AND (due <= ?
+                    OR (json_extract(schedule, '$.state') = 2 AND due < ?))) AS due,
                 sum(suspended) AS suspended
            FROM native_cards WHERE lang = ? GROUP BY deck`,
-        [now, lang],
+        [now, studyDayStart(now) + DAY_MS, lang],
       );
       const byName = new Map(rows.map((r) => [String(r["deck"]), r]));
       const names = [...new Set([...options.keys(), ...byName.keys()])].sort();

@@ -6,6 +6,12 @@
 import {
   type Card,
   type Grade,
+  type LearningStepsResolver,
+  Rating,
+  State,
+  StrategyMode,
+  calculateLearningSteps,
+  ConvertStepUnitToMinutes,
   createEmptyCard,
   default_w,
   fsrs,
@@ -27,8 +33,28 @@ export function paramsDecay(params: readonly number[]): number {
 
 const minutes = (m: number): `${number}m` => `${Math.max(1, Math.round(m))}m`;
 
+/**
+ * The learning steps as Anki does them. ts-fsrs gives Hard the first step's value on every step
+ * (halfway between the first two steps); Anki does that only on the first step and repeats the
+ * current step on a later one (`rslib/src/scheduler/states/steps.rs`, `hard_delay_secs`). With
+ * the default 1m and 10m, Hard on the 10-minute step waits 10 minutes, not 5.5.
+ */
+export const ankiLearningSteps: LearningStepsResolver = (config, state, step) => {
+  const result = calculateLearningSteps(config, state, step);
+  const steps = state === State.Relearning ? config.relearningSteps : config.learningSteps;
+  const current = steps[step];
+  const hard = result[Rating.Hard];
+  if (state !== State.Review && step > 0 && current !== undefined && hard) {
+    return {
+      ...result,
+      [Rating.Hard]: { ...hard, scheduledMinutes: ConvertStepUnitToMinutes(current) },
+    };
+  }
+  return result;
+};
+
 function schedulerFor(options: DeckOptions, params: readonly number[], fuzz: boolean) {
-  return fsrs(
+  const f = fsrs(
     generatorParameters({
       w: params.length === 21 ? [...params] : [...DEFAULT_FSRS_PARAMS],
       request_retention: Math.min(0.99, Math.max(0.7, options.desiredRetention)),
@@ -39,6 +65,7 @@ function schedulerFor(options: DeckOptions, params: readonly number[], fuzz: boo
       relearning_steps: options.relearningSteps.map(minutes),
     }),
   );
+  return f.useStrategy(StrategyMode.LEARNING_STEPS, ankiLearningSteps);
 }
 
 function toCard(s: CardSchedule | undefined, now: number): Card {

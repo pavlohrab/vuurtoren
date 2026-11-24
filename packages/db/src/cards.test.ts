@@ -4,6 +4,7 @@ import {
   type NativeNotetype,
   answerCard,
   defaultProfile,
+  studyDayStart,
 } from "@app/core";
 import { describe, expect, it } from "vitest";
 import { createNodeDriver } from "./node.js";
@@ -108,6 +109,39 @@ describe("native card store", () => {
     await repo.append({ type: "CardReviewUndone", lang: "nl", cardId: 102, reviewId: stored.id });
     expect((await repo.nativeCard("nl", 102))?.card.schedule).toBeUndefined();
     expect((await repo.nativeReviews("nl")).length).toBe(2);
+  });
+
+  it("a review is due all of its day; a learning card whose step is due comes before reviews", async () => {
+    const { repo } = await newRepo();
+    // Day start 4:00 local; the mature card falls due at 20:00 today.
+    const dayStart = studyDayStart(T0);
+    const evening = dayStart + 16 * 3600_000;
+    const morning = dayStart + 5 * 3600_000;
+    await repo.append({
+      ...imported,
+      cards: imported.cards.map((c) =>
+        c.id === 101 ? { ...c, schedule: { ...mature, due: evening } } : c,
+      ),
+    });
+    const q = await repo.nativeQueue("nl", morning, dayStart, 50);
+    expect(q.cards.map((c) => c.card.id)).toEqual([101, 102]);
+    expect(q.due).toBe(1);
+    // Not yet on the day before.
+    expect((await repo.nativeQueue("nl", morning - DAY, dayStart - DAY, 50)).due).toBe(0);
+    // A new card answered Again is due a minute later: it comes before the review.
+    await repo.append({
+      type: "CardReviewed",
+      lang: "nl",
+      cardId: 102,
+      rating: 1,
+      at: morning,
+      durationMs: 1000,
+      schedule: answerCard(undefined, 1, morning, ctx),
+    });
+    const later = await repo.nativeQueue("nl", morning + 61_000, dayStart, 50);
+    expect(later.cards.map((c) => c.card.id)).toEqual([102, 101]);
+    const [deck] = await repo.nativeDecks("nl", morning);
+    expect(deck?.due).toBe(1);
   });
 
   it("continues past today's cards: more new cards, or learned cards ahead of time", async () => {
@@ -354,9 +388,9 @@ describe("native card store", () => {
       schedule: relearn,
       previous: due(3),
     });
-    // 202 and 203 wait for tomorrow; 201 relearns (due again in its step).
+    // 202 and 203 wait for tomorrow; 201 relearns, and its step is due, so it comes first.
     q = await repo.nativeQueue("nl", T0 + 3_600_000, start, 10);
-    expect(q.cards.map((c) => c.card.id)).toEqual([204, 201]);
+    expect(q.cards.map((c) => c.card.id)).toEqual([201, 204]);
     q = await repo.nativeQueue("nl", T0 + DAY, start + DAY, 10);
     expect(q.cards.map((c) => c.card.id)).toContain(202);
     // The badge's count-only query follows the same rules (limits, related cards apart).
