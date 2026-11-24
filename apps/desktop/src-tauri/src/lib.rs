@@ -271,6 +271,28 @@ async fn dictionary_gloss(
     .map_err(|e| e.to_string())?
 }
 
+/// Everything the word card shows about one word, from the dictionary pack on this device, in
+/// the shape of the language server's `/entry`; `None` without the pack (the page then asks the
+/// server).
+#[tauri::command]
+async fn dictionary_entry(
+    word: String,
+    pos: Option<String>,
+    app: AppHandle,
+) -> Result<Option<serde_json::Value>, String> {
+    let dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    tauri::async_runtime::spawn_blocking(move || {
+        let Some(conn) = dictionary::open(&dictionary::path_in(&dir)) else {
+            return Ok(None);
+        };
+        dictionary::entry(&conn, &word, pos.as_deref())
+            .map(Some)
+            .map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
 /// The connected Vuurtoren server's language server and the device's sync token: the first
 /// place to fetch the dictionary from.
 #[derive(Deserialize)]
@@ -865,6 +887,7 @@ pub fn run() {
             db_import,
             dictionary_status,
             dictionary_gloss,
+            dictionary_entry,
             dictionary_install,
             audio_status,
             audio_clip,

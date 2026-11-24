@@ -20,6 +20,7 @@
     "allow-db-import",
     "allow-dictionary-status",
     "allow-dictionary-gloss",
+    "allow-dictionary-entry",
     "allow-dictionary-install",
     "allow-audio-status",
     "allow-audio-clip",

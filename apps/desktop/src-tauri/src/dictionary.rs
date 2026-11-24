@@ -291,6 +291,183 @@ pub fn lookup(
     Ok(out)
 }
 
+/// Words before "of" that make a gloss only a pointer to another word ("inflection of doen",
+/// "plural of huis"): the language server's `is_form_of_gloss` (compound.py).
+const FORM_OF: [&str; 23] = [
+    "inflection",
+    "plural",
+    "diminutive",
+    "participle",
+    "form",
+    "spelling",
+    "comparative",
+    "superlative",
+    "singular",
+    "genitive",
+    "dative",
+    "tense",
+    "indicative",
+    "subjunctive",
+    "imperative",
+    "infinitive",
+    "variant",
+    "abbreviation",
+    "contraction",
+    "misspelling",
+    "clipping",
+    "alternative",
+    "forms",
+];
+
+fn is_form_of(gloss: &str) -> bool {
+    let words: Vec<String> = gloss
+        .split_whitespace()
+        .take(7)
+        .map(|w| w.to_lowercase())
+        .collect();
+    words
+        .iter()
+        .enumerate()
+        .any(|(i, w)| w == "of" && i > 0 && FORM_OF.contains(&words[i - 1].as_str()))
+}
+
+fn has_table(conn: &Connection, name: &str) -> bool {
+    conn.query_row(
+        "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?1",
+        [name],
+        |_| Ok(()),
+    )
+    .is_ok()
+}
+
+/// One entry row of `entry`.
+struct Row {
+    id: i64,
+    word: String,
+    pos: String,
+    article: Option<String>,
+    glosses: Vec<String>,
+    ipa: Option<String>,
+}
+
+fn entry_rows(conn: &Connection, sql: &str, params: &[&str]) -> rusqlite::Result<Vec<Row>> {
+    let mut stmt = conn.prepare_cached(sql)?;
+    let found = stmt.query_map(rusqlite::params_from_iter(params.iter()), |r| {
+        let glosses: String = r.get(4)?;
+        Ok(Row {
+            id: r.get(0)?,
+            word: r.get(1)?,
+            pos: r.get(2)?,
+            article: r.get(3)?,
+            glosses: serde_json::from_str(&glosses).unwrap_or_default(),
+            ipa: r.get(5)?,
+        })
+    })?;
+    found.collect()
+}
+
+/// Everything the word card shows about `word`, in the shape of the language server's
+/// `POST /entry` (`Dictionary.entry` in dictionary.py): `{word, entries: [{pos, article,
+/// glosses, ipa?, forms?, extras?, family?, base?}]}`. A form finds its lemma ("doet" -> doen),
+/// also when the dictionary has a "form of" entry for it. Packs from before the word card
+/// (no `extras` / `family` tables) answer without those fields.
+pub fn entry(
+    conn: &Connection,
+    word: &str,
+    pos: Option<&str>,
+) -> rusqlite::Result<serde_json::Value> {
+    use serde_json::{json, Map, Value};
+    const COLS: &str = "SELECT id, word, pos, article, glosses, ipa FROM entries";
+    let key = word.trim().to_lowercase();
+    let mut rows = entry_rows(
+        conn,
+        &format!("{COLS} WHERE lower(word) = ?1 ORDER BY id"),
+        &[&key],
+    )?;
+    if !rows
+        .iter()
+        .any(|r| r.glosses.iter().any(|g| !is_form_of(g)))
+    {
+        let lemma_rows = entry_rows(
+            conn,
+            &format!(
+                "{COLS} WHERE lower(word) IN (SELECT lower(lemma) FROM forms WHERE lower(form) = ?1) \
+                 AND lower(word) != ?1 ORDER BY id"
+            ),
+            &[&key],
+        )?;
+        if !lemma_rows.is_empty() {
+            rows = lemma_rows;
+        }
+    }
+    if let Some(p) = pos {
+        if rows.iter().any(|r| r.pos == p) {
+            rows.retain(|r| r.pos == p);
+        }
+    }
+    let extras = has_table(conn, "extras");
+    let family = has_table(conn, "family");
+    let mut out = Vec::new();
+    for r in &rows {
+        let mut e = Map::new();
+        e.insert("pos".into(), json!(r.pos));
+        e.insert("article".into(), json!(r.article));
+        e.insert("glosses".into(), json!(r.glosses));
+        if let Some(ipa) = &r.ipa {
+            e.insert("ipa".into(), json!(ipa));
+        }
+        let lower = r.word.to_lowercase();
+        let forms: Option<String> = conn
+            .query_row(
+                "SELECT data FROM wordforms WHERE lower(lemma) = ?1 AND pos = ?2 LIMIT 1",
+                [&lower, &r.pos],
+                |row| row.get(0),
+            )
+            .ok();
+        let forms: Option<Value> = forms.and_then(|f| serde_json::from_str(&f).ok());
+        if extras {
+            let x: Option<String> = conn
+                .query_row(
+                    "SELECT data FROM extras WHERE entry_id = ?1",
+                    [r.id],
+                    |row| row.get(0),
+                )
+                .ok();
+            if let Some(v) = x.and_then(|x| serde_json::from_str::<Value>(&x).ok()) {
+                e.insert("extras".into(), v);
+            }
+        }
+        if family && r.pos == "verb" {
+            let mut stmt = conn.prepare_cached(
+                "SELECT DISTINCT word FROM family WHERE lower(stem) = ?1 ORDER BY word",
+            )?;
+            let fam: Vec<String> = stmt
+                .query_map([&lower], |row| row.get::<_, String>(0))?
+                .filter_map(Result::ok)
+                .filter(|w| w.to_lowercase() != lower)
+                .collect();
+            if !fam.is_empty() {
+                e.insert("family".into(), json!(fam));
+            }
+            if let Some(stem) = forms
+                .as_ref()
+                .and_then(|f| f.get("separable"))
+                .and_then(|s| s.get("stem"))
+            {
+                e.insert("base".into(), stem.clone());
+            }
+        }
+        if let Some(f) = forms {
+            e.insert("forms".into(), f);
+        }
+        out.push(Value::Object(e));
+    }
+    let head = rows
+        .first()
+        .map_or_else(|| word.trim().to_string(), |r| r.word.clone());
+    Ok(json!({ "word": head, "entries": out }))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -496,5 +673,45 @@ mod tests {
             path_in(Path::new("/data")),
             Path::new("/data").join("packs").join(FILE)
         );
+    }
+
+    #[test]
+    fn entry_finds_the_lemma_its_forms_family_and_base() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("v2.sqlite");
+        let conn = Connection::open(&path).unwrap();
+        conn.execute_batch(
+            "CREATE TABLE entries (id INTEGER PRIMARY KEY, word TEXT NOT NULL, pos TEXT NOT NULL,
+               article TEXT, gender TEXT, glosses TEXT NOT NULL, forms TEXT NOT NULL, ipa TEXT);
+             CREATE TABLE forms (form TEXT NOT NULL, lemma TEXT NOT NULL, pos TEXT NOT NULL);
+             CREATE TABLE wordforms (lemma TEXT NOT NULL, pos TEXT NOT NULL, data TEXT NOT NULL);
+             CREATE TABLE extras (entry_id INTEGER PRIMARY KEY, data TEXT NOT NULL);
+             CREATE TABLE family (stem TEXT NOT NULL, word TEXT NOT NULL);
+             INSERT INTO entries(id, word, pos, glosses, forms) VALUES
+               (1, 'doen', 'verb', '[\"to do\"]', '[\"doet\"]'),
+               (2, 'opendoen', 'verb', '[\"to open\"]', '[\"doet open\"]'),
+               (3, 'doet', 'verb', '[\"inflection of doen: third-person singular\"]', '[]');
+             INSERT INTO forms VALUES ('doet', 'doen', 'verb');
+             INSERT INTO wordforms VALUES ('opendoen', 'verb',
+               '{\"participle\": \"opengedaan\", \"separable\": {\"particle\": \"open\", \"stem\": \"doen\"}}');
+             INSERT INTO extras VALUES (2, '{\"senses\": [{\"gloss\": \"to open\", \"synonyms\": [\"openen\"]}]}');
+             INSERT INTO family VALUES ('doen', 'opendoen'), ('doen', 'dichtdoen');",
+        )
+        .unwrap();
+        let doet = entry(&conn, "doet", None).unwrap();
+        assert_eq!(doet["word"], "doen");
+        assert_eq!(
+            doet["entries"][0]["family"],
+            serde_json::json!(["dichtdoen", "opendoen"])
+        );
+        let open = entry(&conn, "opendoen", Some("verb")).unwrap();
+        let e = &open["entries"][0];
+        assert_eq!(e["base"], "doen");
+        assert_eq!(e["forms"]["participle"], "opengedaan");
+        assert_eq!(e["extras"]["senses"][0]["synonyms"][0], "openen");
+        let none = entry(&conn, "wegmoeten", None).unwrap();
+        assert_eq!(none["entries"], serde_json::json!([]));
+        assert!(is_form_of("inflection of doen: plural"));
+        assert!(!is_form_of("to open"));
     }
 }

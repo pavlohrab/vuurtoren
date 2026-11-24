@@ -74,6 +74,7 @@ export function createLiveServices(
     lang,
     nlp,
     localGloss: currentDevice().bridge?.dictionary?.gloss,
+    localEntry: currentDevice().bridge?.dictionary?.entry,
   });
   // Resolved at call time: the texts are created next.
   const { autoCover, ...library } = createLiveLibrary({

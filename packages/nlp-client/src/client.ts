@@ -164,6 +164,44 @@ export interface GlossEntry {
 /** Gloss lookup result: every requested word maps to its entries (empty if unknown). */
 export type GlossResult = Record<string, GlossEntry[]>;
 
+/** One sense of a word-card entry (dictionary v2). */
+export interface EntrySense {
+  gloss: string;
+  examples?: { nl: string; en: string | null }[];
+  synonyms?: string[];
+  antonyms?: string[];
+}
+
+/** One part of speech of a word, as the word card shows it (`POST /entry`, dictionary v2). */
+export interface WordEntry {
+  pos: string;
+  article: string | null;
+  glosses: string[];
+  ipa?: string;
+  /** Verbs: present per person, past, participle, hebben/zijn, the separable split. */
+  forms?: Record<string, unknown>;
+  extras?: {
+    senses?: EntrySense[];
+    synonyms?: string[];
+    antonyms?: string[];
+    derived?: string[];
+    related?: string[];
+    hyphenation?: string;
+    /** Wikimedia Commons file name of a recording (played on demand, with its credit). */
+    audio?: string;
+  };
+  /** Verbs: the separable verbs made from this one (doen: opendoen, dichtdoen …). */
+  family?: string[];
+  /** A separable verb's base verb (opendoen: doen). */
+  base?: string;
+}
+
+/** Everything the word card shows about a word; a form gives its lemma ("doet": doen). */
+export interface EntryResult {
+  word: string;
+  entries: WordEntry[];
+}
+
 /** Languages `/translate` supports (offline OPUS-MT): Dutch to English only. */
 export interface TranslateOptions {
   source?: "nl";
@@ -606,6 +644,11 @@ export class NlpClient {
       );
     }
     return out;
+  }
+
+  /** Everything the word card shows about one word (dictionary v2; older packs answer with less). */
+  async entry(lang: NlpLang, word: string, pos?: string): Promise<EntryResult> {
+    return this.post<EntryResult>("/entry", { lang, word, ...(pos ? { pos } : {}) });
   }
 
   /**

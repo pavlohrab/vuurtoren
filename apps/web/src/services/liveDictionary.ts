@@ -9,7 +9,7 @@
  */
 import { PARTICLE_GLOSSES, formOfTarget, meaningSenses, shortGloss } from "@app/core";
 import type { VuurtorenRepository, WordInfo } from "@app/db";
-import type { NlpClient } from "@app/nlp-client";
+import type { EntryResult, NlpClient } from "@app/nlp-client";
 import { DEGRADED_MESSAGES, clearDegraded, reportDegraded } from "./degraded.js";
 import { nlpOutage } from "./liveSettings.js";
 import { withoutArticle } from "./contextGloss.js";
@@ -156,6 +156,8 @@ export interface LiveDictionaryDeps {
    * there. Asked before the language server, which then only adds what the pack lacks.
    */
   localGloss?: ((words: string[]) => Promise<Dictionary | null>) | undefined;
+  /** The same pack's full entry of one word for the word card (dictionary v2), or null. */
+  localEntry?: ((word: string, pos?: string) => Promise<EntryResult | null>) | undefined;
 }
 
 /** An inline meaning; `note` marks a guess ("from woord + -loos", "in this sentence"). */
@@ -166,7 +168,27 @@ export interface FoundGloss {
   guess?: "derivation" | "compound";
 }
 
-export function createLiveDictionary({ repo, lang, nlp, localGloss }: LiveDictionaryDeps) {
+export function createLiveDictionary({
+  repo,
+  lang,
+  nlp,
+  localGloss,
+  localEntry,
+}: LiveDictionaryDeps) {
+  /**
+   * Everything the word card shows about one word: from the pack on the device when it is
+   * there, else from the language server; null when neither can answer.
+   */
+  async function entry(word: string, pos?: string): Promise<EntryResult | null> {
+    const local = localEntry ? await localEntry(word, pos).catch(() => null) : null;
+    if (local?.entries.length) return local;
+    try {
+      return await (await nlp()).entry("nl", word, pos);
+    } catch {
+      return local;
+    }
+  }
+
   /**
    * Dictionary entries: from the pack on the device when it is there (words it does not know,
    * such as compounds, from the server when it can be reached), else from the server.
@@ -399,6 +421,7 @@ export function createLiveDictionary({ repo, lang, nlp, localGloss }: LiveDictio
   }
 
   return {
+    entry,
     seedSentences,
     lookupGlosses,
     translateSentences,

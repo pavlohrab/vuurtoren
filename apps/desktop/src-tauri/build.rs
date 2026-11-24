@@ -24,6 +24,7 @@ fn main() {
             "db_import",
             "dictionary_status",
             "dictionary_gloss",
+            "dictionary_entry",
             "dictionary_install",
             "audio_status",
             "audio_clip",

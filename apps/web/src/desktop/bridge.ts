@@ -4,6 +4,7 @@
  * nothing here changes behaviour. What a device offers is read through `../platform/`.
  */
 import type { NativeDb } from "@app/db/native";
+import type { EntryResult } from "@app/nlp-client";
 
 /** Who has the database file open (the lock file next to it, `db.rs`). */
 export interface DbLock {
@@ -145,6 +146,8 @@ interface DeviceDictionary {
   }>;
   /** Entries per word; null when the pack is not on the device. */
   gloss(words: string[]): Promise<Record<string, GlossEntry[]> | null>;
+  /** Everything the word card shows about one word; null when the pack is not on the device. */
+  entry?(word: string, pos?: string): Promise<EntryResult | null>;
   /**
    * Download it, checked against packs.json, and put it in place: from the connected server
    * (`from`: its language server and the device's sync token) when it has a copy, else from the

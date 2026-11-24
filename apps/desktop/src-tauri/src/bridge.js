@@ -218,6 +218,10 @@
               gloss: function (words) {
                 return invoke("dictionary_gloss", { words: words });
               },
+              // Everything the word card shows about one word (the server's /entry shape).
+              entry: function (word, pos) {
+                return invoke("dictionary_entry", { word: word, pos: pos || null });
+              },
               // from: { nlp: "<server>/nlp", token } (the connected server) or null.
               install: function (from) {
                 return invoke("dictionary_install", { from: from || null });
