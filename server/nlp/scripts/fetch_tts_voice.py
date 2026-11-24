@@ -1,4 +1,4 @@
-"""Fetch the Dutch Piper voice (nl_NL-alex-medium, trained on CC0 data) into a folder: the tts-nl pack.
+"""Fetch the Dutch Piper voice (nl_NL-alex-medium, trained on CC0 data): the tts-nl pack.
 
 Usage (from server/nlp)::
 
