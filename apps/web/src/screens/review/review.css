@@ -283,9 +283,10 @@
     height: 100%;
     padding-bottom: var(--s-4);
   }
-  /* The close button and the counter right under the status bar, not a row lower. */
+  /* The close button and the counter right under the status bar (the app's frame already
+     keeps the status bar's space; counting it again put them a row lower). */
   .review {
-    padding-top: calc(4px + var(--safe-top, 0px));
+    padding-top: 4px;
   }
   .review-card {
     flex: 0 1 auto;

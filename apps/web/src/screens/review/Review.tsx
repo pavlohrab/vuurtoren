@@ -283,7 +283,8 @@ export function Review() {
     return () => window.removeEventListener("keydown", onKey);
   }, [card, shown, setShown, answer, takeBack, wordSaying, play]);
 
-  const left = queue.data ? queue.data.cards.length : 0;
+  // The cards on screen (an answered card has left already): the counter steps once.
+  const left = queue.data ? cards.length : 0;
   // A swipe answers on the front too: no need to show the answer first.
   const swipe = useSwipe({
     enabled: !!card && !busy,
