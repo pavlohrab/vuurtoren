@@ -10,32 +10,13 @@ shows one page, **Your devices**, where you sign in and add or remove devices. T
 the translation model and the recordings come from `data.vuurtoren.app`, and the server downloads
 what it needs by itself, once.
 
-## The easy way: let a host run it
+## No computer that stays on?
 
-If you don't have a computer that stays on, you can pay a hosting company to run the server for
-you. You give it the Vuurtoren setup file, it starts the server, and you get an HTTPS address back.
-You don't need to know Docker for this, and updates and backups are a button.
-
-**Elestio** can do this today. It runs any Docker Compose file on a small server of your own, with
-HTTPS, updates and backups included. Choose a server with 4 GB of memory (2 GB is the bare
-minimum), because the language server keeps its dictionaries and the translation model in memory.
-That's about 17 dollars a month.
-
-1. Make an account on [elest.io](https://elest.io) and create a new service with the template
-   **Custom docker-compose**.
-2. Paste the contents of `deploy/compose.yml` from the repository, and in the environment settings
-   fill in the lines from `deploy/.env.example`: your user name, your password hash, and `8080` as
-   the port, and `0` for `VUURTOREN_TRUST_CF` (there's no Cloudflare in front of it). You make the
-   hash once on any computer with Docker, see step 2 under [Start it](#start-it).
-3. Deploy, and wait a few minutes: on the first start the server downloads its language data.
-4. Elestio gives you an HTTPS address. Go on with [Connect your devices](#connect-your-devices).
-
-**PikaPods** is even simpler, you just click an app and pay a few euros a month. But it only runs
-apps from its own list, and Vuurtoren isn't on it yet. If you'd like it there, you can vote for it
-on their feedback page.
-
-If you're fine with a bit more work, a small cloud server (Hetzner, for example, from about 4 euros
-a month) with Docker on it works the same as a NAS. Follow the steps below.
+Then rent a small cloud server. At Hetzner one with 2 cores and 4 GB of memory costs about 4 euros
+a month, and that's enough: the language server keeps its dictionaries and the translation model in
+memory, so don't go below 2 GB. When you create it, choose the **Docker CE** app, so Docker is
+already there, and log in with SSH. From there it works the same as on a NAS, so follow the steps
+below.
 
 ## What you need
 
