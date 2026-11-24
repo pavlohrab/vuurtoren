@@ -395,6 +395,25 @@
         }
       }
 
+      /* Phones: buttons that stack are one width (the hero's two, the two ways to support),
+         and "Why a lighthouse?" has the same heading size as every other section. */
+      @media (max-width: 560px) {
+        .hero .cta .btn,
+        .why .way .btn {
+          width: 100%;
+          justify-content: center;
+          text-align: center;
+        }
+        .why .support-ways .way {
+          justify-items: stretch;
+        }
+      }
+      @media (max-width: 900px) {
+        .namev .copy h2 {
+          font-size: clamp(32px, 4.2vw, 50px);
+        }
+      }
+
       /* the app's reader, drawn as the app draws it */
       .app {
         position: relative;
@@ -2688,20 +2707,6 @@
             </div>
             <div class="show">Show answer</div>
           </div>
-          <p class="sources">
-            <sup>1</sup
-            ><a id="src-1" href="https://doi.org/10.1037/0033-2909.132.3.354">Cepeda et al. 2006</a>
-            · <sup>2</sup
-            ><a id="src-2" href="https://doi.org/10.1145/3534678.3539081">Ye et al. 2022</a> ·
-            <sup>3</sup
-            ><a id="src-3" href="https://doi.org/10.1109/TKDE.2023.3251721">Su et al. 2023</a> ·
-            <sup>4</sup
-            ><a
-              id="src-4"
-              href="https://github.com/open-spaced-repetition/fsrs4anki/wiki/The-Algorithm"
-              >FSRS-6</a
-            >
-          </p>
         </div>
         <div class="copy">
           <span class="eyebrow">Words</span>
@@ -2720,6 +2725,20 @@
             </li>
             <li>A ready deck of about 5000 frequent Dutch words.</li>
           </ul>
+          <p class="sources">
+            <sup>1</sup
+            ><a id="src-1" href="https://doi.org/10.1037/0033-2909.132.3.354">Cepeda et al. 2006</a>
+            · <sup>2</sup
+            ><a id="src-2" href="https://doi.org/10.1145/3534678.3539081">Ye et al. 2022</a> ·
+            <sup>3</sup
+            ><a id="src-3" href="https://doi.org/10.1109/TKDE.2023.3251721">Su et al. 2023</a> ·
+            <sup>4</sup
+            ><a
+              id="src-4"
+              href="https://github.com/open-spaced-repetition/fsrs4anki/wiki/The-Algorithm"
+              >FSRS-6</a
+            >
+          </p>
         </div>
       </div>
     </section>
