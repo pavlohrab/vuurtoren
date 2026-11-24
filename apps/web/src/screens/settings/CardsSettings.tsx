@@ -249,6 +249,12 @@ function DeckTable({ decks }: { decks: DeckWithLoad[] }) {
   });
   const set = (d: NativeDeckSummary, patch: Partial<DeckOptions>) =>
     save.mutate({ deck: d.name, options: { ...DEFAULT_DECK_OPTIONS, ...d.options, ...patch } });
+  // Decks that have not started (no new words a day, nothing due: most starter levels) wait
+  // behind one line, so the list shows what is in use.
+  const [showWaiting, setShowWaiting] = useState(false);
+  const waiting = decks.filter((d) => d.options.newPerDay === 0 && !d.due);
+  const shown =
+    showWaiting || waiting.length < 2 ? decks : decks.filter((d) => !waiting.includes(d));
   return (
     <div className="cards-table-wrap">
       <table className="cards-table" aria-label="Decks">
@@ -261,16 +267,18 @@ function DeckTable({ decks }: { decks: DeckWithLoad[] }) {
           </tr>
         </thead>
         <tbody>
-          {decks.map((d) => (
+          {shown.map((d) => (
             <tr key={d.name}>
               <th scope="row" title={d.name}>
                 {d.name}
               </th>
-              <td>
-                {d.total}
-                {d.due ? <span className="k-hint"> · {d.due} due</span> : null}
+              <td data-label="Cards">
+                <span>
+                  {d.total}
+                  {d.due ? <span className="k-hint"> · {d.due} due</span> : null}
+                </span>
               </td>
-              <td>
+              <td data-label="Target recall">
                 <select
                   className="k-input"
                   aria-label={`Target recall for ${d.name}`}
@@ -288,7 +296,7 @@ function DeckTable({ decks }: { decks: DeckWithLoad[] }) {
                   })}
                 </select>
               </td>
-              <td>
+              <td data-label="New a day">
                 <input
                   className="k-input"
                   type="number"
@@ -306,6 +314,18 @@ function DeckTable({ decks }: { decks: DeckWithLoad[] }) {
           ))}
         </tbody>
       </table>
+      {waiting.length >= 2 ? (
+        <button
+          type="button"
+          className="link-button cards-waiting"
+          aria-expanded={showWaiting}
+          onClick={() => setShowWaiting((v) => !v)}
+        >
+          {showWaiting
+            ? "Hide the decks that have not started"
+            : `${plural(waiting.length, "more deck")} not started yet (no new words a day)`}
+        </button>
+      ) : null}
       <p className="k-hint" style={{ margin: 0 }}>
         Target recall: how likely you are to still know a card when it comes back. Higher means more
         reviews a day; each choice shows about how many.

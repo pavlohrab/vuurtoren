@@ -385,6 +385,44 @@
 .cards-metrics {
   max-width: 420px;
 }
+/* Phones: each deck is a small card (its name, then its cards and the two settings, each
+   with its label) instead of a table four columns wide. */
+@media (max-width: 699px) {
+  .cards-table:not(.cards-metrics) thead {
+    display: none;
+  }
+  .cards-table:not(.cards-metrics),
+  .cards-table:not(.cards-metrics) tbody,
+  .cards-table:not(.cards-metrics) tr {
+    display: block;
+  }
+  .cards-table:not(.cards-metrics) tr {
+    padding: var(--s-3) 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .cards-table:not(.cards-metrics) tbody th {
+    display: block;
+    max-width: none;
+    white-space: normal;
+    border: 0;
+    padding: 0 0 4px;
+  }
+  /* A label on the left, the value or setting on the right. */
+  .cards-table:not(.cards-metrics) td {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s-3);
+    border: 0;
+    padding: 4px 0;
+  }
+  .cards-table:not(.cards-metrics) td::before {
+    content: attr(data-label);
+    margin-right: auto;
+    color: var(--ink-muted);
+    font-size: 13px;
+  }
+}
 .cards-file {
   align-self: flex-start;
   cursor: pointer;
