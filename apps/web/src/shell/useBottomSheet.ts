@@ -94,7 +94,9 @@ export function useBottomSheet(
     const onClick = (e: MouseEvent) => {
       const el = panel.current;
       const target = e.target as Element | null;
-      if (!el || !target || !isSheet() || el.contains(target)) return;
+      // Where the tap was when it happened: a word tapped in the card re-renders it at once
+      // (doen → its card), so the target may already be gone from the sheet by now.
+      if (!el || !target || !isSheet() || e.composedPath().includes(el)) return;
       if (target.closest(KEEP_OPEN)) return;
       close();
     };

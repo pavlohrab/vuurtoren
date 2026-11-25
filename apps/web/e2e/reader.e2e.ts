@@ -138,3 +138,25 @@ test("Full entry widens the word panel; Esc makes it smaller, the card stays", a
   await expect(panel).toHaveCSS("width", "340px");
   await expect(panel.locator(".k-inspector-surface")).toHaveText("staan");
 });
+
+test("on a phone, a word tapped in the card opens its card in the same sheet", async ({ page }) => {
+  await page.setViewportSize({ width: 412, height: 915 });
+  await fakeNlp(page);
+  await fakeAnki(page);
+  await page.goto("/");
+  await finishOnboarding(page);
+  await page.goto("/");
+  await page.getByRole("button", { name: /^Legend .*De koe op de toren/ }).click();
+  await page
+    .locator(".k-reader .k-tok", { hasText: /^staat$/ })
+    .first()
+    .click();
+  const panel = page.locator(".inspector-panel");
+  await page.getByRole("button", { name: "Show all of the word panel" }).click();
+  await panel.getByRole("button", { name: "opstaan" }).click();
+  // The sheet stays open with the new word; it used to close (the tap counted as outside).
+  await expect(panel.locator(".k-inspector-surface")).toHaveText("opstaan");
+  await expect(panel).toHaveAttribute("data-sheet", /peek|full/);
+  await panel.getByRole("button", { name: "← staan" }).click();
+  await expect(panel.locator(".k-inspector-surface")).toHaveText("staan");
+});
