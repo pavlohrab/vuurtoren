@@ -240,9 +240,3 @@
   font-size: 18px;
   margin: 0 0 6px;
 }
-/* One shared line under "Where should new words start?" instead of one per level. */
-.ob-choices-note {
-  margin: 0 0 var(--s-1);
-  font-size: 13px;
-  color: var(--ink-muted);
-}

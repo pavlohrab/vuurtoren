@@ -1,8 +1,8 @@
 /**
  * First-run onboarding: language → "Do you use Anki?" → (on a phone) Connect to your server.
  * - No (the easy start, three steps): Vuurtoren holds the cards (native mode, saved at once with
- *   the default decks) → where new words start (starter levels) → ready: Read opens with a story
- *   at the learner's level.
+ *   the default decks) → the starter words, from the most common one (no question) → ready: Read
+ *   opens with a story at the learner's level.
  * - Yes, and move to Vuurtoren: connect Anki → confirm decks → where new words go → the decks are
  *   imported with their review history (native mode) → first text.
  * - Yes, and keep using Anki (connected mode): connect Anki → confirm decks → where new words
