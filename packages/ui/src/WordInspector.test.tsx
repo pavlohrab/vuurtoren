@@ -246,4 +246,19 @@ describe("difficultyBand", () => {
     expect(BAND_LABEL[difficultyBand(0.92)]).toBe("Challenging");
     expect(BAND_LABEL[difficultyBand(0.85)]).toBe("Very challenging");
   });
+
+  it("a new word opens on its Word tab", async () => {
+    const panel = <p>The sentence</p>;
+    const { rerender } = render(<WordInspector entry={entry} card={{}} sentencePanel={panel} />);
+    await userEvent.click(screen.getByRole("tab", { name: "Sentence" }));
+    expect(screen.getByRole("tab", { name: "Sentence" })).toHaveAttribute("aria-selected", "true");
+    rerender(
+      <WordInspector
+        entry={{ ...entry, tokenIndex: 4, key: "zijn", surface: "zijn", lemma: "zijn" }}
+        card={{}}
+        sentencePanel={panel}
+      />,
+    );
+    expect(screen.getByRole("tab", { name: "Word" })).toHaveAttribute("aria-selected", "true");
+  });
 });

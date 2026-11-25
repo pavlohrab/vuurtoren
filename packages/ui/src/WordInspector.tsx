@@ -1,4 +1,4 @@
-import { type ReactNode, useState } from "react";
+import { type ReactNode, type TouchEvent, useRef, useState } from "react";
 import { AddToAnki, type DeckOption, deckName } from "./AddToAnki.js";
 import { Button } from "./Button.js";
 import { Chip } from "./Chip.js";
@@ -125,6 +125,14 @@ export function WordInspector({
   sentencePanel,
 }: WordInspectorProps) {
   const [tab, setTab] = useState<"word" | "sentence">("word");
+  // A new word opens on its Word tab, not on the last word's Sentence tab.
+  const shownId = entry ? `${entry.textId}:${entry.tokenIndex}:${entry.key}` : "";
+  const [tabFor, setTabFor] = useState(shownId);
+  if (tabFor !== shownId) {
+    setTabFor(shownId);
+    setTab("word");
+  }
+  const swipe = useRef<{ x: number; y: number } | null>(null);
   if (!entry && error) {
     return (
       <div className="k-inspector" role="alert">
@@ -162,6 +170,33 @@ export function WordInspector({
     addDeck,
   });
 
+  // On a touch screen a sideways swipe moves between the tabs, except where something scrolls
+  // sideways itself (the sentence's rows).
+  const swipeProps = sentencePanel
+    ? {
+        onTouchStart: (e: TouchEvent) => {
+          const t = e.touches[0];
+          let el = e.target as HTMLElement | null;
+          for (; el && el !== e.currentTarget; el = el.parentElement)
+            if (el.scrollWidth > el.clientWidth + 1) {
+              const o = getComputedStyle(el).overflowX;
+              if (o === "auto" || o === "scroll") break;
+            }
+          swipe.current =
+            t && (!el || el === e.currentTarget) ? { x: t.clientX, y: t.clientY } : null;
+        },
+        onTouchEnd: (e: TouchEvent) => {
+          const t = e.changedTouches[0];
+          const from = swipe.current;
+          swipe.current = null;
+          if (!t || !from) return;
+          const dx = t.clientX - from.x;
+          if (Math.abs(dx) < 60 || Math.abs(t.clientY - from.y) > Math.abs(dx) / 2) return;
+          setTab(dx < 0 ? "sentence" : "word");
+        },
+      }
+    : {};
+
   const tabs = sentencePanel ? (
     <div className="k-inspector-tabs" role="tablist" aria-label="Details">
       <button
@@ -190,8 +225,9 @@ export function WordInspector({
   // The reader's card on its Sentence tab: the tabs and the sentence, nothing of the word.
   if (card && sentencePanel && tab === "sentence") {
     return (
-      <div className="k-inspector" data-layout="card" aria-label="Sentence details">
-        <div className="k-inspector-peek">{tabs}</div>
+      <div className="k-inspector" data-layout="card" aria-label="Sentence details" {...swipeProps}>
+        {tabs}
+        <div className="k-inspector-peek" />
         <div
           className="k-inspector-more"
           role="tabpanel"
@@ -212,14 +248,15 @@ export function WordInspector({
       className="k-inspector"
       aria-label="Word details"
       {...(card ? { "data-layout": "card" } : {})}
+      {...(card ? swipeProps : {})}
     >
+      {card && tabs}
       <div className="k-inspector-peek">
         {backTo ? (
           <button type="button" className="k-inspector-back" onClick={backTo.onBack}>
             ← <span lang="nl">{backTo.label}</span>
           </button>
         ) : null}
-        {card && tabs}
         <div className={card ? "k-card-top" : undefined}>
           <header>
             <div className="k-inspector-head">

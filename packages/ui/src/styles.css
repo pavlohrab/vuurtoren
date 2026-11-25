@@ -2541,19 +2541,22 @@ svg.lucide {
   background: var(--surface-2);
 }
 /* Word | Sentence: two tabs over the details. */
+/* Word · Sentence: tabs with a thin accent under the chosen one, kept at the top while the card
+   scrolls. */
 .k-inspector-tabs {
+  position: sticky;
+  top: 0;
+  z-index: 3;
   display: flex;
-  gap: 2px;
-  padding: 3px;
-  border: 1px solid var(--line);
-  border-radius: 10px;
+  border-bottom: 1px solid var(--hairline);
   background: var(--surface);
 }
 .k-inspector-tabs button {
   flex: 1;
-  min-height: 36px;
+  min-height: 40px;
   border: 0;
-  border-radius: 8px;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
   background: transparent;
   color: var(--ink-muted);
   font: inherit;
@@ -2562,13 +2565,13 @@ svg.lucide {
   cursor: pointer;
 }
 .k-inspector-tabs button[aria-selected="true"] {
-  background: var(--accent-soft);
+  border-bottom-color: var(--accent);
   color: var(--ink);
   font-weight: 600;
 }
 .k-inspector-tabs button:focus-visible {
   outline: 2px solid var(--accent);
-  outline-offset: 1px;
+  outline-offset: -2px;
 }
 /* "✓ Added · Undo" for a few seconds after Add to my words. */
 .k-inspector-added {
