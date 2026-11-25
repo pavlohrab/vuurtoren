@@ -2,9 +2,6 @@
 //! of "Connect a phone" (SY1). No certificate authority, no warning, and the computer's address
 //! may change: only the certificate counts. Used by the phone to reach its computer.
 
-// Not wired into the app yet (the Settings screen and the handover come next).
-#![allow(dead_code)]
-
 use std::sync::Arc;
 
 use rustls::client::danger::{HandshakeSignatureValid, ServerCertVerified, ServerCertVerifier};

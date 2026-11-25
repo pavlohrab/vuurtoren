@@ -626,6 +626,10 @@ struct SyncRequest {
     #[serde(default)]
     headers: std::collections::HashMap<String, String>,
     body_base64: Option<String>,
+    /// "Connect a phone": the SHA-256 of the computer's certificate from the QR code; the
+    /// request then trusts exactly that certificate (`pinned.rs`) instead of the usual roots.
+    #[serde(default)]
+    pinned: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -710,8 +714,11 @@ async fn sync_fetch(
         ));
     }
     let method = reqwest::Method::from_bytes(method.as_bytes()).map_err(|e| e.to_string())?;
-    let mut builder = state
-        .sync_client
+    let client = match req.pinned.as_deref() {
+        Some(sha256) => pinned::client(sha256)?,
+        None => state.sync_client.clone(),
+    };
+    let mut builder = client
         .request(method, url)
         .timeout(Duration::from_secs(120));
     for (name, value) in sync::request_headers(&req.headers) {

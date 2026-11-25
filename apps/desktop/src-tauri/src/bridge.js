@@ -126,12 +126,33 @@
               method: req.method,
               headers: req.headers || {},
               bodyBase64: req.body ? toBase64(req.body) : null,
+              // "Connect a phone": trust only the computer's certificate from the QR code.
+              pinned: req.pinned || null,
             },
           }).then(function (res) {
             return { status: res.status, headers: res.headers, body: fromBase64(res.bodyBase64) };
           });
         },
       }),
+      // "Connect a phone" on a computer (lan_cmd.rs): listen for phones, make a code with the
+      // handover (place + key), list and remove phones.
+      lan:
+        OS === "android" || OS === "ios"
+          ? undefined
+          : Object.freeze({
+              start: function () {
+                return invoke("lan_start");
+              },
+              code: function (handover) {
+                return invoke("lan_code", { handover: handover || null });
+              },
+              phones: function () {
+                return invoke("lan_phones");
+              },
+              remove: function (hash) {
+                return invoke("lan_remove", { hash: hash });
+              },
+            }),
       // vuurtoren:// links that opened the app (phones): taken once; "vuurtoren-link" says a
       // new one arrived.
       links: Object.freeze({

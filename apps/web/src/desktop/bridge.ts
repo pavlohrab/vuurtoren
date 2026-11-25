@@ -84,6 +84,8 @@ export interface DesktopBridge {
    */
   sync?: DesktopSync;
   /** `vuurtoren://` links that opened the app (phones); taken once. */
+  /** Computers only: the computer as its phones' sync place on the home network. */
+  lan?: LanBridge;
   links?: {
     take(): Promise<string[]>;
     /** Called when a new link arrived; returns its removal. */
@@ -193,7 +195,19 @@ export interface DesktopSync {
     method: string;
     headers?: Record<string, string>;
     body?: Uint8Array;
+    /** "Connect a phone": the computer's certificate SHA-256 from the QR code, trusted alone. */
+    pinned?: string;
   }): Promise<{ status: number; headers: Record<string, string>; body: Uint8Array }>;
+}
+
+/** "Connect a phone" on a computer (lan_cmd.rs). */
+export interface LanBridge {
+  /** Start listening for phones (once); where it listens and the certificate's fingerprint. */
+  start(): Promise<{ port: number; fingerprint: string; addresses: string[]; placeDir: string }>;
+  /** A ten-minute code; `handover` (place + key) goes only to the phone that uses it. */
+  code(handover?: unknown): Promise<string>;
+  phones(): Promise<{ hash: string; name: string; device: string | null; vault: boolean }[]>;
+  remove(hash: string): Promise<void>;
 }
 
 declare global {
