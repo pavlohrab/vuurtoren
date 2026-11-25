@@ -238,17 +238,146 @@ export function CardMeaning({ word }: { word: InspectorEntry }) {
   );
 }
 
-/** Related words as rows of chips: label left, words right (Pavlo's pick A). */
+const POS_NAME: Record<string, string> = {
+  verb: "verb",
+  noun: "noun",
+  adj: "adjective",
+  adv: "adverb",
+  prep: "preposition",
+  pron: "pronoun",
+  conj: "conjunction",
+  num: "number",
+  name: "name",
+};
+
+/** The pronunciation, the part of speech in small capitals and a verb's helper ("verb · with hebben"). */
+export function CardPos({ entry }: { entry: Entry }) {
+  const name = POS_NAME[entry.pos] ?? entry.pos;
+  const helper = { heeft: "hebben", is: "zijn", "heeft / is": "hebben or zijn" }[
+    helperOf(entry.forms ?? {}) ?? ""
+  ];
+  if (!name) return null;
+  return (
+    <>
+      {entry.ipa ? <p className="card-ipa">{entry.ipa}</p> : null}
+      <p className="card-pos">
+        {name}
+        {helper ? <span> · with {helper}</span> : null}
+      </p>
+    </>
+  );
+}
+
+/** How many meanings the card shows before "N more meanings". */
+const SENSES_SHOWN = 3;
+
+/**
+ * The meanings as a dictionary has them (WC11): numbered in circles, the one in this sentence
+ * marked, same-meaning words under their own meaning, an example in italics with its English.
+ * Three show; the rest open in place. Old and specialist meanings come last.
+ */
+export function CardSenses({
+  word,
+  entry,
+  onOpen,
+}: {
+  word: InspectorEntry;
+  entry: Entry;
+  onOpen?: ((word: string) => void) | undefined;
+}) {
+  const [all, setAll] = useState(false);
+  const senses: EntrySense[] = entry.extras?.senses?.length
+    ? [...entry.extras.senses.filter((s) => !s.mark), ...entry.extras.senses.filter((s) => s.mark)]
+    : entry.glosses.map((gloss) => ({ gloss }));
+  if (!senses.length) return <CardMeaning word={word} />;
+  const here =
+    word.sentenceGloss ?? (word.glossNote === "in this sentence" ? word.glosses[0] : null);
+  const hereAt = here ? senses.findIndex((s) => !s.mark && sameMeaning(s.gloss, here)) : -1;
+  const shown = all ? senses : senses.slice(0, SENSES_SHOWN);
+  // The sentence's meaning shows even when it's further down the list.
+  const list =
+    !all && hereAt >= SENSES_SHOWN ? [...shown.slice(0, SENSES_SHOWN - 1), senses[hereAt]!] : shown;
+  return (
+    <div className="card-senses">
+      {here && hereAt < 0 ? (
+        <p className="card-senses-here" data-peek="">
+          <span className="card-here">in this sentence</span> {here}
+        </p>
+      ) : null}
+      <ol>
+        {list.map((s) => {
+          const n = senses.indexOf(s);
+          return (
+            <li
+              key={n}
+              data-n={n + 1}
+              {...(s.mark ? { "data-mark": s.mark } : {})}
+              // The phone's peek shows one meaning: this sentence's, else the first.
+              {...(n === hereAt || (!here && n === 0) ? { "data-peek": "" } : {})}
+            >
+              <span className="card-sense-gloss">
+                {s.gloss}
+                {n === hereAt ? <span className="card-here">in this sentence</span> : null}
+                {s.mark ? <span className="card-sense-mark">{s.mark}</span> : null}
+              </span>
+              {s.synonyms?.length ? (
+                <span className="card-sense-same">
+                  <span className="card-sense-label">same meaning</span>
+                  {s.synonyms.slice(0, 4).map((w, k) => (
+                    <span key={w}>
+                      {k ? " · " : ""}
+                      {onOpen && !w.includes(" ") ? (
+                        <button
+                          type="button"
+                          className="card-word"
+                          lang="nl"
+                          onClick={() => onOpen(w)}
+                        >
+                          {w}
+                        </button>
+                      ) : (
+                        <span lang="nl">{w}</span>
+                      )}
+                    </span>
+                  ))}
+                </span>
+              ) : null}
+              {s.examples?.[0] ? (
+                <span className="card-sense-example">
+                  <span lang="nl">{s.examples[0].nl}</span>
+                  {s.examples[0].en ? (
+                    <span className="card-sense-en">{s.examples[0].en}</span>
+                  ) : null}
+                </span>
+              ) : null}
+            </li>
+          );
+        })}
+      </ol>
+      {senses.length > SENSES_SHOWN ? (
+        <button type="button" className="k-link card-senses-more" onClick={() => setAll(!all)}>
+          {all ? "Fewer meanings" : `${senses.length - SENSES_SHOWN} more meanings`}
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+/** Related words: a small label over each row, the words in a line (WC11, dictionary style). */
 export function CardRelated({
   entry,
   onOpen,
   full = false,
+  withSame = true,
 }: {
   entry: Entry;
   onOpen?: ((word: string) => void) | undefined;
   full?: boolean;
+  /** Same meaning as a row (off when the meanings show it under their own sense). */
+  withSame?: boolean;
 }) {
-  const { same, opposite } = related(entry);
+  const { same: sameWords, opposite } = related(entry);
+  const same = withSame ? sameWords : [];
   const family = entry.family ?? [];
   const rows: [string, string[]][] = [
     ["Base verb", entry.base ? [entry.base] : []],
@@ -265,23 +394,20 @@ export function CardRelated({
         <div key={label}>
           <dt>{label}</dt>
           <dd>
-            {words.map((w) =>
-              onOpen && !w.includes(" ") ? (
-                <button
-                  key={w}
-                  type="button"
-                  className="card-chip"
-                  lang="nl"
-                  onClick={() => onOpen(w)}
-                >
-                  {w}
-                </button>
-              ) : (
-                <span key={w} className="card-chip" data-plain="" lang="nl">
-                  {w}
-                </span>
-              ),
-            )}
+            {words.map((w, k) => (
+              <span key={w}>
+                {k ? <span className="card-dot"> · </span> : null}
+                {onOpen && !w.includes(" ") ? (
+                  <button type="button" className="card-word" lang="nl" onClick={() => onOpen(w)}>
+                    {w}
+                  </button>
+                ) : (
+                  <span className="card-word" data-plain="" lang="nl">
+                    {w}
+                  </span>
+                )}
+              </span>
+            ))}
             {!full && label === "Family" && family.length > 6 ? (
               <span className="card-more">+{family.length - 6}</span>
             ) : null}

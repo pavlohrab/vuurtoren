@@ -11,6 +11,7 @@ import {
   CardForms,
   CardMeaning,
   CardRelated,
+  CardSenses,
   FullEntry,
   useWordEntry,
 } from "./WordEntry.js";
@@ -163,5 +164,37 @@ describe("WordEntry", () => {
     expect(screen.getByText("Here")).toBeVisible();
     expect(screen.getByText("for a moment")).toBeVisible();
     expect(screen.getByText("equal, even; just")).toBeVisible();
+  });
+
+  it("the meanings as a dictionary has them: numbered, this sentence's marked, the rest folded", async () => {
+    const entry = {
+      word: "doen",
+      pos: "verb",
+      glosses: [],
+      extras: {
+        senses: [
+          { gloss: "to do" },
+          {
+            gloss: "to put",
+            examples: [{ nl: "Doe dat daar maar in.", en: "Just put it in there." }],
+          },
+          { gloss: "to make" },
+          { gloss: "to give, serve" },
+          { gloss: "to behave", synonyms: ["handelen"] },
+        ],
+      },
+    } as unknown as Parameters<typeof CardSenses>[0]["entry"];
+    render(
+      <CardSenses
+        word={word({ glosses: ["to put"], glossNote: "in this sentence" })}
+        entry={entry}
+      />,
+    );
+    expect(screen.getAllByRole("listitem")).toHaveLength(3);
+    expect(screen.getByText("in this sentence")).toBeVisible();
+    expect(screen.getByText("Doe dat daar maar in.")).toBeVisible();
+    await userEvent.click(screen.getByRole("button", { name: "2 more meanings" }));
+    expect(screen.getAllByRole("listitem")).toHaveLength(5);
+    expect(screen.getByText("handelen")).toBeVisible();
   });
 });

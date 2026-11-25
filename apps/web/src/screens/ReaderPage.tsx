@@ -68,7 +68,9 @@ import {
   CardExtra,
   CardForms,
   CardMeaning,
+  CardPos,
   CardRelated,
+  CardSenses,
   FullEntry,
   useWordEntry,
 } from "./reader/WordEntry.js";
@@ -1087,15 +1089,27 @@ export function ReaderPage({ textId }: { textId: string }) {
                             dict && !card.full ? (
                               <CardForms entry={dict} surface={shown.surface} onSay={audio.say} />
                             ) : null,
-                          note: formInfo?.said.includes("…") ? (
-                            <p className="k-card-note" lang="nl">
-                              {formInfo.said} is one verb
-                            </p>
-                          ) : null,
-                          meaning: <CardMeaning word={shown} />,
+                          note: (
+                            <>
+                              {dict ? <CardPos entry={dict} /> : null}
+                              {formInfo?.said.includes("…") ? (
+                                <p className="k-card-note" lang="nl">
+                                  {formInfo.said} is one verb
+                                </p>
+                              ) : null}
+                            </>
+                          ),
+                          // The meanings numbered as in a dictionary; in the full entry its own
+                          // list has them, so one line here.
+                          meaning:
+                            dict && !card.full ? (
+                              <CardSenses word={shown} entry={dict} onOpen={openWord} />
+                            ) : (
+                              <CardMeaning word={shown} />
+                            ),
                           related:
                             dict && !card.full ? (
-                              <CardRelated entry={dict} onOpen={openWord} />
+                              <CardRelated entry={dict} onOpen={openWord} withSame={false} />
                             ) : null,
                           extra: <CardExtra entry={dict} full={card.full} onFull={card.setFull} />,
                         }
