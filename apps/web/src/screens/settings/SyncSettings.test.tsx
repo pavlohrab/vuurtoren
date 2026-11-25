@@ -359,6 +359,7 @@ describe("a phone that can't reach its computer", { timeout: 20_000 }, () => {
       expect(connectServer).toHaveBeenCalledWith(
         { server: "https://192.168.1.31:47120", code: "ABCDE-FGHJK", pinned: "ab".repeat(32) },
         "",
+        expect.any(Function),
       ),
     );
   });
