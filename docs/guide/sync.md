@@ -89,4 +89,13 @@ syncing on one device, use Settings → Your devices; its data stays on it.
 If you lose a device, remove it on your server's page. To be safe, start new sync data with a new
 passphrase and join it again from your other devices.
 
+When your phone connects to your computer at home (Settings → Your devices → Connect a phone), the
+computer listens on port 47120. If a firewall on the computer blocks it, the phone can't reach it,
+so allow that port. Windows asks the first time: say yes for private networks. On Linux with
+firewalld it's:
+
+```sh
+sudo firewall-cmd --permanent --add-port=47120/tcp && sudo firewall-cmd --reload
+```
+
 And keep a backup now and then, in Settings → **Data → Download backup**.

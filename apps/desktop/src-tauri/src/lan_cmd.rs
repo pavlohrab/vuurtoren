@@ -76,6 +76,9 @@ pub struct LanInfo {
 
 /// Start listening for phones (once; later calls say where it listens). `folder`: serve the
 /// computer's own sync folder instead of `sync-place` (kept for the next start).
+
+/// The port phones connect to (lan_server falls back to a free one when it is taken).
+pub const PHONE_PORT: u16 = 47120;
 #[tauri::command]
 pub async fn lan_start(app: AppHandle, folder: Option<String>) -> Result<LanInfo, String> {
     let hub = hub(&app)?;
@@ -92,10 +95,12 @@ pub async fn lan_start(app: AppHandle, folder: Option<String>) -> Result<LanInfo
         Some(on) => on,
         None => {
             let port_file = hub.dir.join("lan-port");
+            // The port kept from last time, else the fixed one (47120): the same every time, so
+            // a firewall rule for it keeps working. Taken by something else: any free port.
             let port = std::fs::read_to_string(&port_file)
                 .ok()
                 .and_then(|p| p.trim().parse().ok())
-                .unwrap_or(0);
+                .unwrap_or(PHONE_PORT);
             // A connected phone's `/nlp/…`: this computer's language server answers it.
             let handle = app.clone();
             let nlp: lan_server::Nlp = Arc::new(move |method, path, ct, body| {

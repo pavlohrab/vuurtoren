@@ -186,9 +186,14 @@ pub async fn listen(
         )
         .map_err(|e| e.to_string())?;
     let acceptor = TlsAcceptor::from(Arc::new(config));
-    let listener = TcpListener::bind(("0.0.0.0", port))
-        .await
-        .map_err(|e| format!("Could not listen on port {port}: {e}"))?;
+    // The port asked for (the fixed one, so a firewall rule stays right), else any free one.
+    let listener = match TcpListener::bind(("0.0.0.0", port)).await {
+        Ok(l) => l,
+        Err(_) if port != 0 => TcpListener::bind(("0.0.0.0", 0))
+            .await
+            .map_err(|e| format!("Could not listen for phones: {e}"))?,
+        Err(e) => return Err(format!("Could not listen on port {port}: {e}")),
+    };
     let port = listener.local_addr().map_err(|e| e.to_string())?.port();
     let save_to = save_to.map(Arc::new);
     let run = async move {
