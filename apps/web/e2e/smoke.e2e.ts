@@ -54,9 +54,12 @@ async function answerOneExercise(page: Page): Promise<void> {
   // Keys work for every exercise kind: 1 picks the first choice (or types "1"), Enter checks.
   await page.keyboard.press("1");
   await page.keyboard.press("Enter");
-  await expect(page.getByRole("button", { name: /Continue/ })).toBeVisible();
-  await page.getByRole("button", { name: /Continue/ }).click();
-  await expect(page.getByText(/^2 of \d+$/)).toBeVisible();
+  // A right answer to a quick choice (de or het) goes on by itself; others wait for Continue.
+  const cont = page.getByRole("button", { name: /Continue/ });
+  const second = page.getByText(/^2 of \d+$/);
+  await expect(cont.or(second)).toBeVisible();
+  if (await cont.isVisible()) await cont.click();
+  await expect(second).toBeVisible();
 }
 
 test("demo mode", async ({ page }) => {
@@ -136,7 +139,8 @@ test("native mode: start with the most common words, offline data in the app", a
   await page.getByRole("button", { name: "Continue" }).click();
   // Three questions, then the story at the learner's level opens in the reader.
   await page.getByRole("button", { name: "Start reading" }).click();
-  await expect(page).toHaveURL(/\/read\//);
+  // The story opens, then the walkthrough starts on Read (it reopens the story for its reader
+  // steps), so the reader's URL is only there for a moment.
   // The walkthrough follows the welcome once; it can be skipped.
   await expect(page.getByRole("dialog", { name: "Read" })).toBeVisible();
   await page.getByRole("button", { name: "Skip the tour" }).click();
@@ -157,7 +161,8 @@ test("native mode: add a word while reading, then review it", async ({ page }) =
   await page.getByRole("button", { name: "Continue" }).click();
   await page.getByRole("button", { name: "Continue" }).click();
   await page.getByRole("button", { name: "Start reading" }).click();
-  await expect(page).toHaveURL(/\/read\//);
+  // The story opens, then the walkthrough starts on Read (it reopens the story for its reader
+  // steps), so the reader's URL is only there for a moment.
   // The walkthrough follows the welcome once; it can be skipped.
   await expect(page.getByRole("dialog", { name: "Read" })).toBeVisible();
   await page.getByRole("button", { name: "Skip the tour" }).click();
@@ -168,6 +173,10 @@ test("native mode: add a word while reading, then review it", async ({ page }) =
     .first()
     .click();
   await expect(page.locator(".inspector-panel")).toContainText("Your card");
+  // Saved before leaving the page.
+  await expect(
+    page.getByText(/^(Moved to the front of the queue|Added to your words)$/),
+  ).toBeVisible();
   await page.goto("/review");
   await expect(page.locator(".review-word")).toContainText("buurvrouw");
   await page.keyboard.press("Space");

@@ -307,7 +307,11 @@ export function Welcome() {
     enabled: draft.step === "first",
   });
   const startReading = useMutation({
-    mutationFn: async () => (story.data ? services.openStory(story.data.slug) : null),
+    mutationFn: async () => {
+      // A quick tap can come before the shelf has loaded: wait for it, don't open Read instead.
+      const start = story.data ?? storyToStart(await services.storyShelf());
+      return start ? services.openStory(start.slug) : null;
+    },
     onSettled: async (textId) => {
       finish();
       // A short walkthrough of the app follows, once.
