@@ -9,15 +9,22 @@ import { type WordInspectorProps, deckName, useNativeMode, useToast } from "@app
 import { useServices } from "../services/context.js";
 import { errorText } from "../services/errors.js";
 import type { AddSource } from "../services/profileTypes.js";
-import type { InspectorEntry } from "../services/types.js";
+import type { InspectorEntry, KnownUndo } from "../services/types.js";
 import { useDeckChoice } from "./useDeckChoice.js";
 
 type ActionProps = Pick<
   WordInspectorProps,
-  "busy" | "addDeck" | "onAddToAnki" | "onLearnNext" | "onMarkKnown" | "onReset" | "onUndo"
+  | "busy"
+  | "addDeck"
+  | "onAddToAnki"
+  | "onLearnNext"
+  | "onMarkKnown"
+  | "onReset"
+  | "onUndo"
+  | "undoLabel"
 >;
 
-/** How long "✓ Added · Undo" stays after Add to my words. */
+/** How long "✓ Added · Undo" (or "✓ Known · Undo") stays after the action. */
 const UNDO_MS = 5000;
 
 /** Cached views that show word states; refreshed after any word action. */
@@ -61,6 +68,13 @@ export function useWordActions(
     const t = setTimeout(() => setJustAdded(null), UNDO_MS);
     return () => clearTimeout(t);
   }, [justAdded]);
+  // The word just marked known, for a few seconds: Undo puts its cards back (native only).
+  const [justKnown, setJustKnown] = useState<{ key: string; undo: KnownUndo } | null>(null);
+  useEffect(() => {
+    if (!justKnown) return;
+    const t = setTimeout(() => setJustKnown(null), UNDO_MS);
+    return () => clearTimeout(t);
+  }, [justKnown]);
   const addToAnki = useMutation({
     mutationFn: (e: InspectorEntry) => services.addToAnki(e, deckOpts),
     onSuccess: async ({ deck, noteId }, e) => {
@@ -82,8 +96,9 @@ export function useWordActions(
   });
   const markKnown = useMutation({
     mutationFn: (e: InspectorEntry) => services.markKnown(e, deckOpts),
-    onSuccess: async ({ addedToDeck }, e) => {
+    onSuccess: async ({ addedToDeck, undo }, e) => {
       changed?.(e.key, "known");
+      if (undo && services.undoKnown) setJustKnown({ key: e.key, undo });
       toast(
         "Marked as known",
         addedToDeck
@@ -111,12 +126,22 @@ export function useWordActions(
     },
     onError: (e) => toast("Could not undo", errorText(e)),
   });
+  const undoKnown = useMutation({
+    mutationFn: (k: { key: string; undo: KnownUndo }) => services.undoKnown!(k.undo),
+    onSuccess: async () => {
+      setJustKnown(null);
+      toast("Not marked as known any more");
+      await done();
+    },
+    onError: (e) => toast("Could not undo", errorText(e)),
+  });
   const busy =
     addToAnki.isPending ||
     learnNext.isPending ||
     markKnown.isPending ||
     resetState.isPending ||
-    undo.isPending;
+    undo.isPending ||
+    undoKnown.isPending;
 
   return {
     deckChoice,
@@ -129,7 +154,12 @@ export function useWordActions(
         onLearnNext: () => entry && learnNext.mutate(entry),
         onMarkKnown: () => entry && markKnown.mutate(entry),
         onReset: () => entry && resetState.mutate(entry),
-        onUndo: entry && justAdded?.key === entry.key ? () => undo.mutate(justAdded) : undefined,
+        ...(entry && justKnown?.key === entry.key
+          ? { onUndo: () => undoKnown.mutate(justKnown), undoLabel: "✓ Known" }
+          : {
+              onUndo:
+                entry && justAdded?.key === entry.key ? () => undo.mutate(justAdded) : undefined,
+            }),
       };
     },
   };

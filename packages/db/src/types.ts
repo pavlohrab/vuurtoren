@@ -399,7 +399,8 @@ export type AppEvent =
   | {
       type: "NativeCardsChanged";
       lang: string;
-      reason: "known" | "first" | "memory" | "reading";
+      /** "undo": an "I know it" taken back (the earlier schedules restored). */
+      reason: "known" | "first" | "memory" | "reading" | "undo";
       changes: NativeCardChange[];
       /** Reason "memory": the FSRS parameters the memory was replayed with. */
       params?: number[];

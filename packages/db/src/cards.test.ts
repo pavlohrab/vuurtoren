@@ -83,6 +83,33 @@ describe("native card store", () => {
     expect((await repo.nativeDecks("nl", T0)).map((d) => d.name)).toContain("Dutch");
   });
 
+  it("Undo after I know it: the cards get their earlier state back (new again, or as they were)", async () => {
+    const { repo } = await newRepo();
+    await repo.append(imported);
+    const known = { ...mature, due: T0 + 30 * DAY };
+    await repo.append({
+      type: "NativeCardsChanged",
+      lang: "nl",
+      reason: "known",
+      changes: [
+        { cardId: 101, schedule: known, suspended: false },
+        { cardId: 102, schedule: known, suspended: false },
+      ],
+    });
+    expect((await repo.nativeCard("nl", 102))?.card.schedule).toEqual(known);
+    await repo.append({
+      type: "NativeCardsChanged",
+      lang: "nl",
+      reason: "undo",
+      changes: [
+        { cardId: 101, schedule: mature, suspended: false },
+        { cardId: 102, schedule: null, suspended: false },
+      ],
+    });
+    expect((await repo.nativeCard("nl", 101))?.card.schedule).toEqual(mature);
+    expect((await repo.nativeCard("nl", 102))?.card.schedule).toBeUndefined();
+  });
+
   it("imports notes, cards, history and media; a second import keeps progress", async () => {
     const { repo } = await newRepo();
     await repo.append(imported);

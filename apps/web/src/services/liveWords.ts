@@ -49,6 +49,7 @@ import { contextGloss, hasDetachedParticle, meaningInSentence } from "./contextG
 import type {
   AppServices,
   InspectorEntry,
+  KnownUndo,
   LearnerSummary,
   ReadingView,
   TextWordItem,
@@ -317,6 +318,7 @@ export function createLiveWords(deps: LiveWordsDeps) {
     | "removeWord"
     | "learnNext"
     | "markKnown"
+    | "undoKnown"
     | "resetWordState"
     | "setWordState"
     | "syncAnki"
@@ -528,19 +530,63 @@ export function createLiveWords(deps: LiveWordsDeps) {
       return { deck: entry.anki.deck ?? "" };
     },
 
-    async markKnown(entry: InspectorEntry, opts?: AddOptions): Promise<{ addedToDeck?: string }> {
+    async markKnown(
+      entry: InspectorEntry,
+      opts?: AddOptions,
+    ): Promise<{ addedToDeck?: string; undo?: KnownUndo }> {
       if (entry.anki.status === "unavailable") {
         throw new Error(entry.anki.detail ?? "Anki is not reachable");
       }
-      const { addedToDeck } = await markKnown(await native(), anki, record, {
-        lang: await lang(),
+      const isNative = await native();
+      const l = await lang();
+      // Native mode keeps the cards' state as it was, so Undo can put it back.
+      const before = isNative
+        ? await Promise.all(entry.anki.cardIds.map((id) => repo.nativeCard(l, id)))
+        : [];
+      const { addedToDeck, addedNoteId } = await markKnown(isNative, anki, record, {
+        lang: l,
         key: entry.key,
         noteIds: entry.anki.noteIds,
         cardIds: entry.anki.cardIds,
         add: await addRequest(entry, opts),
       });
       learner.changed();
-      return addedToDeck ? { addedToDeck } : {};
+      const cards = before.flatMap((v) =>
+        v
+          ? [
+              {
+                cardId: v.card.id,
+                schedule: v.card.schedule ?? null,
+                suspended: !!v.card.suspended,
+              },
+            ]
+          : [],
+      );
+      const undo: KnownUndo | undefined = !isNative
+        ? undefined
+        : addedNoteId !== undefined
+          ? { noteId: addedNoteId }
+          : cards.length
+            ? { cards }
+            : undefined;
+      return { ...(addedToDeck ? { addedToDeck } : {}), ...(undo ? { undo } : {}) };
+    },
+
+    async undoKnown(undo: KnownUndo): Promise<void> {
+      const l = await lang();
+      if ("noteId" in undo) await removeNativeWord(record, { lang: l, noteId: undo.noteId });
+      else
+        await record({
+          type: "NativeCardsChanged",
+          lang: l,
+          reason: "undo",
+          changes: undo.cards.map((c) => ({
+            cardId: c.cardId,
+            schedule: c.schedule,
+            suspended: c.suspended,
+          })),
+        });
+      learner.changed();
     },
 
     async resetWordState(key: string): Promise<void> {

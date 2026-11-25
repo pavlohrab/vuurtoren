@@ -13,7 +13,7 @@ import type {
   WordState,
 } from "@app/core";
 import type { StoredText, SuggestedWord, TextSummary, WordInfo } from "@app/db";
-import type { InspectorEntry } from "@app/core";
+import type { CardSchedule, InspectorEntry } from "@app/core";
 import type { EntryResult } from "@app/nlp-client";
 import type { CourseServices } from "./courseTypes.js";
 import type { OcrReviewHandler } from "./ocrReview.js";
@@ -243,6 +243,11 @@ export interface PracticeOptions {
   keys?: string[];
 }
 
+/** What an "I know it" changed, to take it back: the note it added, or the cards' earlier state. */
+export type KnownUndo =
+  | { noteId: number }
+  | { cards: { cardId: number; schedule: CardSchedule | null; suspended: boolean }[] };
+
 /**
  * Everything the UI needs from the outside world. The app never talks to the database,
  * AnkiConnect or the NLP server directly; swap the implementation passed to <ServicesProvider>.
@@ -344,7 +349,12 @@ export interface AppServices
   /** Move the word's new card to the front of its deck, unsuspending it. */
   learnNext(entry: InspectorEntry): Promise<{ deck: string }>;
   /** Mark the word known in Anki (adding the note first if needed), then record it. */
-  markKnown(entry: InspectorEntry, opts?: AddOptions): Promise<{ addedToDeck?: string }>;
+  markKnown(
+    entry: InspectorEntry,
+    opts?: AddOptions,
+  ): Promise<{ addedToDeck?: string; undo?: KnownUndo }>;
+  /** Native mode: take an "I know it" back (the word added as known is removed again). */
+  undoKnown?(undo: KnownUndo): Promise<void>;
   /** Drop a manual state so Anki's applies again. */
   resetWordState(key: string): Promise<void>;
   /** App-only state changes (Ignore). Marking known goes through `markKnown`. */

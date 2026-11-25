@@ -154,7 +154,7 @@ export async function markNativeKnown(
   record: RecordEvent<NativeCardsChangedEvent | NativeWordAddedEvent>,
   req: { lang: string; key: string; cardIds: number[]; add?: AddWordRequest },
   now: number = Date.now(),
-): Promise<{ key: string; addedToDeck?: string }> {
+): Promise<{ key: string; addedToDeck?: string; addedNoteId?: number }> {
   if (req.cardIds.length === 0) {
     if (!req.add) throw new Error("This word is not in your words");
     const added = await addWordToMyWords(
@@ -162,7 +162,7 @@ export async function markNativeKnown(
       { ...req.add, key: req.add.key ?? req.key, asKnown: true },
       now,
     );
-    return { key: added.key, addedToDeck: added.deck };
+    return { key: added.key, addedToDeck: added.deck, addedNoteId: added.noteId };
   }
   await record({
     type: "NativeCardsChanged",
@@ -200,7 +200,7 @@ export async function markKnown(
     MarkedKnownEvent | NoteAddedEvent | NativeCardsChangedEvent | NativeWordAddedEvent
   >,
   req: { lang: string; key: string; noteIds: number[]; cardIds: number[]; add?: AddWordRequest },
-): Promise<{ key: string; addedToDeck?: string }> {
+): Promise<{ key: string; addedToDeck?: string; addedNoteId?: number }> {
   if (native) return markNativeKnown(record, req);
   return markWordKnown(await anki(), record, req);
 }
