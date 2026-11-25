@@ -136,10 +136,12 @@ export function createLivePairs(deps: LivePairsDeps) {
     }
     // Stored with the text (offline English): no request either, unless the AI's is wanted.
     const useAIFirst = opts.ai === true && deps.aiReady();
-    const stored =
-      useAIFirst || fromStory.size === all.length
+    const storedAll =
+      fromStory.size === all.length
         ? new Map<number, StorySentencePairs>()
         : ((await deps.textPairs?.(v)) ?? new Map<number, StorySentencePairs>());
+    // With the AI's English wanted, the stored English waits: it fills in when the AI can't.
+    const stored = useAIFirst ? new Map<number, StorySentencePairs>() : storedAll;
     for (const s of all) {
       const r = stored.get(s.sent);
       if (!r || fromStory.has(s.sent)) continue;
@@ -176,6 +178,16 @@ export function createLivePairs(deps: LivePairsDeps) {
       const r = paired[k];
       const given = items[k]?.translation;
       if (!r) {
+        // No server and no AI English: the English stored with the text, with its pairs.
+        const kept = given ? undefined : storedAll.get(s.sent);
+        if (kept)
+          return {
+            sent: s.sent,
+            english: kept.english,
+            englishTokens: englishTokens(kept.english),
+            pairs: onTokens(s.words, kept.pairs),
+            source: "offline",
+          };
         // No server: the story's or the AI's English alone, without pairs.
         return {
           sent: s.sent,

@@ -527,8 +527,13 @@ export function ReaderPage({ textId }: { textId: string }) {
     queryFn: () => services.sentencePairs(textId, sentenceList, { ai: englishAI }),
     enabled: side && sentenceList.length > 0,
     staleTime: Infinity,
-    // Without pairs because the language server was not ready: ask again until it answers.
-    refetchInterval: (q) => (q.state.data?.some((p) => p.retry) ? 4000 : false),
+    // Without pairs because the language server was not ready: ask again until it answers;
+    // slowly when every sentence already shows its English (a phone away from its computer).
+    refetchInterval: (q) => {
+      const d = q.state.data;
+      if (!d?.some((p) => p.retry)) return false;
+      return d.some((p) => p.retry && !p.english) ? 4000 : 30_000;
+    },
   });
   const sentencePairs = useMemo(
     () => new Map((pairsQ.data ?? []).map((p) => [p.sent, p])),
