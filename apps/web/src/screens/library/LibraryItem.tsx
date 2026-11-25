@@ -6,6 +6,7 @@ import type { TextListItem } from "../../services/types.js";
 import { type MenuItem, MenuButton } from "./MenuButton.js";
 import { readingState } from "./shelving.js";
 import { useCoverUrl } from "./useCoverUrl.js";
+import { useCanAddTexts } from "../../platform/canAddTexts.js";
 
 /** MIME type of a dragged Library cover (JSON array of text ids). */
 export const DRAG_TYPE = "application/x-vuurtoren-texts";
@@ -42,8 +43,12 @@ export function LibraryItem({
 }: LibraryItemProps) {
   const imageUrl = useCoverUrl(t.coverId);
   const state = readingState(t);
-  const status =
-    state.kind === "reading"
+  const canAdd = useCanAddTexts();
+  // A phone without a server can't prepare a text: it waits for the computer to send it (SY4).
+  const waiting = !t.analyzed && !canAdd;
+  const status = waiting
+    ? "Waiting for your computer"
+    : state.kind === "reading"
       ? `Page ${state.page} of ${state.pages}`
       : state.kind === "done"
         ? "Finished"
