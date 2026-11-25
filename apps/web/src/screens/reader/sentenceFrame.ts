@@ -89,7 +89,11 @@ function introduces(t: AnalyzedToken): boolean {
  * server had one. The words, sentences and offsets stay the same.
  */
 export function frameTokens(tokens: readonly AnalyzedToken[]): AnalyzedToken[] {
-  return tokens.map((t) => (t.syn ? { ...t, ...t.syn } : t));
+  // A split verb's particle the usual analysis found ("blijf … thuis") stays when SyntaxDot's
+  // parse has none for the word.
+  return tokens.map((t) =>
+    t.syn ? { ...t, ...t.syn, particle_of: t.syn.particle_of ?? t.particle_of } : t,
+  );
 }
 
 /** The clauses of sentence `sent`, main clauses first in reading order; [] for a fragment. */
@@ -101,6 +105,15 @@ export function sentenceClauses(tokens: readonly AnalyzedToken[], sent: number):
     // also a conjugated form the parser hangs on a verb ("sprong in Toms armen")
     if (!t.morph.includes("VerbForm=Inf") && t.dep !== "xcomp") return false;
     if (words.some((x) => x.head === t.i && x.text.toLowerCase() === "te")) return false;
+    // "van zwemmen": an infinitive in a noun's place with a preposition of its own
+    // ("gaan uit eten" stays a verb: gaan takes a bare infinitive)
+    const up = tokens[t.head];
+    if (
+      /^(obl|obj|nsubj)/.test(t.dep) &&
+      words.some((x) => x.head === t.i && x.dep === "case") &&
+      !(up && BARE_INF.has(up.lemma.toLowerCase()))
+    )
+      return true;
     // "zo leuk als vissen"
     const kids = words.filter((x) => x.head === t.i);
     if (kids.some((x) => x.pos === "SCONJ") && !kids.some((x) => x.dep.startsWith("aux")))
@@ -397,7 +410,10 @@ export function sentenceClauses(tokens: readonly AnalyzedToken[], sent: number):
       const lead =
         !reporting &&
         own[0] &&
-        (own[0].dep === "cc" || LINKS.has(own[0].text.toLowerCase())) &&
+        (own[0].dep === "cc" ||
+          LINKS.has(own[0].text.toLowerCase()) ||
+          // "Nee, deze gaat …": a word on its own before the clause
+          (own[0].pos === "INTJ" && tokens[own[0].i + 1]?.text === ",")) &&
         own[0].i < d.verb.i &&
         // "Dus ging ze slapen": dus right before the verb is the first place
         !(own[0].text.toLowerCase() === "dus" && own[1]?.i === d.verb.i)

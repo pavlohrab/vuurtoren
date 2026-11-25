@@ -80,6 +80,31 @@ def _run(folder: Path, conllu: str) -> list[list[list[str]]]:
     return sents
 
 
+def _one_root(cols: list[list[str]]) -> None:
+    """SyntaxDot sometimes gives a sentence two roots ("Ze begroet meneer …": begroet and
+    meneer). Keep one: a conjugated verb, else a word a conjugated helper hangs on, else the
+    first. The others hang on it, so no word falls out of the sentence."""
+    roots = [k for k, c in enumerate(cols) if c[6] == "0"]
+    if len(roots) < 2:
+        return
+
+    def finite(k: int) -> bool:
+        return "VerbForm=Fin" in cols[k][5]
+
+    def helped(k: int) -> bool:
+        return any(
+            c[6] == str(k + 1) and c[7] in ("aux", "cop") and finite(j) for j, c in enumerate(cols)
+        )
+
+    main = next((k for k in roots if finite(k)), None)
+    if main is None:
+        main = next((k for k in roots if helped(k)), roots[0])
+    for k in roots:
+        if k != main:
+            cols[k][6] = str(main + 1)
+            cols[k][7] = "dep"
+
+
 def add_syntax(docs: list[Doc], analyses: list[TextAnalysis], originals: list[str]) -> None:
     """Give every token of ``analyses`` its ``syn`` from SyntaxDot, when it is set up."""
     from vuurtoren_nlp.pipeline import analyze_doc
@@ -97,6 +122,7 @@ def add_syntax(docs: list[Doc], analyses: list[TextAnalysis], originals: list[st
     for (di, idx), cols in zip(where, sents, strict=True):
         if len(cols) != len(idx):
             continue
+        _one_root(cols)
         for k, c in enumerate(cols):
             h = int(c[6])
             i = idx[k]

@@ -155,7 +155,6 @@ export const FRAME_CASES: FrameCase[] = [
     sentence: "Ik heb het boek gelezen dat je me gaf.",
     about: "relative after the verb end",
     clauses: ["main: Ik|heb|het boek|gelezen|[…]", "rel: dat|je me|gaf|"],
-    hard: "after the verb end, a relative dat and the conjunction dat look the same; the parse says ccomp",
   },
   {
     sentence: "Ik lees en zij schrijft.",
@@ -254,7 +253,7 @@ export const FRAME_CASES: FrameCase[] = [
   {
     sentence: "Ze begroet meneer Haddad hartelijk en vraagt hoe hij zich voelt.",
     about: "two main clauses, no word lost",
-    hard: "the parser splits it into two sentences after begroet",
+    hard: "spaCy splits the sentence after begroet (sentences still come from spaCy)",
     clauses: [
       "main: Ze|begroet|meneer Haddad hartelijk||",
       "main: (en) |vraagt|||[…]",
@@ -265,7 +264,6 @@ export const FRAME_CASES: FrameCase[] = [
     sentence:
       "Voorbeelden van dieren die veel voorkomen in de bergtoendra zone zijn berggeiten, fluithazen, chinchilla's, jaks en marmotten.",
     about: "a long subject with a relative clause",
-    hard: "the parser reads zijn as a pronoun and the sentence as a phrase",
     clauses: [
       "main: Voorbeelden van dieren […]|zijn|berggeiten fluithazen chinchilla's jaks en marmotten||",
       "rel: die|veel|voorkomen|in de bergtoendra zone",
@@ -307,7 +305,6 @@ export const FRAME_CASES: FrameCase[] = [
   {
     sentence: "Vraag Tom om morgen Mary mee te nemen.",
     about: "command, its verb tagged as an infinitive",
-    hard: "the parser reads Vraag as a noun and Tom as the object of nemen",
     clauses: ["command: |Vraag|Tom||[…]", "sub: om|morgen Mary mee|te nemen|"],
   },
   {
@@ -329,7 +326,6 @@ export const FRAME_CASES: FrameCase[] = [
     sentence: "Dat zijn vrouwen in lange witte kleren.",
     about: "zijn as the verb",
     clauses: ["main: Dat|zijn|vrouwen in lange witte kleren||"],
-    hard: "the parser reads zijn as a possessive",
   },
   {
     sentence: "Je had hem de waarheid moeten zeggen.",
@@ -365,7 +361,6 @@ export const FRAME_CASES: FrameCase[] = [
     sentence: "Gelieve het vandaag af te halen.",
     about: "formal request",
     clauses: ["command: |Gelieve|het vandaag|af te halen|"],
-    hard: "the parser reads Gelieve as a noun",
   },
   { sentence: "En boven op de kerk?", about: "fragment", clauses: [] },
   { sentence: "Een groot schip op zee.", about: "fragment", clauses: [] },
@@ -430,13 +425,11 @@ export const FRAME_CASES: FrameCase[] = [
     sentence: "Op de oude radio van Jan hoort Noor stemmen.",
     about: "noun or verb",
     clauses: ["main: Op de oude radio van Jan|hoort|Noor stemmen||"],
-    hard: "stemmen can be a verb here too (hears Noor vote); the parser picks the verb",
   },
   {
     sentence: '"Nee, deze gaat naar Zwolle."',
     about: "interjection before the first place",
-    clauses: ["main: deze|gaat|naar Zwolle||"],
-    hard: "Nee has no part of its own yet",
+    clauses: ["main: (Nee) deze|gaat|naar Zwolle||"],
   },
   {
     sentence: '"Was ik maar de zon."',
@@ -506,7 +499,6 @@ export const FRAME_CASES: FrameCase[] = [
     sentence: "En als er mist over het land hangt, blijft hij binnen.",
     about: "a clause in first place after En",
     clauses: ["main: (En) […]|blijft|hij|binnen|", "sub: als|er mist over het land|hangt|"],
-    hard: "the parser reads mist as the verb",
   },
   {
     sentence: "Wanneer staat u normaal gesproken op?",
@@ -518,11 +510,10 @@ export const FRAME_CASES: FrameCase[] = [
     sentence: "Ik kwam thuis en het eerste wat ik deed was mijn schoenen uit doen.",
     about: "a relative inside the second main clause's first place",
     clauses: [
-      "main: Ik|kwam|thuis||",
+      "main: Ik|kwam||thuis|",
       "main: (en) het eerste […]|was|mijn schoenen|uit doen|",
       "rel: wat|ik|deed|",
     ],
-    hard: "the parser hangs was on deed",
   },
   {
     sentence: "Het maakt niet uit hoe duur het is.",
@@ -543,6 +534,5 @@ export const FRAME_CASES: FrameCase[] = [
     sentence: "Sla rechtsaf aan het einde van die straat.",
     about: "command",
     clauses: ["command: |Sla|rechtsaf aan het einde van die straat||"],
-    hard: "the parser reads Sla as a noun",
   },
 ];

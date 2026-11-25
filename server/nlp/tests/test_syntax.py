@@ -42,3 +42,17 @@ def test_syntaxdot_parse_on_the_same_words(monkeypatch):
         "open",
         ".",
     ]
+
+
+def test_one_root_per_sentence():
+    from vuurtoren_nlp.syntax import _one_root
+
+    # "Ze begroet meneer": two roots from SyntaxDot; the verb stays the root
+    cols = [
+        ["1", "Ze", "ze", "PRON", "_", "_", "2", "obj"],
+        ["2", "begroet", "begroeten", "VERB", "_", "VerbForm=Fin", "0", "root"],
+        ["3", "meneer", "meneer", "NOUN", "_", "_", "0", "root"],
+    ]
+    _one_root(cols)
+    assert [c[6] for c in cols] == ["2", "0", "2"]
+    assert cols[2][7] == "dep"

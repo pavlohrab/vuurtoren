@@ -136,6 +136,9 @@ export function SentenceFrameView({
     );
   };
 
+  /** A link part that is an interjection ("Nee,"): labelled "aside", not "joins". */
+  const aside = (p: ClausePart) =>
+    p.items.length === 1 && typeof p.items[0] === "number" && tokens[p.items[0]]!.pos === "INTJ";
   const why = (f: Focus): string => {
     if (!f) return clauses.length ? "Tap a part or a word to see why it's there." : "";
     if (f.kind === "word") {
@@ -149,6 +152,8 @@ export function SentenceFrameView({
       if (particle)
         return `The rest of the verb goes to the end: ${word(c.verb)} … ${word(particle.i)} is one verb.`;
     }
+    if (f.field === "link" && aside(c.parts.find((p) => p.field === "link")!))
+      return "A word on its own before the clause (ja, nee, hé). It takes no place: the verb still comes second.";
     return FIELD_WHY[f.field];
   };
 
@@ -224,7 +229,7 @@ export function SentenceFrameView({
                             ),
                           )}
                         </span>
-                        {LABEL[p.field] ? (
+                        {(p.field === "link" && aside(p) ? "aside" : LABEL[p.field]) ? (
                           <button
                             type="button"
                             className="sframe-label"
@@ -235,7 +240,7 @@ export function SentenceFrameView({
                             }
                             onClick={() => setFocus({ kind: "field", clause: k, field: p.field })}
                           >
-                            {LABEL[p.field]}
+                            {p.field === "link" && aside(p) ? "aside" : LABEL[p.field]}
                           </button>
                         ) : null}
                       </span>
