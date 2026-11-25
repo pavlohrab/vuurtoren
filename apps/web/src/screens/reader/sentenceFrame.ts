@@ -30,6 +30,8 @@ export interface Clause {
   parts: ClausePart[];
   /** The clause this one sits in, or null for a main clause. */
   parent: number | null;
+  /** For a clause that says more about a word ("het eilandje waarop …"): that word. */
+  about?: number | null;
   /** Its conjugated verb; -1 for a phrase without one. */
   verb: number;
 }
@@ -600,7 +602,11 @@ export function sentenceClauses(tokens: readonly AnalyzedToken[], sent: number):
       );
     }
     const parent = d.parentPred === null ? null : (indexOf.get(d.parentPred) ?? null);
-    return { kind, parts, parent, verb: d.verb.i };
+    const about =
+      kind === "rel" && d.anchor !== null && tokens[d.anchor] && isWord(tokens[d.anchor]!)
+        ? d.anchor
+        : null;
+    return { kind, parts, parent, verb: d.verb.i, about };
   });
 }
 

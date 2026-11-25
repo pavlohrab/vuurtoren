@@ -1204,3 +1204,26 @@ dl.card-meaning dd,
   -webkit-touch-callout: none;
   touch-action: manipulation;
 }
+
+/* A clause about a word: the word lights up when its row's label is tapped. */
+.sframe-word[data-about] {
+  outline: 1.5px solid var(--accent);
+  outline-offset: 1px;
+  border-radius: 3px;
+}
+.sframe-nested sup {
+  font-size: 0.6em;
+  margin-inline-start: 1px;
+}
+/* Test build: which style shows the word a clause is about. */
+.sframe-links {
+  display: flex;
+  gap: var(--s-3);
+  font-size: 13px;
+  color: var(--ink-muted);
+}
+.sframe-links label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}

@@ -6,7 +6,7 @@
  * line says why it's there. "Word types" puts the kind under every word.
  */
 import type { AnalyzedToken } from "@app/core";
-import { useMemo, useState } from "react";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { readLocal, writeLocal } from "../../storage/local.js";
 import {
   type Clause,
@@ -65,6 +65,10 @@ const FIELD_WHY: Record<Field, string> = {
 };
 
 const TYPES_KEY = "vuurtoren.sentence-word-types";
+/** Test build (F3): how a clause about a word shows that word. B "under" = the row starts under
+ * the word; A "name" = the row names it. Pavlo picks one, then the other goes. */
+const LINKS_KEY = "vuurtoren.sentence-links";
+type LinkStyle = "under" | "name";
 
 type Focus =
   | { kind: "clause"; clause: number }
@@ -109,6 +113,38 @@ export function SentenceFrameView({
   const doubtful = useMemo(() => structureDoubtful(tokens, sent, clauses), [tokens, sent, clauses]);
   const [focus, setFocus] = useState<Focus>(null);
   const [types, setTypes] = useState(() => readLocal(TYPES_KEY) === "1");
+  const [links, setLinks] = useState<LinkStyle>(() =>
+    readLocal(LINKS_KEY) === "name" ? "name" : "under",
+  );
+  // Clauses inside others, numbered in reading order when there are two or more.
+  const order = useMemo(() => rows(clauses), [clauses]);
+  const number = useMemo(() => {
+    const inner = order.filter(({ depth }) => depth > 0).map(({ k }) => k);
+    return new Map(inner.length >= 2 ? inner.map((k, n) => [k, n + 1]) : []);
+  }, [order]);
+  // Style B: where each "about" row starts (under its word in the rows above), measured.
+  const rowsRef = useRef<HTMLDivElement>(null);
+  const [under, setUnder] = useState<Map<number, number>>(new Map());
+  useLayoutEffect(() => {
+    const box = rowsRef.current;
+    if (!box || links !== "under") return;
+    const measure = () => {
+      const left = box.getBoundingClientRect().left;
+      const next = new Map<number, number>();
+      clauses.forEach((c, k) => {
+        if (c.about == null) return;
+        const el = box.querySelector<HTMLElement>(`[data-i="${c.about}"]`);
+        if (el) next.set(k, Math.max(0, el.getBoundingClientRect().left - left));
+      });
+      setUnder((old) =>
+        [...next].every(([k, v]) => old.get(k) === v) && old.size === next.size ? old : next,
+      );
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(box);
+    return () => ro.disconnect();
+  }, [clauses, links, types]);
   const word = (i: number) => {
     const t = tokens[i]!;
     return text.slice(t.start, t.end);
@@ -122,6 +158,10 @@ export function SentenceFrameView({
         key={i}
         type="button"
         className="sframe-word k-sbs-w"
+        data-i={i}
+        {...(focus?.kind === "clause" && clauses[focus.clause]?.about === i
+          ? { "data-about": "" }
+          : {})}
         {...(c ? { "data-pc": c } : {})}
         aria-pressed={focus?.kind === "word" && focus.i === i}
         {...bound}
@@ -185,16 +225,25 @@ export function SentenceFrameView({
     <section className="sframe k-pairs" aria-label="The sentence, part by part">
       {/* Each clause on one line; a long one scrolls the rows sideways together. */}
       <div className="sframe-scroll">
-        <div className="sframe-rows">
-          {rows(clauses).map(({ k, depth }) => {
+        <div className="sframe-rows" ref={rowsRef}>
+          {order.map(({ k, depth }) => {
             const c = clauses[k]!;
+            const about = c.about == null ? null : word(c.about);
+            const n = number.get(k);
+            const x = links === "under" ? under.get(k) : undefined;
             const particle = tokens.find((t) => t.particle_of === c.verb)?.i ?? null;
             return (
               <div
                 key={k}
                 className="sframe-row"
                 data-kind={c.kind}
-                style={depth ? { marginInlineStart: `${Math.min(depth, 3) * 16}px` } : undefined}
+                style={
+                  x !== undefined
+                    ? { marginInlineStart: `${x}px` }
+                    : depth
+                      ? { marginInlineStart: `${Math.min(depth, 3) * 16}px` }
+                      : undefined
+                }
               >
                 <button
                   type="button"
@@ -203,7 +252,8 @@ export function SentenceFrameView({
                   onClick={() => setFocus({ kind: "clause", clause: k })}
                 >
                   {depth ? "└ " : ""}
-                  {KIND[c.kind]}
+                  {n ? `${n} · ` : ""}
+                  {about ? `About “${about}”` : KIND[c.kind]}
                 </button>
                 <div className="sframe-line" lang="nl">
                   {c.parts
@@ -230,6 +280,7 @@ export function SentenceFrameView({
                                 title={KIND[clauses[x.clause]!.kind]}
                               >
                                 […]
+                                {number.get(x.clause) ? <sup>{number.get(x.clause)}</sup> : null}
                               </span>
                             ),
                           )}
@@ -261,6 +312,24 @@ export function SentenceFrameView({
         {why(focus)}
       </p>
       <TypesToggle types={types} setTypes={setTypes} />
+      {clauses.some((c) => c.about != null) ? (
+        <div className="sframe-links" role="radiogroup" aria-label="The word a clause is about">
+          {(["under", "name"] as const).map((v) => (
+            <label key={v}>
+              <input
+                type="radio"
+                name="sframe-links"
+                checked={links === v}
+                onChange={() => {
+                  setLinks(v);
+                  writeLocal(LINKS_KEY, v === "name" ? "name" : null);
+                }}
+              />
+              {v === "under" ? "Under the word (B)" : "By name (A)"}
+            </label>
+          ))}
+        </div>
+      ) : null}
     </section>
   );
 }
