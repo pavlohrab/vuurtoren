@@ -80,11 +80,27 @@ pub async fn lan_start(app: AppHandle) -> Result<LanInfo, String> {
                 .ok()
                 .and_then(|p| p.trim().parse().ok())
                 .unwrap_or(0);
+            // A connected phone's `/nlp/…`: this computer's language server answers it.
+            let handle = app.clone();
+            let nlp: lan_server::Nlp = Arc::new(move |method, path, ct, body| {
+                let app = handle.clone();
+                Box::pin(async move {
+                    let res = crate::proxy::forward(&app, &method, path, ct, body).await;
+                    let content_type = res
+                        .headers()
+                        .get("content-type")
+                        .and_then(|v| v.to_str().ok())
+                        .unwrap_or("application/json")
+                        .to_string();
+                    (res.status().as_u16(), content_type, res.into_body())
+                })
+            });
             let (on, run) = lan_server::listen(
                 hub.lan.clone(),
                 &hub.dir,
                 port,
                 Some(hub.dir.join("lan-phones.json")),
+                Some(nlp),
             )
             .await?;
             tauri::async_runtime::spawn(run);

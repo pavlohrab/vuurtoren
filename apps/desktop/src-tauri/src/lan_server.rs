@@ -23,6 +23,20 @@ use tokio_rustls::TlsAcceptor;
 use crate::lan::{Lan, MAX_FILE};
 use crate::pinned::fingerprint;
 
+/// Forwards a phone's `/nlp/…` request to this computer's language server: (method, path with
+/// query, content type, body) → (status, content type, body).
+pub type Nlp = Arc<
+    dyn Fn(
+            String,
+            String,
+            Option<Vec<u8>>,
+            Vec<u8>,
+        )
+            -> std::pin::Pin<Box<dyn std::future::Future<Output = (u16, String, Vec<u8>)> + Send>>
+        + Send
+        + Sync,
+>;
+
 const CERT: &str = "lan-cert.der";
 const KEY: &str = "lan-key.der";
 
@@ -58,8 +72,48 @@ fn now() -> u64 {
 async fn answer(
     lan: Arc<Mutex<Lan>>,
     save_to: Option<Arc<std::path::PathBuf>>,
+    nlp: Option<Nlp>,
     req: Request<Incoming>,
 ) -> Result<Response<Full<Bytes>>, std::convert::Infallible> {
+    // A connected phone's language-server request: forwarded, so the phone can prepare a new
+    // text while it is home (`/nlp/analyze/…` → the computer's own language server).
+    if let (Some(nlp), Some(rest)) = (nlp, req.uri().path().strip_prefix("/nlp")) {
+        let bearer = req
+            .headers()
+            .get("authorization")
+            .and_then(|v| v.to_str().ok())
+            .and_then(|v| v.strip_prefix("Bearer "))
+            .map(str::to_string);
+        let allowed = lan
+            .lock()
+            .map(|l| l.authorized(bearer.as_deref()))
+            .unwrap_or(false);
+        if !allowed {
+            return Ok(Response::builder()
+                .status(401)
+                .body(Full::new(Bytes::from_static(b"{\"ok\":false}")))
+                .expect("response"));
+        }
+        let path = match req.uri().query() {
+            Some(q) => format!("{rest}?{q}"),
+            None => rest.to_string(),
+        };
+        let method = req.method().as_str().to_string();
+        let ct = req
+            .headers()
+            .get("content-type")
+            .map(|v| v.as_bytes().to_vec());
+        let body = match Limited::new(req.into_body(), MAX_FILE + 1).collect().await {
+            Ok(b) => b.to_bytes().to_vec(),
+            Err(_) => vec![],
+        };
+        let (status, content_type, out) = nlp(method, path, ct, body).await;
+        return Ok(Response::builder()
+            .status(status)
+            .header("content-type", content_type)
+            .body(Full::new(Bytes::from(out)))
+            .expect("response"));
+    }
     let method = req.method().as_str().to_string();
     let url = Url::parse(&format!("https://phone{}", req.uri())).ok();
     let path = url
@@ -117,6 +171,7 @@ pub async fn listen(
     data_dir: &Path,
     port: u16,
     save_to: Option<std::path::PathBuf>,
+    nlp: Option<Nlp>,
 ) -> Result<(Listening, impl std::future::Future<Output = ()>), String> {
     let (cert, key) = certificate(data_dir)?;
     let print = fingerprint(&cert);
@@ -141,12 +196,14 @@ pub async fn listen(
             let Ok((tcp, _)) = listener.accept().await else {
                 continue;
             };
-            let (acceptor, lan, save_to) = (acceptor.clone(), lan.clone(), save_to.clone());
+            let (acceptor, lan, save_to, nlp) =
+                (acceptor.clone(), lan.clone(), save_to.clone(), nlp.clone());
             tokio::spawn(async move {
                 let Ok(tls) = acceptor.accept(tcp).await else {
                     return;
                 };
-                let service = service_fn(move |req| answer(lan.clone(), save_to.clone(), req));
+                let service =
+                    service_fn(move |req| answer(lan.clone(), save_to.clone(), nlp.clone(), req));
                 let _ = http1::Builder::new()
                     .serve_connection(TokioIo::new(tls), service)
                     .await;
@@ -173,7 +230,9 @@ mod tests {
         fs::create_dir_all(&place).unwrap();
         let lan = Arc::new(Mutex::new(Lan::new(&place)));
         let code = lan.lock().unwrap().new_code(now());
-        let (on, run) = listen(lan.clone(), dir.path(), 0, None).await.unwrap();
+        let (on, run) = listen(lan.clone(), dir.path(), 0, None, None)
+            .await
+            .unwrap();
         tokio::spawn(run);
         let base = format!("https://127.0.0.1:{}", on.port);
 
@@ -218,7 +277,53 @@ mod tests {
             .is_err());
 
         // The certificate is kept: the same fingerprint next time.
-        let (again, _) = listen(lan, dir.path(), 0, None).await.unwrap();
+        let (again, _) = listen(lan, dir.path(), 0, None, None).await.unwrap();
         assert_eq!(again.fingerprint, on.fingerprint);
+    }
+
+    #[tokio::test]
+    async fn a_paired_phone_reaches_the_language_server_and_nobody_else() {
+        let dir = tempfile::tempdir().unwrap();
+        let place = dir.path().join("place");
+        fs::create_dir_all(&place).unwrap();
+        let lan = Arc::new(Mutex::new(Lan::new(&place)));
+        let code = lan.lock().unwrap().new_code(now());
+        let nlp: Nlp = Arc::new(|method, path, _ct, body| {
+            Box::pin(async move {
+                let echo = format!("{method} {path} {}", String::from_utf8_lossy(&body));
+                (200, "text/plain".to_string(), echo.into_bytes())
+            })
+        });
+        let (on, run) = listen(lan, dir.path(), 0, None, Some(nlp)).await.unwrap();
+        tokio::spawn(run);
+        let base = format!("https://127.0.0.1:{}", on.port);
+        let phone = crate::pinned::client(&on.fingerprint).unwrap();
+        let denied = phone
+            .post(format!("{base}/nlp/analyze/text"))
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(denied.status(), 401);
+        let paired: serde_json::Value = phone
+            .post(format!("{base}/api/sync/pair"))
+            .body(serde_json::json!({ "code": code }).to_string())
+            .send()
+            .await
+            .unwrap()
+            .json()
+            .await
+            .unwrap();
+        let token = paired["token"].as_str().unwrap();
+        let echo = phone
+            .post(format!("{base}/nlp/analyze/text?x=1"))
+            .bearer_auth(token)
+            .body("hallo")
+            .send()
+            .await
+            .unwrap()
+            .text()
+            .await
+            .unwrap();
+        assert_eq!(echo, "POST /analyze/text?x=1 hallo");
     }
 }

@@ -80,8 +80,26 @@ pub async fn handle(app: AppHandle, req: Request<Vec<u8>>) -> Response<Vec<u8>> 
             .body(vec![])
             .expect("valid response");
     }
+    let path = upstream_path(&req);
+    let method = req.method().as_str().to_string();
+    let content_type = req
+        .headers()
+        .get(header::CONTENT_TYPE)
+        .map(|v| v.as_bytes().to_vec());
+    forward(&app, &method, path, content_type, req.into_body()).await
+}
+
+/// Forward one request to the language server (the page's `vuurtoren-nlp:` requests, and a
+/// connected phone's `/nlp/…` on the home network, SY1). Waits for the server to start.
+pub async fn forward(
+    app: &AppHandle,
+    method: &str,
+    path: String,
+    content_type: Option<Vec<u8>>,
+    body: Vec<u8>,
+) -> Response<Vec<u8>> {
     let state = app.state::<crate::State>();
-    crate::desktop::ensure_sidecar(&app);
+    crate::desktop::ensure_sidecar(app);
     let started = Instant::now();
     loop {
         match state.sidecar.state() {
@@ -104,7 +122,6 @@ pub async fn handle(app: AppHandle, req: Request<Vec<u8>>) -> Response<Vec<u8>> 
             }
         }
     }
-    let path = upstream_path(&req);
     if path.starts_with("/analyze/") {
         let waiting = Instant::now();
         while state.sidecar.dictionary_busy() && waiting.elapsed() < WAIT_DICTIONARY {
@@ -120,7 +137,7 @@ pub async fn handle(app: AppHandle, req: Request<Vec<u8>>) -> Response<Vec<u8>> 
             "The language server is not running.",
         );
     };
-    let method = match req.method().as_str() {
+    let method = match method {
         "GET" => reqwest::Method::GET,
         "POST" => reqwest::Method::POST,
         _ => return detail(StatusCode::METHOD_NOT_ALLOWED, "Only GET and POST."),
@@ -130,10 +147,10 @@ pub async fn handle(app: AppHandle, req: Request<Vec<u8>>) -> Response<Vec<u8>> 
         .request(method, format!("{base}{path}"))
         .header(TOKEN_HEADER, &state.sidecar.token)
         .timeout(FORWARD_TIMEOUT);
-    if let Some(ct) = req.headers().get(header::CONTENT_TYPE) {
-        forward = forward.header(reqwest::header::CONTENT_TYPE, ct.as_bytes());
+    if let Some(ct) = content_type {
+        forward = forward.header(reqwest::header::CONTENT_TYPE, ct);
     }
-    let res = match forward.body(req.into_body()).send().await {
+    let res = match forward.body(body).send().await {
         Ok(res) => res,
         Err(e) => {
             return detail(

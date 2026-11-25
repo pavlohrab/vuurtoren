@@ -713,8 +713,9 @@ export function createLiveSync(deps: LiveSyncDeps) {
     return {
       url: `${place.url.replace(/\/+$/, "")}/nlp`,
       token,
-      // In the app the requests go through it, like sync's (no CORS setup on the server).
-      ...(deps.desktop ? { fetch: desktopFetch(deps.desktop) } : {}),
+      // In the app the requests go through it, like sync's (no CORS setup on the server); to
+      // the user's own computer only with its certificate (Connect a phone).
+      ...(deps.desktop ? { fetch: desktopFetch(deps.desktop, place.pinned) } : {}),
     };
   }
 

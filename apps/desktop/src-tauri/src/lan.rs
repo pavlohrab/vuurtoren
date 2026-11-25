@@ -115,6 +115,14 @@ impl Lan {
             .unwrap_or_default();
     }
 
+    /// Is `bearer` a connected phone's token (for `/nlp/…`, which the listener forwards)?
+    pub fn authorized(&self, bearer: Option<&str>) -> bool {
+        bearer.is_some_and(|t| {
+            let h = hash(t);
+            self.phones.iter().any(|p| p.hash == h)
+        })
+    }
+
     /// Remove a phone (Settings → Your devices → Remove): its token stops working.
     pub fn remove_phone(&mut self, hash: &str) {
         self.phones.retain(|p| p.hash != hash);
