@@ -550,10 +550,13 @@ def analyze_texts(lang: str, texts: list[str]) -> list[TextAnalysis]:
         # Curly apostrophes -> straight before parsing, so clitics lemmatise ('t -> het).
         # One character for one character: offsets are unchanged.
         clean = [t.translate(_QUOTES) for t in texts]
-        return [
-            analyze_doc(doc, orig)
-            for doc, orig in zip(nlp.pipe(clean, batch_size=64), texts, strict=True)
-        ]
+        docs = list(nlp.pipe(clean, batch_size=64))
+        out = [analyze_doc(doc, orig) for doc, orig in zip(docs, texts, strict=True)]
+        # The sentence structure's own parse (SyntaxDot), when it is set up (syntax.py).
+        from vuurtoren_nlp.syntax import add_syntax
+
+        add_syntax(docs, out, texts)
+        return out
     except ValueError as e:
         if "E088" in str(e):
             raise ServiceError(
