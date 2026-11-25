@@ -222,6 +222,55 @@ export const FRAME_CASES: FrameCase[] = [
       "sub: of|ze|zou bewegen|",
     ],
   },
+  {
+    sentence: "We hebben hem op heterdaad betrapt.",
+    about: "participle the parser calls an adjective",
+    clauses: ["main: We|hebben|hem op heterdaad|betrapt|"],
+  },
+  {
+    sentence: "De moedige brandweerman redde een jongen uit het brandende huis.",
+    about: "an -ende form before a noun is no verb end",
+    clauses: ["main: De moedige brandweerman|redde|een jongen uit het brandende huis||"],
+  },
+  {
+    sentence: "Ze hebben geen eten en geen water.",
+    about: "a noun after geen is no verb",
+    clauses: ["main: Ze|hebben|geen eten en geen water||"],
+  },
+  {
+    sentence:
+      "Ze praten een uur, over haar opa, over vroeger, over dingen die ze nog nooit hebben besproken.",
+    about: "plural present in a relative clause",
+    clauses: [
+      "main: Ze|praten|een uur over haar opa over vroeger over dingen […]||",
+      "rel: die|ze nog nooit|hebben besproken|",
+    ],
+  },
+  {
+    sentence: "Maar Jesse wil in de stad wonen, niet in de trein.",
+    about: "an infinitive is the verb end, not a clause",
+    clauses: ["main: (Maar) Jesse|wil|in de stad|wonen|niet in de trein"],
+  },
+  {
+    sentence: "Ze begroet meneer Haddad hartelijk en vraagt hoe hij zich voelt.",
+    about: "two main clauses, no word lost",
+    hard: "the parser splits it into two sentences after begroet",
+    clauses: [
+      "main: Ze|begroet|meneer Haddad hartelijk||",
+      "main: (en) |vraagt|||[…]",
+      "sub: hoe|hij zich|voelt|",
+    ],
+  },
+  {
+    sentence:
+      "Voorbeelden van dieren die veel voorkomen in de bergtoendra zone zijn berggeiten, fluithazen, chinchilla's, jaks en marmotten.",
+    about: "a long subject with a relative clause",
+    hard: "the parser reads zijn as a pronoun and the sentence as a phrase",
+    clauses: [
+      "main: Voorbeelden van dieren […]|zijn|berggeiten fluithazen chinchilla's jaks en marmotten||",
+      "rel: die|veel|voorkomen|in de bergtoendra zone",
+    ],
+  },
   { sentence: "En boven op de kerk?", about: "fragment", clauses: [] },
   { sentence: "Een groot schip op zee.", about: "fragment", clauses: [] },
   {

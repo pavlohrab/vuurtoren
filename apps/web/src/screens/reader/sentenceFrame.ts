@@ -62,7 +62,21 @@ function introduces(t: AnalyzedToken): boolean {
 /** The clauses of sentence `sent`, main clauses first in reading order; [] for a fragment. */
 export function sentenceClauses(tokens: readonly AnalyzedToken[], sent: number): Clause[] {
   const words = tokens.filter((t) => t.sent === sent && isWord(t));
-  const finite = words.filter((t) => isVerb(t) && t.morph.includes("VerbForm=Fin"));
+  // Conjugated verbs, with two repairs of the parser's forms. An infinitive after a modal is
+  // sometimes tagged conjugated ("wil … wonen"): xcomp means it isn't. A plural present looks like
+  // an infinitive ("die ze nooit hebben besproken"): a helper in a clause of its own with no
+  // conjugated verb is the conjugated one.
+  const finite = words.filter(
+    (t) => isVerb(t) && t.morph.includes("VerbForm=Fin") && t.dep !== "xcomp",
+  );
+  for (const t of words) {
+    if (t.pos !== "AUX" || t.dep !== "aux" || !t.morph.includes("VerbForm=Inf")) continue;
+    const head = tokens[t.head];
+    if (!head || !["acl:relcl", "advcl", "ccomp", "csubj"].includes(head.dep)) continue;
+    const helpers = words.filter((x) => x.head === head.i && (x.dep === "aux" || x.dep === "cop"));
+    if (!helpers.some((x) => finite.includes(x)) && !finite.includes(head)) finite.push(t);
+  }
+  finite.sort((a, b) => a.i - b.i);
   if (!finite.length) return [];
   // The predicate of each conjugated verb: the verb, or the word a helping verb hangs on.
   const predicateOf = (v: AnalyzedToken) =>
@@ -245,8 +259,18 @@ export function sentenceClauses(tokens: readonly AnalyzedToken[], sent: number):
       const body = own.slice(lead);
       const before = body.filter((t) => t.i < d.verb.i);
       const after = body.filter((t) => t.i > d.verb.i);
+      // A verb in the verb end: not the conjugated one, not a participle before a noun
+      // ("brandende huis"), not a noun the parser took for a verb ("geen eten"). The word the
+      // helper hangs on belongs here even when it's tagged conjugated ("hebben … betrapt").
+      const hasArticle = (t: AnalyzedToken) => words.some((x) => x.head === t.i && x.dep === "det");
+      const endVerb = (t: AnalyzedToken) =>
+        isVerb(t) &&
+        t.i !== d.verb.i &&
+        t.dep !== "amod" &&
+        !hasArticle(t) &&
+        (!t.morph.includes("VerbForm=Fin") || t.i === d.pred || t.dep === "xcomp");
       const endWord = (t: AnalyzedToken, next?: AnalyzedToken): boolean =>
-        (isVerb(t) && !t.morph.includes("VerbForm=Fin")) ||
+        endVerb(t) ||
         t.particle_of !== null ||
         t.dep === "compound:prt" ||
         // "te slapen", "uit eten": a small word that hangs on the infinitive right after it
@@ -263,7 +287,7 @@ export function sentenceClauses(tokens: readonly AnalyzedToken[], sent: number):
         // No verb at the very end: find the last run of verb words, the rest follows it.
         let j = after.length - 1;
         while (j >= 0 && !endWord(after[j]!, after[j + 1])) j--;
-        if (j >= 0 && isVerb(after[j]!)) {
+        if (j >= 0 && endVerb(after[j]!)) {
           blockEnd = j + 1;
           endFrom = j;
           while (endFrom > 0 && endWord(after[endFrom - 1]!, after[endFrom])) endFrom--;
