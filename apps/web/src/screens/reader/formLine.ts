@@ -44,10 +44,26 @@ function who(tokens: readonly AnalyzedToken[], verb: AnalyzedToken): string {
   return feat(verb.morph, "Number") === "Plur" ? "wij/jullie/zij" : "hij/zij/het";
 }
 
+/**
+ * A command ("Kijk!", "Doe de deur dicht."): the parser calls it a present-tense verb, so word
+ * order decides. The sentence's first word, a singular present with no subject of its own, in
+ * its bare stem (kijk, not kijkt; wacht, whose stem ends in t, also counts).
+ */
+function isCommand(tokens: readonly AnalyzedToken[], t: AnalyzedToken): boolean {
+  if (feat(t.morph, "Tense") !== "Pres" || feat(t.morph, "Number") === "Plur") return false;
+  const first = tokens.find((x) => x.sent === t.sent && x.is_word);
+  if (first?.i !== t.i) return false;
+  if (tokens.some((x) => x.head === t.i && x.i !== t.i && x.dep.startsWith("nsubj"))) return false;
+  const word = t.text.toLowerCase();
+  const stem = t.lemma.toLowerCase().replace(/e?n$/, "");
+  return !word.endsWith("t") || stem.endsWith("t");
+}
+
 function verbForm(tokens: readonly AnalyzedToken[], t: AnalyzedToken): string | undefined {
   const form = feat(t.morph, "VerbForm");
   if (form === "Part") return "past participle";
   if (form !== "Fin") return undefined;
+  if (isCommand(tokens, t)) return "command";
   const tense = feat(t.morph, "Tense") === "Past" ? "past" : "now";
   return `${tense}, ${who(tokens, t)}`;
 }

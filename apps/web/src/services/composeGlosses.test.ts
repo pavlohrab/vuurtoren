@@ -25,3 +25,27 @@ describe("composeGlosses article", () => {
     expect(composeGlosses(null, huis as never, "").article).toBe("het");
   });
 });
+
+describe("composeGlosses meanings", () => {
+  it("doesn't say the same meaning twice", () => {
+    const burgemeester = [
+      {
+        pos: "noun",
+        article: "de",
+        glosses: ["mayor, burgomaster", "mayor, burgomaster (head of a city or municipality)"],
+      },
+    ];
+    const got = composeGlosses({ gloss: "mayor" } as never, burgemeester as never, "NOUN").glosses;
+    expect(got).toEqual(["mayor, burgomaster"]);
+  });
+
+  it("keeps meanings that differ", () => {
+    const kijken = [
+      { pos: "verb", article: null, glosses: ["to look", "to watch (e.g. a film), to observe"] },
+    ];
+    expect(composeGlosses(null, kijken as never, "VERB").glosses).toEqual([
+      "to look",
+      "to watch (e.g. a film), to observe",
+    ]);
+  });
+});

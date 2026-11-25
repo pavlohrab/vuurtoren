@@ -75,6 +75,31 @@ const ALIGN_MIN_CONFIDENCE = 0.5;
  * `glossNote` says where the first meaning came from when it is a guess built from the word's
  * parts.
  */
+/** The parts of a meaning, for comparing: "mayor, burgomaster (head of a city)" → mayor, burgomaster. */
+function meaningParts(g: string): Set<string> {
+  return new Set(
+    g
+      .replace(/\([^)]*\)/g, "")
+      .split(/[,;]/)
+      .map((p) => p.trim().toLocaleLowerCase().replace(/^to /, ""))
+      .filter(Boolean),
+  );
+}
+
+/**
+ * Add a meaning unless the ones shown already say it: "mayor, burgomaster (head of a city…)"
+ * adds nothing after "mayor, burgomaster". One that says more replaces the one it contains
+ * ("mayor" → "mayor, burgomaster").
+ */
+function addMeaning(glosses: string[], g: string): void {
+  const parts = meaningParts(g);
+  const shown = new Set(glosses.flatMap((x) => [...meaningParts(x)]));
+  if (!parts.size || [...parts].every((p) => shown.has(p))) return;
+  const inside = glosses.findIndex((x) => [...meaningParts(x)].every((p) => parts.has(p)));
+  if (inside >= 0) glosses[inside] = g;
+  else glosses.push(g);
+}
+
 export function composeGlosses(
   info: WordInfo | null,
   entries: Dictionary[string] | undefined,
@@ -89,8 +114,7 @@ export function composeGlosses(
   if (info?.gloss) glosses.push(withoutArticle(info.gloss));
   const ordered = orderByPos(entries ?? [], pos);
   for (const e of ordered)
-    for (const g of e.glosses)
-      if (!FORM_OF.test(g) && !PLACE_SENSE.test(g) && !glosses.includes(g)) glosses.push(g);
+    for (const g of e.glosses) if (!FORM_OF.test(g) && !PLACE_SENSE.test(g)) addMeaning(glosses, g);
   // An article only for a word used as a noun, and only from a noun sense: "haar" (her) must not
   // borrow "het haar" (hair), nor "ons" (us) "het ons" (an ounce).
   const asNoun = pos ? /^(NOUN|PROPN)$/i.test(pos) : ordered[0]?.pos === "noun";

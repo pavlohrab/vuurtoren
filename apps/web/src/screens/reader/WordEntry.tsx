@@ -40,7 +40,8 @@ function formRows(entry: Entry): { short: Row[]; more: Row[] } {
     if (present["hij"]) short.push(["hij", present["hij"]]);
     if (past[0]) short.push(["past", past[0]]);
     // The perfect with its helper when the language server knows it (hij is gegaan, heeft gedaan).
-    const aux = asString(f["aux"]);
+    // aux_nl: the Dutch Wiktionary's, for the many verbs the English one doesn't say.
+    const aux = asString(f["aux"]) ?? asString(f["aux_nl"]);
     const helper = aux === "zijn" ? "is" : aux === "both" ? "heeft / is" : aux ? "heeft" : null;
     if (participle)
       short.push(helper ? ["perfect", `${helper} ${participle}`] : ["participle", participle]);
@@ -73,9 +74,10 @@ function formRows(entry: Entry): { short: Row[]; more: Row[] } {
   return { short: [], more: [] };
 }
 
-/** Same meaning and opposite: the first sense that has them, else the entry's own. */
+/** Same meaning and opposite: the first everyday sense that has them, else the entry's own. */
 function related(entry: Entry): { same: string[]; opposite: string[] } {
-  const senses = entry.extras?.senses ?? [];
+  // Not an old or specialist sense: "kleine burgemeester" is the gull's synonym, not the mayor's.
+  const senses = (entry.extras?.senses ?? []).filter((s) => !s.mark);
   const pick = (k: "synonyms" | "antonyms") =>
     (senses.find((s) => s[k]?.length)?.[k] ?? entry.extras?.[k] ?? []).slice(0, 4);
   return { same: pick("synonyms"), opposite: pick("antonyms") };
@@ -136,7 +138,7 @@ export function WordEntry({
     ["Base verb", entry.base ? [entry.base] : []],
     ["Same meaning", same],
     ["Opposite", opposite],
-    ["Family", wide ? (entry.family ?? []) : (entry.family ?? []).slice(0, 8)],
+    ["Family", wide ? (entry.family ?? []) : (entry.family ?? []).slice(0, 6)],
     ...(wide ? ([["Related", entry.extras?.related ?? []]] as [string, string[]][]) : []),
   ];
   const senses: EntrySense[] = entry.extras?.senses ?? entry.glosses.map((gloss) => ({ gloss }));
@@ -160,8 +162,9 @@ export function WordEntry({
       {wide ? (
         <ol className="word-entry-senses">
           {senses.map((s, k) => (
-            <li key={k}>
+            <li key={k} {...(s.mark ? { "data-mark": s.mark } : {})}>
               <span>{s.gloss}</span>
+              {s.mark ? <span className="word-entry-mark">{s.mark}</span> : null}
               {s.examples
                 ? s.examples.map((ex, n) => (
                     <span key={n} className="word-entry-example">

@@ -158,7 +158,10 @@ def _gloss_text(sense: dict[str, Any]) -> str | None:
 def extract_glosses(senses: list[dict[str, Any]]) -> list[str]:
     """Up to :data:`MAX_GLOSSES` distinct short glosses, in sense order."""
     out: list[str] = []
-    for sense in _everyday_first(senses):
+    # Everyday meanings only when the word has any: the old and specialist ones (the gulls, the
+    # Roman consul of burgemeester) stay in extras.senses, for the full entry.
+    everyday = [x for x in senses if sense_mark(x) is None]
+    for sense in everyday or senses:
         text = _gloss_text(sense)
         if text and text not in out:
             out.append(text)

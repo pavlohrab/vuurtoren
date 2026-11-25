@@ -51,6 +51,27 @@ describe("formLine", () => {
     expect(formLine(t, 1)).toEqual({ said: "liep", what: "past, ik" });
   });
 
+  it("a command: first word, no subject, the bare stem", () => {
+    const kijk = toks([
+      ['"', '"', "PUNCT", "", "punct", 1],
+      ["Kijk", "kijken", "VERB", "Number=Sing|Tense=Pres|VerbForm=Fin", "nsubj", 4],
+      ["!", "!", "PUNCT", "", "punct", 1],
+      ['"', '"', "PUNCT", "", "punct", 1],
+      ["roept", "roepen", "VERB", "Number=Sing|Tense=Pres|VerbForm=Fin", "ROOT", 4],
+    ]);
+    expect(formLine(kijk, 1)).toEqual({ said: "Kijk", what: "command" });
+    // A question with its subject is not a command; nor a form with -t.
+    const woon = toks([
+      ["Woon", "wonen", "VERB", "Number=Sing|Tense=Pres|VerbForm=Fin", "ROOT", 0],
+      ["je", "je", "PRON", "", "nsubj", 0],
+    ]);
+    expect(formLine(woon, 0)?.what).toBe("now, je");
+    const kijkt = toks([
+      ["Kijkt", "kijken", "VERB", "Number=Sing|Tense=Pres|VerbForm=Fin", "ROOT", 0],
+    ]);
+    expect(formLine(kijkt, 0)?.what).toBe("now, hij/zij/het");
+  });
+
   it("a split verb shows both parts, also when the particle is tapped", () => {
     const t = toks([
       ["ze", "ze", "PRON", "", "nsubj", 1],
