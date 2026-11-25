@@ -1,7 +1,7 @@
 /**
  * The word card's dictionary parts (F2, mock round 2 iteration 1, `notes/f2-word-card.md`), from
  * dictionary v2 (`services.wordEntry`): the forms table beside the head, the meaning lines, the
- * related words as chips, the card's extra actions (Full entry, level, Van Dale) and the full
+ * related words as chips, the card's extra actions (Full entry, level) and the full
  * entry. Rows that have nothing aren't there: the card must look whole without them. A tapped
  * word opens its own card in the same panel, with "← back" (`onOpen`, notes/wc2-word-card.md).
  */
@@ -306,14 +306,12 @@ function fullSummary(entry: Entry): string {
     .join(" · ");
 }
 
-/** The card's extra actions: Full entry (and what it adds), the level, Van Dale. */
+/** The card's extra actions: Full entry (and what it adds), the level. */
 export function CardExtra({
-  lemma,
   entry,
   full,
   onFull,
 }: {
-  lemma: string;
   entry: Entry | null;
   full: boolean;
   onFull?: ((full: boolean) => void) | undefined;
@@ -328,14 +326,6 @@ export function CardExtra({
         </button>
       ) : null}
       {entry?.level ? <span className="card-extra-level">about {entry.level}</span> : null}
-      <a
-        className="k-link"
-        href={`https://www.vandale.nl/gratis-woordenboek/nederlands/betekenis/${encodeURIComponent(lemma)}`}
-        target="_blank"
-        rel="noreferrer"
-      >
-        Van Dale ↗
-      </a>
     </div>
   );
 }

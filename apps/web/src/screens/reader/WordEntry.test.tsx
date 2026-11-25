@@ -43,7 +43,7 @@ function Parts({ lemma, pos, surface }: { lemma: string; pos: string; surface: s
     <>
       <CardForms entry={entry} surface={surface} />
       <CardRelated entry={entry} />
-      <CardExtra lemma={lemma} entry={entry} full={false} onFull={() => {}} />
+      <CardExtra entry={entry} full={false} onFull={() => {}} />
     </>
   );
 }
@@ -80,10 +80,6 @@ describe("WordEntry", () => {
     expect(screen.getByText("doen open")).toBeVisible();
     // The order of all forms; a separable verb joins up in a subordinate clause.
     expect(screen.getByText("… opendoet")).toBeVisible();
-    expect(screen.getByRole("link", { name: "Van Dale ↗" })).toHaveAttribute(
-      "href",
-      "https://www.vandale.nl/gratis-woordenboek/nederlands/betekenis/opendoen",
-    );
   });
 
   it("a noun shows its plural and small form; nothing else is there", async () => {
