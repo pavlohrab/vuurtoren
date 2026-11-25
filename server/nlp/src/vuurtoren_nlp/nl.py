@@ -63,6 +63,7 @@ CIRCUMPOSITIONS: dict[str, set[str]] = {
     "af": {"op", "van"},
     "uit": {"van"},
     "aan": {"achter"},
+    "door": {"tussen", "dwars"},
 }
 # "z'n" is a possessive ("z'n best doen"), not a reflexive marker.
 REFLEXIVES = {"zich"}

@@ -100,6 +100,7 @@ PRECISION: list = [
     pytest.param("Maria ging na een tijd naar hem toe.", "ging", "gaan", marks=db),
     pytest.param("Het water stroomde het land in.", "stroomde", "instromen", marks=db),
     pytest.param("Hij keek om zich heen.", "keek", "kijken", marks=db),
+    pytest.param("Toen liep hij weg, tussen de oranje mensen door.", "liep", "weglopen", marks=db),
     pytest.param("Eerst deed zijn vinger pijn.", "deed", "doen", marks=db),
     pytest.param("Schippers gebruikten hem om hun weg te vinden.", "vinden", "vinden", marks=db),
 ]
