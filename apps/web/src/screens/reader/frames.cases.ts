@@ -188,6 +188,21 @@ export const FRAME_CASES: FrameCase[] = [
     about: "quoted speech",
     clauses: ["main: En de rest|vraagt|Mila||"],
   },
+  {
+    sentence: '"Ik weet het," zegt hij.',
+    about: "quote with its own verb",
+    clauses: ["main: […]|zegt|hij||", "main: Ik|weet|het||"],
+  },
+  {
+    sentence: '"Ben jij Hans?" vraagt hij.',
+    about: "quoted question",
+    clauses: ["main: […]|vraagt|hij||", "question: |Ben|jij Hans||"],
+  },
+  {
+    sentence: '"Ga naar zee," zei ze.',
+    about: "quoted command",
+    clauses: ["main: […]|zei|ze||", "command: |Ga|naar zee||"],
+  },
   { sentence: "En boven op de kerk?", about: "fragment", clauses: [] },
   { sentence: "Een groot schip op zee.", about: "fragment", clauses: [] },
   {

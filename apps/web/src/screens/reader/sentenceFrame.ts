@@ -97,6 +97,8 @@ export function sentenceClauses(tokens: readonly AnalyzedToken[], sent: number):
     kind: ClauseKind;
     parentPred: number | null;
     anchor: number | null;
+    /** Quoted speech before its reporting verb: a row under "zegt hij", its kind its own. */
+    quote?: boolean;
   }
   const drafts: Draft[] = [];
   const kindOf = (pred: AnalyzedToken, own: readonly AnalyzedToken[]): ClauseKind => {
@@ -150,6 +152,30 @@ export function sentenceClauses(tokens: readonly AnalyzedToken[], sent: number):
       });
     }
   }
+  // Quoted speech ("Ik weet het," zegt hij): the quote sits in the reporting clause's first
+  // place, as a row of its own under it. Two shapes in the parse: the quote is the root and the
+  // reporting verb hangs on it (parataxis), or the quote hangs on the reporting verb.
+  const lastOf = (d: Draft) => d.own.at(-1)?.i ?? -1;
+  for (const r of drafts) {
+    const rp = tokens[r.pred]!;
+    if (rp.dep !== "parataxis" || r.own.some((t) => t.i < r.verb.i)) continue;
+    const h = drafts.find((d) => d.pred === rp.head && d !== r);
+    if (h && lastOf(h) < r.verb.i && h.parentPred === null) {
+      h.parentPred = r.pred;
+      h.quote = true;
+    }
+  }
+  for (const q of drafts) {
+    if (q.quote || q.parentPred === null || q.kind === "phrase") continue;
+    const p = drafts.find((d) => d.pred === q.parentPred);
+    if (!p || lastOf(q) >= p.verb.i || introduces(q.own[0]!)) continue;
+    const between = tokens.slice(lastOf(q) + 1, p.verb.i);
+    if (between.every((t) => !isWord(t)) && !p.own.some((t) => t.i < p.verb.i)) {
+      q.quote = true;
+      q.kind = "main";
+    }
+  }
+  for (const d of drafts) if (d.quote) d.kind = "main";
   // Words no clause took: a phrase without a verb ("Een boek waarin alles staat", "Dank je wel
   // dat …"). It gets a row of its own, and the clauses hanging on it sit inside it.
   const taken = new Set(drafts.flatMap((d) => d.own.map((t) => t.i)));
@@ -259,14 +285,19 @@ export function sentenceClauses(tokens: readonly AnalyzedToken[], sent: number):
           }
         return items;
       };
-      if (d.parentPred === null && d.kind === "main" && tokens[d.pred]?.dep !== "conj") {
+      const top = d.parentPred === null && d.kind === "main" && tokens[d.pred]?.dep !== "conj";
+      if (top || d.quote) {
         // A clause in first place ("Toen ik thuiskwam, was het …") counts as a first place.
         const startsWithVerb =
           before.length === 0 && !children.some(({ c }) => c.own[0]!.i < d.verb.i);
         const qWord = before[0] && QUESTION_WORDS.has(before[0].text.toLowerCase());
         const hasSubject = own.some((t) => t.dep.startsWith("nsubj") && t.head === d.pred);
-        if (endsWithQuestion && (startsWithVerb || qWord)) kind = "question";
-        else if (startsWithVerb && !hasSubject && !endsWithQuestion) kind = "command";
+        // A quote ends at its own "?" ("Ben jij Hans?" vraagt hij), the sentence at its last one.
+        const asks = d.quote
+          ? tokens.slice(lastOf(d) + 1, lastOf(d) + 3).some((t) => t.text === "?")
+          : endsWithQuestion;
+        if (asks && (startsWithVerb || qWord)) kind = "question";
+        else if (startsWithVerb && !hasSubject && !asks) kind = "command";
       }
       if (lead) push("link", [own[0]!.i]);
       push("first", withChildren("first", before));
