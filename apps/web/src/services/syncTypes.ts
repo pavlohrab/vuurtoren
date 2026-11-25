@@ -102,6 +102,19 @@ export interface SyncServices {
    * server, the language server. Set up then joins it with the passphrase.
    */
   connectServer(link: ServerAccess, deviceName: string): Promise<SyncStatus>;
+  /**
+   * "Connect a phone" (computers): this device's sync key, base64, to hand to a phone that
+   * shows the right code; null when this device does not sync yet.
+   */
+  phoneHandover?(): Promise<string | null>;
+  /**
+   * "Connect a phone" on a computer that does not sync yet: start sync data in `folder` (the
+   * computer is the place) with a recovery key only, no passphrase. The recovery key is shown once.
+   */
+  startForPhones?(
+    folder: string,
+    deviceName: string,
+  ): Promise<SyncStatus & { recoveryKey: string | null }>;
   /** Read a `vuurtoren://connect` link with the camera; null when cancelled or not available. */
   scanConnectLink(): Promise<string | null>;
   /** Stop a running scan (Cancel on the scanner's frame); the scan then gives null. */

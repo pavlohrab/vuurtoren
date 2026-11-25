@@ -22,6 +22,7 @@ import {
   createVault,
   fromBase64,
   keyFromRaw,
+  toBase64,
   newRecoveryKey,
   readVault,
   syncOnce,
@@ -518,6 +519,43 @@ export function createLiveSync(deps: LiveSyncDeps) {
         syncedAt = null;
         watched = null;
         built = null;
+      });
+    },
+
+    async phoneHandover() {
+      if (!read()) return null;
+      const raw = await keys.load();
+      return raw ? toBase64(raw) : null;
+    },
+
+    async startForPhones(folder, deviceName) {
+      return exclusive(async () => {
+        const now = read();
+        if (now) {
+          // Already the phones' place: nothing to start.
+          if (now.place.kind === "folder" && now.place.path === folder)
+            return { ...status(now), recoveryKey: null };
+          throw new Error(
+            "This computer syncs through another place. On your phone, choose that same place in Settings → Your devices.",
+          );
+        }
+        const place: SyncPlace = { kind: "folder", path: folder };
+        const store = storeFor(place);
+        const { key, recoveryKey } = await connect(store, "start", null);
+        const saved: Saved = {
+          place,
+          deviceName: deviceName.trim().slice(0, 60) || defaultName(),
+          last: null,
+          error: null,
+          devices: [],
+        };
+        write(saved);
+        try {
+          await run(saved, key);
+        } catch {
+          // Kept in the saved status.
+        }
+        return { ...status(read()), recoveryKey };
       });
     },
 
