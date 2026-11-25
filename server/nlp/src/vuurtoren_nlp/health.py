@@ -14,6 +14,7 @@ from vuurtoren_nlp.grammar_examples import default_cache_path as grammar_example
 from vuurtoren_nlp.ocr import ocr_engine_name
 from vuurtoren_nlp.sentences import default_db_path as sentences_path
 from vuurtoren_nlp.speech import available as speech_available
+from vuurtoren_nlp.syntax import syntaxdot_dir
 from vuurtoren_nlp.translate import model_dir
 
 
@@ -29,6 +30,8 @@ def health_report() -> dict[str, object]:
             "grammarExamples": grammar_examples_path().is_file(),
             # A Dutch voice for words without a recording (Piper + the tts-nl pack).
             "speech": speech_available(),
+            # The sentence structure's parser (required; scripts/get_syntaxdot.py).
+            "syntaxdot": syntaxdot_dir() is not None,
         },
         "ocr": ocr_engine_name() is not None,
         "ocrEngine": ocr_engine_name(),

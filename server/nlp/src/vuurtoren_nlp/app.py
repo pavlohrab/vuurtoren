@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import os
 import secrets
 import threading
@@ -67,6 +68,7 @@ from vuurtoren_nlp.pipeline import analyze_terms, analyze_texts
 from vuurtoren_nlp.sentences import SentencesMissingError, SentenceStore
 from vuurtoren_nlp.sentences import default_db_path as default_sentences_path
 from vuurtoren_nlp.similar import SimilarMissingError, SimilarService
+from vuurtoren_nlp.syntax import syntaxdot_dir, syntaxdot_target
 from vuurtoren_nlp.translate import translate_texts
 from vuurtoren_nlp.wordforms import WordFormsMissingError, WordFormsStore
 
@@ -104,6 +106,9 @@ def warm_up() -> None:
             continue
 
 
+log = logging.getLogger("vuurtoren_nlp")
+
+
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     # Data packs (vuurtoren_nlp.packs): install missing/outdated ones in the background, so the
@@ -111,6 +116,12 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     if packs.mode() != "off":
         packs.ensure_in_background()
     # Then the models, also in the background (not in tests, and not when switched off).
+    if syntaxdot_dir() is None:
+        log.error(
+            "SyntaxDot is missing (%s): sentence structures fall back to spaCy's parse. "
+            "Install it with scripts/get_syntaxdot.py.",
+            syntaxdot_target(),
+        )
     if os.environ.get("VUURTOREN_WARMUP", "1") != "0" and "PYTEST_CURRENT_TEST" not in os.environ:
         threading.Thread(target=warm_up, name="vuurtoren-warmup", daemon=True).start()
     yield

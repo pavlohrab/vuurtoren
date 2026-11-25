@@ -19,5 +19,6 @@ def test_health_reports_data_presence() -> None:
         "translation",
         "grammarExamples",
         "speech",
+        "syntaxdot",
     }
     assert all(isinstance(v, bool) for v in body["data"].values())

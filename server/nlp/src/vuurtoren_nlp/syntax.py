@@ -5,9 +5,11 @@ each token gets ``syn``: SyntaxDot's part of speech, morphology, dependency and 
 lemma and split-verb particle the server's usual code finds on that parse. Everything else in the
 token stays spaCy's.
 
-Set ``VUURTOREN_SYNTAXDOT_DIR`` to a folder with ``bin/`` (the syntaxdot binary and its libtorch)
-and ``nl/`` (the model with ``syntaxdot.conf``). Without it nothing changes. Each call starts the
-binary (about a second to load, then ~0.75 s per 1,000 words on one core, ~0.5 GB while it runs).
+SyntaxDot is a required part of the server: ``<data dir>/syntaxdot`` (or
+``VUURTOREN_SYNTAXDOT_DIR``) holds ``bin/`` (the syntaxdot binary and its libtorch) and
+``nl/`` (the model with ``syntaxdot.conf``); ``scripts/get_syntaxdot.py`` puts them there. While it is missing the server
+says so (log and /health) and the tokens have no ``syn``. Each call starts the binary (about a
+second to load, then ~0.75 s per 1,000 words on one core, ~0.5 GB while it runs).
 """
 
 from __future__ import annotations
@@ -18,15 +20,19 @@ from pathlib import Path
 
 from spacy.tokens import Doc
 
+from vuurtoren_nlp.datadir import data_dir
 from vuurtoren_nlp.models import SyntaxParse, TextAnalysis
+
+
+def syntaxdot_target() -> Path:
+    """Where SyntaxDot belongs: ``$VUURTOREN_SYNTAXDOT_DIR``, else ``<data dir>/syntaxdot``."""
+    raw = os.environ.get("VUURTOREN_SYNTAXDOT_DIR", "").strip()
+    return Path(raw).expanduser() if raw else data_dir() / "syntaxdot"
 
 
 def syntaxdot_dir() -> Path | None:
     """The SyntaxDot folder, or None when it isn't set up."""
-    raw = os.environ.get("VUURTOREN_SYNTAXDOT_DIR", "").strip()
-    if not raw:
-        return None
-    d = Path(raw).expanduser()
+    d = syntaxdot_target()
     return (
         d if (d / "bin" / "syntaxdot").exists() and (d / "nl" / "syntaxdot.conf").exists() else None
     )

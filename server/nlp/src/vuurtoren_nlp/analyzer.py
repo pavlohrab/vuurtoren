@@ -14,10 +14,10 @@ from functools import lru_cache
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 
-from vuurtoren_nlp import freq, grammar, lexicon, nl, pipeline
+from vuurtoren_nlp import freq, grammar, lexicon, nl, pipeline, syntax
 
 ANALYZER_FORMAT = "a1"
-_SOURCES = (pipeline, nl, lexicon, freq, grammar)
+_SOURCES = (pipeline, nl, lexicon, freq, grammar, syntax)
 _PACKAGES = ("spacy", "nl-core-news-md", "wordfreq", "simplemma")
 
 
@@ -44,6 +44,8 @@ def analyzer_version() -> str:
     else:
         present = packs.SPECS["dictionary-nl"].target().is_file()
         h.update(b"dictionary=unversioned\n" if present else b"dictionary=none\n")
+    # With SyntaxDot the tokens carry its parse: a text analysed without it is analysed again.
+    h.update(b"syntaxdot=yes\n" if syntax.syntaxdot_dir() else b"syntaxdot=no\n")
     return f"{ANALYZER_FORMAT}-{h.hexdigest()[:12]}"
 
 
