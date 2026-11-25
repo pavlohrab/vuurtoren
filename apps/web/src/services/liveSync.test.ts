@@ -580,3 +580,81 @@ describe("connecting to a server with a pairing code", () => {
     await expect(phone.reopen().services.syncNow()).rejects.toThrow(/connect to the server again/);
   });
 });
+
+describe("a phone and its computer at home", () => {
+  it("scanning the computer's code again at a new address only moves it", async () => {
+    const clock = { t: Date.UTC(2026, 10, 25, 9) };
+    const files = new Map<string, Uint8Array>();
+    const server = pairingServer(files, "ksync_phone", "ABCDE-FGHJK");
+    const [OLD, NEW, FP] = [
+      "https://192.168.1.20:47120",
+      "https://192.168.1.31:47120",
+      "ab".repeat(32),
+    ];
+    const laptop = await device("aaaaaaaaaaaa", server.fetch, clock);
+    await laptop.repo.append({ type: "WordStateSet", lang: "nl", key: "fiets", state: "known" });
+    await laptop.sync.services.setUpSync(
+      { kind: "server", url: OLD, token: "ksync_phone" },
+      "start",
+      PASS,
+      "Laptop",
+    );
+    // The phone reaches the computer through the app, at the computer's address of the moment.
+    let home = OLD;
+    const desktop = {
+      fetch: async (req: {
+        url: string;
+        method: string;
+        headers: Record<string, string>;
+        body?: Uint8Array;
+      }) => {
+        if (!req.url.startsWith(home)) throw new Error("No route to host");
+        const r = await server.fetch(req.url, {
+          method: req.method,
+          headers: req.headers,
+          body: req.body ?? null,
+        });
+        return {
+          status: r.status,
+          headers: Object.fromEntries(r.headers),
+          body: new Uint8Array(await r.arrayBuffer()),
+        };
+      },
+    } as unknown as NonNullable<Parameters<typeof createLiveSync>[0]["desktop"]>;
+    const tokens = memTokens();
+    await tokens.save("ksync_phone");
+    const phone = await device("bbbbbbbbbbbb", server.fetch, clock, {
+      tokens,
+      phone: true,
+      desktop,
+    });
+    const joined = await phone.sync.services.setUpSync(
+      { kind: "server", url: OLD, token: "", kept: true, pinned: FP },
+      "join",
+      PASS,
+      "Phone",
+    );
+    expect(joined).toMatchObject({ error: null, place: { computer: true } });
+
+    home = NEW;
+    await expect(phone.sync.services.syncNow()).rejects.toThrow(/cannot be reached/);
+    // Settings shows the error, and with it Scan the code again.
+    expect((await phone.sync.services.syncStatus()).error).toMatch(/cannot be reached/);
+    const moved = await phone.sync.services.connectServer(
+      { server: NEW, code: "QQQQQ-QQQQQ", pinned: FP },
+      "",
+    );
+    expect(moved).toMatchObject({ error: null, place: { computer: true } });
+    // No new pairing: the same token, the code not even used.
+    expect(server.paired).toEqual([]);
+    expect(tokens.token).toBe("ksync_phone");
+
+    // Another computer's code (another certificate) is not a move.
+    await expect(
+      phone.sync.services.connectServer(
+        { server: NEW, code: "QQQQQ-QQQQQ", pinned: "cd".repeat(32) },
+        "",
+      ),
+    ).rejects.toThrow(/Stop syncing first/);
+  });
+});

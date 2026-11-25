@@ -310,7 +310,13 @@ export function createLiveSync(deps: LiveSyncDeps) {
       scan: !!deps.scanQr,
       paired: s ? null : readPaired(),
       thisServer: deps.server?.origin ?? null,
-      place: s ? { kind: s.place.kind, label: placeLabel(s.place) } : null,
+      place: s
+        ? {
+            kind: s.place.kind,
+            label: placeLabel(s.place),
+            ...(s.place.kind === "server" && s.place.pinned ? { computer: true } : {}),
+          }
+        : null,
       deviceName: s?.deviceName ?? defaultName(),
       last: s?.last ?? null,
       error: s?.error ?? null,
@@ -561,7 +567,31 @@ export function createLiveSync(deps: LiveSyncDeps) {
 
     async connectServer(link, deviceName) {
       return exclusive(async () => {
-        if (read()) throw new Error("Stop syncing first, then connect to another server.");
+        const now = read();
+        // The same computer at a new address (its certificate is the same): only the address
+        // changes, the phone stays paired.
+        if (
+          now?.place.kind === "server" &&
+          now.place.pinned &&
+          "pinned" in link &&
+          link.pinned === now.place.pinned
+        ) {
+          const moved: Saved = {
+            ...now,
+            place: { ...now.place, url: link.server.replace(/\/+$/, "") },
+          };
+          write(moved);
+          const key = await keys.load();
+          if (key) {
+            try {
+              await run(moved, await keyFromRaw(key));
+            } catch {
+              // Kept in the saved status.
+            }
+          }
+          return status(read());
+        }
+        if (now) throw new Error("Stop syncing first, then connect to another server.");
         // In the app the request goes through it (no CORS setup on the server).
         const pinned = "pinned" in link ? link.pinned : undefined;
         const fetch = deps.desktop ? desktopFetch(deps.desktop, pinned) : deps.fetch;

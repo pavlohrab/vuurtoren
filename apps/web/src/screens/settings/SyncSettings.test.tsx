@@ -338,3 +338,28 @@ describe("Settings → Sync", { timeout: 20_000 }, () => {
     expect(within(list).getByText(/It does not open/)).toBeVisible();
   });
 });
+
+describe("a phone that can't reach its computer", { timeout: 20_000 }, () => {
+  it("offers to scan the computer's code again, and passes it on as a move", async () => {
+    const link = `vuurtoren://connect?lan=192.168.1.31:47120&cert=${"ab".repeat(32)}&code=ABCDE-FGHJK`;
+    const connectServer = vi.fn(async () => ({ ...OFF }) as SyncStatus);
+    const status: SyncStatus = {
+      ...OFF,
+      scan: true,
+      place: { kind: "server", label: "Your computer", computer: true },
+      error: "Vuurtoren at 192.168.1.20:47120 cannot be reached.",
+    };
+    const { user } = setup({
+      syncStatus: async () => status,
+      scanConnectLink: async () => link,
+      connectServer,
+    });
+    await user.click(await screen.findByRole("button", { name: "Scan the code again" }));
+    await waitFor(() =>
+      expect(connectServer).toHaveBeenCalledWith(
+        { server: "https://192.168.1.31:47120", code: "ABCDE-FGHJK", pinned: "ab".repeat(32) },
+        "",
+      ),
+    );
+  });
+});

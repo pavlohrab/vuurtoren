@@ -662,6 +662,7 @@ function SyncOn({ status }: { status: SyncStatus }) {
           does.
         </p>
       ) : null}
+      {status.error && status.place?.computer && status.scan ? <ScanComputerAgain /> : null}
       {status.devices.length ? (
         <ul className="sync-devices" aria-label="Devices">
           {status.devices.map((d) => (
@@ -714,6 +715,50 @@ function SyncOn({ status }: { status: SyncStatus }) {
         </div>
       ) : null}
     </section>
+  );
+}
+
+/**
+ * A phone that can't reach its computer: the computer's address may have changed. Scanning its
+ * code again (Settings → Your devices → Connect a phone) updates the address; the phone stays
+ * paired.
+ */
+function ScanComputerAgain() {
+  const services = useServices();
+  const qc = useQueryClient();
+  const [problem, setProblem] = useState<string | null>(null);
+  const again = useMutation({
+    mutationFn: async () => {
+      const read = await services.scanConnectLink();
+      if (!read) return;
+      const link = parseConnectLink(read);
+      if (!link || !("pinned" in link)) {
+        setProblem("This is not the code from Connect a phone on your computer.");
+        return;
+      }
+      setProblem(null);
+      await services.connectServer(link, "");
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: ["sync"] }),
+  });
+  const error = problem ?? (again.error ? errorText(again.error) : null);
+  return (
+    <div className="stack" style={{ gap: 6 }}>
+      <p className="k-hint" style={{ margin: 0 }}>
+        At home and it still doesn't sync? Your computer may have a new address. Show the code on it
+        (Settings → Your devices → Connect a phone) and scan it again.
+      </p>
+      <div className="row">
+        <Button onClick={() => again.mutate()} disabled={again.isPending}>
+          Scan the code again
+        </Button>
+      </div>
+      {error ? (
+        <p role="alert" className="error-text" style={{ margin: 0 }}>
+          {error}
+        </p>
+      ) : null}
+    </div>
   );
 }
 

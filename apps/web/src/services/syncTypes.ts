@@ -52,7 +52,12 @@ export interface SyncStatus {
   /** The address of the Vuurtoren server this page comes from (it can be the place), or null. */
   thisServer: string | null;
   /** The place in use, or null when sync is off. */
-  place: { kind: SyncPlace["kind"]; label: string } | null;
+  place: {
+    kind: SyncPlace["kind"];
+    label: string;
+    /** The place is this phone's own computer at home (Connect a phone). */
+    computer?: boolean;
+  } | null;
   /** This device's name, shown on the others. */
   deviceName: string;
   /** The last sync that finished. */
