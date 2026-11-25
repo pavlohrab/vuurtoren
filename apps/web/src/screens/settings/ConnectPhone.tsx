@@ -7,7 +7,7 @@
  */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button, Spinner } from "@app/ui";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { currentDevice } from "../../platform/index.js";
 import { useServices } from "../../services/context.js";
 import { errorText } from "../../services/errors.js";
@@ -23,7 +23,18 @@ export function ConnectPhone() {
     code: string;
     /** The phones there were when the code appeared: a new one is the phone that scanned it. */
     before: Set<string>;
+    /** When the code stops working (ms). */
+    until: number;
+    /** For a new code: the computer's address, port and certificate. */
+    at: { address: string; port: number; fingerprint: string };
   } | null>(null);
+  // The code's minutes left, counted down while it shows.
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!shown) return;
+    const t = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(t);
+  }, [shown]);
   const [recovery, setRecovery] = useState<string | null>(null);
   const phones = useQuery({
     queryKey: ["lan-phones"],
@@ -47,9 +58,19 @@ export function ConnectPhone() {
       const code = await lan!.code({ key });
       await qc.invalidateQueries({ queryKey: ["sync"] });
       const before = new Set((await lan!.phones()).map((p) => p.hash));
-      return { link: lanLink(address, info.port, info.fingerprint, code), code, before };
+      const at = { address, port: info.port, fingerprint: info.fingerprint };
+      return { ...withCode(at, code), before, at };
     },
     onSuccess: setShown,
+  });
+  // A new code when the old one ran out (the computer keeps listening).
+  const again = useMutation({
+    mutationFn: async () => {
+      const key = await services.phoneHandover!();
+      if (!key || !shown) throw new Error("Sync is not open on this computer. Unlock it first.");
+      return withCode(shown.at, await lan!.code({ key }));
+    },
+    onSuccess: (fresh) => setShown((s) => (s ? { ...s, ...fresh } : s)),
   });
   const remove = useMutation({
     mutationFn: (hash: string) => lan!.remove(hash),
@@ -79,13 +100,24 @@ export function ConnectPhone() {
           <p style={{ margin: 0 }}>
             Open Vuurtoren on your phone and scan this. Both need to be on the same Wi-Fi.
           </p>
-          <p className="k-hint" style={{ margin: 0 }}>
-            Or type the code: <b>{shown.code}</b>. It works for ten minutes.
-          </p>
-          <p className="k-hint row" role="status" style={{ margin: 0, gap: 8 }}>
-            <Spinner label="Waiting" />
-            Waiting for your phone…
-          </p>
+          {now < shown.until ? (
+            <>
+              <p className="k-hint" style={{ margin: 0 }}>
+                Or type the code: <b>{shown.code}</b>. It works for {left(shown.until - now)} more.
+              </p>
+              <p className="k-hint row" role="status" style={{ margin: 0, gap: 8 }}>
+                <Spinner label="Waiting" />
+                Waiting for your phone…
+              </p>
+            </>
+          ) : (
+            <div className="row" style={{ alignItems: "center" }}>
+              <span className="k-hint">This code ran out.</span>
+              <Button onClick={() => again.mutate()} disabled={again.isPending}>
+                New code
+              </Button>
+            </div>
+          )}
           {windows ? (
             <p className="k-hint" style={{ margin: 0 }}>
               Windows may ask to allow Vuurtoren on private networks. Say yes.
@@ -131,4 +163,21 @@ export function ConnectPhone() {
       ) : null}
     </section>
   );
+}
+
+/** How long a pairing code works (the computer's lan.rs says the same). */
+const CODE_MS = 10 * 60_000;
+
+function withCode(at: { address: string; port: number; fingerprint: string }, code: string) {
+  return {
+    link: lanLink(at.address, at.port, at.fingerprint, code),
+    code,
+    until: Date.now() + CODE_MS,
+  };
+}
+
+/** "9:41" for the time left. */
+function left(ms: number): string {
+  const s = Math.max(0, Math.ceil(ms / 1000));
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 }
