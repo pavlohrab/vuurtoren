@@ -462,4 +462,30 @@ export const FRAME_CASES: FrameCase[] = [
       "sub: dat|ze zich zorgen|maakt|",
     ],
   },
+  {
+    sentence: "Maria sprong in Toms armen.",
+    about: "a noun the parser calls a verb",
+    clauses: ["main: Maria|sprong|in Toms armen||"],
+  },
+  {
+    sentence: '"Dan moet je ze bellen!" roept Noor.',
+    about: "a quote with ! before the reporting verb",
+    clauses: ["main: […]|roept|Noor||", "main: Dan|moet|je ze|bellen|"],
+  },
+  {
+    sentence: "Hij heeft vijf namen en vijf keer eten per dag.",
+    about: "eten as a noun",
+    clauses: ["main: Hij|heeft|vijf namen en vijf keer eten per dag||"],
+    hard: "the parser makes eten the verb and heeft its helper",
+  },
+  {
+    sentence:
+      "Iedereen brengt zijn kleren naar een winkel waar je kunt wassen, twintig minuten lopen.",
+    about: "a phrase after the comma",
+    clauses: [
+      "main: Iedereen|brengt|zijn kleren naar een winkel […] twintig minuten lopen||",
+      "rel: waar|je|kunt wassen|",
+    ],
+    hard: "the parser reads twintig minuten lopen as a clause",
+  },
 ];

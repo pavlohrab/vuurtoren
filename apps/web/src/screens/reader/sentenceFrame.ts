@@ -90,7 +90,8 @@ export function sentenceClauses(tokens: readonly AnalyzedToken[], sent: number):
   // An infinitive used as a noun: "houdt van zwemmen", "zich zorgen maakt" (houden and maken take
   // no bare infinitive).
   const nounLike = (t: AnalyzedToken): boolean => {
-    if (!t.morph.includes("VerbForm=Inf")) return false;
+    // also a conjugated form the parser hangs on a verb ("sprong in Toms armen")
+    if (!t.morph.includes("VerbForm=Inf") && t.dep !== "xcomp") return false;
     if (words.some((x) => x.head === t.i && x.text.toLowerCase() === "te")) return false;
     const h = tokens[t.head];
     return t.dep === "xcomp" && !!h && h.pos === "VERB" && !BARE_INF.has(h.lemma.toLowerCase());
@@ -290,6 +291,17 @@ export function sentenceClauses(tokens: readonly AnalyzedToken[], sent: number):
     if (h && lastOf(h) < r.verb.i && h.parentPred === null) {
       h.parentPred = r.pred;
       h.quote = true;
+    }
+  }
+  // "Dan moet je ze bellen!" roept Noor: the quote hangs on the reporting verb right after it.
+  for (const q of drafts) {
+    const qp = tokens[q.pred];
+    if (q.quote || !qp || qp.dep !== "parataxis" || q.parentPred !== null) continue;
+    const p = drafts.find((d) => d.pred === qp.head && d !== q);
+    if (!p || lastOf(q) >= p.verb.i || p.own.some((t) => t.i < p.verb.i)) continue;
+    if (tokens.slice(lastOf(q) + 1, p.verb.i).every((t) => !isWord(t))) {
+      q.parentPred = p.pred;
+      q.quote = true;
     }
   }
   for (const q of drafts) {
