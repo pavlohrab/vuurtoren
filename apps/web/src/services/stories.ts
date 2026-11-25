@@ -84,6 +84,8 @@ type PackedToken = [
   flags: number,
   particleOf: number | null,
   zipf: number,
+  /** The sentence structure's parse (SyntaxDot): pos, morph, dep, head, lemma, particle_of. */
+  syn?: [string, string, string, number, string, number | null] | null,
 ];
 
 interface PackedStory extends Omit<
@@ -123,7 +125,7 @@ function unpackGrammar(
 /** Unpack a bundled story; its pairs and hits only when computed for its own analysis. */
 function unpackStory(p: PackedStory, extras?: ExtrasMeta): BundledStory {
   const tokens = p.tokens.map(
-    ([lemma, alt, pos, morph, dep, head, sent, start, end, flags, particleOf, zipf], i) => ({
+    ([lemma, alt, pos, morph, dep, head, sent, start, end, flags, particleOf, zipf, syn], i) => ({
       i,
       text: p.content.slice(start, end),
       lemma,
@@ -140,6 +142,18 @@ function unpackStory(p: PackedStory, extras?: ExtrasMeta): BundledStory {
       is_num: (flags & 4) !== 0,
       particle_of: particleOf,
       zipf,
+      ...(syn
+        ? {
+            syn: {
+              pos: syn[0],
+              morph: syn[1],
+              dep: syn[2],
+              head: syn[3],
+              lemma: syn[4],
+              particle_of: syn[5],
+            },
+          }
+        : {}),
     }),
   );
   const { pairs, grammar, pairsEnglish, ...rest } = p;

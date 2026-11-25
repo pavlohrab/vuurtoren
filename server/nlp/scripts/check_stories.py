@@ -150,8 +150,9 @@ def check(
         "sentences": [[a, b, s.en] for (a, b), s in zip(spans, story.sentences, strict=True)],
         "analyzerVersion": analyzer_version(),
         # One array per token, in AnalyzedToken order without i and text (index, content slice):
-        # lemma, alt_lemmas, pos, morph, dep, head, sent, start, end, flags, particle_of, zipf;
-        # flags: 1 is_word, 2 is_propn, 4 is_num.
+        # lemma, alt_lemmas, pos, morph, dep, head, sent, start, end, flags, particle_of, zipf,
+        # syn; flags: 1 is_word, 2 is_propn, 4 is_num; syn: SyntaxDot's pos, morph, dep, head,
+        # lemma, particle_of (left out without SyntaxDot).
         "tokens": [
             [
                 t.lemma,
@@ -166,6 +167,20 @@ def check(
                 int(t.is_word) | int(t.is_propn) << 1 | int(t.is_num) << 2,
                 t.particle_of,
                 round(t.zipf, 2),
+                *(
+                    [
+                        [
+                            t.syn.pos,
+                            t.syn.morph,
+                            t.syn.dep,
+                            t.syn.head,
+                            t.syn.lemma,
+                            t.syn.particle_of,
+                        ]
+                    ]
+                    if t.syn
+                    else []
+                ),
             ]
             for t in tokens
         ],

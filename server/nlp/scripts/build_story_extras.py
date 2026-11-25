@@ -45,9 +45,22 @@ def unpack_tokens(content: str, packed: list[list[Any]]) -> list[Any]:
             particle_of=particle_of,
             zipf=zipf,
         )
-        for i, (lemma, alt, pos, morph, dep, head, sent, start, end, flags, particle_of, zipf) in (
-            enumerate(packed)
-        )
+        # A 13th field (SyntaxDot's parse) may follow; the extras don't use it.
+        for i, (
+            lemma,
+            alt,
+            pos,
+            morph,
+            dep,
+            head,
+            sent,
+            start,
+            end,
+            flags,
+            particle_of,
+            zipf,
+            *_,
+        ) in (enumerate(packed))
     ]
 
 
