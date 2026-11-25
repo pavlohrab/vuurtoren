@@ -80,9 +80,11 @@ folder (`VUURTOREN_DATA_FOLDER` in its `.env`), with the archives at
 `packs-<version>/<name>-<version>.tar.gz`. For a new dictionary, for example:
 
 1. Bump `dictionary-nl`'s version in `server/nlp/src/vuurtoren_nlp/packs.json` (say `2026.11.3`).
-2. Build it; this also writes its SHA-256 and size into packs.json:
+2. Build it; this also writes its SHA-256 and size into packs.json. Give it a sentence pack, so
+   heb or ben is decided for every verb (without it phones show the Dutch Wiktionary's alone):
    ```sh
    cd server/nlp
+   VUURTOREN_AUX_EVIDENCE=~/.local/share/app.vuurtoren.desktop/nlp-data/sentences-nl.sqlite \
    uv run python scripts/build_packs.py --out dist/packs --only dictionary-nl
    ```
 3. Copy it to the home server, into a new version folder (keep the old folders: older apps
