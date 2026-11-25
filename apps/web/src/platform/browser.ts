@@ -10,7 +10,6 @@ export function browserDevice(): Device {
     scanQr: null,
     cancelScan: null,
     links: null,
-    haptic: () => undefined,
     notifications: false,
   };
 }

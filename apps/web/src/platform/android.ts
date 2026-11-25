@@ -16,14 +16,6 @@ export function androidDevice(bridge: DesktopBridge): Device {
     scanQr: bridge.scanQr ?? null,
     cancelScan: bridge.cancelScan ?? null,
     links: bridge.links ?? null,
-    haptic: () => {
-      // The WebView passes short vibrations on where the app may vibrate.
-      try {
-        navigator.vibrate?.(8);
-      } catch {
-        // No motor: nothing to feel.
-      }
-    },
     notifications: false,
   };
 }

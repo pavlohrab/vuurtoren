@@ -22,8 +22,6 @@ export interface Device {
   cancelScan: (() => Promise<void>) | null;
   /** `vuurtoren://` links that opened the app; null where links do not reach it. */
   links: DesktopBridge["links"] | null;
-  /** A light tick (a review answer); does nothing where the device cannot. */
-  haptic(): void;
   /** Daily review reminders can be shown (not yet on any device). */
   notifications: boolean;
 }

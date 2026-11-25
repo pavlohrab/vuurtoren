@@ -14,7 +14,6 @@ export function desktopDevice(bridge: DesktopBridge): Device {
     scanQr: null,
     cancelScan: null,
     links: null,
-    haptic: () => undefined,
     notifications: false,
   };
 }
