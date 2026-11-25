@@ -33,6 +33,11 @@
     cursor: col-resize;
     touch-action: none;
   }
+  /* Not a content column: the panel's "> * { min-width }" rule must not widen it over the card
+     (it did, and caught every click in the word panel). */
+  .inspector-panel > .panel-resize {
+    min-width: 0;
+  }
   /* Just inside the edge: both panels clip what sticks out. */
   .panel-resize--end {
     right: 0;
