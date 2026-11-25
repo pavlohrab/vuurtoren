@@ -70,6 +70,19 @@ const imported: AppEvent = {
 };
 
 describe("native card store", () => {
+  it("Undo after Add: a removed note takes its card and reviews with it, the rest stays", async () => {
+    const { repo } = await newRepo();
+    await repo.append(imported);
+    expect(await repo.nativeCardReviews("nl", [101])).toHaveLength(2);
+    await repo.append({ type: "NativeNotesRemoved", lang: "nl", noteIds: [11] });
+    expect(await repo.nativeCard("nl", 101)).toBeNull();
+    expect(await repo.nativeCardReviews("nl", [101])).toEqual([]);
+    expect(await repo.nativeNoteStatus("nl", [11], T0)).toEqual([]);
+    // The other notes and the deck are untouched.
+    expect((await repo.nativeCard("nl", 102))?.card.id).toBe(102);
+    expect((await repo.nativeDecks("nl", T0)).map((d) => d.name)).toContain("Dutch");
+  });
+
   it("imports notes, cards, history and media; a second import keeps progress", async () => {
     const { repo } = await newRepo();
     await repo.append(imported);

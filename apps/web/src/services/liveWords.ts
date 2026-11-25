@@ -7,6 +7,7 @@ import {
   type AnkiConnectClient,
   type NoteCardStatus,
   addWord,
+  removeNativeWord,
   cardStatus,
   highlightSentence,
   markKnown,
@@ -300,6 +301,11 @@ export function createLiveWords(deps: LiveWordsDeps) {
     return { noteId, deck };
   }
 
+  async function removeWord(noteId: number) {
+    await removeNativeWord(record, { lang: await lang(), noteId });
+    learner.changed();
+  }
+
   const services: Pick<
     AppServices,
     | "inspect"
@@ -308,6 +314,7 @@ export function createLiveWords(deps: LiveWordsDeps) {
     | "textWords"
     | "wordsToDecide"
     | "addToAnki"
+    | "removeWord"
     | "learnNext"
     | "markKnown"
     | "resetWordState"
@@ -502,6 +509,7 @@ export function createLiveWords(deps: LiveWordsDeps) {
     },
 
     addToAnki,
+    removeWord,
 
     async learnNext(entry: InspectorEntry): Promise<{ deck: string }> {
       const noteId = entry.anki.noteIds[0];

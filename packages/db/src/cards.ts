@@ -45,6 +45,7 @@ type NativeEvent = Extract<
   {
     type:
       | "NativeNotesAdded"
+      | "NativeNotesRemoved"
       | "NativeDeckOptionsSet"
       | "CardReviewed"
       | "CardReviewUndone"
@@ -119,6 +120,20 @@ export async function applyNativeEvent(
   e: NativeEvent,
 ): Promise<void> {
   switch (e.type) {
+    case "NativeNotesRemoved": {
+      // The notes, their cards and the cards' reviews; nothing else (decks and note types stay).
+      const ids = JSON.stringify(e.noteIds);
+      const cards = "SELECT id FROM native_cards WHERE note_id IN (SELECT value FROM json_each(?))";
+      await driver.exec(`DELETE FROM native_reviews WHERE card_id IN (${cards})`, [ids]);
+      await driver.exec(
+        "DELETE FROM native_cards WHERE note_id IN (SELECT value FROM json_each(?))",
+        [ids],
+      );
+      await driver.exec("DELETE FROM native_notes WHERE id IN (SELECT value FROM json_each(?))", [
+        ids,
+      ]);
+      return;
+    }
     case "NativeNotesAdded": {
       await insertMany(
         driver,

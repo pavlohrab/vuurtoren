@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { WordInspector } from "./WordInspector.js";
@@ -32,6 +32,14 @@ const entry: InspectorEntry = {
 };
 
 describe("WordInspector", () => {
+  it("right after Add: ✓ Added and Undo in place of the main button", () => {
+    const onUndo = vi.fn();
+    render(<WordInspector entry={entry} onUndo={onUndo} />);
+    expect(screen.getByText("✓ Added")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Undo" }));
+    expect(onUndo).toHaveBeenCalledOnce();
+  });
+
   it("shows an empty hint without an entry", () => {
     render(<WordInspector entry={null} />);
     expect(screen.getByText(/Select a word/)).toBeInTheDocument();

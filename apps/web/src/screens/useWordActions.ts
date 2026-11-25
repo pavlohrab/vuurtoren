@@ -3,6 +3,7 @@
  * Mark known, Ignore, Use Anki's state), shared by every screen that opens the inspector.
  */
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 import type { WordChange } from "@app/core";
 import { type WordInspectorProps, deckName, useNativeMode, useToast } from "@app/ui";
 import { useServices } from "../services/context.js";
@@ -13,8 +14,11 @@ import { useDeckChoice } from "./useDeckChoice.js";
 
 type ActionProps = Pick<
   WordInspectorProps,
-  "busy" | "addDeck" | "onAddToAnki" | "onLearnNext" | "onMarkKnown" | "onReset"
+  "busy" | "addDeck" | "onAddToAnki" | "onLearnNext" | "onMarkKnown" | "onReset" | "onUndo"
 >;
+
+/** How long "✓ Added · Undo" stays after Add to my words. */
+const UNDO_MS = 5000;
 
 /** Cached views that show word states; refreshed after any word action. */
 const WORD_VIEWS = ["texts", "words", "learner", "textWords", "home", "practice", "reading"];
@@ -50,11 +54,19 @@ export function useWordActions(
   };
 
   // The mutations take the entry they act on as a variable, never "whatever is loaded now".
+  // The word just added to my words, for a few seconds: its card offers Undo (native only).
+  const [justAdded, setJustAdded] = useState<{ key: string; noteId: number } | null>(null);
+  useEffect(() => {
+    if (!justAdded) return;
+    const t = setTimeout(() => setJustAdded(null), UNDO_MS);
+    return () => clearTimeout(t);
+  }, [justAdded]);
   const addToAnki = useMutation({
     mutationFn: (e: InspectorEntry) => services.addToAnki(e, deckOpts),
-    onSuccess: async ({ deck }, e) => {
+    onSuccess: async ({ deck, noteId }, e) => {
       changed?.(e.key, "learning");
       toast(native ? "Added to your words" : "Added to Anki", deckName(deck));
+      if (native && services.removeWord) setJustAdded({ key: e.key, noteId });
       await done();
     },
     onError: (e) =>
@@ -90,8 +102,21 @@ export function useWordActions(
     },
     onError: (e) => toast("Could not reset the word", errorText(e)),
   });
+  const undo = useMutation({
+    mutationFn: (added: { key: string; noteId: number }) => services.removeWord!(added.noteId),
+    onSuccess: async () => {
+      setJustAdded(null);
+      toast("Taken out of your words");
+      await done();
+    },
+    onError: (e) => toast("Could not undo", errorText(e)),
+  });
   const busy =
-    addToAnki.isPending || learnNext.isPending || markKnown.isPending || resetState.isPending;
+    addToAnki.isPending ||
+    learnNext.isPending ||
+    markKnown.isPending ||
+    resetState.isPending ||
+    undo.isPending;
 
   return {
     deckChoice,
@@ -104,6 +129,7 @@ export function useWordActions(
         onLearnNext: () => entry && learnNext.mutate(entry),
         onMarkKnown: () => entry && markKnown.mutate(entry),
         onReset: () => entry && resetState.mutate(entry),
+        onUndo: entry && justAdded?.key === entry.key ? () => undo.mutate(justAdded) : undefined,
       };
     },
   };

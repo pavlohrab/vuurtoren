@@ -357,6 +357,11 @@ export type AppEvent =
       reviews?: CardReview[];
       media?: Record<string, string>;
     }
+  /**
+   * Native mode: notes taken back out, with their cards and reviews: Undo right after Add to my
+   * words (F2). An older app skips it (canApply).
+   */
+  | { type: "NativeNotesRemoved"; lang: string; noteIds: number[] }
   /** Native mode: a deck's scheduling options. Last write wins per deck (HLC). */
   | { type: "NativeDeckOptionsSet"; lang: string; deck: string; options: DeckOptions }
   /**
@@ -525,6 +530,7 @@ export const EVENT_VERSIONS = {
   BookExerciseAnswered: 1,
   ExamAttempt: 1,
   NativeNotesAdded: 1,
+  NativeNotesRemoved: 1,
   NativeDeckOptionsSet: 1,
   CardReviewed: 1,
   CardReviewUndone: 1,

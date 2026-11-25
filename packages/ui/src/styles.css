@@ -2566,3 +2566,11 @@ svg.lucide {
   outline: 2px solid var(--accent);
   outline-offset: 1px;
 }
+/* "✓ Added · Undo" for a few seconds after Add to my words. */
+.k-inspector-added {
+  display: flex;
+  align-items: center;
+  margin: 0;
+  font-weight: 600;
+  color: var(--accent);
+}

@@ -14,6 +14,11 @@ export interface WordInspectorProps {
   onMarkKnown?: (() => void) | undefined;
   /** Drop a manual state so Anki's applies again. */
   onReset?: (() => void) | undefined;
+  /**
+   * The word was just added to my words: "✓ Added · Undo" in place of the main button for a few
+   * seconds; Undo takes it out again.
+   */
+  onUndo?: (() => void) | undefined;
   /** Disables the action buttons while a request is in flight. */
   busy?: boolean | undefined;
   /** The entry is being fetched (e.g. a different word was just selected). */
@@ -105,6 +110,7 @@ export function WordInspector({
   onLearnNext,
   onMarkKnown,
   onReset,
+  onUndo,
   busy = false,
   loading = false,
   error = null,
@@ -152,6 +158,7 @@ export function WordInspector({
     onLearnNext,
     onMarkKnown,
     onReset,
+    onUndo,
     addDeck,
   });
 
@@ -409,10 +416,11 @@ function ankiActions({
   onLearnNext,
   onMarkKnown,
   onReset,
+  onUndo,
   addDeck,
 }: Pick<
   WordInspectorProps,
-  "busy" | "onAddToAnki" | "onLearnNext" | "onMarkKnown" | "onReset" | "addDeck"
+  "busy" | "onAddToAnki" | "onLearnNext" | "onMarkKnown" | "onReset" | "onUndo" | "addDeck"
 > & { entry: InspectorEntry }): { quick: ReactNode; details: ReactNode } {
   const { anki } = entry;
   const { status } = anki;
@@ -444,7 +452,16 @@ function ankiActions({
     primary = { label: ADD, onClick: onAddToAnki };
   }
 
-  const quick = (
+  const quick = onUndo ? (
+    <div className="k-inspector-actions k-inspector-quick">
+      <p className="k-inspector-added" role="status">
+        ✓ Added
+      </p>
+      <Button disabled={busy} onClick={onUndo}>
+        Undo
+      </Button>
+    </div>
+  ) : (
     <div className="k-inspector-actions k-inspector-quick">
       {primary && addDeck && primary.label === ADD ? (
         <AddToAnki

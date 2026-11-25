@@ -327,6 +327,11 @@ export interface AppServices
   ): Promise<Record<number, { text: string; note?: string }>>;
   /** Add the word to Anki: the deck from the language profile, or `opts.deck` (the picker). */
   addToAnki(entry: InspectorEntry, opts?: AddOptions): Promise<{ noteId: number; deck: string }>;
+  /**
+   * Undo right after Add to my words (native mode only): the note just added goes again, with
+   * its card. Absent where it can't (connected mode: Vuurtoren doesn't delete in Anki).
+   */
+  removeWord?(noteId: number): Promise<void>;
   /** Words Claude suggested over MCP, waiting for the learner (newest first). */
   suggestedWords(): Promise<SuggestedWord[]>;
   /**

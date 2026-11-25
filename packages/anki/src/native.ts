@@ -124,6 +124,21 @@ export async function addWordToMyWords(
   return { noteId, deck, key, cardIds: req.asKnown ? [cardId] : [] };
 }
 
+/** Structurally the @app/db NativeNotesRemoved event. */
+export interface NativeWordRemovedEvent {
+  type: "NativeNotesRemoved";
+  lang: string;
+  noteIds: number[];
+}
+
+/** Undo right after Add to my words: the note goes, with its card. */
+export async function removeNativeWord(
+  record: RecordEvent<NativeWordRemovedEvent>,
+  req: { lang: string; noteId: number },
+): Promise<void> {
+  await record({ type: "NativeNotesRemoved", lang: req.lang, noteIds: [req.noteId] });
+}
+
 /** Add to Anki (connected) or Add to my words (native), by the profile's mode. */
 export async function addWord(
   anki: () => Promise<AnkiConnectClient>,
