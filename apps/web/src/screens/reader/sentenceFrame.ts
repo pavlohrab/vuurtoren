@@ -78,7 +78,7 @@ const isWord = (t: AnalyzedToken) => t.pos !== "PUNCT" && t.pos !== "SPACE";
 /** Words that open a subordinate or relative clause: omdat, die, wie, waarop … */
 function introduces(t: AnalyzedToken): boolean {
   if (t.pos === "SCONJ") return true;
-  if (t.dep === "mark" && t.text.toLowerCase() !== "te") return true;
+  if (t.dep === "mark" && t.pos !== "CCONJ" && t.text.toLowerCase() !== "te") return true;
   if (/PronType=(Rel|Int)/.test(t.morph)) return true;
   // waarop, waarin; not waarheid
   return /^waar/i.test(t.text) && (t.pos === "ADV" || t.pos === "PRON");
@@ -93,6 +93,10 @@ export function sentenceClauses(tokens: readonly AnalyzedToken[], sent: number):
     // also a conjugated form the parser hangs on a verb ("sprong in Toms armen")
     if (!t.morph.includes("VerbForm=Inf") && t.dep !== "xcomp") return false;
     if (words.some((x) => x.head === t.i && x.text.toLowerCase() === "te")) return false;
+    // "zo leuk als vissen"
+    const kids = words.filter((x) => x.head === t.i);
+    if (kids.some((x) => x.pos === "SCONJ") && !kids.some((x) => x.dep.startsWith("aux")))
+      return true;
     const h = tokens[t.head];
     return t.dep === "xcomp" && !!h && h.pos === "VERB" && !BARE_INF.has(h.lemma.toLowerCase());
   };
@@ -167,8 +171,10 @@ export function sentenceClauses(tokens: readonly AnalyzedToken[], sent: number):
     const up = tokens[h.head];
     if (up && up.i > h.i && finite.includes(up)) continue;
     const helped = words.some((x) => x.head === h.i && finite.includes(x));
-    // "zo diep als de zee": a noun with no subject of its own is no clause
-    const clauseLike = isVerb(h) || words.some((x) => x.head === h.i && x.dep.startsWith("nsubj"));
+    // "zo diep als de zee", "zo leuk als vissen": no subject and no conjugated verb, no clause
+    const clauseLike =
+      (isVerb(h) && !h.morph.includes("VerbForm=Inf")) ||
+      words.some((x) => x.head === h.i && x.dep.startsWith("nsubj"));
     if (!helped && clauseLike) preds.set(h.i, h);
   }
   // Each word's clause: the nearest predicate above it.
@@ -478,9 +484,12 @@ export function sentenceClauses(tokens: readonly AnalyzedToken[], sent: number):
       // The introducer (omdat, die, om …); "en" for a clause joined to another one; none for a
       // te-clause ("uw kantoor te bellen").
       const teClause = own.some((t) => t.head === d.verb.i && t.text.toLowerCase() === "te");
+      // "en dat alles … wordt bepaald": the joining word and the introducer together
       const introEnd =
         own[0]?.dep === "cc"
-          ? 0
+          ? own[1] && introduces(own[1])
+            ? 1
+            : 0
           : own.findIndex((t) =>
               teClause ? OM_WORDS.has(t.text.toLowerCase()) && t.dep === "mark" : introduces(t),
             );

@@ -488,4 +488,40 @@ export const FRAME_CASES: FrameCase[] = [
     ],
     hard: "the parser reads twintig minuten lopen as a clause",
   },
+  {
+    sentence: "Dit is bijna net zo leuk als vissen.",
+    about: "als with an infinitive, no clause",
+    clauses: ["main: Dit|is|bijna net zo leuk als vissen||"],
+  },
+  {
+    sentence: "Hij zegt dat het leven geen zin heeft, en dat alles door het lot wordt bepaald.",
+    about: "two dat clauses joined with en",
+    clauses: [
+      "main: Hij|zegt|||[…] […]",
+      "sub: dat|het leven geen zin|heeft|",
+      "sub: en dat|alles door het lot|wordt bepaald|",
+    ],
+  },
+  {
+    sentence: "En als er mist over het land hangt, blijft hij binnen.",
+    about: "a clause in first place after En",
+    clauses: ["main: (En) […]|blijft|hij|binnen|", "sub: als|er mist over het land|hangt|"],
+    hard: "the parser reads mist as the verb",
+  },
+  {
+    sentence: "Wanneer staat u normaal gesproken op?",
+    about: "question with a split verb",
+    clauses: ["question: Wanneer|staat|u normaal gesproken|op|"],
+    hard: "the parser makes gesproken the root",
+  },
+  {
+    sentence: "Ik kwam thuis en het eerste wat ik deed was mijn schoenen uit doen.",
+    about: "a relative inside the second main clause's first place",
+    clauses: [
+      "main: Ik|kwam|thuis||",
+      "main: (en) het eerste […]|was|mijn schoenen|uit doen|",
+      "rel: wat|ik|deed|",
+    ],
+    hard: "the parser hangs was on deed",
+  },
 ];
