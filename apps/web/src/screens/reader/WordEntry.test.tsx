@@ -22,6 +22,7 @@ const OPENDOEN: EntryResult = {
       },
       extras: { senses: [{ gloss: "to open", synonyms: ["openen"] }] },
       base: "doen",
+      level: "A2",
     },
   ],
 };
@@ -45,6 +46,7 @@ describe("WordEntry", () => {
     expect(screen.getByText("opengedaan")).toBeVisible();
     expect(screen.getByText("doen")).toBeVisible();
     expect(screen.getByText("openen")).toBeVisible();
+    expect(screen.getByText("about A2")).toBeVisible();
     // The page's own form is marked.
     expect(screen.getByText("doet open")).toHaveAttribute("data-here");
     // No opposite in the data: no Opposite row.

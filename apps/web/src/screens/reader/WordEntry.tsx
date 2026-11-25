@@ -132,6 +132,7 @@ export function WordEntry({
   const here = surface.toLowerCase();
   const table = all || wide ? [...short, ...more] : short;
   const lines: [string, string[]][] = [
+    ["Level", entry.level ? [`about ${entry.level}`] : []],
     ["Base verb", entry.base ? [entry.base] : []],
     ["Same meaning", same],
     ["Opposite", opposite],

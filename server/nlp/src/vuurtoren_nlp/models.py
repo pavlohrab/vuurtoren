@@ -338,6 +338,13 @@ class LemmaPos(BaseModel):
     pos: Annotated[str, StringConstraints(max_length=10)]
 
 
+class LevelsRequest(BaseModel):
+    """``POST /levels``: up to 5000 ``{lemma, pos}`` pairs (spaCy universal POS)."""
+
+    lang: Lang
+    lemmas: list[LemmaPos] = Field(max_length=5000)
+
+
 class FormsRequest(BaseModel):
     """``POST /forms``: up to 500 ``{lemma, pos}`` pairs."""
 

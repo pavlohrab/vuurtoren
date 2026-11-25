@@ -27,6 +27,7 @@ from vuurtoren_nlp.extract_url import extract_from_url
 from vuurtoren_nlp.grammar import detect_grammar
 from vuurtoren_nlp.grammar_examples import GrammarExamples
 from vuurtoren_nlp.health import health_report
+from vuurtoren_nlp.levels import POS_KAIKKI, word_level
 from vuurtoren_nlp.models import (
     GRAMMAR_EXAMPLE_LIMIT,
     MAX_TOTAL_CHARS,
@@ -46,6 +47,7 @@ from vuurtoren_nlp.models import (
     GrammarExample,
     GrammarHit,
     GrammarRequest,
+    LevelsRequest,
     OcrResult,
     PairedText,
     PairRequest,
@@ -291,6 +293,11 @@ def entry_endpoint(req: EntryRequest) -> dict[str, Any]:
         result = _dictionary().entry(req.word, req.pos)
     except DictionaryMissingError as e:
         raise ServiceError(503, str(e)) from e
+    # A rough level per entry (NT2Lex), shown as "about A2".
+    for e in result["entries"]:
+        level = word_level(result["word"], e["pos"])
+        if level:
+            e["level"] = level
     # Verbs: the perfect tense's helper (hebben / zijn / both), as /forms resolves it.
     verbs = [e for e in result["entries"] if e["pos"] == "verb"]
     if verbs:
@@ -303,6 +310,18 @@ def entry_endpoint(req: EntryRequest) -> dict[str, Any]:
             for e in verbs:
                 e.setdefault("forms", {})["aux"] = aux
     return result
+
+
+@app.post("/levels")
+def levels_endpoint(req: LevelsRequest) -> dict[str, str]:
+    """A rough CEFR level (A1–C1, from NT2Lex) per lemma that has one: ``{lemma: level}``.
+    Lemmas NT2Lex doesn't have are left out. Used for a text's rough level."""
+    out: dict[str, str] = {}
+    for item in req.lemmas:
+        level = word_level(item.lemma, POS_KAIKKI.get(item.pos))
+        if level:
+            out[item.lemma] = level
+    return out
 
 
 @app.post("/translate/align")

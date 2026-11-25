@@ -194,6 +194,8 @@ export interface WordEntry {
   family?: string[];
   /** A separable verb's base verb (opendoen: doen). */
   base?: string;
+  /** A rough CEFR level from NT2Lex ("A2"): the first level of learner texts it appears in. */
+  level?: string;
 }
 
 /** Everything the word card shows about a word; a form gives its lemma ("doet": doen). */
