@@ -162,19 +162,19 @@ for (const size of SIZES) {
       await shot(page, `welcome-words-${size.width}`);
       await page.getByRole("button", { name: "Continue" }).click();
       await page.getByRole("button", { name: "Start reading" }).click();
-      await expect(page).toHaveURL(/[/]read[/]/);
-      await expect(page.locator(".k-reader .k-tok").first()).toBeVisible();
-      // The walkthrough: a spotlight on Read in the tab bar, then a word, then on.
+      // The walkthrough starts on Read (what is on top), then the story's first word, then on.
       await expect(page.getByRole("dialog", { name: "Read" })).toBeVisible();
       await shot(page, `tour-${size.width}`);
       // Taps outside the bubble stay with the walkthrough: the Words tab does not open.
       const words = page.getByRole("navigation", { name: "Main" }).getByRole("link").last();
       const tab = await words.boundingBox();
       await page.touchscreen.tap(tab!.x + tab!.width / 2, tab!.y + tab!.height / 2);
-      await expect(page).toHaveURL(/[/]read[/]/);
+      await expect(page).not.toHaveURL(/[/]words/);
       await expect(page.getByRole("dialog", { name: "Read" })).toBeVisible();
       await page.getByRole("dialog").getByRole("button", { name: "Next" }).click();
       await expect(page.getByRole("dialog", { name: "Tap a word" })).toBeVisible();
+      await expect(page).toHaveURL(/[/]read[/]/);
+      await expect(page.locator(".k-reader .k-tok").first()).toBeVisible();
       await shot(page, `tour-word-${size.width}`);
       await page.getByRole("button", { name: "Skip the tour" }).click();
       await expect(page.getByRole("dialog")).toHaveCount(0);
@@ -236,7 +236,11 @@ for (const size of SIZES) {
     test("a finger swipe turns the page both ways (34px gesture line)", async ({ page }) => {
       await withInsets(page);
       await page.goto("/?demo");
-      await page.getByRole("link", { name: "Een dag in Utrecht" }).first().click();
+      // A DOM click, not a tap: a tap's follow-up click could land on the reader and turn the page.
+      await page
+        .getByRole("link", { name: "Een dag in Utrecht" })
+        .first()
+        .evaluate((el) => (el as HTMLElement).click());
       await expect(page.locator(".k-reader .k-tok").first()).toBeVisible();
       const count = page.locator(".reader-pager-count [aria-hidden]");
       await expect(count).toHaveText(/^1 \/ \d+$/);
@@ -247,7 +251,11 @@ for (const size of SIZES) {
       const [left, right] = [size.width * 0.2, size.width * 0.8];
       await swipe(page, [right, y], [left, y + 8]);
       await expect(count).toHaveText(/^2 \/ \d+$/);
-      await swipe(page, [left, y], [right, y]);
+      // The last page can be short: swipe back on its own text, after its slide.
+      await page.waitForTimeout(600);
+      const back = (await page.locator(".reader-turn .k-tok").first().boundingBox())!;
+      const y2 = back.y + back.height / 2;
+      await swipe(page, [left, y2], [right, y2]);
       await expect(count).toHaveText(/^1 \/ \d+$/);
       // A mostly vertical drag is a scroll, not a page turn.
       await swipe(page, [size.width / 2, y + 100], [size.width / 2 + 30, y - 60]);

@@ -32,7 +32,8 @@ async function inspectWord(page: Page): Promise<void> {
   await page.locator(".k-reader .k-tok", { hasText: /^buurvrouw$/ }).click();
   const panel = page.getByRole("region", { name: "Grammar of this word" });
   await expect(panel).toContainText("de-word");
-  await expect(page.getByRole("button", { name: /^Add to / })).toBeVisible();
+  // Without Anki the 5000 common words have cards already (m5): Study first instead of Add.
+  await expect(page.getByRole("button", { name: /^(Add to |Study first)/ }).first()).toBeVisible();
 }
 
 async function changeTextSize(page: Page): Promise<void> {
@@ -109,8 +110,13 @@ test("browser storage mode", async ({ page }) => {
   await finishOnboarding(page);
   await importAndRead(page);
   await inspectWord(page);
-  await page.getByRole("button", { name: /^Add to / }).click();
-  await expect(page.getByText("Added to your words").first()).toBeVisible();
+  await page
+    .getByRole("button", { name: /^(Add to |Study first)/ })
+    .first()
+    .click();
+  await expect(
+    page.getByText(/Added to your words|Moved to the front of the queue/).first(),
+  ).toBeVisible();
   await expect(page.locator(".inspector-panel")).toContainText("Your card");
   await changeTextSize(page);
   // Without Anki, Vuurtoren keeps the cards: the word is waiting in Review.
@@ -134,7 +140,8 @@ test("native mode: start with the most common words, offline data in the app", a
   // The walkthrough follows the welcome once; it can be skipped.
   await expect(page.getByRole("dialog", { name: "Read" })).toBeVisible();
   await page.getByRole("button", { name: "Skip the tour" }).click();
-  await expect(page.locator(".k-reader .k-tok").first()).toBeVisible();
+  // The tour's first step shows Read; skipping it leaves you there.
+  await expect(page.getByRole("heading", { level: 1, name: "Read" })).toBeVisible();
   await page.goto("/review");
   // New words start with the first 500: a card is waiting.
   await expect(page.locator(".review-word")).toBeVisible();
@@ -156,14 +163,17 @@ test("native mode: add a word while reading, then review it", async ({ page }) =
   await page.getByRole("button", { name: "Skip the tour" }).click();
   await importAndRead(page);
   await inspectWord(page);
-  await expect(page.getByRole("group", { name: "Add to my words" })).toBeVisible();
-  await page.getByRole("button", { name: /^Add to / }).click();
+  await page
+    .getByRole("button", { name: /^(Add to |Study first)/ })
+    .first()
+    .click();
   await expect(page.locator(".inspector-panel")).toContainText("Your card");
   await page.goto("/review");
   await expect(page.locator(".review-word")).toContainText("buurvrouw");
   await page.keyboard.press("Space");
   await expect(page.getByRole("button", { name: /Easy/ })).toBeVisible();
   await page.keyboard.press("4");
-  await expect(page.getByRole("heading", { name: "Done for today" })).toBeVisible();
+  // The next card is another of the day's words.
+  await expect(page.locator(".review-word")).not.toContainText("buurvrouw");
   expect(errors).toEqual([]);
 });

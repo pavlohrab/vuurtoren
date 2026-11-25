@@ -139,6 +139,37 @@ async function handle(route: Route): Promise<void> {
       return json(texts.map((text) => ({ text, translation: `[en] ${text}` })));
     case "/grammar":
       return json(texts.map(() => []));
+    case "/translate/align": {
+      // In-context English: the fake has none (the reader keeps the dictionary meaning).
+      const items = (body["items"] as { text: string; spans: [number, number][] }[]) ?? [];
+      return json(
+        items.map((it) => ({
+          text: it.text,
+          translation: `[en] ${it.text}`,
+          words: it.spans.map(([start, end]) => ({ start, end, text: null, confidence: 0 })),
+        })),
+      );
+    }
+    case "/translate/pairs": {
+      // Side by side: the English line, no word pairs.
+      const items = (body["items"] as { text: string; spans: [number, number][] }[]) ?? [];
+      return json(
+        items.map((it) => ({
+          text: it.text,
+          translation: `[en] ${it.text}`,
+          source: "mt",
+          english: [],
+          words: it.spans.map(([start, end]) => ({
+            start,
+            end,
+            en: [],
+            pair: null,
+            confidence: 0,
+          })),
+          pairs: [],
+        })),
+      );
+    }
     case "/entry":
       // The word card's dictionary part: a verb with forms, else nothing.
       return json(
