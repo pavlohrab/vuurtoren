@@ -22,7 +22,9 @@ Schema::
 
 from __future__ import annotations
 
+import gzip
 import json
+import re
 import sqlite3
 from collections.abc import Iterable, Iterator
 from functools import lru_cache
@@ -38,6 +40,7 @@ from vuurtoren_nlp.compound import (
 )
 from vuurtoren_nlp.datadir import data_path
 from vuurtoren_nlp.derive import Derivation, derive
+from vuurtoren_nlp.freq import zipf
 from vuurtoren_nlp.wordforms import extract_word_forms
 
 MAX_GLOSSES = 5
@@ -61,7 +64,7 @@ CREATE TABLE entries (
 CREATE TABLE forms (form TEXT NOT NULL, lemma TEXT NOT NULL, pos TEXT NOT NULL);
 CREATE TABLE wordforms (lemma TEXT NOT NULL, pos TEXT NOT NULL, data TEXT NOT NULL);
 CREATE TABLE extras (entry_id INTEGER PRIMARY KEY, data TEXT NOT NULL);
-CREATE TABLE family (stem TEXT NOT NULL, word TEXT NOT NULL);
+CREATE TABLE family (stem TEXT NOT NULL, word TEXT NOT NULL, rank INTEGER NOT NULL DEFAULT 0);
 """
 INDEXES = """
 CREATE INDEX idx_entries_word ON entries(lower(word));
@@ -74,6 +77,67 @@ CREATE INDEX idx_family_stem ON family(lower(stem));
 def default_db_path() -> Path:
     """Database location: ``$VUURTOREN_DICT_PATH`` or ``server/nlp/data/dictionary-nl.sqlite``."""
     return data_path("VUURTOREN_DICT_PATH", "dictionary-nl.sqlite")
+
+
+# Sense tags that make a meaning one most learners won't meet (shown last, in the full entry).
+_OLD_TAGS = {"archaic", "obsolete", "historical", "dated", "rare"}
+_SPECIALIST_TOPICS = {
+    "zoology",
+    "botany",
+    "biology",
+    "ornithology",
+    "ichthyology",
+    "entomology",
+    "mycology",
+    "taxonomy",
+    "anatomy",
+    "medicine",
+    "pathology",
+    "pharmacology",
+    "law",
+    "chemistry",
+    "physics",
+    "mathematics",
+    "geometry",
+    "geology",
+    "mineralogy",
+    "astronomy",
+    "heraldry",
+    "nautical",
+    "military",
+    "linguistics",
+    "music",
+}
+# "synonym of kleine burgemeester (“Larus glaucoides”)": a Latin species name.
+_SPECIES = re.compile(r"“[A-Z][a-z]+ [a-z]+”")
+
+
+def sense_mark(sense: dict[str, Any]) -> str | None:
+    """``old``, ``specialist`` or None (an everyday meaning)."""
+    tags = set(sense.get("tags") or [])
+    if tags & _OLD_TAGS:
+        return "old"
+    topics = set(sense.get("topics") or [])
+    glosses = " ".join(g for g in sense.get("glosses", []) if isinstance(g, str))
+    if topics & _SPECIALIST_TOPICS or _SPECIES.search(glosses):
+        return "specialist"
+    return None
+
+
+def _everyday_first(senses: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Everyday meanings first, marked ones after, each group in Kaikki's order."""
+    return sorted(senses, key=lambda s: sense_mark(s) is not None)
+
+
+@lru_cache(maxsize=1)
+def aux_list() -> dict[str, str]:
+    """heb or ben per verb from the Dutch Wiktionary (``scripts/build_aux_nl.py``)."""
+    path = Path(__file__).with_name("aux-nl.tsv.gz")
+    if not path.is_file():
+        return {}
+    with gzip.open(path, "rt", encoding="utf-8") as f:
+        rows = (line.rstrip("\n").split("\t") for line in f if not line.startswith("#"))
+        return {r[0]: r[1] for r in rows if len(r) == 2}
 
 
 def _gloss_text(sense: dict[str, Any]) -> str | None:
@@ -94,7 +158,7 @@ def _gloss_text(sense: dict[str, Any]) -> str | None:
 def extract_glosses(senses: list[dict[str, Any]]) -> list[str]:
     """Up to :data:`MAX_GLOSSES` distinct short glosses, in sense order."""
     out: list[str] = []
-    for sense in senses:
+    for sense in _everyday_first(senses):
         text = _gloss_text(sense)
         if text and text not in out:
             out.append(text)
@@ -193,11 +257,18 @@ def entry_extras(entry: dict[str, Any]) -> dict[str, Any]:
     Commons file name of a recording; played on demand, never bundled).
     """
     senses: list[dict[str, Any]] = []
-    for s in entry.get("senses", []):
+    marked_words: set[str] = set()
+    everyday_words: set[str] = set()
+    for s in _everyday_first(entry.get("senses", [])):
         gloss = _gloss_text(s)
         if not gloss:
             continue
         item: dict[str, Any] = {"gloss": gloss}
+        mark = sense_mark(s)
+        if mark:
+            item["mark"] = mark
+        for key in ("synonyms", "antonyms"):
+            (marked_words if mark else everyday_words).update(_words(s.get(key)))
         examples = [
             {"nl": e["text"], "en": e.get("english") or e.get("translation")}
             for e in s.get("examples", [])
@@ -215,6 +286,9 @@ def entry_extras(entry: dict[str, Any]) -> dict[str, Any]:
         out["senses"] = senses
     for key in ("synonyms", "antonyms", "derived", "related"):
         words = _words(entry.get(key))
+        if key in ("synonyms", "antonyms"):
+            # not the ones that belong only to an old or specialist meaning
+            words = [w for w in words if w not in marked_words or w in everyday_words]
         if words:
             out[key] = words
     hyph = entry.get("hyphenations") or []
@@ -270,6 +344,10 @@ def build_dictionary(jsonl_path: Path, db_path: Path) -> dict[str, int]:
                     (cur.lastrowid, json.dumps(extras, ensure_ascii=False)),
                 )
             morph = extract_word_forms(entry)
+            # heb or ben from the Dutch Wiktionary, next to (not over) the English one: the
+            # language server weighs it in resolve_aux; a phone reads aux, else aux_nl.
+            if pos == "verb" and word in aux_list():
+                morph = {**(morph or {}), "aux_nl": aux_list()[word]}
             if morph:
                 con.execute(
                     "INSERT INTO wordforms(lemma, pos, data) VALUES (?,?,?)",
@@ -282,7 +360,11 @@ def build_dictionary(jsonl_path: Path, db_path: Path) -> dict[str, int]:
             if pos == "verb":
                 derived = extras.get("derived", [])
                 family |= {(word, d) for d in derived if " " not in d and d.endswith("en")}
-            con.executemany("INSERT INTO family(stem, word) VALUES (?,?)", sorted(family))
+            # rank: how common the word is (wordfreq, zipf × 100), so readers show common ones first
+            con.executemany(
+                "INSERT INTO family(stem, word, rank) VALUES (?,?,?)",
+                [(st, w, round(zipf(w) * 100)) for st, w in sorted(family)],
+            )
             pairs: set[tuple[str, str]] = {(f, word) for f in forms}
             pairs |= {(word, lemma) for lemma in _form_of_targets(entry)}
             con.executemany(
@@ -378,14 +460,19 @@ class Dictionary:
                     if x:
                         e["extras"] = json.loads(x["data"])
                 if "family" in v2 and r["pos"] == "verb":
-                    fam = [
-                        f["word"]
-                        for f in con.execute(
+                    # Common words first (rank); packs before 2026.11.4 have no rank: by name.
+                    try:
+                        rows_f = con.execute(
+                            "SELECT word FROM family WHERE lower(stem) = ?"
+                            " GROUP BY word ORDER BY MAX(rank) DESC, word",
+                            (r["word"].lower(),),
+                        ).fetchall()
+                    except sqlite3.OperationalError:
+                        rows_f = con.execute(
                             "SELECT DISTINCT word FROM family WHERE lower(stem) = ? ORDER BY word",
                             (r["word"].lower(),),
-                        )
-                        if f["word"].lower() != r["word"].lower()
-                    ]
+                        ).fetchall()
+                    fam = [f["word"] for f in rows_f if f["word"].lower() != r["word"].lower()]
                     if fam:
                         e["family"] = fam
                     stem = ((e.get("forms") or {}).get("separable") or {}).get("stem")

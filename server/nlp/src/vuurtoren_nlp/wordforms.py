@@ -289,9 +289,14 @@ def curated_aux(lemma: str, particle: str | None = None) -> str | None:
 
 
 def resolve_aux(
-    template_aux: str | None, evidence: tuple[int, int] | None, lemma: str, particle: str | None
+    template_aux: str | None,
+    evidence: tuple[int, int] | None,
+    lemma: str,
+    particle: str | None,
+    nl_aux: str | None = None,
 ) -> str:
-    """Final auxiliary: template > curated hebben/both > evidence ``(hebben, zijn)`` > curated.
+    """Final auxiliary: template > curated hebben/both > the Dutch Wiktionary (``nl_aux``) >
+    evidence ``(hebben, zijn)`` > curated.
 
     Corpus ``zijn`` counts include perfect passives ("is aangevallen"), so for a verb not
     curated as zijn/both a hebben-majority of at least 2:1 means "hebben", not "both". A curated
@@ -303,6 +308,8 @@ def resolve_aux(
     curated = curated_aux(low, particle)
     if curated == "hebben" or (curated == "both" and _listed(low) == "both"):
         return curated
+    if nl_aux:
+        return nl_aux
     if evidence and sum(evidence) >= 2:
         heb, zij = evidence
         total = heb + zij
@@ -442,5 +449,7 @@ class WordFormsStore:
             return data
         particle = (data.get("separable") or {}).get("particle")
         out = dict(data)
-        out["aux"] = resolve_aux(data.get("aux"), evidence.get(low), low, particle)
+        out["aux"] = resolve_aux(
+            data.get("aux"), evidence.get(low), low, particle, out.pop("aux_nl", None)
+        )
         return out

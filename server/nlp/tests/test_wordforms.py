@@ -155,7 +155,7 @@ def test_evidence_from_sentence_db_overrides_default(fixture_db: Path, tmp_path:
     got = WordFormsStore(fixture_db, sent).lookup(
         [("werken", "VERB"), ("kopen", "VERB"), ("eten", "VERB")]
     )
-    assert got["werken"]["aux"] == "zijn"
+    assert got["werken"]["aux"] == "hebben"  # the Dutch Wiktionary comes before the evidence
     assert got["kopen"]["aux"] == "hebben"  # 7:3 = passives ("is gekocht")
     assert got["eten"]["aux"] == "hebben"
 
@@ -312,3 +312,8 @@ def test_real_db_aux_validation() -> None:
     store = WordFormsStore(db, db.parent / "sentences-nl.sqlite")
     got = store.lookup([(v, "VERB") for v in expected])
     assert {v: got[v].get("aux") for v in expected} == expected
+
+
+def test_evidence_decides_without_the_dutch_wiktionary() -> None:
+    assert resolve_aux(None, (0, 5), "werken", None) == "zijn"
+    assert resolve_aux(None, (0, 5), "werken", None, nl_aux="hebben") == "hebben"

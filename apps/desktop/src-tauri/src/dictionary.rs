@@ -438,9 +438,16 @@ pub fn entry(
             }
         }
         if family && r.pos == "verb" {
-            let mut stmt = conn.prepare_cached(
-                "SELECT DISTINCT word FROM family WHERE lower(stem) = ?1 ORDER BY word",
-            )?;
+            // Common words first (rank); packs before 2026.11.4 have no rank column: by name.
+            let mut stmt = match conn.prepare_cached(
+                "SELECT word FROM family WHERE lower(stem) = ?1 \
+                 GROUP BY word ORDER BY MAX(rank) DESC, word",
+            ) {
+                Ok(s) => s,
+                Err(_) => conn.prepare_cached(
+                    "SELECT DISTINCT word FROM family WHERE lower(stem) = ?1 ORDER BY word",
+                )?,
+            };
             let fam: Vec<String> = stmt
                 .query_map([&lower], |row| row.get::<_, String>(0))?
                 .filter_map(Result::ok)
@@ -713,5 +720,18 @@ mod tests {
         assert_eq!(none["entries"], serde_json::json!([]));
         assert!(is_form_of("inflection of doen: plural"));
         assert!(!is_form_of("to open"));
+
+        // Packs from 2026.11.4 rank the family: common words first.
+        conn.execute_batch(
+            "ALTER TABLE family ADD COLUMN rank INTEGER NOT NULL DEFAULT 0;
+             UPDATE family SET rank = 450 WHERE word = 'opendoen';
+             UPDATE family SET rank = 300 WHERE word = 'dichtdoen';",
+        )
+        .unwrap();
+        let ranked = entry(&conn, "doen", None).unwrap();
+        assert_eq!(
+            ranked["entries"][0]["family"],
+            serde_json::json!(["opendoen", "dichtdoen"])
+        );
     }
 }

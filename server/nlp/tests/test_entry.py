@@ -1,7 +1,6 @@
 """Dictionary v2: the word card's entry (``Dictionary.entry``, ``POST /entry``).
 
-The fixture is four real Kaikki lines (doen, opendoen, dichtdoen, moeten), so the shapes are
-the ones the real build sees.
+The fixture is real Kaikki lines, so the shapes are the ones the real build sees.
 """
 
 from __future__ import annotations
@@ -100,3 +99,20 @@ def test_entry_route(monkeypatch: pytest.MonkeyPatch, dictionary: Dictionary) ->
     # doen takes hebben (the perfect tense's helper, as /forms resolves it).
     (verb,) = [e for e in r.json()["entries"] if e["pos"] == "verb"]
     assert verb["forms"].get("aux") in {"hebben", None}
+
+
+def test_old_and_specialist_meanings_go_last_with_their_synonyms(dictionary: Dictionary) -> None:
+    (noun,) = [x for x in dictionary.entry("burgemeester")["entries"] if x["pos"] == "noun"]
+    assert noun["glosses"][0].startswith("mayor")
+    senses = noun["extras"]["senses"]
+    assert senses[0].get("mark") is None
+    # the two gulls (a Latin species name) and the Roman consul (historical, obsolete)
+    assert [s.get("mark") for s in senses[1:]] == ["specialist", "specialist", "old"]
+    # "kleine burgemeester" is the gull's synonym, not the mayor's
+    assert "kleine burgemeester" not in noun["extras"].get("synonyms", [])
+    assert "synonyms" not in senses[0]
+
+
+def test_heb_or_ben_from_the_dutch_wiktionary(dictionary: Dictionary) -> None:
+    (verb,) = [x for x in dictionary.entry("gaan")["entries"] if x["pos"] == "verb"]
+    assert verb["forms"]["aux"] == "zijn"
