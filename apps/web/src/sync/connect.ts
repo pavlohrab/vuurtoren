@@ -11,6 +11,8 @@ export interface ConnectLink {
   server: string;
   /** The pairing code as shown (`ABCDE-FGHJK`). */
   code: string;
+  /** "Connect a phone": the computer's certificate SHA-256 (hex), the only one trusted. */
+  pinned?: string;
 }
 
 /** A server and its user name and password: the device signs in by itself. */
@@ -48,6 +50,12 @@ export function pairingCode(text: string): string | null {
   return CODE.test(t) ? `${t.slice(0, 5)}-${t.slice(5)}` : null;
 }
 
+/** The link a computer shows for its phones: its home-network address, certificate and code. */
+export function lanLink(host: string, port: number, cert: string, code: string): string {
+  const q = new URLSearchParams({ lan: `${host}:${port}`, cert, code });
+  return `vuurtoren://connect?${q.toString()}`;
+}
+
 /** The link the server shows for `server` and `code`. */
 export function connectLink(server: string, code: string): string {
   const q = new URLSearchParams({ server, code });
@@ -66,8 +74,13 @@ export function parseConnectLink(text: string): ConnectLink | null {
   // `vuurtoren://connect?…` parses with "connect" as the host; `vuurtoren:connect?…` as the path.
   const what = (u.host || u.pathname).replace(/^\/+|\/+$/g, "");
   if (what !== "connect") return null;
-  const server = serverAddress(u.searchParams.get("server") ?? "");
   const code = pairingCode(u.searchParams.get("code") ?? "");
+  // A computer on the home network (`lan=192.168.1.20:47120&cert=<sha256>`).
+  const lan = u.searchParams.get("lan") ?? "";
+  const cert = (u.searchParams.get("cert") ?? "").toLowerCase();
+  if (lan && /^[0-9a-f]{64}$/.test(cert) && /^[\w.-]+:\d{1,5}$/.test(lan))
+    return code ? { server: `https://${lan}`, code, pinned: cert } : null;
+  const server = serverAddress(u.searchParams.get("server") ?? "");
   return server && code ? { server, code } : null;
 }
 
@@ -87,6 +100,8 @@ export interface Paired {
   url: string;
   token: string;
   label: string;
+  /** "Connect a phone": the sync key the computer handed over (base64), so no passphrase. */
+  key?: string;
 }
 
 /** Trade the pairing code for a sync token (`POST <server>/api/sync/pair`). */
@@ -116,6 +131,7 @@ export async function pairWithServer(
     token?: string;
     label?: string;
     error?: string;
+    handover?: { key?: string };
   };
   if (res.status === 404) {
     throw new Error(
@@ -125,5 +141,10 @@ export async function pairWithServer(
   if (!res.ok || !answer.token) {
     throw new Error(answer.error ?? `The server answered ${res.status}.`);
   }
-  return { url: link.server, token: answer.token, label: answer.label ?? label };
+  return {
+    url: link.server,
+    token: answer.token,
+    label: answer.label ?? label,
+    ...(answer.handover?.key ? { key: answer.handover.key } : {}),
+  };
 }

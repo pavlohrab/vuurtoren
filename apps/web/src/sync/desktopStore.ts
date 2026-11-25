@@ -75,7 +75,7 @@ function allowHost(sync: DesktopSync, url: string): Promise<void> {
  * A `fetch` sent by the desktop app, only to addresses the user allowed. Failures of the bridge
  * (no network, a refused address) surface as a `TypeError`, like a failed browser fetch.
  */
-export function desktopFetch(sync: DesktopSync): typeof fetch {
+export function desktopFetch(sync: DesktopSync, pinned?: string): typeof fetch {
   return async (input, init) => {
     let method: string;
     let res: Awaited<ReturnType<DesktopSync["fetch"]>>;
@@ -83,7 +83,8 @@ export function desktopFetch(sync: DesktopSync): typeof fetch {
       await allowHost(sync, urlOf(input));
       const req = await wireRequest(input, init);
       method = req.method;
-      res = await sync.fetch(req);
+      // "Connect a phone": only the computer's certificate from the QR code is trusted.
+      res = await sync.fetch(pinned ? { ...req, pinned } : req);
     } catch (e) {
       throw new TypeError(e instanceof Error ? e.message : String(e), { cause: e });
     }

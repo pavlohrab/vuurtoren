@@ -17,6 +17,11 @@ export type SyncPlace =
        * place keeps an empty `token`.
        */
       kept?: boolean;
+      /**
+       * "Connect a phone": the place is the user's own computer on the home network, reached
+       * over HTTPS with exactly this certificate (its SHA-256, from the QR code).
+       */
+      pinned?: string;
     }
   /** WebDAV (the desktop app). */
   | { kind: "webdav"; url: string; user: string; password: string }

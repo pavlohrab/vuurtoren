@@ -2,9 +2,10 @@ import { describe, expect, it, vi } from "vitest";
 import { qrPath } from "../screens/settings/QrCode.js";
 import {
   connectLink,
-  pairWithServer,
+  lanLink,
   pairedLabel,
   pairingCode,
+  pairWithServer,
   parseConnectLink,
   serverAddress,
 } from "./connect.js";
@@ -119,5 +120,24 @@ describe("pairing with a server", () => {
       throw new TypeError("Failed to fetch");
     }) as unknown as typeof globalThis.fetch;
     await expect(pairWithServer(link, "Phone", offline)).rejects.toThrow(/cannot be reached/);
+  });
+});
+
+describe("the link a computer shows for its phone", () => {
+  const cert = "ab".repeat(32);
+  it("carries the home-network address, the certificate and the code, and reads back", () => {
+    const link = lanLink("192.168.1.20", 47120, cert, "ABCDE-FGHJK");
+    expect(parseConnectLink(link)).toEqual({
+      server: "https://192.168.1.20:47120",
+      code: "ABCDE-FGHJK",
+      pinned: cert,
+    });
+  });
+
+  it("refuses a link without a whole certificate or a port", () => {
+    expect(parseConnectLink(lanLink("192.168.1.20", 47120, "abc", "ABCDE-FGHJK"))).toBeNull();
+    expect(
+      parseConnectLink(`vuurtoren://connect?lan=192.168.1.20&cert=${cert}&code=ABCDE-FGHJK`),
+    ).toBeNull();
   });
 });

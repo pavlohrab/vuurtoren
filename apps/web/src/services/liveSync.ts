@@ -18,7 +18,9 @@ import {
   type VuurtorenRepository,
   VAULT_PATH,
   changePassphrase,
+  checkKey,
   createVault,
+  fromBase64,
   keyFromRaw,
   newRecoveryKey,
   readVault,
@@ -269,7 +271,9 @@ export function createLiveSync(deps: LiveSyncDeps) {
     const id = JSON.stringify(place);
     if (built?.id === id) return built.store;
     // In the desktop app requests go through the app: WebDAV servers rarely allow CORS.
-    const fetch = deps.desktop ? desktopFetch(deps.desktop) : deps.fetch;
+    const pinned = place.kind === "server" ? place.pinned : undefined;
+    if (pinned && !deps.desktop) throw new Error("Your computer can be reached from the app only.");
+    const fetch = deps.desktop ? desktopFetch(deps.desktop, pinned) : deps.fetch;
     let store: SyncStore;
     switch (place.kind) {
       case "server":
@@ -402,7 +406,7 @@ export function createLiveSync(deps: LiveSyncDeps) {
    * Open the data in a place (join) or start new data there (start). The key is kept on this
    * device before a new vault is written, so no vault exists that no device can open.
    */
-  async function connect(store: SyncStore, how: SetUpHow, passphrase: string) {
+  async function connect(store: SyncStore, how: SetUpHow, passphrase: string | null) {
     const vault = await readVault(store);
     if (how === "join") {
       if (!vault) {
@@ -410,6 +414,7 @@ export function createLiveSync(deps: LiveSyncDeps) {
           "There is no Vuurtoren sync data in this place yet. If another device started it, check that this is the same place (folder or address); a synced folder can take a few minutes to bring the files. To begin here instead, choose Start new sync data here.",
         );
       }
+      if (passphrase === null) throw new Error("Type the passphrase of your synced data.");
       const key = await unlockVault(vault, passphrase);
       await keys.save(key.raw);
       return { key, recoveryKey: null };
@@ -520,15 +525,47 @@ export function createLiveSync(deps: LiveSyncDeps) {
       return exclusive(async () => {
         if (read()) throw new Error("Stop syncing first, then connect to another server.");
         // In the app the request goes through it (no CORS setup on the server).
-        const fetch = deps.desktop ? desktopFetch(deps.desktop) : deps.fetch;
+        const pinned = "pinned" in link ? link.pinned : undefined;
+        const fetch = deps.desktop ? desktopFetch(deps.desktop, pinned) : deps.fetch;
         const ua = typeof navigator === "undefined" ? "" : navigator.userAgent;
         const label = pairedLabel(deviceName || defaultName(), ua, deps.phone ?? false);
         const paired = await pairWithServer(link, label, fetch);
         await tokens.save(paired.token);
         keptToken = paired.token;
-        writePaired(paired.url);
         pendingLink = null;
-        return status(null);
+        if (!pinned || !paired.key) {
+          writePaired(paired.url);
+          return status(null);
+        }
+        // "Connect a phone": the computer handed over the key, so the phone joins at once.
+        const place: SyncPlace = {
+          kind: "server",
+          url: paired.url,
+          token: "",
+          kept: true,
+          pinned,
+        };
+        const store = await storeOf(place);
+        const vault = await readVault(store);
+        if (!vault) throw new Error("Your computer has no sync data yet. Show the code again.");
+        const key = await keyFromRaw(fromBase64(paired.key));
+        await checkKey(vault, key);
+        await keys.save(key.raw);
+        const saved: Saved = {
+          place,
+          deviceName: (deviceName || defaultName()).trim().slice(0, 60),
+          last: null,
+          error: null,
+          devices: [],
+        };
+        write(saved);
+        writePaired(null);
+        try {
+          await run(saved, key);
+        } catch {
+          // Kept in the saved status; it tries again by itself.
+        }
+        return status(read());
       });
     },
 
