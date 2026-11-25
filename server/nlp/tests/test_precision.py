@@ -106,6 +106,10 @@ PRECISION: list = [
     pytest.param(
         "Zijn moeder helpt hem met zijn broek uit en zijn pyjama aan.", "helpt", "helpen", marks=db
     ),
+    # plural past tenses the parser reads as present
+    pytest.param("Ze pleegden een overval.", "pleegden", "plegen", marks=db),
+    pytest.param("Ze wierpen een blik op de zee.", "wierpen", "werpen", marks=db),
+    pytest.param("Wij lopen samen naar huis.", "lopen", "lopen", marks=db),
 ]
 
 

@@ -114,6 +114,20 @@ def is_inflected(pos: str, morph: str, surface: str) -> bool:
     return False
 
 
+def _past_read_as_present(surface: str, pos: str, morph: str) -> bool:
+    """A plural past tense the parser calls present ("pleegden", "wierpen").
+
+    A plural present has the infinitive's form, so it is a verb with meanings of its own (lopen,
+    weten). When the dictionary only says the form is a form of another verb, it isn't one.
+    """
+    if pos not in {"VERB", "AUX"} or "Number=Plur" not in morph or "Tense=Past" in morph:
+        return False
+    lex = get_lexicon()
+    if not lex.available or lex.own_verb(surface) is not False:
+        return False
+    return any(w != surface.lower() for w in lex.lemmas(surface, "VERB"))
+
+
 def _sensible(surface: str, candidate: str, pos: str) -> bool:
     """Reject dictionary lemmas that are obviously derivation noise, not a base form.
 
@@ -167,7 +181,7 @@ def choose_lemma(
     """
     model_lemma = model_lemma or surface
     unchanged = model_lemma.lower() == surface.lower()
-    inflected = is_inflected(pos, morph, surface)
+    inflected = is_inflected(pos, morph, surface) or _past_read_as_present(surface, pos, morph)
     model_ok = _is_known(lang, model_lemma)
     if unchanged and model_ok and not inflected:
         return model_lemma, []  # infinitive, singular noun, ...: the citation form already

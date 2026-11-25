@@ -8,6 +8,7 @@ locally (``scripts/build_dictionary.py``); when it is absent (CI) every method d
 
 from __future__ import annotations
 
+import json
 import sqlite3
 import threading
 from functools import lru_cache
@@ -36,6 +37,7 @@ class Lexicon:
         self.lemmas = lru_cache(maxsize=65536)(self._lemmas)
         self.is_word = lru_cache(maxsize=65536)(self._is_word)
         self.is_headword = lru_cache(maxsize=65536)(self._is_headword)
+        self.own_verb = lru_cache(maxsize=65536)(self._own_verb)
 
     def _con(self) -> sqlite3.Connection:
         con = getattr(self._local, "con", None)
@@ -84,6 +86,19 @@ class Lexicon:
             .fetchone()
         )
         return row is not None
+
+    def _own_verb(self, word: str) -> bool | None:
+        """True if ``word`` is a verb with meanings of its own (lopen, weten), not an entry
+        that only says it is a form of another verb (pleegden: "inflection of plegen").
+        ``None`` without DB."""
+        if not self.available:
+            return None
+        from vuurtoren_nlp.compound import real_glosses
+
+        rows = self._con().execute(
+            "SELECT glosses FROM entries WHERE lower(word) = ? AND pos = 'verb'", (word.lower(),)
+        )
+        return any(real_glosses(json.loads(g)) for (g,) in rows)
 
     def _is_word(self, word: str) -> bool | None:
         """True if ``word`` is a headword or a known form; None when there is no DB."""
