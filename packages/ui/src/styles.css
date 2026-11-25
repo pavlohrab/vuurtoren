@@ -2575,6 +2575,28 @@ svg.lucide {
   color: var(--ink);
   font-weight: 600;
 }
+/* Switching tabs: the content slides in from the side it comes from; the tabs stay. */
+.k-inspector[data-enter] > :not(.k-inspector-tabs) {
+  animation: k-tab-in var(--dur-slow) var(--ease-out) both;
+}
+.k-inspector[data-enter="left"] > :not(.k-inspector-tabs) {
+  --tab-from: -28px;
+}
+@keyframes k-tab-in {
+  from {
+    opacity: 0.4;
+    transform: translateX(var(--tab-from, 28px));
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .k-inspector[data-enter] > :not(.k-inspector-tabs) {
+    animation: none;
+  }
+}
 .k-inspector-tabs button:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: -2px;

@@ -127,13 +127,21 @@ export function WordInspector({
   wordExtra,
   sentencePanel,
 }: WordInspectorProps) {
-  const [tab, setTab] = useState<"word" | "sentence">("word");
+  const [tab, setTabNow] = useState<"word" | "sentence">("word");
+  /** Which side the new tab's content slides in from (none on a new word). */
+  const [enter, setEnter] = useState<"left" | "right" | null>(null);
+  const setTab = (t: "word" | "sentence") => {
+    if (t === tab) return;
+    setEnter(t === "sentence" ? "right" : "left");
+    setTabNow(t);
+  };
   // A new word opens on its Word tab, not on the last word's Sentence tab.
   const shownId = entry ? `${entry.textId}:${entry.tokenIndex}:${entry.key}` : "";
   const [tabFor, setTabFor] = useState(shownId);
   if (tabFor !== shownId) {
     setTabFor(shownId);
-    setTab("word");
+    setTabNow("word");
+    setEnter(null);
   }
   const swipe = useRef<{ x: number; y: number } | null>(null);
   if (!entry && error) {
@@ -229,7 +237,13 @@ export function WordInspector({
   // The reader's card on its Sentence tab: the tabs and the sentence, nothing of the word.
   if (card && sentencePanel && tab === "sentence") {
     return (
-      <div className="k-inspector" data-layout="card" aria-label="Sentence details" {...swipeProps}>
+      <div
+        className="k-inspector"
+        data-layout="card"
+        aria-label="Sentence details"
+        {...(enter ? { "data-enter": enter } : {})}
+        {...swipeProps}
+      >
         {tabs}
         <div className="k-inspector-peek" />
         <div
@@ -252,6 +266,7 @@ export function WordInspector({
       className="k-inspector"
       aria-label="Word details"
       {...(card ? { "data-layout": "card" } : {})}
+      {...(card && enter ? { "data-enter": enter } : {})}
       {...(card ? swipeProps : {})}
     >
       {card && tabs}

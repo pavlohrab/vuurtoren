@@ -883,6 +883,12 @@ dl.card-meaning dd,
 .k-inspector[data-layout="card"] .k-inspector-tabs {
   margin: 0 0 var(--s-3);
 }
+/* On the computer the tabs sit right under the panel's header. */
+@media (min-width: 900px) {
+  .k-inspector[data-layout="card"] > .k-inspector-tabs:first-child {
+    margin-top: calc(-1 * var(--s-3));
+  }
+}
 .word-grammar {
   margin-top: var(--s-4);
   padding-top: var(--s-4);
