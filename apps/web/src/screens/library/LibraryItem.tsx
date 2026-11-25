@@ -10,6 +10,8 @@ import { useCanAddTexts } from "../../platform/canAddTexts.js";
 
 /** MIME type of a dragged Library cover (JSON array of text ids). */
 export const DRAG_TYPE = "application/x-vuurtoren-texts";
+/** The shelf a dragged cover comes from: a drop on another shelf moves it (Ctrl keeps both). */
+export const FROM_SHELF_TYPE = "application/x-vuurtoren-from-shelf";
 
 export interface LibraryItemProps {
   text: TextListItem;
@@ -26,6 +28,8 @@ export interface LibraryItemProps {
   onKeyDown?: (e: KeyboardEvent<HTMLElement>) => void;
   /** Ids to drag with this cover (the selection when it is part of it). */
   dragIds: () => string[];
+  /** The learner's shelf this cover sits on, if any (dragging it away moves it). */
+  fromShelf?: string | undefined;
 }
 
 /** One text on the Library shelf: the cover, a quiet line under it and a "…" menu. */
@@ -40,6 +44,7 @@ export function LibraryItem({
   onFocus,
   onKeyDown,
   dragIds,
+  fromShelf,
 }: LibraryItemProps) {
   const imageUrl = useCoverUrl(t.coverId);
   const state = readingState(t);
@@ -55,8 +60,9 @@ export function LibraryItem({
         : `${t.wordCount.toLocaleString("en")} words`;
   const onDragStart = (e: DragEvent<HTMLElement>) => {
     e.dataTransfer.setData(DRAG_TYPE, JSON.stringify(dragIds()));
+    if (fromShelf) e.dataTransfer.setData(FROM_SHELF_TYPE, fromShelf);
     e.dataTransfer.setData("text/plain", t.title);
-    e.dataTransfer.effectAllowed = "copy";
+    e.dataTransfer.effectAllowed = "copyMove";
   };
   const cover = (
     <TextCover

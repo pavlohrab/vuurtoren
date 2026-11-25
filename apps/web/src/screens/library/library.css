@@ -107,8 +107,17 @@
   scroll-padding-inline: var(--s-2);
   scrollbar-width: thin;
   scrollbar-color: var(--line) transparent;
-  /* The shelf board: a hairline under the covers' meta. */
-  background: linear-gradient(var(--line), var(--line)) bottom / 100% 1px no-repeat;
+  /* The shelf board (mock A, UI3): a ledge under the covers, with a soft shadow below it. */
+  padding-bottom: calc(var(--s-3) + 8px);
+  background:
+    linear-gradient(
+        color-mix(in srgb, var(--accent) 38%, var(--surface)),
+        color-mix(in srgb, var(--accent) 22%, var(--surface))
+      )
+      bottom / 100% 8px no-repeat,
+    linear-gradient(color-mix(in srgb, var(--ink) 10%, transparent), transparent) bottom 0 left 0 /
+      100% 14px no-repeat;
+  border-radius: 0 0 6px 6px;
 }
 .lib-row > .lib-item {
   flex: 0 0 var(--lib-cover-w);
@@ -548,4 +557,38 @@
 }
 .lib-tools[open] > summary {
   color: var(--ink);
+}
+
+/* ---------- The shelf picker on top (mock A, UI3) ---------- */
+.lib-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+  margin-bottom: var(--s-5);
+}
+.lib-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink);
+  font: 500 14px var(--font-ui);
+  cursor: pointer;
+}
+.lib-chip[aria-pressed="true"] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.lib-chip[data-drop] {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.lib-chip-count {
+  font-size: 12px;
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
 }

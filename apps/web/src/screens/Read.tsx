@@ -21,7 +21,7 @@ import type { TextListItem } from "../services/types.js";
 import { PageHeader, SectionHeader } from "../shell/PageHeader.js";
 import { ErrorNotice } from "../shell/ErrorNotice.js";
 import { CoverDialog } from "./library/CoverDialog.js";
-import { DRAG_TYPE, LibraryItem } from "./library/LibraryItem.js";
+import { DRAG_TYPE, FROM_SHELF_TYPE, LibraryItem } from "./library/LibraryItem.js";
 import { type MenuItem, MenuButton } from "./library/MenuButton.js";
 import { AddToShelfDialog, ShelfNameDialog } from "./library/ShelfDialogs.js";
 import {
@@ -49,6 +49,7 @@ import { useCanAddTexts } from "../platform/canAddTexts.js";
 type View = "shelves" | "all";
 const VIEW_KEY = "vuurtoren.library.view";
 const SORT_KEY = "vuurtoren.library.sort";
+const PICK_KEY = "vuurtoren.library.shelf";
 
 function readPref<T extends string>(key: string, allowed: readonly T[], fallback: T): T {
   try {
@@ -76,6 +77,39 @@ function draggedIds(e: DragEvent): string[] | null {
   }
 }
 
+/** How a cover was dropped on a shelf: from which shelf, and whether Ctrl/Alt asked to copy. */
+interface DropHow {
+  from: string | null;
+  copy: boolean;
+}
+
+/** Drag-and-drop handlers for a shelf (its row, or its chip in the picker). */
+export function shelfDrop(onDrop: (ids: string[], how: DropHow) => void, setOver: (on: boolean) => void) {
+  return {
+    onDragOver: (e: DragEvent) => {
+      if (!e.dataTransfer.types.includes(DRAG_TYPE)) return;
+      e.preventDefault();
+      const copy = e.ctrlKey || e.altKey || e.metaKey;
+      e.dataTransfer.dropEffect =
+        e.dataTransfer.types.includes(FROM_SHELF_TYPE) && !copy ? "move" : "copy";
+      setOver(true);
+    },
+    onDragLeave: (e: DragEvent) => {
+      if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setOver(false);
+    },
+    onDrop: (e: DragEvent) => {
+      setOver(false);
+      const ids = draggedIds(e);
+      if (!ids?.length) return;
+      e.preventDefault();
+      onDrop(ids, {
+        from: e.dataTransfer.getData(FROM_SHELF_TYPE) || null,
+        copy: e.ctrlKey || e.altKey || e.metaKey,
+      });
+    },
+  };
+}
+
 /**
  * Read: the landing page. Today on top (the text to continue, what is due today), then
  * Stories for you (the bundled stories, the learner's level first), then Your texts: a bookshelf
@@ -92,6 +126,17 @@ export function Read() {
   const toast = useToast();
 
   const [view, setView] = useState<View>(() => readPref(VIEW_KEY, ["shelves", "all"], "shelves"));
+  const [shelfPick, setShelfPick] = useState<string>(() => {
+    try {
+      return localStorage.getItem(PICK_KEY) ?? "all";
+    } catch {
+      return "all";
+    }
+  });
+  const pickShelf = (id: string) => {
+    setShelfPick(id);
+    writePref(PICK_KEY, id);
+  };
   const [sort, setSort] = useState<SortKey>(() =>
     readPref(SORT_KEY, ["recent", "title", "coverage"], "recent"),
   );
@@ -136,6 +181,23 @@ export function Read() {
       toast("Shelf deleted", "Its texts are still in Your texts.");
     },
     onError: (e) => toast("Could not delete the shelf", errorText(e)),
+  });
+  /** A drop on a shelf: added there, and taken off the shelf it came from unless Ctrl was held. */
+  const moveTo = useMutation({
+    mutationFn: async (a: { shelf: { id: string; name: string }; ids: string[]; how: DropHow }) => {
+      await services.addToShelf(a.shelf.id, a.ids);
+      if (a.how.from && a.how.from !== a.shelf.id && !a.how.copy)
+        await services.removeFromShelf(a.how.from, a.ids);
+    },
+    onSuccess: async (_r, a) => {
+      await qc.invalidateQueries({ queryKey: ["shelves"] });
+      const moved = !!a.how.from && a.how.from !== a.shelf.id && !a.how.copy;
+      toast(
+        `${moved ? "Moved to" : "Added to"} "${a.shelf.name}"`,
+        a.ids.length > 1 ? plural(a.ids.length, "text", "texts") : undefined,
+      );
+    },
+    onError: (e) => toast("Could not move the text", errorText(e)),
   });
   const shelve = useMutation({
     mutationFn: async (a: { shelf: { id: string; name: string }; ids: string[]; add: boolean }) => {
@@ -251,6 +313,7 @@ export function Read() {
       selecting={selecting}
       selected={selected.has(t.id)}
       dragIds={() => (selected.has(t.id) ? [...selected] : [t.id])}
+      fromShelf={row?.own ? row.id : undefined}
       {...extra}
     />
   );
@@ -322,34 +385,63 @@ export function Read() {
       </p>
     );
   } else {
-    body = rows.map((row) => {
-      const shelf = ownShelves.find((s) => s.id === row.id);
-      return (
-        <ShelfRowView
-          key={row.id}
-          row={row}
-          renderItem={(t, extra) => item(t, "shelf", row, extra)}
-          shelfMenu={
-            shelf
-              ? [
-                  {
-                    label: "Rename…",
-                    icon: <Pencil size={16} aria-hidden />,
-                    onSelect: () => setNaming({ open: true, shelf }),
-                  },
-                  {
-                    label: "Delete shelf…",
-                    icon: <Trash2 size={16} aria-hidden />,
-                    danger: true,
-                    onSelect: () => setShelfToDelete(shelf),
-                  },
-                ]
-              : null
-          }
-          onDropTexts={shelf ? (ids) => shelve.mutate({ shelf, ids, add: true }) : undefined}
-        />
-      );
-    });
+    // The picker on top (mock A, UI3): all shelves, or just one, so Read does not scroll so far.
+    const picked = rows.some((r) => r.id === shelfPick) ? shelfPick : "all";
+    const picker =
+      rows.length > 1 ? (
+        <nav className="lib-picker" aria-label="Shelves">
+          <ShelfChip
+            label="All shelves"
+            active={picked === "all"}
+            onPick={() => pickShelf("all")}
+          />
+          {rows.map((row) => {
+            const shelf = ownShelves.find((s) => s.id === row.id);
+            return (
+              <ShelfChip
+                key={row.id}
+                label={row.name}
+                count={row.texts.length}
+                active={picked === row.id}
+                onPick={() => pickShelf(row.id)}
+                onDropTexts={shelf ? (ids, how) => moveTo.mutate({ shelf, ids, how }) : undefined}
+              />
+            );
+          })}
+        </nav>
+      ) : null;
+    const shownRows = picked === "all" ? rows : rows.filter((r) => r.id === picked);
+    body = [
+      picker,
+      ...shownRows.map((row) => {
+        const shelf = ownShelves.find((s) => s.id === row.id);
+        return (
+          <ShelfRowView
+            key={row.id}
+            row={row}
+            renderItem={(t, extra) => item(t, "shelf", row, extra)}
+            shelfMenu={
+              shelf
+                ? [
+                    {
+                      label: "Rename…",
+                      icon: <Pencil size={16} aria-hidden />,
+                      onSelect: () => setNaming({ open: true, shelf }),
+                    },
+                    {
+                      label: "Delete shelf…",
+                      icon: <Trash2 size={16} aria-hidden />,
+                      danger: true,
+                      onSelect: () => setShelfToDelete(shelf),
+                    },
+                  ]
+                : null
+            }
+            onDropTexts={shelf ? (ids, how) => moveTo.mutate({ shelf, ids, how }) : undefined}
+          />
+        );
+      }),
+    ];
   }
 
   return (
@@ -592,7 +684,7 @@ function ShelfRowView({
   row: ShelfRow;
   renderItem: (t: TextListItem, extra: RovingProps) => ReactNode;
   shelfMenu: MenuItem[] | null;
-  onDropTexts?: ((ids: string[]) => void) | undefined;
+  onDropTexts?: ((ids: string[], how: DropHow) => void) | undefined;
 }) {
   const [active, setActive] = useState(0);
   const [over, setOver] = useState(false);
@@ -620,26 +712,7 @@ function ShelfRowView({
     focusAt(e.currentTarget, to);
   };
 
-  const dropProps = onDropTexts
-    ? {
-        onDragOver: (e: DragEvent) => {
-          if (!e.dataTransfer.types.includes(DRAG_TYPE)) return;
-          e.preventDefault();
-          e.dataTransfer.dropEffect = "copy";
-          setOver(true);
-        },
-        onDragLeave: (e: DragEvent) => {
-          if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setOver(false);
-        },
-        onDrop: (e: DragEvent) => {
-          setOver(false);
-          const ids = draggedIds(e);
-          if (!ids?.length) return;
-          e.preventDefault();
-          onDropTexts(ids);
-        },
-      }
-    : {};
+  const dropProps = onDropTexts ? shelfDrop(onDropTexts, setOver) : {};
 
   return (
     <>
@@ -676,5 +749,35 @@ function ShelfRowView({
         )}
       </section>
     </>
+  );
+}
+
+/** One shelf in the picker: shows only that shelf; a cover dropped on it goes there. */
+function ShelfChip({
+  label,
+  count,
+  active,
+  onPick,
+  onDropTexts,
+}: {
+  label: string;
+  count?: number;
+  active: boolean;
+  onPick: () => void;
+  onDropTexts?: ((ids: string[], how: DropHow) => void) | undefined;
+}) {
+  const [over, setOver] = useState(false);
+  return (
+    <button
+      type="button"
+      className="lib-chip"
+      aria-pressed={active}
+      data-drop={over ? "" : undefined}
+      onClick={onPick}
+      {...(onDropTexts ? shelfDrop(onDropTexts, setOver) : {})}
+    >
+      {label}
+      {count !== undefined ? <span className="lib-chip-count">{count}</span> : null}
+    </button>
   );
 }
