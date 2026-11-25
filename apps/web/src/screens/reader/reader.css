@@ -1215,15 +1215,3 @@ dl.card-meaning dd,
   font-size: 0.6em;
   margin-inline-start: 1px;
 }
-/* Test build: which style shows the word a clause is about. */
-.sframe-links {
-  display: flex;
-  gap: var(--s-3);
-  font-size: 13px;
-  color: var(--ink-muted);
-}
-.sframe-links label {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
