@@ -59,6 +59,8 @@ export interface TextListItem extends TextSummary {
   coverage: number | null;
   /** Number of new words: the length of `textWords` for the text. */
   newTypes: number | null;
+  /** A rough level ("about B1", `roughTextLevel`); null until analysed. */
+  roughLevel?: string | null;
   /** Reader pages (the reading plan's segments); null until analysed. */
   pages: number | null;
   /** Its plan (coverage, pages) is still being made in the background: ask again soon. */

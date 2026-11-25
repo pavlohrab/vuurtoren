@@ -32,6 +32,7 @@ import { DEFAULT_STAIRCASE, type LearnerCache } from "./liveLearner.js";
 import { fetchTexts } from "./textBatch.js";
 import { nlpOutage } from "./liveSettings.js";
 import { ImportCancelledError } from "./ocrReview.js";
+import { roughTextLevel, starterRanks } from "./textLevel.js";
 import {
   contextGloss,
   hasDetachedParticle,
@@ -365,6 +366,7 @@ export function createLiveTexts({
       );
       if (later.length) planLater(later);
       const waiting = new Set(later.map((t) => t.id));
+      const rank = await starterRanks().catch(() => null);
       return texts.map((t) => {
         const v = t.analyzed ? (cachedView(t.id) ?? planned.get(t.id)) : undefined;
         const d = v ? textDifficulty(v.plans) : null;
@@ -372,6 +374,7 @@ export function createLiveTexts({
           ...t,
           coverage: d?.coverage ?? null,
           newTypes: d?.newTypes ?? null,
+          roughLevel: v && rank ? roughTextLevel(v.tokens, rank) : null,
           pages: v ? v.plans.length : null,
           ...(waiting.has(t.id) && !v ? { planning: true } : {}),
         };

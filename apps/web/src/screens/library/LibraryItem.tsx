@@ -122,6 +122,12 @@ export function LibraryItem({
           <span className="lib-known">{Math.round(t.coverage * 100)}% known</span>
         ) : null}
         {t.level && variant === "grid" ? <span className="lib-level">{t.level}</span> : null}
+        {/* Your own texts: a rough level from the common words (stories have their own). */}
+        {!t.level && t.roughLevel ? (
+          <span className="lib-level" title="How common its words are">
+            about {t.roughLevel}
+          </span>
+        ) : null}
         {variant === "grid" && t.newTypes !== null ? (
           <WordStateChip state="unknown" count={t.newTypes} />
         ) : null}
