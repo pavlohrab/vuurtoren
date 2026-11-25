@@ -46,6 +46,7 @@ _WORDS_NOT_ABBREVIATIONS = {
     "tom",
     "top",
     "ver",
+    "vol",
 }
 
 
