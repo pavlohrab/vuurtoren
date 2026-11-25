@@ -48,6 +48,7 @@ import { useAutoTune } from "./autoTune.js";
 import { ShellContext, type PageHeader, type ShellState } from "./ShellContext.js";
 import { useBottomSheet } from "./useBottomSheet.js";
 import { Tour, startTour } from "./Tour.js";
+import { DictionaryPackKeeper } from "../screens/settings/DictionaryPack.js";
 import { useAutoSync } from "./useAutoSync.js";
 import { useBackClose, useSystemBack } from "./backStack.js";
 import { useConnectLinks } from "./useConnectLinks.js";
@@ -605,6 +606,7 @@ export function AppShell() {
           </div>
         </div>
         <Tour />
+        <DictionaryPackKeeper />
         <CommandPalette
           open={paletteOpen}
           onOpenChange={(o) => {

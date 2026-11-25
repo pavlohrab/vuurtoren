@@ -184,3 +184,38 @@ export function DictionaryPack({ autoStart = false }: { autoStart?: boolean }) {
     </section>
   );
 }
+
+/**
+ * Gets the language data by itself (OF4): at every start and whenever the phone comes back
+ * online, while the pack is missing, on Wi-Fi (or mobile data when allowed). The welcome used to
+ * be the only time it started, so a phone that was offline then never had meanings without its
+ * computer. Shows nothing; Settings shows the progress.
+ */
+export function DictionaryPackKeeper() {
+  const pack = currentDevice().bridge?.dictionary ?? null;
+  const services = useServices();
+  const qc = useQueryClient();
+  const running = useRef(false);
+  useEffect(() => {
+    if (!pack) return;
+    const tryNow = async () => {
+      if (running.current || offline()) return;
+      if (onMobileData() && readLocal(MOBILE_DATA_KEY) !== "1") return;
+      running.current = true;
+      try {
+        const s = await pack.status();
+        if (s.installed || s.downloading) return;
+        await pack.install((await services.packSource?.()) ?? null);
+      } catch {
+        // Tried again on the next start or when back online.
+      } finally {
+        running.current = false;
+        void qc.invalidateQueries({ queryKey: ["dictionary-pack"] });
+      }
+    };
+    void tryNow();
+    window.addEventListener("online", tryNow);
+    return () => window.removeEventListener("online", tryNow);
+  }, [pack, services, qc]);
+  return null;
+}
