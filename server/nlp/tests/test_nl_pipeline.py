@@ -162,7 +162,7 @@ def alts_of(sentence: str, surface: str) -> set[str]:
         ("De tabel geeft de groei van de economie weer.", "geeft", "weergeven"),
         ("Ze vragen zich af wat er zal volgen.", "vragen", "afvragen"),
         ("Katten zijn ook goed om muizen te vangen.", "Katten", "kat"),
-        ("Mijn agenda is deze week vol.", "vol.", "vol"),
+        ("Mijn agenda is deze week vol.", "vol", "vol"),
     ],
 )
 def test_matcher_candidates(sentence: str, surface: str, expected: str) -> None:
