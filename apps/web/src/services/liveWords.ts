@@ -33,6 +33,7 @@ import { activitySince, firstCard, groupActivity, knownByWeek } from "./activity
 import { absentAnki, ankiFromStatus, unavailableAnki } from "./ankiState.js";
 import { DEGRADED_MESSAGES, clearDegraded, reportDegraded } from "./degraded.js";
 import {
+  type AlignedMeaning,
   type Dictionary,
   IN_SENTENCE,
   type LiveDictionary,
@@ -123,6 +124,12 @@ export interface LiveWordsDeps {
   synced: () => void;
   /** The language server (lemmas of a sentence for `inspectForm`). */
   nlp: () => Promise<NlpClient>;
+  /** A story word's English from the bundle's word pairs (undefined otherwise): works offline. */
+  storyAlign?: (
+    text: { content: string; sourceRef?: string | undefined },
+    tokens: AnalyzedToken[],
+    i: number,
+  ) => Promise<AlignedMeaning | undefined>;
   /** A bundled story's English per sentence (empty for other texts): works offline. */
   storyLines?: (
     text: { content: string; sourceRef?: string | undefined },
@@ -281,11 +288,12 @@ export function createLiveWords(deps: LiveWordsDeps) {
   async function addSentenceMeaning(
     entry: InspectorEntry,
     guess: "derivation" | "compound" | undefined,
+    known?: AlignedMeaning,
   ): Promise<void> {
     if ((entry.glosses.length > 0 && !guess) || !entry.sentence) return;
     const [start, end] = entry.sentenceHighlight;
     const word = { sentence: entry.sentence, start, end };
-    const aligned = (await dictionary.alignWords([word])).get(dictionary.alignKey(word));
+    const aligned = known ?? (await dictionary.alignWords([word])).get(dictionary.alignKey(word));
     if (!aligned) return;
     const first = entry.glosses[0];
     if (first === undefined) {
@@ -366,6 +374,9 @@ export function createLiveWords(deps: LiveWordsDeps) {
       const storyEnglish = deps.storyLines
         ? (await deps.storyLines(v.text, v.tokens)).get(t.sent)
         : undefined;
+      const storyAligned = deps.storyAlign
+        ? await deps.storyAlign(v.text, v.tokens, t.i)
+        : undefined;
       const here = contextGloss(t);
       if (here.fixed) {
         entry.glosses = [here.fixed, ...entry.glosses.filter((g) => g !== here.fixed)];
@@ -378,7 +389,8 @@ export function createLiveWords(deps: LiveWordsDeps) {
       } else if (entry.glosses.length && entry.sentence) {
         const [start, end] = entry.sentenceHighlight;
         const w = { sentence: entry.sentence, start, end };
-        const aligned = (await dictionary.alignWords([w])).get(dictionary.alignKey(w));
+        const aligned =
+          storyAligned ?? (await dictionary.alignWords([w])).get(dictionary.alignKey(w));
         const translation =
           storyEnglish ??
           (await dictionary.translateSentences([entry.sentence])).get(entry.sentence);
@@ -399,6 +411,7 @@ export function createLiveWords(deps: LiveWordsDeps) {
       await addSentenceMeaning(
         entry,
         here.fixed ? undefined : composeGlosses(info, dict[t.lemma], t.pos).guess,
+        storyAligned,
       );
       const tr =
         storyEnglish ?? (await dictionary.translateSentences([entry.sentence])).get(entry.sentence);

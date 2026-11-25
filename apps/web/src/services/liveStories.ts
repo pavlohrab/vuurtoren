@@ -6,6 +6,8 @@
  */
 import type { AnalyzedToken, GrammarHit, LearnerModel } from "@app/core";
 import { type VuurtorenRepository, contentHash } from "@app/db";
+import { ALIGN_MIN_CONFIDENCE, type AlignedMeaning } from "./liveDictionary.js";
+import { englishTokens } from "./livePairs.js";
 import {
   type BundledStory,
   type StoryCover,
@@ -113,6 +115,33 @@ export function createLiveStories(deps: LiveStoriesDeps) {
     return story ? storyEnglish(story, text.content, tokens) : new Map();
   }
 
+  /**
+   * A story word's English from the bundle's word pairs (no server): the words it pairs with, and
+   * how sure the pairing is. Undefined for other texts, or a word with no pair.
+   */
+  async function storyAlign(
+    text: StoryTextRef,
+    tokens: AnalyzedToken[],
+    i: number,
+  ): Promise<AlignedMeaning | undefined> {
+    const t = tokens[i];
+    if (!t) return undefined;
+    const sent = (await storySentencePairs(text, tokens)).get(t.sent);
+    if (!sent?.english) return undefined;
+    const words = tokens.filter((x) => x.sent === t.sent && x.is_word);
+    const k = words.findIndex((x) => x.i === i);
+    const pair = sent.pairs.find((p) => p.nl.includes(k));
+    if (k < 0 || !pair?.en.length) return undefined;
+    const en = englishTokens(sent.english);
+    const words_ = pair.en.map((n) => en[n]?.text).filter(Boolean);
+    if (!words_.length) return undefined;
+    return {
+      text: words_.join(" "),
+      confident: pair.confidence >= ALIGN_MIN_CONFIDENCE,
+      confidence: pair.confidence,
+    };
+  }
+
   async function storyOf(text: StoryTextRef): Promise<BundledStory | null> {
     const slug = storySlugOf(text.sourceRef);
     if (!slug) return null;
@@ -141,6 +170,7 @@ export function createLiveStories(deps: LiveStoriesDeps) {
     services: { storyShelf, openStory },
     storyLines,
     storyPairs: storySentencePairs,
+    storyAlign,
     storyGrammar: storyTextGrammar,
   };
 }

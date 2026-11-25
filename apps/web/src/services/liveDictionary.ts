@@ -68,7 +68,7 @@ function partsNote(entry: Dictionary[string][number] | undefined): string | unde
 export const IN_SENTENCE = "in this sentence";
 
 /** Below this an aligned word is not used as a meaning (see server/nlp align.py). */
-const ALIGN_MIN_CONFIDENCE = 0.5;
+export const ALIGN_MIN_CONFIDENCE = 0.5;
 
 /**
  * Meanings of a word: the card's gloss first, then dictionary senses (form-of noise removed).

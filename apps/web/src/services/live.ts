@@ -130,6 +130,7 @@ export function createLiveServices(
     ankiSnapshot: profile.snapshot,
     nlp,
     storyLines: (text, tokens) => stories.storyLines(text, tokens),
+    storyAlign: (text, tokens, i) => stories.storyAlign(text, tokens, i),
     synced: () => {
       changed();
       texts.clearPlans();

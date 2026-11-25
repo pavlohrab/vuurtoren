@@ -213,4 +213,27 @@ describe("opening a story", () => {
     expect(left.map((t) => t.id)).toEqual(["01JA0000000000000000000002"]);
     expect(cover).toMatchObject({ slug: "klaas", textId: "01JA0000000000000000000002" });
   });
+
+  it("a story word gets its English from the bundle's word pairs, without a server", async () => {
+    const s = story({
+      slug: "klaas",
+      content: "Sam slaapt.",
+      sentences: [[0, 11, "Sam is asleep."]],
+      pairs: [[{ nl: [1], en: [2], confidence: 0.9 }]],
+    });
+    const live = createLiveStories({
+      repo: await createRepository(await createNodeDriver()),
+      model: async () => known(),
+      lang: async () => "nl",
+      stories: async () => [s],
+    });
+    const text = { content: s.content, sourceRef: "story:klaas" };
+    expect(await live.storyAlign(text, s.tokens, 1)).toEqual({
+      text: "asleep",
+      confident: true,
+      confidence: 0.9,
+    });
+    expect(await live.storyAlign(text, s.tokens, 0)).toBeUndefined();
+    expect(await live.storyAlign({ content: s.content }, s.tokens, 1)).toBeUndefined();
+  });
 });
