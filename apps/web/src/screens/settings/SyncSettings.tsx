@@ -824,7 +824,7 @@ function ConnectServer({
       if (!read) return;
       const link = parseConnectLink(read);
       if (link) start(link);
-      else setProblem("This QR code is not a Vuurtoren connect code. Use the one in Add a phone.");
+      else setProblem("This is not a Vuurtoren code. Use the one on your computer or your server.");
     },
   });
   // A vuurtoren://connect link opened the app: connect with it once.
@@ -940,9 +940,8 @@ function ConnectServer({
       )}
       <p className="k-hint" style={{ margin: 0 }}>
         {status.scan
-          ? "Open your server's address in a browser, sign in, and scan the QR code under Add a device. Or connect manually with its address and your user name and password."
-          : "Type your server's address with its user name and password, or the pairing code from its Your devices page."}{" "}
-        This device gets its own access; your passphrase never leaves your devices.
+          ? "Scan the code on your computer: Settings → Your devices → Connect a phone. Or the code on your server's Your devices page."
+          : "Type your server's address with its user name and password, or the pairing code from its Your devices page."}
       </p>
       {scan.isPending ? (
         <ScanOverlay onCancel={() => void services.cancelScan().catch(() => undefined)} />
@@ -951,7 +950,7 @@ function ConnectServer({
         <div className="row">
           <Button type="button" variant="primary" onClick={() => scan.mutate()} disabled={busy}>
             {scan.isPending ? <Spinner label="Scanning" /> : null}
-            Scan QR code
+            Scan the code
           </Button>
         </div>
       ) : null}
