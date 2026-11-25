@@ -177,3 +177,14 @@ def test_preposition_is_not_a_particle() -> None:
 def test_both_genders_headword() -> None:
     (r,) = analyze_terms("nl", ["het of de cement"])
     assert r.key == "cement"
+
+
+def test_unlisted_words_are_marked():
+    """Another alphabet or digits in a word, or a word nothing Dutch knows: unlisted (the app
+    leaves it out of the new words, like a name)."""
+    from vuurtoren_nlp.pipeline import analyze_texts
+
+    a = analyze_texts("nl", ["Het woord λόγος en de 3e keer, en het huis."])[0]
+    flags = {t.text: t.unlisted for t in a.tokens if t.is_word}
+    assert flags["λόγος"] and flags["3e"]
+    assert not flags["huis"] and not flags["woord"]

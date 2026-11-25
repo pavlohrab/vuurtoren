@@ -13,7 +13,7 @@ export function isCounted(t: AnalyzedToken, p: PlannedToken): boolean {
 function classifyOne(t: AnalyzedToken, model: LearnerModel, split: boolean): PlannedToken {
   if (!t.is_word) return { i: t.i, label: "nonword", key: null, pKnown: 0 };
   const key = tokenKey(t, model, split);
-  if (t.is_propn || t.is_num) return { i: t.i, label: "ignored", key, pKnown: 1 };
+  if (t.is_propn || t.is_num || t.unlisted) return { i: t.i, label: "ignored", key, pKnown: 1 };
   const k = model.get(key);
   if (!k) return { i: t.i, label: "new", key, pKnown: 0 };
   switch (k.state) {

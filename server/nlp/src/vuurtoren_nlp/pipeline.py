@@ -147,6 +147,24 @@ def _is_known(lang: str, word: str, strict: bool = False) -> bool:
     return bool(simplemma.is_known(word, lang=lang))
 
 
+def _unlisted(surface: str, lemma: str, name: bool = False) -> bool:
+    """Not a Dutch word to learn: another alphabet or a digit in it, or no dictionary entry for
+    the form or its lemma and no Dutch word frequency (compounds the dictionary lacks usually
+    have one). Without the dictionary only the first test applies."""
+    low = surface.lower()
+    # Another alphabet (Ελληνικά) or digits in it ("3e"): not a Dutch word to learn.
+    if any(c.isdigit() or (c.isalpha() and ord(c) > 0x24F) for c in low):
+        return True
+    lex = get_lexicon()
+    if name or lex.is_word(low) is None:
+        return False
+    if lex.is_word(low) or lex.is_word(lemma.lower()):
+        return False
+    from wordfreq import zipf_frequency
+
+    return zipf_frequency(low, "nl") == 0 and zipf_frequency(lemma.lower(), "nl") == 0
+
+
 def is_inflected(pos: str, morph: str, surface: str) -> bool:
     """Does spaCy's morphology say ``surface`` differs from its citation form?
 
@@ -597,6 +615,7 @@ def analyze_doc(doc: Doc, original: str | None = None) -> TextAnalysis:
             is_num=t.like_num or t.pos_ == "NUM",
             particle_of=particle_of.get(t.i),
             zipf=token_zipf(lemmas[t.i], t.text, is_word[t.i]),
+            unlisted=is_word[t.i] and _unlisted(t.text, lemmas[t.i], t.pos_ == "PROPN"),
         )
         for t in doc
     ]

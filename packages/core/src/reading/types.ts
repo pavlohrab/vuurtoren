@@ -31,6 +31,11 @@ export interface AnalyzedToken extends TokenLike {
    * the Sentence tab builds its clauses from this. Absent: the fields above are used.
    */
   syn?: SyntaxParse | null;
+  /**
+   * Not a Dutch word to learn (another alphabet, digits, or unknown to the dictionary and to
+   * word frequencies): left out of the new words and the coverage, like a name.
+   */
+  unlisted?: boolean;
 }
 
 /** One word's parse for the sentence structure (SyntaxDot; see AnalyzedToken.syn). */

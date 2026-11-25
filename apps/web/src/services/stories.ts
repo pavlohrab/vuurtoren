@@ -140,6 +140,7 @@ function unpackStory(p: PackedStory, extras?: ExtrasMeta): BundledStory {
       is_word: (flags & 1) !== 0,
       is_propn: (flags & 2) !== 0,
       is_num: (flags & 4) !== 0,
+      unlisted: (flags & 8) !== 0,
       particle_of: particleOf,
       zipf,
       ...(syn

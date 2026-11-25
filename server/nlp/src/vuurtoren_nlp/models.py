@@ -69,6 +69,9 @@ class Token(BaseModel):
     """For a detached separable particle: index of its verb."""
     zipf: float = 0.0
     """wordfreq Zipf frequency of the lemma (surface fallback): ~7 common, ~1 rare, 0 unknown."""
+    unlisted: bool = False
+    """A word neither the dictionary nor Dutch word frequencies know (a Greek word, a parser's
+    broken piece): the app leaves it out of the new words and the coverage, like a name."""
     syn: SyntaxParse | None = None
     """The sentence-structure parse (SyntaxDot) when it is set up; the Sentence tab uses it."""
 

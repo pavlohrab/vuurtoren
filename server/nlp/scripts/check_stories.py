@@ -151,8 +151,8 @@ def check(
         "analyzerVersion": analyzer_version(),
         # One array per token, in AnalyzedToken order without i and text (index, content slice):
         # lemma, alt_lemmas, pos, morph, dep, head, sent, start, end, flags, particle_of, zipf,
-        # syn; flags: 1 is_word, 2 is_propn, 4 is_num; syn: SyntaxDot's pos, morph, dep, head,
-        # lemma, particle_of (left out without SyntaxDot).
+        # syn; flags: 1 is_word, 2 is_propn, 4 is_num, 8 unlisted; syn: SyntaxDot's pos, morph,
+        # dep, head, lemma, particle_of (left out without SyntaxDot).
         "tokens": [
             [
                 t.lemma,
@@ -164,7 +164,7 @@ def check(
                 t.sent,
                 t.start,
                 t.end,
-                int(t.is_word) | int(t.is_propn) << 1 | int(t.is_num) << 2,
+                int(t.is_word) | int(t.is_propn) << 1 | int(t.is_num) << 2 | int(t.unlisted) << 3,
                 t.particle_of,
                 round(t.zipf, 2),
                 *(
