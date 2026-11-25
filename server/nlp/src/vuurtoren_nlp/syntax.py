@@ -7,9 +7,10 @@ token stays spaCy's.
 
 SyntaxDot is a required part of the server: ``<data dir>/syntaxdot`` (or
 ``VUURTOREN_SYNTAXDOT_DIR``) holds ``bin/`` (the syntaxdot binary and its libtorch) and
-``nl/`` (the model with ``syntaxdot.conf``); ``scripts/get_syntaxdot.py`` puts them there. While it is missing the server
-says so (log and /health) and the tokens have no ``syn``. Each call starts the binary (about a
-second to load, then ~0.75 s per 1,000 words on one core, ~0.5 GB while it runs).
+``nl/`` (the model with ``syntaxdot.conf``); ``scripts/get_syntaxdot.py`` puts them there.
+While it is missing the server says so (log and /health) and the tokens have no ``syn``. Each
+call starts the binary (about a second to load, then ~0.75 s per 1,000 words on one core,
+~0.5 GB while it runs).
 """
 
 from __future__ import annotations
