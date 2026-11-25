@@ -229,7 +229,7 @@
 }
 @media (max-width: 480px) {
   .ob-shell {
-    padding-top: 24px;
+    padding-top: calc(24px + var(--safe-top));
   }
   .ob-card h1 {
     font-size: 23px;
