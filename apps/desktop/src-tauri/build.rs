@@ -36,6 +36,10 @@ fn main() {
             "nlp_restart",
             "nlp_retry_packs",
             "self_test_report",
+            "lan_start",
+            "lan_code",
+            "lan_phones",
+            "lan_remove",
             "app_exit",
         ]),
     ))

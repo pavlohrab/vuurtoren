@@ -1,0 +1,137 @@
+//! The app's commands for "Connect a phone" (SY1): start the computer's HTTPS listener, make a
+//! pairing code (with the handover the phone gets), list and remove phones. Computers only.
+//! Files in the app's data folder: `sync-place/` (the place when the computer has no other),
+//! `lan-phones.json` (the phones, tokens as hashes), `lan-port` (the port, kept across starts),
+//! `lan-cert.der` / `lan-key.der` (the certificate whose SHA-256 is in the QR code).
+
+use std::net::UdpSocket;
+use std::path::PathBuf;
+use std::sync::{Arc, Mutex, OnceLock};
+use std::time::{SystemTime, UNIX_EPOCH};
+
+use serde::Serialize;
+use tauri::{AppHandle, Manager};
+
+use crate::lan::Lan;
+use crate::lan_server;
+
+struct Hub {
+    lan: Arc<Mutex<Lan>>,
+    dir: PathBuf,
+    on: Mutex<Option<(u16, String)>>,
+}
+
+static HUB: OnceLock<Hub> = OnceLock::new();
+
+fn hub(app: &AppHandle) -> Result<&'static Hub, String> {
+    if let Some(h) = HUB.get() {
+        return Ok(h);
+    }
+    let dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    let place = dir.join("sync-place");
+    std::fs::create_dir_all(&place).map_err(|e| e.to_string())?;
+    let mut lan = Lan::new(&place);
+    if let Ok(bytes) = std::fs::read(dir.join("lan-phones.json")) {
+        if let Ok(v) = serde_json::from_slice(&bytes) {
+            lan.load_phones(&v);
+        }
+    }
+    let _ = HUB.set(Hub {
+        lan: Arc::new(Mutex::new(lan)),
+        dir,
+        on: Mutex::new(None),
+    });
+    HUB.get().ok_or_else(|| "Could not start".to_string())
+}
+
+/// This computer's address on the home network (the route a packet to the internet would take;
+/// nothing is sent). Empty when it has none.
+fn local_addresses() -> Vec<String> {
+    UdpSocket::bind("0.0.0.0:0")
+        .and_then(|s| s.connect("192.0.2.1:9").map(|()| s))
+        .and_then(|s| s.local_addr())
+        .map(|a| a.ip())
+        .ok()
+        .filter(|ip| !ip.is_loopback() && !ip.is_unspecified())
+        .map(|ip| vec![ip.to_string()])
+        .unwrap_or_default()
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LanInfo {
+    port: u16,
+    fingerprint: String,
+    addresses: Vec<String>,
+    /// The folder that is the sync place when the computer has no other.
+    place_dir: String,
+}
+
+/// Start listening for phones (once; later calls say where it listens).
+#[tauri::command]
+pub async fn lan_start(app: AppHandle) -> Result<LanInfo, String> {
+    let hub = hub(&app)?;
+    let running = hub.on.lock().map_err(|e| e.to_string())?.clone();
+    let (port, fingerprint) = match running {
+        Some(on) => on,
+        None => {
+            let port_file = hub.dir.join("lan-port");
+            let port = std::fs::read_to_string(&port_file)
+                .ok()
+                .and_then(|p| p.trim().parse().ok())
+                .unwrap_or(0);
+            let (on, run) = lan_server::listen(
+                hub.lan.clone(),
+                &hub.dir,
+                port,
+                Some(hub.dir.join("lan-phones.json")),
+            )
+            .await?;
+            tauri::async_runtime::spawn(run);
+            let _ = std::fs::write(&port_file, on.port.to_string());
+            let both = (on.port, on.fingerprint);
+            *hub.on.lock().map_err(|e| e.to_string())? = Some(both.clone());
+            both
+        }
+    };
+    Ok(LanInfo {
+        port,
+        fingerprint,
+        addresses: local_addresses(),
+        place_dir: hub.dir.join("sync-place").to_string_lossy().into_owned(),
+    })
+}
+
+/// A new pairing code; `handover` (the sync place and key) goes to the phone that uses it.
+#[tauri::command]
+pub fn lan_code(app: AppHandle, handover: Option<serde_json::Value>) -> Result<String, String> {
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+    let hub = hub(&app)?;
+    let mut lan = hub.lan.lock().map_err(|e| e.to_string())?;
+    Ok(lan.new_code_with(now, handover))
+}
+
+/// The phones connected to this computer.
+#[tauri::command]
+pub fn lan_phones(app: AppHandle) -> Result<serde_json::Value, String> {
+    let hub = hub(&app)?;
+    let lan = hub.lan.lock().map_err(|e| e.to_string())?;
+    Ok(lan.phones_json())
+}
+
+/// Remove a phone: its token stops working at once.
+#[tauri::command]
+pub fn lan_remove(app: AppHandle, hash: String) -> Result<(), String> {
+    let hub = hub(&app)?;
+    let mut lan = hub.lan.lock().map_err(|e| e.to_string())?;
+    lan.remove_phone(&hash);
+    lan.take_dirty();
+    std::fs::write(
+        hub.dir.join("lan-phones.json"),
+        lan.phones_json().to_string(),
+    )
+    .map_err(|e| e.to_string())
+}

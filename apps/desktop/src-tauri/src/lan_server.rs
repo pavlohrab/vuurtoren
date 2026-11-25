@@ -3,9 +3,6 @@
 //! phone pins its SHA-256 from the QR code ([`crate::pinned`]), so no certificate authority is
 //! needed and the computer's address may change. Computers only.
 
-// Not wired into the app yet (the Settings screen and the handover come next).
-#![allow(dead_code)]
-
 use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
@@ -60,6 +57,7 @@ fn now() -> u64 {
 
 async fn answer(
     lan: Arc<Mutex<Lan>>,
+    save_to: Option<Arc<std::path::PathBuf>>,
     req: Request<Incoming>,
 ) -> Result<Response<Full<Bytes>>, std::convert::Infallible> {
     let method = req.method().as_str().to_string();
@@ -88,7 +86,16 @@ async fn answer(
         }
     };
     let reply = match lan.lock() {
-        Ok(mut lan) => lan.dispatch(&method, &path, &query, bearer.as_deref(), &body, now()),
+        Ok(mut lan) => {
+            let reply = lan.dispatch(&method, &path, &query, bearer.as_deref(), &body, now());
+            // A phone paired or claimed its folder: keep the phones for the next start.
+            if let Some(file) = save_to.as_deref() {
+                if lan.take_dirty() {
+                    let _ = fs::write(file, lan.phones_json().to_string());
+                }
+            }
+            reply
+        }
         Err(_) => crate::lan::Reply {
             status: 500,
             content_type: "application/json",
@@ -109,6 +116,7 @@ pub async fn listen(
     lan: Arc<Mutex<Lan>>,
     data_dir: &Path,
     port: u16,
+    save_to: Option<std::path::PathBuf>,
 ) -> Result<(Listening, impl std::future::Future<Output = ()>), String> {
     let (cert, key) = certificate(data_dir)?;
     let print = fingerprint(&cert);
@@ -127,17 +135,18 @@ pub async fn listen(
         .await
         .map_err(|e| format!("Could not listen on port {port}: {e}"))?;
     let port = listener.local_addr().map_err(|e| e.to_string())?.port();
+    let save_to = save_to.map(Arc::new);
     let run = async move {
         loop {
             let Ok((tcp, _)) = listener.accept().await else {
                 continue;
             };
-            let (acceptor, lan) = (acceptor.clone(), lan.clone());
+            let (acceptor, lan, save_to) = (acceptor.clone(), lan.clone(), save_to.clone());
             tokio::spawn(async move {
                 let Ok(tls) = acceptor.accept(tcp).await else {
                     return;
                 };
-                let service = service_fn(move |req| answer(lan.clone(), req));
+                let service = service_fn(move |req| answer(lan.clone(), save_to.clone(), req));
                 let _ = http1::Builder::new()
                     .serve_connection(TokioIo::new(tls), service)
                     .await;
@@ -164,7 +173,7 @@ mod tests {
         fs::create_dir_all(&place).unwrap();
         let lan = Arc::new(Mutex::new(Lan::new(&place)));
         let code = lan.lock().unwrap().new_code(now());
-        let (on, run) = listen(lan.clone(), dir.path(), 0).await.unwrap();
+        let (on, run) = listen(lan.clone(), dir.path(), 0, None).await.unwrap();
         tokio::spawn(run);
         let base = format!("https://127.0.0.1:{}", on.port);
 
@@ -209,7 +218,7 @@ mod tests {
             .is_err());
 
         // The certificate is kept: the same fingerprint next time.
-        let (again, _) = listen(lan, dir.path(), 0).await.unwrap();
+        let (again, _) = listen(lan, dir.path(), 0, None).await.unwrap();
         assert_eq!(again.fingerprint, on.fingerprint);
     }
 }

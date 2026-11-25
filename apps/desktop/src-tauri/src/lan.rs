@@ -45,6 +45,8 @@ struct Code {
     code: String,
     expires: u64,
     tries: u32,
+    /// What the phone gets once the code matched: the sync place and key (from the app).
+    handover: Option<serde_json::Value>,
 }
 
 /// An answer: status, content type and body.
@@ -73,6 +75,51 @@ pub struct Lan {
     root: PathBuf,
     pub phones: Vec<Phone>,
     code: Option<Code>,
+    /// The phones changed since they were last saved ([`Lan::take_dirty`]).
+    dirty: bool,
+}
+
+impl Lan {
+    /// True once after the phones changed (paired, claimed a folder): time to save them.
+    pub fn take_dirty(&mut self) -> bool {
+        std::mem::take(&mut self.dirty)
+    }
+
+    /// The phones as saved on disk.
+    pub fn phones_json(&self) -> serde_json::Value {
+        json!(self
+            .phones
+            .iter()
+            .map(
+                |p| json!({ "hash": p.hash, "name": p.name, "device": p.device, "vault": p.vault })
+            )
+            .collect::<Vec<_>>())
+    }
+
+    /// Phones read back from [`Lan::phones_json`].
+    pub fn load_phones(&mut self, v: &serde_json::Value) {
+        self.phones = v
+            .as_array()
+            .map(|a| {
+                a.iter()
+                    .filter_map(|p| {
+                        Some(Phone {
+                            hash: p["hash"].as_str()?.to_string(),
+                            name: p["name"].as_str().unwrap_or("Phone").to_string(),
+                            device: p["device"].as_str().map(str::to_string),
+                            vault: p["vault"].as_bool().unwrap_or(false),
+                        })
+                    })
+                    .collect()
+            })
+            .unwrap_or_default();
+    }
+
+    /// Remove a phone (Settings → Your devices → Remove): its token stops working.
+    pub fn remove_phone(&mut self, hash: &str) {
+        self.phones.retain(|p| p.hash != hash);
+        self.dirty = true;
+    }
 }
 
 fn hash(token: &str) -> String {
@@ -166,6 +213,7 @@ impl Lan {
             root: root.to_path_buf(),
             phones: vec![],
             code: None,
+            dirty: false,
         }
     }
 
@@ -174,6 +222,16 @@ impl Lan {
     }
 
     /// A new pairing code for a phone, `ABCDE-FGHJK`, valid for ten minutes from `now` (s).
+    /// `handover` (the sync place and key, from the app) goes to the phone that uses the code.
+    pub fn new_code_with(&mut self, now: u64, handover: Option<serde_json::Value>) -> String {
+        let code = self.new_code(now);
+        if let Some(c) = self.code.as_mut() {
+            c.handover = handover;
+        }
+        code
+    }
+
+    /// A new pairing code without a handover.
     pub fn new_code(&mut self, now: u64) -> String {
         let bytes = random_bytes::<10>();
         let chars: String = bytes
@@ -185,6 +243,7 @@ impl Lan {
             code: code.clone(),
             expires: now + CODE_SECONDS,
             tries: 0,
+            handover: None,
         });
         code
     }
@@ -216,7 +275,7 @@ impl Lan {
             code.tries += 1;
             return Reply::fail(401, "That code is not the one on the computer.");
         }
-        self.code = None;
+        let handover = self.code.take().and_then(|c| c.handover);
         let token: String = random_bytes::<32>()
             .iter()
             .map(|b| format!("{b:02x}"))
@@ -227,7 +286,12 @@ impl Lan {
             device: None,
             vault: false,
         });
-        Reply::json(200, json!({ "ok": true, "token": token, "label": name }))
+        let mut answer = json!({ "ok": true, "token": token, "label": name });
+        if let Some(h) = handover {
+            answer["handover"] = h;
+        }
+        self.dirty = true;
+        Reply::json(200, answer)
     }
 
     /// One request. `bearer` is the token from `Authorization: Bearer …`, `now` in seconds.
@@ -312,9 +376,11 @@ impl Lan {
                         let p = &mut self.phones[phone];
                         if let Some(device) = allowed.claim {
                             p.device = Some(device);
+                            self.dirty = true;
                         }
                         if allowed.made_vault {
                             p.vault = true;
+                            self.dirty = true;
                         }
                         Reply::json(200, json!({ "ok": true }))
                     }
@@ -484,5 +550,40 @@ mod tests {
         assert_eq!(r.status, 401);
         let h = lan.dispatch("GET", "/api/health", &HashMap::new(), None, b"", 1);
         assert_eq!(h.status, 200);
+    }
+
+    #[test]
+    fn the_phone_gets_the_handover_once_and_phones_are_saved() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut lan = Lan::new(dir.path());
+        let code = lan.new_code_with(10, Some(json!({ "place": "lan", "key": "AAAA" })));
+        let r = lan.dispatch(
+            "POST",
+            "/api/sync/pair",
+            &HashMap::new(),
+            None,
+            json!({ "code": code }).to_string().as_bytes(),
+            11,
+        );
+        let v: serde_json::Value = serde_json::from_slice(&r.body).unwrap();
+        assert_eq!(v["handover"]["key"], "AAAA");
+        assert!(lan.take_dirty());
+        assert!(!lan.take_dirty());
+        // Saved and read back; removing a phone stops its token.
+        let mut again = Lan::new(dir.path());
+        again.load_phones(&lan.phones_json());
+        assert_eq!(again.phones, lan.phones);
+        let token = v["token"].as_str().unwrap();
+        let hash = again.phones[0].hash.clone();
+        again.remove_phone(&hash);
+        let r = again.dispatch(
+            "GET",
+            "/api/sync/list",
+            &HashMap::new(),
+            Some(token),
+            b"",
+            12,
+        );
+        assert_eq!(r.status, 401);
     }
 }

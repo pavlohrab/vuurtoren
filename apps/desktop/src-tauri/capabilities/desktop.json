@@ -30,6 +30,10 @@
     "allow-nlp-status",
     "allow-nlp-restart",
     "allow-nlp-retry-packs",
-    "allow-self-test-report"
+    "allow-self-test-report",
+    "allow-lan-start",
+    "allow-lan-code",
+    "allow-lan-phones",
+    "allow-lan-remove"
   ]
 }

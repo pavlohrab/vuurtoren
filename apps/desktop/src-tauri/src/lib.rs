@@ -21,7 +21,9 @@ mod desktop;
 mod dictionary;
 mod keys;
 mod lan;
-#[cfg(not(mobile))]
+#[cfg(desktop)]
+mod lan_cmd;
+#[cfg(desktop)]
 mod lan_server;
 #[cfg(mobile)]
 mod mobile;
@@ -923,6 +925,14 @@ pub fn run() {
             desktop::nlp_retry_packs,
             #[cfg(desktop)]
             desktop::self_test_report,
+            #[cfg(desktop)]
+            lan_cmd::lan_start,
+            #[cfg(desktop)]
+            lan_cmd::lan_code,
+            #[cfg(desktop)]
+            lan_cmd::lan_phones,
+            #[cfg(desktop)]
+            lan_cmd::lan_remove,
             #[cfg(mobile)]
             mobile::app_exit
         ])
