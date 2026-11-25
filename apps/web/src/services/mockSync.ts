@@ -48,6 +48,10 @@ export function createMockSync(
         ? { ...state, created: false, recoveryKey: null }
         : { ...state, created: true, recoveryKey: "K7QM-2XRA-9F4D-HV3C-T8NW-5BJP-6GZE-1YKS" };
     },
+    async replaceDevice(deviceId) {
+      state = { ...state, devices: state.devices.filter((d) => d.id !== deviceId) };
+      return state;
+    },
     async syncNow(onProgress) {
       onProgress?.("Sending 0 changes");
       await wait();

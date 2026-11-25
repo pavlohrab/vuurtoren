@@ -88,6 +88,11 @@ export interface SyncServices {
   ): Promise<SyncStatus & { created: boolean; recoveryKey: string | null }>;
   /** Sync now (sync also runs by itself while the app is open). */
   syncNow(onProgress?: (msg: string) => void): Promise<SyncStatus>;
+  /**
+   * This device is `deviceId` from before (the same phone, reinstalled): that one stays in the
+   * place with its history, but no device lists it any more. Then sync.
+   */
+  replaceDevice(deviceId: string): Promise<SyncStatus>;
   /** Bring back this device's sync key with the passphrase or the recovery key, then sync. */
   unlockSync(secret: string): Promise<SyncStatus>;
   /**

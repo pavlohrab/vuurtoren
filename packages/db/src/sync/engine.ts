@@ -139,7 +139,7 @@ interface SyncState {
   /** Blob ids known to be in the place, newest last. */
   blobs?: string[];
   /** The name and time last written to device.kev. */
-  announced?: { name: string; at: number };
+  announced?: { name: string; at: number; replaces?: string[] };
   /** Folds so far, and events compaction removed since the last refold. */
   folds?: number;
   compacted?: number;
@@ -196,6 +196,11 @@ const LIMITS: SyncLimits = {
 export interface SyncOptions {
   /** This device's name, shown on the others ("Laptop", "Phone"). */
   deviceName: string;
+  /**
+   * Devices this one replaces (the same phone before a reinstall): they stay in the place, with
+   * their history, but no device lists them any more.
+   */
+  replaces?: string[];
   now?: () => number;
   onProgress?: (message: string) => void;
   /** Tests only: smaller files. */
@@ -403,6 +408,7 @@ export async function listDevices(
   self: string,
 ): Promise<SyncDevice[]> {
   const out: SyncDevice[] = [];
+  const replaced = new Set<string>();
   for (const id of await store.list(DEVICES)) {
     if (!DEVICE_ID.test(id)) continue;
     const path = `${deviceDir(id)}/device.kev`;
@@ -411,7 +417,11 @@ export async function listDevices(
     if (!bytes) continue;
     let info = { name: "A device", at: 0 };
     try {
-      const raw = decode<{ name?: unknown; at?: unknown }>(await unseal(key, bytes, path));
+      const raw = decode<{ name?: unknown; at?: unknown; replaces?: unknown }>(
+        await unseal(key, bytes, path),
+      );
+      if (Array.isArray(raw.replaces))
+        for (const r of raw.replaces) if (typeof r === "string") replaced.add(r);
       info = {
         name:
           typeof raw.name === "string" && raw.name.trim()
@@ -424,7 +434,9 @@ export async function listDevices(
     }
     out.push({ id, name: info.name, at: info.at, self: id === self });
   }
-  return out.sort((a, b) => Number(b.self) - Number(a.self) || b.at - a.at);
+  return out
+    .filter((d) => d.self || !replaced.has(d.id))
+    .sort((a, b) => Number(b.self) - Number(a.self) || b.at - a.at);
 }
 
 /** One sync: send what is new here, then bring in what is new elsewhere. */
@@ -508,10 +520,21 @@ export async function syncOnce(
   }
   const name = opts.deviceName.trim().slice(0, NAME_MAX) || "A device";
   const told = state.announced;
-  if (sent > 0 || !told || told.name !== name || Math.abs(now() - told.at) >= ANNOUNCE_MS) {
+  const replaces = [...new Set(opts.replaces ?? [])].filter(
+    (id) => DEVICE_ID.test(id) && id !== me,
+  );
+  const sameReplaces = (told?.replaces ?? []).join() === replaces.join();
+  if (
+    sent > 0 ||
+    !told ||
+    told.name !== name ||
+    !sameReplaces ||
+    Math.abs(now() - told.at) >= ANNOUNCE_MS
+  ) {
     const path = `${deviceDir(me)}/device.kev`;
-    await store.put(path, await seal(key, encode({ name, at: now() }), path));
-    state.announced = { name, at: now() };
+    const info = replaces.length ? { name, at: now(), replaces } : { name, at: now() };
+    await store.put(path, await seal(key, encode(info), path));
+    state.announced = { name, at: now(), ...(replaces.length ? { replaces } : {}) };
     await repo.setSyncState(state);
   }
   await sendBundles(repo, store, key, state, leaveOut);
@@ -613,7 +636,13 @@ export async function syncOnce(
 
   await foldOwn(repo, store, key, state, progress, limits);
   let devices: SyncDevice[] | null = null;
-  if (sent > 0 || received > 0 || !state.listedAt || now() - state.listedAt >= DEVICES_EVERY_MS) {
+  if (
+    sent > 0 ||
+    received > 0 ||
+    !sameReplaces ||
+    !state.listedAt ||
+    now() - state.listedAt >= DEVICES_EVERY_MS
+  ) {
     devices = await listDevices(store, key, me);
     state.listedAt = now();
     await repo.setSyncState(state);

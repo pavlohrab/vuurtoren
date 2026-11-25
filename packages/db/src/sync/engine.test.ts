@@ -494,6 +494,20 @@ describe("sync engine, when things go wrong", () => {
     expect(self!.name).toHaveLength(64);
   });
 
+  it("a reinstalled phone replaces its old self: the old one stays in the place, unlisted", async () => {
+    const store = memoryStore();
+    const key = (await openVault(store, PASS, true, LIGHT_ARGON2)).key;
+    const old = await device(A, T0);
+    await syncOnce(old, store, key, { deviceName: "Pixel" });
+    const again = await device(B, T0 + 60_000);
+    await syncOnce(again, store, key, { deviceName: "Pixel" });
+    expect((await listDevices(store, key, B)).map((d) => d.name)).toEqual(["Pixel", "Pixel"]);
+    const r = await syncOnce(again, store, key, { deviceName: "Pixel", replaces: [A] });
+    expect(r.devices?.map((d) => d.id)).toEqual([B]);
+    expect((await listDevices(store, key, A)).map((d) => d.id)).toEqual([A, B]);
+    expect((await listDevices(store, key, "C".repeat(26))).map((d) => d.id)).toEqual([B]);
+  });
+
   it("asks only for blobs with a real id", async () => {
     const store = memoryStore();
     const key = (await openVault(store, PASS, true, LIGHT_ARGON2)).key;

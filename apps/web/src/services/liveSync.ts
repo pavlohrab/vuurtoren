@@ -66,6 +66,8 @@ interface Saved {
   needsKey?: boolean;
   devices: SyncStatus["devices"];
   problems?: SyncProblem[];
+  /** Devices this one replaces (the same phone before a reinstall). */
+  replaces?: string[];
 }
 
 /** Where this device keeps the sync key (the OS keychain, or protected browser storage). */
@@ -345,6 +347,7 @@ export function createLiveSync(deps: LiveSyncDeps) {
     try {
       const r = await syncOnce(counting, await storeOf(saved.place), key, {
         deviceName: saved.deviceName,
+        ...(saved.replaces?.length ? { replaces: saved.replaces } : {}),
         now,
         ...(onProgress ? { onProgress } : {}),
       });
@@ -481,6 +484,19 @@ export function createLiveSync(deps: LiveSyncDeps) {
 
     async syncNow(onProgress) {
       return (await exclusive(() => once(onProgress))).status;
+    },
+
+    async replaceDevice(deviceId) {
+      return exclusive(async () => {
+        const saved = read();
+        if (!saved) throw new Error("Sync is not set up on this device.");
+        const next: Saved = {
+          ...saved,
+          replaces: [...new Set([...(saved.replaces ?? []), deviceId])],
+        };
+        write(next);
+        return (await run(next, await loadKey(next))).status;
+      });
     },
 
     async unlockSync(secret) {

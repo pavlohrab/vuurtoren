@@ -638,6 +638,17 @@ function SyncOn({ status }: { status: SyncStatus }) {
     mutationFn: () => services.stopSync(),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["sync"] }),
   });
+  const replace = useMutation({
+    mutationFn: (id: string) => services.replaceDevice(id),
+    onSettled: () => qc.invalidateQueries(),
+  });
+  // Another device with this one's name: often this same phone before a reinstall.
+  const self = status.devices.find((d) => d.self);
+  const twins = self
+    ? status.devices.filter(
+        (d) => !d.self && d.name.trim().toLowerCase() === self.name.trim().toLowerCase(),
+      )
+    : [];
   const last = status.last;
   return (
     <section className="stack" aria-labelledby="sync-h">
@@ -675,6 +686,17 @@ function SyncOn({ status }: { status: SyncStatus }) {
           ))}
         </ul>
       ) : null}
+      {twins.map((d) => (
+        <div key={d.id} className="row" style={{ alignItems: "center" }}>
+          <span className="k-hint">
+            Another device is called “{d.name}” too
+            {d.at ? `, synced ${relativeTime(d.at)}` : ""}. Is it this one, from before?
+          </span>
+          <Button variant="ghost" onClick={() => replace.mutate(d.id)} disabled={replace.isPending}>
+            It's this one
+          </Button>
+        </div>
+      ))}
       {status.problems.length ? <Problems problems={status.problems} /> : null}
       <p className="k-hint" style={{ margin: 0 }}>
         Vuurtoren syncs by itself while it is open: a few seconds after you change something, and
