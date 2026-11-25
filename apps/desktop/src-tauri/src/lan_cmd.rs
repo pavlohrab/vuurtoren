@@ -1,6 +1,7 @@
 //! The app's commands for "Connect a phone" (SY1): start the computer's HTTPS listener, make a
 //! pairing code (with the handover the phone gets), list and remove phones. Computers only.
 //! Files in the app's data folder: `sync-place/` (the place when the computer has no other),
+//! `lan-root` (the computer's own sync folder, when the phones use that one instead),
 //! `lan-phones.json` (the phones, tokens as hashes), `lan-port` (the port, kept across starts),
 //! `lan-cert.der` / `lan-key.der` (the certificate whose SHA-256 is in the QR code).
 
@@ -30,7 +31,13 @@ fn hub(app: &AppHandle) -> Result<&'static Hub, String> {
     let dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
     let place = dir.join("sync-place");
     std::fs::create_dir_all(&place).map_err(|e| e.to_string())?;
-    let mut lan = Lan::new(&place);
+    // The folder chosen last time (the computer's own sync folder), while it is there.
+    let root = std::fs::read_to_string(dir.join("lan-root"))
+        .ok()
+        .map(|p| PathBuf::from(p.trim()))
+        .filter(|p| p.is_dir())
+        .unwrap_or(place);
+    let mut lan = Lan::new(&root);
     if let Ok(bytes) = std::fs::read(dir.join("lan-phones.json")) {
         if let Ok(v) = serde_json::from_slice(&bytes) {
             lan.load_phones(&v);
@@ -67,10 +74,19 @@ pub struct LanInfo {
     place_dir: String,
 }
 
-/// Start listening for phones (once; later calls say where it listens).
+/// Start listening for phones (once; later calls say where it listens). `folder`: serve the
+/// computer's own sync folder instead of `sync-place` (kept for the next start).
 #[tauri::command]
-pub async fn lan_start(app: AppHandle) -> Result<LanInfo, String> {
+pub async fn lan_start(app: AppHandle, folder: Option<String>) -> Result<LanInfo, String> {
     let hub = hub(&app)?;
+    if let Some(folder) = folder {
+        let path = PathBuf::from(&folder);
+        if !path.is_dir() {
+            return Err(format!("The sync folder {folder} is not there."));
+        }
+        hub.lan.lock().map_err(|e| e.to_string())?.set_root(&path);
+        std::fs::write(hub.dir.join("lan-root"), &folder).map_err(|e| e.to_string())?;
+    }
     let running = hub.on.lock().map_err(|e| e.to_string())?.clone();
     let (port, fingerprint) = match running {
         Some(on) => on,
@@ -116,6 +132,19 @@ pub async fn lan_start(app: AppHandle) -> Result<LanInfo, String> {
         addresses: local_addresses(),
         place_dir: hub.dir.join("sync-place").to_string_lossy().into_owned(),
     })
+}
+
+/// At the app's start: listen again when phones are connected, so they sync without anyone
+/// opening Settings.
+pub fn resume(app: &AppHandle) {
+    let Ok(hub) = hub(app) else { return };
+    let phones = hub.lan.lock().map(|l| l.has_phones()).unwrap_or(false);
+    if phones {
+        let app = app.clone();
+        tauri::async_runtime::spawn(async move {
+            let _ = lan_start(app, None).await;
+        });
+    }
 }
 
 /// A new pairing code; `handover` (the sync place and key) goes to the phone that uses it.

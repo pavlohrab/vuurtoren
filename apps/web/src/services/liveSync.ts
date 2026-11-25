@@ -532,9 +532,9 @@ export function createLiveSync(deps: LiveSyncDeps) {
       return exclusive(async () => {
         const now = read();
         if (now) {
-          // Already the phones' place: nothing to start.
-          if (now.place.kind === "folder" && now.place.path === folder)
-            return { ...status(now), recoveryKey: null };
+          // A folder already (this one, or Syncthing's): the phones join it.
+          if (now.place.kind === "folder")
+            return { ...status(now), recoveryKey: null, folder: now.place.path };
           throw new Error(
             "This computer syncs through another place. On your phone, choose that same place in Settings → Your devices.",
           );
@@ -555,7 +555,7 @@ export function createLiveSync(deps: LiveSyncDeps) {
         } catch {
           // Kept in the saved status.
         }
-        return { ...status(read()), recoveryKey };
+        return { ...status(read()), recoveryKey, folder };
       });
     },
 

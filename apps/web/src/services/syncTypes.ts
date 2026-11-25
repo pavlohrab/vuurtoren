@@ -108,13 +108,15 @@ export interface SyncServices {
    */
   phoneHandover?(): Promise<string | null>;
   /**
-   * "Connect a phone" on a computer that does not sync yet: start sync data in `folder` (the
-   * computer is the place) with a recovery key only, no passphrase. The recovery key is shown once.
+   * "Connect a phone" on a computer: the folder its phones sync through. A computer that syncs
+   * through a folder already (Syncthing, Dropbox) gives that one; one that does not sync yet
+   * starts sync data in `folder` with a recovery key only, no passphrase (shown once). A computer
+   * on WebDAV or a server: an error saying to choose that place on the phone.
    */
   startForPhones?(
     folder: string,
     deviceName: string,
-  ): Promise<SyncStatus & { recoveryKey: string | null }>;
+  ): Promise<SyncStatus & { recoveryKey: string | null; folder: string }>;
   /** Read a `vuurtoren://connect` link with the camera; null when cancelled or not available. */
   scanConnectLink(): Promise<string | null>;
   /** Stop a running scan (Cancel on the scanner's frame); the scan then gives null. */

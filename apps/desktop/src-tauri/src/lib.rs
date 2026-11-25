@@ -977,6 +977,9 @@ pub fn run() {
             });
             #[cfg(desktop)]
             desktop::before_window(&handle);
+            // Connected phones sync with this computer from the start (SY1).
+            #[cfg(desktop)]
+            lan_cmd::resume(&handle);
 
             let window = WebviewWindowBuilder::new(app, MAIN, WebviewUrl::App("index.html".into()))
                 .initialization_script(bridge_script(&handle))

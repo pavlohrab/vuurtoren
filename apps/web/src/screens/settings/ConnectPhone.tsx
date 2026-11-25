@@ -1,7 +1,7 @@
 /**
  * "Connect a phone" on a computer (SY1, mock A of MK4): the computer is its phone's sync place on
  * the home Wi-Fi. "Show the code" starts listening, starts sync here when there is none (no
- * passphrase: a recovery key, shown once), and shows a QR code with this computer's address, the
+ * passphrase: a recovery key, shown once) or serves the computer's own sync folder, and shows a QR code with this computer's address, the
  * certificate's fingerprint and a ten-minute code; the phone that scans it gets the sync key and
  * joins at once. The connected phones are listed with Remove. Plain words, nothing more.
  */
@@ -33,6 +33,8 @@ export function ConnectPhone() {
       // computer syncs through another place.
       const made = await services.startForPhones!(info.placeDir, "");
       if (made.recoveryKey) setRecovery(made.recoveryKey);
+      // A computer on Syncthing or Dropbox: its phone joins that same folder.
+      if (made.folder !== info.placeDir) await lan!.start(made.folder);
       const key = await services.phoneHandover!();
       if (!key) throw new Error("Sync is not open on this computer. Unlock it first.");
       const address = info.addresses[0];

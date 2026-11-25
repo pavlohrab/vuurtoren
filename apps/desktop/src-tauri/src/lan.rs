@@ -225,6 +225,17 @@ impl Lan {
         }
     }
 
+    /// Serve another folder: the computer's own sync folder (Syncthing, Dropbox) when it has one,
+    /// so its phone joins the same place as its other computers.
+    pub fn set_root(&mut self, root: &Path) {
+        self.root = root.to_path_buf();
+    }
+
+    /// Any phones connected?
+    pub fn has_phones(&self) -> bool {
+        !self.phones.is_empty()
+    }
+
     fn file(&self, parts: &[String]) -> PathBuf {
         parts.iter().fold(self.root.clone(), |p, part| p.join(part))
     }
@@ -451,6 +462,20 @@ mod tests {
                 "{bad}"
             );
         }
+    }
+
+    #[test]
+    fn another_folder_is_served_after_set_root() {
+        let (a, b) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
+        let mut lan = Lan::new(a.path());
+        let t = paired(&mut lan);
+        assert!(lan.has_phones());
+        lan.set_root(b.path());
+        let path = q("path", "vuurtoren/devices/p1/a.kan");
+        let r = lan.dispatch("PUT", "/api/sync/file", &path, Some(t.as_str()), b"x", 5);
+        assert_eq!(r.status, 200);
+        assert!(b.path().join("vuurtoren/devices/p1/a.kan").is_file());
+        assert!(!a.path().join("vuurtoren").exists());
     }
 
     #[test]

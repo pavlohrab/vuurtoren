@@ -140,8 +140,8 @@
         OS === "android" || OS === "ios"
           ? undefined
           : Object.freeze({
-              start: function () {
-                return invoke("lan_start");
+              start: function (folder) {
+                return invoke("lan_start", { folder: folder || null });
               },
               code: function (handover) {
                 return invoke("lan_code", { handover: handover || null });

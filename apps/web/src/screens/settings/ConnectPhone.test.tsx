@@ -12,7 +12,7 @@ vi.mock("../../platform/index.js", async (load) => {
   return { ...real, currentDevice: vi.fn(real.currentDevice) };
 });
 
-function setup(opts: { recovery?: string | null } = {}) {
+function setup(opts: { recovery?: string | null; folder?: string } = {}) {
   const lan = {
     start: vi.fn(async () => ({
       port: 47120,
@@ -29,7 +29,10 @@ function setup(opts: { recovery?: string | null } = {}) {
     ...real,
     bridge: { lan } as unknown as NonNullable<typeof real.bridge>,
   });
-  const startForPhones = vi.fn(async () => ({ recoveryKey: opts.recovery ?? null }) as never);
+  const startForPhones = vi.fn(
+    async () =>
+      ({ recoveryKey: opts.recovery ?? null, folder: opts.folder ?? "/data/sync-place" }) as never,
+  );
   const phoneHandover = vi.fn(async () => "S0VZ");
   const services = { ...createMockServices({ latencyMs: 0 }), startForPhones, phoneHandover };
   render(
@@ -54,6 +57,14 @@ describe("Connect a phone", () => {
     expect(lan.code).toHaveBeenCalledWith({ key: "S0VZ" });
     // A computer that just started sync shows its recovery key once.
     expect(screen.getByText("AAAA-BBBB")).toBeVisible();
+    expect(lan.start).toHaveBeenCalledTimes(1);
+  });
+
+  it("a computer on Syncthing serves that folder to its phone", async () => {
+    const { lan } = setup({ folder: "/home/me/Sync/vuurtoren" });
+    await userEvent.click(await screen.findByRole("button", { name: "Show the code" }));
+    expect(await screen.findByText("ABCDE-FGHJK")).toBeVisible();
+    expect(lan.start).toHaveBeenLastCalledWith("/home/me/Sync/vuurtoren");
   });
 
   it("lists the phones, and Remove takes one off", async () => {
