@@ -734,10 +734,12 @@ async function fetchBundles(
   state: SyncState,
   at: number,
 ): Promise<number> {
-  // Texts with no analysis, then texts whose analysis came without extras (asked again now
-  // and then: the other device may have made them since).
+  // Texts with no analysis, then texts whose analysis came without extras or grammar (asked
+  // again now and then: the other device may have made them since).
   const asked = (state.extrasAsked ??= {});
-  const noExtras = (await repo.analysisStates()).filter((s) => s.extrasAt === null);
+  const noExtras = (await repo.analysisStates()).filter(
+    (s) => s.extrasAt === null || s.grammar === null,
+  );
   for (const id of Object.keys(asked)) {
     if (!noExtras.some((s) => s.textId === id)) delete asked[id];
   }
