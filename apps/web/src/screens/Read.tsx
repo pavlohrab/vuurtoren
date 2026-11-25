@@ -84,7 +84,10 @@ interface DropHow {
 }
 
 /** Drag-and-drop handlers for a shelf (its row, or its chip in the picker). */
-export function shelfDrop(onDrop: (ids: string[], how: DropHow) => void, setOver: (on: boolean) => void) {
+export function shelfDrop(
+  onDrop: (ids: string[], how: DropHow) => void,
+  setOver: (on: boolean) => void,
+) {
   return {
     onDragOver: (e: DragEvent) => {
       if (!e.dataTransfer.types.includes(DRAG_TYPE)) return;
