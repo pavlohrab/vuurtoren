@@ -362,5 +362,25 @@ export function createLiveGrammar(deps: LiveGrammarDeps) {
     return { sentences, words };
   }
 
-  return { textGrammar, grammarOverview, grammarExamples, topicMaterial };
+  /**
+   * Grammar for every analysed text that has none yet (OF2), so the bundle sync sends a phone
+   * is whole. One at a time; stops at the first failure (the language server isn't up yet).
+   * Returns how many texts got their grammar.
+   */
+  async function fillGrammar(): Promise<number> {
+    let made = 0;
+    for (const s of (await repo.listTexts()).filter((t) => t.analyzed)) {
+      const stored = await repo.textGrammar(s.id);
+      if (stored && stored.version === GRAMMAR_VERSION) continue;
+      try {
+        await textGrammar(s.id);
+        made++;
+      } catch {
+        break;
+      }
+    }
+    return made;
+  }
+
+  return { textGrammar, grammarOverview, grammarExamples, topicMaterial, fillGrammar };
 }

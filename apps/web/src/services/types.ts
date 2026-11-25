@@ -421,6 +421,8 @@ export interface AppServices
   ): Promise<SentencePairs[]>;
   /** Hit counts per topic over the Library's analysed texts. */
   grammarOverview(): Promise<GrammarOverview>;
+  /** A computer: grammar for every analysed text that lacks it, so phones get it with sync. */
+  fillGrammar?(): Promise<number>;
   /** Examples for a topic page: the learner's own texts first, then Tatoeba. */
   grammarExamples(detects: string[], opts?: { limit?: number }): Promise<TopicExamples>;
   /** A practice session for one grammar topic, from sentences in which it was detected. */

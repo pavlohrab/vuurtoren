@@ -607,6 +607,7 @@ export function AppShell() {
         </div>
         <Tour />
         <DictionaryPackKeeper />
+        {desktop ? <GrammarFiller /> : null}
         <CommandPalette
           open={paletteOpen}
           onOpenChange={(o) => {
@@ -734,4 +735,23 @@ function MoreLink({
       <span>{label}</span>
     </Link>
   );
+}
+
+/**
+ * On a computer: grammar for texts that have none yet, now and then (OF2), so the bundles sync
+ * sends a phone carry it. Quiet; stops for the round when the language server isn't up.
+ */
+function GrammarFiller() {
+  const services = useServices();
+  useEffect(() => {
+    if (!services.fillGrammar) return;
+    const run = () => void services.fillGrammar?.().catch(() => undefined);
+    const first = window.setTimeout(run, 30_000);
+    const every = window.setInterval(run, 10 * 60_000);
+    return () => {
+      window.clearTimeout(first);
+      window.clearInterval(every);
+    };
+  }, [services]);
+  return null;
 }

@@ -259,6 +259,7 @@ export function createLiveServices(
     textGrammar: grammar.textGrammar,
     sentencePairs: pairs.sentencePairs,
     grammarOverview: grammar.grammarOverview,
+    fillGrammar: grammar.fillGrammar,
     grammarExamples: grammar.grammarExamples,
     ...texts.services,
     ...words.services,
