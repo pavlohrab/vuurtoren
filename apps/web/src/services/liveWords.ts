@@ -20,7 +20,8 @@ import {
   DEFAULT_FSRS_PARAMS,
   type InspectorReview,
   type WordState,
-  matchToken,
+  splitVerbs,
+  tokenKey,
   normalizeKey,
   profileMode,
   reviewHistory,
@@ -330,7 +331,7 @@ export function createLiveWords(deps: LiveWordsDeps) {
       const t = clicked.particle_of !== null ? (v.tokens[clicked.particle_of] ?? clicked) : clicked;
       const l = await lang();
       const m = await learner.model();
-      const key = matchToken(t, m) ?? normalizeKey(t.lemma);
+      const key = tokenKey(t, m, splitVerbs(v.tokens).has(t.i));
       const info = await repo.word(l, key);
       const planned = v.plans.flatMap((p) => p.tokens).find((p) => p.i === t.i);
       const [dict, ankiState] = await Promise.all([
@@ -396,7 +397,10 @@ export function createLiveWords(deps: LiveWordsDeps) {
           const l = await lang();
           const [analysis] = await (await deps.nlp()).analyzeText(l as NlpLang, [sentence]);
           const tok = analysis?.tokens.find((t) => t.is_word && normalizeKey(t.text) === wanted);
-          if (tok) key = matchToken(tok, await learner.model()) ?? normalizeKey(tok.lemma);
+          if (tok) {
+            const split = splitVerbs(analysis!.tokens).has(tok.i);
+            key = tokenKey(tok, await learner.model(), split);
+          }
         } catch {
           // No language server: look the form itself up (the reader shows the same).
         }

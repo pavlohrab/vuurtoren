@@ -57,6 +57,22 @@ export function matchToken(t: TokenLike, keys: KeySet): string | undefined {
   return matchTokenDetailed(t, keys)?.key;
 }
 
+/** Indices of the verbs of split verbs: "doet" in "doet … open" (a particle points at it). */
+export function splitVerbs(tokens: readonly { particle_of?: number | null }[]): Set<number> {
+  const out = new Set<number>();
+  for (const t of tokens) if (t.particle_of != null) out.add(t.particle_of);
+  return out;
+}
+
+/**
+ * The learner-model key of a token: the first matching candidate, else its lemma. A split verb
+ * ("doet … open", lemma opendoen) is its joined verb only: its base verb (doen, among the
+ * alternatives) is another word, so a doen card must not stand in for it (WC3).
+ */
+export function tokenKey(t: TokenLike, keys: KeySet, split = false): string {
+  return (split ? undefined : matchToken(t, keys)) ?? normalizeKey(t.lemma);
+}
+
 /**
  * Does a tokenised sentence contain the term? Multiword terms must appear in order,
  * allowing up to `maxGap` tokens between consecutive parts ("op de hoogte", "te koop").

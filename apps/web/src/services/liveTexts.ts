@@ -12,7 +12,8 @@ import {
   type StaircaseState,
   classifyTokens,
   estimateVocabulary,
-  matchToken,
+  splitVerbs,
+  tokenKey,
   normalizeKey,
   planText,
   textDifficulty,
@@ -294,7 +295,8 @@ export function createLiveTexts({
    * whose word has no translation are turned back into normal words. One lookup for all views.
    */
   async function dropUnhintableClozes(views: ReadingView[], m: LearnerModel): Promise<boolean> {
-    const keyOf = (t: AnalyzedToken) => matchToken(t, m) ?? normalizeKey(t.lemma);
+    const split = new Set(views.flatMap((v) => [...splitVerbs(v.tokens)].map((i) => v.tokens[i]!)));
+    const keyOf = (t: AnalyzedToken) => tokenKey(t, m, split.has(t));
     const clozeTokens = views.flatMap((v) =>
       v.plans.flatMap((p) => p.clozes).map((i) => v.tokens[i]!),
     );
@@ -476,6 +478,7 @@ export function createLiveTexts({
       if (!v) return {};
       const m = await learner.model();
       const out: Record<number, { text: string; note?: string }> = {};
+      const split = splitVerbs(v.tokens);
       const items = tokenIndices.flatMap((i) => {
         const clicked = v.tokens[i];
         if (!clicked) return [];
@@ -491,7 +494,7 @@ export function createLiveTexts({
         // A key no card has: the dictionary answers for this form, not the lemma's card.
         const key = here.notTheCard
           ? `form:${normalizeKey(lemma)}`
-          : (matchToken(t, m) ?? normalizeKey(t.lemma));
+          : tokenKey(t, m, split.has(t.i));
         return [{ i, t, key, lemma, pos: t.pos }];
       });
       if (!items.length) return out;

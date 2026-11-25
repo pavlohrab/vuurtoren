@@ -2,7 +2,7 @@
  * Labelling tokens against the learner model and computing coverage.
  */
 import type { LearnerModel } from "../learner.js";
-import { matchToken, normalizeKey } from "../match.js";
+import { splitVerbs, tokenKey } from "../match.js";
 import type { AnalyzedToken, PlannedToken } from "./types.js";
 
 /** Does this token take part in coverage / planning (a real word, not ignored, not a particle)? */
@@ -10,9 +10,9 @@ export function isCounted(t: AnalyzedToken, p: PlannedToken): boolean {
   return p.label !== "nonword" && p.label !== "ignored" && t.particle_of === null;
 }
 
-function classifyOne(t: AnalyzedToken, model: LearnerModel): PlannedToken {
+function classifyOne(t: AnalyzedToken, model: LearnerModel, split: boolean): PlannedToken {
   if (!t.is_word) return { i: t.i, label: "nonword", key: null, pKnown: 0 };
-  const key = matchToken(t, model) ?? normalizeKey(t.lemma);
+  const key = tokenKey(t, model, split);
   if (t.is_propn || t.is_num) return { i: t.i, label: "ignored", key, pKnown: 1 };
   const k = model.get(key);
   if (!k) return { i: t.i, label: "new", key, pKnown: 0 };
@@ -36,7 +36,8 @@ export function classifyTokens(
   tokens: readonly AnalyzedToken[],
   model: LearnerModel,
 ): PlannedToken[] {
-  const planned = tokens.map((t) => classifyOne(t, model));
+  const split = splitVerbs(tokens);
+  const planned = tokens.map((t) => classifyOne(t, model, split.has(t.i)));
   tokens.forEach((t, k) => {
     if (t.particle_of === null) return;
     const verb = planned[t.particle_of];

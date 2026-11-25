@@ -45,6 +45,18 @@ describe("classifyTokens", () => {
     expect(op).toMatchObject({ label: "learning", key: "bel", pKnown: 0.7 });
     expect(op.i).toBe(toks.findIndex((t) => t.text === "op"));
   });
+
+  it("a split verb is its joined verb, never its base verb's card (WC3)", () => {
+    const toks = tokenize("Ze doet haar mond open.", {
+      doet: { lemma: "opendoen", alt_lemmas: ["doen"] },
+      open: { particle_of: 1 },
+    });
+    const p = classifyTokens(toks, model({ doen: known() }));
+    expect(p[1]).toMatchObject({ label: "new", key: "opendoen" });
+    // Without a particle the alternative still matches: "doet" alone is doen.
+    const alone = tokenize("Hij doet het.", { doet: { lemma: "doet", alt_lemmas: ["doen"] } });
+    expect(classifyTokens(alone, model({ doen: known() }))[1]).toMatchObject({ key: "doen" });
+  });
 });
 
 describe("coverageOf", () => {

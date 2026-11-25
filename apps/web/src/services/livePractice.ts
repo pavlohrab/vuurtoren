@@ -14,7 +14,8 @@ import {
   type TopicSentence,
   type WordData,
   type WordForms,
-  matchToken,
+  splitVerbs,
+  tokenKey,
   normalizeKey,
   sharesMeaning,
 } from "@app/core";
@@ -205,9 +206,10 @@ function sentencesFromTexts(
     if (t.is_word) s.words++;
     spans.set(t.sent, s);
   }
+  const split = splitVerbs(tokens);
   for (const t of tokens) {
     if (!t.is_word || t.particle_of !== null) continue;
-    const key = matchToken(t, model) ?? normalizeKey(t.lemma);
+    const key = tokenKey(t, model, split.has(t.i));
     if (!wanted.has(key)) continue;
     const occ = into.get(key) ?? { lemma: t.lemma, pos: t.pos, zipf: t.zipf, sentences: [] };
     into.set(key, occ);
