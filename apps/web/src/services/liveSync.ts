@@ -583,7 +583,7 @@ export function createLiveSync(deps: LiveSyncDeps) {
 
     async connectServer(link, deviceName) {
       return exclusive(async () => {
-        const now = read();
+        let now = read();
         // The same computer at a new address (its certificate is the same): only the address
         // changes, the phone stays paired.
         if (
@@ -598,14 +598,20 @@ export function createLiveSync(deps: LiveSyncDeps) {
           };
           write(moved);
           const key = await keys.load();
+          let synced = false;
           if (key) {
             try {
               await run(moved, await keyFromRaw(key));
+              synced = true;
             } catch {
-              // Kept in the saved status.
+              // Below: pair again with the code just scanned.
             }
           }
-          return status(read());
+          if (synced) return status(read());
+          // The computer doesn't take this phone any more (it was removed there, or the key is
+          // gone): pair again with the new code. The data here and this device stay the same.
+          write(null);
+          now = null;
         }
         if (now) throw new Error("Stop syncing first, then connect to another server.");
         // In the app the request goes through it (no CORS setup on the server).
