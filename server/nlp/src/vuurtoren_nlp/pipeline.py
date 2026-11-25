@@ -28,6 +28,25 @@ DIMINUTIVE_SUFFIXES = ("je", "tje", "etje", "pje", "kje")
 
 
 _ENDS = {".", "!", "?", "…", "..."}
+# Words spaCy also lists as abbreviations; before a full stop they are the words (see get_nlp).
+_WORDS_NOT_ABBREVIATIONS = {
+    "al",
+    "app",
+    "art",
+    "bel",
+    "best",
+    "dat",
+    "get",
+    "hand",
+    "kon",
+    "pan",
+    "pas",
+    "pers",
+    "red",
+    "tom",
+    "top",
+    "ver",
+}
 
 
 def _paragraph_breaks(doc: Doc) -> Doc:
@@ -53,8 +72,13 @@ def _paragraph_breaks(doc: Doc) -> Doc:
         k = j
         while k < len(doc) and doc[k].is_space:
             k += 1
-        nxt = next((w for w in doc[k:] if w.is_alpha), None)
-        if k < len(doc) and nxt is not None and not nxt.text[0].islower():
+        # the next word with letters ("Otto's" counts; "'s Avonds" is decided by "Avonds")
+        nxt = next(
+            (w for w in doc[k:] if any(c.isalpha() for c in w.text) and w.text[0] not in "'’"),
+            None,
+        )
+        first = next((c for c in nxt.text if c.isalpha()), "") if nxt is not None else ""
+        if k < len(doc) and first and not first.islower():
             starts[k] = True
         i = j
     for t in doc[1:]:
@@ -70,6 +94,14 @@ def get_nlp(lang: str) -> Language:
     if not Language.has_factory("paragraph_breaks"):
         Language.component("paragraph_breaks", func=_paragraph_breaks)
     nlp = spacy.load(MODELS[lang])
+    # spaCy's Dutch abbreviations include ordinary words ("hand." for handtekening, "al." for
+    # alinea), so "Hij pakt zijn hand." kept the full stop on the word and the sentence ran on.
+    rules = nlp.tokenizer.rules
+    nlp.tokenizer.rules = {
+        k: v
+        for k, v in rules.items()
+        if k[:-1].lower() not in _WORDS_NOT_ABBREVIATIONS or k[-1] != "."
+    }
     nlp.add_pipe("paragraph_breaks", before="parser")
     # Larger than the API's per-text limit; anything above raises E088 -> HTTP 413.
     nlp.max_length = MAX_TEXT_CHARS + 1000

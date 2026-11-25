@@ -1,7 +1,7 @@
 ---
 title: Het verdronken land van Saeftinghe
 level: B2
-words: 908
+words: 909
 summary: The fishermen of rich Saeftinghe catch a mermaid and refuse to give her back to the merman who comes for her, and the whole land pays the price.
 kind: legend
 credit: The Zeeland legend of the drowned land of Saeftinghe

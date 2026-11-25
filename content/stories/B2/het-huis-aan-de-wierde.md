@@ -1,7 +1,7 @@
 ---
 title: Het huis aan de wierde
 level: B2
-words: 951
+words: 952
 summary: Her Groningen farmhouse is cracked by the gas earthquakes and must be demolished, and Grietje has no intention of being friendly to the young inspector who comes to measure it.
 kind: original
 licence: CC BY-SA 4.0

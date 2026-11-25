@@ -1,7 +1,7 @@
 ---
 title: De koe op de toren
 level: A1
-words: 219
+words: 220
 summary: Grass is growing on top of the church tower of Kampen, and the town council has a very clever plan to get rid of it.
 kind: legend
 credit: The Kamper uien, folk tales about the people of Kampen
