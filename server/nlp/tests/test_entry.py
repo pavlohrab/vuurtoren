@@ -97,3 +97,6 @@ def test_entry_route(monkeypatch: pytest.MonkeyPatch, dictionary: Dictionary) ->
     r = TestClient(app_module.app).post("/entry", json={"lang": "nl", "word": "doet"})
     assert r.status_code == 200
     assert r.json()["word"] == "doen"
+    # doen takes hebben (the perfect tense's helper, as /forms resolves it).
+    (verb,) = [e for e in r.json()["entries"] if e["pos"] == "verb"]
+    assert verb["forms"].get("aux") in {"hebben", None}

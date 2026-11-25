@@ -80,4 +80,25 @@ describe("WordEntry", () => {
     await new Promise((r) => setTimeout(r, 20));
     expect(screen.queryByText("Forms")).toBeNull();
   });
+
+  it("the perfect with its helper when it is known (is gegaan)", async () => {
+    show(
+      {
+        word: "gaan",
+        entries: [
+          {
+            pos: "verb",
+            article: null,
+            glosses: ["to go"],
+            forms: { participle: "gegaan", aux: "zijn", present: { ik: "ga", hij: "gaat" } },
+          },
+        ],
+      },
+      "gaan",
+      "VERB",
+      "gaat",
+    );
+    expect(await screen.findByText("is gegaan")).toBeVisible();
+    expect(screen.getByText("perfect")).toBeVisible();
+  });
 });

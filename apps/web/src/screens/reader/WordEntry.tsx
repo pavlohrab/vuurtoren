@@ -39,7 +39,11 @@ export function formRows(entry: Entry): { short: Row[]; more: Row[] } {
     if (present["ik"]) short.push(["ik", present["ik"]]);
     if (present["hij"]) short.push(["hij", present["hij"]]);
     if (past[0]) short.push(["past", past[0]]);
-    if (participle) short.push(["participle", participle]);
+    // The perfect with its helper when the language server knows it (hij is gegaan, heeft gedaan).
+    const aux = asString(f["aux"]);
+    const helper = aux === "zijn" ? "is" : aux === "both" ? "heeft / is" : aux ? "heeft" : null;
+    if (participle)
+      short.push(helper ? ["perfect", `${helper} ${participle}`] : ["participle", participle]);
     const more: Row[] = [];
     if (present["jij"]) more.push(["jij", present["jij"]]);
     if (present["wij"]) more.push(["wij, jullie, zij", present["wij"]]);

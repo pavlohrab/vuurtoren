@@ -288,9 +288,21 @@ def entry_endpoint(req: EntryRequest) -> dict[str, Any]:
     synonyms and antonyms, the separable family and base verb, a recording's file name
     (dictionary v2; older packs answer with less). A form finds its lemma ("doet" -> doen)."""
     try:
-        return _dictionary().entry(req.word, req.pos)
+        result = _dictionary().entry(req.word, req.pos)
     except DictionaryMissingError as e:
         raise ServiceError(503, str(e)) from e
+    # Verbs: the perfect tense's helper (hebben / zijn / both), as /forms resolves it.
+    verbs = [e for e in result["entries"] if e["pos"] == "verb"]
+    if verbs:
+        try:
+            store = WordFormsStore(default_dictionary_path(), default_sentences_path())
+            aux = store.lookup([(result["word"], "VERB")]).get(result["word"], {}).get("aux")
+        except WordFormsMissingError:
+            aux = None
+        if aux:
+            for e in verbs:
+                e.setdefault("forms", {})["aux"] = aux
+    return result
 
 
 @app.post("/translate/align")
