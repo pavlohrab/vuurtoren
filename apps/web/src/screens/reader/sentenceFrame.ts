@@ -11,14 +11,17 @@
  */
 import type { AnalyzedToken } from "@app/core";
 
-export type ClauseKind = "main" | "question" | "command" | "sub" | "rel";
+export type ClauseKind = "main" | "question" | "command" | "sub" | "rel" | "phrase";
 
 /** A part of a clause: its words, and where a clause inside it sits ([…]). */
 type ClauseItem = number | { clause: number };
 
 export interface ClausePart {
-  /** main-like: first, verb, middle, end, rest; sub-like: intro, middle, verbs, rest. */
-  field: "first" | "verb" | "middle" | "end" | "rest" | "intro" | "verbs";
+  /**
+   * main-like: link (en, maar, want, dus before the clause), first, verb, middle, end, rest;
+   * sub-like: intro, middle, verbs, rest.
+   */
+  field: "link" | "first" | "verb" | "middle" | "end" | "rest" | "intro" | "verbs" | "words";
   items: ClauseItem[];
 }
 
@@ -27,7 +30,7 @@ export interface Clause {
   parts: ClausePart[];
   /** The clause this one sits in, or null for a main clause. */
   parent: number | null;
-  /** Its conjugated verb. */
+  /** Its conjugated verb; -1 for a phrase without one. */
   verb: number;
 }
 
@@ -147,6 +150,22 @@ export function sentenceClauses(tokens: readonly AnalyzedToken[], sent: number):
       });
     }
   }
+  // Words no clause took: a phrase without a verb ("Een boek waarin alles staat", "Dank je wel
+  // dat …"). It gets a row of its own, and the clauses hanging on it sit inside it.
+  const taken = new Set(drafts.flatMap((d) => d.own.map((t) => t.i)));
+  const loose = words.filter((t) => !taken.has(t.i));
+  if (loose.length) {
+    const phrase = loose[0]!;
+    for (const d of drafts) if (d.parentPred === null && d.kind !== "main") d.parentPred = phrase.i;
+    drafts.push({
+      pred: phrase.i,
+      verb: phrase,
+      own: loose,
+      kind: "phrase",
+      parentPred: null,
+      anchor: null,
+    });
+  }
   drafts.sort(
     (a, b) =>
       (a.parentPred === null ? 0 : 1) - (b.parentPred === null ? 0 : 1) ||
@@ -167,6 +186,14 @@ export function sentenceClauses(tokens: readonly AnalyzedToken[], sent: number):
     const parts: ClausePart[] = [];
     const push = (field: ClausePart["field"], items: ClauseItem[]) => parts.push({ field, items });
     let kind = d.kind;
+    if (kind === "phrase") {
+      const items: ClauseItem[] = own.map(at);
+      for (const { c, j } of children) {
+        const pos = items.findIndex((x) => typeof x === "number" && x > c.own[0]!.i);
+        items.splice(pos < 0 ? items.length : pos, 0, { clause: j });
+      }
+      return { kind, parts: [{ field: "words" as const, items }], parent: null, verb: -1 };
+    }
     if (kind === "main" || kind === "question" || kind === "command") {
       // A quote before "vraagt Mila" keeps its first word ("En de rest?").
       const reporting = tokens[d.pred]?.dep === "parataxis";
@@ -241,6 +268,7 @@ export function sentenceClauses(tokens: readonly AnalyzedToken[], sent: number):
         if (endsWithQuestion && (startsWithVerb || qWord)) kind = "question";
         else if (startsWithVerb && !hasSubject && !endsWithQuestion) kind = "command";
       }
+      if (lead) push("link", [own[0]!.i]);
       push("first", withChildren("first", before));
       push("verb", [d.verb.i]);
       push("middle", withChildren("middle", middle));

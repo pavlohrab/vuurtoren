@@ -7,7 +7,8 @@
  * - main, question, command: first | verb | middle | verb end | rest
  * - sub (omdat, als, dat, of, wie …) and rel (die, dat, waar…): introducer | middle | verbs | rest
  * A clause inside another shows as "[…]" in the part of the outer clause it sits in. A second
- * main clause after en, maar, want or dus leaves that word out. Clauses in reading order.
+ * joining word (en, maar, want, dus) shows as "(Maar) " before the clause. Clauses in reading
+ * order.
  */
 export interface FrameCase {
   sentence: string;
@@ -159,19 +160,19 @@ export const FRAME_CASES: FrameCase[] = [
   {
     sentence: "Ik lees en zij schrijft.",
     about: "two main clauses",
-    clauses: ["main: Ik|lees|||", "main: zij|schrijft|||"],
+    clauses: ["main: Ik|lees|||", "main: (en) zij|schrijft|||"],
   },
   {
     sentence: "Ze lachte, want het was grappig.",
     about: "two main clauses",
-    clauses: ["main: Ze|lachte|||", "main: het|was|grappig||"],
+    clauses: ["main: Ze|lachte|||", "main: (want) het|was|grappig||"],
   },
   {
     sentence: "Hij is ziek, dus hij blijft thuis.",
     about: "two main clauses",
-    clauses: ["main: Hij|is|ziek||", "main: hij|blijft|thuis||"],
+    clauses: ["main: Hij|is|ziek||", "main: (dus) hij|blijft|thuis||"],
   },
-  { sentence: "Maar ze eet niet.", about: "linking word", clauses: ["main: ze|eet|niet||"] },
+  { sentence: "Maar ze eet niet.", about: "linking word", clauses: ["main: (Maar) ze|eet|niet||"] },
   {
     sentence: '"Goed," zegt de man.',
     about: "quoted speech",
@@ -227,7 +228,7 @@ export const FRAME_CASES: FrameCase[] = [
     about: "long: two main clauses, a relative in the second",
     clauses: [
       "main: In 1994|begon|een Frans/Egyptische duikersploeg het gebied|te onderzoeken|",
-      "main: |ontdekte|grote steenblokken in zee […]||",
+      "main: (en) |ontdekte|grote steenblokken in zee […]||",
       "rel: die|waarschijnlijk onderdelen|waren|van de vuurtoren",
     ],
   },

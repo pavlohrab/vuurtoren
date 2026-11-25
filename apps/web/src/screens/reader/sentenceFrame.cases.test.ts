@@ -12,7 +12,10 @@ import { type Clause, sentenceClauses } from "./sentenceFrame.js";
 function clauseText(toks: readonly AnalyzedToken[], c: Clause): string {
   const text = (p: Clause["parts"][number]) =>
     p.items.map((x) => (typeof x === "number" ? toks[x]!.text : "[…]")).join(" ");
-  return `${c.kind}: ${c.parts.map(text).join("|")}`;
+  // A joining word shows as "(Maar) " before the clause's first place.
+  const link = c.parts.find((p) => p.field === "link");
+  const rest = c.parts.filter((p) => p.field !== "link");
+  return `${c.kind}: ${link ? `(${text(link)}) ` : ""}${rest.map(text).join("|")}`;
 }
 
 const tokensOf = (s: string) => (fixture as Record<string, AnalyzedToken[]>)[s]!;

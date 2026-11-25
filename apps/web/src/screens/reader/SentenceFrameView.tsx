@@ -20,6 +20,8 @@ import {
 type Field = ClausePart["field"];
 
 const LABEL: Record<Field, string> = {
+  link: "joins",
+  words: "",
   first: "first",
   verb: "verb",
   middle: "middle",
@@ -35,6 +37,7 @@ const KIND: Record<ClauseKind, string> = {
   command: "Command",
   sub: "Clause inside",
   rel: "Says more about a word",
+  phrase: "Phrase, no verb",
 };
 
 const KIND_WHY: Record<ClauseKind, string> = {
@@ -43,9 +46,12 @@ const KIND_WHY: Record<ClauseKind, string> = {
   command: "A command: the verb comes first, and no one is named.",
   sub: "A clause inside the sentence. It starts with a word like omdat, als or dat, and its verbs go to the end.",
   rel: "It says more about the word before it. It starts with die, dat or waar…, and its verbs go to the end.",
+  phrase: "A short phrase without a verb of its own. The clause inside it has one.",
 };
 
 const FIELD_WHY: Record<Field, string> = {
+  link: "A joining word (en, maar, want, dus). It stands before the clause and takes no place: the verb still comes second after the first part.",
+  words: "",
   first: "Anything can come first. The verb comes right after it.",
   verb: "The verb that changes with the person. In a main clause it always comes second.",
   middle: "Who and what: the rest of the clause sits here.",
@@ -196,16 +202,18 @@ export function SentenceFrameView({
                         ),
                       )}
                     </span>
-                    <button
-                      type="button"
-                      className="sframe-label"
-                      aria-pressed={
-                        focus?.kind === "field" && focus.clause === k && focus.field === p.field
-                      }
-                      onClick={() => setFocus({ kind: "field", clause: k, field: p.field })}
-                    >
-                      {LABEL[p.field]}
-                    </button>
+                    {LABEL[p.field] ? (
+                      <button
+                        type="button"
+                        className="sframe-label"
+                        aria-pressed={
+                          focus?.kind === "field" && focus.clause === k && focus.field === p.field
+                        }
+                        onClick={() => setFocus({ kind: "field", clause: k, field: p.field })}
+                      >
+                        {LABEL[p.field]}
+                      </button>
+                    ) : null}
                   </span>
                 ))}
             </div>
