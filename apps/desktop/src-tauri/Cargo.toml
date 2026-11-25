@@ -27,7 +27,7 @@ rusqlite = { version = "0.37", features = ["bundled", "hooks"] }
 base64 = "0.23"
 gethostname = "1"
 getrandom = "0.3"
-tokio = { version = "1", features = ["time"] }
+tokio = { version = "1", features = ["time", "net", "rt", "macros", "io-util"] }
 # The dictionary pack on phones: a .tar.gz checked against packs.json, unpacked in place.
 flate2 = "1"
 tar = "0.4"
@@ -41,6 +41,13 @@ tauri-plugin-updater = "=2.14.1"
 # The sync key in the system keychain (macOS Keychain, Windows Credential Manager, the Secret
 # Service on Linux through libdbus, which the window toolkit links already).
 keyring = { version = "=3.6.3", features = ["apple-native", "windows-native", "sync-secret-service", "crypto-rust"] }
+# "Connect a phone" (SY1): the computer serves its phone over HTTPS on the home network, with a
+# self-signed certificate whose SHA-256 the phone pins from the QR code.
+hyper = { version = "1", features = ["server", "http1"] }
+hyper-util = { version = "0.1", features = ["tokio"] }
+http-body-util = "0.1"
+tokio-rustls = { version = "0.26", default-features = false, features = ["ring"] }
+rcgen = { version = "0.13", default-features = false, features = ["ring", "pem"] }
 
 # Phones only: the QR code of a server's "Add a phone", and vuurtoren:// links.
 [target.'cfg(any(target_os = "android", target_os = "ios"))'.dependencies]

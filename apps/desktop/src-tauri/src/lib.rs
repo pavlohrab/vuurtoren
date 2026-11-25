@@ -21,8 +21,11 @@ mod desktop;
 mod dictionary;
 mod keys;
 mod lan;
+#[cfg(not(mobile))]
+mod lan_server;
 #[cfg(mobile)]
 mod mobile;
+mod pinned;
 #[cfg(desktop)]
 mod proxy;
 #[cfg(desktop)]
