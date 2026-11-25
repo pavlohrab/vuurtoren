@@ -14,7 +14,7 @@ import type { AnalyzedToken } from "@app/core";
 export type ClauseKind = "main" | "question" | "command" | "sub" | "rel";
 
 /** A part of a clause: its words, and where a clause inside it sits ([…]). */
-export type ClauseItem = number | { clause: number };
+type ClauseItem = number | { clause: number };
 
 export interface ClausePart {
   /** main-like: first, verb, middle, end, rest; sub-like: intro, middle, verbs, rest. */
