@@ -17,6 +17,8 @@ export interface ReaderReturn {
   focusTopic: string | null;
   /** The grammar topic the reader opened. */
   topic: string;
+  /** The word card as it was: the words opened from it, and the full entry or not. */
+  card?: { stack: string[]; full: boolean };
 }
 
 function read(): ReaderReturn | null {

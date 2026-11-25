@@ -116,6 +116,13 @@ export function AppShell() {
   // Resizable panels on a computer (UI2): widths kept per device.
   const sidebarSize = usePanelWidth("vuurtoren.sidebar-w", 220, 180, 360);
   const inspectorSize = usePanelWidth("vuurtoren.inspector-w", 340, 300, 640);
+  // The full entry has its own width (F2): about 0.7 of the old fixed one, draggable too.
+  const inspectorWideSize = usePanelWidth(
+    "vuurtoren.inspector-wide-w",
+    typeof window === "undefined" ? 620 : Math.round(Math.min(window.innerWidth * 0.44, 690)),
+    480,
+    1400,
+  );
   const [resizing, setResizing] = useState(false);
   /** A word's full entry widens the panel; closing the panel ends it. */
   const [inspectorWide, setInspectorWide] = useState(false);
@@ -326,7 +333,7 @@ export function AppShell() {
             {
               "--sidebar-w": `${sidebarSize.width}px`,
               "--inspector-w": wideNow
-                ? `max(${inspectorSize.width}px, min(62vw, 980px))`
+                ? `min(${Math.max(inspectorWideSize.width, inspectorSize.width)}px, calc(100vw - 360px))`
                 : `${inspectorSize.width}px`,
             } as CSSProperties
           }
@@ -558,9 +565,9 @@ export function AppShell() {
               >
                 {showInspector ? (
                   <ResizeHandle
-                    size={inspectorSize}
+                    size={wideNow ? inspectorWideSize : inspectorSize}
                     grows="left"
-                    label="Word panel width"
+                    label={wideNow ? "Full entry width" : "Word panel width"}
                     onResizing={setResizing}
                   />
                 ) : null}

@@ -6,6 +6,7 @@ import { createPortal } from "react-dom";
 import { ModeMenu } from "./reader/ModeMenu.js";
 import { useSwipePages } from "./reader/useSwipePages.js";
 import { formLine } from "./reader/formLine.js";
+import { useWordCard } from "./reader/useWordCard.js";
 import {
   type HelpLevel,
   type SegmentPlan,
@@ -66,7 +67,6 @@ import { ReaderLeave, rememberReader, takeReaderReturn } from "./reader/readerRe
 import { WordEntry } from "./reader/WordEntry.js";
 import { DictionaryMissing } from "./reader/DictionaryMissing.js";
 import { SentenceFrameView } from "./reader/SentenceFrameView.js";
-import { useBackClose } from "../shell/backStack.js";
 import { contextGloss } from "../services/contextGloss.js";
 
 /**
@@ -167,13 +167,8 @@ export function ReaderPage({ textId }: { textId: string }) {
    * "← back" and Esc / Android Back go back one (notes/wc2-word-card.md). Cleared when another
    * word of the text is tapped or the card closes.
    */
-  const [stack, setStack] = useState<string[]>([]);
-  const openWord = useCallback(
-    (w: string) => setStack((st) => (st.at(-1) === w ? st : [...st, w])),
-    [],
-  );
-  const backWord = useCallback(() => setStack((st) => st.slice(0, -1)), []);
-  useBackClose(stack.length > 0, backWord);
+  const card = useWordCard(back?.card);
+  const { stack, openWord, backWord, setFull: setCardFull, close: closeCard } = card;
   /** The restored word's sheet has not opened yet: closing logic must not clear it. */
   const restoring = useRef(back?.selected != null);
   const [revealed, setRevealed] = useState<ReadonlySet<number>>(new Set());
@@ -213,6 +208,7 @@ export function ReaderPage({ textId }: { textId: string }) {
       selected,
       focusTopic: focusTopic?.id ?? null,
       topic,
+      card: { stack, full: card.full },
     });
 
   // The plan of the current segment is frozen when the segment starts: answers are keyed by
@@ -287,6 +283,7 @@ export function ReaderPage({ textId }: { textId: string }) {
     readingFocus,
     size: prefs.size,
     stacked: stack.length,
+    full: card.full,
   });
   useEffect(() => {
     keyState.current = {
@@ -295,6 +292,7 @@ export function ReaderPage({ textId }: { textId: string }) {
       readingFocus,
       size: prefs.size,
       stacked: stack.length,
+      full: card.full,
     };
   });
   /** Turns the page (set below, once the page's navigation is known). */
@@ -318,6 +316,11 @@ export function ReaderPage({ textId }: { textId: string }) {
         // A word opened from the card: back one word first.
         if (st.stacked > 0) {
           backWord();
+          return;
+        }
+        // Then out of the full entry, then the card closes.
+        if (st.full) {
+          setCardFull(false);
           return;
         }
         setInspectorOpen(false);
@@ -363,7 +366,7 @@ export function ReaderPage({ textId }: { textId: string }) {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [setInspectorOpen, setPrefs, backWord]);
+  }, [setInspectorOpen, setPrefs, backWord, setCardFull]);
 
   // Closing the word panel (Esc or its close button) clears the selection and gives the focus
   // back to the word, so reading continues where it was.
@@ -377,11 +380,11 @@ export function ReaderPage({ textId }: { textId: string }) {
     const i = keyState.current.selected;
     if (i === null) return;
     setSelected(null);
-    setStack([]);
+    closeCard();
     document
       .querySelector<HTMLElement>(`.k-reader [data-i="${i}"]`)
       ?.focus({ preventScroll: true });
-  }, [inspectorOpen]);
+  }, [inspectorOpen, closeCard]);
 
   // The query data always belongs to the current key; keepPreviousData only avoids a flash, so
   // placeholder data (the previously selected word) is treated as "still loading".
@@ -594,7 +597,7 @@ export function ReaderPage({ textId }: { textId: string }) {
 
   const onTokenClick = (i: number) => {
     setSelected(i);
-    setStack([]);
+    card.restart();
     setInspectorOpen(true);
     // On a phone the inspector is a bottom sheet: keep the word visible above it.
     revealAboveSheet(document.querySelector(`.k-tok[data-i="${i}"]`));
@@ -1067,6 +1070,8 @@ export function ReaderPage({ textId }: { textId: string }) {
                           pos={shown.pos}
                           surface={shown.surface}
                           onOpen={openWord}
+                          full={card.full}
+                          onFull={card.setFull}
                         />
                         {opened ? null : (
                           <WordGrammar

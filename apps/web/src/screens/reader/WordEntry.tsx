@@ -7,9 +7,7 @@
  */
 import { useQuery } from "@tanstack/react-query";
 import type { EntryResult, EntrySense, WordEntry as Entry } from "@app/nlp-client";
-import { useContext, useEffect, useState } from "react";
-import { ShellContext } from "../../shell/ShellContext.js";
-import { useBackClose } from "../../shell/backStack.js";
+import { useState } from "react";
 import { useServices } from "../../services/context.js";
 
 /** spaCy's part of speech → the dictionary's (Kaikki's). */
@@ -96,32 +94,22 @@ export function WordEntry({
   pos,
   surface,
   onOpen,
+  full = false,
+  onFull,
 }: {
   lemma: string;
   pos: string;
   surface: string;
   /** Open a word's own card in the same panel (its base verb, a family word …). */
   onOpen?: ((word: string) => void) | undefined;
+  /** The full entry (the card's state lives in the page: useWordCard). */
+  full?: boolean;
+  onFull?: ((full: boolean) => void) | undefined;
 }) {
   const services = useServices();
   const [all, setAll] = useState(false);
-  const shell = useContext(ShellContext);
-  const wide = !!shell?.inspectorWide;
-  const setWide = shell?.setInspectorWide;
-  // The card goes away (the panel closed, another word): the next one opens at the normal width.
-  useEffect(() => () => setWide?.(false), [setWide]);
-  // Esc and Android Back make the full entry smaller before anything else closes.
-  useBackClose(wide, () => setWide?.(false));
-  useEffect(() => {
-    if (!wide) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key !== "Escape") return;
-      e.stopImmediatePropagation();
-      setWide?.(false);
-    };
-    window.addEventListener("keydown", onKey, true);
-    return () => window.removeEventListener("keydown", onKey, true);
-  }, [wide, setWide]);
+  const wide = full;
+  const setWide = onFull;
   const q = useQuery({
     queryKey: ["word-entry", lemma, pos],
     queryFn: () => services.wordEntry?.(lemma, KAIKKI_POS[pos]) ?? null,

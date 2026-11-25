@@ -117,7 +117,9 @@ test("Words on a computer: the list with Today beside it", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Your words" })).toBeVisible();
 });
 
-test("Full entry widens the word panel; Esc makes it smaller, the card stays", async ({ page }) => {
+test("Full entry: wider, words open inside it, Esc steps back, grammar comes back to it", async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await fakeNlp(page);
   await fakeAnki(page);
@@ -132,11 +134,27 @@ test("Full entry widens the word panel; Esc makes it smaller, the card stays", a
   const panel = page.locator(".inspector-panel");
   await expect(panel).toHaveCSS("width", "340px");
   await panel.getByRole("button", { name: "Full entry ⤢" }).click();
-  await expect.poll(async () => (await panel.boundingBox())!.width).toBeGreaterThan(700);
+  const wide = async () => (await panel.boundingBox())!.width;
+  await expect.poll(wide).toBeGreaterThan(500);
   await expect(panel.locator(".word-entry-senses")).toContainText("to stand");
+  // A word clicked in the full entry opens in the full entry (it used to drop back to small).
+  await panel.getByRole("button", { name: "opstaan" }).click();
+  await expect(panel.locator(".k-inspector-surface")).toHaveText("opstaan");
+  await expect.poll(wide).toBeGreaterThan(500);
+  // Esc: back one word first, still full; then out of the full entry; the card stays.
+  await page.keyboard.press("Escape");
+  await expect(panel.locator(".k-inspector-surface")).toHaveText("staan");
+  await expect.poll(wide).toBeGreaterThan(500);
   await page.keyboard.press("Escape");
   await expect(panel).toHaveCSS("width", "340px");
   await expect(panel.locator(".k-inspector-surface")).toHaveText("staan");
+  // A grammar topic from the full entry, and back: the full entry again.
+  await panel.getByRole("button", { name: "Full entry ⤢" }).click();
+  await expect.poll(wide).toBeGreaterThan(500);
+  await panel.getByRole("link", { name: "The present tense" }).first().click();
+  await page.getByRole("link", { name: "Back to the text" }).click();
+  await expect(panel.locator(".k-inspector-surface")).toHaveText("staan");
+  await expect.poll(wide).toBeGreaterThan(500);
 });
 
 test("on a phone, a word tapped in the card opens its card in the same sheet", async ({ page }) => {
