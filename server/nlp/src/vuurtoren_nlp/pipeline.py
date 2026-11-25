@@ -27,13 +27,38 @@ NON_WORD_POS = {"PUNCT", "SPACE", "SYM", "X", "NUM"}
 DIMINUTIVE_SUFFIXES = ("je", "tje", "etje", "pje", "kje")
 
 
+_ENDS = {".", "!", "?", "…", "..."}
+
+
 def _paragraph_breaks(doc: Doc) -> Doc:
-    """A blank line always starts a sentence: the parser otherwise joins a paragraph that starts
-    with a name, or a heading without a full stop, to the sentence before it."""
+    """Where sentences start, decided before the parser (which keeps to it). A blank line always
+    starts one: the parser otherwise joins a paragraph that starts with a name, or a heading without
+    a full stop, to the sentence before it. Otherwise a sentence ends after . ! ? … (and a closing
+    quote right after them), but not when the next word starts with a small letter ("Kunnen we
+    …?" vroeg hij), and never at a colon: the parser used to cut a quote off from "zegt hij"."""
+    starts = [False] * len(doc)
     for t in doc[1:]:
         prev = doc[t.i - 1]
         if not t.is_space and (prev.is_space and prev.text.count("\n") >= 2):
-            t.is_sent_start = True
+            starts[t.i] = True
+    i = 0
+    while i < len(doc):
+        if doc[i].text not in _ENDS:
+            i += 1
+            continue
+        j = i + 1
+        # closing quotes and brackets that hang on the full stop ("…," or …?")
+        while j < len(doc) and doc[j].text in {'"', "'", ")"} and not doc[j - 1].whitespace_:
+            j += 1
+        k = j
+        while k < len(doc) and doc[k].is_space:
+            k += 1
+        nxt = next((w for w in doc[k:] if w.is_alpha), None)
+        if k < len(doc) and nxt is not None and not nxt.text[0].islower():
+            starts[k] = True
+        i = j
+    for t in doc[1:]:
+        t.is_sent_start = starts[t.i]
     return doc
 
 
@@ -51,7 +76,10 @@ def get_nlp(lang: str) -> Language:
     return nlp
 
 
-_QUOTES = str.maketrans({"‘": "'", "’": "'", "`": "'"})
+# One character for one, so offsets stay: curly apostrophes and typographic quotes become plain.
+_QUOTES = str.maketrans(
+    {"‘": "'", "’": "'", "`": "'", "„": '"', "“": '"', "”": '"', "«": '"', "»": '"'}
+)
 
 
 def normalize_key(s: str) -> str:
@@ -547,7 +575,7 @@ def analyze_texts(lang: str, texts: list[str]) -> list[TextAnalysis]:
     """Analyse texts; raises ``ServiceError(413)`` if one exceeds spaCy's ``max_length`` (E088)."""
     nlp = get_nlp(lang)
     try:
-        # Curly apostrophes -> straight before parsing, so clitics lemmatise ('t -> het).
+        # Curly apostrophes and quotes -> straight before parsing, so clitics lemmatise ('t -> het).
         # One character for one character: offsets are unchanged.
         clean = [t.translate(_QUOTES) for t in texts]
         docs = list(nlp.pipe(clean, batch_size=64))
