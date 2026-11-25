@@ -507,6 +507,39 @@ The bundle records the analyzer version (which covers the detectors), the model 
 
 ---
 
+### 3.8 The Sentence tab: how a sentence is built
+
+The Sentence tab shows each clause of the sentence on its own row: the first place, the verb that
+changes with the person, the middle, the verb end and what comes after it, or, for a clause inside
+another, the word that opens it, the middle and its verbs. The code is `sentenceClauses` in
+`apps/web/src/screens/reader/sentenceFrame.ts`. It works from the parse of the sentence, so it is only
+as good as the parser.
+
+On a server the parse comes from SyntaxDot (`server/nlp/src/vuurtoren_nlp/syntax.py`), because it
+makes fewer mistakes than spaCy. SyntaxDot only runs on Linux with an Intel or AMD processor, so the
+desktop app and ARM servers use spaCy's parse instead. Settings › Server status says which one is in
+use.
+
+How well it works, measured on sentences the rules were not written for:
+
+- 62 random sentences from Tatoeba and the stories, checked by hand: SyntaxDot got 59 right (95%).
+  With spaCy, rounds like this came out between 87% and 94%.
+- 793 harder sentences, made with another AI to cover the difficult cases (split verbs, quotes,
+  te-infinitives, comparisons and so on), with their answers. SyntaxDot matched 77% of them and
+  spaCy 72.6%. A third of SyntaxDot's misses turned out to be mistakes in the answers, so on this
+  set SyntaxDot is right about 85% of the time.
+
+Most of what is still wrong comes back in the same few shapes: "aan het" + infinitive split in two,
+a quote that isn't linked to "zegt hij" or to the colon before it, a word with a comma before the
+clause ("Gelukkig, …"), "te" split from its verbs, circumpositions like "onder de tafel door", and
+comparisons like "langer dan verwacht".
+
+When the parse shows signs of being wrong, the tab says "This is a low-confidence sentence
+structure" under the rows (`structureDoubtful`). It looks for a phrase without a verb next to a main
+clause, and for a main word that is a participle or a noun while a conjugated verb sits somewhere else.
+On the 793 sentences it showed 9 times with spaCy, and all 9 were wrong, but it misses most of the
+wrong ones. With SyntaxDot it didn't show at all.
+
 ## 4. Practice
 
 **In short.** Practice is for the words you are already learning. It gives you short exercises made from sentences, for example choosing the meaning, filling in a blank, de or het, putting words in the right order or writing down what you hear. Every word has its own schedule for every kind of exercise (FSRS), so an exercise comes back just before you would forget it. Practice never touches your Anki cards.
