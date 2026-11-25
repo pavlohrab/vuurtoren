@@ -155,6 +155,25 @@ word pairs, in-context meanings) are derived data, never events. The device that
 them, sealed, in its own sync folder (`devices/<id>/analyses/`). A device with no analysis of a
 text takes them from there (`packages/db/src/sync/engine.ts`, `apps/web/src/services/liveExtras.ts`).
 
+## A phone and its computer
+
+A computer can be its phone's sync place at home, with no server (Settings → Your devices →
+Connect a phone). The computer app runs a small HTTPS server on the home Wi-Fi
+(`apps/desktop/src-tauri/src/lan_server.rs`) that answers the same `/api/sync` calls as a
+Vuurtoren server (`lan.rs`), and passes a paired phone's `/nlp/` on to the computer's own language
+server, so the phone can add texts while it is home.
+
+- **Pairing.** The QR code holds the computer's address, the SHA-256 of its self-signed
+  certificate and a ten-minute code (`vuurtoren://connect?lan=…&cert=…&code=…`). The phone trusts
+  exactly that certificate (`pinned.rs`), and the code buys a sync token, as with a server. The
+  computer hands over the sync key with it, so the phone joins at once: no passphrase. A computer
+  that doesn't sync yet starts with a recovery key only.
+- **The folder.** The phones use the app's `sync-place/`, or the computer's own sync folder when
+  it already syncs through one (Syncthing, Dropbox), so all devices share one place.
+- **Restarts and moves.** The computer listens again at start when phones are paired. If its
+  address changes, the phone scans the code again: same certificate, same computer, only the
+  address is updated.
+
 ## Language server OCR
 
 OCR turns photos and scanned pages into text. `POST /ocr` (one upload) and `POST /course/ocr` (a
@@ -183,6 +202,10 @@ The NLP image holds code and libraries only. Its data come as versioned **data p
 | `grammar-examples-nl` | derived: example sentences per topic         | 0.1 MB  | 0.4 MB    |
 | `audio-nl`            | optional: spoken starter words, sentences    | —       | —         |
 | `tts-nl`              | Piper Dutch voice, for computers without one | 58 MB   | —         |
+
+Two small lists ship inside the Python package, not as packs: OpenTaal's separable compound verbs
+(`compound-verbs-nl.txt.gz`, the split-verb check) and NT2Lex word levels (`levels-nl.tsv.gz`,
+"about A2"). Their sources and licences are in `server/nlp/DATA_LICENSES.md`.
 
 - **Manifest**: `{name: {version, sha256, size}}`. The archive is `<name>-<version>.tar.gz`, a
   deterministic tar.gz of one file or directory. A marker `<data>.pack.json` records what is
