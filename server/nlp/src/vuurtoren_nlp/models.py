@@ -34,6 +34,17 @@ class AnalyzeTermsRequest(BaseModel):
     texts: list[TermStr] = Field(max_length=MAX_ITEMS)
 
 
+class SyntaxParse(BaseModel):
+    """One word's parse for the sentence structure (SyntaxDot), on the same words as the token."""
+
+    pos: str
+    morph: str
+    dep: str
+    head: int
+    lemma: str
+    particle_of: int | None = None
+
+
 class Token(BaseModel):
     """One token. ``start``/``end`` are offsets in UTF-16 code units (what JavaScript's
     ``String.slice`` uses), NOT Python code points: they differ for text with characters above
@@ -58,6 +69,8 @@ class Token(BaseModel):
     """For a detached separable particle: index of its verb."""
     zipf: float = 0.0
     """wordfreq Zipf frequency of the lemma (surface fallback): ~7 common, ~1 rare, 0 unknown."""
+    syn: SyntaxParse | None = None
+    """The sentence-structure parse (SyntaxDot) when it is set up; the Sentence tab uses it."""
 
 
 class TextAnalysis(BaseModel):

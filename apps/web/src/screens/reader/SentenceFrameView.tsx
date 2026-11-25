@@ -13,6 +13,7 @@ import {
   type ClauseKind,
   type ClausePart,
   WORD_KIND,
+  frameTokens,
   sentenceClauses,
   wordRole,
 } from "./sentenceFrame.js";
@@ -86,7 +87,7 @@ function rows(clauses: readonly Clause[]): { k: number; depth: number }[] {
 }
 
 export function SentenceFrameView({
-  tokens,
+  tokens: given,
   sent,
   text,
   marked,
@@ -101,6 +102,8 @@ export function SentenceFrameView({
   /** Tap, Ctrl-click and long press on a word, shared with the sentence above. */
   bindWord?: (i: number) => PickHandlers;
 }) {
+  // SyntaxDot's parse where the server had it (the words and offsets are the same).
+  const tokens = useMemo(() => frameTokens(given), [given]);
   const clauses = useMemo(() => sentenceClauses(tokens, sent), [tokens, sent]);
   const [focus, setFocus] = useState<Focus>(null);
   const [types, setTypes] = useState(() => readLocal(TYPES_KEY) === "1");

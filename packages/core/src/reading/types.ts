@@ -26,6 +26,21 @@ export interface AnalyzedToken extends TokenLike {
   particle_of: number | null;
   /** wordfreq Zipf frequency of the lemma: ~7 very common, ~1 rare, 0 unknown. */
   zipf: number;
+  /**
+   * The sentence-structure parse (SyntaxDot) of the same word, when the language server had it:
+   * the Sentence tab builds its clauses from this. Absent: the fields above are used.
+   */
+  syn?: SyntaxParse | null;
+}
+
+/** One word's parse for the sentence structure (SyntaxDot; see AnalyzedToken.syn). */
+export interface SyntaxParse {
+  pos: string;
+  morph: string;
+  dep: string;
+  head: number;
+  lemma: string;
+  particle_of: number | null;
 }
 
 /**

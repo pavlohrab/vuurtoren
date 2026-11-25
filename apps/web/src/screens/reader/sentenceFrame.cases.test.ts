@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 import type { AnalyzedToken } from "@app/core";
 import { FRAME_CASES } from "./frames.cases.js";
 import fixture from "./frames.fixture.json";
-import { type Clause, sentenceClauses } from "./sentenceFrame.js";
+import { type Clause, frameTokens, sentenceClauses } from "./sentenceFrame.js";
 
 /** "main: first|verb|middle|end|rest", words as text, […] for a clause inside. */
 function clauseText(toks: readonly AnalyzedToken[], c: Clause): string {
@@ -18,7 +18,7 @@ function clauseText(toks: readonly AnalyzedToken[], c: Clause): string {
   return `${c.kind}: ${link ? `(${text(link)}) ` : ""}${rest.map(text).join("|")}`;
 }
 
-const tokensOf = (s: string) => (fixture as Record<string, AnalyzedToken[]>)[s]!;
+const tokensOf = (s: string) => frameTokens((fixture as Record<string, AnalyzedToken[]>)[s]!);
 
 describe("sentence structure on the test set", () => {
   for (const c of FRAME_CASES) {

@@ -84,6 +84,14 @@ function introduces(t: AnalyzedToken): boolean {
   return /^waar/i.test(t.text) && (t.pos === "ADV" || t.pos === "PRON");
 }
 
+/**
+ * The tokens with their sentence-structure parse (SyntaxDot, `syn`) in place of spaCy's, where the
+ * server had one. The words, sentences and offsets stay the same.
+ */
+export function frameTokens(tokens: readonly AnalyzedToken[]): AnalyzedToken[] {
+  return tokens.map((t) => (t.syn ? { ...t, ...t.syn } : t));
+}
+
 /** The clauses of sentence `sent`, main clauses first in reading order; [] for a fragment. */
 export function sentenceClauses(tokens: readonly AnalyzedToken[], sent: number): Clause[] {
   const words = tokens.filter((t) => t.sent === sent && isWord(t));
