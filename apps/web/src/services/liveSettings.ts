@@ -10,7 +10,7 @@ import {
 } from "@app/anki";
 import type { VuurtorenRepository } from "@app/db";
 import { NlpClient, NlpError } from "@app/nlp-client";
-import { watchClient } from "./degraded.js";
+import { DEGRADED_MESSAGES, watchClient } from "./degraded.js";
 import type { Platform } from "./platform.js";
 import type { AnkiStatus, AppServices, Settings } from "./types.js";
 
@@ -95,6 +95,9 @@ export interface LiveSettingsDeps {
   localClip?: ((voice: string, id: string) => Promise<Blob | null>) | undefined;
 }
 
+/** The top bar on a phone whose computer or server isn't reachable (reading still works). */
+const PHONE_AWAY = "Your phone needs a computer or a server to read new texts.";
+
 /** What a phone's language-server calls fail with before it is connected to a server. */
 const NO_LANGUAGE_SERVER = "no language server on this phone";
 
@@ -158,7 +161,13 @@ export function createLiveSettings({
             fetch: (() => Promise.reject(new Error(NO_LANGUAGE_SERVER))) as typeof fetch,
           })
         : new NlpClient({ url, fetch: platform.fetch });
-    return watchClient(client, "nlp", nlpOutage);
+    // A phone reads without its computer; what it can't do then is take new texts.
+    return watchClient(
+      client,
+      "nlp",
+      nlpOutage,
+      noOwnLanguageServer ? PHONE_AWAY : DEGRADED_MESSAGES.nlp,
+    );
   };
 
   const ankiOptions = async (timeoutMs?: number) => {
