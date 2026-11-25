@@ -123,6 +123,11 @@ export interface LiveWordsDeps {
   synced: () => void;
   /** The language server (lemmas of a sentence for `inspectForm`). */
   nlp: () => Promise<NlpClient>;
+  /** A bundled story's English per sentence (empty for other texts): works offline. */
+  storyLines?: (
+    text: { content: string; sourceRef?: string | undefined },
+    tokens: AnalyzedToken[],
+  ) => Promise<Map<number, string>>;
 }
 
 export function createLiveWords(deps: LiveWordsDeps) {
@@ -357,6 +362,10 @@ export function createLiveWords(deps: LiveWordsDeps) {
       // Its meaning in this sentence (contextGloss.ts): the grammar fixes a possessive ("zijn
       // hond" is "his"), a name or a diminutive is its own word, and for the rest the sentence's
       // translation picks among the meanings or gives its own.
+      // A bundled story has its own English for each sentence: no server needed for it.
+      const storyEnglish = deps.storyLines
+        ? (await deps.storyLines(v.text, v.tokens)).get(t.sent)
+        : undefined;
       const here = contextGloss(t);
       if (here.fixed) {
         entry.glosses = [here.fixed, ...entry.glosses.filter((g) => g !== here.fixed)];
@@ -370,9 +379,9 @@ export function createLiveWords(deps: LiveWordsDeps) {
         const [start, end] = entry.sentenceHighlight;
         const w = { sentence: entry.sentence, start, end };
         const aligned = (await dictionary.alignWords([w])).get(dictionary.alignKey(w));
-        const translation = (await dictionary.translateSentences([entry.sentence])).get(
-          entry.sentence,
-        );
+        const translation =
+          storyEnglish ??
+          (await dictionary.translateSentences([entry.sentence])).get(entry.sentence);
         const chosen = meaningInSentence({
           pos: t.pos,
           usual: entry.glosses[0],
@@ -391,7 +400,8 @@ export function createLiveWords(deps: LiveWordsDeps) {
         entry,
         here.fixed ? undefined : composeGlosses(info, dict[t.lemma], t.pos).guess,
       );
-      const tr = (await dictionary.translateSentences([entry.sentence])).get(entry.sentence);
+      const tr =
+        storyEnglish ?? (await dictionary.translateSentences([entry.sentence])).get(entry.sentence);
       if (tr) entry.sentenceTranslation = tr;
       return entry;
     },
