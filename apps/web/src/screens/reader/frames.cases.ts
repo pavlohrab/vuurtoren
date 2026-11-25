@@ -331,6 +331,42 @@ export const FRAME_CASES: FrameCase[] = [
     clauses: ["main: Dat|zijn|vrouwen in lange witte kleren||"],
     hard: "the parser reads zijn as a possessive",
   },
+  {
+    sentence: "Je had hem de waarheid moeten zeggen.",
+    about: "two verbs in the verb end",
+    clauses: ["main: Je|had|hem de waarheid|moeten zeggen|"],
+  },
+  {
+    sentence: "Laten wij hier wachten tot ze terugkomt.",
+    about: "tot as introducer",
+    clauses: ["main: |Laten|wij hier|wachten|[…]", "sub: tot|ze|terugkomt|"],
+  },
+  {
+    sentence: "Ik zal heel voorzichtig zijn.",
+    about: "zijn as the verb end",
+    clauses: ["main: Ik|zal|heel voorzichtig|zijn|"],
+  },
+  {
+    sentence: "Dus ging ze slapen, maar ze sliep slecht.",
+    about: "dus in the first place",
+    clauses: ["main: Dus|ging|ze|slapen|", "main: (maar) ze|sliep|slecht||"],
+  },
+  {
+    sentence: "Het water staat nu hoog, en van het slik is niets meer te zien.",
+    about: "a second main clause with te",
+    clauses: ["main: Het water|staat|nu hoog||", "main: (en) van het slik|is|niets meer|te zien|"],
+  },
+  {
+    sentence: "Zijn stem was zo diep als de zee zelf.",
+    about: "als that compares, no clause",
+    clauses: ["main: Zijn stem|was|zo diep als de zee zelf||"],
+  },
+  {
+    sentence: "Gelieve het vandaag af te halen.",
+    about: "formal request",
+    clauses: ["command: |Gelieve|het vandaag|af te halen|"],
+    hard: "the parser reads Gelieve as a noun",
+  },
   { sentence: "En boven op de kerk?", about: "fragment", clauses: [] },
   { sentence: "Een groot schip op zee.", about: "fragment", clauses: [] },
   {

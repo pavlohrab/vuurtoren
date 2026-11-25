@@ -54,9 +54,10 @@ const isWord = (t: AnalyzedToken) => t.pos !== "PUNCT" && t.pos !== "SPACE";
 /** Words that open a subordinate or relative clause: omdat, die, wie, waarop … */
 function introduces(t: AnalyzedToken): boolean {
   if (t.pos === "SCONJ") return true;
-  if (OM_WORDS.has(t.text.toLowerCase()) && t.dep === "mark") return true;
+  if (t.dep === "mark" && t.text.toLowerCase() !== "te") return true;
   if (/PronType=(Rel|Int)/.test(t.morph)) return true;
-  return /^waar/i.test(t.text) && t.pos !== "VERB";
+  // waarop, waarin; not waarheid
+  return /^waar/i.test(t.text) && (t.pos === "ADV" || t.pos === "PRON");
 }
 
 /** The clauses of sentence `sent`, main clauses first in reading order; [] for a fragment. */
@@ -77,6 +78,25 @@ export function sentenceClauses(tokens: readonly AnalyzedToken[], sent: number):
     if (!helpers.some((x) => finite.includes(x)) && !finite.includes(head)) finite.push(t);
   }
   finite.sort((a, b) => a.i - b.i);
+  // Two helpers tagged conjugated on one verb ("had … moeten zeggen", "zal … zijn"): only the
+  // first is; the second belongs in the verb end.
+  const demoted = new Set<number>();
+  for (const t of [...finite]) {
+    if (t.dep !== "aux" && t.dep !== "cop") continue;
+    if (
+      finite.some(
+        (x) =>
+          x.i < t.i &&
+          x.head === t.head &&
+          (x.dep === "aux" || x.dep === "cop") &&
+          // not across an introducer: "is het eilandje waarop de toren stond … geworden"
+          !words.some((w) => w.i > x.i && w.i < t.i && introduces(w)),
+      )
+    ) {
+      demoted.add(t.i);
+      finite.splice(finite.indexOf(t), 1);
+    }
+  }
   if (!finite.length) return [];
   // The predicate of each conjugated verb: the verb, or the word a helping verb hangs on.
   const predicateOf = (v: AnalyzedToken) =>
@@ -111,7 +131,9 @@ export function sentenceClauses(tokens: readonly AnalyzedToken[], sent: number):
     const h = tokens[m.head];
     if (!h || h.sent !== sent || preds.has(h.i) || h.i === m.i) continue;
     const helped = words.some((x) => x.head === h.i && finite.includes(x));
-    if (!helped) preds.set(h.i, h);
+    // "zo diep als de zee": a noun with no subject of its own is no clause
+    const clauseLike = isVerb(h) || words.some((x) => x.head === h.i && x.dep.startsWith("nsubj"));
+    if (!helped && clauseLike) preds.set(h.i, h);
   }
   // Each word's clause: the nearest predicate above it.
   const owner = new Map<number, number>();
@@ -176,7 +198,9 @@ export function sentenceClauses(tokens: readonly AnalyzedToken[], sent: number):
   // Repair: two conjugated verbs in one clause with an introducer between them ("het eilandje
   // waarop de toren stond"): "introducer … verb" is a clause of its own.
   for (const d of [...drafts]) {
-    const fins = d.own.filter((t) => isVerb(t) && t.morph.includes("VerbForm=Fin"));
+    const fins = d.own.filter(
+      (t) => isVerb(t) && t.morph.includes("VerbForm=Fin") && !demoted.has(t.i),
+    );
     for (const v of fins.slice(1)) {
       const from = d.own.findIndex((t) => t.i > fins[0]!.i && t.i < v.i && introduces(t));
       if (from < 0) continue;
@@ -205,6 +229,19 @@ export function sentenceClauses(tokens: readonly AnalyzedToken[], sent: number):
     if (head && (head.kind === "sub" || head.kind === "rel")) {
       d.kind = head.kind;
       d.parentPred = head.parentPred;
+    }
+  }
+  // "…, en van het slik is niets meer te zien": after en, maar … a clause with its verb second and
+  // words after it is a second main clause, whatever the parse hangs it on.
+  for (const d of drafts) {
+    if (d.kind !== "sub" || d.own[0]?.dep !== "cc") continue;
+    const beforeVerb = d.own.filter((t) => t.i < d.verb.i);
+    const afterVerb = d.own.filter(
+      (t) => t.i > d.verb.i && !isVerb(t) && t.text.toLowerCase() !== "te",
+    );
+    if (beforeVerb.length > 1 && afterVerb.length && !beforeVerb.some(introduces)) {
+      d.kind = "main";
+      d.parentPred = null;
     }
   }
   // Quoted speech ("Ik weet het," zegt hij): the quote sits in the reporting clause's first
@@ -282,7 +319,9 @@ export function sentenceClauses(tokens: readonly AnalyzedToken[], sent: number):
         !reporting &&
         own[0] &&
         (own[0].dep === "cc" || LINKS.has(own[0].text.toLowerCase())) &&
-        own[0].i < d.verb.i
+        own[0].i < d.verb.i &&
+        // "Dus ging ze slapen": dus right before the verb is the first place
+        !(own[0].text.toLowerCase() === "dus" && own[1]?.i === d.verb.i)
           ? 1
           : 0;
       const body = own.slice(lead);
@@ -299,7 +338,10 @@ export function sentenceClauses(tokens: readonly AnalyzedToken[], sent: number):
         // with a copula the predicate stays in the middle ("is bewapend en gevaarlijk")
         !(t.i === d.pred && d.verb.dep === "cop") &&
         !hasArticle(t) &&
-        (!t.morph.includes("VerbForm=Fin") || t.i === d.pred || t.dep === "xcomp");
+        (!t.morph.includes("VerbForm=Fin") ||
+          t.i === d.pred ||
+          t.dep === "xcomp" ||
+          demoted.has(t.i));
       const endWord = (t: AnalyzedToken, next?: AnalyzedToken): boolean =>
         endVerb(t) ||
         t.particle_of !== null ||
