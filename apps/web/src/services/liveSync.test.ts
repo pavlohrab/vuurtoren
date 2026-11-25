@@ -612,7 +612,7 @@ describe("a phone and its computer at home", () => {
         const r = await server.fetch(req.url, {
           method: req.method,
           headers: req.headers,
-          body: req.body ?? null,
+          body: (req.body ?? null) as BodyInit | null,
         });
         return {
           status: r.status,

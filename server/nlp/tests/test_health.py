@@ -13,5 +13,11 @@ def test_health() -> None:
 def test_health_reports_data_presence() -> None:
     body = TestClient(app).get("/health").json()
     assert body["version"]
-    assert set(body["data"]) == {"dictionary", "sentences", "translation", "grammarExamples", "speech"}
+    assert set(body["data"]) == {
+        "dictionary",
+        "sentences",
+        "translation",
+        "grammarExamples",
+        "speech",
+    }
     assert all(isinstance(v, bool) for v in body["data"].values())

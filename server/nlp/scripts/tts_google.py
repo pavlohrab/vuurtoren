@@ -8,11 +8,11 @@ import json
 import shutil
 import subprocess
 import time
-from concurrent.futures import ThreadPoolExecutor
-from threading import Lock
 import urllib.error
 import urllib.request
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+from threading import Lock
 
 from tts_elevenlabs import ROOT, clip_id, manifest
 
@@ -22,8 +22,15 @@ VOICES = {
     "male": ("Achird", "Zubenelgenubi", "Charon", "Puck", "Orus", "Sadaltager"),
 }
 AUDITION = (
-    "de kust", "het huis", "uit", "de deur", "gezellig", "Scheveningen",
-    "de trein", "het geluid", "Ik bel je morgen op.",
+    "de kust",
+    "het huis",
+    "uit",
+    "de deur",
+    "gezellig",
+    "Scheveningen",
+    "de trein",
+    "het geluid",
+    "Ik bel je morgen op.",
     "Rijd je met de trein of ga je op de fiets?",
     "De buurvrouw heeft haar sleutels thuis laten liggen.",
     "Op 21 november vertrekt de trein om kwart over acht.",
@@ -31,7 +38,9 @@ AUDITION = (
 
 
 def stories() -> list[dict]:
-    return json.loads((ROOT / "content/stories/stories.json").read_text(encoding="utf-8"))["stories"]
+    return json.loads((ROOT / "content/stories/stories.json").read_text(encoding="utf-8"))[
+        "stories"
+    ]
 
 
 def clip(kind: str, text: str) -> dict:
@@ -71,17 +80,23 @@ class RequestBudget:
 
 
 def speak(text: str, voice: str, project: str, budget: RequestBudget) -> bytes:
-    body = json.dumps({
-        "input": {"text": text},
-        "voice": {"languageCode": "nl-NL", "name": f"nl-NL-Chirp3-HD-{voice}"},
-        "audioConfig": {"audioEncoding": "MP3"},
-    }).encode()
+    body = json.dumps(
+        {
+            "input": {"text": text},
+            "voice": {"languageCode": "nl-NL", "name": f"nl-NL-Chirp3-HD-{voice}"},
+            "audioConfig": {"audioEncoding": "MP3"},
+        }
+    ).encode()
     for attempt in range(5):
-        request = urllib.request.Request(API, data=body, headers={
-            "Authorization": f"Bearer {budget.authorize()}",
-            "x-goog-user-project": project,
-            "Content-Type": "application/json",
-        })
+        request = urllib.request.Request(
+            API,
+            data=body,
+            headers={
+                "Authorization": f"Bearer {budget.authorize()}",
+                "x-goog-user-project": project,
+                "Content-Type": "application/json",
+            },
+        )
         try:
             with urllib.request.urlopen(request, timeout=60) as response:  # noqa: S310
                 audio = base64.b64decode(json.load(response)["audioContent"], validate=True)
@@ -105,7 +120,9 @@ def main() -> None:
     parser.add_argument("--project", help="Billing-enabled Google Cloud project ID")
     parser.add_argument("--voice", nargs=2, metavar=("FEMALE", "MALE"))
     parser.add_argument(
-        "--audition-voices", nargs="+", choices=[v for group in VOICES.values() for v in group],
+        "--audition-voices",
+        nargs="+",
+        choices=[v for group in VOICES.values() for v in group],
         help="Generate only these voices in audition mode",
     )
     parser.add_argument("--story", help="Bundled story slug for story mode")
@@ -127,7 +144,9 @@ def main() -> None:
         selected = args.audition_voices or [v for group in VOICES.values() for v in group]
         voices = [(voice, voice) for voice in dict.fromkeys(selected)]
     else:
-        if not args.voice or any(v not in VOICES[g] for g, v in zip(VOICES, args.voice, strict=True)):
+        if not args.voice or any(
+            v not in VOICES[g] for g, v in zip(VOICES, args.voice, strict=True)
+        ):
             female, male = (",".join(group) for group in VOICES.values())
             parser.error(f"select --voice {{{female}}} {{{male}}}")
         voices = list(zip(VOICES, args.voice, strict=True))
@@ -156,10 +175,7 @@ def main() -> None:
             clips = paragraphs(story)
 
     if args.mode == "audition":
-        clips = [
-            {**c, "id": f"{index:02d}-{c['id']}"}
-            for index, c in enumerate(clips, 1)
-        ]
+        clips = [{**c, "id": f"{index:02d}-{c['id']}"} for index, c in enumerate(clips, 1)]
 
     out = args.out.expanduser()
     jobs = [
@@ -168,7 +184,9 @@ def main() -> None:
         for c in clips
     ]
     pending = [(p, t, v) for p, t, v in jobs if not p.exists() or not p.stat().st_size]
-    print(f"{len(pending):,} new clips, {sum(len(t) for _, t, _ in pending):,} characters", flush=True)
+    print(
+        f"{len(pending):,} new clips, {sum(len(t) for _, t, _ in pending):,} characters", flush=True
+    )
     if args.dry_run:
         return
     if args.mode == "stories":

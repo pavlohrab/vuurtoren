@@ -160,7 +160,13 @@ def test_health_and_admin_report_packs(env: dict[str, Path]) -> None:
 
 def test_shipped_manifest_lists_the_downloadable_packs() -> None:
     manifest = json.loads((Path(packs.__file__).with_name("packs.json")).read_text())
-    assert set(manifest["packs"]) == {"dictionary-nl", "sentences-nl", "mt-nl-en", "audio-nl", "tts-nl"}
+    assert set(manifest["packs"]) == {
+        "dictionary-nl",
+        "sentences-nl",
+        "mt-nl-en",
+        "audio-nl",
+        "tts-nl",
+    }
     assert set(manifest["packs"]) | {"grammar-examples-nl"} == set(packs.SPECS)
 
 

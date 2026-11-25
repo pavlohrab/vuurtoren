@@ -15,8 +15,8 @@ them:
 
 1. ``$VUURTOREN_PACKS_DIR``: a directory of pack archives (the "all-in" image and the desktop
    sidecar bundle them; works offline);
-2. ``$VUURTOREN_PACKS_URL``: ``<url>/<name>-<version>.tar.gz`` (the data host, data.vuurtoren.app, or any static
-   host; ``$VUURTOREN_PACKS_TOKEN`` is sent as a bearer token when set);
+2. ``$VUURTOREN_PACKS_URL``: ``<url>/<name>-<version>.tar.gz`` (the data host, data.vuurtoren.app,
+   or any static host; ``$VUURTOREN_PACKS_TOKEN`` is sent as a bearer token when set);
 3. a local build with ``scripts/`` (downloads the pinned upstream sources: Kaikki, Tatoeba,
    OPUS-MT; ~10 minutes). Only in ``VUURTOREN_PACKS=auto`` mode.
 
