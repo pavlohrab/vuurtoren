@@ -302,12 +302,17 @@ const checkPassphrase = (p: string): string => {
   return t;
 };
 
-/** A new vault: a random data key, locked by the passphrase and by a new recovery key. */
+/**
+ * A new vault: a random data key, locked by the passphrase and by a new recovery key. Without a
+ * passphrase (`null`: a computer starting sync for its own phone, SY1) only the recovery key
+ * locks it; the computer hands the key itself to the paired phone, and a passphrase can be added
+ * later with `changePassphrase` (needed for WebDAV or a server).
+ */
 export async function createVault(
-  passphrase: string,
+  passphrase: string | null,
   cost: Argon2Cost = ARGON2_COST,
 ): Promise<{ vault: VaultFile; key: SyncKey; recoveryKey: string }> {
-  const tidied = checkPassphrase(passphrase);
+  const tidied = passphrase === null ? null : checkPassphrase(passphrase);
   const key = await keyFromRaw(random(64));
   const recovery = random(20);
   return {
@@ -316,7 +321,7 @@ export async function createVault(
       id: toBase64(random(16)),
       check: toBase64(await seal(key, new TextEncoder().encode(CHECK))),
       locks: [
-        await makeLock("passphrase", tidied, key, cost),
+        ...(tidied === null ? [] : [await makeLock("passphrase", tidied, key, cost)]),
         await makeLock("recovery", recovery, key, cost),
       ],
     },
