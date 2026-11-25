@@ -96,7 +96,7 @@ export interface LiveSettingsDeps {
 }
 
 /** What a phone's language-server calls fail with before it is connected to a server. */
-export const NO_LANGUAGE_SERVER = "no language server on this phone";
+const NO_LANGUAGE_SERVER = "no language server on this phone";
 
 /**
  * `fetch` that sends `token` as a bearer token to `base` and its paths only (the sync token

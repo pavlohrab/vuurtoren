@@ -201,7 +201,7 @@ export interface DesktopSync {
 }
 
 /** "Connect a phone" on a computer (lan_cmd.rs). */
-export interface LanBridge {
+interface LanBridge {
   /**
    * Start listening for phones (once); where it listens and the certificate's fingerprint.
    * `folder`: serve the computer's own sync folder instead of the app's (kept for next time).

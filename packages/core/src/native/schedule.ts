@@ -39,7 +39,7 @@ const minutes = (m: number): `${number}m` => `${Math.max(1, Math.round(m))}m`;
  * current step on a later one (`rslib/src/scheduler/states/steps.rs`, `hard_delay_secs`). With
  * the default 1m and 10m, Hard on the 10-minute step waits 10 minutes, not 5.5.
  */
-export const ankiLearningSteps: LearningStepsResolver = (config, state, step) => {
+const ankiLearningSteps: LearningStepsResolver = (config, state, step) => {
   const result = calculateLearningSteps(config, state, step);
   const steps = state === State.Relearning ? config.relearningSteps : config.learningSteps;
   const current = steps[step];

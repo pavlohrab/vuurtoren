@@ -8,7 +8,7 @@
 import { currentDevice } from "./platform/index.js";
 import { APP_VERSION, APP_STORE } from "./version.js";
 
-export const LATEST_RELEASE = "https://api.github.com/repos/pavlohrab/Vuurtoren/releases/latest";
+const LATEST_RELEASE = "https://api.github.com/repos/pavlohrab/Vuurtoren/releases/latest";
 export const RELEASES_PAGE = "https://github.com/pavlohrab/Vuurtoren/releases/latest";
 
 const KEY = "vuurtoren-updates";

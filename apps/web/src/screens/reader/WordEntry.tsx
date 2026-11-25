@@ -29,7 +29,7 @@ const asList = (v: unknown): string[] =>
   Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
 
 /** The forms to show: a short table, and the rest under "All forms". */
-export function formRows(entry: Entry): { short: Row[]; more: Row[] } {
+function formRows(entry: Entry): { short: Row[]; more: Row[] } {
   const f = entry.forms ?? {};
   if (entry.pos === "verb") {
     const present = (f["present"] ?? {}) as Record<string, string>;
@@ -82,7 +82,7 @@ function related(entry: Entry): { same: string[]; opposite: string[] } {
 }
 
 /** The entry of the word's part of speech, else its first. */
-export function entryFor(result: EntryResult | null | undefined, pos: string): Entry | null {
+function entryFor(result: EntryResult | null | undefined, pos: string): Entry | null {
   if (!result?.entries.length) return null;
   const want = KAIKKI_POS[pos];
   return result.entries.find((e) => e.pos === want) ?? result.entries[0] ?? null;

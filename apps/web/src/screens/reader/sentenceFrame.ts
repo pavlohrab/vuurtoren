@@ -12,7 +12,7 @@ import type { AnalyzedToken } from "@app/core";
 
 export type Field = "first" | "verb" | "middle" | "end" | "rest";
 
-export interface FramePart {
+interface FramePart {
   field: Field;
   /** Token indices (into the text's tokens), in order. */
   tokens: number[];
