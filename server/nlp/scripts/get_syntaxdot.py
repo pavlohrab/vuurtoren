@@ -4,7 +4,8 @@
 
 Downloads the CPU binary (v0.5.0, with its libtorch) and the distilled Dutch model
 (nl-l6-h384-20210728) into ``target`` (default: ``<data dir>/syntaxdot``, see
-vuurtoren_nlp.syntax), as ``bin/`` and ``nl/``. About 850 MB unpacked; Linux x86_64 only.
+vuurtoren_nlp.syntax), as ``bin/`` and ``nl/``. About 850 MB unpacked. SyntaxDot is built for
+Linux on x86_64 only (no Windows, macOS or ARM): elsewhere the server keeps spaCy's parse.
 Needs ``zstd`` on the PATH for the binary's archive.
 """
 
@@ -18,9 +19,6 @@ import tempfile
 import urllib.request
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
-from vuurtoren_nlp.syntax import syntaxdot_target  # noqa: E402
-
 BINARY = (
     "https://github.com/tensordot/syntaxdot/releases/download/v0.5.0/"
     "syntaxdot-v0.5.0-cpu-x86_64-linux-gnu-gcc.tar.zst"
@@ -32,7 +30,13 @@ MODEL = (
 
 
 def main() -> None:
-    target = Path(sys.argv[1]).expanduser() if len(sys.argv) > 1 else syntaxdot_target()
+    if len(sys.argv) > 1:
+        target = Path(sys.argv[1]).expanduser()
+    else:
+        sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+        from vuurtoren_nlp.syntax import syntaxdot_target
+
+        target = syntaxdot_target()
     target.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory() as tmp:
         t = Path(tmp)

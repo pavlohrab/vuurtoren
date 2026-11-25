@@ -55,6 +55,17 @@ COPY scripts ./scripts
 RUN extra=""; [ "$OCR" = 1 ] && extra="--extra ocr --extra speech"; \
     uv sync --locked --no-dev $extra && find /opt/venv /app -depth -name __pycache__ -exec rm -rf {} +
 
+# ---- Stage 1b: SyntaxDot (the sentence structure's parser; Linux x86_64 only) -----------
+# The binary with its libtorch and the Dutch model, ~850 MB (scripts/get_syntaxdot.py). On ARM
+# the folder stays empty and the server keeps spaCy's parse (GET /health: data.syntaxdot).
+FROM python:3.12.16-slim AS syntaxdot
+ARG TARGETARCH
+RUN apt-get update && apt-get install -y --no-install-recommends zstd ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+COPY scripts/get_syntaxdot.py /tmp/get_syntaxdot.py
+RUN mkdir -p /opt/syntaxdot && if [ "${TARGETARCH:-amd64}" = amd64 ]; then \
+    python /tmp/get_syntaxdot.py /opt/syntaxdot; fi
+
 # ---- Stage 2: runtime ------------------------------------------------------------------
 FROM python:3.12.16-slim AS runtime
 
@@ -66,12 +77,14 @@ ENV PATH="/opt/venv/bin:$PATH" \
     PYTHONUNBUFFERED=1 \
     PYTHONPYCACHEPREFIX=/cache/pycache \
     VUURTOREN_DATA_DIR=/data \
-    VUURTOREN_PACKS=auto
+    VUURTOREN_PACKS=auto \
+    VUURTOREN_SYNTAXDOT_DIR=/opt/syntaxdot
 
 WORKDIR /app
 # The project is installed in editable mode, so /app (src, scripts) must sit next to /opt/venv.
 COPY --from=venv /opt/venv /opt/venv
 COPY --from=venv /app /app
+COPY --from=syntaxdot /opt/syntaxdot /opt/syntaxdot
 
 # /data is the data-pack volume: owned by the service user so a fresh named volume inherits it.
 RUN useradd --system --uid 10001 vuurtoren \

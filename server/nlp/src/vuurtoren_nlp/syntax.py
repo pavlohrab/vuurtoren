@@ -16,13 +16,20 @@ call starts the binary (about a second to load, then ~0.75 s per 1,000 words on 
 from __future__ import annotations
 
 import os
+import platform
 import subprocess
+import sys
 from pathlib import Path
 
 from spacy.tokens import Doc
 
 from vuurtoren_nlp.datadir import data_dir
 from vuurtoren_nlp.models import SyntaxParse, TextAnalysis
+
+
+def supported() -> bool:
+    """SyntaxDot is built for Linux on x86_64 only; elsewhere spaCy's parse is used."""
+    return sys.platform.startswith("linux") and platform.machine().lower() in ("x86_64", "amd64")
 
 
 def syntaxdot_target() -> Path:

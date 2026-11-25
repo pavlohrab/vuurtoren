@@ -141,7 +141,7 @@ export function ServerStatus({ nlpUrl }: { nlpUrl: string }) {
       });
     } else if (lang.data) {
       const missing = Object.entries(lang.data.data ?? {})
-        .filter(([, present]) => !present)
+        .filter(([k, present]) => !present && k !== "syntaxdot")
         .map(([k]) => DATA_NAMES[k] ?? k);
       const busy = lang.data.packs?.busy === true;
       const failed = Object.entries(lang.data.packs?.items ?? {}).filter(([, p]) =>
@@ -158,6 +158,13 @@ export function ServerStatus({ nlpUrl }: { nlpUrl: string }) {
           lang.data.analyzerVersion ? ` · analyzer ${lang.data.analyzerVersion}` : ""
         }`,
       });
+      // The sentence structure's parser: SyntaxDot where it runs (Linux), else spaCy's parse.
+      if (lang.data.data && "syntaxdot" in lang.data.data)
+        rows.push({
+          label: "Sentence structure",
+          tone: "ok",
+          value: lang.data.data.syntaxdot ? "SyntaxDot" : "spaCy (SyntaxDot runs only on Linux)",
+        });
     }
   }
 

@@ -17,6 +17,17 @@ dictionary, the example sentences, the translation model, the recordings and a D
 computers that don't have one. If that computer has no internet, take the installer whose name
 starts with `Vuurtoren_offline_` instead, because it has all of this inside.
 
+On a computer the app works out how each sentence is built with spaCy. A Vuurtoren server does it
+better, with SyntaxDot. On Linux you can add SyntaxDot to the app yourself (about 850 MB), and the
+app uses it from its next start:
+
+```sh
+d=~/.local/share/app.vuurtoren.desktop/nlp-data/syntaxdot && mkdir -p "$d" && cd "$d"
+curl -L https://github.com/tensordot/syntaxdot/releases/download/v0.5.0/syntaxdot-v0.5.0-cpu-x86_64-linux-gnu-gcc.tar.zst | tar --zstd -x
+curl -L https://github.com/tensordot/syntaxdot-models/releases/download/nl-l6-h384-20210728/nl-l6-h384-20210728.tar.gz | tar -xz
+mv syntaxdot-v0.5.0-cpu-x86_64-linux-gnu-gcc bin && mv nl-l6-h384-20210728 nl
+```
+
 ## On your phone
 
 Vuurtoren works on Android. Download `Vuurtoren-android.apk` from the

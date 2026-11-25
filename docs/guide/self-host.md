@@ -30,6 +30,11 @@ You need a computer that stays on, like a NAS, a mini PC or a small cloud server
 it. It also needs HTTPS in front of it, because phones only connect over HTTPS. The simplest way is
 a Cloudflare Tunnel, but any reverse proxy with a certificate works too.
 
+The server image is about 1 GB bigger than the app alone, because it includes SyntaxDot, which
+works out how each sentence is built for the Sentence tab. SyntaxDot only runs on Linux with an
+Intel or AMD processor. On an ARM server, like a Raspberry Pi, the server uses spaCy for this
+instead, which makes more mistakes.
+
 ## Start it
 
 1. Get `deploy/compose.yml` and `deploy/.env.example` from the repository.
