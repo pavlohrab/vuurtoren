@@ -5,7 +5,15 @@ import type { EntryResult } from "@app/nlp-client";
 import { describe, expect, it } from "vitest";
 import { ServicesProvider } from "../../services/context.js";
 import { createMockServices } from "../../services/mock.js";
-import { WordEntry } from "./WordEntry.js";
+import type { InspectorEntry } from "@app/core";
+import {
+  CardExtra,
+  CardForms,
+  CardMeaning,
+  CardRelated,
+  FullEntry,
+  useWordEntry,
+} from "./WordEntry.js";
 
 const OPENDOEN: EntryResult = {
   word: "opendoen",
@@ -27,32 +35,55 @@ const OPENDOEN: EntryResult = {
   ],
 };
 
+/** The card's dictionary parts, put together as the reader does. */
+function Parts({ lemma, pos, surface }: { lemma: string; pos: string; surface: string }) {
+  const entry = useWordEntry(lemma, pos);
+  if (!entry) return null;
+  return (
+    <>
+      <CardForms entry={entry} surface={surface} />
+      <CardRelated entry={entry} />
+      <CardExtra lemma={lemma} entry={entry} full={false} onFull={() => {}} />
+    </>
+  );
+}
+
 function show(result: EntryResult | null, lemma: string, pos: string, surface: string) {
   const services = { ...createMockServices({ latencyMs: 0 }), wordEntry: async () => result };
   render(
     <ServicesProvider services={services}>
       <QueryClientProvider client={new QueryClient()}>
-        <WordEntry lemma={lemma} pos={pos} surface={surface} />
+        <Parts lemma={lemma} pos={pos} surface={surface} />
       </QueryClientProvider>
     </ServicesProvider>,
   );
 }
 
+const word = (over: Partial<InspectorEntry>): InspectorEntry =>
+  ({ surface: "even", lemma: "even", glosses: [], ...over }) as InspectorEntry;
+
 describe("WordEntry", () => {
   it("a separable verb: the short forms table, its base verb and a word with the same meaning", async () => {
     show(OPENDOEN, "opendoen", "VERB", "doet");
-    expect(await screen.findByText("Forms")).toBeVisible();
-    expect(screen.getByText("doe open")).toBeVisible();
+    expect(await screen.findByText("doe open")).toBeVisible();
     expect(screen.getByText("opengedaan")).toBeVisible();
     expect(screen.getByText("doen")).toBeVisible();
     expect(screen.getByText("openen")).toBeVisible();
     expect(screen.getByText("about A2")).toBeVisible();
-    // The page's own form is marked.
-    expect(screen.getByText("doet open")).toHaveAttribute("data-here");
+    // The page's own form is marked; a tapped form says what it is.
+    expect(screen.getByText("doet open").closest("tr")).toHaveAttribute("data-here");
+    await userEvent.click(screen.getByRole("button", { name: "deed open" }));
+    expect(screen.getByRole("status")).toHaveTextContent("deed open · past, ik/hij/zij");
     // No opposite in the data: no Opposite row.
     expect(screen.queryByText("Opposite")).toBeNull();
     await userEvent.click(screen.getByRole("button", { name: "All forms" }));
     expect(screen.getByText("doen open")).toBeVisible();
+    // The order of all forms; a separable verb joins up in a subordinate clause.
+    expect(screen.getByText("… opendoet")).toBeVisible();
+    expect(screen.getByRole("link", { name: "Van Dale ↗" })).toHaveAttribute(
+      "href",
+      "https://www.vandale.nl/gratis-woordenboek/nederlands/betekenis/opendoen",
+    );
   });
 
   it("a noun shows its plural and small form; nothing else is there", async () => {
@@ -80,7 +111,7 @@ describe("WordEntry", () => {
   it("shows nothing when the dictionary has nothing", async () => {
     show(null, "wegmoeten", "VERB", "moet");
     await new Promise((r) => setTimeout(r, 20));
-    expect(screen.queryByText("Forms")).toBeNull();
+    expect(screen.queryByRole("table")).toBeNull();
   });
 
   it("the perfect with its helper when it is known (is gegaan)", async () => {
@@ -102,5 +133,39 @@ describe("WordEntry", () => {
     );
     expect(await screen.findByText("is gegaan")).toBeVisible();
     expect(screen.getByText("perfect")).toBeVisible();
+  });
+
+  it("the full entry: what the card leaves out, the sentence's meaning first and marked", () => {
+    const entry = {
+      ...OPENDOEN.entries[0]!,
+      extras: {
+        senses: [
+          { gloss: "to answer the door" },
+          { gloss: "to open", examples: [{ nl: "Doe het raam open.", en: "Open the window." }] },
+          { gloss: "an old meaning", mark: "old" as const },
+        ],
+      },
+    };
+    render(<FullEntry entry={entry} word={word({ surface: "doet", glosses: ["to open"] })} />);
+    expect(screen.getByText("verb · separable · about A2")).toBeVisible();
+    const items = screen.getAllByRole("listitem");
+    expect(items[0]).toHaveTextContent("to open");
+    expect(items[0]).toHaveTextContent("in your sentence");
+    expect(items[0]).toHaveTextContent("Open the window.");
+    expect(items[2]).toHaveTextContent("old");
+  });
+
+  it("the meaning: one line, or Here and Dictionary when they differ", () => {
+    const { rerender } = render(<CardMeaning word={word({ glosses: ["to open"] })} />);
+    expect(screen.queryByText("Here")).toBeNull();
+    expect(screen.getByText("to open")).toBeVisible();
+    rerender(
+      <CardMeaning
+        word={word({ glosses: ["equal, even; just"], sentenceGloss: "for a moment" })}
+      />,
+    );
+    expect(screen.getByText("Here")).toBeVisible();
+    expect(screen.getByText("for a moment")).toBeVisible();
+    expect(screen.getByText("equal, even; just")).toBeVisible();
   });
 });

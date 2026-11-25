@@ -648,85 +648,240 @@
 }
 
 /* "Grammar of this word" in the inspector: quiet lines with a hairline above. */
-/* The word card's forms and related words (WordEntry.tsx): a small table, then short lines. */
-.word-entry {
-  display: grid;
-  gap: 8px;
-  padding-block: 4px 10px;
-  border-bottom: 1px solid var(--hairline);
+/* The word card as the mock (F2, WordEntry.tsx): the forms beside the head, the meaning, the
+   related words as chips, the actions, a quiet line; the full entry under it. */
+.k-card-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px 16px;
 }
-.word-entry-forms dl {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 2px 14px;
-  margin: 4px 0 0;
+.k-card-top > header {
+  flex: 1 1 140px;
+  min-width: 0;
+}
+.k-card-note {
+  margin: 2px 0 0;
+  font-size: 13px;
+  color: var(--ink-muted);
+}
+.card-forms {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+.card-forms table {
+  border-collapse: collapse;
   font-size: 14px;
 }
-.word-entry-forms dl > div {
-  display: contents;
+.card-forms tr:nth-child(even) {
+  background: var(--accent-soft);
 }
-.word-entry-forms dt {
+.card-forms th {
+  padding: 3px 12px 3px 8px;
+  text-align: left;
+  font-weight: 400;
   color: var(--ink-muted);
+  white-space: nowrap;
 }
-.word-entry-forms dd {
-  margin: 0;
-  font-family: var(--font-reading);
+.card-forms td {
+  padding: 3px 8px 3px 0;
 }
-.word-entry-forms dd[data-here] {
-  font-weight: 600;
-}
-.word-entry-all {
-  margin-top: 4px;
-  font-size: 13px;
-  background: none;
-  border: 0;
-  padding: 0;
-  cursor: pointer;
-}
-.word-entry-word {
+.card-forms td button {
   padding: 0;
   border: 0;
   background: none;
-  color: var(--accent);
   font: inherit;
+  font-family: var(--font-reading);
+  color: var(--ink);
+  text-align: left;
   cursor: pointer;
 }
-.word-entry-word:hover {
+.card-forms td button:hover {
   text-decoration: underline;
 }
-.word-entry-full {
-  justify-self: end;
-  padding: 0;
-  border: 0;
-  background: none;
+.card-forms tr[data-here] td button {
+  font-weight: 600;
+}
+.card-forms tr[data-tapped] {
+  outline: 1px solid var(--accent);
+  outline-offset: -1px;
+}
+.card-forms-said {
+  margin: 4px 0 0;
   font-size: 13px;
-  cursor: pointer;
-}
-.word-entry-senses {
-  display: grid;
-  gap: 8px;
-  margin: 0;
-  padding-left: 20px;
-  font-size: 14.5px;
-}
-.word-entry-example {
-  display: block;
   color: var(--ink-muted);
-  font-size: 13.5px;
 }
-.word-entry-example [lang="nl"] {
+.card-forms-said [lang="nl"] {
   font-family: var(--font-reading);
   color: var(--ink);
 }
-.word-entry[data-wide] .word-entry-forms dl {
-  grid-template-columns: repeat(2, auto 1fr);
+.card-forms-all {
+  margin-top: 4px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: 13px;
+  cursor: pointer;
 }
-.word-entry-line {
+.card-meaning {
+  margin: 8px 0 0;
+  font-size: 15px;
+}
+.card-meaning-none {
+  color: var(--ink-muted);
+}
+dl.card-meaning,
+.card-related {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 6px 12px;
+  align-items: baseline;
+}
+dl.card-meaning > div,
+.card-related > div {
+  display: contents;
+}
+dl.card-meaning dt,
+.card-related dt {
+  font-size: 13px;
+  color: var(--ink-muted);
+}
+dl.card-meaning dd,
+.card-related dd {
   margin: 0;
+}
+.card-related {
+  margin: 10px 0 2px;
+}
+.card-related dd {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.card-chip {
+  padding: 2px 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--accent);
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.5;
+  cursor: pointer;
+}
+.card-chip:hover {
+  border-color: var(--accent);
+}
+.card-chip[data-plain] {
+  color: var(--ink);
+  cursor: default;
+}
+.card-more {
+  align-self: center;
+  font-size: 13px;
+  color: var(--ink-muted);
+}
+.card-extra {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 14px;
+  margin-top: 10px;
+  font-size: 13.5px;
+}
+.card-extra button {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  cursor: pointer;
+}
+.card-extra-summary,
+.card-extra-level {
+  color: var(--ink-muted);
+}
+.k-card-quiet {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  margin: var(--s-4) 0 0;
+  font-size: 13px;
+  color: var(--ink-muted);
+}
+.sentence-panel-text {
+  margin-bottom: var(--s-3);
+}
+.sentence-panel-text p {
+  margin: 0;
+}
+.sentence-panel-text [lang="nl"] {
+  font-family: var(--font-reading);
+  font-size: 16px;
+}
+.sentence-panel-text [lang="en"] {
+  color: var(--ink-muted);
   font-size: 14px;
 }
-.word-entry-line .k-overline {
-  margin-right: 6px;
+.full-entry {
+  display: grid;
+  gap: 14px;
+  margin-top: var(--s-3);
+  padding-top: var(--s-3);
+  border-top: 1px solid var(--hairline);
+}
+.full-entry-facts {
+  margin: 0;
+  font-size: 13.5px;
+  color: var(--ink-muted);
+}
+.full-entry-senses {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding-left: 22px;
+  font-size: 15px;
+}
+.full-entry-here,
+.full-entry-mark {
+  margin-left: 8px;
+  padding: 0 6px;
+  border-radius: 6px;
+  font-size: 12px;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.full-entry-senses li[data-mark] {
+  color: var(--ink-muted);
+}
+.full-entry-example {
+  display: block;
+  margin-top: 2px;
+  font-size: 14px;
+}
+.full-entry-example [lang="nl"] {
+  display: block;
+  font-family: var(--font-reading);
+}
+.full-entry-en {
+  display: block;
+  color: var(--ink-muted);
+}
+/* The phone's peek: the word, the meaning, two forms and the buttons; the rest when it's pulled
+   up (the peek's height is measured from what is in it, so these are left out, not faded). */
+@media (max-width: 899px) {
+  .inspector-panel[data-sheet="peek"] .k-inspector[data-layout="card"] .k-inspector-tabs,
+  .inspector-panel[data-sheet="peek"] .k-inspector[data-layout="card"] .k-card-related,
+  .inspector-panel[data-sheet="peek"] .k-inspector[data-layout="card"] .card-extra,
+  .inspector-panel[data-sheet="peek"] .card-forms tr:nth-child(n + 3),
+  .inspector-panel[data-sheet="peek"] .card-forms-all,
+  .inspector-panel[data-sheet="peek"] .card-forms-said {
+    display: none;
+  }
+}
+.k-inspector[data-layout="card"] .k-inspector-tabs {
+  margin: 0 0 var(--s-3);
 }
 .word-grammar {
   margin-top: var(--s-4);
@@ -981,4 +1136,10 @@
   gap: 6px;
   font-size: 13px;
   color: var(--ink-muted);
+}
+/* The card keeps the mock's order: the buttons right after the related words, Full entry and
+   the rest after them (the old layout put the buttons last). */
+.k-inspector[data-layout="card"] .k-inspector-quick {
+  order: 0;
+  margin-top: var(--s-3);
 }

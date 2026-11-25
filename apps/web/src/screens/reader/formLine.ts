@@ -1,6 +1,6 @@
 /**
  * The line under the card's head (RD2): the word as the page has it, and what kind of form it is,
- * in plain words. The head is the dictionary word (moeten); this line says "moet · now,
+ * in plain words. The head is the dictionary word (moeten); this line says "moet · present,
  * hij/zij/het". A split verb shows both parts ("doet … open"). Worked out from the token's
  * morphology and its subject, no new data.
  */
@@ -9,7 +9,7 @@ import type { AnalyzedToken } from "@app/core";
 export interface FormLine {
   /** The word as the page has it: "moet", "doet … open". */
   said: string;
-  /** What kind of form: "now, hij/zij/het", "plural". Missing when there is nothing to say. */
+  /** What kind of form: "present, hij/zij/het", "plural". Missing when there is nothing to say. */
   what?: string;
 }
 
@@ -64,7 +64,7 @@ function verbForm(tokens: readonly AnalyzedToken[], t: AnalyzedToken): string | 
   if (form === "Part") return "past participle";
   if (form !== "Fin") return undefined;
   if (isCommand(tokens, t)) return "command";
-  const tense = feat(t.morph, "Tense") === "Past" ? "past" : "now";
+  const tense = feat(t.morph, "Tense") === "Past" ? "past" : "present";
   return `${tense}, ${who(tokens, t)}`;
 }
 

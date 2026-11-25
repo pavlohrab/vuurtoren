@@ -19,10 +19,13 @@ const pct = (v: number | null) => (v === null ? "not scored" : `${(v * 100).toFi
  */
 export function SentencePanel({
   sentence,
+  translation,
   grammar,
   frame,
 }: {
   sentence: string | null | undefined;
+  /** The sentence's English, shown with it (F2: the tab has it too, not only the card). */
+  translation?: string | null | undefined;
   /** Grammar detected in the sentence: listed, and sent along as context. */
   grammar?: ExplainGrammar[];
   /** The sentence part by part (the reader's SentenceFrameView), shown first. */
@@ -32,6 +35,10 @@ export function SentencePanel({
   // Keyed by sentence so a new selection starts clean.
   return (
     <>
+      <div className="sentence-panel-text">
+        <p lang="nl">{sentence}</p>
+        {translation ? <p lang="en">{translation}</p> : null}
+      </div>
       {frame}
       <SentenceChat key={sentence} sentence={sentence} grammar={grammar ?? []} />
     </>

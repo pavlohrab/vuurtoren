@@ -41,6 +41,12 @@ export interface WordInspectorProps {
    * the page's word.
    */
   form?: { said: string; what?: string } | null | undefined;
+  /**
+   * The reader's word card as the mock (F2): with it, the tabs sit on top, the forms beside the
+   * head, the meaning lines and related words before the actions, and the word's state and decks
+   * become one quiet line at the bottom. Other screens leave it out and keep their layout.
+   */
+  card?: CardSlots | undefined;
   /** More about the word under its details (the reader's grammar of this word). */
   wordExtra?: ReactNode;
   /**
@@ -48,6 +54,20 @@ export interface WordInspectorProps {
    * have two tabs, Word and Sentence.
    */
   sentencePanel?: ReactNode;
+}
+
+/** The parts of the reader's word card (apps/web `WordEntry.tsx`). */
+export interface CardSlots {
+  /** The forms table, beside the head (under it on a phone). */
+  forms?: ReactNode;
+  /** One line under the head: "doet … open is one verb". */
+  note?: ReactNode;
+  /** The meaning line(s), in place of the short meaning and the meaning list. */
+  meaning?: ReactNode;
+  /** Related words, before the actions (not in the phone's peek). */
+  related?: ReactNode;
+  /** After the main buttons: Full entry, the level, Van Dale. */
+  extra?: ReactNode;
 }
 
 /** Destination deck of Add to Anki with the picker's options. */
@@ -94,6 +114,7 @@ export function WordInspector({
   headerAction,
   backTo,
   form,
+  card,
   wordExtra,
   sentencePanel,
 }: WordInspectorProps) {
@@ -134,39 +155,94 @@ export function WordInspector({
     addDeck,
   });
 
+  const tabs = sentencePanel ? (
+    <div className="k-inspector-tabs" role="tablist" aria-label="Details">
+      <button
+        type="button"
+        role="tab"
+        id="k-tab-word"
+        aria-selected={tab === "word"}
+        aria-controls="k-panel-word"
+        onClick={() => setTab("word")}
+      >
+        Word
+      </button>
+      <button
+        type="button"
+        role="tab"
+        id="k-tab-sentence"
+        aria-selected={tab === "sentence"}
+        aria-controls="k-panel-sentence"
+        onClick={() => setTab("sentence")}
+      >
+        Sentence
+      </button>
+    </div>
+  ) : null;
+
+  // The reader's card on its Sentence tab: the tabs and the sentence, nothing of the word.
+  if (card && sentencePanel && tab === "sentence") {
+    return (
+      <div className="k-inspector" data-layout="card" aria-label="Sentence details">
+        <div className="k-inspector-peek">{tabs}</div>
+        <div
+          className="k-inspector-more"
+          role="tabpanel"
+          id="k-panel-sentence"
+          aria-labelledby="k-tab-sentence"
+        >
+          {sentencePanel}
+        </div>
+      </div>
+    );
+  }
+
   // Two parts: the peek (the word, its short meaning, play, the two main buttons) and the
   // details. Below 900px the bottom sheet opens showing only the peek (useBottomSheet.ts); the
   // side panel lays both out as one column in the order it always had (styles.css).
   return (
-    <div className="k-inspector" aria-label="Word details">
+    <div
+      className="k-inspector"
+      aria-label="Word details"
+      {...(card ? { "data-layout": "card" } : {})}
+    >
       <div className="k-inspector-peek">
         {backTo ? (
           <button type="button" className="k-inspector-back" onClick={backTo.onBack}>
             ← <span lang="nl">{backTo.label}</span>
           </button>
         ) : null}
-        <header>
-          <div className="k-inspector-head">
-            <h2 className="k-inspector-surface" lang="nl">
-              {entry.article ? (
-                <>
-                  <span style={{ color: "var(--ink-muted)" }}>{entry.article}</span>{" "}
-                </>
-              ) : null}
-              {lemmaHead ? entry.lemma : entry.surface}
-            </h2>
-            {headerAction}
-          </div>
-          {lemmaHead ? (
-            <div className="k-inspector-lemma">
-              <span lang="nl">{form?.said ?? entry.surface}</span>
-              {form?.what ? ` · ${form.what}` : null}
+        {card && tabs}
+        <div className={card ? "k-card-top" : undefined}>
+          <header>
+            <div className="k-inspector-head">
+              <h2 className="k-inspector-surface" lang="nl">
+                {entry.article ? (
+                  <>
+                    <span style={{ color: "var(--ink-muted)" }}>{entry.article}</span>{" "}
+                  </>
+                ) : null}
+                {lemmaHead ? entry.lemma : entry.surface}
+              </h2>
+              {headerAction}
             </div>
-          ) : null}
-        </header>
-        {/* The short meaning, drawn from its attribute (styles.css): the full list below is
-            what screen readers and searches find, so the word is not said twice. */}
-        <p className="k-inspector-short" data-short={short ?? "No meaning yet"} aria-hidden />
+            {lemmaHead ? (
+              <div className="k-inspector-lemma">
+                <span lang="nl">{form?.said ?? entry.surface}</span>
+                {form?.what ? ` · ${form.what}` : null}
+              </div>
+            ) : null}
+            {card?.note}
+          </header>
+          {card?.forms}
+        </div>
+        {card ? (
+          card.meaning
+        ) : (
+          /* The short meaning, drawn from its attribute (styles.css): the full list below is
+             what screen readers and searches find, so the word is not said twice. */
+          <p className="k-inspector-short" data-short={short ?? "No meaning yet"} aria-hidden />
+        )}
         {s ? (
           <div className="k-inspector-context">
             <p className="k-inspector-sentence" lang="nl">
@@ -181,33 +257,12 @@ export function WordInspector({
             ) : null}
           </div>
         ) : null}
+        {card?.related ? <div className="k-card-related">{card.related}</div> : null}
         {actions.quick}
+        {card?.extra}
       </div>
 
-      {sentencePanel ? (
-        <div className="k-inspector-tabs" role="tablist" aria-label="Details">
-          <button
-            type="button"
-            role="tab"
-            id="k-tab-word"
-            aria-selected={tab === "word"}
-            aria-controls="k-panel-word"
-            onClick={() => setTab("word")}
-          >
-            Word
-          </button>
-          <button
-            type="button"
-            role="tab"
-            id="k-tab-sentence"
-            aria-selected={tab === "sentence"}
-            aria-controls="k-panel-sentence"
-            onClick={() => setTab("sentence")}
-          >
-            Sentence
-          </button>
-        </div>
-      ) : null}
+      {!card && tabs}
 
       {sentencePanel && tab === "sentence" ? (
         <div
@@ -225,54 +280,76 @@ export function WordInspector({
             ? { role: "tabpanel", id: "k-panel-word", "aria-labelledby": "k-tab-word" }
             : {})}
         >
-          <div className="k-inspector-row">
-            <WordStateChip state={entry.state} inVuurtoren={entry.appLearning} />
-            {pos ? <span className="k-inspector-pos">{pos}</span> : null}
-            {entry.state === "learning" ? (
-              <span className="k-recall" style={{ color: "var(--ink-muted)", fontSize: 13 }}>
-                Recall {recall}%
-              </span>
-            ) : null}
-          </div>
-
-          {entry.glosses.length === 0 && !entry.sentenceGloss ? (
-            <p className="k-inspector-nomeaning">No meaning yet</p>
-          ) : (
-            <section>
-              <div className="k-overline">Meaning</div>
-              <ul className="k-inspector-glosses">
-                {entry.glosses.map((g, i) => (
-                  <li key={g}>
-                    {g}
-                    {i === 0 && entry.glossNote ? (
-                      <span className="k-gloss-note"> · {entry.glossNote}</span>
-                    ) : null}
-                  </li>
-                ))}
-                {entry.sentenceGloss ? (
-                  <li key="in-sentence">
-                    {entry.sentenceGloss}
-                    <span className="k-gloss-note"> · in this sentence</span>
-                  </li>
+          {card ? null : (
+            <>
+              <div className="k-inspector-row">
+                <WordStateChip state={entry.state} inVuurtoren={entry.appLearning} />
+                {pos ? <span className="k-inspector-pos">{pos}</span> : null}
+                {entry.state === "learning" ? (
+                  <span className="k-recall" style={{ color: "var(--ink-muted)", fontSize: 13 }}>
+                    Recall {recall}%
+                  </span>
                 ) : null}
-              </ul>
-            </section>
-          )}
-
-          {entry.decks.length > 0 ? (
-            <section>
-              <div className="k-overline">In your decks</div>
-              <div className="k-inspector-row" style={{ marginTop: 4 }}>
-                {entry.decks.map((d) => (
-                  <Chip key={d} title={d}>
-                    {deckName(d)}
-                  </Chip>
-                ))}
               </div>
-            </section>
-          ) : null}
 
+              {entry.glosses.length === 0 && !entry.sentenceGloss ? (
+                <p className="k-inspector-nomeaning">No meaning yet</p>
+              ) : (
+                <section>
+                  <div className="k-overline">Meaning</div>
+                  <ul className="k-inspector-glosses">
+                    {entry.glosses.map((g, i) => (
+                      <li key={g}>
+                        {g}
+                        {i === 0 && entry.glossNote ? (
+                          <span className="k-gloss-note"> · {entry.glossNote}</span>
+                        ) : null}
+                      </li>
+                    ))}
+                    {entry.sentenceGloss ? (
+                      <li key="in-sentence">
+                        {entry.sentenceGloss}
+                        <span className="k-gloss-note"> · in this sentence</span>
+                      </li>
+                    ) : null}
+                  </ul>
+                </section>
+              )}
+
+              {entry.decks.length > 0 ? (
+                <section>
+                  <div className="k-overline">In your decks</div>
+                  <div className="k-inspector-row" style={{ marginTop: 4 }}>
+                    {entry.decks.map((d) => (
+                      <Chip key={d} title={d}>
+                        {deckName(d)}
+                      </Chip>
+                    ))}
+                  </div>
+                </section>
+              ) : null}
+            </>
+          )}
           {wordExtra}
+
+          {card ? (
+            <p className="k-card-quiet">
+              <WordStateChip state={entry.state} inVuurtoren={entry.appLearning} />
+              {pos ? <span className="k-inspector-pos">{pos}</span> : null}
+              {entry.state === "learning" ? <span>Recall {recall}%</span> : null}
+              {entry.decks.length ? (
+                <span>
+                  In your decks:{" "}
+                  {entry.decks.map((d, k) => (
+                    <span key={d} title={d}>
+                      {k ? ", " : null}
+                      {deckName(d)}
+                    </span>
+                  ))}
+                </span>
+              ) : null}
+            </p>
+          ) : null}
 
           {actions.details}
         </div>

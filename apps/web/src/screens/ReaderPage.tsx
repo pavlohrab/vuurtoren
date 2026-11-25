@@ -64,7 +64,14 @@ import { revealAboveSheet } from "../shell/revealAboveSheet.js";
 import { useReaderAudio } from "../audio/ReaderAudio.js";
 import { readLocal, writeLocal } from "../storage/local.js";
 import { ReaderLeave, rememberReader, takeReaderReturn } from "./reader/readerReturn.js";
-import { WordEntry } from "./reader/WordEntry.js";
+import {
+  CardExtra,
+  CardForms,
+  CardMeaning,
+  CardRelated,
+  FullEntry,
+  useWordEntry,
+} from "./reader/WordEntry.js";
 import { DictionaryMissing } from "./reader/DictionaryMissing.js";
 import { SentenceFrameView } from "./reader/SentenceFrameView.js";
 import { contextGloss } from "../services/contextGloss.js";
@@ -404,6 +411,10 @@ export function ReaderPage({ textId }: { textId: string }) {
   });
   /** What the card shows: the word opened from the card, else the text's word. */
   const shown: InspectorEntry | null = opened ? (openedEntry.data ?? null) : entry;
+  /** The shown word's dictionary entry, for the card's parts (one request, shared). */
+  const dict = useWordEntry(shown?.lemma, shown?.pos ?? "");
+  /** What the page's form is ("doet … open · present, ze"), for the text's own word. */
+  const formInfo = !opened && selected !== null && data ? formLine(data.tokens, selected) : null;
 
   // Reader settings: the help dial (which words get a translation) and the new-word budget.
   const settingsQ = useQuery({ queryKey: ["settings"], queryFn: () => services.getSettings() });
@@ -1052,8 +1063,35 @@ export function ReaderPage({ textId }: { textId: string }) {
                   }
                   onRetry={() => void (opened ? openedEntry.refetch() : inspect.refetch())}
                   headerAction={audio.wordButton(shown)}
-                  form={
-                    !opened && selected !== null && data ? formLine(data.tokens, selected) : null
+                  form={formInfo}
+                  card={
+                    shown
+                      ? {
+                          // In the full entry its own complete lists take their place.
+                          forms:
+                            dict && !card.full ? (
+                              <CardForms entry={dict} surface={shown.surface} onSay={audio.say} />
+                            ) : null,
+                          note: formInfo?.said.includes("…") ? (
+                            <p className="k-card-note" lang="nl">
+                              {formInfo.said} is one verb
+                            </p>
+                          ) : null,
+                          meaning: <CardMeaning word={shown} />,
+                          related:
+                            dict && !card.full ? (
+                              <CardRelated entry={dict} onOpen={openWord} />
+                            ) : null,
+                          extra: (
+                            <CardExtra
+                              lemma={shown.lemma}
+                              entry={dict}
+                              full={card.full}
+                              onFull={card.setFull}
+                            />
+                          ),
+                        }
+                      : undefined
                   }
                   backTo={
                     opened
@@ -1065,14 +1103,14 @@ export function ReaderPage({ textId }: { textId: string }) {
                     shown && entry ? (
                       <>
                         <DictionaryMissing />
-                        <WordEntry
-                          lemma={shown.lemma}
-                          pos={shown.pos}
-                          surface={shown.surface}
-                          onOpen={openWord}
-                          full={card.full}
-                          onFull={card.setFull}
-                        />
+                        {card.full && dict ? (
+                          <FullEntry
+                            entry={dict}
+                            word={shown}
+                            onOpen={openWord}
+                            onSay={audio.say}
+                          />
+                        ) : null}
                         {opened ? null : (
                           <WordGrammar
                             tokens={data.tokens}
@@ -1088,6 +1126,7 @@ export function ReaderPage({ textId }: { textId: string }) {
                   sentencePanel={
                     <SentencePanel
                       sentence={entry?.sentence}
+                      translation={entry?.sentenceTranslation}
                       grammar={sentenceGrammar}
                       frame={
                         entry && !opened && data.tokens[entry.tokenIndex] ? (

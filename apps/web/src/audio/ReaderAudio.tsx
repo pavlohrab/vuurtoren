@@ -47,5 +47,8 @@ export function useReaderAudio() {
     [play, playing],
   );
 
-  return { wordButton, sentenceButton };
+  /** Say any text with the voice (a form tapped in the card's table). */
+  const say = useCallback((text: string) => void play(`say:${text}`, { text }), [play]);
+
+  return { wordButton, sentenceButton, say };
 }

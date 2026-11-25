@@ -393,12 +393,9 @@ for (const size of SIZES) {
       expect(box).not.toBeNull();
       expect(box!.y + box!.height).toBeLessThanOrEqual(size.height - 34);
       expect(box!.y).toBeGreaterThan(seen);
-      // The sentence shows at once; the Word and Sentence tabs wait below.
+      // The sentence shows at once; the Word and Sentence tabs come when the sheet is pulled up.
       await expect(sheet.locator(".k-inspector-context")).toBeInViewport();
-      const tabs = await sheet
-        .getByRole("tablist", { name: "Details" })
-        .evaluate((el) => el.getBoundingClientRect().top);
-      expect(tabs).toBeGreaterThanOrEqual(size.height - 34);
+      await expect(sheet.locator(".k-inspector-tabs")).toBeHidden();
       await shot(page, `sheet-small-peek-${size.width}`);
 
       // A drag up shows the details; a drag down goes back, and once more closes it.

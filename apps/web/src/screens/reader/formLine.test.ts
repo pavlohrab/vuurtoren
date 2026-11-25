@@ -40,7 +40,7 @@ describe("formLine", () => {
       ["moet", "moeten", "VERB", "Number=Sing|Tense=Pres|VerbForm=Fin", "ROOT", 1],
       ["weg", "weg", "ADV", "", "advmod", 1],
     ]);
-    expect(formLine(t, 1)).toEqual({ said: "moet", what: "now, hij/zij/het" });
+    expect(formLine(t, 1)).toEqual({ said: "moet", what: "present, hij/zij/het" });
   });
 
   it("a subject pronoun names who; past tense", () => {
@@ -65,11 +65,11 @@ describe("formLine", () => {
       ["Woon", "wonen", "VERB", "Number=Sing|Tense=Pres|VerbForm=Fin", "ROOT", 0],
       ["je", "je", "PRON", "", "nsubj", 0],
     ]);
-    expect(formLine(woon, 0)?.what).toBe("now, je");
+    expect(formLine(woon, 0)?.what).toBe("present, je");
     const kijkt = toks([
       ["Kijkt", "kijken", "VERB", "Number=Sing|Tense=Pres|VerbForm=Fin", "ROOT", 0],
     ]);
-    expect(formLine(kijkt, 0)?.what).toBe("now, hij/zij/het");
+    expect(formLine(kijkt, 0)?.what).toBe("present, hij/zij/het");
   });
 
   it("a split verb shows both parts, also when the particle is tapped", () => {
@@ -78,7 +78,7 @@ describe("formLine", () => {
       ["doet", "opendoen", "VERB", "Number=Sing|Tense=Pres|VerbForm=Fin", "ROOT", 1],
       ["open", "open", "ADP", "", "compound:prt", 1, 1],
     ]);
-    const line = { said: "doet … open", what: "now, ze" };
+    const line = { said: "doet … open", what: "present, ze" };
     expect(formLine(t, 1)).toEqual(line);
     expect(formLine(t, 2)).toEqual(line);
   });

@@ -90,7 +90,7 @@ test("a word opened from the card replaces it, and Back goes back one word", asy
   const head = panel.locator(".k-inspector-surface");
   // The dictionary word on top, the page's form and what it is under it (RD2).
   await expect(head).toHaveText("staan");
-  await expect(panel.locator(".k-inspector-lemma")).toHaveText(/^staat · now, /);
+  await expect(panel.locator(".k-inspector-lemma")).toHaveText(/^staat · present, /);
   await panel.getByRole("button", { name: "opstaan" }).click();
   await expect(head).toHaveText("opstaan");
   // Never a second panel: the same one, with the way back on top; the text's word stays outlined.
@@ -136,7 +136,7 @@ test("Full entry: wider, words open inside it, Esc steps back, grammar comes bac
   await panel.getByRole("button", { name: "Full entry ⤢" }).click();
   const wide = async () => (await panel.boundingBox())!.width;
   await expect.poll(wide).toBeGreaterThan(500);
-  await expect(panel.locator(".word-entry-senses")).toContainText("to stand");
+  await expect(panel.locator(".full-entry-senses")).toContainText("to stand");
   // A word clicked in the full entry opens in the full entry (it used to drop back to small).
   await panel.getByRole("button", { name: "opstaan" }).click();
   await expect(panel.locator(".k-inspector-surface")).toHaveText("opstaan");
