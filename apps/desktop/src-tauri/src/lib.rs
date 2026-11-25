@@ -20,6 +20,7 @@ mod db;
 mod desktop;
 mod dictionary;
 mod keys;
+mod lan;
 #[cfg(mobile)]
 mod mobile;
 #[cfg(desktop)]
