@@ -63,6 +63,8 @@ export default defineConfig({
   define: {
     __VUURTOREN_VERSION__: JSON.stringify(rootPackage.version),
     __VUURTOREN_COMMIT__: JSON.stringify(commit),
+    // A store build (VUURTOREN_STORE=play) leaves updates to its store (updates.ts).
+    __VUURTOREN_STORE__: JSON.stringify(process.env.VUURTOREN_STORE ?? ""),
   },
   server: {
     port: 5173,

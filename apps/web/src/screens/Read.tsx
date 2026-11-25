@@ -39,6 +39,7 @@ import {
 import { StoriesShelf } from "./library/StoriesShelf.js";
 import { TodayStrip } from "./library/TodayStrip.js";
 import { SupportCard } from "./library/SupportCard.js";
+import { UpdateCard } from "./library/UpdateCard.js";
 import { TextDetailsDialog } from "./library/TextDetailsDialog.js";
 import { readLastText } from "../lastText.js";
 import "./library/library.css";
@@ -461,6 +462,7 @@ export function Read() {
       />
 
       <TodayStrip />
+      <UpdateCard />
       <SupportCard />
 
       {needsAnki ? (

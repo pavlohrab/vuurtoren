@@ -18,6 +18,7 @@ import {
 import { useState, type ReactNode } from "react";
 import { Button, Input, Select, Skeleton, Slider, useNativeMode } from "@app/ui";
 import { InstallApp } from "../../pwa/PwaControls.js";
+import { UpdateSetting } from "../library/UpdateCard.js";
 import { useServices } from "../../services/context.js";
 import type { Settings as SettingsData } from "../../services/types.js";
 import { PageHeader } from "../../shell/PageHeader.js";
@@ -418,6 +419,7 @@ function AdvancedSettings() {
         }}
       />
       <ServerStatus nlpUrl={form.nlpUrl} />
+      <UpdateSetting />
       <InstallApp />
     </div>
   );
