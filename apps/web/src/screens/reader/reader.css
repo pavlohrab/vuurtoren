@@ -1182,3 +1182,13 @@ dl.card-meaning dd,
   order: 0;
   margin-top: var(--s-3);
 }
+
+/* The Sentence tab's words (SentenceTab.tsx): a long press marks one more word, so the phone must
+   not select the text or open its copy menu there. */
+.k-pairs .k-sbs-w,
+.sframe-word {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  touch-action: manipulation;
+}

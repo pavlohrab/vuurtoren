@@ -27,6 +27,9 @@ export interface PickHandlers {
 function usePick(onPick: (key: number, add: boolean) => void) {
   const timer = useRef<number | null>(null);
   const long = useRef(false);
+  const touch = useRef(false);
+  /** The long press already picked the word: the click that may follow it does nothing. */
+  const done = useRef(false);
   const clear = () => {
     if (timer.current !== null) window.clearTimeout(timer.current);
     timer.current = null;
@@ -34,13 +37,19 @@ function usePick(onPick: (key: number, add: boolean) => void) {
   return useCallback(
     (key: number): PickHandlers => ({
       onClick: (e) => {
+        if (done.current) {
+          done.current = false;
+          return;
+        }
         const add = e.ctrlKey || e.metaKey || long.current;
         long.current = false;
         onPick(key, add);
       },
       onPointerDown: (e) => {
         long.current = false;
-        if (e.pointerType === "mouse") return;
+        done.current = false;
+        touch.current = e.pointerType !== "mouse";
+        if (!touch.current) return;
         clear();
         timer.current = window.setTimeout(() => {
           long.current = true;
@@ -50,8 +59,15 @@ function usePick(onPick: (key: number, add: boolean) => void) {
       onPointerUp: clear,
       onPointerLeave: clear,
       onPointerCancel: clear,
+      // Android answers a long press with the context menu (and would select the text): on a
+      // touch screen that is the long press, so it adds the word, with no menu.
       onContextMenu: (e) => {
-        if (long.current) e.preventDefault();
+        if (!touch.current && !long.current) return;
+        e.preventDefault();
+        clear();
+        long.current = false;
+        done.current = true;
+        onPick(key, true);
       },
     }),
     [onPick],
