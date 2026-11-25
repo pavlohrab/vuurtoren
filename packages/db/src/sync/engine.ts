@@ -151,6 +151,11 @@ interface SyncState {
   problems?: SyncProblem[];
   /** Per text, the bundle sent from or taken into this device (`bundleStamp`). */
   bundles?: Record<string, string>;
+  /**
+   * Per text, the path of the bundle file this device put in its folder: removed when the text
+   * is deleted, or replaced when the text changed (a new content hash gives a new name).
+   */
+  sentBundles?: Record<string, string>;
   /** Texts with an analysis but no extras, with when another device's bundle was last asked. */
   extrasAsked?: Record<string, number>;
 }
@@ -652,6 +657,16 @@ async function sendBundles(
   leaveOut: (p: SyncProblem) => void,
 ): Promise<void> {
   const done = (state.bundles ??= {});
+  const sent = (state.sentBundles ??= {});
+  // A deleted text's bundle leaves this device's folder (the place keeps nothing of it).
+  const live = new Set((await repo.listTexts()).map((t) => t.id));
+  for (const [textId, path] of Object.entries(sent)) {
+    if (live.has(textId)) continue;
+    await store.remove(path);
+    delete sent[textId];
+    delete done[textId];
+    await repo.setSyncState(state);
+  }
   const todo = (await repo.analysisStates())
     .filter((s) => done[s.textId] !== bundleStamp(s))
     .slice(0, BUNDLES_OUT_PER_SYNC);
@@ -670,6 +685,10 @@ async function sendBundles(
     }
     const path = `${deviceDir(repo.deviceId)}/analyses/${await bundleName(key, s.textId, s.contentHash)}`;
     await store.put(path, await seal(key, gzipSync(json, { level: 6 }), path));
+    // The text changed since: its old bundle (another name) goes.
+    const old = sent[s.textId];
+    if (old && old !== path) await store.remove(old);
+    sent[s.textId] = path;
     done[s.textId] = bundleStamp(s);
     await repo.setSyncState(state);
   }

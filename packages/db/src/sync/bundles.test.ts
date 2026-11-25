@@ -145,4 +145,20 @@ describe("text bundles", () => {
       }),
     ).toBe(false);
   });
+
+  it("a deleted text's bundle leaves the place", async () => {
+    const { store, a, keyA } = await twoDevices();
+    await a.saveTextAnalysis({
+      textId: "t1",
+      contentHash: HASH,
+      tokens: TOKENS,
+      analyzerVersion: "v1",
+    });
+    await syncOnce(a, store, keyA, { deviceName: "Laptop" });
+    const bundles = () => [...store.files.keys()].filter((p) => p.includes("/analyses/"));
+    expect(bundles()).toHaveLength(1);
+    await a.append({ type: "TextDeleted", textId: "t1" });
+    await syncOnce(a, store, keyA, { deviceName: "Laptop" });
+    expect(bundles()).toEqual([]);
+  });
 });
