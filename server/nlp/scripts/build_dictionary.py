@@ -11,6 +11,7 @@ Source: English Wiktionary via https://kaikki.org (CC BY-SA 4.0, see DATA_LICENS
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 import time
 from pathlib import Path
@@ -40,6 +41,12 @@ def main() -> int:
         help="build from the downloaded file even if it differs from the pinned snapshot",
     )
     ap.add_argument("--keep-jsonl", action="store_true", help="keep the downloaded JSONL")
+    ap.add_argument(
+        "--aux-evidence",
+        type=Path,
+        default=os.environ.get("VUURTOREN_AUX_EVIDENCE") or None,
+        help="a sentence pack (sentences-nl.sqlite): decide heb or ben here for every verb",
+    )
     args = ap.parse_args()
 
     src = args.input
@@ -63,7 +70,9 @@ def main() -> int:
                 return 2
             downloaded = True
     t0 = time.perf_counter()
-    stats = build_dictionary(src, args.output)
+    stats = build_dictionary(
+        src, args.output, Path(args.aux_evidence) if args.aux_evidence else None
+    )
     print(
         f"Built {args.output}: {stats['entries']} entries, {stats['forms']} forms "
         f"in {time.perf_counter() - t0:.1f}s ({args.output.stat().st_size / 1e6:.0f} MB)"

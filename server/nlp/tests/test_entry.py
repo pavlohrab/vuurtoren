@@ -116,3 +116,16 @@ def test_old_and_specialist_meanings_go_last_with_their_synonyms(dictionary: Dic
 def test_heb_or_ben_from_the_dutch_wiktionary(dictionary: Dictionary) -> None:
     (verb,) = [x for x in dictionary.entry("gaan")["entries"] if x["pos"] == "verb"]
     assert verb["forms"]["aux"] == "zijn"
+
+
+def test_heb_or_ben_decided_at_build_with_the_sentences(tmp_path: Path) -> None:
+    sentences = tmp_path / "sentences-nl.sqlite"
+    con = sqlite3.connect(sentences)
+    con.execute("CREATE TABLE aux_evidence (lemma TEXT PRIMARY KEY, hebben INT, zijn INT)")
+    con.execute("INSERT INTO aux_evidence VALUES ('gaan', 0, 50)")
+    con.commit()
+    con.close()
+    path = tmp_path / "dictionary.sqlite"
+    build_dictionary(FIXTURE, path, sentences)
+    (verb,) = [x for x in Dictionary(path).entry("gaan")["entries"] if x["pos"] == "verb"]
+    assert verb["forms"]["aux_best"] == "zijn"

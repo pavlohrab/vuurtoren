@@ -40,8 +40,9 @@ function formRows(entry: Entry): { short: Row[]; more: Row[] } {
     if (present["hij"]) short.push(["hij", present["hij"]]);
     if (past[0]) short.push(["past", past[0]]);
     // The perfect with its helper when the language server knows it (hij is gegaan, heeft gedaan).
-    // aux_nl: the Dutch Wiktionary's, for the many verbs the English one doesn't say.
-    const aux = asString(f["aux"]) ?? asString(f["aux_nl"]);
+    // aux_best: decided when the pack was built (Wiktionary, curated lists, Tatoeba); aux_nl: the
+    // Dutch Wiktionary's alone, in packs built without the sentences.
+    const aux = asString(f["aux"]) ?? asString(f["aux_best"]) ?? asString(f["aux_nl"]);
     const helper = aux === "zijn" ? "is" : aux === "both" ? "heeft / is" : aux ? "heeft" : null;
     if (participle)
       short.push(helper ? ["perfect", `${helper} ${participle}`] : ["participle", participle]);

@@ -41,7 +41,7 @@ from vuurtoren_nlp.compound import (
 from vuurtoren_nlp.datadir import data_path
 from vuurtoren_nlp.derive import Derivation, derive
 from vuurtoren_nlp.freq import zipf
-from vuurtoren_nlp.wordforms import extract_word_forms
+from vuurtoren_nlp.wordforms import extract_word_forms, resolve_aux
 
 MAX_GLOSSES = 5
 MAX_GLOSS_CHARS = 160
@@ -305,14 +305,35 @@ def entry_extras(entry: dict[str, Any]) -> dict[str, Any]:
     return out
 
 
-def build_dictionary(jsonl_path: Path, db_path: Path) -> dict[str, int]:
+def aux_evidence(sentences_db: Path | None) -> dict[str, tuple[int, int]]:
+    """``lemma -> (hebben, zijn)`` counts from a sentence pack's ``aux_evidence``; {} without."""
+    if not sentences_db or not sentences_db.is_file():
+        return {}
+    con = sqlite3.connect(f"file:{sentences_db}?mode=ro", uri=True)
+    try:
+        rows = con.execute("SELECT lemma, hebben, zijn FROM aux_evidence").fetchall()
+    except sqlite3.OperationalError:
+        return {}
+    finally:
+        con.close()
+    return {r[0]: (r[1], r[2]) for r in rows}
+
+
+def build_dictionary(
+    jsonl_path: Path, db_path: Path, sentences_db: Path | None = None
+) -> dict[str, int]:
     """Build the SQLite dictionary from a Kaikki JSONL file (replaces ``db_path``).
+
+    With ``sentences_db`` (a sentence pack) each verb also gets ``aux_best``: heb or ben decided
+    here as the language server would (``resolve_aux``), so a phone without the sentences shows
+    the same.
 
     Entries without any gloss are skipped. Returns counts: ``entries`` and ``forms``.
     """
     db_path.parent.mkdir(parents=True, exist_ok=True)
     tmp = db_path.with_name(db_path.name + ".tmp")
     tmp.unlink(missing_ok=True)
+    evidence = aux_evidence(sentences_db)
     con = sqlite3.connect(tmp)
     try:
         con.executescript(SCHEMA)
@@ -351,6 +372,15 @@ def build_dictionary(jsonl_path: Path, db_path: Path) -> dict[str, int]:
             # language server weighs it in resolve_aux; a phone reads aux, else aux_nl.
             if pos == "verb" and word in aux_list():
                 morph = {**(morph or {}), "aux_nl": aux_list()[word]}
+            if pos == "verb" and morph and evidence:
+                particle = (morph.get("separable") or {}).get("particle")
+                morph["aux_best"] = resolve_aux(
+                    morph.get("aux"),
+                    evidence.get(word.lower()),
+                    word,
+                    particle,
+                    morph.get("aux_nl"),
+                )
             if morph:
                 con.execute(
                     "INSERT INTO wordforms(lemma, pos, data) VALUES (?,?,?)",
@@ -359,10 +389,13 @@ def build_dictionary(jsonl_path: Path, db_path: Path) -> dict[str, int]:
             # The separable family, from both ends: opendoen names its stem doen, and doen
             # lists opendoen among its derived verbs.
             sep = (morph or {}).get("separable") or {}
-            family = {(sep["stem"], word)} if pos == "verb" and sep.get("stem") else set()
+            joined = pos == "verb" and sep.get("stem") and "-" not in word  # not tv-kijken
+            family = {(sep["stem"], word)} if joined else set()
             if pos == "verb":
                 derived = extras.get("derived", [])
-                family |= {(word, d) for d in derived if " " not in d and d.endswith("en")}
+                family |= {
+                    (word, d) for d in derived if " " not in d and "-" not in d and d.endswith("en")
+                }
             # rank: how common the word is (wordfreq, zipf × 100), so readers show common ones first
             con.executemany(
                 "INSERT INTO family(stem, word, rank) VALUES (?,?,?)",
