@@ -595,6 +595,9 @@ pub fn window<'a>(
         .inner_size(1200.0, 820.0)
         .min_inner_size(380.0, 520.0)
         .visible(!self_test())
+        // Drags belong to the page (moving a text to a shelf, a file onto Add text): Tauri's own
+        // file-drop handler took every drag, so the page never saw one.
+        .disable_drag_drop_handler()
         // Backups and exports land in the Downloads folder.
         .on_download(move |_, event| {
             if let (DownloadEvent::Requested { destination, .. }, Some(dir)) =
