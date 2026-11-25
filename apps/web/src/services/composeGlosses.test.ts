@@ -36,7 +36,17 @@ describe("composeGlosses meanings", () => {
       },
     ];
     const got = composeGlosses({ gloss: "mayor" } as never, burgemeester as never, "NOUN").glosses;
-    expect(got).toEqual(["mayor, burgomaster"]);
+    expect(got).toEqual(["mayor", "mayor, burgomaster"]);
+  });
+
+  it("never puts a later meaning over the first one", () => {
+    const doen = [
+      { pos: "verb", article: null, glosses: ["to do", "to do, to have sex with someone"] },
+    ];
+    expect(composeGlosses({ gloss: "to do" } as never, doen as never, "VERB").glosses).toEqual([
+      "to do",
+      "to do, to have sex with someone",
+    ]);
   });
 
   it("keeps meanings that differ", () => {

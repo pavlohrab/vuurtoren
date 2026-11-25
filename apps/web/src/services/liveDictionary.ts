@@ -88,16 +88,13 @@ function meaningParts(g: string): Set<string> {
 
 /**
  * Add a meaning unless the ones shown already say it: "mayor, burgomaster (head of a city…)"
- * adds nothing after "mayor, burgomaster". One that says more replaces the one it contains
- * ("mayor" → "mayor, burgomaster").
+ * adds nothing after "mayor, burgomaster". Never in place of an earlier one: "to do, to have sex
+ * with someone" goes after "to do", not over it.
  */
 function addMeaning(glosses: string[], g: string): void {
   const parts = meaningParts(g);
   const shown = new Set(glosses.flatMap((x) => [...meaningParts(x)]));
-  if (!parts.size || [...parts].every((p) => shown.has(p))) return;
-  const inside = glosses.findIndex((x) => [...meaningParts(x)].every((p) => parts.has(p)));
-  if (inside >= 0) glosses[inside] = g;
-  else glosses.push(g);
+  if (parts.size && ![...parts].every((p) => shown.has(p))) glosses.push(g);
 }
 
 export function composeGlosses(
