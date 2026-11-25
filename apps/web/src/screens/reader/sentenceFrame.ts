@@ -104,8 +104,19 @@ export function sentenceClauses(tokens: readonly AnalyzedToken[], sent: number):
   // sometimes tagged conjugated ("wil … wonen"): xcomp means it isn't. A plural present looks like
   // an infinitive ("die ze nooit hebben besproken"): a helper in a clause of its own with no
   // conjugated verb is the conjugated one.
+  // A noun the parser calls a verb isn't one either: right after an article ("de was") or
+  // alone in a noun's place ("Er komt mist").
+  const afterArticle = (t: AnalyzedToken) => {
+    const b = tokens[t.i - 1];
+    return !!b && b.sent === sent && b.pos === "DET" && /Definite=/.test(b.morph);
+  };
   const finite = words.filter(
-    (t) => isVerb(t) && t.morph.includes("VerbForm=Fin") && t.dep !== "xcomp",
+    (t) =>
+      isVerb(t) &&
+      t.morph.includes("VerbForm=Fin") &&
+      t.dep !== "xcomp" &&
+      !(/^(nsubj|obj|iobj|obl)/.test(t.dep) && !words.some((x) => x.head === t.i && x.i !== t.i)) &&
+      !afterArticle(t),
   );
   for (const t of words) {
     if (t.pos !== "AUX" || t.dep !== "aux" || !t.morph.includes("VerbForm=Inf")) continue;
@@ -490,8 +501,11 @@ export function sentenceClauses(tokens: readonly AnalyzedToken[], sent: number):
           ? own[1] && introduces(own[1])
             ? 1
             : 0
-          : own.findIndex((t) =>
-              teClause ? OM_WORDS.has(t.text.toLowerCase()) && t.dep === "mark" : introduces(t),
+          : own.findIndex((t, n) =>
+              teClause
+                ? OM_WORDS.has(t.text.toLowerCase()) && t.dep === "mark"
+                : // "hoe duur het is": a question word opens it too
+                  introduces(t) || (n === 0 && QUESTION_WORDS.has(t.text.toLowerCase())),
             );
       const intro = own.slice(0, introEnd + 1);
       const body = own.slice(introEnd + 1);

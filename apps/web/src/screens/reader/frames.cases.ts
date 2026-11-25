@@ -524,4 +524,25 @@ export const FRAME_CASES: FrameCase[] = [
     ],
     hard: "the parser hangs was on deed",
   },
+  {
+    sentence: "Het maakt niet uit hoe duur het is.",
+    about: "a question word opens the clause inside",
+    clauses: ["main: Het|maakt|niet|uit|[…]", "sub: hoe|duur het|is|"],
+  },
+  {
+    sentence: "Na school brengt hij de was naar de klanten, in een grote mand op zijn rug.",
+    about: "was after an article is a noun",
+    clauses: ["main: Na school|brengt|hij de was naar de klanten in een grote mand op zijn rug||"],
+  },
+  {
+    sentence: "Er komt mist van de zee.",
+    about: "a noun the parser calls a verb, as subject",
+    clauses: ["main: Er|komt|mist van de zee||"],
+  },
+  {
+    sentence: "Sla rechtsaf aan het einde van die straat.",
+    about: "command",
+    clauses: ["command: |Sla|rechtsaf aan het einde van die straat||"],
+    hard: "the parser reads Sla as a noun",
+  },
 ];
