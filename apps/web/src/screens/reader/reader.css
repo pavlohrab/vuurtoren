@@ -1061,6 +1061,16 @@ dl.card-meaning dd,
 
 /* The Sentence tab's frame (SentenceFrameView.tsx): one row per clause, a label under each part;
    a clause inside another sits under it, indented, and shows as […] where it belongs. */
+.sframe-scroll {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: thin;
+  padding-bottom: 4px;
+}
+.sframe-rows {
+  width: max-content;
+  min-width: 100%;
+}
 .sframe-row {
   display: grid;
   gap: 4px;
@@ -1097,7 +1107,7 @@ dl.card-meaning dd,
 }
 .sframe-line {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: flex-start;
   gap: 4px 14px;
   font-family: var(--font-reading);
@@ -1112,7 +1122,8 @@ dl.card-meaning dd,
 }
 .sframe-words {
   display: inline-flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  white-space: nowrap;
   gap: 0 0.3em;
   border-bottom: 1px solid var(--line);
   padding-bottom: 2px;

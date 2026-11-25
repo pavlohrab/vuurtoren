@@ -154,72 +154,79 @@ export function SentenceFrameView({
 
   return (
     <section className="sframe" aria-label="The sentence, part by part">
-      {rows(clauses).map(({ k, depth }) => {
-        const c = clauses[k]!;
-        const particle = tokens.find((t) => t.particle_of === c.verb)?.i ?? null;
-        return (
-          <div
-            key={k}
-            className="sframe-row"
-            data-kind={c.kind}
-            style={depth ? { marginInlineStart: `${Math.min(depth, 3) * 16}px` } : undefined}
-          >
-            <button
-              type="button"
-              className="sframe-rowlabel"
-              aria-pressed={focus?.kind === "clause" && focus.clause === k}
-              onClick={() => setFocus({ kind: "clause", clause: k })}
-            >
-              {depth ? "└ " : ""}
-              {KIND[c.kind]}
-            </button>
-            <div className="sframe-line" lang="nl">
-              {c.parts
-                .filter((p) => p.items.length)
-                .map((p) => (
-                  <span
-                    key={p.field}
-                    className="sframe-part"
-                    data-field={p.field}
-                    {...(p.field === "verb" ||
-                    p.field === "verbs" ||
-                    (p.field === "end" && particle !== null)
-                      ? { "data-verb": "" }
-                      : {})}
-                  >
-                    <span className="sframe-words">
-                      {p.items.map((x) =>
-                        typeof x === "number" ? (
-                          wordButton(x)
-                        ) : (
-                          <span
-                            key={`c${x.clause}`}
-                            className="sframe-nested"
-                            title={KIND[clauses[x.clause]!.kind]}
-                          >
-                            […]
-                          </span>
-                        ),
-                      )}
-                    </span>
-                    {LABEL[p.field] ? (
-                      <button
-                        type="button"
-                        className="sframe-label"
-                        aria-pressed={
-                          focus?.kind === "field" && focus.clause === k && focus.field === p.field
-                        }
-                        onClick={() => setFocus({ kind: "field", clause: k, field: p.field })}
+      {/* Each clause on one line; a long one scrolls the rows sideways together. */}
+      <div className="sframe-scroll">
+        <div className="sframe-rows">
+          {rows(clauses).map(({ k, depth }) => {
+            const c = clauses[k]!;
+            const particle = tokens.find((t) => t.particle_of === c.verb)?.i ?? null;
+            return (
+              <div
+                key={k}
+                className="sframe-row"
+                data-kind={c.kind}
+                style={depth ? { marginInlineStart: `${Math.min(depth, 3) * 16}px` } : undefined}
+              >
+                <button
+                  type="button"
+                  className="sframe-rowlabel"
+                  aria-pressed={focus?.kind === "clause" && focus.clause === k}
+                  onClick={() => setFocus({ kind: "clause", clause: k })}
+                >
+                  {depth ? "└ " : ""}
+                  {KIND[c.kind]}
+                </button>
+                <div className="sframe-line" lang="nl">
+                  {c.parts
+                    .filter((p) => p.items.length)
+                    .map((p) => (
+                      <span
+                        key={p.field}
+                        className="sframe-part"
+                        data-field={p.field}
+                        {...(p.field === "verb" ||
+                        p.field === "verbs" ||
+                        (p.field === "end" && particle !== null)
+                          ? { "data-verb": "" }
+                          : {})}
                       >
-                        {LABEL[p.field]}
-                      </button>
-                    ) : null}
-                  </span>
-                ))}
-            </div>
-          </div>
-        );
-      })}
+                        <span className="sframe-words">
+                          {p.items.map((x) =>
+                            typeof x === "number" ? (
+                              wordButton(x)
+                            ) : (
+                              <span
+                                key={`c${x.clause}`}
+                                className="sframe-nested"
+                                title={KIND[clauses[x.clause]!.kind]}
+                              >
+                                […]
+                              </span>
+                            ),
+                          )}
+                        </span>
+                        {LABEL[p.field] ? (
+                          <button
+                            type="button"
+                            className="sframe-label"
+                            aria-pressed={
+                              focus?.kind === "field" &&
+                              focus.clause === k &&
+                              focus.field === p.field
+                            }
+                            onClick={() => setFocus({ kind: "field", clause: k, field: p.field })}
+                          >
+                            {LABEL[p.field]}
+                          </button>
+                        ) : null}
+                      </span>
+                    ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
       <p className="sframe-why" aria-live="polite">
         {why(focus)}
       </p>
