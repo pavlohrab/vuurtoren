@@ -32,6 +32,9 @@ export interface ShellState {
   setInspectorAvailable(available: boolean): void;
   inspectorOpen: boolean;
   setInspectorOpen(open: boolean): void;
+  /** The word panel widened for a word's full entry (computers; it resets when the panel closes). */
+  inspectorWide?: boolean;
+  setInspectorWide?(wide: boolean): void;
 }
 
 export const ShellContext = createContext<ShellState | null>(null);

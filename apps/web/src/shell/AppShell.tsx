@@ -117,6 +117,8 @@ export function AppShell() {
   const sidebarSize = usePanelWidth("vuurtoren.sidebar-w", 220, 180, 360);
   const inspectorSize = usePanelWidth("vuurtoren.inspector-w", 340, 300, 640);
   const [resizing, setResizing] = useState(false);
+  /** A word's full entry widens the panel; closing the panel ends it. */
+  const [inspectorWide, setInspectorWide] = useState(false);
   const [toolbarEl, setToolbarEl] = useState<HTMLElement | null>(null);
   const [contentEl, setContentEl] = useState<HTMLElement | null>(null);
   const pageTitleInView = usePageTitleInView(contentEl);
@@ -212,8 +214,10 @@ export function AppShell() {
       setInspectorAvailable,
       inspectorOpen,
       setInspectorOpen,
+      inspectorWide: inspectorWide && inspectorOpen,
+      setInspectorWide,
     }),
-    [mode, toolbarEl, inspectorEl, inspectorOpen],
+    [mode, toolbarEl, inspectorEl, inspectorOpen, inspectorWide],
   );
 
   const title =
@@ -221,6 +225,8 @@ export function AppShell() {
     PAGE_TITLES[pathname] ??
     (pathname.startsWith("/courses/") ? "Courses" : "Vuurtoren");
   const showInspector = inspectorAvailable && inspectorOpen;
+  // Only while the panel is open: closed, the next word opens at the normal width.
+  const wideNow = inspectorWide && showInspector;
   const sheetRef = useRef<HTMLElement>(null);
   const closeSheet = useCallback(() => setInspectorOpen(false), []);
   const sheet = useBottomSheet(sheetRef, showInspector, closeSheet);
@@ -319,7 +325,9 @@ export function AppShell() {
           style={
             {
               "--sidebar-w": `${sidebarSize.width}px`,
-              "--inspector-w": `${inspectorSize.width}px`,
+              "--inspector-w": wideNow
+                ? `max(${inspectorSize.width}px, min(62vw, 980px))`
+                : `${inspectorSize.width}px`,
             } as CSSProperties
           }
         >

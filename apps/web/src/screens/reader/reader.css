@@ -694,6 +694,33 @@
 .word-entry-word:hover {
   text-decoration: underline;
 }
+.word-entry-full {
+  justify-self: end;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: 13px;
+  cursor: pointer;
+}
+.word-entry-senses {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding-left: 20px;
+  font-size: 14.5px;
+}
+.word-entry-example {
+  display: block;
+  color: var(--ink-muted);
+  font-size: 13.5px;
+}
+.word-entry-example [lang="nl"] {
+  font-family: var(--font-reading);
+  color: var(--ink);
+}
+.word-entry[data-wide] .word-entry-forms dl {
+  grid-template-columns: repeat(2, auto 1fr);
+}
 .word-entry-line {
   margin: 0;
   font-size: 14px;

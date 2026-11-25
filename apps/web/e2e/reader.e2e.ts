@@ -114,3 +114,25 @@ test("Words on a computer: the list with Today beside it", async ({ page }) => {
   await expect(page.locator(".words-aside .due-today")).toBeVisible();
   await expect(page.getByRole("heading", { name: "Your words" })).toBeVisible();
 });
+
+test("Full entry widens the word panel; Esc makes it smaller, the card stays", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await fakeNlp(page);
+  await fakeAnki(page);
+  await page.goto("/");
+  await finishOnboarding(page);
+  await page.goto("/");
+  await page.getByRole("button", { name: /^Legend .*De koe op de toren/ }).click();
+  await page
+    .locator(".k-reader .k-tok", { hasText: /^staat$/ })
+    .first()
+    .click();
+  const panel = page.locator(".inspector-panel");
+  await expect(panel).toHaveCSS("width", "340px");
+  await panel.getByRole("button", { name: "Full entry ⤢" }).click();
+  await expect.poll(async () => (await panel.boundingBox())!.width).toBeGreaterThan(700);
+  await expect(panel.locator(".word-entry-senses")).toContainText("to stand");
+  await page.keyboard.press("Escape");
+  await expect(panel).toHaveCSS("width", "340px");
+  await expect(panel.locator(".k-inspector-surface")).toHaveText("staat");
+});

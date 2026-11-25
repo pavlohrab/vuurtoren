@@ -6,8 +6,10 @@
  * panel, with "← back" (`onOpen`, notes/wc2-word-card.md).
  */
 import { useQuery } from "@tanstack/react-query";
-import type { EntryResult, WordEntry as Entry } from "@app/nlp-client";
-import { useState } from "react";
+import type { EntryResult, EntrySense, WordEntry as Entry } from "@app/nlp-client";
+import { useContext, useEffect, useState } from "react";
+import { ShellContext } from "../../shell/ShellContext.js";
+import { useBackClose } from "../../shell/backStack.js";
 import { useServices } from "../../services/context.js";
 
 /** spaCy's part of speech → the dictionary's (Kaikki's). */
@@ -96,6 +98,23 @@ export function WordEntry({
 }) {
   const services = useServices();
   const [all, setAll] = useState(false);
+  const shell = useContext(ShellContext);
+  const wide = !!shell?.inspectorWide;
+  const setWide = shell?.setInspectorWide;
+  // The card goes away (the panel closed, another word): the next one opens at the normal width.
+  useEffect(() => () => setWide?.(false), [setWide]);
+  // Esc and Android Back make the full entry smaller before anything else closes.
+  useBackClose(wide, () => setWide?.(false));
+  useEffect(() => {
+    if (!wide) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      e.stopImmediatePropagation();
+      setWide?.(false);
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, [wide, setWide]);
   const q = useQuery({
     queryKey: ["word-entry", lemma, pos],
     queryFn: () => services.wordEntry?.(lemma, KAIKKI_POS[pos]) ?? null,
@@ -107,16 +126,49 @@ export function WordEntry({
   const { short, more } = formRows(entry);
   const { same, opposite } = related(entry);
   const here = surface.toLowerCase();
-  const table = all ? [...short, ...more] : short;
+  const table = all || wide ? [...short, ...more] : short;
   const lines: [string, string[]][] = [
     ["Base verb", entry.base ? [entry.base] : []],
     ["Same meaning", same],
     ["Opposite", opposite],
-    ["Family", (entry.family ?? []).slice(0, 8)],
+    ["Family", wide ? (entry.family ?? []) : (entry.family ?? []).slice(0, 8)],
+    ...(wide ? ([["Related", entry.extras?.related ?? []]] as [string, string[]][]) : []),
   ];
+  const senses: EntrySense[] = entry.extras?.senses ?? entry.glosses.map((gloss) => ({ gloss }));
   if (!table.length && lines.every(([, v]) => !v.length)) return null;
   return (
-    <section className="word-entry" aria-label="Forms and related words">
+    <section
+      className="word-entry"
+      aria-label="Forms and related words"
+      {...(wide ? { "data-wide": "" } : {})}
+    >
+      {setWide ? (
+        <button
+          type="button"
+          className="k-link word-entry-full"
+          aria-pressed={wide}
+          onClick={() => setWide(!wide)}
+        >
+          {wide ? "Smaller ⤡" : "Full entry ⤢"}
+        </button>
+      ) : null}
+      {wide ? (
+        <ol className="word-entry-senses">
+          {senses.map((s, k) => (
+            <li key={k}>
+              <span>{s.gloss}</span>
+              {s.examples
+                ? s.examples.map((ex, n) => (
+                    <span key={n} className="word-entry-example">
+                      <span lang="nl">{ex.nl}</span>
+                      {ex.en ? <span> · {ex.en}</span> : null}
+                    </span>
+                  ))
+                : null}
+            </li>
+          ))}
+        </ol>
+      ) : null}
       {table.length ? (
         <div className="word-entry-forms">
           <p className="k-overline">Forms</p>
@@ -130,7 +182,7 @@ export function WordEntry({
               </div>
             ))}
           </dl>
-          {more.length ? (
+          {more.length && !wide ? (
             <button type="button" className="k-link word-entry-all" onClick={() => setAll(!all)}>
               {all ? "Fewer forms" : "All forms"}
             </button>
