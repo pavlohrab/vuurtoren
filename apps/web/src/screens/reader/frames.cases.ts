@@ -203,6 +203,25 @@ export const FRAME_CASES: FrameCase[] = [
     about: "quoted command",
     clauses: ["main: […]|zei|ze||", "command: |Ga|naar zee||"],
   },
+  {
+    sentence: "Het is mij gelukt om binnen te komen.",
+    about: "om … te",
+    clauses: ["main: Het|is|mij|gelukt|[…]", "sub: om|binnen|te komen|"],
+  },
+  {
+    sentence: "Sami leerde het Arabisch om de Koran beter te begrijpen.",
+    about: "om … te",
+    clauses: ["main: Sami|leerde|het Arabisch||[…]", "sub: om|de Koran beter|te begrijpen|"],
+  },
+  {
+    sentence: "Kinderen gooiden steentjes naar haar, om te zien of ze zou bewegen.",
+    about: "om … te with a clause inside",
+    clauses: [
+      "main: Kinderen|gooiden|steentjes naar haar||[…]",
+      "sub: om||te zien|[…]",
+      "sub: of|ze|zou bewegen|",
+    ],
+  },
   { sentence: "En boven op de kerk?", about: "fragment", clauses: [] },
   { sentence: "Een groot schip op zee.", about: "fragment", clauses: [] },
   {

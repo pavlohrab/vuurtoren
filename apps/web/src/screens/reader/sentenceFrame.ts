@@ -47,11 +47,14 @@ const QUESTION_WORDS = new Set([
 ]);
 const LINKS = new Set(["en", "maar", "want", "dus", "of"]);
 const REL_WORDS = new Set(["die", "dat", "wie", "wat", "welke", "waar"]);
+/** Words that open an infinitive clause with "te": om te zien, zonder te kijken, door te lezen. */
+const OM_WORDS = new Set(["om", "zonder", "door"]);
 const isVerb = (t: AnalyzedToken) => t.pos === "VERB" || t.pos === "AUX";
 const isWord = (t: AnalyzedToken) => t.pos !== "PUNCT" && t.pos !== "SPACE";
 /** Words that open a subordinate or relative clause: omdat, die, wie, waarop … */
 function introduces(t: AnalyzedToken): boolean {
   if (t.pos === "SCONJ") return true;
+  if (OM_WORDS.has(t.text.toLowerCase()) && t.dep === "mark") return true;
   if (/PronType=(Rel|Int)/.test(t.morph)) return true;
   return /^waar/i.test(t.text) && t.pos !== "VERB";
 }
@@ -70,6 +73,13 @@ export function sentenceClauses(tokens: readonly AnalyzedToken[], sent: number):
   for (const v of finite) {
     const p = predicateOf(v);
     if (!preds.has(p.i)) preds.set(p.i, v);
+  }
+  // "om … te" clauses: an infinitive with om (zonder, door) and te of its own is a clause too.
+  for (const t of words) {
+    if (preds.has(t.i) || !isVerb(t) || !t.morph.includes("VerbForm=Inf")) continue;
+    const kids = words.filter((c) => c.head === t.i);
+    const te = kids.some((c) => c.text.toLowerCase() === "te");
+    if (te && kids.some((c) => OM_WORDS.has(c.text.toLowerCase()))) preds.set(t.i, t);
   }
   // Each word's clause: the nearest predicate above it.
   const owner = new Map<number, number>();
@@ -143,7 +153,9 @@ export function sentenceClauses(tokens: readonly AnalyzedToken[], sent: number):
       const intro = d.own[from] ?? span[0]!;
       const rel = /PronType=Rel/.test(span[0]!.morph) || /^waar/i.test(span[0]!.text);
       drafts.push({
-        pred: v.i,
+        // Its own key, also when the split-off verb was this clause's (a parse that hangs
+        // "was" on "beschuldigde"): two clauses can't share one.
+        pred: v.i === d.pred ? -(v.i + 1) : v.i,
         verb: v,
         own: span,
         kind: rel ? "rel" : "sub",
@@ -157,8 +169,8 @@ export function sentenceClauses(tokens: readonly AnalyzedToken[], sent: number):
   // reporting verb hangs on it (parataxis), or the quote hangs on the reporting verb.
   const lastOf = (d: Draft) => d.own.at(-1)?.i ?? -1;
   for (const r of drafts) {
-    const rp = tokens[r.pred]!;
-    if (rp.dep !== "parataxis" || r.own.some((t) => t.i < r.verb.i)) continue;
+    const rp = tokens[r.pred];
+    if (!rp || rp.dep !== "parataxis" || r.own.some((t) => t.i < r.verb.i)) continue;
     const h = drafts.find((d) => d.pred === rp.head && d !== r);
     if (h && lastOf(h) < r.verb.i && h.parentPred === null) {
       h.parentPred = r.pred;
@@ -320,10 +332,28 @@ export function sentenceClauses(tokens: readonly AnalyzedToken[], sent: number):
           (body[vStart - 1]!.text.toLowerCase() === "te" && vStart < vEnd))
       )
         vStart--;
+      // A clause inside this one ("om te zien [of ze zou bewegen]"): after the verbs in rest,
+      // else in the middle.
+      const lastVerb = body[vEnd - 1]?.i ?? d.verb.i;
+      const place = (list: AnalyzedToken[], here: (start: number) => boolean): ClauseItem[] => {
+        const items: ClauseItem[] = list.map(at);
+        for (const { c, j } of children) {
+          if (!here(c.own[0]!.i)) continue;
+          const pos = items.findIndex((x) => typeof x === "number" && x > c.own[0]!.i);
+          items.splice(pos < 0 ? items.length : pos, 0, { clause: j });
+        }
+        return items;
+      };
       push("intro", intro.map(at));
-      push("middle", body.slice(0, vStart).map(at));
+      push(
+        "middle",
+        place(body.slice(0, vStart), (st) => st < lastVerb),
+      );
       push("verbs", body.slice(vStart, vEnd).map(at));
-      push("rest", body.slice(vEnd).map(at));
+      push(
+        "rest",
+        place(body.slice(vEnd), (st) => st > lastVerb),
+      );
     }
     const parent = d.parentPred === null ? null : (indexOf.get(d.parentPred) ?? null);
     return { kind, parts, parent, verb: d.verb.i };
