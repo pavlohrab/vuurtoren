@@ -2,9 +2,9 @@
  "format": 1,
  "packs": {
   "dictionary-nl": {
-   "version": "2026.11.3",
-   "sha256": "395faeab955f59ca02ec0c9ce67e3a86b63ef51f80364722701978f5fbfb338c",
-   "size": 17900053
+   "version": "2026.11.4",
+   "sha256": "68fb8824cb87c8b0a9fa2278ef2b2b544d9cfc8fff359cb231afbbb89e4981a9",
+   "size": 18218321
   },
   "sentences-nl": {
    "version": "2026.11.1",
