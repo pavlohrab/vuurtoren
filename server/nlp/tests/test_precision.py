@@ -110,6 +110,10 @@ PRECISION: list = [
     pytest.param("Ze pleegden een overval.", "pleegden", "plegen", marks=db),
     pytest.param("Ze wierpen een blik op de zee.", "wierpen", "werpen", marks=db),
     pytest.param("Wij lopen samen naar huis.", "lopen", "lopen", marks=db),
+    # past tenses in -de/-te whose participle Kaikki also lists as a verb (RD8)
+    pytest.param("Hij ontdekte een eiland.", "ontdekte", "ontdekken", marks=db),
+    pytest.param("Ze vertaalde de brief.", "vertaalde", "vertalen", marks=db),
+    pytest.param("Wat bedoelde je?", "bedoelde", "bedoelen", marks=db),
 ]
 
 

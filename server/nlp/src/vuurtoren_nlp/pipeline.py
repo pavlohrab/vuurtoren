@@ -148,6 +148,10 @@ def _dict_candidates(lang: str, surface: str, pos: str) -> tuple[list[str], bool
     lex = get_lexicon()
     if lex.available:
         found = [w for w in lex.lemmas(surface, pos) if _sensible(surface.lower(), w, pos)]
+        if pos in {"VERB", "AUX"}:
+            # A Dutch infinitive ends in -n; Kaikki also lists participles as verb headwords
+            # ("ontdekte" under both ontdekt and ontdekken): the infinitive first.
+            found.sort(key=lambda w: not w.endswith("n"))
         if found:
             return found, True
     cand = _dictionary_lemma(lang, surface).lower()
@@ -198,7 +202,14 @@ def choose_lemma(
         and inflected
         and (model_lemma.lower() not in cands or zipf(dict_lemma) > zipf(model_lemma.lower()))
     )
-    take_dict = not model_ok or (unchanged and inflected) or variant
+    # spaCy gave a participle ("ontdekt") for a verb the dictionary knows by its infinitive.
+    participle = (
+        pos in {"VERB", "AUX"}
+        and from_kaikki
+        and dict_lemma.endswith("n")
+        and not model_lemma.lower().endswith("n")
+    )
+    take_dict = not model_ok or (unchanged and inflected) or variant or participle
     if take_dict:
         return dict_lemma, [model_lemma]
     return model_lemma, [dict_lemma] if (from_kaikki or inflected) else []
