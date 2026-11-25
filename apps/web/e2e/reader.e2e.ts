@@ -102,3 +102,15 @@ test("a word opened from the card replaces it, and Back goes back one word", asy
   await page.keyboard.press("Escape");
   await expect(head).toHaveText("staat");
 });
+
+test("Words on a computer: the list with Today beside it", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await fakeNlp(page);
+  await fakeAnki(page);
+  await page.goto("/");
+  await finishOnboarding(page);
+  await page.getByRole("link", { name: "Words" }).first().click();
+  await expect(page).toHaveURL(/\/words\/all\?layout=list/);
+  await expect(page.locator(".words-aside .due-today")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Your words" })).toBeVisible();
+});

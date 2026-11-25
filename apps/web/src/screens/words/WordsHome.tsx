@@ -5,7 +5,7 @@
  * Connected to Anki, the reviews happen in Anki and Words shows the lists.
  */
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
+import { Link, Navigate } from "@tanstack/react-router";
 import { BookOpenCheck, ChevronRight, Dumbbell, Gauge, Layers } from "lucide-react";
 import type { ReactNode } from "react";
 import { Skeleton, useNativeMode } from "@app/ui";
@@ -14,14 +14,36 @@ import { useServices } from "../../services/context.js";
 import { PageHeader } from "../../shell/PageHeader.js";
 import { usePageHeader } from "../../shell/ShellContext.js";
 import { useCurrentLevel } from "./WordsRoom.js";
+import { currentDevice } from "../../platform/index.js";
 import "./wordsHome.css";
 import { progressText } from "./levels.js";
 import { starterBand } from "@app/anki";
 
 const fmt = (n: number) => n.toLocaleString("en");
 
+/** A computer with room for the three columns (Today and the levels · the list · the word). */
+export function wideDesk(): boolean {
+  return (
+    currentDevice().kind !== "android" &&
+    typeof window.matchMedia === "function" &&
+    window.matchMedia("(min-width: 1100px)").matches
+  );
+}
+
 export function WordsHome() {
   usePageHeader("Words");
+  // On a wide computer window Words is one screen: the list with Today beside it (mock A, UI1).
+  if (wideDesk()) return <Navigate to="/words/all" search={{ layout: "list" }} replace />;
+  return (
+    <div className="page page--list words-home">
+      <PageHeader title="Words" />
+      <WordsAside />
+    </div>
+  );
+}
+
+/** Due today, then the word lists, Practice and the level check: Words home, and the desktop's left column. */
+export function WordsAside() {
   const services = useServices();
   const native = useNativeMode();
   const today = useQuery({
@@ -38,8 +60,7 @@ export function WordsHome() {
   const level = useCurrentLevel();
 
   return (
-    <div className="page page--list words-home">
-      <PageHeader title="Words" />
+    <>
       {native ? <DueToday due={today.data?.due} fresh={today.data?.fresh} /> : <AnkiNote />}
 
       <nav className="words-home-list" aria-label="Your words">
@@ -77,7 +98,7 @@ export function WordsHome() {
           detail={level ? `${starterBand(level.level)} · ${progressText(level)}` : null}
         />
       </nav>
-    </div>
+    </>
   );
 }
 

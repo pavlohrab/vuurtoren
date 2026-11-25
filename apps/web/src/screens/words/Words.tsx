@@ -61,6 +61,7 @@ import {
   parseLevel,
   progressText,
 } from "./levels.js";
+import { WordsAside } from "./WordsHome.js";
 import { ALL_WORDS, WordsRoom, loadStarterIndex, useLevelProgress } from "./WordsRoom.js";
 import { useWordActions } from "../useWordActions.js";
 import { WordStack } from "./WordStack.js";
@@ -549,397 +550,404 @@ export function Words() {
   }
 
   return (
-    <div className="page page--list words-page">
-      <WordsRoom />
-      <PageHeader
-        title="Your words"
-        lede={
-          view === "decide"
-            ? "New words from your reading wait here. Open one to add it to your words, mark it known or leave it."
-            : undefined
-        }
-        actions={
-          <>
-            {layoutToggle}
-            {list.length > 0 ? (
-              <Link
-                to="/practice"
-                search={filtered ? { words: practiseKeys.join(",") } : {}}
-                className="k-btn k-btn--primary"
+    <div className="page page--list words-page words-desk">
+      {/* Computers with room: Today and the lists on the left (mock A, UI1); hidden on phones. */}
+      <aside className="words-aside" aria-label="Today">
+        <WordsAside />
+      </aside>
+      <div className="words-main">
+        <WordsRoom />
+        <PageHeader
+          title="Your words"
+          lede={
+            view === "decide"
+              ? "New words from your reading wait here. Open one to add it to your words, mark it known or leave it."
+              : undefined
+          }
+          actions={
+            <>
+              {layoutToggle}
+              {list.length > 0 ? (
+                <Link
+                  to="/practice"
+                  search={filtered ? { words: practiseKeys.join(",") } : {}}
+                  className="k-btn k-btn--primary"
+                >
+                  <Dumbbell size={16} aria-hidden />{" "}
+                  {filtered ? "Practise these words" : "Practise"}
+                </Link>
+              ) : null}
+            </>
+          }
+        />
+
+        <div className="words-filters" role="group" aria-label="Filters">
+          <div className="words-states" role="radiogroup" aria-label="Show">
+            {VIEWS.filter((v) => !v.native || native).map((v) => (
+              <button
+                key={v.id}
+                type="button"
+                role="radio"
+                aria-checked={view === v.id}
+                className="words-state"
+                onClick={() => {
+                  setLimit(PAGE_SIZE);
+                  setSearch({ state: v.id === defaultView ? undefined : v.id });
+                }}
               >
-                <Dumbbell size={16} aria-hidden /> {filtered ? "Practise these words" : "Practise"}
+                {v.label}
+              </button>
+            ))}
+          </div>
+          <div className="words-filter-fields">
+            <div className="words-source">
+              <Select
+                label="Source"
+                value={params.source ?? "all"}
+                options={sourceOptions}
+                onValueChange={(v) => {
+                  setLimit(PAGE_SIZE);
+                  setSelected(new Set());
+                  setSearch({ source: v === "all" ? undefined : v });
+                }}
+              />
+            </div>
+            <div className="words-level">
+              <Select
+                label="Level"
+                value={level === null ? "all" : String(level)}
+                options={levelOptions}
+                onValueChange={(v) => {
+                  setLimit(PAGE_SIZE);
+                  setSelected(new Set());
+                  setSearch({ level: v === "all" ? undefined : v });
+                }}
+              />
+            </div>
+            <div className="words-search">
+              <Input
+                label="Search"
+                type="search"
+                value={draft}
+                placeholder="Word or meaning"
+                onChange={(e) => {
+                  setDraft(e.target.value);
+                  setLimit(PAGE_SIZE);
+                }}
+              />
+            </div>
+            <div className="words-tools">
+              <Popover
+                align="end"
+                label="Columns"
+                className="words-columns"
+                trigger={
+                  <Button variant="ghost" size="sm">
+                    <Columns3 size={14} aria-hidden /> Columns
+                  </Button>
+                }
+              >
+                <label className="words-column-opt">
+                  <input
+                    type="checkbox"
+                    checked={columns.recall}
+                    onChange={() => toggleColumn("recall")}
+                  />
+                  Recall
+                </label>
+                <label className="words-column-opt">
+                  <input
+                    type="checkbox"
+                    checked={columns.decks}
+                    onChange={() => toggleColumn("decks")}
+                  />
+                  Decks
+                </label>
+              </Popover>
+              <Button
+                variant={grouped ? "secondary" : "ghost"}
+                size="sm"
+                aria-pressed={grouped}
+                onClick={() =>
+                  setSearch({
+                    group: grouped
+                      ? hasStarter
+                        ? "none"
+                        : undefined
+                      : hasStarter
+                        ? undefined
+                        : "level",
+                  })
+                }
+              >
+                <Layers size={14} aria-hidden /> Group by level
+              </Button>
+              <Button
+                variant={selecting ? "secondary" : "ghost"}
+                size="sm"
+                aria-pressed={selecting}
+                onClick={() => (selecting ? stopSelecting() : setSelecting(true))}
+              >
+                <SquareCheck size={14} aria-hidden /> Select
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        <SuggestedWords />
+
+        {filtered ? (
+          <ul className="words-chips" aria-label="Active filters">
+            {sourceLabel ? (
+              <FilterChip
+                label={`From: ${sourceLabel}`}
+                onClear={() => setSearch({ source: undefined })}
+              />
+            ) : null}
+            {level !== null ? (
+              <FilterChip
+                label={`Level: ${levelName(level)}`}
+                onClear={() => setSearch({ level: undefined })}
+              />
+            ) : null}
+            {view !== defaultView ? (
+              <FilterChip
+                label={`Showing: ${VIEWS.find((v) => v.id === view)?.label ?? view}`}
+                onClear={() => setSearch({ state: undefined })}
+              />
+            ) : null}
+            {params.q ? (
+              <FilterChip
+                label={`Search: “${params.q}”`}
+                onClear={() => {
+                  setDraft("");
+                  setSearch({ q: undefined });
+                }}
+              />
+            ) : null}
+            <li>
+              <button
+                type="button"
+                className="link-button words-clear"
+                onClick={() => {
+                  setDraft("");
+                  // Grouping is a way of showing the list, not a filter: it stays.
+                  const keep = {
+                    ...(word ? { word } : {}),
+                    ...(params.group ? { group: params.group } : {}),
+                  };
+                  void navigate({ to: "/words/all", search: keep, replace: true });
+                }}
+              >
+                Clear filters
+              </button>
+            </li>
+          </ul>
+        ) : null}
+
+        {noStarterDecks ? (
+          <p className="words-levels-hint">
+            <Link to="/settings" search={{ section: "words" }}>
+              Add the starter levels in Settings → Your words
+            </Link>
+          </p>
+        ) : null}
+
+        {rows.isPending ? (
+          <Skeleton style={{ height: 160, borderRadius: 10 }} />
+        ) : rows.isError ? (
+          <ErrorNotice
+            title="Your words could not be loaded."
+            error={rows.error}
+            onRetry={() => void rows.refetch()}
+            retryLabel="Try again"
+          />
+        ) : list.length === 0 && !filtered ? (
+          <EmptyState
+            icon={<Languages size={20} />}
+            title="No words yet"
+            description={
+              native
+                ? "Words arrive when you read a text or import a deck file. Start with a text you want to read."
+                : "Words arrive when you sync your Anki decks or read a text. Start with a text you want to read."
+            }
+            action={
+              canAdd ? (
+                <Link to="/import" className="k-btn k-btn--primary">
+                  Add text
+                </Link>
+              ) : undefined
+            }
+          />
+        ) : list.length === 0 && view === "decide" && !source && !params.q ? (
+          <EmptyState
+            icon={<Languages size={20} />}
+            title="Nothing to decide"
+            description="Every new word from your texts has a card or a decision. New words appear here as you read."
+            action={
+              <Link to="/" className="k-btn k-btn--secondary">
+                Find something to read
               </Link>
+            }
+          />
+        ) : list.length === 0 && view === "due" && !source && !params.q ? (
+          <EmptyState
+            icon={<Languages size={20} />}
+            title="Nothing due"
+            description="Every card is up to date. Words come back here when their next review is due."
+            action={
+              <Link to="/" className="k-btn k-btn--secondary">
+                Find something to read
+              </Link>
+            }
+          />
+        ) : list.length === 0 ? (
+          <EmptyState
+            title="No words match"
+            description={
+              source?.kind === "practice-again"
+                ? "Nothing to look at again: every answer in your last session was right."
+                : "Try another view, source or search."
+            }
+          />
+        ) : (
+          <>
+            <div className="words-table-wrap">
+              <table className="data-table words-table">
+                <thead>
+                  <tr>
+                    {selecting ? (
+                      <th className="words-check">
+                        <input
+                          type="checkbox"
+                          aria-label="Select all words shown"
+                          checked={allSelected}
+                          onChange={() =>
+                            setSelected(allSelected ? new Set() : new Set(list.map((r) => r.key)))
+                          }
+                        />
+                      </th>
+                    ) : null}
+                    <th>Word</th>
+                    <th>State</th>
+                    <th>Meaning</th>
+                    {columns.recall ? <th className="words-col-recall">Recall</th> : null}
+                    {columns.decks ? <th className="words-col-decks">Decks</th> : null}
+                  </tr>
+                </thead>
+                <tbody>
+                  {groups.map((g) => (
+                    <Fragment key={String(g.level)}>
+                      {g.level !== undefined && index.data ? (
+                        <LevelHeader
+                          label={levelLabel(index.data, g.level)}
+                          progress={progress.data?.find((p) => p.level === g.level)}
+                          span={span}
+                        />
+                      ) : null}
+                      {g.rows.map((w) => (
+                        <tr
+                          key={w.key}
+                          aria-selected={w.key === word}
+                          className="words-row"
+                          onClick={(e) => {
+                            if ((e.target as Element).closest("input,button,a")) return;
+                            if (selecting) toggle(w.key);
+                            else open(w.key, e.currentTarget);
+                          }}
+                        >
+                          {selecting ? (
+                            <td className="words-check">
+                              <input
+                                type="checkbox"
+                                aria-label={`Select ${w.lemma}`}
+                                checked={selected.has(w.key)}
+                                onChange={() => toggle(w.key)}
+                              />
+                            </td>
+                          ) : null}
+                          <td>
+                            <button
+                              type="button"
+                              className="words-open"
+                              aria-label={`Open ${w.lemma}`}
+                              onClick={(e) => open(w.key, e.currentTarget.closest("tr"))}
+                            >
+                              <Lemma lemma={w.lemma} article={w.article} />
+                            </button>
+                          </td>
+                          <td>
+                            <WordStateChip state={w.state} inVuurtoren={w.appLearning} />
+                            {w.due !== undefined ? (
+                              <span className="words-due">{dueAgo(w.due)}</span>
+                            ) : null}
+                          </td>
+                          <td className={w.gloss ? "words-gloss" : "words-gloss words-gloss--none"}>
+                            {w.gloss ?? "No meaning yet"}
+                          </td>
+                          {columns.recall ? (
+                            <td className="k-mono words-col-recall">
+                              {w.pKnown === null || w.state !== "learning" ? "–" : pct(w.pKnown)}
+                            </td>
+                          ) : null}
+                          {columns.decks ? (
+                            <td className="words-col-decks" title={w.decks.join(", ")}>
+                              {w.decks.map(deckName).join(", ")}
+                            </td>
+                          ) : null}
+                        </tr>
+                      ))}
+                    </Fragment>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {!source && list.length >= limit ? (
+              <div className="words-more">
+                <Button onClick={() => setLimit((l) => l + PAGE_SIZE)}>Show more</Button>
+              </div>
             ) : null}
           </>
-        }
-      />
+        )}
 
-      <div className="words-filters" role="group" aria-label="Filters">
-        <div className="words-states" role="radiogroup" aria-label="Show">
-          {VIEWS.filter((v) => !v.native || native).map((v) => (
-            <button
-              key={v.id}
-              type="button"
-              role="radio"
-              aria-checked={view === v.id}
-              className="words-state"
-              onClick={() => {
-                setLimit(PAGE_SIZE);
-                setSearch({ state: v.id === defaultView ? undefined : v.id });
-              }}
+        {selecting && chosen.length > 0 ? (
+          <div className="words-bulk" role="region" aria-label="Selected words">
+            <span className="words-bulk-count">{chosen.length} selected</span>
+            {actions.deckChoice.addDeck ? (
+              <AddToAnki
+                {...actions.deckChoice.addDeck}
+                size="sm"
+                {...(bulkAdd.isPending ? { label: "Adding…" } : {})}
+                disabled={bulkAdd.isPending}
+                onAdd={() => bulkAdd.mutate(chosen)}
+              />
+            ) : (
+              <Button size="sm" disabled={bulkAdd.isPending} onClick={() => bulkAdd.mutate(chosen)}>
+                {native ? "Add to my words" : "Add to Anki"}
+              </Button>
+            )}
+            <Link
+              to="/practice"
+              search={{ words: chosenKeys.join(",") }}
+              className="k-btn k-btn--secondary k-btn--sm"
             >
-              {v.label}
-            </button>
-          ))}
-        </div>
-        <div className="words-filter-fields">
-          <div className="words-source">
-            <Select
-              label="Source"
-              value={params.source ?? "all"}
-              options={sourceOptions}
-              onValueChange={(v) => {
-                setLimit(PAGE_SIZE);
-                setSelected(new Set());
-                setSearch({ source: v === "all" ? undefined : v });
-              }}
-            />
-          </div>
-          <div className="words-level">
-            <Select
-              label="Level"
-              value={level === null ? "all" : String(level)}
-              options={levelOptions}
-              onValueChange={(v) => {
-                setLimit(PAGE_SIZE);
-                setSelected(new Set());
-                setSearch({ level: v === "all" ? undefined : v });
-              }}
-            />
-          </div>
-          <div className="words-search">
-            <Input
-              label="Search"
-              type="search"
-              value={draft}
-              placeholder="Word or meaning"
-              onChange={(e) => {
-                setDraft(e.target.value);
-                setLimit(PAGE_SIZE);
-              }}
-            />
-          </div>
-          <div className="words-tools">
-            <Popover
-              align="end"
-              label="Columns"
-              className="words-columns"
-              trigger={
-                <Button variant="ghost" size="sm">
-                  <Columns3 size={14} aria-hidden /> Columns
-                </Button>
-              }
+              <Dumbbell size={14} aria-hidden /> Practise these
+            </Link>
+            <Link
+              to="/talk"
+              search={{ words: chosenKeys.slice(0, 8).join(",") }}
+              className="k-btn k-btn--secondary k-btn--sm"
             >
-              <label className="words-column-opt">
-                <input
-                  type="checkbox"
-                  checked={columns.recall}
-                  onChange={() => toggleColumn("recall")}
-                />
-                Recall
-              </label>
-              <label className="words-column-opt">
-                <input
-                  type="checkbox"
-                  checked={columns.decks}
-                  onChange={() => toggleColumn("decks")}
-                />
-                Decks
-              </label>
-            </Popover>
-            <Button
-              variant={grouped ? "secondary" : "ghost"}
-              size="sm"
-              aria-pressed={grouped}
-              onClick={() =>
-                setSearch({
-                  group: grouped
-                    ? hasStarter
-                      ? "none"
-                      : undefined
-                    : hasStarter
-                      ? undefined
-                      : "level",
-                })
-              }
-            >
-              <Layers size={14} aria-hidden /> Group by level
-            </Button>
-            <Button
-              variant={selecting ? "secondary" : "ghost"}
-              size="sm"
-              aria-pressed={selecting}
-              onClick={() => (selecting ? stopSelecting() : setSelecting(true))}
-            >
-              <SquareCheck size={14} aria-hidden /> Select
+              <MessagesSquare size={14} aria-hidden /> Talk about these
+            </Link>
+            <Button size="sm" variant="ghost" onClick={stopSelecting}>
+              Done
             </Button>
           </div>
-        </div>
+        ) : null}
+
+        {inspectorPortal}
       </div>
-
-      <SuggestedWords />
-
-      {filtered ? (
-        <ul className="words-chips" aria-label="Active filters">
-          {sourceLabel ? (
-            <FilterChip
-              label={`From: ${sourceLabel}`}
-              onClear={() => setSearch({ source: undefined })}
-            />
-          ) : null}
-          {level !== null ? (
-            <FilterChip
-              label={`Level: ${levelName(level)}`}
-              onClear={() => setSearch({ level: undefined })}
-            />
-          ) : null}
-          {view !== defaultView ? (
-            <FilterChip
-              label={`Showing: ${VIEWS.find((v) => v.id === view)?.label ?? view}`}
-              onClear={() => setSearch({ state: undefined })}
-            />
-          ) : null}
-          {params.q ? (
-            <FilterChip
-              label={`Search: “${params.q}”`}
-              onClear={() => {
-                setDraft("");
-                setSearch({ q: undefined });
-              }}
-            />
-          ) : null}
-          <li>
-            <button
-              type="button"
-              className="link-button words-clear"
-              onClick={() => {
-                setDraft("");
-                // Grouping is a way of showing the list, not a filter: it stays.
-                const keep = {
-                  ...(word ? { word } : {}),
-                  ...(params.group ? { group: params.group } : {}),
-                };
-                void navigate({ to: "/words/all", search: keep, replace: true });
-              }}
-            >
-              Clear filters
-            </button>
-          </li>
-        </ul>
-      ) : null}
-
-      {noStarterDecks ? (
-        <p className="words-levels-hint">
-          <Link to="/settings" search={{ section: "words" }}>
-            Add the starter levels in Settings → Your words
-          </Link>
-        </p>
-      ) : null}
-
-      {rows.isPending ? (
-        <Skeleton style={{ height: 160, borderRadius: 10 }} />
-      ) : rows.isError ? (
-        <ErrorNotice
-          title="Your words could not be loaded."
-          error={rows.error}
-          onRetry={() => void rows.refetch()}
-          retryLabel="Try again"
-        />
-      ) : list.length === 0 && !filtered ? (
-        <EmptyState
-          icon={<Languages size={20} />}
-          title="No words yet"
-          description={
-            native
-              ? "Words arrive when you read a text or import a deck file. Start with a text you want to read."
-              : "Words arrive when you sync your Anki decks or read a text. Start with a text you want to read."
-          }
-          action={
-            canAdd ? (
-              <Link to="/import" className="k-btn k-btn--primary">
-                Add text
-              </Link>
-            ) : undefined
-          }
-        />
-      ) : list.length === 0 && view === "decide" && !source && !params.q ? (
-        <EmptyState
-          icon={<Languages size={20} />}
-          title="Nothing to decide"
-          description="Every new word from your texts has a card or a decision. New words appear here as you read."
-          action={
-            <Link to="/" className="k-btn k-btn--secondary">
-              Find something to read
-            </Link>
-          }
-        />
-      ) : list.length === 0 && view === "due" && !source && !params.q ? (
-        <EmptyState
-          icon={<Languages size={20} />}
-          title="Nothing due"
-          description="Every card is up to date. Words come back here when their next review is due."
-          action={
-            <Link to="/" className="k-btn k-btn--secondary">
-              Find something to read
-            </Link>
-          }
-        />
-      ) : list.length === 0 ? (
-        <EmptyState
-          title="No words match"
-          description={
-            source?.kind === "practice-again"
-              ? "Nothing to look at again: every answer in your last session was right."
-              : "Try another view, source or search."
-          }
-        />
-      ) : (
-        <>
-          <div className="words-table-wrap">
-            <table className="data-table words-table">
-              <thead>
-                <tr>
-                  {selecting ? (
-                    <th className="words-check">
-                      <input
-                        type="checkbox"
-                        aria-label="Select all words shown"
-                        checked={allSelected}
-                        onChange={() =>
-                          setSelected(allSelected ? new Set() : new Set(list.map((r) => r.key)))
-                        }
-                      />
-                    </th>
-                  ) : null}
-                  <th>Word</th>
-                  <th>State</th>
-                  <th>Meaning</th>
-                  {columns.recall ? <th className="words-col-recall">Recall</th> : null}
-                  {columns.decks ? <th className="words-col-decks">Decks</th> : null}
-                </tr>
-              </thead>
-              <tbody>
-                {groups.map((g) => (
-                  <Fragment key={String(g.level)}>
-                    {g.level !== undefined && index.data ? (
-                      <LevelHeader
-                        label={levelLabel(index.data, g.level)}
-                        progress={progress.data?.find((p) => p.level === g.level)}
-                        span={span}
-                      />
-                    ) : null}
-                    {g.rows.map((w) => (
-                      <tr
-                        key={w.key}
-                        aria-selected={w.key === word}
-                        className="words-row"
-                        onClick={(e) => {
-                          if ((e.target as Element).closest("input,button,a")) return;
-                          if (selecting) toggle(w.key);
-                          else open(w.key, e.currentTarget);
-                        }}
-                      >
-                        {selecting ? (
-                          <td className="words-check">
-                            <input
-                              type="checkbox"
-                              aria-label={`Select ${w.lemma}`}
-                              checked={selected.has(w.key)}
-                              onChange={() => toggle(w.key)}
-                            />
-                          </td>
-                        ) : null}
-                        <td>
-                          <button
-                            type="button"
-                            className="words-open"
-                            aria-label={`Open ${w.lemma}`}
-                            onClick={(e) => open(w.key, e.currentTarget.closest("tr"))}
-                          >
-                            <Lemma lemma={w.lemma} article={w.article} />
-                          </button>
-                        </td>
-                        <td>
-                          <WordStateChip state={w.state} inVuurtoren={w.appLearning} />
-                          {w.due !== undefined ? (
-                            <span className="words-due">{dueAgo(w.due)}</span>
-                          ) : null}
-                        </td>
-                        <td className={w.gloss ? "words-gloss" : "words-gloss words-gloss--none"}>
-                          {w.gloss ?? "No meaning yet"}
-                        </td>
-                        {columns.recall ? (
-                          <td className="k-mono words-col-recall">
-                            {w.pKnown === null || w.state !== "learning" ? "–" : pct(w.pKnown)}
-                          </td>
-                        ) : null}
-                        {columns.decks ? (
-                          <td className="words-col-decks" title={w.decks.join(", ")}>
-                            {w.decks.map(deckName).join(", ")}
-                          </td>
-                        ) : null}
-                      </tr>
-                    ))}
-                  </Fragment>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          {!source && list.length >= limit ? (
-            <div className="words-more">
-              <Button onClick={() => setLimit((l) => l + PAGE_SIZE)}>Show more</Button>
-            </div>
-          ) : null}
-        </>
-      )}
-
-      {selecting && chosen.length > 0 ? (
-        <div className="words-bulk" role="region" aria-label="Selected words">
-          <span className="words-bulk-count">{chosen.length} selected</span>
-          {actions.deckChoice.addDeck ? (
-            <AddToAnki
-              {...actions.deckChoice.addDeck}
-              size="sm"
-              {...(bulkAdd.isPending ? { label: "Adding…" } : {})}
-              disabled={bulkAdd.isPending}
-              onAdd={() => bulkAdd.mutate(chosen)}
-            />
-          ) : (
-            <Button size="sm" disabled={bulkAdd.isPending} onClick={() => bulkAdd.mutate(chosen)}>
-              {native ? "Add to my words" : "Add to Anki"}
-            </Button>
-          )}
-          <Link
-            to="/practice"
-            search={{ words: chosenKeys.join(",") }}
-            className="k-btn k-btn--secondary k-btn--sm"
-          >
-            <Dumbbell size={14} aria-hidden /> Practise these
-          </Link>
-          <Link
-            to="/talk"
-            search={{ words: chosenKeys.slice(0, 8).join(",") }}
-            className="k-btn k-btn--secondary k-btn--sm"
-          >
-            <MessagesSquare size={14} aria-hidden /> Talk about these
-          </Link>
-          <Button size="sm" variant="ghost" onClick={stopSelecting}>
-            Done
-          </Button>
-        </div>
-      ) : null}
-
-      {inspectorPortal}
     </div>
   );
 }

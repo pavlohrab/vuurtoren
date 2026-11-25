@@ -271,3 +271,38 @@
     width: 100%;
   }
 }
+
+/* Desktop Words (mock A, UI1): Today and the lists on the left, the list in the middle, the word
+   panel on the right. Below 1100px (and on phones) the left column is not shown: Words home has
+   the same things. */
+.words-aside {
+  display: none;
+}
+@media (min-width: 1100px) {
+  .words-desk {
+    display: grid;
+    grid-template-columns: 300px minmax(0, 1fr);
+    gap: var(--s-6, 32px);
+    align-items: start;
+    max-width: none;
+  }
+  .words-aside {
+    display: grid;
+    gap: var(--s-4, 16px);
+    position: sticky;
+    top: 0;
+  }
+  .words-aside .due-today {
+    padding: var(--s-4, 16px);
+  }
+  .words-aside .due-today-count {
+    font-size: 28px;
+  }
+  .words-main {
+    min-width: 0;
+  }
+  /* Words home is this page here: no "‹ Words" that would only come back. */
+  .words-desk .words-room-back {
+    visibility: hidden;
+  }
+}
