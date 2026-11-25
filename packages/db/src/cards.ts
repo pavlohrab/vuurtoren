@@ -496,6 +496,19 @@ async function queuePlan(
     );
     fresh.push(...rows.map(toQueueRow));
   }
+  // Cards you put first (Study first, or added while reading: a negative position) come even
+  // when their deck has no new cards today: a word of a level not started yet (m5). The one
+  // limit for all decks below still holds.
+  const taken = new Set(fresh.map((r) => r.id));
+  for (const r of await driver.exec(
+    `SELECT ${QUEUE_COLUMNS}
+      WHERE c.lang = ? AND c.suspended = 0 AND c.schedule IS NULL AND c.position < 0
+      ORDER BY c.position, c.id LIMIT 200`,
+    [lang],
+  )) {
+    const row = toQueueRow(r);
+    if (!taken.has(row.id)) fresh.push(row);
+  }
   fresh.sort((a, b) => a.position - b.position || a.id - b.id);
   // One limit for all decks together: what is left of it today, words added while reading first.
   if (newCap !== undefined) {

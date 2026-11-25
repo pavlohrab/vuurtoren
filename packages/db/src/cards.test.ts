@@ -231,6 +231,32 @@ describe("native card store", () => {
     expect((await repo.nativeQueueCounts("nl", T0, day, 2)).fresh).toBe(2);
   });
 
+  it("a card put first comes today even when its level has no new cards yet (Study first)", async () => {
+    const { repo } = await newRepo();
+    await repo.append({
+      ...imported,
+      decks: [
+        { name: "Woorden 1–500", options: { ...DEFAULT_DECK_OPTIONS, newPerDay: 10 } },
+        { name: "Woorden 4001–4500", options: { ...DEFAULT_DECK_OPTIONS, newPerDay: 0 } },
+      ],
+      cards: [
+        { id: 101, noteId: 11, ord: 0, deck: "Woorden 1–500", position: 1 },
+        { id: 102, noteId: 12, ord: 0, deck: "Woorden 4001–4500", position: 4340 },
+      ],
+      reviews: [],
+    });
+    const day = T0 - 3600_000;
+    expect((await repo.nativeQueue("nl", T0, day, 50)).cards.map((c) => c.card.id)).toEqual([101]);
+    await repo.append({
+      type: "NativeCardsChanged",
+      lang: "nl",
+      reason: "first",
+      changes: [{ cardId: 102, position: -T0, suspended: false }],
+    });
+    const q = await repo.nativeQueue("nl", T0, day, 50, undefined, 10);
+    expect(q.cards.map((c) => c.card.id)).toEqual([102, 101]);
+  });
+
   it("gives more new cards by position across decks (frequency rank), not by deck name", async () => {
     const { repo } = await newRepo();
     await repo.append({
