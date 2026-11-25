@@ -1059,7 +1059,35 @@ dl.card-meaning dd,
   line-height: 1.5;
 }
 
-/* The Sentence tab's frame (SentenceFrameView.tsx): one line, a label under each part. */
+/* The Sentence tab's frame (SentenceFrameView.tsx): one row per clause, a label under each part;
+   a clause inside another sits under it, indented, and shows as […] where it belongs. */
+.sframe-row {
+  display: grid;
+  gap: 4px;
+}
+.sframe-row + .sframe-row {
+  margin-top: 6px;
+}
+.sframe-rowlabel {
+  justify-self: start;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: 12px;
+  color: var(--ink-muted);
+  cursor: pointer;
+}
+.sframe-rowlabel[aria-pressed="true"] {
+  color: var(--accent);
+}
+.sframe-nested {
+  color: var(--ink-muted);
+}
+.sframe-none {
+  margin: 0;
+  font-size: 13px;
+  color: var(--ink-muted);
+}
 .sframe {
   display: grid;
   gap: 8px;
