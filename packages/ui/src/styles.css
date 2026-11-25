@@ -2245,7 +2245,9 @@ svg.lucide {
   container: k-sbs / inline-size;
   min-width: 0;
 }
-.k-sbs {
+/* The pair colours, for side by side and the Sentence tab's marked words (.k-pairs). */
+.k-sbs,
+.k-pairs {
   /* Mixed here, not on :root, so a reading theme's page colour is used. */
   --pair-1: color-mix(in srgb, var(--pair-hue-1) 34%, var(--bg));
   --pair-2: color-mix(in srgb, var(--pair-hue-2) 26%, var(--bg));
@@ -2256,6 +2258,8 @@ svg.lucide {
   --pair-7: color-mix(in srgb, var(--pair-hue-7) 48%, var(--bg));
   --pair-8: color-mix(in srgb, var(--pair-hue-8) 36%, var(--bg));
   --pair-9: color-mix(in srgb, var(--pair-hue-9) 30%, var(--bg));
+}
+.k-sbs {
   --pair-active-bg: color-mix(in srgb, var(--accent) 24%, var(--bg));
   --pair-active-line: var(--accent);
   font-family: var(--font-reading);

@@ -73,7 +73,7 @@ import {
   useWordEntry,
 } from "./reader/WordEntry.js";
 import { DictionaryMissing } from "./reader/DictionaryMissing.js";
-import { SentenceFrameView } from "./reader/SentenceFrameView.js";
+import { SentenceTab } from "./reader/SentenceTab.js";
 import { contextGloss } from "../services/contextGloss.js";
 
 /**
@@ -534,6 +534,16 @@ export function ReaderPage({ textId }: { textId: string }) {
     () => new Map((pairsQ.data ?? []).map((p) => [p.sent, p])),
     [pairsQ.data],
   );
+  // The Sentence tab's word pairs (F3): the English lights up with the Dutch.
+  const tabSent = entry && !opened ? data?.tokens[entry.tokenIndex]?.sent : undefined;
+  const tabPairsQ = useQuery({
+    queryKey: ["pairs", textId, "tab", tabSent, englishAI],
+    queryFn: () => services.sentencePairs(textId, [tabSent as number], { ai: englishAI }),
+    enabled: tabSent !== undefined && !sentencePairs.has(tabSent),
+    staleTime: Infinity,
+  });
+  const tabPairs =
+    tabSent === undefined ? undefined : (sentencePairs.get(tabSent) ?? tabPairsQ.data?.[0]);
   const orderNotes = useMemo(() => {
     const out = new Map<number, StructureNote>();
     if (!side || !data) return out;
@@ -1124,20 +1134,24 @@ export function ReaderPage({ textId }: { textId: string }) {
                     ) : null
                   }
                   sentencePanel={
-                    <SentencePanel
-                      sentence={entry?.sentence}
-                      translation={entry?.sentenceTranslation}
-                      grammar={sentenceGrammar}
-                      frame={
-                        entry && !opened && data.tokens[entry.tokenIndex] ? (
-                          <SentenceFrameView
-                            tokens={data.tokens}
-                            sent={data.tokens[entry.tokenIndex]!.sent}
-                            text={data.text.content}
-                          />
-                        ) : null
-                      }
-                    />
+                    entry && entry.sentence && tabSent !== undefined ? (
+                      <SentenceTab
+                        key={tabSent}
+                        tokens={data.tokens}
+                        sent={tabSent}
+                        text={data.text.content}
+                        sentence={entry.sentence}
+                        translation={entry.sentenceTranslation}
+                        pairs={tabPairs}
+                        grammar={sentenceGrammar}
+                      />
+                    ) : (
+                      <SentencePanel
+                        sentence={entry?.sentence}
+                        translation={entry?.sentenceTranslation}
+                        grammar={sentenceGrammar}
+                      />
+                    )
                   }
                 />
               </>,

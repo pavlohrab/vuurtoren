@@ -22,6 +22,7 @@ export function SentencePanel({
   translation,
   grammar,
   frame,
+  text,
 }: {
   sentence: string | null | undefined;
   /** The sentence's English, shown with it (F2: the tab has it too, not only the card). */
@@ -30,15 +31,19 @@ export function SentencePanel({
   grammar?: ExplainGrammar[];
   /** The sentence part by part (the reader's SentenceFrameView), shown first. */
   frame?: ReactNode;
+  /** The sentence and its English drawn by the caller (the Sentence tab links their words). */
+  text?: ReactNode;
 }) {
   if (!sentence) return <p className="k-hint">No sentence for this word.</p>;
   // Keyed by sentence so a new selection starts clean.
   return (
     <>
-      <div className="sentence-panel-text">
-        <p lang="nl">{sentence}</p>
-        {translation ? <p lang="en">{translation}</p> : null}
-      </div>
+      {text ?? (
+        <div className="sentence-panel-text">
+          <p lang="nl">{sentence}</p>
+          {translation ? <p lang="en">{translation}</p> : null}
+        </div>
+      )}
       {frame}
       <SentenceChat key={sentence} sentence={sentence} grammar={grammar ?? []} />
     </>

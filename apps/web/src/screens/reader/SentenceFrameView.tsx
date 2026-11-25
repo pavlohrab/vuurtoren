@@ -16,6 +16,7 @@ import {
   sentenceClauses,
   wordRole,
 } from "./sentenceFrame.js";
+import type { PickHandlers } from "./SentenceTab.js";
 
 type Field = ClausePart["field"];
 
@@ -88,11 +89,17 @@ export function SentenceFrameView({
   tokens,
   sent,
   text,
+  marked,
+  bindWord,
 }: {
   tokens: readonly AnalyzedToken[];
   sent: number;
   /** The text's content (words are slices of it). */
   text: string;
+  /** Words lit up in the Sentence tab, with their colour (1–9). */
+  marked?: ReadonlyMap<number, number>;
+  /** Tap, Ctrl-click and long press on a word, shared with the sentence above. */
+  bindWord?: (i: number) => PickHandlers;
 }) {
   const clauses = useMemo(() => sentenceClauses(tokens, sent), [tokens, sent]);
   const [focus, setFocus] = useState<Focus>(null);
@@ -102,20 +109,29 @@ export function SentenceFrameView({
     return text.slice(t.start, t.end);
   };
 
-  const wordButton = (i: number) => (
-    <button
-      key={i}
-      type="button"
-      className="sframe-word"
-      aria-pressed={focus?.kind === "word" && focus.i === i}
-      onClick={() => setFocus({ kind: "word", i })}
-    >
-      {word(i)}
-      {types && WORD_KIND[tokens[i]!.pos] ? (
-        <small className="sframe-kind">{WORD_KIND[tokens[i]!.pos]}</small>
-      ) : null}
-    </button>
-  );
+  const wordButton = (i: number) => {
+    const bound = bindWord?.(i);
+    const c = marked?.get(i);
+    return (
+      <button
+        key={i}
+        type="button"
+        className="sframe-word k-sbs-w"
+        {...(c ? { "data-pc": c } : {})}
+        aria-pressed={focus?.kind === "word" && focus.i === i}
+        {...bound}
+        onClick={(e) => {
+          setFocus({ kind: "word", i });
+          bound?.onClick(e);
+        }}
+      >
+        {word(i)}
+        {types && WORD_KIND[tokens[i]!.pos] ? (
+          <small className="sframe-kind">{WORD_KIND[tokens[i]!.pos]}</small>
+        ) : null}
+      </button>
+    );
+  };
 
   const why = (f: Focus): string => {
     if (!f) return clauses.length ? "Tap a part or a word to see why it's there." : "";
@@ -137,7 +153,7 @@ export function SentenceFrameView({
     // No conjugated verb: a short phrase. The words alone, so their kinds still show.
     const words = tokens.filter((t) => t.sent === sent && t.pos !== "PUNCT").map((t) => t.i);
     return (
-      <section className="sframe" aria-label="The sentence, part by part">
+      <section className="sframe k-pairs" aria-label="The sentence, part by part">
         <p className="sframe-none">No verb: a short phrase.</p>
         <div className="sframe-line" lang="nl">
           <span className="sframe-part">
@@ -153,7 +169,7 @@ export function SentenceFrameView({
   }
 
   return (
-    <section className="sframe" aria-label="The sentence, part by part">
+    <section className="sframe k-pairs" aria-label="The sentence, part by part">
       {/* Each clause on one line; a long one scrolls the rows sideways together. */}
       <div className="sframe-scroll">
         <div className="sframe-rows">
