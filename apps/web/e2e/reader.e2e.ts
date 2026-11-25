@@ -88,19 +88,21 @@ test("a word opened from the card replaces it, and Back goes back one word", asy
   await word.click();
   const panel = page.locator(".inspector-panel");
   const head = panel.locator(".k-inspector-surface");
-  await expect(head).toHaveText("staat");
+  // The dictionary word on top, the page's form and what it is under it (RD2).
+  await expect(head).toHaveText("staan");
+  await expect(panel.locator(".k-inspector-lemma")).toHaveText(/^staat · now, /);
   await panel.getByRole("button", { name: "opstaan" }).click();
   await expect(head).toHaveText("opstaan");
   // Never a second panel: the same one, with the way back on top; the text's word stays outlined.
   await expect(page.locator(".inspector-panel")).toHaveCount(1);
   await expect(word).toHaveAttribute("data-selected", "true");
   await panel.getByRole("button", { name: "← staan" }).click();
-  await expect(head).toHaveText("staat");
+  await expect(head).toHaveText("staan");
   // Esc goes back one word first, then closes the card.
   await panel.getByRole("button", { name: "toestaan" }).click();
   await expect(head).toHaveText("toestaan");
   await page.keyboard.press("Escape");
-  await expect(head).toHaveText("staat");
+  await expect(head).toHaveText("staan");
 });
 
 test("Words on a computer: the list with Today beside it", async ({ page }) => {
@@ -134,5 +136,5 @@ test("Full entry widens the word panel; Esc makes it smaller, the card stays", a
   await expect(panel.locator(".word-entry-senses")).toContainText("to stand");
   await page.keyboard.press("Escape");
   await expect(panel).toHaveCSS("width", "340px");
-  await expect(panel.locator(".k-inspector-surface")).toHaveText("staat");
+  await expect(panel.locator(".k-inspector-surface")).toHaveText("staan");
 });

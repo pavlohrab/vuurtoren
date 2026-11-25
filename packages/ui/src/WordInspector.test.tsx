@@ -45,7 +45,9 @@ describe("WordInspector", () => {
 
   it("renders the entry details", () => {
     const { container } = render(<WordInspector entry={entry} />);
-    expect(screen.getByRole("heading", { name: /het huizen/ })).toBeInTheDocument();
+    // The dictionary word on top, the page's form under it (RD2).
+    expect(screen.getByRole("heading", { name: "het huis" })).toBeInTheDocument();
+    expect(container.querySelector(".k-inspector-lemma")).toHaveTextContent("huizen");
     expect(screen.getByText("house")).toBeInTheDocument();
     // Short deck names, a plain part of speech; Recall only while learning.
     expect(screen.getByText("Core 2k")).toBeInTheDocument();

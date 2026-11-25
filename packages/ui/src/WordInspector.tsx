@@ -35,6 +35,12 @@ export interface WordInspectorProps {
    * opendoen" above the head goes back one word (notes/wc2-word-card.md).
    */
   backTo?: { label: string; onBack: () => void } | undefined;
+  /**
+   * The word as the page has it and what kind of form it is ("moet", "now, hij/zij/het"): the
+   * head is then the dictionary word, with this under it (RD2). Without it the line shows just
+   * the page's word.
+   */
+  form?: { said: string; what?: string } | null | undefined;
   /** More about the word under its details (the reader's grammar of this word). */
   wordExtra?: ReactNode;
   /**
@@ -87,6 +93,7 @@ export function WordInspector({
   emptyText = "Select a word in the text to see its details.",
   headerAction,
   backTo,
+  form,
   wordExtra,
   sentencePanel,
 }: WordInspectorProps) {
@@ -115,6 +122,8 @@ export function WordInspector({
   const pos = posName(entry.pos);
 
   const short = entry.glosses[0] ?? entry.sentenceGloss ?? null;
+  // The head is the dictionary word; the page's form goes under it (RD2).
+  const lemmaHead = !!form || entry.surface.toLocaleLowerCase() !== entry.lemma.toLocaleLowerCase();
   const actions = ankiActions({
     entry,
     busy,
@@ -144,13 +153,14 @@ export function WordInspector({
                   <span style={{ color: "var(--ink-muted)" }}>{entry.article}</span>{" "}
                 </>
               ) : null}
-              {entry.surface}
+              {lemmaHead ? entry.lemma : entry.surface}
             </h2>
             {headerAction}
           </div>
-          {entry.surface.toLocaleLowerCase() !== entry.lemma.toLocaleLowerCase() ? (
+          {lemmaHead ? (
             <div className="k-inspector-lemma">
-              from <span lang="nl">{entry.lemma}</span>
+              <span lang="nl">{form?.said ?? entry.surface}</span>
+              {form?.what ? ` · ${form.what}` : null}
             </div>
           ) : null}
         </header>

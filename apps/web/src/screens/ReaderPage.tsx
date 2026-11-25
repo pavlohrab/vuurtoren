@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { ModeMenu } from "./reader/ModeMenu.js";
 import { useSwipePages } from "./reader/useSwipePages.js";
+import { formLine } from "./reader/formLine.js";
 import {
   type HelpLevel,
   type SegmentPlan,
@@ -1048,6 +1049,9 @@ export function ReaderPage({ textId }: { textId: string }) {
                   }
                   onRetry={() => void (opened ? openedEntry.refetch() : inspect.refetch())}
                   headerAction={audio.wordButton(shown)}
+                  form={
+                    !opened && selected !== null && data ? formLine(data.tokens, selected) : null
+                  }
                   backTo={
                     opened
                       ? { label: stack.at(-2) ?? entry?.lemma ?? "", onBack: backWord }
