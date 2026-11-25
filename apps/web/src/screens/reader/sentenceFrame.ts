@@ -49,6 +49,30 @@ const LINKS = new Set(["en", "maar", "want", "dus", "of"]);
 const REL_WORDS = new Set(["die", "dat", "wie", "wat", "welke", "waar"]);
 /** Words that open an infinitive clause with "te": om te zien, zonder te kijken, door te lezen. */
 const OM_WORDS = new Set(["om", "zonder", "door"]);
+/** Verbs that take a bare infinitive: kan zwemmen, gaat slapen, hoort haar zingen. */
+const BARE_INF = new Set([
+  "kunnen",
+  "moeten",
+  "willen",
+  "zullen",
+  "mogen",
+  "hoeven",
+  "gaan",
+  "komen",
+  "blijven",
+  "laten",
+  "zien",
+  "horen",
+  "voelen",
+  "helpen",
+  "leren",
+  "doen",
+  "durven",
+  "liggen",
+  "staan",
+  "zitten",
+  "lopen",
+]);
 const isVerb = (t: AnalyzedToken) => t.pos === "VERB" || t.pos === "AUX";
 const isWord = (t: AnalyzedToken) => t.pos !== "PUNCT" && t.pos !== "SPACE";
 /** Words that open a subordinate or relative clause: omdat, die, wie, waarop … */
@@ -63,6 +87,14 @@ function introduces(t: AnalyzedToken): boolean {
 /** The clauses of sentence `sent`, main clauses first in reading order; [] for a fragment. */
 export function sentenceClauses(tokens: readonly AnalyzedToken[], sent: number): Clause[] {
   const words = tokens.filter((t) => t.sent === sent && isWord(t));
+  // An infinitive used as a noun: "houdt van zwemmen", "zich zorgen maakt" (houden and maken take
+  // no bare infinitive).
+  const nounLike = (t: AnalyzedToken): boolean => {
+    if (!t.morph.includes("VerbForm=Inf")) return false;
+    if (words.some((x) => x.head === t.i && x.text.toLowerCase() === "te")) return false;
+    const h = tokens[t.head];
+    return t.dep === "xcomp" && !!h && h.pos === "VERB" && !BARE_INF.has(h.lemma.toLowerCase());
+  };
   // Conjugated verbs, with two repairs of the parser's forms. An infinitive after a modal is
   // sometimes tagged conjugated ("wil … wonen"): xcomp means it isn't. A plural present looks like
   // an infinitive ("die ze nooit hebben besproken"): a helper in a clause of its own with no
@@ -130,6 +162,9 @@ export function sentenceClauses(tokens: readonly AnalyzedToken[], sent: number):
     if (m.pos !== "SCONJ" || m.dep !== "mark") continue;
     const h = tokens[m.head];
     if (!h || h.sent !== sent || preds.has(h.i) || h.i === m.i) continue;
+    // "dat ze zich gehaat voelde": the parse hangs dat on the participle; voelde is the verb
+    const up = tokens[h.head];
+    if (up && up.i > h.i && finite.includes(up)) continue;
     const helped = words.some((x) => x.head === h.i && finite.includes(x));
     // "zo diep als de zee": a noun with no subject of its own is no clause
     const clauseLike = isVerb(h) || words.some((x) => x.head === h.i && x.dep.startsWith("nsubj"));
@@ -268,6 +303,13 @@ export function sentenceClauses(tokens: readonly AnalyzedToken[], sent: number):
     }
   }
   for (const d of drafts) if (d.quote) d.kind = "main";
+  // "Waar u ook maar wilt.", "Omdat ik moe ben.": a sentence that is one clause inside, alone.
+  const asked = tokens.some((t) => t.sent === sent && t.text === "?");
+  for (const d of drafts) {
+    if (d.kind !== "main" || d.parentPred !== null || d.quote || asked) continue;
+    if (tokens[d.pred]?.dep !== "ROOT" || !d.own[0] || !introduces(d.own[0])) continue;
+    if (d.own.length > 2 && d.own.every((t) => t.i <= d.verb.i || isVerb(t))) d.kind = "sub";
+  }
   // Words no clause took: a phrase without a verb ("Een boek waarin alles staat", "Dank je wel
   // dat …"). It gets a row of its own, and the clauses hanging on it sit inside it.
   const taken = new Set(drafts.flatMap((d) => d.own.map((t) => t.i)));
@@ -338,6 +380,7 @@ export function sentenceClauses(tokens: readonly AnalyzedToken[], sent: number):
         // with a copula the predicate stays in the middle ("is bewapend en gevaarlijk")
         !(t.i === d.pred && d.verb.dep === "cop") &&
         !hasArticle(t) &&
+        !nounLike(t) &&
         (!t.morph.includes("VerbForm=Fin") ||
           t.i === d.pred ||
           t.dep === "xcomp" ||
@@ -402,7 +445,9 @@ export function sentenceClauses(tokens: readonly AnalyzedToken[], sent: number):
         // "Waar woon je?", and after a preposition: "Aan wie gaf je …?"
         const qAt = before[0]?.pos === "ADP" ? before[1] : before[0];
         const qWord = !!qAt && QUESTION_WORDS.has(qAt.text.toLowerCase());
-        const hasSubject = own.some((t) => t.dep.startsWith("nsubj") && t.head === d.pred);
+        const hasSubject = own.some(
+          (t) => t.dep.startsWith("nsubj") && (t.head === d.pred || t.head === d.verb.i),
+        );
         // A quote ends at its own "?" ("Ben jij Hans?" vraagt hij), the sentence at its last one.
         const asks = d.quote
           ? tokens.slice(lastOf(d) + 1, lastOf(d) + 3).some((t) => t.text === "?")
@@ -431,7 +476,7 @@ export function sentenceClauses(tokens: readonly AnalyzedToken[], sent: number):
       const body = own.slice(introEnd + 1);
       let vEnd = body.length;
       // the clause's own verb counts, also when the parser calls it something else ("oplet")
-      const inVerbs = (x: AnalyzedToken) => isVerb(x) || x.i === d.verb.i;
+      const inVerbs = (x: AnalyzedToken) => (isVerb(x) && !nounLike(x)) || x.i === d.verb.i;
       while (vEnd > 0 && !inVerbs(body[vEnd - 1]!)) vEnd--;
       let vStart = vEnd;
       while (

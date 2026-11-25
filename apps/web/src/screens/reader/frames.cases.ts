@@ -411,4 +411,55 @@ export const FRAME_CASES: FrameCase[] = [
       "rel: die|waarschijnlijk onderdelen|waren|van de vuurtoren",
     ],
   },
+  {
+    sentence: "Waar u ook maar wilt.",
+    about: "a clause inside, alone",
+    clauses: ["sub: Waar|u ook maar|wilt|"],
+  },
+  {
+    sentence: "Houdt u niet van zwemmen?",
+    about: "infinitive as a noun after van",
+    clauses: ["question: |Houdt|u niet van zwemmen||"],
+  },
+  {
+    sentence: "Ze zei dat ze zich gehaat voelde.",
+    about: "dat hung on the participle",
+    clauses: ["main: Ze|zei|||[…]", "sub: dat|ze zich|gehaat voelde|"],
+  },
+  {
+    sentence: "Op de oude radio van Jan hoort Noor stemmen.",
+    about: "noun or verb",
+    clauses: ["main: Op de oude radio van Jan|hoort|Noor stemmen||"],
+    hard: "stemmen can be a verb here too (hears Noor vote); the parser picks the verb",
+  },
+  {
+    sentence: '"Nee, deze gaat naar Zwolle."',
+    about: "interjection before the first place",
+    clauses: ["main: deze|gaat|naar Zwolle||"],
+    hard: "Nee has no part of its own yet",
+  },
+  {
+    sentence: '"Was ik maar de zon."',
+    about: "a wish, verb first",
+    clauses: ["main: |Was|ik maar de zon||"],
+  },
+  {
+    sentence:
+      "Volgens het verhaal noemden de mensen de plek waar de wieg aan land kwam vanaf toen Kinderdijk.",
+    about: "relative in the middle",
+    clauses: [
+      "main: Volgens het verhaal|noemden|de mensen de plek […] vanaf toen Kinderdijk||",
+      "rel: waar|de wieg aan land|kwam|",
+    ],
+    hard: "the parser hangs Kinderdijk on kwam",
+  },
+  {
+    sentence: "Betsy schrijft terug dat ze zich zorgen maakt, maar ze komt niet.",
+    about: "zorgen is a noun",
+    clauses: [
+      "main: Betsy|schrijft||terug|[…]",
+      "main: (maar) ze|komt|niet||",
+      "sub: dat|ze zich zorgen|maakt|",
+    ],
+  },
 ];
