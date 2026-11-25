@@ -261,4 +261,11 @@ describe("difficultyBand", () => {
     );
     expect(screen.getByRole("tab", { name: "Word" })).toHaveAttribute("aria-selected", "true");
   });
+
+  it("on the card, the sentence opens the Sentence tab", async () => {
+    render(<WordInspector entry={entry} card={{}} sentencePanel={<p>The sentence</p>} />);
+    await userEvent.click(screen.getByRole("button", { name: "Open the Sentence tab" }));
+    expect(screen.getByRole("tab", { name: "Sentence" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByText("The sentence")).toBeVisible();
+  });
 });

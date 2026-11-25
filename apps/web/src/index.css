@@ -559,6 +559,11 @@
   .inspector-panel .k-inspector-tabs {
     margin-top: var(--s-4);
   }
+  /* Room between the sentence (it opens the Sentence tab) and the buttons under it, so a tap
+     meant for one doesn't land on the other. */
+  .inspector-panel .k-inspector[data-layout="card"] .k-inspector-quick {
+    margin-top: var(--s-5);
+  }
   .inspector-panel .k-inspector-context .k-inspector-sentence {
     font-size: 16px;
   }

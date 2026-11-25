@@ -1,4 +1,4 @@
-import { type ReactNode, type TouchEvent, useRef, useState } from "react";
+import { type KeyboardEvent, type ReactNode, type TouchEvent, useRef, useState } from "react";
 import { AddToAnki, type DeckOption, deckName } from "./AddToAnki.js";
 import { Button } from "./Button.js";
 import { Chip } from "./Chip.js";
@@ -292,7 +292,24 @@ export function WordInspector({
           <p className="k-inspector-short" data-short={short ?? "No meaning yet"} aria-hidden />
         )}
         {s ? (
-          <div className="k-inspector-context">
+          <div
+            className="k-inspector-context"
+            /* On the card, the sentence opens the Sentence tab. */
+            {...(card && sentencePanel
+              ? {
+                  role: "button",
+                  tabIndex: 0,
+                  "aria-label": "Open the Sentence tab",
+                  "data-opens": "",
+                  onClick: () => setTab("sentence"),
+                  onKeyDown: (e: KeyboardEvent) => {
+                    if (e.key !== "Enter" && e.key !== " ") return;
+                    e.preventDefault();
+                    setTab("sentence");
+                  },
+                }
+              : {})}
+          >
             <p className="k-inspector-sentence" lang="nl">
               {s.slice(0, from)}
               <mark>{s.slice(from, to)}</mark>
