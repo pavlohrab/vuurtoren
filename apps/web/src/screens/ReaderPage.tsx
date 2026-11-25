@@ -63,6 +63,7 @@ import { useReaderAudio } from "../audio/ReaderAudio.js";
 import { readLocal, writeLocal } from "../storage/local.js";
 import { ReaderLeave, rememberReader, takeReaderReturn } from "./reader/readerReturn.js";
 import { WordEntry } from "./reader/WordEntry.js";
+import { DictionaryMissing } from "./reader/DictionaryMissing.js";
 import { SentenceFrameView } from "./reader/SentenceFrameView.js";
 import { useBackClose } from "../shell/backStack.js";
 import { contextGloss } from "../services/contextGloss.js";
@@ -1056,6 +1057,7 @@ export function ReaderPage({ textId }: { textId: string }) {
                   wordExtra={
                     shown && entry ? (
                       <>
+                        <DictionaryMissing />
                         <WordEntry
                           lemma={shown.lemma}
                           pos={shown.pos}

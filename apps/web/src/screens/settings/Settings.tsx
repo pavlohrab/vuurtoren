@@ -59,7 +59,7 @@ const SECTIONS: { id: SectionId; label: string; hint: string; icon: ReactNode }[
   {
     id: "reading",
     label: "Reading",
-    hint: "How much help you get while you read, and the voice that reads to you.",
+    hint: "How much help you get while you read, the voice, and the dictionary on this phone.",
     icon: <BookOpen size={18} />,
   },
   {
@@ -144,7 +144,6 @@ export function SettingsScreen() {
             <div className="stack settings-stack">
               {native ? null : <AnkiConnection />}
               <LanguageDecksSettings />
-              <DictionaryPack />
             </div>
           ) : section === "reading" ? (
             <ReadingSettings />
@@ -349,6 +348,8 @@ function ReadingSettings() {
         </div>
       </div>
       <VoiceTest rate={form.audioRate} />
+      {/* The phone's downloads, together and easy to find (m5): the dictionary, then the recordings. */}
+      <DictionaryPack />
       <RecordingsPack />
       <label className="settings-check">
         <input
