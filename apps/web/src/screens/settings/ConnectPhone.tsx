@@ -6,7 +6,7 @@
  * joins at once. The connected phones are listed with Remove. Plain words, nothing more.
  */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Button } from "@app/ui";
+import { Button, Spinner } from "@app/ui";
 import { useState } from "react";
 import { currentDevice } from "../../platform/index.js";
 import { useServices } from "../../services/context.js";
@@ -18,7 +18,12 @@ export function ConnectPhone() {
   const lan = currentDevice().bridge?.lan;
   const services = useServices();
   const qc = useQueryClient();
-  const [shown, setShown] = useState<{ link: string; code: string } | null>(null);
+  const [shown, setShown] = useState<{
+    link: string;
+    code: string;
+    /** The phones there were when the code appeared: a new one is the phone that scanned it. */
+    before: Set<string>;
+  } | null>(null);
   const [recovery, setRecovery] = useState<string | null>(null);
   const phones = useQuery({
     queryKey: ["lan-phones"],
@@ -41,7 +46,8 @@ export function ConnectPhone() {
       if (!address) throw new Error("This computer is not on a network. Connect it to your Wi-Fi.");
       const code = await lan!.code({ key });
       await qc.invalidateQueries({ queryKey: ["sync"] });
-      return { link: lanLink(address, info.port, info.fingerprint, code), code };
+      const before = new Set((await lan!.phones()).map((p) => p.hash));
+      return { link: lanLink(address, info.port, info.fingerprint, code), code, before };
     },
     onSuccess: setShown,
   });
@@ -50,6 +56,7 @@ export function ConnectPhone() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["lan-phones"] }),
   });
   if (!lan || !services.startForPhones || !services.phoneHandover) return null;
+  const arrived = shown ? phones.data?.find((p) => !shown.before.has(p.hash)) : undefined;
   const windows = typeof navigator !== "undefined" && /Windows/.test(navigator.userAgent);
 
   return (
@@ -57,7 +64,16 @@ export function ConnectPhone() {
       <h3 className="settings-h3" id="connect-phone-h">
         Connect a phone
       </h3>
-      {shown ? (
+      {shown && arrived ? (
+        <div className="stack" style={{ gap: 8 }} role="status">
+          <p style={{ margin: 0 }}>
+            ✓ <b>{arrived.name}</b> is connected. It&apos;s bringing your data over now.
+          </p>
+          <div className="row">
+            <Button onClick={() => setShown(null)}>Done</Button>
+          </div>
+        </div>
+      ) : shown ? (
         <div className="stack" style={{ gap: 8 }}>
           <QrCode text={shown.link} label="Code to scan with your phone" />
           <p style={{ margin: 0 }}>
@@ -65,6 +81,10 @@ export function ConnectPhone() {
           </p>
           <p className="k-hint" style={{ margin: 0 }}>
             Or type the code: <b>{shown.code}</b>. It works for ten minutes.
+          </p>
+          <p className="k-hint row" role="status" style={{ margin: 0, gap: 8 }}>
+            <Spinner label="Waiting" />
+            Waiting for your phone…
           </p>
           {windows ? (
             <p className="k-hint" style={{ margin: 0 }}>
