@@ -111,7 +111,11 @@ export interface SyncServices {
    * server becomes the place to join (`paired`) and, on a device without its own language
    * server, the language server. Set up then joins it with the passphrase.
    */
-  connectServer(link: ServerAccess, deviceName: string): Promise<SyncStatus>;
+  connectServer(
+    link: ServerAccess,
+    deviceName: string,
+    onProgress?: (msg: string) => void,
+  ): Promise<SyncStatus>;
   /**
    * "Connect a phone" (computers): this device's sync key, base64, to hand to a phone that
    * shows the right code; null when this device does not sync yet.

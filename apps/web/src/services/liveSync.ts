@@ -581,9 +581,11 @@ export function createLiveSync(deps: LiveSyncDeps) {
       });
     },
 
-    async connectServer(link, deviceName) {
+    async connectServer(link, deviceName, onProgress) {
       return exclusive(async () => {
         let now = read();
+        const there = "pinned" in link && link.pinned ? "your computer" : "the server";
+        onProgress?.(`Reaching ${there}…`);
         // The same computer at a new address (its certificate is the same): only the address
         // changes, the phone stays paired.
         if (
@@ -601,7 +603,7 @@ export function createLiveSync(deps: LiveSyncDeps) {
           let synced = false;
           if (key) {
             try {
-              await run(moved, await keyFromRaw(key));
+              await run(moved, await keyFromRaw(key), onProgress);
               synced = true;
             } catch {
               // Below: pair again with the code just scanned.
@@ -620,6 +622,7 @@ export function createLiveSync(deps: LiveSyncDeps) {
         const ua = typeof navigator === "undefined" ? "" : navigator.userAgent;
         const label = pairedLabel(deviceName || defaultName(), ua, deps.phone ?? false);
         const paired = await pairWithServer(link, label, fetch);
+        onProgress?.(`Connected to ${there}. Checking the key…`);
         await tokens.save(paired.token);
         keptToken = paired.token;
         pendingLink = null;
@@ -650,8 +653,9 @@ export function createLiveSync(deps: LiveSyncDeps) {
         };
         write(saved);
         writePaired(null);
+        onProgress?.("Bringing your data over…");
         try {
-          await run(saved, key);
+          await run(saved, key, onProgress);
         } catch {
           // Kept in the saved status; it tries again by itself.
         }

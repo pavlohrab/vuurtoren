@@ -749,6 +749,7 @@ function ScanComputerAgain() {
   const services = useServices();
   const qc = useQueryClient();
   const [problem, setProblem] = useState<string | null>(null);
+  const [progress, setProgress] = useState<string | null>(null);
   const again = useMutation({
     mutationFn: async () => {
       const read = await services.scanConnectLink();
@@ -759,9 +760,12 @@ function ScanComputerAgain() {
         return;
       }
       setProblem(null);
-      await services.connectServer(link, "");
+      await services.connectServer(link, "", setProgress);
     },
-    onSettled: () => qc.invalidateQueries({ queryKey: ["sync"] }),
+    onSettled: () => {
+      setProgress(null);
+      void qc.invalidateQueries({ queryKey: ["sync"] });
+    },
   });
   const error = problem ?? (again.error ? errorText(again.error) : null);
   return (
@@ -775,6 +779,12 @@ function ScanComputerAgain() {
           Scan the code again
         </Button>
       </div>
+      {again.isPending && progress ? (
+        <p className="k-hint row" role="status" style={{ margin: 0, gap: 8 }}>
+          <Spinner label="Connecting" />
+          {progress}
+        </p>
+      ) : null}
       {error ? (
         <p role="alert" className="error-text" style={{ margin: 0 }}>
           {error}
@@ -877,9 +887,12 @@ function ConnectServer({
   const [password, setPassword] = useState("");
   const [problem, setProblem] = useState<string | null>(null);
   const tried = useRef<string | null>(null);
+  const [progress, setProgress] = useState<string | null>(null);
   const connect = useMutation({
-    mutationFn: (link: ServerAccess) => services.connectServer(link, status.deviceName),
+    mutationFn: (link: ServerAccess) =>
+      services.connectServer(link, status.deviceName, setProgress),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["sync"] }),
+    onSettled: () => setProgress(null),
   });
   const start = (link: ServerAccess) => {
     setProblem(null);
@@ -1045,6 +1058,12 @@ function ConnectServer({
       ) : (
         manual
       )}
+      {connect.isPending ? (
+        <p className="k-hint row" role="status" style={{ margin: 0, gap: 8 }}>
+          <Spinner label="Connecting" />
+          {progress ?? "Connecting…"}
+        </p>
+      ) : null}
       {error ? (
         <p role="alert" className="error-text" style={{ margin: 0 }}>
           {error}
