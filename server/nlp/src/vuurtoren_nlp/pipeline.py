@@ -552,6 +552,22 @@ def _lemmas(doc: Doc, lang: str = "nl") -> tuple[list[str], list[list[str]], dic
             clause_final = nxt is None or nxt.is_punct or nxt.pos_ in {"CCONJ", "SCONJ"}
             if t.dep_ == "case" and not clause_final:
                 continue
+            from wordfreq import zipf_frequency
+
+            # A known, common separable verb (OpenTaal, and used enough that it isn't a rare
+            # reading like "samenlopen" for "lopen samen") with an adverb particle: it is the
+            # particle, also with a phrase after it ("Hij ging mee naar Gorinchem").
+            known = [
+                v
+                for v in finite
+                if v.i < t.i
+                and t.pos_ == "ADV"
+                and (joined := nl.join_particle(t.text, lemmas[v.i], v.text)) in _compound_verbs()
+                and zipf_frequency(joined, "nl") >= 2.5
+            ]
+            if len(known) == 1 and t.i not in particle_of:
+                attach(t, known[0], primary=True)
+                continue
             for v in finite:
                 if v.i < t.i:
                     attach(t, v, primary=False)

@@ -188,3 +188,17 @@ def test_unlisted_words_are_marked():
     flags = {t.text: t.unlisted for t in a.tokens if t.is_word}
     assert flags["λόγος"] and flags["3e"]
     assert not flags["huis"] and not flags["woord"]
+
+
+def test_a_known_particle_with_a_phrase_after_it():
+    """A common separable verb's adverb particle is its particle, also with a phrase after it;
+    a rare reading ("samenlopen" for "lopen samen") is not."""
+    from vuurtoren_nlp.pipeline import analyze_texts
+
+    [a] = analyze_texts("nl", ["Elsje ging mee naar Gorinchem."])
+    words = {t.text: t for t in a.tokens}
+    assert words["mee"].particle_of == words["ging"].i
+    assert words["ging"].lemma == "meegaan"
+    [b] = analyze_texts("nl", ["Wij lopen samen naar huis."])
+    words = {t.text: t for t in b.tokens}
+    assert words["samen"].particle_of is None
