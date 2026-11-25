@@ -103,6 +103,9 @@ PRECISION: list = [
     pytest.param("Toen liep hij weg, tussen de oranje mensen door.", "liep", "weglopen", marks=db),
     pytest.param("Eerst deed zijn vinger pijn.", "deed", "doen", marks=db),
     pytest.param("Schippers gebruikten hem om hun weg te vinden.", "vinden", "vinden", marks=db),
+    pytest.param(
+        "Zijn moeder helpt hem met zijn broek uit en zijn pyjama aan.", "helpt", "helpen", marks=db
+    ),
 ]
 
 

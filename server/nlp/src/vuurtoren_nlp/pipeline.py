@@ -5,6 +5,7 @@ from __future__ import annotations
 import gzip
 import re
 import unicodedata
+from collections import Counter
 from functools import lru_cache
 from itertools import accumulate
 from pathlib import Path
@@ -390,15 +391,21 @@ def _lemmas(doc: Doc, lang: str = "nl") -> tuple[list[str], list[list[str]], dic
             ]
 
     # (a) parser-attached particles: "Ik bel je morgen op."
-    for t in doc:
-        if (
-            t.dep_ == "compound:prt"
-            and t.is_alpha
-            and t.head.i != t.i
-            # head may be mis-tagged (sentence-initial imperative "Trek ... aan" -> PROPN)
-            and t.head.pos_ in {"VERB", "AUX", "PROPN"}
-            and not _stranded(doc, t)
-        ):
+    prts = [
+        t
+        for t in doc
+        if t.dep_ == "compound:prt"
+        and t.is_alpha
+        and t.head.i != t.i
+        # head may be mis-tagged (sentence-initial imperative "Trek ... aan" -> PROPN)
+        and t.head.pos_ in {"VERB", "AUX", "PROPN"}
+        and not _stranded(doc, t)
+    ]
+    per_verb = Counter(t.head.i for t in prts if not _circumposition(t))
+    for t in prts:
+        # A verb has one particle. Two mean verbs left out: "helpt met zijn broek uit en zijn
+        # pyjama aan" is uit(doen) and aan(doen), not aanhelpen.
+        if per_verb[t.head.i] <= 1:
             attach(t, t.head, primary=True)
     # (a2) noun particles the parser leaves as objects: "nam deel" (spaCy proposed deelnemen,
     # the dictionary says nemen). Promote spaCy's candidate and mark "deel" as its particle,
