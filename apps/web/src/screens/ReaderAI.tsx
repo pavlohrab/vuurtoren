@@ -1,5 +1,5 @@
 import { useMutation } from "@tanstack/react-query";
-import { useEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { Sparkles } from "lucide-react";
 import type { SentenceTurn } from "@app/ai";
 import { Button, Input, Spinner } from "@app/ui";
@@ -20,14 +20,22 @@ const pct = (v: number | null) => (v === null ? "not scored" : `${(v * 100).toFi
 export function SentencePanel({
   sentence,
   grammar,
+  frame,
 }: {
   sentence: string | null | undefined;
   /** Grammar detected in the sentence: listed, and sent along as context. */
   grammar?: ExplainGrammar[];
+  /** The sentence part by part (the reader's SentenceFrameView), shown first. */
+  frame?: ReactNode;
 }) {
   if (!sentence) return <p className="k-hint">No sentence for this word.</p>;
   // Keyed by sentence so a new selection starts clean.
-  return <SentenceChat key={sentence} sentence={sentence} grammar={grammar ?? []} />;
+  return (
+    <>
+      {frame}
+      <SentenceChat key={sentence} sentence={sentence} grammar={grammar ?? []} />
+    </>
+  );
 }
 
 function SentenceChat({ sentence, grammar }: { sentence: string; grammar: ExplainGrammar[] }) {

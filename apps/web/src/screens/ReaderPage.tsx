@@ -63,6 +63,7 @@ import { useReaderAudio } from "../audio/ReaderAudio.js";
 import { readLocal, writeLocal } from "../storage/local.js";
 import { ReaderLeave, rememberReader, takeReaderReturn } from "./reader/readerReturn.js";
 import { WordEntry } from "./reader/WordEntry.js";
+import { SentenceFrameView } from "./reader/SentenceFrameView.js";
 import { useBackClose } from "../shell/backStack.js";
 import { contextGloss } from "../services/contextGloss.js";
 
@@ -1074,7 +1075,19 @@ export function ReaderPage({ textId }: { textId: string }) {
                     ) : null
                   }
                   sentencePanel={
-                    <SentencePanel sentence={entry?.sentence} grammar={sentenceGrammar} />
+                    <SentencePanel
+                      sentence={entry?.sentence}
+                      grammar={sentenceGrammar}
+                      frame={
+                        entry && !opened && data.tokens[entry.tokenIndex] ? (
+                          <SentenceFrameView
+                            tokens={data.tokens}
+                            sent={data.tokens[entry.tokenIndex]!.sent}
+                            text={data.text.content}
+                          />
+                        ) : null
+                      }
+                    />
                   }
                 />
               </>,

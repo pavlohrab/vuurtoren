@@ -876,3 +876,82 @@
   font-size: 0.875rem;
   line-height: 1.5;
 }
+
+/* The Sentence tab's frame (SentenceFrameView.tsx): one line, a label under each part. */
+.sframe {
+  display: grid;
+  gap: 8px;
+  padding-bottom: 12px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--hairline);
+}
+.sframe-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 4px 14px;
+  font-family: var(--font-reading);
+  font-size: 17px;
+  line-height: 1.4;
+}
+.sframe-part {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+.sframe-words {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0 0.3em;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 2px;
+}
+.sframe-part[data-verb] .sframe-words {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+.sframe-word {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.sframe-word[aria-pressed="true"] {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.sframe-kind {
+  font-family: var(--font-ui);
+  font-size: 10.5px;
+  color: var(--ink-muted);
+  line-height: 1.2;
+}
+.sframe-label {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: 500 11.5px var(--font-ui);
+  color: var(--ink-muted);
+  cursor: pointer;
+}
+.sframe-label[aria-pressed="true"] {
+  color: var(--accent);
+}
+.sframe-why {
+  margin: 0;
+  font-size: 14px;
+  min-height: 1.4em;
+}
+.sframe-types {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--ink-muted);
+}
