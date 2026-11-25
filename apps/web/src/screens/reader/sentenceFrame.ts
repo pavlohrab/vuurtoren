@@ -94,6 +94,24 @@ export function sentenceClauses(tokens: readonly AnalyzedToken[], sent: number):
     const kids = words.filter((c) => c.head === t.i);
     const te = kids.some((c) => c.text.toLowerCase() === "te");
     if (te && kids.some((c) => OM_WORDS.has(c.text.toLowerCase()))) preds.set(t.i, t);
+    // A te-infinitive with its own object is a clause too ("uw kantoor te bellen"); a bare one
+    // stays in the verb end ("te slapen", "gemakkelijk te vinden").
+    // Not after the conjugated verb itself: "begon … te onderzoeken" is one verb group.
+    else if (
+      te &&
+      kids.some((c) => ["obj", "iobj", "ccomp"].includes(c.dep)) &&
+      !tokens[t.head]?.morph.includes("VerbForm=Fin")
+    )
+      preds.set(t.i, t);
+  }
+  // The word a conjunction hangs on opens a clause, whatever the parser calls it ("als ze oud
+  // worden", "omdat hij niet oplet", "als hij het vuur aanmaakt").
+  for (const m of words) {
+    if (m.pos !== "SCONJ" || m.dep !== "mark") continue;
+    const h = tokens[m.head];
+    if (!h || h.sent !== sent || preds.has(h.i) || h.i === m.i) continue;
+    const helped = words.some((x) => x.head === h.i && finite.includes(x));
+    if (!helped) preds.set(h.i, h);
   }
   // Each word's clause: the nearest predicate above it.
   const owner = new Map<number, number>();
@@ -176,6 +194,17 @@ export function sentenceClauses(tokens: readonly AnalyzedToken[], sent: number):
         parentPred: d.pred,
         anchor: intro.i > 0 ? (tokens[span[0]!.i - 1]?.i ?? null) : null,
       });
+    }
+  }
+  // A clause joined with en to a subordinate or relative one is one too, in the same place
+  // ("zodat hij kon trouwen en een eigen leven kon beginnen").
+  for (const d of drafts) {
+    const dp = tokens[d.pred];
+    if (!dp || dp.dep !== "conj") continue;
+    const head = drafts.find((x) => x.pred === dp.head);
+    if (head && (head.kind === "sub" || head.kind === "rel")) {
+      d.kind = head.kind;
+      d.parentPred = head.parentPred;
     }
   }
   // Quoted speech ("Ik weet het," zegt hij): the quote sits in the reporting clause's first
@@ -267,6 +296,8 @@ export function sentenceClauses(tokens: readonly AnalyzedToken[], sent: number):
         isVerb(t) &&
         t.i !== d.verb.i &&
         t.dep !== "amod" &&
+        // with a copula the predicate stays in the middle ("is bewapend en gevaarlijk")
+        !(t.i === d.pred && d.verb.dep === "cop") &&
         !hasArticle(t) &&
         (!t.morph.includes("VerbForm=Fin") || t.i === d.pred || t.dep === "xcomp");
       const endWord = (t: AnalyzedToken, next?: AnalyzedToken): boolean =>
@@ -326,7 +357,9 @@ export function sentenceClauses(tokens: readonly AnalyzedToken[], sent: number):
         // A clause in first place ("Toen ik thuiskwam, was het …") counts as a first place.
         const startsWithVerb =
           before.length === 0 && !children.some(({ c }) => c.own[0]!.i < d.verb.i);
-        const qWord = before[0] && QUESTION_WORDS.has(before[0].text.toLowerCase());
+        // "Waar woon je?", and after a preposition: "Aan wie gaf je …?"
+        const qAt = before[0]?.pos === "ADP" ? before[1] : before[0];
+        const qWord = !!qAt && QUESTION_WORDS.has(qAt.text.toLowerCase());
         const hasSubject = own.some((t) => t.dep.startsWith("nsubj") && t.head === d.pred);
         // A quote ends at its own "?" ("Ben jij Hans?" vraagt hij), the sentence at its last one.
         const asks = d.quote
@@ -343,16 +376,25 @@ export function sentenceClauses(tokens: readonly AnalyzedToken[], sent: number):
       push("rest", withChildren("rest", rest));
     } else {
       // sub, rel: introducer (with a preposition before it) · middle · verbs · rest
-      let introEnd = own.findIndex(introduces);
-      if (introEnd < 0) introEnd = 0;
+      // The introducer (omdat, die, om …); "en" for a clause joined to another one; none for a
+      // te-clause ("uw kantoor te bellen").
+      const teClause = own.some((t) => t.head === d.verb.i && t.text.toLowerCase() === "te");
+      const introEnd =
+        own[0]?.dep === "cc"
+          ? 0
+          : own.findIndex((t) =>
+              teClause ? OM_WORDS.has(t.text.toLowerCase()) && t.dep === "mark" : introduces(t),
+            );
       const intro = own.slice(0, introEnd + 1);
       const body = own.slice(introEnd + 1);
       let vEnd = body.length;
-      while (vEnd > 0 && !isVerb(body[vEnd - 1]!)) vEnd--;
+      // the clause's own verb counts, also when the parser calls it something else ("oplet")
+      const inVerbs = (x: AnalyzedToken) => isVerb(x) || x.i === d.verb.i;
+      while (vEnd > 0 && !inVerbs(body[vEnd - 1]!)) vEnd--;
       let vStart = vEnd;
       while (
         vStart > 0 &&
-        (isVerb(body[vStart - 1]!) ||
+        (inVerbs(body[vStart - 1]!) ||
           (body[vStart - 1]!.text.toLowerCase() === "te" && vStart < vEnd))
       )
         vStart--;

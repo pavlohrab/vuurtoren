@@ -271,6 +271,66 @@ export const FRAME_CASES: FrameCase[] = [
       "rel: die|veel|voorkomen|in de bergtoendra zone",
     ],
   },
+  {
+    sentence: "Ik zorg voor mijn ouders als ze oud worden.",
+    about: "sub clause, its verb tagged as an infinitive",
+    clauses: ["main: Ik|zorg|voor mijn ouders||[…]", "sub: als|ze oud|worden|"],
+  },
+  {
+    sentence: "In de klas krijgt hij straf omdat hij niet oplet.",
+    about: "sub clause with a joined separable verb",
+    clauses: ["main: In de klas|krijgt|hij straf||[…]", "sub: omdat|hij niet|oplet|"],
+  },
+  {
+    sentence: "Die avond, als hij het vuur aanmaakt, zingt hij zacht een liedje.",
+    about: "sub clause inside the first place",
+    clauses: [
+      "main: Die avond […]|zingt|hij zacht een liedje||",
+      "sub: als|hij het vuur|aanmaakt|",
+    ],
+  },
+  {
+    sentence: "Ik heb geprobeerd uw kantoor te bellen.",
+    about: "te-clause without om",
+    clauses: ["main: Ik|heb||geprobeerd|[…]", "sub: |uw kantoor|te bellen|"],
+  },
+  {
+    sentence: "Zij wilden mij niet toestaan dat te doen.",
+    about: "te-clause without om",
+    clauses: ["main: Zij|wilden|mij niet|toestaan|[…]", "sub: |dat|te doen|"],
+  },
+  {
+    sentence: "Aan wie gaf je de huissleutels?",
+    about: "question with a preposition first",
+    clauses: ["question: Aan wie|gaf|je de huissleutels||"],
+  },
+  {
+    sentence: "Vraag Tom om morgen Mary mee te nemen.",
+    about: "command, its verb tagged as an infinitive",
+    hard: "the parser reads Vraag as a noun and Tom as the object of nemen",
+    clauses: ["command: |Vraag|Tom||[…]", "sub: om|morgen Mary mee|te nemen|"],
+  },
+  {
+    sentence:
+      "Hij wilde geld sparen voor twee buffels, zodat hij met Adinda kon trouwen en een eigen leven kon beginnen.",
+    about: "two sub clauses joined with en",
+    clauses: [
+      "main: Hij|wilde|geld|sparen|voor twee buffels […] […]",
+      "sub: zodat|hij met Adinda|kon trouwen|",
+      "sub: en|een eigen leven|kon beginnen|",
+    ],
+  },
+  {
+    sentence: "De verdachte is bewapend en gevaarlijk.",
+    about: "a copula with adjectives",
+    clauses: ["main: De verdachte|is|bewapend en gevaarlijk||"],
+  },
+  {
+    sentence: "Dat zijn vrouwen in lange witte kleren.",
+    about: "zijn as the verb",
+    clauses: ["main: Dat|zijn|vrouwen in lange witte kleren||"],
+    hard: "the parser reads zijn as a possessive",
+  },
   { sentence: "En boven op de kerk?", about: "fragment", clauses: [] },
   { sentence: "Een groot schip op zee.", about: "fragment", clauses: [] },
   {
