@@ -99,6 +99,13 @@ export function frameTokens(tokens: readonly AnalyzedToken[]): AnalyzedToken[] {
 /** The clauses of sentence `sent`, main clauses first in reading order; [] for a fragment. */
 export function sentenceClauses(tokens: readonly AnalyzedToken[], sent: number): Clause[] {
   const words = tokens.filter((t) => t.sent === sent && isWord(t));
+  const low = (t: AnalyzedToken | undefined) => t?.text.toLowerCase();
+  const isInf = (t: AnalyzedToken | undefined) =>
+    !!t && isVerb(t) && t.morph.includes("VerbForm=Inf");
+  /** "aan het" before an infinitive (is … aan het lezen): it goes with the verb. */
+  const aanHet = (t: AnalyzedToken): boolean =>
+    (low(t) === "aan" && low(tokens[t.i + 1]) === "het" && isInf(tokens[t.i + 2])) ||
+    (low(t) === "het" && low(tokens[t.i - 1]) === "aan" && isInf(tokens[t.i + 1]));
   // An infinitive used as a noun: "houdt van zwemmen", "zich zorgen maakt" (houden and maken take
   // no bare infinitive).
   const nounLike = (t: AnalyzedToken): boolean => {
@@ -352,6 +359,24 @@ export function sentenceClauses(tokens: readonly AnalyzedToken[], sent: number):
       q.kind = "main";
     }
   }
+  // After a colon ("Hij zegt: "Ik heb geen tijd.""), the quote sits in the clause before it.
+  for (const q of drafts) {
+    const first = q.own[0];
+    if (!first) continue;
+    let b = first.i - 1;
+    while (b >= 0 && tokens[b]!.sent === sent && !isWord(tokens[b]!) && tokens[b]!.text !== ":")
+      b--;
+    if (b < 0 || tokens[b]!.text !== ":") continue;
+    const before = words.filter((t) => t.i < b).at(-1);
+    const p = before && drafts.find((d) => d !== q && d.own.includes(before));
+    if (!p) continue;
+    if (p.parentPred === q.pred) {
+      p.parentPred = null;
+      p.quote = false;
+    }
+    q.parentPred = p.pred;
+    q.quote = true;
+  }
   for (const d of drafts) if (d.quote) d.kind = "main";
   // "Waar u ook maar wilt.", "Omdat ik moe ben.": a sentence that is one clause inside, alone.
   const asked = tokens.some((t) => t.sent === sent && t.text === "?");
@@ -412,8 +437,11 @@ export function sentenceClauses(tokens: readonly AnalyzedToken[], sent: number):
         own[0] &&
         (own[0].dep === "cc" ||
           LINKS.has(own[0].text.toLowerCase()) ||
-          // "Nee, deze gaat …": a word on its own before the clause
-          (own[0].pos === "INTJ" && tokens[own[0].i + 1]?.text === ",")) &&
+          // "Nee, deze gaat …", "Gelukkig, het probleem is …": one word and a comma before a
+          // clause that has its own first place
+          (tokens[own[0].i + 1]?.text === "," &&
+            !own.some((t) => t.head === own[0]!.i && t.i !== own[0]!.i) &&
+            own.filter((t) => t.i > own[0]!.i + 1 && t.i < d.verb.i).length > 0)) &&
         own[0].i < d.verb.i &&
         // "Dus ging ze slapen": dus right before the verb is the first place
         !(own[0].text.toLowerCase() === "dus" && own[1]?.i === d.verb.i)
@@ -442,11 +470,11 @@ export function sentenceClauses(tokens: readonly AnalyzedToken[], sent: number):
         endVerb(t) ||
         t.particle_of !== null ||
         t.dep === "compound:prt" ||
-        // "te slapen", "uit eten": a small word that hangs on the infinitive right after it
+        aanHet(t) ||
+        // "te slapen", "uit eten": a small word before the verb (te always goes with it)
         (!!next &&
           isVerb(next) &&
-          t.head === next.i &&
-          (t.text.toLowerCase() === "te" || t.pos === "ADP"));
+          (t.text.toLowerCase() === "te" || (t.head === next.i && t.pos === "ADP")));
       let endFrom = after.length;
       while (endFrom > 0 && endWord(after[endFrom - 1]!, after[endFrom])) endFrom--;
       // Words after the verb end (rest): the end block is the last run of verb words, and
@@ -541,7 +569,11 @@ export function sentenceClauses(tokens: readonly AnalyzedToken[], sent: number):
       while (
         vStart > 0 &&
         (inVerbs(body[vStart - 1]!) ||
-          (body[vStart - 1]!.text.toLowerCase() === "te" && vStart < vEnd))
+          aanHet(body[vStart - 1]!) ||
+          // te, and a split verb's particle before it ("toe te geven")
+          ((body[vStart - 1]!.text.toLowerCase() === "te" ||
+            body[vStart - 1]!.particle_of !== null) &&
+            vStart < vEnd))
       )
         vStart--;
       // A clause inside this one ("om te zien [of ze zou bewegen]"): after the verbs in rest,

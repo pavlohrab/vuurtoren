@@ -138,9 +138,11 @@ export function SentenceFrameView({
     );
   };
 
-  /** A link part that is an interjection ("Nee,"): labelled "aside", not "joins". */
+  /** A link part that isn't a joining word ("Nee,", "Gelukkig,"): labelled "aside". */
   const aside = (p: ClausePart) =>
-    p.items.length === 1 && typeof p.items[0] === "number" && tokens[p.items[0]]!.pos === "INTJ";
+    p.items.length === 1 &&
+    typeof p.items[0] === "number" &&
+    !["en", "maar", "want", "dus", "of"].includes(tokens[p.items[0]]!.text.toLowerCase());
   const why = (f: Focus): string => {
     if (!f) return clauses.length ? "Tap a part or a word to see why it's there." : "";
     if (f.kind === "word") {

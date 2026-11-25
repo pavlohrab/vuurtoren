@@ -124,7 +124,7 @@ export const FRAME_CASES: FrameCase[] = [
   {
     sentence: "Hij vroeg of ik mee wilde.",
     about: "of-clause",
-    clauses: ["main: Hij|vroeg|||[…]", "sub: of|ik mee|wilde|"],
+    clauses: ["main: Hij|vroeg|||[…]", "sub: of|ik|mee wilde|"],
   },
   {
     sentence: "Ik weet niet waarom hij boos is.",
@@ -205,7 +205,7 @@ export const FRAME_CASES: FrameCase[] = [
   {
     sentence: "Het is mij gelukt om binnen te komen.",
     about: "om … te",
-    clauses: ["main: Het|is|mij|gelukt|[…]", "sub: om|binnen|te komen|"],
+    clauses: ["main: Het|is|mij|gelukt|[…]", "sub: om||binnen te komen|"],
   },
   {
     sentence: "Sami leerde het Arabisch om de Koran beter te begrijpen.",
@@ -305,7 +305,7 @@ export const FRAME_CASES: FrameCase[] = [
   {
     sentence: "Vraag Tom om morgen Mary mee te nemen.",
     about: "command, its verb tagged as an infinitive",
-    clauses: ["command: |Vraag|Tom||[…]", "sub: om|morgen Mary mee|te nemen|"],
+    clauses: ["command: |Vraag|Tom||[…]", "sub: om|morgen Mary|mee te nemen|"],
   },
   {
     sentence:
