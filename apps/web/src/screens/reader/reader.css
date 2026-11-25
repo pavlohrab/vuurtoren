@@ -1164,6 +1164,12 @@ dl.card-meaning dd,
 .sframe-label[aria-pressed="true"] {
   color: var(--accent);
 }
+.sframe-doubt {
+  margin: 0;
+  font-size: 13px;
+  color: var(--ink-muted);
+  font-style: italic;
+}
 .sframe-why {
   margin: 0;
   font-size: 14px;

@@ -572,6 +572,38 @@ export function sentenceClauses(tokens: readonly AnalyzedToken[], sent: number):
   });
 }
 
+/**
+ * Signs the parse of sentence `sent` is likely wrong (notes/f3-parser-exp.md): a phrase without
+ * a verb beside a main clause, or a main word that is a participle or a noun while a conjugated verb
+ * sits elsewhere (not a quote's reporting verb: "Goed," zegt de man). A sentence without a verb is
+ * left alone: stories use short phrases on purpose.
+ */
+export function structureDoubtful(
+  tokens: readonly AnalyzedToken[],
+  sent: number,
+  clauses: readonly Clause[],
+): boolean {
+  const words = tokens.filter((t) => t.sent === sent && isWord(t));
+  if (words.length < 4) return false;
+  const fin = words.filter((t) => isVerb(t) && t.morph.includes("VerbForm=Fin"));
+  if (!clauses.length) return false;
+  // A phrase beside a main clause: words the main clause should have held ("… meneer Haddad").
+  // A phrase with a clause inside it is fine ("Een boek waarin alles staat").
+  const main = clauses.some(
+    (c) => c.kind === "main" || c.kind === "question" || c.kind === "command",
+  );
+  if (clauses.some((c) => c.kind === "phrase") && main) return true;
+  for (const r of words.filter((t) => t.dep === "ROOT")) {
+    const kids = words.filter((k) => k.head === r.i && k.i !== r.i);
+    const helped = kids.some((k) => k.dep.startsWith("aux") || k.dep === "cop");
+    if (r.pos === "VERB" && /VerbForm=(Part|Inf)/.test(r.morph) && !helped) return true;
+    const reporting = fin.some((f) => f.head === r.i);
+    if (/^(NOUN|PROPN|ADJ|ADV|PRON|NUM)$/.test(r.pos) && !helped && fin.length && !reporting)
+      return true;
+  }
+  return false;
+}
+
 /** The kind of word, in plain English (from spaCy's part of speech). */
 export const WORD_KIND: Record<string, string> = {
   NOUN: "noun",

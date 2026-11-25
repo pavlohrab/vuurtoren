@@ -15,6 +15,7 @@ import {
   WORD_KIND,
   frameTokens,
   sentenceClauses,
+  structureDoubtful,
   wordRole,
 } from "./sentenceFrame.js";
 import type { PickHandlers } from "./SentenceTab.js";
@@ -105,6 +106,7 @@ export function SentenceFrameView({
   // SyntaxDot's parse where the server had it (the words and offsets are the same).
   const tokens = useMemo(() => frameTokens(given), [given]);
   const clauses = useMemo(() => sentenceClauses(tokens, sent), [tokens, sent]);
+  const doubtful = useMemo(() => structureDoubtful(tokens, sent, clauses), [tokens, sent, clauses]);
   const [focus, setFocus] = useState<Focus>(null);
   const [types, setTypes] = useState(() => readLocal(TYPES_KEY) === "1");
   const word = (i: number) => {
@@ -163,6 +165,7 @@ export function SentenceFrameView({
     return (
       <section className="sframe k-pairs" aria-label="The sentence, part by part">
         <p className="sframe-none">No verb: a short phrase.</p>
+        {doubtful ? <Doubt /> : null}
         <div className="sframe-line" lang="nl">
           <span className="sframe-part">
             <span className="sframe-words">{words.map(wordButton)}</span>
@@ -251,12 +254,18 @@ export function SentenceFrameView({
           })}
         </div>
       </div>
+      {doubtful ? <Doubt /> : null}
       <p className="sframe-why" aria-live="polite">
         {why(focus)}
       </p>
       <TypesToggle types={types} setTypes={setTypes} />
     </section>
   );
+}
+
+/** The parse looks unsure (structureDoubtful): said once, quietly. */
+function Doubt() {
+  return <p className="sframe-doubt">This one may be off: the sentence was hard to take apart.</p>;
 }
 
 function TypesToggle({ types, setTypes }: { types: boolean; setTypes: (on: boolean) => void }) {
