@@ -1348,6 +1348,21 @@ button.k-word-chip {
 /* The word whose sheet is open. Also while it has the focus from the click: the global
    ":focus:not(:focus-visible)" reset would hide it otherwise (it did, m5). The other half of a
    split verb ("doet … open") gets a lighter, dashed outline. */
+/* "← opendoen" above a word opened from another word's card. */
+.k-inspector-back {
+  align-self: flex-start;
+  margin: 0 0 6px;
+  padding: 2px 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.k-inspector-back:hover {
+  text-decoration: underline;
+}
 .k-tok[data-selected="true"],
 .k-tok[data-selected="true"]:focus {
   outline: 1.5px solid var(--accent);

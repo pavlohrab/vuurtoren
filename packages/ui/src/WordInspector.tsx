@@ -30,6 +30,11 @@ export interface WordInspectorProps {
   emptyText?: string;
   /** Shown beside the headword (a play button). */
   headerAction?: ReactNode;
+  /**
+   * The card shows a word opened from another word's card (its base verb, a family word): "←
+   * opendoen" above the head goes back one word (notes/wc2-word-card.md).
+   */
+  backTo?: { label: string; onBack: () => void } | undefined;
   /** More about the word under its details (the reader's grammar of this word). */
   wordExtra?: ReactNode;
   /**
@@ -81,6 +86,7 @@ export function WordInspector({
   addDeck,
   emptyText = "Select a word in the text to see its details.",
   headerAction,
+  backTo,
   wordExtra,
   sentencePanel,
 }: WordInspectorProps) {
@@ -125,6 +131,11 @@ export function WordInspector({
   return (
     <div className="k-inspector" aria-label="Word details">
       <div className="k-inspector-peek">
+        {backTo ? (
+          <button type="button" className="k-inspector-back" onClick={backTo.onBack}>
+            ← <span lang="nl">{backTo.label}</span>
+          </button>
+        ) : null}
         <header>
           <div className="k-inspector-head">
             <h2 className="k-inspector-surface" lang="nl">

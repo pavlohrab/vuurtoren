@@ -57,6 +57,8 @@ test("the word panel and the sidebar can be made wider or narrower", async ({ pa
   const panel = page.locator(".inspector-panel");
   await expect(panel).toHaveCSS("width", "340px");
   const handle = page.getByRole("separator", { name: "Word panel width" });
+  // A thin strip on the edge, never over the card's content.
+  expect((await handle.boundingBox())!.width).toBeLessThan(10);
   const box = (await handle.boundingBox())!;
   await page.mouse.move(box.x + 3, box.y + 200);
   await page.mouse.down();
@@ -72,4 +74,31 @@ test("the word panel and the sidebar can be made wider or narrower", async ({ pa
   await page.reload();
   await page.locator(".k-reader .k-tok[data-i]").nth(3).click();
   await expect(panel).toHaveCSS("width", "460px");
+});
+
+test("a word opened from the card replaces it, and Back goes back one word", async ({ page }) => {
+  await page.setViewportSize({ width: 1400, height: 900 });
+  await fakeNlp(page);
+  await fakeAnki(page);
+  await page.goto("/");
+  await finishOnboarding(page);
+  await page.goto("/");
+  await page.getByRole("button", { name: /^Legend .*De koe op de toren/ }).click();
+  const word = page.locator(".k-reader .k-tok", { hasText: /^staat$/ }).first();
+  await word.click();
+  const panel = page.locator(".inspector-panel");
+  const head = panel.locator(".k-inspector-surface");
+  await expect(head).toHaveText("staat");
+  await panel.getByRole("button", { name: "opstaan" }).click();
+  await expect(head).toHaveText("opstaan");
+  // Never a second panel: the same one, with the way back on top; the text's word stays outlined.
+  await expect(page.locator(".inspector-panel")).toHaveCount(1);
+  await expect(word).toHaveAttribute("data-selected", "true");
+  await panel.getByRole("button", { name: "← staan" }).click();
+  await expect(head).toHaveText("staat");
+  // Esc goes back one word first, then closes the card.
+  await panel.getByRole("button", { name: "toestaan" }).click();
+  await expect(head).toHaveText("toestaan");
+  await page.keyboard.press("Escape");
+  await expect(head).toHaveText("staat");
 });

@@ -683,6 +683,17 @@
   padding: 0;
   cursor: pointer;
 }
+.word-entry-word {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  cursor: pointer;
+}
+.word-entry-word:hover {
+  text-decoration: underline;
+}
 .word-entry-line {
   margin: 0;
   font-size: 14px;

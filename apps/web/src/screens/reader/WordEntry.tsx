@@ -2,8 +2,8 @@
  * The word card's dictionary part (m5, WC2 step 2): the small forms table, the base verb of a
  * separable verb, words with the same meaning, the opposite and the separable family, from
  * dictionary v2 (`services.wordEntry`). Empty rows are left out: the card must look whole
- * without them (no opposite for 92% of the 5000). Tapping a word to open its card comes with
- * the card's stack (notes/wc2-word-card.md).
+ * without them (no opposite for 92% of the 5000). A tapped word opens its own card in the same
+ * panel, with "← back" (`onOpen`, notes/wc2-word-card.md).
  */
 import { useQuery } from "@tanstack/react-query";
 import type { EntryResult, WordEntry as Entry } from "@app/nlp-client";
@@ -86,10 +86,13 @@ export function WordEntry({
   lemma,
   pos,
   surface,
+  onOpen,
 }: {
   lemma: string;
   pos: string;
   surface: string;
+  /** Open a word's own card in the same panel (its base verb, a family word …). */
+  onOpen?: ((word: string) => void) | undefined;
 }) {
   const services = useServices();
   const [all, setAll] = useState(false);
@@ -138,7 +141,24 @@ export function WordEntry({
         .filter(([, v]) => v.length)
         .map(([label, words]) => (
           <p key={label} className="word-entry-line">
-            <span className="k-overline">{label}</span> <span lang="nl">{words.join(", ")}</span>
+            <span className="k-overline">{label}</span>{" "}
+            {words.map((w, k) => (
+              <span key={w}>
+                {k ? ", " : null}
+                {onOpen && !w.includes(" ") ? (
+                  <button
+                    type="button"
+                    className="word-entry-word"
+                    lang="nl"
+                    onClick={() => onOpen(w)}
+                  >
+                    {w}
+                  </button>
+                ) : (
+                  <span lang="nl">{w}</span>
+                )}
+              </span>
+            ))}
           </p>
         ))}
     </section>

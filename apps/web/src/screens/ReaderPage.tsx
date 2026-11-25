@@ -63,6 +63,7 @@ import { useReaderAudio } from "../audio/ReaderAudio.js";
 import { readLocal, writeLocal } from "../storage/local.js";
 import { ReaderLeave, rememberReader, takeReaderReturn } from "./reader/readerReturn.js";
 import { WordEntry } from "./reader/WordEntry.js";
+import { useBackClose } from "../shell/backStack.js";
 import { contextGloss } from "../services/contextGloss.js";
 
 /**
@@ -158,6 +159,18 @@ export function ReaderPage({ textId }: { textId: string }) {
   const [back] = useState(() => takeReaderReturn(textId));
   const [segment, setSegment] = useState<number | null>(back?.segment ?? null);
   const [selected, setSelected] = useState<number | null>(back?.selected ?? null);
+  /**
+   * Words opened from the card (its base verb, a family word): the card shows the last one,
+   * "← back" and Esc / Android Back go back one (notes/wc2-word-card.md). Cleared when another
+   * word of the text is tapped or the card closes.
+   */
+  const [stack, setStack] = useState<string[]>([]);
+  const openWord = useCallback(
+    (w: string) => setStack((st) => (st.at(-1) === w ? st : [...st, w])),
+    [],
+  );
+  const backWord = useCallback(() => setStack((st) => st.slice(0, -1)), []);
+  useBackClose(stack.length > 0, backWord);
   /** The restored word's sheet has not opened yet: closing logic must not clear it. */
   const restoring = useRef(back?.selected != null);
   const [revealed, setRevealed] = useState<ReadonlySet<number>>(new Set());
@@ -265,9 +278,21 @@ export function ReaderPage({ textId }: { textId: string }) {
   // j/k/arrows from nowhere move focus into the text; Ctrl/Cmd +/− change the text size; F
   // toggles focus mode. Keys that belong to a control (slider, tabs, select, buttons, dialogs)
   // are left alone.
-  const keyState = useRef({ selected, focusTopic, readingFocus, size: prefs.size });
+  const keyState = useRef({
+    selected,
+    focusTopic,
+    readingFocus,
+    size: prefs.size,
+    stacked: stack.length,
+  });
   useEffect(() => {
-    keyState.current = { selected, focusTopic, readingFocus, size: prefs.size };
+    keyState.current = {
+      selected,
+      focusTopic,
+      readingFocus,
+      size: prefs.size,
+      stacked: stack.length,
+    };
   });
   /** Turns the page (set below, once the page's navigation is known). */
   const stepRef = useRef<(dir: 1 | -1) => void>(() => {});
@@ -285,6 +310,11 @@ export function ReaderPage({ textId }: { textId: string }) {
         }
         if (st.selected === null && st.readingFocus) {
           setReadingFocus(false);
+          return;
+        }
+        // A word opened from the card: back one word first.
+        if (st.stacked > 0) {
+          backWord();
           return;
         }
         setInspectorOpen(false);
@@ -330,7 +360,7 @@ export function ReaderPage({ textId }: { textId: string }) {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [setInspectorOpen, setPrefs]);
+  }, [setInspectorOpen, setPrefs, backWord]);
 
   // Closing the word panel (Esc or its close button) clears the selection and gives the focus
   // back to the word, so reading continues where it was.
@@ -344,6 +374,7 @@ export function ReaderPage({ textId }: { textId: string }) {
     const i = keyState.current.selected;
     if (i === null) return;
     setSelected(null);
+    setStack([]);
     document
       .querySelector<HTMLElement>(`.k-reader [data-i="${i}"]`)
       ?.focus({ preventScroll: true });
@@ -359,6 +390,14 @@ export function ReaderPage({ textId }: { textId: string }) {
   });
   const entry: InspectorEntry | null =
     selected !== null && !inspect.isPlaceholderData ? (inspect.data ?? null) : null;
+  const opened = stack.at(-1) ?? null;
+  const openedEntry = useQuery({
+    queryKey: ["inspect-word", opened],
+    queryFn: () => services.inspectWord(opened as string),
+    enabled: opened !== null,
+  });
+  /** What the card shows: the word opened from the card, else the text's word. */
+  const shown: InspectorEntry | null = opened ? (openedEntry.data ?? null) : entry;
 
   // Reader settings: the help dial (which words get a translation) and the new-word budget.
   const settingsQ = useQuery({ queryKey: ["settings"], queryFn: () => services.getSettings() });
@@ -552,6 +591,7 @@ export function ReaderPage({ textId }: { textId: string }) {
 
   const onTokenClick = (i: number) => {
     setSelected(i);
+    setStack([]);
     setInspectorOpen(true);
     // On a phone the inspector is a bottom sheet: keep the word visible above it.
     revealAboveSheet(document.querySelector(`.k-tok[data-i="${i}"]`));
@@ -991,23 +1031,45 @@ export function ReaderPage({ textId }: { textId: string }) {
           ? createPortal(
               <>
                 <WordInspector
-                  entry={entry}
-                  loading={selected !== null && !entry && !inspect.isError}
-                  error={selected !== null && inspect.isError ? errorText(inspect.error) : null}
-                  onRetry={() => void inspect.refetch()}
-                  headerAction={audio.wordButton(entry)}
-                  {...actions.props(entry)}
+                  entry={shown}
+                  loading={
+                    opened
+                      ? !openedEntry.data && !openedEntry.isError
+                      : selected !== null && !entry && !inspect.isError
+                  }
+                  error={
+                    opened && openedEntry.isError
+                      ? errorText(openedEntry.error)
+                      : selected !== null && inspect.isError
+                        ? errorText(inspect.error)
+                        : null
+                  }
+                  onRetry={() => void (opened ? openedEntry.refetch() : inspect.refetch())}
+                  headerAction={audio.wordButton(shown)}
+                  backTo={
+                    opened
+                      ? { label: stack.at(-2) ?? entry?.lemma ?? "", onBack: backWord }
+                      : undefined
+                  }
+                  {...actions.props(shown)}
                   wordExtra={
-                    entry ? (
+                    shown && entry ? (
                       <>
-                        <WordEntry lemma={entry.lemma} pos={entry.pos} surface={entry.surface} />
-                        <WordGrammar
-                          tokens={data.tokens}
-                          index={entry.tokenIndex}
-                          hits={hits}
-                          article={entry.article}
-                          onFocus={chooseFocus}
+                        <WordEntry
+                          lemma={shown.lemma}
+                          pos={shown.pos}
+                          surface={shown.surface}
+                          onOpen={openWord}
                         />
+                        {opened ? null : (
+                          <WordGrammar
+                            tokens={data.tokens}
+                            index={entry.tokenIndex}
+                            hits={hits}
+                            article={entry.article}
+                            onFocus={chooseFocus}
+                          />
+                        )}
                       </>
                     ) : null
                   }
