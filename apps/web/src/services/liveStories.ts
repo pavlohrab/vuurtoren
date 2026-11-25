@@ -5,7 +5,7 @@
  * side by side and the grammar marks.
  */
 import type { AnalyzedToken, GrammarHit, LearnerModel } from "@app/core";
-import { type VuurtorenRepository, contentHash, createUlidGenerator } from "@app/db";
+import { type VuurtorenRepository, contentHash } from "@app/db";
 import {
   type BundledStory,
   type StoryCover,
@@ -32,27 +32,49 @@ export interface LiveStoriesDeps {
   stories?: () => Promise<BundledStory[]>;
 }
 
-const nextUlid = createUlidGenerator();
-
 export function createLiveStories(deps: LiveStoriesDeps) {
   const stories = deps.stories ?? loadStories;
   const opening = new Map<string, Promise<string>>();
 
+  /**
+   * Your texts, with one text per story. Each device used to make its own copy of a story, and
+   * sync kept them all: the copies go now, the one read furthest stays (the lowest id on a tie,
+   * so every device keeps the same one).
+   */
+  async function textsOnePerStory() {
+    const texts = await deps.repo.listTexts();
+    const bySlug = new Map<string, typeof texts>();
+    for (const t of texts) {
+      const slug = storySlugOf(t.sourceRef);
+      if (slug) bySlug.set(slug, [...(bySlug.get(slug) ?? []), t]);
+    }
+    const gone = new Set<string>();
+    for (const copies of bySlug.values()) {
+      if (copies.length < 2) continue;
+      const keep = [...copies].sort(
+        (a, b) => b.lastSegment - a.lastSegment || (a.id < b.id ? -1 : 1),
+      )[0]!;
+      for (const t of copies) {
+        if (t.id === keep.id) continue;
+        await deps.repo.append({ type: "TextDeleted", textId: t.id });
+        gone.add(t.id);
+      }
+    }
+    return gone.size ? texts.filter((t) => !gone.has(t.id)) : texts;
+  }
+
   async function storyShelf(): Promise<StoryCover[]> {
-    const [list, model, texts] = await Promise.all([
-      stories(),
-      deps.model(),
-      deps.repo.listTexts(),
-    ]);
+    const [list, model, texts] = await Promise.all([stories(), deps.model(), textsOnePerStory()]);
     return storyCovers(list, model, texts);
   }
 
   async function addStory(slug: string): Promise<string> {
-    const had = (await deps.repo.listTexts()).find((t) => storySlugOf(t.sourceRef) === slug);
+    const had = (await textsOnePerStory()).find((t) => storySlugOf(t.sourceRef) === slug);
     if (had) return had.id;
     const story = (await stories()).find((s) => s.slug === slug);
     if (!story) throw new Error(`There is no story "${slug}".`);
-    const textId = nextUlid();
+    // The same id on every device, so sync sees one text, not one per device.
+    const textId = `story:${await deps.lang()}:${slug}`;
     await deps.repo.append({
       type: "TextImported",
       textId,

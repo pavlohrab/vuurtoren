@@ -168,4 +168,49 @@ describe("opening a story", () => {
     expect(cover).toMatchObject({ slug: "klaas", textId: a, coverage: 1 });
     expect([...(await live.storyLines(stored!, stored!.tokens!))]).toEqual([[0, "Sam is asleep."]]);
   });
+
+  it("one story is one text on every device; copies made before go, the one read furthest stays", async () => {
+    const repo = await createRepository(await createNodeDriver());
+    const s = story({
+      slug: "klaas",
+      level: "A1",
+      title: "Klaas",
+      content: "Sam slaapt.",
+      sentences: [[0, 11, "Sam is asleep."]],
+    });
+    const live = createLiveStories({
+      repo,
+      model: async () => known("slaapt"),
+      lang: async () => "nl",
+      stories: async () => [s],
+    });
+    expect(await live.services.openStory("klaas")).toBe("story:nl:klaas");
+    // Two copies from before, as two devices made them; the second one was read further.
+    for (const [id, seg] of [
+      ["01JA0000000000000000000001", 0],
+      ["01JA0000000000000000000002", 1],
+    ] as const) {
+      await repo.append({
+        type: "TextImported",
+        textId: id,
+        title: "Klaas",
+        lang: "nl",
+        source: { kind: "paste", ref: "story:klaas" },
+        content: "Sam slaapt.",
+      });
+      if (seg)
+        await repo.append({
+          type: "ReadingProgress",
+          textId: id,
+          segment: seg,
+          clozeAccuracy: null,
+          lookupsPer100: 0,
+        });
+    }
+    expect(await repo.listTexts()).toHaveLength(3);
+    const [cover] = await live.services.storyShelf();
+    const left = await repo.listTexts();
+    expect(left.map((t) => t.id)).toEqual(["01JA0000000000000000000002"]);
+    expect(cover).toMatchObject({ slug: "klaas", textId: "01JA0000000000000000000002" });
+  });
 });
