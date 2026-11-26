@@ -2108,3 +2108,28 @@
   color: var(--known-ink, var(--known));
   background: color-mix(in srgb, var(--known) 14%, transparent);
 }
+
+/* "Beta" beside the name: we are still testing everything. */
+.beta-tag {
+  display: inline-block;
+  padding: 1px 7px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--accent);
+  line-height: 1.5;
+  white-space: nowrap;
+}
+.sidebar-brand {
+  gap: 8px;
+}
+.shell[data-sidebar="collapsed"] .sidebar-brand .beta-tag {
+  display: none;
+}
+.ob-brand {
+  align-items: center;
+  gap: 10px;
+}

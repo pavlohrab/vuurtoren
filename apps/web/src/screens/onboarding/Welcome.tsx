@@ -351,7 +351,10 @@ export function Welcome() {
   return (
     <div className="ob-shell">
       <main className="ob-card">
-        <Logo size={28} className="ob-brand" />
+        <div className="ob-brand">
+          <Logo size={28} />
+          <span className="beta-tag">Beta</span>
+        </div>
         {/* OB8: a round back button, "Step 2 of 3" and one bar (the list is for screen readers). */}
         <div className="ob-top">
           {draft.step === "server" || (at > 0 && draft.step !== "first") ? (

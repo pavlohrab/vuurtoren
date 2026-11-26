@@ -81,7 +81,7 @@ export function ServerStatus({ nlpUrl }: { nlpUrl: string }) {
     retry: false,
   });
 
-  const rows: Row[] = [{ label: "Vuurtoren", tone: "ok", value: appVersionLabel() }];
+  const rows: Row[] = [{ label: "Vuurtoren", tone: "ok", value: `${appVersionLabel()} · beta` }];
 
   if (demo || !data) {
     rows.push({ label: "Your data", tone: "warn", value: "Demo data: nothing is stored." });

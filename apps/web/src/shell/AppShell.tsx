@@ -353,6 +353,7 @@ export function AppShell() {
               )}
               <Link to="/" className="sidebar-brand" aria-label="Vuurtoren, Read">
                 <Logo size={26} className="brand-logo" title="Vuurtoren" />
+                <span className="beta-tag">Beta</span>
               </Link>
               {/* The two rooms, then the quieter places; on a phone: Read · Words · More. */}
               <NavLink to="/" label="Read" icon={<BookOpen size={18} />} active={room === "read"} />
