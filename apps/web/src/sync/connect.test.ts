@@ -153,7 +153,7 @@ describe("pairing with your computer waits for its yes (SY12)", () => {
       reply(202, { waiting: "w1" }),
       reply(200, { token: "t1", label: "Pixel", handover: { key: "S0VZ" } }),
     ];
-    const fetch = vi.fn(async () => answers.shift()!);
+    const fetch = vi.fn(async (_url: string) => answers.shift()!);
     const onWait = vi.fn();
     const paired = await pairWithServer(
       link,

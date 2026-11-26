@@ -41,7 +41,7 @@ describe("DictionaryMissing", () => {
   it("says plainly where to get the dictionary when the phone has none", async () => {
     onPhone({ installed: false });
     expect(await screen.findByText(/No dictionary on this phone yet/)).toBeVisible();
-    expect(screen.getByRole("link", { name: "Get it in Settings" })).toBeVisible();
+    expect(screen.getByRole("link", { name: "Get it (Reading) →" })).toBeVisible();
   });
 
   it("says nothing once it is there", async () => {

@@ -70,7 +70,7 @@ export function Progress() {
             ? "Based on your cards in Vuurtoren and your reading."
             : s?.lastSync
               ? `Based on your Anki collection, synced ${relativeTime(s.lastSync)}.`
-              : "Based on your reading so far. Connect Anki in Settings to include your decks."
+              : "Based on your reading so far. Connect Anki (Your words) to include your decks."
         }
       />
       {q.isPending ? (

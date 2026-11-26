@@ -6,7 +6,9 @@ describe("describeError", () => {
     const f = describeError(new Error("NLP /analyze/text: HTTP 502, not JSON: <html>"));
     expect(f.source).toBe("nlp");
     expect(f.message).toMatch(/language server is not reachable/);
-    expect(f.next).toMatch(/Settings/);
+    // Where the fix is, as a button target (SY8), not "in Settings" in words.
+    expect(f.next).toMatch(/address/);
+    expect(f.go).toEqual({ section: "data", label: "Data" });
     expect(f.details).toBe("NLP /analyze/text: HTTP 502, not JSON: <html>");
   });
 

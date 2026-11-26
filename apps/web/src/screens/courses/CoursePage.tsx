@@ -1,3 +1,5 @@
+import { SettingsButton } from "../../shell/SettingsButton.js";
+import { SETTINGS_PLACES } from "../../services/errors.js";
 import { pct } from "../../format.js";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
@@ -126,7 +128,8 @@ export function CourseRoute({ courseId }: { courseId: string }) {
       />
       {!ankiReady ? (
         <div className="banner" role="note">
-          <span>Sync Anki in Settings to see how much of each unit you already know.</span>
+          <span>Sync Anki to see how much of each unit you already know.</span>
+          <SettingsButton go={SETTINGS_PLACES.words} />
         </div>
       ) : null}
       {adding ? (

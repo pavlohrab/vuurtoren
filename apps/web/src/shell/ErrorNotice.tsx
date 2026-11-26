@@ -24,7 +24,7 @@ export function ErrorNotice({
   settingsLink = true,
 }: ErrorNoticeProps) {
   const f = describeError(error, fallback);
-  const settings = settingsLink && (f.source === "nlp" || f.source === "anki");
+  const settings = settingsLink && (f.go || f.source === "nlp" || f.source === "anki");
   return (
     <div className="error-notice" role="alert">
       <p className="error-notice-message">
@@ -40,8 +40,12 @@ export function ErrorNotice({
             </Button>
           ) : null}
           {settings ? (
-            <Link to="/settings" className="k-btn k-btn--ghost k-btn--sm">
-              Open Settings
+            <Link
+              to="/settings"
+              {...(f.go ? { search: { section: f.go.section } } : {})}
+              className="k-btn k-btn--secondary k-btn--sm"
+            >
+              {f.go ? `${f.go.label} →` : "Open Settings"}
             </Link>
           ) : null}
         </div>

@@ -25,7 +25,7 @@ describe("Converse", () => {
   it("asks for a provider when none is configured", async () => {
     setup("/converse", false);
     expect(await screen.findByText(/Add an AI provider/)).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Open Settings" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "AI →" })).toBeInTheDocument();
   });
 
   it("starts a chat, shows coverage, adds a new word to Anki and shows corrections", async () => {

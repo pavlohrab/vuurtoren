@@ -16,7 +16,22 @@ export interface FriendlyError {
   source: ErrorSource;
   /** The original technical message, for a details disclosure. */
   details?: string;
+  /** Where the fix is (SY8: a message says where to go, with a button that goes there). */
+  go?: SettingsPlace;
 }
+
+/** A Settings section, as a button's target and label. */
+export type SettingsPlace = {
+  section: "words" | "reading" | "devices" | "ai" | "data";
+  label: string;
+};
+export const SETTINGS_PLACES = {
+  words: { section: "words", label: "Your words" },
+  devices: { section: "devices", label: "Your devices" },
+  ai: { section: "ai", label: "AI" },
+  data: { section: "data", label: "Data" },
+  reading: { section: "reading", label: "Reading" },
+} as const satisfies Record<string, SettingsPlace>;
 
 const rawMessage = (e: unknown): string =>
   e instanceof Error ? e.message : typeof e === "string" ? e : e == null ? "" : String(e);
@@ -37,7 +52,8 @@ export function describeError(e: unknown, fallback = "Something went wrong."): F
     return withDetails({
       source: "nlp",
       message: "On a phone, a new text is prepared by your server or your computer.",
-      next: "Connect your server in Settings → Your devices, or add the text on your computer: it comes here when you sync.",
+      next: "Connect your server, or add the text on your computer: it comes here when you sync.",
+      go: SETTINGS_PLACES.devices,
     });
   }
   if (/^NLP\b/.test(raw) || /NLP service/.test(raw)) {
@@ -52,7 +68,8 @@ export function describeError(e: unknown, fallback = "Something went wrong."): F
       return withDetails({
         source: "nlp",
         message: "The language server is not reachable, so the text could not be analysed.",
-        next: "Check that it is running and its address in Settings is right, then try again.",
+        next: "Check that it is running and its address is right (Data → Advanced), then try again.",
+        go: SETTINGS_PLACES.data,
       });
     }
     // The server said why in words ("The page could not be fetched (HTTP 404).", "The PDF is
@@ -71,6 +88,7 @@ export function describeError(e: unknown, fallback = "Something went wrong."): F
     if (/no answer within/.test(raw)) {
       return withDetails({
         source: "anki",
+        go: SETTINGS_PLACES.words,
         message: "Anki did not answer in time.",
         next: "Close any open dialog in Anki, then try again.",
       });
@@ -78,6 +96,7 @@ export function describeError(e: unknown, fallback = "Something went wrong."): F
     if (/origin not allowed|forbidden|403/.test(raw)) {
       return withDetails({
         source: "anki",
+        go: SETTINGS_PLACES.words,
         message: "Anki refused the connection from Vuurtoren.",
         next: "Allow this site in AnkiConnect's settings (webCorsOriginList) or set the API key in Settings.",
       });
@@ -85,6 +104,7 @@ export function describeError(e: unknown, fallback = "Something went wrong."): F
     if (/cannot reach|not reachable|HTTP 5\d\d|not JSON/.test(raw)) {
       return withDetails({
         source: "anki",
+        go: SETTINGS_PLACES.words,
         message: "Anki is not reachable.",
         next: "Open Anki with the AnkiConnect add-on installed, then try again.",
       });
@@ -92,12 +112,14 @@ export function describeError(e: unknown, fallback = "Something went wrong."): F
     if (/API v1|Anki ≥/.test(raw)) {
       return withDetails({
         source: "anki",
+        go: SETTINGS_PLACES.words,
         message: "This needs a newer Anki and AnkiConnect.",
         next: "Update Anki and the AnkiConnect add-on, then try again.",
       });
     }
     return withDetails({
       source: "anki",
+      go: SETTINGS_PLACES.words,
       message: "Anki could not do this.",
       next: "Check Anki for a message, then try again.",
     });

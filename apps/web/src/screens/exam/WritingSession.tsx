@@ -3,6 +3,8 @@
  * then check each answer with the checklist and the model answer. Optional AI feedback when a
  * provider is configured; the score is what you tick (AI verdicts tick task points for you).
  */
+import { SettingsButton } from "../../shell/SettingsButton.js";
+import { SETTINGS_PLACES } from "../../services/errors.js";
 import { plural } from "../../format.js";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Sparkles } from "lucide-react";
@@ -386,7 +388,8 @@ function TaskBlock({
             </div>
           ) : (
             <p className="exam-muted">
-              With an AI provider set up in Settings you can also get examiner-style feedback here.
+              With an AI provider set up you can also get examiner-style feedback here.{" "}
+              <SettingsButton go={SETTINGS_PLACES.ai} />
             </p>
           )}
         </div>

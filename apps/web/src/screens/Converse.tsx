@@ -1,6 +1,8 @@
+import { SettingsButton } from "../shell/SettingsButton.js";
+import { SETTINGS_PLACES } from "../services/errors.js";
 import { pct } from "../format.js";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link, useNavigate, useSearch } from "@tanstack/react-router";
+import { useNavigate, useSearch } from "@tanstack/react-router";
 import { ArrowRight, BookmarkPlus, ChevronRight, MessagesSquare, Plus } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -276,14 +278,10 @@ export function Converse() {
           title="Talk in Dutch"
           description={
             status.data.locked
-              ? "Your API key is locked. Unlock it in Settings to start talking."
-              : "Talk with a partner who keeps to words you know, with gentle corrections. Add an AI provider and your own key in Settings first."
+              ? "Your API key is locked. Unlock it to start talking."
+              : "Talk with a partner who keeps to words you know, with gentle corrections. Add an AI provider and your own key first."
           }
-          action={
-            <Link to="/settings" search={{ section: "ai" }} className="k-btn k-btn--primary">
-              Open Settings
-            </Link>
-          }
+          action={<SettingsButton go={SETTINGS_PLACES.ai} primary />}
         />
       </div>
     );

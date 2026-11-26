@@ -22,7 +22,7 @@ export function DictionaryMissing() {
         : "No dictionary on this phone yet. "}
       {status.data.downloading ? null : (
         <Link to="/settings" search={{ section: "reading" }} className="k-link">
-          Get it in Settings
+          Get it (Reading) →
         </Link>
       )}
     </p>

@@ -625,7 +625,7 @@ function Summary({
       emptyText ??
       (native
         ? "Nothing to practise yet. Read a text and start learning a few words."
-        : "Nothing to practise yet. Sync Anki in Settings, or read a text and start learning a few words.");
+        : "Nothing to practise yet. Sync Anki (Your words), or read a text and start learning a few words.");
     return (
       <>
         <PageHeader title={emptyTitle} lede={lede} />
