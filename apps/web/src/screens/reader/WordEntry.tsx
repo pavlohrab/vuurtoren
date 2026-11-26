@@ -6,7 +6,7 @@
  * word opens its own card in the same panel, with "← back" (`onOpen`, notes/wc2-word-card.md).
  */
 import { useQuery } from "@tanstack/react-query";
-import type { InspectorEntry } from "@app/core";
+import { frequencyLabel, type InspectorEntry } from "@app/core";
 import type { EntryResult, EntrySense, WordEntry as Entry } from "@app/nlp-client";
 import { useState } from "react";
 import { useServices } from "../../services/context.js";
@@ -432,13 +432,21 @@ function fullSummary(entry: Entry): string {
     .join(" · ");
 }
 
-/** The card's extra actions: Full entry (and what it adds), the level. */
+/** The card's extra actions: Full entry (and what it adds), how common the word is, the level. */
+/** "very common · about A2": how common the word is, then NT2Lex's level; either may be missing. */
+export function levelLine(zipf: number | undefined, level: string | undefined | null): string {
+  return [frequencyLabel(zipf), level ? `about ${level}` : null].filter(Boolean).join(" · ");
+}
+
 export function CardExtra({
   entry,
+  zipf,
   full,
   onFull,
 }: {
   entry: Entry | null;
+  /** How common the word is (the word card's `zipf`). */
+  zipf?: number | undefined;
   full: boolean;
   onFull?: ((full: boolean) => void) | undefined;
 }) {
@@ -451,7 +459,9 @@ export function CardExtra({
           {summary ? <span className="card-extra-summary"> {summary}</span> : null}
         </button>
       ) : null}
-      {entry?.level ? <span className="card-extra-level">about {entry.level}</span> : null}
+      {levelLine(zipf, entry?.level) ? (
+        <span className="card-extra-level">{levelLine(zipf, entry?.level)}</span>
+      ) : null}
     </div>
   );
 }
@@ -478,6 +488,7 @@ export function FullEntry({
   const facts = [
     entry.pos === "adj" ? "adjective" : entry.pos,
     f["separable"] ? "separable" : null,
+    frequencyLabel(word.zipf),
     entry.level ? `about ${entry.level}` : null,
     helper && participle ? `${helper} ${participle}` : null,
   ].filter(Boolean);

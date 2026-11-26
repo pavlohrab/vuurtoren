@@ -8,6 +8,7 @@ import { createMockServices } from "../../services/mock.js";
 import type { InspectorEntry } from "@app/core";
 import {
   CardExtra,
+  levelLine,
   CardForms,
   CardMeaning,
   CardRelated,
@@ -196,5 +197,14 @@ describe("WordEntry", () => {
     await userEvent.click(screen.getByRole("button", { name: "2 more meanings" }));
     expect(screen.getAllByRole("listitem")).toHaveLength(5);
     expect(screen.getByText("handelen")).toBeVisible();
+  });
+});
+
+describe("how common a word is, beside its level (LV9)", () => {
+  it("says both, either, or nothing", () => {
+    expect(levelLine(6.1, "A1")).toBe("very common · about A1");
+    expect(levelLine(3.4, undefined)).toBe("less common");
+    expect(levelLine(undefined, "B2")).toBe("about B2");
+    expect(levelLine(0, null)).toBe("");
   });
 });

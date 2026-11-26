@@ -1151,7 +1151,14 @@ export function ReaderPage({ textId }: { textId: string }) {
                             dict && !card.full ? (
                               <CardRelated entry={dict} onOpen={openWord} withSame={false} />
                             ) : null,
-                          extra: <CardExtra entry={dict} full={card.full} onFull={card.setFull} />,
+                          extra: (
+                            <CardExtra
+                              entry={dict}
+                              zipf={shown.zipf}
+                              full={card.full}
+                              onFull={card.setFull}
+                            />
+                          ),
                         }
                       : undefined
                   }

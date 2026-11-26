@@ -76,4 +76,6 @@ export interface InspectorEntry {
   sentenceHighlight: [number, number];
   /** Machine translation of `sentence` (offline model on the NLP server), when available. */
   sentenceTranslation?: string;
+  /** How common the word is (Zipf, wordfreq), from the text's analysis; for `frequencyLabel`. */
+  zipf?: number;
 }

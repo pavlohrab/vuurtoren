@@ -107,6 +107,7 @@ function describeWord(
   if (article) entry.article = article;
   if (glossNote) entry.glossNote = glossNote;
   if (w.info?.appLearning) entry.appLearning = true;
+  if (t.zipf > 0) entry.zipf = t.zipf;
   return entry;
 }
 
