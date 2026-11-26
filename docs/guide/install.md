@@ -18,8 +18,10 @@ computers that don't have one. If that computer has no internet, take the instal
 starts with `Vuurtoren_offline_` instead, because it has all of this inside.
 
 On a computer the app works out how each sentence is built with spaCy. A Vuurtoren server does it
-better, with SyntaxDot. On Linux you can add SyntaxDot to the app yourself (about 850 MB), and the
-app uses it from its next start:
+better, with SyntaxDot. On Linux the app can have it too: in Settings → Data → Advanced, under
+Server status, press **Download SyntaxDot** (about 250 MB, 620 MB unpacked). It needs the `zstd`
+command, which most Linux systems have. If you'd rather do it by hand, the app uses it from its
+next start:
 
 ```sh
 d=~/.local/share/app.vuurtoren.desktop/nlp-data/syntaxdot && mkdir -p "$d" && cd "$d"

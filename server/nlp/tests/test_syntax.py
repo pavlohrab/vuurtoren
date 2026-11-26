@@ -96,3 +96,42 @@ def test_syntax_lemma(surface, pos, ours, theirs, primary):
 
 def test_syntax_lemma_without_a_parse_changes_nothing():
     assert syntax_lemma("nl", "kat", "NOUN", "kat", ["x"], None) == ("kat", ["x"])
+
+
+# --- SX4: Settings downloads SyntaxDot on a Linux computer ---
+def test_syntaxdot_download_does_not_start_where_it_cannot_run(monkeypatch, tmp_path):
+    from fastapi.testclient import TestClient
+
+    from vuurtoren_nlp import syntaxdot_get
+    from vuurtoren_nlp.app import app
+
+    monkeypatch.setenv("VUURTOREN_SYNTAXDOT_DIR", str(tmp_path / "sd"))
+    monkeypatch.setattr(syntaxdot_get, "supported", lambda: False)
+    body = TestClient(app).post("/admin/syntaxdot").json()
+    assert body["started"] is False
+    assert body["supported"] is False and body["installed"] is False
+
+
+def test_syntaxdot_download_does_not_start_when_it_is_in(monkeypatch, tmp_path):
+    from fastapi.testclient import TestClient
+
+    from vuurtoren_nlp import syntaxdot_get
+    from vuurtoren_nlp.app import app
+
+    sd = tmp_path / "sd"
+    (sd / "bin").mkdir(parents=True)
+    (sd / "nl").mkdir()
+    (sd / "bin" / "syntaxdot").write_text("")
+    (sd / "nl" / "syntaxdot.conf").write_text("")
+    monkeypatch.setenv("VUURTOREN_SYNTAXDOT_DIR", str(sd))
+    monkeypatch.setattr(syntaxdot_get, "supported", lambda: True)
+    body = TestClient(app).post("/admin/syntaxdot").json()
+    assert body["started"] is False and body["installed"] is True
+
+
+def test_syntaxdot_download_needs_zstd(monkeypatch, tmp_path):
+    from vuurtoren_nlp import syntaxdot_get
+
+    monkeypatch.setattr(syntaxdot_get.shutil, "which", lambda _: None)
+    with pytest.raises(RuntimeError, match="zstd"):
+        syntaxdot_get.install(tmp_path / "sd")

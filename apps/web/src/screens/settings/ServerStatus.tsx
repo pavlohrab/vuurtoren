@@ -5,6 +5,7 @@
  * the data counters, the AnkiConnect status. scripts/doctor.sh does the same from a shell.
  */
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect } from "react";
 import { Button, useToast } from "@app/ui";
 import { formatBytes } from "../../format.js";
 import { useServices } from "../../services/context.js";
@@ -229,6 +230,74 @@ export function ServerStatus({ nlpUrl }: { nlpUrl: string }) {
           </div>
         ))}
       </dl>
+      {!demo && nlp && lang.data?.data?.["syntaxdot"] === false ? (
+        <SyntaxDotDownload
+          nlp={nlp}
+          onDone={() => void qc.invalidateQueries({ queryKey: ["server-status", "nlp"] })}
+        />
+      ) : null}
     </section>
+  );
+}
+
+interface SyntaxDotStatus {
+  supported: boolean;
+  installed: boolean;
+  state: "idle" | "downloading" | "done" | "failed";
+  step: string;
+  received: number;
+  error: string | null;
+}
+
+/**
+ * SX4: on a Linux computer, SyntaxDot (the better sentence structure) comes from here instead
+ * of four commands in the install guide. Elsewhere it can't run, and this says nothing.
+ */
+export function SyntaxDotDownload({ nlp, onDone }: { nlp: string; onDone: () => void }) {
+  const qc = useQueryClient();
+  const status = useQuery({
+    queryKey: ["server-status", "syntaxdot", nlp],
+    queryFn: () => getJson<SyntaxDotStatus>(`${nlp}/admin/syntaxdot`),
+    retry: false,
+    refetchInterval: (q) => (q.state.data?.state === "downloading" ? 2000 : false),
+  });
+  const s = status.data;
+  const done = s?.state === "done" || s?.installed;
+  useEffect(() => {
+    if (done) onDone();
+  }, [done, onDone]);
+  if (!s?.supported || s.installed) return null;
+  const start = async () => {
+    const r = await fetch(`${nlp}/admin/syntaxdot`, {
+      method: "POST",
+      credentials: "same-origin",
+    });
+    if (r.ok) qc.setQueryData(["server-status", "syntaxdot", nlp], await r.json());
+  };
+  return (
+    <div className="syntaxdot-download stack" style={{ gap: 6 }}>
+      {s.state === "downloading" ? (
+        <p className="k-hint" role="status" style={{ margin: 0 }}>
+          Downloading {s.step || "SyntaxDot"}… {formatBytes(s.received)}
+        </p>
+      ) : (
+        <>
+          <p className="k-hint" style={{ margin: 0 }}>
+            SyntaxDot gets the sentence structure right more often than spaCy. It runs on this
+            computer. The download is about 250 MB, 620 MB unpacked.
+          </p>
+          <div className="row">
+            <Button size="sm" onClick={() => void start()}>
+              Download SyntaxDot
+            </Button>
+          </div>
+        </>
+      )}
+      {s.state === "failed" && s.error ? (
+        <p role="alert" className="error-text" style={{ margin: 0 }}>
+          {s.error}
+        </p>
+      ) : null}
+    </div>
   );
 }

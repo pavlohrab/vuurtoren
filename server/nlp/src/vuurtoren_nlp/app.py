@@ -184,6 +184,24 @@ def packs_update(force: bool = False) -> dict[str, object]:
     return {"started": started, **packs_status()}
 
 
+@app.get("/admin/syntaxdot")
+def syntaxdot_status() -> dict[str, object]:
+    """SyntaxDot on this server: can it run here (Linux x86_64), is it in, how a download goes."""
+    from vuurtoren_nlp import syntaxdot_get
+
+    return syntaxdot_get.status()
+
+
+@app.post("/admin/syntaxdot")
+def syntaxdot_install() -> dict[str, object]:
+    """Download SyntaxDot in the background (about 250 MB to download, 620 MB unpacked; poll ``GET``). Settings on
+    a Linux computer uses it (SX4). Behind the sign-in like every /nlp/ route."""
+    from vuurtoren_nlp import syntaxdot_get
+
+    started = syntaxdot_get.start()
+    return {"started": started, **syntaxdot_get.status()}
+
+
 @app.get("/packs/{file}")
 def phone_pack(file: str) -> Response:
     """The archive of a pack the Android app keeps (``dictionary-nl-<version>.tar.gz``).

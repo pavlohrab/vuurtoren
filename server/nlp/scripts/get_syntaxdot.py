@@ -4,58 +4,26 @@
 
 Downloads the CPU binary (v0.5.0, with its libtorch) and the distilled Dutch model
 (nl-l6-h384-20210728) into ``target`` (default: ``<data dir>/syntaxdot``, see
-vuurtoren_nlp.syntax), as ``bin/`` and ``nl/``. About 850 MB unpacked. SyntaxDot is built for
+vuurtoren_nlp.syntax), as ``bin/`` and ``nl/``. About 250 MB to download, 620 MB unpacked. SyntaxDot is built for
 Linux on x86_64 only (no Windows, macOS or ARM): elsewhere the server keeps spaCy's parse.
 Needs ``zstd`` on the PATH for the binary's archive.
 """
 
 from __future__ import annotations
 
-import shutil
-import subprocess
 import sys
-import tarfile
-import tempfile
-import urllib.request
 from pathlib import Path
 
-BINARY = (
-    "https://github.com/tensordot/syntaxdot/releases/download/v0.5.0/"
-    "syntaxdot-v0.5.0-cpu-x86_64-linux-gnu-gcc.tar.zst"
-)
-MODEL = (
-    "https://github.com/tensordot/syntaxdot-models/releases/download/"
-    "nl-l6-h384-20210728/nl-l6-h384-20210728.tar.gz"
-)
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+
+from vuurtoren_nlp.syntax import syntaxdot_target  # noqa: E402
+from vuurtoren_nlp.syntaxdot_get import install  # noqa: E402
 
 
 def main() -> None:
-    if len(sys.argv) > 1:
-        target = Path(sys.argv[1]).expanduser()
-    else:
-        sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
-        from vuurtoren_nlp.syntax import syntaxdot_target
-
-        target = syntaxdot_target()
-    target.mkdir(parents=True, exist_ok=True)
-    with tempfile.TemporaryDirectory() as tmp:
-        t = Path(tmp)
-        print("downloading the binary …")
-        urllib.request.urlretrieve(BINARY, t / "bin.tar.zst")
-        subprocess.run(["zstd", "-d", str(t / "bin.tar.zst"), "-o", str(t / "bin.tar")], check=True)
-        with tarfile.open(t / "bin.tar") as tar:
-            tar.extractall(t / "bin", filter="data")
-        print("downloading the Dutch model …")
-        urllib.request.urlretrieve(MODEL, t / "nl.tar.gz")
-        with tarfile.open(t / "nl.tar.gz") as tar:
-            tar.extractall(t / "nl", filter="data")
-        for name in ("bin", "nl"):
-            inner = [p for p in (t / name).iterdir() if p.is_dir()]
-            src = inner[0] if len(inner) == 1 else t / name
-            if (target / name).exists():
-                shutil.rmtree(target / name)
-            shutil.move(str(src), str(target / name))
-    (target / "bin" / "syntaxdot").chmod(0o755)
+    target = Path(sys.argv[1]).expanduser() if len(sys.argv) > 1 else syntaxdot_target()
+    print("downloading SyntaxDot …")
+    install(target)
     print("SyntaxDot is in", target)
 
 
