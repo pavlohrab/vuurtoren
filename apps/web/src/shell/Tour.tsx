@@ -1,14 +1,15 @@
 /**
- * The first-run walkthrough: five short coach marks after the welcome (a word in the story you
- * opened, the reading help, then Read, Words, and Due today on the Words page), each with a soft spotlight on its
- * target. The Words step can be followed: a tap on Words, or "Go to Words", opens the page the
- * last step is about. Shown once
- * (`vuurtoren.tour`), skippable at every step, and started again from Settings → Reading or
- * the More sheet (`startTour`). It has a known start wherever it begins: the reader steps open
- * the learner's current story themselves (Continue reading, else the story at their level) when
- * no reader is on screen. A target outside the screen is scrolled into view; a step whose target
- * never shows is passed over. The bubble stays inside the screen (its text scrolls when there is
- * little room), and the focus moves to each step so a screen reader reads it.
+ * The first-run walkthrough (OB9, mock C of `mock-card-onboarding-tour.html`): ten short steps,
+ * each lighting up one thing with one line. In the story you opened: tap a word, its card, the
+ * sentence and its grammar, Aa, the reading modes, then Cloze, Gloss and Side by side, which the
+ * tour switches on for you (Read comes back at the end). Then Read and Words. Steps you can do
+ * yourself say "Try it" and go on when you tap. Shown once (`vuurtoren.tour`), skippable at every
+ * step, and started again from Settings → Reading or the More sheet (`startTour`). It has a known
+ * start wherever it begins: the reader steps open the learner's current story themselves
+ * (Continue reading, else the story at their level) when no reader is on screen. A target outside
+ * the screen is scrolled into view; a step whose target never shows is passed over. The bubble
+ * stays inside the screen (its text scrolls when there is little room), and the focus moves to
+ * each step so a screen reader reads it.
  *
  * While a step shows, a transparent scrim over the whole screen takes every tap, so nothing
  * reaches the page under it; only a step that asks for it (`tap`) leaves its target open, and a
@@ -25,7 +26,7 @@ import {
   useState,
 } from "react";
 import { createPortal } from "react-dom";
-import { Button, useNativeMode } from "@app/ui";
+import { Button, type ReaderMode, useNativeMode } from "@app/ui";
 import { useNavigate } from "@tanstack/react-router";
 import { readLocal, writeLocal } from "../storage/local.js";
 import { readLastText } from "../lastText.js";
@@ -34,12 +35,13 @@ import { storyToStart } from "../services/stories.js";
 import type { AppServices } from "../services/types.js";
 import { pickContinue } from "../textPages.js";
 import { useBackClose } from "./backStack.js";
+import { useShell } from "./ShellContext.js";
 
 const STATE = "vuurtoren.tour";
 const START = "vuurtoren-tour";
 
 interface Step {
-  /** Where to point: the first visible match. */
+  /** Where to point: the first visible match; "a || b" tries a first, then b. */
   target: string;
   title: string;
   text: string;
@@ -54,44 +56,101 @@ interface Step {
   /** The title and text with Anki keeping the cards (reviews happen in Anki). */
   ankiTitle?: string;
   ankiText?: string;
+  /** What the tour does as the step begins: switch the reading mode, show a tab, close the card. */
+  enter?: {
+    mode?: ReaderMode;
+    /** Clicked one after another; each entry is a list of selectors, the first found wins. */
+    click?: string[][];
+    /** Nothing is clicked when this is on screen already. */
+    unless?: string;
+    closeCard?: boolean;
+  };
 }
 
 const STEPS: Step[] = [
-  // D4: the story you opened comes first; Read, then Words, after it.
+  // The story you opened comes first; Read, then Words, after it (D4).
   {
     target: ".k-reader .k-tok",
     title: "Tap a word",
-    text: "See its meaning in its sentence, and hear it. Pull the sheet up for its grammar and Explain this sentence.",
+    text: "See what it means here.",
     tap: true,
     reader: true,
   },
   {
-    target: ".rbar-mode, .rbar-modes, [aria-label='Reading settings']",
+    target: ".inspector-panel .k-inspector-head, .inspector-panel",
     reader: true,
-    title: "Help while reading",
-    text: "Choose how to read (English next to hard words, blanks, side by side) and set the text in Aa. A short line in the margin marks grammar worth a look: tap it.",
+    title: "Its card",
+    text: "The word, and what it means in this sentence. Study first to learn it.",
+    // Next on step 1 instead of a tap: the tour opens a word's card itself.
+    enter: {
+      click: [
+        [
+          '.k-reader .k-tok[data-label="introduce"]',
+          '.k-reader .k-tok[data-label="new"]',
+          ".k-reader .k-tok[data-i]",
+        ],
+      ],
+      unless: ".inspector-panel .k-inspector-head",
+    },
+  },
+  {
+    target: "#k-panel-sentence .sframe || #k-panel-sentence",
+    reader: true,
+    title: "The sentence and its grammar",
+    text: "The sentence part by part. In the text, a line beside a sentence marks grammar: tap it to focus on it, or open the topic.",
+    // Pull the card up (the phone's peek hides the tab), then the Sentence tab.
+    enter: { click: [["[aria-label='Show all of the word panel']"], ["#k-tab-sentence"]] },
+  },
+  {
+    target: "[aria-label='Reading settings']",
+    reader: true,
+    title: "Aa: how the page looks",
+    text: "Text size, how many new words, and the grammar lines.",
+    enter: { closeCard: true },
+  },
+  {
+    target: ".rbar-mode, .rbar-modes",
+    reader: true,
+    title: "Four ways to read",
+    text: "Choose how much help you get. Here are three of them.",
+  },
+  {
+    target: ".k-reader",
+    reader: true,
+    title: "Cloze",
+    text: "Words you know well become blanks. Fill them in.",
+    enter: { mode: "cloze" },
+  },
+  {
+    target: ".k-reader",
+    reader: true,
+    title: "Gloss",
+    text: "The English sits above the words you may not know.",
+    enter: { mode: "gloss" },
+  },
+  {
+    target: ".k-sbs, .k-reader",
+    reader: true,
+    title: "Side by side",
+    text: "Tap a sentence to see it in English.",
+    tap: true,
+    enter: { mode: "side" },
   },
   {
     // The Read page, after the story: where "on top" is.
     target: ".today-continue",
     route: "/",
     title: "Read",
-    text: "Stories at your level and your own texts. On top: what to continue and what is due today.",
-  },
-  {
-    target: ".sidebar .nav-link[href='/words']",
-    title: "Words",
-    text: "Your daily cards and all your words, in one place. The dot says cards are waiting.",
-    tap: true,
-    go: "Go to Words",
+    text: "Your story waits on top. Below, stories at your level, and your own texts.",
+    enter: { mode: "read", closeCard: true },
   },
   {
     target: ".due-today",
     route: "/words",
-    title: "Due today",
-    text: "Your cards for today: reviews first, then a few new words. Press Start, then swipe: left Again, right Good, up Easy. Done early? Go on with more.",
-    ankiTitle: "Your words",
-    ankiText: "Your cards are reviewed in Anki. Here are your word lists, Practice and your level.",
+    title: "Words",
+    text: "Review today's cards here. Check your level once, so Vuurtoren knows which words to help you with.",
+    ankiTitle: "Words",
+    ankiText: "You review your cards in Anki. Here are your words, Practice, and Check your level.",
   },
 ];
 
@@ -106,6 +165,14 @@ export function startTour(): void {
 }
 
 function visible(selector: string): Element | null {
+  const choices = selector.split("||").map((c) => c.trim());
+  if (choices.length > 1) {
+    for (const c of choices) {
+      const el = visible(c);
+      if (el) return el;
+    }
+    return null;
+  }
   for (const el of document.querySelectorAll(selector)) {
     const r = el.getBoundingClientRect();
     if (r.width > 0 && r.height > 0 && getComputedStyle(el).visibility !== "hidden") {
@@ -136,8 +203,11 @@ export function Tour() {
   const services = useServices();
   const navigate = useNavigate();
   const native = useNativeMode();
+  const shell = useShell();
   // The step whose page the walkthrough opened (once per step).
   const routed = useRef(-1);
+  // The step whose action (`enter`) has run.
+  const entered = useRef(-1);
   // The reader steps open a story once per start of the tour (then wait for it to load).
   const opening = useRef<"no" | "busy" | "done">("no");
   const [on, setOn] = useState(() => readLocal(STATE) === "pending");
@@ -153,6 +223,7 @@ export function Tour() {
     const start = () => {
       opening.current = "no";
       routed.current = -1;
+      entered.current = -1;
       setAt(0);
       setOn(true);
     };
@@ -163,6 +234,9 @@ export function Tour() {
   const end = () => {
     writeLocal(STATE, "done");
     setOn(false);
+    // The tour switched the reading mode for its steps: Read again when it ends early.
+    if (STEPS.some((st, k) => k <= at && st.enter?.mode && st.enter.mode !== "read"))
+      shell.setMode("read");
   };
   const next = () => {
     if (at + 1 < STEPS.length) setAt(at + 1);
@@ -170,6 +244,25 @@ export function Tour() {
   };
   // Android Back ends the walkthrough before it closes anything under it.
   useBackClose(on, end);
+
+  // What a step does as it begins (once): a reading mode, a tab, the card closed.
+  useEffect(() => {
+    const step = STEPS[at];
+    if (!on || !step?.enter || entered.current === at) return;
+    entered.current = at;
+    const { mode, click, unless, closeCard } = step.enter;
+    if (closeCard) shell.setInspectorOpen(false);
+    if (mode) shell.setMode(mode);
+    if (click && !(unless && document.querySelector(unless))) {
+      // One after another, a moment apart, so each click's effect is on screen for the next.
+      click.forEach((choices, k) =>
+        window.setTimeout(() => {
+          const el = choices.map((c) => document.querySelector(c)).find(Boolean);
+          (el as HTMLElement | null | undefined)?.click();
+        }, k * 250),
+      );
+    }
+  }, [on, at, shell]);
 
   // Follow the target (pages load, sheets move, the window turns); pass over a missing one
   // after a moment.
@@ -265,7 +358,7 @@ export function Tour() {
     if (!on || !step?.tap) return;
     const onClick = (e: MouseEvent) => {
       const target = e.target as Element | null;
-      if (target?.closest(step.target)) setAt((a) => (a === at ? a + 1 : a));
+      if (target?.closest(step.target.replaceAll("||", ","))) setAt((a) => (a === at ? a + 1 : a));
     };
     document.addEventListener("click", onClick, true);
     return () => document.removeEventListener("click", onClick, true);
@@ -363,7 +456,14 @@ export function Tour() {
         aria-describedby="tour-text"
       >
         <p className="tour-count">
-          {at + 1} of {STEPS.length}
+          <span className="k-sr">
+            {at + 1} of {STEPS.length}
+          </span>
+          <span className="tour-dots" aria-hidden>
+            {STEPS.map((_, k) => (
+              <i key={k} data-on={k === at || undefined} data-done={k < at || undefined} />
+            ))}
+          </span>
         </p>
         <h2 className="tour-title" id="tour-title">
           {!native && step.ankiTitle ? step.ankiTitle : step.title}
@@ -375,7 +475,8 @@ export function Tour() {
           <button type="button" className="tour-skip" onClick={end}>
             Skip the tour
           </button>
-          <Button variant="primary" size="sm" onClick={next}>
+          {step.tap ? <span className="tour-try">Try it</span> : null}
+          <Button variant={step.tap ? "ghost" : "primary"} size="sm" onClick={next}>
             {last ? "Done" : (step.go ?? "Next")}
           </Button>
         </div>

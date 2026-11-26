@@ -36,13 +36,13 @@ describe("the walkthrough", () => {
     expect(
       await screen.findByRole("dialog", { name: "Tap a word" }, { timeout: 9000 }),
     ).toBeVisible();
-    expect(screen.getByText("1 of 5")).toBeVisible();
+    expect(screen.getByText("1 of 10")).toBeInTheDocument();
     await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Next" }));
     // The next step whose target is on screen (one that is not is passed over).
     expect(
       await screen.findByRole(
         "dialog",
-        { name: /Help while reading|Read|Words/ },
+        { name: /Its card|The sentence|Aa|Four ways|Cloze|Read|Words/ },
         { timeout: 9000 },
       ),
     ).toBeVisible();
@@ -60,7 +60,7 @@ describe("the walkthrough", () => {
     await userEvent.setup().click(within(first).getByRole("button", { name: "Next" }));
     const plain = await screen.findByRole(
       "dialog",
-      { name: /Help while reading|Read/ },
+      { name: /Its card|The sentence|Aa|Four ways|Cloze|Read/ },
       { timeout: 9000 },
     );
     const name = document.getElementById("tour-title")?.textContent ?? "";
@@ -94,28 +94,26 @@ describe("the walkthrough", () => {
     });
     const tap = await screen.findByRole("group", { name: "Tap a word" }, { timeout: 5000 });
     await waitFor(() => expect(tap).toHaveFocus());
-    expect(screen.getByText("1 of 5")).toBeVisible();
+    expect(screen.getByText("1 of 10")).toBeInTheDocument();
   }, 20_000);
 
-  it("ends on Words: Go to Words opens it, and the last step shows Due today", async () => {
+  it("goes through the reader to Read and ends on Words; Read is the mode again (OB9)", async () => {
     const history = createMemoryHistory({ initialEntries: ["/"] });
     render(<App services={createMockServices({ latencyMs: 0, native: true })} history={history} />);
     expect(await screen.findByRole("heading", { level: 1, name: "Read" })).toBeVisible();
     act(() => startTour());
     const user = userEvent.setup();
     await screen.findByRole("dialog", {}, { timeout: 9000 });
-    // Next until the Words step (the reader steps open the current story on the way).
-    for (let i = 0; i < 4 && !screen.queryByRole("dialog", { name: "Words" }); i++) {
+    // Next until the last step (the reader steps open the current story on the way).
+    for (let i = 0; i < 10 && !screen.queryByRole("dialog", { name: "Words" }); i++) {
       const step = await screen.findByRole("dialog", {}, { timeout: 9000 });
       await user.click(within(step).getByRole("button", { name: "Next" }));
       await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeNull(), { timeout: 9000 });
     }
-    expect(await screen.findByRole("dialog", { name: "Words" }, { timeout: 9000 })).toBeVisible();
-    await user.click(screen.getByRole("button", { name: "Go to Words" }));
-    await waitFor(() => expect(history.location.pathname).toBe("/words"));
-    const last = await screen.findByRole("dialog", { name: "Due today" }, { timeout: 9000 });
-    expect(last).toHaveTextContent(/swipe: left Again, right Good, up Easy/);
+    const last = await screen.findByRole("dialog", { name: "Words" }, { timeout: 9000 });
+    expect(history.location.pathname).toBe("/words");
+    expect(last).toHaveTextContent(/Check your level once/);
     await user.click(screen.getByRole("button", { name: "Done" }));
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
-  }, 40_000);
+  }, 60_000);
 });

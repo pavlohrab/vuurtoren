@@ -1707,6 +1707,8 @@
 .tour-title {
   margin: 0 0 var(--s-1);
   font-size: 17px;
+  /* The display face's space is narrow at this size ("Its card" read as one word). */
+  word-spacing: 0.08em;
 }
 .tour-text {
   margin: 0;
@@ -1736,6 +1738,29 @@
 .tour-skip:hover {
   color: var(--ink);
   text-decoration: underline;
+}
+/* OB9: where you are, as dots; "Try it" on a step you do yourself. */
+.tour-dots {
+  display: flex;
+  gap: 4px;
+}
+.tour-dots i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--line-strong);
+}
+.tour-dots i[data-done] {
+  background: color-mix(in srgb, var(--accent) 45%, var(--line-strong));
+}
+.tour-dots i[data-on] {
+  background: var(--accent);
+}
+.tour-try {
+  margin-left: auto;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--accent);
 }
 @media (prefers-reduced-motion: reduce) {
   .tour-spot,
