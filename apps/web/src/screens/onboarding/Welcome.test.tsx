@@ -15,6 +15,8 @@ vi.mock("../../platform/index.js", async (load) => {
 
 // The wizard is a lazy route: allow for a slow first import when the whole suite runs at once.
 configure({ asyncUtilTimeout: 4000 });
+// A whole wizard per test: more than the default 5 s when the full run is busy.
+vi.setConfig({ testTimeout: 30_000 });
 afterEach(() => localStorage.clear());
 
 function setup(patch: Partial<AppServices> = {}, path = "/") {
