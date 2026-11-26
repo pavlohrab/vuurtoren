@@ -5,6 +5,7 @@
  * shows the QR code that connects a phone (Add a phone). Elsewhere, Connect to your server
  * trades such a code (scanned, pasted as a link, or typed) for this device's own token.
  */
+import { currentDevice } from "../../platform/index.js";
 import { ScanOverlay } from "./ScanOverlay.js";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { type FormEvent, useEffect, useRef, useState } from "react";
@@ -459,71 +460,123 @@ function SetUp({ status, onRecovery }: { status: SyncStatus; onRecovery: (key: s
     mutationFn: () => services.pickSyncFolder(),
     onSuccess: (path) => path && setFields((x) => ({ ...x, path })),
   });
+  // One step at a time (SY8): this device and where, then the place's details, then the name
+  // and passphrase. Next checks the step and says what is missing, under the field.
+  const needsDetails = !(choice === "this" || choice === "paired");
+  const steps: ("how" | "where" | "lock")[] = needsDetails
+    ? ["how", "where", "lock"]
+    : ["how", "lock"];
+  const [step, setStep] = useState<"how" | "where" | "lock">("how");
+  const [tried, setTried] = useState<Record<string, boolean>>({});
+  const at = Math.max(0, steps.indexOf(step));
+  const errors = {
+    how: how === null ? "Choose one: start new sync data here, or join it." : null,
+    url:
+      needsDetails && kind !== "folder" && !/^https?:\/\/./.test(f("url").trim())
+        ? "An address that starts with https://"
+        : null,
+    token:
+      needsDetails && kind === "server" && !f("token").trim()
+        ? "The sync token made on your server (its Settings → Your devices)."
+        : null,
+    user: kind === "webdav" && !f("user").trim() ? "Your user name on that server." : null,
+    password: kind === "webdav" && !f("password") ? "The app password you made there." : null,
+    path: kind === "folder" && !f("path") ? "Choose a folder." : null,
+    passphrase:
+      passphrase.trim().length < 8 ? "At least 8 characters; a few words work well." : null,
+  };
+  const stepOk = (st: string) =>
+    st === "how"
+      ? !errors.how
+      : st === "where"
+        ? !errors.url && !errors.token && !errors.user && !errors.password && !errors.path
+        : !errors.passphrase;
+  const err = (st: string, key: keyof typeof errors) => (tried[st] ? errors[key] : null);
+  const next = () => {
+    setTried((t) => ({ ...t, [step]: true }));
+    if (stepOk(step)) setStep(steps[at + 1] ?? step);
+  };
   const submit = (e: FormEvent) => {
     e.preventDefault();
+    if (step !== "lock") return next();
+    setTried((t) => ({ ...t, lock: true }));
     if (ready && !start.isPending) start.mutate();
   };
 
   return (
-    <form className="stack" onSubmit={submit} aria-labelledby="sync-h">
+    <form className="stack" onSubmit={submit} aria-labelledby="sync-h" noValidate>
       <h3 className="settings-h3" id="sync-h">
         Sync your devices
       </h3>
       <p className="k-hint" style={{ margin: 0 }}>
-        Your words, texts, reviews and progress on every device. Everything is encrypted on this
-        device with your passphrase before it leaves; the place you choose only stores sealed files.
+        Step {at + 1} of {steps.length}
+        {step === "how"
+          ? ". Your words, texts, reviews and progress on every device, locked on this device with your passphrase before they leave."
+          : null}
       </p>
-      <fieldset className="sync-kinds">
-        <legend className="k-label">This device</legend>
-        {HOWS.map((h) => (
-          <label key={h.how} className="sync-kind">
-            <input
-              type="radio"
-              name="sync-how"
-              checked={how === h.how}
-              onChange={() => {
-                setHow(h.how);
-                start.reset();
-              }}
-            />
-            <span>
-              <span className="sync-kind-title">{h.title}</span>
-              <span className="k-hint">{h.sub}</span>
-            </span>
-          </label>
-        ))}
-      </fieldset>
-      {options.length === 1 && choice === "paired" ? (
-        <p className="sync-connected" role="status" style={{ margin: 0 }}>
-          Connected to <strong>{new URL(status.paired!).host}</strong> with a pairing code.
-        </p>
-      ) : (
-        <fieldset className="sync-kinds">
-          <legend className="k-label">Where</legend>
-          {options.map((k) => (
-            <label key={k.id} className="sync-kind">
-              <input
-                type="radio"
-                name="sync-kind"
-                checked={choice === k.id}
-                onChange={() => setChoice(k.id)}
-              />
-              <span>
-                <span className="sync-kind-title">{k.title}</span>
-                <span className="k-hint">{k.sub}</span>
-              </span>
-            </label>
-          ))}
-        </fieldset>
-      )}
 
-      {choice === "this" || choice === "paired" ? null : kind === "server" ? (
+      {step === "how" ? (
+        <>
+          <fieldset className="sync-kinds">
+            <legend className="k-label">This device</legend>
+            {HOWS.map((h) => (
+              <label key={h.how} className="sync-kind">
+                <input
+                  type="radio"
+                  name="sync-how"
+                  checked={how === h.how}
+                  onChange={() => {
+                    setHow(h.how);
+                    start.reset();
+                  }}
+                />
+                <span>
+                  <span className="sync-kind-title">{h.title}</span>
+                  <span className="k-hint">{h.sub}</span>
+                </span>
+              </label>
+            ))}
+            {err("how", "how") ? (
+              <span className="k-field-error" role="alert">
+                {err("how", "how")}
+              </span>
+            ) : null}
+          </fieldset>
+          {options.length === 1 && choice === "paired" ? (
+            <p className="sync-connected" role="status" style={{ margin: 0 }}>
+              Connected to <strong>{new URL(status.paired!).host}</strong> with a pairing code.
+            </p>
+          ) : (
+            <fieldset className="sync-kinds">
+              <legend className="k-label">Where</legend>
+              {options.map((k) => (
+                <label key={k.id} className="sync-kind">
+                  <input
+                    type="radio"
+                    name="sync-kind"
+                    checked={choice === k.id}
+                    onChange={() => setChoice(k.id)}
+                  />
+                  <span>
+                    <span className="sync-kind-title">{k.title}</span>
+                    <span className="k-hint">{k.sub}</span>
+                  </span>
+                </label>
+              ))}
+            </fieldset>
+          )}
+        </>
+      ) : null}
+
+      {step === "where" && kind === "server" ? (
         <>
           <Input
             label="Server address"
             placeholder="https://vuurtoren.example.org"
             value={f("url")}
             onChange={set("url")}
+            error={err("where", "url")}
+            autoFocus
           />
           <Input
             label="Sync token"
@@ -531,9 +584,10 @@ function SetUp({ status, onRecovery }: { status: SyncStatus; onRecovery: (key: s
             value={f("token")}
             onChange={set("token")}
             autoComplete="off"
+            error={err("where", "token")}
           />
         </>
-      ) : kind === "webdav" ? (
+      ) : step === "where" && kind === "webdav" ? (
         <>
           <details className="sync-help">
             <summary>How to set it up with Nextcloud</summary>
@@ -554,12 +608,15 @@ function SetUp({ status, onRecovery }: { status: SyncStatus; onRecovery: (key: s
             placeholder="https://cloud.example.org/remote.php/dav/files/you/Vuurtoren"
             value={f("url")}
             onChange={set("url")}
+            error={err("where", "url")}
+            autoFocus
           />
           <Input
             label="User name"
             value={f("user")}
             onChange={set("user")}
             autoComplete="username"
+            error={err("where", "user")}
           />
           <Input
             label="App password"
@@ -567,9 +624,10 @@ function SetUp({ status, onRecovery }: { status: SyncStatus; onRecovery: (key: s
             value={f("password")}
             onChange={set("password")}
             autoComplete="off"
+            error={err("where", "password")}
           />
         </>
-      ) : (
+      ) : step === "where" ? (
         <>
           <details className="sync-help">
             <summary>How to set it up with Syncthing</summary>
@@ -585,33 +643,60 @@ function SetUp({ status, onRecovery }: { status: SyncStatus; onRecovery: (key: s
             </Button>
             <span className="k-hint">{f("path") || "No folder chosen"}</span>
           </div>
+          {err("where", "path") ? (
+            <span className="k-field-error" role="alert">
+              {err("where", "path")}
+            </span>
+          ) : null}
         </>
-      )}
+      ) : null}
 
-      <Input label="This device's name" value={name} onChange={(e) => setName(e.target.value)} />
-      <div className="stack" style={{ gap: 4 }}>
-        <Input
-          label={how === "join" ? "Passphrase or recovery key" : "Passphrase"}
-          type={show ? "text" : "password"}
-          value={passphrase}
-          onChange={(e) => setPassphrase(e.target.value)}
-          autoComplete={how === "join" ? "current-password" : "new-password"}
-          hint={
-            how === "join"
-              ? "The passphrase you chose on your first device, or your recovery key."
-              : "At least 8 characters; a few words are easy to remember. You type it on each of your devices. Only it or the recovery key opens your synced data, so keep both safe."
-          }
-        />
-        <label className="row k-hint" style={{ gap: 6 }}>
-          <input type="checkbox" checked={show} onChange={(e) => setShow(e.target.checked)} />
-          Show the passphrase
-        </label>
-      </div>
+      {step === "lock" ? (
+        <>
+          <Input
+            label="This device's name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
+          <div className="stack" style={{ gap: 4 }}>
+            <Input
+              label={how === "join" ? "Passphrase or recovery key" : "Passphrase"}
+              type={show ? "text" : "password"}
+              value={passphrase}
+              onChange={(e) => setPassphrase(e.target.value)}
+              autoComplete={how === "join" ? "current-password" : "new-password"}
+              autoFocus
+              error={err("lock", "passphrase")}
+              hint={
+                how === "join"
+                  ? "The passphrase you chose on your first device, or your recovery key."
+                  : "At least 8 characters; a few words are easy to remember. You type it on each of your devices. Only it or the recovery key opens your synced data, so keep both safe."
+              }
+            />
+            <label className="row k-hint" style={{ gap: 6 }}>
+              <input type="checkbox" checked={show} onChange={(e) => setShow(e.target.checked)} />
+              Show the passphrase
+            </label>
+          </div>
+        </>
+      ) : null}
+
       <div className="row">
-        <Button type="submit" variant="primary" disabled={!ready || start.isPending}>
-          {start.isPending ? <Spinner label="Starting" /> : null}
-          {how === "join" ? "Join and sync" : "Start syncing"}
-        </Button>
+        {at > 0 ? (
+          <Button type="button" variant="ghost" onClick={() => setStep(steps[at - 1]!)}>
+            Back
+          </Button>
+        ) : null}
+        {step === "lock" ? (
+          <Button type="submit" variant="primary" disabled={start.isPending}>
+            {start.isPending ? <Spinner label="Starting" /> : null}
+            {how === "join" ? "Join and sync" : "Start syncing"}
+          </Button>
+        ) : (
+          <Button type="submit" variant="primary">
+            Next
+          </Button>
+        )}
         {start.isPending && progress ? <span className="k-hint">{progress}</span> : null}
       </div>
       {start.isError ? (
@@ -630,6 +715,13 @@ function SyncOn({ status }: { status: SyncStatus }) {
   const qc = useQueryClient();
   const [progress, setProgress] = useState<string | null>(null);
   const [stopping, setStopping] = useState(false);
+  // A computer that shares its folder with phones: stopping (or moving) leaves them behind (D5).
+  const lan = currentDevice().bridge?.lan;
+  const phones = useQuery({
+    queryKey: ["lan-phones"],
+    queryFn: () => lan!.phones(),
+    enabled: !!lan && stopping && status.place?.kind === "folder",
+  });
   const now = useMutation({
     mutationFn: () => services.syncNow(setProgress),
     onSettled: () => qc.invalidateQueries(),
@@ -726,6 +818,13 @@ function SyncOn({ status }: { status: SyncStatus }) {
             Stop syncing on this device? Your data stays here and in {status.place!.label}; other
             devices keep syncing.
           </p>
+          {phones.data?.length ? (
+            <p role="note" style={{ margin: 0 }}>
+              {phones.data.length === 1
+                ? `${phones.data[0]!.name} syncs with this computer. It will ask you to connect it again: scan the new code, or choose the place this computer moves to.`
+                : `${phones.data.length} phones sync with this computer. They will ask you to connect them again.`}
+            </p>
+          ) : null}
           <div className="row">
             <Button onClick={() => stop.mutate()} disabled={stop.isPending}>
               Stop syncing

@@ -52,13 +52,21 @@ describe("Settings → Sync", { timeout: 20_000 }, () => {
     expect(await screen.findByRole("heading", { name: "Sync your devices" })).toBeVisible();
     // Folders need the desktop app.
     expect(screen.queryByRole("radio", { name: /folder you already sync/ })).toBeNull();
-    const start = screen.getByRole("button", { name: "Start syncing" });
-    expect(start).toBeDisabled();
+    // One step at a time (SY8): Next says what is missing, under the field.
+    expect(screen.getByText(/Step 1 of 3/)).toBeVisible();
+    await user.click(screen.getByRole("button", { name: "Next" }));
+    expect(screen.getByText(/Choose one: start new sync data here, or join it/)).toBeVisible();
     await user.click(screen.getByRole("radio", { name: /Start new sync data here/ }));
+    await user.click(screen.getByRole("button", { name: "Next" }));
+    await user.click(screen.getByRole("button", { name: "Next" }));
+    expect(screen.getByLabelText("Server address")).toHaveAttribute("aria-invalid", "true");
     await user.type(screen.getByLabelText("Server address"), "https://vuurtoren.example.org");
     await user.type(screen.getByLabelText("Sync token"), "ksync_abc");
+    await user.click(screen.getByRole("button", { name: "Next" }));
     await user.type(screen.getByLabelText("Passphrase"), "short");
-    expect(start).toBeDisabled();
+    const start = screen.getByRole("button", { name: "Start syncing" });
+    await user.click(start);
+    expect(screen.getByText(/At least 8 characters; a few words work well/)).toBeVisible();
     await user.type(screen.getByLabelText("Passphrase"), " but longer now");
     await user.click(start);
 
@@ -105,16 +113,18 @@ describe("Settings → Sync", { timeout: 20_000 }, () => {
     await user.click(screen.getByRole("button", { name: "Sync now" }));
     await user.click(screen.getByRole("button", { name: "Stop syncing…" }));
     await user.click(screen.getByRole("button", { name: "Stop syncing" }));
-    expect(await screen.findByRole("button", { name: "Start syncing" })).toBeVisible();
+    expect(await screen.findByRole("heading", { name: "Sync your devices" })).toBeVisible();
     expect((await services.syncStatus()).place).toBeNull();
   });
 
   it("joins data another device started: no recovery key, its passphrase", async () => {
     const { user } = setup();
     await user.click(await screen.findByRole("radio", { name: /Join my synced data/ }));
-    expect(screen.getByLabelText("Passphrase or recovery key")).toBeVisible();
+    await user.click(screen.getByRole("button", { name: "Next" }));
     await user.type(screen.getByLabelText("Server address"), "https://vuurtoren.example.org");
     await user.type(screen.getByLabelText("Sync token"), "ksync_abc");
+    await user.click(screen.getByRole("button", { name: "Next" }));
+    expect(screen.getByLabelText("Passphrase or recovery key")).toBeVisible();
     await user.type(screen.getByLabelText("Passphrase or recovery key"), "lange zinnen lezen");
     await user.click(screen.getByRole("button", { name: "Join and sync" }));
     expect(await screen.findByText("Sync is on")).toBeVisible();
@@ -139,9 +149,11 @@ describe("Settings → Sync", { timeout: 20_000 }, () => {
       syncStatus: async () => ({ ...OFF, desktop: true, places: ["server", "folder", "webdav"] }),
     });
     await user.click(await screen.findByRole("radio", { name: /WebDAV/ }));
-    expect(screen.getByLabelText("App password")).toBeVisible();
     expect(screen.getByRole("radio", { name: /folder you already sync/ })).toBeVisible();
-    expect(screen.queryByRole("radio", { name: /GitHub/ })).toBeNull();
+    await user.click(screen.getByRole("radio", { name: /Start new sync data here/ }));
+    await user.click(screen.getByRole("button", { name: "Next" }));
+    expect(screen.getByLabelText("App password")).toBeVisible();
+    expect(screen.queryByText(/GitHub/)).toBeNull();
   });
 
   it("on a page of a Vuurtoren server offers This server, and makes tokens for other devices", async () => {
@@ -169,6 +181,9 @@ describe("Settings → Sync", { timeout: 20_000 }, () => {
     // No address or token to type: the page makes its own token.
     expect(screen.queryByLabelText("Sync token")).toBeNull();
     await user.click(screen.getByRole("radio", { name: /Start new sync data here/ }));
+    // Nothing to fill in for this server: straight to the passphrase.
+    await user.click(screen.getByRole("button", { name: "Next" }));
+    expect(screen.getByText(/Step 2 of 2/)).toBeVisible();
     await user.type(screen.getByLabelText("Passphrase"), "lange zinnen lezen");
     await user.click(screen.getByRole("button", { name: "Start syncing" }));
     expect(setUpSync).toHaveBeenCalledWith(
@@ -215,6 +230,7 @@ describe("Settings → Sync", { timeout: 20_000 }, () => {
     expect(paired).toBeChecked();
     expect(screen.getByRole("radio", { name: /Join my synced data/ })).toBeChecked();
     expect(screen.queryByLabelText("Link or server address")).toBeNull();
+    await user.click(screen.getByRole("button", { name: "Next" }));
     await user.type(screen.getByLabelText("Passphrase or recovery key"), "lange zinnen lezen");
     await user.click(screen.getByRole("button", { name: "Join and sync" }));
     expect(setUpSync).toHaveBeenCalledWith(
@@ -274,6 +290,8 @@ describe("Settings → Sync", { timeout: 20_000 }, () => {
     expect(within(manual).getByLabelText("Pairing code")).toBeInTheDocument();
     await user.click(screen.getByText("Connect manually"));
     await user.click(within(manual).getByRole("button", { name: "Use a sync token…" }));
+    await user.click(screen.getByRole("radio", { name: /Start new sync data here/ }));
+    await user.click(screen.getByRole("button", { name: "Next" }));
     expect(screen.getByLabelText("Sync token")).toBeVisible();
     await user.click(screen.getByRole("button", { name: "Scan a QR code instead" }));
     // Scan: then the connected server and the passphrase, nothing about the address again.
@@ -283,6 +301,7 @@ describe("Settings → Sync", { timeout: 20_000 }, () => {
     );
     expect(screen.queryByLabelText("Server address")).toBeNull();
     expect(screen.queryByLabelText("Sync token")).toBeNull();
+    await user.click(screen.getByRole("button", { name: "Next" }));
     expect(screen.getByLabelText("Passphrase or recovery key")).toBeVisible();
     // Change server asks first, then forgets the pairing.
     await user.click(screen.getByRole("button", { name: "Change server…" }));

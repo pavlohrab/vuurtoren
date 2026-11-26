@@ -428,6 +428,31 @@ kbd {
   flex-direction: column;
   gap: 6px;
 }
+/* A field that needs something (SY8): red, one shake, the reason right under it. */
+.k-field[data-error] .k-input,
+.k-field[data-error] .k-textarea {
+  border-color: var(--danger);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--danger) 14%, transparent);
+  animation: k-shake 0.3s ease-in-out 1;
+}
+.k-field-error {
+  font-size: 13px;
+  color: var(--danger);
+}
+@keyframes k-shake {
+  25% {
+    transform: translateX(-4px);
+  }
+  75% {
+    transform: translateX(4px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .k-field[data-error] .k-input,
+  .k-field[data-error] .k-textarea {
+    animation: none;
+  }
+}
 .k-label {
   font-size: 13px;
   font-weight: 500;
