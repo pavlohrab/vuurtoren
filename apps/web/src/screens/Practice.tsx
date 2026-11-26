@@ -29,6 +29,7 @@ import { dutchVoiceAvailable, speakDutch, useDutchVoice } from "../practice/spee
 import { toWav16k } from "../practice/wav.js";
 import { useSay } from "../audio/useSay.js";
 import { buzz, moving, play as playSound, useFeel } from "../practice/feel.js";
+import { PracticeFeelSettings } from "./settings/PracticeFeelSettings.js";
 import { clipId } from "@app/anki";
 import {
   androidListen,
@@ -436,6 +437,8 @@ function StartView({
             </p>
           </fieldset>
         ) : null}
+        {/* How Practice reacts: the same switches as Settings → Your words → Practice (M6). */}
+        <PracticeFeelSettings title="Sound and movement" />
       </div>
     </details>
   );

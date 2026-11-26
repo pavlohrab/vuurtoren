@@ -29,7 +29,7 @@ const ROWS: { key: keyof PracticeFeel; label: string; hint: string }[] = [
   { key: "vibrate", label: "Buzz on a miss", hint: "On a phone." },
 ];
 
-export function PracticeFeelSettings() {
+export function PracticeFeelSettings({ title = "Practice" }: { title?: string }) {
   const [feel, setFeel] = useState(readFeel);
   const set = (key: keyof PracticeFeel, on: boolean) => {
     const next = { ...feel, [key]: on };
@@ -40,7 +40,7 @@ export function PracticeFeelSettings() {
   return (
     <section className="stack" aria-labelledby="practice-feel-h" style={{ gap: 10 }}>
       <h3 className="settings-h3" id="practice-feel-h">
-        Practice
+        {title}
       </h3>
       {ROWS.map((r) => (
         <label key={r.key} className="feel-row">
