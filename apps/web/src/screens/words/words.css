@@ -222,12 +222,6 @@
 .words-gloss--none {
   color: var(--ink-muted);
 }
-/* The inspector moves list pages aside instead of covering them (wide screens). */
-@media (min-width: 900px) {
-  .shell[data-inspector="open"] .content:has(.words-page) {
-    padding-right: var(--inspector-w);
-  }
-}
 /* Due view: how long ago the card came due, after the state chip. */
 .words-due {
   margin-left: var(--s-2);
@@ -301,8 +295,98 @@
   .words-main {
     min-width: 0;
   }
-  /* Words home is this page here: no "‹ Words" that would only come back. */
-  .words-desk .words-room-back {
-    visibility: hidden;
+  /* Words home is this page here: no "‹ Words" that would only come back, and the levels are
+     in the column (UI5), so the strip on top goes. */
+  .words-desk .words-room {
+    display: none;
+  }
+  .words-aside .due-today-start {
+    width: 100%;
+    justify-content: center;
+  }
+  .words-aside .due-today {
+    justify-items: stretch;
+  }
+}
+
+/* The column's Levels and From your texts (mock MK2 A). */
+.words-levels,
+.words-from-texts {
+  display: grid;
+  gap: var(--s-2);
+  padding: var(--s-4, 16px);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+}
+.words-levels ul {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.words-level-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 4px var(--s-2);
+  width: 100%;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  font-size: 13.5px;
+  text-align: start;
+  cursor: pointer;
+}
+.words-level-row:hover {
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
+}
+.words-level-row[aria-pressed="true"] {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+.words-level-name {
+  font-weight: 600;
+}
+.words-level-count {
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+.words-level-bar {
+  grid-column: 1 / -1;
+  display: flex;
+  height: 4px;
+  overflow: hidden;
+  border-radius: 2px;
+  background: var(--hairline);
+}
+.words-level-bar > span {
+  background: var(--known, #4f7a4f);
+}
+.words-level-bar > .words-level-bar-learning {
+  background: var(--learn, #c47a3a);
+}
+.words-aside-link {
+  justify-self: start;
+  padding: 4px 8px;
+  color: var(--accent);
+  font-weight: 600;
+  text-decoration: none;
+}
+.words-aside-link:hover {
+  text-decoration: underline;
+}
+.words-col-level {
+  width: 4.5em;
+  color: var(--ink-muted);
+}
+
+/* With a word open the panel is a column too: the left column narrows so the list keeps room. */
+@media (min-width: 1100px) {
+  .shell[data-inspector="open"] .words-desk {
+    grid-template-columns: 240px minmax(0, 1fr);
+    gap: var(--s-5, 24px);
   }
 }

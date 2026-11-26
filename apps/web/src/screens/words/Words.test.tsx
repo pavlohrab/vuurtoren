@@ -137,12 +137,22 @@ describe("Words", () => {
     expect(within(panel).queryByText(/Recall/)).toBeNull();
   });
 
-  it("opens on the words to decide, without the optional columns", async () => {
+  it("opens on all your words, Word · Meaning · State · Level, no optional columns (UI5)", async () => {
     setup("/words/all?layout=list");
+    expect(await screen.findByRole("radio", { name: "All" })).toBeChecked();
+    const table = await screen.findByRole("table");
+    expect(
+      within(table)
+        .getAllByRole("columnheader")
+        .map((h) => h.textContent),
+    ).toEqual(["Word", "Meaning", "State", "Level"]);
+    expect(await within(table).findByRole("button", { name: "Open boek" })).toBeVisible();
+  });
+
+  it("To decide holds only the words met while reading that have no card", async () => {
+    setup("/words/all?layout=list&state=decide");
     expect(await screen.findByRole("radio", { name: "To decide" })).toBeChecked();
     const table = await screen.findByRole("table");
-    expect(within(table).queryByRole("columnheader", { name: "Recall" })).toBeNull();
-    expect(within(table).queryByRole("columnheader", { name: "Decks" })).toBeNull();
     expect(await within(table).findByRole("button", { name: "Open vertrekken" })).toBeVisible();
     expect(within(table).queryByRole("button", { name: "Open boek" })).toBeNull();
   });

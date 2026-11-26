@@ -13,7 +13,8 @@ import { plural } from "../../format.js";
 import { useServices } from "../../services/context.js";
 import { PageHeader } from "../../shell/PageHeader.js";
 import { usePageHeader } from "../../shell/ShellContext.js";
-import { useCurrentLevel } from "./WordsRoom.js";
+import { loadStarterIndex, useCurrentLevel, useLevelProgress } from "./WordsRoom.js";
+import { type LevelFilter, currentLevel, levelLabel } from "./levels.js";
 import { currentDevice } from "../../platform/index.js";
 import "./wordsHome.css";
 import { progressText } from "./levels.js";
@@ -73,7 +74,7 @@ export function WordsAside() {
         />
         <Row
           to="/words/all"
-          search={{ layout: "list" }}
+          search={{ state: "decide", layout: "list" }}
           icon={<BookOpenCheck size={18} />}
           title="Met while reading"
           detail="New words from your texts"
@@ -102,8 +103,122 @@ export function WordsAside() {
   );
 }
 
+/**
+ * The computer's left column (mock MK2 A): Due today with Practise, the levels with progress
+ * (each one a filter of the list beside it, with Check your level), and From your texts.
+ */
+export function WordsDeskAside({
+  level,
+  onLevel,
+}: {
+  level: LevelFilter | null;
+  onLevel: (level: number | null) => void;
+}) {
+  const services = useServices();
+  const native = useNativeMode();
+  const today = useQuery({
+    queryKey: ["review", "overview"],
+    queryFn: () => services.reviewOverview(),
+    enabled: native,
+  });
+  const index = useQuery({
+    queryKey: ["starter-index"],
+    queryFn: loadStarterIndex,
+    staleTime: Infinity,
+  });
+  const progress = useLevelProgress();
+  const decide = useQuery({
+    queryKey: ["words", "to-decide-count"],
+    queryFn: async () => (await services.wordsToDecide({ limit: DECIDE_CAP })).length,
+    staleTime: 30_000,
+  });
+  const current = progress.data ? currentLevel(progress.data) : null;
+  return (
+    <>
+      {native ? (
+        <DueToday due={today.data?.due} fresh={today.data?.fresh} practise />
+      ) : (
+        <AnkiNote />
+      )}
+      {index.data && progress.data?.length ? (
+        <section className="words-levels" aria-labelledby="words-levels-h">
+          <h2 id="words-levels-h" className="due-today-label">
+            Levels
+          </h2>
+          <ul>
+            {progress.data.map((p) => (
+              <li key={p.level}>
+                <button
+                  type="button"
+                  className="words-level-row"
+                  aria-pressed={level === p.level}
+                  onClick={() => onLevel(level === p.level ? null : p.level)}
+                >
+                  <span className="words-level-name">{levelLabel(index.data, p.level)}</span>
+                  <span className="words-level-count">
+                    {fmt(p.known)} / {fmt(p.size)}
+                  </span>
+                  <span className="words-level-bar" aria-hidden>
+                    <span style={{ width: `${(100 * p.known) / Math.max(1, p.size)}%` }} />
+                    <span
+                      className="words-level-bar-learning"
+                      style={{ width: `${(100 * p.learning) / Math.max(1, p.size)}%` }}
+                    />
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+          <Link
+            to="/words/all"
+            search={
+              current ? { layout: "cards", level: String(current.level) } : { layout: "cards" }
+            }
+            className="words-aside-link"
+          >
+            Check your level
+          </Link>
+        </section>
+      ) : null}
+      <section className="words-from-texts" aria-labelledby="words-from-texts-h">
+        <h2 id="words-from-texts-h" className="due-today-label">
+          From your texts
+        </h2>
+        <p className="due-today-parts">
+          {decide.data === undefined
+            ? "…"
+            : decide.data === 0
+              ? "Nothing to decide."
+              : `${decide.data >= DECIDE_CAP ? `${DECIDE_CAP}+` : fmt(decide.data)} new ${decide.data === 1 ? "word" : "words"} to decide`}
+        </p>
+        {decide.data ? (
+          <Link
+            to="/words/all"
+            search={{ state: "decide", layout: "list" }}
+            className="words-aside-link"
+          >
+            Decide →
+          </Link>
+        ) : null}
+      </section>
+    </>
+  );
+}
+
+/** At most this many words to decide are counted ("100+"). */
+const DECIDE_CAP = 100;
+
 /** The day's work: one number, what it is made of, and Start. */
-function DueToday({ due, fresh }: { due: number | undefined; fresh: number | undefined }) {
+function DueToday({
+  due,
+  fresh,
+  practise = false,
+}: {
+  due: number | undefined;
+  fresh: number | undefined;
+  /** The computer's column: Practise these words under Start (mock MK2 A). */
+  practise?: boolean;
+}) {
   if (due === undefined || fresh === undefined)
     return <Skeleton className="due-today" style={{ height: 156 }} />;
   const total = due + fresh;
@@ -121,6 +236,11 @@ function DueToday({ due, fresh }: { due: number | undefined; fresh: number | und
           <Link to="/review" className="k-btn k-btn--primary due-today-start">
             Start
           </Link>
+          {practise ? (
+            <Link to="/practice" className="k-btn k-btn--secondary due-today-start">
+              Practise these words
+            </Link>
+          ) : null}
         </>
       ) : (
         <>

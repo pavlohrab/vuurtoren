@@ -6,7 +6,7 @@
  * &word=<key>`). Grouped by level, each level shows how many of its words are known. A row
  * opens the shared word inspector; in Select mode a selection goes to Anki, Practice or Talk.
  */
-import { starterLevelName } from "@app/anki";
+import { starterBand, starterLevelName } from "@app/anki";
 import { pct, plural } from "../../format.js";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
@@ -57,11 +57,12 @@ import {
   type StarterIndex,
   groupByLevel,
   inLevel,
+  levelOf,
   levelLabel,
   parseLevel,
   progressText,
 } from "./levels.js";
-import { WordsAside } from "./WordsHome.js";
+import { WordsDeskAside } from "./WordsHome.js";
 import { ALL_WORDS, WordsRoom, loadStarterIndex, useLevelProgress } from "./WordsRoom.js";
 import { useWordActions } from "../useWordActions.js";
 import { WordStack } from "./WordStack.js";
@@ -91,20 +92,24 @@ async function loadLevelRows(
 /** The views of the list: words to decide on, then by state. */
 export type WordsView = "decide" | "due" | "new" | "learning" | "known" | "ignored" | "all";
 const VIEWS: { id: WordsView; label: string; native?: true }[] = [
+  { id: "all", label: "All" },
   { id: "decide", label: "To decide" },
   { id: "due", label: "Due", native: true },
   { id: "new", label: "New" },
   { id: "learning", label: "Learning" },
   { id: "known", label: "Known" },
   { id: "ignored", label: "Ignored" },
-  { id: "all", label: "All" },
 ];
 
-/** The view of `state` in the URL; without one, To decide (or All words of a source). */
-export function parseView(raw: string | undefined, hasSource: boolean): WordsView {
+/**
+ * The view of `state` in the URL; without one, All (UI5: a fresh start has 500 words with
+ * cards and nothing to decide yet, and the list must not look empty). "Met while reading" asks
+ * for To decide.
+ */
+export function parseView(raw: string | undefined): WordsView {
   if (raw === "unknown" || raw === "seen") return "new";
   const v = VIEWS.find((x) => x.id === raw);
-  return v ? v.id : hasSource ? "all" : "decide";
+  return v ? v.id : "all";
 }
 
 /** Does a word belong in a view? "New" holds words met but not learned (new and seen). */
@@ -310,8 +315,8 @@ export function Words() {
   const { inspectorEl, setInspectorAvailable, setInspectorOpen } = useShell();
 
   const source = parseSource(params.source);
-  const view = parseView(params.state, source !== null);
-  const defaultView: WordsView = source ? "all" : "decide";
+  const view = parseView(params.state);
+  const defaultView: WordsView = "all";
   const word = params.word;
   const asList = showsList(params);
   // The stack's search icon opens the list with its search field ready.
@@ -494,7 +499,7 @@ export function Words() {
   // Grouped: a header row per level (null: Other words); otherwise one group without a header.
   const groups: { level?: number | null; rows: WordRow[] }[] =
     grouped && index.data ? groupByLevel(list, index.data) : [{ rows: list }];
-  const span = 3 + Number(selecting) + Number(columns.recall) + Number(columns.decks);
+  const span = 4 + Number(selecting) + Number(columns.recall) + Number(columns.decks);
   const practiseKeys = (chosenKeys.length ? chosenKeys : list.map((r) => r.key)).slice(0, 30);
   const again = readPracticeAgain();
   const sourceOptions = [
@@ -505,6 +510,12 @@ export function Words() {
     ...(texts.data ?? []).map((t) => ({ value: `text:${t.id}`, label: t.title })),
     ...(source?.kind === "unit" ? [{ value: params.source!, label: sourceLabel ?? "Unit" }] : []),
   ];
+
+  /** The word's starter band ("A1"), or "–" for a word outside the starter list. */
+  const bandOf = (key: string): string => {
+    const l = index.data ? levelOf(index.data, key) : null;
+    return l === null ? "–" : starterBand(l);
+  };
 
   const inspectorPortal =
     inspectorEl && word
@@ -553,7 +564,10 @@ export function Words() {
     <div className="page page--list words-page words-desk">
       {/* Computers with room: Today and the lists on the left (mock A, UI1); hidden on phones. */}
       <aside className="words-aside" aria-label="Today">
-        <WordsAside />
+        <WordsDeskAside
+          level={level}
+          onLevel={(l) => setSearch({ level: l === null ? undefined : String(l) })}
+        />
       </aside>
       <div className="words-main">
         <WordsRoom />
@@ -829,8 +843,9 @@ export function Words() {
                       </th>
                     ) : null}
                     <th>Word</th>
-                    <th>State</th>
                     <th>Meaning</th>
+                    <th>State</th>
+                    <th className="words-col-level">Level</th>
                     {columns.recall ? <th className="words-col-recall">Recall</th> : null}
                     {columns.decks ? <th className="words-col-decks">Decks</th> : null}
                   </tr>
@@ -876,15 +891,16 @@ export function Words() {
                               <Lemma lemma={w.lemma} article={w.article} />
                             </button>
                           </td>
+                          <td className={w.gloss ? "words-gloss" : "words-gloss words-gloss--none"}>
+                            {w.gloss ?? "No meaning yet"}
+                          </td>
                           <td>
                             <WordStateChip state={w.state} inVuurtoren={w.appLearning} />
                             {w.due !== undefined ? (
                               <span className="words-due">{dueAgo(w.due)}</span>
                             ) : null}
                           </td>
-                          <td className={w.gloss ? "words-gloss" : "words-gloss words-gloss--none"}>
-                            {w.gloss ?? "No meaning yet"}
-                          </td>
+                          <td className="words-col-level">{bandOf(w.key)}</td>
                           {columns.recall ? (
                             <td className="k-mono words-col-recall">
                               {w.pKnown === null || w.state !== "learning" ? "–" : pct(w.pKnown)}
