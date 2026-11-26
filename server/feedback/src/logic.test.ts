@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { hasContent, headline, issueBody, issueTitle, message, readReport, screenName } from "./logic.js";
+import {
+  hasContent,
+  headline,
+  issueBody,
+  issueLabels,
+  issueTitle,
+  message,
+  readReport,
+  screenName,
+} from "./logic.js";
 
 const sent = {
   id: "r-1234abcd",
@@ -46,5 +55,15 @@ describe("the feedback Worker's logic", () => {
     const body = issueBody(r.report, null);
     expect(body).toContain("Version: 26e (b7c1d68)");
     expect(body).not.toContain("dev-5678efgh");
+  });
+
+  it("labels the issue: from a tester, desktop or phone, and the platform", () => {
+    const phone = readReport(sent);
+    const desk = readReport({ ...sent, kind: "computer", device: "Linux, desktop app" });
+    const mac = readReport({ ...sent, kind: "computer", device: "Safari on macOS" });
+    if (!("report" in phone) || !("report" in desk) || !("report" in mac)) throw new Error("refused");
+    expect(issueLabels(phone.report)).toEqual(["from a tester", "phone", "android"]);
+    expect(issueLabels(desk.report)).toEqual(["from a tester", "desktop", "linux"]);
+    expect(issueLabels(mac.report)).toEqual(["from a tester", "desktop", "macos"]);
   });
 });

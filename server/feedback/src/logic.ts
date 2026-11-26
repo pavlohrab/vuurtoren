@@ -136,9 +136,19 @@ export function issueBody(report: Report, transcript: string | null): string {
   return parts.join("\n\n");
 }
 
-/** Labels for the issue. */
+/** The platform from the device line the app sends ("Android 15, Pixel 8", "Linux, desktop app"). */
+export function platform(device: string): "android" | "windows" | "macos" | "linux" | null {
+  if (/android/i.test(device)) return "android";
+  if (/windows/i.test(device)) return "windows";
+  if (/macos|mac os/i.test(device)) return "macos";
+  if (/linux/i.test(device)) return "linux";
+  return null;
+}
+
+/** Labels for the issue: who sent it, desktop or phone, and the platform. */
 export function issueLabels(report: Report): string[] {
-  return ["from a tester", report.kind];
+  const where = platform(report.device);
+  return ["from a tester", report.kind === "computer" ? "desktop" : "phone", ...(where ? [where] : [])];
 }
 
 /** A short hash of the sender's address for the hourly limit (never the address itself). */

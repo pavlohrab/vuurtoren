@@ -17,7 +17,8 @@ You need `npx wrangler login` with the Cloudflare account that has vuurtoren.app
    `https://api.telegram.org/bot<TOKEN>/getUpdates` and note `"chat":{"id":…}`. That's your chat id.
 2. **The GitHub token.** github.com → Settings → Developer settings → Fine-grained tokens → new
    token, only the Vuurtoren repository, permission **Issues: Read and write**. Also make the
-   labels `from a tester`, `phone` and `computer` in the repository.
+   labels `from a tester`, `desktop`, `phone`, `android`, `windows`, `macos` and `linux` in the
+   repository.
 3. **Storage.** From this folder:
    ```sh
    npx wrangler d1 create vuurtoren-feedback      # put its database_id into wrangler.toml
