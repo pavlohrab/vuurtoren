@@ -1845,6 +1845,108 @@
           display: none;
         }
       }
+          /* Practice: a sentence builds itself from tiles, then the green strip (plays when in view). */
+      .ld {
+        width: 84%;
+        display: grid;
+        gap: 12px;
+      }
+      .ld p {
+        margin: 0;
+      }
+      .ld-ask {
+        font: 600 16px var(--f-display);
+        color: var(--ink);
+      }
+      .ld-en {
+        color: var(--muted);
+        font-size: 15px;
+      }
+      .ld-slot,
+      .ld-bank {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        min-height: 40px;
+      }
+      .ld-slot {
+        padding-bottom: 8px;
+        border-bottom: 2px solid var(--line);
+      }
+      .ld-bank {
+        justify-content: center;
+      }
+      .ld .t {
+        font: 16px var(--f-read);
+        color: var(--ink);
+        padding: 6px 11px;
+        border-radius: 10px;
+        background: var(--sheet);
+        border: 1px solid var(--line-strong);
+        box-shadow: 0 2px 0 var(--line-strong);
+      }
+      .ld-bank .t.used {
+        opacity: 0.25;
+      }
+      .ld-strip {
+        padding: 10px 12px;
+        border-radius: 10px;
+        background: color-mix(in srgb, var(--good) 14%, var(--surface));
+        font-size: 15px;
+      }
+      .ld-strip b {
+        color: var(--good);
+        margin-right: 6px;
+      }
+      .ld-strip span {
+        font-family: var(--f-read);
+      }
+      @media (prefers-reduced-motion: no-preference) {
+        .play .ld-slot .t {
+          animation: ld-in 0.35s calc(0.4s + var(--i) * 0.7s) both;
+        }
+        .play .ld-bank .t.used {
+          animation: ld-used 0.35s calc(0.4s + var(--i) * 0.7s) both;
+        }
+        .play .ld-strip {
+          animation: ld-in 0.4s 3.4s both;
+        }
+        @keyframes ld-in {
+          from {
+            opacity: 0;
+            transform: translateY(6px);
+          }
+        }
+        @keyframes ld-used {
+          from {
+            opacity: 1;
+          }
+        }
+      }
+      /* More than a reader: one band after the cards, with the way to How it works. */
+      .more-band .more {
+        border-radius: 18px;
+        background: var(--surface);
+        border: 1px solid var(--line);
+        padding: clamp(22px, 4vw, 40px);
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 20px;
+        align-items: center;
+      }
+      .more-band h2 {
+        margin: 0;
+      }
+      .more-band p {
+        margin: 8px 0 0;
+        max-width: 52ch;
+        color: var(--muted);
+      }
+      @media (max-width: 700px) {
+        .more-band .more {
+          grid-template-columns: 1fr;
+        }
+      }
     </style>
   </head>
   <body data-page="desktop">
@@ -2085,6 +2187,37 @@
         </div>
         <div class="row">
           <div class="copy">
+            <span class="eyebrow">Practice</span>
+            <h2>Practise what you've seen.</h2>
+            <p>Write it, make sentences, speak it.</p>
+          </div>
+          <div class="demo" data-loop>
+            <div class="stage">
+              <div class="ld" aria-label="A practice exercise: build the sentence">
+                <p class="ld-ask">Write this in Dutch</p>
+                <p class="ld-en">I climb the stairs.</p>
+                <div class="ld-slot" lang="nl">
+                  <span class="t" style="--i: 0">Ik</span>
+                  <span class="t" style="--i: 1">beklim</span>
+                  <span class="t" style="--i: 2">de</span>
+                  <span class="t" style="--i: 3">trap</span>
+                </div>
+                <div class="ld-bank" lang="nl">
+                  <span class="t used" style="--i: 2">de</span>
+                  <span class="t used" style="--i: 3">trap</span>
+                  <span class="t">het</span>
+                  <span class="t used" style="--i: 0">ik</span>
+                  <span class="t used" style="--i: 1">beklim</span>
+                </div>
+                <p class="ld-strip">
+                  <b>Right</b> <span lang="nl">Ik beklim de trap.</span>
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="row">
+          <div class="copy">
             <span class="eyebrow">For your phone</span>
             <h2>It prepares your texts for your phone.</h2>
             <p>
@@ -2109,6 +2242,21 @@
               </div>
             </div>
           </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="band more-band">
+      <div class="in">
+        <div class="more">
+          <div>
+            <h2>More than a library and a reader.</h2>
+            <p>
+              Vuurtoren helps you learn, with methods that research shows work: spaced review,
+              words in context, practice at the right level.
+            </p>
+          </div>
+          <a class="btn primary" href="how.html">How it works →</a>
         </div>
       </div>
     </section>
