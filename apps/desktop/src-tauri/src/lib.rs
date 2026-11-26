@@ -761,6 +761,21 @@ async fn sync_fetch(
     })
 }
 
+#[derive(Serialize)]
+struct Probed {
+    fingerprint: String,
+    proof: String,
+}
+
+/// The typed code's first step (SY9): ask the computer at `base` (a home-network address) to
+/// prove it knows the code. Returns the certificate it showed and its proof; the page checks the
+/// proof and only then pairs, pinned to that certificate.
+#[tauri::command]
+async fn sync_probe(base: String, nonce: String) -> Result<Probed, String> {
+    let (fingerprint, proof) = pinned::probe(&base, &nonce).await?;
+    Ok(Probed { fingerprint, proof })
+}
+
 /// Keep a secret in the device's key store (`keys.rs`): the sync key (base64, `name` absent or
 /// "sync-key") or a server's sync token ("sync-token"). Says where it went: "keychain" or "file"
 /// on a computer, "keystore" on Android.
@@ -900,6 +915,7 @@ pub fn run() {
             desktop_info,
             links_take,
             sync_fetch,
+            sync_probe,
             sync_allow_host,
             sync_key_save,
             sync_key_load,

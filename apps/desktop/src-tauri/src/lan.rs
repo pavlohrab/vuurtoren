@@ -92,6 +92,37 @@ pub struct Lan {
     moved: bool,
     /// SY12: the phone that used the code, until the computer said yes or no.
     asking: Option<Asking>,
+    /// SHA-256 of this listener's certificate: what `prove` binds the code to (SY9).
+    fingerprint: String,
+}
+
+/// HMAC-SHA256 (RFC 2104), hex: the typed code's proof (SY9).
+pub fn hmac_sha256(key: &[u8], message: &[u8]) -> String {
+    const BLOCK: usize = 64;
+    let mut k = if key.len() > BLOCK {
+        Sha256::digest(key).to_vec()
+    } else {
+        key.to_vec()
+    };
+    k.resize(BLOCK, 0);
+    let ipad: Vec<u8> = k.iter().map(|b| b ^ 0x36).collect();
+    let opad: Vec<u8> = k.iter().map(|b| b ^ 0x5c).collect();
+    let inner = Sha256::new()
+        .chain_update(&ipad)
+        .chain_update(message)
+        .finalize();
+    Sha256::new()
+        .chain_update(&opad)
+        .chain_update(inner)
+        .finalize()
+        .iter()
+        .map(|b| format!("{b:02x}"))
+        .collect()
+}
+
+/// What the typed code proves (SY9): the phone's random value and this computer's certificate.
+pub fn proof_message(nonce: &str, fingerprint: &str) -> Vec<u8> {
+    format!("vuurtoren-pair:{nonce}:{}", fingerprint.to_lowercase()).into_bytes()
 }
 
 /// What a phone of a computer that moved is told (410).
@@ -235,7 +266,39 @@ impl Lan {
             dirty: false,
             moved: false,
             asking: None,
+            fingerprint: String::new(),
         }
+    }
+
+    /// The listener's certificate (set when it starts listening).
+    pub fn set_fingerprint(&mut self, fingerprint: &str) {
+        self.fingerprint = fingerprint.to_lowercase();
+    }
+
+    /// SY9, the typed code: before the phone sends the code, the computer shows it knows it, bound
+    /// to its own certificate. A phone that sees another certificate (someone in between) gets a
+    /// proof that doesn't match and stops. Each proof costs one of the code's tries, so nobody
+    /// can collect proofs to guess the code.
+    fn prove(&mut self, body: &[u8], now: u64) -> Reply {
+        let v: serde_json::Value = serde_json::from_slice(body).unwrap_or_default();
+        let nonce = v["nonce"].as_str().unwrap_or("");
+        if nonce.len() < 16 || nonce.len() > 128 || self.fingerprint.is_empty() {
+            return Reply::fail(400, "Not a valid request.");
+        }
+        let Some(code) = self.code.as_mut() else {
+            return Reply::fail(401, "Show a new code on the computer and type it again.");
+        };
+        if now > code.expires || code.tries >= CODE_TRIES {
+            self.code = None;
+            return Reply::fail(
+                401,
+                "This code has run out. Show a new one on the computer.",
+            );
+        }
+        code.tries += 1;
+        let key = code.code.replace('-', "");
+        let proof = hmac_sha256(key.as_bytes(), &proof_message(nonce, &self.fingerprint));
+        Reply::json(200, json!({ "ok": true, "proof": proof }))
     }
 
     /// The computer moved to another place (true), or shares its folder again (false).
@@ -436,6 +499,9 @@ impl Lan {
         if path == "/api/sync/pair/wait" && method == "POST" {
             return self.pair_wait(body, now);
         }
+        if path == "/api/sync/prove" && method == "POST" {
+            return self.prove(body, now);
+        }
         if !path.starts_with("/api/sync/") {
             return Reply::fail(404, "Not found.");
         }
@@ -576,6 +642,68 @@ mod tests {
             .as_str()
             .unwrap()
             .to_string()
+    }
+
+    #[test]
+    fn hmac_matches_rfc_4231() {
+        assert_eq!(
+            hmac_sha256(b"Jefe", b"what do ya want for nothing?"),
+            "5bdcc146bf60754e6a042426089575c75a003f089d2739839dec58b964ec3843"
+        );
+    }
+
+    /// SY9: the computer proves it knows the code, bound to its certificate; each proof is a try.
+    #[test]
+    fn the_typed_code_is_proved_before_it_is_sent() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut lan = Lan::new(dir.path());
+        lan.set_fingerprint("AB12");
+        let code = lan.new_code(10);
+        let nonce = "0123456789abcdef0123";
+        let body = json!({ "nonce": nonce }).to_string();
+        let r = lan.dispatch(
+            "POST",
+            "/api/sync/prove",
+            &HashMap::new(),
+            None,
+            body.as_bytes(),
+            11,
+        );
+        assert_eq!(r.status, 200);
+        let v: serde_json::Value = serde_json::from_slice(&r.body).unwrap();
+        let want = hmac_sha256(
+            code.replace('-', "").as_bytes(),
+            &proof_message(nonce, "ab12"),
+        );
+        assert_eq!(v["proof"], want);
+        // Bound to the certificate: another one gives another proof.
+        assert_ne!(
+            want,
+            hmac_sha256(
+                code.replace('-', "").as_bytes(),
+                &proof_message(nonce, "cd34")
+            )
+        );
+        // Proofs use up the code's tries: nobody collects them to guess the code.
+        for _ in 1..CODE_TRIES {
+            lan.dispatch(
+                "POST",
+                "/api/sync/prove",
+                &HashMap::new(),
+                None,
+                body.as_bytes(),
+                12,
+            );
+        }
+        let r = lan.dispatch(
+            "POST",
+            "/api/sync/prove",
+            &HashMap::new(),
+            None,
+            body.as_bytes(),
+            13,
+        );
+        assert_eq!(r.status, 401);
     }
 
     /// SY12: nothing goes to the phone before the computer says yes; "no" ends it.

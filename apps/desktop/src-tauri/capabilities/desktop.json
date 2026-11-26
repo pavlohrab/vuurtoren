@@ -16,6 +16,7 @@
     "allow-sync-dir-put",
     "allow-sync-dir-remove",
     "allow-sync-fetch",
+    "allow-sync-probe",
     "allow-sync-allow-host",
     "allow-sync-key-save",
     "allow-sync-key-load",

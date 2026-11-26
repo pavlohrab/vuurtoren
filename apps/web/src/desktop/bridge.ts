@@ -198,6 +198,11 @@ export interface DesktopSync {
     /** "Connect a phone": the computer's certificate SHA-256 from the QR code, trusted alone. */
     pinned?: string;
   }): Promise<{ status: number; headers: Record<string, string>; body: Uint8Array }>;
+  /**
+   * The typed code (SY9): ask the computer at `base` (a home-network address) to prove it knows
+   * the code, for `nonce`. The certificate it showed and its proof; optional in older builds.
+   */
+  probe?(base: string, nonce: string): Promise<{ fingerprint: string; proof: string }>;
 }
 
 /** "Connect a phone" on a computer (lan_cmd.rs). */

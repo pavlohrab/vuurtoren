@@ -13,6 +13,7 @@ fn main() {
             "sync_dir_put",
             "sync_dir_remove",
             "sync_fetch",
+            "sync_probe",
             "sync_allow_host",
             "sync_key_save",
             "sync_key_load",

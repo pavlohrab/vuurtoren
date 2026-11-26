@@ -120,6 +120,9 @@ pub async fn listen(
 ) -> Result<(Listening, impl std::future::Future<Output = ()>), String> {
     let (cert, key) = certificate(data_dir)?;
     let print = fingerprint(&cert);
+    if let Ok(mut l) = lan.lock() {
+        l.set_fingerprint(&print);
+    }
     let provider = Arc::new(rustls::crypto::ring::default_provider());
     let config = rustls::ServerConfig::builder_with_provider(provider)
         .with_safe_default_protocol_versions()

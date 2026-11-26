@@ -153,7 +153,7 @@ describe("pairing with your computer waits for its yes (SY12)", () => {
       reply(202, { waiting: "w1" }),
       reply(200, { token: "t1", label: "Pixel", handover: { key: "S0VZ" } }),
     ];
-    const fetch = vi.fn(async (_url: string) => answers.shift()!);
+    const fetch = vi.fn(async (url: string) => (void url, answers.shift()!));
     const onWait = vi.fn();
     const paired = await pairWithServer(
       link,
@@ -176,5 +176,37 @@ describe("pairing with your computer waits for its yes (SY12)", () => {
     await expect(
       pairWithServer(link, "Pixel", fetch as unknown as typeof globalThis.fetch, undefined, noWait),
     ).rejects.toThrow(/said no/);
+  });
+});
+
+describe("the typed code (SY9)", () => {
+  it("knows the user's computer by its home address, with the phone port unless typed", async () => {
+    const { typedComputer } = await import("./connect.js");
+    expect(typedComputer("https://192.168.178.123")).toBe("https://192.168.178.123:47120");
+    expect(typedComputer("https://10.0.0.5:5000")).toBe("https://10.0.0.5:5000");
+    expect(typedComputer("https://vuurtoren.example.org")).toBeNull();
+    expect(typedComputer("https://8.8.8.8")).toBeNull();
+  });
+
+  it("trusts the certificate only when the computer's proof matches it", async () => {
+    const { createHmac } = await import("node:crypto");
+    const { proveComputer } = await import("./connect.js");
+    const code = "ABCDE-FGHJK";
+    // The real computer: the proof is made with the code and its own certificate.
+    const honest = async (_base: string, nonce: string) => ({
+      fingerprint: "ab12",
+      proof: createHmac("sha256", "ABCDEFGHJK")
+        .update(`vuurtoren-pair:${nonce}:ab12`)
+        .digest("hex"),
+    });
+    await expect(proveComputer("https://192.168.1.20:47120", code, honest)).resolves.toBe("ab12");
+    // Someone in between relays the real proof but shows their own certificate.
+    const between = async (base: string, nonce: string) => ({
+      ...(await honest(base, nonce)),
+      fingerprint: "cd34",
+    });
+    await expect(proveComputer("https://192.168.1.20:47120", code, between)).rejects.toThrow(
+      /not the computer that shows this code/,
+    );
   });
 });

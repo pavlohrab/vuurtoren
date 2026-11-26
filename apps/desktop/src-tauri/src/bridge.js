@@ -133,6 +133,10 @@
             return { status: res.status, headers: res.headers, body: fromBase64(res.bodyBase64) };
           });
         },
+        // The typed code (SY9): the computer's certificate and its proof that it knows the code.
+        probe: function (base, nonce) {
+          return invoke("sync_probe", { base: base, nonce: nonce });
+        },
       }),
       // "Connect a phone" on a computer (lan_cmd.rs): listen for phones, make a code with the
       // handover (place + key), list and remove phones.

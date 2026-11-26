@@ -179,3 +179,68 @@ export async function pairWithServer(
     ...(answer.handover?.key ? { key: answer.handover.key } : {}),
   };
 }
+
+/** The port a computer listens on for its phones (lan_cmd.rs `PHONE_PORT`). */
+const PHONE_PORT = 47120;
+
+/**
+ * A typed address of the user's computer on the home network (a private IPv4), as the base to
+ * reach it, with its port (47120 unless typed); null for anything else (a server).
+ */
+export function typedComputer(server: string): string | null {
+  try {
+    const u = new URL(server);
+    const parts = u.hostname.split(".").map(Number);
+    if (parts.length !== 4 || parts.some((n) => !Number.isInteger(n) || n < 0 || n > 255))
+      return null;
+    const [a, b] = parts as [number, number];
+    const home =
+      a === 10 ||
+      (a === 172 && b >= 16 && b <= 31) ||
+      (a === 192 && b === 168) ||
+      (a === 169 && b === 254);
+    return home ? `https://${u.hostname}:${u.port || PHONE_PORT}` : null;
+  } catch {
+    return null;
+  }
+}
+
+/** HMAC-SHA256 of `message` with `key`, hex (WebCrypto). */
+async function hmacHex(key: string, message: string): Promise<string> {
+  const enc = new TextEncoder();
+  const k = await crypto.subtle.importKey(
+    "raw",
+    enc.encode(key),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const sig = new Uint8Array(await crypto.subtle.sign("HMAC", k, enc.encode(message)));
+  return [...sig].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+/**
+ * The typed code (SY9): the computer at `base` proves it knows `code`, bound to the certificate
+ * the phone saw; only then is that certificate trusted. Returns its fingerprint. Someone in
+ * between shows another certificate and can't make the proof for it without the code.
+ */
+export async function proveComputer(
+  base: string,
+  code: string,
+  probe: (base: string, nonce: string) => Promise<{ fingerprint: string; proof: string }>,
+): Promise<string> {
+  const nonce = [...crypto.getRandomValues(new Uint8Array(16))]
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+  const { fingerprint, proof } = await probe(base, nonce);
+  const want = await hmacHex(
+    code.replace(/-/g, ""),
+    `vuurtoren-pair:${nonce}:${fingerprint.toLowerCase()}`,
+  );
+  if (!fingerprint || proof !== want) {
+    throw new Error(
+      "This is not the computer that shows this code, or the code is wrong. Show a new code on your computer and type it again.",
+    );
+  }
+  return fingerprint.toLowerCase();
+}

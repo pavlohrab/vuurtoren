@@ -167,7 +167,12 @@ export function ConnectPhone() {
           {now < shown.until ? (
             <>
               <p className="k-hint" style={{ margin: 0 }}>
-                Or type the code: <b>{shown.code}</b>. It works for {left(shown.until - now)} more.
+                Or type it on your phone (Connect manually):{" "}
+                <b>
+                  {shown.at.address}
+                  {shown.at.port === 47120 ? "" : `:${shown.at.port}`}
+                </b>{" "}
+                and <b>{shown.code}</b>. It works for {left(shown.until - now)} more.
               </p>
               <p className="k-hint row" role="status" style={{ margin: 0, gap: 8 }}>
                 <Spinner label="Waiting" />

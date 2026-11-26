@@ -30,7 +30,13 @@ import {
   vaultId,
 } from "@app/db";
 import type { DesktopSync } from "../desktop/bridge.js";
-import { pairWithServer, pairedLabel, parseConnectLink } from "../sync/connect.js";
+import {
+  pairWithServer,
+  pairedLabel,
+  parseConnectLink,
+  proveComputer,
+  typedComputer,
+} from "../sync/connect.js";
 import { desktopFetch, folderStore } from "../sync/desktopStore.js";
 import {
   forgetSyncKey,
@@ -634,8 +640,18 @@ export function createLiveSync(deps: LiveSyncDeps) {
       });
     },
 
-    async connectServer(link, deviceName, onProgress) {
+    async connectServer(typed, deviceName, onProgress) {
       return exclusive(async () => {
+        let link = typed;
+        // The typed code (SY9): the user's computer typed by its home address, no QR code. It
+        // proves it knows the code before anything is sent, then is trusted like a scanned one.
+        const home =
+          "code" in link && !("pinned" in link && link.pinned) ? typedComputer(link.server) : null;
+        if (home && "code" in link && deps.desktop?.probe) {
+          onProgress?.("Checking that it's your computer…");
+          const pinned = await proveComputer(home, link.code, deps.desktop.probe);
+          link = { server: home, code: link.code, pinned };
+        }
         let now = read();
         const there = "pinned" in link && link.pinned ? "your computer" : "the server";
         onProgress?.(`Reaching ${there}…`);
