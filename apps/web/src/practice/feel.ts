@@ -128,11 +128,8 @@ export type Sound = "tick" | "right" | "wrong" | "done";
 const SOUNDS: Record<Sound, () => void> = {
   // Soft pop: a tile placed, a pair matched.
   tick: () => note([520, 260], 0.06, 0.06, 0, "sine"),
-  // Warm two notes, up.
-  right: () => {
-    note(523, 0.22, 0.045);
-    note(659, 0.26, 0.045, 0.1);
-  },
+  // Three bright notes, quick and rising (mock-practice-reward.html, B; Pavlo 26 Nov).
+  right: () => [659, 784, 1047].forEach((f, i) => note(f, 0.2, 0.04, i * 0.07)),
   // Two notes down, the mirror of "right" (high enough for phone speakers).
   wrong: () => {
     note(523, 0.16, 0.06);

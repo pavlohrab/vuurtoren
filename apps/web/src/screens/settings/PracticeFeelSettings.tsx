@@ -14,7 +14,7 @@ const ROWS: { key: keyof PracticeFeel; label: string; hint: string }[] = [
   {
     key: "sounds",
     label: "Sounds",
-    hint: "A soft tick, two notes for right and for not quite, and a short chime at the end.",
+    hint: "A soft tick, three quick notes for right, two down for not quite, and a short chime at the end.",
   },
   {
     key: "movement",

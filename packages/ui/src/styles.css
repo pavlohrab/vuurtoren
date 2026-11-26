@@ -3018,3 +3018,97 @@ svg.lucide {
 .k-cover[data-tone="soft"] .k-cover-progress > span {
   background: var(--accent);
 }
+
+/* A right answer (mock-practice-reward.html, B): the tick pops and draws itself, the answer
+   bounces, sparks rise from Continue, and Continue breathes until pressed. Only with movement on
+   (.practice-move) and when the system doesn't ask for less. */
+.ex-tick {
+  width: 28px;
+  height: 28px;
+  flex: none;
+}
+.ex-tick circle {
+  fill: var(--success);
+}
+.ex-tick path {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.ex-strip--right .ex-verdict {
+  align-items: center;
+  font-size: 19px;
+}
+.ex-strip {
+  position: relative;
+}
+.ex-sparks {
+  position: absolute;
+  left: 50%;
+  bottom: 44px;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+.ex-sparks i {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  opacity: 0;
+  background: var(--accent);
+}
+.ex-sparks i:nth-child(odd) {
+  background: var(--success);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .practice-move .ex-tick circle {
+    transform-origin: 20px 20px;
+    animation: ex-tick-grow 0.3s cubic-bezier(0.2, 1.6, 0.4, 1) both;
+  }
+  .practice-move .ex-tick path {
+    stroke-dasharray: 30;
+    animation: ex-tick-draw 0.25s 0.2s ease-out both;
+  }
+  .practice-move .ex-choice--right {
+    animation: ex-bounce 0.35s cubic-bezier(0.2, 1.6, 0.4, 1);
+  }
+  .practice-move .ex-sparks i {
+    animation: ex-spark 0.9s var(--d) ease-out forwards;
+  }
+  .practice-move .ex-strip--right .ex-continue {
+    animation: ex-breathe 1.6s 0.6s ease-in-out infinite;
+  }
+}
+@keyframes ex-tick-grow {
+  from {
+    transform: scale(0);
+  }
+}
+@keyframes ex-tick-draw {
+  from {
+    stroke-dashoffset: 30;
+  }
+}
+@keyframes ex-bounce {
+  40% {
+    transform: scale(1.05);
+  }
+}
+@keyframes ex-spark {
+  0% {
+    opacity: 1;
+    transform: translate(0, 0) rotate(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--x), var(--y)) rotate(260deg);
+  }
+}
+@keyframes ex-breathe {
+  50% {
+    transform: scale(1.025);
+  }
+}

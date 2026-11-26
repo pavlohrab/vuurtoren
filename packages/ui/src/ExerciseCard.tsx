@@ -7,7 +7,7 @@
  * continues, Backspace takes the last tile back, ? reveals a letter or places the next tile.
  * Holding a tile (or right-clicking it) shows what the word means; that counts as help.
  */
-import { Check, Mic, Snail, Square, Volume2, X } from "lucide-react";
+import { Mic, Snail, Square, Volume2, X } from "lucide-react";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import type { Exercise } from "@app/core";
 import { Button } from "./Button.js";
@@ -148,6 +148,8 @@ export function ExerciseCard({
       if (i !== undefined) setBack((b) => ({ i, n: (b?.n ?? 0) + 1 }));
       return cur.filter((_, m) => m !== n);
     });
+  /** The word for a right answer, a different one now and then (mock-practice-reward.html, B). */
+  const praise = PRAISE[(e.id.length + e.id.charCodeAt(e.id.length - 1)) % PRAISE.length]!;
   /** The speaker pulses while the card says something. */
   const [saying, setSaying] = useState(false);
   const sayTimer = useRef<number | undefined>(undefined);
@@ -640,8 +642,16 @@ export function ExerciseCard({
           role="status"
         >
           <p className="ex-verdict">
-            {feedback.correct ? <Check size={18} aria-hidden /> : <X size={18} aria-hidden />}
-            {feedback.correct ? "Right" : "Not quite"}
+            {feedback.correct ? (
+              // A tick that pops and draws itself (mock-practice-reward.html, B).
+              <svg className="ex-tick" viewBox="0 0 40 40" aria-hidden>
+                <circle cx="20" cy="20" r="20" />
+                <path d="M12 21 l6 6 l11 -13" />
+              </svg>
+            ) : (
+              <X size={18} aria-hidden />
+            )}
+            {feedback.correct ? praise : "Not quite"}
           </p>
           <p className="ex-strip-dutch ex-dutch" lang="nl">
             {onSpeak ? (
@@ -706,6 +716,22 @@ export function ExerciseCard({
                 </Button>
               ) : null}
             </div>
+          ) : null}
+          {feedback.correct ? (
+            <span className="ex-sparks" aria-hidden>
+              {Array.from({ length: 10 }, (_, i) => (
+                <i
+                  key={i}
+                  style={
+                    {
+                      "--x": `${Math.round(Math.cos((i / 9) * Math.PI + Math.PI) * 110)}px`,
+                      "--y": `${-50 - ((i * 37) % 80)}px`,
+                      "--d": `${0.12 + ((i * 7) % 5) * 0.04}s`,
+                    } as React.CSSProperties
+                  }
+                />
+              ))}
+            </span>
           ) : null}
           <Button variant="primary" className="ex-continue" onClick={onContinue}>
             {continueLabel} <kbd className="ex-key">Enter</kbd>
@@ -981,6 +1007,8 @@ function MarkedSentence({ answer, given }: { answer: string; given: string }) {
     </>
   );
 }
+
+const PRAISE = ["Nice", "Good", "Well done", "Yes", "Right"] as const;
 
 /** The round speaker button next to Dutch text. */
 function SpeakButton({ onClick, label }: { onClick: () => void; label: string }) {
