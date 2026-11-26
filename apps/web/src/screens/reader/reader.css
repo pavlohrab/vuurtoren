@@ -472,9 +472,15 @@
 }
 
 /* "Aa" reading settings */
+@media (max-width: 760px) {
+  .aa-pop {
+    max-height: calc(100dvh - 72px - 96px - env(safe-area-inset-bottom, 0px));
+  }
+}
 .aa-pop {
   width: min(320px, calc(100vw - 32px));
-  max-height: min(760px, calc(100dvh - 72px));
+  /* Room for the top bar above and, on a phone, the tab bar and a gap below (M6). */
+  max-height: min(760px, calc(100dvh - 72px - 24px - env(safe-area-inset-bottom, 0px)));
   overflow: auto;
   padding: var(--s-4);
   display: flex;
@@ -1648,5 +1654,32 @@ dl.card-meaning dd,
   :root[data-book] .topbar,
   :root[data-book] .sidebar {
     transition: none;
+  }
+}
+
+/* Simplify in book mode: a sheet over the page (bottom on a phone, right on a computer). */
+.simplify-over {
+  position: fixed;
+  z-index: 30;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  max-height: 75dvh;
+  overflow: auto;
+  padding: var(--s-4) var(--s-4) calc(var(--s-4) + env(safe-area-inset-bottom, 0px));
+  background: var(--surface);
+  border-top-left-radius: 18px;
+  border-top-right-radius: 18px;
+  box-shadow: 0 -10px 30px color-mix(in srgb, var(--ink) 16%, transparent);
+}
+@media (min-width: 1100px) {
+  .simplify-over {
+    left: auto;
+    top: 72px;
+    bottom: 16px;
+    right: 16px;
+    width: min(520px, 40vw);
+    max-height: none;
+    border-radius: 18px;
   }
 }

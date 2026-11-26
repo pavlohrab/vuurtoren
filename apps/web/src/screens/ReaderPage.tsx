@@ -332,6 +332,7 @@ export function ReaderPage({ textId }: { textId: string }) {
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [simplifyAt, setSimplifyAt] = useState<number | null>(null);
+  useBackClose(simplifyAt !== null, () => setSimplifyAt(null));
   useEffect(() => {
     if (!readingFocus) return;
     document.documentElement.dataset["readingFocus"] = "";
@@ -1087,7 +1088,7 @@ export function ReaderPage({ textId }: { textId: string }) {
         )}
       </div>
       <StoryCredit sourceRef={data.text.sourceRef} />
-      {simplifyAt === current ? (
+      {simplifyAt === current && !book ? (
         <SimplifyPage
           key={current}
           text={data.text.content.slice(plan.segment.charStart, plan.segment.charEnd)}
@@ -1273,6 +1274,17 @@ export function ReaderPage({ textId }: { textId: string }) {
         ) : (
           pageBody
         )}
+        {/* In book mode the easier version opens over the page, not in its flow: in the flow
+            it made the page longer and the screens re-measure (M6). */}
+        {book && simplifyAt === current ? (
+          <div className="simplify-over" role="dialog" aria-label="Simplify this page">
+            <SimplifyPage
+              key={current}
+              text={data.text.content.slice(plan.segment.charStart, plan.segment.charEnd)}
+              onClose={() => setSimplifyAt(null)}
+            />
+          </div>
+        ) : null}
         <AnchoredPopover
           anchor={openMarkData ? (openMark?.el ?? null) : null}
           onClose={() => setOpenMark(null)}
