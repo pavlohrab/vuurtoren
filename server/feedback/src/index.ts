@@ -22,6 +22,7 @@ import {
   issueTitle,
   message,
   readReport,
+  topicTitle,
   type Report,
 } from "./logic.js";
 
@@ -187,6 +188,40 @@ async function report(req: Request, env: Env): Promise<Response> {
   return json(200, { ok: true, id: r.id });
 }
 
+/**
+ * The tester's own topic in Pavlo's Telegram group (FB2): made the first time a device writes,
+ * renamed when the tester gives a name. In a chat without topics (Pavlo's private chat) there
+ * is none, and everything goes there as before.
+ */
+async function topicFor(env: Env, r: Report): Promise<number | null> {
+  if (!r.replyTo) return null;
+  const row = await env.DB.prepare("SELECT name, topic FROM testers WHERE device = ?")
+    .bind(r.replyTo)
+    .first<{ name: string | null; topic: number | null }>();
+  if (row?.topic) {
+    if (r.name && r.name !== row.name) {
+      await tg(env, "editForumTopic", {
+        chat_id: env.TG_CHAT_ID,
+        message_thread_id: row.topic,
+        name: topicTitle(r),
+      });
+      await env.DB.prepare("UPDATE testers SET name = ? WHERE device = ?").bind(r.name, r.replyTo).run();
+    }
+    return row.topic;
+  }
+  const made = (await tg(env, "createForumTopic", {
+    chat_id: env.TG_CHAT_ID,
+    name: topicTitle(r),
+  })) as { ok?: boolean; result?: { message_thread_id?: number } };
+  const topic = made.ok ? (made.result?.message_thread_id ?? null) : null;
+  await env.DB.prepare(
+    "INSERT INTO testers (device, name, topic, created) VALUES (?, ?, ?, ?) ON CONFLICT(device) DO UPDATE SET name = excluded.name, topic = excluded.topic",
+  )
+    .bind(r.replyTo, r.name ?? null, topic, Date.now())
+    .run();
+  return topic;
+}
+
 /** Workers AI Whisper; null when it isn't bound or fails (the audio still goes to Pavlo). */
 async function transcribe(env: Env, audio: ArrayBuffer): Promise<string | null> {
   if (!env.AI) return null;
@@ -228,10 +263,13 @@ async function sendToPavlo(
   audioType: string | undefined,
 ): Promise<number | null> {
   const text = message(r, transcript);
+  const topic = await topicFor(env, r).catch(() => null);
+  const where = topic ? { message_thread_id: topic } : {};
   let sent;
   if (shot) {
     const f = new FormData();
     f.set("chat_id", env.TG_CHAT_ID);
+    if (topic) f.set("message_thread_id", String(topic));
     f.set("caption", text);
     f.set("reply_markup", JSON.stringify(buttons(r.id)));
     f.set("photo", new Blob([shot], { type: shotType ?? "image/png" }), "screen.png");
@@ -240,11 +278,17 @@ async function sendToPavlo(
     if (!sent.ok)
       sent = await tg(env, "sendMessage", {
         chat_id: env.TG_CHAT_ID,
+        ...where,
         text: `${text}\n\n(The picture couldn't be sent.)`.slice(0, 4096),
         reply_markup: buttons(r.id),
       });
   } else {
-    sent = await tg(env, "sendMessage", { chat_id: env.TG_CHAT_ID, text, reply_markup: buttons(r.id) });
+    sent = await tg(env, "sendMessage", {
+      chat_id: env.TG_CHAT_ID,
+      ...where,
+      text,
+      reply_markup: buttons(r.id),
+    });
   }
   const id = sent.ok ? (sent.result?.message_id ?? null) : null;
   if (audio) {
@@ -259,6 +303,7 @@ async function sendToPavlo(
           : (["sendDocument", "document", "voice.webm"] as const);
     const f = new FormData();
     f.set("chat_id", env.TG_CHAT_ID);
+    if (topic) f.set("message_thread_id", String(topic));
     if (id) f.set("reply_to_message_id", String(id));
     f.set(field, new Blob([audio], { type }), name);
     const voiceSent = await tg(env, method, f);
@@ -266,6 +311,7 @@ async function sendToPavlo(
     if (!voiceSent.ok)
       await tg(env, "sendMessage", {
         chat_id: env.TG_CHAT_ID,
+        ...where,
         ...(id ? { reply_to_message_id: id } : {}),
         text: `The voice note couldn't be attached (${(voiceSent as { description?: string }).description ?? "Telegram said no"}). It's kept with the report.`,
       });
@@ -283,6 +329,8 @@ interface TgUpdate {
     message_id: number;
     chat: { id: number };
     text?: string;
+    message_thread_id?: number;
+    is_topic_message?: boolean;
     reply_to_message?: { message_id: number };
   };
 }
@@ -330,18 +378,40 @@ async function telegram(req: Request, env: Env): Promise<Response> {
   }
 
   // Pavlo replies to a report's message: it goes to the tester's app.
+  // Pavlo writes to a tester: in their topic (FB2), or as a reply to a report's message.
   const m = u.message;
-  if (m?.text && m.reply_to_message && String(m.chat.id) === env.TG_CHAT_ID) {
-    const row = await env.DB.prepare("SELECT id, reply_to FROM reports WHERE tg_message = ?")
-      .bind(m.reply_to_message.message_id)
-      .first<{ id: string; reply_to: string | null }>();
-    if (row?.reply_to) {
+  if (m?.text && String(m.chat.id) === env.TG_CHAT_ID) {
+    let device: string | null = null;
+    let reportId = "";
+    if (m.is_topic_message && m.message_thread_id) {
+      const t = await env.DB.prepare("SELECT device FROM testers WHERE topic = ?")
+        .bind(m.message_thread_id)
+        .first<{ device: string }>();
+      device = t?.device ?? null;
+      const last = device
+        ? await env.DB.prepare("SELECT id FROM reports WHERE reply_to = ? ORDER BY created DESC LIMIT 1")
+            .bind(device)
+            .first<{ id: string }>()
+        : null;
+      reportId = last?.id ?? "";
+    }
+    if (!device && m.reply_to_message) {
+      const row = await env.DB.prepare("SELECT id, reply_to FROM reports WHERE tg_message = ?")
+        .bind(m.reply_to_message.message_id)
+        .first<{ id: string; reply_to: string | null }>();
+      device = row?.reply_to ?? null;
+      reportId = row?.id ?? "";
+    }
+    if (device) {
       await env.DB.prepare("INSERT INTO replies (report_id, reply_to, text, created) VALUES (?, ?, ?, ?)")
-        .bind(row.id, row.reply_to, m.text.slice(0, 2000), Date.now())
+        .bind(reportId, device, m.text.slice(0, 2000), Date.now())
         .run();
-      await tg(env, "sendMessage", { chat_id: env.TG_CHAT_ID, reply_to_message_id: m.message_id, text: "Sent to the tester's app." });
-    } else if (row) {
-      await tg(env, "sendMessage", { chat_id: env.TG_CHAT_ID, reply_to_message_id: m.message_id, text: "This tester didn't ask for replies." });
+      await tg(env, "sendMessage", {
+        chat_id: env.TG_CHAT_ID,
+        ...(m.message_thread_id ? { message_thread_id: m.message_thread_id } : {}),
+        reply_to_message_id: m.message_id,
+        text: "✓ In the tester's app, under Feedback.",
+      });
     }
   }
   return ok;

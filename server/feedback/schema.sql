@@ -35,3 +35,12 @@ CREATE TABLE IF NOT EXISTS contacts (
   message TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS contacts_ip ON contacts (ip, created);
+
+-- One tester per device (FB2): their name and their topic in Pavlo's Telegram group.
+CREATE TABLE IF NOT EXISTS testers (
+  device TEXT PRIMARY KEY,
+  name TEXT,
+  topic INTEGER,                 -- message_thread_id, or null in a chat without topics
+  created INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS testers_topic ON testers (topic);

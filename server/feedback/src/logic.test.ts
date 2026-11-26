@@ -10,6 +10,7 @@ import {
   message,
   readReport,
   screenName,
+  topicTitle,
 } from "./logic.js";
 
 const sent = {
@@ -52,7 +53,7 @@ describe("the feedback Worker's logic", () => {
     expect(headline(r.report)).toBe("Phone · 26e · Read");
     const m = message(r.report, "it says verb");
     expect(m).toContain("🎙 it says verb");
-    expect(m).toContain("Reply to this message");
+    expect(m).toContain("Write in this topic");
     expect(issueTitle(r.report, null)).toBe(sent.text);
     const body = issueBody(r.report, null);
     expect(body).toContain("Version: 26e (b7c1d68)");
@@ -81,6 +82,14 @@ describe("the feedback Worker's logic", () => {
     expect(contactMessage({ name: "Sanne", email: "a@b.nl", message: "Hoi" })).toContain(
       "Sanne <a@b.nl>",
     );
+  });
+
+  it("names a tester's topic by their name, else Tester, and the device", () => {
+    const r = readReport({ ...sent, name: "Sanne" });
+    const anon = readReport(sent);
+    if (!("report" in r) || !("report" in anon)) throw new Error("refused");
+    expect(topicTitle(r.report)).toBe("Sanne · Android 15, Pixel 8");
+    expect(topicTitle(anon.report)).toBe("Tester · Android 15, Pixel 8");
   });
 });
 

@@ -20,8 +20,10 @@ export interface Report {
   errors: string[];
   /** Desktop "Point at it": the element's name. */
   picked?: string;
-  /** A random id of this device for Pavlo's replies; absent when the tester said no. */
+  /** A random id of this device: the tester's conversation (FB2), and where replies go. */
   replyTo?: string;
+  /** The name the tester gave once (Settings → Feedback), for their topic in Telegram. */
+  name?: string;
 }
 
 export const LIMITS = {
@@ -52,6 +54,7 @@ export function readReport(raw: unknown): { report: Report } | { error: string }
     : [];
   const replyTo = str(r.replyTo, 64);
   const picked = str(r.picked, 200);
+  const name = str(r.name, 60);
   return {
     report: {
       id,
@@ -63,6 +66,7 @@ export function readReport(raw: unknown): { report: Report } | { error: string }
       errors,
       ...(picked ? { picked } : {}),
       ...(ID.test(replyTo) ? { replyTo } : {}),
+      ...(name ? { name } : {}),
     },
   };
 }
@@ -107,7 +111,7 @@ export function message(report: Report, transcript: string | null): string {
   if (report.picked) lines.push(`Pointed at: ${report.picked}`);
   lines.push(report.device);
   lines.push(report.errors.length ? `Last error: ${report.errors[0]}` : "No errors");
-  if (report.replyTo) lines.push("Reply to this message to answer the tester.");
+  if (report.replyTo) lines.push("Write in this topic (or reply here) to answer.");
   const out = lines.join("\n");
   return out.length > 1024 ? `${out.slice(0, 1020)}…` : out;
 }
@@ -192,3 +196,8 @@ export function contactMessage(c: Contact): string {
 
 /** The pages that may send the form. */
 export const CONTACT_ORIGINS = ["https://vuurtoren.app", "https://www.vuurtoren.app"];
+
+/** The Telegram topic of a tester: their name if they gave one, else "Tester", and the device. */
+export function topicTitle(report: Report): string {
+  return `${report.name || "Tester"} · ${report.device}`.slice(0, 120);
+}
