@@ -1400,3 +1400,244 @@ dl.card-meaning dd,
     min-height: 32px;
   }
 }
+
+/* ---------- Book mode (BookPages.tsx, mock-reader-book.html) ----------
+   The reader page fills the room between the top bar and the tab bar; its text is cut into
+   screens by CSS columns and turned sideways. Nothing in it scrolls. */
+:root[data-book] .content {
+  overflow: clip;
+}
+.reader-page[data-book] {
+  height: 100%;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  padding: 14px 0 6px;
+  overflow: clip;
+}
+/* The open word sheet must not take room from the page (it would cut the screens again). */
+:root[data-book] .shell[data-inspector="open"] .content {
+  padding-bottom: 0;
+}
+.book {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  /* Horizontal moves are page turns; a pinch still zooms. */
+  touch-action: pinch-zoom;
+  -webkit-tap-highlight-color: transparent;
+}
+.book-inner,
+.book-leaf {
+  position: absolute;
+  inset: 0;
+}
+.book-vp {
+  position: absolute;
+  top: var(--book-pad-y, 0px);
+  bottom: var(--book-pad-y, 0px);
+  left: var(--book-side, 0px);
+  width: var(--book-vw, 100%);
+  /* Clip without being a scroll container, so focus never scrolls the columns. The margin
+     lets the grammar marks show beside the text. */
+  overflow: clip;
+  overflow-clip-margin: 20px;
+  transform: translateY(calc(-1 * var(--book-lift, 0px)));
+  transition: transform var(--dur) var(--ease-out);
+}
+.book-flow {
+  height: 100%;
+  width: var(--book-vw, 100%);
+  column-width: var(--book-col, auto);
+  column-count: var(--book-per, 1);
+  column-gap: var(--book-gap, 0px);
+  column-fill: auto;
+  will-change: transform;
+}
+.book-flow .k-reader,
+.book-flow .k-sbs {
+  max-width: none;
+  margin-inline: 0;
+}
+.book-flow .k-reader p {
+  orphans: 2;
+  widows: 2;
+}
+.book-flow[data-justify] .k-reader p,
+.book-flow[data-justify] .k-sbs-nl {
+  text-align: justify;
+  hyphens: auto;
+  -webkit-hyphens: auto;
+}
+.book-flow .reader-hard,
+.book-flow .reader-cloze-empty,
+.book-flow .reader-story-credit,
+.book-flow .reader-simplify,
+.book-flow .page-end {
+  max-width: none;
+  margin-inline: 0;
+  break-inside: avoid;
+}
+.book-end {
+  display: block;
+  height: 0;
+}
+/* A spread: two pages on a sheet of paper, with a soft fold. */
+.book[data-spread] {
+  --book-pad-y: 40px;
+}
+.book[data-spread] .book-paper {
+  position: absolute;
+  top: 8px;
+  bottom: 8px;
+  left: calc(var(--book-side) - 40px);
+  right: calc(var(--book-side) - 40px);
+  border-radius: 6px;
+  background: var(--surface);
+  box-shadow:
+    0 10px 28px color-mix(in srgb, var(--ink) 12%, transparent),
+    inset 0 0 0 1px var(--hairline);
+}
+.book[data-spread] .book-paper::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 44px;
+  transform: translateX(-50%);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--ink) 6%, transparent) 45%,
+    color-mix(in srgb, var(--ink) 10%, transparent) 50%,
+    color-mix(in srgb, var(--ink) 6%, transparent) 55%,
+    transparent
+  );
+}
+/* Copies of a page for the turn animations; gone when it ends. */
+.book-leaves {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  perspective: 1800px;
+}
+.book-leaf {
+  background: var(--bg);
+  backface-visibility: hidden;
+  will-change: transform;
+}
+.book[data-spread] .book-leaf .book-paper {
+  box-shadow: none;
+}
+.book-leaf-shade {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, #000 4%, transparent),
+    color-mix(in srgb, #000 22%, transparent)
+  );
+}
+
+/* Under the page: the scrub bar, the time left, and the footer with the screen count. */
+.book-chrome {
+  flex: none;
+  display: grid;
+  gap: 2px;
+  width: min(100%, var(--book-chrome-w, 44rem));
+  margin: 4px auto 0;
+  padding: 0 16px;
+  box-sizing: border-box;
+  transition:
+    transform var(--dur) var(--ease-out),
+    opacity var(--dur) var(--ease-out);
+}
+.book-chrome .reader-footer {
+  margin: 0;
+  max-width: none;
+}
+.book-screens {
+  flex: 1 1 auto;
+  min-width: 0;
+  text-align: center;
+  font-size: 13px;
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.book-left {
+  margin: 0;
+  text-align: center;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--ink-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.book-scrub {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 28px;
+}
+.book-scrub input {
+  width: 100%;
+  margin: 0;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+.book-scrub-bubble {
+  position: absolute;
+  bottom: calc(100% + 2px);
+  transform: translateX(-50%);
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--bg);
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* A tap in the middle hides the bars; another brings them back. The text stays put. */
+:root[data-book] .topbar,
+:root[data-book] .sidebar {
+  transition:
+    transform var(--dur) var(--ease-out),
+    opacity var(--dur) var(--ease-out);
+}
+:root[data-book-bare] .topbar {
+  transform: translateY(-100%);
+  opacity: 0;
+  pointer-events: none;
+}
+:root[data-book-bare] .book-chrome {
+  transform: translateY(30%);
+  opacity: 0;
+  pointer-events: none;
+}
+@media (max-width: 699px) {
+  :root[data-book-bare] .sidebar {
+    transform: translateY(100%);
+    opacity: 0;
+    pointer-events: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .book-vp,
+  .book-chrome,
+  :root[data-book] .topbar,
+  :root[data-book] .sidebar {
+    transition: none;
+  }
+}

@@ -6,6 +6,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { ModeMenu } from "./reader/ModeMenu.js";
 import { useSwipePages } from "./reader/useSwipePages.js";
+import { type BookHandle, BookPages, type BookScreen } from "./reader/BookPages.js";
+import { BookScrub } from "./reader/BookScrub.js";
+import { DEFAULT_WPM, nextWpm, timeLeftLine } from "./reader/bookMath.js";
+import { takeVolumeKeys } from "../platform/volumeKeys.js";
 import { formLine } from "./reader/formLine.js";
 import { useWordCard } from "./reader/useWordCard.js";
 import {
@@ -62,7 +66,7 @@ import { useWordActions } from "./useWordActions.js";
 import { TextComplete } from "./TextComplete.js";
 import { errorText } from "../services/errors.js";
 import { usePageHeader, useShell } from "../shell/ShellContext.js";
-import { revealAboveSheet } from "../shell/revealAboveSheet.js";
+import { liftAboveSheet, revealAboveSheet } from "../shell/revealAboveSheet.js";
 import { useReaderAudio } from "../audio/ReaderAudio.js";
 import { readLocal, writeLocal } from "../storage/local.js";
 import { ReaderLeave, rememberReader, takeReaderReturn } from "./reader/readerReturn.js";
@@ -87,6 +91,13 @@ import { contextGloss } from "../services/contextGloss.js";
 const PRACTISE_FROM = 2;
 const HARD_TEXT = 80;
 const HARD_SEEN = "vuurtoren-hard-seen:";
+/** The reader's own speed, words a minute (book mode's time left), per device. */
+const WPM_KEY = "vuurtoren-reading-wpm";
+/** How long the place waits before it is saved, so quick turns make one event. */
+const PLACE_DELAY = 1500;
+
+/** Words that count as reading on a page (not punctuation or ignored tokens). */
+const isWord = (t: { label: string }) => t.label !== "nonword" && t.label !== "ignored";
 
 const HELP_LABEL: Record<HelpLevel, string> = {
   off: "Off",
@@ -210,9 +221,25 @@ export function ReaderPage({ textId }: { textId: string }) {
   // Wait for a settled (not refetching) result before starting, so a stale cached plan or
   // resume point is never used.
   const settled = data != null && !reading.isFetching;
-  // Resume at the next segment to read, clamped to the available segments.
-  const resume = Math.min(data?.text.lastSegment ?? 0, Math.max(0, (plans?.length ?? 1) - 1));
+  // Resume at the saved place (book mode keeps it to the word), else the next segment to
+  // read, clamped to the available segments.
+  const resume = Math.min(
+    data?.text.place?.segment ?? data?.text.lastSegment ?? 0,
+    Math.max(0, (plans?.length ?? 1) - 1),
+  );
   if (segment === null && settled) setSegment(resume);
+  /** Book mode opens on this word once: back from grammar, or the saved place. */
+  const [startPlace, setStartPlace] = useState<{ segment: number; char: number } | null>();
+  if (startPlace === undefined && settled && data) {
+    const sel = back?.selected != null ? data.tokens[back.selected] : undefined;
+    setStartPlace(
+      sel && back
+        ? { segment: back.segment, char: sel.start }
+        : data.text.place?.segment === resume
+          ? data.text.place
+          : null,
+    );
+  }
   const current = segment ?? resume;
   /** Save where we are before a grammar link leaves the reader (Back returns here, RD5). */
   const leaveFor = (topic: string) =>
@@ -261,6 +288,11 @@ export function ReaderPage({ textId }: { textId: string }) {
   }, [setInspectorAvailable, setInspectorOpen, back?.selected]);
   useEffect(() => writeLastText(textId), [textId]);
 
+  /** When this page was opened, for the reading speed. */
+  const pageStart = useRef(0);
+  useEffect(() => {
+    pageStart.current = Date.now();
+  }, [current]);
   const resetSegmentState = useCallback(() => {
     setOpenMark(null);
     setHitIndex(null);
@@ -273,6 +305,24 @@ export function ReaderPage({ textId }: { textId: string }) {
   // Reading comforts (per device) and reading focus mode.
   const [prefs, setPrefs] = useReaderPrefs();
   const [readingFocus, setReadingFocus] = useState(false);
+  // Book mode: pages turn instead of scrolling (BookPages.tsx).
+  const book = prefs.pages === "turn";
+  const bookRef = useRef<BookHandle | null>(null);
+  const [bookAt, setBookAt] = useState<BookScreen>({ screen: 0, screens: 1, anchor: null });
+  /** The bars are hidden by a tap in the middle of the page. */
+  const [bare, setBare] = useState(false);
+  /** How far the text is lifted so the tapped word shows above the word sheet. */
+  const [lift, setLift] = useState(0);
+  useEffect(() => {
+    if (!book) return;
+    const root = document.documentElement;
+    root.dataset["book"] = "";
+    if (bare) root.dataset["bookBare"] = "";
+    return () => {
+      delete root.dataset["book"];
+      delete root.dataset["bookBare"];
+    };
+  }, [book, bare]);
   // The "…" menu (and its grammar view), the shortcuts list and Simplify this page.
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuView, setMenuView] = useState<MenuView>("menu");
@@ -659,12 +709,39 @@ export function ReaderPage({ textId }: { textId: string }) {
     el?.focus({ preventScroll: true });
   };
 
+  // Book mode: while a word's sheet is open, lift the text so the word stays above it, as the
+  // sheet slides up, fills with the entry, or is pulled up.
+  useEffect(() => {
+    if (!book || selected === null || !inspectorOpen) return;
+    const sheet = document.querySelector(".inspector-panel");
+    if (!sheet) return;
+    let frame = 0;
+    const run = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        const word = document.querySelector(`.book-flow .k-tok[data-i="${selected}"]`);
+        const px = liftAboveSheet(word, document.querySelector(".book"));
+        if (px !== null) setLift(px);
+      });
+    };
+    run();
+    const ro = typeof ResizeObserver === "function" ? new ResizeObserver(run) : null;
+    ro?.observe(sheet);
+    sheet.addEventListener("transitionend", run);
+    return () => {
+      cancelAnimationFrame(frame);
+      ro?.disconnect();
+      sheet.removeEventListener("transitionend", run);
+    };
+  }, [book, selected, inspectorOpen]);
+
   const onTokenClick = (i: number) => {
     setSelected(i);
     card.restart();
     setInspectorOpen(true);
-    // On a phone the inspector is a bottom sheet: keep the word visible above it.
-    revealAboveSheet(document.querySelector(`.k-tok[data-i="${i}"]`));
+    // On a phone the inspector is a bottom sheet: keep the word visible above it. A book page
+    // can't scroll: its text lifts instead (the effect below) and stays on its screen.
+    if (!book) revealAboveSheet(document.querySelector(`.k-tok[data-i="${i}"]`));
     const key = plan?.tokens.find((t) => t.i === i)?.key;
     const tok = data?.tokens[i];
     const t = tok && tok.particle_of !== null ? (data?.tokens[tok.particle_of] ?? tok) : tok;
@@ -746,6 +823,9 @@ export function ReaderPage({ textId }: { textId: string }) {
         lookupsPer100: words > 0 ? (lookups.current / words) * 100 : 0,
       });
       finished.current.add(current);
+      // The reader's speed, for the time left: this page's words over the time it was open.
+      const wpm = Number(readLocal(WPM_KEY)) || DEFAULT_WPM;
+      writeLocal(WPM_KEY, String(nextWpm(wpm, words, Date.now() - pageStart.current)));
       // Keep the cached resume point current so reopening the text does not use a stale one.
       qc.setQueryData<ReadingView | null>(["reading", textId], (d) =>
         d
@@ -769,12 +849,61 @@ export function ReaderPage({ textId }: { textId: string }) {
     } else if (!isLast) void finish();
   };
   useEffect(() => {
-    stepRef.current = stepPage;
+    stepRef.current = (dir) => {
+      if (book && bookRef.current) bookRef.current.turn(dir);
+      else stepPage(dir);
+    };
   });
+  // Android: the volume keys turn pages while the reader is open, when asked for.
+  const volumeOn = book && prefs.volumeKeys && !complete;
+  useEffect(() => {
+    if (!volumeOn) return;
+    return takeVolumeKeys((dir) => stepRef.current(dir));
+  }, [volumeOn]);
+
+  // Book mode: the place to the word, saved a little after the turns stop (and on leaving).
+  const placeSave = useRef<{ key: string; timer: number; run: (() => void) | null }>({
+    key: "",
+    timer: 0,
+    run: null,
+  });
+  const charOfToken = useCallback((i: number) => data?.tokens[i]?.start, [data]);
+  const onBookScreen = (s: BookScreen) => {
+    if (s.screen !== bookAt.screen) setLift(0);
+    setBookAt(s);
+    const char = s.anchor !== null ? charOfToken(s.anchor) : undefined;
+    if (char === undefined || !services.savePlace) return;
+    const ps = placeSave.current;
+    const key = `${current}:${char}`;
+    // The first place of a visit is where it opened: nothing new to save.
+    if (!ps.key) {
+      ps.key = key;
+      return;
+    }
+    if (key === ps.key) return;
+    window.clearTimeout(ps.timer);
+    const seg = current;
+    ps.run = () => {
+      ps.run = null;
+      ps.key = key;
+      services.savePlace?.(textId, seg, char).catch((e: unknown) => {
+        console.warn("Could not save the place:", e);
+      });
+    };
+    ps.timer = window.setTimeout(() => ps.run?.(), PLACE_DELAY);
+  };
+  useEffect(
+    () => () => {
+      const ps = placeSave.current;
+      window.clearTimeout(ps.timer);
+      ps.run?.();
+    },
+    [],
+  );
   // Touch: swipe left or right turns the page, with a short slide of the new page.
   const [pageEl, setPageEl] = useState<HTMLDivElement | null>(null);
   const [turn, setTurn] = useState<"next" | "prev" | null>(null);
-  useSwipePages(pageEl, (dir) => {
+  useSwipePages(book ? null : pageEl, (dir) => {
     setTurn(dir === 1 ? "next" : "prev");
     stepPage(dir);
   });
@@ -854,6 +983,133 @@ export function ReaderPage({ textId }: { textId: string }) {
     );
   }
 
+  /** ‹ › and Next in book mode: the same move to another page, with one slide. */
+  const turnPage = (dir: 1 | -1) => {
+    if (book && bookRef.current && (dir < 0 ? current > 0 : !isLast)) {
+      bookRef.current.leave(dir, () => stepPage(dir), "first");
+    } else stepPage(dir);
+  };
+  const onNext = () => {
+    if (book && bookRef.current && !isLast && !finishing) {
+      bookRef.current.leave(1, () => void finish(), "first");
+    } else void finish();
+  };
+  /** The scrub bar let go on page `n`. */
+  const jumpTo = (n: number) => {
+    if (n === current || finishing) return;
+    if (book && bookRef.current)
+      bookRef.current.leave(n > current ? 1 : -1, () => goTo(n), "first");
+    else goTo(n);
+  };
+  // Time left, from the first word on the screen and the reader's own speed.
+  const timeLeft = (() => {
+    if (!book || !plans) return null;
+    const anchor = bookAt.anchor ?? -1;
+    const onPage = plan.tokens.filter((t) => isWord(t) && t.i >= anchor).length;
+    const later = plans.slice(current + 1).reduce((n, p) => n + p.tokens.filter(isWord).length, 0);
+    const wpm = Number(readLocal(WPM_KEY)) || DEFAULT_WPM;
+    return timeLeftLine(onPage, onPage + later, wpm);
+  })();
+  const pageBody = (
+    <>
+      {current === 0 &&
+      known < HARD_TEXT &&
+      mode !== "gloss" &&
+      !hardSeen &&
+      !data.text.sourceRef?.startsWith("story:") ? (
+        <div className="reader-hard" role="note">
+          <span>You know about {known}% of the words in this text, so it will be hard.</span>
+          <Button size="sm" variant="ghost" onClick={closeHard}>
+            Not now
+          </Button>
+        </div>
+      ) : null}
+      {mode === "cloze" && plan.clozes.length === 0 ? (
+        <p className="reader-cloze-empty" role="status">
+          Cloze hides only words you know well, and this page has none yet.
+        </p>
+      ) : null}
+      <div
+        key={current}
+        className="reader-turn"
+        data-turn={turn ?? undefined}
+        onAnimationEnd={(e) => {
+          if (e.target === e.currentTarget) setTurn(null);
+        }}
+      >
+        {side ? (
+          <SideBySide
+            key={`${current}-${epoch}`}
+            text={data.text.content}
+            tokens={data.tokens}
+            plan={plan}
+            pairs={sentencePairs}
+            visibility={prefs.english}
+            notes={orderNotes}
+            selectedToken={selected}
+            onTokenClick={onTokenClick}
+            sentenceAction={audio.sentenceButton}
+          />
+        ) : (
+          <Reader
+            key={`${current}-${epoch}`}
+            text={data.text.content}
+            tokens={data.tokens}
+            plans={[plan]}
+            selectedToken={selected}
+            revealed={revealed}
+            mode={mode}
+            blanks={blanks}
+            glosses={glosses}
+            glossNotes={glossNotes}
+            {...(spotlights ? { spotlights } : {})}
+            spotlightCurrent={currentHitTokens}
+            marks={markLabels}
+            openMark={openMark?.sent ?? null}
+            onMarkClick={(sent, el) =>
+              setOpenMark((cur) => (cur?.sent === sent ? null : { sent, el }))
+            }
+            focusParagraphs={readingFocus}
+            onTokenClick={onTokenClick}
+            onClozeAnswer={onClozeAnswer}
+          />
+        )}
+      </div>
+      <StoryCredit sourceRef={data.text.sourceRef} />
+      {simplifyAt === current ? (
+        <SimplifyPage
+          key={current}
+          text={data.text.content.slice(plan.segment.charStart, plan.segment.charEnd)}
+          onClose={() => setSimplifyAt(null)}
+        />
+      ) : null}
+      {(pageTaps.get(current)?.length ?? 0) >= PRACTISE_FROM ? (
+        <section className="page-end" aria-label="Practise this page's words">
+          <div className="page-end-chips" lang="nl">
+            {pageTaps
+              .get(current)!
+              .slice(0, 6)
+              .map((k) => (
+                <span key={k} className="page-end-chip">
+                  {k}
+                </span>
+              ))}
+            {pageTaps.get(current)!.length > 6 ? (
+              <span className="page-end-chip">+{pageTaps.get(current)!.length - 6}</span>
+            ) : null}
+          </div>
+          <Link
+            to="/practice"
+            search={{ words: pageTaps.get(current)!.join(","), start: "1" }}
+            className="k-btn k-btn--secondary"
+          >
+            Practise these {pageTaps.get(current)!.length} words
+          </Link>
+        </section>
+      ) : null}
+    </>
+  );
+
   return (
     <ReaderLeave.Provider value={leaveFor}>
       <div
@@ -862,6 +1118,7 @@ export function ReaderPage({ textId }: { textId: string }) {
         style={prefsStyle(prefs)}
         {...(prefs.theme !== "app" ? { "data-reading-theme": prefs.theme } : {})}
         {...(readingFocus ? { "data-focus": "" } : {})}
+        {...(book ? { "data-book": "" } : {})}
       >
         {toolbarEl
           ? createPortal(
@@ -973,70 +1230,38 @@ export function ReaderPage({ textId }: { textId: string }) {
             Leave focus mode <kbd>Esc</kbd>
           </button>
         ) : null}
-        {current === 0 &&
-        known < HARD_TEXT &&
-        mode !== "gloss" &&
-        !hardSeen &&
-        !data.text.sourceRef?.startsWith("story:") ? (
-          <div className="reader-hard" role="note">
-            <span>You know about {known}% of the words in this text, so it will be hard.</span>
-            <Button size="sm" variant="ghost" onClick={closeHard}>
-              Not now
-            </Button>
-          </div>
-        ) : null}
-        {mode === "cloze" && plan.clozes.length === 0 ? (
-          <p className="reader-cloze-empty" role="status">
-            Cloze hides only words you know well, and this page has none yet.
-          </p>
-        ) : null}
-        <div
-          key={current}
-          className="reader-turn"
-          data-turn={turn ?? undefined}
-          onAnimationEnd={(e) => {
-            if (e.target === e.currentTarget) setTurn(null);
-          }}
-        >
-          {side ? (
-            <SideBySide
-              key={`${current}-${epoch}`}
-              text={data.text.content}
-              tokens={data.tokens}
-              plan={plan}
-              pairs={sentencePairs}
-              visibility={prefs.english}
-              notes={orderNotes}
-              selectedToken={selected}
-              onTokenClick={onTokenClick}
-              sentenceAction={audio.sentenceButton}
-            />
-          ) : (
-            <Reader
-              key={`${current}-${epoch}`}
-              text={data.text.content}
-              tokens={data.tokens}
-              plans={[plan]}
-              selectedToken={selected}
-              revealed={revealed}
-              mode={mode}
-              blanks={blanks}
-              glosses={glosses}
-              glossNotes={glossNotes}
-              {...(spotlights ? { spotlights } : {})}
-              spotlightCurrent={currentHitTokens}
-              marks={markLabels}
-              openMark={openMark?.sent ?? null}
-              onMarkClick={(sent, el) =>
-                setOpenMark((cur) => (cur?.sent === sent ? null : { sent, el }))
-              }
-              focusParagraphs={readingFocus}
-              onTokenClick={onTokenClick}
-              onClozeAnswer={onClozeAnswer}
-            />
-          )}
-        </div>
-        <StoryCredit sourceRef={data.text.sourceRef} />
+        {book ? (
+          <BookPages
+            pageKey={`${current}-${epoch}`}
+            layoutKey={[
+              prefs.size,
+              prefs.leading,
+              prefs.font,
+              prefs.margins,
+              prefs.spread,
+              prefs.justify,
+              prefs.english,
+            ].join("-")}
+            prefs={prefs}
+            lang={data.text.lang}
+            start={
+              startPlace && startPlace.segment === current
+                ? { pageKey: `${current}-${epoch}`, char: startPlace.char }
+                : null
+            }
+            charOf={charOfToken}
+            canLeave={(dir) => !finishing && !complete && (dir < 0 ? current > 0 : !isLast)}
+            onLeave={stepPage}
+            onScreen={onBookScreen}
+            onMiddle={() => setBare((v) => !v)}
+            lift={inspectorOpen ? lift : 0}
+            handle={bookRef}
+          >
+            {pageBody}
+          </BookPages>
+        ) : (
+          pageBody
+        )}
         <AnchoredPopover
           anchor={openMarkData ? (openMark?.el ?? null) : null}
           onClose={() => setOpenMark(null)}
@@ -1053,79 +1278,107 @@ export function ReaderPage({ textId }: { textId: string }) {
             />
           ) : null}
         </AnchoredPopover>
-        {simplifyAt === current ? (
-          <SimplifyPage
-            key={current}
-            text={data.text.content.slice(plan.segment.charStart, plan.segment.charEnd)}
-            onClose={() => setSimplifyAt(null)}
-          />
-        ) : null}
-        {(pageTaps.get(current)?.length ?? 0) >= PRACTISE_FROM ? (
-          <section className="page-end" aria-label="Practise this page's words">
-            <div className="page-end-chips" lang="nl">
-              {pageTaps
-                .get(current)!
-                .slice(0, 6)
-                .map((k) => (
-                  <span key={k} className="page-end-chip">
-                    {k}
+        {book ? (
+          <div className="book-chrome">
+            <BookScrub pages={plans?.length ?? 1} current={current} onJump={jumpTo} />
+            {timeLeft ? <p className="book-left">{timeLeft}</p> : null}
+            <nav className="reader-footer" aria-label="Pages">
+              <div className="reader-pager">
+                <button
+                  type="button"
+                  className="reader-pager-btn"
+                  aria-label="Previous page"
+                  title="Previous page (←)"
+                  disabled={current === 0 || finishing}
+                  onClick={() => turnPage(-1)}
+                >
+                  <ChevronLeft size={18} aria-hidden />
+                </button>
+                <span className="reader-pager-count">
+                  <span aria-hidden>
+                    {current + 1} / {plans?.length}
                   </span>
-                ))}
-              {pageTaps.get(current)!.length > 6 ? (
-                <span className="page-end-chip">+{pageTaps.get(current)!.length - 6}</span>
+                  <span className="k-sr">
+                    Page {current + 1} of {plans?.length}
+                  </span>
+                </span>
+                <button
+                  type="button"
+                  className="reader-pager-btn"
+                  aria-label="Next page"
+                  title="Next page (→)"
+                  disabled={isLast || finishing}
+                  onClick={() => turnPage(1)}
+                >
+                  <ChevronRight size={18} aria-hidden />
+                </button>
+              </div>
+              {book && bookAt.screens > 1 ? (
+                <span className="book-screens" aria-live="polite">
+                  Screen {bookAt.screen + 1} of {bookAt.screens}
+                </span>
               ) : null}
-            </div>
-            <Link
-              to="/practice"
-              search={{ words: pageTaps.get(current)!.join(","), start: "1" }}
-              className="k-btn k-btn--secondary"
-            >
-              Practise these {pageTaps.get(current)!.length} words
-            </Link>
-          </section>
-        ) : null}
-        <nav className="reader-footer" aria-label="Pages">
-          <div className="reader-pager">
-            <button
-              type="button"
-              className="reader-pager-btn"
-              aria-label="Previous page"
-              title="Previous page (←)"
-              disabled={current === 0 || finishing}
-              onClick={() => stepPage(-1)}
-            >
-              <ChevronLeft size={18} aria-hidden />
-            </button>
-            <span className="reader-pager-count">
-              <span aria-hidden>
-                {current + 1} / {plans?.length}
-              </span>
-              <span className="k-sr">
-                Page {current + 1} of {plans?.length}
-              </span>
-            </span>
-            <button
-              type="button"
-              className="reader-pager-btn"
-              aria-label="Next page"
-              title="Next page (→)"
-              disabled={isLast || finishing}
-              onClick={() => stepPage(1)}
-            >
-              <ChevronRight size={18} aria-hidden />
-            </button>
+              <Button variant="primary" disabled={finishing} onClick={onNext}>
+                {isLast ? (
+                  "Finish"
+                ) : (
+                  <>
+                    Next
+                    <ArrowRight size={16} aria-hidden />
+                  </>
+                )}
+              </Button>
+            </nav>
           </div>
-          <Button variant="primary" disabled={finishing} onClick={() => void finish()}>
-            {isLast ? (
-              "Finish"
-            ) : (
-              <>
-                Next
-                <ArrowRight size={16} aria-hidden />
-              </>
-            )}
-          </Button>
-        </nav>
+        ) : (
+          <nav className="reader-footer" aria-label="Pages">
+            <div className="reader-pager">
+              <button
+                type="button"
+                className="reader-pager-btn"
+                aria-label="Previous page"
+                title="Previous page (←)"
+                disabled={current === 0 || finishing}
+                onClick={() => turnPage(-1)}
+              >
+                <ChevronLeft size={18} aria-hidden />
+              </button>
+              <span className="reader-pager-count">
+                <span aria-hidden>
+                  {current + 1} / {plans?.length}
+                </span>
+                <span className="k-sr">
+                  Page {current + 1} of {plans?.length}
+                </span>
+              </span>
+              <button
+                type="button"
+                className="reader-pager-btn"
+                aria-label="Next page"
+                title="Next page (→)"
+                disabled={isLast || finishing}
+                onClick={() => turnPage(1)}
+              >
+                <ChevronRight size={18} aria-hidden />
+              </button>
+            </div>
+            {book && bookAt.screens > 1 ? (
+              <span className="book-screens" aria-live="polite">
+                Screen {bookAt.screen + 1} of {bookAt.screens}
+              </span>
+            ) : null}
+            <Button variant="primary" disabled={finishing} onClick={onNext}>
+              {isLast ? (
+                "Finish"
+              ) : (
+                <>
+                  Next
+                  <ArrowRight size={16} aria-hidden />
+                </>
+              )}
+            </Button>
+          </nav>
+        )}
         {inspectorEl
           ? createPortal(
               <>
