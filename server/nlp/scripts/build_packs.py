@@ -5,15 +5,16 @@ Usage (from server/nlp)::
     uv run python scripts/build_packs.py --out dist/packs                 # build everything
     uv run python scripts/build_packs.py --out dist/packs --from-data data  # pack existing files
     uv run python scripts/build_packs.py --out dist/packs --download URL    # fetch + verify
+        (URL may hold {version}: https://data.vuurtoren.app/packs-{version})
     uv run python scripts/build_packs.py --grammar-from dist/packs          # grammar cache only
     uv run python scripts/build_packs.py --out dist/packs --audio-from DIR  # audio pack only
 
 Each downloadable pack becomes ``<name>-<version>.tar.gz`` (deterministic: sorted, mtime 0,
 root-owned, so the same data gives the same SHA-256). Versions come from packs.json: bump a
 pack's version when its data changes (new upstream snapshot, schema change), rebuild, upload the
-archives as release assets (``gh release upload packs-<version> dist/packs/*``) and commit the
-updated packs.json. Servers then install the new version at their next start (or via
-``POST /admin/packs``). See docs/dev/architecture.md, "Data packs".
+archives to the data host (``data.vuurtoren.app/packs-<version>/``, the only place packs are
+published) and commit the updated packs.json. Servers then install the new version at their next
+start (or via ``POST /admin/packs``). See docs/dev/architecture.md, "Data packs".
 
 Next to them goes the grammar-example cache, ``grammar-examples-nl-<sentences version>-<detector
 hash>.tar.gz`` (not in packs.json: it is derived from the sentence pack and the grammar detectors).
@@ -176,14 +177,17 @@ def levels(manifest: dict, out: Path, version: str) -> int:
 
 
 def download(manifest: dict, url: str, out: Path, names: list[str]) -> int:
-    """Fetch ``<url>/<name>-<version>.tar.gz`` for each pack and verify it against packs.json."""
+    """Fetch ``<url>/<name>-<version>.tar.gz`` for each pack and verify it against packs.json.
+
+    ``{version}`` in ``url`` becomes each pack's version, for the data host's folders:
+    ``https://data.vuurtoren.app/packs-{version}``.
+    """
     for name in names:
         entry = manifest["packs"][name]
         file = f"{name}-{entry['version']}.tar.gz"
         dest = out / file
-        req = urllib.request.Request(
-            f"{url.rstrip('/')}/{file}", headers={"User-Agent": "vuurtoren"}
-        )
+        base = url.replace("{version}", entry["version"]).rstrip("/")
+        req = urllib.request.Request(f"{base}/{file}", headers={"User-Agent": "vuurtoren"})
         with urllib.request.urlopen(req, timeout=60) as resp, dest.open("wb") as fh:  # noqa: S310
             while chunk := resp.read(1 << 20):
                 fh.write(chunk)

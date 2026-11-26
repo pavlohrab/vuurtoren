@@ -202,10 +202,17 @@ The NLP image holds code and libraries only. Its data come as versioned **data p
 | `grammar-examples-nl` | derived: example sentences per topic         | 0.1 MB  | 0.4 MB    |
 | `audio-nl`            | optional: spoken starter words, sentences    | —       | —         |
 | `tts-nl`              | Piper Dutch voice, for computers without one | 58 MB   | —         |
+| `levels-nl`           | phones only: NT2Lex levels ("about A2")      | 0.07 MB | 0.07 MB   |
 
 Two small lists ship inside the Python package, not as packs: OpenTaal's separable compound verbs
 (`compound-verbs-nl.txt.gz`, the split-verb check) and NT2Lex word levels (`levels-nl.tsv.gz`,
-"about A2"). Their sources and licences are in `server/nlp/DATA_LICENSES.md`.
+"about A2"). Their sources and licences are in `server/nlp/DATA_LICENSES.md`. Phones get the
+levels as their own small pack, `levels-nl`, joined with the dictionary on the device.
+
+Packs are published only on the data host, data.vuurtoren.app (one folder per pack version,
+`packs-<version>/`). The `packs` workflow builds the archives as a workflow artifact; they are
+uploaded there by hand, and the new `packs.json` is committed. Installers and servers take them
+from there.
 
 - **Manifest**: `{name: {version, sha256, size}}`. The archive is `<name>-<version>.tar.gz`, a
   deterministic tar.gz of one file or directory. A marker `<data>.pack.json` records what is
@@ -213,7 +220,8 @@ Two small lists ship inside the Python package, not as packs: OpenTaal's separab
 - **Install** runs at startup in a background thread, and on `POST /nlp/admin/packs`. Each missing
   or outdated pack comes from the first source that has it. That is `VUURTOREN_PACKS_DIR`
   (bundled archives, in the `-full` image and the desktop sidecar), then `VUURTOREN_PACKS_URL`
-  (release assets, with an optional `VUURTOREN_PACKS_TOKEN`), and then, with
+  (by default the data host, `https://data.vuurtoren.app/packs-<version>/`, with an optional
+  `VUURTOREN_PACKS_TOKEN`), and then, with
   `VUURTOREN_PACKS=auto`, a local build from the pinned upstream sources with `scripts/`. Archives
   are checked by size and SHA-256, unpacked next to the target and renamed into place, and caches
   holding the old data are dropped. Data without a marker (a development build) is never replaced

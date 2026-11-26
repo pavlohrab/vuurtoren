@@ -42,25 +42,23 @@ runs:
     - name: Data pack archives (offline installer)
       if: inputs.packs == 'true'
       shell: bash
-      # Through gh with the job's token, so it also works while the repository is private.
-      env:
-        GH_TOKEN: ${{ github.token }}
-        REPO: ${{ github.repository }}
+      # From the data host, where the packs are published (RL1); checked against packs.json.
       run: |
         mkdir -p "$RUNNER_TEMP/packs"
         python3 - "$RUNNER_TEMP/packs" <<'PY'
-        import hashlib, json, os, subprocess, sys
+        import hashlib, json, sys, urllib.request
         out = sys.argv[1]
         packs = json.load(open("server/nlp/src/vuurtoren_nlp/packs.json"))["packs"]
         for name, p in packs.items():
+            if name == "levels-nl":
+                continue  # for phones only: the server has the file in its package
             file = f"{name}-{p['version']}.tar.gz"
-            tag = f"packs-{p['version']}"
-            print("fetch", tag, file, flush=True)
-            subprocess.run(
-                ["gh", "release", "download", tag, "--repo", os.environ["REPO"],
-                 "--pattern", file, "--dir", out, "--clobber"],
-                check=True,
-            )
+            url = f"https://data.vuurtoren.app/packs-{p['version']}/{file}"
+            print("fetch", url, flush=True)
+            req = urllib.request.Request(url, headers={"User-Agent": "vuurtoren-ci"})
+            with urllib.request.urlopen(req, timeout=120) as r, open(f"{out}/{file}", "wb") as f:
+                while chunk := r.read(1 << 20):
+                    f.write(chunk)
             sha = hashlib.sha256(open(f"{out}/{file}", "rb").read()).hexdigest()
             assert sha == p["sha256"], f"{file}: checksum mismatch"
         PY
