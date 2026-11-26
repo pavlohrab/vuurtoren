@@ -967,8 +967,8 @@ export async function createRepository(
       }),
 
     compact: () =>
-      serial(() =>
-        driver.transaction(async () => {
+      serial(async () => {
+        const result = await driver.transaction(async () => {
           let removed = 0;
           let emptied = 0;
           // Anki snapshots: each replaces the last; only the newest per language matters.
@@ -982,6 +982,48 @@ export async function createRepository(
             if (keep.has(String(r["id"]))) continue;
             await driver.exec("DELETE FROM events WHERE id = ?", [String(r["id"])]);
             removed++;
+          }
+          // Starter words added again: every device that set up its own words added the same
+          // starter notes (the same ids), and sync brought each copy to every device. A later
+          // copy changes nothing (the notes and cards are inserted or ignored), so an event
+          // whose notes and cards were all added before goes. Only Vuurtoren's own adds, never
+          // one with reviews or media, and a note taken out (Undo) counts as gone again.
+          const adds = await driver.exec(
+            `SELECT id, type, json_extract(payload, '$.origin') AS origin,
+                    json_array_length(json_extract(payload, '$.reviews')) AS reviews,
+                    json_extract(payload, '$.media') AS media,
+                    (SELECT json_group_array(json_extract(n.value, '$.id'))
+                       FROM json_each(payload, '$.notes') n) AS notes,
+                    (SELECT json_group_array(json_extract(c.value, '$.id'))
+                       FROM json_each(payload, '$.cards') c) AS cards,
+                    json_extract(payload, '$.noteIds') AS removedIds
+               FROM events WHERE type IN ('NativeNotesAdded', 'NativeNotesRemoved')
+              ORDER BY hlc, id`,
+          );
+          const notesSeen = new Set<number>();
+          const cardsSeen = new Set<number>();
+          for (const r of adds) {
+            if (r["type"] === "NativeNotesRemoved") {
+              for (const n of JSON.parse(String(r["removedIds"] ?? "[]")) as number[])
+                notesSeen.delete(n);
+              continue;
+            }
+            const notes = JSON.parse(String(r["notes"] ?? "[]")) as number[];
+            const cards = JSON.parse(String(r["cards"] ?? "[]")) as number[];
+            const repeat =
+              r["origin"] === "vuurtoren" &&
+              !Number(r["reviews"] ?? 0) &&
+              r["media"] == null &&
+              notes.length > 0 &&
+              notes.every((n) => notesSeen.has(n)) &&
+              cards.every((c) => cardsSeen.has(c));
+            if (repeat) {
+              await driver.exec("DELETE FROM events WHERE id = ?", [String(r["id"])]);
+              removed++;
+              continue;
+            }
+            for (const n of notes) notesSeen.add(n);
+            for (const c of cards) cardsSeen.add(c);
           }
           // The reader's place: only the newest per text matters.
           const places = await driver.exec(
@@ -1042,8 +1084,12 @@ export async function createRepository(
             }
           }
           return { removed, emptied };
-        }),
-      ),
+        });
+        // Give the freed space back to the disk (outside the transaction). Best effort: a
+        // driver that can't just keeps the free pages for later writes.
+        if (result.removed + result.emptied > 0) await driver.exec("VACUUM").catch(() => {});
+        return result;
+      }),
 
     syncState: () =>
       serial(async () => {

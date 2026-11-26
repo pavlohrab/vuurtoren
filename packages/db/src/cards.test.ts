@@ -809,4 +809,37 @@ describe("native cards on two devices", () => {
     ]);
     expect(await schedule(b, 101)).toEqual(moved);
   });
+
+  it("compaction drops starter words added again, keeps new ones and a re-add after Undo", async () => {
+    const driver = await createNodeDriver();
+    const repo = await createRepository(driver, { deviceId: "dev1" });
+    const starter = (ids: number[]): AppEvent => ({
+      type: "NativeNotesAdded",
+      lang: "nl",
+      origin: "vuurtoren",
+      notetypes: [WORD],
+      notes: ids.map((id) => ({
+        id,
+        notetypeId: WORD.id,
+        fields: [`w${id}`, "", ""],
+        tags: [],
+        key: `w${id}`,
+      })),
+      cards: ids.map((id) => ({ id: id + 100, noteId: id, ord: 0, deck: "Dutch", position: id })),
+    });
+    await repo.append(starter([1, 2])); // the first device
+    await repo.append(starter([1, 2])); // another device: the same words again
+    await repo.append(starter([2, 3])); // partly new: stays
+    await repo.append({ type: "NativeNotesRemoved", lang: "nl", noteIds: [1] });
+    await repo.append(starter([1])); // added again after Undo: stays
+    const before = await driver.exec("SELECT count(*) AS c FROM native_notes");
+    const { removed } = await repo.compact();
+    expect(removed).toBe(1);
+    const left = await driver.exec(
+      "SELECT count(*) AS c FROM events WHERE type = 'NativeNotesAdded'",
+    );
+    expect(left).toEqual([{ c: 3 }]);
+    // Replaying what is left gives the same notes.
+    expect(await driver.exec("SELECT count(*) AS c FROM native_notes")).toEqual(before);
+  });
 });
