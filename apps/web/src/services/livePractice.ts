@@ -735,10 +735,13 @@ export function createLivePractice(deps: LivePracticeDeps) {
       state: next,
     });
     itemCache.get(lang)!.set(itemId(exercise.key, exercise.skill), next);
-    await deps
-      .evidence?.()
-      .exercise(exercise.key, grade, attempt.ms)
-      .catch((e: unknown) => console.warn("Could not update the card:", e));
+    // The app's own cards: building and typing also answer the word's due card; the choice
+    // exercises don't, because picking the meaning is the card's own job (algorithms.md 4.7.5).
+    if (STEP_OF[exercise.kind] >= 3)
+      await deps
+        .evidence?.()
+        .exercise(exercise.key, grade, attempt.ms)
+        .catch((e: unknown) => console.warn("Could not update the card:", e));
     return {
       grade,
       correct: checked.correct,
