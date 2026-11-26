@@ -74,6 +74,11 @@ function usePick(onPick: (key: number, add: boolean) => void) {
   );
 }
 
+/** A finger, not a mouse: the hint says long press instead of Ctrl + click. */
+function touchScreen(): boolean {
+  return typeof window !== "undefined" && !!window.matchMedia?.("(pointer: coarse)").matches;
+}
+
 interface Mark {
   /** A Dutch token; its pair (if any) lights up with it. */
   i: number;
@@ -213,6 +218,11 @@ export function SentenceTab({
         <div className="sentence-panel-text k-pairs">
           {dutch}
           {english}
+          {english && pairs?.pairs.length ? (
+            <p className="k-pairs-hint">
+              {touchScreen() ? "Long press" : "Ctrl + click"} to mark more words.
+            </p>
+          ) : null}
         </div>
       }
       frame={

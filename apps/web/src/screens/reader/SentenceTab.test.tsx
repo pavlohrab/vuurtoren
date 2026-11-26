@@ -78,6 +78,20 @@ const colours = (name: string) =>
   screen.getAllByRole("button", { name }).map((b) => b.getAttribute("data-pc"));
 
 describe("SentenceTab", () => {
+  it("says how to mark more words: Ctrl + click with a mouse", () => {
+    render(
+      <SentenceTab
+        tokens={TOKENS}
+        sent={0}
+        text={TEXT}
+        sentence={TEXT}
+        pairs={PAIRS}
+        grammar={[]}
+      />,
+    );
+    expect(screen.getByText("Ctrl + click to mark more words.")).toBeInTheDocument();
+  });
+
   it("a tap lights a word and its partners; Ctrl-click adds the next colour", async () => {
     const user = userEvent.setup();
     render(
