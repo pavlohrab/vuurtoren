@@ -29,17 +29,20 @@ describe("the walkthrough", () => {
   it("is not shown unless asked; once started it steps through and ends for good", async () => {
     renderApp();
     expect(await screen.findByRole("heading", { level: 1, name: "Read" })).toBeVisible();
-    expect(screen.queryByRole("dialog", { name: "Read" })).toBeNull();
+    expect(screen.queryByRole("dialog")).toBeNull();
     act(() => startTour());
     const user = userEvent.setup();
-    expect(await screen.findByRole("dialog", { name: "Read" })).toBeVisible();
+    // D4: it starts in the story (opened for it), then goes on to Read and Words.
+    expect(
+      await screen.findByRole("dialog", { name: "Tap a word" }, { timeout: 9000 }),
+    ).toBeVisible();
     expect(screen.getByText("1 of 5")).toBeVisible();
-    await user.click(screen.getByRole("button", { name: "Next" }));
+    await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Next" }));
     // The next step whose target is on screen (one that is not is passed over).
     expect(
       await screen.findByRole(
         "dialog",
-        { name: /Tap a word|Help while reading|Words/ },
+        { name: /Help while reading|Read|Words/ },
         { timeout: 9000 },
       ),
     ).toBeVisible();
@@ -52,7 +55,15 @@ describe("the walkthrough", () => {
     renderApp();
     expect(await screen.findByRole("heading", { level: 1, name: "Read" })).toBeVisible();
     act(() => startTour());
-    expect(await screen.findByRole("dialog", { name: "Read" })).toBeVisible();
+    // Past the first step (it takes a tap on the word): a step that takes none.
+    const first = await screen.findByRole("dialog", { name: "Tap a word" }, { timeout: 9000 });
+    await userEvent.setup().click(within(first).getByRole("button", { name: "Next" }));
+    const plain = await screen.findByRole(
+      "dialog",
+      { name: /Help while reading|Read/ },
+      { timeout: 9000 },
+    );
+    const name = document.getElementById("tour-title")?.textContent ?? "";
     const seen = vi.fn();
     document.addEventListener("click", seen);
     document.addEventListener("pointerdown", seen);
@@ -63,10 +74,10 @@ describe("the walkthrough", () => {
       const user = userEvent.setup();
       await user.click(scrims[0]!);
       expect(seen).not.toHaveBeenCalled();
-      expect(screen.getByRole("dialog", { name: "Read" })).toBeVisible();
+      expect(plain).toBeVisible();
       // The bubble's own buttons still work.
-      await user.click(screen.getByRole("button", { name: "Next" }));
-      expect(screen.queryByRole("dialog", { name: "Read" })).toBeNull();
+      await user.click(within(plain).getByRole("button", { name: "Next" }));
+      await waitFor(() => expect(screen.queryByRole("dialog", { name })).toBeNull());
     } finally {
       document.removeEventListener("click", seen);
       document.removeEventListener("pointerdown", seen);
@@ -78,16 +89,12 @@ describe("the walkthrough", () => {
     render(<App services={createMockServices({ latencyMs: 0 })} history={history} />);
     await screen.findByRole("heading", { level: 1, name: "Grammar" });
     act(() => startTour());
-    const user = userEvent.setup();
-    const first = await screen.findByRole("group", { name: "Read" });
-    await waitFor(() => expect(first).toHaveFocus());
-    await user.click(screen.getByRole("button", { name: "Next" }));
     await waitFor(() => expect(history.location.pathname).toMatch(/^\/read\//), {
       timeout: 5000,
     });
     const tap = await screen.findByRole("group", { name: "Tap a word" }, { timeout: 5000 });
     await waitFor(() => expect(tap).toHaveFocus());
-    expect(screen.getByText("2 of 5")).toBeVisible();
+    expect(screen.getByText("1 of 5")).toBeVisible();
   }, 20_000);
 
   it("ends on Words: Go to Words opens it, and the last step shows Due today", async () => {
@@ -96,7 +103,7 @@ describe("the walkthrough", () => {
     expect(await screen.findByRole("heading", { level: 1, name: "Read" })).toBeVisible();
     act(() => startTour());
     const user = userEvent.setup();
-    await screen.findByRole("dialog", { name: "Read" });
+    await screen.findByRole("dialog", {}, { timeout: 9000 });
     // Next until the Words step (the reader steps open the current story on the way).
     for (let i = 0; i < 4 && !screen.queryByRole("dialog", { name: "Words" }); i++) {
       const step = await screen.findByRole("dialog", {}, { timeout: 9000 });

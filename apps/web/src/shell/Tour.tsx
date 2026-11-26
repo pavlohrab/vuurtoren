@@ -1,6 +1,6 @@
 /**
- * The first-run walkthrough: five short coach marks after the welcome (Read, a word, the
- * reading help, Words, and Due today on the Words page), each with a soft spotlight on its
+ * The first-run walkthrough: five short coach marks after the welcome (a word in the story you
+ * opened, the reading help, then Read, Words, and Due today on the Words page), each with a soft spotlight on its
  * target. The Words step can be followed: a tap on Words, or "Go to Words", opens the page the
  * last step is about. Shown once
  * (`vuurtoren.tour`), skippable at every step, and started again from Settings → Reading or
@@ -57,13 +57,7 @@ interface Step {
 }
 
 const STEPS: Step[] = [
-  {
-    // The Read page itself, where "on top" is: from the first story the walkthrough opens it.
-    target: ".today-continue",
-    route: "/",
-    title: "Read",
-    text: "Stories at your level and your own texts. On top: what to continue and what is due today.",
-  },
+  // D4: the story you opened comes first; Read, then Words, after it.
   {
     target: ".k-reader .k-tok",
     title: "Tap a word",
@@ -76,6 +70,13 @@ const STEPS: Step[] = [
     reader: true,
     title: "Help while reading",
     text: "Choose how to read (English next to hard words, blanks, side by side) and set the text in Aa. A short line in the margin marks grammar worth a look: tap it.",
+  },
+  {
+    // The Read page, after the story: where "on top" is.
+    target: ".today-continue",
+    route: "/",
+    title: "Read",
+    text: "Stories at your level and your own texts. On top: what to continue and what is due today.",
   },
   {
     target: ".sidebar .nav-link[href='/words']",
