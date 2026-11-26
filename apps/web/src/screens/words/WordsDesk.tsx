@@ -295,7 +295,7 @@ export function WordsDesk() {
           <section className="wd-today">
             <h2 className="wd-over">Reviews</h2>
             <p className="wd-muted" style={{ margin: 0 }}>
-              Your cards are reviewed in Anki. Words you add here go to your Anki deck.
+              You review your cards in Anki. Words you add go to your Anki deck.
             </p>
             <Link to="/practice" className="wd-ghost">
               Practise these words

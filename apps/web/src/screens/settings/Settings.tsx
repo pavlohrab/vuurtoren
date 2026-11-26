@@ -55,31 +55,31 @@ const SECTIONS: { id: SectionId; label: string; hint: string; icon: ReactNode }[
   {
     id: "words",
     label: "Your words",
-    hint: "Where your cards live, the starter words, how many new words a day, and deck files.",
+    hint: "Your cards, new words a day, and deck files.",
     icon: <Languages size={18} />,
   },
   {
     id: "reading",
     label: "Reading",
-    hint: "How much help you get while you read, the voice, and the dictionary on this phone.",
+    hint: "Help while you read, the voice, and the dictionary.",
     icon: <BookOpen size={18} />,
   },
   {
     id: "devices",
     label: "Your devices",
-    hint: "The same words and texts on your phone and computer, locked with your passphrase.",
+    hint: "Your phone and your computer, with the same words and texts.",
     icon: <RefreshCw size={18} />,
   },
   {
     id: "ai",
     label: "AI (optional)",
-    hint: "Stories, Talk and simpler pages with your own AI provider. Everything else works without it.",
+    hint: "Stories, Talk and easier pages, with your own AI key.",
     icon: <Sparkles size={18} />,
   },
   {
     id: "data",
     label: "Data",
-    hint: "Backups, your account and the technical details.",
+    hint: "Backups and your account.",
     icon: <Database size={18} />,
   },
 ];
@@ -199,9 +199,6 @@ function DataSection() {
           <h3 className="settings-h3" id="account-h">
             Account
           </h3>
-          <p className="k-hint" style={{ margin: 0 }}>
-            Who is signed in on this server, and signing out.
-          </p>
           <AccountSettings />
         </section>
       ) : null}
@@ -251,9 +248,7 @@ function ReadingSettings() {
             Show the tour again
           </Button>
         </div>
-        <p className="k-hint">
-          A short walk past Read, a word, the reading help, Words and Review.
-        </p>
+        <p className="k-hint">A short tour of the app.</p>
       </div>
       <div className="settings-field">
         <span className="k-label" id="help-dial">
@@ -265,8 +260,7 @@ function ReadingSettings() {
           onValueChange={(v) => set({ help: v / 100 })}
         />
         <p className="k-hint">
-          How many words show their English above them in Gloss mode. Left: only new words. Right:
-          most words. The reader&rsquo;s Aa menu has the same dial.
+          In Gloss: left shows English only for new words, right for most words.
         </p>
       </div>
       <div style={{ maxWidth: 320 }}>
@@ -288,8 +282,7 @@ function ReadingSettings() {
           }
         />
         <p className="k-hint">
-          In Side by side. Hard sentences are the ones where you know less than 85% of the words.
-          Saved on this device.
+          In Side by side: English only for sentences where you know less than 85% of the words.
         </p>
       </div>
       <label className="settings-check">
@@ -327,9 +320,7 @@ function ReadingSettings() {
       </label>
       <h3 className="settings-h3">Voice</h3>
       <p className="k-hint" style={{ margin: 0 }}>
-        The common words, their sentences and the stories are recorded by a woman and by a man:
-        choose whose recordings you hear. Other words are read by your device&rsquo;s own Dutch
-        voice. The speed is for both.
+        Choose the voice of the recordings. Words without a recording use your device&rsquo;s voice.
       </p>
       <div className="row" style={{ alignItems: "flex-start" }}>
         <div style={{ minWidth: 160 }}>

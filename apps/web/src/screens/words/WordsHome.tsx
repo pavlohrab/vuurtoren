@@ -245,7 +245,7 @@ function DueToday({
       ) : (
         <>
           <p className="due-today-count">All done</p>
-          <p className="due-today-parts">Cards come back when they are due. Want more?</p>
+          <p className="due-today-parts">All done for today. Want more?</p>
           <div className="due-today-more">
             <Link to="/review" search={{ more: "new" }} className="k-btn k-btn--secondary">
               Continue with new words
@@ -265,7 +265,7 @@ function AnkiNote() {
     <section className="due-today due-today--anki">
       <h2 className="due-today-label">Reviews</h2>
       <p className="due-today-parts">
-        Your cards are reviewed in Anki. Words you add while reading go to your Anki deck.
+        You review your cards in Anki. Words you add go to your Anki deck.
       </p>
     </section>
   );
