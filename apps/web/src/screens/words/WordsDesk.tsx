@@ -3,7 +3,7 @@
  * like a mail app. Left, Due today on top of folders: the states, the levels with thin bars,
  * the texts. Middle, the words of the chosen folder as a two-line list with a checkbox on every
  * row and a dark bar for the selected words. Right, a wide pane for the chosen word: for a new
- * word you decide (Add to my words, I know it, Leave: keys A, K, L) and the next one opens; for
+ * word you decide (Add to my words or I know it: keys A, K) and the next one opens; for
  * any other word its reviews and next review. Open word card puts the whole card in the pane.
  * Phones keep the list page (`Words`).
  */
@@ -175,9 +175,9 @@ export function WordsDesk() {
     for (const k of ["words", "inspect-word", "texts", "learner", "home", "textWords", "review"])
       void qc.invalidateQueries({ queryKey: [k] });
   };
-  /** Decide on words: add them, say you know them, or leave them (they go to Ignored). */
+  /** Decide on words: add them, or say you know them. */
   const decide = useMutation({
-    mutationFn: async ({ keys, how }: { keys: string[]; how: "add" | "know" | "leave" }) => {
+    mutationFn: async ({ keys, how }: { keys: string[]; how: "add" | "know" }) => {
       const opts = actions.deckChoice.chosen ? { deck: actions.deckChoice.chosen } : undefined;
       let done = 0;
       for (const key of keys) {
@@ -186,21 +186,14 @@ export function WordsDesk() {
         if (how === "add") {
           if (e.anki.status !== "absent") continue;
           await services.addToAnki(e, opts);
-        } else if (how === "know") await services.markKnown(e, opts);
-        else await services.setWordState(key, "ignored");
+        } else await services.markKnown(e, opts);
         done++;
       }
       return { done, how };
     },
     onSuccess: ({ done, how }, { keys }) => {
       if (keys.length > 1 || how === "add")
-        toast(
-          how === "add"
-            ? `Added ${plural(done, "word")}`
-            : how === "know"
-              ? `${plural(done, "word")} known`
-              : `Left ${plural(done, "word")}: they're in Ignored`,
-        );
+        toast(how === "add" ? `Added ${plural(done, "word")}` : `${plural(done, "word")} known`);
       setSelected(new Set());
       // The next word opens.
       if (keys.length === 1 && keys[0] === chosenKey && after) setSearch({ word: after.key });
@@ -217,7 +210,7 @@ export function WordsDesk() {
     }
   };
   const deciding = !!row && toDecide(row);
-  // Keys: A, K and L decide; ↑ and ↓ move through the list; "/" goes to the search.
+  // Keys: A and K decide; ↑ and ↓ move through the list; "/" goes to the search.
   const onKey = (e: ReactKeyboardEvent<HTMLDivElement>) => {
     if ((e.target as Element).closest("input,textarea,select,[contenteditable]")) return;
     if (e.metaKey || e.ctrlKey || e.altKey) return;
@@ -231,8 +224,7 @@ export function WordsDesk() {
       e.preventDefault();
       move(-1);
     } else if (deciding && chosenKey && !decide.isPending && !full) {
-      const how = { a: "add", k: "know", l: "leave" }[e.key.toLowerCase()] as
-        "add" | "know" | "leave" | undefined;
+      const how = { a: "add", k: "know" }[e.key.toLowerCase()] as "add" | "know" | undefined;
       if (how) {
         e.preventDefault();
         decide.mutate({ keys: [chosenKey], how });
@@ -313,7 +305,10 @@ export function WordsDesk() {
 
         <div className="wd-grp">
           <h2 className="wd-over wd-gh">Words</h2>
-          {FOLDERS.filter((f) => !f.native || native).map((f) => {
+          {FOLDERS.filter(
+            // Nothing ignores a word any more: the folder is there only for old ones.
+            (f) => (!f.native || native) && (f.id !== "ignored" || (counts.data?.ignored ?? 0) > 0),
+          ).map((f) => {
             const on = view === f.id && level === null && !source;
             const n = counts.data?.[f.id];
             return (
@@ -557,13 +552,6 @@ export function WordsDesk() {
             >
               I know them
             </button>
-            <button
-              type="button"
-              disabled={decide.isPending}
-              onClick={() => decide.mutate({ keys: chosen.map((r) => r.key), how: "leave" })}
-            >
-              Leave
-            </button>
             <button type="button" className="wd-clear" onClick={() => setSelected(new Set())}>
               Clear
             </button>
@@ -646,7 +634,7 @@ function WordPane({
   busy: boolean;
   after: string | undefined;
   onMove: (by: 1 | -1) => void;
-  onDecide: (how: "add" | "know" | "leave") => void;
+  onDecide: (how: "add" | "know") => void;
   onOpen: () => void;
 }) {
   // When the pane opened: "learning for 6 days" counts from here.
@@ -733,15 +721,6 @@ function WordPane({
           >
             <span>I know it</span>
             <kbd className="wd-kbd">K</kbd>
-          </button>
-          <button
-            type="button"
-            className="wd-dbtn"
-            disabled={busy}
-            onClick={() => onDecide("leave")}
-          >
-            <span>Leave</span>
-            <kbd className="wd-kbd">L</kbd>
           </button>
         </div>
       ) : (
