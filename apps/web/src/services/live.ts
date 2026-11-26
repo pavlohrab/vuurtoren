@@ -282,7 +282,8 @@ export function createLiveServices(
       // Sync when it is due (the caches drop on new changes, also when it failed after them).
       const r = await sync.auto(why);
       // Texts analysed here (or arrived) may still need their English: made in the background.
-      extras.fillLater();
+      // Not on every 5 s look at the log (SPEED: it read the texts each time).
+      if (why !== "local" || r.changed) extras.fillLater();
       if (r.error) reportDegraded("sync", DEGRADED_MESSAGES.sync, r.error);
       else if (r.ran || !sync.configured()) clearDegraded("sync");
       return r.changed;

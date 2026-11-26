@@ -149,8 +149,12 @@ export function createLiveExtras({ repo, nlp, dictionary, pauseMs = 1500 }: Live
   }
 
   let running: Promise<void> | null = null;
+  /** After a failure (no language server), wait a while before trying again (SPEED). */
+  let restUntil = 0;
+  const REST_MS = 3 * 60_000;
   /** Make the extras of every analysed text that lacks them, in the background. */
   function fillLater(): void {
+    if (Date.now() < restUntil) return;
     running ??= (async () => {
       try {
         for (;;) {
@@ -161,6 +165,7 @@ export function createLiveExtras({ repo, nlp, dictionary, pauseMs = 1500 }: Live
         }
       } catch {
         // No language server (a phone on its own, or it is starting): another time.
+        restUntil = Date.now() + REST_MS;
       } finally {
         running = null;
       }

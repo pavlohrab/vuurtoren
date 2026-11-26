@@ -37,7 +37,15 @@ export function App({
           // is online. React Query's default ("online") paused every query when the network
           // dropped while the app was open: the reader then waited forever in airplane mode.
           // Calls that need the network fail on their own and say why.
-          queries: { retry: false, staleTime: 5_000, networkMode: "always" },
+          // The data is local and every change refreshes what it touches (mutations, and sync
+          // when changes came in), so answers stay good for a while and a window getting focus
+          // doesn't refetch every screen (SPEED: each refetch is many database calls).
+          queries: {
+            retry: false,
+            staleTime: 30_000,
+            refetchOnWindowFocus: false,
+            networkMode: "always",
+          },
           mutations: { networkMode: "always" },
         },
       }),

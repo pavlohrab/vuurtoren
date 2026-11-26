@@ -1,5 +1,11 @@
 import { grammarLevel, levelsLine, roughTextLevel, starterRanks } from "../services/textLevel.js";
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  keepPreviousData,
+  useMutation,
+  useQueries,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { Link, useParams } from "@tanstack/react-router";
 import { ArrowRight, ChevronLeft, ChevronRight, Maximize2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -568,40 +574,55 @@ export function ReaderPage({ textId }: { textId: string }) {
   // only the blanks' meanings (the hint), Gloss whatever the dial selects.
   // Blanks: always in Cloze mode; in Gloss mode only when the user turns them on.
   const blanks = mode === "cloze" || (mode === "gloss" && (settingsQ.data?.glossClozes ?? false));
-  const glossIdx = useMemo(() => {
+  // The words that get help, per segment: the current one, and in one flow (book mode) also the
+  // next, so help is there when the reader is. One query per segment, so moving on fetches
+  // only the new one (SPEED: the pair used to be fetched again as a new set).
+  const glossSets = useMemo(() => {
     if (!plan) return [];
-    // One flow (book mode): this segment and the next, so help is there when the reader is.
-    const near = book && plans?.[current + 1] ? [plan, plans[current + 1]!] : [plan];
-    const idx: number[] = [];
-    for (const p of near) {
-      // Detached particles ("op" in "bel ... op") share their verb's translation: show it once.
-      if (mode === "gloss") {
-        const dial = glossTargets(
-          p.tokens.filter((t) => data?.tokens[t.i]?.particle_of == null),
-          help,
-          GLOSS_MIN,
-        );
-        idx.push(...(blanks ? [...new Set([...dial, ...p.clozes])] : dial));
-      } else if (mode === "cloze" && prefs.clozeMeaning) idx.push(...p.clozes);
-    }
-    return [...new Set(idx)].sort((a, b) => a - b);
+    const near: [number, SegmentPlan][] =
+      book && plans?.[current + 1]
+        ? [
+            [current, plan],
+            [current + 1, plans[current + 1]!],
+          ]
+        : [[current, plan]];
+    return near
+      .map(([seg, p]) => {
+        let idx: number[] = [];
+        // Detached particles ("op" in "bel ... op") share their verb's translation: show it once.
+        if (mode === "gloss") {
+          const dial = glossTargets(
+            p.tokens.filter((t) => data?.tokens[t.i]?.particle_of == null),
+            help,
+            GLOSS_MIN,
+          );
+          idx = blanks ? [...new Set([...dial, ...p.clozes])] : dial;
+        } else if (mode === "cloze" && prefs.clozeMeaning) idx = [...p.clozes];
+        return { seg, idx: [...new Set(idx)].sort((a, b) => a - b) };
+      })
+      .filter((g) => g.idx.length > 0);
   }, [plan, plans, book, current, help, mode, data, blanks, prefs.clozeMeaning]);
-  const glossQ = useQuery({
-    queryKey: ["glosses", textId, current, glossIdx.join(",")],
-    queryFn: () => services.glosses(textId, glossIdx),
-    enabled: glossIdx.length > 0,
-    placeholderData: keepPreviousData,
+  const glossData = useQueries({
+    queries: glossSets.map((g) => ({
+      queryKey: ["glosses", textId, g.seg, g.idx.join(",")],
+      queryFn: () => services.glosses(textId, g.idx),
+      placeholderData: keepPreviousData,
+    })),
+    // One value that only changes when an answer does.
+    combine: (rs) => rs.map((r) => r.data),
   });
   const { glosses, glossNotes } = useMemo(() => {
     const text: Record<number, string> = {};
     const notes: Record<number, string> = {};
-    for (const i of glossIdx) {
-      const g = glossQ.data?.[i];
-      if (g) text[i] = g.text;
-      if (g?.note) notes[i] = g.note;
-    }
+    glossSets.forEach((g, k) => {
+      for (const i of g.idx) {
+        const got = glossData[k]?.[i];
+        if (got) text[i] = got.text;
+        if (got?.note) notes[i] = got.note;
+      }
+    });
     return { glosses: text, glossNotes: notes };
-  }, [glossIdx, glossQ.data]);
+  }, [glossSets, glossData]);
 
   // Sentences of the current page, and what the grammar marks show on it.
   const pageTokens = useMemo(() => new Set(plan?.tokens.map((t) => t.i) ?? []), [plan]);
