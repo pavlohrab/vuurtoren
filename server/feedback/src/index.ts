@@ -248,12 +248,27 @@ async function sendToPavlo(
   }
   const id = sent.ok ? (sent.result?.message_id ?? null) : null;
   if (audio) {
+    // Telegram plays OGG/Opus as a voice message and M4A/MP3 as audio; anything else (WebM)
+    // only as a file. The recording is in R2 either way.
+    const type = (audioType ?? "audio/webm").split(";")[0]!.trim();
+    const [method, field, name] =
+      type === "audio/ogg"
+        ? (["sendVoice", "voice", "voice.ogg"] as const)
+        : type === "audio/mp4" || type === "audio/x-m4a" || type === "audio/mpeg"
+          ? (["sendAudio", "audio", type === "audio/mpeg" ? "voice.mp3" : "voice.m4a"] as const)
+          : (["sendDocument", "document", "voice.webm"] as const);
     const f = new FormData();
     f.set("chat_id", env.TG_CHAT_ID);
     if (id) f.set("reply_to_message_id", String(id));
-    // WebM/Opus from the app: Telegram plays it as a file, not as a voice message.
-    f.set("document", new Blob([audio], { type: audioType ?? "audio/webm" }), "voice.webm");
-    await tg(env, "sendDocument", f);
+    f.set(field, new Blob([audio], { type }), name);
+    const voiceSent = await tg(env, method, f);
+    // Refused: say so, instead of a report that looks like it had no voice note.
+    if (!voiceSent.ok)
+      await tg(env, "sendMessage", {
+        chat_id: env.TG_CHAT_ID,
+        ...(id ? { reply_to_message_id: id } : {}),
+        text: `The voice note couldn't be attached (${(voiceSent as { description?: string }).description ?? "Telegram said no"}). It's kept with the report.`,
+      });
   }
   return id;
 }
