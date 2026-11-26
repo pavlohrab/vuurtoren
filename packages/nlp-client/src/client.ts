@@ -168,7 +168,8 @@ export type GlossResult = Record<string, GlossEntry[]>;
 export interface EntrySense {
   gloss: string;
   /** An old or specialist meaning (packs from 2026.11.4): last, and only in the full entry. */
-  mark?: "old" | "specialist";
+  /** Shown last, labelled: an old, rude (vulgar, offensive, slang) or specialist meaning. */
+  mark?: "old" | "vulgar" | "offensive" | "slang" | "specialist";
   examples?: { nl: string; en: string | null }[];
   synonyms?: string[];
   antonyms?: string[];

@@ -89,3 +89,18 @@ def test_gloss_endpoint_503_when_missing(tmp_path: Path, monkeypatch: pytest.Mon
     r = client.post("/gloss", json={"lang": "nl", "words": ["fiets"]})
     assert r.status_code == 503
     assert "build_dictionary" in r.json()["detail"]
+
+
+def test_rude_meanings_come_last_and_labelled_informal_stays() -> None:
+    """WC8: vulgar, offensive and slang meanings go last with their label, like the old ones."""
+    from vuurtoren_nlp.dictionary import extract_glosses, sense_mark
+
+    senses = [
+        {"glosses": ["to have sex with someone"], "tags": ["vulgar"]},
+        {"glosses": ["to do"]},
+        {"glosses": ["to put"], "tags": ["informal"]},
+        {"glosses": ["a slur"], "tags": ["ethnic", "slur"]},
+        {"glosses": ["cool"], "tags": ["slang"]},
+    ]
+    assert [sense_mark(s) for s in senses] == ["vulgar", None, None, "offensive", "slang"]
+    assert extract_glosses(senses) == ["to do", "to put"]

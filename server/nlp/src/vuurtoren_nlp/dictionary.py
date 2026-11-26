@@ -81,6 +81,13 @@ def default_db_path() -> Path:
 
 # Sense tags that make a meaning one most learners won't meet (shown last, in the full entry).
 _OLD_TAGS = {"archaic", "obsolete", "historical", "dated", "rare"}
+# Rude meanings, last and labelled like the old ones (WC8): doen's "to have sex with someone"
+# is not its first meaning. "informal" or "colloquial" alone stays an everyday meaning.
+_RUDE_TAGS = (
+    ("vulgar", {"vulgar"}),
+    ("offensive", {"offensive", "derogatory", "pejorative", "ethnic", "slur"}),
+    ("slang", {"slang"}),
+)
 _SPECIALIST_TOPICS = {
     "zoology",
     "botany",
@@ -113,10 +120,13 @@ _SPECIES = re.compile(r"“[A-Z][a-z]+ [a-z]+”")
 
 
 def sense_mark(sense: dict[str, Any]) -> str | None:
-    """``old``, ``specialist`` or None (an everyday meaning)."""
+    """``old``, ``vulgar``, ``offensive``, ``slang``, ``specialist`` or None (everyday)."""
     tags = set(sense.get("tags") or [])
     if tags & _OLD_TAGS:
         return "old"
+    for label, rude in _RUDE_TAGS:
+        if tags & rude:
+            return label
     topics = set(sense.get("topics") or [])
     glosses = " ".join(g for g in sense.get("glosses", []) if isinstance(g, str))
     if topics & _SPECIALIST_TOPICS or _SPECIES.search(glosses):
