@@ -10,6 +10,7 @@ import android.speech.SpeechRecognizer
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
 import java.util.Locale
+import android.view.KeyEvent
 import android.webkit.JavascriptInterface
 import android.webkit.WebView
 import androidx.activity.enableEdgeToEdge
@@ -66,6 +67,7 @@ class MainActivity : TauriActivity() {
     webView.addJavascriptInterface(TtsBridge(), "VuurtorenTts")
     webView.addJavascriptInterface(LinksBridge(), "VuurtorenLinks")
     webView.addJavascriptInterface(ListenBridge(), "VuurtorenListen")
+    webView.addJavascriptInterface(KeysBridge(), "VuurtorenKeys")
     this.webView = webView
     startTts()
     ViewCompat.setOnApplyWindowInsetsListener(webView) { view, windowInsets ->
@@ -243,6 +245,33 @@ class MainActivity : TauriActivity() {
     tts?.shutdown()
     tts = null
     super.onDestroy()
+  }
+
+  /**
+   * The volume keys turn the reader's pages while the page asks for them (a reader setting,
+   * apps/web/src/platform/volumeKeys.ts). Otherwise they change the volume as always.
+   */
+  @Volatile private var volumeKeys = false
+
+  override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+    val dir = when (event.keyCode) {
+      KeyEvent.KEYCODE_VOLUME_DOWN -> 1
+      KeyEvent.KEYCODE_VOLUME_UP -> -1
+      else -> 0
+    }
+    if (dir == 0 || !volumeKeys) return super.dispatchKeyEvent(event)
+    // One turn per press, repeats included; the key's release is swallowed with it.
+    if (event.action == KeyEvent.ACTION_DOWN) {
+      js("window.__vuurtorenVolumeKey && window.__vuurtorenVolumeKey($dir)")
+    }
+    return true
+  }
+
+  private inner class KeysBridge {
+    @JavascriptInterface
+    fun setVolumeKeys(on: Boolean) {
+      volumeKeys = on
+    }
   }
 
   private inner class TtsBridge {
