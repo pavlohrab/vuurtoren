@@ -135,7 +135,7 @@ describe("reading comforts", () => {
       size: 3,
       theme: "sepia",
       font: "atkinson",
-      width: "wide",
+      margins: "wide",
     });
     expect(page().style.getPropertyValue("--font-reading")).toMatch(/Atkinson/);
   });

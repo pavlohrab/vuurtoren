@@ -4,11 +4,14 @@ import { Popover, Select, Slider } from "@app/ui";
 import {
   ENGLISH_VISIBILITY,
   LEADINGS,
+  MARGINS,
+  PAGE_MODES,
   READING_THEMES,
   type ReaderPrefs,
   TEXT_SIZES,
-  WIDTHS,
+  TURN_STYLES,
 } from "./readerPrefs.js";
+import { hasVolumeKeys } from "../../platform/volumeKeys.js";
 
 const FONT_LABEL: Record<ReaderPrefs["font"], string> = {
   literata: "Literata",
@@ -31,11 +34,19 @@ const ENGLISH_LABEL: Record<ReaderPrefs["english"], string> = {
   hard: "Hard sentences",
   tap: "Tap to show",
 };
-const WIDTH_LABEL: Record<ReaderPrefs["width"], string> = {
+const MARGIN_LABEL: Record<ReaderPrefs["margins"], string> = {
   narrow: "Narrow",
   normal: "Normal",
   wide: "Wide",
 };
+const PAGES_LABEL: Record<ReaderPrefs["pages"], string> = {
+  turn: "Turn",
+  scroll: "Scroll",
+};
+const TURN_OPTIONS = TURN_STYLES.map((value) => ({
+  value,
+  label: { follow: "Follow the finger", flip: "Page turn", fade: "Fade", none: "None" }[value],
+}));
 
 /** One row of mutually exclusive choices (radio semantics, segmented look). */
 function Choice<T extends string>({
@@ -287,11 +298,11 @@ export function ReadingSettings({
             onChange={(leading) => onChange({ leading })}
           />
           <Choice
-            label="Line width"
-            value={prefs.width}
-            options={Object.keys(WIDTHS) as ReaderPrefs["width"][]}
-            labels={WIDTH_LABEL}
-            onChange={(width) => onChange({ width })}
+            label="Margins"
+            value={prefs.margins}
+            options={MARGINS}
+            labels={MARGIN_LABEL}
+            onChange={(margins) => onChange({ margins })}
           />
           <Choice
             label="Font"
@@ -311,6 +322,49 @@ export function ReadingSettings({
           <p className="aa-hint">
             {mod} + / − changes the size while reading. Saved on this device.
           </p>
+        </>,
+      )}
+      {section(
+        "Pages",
+        <>
+          <Choice
+            label="Pages"
+            value={prefs.pages}
+            options={PAGE_MODES}
+            labels={PAGES_LABEL}
+            onChange={(pages) => onChange({ pages })}
+          />
+          {prefs.pages === "turn" ? (
+            <>
+              <div className="aa-select">
+                <Select
+                  label="Turn style"
+                  value={prefs.turn}
+                  onValueChange={(v) => onChange({ turn: v as ReaderPrefs["turn"] })}
+                  options={TURN_OPTIONS}
+                />
+              </div>
+              <Toggle
+                label="Two pages side by side"
+                hint="On a wide screen."
+                on={prefs.spread}
+                onToggle={() => onChange({ spread: !prefs.spread })}
+              />
+              <Toggle
+                label="Justify"
+                hint="Straight edges, with hyphens."
+                on={prefs.justify}
+                onToggle={() => onChange({ justify: !prefs.justify })}
+              />
+              {hasVolumeKeys() ? (
+                <Toggle
+                  label="Volume keys turn pages"
+                  on={prefs.volumeKeys}
+                  onToggle={() => onChange({ volumeKeys: !prefs.volumeKeys })}
+                />
+              ) : null}
+            </>
+          ) : null}
         </>,
       )}
     </Popover>
