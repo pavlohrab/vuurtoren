@@ -8,7 +8,7 @@ import {
   MessagesSquare,
   Sparkles,
 } from "lucide-react";
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { cn } from "./cn.js";
 
 /** Where a text came from, as its Library cover shows it. */
@@ -70,6 +70,8 @@ export interface TextCoverProps {
    * title sits on a quiet band at the bottom. Without one the cover is typographic.
    */
   imageUrl?: string | null;
+  /** The cover's colour instead of its kind's (each story has its own). */
+  hue?: string;
   /** Replaces the printed title (e.g. a button carrying the title, so it is not read twice). */
   titleSlot?: ReactNode;
   children?: ReactNode;
@@ -89,6 +91,7 @@ export function TextCover({
   showLabel = true,
   className,
   imageUrl = null,
+  hue,
   titleSlot,
   children,
 }: TextCoverProps) {
@@ -97,6 +100,7 @@ export function TextCover({
     <div
       className={cn("k-cover", `k-cover--${size}`, className)}
       data-kind={kind}
+      {...(hue ? { style: { "--cover-hue": hue } as CSSProperties } : {})}
       {...(imageUrl ? { "data-image": "" } : {})}
     >
       {imageUrl ? <img className="k-cover-img" src={imageUrl} alt="" draggable={false} /> : null}

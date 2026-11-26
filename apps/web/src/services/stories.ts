@@ -14,6 +14,7 @@ import {
   type LearnerModel,
   classifyTokens,
   coverageOf,
+  isCounted,
 } from "@app/core";
 
 export const STORY_LEVELS = ["A1", "A2", "B1", "B2"] as const;
@@ -282,6 +283,17 @@ function storyCoverage(story: Pick<BundledStory, "tokens">, model: LearnerModel)
   return coverageOf(classifyTokens(story.tokens, model), story.tokens);
 }
 
+/** How many different words of the story are new to the learner (as a text's "N new"). */
+function storyNewWords(story: Pick<BundledStory, "tokens">, model: LearnerModel): number {
+  const planned = classifyTokens(story.tokens, model);
+  const keys = new Set<string>();
+  planned.forEach((p, k) => {
+    const t = story.tokens[k];
+    if (p.label === "new" && p.key && t && isCounted(t, p)) keys.add(p.key);
+  });
+  return keys.size;
+}
+
 /** One cover of the Stories shelf. */
 export interface StoryCover {
   slug: string;
@@ -293,6 +305,8 @@ export interface StoryCover {
   credit?: string;
   /** Share of the story's words the learner knows. */
   coverage: number;
+  /** Different words in it that are new to the learner. */
+  newWords: number;
   /** Above the learner's comfort level: visible, but marked. */
   stretch: boolean;
   /** The Library text once the story was opened, else null. */
@@ -321,6 +335,7 @@ export function storyCovers(
       kind: s.kind,
       ...(s.credit ? { credit: s.credit } : {}),
       coverage,
+      newWords: storyNewWords(s, model),
       stretch: coverage < STRETCH_BELOW,
       textId: opened.get(s.slug) ?? null,
     };

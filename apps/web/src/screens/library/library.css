@@ -592,3 +592,7 @@
   color: var(--ink-muted);
   font-variant-numeric: tabular-nums;
 }
+/* The story shelves' names ("A1 · Start here"): the display face's space is narrow. */
+.lib-story-shelf .lib-shelf-title {
+  word-spacing: 0.12em;
+}

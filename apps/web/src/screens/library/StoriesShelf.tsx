@@ -2,17 +2,12 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { useMemo } from "react";
 import { ChevronRight } from "lucide-react";
-import { Skeleton, useToast } from "@app/ui";
+import { Skeleton, TextCover, useToast } from "@app/ui";
+import { coverLine, storyHue } from "./coverLine.js";
 import { useServices } from "../../services/context.js";
 import { errorText } from "../../services/errors.js";
-import { type StoryCover, storyRows } from "../../services/stories.js";
+import { storyRows } from "../../services/stories.js";
 import { plural } from "../../format.js";
-
-const KIND_LABEL: Record<StoryCover["kind"], string> = {
-  legend: "Legend",
-  classic: "Classic, retold",
-  original: "New story",
-};
 
 /** The bundled stories with the learner's coverage (shared by the shelf and Today). */
 export function useStoryShelf() {
@@ -91,7 +86,10 @@ export function StoriesShelf() {
   );
 }
 
-/** One level: its name and its stories, in a row that scrolls sideways. */
+/**
+ * One level as a shelf (F5): its name, and its stories as book covers on a ledge like your own
+ * shelves, each in its own colour, with "about A2 · 12 new words" under it.
+ */
 function StoryRow({
   row,
   open,
@@ -99,12 +97,13 @@ function StoryRow({
   row: ReturnType<typeof storyRows>[number];
   open: ReturnType<typeof useOpenStory>;
 }) {
+  const id = `stories-${row.level}`;
   // "A1 · Start here": the separator gets room of its own on both sides.
   const [level, tag] = row.name.split(" · ");
   return (
-    <section className="lib-story-level" aria-label={row.name}>
-      <h3 className="lib-story-level-title" id={`stories-${row.level}`}>
-        <span>
+    <section className="lib-shelf lib-story-shelf" aria-labelledby={id}>
+      <header className="lib-shelf-head">
+        <h3 className="lib-shelf-title" id={id}>
           {level}
           {tag ? (
             <>
@@ -112,31 +111,39 @@ function StoryRow({
               <span className="lib-story-sep">·</span> {tag}
             </>
           ) : null}
-        </span>
+        </h3>
         <span className="lib-shelf-count">{plural(row.covers.length, "story", "stories")}</span>
-      </h3>
-      <ul className="lib-story-row">
-        {row.covers.map((c) => (
-          <li key={c.slug} className="lib-story" data-stretch={c.stretch ? "" : undefined}>
-            <button
-              type="button"
-              className="lib-story-open"
-              disabled={open.isPending}
-              onClick={() => open.mutate(c.slug)}
-            >
-              <span className="lib-story-kind">
-                {KIND_LABEL[c.kind]} · {c.words} words
-              </span>
-              <span className="lib-story-title">{c.title}</span>
-              <span className="lib-story-summary">{c.summary}</span>
-              <span className="lib-story-meta">
-                <span className="lib-known">You know {Math.round(c.coverage * 100)}%</span>
-                {c.stretch ? <span className="lib-story-stretch">A stretch</span> : null}
+      </header>
+      <ul className="lib-row" aria-labelledby={id}>
+        {row.covers.map((c) => {
+          const line = coverLine(c.level, c.newWords);
+          return (
+            <li key={c.slug} className="lib-item" data-variant="shelf">
+              <div className="lib-item-cover">
+                <button
+                  type="button"
+                  className="lib-open"
+                  aria-label={c.title}
+                  title={c.summary}
+                  disabled={open.isPending}
+                  onClick={() => open.mutate(c.slug)}
+                >
+                  <TextCover
+                    title={c.title}
+                    kind="story"
+                    hue={storyHue(c.slug)}
+                    coverage={c.coverage}
+                    showLabel={false}
+                  />
+                </button>
+              </div>
+              <div className="lib-item-meta">
+                {line ? <span>{line}</span> : null}
                 {c.textId ? <span className="lib-story-added">In your texts</span> : null}
-              </span>
-            </button>
-          </li>
-        ))}
+              </div>
+            </li>
+          );
+        })}
       </ul>
     </section>
   );

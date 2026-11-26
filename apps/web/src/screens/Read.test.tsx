@@ -117,7 +117,8 @@ describe("Library screen", () => {
     const a1 = await screen.findByRole("region", { name: /A1 · Start here/ });
     expect(screen.getByRole("region", { name: /^B2/ })).toBeInTheDocument();
     const klaas = within(a1).getByRole("button", { name: /Klaas Vaak/ });
-    expect(klaas).toHaveTextContent(/You know \d+%/);
+    // A book cover with its level and new words under it.
+    expect(within(a1).getAllByText(/^about A1/).length).toBeGreaterThan(0);
     await user.click(klaas);
     await waitFor(() => expect(history.location.pathname).toMatch(/^\/read\//));
     const first = history.location.pathname;

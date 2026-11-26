@@ -4,6 +4,7 @@ import { Check } from "lucide-react";
 import type { DragEvent, FocusEvent, KeyboardEvent } from "react";
 import type { TextListItem } from "../../services/types.js";
 import { type MenuItem, MenuButton } from "./MenuButton.js";
+import { coverLine } from "./coverLine.js";
 import { readingState } from "./shelving.js";
 import { useCoverUrl } from "./useCoverUrl.js";
 import { useCanAddTexts } from "../../platform/canAddTexts.js";
@@ -118,12 +119,12 @@ export function LibraryItem({
       </div>
       <div className="lib-item-meta">
         <span>{status}</span>
-        {variant === "shelf" && t.coverage !== null ? (
-          <span className="lib-known">{Math.round(t.coverage * 100)}% known</span>
+        {variant === "shelf" && coverLine(t.level ?? t.roughLevel, t.newTypes) ? (
+          <span>{coverLine(t.level ?? t.roughLevel, t.newTypes)}</span>
         ) : null}
         {t.level && variant === "grid" ? <span className="lib-level">{t.level}</span> : null}
         {/* Your own texts: a rough level from the common words (stories have their own). */}
-        {!t.level && t.roughLevel ? (
+        {variant === "grid" && !t.level && t.roughLevel ? (
           <span className="lib-level" title="How common its words are">
             about {t.roughLevel}
           </span>
