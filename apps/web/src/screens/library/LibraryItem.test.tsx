@@ -42,7 +42,7 @@ function show(phone: boolean) {
   const Item = () => (
     <LibraryItem
       text={TEXT}
-      variant="shelf"
+      variant="grid"
       menu={[]}
       onToggle={() => {}}
       selecting={false}

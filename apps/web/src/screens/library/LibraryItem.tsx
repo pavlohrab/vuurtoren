@@ -4,7 +4,7 @@ import { Check } from "lucide-react";
 import type { DragEvent, FocusEvent, KeyboardEvent } from "react";
 import type { TextListItem } from "../../services/types.js";
 import { type MenuItem, MenuButton } from "./MenuButton.js";
-import { coverLine } from "./coverLine.js";
+import { coverLines, textHue } from "./coverLine.js";
 import { readingState } from "./shelving.js";
 import { useCoverUrl } from "./useCoverUrl.js";
 import { useCanAddTexts } from "../../platform/canAddTexts.js";
@@ -77,6 +77,13 @@ export function LibraryItem({
       coverage={t.coverage}
       showLabel={variant === "grid"}
       imageUrl={imageUrl}
+      {...(variant === "shelf" && !imageUrl
+        ? {
+            tone: "deep" as const,
+            hue: textHue(t.id),
+            progress: state.kind === "reading" ? state.page / state.pages : null,
+          }
+        : {})}
     />
   );
   return (
@@ -124,10 +131,11 @@ export function LibraryItem({
         )}
       </div>
       <div className="lib-item-meta">
-        <span>{status}</span>
-        {variant === "shelf" && coverLine(t.level ?? t.roughLevel, t.newTypes) ? (
-          <span>{coverLine(t.level ?? t.roughLevel, t.newTypes)}</span>
-        ) : null}
+        {/* On a shelf the cover line says it (mock MK3 A); the bar on the cover shows the page. */}
+        {variant === "grid" || waiting ? <span>{status}</span> : null}
+        {variant === "shelf"
+          ? coverLines(t.level ?? t.roughLevel, t.newTypes).map((l) => <span key={l}>{l}</span>)
+          : null}
         {t.level && variant === "grid" ? <span className="lib-level">{t.level}</span> : null}
         {/* Your own texts: a rough level from the common words (stories have their own). */}
         {variant === "grid" && !t.level && t.roughLevel ? (

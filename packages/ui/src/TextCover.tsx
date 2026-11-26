@@ -72,6 +72,13 @@ export interface TextCoverProps {
   imageUrl?: string | null;
   /** The cover's colour instead of its kind's (each story has its own). */
   hue?: string;
+  /**
+   * A book on a shelf (F5): "deep" is a solid cover with a light title (your texts), "soft" a
+   * lighter one (stories). Both say their kind at the foot. Left out: the plain tinted cover.
+   */
+  tone?: "deep" | "soft";
+  /** How far you've read, 0–1: a thin bar along the bottom (shelf covers only). */
+  progress?: number | null;
   /** Replaces the printed title (e.g. a button carrying the title, so it is not read twice). */
   titleSlot?: ReactNode;
   children?: ReactNode;
@@ -92,6 +99,8 @@ export function TextCover({
   className,
   imageUrl = null,
   hue,
+  tone,
+  progress = null,
   titleSlot,
   children,
 }: TextCoverProps) {
@@ -101,24 +110,28 @@ export function TextCover({
       className={cn("k-cover", `k-cover--${size}`, className)}
       data-kind={kind}
       {...(hue ? { style: { "--cover-hue": hue } as CSSProperties } : {})}
+      {...(tone ? { "data-tone": tone } : {})}
       {...(imageUrl ? { "data-image": "" } : {})}
     >
       {imageUrl ? <img className="k-cover-img" src={imageUrl} alt="" draggable={false} /> : null}
-      <span className="k-cover-top">
-        <span className="k-cover-kind" title={COVER_LABEL[kind]}>
-          {COVER_ICON[kind](size === "sm" ? 13 : 14)}
-          {showLabel ? (
-            <span>{COVER_LABEL[kind]}</span>
-          ) : (
-            <span className="k-sr">{COVER_LABEL[kind]}</span>
-          )}
-        </span>
-        {showPercent && cov !== null ? (
-          <span className="k-cover-pct" aria-hidden>
-            {Math.round(cov * 100)}%
+      {tone ? <span className="k-cover-foot">{COVER_LABEL[kind]}</span> : null}
+      {tone ? null : (
+        <span className="k-cover-top">
+          <span className="k-cover-kind" title={COVER_LABEL[kind]}>
+            {COVER_ICON[kind](size === "sm" ? 13 : 14)}
+            {showLabel ? (
+              <span>{COVER_LABEL[kind]}</span>
+            ) : (
+              <span className="k-sr">{COVER_LABEL[kind]}</span>
+            )}
           </span>
-        ) : null}
-      </span>
+          {showPercent && cov !== null ? (
+            <span className="k-cover-pct" aria-hidden>
+              {Math.round(cov * 100)}%
+            </span>
+          ) : null}
+        </span>
+      )}
       {titleSlot ?? (
         <span className="k-cover-title" lang="nl">
           {title}
@@ -126,7 +139,12 @@ export function TextCover({
       )}
       <span className="k-cover-rule" aria-hidden />
       {children}
-      {cov !== null ? (
+      {tone && progress !== null && progress > 0 ? (
+        <span className="k-cover-progress" aria-hidden>
+          <span style={{ transform: `scaleX(${Math.min(1, progress)})` }} />
+        </span>
+      ) : null}
+      {!tone && cov !== null ? (
         <span className="k-cover-meter" aria-hidden>
           <span style={{ transform: `scaleX(${cov})` }} />
         </span>

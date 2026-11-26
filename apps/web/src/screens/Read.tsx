@@ -12,13 +12,14 @@ import {
   Plus,
   SquareCheck,
   Trash2,
+  Search,
 } from "lucide-react";
 import { type DragEvent, type KeyboardEvent, type ReactNode, useMemo, useState } from "react";
 import { Button, Dialog, EmptyState, Input, Select, Skeleton, useToast } from "@app/ui";
 import { useServices } from "../services/context.js";
 import type { Shelf } from "../services/libraryTypes.js";
 import type { TextListItem } from "../services/types.js";
-import { PageHeader, SectionHeader } from "../shell/PageHeader.js";
+import { PageHeader } from "../shell/PageHeader.js";
 import { ErrorNotice } from "../shell/ErrorNotice.js";
 import { CoverDialog } from "./library/CoverDialog.js";
 import { DRAG_TYPE, FROM_SHELF_TYPE, LibraryItem } from "./library/LibraryItem.js";
@@ -36,7 +37,7 @@ import {
   shelfRows,
   sortTexts,
 } from "./library/shelving.js";
-import { StoriesShelf } from "./library/StoriesShelf.js";
+import { StoriesShelf, useStoryShelf } from "./library/StoriesShelf.js";
 import { TodayStrip } from "./library/TodayStrip.js";
 import { SupportCard } from "./library/SupportCard.js";
 import { UpdateCard } from "./library/UpdateCard.js";
@@ -164,6 +165,7 @@ export function Read() {
     refetchInterval: (q) => (q.state.data?.some((t) => t.planning) ? 1500 : false),
   });
   const shelves = useQuery({ queryKey: ["shelves"], queryFn: () => services.shelves() });
+  const storyShelf = useStoryShelf();
   const summary = useQuery({ queryKey: ["learner"], queryFn: () => services.learnerSummary() });
 
   const remove = useMutation({
@@ -329,6 +331,9 @@ export function Read() {
     </ul>
   );
 
+  // In the All texts grid the tools stay open: the switch back to the shelves is there.
+  const toolsShown = toolsOpen || selecting || searching || view === "all";
+  const storyCount = storyShelf.data?.length ?? 0;
   let body: ReactNode;
   /** The story shelves sit among your shelves (under Reading now) when all shelves show. */
   let storiesInShelves = false;
@@ -401,6 +406,7 @@ export function Read() {
       <ShelfChip
         key={STORIES}
         label="Stories"
+        {...(storyCount ? { count: storyCount } : {})}
         active={picked === STORIES}
         onPick={() => pickShelf(STORIES)}
       />
@@ -430,6 +436,16 @@ export function Read() {
           onClick={() => setNaming({ open: true })}
         >
           + New shelf
+        </button>
+        <button
+          type="button"
+          className="lib-chip lib-chip-search"
+          aria-label="Search, sort and select"
+          aria-expanded={toolsShown}
+          aria-controls="lib-tools"
+          onClick={() => setToolsOpen((o) => !o)}
+        >
+          <Search size={15} aria-hidden />
         </button>
       </nav>
     );
@@ -506,17 +522,12 @@ export function Read() {
       {storiesInShelves ? null : <StoriesShelf />}
 
       <section className="lib-own" aria-labelledby="lib-own-h">
-        <SectionHeader id="lib-own-h" title="Your texts" />
-        {texts.data && texts.data.length > 0 ? (
-          <details className="lib-tools" open={toolsOpen || selecting || searching}>
-            <summary
-              onClick={(e) => {
-                e.preventDefault();
-                setToolsOpen((o) => !o);
-              }}
-            >
-              Search, sort and shelves
-            </summary>
+        <h2 id="lib-own-h" className="k-sr">
+          Your texts
+        </h2>
+        {/* Search, sort and Select open from ⌕ at the end of the shelf row (F5 mock). */}
+        {texts.data && texts.data.length > 0 && toolsShown ? (
+          <div className="lib-tools" id="lib-tools">
             <div className="lib-toolbar" role="group" aria-label="View of your texts">
               <div className="lib-seg" role="radiogroup" aria-label="View">
                 {(["shelves", "all"] as const).map((v) => (
@@ -592,7 +603,7 @@ export function Read() {
                 </div>
               </div>
             </div>
-          </details>
+          </div>
         ) : null}
 
         {body}
@@ -763,6 +774,11 @@ function ShelfRowView({
             {row.name}
           </h2>
           <span className="lib-shelf-count">{plural(row.texts.length, "text", "texts")}</span>
+          {over ? (
+            <span className="lib-drop-hint" role="status">
+              Drop to move it here
+            </span>
+          ) : null}
           {shelfMenu ? (
             <MenuButton className="lib-shelf-menu" label={`Shelf ${row.name}`} items={shelfMenu} />
           ) : null}

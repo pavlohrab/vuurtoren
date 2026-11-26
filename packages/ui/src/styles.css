@@ -2609,3 +2609,67 @@ svg.lucide {
   font-weight: 600;
   color: var(--accent);
 }
+
+/* Books on a shelf (F5, mock MK3 A). Deep: your texts, a solid cover with a light title.
+   Soft: the stories, the same book in a lighter colour. The kind sits at the foot. */
+.k-cover[data-tone] {
+  justify-content: flex-start;
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--cover-hue) 30%, transparent),
+    0 1px 2px color-mix(in srgb, var(--ink) 12%, transparent);
+}
+.k-cover[data-tone="deep"] {
+  background:
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--cover-hue) 45%, #1d160f) 0 5px,
+      transparent 5px
+    ),
+    color-mix(in srgb, var(--cover-hue) 62%, #2b2118);
+  color: #fbf6ee;
+}
+.k-cover[data-tone="soft"] {
+  background:
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--cover-hue) 55%, var(--surface-2)) 0 5px,
+      transparent 5px
+    ),
+    color-mix(in srgb, var(--cover-hue) 38%, var(--surface));
+}
+.k-cover[data-tone="deep"] .k-cover-title {
+  color: #fbf6ee;
+}
+.k-cover[data-tone="deep"] .k-cover-rule {
+  background: color-mix(in srgb, #fbf6ee 55%, transparent);
+}
+.k-cover[data-tone="soft"] .k-cover-rule {
+  background: color-mix(in srgb, var(--cover-hue) 75%, var(--ink));
+}
+.k-cover-foot {
+  position: absolute;
+  inset: auto 12px 12px 18px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, currentColor 72%, transparent);
+}
+.k-cover[data-tone="soft"] .k-cover-foot {
+  color: color-mix(in srgb, var(--cover-hue) 45%, var(--ink-muted));
+}
+.k-cover-progress {
+  position: absolute;
+  inset: auto 0 0 5px;
+  height: 3px;
+  background: color-mix(in srgb, currentColor 18%, transparent);
+}
+.k-cover-progress > span {
+  display: block;
+  height: 100%;
+  transform-origin: left;
+  background: color-mix(in srgb, currentColor 80%, transparent);
+}
+.k-cover[data-tone="soft"] .k-cover-progress > span {
+  background: var(--accent);
+}

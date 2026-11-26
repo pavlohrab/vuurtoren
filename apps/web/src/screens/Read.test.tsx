@@ -148,6 +148,7 @@ describe("Library screen", () => {
     expect(screen.queryByRole("link", { name: "Het weer" })).toBeNull();
 
     // Search finds it by the new title and by the author; the imported title is offered back.
+    await user.click(screen.getByRole("button", { name: "Search, sort and select" }));
     await user.type(screen.getByLabelText("Search"), "knmi");
     expect(await screen.findByText("1 text matches")).toBeInTheDocument();
     await openMenu(user, "Regen in april");
@@ -256,6 +257,7 @@ describe("Library screen", () => {
 
   it("puts several selected texts on a new shelf at once", async () => {
     const { user, services } = setup();
+    await user.click(await screen.findByRole("button", { name: "Search, sort and select" }));
     await user.click(await screen.findByRole("button", { name: /Select/ }));
     const toRead = screen.getByRole("region", { name: "To read" });
     await user.click(within(toRead).getByRole("button", { name: "Het weer" }));
@@ -285,6 +287,7 @@ describe("Library screen", () => {
     await user.keyboard("{End}");
     expect(document.activeElement).toBe(covers[covers.length - 1]);
 
+    await user.click(screen.getByRole("button", { name: "Search, sort and select" }));
     await user.click(screen.getByRole("radio", { name: "All texts" }));
     const grid = await screen.findByRole("list", { name: "All texts" });
     // Where a text came from is a filter here, not more shelves.

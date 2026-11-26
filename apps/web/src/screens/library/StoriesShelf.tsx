@@ -3,7 +3,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { useMemo } from "react";
 import { ChevronRight } from "lucide-react";
 import { Skeleton, TextCover, useToast } from "@app/ui";
-import { coverLine, storyHue } from "./coverLine.js";
+import { coverLines, storyHue } from "./coverLine.js";
 import { useServices } from "../../services/context.js";
 import { errorText } from "../../services/errors.js";
 import { storyRows } from "../../services/stories.js";
@@ -116,7 +116,6 @@ function StoryRow({
       </header>
       <ul className="lib-row" aria-labelledby={id}>
         {row.covers.map((c) => {
-          const line = coverLine(c.level, c.newWords);
           return (
             <li key={c.slug} className="lib-item" data-variant="shelf">
               <div className="lib-item-cover">
@@ -132,13 +131,16 @@ function StoryRow({
                     title={c.title}
                     kind="story"
                     hue={storyHue(c.slug)}
+                    tone="soft"
                     coverage={c.coverage}
                     showLabel={false}
                   />
                 </button>
               </div>
               <div className="lib-item-meta">
-                {line ? <span>{line}</span> : null}
+                {coverLines(c.level, c.newWords).map((l) => (
+                  <span key={l}>{l}</span>
+                ))}
                 {c.textId ? <span className="lib-story-added">In your texts</span> : null}
               </div>
             </li>
