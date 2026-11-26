@@ -434,17 +434,6 @@
   font-size: 14px;
   color: var(--ink-muted);
 }
-.lib-story-level {
-  margin-bottom: var(--s-5);
-}
-.lib-story-level-title {
-  display: flex;
-  align-items: baseline;
-  gap: var(--s-3);
-  margin: 0 0 var(--s-2);
-  font-size: 15px;
-  font-weight: 600;
-}
 .lib-story-sep {
   margin-inline: var(--s-1);
   color: var(--ink-muted);
@@ -476,63 +465,13 @@
     grid-auto-columns: 78%;
   }
 }
-.lib-story-open {
-  all: unset;
-  box-sizing: border-box;
-  display: flex;
-  flex-direction: column;
-  gap: var(--s-1);
-  width: 100%;
-  height: 100%;
-  padding: var(--s-3) var(--s-4);
-  border-radius: var(--radius-card, 12px);
-  background: var(--surface);
-  box-shadow: 0 0 0 1px var(--hairline);
-  cursor: pointer;
-}
-.lib-story-open:hover {
-  box-shadow: 0 0 0 1px var(--line);
-}
-.lib-story-open:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-}
-.lib-story-open:disabled {
-  cursor: progress;
-}
-.lib-story-kind {
-  font-size: 12px;
-  color: var(--ink-muted);
-}
-.lib-story-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--ink);
-}
-.lib-story-summary {
-  font-size: 13px;
-  line-height: 1.45;
-  color: var(--ink-muted);
-}
-.lib-story-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--s-2);
-  margin-top: auto;
-  padding-top: var(--s-2);
-  font-size: 13px;
-}
-.lib-story-stretch {
-  color: var(--learn-ink);
-}
 .lib-story-added {
   color: var(--ink-muted);
 }
 
-/* Phones: the summaries and their line under each story at the supporting size, 14px. */
+/* Phones: the line under each cover at the supporting size, 14px. */
 @media (max-width: 699px) {
-  .lib-story-summary,
-  .lib-story-meta {
+  .lib-item[data-variant="shelf"] .lib-item-meta {
     font-size: 14px;
   }
 }
@@ -678,4 +617,15 @@
 /* Among your shelves the stories need the same room above as a shelf has. */
 .lib-shelf + .lib-stories {
   margin-top: var(--s-6);
+}
+/* While a cover is dragged: only your shelves take it, the rest fade (F5 mock). */
+.library[data-dragging] .lib-shelf:not([data-takes-drop]),
+.library[data-dragging] .lib-stories {
+  opacity: 0.45;
+  transition: opacity var(--dur) var(--ease);
+}
+.library[data-dragging] .lib-shelf[data-takes-drop] {
+  outline: 1px dashed color-mix(in srgb, var(--accent) 45%, transparent);
+  outline-offset: 4px;
+  border-radius: var(--radius-card);
 }

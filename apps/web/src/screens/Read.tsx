@@ -14,7 +14,14 @@ import {
   Trash2,
   Search,
 } from "lucide-react";
-import { type DragEvent, type KeyboardEvent, type ReactNode, useMemo, useState } from "react";
+import {
+  type DragEvent,
+  type KeyboardEvent,
+  type ReactNode,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { Button, Dialog, EmptyState, Input, Select, Skeleton, useToast } from "@app/ui";
 import { useServices } from "../services/context.js";
 import type { Shelf } from "../services/libraryTypes.js";
@@ -24,6 +31,7 @@ import { ErrorNotice } from "../shell/ErrorNotice.js";
 import { CoverDialog } from "./library/CoverDialog.js";
 import { DRAG_TYPE, FROM_SHELF_TYPE, LibraryItem } from "./library/LibraryItem.js";
 import { type MenuItem, MenuButton } from "./library/MenuButton.js";
+import { moveTexts } from "./library/moveTexts.js";
 import { MoveToShelfDialog, ShelfNameDialog } from "./library/ShelfDialogs.js";
 import {
   SORT_LABEL,
@@ -154,7 +162,9 @@ export function Read() {
     ids: [],
     label: "",
   });
-  const [naming, setNaming] = useState<{ open: boolean; shelf?: Shelf }>({ open: false });
+  const [naming, setNaming] = useState<{ open: boolean; shelf?: Shelf; textIds?: string[] }>({
+    open: false,
+  });
   const [pendingDelete, setPendingDelete] = useState<TextListItem | null>(null);
   const [shelfToDelete, setShelfToDelete] = useState<Shelf | null>(null);
 
@@ -166,6 +176,16 @@ export function Read() {
   });
   const shelves = useQuery({ queryKey: ["shelves"], queryFn: () => services.shelves() });
   const storyShelf = useStoryShelf();
+  // A drag is over when anything is dropped or let go, even if its cover moved away meanwhile.
+  useEffect(() => {
+    const end = () => document.querySelector(".library")?.removeAttribute("data-dragging");
+    window.addEventListener("drop", end, true);
+    window.addEventListener("dragend", end, true);
+    return () => {
+      window.removeEventListener("drop", end, true);
+      window.removeEventListener("dragend", end, true);
+    };
+  }, []);
   const summary = useQuery({ queryKey: ["learner"], queryFn: () => services.learnerSummary() });
 
   const remove = useMutation({
@@ -186,21 +206,18 @@ export function Read() {
   });
   /** A drop on a shelf: added there, and taken off the shelf it came from unless Ctrl was held. */
   const moveTo = useMutation({
-    mutationFn: async (a: { shelf: { id: string; name: string }; ids: string[]; how: DropHow }) => {
-      await services.addToShelf(a.shelf.id, a.ids);
-      // A drop moves the text: off every other shelf of yours it was on, wherever it came from.
-      for (const other of shelves.data ?? []) {
-        if (other.id === a.shelf.id) continue;
-        const on = a.ids.filter((id) => other.textIds.includes(id));
-        if (on.length) await services.removeFromShelf(other.id, on);
-      }
-    },
-    onSuccess: async (_r, a) => {
+    // A drop moves the text: off every other shelf of yours it was on, wherever it came from.
+    mutationFn: (a: { shelf: { id: string; name: string }; ids: string[]; how: DropHow }) =>
+      moveTexts(services, shelves.data ?? [], a.shelf.id, a.ids),
+    onSuccess: async (undo, a) => {
       await qc.invalidateQueries({ queryKey: ["shelves"] });
-      const moved = !!a.how.from && a.how.from !== a.shelf.id;
       toast(
-        `${moved ? "Moved to" : "Added to"} "${a.shelf.name}"`,
+        `Moved to “${a.shelf.name}”`,
         a.ids.length > 1 ? plural(a.ids.length, "text", "texts") : undefined,
+        {
+          label: "Undo",
+          onAct: () => void undo().then(() => qc.invalidateQueries({ queryKey: ["shelves"] })),
+        },
       );
     },
     onError: (e) => toast("Could not move the text", errorText(e)),
@@ -430,13 +447,10 @@ export function Read() {
             k === readingAt ? storiesChip : null,
           ];
         })}
-        <button
-          type="button"
-          className="lib-chip lib-chip-new"
-          onClick={() => setNaming({ open: true })}
-        >
-          + New shelf
-        </button>
+        <NewShelfChip
+          onPick={() => setNaming({ open: true })}
+          onDropTexts={(ids) => setNaming({ open: true, textIds: ids })}
+        />
         <button
           type="button"
           className="lib-chip lib-chip-search"
@@ -650,6 +664,7 @@ export function Read() {
       <ShelfNameDialog
         open={naming.open}
         shelf={naming.shelf}
+        {...(naming.textIds ? { textIds: naming.textIds } : {})}
         onClose={() => setNaming({ open: false })}
       />
 
@@ -767,6 +782,7 @@ function ShelfRowView({
         aria-labelledby={headingId}
         data-own={row.own ? "" : undefined}
         data-drop={over ? "" : undefined}
+        data-takes-drop={onDropTexts ? "" : undefined}
         {...dropProps}
       >
         <header className="lib-shelf-head">
@@ -804,6 +820,28 @@ function ShelfRowView({
 }
 
 /** One shelf in the picker: shows only that shelf; a cover dropped on it goes there. */
+/** + New shelf at the end of the row; a cover dropped on it gets a new shelf of its own. */
+function NewShelfChip({
+  onPick,
+  onDropTexts,
+}: {
+  onPick: () => void;
+  onDropTexts: (ids: string[]) => void;
+}) {
+  const [over, setOver] = useState(false);
+  return (
+    <button
+      type="button"
+      className="lib-chip lib-chip-new"
+      data-drop={over ? "" : undefined}
+      onClick={onPick}
+      {...shelfDrop((ids) => onDropTexts(ids), setOver)}
+    >
+      + New shelf
+    </button>
+  );
+}
+
 function ShelfChip({
   label,
   count,

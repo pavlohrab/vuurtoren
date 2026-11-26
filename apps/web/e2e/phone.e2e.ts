@@ -480,7 +480,7 @@ for (const size of SIZES) {
           .first()
           .evaluate((el) => parseFloat(getComputedStyle(el).fontSize));
       expect(await fontOf("body")).toBe(16);
-      expect(await fontOf(".lib-story-summary")).toBe(14);
+      expect(await fontOf(".lib-item-meta")).toBe(14);
       for (const path of ["/", "/settings?section=reading", "/words", "/exam", "/grammar"]) {
         await page.goto(path);
         await page.waitForTimeout(300);

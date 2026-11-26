@@ -4,6 +4,7 @@ import { Check } from "lucide-react";
 import { type FormEvent, useState } from "react";
 import { useServices } from "../../services/context.js";
 import type { Shelf } from "../../services/libraryTypes.js";
+import { moveTexts } from "./moveTexts.js";
 
 const errorText = (e: unknown) => (e instanceof Error ? e.message : "Try again.");
 
@@ -53,13 +54,22 @@ function ShelfNameForm({
   const [name, setName] = useState(shelf?.name ?? "");
   const save = useMutation({
     mutationFn: async () => {
-      if (shelf) await services.renameShelf(shelf.id, name);
-      else await services.createShelf(name, textIds);
+      if (shelf) {
+        await services.renameShelf(shelf.id, name);
+        return;
+      }
+      // The texts move to the new shelf: off the shelves they were on (F5).
+      const before = qc.getQueryData<Shelf[]>(["shelves"]) ?? [];
+      await services.createShelf(name, textIds);
+      for (const s of before) {
+        const on = textIds.filter((id) => s.textIds.includes(id));
+        if (on.length) await services.removeFromShelf(s.id, on);
+      }
     },
     onSuccess: async () => {
       onClose();
       await qc.invalidateQueries({ queryKey: ["shelves"] });
-      if (!shelf && textIds.length) toast(`Added to "${name.trim()}"`);
+      if (!shelf && textIds.length) toast(`Moved to “${name.trim()}”`);
     },
     onError: (e) => toast("Could not save the shelf", errorText(e)),
   });
@@ -143,17 +153,23 @@ function MoveToShelfForm({
       if (on.length) await services.removeFromShelf(s.id, on);
     }
   };
-  const done = async (message: string) => {
+  const done = async (message: string, undo?: () => Promise<void>) => {
     await qc.invalidateQueries({ queryKey: ["shelves"] });
-    toast(message);
+    toast(
+      message,
+      undefined,
+      undo
+        ? {
+            label: "Undo",
+            onAct: () => void undo().then(() => qc.invalidateQueries({ queryKey: ["shelves"] })),
+          }
+        : undefined,
+    );
     onClose();
   };
   const move = useMutation({
-    mutationFn: async (s: Shelf) => {
-      await services.addToShelf(s.id, textIds);
-      await offOthers(s.id);
-    },
-    onSuccess: (_r, s) => done(`Moved to “${s.name}”`),
+    mutationFn: (s: Shelf) => moveTexts(services, shelves, s.id, textIds),
+    onSuccess: (undo, s) => done(`Moved to “${s.name}”`, undo),
     onError: (e) => toast("Could not move the text", errorText(e)),
   });
   const takeOff = useMutation({

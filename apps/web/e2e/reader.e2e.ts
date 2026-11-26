@@ -11,7 +11,10 @@ test("the clicked word has its outline while its sheet is open", async ({ page }
   await page.goto("/");
   await finishOnboarding(page);
   await page.goto("/");
-  await page.getByRole("button", { name: /^Legend .*De koe op de toren/ }).click();
+  await page
+    .getByRole("region", { name: /^A1/ })
+    .getByRole("button", { name: "De koe op de toren" })
+    .click();
   const word = page.locator(".k-reader .k-tok[data-i]").nth(5);
   await word.click();
   await expect(word).toHaveAttribute("data-selected", "true");
@@ -29,7 +32,10 @@ test("a grammar topic opened from the reader goes back to the text, the word sti
   await page.goto("/");
   await finishOnboarding(page);
   await page.goto("/");
-  await page.getByRole("button", { name: /^Legend .*De koe op de toren/ }).click();
+  await page
+    .getByRole("region", { name: /^A1/ })
+    .getByRole("button", { name: "De koe op de toren" })
+    .click();
   const word = page.locator(".k-reader .k-tok[data-i]").nth(3);
   await word.click();
   const index = await word.getAttribute("data-i");
@@ -52,7 +58,10 @@ test("the word panel and the sidebar can be made wider or narrower", async ({ pa
   await page.goto("/");
   await finishOnboarding(page);
   await page.goto("/");
-  await page.getByRole("button", { name: /^Legend .*De koe op de toren/ }).click();
+  await page
+    .getByRole("region", { name: /^A1/ })
+    .getByRole("button", { name: "De koe op de toren" })
+    .click();
   await page.locator(".k-reader .k-tok[data-i]").nth(3).click();
   const panel = page.locator(".inspector-panel");
   await expect(panel).toHaveCSS("width", "340px");
@@ -83,7 +92,10 @@ test("a word opened from the card replaces it, and Back goes back one word", asy
   await page.goto("/");
   await finishOnboarding(page);
   await page.goto("/");
-  await page.getByRole("button", { name: /^Legend .*De koe op de toren/ }).click();
+  await page
+    .getByRole("region", { name: /^A1/ })
+    .getByRole("button", { name: "De koe op de toren" })
+    .click();
   const word = page.locator(".k-reader .k-tok", { hasText: /^staat$/ }).first();
   await word.click();
   const panel = page.locator(".inspector-panel");
@@ -126,7 +138,10 @@ test("Full entry: wider, words open inside it, Esc steps back, grammar comes bac
   await page.goto("/");
   await finishOnboarding(page);
   await page.goto("/");
-  await page.getByRole("button", { name: /^Legend .*De koe op de toren/ }).click();
+  await page
+    .getByRole("region", { name: /^A1/ })
+    .getByRole("button", { name: "De koe op de toren" })
+    .click();
   await page
     .locator(".k-reader .k-tok", { hasText: /^staat$/ })
     .first()
@@ -164,7 +179,10 @@ test("on a phone, a word tapped in the card opens its card in the same sheet", a
   await page.goto("/");
   await finishOnboarding(page);
   await page.goto("/");
-  await page.getByRole("button", { name: /^Legend .*De koe op de toren/ }).click();
+  await page
+    .getByRole("region", { name: /^A1/ })
+    .getByRole("button", { name: "De koe op de toren" })
+    .click();
   await page
     .locator(".k-reader .k-tok", { hasText: /^staat$/ })
     .first()

@@ -682,6 +682,31 @@ kbd {
   box-shadow: var(--shadow-pop);
   padding: 10px 14px;
 }
+/* Undo and such: a quiet text button after the words. */
+.k-toast:has(.k-toast-action) {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  column-gap: var(--s-4);
+}
+.k-toast:has(.k-toast-action) .k-toast-desc {
+  grid-column: 1;
+}
+.k-toast-action {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.k-toast-action:hover {
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
 .k-toast[data-state="open"] {
   animation: k-fade-in var(--dur) var(--ease);
 }

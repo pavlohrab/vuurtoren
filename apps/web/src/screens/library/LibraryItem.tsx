@@ -68,7 +68,12 @@ export function LibraryItem({
     e.dataTransfer.setData(DRAG_TYPE, JSON.stringify(dragIds()));
     if (fromShelf) e.dataTransfer.setData(FROM_SHELF_TYPE, fromShelf);
     e.dataTransfer.setData("text/plain", t.title);
-    e.dataTransfer.effectAllowed = "copyMove";
+    e.dataTransfer.effectAllowed = "move";
+    // The page knows a drag is on, so the shelves that take nothing fade (F5 mock).
+    e.currentTarget.closest(".library")?.setAttribute("data-dragging", "");
+  };
+  const onDragEnd = (e: DragEvent<HTMLElement>) => {
+    e.currentTarget.closest(".library")?.removeAttribute("data-dragging");
   };
   const cover = (
     <TextCover
@@ -99,6 +104,7 @@ export function LibraryItem({
             {...(tabIndex !== undefined ? { tabIndex } : {})}
             draggable={selected}
             onDragStart={onDragStart}
+            onDragEnd={onDragEnd}
             onClick={onToggle}
             onFocus={onFocus}
             onKeyDown={onKeyDown}
@@ -119,6 +125,7 @@ export function LibraryItem({
             {...(tabIndex !== undefined ? { tabIndex } : {})}
             draggable
             onDragStart={onDragStart}
+            onDragEnd={onDragEnd}
             onFocus={onFocus}
             onKeyDown={onKeyDown}
             {...press}

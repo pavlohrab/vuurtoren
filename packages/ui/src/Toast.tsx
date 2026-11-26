@@ -2,13 +2,20 @@ import * as RToast from "@radix-ui/react-toast";
 import { createContext, useCallback, useContext, useState } from "react";
 import type { ReactNode } from "react";
 
+/** A button on the toast, such as Undo. */
+export interface ToastAction {
+  label: string;
+  onAct: () => void;
+}
+
 interface ToastItem {
   id: number;
   title: string;
   description?: string;
+  action?: ToastAction;
 }
 
-type PushToast = (title: string, description?: string) => void;
+type PushToast = (title: string, description?: string, action?: ToastAction) => void;
 
 const ToastContext = createContext<PushToast | null>(null);
 
@@ -24,9 +31,10 @@ let nextId = 1;
 /** Provides toasts to the tree and renders the viewport. */
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<ToastItem[]>([]);
-  const push = useCallback<PushToast>((title, description) => {
+  const push = useCallback<PushToast>((title, description, action) => {
     const item: ToastItem = { id: nextId++, title };
     if (description) item.description = description;
+    if (action) item.action = action;
     setItems((cur) => [...cur, item]);
   }, []);
   return (
@@ -37,6 +45,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
           <RToast.Root
             key={t.id}
             className="k-toast"
+            // A toast with a button stays a little longer, so there is time to press it.
+            {...(t.action ? { duration: 7000 } : {})}
             onOpenChange={(open) => {
               if (!open) setItems((cur) => cur.filter((x) => x.id !== t.id));
             }}
@@ -44,6 +54,13 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             <RToast.Title className="k-toast-title">{t.title}</RToast.Title>
             {t.description ? (
               <RToast.Description className="k-toast-desc">{t.description}</RToast.Description>
+            ) : null}
+            {t.action ? (
+              <RToast.Action altText={t.action.label} asChild>
+                <button type="button" className="k-toast-action" onClick={t.action.onAct}>
+                  {t.action.label}
+                </button>
+              </RToast.Action>
             ) : null}
           </RToast.Root>
         ))}
