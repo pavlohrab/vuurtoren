@@ -317,7 +317,8 @@ function LayoutToggle({ list, onChange }: { list: boolean; onChange: (list: bool
 export function Words() {
   const params: WordsSearch = useSearch({ from: "/words/all" });
   // A computer with room: the Inbox (mock "Words, round 2" A); phones and the cards keep this page.
-  return wideDesk() && showsList(params) ? <WordsDesk /> : <WordsList />;
+  // Grouped by level is the list page's own view; the Inbox has levels as folders instead.
+  return wideDesk() && showsList(params) && !params.group ? <WordsDesk /> : <WordsList />;
 }
 
 function WordsList() {

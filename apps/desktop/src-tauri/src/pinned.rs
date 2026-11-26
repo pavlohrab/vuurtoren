@@ -198,10 +198,15 @@ pub async fn probe(base: &str, nonce: &str) -> Result<(String, String), String> 
     let status = res.status();
     let v: serde_json::Value = res.json().await.unwrap_or_default();
     if !status.is_success() {
-        return Err(v["error"]
+        // "computer: …" is a Vuurtoren computer saying no; anything else isn't one (a server).
+        let error = v["error"]
             .as_str()
-            .unwrap_or("The computer didn't take the code.")
-            .to_string());
+            .unwrap_or("The computer didn't take the code.");
+        return Err(if v["computer"] == true {
+            format!("computer: {error}")
+        } else {
+            error.to_string()
+        });
     }
     let proof = v["proof"].as_str().unwrap_or("").to_string();
     let print = seen.lock().ok().and_then(|s| s.clone()).unwrap_or_default();

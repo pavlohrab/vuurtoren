@@ -119,7 +119,7 @@ export async function pairWithServer(
 ): Promise<Paired> {
   const body =
     "code" in link
-      ? { code: link.code, name: label }
+      ? { code: link.code, name: label, wait: true }
       : { user: link.user, password: link.password, name: label };
   let res: Response;
   try {
@@ -221,18 +221,29 @@ async function hmacHex(key: string, message: string): Promise<string> {
 
 /**
  * The typed code (SY9): the computer at `base` proves it knows `code`, bound to the certificate
- * the phone saw; only then is that certificate trusted. Returns its fingerprint. Someone in
- * between shows another certificate and can't make the proof for it without the code.
+ * the phone saw; only then is that certificate trusted. Returns its fingerprint, or null when no
+ * Vuurtoren computer answers there. Someone in between shows another certificate and can't make
+ * the proof for it without the code.
  */
 export async function proveComputer(
   base: string,
   code: string,
   probe: (base: string, nonce: string) => Promise<{ fingerprint: string; proof: string }>,
-): Promise<string> {
+): Promise<string | null> {
   const nonce = [...crypto.getRandomValues(new Uint8Array(16))]
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
-  const { fingerprint, proof } = await probe(base, nonce);
+  let seen: { fingerprint: string; proof: string };
+  try {
+    seen = await probe(base, nonce);
+  } catch (e) {
+    // The user's computer said no (the code ran out, say): show why.
+    const why = e instanceof Error ? e.message : String(e);
+    if (why.startsWith("computer: ")) throw new Error(why.slice("computer: ".length), { cause: e });
+    // Not a Vuurtoren computer there (a server on a home address, say): pair with it as typed.
+    return null;
+  }
+  const { fingerprint, proof } = seen;
   const want = await hmacHex(
     code.replace(/-/g, ""),
     `vuurtoren-pair:${nonce}:${fingerprint.toLowerCase()}`,

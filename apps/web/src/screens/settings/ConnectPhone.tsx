@@ -11,7 +11,8 @@ import { useEffect, useState } from "react";
 import { currentDevice } from "../../platform/index.js";
 import { useServices } from "../../services/context.js";
 import { errorText } from "../../services/errors.js";
-import { lanLink } from "../../sync/connect.js";
+import { lanLink, typedComputer } from "../../sync/connect.js";
+import { PHONE_REFUSED } from "../../shell/PhoneAsking.js";
 import { QrCode } from "./QrCode.js";
 
 export function ConnectPhone() {
@@ -27,6 +28,8 @@ export function ConnectPhone() {
     until: number;
     /** For a new code: the computer's address, port and certificate. */
     at: { address: string; port: number; fingerprint: string };
+    /** The address to type on the phone: a home-network IPv4 only (SY9), else none. */
+    typed?: string;
   } | null>(null);
   // The code's minutes left, counted down while it shows.
   const [now, setNow] = useState(() => Date.now());
@@ -59,7 +62,8 @@ export function ConnectPhone() {
       await qc.invalidateQueries({ queryKey: ["sync"] });
       const before = new Set((await lan!.phones()).map((p) => p.hash));
       const at = { address, port: info.port, fingerprint: info.fingerprint };
-      return { ...withCode(at, code), before, at };
+      const home = info.addresses.find((a) => typedComputer(`https://${a}`));
+      return { ...withCode(at, code), before, at, ...(home ? { typed: home } : {}) };
     },
     onSuccess: (s) => {
       setRefused(false);
@@ -73,7 +77,10 @@ export function ConnectPhone() {
       if (!key || !shown) throw new Error("Sync is not open on this computer. Unlock it first.");
       return withCode(shown.at, await lan!.code({ key }));
     },
-    onSuccess: (fresh) => setShown((s) => (s ? { ...s, ...fresh } : s)),
+    onSuccess: (fresh) => {
+      setRefused(false);
+      setShown((s) => (s ? { ...s, ...fresh } : s));
+    },
   });
   // Linux with firewalld keeps the phone out unless the port is open (Pavlo's case): ask, and
   // offer to open it (SY9).
@@ -86,26 +93,17 @@ export function ConnectPhone() {
     mutationFn: () => lan!.allowFirewall!(shown!.at.port),
     onSuccess: () => firewall.refetch(),
   });
-  // SY12: a phone used the code; nothing goes to it before "Is this your phone?" gets a yes.
-  const asking = useQuery({
-    queryKey: ["lan-asking"],
-    queryFn: async () => (await lan!.asking!()) ?? null,
-    enabled: !!shown && !!lan?.asking,
-    refetchInterval: 1000,
-  });
+  // SY12: "Is this your phone?" shows on any screen (shell/PhoneAsking). After a no the code is
+  // used up, so a new one is needed to try again.
   const [refused, setRefused] = useState(false);
-  const reply = useMutation({
-    mutationFn: ({ id, yes }: { id: string; yes: boolean }) => lan!.answer!(id, yes),
-    onSuccess: async (_r, { yes }) => {
-      if (!yes) {
-        // The code is used up: a new one is needed to try again.
-        setRefused(true);
-        setShown((s) => (s ? { ...s, until: Date.now() } : s));
-      }
-      await qc.invalidateQueries({ queryKey: ["lan-asking"] });
-      await qc.invalidateQueries({ queryKey: ["lan-phones"] });
-    },
-  });
+  useEffect(() => {
+    const no = () => {
+      setRefused(true);
+      setShown((s) => (s ? { ...s, until: Date.now() } : s));
+    };
+    window.addEventListener(PHONE_REFUSED, no);
+    return () => window.removeEventListener(PHONE_REFUSED, no);
+  }, []);
   const remove = useMutation({
     mutationFn: (hash: string) => lan!.remove(hash),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["lan-phones"] }),
@@ -119,37 +117,7 @@ export function ConnectPhone() {
       <h3 className="settings-h3" id="connect-phone-h">
         Connect a phone
       </h3>
-      {shown && !arrived && asking.data ? (
-        <div
-          className="stack connect-asking"
-          role="alertdialog"
-          aria-labelledby="connect-asking-h"
-          style={{ gap: 8 }}
-        >
-          <h4 id="connect-asking-h" className="settings-h3" style={{ margin: 0 }}>
-            A phone wants to connect
-          </h4>
-          <p style={{ margin: 0 }}>
-            <b>{asking.data.name}</b>, on your Wi-Fi. Is this your phone? It gets your data and the
-            key to it.
-          </p>
-          <div className="row" style={{ gap: 8 }}>
-            <Button
-              disabled={reply.isPending}
-              onClick={() => reply.mutate({ id: asking.data!.id, yes: false })}
-            >
-              No
-            </Button>
-            <Button
-              variant="primary"
-              disabled={reply.isPending}
-              onClick={() => reply.mutate({ id: asking.data!.id, yes: true })}
-            >
-              Yes, it&apos;s mine
-            </Button>
-          </div>
-        </div>
-      ) : shown && arrived ? (
+      {shown && arrived ? (
         <div className="stack" style={{ gap: 8 }} role="status">
           <p style={{ margin: 0 }}>
             ✓ <b>{arrived.name}</b> is connected. It&apos;s bringing your data over now.
@@ -167,12 +135,17 @@ export function ConnectPhone() {
           {now < shown.until ? (
             <>
               <p className="k-hint" style={{ margin: 0 }}>
-                Or type it on your phone (Connect manually):{" "}
-                <b>
-                  {shown.at.address}
-                  {shown.at.port === 47120 ? "" : `:${shown.at.port}`}
-                </b>{" "}
-                and <b>{shown.code}</b>. It works for {left(shown.until - now)} more.
+                {shown.typed ? (
+                  <>
+                    Or type it on your phone (Connect manually):{" "}
+                    <b>
+                      {shown.typed}
+                      {shown.at.port === 47120 ? "" : `:${shown.at.port}`}
+                    </b>{" "}
+                    and <b>{shown.code}</b>.{" "}
+                  </>
+                ) : null}
+                It works for {left(shown.until - now)} more.
               </p>
               <p className="k-hint row" role="status" style={{ margin: 0, gap: 8 }}>
                 <Spinner label="Waiting" />

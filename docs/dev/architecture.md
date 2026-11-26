@@ -167,14 +167,16 @@ computer has no Add text: texts are added on the computer, and their bundles com
   certificate and a ten-minute code (`vuurtoren://connect?lan=…&cert=…&code=…`). The phone trusts
   exactly that certificate (`pinned.rs`), and the code buys a sync token, as with a server. The
   code works once. The computer asks "Is this your phone?" first, and the phone waits for the
-  answer (`/api/sync/pair` answers 202, then `/api/sync/pair/wait`). With a yes the computer hands
+  answer (`/api/sync/pair` answers 202, then `/api/sync/pair/wait`), and the question shows on any
+  screen. A phone from before this is told to update. With a yes the computer hands
   over the sync key with the token, so the phone joins at once: no passphrase. A computer that
   doesn't sync yet starts with a recovery key only.
 - **The typed code.** Without the camera the phone takes the address and the code. It connects to
   a private IPv4 address only, without trusting the certificate yet, and asks `/api/sync/prove`
   for an HMAC of a random nonce and the certificate it saw, keyed by the code. It trusts that
   certificate only when the HMAC matches, so someone in between can't show their own. Each proof
-  uses one of the code's five tries.
+  uses one of the code's five tries. One proof is enough to guess the code offline, so
+  what keeps it safe is the code's ten minutes and the yes on the computer.
 - **The folder.** The phones use the app's `sync-place/`, or the computer's own sync folder when
   it already syncs through one (Syncthing, Dropbox), so all devices share one place.
 - **Restarts and moves.** The computer listens again at start when phones are paired. If its

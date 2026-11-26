@@ -68,8 +68,9 @@ export function WordsDesk() {
   const view = parseView(params.state);
   const setSearch = (patch: Partial<Record<keyof WordsSearch, string | undefined>>) => {
     const next: Record<string, string | undefined> = { ...params, ...patch };
-    const clean: WordsSearch = {};
-    for (const k of ["state", "source", "level", "group", "q", "word", "layout"] as const)
+    // Always "list": with no filter left, the Inbox stays (Words() would show the cards).
+    const clean: WordsSearch = { layout: "list" };
+    for (const k of ["state", "source", "level", "q", "word"] as const)
       if (next[k]) clean[k] = next[k];
     void navigate({ to: "/words/all", search: clean, replace: true });
   };
@@ -126,8 +127,8 @@ export function WordsDesk() {
     queryFn: async () => {
       const [all, decide, due] = await Promise.all([
         services.words({ limit: ALL_WORDS }),
-        services.wordsToDecide({ limit: 1000 }),
-        native ? services.dueWords({ limit: 1000 }) : Promise.resolve([]),
+        services.wordsToDecide({ limit: ALL_WORDS }),
+        native ? services.dueWords({ limit: ALL_WORDS }) : Promise.resolve([]),
       ]);
       const by = (s: string) => all.filter((w) => w.state === s).length;
       return {

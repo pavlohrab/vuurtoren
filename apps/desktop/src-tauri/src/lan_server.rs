@@ -183,7 +183,7 @@ mod tests {
     ) -> String {
         let asked: serde_json::Value = phone
             .post(format!("{base}/api/sync/pair"))
-            .body(serde_json::json!({ "code": code, "name": "Pixel" }).to_string())
+            .body(serde_json::json!({ "code": code, "name": "Pixel", "wait": true }).to_string())
             .send()
             .await
             .unwrap()

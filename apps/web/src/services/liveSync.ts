@@ -650,7 +650,7 @@ export function createLiveSync(deps: LiveSyncDeps) {
         if (home && "code" in link && deps.desktop?.probe) {
           onProgress?.("Checking that it's your computer…");
           const pinned = await proveComputer(home, link.code, deps.desktop.probe);
-          link = { server: home, code: link.code, pinned };
+          if (pinned) link = { server: home, code: link.code, pinned };
         }
         let now = read();
         const there = "pinned" in link && link.pinned ? "your computer" : "the server";

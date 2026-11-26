@@ -6,6 +6,7 @@ import { currentDevice } from "../../platform/index.js";
 import { ServicesProvider } from "../../services/context.js";
 import { createMockServices } from "../../services/mock.js";
 import { ConnectPhone } from "./ConnectPhone.js";
+import { PhoneAsking } from "../../shell/PhoneAsking.js";
 
 vi.mock("../../platform/index.js", async (load) => {
   const real = await load<typeof import("../../platform/index.js")>();
@@ -61,28 +62,36 @@ function setup(
     <ServicesProvider services={services}>
       <QueryClientProvider client={new QueryClient()}>
         <ConnectPhone />
+        <PhoneAsking />
       </QueryClientProvider>
     </ServicesProvider>,
   );
-  return { lan, startForPhones };
+  return {
+    lan,
+    startForPhones,
+    ask: (a: { id: string; name: string }) => {
+      asking = a;
+    },
+  };
 }
 
 afterEach(() => vi.mocked(currentDevice).mockReset());
 
 describe("Connect a phone", () => {
-  it("asks 'Is this your phone?' before the key goes; Yes lets it in (SY12)", async () => {
+  it("asks 'Is this your phone?' on any screen before the key goes; Yes lets it in (SY12)", async () => {
+    // No code on screen here: the user may have left Settings after showing it.
     const { lan } = setup({ asking: { id: "w1", name: "Pixel 8" } });
-    await userEvent.click(await screen.findByRole("button", { name: "Show the code" }));
-    const dialog = await screen.findByRole("alertdialog", { name: "A phone wants to connect" });
+    const dialog = await screen.findByRole("dialog", { name: "A phone wants to connect" });
     expect(dialog).toHaveTextContent("Pixel 8");
     await userEvent.click(screen.getByRole("button", { name: "Yes, it's mine" }));
     expect(lan.answer).toHaveBeenCalledWith("w1", true);
   });
 
   it("No ends the code: a new one is needed (SY12)", async () => {
-    const { lan } = setup({ asking: { id: "w1", name: "Pixel 8" } });
+    const { lan, ask } = setup();
     await userEvent.click(await screen.findByRole("button", { name: "Show the code" }));
-    await screen.findByRole("alertdialog", { name: "A phone wants to connect" });
+    ask({ id: "w1", name: "Pixel 8" });
+    await screen.findByRole("dialog", { name: "A phone wants to connect" });
     await userEvent.click(screen.getByRole("button", { name: "No" }));
     expect(lan.answer).toHaveBeenCalledWith("w1", false);
     expect(await screen.findByText(/That phone got nothing/)).toBeVisible();

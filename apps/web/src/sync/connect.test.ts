@@ -90,6 +90,8 @@ describe("pairing with a server", () => {
     expect(JSON.parse(String(init?.body))).toEqual({
       code: "ABCDE-FGHJK",
       name: "Phone (Pixel 8)",
+      // A computer answers only phones that wait for its yes (SY12); a server ignores it.
+      wait: true,
     });
   });
 
@@ -207,6 +209,18 @@ describe("the typed code (SY9)", () => {
     });
     await expect(proveComputer("https://192.168.1.20:47120", code, between)).rejects.toThrow(
       /not the computer that shows this code/,
+    );
+    // A server on a home address has no /api/sync/prove: the phone pairs with it as typed.
+    const server = async () => {
+      throw new Error("404");
+    };
+    await expect(proveComputer("https://192.168.1.10:8080", code, server)).resolves.toBeNull();
+    // The computer itself says no: that is what the phone shows.
+    const ranOut = async () => {
+      throw "computer: This code has run out. Show a new one on the computer.";
+    };
+    await expect(proveComputer("https://192.168.1.20:47120", code, ranOut)).rejects.toThrow(
+      /^This code has run out/,
     );
   });
 });

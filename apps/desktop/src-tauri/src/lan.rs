@@ -22,6 +22,8 @@ use sha2::{Digest, Sha256};
 
 /// Largest file a phone may put (the server's `MAX_SYNC_FILE_BYTES`).
 pub const MAX_FILE: usize = 64 * 1024 * 1024;
+/// How long the computer waits for the yes once a phone used the code (the phone waits as long).
+const ASK_SECONDS: u64 = 600;
 /// How long a pairing code works, and how many wrong tries it takes.
 pub const CODE_SECONDS: u64 = 10 * 60;
 pub const CODE_TRIES: u32 = 5;
@@ -94,6 +96,15 @@ pub struct Lan {
     asking: Option<Asking>,
     /// SHA-256 of this listener's certificate: what `prove` binds the code to (SY9).
     fingerprint: String,
+}
+
+/// A failure of `/api/sync/prove` that says it comes from a Vuurtoren computer, so the phone
+/// shows it instead of trying the address as a server.
+fn refused(status: u16, error: &str) -> Reply {
+    Reply::json(
+        status,
+        json!({ "ok": false, "error": error, "computer": true }),
+    )
 }
 
 /// HMAC-SHA256 (RFC 2104), hex: the typed code's proof (SY9).
@@ -277,20 +288,21 @@ impl Lan {
 
     /// SY9, the typed code: before the phone sends the code, the computer shows it knows it, bound
     /// to its own certificate. A phone that sees another certificate (someone in between) gets a
-    /// proof that doesn't match and stops. Each proof costs one of the code's tries, so nobody
-    /// can collect proofs to guess the code.
+    /// proof that doesn't match and stops. Each proof costs one of the code's tries. One proof
+    /// is enough to guess the code offline, so the code's ten minutes and the computer's yes are
+    /// what keep it safe.
     fn prove(&mut self, body: &[u8], now: u64) -> Reply {
         let v: serde_json::Value = serde_json::from_slice(body).unwrap_or_default();
         let nonce = v["nonce"].as_str().unwrap_or("");
         if nonce.len() < 16 || nonce.len() > 128 || self.fingerprint.is_empty() {
-            return Reply::fail(400, "Not a valid request.");
+            return refused(400, "Not a valid request.");
         }
         let Some(code) = self.code.as_mut() else {
-            return Reply::fail(401, "Show a new code on the computer and type it again.");
+            return refused(401, "Show a new code on the computer and type it again.");
         };
         if now > code.expires || code.tries >= CODE_TRIES {
             self.code = None;
-            return Reply::fail(
+            return refused(
                 401,
                 "This code has run out. Show a new one on the computer.",
             );
@@ -361,6 +373,14 @@ impl Lan {
             .chars()
             .take(80)
             .collect::<String>();
+        // A phone from before "Is this your phone?" can't wait for the yes: tell it to update,
+        // before the code is used.
+        if v["wait"].as_bool() != Some(true) {
+            return Reply::fail(
+                426,
+                "Update Vuurtoren on your phone, then scan the code again.",
+            );
+        }
         let Some(code) = self.code.as_mut() else {
             return Reply::fail(401, "Show a new code on the computer and scan it again.");
         };
@@ -388,7 +408,8 @@ impl Lan {
             id: id.clone(),
             name,
             handover: code.handover,
-            expires: code.expires,
+            // Its own time to answer, from when the phone asked, not what was left of the code.
+            expires: now + ASK_SECONDS,
             answer: None,
         });
         Reply::json(
@@ -404,7 +425,7 @@ impl Lan {
         let Some(asking) = self.asking.as_ref().filter(|a| a.id == id) else {
             return Reply::fail(401, "Show a new code on the computer and scan it again.");
         };
-        if now > asking.expires {
+        if asking.answer.is_none() && now > asking.expires {
             self.asking = None;
             return Reply::fail(
                 401,
@@ -614,7 +635,7 @@ mod tests {
             "/api/sync/pair",
             &HashMap::new(),
             None,
-            json!({ "code": code, "name": "Pixel" })
+            json!({ "code": code, "name": "Pixel", "wait": true })
                 .to_string()
                 .as_bytes(),
             now,
@@ -717,7 +738,7 @@ mod tests {
             "/api/sync/pair",
             &HashMap::new(),
             None,
-            json!({ "code": code, "name": "Pixel" })
+            json!({ "code": code, "name": "Pixel", "wait": true })
                 .to_string()
                 .as_bytes(),
             11,
@@ -791,6 +812,49 @@ mod tests {
     }
 
     #[test]
+    fn an_old_phone_is_told_to_update_and_a_late_phone_still_gets_its_time() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut lan = Lan::new(dir.path());
+        let code = lan.new_code(0);
+        // A phone from before the yes: told to update, and the code stays.
+        let old = json!({ "code": code, "name": "Pixel" }).to_string();
+        let r = lan.dispatch(
+            "POST",
+            "/api/sync/pair",
+            &HashMap::new(),
+            None,
+            old.as_bytes(),
+            1,
+        );
+        assert_eq!(r.status, 426);
+        assert!(lan.code.is_some());
+        // A phone that uses the code at the last second gets the full time to be answered.
+        let late = json!({ "code": code, "name": "Pixel", "wait": true }).to_string();
+        let r = lan.dispatch(
+            "POST",
+            "/api/sync/pair",
+            &HashMap::new(),
+            None,
+            late.as_bytes(),
+            595,
+        );
+        assert_eq!(r.status, 202);
+        let id = lan.asking_json(700)["id"].as_str().unwrap().to_string();
+        assert!(lan.answer(&id, true));
+        // A yes given in time still counts when the phone asks after the window.
+        let wait = json!({ "waiting": id }).to_string();
+        let r = lan.dispatch(
+            "POST",
+            "/api/sync/pair/wait",
+            &HashMap::new(),
+            None,
+            wait.as_bytes(),
+            1300,
+        );
+        assert_eq!(r.status, 200);
+    }
+
+    #[test]
     fn a_code_pairs_once_and_runs_out() {
         let dir = tempfile::tempdir().unwrap();
         let mut lan = Lan::new(dir.path());
@@ -799,11 +863,18 @@ mod tests {
         assert_eq!(lan.phones.len(), 1);
         assert_ne!(lan.phones[0].hash, token, "only the hash is kept");
         // Used: the same code no longer works.
-        let again = lan.dispatch("POST", "/api/sync/pair", &HashMap::new(), None, b"{}", 1002);
+        let again = lan.dispatch(
+            "POST",
+            "/api/sync/pair",
+            &HashMap::new(),
+            None,
+            b"{\"wait\":true}",
+            1002,
+        );
         assert_eq!(again.status, 401);
         // Expired, and too many wrong tries.
         let code = lan.new_code(0);
-        let late = json!({ "code": code }).to_string();
+        let late = json!({ "code": code, "wait": true }).to_string();
         let r = lan.dispatch(
             "POST",
             "/api/sync/pair",
@@ -820,7 +891,7 @@ mod tests {
                 "/api/sync/pair",
                 &HashMap::new(),
                 None,
-                b"{\"code\":\"X\"}",
+                b"{\"code\":\"X\",\"wait\":true}",
                 1,
             );
         }

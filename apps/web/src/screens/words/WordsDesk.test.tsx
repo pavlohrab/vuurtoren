@@ -48,6 +48,15 @@ describe("Words on a computer: the Inbox", () => {
     expect(await screen.findByRole("heading", { level: 1, name: "Known" })).toBeVisible();
   });
 
+  it("All stays in the Inbox when it came from a link with only a state", async () => {
+    const { user, history } = setup("/words/all?state=learning");
+    const rail = await screen.findByRole("navigation", { name: "Your words" });
+    await user.click(within(rail).getByRole("button", { name: /^All/ }));
+    await waitFor(() => expect(String(history.location.search)).not.toContain("state="));
+    expect(screen.getByRole("navigation", { name: "Your words" })).toBeVisible();
+    expect(await screen.findByRole("heading", { level: 1, name: "All words" })).toBeVisible();
+  });
+
   it("I know it marks a new word known, and the next one opens", async () => {
     const { user, markKnown, history } = setup("/words/all?layout=list&state=decide");
     const pane = await screen.findByRole("complementary", { name: "The chosen word" });
