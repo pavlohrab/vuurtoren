@@ -1,5 +1,10 @@
 # Install Vuurtoren
 
+Vuurtoren is in beta: it works, but things still change and some
+things break. If something goes wrong, tell Pavlo with the feedback button (see
+[Quick start](quick-start.md#telling-pavlo-what-you-think)). Who makes it and why is on the
+[About](https://vuurtoren.app/about.html) page.
+
 ## On your computer
 
 Go to the [latest release](https://github.com/pavlohrab/Vuurtoren/releases/latest) and download the

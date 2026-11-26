@@ -46,5 +46,8 @@ and a search. On a computer the list has your folders on the left (To decide, Du
 your levels and your texts) and the chosen word on the right, where **A** adds a new word and **K**
 marks it known. Tap a word to see its meaning, its sentences and how your reviews went. Words you
 already know you can mark with **I know it**, here or while reading, and they leave your reviews.
+Pressed it by mistake? **Undo** shows for a few seconds right after. Later, open the word's card and
+press **Learn it again**: its cards start over as new and the word comes back with your new words.
+If you work with Anki, change the card in Anki instead.
 
 If you use Anki, see [Anki](anki.md).

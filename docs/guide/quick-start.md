@@ -18,4 +18,20 @@ From nothing to reading your first Dutch text takes about five minutes.
 5. **Do your first review.** Open **Words** and start the review. Say how well you knew each word,
    or on a phone swipe right if you know it and left if you don't. A few minutes a day is enough.
 
+The first time you open a story, a short tour shows you around: tapping a word, its card, the
+sentence and its grammar, **Aa**, and the ways to read. You can skip it at any step, and start it
+again from **Settings → Reading** or, on a phone, from **More**.
+
 When you want your words on more devices, see [Sync your devices](sync.md).
+
+## Telling Pavlo what you think
+
+Vuurtoren is in beta, and Pavlo reads everything you send. On a computer press **Send feedback** in
+the sidebar (or Ctrl+Shift+F). On a phone use the **Feedback** tab on the side of the screen, or
+shake the phone. You can also find it in **Settings → Data**, and every error message has **Tell
+Pavlo**.
+
+Write what happened, and if it helps, add the screen (you can draw on it to point at something) or
+a short voice note. The app version and your device go with it, and the last errors if you leave
+them on. When Pavlo answers, you see it in the same place, like a chat. On a phone you can hide the
+side tab in **Settings → Data → Feedback**.
