@@ -29,6 +29,8 @@ export function lessonSignals(
   answers: readonly EloAnswer[],
   now: number,
   zipfOf: (key: string) => number = () => 4,
+  /** Words asked for by name ("Practise these words"): in, whatever their state (not ignored). */
+  always: ReadonlySet<string> = new Set(),
 ): WordSignals[] {
   const byKey = new Map<string, EloAnswer[]>();
   for (const a of answers) {
@@ -36,35 +38,38 @@ export function lessonSignals(
     if (xs) xs.push(a);
     else byKey.set(a.key, [a]);
   }
-  return infos.filter(lessonCandidate).map((w) => {
-    const mine = byKey.get(w.key) ?? [];
-    const practiceRight = mine.filter((a) => a.result >= 0.5).length;
-    const practiceWrong = mine.length - practiceRight;
-    // App evidence counts practice and reader answers together; take practice out again.
-    const ev = w.evidence;
-    const netClozes = ev
-      ? Math.max(-3, Math.min(3, ev.correct - ev.wrong - (practiceRight - practiceWrong)))
-      : 0;
-    const lastMiss = [...mine].reverse().find((a) => a.result < 0.5)?.at;
-    const recent = w.lastLookupAt !== undefined && now - w.lastLookupAt < RECENT_TAPS_DAYS * DAY_MS;
-    const streak = mine.slice(-SAFE_STREAK);
-    const s: WordSignals = {
-      key: w.key,
-      state: w.state,
-      pKnown: w.pKnown,
-      hasCard: w.state === "learning" || w.state === "known",
-      taps: w.lookups,
-      recentTaps: recent ? Math.min(w.lookups, 3) : 0,
-      netClozes,
-      reviewedToday: false,
-      practiceSafe: streak.length === SAFE_STREAK && streak.every((a) => a.result === 1),
-      onPage: false,
-      onNextPages: false,
-      zipf: zipfOf(w.key),
-      dismissed: false,
-    };
-    if (w.lastLookupAt !== undefined) s.lastTapAt = w.lastLookupAt;
-    if (lastMiss !== undefined) s.lastWrongAt = lastMiss;
-    return s;
-  });
+  return infos
+    .filter((w) => lessonCandidate(w) || (always.has(w.key) && w.state !== "ignored"))
+    .map((w) => {
+      const mine = byKey.get(w.key) ?? [];
+      const practiceRight = mine.filter((a) => a.result >= 0.5).length;
+      const practiceWrong = mine.length - practiceRight;
+      // App evidence counts practice and reader answers together; take practice out again.
+      const ev = w.evidence;
+      const netClozes = ev
+        ? Math.max(-3, Math.min(3, ev.correct - ev.wrong - (practiceRight - practiceWrong)))
+        : 0;
+      const lastMiss = [...mine].reverse().find((a) => a.result < 0.5)?.at;
+      const recent =
+        w.lastLookupAt !== undefined && now - w.lastLookupAt < RECENT_TAPS_DAYS * DAY_MS;
+      const streak = mine.slice(-SAFE_STREAK);
+      const s: WordSignals = {
+        key: w.key,
+        state: w.state,
+        pKnown: w.pKnown,
+        hasCard: w.state === "learning" || w.state === "known",
+        taps: w.lookups,
+        recentTaps: recent ? Math.min(w.lookups, 3) : 0,
+        netClozes,
+        reviewedToday: false,
+        practiceSafe: streak.length === SAFE_STREAK && streak.every((a) => a.result === 1),
+        onPage: false,
+        onNextPages: false,
+        zipf: zipfOf(w.key),
+        dismissed: false,
+      };
+      if (w.lastLookupAt !== undefined) s.lastTapAt = w.lastLookupAt;
+      if (lastMiss !== undefined) s.lastWrongAt = lastMiss;
+      return s;
+    });
 }

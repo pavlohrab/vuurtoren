@@ -444,7 +444,9 @@ export function createLivePractice(deps: LivePracticeDeps) {
     const focus = opts.keys ? new Set(opts.keys) : null;
     // A first pass with a neutral frequency picks the pool; word data (with the real frequency)
     // is only built for that pool, because it reads texts and asks the language server.
-    const rough = lessonSignals(infos, answers, now).filter((s) => !focus || focus.has(s.key));
+    const rough = lessonSignals(infos, answers, now, undefined, focus ?? undefined).filter(
+      (s) => !focus || focus.has(s.key),
+    );
     const due = new Set(items.filter((i) => i.due <= now).map((i) => i.key));
     const pool = rough
       .map((s) => ({ s, v: due.has(s.key) ? Infinity : lessonScore(s, now) }))
@@ -475,6 +477,7 @@ export function createLivePractice(deps: LivePracticeDeps) {
       answers,
       now,
       (k) => zipf.get(k) ?? 0,
+      focus ?? undefined,
     );
     const speaking = (await deps.canListen?.().catch(() => false)) ?? false;
     lastLesson = { words, signals, states: items, answers, now, speaking };

@@ -23,6 +23,15 @@ describe("lesson signals (algorithms.md 4.7.1)", () => {
     expect(lessonCandidate(info("b", { state: "seen" }))).toBe(false);
     expect(lessonCandidate(info("c", { state: "seen", lookups: 2 }))).toBe(true);
     expect(lessonCandidate(info("d", { state: "ignored", lookups: 2 }))).toBe(false);
+    // Asked for by name: in, unless ignored.
+    const named = lessonSignals(
+      [info("b", { state: "seen" }), info("d", { state: "ignored" })],
+      [],
+      NOW,
+      undefined,
+      new Set(["b", "d"]),
+    );
+    expect(named.map((s) => s.key)).toEqual(["b"]);
   });
 
   it("reads taps, the last tap, misses and a safe streak", () => {
