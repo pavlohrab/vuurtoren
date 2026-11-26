@@ -745,7 +745,8 @@ function SayIt({
   useEffect(() => {
     const key = (ev: KeyboardEvent) => {
       if (!/^m$/i.test(ev.key) || ev.metaKey || ev.ctrlKey || ev.altKey) return;
-      if (ev.target instanceof HTMLInputElement || ev.target instanceof HTMLTextAreaElement) return;
+      // Not while typing, or while a dialog (the word card) owns the keys.
+      if (shortcutBlocked(ev)) return;
       ev.preventDefault();
       toggle.current();
     };
