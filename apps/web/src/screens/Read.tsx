@@ -80,10 +80,9 @@ function draggedIds(e: DragEvent): string[] | null {
   }
 }
 
-/** How a cover was dropped on a shelf: from which shelf, and whether Ctrl/Alt asked to copy. */
+/** How a cover was dropped on a shelf: from which shelf. A drop moves it (Pavlo, F5). */
 interface DropHow {
   from: string | null;
-  copy: boolean;
 }
 
 /** Drag-and-drop handlers for a shelf (its row, or its chip in the picker). */
@@ -95,9 +94,7 @@ export function shelfDrop(
     onDragOver: (e: DragEvent) => {
       if (!e.dataTransfer.types.includes(DRAG_TYPE)) return;
       e.preventDefault();
-      const copy = e.ctrlKey || e.altKey || e.metaKey;
-      e.dataTransfer.dropEffect =
-        e.dataTransfer.types.includes(FROM_SHELF_TYPE) && !copy ? "move" : "copy";
+      e.dataTransfer.dropEffect = "move";
       setOver(true);
     },
     onDragLeave: (e: DragEvent) => {
@@ -108,10 +105,7 @@ export function shelfDrop(
       const ids = draggedIds(e);
       if (!ids?.length) return;
       e.preventDefault();
-      onDrop(ids, {
-        from: e.dataTransfer.getData(FROM_SHELF_TYPE) || null,
-        copy: e.ctrlKey || e.altKey || e.metaKey,
-      });
+      onDrop(ids, { from: e.dataTransfer.getData(FROM_SHELF_TYPE) || null });
     },
   };
 }
@@ -192,12 +186,16 @@ export function Read() {
   const moveTo = useMutation({
     mutationFn: async (a: { shelf: { id: string; name: string }; ids: string[]; how: DropHow }) => {
       await services.addToShelf(a.shelf.id, a.ids);
-      if (a.how.from && a.how.from !== a.shelf.id && !a.how.copy)
-        await services.removeFromShelf(a.how.from, a.ids);
+      // A drop moves the text: off every other shelf of yours it was on, wherever it came from.
+      for (const other of shelves.data ?? []) {
+        if (other.id === a.shelf.id) continue;
+        const on = a.ids.filter((id) => other.textIds.includes(id));
+        if (on.length) await services.removeFromShelf(other.id, on);
+      }
     },
     onSuccess: async (_r, a) => {
       await qc.invalidateQueries({ queryKey: ["shelves"] });
-      const moved = !!a.how.from && a.how.from !== a.shelf.id && !a.how.copy;
+      const moved = !!a.how.from && a.how.from !== a.shelf.id;
       toast(
         `${moved ? "Moved to" : "Added to"} "${a.shelf.name}"`,
         a.ids.length > 1 ? plural(a.ids.length, "text", "texts") : undefined,

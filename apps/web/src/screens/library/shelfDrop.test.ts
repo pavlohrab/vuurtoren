@@ -20,27 +20,17 @@ function drop(data: Record<string, string>, keys: { ctrlKey?: boolean } = {}) {
 }
 
 describe("dropping a cover on a shelf", () => {
-  it("moves it when it comes from another shelf, keeps it on both with Ctrl", () => {
+  it("moves it, from another shelf or from none; Ctrl doesn't copy (Pavlo, F5)", () => {
     const onDrop = vi.fn();
     const h = shelfDrop(onDrop, () => {});
     const data = { [DRAG_TYPE]: JSON.stringify(["t1"]), [FROM_SHELF_TYPE]: "s1" };
     const over = drop(data);
     h.onDragOver(over);
     expect((over as { dataTransfer: { dropEffect: string } }).dataTransfer.dropEffect).toBe("move");
-    h.onDrop(drop(data));
-    expect(onDrop).toHaveBeenLastCalledWith(["t1"], { from: "s1", copy: false });
     h.onDrop(drop(data, { ctrlKey: true }));
-    expect(onDrop).toHaveBeenLastCalledWith(["t1"], { from: "s1", copy: true });
-  });
-
-  it("adds it when it comes from no shelf of yours", () => {
-    const onDrop = vi.fn();
-    const h = shelfDrop(onDrop, () => {});
-    const data = { [DRAG_TYPE]: JSON.stringify(["t2"]) };
-    const over = drop(data);
-    h.onDragOver(over);
-    expect((over as { dataTransfer: { dropEffect: string } }).dataTransfer.dropEffect).toBe("copy");
-    h.onDrop(drop(data));
-    expect(onDrop).toHaveBeenLastCalledWith(["t2"], { from: null, copy: false });
+    expect(onDrop).toHaveBeenLastCalledWith(["t1"], { from: "s1" });
+    const loose = { [DRAG_TYPE]: JSON.stringify(["t2"]) };
+    h.onDrop(drop(loose));
+    expect(onDrop).toHaveBeenLastCalledWith(["t2"], { from: null });
   });
 });
