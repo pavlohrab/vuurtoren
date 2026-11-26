@@ -644,7 +644,110 @@ Most exercises need a sentence with the word in it, so Vuurtoren looks for good 
 
 **Limits.** This approximates "i+1" (a sentence where only the target word is new) with **general word frequency, not your own learner model**. A Tatoeba sentence can still contain a common word that you have not learned.
 
-### 4.7 Building a session
+### 4.7 Lessons (being built, Nov 2026)
+
+Practice is turning into short lessons: about 10 words, 4–6 minutes. The design below is approved
+and is being built in steps; until a step is done, 4.8 describes how sessions are built now. The
+research behind each decision is in 4.9.
+
+**The idea.** Your cards (Anki, or the app's own) already bring each word's meaning back on time.
+Practice doesn't repeat that. It trains what a card doesn't, on the same words: the word in a real
+sentence (a different one each time), saying it in Dutch, de/het, forms and word order, and the
+sound. Each word gets the exercise you'd get right about 8 times in 10.
+
+#### 4.7.1 What the app knows about each word
+
+| Signal                                                         | Source                                 |
+| -------------------------------------------------------------- | -------------------------------------- |
+| Card state, FSRS stability, last review, recall now (`pKnown`) | the learner model (1.4–1.7)            |
+| Taps on the word, when, and in which text                      | `WordLookedUp` events, `word_lookups`  |
+| Reader clozes right or wrong, hinted or not                    | `ClozeAnswered`, `word_evidence`       |
+| Every practice answer: word, skill, kind, right or wrong       | `ExerciseAnswered`, `practice_answers` |
+| The words of the page you read and of the next pages           | the text's analysed tokens             |
+| Frequency (Zipf), part of speech, gender, forms                | dictionary and language server         |
+| Ignored, dismissed and suggested words                         | word states, `WordSuggestionDismissed` |
+| Your reading level                                             | the staircase (3.6)                    |
+
+#### 4.7.2 Which words go into a lesson
+
+Practice items that are due (FSRS, 4.1) come first. The other places go to words with the highest
+**need × use**:
+
+- **Need**: recall now between about 0.3 and 0.85; tapped two or more times, or tapped in the last
+  few days (the first retrieval should come soon after meeting a word, then spread out); a wrong
+  cloze or practice answer lately; a card that has slipped.
+- **Use**: frequency; on the page you just read; on the next pages of the text you are reading
+  (learning words before a text helps you understand it).
+- **Left out**: ignored and dismissed words; words reviewed with a card today (the app's own cards;
+  Anki mode once the app reads Anki's review dates); words that are safe on every side, apart from
+  an occasional check.
+
+A lesson's source narrows the pool first: this page, before the next page, new words, mistakes.
+
+#### 4.7.3 Which exercise: a small Elo model
+
+Every answer is treated as a match between your grip on a word (θ) and how hard an exercise kind is
+for you (d) (Pelánek 2016).
+
+- **Start of θ**: `logit(pKnown)` (clamped to 0.05–0.95), −0.3 for each tap in the last 14 days,
+  +0.3 for each net right reader cloze, clamped.
+- **Start of d**, the ladder from easy to hard: meaning-choice −2.0, word-choice −1.6, cloze-choice
+  −1.2, gender −1.0, adjective-e −0.8, separable −0.6, scramble −0.4, listen-build −0.2, perfect
+  +0.4, cloze-typed +0.6, dictation +0.7, verb-form +0.8. These adapt to you.
+- **Chance of a right answer**: `p = g + (1 − g) · σ(θ − d)`, where `g` = 1 / number of choices for
+  multiple choice (a guess can be right) and 0 for typing and building.
+- **The pick**: among the kinds the word supports, the one with `p` closest to 0.85 (Wilson et al.
+  2019).
+- **Guard rail**: never more than one step above the hardest kind this word was answered right
+  in, so typing only comes after building. A word you marked known (I know it) starts at building.
+- **After an answer**: `θ += K(n)(r − p)` and `d −= ½ K(n)(r − p)`, with `r` = 1 or 0 and
+  `K(n) = 0.8 / (1 + 0.1 n)` shrinking as the word or kind collects answers. A peek or a hint
+  counts as half (`r` = 0.5), like a hinted reader cloze.
+- **Replay**: θ and d are not stored; they are worked out from `practice_answers` in time order, so
+  every device gets the same numbers.
+
+**FSRS decides when, Elo decides how hard.** Elo has no forgetting of its own; FSRS models it (the
+card's recall now, each practice item's schedule), and θ starts from that recall.
+
+**Weak spots across words.** Misses are also counted per grammar point (gender, adjective -e,
+perfect, separable verbs, verb forms, word order). A point you often miss gets more room in the
+next lessons, and the end of the lesson links its grammar page.
+
+#### 4.7.4 Which sentence, and the guard rail on hard ones
+
+Sentences come from the sources of 4.6. Every sentence passes a check before an exercise uses it:
+
+| Exercise     | Length               | Other words                                                |
+| ------------ | -------------------- | ---------------------------------------------------------- |
+| build, hear  | 4–7 words            | known to you (recall ≥ 0.8) or a very common function word |
+| fill the gap | up to about 12 words | the same                                                   |
+
+- Always with its English: sentences from your texts are translated offline (2.6); a sentence
+  without a translation is not used for building or hearing.
+- Not harder than your reading level allows (3.6).
+- The first time, the sentence from the page where you met the word, if it passes. If it doesn't,
+  a simpler one is used and the original shows after the answer as "Where you met it".
+- No simple sentence: your other texts, Tatoeba, then (with AI on) a short sentence made of your
+  known words, checked by the language server. Still none: only exercises that need no sentence.
+- One extra tile in building (the other article, or another form of a word in the sentence).
+- Unsure: tap a tile to hear it, hold it to see its meaning, or take a Hint (the next tile).
+
+#### 4.7.5 Words you said you know, and your cards
+
+- **I know it** gives the card a mature schedule, so the word is known with a high recall. It comes
+  up rarely, as a check, starting at building. A miss lowers θ, never the card; after two misses the
+  end of the lesson offers Learn it again.
+- **A word with a card never gets "pick the meaning"**: that is the card's job.
+- **The app's own cards** (native mode): a practice answer counts as a review of the word's due card
+  only for building and typing, not for the choice exercises.
+
+#### 4.7.6 The lesson
+
+About 10 words (Short 5, Normal 10, Long 15), each once at its exercise. A miss shows the right
+answer with one line on why and a link to the grammar page, and the word comes back once at the
+end, one step easier. Today's count is 1 lesson a day by default; there are no streaks.
+
+### 4.8 Building a session (now)
 
 A session first picks the words, then the (word, skill) pairs that are due or new, and then an exercise kind for each (`packages/core/src/practice/session.ts`, `apps/web/src/services/livePractice.ts`):
 
@@ -657,6 +760,24 @@ A session first picks the words, then the (word, skill) pairs that are due or ne
 | 3. Filler     | if still short: pairs that are not yet due, soonest first                                                                                                                                                   |
 | Exercise kind | per skill, the least-used kind so far that the word supports                                                                                                                                                |
 | Order         | never the same word twice in a row; alternating skills where possible                                                                                                                                       |
+
+### 4.9 Research behind the lesson design
+
+| Decision                                         | Evidence                                                                                                                                                                                      |
+| ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Recall, not re-showing                           | Karpicke & Roediger 2008, _Science_ 319: after a week ~80% recalled when every pair kept being tested, 36% and 33% when learned pairs were only studied again                                 |
+| Spread repetitions; once per lesson is enough    | Cepeda et al. 2006, _Psychological Bulletin_ 132 (839 comparisons); Karpicke & Bauernschmidt 2011, _JEP:LMC_ 37: long gaps +200%, three recalls in a row no better than one (26% vs 25%)      |
+| Hard enough, but you must succeed                | Bjork & Bjork 2011 (desirable difficulties); Wilson et al. 2019, _Nature Communications_ (~85% right as the best training accuracy, for simple tasks)                                         |
+| Elo for picking exercises                        | Pelánek 2016, _Computers & Education_; Pelánek 2017, _UMUAI_; Khajah, Lindsey & Mozer 2016 (classic models match deep knowledge tracing)                                                      |
+| English for beginners; meaning before production | Nakata 2011, _CALL_ 24; Webb 2005, _SSLA_ 27                                                                                                                                                  |
+| Producing the word (build, type)                 | Webb 2005; Shintani, Li & Ellis 2013, _Language Learning_ 63                                                                                                                                  |
+| Explain mistakes, link grammar                   | Norris & Ortega 2000; Spada & Tomita 2010; Li 2010 (all _Language Learning_)                                                                                                                  |
+| Sentences of known words                         | Hu & Nation 2000 (98% coverage; partly replicated, Kremmel et al. 2023)                                                                                                                       |
+| Different sentences each time                    | contextual diversity: Chen, Miller & Ke 2026, _Applied Psycholinguistics_ (meta-analysis)                                                                                                     |
+| Words before the next page                       | Webb 2009, _Canadian Modern Language Review_ 65                                                                                                                                               |
+| Reading as the core, Practice as one part        | Nation 2007 (the four strands); Webb, Uchihara & Yanagisawa 2023; Yanagisawa, Webb & Uchihara 2020 (glossing)                                                                                 |
+| Synthetic voices are fine                        | Bione & Cardoso 2020, _Language Learning & Technology_                                                                                                                                        |
+| What Duolingo does                               | Settles & Meeder 2016, _ACL_ (half-life regression: error 0.128 vs 0.235 for Leitner); Duolingo report DRR-21-03 (reading and listening like 5 semesters, median 203 hours, no control group) |
 
 ---
 
