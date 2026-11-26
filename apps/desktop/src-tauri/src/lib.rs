@@ -25,6 +25,7 @@ mod lan;
 mod lan_cmd;
 #[cfg(desktop)]
 mod lan_server;
+mod levels;
 #[cfg(mobile)]
 mod mobile;
 mod pinned;
@@ -285,15 +286,25 @@ async fn dictionary_entry(
     word: String,
     pos: Option<String>,
     app: AppHandle,
+    state: tauri::State<'_, State>,
 ) -> Result<Option<serde_json::Value>, String> {
     let dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    // The levels pack (OF4): fetched quietly the first time a card needs it in this run.
+    if !levels::path_in(&dir).is_file() && levels::wanted().is_some() && levels::first_try() {
+        let (client, dir) = (state.client.clone(), dir.clone());
+        tauri::async_runtime::spawn(async move {
+            let _ = levels::download(&client, &dir).await;
+        });
+    }
     tauri::async_runtime::spawn_blocking(move || {
         let Some(conn) = dictionary::open(&dictionary::path_in(&dir)) else {
             return Ok(None);
         };
-        dictionary::entry(&conn, &word, pos.as_deref())
-            .map(Some)
-            .map_err(|e| e.to_string())
+        let mut answer =
+            dictionary::entry(&conn, &word, pos.as_deref()).map_err(|e| e.to_string())?;
+        // "about A2" from the levels pack, as the language server adds it.
+        levels::add_levels(&dir, &mut answer);
+        Ok(Some(answer))
     })
     .await
     .map_err(|e| e.to_string())?

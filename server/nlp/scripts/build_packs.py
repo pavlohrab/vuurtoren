@@ -21,6 +21,9 @@ The offline installer and the ``-full`` image bundle it, so their first start do
 ``--grammar-from DIR`` makes it from the sentence pack archive in DIR (the offline installer's
 build, whose archives come from the release).
 
+``--levels VERSION`` packs ``levels-nl.tsv.gz`` (NT2Lex, its own licence) as
+``levels-nl-<version>.tar.gz`` for phones and lists it in packs.json.
+
 ``--audio-from DIR`` packs the spoken starter words and sentences (``DIR/{female,male}/<id>.mp3``,
 made by ``scripts/tts_elevenlabs.py``) as ``audio-nl-<version>.tar.gz`` and lists it in packs.json
 (version: ``--audio-version``, by default the dictionary's, so it goes in the same release).
@@ -155,6 +158,23 @@ def audio_from(manifest: dict, src: Path, out: Path, version: str | None) -> int
     return 0
 
 
+LEVELS_FILE = ROOT / "src" / "vuurtoren_nlp" / "levels-nl.tsv.gz"
+
+
+def levels(manifest: dict, out: Path, version: str) -> int:
+    """Pack ``levels-nl.tsv.gz`` (NT2Lex levels, CC BY-NC-SA, kept apart from the dictionary)
+    as the ``levels-nl`` archive for phones, and record it in packs.json."""
+    dest = out / f"levels-nl-{version}.tar.gz"
+    make_archive(LEVELS_FILE, dest)
+    manifest["packs"]["levels-nl"] = {
+        "version": version,
+        "sha256": hashlib.sha256(dest.read_bytes()).hexdigest(),
+        "size": dest.stat().st_size,
+    }
+    print(f"{dest.name}: {dest.stat().st_size / 1e3:.0f} KB")
+    return 0
+
+
 def download(manifest: dict, url: str, out: Path, names: list[str]) -> int:
     """Fetch ``<url>/<name>-<version>.tar.gz`` for each pack and verify it against packs.json."""
     for name in names:
@@ -189,6 +209,11 @@ def main() -> int:
         "--audio-from", type=Path, metavar="DIR", help="only the audio pack, from DIR/{female,male}"
     )
     ap.add_argument("--audio-version", help="audio pack version (default: the dictionary's)")
+    ap.add_argument(
+        "--levels",
+        metavar="VERSION",
+        help="only the levels pack for phones (levels-nl.tsv.gz), as this version",
+    )
     args = ap.parse_args()
     manifest = json.loads(MANIFEST.read_text())
     if args.grammar_from:
@@ -196,6 +221,12 @@ def main() -> int:
     if args.out is None:
         ap.error("--out is required")
     args.out.mkdir(parents=True, exist_ok=True)
+    if args.levels:
+        code = levels(manifest, args.out, args.levels)
+        if code == 0:
+            MANIFEST.write_text(json.dumps(manifest, indent=1) + "\n")
+            print(f"Updated {MANIFEST.relative_to(ROOT)}")
+        return code
     if args.audio_from:
         code = audio_from(manifest, args.audio_from.expanduser(), args.out, args.audio_version)
         if code == 0:

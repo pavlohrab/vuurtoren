@@ -25,6 +25,11 @@
    "version": "2026.11.2",
    "sha256": "7260f2924d2b5d120300f686d53aa8b8d32d34c81ba56feb70be9f761b4a4405",
    "size": 58250847
+  },
+  "levels-nl": {
+   "version": "2026.11.1",
+   "sha256": "21c64820370ecc19da4b754d4c520b6c5f7fb4c1f699211a71884f14b2db7beb",
+   "size": 67244
   }
  }
 }

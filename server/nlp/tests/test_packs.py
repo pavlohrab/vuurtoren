@@ -166,8 +166,10 @@ def test_shipped_manifest_lists_the_downloadable_packs() -> None:
         "mt-nl-en",
         "audio-nl",
         "tts-nl",
+        "levels-nl",
     }
-    assert set(manifest["packs"]) | {"grammar-examples-nl"} == set(packs.SPECS)
+    # levels-nl is for phones only: the server has the file in its package (levels.py).
+    assert set(manifest["packs"]) - {"levels-nl"} | {"grammar-examples-nl"} == set(packs.SPECS)
 
 
 def test_download_progress_is_reported(env: dict[str, Path]) -> None:

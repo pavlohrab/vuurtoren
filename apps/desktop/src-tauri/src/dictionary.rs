@@ -35,6 +35,8 @@ const NAME: &str = "dictionary-nl";
 /// The dictionary pack this build wants.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct Pack {
+    /// "dictionary-nl" or "levels-nl".
+    pub name: &'static str,
     pub version: String,
     pub sha256: String,
     pub size: u64,
@@ -43,9 +45,15 @@ pub struct Pack {
 impl Pack {
     /// The pack from the built-in manifest.
     pub fn wanted() -> Option<Pack> {
+        Self::wanted_named(NAME)
+    }
+
+    /// Another pack from the built-in manifest (`levels-nl`).
+    pub fn wanted_named(name: &'static str) -> Option<Pack> {
         let manifest: serde_json::Value = serde_json::from_str(MANIFEST).ok()?;
-        let pack = manifest.pointer(&format!("/packs/{NAME}"))?;
+        let pack = manifest.pointer(&format!("/packs/{name}"))?;
         Some(Pack {
+            name,
             version: pack.get("version")?.as_str()?.into(),
             sha256: pack.get("sha256")?.as_str()?.into(),
             size: pack.get("size")?.as_u64()?,
@@ -54,7 +62,11 @@ impl Pack {
 
     /// The archive's address on the data host.
     pub fn url(&self) -> String {
-        format!("{DATA_HOST}/packs-{v}/{NAME}-{v}.tar.gz", v = self.version)
+        format!(
+            "{DATA_HOST}/packs-{v}/{n}-{v}.tar.gz",
+            n = self.name,
+            v = self.version
+        )
     }
 
     /// Check the archive (size, SHA-256), unpack its file next to `dest` and move it into place.
@@ -537,6 +549,7 @@ mod tests {
             .map(|b| format!("{b:02x}"))
             .collect();
         let pack = Pack {
+            name: NAME,
             version: "1".into(),
             sha256: sum,
             size: archive.len() as u64,
