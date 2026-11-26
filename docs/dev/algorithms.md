@@ -644,11 +644,18 @@ Most exercises need a sentence with the word in it, so Vuurtoren looks for good 
 
 **Limits.** This approximates "i+1" (a sentence where only the target word is new) with **general word frequency, not your own learner model**. A Tatoeba sentence can still contain a common word that you have not learned.
 
-### 4.7 Lessons (being built, Nov 2026)
+### 4.7 Lessons
 
-Practice is turning into short lessons: about 10 words, 4–6 minutes. The design below is approved
-and is being built in steps; until a step is done, 4.8 describes how sessions are built now. The
-research behind each decision is in 4.9.
+Practice is short lessons now: about 10 words, 4–6 minutes. The code is
+`packages/core/src/practice/` (`select.ts`, `elo.ts`, `choose.ts`, `lesson.ts`, `known.ts`) and
+`apps/web/src/services/livePractice.ts` with `lessonSignals.ts`. When you pick fewer skills under
+Options, the older session builder of 4.8 is used instead. The research behind each decision is
+in 4.9.
+
+Not there yet: the list of lessons to start from (this page, before the next page, new words,
+mistakes), "meet it" cards and match pairs, the end-of-lesson screen, hearing a sentence and
+building it, the reading-level check on sentences, and leaving out words you reviewed on a card
+today.
 
 **The idea.** Your cards (Anki, or the app's own) already bring each word's meaning back on time.
 Practice doesn't repeat that. It trains what a card doesn't, on the same words: the word in a real
@@ -750,7 +757,22 @@ Sentences come from the sources of 4.6. Every sentence passes a check before an 
 - **The app's own cards** (native mode): a practice answer counts as a review of the word's due card
   only for building and typing, not for the choice exercises.
 
-#### 4.7.6 The lesson
+#### 4.7.6 Saying a sentence
+
+"Say this sentence" shows a short sentence (up to 7 words, every other word known to you) with its
+English and a speaker, so you can hear it first. You tap the mic, say it, and tap again. The
+recording is turned into a 16 kHz WAV in the browser and sent to the language server, which
+listens with Whisper base (Radford et al. 2023) running offline in sherpa-onnx (`listen.py`,
+the `asr-nl` pack, about 160 MB). It sits at the same step as building, because both make you
+produce the sentence (Webb 2005).
+
+Whisper base still mishears some fast Dutch, so the check is lenient: the sentence's words are
+lined up with what was heard, a word may be one letter off when it has four letters or more, and
+70% of the words is enough. Under that the strip shows what was heard, with the missing words
+underlined. Silence counts as nothing heard, because Whisper makes words up from silence. The
+exercise only comes into lessons when the language server says it can listen.
+
+#### 4.7.7 The lesson
 
 About 10 words (Short 5, Normal 10, Long 15), each once at its exercise, because recalling a word
 three times in a row is no better than once (Karpicke & Bauernschmidt 2011). A miss shows the right
@@ -758,7 +780,7 @@ answer with one line on why and a link to the grammar page, since explaining mis
 grammar outright both work (Li 2010; Norris & Ortega 2000; Spada & Tomita 2010). The word comes
 back once at the end, one step easier. Today's count is 1 lesson a day by default; there are no streaks.
 
-### 4.8 Building a session (now)
+### 4.8 Building a session (when you limit the skills)
 
 A session first picks the words, then the (word, skill) pairs that are due or new, and then an exercise kind for each (`packages/core/src/practice/session.ts`, `apps/web/src/services/livePractice.ts`):
 
@@ -787,6 +809,7 @@ A session first picks the words, then the (word, skill) pairs that are due or ne
 | Different sentences each time                    | contextual diversity: Chen, Miller & Ke 2026, _Applied Psycholinguistics_ (meta-analysis)                                                                                                     |
 | Words before the next page                       | Webb 2009, _Canadian Modern Language Review_ 65                                                                                                                                               |
 | Reading as the core, Practice as one part        | Nation 2007 (the four strands); Webb, Uchihara & Yanagisawa 2023; Yanagisawa, Webb & Uchihara 2020 (glossing)                                                                                 |
+| Listening to what you say                        | Radford et al. 2023, _ICML_ (Whisper)                                                                                                                                                         |
 | Synthetic voices are fine                        | Bione & Cardoso 2020, _Language Learning & Technology_                                                                                                                                        |
 | What Duolingo does                               | Settles & Meeder 2016, _ACL_ (half-life regression: error 0.128 vs 0.235 for Leitner); Duolingo report DRR-21-03 (reading and listening like 5 semesters, median 203 hours, no control group) |
 
