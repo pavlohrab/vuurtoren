@@ -1753,6 +1753,98 @@ svg.lucide {
 .ex-instruction {
   margin: 0;
 }
+/* Practice lessons (mock-practice-lessons.html): the question as a heading, the English under
+   it, the speaker, the Check button and the result strip at the bottom. */
+.ex-ask {
+  margin: 0;
+  font: 600 18px/1.3 var(--font-display);
+  color: var(--ink);
+}
+.ex-prompt-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.ex-en {
+  margin: -6px 0 0;
+  font-size: 16px;
+  color: var(--ink-muted);
+}
+.ex-card > .ex-en:first-of-type {
+  margin-top: -6px;
+}
+.ex-say {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: none;
+  background: var(--accent-soft);
+  color: var(--accent);
+  cursor: pointer;
+}
+.ex-foot {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 4px;
+}
+.ex-foot .ex-check {
+  flex: 1;
+  min-height: 46px;
+  font-size: 15px;
+}
+.ex-strip {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 4px -24px -28px;
+  padding: 16px 24px 20px;
+  border-radius: 0 0 var(--radius-card) var(--radius-card);
+}
+.ex-strip p {
+  margin: 0;
+}
+.ex-strip--right {
+  background: color-mix(in srgb, var(--success) 14%, var(--surface));
+}
+.ex-strip--wrong {
+  background: color-mix(in srgb, var(--danger) 12%, var(--surface));
+}
+.ex-strip .ex-verdict {
+  font: 600 17px var(--font-display);
+}
+.ex-strip--right .ex-verdict {
+  color: var(--success);
+}
+.ex-strip--wrong .ex-verdict {
+  color: var(--danger);
+}
+.ex-strip-dutch {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 18px;
+}
+.ex-metin {
+  font-size: 13px;
+  color: var(--ink-muted);
+}
+.ex-strip .ex-continue {
+  margin-top: 8px;
+  min-height: 46px;
+  font-size: 15px;
+}
+.ex-strip--right .ex-continue {
+  background: var(--success);
+  border-color: var(--success);
+}
+.ex-strip--wrong .ex-continue {
+  background: var(--danger);
+  border-color: var(--danger);
+}
 .ex-dutch {
   font-family: var(--font-reading);
 }
@@ -1849,10 +1941,13 @@ svg.lucide {
   gap: 8px;
 }
 .ex-built {
-  min-height: 56px;
-  padding: 8px;
-  align-items: center;
-  border-bottom: 1px solid var(--line);
+  min-height: 92px;
+  padding: 8px 0;
+  align-content: flex-start;
+  border-bottom: 2px solid var(--line);
+}
+.ex-pieces {
+  justify-content: center;
 }
 .ex-placeholder {
   color: var(--ink-muted);
@@ -1862,16 +1957,24 @@ svg.lucide {
 .ex-piece {
   font: inherit;
   font-size: 18px;
-  padding: 6px 12px;
+  padding: 7px 12px;
   color: var(--ink);
-  background: var(--surface-2);
+  background: var(--bg);
   border: 1px solid var(--line);
-  border-radius: var(--radius-control);
+  border-radius: 10px;
+  box-shadow: 0 2px 0 var(--line);
   cursor: pointer;
 }
 .ex-piece:disabled {
-  opacity: 0.35;
   cursor: default;
+}
+/* A tile in the sentence leaves its place empty in the bank. */
+.ex-piece--gone,
+.ex-piece--gone:disabled {
+  color: transparent;
+  background: var(--surface-2);
+  border-color: var(--surface-2);
+  box-shadow: none;
 }
 .ex-piece--placed {
   background: var(--surface);
@@ -1958,6 +2061,10 @@ svg.lucide {
 @media (max-width: 480px) {
   .ex-card {
     padding: 20px 16px;
+  }
+  .ex-strip {
+    margin: 4px -16px -20px;
+    padding: 14px 16px 18px;
   }
   .ex-prompt {
     font-size: 20px;

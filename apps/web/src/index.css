@@ -1086,7 +1086,29 @@
 .practice-top {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 12px;
+}
+.practice-top .ex-progress {
+  flex: 1;
+  height: 8px;
+}
+.practice-close {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: none;
+  border-radius: 50%;
+  background: none;
+  color: var(--ink-muted);
+  cursor: pointer;
+}
+/* A lesson is one centred column on a computer. */
+.practice-top,
+.practice-card {
+  max-width: 640px;
+  margin-inline: auto;
 }
 .practice-group {
   border: 0;

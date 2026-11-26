@@ -9,6 +9,7 @@ import {
   Dumbbell,
   ListChecks,
   MessagesSquare,
+  X,
 } from "lucide-react";
 import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import type { Exercise, ExerciseKind, Skill } from "@app/core";
@@ -555,12 +556,19 @@ function Session({
   return (
     <>
       <div className="practice-top">
-        <span className="k-hint">
+        <button
+          type="button"
+          className="practice-close"
+          onClick={requestEnd}
+          aria-label="End session"
+          title="End session (Esc)"
+        >
+          <X size={20} aria-hidden />
+        </button>
+        <ExerciseProgress done={index + (feedback ? 1 : 0)} total={exercises.length} />
+        <span className="k-sr">
           {index + 1} of {exercises.length}
         </span>
-        <Button variant="ghost" size="sm" onClick={requestEnd}>
-          End session <kbd className="ex-key">Esc</kbd>
-        </Button>
       </div>
       {confirmEnd ? (
         <p className="practice-confirm" role="group" aria-label="End the session?">
@@ -573,7 +581,6 @@ function Session({
           </Button>
         </p>
       ) : null}
-      <ExerciseProgress done={index + (feedback ? 1 : 0)} total={exercises.length} />
       <div className="practice-card">
         <ExerciseCard
           key={current.id}

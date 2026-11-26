@@ -153,7 +153,9 @@ describe("Practice start view", () => {
       <App services={services} history={createMemoryHistory({ initialEntries: ["/practice"] })} />,
     );
     expect(
-      await screen.findByText("The language server doesn’t answer, so there are fewer kinds of exercise today."),
+      await screen.findByText(
+        "The language server doesn’t answer, so there are fewer kinds of exercise today.",
+      ),
     ).toBeInTheDocument();
   });
 
@@ -191,7 +193,7 @@ describe("Practice session", () => {
       } else {
         await user.type(screen.getByLabelText("Your answer"), `${e.answer}{Enter}`);
       }
-      expect(await fed(/Correct\./)).toBeInTheDocument();
+      expect(await fed(/^Right$/)).toBeInTheDocument();
       await user.keyboard("{Enter}");
     }
 
@@ -235,7 +237,7 @@ describe("Practice session", () => {
     await begin(user);
     const wrong = list[0]!.choices!.findIndex((c) => c !== list[0]!.answer) + 1;
     await user.keyboard(String(wrong));
-    expect(await fed(/Not quite\./)).toBeInTheDocument();
+    expect(await fed(/^Not quite$/)).toBeInTheDocument();
     expect(screen.getByText(/Answer:/)).toHaveTextContent("canal");
     expect(answers[0]!.answer).toBe(list[0]!.choices![wrong - 1]);
     // choices are locked now
@@ -295,10 +297,10 @@ describe("Practice session", () => {
     const { user } = setup(list);
     await begin(user);
     await user.keyboard("d"); // schuur: de
-    expect(await fed(/Correct\./)).toBeInTheDocument();
+    expect(await fed(/^Right$/)).toBeInTheDocument();
     await user.keyboard("{Enter}");
     await user.keyboard("2"); // boek: het
-    expect(await fed(/Correct\./)).toBeInTheDocument();
+    expect(await fed(/^Right$/)).toBeInTheDocument();
   });
 
   it("reveals letters of a typed answer with ? and undoes scramble pieces with Backspace", async () => {
@@ -311,7 +313,7 @@ describe("Practice session", () => {
     expect(input).toHaveValue("");
     expect(screen.getByText("b…")).toBeInTheDocument();
     await user.type(input, "brug{Enter}");
-    expect(await fed(/Correct\./)).toBeInTheDocument();
+    expect(await fed(/^Right$/)).toBeInTheDocument();
     await user.keyboard("{Enter}");
 
     const words = await screen.findByRole("group", { name: "Words" });
@@ -335,7 +337,7 @@ describe("Practice session", () => {
     const { user } = setup(list);
     await begin(user);
     await user.keyboard("d");
-    expect(await fed(/Correct\./)).toBeInTheDocument();
+    expect(await fed(/^Right$/)).toBeInTheDocument();
     await user.keyboard("{Escape}");
     expect(screen.getByRole("group", { name: "End the session?" })).toBeInTheDocument();
     expect(screen.queryByText("Session complete")).not.toBeInTheDocument();
@@ -417,7 +419,7 @@ describe("Practice session", () => {
     expect(screen.getByText("bru…")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Show the answer" })).toBeInTheDocument();
     await user.type(input, "?");
-    expect(await fed(/Not quite\./)).toBeInTheDocument();
+    expect(await fed(/^Not quite$/)).toBeInTheDocument();
   });
 
   it("plays dictation with a Dutch voice", async () => {
@@ -440,7 +442,7 @@ describe("Practice session", () => {
     // the dictation is skipped asynchronously: wait for the gender exercise before typing
     await screen.findByText("de or het?");
     await user.keyboard("d");
-    expect(await fed(/Correct\./)).toBeInTheDocument();
+    expect(await fed(/^Right$/)).toBeInTheDocument();
     await user.keyboard("{Enter}");
     expect(await screen.findByText(/1 listening exercise was skipped/)).toBeInTheDocument();
     expect(answers).toHaveLength(1);

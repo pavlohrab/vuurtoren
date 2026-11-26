@@ -188,11 +188,31 @@ export function ExerciseCard({
   const hintText =
     hints > 0 ? `${e.answer.slice(0, hints)}${hints < e.answer.length ? "…" : ""}` : "";
   const hintLabel = lastStep ? "Show answer" : "Hint";
+  // A Dutch word on its own can be heard before answering; a sentence only after (it would
+  // give the answer away).
+  const sayFirst = (e.kind === "meaning-choice" || e.kind === "gender") && onSpeak;
+  // The Dutch that is shown after answering: the whole sentence when there is one.
+  const resultDutch =
+    e.kind === "scramble" || e.kind === "dictation"
+      ? e.answer
+      : e.kind === "meaning-choice"
+        ? e.prompt.text
+        : (e.prompt.sentence ?? e.answer);
+  const englishLine =
+    !dutchPrompt || !e.prompt.translation || e.kind === "scramble" ? null : e.prompt.translation;
 
   return (
     <section className="ex-card" aria-label="Exercise" ref={cardRef}>
-      <p className="ex-instruction k-overline">{e.instruction}</p>
-      {mode !== "dictation" ? <PromptText text={e.prompt.text} dutch={dutchPrompt} /> : null}
+      <h2 className="ex-ask">{e.instruction}</h2>
+      {mode !== "dictation" ? (
+        <div className="ex-prompt-row">
+          {sayFirst ? (
+            <SpeakButton onClick={() => onSpeak(e.prompt.text)} label="Play the word" />
+          ) : null}
+          <PromptText text={e.prompt.text} dutch={dutchPrompt} />
+        </div>
+      ) : null}
+      {englishLine ? <p className="ex-en">{englishLine}</p> : null}
       {e.prompt.hint ? <p className="ex-hint">{e.prompt.hint}</p> : null}
 
       {mode === "dictation" ? (
@@ -249,9 +269,6 @@ export function ExerciseCard({
             aria-label="Your sentence"
             aria-live="polite"
           >
-            {picked.length === 0 ? (
-              <span className="ex-placeholder">Tap the words in order</span>
-            ) : null}
             {picked.map((i, n) => (
               <button
                 key={`${i}-${n}`}
@@ -269,33 +286,22 @@ export function ExerciseCard({
               <button
                 key={i}
                 type="button"
-                className="ex-piece"
+                className={cn("ex-piece", picked.includes(i) && "ex-piece--gone")}
                 disabled={answered || picked.includes(i)}
-                onClick={() => setPicked((cur) => [...cur, i])}
+                onClick={() => {
+                  setPicked((cur) => [...cur, i]);
+                  onSpeak?.(p);
+                }}
               >
                 {p}
               </button>
             ))}
           </div>
-          {!answered ? (
-            <div className="ex-actions">
-              <Button
-                variant="primary"
-                disabled={picked.length === 0}
-                onClick={() => submit(scrambleAnswer())}
-              >
-                Check
-              </Button>
-              <Button variant="ghost" disabled={picked.length === 0} onClick={() => setPicked([])}>
-                Clear
-              </Button>
-            </div>
-          ) : null}
         </div>
       ) : null}
 
       {mode === "typed" || mode === "dictation" ? (
-        <form className="ex-typed" onSubmit={onTypedSubmit}>
+        <form className="ex-typed" id={`ex-form-${e.id}`} onSubmit={onTypedSubmit}>
           {hintText ? (
             <p className="ex-letters ex-dutch" lang="nl" aria-live="polite">
               {hintText}
@@ -323,73 +329,105 @@ export function ExerciseCard({
               }
             }}
           />
-          {!answered ? (
-            <div className="ex-actions">
-              <Button variant="primary" type="submit" disabled={!text.trim()}>
-                Check
-              </Button>
-              <Button
-                variant="ghost"
-                onClick={revealHint}
-                aria-label={lastStep ? "Show the answer" : "Reveal a letter"}
-              >
-                {hintLabel} <kbd className="ex-key">?</kbd>
-              </Button>
-            </div>
-          ) : null}
         </form>
+      ) : null}
+
+      {!answered && (mode === "scramble" || mode === "typed" || mode === "dictation") ? (
+        <div className="ex-foot">
+          {mode === "scramble" ? (
+            <Button variant="ghost" disabled={picked.length === 0} onClick={() => setPicked([])}>
+              Clear
+            </Button>
+          ) : (
+            <Button
+              variant="ghost"
+              onClick={revealHint}
+              aria-label={lastStep ? "Show the answer" : "Reveal a letter"}
+            >
+              {hintLabel} <kbd className="ex-key">?</kbd>
+            </Button>
+          )}
+          {mode === "scramble" ? (
+            <Button
+              variant="primary"
+              className="ex-check"
+              disabled={picked.length === 0}
+              onClick={() => submit(scrambleAnswer())}
+            >
+              Check
+            </Button>
+          ) : (
+            <Button
+              variant="primary"
+              className="ex-check"
+              type="submit"
+              form={`ex-form-${e.id}`}
+              disabled={!text.trim()}
+            >
+              Check
+            </Button>
+          )}
+        </div>
       ) : null}
 
       {feedback ? (
         <div
-          className={cn(
-            "ex-feedback",
-            feedback.correct ? "ex-feedback--right" : "ex-feedback--wrong",
-          )}
+          className={cn("ex-strip", feedback.correct ? "ex-strip--right" : "ex-strip--wrong")}
           role="status"
         >
           <p className="ex-verdict">
-            {feedback.correct ? <Check size={16} aria-hidden /> : <X size={16} aria-hidden />}
-            {feedback.correct ? "Correct." : "Not quite."}
+            {feedback.correct ? <Check size={18} aria-hidden /> : <X size={18} aria-hidden />}
+            {feedback.correct ? "Right" : "Not quite"}
           </p>
-          {!feedback.correct || e.kind === "dictation" ? (
+          <p className="ex-strip-dutch ex-dutch" lang="nl">
+            {onSpeak ? (
+              <SpeakButton onClick={() => onSpeak(resultDutch)} label="Play the sentence" />
+            ) : null}
+            <span>
+              {onWord ? (
+                <WordText
+                  text={resultDutch}
+                  onWord={(form, el) => onWord(form, e.prompt.sentence ?? e.answer, el)}
+                />
+              ) : (
+                resultDutch
+              )}
+            </span>
+          </p>
+          {resultDutch !== e.answer && !feedback.correct ? (
             <p>
               Answer:{" "}
               <strong className="ex-dutch" lang="nl">
-                {onWord ? (
-                  <WordText
-                    text={e.answer}
-                    onWord={(form, el) => onWord(form, e.prompt.sentence ?? e.answer, el)}
-                  />
-                ) : (
-                  e.answer
-                )}
+                {e.answer}
               </strong>
             </p>
           ) : null}
+          {e.prompt.translation ? <p className="ex-translation">{e.prompt.translation}</p> : null}
           {feedback.note ? <p>{feedback.note}</p> : null}
           {e.explanation ? <p className="ex-explanation">{e.explanation}</p> : null}
-          {e.prompt.sentence ? (
-            <p className="ex-sentence ex-dutch" lang="nl">
-              {onWord ? (
-                <WordText
-                  text={e.prompt.sentence}
-                  onWord={(form, el) => onWord(form, e.prompt.sentence, el)}
-                />
-              ) : (
-                e.prompt.sentence
-              )}
+          {e.metIn ? (
+            <p className="ex-metin">
+              Where you met it:{" "}
+              <span className="ex-dutch" lang="nl">
+                {e.metIn.text}
+              </span>
             </p>
           ) : null}
-          {e.prompt.translation ? <p className="ex-translation">{e.prompt.translation}</p> : null}
-          <div className="ex-actions">
-            <Button variant="primary" onClick={onContinue}>
-              {continueLabel} <kbd className="ex-key">Enter</kbd>
-            </Button>
-          </div>
+          <Button variant="primary" className="ex-continue" onClick={onContinue}>
+            {continueLabel} <kbd className="ex-key">Enter</kbd>
+          </Button>
         </div>
       ) : null}
     </section>
+  );
+}
+
+/** The round speaker button next to Dutch text. */
+function SpeakButton({ onClick, label }: { onClick: () => void; label: string }) {
+  return (
+    <button type="button" className="ex-say" onClick={onClick} aria-label={label}>
+      <Volume2 size={15} aria-hidden />
+    </button>
   );
 }
 
