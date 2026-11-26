@@ -48,6 +48,8 @@ export interface ExerciseCardProps {
   topic?: { title: string; onOpen: () => void };
   /** "Say this sentence": what the language server heard in a recording. */
   onHear?: (recording: Blob) => Promise<string>;
+  /** "I can't talk now": skip speaking for the rest of the lesson. */
+  onSkipSpeaking?: () => void;
   /** "Say this sentence" was misheard: count it as right. */
   onSaidRight?: () => void;
   /** "Say this sentence" with the device's own recogniser (Android): it listens itself. */
@@ -118,6 +120,7 @@ export function ExerciseCard({
   onHear,
   listenLive,
   onSaidRight,
+  onSkipSpeaking,
 }: ExerciseCardProps) {
   const mode = exerciseMode(e);
   const answered = feedback !== null;
@@ -193,6 +196,28 @@ export function ExerciseCard({
         return;
       }
       if (mode === "pairs") return;
+      const typingNow = ev.target instanceof HTMLInputElement;
+      // Space hears the Dutch again: the sentence after answering, the word or sentence before.
+      // (A focused button keeps Space as its click.)
+      if (ev.key === " " && !typingNow && onSpeak && !(ev.target instanceof HTMLButtonElement)) {
+        const before =
+          e.kind === "meaning-choice" || e.kind === "gender" || e.kind === "say"
+            ? e.prompt.text
+            : e.kind === "listen-build" || e.kind === "dictation"
+              ? (e.prompt.speak ?? e.answer)
+              : null;
+        const text = answered ? resultDutch : before;
+        if (text) {
+          ev.preventDefault();
+          onSpeak(text);
+          return;
+        }
+      }
+      if (mode === "say" && !answered && /^s$/i.test(ev.key) && onSkipSpeaking) {
+        ev.preventDefault();
+        onSkipSpeaking();
+        return;
+      }
       if (answered) {
         // A focused button or word handles Enter itself (its click would otherwise fire a
         // second time, or a word would open and the card move on at once).
@@ -445,6 +470,11 @@ export function ExerciseCard({
                   }
                 }}
               >
+                {i < 9 ? (
+                  <sup className="ex-tile-n" aria-hidden>
+                    {i + 1}
+                  </sup>
+                ) : null}
                 {p}
               </button>
             ))}
@@ -453,7 +483,16 @@ export function ExerciseCard({
       ) : null}
 
       {mode === "say" && !answered ? (
-        <SayIt onHear={onHear} live={listenLive} onHeard={(heard) => submit(heard)} />
+        <>
+          <SayIt onHear={onHear} live={listenLive} onHeard={(heard) => submit(heard)} />
+          {onSkipSpeaking ? (
+            <div className="ex-foot">
+              <Button variant="ghost" onClick={onSkipSpeaking}>
+                I can&rsquo;t talk now <kbd className="ex-key">S</kbd>
+              </Button>
+            </div>
+          ) : null}
+        </>
       ) : null}
 
       {mode === "typed" || mode === "dictation" ? (
@@ -701,6 +740,18 @@ function SayIt({
     },
     [],
   );
+  // M starts and stops the mic, like a tap.
+  const toggle = useRef<() => void>(() => undefined);
+  useEffect(() => {
+    const key = (ev: KeyboardEvent) => {
+      if (!/^m$/i.test(ev.key) || ev.metaKey || ev.ctrlKey || ev.altKey) return;
+      if (ev.target instanceof HTMLInputElement || ev.target instanceof HTMLTextAreaElement) return;
+      ev.preventDefault();
+      toggle.current();
+    };
+    window.addEventListener("keydown", key);
+    return () => window.removeEventListener("keydown", key);
+  }, []);
   if (!onHear && !live) return <p className="ex-hint">Speaking needs the language server.</p>;
   /** The phone listens itself and stops after a pause, or on the second tap. */
   const startLive = async (l: NonNullable<typeof live>) => {
@@ -779,6 +830,10 @@ function SayIt({
       setWhy("Couldn't hear that. Try again.");
       setState("idle");
     }
+  };
+  toggle.current = () => {
+    if (state === "listening") return;
+    void (state === "on" ? stop() : start());
   };
   return (
     <div className="ex-say-it">

@@ -2080,6 +2080,29 @@ svg.lucide {
   box-shadow: 0 2px 0 var(--line);
   cursor: pointer;
 }
+.ex-piece {
+  position: relative;
+}
+/* The tile's key (1–9), fixed to the tile; only where there is a keyboard. */
+.ex-tile-n {
+  position: absolute;
+  top: -8px;
+  left: -6px;
+  font: 500 10px/1 var(--font-mono);
+  padding: 2px 4px;
+  border-radius: 4px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  color: var(--ink-muted);
+}
+.ex-piece--gone .ex-tile-n {
+  display: none;
+}
+@media (hover: none), (max-width: 700px) {
+  .ex-tile-n {
+    display: none;
+  }
+}
 .ex-piece:disabled {
   cursor: default;
 }

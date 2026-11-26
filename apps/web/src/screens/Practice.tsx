@@ -788,6 +788,12 @@ function Session({
     }
   };
 
+  /** "I can't talk now": no more speaking in this lesson; this one goes by unanswered. */
+  const skipSpeaking = () => {
+    setExercises((xs) => xs.filter((x, i) => i <= index || x.kind !== "say"));
+    advance(answeredRef.current, skippedRef.current);
+  };
+
   if (!current || skipDictation) return null;
   const last = index === exercises.length - 1;
   // After a miss, a link to the grammar page (the answers so far are already saved).
@@ -839,6 +845,7 @@ function Session({
           onWord={(form, sentence, el) => inspector.open(form, sentence, el)}
           {...(topic ? { topic } : {})}
           onSaidRight={() => void saidRight()}
+          onSkipSpeaking={skipSpeaking}
           {...(phoneListens
             ? { listenLive: { start: androidListen, stop: androidStopListening } }
             : {})}
