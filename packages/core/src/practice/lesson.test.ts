@@ -111,4 +111,23 @@ describe("a lesson (4.7)", () => {
     expect([...weakPoints(answers, NOW)]).toEqual(["gender"]);
     expect(weakPoints(answers.slice(0, 1), NOW).size).toBe(0);
   });
+
+  it("never builds a sentence that has no English", () => {
+    const bare = word("brug", {
+      state: "known",
+      pKnown: 0.97,
+      sentences: [sentence("De brug over de gracht is dicht.", "brug")],
+    });
+    const lesson = buildLesson(
+      {
+        words: [bare, ...pool],
+        signals: [sig("brug", { state: "known", pKnown: 0.97 })],
+        states: [],
+        answers: [],
+        now: NOW,
+      },
+      createRng(7),
+    );
+    expect(lesson.some((e) => e.kind === "scramble")).toBe(false);
+  });
 });

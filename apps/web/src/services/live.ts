@@ -171,6 +171,7 @@ export function createLiveServices(
     dictionary: dictionary.dictionaryFor,
     composeGlosses,
     data: practiceData,
+    translate: dictionary.translateSentences,
     topicMaterial: grammar.topicMaterial,
     aiSentences: { ready: ai.aiReady, fill: ai.fillSentences },
     evidence,

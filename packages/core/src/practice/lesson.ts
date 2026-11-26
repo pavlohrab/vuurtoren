@@ -43,7 +43,8 @@ function candidates(word: WordData, pool: readonly WordData[], rng: Rng): Exerci
   const out: Exercise[] = [];
   for (const kind of KINDS) {
     const ex = generate(kind, word, pool, rng);
-    if (ex) out.push(ex);
+    // Building needs the sentence's English on top (4.7.4); without it, no building.
+    if (ex && !(ex.kind === "scramble" && !ex.prompt.translation)) out.push(ex);
   }
   return out;
 }

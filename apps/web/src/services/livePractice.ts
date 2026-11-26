@@ -64,6 +64,8 @@ export interface LivePracticeDeps {
     pos: string,
   ) => { glosses: string[]; article: string | undefined };
   data: PracticeData;
+  /** Offline sentence translation (cached); missing entries when it is unavailable. */
+  translate?: (sentences: string[]) => Promise<Map<string, string>>;
   /** Hit sentences and words of a grammar topic (topic exercises). */
   topicMaterial?: (detects: string[]) => Promise<TopicMaterial>;
   /** AI example sentences (docs/ai.md); absent or not ready = no generation. */
@@ -115,6 +117,8 @@ const goodSentences = (xs: readonly ExampleSentence[]) =>
 const TOPIC_WORDS = 40;
 
 const DEFAULT_SIZE = 20;
+/** Most sentences translated for one lesson (the translator is local but not instant). */
+const MAX_TRANSLATE = 80;
 /** Words in a lesson (algorithms.md 4.7.6). */
 const LESSON_WORDS = 10;
 /** Exercise kinds the engine knows (older answers of a removed kind are skipped). */
@@ -445,6 +449,7 @@ export function createLivePractice(deps: LivePracticeDeps) {
       const report = await fillWithAI(lang, words, aiByKey, size);
       opts.onAISentences?.(report);
     }
+    await addTranslations(words);
     const zipf = new Map(words.map((w) => [w.key, w.zipf]));
     const inPool = new Set(pool);
     const signals = lessonSignals(
@@ -466,6 +471,26 @@ export function createLivePractice(deps: LivePracticeDeps) {
       rng,
     );
     return padWordChoices(exercises, words, lang);
+  }
+
+  /**
+   * The English for sentences that have none (mostly ones from your texts), from the offline
+   * translator. A sentence still without English is not used for building (algorithms.md 4.7.4).
+   */
+  async function addTranslations(words: WordData[]): Promise<void> {
+    if (!deps.translate) return;
+    const missing = [
+      ...new Set(
+        words.flatMap((w) => w.sentences.filter((x) => !x.translation).map((x) => x.text)),
+      ),
+    ].slice(0, MAX_TRANSLATE);
+    if (missing.length === 0) return;
+    const got = await deps.translate(missing).catch(() => new Map<string, string>());
+    for (const w of words)
+      for (const x of w.sentences) {
+        const t = !x.translation ? got.get(x.text) : undefined;
+        if (t) x.translation = t;
+      }
   }
 
   async function startPractice(opts: PracticeOptions = {}): Promise<Exercise[]> {
