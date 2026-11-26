@@ -4,7 +4,7 @@ title: The imperative
 level: A1
 group: verbs
 order: 13
-summary: For a command, use the stem of the verb at the start of the sentence, without a subject; small words like even and maar make it friendlier.
+summary: For a command, use the stem of the verb at the start of the sentence, without a subject. Small words like even and maar make it friendlier.
 detects: [imperative]
 practice: [scramble]
 related: [present-tense, separable-verbs, modal-particles, modal-verbs]

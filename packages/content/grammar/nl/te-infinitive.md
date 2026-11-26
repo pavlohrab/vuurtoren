@@ -4,7 +4,7 @@ title: Infinitive with or without te
 level: B1
 group: infinitives
 order: 36
-summary: Modal verbs and a few others take a bare infinitive; most other verbs, and many nouns and adjectives, take te + infinitive.
+summary: Modal verbs and a few others take a bare infinitive. Most other verbs, and many nouns and adjectives, take te + infinitive.
 detects: [te-infinitive]
 practice: [scramble]
 related: [om-te-infinitive, modal-verbs, separable-verbs, progressive, verb-clusters]
@@ -30,7 +30,7 @@ When one verb is followed by another verb in the infinitive, you need to know wh
 **te** after:
 
 - most other verbs: _proberen, beginnen, vergeten, hopen, besluiten, durven, weigeren, beloven, van plan zijn_: _Ik probeer vroeg te slapen._
-- _hoeven_ (with a negative), _hebben te_ (have to), _zijn te_ (can be), _staan/zitten/liggen/lopen te_ (doing right now — see progressive);
+- _hoeven_ (with a negative), _hebben te_ (have to), _zijn te_ (can be), _staan/zitten/liggen/lopen te_ (doing right now, see progressive);
 - nouns and adjectives: _Ik heb geen tijd om te koken_ / _Het is moeilijk te zeggen._
 
 Many te-verbs can also take _om te_ (see the next topic), especially when the infinitive part is long: _Ik probeer (om) elke dag te lopen._

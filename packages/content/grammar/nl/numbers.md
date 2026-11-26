@@ -4,7 +4,7 @@ title: Numbers, ordinals and amounts
 level: A1
 group: numbers
 order: 9
-summary: From 21 to 99 the ones come first (eenentwintig); ordinals end in -de or -ste, and amounts, fractions and sums follow simple patterns.
+summary: From 21 to 99 the ones come first (eenentwintig). Ordinals end in -de or -ste, and amounts, fractions and sums follow simple patterns.
 practice: [dictation]
 related: [dates-and-time, er, adjective-inflection]
 sources:

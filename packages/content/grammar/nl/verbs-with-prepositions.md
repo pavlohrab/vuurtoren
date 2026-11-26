@@ -4,7 +4,7 @@ title: Verbs and adjectives with fixed prepositions
 level: B1
 group: small-words
 order: 44
-summary: Many verbs and adjectives always go with one preposition (wachten op, denken aan, trots op); learn them as a pair.
+summary: Many verbs and adjectives always go with one preposition (wachten op, denken aan, trots op). Learn them as a pair.
 practice: [cloze-choice]
 related: [prepositions, pronominal-adverbs, reflexive-verbs, er]
 detects: [verbs-with-prepositions]

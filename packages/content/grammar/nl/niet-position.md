@@ -4,7 +4,7 @@ title: Where does niet go?
 level: B1
 group: word-order
 order: 33
-summary: Niet goes after the verb and its definite objects, but before adjectives, most prepositional phrases and the verb parts at the end; to negate one word, put niet right before it.
+summary: Niet goes after the verb and its definite objects, but before adjectives, most prepositional phrases and the verb parts at the end. To negate one word, put niet right before it.
 detects: [niet-position, negation]
 practice: [scramble]
 related: [negation, verb-bracket, time-manner-place]

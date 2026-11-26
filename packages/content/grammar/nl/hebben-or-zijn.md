@@ -4,7 +4,7 @@ title: hebben or zijn in the perfect
 level: A2
 group: verbs
 order: 21
-summary: Most verbs take hebben; verbs of change, of going somewhere, and blijven and zijn themselves take zijn.
+summary: Most verbs take hebben. Verbs of change, of going somewhere, and blijven and zijn themselves take zijn.
 detects: [perfect-tense]
 practice: [perfect]
 related: [perfect-tense, past-perfect, irregular-verbs]

@@ -24,7 +24,7 @@ An adjective **after** the noun, with _zijn_, _worden_ or _blijven_, never chang
 
 An adjective **before** a noun usually adds **-e**: _de grote stad_, _een oude man_, _mooie bloemen_.
 
-There is **one** case without -e: a **singular het-word** that is **not definite** — so after _een_, _geen_, _elk/ieder_, _veel_, _wat_, _zo'n_, or with no article: _een groot huis_, _geen warm water_, _lekker brood_.
+There is **one** case without -e: a **singular het-word** that is **not definite**. That is after _een_, _geen_, _elk/ieder_, _veel_, _wat_, _zo'n_, or with no article: _een groot huis_, _geen warm water_, _lekker brood_.
 
 Definite words always give -e, also with het-words: _het grote huis_, _dit grote huis_, _mijn grote huis_.
 

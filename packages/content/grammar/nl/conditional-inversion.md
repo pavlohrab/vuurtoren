@@ -4,7 +4,7 @@ title: Conditions without als (Had je gebeld, dan…)
 level: B2
 group: clauses
 order: 58
-summary: A condition can start with the verb instead of als (Heb je vragen, dan…; Had ik het geweten, dan…; Mocht u…); the result clause usually starts with dan.
+summary: A condition can start with the verb instead of als, as in Heb je vragen, dan… or Mocht u…. The second part usually starts with dan.
 detects: [conditional-inversion]
 practice: [scramble]
 related: [subordinate-clauses, conditional, past-perfect, conditional-perfect, register]
@@ -36,7 +36,7 @@ Common types:
 - **mocht** — "should (you)", polite and very common in formal letters and emails: _Mocht u nog vragen hebben, dan kunt u contact met ons opnemen._
 - **zou** — a hypothetical: _Zou het misgaan, dan heb ik een plan B._
 
-Do not confuse it with a **wish** using _maar_ (no dan-clause): _Had ik het maar geweten!_ — If only I had known!
+Do not confuse it with a **wish** using _maar_ (no dan-clause): _Had ik het maar geweten!_ (If only I had known!)
 
 ### Pattern
 

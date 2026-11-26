@@ -4,7 +4,7 @@ title: The passive (worden and zijn)
 level: B1
 group: verbs
 order: 41
-summary: Worden + past participle says that something is being done; zijn + participle is the perfect of the passive (it has been done); door introduces who does it.
+summary: Worden + past participle says that something is being done. Zijn + participle is the perfect of the passive (it has been done). Door introduces who does it.
 detects: [passive]
 practice: [scramble]
 related: [impersonal-passive, perfect-tense, participles, modal-verbs]
@@ -37,7 +37,7 @@ So _is gerepareerd_ is a **finished** action (or the state after it), while _wor
 
 **With a modal**, the modal is conjugated and _worden_ comes at the end next to the participle: _Dit moet vandaag worden gedaan_ or _…gedaan worden_.
 
-**Future**: _zal worden + participle_ (formal) — in practice the present is used: _De winnaar wordt morgen bekendgemaakt._
+**Future**: _zal worden + participle_ (formal). In practice people use the present: _De winnaar wordt morgen bekendgemaakt._
 
 The passive is common in news, instructions and formal texts. In speech, Dutch often uses _men_, _ze_ or _je_ instead: _Ze hebben de weg afgesloten._
 

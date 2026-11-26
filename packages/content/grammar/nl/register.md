@@ -4,7 +4,7 @@ title: Formal and informal Dutch (hetgeen, men, gij, emails)
 level: C1
 group: style
 order: 62
-summary: Written and formal Dutch uses words and forms you rarely hear (hetgeen, welke, men, derhalve, ten slotte), while speech shortens and simplifies; learn to recognise the first and to use the second naturally.
+summary: Written and formal Dutch uses words you rarely hear (hetgeen, welke, men, derhalve, ten slotte), and speech is shorter and simpler. Learn to recognise the first and to use the second.
 practice: [meaning-choice]
 related: [flemish-dutch, subjunctive, relative-pronouns, extended-attributes, modal-particles]
 sources:

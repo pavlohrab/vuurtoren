@@ -4,7 +4,7 @@ title: Joining main clauses (en, maar, want, of, dus)
 level: A2
 group: clauses
 order: 29
-summary: En, maar, want, of and dus join two main clauses without changing the word order; pairs like zowel … als and niet alleen … maar ook join words and phrases.
+summary: En, maar, want, of and dus join two main clauses without changing the word order. Pairs like zowel … als and niet alleen … maar ook join words and phrases.
 detects: [conjunctions]
 practice: [scramble]
 related: [subordinate-clauses, conjunctional-adverbs, inversion]

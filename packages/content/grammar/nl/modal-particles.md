@@ -4,7 +4,7 @@ title: Little words that add tone (even, maar, toch, wel, eens…)
 level: B1
 group: small-words
 order: 49
-summary: Small unstressed words such as even, maar, toch, wel, eens, hoor, nou and gewoon change the tone of a sentence — friendlier, softer, more insistent — without changing its facts.
+summary: Small unstressed words such as even, maar, toch, wel, eens, hoor, nou and gewoon make a sentence friendlier, softer or more insistent, without changing its facts.
 practice: [cloze-choice]
 related: [imperative, adverbs, negation, register]
 detects: [modal-particles]

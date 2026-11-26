@@ -4,7 +4,7 @@ title: would and should (zou, zouden)
 level: B1
 group: verbs
 order: 39
-summary: Zou/zouden + infinitive means "would"; it is used for wishes, polite requests, advice, unreal situations and the future seen from the past.
+summary: Zou/zouden + infinitive means "would". It is used for wishes, polite requests, advice, unreal situations and the future seen from the past.
 detects: [conditional]
 practice: [scramble]
 related: [future, conditional-perfect, modal-verbs, conditional-inversion]

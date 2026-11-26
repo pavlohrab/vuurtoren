@@ -4,7 +4,7 @@ title: Strong and irregular verbs
 level: A2
 group: verbs
 order: 23
-summary: Strong verbs change their vowel in the past (lopen – liep – gelopen); they fall into a few vowel patterns, and a handful of verbs are fully irregular.
+summary: Strong verbs change their vowel in the past (lopen – liep – gelopen). They fall into a few vowel patterns, and a handful of verbs are fully irregular.
 detects: [imperfect-tense]
 practice: [verb-form]
 related: [imperfect-tense, perfect-tense, hebben-or-zijn]

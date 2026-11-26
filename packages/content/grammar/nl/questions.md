@@ -4,7 +4,7 @@ title: Questions and question words
 level: A1
 group: word-order
 order: 7
-summary: A yes/no question starts with the verb; an open question starts with a question word, followed by the verb.
+summary: A yes/no question starts with the verb. An open question starts with a question word, followed by the verb.
 detects: [questions]
 practice: [scramble]
 related: [word-order-v2, present-tense, indirect-speech, pronominal-adverbs]

@@ -4,7 +4,7 @@ title: The present tense
 level: A1
 group: verbs
 order: 3
-summary: Take the stem of the verb, add -t for jij, u and hij/zij/het, and -en for all plurals; hebben and zijn are irregular.
+summary: Take the stem of the verb, add -t for jij, u and hij/zij/het, and -en for all plurals. Hebben and zijn are irregular.
 practice: [verb-form]
 related: [spelling-rules, personal-pronouns, questions, imperative]
 sources:

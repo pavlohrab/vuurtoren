@@ -4,7 +4,7 @@ title: Possessives (mijn, jouw, van mij, de mijne)
 level: A1
 group: pronouns
 order: 11
-summary: Mijn, jouw, zijn, haar, ons/onze, jullie, hun and uw say whose something is; van + name, -s and de/het mijne do the same job in other ways.
+summary: Mijn, jouw, zijn, haar, ons/onze, jullie, hun and uw say whose something is. Van + name, -s and de/het mijne do the same job in other ways.
 detects: [possessive-pronouns]
 practice: [scramble]
 related: [personal-pronouns, object-pronouns, adjective-inflection, demonstratives]

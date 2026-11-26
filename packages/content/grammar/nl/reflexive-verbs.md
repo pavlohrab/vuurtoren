@@ -4,7 +4,7 @@ title: Reflexive verbs (zich wassen)
 level: A2
 group: verbs
 order: 31
-summary: Some verbs need a pronoun that points back to the subject, such as me, je, zich or ons; zichzelf adds emphasis, elkaar means "each other".
+summary: Some verbs need a pronoun that points back to the subject, such as me, je, zich or ons. Zichzelf adds emphasis, elkaar means "each other".
 detects: [reflexive-verbs]
 practice: [scramble]
 related: [object-pronouns, personal-pronouns, perfect-tense]

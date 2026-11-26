@@ -4,7 +4,7 @@ title: this and that (deze, dit, die, dat)
 level: A1
 group: pronouns
 order: 12
-summary: Deze and die go with de-words and plurals, dit and dat with singular het-words; deze and dit point to something near.
+summary: Deze and die go with de-words and plurals, dit and dat with singular het-words. Deze and dit point to something near.
 detects: [demonstratives]
 practice: [gender, scramble]
 related: [de-het, relative-pronouns, adjective-inflection]

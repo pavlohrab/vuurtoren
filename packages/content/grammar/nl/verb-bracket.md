@@ -23,7 +23,7 @@ Many Dutch sentences have **two verb parts**. They do not stand together, as in 
 - the **conjugated verb** stays in **second place**;
 - the **other verb part** goes to the **end** of the clause.
 
-Everything else — objects, time, place, _niet_ — goes **inside** the bracket.
+Everything else goes **inside** the bracket: objects, time, place and _niet_.
 
 The end part can be:
 

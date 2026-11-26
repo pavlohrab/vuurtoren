@@ -4,7 +4,7 @@ title: One er, two jobs (Er liggen er drie; er wordt veel over gepraat)
 level: C1
 group: small-words
 order: 60
-summary: When two uses of er meet in the same clause, Dutch normally says er only once; a second er appears only when the first one stands at the very start.
+summary: When two uses of er meet in the same clause, Dutch normally says er only once. A second er appears only when the first one stands at the very start.
 detects: [er]
 practice: [scramble]
 related: [er, pronominal-adverbs, impersonal-passive]

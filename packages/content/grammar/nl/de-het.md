@@ -4,7 +4,7 @@ title: de, het and een
 level: A1
 group: nouns
 order: 4
-summary: Every noun is a de-word or a het-word; all plurals and most nouns take de, all diminutives take het, and een is the same for both.
+summary: Every noun is a de-word or a het-word. All plurals and most nouns take de, all diminutives take het, and een is the same for both.
 detects: [diminutives, demonstratives]
 practice: [gender]
 related: [diminutives, demonstratives, adjective-inflection, plural-nouns, word-formation]

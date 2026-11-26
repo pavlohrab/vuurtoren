@@ -4,7 +4,7 @@ title: Relative clauses (die, dat, wat, waar-)
 level: B1
 group: clauses
 order: 34
-summary: A relative clause describes a noun; it starts with die (de-words, plurals) or dat (het-words), or with waar + preposition, and its verb goes to the end.
+summary: A relative clause says more about a noun. It starts with die (de-words, plurals), dat (het-words) or waar + preposition, and its verb goes to the end.
 detects: [relative-pronouns]
 practice: [scramble]
 related: [subordinate-clauses, demonstratives, pronominal-adverbs, register]

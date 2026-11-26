@@ -30,7 +30,7 @@ Common subordinating conjunctions:
 
 - **dat** (that), **of** (whether, if)
 - **omdat** (because), **doordat** (because, as a result of), **zodat** (so that)
-- **als** (if, when — present/future), **wanneer** (when), **toen** (when — once in the past)
+- **als** (if, or when about now or the future), **wanneer** (when), **toen** (when, once in the past)
 - **terwijl** (while), **voordat** (before), **nadat** (after), **totdat** (until), **sinds**, **zodra** (as soon as)
 - **hoewel** (although), **tenzij** (unless), **alsof** (as if)
 

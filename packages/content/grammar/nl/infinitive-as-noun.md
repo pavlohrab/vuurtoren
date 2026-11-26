@@ -4,7 +4,7 @@ title: The infinitive as a noun (het lezen van…)
 level: B1
 group: infinitives
 order: 51
-summary: Any infinitive can be used as a het-word noun (het lezen, roken is ongezond), often where English uses an -ing form; objects follow with van or come before it.
+summary: Any infinitive can be used as a het-word noun (het lezen, roken is ongezond), often where English uses an -ing form. Objects follow with van or come before it.
 practice: [gender]
 related: [participles, om-te-infinitive, de-het, word-formation]
 sources:

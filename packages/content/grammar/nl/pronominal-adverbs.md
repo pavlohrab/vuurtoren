@@ -34,7 +34,7 @@ When the noun after a preposition is a **thing** (not a person), Dutch does **no
 
 **Spelling changes**: _met_ → **mee** (_ermee, daarmee_), _tot_ → **toe** (_ertoe, waartoe_). _naar_ often becomes _naartoe_ for direction: _Ik ga erheen / ernaartoe._
 
-**Splitting.** In a sentence, _er/daar/hier/waar_ usually stays early and the preposition moves towards the end, just before the verbs at the end. Other words — time, _niet_, objects — go in between: _Ik heb **er** gisteren lang **over** nagedacht._ _**Daar** heb ik geen zin **in**._ Written together is also correct when nothing stands between: _Ik denk erover._
+**Splitting.** In a sentence, _er/daar/hier/waar_ usually stays early and the preposition moves towards the end, just before the verbs at the end. Other words, like time, _niet_ and objects, go in between: _Ik heb **er** gisteren lang **over** nagedacht._ _**Daar** heb ik geen zin **in**._ Written together is also correct when nothing stands between: _Ik denk erover._
 
 **People** keep the normal pronoun: _Ik wacht op haar_, _Met wie praat je?_ (In speech _waar … mee_ is also heard for people.)
 

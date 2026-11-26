@@ -4,7 +4,7 @@ title: The impersonal passive (er wordt gedanst)
 level: B2
 group: verbs
 order: 55
-summary: Er + worden + participle, with no subject at all, describes an activity going on without saying who does it; it also works with modals and in the perfect.
+summary: Er + worden + participle, with no subject at all, describes an activity going on without saying who does it. It also works with modals and in the perfect.
 detects: [impersonal-passive]
 practice: [scramble]
 related: [passive, er, modal-verbs]

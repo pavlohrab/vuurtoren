@@ -4,7 +4,7 @@ title: The simple past (werkte, liep)
 level: A2
 group: verbs
 order: 22
-summary: Weak verbs add -te(n) or -de(n) to the stem ('t kofschip again); strong verbs change their vowel; there is one form for the singular and one for the plural.
+summary: Weak verbs add -te(n) or -de(n) to the stem ('t kofschip again). Strong verbs change their vowel. There is one form for the singular and one for the plural.
 detects: [imperfect-tense]
 practice: [verb-form]
 related: [perfect-tense, irregular-verbs, past-perfect]

@@ -4,7 +4,7 @@ title: Verb clusters and "infinitive instead of participle"
 level: B2
 group: word-order
 order: 53
-summary: When three or more verbs meet at the end of a clause, the conjugated verb usually comes first in the group; and a modal, laten, zien and similar verbs use their infinitive instead of a participle (heeft moeten werken).
+summary: When three or more verbs meet at the end of a clause, the conjugated verb usually comes first. A modal, laten, zien and similar verbs then use their infinitive instead of a participle (heeft moeten werken).
 detects: [verb-clusters]
 practice: [scramble]
 related: [verb-bracket, modal-verbs, laten, subordinate-clauses, perfect-tense, progressive]

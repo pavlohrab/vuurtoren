@@ -4,7 +4,7 @@ title: Comparing (groter, grootst)
 level: A2
 group: adjectives
 order: 26
-summary: Add -er for "more" (groter dan) and -st for "most" (het grootst); a few common words are irregular.
+summary: Add -er for "more" (groter dan) and -st for "most" (het grootst). A few common words are irregular.
 detects: [comparison]
 practice: [scramble]
 related: [adjective-inflection, adverbs, spelling-rules]

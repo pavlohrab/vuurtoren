@@ -4,7 +4,7 @@ title: The perfect tense (heb gewerkt)
 level: A2
 group: verbs
 order: 20
-summary: Hebben or zijn plus a past participle; regular participles are ge- + stem + -t or -d, and 't kofschip tells you which.
+summary: Hebben or zijn plus a past participle. Regular participles are ge- + stem + -t or -d, and 't kofschip tells you which.
 detects: [perfect-tense]
 practice: [perfect]
 related:

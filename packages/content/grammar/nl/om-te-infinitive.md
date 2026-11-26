@@ -4,7 +4,7 @@ title: om … te, zonder te, door te
 level: B1
 group: infinitives
 order: 37
-summary: Om … te + infinitive expresses a purpose ("in order to") or completes a noun or adjective; zonder te, door te and in plaats van te build similar phrases.
+summary: Om … te + infinitive expresses a purpose ("in order to") or completes a noun or adjective. Zonder te, door te and in plaats van te build similar phrases.
 detects: [om-te-infinitive]
 practice: [scramble]
 related: [te-infinitive, subordinate-clauses, infinitive-as-noun]

@@ -4,7 +4,7 @@ title: Old wish forms (leve de koning, het zij zo)
 level: C1
 group: verbs
 order: 61
-summary: Dutch once had a subjunctive (stem + -e); today it survives only in fixed phrases, wishes, slogans and old-style instructions, which you should recognise and use as set expressions.
+summary: Dutch once had a subjunctive (stem + -e). Today it lives on in fixed phrases, wishes and old-style instructions, so learn those as set phrases.
 practice: [meaning-choice]
 related: [register, conditional, imperative]
 sources:

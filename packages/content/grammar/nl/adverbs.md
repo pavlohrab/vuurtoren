@@ -4,7 +4,7 @@ title: Adverbs (how, when, where, how much)
 level: B1
 group: adjectives
 order: 48
-summary: Most adjectives work as adverbs without any ending; small adverbs of degree, time and place (heel, al, nog, pas, hier, daar) have meanings that are worth learning one by one.
+summary: Most adjectives work as adverbs without any ending. Small words of degree, time and place (heel, al, nog, pas, hier, daar) are worth learning one by one.
 practice: [cloze-choice]
 related: [comparison, time-manner-place, modal-particles, pronominal-adverbs]
 sources:
