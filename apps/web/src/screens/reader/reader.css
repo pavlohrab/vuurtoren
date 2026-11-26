@@ -1755,3 +1755,32 @@ dl.card-meaning dd,
   overflow: visible;
   pointer-events: none;
 }
+
+/* The other face of a turning leaf on a spread: the next page, bent onto the flap. */
+.book-flapwrap {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.book-flapwrap > .book-leaf {
+  transform-origin: 0 0;
+  will-change: transform;
+}
+
+/* Paper: a fine grain over the page and every turning leaf, faint enough to leave the text
+   alone. The grain is drawn once (an SVG noise tile) and only tinted per theme. */
+.book,
+.book-leaf,
+.book[data-spread] .book-paper {
+  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .42 0 0 0 0 .34 0 0 0 0 .24 0 0 0 .11 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-image:
+    var(--grain),
+    radial-gradient(ellipse at 50% 40%, transparent 55%, color-mix(in srgb, var(--ink) 5%, transparent));
+}
+.book[data-spread] {
+  background-image: none;
+}
+/* On a spread a leaf is only its paper: around it the book's cover underneath shows through. */
+.book[data-spread] .book-leaf {
+  background: none;
+}
