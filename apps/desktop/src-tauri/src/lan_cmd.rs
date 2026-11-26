@@ -203,26 +203,52 @@ fn firewalld_command(port: u16) -> String {
     format!("sudo firewall-cmd --permanent --add-port={port}/tcp && sudo firewall-cmd --reload")
 }
 
-/// Is the phone port open? Asks firewalld (no admin needed); other systems: unknown.
+/// Run `firewall-cmd` with a time limit: with D-Bus stuck it would wait 25 s for nothing.
+/// Some(success) when it answered in time, None otherwise.
+#[cfg(target_os = "linux")]
+fn firewall_cmd(arg: &str) -> Option<bool> {
+    use std::process::{Command, Stdio};
+    use std::time::{Duration, Instant};
+    let mut child = Command::new("firewall-cmd")
+        .arg(arg)
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()
+        .ok()?;
+    let until = Instant::now() + Duration::from_secs(3);
+    loop {
+        if let Ok(Some(status)) = child.try_wait() {
+            return Some(status.success());
+        }
+        if Instant::now() >= until {
+            let _ = child.kill();
+            let _ = child.wait();
+            return None;
+        }
+        std::thread::sleep(Duration::from_millis(50));
+    }
+}
+
+/// Is the phone port open? Asks firewalld (no admin needed, at most a few seconds, off the
+/// window's thread); other systems: unknown.
 #[tauri::command]
-pub fn lan_firewall(port: u16) -> FirewallInfo {
+pub async fn lan_firewall(port: u16) -> FirewallInfo {
+    tauri::async_runtime::spawn_blocking(move || firewall_info(port))
+        .await
+        .unwrap_or(FirewallInfo {
+            tool: None,
+            open: None,
+            command: None,
+        })
+}
+
+fn firewall_info(port: u16) -> FirewallInfo {
     #[cfg(target_os = "linux")]
     {
-        use std::process::Command;
-        let running = Command::new("firewall-cmd")
-            .arg("--state")
-            .output()
-            .map(|o| o.status.success())
-            .unwrap_or(false);
-        if running {
-            let open = Command::new("firewall-cmd")
-                .arg(format!("--query-port={port}/tcp"))
-                .output()
-                .ok()
-                .map(|o| o.status.success());
+        if firewall_cmd("--state") == Some(true) {
             return FirewallInfo {
                 tool: Some("firewalld"),
-                open,
+                open: firewall_cmd(&format!("--query-port={port}/tcp")),
                 command: Some(firewalld_command(port)),
             };
         }
@@ -238,7 +264,13 @@ pub fn lan_firewall(port: u16) -> FirewallInfo {
 /// Open the phone port in firewalld for good: the system asks for the admin password (pkexec),
 /// once for both steps.
 #[tauri::command]
-pub fn lan_firewall_allow(port: u16) -> Result<(), String> {
+pub async fn lan_firewall_allow(port: u16) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || allow_firewall(port))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+fn allow_firewall(port: u16) -> Result<(), String> {
     #[cfg(target_os = "linux")]
     {
         use std::process::Command;
@@ -262,5 +294,21 @@ pub fn lan_firewall_allow(port: u16) -> Result<(), String> {
     {
         let _ = port;
         Err("Only firewalld on Linux can be opened from here.".to_string())
+    }
+}
+
+#[cfg(all(test, target_os = "linux"))]
+mod firewall_tests {
+    use super::*;
+
+    /// With firewalld absent, stopped or stuck on D-Bus, the check still answers in seconds.
+    #[test]
+    fn the_firewall_check_answers_quickly() {
+        let t = std::time::Instant::now();
+        let info = firewall_info(47120);
+        assert!(t.elapsed() < std::time::Duration::from_secs(8));
+        if info.tool.is_some() {
+            assert!(info.command.unwrap().contains("--add-port=47120/tcp"));
+        }
     }
 }
