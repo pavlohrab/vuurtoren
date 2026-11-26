@@ -27,7 +27,8 @@ word needs about ten meetings before it sticks (Webb 2007). The sources, with li
 ## It runs on your computer
 
 To find the words and the grammar of a text, Vuurtoren uses spaCy, a language analysis tool, and a
-small translation model, OPUS-MT. The meanings and example sentences come from open dictionaries
+small translation model, OPUS-MT. How each sentence is built comes from SyntaxDot on a server, and on
+Linux when you download it, and from spaCy elsewhere. The meanings and example sentences come from open dictionaries
 (Wiktionary, Tatoeba and wordfreq). All of it is on your computer, so it works offline and your
 texts stay with you.
 
