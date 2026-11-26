@@ -76,7 +76,8 @@ const PART: Record<Step, number> = {
   destinations: 1,
   moving: 1,
   placement: 1,
-  starter: 1,
+  // The 500 words' screen is the last one (Start reading is on it).
+  starter: 2,
   first: 2,
 };
 
@@ -163,10 +164,11 @@ export function Welcome() {
     ...(askServer ? (["server"] as const) : []),
   ];
   // No Anki: the default decks are fine to start with (Settings changes them), so no deck step.
+  // With the 500 words, their screen is the last one: Start reading sits on it (mock MK4 A).
   const steps: Step[] = phoneAnki
-    ? [...start, "apkg", "starter", "first"]
+    ? [...start, "apkg", "starter"]
     : native
-      ? [...start, "starter", "first"]
+      ? [...start, "starter"]
       : draft.usesAnki === null
         ? [...start, "first"]
         : [
@@ -296,7 +298,8 @@ export function Welcome() {
       for (const k of ["learner", "review", "words", "home"]) {
         await qc.invalidateQueries({ queryKey: [k] });
       }
-      next();
+      // The last screen: the words are in, the story opens.
+      startReading.mutate();
     },
   });
 
@@ -304,7 +307,7 @@ export function Welcome() {
   const story = useQuery({
     queryKey: ["onboarding", "story"],
     queryFn: async () => storyToStart(await services.storyShelf()),
-    enabled: draft.step === "first",
+    enabled: draft.step === "first" || draft.step === "starter",
   });
   const startReading = useMutation({
     mutationFn: async () => {
@@ -355,7 +358,9 @@ export function Welcome() {
               aria-current={i === PART[draft.step] ? "step" : undefined}
               data-done={i < PART[draft.step] || undefined}
             >
-              {i + 1}. {name}
+              <span className="k-sr">
+                {i + 1}. {name}
+              </span>
             </li>
           ))}
         </ol>
@@ -398,21 +403,31 @@ export function Welcome() {
                 <h1 ref={heading} tabIndex={-1}>
                   Do you use Anki?
                 </h1>
-                <fieldset className="ob-choices">
-                  <legend className="k-sr">Do you use Anki?</legend>
-                  <Choice
-                    name="uses"
-                    checked={draft.usesAnki === true}
-                    onChange={() => setDraft({ usesAnki: true })}
-                    title="Yes"
-                  />
-                  <Choice
-                    name="uses"
-                    checked={draft.usesAnki === false}
-                    onChange={() => setDraft({ usesAnki: false, sources: [], noAnki: false })}
-                    title="No"
-                  />
-                </fieldset>
+                {/* The answer is the button: Yes or No, low on the screen (mock MK4 A). */}
+                <div className="ob-answers">
+                  <Button
+                    disabled={save.isPending}
+                    onClick={() => {
+                      if (phone) {
+                        // A phone brings Anki decks in as a file: its cards are Vuurtoren's.
+                        setDraft({ usesAnki: true });
+                        save.mutate({ native: true });
+                      } else setDraft({ usesAnki: true, step: "choice" });
+                    }}
+                  >
+                    Yes
+                  </Button>
+                  <Button
+                    variant="primary"
+                    disabled={save.isPending}
+                    onClick={() => {
+                      setDraft({ usesAnki: false, sources: [], noAnki: false });
+                      save.mutate({ native: true });
+                    }}
+                  >
+                    No
+                  </Button>
+                </div>
               </>
             ) : null}
 
@@ -663,6 +678,9 @@ export function Welcome() {
                     Could not add the words. {errorOf(starter.error)}
                   </p>
                 ) : null}
+                {/* A phone: the dictionary comes down now, and one yes or no for the recordings. */}
+                <DictionaryPack autoStart />
+                <RecordingsPack ask />
               </>
             ) : null}
 
@@ -734,7 +752,9 @@ export function Welcome() {
                   Continue without Anki
                 </Button>
               ) : null}
-              {draft.step !== "first" && !(draft.step === "anki" && !connected) ? (
+              {draft.step !== "first" &&
+              draft.step !== "uses" &&
+              !(draft.step === "anki" && !connected) ? (
                 <Button
                   type="submit"
                   variant="primary"
@@ -742,8 +762,8 @@ export function Welcome() {
                     save.isPending ||
                     placement.isPending ||
                     starter.isPending ||
+                    startReading.isPending ||
                     move.isPending ||
-                    (draft.step === "uses" && draft.usesAnki === null) ||
                     (draft.step === "decks" && connected && !draft.noAnki && decks.isPending) ||
                     (draft.step === "destinations" && !draft.profile.destinations.default.trim())
                   }
@@ -761,7 +781,9 @@ export function Welcome() {
                           : "Import"
                       : draft.step === "placement"
                         ? `Continue${known.size ? ` with ${known.size} known` : ""}`
-                        : "Continue"}
+                        : draft.step === "starter"
+                          ? "Start reading"
+                          : "Continue"}
                 </Button>
               ) : null}
             </div>

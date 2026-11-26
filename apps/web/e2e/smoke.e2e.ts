@@ -133,19 +133,15 @@ test("native mode: start with the most common words, offline data in the app", a
   await fakeNlp(page);
   await fakeAnki(page);
   await page.goto("/");
-  await page.getByRole("radio", { name: /^No/ }).check();
-  await page.getByRole("button", { name: "Continue" }).click();
-  // No level question: the 500 most common words, from the first one (m5).
-  await page.getByRole("button", { name: "Continue" }).click();
-  // Three questions, then the story at the learner's level opens in the reader.
+  await page.getByRole("button", { name: "No" }).click();
+  // No level question: the 500 most common words, from the first one (m5). Start reading is
+  // on that screen: the story at the learner's level opens in the reader.
   await page.getByRole("button", { name: "Start reading" }).click();
-  // The story opens, then the walkthrough starts on Read (it reopens the story for its reader
-  // steps), so the reader's URL is only there for a moment.
-  // The walkthrough follows the welcome once; it can be skipped.
-  await expect(page.getByRole("dialog", { name: "Read" })).toBeVisible();
+  // The walkthrough follows the welcome once, in the story (D4); it can be skipped.
+  await expect(page.getByRole("dialog", { name: "Tap a word" })).toBeVisible();
   await page.getByRole("button", { name: "Skip the tour" }).click();
-  // The tour's first step shows Read; skipping it leaves you there.
-  await expect(page.getByRole("heading", { level: 1, name: "Read" })).toBeVisible();
+  // Skipping it leaves you in the story.
+  await expect(page.locator(".k-reader .k-tok").first()).toBeVisible();
   await page.goto("/review");
   // New words start with the first 500: a card is waiting.
   await expect(page.locator(".review-word")).toBeVisible();
@@ -157,14 +153,10 @@ test("native mode: add a word while reading, then review it", async ({ page }) =
   await fakeNlp(page);
   await fakeAnki(page);
   await page.goto("/");
-  await page.getByRole("radio", { name: /^No/ }).check();
-  await page.getByRole("button", { name: "Continue" }).click();
-  await page.getByRole("button", { name: "Continue" }).click();
+  await page.getByRole("button", { name: "No" }).click();
   await page.getByRole("button", { name: "Start reading" }).click();
-  // The story opens, then the walkthrough starts on Read (it reopens the story for its reader
-  // steps), so the reader's URL is only there for a moment.
-  // The walkthrough follows the welcome once; it can be skipped.
-  await expect(page.getByRole("dialog", { name: "Read" })).toBeVisible();
+  // The walkthrough follows the welcome once, in the story (D4); it can be skipped.
+  await expect(page.getByRole("dialog", { name: "Tap a word" })).toBeVisible();
   await page.getByRole("button", { name: "Skip the tour" }).click();
   await importAndRead(page);
   await inspectWord(page);

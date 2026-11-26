@@ -153,25 +153,24 @@ for (const size of SIZES) {
       await expect(page.getByRole("heading", { name: "Do you use Anki?" })).toBeVisible({
         timeout: 40_000,
       });
-      await page.getByRole("radio", { name: /^No/ }).check();
-      await page.getByRole("button", { name: "Continue" }).click();
+      await page.getByRole("button", { name: "No" }).click();
       await expect(
         page.getByRole("heading", { name: "You start with the 500 most common words" }),
       ).toBeVisible();
       expect(await overflowing(page, ".ob-card *")).toEqual([]);
       await shot(page, `welcome-words-${size.width}`);
-      await page.getByRole("button", { name: "Continue" }).click();
       await page.getByRole("button", { name: "Start reading" }).click();
-      // The walkthrough starts on Read (what is on top), then the story's first word, then on.
-      await expect(page.getByRole("dialog", { name: "Read" })).toBeVisible();
+      // The words go in first (about 5,000, a few seconds on a slow phone), then the story
+      // opens and the walkthrough starts in it (D4): its first word, the help, then Read.
+      await expect(page.getByRole("dialog", { name: "Tap a word" })).toBeVisible({
+        timeout: 60_000,
+      });
       await shot(page, `tour-${size.width}`);
       // Taps outside the bubble stay with the walkthrough: the Words tab does not open.
       const words = page.getByRole("navigation", { name: "Main" }).getByRole("link").last();
       const tab = await words.boundingBox();
       await page.touchscreen.tap(tab!.x + tab!.width / 2, tab!.y + tab!.height / 2);
       await expect(page).not.toHaveURL(/[/]words/);
-      await expect(page.getByRole("dialog", { name: "Read" })).toBeVisible();
-      await page.getByRole("dialog").getByRole("button", { name: "Next" }).click();
       await expect(page.getByRole("dialog", { name: "Tap a word" })).toBeVisible();
       await expect(page).toHaveURL(/[/]read[/]/);
       await expect(page.locator(".k-reader .k-tok").first()).toBeVisible();

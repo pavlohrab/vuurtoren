@@ -37,7 +37,7 @@
   width: fit-content;
   margin: 0 0 28px;
 }
-/* Steps: a quiet segmented line with labels, not a row of pills. */
+/* Steps: a quiet segmented line, no labels (mock MK4 A); the names are for screen readers. */
 .ob-steps {
   display: grid;
   grid-auto-columns: minmax(0, 1fr);
@@ -49,29 +49,13 @@
 }
 .ob-steps li {
   min-width: 0;
-  padding-top: var(--s-2);
-  border-top: 2px solid var(--hairline);
-  font-size: 12px;
-  color: var(--ink-muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--hairline);
 }
-.ob-steps li[aria-current="step"] {
-  color: var(--ink);
-  font-weight: 500;
-  border-top-color: var(--accent);
-}
+.ob-steps li[aria-current="step"],
 .ob-steps li[data-done] {
-  border-top-color: color-mix(in srgb, var(--accent) 45%, transparent);
-}
-@media (max-width: 599px) {
-  .ob-steps li:not([aria-current="step"]) {
-    color: transparent;
-  }
-  .ob-steps li[aria-current="step"] {
-    overflow: visible;
-  }
+  background: var(--accent);
 }
 .ob-card h1 {
   font-size: 28px;
@@ -239,4 +223,55 @@
 .ob-question {
   font-size: 18px;
   margin: 0 0 6px;
+}
+
+/* "Do you use Anki?": the answers are the buttons, full width (mock MK4 A). */
+.ob-answers {
+  display: grid;
+  gap: var(--s-2);
+  margin-top: var(--s-6);
+  max-width: 420px;
+}
+.ob-answers .k-btn {
+  width: 100%;
+  min-height: 48px;
+  justify-content: center;
+}
+
+/* On a phone the buttons sit low, near the thumb, and the main one is full width. */
+@media (max-width: 599px) {
+  .ob-shell {
+    padding-bottom: calc(20px + var(--safe-bottom));
+  }
+  .ob-card {
+    display: flex;
+    flex-direction: column;
+    min-height: calc(100dvh - 44px - var(--safe-top) - var(--safe-bottom));
+  }
+  .ob-card > form,
+  .ob-card > section {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+  }
+  .ob-answers {
+    margin-top: auto;
+    max-width: none;
+  }
+  .ob-nav {
+    margin-top: auto;
+    padding-top: var(--s-5);
+  }
+  .ob-answers ~ .ob-nav {
+    margin-top: 0;
+  }
+  .ob-nav .k-btn--primary {
+    flex: 1 0 100%;
+    order: 2;
+    min-height: 48px;
+    justify-content: center;
+  }
+  .ob-nav-spacer {
+    display: none;
+  }
 }
