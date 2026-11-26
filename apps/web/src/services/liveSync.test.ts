@@ -635,6 +635,8 @@ describe("a phone and its computer at home", () => {
       "Phone",
     );
     expect(joined).toMatchObject({ error: null, place: { computer: true } });
+    // Linked to its computer, the phone adds no texts and asks no language server there (SY6).
+    expect(await phone.sync.languageServer()).toBeNull();
 
     home = NEW;
     await expect(phone.sync.services.syncNow()).rejects.toThrow(/cannot be reached/);

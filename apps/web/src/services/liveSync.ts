@@ -744,8 +744,9 @@ export function createLiveSync(deps: LiveSyncDeps) {
 
   /**
    * The language server of the server this device syncs with, for a device without one of its
-   * own: the place's `/nlp` and its sync token. Null for other places and on the page of that
-   * same server (it reaches `/nlp` with its sign-in).
+   * own: the place's `/nlp` and its sync token. Null for other places, on the page of that
+   * same server (it reaches `/nlp` with its sign-in), and for the user's own computer (SY6: a
+   * phone linked to its computer reads what the computer sends; it adds no texts itself).
    */
   async function languageServer(): Promise<{
     url: string;
@@ -757,7 +758,7 @@ export function createLiveSync(deps: LiveSyncDeps) {
     const pairedUrl = saved ? null : readPaired();
     const place: SyncPlace | undefined =
       saved ?? (pairedUrl ? { kind: "server", url: pairedUrl, token: "", kept: true } : undefined);
-    if (place?.kind !== "server") return null;
+    if (place?.kind !== "server" || place.pinned) return null;
     const here = deps.server?.origin ?? (typeof location === "undefined" ? "" : location.origin);
     if (sameOrigin(place.url, here)) return null;
     let token: string;
@@ -769,9 +770,8 @@ export function createLiveSync(deps: LiveSyncDeps) {
     return {
       url: `${place.url.replace(/\/+$/, "")}/nlp`,
       token,
-      // In the app the requests go through it, like sync's (no CORS setup on the server); to
-      // the user's own computer only with its certificate (Connect a phone).
-      ...(deps.desktop ? { fetch: desktopFetch(deps.desktop, place.pinned) } : {}),
+      // In the app the requests go through it, like sync's (no CORS setup on the server).
+      ...(deps.desktop ? { fetch: desktopFetch(deps.desktop) } : {}),
     };
   }
 

@@ -1,8 +1,9 @@
 /**
  * Can this device add a new text? A computer analyses texts itself; a phone needs its server (a
  * phone alone has no language server, A46). Without one, "Add text" is not offered on the phone:
- * its texts come from the computer through sync. Nor while its server or computer can't be
- * reached (OF3): a text added then would wait without an analysis.
+ * its texts come from the computer through sync. A phone linked to its own computer doesn't add
+ * texts either (SY6): you add them on the computer. Nor while its server can't be reached
+ * (OF3): a text added then would wait without an analysis.
  */
 import { useQuery } from "@tanstack/react-query";
 import { useSyncExternalStore } from "react";
@@ -22,5 +23,6 @@ export function useCanAddTexts(): boolean {
     degradedEntries().some((e) => e.source === "nlp"),
   );
   if (!phone) return true;
-  return sync.isSuccess && sync.data.place?.kind === "server" && !away;
+  const place = sync.isSuccess ? sync.data.place : null;
+  return place?.kind === "server" && !place.computer && !away;
 }

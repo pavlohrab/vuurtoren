@@ -34,6 +34,9 @@ computer, and read it on your phone, even on a train. This works with every way 
 **A text you add on the phone** needs a language server. Without one, it waits: open Vuurtoren
 on your computer, and after the next sync the text is ready on your phone too.
 
+A phone that syncs with your computer (Connect a phone) has no **Add text**. You add texts on the
+computer, and the phone gets them ready to read.
+
 ## Install
 
 Android: download the `.apk` from the [latest release](https://github.com/pavlohrab/Vuurtoren/releases/latest)
