@@ -117,7 +117,7 @@ test("a word opened from the card replaces it, and Back goes back one word", asy
   await expect(head).toHaveText("staan");
 });
 
-test("Words on a computer: the list with Today beside it", async ({ page }) => {
+test("Words on a computer: the Inbox (folders, the words, the chosen word)", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await fakeNlp(page);
   await fakeAnki(page);
@@ -125,8 +125,13 @@ test("Words on a computer: the list with Today beside it", async ({ page }) => {
   await finishOnboarding(page);
   await page.getByRole("link", { name: "Words" }).first().click();
   await expect(page).toHaveURL(/\/words\/all\?layout=list/);
-  await expect(page.locator(".words-aside .due-today")).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Your words" })).toBeVisible();
+  const rail = page.getByRole("navigation", { name: "Your words" });
+  await expect(rail.getByRole("link", { name: "Start review" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "All words" })).toBeVisible();
+  const pane = page.getByRole("complementary", { name: "The chosen word" });
+  await expect(pane.getByRole("button", { name: "Open word card" })).toBeVisible();
+  // The three columns fit: nothing wider than the window.
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(1440);
 });
 
 test("Full entry: wider, words open inside it, Esc steps back, grammar comes back to it", async ({

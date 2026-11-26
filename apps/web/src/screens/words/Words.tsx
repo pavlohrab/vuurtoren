@@ -62,20 +62,21 @@ import {
   parseLevel,
   progressText,
 } from "./levels.js";
-import { WordsDeskAside } from "./WordsHome.js";
+import { WordsDeskAside, wideDesk } from "./WordsHome.js";
+import { WordsDesk } from "./WordsDesk.js";
 import { ALL_WORDS, WordsRoom, loadStarterIndex, useLevelProgress } from "./WordsRoom.js";
 import { useWordActions } from "../useWordActions.js";
 import { WordStack } from "./WordStack.js";
 import "./words.css";
 import { useCanAddTexts } from "../../platform/canAddTexts.js";
 
-const PAGE_SIZE = 50;
+export const PAGE_SIZE = 50;
 
 /**
  * Rows narrowed to a starter level and/or ordered by level (`loadRows` reads them all first, so
  * a level is complete), then cut to `limit`.
  */
-async function loadLevelRows(
+export async function loadLevelRows(
   services: AppServices,
   source: WordSource | null,
   filters: { view: WordsView; query?: string | undefined; limit: number },
@@ -91,7 +92,7 @@ async function loadLevelRows(
 
 /** The views of the list: words to decide on, then by state. */
 export type WordsView = "decide" | "due" | "new" | "learning" | "known" | "ignored" | "all";
-const VIEWS: { id: WordsView; label: string; native?: true }[] = [
+export const VIEWS: { id: WordsView; label: string; native?: true }[] = [
   { id: "all", label: "All" },
   { id: "decide", label: "To decide" },
   { id: "due", label: "Due", native: true },
@@ -126,8 +127,8 @@ export interface WordColumns {
   recall: boolean;
   decks: boolean;
 }
-const COLUMNS_KEY = "vuurtoren-words-columns";
-function readColumns(): WordColumns {
+export const COLUMNS_KEY = "vuurtoren-words-columns";
+export function readColumns(): WordColumns {
   const v = readLocalJSON(COLUMNS_KEY) as Partial<WordColumns> | undefined;
   return { recall: v?.recall === true, decks: v?.decks === true };
 }
@@ -277,7 +278,7 @@ export async function loadRows(
   return (await services.words({ ...base, ...(state ? { state } : {}) })).map(rowOf);
 }
 
-interface WordsSearch {
+export interface WordsSearch {
   state?: string;
   source?: string;
   level?: string;
@@ -314,6 +315,12 @@ function LayoutToggle({ list, onChange }: { list: boolean; onChange: (list: bool
 
 /** Words: filterable table of lemmas; rows open the inspector; selections go on to Anki, Practice or Talk. */
 export function Words() {
+  const params: WordsSearch = useSearch({ from: "/words/all" });
+  // A computer with room: the Inbox (mock "Words, round 2" A); phones and the cards keep this page.
+  return wideDesk() && showsList(params) ? <WordsDesk /> : <WordsList />;
+}
+
+function WordsList() {
   const canAdd = useCanAddTexts();
   const services = useServices();
   const toast = useToast();
@@ -1026,7 +1033,7 @@ function LevelHeader({
   );
 }
 
-function FilterChip({ label, onClear }: { label: string; onClear: () => void }) {
+export function FilterChip({ label, onClear }: { label: string; onClear: () => void }) {
   return (
     <li className="words-chip">
       <span>{label}</span>
