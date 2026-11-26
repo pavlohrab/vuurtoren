@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS reports (
   ip TEXT NOT NULL,              -- a salted hash, for the hourly limit
   body TEXT NOT NULL,            -- the report, JSON
   transcript TEXT,               -- the voice note as text (Workers AI Whisper)
-  status TEXT NOT NULL,          -- new | issue | done
+  status TEXT NOT NULL,          -- new | unsent (Telegram refused) | issue | done
   issue TEXT,                    -- the GitHub issue's address
   tg_message INTEGER,            -- Pavlo's Telegram message, for replies
   reply_to TEXT                  -- the tester's device id for replies, or null

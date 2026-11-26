@@ -24,6 +24,6 @@ bucket_name = "vuurtoren-feedback"
 binding = "AI"
 
 [triggers]
-crons = ["17 3 * * *"]
+crons = ["17 * * * *"]
 
 # Secrets (wrangler secret put …): APP_KEY, TG_TOKEN, TG_CHAT_ID, TG_SECRET, GITHUB_TOKEN, SALT

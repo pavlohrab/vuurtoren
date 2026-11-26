@@ -101,8 +101,31 @@ export default {
     }
   },
 
-  /** Daily: reports and contact messages older than 90 days go, with their files. */
+  /**
+   * Hourly: reports Telegram refused are sent again; reports and contact messages older than
+   * 90 days go, with their files.
+   */
   async scheduled(_event: unknown, env: Env): Promise<void> {
+    const unsent = await env.DB.prepare(
+      "SELECT id, body, transcript FROM reports WHERE status = 'unsent' ORDER BY created LIMIT 20",
+    ).all<{ id: string; body: string; transcript: string | null }>();
+    for (const u of unsent.results) {
+      const shot = await env.FILES?.get(`${u.id}/screenshot`);
+      const voice = await env.FILES?.get(`${u.id}/voice`);
+      const messageId = await sendToPavlo(
+        env,
+        JSON.parse(u.body) as Report,
+        u.transcript,
+        shot ? await shot.arrayBuffer() : null,
+        "image/png",
+        voice ? await voice.arrayBuffer() : null,
+        "audio/webm",
+      );
+      if (messageId)
+        await env.DB.prepare("UPDATE reports SET tg_message = ?, status = 'new' WHERE id = ?")
+          .bind(messageId, u.id)
+          .run();
+    }
     const before = Date.now() - 90 * 86_400_000;
     const old = await env.DB.prepare("SELECT id FROM reports WHERE created < ?")
       .bind(before)
@@ -157,8 +180,10 @@ async function report(req: Request, env: Env): Promise<Response> {
     .run();
 
   const messageId = await sendToPavlo(env, r, transcript, shotBytes, shot?.type, audioBytes, audio?.type);
-  if (messageId)
-    await env.DB.prepare("UPDATE reports SET tg_message = ? WHERE id = ?").bind(messageId, r.id).run();
+  // Telegram said no (an outage, a limit): the report stays "unsent" and the hourly job tries again.
+  await env.DB.prepare("UPDATE reports SET tg_message = ?, status = ? WHERE id = ?")
+    .bind(messageId, messageId ? "new" : "unsent", r.id)
+    .run();
   return json(200, { ok: true, id: r.id });
 }
 
@@ -211,10 +236,17 @@ async function sendToPavlo(
     f.set("reply_markup", JSON.stringify(buttons(r.id)));
     f.set("photo", new Blob([shot], { type: shotType ?? "image/png" }), "screen.png");
     sent = await tg(env, "sendPhoto", f);
+    // The picture refused (its size, a limit): the words still go, without it.
+    if (!sent.ok)
+      sent = await tg(env, "sendMessage", {
+        chat_id: env.TG_CHAT_ID,
+        text: `${text}\n\n(The picture couldn't be sent.)`.slice(0, 4096),
+        reply_markup: buttons(r.id),
+      });
   } else {
     sent = await tg(env, "sendMessage", { chat_id: env.TG_CHAT_ID, text, reply_markup: buttons(r.id) });
   }
-  const id = sent.result?.message_id ?? null;
+  const id = sent.ok ? (sent.result?.message_id ?? null) : null;
   if (audio) {
     const f = new FormData();
     f.set("chat_id", env.TG_CHAT_ID);
@@ -324,9 +356,11 @@ async function replies(url: URL, env: Env): Promise<Response> {
   )
     .bind(to)
     .all<{ id: number; report_id: string; text: string; created: number }>();
-  if (rows.results.length)
-    await env.DB.prepare(`UPDATE replies SET delivered = ? WHERE reply_to = ? AND delivered IS NULL`)
-      .bind(Date.now(), to)
+  // Only the replies read here: one that came in meanwhile waits for the next ask.
+  const ids = rows.results.map((r) => r.id);
+  if (ids.length)
+    await env.DB.prepare(`UPDATE replies SET delivered = ? WHERE id IN (${ids.map(() => "?").join(",")})`)
+      .bind(Date.now(), ...ids)
       .run();
   return json(200, {
     replies: rows.results.map((r) => ({ report: r.report_id, text: r.text, at: r.created })),
