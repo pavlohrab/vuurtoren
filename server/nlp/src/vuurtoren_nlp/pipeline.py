@@ -294,6 +294,46 @@ def choose_lemma(
     return model_lemma, [dict_lemma] if (from_kaikki or inflected) else []
 
 
+def syntax_lemma(
+    lang: str, surface: str, pos: str, ours: str, alts: list[str], theirs: str | None
+) -> tuple[str, list[str]]:
+    """SyntaxDot's own lemma as one more candidate (SX2). Returns (primary, alternatives).
+
+    Needs the dictionary. Theirs must be a word with meanings of its own (never a form such
+    as lachten or had). It wins where ours is not one (geheugen, not geheug; vreemd, not
+    vreemds; voorbijgaan, not voorbijgaat), or, for a verb, where theirs is a verb and ours is
+    another word altogether (reed: rijden, not the noun reden). Otherwise it becomes an
+    alternative for the matcher, when the dictionary lists it for this word. It never undoes
+    what we do on purpose: a split verb joined to its particle (dichtdoen, not doen), a
+    diminutive kept (broertje(s), not broer), a participle used as a word (volgende: volgend).
+    """
+    lex = get_lexicon()
+    if not theirs or theirs == "_" or not lex.available:
+        return ours, alts
+    t = theirs if pos == "PROPN" else theirs.lower()
+    low = ours.lower()
+    if t == low or lex.own_entry(t) is not True:
+        return ours, alts
+    if low.endswith(t) and len(low) > len(t):
+        return ours, alts  # a separable verb joined to its particle: dicht+doen
+    if _is_diminutive(low, t) or (_is_diminutive(surface, t) and low == surface.lower()):
+        return ours, alts  # broertje(s), beetje stay diminutives
+    rest = [a for a in alts if a.lower() != t]
+    # Ours is the word with an ending (volgend+e, gemaakt+e): that's a word, not a mistake.
+    ending = surface.lower().startswith(low)
+    verb_fix = (
+        pos in {"VERB", "AUX"}
+        and not ending
+        and lex.own_verb(t) is True
+        and lex.own_verb(low) is False
+    )
+    if lex.own_entry(low) is not True or verb_fix:
+        return t, [ours, *rest]
+    if t in lex.lemmas(surface.lower(), pos) and t not in alts:
+        return ours, [*alts, t]
+    return ours, alts
+
+
 def _initial_capital_lemma(lang: str, text: str, model: str) -> tuple[str, list[str]]:
     """Lemma for a sentence-initial capitalised word that is really a common word.
 

@@ -540,6 +540,15 @@ clause, and for a main word that is a participle or a noun while a conjugated ve
 On the 793 sentences it showed 9 times with spaCy, and all 9 were wrong, but it misses most of the
 wrong ones. With SyntaxDot it didn't show at all.
 
+SyntaxDot also gives a lemma, and the server uses it as one more candidate (`syntax_lemma` in
+`pipeline.py`). It replaces ours only when ours has no dictionary entry of its own (geheug, not a
+word, becomes geheugen; schiep becomes scheppen, not schapen), or for a verb when ours is not a verb
+at all. Otherwise it is an alternative the matcher also tries. Things we do on purpose stay: a split
+verb joined to its particle (dichtdoen), a diminutive (broertjes), a participle used as a word
+(volgende). On the stories and the 793 sentences, 27,866 words, it changed 33 lemmas (0.12%). I read
+all 33 and they were right or at least fine. It needs the dictionary and SyntaxDot, so only the
+server does it.
+
 ## 4. Practice
 
 **In short.** Practice is for the words you are already learning. It gives you short exercises made from sentences, for example choosing the meaning, filling in a blank, de or het, putting words in the right order or writing down what you hear. Every word has its own schedule for every kind of exercise (FSRS), so an exercise comes back just before you would forget it. Practice never touches your Anki cards.

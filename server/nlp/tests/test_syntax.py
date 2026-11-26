@@ -56,3 +56,43 @@ def test_one_root_per_sentence():
     _one_root(cols)
     assert [c[6] for c in cols] == ["2", "0", "2"]
     assert cols[2][7] == "dep"
+
+
+# --- SX2: SyntaxDot's own lemma as one more candidate (needs the Kaikki dictionary DB) ---
+from vuurtoren_nlp.lexicon import get_lexicon  # noqa: E402
+from vuurtoren_nlp.pipeline import syntax_lemma  # noqa: E402
+
+needs_db = pytest.mark.skipif(not get_lexicon().available, reason="Kaikki dictionary DB not built")
+
+
+@needs_db
+@pytest.mark.parametrize(
+    ("surface", "pos", "ours", "theirs", "primary"),
+    [
+        # ours is no word of its own: theirs wins
+        ("geheugen", "NOUN", "geheug", "geheugen", "geheugen"),
+        ("schiep", "VERB", "schapen", "scheppen", "scheppen"),
+        ("weeks", "NOUN", "weeks", "week", "week"),
+        ("voorbijgaat", "ADP", "voorbijgaat", "voorbijgaan", "voorbijgaan"),
+        # what we do on purpose stays
+        ("doet", "VERB", "dichtdoen", "doen", "dichtdoen"),
+        ("broertjes", "NOUN", "broertje", "broer", "broertje"),
+        ("beetje", "NOUN", "beetje", "beet", "beetje"),
+        ("volgende", "VERB", "volgend", "volgen", "volgend"),
+        # theirs is only a form, or no word: ignored
+        ("lachten", "VERB", "meelachen", "lachten", "meelachen"),
+        ("Ziet", "VERB", "zien", "zietn", "zien"),
+        # both are words of their own: ours stays
+        ("jongen", "NOUN", "jongen", "jong", "jongen"),
+        ("mij", "PRON", "mij", "me", "mij"),
+    ],
+)
+def test_syntax_lemma(surface, pos, ours, theirs, primary):
+    got, alts = syntax_lemma("nl", surface, pos, ours, [], theirs)
+    assert got == primary
+    if got != ours:
+        assert ours in alts  # ours is still tried by the matcher
+
+
+def test_syntax_lemma_without_a_parse_changes_nothing():
+    assert syntax_lemma("nl", "kat", "NOUN", "kat", ["x"], None) == ("kat", ["x"])

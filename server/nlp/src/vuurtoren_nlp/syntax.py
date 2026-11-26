@@ -121,7 +121,7 @@ def _one_root(cols: list[list[str]]) -> None:
 
 def add_syntax(docs: list[Doc], analyses: list[TextAnalysis], originals: list[str]) -> None:
     """Give every token of ``analyses`` its ``syn`` from SyntaxDot, when it is set up."""
-    from vuurtoren_nlp.pipeline import analyze_doc
+    from vuurtoren_nlp.pipeline import analyze_doc, syntax_lemma
 
     folder = syntaxdot_dir()
     if folder is None or not docs:
@@ -133,6 +133,8 @@ def add_syntax(docs: list[Doc], analyses: list[TextAnalysis], originals: list[st
     if len(sents) != len(where):
         return  # SyntaxDot split differently: keep spaCy's parse rather than guess
     parse = [[(t.pos_, str(t.morph), t.dep_, t.head.i) for t in doc] for doc in docs]
+    # SyntaxDot's own lemma per word (CoNLL-U column 3), for SX2's extra candidate.
+    theirs: list[list[str | None]] = [[None] * len(doc) for doc in docs]
     for (di, idx), cols in zip(where, sents, strict=True):
         if len(cols) != len(idx):
             continue
@@ -140,13 +142,14 @@ def add_syntax(docs: list[Doc], analyses: list[TextAnalysis], originals: list[st
         for k, c in enumerate(cols):
             h = int(c[6])
             i = idx[k]
+            theirs[di][i] = c[2]
             parse[di][i] = (
                 c[3],
                 "" if c[5] == "_" else c[5],
                 "ROOT" if c[7] == "root" else c[7],
                 i if h == 0 else idx[h - 1],
             )
-    for doc, p, analysis, orig in zip(docs, parse, analyses, originals, strict=True):
+    for doc, p, analysis, orig, lem in zip(docs, parse, analyses, originals, theirs, strict=True):
         # The same words through the usual code, so lemma and particles follow the same rules.
         sd = Doc(
             doc.vocab,
@@ -167,3 +170,8 @@ def add_syntax(docs: list[Doc], analyses: list[TextAnalysis], originals: list[st
                 lemma=s.lemma,
                 particle_of=s.particle_of,
             )
+            # The word's own lemma: SyntaxDot's, where the dictionary backs it and not ours.
+            if tok.is_word and not tok.is_propn and tok.particle_of is None:
+                tok.lemma, tok.alt_lemmas = syntax_lemma(
+                    "nl", tok.text, tok.pos, tok.lemma, tok.alt_lemmas, lem[tok.i]
+                )

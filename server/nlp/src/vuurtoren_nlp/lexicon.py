@@ -38,6 +38,7 @@ class Lexicon:
         self.is_word = lru_cache(maxsize=65536)(self._is_word)
         self.is_headword = lru_cache(maxsize=65536)(self._is_headword)
         self.own_verb = lru_cache(maxsize=65536)(self._own_verb)
+        self.own_entry = lru_cache(maxsize=65536)(self._own_entry)
 
     def _con(self) -> sqlite3.Connection:
         con = getattr(self._local, "con", None)
@@ -97,6 +98,18 @@ class Lexicon:
 
         rows = self._con().execute(
             "SELECT glosses FROM entries WHERE lower(word) = ? AND pos = 'verb'", (word.lower(),)
+        )
+        return any(real_glosses(json.loads(g)) for (g,) in rows)
+
+    def _own_entry(self, word: str) -> bool | None:
+        """True if ``word`` has an entry with meanings of its own, any word kind (hap, mij,
+        slepen), not only "inflection of …" (vreemds, langzamer, had). ``None`` without DB."""
+        if not self.available:
+            return None
+        from vuurtoren_nlp.compound import real_glosses
+
+        rows = self._con().execute(
+            "SELECT glosses FROM entries WHERE lower(word) = ?", (word.lower(),)
         )
         return any(real_glosses(json.loads(g)) for (g,) in rows)
 
