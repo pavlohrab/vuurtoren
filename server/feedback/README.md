@@ -5,9 +5,8 @@ Telegram with **Make issue** and **Done**. Make issue opens a GitHub issue with 
 device facts, and never the screenshot. If you reply to the message in Telegram, the tester sees
 your reply in the app, if they agreed to replies.
 
-It runs on Cloudflare's free plan: a Worker, one D1 database and Workers AI for the voice notes.
-The screenshots and voice notes live in your Telegram chat. An R2 bucket for them is optional
-(`wrangler.toml`).
+It runs on Cloudflare's free plan: a Worker, one D1 database, one R2 bucket for the screenshots and
+voice notes (optional: they're in your Telegram chat too) and Workers AI for the voice notes.
 
 ## Set it up once
 
@@ -23,6 +22,7 @@ You need `npx wrangler login` with the Cloudflare account that has vuurtoren.app
 3. **Storage.** From this folder:
    ```sh
    npx wrangler d1 create vuurtoren-feedback      # put its database_id into wrangler.toml
+   npx wrangler r2 bucket create vuurtoren-feedback   # optional, needs R2 turned on
    npx wrangler d1 execute vuurtoren-feedback --remote --file=schema.sql
    ```
 4. **Secrets.** Each one asks for its value:

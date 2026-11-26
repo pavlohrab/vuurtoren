@@ -13,11 +13,11 @@ binding = "DB"
 database_name = "vuurtoren-feedback"
 database_id = "b7cbcdc4-4f58-436e-8577-514a2548bcbb"
 
-# Optional: keep the screenshots and voice notes in R2 too (they're in Telegram anyway).
-# Turn R2 on in the dashboard, `npx wrangler r2 bucket create vuurtoren-feedback`, then uncomment.
-# [[r2_buckets]]
-# binding = "FILES"
-# bucket_name = "vuurtoren-feedback"
+# Optional: the screenshots and voice notes are kept here too, for 90 days (they're in Telegram
+# anyway). Remove these three lines to skip it.
+[[r2_buckets]]
+binding = "FILES"
+bucket_name = "vuurtoren-feedback"
 
 # Voice notes as text. Remove these two lines to skip it.
 [ai]
