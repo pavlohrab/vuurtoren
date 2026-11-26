@@ -34,7 +34,11 @@ export type ExerciseKind =
   /** Hear a word or sentence (text-to-speech), type it (listening). */
   | "dictation"
   /** Say a sentence out loud; the language server hears it (speaking, algorithms.md 4.7). */
-  | "say";
+  | "say"
+  /** A new word shown before any question: its sound, meaning and sentence (not graded). */
+  | "meet"
+  /** Match Dutch words with their meanings, a short warm-up (not graded). */
+  | "pairs";
 
 export const SKILL_OF: Readonly<Record<ExerciseKind, Skill>> = {
   "meaning-choice": "recognition",
@@ -49,6 +53,8 @@ export const SKILL_OF: Readonly<Record<ExerciseKind, Skill>> = {
   scramble: "form",
   dictation: "listening",
   say: "recall",
+  meet: "recognition",
+  pairs: "recognition",
 };
 
 /** An example sentence containing the word. `target` = [start, end) of the word in `text` (UTF-16). */
@@ -132,6 +138,8 @@ export interface Exercise {
   accept?: string[];
   /** Short explanation shown after answering (e.g. "het: neuter nouns…", "zijn: verb of motion"). */
   explanation?: string;
+  /** Match pairs: the Dutch words and their meanings. */
+  pairs?: { nl: string; en: string }[];
   /** The grammar page that explains this exercise (an id in @app/content), set by lessons. */
   topic?: string;
   /** The sentence where the learner met the word, when the exercise used a simpler one (4.7.4). */

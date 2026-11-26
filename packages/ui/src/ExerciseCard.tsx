@@ -73,13 +73,15 @@ export function shortcutBlocked(ev: KeyboardEvent, scope?: Element | null): bool
 /** Kinds whose prompt text is English (the rest show Dutch in the reading face). */
 const ENGLISH_PROMPT = new Set(["word-choice", "scramble"]);
 
-type Mode = "choice" | "gender" | "scramble" | "typed" | "dictation" | "say";
+type Mode = "choice" | "gender" | "scramble" | "typed" | "dictation" | "say" | "meet" | "pairs";
 
 /** Which interaction an exercise needs (derived from its data, so new kinds degrade sensibly). */
 function exerciseMode(e: Exercise): Mode {
   if (e.kind === "gender") return "gender";
   if (e.kind === "dictation") return "dictation";
   if (e.kind === "say") return "say";
+  if (e.kind === "meet") return "meet";
+  if (e.kind === "pairs") return "pairs";
   if (e.pieces && e.pieces.length > 0) return "scramble";
   if (e.choices && e.choices.length > 0) return "choice";
   return "typed";
@@ -179,6 +181,14 @@ export function ExerciseCard({
     const onKey = (ev: KeyboardEvent) => {
       if (ev.metaKey || ev.ctrlKey || ev.altKey || ev.repeat) return;
       if (shortcutBlocked(ev, cardRef.current)) return;
+      if (mode === "meet") {
+        if (ev.key === "Enter" && !(ev.target instanceof HTMLButtonElement)) {
+          ev.preventDefault();
+          onContinue();
+        }
+        return;
+      }
+      if (mode === "pairs") return;
       if (answered) {
         // A focused button or word handles Enter itself (its click would otherwise fire a
         // second time, or a word would open and the card move on at once).
@@ -246,6 +256,42 @@ export function ExerciseCard({
         : (e.prompt.sentence ?? e.answer);
   const englishLine =
     !dutchPrompt || !e.prompt.translation || e.kind === "scramble" ? null : e.prompt.translation;
+
+  if (mode === "meet")
+    return (
+      <section className="ex-card" aria-label="Exercise" ref={cardRef}>
+        <h2 className="ex-ask ex-tag">{e.instruction}</h2>
+        <div className="ex-meet">
+          <p className="ex-prompt-row">
+            {onSpeak ? (
+              <SpeakButton onClick={() => onSpeak(e.prompt.text)} label="Play the word" />
+            ) : null}
+            <span className="ex-meet-word ex-dutch" lang="nl">
+              {e.prompt.text}
+            </span>
+          </p>
+          {e.prompt.hint ? <p className="ex-meet-meaning">{e.prompt.hint}</p> : null}
+          {e.prompt.sentence ? (
+            <p className="ex-dutch ex-meet-sentence" lang="nl">
+              {e.prompt.sentence}
+            </p>
+          ) : null}
+          {e.prompt.translation ? <p className="ex-en">{e.prompt.translation}</p> : null}
+        </div>
+        <div className="ex-foot">
+          <Button variant="primary" className="ex-check" onClick={onContinue}>
+            Got it <kbd className="ex-key">Enter</kbd>
+          </Button>
+        </div>
+      </section>
+    );
+  if (mode === "pairs")
+    return (
+      <section className="ex-card" aria-label="Exercise" ref={cardRef}>
+        <h2 className="ex-ask">{e.instruction}</h2>
+        <Pairs pairs={e.pairs ?? []} onDone={onContinue} />
+      </section>
+    );
 
   return (
     <section className="ex-card" aria-label="Exercise" ref={cardRef}>
@@ -519,6 +565,82 @@ export function ExerciseCard({
         </div>
       ) : null}
     </section>
+  );
+}
+
+/** Match pairs: tap a Dutch word, then its meaning. A warm-up, so misses only flash. */
+function Pairs({
+  pairs,
+  onDone,
+}: {
+  pairs: readonly { nl: string; en: string }[];
+  onDone: () => void;
+}) {
+  // The meanings in a fixed shuffled order (by length, then text), so they don't line up.
+  const [meanings] = useState(() =>
+    [...pairs].sort((a, b) => a.en.length - b.en.length || a.en.localeCompare(b.en)),
+  );
+  const [picked, setPicked] = useState<string | null>(null);
+  const [done, setDone] = useState<Set<string>>(new Set());
+  const [miss, setMiss] = useState<string | null>(null);
+  const all = done.size === pairs.length;
+  const tryMeaning = (en: string) => {
+    if (!picked) return;
+    const right = pairs.find((p) => p.nl === picked)?.en === en;
+    if (right) {
+      setDone((d) => new Set(d).add(picked));
+      setPicked(null);
+    } else {
+      setMiss(en);
+      window.setTimeout(() => setMiss(null), 500);
+    }
+  };
+  return (
+    <>
+      <div className="ex-pairs">
+        <div role="group" aria-label="Dutch">
+          {pairs.map((p) => (
+            <button
+              key={p.nl}
+              type="button"
+              lang="nl"
+              className={cn(
+                "ex-pair ex-dutch",
+                picked === p.nl && "ex-pair--on",
+                done.has(p.nl) && "ex-pair--done",
+              )}
+              disabled={done.has(p.nl)}
+              aria-pressed={picked === p.nl}
+              onClick={() => setPicked(p.nl)}
+            >
+              {p.nl}
+            </button>
+          ))}
+        </div>
+        <div role="group" aria-label="Meanings">
+          {meanings.map((p) => (
+            <button
+              key={p.en}
+              type="button"
+              className={cn(
+                "ex-pair",
+                done.has(p.nl) && "ex-pair--done",
+                miss === p.en && "ex-pair--miss",
+              )}
+              disabled={done.has(p.nl) || !picked}
+              onClick={() => tryMeaning(p.en)}
+            >
+              {p.en}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="ex-foot">
+        <Button variant="primary" className="ex-check" disabled={!all} onClick={onDone}>
+          Continue
+        </Button>
+      </div>
+    </>
   );
 }
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildLesson, comeBack, extraTile, weakPoints } from "./lesson.js";
+import { UNGRADED, buildLesson, comeBack, extraTile, weakPoints } from "./lesson.js";
 import { STEP_OF } from "./choose.js";
 import { createRng } from "./rng.js";
 import type { WordSignals } from "./select.js";
@@ -48,7 +48,10 @@ const signals = [
 
 describe("a lesson (4.7)", () => {
   it("gives each picked word one exercise, card words never 'pick the meaning'", () => {
-    const lesson = buildLesson({ words, signals, states: [], answers: [], now: NOW }, createRng(1));
+    const lesson = buildLesson(
+      { words, signals, states: [], answers: [], now: NOW },
+      createRng(1),
+    ).filter((e) => !UNGRADED.has(e.kind));
     const keys = lesson.map((e) => e.key);
     expect(new Set(keys).size).toBe(keys.length);
     expect(keys).toEqual(expect.arrayContaining(["huis", "fiets"]));
@@ -67,12 +70,12 @@ describe("a lesson (4.7)", () => {
       { words: [...many, ...pool], signals: s, states: [], answers: [], now: NOW, size: 5 },
       createRng(2),
     );
-    expect(lesson).toHaveLength(5);
+    expect(lesson.filter((e) => !UNGRADED.has(e.kind))).toHaveLength(5);
     const only = buildLesson(
       { words, signals, states: [], answers: [], now: NOW, only: new Set(["huis"]) },
       createRng(3),
     );
-    expect(only.map((e) => e.key)).toEqual(["huis"]);
+    expect(only.filter((e) => !UNGRADED.has(e.kind)).map((e) => e.key)).toEqual(["huis"]);
   });
 
   it("puts due words in, and is the same for the same input", () => {
@@ -193,5 +196,28 @@ describe("a lesson (4.7)", () => {
     expect(ex.pieces).toHaveLength(6);
     expect(ex.topic).toBe("word-order-v2");
     expect(ex.explanation).toMatch(/verb comes second/);
+  });
+
+  it("shows new words first and warms up with pairs when three or more words start at step 1", () => {
+    const fresh = ["kat", "hond", "vis"].map((w, i) =>
+      word(w, { state: "seen", pKnown: 0.2, glosses: [`animal ${i}`], article: "de" }),
+    );
+    const lesson = buildLesson(
+      {
+        words: [...fresh, ...pool],
+        signals: fresh.map((w) =>
+          sig(w.key, { state: "seen", hasCard: false, pKnown: 0.2, taps: 2 }),
+        ),
+        states: [],
+        answers: [],
+        now: NOW,
+      },
+      createRng(10),
+    );
+    expect(lesson.slice(0, 3).map((e) => e.kind)).toEqual(["meet", "meet", "meet"]);
+    expect(lesson[0]!.prompt.hint).toMatch(/^animal/);
+    const pairs = lesson.find((e) => e.kind === "pairs")!;
+    expect(pairs.pairs).toHaveLength(3);
+    expect(pairs.pairs![0]).toMatchObject({ nl: expect.stringMatching(/^de /) });
   });
 });

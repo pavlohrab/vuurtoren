@@ -1828,6 +1828,69 @@ svg.lucide {
   gap: 8px;
   font-size: 18px;
 }
+.ex-tag {
+  font: 600 12px var(--font-ui);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--accent);
+}
+.ex-meet {
+  display: grid;
+  gap: 8px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  background: var(--bg);
+}
+.ex-meet p {
+  margin: 0;
+}
+.ex-meet-word {
+  font-size: 28px;
+  font-weight: 500;
+}
+.ex-meet-meaning {
+  font-size: 17px;
+  color: var(--ink-muted);
+}
+.ex-meet-sentence {
+  font-size: 17px;
+}
+.ex-pairs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.ex-pairs > div {
+  display: grid;
+  gap: 8px;
+}
+.ex-pair {
+  min-height: 46px;
+  padding: 8px 6px;
+  font: inherit;
+  font-size: 15px;
+  color: var(--ink);
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  cursor: pointer;
+}
+.ex-pair.ex-dutch {
+  font-family: var(--font-reading);
+  font-size: 16px;
+}
+.ex-pair--on {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.ex-pair--done {
+  opacity: 0.35;
+}
+.ex-pair--miss {
+  border-color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 12%, var(--surface));
+}
 .ex-say-it {
   display: flex;
   flex-direction: column;

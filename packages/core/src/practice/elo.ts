@@ -26,6 +26,8 @@ export const START_DIFFICULTY: Readonly<Record<ExerciseKind, number>> = {
   dictation: 0.7,
   "verb-form": 0.8,
   say: -0.2,
+  meet: -3,
+  pairs: -3,
 };
 
 /** θ and d stay inside this range, so a long streak can't run away. */

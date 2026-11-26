@@ -162,6 +162,51 @@ function spreadKinds(xs: Exercise[]): Exercise[] {
   return out;
 }
 
+/** Not graded and not recorded: "meet" and "pairs" (4.7.7). */
+export const UNGRADED: ReadonlySet<ExerciseKind> = new Set(["meet", "pairs"]);
+
+/** A new word shown first: its sound, meaning and the sentence where you met it. */
+function meetCard(word: WordData): Exercise | null {
+  const meaning = word.glosses[0];
+  if (!meaning) return null;
+  const s = word.sentences.find((x) => x.translation) ?? word.sentences[0];
+  const shown = word.article ? `${word.article} ${word.lemma}` : word.lemma;
+  return {
+    id: `meet-${word.key}`,
+    kind: "meet",
+    skill: "recognition",
+    key: word.key,
+    instruction: "New word",
+    prompt: {
+      text: shown,
+      speak: shown,
+      hint: meaning,
+      ...(s ? { sentence: s.text } : {}),
+      ...(s?.translation ? { translation: s.translation } : {}),
+    },
+    answer: shown,
+  };
+}
+
+/** Match pairs for three to five words picked at step 1 (a warm-up, 4.7.7). */
+function pairsCard(words: readonly WordData[], rng: Rng): Exercise | null {
+  const pairs = words
+    .filter((w) => w.glosses[0])
+    .slice(0, 5)
+    .map((w) => ({ nl: w.article ? `${w.article} ${w.lemma}` : w.lemma, en: w.glosses[0]! }));
+  if (pairs.length < 3 || new Set(pairs.map((p) => p.en)).size < pairs.length) return null;
+  return {
+    id: `pairs-${Math.floor(rng() * 1e9)}`,
+    kind: "pairs",
+    skill: "recognition",
+    key: words[0]!.key,
+    instruction: "Tap the pairs",
+    prompt: { text: "" },
+    pairs,
+    answer: "",
+  };
+}
+
 export function buildLesson(input: LessonInput, rng: Rng): Exercise[] {
   const size = input.size ?? LESSON_SIZE;
   const byKey = new Map(input.words.map((w) => [w.key, w]));
@@ -199,7 +244,16 @@ export function buildLesson(input: LessonInput, rng: Rng): Exercise[] {
     });
     if (ex) out.push(withTopic(withExtraTile(withMetIn(ex, word))));
   }
-  return spreadKinds(out);
+  const lesson = spreadKinds(out);
+  // Words never practised and without a card are shown first ("meet it"); three or more words
+  // at step 1 get a match-pairs warm-up before the exercises.
+  const practised = new Set(input.answers.map((a) => a.key));
+  const meets = lesson
+    .filter((ex) => !sig.get(ex.key)?.hasCard && !practised.has(ex.key))
+    .flatMap((ex) => meetCard(byKey.get(ex.key)!) ?? []);
+  const firstStep = lesson.filter((ex) => STEP_OF[ex.kind] === 1).map((ex) => byKey.get(ex.key)!);
+  const warmUp = firstStep.length >= 3 ? pairsCard(firstStep, rng) : null;
+  return [...meets, ...(warmUp ? [warmUp] : []), ...lesson];
 }
 
 /** The exercise for a missed word at the end of the lesson: one step easier, another kind. */

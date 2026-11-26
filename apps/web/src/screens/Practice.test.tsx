@@ -329,6 +329,50 @@ describe("Practice session", () => {
     expect(within(words).getByRole("button", { name: "De" })).toBeDisabled();
   });
 
+  it("shows a new word, then a pairs warm-up, without grading either", async () => {
+    const gender = MOCK_EXERCISES.find((e) => e.kind === "gender")!;
+    const meet = {
+      id: "meet-gracht",
+      kind: "meet",
+      skill: "recognition",
+      key: "gracht",
+      instruction: "New word",
+      prompt: { text: "de gracht", hint: "canal", sentence: "Ze fietst langs de gracht." },
+      answer: "de gracht",
+    } as Exercise;
+    const pairs = {
+      id: "pairs-1",
+      kind: "pairs",
+      skill: "recognition",
+      key: "brug",
+      instruction: "Tap the pairs",
+      prompt: { text: "" },
+      pairs: [
+        { nl: "de brug", en: "bridge" },
+        { nl: "de sleutel", en: "key" },
+        { nl: "de markt", en: "market" },
+      ],
+      answer: "",
+    } as Exercise;
+    const { answers, user } = setup([meet, pairs, gender]);
+    await begin(user);
+    expect(await screen.findByText("canal")).toBeVisible();
+    await user.click(screen.getByRole("button", { name: /Got it/ }));
+    const dutch = await screen.findByRole("group", { name: "Dutch" });
+    const meanings = screen.getByRole("group", { name: "Meanings" });
+    for (const [nl, en] of [
+      ["de brug", "bridge"],
+      ["de sleutel", "key"],
+      ["de markt", "market"],
+    ]) {
+      await user.click(within(dutch).getByRole("button", { name: nl }));
+      await user.click(within(meanings).getByRole("button", { name: en }));
+    }
+    await user.click(screen.getByRole("button", { name: "Continue" }));
+    expect(await screen.findByRole("group", { name: "Answers" })).toBeVisible();
+    expect(answers).toHaveLength(0);
+  });
+
   it("asks before ending with Escape once something was answered", async () => {
     const list = MOCK_EXERCISES.filter((e) => e.kind === "gender");
     const { user } = setup(list);

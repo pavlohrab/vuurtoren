@@ -37,6 +37,7 @@ export {
   LESSON_SIZE,
   LESSON_SIZES,
   buildLesson,
+  UNGRADED,
   comeBack,
   extraTile,
   weakPoints,

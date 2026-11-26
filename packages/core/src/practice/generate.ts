@@ -388,6 +388,9 @@ const GENERATORS: Record<ExerciseKind, Generator> = {
   scramble,
   dictation,
   say,
+  // Lessons make these (lesson.ts); a word alone can't.
+  meet: () => null,
+  pairs: () => null,
 };
 
 /**
