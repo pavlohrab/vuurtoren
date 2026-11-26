@@ -490,7 +490,11 @@ export function createLivePractice(deps: LivePracticeDeps) {
     const known = (form: string) => (model.get(form)?.pKnown ?? 0) >= KNOWN_RECALL;
     const practisedKeys = new Set(answers.map((a) => a.key));
     for (const w of words) {
-      for (const x of w.sentences) x.unknown = unknownOthers(x.text, x.target, known);
+      // Sentence objects can be reused between lessons: set both marks fresh each time.
+      for (const x of w.sentences) {
+        x.unknown = unknownOthers(x.text, x.target, known);
+        delete x.first;
+      }
       // The first time, the sentence from your own reading comes first (4.7.4).
       if (!practisedKeys.has(w.key)) {
         const mine = w.sentences.find((x) => x.source === "text");
