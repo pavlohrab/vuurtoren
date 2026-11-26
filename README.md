@@ -38,45 +38,33 @@ to find your way.
 
 ## What it does
 
-**Read at your level.** You can read the stories that come with the app, or add your own text:
-paste it, give a web address, or choose a PDF or a photo of a page. Every page is planned around the
-words you know, and about three new words are left for you to learn. Tap any word to see what it
-means in that sentence and the grammar around it, so you don't get stuck.
+**Read at your level.** Read the stories that come with the app, or add your own: paste a text, or
+give a web page, a PDF or a photo. Each page has a few new words to learn, and you can tap any other
+word to see what it means.
 
-**Four ways to read.** There are four ways to read the same page: plain, with English above the
-words you may not know, with some words you know turned into blanks, or side by side with the
-English, where the same words have the same colour.
+**Learn the words you meet.** A word you tap can become a card, with the sentence you found it in.
+A short review each day brings it back before you forget it. If you use Anki, you can bring your
+decks in or keep reviewing there.
 
-**Learn the words.** A word you tap while reading can become a card, with the sentence you found it
-in. Every day a short review brings back the cards you're about to forget, scheduled with FSRS, the
-algorithm [Anki](https://apps.ankiweb.net/) also offers. On a phone you just swipe. If you're
-starting from zero, Vuurtoren comes with about 5000 of the most common Dutch words, and if you
-already use Anki, you can bring your decks in or keep reviewing in Anki.
+**Understand the grammar.** Grammar is marked in your texts and explained under each word, with 63
+topics from A1 to C1.
 
-**Grammar in your texts.** Grammar like inversion, separable verbs or the perfect tense is marked
-where it appears in your texts, and explained under each word. 63 topics from A1 to C1 explain it
-with examples, following the e-ANS, the reference grammar of Dutch.
+**Your textbook and the A2 exam.** Add your textbook and work through it unit by unit, and practise
+for the inburgeringsexamen.
 
-**Your textbook and the A2 exam.** Add your textbook as a PDF or photos of the pages, and read and
-practise it unit by unit, with help for its exercises. Practice turns the words you're learning into
-short exercises, and mock tests prepare you for the A2 inburgeringsexamen.
+**AI if you want it.** With your own key, it can explain a sentence, write a story at your level or
+talk with you in Dutch. You don't need it for anything else.
 
-**Bring your own AI.** AI is only there if you want it, with your own key. It can explain a
-sentence, write a story at your level, or chat with you in Dutch, keeping to the words you know and
-correcting your mistakes. Vuurtoren checks what it writes against your words.
-
-You can see it all on [vuurtoren.app](https://vuurtoren.app).
+You can see it on [vuurtoren.app](https://vuurtoren.app).
 
 ## Your data
 
-Local-first, open source, with encrypted sync. Your words and texts stay on your devices and work
-offline, with no account. When you sync, they're locked with your passphrase before they leave,
-through your computer (for your phone, at home), your own server, WebDAV or a synced folder.
-Vuurtoren Sync, where you just sign in, is planned.
+Your words and texts stay on your devices and work offline, with no account. When you sync them,
+they're locked with your passphrase first. Your phone can sync with your computer at home, or your
+devices can sync through your own server, WebDAV or a synced folder.
 
-How it all works, from the words you know to the help on each page, is on
-[vuurtoren.app/how](https://vuurtoren.app/how.html), with the research behind it. The full
-technical story is in [docs/dev](docs/dev/README.md).
+How it works is on [vuurtoren.app/how](https://vuurtoren.app/how.html), and the technical side is in
+[docs/dev](docs/dev/README.md).
 
 ## Support
 
@@ -86,6 +74,6 @@ Vuurtoren is free and made by one person. If it helps you, you can support it on
 
 ## Licence
 
-The code is MIT. The content in `content/` (the starter words and the stories) is CC BY-SA
-4.0, because the dictionary and sentence sources it is built from are; see [content/LICENSE](content/LICENSE). Vuurtoren is an independent project, and it talks to Anki
-through the AnkiConnect add-on.
+The code is MIT. The starter words and the stories in `content/` are CC BY-SA 4.0, like the
+dictionaries and sentences they come from ([content/LICENSE](content/LICENSE)). Vuurtoren is an
+independent project, and it talks to Anki through the AnkiConnect add-on.
