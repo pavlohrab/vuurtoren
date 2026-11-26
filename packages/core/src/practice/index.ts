@@ -21,3 +21,15 @@ export {
   type GripStart,
 } from "./elo.js";
 export { isSafe, leftOut, need, pickWords, score, use, type WordSignals } from "./select.js";
+export {
+  POINT_OF,
+  STEP_OF,
+  TARGET,
+  chanceFor,
+  chooseExercise,
+  hardestRight,
+  maxStep,
+  missesByPoint,
+  type ChooseInput,
+  type GrammarPoint,
+} from "./choose.js";
