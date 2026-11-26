@@ -121,24 +121,30 @@ for (const size of SIZES) {
       expect(await overflowing(page, ".inspector-panel, .inspector-panel button")).toEqual([]);
       await shot(page, `word-${size.width}`);
 
-      // A swipe to the left turns to the next page.
+      // A swipe to the left turns on (in book mode the screen, then the page; this demo page is
+      // one screen, so the page). A finger moves on the way, so the swipe moves too.
       await page.keyboard.press("Escape");
       const count = page.locator(".reader-pager-count [aria-hidden]");
       const before = await count.textContent();
-      await page.locator(".reader-turn").evaluate((el) => {
-        const at = (type: string, x: number, t: number) =>
-          new PointerEvent(type, {
-            pointerType: "touch",
-            isPrimary: true,
-            pointerId: 7,
-            clientX: x,
-            clientY: 300,
-            bubbles: true,
-            timeStamp: t,
-          } as PointerEventInit);
-        el.dispatchEvent(at("pointerdown", 300, 0));
-        el.dispatchEvent(at("pointerup", 80, 100));
-      });
+      await page
+        .locator(".book, .reader-turn")
+        .first()
+        .evaluate((el) => {
+          const at = (type: string, x: number, t: number) =>
+            new PointerEvent(type, {
+              pointerType: "touch",
+              isPrimary: true,
+              pointerId: 7,
+              clientX: x,
+              clientY: 300,
+              bubbles: true,
+              timeStamp: t,
+            } as PointerEventInit);
+          el.dispatchEvent(at("pointerdown", 300, 0));
+          el.dispatchEvent(at("pointermove", 220, 40));
+          el.dispatchEvent(at("pointermove", 120, 80));
+          el.dispatchEvent(at("pointerup", 80, 100));
+        });
       await expect(count).not.toHaveText(before ?? "");
     });
 

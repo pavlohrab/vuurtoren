@@ -1423,7 +1423,8 @@ dl.card-meaning dd,
   position: relative;
   flex: 1 1 auto;
   min-height: 0;
-  overflow: hidden;
+  /* clip, not hidden: never a scroll container, so focus can't scroll the screens away. */
+  overflow: clip;
   /* Horizontal moves are page turns; a pinch still zooms. */
   touch-action: pinch-zoom;
   -webkit-tap-highlight-color: transparent;
@@ -1439,10 +1440,10 @@ dl.card-meaning dd,
   bottom: var(--book-pad-y, 0px);
   left: var(--book-side, 0px);
   width: var(--book-vw, 100%);
-  /* Clip without being a scroll container, so focus never scrolls the columns. The margin
-     lets the grammar marks show beside the text. */
-  overflow: clip;
-  overflow-clip-margin: 20px;
+  /* Clip without being a scroll container, so focus never scrolls the columns. The 36 px on
+     the sides let the grammar marks show beside the text; clip-path (not overflow-clip-margin)
+     so they also take clicks there. */
+  clip-path: inset(-8px -36px);
   transform: translateY(calc(-1 * var(--book-lift, 0px)));
   transition: transform var(--dur) var(--ease-out);
 }
@@ -1495,6 +1496,8 @@ dl.card-meaning dd,
   right: calc(var(--book-side) - 40px);
   border-radius: 6px;
   background: var(--surface);
+  /* Only the look of the paper: the grammar marks in its margin take the clicks. */
+  pointer-events: none;
   box-shadow:
     0 10px 28px color-mix(in srgb, var(--ink) 12%, transparent),
     inset 0 0 0 1px var(--hairline);

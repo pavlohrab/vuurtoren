@@ -47,6 +47,31 @@ async function emptyMiddle(page: Page): Promise<{ x: number; y: number }> {
 test.describe("phone 412px", () => {
   test.use({ viewport: { width: 412, height: 900 }, hasTouch: true, isMobile: true });
 
+  test("a word low on the screen stays above the word card", async ({ page }) => {
+    await openStory(page);
+    // The lowest word on this screen.
+    const i = await page.evaluate(() => {
+      const vp = document.querySelector(".book-vp")!.getBoundingClientRect();
+      let best: { i: string; y: number } | null = null;
+      for (const el of document.querySelectorAll<HTMLElement>(".book .k-tok[data-i]")) {
+        const r = el.getBoundingClientRect();
+        if (r.left < vp.left || r.right > vp.right || r.bottom > vp.bottom) continue;
+        if (!best || r.top > best.y) best = { i: el.dataset["i"]!, y: r.top };
+      }
+      return best?.i ?? null;
+    });
+    expect(i).not.toBeNull();
+    const word = page.locator(`.book .k-tok[data-i="${i}"]`);
+    await word.click();
+    const sheet = page.locator(".inspector-panel");
+    await expect(sheet).toBeVisible();
+    await page.waitForTimeout(700);
+    const w = (await word.boundingBox())!;
+    const s = (await sheet.boundingBox())!;
+    expect(w.y + w.height).toBeLessThanOrEqual(s.y);
+    await shot(page, "book-phone-word-low");
+  });
+
   test("a tap on the right side turns to the next screen of the page", async ({ page }) => {
     await openStory(page);
     const counter = page.locator(".book-screens");

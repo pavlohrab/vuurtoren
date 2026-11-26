@@ -40,7 +40,10 @@ test("a grammar topic opened from the reader goes back to the text, the word sti
   await word.click();
   const index = await word.getAttribute("data-i");
   const url = page.url();
-  await page.getByRole("button", { name: "Grammar: Separable verbs" }).first().click();
+  // In book mode the mark may sit on another screen: focus brings that screen, as Tab would.
+  const mark = page.getByRole("button", { name: "Grammar: Separable verbs" }).first();
+  await mark.focus();
+  await mark.click();
   await page.getByRole("link", { name: "Open the topic", exact: true }).click();
   await expect(page).toHaveURL(/\/grammar\/separable-verbs/);
   await page.getByRole("link", { name: "Back to the text" }).click();
