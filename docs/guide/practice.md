@@ -66,6 +66,16 @@ doesn't go to any server. If it heard you wrong, press **I said it right**, or *
 can't talk right now, **I can't talk now** skips speaking for the rest of the lesson. On a computer
 speaking isn't ready yet.
 
+## Sound and movement
+
+Practice says the Dutch by itself: a new word when it shows up, a tile when you tap it, and the
+right sentence after you answer. A right answer plays two soft notes going up, a miss two going
+down, and the end of a lesson a short chime. Tiles fly into the sentence and a wrong answer shakes
+once. You can turn each of these off in **Settings → Your words → Practice**, and there you can
+also make the phone buzz on a miss. When your system asks for less motion, nothing moves.
+
+The same settings make the word card in the reader and in Words say the word when it opens.
+
 ## Keys on a computer
 
 | Key       | What it does                  |
