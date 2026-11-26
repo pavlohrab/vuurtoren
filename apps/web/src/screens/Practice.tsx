@@ -458,6 +458,7 @@ function Session({
   inspector: WordInspectorHandle;
 }) {
   const services = useServices();
+  const navigate = useNavigate();
   const [index, setIndex] = useState(0);
   const [feedback, setFeedback] = useState<ExerciseFeedback | null>(null);
   const [submitted, setSubmitted] = useState<string | null>(null);
@@ -553,6 +554,14 @@ function Session({
 
   if (!current || skipDictation) return null;
   const last = index === exercises.length - 1;
+  // After a miss, a link to the grammar page (the answers so far are already saved).
+  const page = current.topic ? grammarTopic(current.topic) : undefined;
+  const topic = page
+    ? {
+        title: page.title,
+        onOpen: () => void navigate({ to: "/grammar/$topic", params: { topic: page.id } }),
+      }
+    : undefined;
   return (
     <>
       <div className="practice-top">
@@ -592,6 +601,7 @@ function Session({
           onSpeak={speakDutch}
           continueLabel={last ? "Finish" : "Continue"}
           onWord={(form, sentence, el) => inspector.open(form, sentence, el)}
+          {...(topic ? { topic } : {})}
         />
       </div>
       {error ? (

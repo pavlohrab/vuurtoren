@@ -44,6 +44,8 @@ export interface ExerciseCardProps {
    * and the sentence it stands in.
    */
   onWord?: (form: string, sentence: string | undefined, el: HTMLElement) => void;
+  /** The grammar page behind this exercise, linked after a miss. */
+  topic?: { title: string; onOpen: () => void };
 }
 
 /** Elements that mean another layer (dialog, command palette) owns the keyboard. */
@@ -103,6 +105,7 @@ export function ExerciseCard({
   onSpeak,
   continueLabel = "Continue",
   onWord,
+  topic,
 }: ExerciseCardProps) {
   const mode = exerciseMode(e);
   const answered = feedback !== null;
@@ -472,7 +475,19 @@ export function ExerciseCard({
           ) : null}
           {e.prompt.translation ? <p className="ex-translation">{e.prompt.translation}</p> : null}
           {feedback.note ? <p>{feedback.note}</p> : null}
-          {e.explanation ? <p className="ex-explanation">{e.explanation}</p> : null}
+          {e.explanation ? (
+            <p className="ex-explanation">
+              {e.explanation}
+              {topic && !feedback.correct ? (
+                <>
+                  {" "}
+                  <button type="button" className="ex-topic" onClick={topic.onOpen}>
+                    More about {topic.title}
+                  </button>
+                </>
+              ) : null}
+            </p>
+          ) : null}
           {e.metIn ? (
             <p className="ex-metin">
               Where you met it:{" "}

@@ -191,5 +191,7 @@ describe("a lesson (4.7)", () => {
     ).find((e) => e.kind === "scramble")!;
     expect(ex.pieces).toContain("het");
     expect(ex.pieces).toHaveLength(6);
+    expect(ex.topic).toBe("word-order-v2");
+    expect(ex.explanation).toMatch(/verb comes second/);
   });
 });

@@ -129,6 +129,8 @@ export interface Exercise {
   accept?: string[];
   /** Short explanation shown after answering (e.g. "het: neuter nouns…", "zijn: verb of motion"). */
   explanation?: string;
+  /** The grammar page that explains this exercise (an id in @app/content), set by lessons. */
+  topic?: string;
   /** The sentence where the learner met the word, when the exercise used a simpler one (4.7.4). */
   metIn?: { text: string; translation?: string };
 }

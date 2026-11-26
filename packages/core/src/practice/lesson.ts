@@ -92,6 +92,30 @@ function withExtraTile(ex: Exercise): Exercise {
   return { ...ex, pieces: [...ex.pieces.slice(0, at), tile, ...ex.pieces.slice(at)] };
 }
 
+/** The grammar page behind a kind, for the link after a miss (4.7.6). */
+const TOPIC_OF: Partial<Record<ExerciseKind, string>> = {
+  gender: "de-het",
+  "adjective-e": "adjective-inflection",
+  perfect: "perfect-tense",
+  separable: "separable-verbs",
+  scramble: "word-order-v2",
+};
+
+/** The grammar page and, where the generator gave none, the reason line. */
+function withTopic(ex: Exercise): Exercise {
+  const topic =
+    ex.kind === "verb-form"
+      ? /past/i.test(ex.instruction + ex.prompt.text)
+        ? "imperfect-tense"
+        : "present-tense"
+      : TOPIC_OF[ex.kind];
+  if (!topic) return ex;
+  const why =
+    ex.explanation ??
+    (ex.kind === "scramble" ? "In a main clause the verb comes second." : undefined);
+  return { ...ex, topic, ...(why ? { explanation: why } : {}) };
+}
+
 /** The text of the sentence an exercise uses, if any. */
 const usedSentence = (ex: Exercise): string | undefined =>
   ex.prompt.sentence ??
@@ -165,7 +189,7 @@ export function buildLesson(input: LessonInput, rng: Rng): Exercise[] {
       answers: input.answers,
       favour,
     });
-    if (ex) out.push(withExtraTile(withMetIn(ex, word)));
+    if (ex) out.push(withTopic(withExtraTile(withMetIn(ex, word))));
   }
   return spreadKinds(out);
 }

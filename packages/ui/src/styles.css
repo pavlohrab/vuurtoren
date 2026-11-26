@@ -1828,6 +1828,15 @@ svg.lucide {
   gap: 8px;
   font-size: 18px;
 }
+.ex-topic {
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  font-weight: 600;
+  color: var(--accent);
+  cursor: pointer;
+}
 .ex-metin {
   font-size: 13px;
   color: var(--ink-muted);
