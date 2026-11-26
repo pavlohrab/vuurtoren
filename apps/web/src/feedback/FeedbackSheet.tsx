@@ -2,8 +2,9 @@
  * The feedback button (FB1, mock `.plan/mocks/mock-feedback.html`). One sheet on a phone, a panel
  * on the right on a computer (where the word card opens), with "Point at it". Ways in: the edge
  * tab of test builds, a shake on the phone, Ctrl+Shift+F and the sidebar on a computer, Settings,
- * and "Tell Pavlo" on every error message. Pavlo's replies come back as a toast and stay in the
- * sheet.
+ * and "Tell Pavlo" on every error message. FB2 (mock `.plan/mocks/mock-feedback-chat.html`): it's
+ * one conversation between the tester and Pavlo; each report is the next message, and his answers
+ * come back as a toast and stay in it.
  */
 import {
   createContext,
@@ -17,7 +18,15 @@ import {
 import type { ReactNode } from "react";
 import { useRouterState } from "@tanstack/react-router";
 import { Button, useToast } from "@app/ui";
-import { MessageSquareWarning, Mic, Square, X } from "lucide-react";
+import {
+  Camera,
+  Image as ImageIcon,
+  MessageSquareWarning,
+  Mic,
+  SendHorizontal,
+  Square,
+  X,
+} from "lucide-react";
 import { currentDevice } from "../platform/index.js";
 import { appVersionLabel } from "../version.js";
 import {
@@ -29,17 +38,21 @@ import {
   type Recorder,
 } from "./capture.js";
 import {
+  conversation,
   deviceLine,
+  feedbackName,
   feedbackOn,
   fetchReplies,
   flushQueue,
   markRepliesRead,
   newReport,
   recentErrors,
+  rememberSent,
   savedReplies,
+  setFeedbackName,
   submit,
   testBuild,
-  type Reply,
+  type Message,
 } from "./feedback.js";
 import "./feedback.css";
 
@@ -51,9 +64,15 @@ interface OpenOptions {
 interface FeedbackApi {
   open: (opts?: OpenOptions) => void;
   on: boolean;
+  /** Pavlo's answers not seen yet. */
+  unread: number;
 }
 
-const FeedbackContext = createContext<FeedbackApi>({ open: () => undefined, on: false });
+const FeedbackContext = createContext<FeedbackApi>({
+  open: () => undefined,
+  on: false,
+  unread: 0,
+});
 
 export const useFeedback = (): FeedbackApi => useContext(FeedbackContext);
 
@@ -77,6 +96,7 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
     error?: string;
   } | null>(null);
   const [unread, setUnread] = useState(() => savedReplies().filter((r) => !r.read).length);
+  const [talk, setTalk] = useState<Message[]>(() => conversation());
 
   // Read through a ref, so `open` stays the same while the sheet opens and closes (the
   // effects below that use it don't start over each time).
@@ -90,6 +110,7 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
       // The panel opens at once; the picture is taken just after it has drawn (the panel and
       // the sheet are left out of it), and shows up when it's ready.
       const coming = new Promise<void>((ok) => setTimeout(ok, 150)).then(() => screenshot());
+      setTalk(conversation());
       setState({
         shot: null,
         taking: true,
@@ -138,37 +159,48 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener("devicemotion", motion);
   }, [on, phone, toast, open]);
 
-  // Kept reports go when the device is online; Pavlo's replies come in now and then.
+  // Kept reports go when the device is online; Pavlo's answers are asked for every minute
+  // while the app is on screen.
   useEffect(() => {
     if (!on) return;
     const flush = () => void flushQueue();
-    const ask = () =>
+    const ask = () => {
+      if (document.visibilityState !== "visible") return;
       void fetchReplies()
         .then((news) => {
           if (!news.length) return;
+          setTalk(conversation());
+          if (openNow.current) {
+            markRepliesRead();
+            return;
+          }
           setUnread(savedReplies().filter((r) => !r.read).length);
-          toast("Pavlo replied", news[news.length - 1]!.text.slice(0, 120), {
-            label: "Read",
+          toast("Pavlo answered", news[news.length - 1]!.text.slice(0, 120), {
+            label: "Open",
             onAct: () => open(),
           });
         })
         .catch(() => undefined);
+    };
     flush();
     ask();
     window.addEventListener("online", flush);
-    const t = window.setInterval(ask, 15 * 60_000);
+    document.addEventListener("visibilitychange", ask);
+    const t = window.setInterval(ask, 60_000);
     return () => {
       window.removeEventListener("online", flush);
+      document.removeEventListener("visibilitychange", ask);
       window.clearInterval(t);
     };
   }, [on, toast, open]);
 
-  const api = useMemo(() => ({ open, on }), [open, on]);
+  const api = useMemo(() => ({ open, on, unread }), [open, on, unread]);
   return (
     <FeedbackContext.Provider value={api}>
       {children}
       {on && phone && testBuild() && !state ? (
         <button type="button" className="fb-edge" data-feedback-skip onClick={() => open()}>
+          {unread ? <span className="fb-pip" aria-label="New answer" /> : null}
           Feedback
         </button>
       ) : null}
@@ -180,6 +212,8 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
           shotPromise={state.coming}
           {...(state.error ? { error: state.error } : {})}
           unread={unread}
+          messages={talk}
+          onTalk={() => setTalk(conversation())}
           onClose={() => setState(null)}
           onRead={() => {
             markRepliesRead();
@@ -212,6 +246,8 @@ function FeedbackForm({
   shotPromise,
   error,
   unread,
+  messages,
+  onTalk,
   onClose,
   onRead,
   onSent,
@@ -223,6 +259,9 @@ function FeedbackForm({
   shotPromise: Promise<Blob | null>;
   error?: string;
   unread: number;
+  messages: Message[];
+  /** A message was sent: the conversation changed. */
+  onTalk: () => void;
   onClose: () => void;
   onRead: () => void;
   onSent: (how: "sent" | "kept") => void;
@@ -240,7 +279,6 @@ function FeedbackForm({
   const [picked, setPicked] = useState<{ name: string; crop: Blob | null } | null>(null);
   const [picking, setPicking] = useState(false);
   const [withErrors, setWithErrors] = useState(true);
-  const [replies, setReplies] = useState(true);
   const [voice, setVoice] = useState<Blob | null>(null);
   const [drawing, setDrawing] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -248,7 +286,6 @@ function FeedbackForm({
   const pictureUrl = useObjectUrl(
     mode === "point" ? (picked?.crop ?? null) : mode === "window" ? picture : null,
   );
-  const old = savedReplies();
 
   useEffect(() => {
     if (unread) onRead();
@@ -274,7 +311,6 @@ function FeedbackForm({
       kind,
       userAgent: navigator.userAgent,
       picked: mode === "point" ? picked?.name : undefined,
-      replies,
       error,
     });
     if (!withErrors) report.errors = [];
@@ -291,7 +327,10 @@ function FeedbackForm({
       try {
         // Sent before the picture was ready: it waits for it.
         const screenshot = window_ ? (drawn ?? (await shotPromise)) : pointed;
-        onSent(await submit(report, { screenshot, voice }));
+        const how = await submit(report, { screenshot, voice });
+        rememberSent(report, { picture: !!screenshot, voice: !!voice }, screenLabel(screen));
+        onTalk();
+        onSent(how);
       } catch (e) {
         toast("Feedback not sent", e instanceof Error ? e.message : String(e));
       }
@@ -301,34 +340,20 @@ function FeedbackForm({
   const facts = [appVersionLabel(), deviceLine(navigator.userAgent, kind)];
   const lastError = error ?? recentErrors()[0];
 
+  const title = (
+    <h2 id="fb-title" className="fb-title">
+      <span>
+        Feedback <span className="fb-to">to Pavlo</span>
+      </span>
+      <button type="button" className="fb-close" aria-label="Close" onClick={onClose}>
+        <X size={18} aria-hidden />
+      </button>
+    </h2>
+  );
+
   const body = (
     <>
-      {old.length ? <Replies replies={old} /> : null}
-      {!phone ? (
-        <div className="fb-seg" role="radiogroup" aria-label="Picture">
-          {(
-            [
-              ["point", "Point at it"],
-              ["window", "Whole window"],
-              ["none", "No picture"],
-            ] as const
-          ).map(([m, label]) => (
-            <button
-              key={m}
-              type="button"
-              role="radio"
-              aria-checked={mode === m}
-              disabled={m === "window" && !taking && !shot}
-              onClick={() => {
-                setMode(m);
-                if (m === "point") setPicking(true);
-              }}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-      ) : null}
+      <Thread messages={messages} />
       {!phone && mode === "point" ? (
         <p className="fb-hint">
           {picked ? (
@@ -337,10 +362,14 @@ function FeedbackForm({
               <button type="button" className="fb-link" onClick={() => setPicking(true)}>
                 Point again
               </button>
+              {" · "}
             </>
           ) : (
-            "Click the thing that's wrong. It gets a red outline and goes with your words."
+            "Click the thing that's wrong. It gets a red outline and goes with your words. "
           )}
+          <button type="button" className="fb-link" onClick={() => setMode("window")}>
+            The whole screen instead
+          </button>
         </p>
       ) : null}
       {mode === "window" && taking && !drawn ? (
@@ -360,25 +389,61 @@ function FeedbackForm({
                 Draw on it
               </button>
             ) : null}
+            {!phone && mode === "window" ? (
+              <button
+                type="button"
+                className="fb-link"
+                onClick={() => {
+                  setMode("point");
+                  setPicking(true);
+                }}
+              >
+                Point at it instead
+              </button>
+            ) : null}
             <button type="button" className="fb-link" onClick={() => setMode("none")}>
               Leave it out
             </button>
           </div>
         </div>
       ) : null}
-      <textarea
-        id="fb-text"
-        className="fb-text"
-        aria-label="What went wrong"
-        placeholder="What went wrong?"
-        value={text}
-        onChange={(e) => {
-          setText(e.target.value);
-          setErr(null);
-        }}
-        rows={phone ? 3 : 5}
+      <VoiceNote
+        voice={voice}
+        onVoice={setVoice}
+        render={(mic, status) => (
+          <>
+            {status ? <div className="fb-rec">{status}</div> : null}
+            <div className="fb-compose">
+              <button
+                type="button"
+                className={`fb-ic${mode !== "none" ? " on" : ""}`}
+                aria-pressed={mode !== "none"}
+                aria-label={mode === "none" ? "Add the screen" : "Leave the screen out"}
+                title={mode === "none" ? "Add the screen" : "Leave the screen out"}
+                onClick={() => setMode(mode === "none" ? "window" : "none")}
+              >
+                <Camera size={17} aria-hidden />
+              </button>
+              {mic}
+              <textarea
+                id="fb-text"
+                className="fb-text"
+                aria-label="Write to Pavlo"
+                placeholder="Write to Pavlo…"
+                value={text}
+                onChange={(e) => {
+                  setText(e.target.value);
+                  setErr(null);
+                }}
+                rows={phone ? 2 : 3}
+              />
+              <button type="button" className="fb-ic fb-ic--send" aria-label="Send" onClick={send}>
+                <SendHorizontal size={17} aria-hidden />
+              </button>
+            </div>
+          </>
+        )}
       />
-      <VoiceNote voice={voice} onVoice={setVoice} />
       <div className="fb-chips" aria-label="What goes with it">
         {facts.map((f) => (
           <span key={f} className="fb-chip on">
@@ -395,26 +460,12 @@ function FeedbackForm({
             Last errors
           </button>
         ) : null}
-        <button
-          type="button"
-          className={`fb-chip${replies ? " on" : " off"}`}
-          aria-pressed={replies}
-          onClick={() => setReplies(!replies)}
-        >
-          Pavlo can reply
-        </button>
       </div>
       {err ? (
         <p role="alert" className="error-text" style={{ margin: 0 }}>
           {err}
         </p>
       ) : null}
-      <div className="fb-send">
-        <span className="fb-hint">Goes to Pavlo</span>
-        <Button variant="primary" onClick={send}>
-          Send
-        </Button>
-      </div>
     </>
   );
 
@@ -430,20 +481,13 @@ function FeedbackForm({
             onClick={(e) => e.stopPropagation()}
           >
             <div className="fb-grab" aria-hidden />
-            <h2 id="fb-title" className="fb-title">
-              What went wrong?
-            </h2>
+            {title}
             {body}
           </section>
         </div>
       ) : (
         <aside className="fb-pane" data-feedback-skip role="dialog" aria-labelledby="fb-title">
-          <h2 id="fb-title" className="fb-title">
-            Send feedback
-            <button type="button" className="fb-close" aria-label="Close" onClick={onClose}>
-              <X size={18} aria-hidden />
-            </button>
-          </h2>
+          {title}
           {body}
         </aside>
       )}
@@ -486,20 +530,82 @@ function useObjectUrl(blob: Blob | null): string | null {
   return url;
 }
 
-function Replies({ replies }: { replies: Reply[] }) {
-  return (
-    <div className="fb-replies" role="log" aria-label="Pavlo's replies">
-      {replies.slice(-3).map((r) => (
-        <p key={`${r.report}-${r.at}`} className="fb-reply">
-          <b>Pavlo:</b> {r.text}
+/** "/read/t42" → "Read": the screen a message was sent from. */
+function screenLabel(href: string): string {
+  const first = href.replace(/^\/+/, "").split(/[/?#]/)[0] ?? "";
+  return first ? first[0]!.toUpperCase() + first.slice(1) : "Home";
+}
+
+/** "12:40" today, "Mon" this week, else "3 Nov". */
+function when(at: number): string {
+  const d = new Date(at);
+  const now = new Date();
+  if (d.toDateString() === now.toDateString())
+    return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  if (now.getTime() - at < 6 * 86_400_000) return d.toLocaleDateString([], { weekday: "short" });
+  return d.toLocaleDateString([], { day: "numeric", month: "short" });
+}
+
+/** The conversation with Pavlo, oldest first, scrolled to the newest. */
+function Thread({ messages }: { messages: Message[] }) {
+  const end = useRef<HTMLDivElement>(null);
+  useEffect(() => end.current?.scrollIntoView({ block: "end" }), [messages.length]);
+  if (!messages.length)
+    return (
+      <div className="fb-thread fb-thread--empty">
+        <p className="fb-hint">
+          Tell Pavlo what went wrong or what you'd like. He reads every message and answers here.
         </p>
-      ))}
+      </div>
+    );
+  return (
+    <div className="fb-thread" role="log" aria-label="Your messages with Pavlo">
+      {messages.map((m) =>
+        m.who === "me" ? (
+          <div key={m.id} className="fb-msg fb-msg--me">
+            {m.picture || m.voice ? (
+              <span className="fb-msg-tags">
+                {m.picture ? (
+                  <span>
+                    <ImageIcon size={12} aria-hidden /> Picture
+                  </span>
+                ) : null}
+                {m.voice ? (
+                  <span>
+                    <Mic size={12} aria-hidden /> Voice note
+                  </span>
+                ) : null}
+              </span>
+            ) : null}
+            {m.text ? <span>{m.text}</span> : null}
+            <small>
+              You · {when(m.at)} · {m.facts}
+            </small>
+          </div>
+        ) : (
+          <div key={`${m.report}-${m.at}`} className="fb-msg fb-msg--him">
+            <span className="fb-who">Pavlo</span>
+            <span>{m.text}</span>
+            <small>{when(m.at)}</small>
+          </div>
+        ),
+      )}
+      <div ref={end} />
     </div>
   );
 }
 
 /** Tap the mic to talk, tap again to stop; a minute at most. */
-function VoiceNote({ voice, onVoice }: { voice: Blob | null; onVoice: (b: Blob | null) => void }) {
+function VoiceNote({
+  voice,
+  onVoice,
+  render,
+}: {
+  voice: Blob | null;
+  onVoice: (b: Blob | null) => void;
+  /** Lays out the mic button (in the compose row) and what's going on (above it). */
+  render: (mic: ReactNode, status: ReactNode) => ReactNode;
+}) {
   const rec = useRef<Recorder | null>(null);
   const [on, setOn] = useState(false);
   const [bars, setBars] = useState<number[]>([]);
@@ -522,7 +628,6 @@ function VoiceNote({ voice, onVoice }: { voice: Blob | null; onVoice: (b: Blob |
   }, [on]);
   useEffect(() => () => rec.current?.cancel(), []);
 
-  if (!canRecord()) return null;
   const stop = async () => {
     const r = rec.current;
     rec.current = null;
@@ -550,39 +655,38 @@ function VoiceNote({ voice, onVoice }: { voice: Blob | null; onVoice: (b: Blob |
     }
   };
   const secs = Math.floor((now - started) / 1000);
-  return (
-    <div className="fb-rec">
-      <button
-        type="button"
-        className={`fb-mic${on ? " on" : ""}`}
-        aria-label={on ? "Stop recording" : voice ? "Record again" : "Record a voice note"}
-        onClick={() => void (on ? stop() : start())}
-      >
-        {on ? <Square size={16} aria-hidden /> : <Mic size={18} aria-hidden />}
+  const mic = canRecord() ? (
+    <button
+      type="button"
+      className={`fb-ic fb-mic${on ? " on" : ""}`}
+      aria-label={on ? "Stop recording" : voice ? "Record again" : "Record a voice note"}
+      onClick={() => void (on ? stop() : start())}
+    >
+      {on ? <Square size={15} aria-hidden /> : <Mic size={17} aria-hidden />}
+    </button>
+  ) : null;
+  const status = on ? (
+    <>
+      <span className="fb-wave" aria-hidden>
+        {bars.map((h, i) => (
+          <i key={i} style={{ height: `${h}px` }} />
+        ))}
+      </span>
+      <span className="fb-hint">
+        {Math.floor(secs / 60)}:{String(secs % 60).padStart(2, "0")}
+      </span>
+    </>
+  ) : voice && url ? (
+    <>
+      <audio className="fb-audio" src={url} controls />
+      <button type="button" className="fb-link" onClick={() => onVoice(null)}>
+        Remove
       </button>
-      {on ? (
-        <>
-          <span className="fb-wave" aria-hidden>
-            {bars.map((h, i) => (
-              <i key={i} style={{ height: `${h}px` }} />
-            ))}
-          </span>
-          <span className="fb-hint">
-            {Math.floor(secs / 60)}:{String(secs % 60).padStart(2, "0")}
-          </span>
-        </>
-      ) : voice && url ? (
-        <>
-          <audio className="fb-audio" src={url} controls />
-          <button type="button" className="fb-link" onClick={() => onVoice(null)}>
-            Remove
-          </button>
-        </>
-      ) : (
-        <span className="fb-hint">{why ?? "or say it"}</span>
-      )}
-    </div>
-  );
+    </>
+  ) : why ? (
+    <span className="fb-hint">{why}</span>
+  ) : null;
+  return <>{render(mic, status)}</>;
 }
 
 /** "Point at it": the thing under the pointer gets an outline; a click picks it. */
@@ -701,7 +805,7 @@ function DrawOn({ picture, onDone }: { picture: Blob; onDone: (b: Blob | null) =
 
 /** The sidebar's "Send feedback" on a computer, with its key. */
 export function FeedbackNavItem() {
-  const { open, on } = useFeedback();
+  const { open, on, unread } = useFeedback();
   if (!on || currentDevice().kind === "android") return null;
   return (
     <button
@@ -712,8 +816,40 @@ export function FeedbackNavItem() {
     >
       <MessageSquareWarning size={18} />
       <span className="nav-label">Send feedback</span>
+      {unread ? (
+        <span className="fb-count" aria-label={`${unread} new`}>
+          {unread}
+        </span>
+      ) : null}
     </button>
   );
+}
+
+/** The phone's More sheet: Feedback, with a dot for a new answer. */
+export function FeedbackMoreItem({ onSelect }: { onSelect: () => void }) {
+  const { open, on, unread } = useFeedback();
+  if (!on) return null;
+  return (
+    <button
+      type="button"
+      className="nav-more-item"
+      role="menuitem"
+      onClick={() => {
+        onSelect();
+        open();
+      }}
+    >
+      <MessageSquareWarning size={18} />
+      <span>Feedback</span>
+      {unread ? <span className="fb-pip" aria-label="New answer" /> : null}
+    </button>
+  );
+}
+
+/** A dot on the phone's More button when Pavlo answered. */
+export function FeedbackDot() {
+  const { on, unread } = useFeedback();
+  return on && unread ? <span className="fb-pip fb-pip--more" aria-label="New answer" /> : null;
 }
 
 /** "Tell Pavlo" under an error message: the sheet opens with the error in it. */
@@ -727,19 +863,32 @@ export function TellPavlo({ error }: { error: string }) {
   );
 }
 
-/** Settings → Data: Send feedback, and Pavlo's replies so far. */
+/** Settings → Data: the name that goes with feedback, and Send feedback. */
 export function FeedbackSettings() {
-  const { open, on } = useFeedback();
+  const { open, on, unread } = useFeedback();
+  const [name, setName] = useState(feedbackName);
   if (!on) return null;
-  const replies = savedReplies();
   return (
     <section className="stack" aria-labelledby="feedback-h" style={{ gap: 8 }}>
       <h3 className="settings-h3" id="feedback-h">
         Feedback
       </h3>
-      {replies.length ? <Replies replies={replies} /> : null}
+      <label className="stack" style={{ gap: 4 }}>
+        <span className="fb-hint">
+          Your name, so Pavlo knows who writes (you can leave it empty)
+        </span>
+        <input
+          className="k-input"
+          style={{ maxWidth: 320 }}
+          value={name}
+          maxLength={60}
+          onChange={(e) => setName(e.target.value)}
+          onBlur={() => setFeedbackName(name)}
+          autoComplete="given-name"
+        />
+      </label>
       <div className="row">
-        <Button onClick={() => open()}>Send feedback</Button>
+        <Button onClick={() => open()}>Send feedback{unread ? ` (${unread} new)` : ""}</Button>
       </div>
     </section>
   );

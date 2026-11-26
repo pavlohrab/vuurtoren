@@ -37,9 +37,9 @@ describe("the feedback button (FB1)", () => {
     const { sent, user } = setup("/settings?section=data");
     const section = await screen.findByRole("region", { name: "Feedback" });
     await user.click(within(section).getByRole("button", { name: "Send feedback" }));
-    const panel = await screen.findByRole("dialog", { name: /Send feedback/ });
+    const panel = await screen.findByRole("dialog", { name: /Feedback/ });
     await user.type(
-      within(panel).getByRole("textbox", { name: "What went wrong" }),
+      within(panel).getByRole("textbox", { name: "Write to Pavlo" }),
       "The plural says Verb.",
     );
     await user.click(within(panel).getByRole("button", { name: "Send" }));
@@ -55,8 +55,35 @@ describe("the feedback button (FB1)", () => {
     const { user } = setup("/settings?section=data");
     const section = await screen.findByRole("region", { name: "Feedback" });
     await user.click(within(section).getByRole("button", { name: "Send feedback" }));
-    const panel = await screen.findByRole("dialog", { name: /Send feedback/ });
+    const panel = await screen.findByRole("dialog", { name: /Feedback/ });
     await user.click(within(panel).getByRole("button", { name: "Send" }));
     expect(within(panel).getByRole("alert")).toHaveTextContent("Say what went wrong first.");
   });
+
+  it("is one conversation: what was sent, then Pavlo's answer under it (FB2)", async () => {
+    vi.stubEnv("VITE_FEEDBACK_KEY", "k");
+    localStorage.clear();
+    const { sent, user } = setup("/settings?section=data");
+    const section = await screen.findByRole("region", { name: "Feedback" });
+    await user.click(within(section).getByRole("button", { name: /Send feedback/ }));
+    let panel = await screen.findByRole("dialog", { name: /Feedback/ });
+    expect(within(panel).getByText(/He reads every message/)).toBeVisible();
+    await user.type(
+      within(panel).getByRole("textbox", { name: "Write to Pavlo" }),
+      "Tour skips a step",
+    );
+    await user.click(within(panel).getByRole("button", { name: "Send" }));
+    await waitFor(() => expect(sent).toHaveLength(1), { timeout: 6000 });
+    const report = JSON.parse(String(sent[0]!.get("report"))) as { id: string; replyTo?: string };
+    expect(report.replyTo).toMatch(/^d-/);
+    localStorage.setItem(
+      "vuurtoren.feedback.replies",
+      JSON.stringify([{ report: report.id, text: "Looking at it today.", at: Date.now() + 1000 }]),
+    );
+    await waitFor(() => expect(screen.queryByText("Sending…")).toBeNull(), { timeout: 6000 });
+    await user.click(within(section).getByRole("button", { name: /Send feedback/ }));
+    panel = await screen.findByRole("dialog", { name: /Feedback/ });
+    const log = within(panel).getByRole("log", { name: "Your messages with Pavlo" });
+    expect(log).toHaveTextContent(/Tour skips a step.*Pavlo.*Looking at it today\./s);
+  }, 15_000);
 });

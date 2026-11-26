@@ -25,7 +25,10 @@ export interface Report {
   screen: string;
   errors: string[];
   picked?: string;
+  /** This device's conversation (FB2): Pavlo's answers come back to it. */
   replyTo?: string;
+  /** The name the tester gave once, for their topic in Pavlo's Telegram. */
+  name?: string;
 }
 
 export interface Files {
@@ -98,9 +101,9 @@ export function newReport(opts: {
   kind: "android" | "desktop" | "browser";
   userAgent: string;
   picked?: string | undefined;
-  replies: boolean;
   error?: string | undefined;
 }): Report {
+  const name = feedbackName();
   const errors = recentErrors();
   if (opts.error && errors[0] !== opts.error) errors.unshift(opts.error.slice(0, 300));
   return {
@@ -112,14 +115,88 @@ export function newReport(opts: {
     screen: opts.screen,
     errors: errors.slice(0, ERRORS_KEPT),
     ...(opts.picked ? { picked: opts.picked } : {}),
-    ...(opts.replies ? { replyTo: replyId() } : {}),
+    replyTo: replyId(),
+    ...(name ? { name } : {}),
   };
 }
 
-// --- replies: one random id per device, kept here ---
+// --- the conversation (FB2): one random id per device, what was sent and the answers ---
 
 const REPLY_ID = "vuurtoren.feedback.replyId";
 const REPLIES = "vuurtoren.feedback.replies";
+const MINE = "vuurtoren.feedback.mine";
+const NAME = "vuurtoren.feedback.name";
+
+/** The name the tester gave (Settings → Feedback), or "". */
+export function feedbackName(): string {
+  try {
+    return localStorage.getItem(NAME) ?? "";
+  } catch {
+    return "";
+  }
+}
+
+export function setFeedbackName(name: string): void {
+  try {
+    const n = name.trim().slice(0, 60);
+    if (n) localStorage.setItem(NAME, n);
+    else localStorage.removeItem(NAME);
+  } catch {
+    // Blocked storage: the reports go without a name.
+  }
+}
+
+/** What the tester sent, as it shows in the conversation. */
+export interface Mine {
+  id: string;
+  text: string;
+  at: number;
+  /** "Android 15, Pixel 8 · 26l · Read". */
+  facts: string;
+  picture: boolean;
+  voice: boolean;
+}
+
+export function savedMine(): Mine[] {
+  try {
+    return JSON.parse(localStorage.getItem(MINE) ?? "[]") as Mine[];
+  } catch {
+    return [];
+  }
+}
+
+/** Keep a sent (or kept-for-later) report for the conversation. */
+export function rememberSent(
+  report: Report,
+  files: { picture: boolean; voice: boolean },
+  screenName: string,
+): void {
+  const m: Mine = {
+    id: report.id,
+    text: report.text,
+    at: Date.now(),
+    facts: [report.device, report.version, screenName].filter(Boolean).join(" · "),
+    ...files,
+  };
+  try {
+    localStorage.setItem(
+      MINE,
+      JSON.stringify([...savedMine().filter((x) => x.id !== m.id), m].slice(-100)),
+    );
+  } catch {
+    // Storage full or blocked: the report still goes; it just won't show here.
+  }
+}
+
+export type Message = ({ who: "me" } & Mine) | ({ who: "pavlo" } & Reply);
+
+/** The tester's messages and Pavlo's answers, oldest first. */
+export function conversation(): Message[] {
+  return [
+    ...savedMine().map((m) => ({ who: "me" as const, ...m })),
+    ...savedReplies().map((r) => ({ who: "pavlo" as const, ...r })),
+  ].sort((a, b) => a.at - b.at);
+}
 
 function replyId(): string {
   try {
@@ -150,7 +227,7 @@ export function savedReplies(): Reply[] {
 
 function saveReplies(all: Reply[]): void {
   try {
-    localStorage.setItem(REPLIES, JSON.stringify(all.slice(-50)));
+    localStorage.setItem(REPLIES, JSON.stringify(all.slice(-100)));
   } catch {
     // Storage full or blocked: the replies show once and are gone.
   }
@@ -160,7 +237,7 @@ export function markRepliesRead(): void {
   saveReplies(savedReplies().map((r) => ({ ...r, read: true })));
 }
 
-/** New replies from Pavlo, if this device ever asked for replies. */
+/** New answers from Pavlo to this device. */
 export async function fetchReplies(fetchImpl: typeof fetch = fetch): Promise<Reply[]> {
   if (!feedbackOn()) return [];
   let id: string | null;

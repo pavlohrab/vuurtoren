@@ -7,6 +7,9 @@ import {
   submit,
   SendRefused,
   feedbackOn,
+  conversation,
+  rememberSent,
+  setFeedbackName,
 } from "./feedback.js";
 
 afterEach(() => vi.unstubAllEnvs());
@@ -37,7 +40,6 @@ describe("the feedback button's report (FB1)", () => {
       screen: "/read/t42",
       kind: "android",
       userAgent: PIXEL,
-      replies: true,
       error: "Grammar needs the language server.",
     });
     expect(r.text).toBe("it says verb");
@@ -48,13 +50,32 @@ describe("the feedback button's report (FB1)", () => {
     ]);
     expect(r.replyTo).toMatch(/^d-[0-9a-f]{24}$/);
     // The same device id each time, so Pavlo's replies find it.
+    expect(newReport({ text: "x", screen: "/", kind: "android", userAgent: PIXEL }).replyTo).toBe(
+      r.replyTo,
+    );
+  });
+
+  it("keeps the conversation: what was sent and Pavlo's answers, oldest first (FB2)", () => {
+    localStorage.clear();
+    setFeedbackName("Sanne");
+    const r = newReport({
+      text: "it says verb",
+      screen: "/read",
+      kind: "android",
+      userAgent: PIXEL,
+    });
+    expect(r.name).toBe("Sanne");
+    rememberSent(r, { picture: true, voice: false }, "Read");
+    localStorage.setItem(
+      "vuurtoren.feedback.replies",
+      JSON.stringify([{ report: r.id, text: "Fixed, thanks", at: Date.now() + 1000 }]),
+    );
+    const c = conversation();
+    expect(c.map((m) => m.who)).toEqual(["me", "pavlo"]);
+    expect(c[0]!.who === "me" && c[0]!.facts).toContain("Read");
+    setFeedbackName("");
     expect(
-      newReport({ text: "x", screen: "/", kind: "android", userAgent: PIXEL, replies: true })
-        .replyTo,
-    ).toBe(r.replyTo);
-    expect(
-      newReport({ text: "x", screen: "/", kind: "android", userAgent: PIXEL, replies: false })
-        .replyTo,
+      newReport({ text: "x", screen: "/", kind: "android", userAgent: PIXEL }).name,
     ).toBeUndefined();
   });
 
@@ -65,7 +86,6 @@ describe("the feedback button's report (FB1)", () => {
       screen: "/",
       kind: "desktop",
       userAgent: "Linux",
-      replies: false,
     });
     const ok = vi.fn(
       async (u: string, i?: RequestInit) => (void u, void i, new Response("{}", { status: 200 })),
@@ -88,7 +108,6 @@ describe("the feedback button's report (FB1)", () => {
       screen: "/",
       kind: "desktop",
       userAgent: "Linux",
-      replies: false,
     });
     for (const status of [500, 502, 429]) {
       const down = async () => new Response("{}", { status });

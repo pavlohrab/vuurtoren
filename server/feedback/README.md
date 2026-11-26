@@ -46,6 +46,20 @@ You need `npx wrangler login` with the Cloudflare account that has vuurtoren.app
    ```
    Without it the app doesn't show the feedback button.
 
+## One topic per tester
+
+Each tester gets their own topic in a Telegram group, and what you write in that topic goes back
+to their app. To switch it on once:
+
+1. Make a Telegram group, open its settings and turn on Topics.
+2. Add the bot and make it an admin with "Manage topics" (an admin bot sees every message).
+3. Send any message in the group, open
+   `https://api.telegram.org/bot<token>/getUpdates` and copy the chat id (it starts with `-100`).
+4. `npx wrangler secret put TG_CHAT_ID` with that id.
+
+Without a group the bot keeps posting to your private chat, and you answer by replying to a
+report.
+
 ## If someone abuses it
 
 Each address can send 20 reports an hour (`LIMITS.perHour` in `src/logic.ts`). If a key gets misused, set a new `APP_KEY`, and older

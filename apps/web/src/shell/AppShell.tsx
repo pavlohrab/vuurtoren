@@ -49,7 +49,12 @@ import { ShellContext, type PageHeader, type ShellState } from "./ShellContext.j
 import { useBottomSheet } from "./useBottomSheet.js";
 import { Tour, startTour } from "./Tour.js";
 import { PhoneAsking } from "./PhoneAsking.js";
-import { FeedbackNavItem, FeedbackProvider } from "../feedback/FeedbackSheet.js";
+import {
+  FeedbackDot,
+  FeedbackMoreItem,
+  FeedbackNavItem,
+  FeedbackProvider,
+} from "../feedback/FeedbackSheet.js";
 import { DictionaryPackKeeper } from "../screens/settings/DictionaryPack.js";
 import { useAutoSync } from "./useAutoSync.js";
 import { useBackClose, useSystemBack } from "./backStack.js";
@@ -403,6 +408,7 @@ export function AppShell() {
               >
                 <Ellipsis size={18} />
                 <span className="nav-label">More</span>
+                <FeedbackDot />
               </button>
             </nav>
             {moreOpen ? (
@@ -440,6 +446,7 @@ export function AppShell() {
                     <Heart size={18} />
                     <span>Support</span>
                   </a>
+                  <FeedbackMoreItem onSelect={() => setMoreOpen(false)} />
                   <button
                     type="button"
                     className="nav-more-item"
