@@ -47,6 +47,10 @@
       info: function () {
         return invoke("desktop_info");
       },
+      // Focus mode in the reader: the window fills the screen, and back.
+      fullscreen: function (on) {
+        return invoke("plugin:window|set_fullscreen", { label: "main", value: !!on });
+      },
       // What to do before the window closes (the page's last sync); returns its removal.
       beforeClose: function (fn) {
         beforeClose = fn;

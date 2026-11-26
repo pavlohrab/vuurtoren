@@ -57,7 +57,7 @@ words you know or are learning into blanks to fill in, and a right answer counts
 word. **Side by side** shows each sentence with its English, and the same words have the same colour
 on both sides.
 
-**Focus mode**, in the menu above the page (or the F key), hides everything except the text.
+**Focus mode**, in the menu above the page (or the F key), hides everything except the text and fills the whole screen. To leave it, press Esc or F, tap **Leave focus mode** in the corner, or on a phone go back.
 
 ## Grammar and sound
 

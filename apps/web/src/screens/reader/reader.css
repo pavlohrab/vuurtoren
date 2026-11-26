@@ -633,6 +633,12 @@
 .reader-focus-exit:focus-visible {
   opacity: 1;
 }
+/* On a touch screen there is no Esc to show. */
+@media (hover: none) {
+  .reader-focus-exit kbd {
+    display: none;
+  }
+}
 .reader-focus-exit kbd {
   font-family: var(--font-ui);
   font-size: 11px;

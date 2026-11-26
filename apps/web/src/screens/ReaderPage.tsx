@@ -82,6 +82,8 @@ import {
 import { DictionaryMissing } from "./reader/DictionaryMissing.js";
 import { SentenceTab } from "./reader/SentenceTab.js";
 import { contextGloss } from "../services/contextGloss.js";
+import { onFullScreenLeft, setFullScreen } from "../platform/fullScreen.js";
+import { useBackClose } from "../shell/backStack.js";
 
 /**
  * Below this share of known words (%) the first page says the text is hard for the learner
@@ -332,10 +334,17 @@ export function ReaderPage({ textId }: { textId: string }) {
   useEffect(() => {
     if (!readingFocus) return;
     document.documentElement.dataset["readingFocus"] = "";
+    // The whole screen: no system bars, no window frame (fullScreen.ts).
+    setFullScreen(true);
+    const stop = onFullScreenLeft(() => setReadingFocus(false));
     return () => {
+      stop();
+      setFullScreen(false);
       delete document.documentElement.dataset["readingFocus"];
     };
   }, [readingFocus]);
+  // Android's back gesture leaves focus mode first.
+  useBackClose(readingFocus, () => setReadingFocus(false));
 
   // Esc steps back one layer: the selected word, then the grammar focus, then focus mode.
   // j/k/arrows from nowhere move focus into the text; Ctrl/Cmd +/− change the text size; F

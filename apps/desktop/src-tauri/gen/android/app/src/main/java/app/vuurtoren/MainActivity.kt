@@ -17,6 +17,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 
 class MainActivity : TauriActivity() {
   /** The system bars and cutout in CSS pixels, as JSON: {"top":…,"right":…,"bottom":…,"left":…}. */
@@ -68,6 +69,7 @@ class MainActivity : TauriActivity() {
     webView.addJavascriptInterface(LinksBridge(), "VuurtorenLinks")
     webView.addJavascriptInterface(ListenBridge(), "VuurtorenListen")
     webView.addJavascriptInterface(KeysBridge(), "VuurtorenKeys")
+    webView.addJavascriptInterface(ScreenBridge(), "VuurtorenScreen")
     this.webView = webView
     startTts()
     ViewCompat.setOnApplyWindowInsetsListener(webView) { view, windowInsets ->
@@ -265,6 +267,22 @@ class MainActivity : TauriActivity() {
       js("window.__vuurtorenVolumeKey && window.__vuurtorenVolumeKey($dir)")
     }
     return true
+  }
+
+  // Focus mode in the reader: hide the status and navigation bars (a swipe from the edge shows
+  // them for a moment), and bring them back.
+  private inner class ScreenBridge {
+    @JavascriptInterface
+    fun setImmersive(on: Boolean) {
+      runOnUiThread {
+        val c = WindowCompat.getInsetsController(window, window.decorView)
+        if (on) {
+          c.systemBarsBehavior =
+            WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+          c.hide(WindowInsetsCompat.Type.systemBars())
+        } else c.show(WindowInsetsCompat.Type.systemBars())
+      }
+    }
   }
 
   private inner class KeysBridge {

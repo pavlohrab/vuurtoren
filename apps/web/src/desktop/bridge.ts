@@ -48,6 +48,8 @@ export interface DesktopBridge {
   readonly home: boolean;
   /** The device: "linux", "macos", "windows", "android" (absent in older builds: a computer). */
   readonly os?: string;
+  /** Make the window fill the screen, or not (absent in older builds). */
+  fullscreen?(on: boolean): Promise<void>;
   info(): Promise<{
     version: string;
     /** The bundled language server's address (`vuurtoren-nlp:` protocol); null on a phone. */
