@@ -22,7 +22,7 @@ import { pairItem } from "./livePairs.js";
 import { type StorySentencePairs, storySlugOf } from "./stories.js";
 
 /** The language server's offline translation model, the one that makes the extras' English. */
-export const MT_MODEL = "opus-mt-nl-en";
+const MT_MODEL = "opus-mt-nl-en";
 
 export interface LiveExtrasDeps {
   repo: VuurtorenRepository;
