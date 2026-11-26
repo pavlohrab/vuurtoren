@@ -2041,8 +2041,9 @@
           <span class="eyebrow">How it works</span>
           <h1>It measures what you know.</h1>
           <p class="lead">
-            Vuurtoren keeps track of every word you know, and plans each page around them: a few new
-            words to learn, and help with the rest. All of it runs on your computer, without AI.
+            When you open a text, Vuurtoren checks every word in it against the words you know. Then
+            it plans each page, with a few new words to learn and help with the rest. It does all of
+            this without AI.
           </p>
         </div>
         <div class="demo">
@@ -2071,70 +2072,24 @@
       <div class="in">
         <div class="row">
           <div class="copy">
-            <span class="eyebrow">Your words</span>
-            <h2>It knows which words you know.</h2>
-            <p>
-              Each time you review a word, Vuurtoren updates how likely you are to still remember
-              it, with FSRS, the algorithm Anki also offers<sup>1–4</sup>. Your Anki decks count
-              too. With Vuurtoren's own cards, so does reading: a word you read without tapping it
-              waits a little longer for its next review, and a word you had to look up comes back
-              today. So for every word it knows how well you know it, and from all of them, how many
-              words you know.
-            </p>
-            <p class="src">
-              <sup>1</sup
-              ><a href="https://doi.org/10.1037/0033-2909.132.3.354">Cepeda et al. 2006</a> ·
-              <sup>2</sup><a href="https://doi.org/10.1145/3534678.3539081">Ye et al. 2022</a> ·
-              <sup>3</sup><a href="https://doi.org/10.1109/TKDE.2023.3251721">Su et al. 2023</a> ·
-              <sup>4</sup
-              ><a href="https://github.com/open-spaced-repetition/fsrs4anki/wiki/The-Algorithm"
-                >FSRS-6</a
-              >
-            </p>
-            <a
-              class="more"
-              href="https://github.com/pavlohrab/Vuurtoren/blob/main/docs/dev/algorithms.md#1-your-words--learner-model"
-              >How it works in detail →</a
-            >
-          </div>
-          <div class="demo">
-            <div class="stage">
-              <ul class="recall" aria-label="Words with the chance you still know them">
-                <li>
-                  <span lang="nl">de vuurtoren</span><i><b style="width: 96%"></b></i><em>96%</em>
-                </li>
-                <li>
-                  <span lang="nl">beklimmen</span><i><b style="width: 81%"></b></i><em>81%</em>
-                </li>
-                <li>
-                  <span lang="nl">de trap</span><i><b style="width: 64%"></b></i><em>64%</em>
-                </li>
-                <li>
-                  <span lang="nl">de verte</span><i><b class="low" style="width: 22%"></b></i
-                  ><em>22%</em>
-                </li>
-              </ul>
-            </div>
-          </div>
-        </div>
-
-        <div class="row">
-          <div class="copy">
             <span class="eyebrow">Every page</span>
             <h2>Just enough help on every page.</h2>
             <p>
-              Before you read a page of about 150 words, Vuurtoren plans it. It picks about three
-              new words for you to learn, from the most common words you don't know yet, and leaves
-              them untranslated<sup>1</sup>. You can tap any other word to see what it means, and in
-              Gloss the words you may not know get their English above them, so you don't get
-              stuck<sup>2</sup>. When reading goes well, the next pages get a few more new words;
-              when you look up a lot, fewer.
+              A page is about 150 words. Before you read it, Vuurtoren picks about three new words
+              for you to learn, from the most common words you don't know yet<sup>1</sup>. They stay
+              in Dutch, with no translation next to them. If you get stuck on any other word, tap it
+              to see what it means. And if you want more help, switch to Gloss, so the words you may
+              not know get their English above them and you can keep reading<sup>2</sup>.
+            </p>
+            <p>
+              The next pages follow how it goes. If you read without much trouble, you get a few
+              more new words, and if you look up a lot, you get fewer.
             </p>
             <p class="why">
               This follows reading research. You can follow a text when you know about 95% of its
               words, and read it comfortably at 98%<sup>3–5</sup>. A new word needs about ten
-              meetings before it sticks<sup>6</sup>, so Vuurtoren prefers new words that come back
-              later in the text.
+              meetings before it sticks<sup>6</sup>, so Vuurtoren picks new words that come back
+              later in the text when it can.
             </p>
             <p class="src">
               <sup>1</sup
@@ -2186,14 +2141,70 @@
 
         <div class="row">
           <div class="copy">
+            <span class="eyebrow">Your words</span>
+            <h2>How it knows your words.</h2>
+            <p>
+              For every word, Vuurtoren keeps a number for how likely you are to still remember it.
+              Each review changes that number, with FSRS, the algorithm Anki also
+              offers<sup>1–4</sup>. If you use Anki, your decks count too. With Vuurtoren's own
+              cards, reading counts as well. A word you read without tapping it waits a little
+              longer for its next review, and a word you had to look up comes back today. Added up,
+              this tells Vuurtoren how many words you know, and it is what each page is planned
+              with.
+            </p>
+            <p class="src">
+              <sup>1</sup
+              ><a href="https://doi.org/10.1037/0033-2909.132.3.354">Cepeda et al. 2006</a> ·
+              <sup>2</sup><a href="https://doi.org/10.1145/3534678.3539081">Ye et al. 2022</a> ·
+              <sup>3</sup><a href="https://doi.org/10.1109/TKDE.2023.3251721">Su et al. 2023</a> ·
+              <sup>4</sup
+              ><a href="https://github.com/open-spaced-repetition/fsrs4anki/wiki/The-Algorithm"
+                >FSRS-6</a
+              >
+            </p>
+            <a
+              class="more"
+              href="https://github.com/pavlohrab/Vuurtoren/blob/main/docs/dev/algorithms.md#1-your-words--learner-model"
+              >How it works in detail →</a
+            >
+          </div>
+          <div class="demo">
+            <div class="stage">
+              <ul class="recall" aria-label="Words with the chance you still know them">
+                <li>
+                  <span lang="nl">de vuurtoren</span><i><b style="width: 96%"></b></i><em>96%</em>
+                </li>
+                <li>
+                  <span lang="nl">beklimmen</span><i><b style="width: 81%"></b></i><em>81%</em>
+                </li>
+                <li>
+                  <span lang="nl">de trap</span><i><b style="width: 64%"></b></i><em>64%</em>
+                </li>
+                <li>
+                  <span lang="nl">de verte</span><i><b class="low" style="width: 22%"></b></i
+                  ><em>22%</em>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="copy">
             <span class="eyebrow">Offline</span>
             <h2>It runs on your computer.</h2>
             <p>
-              To find the words and the grammar in a text, Vuurtoren uses spaCy, a language analysis
-              tool, and a small translation model, OPUS-MT. How each sentence is built comes from
-              SyntaxDot on a server, and on Linux when you download it. The meanings and example
-              sentences come from open dictionaries. All of it is on your computer, so it works
-              offline and your texts stay with you.
+              When you tap a word, you see its dictionary form and what it means in this sentence.
+              Below that is the grammar of the sentence, and the sentence shown part by part. Every
+              text and story also shows a rough level, like "about A2", from its words and its
+              grammar.
+            </p>
+            <p>
+              To find all this, Vuurtoren uses spaCy, a tool that analyses Dutch, and a small
+              translation model, OPUS-MT. How each sentence is built comes from SyntaxDot if you run
+              it on Linux or on your own server, and from spaCy everywhere else. The meanings and
+              example sentences come from open dictionaries. It all works offline, and your texts
+              stay with you.
             </p>
             <p class="src">
               <a href="https://spacy.io/">spaCy</a> ·
@@ -2227,11 +2238,11 @@
             <span class="eyebrow">Optional · AI</span>
             <h2>How the AI stories are made.</h2>
             <p>
-              If you add your own AI key, Vuurtoren can also write stories for you. It gives the
+              If you add your own AI key, Vuurtoren can also write stories for you. It sends the
               writer the words you know and the words you're learning, and asks for about 3% new
-              words, each used at least twice, so you can work out what they mean. Then it checks
-              the story against your words, and if it has more words you don't know than it should,
-              it asks for a rewrite.
+              words. Each new word should come up at least twice, so you can work out what it means.
+              When the story comes back, Vuurtoren checks it against your words. If there are more
+              words you don't know than there should be, it asks for one rewrite.
             </p>
             <a
               class="more"
@@ -2256,8 +2267,8 @@
       <div class="in">
         <h2>AI is there if you want it.</h2>
         <p class="sub">
-          With your own key, it can explain a sentence, write a story or talk with you. Nothing
-          above depends on it.
+          With your own key, it can explain a sentence or write a story, and you can talk with it in
+          Dutch. Everything else on this page works without it.
         </p>
         <div class="cta">
           <a
