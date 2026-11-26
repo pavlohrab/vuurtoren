@@ -1852,6 +1852,85 @@
       .page-demo {
         width: 84%;
       }
+      /* Practice: a sentence builds itself from tiles, then the green strip (plays once when in
+         view; the page starts in the end state, and stays there with reduced motion). */
+      .ld {
+        width: 84%;
+        display: grid;
+        gap: 12px;
+      }
+      .ld p {
+        margin: 0;
+      }
+      .ld-ask {
+        font: 600 16px var(--f-display);
+        color: var(--ink);
+      }
+      .ld-en {
+        color: var(--muted);
+        font-size: 15px;
+      }
+      .ld-slot,
+      .ld-bank {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        min-height: 40px;
+      }
+      .ld-slot {
+        padding-bottom: 8px;
+        border-bottom: 2px solid var(--line);
+      }
+      .ld-bank {
+        justify-content: center;
+      }
+      .ld .t {
+        font: 16px var(--f-read);
+        color: var(--ink);
+        padding: 6px 11px;
+        border-radius: 10px;
+        background: var(--sheet);
+        border: 1px solid var(--line-strong);
+        box-shadow: 0 2px 0 var(--line-strong);
+      }
+      .ld-bank .t.used {
+        opacity: 0.25;
+      }
+      .ld-strip {
+        padding: 10px 12px;
+        border-radius: 10px;
+        background: color-mix(in srgb, var(--good) 14%, var(--surface));
+        font-size: 15px;
+      }
+      .ld-strip b {
+        color: var(--good);
+        margin-right: 6px;
+      }
+      .ld-strip span {
+        font-family: var(--f-read);
+      }
+      @media (prefers-reduced-motion: no-preference) {
+        .ld.play .ld-slot .t {
+          animation: ld-in 0.35s calc(0.4s + var(--i) * 0.7s) both;
+        }
+        .ld.play .ld-bank .t.used {
+          animation: ld-used 0.35s calc(0.4s + var(--i) * 0.7s) both;
+        }
+        .ld.play .ld-strip {
+          animation: ld-in 0.4s 3.4s both;
+        }
+        @keyframes ld-in {
+          from {
+            opacity: 0;
+            transform: translateY(6px);
+          }
+        }
+        @keyframes ld-used {
+          from {
+            opacity: 1;
+          }
+        }
+      }
       .how-end {
         text-align: left;
       }
@@ -2195,10 +2274,6 @@
               Every review tells Vuurtoren a bit more about what you remember. It uses FSRS, the
               same algorithm as Anki<sup>1–4</sup>, and the words you read count too.
             </p>
-            <p>
-              Also practise what you learned with Duolingo-like exercises. Offline, and backed by
-              science<sup>5–7</sup>.
-            </p>
             <p class="src">
               <sup>1</sup
               ><a href="https://doi.org/10.1037/0033-2909.132.3.354">Cepeda et al. 2006</a> ·
@@ -2208,11 +2283,6 @@
               ><a href="https://github.com/open-spaced-repetition/fsrs4anki/wiki/The-Algorithm"
                 >FSRS-6</a
               >
-              · <sup>5</sup
-              ><a href="https://doi.org/10.1016/j.compedu.2016.03.017">Pelánek 2016</a> ·
-              <sup>6</sup
-              ><a href="https://doi.org/10.1038/s41467-019-12552-4">Wilson et al. 2019</a> ·
-              <sup>7</sup><a href="https://aclanthology.org/P16-1174">Settles &amp; Meeder 2016</a>
             </p>
             <a
               class="more"
@@ -2237,6 +2307,61 @@
                   ><em>22%</em>
                 </li>
               </ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="copy">
+            <span class="eyebrow">Practice</span>
+            <h2>It helps you practise what you read.</h2>
+            <p>
+              Practise what you learned with Duolingo-like exercises. Offline, and backed by
+              science<sup>1–4</sup>.
+            </p>
+            <p>
+              Vuurtoren already knows a lot about each word: what your cards say, which words you
+              tapped while reading and which ones you got wrong. It uses that to pick the words for
+              a short lesson, and for each word an exercise you get right about 8 times in 10. You
+              build the sentence, fill in the gap or say it out loud, and when you miss, it shows why.
+            </p>
+            <p class="src">
+              <sup>1</sup
+              ><a href="https://doi.org/10.1126/science.1152408">Karpicke &amp; Roediger 2008</a> ·
+              <sup>2</sup
+              ><a href="https://doi.org/10.1016/j.compedu.2016.03.017">Pelánek 2016</a> ·
+              <sup>3</sup
+              ><a href="https://doi.org/10.1038/s41467-019-12552-4">Wilson et al. 2019</a> ·
+              <sup>4</sup><a href="https://aclanthology.org/P16-1174">Settles &amp; Meeder 2016</a>
+            </p>
+            <a
+              class="more"
+              href="https://github.com/pavlohrab/Vuurtoren/blob/main/docs/dev/algorithms.md#47-lessons"
+              >How it works in detail →</a
+            >
+          </div>
+          <div class="demo">
+            <div class="stage">
+              <div class="ld" data-ld aria-label="A practice exercise: build the sentence">
+                <p class="ld-ask">Write this in Dutch</p>
+                <p class="ld-en">I climb the stairs.</p>
+                <div class="ld-slot" lang="nl">
+                  <span class="t" style="--i: 0">Ik</span>
+                  <span class="t" style="--i: 1">beklim</span>
+                  <span class="t" style="--i: 2">de</span>
+                  <span class="t" style="--i: 3">trap</span>
+                </div>
+                <div class="ld-bank" lang="nl">
+                  <span class="t used" style="--i: 2">de</span>
+                  <span class="t used" style="--i: 3">trap</span>
+                  <span class="t">het</span>
+                  <span class="t used" style="--i: 0">ik</span>
+                  <span class="t used" style="--i: 1">beklim</span>
+                </div>
+                <p class="ld-strip">
+                  <b>Right</b> <span lang="nl">Ik beklim de trap.</span>
+                </p>
+              </div>
             </div>
           </div>
         </div>
@@ -2507,6 +2632,22 @@
           { threshold: 0.6 },
         );
         seen.observe(box);
+      })();
+    </script>
+    <script>
+      // Practice: the sentence builds itself once, when the demo is in view.
+      (() => {
+        const ld = document.querySelector("[data-ld]");
+        if (!ld || !("IntersectionObserver" in window)) return;
+        const seen = new IntersectionObserver(
+          (es) => {
+            if (!es.some((e) => e.isIntersecting)) return;
+            seen.disconnect();
+            ld.classList.add("play");
+          },
+          { threshold: 0.6 },
+        );
+        seen.observe(ld);
       })();
     </script>
     <script>
