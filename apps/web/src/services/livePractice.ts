@@ -26,7 +26,8 @@ import type {
   WordInfo,
 } from "@app/db";
 import type { GlossEntry } from "@app/nlp-client";
-import { buildTopicSession } from "@app/core";
+import { STEP_OF, buildLesson, buildTopicSession, score as lessonScore } from "@app/core";
+import { lessonSignals, toEloAnswers } from "./lessonSignals.js";
 import {
   buildSession,
   checkAnswer,
@@ -114,6 +115,11 @@ const goodSentences = (xs: readonly ExampleSentence[]) =>
 const TOPIC_WORDS = 40;
 
 const DEFAULT_SIZE = 20;
+/** Words in a lesson (algorithms.md 4.7.6). */
+const LESSON_WORDS = 10;
+/** Exercise kinds the engine knows (older answers of a removed kind are skipped). */
+const KNOWN_KINDS: ReadonlySet<string> = new Set(Object.keys(STEP_OF));
+const ALL_SKILLS: readonly Skill[] = ["recognition", "recall", "form", "gender", "listening"];
 /** Texts scanned for example sentences (most recent first). */
 const MAX_TEXTS = 15;
 const MIN_SENTENCE_WORDS = 4;
@@ -399,9 +405,74 @@ export function createLivePractice(deps: LivePracticeDeps) {
     return { words, aiByKey };
   }
 
+  /**
+   * A lesson (algorithms.md 4.7): the words with the highest need × use, each at the exercise the
+   * Elo model and the guard rail choose. Used unless the learner limited the skills in Options.
+   */
+  async function startLesson(
+    opts: PracticeOptions,
+    lang: string,
+    now: number,
+  ): Promise<Exercise[]> {
+    const size = Math.max(1, opts.size ?? LESSON_WORDS);
+    const rng = createRng(now);
+    const [infos, items, model, rows] = await Promise.all([
+      repo.words(lang),
+      loadItems(lang),
+      deps.model(),
+      repo.practiceAnswers(lang),
+    ]);
+    const answers = toEloAnswers(rows, KNOWN_KINDS);
+    const focus = opts.keys ? new Set(opts.keys) : null;
+    // A first pass with a neutral frequency picks the pool; word data (with the real frequency)
+    // is only built for that pool, because it reads texts and asks the language server.
+    const rough = lessonSignals(infos, answers, now).filter((s) => !focus || focus.has(s.key));
+    const due = new Set(items.filter((i) => i.due <= now).map((i) => i.key));
+    const pool = rough
+      .map((s) => ({ s, v: due.has(s.key) ? Infinity : lessonScore(s, now) }))
+      .filter((x) => x.v > 0)
+      .sort((a, b) => b.v - a.v || (a.s.key < b.s.key ? -1 : 1))
+      .slice(0, Math.max(30, size * 4))
+      .map((x) => x.s.key);
+    if (pool.length === 0) return [];
+    const byKey = new Map(infos.map((w) => [w.key, w]));
+    const { words, aiByKey } = await buildWordData(
+      lang,
+      pool.map((key) => ({ key, info: byKey.get(key)! })),
+      model,
+    );
+    if (opts.aiSentences) {
+      const report = await fillWithAI(lang, words, aiByKey, size);
+      opts.onAISentences?.(report);
+    }
+    const zipf = new Map(words.map((w) => [w.key, w.zipf]));
+    const inPool = new Set(pool);
+    const signals = lessonSignals(
+      infos.filter((w) => inPool.has(w.key)),
+      answers,
+      now,
+      (k) => zipf.get(k) ?? 0,
+    );
+    const exercises = buildLesson(
+      {
+        words,
+        signals,
+        states: items,
+        answers,
+        size,
+        now,
+        ...(focus ? { only: focus } : {}),
+      },
+      rng,
+    );
+    return padWordChoices(exercises, words, lang);
+  }
+
   async function startPractice(opts: PracticeOptions = {}): Promise<Exercise[]> {
     const lang = await deps.lang();
     const now = clock();
+    if (!opts.skills || ALL_SKILLS.every((sk) => opts.skills!.includes(sk)))
+      return startLesson(opts, lang, now);
     const size = Math.max(1, opts.size ?? DEFAULT_SIZE);
     const rng = createRng(now);
     const [infos, items, model] = await Promise.all([
