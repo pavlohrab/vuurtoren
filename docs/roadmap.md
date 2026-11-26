@@ -34,5 +34,4 @@ Hard to fix, because they come from the tools Vuurtoren builds on:
 - Reading a photo sometimes glues two words together (_productenwilt_) and reads some tables
   column by column.
 - In scanned books, gap-fill exercises can be missed when the scan loses the blanks.
-- A few past tenses keep their own form instead of the verb's (_pleegden_, _wierpen_), and verbs
-  like _groeien hier op_ are not seen as one verb.
+- Verbs like _groeien hier op_ are not seen as one verb.

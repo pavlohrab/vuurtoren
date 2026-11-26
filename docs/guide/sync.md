@@ -15,6 +15,7 @@ All your devices have to use the same place. There are three options for now.
 
 | Place                     | Devices                | Good for                               |
 | ------------------------- | ---------------------- | -------------------------------------- |
+| **Your computer**         | your phone, at home    | The easiest: one code, no account      |
 | Your own Vuurtoren server | computer and phone     | You [self-host](self-host.md) a server |
 | WebDAV                    | computer and phone     | Nextcloud, ownCloud, a NAS             |
 | A folder you already sync | computer (desktop app) | Syncthing, Dropbox, iCloud Drive       |
@@ -25,6 +26,12 @@ without setting anything up.
 ## Set it up
 
 Everything happens in **Settings → Your devices**.
+
+**Just your computer and your phone?** On the computer, choose Connect a phone → Show the code, and
+scan it with the phone. There's no passphrase to make up. Keep the recovery key the computer shows
+you once. More on [Vuurtoren on your phone](../phones.md).
+
+For the other places:
 
 On your **first device**, which is a computer or a phone (never the server):
 

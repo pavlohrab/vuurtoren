@@ -20,7 +20,8 @@ until you sync. See [On your phone](../phones.md).
 
 ## What you see on a page
 
-A page is about 150 words, and about three new words on it are underlined. They are not translated,
+A page is about 150 words, and about three new words on it are marked to learn, with a soft colour and
+a line under them. They are not translated,
 so you can try to work them out from the sentence first. The number of new words follows how you
 read: when you look up only a few words, the next pages get one more new word, and when you look up
 a lot, they get one fewer. If you'd rather choose the number yourself, set **Words to learn per

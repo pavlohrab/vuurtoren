@@ -42,8 +42,7 @@ and what it needs your computer for, is on [On your phone](../phones.md).
 Vuurtoren first asks: **Do you use Anki?**
 
 If you say **no**, Vuurtoren keeps your words and your reviews itself, and you don't need anything
-else. It asks where new words should start (from the most common words, or a bit further if you
-already know some Dutch), and then it opens with a story at your level.
+else. It starts with the most common words and opens with a story at your level.
 
 If you say **yes**, you can move your decks into Vuurtoren with their review history, or keep using
 Anki and read here. To keep using Anki, keep Anki open with the
