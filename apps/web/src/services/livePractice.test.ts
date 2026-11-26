@@ -121,6 +121,20 @@ describe("locateWord", () => {
 });
 
 describe("live practice", () => {
+  it("gives a missed word a second go of another kind (algorithms.md 4.7.6)", async () => {
+    backend();
+    const { services } = await setup();
+    const lesson = await services.startPractice();
+    expect(lesson.length).toBeGreaterThan(0);
+    const missed = lesson[0]!;
+    const again = await services.comeBack!(missed);
+    if (again) {
+      expect(again.key).toBe(missed.key);
+      expect(again.kind).not.toBe(missed.kind);
+      expect(again.id.endsWith("-again")).toBe(true);
+    }
+  });
+
   it("builds a session from the learner model, Anki sentences and server data", async () => {
     const be = backend();
     const { services } = await setup();

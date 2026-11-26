@@ -411,6 +411,11 @@ export interface AppServices
   /** Grade an answer, schedule the (word, skill) pair and record it. */
   answerExercise(exercise: Exercise, attempt: AttemptInput): Promise<AnswerResult>;
   /**
+   * A missed word's second go at the end of the lesson: another kind, one step easier
+   * (algorithms.md 4.7.6). Null when there is none.
+   */
+  comeBack?(missed: Exercise): Promise<Exercise | null>;
+  /**
    * Grammar constructions in a text: detected once by the language server, then stored
    * with the analysis. Rejects when they are not stored and the server cannot be reached.
    */

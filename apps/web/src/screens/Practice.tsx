@@ -446,7 +446,7 @@ function StartView({
 }
 
 function Session({
-  exercises,
+  exercises: planned,
   listening,
   onFinish,
   inspector,
@@ -459,6 +459,8 @@ function Session({
 }) {
   const services = useServices();
   const navigate = useNavigate();
+  // The lesson grows by a missed word's second go at the end (algorithms.md 4.7.6).
+  const [exercises, setExercises] = useState(planned);
   const [index, setIndex] = useState(0);
   const [feedback, setFeedback] = useState<ExerciseFeedback | null>(null);
   const [submitted, setSubmitted] = useState<string | null>(null);
@@ -539,6 +541,11 @@ function Session({
           ms: Date.now() - shownAt.current,
         });
         answeredRef.current = [...answeredRef.current, { exercise: current, result }];
+        if (!result.correct && !current.id.endsWith("-again")) {
+          const again = await services.comeBack?.(current).catch(() => null);
+          if (again)
+            setExercises((xs) => (xs.some((x) => x.id === again.id) ? xs : [...xs, again]));
+        }
         setSubmitted(s.answer);
         setFeedback({ correct: result.correct, ...(result.note ? { note: result.note } : {}) });
       } catch (e) {

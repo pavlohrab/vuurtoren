@@ -29,6 +29,8 @@ import type { GlossEntry } from "@app/nlp-client";
 import {
   STEP_OF,
   buildLesson,
+  comeBack as engineComeBack,
+  type LessonInput,
   buildTopicSession,
   score as lessonScore,
   unknownOthers,
@@ -248,6 +250,8 @@ function sentencesFromTexts(
 
 /** Create the practice part of AppServices. */
 export function createLivePractice(deps: LivePracticeDeps) {
+  /** The running lesson's input, for a missed word's second go. */
+  let lastLesson: Omit<LessonInput, "size" | "only"> | null = null;
   const { repo } = deps;
   const clock = deps.now ?? Date.now;
 
@@ -470,6 +474,7 @@ export function createLivePractice(deps: LivePracticeDeps) {
       now,
       (k) => zipf.get(k) ?? 0,
     );
+    lastLesson = { words, signals, states: items, answers, now };
     const exercises = buildLesson(
       {
         words,
@@ -503,6 +508,18 @@ export function createLivePractice(deps: LivePracticeDeps) {
         const t = !x.translation ? got.get(x.text) : undefined;
         if (t) x.translation = t;
       }
+  }
+
+  /** A missed word's second go, from the lesson that is running. */
+  async function comeBack(missed: Exercise): Promise<Exercise | null> {
+    if (!lastLesson) return null;
+    const miss = { key: missed.key, kind: missed.kind, result: 0, at: clock() };
+    const ex = engineComeBack(
+      missed,
+      { ...lastLesson, answers: [...lastLesson.answers, miss] },
+      createRng(clock()),
+    );
+    return ex ? { ...ex, id: `${ex.id}-again` } : null;
   }
 
   async function startPractice(opts: PracticeOptions = {}): Promise<Exercise[]> {
@@ -792,6 +809,7 @@ export function createLivePractice(deps: LivePracticeDeps) {
     startPractice,
     startTopicPractice,
     answerExercise,
+    comeBack,
     buildWordData,
     /** Forget the cached practice items (another device answered). */
     invalidate: () => itemCache.clear(),
