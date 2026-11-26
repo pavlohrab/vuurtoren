@@ -62,7 +62,7 @@ type Phase =
   | { name: "start" }
   | { name: "loading" }
   | { name: "session"; exercises: Exercise[]; listening: boolean }
-  | { name: "summary"; answered: Answered[]; skipped: number; empty: boolean };
+  | { name: "summary"; answered: Answered[]; skipped: number; empty: boolean; ms?: number };
 
 /** Practice: start view, one exercise per screen, then a quiet summary. */
 export function Practice() {
@@ -90,6 +90,7 @@ function PracticeSession({ focus, autoStart }: { focus: string[] | null; autoSta
   const client = useQueryClient();
   const inspector = useWordInspector("reading");
 
+  const startedAt = useRef(0);
   const start = async (size: number, skills: Skill[], aiSentences: boolean) => {
     setError(null);
     setPhase({ name: "loading" });
@@ -107,6 +108,7 @@ function PracticeSession({ focus, autoStart }: { focus: string[] | null; autoSta
       const listening = exercises.some((e) => e.kind === "dictation")
         ? await dutchVoiceAvailable()
         : true;
+      startedAt.current = Date.now();
       setPhase({ name: "session", exercises, listening });
     } catch (e) {
       setError(e ?? new Error("The session could not be prepared."));
@@ -119,7 +121,13 @@ function PracticeSession({ focus, autoStart }: { focus: string[] | null; autoSta
     void client.invalidateQueries({ queryKey: ["activity"] });
     writePracticeAgain(answered.filter((a) => !a.result.correct).map((a) => a.exercise.key));
     if (answered.length > 0) countLessonToday();
-    setPhase({ name: "summary", answered, skipped, empty: false });
+    setPhase({
+      name: "summary",
+      answered,
+      skipped,
+      empty: false,
+      ms: Date.now() - startedAt.current,
+    });
   };
 
   return (
@@ -148,6 +156,7 @@ function PracticeSession({ focus, autoStart }: { focus: string[] | null; autoSta
           answered={phase.answered}
           skipped={phase.skipped}
           empty={phase.empty}
+          {...(phase.ms !== undefined ? { ms: phase.ms } : {})}
           onAgain={() => setPhase({ name: "start" })}
           {...(focus
             ? {
@@ -785,7 +794,10 @@ function Summary({
   emptyText,
   actions,
   inspector,
+  ms,
 }: {
+  /** How long the lesson took. */
+  ms?: number;
   /** The words to look at again open the word inspector. */
   inspector: WordInspectorHandle;
   answered: Answered[];
@@ -812,21 +824,30 @@ function Summary({
     );
   }
   const correct = answered.filter((a) => a.result.correct).length;
-  // Counted per word: a word practised in several skills is one word.
-  const started = new Set(
-    answered.filter((a) => a.result.next.reps === 1).map((a) => a.exercise.key),
-  ).size;
-  const relearned = new Set(
-    answered
-      .filter((a) => a.result.grade === "again" && a.result.next.reps > 1)
-      .map((a) => a.exercise.key),
-  ).size;
   const again = [...new Set(answered.filter((a) => !a.result.correct).map((a) => a.exercise.key))];
   const practised = [...new Set(answered.map((a) => a.exercise.key))];
+  const share = answered.length ? Math.round((correct / answered.length) * 100) : 0;
+  const minutes = Math.max(1, Math.round((ms ?? 0) / 60_000));
+  // Words whose next practice is due by tomorrow evening.
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  tomorrow.setHours(23, 59, 59, 999);
+  const soon = [
+    ...new Set(
+      answered.filter((a) => a.result.next.due <= tomorrow.getTime()).map((a) => a.exercise.key),
+    ),
+  ];
+  // A grammar point missed twice or more in this lesson: its page.
+  const missedTopics = new Map<string, number>();
+  for (const a of answered)
+    if (!a.result.correct && a.exercise.topic)
+      missedTopics.set(a.exercise.topic, (missedTopics.get(a.exercise.topic) ?? 0) + 1);
+  const [weakTopic, weakMisses] = [...missedTopics].sort((x, y) => y[1] - x[1])[0] ?? [];
+  const weak = weakTopic && (weakMisses ?? 0) >= 2 ? grammarTopic(weakTopic) : undefined;
   return (
     <>
       <PageHeader
-        title="Session complete"
+        title="Lesson done"
         lede={
           answered.length === 0
             ? "No exercises were answered."
@@ -835,18 +856,38 @@ function Summary({
       />
       <dl className="done-stats">
         <div>
-          <dt>Words practised</dt>
+          <dt>Words</dt>
           <dd>{practised.length}</dd>
         </div>
         <div>
-          <dt>New words started</dt>
-          <dd>{started}</dd>
+          <dt>Right</dt>
+          <dd>{share}%</dd>
         </div>
         <div>
-          <dt>Words to relearn</dt>
-          <dd className={relearned ? "done-stats-learn" : undefined}>{relearned}</dd>
+          <dt>Time</dt>
+          <dd>{ms === undefined ? "–" : `${minutes} min`}</dd>
         </div>
       </dl>
+      {answered.length > 0 ? (
+        <p className="k-hint practice-note">
+          {soon.length ? (
+            <>
+              <span lang="nl">{soon.slice(0, 3).join(", ")}</span>
+              {soon.length > 3 ? ` and ${soon.length - 3} more` : ""}{" "}
+              {soon.length === 1 ? "comes" : "come"} back tomorrow.{" "}
+            </>
+          ) : null}
+          <TodayCount />
+        </p>
+      ) : null}
+      {weak ? (
+        <p className="practice-note">
+          {weak.title}: {weakMisses} missed.{" "}
+          <Link to="/grammar/$topic" params={{ topic: weak.id }}>
+            Read about it
+          </Link>
+        </p>
+      ) : null}
       {skipped > 0 ? (
         <p className="k-hint practice-note">
           {skipped} listening {skipped === 1 ? "exercise was" : "exercises were"} skipped: no Dutch

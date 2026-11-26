@@ -345,7 +345,7 @@ describe("Practice session", () => {
     expect(await fed(/^Right$/)).toBeInTheDocument();
     await user.keyboard("{Escape}");
     expect(screen.getByRole("group", { name: "End the session?" })).toBeInTheDocument();
-    expect(screen.queryByText("Session complete")).not.toBeInTheDocument();
+    expect(screen.queryByText("Lesson done")).not.toBeInTheDocument();
     await user.keyboard("{Escape}"); // dismisses the question
     expect(screen.queryByRole("group", { name: "End the session?" })).not.toBeInTheDocument();
     await user.keyboard("{Escape}");
@@ -382,7 +382,7 @@ describe("Practice session", () => {
         name: "End session",
       }),
     );
-    expect(screen.queryByText("Session complete")).not.toBeInTheDocument();
+    expect(screen.queryByText("Lesson done")).not.toBeInTheDocument();
     release();
     expect(await screen.findByText("1 of 1 correct.")).toBeInTheDocument();
   });
@@ -401,7 +401,7 @@ describe("Practice session", () => {
     input.focus();
     await user.keyboard("1{Escape}");
     expect(answers).toHaveLength(0);
-    expect(screen.queryByText("Session complete")).not.toBeInTheDocument();
+    expect(screen.queryByText("Lesson done")).not.toBeInTheDocument();
     dialog.remove();
     // an editable element outside the card, no dialog role
     const search = document.createElement("input");
