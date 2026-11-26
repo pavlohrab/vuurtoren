@@ -39,6 +39,8 @@ for pkg in (
     "omegaconf",
     # Speech: Piper and its espeak-ng data (phonemes) live in its package folder.
     "piper",
+    # Listening (the speaking exercise): sherpa-onnx and its native library.
+    "sherpa_onnx",
 ):
     try:
         d, b, h = collect_all(pkg)

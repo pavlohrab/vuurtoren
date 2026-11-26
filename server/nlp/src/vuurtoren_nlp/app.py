@@ -238,6 +238,18 @@ def speech(text: str, rate: float = 1.0) -> Response:
     return Response(audio, media_type="audio/wav", headers={"Cache-Control": "max-age=86400"})
 
 
+@app.post("/listen")
+async def listen(request: Request) -> dict[str, str]:
+    """What was said in a WAV recording (16-bit PCM) of one Dutch sentence: the speaking
+    exercise. 503 when speech recognition (asr-nl) is not installed."""
+    from vuurtoren_nlp.listen import transcribe
+
+    body = await request.body()
+    if len(body) > 4_000_000:
+        raise ServiceError(413, "Say one sentence.")
+    return {"text": transcribe(body)}
+
+
 @app.post("/analyze/text")
 def analyze_text_endpoint(req: AnalyzeRequest) -> list[TextAnalysis]:
     check_total(req.texts)
