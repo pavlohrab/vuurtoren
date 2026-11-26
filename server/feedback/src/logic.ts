@@ -157,3 +157,38 @@ export async function addressHash(ip: string, salt: string): Promise<string> {
   const sum = new Uint8Array(await crypto.subtle.digest("SHA-256", data));
   return [...sum.slice(0, 12)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
+
+// --- the website's contact form (about.html) ---
+
+export interface Contact {
+  name: string;
+  email: string;
+  message: string;
+}
+
+const EMAIL = /^[^\s@]{1,64}@[^\s@]{1,190}\.[^\s@]{2,24}$/;
+
+/** The form as sent; `website` is the hidden field only bots fill in (then: drop, quietly). */
+export function readContact(
+  raw: unknown,
+): { contact: Contact } | { error: string } | { bot: true } {
+  if (!raw || typeof raw !== "object") return { error: "Nothing was sent." };
+  const r = raw as Record<string, unknown>;
+  const str = (v: unknown, max: number) => (typeof v === "string" ? v.trim().slice(0, max) : "");
+  if (str(r.website, 200)) return { bot: true };
+  const email = str(r.email, 254);
+  const message = str(r.message, 4000);
+  if (!EMAIL.test(email)) return { error: "Write your email address, so Pavlo can answer." };
+  if (message.length < 2) return { error: "Write a message first." };
+  return { contact: { name: str(r.name, 100), email, message } };
+}
+
+/** Pavlo's Telegram message for a contact form. */
+export function contactMessage(c: Contact): string {
+  const who = c.name ? `${c.name} <${c.email}>` : c.email;
+  const out = `✉️ From the website: ${who}\n\n${c.message}\n\nAnswer by email.`;
+  return out.length > 4000 ? `${out.slice(0, 3996)}…` : out;
+}
+
+/** The pages that may send the form. */
+export const CONTACT_ORIGINS = ["https://vuurtoren.app", "https://www.vuurtoren.app"];

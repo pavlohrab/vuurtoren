@@ -24,3 +24,14 @@ CREATE TABLE IF NOT EXISTS replies (
   delivered INTEGER              -- when the app took it
 );
 CREATE INDEX IF NOT EXISTS replies_to ON replies (reply_to, delivered);
+
+-- The website's contact form (about.html).
+CREATE TABLE IF NOT EXISTS contacts (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  created INTEGER NOT NULL,
+  ip TEXT NOT NULL,
+  name TEXT,
+  email TEXT NOT NULL,
+  message TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS contacts_ip ON contacts (ip, created);

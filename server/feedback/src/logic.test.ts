@@ -4,6 +4,8 @@ import {
   headline,
   issueBody,
   issueLabels,
+  contactMessage,
+  readContact,
   issueTitle,
   message,
   readReport,
@@ -66,4 +68,19 @@ describe("the feedback Worker's logic", () => {
     expect(issueLabels(desk.report)).toEqual(["from a tester", "desktop", "linux"]);
     expect(issueLabels(mac.report)).toEqual(["from a tester", "desktop", "macos"]);
   });
+
+  it("takes the contact form, quietly drops a bot, and needs an email and a message", () => {
+    expect(readContact({ email: "a@b.nl", message: "Hoi Pavlo!", name: " Sanne " })).toEqual({
+      contact: { name: "Sanne", email: "a@b.nl", message: "Hoi Pavlo!" },
+    });
+    expect(readContact({ email: "a@b.nl", message: "spam", website: "http://x" })).toEqual({
+      bot: true,
+    });
+    expect(readContact({ email: "nope", message: "hi there" })).toHaveProperty("error");
+    expect(readContact({ email: "a@b.nl", message: "" })).toHaveProperty("error");
+    expect(contactMessage({ name: "Sanne", email: "a@b.nl", message: "Hoi" })).toContain(
+      "Sanne <a@b.nl>",
+    );
+  });
 });
+

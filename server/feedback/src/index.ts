@@ -6,11 +6,15 @@
  *
  *   POST /v1/report            multipart: report (JSON), screenshot?, voice?   (x-vuurtoren-key)
  *   GET  /v1/replies?to=<id>   Pavlo's replies for this device, once each      (x-vuurtoren-key)
+ *   POST /v1/contact           the website's contact form (vuurtoren.app only, no key)
  *   POST /tg/hook              Telegram's webhook (X-Telegram-Bot-Api-Secret-Token)
  *   cron                       reports older than 90 days are deleted
  */
 import {
+  CONTACT_ORIGINS,
   LIMITS,
+  contactMessage,
+  readContact,
   addressHash,
   hasContent,
   issueBody,
@@ -85,6 +89,7 @@ export default {
     if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS });
     try {
       if (url.pathname === "/tg/hook" && req.method === "POST") return await telegram(req, env);
+      if (url.pathname === "/v1/contact") return await contact(req, env);
       if (req.headers.get("x-vuurtoren-key") !== env.APP_KEY)
         return json(401, { error: "This version of Vuurtoren can't send feedback. Update it." });
       if (url.pathname === "/v1/report" && req.method === "POST") return await report(req, env);
@@ -96,7 +101,7 @@ export default {
     }
   },
 
-  /** Daily: reports older than 90 days go, with their files. */
+  /** Daily: reports and contact messages older than 90 days go, with their files. */
   async scheduled(_event: unknown, env: Env): Promise<void> {
     const before = Date.now() - 90 * 86_400_000;
     const old = await env.DB.prepare("SELECT id FROM reports WHERE created < ?")
@@ -108,6 +113,7 @@ export default {
       .bind(before)
       .run();
     await env.DB.prepare("DELETE FROM reports WHERE created < ?").bind(before).run();
+    await env.DB.prepare("DELETE FROM contacts WHERE created < ?").bind(before).run();
   },
 };
 
@@ -325,4 +331,39 @@ async function replies(url: URL, env: Env): Promise<Response> {
   return json(200, {
     replies: rows.results.map((r) => ({ report: r.report_id, text: r.text, at: r.created })),
   });
+}
+
+/** The website's contact form: to Pavlo's Telegram, kept in D1; 5 an hour per address. */
+async function contact(req: Request, env: Env): Promise<Response> {
+  const origin = req.headers.get("origin") ?? "";
+  const allowed = CONTACT_ORIGINS.includes(origin);
+  const cors = {
+    "access-control-allow-origin": allowed ? origin : CONTACT_ORIGINS[0]!,
+    "access-control-allow-methods": "POST, OPTIONS",
+    "access-control-allow-headers": "content-type",
+    vary: "origin",
+  };
+  const answer = (status: number, body: unknown) =>
+    new Response(JSON.stringify(body), {
+      status,
+      headers: { "content-type": "application/json", ...cors },
+    });
+  if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
+  if (req.method !== "POST") return answer(405, { error: "Not here." });
+  if (!allowed) return answer(403, { error: "Send it from vuurtoren.app." });
+  const read = readContact(await req.json().catch(() => null));
+  if ("bot" in read) return answer(200, { ok: true });
+  if ("error" in read) return answer(400, { error: read.error });
+  const ip = await addressHash(req.headers.get("cf-connecting-ip") ?? "", env.SALT);
+  const recent = await env.DB.prepare("SELECT COUNT(*) AS n FROM contacts WHERE ip = ? AND created > ?")
+    .bind(ip, Date.now() - 3_600_000)
+    .first<{ n: number }>();
+  if ((recent?.n ?? 0) >= 5)
+    return answer(429, { error: "That's a lot of messages in one hour. Try again later." });
+  const c = read.contact;
+  await env.DB.prepare("INSERT INTO contacts (created, ip, name, email, message) VALUES (?, ?, ?, ?, ?)")
+    .bind(Date.now(), ip, c.name, c.email, c.message)
+    .run();
+  await tg(env, "sendMessage", { chat_id: env.TG_CHAT_ID, text: contactMessage(c) });
+  return answer(200, { ok: true });
 }
