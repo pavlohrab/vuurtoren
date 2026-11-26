@@ -562,6 +562,18 @@ area; on a computer, or a phone or tablet sideways when two pages of a readable 
 so a turn moves the text sideways by one step, the screen width plus the gap. Widths are whole
 pixels, so columns don't drift after many turns.
 
+- **One flow.** The whole text goes into the book, its segments (3.1) one after another, so the
+  reader never sees a seam or a page number. Each segment keeps its own plan: its new words,
+  blanks and help (3.4, 3.5), and the current one is frozen as before. The segment the reader is
+  in is the one holding the first word on the screen. When that moves into a later segment, the
+  ones before it are recorded as read with their own stats, as Next does in the scroll reader, so
+  the staircase (3.6), the resume point and the reading speed work the same. Going back only
+  moves the place. Turning past the last screen finishes the text. Gloss fetches the help for
+  the next segment ahead.
+- **The turn.** The default is Paper: the page folds along the line halfway between its corner
+  and the finger, at right angles to them, and the part past the line lands mirrored as the back
+  of the paper (`paperFold.ts`). Past the middle, or with a flick, it turns; otherwise it falls
+  back. Slide, Fade and None are the other choices.
 - **How many screens.** A marker after the last word: its x divided by the step, rounded up, at
   least one (`screenCount`). It's measured again when the text size, spacing, margins, the
   translations or the window change.
@@ -577,6 +589,8 @@ pixels, so columns don't drift after many turns.
   asks for them). Past the last screen it goes to the next page; at the very end the page bumps
   back a little. Swipes that start within 20 px of the screen edge are left to Android's back
   gesture. With reduced motion every turn is instant.
+- **Where you are.** One line: the share of the text before the first word on the screen, and the
+  minutes for the words after it at the reader's speed ("51% · 1 min left").
 - **Time left.** Reading speed in words a minute, starting at 100, a slow learner's pace. After
   each finished page: `wpm = 0.7·wpm + 0.3·sample`, where the sample is that page's words over
   its time. A page under 15 words or 5 s, or read faster than 450 or slower than 25 words a
