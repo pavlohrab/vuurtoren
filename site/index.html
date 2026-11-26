@@ -1153,7 +1153,7 @@
       .path {
         position: relative;
         display: grid;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
+        grid-template-columns: repeat(5, minmax(0, 1fr));
         gap: 24px;
         margin-top: 40px;
       }
@@ -1164,11 +1164,12 @@
         right: 6px;
         top: 7px;
         height: 2px;
-        background: linear-gradient(90deg, var(--known) 0 22%, var(--line-strong) 22%);
+        background: linear-gradient(90deg, var(--known) 0 18%, var(--line-strong) 18%);
       }
       .stop {
         position: relative;
         display: grid;
+        align-content: start;
         gap: 6px;
         padding-top: 30px;
       }
@@ -3248,13 +3249,18 @@
           </div>
           <div class="stop next">
             <span class="when">Next</span>
-            <h3>Add voice to the cards you create</h3>
-            <p>Recordings for the words you add, made with your own speech key.</p>
+            <h3>Reminders and gamification</h3>
+            <p>Optional gamification for the learning process.</p>
           </div>
           <div class="stop">
             <span class="when">Then</span>
-            <h3>Reminders and gamification</h3>
-            <p>Optional gamification for the learning process.</p>
+            <h3>15,000 words in the deck</h3>
+            <p>The deck that comes with the app grows to the 15,000 most frequent words.</p>
+          </div>
+          <div class="stop">
+            <span class="when">Then</span>
+            <h3>More stories to read</h3>
+            <p>More stories in the app, ready to read.</p>
           </div>
           <div class="stop">
             <span class="when">Later</span>

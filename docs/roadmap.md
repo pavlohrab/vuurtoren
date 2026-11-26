@@ -2,15 +2,16 @@
 
 ## Next
 
-- **Voice for the cards you create.** Recordings for the words you add, made once with your own
-  speech key (Google Cloud, Gemini, OpenAI, ElevenLabs or Azure) and kept on your device.
-
-## Then
-
 - **Review reminders.** If you turn them on, the app reminds you when you have cards to review, at
   most once a day. You can snooze it, and hide how many cards are waiting.
 - **Optional gamification.** A weekly goal, like reviewing on 3 days, without points or a streak
   you can lose.
+
+## Then
+
+- **15,000 words in the deck.** The deck that comes with the app grows to the 15,000 most
+  frequent words.
+- **More stories to read.** More stories in the app, ready to read.
 
 ## Later
 
