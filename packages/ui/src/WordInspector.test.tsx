@@ -199,7 +199,7 @@ describe("WordInspector Anki states", () => {
     expect(screen.queryAllByRole("button")).toEqual([]);
   });
 
-  it("marked known: no Mark known, and a link back to Anki's state", async () => {
+  it("marked known: no Mark known; it says Known and offers Learn it again", async () => {
     const onReset = vi.fn();
     render(
       <WordInspector
@@ -210,8 +210,9 @@ describe("WordInspector Anki states", () => {
         onReset={onReset}
       />,
     );
-    expect(names()).toEqual(["Use Anki\u2019s state"]);
-    await userEvent.click(screen.getByRole("button", { name: /Use Anki.s state/ }));
+    expect(names()).toEqual(["Learn it again"]);
+    expect(screen.getByText("✓ Known")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Learn it again" }));
     expect(onReset).toHaveBeenCalledOnce();
   });
 
