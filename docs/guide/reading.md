@@ -37,7 +37,7 @@ On a phone the text doesn't scroll, you turn it like a book. Swipe, or tap the l
 of the screen. When a page of the text is longer than the screen, you go through its screens first,
 then on to the next page. On a computer, and on a phone or tablet turned sideways when there's
 room, you see two pages side by side. The arrow keys turn too, and on Android so can the volume
-keys if you turn that on.
+keys if you turn that on. **Side by side** still scrolls, because it needs the whole width for the Dutch and the English.
 
 Tap the middle of the page to hide the bars, and tap again to bring them back. The bar along the
 bottom lets you jump through the text, and the line under it says about how long the rest takes.

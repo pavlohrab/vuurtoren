@@ -308,7 +308,8 @@ export function ReaderPage({ textId }: { textId: string }) {
   const [prefs, setPrefs] = useReaderPrefs();
   const [readingFocus, setReadingFocus] = useState(false);
   // Book mode: pages turn instead of scrolling (BookPages.tsx).
-  const book = prefs.pages === "turn";
+  // Side by side is a study view that needs the whole width: it scrolls, as before.
+  const book = prefs.pages === "turn" && mode !== "side";
   const bookRef = useRef<BookHandle | null>(null);
   const [bookAt, setBookAt] = useState<BookScreen>({ screen: 0, screens: 1, anchor: null });
   /** The bars are hidden by a tap in the middle of the page. */
@@ -605,6 +606,7 @@ export function ReaderPage({ textId }: { textId: string }) {
   // Side by side: the page's sentences with their English and word pairs, and a word-order
   // note per sentence for the structure view.
   const side = mode === "side";
+
   const audio = useReaderAudio();
   const englishAI = prefs.englishAI && aiReady;
   const sentenceList = useMemo(() => [...pageSentences].sort((a, b) => a - b), [pageSentences]);
