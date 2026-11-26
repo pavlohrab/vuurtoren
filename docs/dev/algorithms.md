@@ -652,10 +652,9 @@ Practice is short lessons now: about 10 words, 4–6 minutes. The code is
 Options, the older session builder of 4.8 is used instead. The research behind each decision is
 in 4.9.
 
-Not there yet: the list of lessons to start from (this page, before the next page, new words,
-mistakes), "meet it" cards and match pairs, the end-of-lesson screen, hearing a sentence and
-building it, the reading-level check on sentences, and leaving out words you reviewed on a card
-today.
+Not there yet: the reading-level check on sentences, the page sentence first, and asking the AI
+for sentences made only of your known words. In Anki mode, words you reviewed in Anki today still
+come in, because the app doesn't read Anki's review dates.
 
 **The idea.** Your cards (Anki, or the app's own) already bring each word's meaning back on time.
 Practice doesn't repeat that. It trains what a card doesn't, on the same words: the word in a real
@@ -772,7 +771,25 @@ lined up with what was heard, a word may be one letter off when it has four lett
 underlined. Silence counts as nothing heard, because Whisper makes words up from silence. The
 exercise only comes into lessons when the language server says it can listen.
 
-#### 4.7.7 The lesson
+#### 4.7.7 Where lessons start, and what's around them
+
+Practice opens on a list of lessons. The text you read last, with the words you tapped in it, is
+the first card. Then come your new words (the usual lesson), the words you got wrong this week,
+and the grammar point you missed most this week, which opens that topic's practice. A ring counts
+the lessons you finished today on this device. The goal is one.
+
+A page in the reader where you tapped two or more words ends with those words and "Practise these
+N words". A word with no card that you never practised is shown first as a "new word" card (its
+sound, meaning and sentence), and three or more such words get a short match-pairs round. Neither
+of those is graded. "Hear it, build it" plays a short sentence (once by itself, again with the
+play button, slowly with the snail) and you build it from tiles. It sits at step 4, after
+building from the English. With the app's own cards, a word reviewed on its card today waits
+until tomorrow.
+
+At the end you see the words, the share you got right and the time, which words come back
+tomorrow, and a link to the grammar point you missed twice or more.
+
+#### 4.7.8 The lesson
 
 About 10 words (Short 5, Normal 10, Long 15), each once at its exercise, because recalling a word
 three times in a row is no better than once (Karpicke & Bauernschmidt 2011). A miss shows the right
