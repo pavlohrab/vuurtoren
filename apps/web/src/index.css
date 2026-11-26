@@ -1092,6 +1092,59 @@
   flex: 1;
   height: 8px;
 }
+/* The end of a lesson: the ring, its count and a few sparks (mock-practice-polish.html). */
+.done-ring {
+  position: relative;
+  width: 132px;
+  height: 132px;
+  margin: 8px 0 4px;
+}
+.done-ring-fill {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: conic-gradient(var(--accent) 0 var(--share), var(--line) var(--share) 100%);
+  display: grid;
+  place-items: center;
+}
+.done-ring-fill b {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  background: var(--bg);
+  display: grid;
+  place-items: center;
+  font: 700 28px var(--font-display);
+  font-variant-numeric: tabular-nums;
+}
+.done-ring i {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 6px;
+  height: 6px;
+  border-radius: 2px;
+  background: var(--accent);
+  opacity: 0;
+}
+.done-ring i:nth-child(odd) {
+  background: var(--success);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .done-ring--sparks i {
+    animation: done-spark 0.9s 0.7s ease-out forwards;
+  }
+}
+@keyframes done-spark {
+  0% {
+    opacity: 1;
+    transform: translate(0, 0) rotate(0deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--dx), var(--dy)) rotate(200deg);
+  }
+}
 /* Settings → Your words → Practice: a switch per line. */
 .feel-row {
   display: grid;

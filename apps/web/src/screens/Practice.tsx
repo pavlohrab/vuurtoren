@@ -909,6 +909,51 @@ function Session({
   );
 }
 
+/**
+ * The end of a lesson: a ring fills to the share you got right while the number counts up, a few
+ * sparks, and the three-note chime (Settings → Practice; still and silent when those are off).
+ */
+function DoneRing({ share }: { share: number }) {
+  const feel = useFeel();
+  const move = moving(feel);
+  const [shown, setShown] = useState(move ? 0 : share);
+  useEffect(() => {
+    playSound("done", feel);
+    if (!move) return;
+    let raf = 0;
+    const start = performance.now();
+    const tick = (t: number) => {
+      const k = Math.min(1, (t - start) / 900);
+      setShown(Math.round(share * (1 - (1 - k) ** 3)));
+      if (k < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+    // Once, when the lesson ends.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  return (
+    <div className={`done-ring${move ? " done-ring--sparks" : ""}`} aria-hidden>
+      <div className="done-ring-fill" style={{ "--share": `${shown}%` } as React.CSSProperties}>
+        <b>{shown}%</b>
+      </div>
+      {move
+        ? Array.from({ length: 12 }, (_, i) => (
+            <i
+              key={i}
+              style={
+                {
+                  "--dx": `${Math.cos((i / 12) * Math.PI * 2) * 90}px`,
+                  "--dy": `${Math.sin((i / 12) * Math.PI * 2) * 90}px`,
+                } as React.CSSProperties
+              }
+            />
+          ))
+        : null}
+    </div>
+  );
+}
+
 /** Lessons finished today on this device, and the goal (one a day). */
 const TODAY_KEY = "vuurtoren.practice.today";
 /** Answers after which leaving a lesson halfway still counts it for today. */
@@ -1063,6 +1108,7 @@ function Summary({
             : `${correct} of ${answered.length} correct.`
         }
       />
+      {answered.length > 0 ? <DoneRing share={share} /> : null}
       <dl className="done-stats">
         <div>
           <dt>Words</dt>
