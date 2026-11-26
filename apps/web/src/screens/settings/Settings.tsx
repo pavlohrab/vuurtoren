@@ -5,6 +5,7 @@
  * The theme lives only in the top bar.
  */
 import { FeedbackSettings } from "../../feedback/FeedbackSheet.js";
+import { PracticeFeelSettings } from "./PracticeFeelSettings.js";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import {
@@ -147,6 +148,7 @@ export function SettingsScreen() {
             <div className="stack settings-stack">
               {native ? null : <AnkiConnection />}
               <LanguageDecksSettings />
+              <PracticeFeelSettings />
             </div>
           ) : section === "reading" ? (
             <ReadingSettings />

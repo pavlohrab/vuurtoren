@@ -1092,6 +1092,19 @@
   flex: 1;
   height: 8px;
 }
+/* Settings → Your words → Practice: a switch per line. */
+.feel-row {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px;
+  align-items: start;
+}
+.feel-row input {
+  margin-top: 3px;
+}
+.feel-row small {
+  display: block;
+}
 /* Practice under Words in the sidebar (computer). */
 .nav-link--sub {
   padding-left: 30px;
