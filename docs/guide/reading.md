@@ -31,6 +31,23 @@ Tap a word to see what it means in this sentence, its dictionary form and the gr
 **Add to my words** puts it in your reviews (**Add to Anki** if you work with Anki), and **I know
 it** stops Vuurtoren from translating and teaching it.
 
+## Turning pages
+
+On a phone the text doesn't scroll, you turn it like a book. Swipe, or tap the left or right side
+of the screen. When a page of the text is longer than the screen, you go through its screens first,
+then on to the next page. On a computer, and on a phone or tablet turned sideways when there's
+room, you see two pages side by side. The arrow keys turn too, and on Android so can the volume
+keys if you turn that on.
+
+Tap the middle of the page to hide the bars, and tap again to bring them back. The bar along the
+bottom lets you jump through the text, and the line under it says about how long the rest takes.
+That time comes from your own reading speed, so it gets better as you read. Vuurtoren also keeps
+your place to the word, on your other devices too.
+
+In the reading settings (**Aa**), under **Pages**, you can go back to scrolling, choose how a page
+turns (follow the finger, page turn, fade, or none), set the margins, and turn justified text and
+two pages off.
+
 ## Four ways to read
 
 You switch the reading mode at the top of the page. **Read** is the page as described above.

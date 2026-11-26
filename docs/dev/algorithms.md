@@ -552,6 +552,40 @@ verb joined to its particle (dichtdoen), a diminutive (broertjes), a participle 
 all 33 and they were right or at least fine. It needs the dictionary and SyntaxDot, so only the
 server does it.
 
+### 3.9 Book mode: screens, spreads and time left
+
+Code: `apps/web/src/screens/reader/BookPages.tsx`, `bookMath.ts`, `BookScrub.tsx`.
+
+One reader page flows into CSS columns. On a phone a screen is one column as wide as the text
+area; on a computer, or a phone or tablet sideways when two pages of a readable width fit
+(`fitsSpread`), it's two columns with a fold between them. The text area shows exactly one screen,
+so a turn moves the text sideways by one step, the screen width plus the gap. Widths are whole
+pixels, so columns don't drift after many turns.
+
+- **How many screens.** A marker after the last word: its x divided by the step, rounded up, at
+  least one (`screenCount`). It's measured again when the text size, spacing, margins, the
+  translations or the window change.
+- **Which screen a word is on.** Its x before any turn, divided by the step (`screenAt`). After a
+  re-measure the reader lands on the screen with the first word they were on, so changing the
+  text size doesn't lose the place.
+- **The place to the word.** The first word on the screen is saved as a character offset in the
+  page (`ReadingPlace` event, `reading_place` table, the newest per text wins). Another device
+  opens on the screen holding that character (`itemAtChar`). Apps without book mode skip the
+  event.
+- **Turning.** A tap on the left or right third, a swipe, the arrow keys, or the volume keys on
+  Android (`volumeKeys.ts`, a bridge in MainActivity that only takes the keys while the reader
+  asks for them). Past the last screen it goes to the next page; at the very end the page bumps
+  back a little. Swipes that start within 20 px of the screen edge are left to Android's back
+  gesture. With reduced motion every turn is instant.
+- **Time left.** Reading speed in words a minute, starting at 100, a slow learner's pace. After
+  each finished page: `wpm = 0.7·wpm + 0.3·sample`, where the sample is that page's words over
+  its time. A page under 15 words or 5 s, or read faster than 450 or slower than 25 words a
+  minute (skimmed, or put down), is left out. Minutes are rounded, at least one while anything is
+  left (`minutesFor`).
+- **The word card.** On a phone the card covers the bottom; the text lifts so the tapped word sits
+  above it, and drops back when the card closes.
+
+
 ## 4. Practice
 
 **In short.** Practice is for the words you are already learning. It gives you short exercises made from sentences, for example choosing the meaning, filling in a blank, de or het, putting words in the right order or writing down what you hear. Every word has its own schedule for every kind of exercise (FSRS), so an exercise comes back just before you would forget it. Practice never touches your Anki cards.
