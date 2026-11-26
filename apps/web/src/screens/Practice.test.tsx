@@ -322,6 +322,11 @@ describe("Practice session", () => {
     await user.keyboard("{Backspace}");
     expect(within(words).getByRole("button", { name: "is" })).toBeEnabled();
     expect(within(words).getByRole("button", { name: "rood" })).toBeDisabled();
+    // Hint: a wrong start is cleared, then each ? places the next right word.
+    await user.keyboard("?");
+    expect(within(words).getByRole("button", { name: "rood" })).toBeEnabled();
+    await user.keyboard("?");
+    expect(within(words).getByRole("button", { name: "De" })).toBeDisabled();
   });
 
   it("asks before ending with Escape once something was answered", async () => {

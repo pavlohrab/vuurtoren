@@ -3,8 +3,9 @@
  * dictation) with keyboard shortcuts. Pure UI: the caller grades the answer and passes the
  * result back as `feedback`.
  *
- * Keys: 1-9 pick a choice (1 = de, 2 = het for gender), Enter submits / continues,
- * Backspace undoes the last scramble piece, ? reveals a letter of a typed answer.
+ * Keys: 1-9 pick a choice (1 = de, 2 = het for gender) or place a tile, Enter submits /
+ * continues, Backspace takes the last tile back, ? reveals a letter or places the next tile.
+ * Holding a tile (or right-clicking it) shows what the word means; that counts as help.
  */
 import { Check, Volume2, X } from "lucide-react";
 import { type FormEvent, useEffect, useRef, useState } from "react";
@@ -119,6 +120,37 @@ export function ExerciseCard({
     onSubmit({ answer, hintsUsed: hints });
   };
   const scrambleAnswer = () => picked.map((i) => pieces[i]).join(" ");
+  /** Hint while building: place the next tile of the right sentence (counts as help). */
+  const nextTile = () => {
+    if (answered) return;
+    const want = e.answer
+      .split(/\s+/)
+      .map((w) => w.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, "").toLowerCase())
+      .filter(Boolean)[picked.length];
+    // Undo a wrong tile first, so the hint always builds on a right start.
+    const rightSoFar = e.answer
+      .toLowerCase()
+      .replace(/[^\p{L}\p{N}\s'-]/gu, "")
+      .startsWith(picked.map((i) => pieces[i]!.toLowerCase()).join(" "));
+    if (!rightSoFar) {
+      setPicked([]);
+      setHints((h) => h + 1);
+      return;
+    }
+    const at = pieces.findIndex(
+      (p, i) => !picked.includes(i) && p.replace(/[^\p{L}\p{N}'-]/gu, "").toLowerCase() === want,
+    );
+    if (at >= 0) {
+      setPicked((cur) => [...cur, at]);
+      setHints((h) => h + 1);
+    }
+  };
+  const holdTimer = useRef<number | null>(null);
+  const peek = (piece: string, el: HTMLElement) => {
+    if (!onWord) return;
+    setHints((h) => h + 1);
+    onWord(piece, undefined, el);
+  };
   // Letters can be revealed up to one short of the whole word; the last step gives up
   // (submitted empty, so it counts as not recalled and the answer is shown).
   const maxHints = Math.max(0, e.answer.length - 1);
@@ -166,7 +198,16 @@ export function ExerciseCard({
         ev.preventDefault();
         submit(ev.key.toLowerCase() === "d" ? "de" : "het");
       } else if (mode === "scramble") {
-        if (ev.key === "Backspace") {
+        if (/^[1-9]$/.test(ev.key)) {
+          const i = Number(ev.key) - 1;
+          if (i < pieces.length && !picked.includes(i)) {
+            ev.preventDefault();
+            setPicked((p) => [...p, i]);
+          }
+        } else if (ev.key === "?") {
+          ev.preventDefault();
+          nextTile();
+        } else if (ev.key === "Backspace") {
           ev.preventDefault();
           setPicked((p) => p.slice(0, -1));
         } else if (ev.key === "Enter" && picked.length > 0) {
@@ -289,8 +330,35 @@ export function ExerciseCard({
                 className={cn("ex-piece", picked.includes(i) && "ex-piece--gone")}
                 disabled={answered || picked.includes(i)}
                 onClick={() => {
+                  if (holdTimer.current === -1) {
+                    holdTimer.current = null;
+                    return; // the press was a hold: it showed the meaning
+                  }
                   setPicked((cur) => [...cur, i]);
                   onSpeak?.(p);
+                }}
+                onContextMenu={(ev) => {
+                  ev.preventDefault();
+                  peek(p, ev.currentTarget);
+                }}
+                onPointerDown={(ev) => {
+                  const el = ev.currentTarget;
+                  holdTimer.current = window.setTimeout(() => {
+                    holdTimer.current = -1;
+                    peek(p, el);
+                  }, 500);
+                }}
+                onPointerUp={() => {
+                  if (holdTimer.current && holdTimer.current > 0) {
+                    window.clearTimeout(holdTimer.current);
+                    holdTimer.current = null;
+                  }
+                }}
+                onPointerLeave={() => {
+                  if (holdTimer.current && holdTimer.current > 0) {
+                    window.clearTimeout(holdTimer.current);
+                    holdTimer.current = null;
+                  }
                 }}
               >
                 {p}
@@ -335,8 +403,8 @@ export function ExerciseCard({
       {!answered && (mode === "scramble" || mode === "typed" || mode === "dictation") ? (
         <div className="ex-foot">
           {mode === "scramble" ? (
-            <Button variant="ghost" disabled={picked.length === 0} onClick={() => setPicked([])}>
-              Clear
+            <Button variant="ghost" onClick={nextTile} aria-label="Place the next word">
+              Hint <kbd className="ex-key">?</kbd>
             </Button>
           ) : (
             <Button
