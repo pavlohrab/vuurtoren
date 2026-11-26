@@ -2480,6 +2480,14 @@
       .lc-parts > span.v {
         box-shadow: inset 0 0 0 2px var(--accent);
       }
+      /* Held until the fonts are in (the script adds .go), so the first loop isn't fighting
+         the page's own loading. */
+      .tapdemo:not(.go) .tapring,
+      .tapdemo:not(.go) .lcard,
+      .tapdemo:not(.go) .lc-gram,
+      .tapdemo:not(.go) .lc-parts {
+        animation-play-state: paused;
+      }
       @keyframes ttap {
         0%,
         12% {
@@ -3554,6 +3562,17 @@
       })();
     </script>
     <script>
+      // The hero's tap-a-word loop starts once the fonts are in and the page has loaded.
+      (() => {
+        const demo = document.querySelector(".tapdemo");
+        if (!demo) return;
+        const go = () => demo.classList.add("go");
+        new Promise((ok) =>
+          document.readyState === "complete" ? ok() : addEventListener("load", ok, { once: true }),
+        )
+          .then(() => document.fonts?.ready)
+          .then(() => setTimeout(go, 200), go);
+      })();
       // Sections marked data-lit play their entrance once, when they come into view. The
       // lighthouse blueprint (#name) never plays while the hero is still building in view: it
       // starts as soon as the hero's picture is mostly out of sight (a quick scroll: at once), or

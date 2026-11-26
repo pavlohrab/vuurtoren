@@ -1715,10 +1715,10 @@
         color: var(--ink);
       }
       .m-w {
+        /* Colours only: a shadow on every word is costly to animate on phones. */
         transition:
           color 0.3s,
-          background-color 0.3s,
-          box-shadow 0.3s;
+          background-color 0.3s;
         border-radius: 4px;
       }
       .m-text {
@@ -2549,15 +2549,22 @@
         }
         let raf = 0;
         function play() {
-          const ls = lines();
+          let ls = lines();
+          // The window changed size: the words moved, so measure the lines again.
+          const remeasure = () => (ls = lines());
+          addEventListener("resize", remeasure);
           words.forEach((w) => w.classList.remove("k", "n"));
           text.classList.add("run");
           show(0);
           let lit = 0;
-          let start = 0;
+          let last = 0;
+          let gone = -120; // px along the lines; a short pause first
           const step = (now) => {
-            if (!start) start = now;
-            let d = ((now - start) / 1000) * SPEED - 120; // a short pause first
+            // Per frame, at most 50 ms: a busy moment slows the beam, it never jumps ahead.
+            const dt = last ? Math.min(now - last, 50) : 0;
+            last = now;
+            gone += (dt / 1000) * SPEED;
+            let d = gone;
             if (d < 0) {
               raf = requestAnimationFrame(step);
               return;
@@ -2579,6 +2586,7 @@
               beam.style.transform = `translate3d(${at.x}px, ${at.top}px, 0)`;
               raf = requestAnimationFrame(step);
             } else {
+              removeEventListener("resize", remeasure);
               text.classList.remove("run");
               // Once: then it rests on the result, and the dots below may play.
               dispatchEvent(new Event("vuurtoren:beam-done"));
@@ -2592,12 +2600,21 @@
           }
           raf = requestAnimationFrame(step);
         }
-        const seen = new IntersectionObserver((es) => {
-          if (!es.some((e) => e.isIntersecting)) return;
-          seen.disconnect();
-          play();
+        // Start once the fonts are in and the page has settled: the words sit where they will
+        // stay, and the first frames aren't fighting the page's own loading.
+        const settled = new Promise((ok) =>
+          document.readyState === "complete" ? ok() : addEventListener("load", ok, { once: true }),
+        )
+          .then(() => document.fonts?.ready)
+          .then(() => new Promise((ok) => setTimeout(ok, 250)));
+        settled.then(() => {
+          const seen = new IntersectionObserver((es) => {
+            if (!es.some((e) => e.isIntersecting)) return;
+            seen.disconnect();
+            play();
+          });
+          seen.observe(text);
         });
-        seen.observe(text);
       })();
     </script>
   </body>
