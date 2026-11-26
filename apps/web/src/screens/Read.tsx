@@ -51,6 +51,8 @@ type View = "shelves" | "all";
 const VIEW_KEY = "vuurtoren.library.view";
 const SORT_KEY = "vuurtoren.library.sort";
 const PICK_KEY = "vuurtoren.library.shelf";
+/** The shelf row's Stories chip: the story shelves alone. */
+const STORIES = "stories";
 
 function readPref<T extends string>(key: string, allowed: readonly T[], fallback: T): T {
   try {
@@ -392,30 +394,46 @@ export function Read() {
     );
   } else {
     // The picker on top (mock A, UI3): all shelves, or just one, so Read does not scroll so far.
-    const picked = rows.some((r) => r.id === shelfPick) ? shelfPick : "all";
-    const picker =
-      rows.length > 1 ? (
-        <nav className="lib-picker" aria-label="Shelves">
-          <ShelfChip
-            label="All shelves"
-            active={picked === "all"}
-            onPick={() => pickShelf("all")}
-          />
-          {rows.map((row) => {
-            const shelf = ownShelves.find((s) => s.id === row.id);
-            return (
-              <ShelfChip
-                key={row.id}
-                label={row.name}
-                count={row.texts.length}
-                active={picked === row.id}
-                onPick={() => pickShelf(row.id)}
-                onDropTexts={shelf ? (ids, how) => moveTo.mutate({ shelf, ids, how }) : undefined}
-              />
-            );
-          })}
-        </nav>
-      ) : null;
+    const picked =
+      shelfPick === STORIES || rows.some((r) => r.id === shelfPick) ? shelfPick : "all";
+    // The shelf row (F5): always there, the stories right after Reading now, + New shelf last.
+    // A chip shows only its shelf.
+    const storiesChip = (
+      <ShelfChip
+        key={STORIES}
+        label="Stories"
+        active={picked === STORIES}
+        onPick={() => pickShelf(STORIES)}
+      />
+    );
+    const readingAt = rows.findIndex((r) => r.id === "auto:reading");
+    const picker = (
+      <nav className="lib-picker" aria-label="Shelves">
+        <ShelfChip label="All shelves" active={picked === "all"} onPick={() => pickShelf("all")} />
+        {readingAt < 0 ? storiesChip : null}
+        {rows.map((row, k) => {
+          const shelf = ownShelves.find((s) => s.id === row.id);
+          return [
+            <ShelfChip
+              key={row.id}
+              label={row.name}
+              count={row.texts.length}
+              active={picked === row.id}
+              onPick={() => pickShelf(row.id)}
+              onDropTexts={shelf ? (ids, how) => moveTo.mutate({ shelf, ids, how }) : undefined}
+            />,
+            k === readingAt ? storiesChip : null,
+          ];
+        })}
+        <button
+          type="button"
+          className="lib-chip lib-chip-new"
+          onClick={() => setNaming({ open: true })}
+        >
+          + New shelf
+        </button>
+      </nav>
+    );
     const shownRows = picked === "all" ? rows : rows.filter((r) => r.id === picked);
     const shelfViews = shownRows.map((row) => {
       const shelf = ownShelves.find((s) => s.id === row.id);
@@ -446,7 +464,10 @@ export function Read() {
       );
     });
     // The story shelves come right under Reading now (Pavlo, F5), when all shelves show.
-    if (picked === "all") {
+    if (picked === STORIES) {
+      shelfViews.push(<StoriesShelf key="stories" />);
+      storiesInShelves = true;
+    } else if (picked === "all") {
       const after = shownRows.findIndex((r) => r.id === "auto:reading") + 1;
       shelfViews.splice(after, 0, <StoriesShelf key="stories" />);
       storiesInShelves = true;
@@ -550,13 +571,17 @@ export function Read() {
                   </div>
                 ) : null}
                 <div className="lib-toolbar-buttons">
-                  <Button
-                    variant="ghost"
-                    aria-label="New shelf"
-                    onClick={() => setNaming({ open: true })}
-                  >
-                    <FolderPlus size={16} aria-hidden /> <span className="lib-wide">New shelf</span>
-                  </Button>
+                  {/* On the shelves, + New shelf is in the shelf row. */}
+                  {view === "all" ? (
+                    <Button
+                      variant="ghost"
+                      aria-label="New shelf"
+                      onClick={() => setNaming({ open: true })}
+                    >
+                      <FolderPlus size={16} aria-hidden />{" "}
+                      <span className="lib-wide">New shelf</span>
+                    </Button>
+                  ) : null}
                   <button
                     type="button"
                     className="k-toggle"

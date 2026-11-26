@@ -596,3 +596,21 @@
 .lib-story-shelf .lib-shelf-title {
   word-spacing: 0.12em;
 }
+/* + New shelf at the end of the shelf row (F5). */
+.lib-chip-new {
+  border-style: dashed;
+  color: var(--accent);
+}
+/* On the phone the shelf row scrolls sideways instead of wrapping (F5 mock). */
+@media (max-width: 599px) {
+  .lib-picker {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    margin-inline: calc(-1 * var(--s-4));
+    padding-inline: var(--s-4);
+  }
+  .lib-picker > * {
+    flex: none;
+  }
+}
