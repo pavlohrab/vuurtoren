@@ -908,6 +908,16 @@ export function createMockServices(
       e.anki = { ...e.anki, markedKnown: false };
     },
 
+    async relearnWord(entry) {
+      await wait();
+      const e = lexicon.get(entry.key);
+      if (!e) return;
+      e.state = "learning";
+      e.pKnown = 0.2;
+      e.overridden = false;
+      e.anki = { ...e.anki, markedKnown: false };
+    },
+
     async setWordState(key, state) {
       await wait();
       const e = lexicon.get(key);

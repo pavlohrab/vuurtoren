@@ -240,7 +240,7 @@ function ExamPartScreen({
         </ul>
         <p className="exam-muted">
           Practice shows the answer each time. The mock exam is timed and shows your score at the
-          end.{part === "luisteren" ? "; each fragment can be played twice" : ""}.
+          end.{part === "luisteren" ? " You can play each fragment twice." : ""}
         </p>
       </section>
 

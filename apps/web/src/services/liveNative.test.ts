@@ -225,6 +225,21 @@ describe("native services", () => {
     expect(await live.lastReview()).toBeNull();
   });
 
+  it("Learn it again: a word marked known gets new cards and comes back (WC12 review)", async () => {
+    const { live } = await setup(defaultProfile("nl", [{ deck: "Dutch" }], "connected"));
+    await live.moveFromAnki();
+    vi.stubGlobal("fetch", () => Promise.reject(new Error("offline")));
+    const app = createLiveServices(repo!);
+    await app.markKnown(await app.inspectWord("fiets"));
+    const known = await app.inspectWord("fiets");
+    expect(known.state).toBe("known");
+    await app.relearnWord!(known);
+    const again = await app.inspectWord("fiets");
+    expect(again.state).not.toBe("known");
+    expect(again.anki.status).toBe("new");
+    vi.unstubAllGlobals();
+  });
+
   it("moves from Anki: notes, cards and history come in, Anki is not written", async () => {
     const connected = defaultProfile("nl", [{ deck: "Dutch" }], "connected");
     const { live, anki, profile } = await setup(connected);

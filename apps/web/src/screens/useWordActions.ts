@@ -20,6 +20,7 @@ type ActionProps = Pick<
   | "onLearnNext"
   | "onMarkKnown"
   | "onReset"
+  | "onRelearn"
   | "onUndo"
   | "undoLabel"
 >;
@@ -105,13 +106,10 @@ export function useWordActions(
         addedToDeck
           ? `${native ? "Added to your words" : "Added to Anki"}, ${deckName(addedToDeck)}`
           : undefined,
-        {
-          label: "Undo",
-          onAct: () =>
-            undo && services.undoKnown
-              ? undoKnown.mutate({ key: e.key, undo })
-              : resetState.mutate(e),
-        },
+        // Undo only where it really undoes: your own cards (Anki's cards change in Anki).
+        undo && services.undoKnown
+          ? { label: "Undo", onAct: () => undoKnown.mutate({ key: e.key, undo }) }
+          : undefined,
       );
       await done();
     },
@@ -151,7 +149,17 @@ export function useWordActions(
     },
     onError: (e) => toast("Could not undo", errorText(e)),
   });
+  const relearn = useMutation({
+    mutationFn: (e: InspectorEntry) => services.relearnWord!(e),
+    onSuccess: async (_r, e) => {
+      changed?.(e.key, "learning");
+      toast("Back to learning", "It comes back with your new words.");
+      await done();
+    },
+    onError: (e) => toast("Could not change the word", errorText(e)),
+  });
   const busy =
+    relearn.isPending ||
     addToAnki.isPending ||
     learnNext.isPending ||
     markKnown.isPending ||
@@ -170,6 +178,9 @@ export function useWordActions(
         onLearnNext: () => entry && learnNext.mutate(entry),
         onMarkKnown: () => entry && markKnown.mutate(entry),
         onReset: () => entry && resetState.mutate(entry),
+        ...(native && services.relearnWord
+          ? { onRelearn: () => entry && relearn.mutate(entry) }
+          : {}),
         ...(entry && justKnown?.key === entry.key
           ? { onUndo: () => undoKnown.mutate(justKnown), undoLabel: "✓ Known" }
           : {

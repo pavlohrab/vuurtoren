@@ -359,6 +359,11 @@ export interface AppServices
   undoKnown?(undo: KnownUndo): Promise<void>;
   /** Drop a manual state so Anki's applies again. */
   resetWordState(key: string): Promise<void>;
+  /**
+   * Native mode: "Learn it again" on a word marked known: its cards become new again and the
+   * known mark goes, so the word comes back with the new words.
+   */
+  relearnWord?(entry: InspectorEntry): Promise<void>;
   /** App-only state changes (Ignore). Marking known goes through `markKnown`. */
   setWordState(key: string, state: WordState): Promise<void>;
   recordLookup(textId: string, key: string): Promise<void>;

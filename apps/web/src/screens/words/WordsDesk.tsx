@@ -202,11 +202,14 @@ export function WordsDesk() {
       if (how === "add") {
         if (keys.length > 1) toast(`Added ${plural(done, "word")}`);
       } else {
-        // Marking known always offers Undo: the list moves on, so the card can't show it.
-        toast(done === 1 ? "Marked as known" : `${plural(done, "word")} known`, undefined, {
-          label: "Undo",
-          onAct: () => unknow.mutate(undos),
-        });
+        // Undo on the toast (the list moves on, so the card can't show it), where it really
+        // undoes: your own cards. Anki's cards change in Anki.
+        const canUndo = undos.length > 0 && undos.every((u) => u.undo) && !!services.undoKnown;
+        toast(
+          done === 1 ? "Marked as known" : `${plural(done, "word")} known`,
+          undefined,
+          canUndo ? { label: "Undo", onAct: () => unknow.mutate(undos) } : undefined,
+        );
       }
       setSelected(new Set());
       // The next word opens.
@@ -215,13 +218,10 @@ export function WordsDesk() {
     },
     onError: (e) => toast("Could not change the words", errorText(e)),
   });
-  /** Undo of "I know it" from the list: the card's own undo, or back to the card's state. */
+  /** Undo of "I know it" from the list (your own cards: each card's earlier state). */
   const unknow = useMutation({
     mutationFn: async (undos: { key: string; undo?: KnownUndo | undefined }[]) => {
-      for (const u of undos) {
-        if (u.undo && services.undoKnown) await services.undoKnown(u.undo);
-        else await services.resetWordState(u.key);
-      }
+      for (const u of undos) if (u.undo) await services.undoKnown!(u.undo);
     },
     onSuccess: () => {
       toast("Not marked as known any more");

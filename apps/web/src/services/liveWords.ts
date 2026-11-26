@@ -334,6 +334,7 @@ export function createLiveWords(deps: LiveWordsDeps) {
     | "markKnown"
     | "undoKnown"
     | "resetWordState"
+    | "relearnWord"
     | "setWordState"
     | "syncAnki"
     | "learnerSummary"
@@ -616,6 +617,25 @@ export function createLiveWords(deps: LiveWordsDeps) {
 
     async resetWordState(key: string): Promise<void> {
       await resetToAnkiState(record, await lang(), key);
+      learner.changed();
+    },
+
+    async relearnWord(entry: InspectorEntry): Promise<void> {
+      if (!(await native())) throw new Error("In Anki mode, change the card in Anki.");
+      const l = await lang();
+      if (entry.anki.cardIds.length)
+        await record({
+          type: "NativeCardsChanged",
+          lang: l,
+          reason: "undo",
+          // null: the card is new again.
+          changes: entry.anki.cardIds.map((cardId) => ({
+            cardId,
+            schedule: null,
+            suspended: false,
+          })),
+        });
+      await resetToAnkiState(record, l, entry.key);
       learner.changed();
     },
 

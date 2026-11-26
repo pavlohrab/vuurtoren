@@ -14,6 +14,8 @@ export interface WordInspectorProps {
   onMarkKnown?: (() => void) | undefined;
   /** Drop a manual state so Anki's applies again. */
   onReset?: (() => void) | undefined;
+  /** Native mode, a word marked known: its cards become new again ("Learn it again"). */
+  onRelearn?: (() => void) | undefined;
   /**
    * The word was just added to my words: "✓ Added · Undo" in place of the main button for a few
    * seconds; Undo takes it out again.
@@ -112,6 +114,7 @@ export function WordInspector({
   onLearnNext,
   onMarkKnown,
   onReset,
+  onRelearn,
   onUndo,
   undoLabel,
   busy = false,
@@ -177,6 +180,7 @@ export function WordInspector({
     onLearnNext,
     onMarkKnown,
     onReset,
+    onRelearn,
     onUndo,
     undoLabel,
     addDeck,
@@ -500,6 +504,7 @@ function ankiActions({
   onLearnNext,
   onMarkKnown,
   onReset,
+  onRelearn,
   onUndo,
   undoLabel = "✓ Added",
   addDeck,
@@ -510,6 +515,7 @@ function ankiActions({
   | "onLearnNext"
   | "onMarkKnown"
   | "onReset"
+  | "onRelearn"
   | "onUndo"
   | "undoLabel"
   | "addDeck"
@@ -526,8 +532,10 @@ function ankiActions({
   // yet always get it, because it also writes to Anki.
   const canMarkKnown = !anki.markedKnown && !(inProgress && entry.state === "known");
   const disabled = busy || unavailable;
-  // Marked known by you (not learnt to maturity): it can always be taken back from the card.
-  const markedKnown = entry.state === "known" && (anki.markedKnown || anki.overridden) === true;
+  // Marked known by you (not learnt to maturity), with your own cards: it can always be taken
+  // back from the card. In Anki mode the card's state is changed in Anki.
+  const markedKnown =
+    native && entry.state === "known" && (anki.markedKnown || anki.overridden) === true;
 
   let primary: { label: string; onClick?: (() => void) | undefined } | null = null;
   if (status === "absent") {
@@ -547,12 +555,12 @@ function ankiActions({
   }
 
   const quick =
-    markedKnown && !onUndo && onReset ? (
+    markedKnown && !onUndo && onRelearn ? (
       <div className="k-inspector-actions k-inspector-quick">
         <p className="k-inspector-added" role="status">
           ✓ Known
         </p>
-        <Button disabled={busy} onClick={() => onReset()}>
+        <Button disabled={busy} onClick={() => onRelearn()}>
           Learn it again
         </Button>
       </div>
