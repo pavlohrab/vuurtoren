@@ -720,3 +720,54 @@ describe("one sync place per device (SY5)", () => {
     expect(lanMoved).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("secrets in the key store, not in plain storage (SY11)", () => {
+  it("a typed server token goes to the key store, and sync still works", async () => {
+    const clock = { t: Date.UTC(2026, 10, 26, 9) };
+    const tokens = memTokens();
+    const laptop = await device("aaaaaaaaaaaa", fakeServer(new Map(), "ksync_t"), clock, {
+      tokens,
+    });
+    await laptop.sync.services.setUpSync(
+      { kind: "server", url: "https://vuurtoren.example", token: "ksync_t" },
+      "start",
+      PASS,
+      "Laptop",
+    );
+    expect([...laptop.storage.m.values()].join()).not.toContain("ksync_t");
+    expect(tokens.token).toBe("ksync_t");
+    expect((await laptop.sync.services.syncNow()).error).toBeNull();
+  });
+
+  it("a place saved before moves its secret on the next sync", async () => {
+    const clock = { t: Date.UTC(2026, 10, 26, 9) };
+    const tokens = memTokens();
+    const fetch = fakeServer(new Map(), "ksync_t");
+    const first = await device("aaaaaaaaaaaa", fetch, clock, { tokens: memTokens() });
+    await first.sync.services.setUpSync(
+      { kind: "server", url: "https://vuurtoren.example", token: "ksync_t" },
+      "start",
+      PASS,
+      "Laptop",
+    );
+    // As an older build saved it: the token in plain storage.
+    const raw = JSON.parse(first.storage.m.get("vuurtoren.sync")!) as {
+      place: Record<string, unknown>;
+    };
+    raw.place = { kind: "server", url: "https://vuurtoren.example", token: "ksync_t" };
+    first.storage.m.set("vuurtoren.sync", JSON.stringify(raw));
+    const again = createLiveSync({
+      repo: first.repo,
+      storage: first.storage,
+      fetch,
+      changed: () => {},
+      now: () => clock.t,
+      cost: LIGHT_ARGON2,
+      keys: first.keys,
+      tokens,
+    });
+    expect((await again.services.syncNow()).error).toBeNull();
+    expect([...first.storage.m.values()].join()).not.toContain("ksync_t");
+    expect(tokens.token).toBe("ksync_t");
+  });
+});

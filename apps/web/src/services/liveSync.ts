@@ -246,8 +246,17 @@ export function createLiveSync(deps: LiveSyncDeps) {
       ? deps.storage.setItem(PAIRED_KEY, JSON.stringify({ url }))
       : deps.storage.removeItem(PAIRED_KEY);
 
-  /** The place with its token: a kept one comes from the key store. */
+  /** The place with its secret: a kept token or WebDAV password comes from the key store. */
   async function withToken(place: SyncPlace): Promise<SyncPlace> {
+    if (place.kind === "webdav" && place.kept) {
+      keptToken ??= await tokens.load();
+      if (!keptToken) {
+        throw new Error(
+          "This device no longer has the WebDAV password. Stop syncing, then set up WebDAV again (Settings → Your devices).",
+        );
+      }
+      return { ...place, password: keptToken };
+    }
     if (place.kind !== "server" || !place.kept) return place;
     keptToken ??= await tokens.load();
     if (!keptToken) {
@@ -256,6 +265,32 @@ export function createLiveSync(deps: LiveSyncDeps) {
       );
     }
     return { ...place, token: keptToken };
+  }
+
+  /**
+   * The place with its secret (a typed server token, a WebDAV password) moved to the key store,
+   * where the paired token already is (SY11): the app's storage is plain JSON on disk. A device
+   * has one place (SY5), so one slot is enough. A key store that can't save leaves it as it was.
+   */
+  async function keepSecret(place: SyncPlace): Promise<SyncPlace> {
+    const secret =
+      place.kind === "server" && !place.kept && place.token
+        ? place.token
+        : place.kind === "webdav" && !place.kept && place.password
+          ? place.password
+          : null;
+    if (!secret) return place;
+    try {
+      await tokens.save(secret);
+    } catch {
+      return place;
+    }
+    keptToken = secret;
+    return place.kind === "server"
+      ? { ...place, token: "", kept: true }
+      : place.kind === "webdav"
+        ? { ...place, password: "", kept: true }
+        : place;
   }
 
   /** Run one thing at a time: a call waits for the one running, then runs. */
@@ -401,8 +436,14 @@ export function createLiveSync(deps: LiveSyncDeps) {
 
   /** A sync with the saved place and key (inside `exclusive`). */
   async function once(onProgress?: (m: string) => void) {
-    const saved = read();
+    let saved = read();
     if (!saved) throw new Error("Sync is not set up on this device.");
+    // A place saved before SY11 with its secret in plain storage: moved to the key store now.
+    const place = await keepSecret(saved.place);
+    if (place !== saved.place) {
+      saved = { ...saved, place };
+      write(saved);
+    }
     return run(saved, await loadKey(saved), onProgress);
   }
 
@@ -463,7 +504,7 @@ export function createLiveSync(deps: LiveSyncDeps) {
     async setUpSync(place, how, passphrase, deviceName, onProgress) {
       return exclusive(async () => {
         const name = deviceName.trim().slice(0, 60) || defaultName();
-        const kept = await keptPlace(place, name);
+        const kept = await keepSecret(await keptPlace(place, name));
         const store = await storeOf(kept);
         onProgress?.(how === "join" ? "Opening your synced data" : "Starting your sync data");
         const { key, recoveryKey } = await connect(store, how, passphrase);
@@ -545,7 +586,8 @@ export function createLiveSync(deps: LiveSyncDeps) {
         const place = read()?.place;
         // Its phones are told it stopped (SY5), not left with a folder nobody updates.
         if (place?.kind === "folder") await deps.lanMoved?.().catch(() => undefined);
-        if ((place?.kind === "server" && place.kept) || readPaired()) await tokens.forget();
+        if (((place?.kind === "server" || place?.kind === "webdav") && place.kept) || readPaired())
+          await tokens.forget();
         keptToken = null;
         writePaired(null);
         write(null);

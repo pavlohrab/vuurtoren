@@ -23,8 +23,11 @@ export type SyncPlace =
        */
       pinned?: string;
     }
-  /** WebDAV (the desktop app). */
-  | { kind: "webdav"; url: string; user: string; password: string }
+  /**
+   * WebDAV (the desktop app). With `kept` the password is in this device's key store, not here
+   * (security review SY11): the place keeps an empty `password`.
+   */
+  | { kind: "webdav"; url: string; user: string; password: string; kept?: boolean }
   /** A folder you already sync (the desktop app). */
   | { kind: "folder"; path: string };
 
