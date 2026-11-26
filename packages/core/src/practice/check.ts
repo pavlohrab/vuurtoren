@@ -45,6 +45,7 @@ export function checkAnswer(
   if (exercise.choices) {
     return { correct: answer.normalize("NFC").trim() === exercise.answer.normalize("NFC") };
   }
+  if (exercise.kind === "say") return checkSaid(exercise.answer, answer);
   const sentenceLevel = exercise.pieces !== undefined || exercise.kind === "dictation";
   const norm = (s: string) => {
     const n = normalizeAnswer(normalizeQuotes(s));
@@ -57,4 +58,61 @@ export function checkAnswer(
   const hit = accepted.find((a) => stripAccents(norm(a)) === stripAccents(given));
   if (hit !== undefined) return { correct: true, note: `Mind the accents: ${hit}` };
   return { correct: false };
+}
+
+/** Share of the sentence's words that must come through for "say" to count (speech recognition
+ * mishears some Dutch, so this is lenient; the learner can still say it was right). */
+export const SAY_ENOUGH = 0.7;
+
+const sayWords = (s: string) =>
+  stripAccents(stripSentencePunctuation(normalizeAnswer(normalizeQuotes(s))))
+    .split(" ")
+    .filter(Boolean);
+
+/** Two words sound alike enough: equal, or one letter apart in words of 4+ letters. */
+function close(a: string, b: string): boolean {
+  if (a === b) return true;
+  if (Math.min(a.length, b.length) < 4 || Math.abs(a.length - b.length) > 1) return false;
+  let i = 0;
+  while (i < a.length && a[i] === b[i]) i++;
+  const rest = (x: string, y: string) => x === y;
+  return (
+    rest(a.slice(i + 1), b.slice(i + 1)) ||
+    rest(a.slice(i + 1), b.slice(i)) ||
+    rest(a.slice(i), b.slice(i + 1))
+  );
+}
+
+/** The sentence's words that were heard, in order (longest common subsequence, with `close`). */
+export function heardWords(sentence: string, heard: string): boolean[] {
+  const a = sayWords(sentence);
+  const b = sayWords(heard);
+  const t = Array.from({ length: a.length + 1 }, () => new Array<number>(b.length + 1).fill(0));
+  for (let i = a.length - 1; i >= 0; i--)
+    for (let j = b.length - 1; j >= 0; j--)
+      t[i]![j] = close(a[i]!, b[j]!)
+        ? 1 + t[i + 1]![j + 1]!
+        : Math.max(t[i + 1]![j]!, t[i]![j + 1]!);
+  const out = new Array<boolean>(a.length).fill(false);
+  let i = 0;
+  let j = 0;
+  while (i < a.length && j < b.length) {
+    if (close(a[i]!, b[j]!)) {
+      out[i] = true;
+      i++;
+      j++;
+    } else if (t[i + 1]![j]! >= t[i]![j + 1]!) i++;
+    else j++;
+  }
+  return out;
+}
+
+/** "say": right when enough of the sentence's words were heard. */
+function checkSaid(sentence: string, heard: string): { correct: boolean; note?: string } {
+  const hits = heardWords(sentence, heard);
+  if (!hits.length || !heard.trim()) return { correct: false };
+  const share = hits.filter(Boolean).length / hits.length;
+  return share >= SAY_ENOUGH
+    ? { correct: true, ...(share < 1 ? { note: `Heard: ${heard}` } : {}) }
+    : { correct: false, note: `Heard: ${heard}` };
 }

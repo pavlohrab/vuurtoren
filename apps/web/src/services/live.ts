@@ -172,6 +172,13 @@ export function createLiveServices(
     composeGlosses,
     data: practiceData,
     translate: dictionary.translateSentences,
+    canListen: async () => {
+      try {
+        return (await (await nlp()).health()).data?.["listen"] === true;
+      } catch {
+        return false;
+      }
+    },
     topicMaterial: grammar.topicMaterial,
     aiSentences: { ready: ai.aiReady, fill: ai.fillSentences },
     evidence,

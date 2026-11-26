@@ -32,7 +32,9 @@ export type ExerciseKind =
   /** Reorder the words of a sentence (form / word order). */
   | "scramble"
   /** Hear a word or sentence (text-to-speech), type it (listening). */
-  | "dictation";
+  | "dictation"
+  /** Say a sentence out loud; the language server hears it (speaking, algorithms.md 4.7). */
+  | "say";
 
 export const SKILL_OF: Readonly<Record<ExerciseKind, Skill>> = {
   "meaning-choice": "recognition",
@@ -46,6 +48,7 @@ export const SKILL_OF: Readonly<Record<ExerciseKind, Skill>> = {
   "adjective-e": "form",
   scramble: "form",
   dictation: "listening",
+  say: "recall",
 };
 
 /** An example sentence containing the word. `target` = [start, end) of the word in `text` (UTF-16). */

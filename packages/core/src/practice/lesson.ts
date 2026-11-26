@@ -28,6 +28,8 @@ export interface LessonInput {
   /** Number of words (default 10). */
   size?: number;
   now: number;
+  /** The language server can hear speech: "say" exercises may come in. */
+  speaking?: boolean;
   /** Only these words (a lesson's source: this page, mistakes…); default all. */
   only?: ReadonlySet<string>;
 }
@@ -49,7 +51,7 @@ const words = (t: string) => t.split(/\s+/).filter(Boolean).length;
 
 /** The word with only the sentences an exercise kind may use (the sentence guard rail). */
 function forKind(word: WordData, kind: ExerciseKind): WordData {
-  const build = kind === "scramble" || kind === "dictation";
+  const build = kind === "scramble" || kind === "dictation" || kind === "say";
   const max = build ? BUILD_MAX_WORDS : GAP_MAX_WORDS;
   const unknown = build ? BUILD_MAX_UNKNOWN : GAP_MAX_UNKNOWN;
   return {
@@ -59,9 +61,15 @@ function forKind(word: WordData, kind: ExerciseKind): WordData {
 }
 
 /** Every exercise the generators can make for a word (one per kind). */
-function candidates(word: WordData, pool: readonly WordData[], rng: Rng): Exercise[] {
+function candidates(
+  word: WordData,
+  pool: readonly WordData[],
+  rng: Rng,
+  speaking = false,
+): Exercise[] {
   const out: Exercise[] = [];
   for (const kind of KINDS) {
+    if (kind === "say" && !speaking) continue;
     const ex = generate(kind, forKind(word, kind), pool, rng);
     // Building needs the sentence's English on top (4.7.4); without it, no building.
     if (ex && !(ex.kind === "scramble" && !ex.prompt.translation)) out.push(ex);
@@ -184,7 +192,7 @@ export function buildLesson(input: LessonInput, rng: Rng): Exercise[] {
       state: word.state,
       hasCard: s?.hasCard ?? false,
       start: starts.get(key)!,
-      candidates: candidates(word, input.words, rng),
+      candidates: candidates(word, input.words, rng, input.speaking),
       elo,
       answers: input.answers,
       favour,
@@ -209,7 +217,7 @@ export function comeBack(
     state: word.state,
     hasCard: s?.hasCard ?? false,
     start,
-    candidates: candidates(word, input.words, rng),
+    candidates: candidates(word, input.words, rng, input.speaking),
     elo: replay(input.answers, new Map([[missed.key, start]])),
     answers: input.answers,
     cap: STEP_OF[missed.kind] - 1,

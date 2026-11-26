@@ -72,6 +72,8 @@ export interface LivePracticeDeps {
     pos: string,
   ) => { glosses: string[]; article: string | undefined };
   data: PracticeData;
+  /** The language server can hear speech (the "say" exercise). */
+  canListen?: () => Promise<boolean>;
   /** Offline sentence translation (cached); missing entries when it is unavailable. */
   translate?: (sentences: string[]) => Promise<Map<string, string>>;
   /** Hit sentences and words of a grammar topic (topic exercises). */
@@ -474,7 +476,8 @@ export function createLivePractice(deps: LivePracticeDeps) {
       now,
       (k) => zipf.get(k) ?? 0,
     );
-    lastLesson = { words, signals, states: items, answers, now };
+    const speaking = (await deps.canListen?.().catch(() => false)) ?? false;
+    lastLesson = { words, signals, states: items, answers, now, speaking };
     const exercises = buildLesson(
       {
         words,
@@ -483,6 +486,7 @@ export function createLivePractice(deps: LivePracticeDeps) {
         answers,
         size,
         now,
+        speaking,
         ...(focus ? { only: focus } : {}),
       },
       rng,

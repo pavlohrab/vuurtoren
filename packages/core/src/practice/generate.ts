@@ -359,6 +359,22 @@ const dictation: Generator = (word, _pool, rng) => {
   });
 };
 
+const SAY_MAX_WORDS = 8;
+
+/** say: read a short sentence with the word out loud (its English under it). */
+const say: Generator = (word, _pool, rng) => {
+  const s = rankSentences(word.sentences, 3, SAY_MAX_WORDS).find(
+    (x) => wordCount(x.text) <= SAY_MAX_WORDS && x.translation,
+  );
+  if (!s) return null;
+  const text = s.text.trim();
+  return base("say", word, rng, {
+    instruction: "Say this sentence",
+    prompt: { text, sentence: text, speak: text, translation: s.translation! },
+    answer: text,
+  });
+};
+
 const GENERATORS: Record<ExerciseKind, Generator> = {
   "meaning-choice": meaningChoice,
   "word-choice": wordChoice,
@@ -371,6 +387,7 @@ const GENERATORS: Record<ExerciseKind, Generator> = {
   "adjective-e": adjectiveE,
   scramble,
   dictation,
+  say,
 };
 
 /**

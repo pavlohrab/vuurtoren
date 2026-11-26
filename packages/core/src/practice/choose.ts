@@ -24,6 +24,7 @@ export const STEP_OF: Readonly<Record<ExerciseKind, 1 | 2 | 3 | 4 | 5>> = {
   "cloze-typed": 5,
   dictation: 5,
   "verb-form": 5,
+  say: 3,
 };
 
 /** How much closer to the target a weak grammar point's kind counts as. */
