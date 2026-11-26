@@ -51,7 +51,8 @@ const words = (t: string) => t.split(/\s+/).filter(Boolean).length;
 
 /** The word with only the sentences an exercise kind may use (the sentence guard rail). */
 function forKind(word: WordData, kind: ExerciseKind): WordData {
-  const build = kind === "scramble" || kind === "dictation" || kind === "say";
+  const build =
+    kind === "scramble" || kind === "dictation" || kind === "say" || kind === "listen-build";
   const max = build ? BUILD_MAX_WORDS : GAP_MAX_WORDS;
   const unknown = build ? BUILD_MAX_UNKNOWN : GAP_MAX_UNKNOWN;
   return {
@@ -72,7 +73,8 @@ function candidates(
     if (kind === "say" && !speaking) continue;
     const ex = generate(kind, forKind(word, kind), pool, rng);
     // Building needs the sentence's English on top (4.7.4); without it, no building.
-    if (ex && !(ex.kind === "scramble" && !ex.prompt.translation)) out.push(ex);
+    if (ex && !((ex.kind === "scramble" || ex.kind === "listen-build") && !ex.prompt.translation))
+      out.push(ex);
   }
   return out;
 }
@@ -93,7 +95,7 @@ export function extraTile(pieces: readonly string[]): string | null {
 
 /** Building gets its extra tile, at a stable place among the others. */
 function withExtraTile(ex: Exercise): Exercise {
-  if (ex.kind !== "scramble" || !ex.pieces) return ex;
+  if ((ex.kind !== "scramble" && ex.kind !== "listen-build") || !ex.pieces) return ex;
   const tile = extraTile(ex.pieces);
   if (!tile) return ex;
   const at = (ex.answer.length + tile.length) % (ex.pieces.length + 1);
@@ -127,7 +129,9 @@ function withTopic(ex: Exercise): Exercise {
 /** The text of the sentence an exercise uses, if any. */
 const usedSentence = (ex: Exercise): string | undefined =>
   ex.prompt.sentence ??
-  (ex.kind === "scramble" || (ex.kind === "dictation" && ex.answer.includes(" "))
+  (ex.kind === "scramble" ||
+  ex.kind === "listen-build" ||
+  (ex.kind === "dictation" && ex.answer.includes(" "))
     ? ex.answer
     : undefined);
 

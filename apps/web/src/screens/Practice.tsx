@@ -110,7 +110,7 @@ function PracticeSession({ focus, autoStart }: { focus: string[] | null; autoSta
         setPhase({ name: "summary", answered: [], skipped: 0, empty: true });
         return;
       }
-      const listening = exercises.some((e) => e.kind === "dictation")
+      const listening = exercises.some((e) => e.kind === "dictation" || e.kind === "listen-build")
         ? await dutchVoiceAvailable()
         : true;
       startedAt.current = Date.now();
@@ -570,7 +570,8 @@ function Session({
   const shownAt = useRef(0);
   const skippedAt = useRef(-1);
   const current = exercises[index];
-  const skipDictation = current?.kind === "dictation" && !listening;
+  const skipDictation =
+    (current?.kind === "dictation" || current?.kind === "listen-build") && !listening;
   // Another device's changes wait until the session ends.
   useHoldFreshness();
 

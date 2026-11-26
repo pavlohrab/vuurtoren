@@ -75,4 +75,14 @@ describe("saying a sentence (algorithms.md 4.7)", () => {
       );
     expect(kinds(false)).not.toContain("say");
   });
+
+  it("makes hear-it-build-it from a short sentence with English (no English on screen)", () => {
+    const ex = generate("listen-build", gracht, [], createRng(3))!;
+    expect(ex.kind).toBe("listen-build");
+    expect(ex.prompt.text).toBe("");
+    expect(ex.prompt.speak).toBe("Ze fietst langs de gracht.");
+    expect(ex.prompt.translation).toBe("She cycles along the canal.");
+    expect([...ex.pieces!].sort()).toEqual(["de", "fietst", "gracht", "langs", "ze"]);
+    expect(checkAnswer(ex, "ze fietst langs de gracht").correct).toBe(true);
+  });
 });

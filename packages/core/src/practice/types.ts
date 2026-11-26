@@ -35,6 +35,8 @@ export type ExerciseKind =
   | "dictation"
   /** Say a sentence out loud; the language server hears it (speaking, algorithms.md 4.7). */
   | "say"
+  /** Hear a short sentence and build it from tiles (listening, step 4). */
+  | "listen-build"
   /** A new word shown before any question: its sound, meaning and sentence (not graded). */
   | "meet"
   /** Match Dutch words with their meanings, a short warm-up (not graded). */
@@ -53,6 +55,7 @@ export const SKILL_OF: Readonly<Record<ExerciseKind, Skill>> = {
   scramble: "form",
   dictation: "listening",
   say: "recall",
+  "listen-build": "listening",
   meet: "recognition",
   pairs: "recognition",
 };

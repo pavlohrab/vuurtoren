@@ -359,6 +359,20 @@ const dictation: Generator = (word, _pool, rng) => {
   });
 };
 
+/** listen-build: hear a short sentence, build it from the same tiles as scramble. */
+const listenBuild: Generator = (word, pool, rng) => {
+  const ex = scramble(word, pool, rng);
+  if (!ex || !ex.prompt.translation) return null;
+  return {
+    ...ex,
+    id: ex.id.replace(/^scramble/, "listen-build"),
+    kind: "listen-build",
+    skill: "listening",
+    instruction: "Write what you hear",
+    prompt: { text: "", speak: ex.answer, translation: ex.prompt.translation },
+  };
+};
+
 const SAY_MAX_WORDS = 8;
 
 /** say: read a short sentence with the word out loud (its English under it). */
@@ -388,6 +402,7 @@ const GENERATORS: Record<ExerciseKind, Generator> = {
   scramble,
   dictation,
   say,
+  "listen-build": listenBuild,
   // Lessons make these (lesson.ts); a word alone can't.
   meet: () => null,
   pairs: () => null,

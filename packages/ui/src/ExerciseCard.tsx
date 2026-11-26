@@ -7,7 +7,7 @@
  * continues, Backspace takes the last tile back, ? reveals a letter or places the next tile.
  * Holding a tile (or right-clicking it) shows what the word means; that counts as help.
  */
-import { Check, Mic, Square, Volume2, X } from "lucide-react";
+import { Check, Mic, Snail, Square, Volume2, X } from "lucide-react";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import type { Exercise } from "@app/core";
 import { Button } from "./Button.js";
@@ -35,8 +35,8 @@ export interface ExerciseCardProps {
   submitted?: string | null;
   onSubmit: (s: ExerciseSubmit) => void;
   onContinue: () => void;
-  /** Speak a text (dictation). */
-  onSpeak?: (text: string) => void;
+  /** Speak a text (dictation); `rate` below 1 is slower. */
+  onSpeak?: (text: string, rate?: number) => void;
   /** Label of the continue button (e.g. "Finish" on the last exercise). */
   continueLabel?: string;
   /**
@@ -167,9 +167,10 @@ export function ExerciseCard({
     else setHints((h) => h + 1);
   };
 
-  // Speak a dictation once when it appears (the browser may block it; the button always works).
+  // Speak a dictation or a sentence to build once when it appears (the browser may block it;
+  // the button always works).
   useEffect(() => {
-    if (mode === "dictation") onSpeak?.(e.prompt.speak ?? e.answer);
+    if (mode === "dictation" || e.kind === "listen-build") onSpeak?.(e.prompt.speak ?? e.answer);
   }, [e.id]);
 
   useEffect(() => {
@@ -249,13 +250,15 @@ export function ExerciseCard({
     (e.kind === "meaning-choice" || e.kind === "gender" || e.kind === "say") && onSpeak;
   // The Dutch that is shown after answering: the whole sentence when there is one.
   const resultDutch =
-    e.kind === "scramble" || e.kind === "dictation"
+    e.kind === "scramble" || e.kind === "dictation" || e.kind === "listen-build"
       ? e.answer
       : e.kind === "meaning-choice"
         ? e.prompt.text
         : (e.prompt.sentence ?? e.answer);
   const englishLine =
-    !dutchPrompt || !e.prompt.translation || e.kind === "scramble" ? null : e.prompt.translation;
+    !dutchPrompt || !e.prompt.translation || e.kind === "scramble" || e.kind === "listen-build"
+      ? null
+      : e.prompt.translation;
 
   if (mode === "meet")
     return (
@@ -296,7 +299,27 @@ export function ExerciseCard({
   return (
     <section className="ex-card" aria-label="Exercise" ref={cardRef}>
       <h2 className="ex-ask">{e.instruction}</h2>
-      {mode !== "dictation" ? (
+      {e.kind === "listen-build" ? (
+        <div className="ex-hear">
+          <button
+            type="button"
+            className="ex-say ex-say--big"
+            onClick={() => onSpeak?.(e.prompt.speak ?? e.answer)}
+            aria-label="Play the sentence"
+          >
+            <Volume2 size={24} aria-hidden />
+          </button>
+          <button
+            type="button"
+            className="ex-say ex-say--slow"
+            onClick={() => onSpeak?.(e.prompt.speak ?? e.answer, 0.6)}
+            aria-label="Play it slowly"
+            title="Slowly"
+          >
+            <Snail size={18} aria-hidden />
+          </button>
+        </div>
+      ) : mode !== "dictation" ? (
         <div className="ex-prompt-row">
           {sayFirst ? (
             <SpeakButton onClick={() => onSpeak(e.prompt.text)} label="Play the word" />

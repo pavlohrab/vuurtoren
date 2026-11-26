@@ -26,6 +26,7 @@ export const START_DIFFICULTY: Readonly<Record<ExerciseKind, number>> = {
   dictation: 0.7,
   "verb-form": 0.8,
   say: -0.2,
+  "listen-build": 0.1,
   meet: -3,
   pairs: -3,
 };

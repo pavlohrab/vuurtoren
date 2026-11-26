@@ -45,7 +45,7 @@ export function useDutchVoice(): boolean | undefined {
 }
 
 /** Speak `text` in Dutch, cancelling anything still playing. No-op without a voice. */
-export function speakDutch(text: string): void {
+export function speakDutch(text: string, rate = 0.9): void {
   const s = synth();
   const voice = dutchVoice();
   if (!s || !voice || !text) return;
@@ -53,6 +53,6 @@ export function speakDutch(text: string): void {
   const u = new SpeechSynthesisUtterance(text);
   u.voice = voice;
   u.lang = voice.lang;
-  u.rate = 0.9;
+  u.rate = rate;
   s.speak(u);
 }
