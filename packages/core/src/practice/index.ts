@@ -7,3 +7,16 @@ export { buildSession } from "./session.js";
 export { gradeAttempt } from "./grade.js";
 export { review, practiceStats } from "./schedule.js";
 export { buildTopicSession, type TopicSentence, type TopicSessionInput } from "./topic.js";
+export {
+  START_DIFFICULTY,
+  chance,
+  difficultyOf,
+  gripOf,
+  guessOf,
+  replay as replayElo,
+  startGrip,
+  update as updateElo,
+  type EloAnswer,
+  type EloState,
+  type GripStart,
+} from "./elo.js";
