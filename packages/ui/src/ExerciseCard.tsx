@@ -455,7 +455,9 @@ export function ExerciseCard({
               <SpeakButton onClick={() => onSpeak(resultDutch)} label="Play the sentence" />
             ) : null}
             <span>
-              {onWord ? (
+              {!feedback.correct && submitted && (mode === "scramble" || mode === "dictation") ? (
+                <MarkedSentence answer={resultDutch} given={submitted} />
+              ) : onWord ? (
                 <WordText
                   text={resultDutch}
                   onWord={(form, el) => onWord(form, e.prompt.sentence ?? e.answer, el)}
@@ -502,6 +504,31 @@ export function ExerciseCard({
         </div>
       ) : null}
     </section>
+  );
+}
+
+/** Fold a word for comparing: lower case, no punctuation at the edges. */
+const fold = (w: string) => w.toLowerCase().replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, "");
+
+/** The right sentence with the words that differ from the learner's underlined, place by place. */
+function MarkedSentence({ answer, given }: { answer: string; given: string }) {
+  const theirs = given.split(/\s+/).filter(Boolean).map(fold);
+  const words = answer.split(/(\s+)/);
+  let n = -1;
+  return (
+    <>
+      {words.map((w, i) => {
+        if (/^\s+$/.test(w) || !w) return w;
+        n++;
+        return fold(w) === theirs[n] ? (
+          <span key={i}>{w}</span>
+        ) : (
+          <u key={i} className="ex-diff">
+            {w}
+          </u>
+        );
+      })}
+    </>
   );
 }
 

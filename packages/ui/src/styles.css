@@ -1828,6 +1828,11 @@ svg.lucide {
   gap: 8px;
   font-size: 18px;
 }
+.ex-diff {
+  text-decoration-color: var(--danger);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+}
 .ex-topic {
   border: none;
   background: none;
