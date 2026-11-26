@@ -28,6 +28,7 @@ import {
   X,
 } from "lucide-react";
 import { currentDevice } from "../platform/index.js";
+import { useBackClose } from "../shell/backStack.js";
 import { appVersionLabel } from "../version.js";
 import {
   canRecord,
@@ -97,6 +98,7 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
   } | null>(null);
   const [unread, setUnread] = useState(() => savedReplies().filter((r) => !r.read).length);
   const [talk, setTalk] = useState<Message[]>(() => conversation());
+  const showTab = useFeedbackTab();
 
   // Read through a ref, so `open` stays the same while the sheet opens and closes (the
   // effects below that use it don't start over each time).
@@ -198,7 +200,7 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
   return (
     <FeedbackContext.Provider value={api}>
       {children}
-      {on && phone && testBuild() && !state ? (
+      {on && phone && testBuild() && showTab && !state ? (
         <button type="button" className="fb-edge" data-feedback-skip onClick={() => open()}>
           {unread ? <span className="fb-pip" aria-label="New answer" /> : null}
           Feedback
@@ -290,6 +292,14 @@ function FeedbackForm({
   useEffect(() => {
     if (unread) onRead();
   }, [unread, onRead]);
+
+  // Android's back gesture closes the innermost thing too. Without this the app went back a
+  // whole page, which at the start of the app left a black window (FB3).
+  useBackClose(true, () => {
+    if (drawing) setDrawing(false);
+    else if (picking) setPicking(false);
+    else onClose();
+  });
 
   // Esc closes (not while pointing: there it stops pointing).
   useEffect(() => {
@@ -863,10 +873,43 @@ export function TellPavlo({ error }: { error: string }) {
   );
 }
 
+const TAB_KEY = "vuurtoren.feedback.tab";
+const TAB_EVENT = "vuurtoren-feedback-tab";
+
+function readTab(): boolean {
+  try {
+    return localStorage.getItem(TAB_KEY) !== "off";
+  } catch {
+    return true;
+  }
+}
+
+/** Is the Feedback tab on the screen's edge shown (phone, test builds)? On unless turned off. */
+function useFeedbackTab(): boolean {
+  const [on, setOn] = useState(readTab);
+  useEffect(() => {
+    const changed = () => setOn(readTab());
+    window.addEventListener(TAB_EVENT, changed);
+    return () => window.removeEventListener(TAB_EVENT, changed);
+  }, []);
+  return on;
+}
+
+function setFeedbackTab(on: boolean): void {
+  try {
+    if (on) localStorage.removeItem(TAB_KEY);
+    else localStorage.setItem(TAB_KEY, "off");
+  } catch {
+    // Blocked storage: the tab stays as it is.
+  }
+  window.dispatchEvent(new Event(TAB_EVENT));
+}
+
 /** Settings → Data: the name that goes with feedback, and Send feedback. */
 export function FeedbackSettings() {
   const { open, on, unread } = useFeedback();
   const [name, setName] = useState(feedbackName);
+  const [tab, setTab] = useState(readTab);
   if (!on) return null;
   return (
     <section className="stack" aria-labelledby="feedback-h" style={{ gap: 8 }}>
@@ -887,6 +930,19 @@ export function FeedbackSettings() {
           autoComplete="given-name"
         />
       </label>
+      {testBuild() && currentDevice().kind === "android" ? (
+        <label className="row" style={{ gap: 8 }}>
+          <input
+            type="checkbox"
+            checked={tab}
+            onChange={(e) => {
+              setTab(e.target.checked);
+              setFeedbackTab(e.target.checked);
+            }}
+          />
+          Show the Feedback tab on the side of the screen
+        </label>
+      ) : null}
       <div className="row">
         <Button onClick={() => open()}>Send feedback{unread ? ` (${unread} new)` : ""}</Button>
       </div>
