@@ -77,7 +77,14 @@ pub struct Lan {
     code: Option<Code>,
     /// The phones changed since they were last saved ([`Lan::take_dirty`]).
     dirty: bool,
+    /// SY5: this computer syncs through another place now (a server, WebDAV): its phones are
+    /// told so, and get nothing from the old folder.
+    moved: bool,
 }
+
+/// What a phone of a computer that moved is told (410).
+pub const MOVED: &str = "This computer syncs through another place now. On your phone, scan \
+     its new code, or choose that place in Settings → Your devices.";
 
 impl Lan {
     /// True once after the phones changed (paired, claimed a folder): time to save them.
@@ -214,7 +221,13 @@ impl Lan {
             phones: vec![],
             code: None,
             dirty: false,
+            moved: false,
         }
+    }
+
+    /// The computer moved to another place (true), or shares its folder again (false).
+    pub fn set_moved(&mut self, moved: bool) {
+        self.moved = moved;
     }
 
     /// Serve another folder: the computer's own sync folder (Syncthing, Dropbox) when it has one,
@@ -317,6 +330,9 @@ impl Lan {
     ) -> Reply {
         if path == "/api/health" && method == "GET" {
             return Reply::json(200, json!({ "ok": true, "service": "vuurtoren-desktop" }));
+        }
+        if self.moved && path.starts_with("/api/sync/") {
+            return Reply::fail(410, MOVED);
         }
         if path == "/api/sync/pair" && method == "POST" {
             return self.pair(body, now);
@@ -558,6 +574,37 @@ mod tests {
             .path()
             .join("vuurtoren/devices/phone1/seg-1.kan")
             .exists());
+    }
+
+    /// SY5: a computer that moved to another place tells its phones, and serves them nothing.
+    #[test]
+    fn a_computer_that_moved_tells_its_phones() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut lan = Lan::new(dir.path());
+        let token = paired(&mut lan);
+        lan.set_moved(true);
+        let r = lan.dispatch(
+            "GET",
+            "/api/sync/list",
+            &q("dir", ""),
+            Some(&token),
+            b"",
+            2000,
+        );
+        assert_eq!(r.status, 410);
+        let v: serde_json::Value = serde_json::from_slice(&r.body).unwrap();
+        assert!(v["error"].as_str().unwrap().contains("another place"));
+        // Sharing again (a new code): the phone syncs as before.
+        lan.set_moved(false);
+        let r = lan.dispatch(
+            "GET",
+            "/api/sync/list",
+            &q("dir", ""),
+            Some(&token),
+            b"",
+            2001,
+        );
+        assert_eq!(r.status, 200);
     }
 
     #[test]

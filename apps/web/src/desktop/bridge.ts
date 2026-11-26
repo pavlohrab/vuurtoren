@@ -222,6 +222,11 @@ interface LanBridge {
   ): Promise<{ tool: "firewalld" | null; open: boolean | null; command: string | null }>;
   /** Opens the port in firewalld for good; the system asks for the admin password. */
   allowFirewall?(port: number): Promise<void>;
+  /**
+   * SY5: this computer left its folder (for a server or WebDAV) or stopped syncing: its phones
+   * are told so instead of syncing with a folder nobody updates. A new code clears it.
+   */
+  moved?(): Promise<void>;
 }
 
 declare global {

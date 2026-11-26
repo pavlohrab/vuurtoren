@@ -43,6 +43,7 @@ fn hub(app: &AppHandle) -> Result<&'static Hub, String> {
             lan.load_phones(&v);
         }
     }
+    lan.set_moved(dir.join(MOVED_FILE).is_file());
     let _ = HUB.set(Hub {
         lan: Arc::new(Mutex::new(lan)),
         dir,
@@ -145,7 +146,26 @@ pub fn lan_code(app: AppHandle, handover: Option<serde_json::Value>) -> Result<S
         .unwrap_or(0);
     let hub = hub(&app)?;
     let mut lan = hub.lan.lock().map_err(|e| e.to_string())?;
+    // A new code: the computer shares its folder again (the page checked it syncs there).
+    lan.set_moved(false);
+    let _ = std::fs::remove_file(hub.dir.join(MOVED_FILE));
     Ok(lan.new_code_with(now, handover))
+}
+
+/// Kept while this computer syncs through another place (SY5).
+const MOVED_FILE: &str = "lan-moved";
+
+/// The computer moved from its folder to a server or WebDAV, or stopped syncing (SY5): its
+/// phones are told so (410) instead of syncing with a folder nobody updates. Remembered across
+/// starts; a new code clears it.
+#[tauri::command]
+pub fn lan_moved(app: AppHandle) -> Result<(), String> {
+    let hub = hub(&app)?;
+    if !hub.lan.lock().map_err(|e| e.to_string())?.has_phones() {
+        return Ok(());
+    }
+    hub.lan.lock().map_err(|e| e.to_string())?.set_moved(true);
+    std::fs::write(hub.dir.join(MOVED_FILE), b"1").map_err(|e| e.to_string())
 }
 
 /// The phones connected to this computer.

@@ -651,12 +651,72 @@ describe("a phone and its computer at home", () => {
     expect(server.paired).toEqual([]);
     expect(tokens.token).toBe("ksync_phone");
 
-    // Another computer's code (another certificate) is not a move.
+    // Another computer's code (another certificate) is not a move: the phone would leave this
+    // link for it (SY5), but only once that pairing works. A wrong code keeps the link.
     await expect(
       phone.sync.services.connectServer(
         { server: NEW, code: "QQQQQ-QQQQQ", pinned: "cd".repeat(32) },
         "",
       ),
-    ).rejects.toThrow(/Stop syncing first/);
+    ).rejects.toThrow();
+    expect(await phone.sync.services.syncStatus()).toMatchObject({ place: { computer: true } });
+  });
+});
+
+describe("one sync place per device (SY5)", () => {
+  it("a computer that leaves the folder it shares with its phones tells them", async () => {
+    const clock = { t: Date.UTC(2026, 10, 26, 9) };
+    const folder = new Map<string, Uint8Array>();
+    const server = fakeServer(new Map(), "ksync_t");
+    const desktop = {
+      pickFolder: async () => "/home/me/Sync",
+      list: async (root: string, dir: string) => [
+        ...new Set(
+          [...folder.keys()]
+            .filter((k) => k.startsWith(`${root}/${dir}/`))
+            .map((k) => k.slice(`${root}/${dir}/`.length).split("/")[0]!),
+        ),
+      ],
+      get: async (root: string, path: string) => folder.get(`${root}/${path}`) ?? null,
+      put: async (root: string, path: string, bytes: Uint8Array) =>
+        void folder.set(`${root}/${path}`, bytes),
+      remove: async (root: string, path: string) => void folder.delete(`${root}/${path}`),
+      fetch: async (req: {
+        url: string;
+        method: string;
+        headers: Record<string, string>;
+        body?: Uint8Array;
+      }) => {
+        const r = await server(req.url, {
+          method: req.method,
+          headers: req.headers,
+          body: (req.body ?? null) as BodyInit | null,
+        });
+        return {
+          status: r.status,
+          headers: Object.fromEntries(r.headers),
+          body: new Uint8Array(await r.arrayBuffer()),
+        };
+      },
+    } as unknown as NonNullable<Parameters<typeof createLiveSync>[0]["desktop"]>;
+    const lanMoved = vi.fn(async () => undefined);
+    const laptop = await device("aaaaaaaaaaaa", server, clock, { desktop, lanMoved });
+    await laptop.sync.services.setUpSync(
+      { kind: "folder", path: "/home/me/Sync" },
+      "start",
+      PASS,
+      "Laptop",
+    );
+    expect(lanMoved).not.toHaveBeenCalled();
+    await laptop.sync.services.setUpSync(
+      { kind: "server", url: "https://vuurtoren.example", token: "ksync_t" },
+      "start",
+      PASS,
+      "Laptop",
+    );
+    expect(lanMoved).toHaveBeenCalledTimes(1);
+    // Stopping sync on a server place: no folder was shared any more, nothing more to say.
+    await laptop.sync.services.stopSync();
+    expect(lanMoved).toHaveBeenCalledTimes(1);
   });
 });

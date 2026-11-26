@@ -246,6 +246,7 @@ export function createLiveServices(
     links: device.links,
     server: options.server,
     changed: dropCaches,
+    lanMoved: device.bridge?.lan?.moved ? () => device.bridge!.lan!.moved!() : undefined,
   });
 
   const services: AppServices = {

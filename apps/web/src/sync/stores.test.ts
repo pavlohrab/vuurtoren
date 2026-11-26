@@ -68,6 +68,17 @@ describe("a Vuurtoren server", () => {
     expect(await store.list("vuurtoren/blobs")).toEqual(["a.kbl"]);
     expect(caches).toEqual(["no-store", "no-store", "no-store"]);
   });
+
+  it("the user's computer that moved to another place says where to go (SY5)", async () => {
+    const said = "This computer syncs through another place now. On your phone, scan its new code.";
+    const store = serverStore(
+      "https://192.168.1.20:47120",
+      "ksync_t",
+      (async () =>
+        new Response(JSON.stringify({ ok: false, error: said }), { status: 410 })) as typeof fetch,
+    );
+    await expect(store.list("vuurtoren")).rejects.toThrow(said);
+  });
 });
 
 describe("credentials refused", () => {

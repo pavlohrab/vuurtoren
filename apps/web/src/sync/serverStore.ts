@@ -21,6 +21,11 @@ export function serverStore(url: string, token: string, fetch: typeof globalThis
     if (res.status === 401) {
       throw new SyncPlaceError("The server did not accept the sync token.");
     }
+    // The user's computer moved to another place (SY5): it says where to go now.
+    if (res.status === 410) {
+      const said = (await res.json().catch(() => ({}))) as { error?: string };
+      throw new SyncPlaceError(said.error ?? "Your computer syncs through another place now.");
+    }
     return res;
   };
   const file = (path: string) => `/api/sync/file?path=${encodeURIComponent(path)}`;

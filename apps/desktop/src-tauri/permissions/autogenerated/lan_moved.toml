@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-lan-moved"
+description = "Enables the lan_moved command without any pre-configured scope."
+commands.allow = ["lan_moved"]
+
+[[permission]]
+identifier = "deny-lan-moved"
+description = "Denies the lan_moved command without any pre-configured scope."
+commands.deny = ["lan_moved"]

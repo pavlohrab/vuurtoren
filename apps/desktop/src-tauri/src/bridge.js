@@ -152,6 +152,9 @@
               remove: function (hash) {
                 return invoke("lan_remove", { hash: hash });
               },
+              moved: function () {
+                return invoke("lan_moved");
+              },
               firewall: function (port) {
                 return invoke("lan_firewall", { port: port });
               },

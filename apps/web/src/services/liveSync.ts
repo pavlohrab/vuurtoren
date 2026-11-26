@@ -117,6 +117,11 @@ export interface LiveSyncDeps {
   server?: ThisServer | undefined;
   /** Changes came in from another device: drop what is derived from the data. */
   changed: () => void;
+  /**
+   * A computer that shares its folder with phones (Connect a phone): it left that folder, so
+   * its phones must be told (SY5: one sync place per device).
+   */
+  lanMoved?: (() => Promise<void>) | undefined;
   now?: () => number;
   /** How hard the passphrase is to guess by trying (tests use a light one). */
   cost?: Argon2Cost;
@@ -462,6 +467,10 @@ export function createLiveSync(deps: LiveSyncDeps) {
         const store = await storeOf(kept);
         onProgress?.(how === "join" ? "Opening your synced data" : "Starting your sync data");
         const { key, recoveryKey } = await connect(store, how, passphrase);
+        // One place per device (SY5): a computer leaving the folder it shares with its phones
+        // tells them so.
+        if (read()?.place.kind === "folder" && kept.kind !== "folder")
+          await deps.lanMoved?.().catch(() => undefined);
         const saved: Saved = {
           place: kept,
           deviceName: name,
@@ -534,6 +543,8 @@ export function createLiveSync(deps: LiveSyncDeps) {
       await exclusive(async () => {
         await keys.forget();
         const place = read()?.place;
+        // Its phones are told it stopped (SY5), not left with a folder nobody updates.
+        if (place?.kind === "folder") await deps.lanMoved?.().catch(() => undefined);
         if ((place?.kind === "server" && place.kept) || readPaired()) await tokens.forget();
         keptToken = null;
         writePaired(null);
@@ -615,13 +626,20 @@ export function createLiveSync(deps: LiveSyncDeps) {
           write(null);
           now = null;
         }
-        if (now) throw new Error("Stop syncing first, then connect to another server.");
+        // One place per device (SY5): a phone linked to its computer that connects to a server
+        // (or another computer) leaves that link, once the new pairing worked; its data stays.
+        const leaving = now?.place.kind === "server" && !!now.place.pinned;
+        if (now && !leaving) throw new Error("Stop syncing first, then connect to another server.");
         // In the app the request goes through it (no CORS setup on the server).
         const pinned = "pinned" in link ? link.pinned : undefined;
         const fetch = deps.desktop ? desktopFetch(deps.desktop, pinned) : deps.fetch;
         const ua = typeof navigator === "undefined" ? "" : navigator.userAgent;
         const label = pairedLabel(deviceName || defaultName(), ua, deps.phone ?? false);
         const paired = await pairWithServer(link, label, fetch);
+        if (leaving) {
+          await keys.forget();
+          write(null);
+        }
         onProgress?.(`Connected to ${there}. Checking the key…`);
         await tokens.save(paired.token);
         keptToken = paired.token;
