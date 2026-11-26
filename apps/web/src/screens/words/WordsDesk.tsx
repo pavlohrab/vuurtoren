@@ -11,6 +11,7 @@ import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { starterBand } from "@app/anki";
 import type { InspectorEntry } from "@app/core";
+import { frequencyLabel } from "@app/core";
 import { Lemma, Popover, Skeleton, WordInspector, useNativeMode, useToast } from "@app/ui";
 import { ChevronDown, ChevronLeft, ChevronUp, Search } from "lucide-react";
 import { type KeyboardEvent as ReactKeyboardEvent, useEffect, useRef, useState } from "react";
@@ -701,6 +702,9 @@ function WordPane({
   const reviews = (entry.anki.reviews ?? []).slice(-10);
   const first = entry.anki.reviews?.[0]?.at;
   const days = first ? Math.max(1, Math.round((now - first) / DAY_MS)) : null;
+  const sub = [frequencyLabel(entry.zipf), band !== "–" ? `about ${band}` : null]
+    .filter(Boolean)
+    .join(" · ");
   return (
     <>
       {nav}
@@ -710,7 +714,8 @@ function WordPane({
           {entry.lemma}
           {kind ? <small>{kind}</small> : null}
         </h2>
-        {band !== "–" ? <p className="wd-muted wd-sub">about {band}</p> : null}
+        {/* How common it is (from your texts) beside its level, as on the word card (LV9). */}
+        {sub ? <p className="wd-muted wd-sub">{sub}</p> : null}
       </div>
       <p className="wd-mean">{meaning ?? "No meaning yet"}</p>
       {s ? (
