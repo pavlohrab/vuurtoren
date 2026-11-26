@@ -229,14 +229,29 @@ fn ufw_command(port: u16) -> String {
     format!("sudo ufw allow {port}/tcp")
 }
 
-/// Is ufw running? `systemctl is-active` needs no admin rights (ufw's own status does).
+/// Is ufw on? `systemctl is-active ufw` says "active" even when ufw is switched off (it is a
+/// oneshot service), so its own setting decides: `ENABLED=yes` in /etc/ufw/ufw.conf, which
+/// anyone can read (ufw's status needs admin rights).
 #[cfg(target_os = "linux")]
 fn ufw_active() -> bool {
-    std::process::Command::new("systemctl")
-        .args(["is-active", "--quiet", "ufw"])
-        .status()
-        .map(|s| s.success())
+    std::fs::read_to_string("/etc/ufw/ufw.conf")
+        .map(|conf| ufw_enabled(&conf))
         .unwrap_or(false)
+}
+
+/// `ENABLED=yes` in ufw.conf (quotes and spaces allowed, comments not).
+#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
+fn ufw_enabled(conf: &str) -> bool {
+    conf.lines().any(|l| {
+        let l = l.trim();
+        !l.starts_with('#')
+            && l.split_once('=').is_some_and(|(k, v)| {
+                k.trim() == "ENABLED"
+                    && v.trim()
+                        .trim_matches(|c| c == '"' || c == '\'')
+                        .eq_ignore_ascii_case("yes")
+            })
+    })
 }
 
 fn firewalld_command(port: u16) -> String {
@@ -352,6 +367,16 @@ fn allow_firewall(port: u16) -> Result<(), String> {
 #[cfg(all(test, target_os = "linux"))]
 mod firewall_tests {
     use super::*;
+
+    /// ufw counts only when it is switched on (systemctl says "active" either way).
+    #[test]
+    fn ufw_counts_only_when_enabled() {
+        assert!(ufw_enabled("# comment\nENABLED=yes\nLOGLEVEL=low\n"));
+        assert!(ufw_enabled("ENABLED = \"yes\""));
+        assert!(!ufw_enabled("ENABLED=no\n"));
+        assert!(!ufw_enabled("#ENABLED=yes\n"));
+        assert!(!ufw_enabled(""));
+    }
 
     /// With firewalld absent, stopped or stuck on D-Bus, the check still answers in seconds.
     #[test]
