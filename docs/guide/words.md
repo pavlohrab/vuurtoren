@@ -31,10 +31,9 @@ levels of 500, each with an example sentence. New words start with the most comm
 
 ## Practice and the exam
 
-**Practice** trains the words you're learning with short exercises: choose the meaning, fill in a
-blank, de or het, the right verb form, put the words in order, or write what you hear. Every word
-has its own schedule for each kind of exercise, so an exercise comes back just before you would
-forget it, and a right answer also counts towards knowing the word.
+**Practice** is short lessons with the words you're learning: building sentences, de or het, the
+right form, hearing and saying them. It picks the exercise for each word from what it knows about
+you. How it works is on the [Practice](practice.md) page.
 
 **Exam** is for the A2 inburgeringsexamen. It explains the parts of the exam, and has practice tests
 for reading, listening, writing, speaking and KNM. With your own AI key you also get feedback on

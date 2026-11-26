@@ -30,6 +30,7 @@ const CHAPTERS = [
     pages: [
       ["guide/reading.md", "Reading"],
       ["guide/words.md", "Your words"],
+      ["guide/practice.md", "Practice"],
       ["guide/anki.md", "Anki"],
     ],
   },
