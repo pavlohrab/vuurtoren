@@ -130,29 +130,23 @@ export function ExerciseCard({
   /** Hint while building: place the next tile of the right sentence (counts as help). */
   const nextTile = () => {
     if (answered) return;
-    const want = e.answer
-      .split(/\s+/)
-      .map((w) => w.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, "").toLowerCase())
-      .filter(Boolean)[picked.length];
-    // Undo a wrong tile first, so the hint always builds on a right start.
-    const rightSoFar = e.answer
-      .toLowerCase()
-      .replace(/[^\p{L}\p{N}\s'-]/gu, "")
-      .startsWith(picked.map((i) => pieces[i]!.toLowerCase()).join(" "));
-    if (!rightSoFar) {
+    const right = e.answer.split(/\s+/).map(fold).filter(Boolean);
+    const placed = picked.map((i) => fold(pieces[i]!));
+    // Undo a wrong start first, so the hint always builds on a right one.
+    if (placed.some((w, n) => w !== right[n])) {
       setPicked([]);
       setHints((h) => h + 1);
       return;
     }
-    const at = pieces.findIndex(
-      (p, i) => !picked.includes(i) && p.replace(/[^\p{L}\p{N}'-]/gu, "").toLowerCase() === want,
-    );
+    const want = right[placed.length];
+    const at = pieces.findIndex((p, i) => !picked.includes(i) && fold(p) === want);
     if (at >= 0) {
       setPicked((cur) => [...cur, at]);
       setHints((h) => h + 1);
     }
   };
   const holdTimer = useRef<number | null>(null);
+  const touch = useRef(false);
   const peek = (piece: string, el: HTMLElement) => {
     if (!onWord) return;
     setHints((h) => h + 1);
@@ -347,9 +341,16 @@ export function ExerciseCard({
                 }}
                 onContextMenu={(ev) => {
                   ev.preventDefault();
+                  // A long press already showed it (phones fire this too).
+                  if (holdTimer.current === -1) return;
+                  if (holdTimer.current) window.clearTimeout(holdTimer.current);
+                  // On a touch screen the release still clicks: swallow that click.
+                  holdTimer.current = touch.current ? -1 : null;
                   peek(p, ev.currentTarget);
                 }}
                 onPointerDown={(ev) => {
+                  touch.current = ev.pointerType === "touch";
+                  if (ev.button !== 0) return;
                   const el = ev.currentTarget;
                   holdTimer.current = window.setTimeout(() => {
                     holdTimer.current = -1;
@@ -464,7 +465,9 @@ export function ExerciseCard({
               <SpeakButton onClick={() => onSpeak(resultDutch)} label="Play the sentence" />
             ) : null}
             <span>
-              {!feedback.correct && submitted && (mode === "scramble" || mode === "dictation" || mode === "say") ? (
+              {!feedback.correct &&
+              submitted &&
+              (mode === "scramble" || mode === "dictation" || mode === "say") ? (
                 <MarkedSentence answer={resultDutch} given={submitted} />
               ) : onWord ? (
                 <WordText
