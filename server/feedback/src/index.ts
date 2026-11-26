@@ -117,7 +117,7 @@ export default {
         JSON.parse(u.body) as Report,
         u.transcript,
         shot ? await shot.arrayBuffer() : null,
-        "image/png",
+        "image/jpeg",
         voice ? await voice.arrayBuffer() : null,
         "audio/webm",
       );

@@ -4,18 +4,35 @@
  */
 import { domToBlob } from "modern-screenshot";
 
-/** The page as a PNG, taken before the sheet opens. Null when it can't be taken. */
+/** The Worker takes pictures up to 3 MB (server/feedback LIMITS); stay under it. */
+const MAX_BYTES = 2.8 * 1024 * 1024;
+
+/**
+ * The page as a JPEG, taken before the sheet opens: at most 2000 px wide, and smaller again
+ * when it's still too big. Null when it can't be taken (the report goes without it).
+ */
 export async function screenshot(node: HTMLElement = document.body): Promise<Blob | null> {
-  try {
-    return await domToBlob(node, {
-      scale: Math.min(2, window.devicePixelRatio || 1),
-      backgroundColor: getComputedStyle(document.body).backgroundColor,
-      // The sheet and toasts are not part of what went wrong.
-      filter: (n) => !(n instanceof HTMLElement && n.dataset["feedbackSkip"] !== undefined),
-    });
-  } catch {
-    return null;
+  const base = Math.min(2, window.devicePixelRatio || 1, 2000 / Math.max(1, window.innerWidth));
+  for (const [scale, quality] of [
+    [base, 0.85],
+    [Math.min(base, 1), 0.75],
+    [Math.min(base, 0.7), 0.65],
+  ] as const) {
+    try {
+      const blob = await domToBlob(node, {
+        scale,
+        type: "image/jpeg",
+        quality,
+        backgroundColor: getComputedStyle(document.body).backgroundColor,
+        // The sheet and toasts are not part of what went wrong.
+        filter: (n) => !(n instanceof HTMLElement && n.dataset["feedbackSkip"] !== undefined),
+      });
+      if (blob && blob.size <= MAX_BYTES) return blob;
+    } catch {
+      return null;
+    }
   }
+  return null;
 }
 
 /** A picture of the window cut around one element, with room to see where it sits. */
@@ -43,7 +60,7 @@ export async function cropAround(whole: Blob, rect: DOMRect, margin = 80): Promi
       rect.width * scale + 8 * scale,
       rect.height * scale + 8 * scale,
     );
-    return await new Promise((r) => c.toBlob((b) => r(b), "image/png"));
+    return await new Promise((r) => c.toBlob((b) => r(b), "image/jpeg", 0.85));
   } catch {
     return null;
   }

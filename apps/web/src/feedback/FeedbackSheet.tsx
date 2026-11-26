@@ -71,15 +71,21 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<{ shot: Blob | null; error?: string } | null>(null);
   const [unread, setUnread] = useState(() => savedReplies().filter((r) => !r.read).length);
 
+  // Read through a ref, so `open` stays the same while the sheet opens and closes (the
+  // effects below that use it don't start over each time).
+  const openNow = useRef(false);
+  useEffect(() => {
+    openNow.current = state !== null;
+  }, [state]);
   const open = useCallback(
     (opts: OpenOptions = {}) => {
-      if (!on || state) return;
+      if (!on || openNow.current) return;
       // The picture first, so it shows the screen and not the sheet.
       void screenshot().then((shot) =>
         setState({ shot, ...(opts.error ? { error: opts.error } : {}) }),
       );
     },
-    [on, state],
+    [on],
   );
 
   // Ctrl+Shift+F anywhere on a computer.
@@ -430,8 +436,16 @@ function FeedbackForm({
 }
 
 function useObjectUrl(blob: Blob | null): string | null {
-  const url = useMemo(() => (blob ? URL.createObjectURL(blob) : null), [blob]);
-  useEffect(() => () => (url ? URL.revokeObjectURL(url) : undefined), [url]);
+  // Each run of the effect makes its own URL and revokes it on cleanup, so React's double run in
+  // development never leaves a revoked URL on screen.
+  const [url, setUrl] = useState<string | null>(null);
+  useEffect(() => {
+    const made = blob ? URL.createObjectURL(blob) : null;
+    void Promise.resolve().then(() => setUrl(made));
+    return () => {
+      if (made) URL.revokeObjectURL(made);
+    };
+  }, [blob]);
   return url;
 }
 
@@ -615,7 +629,7 @@ function DrawOn({ picture, onDone }: { picture: Blob; onDone: (b: Blob | null) =
         <Button onClick={() => onDone(null)}>Cancel</Button>
         <Button
           variant="primary"
-          onClick={() => canvas.current?.toBlob((b) => onDone(b), "image/png")}
+          onClick={() => canvas.current?.toBlob((b) => onDone(b), "image/jpeg", 0.85)}
         >
           Done
         </Button>

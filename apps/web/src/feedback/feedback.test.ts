@@ -80,4 +80,21 @@ describe("the feedback button's report (FB1)", () => {
       SendRefused,
     );
   });
+
+  it("keeps a report the server couldn't take now (5xx, 429): only a real no is final", async () => {
+    vi.stubEnv("VITE_FEEDBACK_KEY", "k");
+    const report = newReport({
+      text: "x",
+      screen: "/",
+      kind: "desktop",
+      userAgent: "Linux",
+      replies: false,
+    });
+    for (const status of [500, 502, 429]) {
+      const down = async () => new Response("{}", { status });
+      const sent = sendReport(report, {}, down as unknown as typeof fetch);
+      await expect(sent).rejects.toThrow();
+      await expect(sent).rejects.not.toBeInstanceOf(SendRefused);
+    }
+  });
 });

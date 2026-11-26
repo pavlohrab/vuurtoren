@@ -190,7 +190,7 @@ export async function sendReport(
 ): Promise<void> {
   const form = new FormData();
   form.set("report", JSON.stringify(report));
-  if (files.screenshot) form.set("screenshot", files.screenshot, "screen.png");
+  if (files.screenshot) form.set("screenshot", files.screenshot, "screen.jpg");
   if (files.voice) form.set("voice", files.voice, "voice.webm");
   const res = await fetchImpl(`${urlBase()}/v1/report`, {
     method: "POST",
@@ -199,7 +199,11 @@ export async function sendReport(
   });
   if (!res.ok) {
     const { error } = (await res.json().catch(() => ({}))) as { error?: string };
-    throw new SendRefused(error ?? `The feedback server answered ${res.status}.`);
+    const why = error ?? `The feedback server answered ${res.status}.`;
+    // Only a real no (bad report, wrong key, too big) is final; a server problem or the hourly
+    // limit (5xx, 429) keeps the report for later.
+    if ([400, 401, 413].includes(res.status)) throw new SendRefused(why);
+    throw new Error(why);
   }
 }
 
