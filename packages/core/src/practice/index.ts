@@ -33,3 +33,11 @@ export {
   type ChooseInput,
   type GrammarPoint,
 } from "./choose.js";
+export {
+  LESSON_SIZE,
+  LESSON_SIZES,
+  buildLesson,
+  comeBack,
+  weakPoints,
+  type LessonInput,
+} from "./lesson.js";

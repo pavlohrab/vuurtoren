@@ -26,6 +26,9 @@ export const STEP_OF: Readonly<Record<ExerciseKind, 1 | 2 | 3 | 4 | 5>> = {
   "verb-form": 5,
 };
 
+/** How much closer to the target a weak grammar point's kind counts as. */
+const FAVOUR = 0.05;
+
 /** The share of right answers to aim at (Wilson et al. 2019). */
 export const TARGET = 0.85;
 
@@ -66,6 +69,10 @@ export interface ChooseInput {
   answers: readonly EloAnswer[];
   /** For a word coming back after a miss: at most this step (one below the missed one). */
   cap?: number;
+  /** Kinds not to use (the one just missed, when a word comes back). */
+  avoid?: ReadonlySet<ExerciseKind>;
+  /** Grammar points the learner often misses: their kinds win close calls (4.7.3). */
+  favour?: ReadonlySet<GrammarPoint>;
 }
 
 /** The chance of a right answer for this word on this exercise. */
@@ -89,16 +96,23 @@ export function chooseExercise(input: ChooseInput): Exercise | null {
   });
   if (input.cap !== undefined) top = Math.min(top, Math.max(1, input.cap));
   const fit = input.candidates.filter(
-    (ex) => STEP_OF[ex.kind] <= top && !(input.hasCard && STEP_OF[ex.kind] === 1),
+    (ex) =>
+      STEP_OF[ex.kind] <= top &&
+      !(input.hasCard && STEP_OF[ex.kind] === 1) &&
+      !input.avoid?.has(ex.kind),
   );
   // A card word capped below 2 (a miss at step 2) stays at step 2 with another kind.
   const pool = fit.length
     ? fit
-    : input.candidates.filter((ex) => STEP_OF[ex.kind] <= Math.max(top, 2));
+    : input.candidates.filter(
+        (ex) => STEP_OF[ex.kind] <= Math.max(top, 2) && !input.avoid?.has(ex.kind),
+      );
   let best: Exercise | null = null;
   let bestGap = Infinity;
   for (const ex of pool) {
-    const gap = Math.abs(chanceFor(input, ex) - TARGET);
+    const point = POINT_OF[ex.kind];
+    const gap =
+      Math.abs(chanceFor(input, ex) - TARGET) - (point && input.favour?.has(point) ? FAVOUR : 0);
     const better =
       gap < bestGap - 1e-9 ||
       (Math.abs(gap - bestGap) <= 1e-9 &&
