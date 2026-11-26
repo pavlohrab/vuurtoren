@@ -4,6 +4,7 @@
  * account and the advanced addresses). Old section names in links still open their new home.
  * The theme lives only in the top bar.
  */
+import { speedReport } from "../../perf/speed.js";
 import { FeedbackSettings } from "../../feedback/FeedbackSheet.js";
 import { PracticeFeelSettings } from "./PracticeFeelSettings.js";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -18,7 +19,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { useState, type ReactNode } from "react";
-import { Button, Input, Select, Skeleton, Slider, useNativeMode } from "@app/ui";
+import { Button, Input, Select, Skeleton, Slider, useNativeMode, useToast } from "@app/ui";
 import { InstallApp } from "../../pwa/PwaControls.js";
 import { UpdateSetting } from "../library/UpdateCard.js";
 import { useServices } from "../../services/context.js";
@@ -381,12 +382,49 @@ function ReadingSettings() {
   );
 }
 
+/** How long the start took and the slowest calls (perf/speed.ts), to copy into feedback. */
+function SpeedReport() {
+  const [text, setText] = useState<string | null>(null);
+  const toast = useToast();
+  return (
+    <section className="stack" style={{ gap: 6 }}>
+      <span className="k-label">Speed report</span>
+      <p className="k-hint" style={{ margin: 0 }}>
+        How long the start took and which steps are slow, on this device. Nothing is sent.
+      </p>
+      <div className="row" style={{ gap: 8 }}>
+        <Button size="sm" onClick={() => setText(speedReport())}>
+          {text ? "Refresh" : "Show"}
+        </Button>
+        {text ? (
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() =>
+              void navigator.clipboard
+                .writeText(text)
+                .then(() => toast("Copied"))
+                .catch(() => toast("Could not copy", "Select the text and copy it."))
+            }
+          >
+            Copy
+          </Button>
+        ) : null}
+      </div>
+      {text ? (
+        <pre style={{ fontSize: 12, overflowX: "auto", whiteSpace: "pre", margin: 0 }}>{text}</pre>
+      ) : null}
+    </section>
+  );
+}
+
 function AdvancedSettings() {
   const { form, set, setDraft, save } = useSettingsDraft();
   if (!form) return <Skeleton style={{ height: 160 }} />;
   return (
     <div className="stack settings-stack">
       <SavedNote status={save.status} error={save.error} />
+      <SpeedReport />
       <Input
         label="Language server address"
         value={form.nlpUrl}

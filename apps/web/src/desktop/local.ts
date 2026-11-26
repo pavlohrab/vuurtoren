@@ -4,6 +4,7 @@
  * computer the language server is the bundled sidecar; a phone uses its sync server's.
  * Everything above the driver (repository, services, screens) is the browser build's.
  */
+import { mark, timed } from "../perf/speed.js";
 import type { DataControls, DesktopLocal } from "../shell/AppInfo.js";
 import type { AppServices } from "../services/types.js";
 import { type DbLock, type DesktopBridge, routeNlpTo } from "./bridge.js";
@@ -61,10 +62,12 @@ export async function bootDesktopLocal(
   const [{ createRepository, isSchemaTooNew }, { createNativeDriver }, { createLiveServices }] =
     await Promise.all([import("@app/db"), import("@app/db/native"), import("../services/live.js")]);
   const { createBrowserAdmin } = await import("../storage/browserAdmin.js");
-  const driver = createNativeDriver(bridge.db);
+  mark("code loaded");
+  const driver = createNativeDriver(timed(bridge.db, "db"));
   let repo;
   try {
     repo = await createRepository(driver);
+    mark("database open (and caught up)");
   } catch (e) {
     if (isSchemaTooNew(e)) {
       return { kind: "blocked", message: e.message, download: () => driver.exportFile() };
@@ -74,7 +77,7 @@ export async function bootDesktopLocal(
   const notice = conflictNotice(opened.path, opened.conflicts);
   return {
     kind: "app",
-    services: createLiveServices(repo),
+    services: timed(createLiveServices(repo), "services"),
     ...(notice ? { notice } : {}),
     data: {
       mode: phone ? "phone" : "desktop",

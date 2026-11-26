@@ -1,4 +1,5 @@
 import { finishBoot } from "./bootSplash.js";
+import { mark, timed } from "./perf/speed.js";
 import { StrictMode, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import "./index.css";
@@ -126,6 +127,7 @@ async function bootBrowser(server: PageServer | null): Promise<Boot> {
 async function openBrowser(lock: HeldLock, server: PageServer | null): Promise<Boot> {
   const [{ createRepository, isSchemaTooNew }, { createWebDriver }, { createLiveServices }] =
     await Promise.all([import("@app/db"), import("@app/db/web"), import("./services/live.js")]);
+  mark("code loaded");
   const driver = await createWebDriver("vuurtoren");
   // Another tab may ask for the database ("Use here instead"): let go of OPFS at once.
   lock.onTakenOver(() => {
@@ -135,6 +137,7 @@ async function openBrowser(lock: HeldLock, server: PageServer | null): Promise<B
   let repo;
   try {
     repo = await createRepository(driver);
+    mark("database open (and caught up)");
   } catch (e) {
     // A database from a newer app must never be replaced by demo data.
     if (isSchemaTooNew(e)) {
@@ -177,7 +180,7 @@ async function openBrowser(lock: HeldLock, server: PageServer | null): Promise<B
   const account = server?.account;
   return {
     kind: "app",
-    services,
+    services: timed(services, "services"),
     ...(notice ? { notice } : {}),
     data: {
       mode: "browser",
@@ -308,6 +311,7 @@ function show(b: Boot): Promise<void> {
       break;
   }
   reactRoot.render(<StrictMode>{node}</StrictMode>);
+  mark("first screen drawn");
   finishBoot();
   return Promise.resolve();
 }
