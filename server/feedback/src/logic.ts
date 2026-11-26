@@ -30,7 +30,7 @@ export const LIMITS = {
   errorLength: 300,
   screenshotBytes: 3 * 1024 * 1024,
   voiceBytes: 2 * 1024 * 1024,
-  perHour: 10,
+  perHour: 20,
 };
 
 const ID = /^[a-z0-9-]{8,64}$/i;

@@ -48,7 +48,7 @@ You need `npx wrangler login` with the Cloudflare account that has vuurtoren.app
 
 ## If someone abuses it
 
-Each address can send 10 reports an hour. If a key gets misused, set a new `APP_KEY`, and older
+Each address can send 20 reports an hour (`LIMITS.perHour` in `src/logic.ts`). If a key gets misused, set a new `APP_KEY`, and older
 builds get "Update Vuurtoren" when they send feedback.
 
 ## Tests
