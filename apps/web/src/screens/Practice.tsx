@@ -674,6 +674,10 @@ function Session({
   const [streak, setStreak] = useState(0);
   /** The exercise slides out before the next one comes in (Movement on). */
   const [leaving, setLeaving] = useState(false);
+  // The same in a ref, read synchronously: two Enters in one slide must advance once.
+  const leavingRef = useRef(false);
+  const leaveTimer = useRef<number | undefined>(undefined);
+  useEffect(() => () => window.clearTimeout(leaveTimer.current), []);
   const [submitted, setSubmitted] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -899,12 +903,15 @@ function Session({
           onSubmit={(s) => void submit(s)}
           onContinue={() => {
             // The old exercise slides out, then the next slides in (mock-practice-miss.html).
-            if (!moving(feel) || leaving) {
+            if (leavingRef.current) return;
+            if (!moving(feel)) {
               advance(answeredRef.current, skippedRef.current);
               return;
             }
+            leavingRef.current = true;
             setLeaving(true);
-            window.setTimeout(() => {
+            leaveTimer.current = window.setTimeout(() => {
+              leavingRef.current = false;
               setLeaving(false);
               advance(answeredRef.current, skippedRef.current);
             }, 180);

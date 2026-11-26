@@ -894,8 +894,9 @@ export function ReaderPage({ textId }: { textId: string }) {
    * read (as Next did); going back just moves the place. The text stays on screen throughout.
    */
   const passing = useRef(false);
-  const passTo = async (n: number) => {
-    if (!plans || passing.current || n === current) return;
+  const passTo = async (n: number): Promise<void> => {
+    if (passing.current) return;
+    if (!plans || n === current) return;
     if (n < current) {
       setSegment(n);
       return;
@@ -913,6 +914,19 @@ export function ReaderPage({ textId }: { textId: string }) {
       passing.current = false;
     }
   };
+  // Which segment the screen starts in: the place moves with the reader. An effect, so a move
+  // made while a pass was recording is caught up as soon as that pass is in (current changes).
+  const anchorChar =
+    book && bookAt.anchor !== null ? data?.tokens[bookAt.anchor]?.start : undefined;
+  useEffect(() => {
+    if (anchorChar === undefined || !plans) return;
+    const seg = plans.findIndex(
+      (p) => anchorChar >= p.segment.charStart && anchorChar < p.segment.charEnd,
+    );
+    if (seg >= 0 && seg !== current) void Promise.resolve().then(() => passTo(seg));
+    // passTo reads the latest state; this runs when the place or the segment moves.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [anchorChar, current]);
   /** The end of the flow: every segment read, then the text is done. */
   const finishFlow = async () => {
     if (!plans || !data || finishing) return;
@@ -965,11 +979,7 @@ export function ReaderPage({ textId }: { textId: string }) {
     if (s.screen !== bookAt.screen) setLift(0);
     setBookAt(s);
     const char = s.anchor !== null ? charOfToken(s.anchor) : undefined;
-    // Which segment the screen starts in: the place moves with the reader.
-    if (char !== undefined && plans) {
-      const seg = plans.findIndex((p) => char >= p.segment.charStart && char < p.segment.charEnd);
-      if (seg >= 0 && seg !== current) void passTo(seg);
-    }
+
     if (char === undefined || !services.savePlace) return;
     const ps = placeSave.current;
     const key = `${current}:${char}`;

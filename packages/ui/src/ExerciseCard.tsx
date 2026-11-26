@@ -186,16 +186,23 @@ export function ExerciseCard({
   const flipFrom = useRef<Map<number, DOMRect> | null>(null);
   useEffect(() => {
     if (!(missed && mode === "scramble")) return;
+    // No glide to play (the tiles don't make the answer word by word, or they're in order):
+    // the sentence is still said, once.
+    const sayOnly = () => {
+      if (!sayDutch) return undefined;
+      const t = window.setTimeout(() => say(e.answer), 550);
+      return () => window.clearTimeout(t);
+    };
     const words = e.answer.split(/\s+/);
     const used = new Set<number>();
     const right: number[] = [];
     for (const w of words) {
       const k = pieces.findIndex((p, j) => !used.has(j) && bare(p) === bare(w));
-      if (k < 0) return; // pieces that don't make the answer word by word: leave as is
+      if (k < 0) return sayOnly(); // pieces that don't make the answer word by word
       used.add(k);
       right.push(k);
     }
-    if (right.join() === picked.join()) return;
+    if (right.join() === picked.join()) return sayOnly();
     const t = window.setTimeout(() => {
       const map = new Map<number, DOMRect>();
       for (const el of builtRef.current?.querySelectorAll<HTMLElement>("[data-piece]") ?? [])
@@ -222,7 +229,7 @@ export function ExerciseCard({
       );
       el.classList.add("ex-piece--now-right");
     }
-    if (sayDutch) window.setTimeout(() => say(e.answer), 450);
+    if (sayDutch) sayTimer.current = window.setTimeout(() => say(e.answer), 450);
   }, [picked]);
 
   const submit = (answer: string) => {
@@ -384,6 +391,8 @@ export function ExerciseCard({
   // After answering, the right Dutch is said (Settings → Practice).
   useEffect(() => {
     if (!(feedback && sayDutch && resultDutch && e.kind !== "pairs")) return;
+    // A missed sentence is said once, as its tiles glide into order (below).
+    if (!feedback.correct && mode === "scramble") return;
     // After the right/not-quite notes, not over them (M6).
     const t = window.setTimeout(() => say(resultDutch), 550);
     return () => window.clearTimeout(t);

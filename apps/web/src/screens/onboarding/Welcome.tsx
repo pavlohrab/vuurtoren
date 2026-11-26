@@ -290,10 +290,12 @@ export function Welcome() {
     mutationFn: async () => {
       // With sync set up (a phone joining a computer), bring the other devices' words in first:
       // the starter words they already have are then skipped, not added a second time.
+      // At most 15 s: offline or slow, the words are added and compaction drops repeats later.
       if (sync.data?.place)
-        await services.syncNow().catch(() => {
-          // Offline now: the words are added, and compaction drops repeats later.
-        });
+        await Promise.race([
+          services.syncNow().catch(() => {}),
+          new Promise((done) => setTimeout(done, 15_000)),
+        ]);
       return services.addStarterLevels(
         {
           levels: Array.from({ length: STARTER_LEVELS }, (_, i) => i + 1),

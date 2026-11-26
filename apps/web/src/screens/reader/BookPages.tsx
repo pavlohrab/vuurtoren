@@ -752,6 +752,16 @@ export function BookPages(props: Props) {
       if (dragging && shown) place();
       start = null;
       dragging = false;
+      // A paper turn the system took away (a gesture, a call): put the page back, free the book.
+      if (paperDrag) {
+        const d = paperDrag;
+        paperDrag = null;
+        if (!d.back) st.current.screen = d.from;
+        place();
+        clearLeaves();
+        st.current.busy = false;
+        settle();
+      }
     };
     const onClick = (e: MouseEvent) => {
       if (swallow) {
