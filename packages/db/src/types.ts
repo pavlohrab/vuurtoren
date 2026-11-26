@@ -53,6 +53,8 @@ export interface AnkiWordEntry {
   sentence?: string;
   /** English translation of `sentence`, when the note type has one. */
   sentenceTranslation?: string;
+  /** The newest Anki review of its cards at sync time (ms). */
+  lastReviewMs?: number;
 }
 
 /** Where an imported text came from. */
@@ -632,6 +634,8 @@ export interface WordInfo {
   lookups: number;
   /** When the word was last tapped (ms); absent if never, or before this was recorded. */
   lastLookupAt?: number;
+  /** The newest Anki review of its cards as of the last sync (ms). */
+  ankiLastReview?: number;
   addedNoteId?: number;
   /** Anki notes behind this word (snapshot notes, plus a note the app added). */
   noteIds: number[];

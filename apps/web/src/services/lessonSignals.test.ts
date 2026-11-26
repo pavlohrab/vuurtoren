@@ -43,6 +43,14 @@ describe("lesson signals (algorithms.md 4.7.1)", () => {
     );
     expect(today!.reviewedToday).toBe(true);
     expect(named2!.reviewedToday).toBe(false);
+    // Anki: reviewed today as of the last sync.
+    const [anki, yesterday] = lessonSignals(
+      [info("a", { ankiLastReview: NOW - 1000 }), info("b", { ankiLastReview: NOW - 2 * DAY })],
+      [],
+      NOW,
+    );
+    expect(anki!.reviewedToday).toBe(true);
+    expect(yesterday!.reviewedToday).toBe(false);
   });
 
   it("reads taps, the last tap, misses and a safe streak", () => {

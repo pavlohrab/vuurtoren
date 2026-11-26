@@ -46,4 +46,26 @@ describe("practice lessons data (algorithms.md 4.7)", () => {
     const w = await repo.word("nl", "gracht");
     expect(w).toMatchObject({ lookups: 2, lastLookupAt: T + 5000 });
   });
+
+  it("keeps the newest Anki review of a word from the sync", async () => {
+    const repo = await createRepository(await createNodeDriver(), { deviceId: "d", now: () => T });
+    await repo.append({
+      type: "AnkiSnapshotImported",
+      lang: "nl",
+      sources: ["D"],
+      entries: [
+        {
+          key: "brug",
+          state: "learning",
+          pKnown: 0.5,
+          noteIds: [1],
+          decks: ["D"],
+          lastReviewMs: T - 60_000,
+        },
+        { key: "trap", state: "learning", pKnown: 0.5, noteIds: [2], decks: ["D"] },
+      ],
+    });
+    expect((await repo.word("nl", "brug"))?.ankiLastReview).toBe(T - 60_000);
+    expect((await repo.word("nl", "trap"))?.ankiLastReview).toBeUndefined();
+  });
 });

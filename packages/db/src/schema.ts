@@ -298,6 +298,10 @@ export const MIGRATIONS: readonly (readonly string[])[] = [
      )`,
     `CREATE INDEX practice_answers_lang ON practice_answers (lang, at)`,
   ],
+  [
+    // The newest Anki review per word as of the sync (Practice leaves today's out, 4.7.2).
+    `ALTER TABLE anki_words ADD COLUMN last_review INTEGER`,
+  ],
 ];
 
 /** Latest schema version. */

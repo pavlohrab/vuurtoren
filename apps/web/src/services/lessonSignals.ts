@@ -7,6 +7,8 @@ import type { EloAnswer, ExerciseKind, WordSignals } from "@app/core";
 import type { WordInfo } from "@app/db";
 
 const DAY_MS = 86_400_000;
+
+const sameDay = (a: number, b: number) => new Date(a).toDateString() === new Date(b).toDateString();
 /** Taps in this window lower a word's starting grip. */
 const RECENT_TAPS_DAYS = 14;
 /** A word is safe for now after this many right answers in a row. */
@@ -63,7 +65,11 @@ export function lessonSignals(
         taps: w.lookups,
         recentTaps: recent ? Math.min(w.lookups, 3) : 0,
         netClozes,
-        reviewedToday: reviewedToday.has(w.key) && !always.has(w.key),
+        // Reviewed on its own card today: the app's cards (the set), or Anki at the last sync.
+        reviewedToday:
+          !always.has(w.key) &&
+          (reviewedToday.has(w.key) ||
+            (w.ankiLastReview !== undefined && sameDay(w.ankiLastReview, now))),
         practiceSafe: streak.length === SAFE_STREAK && streak.every((a) => a.result === 1),
         onPage: false,
         onNextPages: false,

@@ -59,6 +59,8 @@ export interface SnapshotEntry {
   sentence?: string;
   /** English translation of that sentence, when the note type has one. */
   sentenceTranslation?: string;
+  /** The newest review of any of its cards (ms), for "not on the same day" in Practice. */
+  lastReviewMs?: number;
 }
 
 /** Per-note detail, useful for reports and checks. */
@@ -70,6 +72,8 @@ export interface SnapshotNote {
   term: TermKey;
   studied: boolean;
   knowledge: WordKnowledge;
+  /** The newest review of the note's cards (ms), when it was reviewed. */
+  lastReviewMs?: number;
 }
 
 export interface Snapshot {
@@ -190,6 +194,7 @@ export async function buildSnapshot(deps: SnapshotDeps, chosen?: Candidate[]): P
     term: terms[i]!,
     studied: !p.memory.isNew,
     knowledge: classifyCard(p.memory, now),
+    ...(p.memory.lastReviewMs !== undefined ? { lastReviewMs: p.memory.lastReviewMs } : {}),
   }));
 
   const byKey = new Map<string, SnapshotEntry>();
@@ -223,6 +228,8 @@ export async function buildSnapshot(deps: SnapshotDeps, chosen?: Candidate[]): P
         noteIds: [...new Set([...(prev?.noteIds ?? []), n.note.noteId])],
         decks: [...new Set([...(prev?.decks ?? []), n.source.deck])],
       };
+      const last = Math.max(prev?.lastReviewMs ?? 0, n.lastReviewMs ?? 0);
+      if (last > 0) entry.lastReviewMs = last;
       const g = prev?.gloss ?? (gloss || undefined);
       if (g) entry.gloss = g;
       const article = prev?.article ?? n.term.article ?? undefined;

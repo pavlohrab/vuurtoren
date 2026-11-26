@@ -258,6 +258,8 @@ function ankiEntry(r: Row): AnkiWordEntry {
   if (r["sentence_translation"] !== null && r["sentence_translation"] !== undefined) {
     a.sentenceTranslation = String(r["sentence_translation"]);
   }
+  if (r["last_review"] !== null && r["last_review"] !== undefined)
+    a.lastReviewMs = Number(r["last_review"]);
   return a;
 }
 

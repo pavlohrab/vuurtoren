@@ -303,8 +303,8 @@ export async function applyEvent(driver: SqlDriver, ctx: EventContext): Promise<
       await driver.exec("DELETE FROM anki_words WHERE lang = ?", [e.lang]);
       await insertMany(
         driver,
-        "INSERT OR REPLACE INTO anki_words (lang, key, state, p_known, note_ids, decks, gloss, article, sentence, sentence_translation)",
-        10,
+        "INSERT OR REPLACE INTO anki_words (lang, key, state, p_known, note_ids, decks, gloss, article, sentence, sentence_translation, last_review)",
+        11,
         e.entries.map((a) => [
           e.lang,
           a.key,
@@ -316,6 +316,7 @@ export async function applyEvent(driver: SqlDriver, ctx: EventContext): Promise<
           a.article ?? null,
           a.sentence ?? null,
           a.sentenceTranslation ?? null,
+          a.lastReviewMs ?? null,
         ]),
       );
       await driver.exec("INSERT OR REPLACE INTO meta (key, value) VALUES (?,?)", [
@@ -566,6 +567,7 @@ export function composeWord(
   if (note && !decks.includes(note.deck)) decks.push(note.deck);
   const info: WordInfo = { key, state, pKnown, source, decks, lookups, noteIds: [] };
   if (f.lastLookupAt) info.lastLookupAt = f.lastLookupAt;
+  if (anki?.lastReviewMs) info.ankiLastReview = anki.lastReviewMs;
   if (anki?.gloss) info.gloss = anki.gloss;
   if (anki?.article) info.article = anki.article;
   if (anki?.sentence) info.sentence = anki.sentence;
