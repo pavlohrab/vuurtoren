@@ -227,6 +227,10 @@ interface LanBridge {
    * are told so instead of syncing with a folder nobody updates. A new code clears it.
    */
   moved?(): Promise<void>;
+  /** SY12: the phone that used the code and waits for "Is this your phone?", or null. */
+  asking?(): Promise<{ id: string; name: string } | null>;
+  /** The answer to "Is this your phone?"; false when nothing asks with that id any more. */
+  answer?(id: string, yes: boolean): Promise<boolean>;
 }
 
 declare global {

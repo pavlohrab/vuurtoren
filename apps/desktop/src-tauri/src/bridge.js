@@ -155,6 +155,12 @@
               moved: function () {
                 return invoke("lan_moved");
               },
+              asking: function () {
+                return invoke("lan_asking");
+              },
+              answer: function (id, yes) {
+                return invoke("lan_answer", { id: id, yes: yes });
+              },
               firewall: function (port) {
                 return invoke("lan_firewall", { port: port });
               },

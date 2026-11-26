@@ -105,10 +105,17 @@ export interface Paired {
 }
 
 /** Trade the pairing code for a sync token (`POST <server>/api/sync/pair`). */
+/** How long a phone waits for "Is this your phone?" on its computer, and how often it asks. */
+const WAIT_MS = 10 * 60_000;
+const ASK_EVERY_MS = 1000;
+
 export async function pairWithServer(
   link: ServerAccess,
   label: string,
   fetchImpl: typeof fetch,
+  /** The computer asks "Is this your phone?" (SY12): say so on the phone meanwhile. */
+  onWait?: () => void,
+  wait: (ms: number) => Promise<void> = (ms) => new Promise((r) => setTimeout(r, ms)),
 ): Promise<Paired> {
   const body =
     "code" in link
@@ -127,12 +134,36 @@ export async function pairWithServer(
       `Vuurtoren at ${new URL(link.server).host} cannot be reached. Check the address and that this device is online.`,
     );
   }
-  const answer = (await res.json().catch(() => ({}))) as {
+  type Answer = {
     token?: string;
     label?: string;
     error?: string;
+    waiting?: string;
     handover?: { key?: string };
   };
+  let answer = (await res.json().catch(() => ({}))) as Answer;
+  // The user's computer asks "Is this your phone?" before anything goes (SY12): ask again
+  // until it says yes or no.
+  if (res.status === 202 && answer.waiting) {
+    onWait?.();
+    const id = answer.waiting;
+    const until = Date.now() + WAIT_MS;
+    while (res.status === 202 && Date.now() < until) {
+      await wait(ASK_EVERY_MS);
+      try {
+        res = await fetchImpl(`${link.server}/api/sync/pair/wait`, {
+          method: "POST",
+          cache: "no-store",
+          headers: { "content-type": "application/json", "x-vuurtoren": "1" },
+          body: JSON.stringify({ waiting: id }),
+        });
+      } catch {
+        throw new Error("Your phone lost the computer while it waited. Scan the code again.");
+      }
+      answer = (await res.json().catch(() => ({}))) as Answer;
+    }
+    if (res.status === 202) throw new Error("No answer from the computer. Scan the code again.");
+  }
   if (res.status === 404) {
     throw new Error(
       `${new URL(link.server).host} does not answer like a Vuurtoren server that can pair devices. Check the address, or update the server.`,

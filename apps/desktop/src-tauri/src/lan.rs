@@ -49,6 +49,16 @@ struct Code {
     handover: Option<serde_json::Value>,
 }
 
+/// A phone that used the right code, waiting for "Is this your phone?" on the computer (SY12).
+struct Asking {
+    id: String,
+    name: String,
+    handover: Option<serde_json::Value>,
+    expires: u64,
+    /// The computer's answer: None while it asks.
+    answer: Option<bool>,
+}
+
 /// An answer: status, content type and body.
 #[derive(Debug, PartialEq)]
 pub struct Reply {
@@ -80,6 +90,8 @@ pub struct Lan {
     /// SY5: this computer syncs through another place now (a server, WebDAV): its phones are
     /// told so, and get nothing from the old folder.
     moved: bool,
+    /// SY12: the phone that used the code, until the computer said yes or no.
+    asking: Option<Asking>,
 }
 
 /// What a phone of a computer that moved is told (410).
@@ -222,6 +234,7 @@ impl Lan {
             code: None,
             dirty: false,
             moved: false,
+            asking: None,
         }
     }
 
@@ -299,23 +312,96 @@ impl Lan {
             code.tries += 1;
             return Reply::fail(401, "That code is not the one on the computer.");
         }
-        let handover = self.code.take().and_then(|c| c.handover);
-        let token: String = random_bytes::<32>()
+        // The code is used up now. Nothing goes to the phone before the computer says yes:
+        // whoever reads the code off the screen can't take the key unseen (SY12).
+        let Some(code) = self.code.take() else {
+            return Reply::fail(401, "Show a new code on the computer and scan it again.");
+        };
+        let id: String = random_bytes::<16>()
             .iter()
             .map(|b| format!("{b:02x}"))
             .collect();
-        self.phones.push(Phone {
-            hash: hash(&token),
-            name: name.clone(),
-            device: None,
-            vault: false,
+        self.asking = Some(Asking {
+            id: id.clone(),
+            name,
+            handover: code.handover,
+            expires: code.expires,
+            answer: None,
         });
-        let mut answer = json!({ "ok": true, "token": token, "label": name });
-        if let Some(h) = handover {
-            answer["handover"] = h;
+        Reply::json(
+            202,
+            json!({ "ok": true, "waiting": id, "error": "Say yes on your computer, then try again." }),
+        )
+    }
+
+    /// The phone asks again whether the computer said yes (`POST /api/sync/pair/wait`).
+    fn pair_wait(&mut self, body: &[u8], now: u64) -> Reply {
+        let v: serde_json::Value = serde_json::from_slice(body).unwrap_or_default();
+        let id = v["waiting"].as_str().unwrap_or("");
+        let Some(asking) = self.asking.as_ref().filter(|a| a.id == id) else {
+            return Reply::fail(401, "Show a new code on the computer and scan it again.");
+        };
+        if now > asking.expires {
+            self.asking = None;
+            return Reply::fail(
+                401,
+                "This code has run out. Show a new one on the computer.",
+            );
         }
-        self.dirty = true;
-        Reply::json(200, answer)
+        match asking.answer {
+            None => Reply::json(202, json!({ "ok": true, "waiting": id })),
+            Some(false) => {
+                self.asking = None;
+                Reply::fail(
+                    403,
+                    "Your computer said no. Show a new code on it and scan it again.",
+                )
+            }
+            Some(true) => {
+                let asking = self.asking.take().expect("checked above");
+                let token: String = random_bytes::<32>()
+                    .iter()
+                    .map(|b| format!("{b:02x}"))
+                    .collect();
+                self.phones.push(Phone {
+                    hash: hash(&token),
+                    name: asking.name.clone(),
+                    device: None,
+                    vault: false,
+                });
+                let mut answer = json!({ "ok": true, "token": token, "label": asking.name });
+                if let Some(h) = asking.handover {
+                    answer["handover"] = h;
+                }
+                self.dirty = true;
+                Reply::json(200, answer)
+            }
+        }
+    }
+
+    /// The phone waiting for "Is this your phone?": `{id, name}`, or null.
+    pub fn asking_json(&self, now: u64) -> serde_json::Value {
+        match &self.asking {
+            Some(a) if a.answer.is_none() && now <= a.expires => {
+                json!({ "id": a.id, "name": a.name })
+            }
+            _ => serde_json::Value::Null,
+        }
+    }
+
+    /// The computer's answer to "Is this your phone?"; false if nothing asks with that id.
+    pub fn answer(&mut self, id: &str, yes: bool) -> bool {
+        match self
+            .asking
+            .as_mut()
+            .filter(|a| a.id == id && a.answer.is_none())
+        {
+            Some(a) => {
+                a.answer = Some(yes);
+                true
+            }
+            None => false,
+        }
     }
 
     /// One request. `bearer` is the token from `Authorization: Bearer …`, `now` in seconds.
@@ -346,6 +432,9 @@ impl Lan {
         }
         if path == "/api/sync/pair" && method == "POST" {
             return self.pair(body, now);
+        }
+        if path == "/api/sync/pair/wait" && method == "POST" {
+            return self.pair_wait(body, now);
         }
         if !path.starts_with("/api/sync/") {
             return Reply::fail(404, "Not found.");
@@ -452,8 +541,8 @@ mod tests {
         HashMap::from([(k.to_string(), v.to_string())])
     }
 
-    fn paired(lan: &mut Lan) -> String {
-        let code = lan.new_code(1000);
+    /// The code, the computer's yes (SY12), and the token: the answer of the wait.
+    fn pair_with_yes(lan: &mut Lan, code: &str, now: u64) -> serde_json::Value {
         let r = lan.dispatch(
             "POST",
             "/api/sync/pair",
@@ -462,11 +551,88 @@ mod tests {
             json!({ "code": code, "name": "Pixel" })
                 .to_string()
                 .as_bytes(),
-            1001,
+            now,
+        );
+        assert_eq!(r.status, 202, "the phone waits for the computer's yes");
+        let v: serde_json::Value = serde_json::from_slice(&r.body).unwrap();
+        let id = v["waiting"].as_str().unwrap().to_string();
+        assert_eq!(lan.asking_json(now)["name"], "Pixel");
+        assert!(lan.answer(&id, true));
+        let r = lan.dispatch(
+            "POST",
+            "/api/sync/pair/wait",
+            &HashMap::new(),
+            None,
+            json!({ "waiting": id }).to_string().as_bytes(),
+            now + 1,
         );
         assert_eq!(r.status, 200);
-        let v: serde_json::Value = serde_json::from_slice(&r.body).unwrap();
-        v["token"].as_str().unwrap().to_string()
+        serde_json::from_slice(&r.body).unwrap()
+    }
+
+    fn paired(lan: &mut Lan) -> String {
+        let code = lan.new_code(1000);
+        pair_with_yes(lan, &code, 1001)["token"]
+            .as_str()
+            .unwrap()
+            .to_string()
+    }
+
+    /// SY12: nothing goes to the phone before the computer says yes; "no" ends it.
+    #[test]
+    fn the_computer_says_yes_or_no_before_the_key_goes() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut lan = Lan::new(dir.path());
+        let code = lan.new_code_with(10, Some(json!({ "key": "AAAA" })));
+        let r = lan.dispatch(
+            "POST",
+            "/api/sync/pair",
+            &HashMap::new(),
+            None,
+            json!({ "code": code, "name": "Pixel" })
+                .to_string()
+                .as_bytes(),
+            11,
+        );
+        assert_eq!(r.status, 202);
+        assert!(!String::from_utf8_lossy(&r.body).contains("AAAA"));
+        let id = serde_json::from_slice::<serde_json::Value>(&r.body).unwrap()["waiting"]
+            .as_str()
+            .unwrap()
+            .to_string();
+        let body = json!({ "waiting": id }).to_string();
+        let r = lan.dispatch(
+            "POST",
+            "/api/sync/pair/wait",
+            &HashMap::new(),
+            None,
+            body.as_bytes(),
+            12,
+        );
+        assert_eq!(r.status, 202);
+        assert!(lan.phones.is_empty());
+        assert!(lan.answer(&id, false));
+        let r = lan.dispatch(
+            "POST",
+            "/api/sync/pair/wait",
+            &HashMap::new(),
+            None,
+            body.as_bytes(),
+            13,
+        );
+        assert_eq!(r.status, 403);
+        assert!(lan.phones.is_empty());
+        // The code was used: it can't be tried again.
+        let r = lan.dispatch(
+            "POST",
+            "/api/sync/pair/wait",
+            &HashMap::new(),
+            None,
+            body.as_bytes(),
+            14,
+        );
+        assert_eq!(r.status, 401);
+        assert_eq!(lan.asking_json(14), serde_json::Value::Null);
     }
 
     #[test]
@@ -650,15 +816,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let mut lan = Lan::new(dir.path());
         let code = lan.new_code_with(10, Some(json!({ "place": "lan", "key": "AAAA" })));
-        let r = lan.dispatch(
-            "POST",
-            "/api/sync/pair",
-            &HashMap::new(),
-            None,
-            json!({ "code": code }).to_string().as_bytes(),
-            11,
-        );
-        let v: serde_json::Value = serde_json::from_slice(&r.body).unwrap();
+        let v = pair_with_yes(&mut lan, &code, 11);
         assert_eq!(v["handover"]["key"], "AAAA");
         assert!(lan.take_dirty());
         assert!(!lan.take_dirty());

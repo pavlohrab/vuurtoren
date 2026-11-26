@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-lan-answer"
+description = "Enables the lan_answer command without any pre-configured scope."
+commands.allow = ["lan_answer"]
+
+[[permission]]
+identifier = "deny-lan-answer"
+description = "Denies the lan_answer command without any pre-configured scope."
+commands.deny = ["lan_answer"]

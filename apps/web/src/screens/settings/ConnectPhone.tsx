@@ -61,7 +61,10 @@ export function ConnectPhone() {
       const at = { address, port: info.port, fingerprint: info.fingerprint };
       return { ...withCode(at, code), before, at };
     },
-    onSuccess: setShown,
+    onSuccess: (s) => {
+      setRefused(false);
+      setShown(s);
+    },
   });
   // A new code when the old one ran out (the computer keeps listening).
   const again = useMutation({
@@ -83,6 +86,26 @@ export function ConnectPhone() {
     mutationFn: () => lan!.allowFirewall!(shown!.at.port),
     onSuccess: () => firewall.refetch(),
   });
+  // SY12: a phone used the code; nothing goes to it before "Is this your phone?" gets a yes.
+  const asking = useQuery({
+    queryKey: ["lan-asking"],
+    queryFn: async () => (await lan!.asking!()) ?? null,
+    enabled: !!shown && !!lan?.asking,
+    refetchInterval: 1000,
+  });
+  const [refused, setRefused] = useState(false);
+  const reply = useMutation({
+    mutationFn: ({ id, yes }: { id: string; yes: boolean }) => lan!.answer!(id, yes),
+    onSuccess: async (_r, { yes }) => {
+      if (!yes) {
+        // The code is used up: a new one is needed to try again.
+        setRefused(true);
+        setShown((s) => (s ? { ...s, until: Date.now() } : s));
+      }
+      await qc.invalidateQueries({ queryKey: ["lan-asking"] });
+      await qc.invalidateQueries({ queryKey: ["lan-phones"] });
+    },
+  });
   const remove = useMutation({
     mutationFn: (hash: string) => lan!.remove(hash),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["lan-phones"] }),
@@ -96,7 +119,37 @@ export function ConnectPhone() {
       <h3 className="settings-h3" id="connect-phone-h">
         Connect a phone
       </h3>
-      {shown && arrived ? (
+      {shown && !arrived && asking.data ? (
+        <div
+          className="stack connect-asking"
+          role="alertdialog"
+          aria-labelledby="connect-asking-h"
+          style={{ gap: 8 }}
+        >
+          <h4 id="connect-asking-h" className="settings-h3" style={{ margin: 0 }}>
+            A phone wants to connect
+          </h4>
+          <p style={{ margin: 0 }}>
+            <b>{asking.data.name}</b>, on your Wi-Fi. Is this your phone? It gets your data and the
+            key to it.
+          </p>
+          <div className="row" style={{ gap: 8 }}>
+            <Button
+              disabled={reply.isPending}
+              onClick={() => reply.mutate({ id: asking.data!.id, yes: false })}
+            >
+              No
+            </Button>
+            <Button
+              variant="primary"
+              disabled={reply.isPending}
+              onClick={() => reply.mutate({ id: asking.data!.id, yes: true })}
+            >
+              Yes, it&apos;s mine
+            </Button>
+          </div>
+        </div>
+      ) : shown && arrived ? (
         <div className="stack" style={{ gap: 8 }} role="status">
           <p style={{ margin: 0 }}>
             ✓ <b>{arrived.name}</b> is connected. It&apos;s bringing your data over now.
@@ -123,7 +176,11 @@ export function ConnectPhone() {
             </>
           ) : (
             <div className="row" style={{ alignItems: "center" }}>
-              <span className="k-hint">This code ran out.</span>
+              <span className="k-hint">
+                {refused
+                  ? "That phone got nothing. Show a new code to try again."
+                  : "This code ran out."}
+              </span>
               <Button onClick={() => again.mutate()} disabled={again.isPending}>
                 New code
               </Button>

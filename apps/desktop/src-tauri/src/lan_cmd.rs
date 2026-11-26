@@ -152,6 +152,27 @@ pub fn lan_code(app: AppHandle, handover: Option<serde_json::Value>) -> Result<S
     Ok(lan.new_code_with(now, handover))
 }
 
+/// The phone that used the code and waits for "Is this your phone?" (SY12): `{id, name}`, or
+/// null.
+#[tauri::command]
+pub fn lan_asking(app: AppHandle) -> Result<serde_json::Value, String> {
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+    let hub = hub(&app)?;
+    let lan = hub.lan.lock().map_err(|e| e.to_string())?;
+    Ok(lan.asking_json(now))
+}
+
+/// The computer's answer to "Is this your phone?" (SY12).
+#[tauri::command]
+pub fn lan_answer(app: AppHandle, id: String, yes: bool) -> Result<bool, String> {
+    let hub = hub(&app)?;
+    let mut lan = hub.lan.lock().map_err(|e| e.to_string())?;
+    Ok(lan.answer(&id, yes))
+}
+
 /// Kept while this computer syncs through another place (SY5).
 const MOVED_FILE: &str = "lan-moved";
 

@@ -171,6 +171,36 @@ pub async fn listen(
 mod tests {
     use super::*;
 
+    /// Pair over HTTPS as a phone does: the code, the computer's yes (SY12), the token.
+    async fn pair(
+        phone: &reqwest::Client,
+        base: &str,
+        lan: &Arc<Mutex<Lan>>,
+        code: &str,
+    ) -> String {
+        let asked: serde_json::Value = phone
+            .post(format!("{base}/api/sync/pair"))
+            .body(serde_json::json!({ "code": code, "name": "Pixel" }).to_string())
+            .send()
+            .await
+            .unwrap()
+            .json()
+            .await
+            .unwrap();
+        let id = asked["waiting"].as_str().unwrap().to_string();
+        assert!(lan.lock().unwrap().answer(&id, true));
+        let paired: serde_json::Value = phone
+            .post(format!("{base}/api/sync/pair/wait"))
+            .body(serde_json::json!({ "waiting": id }).to_string())
+            .send()
+            .await
+            .unwrap()
+            .json()
+            .await
+            .unwrap();
+        paired["token"].as_str().unwrap().to_string()
+    }
+
     #[tokio::test]
     async fn a_phone_pairs_and_syncs_over_pinned_https() {
         let dir = tempfile::tempdir().unwrap();
@@ -183,16 +213,7 @@ mod tests {
         let base = format!("https://127.0.0.1:{}", on.port);
 
         let phone = crate::pinned::client(&on.fingerprint).unwrap();
-        let paired: serde_json::Value = phone
-            .post(format!("{base}/api/sync/pair"))
-            .body(serde_json::json!({ "code": code, "name": "Pixel" }).to_string())
-            .send()
-            .await
-            .unwrap()
-            .json()
-            .await
-            .unwrap();
-        let token = paired["token"].as_str().unwrap().to_string();
+        let token = pair(&phone, &base, &lan, &code).await;
         let put = phone
             .put(format!(
                 "{base}/api/sync/file?path=vuurtoren/devices/p1/a.kan"
@@ -235,23 +256,14 @@ mod tests {
         fs::create_dir_all(&place).unwrap();
         let lan = Arc::new(Mutex::new(Lan::new(&place)));
         let code = lan.lock().unwrap().new_code(now());
-        let (on, run) = listen(lan, dir.path(), 0, None).await.unwrap();
+        let (on, run) = listen(lan.clone(), dir.path(), 0, None).await.unwrap();
         tokio::spawn(run);
         let base = format!("https://127.0.0.1:{}", on.port);
         let phone = crate::pinned::client(&on.fingerprint).unwrap();
-        let paired: serde_json::Value = phone
-            .post(format!("{base}/api/sync/pair"))
-            .body(serde_json::json!({ "code": code }).to_string())
-            .send()
-            .await
-            .unwrap()
-            .json()
-            .await
-            .unwrap();
-        let token = paired["token"].as_str().unwrap();
+        let token = pair(&phone, &base, &lan, &code).await;
         let res = phone
             .post(format!("{base}/nlp/analyze/text"))
-            .bearer_auth(token)
+            .bearer_auth(&token)
             .body("hallo")
             .send()
             .await

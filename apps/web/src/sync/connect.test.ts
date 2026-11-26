@@ -141,3 +141,40 @@ describe("the link a computer shows for its phone", () => {
     ).toBeNull();
   });
 });
+
+describe("pairing with your computer waits for its yes (SY12)", () => {
+  const link = { server: "https://192.168.1.20:47120", code: "ABCDE-FGHJK", pinned: "ab" };
+  const reply = (status: number, body: object) => new Response(JSON.stringify(body), { status });
+  const noWait = async () => undefined;
+
+  it("asks again until the computer says yes, then gets the token and the key", async () => {
+    const answers = [
+      reply(202, { waiting: "w1" }),
+      reply(202, { waiting: "w1" }),
+      reply(200, { token: "t1", label: "Pixel", handover: { key: "S0VZ" } }),
+    ];
+    const fetch = vi.fn(async () => answers.shift()!);
+    const onWait = vi.fn();
+    const paired = await pairWithServer(
+      link,
+      "Pixel",
+      fetch as unknown as typeof globalThis.fetch,
+      onWait,
+      noWait,
+    );
+    expect(onWait).toHaveBeenCalledOnce();
+    expect(paired).toMatchObject({ token: "t1", key: "S0VZ" });
+    expect(fetch.mock.calls[1]![0]).toBe("https://192.168.1.20:47120/api/sync/pair/wait");
+  });
+
+  it("says so when the computer says no", async () => {
+    const answers = [
+      reply(202, { waiting: "w1" }),
+      reply(403, { error: "Your computer said no. Show a new code on it and scan it again." }),
+    ];
+    const fetch = vi.fn(async () => answers.shift()!);
+    await expect(
+      pairWithServer(link, "Pixel", fetch as unknown as typeof globalThis.fetch, undefined, noWait),
+    ).rejects.toThrow(/said no/);
+  });
+});

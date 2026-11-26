@@ -13,9 +13,15 @@ vi.mock("../../platform/index.js", async (load) => {
 });
 
 function setup(
-  opts: { recovery?: string | null; folder?: string; firewallOpen?: boolean | null } = {},
+  opts: {
+    recovery?: string | null;
+    folder?: string;
+    firewallOpen?: boolean | null;
+    asking?: { id: string; name: string } | null;
+  } = {},
 ) {
   let open = opts.firewallOpen ?? null;
+  let asking: { id: string; name: string } | null = opts.asking ?? null;
   const lan = {
     start: vi.fn(async () => ({
       port: 47120,
@@ -33,6 +39,11 @@ function setup(
     })),
     allowFirewall: vi.fn(async () => {
       open = true;
+    }),
+    asking: vi.fn(async () => asking),
+    answer: vi.fn(async () => {
+      asking = null;
+      return true;
     }),
   };
   const real = currentDevice();
@@ -59,6 +70,25 @@ function setup(
 afterEach(() => vi.mocked(currentDevice).mockReset());
 
 describe("Connect a phone", () => {
+  it("asks 'Is this your phone?' before the key goes; Yes lets it in (SY12)", async () => {
+    const { lan } = setup({ asking: { id: "w1", name: "Pixel 8" } });
+    await userEvent.click(await screen.findByRole("button", { name: "Show the code" }));
+    const dialog = await screen.findByRole("alertdialog", { name: "A phone wants to connect" });
+    expect(dialog).toHaveTextContent("Pixel 8");
+    await userEvent.click(screen.getByRole("button", { name: "Yes, it's mine" }));
+    expect(lan.answer).toHaveBeenCalledWith("w1", true);
+  });
+
+  it("No ends the code: a new one is needed (SY12)", async () => {
+    const { lan } = setup({ asking: { id: "w1", name: "Pixel 8" } });
+    await userEvent.click(await screen.findByRole("button", { name: "Show the code" }));
+    await screen.findByRole("alertdialog", { name: "A phone wants to connect" });
+    await userEvent.click(screen.getByRole("button", { name: "No" }));
+    expect(lan.answer).toHaveBeenCalledWith("w1", false);
+    expect(await screen.findByText(/That phone got nothing/)).toBeVisible();
+    expect(screen.getByRole("button", { name: "New code" })).toBeVisible();
+  });
+
   it("when firewalld keeps the phone out, it offers to let Vuurtoren through (SY9)", async () => {
     const { lan } = setup({ firewallOpen: false });
     await userEvent.click(await screen.findByRole("button", { name: "Show the code" }));

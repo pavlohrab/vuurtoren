@@ -41,6 +41,8 @@ fn main() {
             "lan_phones",
             "lan_remove",
             "lan_moved",
+            "lan_asking",
+            "lan_answer",
             "lan_firewall",
             "lan_firewall_allow",
             "app_exit",

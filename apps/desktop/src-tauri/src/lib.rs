@@ -954,6 +954,10 @@ pub fn run() {
             #[cfg(desktop)]
             lan_cmd::lan_moved,
             #[cfg(desktop)]
+            lan_cmd::lan_asking,
+            #[cfg(desktop)]
+            lan_cmd::lan_answer,
+            #[cfg(desktop)]
             lan_cmd::lan_firewall,
             #[cfg(desktop)]
             lan_cmd::lan_firewall_allow,

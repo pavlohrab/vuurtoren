@@ -36,6 +36,8 @@
     "allow-lan-phones",
     "allow-lan-remove",
     "allow-lan-moved",
+    "allow-lan-asking",
+    "allow-lan-answer",
     "allow-lan-firewall",
     "allow-lan-firewall-allow"
   ]

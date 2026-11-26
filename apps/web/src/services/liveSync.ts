@@ -677,7 +677,9 @@ export function createLiveSync(deps: LiveSyncDeps) {
         const fetch = deps.desktop ? desktopFetch(deps.desktop, pinned) : deps.fetch;
         const ua = typeof navigator === "undefined" ? "" : navigator.userAgent;
         const label = pairedLabel(deviceName || defaultName(), ua, deps.phone ?? false);
-        const paired = await pairWithServer(link, label, fetch);
+        const paired = await pairWithServer(link, label, fetch, () =>
+          onProgress?.("Say yes on your computer: it asks whether this is your phone."),
+        );
         if (leaving) {
           await keys.forget();
           write(null);
