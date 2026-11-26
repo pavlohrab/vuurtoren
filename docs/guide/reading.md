@@ -28,9 +28,8 @@ a lot, they get one fewer. If you'd rather choose the number yourself, set **Wor
 page** in the reading settings (the **Aa** button above the page).
 
 Tap a word to see what it means in this sentence, its dictionary form and the grammar around it.
-**Add to my words** puts it in your reviews (**Add to Anki** if you work with Anki), **I know it**
-stops Vuurtoren from translating and teaching it, and **Ignore** is for names and words you don't
-need.
+**Add to my words** puts it in your reviews (**Add to Anki** if you work with Anki), and **I know
+it** stops Vuurtoren from translating and teaching it.
 
 ## Four ways to read
 

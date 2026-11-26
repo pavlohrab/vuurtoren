@@ -22,7 +22,7 @@ The code is split into packages and apps. Dependencies point down the table, and
 | `apps/desktop`        | Tauri v2 app for computers and Android: local SQLite file, sync requests, key store; on a computer also the bundled language server, Anki bridge, sync folders, updater.                                                                                                | (loads apps/web)                      |
 | `apps/mcp`            | stdio MCP server on the desktop app's data file.                                                                                                                                                                                                                        | mcp-tools, core, db, anki, nlp-client |
 | `server/api`          | A Vuurtoren server: sign-in, sync tokens, the sync place (`/api/sync`) and the sign-in check of the language server (`/nlp/`). Holds no learner data.                                                                                                                   | —                                     |
-| `server/nlp`          | Python language server: analysis (spaCy), dictionary, forms, sentences, grammar detectors, OCR (RapidOCR), translation.                                                                                                                                                 | —                                     |
+| `server/nlp`          | Python language server: analysis (spaCy, and SyntaxDot for the sentence structure where it runs), dictionary, forms, sentences, grammar detectors, OCR (RapidOCR), translation.                                                                                         | —                                     |
 
 Content that is data, not code, lives in `content/` under CC BY-SA 4.0 (`content/LICENSE`). The
 first part is `content/starter/nl-5000.json`, about 5000 of the most common Dutch words (4,930),
@@ -160,19 +160,27 @@ text takes them from there (`packages/db/src/sync/engine.ts`, `apps/web/src/serv
 A computer can be its phone's sync place at home, with no server (Settings → Your devices →
 Connect a phone). The computer app runs a small HTTPS server on the home Wi-Fi
 (`apps/desktop/src-tauri/src/lan_server.rs`) that answers the same `/api/sync` calls as a
-Vuurtoren server (`lan.rs`), and passes a paired phone's `/nlp/` on to the computer's own language
-server, so the phone can add texts while it is home.
+Vuurtoren server (`lan.rs`), on port 47120. It doesn't pass `/nlp/` on, so a phone linked to its
+computer has no Add text: texts are added on the computer, and their bundles come over with sync.
 
 - **Pairing.** The QR code holds the computer's address, the SHA-256 of its self-signed
   certificate and a ten-minute code (`vuurtoren://connect?lan=…&cert=…&code=…`). The phone trusts
   exactly that certificate (`pinned.rs`), and the code buys a sync token, as with a server. The
-  computer hands over the sync key with it, so the phone joins at once: no passphrase. A computer
-  that doesn't sync yet starts with a recovery key only.
+  code works once. The computer asks "Is this your phone?" first, and the phone waits for the
+  answer (`/api/sync/pair` answers 202, then `/api/sync/pair/wait`). With a yes the computer hands
+  over the sync key with the token, so the phone joins at once: no passphrase. A computer that
+  doesn't sync yet starts with a recovery key only.
+- **The typed code.** Without the camera the phone takes the address and the code. It connects to
+  a private IPv4 address only, without trusting the certificate yet, and asks `/api/sync/prove`
+  for an HMAC of a random nonce and the certificate it saw, keyed by the code. It trusts that
+  certificate only when the HMAC matches, so someone in between can't show their own. Each proof
+  uses one of the code's five tries.
 - **The folder.** The phones use the app's `sync-place/`, or the computer's own sync folder when
   it already syncs through one (Syncthing, Dropbox), so all devices share one place.
 - **Restarts and moves.** The computer listens again at start when phones are paired. If its
   address changes, the phone scans the code again: same certificate, same computer, only the
-  address is updated.
+  address is updated. A computer whose phones moved to another sync place answers 410, and the
+  phone says where to go. `/api/health` answers only a paired phone.
 
 ## Language server OCR
 
