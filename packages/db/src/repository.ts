@@ -218,11 +218,13 @@ const TEXT_FROM = `FROM texts t
 
 function textExtrasOf(r: Row): TextExtras {
   // `data` is the sentence list (older rows) or { sentences, mtModel }.
-  const data = json<TextExtraSentence[] | { sentences: TextExtraSentence[]; mtModel?: string }>(
-    r["data"],
-  );
+  const data = json<
+    | TextExtraSentence[]
+    | { sentences: TextExtraSentence[]; mtModel?: string; glosses?: TextExtras["glosses"] }
+  >(r["data"]);
   const sentences = Array.isArray(data) ? data : data.sentences;
   const mtModel = Array.isArray(data) ? undefined : data.mtModel;
+  const glosses = Array.isArray(data) ? undefined : data.glosses;
   return {
     textId: String(r["text_id"]),
     contentHash: String(r["content_hash"]),
@@ -230,6 +232,7 @@ function textExtrasOf(r: Row): TextExtras {
     madeAt: Number(r["made_at"]),
     sentences,
     ...(mtModel ? { mtModel } : {}),
+    ...(glosses ? { glosses } : {}),
   };
 }
 
@@ -737,6 +740,7 @@ export async function createRepository(
                   madeAt: extras.madeAt,
                   sentences: extras.sentences,
                   ...(extras.mtModel ? { mtModel: extras.mtModel } : {}),
+                  ...(extras.glosses ? { glosses: extras.glosses } : {}),
                 }
               : null,
         };

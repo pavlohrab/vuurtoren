@@ -176,7 +176,15 @@ export async function writeTextExtras(driver: SqlDriver, x: TextExtras): Promise
       x.contentHash,
       x.analyzerVersion ?? null,
       x.madeAt,
-      JSON.stringify(x.mtModel ? { sentences: x.sentences, mtModel: x.mtModel } : x.sentences),
+      JSON.stringify(
+        x.mtModel || x.glosses
+          ? {
+              sentences: x.sentences,
+              ...(x.mtModel ? { mtModel: x.mtModel } : {}),
+              ...(x.glosses ? { glosses: x.glosses } : {}),
+            }
+          : x.sentences,
+      ),
     ],
   );
   return true;

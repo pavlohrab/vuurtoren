@@ -680,6 +680,22 @@ export interface TextExtras {
   sentences: TextExtraSentence[];
   /** The translation model that made the English ("opus-mt-nl-en"); absent in older extras. */
   mtModel?: string;
+  /**
+   * Meanings the language server built from a word's parts (compounds, derivations), by lemma:
+   * a phone's dictionary pack has none of these. The server's `/gloss` entries, as they came.
+   */
+  glosses?: Record<string, ExtrasGloss[]>;
+}
+
+/** A `/gloss` entry built from a word's parts (mirrors the NLP client's GlossEntry). */
+export interface ExtrasGloss {
+  pos: string;
+  article: string | null;
+  glosses: string[];
+  compound?: boolean;
+  origin?: "derivation" | "compound";
+  formed?: string;
+  parts?: { part: string; gloss: string | null }[];
 }
 
 /** A text's analysis as it stands on this device, for its bundle (sync/bundles.ts). */

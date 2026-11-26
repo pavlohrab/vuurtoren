@@ -224,6 +224,53 @@ describe("text extras", () => {
     expect(nlp).not.toHaveBeenCalled();
   });
 
+  it("format 2: meanings built from parts travel, for the phone's dictionary has none", async () => {
+    const repo = await repoWithText();
+    const server = fakeServer();
+    const built = {
+      pos: "NOUN",
+      article: "de",
+      glosses: ["cat nap"],
+      origin: "compound" as const,
+      formed: "kat + slaap",
+    };
+    const withGloss = async () => {
+      const c = await server.nlp();
+      return {
+        pairs: c.pairs.bind(c),
+        align: c.align.bind(c),
+        // "kat" is in every dictionary; "slaapt" (as a lemma here) only built from its parts.
+        async gloss(_lang: string, words: string[]) {
+          return Object.fromEntries(
+            words.map((w) => [
+              w,
+              w === "kat"
+                ? [{ pos: "NOUN", article: "de", glosses: ["cat"] }]
+                : w === "slaapt"
+                  ? [built]
+                  : [],
+            ]),
+          );
+        },
+      } as unknown as NlpClient;
+    };
+    await createLiveExtras({
+      repo,
+      nlp: withGloss,
+      dictionary: { seedSentences: () => undefined },
+    }).make("t1");
+    expect((await repo.textExtras("t1"))?.glosses).toEqual({ slaapt: [built] });
+
+    // The phone: no server; the bundle's built meaning answers.
+    const dictionary = createLiveDictionary({ repo, lang: async () => "nl", nlp: down });
+    await createLiveExtras({ repo, nlp: down, dictionary }).seed(
+      (await repo.getText("t1"))!,
+      TOKENS,
+    );
+    const got = await dictionary.lookupGlosses([{ key: "slaapt", lemma: "slaapt", pos: "NOUN" }]);
+    expect(got.found.get("slaapt")).toBe("cat nap");
+  });
+
   it("are not used for another analysis of the text", async () => {
     const repo = await repoWithText();
     await createLiveExtras({

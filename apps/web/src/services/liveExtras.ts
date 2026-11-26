@@ -10,6 +10,7 @@
  */
 import type { AnalyzedToken } from "@app/core";
 import {
+  type ExtrasGloss,
   type TextExtraSentence,
   type TextExtras,
   type VuurtorenRepository,
@@ -26,7 +27,7 @@ export const MT_MODEL = "opus-mt-nl-en";
 export interface LiveExtrasDeps {
   repo: VuurtorenRepository;
   nlp: () => Promise<NlpClient>;
-  dictionary: Pick<LiveDictionary, "seedSentences">;
+  dictionary: Pick<LiveDictionary, "seedSentences"> & Partial<Pick<LiveDictionary, "seedGlosses">>;
   /** Wait between two texts of the background run (ms). */
   pauseMs?: number;
 }
@@ -74,6 +75,34 @@ async function makeExtras(
   });
 }
 
+/** Words per `/gloss` request when collecting a text's built meanings. */
+const GLOSS_BATCH = 200;
+
+/**
+ * The meanings the language server builds from a word's parts (compounds, derivations) for the
+ * text's words: a phone's dictionary pack has none of these, so the bundle carries them. Empty
+ * when the dictionary isn't there.
+ */
+async function builtGlosses(
+  client: NlpClient,
+  tokens: readonly AnalyzedToken[],
+): Promise<Record<string, ExtrasGloss[]>> {
+  const lemmas = [...new Set(tokens.filter((t) => t.is_word && !t.is_propn).map((t) => t.lemma))];
+  const out: Record<string, ExtrasGloss[]> = {};
+  try {
+    for (let i = 0; i < lemmas.length; i += GLOSS_BATCH) {
+      const got = await client.gloss("nl", lemmas.slice(i, i + GLOSS_BATCH));
+      for (const [lemma, entries] of Object.entries(got)) {
+        const built = entries.filter((e) => e.origin || e.compound);
+        if (built.length) out[lemma] = built;
+      }
+    }
+  } catch {
+    // No dictionary on the server: the extras go without built meanings.
+  }
+  return out;
+}
+
 /** The extras of `text` if they index these tokens (same content and analyzer), else null. */
 async function extrasFor(
   repo: VuurtorenRepository,
@@ -89,7 +118,9 @@ export function createLiveExtras({ repo, nlp, dictionary, pauseMs = 1500 }: Live
   async function make(textId: string): Promise<boolean> {
     const text = await repo.getText(textId);
     if (!text?.tokens) return false;
-    const sentences = await makeExtras(await nlp(), text.content, text.tokens);
+    const client = await nlp();
+    const sentences = await makeExtras(client, text.content, text.tokens);
+    const glosses = await builtGlosses(client, text.tokens);
     return repo.saveTextExtras({
       textId,
       contentHash: contentHash(text.content),
@@ -97,6 +128,7 @@ export function createLiveExtras({ repo, nlp, dictionary, pauseMs = 1500 }: Live
       madeAt: Date.now(),
       sentences,
       mtModel: MT_MODEL,
+      ...(Object.keys(glosses).length ? { glosses } : {}),
     });
   }
 
@@ -145,6 +177,7 @@ export function createLiveExtras({ repo, nlp, dictionary, pauseMs = 1500 }: Live
   ): Promise<void> {
     const x = await extrasFor(repo, text);
     if (!x) return;
+    if (x.glosses) dictionary.seedGlosses?.(x.glosses);
     const sents = bySentence(tokens);
     dictionary.seedSentences(
       x.sentences.flatMap((s) => {

@@ -216,7 +216,18 @@ export function createLiveDictionary({
    */
   async function gloss(words: string[]): Promise<Dictionary> {
     const local = localGloss ? await localGloss(words).catch(() => null) : null;
-    if (!local) return (await nlp()).gloss("nl", words);
+    if (!local) {
+      try {
+        return await (await nlp()).gloss("nl", words);
+      } catch (e) {
+        // No server: a text's bundle may still have brought the meanings built from parts.
+        const seeded = fromSeeded(words);
+        if (Object.keys(seeded).length) return seeded;
+        throw e;
+      }
+    }
+    // Words the pack doesn't know (compounds): the meanings a bundle brought, then the server.
+    Object.assign(local, fromSeeded(words.filter((w) => !local[w]?.length)));
     const unknown = words.filter((w) => !local[w]?.length);
     if (unknown.length) {
       try {
@@ -226,6 +237,22 @@ export function createLiveDictionary({
       }
     }
     return local;
+  }
+
+  /** Meanings built from a word's parts that a text's bundle brought (format 2). */
+  const seededGlosses = new Map<string, Dictionary[string]>();
+  function seedGlosses(glosses: Record<string, Dictionary[string]>): void {
+    for (const [lemma, entries] of Object.entries(glosses)) {
+      if (!seededGlosses.has(lemma)) seededGlosses.set(lemma, entries);
+    }
+  }
+  function fromSeeded(words: string[]): Dictionary {
+    const out: Dictionary = {};
+    for (const w of words) {
+      const e = seededGlosses.get(w);
+      if (e?.length) out[w] = e;
+    }
+    return out;
   }
 
   // Translation per lemma key: Anki gloss first, then the Wiktionary dictionary; null = none.
@@ -450,6 +477,7 @@ export function createLiveDictionary({
   return {
     entry,
     seedSentences,
+    seedGlosses,
     lookupGlosses,
     translateSentences,
     alignWords,
