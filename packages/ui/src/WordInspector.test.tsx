@@ -270,3 +270,18 @@ describe("difficultyBand", () => {
     expect(screen.getByText("The sentence")).toBeVisible();
   });
 });
+
+describe("a long sentence in the phone's peek (around)", () => {
+  it("keeps the word with a piece each side, cut at spaces, with … where cut", async () => {
+    const { around } = await import("./WordInspector.js");
+    const s =
+      "In de verte, voorbij de duinen en de oude haven waar de vissers 's avonds terugkomen, staat het lichtbaken dat de schepen veilig naar binnen leidt, ook als het stormt en regent.";
+    const from = s.indexOf("lichtbaken");
+    const { before, after } = around(s, from, from + "lichtbaken".length);
+    expect(before.startsWith("…")).toBe(true);
+    expect(before.endsWith("staat het ")).toBe(true);
+    expect(after.endsWith(" …")).toBe(true);
+    expect(before.length).toBeLessThanOrEqual(62);
+    expect(around("Kort.", 0, 4)).toEqual({ before: "", after: "." });
+  });
+});

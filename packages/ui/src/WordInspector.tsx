@@ -326,9 +326,20 @@ export function WordInspector({
               : {})}
           >
             <p className="k-inspector-sentence" lang="nl">
-              {s.slice(0, from)}
-              <mark>{s.slice(from, to)}</mark>
-              {s.slice(to)}
+              {/* The whole sentence; on the phone's peek a piece around the word instead, so
+                  a long sentence doesn't make the card scroll (the whole one when pulled up). */}
+              <span className={s.length > 140 ? "k-sent-full" : undefined}>
+                {s.slice(0, from)}
+                <mark>{s.slice(from, to)}</mark>
+                {s.slice(to)}
+              </span>
+              {s.length > 140 ? (
+                <span className="k-sent-short">
+                  {around(s, from, to).before}
+                  <mark>{s.slice(from, to)}</mark>
+                  {around(s, from, to).after}
+                </span>
+              ) : null}
             </p>
             {entry.sentenceTranslation ? (
               <p className="k-inspector-translation" lang="en">
@@ -609,4 +620,24 @@ function ankiActions({
     </>
   );
   return { quick, details };
+}
+
+/** At most about `room` letters each side of the word, cut at a space, with "…" where cut. */
+export function around(
+  s: string,
+  from: number,
+  to: number,
+  room = 60,
+): { before: string; after: string } {
+  let before = s.slice(0, from);
+  let after = s.slice(to);
+  if (before.length > room) {
+    const cut = before.indexOf(" ", before.length - room);
+    before = `…${before.slice(cut < 0 ? before.length - room : cut)}`;
+  }
+  if (after.length > room) {
+    const cut = after.lastIndexOf(" ", room);
+    after = `${after.slice(0, cut < 0 ? room : cut)} …`;
+  }
+  return { before, after };
 }
