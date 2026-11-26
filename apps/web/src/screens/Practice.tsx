@@ -118,6 +118,7 @@ function PracticeSession({ focus, autoStart }: { focus: string[] | null; autoSta
     void client.invalidateQueries({ queryKey: ["practice"] });
     void client.invalidateQueries({ queryKey: ["activity"] });
     writePracticeAgain(answered.filter((a) => !a.result.correct).map((a) => a.exercise.key));
+    if (answered.length > 0) countLessonToday();
     setPhase({ name: "summary", answered, skipped, empty: false });
   };
 
@@ -270,6 +271,11 @@ function StartView({
     staleTime: 60_000,
   });
   const voice = useDutchVoice();
+  const sources = useQuery({
+    queryKey: ["practice", "sources"],
+    queryFn: () => services.lessonSources?.(readLastText()) ?? null,
+    enabled: !focus,
+  });
   const [skills, setSkills] = useState<Skill[]>(initial.skills);
   const [size, setSize] = useState(initial.size);
   useEffect(() => {
@@ -300,8 +306,11 @@ function StartView({
       cur.includes(s) ? (cur.length > 1 ? cur.filter((x) => x !== s) : cur) : [...cur, s],
     );
 
-  // Nothing due and nothing new: no Start button, one next step instead.
-  if (o && o.due === 0 && o.newAvailable === 0 && !focus) {
+  const src = sources.data;
+  const practise = (keys: string[]) =>
+    void navigate({ to: "/practice", search: { words: keys.join(","), start: "1" } });
+  // Nothing due, nothing new and no lesson to offer: no Start, one next step instead.
+  if (o && o.due === 0 && o.newAvailable === 0 && !focus && !src?.page && !src?.mistakes.length) {
     const fresh = o.learned === 0 && o.lastSession === null;
     return (
       <>
@@ -325,6 +334,66 @@ function StartView({
   }
 
   const go = () => onStart(size, effective, aiReady && aiFill);
+  const options = (
+    <details className="k-disclosure practice-more">
+      <summary>
+        <ChevronRight size={16} className="k-disclosure-icon" aria-hidden />
+        Options
+        <span className="k-disclosure-hint">
+          {optionsSummary(effective, size, aiReady && aiFill)}
+        </span>
+      </summary>
+      <div className="k-disclosure-body practice-form">
+        <fieldset className="practice-group">
+          <legend className="k-label">Skills</legend>
+          <div className="practice-options">
+            {SKILLS.map(({ skill, label }) => {
+              const blocked = skill === "listening" && noVoice;
+              return (
+                <OptionChip
+                  key={skill}
+                  pressed={!blocked && skills.includes(skill)}
+                  disabled={blocked}
+                  title={blocked ? "No Dutch voice is available in this browser" : undefined}
+                  onClick={() => toggle(skill)}
+                >
+                  {label}
+                </OptionChip>
+              );
+            })}
+          </div>
+        </fieldset>
+
+        <fieldset className="practice-group">
+          <legend className="k-label">Session length</legend>
+          <div className="practice-options">
+            {SIZES.map((n) => (
+              <OptionChip key={n} pressed={size === n} onClick={() => setSize(n)}>
+                {n} words
+              </OptionChip>
+            ))}
+          </div>
+        </fieldset>
+
+        {aiReady ? (
+          <fieldset className="practice-group">
+            <legend className="k-label">Sentences</legend>
+            <label className="row" style={{ gap: 8 }}>
+              <input
+                type="checkbox"
+                checked={aiFill}
+                onChange={(e) => setAIFill(e.target.checked)}
+              />
+              Fill gaps with AI sentences
+            </label>
+            <p className="k-hint practice-note">
+              Words with few sentences get new ones from your AI.
+            </p>
+          </fieldset>
+        ) : null}
+      </div>
+    </details>
+  );
   const startLabel = loading
     ? "Preparing…"
     : focus
@@ -334,6 +403,73 @@ function StartView({
         : o && o.newAvailable > 0
           ? `Start · ${o.newAvailable} new`
           : "Start";
+
+  if (!focus)
+    return (
+      <>
+        <PageHeader title="Practice" lede={<TodayCount />} />
+        <div className="practice-form">
+          {o?.degraded ? (
+            <p className="k-hint practice-note">
+              The language server doesn&rsquo;t answer, so there are fewer kinds of exercise today.
+            </p>
+          ) : null}
+          {error ? (
+            <ErrorNotice error={error} title="The lesson could not be prepared." onRetry={go} />
+          ) : null}
+          <div className="lessons" role="group" aria-label="Lessons">
+            {src?.page ? (
+              <LessonCard
+                main
+                icon={<BookOpen size={18} aria-hidden />}
+                title={src.page.title}
+                sub={`${plural(src.page.keys.length, "word")} you tapped`}
+                onClick={() => practise(src.page!.keys)}
+              />
+            ) : null}
+            {o && (o.due > 0 || o.newAvailable > 0) ? (
+              <LessonCard
+                main={!src?.page}
+                icon={<Dumbbell size={18} aria-hidden />}
+                title="Your new words"
+                sub={loading ? "Preparing…" : `${o.due} due · ${o.newAvailable} new`}
+                label={startLabel}
+                disabled={loading || effective.length === 0}
+                onClick={go}
+              />
+            ) : null}
+            {src?.mistakes.length ? (
+              <LessonCard
+                icon={<ListChecks size={18} aria-hidden />}
+                title="Mistakes"
+                sub={`${plural(src.mistakes.length, "word")} you got wrong this week`}
+                onClick={() => practise(src.mistakes)}
+              />
+            ) : null}
+            {src?.weak && grammarTopic(src.weak.topic) ? (
+              <LessonCard
+                icon={<MessagesSquare size={18} aria-hidden />}
+                title={grammarTopic(src.weak.topic)!.title}
+                sub={`${plural(src.weak.misses, "miss", "misses")} this week`}
+                onClick={() =>
+                  void navigate({
+                    to: "/grammar/$topic/practice",
+                    params: { topic: src.weak!.topic },
+                  })
+                }
+              />
+            ) : null}
+          </div>
+          {noVoice ? (
+            <p className="k-hint practice-note" role="note">
+              Add a Dutch voice in your system&rsquo;s settings to practise listening and dictation.
+            </p>
+          ) : null}
+          {options}
+          <PracticeNote native={review.data?.native === true} />
+        </div>
+      </>
+    );
 
   return (
     <>
@@ -383,64 +519,7 @@ function StartView({
           </p>
         ) : null}
 
-        <details className="k-disclosure practice-more">
-          <summary>
-            <ChevronRight size={16} className="k-disclosure-icon" aria-hidden />
-            Options
-            <span className="k-disclosure-hint">
-              {optionsSummary(effective, size, aiReady && aiFill)}
-            </span>
-          </summary>
-          <div className="k-disclosure-body practice-form">
-            <fieldset className="practice-group">
-              <legend className="k-label">Skills</legend>
-              <div className="practice-options">
-                {SKILLS.map(({ skill, label }) => {
-                  const blocked = skill === "listening" && noVoice;
-                  return (
-                    <OptionChip
-                      key={skill}
-                      pressed={!blocked && skills.includes(skill)}
-                      disabled={blocked}
-                      title={blocked ? "No Dutch voice is available in this browser" : undefined}
-                      onClick={() => toggle(skill)}
-                    >
-                      {label}
-                    </OptionChip>
-                  );
-                })}
-              </div>
-            </fieldset>
-
-            <fieldset className="practice-group">
-              <legend className="k-label">Session length</legend>
-              <div className="practice-options">
-                {SIZES.map((n) => (
-                  <OptionChip key={n} pressed={size === n} onClick={() => setSize(n)}>
-                    {n} words
-                  </OptionChip>
-                ))}
-              </div>
-            </fieldset>
-
-            {aiReady ? (
-              <fieldset className="practice-group">
-                <legend className="k-label">Sentences</legend>
-                <label className="row" style={{ gap: 8 }}>
-                  <input
-                    type="checkbox"
-                    checked={aiFill}
-                    onChange={(e) => setAIFill(e.target.checked)}
-                  />
-                  Fill gaps with AI sentences
-                </label>
-                <p className="k-hint practice-note">
-                  Words with few sentences get new ones from your AI.
-                </p>
-              </fieldset>
-            ) : null}
-          </div>
-        </details>
+        {options}
         <PracticeNote native={review.data?.native === true} />
       </div>
     </>
@@ -624,6 +703,76 @@ function Session({
         </p>
       ) : null}
     </>
+  );
+}
+
+/** Lessons finished today on this device, and the goal (one a day). */
+const TODAY_KEY = "vuurtoren.practice.today";
+const DAILY_GOAL = 1;
+
+const today = () => new Date().toDateString();
+
+function readToday(): number {
+  const r = readLocalJSON(TODAY_KEY) as { day?: string; n?: number } | null;
+  return r?.day === today() && typeof r.n === "number" ? r.n : 0;
+}
+
+/** A lesson was finished: count it for today. */
+export function countLessonToday(): void {
+  writeLocalJSON(TODAY_KEY, { day: today(), n: readToday() + 1 });
+}
+
+function TodayCount() {
+  const n = readToday();
+  const share = Math.min(1, n / DAILY_GOAL);
+  return (
+    <span className="today-count">
+      <span
+        className="today-ring"
+        style={{ "--share": `${share * 100}%` } as React.CSSProperties}
+        aria-hidden
+      />
+      {n >= DAILY_GOAL
+        ? `${plural(n, "lesson")} today`
+        : `${n} of ${DAILY_GOAL} ${DAILY_GOAL === 1 ? "lesson" : "lessons"} today`}
+    </span>
+  );
+}
+
+/** One lesson to start from, as on the mock. */
+function LessonCard({
+  icon,
+  title,
+  sub,
+  main = false,
+  label,
+  disabled = false,
+  onClick,
+}: {
+  icon: ReactNode;
+  title: string;
+  sub: string;
+  main?: boolean;
+  /** The accessible name, when it should say more than the title. */
+  label?: string;
+  disabled?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      className={`lesson-card${main ? " lesson-card--main" : ""}`}
+      onClick={onClick}
+      disabled={disabled}
+      {...(label ? { "aria-label": label } : {})}
+    >
+      <span className="lesson-icon">{icon}</span>
+      <span className="lesson-text">
+        <b>{title}</b>
+        <small>{sub}</small>
+      </span>
+      <ChevronRight size={18} className="lesson-go" aria-hidden />
+    </button>
   );
 }
 

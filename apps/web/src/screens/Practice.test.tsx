@@ -60,7 +60,7 @@ describe("Practice start view", () => {
     stubSpeech([{ lang: "nl-NL" }]);
     const { services, user } = setup();
     await waitFor(() => expect(screen.getByRole("button", { name: "Listening" })).toBeEnabled());
-    expect(await screen.findByText(/\d+ exercises? due · \d+ new/)).toBeInTheDocument();
+    expect(await screen.findByText(/^\d+ due · \d+ new$/)).toBeInTheDocument();
     expect(screen.getByText(/Practice trains what Anki doesn.t/)).toBeInTheDocument();
     expect(await screen.findByRole("button", { name: /^Start · \d+ due$/ })).toBeInTheDocument();
     await user.click(screen.getByText("Options"));
