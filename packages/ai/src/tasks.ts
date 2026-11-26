@@ -1,4 +1,5 @@
 /** One-shot helpers for the reader: explain a sentence, simplify a page with re-scoring. */
+import { PLAIN_VOICE } from "./util.js";
 import type { AnalyzedToken, LearnerModel } from "@app/core";
 import { coverageReport } from "./coverage.js";
 import type { AIProvider } from "./types.js";
@@ -32,7 +33,8 @@ export async function explainSentence(
     system:
       `You are a concise Dutch tutor. The learner knows about ${opts.vocabEstimate} Dutch words. ` +
       `Explain the sentence in ${lang}: first its meaning in one line, then the grammar that matters ` +
-      "(word order, separable verbs, tenses) in at most 4 short bullet points. No introduction, under 120 words." +
+      "(word order, separable verbs, tenses) in at most 4 short bullet points. Under 120 words. " +
+      PLAIN_VOICE +
       (grammar.length
         ? " The message lists grammar the app detected in the sentence; cover those points first, using their names."
         : ""),
@@ -65,7 +67,8 @@ export async function askAboutSentence(
     system:
       `You are a concise Dutch tutor. The learner knows about ${opts.vocabEstimate} Dutch words. ` +
       `They are asking about one Dutch sentence you explained. Answer in ${lang}, in at most 100 words, ` +
-      "with Dutch examples where they help. Stay on this sentence and its grammar or words.",
+      "with Dutch examples where they help. Stay on this sentence and its grammar or words. " +
+      PLAIN_VOICE,
     messages: [
       { role: "user", content: sentence },
       { role: "assistant", content: explanation },

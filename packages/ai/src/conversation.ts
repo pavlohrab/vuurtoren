@@ -11,7 +11,7 @@ import type { AnalyzedToken, LearnerModel } from "@app/core";
 import { normalizeKey } from "@app/core";
 import { coverageReport } from "./coverage.js";
 import { extractJson } from "./json.js";
-import { addUsage, asString } from "./util.js";
+import { PLAIN_VOICE, addUsage, asString } from "./util.js";
 import type { AIProvider, ChatMessage, SystemPrompt, Usage } from "./types.js";
 
 export interface Correction {
@@ -107,7 +107,7 @@ export function buildSystemPrompt(s: ConversationSetup): SystemPrompt {
     "- Use ONLY words from the learner's vocabulary list below plus very common function words (articles, pronouns, prepositions, basic verbs). Names and numbers are fine.",
     `- You may introduce at most ${maxNew} new words per reply, always from the target words if they fit. List every new word in new_words.`,
     "- Check the learner's last message. If it contains mistakes, give each correction and the whole message rewritten correctly in corrected_message; otherwise leave both empty. Keep it kind and brief.",
-    `- Write glosses and explanations in ${explain}.`,
+    `- Write glosses and explanations in ${explain}. ${PLAIN_VOICE}`,
     "",
     "Answer with ONE JSON object and nothing else, exactly in this shape:",
     '{"reply": "Dutch text", "corrections": [{"original": "...", "corrected": "...", "explanation": "..."}], "corrected_message": "the whole message corrected, or empty", "new_words": [{"lemma": "dictionary form", "gloss": "short meaning", "example": "short Dutch example"}]}',

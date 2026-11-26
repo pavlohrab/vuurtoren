@@ -6,7 +6,7 @@
 import type { AnalyzedToken, LearnerModel } from "@app/core";
 import { coverageReport, type CoverageReport } from "./coverage.js";
 import { extractJson } from "./json.js";
-import { addUsage, asString } from "./util.js";
+import { PLAIN_VOICE, addUsage, asString } from "./util.js";
 import type { AIProvider, ChatMessage, Usage } from "./types.js";
 
 export type ExamItemPart = "lezen" | "luisteren";
@@ -234,6 +234,7 @@ export async function examFeedback(
     "You are a friendly examiner for the Dutch civic integration exam at CEFR A2.",
     `Judge the learner's ${what} against the task and its checklist. A2 means: simple sentences, small errors are fine if the message is clear.`,
     "Write all feedback in English; corrections and the improved answer in Dutch at A2.",
+    PLAIN_VOICE,
     "Answer with ONE JSON object and nothing else, exactly in this shape:",
     '{"summary": "1-2 sentences", "points": [{"point": "checklist item", "ok": true, "note": "short"}], "corrections": [{"wrong": "learner text", "right": "corrected", "why": "short reason"}], "improved": "the corrected answer"}',
     "List at most 6 corrections, most important first.",

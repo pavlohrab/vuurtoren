@@ -15,3 +15,12 @@ export function addUsage(a: Usage, b: Usage | undefined): Usage {
     cachedTokens: (a.cachedTokens ?? 0) + (b.cachedTokens ?? 0),
   };
 }
+
+/**
+ * How the model writes what the learner reads in English (OB7): the app's own plain voice, so an
+ * answer from the AI sounds like the rest of the app.
+ */
+export const PLAIN_VOICE =
+  "Write like a patient person talking: plain everyday words and short sentences that connect " +
+  "with and, so or because. No introduction and no closing line. No dashes for effect, no lists of " +
+  "three for rhythm, no praise words like great or perfect, no hype.";
