@@ -75,11 +75,11 @@ describe("Practice start view", () => {
       "true",
     );
     await user.click(screen.getByRole("button", { name: "Gender" }));
-    await user.click(screen.getByRole("button", { name: "10 exercises" }));
+    await user.click(screen.getByRole("button", { name: "5 words" }));
     await begin(user);
     await waitFor(() =>
       expect(services.startPractice).toHaveBeenCalledWith({
-        size: 10,
+        size: 5,
         skills: ["recognition", "gender"],
         aiSentences: true,
       }),
@@ -99,9 +99,9 @@ describe("Practice start view", () => {
     stubSpeech([{ lang: "nl-NL" }]);
     const { user } = setup();
     await user.click(await screen.findByText("Options"));
-    await user.click(screen.getByRole("button", { name: "30 exercises" }));
+    await user.click(screen.getByRole("button", { name: "15 words" }));
     await user.click(screen.getByRole("button", { name: "Listening" }));
-    expect(readStartOptions()).toMatchObject({ size: 30 });
+    expect(readStartOptions()).toMatchObject({ size: 15 });
     expect(readStartOptions().skills).not.toContain("listening");
   });
 

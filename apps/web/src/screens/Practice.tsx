@@ -48,7 +48,8 @@ export const SKILLS: { skill: Skill; label: string }[] = [
   { skill: "gender", label: "Gender" },
   { skill: "listening", label: "Listening" },
 ];
-const SIZES = [10, 20, 30];
+/** Words in a lesson: Short, Normal, Long (algorithms.md 4.7.6). */
+const SIZES = [5, 10, 15];
 
 /** One answered exercise of the running session. */
 interface Answered {
@@ -212,7 +213,7 @@ interface StartOptions {
 
 /** The options last used on this device (all skills, 20 exercises, AI sentences on). */
 export function readStartOptions(): StartOptions {
-  const fallback: StartOptions = { skills: SKILLS.map((s) => s.skill), size: 20, ai: true };
+  const fallback: StartOptions = { skills: SKILLS.map((s) => s.skill), size: 10, ai: true };
   const raw = readLocalJSON(OPTIONS_KEY);
   if (!raw || typeof raw !== "object") return fallback;
   const r = raw as Partial<Record<keyof StartOptions, unknown>>;
@@ -235,7 +236,7 @@ function optionsSummary(skills: Skill[], size: number, ai: boolean): string {
       : SKILLS.filter((s) => skills.includes(s.skill))
           .map((s) => s.label)
           .join(", ");
-  return [names, `${size} exercises`, ...(ai ? ["AI sentences"] : [])].join(" · ");
+  return [names, `${size} words`, ...(ai ? ["AI sentences"] : [])].join(" · ");
 }
 
 function StartView({
@@ -415,7 +416,7 @@ function StartView({
               <div className="practice-options">
                 {SIZES.map((n) => (
                   <OptionChip key={n} pressed={size === n} onClick={() => setSize(n)}>
-                    {n} exercises
+                    {n} words
                   </OptionChip>
                 ))}
               </div>
