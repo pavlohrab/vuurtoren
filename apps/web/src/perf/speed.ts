@@ -32,6 +32,9 @@ export function mark(step: string): void {
  * settle). Anything else passes through untouched.
  */
 export function timed<T extends object>(obj: T, prefix: string): T {
+  // A Proxy may not hand back something else for a frozen object's properties (it throws):
+  // the computer app's bridge (`db`) is frozen, so wrap a plain copy of it instead.
+  if (Object.isFrozen(obj) || !Object.isExtensible(obj)) obj = { ...obj };
   // One timed function per original, so each looks the same on every read (React compares them).
   const made = new WeakMap<object, unknown>();
   return new Proxy(obj, {

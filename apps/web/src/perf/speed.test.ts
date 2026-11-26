@@ -21,4 +21,15 @@ describe("the speed report", () => {
     expect(r).toMatch(/t\.slow/);
     expect(r).toMatch(/t\.sync/);
   });
+
+  it("wraps a frozen object too (the computer app's bridge is frozen)", async () => {
+    const frozen = Object.freeze({
+      async exec(sql: string) {
+        return sql.length;
+      },
+    });
+    const db = timed(frozen, "db");
+    expect(await db.exec("abc")).toBe(3);
+    expect(speedReport()).toMatch(/db\.exec/);
+  });
 });
