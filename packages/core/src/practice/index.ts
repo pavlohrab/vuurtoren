@@ -20,3 +20,4 @@ export {
   type EloState,
   type GripStart,
 } from "./elo.js";
+export { isSafe, leftOut, need, pickWords, score, use, type WordSignals } from "./select.js";
