@@ -4,11 +4,12 @@
  */
 import { useQuery } from "@tanstack/react-query";
 import { Volume2, VolumeX } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Button, useToast } from "@app/ui";
 import { useServices } from "../services/context.js";
 import type { Settings } from "../services/types.js";
 import { dutchVoiceAvailable } from "../practice/speech.js";
+import { useFeel } from "../practice/feel.js";
 import { type PlayerDeps, type Saying, browserPlayer, say, stopSaying } from "./play.js";
 import "./audio.css";
 
@@ -77,16 +78,33 @@ export function PlayButton({
   onPlay,
   size = "sm",
   check,
+  autoPlay,
 }: {
   label: string;
   playing: boolean;
   onPlay: () => void;
   size?: "sm" | "md";
   check?: { key: string; what: () => Promise<Saying | null> | Saying | null };
+  /** Play once by itself whenever this changes (a new card), when Settings → Practice says to
+   * say the word when a card opens. */
+  autoPlay?: string;
 }) {
   const toast = useToast();
   const available = useCanSay(check?.key ?? null, check?.what ?? (() => null));
   const silent = check !== undefined && available === false;
+  const feel = useFeel();
+  const played = useRef<string | null>(null);
+  const latestPlay = useRef(onPlay);
+  useLayoutEffect(() => {
+    latestPlay.current = onPlay;
+  });
+  useEffect(() => {
+    if (!autoPlay || !feel.sayOnCard || played.current === autoPlay) return;
+    // Wait for the check to say there is something to play.
+    if (check !== undefined && available !== true) return;
+    played.current = autoPlay;
+    latestPlay.current();
+  }, [autoPlay, feel.sayOnCard, available, check]);
   return (
     <Button
       variant="ghost"

@@ -888,6 +888,7 @@ function Session({
           onSaidRight={() => void saidRight()}
           sayDutch={feel.sayDutch}
           onTick={() => playSound("tick", feel)}
+          onMiss={() => playSound("wrong", feel)}
           onTryAgain={tryAgain}
           onSkipSpeaking={skipSpeaking}
           {...(phoneListens

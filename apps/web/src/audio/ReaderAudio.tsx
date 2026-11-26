@@ -24,6 +24,7 @@ export function useReaderAudio() {
         label={`Play “${entry.surface}”`}
         playing={playing === `word:${entry.tokenIndex}`}
         check={{ key: `word:${entry.lemma}:${entry.surface}`, what: () => wordSaying(entry) }}
+        autoPlay={`word:${entry.tokenIndex}`}
         onPlay={() =>
           void (async () => play(`word:${entry.tokenIndex}`, await wordSaying(entry)))()
         }

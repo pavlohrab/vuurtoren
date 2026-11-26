@@ -58,6 +58,8 @@ export interface ExerciseCardProps {
   sayDutch?: boolean;
   /** A small sound: a tile placed, a pair matched. */
   onTick?: () => void;
+  /** The not-quite sound, for a pair that doesn't match. */
+  onMiss?: () => void;
   /** "Say this sentence" with the device's own recogniser (Android): it listens itself. */
   listenLive?: { start: () => Promise<string>; stop: () => void };
 }
@@ -130,6 +132,7 @@ export function ExerciseCard({
   onTryAgain,
   sayDutch = false,
   onTick,
+  onMiss,
 }: ExerciseCardProps) {
   const mode = exerciseMode(e);
   const answered = feedback !== null;
@@ -345,6 +348,7 @@ export function ExerciseCard({
           onDone={onContinue}
           onSay={sayDutch ? onSpeak : undefined}
           onTick={onTick}
+          onMiss={onMiss}
         />
       </section>
     );
@@ -679,6 +683,7 @@ function Pairs({
   onDone,
   onSay,
   onTick,
+  onMiss,
 }: {
   pairs: readonly { nl: string; en: string }[];
   onDone: () => void;
@@ -686,6 +691,8 @@ function Pairs({
   onSay?: ((text: string) => void) | undefined;
   /** A small sound on a match. */
   onTick?: (() => void) | undefined;
+  /** The not-quite sound on a pair that doesn't match. */
+  onMiss?: (() => void) | undefined;
 }) {
   // The meanings in a fixed shuffled order (by length, then text), so they don't line up.
   const [meanings] = useState(() =>
@@ -704,6 +711,7 @@ function Pairs({
       onTick?.();
     } else {
       setMiss(en);
+      onMiss?.();
       window.setTimeout(() => setMiss(null), 500);
     }
   };

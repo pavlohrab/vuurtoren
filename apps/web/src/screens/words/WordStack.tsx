@@ -421,6 +421,7 @@ export function WordStack({
                 <PlayButton
                   label={`Play “${lemma}”`}
                   playing={playing === `stack:${top.key}`}
+                  autoPlay={`stack:${top.key}`}
                   check={{
                     key: `word:${lemma}:${article ?? ""}`,
                     what: async () => ({
