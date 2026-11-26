@@ -11,11 +11,13 @@ GITHUB_REPO = "pavlohrab/Vuurtoren"
 [[d1_databases]]
 binding = "DB"
 database_name = "vuurtoren-feedback"
-database_id = "PUT-THE-ID-FROM-wrangler-d1-create-HERE"
+database_id = "b7cbcdc4-4f58-436e-8577-514a2548bcbb"
 
-[[r2_buckets]]
-binding = "FILES"
-bucket_name = "vuurtoren-feedback"
+# Optional: keep the screenshots and voice notes in R2 too (they're in Telegram anyway).
+# Turn R2 on in the dashboard, `npx wrangler r2 bucket create vuurtoren-feedback`, then uncomment.
+# [[r2_buckets]]
+# binding = "FILES"
+# bucket_name = "vuurtoren-feedback"
 
 # Voice notes as text. Remove these two lines to skip it.
 [ai]

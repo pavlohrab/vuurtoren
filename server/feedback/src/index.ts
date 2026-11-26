@@ -1,6 +1,6 @@
 /**
  * The feedback Worker at issue.vuurtoren.app (FB1). The app sends a report (text, a voice note,
- * a screenshot, device facts); it is stored (D1, R2) and sent to Pavlo's Telegram with two
+ * a screenshot, device facts); it is stored (D1; the files in R2 when a bucket is bound) and sent to Pavlo's Telegram with two
  * buttons. "Make issue" turns it into a GitHub issue, "Done" closes it. Pavlo's reply to the
  * message goes back to the tester's app, when they agreed to that.
  *
@@ -48,7 +48,8 @@ interface Ai {
 
 export interface Env {
   DB: D1Database;
-  FILES: R2Bucket;
+  /** Optional: keeps the files too. Without it they live only in Pavlo's Telegram chat. */
+  FILES?: R2Bucket;
   AI?: Ai;
   /** The key built into the app; change it if someone abuses the endpoint. */
   APP_KEY: string;
@@ -101,8 +102,8 @@ export default {
     const old = await env.DB.prepare("SELECT id FROM reports WHERE created < ?")
       .bind(before)
       .all<{ id: string }>();
-    for (const { id } of old.results)
-      await env.FILES.delete([`${id}/screenshot`, `${id}/voice`]);
+    if (env.FILES)
+      for (const { id } of old.results) await env.FILES.delete([`${id}/screenshot`, `${id}/voice`]);
     await env.DB.prepare("DELETE FROM replies WHERE report_id IN (SELECT id FROM reports WHERE created < ?)")
       .bind(before)
       .run();
@@ -137,8 +138,10 @@ async function report(req: Request, env: Env): Promise<Response> {
 
   const shotBytes = shot ? await shot.arrayBuffer() : null;
   const audioBytes = audio ? await audio.arrayBuffer() : null;
-  if (shotBytes) await env.FILES.put(`${r.id}/screenshot`, shotBytes, { httpMetadata: { contentType: shot!.type } });
-  if (audioBytes) await env.FILES.put(`${r.id}/voice`, audioBytes, { httpMetadata: { contentType: audio!.type } });
+  if (shotBytes && env.FILES)
+    await env.FILES.put(`${r.id}/screenshot`, shotBytes, { httpMetadata: { contentType: shot!.type } });
+  if (audioBytes && env.FILES)
+    await env.FILES.put(`${r.id}/voice`, audioBytes, { httpMetadata: { contentType: audio!.type } });
   const transcript = audioBytes ? await transcribe(env, audioBytes) : null;
 
   await env.DB.prepare(
