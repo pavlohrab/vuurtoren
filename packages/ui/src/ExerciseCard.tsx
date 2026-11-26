@@ -48,6 +48,8 @@ export interface ExerciseCardProps {
   topic?: { title: string; onOpen: () => void };
   /** "Say this sentence": what the language server heard in a recording. */
   onHear?: (recording: Blob) => Promise<string>;
+  /** "Say this sentence" was misheard: count it as right. */
+  onSaidRight?: () => void;
   /** "Say this sentence" with the device's own recogniser (Android): it listens itself. */
   listenLive?: { start: () => Promise<string>; stop: () => void };
 }
@@ -115,6 +117,7 @@ export function ExerciseCard({
   topic,
   onHear,
   listenLive,
+  onSaidRight,
 }: ExerciseCardProps) {
   const mode = exerciseMode(e);
   const answered = feedback !== null;
@@ -581,6 +584,11 @@ export function ExerciseCard({
                 {e.metIn.text}
               </span>
             </p>
+          ) : null}
+          {e.kind === "say" && !feedback.correct && onSaidRight ? (
+            <Button variant="ghost" onClick={onSaidRight}>
+              I said it right
+            </Button>
           ) : null}
           <Button variant="primary" className="ex-continue" onClick={onContinue}>
             {continueLabel} <kbd className="ex-key">Enter</kbd>

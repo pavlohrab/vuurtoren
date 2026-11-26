@@ -373,6 +373,28 @@ describe("Practice session", () => {
     expect(answers).toHaveLength(0);
   });
 
+  it("says when nothing can listen for \"Say this sentence\"", async () => {
+    const say = {
+      id: "say-1",
+      kind: "say",
+      skill: "recall",
+      key: "deur",
+      instruction: "Say this sentence",
+      prompt: {
+        text: "De deur is open.",
+        sentence: "De deur is open.",
+        translation: "The door is open.",
+      },
+      answer: "De deur is open.",
+    } as Exercise;
+    const gender = MOCK_EXERCISES.find((e) => e.kind === "gender")!;
+    const { answers, user } = setup([say, gender]);
+    await begin(user);
+    // No recogniser and no language server in the test: no mic, one plain line.
+    expect(await screen.findByText("Speaking needs the language server.")).toBeVisible();
+    expect(answers).toHaveLength(0);
+  });
+
   it("asks before ending with Escape once something was answered", async () => {
     const list = MOCK_EXERCISES.filter((e) => e.kind === "gender");
     const { user } = setup(list);

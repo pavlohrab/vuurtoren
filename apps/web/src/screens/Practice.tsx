@@ -570,6 +570,8 @@ function Session({
     queryFn: androidListenAvailable,
     staleTime: Infinity,
   }).data;
+  /** Exercises the learner said were heard wrong: their second go is not added. */
+  const saidRightIds = useRef(new Set<string>());
   // The lesson grows by a missed word's second go at the end (algorithms.md 4.7.6).
   const [exercises, setExercises] = useState(planned);
   const [index, setIndex] = useState(0);
@@ -655,7 +657,7 @@ function Session({
         answeredRef.current = [...answeredRef.current, { exercise: current, result }];
         if (!result.correct && !current.id.endsWith("-again")) {
           const again = await services.comeBack?.(current).catch(() => null);
-          if (again)
+          if (again && !saidRightIds.current.has(current.id))
             setExercises((xs) => (xs.some((x) => x.id === again.id) ? xs : [...xs, again]));
         }
         setSubmitted(s.answer);
@@ -669,6 +671,36 @@ function Session({
     })();
     inflight.current = run;
     await run;
+  };
+
+  /**
+   * The recogniser misheard "Say this sentence": save it again as right, show it as right, and
+   * take back the second go that the miss added.
+   */
+  const saidRight = async () => {
+    if (!current || busy) return;
+    saidRightIds.current.add(current.id);
+    setBusy(true);
+    try {
+      const result = await services.answerExercise(current, {
+        exerciseId: current.id,
+        answer: current.answer,
+        hintsUsed: 0,
+        ms: Date.now() - shownAt.current,
+      });
+      answeredRef.current = [
+        ...answeredRef.current.filter((a) => a.exercise.id !== current.id),
+        { exercise: current, result },
+      ];
+      setExercises((xs) =>
+        xs.filter((x, i) => i <= index || !(x.key === current.key && x.id.endsWith("-again"))),
+      );
+      setFeedback({ correct: true });
+    } catch (e) {
+      setError(errorText(e, "The answer could not be saved."));
+    } finally {
+      setBusy(false);
+    }
   };
 
   if (!current || skipDictation) return null;
@@ -721,6 +753,7 @@ function Session({
           continueLabel={last ? "Finish" : "Continue"}
           onWord={(form, sentence, el) => inspector.open(form, sentence, el)}
           {...(topic ? { topic } : {})}
+          onSaidRight={() => void saidRight()}
           {...(phoneListens
             ? { listenLive: { start: androidListen, stop: androidStopListening } }
             : {})}
