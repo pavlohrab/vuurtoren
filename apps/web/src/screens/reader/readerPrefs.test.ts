@@ -22,7 +22,7 @@ describe("book settings", () => {
       KEY,
       JSON.stringify({
         pages: "scroll",
-        turn: "flip",
+        turn: "paper",
         spread: false,
         justify: "yes",
         volumeKeys: true,
@@ -30,7 +30,7 @@ describe("book settings", () => {
     );
     expect(readPrefs()).toMatchObject({
       pages: "scroll",
-      turn: "flip",
+      turn: "paper",
       spread: false,
       justify: true,
       volumeKeys: true,

@@ -30,6 +30,7 @@ import {
   screenAt,
   screenCount,
 } from "./bookMath.js";
+import { clipOf, fold, foldShading, type Pt } from "./paperFold.js";
 import { MEASURES, type ReaderPrefs, SIDE_MARGINS, SPREAD_PAGES } from "./readerPrefs.js";
 
 /** The fold between the two pages of a spread, in px. */
@@ -42,7 +43,8 @@ const PHONE = 700;
 const EDGE = 20;
 const EASE = "cubic-bezier(.2,.8,.2,1)";
 const SLIDE_MS = 300;
-const FLIP_MS = 420;
+/** The paper turn, from the corner to the far side. */
+const PAPER_MS = 480;
 const FADE_MS = 180;
 /** Taps on these are the element's own (a word, a blank, a link, the practise card). */
 const OWN_TAP =
@@ -108,6 +110,20 @@ function play(el: Element, frames: Keyframe[], ms: number, easing = EASE): Promi
 }
 
 const shift = (x: number) => `translate3d(${x}px,0,0)`;
+
+/** The first background colour that isn't transparent, from `el` up (the paper's colour). */
+function backgroundOf(el: Element | null): string {
+  for (let e = el; e; e = e.parentElement) {
+    const c = getComputedStyle(e).backgroundColor;
+    if (c && c !== "transparent" && !/rgba\([^)]*,\s*0\)$/.test(c)) return c;
+  }
+  return "rgb(251, 248, 242)";
+}
+/** Roughly how light a CSS rgb() colour is, 0 to 1. */
+function lightness(c: string): number {
+  const m = c.match(/[\d.]+/g)?.map(Number) ?? [255, 255, 255];
+  return (0.2126 * (m[0] ?? 0) + 0.7152 * (m[1] ?? 0) + 0.0722 * (m[2] ?? 0)) / 255;
+}
 
 function remPx(rem: string): number {
   const root = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
@@ -247,70 +263,108 @@ export function BookPages(props: Props) {
 
   const clearLeaves = () => leavesRef.current?.replaceChildren();
 
-  /** The page turn: the old page swings round its spine, the new one lands. */
-  const flip = async (dir: 1 | -1, oldLeaf: HTMLElement, newLeaf: HTMLElement) => {
+  /**
+   * The paper turn (paperFold.ts): `leaf`, the old screen laid over the new one, folds away from
+   * its corner on the side it turns to. On a phone the flap is the plain back of the paper; on a
+   * spread `back`, the new spread, shows through the flap (the next page lands where it falls).
+   */
+  interface PaperRig {
+    leaf: HTMLElement;
+    back: HTMLElement | null;
+    svg: SVGSVGElement;
+    dir: 1 | -1;
+    w: number;
+    h: number;
+    c: Pt;
+    spread: boolean;
+    paper: string;
+    dark: boolean;
+  }
+  const paperRig = (
+    dir: 1 | -1,
+    leaf: HTMLElement,
+    backScreen: number,
+    corner: "top" | "bottom",
+  ): PaperRig | null => {
+    const stage = stageRef.current;
+    const leaves = leavesRef.current;
+    if (!stage || !leaves) return null;
+    const w = stage.clientWidth;
+    const h = stage.clientHeight;
     const spread = (st.current.layout?.perScreen ?? 1) === 2;
-    const shade = (el: HTMLElement) => el.querySelector(".book-leaf-shade") ?? el;
-    if (!spread) {
-      if (dir > 0) {
-        newLeaf.remove();
-        oldLeaf.style.transformOrigin = "0 50%";
-        await Promise.all([
-          play(
-            oldLeaf,
-            [{ transform: "rotateY(0)" }, { transform: "rotateY(-90deg)" }],
-            FLIP_MS,
-            "ease-in",
-          ),
-          play(shade(oldLeaf), [{ opacity: 0 }, { opacity: 1 }], FLIP_MS, "ease-in"),
-        ]);
-      } else {
-        newLeaf.style.transformOrigin = "0 50%";
-        await Promise.all([
-          play(
-            newLeaf,
-            [{ transform: "rotateY(-90deg)" }, { transform: "rotateY(0)" }],
-            FLIP_MS,
-            "ease-out",
-          ),
-          play(shade(newLeaf), [{ opacity: 1 }, { opacity: 0 }], FLIP_MS, "ease-out"),
-        ]);
+    const back = spread ? leafAt(backScreen) : null;
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("class", "book-fold");
+    leaves.append(svg);
+    const paper = backgroundOf(stage);
+    return {
+      leaf,
+      back,
+      svg,
+      dir,
+      w,
+      h,
+      c: [dir > 0 ? w : 0, corner === "bottom" ? h : 0],
+      spread,
+      paper,
+      dark: lightness(paper) < 0.4,
+    };
+  };
+  /** Where the corner goes for the page to be gone. */
+  const paperEnd = (r: PaperRig): Pt => {
+    const far = r.spread ? r.w / 2 + 2 : r.w * 1.05;
+    return [r.dir > 0 ? r.c[0] - 2 * far : r.c[0] + 2 * far, r.c[1]];
+  };
+  const paperFrame = (r: PaperRig, p: Pt) => {
+    const half = r.w / 2;
+    // On a spread only the page on the turning side folds; the other page stays whole.
+    const [x0, pw] = r.spread ? (r.dir > 0 ? [half, half] : [0, half]) : [0, r.w];
+    const f = fold(pw, r.h, x0, r.c, p);
+    let keep = f.keep;
+    if (r.spread && keep.length > 2) {
+      if (r.dir > 0) keep = [[0, 0], ...keep, [0, r.h]];
+      else {
+        const k = keep.findIndex((q) => Math.abs(q[0] - half) < 0.5 && q[1] < 0.5);
+        if (k >= 0) keep = [...keep.slice(0, k + 1), [r.w, 0], [r.w, r.h], ...keep.slice(k + 1)];
       }
-      return;
-    }
-    // A spread: the outgoing half of the old spread rises, then the new half comes down
-    // on the other side. Under them the old half that stays, and the new spread.
-    const outer = dir > 0 ? "inset(0 0 0 50%)" : "inset(0 50% 0 0)";
-    const inner = dir > 0 ? "inset(0 50% 0 0)" : "inset(0 0 0 50%)";
-    const still = oldLeaf.cloneNode(true) as HTMLElement;
-    still.style.clipPath = inner;
-    oldLeaf.before(still);
-    newLeaf.style.clipPath = inner;
-    newLeaf.style.transform = `rotateY(${dir > 0 ? 90 : -90}deg)`;
-    oldLeaf.after(newLeaf);
-    oldLeaf.style.clipPath = outer;
-    for (const el of [oldLeaf, newLeaf]) el.style.transformOrigin = "50% 50%";
-    const half = FLIP_MS / 2;
-    await Promise.all([
-      play(
-        oldLeaf,
-        [{ transform: "rotateY(0)" }, { transform: `rotateY(${dir > 0 ? -90 : 90}deg)` }],
-        half,
-        "ease-in",
-      ),
-      play(shade(oldLeaf), [{ opacity: 0 }, { opacity: 1 }], half, "ease-in"),
-    ]);
-    oldLeaf.style.visibility = "hidden";
-    newLeaf.style.transform = "none";
-    await Promise.all([
-      play(
-        newLeaf,
-        [{ transform: `rotateY(${dir > 0 ? 90 : -90}deg)` }, { transform: "rotateY(0)" }],
-        half,
-        "ease-out",
-      ),
-      play(shade(newLeaf), [{ opacity: 1 }, { opacity: 0 }], half, "ease-out"),
-    ]);
+    } else if (r.spread)
+      keep =
+        r.dir > 0
+          ? [
+              [0, 0],
+              [half, 0],
+              [half, r.h],
+              [0, r.h],
+            ]
+          : [
+              [half, 0],
+              [r.w, 0],
+              [r.w, r.h],
+              [half, r.h],
+            ];
+    r.leaf.style.clipPath = clipOf(keep);
+    if (r.back) r.back.style.clipPath = clipOf(f.flap);
+    r.svg.innerHTML = foldShading(f, r.back ? null : r.paper, r.dark);
+  };
+  /** Move the corner from `a` to `b`, easing out. */
+  const paperMove = (r: PaperRig, a: Pt, b: Pt, ms: number) =>
+    new Promise<void>((done) => {
+      const t0 = performance.now();
+      const frame = (t: number) => {
+        const k = Math.min(1, (t - t0) / ms);
+        const e = 1 - (1 - k) ** 3;
+        paperFrame(r, [a[0] + (b[0] - a[0]) * e, a[1] + (b[1] - a[1]) * e]);
+        if (k < 1) requestAnimationFrame(frame);
+        else done();
+      };
+      requestAnimationFrame(frame);
+    });
+  /** A tap's turn: the corner lifts a little and the page folds away. */
+  const paperTurn = async (dir: 1 | -1, leaf: HTMLElement, backScreen: number) => {
+    const r = paperRig(dir, leaf, backScreen, "bottom");
+    if (!r) return;
+    const lift: Pt = [r.c[0] - r.dir * 2, r.c[1] - 2];
+    await paperMove(r, lift, paperEnd(r), PAPER_MS);
   };
 
   /** One screen on or back, within this page. `dx`: where a drag left the text. */
@@ -333,12 +387,11 @@ export function BookPages(props: Props) {
           [{ transform: shift(offset(from) + dx) }, { transform: shift(offset(to)) }],
           ms,
         );
-      } else if (how === "flip" || how === "fade") {
+      } else if (how === "paper" || how === "fade") {
         const oldLeaf = leafAt(from);
-        const newLeaf = how === "flip" ? leafAt(to) : null;
         s.screen = to;
         place();
-        if (oldLeaf && newLeaf) await flip(dir, oldLeaf, newLeaf);
+        if (oldLeaf && how === "paper") await paperTurn(dir, oldLeaf, to);
         else if (oldLeaf) await play(oldLeaf, [{ opacity: 1 }, { opacity: 0 }], FADE_MS, "linear");
         clearLeaves();
       } else {
@@ -409,9 +462,8 @@ export function BookPages(props: Props) {
             SLIDE_MS,
           ),
         ]);
-      } else if (how === "flip") {
-        const newLeaf = leafAt(s.screen);
-        if (newLeaf) await flip(p.dir, p.leaf, newLeaf);
+      } else if (how === "paper") {
+        await paperTurn(p.dir, p.leaf, s.screen);
       } else {
         await play(p.leaf, [{ opacity: 1 }, { opacity: 0 }], FADE_MS, "linear");
       }
@@ -514,6 +566,12 @@ export function BookPages(props: Props) {
     let dragging = false;
     let shown = 0;
     let swallow = false;
+    /** A paper turn that follows the finger, within this page. */
+    let paperDrag: { rig: PaperRig; from: number; to: number; p: Pt } | null = null;
+    const local = (e: PointerEvent): Pt => {
+      const r = stage.getBoundingClientRect();
+      return [e.clientX - r.left, Math.max(0, Math.min(r.height, e.clientY - r.top))];
+    };
     const resist = (dx: number) => {
       const s = st.current;
       const dir: 1 | -1 = dx < 0 ? 1 : -1;
@@ -548,6 +606,31 @@ export function BookPages(props: Props) {
         if (Math.abs(dx) < 10 || Math.abs(dx) < 1.5 * Math.abs(dy)) return;
         dragging = true;
       }
+      if (style() === "paper") {
+        const s = st.current;
+        if (!paperDrag) {
+          const dir: 1 | -1 = dx < 0 ? 1 : -1;
+          const to = s.screen + dir;
+          // Past this page's screens the turn plays on release (the next page isn't laid out).
+          if (s.busy || !s.layout || to < 0 || to >= s.screens) return;
+          const leaf = leafAt(s.screen);
+          if (!leaf) return;
+          const rig = paperRig(
+            dir,
+            leaf,
+            to,
+            start.y - stage.getBoundingClientRect().top > stage.clientHeight / 2 ? "bottom" : "top",
+          );
+          if (!rig) return;
+          s.busy = true;
+          paperDrag = { rig, from: s.screen, to, p: rig.c };
+          s.screen = to;
+          place();
+        }
+        paperDrag.p = local(e);
+        paperFrame(paperDrag.rig, paperDrag.p);
+        return;
+      }
       if (st.current.busy || style() !== "follow") return;
       shown = resist(dx);
       place(shown);
@@ -564,6 +647,23 @@ export function BookPages(props: Props) {
       const width = st.current.layout?.viewport ?? stage.clientWidth;
       const far = Math.abs(dx) > width / 3;
       const flick = Math.abs(dx) > 30 && e.timeStamp - s.t < 250;
+      if (paperDrag) {
+        const d = paperDrag;
+        paperDrag = null;
+        const r = d.rig;
+        const past = r.dir > 0 ? d.p[0] < r.w / 2 : d.p[0] > r.w / 2;
+        const on = past || (flick && Math.sign(-dx) === r.dir);
+        void paperMove(r, d.p, on ? paperEnd(r) : r.c, on ? 300 : 220).then(() => {
+          if (!on) {
+            st.current.screen = d.from;
+            place();
+          }
+          clearLeaves();
+          st.current.busy = false;
+          settle();
+        });
+        return;
+      }
       if ((far || flick) && !st.current.busy) turn(dx < 0 ? 1 : -1, shown);
       else if (shown) {
         const flow = flowRef.current;

@@ -45,7 +45,7 @@ const PAGES_LABEL: Record<ReaderPrefs["pages"], string> = {
 };
 const TURN_OPTIONS = TURN_STYLES.map((value) => ({
   value,
-  label: { follow: "Follow the finger", flip: "Page turn", fade: "Fade", none: "None" }[value],
+  label: { paper: "Paper", follow: "Slide", fade: "Fade", none: "None" }[value],
 }));
 
 /** One row of mutually exclusive choices (radio semantics, segmented look). */

@@ -23,7 +23,7 @@ export const SIDE_MARGINS: Record<Margins, number> = { narrow: 14, normal: 22, w
 export const SPREAD_PAGES: Record<Margins, number> = { narrow: 512, normal: 448, wide: 384 };
 export const PAGE_MODES = ["turn", "scroll"] as const;
 /** How a page turns in book mode. */
-export const TURN_STYLES = ["follow", "flip", "fade", "none"] as const;
+export const TURN_STYLES = ["paper", "follow", "fade", "none"] as const;
 const FONTS = {
   literata: '"Literata Variable", Georgia, serif',
   inter: '"Inter Variable", system-ui, sans-serif',
@@ -70,7 +70,7 @@ export const DEFAULT_PREFS: ReaderPrefs = {
   englishAI: false,
   pages: "turn",
   spread: true,
-  turn: "follow",
+  turn: "paper",
   justify: true,
   volumeKeys: false,
 };
@@ -101,7 +101,8 @@ export function readPrefs(): ReaderPrefs {
       englishAI: v["englishAI"] === true,
       pages: pick(v["pages"], PAGE_MODES, "turn"),
       spread: bool("spread"),
-      turn: pick(v["turn"], TURN_STYLES, "follow"),
+      // "flip" (the 3D page turn) became "paper"; anything unknown is the default.
+      turn: pick(v["turn"], TURN_STYLES, "paper"),
       justify: bool("justify"),
       volumeKeys: bool("volumeKeys"),
     };

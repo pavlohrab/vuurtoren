@@ -1683,3 +1683,13 @@ dl.card-meaning dd,
     border-radius: 18px;
   }
 }
+
+/* The paper turn's light and shade (paperFold.ts), over the leaves. */
+.book-fold {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
