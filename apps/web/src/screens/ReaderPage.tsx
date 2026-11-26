@@ -83,6 +83,8 @@ import { contextGloss } from "../services/contextGloss.js";
  * Below this share of known words (%) the first page says the text is hard for the learner
  * (a Wikipedia page for an A1 learner), with Gloss mode or a story at their level.
  */
+/** Words tapped on a page before its end offers to practise them. */
+const PRACTISE_FROM = 2;
 const HARD_TEXT = 80;
 const HARD_SEEN = "vuurtoren-hard-seen:";
 
@@ -185,6 +187,8 @@ export function ReaderPage({ textId }: { textId: string }) {
   /** Credit per answered cloze token: 1 unaided, 0.5 with the letter hint, 0 wrong or revealed. */
   const [credits, setCredits] = useState<ReadonlyMap<number, number>>(new Map());
   const lookups = useRef(0);
+  /** The words tapped on each page, for "Practise these words" at its end (algorithms.md 4.7). */
+  const [pageTaps, setPageTaps] = useState<Map<number, string[]>>(new Map());
   /** Segments finished in this visit; going back and forward again must not re-submit them. */
   const finished = useRef(new Set<number>());
   const [finishing, setFinishing] = useState(false);
@@ -669,6 +673,10 @@ export function ReaderPage({ textId }: { textId: string }) {
     if (key && t && contextGloss(t).notTheCard) lookups.current += 1;
     else if (key) {
       lookups.current += 1;
+      setPageTaps((m) => {
+        const cur = m.get(current) ?? [];
+        return cur.includes(key) ? m : new Map(m).set(current, [...cur, key]);
+      });
       // Fire and forget: a failed lookup count is not worth interrupting the reading.
       services.recordLookup(textId, key).catch((e: unknown) => {
         console.warn("Could not record the lookup:", e);
@@ -1051,6 +1059,30 @@ export function ReaderPage({ textId }: { textId: string }) {
             text={data.text.content.slice(plan.segment.charStart, plan.segment.charEnd)}
             onClose={() => setSimplifyAt(null)}
           />
+        ) : null}
+        {(pageTaps.get(current)?.length ?? 0) >= PRACTISE_FROM ? (
+          <section className="page-end" aria-label="Practise this page's words">
+            <div className="page-end-chips" lang="nl">
+              {pageTaps
+                .get(current)!
+                .slice(0, 6)
+                .map((k) => (
+                  <span key={k} className="page-end-chip">
+                    {k}
+                  </span>
+                ))}
+              {pageTaps.get(current)!.length > 6 ? (
+                <span className="page-end-chip">+{pageTaps.get(current)!.length - 6}</span>
+              ) : null}
+            </div>
+            <Link
+              to="/practice"
+              search={{ words: pageTaps.get(current)!.join(","), start: "1" }}
+              className="k-btn k-btn--secondary"
+            >
+              Practise these {pageTaps.get(current)!.length} words
+            </Link>
+          </section>
         ) : null}
         <nav className="reader-footer" aria-label="Pages">
           <div className="reader-pager">

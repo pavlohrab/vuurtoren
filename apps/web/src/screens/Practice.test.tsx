@@ -364,7 +364,7 @@ describe("Practice session", () => {
       ["de brug", "bridge"],
       ["de sleutel", "key"],
       ["de markt", "market"],
-    ]) {
+    ] as const) {
       await user.click(within(dutch).getByRole("button", { name: nl }));
       await user.click(within(meanings).getByRole("button", { name: en }));
     }

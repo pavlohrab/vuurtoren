@@ -1092,6 +1092,32 @@
   flex: 1;
   height: 8px;
 }
+/* The end of a reader page: practise the words tapped on it (mock-practice-lessons.html). */
+.page-end {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 14px;
+  margin-top: 16px;
+  border: 1px solid var(--accent);
+  border-radius: 14px;
+  background: var(--surface);
+}
+.page-end-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.page-end-chip {
+  font-family: var(--font-reading);
+  font-size: 14px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
 /* The lessons to start from (mock-practice-lessons.html). */
 .lessons {
   display: grid;
