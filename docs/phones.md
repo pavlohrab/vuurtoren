@@ -37,7 +37,7 @@ on your computer, and after the next sync the text is ready on your phone too.
 ## Connect it to your computer
 
 On the computer, open Settings → Your devices → **Connect a phone** and press **Show the code**.
-On the phone, scan it (in Settings → Your devices, or when you first open the app). Both need to be
+On the phone, scan the QR code (in Settings → Your devices, or when you first open the app). Both need to be
 on the same Wi-Fi. If the camera doesn't work, type the address and the code the computer shows.
 The computer asks "Is this your phone?" before anything goes over, and you say yes.
 
@@ -45,7 +45,7 @@ After that the phone syncs with your computer whenever both are home, and away f
 what it has. A phone connected like this has no **Add text**: you add texts on the computer, and
 the phone gets them ready to read.
 
-If it stops syncing at home, your computer may have a new address. Show the code again and scan it,
+If it stops syncing at home, your computer may have a new address. Show the QR code again and scan it,
 and the phone stays connected. Want the phone to sync from anywhere? Use WebDAV or your own server
 instead.
 
