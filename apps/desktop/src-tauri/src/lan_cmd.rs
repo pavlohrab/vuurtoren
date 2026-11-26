@@ -211,17 +211,32 @@ pub fn lan_remove(app: AppHandle, hash: String) -> Result<(), String> {
     .map_err(|e| e.to_string())
 }
 
-/// What the computer's firewall does to the phone port (SY9). Only firewalld (Fedora, openSUSE)
-/// can be asked without admin rights; elsewhere `tool` is None and the app says nothing.
+/// What the computer's firewall does to the phone port (SY9). firewalld (Fedora, openSUSE) can be
+/// asked without admin rights; ufw (Ubuntu, Mint) only says that it runs, so `open` is None there.
+/// Elsewhere `tool` is None and the app says nothing.
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FirewallInfo {
-    /// "firewalld" when it runs, else None.
+    /// "firewalld" or "ufw" when it runs, else None.
     tool: Option<&'static str>,
     /// Whether the port is open in the active zone (None: couldn't tell).
     open: Option<bool>,
     /// The command that opens it, for people who'd rather type it.
     command: Option<String>,
+}
+
+fn ufw_command(port: u16) -> String {
+    format!("sudo ufw allow {port}/tcp")
+}
+
+/// Is ufw running? `systemctl is-active` needs no admin rights (ufw's own status does).
+#[cfg(target_os = "linux")]
+fn ufw_active() -> bool {
+    std::process::Command::new("systemctl")
+        .args(["is-active", "--quiet", "ufw"])
+        .status()
+        .map(|s| s.success())
+        .unwrap_or(false)
 }
 
 fn firewalld_command(port: u16) -> String {
@@ -277,6 +292,13 @@ fn firewall_info(port: u16) -> FirewallInfo {
                 command: Some(firewalld_command(port)),
             };
         }
+        if ufw_active() {
+            return FirewallInfo {
+                tool: Some("ufw"),
+                open: None,
+                command: Some(ufw_command(port)),
+            };
+        }
     }
     let _ = port;
     FirewallInfo {
@@ -286,8 +308,8 @@ fn firewall_info(port: u16) -> FirewallInfo {
     }
 }
 
-/// Open the phone port in firewalld for good: the system asks for the admin password (pkexec),
-/// once for both steps.
+/// Open the phone port for good in firewalld or ufw: the system asks for the admin password
+/// (pkexec), once.
 #[tauri::command]
 pub async fn lan_firewall_allow(port: u16) -> Result<(), String> {
     tauri::async_runtime::spawn_blocking(move || allow_firewall(port))
@@ -300,8 +322,13 @@ fn allow_firewall(port: u16) -> Result<(), String> {
     {
         use std::process::Command;
         // `port` is a number, so the line has nothing in it from outside.
-        let line =
-            format!("firewall-cmd --permanent --add-port={port}/tcp && firewall-cmd --reload");
+        let line = if firewall_cmd("--state") == Some(true) {
+            format!("firewall-cmd --permanent --add-port={port}/tcp && firewall-cmd --reload")
+        } else if ufw_active() {
+            format!("ufw allow {port}/tcp")
+        } else {
+            return Err("No firewall to open was found.".to_string());
+        };
         let out = Command::new("pkexec")
             .args(["sh", "-c", &line])
             .output()
@@ -318,7 +345,7 @@ fn allow_firewall(port: u16) -> Result<(), String> {
     #[allow(unreachable_code)]
     {
         let _ = port;
-        Err("Only firewalld on Linux can be opened from here.".to_string())
+        Err("Only firewalld and ufw on Linux can be opened from here.".to_string())
     }
 }
 
@@ -332,8 +359,13 @@ mod firewall_tests {
         let t = std::time::Instant::now();
         let info = firewall_info(47120);
         assert!(t.elapsed() < std::time::Duration::from_secs(8));
-        if info.tool.is_some() {
-            assert!(info.command.unwrap().contains("--add-port=47120/tcp"));
+        match info.tool {
+            Some("firewalld") => assert!(info.command.unwrap().contains("--add-port=47120/tcp")),
+            Some("ufw") => {
+                assert_eq!(info.command.unwrap(), "sudo ufw allow 47120/tcp");
+                assert!(info.open.is_none(), "ufw can't tell without admin rights");
+            }
+            _ => {}
         }
     }
 }

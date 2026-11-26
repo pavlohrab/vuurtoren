@@ -110,6 +110,9 @@ export function ConnectPhone() {
   });
   if (!lan || !services.startForPhones || !services.phoneHandover) return null;
   const arrived = shown ? phones.data?.find((p) => !shown.before.has(p.hash)) : undefined;
+  // How long the code has been waiting: ufw can't say whether the port is open, so its note
+  // shows only when no phone came for a while.
+  const waited = shown ? now - (shown.until - CODE_MS) : 0;
   const windows = typeof navigator !== "undefined" && /Windows/.test(navigator.userAgent);
 
   return (
@@ -169,10 +172,13 @@ export function ConnectPhone() {
               Windows may ask to allow Vuurtoren on private networks. Say yes.
             </p>
           ) : null}
-          {firewall.data?.tool === "firewalld" && firewall.data.open === false ? (
+          {(firewall.data?.tool === "firewalld" && firewall.data.open === false) ||
+          (firewall.data?.tool === "ufw" && !allow.isSuccess && waited >= UFW_AFTER_MS) ? (
             <div role="note" className="stack firewall-note" style={{ gap: 6 }}>
               <p style={{ margin: 0 }}>
-                This computer&apos;s firewall keeps your phone out. Allow Vuurtoren through it?
+                {firewall.data.tool === "ufw"
+                  ? "Phone not getting through? This computer's firewall may keep it out. Allow Vuurtoren through it?"
+                  : "This computer's firewall keeps your phone out. Allow Vuurtoren through it?"}
               </p>
               <div className="row">
                 <Button onClick={() => allow.mutate()} disabled={allow.isPending}>
@@ -190,7 +196,7 @@ export function ConnectPhone() {
               ) : null}
             </div>
           ) : null}
-          {allow.isSuccess && firewall.data?.open ? (
+          {allow.isSuccess && (firewall.data?.open || firewall.data?.tool === "ufw") ? (
             <p className="k-hint" role="status" style={{ margin: 0 }}>
               ✓ The firewall lets your phone in now.
             </p>
@@ -240,6 +246,8 @@ export function ConnectPhone() {
 
 /** How long a pairing code works (the computer's lan.rs says the same). */
 const CODE_MS = 10 * 60_000;
+/** ufw: offer to open the port when no phone came within this time. */
+const UFW_AFTER_MS = 30_000;
 
 function withCode(at: { address: string; port: number; fingerprint: string }, code: string) {
   return {

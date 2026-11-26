@@ -219,13 +219,14 @@ interface LanBridge {
   phones(): Promise<{ hash: string; name: string; device: string | null; vault: boolean }[]>;
   remove(hash: string): Promise<void>;
   /**
-   * Is the phone port open? Only firewalld (Linux) can say: elsewhere `tool` is null. Optional:
+   * Is the phone port open? firewalld (Linux) can say; ufw only that it runs (`open` null);
+   * elsewhere `tool` is null. Optional:
    * older app builds don't have it.
    */
   firewall?(
     port: number,
-  ): Promise<{ tool: "firewalld" | null; open: boolean | null; command: string | null }>;
-  /** Opens the port in firewalld for good; the system asks for the admin password. */
+  ): Promise<{ tool: "firewalld" | "ufw" | null; open: boolean | null; command: string | null }>;
+  /** Opens the port in firewalld or ufw for good; the system asks for the admin password. */
   allowFirewall?(port: number): Promise<void>;
   /**
    * SY5: this computer left its folder (for a server or WebDAV) or stopped syncing: its phones

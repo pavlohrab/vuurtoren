@@ -18,6 +18,7 @@ function setup(
     recovery?: string | null;
     folder?: string;
     firewallOpen?: boolean | null;
+    ufw?: boolean;
     asking?: { id: string; name: string } | null;
   } = {},
 ) {
@@ -33,11 +34,16 @@ function setup(
     code: vi.fn(async () => "ABCDE-FGHJK"),
     phones: vi.fn(async () => [{ hash: "h1", name: "Pixel", device: "p1", vault: false }]),
     remove: vi.fn(async () => undefined),
-    firewall: vi.fn(async () => ({
-      tool: open === null ? null : ("firewalld" as const),
-      open,
-      command: "sudo firewall-cmd --permanent --add-port=47120/tcp && sudo firewall-cmd --reload",
-    })),
+    firewall: vi.fn(async () =>
+      opts.ufw
+        ? { tool: "ufw" as const, open: null, command: "sudo ufw allow 47120/tcp" }
+        : {
+            tool: open === null ? null : ("firewalld" as const),
+            open,
+            command:
+              "sudo firewall-cmd --permanent --add-port=47120/tcp && sudo firewall-cmd --reload",
+          },
+    ),
     allowFirewall: vi.fn(async () => {
       open = true;
     }),
@@ -107,6 +113,24 @@ describe("Connect a phone", () => {
     expect(lan.allowFirewall).toHaveBeenCalledWith(47120);
     expect(await screen.findByText(/The firewall lets your phone in now/)).toBeVisible();
     expect(screen.queryByText(/firewall keeps your phone out/)).toBeNull();
+  });
+
+  it("with ufw, which can't say, it offers the same help when no phone came for a while (SY9)", async () => {
+    const { lan } = setup({ ufw: true });
+    await userEvent.click(await screen.findByRole("button", { name: "Show the QR code" }));
+    await screen.findByText("ABCDE-FGHJK");
+    expect(screen.queryByText(/firewall/i)).toBeNull();
+    // Half a minute later, still no phone.
+    const later = Date.now() + 31_000;
+    const spy = vi.spyOn(Date, "now").mockImplementation(() => later);
+    expect(
+      await screen.findByText(/Phone not getting through/, {}, { timeout: 3000 }),
+    ).toBeVisible();
+    expect(screen.getByText("sudo ufw allow 47120/tcp")).toBeVisible();
+    await userEvent.click(screen.getByRole("button", { name: "Allow Vuurtoren" }));
+    expect(lan.allowFirewall).toHaveBeenCalledWith(47120);
+    expect(await screen.findByText(/The firewall lets your phone in now/)).toBeVisible();
+    spy.mockRestore();
   });
 
   it("says nothing about a firewall it can't ask, or one that is open", async () => {

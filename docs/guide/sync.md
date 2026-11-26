@@ -98,12 +98,18 @@ passphrase and join it again from your other devices.
 
 When your phone connects to your computer at home (Settings → Your devices → Connect a phone), the
 computer listens on port 47120. If a firewall on the computer blocks it, the phone can't reach it,
-so allow that port. Windows asks the first time: say yes for private networks. On Linux with
-firewalld, Connect a phone sees when the port is closed and shows **Allow Vuurtoren**, which asks
-for your password and opens it. If you'd rather type it yourself:
+so allow that port. On Windows the installer asks once to let your phone in on private networks;
+say yes. On Linux, Connect a phone shows **Allow Vuurtoren** when the firewall is in the way, and it
+asks for your password. If you'd rather type it yourself, on Fedora:
 
 ```sh
 sudo firewall-cmd --permanent --add-port=47120/tcp && sudo firewall-cmd --reload
+```
+
+and on Ubuntu or Mint:
+
+```sh
+sudo ufw allow 47120/tcp
 ```
 
 And keep a backup now and then, in Settings → **Data → Download backup**.
