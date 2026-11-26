@@ -29,7 +29,7 @@ import type { TextListItem } from "../services/types.js";
 import { PageHeader } from "../shell/PageHeader.js";
 import { ErrorNotice } from "../shell/ErrorNotice.js";
 import { CoverDialog } from "./library/CoverDialog.js";
-import { DRAG_TYPE, FROM_SHELF_TYPE, LibraryItem } from "./library/LibraryItem.js";
+import { DRAG_TYPE, FROM_SHELF_TYPE, LibraryItem, STORY_TYPE } from "./library/LibraryItem.js";
 import { type MenuItem, MenuButton } from "./library/MenuButton.js";
 import { moveTexts } from "./library/moveTexts.js";
 import { MoveToShelfDialog, ShelfNameDialog } from "./library/ShelfDialogs.js";
@@ -89,9 +89,13 @@ function draggedIds(e: DragEvent): string[] | null {
   }
 }
 
-/** How a cover was dropped on a shelf: from which shelf. A drop moves it (Pavlo, F5). */
+/**
+ * How a cover was dropped on a shelf: from which shelf, or a story (its slug, no text yet).
+ * A drop moves it (Pavlo, F5).
+ */
 interface DropHow {
   from: string | null;
+  story?: string;
 }
 
 /** Drag-and-drop handlers for a shelf (its row, or its chip in the picker). */
@@ -101,7 +105,8 @@ export function shelfDrop(
 ) {
   return {
     onDragOver: (e: DragEvent) => {
-      if (!e.dataTransfer.types.includes(DRAG_TYPE)) return;
+      const types = e.dataTransfer.types;
+      if (!types.includes(DRAG_TYPE) && !types.includes(STORY_TYPE)) return;
       e.preventDefault();
       e.dataTransfer.dropEffect = "move";
       setOver(true);
@@ -111,6 +116,12 @@ export function shelfDrop(
     },
     onDrop: (e: DragEvent) => {
       setOver(false);
+      const story = e.dataTransfer.getData(STORY_TYPE);
+      if (story) {
+        e.preventDefault();
+        onDrop([], { from: null, story });
+        return;
+      }
       const ids = draggedIds(e);
       if (!ids?.length) return;
       e.preventDefault();
@@ -205,12 +216,17 @@ export function Read() {
     onError: (e) => toast("Could not delete the shelf", errorText(e)),
   });
   /** A drop on a shelf: added there, and taken off the shelf it came from unless Ctrl was held. */
+  /** The texts a drop carries: a story joins your texts first (once), then it's a text too. */
+  const droppedIds = async (ids: string[], how: DropHow): Promise<string[]> =>
+    how.story ? [await services.openStory(how.story)] : ids;
   const moveTo = useMutation({
     // A drop moves the text: off every other shelf of yours it was on, wherever it came from.
-    mutationFn: (a: { shelf: { id: string; name: string }; ids: string[]; how: DropHow }) =>
-      moveTexts(services, shelves.data ?? [], a.shelf.id, a.ids),
+    mutationFn: async (a: { shelf: { id: string; name: string }; ids: string[]; how: DropHow }) =>
+      moveTexts(services, shelves.data ?? [], a.shelf.id, await droppedIds(a.ids, a.how)),
     onSuccess: async (undo, a) => {
-      await qc.invalidateQueries({ queryKey: ["shelves"] });
+      await Promise.all(
+        ["shelves", "texts", "stories"].map((k) => qc.invalidateQueries({ queryKey: [k] })),
+      );
       toast(
         `Moved to “${a.shelf.name}”`,
         a.ids.length > 1 ? plural(a.ids.length, "text", "texts") : undefined,
@@ -449,7 +465,12 @@ export function Read() {
         })}
         <NewShelfChip
           onPick={() => setNaming({ open: true })}
-          onDropTexts={(ids) => setNaming({ open: true, textIds: ids })}
+          onDropTexts={(ids, how) =>
+            void droppedIds(ids, how).then(
+              (textIds) => setNaming({ open: true, textIds }),
+              (e: unknown) => toast("Could not add the story", errorText(e)),
+            )
+          }
         />
         <button
           type="button"
@@ -826,7 +847,7 @@ function NewShelfChip({
   onDropTexts,
 }: {
   onPick: () => void;
-  onDropTexts: (ids: string[]) => void;
+  onDropTexts: (ids: string[], how: DropHow) => void;
 }) {
   const [over, setOver] = useState(false);
   return (
@@ -835,7 +856,7 @@ function NewShelfChip({
       className="lib-chip lib-chip-new"
       data-drop={over ? "" : undefined}
       onClick={onPick}
-      {...shelfDrop((ids) => onDropTexts(ids), setOver)}
+      {...shelfDrop(onDropTexts, setOver)}
     >
       + New shelf
     </button>

@@ -12,6 +12,8 @@ import { useLongPress } from "../../platform/useLongPress.js";
 
 /** MIME type of a dragged Library cover (JSON array of text ids). */
 export const DRAG_TYPE = "application/x-vuurtoren-texts";
+/** A dragged story (its slug): a drop adds it to your texts first, then to the shelf. */
+export const STORY_TYPE = "application/x-vuurtoren-story";
 /** The shelf a dragged cover comes from (a drop moves it off the shelves it was on). */
 export const FROM_SHELF_TYPE = "application/x-vuurtoren-from-shelf";
 

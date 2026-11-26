@@ -30,3 +30,25 @@ test("dragging a cover to a shelf moves it, and Undo puts it back (F5)", async (
   await expect(news.getByRole("link", { name: "Het weer" })).toHaveCount(0);
   await expect(page.locator(".library[data-dragging]")).toHaveCount(0);
 });
+
+test("a story dragged onto a shelf joins your texts there (F5)", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 2400 });
+  await page.goto("/?demo");
+  const news = page.getByRole("region", { name: "News" });
+  await expect(news).toBeVisible({ timeout: 20000 });
+  const a1 = page.getByRole("region", { name: /^A1/ });
+  await expect(a1).toBeVisible();
+  await page.waitForLoadState("networkidle");
+  const klaas = a1.getByRole("button", { name: "Klaas Vaak" });
+  const from = (await klaas.boundingBox())!;
+  const to = (await news.locator(".lib-row").boundingBox())!;
+  await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(from.x + from.width / 2 + 20, from.y + from.height / 2, { steps: 5 });
+  await page.mouse.move(to.x + to.width - 60, to.y + to.height / 2, { steps: 15 });
+  await page.mouse.up();
+  await expect(page.locator(".k-toast").getByText("Moved to “News”")).toBeVisible();
+  await expect(news.getByRole("link", { name: "Klaas Vaak" })).toBeVisible();
+  // It stays where it was read from: Read is still open, not the reader.
+  expect(new URL(page.url()).pathname).toBe("/");
+});

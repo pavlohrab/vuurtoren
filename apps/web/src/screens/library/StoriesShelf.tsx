@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { ChevronRight } from "lucide-react";
 import { Skeleton, TextCover, useToast } from "@app/ui";
 import { coverLines, storyHue } from "./coverLine.js";
+import { STORY_TYPE } from "./LibraryItem.js";
 import { useServices } from "../../services/context.js";
 import { errorText } from "../../services/errors.js";
 import { storyRows } from "../../services/stories.js";
@@ -118,7 +119,18 @@ function StoryRow({
         {row.covers.map((c) => {
           return (
             <li key={c.slug} className="lib-item" data-variant="shelf">
-              <div className="lib-item-cover">
+              {/* A story dragged onto one of your shelves joins your texts there (F5). The drag
+                  sits on this box: Chromium starts no drag from a button. */}
+              <div
+                className="lib-item-cover"
+                draggable
+                onDragStart={(e) => {
+                  e.dataTransfer.setData(STORY_TYPE, c.slug);
+                  e.dataTransfer.setData("text/plain", c.title);
+                  e.dataTransfer.effectAllowed = "move";
+                  e.currentTarget.closest(".library")?.setAttribute("data-dragging", "");
+                }}
+              >
                 <button
                   type="button"
                   className="lib-open"
