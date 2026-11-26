@@ -58,7 +58,7 @@ describe("Words on a computer: the Inbox", () => {
   });
 
   it("I know it marks a new word known, and the next one opens", async () => {
-    const { user, markKnown, history } = setup("/words/all?layout=list&state=decide");
+    const { user, markKnown, history, services } = setup("/words/all?layout=list&state=decide");
     const pane = await screen.findByRole("complementary", { name: "The chosen word" });
     const list = await screen.findByRole("list", { name: "To decide" });
     const [first, second] = within(list).getAllByRole("button", { name: /^Open / });
@@ -71,6 +71,14 @@ describe("Words on a computer: the Inbox", () => {
     expect(within(pane).queryByRole("button", { name: /^Leave/ })).toBeNull();
     const secondKey = second!.getAttribute("aria-label")!.replace("Open ", "");
     await waitFor(() => expect(String(history.location.search)).toContain(`word=${secondKey}`));
+    // The list moved on, so Undo is on the toast: the word is taken back.
+    const reset = vi.spyOn(services, "resetWordState");
+    const undoKnown = services.undoKnown ? vi.spyOn(services, "undoKnown") : null;
+    await user.click(await screen.findByRole("button", { name: "Undo" }));
+    await waitFor(() =>
+      expect(reset.mock.calls.length + (undoKnown?.mock.calls.length ?? 0)).toBe(1),
+    );
+    expect(await screen.findByText("Not marked as known any more")).toBeInTheDocument();
   });
 
   it("a ticked word gets the dark bar: Add, I know them, Clear", async () => {

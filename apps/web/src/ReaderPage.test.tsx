@@ -295,7 +295,7 @@ describe("Anki write actions in the inspector", () => {
     await screen.findByText("Page 2 of 2");
   }
 
-  it("absent word: Mark known adds it as known, then offers Use Anki's state", async () => {
+  it("absent word: Mark known adds it as known, then offers Learn it again", async () => {
     setup("/read/t-utrecht");
     await userEvent.click(await screen.findByText("grachten"));
     await screen.findByRole("button", { name: ADD });
@@ -307,10 +307,12 @@ describe("Anki write actions in the inspector", () => {
     expect(await screen.findByText("Added to Anki, Reading")).toBeInTheDocument();
     expect(await screen.findByText("In review · due in 28 days")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "I know it" })).toBeNull();
-    await userEvent.click(screen.getByRole("button", { name: /Use Anki.s state/ }));
-    expect(await screen.findByText(/Using Anki.s state/)).toBeInTheDocument();
+    // A word you marked known shows it, and can always be taken back from its card.
+    expect(screen.getByText("✓ Known")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Learn it again" }));
+    expect(await screen.findByText("Not marked as known any more")).toBeInTheDocument();
     await waitFor(() =>
-      expect(screen.queryByRole("button", { name: /Use Anki.s state/ })).toBeNull(),
+      expect(screen.queryByRole("button", { name: "Learn it again" })).toBeNull(),
     );
   });
 

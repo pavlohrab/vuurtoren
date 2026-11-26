@@ -99,11 +99,19 @@ export function useWordActions(
     onSuccess: async ({ addedToDeck, undo }, e) => {
       changed?.(e.key, "known");
       if (undo && services.undoKnown) setJustKnown({ key: e.key, undo });
+      // Undo on the toast too: a word list moves on to the next word, and the card with it.
       toast(
         "Marked as known",
         addedToDeck
           ? `${native ? "Added to your words" : "Added to Anki"}, ${deckName(addedToDeck)}`
           : undefined,
+        {
+          label: "Undo",
+          onAct: () =>
+            undo && services.undoKnown
+              ? undoKnown.mutate({ key: e.key, undo })
+              : resetState.mutate(e),
+        },
       );
       await done();
     },
@@ -111,8 +119,16 @@ export function useWordActions(
   });
   const resetState = useMutation({
     mutationFn: (e: InspectorEntry) => services.resetWordState(e.key),
-    onSuccess: async () => {
-      toast(native ? "Using the card’s state" : "Using Anki’s state");
+    onSuccess: async (_r, e) => {
+      toast(
+        e.state === "known"
+          ? "Not marked as known any more"
+          : e.state === "ignored"
+            ? "Not ignored any more"
+            : native
+              ? "Using the card’s state"
+              : "Using Anki’s state",
+      );
       await done();
     },
     onError: (e) => toast("Could not reset the word", errorText(e)),

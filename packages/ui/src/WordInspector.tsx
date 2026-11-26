@@ -515,6 +515,8 @@ function ankiActions({
   // yet always get it, because it also writes to Anki.
   const canMarkKnown = !anki.markedKnown && !(inProgress && entry.state === "known");
   const disabled = busy || unavailable;
+  // Marked known by you (not learnt to maturity): it can always be taken back from the card.
+  const markedKnown = entry.state === "known" && (anki.markedKnown || anki.overridden) === true;
 
   let primary: { label: string; onClick?: (() => void) | undefined } | null = null;
   if (status === "absent") {
@@ -533,38 +535,48 @@ function ankiActions({
     primary = { label: ADD, onClick: onAddToAnki };
   }
 
-  const quick = onUndo ? (
-    <div className="k-inspector-actions k-inspector-quick">
-      <p className="k-inspector-added" role="status">
-        {undoLabel}
-      </p>
-      <Button disabled={busy} onClick={onUndo}>
-        Undo
-      </Button>
-    </div>
-  ) : (
-    <div className="k-inspector-actions k-inspector-quick">
-      {primary && addDeck && primary.label === ADD ? (
-        <AddToAnki
-          native={native}
-          deck={addDeck.deck}
-          options={addDeck.options}
-          onDeckChange={addDeck.onDeckChange}
-          onAdd={() => primary.onClick?.()}
-          disabled={disabled}
-        />
-      ) : primary ? (
-        <Button variant="primary" disabled={disabled} onClick={() => primary.onClick?.()}>
-          {primary.label}
+  const quick =
+    markedKnown && !onUndo && onReset ? (
+      <div className="k-inspector-actions k-inspector-quick">
+        <p className="k-inspector-added" role="status">
+          ✓ Known
+        </p>
+        <Button disabled={busy} onClick={() => onReset()}>
+          Learn it again
         </Button>
-      ) : null}
-      {canMarkKnown ? (
-        <Button disabled={disabled} onClick={() => onMarkKnown?.()}>
-          I know it
+      </div>
+    ) : onUndo ? (
+      <div className="k-inspector-actions k-inspector-quick">
+        <p className="k-inspector-added" role="status">
+          {undoLabel}
+        </p>
+        <Button disabled={busy} onClick={onUndo}>
+          Undo
         </Button>
-      ) : null}
-    </div>
-  );
+      </div>
+    ) : (
+      <div className="k-inspector-actions k-inspector-quick">
+        {primary && addDeck && primary.label === ADD ? (
+          <AddToAnki
+            native={native}
+            deck={addDeck.deck}
+            options={addDeck.options}
+            onDeckChange={addDeck.onDeckChange}
+            onAdd={() => primary.onClick?.()}
+            disabled={disabled}
+          />
+        ) : primary ? (
+          <Button variant="primary" disabled={disabled} onClick={() => primary.onClick?.()}>
+            {primary.label}
+          </Button>
+        ) : null}
+        {canMarkKnown ? (
+          <Button disabled={disabled} onClick={() => onMarkKnown?.()}>
+            I know it
+          </Button>
+        ) : null}
+      </div>
+    );
 
   const details = (
     <>
@@ -588,7 +600,7 @@ function ankiActions({
           <Button variant="ghost" disabled={busy} onClick={() => onReset?.()}>
             Stop ignoring
           </Button>
-        ) : anki.overridden ? (
+        ) : anki.overridden && !markedKnown ? (
           <Button variant="ghost" disabled={busy} onClick={() => onReset?.()}>
             {native ? "Use the card’s state" : "Use Anki’s state"}
           </Button>

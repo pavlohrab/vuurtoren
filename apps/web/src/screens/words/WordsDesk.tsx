@@ -17,6 +17,7 @@ import { type KeyboardEvent as ReactKeyboardEvent, useEffect, useRef, useState }
 import { plural } from "../../format.js";
 import { useServices } from "../../services/context.js";
 import { errorText } from "../../services/errors.js";
+import type { KnownUndo } from "../../services/types.js";
 import { useDebounced } from "../../useDebounced.js";
 import { writeLocalJSON } from "../../storage/local.js";
 import { useWordActions } from "../useWordActions.js";
@@ -181,26 +182,52 @@ export function WordsDesk() {
     mutationFn: async ({ keys, how }: { keys: string[]; how: "add" | "know" }) => {
       const opts = actions.deckChoice.chosen ? { deck: actions.deckChoice.chosen } : undefined;
       let done = 0;
+      // What Undo needs for each word marked known.
+      const undos: { key: string; undo?: KnownUndo | undefined }[] = [];
       for (const key of keys) {
         const r = list.find((x) => x.key === key);
         const e = r?.entry ?? (await services.inspectWord(key));
         if (how === "add") {
           if (e.anki.status !== "absent") continue;
           await services.addToAnki(e, opts);
-        } else await services.markKnown(e, opts);
+        } else {
+          const { undo } = await services.markKnown(e, opts);
+          undos.push({ key, undo });
+        }
         done++;
       }
-      return { done, how };
+      return { done, how, undos };
     },
-    onSuccess: ({ done, how }, { keys }) => {
-      if (keys.length > 1 || how === "add")
-        toast(how === "add" ? `Added ${plural(done, "word")}` : `${plural(done, "word")} known`);
+    onSuccess: ({ done, how, undos }, { keys }) => {
+      if (how === "add") {
+        if (keys.length > 1) toast(`Added ${plural(done, "word")}`);
+      } else {
+        // Marking known always offers Undo: the list moves on, so the card can't show it.
+        toast(done === 1 ? "Marked as known" : `${plural(done, "word")} known`, undefined, {
+          label: "Undo",
+          onAct: () => unknow.mutate(undos),
+        });
+      }
       setSelected(new Set());
       // The next word opens.
       if (keys.length === 1 && keys[0] === chosenKey && after) setSearch({ word: after.key });
       refresh();
     },
     onError: (e) => toast("Could not change the words", errorText(e)),
+  });
+  /** Undo of "I know it" from the list: the card's own undo, or back to the card's state. */
+  const unknow = useMutation({
+    mutationFn: async (undos: { key: string; undo?: KnownUndo | undefined }[]) => {
+      for (const u of undos) {
+        if (u.undo && services.undoKnown) await services.undoKnown(u.undo);
+        else await services.resetWordState(u.key);
+      }
+    },
+    onSuccess: () => {
+      toast("Not marked as known any more");
+      refresh();
+    },
+    onError: (e) => toast("Could not undo", errorText(e)),
   });
 
   const move = (by: 1 | -1) => {
