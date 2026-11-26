@@ -328,8 +328,18 @@ impl Lan {
         body: &[u8],
         now: u64,
     ) -> Reply {
+        // Only a paired phone learns what answers here: on a café's Wi-Fi nobody else should
+        // see a Vuurtoren computer (security review, SY13).
         if path == "/api/health" && method == "GET" {
-            return Reply::json(200, json!({ "ok": true, "service": "vuurtoren-desktop" }));
+            let known = bearer.is_some_and(|t| {
+                let h = hash(t);
+                self.phones.iter().any(|p| p.hash == h)
+            });
+            return if known {
+                Reply::json(200, json!({ "ok": true, "service": "vuurtoren-desktop" }))
+            } else {
+                Reply::fail(404, "Not found.")
+            };
         }
         if self.moved && path.starts_with("/api/sync/") {
             return Reply::fail(410, MOVED);
@@ -620,7 +630,18 @@ mod tests {
             1,
         );
         assert_eq!(r.status, 401);
+        // Not even what answers here, to anyone without a token.
         let h = lan.dispatch("GET", "/api/health", &HashMap::new(), None, b"", 1);
+        assert_eq!(h.status, 404);
+        let token = paired(&mut lan);
+        let h = lan.dispatch(
+            "GET",
+            "/api/health",
+            &HashMap::new(),
+            Some(&token),
+            b"",
+            2000,
+        );
         assert_eq!(h.status, 200);
     }
 
