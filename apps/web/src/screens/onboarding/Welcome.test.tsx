@@ -59,7 +59,7 @@ describe("onboarding", () => {
     await user.click(cont());
 
     expect(await screen.findByRole("heading", { name: "Connect Anki" })).toBeVisible();
-    expect(await screen.findByText(/Connected/)).toBeVisible();
+    expect(await screen.findByText(/Anki is connected/)).toBeVisible();
     await user.click(cont());
 
     expect(await screen.findByRole("heading", { name: "Decks Vuurtoren reads" })).toBeVisible();
@@ -267,10 +267,10 @@ describe("onboarding", () => {
     const { user, saveLanguageProfile } = setup({ moveFromAnki });
     await user.click(await screen.findByRole("button", { name: "Yes" }));
     expect(
-      await screen.findByRole("radio", { name: /Import from Anki and use Vuurtoren/ }),
+      await screen.findByRole("radio", { name: /Bring them into Vuurtoren/ }),
     ).toBeChecked();
     await user.click(cont());
-    expect(await screen.findByText(/Connected/)).toBeVisible();
+    expect(await screen.findByText(/Anki is connected/)).toBeVisible();
     await user.click(cont());
     await screen.findByRole("checkbox", { name: /Dutch::Core 2k/ });
     await user.click(cont());

@@ -16,8 +16,8 @@ export function AnkiConnectionHelp({ status, denied }: { status: AnkiStatus; den
   const origin = window.location.origin;
   if (status.state === "connected") {
     return (
-      <p role="status" style={{ margin: 0 }}>
-        Connected{status.version ? `, AnkiConnect version ${status.version}` : ""}.
+      <p role="status" className="status-pill">
+        ✓ Anki is connected{status.version ? ` (AnkiConnect ${status.version})` : ""}
       </p>
     );
   }

@@ -112,11 +112,55 @@
 .ob-choices--row .ob-choice {
   padding: 6px 10px;
 }
-.ob-choice input,
 .ob-check input,
 .ob-deck input {
   margin-top: 3px;
   accent-color: var(--accent);
+}
+/* OB8: a choice is a card you tap anywhere; the radio is drawn, the real one stays for
+   keyboards and screen readers. */
+.ob-choice {
+  position: relative;
+  border: 1.5px solid var(--line);
+  border-radius: 14px;
+  padding: 12px 14px;
+  background: var(--surface);
+  transition:
+    border-color var(--dur-fast),
+    background-color var(--dur-fast);
+}
+.ob-choice input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+.ob-radio {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  border-radius: 50%;
+  border: 1.5px solid var(--line-strong);
+  display: grid;
+  place-items: center;
+}
+.ob-choice:has(input:checked) {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent-soft) 55%, var(--surface));
+}
+.ob-choice:has(input:checked) .ob-radio {
+  border-color: var(--accent);
+}
+.ob-choice:has(input:checked) .ob-radio::after {
+  content: "";
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+.ob-choice:has(input:focus-visible) {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 .ob-choice[data-disabled] {
   cursor: not-allowed;
@@ -273,5 +317,83 @@
   }
   .ob-nav-spacer {
     display: none;
+  }
+}
+
+/* OB8: the top row: a round back button, "Step 2 of 3" and one bar that fills. */
+.ob-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 var(--s-6);
+}
+.ob-back {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  color: var(--ink);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+.ob-back:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.ob-back:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.ob-progress {
+  flex: 1;
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+.ob-progress span {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: var(--ink-muted);
+}
+.ob-progress i {
+  display: block;
+  height: 4px;
+  border-radius: 4px;
+  background: var(--hairline);
+  overflow: hidden;
+}
+.ob-progress b {
+  display: block;
+  height: 100%;
+  border-radius: 4px;
+  background: var(--accent);
+  transition: width var(--dur) ease;
+}
+/* OB8: on a computer the steps sit in one panel in the middle of the window, the logo at the
+   window's top left. Phones keep the whole screen. */
+@media (min-width: 901px) {
+  .ob-shell {
+    align-items: center;
+  }
+  .ob-card {
+    max-width: 600px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    padding: 28px 32px;
+    box-shadow: 0 20px 50px color-mix(in srgb, var(--ink) 12%, transparent);
+  }
+  .ob-brand {
+    position: fixed;
+    left: calc(28px + var(--safe-left));
+    top: calc(22px + var(--safe-top));
+    margin: 0;
+  }
+  .ob-card .ob-choice {
+    background: var(--bg);
   }
 }

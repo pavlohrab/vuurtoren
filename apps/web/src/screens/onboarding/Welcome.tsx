@@ -24,6 +24,7 @@ import {
 } from "@app/core";
 import { STARTER_LEVELS } from "@app/anki";
 import { Button, Spinner, Logo } from "@app/ui";
+import { ChevronLeft } from "lucide-react";
 import { useServices } from "../../services/context.js";
 import type { AnkiStatus } from "../../services/types.js";
 import { AnkiConnectionHelp } from "../settings/AnkiSettings.js";
@@ -351,7 +352,29 @@ export function Welcome() {
     <div className="ob-shell">
       <main className="ob-card">
         <Logo size={28} className="ob-brand" />
-        <ol className="ob-steps" aria-label="Setup steps">
+        {/* OB8: a round back button, "Step 2 of 3" and one bar (the list is for screen readers). */}
+        <div className="ob-top">
+          {draft.step === "server" || (at > 0 && draft.step !== "first") ? (
+            <button
+              type="button"
+              className="ob-back"
+              aria-label="Back"
+              onClick={back}
+              disabled={starter.isPending}
+            >
+              <ChevronLeft size={18} aria-hidden />
+            </button>
+          ) : null}
+          <div className="ob-progress" aria-hidden>
+            <span>
+              Step {PART[draft.step] + 1} of {PARTS.length}
+            </span>
+            <i>
+              <b style={{ width: `${((PART[draft.step] + 1) / PARTS.length) * 100}%` }} />
+            </i>
+          </div>
+        </div>
+        <ol className="ob-steps k-sr" aria-label="Setup steps">
           {PARTS.map((name, i) => (
             <li
               key={name}
@@ -372,9 +395,6 @@ export function Welcome() {
             <p className="ob-lede">Your phone needs a computer or a server to read new texts.</p>
             <ConnectYourServer onState={onServerState} />
             <div className="ob-nav">
-              <Button variant="ghost" onClick={back}>
-                Back
-              </Button>
               <span className="ob-nav-spacer" />
               <Button variant={server === "on" ? "primary" : "secondary"} onClick={next}>
                 {server === "on" ? "Continue" : "Not now"}
@@ -441,7 +461,7 @@ export function Welcome() {
                     name="move"
                     checked={draft.move}
                     onChange={() => setDraft({ move: true })}
-                    title="Import from Anki and use Vuurtoren’s scheduler"
+                    title="Bring them into Vuurtoren"
                     sub="Your decks and their history come in once. Anki doesn’t change."
                   />
                   <Choice
@@ -706,11 +726,6 @@ export function Welcome() {
             ) : null}
 
             <div className="ob-nav">
-              {at > 0 && draft.step !== "first" ? (
-                <Button variant="ghost" onClick={back} disabled={starter.isPending}>
-                  Back
-                </Button>
-              ) : null}
               <span className="ob-nav-spacer" />
               {draft.step === "anki" && !connected ? (
                 <Button
@@ -787,6 +802,7 @@ function Choice({
   return (
     <label className="ob-choice">
       <input type="radio" name={name} checked={checked} onChange={onChange} />
+      <span className="ob-radio" aria-hidden />
       <span>
         <span className="ob-choice-title">{title}</span>
         {sub ? <span className="ob-choice-sub">{sub}</span> : null}
