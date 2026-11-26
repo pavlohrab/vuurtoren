@@ -6,6 +6,7 @@
  * 34 within one. NT2Lex was tried too and was too coarse for texts (every story came out A2).
  */
 import { starterKey } from "@app/anki";
+import { grammarTopic } from "@app/content";
 import type { AnalyzedToken } from "@app/core";
 import { wordKey } from "@app/core";
 import { loadStarterWords } from "./starterWords.js";
@@ -45,4 +46,40 @@ export function starterRanks(): Promise<ReadonlyMap<string, number>> {
     return m;
   });
   return ranks;
+}
+
+/** Share of a text's grammar hits whose topic level is at or below the text's grammar level. */
+const GRAMMAR_SHARE = 0.8;
+/** Fewer hits than this say nothing about a text's grammar. */
+const MIN_HITS = 3;
+const LEVELS: RoughLevel[] = ["A1", "A2", "B1", "B2", "C1"];
+
+/**
+ * A text's grammar level (LV8, notes/levels.md): the first level that holds 80% of its grammar
+ * hits, by their topics' levels. On the 35 stories 33 come out within one level of the one they
+ * were written to; A1 stories come out A2 (they use the perfect tense and split verbs, A2
+ * topics), which is true of them. Null with fewer than three hits.
+ */
+export function grammarLevel(hits: readonly { topic: string }[]): RoughLevel | null {
+  const levels = hits
+    .map((h) => grammarTopic(h.topic)?.level as RoughLevel | undefined)
+    .filter((l): l is RoughLevel => !!l && LEVELS.includes(l));
+  if (levels.length < MIN_HITS) return null;
+  for (const level of LEVELS) {
+    const at = LEVELS.indexOf(level);
+    if (levels.filter((l) => LEVELS.indexOf(l) <= at).length / levels.length >= GRAMMAR_SHARE)
+      return level;
+  }
+  return "C1";
+}
+
+/** "A1 words · A2 grammar" (either part alone when the other is unknown); null for neither. */
+export function levelsLine(
+  words: string | null | undefined,
+  grammar: string | null | undefined,
+): string | null {
+  const parts = [words ? `${words} words` : null, grammar ? `${grammar} grammar` : null].filter(
+    Boolean,
+  );
+  return parts.length ? parts.join(" · ") : null;
 }

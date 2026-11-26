@@ -33,7 +33,7 @@ import { DEFAULT_STAIRCASE, type LearnerCache } from "./liveLearner.js";
 import { fetchTexts } from "./textBatch.js";
 import { nlpOutage } from "./liveSettings.js";
 import { ImportCancelledError } from "./ocrReview.js";
-import { roughTextLevel, starterRanks } from "./textLevel.js";
+import { grammarLevel, roughTextLevel, starterRanks } from "./textLevel.js";
 import {
   contextGloss,
   hasDetachedParticle,
@@ -369,6 +369,17 @@ export function createLiveTexts({
       if (later.length) planLater(later);
       const waiting = new Set(later.map((t) => t.id));
       const rank = await starterRanks().catch(() => null);
+      // The grammar level from each analysed text's stored grammar hits (LV8).
+      const grammarOf = new Map(
+        await Promise.all(
+          texts
+            .filter((t) => t.analyzed)
+            .map(
+              async (t) =>
+                [t.id, grammarLevel((await repo.textGrammar(t.id))?.hits ?? [])] as const,
+            ),
+        ),
+      );
       return texts.map((t) => {
         const v = t.analyzed ? (cachedView(t.id) ?? planned.get(t.id)) : undefined;
         const d = v ? textDifficulty(v.plans) : null;
@@ -377,6 +388,7 @@ export function createLiveTexts({
           coverage: d?.coverage ?? null,
           newTypes: d?.newTypes ?? null,
           roughLevel: v && rank ? roughTextLevel(v.tokens, rank) : null,
+          grammarLevel: grammarOf.get(t.id) ?? null,
           pages: v ? v.plans.length : null,
           ...(waiting.has(t.id) && !v ? { planning: true } : {}),
         };

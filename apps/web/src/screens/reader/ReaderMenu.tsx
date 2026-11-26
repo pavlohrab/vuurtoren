@@ -62,6 +62,7 @@ export function ReaderMenu({
   onViewChange,
   textId,
   summary,
+  about = null,
   grammar,
   readingFocus,
   onFocusMode,
@@ -77,6 +78,8 @@ export function ReaderMenu({
   textId: string;
   /** "82% known · 3 to learn on this page". */
   summary: string;
+  /** "A1 words · A2 grammar · 233 words" (LV8: the text's levels, apart), or null. */
+  about?: string | null;
   grammar: {
     value: GrammarTopic | null;
     topics: readonly PickerTopic[];
@@ -139,7 +142,15 @@ export function ReaderMenu({
         </>
       ) : (
         <>
-          <p className="rmenu-summary">{summary}</p>
+          <p className="rmenu-summary">
+            {summary}
+            {about ? (
+              <>
+                <br />
+                About this text: {about}
+              </>
+            ) : null}
+          </p>
           <div role="menu" aria-label="More reading options" onKeyDown={onMenuKey}>
             <button
               type="button"

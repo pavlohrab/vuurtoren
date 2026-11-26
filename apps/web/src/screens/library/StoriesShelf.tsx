@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { ChevronRight } from "lucide-react";
 import { Skeleton, TextCover, useToast } from "@app/ui";
 import { coverLines, storyHue } from "./coverLine.js";
+import { levelsLine } from "../../services/textLevel.js";
 import { STORY_TYPE } from "./LibraryItem.js";
 import { useServices } from "../../services/context.js";
 import { errorText } from "../../services/errors.js";
@@ -153,6 +154,11 @@ function StoryRow({
                 {coverLines(c.level, c.newWords).map((l) => (
                   <span key={l}>{l}</span>
                 ))}
+                {levelsLine(c.wordsLevel, c.grammarLevel) ? (
+                  <span className="lib-item-levels">
+                    {levelsLine(c.wordsLevel, c.grammarLevel)}
+                  </span>
+                ) : null}
                 {c.textId ? <span className="lib-story-added">In your texts</span> : null}
               </div>
             </li>

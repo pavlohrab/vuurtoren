@@ -5,6 +5,7 @@ import type { DragEvent, FocusEvent, KeyboardEvent } from "react";
 import type { TextListItem } from "../../services/types.js";
 import { type MenuItem, MenuButton } from "./MenuButton.js";
 import { coverLines, textHue } from "./coverLine.js";
+import { levelsLine } from "../../services/textLevel.js";
 import { readingState } from "./shelving.js";
 import { useCoverUrl } from "./useCoverUrl.js";
 import { useCanAddTexts } from "../../platform/canAddTexts.js";
@@ -145,6 +146,10 @@ export function LibraryItem({
         {variant === "shelf"
           ? coverLines(t.level ?? t.roughLevel, t.newTypes).map((l) => <span key={l}>{l}</span>)
           : null}
+        {/* Quietly, how its words and its grammar compare (LV8, Pavlo: nice to see). */}
+        {variant === "shelf" && levelsLine(t.roughLevel, t.grammarLevel) ? (
+          <span className="lib-item-levels">{levelsLine(t.roughLevel, t.grammarLevel)}</span>
+        ) : null}
         {t.level && variant === "grid" ? <span className="lib-level">{t.level}</span> : null}
         {/* Your own texts: a rough level from the common words (stories have their own). */}
         {variant === "grid" && !t.level && t.roughLevel ? (

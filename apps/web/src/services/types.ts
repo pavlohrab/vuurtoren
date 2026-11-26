@@ -61,6 +61,8 @@ export interface TextListItem extends TextSummary {
   newTypes: number | null;
   /** A rough level ("about B1", `roughTextLevel`); null until analysed. */
   roughLevel?: string | null;
+  /** The level of its grammar ("A2", `grammarLevel`, LV8); null until analysed or too few hits. */
+  grammarLevel?: string | null;
   /** Reader pages (the reading plan's segments); null until analysed. */
   pages: number | null;
   /** Its plan (coverage, pages) is still being made in the background: ask again soon. */

@@ -1,6 +1,6 @@
 import type { AnalyzedToken } from "@app/core";
 import { describe, expect, it } from "vitest";
-import { roughTextLevel } from "./textLevel.js";
+import { grammarLevel, levelsLine, roughTextLevel } from "./textLevel.js";
 
 const tok = (lemma: string, extra: Partial<AnalyzedToken> = {}): AnalyzedToken =>
   ({
@@ -38,5 +38,25 @@ describe("roughTextLevel", () => {
     ];
     expect(roughTextLevel([...common, ...extra], RANK)).toBe("A1");
     expect(roughTextLevel([tok("Kampen", { is_propn: true })], RANK)).toBeNull();
+  });
+});
+
+describe("grammarLevel (LV8)", () => {
+  const hits = (...ids: string[]) => ids.map((topic) => ({ topic }));
+  it("is the first level holding 80% of the grammar hits", () => {
+    expect(grammarLevel(hits("de-het", "demonstratives", "dates-and-time", "comparison"))).toBe(
+      "A2",
+    );
+    expect(grammarLevel(hits("de-het", "de-het", "de-het", "de-het", "comparison"))).toBe("A1");
+    expect(grammarLevel(hits("adverbs", "conditional", "er", "de-het"))).toBe("B1");
+  });
+  it("says nothing with fewer than three hits, or topics it doesn't know", () => {
+    expect(grammarLevel(hits("de-het", "conditional"))).toBeNull();
+    expect(grammarLevel(hits("nope", "nope", "nope"))).toBeNull();
+  });
+  it("reads as one quiet line", () => {
+    expect(levelsLine("A1", "A2")).toBe("A1 words · A2 grammar");
+    expect(levelsLine(null, "B1")).toBe("B1 grammar");
+    expect(levelsLine(undefined, null)).toBeNull();
   });
 });

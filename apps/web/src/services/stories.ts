@@ -8,6 +8,7 @@
  * text's grammar hits (`/grammar`), so side by side, its structure view and the grammar marks
  * work without the server too (see `storyExtras`).
  */
+import { grammarLevel, roughTextLevel } from "./textLevel.js";
 import {
   type AnalyzedToken,
   type GrammarHit,
@@ -307,6 +308,9 @@ export interface StoryCover {
   coverage: number;
   /** Different words in it that are new to the learner. */
   newWords: number;
+  /** Its words' level from the frequency bands, and its grammar's level (LV8). */
+  wordsLevel: string | null;
+  grammarLevel: string | null;
   /** Above the learner's comfort level: visible, but marked. */
   stretch: boolean;
   /** The Library text once the story was opened, else null. */
@@ -318,6 +322,8 @@ export function storyCovers(
   list: readonly BundledStory[],
   model: LearnerModel,
   texts: readonly { id: string; sourceRef?: string | undefined }[],
+  /** The starter list's ranks, for the words' level (LV8); without them it is left out. */
+  rank: ReadonlyMap<string, number> | null = null,
 ): StoryCover[] {
   const opened = new Map<string, string>();
   for (const t of texts) {
@@ -336,6 +342,8 @@ export function storyCovers(
       ...(s.credit ? { credit: s.credit } : {}),
       coverage,
       newWords: storyNewWords(s, model),
+      wordsLevel: rank ? roughTextLevel(s.tokens, rank) : null,
+      grammarLevel: grammarLevel(s.grammar ?? []),
       stretch: coverage < STRETCH_BELOW,
       textId: opened.get(s.slug) ?? null,
     };

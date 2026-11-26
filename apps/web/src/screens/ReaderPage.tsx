@@ -1,3 +1,4 @@
+import { grammarLevel, levelsLine, roughTextLevel, starterRanks } from "../services/textLevel.js";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "@tanstack/react-router";
 import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
@@ -33,6 +34,7 @@ import {
   useToast,
 } from "@app/ui";
 import { useServices } from "../services/context.js";
+import { storySlugOf } from "../services/stories.js";
 import type { InspectorEntry, ReadingView } from "../services/types.js";
 import { notesFor } from "./GrammarNotes.js";
 import {
@@ -452,6 +454,31 @@ export function ReaderPage({ textId }: { textId: string }) {
     retry: 1,
   });
   const hits = useMemo(() => grammarQ.data ?? [], [grammarQ.data]);
+  // The text's levels, apart (LV8): its words (frequency bands) and its grammar.
+  const ranksQ = useQuery({
+    queryKey: ["starter-ranks"],
+    queryFn: () => starterRanks(),
+    staleTime: Infinity,
+  });
+  // A story has its levels from its own analysis, the same as on its cover.
+  const storyQ = useQuery({
+    queryKey: ["stories"],
+    queryFn: () => services.storyShelf(),
+    enabled: !!storySlugOf(data?.text.sourceRef),
+  });
+  const aboutText = useMemo(() => {
+    if (!data) return null;
+    const slug = storySlugOf(data.text.sourceRef);
+    const story = slug ? storyQ.data?.find((c) => c.slug === slug) : undefined;
+    const words = story
+      ? story.wordsLevel
+      : ranksQ.data
+        ? roughTextLevel(data.tokens, ranksQ.data)
+        : null;
+    const levels = levelsLine(words, story ? story.grammarLevel : grammarLevel(hits));
+    const count = `${data.text.wordCount.toLocaleString("en")} words`;
+    return levels ? `${levels} · ${count}` : count;
+  }, [data, ranksQ.data, hits, storyQ.data]);
   const learnerQ = useQuery({ queryKey: ["learner"], queryFn: () => services.learnerSummary() });
   const [recent, setRecent] = useState(readRecentTopics);
   const markContext = useMemo(
@@ -907,6 +934,7 @@ export function ReaderPage({ textId }: { textId: string }) {
                     onViewChange={setMenuView}
                     textId={textId}
                     summary={knownTitle}
+                    about={aboutText}
                     grammar={{
                       value: focusTopic,
                       topics: pickerTopics,

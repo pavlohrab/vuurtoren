@@ -8,6 +8,7 @@ import type { AnalyzedToken, GrammarHit, LearnerModel } from "@app/core";
 import { type VuurtorenRepository, contentHash } from "@app/db";
 import { ALIGN_MIN_CONFIDENCE, type AlignedMeaning } from "./liveDictionary.js";
 import { englishTokens } from "./livePairs.js";
+import { starterRanks } from "./textLevel.js";
 import {
   type BundledStory,
   type StoryCover,
@@ -66,8 +67,13 @@ export function createLiveStories(deps: LiveStoriesDeps) {
   }
 
   async function storyShelf(): Promise<StoryCover[]> {
-    const [list, model, texts] = await Promise.all([stories(), deps.model(), textsOnePerStory()]);
-    return storyCovers(list, model, texts);
+    const [list, model, texts, rank] = await Promise.all([
+      stories(),
+      deps.model(),
+      textsOnePerStory(),
+      starterRanks().catch(() => null),
+    ]);
+    return storyCovers(list, model, texts, rank);
   }
 
   async function addStory(slug: string): Promise<string> {
