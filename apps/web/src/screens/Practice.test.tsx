@@ -193,7 +193,7 @@ describe("Practice session", () => {
       } else {
         await user.type(screen.getByLabelText("Your answer"), `${e.answer}{Enter}`);
       }
-      expect(await fed(/^(Nice|Good|Well done|Yes|Right)$/)).toBeInTheDocument();
+      expect(await fed(/^(Nice|Good|Well done|Yes|Right|On a roll)$/)).toBeInTheDocument();
       await user.keyboard("{Enter}");
     }
 
@@ -297,10 +297,10 @@ describe("Practice session", () => {
     const { user } = setup(list);
     await begin(user);
     await user.keyboard("d"); // schuur: de
-    expect(await fed(/^(Nice|Good|Well done|Yes|Right)$/)).toBeInTheDocument();
+    expect(await fed(/^(Nice|Good|Well done|Yes|Right|On a roll)$/)).toBeInTheDocument();
     await user.keyboard("{Enter}");
     await user.keyboard("2"); // boek: het
-    expect(await fed(/^(Nice|Good|Well done|Yes|Right)$/)).toBeInTheDocument();
+    expect(await fed(/^(Nice|Good|Well done|Yes|Right|On a roll)$/)).toBeInTheDocument();
   });
 
   it("reveals letters of a typed answer with ? and undoes scramble pieces with Backspace", async () => {
@@ -313,7 +313,7 @@ describe("Practice session", () => {
     expect(input).toHaveValue("");
     expect(screen.getByText("b…")).toBeInTheDocument();
     await user.type(input, "brug{Enter}");
-    expect(await fed(/^(Nice|Good|Well done|Yes|Right)$/)).toBeInTheDocument();
+    expect(await fed(/^(Nice|Good|Well done|Yes|Right|On a roll)$/)).toBeInTheDocument();
     await user.keyboard("{Enter}");
 
     const words = await screen.findByRole("group", { name: "Words" });
@@ -408,7 +408,7 @@ describe("Practice session", () => {
     const { user } = setup(list);
     await begin(user);
     await user.keyboard("d");
-    expect(await fed(/^(Nice|Good|Well done|Yes|Right)$/)).toBeInTheDocument();
+    expect(await fed(/^(Nice|Good|Well done|Yes|Right|On a roll)$/)).toBeInTheDocument();
     await user.keyboard("{Escape}");
     expect(screen.getByRole("group", { name: "End the session?" })).toBeInTheDocument();
     expect(screen.queryByText("Lesson done")).not.toBeInTheDocument();
@@ -513,7 +513,7 @@ describe("Practice session", () => {
     // the dictation is skipped asynchronously: wait for the gender exercise before typing
     await screen.findByText("de or het?");
     await user.keyboard("d");
-    expect(await fed(/^(Nice|Good|Well done|Yes|Right)$/)).toBeInTheDocument();
+    expect(await fed(/^(Nice|Good|Well done|Yes|Right|On a roll)$/)).toBeInTheDocument();
     await user.keyboard("{Enter}");
     expect(await screen.findByText(/1 listening exercise was skipped/)).toBeInTheDocument();
     expect(answers).toHaveLength(1);

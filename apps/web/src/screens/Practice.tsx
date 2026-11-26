@@ -668,6 +668,12 @@ function Session({
   const [exercises, setExercises] = useState(planned);
   const [index, setIndex] = useState(0);
   const [feedback, setFeedback] = useState<ExerciseFeedback | null>(null);
+  /** After a miss, the word comes back at the end of the lesson (comeBack). */
+  const [comesBack, setComesBack] = useState(false);
+  /** Right answers in a row, for "On a roll". */
+  const [streak, setStreak] = useState(0);
+  /** The exercise slides out before the next one comes in (Movement on). */
+  const [leaving, setLeaving] = useState(false);
   const [submitted, setSubmitted] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -698,6 +704,7 @@ function Session({
         setFeedback(null);
         setSubmitted(null);
         setError(null);
+        setComesBack(false);
       }
     },
     [index, exercises.length, onFinish],
@@ -772,11 +779,16 @@ function Session({
             xs.filter((x, i) => i <= index || !(x.key === current.key && x.id.endsWith("-again"))),
           );
         // One second go per word: not again after a retry, and not for a second go itself.
+        let back = false;
         if (!result.correct && !current.id.endsWith("-again") && !retried.current.has(current.id)) {
           const again = await services.comeBack?.(current).catch(() => null);
-          if (again && !saidRightIds.current.has(current.id))
+          if (again && !saidRightIds.current.has(current.id)) {
+            back = true;
             setExercises((xs) => (xs.some((x) => x.id === again.id) ? xs : [...xs, again]));
+          }
         }
+        setComesBack(back);
+        setStreak((n) => (result.correct ? n + 1 : 0));
         setSubmitted(s.answer);
         setFeedback({ correct: result.correct, ...(result.note ? { note: result.note } : {}) });
         playSound(result.correct ? "right" : "wrong", feel);
@@ -876,14 +888,29 @@ function Session({
           </Button>
         </p>
       ) : null}
-      <div className={`practice-card${moving(feel) ? " practice-move" : ""}`}>
+      <div
+        className={`practice-card${moving(feel) ? " practice-move" : ""}${leaving ? " practice-leaving" : ""}`}
+      >
         <ExerciseCard
           key={current.id}
           exercise={current}
           feedback={feedback}
           submitted={submitted}
           onSubmit={(s) => void submit(s)}
-          onContinue={() => advance(answeredRef.current, skippedRef.current)}
+          onContinue={() => {
+            // The old exercise slides out, then the next slides in (mock-practice-miss.html).
+            if (!moving(feel) || leaving) {
+              advance(answeredRef.current, skippedRef.current);
+              return;
+            }
+            setLeaving(true);
+            window.setTimeout(() => {
+              setLeaving(false);
+              advance(answeredRef.current, skippedRef.current);
+            }, 180);
+          }}
+          comesBack={comesBack}
+          streak={streak}
           onSpeak={speak}
           continueLabel={last ? "Finish" : "Continue"}
           onWord={(form, sentence, el) => inspector.open(form, sentence, el)}

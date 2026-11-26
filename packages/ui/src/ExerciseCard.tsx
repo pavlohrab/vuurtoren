@@ -7,8 +7,8 @@
  * continues, Backspace takes the last tile back, ? reveals a letter or places the next tile.
  * Holding a tile (or right-clicking it) shows what the word means; that counts as help.
  */
-import { Mic, Snail, Square, Volume2, X } from "lucide-react";
-import { type FormEvent, useEffect, useRef, useState } from "react";
+import { Mic, Snail, Square, Volume2 } from "lucide-react";
+import { type FormEvent, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { Exercise } from "@app/core";
 import { Button } from "./Button.js";
 import { WordText } from "./WordText.js";
@@ -60,6 +60,10 @@ export interface ExerciseCardProps {
   onTick?: () => void;
   /** The not-quite sound, for a pair that doesn't match. */
   onMiss?: () => void;
+  /** After a miss: the word comes back at the end of the lesson (Practice's comeBack). */
+  comesBack?: boolean;
+  /** Right answers in a row, this one included: five or more says "On a roll". */
+  streak?: number;
   /** "Say this sentence" with the device's own recogniser (Android): it listens itself. */
   listenLive?: { start: () => Promise<string>; stop: () => void };
 }
@@ -133,6 +137,8 @@ export function ExerciseCard({
   sayDutch = false,
   onTick,
   onMiss,
+  comesBack = false,
+  streak = 0,
 }: ExerciseCardProps) {
   const mode = exerciseMode(e);
   const answered = feedback !== null;
@@ -149,7 +155,15 @@ export function ExerciseCard({
       return cur.filter((_, m) => m !== n);
     });
   /** The word for a right answer, a different one now and then (mock-practice-reward.html, B). */
-  const praise = PRAISE[(e.id.length + e.id.charCodeAt(e.id.length - 1)) % PRAISE.length]!;
+  const praise =
+    streak >= 5
+      ? "On a roll"
+      : PRAISE[(e.id.length + e.id.charCodeAt(e.id.length - 1)) % PRAISE.length]!;
+  const missed = !!feedback && !feedback.correct;
+  // A typed answer a letter or two off is "Almost" (mock-practice-miss.html).
+  const typedMiss = missed && (mode === "typed" || mode === "dictation") && !!submitted;
+  const off = typedMiss ? editDistance(norm(submitted), norm(e.answer)) : 99;
+  const almost = typedMiss && off > 0 && off <= 2;
   /** The speaker pulses while the card says something. */
   const [saying, setSaying] = useState(false);
   const sayTimer = useRef<number | undefined>(undefined);
@@ -166,6 +180,50 @@ export function ExerciseCard({
 
   const choices = mode === "gender" ? (e.choices ?? ["de", "het"]) : (e.choices ?? []);
   const pieces = e.pieces ?? [];
+  // A missed sentence: the tiles in the wrong place flash, then glide into the right order
+  // (mock-practice-miss.html). The same buttons move, so it reads as one motion.
+  const builtRef = useRef<HTMLDivElement | null>(null);
+  const flipFrom = useRef<Map<number, DOMRect> | null>(null);
+  useEffect(() => {
+    if (!(missed && mode === "scramble")) return;
+    const words = e.answer.split(/\s+/);
+    const used = new Set<number>();
+    const right: number[] = [];
+    for (const w of words) {
+      const k = pieces.findIndex((p, j) => !used.has(j) && bare(p) === bare(w));
+      if (k < 0) return; // pieces that don't make the answer word by word: leave as is
+      used.add(k);
+      right.push(k);
+    }
+    if (right.join() === picked.join()) return;
+    const t = window.setTimeout(() => {
+      const map = new Map<number, DOMRect>();
+      for (const el of builtRef.current?.querySelectorAll<HTMLElement>("[data-piece]") ?? [])
+        map.set(Number(el.dataset["piece"]), el.getBoundingClientRect());
+      flipFrom.current = map;
+      setPicked(right);
+    }, 750);
+    return () => window.clearTimeout(t);
+  }, [missed]);
+  useLayoutEffect(() => {
+    const from = flipFrom.current;
+    if (!from) return;
+    flipFrom.current = null;
+    for (const el of builtRef.current?.querySelectorAll<HTMLElement>("[data-piece]") ?? []) {
+      const a = from.get(Number(el.dataset["piece"]));
+      if (!a) continue;
+      const b = el.getBoundingClientRect();
+      el.animate(
+        [
+          { transform: `translate(${a.left - b.left}px, ${a.top - b.top}px)` },
+          { transform: "none" },
+        ],
+        { duration: 550, easing: "cubic-bezier(.2,.9,.25,1)" },
+      );
+      el.classList.add("ex-piece--now-right");
+    }
+    if (sayDutch) window.setTimeout(() => say(e.answer), 450);
+  }, [picked]);
 
   const submit = (answer: string) => {
     if (answered) return;
@@ -339,7 +397,7 @@ export function ExerciseCard({
   if (mode === "meet")
     return (
       <section
-        className={cn("ex-card", saying && "ex-card--saying")}
+        className={cn("ex-card", saying && "ex-card--saying", missed && "ex-card--missed")}
         aria-label="Exercise"
         ref={cardRef}
       >
@@ -371,7 +429,7 @@ export function ExerciseCard({
   if (mode === "pairs")
     return (
       <section
-        className={cn("ex-card", saying && "ex-card--saying")}
+        className={cn("ex-card", saying && "ex-card--saying", missed && "ex-card--missed")}
         aria-label="Exercise"
         ref={cardRef}
       >
@@ -388,7 +446,7 @@ export function ExerciseCard({
 
   return (
     <section
-      className={cn("ex-card", saying && "ex-card--saying")}
+      className={cn("ex-card", saying && "ex-card--saying", missed && "ex-card--missed")}
       aria-label="Exercise"
       ref={cardRef}
     >
@@ -473,6 +531,7 @@ export function ExerciseCard({
       {mode === "scramble" ? (
         <div className="ex-scramble">
           <div
+            ref={builtRef}
             className="ex-built ex-dutch"
             lang="nl"
             aria-label="Your sentence"
@@ -480,9 +539,15 @@ export function ExerciseCard({
           >
             {picked.map((i, n) => (
               <button
-                key={`${i}-${n}`}
+                key={i}
+                data-piece={i}
                 type="button"
-                className="ex-piece ex-piece--placed ex-piece--fly"
+                className={cn(
+                  "ex-piece ex-piece--placed ex-piece--fly",
+                  missed &&
+                    bare(e.answer.split(/\s+/)[n] ?? "") !== bare(pieces[i] ?? "") &&
+                    "ex-piece--wrong-place",
+                )}
                 disabled={answered}
                 onClick={() => takeBack(n)}
               >
@@ -649,9 +714,13 @@ export function ExerciseCard({
                 <path d="M12 21 l6 6 l11 -13" />
               </svg>
             ) : (
-              <X size={18} aria-hidden />
+              // A soft × that wobbles in, never a buzzer (mock-practice-miss.html).
+              <svg className="ex-x" viewBox="0 0 28 28" aria-hidden>
+                <circle cx="14" cy="14" r="12.5" />
+                <path d="M10 10 l8 8 M18 10 l-8 8" />
+              </svg>
             )}
-            {feedback.correct ? praise : "Not quite"}
+            {feedback.correct ? praise : almost ? "Almost" : "Not quite"}
           </p>
           <p className="ex-strip-dutch ex-dutch" lang="nl">
             {onSpeak ? (
@@ -672,13 +741,29 @@ export function ExerciseCard({
               )}
             </span>
           </p>
-          {resultDutch !== e.answer && !feedback.correct ? (
+          {typedMiss ? (
+            // The right word letter by letter: green where it was right, red where it wasn't.
+            <p className="ex-diff ex-dutch" lang="nl" aria-label={`Answer: ${e.answer}`}>
+              {[...e.answer].map((ch, k) => (
+                <span
+                  key={k}
+                  className={(submitted ?? "")[k]?.toLowerCase() === ch.toLowerCase() ? "ok" : "no"}
+                  style={{ animationDelay: `${0.3 + k * 0.05}s` }}
+                >
+                  {ch}
+                </span>
+              ))}
+            </p>
+          ) : resultDutch !== e.answer && !feedback.correct ? (
             <p>
               Answer:{" "}
               <strong className="ex-dutch" lang="nl">
                 {e.answer}
               </strong>
             </p>
+          ) : null}
+          {missed && comesBack ? (
+            <p className="ex-back">↻ It comes back at the end of the lesson</p>
           ) : null}
           {e.prompt.translation ? <p className="ex-translation">{e.prompt.translation}</p> : null}
           {feedback.note ? <p>{feedback.note}</p> : null}
@@ -734,7 +819,8 @@ export function ExerciseCard({
             </span>
           ) : null}
           <Button variant="primary" className="ex-continue" onClick={onContinue}>
-            {continueLabel} <kbd className="ex-key">Enter</kbd>
+            {missed && continueLabel === "Continue" ? "Got it" : continueLabel}{" "}
+            <kbd className="ex-key">Enter</kbd>
           </Button>
         </div>
       ) : null}
@@ -768,13 +854,39 @@ function Pairs({
   const [miss, setMiss] = useState<string | null>(null);
   const [missNl, setMissNl] = useState<string | null>(null);
   const all = done.size === pairs.length;
-  const tryMeaning = (en: string) => {
+  const boxRef = useRef<HTMLDivElement | null>(null);
+  const linkTimer = useRef<number | undefined>(undefined);
+  useEffect(() => () => window.clearTimeout(linkTimer.current), []);
+  /** A match being shown: a thin line joins the two, then they pop away. */
+  const [link, setLink] = useState<{ nl: string; line: [number, number, number, number] } | null>(
+    null,
+  );
+  const tryMeaning = (en: string, enEl?: HTMLElement) => {
     if (!picked) return;
     const right = pairs.find((p) => p.nl === picked)?.en === en;
     if (right) {
-      setDone((d) => new Set(d).add(picked));
+      const box = boxRef.current?.getBoundingClientRect();
+      const nlEl = boxRef.current?.querySelector<HTMLElement>(`[data-nl="${CSS.escape(picked)}"]`);
+      const a = nlEl?.getBoundingClientRect();
+      const b = enEl?.getBoundingClientRect();
+      const nl = picked;
       setPicked(null);
       onTick?.();
+      // The match counts at once (the next tap is never held up); the line plays over it.
+      setDone((d) => new Set(d).add(nl));
+      if (box && a && b) {
+        setLink({
+          nl,
+          line: [
+            a.right - box.left,
+            a.top + a.height / 2 - box.top,
+            b.left - box.left,
+            b.top + b.height / 2 - box.top,
+          ],
+        });
+        window.clearTimeout(linkTimer.current);
+        linkTimer.current = window.setTimeout(() => setLink(null), 420);
+      }
     } else {
       setMiss(en);
       setMissNl(picked);
@@ -787,16 +899,23 @@ function Pairs({
   };
   return (
     <>
-      <div className="ex-pairs">
+      <div className="ex-pairs" ref={boxRef}>
+        {link ? (
+          <svg className="ex-pair-link" aria-hidden>
+            <line x1={link.line[0]} y1={link.line[1]} x2={link.line[2]} y2={link.line[3]} />
+          </svg>
+        ) : null}
         <div role="group" aria-label="Dutch">
           {pairs.map((p) => (
             <button
               key={p.nl}
+              data-nl={p.nl}
               type="button"
               lang="nl"
               className={cn(
                 "ex-pair ex-dutch",
                 picked === p.nl && "ex-pair--on",
+                link?.nl === p.nl && "ex-pair--match",
                 done.has(p.nl) && "ex-pair--done",
                 missNl === p.nl && "ex-pair--miss",
               )}
@@ -820,9 +939,10 @@ function Pairs({
                 "ex-pair",
                 done.has(p.nl) && "ex-pair--done",
                 miss === p.en && "ex-pair--miss",
+                link && pairs.find((q) => q.nl === link.nl)?.en === p.en && "ex-pair--match",
               )}
               disabled={done.has(p.nl) || !picked}
-              onClick={() => tryMeaning(p.en)}
+              onClick={(ev) => tryMeaning(p.en, ev.currentTarget)}
             >
               {p.en}
             </button>
@@ -1008,6 +1128,27 @@ function MarkedSentence({ answer, given }: { answer: string; given: string }) {
   );
 }
 
+/** A tile's word without its punctuation, for comparing with the answer ("rood." is "rood"). */
+const bare = (w: string) => w.replace(/[.,!?;:"'«»]/g, "").toLowerCase();
+
+/** Lower case, no spaces at the ends: for "how far off" a typed answer is. */
+const norm = (x: string | null | undefined) => (x ?? "").trim().toLowerCase();
+
+/** Letters to add, drop, change or swap to get from `a` to `b` (a swap counts once). */
+function editDistance(a: string, b: string): number {
+  const d = Array.from({ length: a.length + 1 }, (_, i) => [i, ...Array<number>(b.length).fill(0)]);
+  for (let j = 1; j <= b.length; j++) d[0]![j] = j;
+  for (let i = 1; i <= a.length; i++)
+    for (let j = 1; j <= b.length; j++) {
+      const c = a[i - 1] === b[j - 1] ? 0 : 1;
+      let v = Math.min(d[i - 1]![j]! + 1, d[i]![j - 1]! + 1, d[i - 1]![j - 1]! + c);
+      if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1])
+        v = Math.min(v, d[i - 2]![j - 2]! + 1);
+      d[i]![j] = v;
+    }
+  return d[a.length]![b.length]!;
+}
+
 const PRAISE = ["Nice", "Good", "Well done", "Yes", "Right"] as const;
 
 /** The round speaker button next to Dutch text. */
@@ -1041,7 +1182,10 @@ export function ExerciseProgress({ done, total }: ExerciseProgressProps) {
       aria-valuemax={total}
       aria-valuenow={done}
     >
-      <div className="ex-progress-bar" style={{ width: `${pct}%` }} />
+      <div className="ex-progress-bar" style={{ width: `${pct}%` }}>
+        {/* A short light runs along it each time it moves on. */}
+        <span key={done} className="ex-progress-shine" aria-hidden />
+      </div>
     </div>
   );
 }

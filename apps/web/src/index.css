@@ -1428,6 +1428,14 @@
     transition: width 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
   }
 }
+/* The old exercise slides out to the left before the next comes in. */
+.practice-leaving .ex-card {
+  transition:
+    transform 0.18s ease-in,
+    opacity 0.18s ease-in;
+  transform: translateX(-40px);
+  opacity: 0;
+}
 @keyframes practice-in {
   from {
     opacity: 0;
