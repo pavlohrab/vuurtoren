@@ -72,26 +72,26 @@ test.describe("phone 412px", () => {
     await shot(page, "book-phone-word-low");
   });
 
-  test("a tap on the right side turns to the next screen of the page", async ({ page }) => {
+  test("a tap on the right side turns to the next screen of the text", async ({ page }) => {
     await openStory(page);
-    const counter = page.locator(".book-screens");
-    const pageCount = page.locator(".reader-pager-count [aria-hidden]");
-    await expect(counter).toHaveText(/^Screen 1 of \d+$/);
-    await expect(pageCount).toHaveText(/^1 \/ \d+$/);
+    // One flow: one quiet line says where the reader is, no page or screen counters.
+    const where = page.locator(".book-left");
+    await expect(where).toHaveText(/^\d+% · \d+ min left$/);
+    await expect(page.locator(".reader-pager-count")).toHaveCount(0);
+    const first = await where.textContent();
     // The text area is one screen wide: nothing sticks out.
     const vp = (await page.locator(".book-vp").boundingBox())!;
     expect(vp.x + vp.width).toBeLessThanOrEqual(412);
     await shot(page, "book-phone-light");
 
-    // The right margin is not a word: a tap there turns the screen, not the page.
+    // The right margin is not a word: a tap there turns the screen.
     await page.mouse.click(404, vp.y + vp.height / 2);
-    await expect(counter).toHaveText(/^Screen 2 of \d+$/);
-    await expect(pageCount).toHaveText(/^1 \/ \d+$/);
+    await expect(where).not.toHaveText(first ?? "");
     await shot(page, "book-phone-screen2");
 
     // A tap on the left side goes back.
     await page.mouse.click(8, vp.y + vp.height / 2);
-    await expect(counter).toHaveText(/^Screen 1 of \d+$/);
+    await expect(where).toHaveText(first ?? "");
   });
 
   test("a tap in the middle hides the bars, another brings them back", async ({ page }) => {

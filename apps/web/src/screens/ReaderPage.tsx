@@ -8,7 +8,7 @@ import { ModeMenu } from "./reader/ModeMenu.js";
 import { useSwipePages } from "./reader/useSwipePages.js";
 import { type BookHandle, BookPages, type BookScreen } from "./reader/BookPages.js";
 import { BookScrub } from "./reader/BookScrub.js";
-import { DEFAULT_WPM, nextWpm, timeLeftLine } from "./reader/bookMath.js";
+import { DEFAULT_WPM, minutesFor, nextWpm } from "./reader/bookMath.js";
 import { takeVolumeKeys } from "../platform/volumeKeys.js";
 import { formLine } from "./reader/formLine.js";
 import { useWordCard } from "./reader/useWordCard.js";
@@ -310,6 +310,11 @@ export function ReaderPage({ textId }: { textId: string }) {
   // Book mode: pages turn instead of scrolling (BookPages.tsx).
   // Side by side is a study view that needs the whole width: it scrolls, as before.
   const book = prefs.pages === "turn" && mode !== "side";
+  // Book mode is one flow: every segment's plan, the current one held as it was frozen.
+  const flowPlans = useMemo(
+    () => (plan ? (book && plans ? plans.map((p, i) => (i === current ? plan : p)) : [plan]) : []),
+    [book, plans, plan, current],
+  );
   const bookRef = useRef<BookHandle | null>(null);
   const [bookAt, setBookAt] = useState<BookScreen>({ screen: 0, screens: 1, anchor: null });
   /** The bars are hidden by a tap in the middle of the page. */
@@ -565,18 +570,22 @@ export function ReaderPage({ textId }: { textId: string }) {
   const blanks = mode === "cloze" || (mode === "gloss" && (settingsQ.data?.glossClozes ?? false));
   const glossIdx = useMemo(() => {
     if (!plan) return [];
-    // Detached particles ("op" in "bel ... op") share their verb's translation: show it once.
-    if (mode === "gloss") {
-      const dial = glossTargets(
-        plan.tokens.filter((p) => data?.tokens[p.i]?.particle_of == null),
-        help,
-        GLOSS_MIN,
-      );
-      return blanks ? [...new Set([...dial, ...plan.clozes])].sort((a, b) => a - b) : dial;
+    // One flow (book mode): this segment and the next, so help is there when the reader is.
+    const near = book && plans?.[current + 1] ? [plan, plans[current + 1]!] : [plan];
+    const idx: number[] = [];
+    for (const p of near) {
+      // Detached particles ("op" in "bel ... op") share their verb's translation: show it once.
+      if (mode === "gloss") {
+        const dial = glossTargets(
+          p.tokens.filter((t) => data?.tokens[t.i]?.particle_of == null),
+          help,
+          GLOSS_MIN,
+        );
+        idx.push(...(blanks ? [...new Set([...dial, ...p.clozes])] : dial));
+      } else if (mode === "cloze" && prefs.clozeMeaning) idx.push(...p.clozes);
     }
-    if (mode === "cloze") return prefs.clozeMeaning ? [...plan.clozes] : [];
-    return [];
-  }, [plan, help, mode, data, blanks, prefs.clozeMeaning]);
+    return [...new Set(idx)].sort((a, b) => a - b);
+  }, [plan, plans, book, current, help, mode, data, blanks, prefs.clozeMeaning]);
   const glossQ = useQuery({
     queryKey: ["glosses", textId, current, glossIdx.join(",")],
     queryFn: () => services.glosses(textId, glossIdx),
@@ -814,38 +823,89 @@ export function ReaderPage({ textId }: { textId: string }) {
     }
   };
 
+  /**
+   * Record that segment `seg` was read (its stats, the reading speed, the resume point). A
+   * segment already recorded, or before the resume point, is not sent again: it would read as an
+   * "easy" signal with no stats.
+   */
+  const recordSegment = async (seg: number, p: SegmentPlan) => {
+    if (!data || finished.current.has(seg) || seg < data.text.lastSegment) return;
+    const words = p.tokens.filter(isWord).length;
+    // In one flow (book mode) the answers of all pages are kept: count this page's own.
+    const own = new Set(p.clozes);
+    const mine = [...credits].filter(([i]) => own.has(i));
+    // Blanks shown in Cloze mode count as answered even if left empty or revealed (0 credit).
+    const tested = Math.max(mine.length, blanks ? p.clozes.length : 0);
+    const credit = mine.reduce((a, [, c]) => a + c, 0);
+    await services.finishSegment(textId, seg, {
+      clozeAccuracy: tested > 0 ? credit / tested : null,
+      lookupsPer100: words > 0 ? (lookups.current / words) * 100 : 0,
+    });
+    finished.current.add(seg);
+    lookups.current = 0;
+    // The reader's speed, for the time left: this page's words over the time it was open.
+    const wpm = Number(readLocal(WPM_KEY)) || DEFAULT_WPM;
+    writeLocal(WPM_KEY, String(nextWpm(wpm, words, Date.now() - pageStart.current)));
+    pageStart.current = Date.now();
+    // Keep the cached resume point current so reopening the text does not use a stale one.
+    qc.setQueryData<ReadingView | null>(["reading", textId], (d) =>
+      d ? { ...d, text: { ...d.text, lastSegment: Math.max(d.text.lastSegment, seg + 1) } } : d,
+    );
+    void qc.invalidateQueries({ queryKey: ["texts"], refetchType: "none" });
+  };
+
   const finish = async () => {
     if (!plan || !data) return;
-    // A segment finished earlier (this visit, or before the resume point) is just navigated:
-    // submitting it again would send a segment with no stats and read as an "easy" signal.
-    if (finished.current.has(current) || current < data.text.lastSegment) {
-      await advance();
-      return;
-    }
     setFinishing(true);
     try {
-      const words = plan.tokens.filter(
-        (t) => t.label !== "nonword" && t.label !== "ignored",
-      ).length;
-      // Blanks shown in Cloze mode count as answered even if left empty or revealed (0 credit).
-      const tested = Math.max(credits.size, blanks ? plan.clozes.length : 0);
-      const credit = [...credits.values()].reduce((a, b) => a + b, 0);
-      await services.finishSegment(textId, current, {
-        clozeAccuracy: tested > 0 ? credit / tested : null,
-        lookupsPer100: words > 0 ? (lookups.current / words) * 100 : 0,
-      });
-      finished.current.add(current);
-      // The reader's speed, for the time left: this page's words over the time it was open.
-      const wpm = Number(readLocal(WPM_KEY)) || DEFAULT_WPM;
-      writeLocal(WPM_KEY, String(nextWpm(wpm, words, Date.now() - pageStart.current)));
-      // Keep the cached resume point current so reopening the text does not use a stale one.
-      qc.setQueryData<ReadingView | null>(["reading", textId], (d) =>
-        d
-          ? { ...d, text: { ...d.text, lastSegment: Math.max(d.text.lastSegment, current + 1) } }
-          : d,
-      );
-      void qc.invalidateQueries({ queryKey: ["texts"], refetchType: "none" });
+      await recordSegment(current, plan);
       await advance();
+    } catch (e) {
+      toast("Could not save your progress", errorText(e));
+    } finally {
+      setFinishing(false);
+    }
+  };
+
+  /**
+   * Book mode is one flow (M6): the whole text in the book, its segments one after another.
+   * When the first word on the screen is in a later segment, the ones before are recorded as
+   * read (as Next did); going back just moves the place. The text stays on screen throughout.
+   */
+  const passing = useRef(false);
+  const passTo = async (n: number) => {
+    if (!plans || passing.current || n === current) return;
+    if (n < current) {
+      setSegment(n);
+      return;
+    }
+    passing.current = true;
+    try {
+      for (let k = current; k < n; k++) {
+        const p = k === current ? plan : plans[k];
+        if (p) await recordSegment(k, p);
+      }
+      setSegment(n);
+    } catch (e) {
+      toast("Could not save your progress", errorText(e));
+    } finally {
+      passing.current = false;
+    }
+  };
+  /** The end of the flow: every segment read, then the text is done. */
+  const finishFlow = async () => {
+    if (!plans || !data || finishing) return;
+    setFinishing(true);
+    try {
+      for (let k = current; k < plans.length; k++) {
+        const p = k === current ? plan : plans[k];
+        if (p) await recordSegment(k, p);
+      }
+      setSegment(plans.length - 1);
+      resetSegmentState();
+      setInspectorOpen(false);
+      setComplete(true);
+      void qc.invalidateQueries({ queryKey: ["activity"] });
     } catch (e) {
       toast("Could not save your progress", errorText(e));
     } finally {
@@ -884,6 +944,11 @@ export function ReaderPage({ textId }: { textId: string }) {
     if (s.screen !== bookAt.screen) setLift(0);
     setBookAt(s);
     const char = s.anchor !== null ? charOfToken(s.anchor) : undefined;
+    // Which segment the screen starts in: the place moves with the reader.
+    if (char !== undefined && plans) {
+      const seg = plans.findIndex((p) => char >= p.segment.charStart && char < p.segment.charEnd);
+      if (seg >= 0 && seg !== current) void passTo(seg);
+    }
     if (char === undefined || !services.savePlace) return;
     const ps = placeSave.current;
     const key = `${current}:${char}`;
@@ -1006,22 +1071,23 @@ export function ReaderPage({ textId }: { textId: string }) {
       bookRef.current.leave(1, () => void finish(), "first");
     } else void finish();
   };
-  /** The scrub bar let go on page `n`. */
-  const jumpTo = (n: number) => {
-    if (n === current || finishing) return;
-    if (book && bookRef.current)
-      bookRef.current.leave(n > current ? 1 : -1, () => goTo(n), "first");
-    else goTo(n);
-  };
-  // Time left, from the first word on the screen and the reader's own speed.
+
+  // Where the reader is in the text and the time left, from the first word on the screen and
+  // the reader's own speed: one line, the only counter in book mode (M6).
   const timeLeft = (() => {
-    if (!book || !plans) return null;
+    if (!book || !data) return null;
     const anchor = bookAt.anchor ?? -1;
-    const onPage = plan.tokens.filter((t) => isWord(t) && t.i >= anchor).length;
-    const later = plans.slice(current + 1).reduce((n, p) => n + p.tokens.filter(isWord).length, 0);
+    const left = flowPlans.reduce(
+      (n, p) => n + p.tokens.filter((t) => isWord(t) && t.i >= anchor).length,
+      0,
+    );
     const wpm = Number(readLocal(WPM_KEY)) || DEFAULT_WPM;
-    return timeLeftLine(onPage, onPage + later, wpm);
+    const char = anchor >= 0 ? (data.tokens[anchor]?.start ?? 0) : 0;
+    const pct = Math.round((char / Math.max(1, data.text.content.length)) * 100);
+    return `${pct}% · ${minutesFor(left, wpm)} min left`;
   })();
+  // The words to practise at the end: this page's taps, or in one flow all of the text's.
+  const endTaps = book ? [...new Set([...pageTaps.values()].flat())] : pageTaps.get(current);
   const pageBody = (
     <>
       {current === 0 &&
@@ -1042,7 +1108,7 @@ export function ReaderPage({ textId }: { textId: string }) {
         </p>
       ) : null}
       <div
-        key={current}
+        key={book ? "flow" : current}
         className="reader-turn"
         data-turn={turn ?? undefined}
         onAnimationEnd={(e) => {
@@ -1064,10 +1130,10 @@ export function ReaderPage({ textId }: { textId: string }) {
           />
         ) : (
           <Reader
-            key={`${current}-${epoch}`}
+            key={book ? `flow-${epoch}` : `${current}-${epoch}`}
             text={data.text.content}
             tokens={data.tokens}
-            plans={[plan]}
+            plans={flowPlans}
             selectedToken={selected}
             revealed={revealed}
             mode={mode}
@@ -1095,7 +1161,7 @@ export function ReaderPage({ textId }: { textId: string }) {
           onClose={() => setSimplifyAt(null)}
         />
       ) : null}
-      {(pageTaps.get(current)?.length ?? 0) >= PRACTISE_FROM ? (
+      {(endTaps?.length ?? 0) >= PRACTISE_FROM ? (
         <section className="page-end" aria-label="Practise this page's words">
           <div className="page-end-chips" lang="nl">
             {pageTaps
@@ -1106,16 +1172,16 @@ export function ReaderPage({ textId }: { textId: string }) {
                   {k}
                 </span>
               ))}
-            {pageTaps.get(current)!.length > 6 ? (
-              <span className="page-end-chip">+{pageTaps.get(current)!.length - 6}</span>
+            {endTaps!.length > 6 ? (
+              <span className="page-end-chip">+{endTaps!.length - 6}</span>
             ) : null}
           </div>
           <Link
             to="/practice"
-            search={{ words: pageTaps.get(current)!.join(","), start: "1" }}
+            search={{ words: endTaps!.join(","), start: "1" }}
             className="k-btn k-btn--secondary"
           >
-            Practise these {pageTaps.get(current)!.length} words
+            Practise these {endTaps!.length} words
           </Link>
         </section>
       ) : null}
@@ -1244,7 +1310,7 @@ export function ReaderPage({ textId }: { textId: string }) {
         ) : null}
         {book ? (
           <BookPages
-            pageKey={`${current}-${epoch}`}
+            pageKey={`flow-${epoch}`}
             layoutKey={[
               prefs.size,
               prefs.leading,
@@ -1257,13 +1323,13 @@ export function ReaderPage({ textId }: { textId: string }) {
             prefs={prefs}
             lang={data.text.lang}
             start={
-              startPlace && startPlace.segment === current
-                ? { pageKey: `${current}-${epoch}`, char: startPlace.char }
-                : null
+              // Open where the reader was: the saved word, else the start of the resume segment.
+              { pageKey: `flow-${epoch}`, char: startPlace?.char ?? plan.segment.charStart }
             }
             charOf={charOfToken}
-            canLeave={(dir) => !finishing && !complete && (dir < 0 ? current > 0 : !isLast)}
-            onLeave={stepPage}
+            // One flow: only the end of the text leads on (to the finish).
+            canLeave={(dir) => dir > 0 && !finishing && !complete}
+            onLeave={() => void finishFlow()}
             onScreen={onBookScreen}
             onMiddle={() => setBare((v) => !v)}
             lift={inspectorOpen ? lift : 0}
@@ -1303,55 +1369,18 @@ export function ReaderPage({ textId }: { textId: string }) {
         </AnchoredPopover>
         {book ? (
           <div className="book-chrome">
-            <BookScrub pages={plans?.length ?? 1} current={current} onJump={jumpTo} />
-            {timeLeft ? <p className="book-left">{timeLeft}</p> : null}
-            <nav className="reader-footer" aria-label="Pages">
-              <div className="reader-pager">
-                <button
-                  type="button"
-                  className="reader-pager-btn"
-                  aria-label="Previous page"
-                  title="Previous page (←)"
-                  disabled={current === 0 || finishing}
-                  onClick={() => turnPage(-1)}
-                >
-                  <ChevronLeft size={18} aria-hidden />
-                </button>
-                <span className="reader-pager-count">
-                  <span aria-hidden>
-                    {current + 1} / {plans?.length}
-                  </span>
-                  <span className="k-sr">
-                    Page {current + 1} of {plans?.length}
-                  </span>
-                </span>
-                <button
-                  type="button"
-                  className="reader-pager-btn"
-                  aria-label="Next page"
-                  title="Next page (→)"
-                  disabled={isLast || finishing}
-                  onClick={() => turnPage(1)}
-                >
-                  <ChevronRight size={18} aria-hidden />
-                </button>
-              </div>
-              {book && bookAt.screens > 1 ? (
-                <span className="book-screens" aria-live="polite">
-                  Screen {bookAt.screen + 1} of {bookAt.screens}
-                </span>
-              ) : null}
-              <Button variant="primary" disabled={finishing} onClick={onNext}>
-                {isLast ? (
-                  "Finish"
-                ) : (
-                  <>
-                    Next
-                    <ArrowRight size={16} aria-hidden />
-                  </>
-                )}
-              </Button>
-            </nav>
+            {/* One flow: the scrub bar runs over the whole text's screens; one quiet line. */}
+            <BookScrub
+              pages={bookAt.screens}
+              current={bookAt.screen}
+              onJump={(n) => bookRef.current?.go(n)}
+              label={(n) => `${Math.round(((n + 1) / Math.max(1, bookAt.screens)) * 100)}%`}
+            />
+            {timeLeft ? (
+              <p className="book-left" aria-live="polite">
+                {timeLeft}
+              </p>
+            ) : null}
           </div>
         ) : (
           <nav className="reader-footer" aria-label="Pages">

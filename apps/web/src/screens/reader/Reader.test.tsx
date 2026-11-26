@@ -56,6 +56,8 @@ describe("grammar margin marks", () => {
   });
 
   it("'Focus on this' marks the topic all through the text, with a count and ‹ ›", async () => {
+    // Page by page with Next: the scroll reader (book mode is one flow).
+    localStorage.setItem("vuurtoren-reader-prefs", JSON.stringify({ pages: "scroll" }));
     setup();
     await userEvent.click(
       await screen.findByRole("button", { name: "Grammar: Separable verbs" }, SLOW),
@@ -92,6 +94,8 @@ describe("grammar margin marks", () => {
   });
 
   it("the picker (in the … menu) suggests topics and searches the ones in the text", async () => {
+    // Page by page with Next: the scroll reader (book mode is one flow).
+    localStorage.setItem("vuurtoren-reader-prefs", JSON.stringify({ pages: "scroll" }));
     setup();
     await screen.findByRole("button", { name: "Grammar: Separable verbs" }, SLOW);
     await userEvent.click(screen.getByRole("button", { name: "More reading options" }));

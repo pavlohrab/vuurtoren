@@ -1,6 +1,6 @@
 /**
- * Book mode's scrub bar: drag along it to jump through the text's pages. A bubble shows the
- * page under the thumb; the reader goes there when it is let go, with one slide.
+ * Book mode's scrub bar: drag along it to jump through the text. A bubble shows where the thumb
+ * is (a share of the text); the reader goes there when it is let go.
  */
 import { useState } from "react";
 
@@ -8,8 +8,11 @@ export function BookScrub({
   pages,
   current,
   onJump,
+  label = (n) => `Page ${n + 1}`,
 }: {
   pages: number;
+  /** What the bubble says for position `n` (from 0). */
+  label?: (n: number) => string;
   /** The page shown now, from 0. */
   current: number;
   onJump: (page: number) => void;
@@ -32,8 +35,8 @@ export function BookScrub({
         max={pages}
         step={1}
         value={value}
-        aria-label="Page"
-        aria-valuetext={`Page ${value} of ${pages}`}
+        aria-label="Where in the text"
+        aria-valuetext={label(value - 1)}
         onChange={(e) => setDrag(Number(e.target.value))}
         onPointerUp={commit}
         onKeyUp={commit}
@@ -44,7 +47,7 @@ export function BookScrub({
           className="book-scrub-bubble"
           style={{ left: `calc(${share * 100}% + ${(0.5 - share) * 16}px)` }}
         >
-          Page {drag}
+          {label(drag - 1)}
         </output>
       ) : null}
     </div>

@@ -63,6 +63,8 @@ export interface BookHandle {
   turn(dir: 1 | -1): void;
   /** Leave this page with one slide: `go` changes the page, the new one opens on `land`. */
   leave(dir: 1 | -1, go: () => void, land: "first" | "last"): void;
+  /** Straight to screen `n` of this page (the scrub bar), in one move. */
+  go(n: number): void;
 }
 
 interface Pending {
@@ -490,6 +492,18 @@ export function BookPages(props: Props) {
   useImperativeHandle(props.handle, () => ({
     turn: (dir) => turn(dir),
     leave: (dir, go, land) => leave(dir, go, land),
+    go: (n) => {
+      const s = st.current;
+      if (s.busy || !s.layout) return;
+      const to = Math.max(0, Math.min(s.screens - 1, n));
+      if (to === s.screen) return;
+      const flow = flowRef.current;
+      s.screen = to;
+      place();
+      if (flow && style() !== "none")
+        void play(flow, [{ opacity: 0.4 }, { opacity: 1 }], FADE_MS, "linear");
+      settle();
+    },
   }));
 
   // A new page: start at its first screen (or where the move from the last one says).

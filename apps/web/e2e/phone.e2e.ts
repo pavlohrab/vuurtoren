@@ -98,6 +98,10 @@ for (const size of SIZES) {
     test.use({ viewport: size, hasTouch: true, isMobile: true, deviceScaleFactor: 2 });
 
     test("Read, the reader bar and the word sheet fit the screen", async ({ page }) => {
+      // Page by page (the scroll reader): book mode is one flow, tested in book.e2e.ts.
+      await page.addInitScript(() =>
+        localStorage.setItem("vuurtoren-reader-prefs", JSON.stringify({ pages: "scroll" })),
+      );
       await page.goto("/?demo");
       await expect(page.getByText("Demo data")).toBeVisible();
       await expect(page.getByRole("heading", { level: 1, name: "Read" })).toBeVisible();
@@ -239,6 +243,10 @@ for (const size of SIZES) {
     });
 
     test("a finger swipe turns the page both ways (34px gesture line)", async ({ page }) => {
+      // Page by page (the scroll reader): book mode is one flow, tested in book.e2e.ts.
+      await page.addInitScript(() =>
+        localStorage.setItem("vuurtoren-reader-prefs", JSON.stringify({ pages: "scroll" })),
+      );
       await withInsets(page);
       await page.goto("/?demo");
       // A DOM click, not a tap: a tap's follow-up click could land on the reader and turn the page.
