@@ -29,7 +29,9 @@ import type { GlossEntry } from "@app/nlp-client";
 import {
   STEP_OF,
   buildLesson,
+  missesByPoint,
   comeBack as engineComeBack,
+  type GrammarPoint,
   type LessonInput,
   buildTopicSession,
   score as lessonScore,
@@ -53,6 +55,7 @@ import type {
   AnswerResult,
   AttemptInput,
   PracticeOptions,
+  LessonSources,
   PracticeOverview,
   TopicPracticeOptions,
 } from "./types.js";
@@ -129,6 +132,18 @@ const TOPIC_WORDS = 40;
 const DEFAULT_SIZE = 20;
 /** Most sentences translated for one lesson (the translator is local but not instant). */
 const MAX_TRANSLATE = 80;
+const DAY_MS = 86_400_000;
+/** At most this many tapped words make the "this text" lesson. */
+const PAGE_WORDS = 15;
+/** The grammar page of each grammar point (for "practise the one you miss most"). */
+const TOPIC_OF_POINT: Record<GrammarPoint, string> = {
+  gender: "de-het",
+  "adjective-e": "adjective-inflection",
+  perfect: "perfect-tense",
+  separable: "separable-verbs",
+  "verb-form": "imperfect-tense",
+  "word-order": "word-order-v2",
+};
 /** Recall at which another word in a sentence counts as known (algorithms.md 4.7.4). */
 const KNOWN_RECALL = 0.8;
 /** Words in a lesson (algorithms.md 4.7.6). */
@@ -517,6 +532,36 @@ export function createLivePractice(deps: LivePracticeDeps) {
       }
   }
 
+  /** The lessons to start from: this text's words, the week's mistakes, a weak grammar point. */
+  async function lessonSources(lastText: string | null): Promise<LessonSources> {
+    const lang = await deps.lang();
+    const now = clock();
+    const week = now - 7 * DAY_MS;
+    const [rows, texts, infos] = await Promise.all([
+      repo.practiceAnswers(lang),
+      lastText ? repo.listTexts() : Promise.resolve([]),
+      repo.words(lang),
+    ]);
+    const ignored = new Set(infos.filter((w) => w.state === "ignored").map((w) => w.key));
+    let page: LessonSources["page"] = null;
+    const text = texts.find((t) => t.id === lastText);
+    if (text) {
+      const keys = (await repo.lookedUpKeys(lang, text.id)).filter((k) => !ignored.has(k));
+      if (keys.length) page = { textId: text.id, title: text.title, keys: keys.slice(-PAGE_WORDS) };
+    }
+    const answers = toEloAnswers(rows, KNOWN_KINDS);
+    // Words whose newest answer this week was wrong.
+    const newest = new Map<string, number>();
+    for (const a of answers) if (a.at >= week) newest.set(a.key, a.result);
+    const mistakes = [...newest].filter(([k, r]) => r < 0.5 && !ignored.has(k)).map(([k]) => k);
+    const [point, misses] = [...missesByPoint(answers, week)].sort((a, b) => b[1] - a[1])[0] ?? [];
+    const weak =
+      point && misses !== undefined && misses >= 2
+        ? { topic: TOPIC_OF_POINT[point], misses }
+        : null;
+    return { page, mistakes, weak };
+  }
+
   /** A missed word's second go, from the lesson that is running. */
   async function comeBack(missed: Exercise): Promise<Exercise | null> {
     if (!lastLesson) return null;
@@ -817,6 +862,7 @@ export function createLivePractice(deps: LivePracticeDeps) {
     startTopicPractice,
     answerExercise,
     comeBack,
+    lessonSources,
     buildWordData,
     /** Forget the cached practice items (another device answered). */
     invalidate: () => itemCache.clear(),

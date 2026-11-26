@@ -121,6 +121,43 @@ describe("locateWord", () => {
 });
 
 describe("live practice", () => {
+  it("offers lessons from the last text, the week's mistakes and a weak grammar point", async () => {
+    backend();
+    const { repo, services } = await setup();
+    const text = { id: "t-brug" };
+    await repo.append({
+      type: "TextImported",
+      textId: text.id,
+      title: "De brug",
+      lang: "nl",
+      source: { kind: "paste" },
+      content: "De brug is dicht.",
+    });
+    await repo.append({ type: "WordLookedUp", lang: "nl", key: "huis", textId: text.id });
+    const now = Date.now();
+    for (const [key, at] of [
+      ["huis", now - 2000],
+      ["fiets", now - 1000],
+    ] as const)
+      await repo.append({
+        type: "ExerciseAnswered",
+        lang: "nl",
+        key,
+        skill: "gender",
+        kind: "gender",
+        grade: "again",
+        correct: false,
+        ms: 900,
+        at,
+        state: { key, skill: "gender" } as never,
+      });
+    const sources = await services.lessonSources!(text.id);
+    expect(sources.page).toMatchObject({ textId: text.id, title: "De brug", keys: ["huis"] });
+    expect(sources.mistakes.sort()).toEqual(["fiets", "huis"]);
+    expect(sources.weak).toEqual({ topic: "de-het", misses: 2 });
+    expect((await services.lessonSources!(null)).page).toBeNull();
+  });
+
   it("gives a missed word a second go of another kind (algorithms.md 4.7.6)", async () => {
     backend();
     const { services } = await setup();

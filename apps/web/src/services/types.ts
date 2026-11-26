@@ -417,6 +417,12 @@ export interface AppServices
    * Never writes to Anki.
    */
   startPractice(opts?: PracticeOptions): Promise<Exercise[]>;
+  /**
+   * The lessons to start from (algorithms.md 4.7): the words you tapped in the text you read
+   * last, mistakes of the last week, and the grammar point you miss most. `lastText` is the
+   * text the reader opened last on this device.
+   */
+  lessonSources?(lastText: string | null): Promise<LessonSources>;
   /** Grade an answer, schedule the (word, skill) pair and record it. */
   answerExercise(exercise: Exercise, attempt: AttemptInput): Promise<AnswerResult>;
   /**
@@ -465,4 +471,14 @@ export interface AppServices
 /** A word whose card is due, with the time it came due. */
 interface DueWord extends WordInfo {
   due: number;
+}
+
+/** What Practice offers to start from (services.lessonSources). */
+export interface LessonSources {
+  /** The text you read last and the words you tapped in it (newest last, at most 15). */
+  page: { textId: string; title: string; keys: string[] } | null;
+  /** Words you answered wrong in the last 7 days. */
+  mistakes: string[];
+  /** The grammar point you missed most this week (two misses or more), as a grammar page id. */
+  weak: { topic: string; misses: number } | null;
 }
