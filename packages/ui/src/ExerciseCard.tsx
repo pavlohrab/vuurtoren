@@ -139,6 +139,26 @@ export function ExerciseCard({
   const [text, setText] = useState("");
   const [hints, setHints] = useState(0);
   const [picked, setPicked] = useState<number[]>([]);
+  /** A tile just taken back (and a count, so it flies down again each time). */
+  const [back, setBack] = useState<{ i: number; n: number } | null>(null);
+  const takeBack = (at: number | "last") =>
+    setPicked((cur) => {
+      const n = at === "last" ? cur.length - 1 : at;
+      const i = cur[n];
+      if (i !== undefined) setBack((b) => ({ i, n: (b?.n ?? 0) + 1 }));
+      return cur.filter((_, m) => m !== n);
+    });
+  /** The speaker pulses while the card says something. */
+  const [saying, setSaying] = useState(false);
+  const sayTimer = useRef<number | undefined>(undefined);
+  const say = (text: string, rate?: number) => {
+    if (!onSpeak) return;
+    onSpeak(text, rate);
+    setSaying(true);
+    window.clearTimeout(sayTimer.current);
+    sayTimer.current = window.setTimeout(() => setSaying(false), 1200);
+  };
+  useEffect(() => () => window.clearTimeout(sayTimer.current), []);
   const inputRef = useRef<HTMLInputElement>(null);
   const cardRef = useRef<HTMLElement>(null);
 
@@ -188,13 +208,13 @@ export function ExerciseCard({
   // Speak a dictation or a sentence to build once when it appears (the browser may block it;
   // the button always works).
   useEffect(() => {
-    if (mode === "dictation" || e.kind === "listen-build") onSpeak?.(e.prompt.speak ?? e.answer);
+    if (mode === "dictation" || e.kind === "listen-build") say(e.prompt.speak ?? e.answer);
     // A Dutch word on its own is said as it appears (Settings → Practice).
     else if (
       sayDutch &&
       (e.kind === "meaning-choice" || e.kind === "gender" || e.kind === "meet" || e.kind === "say")
     )
-      onSpeak?.(e.prompt.text);
+      say(e.prompt.text);
   }, [e.id]);
 
   useEffect(() => {
@@ -270,7 +290,7 @@ export function ExerciseCard({
           nextTile();
         } else if (ev.key === "Backspace") {
           ev.preventDefault();
-          setPicked((p) => p.slice(0, -1));
+          takeBack("last");
         } else if (ev.key === "Enter" && picked.length > 0) {
           ev.preventDefault();
           submit(scrambleAnswer());
@@ -303,7 +323,7 @@ export function ExerciseCard({
         : (e.prompt.sentence ?? e.answer);
   // After answering, the right Dutch is said (Settings → Practice).
   useEffect(() => {
-    if (feedback && sayDutch && resultDutch && e.kind !== "pairs") onSpeak?.(resultDutch);
+    if (feedback && sayDutch && resultDutch && e.kind !== "pairs") say(resultDutch);
   }, [feedback !== null]);
 
   const englishLine =
@@ -313,7 +333,11 @@ export function ExerciseCard({
 
   if (mode === "meet")
     return (
-      <section className="ex-card" aria-label="Exercise" ref={cardRef}>
+      <section
+        className={cn("ex-card", saying && "ex-card--saying")}
+        aria-label="Exercise"
+        ref={cardRef}
+      >
         <h2 className="ex-ask ex-tag">{e.instruction}</h2>
         <div className="ex-meet">
           <p className="ex-prompt-row">
@@ -341,7 +365,11 @@ export function ExerciseCard({
     );
   if (mode === "pairs")
     return (
-      <section className="ex-card" aria-label="Exercise" ref={cardRef}>
+      <section
+        className={cn("ex-card", saying && "ex-card--saying")}
+        aria-label="Exercise"
+        ref={cardRef}
+      >
         <h2 className="ex-ask">{e.instruction}</h2>
         <Pairs
           pairs={e.pairs ?? []}
@@ -354,14 +382,18 @@ export function ExerciseCard({
     );
 
   return (
-    <section className="ex-card" aria-label="Exercise" ref={cardRef}>
+    <section
+      className={cn("ex-card", saying && "ex-card--saying")}
+      aria-label="Exercise"
+      ref={cardRef}
+    >
       <h2 className="ex-ask">{e.instruction}</h2>
       {e.kind === "listen-build" ? (
         <div className="ex-hear">
           <button
             type="button"
             className="ex-say ex-say--big"
-            onClick={() => onSpeak?.(e.prompt.speak ?? e.answer)}
+            onClick={() => say(e.prompt.speak ?? e.answer)}
             aria-label="Play the sentence"
           >
             <Volume2 size={24} aria-hidden />
@@ -369,7 +401,7 @@ export function ExerciseCard({
           <button
             type="button"
             className="ex-say ex-say--slow"
-            onClick={() => onSpeak?.(e.prompt.speak ?? e.answer, 0.6)}
+            onClick={() => say(e.prompt.speak ?? e.answer, 0.6)}
             aria-label="Play it slowly"
             title="Slowly"
           >
@@ -391,7 +423,7 @@ export function ExerciseCard({
         <div className="ex-listen">
           <Button
             variant="secondary"
-            onClick={() => onSpeak?.(e.prompt.speak ?? e.answer)}
+            onClick={() => say(e.prompt.speak ?? e.answer)}
             aria-label="Play audio"
           >
             <Volume2 size={16} aria-hidden /> Play
@@ -447,7 +479,7 @@ export function ExerciseCard({
                 type="button"
                 className="ex-piece ex-piece--placed ex-piece--fly"
                 disabled={answered}
-                onClick={() => setPicked((p) => p.filter((_, m) => m !== n))}
+                onClick={() => takeBack(n)}
               >
                 {pieces[i]}
               </button>
@@ -456,9 +488,13 @@ export function ExerciseCard({
           <div className="ex-pieces ex-dutch" lang="nl" role="group" aria-label="Words">
             {pieces.map((p, i) => (
               <button
-                key={i}
+                key={back?.i === i ? `${i}-${back.n}` : i}
                 type="button"
-                className={cn("ex-piece", picked.includes(i) && "ex-piece--gone")}
+                className={cn(
+                  "ex-piece",
+                  picked.includes(i) && "ex-piece--gone",
+                  back?.i === i && !picked.includes(i) && "ex-piece--back",
+                )}
                 disabled={answered || picked.includes(i)}
                 onClick={() => {
                   if (holdTimer.current === -1) {
@@ -467,7 +503,7 @@ export function ExerciseCard({
                   }
                   setPicked((cur) => [...cur, i]);
                   onTick?.();
-                  onSpeak?.(p);
+                  say(p);
                 }}
                 onContextMenu={(ev) => {
                   ev.preventDefault();
@@ -701,6 +737,7 @@ function Pairs({
   const [picked, setPicked] = useState<string | null>(null);
   const [done, setDone] = useState<Set<string>>(new Set());
   const [miss, setMiss] = useState<string | null>(null);
+  const [missNl, setMissNl] = useState<string | null>(null);
   const all = done.size === pairs.length;
   const tryMeaning = (en: string) => {
     if (!picked) return;
@@ -711,8 +748,12 @@ function Pairs({
       onTick?.();
     } else {
       setMiss(en);
+      setMissNl(picked);
       onMiss?.();
-      window.setTimeout(() => setMiss(null), 500);
+      window.setTimeout(() => {
+        setMiss(null);
+        setMissNl(null);
+      }, 500);
     }
   };
   return (
@@ -728,6 +769,7 @@ function Pairs({
                 "ex-pair ex-dutch",
                 picked === p.nl && "ex-pair--on",
                 done.has(p.nl) && "ex-pair--done",
+                missNl === p.nl && "ex-pair--miss",
               )}
               disabled={done.has(p.nl)}
               aria-pressed={picked === p.nl}

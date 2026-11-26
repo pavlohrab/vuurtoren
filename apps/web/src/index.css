@@ -1414,6 +1414,16 @@
   .practice-move .ex-strip {
     animation: practice-rise 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
   }
+  .practice-move .ex-piece--back {
+    animation: practice-back 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .practice-move .ex-pair--done {
+    animation: practice-pop 0.3s ease-out;
+  }
+  /* The speaker pulses while the Dutch is said (not the one in the result band). */
+  .practice-move .ex-card--saying > :not(.ex-strip) .ex-say {
+    animation: practice-pulse 0.6s ease-in-out 2;
+  }
   .practice-top .ex-progress-bar {
     transition: width 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
   }
@@ -1442,6 +1452,27 @@
   }
   80% {
     transform: translateX(3px);
+  }
+}
+@keyframes practice-back {
+  from {
+    opacity: 0.4;
+    transform: translateY(-48px) scale(0.92);
+  }
+}
+@keyframes practice-pop {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  40% {
+    opacity: 1;
+    transform: scale(1.08);
+  }
+}
+@keyframes practice-pulse {
+  50% {
+    box-shadow: 0 0 0 6px color-mix(in srgb, var(--accent) 30%, transparent);
   }
 }
 @keyframes practice-rise {
