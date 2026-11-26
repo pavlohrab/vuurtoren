@@ -660,8 +660,11 @@ export interface TextExtraSentence {
   english: string;
   /** Word pairs: `nl` = word indices within the sentence, `en` = English token indices. */
   pairs: { nl: number[]; en: number[]; confidence: number }[];
-  /** A word's English in this sentence: [token index, English, confidence 0–1]. */
-  align: [number, string, number][];
+  /**
+   * A word's English in this sentence: [token index, English, confidence 0–1]. English null:
+   * the server was asked and had none (bundle format 2), so a phone doesn't ask again.
+   */
+  align: [number, string | null, number][];
 }
 
 /**
@@ -675,6 +678,8 @@ export interface TextExtras {
   analyzerVersion: string | null;
   madeAt: number;
   sentences: TextExtraSentence[];
+  /** The translation model that made the English ("opus-mt-nl-en"); absent in older extras. */
+  mtModel?: string;
 }
 
 /** A text's analysis as it stands on this device, for its bundle (sync/bundles.ts). */

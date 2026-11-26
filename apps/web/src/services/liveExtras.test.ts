@@ -189,6 +189,41 @@ describe("text extras", () => {
     ]);
   });
 
+  it("format 2: a word the server had no English for is kept, so the phone doesn't ask again", async () => {
+    const repo = await repoWithText();
+    const server = fakeServer();
+    // The server knows no English for "kat" (start 3).
+    const blank = async () => {
+      const c = await server.nlp();
+      return {
+        ...c,
+        pairs: c.pairs.bind(c),
+        async align(items: AlignItem[]) {
+          return (await c.align(items)).map((r) => ({
+            ...r,
+            words: r.words.map((w) => (w.start === 3 ? { ...w, text: "", confidence: 0 } : w)),
+          }));
+        },
+      } as unknown as NlpClient;
+    };
+    await createLiveExtras({
+      repo,
+      nlp: blank,
+      dictionary: { seedSentences: () => undefined },
+    }).make("t1");
+    const x = (await repo.textExtras("t1"))!;
+    expect(x.sentences[0]?.align).toContainEqual([1, null, 0]);
+    expect(x.mtModel).toBe("opus-mt-nl-en");
+
+    // The phone: a server it must not ask.
+    const nlp = vi.fn(down);
+    const dictionary = createLiveDictionary({ repo, lang: async () => "nl", nlp });
+    await createLiveExtras({ repo, nlp, dictionary }).seed((await repo.getText("t1"))!, TOKENS);
+    const kat = { sentence: "De kat slaapt.", start: 3, end: 6 };
+    expect((await dictionary.alignWords([kat])).get(dictionary.alignKey(kat))).toBeUndefined();
+    expect(nlp).not.toHaveBeenCalled();
+  });
+
   it("are not used for another analysis of the text", async () => {
     const repo = await repoWithText();
     await createLiveExtras({

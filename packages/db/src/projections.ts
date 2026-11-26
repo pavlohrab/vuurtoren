@@ -171,7 +171,13 @@ export async function writeTextExtras(driver: SqlDriver, x: TextExtras): Promise
   }
   await driver.exec(
     "INSERT OR REPLACE INTO text_extras (text_id, content_hash, analyzer_version, made_at, data) VALUES (?,?,?,?,?)",
-    [x.textId, x.contentHash, x.analyzerVersion ?? null, x.madeAt, JSON.stringify(x.sentences)],
+    [
+      x.textId,
+      x.contentHash,
+      x.analyzerVersion ?? null,
+      x.madeAt,
+      JSON.stringify(x.mtModel ? { sentences: x.sentences, mtModel: x.mtModel } : x.sentences),
+    ],
   );
   return true;
 }

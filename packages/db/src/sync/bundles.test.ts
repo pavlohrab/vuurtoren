@@ -118,6 +118,60 @@ describe("text bundles", () => {
     expect((await b.textExtras("t1"))?.sentences).toEqual(SENTENCES);
   });
 
+  it("waits a little for grammar and extras before sending a bundle without them", async () => {
+    const { store, a, keyA } = await twoDevices();
+    await a.saveTextAnalysis({
+      textId: "t1",
+      contentHash: HASH,
+      tokens: TOKENS,
+      analyzerVersion: "v1",
+    });
+    const analysed = (await a.analysisStates())[0]!.analyzedAt;
+    const bundles = () => [...store.files.keys()].filter((p) => p.includes("/analyses/"));
+    await syncOnce(a, store, keyA, { deviceName: "Laptop", now: () => analysed + 30_000 });
+    expect(bundles()).toHaveLength(0);
+    // Not made in time: it goes as it is (the phone can't read the text without it).
+    await syncOnce(a, store, keyA, { deviceName: "Laptop", now: () => analysed + 3 * 60_000 });
+    expect(bundles()).toHaveLength(1);
+  });
+
+  it("format 2: an empty alignment and the translation model travel too", async () => {
+    const { store, a, b, keyA, keyB } = await twoDevices();
+    await a.saveTextAnalysis({
+      textId: "t1",
+      contentHash: HASH,
+      tokens: TOKENS,
+      analyzerVersion: "v1",
+    });
+    await a.saveTextGrammar({ textId: "t1", contentHash: HASH, version: 3, hits: HITS });
+    const sentences = [
+      {
+        ...SENTENCES[0]!,
+        align: [
+          [1, "cat", 0.9],
+          [2, null, 0],
+        ] as [number, string | null, number][],
+      },
+    ];
+    await a.saveTextExtras({
+      textId: "t1",
+      contentHash: HASH,
+      analyzerVersion: "v1",
+      madeAt: T0 + 5,
+      sentences,
+      mtModel: "opus-mt-nl-en",
+    });
+    expect((await a.textExtras("t1"))?.mtModel).toBe("opus-mt-nl-en");
+    await syncOnce(a, store, keyA, { deviceName: "Laptop" });
+    await syncOnce(b, store, keyB, { deviceName: "Phone" });
+    const got = await b.textExtras("t1");
+    expect(got?.sentences[0]?.align).toEqual([
+      [1, "cat", 0.9],
+      [2, null, 0],
+    ]);
+    expect(got?.mtModel).toBe("opus-mt-nl-en");
+  });
+
   it("keeps extras only for the analysis they index", async () => {
     const { a } = await twoDevices();
     await a.saveTextAnalysis({

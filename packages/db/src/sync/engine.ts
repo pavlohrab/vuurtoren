@@ -86,6 +86,12 @@ const BUNDLES_OUT_PER_SYNC = 20;
 const BUNDLES_IN_PER_SYNC = 20;
 /** A text with an analysis but no extras looks for another device's at most this often. */
 const EXTRAS_RETRY_MS = 15 * 60_000;
+/**
+ * A bundle without its grammar or extras waits this long after the analysis before it's sent:
+ * they are made right after, and then it goes once, full. After that it goes as it is (a phone
+ * can't read the text at all without it) and the rest follows.
+ */
+const PARTIAL_BUNDLE_WAIT_MS = 2 * 60_000;
 /** Blob ids known to be in the place, remembered so blobs are not listed every sync. */
 const KNOWN_BLOBS = 1000;
 const PROBLEMS_KEPT = 50;
@@ -537,7 +543,7 @@ export async function syncOnce(
     state.announced = { name, at: now(), ...(replaces.length ? { replaces } : {}) };
     await repo.setSyncState(state);
   }
-  await sendBundles(repo, store, key, state, leaveOut);
+  await sendBundles(repo, store, key, state, leaveOut, now());
 
   // Receive: every new file of every device, imported without a replay; one replay at the
   // end when some events were older than the log's end.
@@ -650,9 +656,13 @@ export async function syncOnce(
   return { sent, received, rebuilt, devices, problems };
 }
 
-/** Format of a text bundle file. */
+/**
+ * Format of a text bundle file. Format 2 (empty alignments as null, `extras.mtModel`) only adds
+ * to format 1, so it is still written as 1: older apps read it and skip what they don't know.
+ * Readers take 1 and 2.
+ */
 interface BundleFile extends TextBundle {
-  format: 1;
+  format: 1 | 2;
 }
 
 /** What a bundle holds, in one string: a changed analysis, grammar or extras is sent again. */
@@ -684,6 +694,7 @@ async function sendBundles(
   key: SyncKey,
   state: SyncState,
   leaveOut: (p: SyncProblem) => void,
+  at: number,
 ): Promise<void> {
   const done = (state.bundles ??= {});
   const sent = (state.sentBundles ??= {});
@@ -696,8 +707,10 @@ async function sendBundles(
     delete done[textId];
     await repo.setSyncState(state);
   }
+  const full = (s: TextAnalysisState) => s.grammar !== null && s.extrasAt !== null;
   const todo = (await repo.analysisStates())
     .filter((s) => done[s.textId] !== bundleStamp(s))
+    .filter((s) => full(s) || at - s.analyzedAt >= PARTIAL_BUNDLE_WAIT_MS)
     .slice(0, BUNDLES_OUT_PER_SYNC);
   for (const s of todo) {
     const bundle = await repo.textBundle(s.textId);
@@ -772,7 +785,7 @@ async function fetchBundles(
       const bytes = await store.get(path);
       if (!bytes) continue;
       const file = decode<BundleFile>(gunzipAtMost(await unseal(key, bytes, path), MAX_READ_BYTES));
-      if (file.format !== 1 || file.textId !== w.textId || file.contentHash !== w.contentHash) {
+      if ((file.format !== 1 && file.format !== 2) || file.textId !== w.textId || file.contentHash !== w.contentHash) {
         continue;
       }
       const bundle: TextBundle = {

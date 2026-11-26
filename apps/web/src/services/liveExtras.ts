@@ -20,6 +20,9 @@ import type { LiveDictionary } from "./liveDictionary.js";
 import { pairItem } from "./livePairs.js";
 import { type StorySentencePairs, storySlugOf } from "./stories.js";
 
+/** The language server's offline translation model, the one that makes the extras' English. */
+export const MT_MODEL = "opus-mt-nl-en";
+
 export interface LiveExtrasDeps {
   repo: VuurtorenRepository;
   nlp: () => Promise<NlpClient>;
@@ -61,9 +64,11 @@ async function makeExtras(
       sent: s.sent,
       english: p?.translation ?? a?.translation ?? "",
       pairs: (p?.pairs ?? []).map((w) => ({ nl: w.nl, en: w.en, confidence: w.confidence })),
-      align: (a?.words ?? []).flatMap((w): [number, string, number][] => {
+      // A word with no English is kept as [i, null, 0]: asked, nothing (format 2).
+      align: (a?.words ?? []).flatMap((w): [number, string | null, number][] => {
         const i = tokenAt.get(`${w.start}:${w.end}`);
-        return i !== undefined && w.text ? [[i, w.text, w.confidence]] : [];
+        if (i === undefined) return [];
+        return [w.text ? [i, w.text, w.confidence] : [i, null, 0]];
       }),
     };
   });
@@ -91,6 +96,7 @@ export function createLiveExtras({ repo, nlp, dictionary, pauseMs = 1500 }: Live
       analyzerVersion: text.analyzerVersion ?? null,
       madeAt: Date.now(),
       sentences,
+      mtModel: MT_MODEL,
     });
   }
 

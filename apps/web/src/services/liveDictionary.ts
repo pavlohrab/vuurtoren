@@ -421,7 +421,8 @@ export function createLiveDictionary({
     items: {
       sentence: string;
       english: string;
-      words: { start: number; end: number; text: string; confidence: number }[];
+      /** `text` null: the server had no English for the word; don't ask it again. */
+      words: { start: number; end: number; text: string | null; confidence: number }[];
     }[],
   ): void {
     for (const it of items) {
@@ -431,11 +432,16 @@ export function createLiveDictionary({
       for (const w of it.words) {
         const k = alignKey({ sentence: it.sentence, start: w.start, end: w.end });
         if (!alignCache.has(k)) {
-          alignCache.set(k, {
-            text: w.text,
-            confident: w.confidence >= ALIGN_MIN_CONFIDENCE,
-            confidence: w.confidence,
-          });
+          alignCache.set(
+            k,
+            w.text === null
+              ? null
+              : {
+                  text: w.text,
+                  confident: w.confidence >= ALIGN_MIN_CONFIDENCE,
+                  confidence: w.confidence,
+                },
+          );
         }
       }
     }

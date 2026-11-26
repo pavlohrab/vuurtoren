@@ -217,12 +217,19 @@ const TEXT_FROM = `FROM texts t
   LEFT JOIN reading_progress rp ON rp.text_id = t.id`;
 
 function textExtrasOf(r: Row): TextExtras {
+  // `data` is the sentence list (older rows) or { sentences, mtModel }.
+  const data = json<TextExtraSentence[] | { sentences: TextExtraSentence[]; mtModel?: string }>(
+    r["data"],
+  );
+  const sentences = Array.isArray(data) ? data : data.sentences;
+  const mtModel = Array.isArray(data) ? undefined : data.mtModel;
   return {
     textId: String(r["text_id"]),
     contentHash: String(r["content_hash"]),
     analyzerVersion: r["analyzer_version"] == null ? null : String(r["analyzer_version"]),
     madeAt: Number(r["made_at"]),
-    sentences: json<TextExtraSentence[]>(r["data"]),
+    sentences,
+    ...(mtModel ? { mtModel } : {}),
   };
 }
 
@@ -726,7 +733,11 @@ export async function createRepository(
             : null,
           extras:
             extras && extras.analyzerVersion === analyzerVersion
-              ? { madeAt: extras.madeAt, sentences: extras.sentences }
+              ? {
+                  madeAt: extras.madeAt,
+                  sentences: extras.sentences,
+                  ...(extras.mtModel ? { mtModel: extras.mtModel } : {}),
+                }
               : null,
         };
       }),
