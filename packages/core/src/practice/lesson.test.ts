@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildLesson, comeBack, weakPoints } from "./lesson.js";
+import { buildLesson, comeBack, extraTile, weakPoints } from "./lesson.js";
 import { STEP_OF } from "./choose.js";
 import { createRng } from "./rng.js";
 import type { WordSignals } from "./select.js";
@@ -162,5 +162,34 @@ describe("a lesson (4.7)", () => {
     expect(ex.kind).toBe("scramble");
     expect(ex.answer).toBe("Ze fietst langs de gracht.");
     expect(ex.metIn?.text).toMatch(/^Langs de oude gracht/);
+  });
+
+  it("adds one tile that doesn't belong when building", () => {
+    expect(extraTile(["ze", "fietst", "langs", "de", "gracht"])).toBe("het");
+    expect(extraTile(["hij", "loopt", "snel"])).toBe("loop");
+    const ex = buildLesson(
+      {
+        words: [
+          word("gracht", {
+            state: "known",
+            pKnown: 0.97,
+            sentences: [
+              sentence("Ze fietst langs de gracht.", "gracht", {
+                translation: "She cycles along the canal.",
+                unknown: 0,
+              }),
+            ],
+          }),
+          ...pool,
+        ],
+        signals: [sig("gracht", { state: "known", pKnown: 0.97 })],
+        states: [],
+        answers: [],
+        now: NOW,
+      },
+      createRng(9),
+    ).find((e) => e.kind === "scramble")!;
+    expect(ex.pieces).toContain("het");
+    expect(ex.pieces).toHaveLength(6);
   });
 });

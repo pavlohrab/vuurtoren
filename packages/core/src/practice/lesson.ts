@@ -69,6 +69,29 @@ function candidates(word: WordData, pool: readonly WordData[], rng: Rng): Exerci
   return out;
 }
 
+/**
+ * One tile that doesn't belong, so building isn't only a puzzle (4.7.4): the other article,
+ * else another form of a word in the sentence (loopt → loop, groot → grote).
+ */
+export function extraTile(pieces: readonly string[]): string | null {
+  const has = new Set(pieces.map((p) => p.toLowerCase()));
+  if (has.has("de") && !has.has("het")) return "het";
+  if (has.has("het") && !has.has("de")) return "de";
+  const verb = pieces.find((p) => /^\p{Ll}{3,}t$/u.test(p));
+  if (verb && !has.has(verb.slice(0, -1))) return verb.slice(0, -1);
+  const other = pieces.find((p) => /^\p{Ll}{3,}[^e]$/u.test(p) && !has.has(`${p}e`));
+  return other ? `${other}e` : null;
+}
+
+/** Building gets its extra tile, at a stable place among the others. */
+function withExtraTile(ex: Exercise): Exercise {
+  if (ex.kind !== "scramble" || !ex.pieces) return ex;
+  const tile = extraTile(ex.pieces);
+  if (!tile) return ex;
+  const at = (ex.answer.length + tile.length) % (ex.pieces.length + 1);
+  return { ...ex, pieces: [...ex.pieces.slice(0, at), tile, ...ex.pieces.slice(at)] };
+}
+
 /** The text of the sentence an exercise uses, if any. */
 const usedSentence = (ex: Exercise): string | undefined =>
   ex.prompt.sentence ??
@@ -142,7 +165,7 @@ export function buildLesson(input: LessonInput, rng: Rng): Exercise[] {
       answers: input.answers,
       favour,
     });
-    if (ex) out.push(withMetIn(ex, word));
+    if (ex) out.push(withExtraTile(withMetIn(ex, word)));
   }
   return spreadKinds(out);
 }

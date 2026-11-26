@@ -38,6 +38,7 @@ export {
   LESSON_SIZES,
   buildLesson,
   comeBack,
+  extraTile,
   weakPoints,
   type LessonInput,
 } from "./lesson.js";

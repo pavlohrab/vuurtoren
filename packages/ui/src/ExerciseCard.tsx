@@ -169,7 +169,7 @@ export function ExerciseCard({
         if (ev.key === "Backspace") {
           ev.preventDefault();
           setPicked((p) => p.slice(0, -1));
-        } else if (ev.key === "Enter" && picked.length === pieces.length) {
+        } else if (ev.key === "Enter" && picked.length > 0) {
           ev.preventDefault();
           submit(scrambleAnswer());
         }
@@ -281,7 +281,7 @@ export function ExerciseCard({
             <div className="ex-actions">
               <Button
                 variant="primary"
-                disabled={picked.length !== pieces.length}
+                disabled={picked.length === 0}
                 onClick={() => submit(scrambleAnswer())}
               >
                 Check
