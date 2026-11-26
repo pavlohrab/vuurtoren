@@ -74,3 +74,25 @@ export function speedReport(top = 25): string {
     );
   return lines.join("\n");
 }
+
+/**
+ * About once a week, after the start: compaction (drops what later events made useless, and the
+ * starter words other devices added again) also on a device that never syncs. In the
+ * background; a failure just waits for next week.
+ */
+export function compactNowAndThen(repo: { compact(): Promise<unknown> }): void {
+  const KEY = "vuurtoren.compacted";
+  const WEEK = 7 * 86_400_000;
+  try {
+    const last = Number(localStorage.getItem(KEY) ?? 0);
+    if (Date.now() - last < WEEK) return;
+    setTimeout(() => {
+      void repo
+        .compact()
+        .then(() => localStorage.setItem(KEY, String(Date.now())))
+        .catch(() => {});
+    }, 20_000);
+  } catch {
+    // No storage: skip.
+  }
+}

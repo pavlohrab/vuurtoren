@@ -4,7 +4,7 @@
  * computer the language server is the bundled sidecar; a phone uses its sync server's.
  * Everything above the driver (repository, services, screens) is the browser build's.
  */
-import { mark, timed } from "../perf/speed.js";
+import { compactNowAndThen, mark, timed } from "../perf/speed.js";
 import type { DataControls, DesktopLocal } from "../shell/AppInfo.js";
 import type { AppServices } from "../services/types.js";
 import { type DbLock, type DesktopBridge, routeNlpTo } from "./bridge.js";
@@ -68,6 +68,7 @@ export async function bootDesktopLocal(
   try {
     repo = await createRepository(driver);
     mark("database open (and caught up)");
+    compactNowAndThen(repo);
   } catch (e) {
     if (isSchemaTooNew(e)) {
       return { kind: "blocked", message: e.message, download: () => driver.exportFile() };

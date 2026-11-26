@@ -1,5 +1,5 @@
 import { finishBoot } from "./bootSplash.js";
-import { mark, timed } from "./perf/speed.js";
+import { compactNowAndThen, mark, timed } from "./perf/speed.js";
 import { StrictMode, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import "./index.css";
@@ -138,6 +138,7 @@ async function openBrowser(lock: HeldLock, server: PageServer | null): Promise<B
   try {
     repo = await createRepository(driver);
     mark("database open (and caught up)");
+    compactNowAndThen(repo);
   } catch (e) {
     // A database from a newer app must never be replaced by demo data.
     if (isSchemaTooNew(e)) {

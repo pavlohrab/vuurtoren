@@ -287,14 +287,21 @@ export function Welcome() {
   // question: Check your level in Words marks what you know, m5)
   const [added, setAdded] = useState<{ done: number; total: number } | null>(null);
   const starter = useMutation({
-    mutationFn: () =>
-      services.addStarterLevels(
+    mutationFn: async () => {
+      // With sync set up (a phone joining a computer), bring the other devices' words in first:
+      // the starter words they already have are then skipped, not added a second time.
+      if (sync.data?.place)
+        await services.syncNow().catch(() => {
+          // Offline now: the words are added, and compaction drops repeats later.
+        });
+      return services.addStarterLevels(
         {
           levels: Array.from({ length: STARTER_LEVELS }, (_, i) => i + 1),
           from: 1,
         },
         (done, total) => setAdded({ done, total }),
-      ),
+      );
+    },
     onSuccess: async () => {
       for (const k of ["learner", "review", "words", "home"]) {
         await qc.invalidateQueries({ queryKey: [k] });
