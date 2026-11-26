@@ -1092,6 +1092,11 @@
   flex: 1;
   height: 8px;
 }
+/* Practice under Words in the sidebar (computer). */
+.nav-link--sub {
+  padding-left: 30px;
+  font-size: 13.5px;
+}
 /* The end of a reader page: practise the words tapped on it (mock-practice-lessons.html). */
 .page-end {
   display: flex;

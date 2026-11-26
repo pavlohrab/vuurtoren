@@ -205,6 +205,7 @@ export function AppShell() {
   const ai = useQuery({ queryKey: ["ai-status"], queryFn: () => services.aiStatus() });
   const talk = ai.data?.configured === true;
   const room = roomOf(pathname);
+  const onPractice = /^\/practice(\/|$)/.test(pathname);
   const wordsDue = native ? review.data?.due : practice.data?.due;
 
   // ⌘K / Ctrl+K opens the palette from anywhere.
@@ -367,10 +368,19 @@ export function AppShell() {
                 to="/words"
                 label="Words"
                 icon={<Languages size={18} />}
-                active={room === "words"}
+                active={room === "words" && !onPractice}
                 badge={wordsDue}
                 badgeNoun={native ? "card" : "exercise"}
                 badgeWhere={native ? "Review" : "Practice"}
+              />
+              {/* Practice has its own row under Words on a computer (folded on a phone). */}
+              <NavLink
+                to="/practice"
+                label="Practice"
+                icon={<Dumbbell size={16} />}
+                active={onPractice}
+                secondary
+                sub
               />
               <div className="nav-divider" role="separator" />
               <NavLink to="/grammar" label="Grammar" icon={<BookText size={18} />} secondary />
@@ -699,6 +709,7 @@ function NavLink({
   badgeWhere = "Practice",
   active,
   secondary,
+  sub,
 }: {
   to: FixedRoute;
   label: string;
@@ -711,8 +722,10 @@ function NavLink({
   active?: boolean;
   /** Folded into the phone tab bar's More sheet. */
   secondary?: boolean;
+  /** A place inside the row above it (Practice under Words): indented. */
+  sub?: boolean;
 }) {
-  const className = secondary ? "nav-link nav-link--secondary" : "nav-link";
+  const className = `${secondary ? "nav-link nav-link--secondary" : "nav-link"}${sub ? " nav-link--sub" : ""}`;
   return (
     <Link
       to={to}

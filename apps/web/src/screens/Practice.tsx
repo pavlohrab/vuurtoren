@@ -48,6 +48,7 @@ import { readLocalJSON, writeLocalJSON } from "../storage/local.js";
 import { type WordInspectorHandle, useWordInspector } from "./useWordInspector.js";
 import { pickContinue } from "../textPages.js";
 import { WordsRoom } from "./words/WordsRoom.js";
+import { useWideDesk } from "./words/WordsHome.js";
 
 export const SKILLS: { skill: Skill; label: string }[] = [
   { skill: "recognition", label: "Recognition" },
@@ -96,6 +97,7 @@ function PracticeSession({ focus, autoStart }: { focus: string[] | null; autoSta
   const services = useServices();
   const client = useQueryClient();
   const inspector = useWordInspector("reading");
+  const wide = useWideDesk();
 
   const startedAt = useRef(0);
   const start = async (size: number, skills: Skill[], aiSentences: boolean) => {
@@ -139,7 +141,8 @@ function PracticeSession({ focus, autoStart }: { focus: string[] | null; autoSta
 
   return (
     <div className="page page--list practice">
-      {phase.name === "start" || phase.name === "loading" ? <WordsRoom /> : null}
+      {/* On a computer Practice has its own sidebar row; the Words bar is for the phone. */}
+      {(phase.name === "start" || phase.name === "loading") && !wide ? <WordsRoom /> : null}
       {phase.name === "start" || phase.name === "loading" ? (
         <StartView
           loading={phase.name === "loading"}

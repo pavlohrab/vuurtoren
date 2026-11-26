@@ -44,7 +44,12 @@ describe("App with mock services", () => {
       expect(within(nav).getByRole("link", { name: /^Words/ })).toHaveAttribute("href", "/words"),
     );
     expect(within(nav).getAllByRole("link", { name: /^Words/ })).toHaveLength(1);
-    expect(within(nav).queryByRole("link", { name: /^(Review|Practice)/ })).toBeNull();
+    expect(within(nav).queryByRole("link", { name: /^Review/ })).toBeNull();
+    // Practice has its own row under Words (a computer; the phone folds it away).
+    expect(within(nav).getByRole("link", { name: /^Practice/ })).toHaveAttribute(
+      "href",
+      "/practice",
+    );
     unmount();
     renderApp("/");
     const connected = await screen.findByRole("navigation", { name: "Main" });

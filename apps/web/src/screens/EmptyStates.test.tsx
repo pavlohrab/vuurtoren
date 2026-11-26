@@ -52,11 +52,12 @@ describe("empty states", () => {
         .getAllByRole("link")
         .map((l) => l.getAttribute("title"))
         .filter(Boolean);
-    // One Words entry (the phone tab bar: Read · Words · More); Practice is a tab of Words.
+    // One Words entry, with Practice as its own row under it on a computer (folded on a phone).
     await waitFor(() =>
       expect(names()).toEqual([
         "Read",
         "Words",
+        "Practice",
         "Grammar",
         "Exam",
         "Courses",
