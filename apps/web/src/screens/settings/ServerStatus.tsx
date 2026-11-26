@@ -236,7 +236,8 @@ export function ServerStatus({ nlpUrl }: { nlpUrl: string }) {
           onDone={() => void qc.invalidateQueries({ queryKey: ["server-status", "nlp"] })}
         />
       ) : null}
-      {!demo && nlp && lang.data?.data?.["listen"] === false ? (
+      {/* Speaking listens on your own computer only, never on a hosted server. */}
+      {!demo && nlp && isLocal(nlp) && lang.data?.data?.["listen"] === false ? (
         <SpeakingDownload
           nlp={nlp}
           onDone={() => void qc.invalidateQueries({ queryKey: ["server-status", "nlp"] })}
@@ -306,6 +307,15 @@ export function SyntaxDotDownload({ nlp, onDone }: { nlp: string; onDone: () => 
       ) : null}
     </div>
   );
+}
+
+/** The language server runs on this computer (the desktop app's helper). */
+function isLocal(url: string): boolean {
+  try {
+    return ["localhost", "127.0.0.1", "[::1]"].includes(new URL(url, location.href).hostname);
+  } catch {
+    return false;
+  }
 }
 
 interface PackItem {
