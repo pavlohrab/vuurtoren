@@ -34,7 +34,7 @@ async function setup(keys: [string, WordState][]) {
   >(async (lang, needs) => {
     const sentences = needs.map((n) => [
       {
-        text: `Ik zie de ${n.lemma} hier vandaag.`,
+        text: `Dit is de ${n.lemma} hier.`,
         target: [10, 10 + n.lemma!.length] as [number, number],
         translation: "I see it.",
       },
@@ -86,7 +86,7 @@ describe("practice with AI sentences", () => {
     expect(report).toEqual({ requested: 8, accepted: 8, rejected: 8, reused: 0 });
     expect(
       ex.some(
-        (e) => e.prompt.sentence?.startsWith("Ik zie de") || e.prompt.text.includes("Ik zie de"),
+        (e) => e.prompt.sentence?.startsWith("Dit is de") || e.prompt.text.includes("Dit is de"),
       ),
     ).toBe(true);
 

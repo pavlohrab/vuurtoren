@@ -130,4 +130,37 @@ describe("a lesson (4.7)", () => {
     );
     expect(lesson.some((e) => e.kind === "scramble")).toBe(false);
   });
+
+  it("builds only from short sentences of known words, and says where you met the word", () => {
+    const hard = word("gracht", {
+      state: "known",
+      pKnown: 0.97,
+      sentences: [
+        sentence("Langs de oude gracht in het centrum stonden vroeger veel pakhuizen.", "gracht", {
+          translation: "Along the old canal…",
+          source: "text",
+          unknown: 3,
+        }),
+        sentence("Ze fietst langs de gracht.", "gracht", {
+          translation: "She cycles along the canal.",
+          source: "tatoeba",
+          unknown: 0,
+        }),
+      ],
+    });
+    const lesson = buildLesson(
+      {
+        words: [hard, ...pool],
+        signals: [sig("gracht", { state: "known", pKnown: 0.97 })],
+        states: [],
+        answers: [],
+        now: NOW,
+      },
+      createRng(8),
+    );
+    const ex = lesson.find((e) => e.key === "gracht")!;
+    expect(ex.kind).toBe("scramble");
+    expect(ex.answer).toBe("Ze fietst langs de gracht.");
+    expect(ex.metIn?.text).toMatch(/^Langs de oude gracht/);
+  });
 });

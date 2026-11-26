@@ -30,7 +30,8 @@ export function rankSentences(
 ): ExampleSentence[] {
   const score = (s: ExampleSentence) => {
     const n = wordCount(s.text);
-    return (n >= minWords && n <= maxWords ? 0 : 3) + SOURCE_RANK[s.source];
+    // Unknown words weigh more than length or source (lessons set `unknown`, 4.7.4).
+    return (n >= minWords && n <= maxWords ? 0 : 3) + SOURCE_RANK[s.source] + 4 * (s.unknown ?? 0);
   };
   return sentences
     .filter(validSpan)

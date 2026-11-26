@@ -38,15 +38,52 @@ const startOf = (s: WordSignals | undefined): GripStart => ({
   netClozes: s?.netClozes ?? 0,
 });
 
+/** Building uses 4–7 words; filling a gap up to 12 (4.7.4). */
+const BUILD_MAX_WORDS = 7;
+const GAP_MAX_WORDS = 12;
+/** Other unknown words allowed: none when building, one when filling a gap. */
+const BUILD_MAX_UNKNOWN = 0;
+const GAP_MAX_UNKNOWN = 1;
+
+const words = (t: string) => t.split(/\s+/).filter(Boolean).length;
+
+/** The word with only the sentences an exercise kind may use (the sentence guard rail). */
+function forKind(word: WordData, kind: ExerciseKind): WordData {
+  const build = kind === "scramble" || kind === "dictation";
+  const max = build ? BUILD_MAX_WORDS : GAP_MAX_WORDS;
+  const unknown = build ? BUILD_MAX_UNKNOWN : GAP_MAX_UNKNOWN;
+  return {
+    ...word,
+    sentences: word.sentences.filter((x) => words(x.text) <= max && (x.unknown ?? 0) <= unknown),
+  };
+}
+
 /** Every exercise the generators can make for a word (one per kind). */
 function candidates(word: WordData, pool: readonly WordData[], rng: Rng): Exercise[] {
   const out: Exercise[] = [];
   for (const kind of KINDS) {
-    const ex = generate(kind, word, pool, rng);
+    const ex = generate(kind, forKind(word, kind), pool, rng);
     // Building needs the sentence's English on top (4.7.4); without it, no building.
     if (ex && !(ex.kind === "scramble" && !ex.prompt.translation)) out.push(ex);
   }
   return out;
+}
+
+/** The text of the sentence an exercise uses, if any. */
+const usedSentence = (ex: Exercise): string | undefined =>
+  ex.prompt.sentence ??
+  (ex.kind === "scramble" || (ex.kind === "dictation" && ex.answer.includes(" "))
+    ? ex.answer
+    : undefined);
+
+/** "Where you met it": the word's first sentence, when the exercise used another one (4.7.4). */
+function withMetIn(ex: Exercise, word: WordData): Exercise {
+  const first = word.sentences.find((x) => x.source === "anki" || x.source === "text");
+  if (!first || usedSentence(ex) === first.text) return ex;
+  return {
+    ...ex,
+    metIn: { text: first.text, ...(first.translation ? { translation: first.translation } : {}) },
+  };
 }
 
 /** Grammar points missed often in the last week. */
@@ -105,7 +142,7 @@ export function buildLesson(input: LessonInput, rng: Rng): Exercise[] {
       answers: input.answers,
       favour,
     });
-    if (ex) out.push(ex);
+    if (ex) out.push(withMetIn(ex, word));
   }
   return spreadKinds(out);
 }

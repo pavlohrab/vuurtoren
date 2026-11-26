@@ -26,7 +26,13 @@ import type {
   WordInfo,
 } from "@app/db";
 import type { GlossEntry } from "@app/nlp-client";
-import { STEP_OF, buildLesson, buildTopicSession, score as lessonScore } from "@app/core";
+import {
+  STEP_OF,
+  buildLesson,
+  buildTopicSession,
+  score as lessonScore,
+  unknownOthers,
+} from "@app/core";
 import { lessonSignals, toEloAnswers } from "./lessonSignals.js";
 import {
   buildSession,
@@ -119,6 +125,8 @@ const TOPIC_WORDS = 40;
 const DEFAULT_SIZE = 20;
 /** Most sentences translated for one lesson (the translator is local but not instant). */
 const MAX_TRANSLATE = 80;
+/** Recall at which another word in a sentence counts as known (algorithms.md 4.7.4). */
+const KNOWN_RECALL = 0.8;
 /** Words in a lesson (algorithms.md 4.7.6). */
 const LESSON_WORDS = 10;
 /** Exercise kinds the engine knows (older answers of a removed kind are skipped). */
@@ -450,6 +458,10 @@ export function createLivePractice(deps: LivePracticeDeps) {
       opts.onAISentences?.(report);
     }
     await addTranslations(words);
+    // How many other words of each sentence you don't know yet (the sentence guard rail, 4.7.4).
+    const known = (form: string) => (model.get(form)?.pKnown ?? 0) >= KNOWN_RECALL;
+    for (const w of words)
+      for (const x of w.sentences) x.unknown = unknownOthers(x.text, x.target, known);
     const zipf = new Map(words.map((w) => [w.key, w.zipf]));
     const inPool = new Set(pool);
     const signals = lessonSignals(

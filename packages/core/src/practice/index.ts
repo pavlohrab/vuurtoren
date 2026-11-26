@@ -41,3 +41,4 @@ export {
   weakPoints,
   type LessonInput,
 } from "./lesson.js";
+export { FUNCTION_WORDS, formsOf, unknownOthers } from "./known.js";
