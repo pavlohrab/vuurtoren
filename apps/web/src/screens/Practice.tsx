@@ -811,7 +811,7 @@ function Session({
           <X size={20} aria-hidden />
         </button>
         <ExerciseProgress done={index + (feedback ? 1 : 0)} total={exercises.length} />
-        <span className="k-sr">
+        <span className="practice-count">
           {index + 1} of {exercises.length}
         </span>
       </div>
