@@ -1686,6 +1686,57 @@
       .src a {
         color: inherit;
       }
+      /* The hero: a beam measures a text word by word (WD10). At rest it shows the end. */
+      .measure {
+        margin: 0;
+        width: 84%;
+        display: grid;
+        gap: 10px;
+        position: relative;
+      }
+      .m-text {
+        position: relative;
+        margin: 6px 0 0;
+        font: 19px/1.8 var(--f-read);
+        color: var(--ink);
+      }
+      .m-w {
+        transition:
+          color 0.3s,
+          background-color 0.3s,
+          box-shadow 0.3s;
+        border-radius: 4px;
+      }
+      .m-text.run .m-w {
+        color: var(--line-strong);
+      }
+      .m-text .m-w.k {
+        color: var(--ink);
+      }
+      .m-text .m-w.n {
+        color: var(--ink);
+        background: var(--learn-soft);
+        box-shadow: inset 0 -2px 0 var(--learn);
+      }
+      .m-beam {
+        position: absolute;
+        width: 70px;
+        height: 2.2em;
+        margin: -0.45em 0 0 -35px;
+        background: radial-gradient(closest-side, var(--beam), transparent);
+        pointer-events: none;
+        opacity: 0;
+        transition:
+          left 0.12s linear,
+          top 0.12s linear,
+          opacity 0.4s;
+      }
+      .m-text.run .m-beam {
+        opacity: 1;
+      }
+      .meter-bar i {
+        transition: width 0.12s linear;
+      }
       .meter {
         width: 80%;
         display: grid;
@@ -1992,16 +2043,21 @@
         </div>
         <div class="demo">
           <div class="stage">
-            <div class="meter" aria-label="A page you know 97% of">
-              <div class="meter-num">97%</div>
-              <div class="meter-bar"><i style="width: 97%"></i></div>
-              <div class="meter-cap">of this page are words you know</div>
-              <div class="meter-keys">
-                <span><b class="k-known"></b>you know them</span
-                ><span><b class="k-new"></b>3 new words to learn</span
-                ><span><b class="k-gloss"></b>the rest translated</span>
-              </div>
-            </div>
+            <figure
+              class="measure"
+              aria-label="A beam passes over a Dutch text. The words you know turn dark, three new words light up, and the share you know counts up to 97%"
+            >
+              <div class="meter-num" data-m-pct>97%</div>
+              <div class="meter-bar"><i data-m-bar style="width: 97%"></i></div>
+              <p class="m-text" lang="nl" data-m-text>
+                Op het eiland staat een oude vuurtoren. Elke avond beklimt Jan de trap en kijkt naar
+                de zee. In de verte ziet hij een klein schip.
+              </p>
+              <figcaption class="meter-keys">
+                <span><b class="k-known"></b>words you know</span
+                ><span><b class="k-new"></b>3 new words to learn</span>
+              </figcaption>
+            </figure>
           </div>
         </div>
       </div>
@@ -2364,6 +2420,61 @@
           },
           { threshold: 0.5 },
         ).observe(box);
+      })();
+    </script>
+    <script>
+      // The hero: a beam passes over the text; known words turn dark, three new ones light up,
+      // and the share counts up to 97%. The page starts in the end state (reduced motion too).
+      (() => {
+        const text = document.querySelector("[data-m-text]");
+        const pct = document.querySelector("[data-m-pct]");
+        const bar = document.querySelector("[data-m-bar]");
+        if (!text || !pct || !bar) return;
+        const NEW = new Set(["vuurtoren", "beklimt", "schip"]);
+        text.innerHTML = text.textContent
+          .trim()
+          .split(/\s+/)
+          .map((w) => {
+            const bare = w.replace(/[.,]/g, "");
+            const mark = w.slice(bare.length);
+            return `<span class="m-w ${NEW.has(bare) ? "n" : "k"}">${bare}</span>${mark}`;
+          })
+          .join(" ");
+        const beam = text.appendChild(document.createElement("span"));
+        beam.className = "m-beam";
+        beam.setAttribute("aria-hidden", "true");
+        if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+        const words = [...text.querySelectorAll(".m-w")];
+        const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+        const show = (n) => {
+          pct.textContent = n + "%";
+          bar.style.width = n + "%";
+        };
+        let running = false;
+        async function play() {
+          running = true;
+          words.forEach((w) => w.classList.remove("k", "n"));
+          text.classList.add("run");
+          show(0);
+          await wait(500);
+          for (let i = 0; i < words.length; i++) {
+            const w = words[i];
+            beam.style.left = w.offsetLeft + w.offsetWidth / 2 + "px";
+            beam.style.top = w.offsetTop + "px";
+            await wait(NEW.has(w.textContent) ? 420 : 150);
+            w.classList.add(NEW.has(w.textContent) ? "n" : "k");
+            show(Math.round((97 * (i + 1)) / words.length));
+          }
+          text.classList.remove("run");
+          running = false;
+          await wait(4500);
+          if (visible) play();
+        }
+        let visible = false;
+        new IntersectionObserver((es) => {
+          visible = es.some((e) => e.isIntersecting);
+          if (visible && !running) play();
+        }).observe(text);
       })();
     </script>
   </body>
