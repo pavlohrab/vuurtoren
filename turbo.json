@@ -3,7 +3,8 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/content/**"],
+      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/content/**", ".env*"],
+      "env": ["VITE_*", "VUURTOREN_*"],
       "outputs": ["dist/**"]
     },
     "typecheck": { "dependsOn": ["^build"] },
