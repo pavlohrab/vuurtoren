@@ -393,6 +393,15 @@ export interface AppServices
     available(): Promise<boolean>;
     say(text: string, rate: number): Promise<Blob>;
   };
+  /**
+   * Speech to text for the speaking exercise (the `asr-nl` pack on the language server):
+   * `available` asks its health, `hear` sends a WAV of one sentence and gets back what was heard.
+   * Absent in demo mode.
+   */
+  listening?: {
+    available(): Promise<boolean>;
+    hear(wav: Blob): Promise<string>;
+  };
   /** Can the language server read photos and scanned pages? (its `/health` says; false when unreachable) */
   ocrAvailable(): Promise<boolean>;
   syncAnki(onProgress?: (msg: string) => void): Promise<LearnerSummary>;

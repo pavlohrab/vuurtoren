@@ -491,7 +491,8 @@ export class NlpClient {
     analyzerVersion?: string;
     /** True when the server can read photos and scanned pages. */
     ocr?: boolean;
-    /** What data is installed; `speech` is the Dutch voice behind `speech()`. */
+    /** What data is installed; `speech` is the Dutch voice behind `speech()`, `listen` the
+     * speech recognition behind `listen()`. */
     data?: Record<string, boolean>;
   }> {
     return this.request("/health");
@@ -578,6 +579,26 @@ export class NlpClient {
     }
     if (!res.ok) throw new NlpError(`NLP /speech: HTTP ${res.status}`, res.status);
     return res.blob();
+  }
+
+  /**
+   * What was said in a WAV recording of one Dutch sentence (the speaking exercise). Rejects with
+   * NlpError when the server can't listen (503: no asr-nl model).
+   */
+  async listen(wav: Blob): Promise<string> {
+    let res: Response;
+    try {
+      res = await this.fetchImpl(`${this.url}/listen`, {
+        method: "POST",
+        headers: { "content-type": "audio/wav" },
+        body: wav,
+        signal: AbortSignal.timeout(this.timeoutMs),
+      });
+    } catch (e) {
+      throw new NlpError(`NLP service unreachable at ${this.url} (${String(e)})`, null);
+    }
+    if (!res.ok) throw new NlpError(`NLP /listen: HTTP ${res.status}`, res.status);
+    return ((await res.json()) as { text: string }).text;
   }
 
   /** Stop an OCR job and free its memory on the server. */

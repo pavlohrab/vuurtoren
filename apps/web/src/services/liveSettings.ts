@@ -196,6 +196,7 @@ export function createLiveSettings({
     | "ocrAvailable"
     | "audioClip"
     | "ownVoice"
+    | "listening"
   > = {
     getSettings: settings,
 
@@ -256,6 +257,17 @@ export function createLiveSettings({
         }
       },
       say: async (text, rate) => (await nlp()).speech(text, rate),
+    },
+
+    listening: {
+      async available() {
+        try {
+          return (await (await nlp()).health()).data?.["listen"] === true;
+        } catch {
+          return false;
+        }
+      },
+      hear: async (wav) => (await nlp()).listen(wav),
     },
 
     async ocrAvailable(): Promise<boolean> {
