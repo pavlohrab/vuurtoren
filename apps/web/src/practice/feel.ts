@@ -72,7 +72,11 @@ export function moving(feel: PracticeFeel): boolean {
 // --- the sounds: made with Web Audio, no files; quiet, under the Dutch voice ---
 
 let ctx: AudioContext | null = null;
-const VOLUME = 0.6;
+/** Everything goes through a limiter, so the sounds can be as loud as the voice without crackle. */
+let out: AudioNode | null = null;
+// Louder than the first round (M6: hard to hear on a phone next to the voice).
+const VOLUME = 1;
+const LOUDER = 3;
 
 function audio(): AudioContext | null {
   if (typeof window === "undefined") return null;
@@ -80,26 +84,41 @@ function audio(): AudioContext | null {
     window.AudioContext ??
     (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
   if (!AC) return null;
-  ctx ??= new AC();
+  if (!ctx) {
+    ctx = new AC();
+    const limit = ctx.createDynamicsCompressor();
+    limit.threshold.value = -10;
+    limit.ratio.value = 12;
+    limit.connect(ctx.destination);
+    out = limit;
+  }
   if (ctx.state === "suspended") void ctx.resume();
   return ctx;
 }
 
 /** One note: a frequency (or a glide from, to), its length and loudness, starting `at` s later. */
-function note(f: number | [number, number], dur: number, gain: number, at = 0): void {
+function note(
+  f: number | [number, number],
+  dur: number,
+  gain: number,
+  at = 0,
+  type: OscillatorType = "triangle",
+): void {
   const c = audio();
-  if (!c) return;
+  if (!c || !out) return;
   const t = c.currentTime + at;
   const o = c.createOscillator();
   const g = c.createGain();
+  // Triangle: a little brighter than a sine, so a phone speaker carries it.
+  o.type = type;
   if (Array.isArray(f)) {
     o.frequency.setValueAtTime(f[0], t);
     o.frequency.exponentialRampToValueAtTime(f[1], t + dur);
   } else o.frequency.value = f;
   g.gain.setValueAtTime(0, t);
-  g.gain.linearRampToValueAtTime(gain * VOLUME, t + 0.008);
+  g.gain.linearRampToValueAtTime(gain * VOLUME * LOUDER, t + 0.008);
   g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-  o.connect(g).connect(c.destination);
+  o.connect(g).connect(out);
   o.start(t);
   o.stop(t + dur + 0.03);
 }
@@ -108,7 +127,7 @@ export type Sound = "tick" | "right" | "wrong" | "done";
 
 const SOUNDS: Record<Sound, () => void> = {
   // Soft pop: a tile placed, a pair matched.
-  tick: () => note([520, 260], 0.05, 0.05),
+  tick: () => note([520, 260], 0.06, 0.06, 0, "sine"),
   // Warm two notes, up.
   right: () => {
     note(523, 0.22, 0.045);

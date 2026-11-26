@@ -323,7 +323,10 @@ export function ExerciseCard({
         : (e.prompt.sentence ?? e.answer);
   // After answering, the right Dutch is said (Settings → Practice).
   useEffect(() => {
-    if (feedback && sayDutch && resultDutch && e.kind !== "pairs") say(resultDutch);
+    if (!(feedback && sayDutch && resultDutch && e.kind !== "pairs")) return;
+    // After the right/not-quite notes, not over them (M6).
+    const t = window.setTimeout(() => say(resultDutch), 550);
+    return () => window.clearTimeout(t);
   }, [feedback !== null]);
 
   const englishLine =
