@@ -54,6 +54,10 @@ export interface ExerciseCardProps {
   onSaidRight?: () => void;
   /** "Say this sentence" missed: the mic again, for the same sentence. */
   onTryAgain?: () => void;
+  /** Say Dutch by itself: the word when it appears, the right answer after answering. */
+  sayDutch?: boolean;
+  /** A small sound: a tile placed, a pair matched. */
+  onTick?: () => void;
   /** "Say this sentence" with the device's own recogniser (Android): it listens itself. */
   listenLive?: { start: () => Promise<string>; stop: () => void };
 }
@@ -124,6 +128,8 @@ export function ExerciseCard({
   onSaidRight,
   onSkipSpeaking,
   onTryAgain,
+  sayDutch = false,
+  onTick,
 }: ExerciseCardProps) {
   const mode = exerciseMode(e);
   const answered = feedback !== null;
@@ -180,6 +186,12 @@ export function ExerciseCard({
   // the button always works).
   useEffect(() => {
     if (mode === "dictation" || e.kind === "listen-build") onSpeak?.(e.prompt.speak ?? e.answer);
+    // A Dutch word on its own is said as it appears (Settings → Practice).
+    else if (
+      sayDutch &&
+      (e.kind === "meaning-choice" || e.kind === "gender" || e.kind === "meet" || e.kind === "say")
+    )
+      onSpeak?.(e.prompt.text);
   }, [e.id]);
 
   useEffect(() => {
@@ -286,6 +298,11 @@ export function ExerciseCard({
       : e.kind === "meaning-choice"
         ? e.prompt.text
         : (e.prompt.sentence ?? e.answer);
+  // After answering, the right Dutch is said (Settings → Practice).
+  useEffect(() => {
+    if (feedback && sayDutch && resultDutch && e.kind !== "pairs") onSpeak?.(resultDutch);
+  }, [feedback !== null]);
+
   const englishLine =
     !dutchPrompt || !e.prompt.translation || e.kind === "scramble" || e.kind === "listen-build"
       ? null
@@ -323,7 +340,12 @@ export function ExerciseCard({
     return (
       <section className="ex-card" aria-label="Exercise" ref={cardRef}>
         <h2 className="ex-ask">{e.instruction}</h2>
-        <Pairs pairs={e.pairs ?? []} onDone={onContinue} />
+        <Pairs
+          pairs={e.pairs ?? []}
+          onDone={onContinue}
+          onSay={sayDutch ? onSpeak : undefined}
+          onTick={onTick}
+        />
       </section>
     );
 
@@ -419,7 +441,7 @@ export function ExerciseCard({
               <button
                 key={`${i}-${n}`}
                 type="button"
-                className="ex-piece ex-piece--placed"
+                className="ex-piece ex-piece--placed ex-piece--fly"
                 disabled={answered}
                 onClick={() => setPicked((p) => p.filter((_, m) => m !== n))}
               >
@@ -440,6 +462,7 @@ export function ExerciseCard({
                     return; // the press was a hold: it showed the meaning
                   }
                   setPicked((cur) => [...cur, i]);
+                  onTick?.();
                   onSpeak?.(p);
                 }}
                 onContextMenu={(ev) => {
@@ -654,9 +677,15 @@ export function ExerciseCard({
 function Pairs({
   pairs,
   onDone,
+  onSay,
+  onTick,
 }: {
   pairs: readonly { nl: string; en: string }[];
   onDone: () => void;
+  /** Say a Dutch word when it's tapped. */
+  onSay?: ((text: string) => void) | undefined;
+  /** A small sound on a match. */
+  onTick?: (() => void) | undefined;
 }) {
   // The meanings in a fixed shuffled order (by length, then text), so they don't line up.
   const [meanings] = useState(() =>
@@ -672,6 +701,7 @@ function Pairs({
     if (right) {
       setDone((d) => new Set(d).add(picked));
       setPicked(null);
+      onTick?.();
     } else {
       setMiss(en);
       window.setTimeout(() => setMiss(null), 500);
@@ -693,7 +723,10 @@ function Pairs({
               )}
               disabled={done.has(p.nl)}
               aria-pressed={picked === p.nl}
-              onClick={() => setPicked(p.nl)}
+              onClick={() => {
+                setPicked(p.nl);
+                onSay?.(p.nl);
+              }}
             >
               {p.nl}
             </button>

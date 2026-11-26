@@ -1804,6 +1804,27 @@ svg.lucide {
   align-items: center;
   margin-top: 4px;
 }
+.ex-check,
+.ex-continue {
+  box-shadow: 0 3px 0 color-mix(in srgb, var(--accent) 55%, black);
+  transition:
+    transform 0.12s var(--ease),
+    box-shadow 0.12s var(--ease);
+}
+.ex-check:active:not(:disabled),
+.ex-continue:active {
+  transform: translateY(3px);
+  box-shadow: none;
+}
+.ex-check:disabled {
+  box-shadow: none;
+}
+.ex-strip--right .ex-continue {
+  box-shadow: 0 3px 0 color-mix(in srgb, var(--success) 55%, black);
+}
+.ex-strip--wrong .ex-continue {
+  box-shadow: 0 3px 0 color-mix(in srgb, var(--danger) 55%, black);
+}
 .ex-foot .ex-check {
   flex: 1;
   min-height: 46px;
@@ -2011,6 +2032,28 @@ svg.lucide {
 .ex-choice:hover:not(:disabled) {
   background: var(--surface-2);
 }
+/* A little depth, so an answer looks pressable and presses down (mock-practice-polish.html). */
+.ex-choice,
+.ex-pair {
+  border-width: 2px;
+  box-shadow: 0 3px 0 var(--line);
+  transition:
+    transform 0.12s var(--ease),
+    box-shadow 0.12s var(--ease),
+    background var(--dur) var(--ease),
+    border-color var(--dur) var(--ease);
+}
+.ex-choice:active:not(:disabled),
+.ex-pair:active:not(:disabled) {
+  transform: translateY(3px);
+  box-shadow: 0 0 0 var(--line);
+}
+.ex-choice--right {
+  box-shadow: 0 3px 0 var(--success);
+}
+.ex-choice--wrong {
+  box-shadow: 0 3px 0 var(--danger);
+}
 .ex-choice:disabled {
   cursor: default;
 }
@@ -2075,10 +2118,17 @@ svg.lucide {
   padding: 7px 12px;
   color: var(--ink);
   background: var(--bg);
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  box-shadow: 0 2px 0 var(--line);
+  border: 2px solid var(--line);
+  border-radius: 12px;
+  box-shadow: 0 3px 0 var(--line);
   cursor: pointer;
+  transition:
+    transform 0.12s var(--ease),
+    box-shadow 0.12s var(--ease);
+}
+.ex-piece:active:not(:disabled) {
+  transform: translateY(3px);
+  box-shadow: 0 0 0 var(--line);
 }
 .ex-piece {
   position: relative;

@@ -28,6 +28,7 @@ import {
 import { dutchVoiceAvailable, speakDutch, useDutchVoice } from "../practice/speech.js";
 import { toWav16k } from "../practice/wav.js";
 import { useSay } from "../audio/useSay.js";
+import { buzz, moving, play as playSound, useFeel } from "../practice/feel.js";
 import { clipId } from "@app/anki";
 import {
   androidListen,
@@ -655,6 +656,7 @@ function Session({
       })().catch(() => speakDutch(text, rate)),
     [play],
   );
+  const feel = useFeel();
   /** Exercises tried again after a miss (Say this sentence). */
   const retried = useRef(new Set<string>());
   /** Exercises the learner said were heard wrong: their second go is not added. */
@@ -774,6 +776,8 @@ function Session({
         }
         setSubmitted(s.answer);
         setFeedback({ correct: result.correct, ...(result.note ? { note: result.note } : {}) });
+        playSound(result.correct ? "right" : "wrong", feel);
+        if (!result.correct) buzz(feel);
       } catch (e) {
         setError(errorText(e, "The answer could not be saved."));
       } finally {
@@ -869,7 +873,7 @@ function Session({
           </Button>
         </p>
       ) : null}
-      <div className="practice-card">
+      <div className={`practice-card${moving(feel) ? " practice-move" : ""}`}>
         <ExerciseCard
           key={current.id}
           exercise={current}
@@ -882,6 +886,8 @@ function Session({
           onWord={(form, sentence, el) => inspector.open(form, sentence, el)}
           {...(topic ? { topic } : {})}
           onSaidRight={() => void saidRight()}
+          sayDutch={feel.sayDutch}
+          onTick={() => playSound("tick", feel)}
           onTryAgain={tryAgain}
           onSkipSpeaking={skipSpeaking}
           {...(phoneListens

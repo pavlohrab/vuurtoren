@@ -1293,6 +1293,110 @@
   overflow: hidden;
   clip-path: inset(50%);
 }
+/* A lesson on any screen (mock-practice-polish.html): no card around the exercise, its content
+   in the middle, and the band with Check and the result at the bottom, as on a computer. */
+.practice-card {
+  flex: 1;
+  display: flex;
+}
+.practice-card .ex-card {
+  flex: 1;
+  background: none;
+  border: 0;
+  padding: 12px 0 0;
+}
+/* The content sits in the middle of the room above the band (or of the whole room, before an
+   answer to a choice, when there is no band yet). */
+.practice-card .ex-card > :first-child {
+  margin-top: auto;
+}
+.practice-card .ex-card > :last-child:not(.ex-foot):not(.ex-strip) {
+  margin-bottom: auto;
+}
+/* In a lesson the page fills the room, so the band sits right on the bottom (no gap). */
+.practice:has(.practice-card) {
+  padding-bottom: 0;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+.practice:has(.practice-card) .practice-session {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+.practice-card .ex-foot,
+.practice-card .ex-strip {
+  position: sticky;
+  bottom: 0;
+  margin: auto 0 0;
+  padding: 14px 0 16px;
+  border-radius: 0;
+  background: var(--surface);
+  box-shadow: 0 0 0 100vmax var(--surface);
+  clip-path: inset(0 -100vmax);
+  border-top: 1px solid var(--line);
+}
+.practice-card .ex-strip--right {
+  background: color-mix(in srgb, var(--success) 14%, var(--surface));
+  box-shadow: 0 0 0 100vmax color-mix(in srgb, var(--success) 14%, var(--surface));
+}
+.practice-card .ex-strip--wrong {
+  background: color-mix(in srgb, var(--danger) 12%, var(--surface));
+  box-shadow: 0 0 0 100vmax color-mix(in srgb, var(--danger) 12%, var(--surface));
+}
+/* Movement (Settings → Practice; never with reduced motion): a new exercise slides in, a placed
+   tile flies up, a wrong answer shakes once, the band rises. */
+@media (prefers-reduced-motion: no-preference) {
+  .practice-move .ex-card {
+    animation: practice-in 0.32s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .practice-move .ex-piece--fly {
+    animation: practice-fly 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .practice-move .ex-choice--wrong,
+  .practice-move .ex-pair--miss {
+    animation: practice-shake 0.35s;
+  }
+  .practice-move .ex-strip {
+    animation: practice-rise 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .practice-top .ex-progress-bar {
+    transition: width 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+}
+@keyframes practice-in {
+  from {
+    opacity: 0;
+    transform: translateX(32px);
+  }
+}
+@keyframes practice-fly {
+  from {
+    opacity: 0.4;
+    transform: translateY(48px) scale(0.92);
+  }
+}
+@keyframes practice-shake {
+  20% {
+    transform: translateX(-6px);
+  }
+  40% {
+    transform: translateX(6px);
+  }
+  60% {
+    transform: translateX(-4px);
+  }
+  80% {
+    transform: translateX(3px);
+  }
+}
+@keyframes practice-rise {
+  from {
+    transform: translateY(16px);
+    opacity: 0.6;
+  }
+}
 /* On a computer (mock-practice-desktop.html): a 720 px column, bigger type, the count shown,
    and one band along the bottom of the window where Check and the result always sit. */
 @media (min-width: 1100px) {
@@ -1309,15 +1413,8 @@
     color: var(--ink-muted);
     white-space: nowrap;
   }
-  .practice-card {
-    min-height: calc(100dvh - 190px);
-    display: flex;
-  }
   .practice-card .ex-card {
-    flex: 1;
-    background: none;
-    border: 0;
-    padding: 36px 0 0;
+    padding-top: 36px;
     gap: 18px;
   }
   .practice-card .ex-ask {
