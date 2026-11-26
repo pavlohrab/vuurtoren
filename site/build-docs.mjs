@@ -7,7 +7,7 @@
  * Links between docs pages become links between the HTML pages; links to anything else in docs/
  * (docs/dev, the design system) go to the file on GitHub.
  */
-import { copyFileSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, normalize, posix, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { marked } from "marked";
@@ -168,6 +168,10 @@ function page({ title, summary, nav: navHtml, content, pager, edit, onpage }) {
 rmSync(out, { recursive: true, force: true });
 mkdirSync(out, { recursive: true });
 copyFileSync(join(root, "site", "docs-template", "docs.css"), join(out, "docs.css"));
+// The clips of the app (WD9), recorded by apps/web/clips.
+mkdirSync(join(out, "clips"), { recursive: true });
+for (const f of readdirSync(join(root, "docs", "clips")))
+  copyFileSync(join(root, "docs", "clips", f), join(out, "clips", f));
 
 pages.forEach((p, i) => {
   const r = rendered.get(p.file);

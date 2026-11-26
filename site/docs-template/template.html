@@ -148,6 +148,14 @@
 
     <script>
       (() => {
+        // Clips of the app play by themselves, unless the system asks for less motion: then
+        // they show their last frame and play on a tap.
+        if (matchMedia("(prefers-reduced-motion: reduce)").matches)
+          document.querySelectorAll("video.clip").forEach((v) => {
+            v.removeAttribute("autoplay");
+            v.pause();
+            v.controls = true;
+          });
         // On a phone the chapters start folded behind Menu.
         if (matchMedia("(max-width: 800px)").matches) document.getElementById("tocd").open = false;
         // Search: titles, headings and text of every page, filtered as you type.

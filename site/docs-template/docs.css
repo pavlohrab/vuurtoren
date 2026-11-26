@@ -851,3 +851,21 @@ article > * {
   color: var(--accent);
   vertical-align: 3px;
 }
+
+/* Clips of the app (docs/clips, recorded by apps/web/clips): a phone screen, its caption below. */
+figure.clip-fig {
+  margin: 20px 0;
+  display: grid;
+  justify-items: start;
+  gap: 8px;
+}
+video.clip {
+  width: min(300px, 100%);
+  height: auto;
+  border-radius: 18px;
+  border: 1px solid var(--line, #ddd3c3);
+}
+figure.clip-fig figcaption {
+  font-size: 14px;
+  color: var(--muted, #6e6457);
+}
