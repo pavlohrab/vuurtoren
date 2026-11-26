@@ -657,8 +657,8 @@ doesn't do that again. It trains what a card doesn't, on the same words: the wor
 sentence, a different one each time; saying it in Dutch; de or het, forms and word order; and the
 sound. Each word gets the exercise you would get right about 8 times in 10.
 
-Not there yet: in Anki mode, words you reviewed in Anki today can still come up, because the app
-doesn't read Anki's review dates.
+Words you reviewed on a card today wait until tomorrow. With Anki that is as fresh as the last
+sync, because the app learns Anki's review dates when it syncs.
 
 #### 4.7.1 What the app knows about each word
 
@@ -685,7 +685,8 @@ the highest **need × use**.
 - **Use** is high for common words, for words on the page you just read, and for words on the next
   pages, because learning words before a text helps you understand it (Webb 2009).
 - **Left out:** ignored and dismissed words, words you reviewed on their own card today (the app's
-  cards), and words that are safe in every way, except now and then as a check.
+  cards, or Anki as of the last sync), and words that are safe in every way, except now and then
+  as a check.
 
 When you start a lesson from a list (this text, mistakes), only those words are in the pool.
 
