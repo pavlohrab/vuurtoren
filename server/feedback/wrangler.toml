@@ -1,0 +1,27 @@
+# The feedback Worker (FB1). Setup steps: README.md.
+name = "vuurtoren-feedback"
+main = "src/index.ts"
+compatibility_date = "2026-11-01"
+workers_dev = false
+routes = [{ pattern = "issue.vuurtoren.app", custom_domain = true }]
+
+[vars]
+GITHUB_REPO = "pavlohrab/Vuurtoren"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "vuurtoren-feedback"
+database_id = "PUT-THE-ID-FROM-wrangler-d1-create-HERE"
+
+[[r2_buckets]]
+binding = "FILES"
+bucket_name = "vuurtoren-feedback"
+
+# Voice notes as text. Remove these two lines to skip it.
+[ai]
+binding = "AI"
+
+[triggers]
+crons = ["17 3 * * *"]
+
+# Secrets (wrangler secret put …): APP_KEY, TG_TOKEN, TG_CHAT_ID, TG_SECRET, GITHUB_TOKEN, SALT
