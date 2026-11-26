@@ -614,3 +614,39 @@
     flex: none;
   }
 }
+/* A long press on a cover is ours (Move to…), not the phone's: no callout, no text selection. */
+.lib-open {
+  -webkit-touch-callout: none;
+  user-select: none;
+}
+/* Move to…: one row per shelf, a check on the one it is on. */
+.lib-move-picks {
+  display: grid;
+  gap: var(--s-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.lib-move-pick {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 44px;
+  padding: var(--s-2) var(--s-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+.lib-move-pick:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+.lib-move-pick[aria-current="true"] {
+  border-color: var(--accent);
+  color: var(--accent);
+  cursor: default;
+}

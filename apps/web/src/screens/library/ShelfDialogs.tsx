@@ -90,18 +90,19 @@ function ShelfNameForm({
 }
 
 /**
- * Put texts on shelves: one toggle per shelf (a text may be on several) and a quick new shelf.
- * With several texts, a shelf counts as "on" only when all of them are on it.
+ * Move texts to a shelf (F5): a text sits on one shelf of yours. Pick a shelf and it moves
+ * there, off the others; or make a new shelf for it; or take it off the shelf it is on. The
+ * phone opens this with a long press on a cover, the computer from the cover's "…" menu.
  */
-export function AddToShelfDialog({
+export function MoveToShelfDialog({
   textIds,
   label,
   shelves,
   onClose,
 }: {
-  /** Texts to shelve; empty = closed. */
+  /** Texts to move; empty = closed. */
   textIds: string[];
-  /** What is being shelved, for the title ("Het weer", "3 texts"). */
+  /** What is being moved, for the title ("Het weer", "3 texts"). */
   label: string;
   shelves: Shelf[];
   onClose: () => void;
@@ -113,15 +114,14 @@ export function AddToShelfDialog({
       onOpenChange={(o) => {
         if (!o) onClose();
       }}
-      title="Add to shelf"
-      description={label}
+      title={`Move “${label}” to`}
     >
-      {open ? <AddToShelfForm textIds={textIds} shelves={shelves} onClose={onClose} /> : null}
+      {open ? <MoveToShelfForm textIds={textIds} shelves={shelves} onClose={onClose} /> : null}
     </Dialog>
   );
 }
 
-function AddToShelfForm({
+function MoveToShelfForm({
   textIds,
   shelves,
   onClose,
@@ -135,35 +135,57 @@ function AddToShelfForm({
   const toast = useToast();
   const [newName, setNewName] = useState("");
   const isOn = (s: Shelf) => textIds.every((id) => s.textIds.includes(id));
-  const toggle = useMutation({
-    mutationFn: async (s: Shelf) =>
-      isOn(s) ? services.removeFromShelf(s.id, textIds) : services.addToShelf(s.id, textIds),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["shelves"] }),
+  /** Off every shelf of yours but `keep`. */
+  const offOthers = async (keep: string | null) => {
+    for (const s of shelves) {
+      if (s.id === keep) continue;
+      const on = textIds.filter((id) => s.textIds.includes(id));
+      if (on.length) await services.removeFromShelf(s.id, on);
+    }
+  };
+  const done = async (message: string) => {
+    await qc.invalidateQueries({ queryKey: ["shelves"] });
+    toast(message);
+    onClose();
+  };
+  const move = useMutation({
+    mutationFn: async (s: Shelf) => {
+      await services.addToShelf(s.id, textIds);
+      await offOthers(s.id);
+    },
+    onSuccess: (_r, s) => done(`Moved to “${s.name}”`),
+    onError: (e) => toast("Could not move the text", errorText(e)),
+  });
+  const takeOff = useMutation({
+    mutationFn: (s: Shelf) => services.removeFromShelf(s.id, textIds),
+    onSuccess: (_r, s) => done(`Taken off “${s.name}”`),
     onError: (e) => toast("Could not change the shelf", errorText(e)),
   });
   const create = useMutation({
-    mutationFn: () => services.createShelf(newName, textIds),
-    onSuccess: async () => {
-      setNewName("");
-      await qc.invalidateQueries({ queryKey: ["shelves"] });
+    mutationFn: async () => {
+      await services.createShelf(newName, textIds);
+      await offOthers(null);
     },
+    onSuccess: () => done(`Moved to “${newName.trim()}”`),
     onError: (e) => toast("Could not create the shelf", errorText(e)),
   });
+  const busy = move.isPending || takeOff.isPending || create.isPending;
+  const on = shelves.filter(isOn);
   return (
     <div className="lib-form">
       {shelves.length ? (
-        <ul className="lib-shelf-picks" aria-label="Shelves">
+        <ul className="lib-move-picks" aria-label="Shelves">
           {shelves.map((s) => (
             <li key={s.id}>
               <button
                 type="button"
-                className="k-toggle"
-                aria-pressed={isOn(s)}
-                disabled={toggle.isPending}
-                onClick={() => toggle.mutate(s)}
+                className="lib-move-pick"
+                aria-current={isOn(s) ? "true" : undefined}
+                disabled={busy || isOn(s)}
+                onClick={() => move.mutate(s)}
               >
-                {isOn(s) ? <Check size={14} aria-hidden /> : null}
-                {s.name}
+                <span>{s.name}</span>
+                {isOn(s) ? <Check size={16} aria-label="It is here" /> : null}
               </button>
             </li>
           ))}
@@ -185,13 +207,18 @@ function AddToShelfForm({
           placeholder="Name"
           onChange={(e) => setNewName(e.target.value)}
         />
-        <Button type="submit" disabled={!newName.trim() || create.isPending}>
+        <Button type="submit" disabled={!newName.trim() || busy}>
           Create
         </Button>
       </form>
       <div className="k-dialog-actions">
-        <Button variant="primary" onClick={onClose}>
-          Done
+        {on.map((s) => (
+          <Button key={s.id} variant="ghost" disabled={busy} onClick={() => takeOff.mutate(s)}>
+            Take it off “{s.name}”
+          </Button>
+        ))}
+        <Button variant="secondary" onClick={onClose}>
+          Cancel
         </Button>
       </div>
     </div>

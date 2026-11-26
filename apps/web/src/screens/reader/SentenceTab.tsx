@@ -4,6 +4,7 @@
  * side, in side by side's colours. Ctrl-click, or a long press on the phone, adds the next word in
  * the next colour; tapping a marked word again clears it.
  */
+import { LONG_PRESS_MS } from "../../platform/useLongPress.js";
 import type { AnalyzedToken, SentencePairs } from "@app/core";
 import { type MouseEvent, type PointerEvent, useCallback, useMemo, useRef, useState } from "react";
 import type { ExplainGrammar } from "../../services/aiTypes.js";
@@ -11,7 +12,6 @@ import { SentencePanel } from "../ReaderAI.js";
 import { SentenceFrameView } from "./SentenceFrameView.js";
 
 const COLOURS = 9;
-const LONG_PRESS_MS = 450;
 
 /** What a word's button needs to tell a tap from Ctrl-click or a long press. */
 export interface PickHandlers {

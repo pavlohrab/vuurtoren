@@ -8,10 +8,11 @@ import { coverLine } from "./coverLine.js";
 import { readingState } from "./shelving.js";
 import { useCoverUrl } from "./useCoverUrl.js";
 import { useCanAddTexts } from "../../platform/canAddTexts.js";
+import { useLongPress } from "../../platform/useLongPress.js";
 
 /** MIME type of a dragged Library cover (JSON array of text ids). */
 export const DRAG_TYPE = "application/x-vuurtoren-texts";
-/** The shelf a dragged cover comes from: a drop on another shelf moves it (Ctrl keeps both). */
+/** The shelf a dragged cover comes from (a drop moves it off the shelves it was on). */
 export const FROM_SHELF_TYPE = "application/x-vuurtoren-from-shelf";
 
 export interface LibraryItemProps {
@@ -31,6 +32,8 @@ export interface LibraryItemProps {
   dragIds: () => string[];
   /** The learner's shelf this cover sits on, if any (dragging it away moves it). */
   fromShelf?: string | undefined;
+  /** A long press with a finger (the phone): Move to… (F5). */
+  onLongPress?: (() => void) | undefined;
 }
 
 /** One text on the Library shelf: the cover, a quiet line under it and a "…" menu. */
@@ -46,7 +49,9 @@ export function LibraryItem({
   onKeyDown,
   dragIds,
   fromShelf,
+  onLongPress,
 }: LibraryItemProps) {
+  const press = useLongPress(onLongPress);
   const imageUrl = useCoverUrl(t.coverId);
   const state = readingState(t);
   const canAdd = useCanAddTexts();
@@ -109,6 +114,7 @@ export function LibraryItem({
             onDragStart={onDragStart}
             onFocus={onFocus}
             onKeyDown={onKeyDown}
+            {...press}
           >
             {cover}
           </Link>

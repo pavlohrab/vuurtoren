@@ -189,16 +189,11 @@ describe("Library screen", () => {
     expect(within(shelf).getByText(/Nothing here yet/)).toBeInTheDocument();
 
     await openMenu(user, "Op de markt");
-    await user.click(await screen.findByRole("menuitem", { name: "Add to shelf…" }));
-    dialog = await screen.findByRole("dialog", { name: "Add to shelf" });
+    await user.click(await screen.findByRole("menuitem", { name: "Move to…" }));
+    dialog = await screen.findByRole("dialog", { name: "Move “Op de markt” to" });
+    // Picking a shelf moves the text there and closes.
     await user.click(within(dialog).getByRole("button", { name: "Nieuws" }));
-    await waitFor(() =>
-      expect(within(dialog).getByRole("button", { name: "Nieuws" })).toHaveAttribute(
-        "aria-pressed",
-        "true",
-      ),
-    );
-    await user.click(within(dialog).getByRole("button", { name: "Done" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     await waitFor(() =>
       expect(
         within(screen.getByRole("region", { name: "Nieuws" })).getByRole("link", {
@@ -233,6 +228,32 @@ describe("Library screen", () => {
     await waitFor(() => expect(history.location.pathname).toBe("/courses/demo-course/3"));
   });
 
+  it("moves a text from one shelf to another, and takes it off (F5)", async () => {
+    const { user, services } = setup();
+    await services.createShelf("Nieuws", ["t-markt"]);
+    await services.createShelf("Later", []);
+    await openMenu(user, "Op de markt");
+    await user.click(await screen.findByRole("menuitem", { name: "Move to…" }));
+    let dialog = await screen.findByRole("dialog", { name: "Move “Op de markt” to" });
+    expect(within(dialog).getByRole("button", { name: /^Nieuws/ })).toHaveAttribute(
+      "aria-current",
+      "true",
+    );
+    await user.click(within(dialog).getByRole("button", { name: "Later" }));
+    await waitFor(async () => {
+      const byName = Object.fromEntries((await services.shelves()).map((x) => [x.name, x]));
+      expect(byName.Later?.textIds).toEqual(["t-markt"]);
+      expect(byName.Nieuws?.textIds).toEqual([]);
+    });
+    await openMenu(user, "Op de markt");
+    await user.click(await screen.findByRole("menuitem", { name: "Move to…" }));
+    dialog = await screen.findByRole("dialog", { name: "Move “Op de markt” to" });
+    await user.click(within(dialog).getByRole("button", { name: "Take it off “Later”" }));
+    await waitFor(async () =>
+      expect((await services.shelves()).every((x) => x.textIds.length === 0)).toBe(true),
+    );
+  });
+
   it("puts several selected texts on a new shelf at once", async () => {
     const { user, services } = setup();
     await user.click(await screen.findByRole("button", { name: /Select/ }));
@@ -241,8 +262,8 @@ describe("Library screen", () => {
     await user.click(within(toRead).getByRole("button", { name: "Op de markt" }));
     expect(screen.getByText("2 texts selected")).toBeInTheDocument();
     const bar = screen.getByRole("region", { name: "Selection" });
-    await user.click(within(bar).getByRole("button", { name: /Add to shelf/ }));
-    const dialog = await screen.findByRole("dialog", { name: "Add to shelf" });
+    await user.click(within(bar).getByRole("button", { name: /Move to/ }));
+    const dialog = await screen.findByRole("dialog", { name: "Move “2 texts” to" });
     await user.type(within(dialog).getByLabelText("New shelf"), "Stories");
     await user.click(within(dialog).getByRole("button", { name: "Create" }));
     await waitFor(async () =>

@@ -23,7 +23,7 @@ import { ErrorNotice } from "../shell/ErrorNotice.js";
 import { CoverDialog } from "./library/CoverDialog.js";
 import { DRAG_TYPE, FROM_SHELF_TYPE, LibraryItem } from "./library/LibraryItem.js";
 import { type MenuItem, MenuButton } from "./library/MenuButton.js";
-import { AddToShelfDialog, ShelfNameDialog } from "./library/ShelfDialogs.js";
+import { MoveToShelfDialog, ShelfNameDialog } from "./library/ShelfDialogs.js";
 import {
   SORT_LABEL,
   SOURCES,
@@ -279,7 +279,7 @@ export function Read() {
       onSelect: () => setCoverFor(t),
     },
     {
-      label: "Add to shelf…",
+      label: "Move to…",
       icon: <FolderPlus size={16} aria-hidden />,
       onSelect: () => setShelving({ ids: [t.id], label: t.title }),
     },
@@ -318,6 +318,7 @@ export function Read() {
       selected={selected.has(t.id)}
       dragIds={() => (selected.has(t.id) ? [...selected] : [t.id])}
       fromShelf={row?.own ? row.id : undefined}
+      onLongPress={selecting ? undefined : () => setShelving({ ids: [t.id], label: t.title })}
       {...extra}
     />
   );
@@ -619,7 +620,7 @@ export function Read() {
               setShelving({ ids: [...selected], label: plural(selected.size, "text", "texts") })
             }
           >
-            <FolderPlus size={16} aria-hidden /> Add to shelf
+            <FolderPlus size={16} aria-hidden /> Move to
           </Button>
           <Button variant="ghost" size="sm" onClick={stopSelecting}>
             Done
@@ -629,7 +630,7 @@ export function Read() {
 
       <TextDetailsDialog text={details} onClose={() => setDetails(null)} />
       <CoverDialog text={coverFor} onClose={() => setCoverFor(null)} />
-      <AddToShelfDialog
+      <MoveToShelfDialog
         textIds={shelving.ids}
         label={shelving.label}
         shelves={ownShelves}
@@ -778,7 +779,7 @@ function ShelfRowView({
           </ul>
         ) : (
           <p className="lib-shelf-empty">
-            Nothing here yet. Choose “Add to shelf…” in a cover’s menu, or drag covers here.
+            Nothing here yet. Drag covers here, or choose “Move to…” in a cover’s menu.
           </p>
         )}
       </section>
