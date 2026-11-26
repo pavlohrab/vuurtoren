@@ -324,7 +324,17 @@ function StartView({
   const practise = (keys: string[]) =>
     void navigate({ to: "/practice", search: { words: keys.join(","), start: "1" } });
   // Nothing due, nothing new and no lesson to offer: no Start, one next step instead.
-  if (o && o.due === 0 && o.newAvailable === 0 && !focus && !src?.page && !src?.mistakes.length) {
+  // (Wait for the lesson list, so a page lesson doesn't flash "All caught up" first.)
+  const sourcesKnown = sources.isSuccess || !services.lessonSources;
+  if (
+    o &&
+    o.due === 0 &&
+    o.newAvailable === 0 &&
+    !focus &&
+    sourcesKnown &&
+    !src?.page &&
+    !src?.mistakes.length
+  ) {
     const fresh = o.learned === 0 && o.lastSession === null;
     return (
       <>
