@@ -1656,6 +1656,20 @@
       .how-hero .in {
         min-height: 0;
       }
+      /* ALMOST FULL-SCREEN HERO (on computers), as on the home page: the hero takes most of the
+         first screen (88%, at most 880 px), so the next section only peeks in and its animation
+         starts when you scroll to it, not next to the beam. To undo it, remove "hero--full". */
+      @media (min-width: 901px) and (min-height: 600px) {
+        .hero--full {
+          display: grid;
+          align-content: center;
+          min-height: min(calc((100svh - 64px - env(safe-area-inset-top, 0px)) * 0.88), 880px);
+          padding-block: 48px;
+        }
+        .hero--full .in {
+          width: 100%;
+        }
+      }
       .pts {
         margin: 0;
         padding-left: 18px;
@@ -2035,7 +2049,7 @@
       </div>
     </nav>
 
-    <header class="hero band how-hero">
+    <header class="hero band how-hero hero--full">
       <div class="in">
         <div class="copy">
           <span class="eyebrow">How it works</span>
@@ -2407,13 +2421,37 @@
           }
           running = false;
         }
-        // Once, the first time it's seen: the hero above has its own moment.
+        // Once, when it comes into view, but never while the beam above is still measuring on
+        // screen (the home page's rule): it waits until the beam is done or the hero is mostly
+        // out of sight, whichever comes first.
+        const hero = document.querySelector(".how-hero");
+        let heroInView = !!hero;
+        let beamDone = false;
+        let waiting = false;
+        const go = () => {
+          if (waiting && !running) {
+            waiting = false;
+            play();
+          }
+        };
+        if (hero)
+          new IntersectionObserver(
+            ([e]) => {
+              heroInView = e.intersectionRatio >= 0.5;
+              if (!heroInView) go();
+            },
+            { threshold: [0, 0.5] },
+          ).observe(hero);
+        addEventListener("vuurtoren:beam-done", () => {
+          beamDone = true;
+          go();
+        });
         const seen = new IntersectionObserver(
           (es) => {
-            if (es.some((e) => e.isIntersecting) && !running) {
-              seen.disconnect();
-              play();
-            }
+            if (!es.some((e) => e.isIntersecting)) return;
+            seen.disconnect();
+            waiting = true;
+            if (beamDone || !heroInView) go();
           },
           { threshold: 0.6 },
         );
@@ -2500,8 +2538,8 @@
               raf = requestAnimationFrame(step);
             } else {
               text.classList.remove("run");
-              ls.forEach((l) => l.words.forEach((o) => (o.on = false)));
-              // Once, then it rests on the result: two loops on one screen are too much.
+              // Once: then it rests on the result, and the dots below may play.
+              dispatchEvent(new Event("vuurtoren:beam-done"));
             }
           };
           function light(o) {
@@ -2513,10 +2551,9 @@
           raf = requestAnimationFrame(step);
         }
         const seen = new IntersectionObserver((es) => {
-          if (es.some((e) => e.isIntersecting) && !raf) {
-            seen.disconnect();
-            play();
-          }
+          if (!es.some((e) => e.isIntersecting)) return;
+          seen.disconnect();
+          play();
         });
         seen.observe(text);
       })();
