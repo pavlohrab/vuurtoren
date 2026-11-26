@@ -329,6 +329,8 @@ export function Read() {
   );
 
   let body: ReactNode;
+  /** The story shelves sit among your shelves (under Reading now) when all shelves show. */
+  let storiesInShelves = false;
   if (texts.isPending) {
     body = (
       <div className="shelf" aria-busy>
@@ -415,37 +417,41 @@ export function Read() {
         </nav>
       ) : null;
     const shownRows = picked === "all" ? rows : rows.filter((r) => r.id === picked);
-    body = [
-      picker,
-      ...shownRows.map((row) => {
-        const shelf = ownShelves.find((s) => s.id === row.id);
-        return (
-          <ShelfRowView
-            key={row.id}
-            row={row}
-            renderItem={(t, extra) => item(t, "shelf", row, extra)}
-            shelfMenu={
-              shelf
-                ? [
-                    {
-                      label: "Rename…",
-                      icon: <Pencil size={16} aria-hidden />,
-                      onSelect: () => setNaming({ open: true, shelf }),
-                    },
-                    {
-                      label: "Delete shelf…",
-                      icon: <Trash2 size={16} aria-hidden />,
-                      danger: true,
-                      onSelect: () => setShelfToDelete(shelf),
-                    },
-                  ]
-                : null
-            }
-            onDropTexts={shelf ? (ids, how) => moveTo.mutate({ shelf, ids, how }) : undefined}
-          />
-        );
-      }),
-    ];
+    const shelfViews = shownRows.map((row) => {
+      const shelf = ownShelves.find((s) => s.id === row.id);
+      return (
+        <ShelfRowView
+          key={row.id}
+          row={row}
+          renderItem={(t, extra) => item(t, "shelf", row, extra)}
+          shelfMenu={
+            shelf
+              ? [
+                  {
+                    label: "Rename…",
+                    icon: <Pencil size={16} aria-hidden />,
+                    onSelect: () => setNaming({ open: true, shelf }),
+                  },
+                  {
+                    label: "Delete shelf…",
+                    icon: <Trash2 size={16} aria-hidden />,
+                    danger: true,
+                    onSelect: () => setShelfToDelete(shelf),
+                  },
+                ]
+              : null
+          }
+          onDropTexts={shelf ? (ids, how) => moveTo.mutate({ shelf, ids, how }) : undefined}
+        />
+      );
+    });
+    // The story shelves come right under Reading now (Pavlo, F5), when all shelves show.
+    if (picked === "all") {
+      const after = shownRows.findIndex((r) => r.id === "auto:reading") + 1;
+      shelfViews.splice(after, 0, <StoriesShelf key="stories" />);
+      storiesInShelves = true;
+    }
+    body = [picker, ...shelfViews];
   }
 
   return (
@@ -477,7 +483,7 @@ export function Read() {
         </div>
       ) : null}
 
-      <StoriesShelf />
+      {storiesInShelves ? null : <StoriesShelf />}
 
       <section className="lib-own" aria-labelledby="lib-own-h">
         <SectionHeader id="lib-own-h" title="Your texts" />
