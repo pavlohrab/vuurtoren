@@ -90,7 +90,7 @@ const STEPS: Step[] = [
           ".k-reader .k-tok[data-i]",
         ],
       ],
-      unless: ".inspector-panel .k-inspector-head",
+      unless: '.shell[data-inspector="open"]',
     },
   },
   {
