@@ -173,15 +173,9 @@ export function createLiveServices(
     composeGlosses,
     data: practiceData,
     translate: dictionary.translateSentences,
-    canListen: async () => {
-      // A phone with its own recogniser listens without the server.
-      if (await androidListenAvailable()) return true;
-      try {
-        return (await (await nlp()).health()).data?.["listen"] === true;
-      } catch {
-        return false;
-      }
-    },
+    // Speaking: only a phone with its own recogniser for now. On a computer (Whisper in the
+    // language server) it's switched off until after the release.
+    canListen: () => androidListenAvailable(),
     topicMaterial: grammar.topicMaterial,
     aiSentences: { ready: ai.aiReady, fill: ai.fillSentences },
     evidence,

@@ -759,10 +759,10 @@ The aim is about 98% known words, as in Hu & Nation (2000).
 "Say this sentence" shows a short sentence with its English and a speaker, so you can hear it
 first. You tap the mic (or press M), say it, and tap again.
 
-- **On a computer** the recording is turned into a 16 kHz WAV in the browser and the language
-  server listens to it with Whisper base (Radford et al. 2023), offline, in sherpa-onnx
-  (`listen.py`). The model is the `asr-nl` pack, 94 MB. Nobody gets it unasked: Settings offers
-  "Turn on speaking" when the server can't listen yet.
+- **On a computer** it is switched off for now; it comes after the release. The parts are built:
+  the recording is turned into a 16 kHz WAV in the browser and the language server listens to it
+  with Whisper base (Radford et al. 2023), offline, in sherpa-onnx (`listen.py`), from the
+  `asr-nl` pack (94 MB, fetched only on request). Settings shows "Turn on speaking" greyed out.
 - **On a phone** Android's own Dutch speech recognition listens, so no server hears anything.
 
 It's at the same step as building, because both make you produce the sentence (Webb 2005).

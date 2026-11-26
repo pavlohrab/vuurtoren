@@ -358,11 +358,11 @@ export function SpeakingDownload({ nlp, onDone }: { nlp: string; onDone: () => v
       ) : (
         <>
           <p className="k-hint" style={{ margin: 0 }}>
-            Practice can ask you to say a sentence out loud. This computer listens itself, so it
-            needs speech recognition first, about 94 MB.
+            Saying sentences out loud works on the phone. On a computer it isn&rsquo;t ready yet.
           </p>
           <div className="row">
-            <Button size="sm" onClick={() => void start()}>
+            {/* Off until after the release (SPEAK-DESK in the plan); start() stays for then. */}
+            <Button size="sm" disabled onClick={() => void start()}>
               Turn on speaking
             </Button>
           </div>
