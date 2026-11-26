@@ -236,6 +236,12 @@ export function ServerStatus({ nlpUrl }: { nlpUrl: string }) {
           onDone={() => void qc.invalidateQueries({ queryKey: ["server-status", "nlp"] })}
         />
       ) : null}
+      {!demo && nlp && lang.data?.data?.["listen"] === false ? (
+        <SpeakingDownload
+          nlp={nlp}
+          onDone={() => void qc.invalidateQueries({ queryKey: ["server-status", "nlp"] })}
+        />
+      ) : null}
     </section>
   );
 }
@@ -296,6 +302,65 @@ export function SyntaxDotDownload({ nlp, onDone }: { nlp: string; onDone: () => 
       {s.state === "failed" && s.error ? (
         <p role="alert" className="error-text" style={{ margin: 0 }}>
           {s.error}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+interface PackItem {
+  state: string;
+  activity: string | null;
+}
+
+/**
+ * Speaking ("Say this sentence") needs speech recognition, the asr-nl pack (about 94 MB). Nobody
+ * gets it unasked: this fetches it on this computer's language server when you turn it on.
+ */
+export function SpeakingDownload({ nlp, onDone }: { nlp: string; onDone: () => void }) {
+  const qc = useQueryClient();
+  const status = useQuery({
+    queryKey: ["server-status", "packs", nlp],
+    queryFn: () => getJson<{ items: Record<string, PackItem> }>(`${nlp}/admin/packs`),
+    retry: false,
+    refetchInterval: (q) => (q.state.data?.items["asr-nl"]?.activity ? 2000 : false),
+  });
+  const item = status.data?.items["asr-nl"];
+  const done = item?.state === "ok";
+  useEffect(() => {
+    if (done) onDone();
+  }, [done, onDone]);
+  if (!item || done) return null;
+  const busy = !!item.activity && !item.activity.startsWith("error");
+  const start = async () => {
+    const r = await fetch(`${nlp}/admin/packs/asr-nl`, {
+      method: "POST",
+      credentials: "same-origin",
+    });
+    if (r.ok) qc.setQueryData(["server-status", "packs", nlp], await r.json());
+  };
+  return (
+    <div className="syntaxdot-download stack" style={{ gap: 6 }}>
+      {busy ? (
+        <p className="k-hint" role="status" style={{ margin: 0 }}>
+          Downloading speech recognition…
+        </p>
+      ) : (
+        <>
+          <p className="k-hint" style={{ margin: 0 }}>
+            Practice can ask you to say a sentence out loud. This computer listens itself, so it
+            needs speech recognition first, about 94 MB.
+          </p>
+          <div className="row">
+            <Button size="sm" onClick={() => void start()}>
+              Turn on speaking
+            </Button>
+          </div>
+        </>
+      )}
+      {item.activity?.startsWith("error") ? (
+        <p role="alert" className="error-text" style={{ margin: 0 }}>
+          {item.activity.slice("error: ".length)}
         </p>
       ) : null}
     </div>

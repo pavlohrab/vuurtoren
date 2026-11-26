@@ -60,6 +60,7 @@ from typing import Any, Literal
 from vuurtoren_nlp.audio import audio_dir
 from vuurtoren_nlp.dictionary import default_db_path as dictionary_path
 from vuurtoren_nlp.grammar_examples import default_cache_path as grammar_cache_path
+from vuurtoren_nlp.listen import asr_dir
 from vuurtoren_nlp.sentences import default_db_path as sentences_path
 from vuurtoren_nlp.speech import tts_dir
 from vuurtoren_nlp.translate import model_dir
@@ -82,6 +83,9 @@ class PackSpec:
     build: Callable[[Path], list[str]] | None = None
     """argv that builds the pack's data at the given output path (None: not buildable)."""
     derived: bool = False
+    on_demand: bool = False
+    """Not fetched with the others: only when the person asks for it (``install_on_demand``).
+    Once installed it is kept up to date like any pack."""
 
 
 def _py(script: str, *args: str) -> list[str]:
@@ -123,6 +127,14 @@ SPECS: dict[str, PackSpec] = {
             tts_dir,
             "dir",
             lambda out: _py("fetch_tts_voice.py", "--output", str(out)),
+        ),
+        # Speech to text for "Say this sentence" (listen.py): about 160 MB, so only on request.
+        PackSpec(
+            "asr-nl",
+            asr_dir,
+            "dir",
+            lambda out: _py("fetch_asr_model.py", "--output", str(out)),
+            on_demand=True,
         ),
     )
 }
@@ -448,6 +460,8 @@ def ensure(force: bool = False, allow_build: bool | None = None) -> dict[str, st
                     results[name] = "ok" if state == "ok" else "skipped: no sentences"
             elif name not in published:
                 results[name] = "skipped: not published" if state == "missing" else "ok"
+            elif spec.on_demand and state == "missing":
+                results[name] = "skipped: on request"
             elif state in ("missing", "outdated") or (force and state == "unversioned"):
                 results[name] = install(name, allow_build)
                 if name == "sentences-nl":
@@ -480,3 +494,32 @@ def ensure_in_background(force: bool = False) -> bool:
 
 def busy() -> bool:
     return _thread is not None and _thread.is_alive()
+
+
+def install_on_demand(name: str) -> bool:
+    """Fetch one on-request pack (``asr-nl``) in the background; False if one is running already.
+
+    Raises:
+        KeyError: ``name`` is not an on-request pack.
+    """
+    spec = SPECS[name]
+    if not spec.on_demand:
+        raise KeyError(name)
+    global _thread
+    with _lock:
+        if _thread is not None and _thread.is_alive():
+            return False
+
+        def run() -> None:
+            try:
+                install(name, mode() == "auto")
+                for hook in _reset_hooks:
+                    hook()
+                _set(name, None)
+            except Exception as e:  # noqa: BLE001 - reported in /health
+                log.exception("data pack %s failed", name)
+                _set(name, f"error: {e}")
+
+        _thread = threading.Thread(target=run, name=f"vuurtoren-pack-{name}", daemon=True)
+        _thread.start()
+        return True

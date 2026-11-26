@@ -184,6 +184,17 @@ def packs_update(force: bool = False) -> dict[str, object]:
     return {"started": started, **packs_status()}
 
 
+@app.post("/admin/packs/{name}")
+def pack_install(name: str) -> dict[str, object]:
+    """Fetch one on-request pack now, in the background (``asr-nl``: speaking, about 160 MB;
+    poll ``GET /admin/packs``). Behind the sign-in like every /nlp/ route."""
+    try:
+        started = packs.install_on_demand(name)
+    except KeyError as e:
+        raise ServiceError(404, f"No pack to fetch on request: {name}.") from e
+    return {"started": started, **packs_status()}
+
+
 @app.get("/admin/syntaxdot")
 def syntaxdot_status() -> dict[str, object]:
     """SyntaxDot on this server: can it run here (Linux x86_64), is it in, how a download goes."""

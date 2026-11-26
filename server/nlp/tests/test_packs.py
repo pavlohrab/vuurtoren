@@ -167,6 +167,7 @@ def test_shipped_manifest_lists_the_downloadable_packs() -> None:
         "audio-nl",
         "tts-nl",
         "levels-nl",
+        "asr-nl",
     }
     # levels-nl is for phones only: the server has the file in its package (levels.py).
     assert set(manifest["packs"]) - {"levels-nl"} | {"grammar-examples-nl"} == set(packs.SPECS)
@@ -231,3 +232,9 @@ def test_a_bundled_grammar_cache_of_other_detectors_is_built_again(
     monkeypatch.setattr(packs, "_build_grammar_cache", lambda: built.append(1))
     assert packs.ensure(allow_build=False)["grammar-examples-nl"] == "build"
     assert built == [1]
+
+
+def test_only_on_request_packs_can_be_fetched_one_by_one() -> None:
+    assert packs.SPECS["asr-nl"].on_demand
+    with pytest.raises(KeyError):
+        packs.install_on_demand("dictionary-nl")

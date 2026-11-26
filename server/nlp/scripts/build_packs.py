@@ -52,6 +52,7 @@ TARGETS = {
     "dictionary-nl": "dictionary-nl.sqlite",
     "sentences-nl": "sentences-nl.sqlite",
     "mt-nl-en": "mt-nl-en",
+    "asr-nl": "asr-nl",
 }
 
 
@@ -93,6 +94,7 @@ def build(name: str, data: Path) -> None:
             *("--output", str(data / TARGETS[name])),
         ],
         "mt-nl-en": ["scripts/fetch_mt_model.py", "--output", str(data / TARGETS[name])],
+        "asr-nl": ["scripts/fetch_asr_model.py", "--output", str(data / TARGETS[name])],
     }[name]
     subprocess.run(py + cmd, check=True, cwd=ROOT, env=env)
 
@@ -242,7 +244,8 @@ def main() -> int:
     with tempfile.TemporaryDirectory() as d:
         data = args.from_data or Path(d)
         for name in args.only or list(TARGETS):
-            entry = manifest["packs"][name]
+            # A new pack (asr-nl) starts at today's version.
+            entry = manifest["packs"].setdefault(name, {"version": "2026.11.1"})
             if args.from_data is None:
                 build(name, data)
             src = data / TARGETS[name]
