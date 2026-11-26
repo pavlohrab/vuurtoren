@@ -167,6 +167,15 @@ export interface WordRow {
 }
 
 const DAY_MS = 86_400_000;
+/** "today", "tomorrow", "in 3 days" for a next review (overdue counts as today). */
+export function nextIn(due: number, now = Date.now()): string {
+  const start = new Date(now);
+  start.setHours(0, 0, 0, 0);
+  const days = Math.floor((due - start.getTime()) / DAY_MS);
+  if (days <= 0) return "today";
+  return days === 1 ? "tomorrow" : `in ${days} days`;
+}
+
 /** "due today", "due yesterday", "due 3 days ago". */
 export function dueAgo(due: number, now = Date.now()): string {
   const days = Math.floor((now - due) / DAY_MS);
@@ -388,6 +397,13 @@ export function Words() {
     enabled: asList,
   });
   const progress = useLevelProgress(grouped);
+  // Native mode: each word's next review, for the Next column (mock MK2 A).
+  const next = useQuery({
+    queryKey: ["words", "next-reviews"],
+    queryFn: () => services.nextReviews(),
+    enabled: native && asList,
+    staleTime: 30_000,
+  });
   // Native learners whose profile predates the starter words have no starter decks.
   const noStarterDecks = grouped && native && starterDecks.data?.held.length === 0;
   const texts = useQuery({ queryKey: ["texts"], queryFn: () => services.listTexts() });
@@ -499,7 +515,8 @@ export function Words() {
   // Grouped: a header row per level (null: Other words); otherwise one group without a header.
   const groups: { level?: number | null; rows: WordRow[] }[] =
     grouped && index.data ? groupByLevel(list, index.data) : [{ rows: list }];
-  const span = 4 + Number(selecting) + Number(columns.recall) + Number(columns.decks);
+  const span =
+    4 + Number(native) + Number(selecting) + Number(columns.recall) + Number(columns.decks);
   const practiseKeys = (chosenKeys.length ? chosenKeys : list.map((r) => r.key)).slice(0, 30);
   const again = readPracticeAgain();
   const sourceOptions = [
@@ -846,6 +863,7 @@ export function Words() {
                     <th>Meaning</th>
                     <th>State</th>
                     <th className="words-col-level">Level</th>
+                    {native ? <th className="words-col-next">Next</th> : null}
                     {columns.recall ? <th className="words-col-recall">Recall</th> : null}
                     {columns.decks ? <th className="words-col-decks">Decks</th> : null}
                   </tr>
@@ -901,6 +919,11 @@ export function Words() {
                             ) : null}
                           </td>
                           <td className="words-col-level">{bandOf(w.key)}</td>
+                          {native ? (
+                            <td className="words-col-next">
+                              {next.data?.[w.key] !== undefined ? nextIn(next.data[w.key]!) : "–"}
+                            </td>
+                          ) : null}
                           {columns.recall ? (
                             <td className="k-mono words-col-recall">
                               {w.pKnown === null || w.state !== "learning" ? "–" : pct(w.pKnown)}

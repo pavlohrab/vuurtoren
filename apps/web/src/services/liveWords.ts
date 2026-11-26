@@ -338,6 +338,7 @@ export function createLiveWords(deps: LiveWordsDeps) {
     | "learnerSummary"
     | "words"
     | "dueWords"
+    | "nextReviews"
     | "activity"
     | "knownOverTime"
     | "suggestedWords"
@@ -660,6 +661,14 @@ export function createLiveWords(deps: LiveWordsDeps) {
       return infos
         .map((w) => ({ ...w, due: when.get(w.key)! }))
         .sort((a, b) => a.due - b.due || a.key.localeCompare(b.key));
+    },
+
+    async nextReviews() {
+      if (!(await native())) return {};
+      const l = await lang();
+      // Every started card: due within ten years, the earliest per word.
+      const all = await repo.nativeDueKeys(l, Date.now() + 10 * 365 * 86_400_000, 1_000_000);
+      return Object.fromEntries(all.map((d) => [d.key, d.due]));
     },
 
     async activity(days = 7) {

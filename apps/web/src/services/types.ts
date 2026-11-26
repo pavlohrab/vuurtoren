@@ -437,6 +437,8 @@ export interface AppServices
   }): Promise<WordInfo[]>;
   /** Native mode: words with a card due now, earliest due first (Words → Due). */
   dueWords(opts?: { limit?: number }): Promise<DueWord[]>;
+  /** Native mode: each word's next review (ms), for the cards already started; {} otherwise. */
+  nextReviews(): Promise<Record<string, number>>;
 }
 
 /** A word whose card is due, with the time it came due. */

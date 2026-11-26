@@ -1088,6 +1088,19 @@ export function createMockServices(
         .map((e, i) => ({ ...infoOf(e), due: now - i * 86_400_000 - 3_600_000 }))
         .sort((a, b) => a.due - b.due);
     },
+
+    async nextReviews() {
+      await wait();
+      if (!options.native) return {};
+      // Demo: learning words come back over the next days, known ones in weeks.
+      const now = Date.now();
+      const out: Record<string, number> = {};
+      [...lexicon.values()].forEach((e, i) => {
+        if (e.state === "learning") out[e.key] = now + (i % 5) * 86_400_000;
+        else if (e.state === "known") out[e.key] = now + (20 + (i % 30)) * 86_400_000;
+      });
+      return out;
+    },
   };
   return services;
 }

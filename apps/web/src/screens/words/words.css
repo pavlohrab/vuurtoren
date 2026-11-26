@@ -382,6 +382,11 @@
   width: 4.5em;
   color: var(--ink-muted);
 }
+.words-col-next {
+  width: 7em;
+  color: var(--ink-muted);
+  white-space: nowrap;
+}
 
 /* With a word open the panel is a column too: the left column narrows so the list keeps room. */
 @media (min-width: 1100px) {

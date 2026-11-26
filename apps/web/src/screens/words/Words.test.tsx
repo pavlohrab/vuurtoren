@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import { App } from "../../App.js";
 import { createMockServices } from "../../services/mock.js";
 import type { AppServices } from "../../services/types.js";
-import { parseSource } from "./Words.js";
+import { nextIn, parseSource } from "./Words.js";
 
 function setup(url: string, patch: Partial<AppServices> = {}) {
   const services: AppServices = { ...createMockServices({ latencyMs: 0 }), ...patch };
@@ -24,7 +24,28 @@ describe("parseSource", () => {
   });
 });
 
+describe("nextIn", () => {
+  it("says when a card comes back: today (also overdue), tomorrow, in N days", () => {
+    const now = new Date(2026, 10, 26, 15).getTime();
+    expect(nextIn(now - 86_400_000, now)).toBe("today");
+    expect(nextIn(new Date(2026, 10, 26, 23).getTime(), now)).toBe("today");
+    expect(nextIn(new Date(2026, 10, 27, 8).getTime(), now)).toBe("tomorrow");
+    expect(nextIn(new Date(2026, 11, 20, 8).getTime(), now)).toBe("in 24 days");
+  });
+});
+
 describe("Words", () => {
+  it("native mode: a Next column says when each started card comes back (UI5)", async () => {
+    const native = createMockServices({ latencyMs: 0, native: true });
+    const history = createMemoryHistory({ initialEntries: ["/words/all?layout=list"] });
+    render(<App services={native} history={history} />);
+    const table = await screen.findByRole("table");
+    expect(within(table).getByRole("columnheader", { name: "Next" })).toBeInTheDocument();
+    expect(
+      (await within(table).findAllByText(/^(today|tomorrow|in \d+ days)$/)).length,
+    ).toBeGreaterThan(0);
+  });
+
   it("has a Due view in native mode only: words due now, earliest first, with how overdue", async () => {
     const native = { ...createMockServices({ latencyMs: 0, native: true }) };
     const history = createMemoryHistory({ initialEntries: ["/words/all?state=due"] });
