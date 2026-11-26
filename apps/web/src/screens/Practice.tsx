@@ -655,6 +655,8 @@ function Session({
       })().catch(() => speakDutch(text, rate)),
     [play],
   );
+  /** Exercises tried again after a miss (Say this sentence). */
+  const retried = useRef(new Set<string>());
   /** Exercises the learner said were heard wrong: their second go is not added. */
   const saidRightIds = useRef(new Set<string>());
   // The lesson grows by a missed word's second go at the end (algorithms.md 4.7.6).
@@ -753,8 +755,19 @@ function Session({
           hintsUsed: s.hintsUsed,
           ms: Date.now() - shownAt.current,
         });
-        answeredRef.current = [...answeredRef.current, { exercise: current, result }];
-        if (!result.correct && !current.id.endsWith("-again")) {
+        // A retry replaces the earlier miss in the summary; right now means no second go.
+        answeredRef.current = [
+          ...answeredRef.current.filter(
+            (a) => !(retried.current.has(current.id) && a.exercise.id === current.id),
+          ),
+          { exercise: current, result },
+        ];
+        if (result.correct && retried.current.has(current.id))
+          setExercises((xs) =>
+            xs.filter((x, i) => i <= index || !(x.key === current.key && x.id.endsWith("-again"))),
+          );
+        // One second go per word: not again after a retry, and not for a second go itself.
+        if (!result.correct && !current.id.endsWith("-again") && !retried.current.has(current.id)) {
           const again = await services.comeBack?.(current).catch(() => null);
           if (again && !saidRightIds.current.has(current.id))
             setExercises((xs) => (xs.some((x) => x.id === again.id) ? xs : [...xs, again]));
@@ -800,6 +813,16 @@ function Session({
     } finally {
       setBusy(false);
     }
+  };
+
+  /** "Try again" after a miss on "Say this sentence": the same sentence, the mic again. A
+   * right answer then takes back the second go the miss added. */
+  const tryAgain = () => {
+    if (!current) return;
+    retried.current.add(current.id);
+    setFeedback(null);
+    setSubmitted(null);
+    shownAt.current = Date.now();
   };
 
   /** "I can't talk now": no more speaking in this lesson; this one goes by unanswered. */
@@ -859,6 +882,7 @@ function Session({
           onWord={(form, sentence, el) => inspector.open(form, sentence, el)}
           {...(topic ? { topic } : {})}
           onSaidRight={() => void saidRight()}
+          onTryAgain={tryAgain}
           onSkipSpeaking={skipSpeaking}
           {...(phoneListens
             ? { listenLive: { start: androidListen, stop: androidStopListening } }

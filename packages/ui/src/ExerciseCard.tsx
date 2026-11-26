@@ -52,6 +52,8 @@ export interface ExerciseCardProps {
   onSkipSpeaking?: () => void;
   /** "Say this sentence" was misheard: count it as right. */
   onSaidRight?: () => void;
+  /** "Say this sentence" missed: the mic again, for the same sentence. */
+  onTryAgain?: () => void;
   /** "Say this sentence" with the device's own recogniser (Android): it listens itself. */
   listenLive?: { start: () => Promise<string>; stop: () => void };
 }
@@ -121,6 +123,7 @@ export function ExerciseCard({
   listenLive,
   onSaidRight,
   onSkipSpeaking,
+  onTryAgain,
 }: ExerciseCardProps) {
   const mode = exerciseMode(e);
   const answered = feedback !== null;
@@ -624,10 +627,19 @@ export function ExerciseCard({
               </span>
             </p>
           ) : null}
-          {e.kind === "say" && !feedback.correct && onSaidRight ? (
-            <Button variant="ghost" onClick={onSaidRight}>
-              I said it right
-            </Button>
+          {e.kind === "say" && !feedback.correct && (onTryAgain || onSaidRight) ? (
+            <div className="ex-actions">
+              {onTryAgain ? (
+                <Button variant="secondary" onClick={onTryAgain}>
+                  Try again
+                </Button>
+              ) : null}
+              {onSaidRight ? (
+                <Button variant="ghost" onClick={onSaidRight}>
+                  I said it right
+                </Button>
+              ) : null}
+            </div>
           ) : null}
           <Button variant="primary" className="ex-continue" onClick={onContinue}>
             {continueLabel} <kbd className="ex-key">Enter</kbd>
