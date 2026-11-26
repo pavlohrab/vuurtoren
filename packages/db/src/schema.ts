@@ -284,6 +284,20 @@ export const MIGRATIONS: readonly (readonly string[])[] = [
        data TEXT NOT NULL
      )`,
   ],
+  [
+    // Practice lessons (algorithms.md 4.7): when a word was last tapped, and every practice
+    // answer in order, so the Elo model can be replayed without reading the whole log.
+    `ALTER TABLE word_lookups ADD COLUMN last_at INTEGER NOT NULL DEFAULT 0`,
+    `CREATE TABLE practice_answers (
+       id TEXT PRIMARY KEY,
+       lang TEXT NOT NULL,
+       key TEXT NOT NULL,
+       kind TEXT NOT NULL,
+       result REAL NOT NULL,
+       at INTEGER NOT NULL
+     )`,
+    `CREATE INDEX practice_answers_lang ON practice_answers (lang, at)`,
+  ],
 ];
 
 /** Latest schema version. */
@@ -303,6 +317,7 @@ export const PROJECTION_TABLES = [
   "notes_added",
   "prioritized",
   "practice_items",
+  "practice_answers",
   "word_evidence",
   "reading_progress",
   "staircase",

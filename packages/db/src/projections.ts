@@ -326,6 +326,11 @@ export async function applyEvent(driver: SqlDriver, ctx: EventContext): Promise<
     }
     case "ExerciseAnswered": {
       await addEvidence(driver, e.lang, e.key, answerEvidence("practice", e.correct, e.at));
+      // Every answer, for the Elo replay (a hinted right answer counts half).
+      await driver.exec(
+        "INSERT OR IGNORE INTO practice_answers (id, lang, key, kind, result, at) VALUES (?,?,?,?,?,?)",
+        [ctx.id, e.lang, e.key, e.kind, e.correct ? (e.grade === "hard" ? 0.5 : 1) : 0, e.at],
+      );
       // Keep the newest answer per (key, skill), independent of arrival order.
       const rows = await driver.exec(
         "SELECT at FROM practice_items WHERE lang = ? AND key = ? AND skill = ?",
@@ -358,9 +363,10 @@ export async function applyEvent(driver: SqlDriver, ctx: EventContext): Promise<
       return;
     case "WordLookedUp":
       await driver.exec(
-        `INSERT INTO word_lookups (lang, key, count) VALUES (?,?,1)
-         ON CONFLICT(lang, key) DO UPDATE SET count = count + 1`,
-        [e.lang, e.key],
+        `INSERT INTO word_lookups (lang, key, count, last_at) VALUES (?,?,1,?)
+         ON CONFLICT(lang, key) DO UPDATE SET count = count + 1,
+           last_at = max(last_at, excluded.last_at)`,
+        [e.lang, e.key, ctx.createdAt],
       );
       return;
     case "ClozeAnswered":
@@ -471,6 +477,8 @@ export interface WordFacts {
   anki?: AnkiWordEntry;
   override?: WordState;
   lookups: number;
+  /** When the word was last tapped (ms), 0 if never or before this was recorded. */
+  lastLookupAt?: number;
   note?: { noteId: number; deck: string };
   /** Note whose card(s) "Learn next" moved to the front. */
   prioritizedNoteId?: number;
@@ -557,6 +565,7 @@ export function composeWord(
   const decks = [...(anki?.decks ?? [])];
   if (note && !decks.includes(note.deck)) decks.push(note.deck);
   const info: WordInfo = { key, state, pKnown, source, decks, lookups, noteIds: [] };
+  if (f.lastLookupAt) info.lastLookupAt = f.lastLookupAt;
   if (anki?.gloss) info.gloss = anki.gloss;
   if (anki?.article) info.article = anki.article;
   if (anki?.sentence) info.sentence = anki.sentence;

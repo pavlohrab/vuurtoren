@@ -630,6 +630,8 @@ export interface WordInfo {
   sentenceTranslation?: string;
   decks: string[];
   lookups: number;
+  /** When the word was last tapped (ms); absent if never, or before this was recorded. */
+  lastLookupAt?: number;
   addedNoteId?: number;
   /** Anki notes behind this word (snapshot notes, plus a note the app added). */
   noteIds: number[];
@@ -867,6 +869,10 @@ export interface Repository {
   ): Promise<WordInfo[]>;
   staircase(lang: string): Promise<StaircaseState | null>;
   /** FSRS state of every practised (key, skill) pair of a language. */
+  /** Every practice answer, oldest first (the Elo replay, algorithms.md 4.7.3). */
+  practiceAnswers(
+    lang: string,
+  ): Promise<{ key: string; kind: string; result: number; at: number }[]>;
   practiceItems(lang: string): Promise<ItemState[]>;
   /** Newest-first answers (ExerciseAnswered events), at most `limit`. */
   practiceLog(lang: string, limit: number): Promise<PracticeLogEntry[]>;

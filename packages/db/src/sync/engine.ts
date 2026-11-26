@@ -785,7 +785,11 @@ async function fetchBundles(
       const bytes = await store.get(path);
       if (!bytes) continue;
       const file = decode<BundleFile>(gunzipAtMost(await unseal(key, bytes, path), MAX_READ_BYTES));
-      if ((file.format !== 1 && file.format !== 2) || file.textId !== w.textId || file.contentHash !== w.contentHash) {
+      if (
+        (file.format !== 1 && file.format !== 2) ||
+        file.textId !== w.textId ||
+        file.contentHash !== w.contentHash
+      ) {
         continue;
       }
       const bundle: TextBundle = {

@@ -170,9 +170,9 @@ export interface ImportResult {
 }
 
 /**
- * Bump when a projection's meaning changes. 2: reading_progress.last_segment = next segment to read. 3: write-action events. 4: anki_words sentences, practice_items. 5: course tables. 6: text_grammar. 7: language_profiles. 8: word_evidence. 9: text_meta (edited details, covers). 10: native cards. 11: text analyses are a per-device cache (text_tokens.analyzed_at), kept by rebuilds.
+ * Bump when a projection's meaning changes. 2: reading_progress.last_segment = next segment to read. 3: write-action events. 4: anki_words sentences, practice_items. 5: course tables. 6: text_grammar. 7: language_profiles. 8: word_evidence. 9: text_meta (edited details, covers). 10: native cards. 11: text analyses are a per-device cache (text_tokens.analyzed_at), kept by rebuilds. 12: word_lookups.last_at, practice_answers.
  */
-export const PROJECTION_VERSION = 11;
+export const PROJECTION_VERSION = 12;
 
 /** Wrap every query function in the repository's mutex. */
 function serialised<T extends Record<string, (...a: never[]) => Promise<unknown>>>(
@@ -441,7 +441,9 @@ export async function createRepository(
       f.markedKnownInAnki = r["marked_anki"] === 1;
     }
     for (const r of await driver.exec(`SELECT * FROM word_lookups WHERE lang = ?${k}`, p)) {
-      get(String(r["key"])).lookups = Number(r["count"]);
+      const f = get(String(r["key"]));
+      f.lookups = Number(r["count"]);
+      if (Number(r["last_at"] ?? 0) > 0) f.lastLookupAt = Number(r["last_at"]);
     }
     if (!native) {
       for (const r of await driver.exec(`SELECT * FROM notes_added WHERE lang = ?${k}`, p)) {
@@ -553,6 +555,21 @@ export async function createRepository(
         const rows = await driver.exec("SELECT state FROM staircase WHERE lang = ?", [lang]);
         return rows[0] ? json<StaircaseState>(rows[0]["state"]) : null;
       }),
+
+    practiceAnswers: (lang) =>
+      serial(async () =>
+        (
+          await driver.exec(
+            "SELECT key, kind, result, at FROM practice_answers WHERE lang = ? ORDER BY at, key, kind",
+            [lang],
+          )
+        ).map((r) => ({
+          key: String(r["key"]),
+          kind: String(r["kind"]),
+          result: Number(r["result"]),
+          at: Number(r["at"]),
+        })),
+      ),
 
     practiceItems: (lang) =>
       serial(async () =>
