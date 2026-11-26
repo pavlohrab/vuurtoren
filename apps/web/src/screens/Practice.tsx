@@ -27,6 +27,8 @@ import {
 } from "@app/ui";
 import { dutchVoiceAvailable, speakDutch, useDutchVoice } from "../practice/speech.js";
 import { toWav16k } from "../practice/wav.js";
+import { useSay } from "../audio/useSay.js";
+import { clipId } from "@app/anki";
 import {
   androidListen,
   androidListenAvailable,
@@ -570,6 +572,17 @@ function Session({
     queryFn: androidListenAvailable,
     staleTime: Infinity,
   }).data;
+  // The recorded clip when the audio pack has one (starter words, their sentences, stories),
+  // else the voice. A rate below 0.9 is the snail: slower than the Settings speed.
+  const { play } = useSay();
+  const speak = useCallback(
+    (text: string, rate?: number) =>
+      void (async () => {
+        const kind = /\s/.test(text.trim()) ? "sentence" : "word";
+        await play("practice", { clip: await clipId(kind, text), text }, rate ? rate / 0.9 : 1);
+      })().catch(() => speakDutch(text, rate)),
+    [play],
+  );
   /** Exercises the learner said were heard wrong: their second go is not added. */
   const saidRightIds = useRef(new Set<string>());
   // The lesson grows by a missed word's second go at the end (algorithms.md 4.7.6).
@@ -749,7 +762,7 @@ function Session({
           submitted={submitted}
           onSubmit={(s) => void submit(s)}
           onContinue={() => advance(answeredRef.current, skippedRef.current)}
-          onSpeak={speakDutch}
+          onSpeak={speak}
           continueLabel={last ? "Finish" : "Continue"}
           onWord={(form, sentence, el) => inspector.open(form, sentence, el)}
           {...(topic ? { topic } : {})}

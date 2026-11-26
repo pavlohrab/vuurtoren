@@ -30,10 +30,11 @@ export function useSay(player?: PlayerDeps) {
   }, []);
   const rate = settings.data?.audioRate ?? 1;
   const play = useCallback(
-    async (key: string, what: Saying) => {
+    /** `slower` below 1 plays it slower than the Settings speed (Practice's snail). */
+    async (key: string, what: Saying, slower = 1) => {
       setPlaying(key);
       try {
-        return await say(what, rate, deps);
+        return await say(what, rate * slower, deps);
       } finally {
         if (alive.current) setPlaying((p) => (p === key ? null : p));
       }
