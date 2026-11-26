@@ -677,12 +677,16 @@ function Session({
   const answeredRef = useRef<Answered[]>([]);
   const skippedRef = useRef(0);
   const inflight = useRef<Promise<void> | null>(null);
+  /** The lesson ended normally (finished, or ended with Esc / End session). */
+  const ended = useRef(false);
   const [confirmEnd, setConfirmEnd] = useState(false);
 
   const advance = useCallback(
     (nextAnswered: Answered[], nextSkipped: number) => {
-      if (index + 1 >= exercises.length) onFinish(nextAnswered, nextSkipped);
-      else {
+      if (index + 1 >= exercises.length) {
+        ended.current = true;
+        onFinish(nextAnswered, nextSkipped);
+      } else {
         setIndex(index + 1);
         setFeedback(null);
         setSubmitted(null);
@@ -704,8 +708,18 @@ function Session({
     shownAt.current = Date.now();
   }, [index]);
 
+  // Leaving by the sidebar (or closing the app) after three answers still counts the lesson
+  // for today; ending it normally counts it in `finish`.
+  useEffect(
+    () => () => {
+      if (!ended.current && answeredRef.current.length >= LEAVE_COUNTS) countLessonToday();
+    },
+    [],
+  );
+
   /** End now: wait for an answer that is being saved, so it is part of the summary. */
   const endSession = useCallback(async () => {
+    ended.current = true;
     await inflight.current;
     onFinish(answeredRef.current, skippedRef.current);
   }, [onFinish]);
@@ -867,6 +881,8 @@ function Session({
 
 /** Lessons finished today on this device, and the goal (one a day). */
 const TODAY_KEY = "vuurtoren.practice.today";
+/** Answers after which leaving a lesson halfway still counts it for today. */
+const LEAVE_COUNTS = 3;
 const DAILY_GOAL = 1;
 
 const today = () => new Date().toDateString();
