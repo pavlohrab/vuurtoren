@@ -96,6 +96,8 @@ function buildSentencePrompt(
       "",
       "Rules for every sentence:",
       `- ${SENTENCE_MIN_WORDS} to ${SENTENCE_MAX_WORDS} words, natural everyday Dutch, one sentence each, all different.`,
+      // Practice builds and hears sentences of 4 to 7 words (algorithms.md 4.7): ask for enough.
+      "- Make at least half of them short, 4 to 7 words.",
       "- Use ONLY words from the learner's vocabulary list below plus very common function words, besides the requested word. Names and numbers are fine.",
       "- The context should make the meaning of the requested word clear.",
       `- Give a translation into ${explain} for each sentence.`,
