@@ -1413,3 +1413,24 @@ dl.card-meaning dd,
     font-size: 14px;
   }
 }
+/* "Focus on this" and "Open the topic" after a grammar note in the Sentence tab (WC4). */
+.sentence-grammar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-3);
+  margin-top: 2px;
+}
+.sentence-grammar-actions .k-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+@media (max-width: 699px) {
+  .sentence-grammar-actions .k-link {
+    font-size: 14px;
+    min-height: 32px;
+  }
+}

@@ -467,6 +467,7 @@ export function ReaderPage({ textId }: { textId: string }) {
       selectedSent === undefined
         ? []
         : notesFor(hitsInSentence(hits, selectedSent)).map(({ topic, note }) => ({
+            id: topic.id,
             title: topic.title,
             note,
           })),
@@ -610,6 +611,17 @@ export function ReaderPage({ textId }: { textId: string }) {
     if (topic) {
       noteRecentTopic(topic.id);
       setRecent(readRecentTopics());
+    }
+  };
+  /** "Focus on this" from the Sentence tab (WC4): the phone has no margin marks. */
+  const focusTopicById = (id: string) => {
+    const t = pickerTopics.find((p) => p.topic.id === id)?.topic;
+    if (!t) return;
+    chooseFocus(t);
+    // On a phone the sheet covers the text: close it, so the marks show.
+    if (window.matchMedia?.("(max-width: 699px)").matches) {
+      setSelected(null);
+      closeCard();
     }
   };
   const stepHit = (dir: 1 | -1) => {
@@ -1156,12 +1168,14 @@ export function ReaderPage({ textId }: { textId: string }) {
                         translation={entry.sentenceTranslation}
                         pairs={tabPairs}
                         grammar={sentenceGrammar}
+                        onFocusTopic={focusTopicById}
                       />
                     ) : (
                       <SentencePanel
                         sentence={entry?.sentence}
                         translation={entry?.sentenceTranslation}
                         grammar={sentenceGrammar}
+                        onFocusTopic={focusTopicById}
                       />
                     )
                   }

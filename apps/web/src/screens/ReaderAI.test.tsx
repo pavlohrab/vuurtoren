@@ -1,7 +1,13 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import {
+  RouterProvider,
+  createMemoryHistory,
+  createRootRoute,
+  createRouter,
+} from "@tanstack/react-router";
+import { describe, expect, it, vi } from "vitest";
 import { ServicesProvider } from "../services/context.js";
 import { createMockAI } from "../services/mockAI.js";
 import { createMockServices } from "../services/mock.js";
@@ -38,5 +44,40 @@ describe("the Sentence tab", () => {
     renderExplain(false);
     expect(await screen.findByText(/Add an AI provider and key/)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Explain this sentence" })).toBeNull();
+  });
+});
+
+describe("grammar in the Sentence tab (WC4)", () => {
+  it("each topic can be focused and opened, also on a phone with no margin marks", async () => {
+    const onFocusTopic = vi.fn();
+    const services = {
+      ...createMockServices({ latencyMs: 0 }),
+      ...createMockAI(() => Promise.resolve(), { configured: false }),
+    };
+    const Panel = () => (
+      <SentencePanel
+        sentence="Ik bel je op."
+        grammar={[{ id: "separable-verbs", title: "Separable verbs", note: "bel … op" }]}
+        onFocusTopic={onFocusTopic}
+      />
+    );
+    const router = createRouter({
+      routeTree: createRootRoute({ component: Panel }),
+      history: createMemoryHistory(),
+    });
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <ServicesProvider services={services}>
+          <RouterProvider router={router} />
+        </ServicesProvider>
+      </QueryClientProvider>,
+    );
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: "Focus on this" }));
+    expect(onFocusTopic).toHaveBeenCalledWith("separable-verbs");
+    expect(screen.getByRole("link", { name: "Open the topic" })).toHaveAttribute(
+      "href",
+      "/grammar/separable-verbs",
+    );
   });
 });

@@ -7,7 +7,7 @@
 import { LONG_PRESS_MS } from "../../platform/useLongPress.js";
 import type { AnalyzedToken, SentencePairs } from "@app/core";
 import { type MouseEvent, type PointerEvent, useCallback, useMemo, useRef, useState } from "react";
-import type { ExplainGrammar } from "../../services/aiTypes.js";
+import type { SentenceGrammar } from "../ReaderAI.js";
 import { SentencePanel } from "../ReaderAI.js";
 import { SentenceFrameView } from "./SentenceFrameView.js";
 
@@ -93,6 +93,7 @@ export function SentenceTab({
   translation,
   pairs,
   grammar,
+  onFocusTopic,
 }: {
   tokens: readonly AnalyzedToken[];
   sent: number;
@@ -102,7 +103,8 @@ export function SentenceTab({
   translation?: string | null | undefined;
   /** The sentence's English and word pairs; without them only the Dutch side lights up. */
   pairs?: SentencePairs | undefined;
-  grammar: ExplainGrammar[];
+  grammar: SentenceGrammar[];
+  onFocusTopic?: (id: string) => void;
 }) {
   const [marks, setMarks] = useState<Mark[]>([]);
   const pairOf = useCallback(
@@ -214,6 +216,7 @@ export function SentenceTab({
     <SentencePanel
       sentence={sentence}
       grammar={grammar}
+      {...(onFocusTopic ? { onFocusTopic } : {})}
       text={
         <div className="sentence-panel-text k-pairs">
           {dutch}

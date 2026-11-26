@@ -4,6 +4,13 @@ import { Sparkles } from "lucide-react";
 import type { SentenceTurn } from "@app/ai";
 import { Button, Input, Spinner } from "@app/ui";
 import type { ExplainGrammar } from "../services/aiTypes.js";
+import { Link } from "@tanstack/react-router";
+import { useReaderLeave } from "./reader/readerReturn.js";
+
+/** A grammar topic found in the sentence; with `id` it can be opened and focused (WC4). */
+export interface SentenceGrammar extends ExplainGrammar {
+  id?: string;
+}
 import { useServices } from "../services/context.js";
 import { errorText } from "../services/errors.js";
 import { Markdown } from "./Markdown.js";
@@ -23,12 +30,15 @@ export function SentencePanel({
   grammar,
   frame,
   text,
+  onFocusTopic,
 }: {
   sentence: string | null | undefined;
   /** The sentence's English, shown with it (F2: the tab has it too, not only the card). */
   translation?: string | null | undefined;
   /** Grammar detected in the sentence: listed, and sent along as context. */
-  grammar?: ExplainGrammar[];
+  grammar?: SentenceGrammar[];
+  /** "Focus on this": mark the topic all through the text (the margin mark does the same). */
+  onFocusTopic?: (id: string) => void;
   /** The sentence part by part (the reader's SentenceFrameView), shown first. */
   frame?: ReactNode;
   /** The sentence and its English drawn by the caller (the Sentence tab links their words). */
@@ -45,17 +55,37 @@ export function SentencePanel({
         </div>
       )}
       {frame}
-      <SentenceChat key={sentence} sentence={sentence} grammar={grammar ?? []} />
+      <SentenceChat
+        key={sentence}
+        sentence={sentence}
+        grammar={grammar ?? []}
+        {...(onFocusTopic ? { onFocusTopic } : {})}
+      />
     </>
   );
 }
 
-function SentenceChat({ sentence, grammar }: { sentence: string; grammar: ExplainGrammar[] }) {
+function SentenceChat({
+  sentence,
+  grammar,
+  onFocusTopic,
+}: {
+  sentence: string;
+  grammar: SentenceGrammar[];
+  onFocusTopic?: (id: string) => void;
+}) {
   const services = useServices();
+  const leave = useReaderLeave();
   const ready = useAIReady();
   const [turns, setTurns] = useState<SentenceTurn[]>([]);
   const [question, setQuestion] = useState("");
-  const explain = useMutation({ mutationFn: () => services.aiExplainSentence(sentence, grammar) });
+  const explain = useMutation({
+    mutationFn: () =>
+      services.aiExplainSentence(
+        sentence,
+        grammar.map(({ title, note }) => ({ title, note })),
+      ),
+  });
   const ask = useMutation({
     mutationFn: (q: string) => services.aiAskAboutSentence(sentence, explain.data ?? "", turns, q),
     onSuccess: (answer, q) => setTurns((t) => [...t, { question: q, answer }]),
@@ -70,6 +100,24 @@ function SentenceChat({ sentence, grammar }: { sentence: string; grammar: Explai
             {grammar.map((g) => (
               <li key={g.title}>
                 <strong>{g.title}</strong>: {g.note}
+                {/* The phone has no margin marks: the topic opens from here too (WC4). */}
+                {g.id ? (
+                  <span className="sentence-grammar-actions">
+                    {onFocusTopic ? (
+                      <button type="button" className="k-link" onClick={() => onFocusTopic(g.id!)}>
+                        Focus on this
+                      </button>
+                    ) : null}
+                    <Link
+                      to="/grammar/$topic"
+                      params={{ topic: g.id }}
+                      className="k-link"
+                      onClick={() => leave?.(g.id!)}
+                    >
+                      Open the topic
+                    </Link>
+                  </span>
+                ) : null}
               </li>
             ))}
           </ul>
