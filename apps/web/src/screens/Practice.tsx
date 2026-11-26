@@ -276,6 +276,7 @@ function StartView({
   autoStart: boolean;
 }) {
   const services = useServices();
+  const wide = useWideDesk();
   const navigate = useNavigate();
   const aiReady = useAIReady();
   const [initial] = useState(readStartOptions);
@@ -328,6 +329,20 @@ function StartView({
   const src = sources.data;
   const practise = (keys: string[]) =>
     void navigate({ to: "/practice", search: { words: keys.join(","), start: "1" } });
+  // Enter starts the first lesson (the main card), as the mock shows on a computer.
+  useEffect(() => {
+    if (focus) return;
+    const key = (e: KeyboardEvent) => {
+      if (e.key !== "Enter" || shortcutBlocked(e)) return;
+      if (e.target instanceof HTMLElement && e.target.closest("button,a,input,summary")) return;
+      e.preventDefault();
+      if (src?.page) practise(src.page.keys);
+      else if (o && (o.due > 0 || o.newAvailable > 0) && !loading)
+        onStart(size, effective, aiReady && aiFill);
+    };
+    window.addEventListener("keydown", key);
+    return () => window.removeEventListener("keydown", key);
+  });
   // Nothing due, nothing new and no lesson to offer: no Start, one next step instead.
   // (Wait for the lesson list, so a page lesson doesn't flash "All caught up" first.)
   const sourcesKnown = sources.isSuccess || !services.lessonSources;
@@ -364,7 +379,7 @@ function StartView({
 
   const go = () => onStart(size, effective, aiReady && aiFill);
   const options = (
-    <details className="k-disclosure practice-more">
+    <details className="k-disclosure practice-more" open={wide || undefined}>
       <summary>
         <ChevronRight size={16} className="k-disclosure-icon" aria-hidden />
         Options
@@ -437,65 +452,119 @@ function StartView({
     return (
       <>
         <PageHeader title="Practice" lede={<TodayCount />} />
-        <div className="practice-form">
-          {o?.degraded ? (
-            <p className="k-hint practice-note">
-              The language server doesn&rsquo;t answer, so there are fewer kinds of exercise today.
-            </p>
-          ) : null}
-          {error ? (
-            <ErrorNotice error={error} title="The lesson could not be prepared." onRetry={go} />
-          ) : null}
-          <div className="lessons" role="group" aria-label="Lessons">
-            {src?.page ? (
-              <LessonCard
-                main
-                icon={<BookOpen size={18} aria-hidden />}
-                title={src.page.title}
-                sub={`${plural(src.page.keys.length, "word")} you tapped`}
-                onClick={() => practise(src.page!.keys)}
-              />
+        <div className="practice-start">
+          <div className="practice-form practice-main">
+            {o?.degraded ? (
+              <p className="k-hint practice-note">
+                The language server doesn&rsquo;t answer, so there are fewer kinds of exercise
+                today.
+              </p>
             ) : null}
-            {o && (o.due > 0 || o.newAvailable > 0) ? (
-              <LessonCard
-                main={!src?.page}
-                icon={<Dumbbell size={18} aria-hidden />}
-                title="Your new words"
-                sub={loading ? "Preparing…" : `${o.due} due · ${o.newAvailable} new`}
-                label={startLabel}
-                disabled={loading || effective.length === 0}
-                onClick={go}
-              />
+            {error ? (
+              <ErrorNotice error={error} title="The lesson could not be prepared." onRetry={go} />
             ) : null}
-            {src?.mistakes.length ? (
-              <LessonCard
-                icon={<ListChecks size={18} aria-hidden />}
-                title="Mistakes"
-                sub={`${plural(src.mistakes.length, "word")} you got wrong this week`}
-                onClick={() => practise(src.mistakes)}
-              />
+            <div className="lessons" role="group" aria-label="Lessons">
+              {src?.page ? (
+                <LessonCard
+                  main
+                  icon={<BookOpen size={18} aria-hidden />}
+                  title={src.page.title}
+                  sub={`${plural(src.page.keys.length, "word")} you tapped`}
+                  words={src.page.keys}
+                  onClick={() => practise(src.page!.keys)}
+                />
+              ) : null}
+              {o && (o.due > 0 || o.newAvailable > 0) ? (
+                <LessonCard
+                  main={!src?.page}
+                  icon={<Dumbbell size={18} aria-hidden />}
+                  title="Your new words"
+                  sub={loading ? "Preparing…" : `${o.due} due · ${o.newAvailable} new`}
+                  label={startLabel}
+                  disabled={loading || effective.length === 0}
+                  onClick={go}
+                />
+              ) : null}
+              {src?.mistakes.length ? (
+                <LessonCard
+                  icon={<ListChecks size={18} aria-hidden />}
+                  title="Mistakes"
+                  sub={`${plural(src.mistakes.length, "word")} you got wrong this week`}
+                  onClick={() => practise(src.mistakes)}
+                />
+              ) : null}
+              {src?.weak && grammarTopic(src.weak.topic) ? (
+                <LessonCard
+                  icon={<MessagesSquare size={18} aria-hidden />}
+                  title={grammarTopic(src.weak.topic)!.title}
+                  sub={`${plural(src.weak.misses, "miss", "misses")} this week`}
+                  onClick={() =>
+                    void navigate({
+                      to: "/grammar/$topic/practice",
+                      params: { topic: src.weak!.topic },
+                    })
+                  }
+                />
+              ) : null}
+            </div>
+            {noVoice ? (
+              <p className="k-hint practice-note" role="note">
+                Add a Dutch voice in your system&rsquo;s settings to practise listening and
+                dictation.
+              </p>
             ) : null}
-            {src?.weak && grammarTopic(src.weak.topic) ? (
-              <LessonCard
-                icon={<MessagesSquare size={18} aria-hidden />}
-                title={grammarTopic(src.weak.topic)!.title}
-                sub={`${plural(src.weak.misses, "miss", "misses")} this week`}
-                onClick={() =>
-                  void navigate({
-                    to: "/grammar/$topic/practice",
-                    params: { topic: src.weak!.topic },
-                  })
-                }
-              />
-            ) : null}
+            {wide ? null : options}
+            <PracticeNote native={review.data?.native === true} />
           </div>
-          {noVoice ? (
-            <p className="k-hint practice-note" role="note">
-              Add a Dutch voice in your system&rsquo;s settings to practise listening and dictation.
-            </p>
+          {wide ? (
+            <aside className="practice-aside" aria-label="About your practice">
+              {src?.tomorrow.length ? (
+                <section className="practice-box">
+                  <h2 className="practice-box-h">Back tomorrow</h2>
+                  <div className="lesson-chips" lang="nl">
+                    {src.tomorrow.slice(0, 8).map((k) => (
+                      <span key={k} className="lesson-chip">
+                        {k}
+                      </span>
+                    ))}
+                    {src.tomorrow.length > 8 ? (
+                      <span className="lesson-chip">+{src.tomorrow.length - 8}</span>
+                    ) : null}
+                  </div>
+                </section>
+              ) : null}
+              <section className="practice-box">{options}</section>
+              <section className="practice-box">
+                <h2 className="practice-box-h">Keys in a lesson</h2>
+                <dl className="practice-keys">
+                  <dt>
+                    <kbd className="ex-key">1</kbd>–<kbd className="ex-key">9</kbd>
+                  </dt>
+                  <dd>pick an answer or a tile</dd>
+                  <dt>
+                    <kbd className="ex-key">Enter</kbd>
+                  </dt>
+                  <dd>check, then go on</dd>
+                  <dt>
+                    <kbd className="ex-key">Space</kbd>
+                  </dt>
+                  <dd>hear the Dutch again</dd>
+                  <dt>
+                    <kbd className="ex-key">?</kbd>
+                  </dt>
+                  <dd>a hint</dd>
+                  <dt>
+                    <kbd className="ex-key">⌫</kbd>
+                  </dt>
+                  <dd>take back the last tile</dd>
+                  <dt>
+                    <kbd className="ex-key">Esc</kbd>
+                  </dt>
+                  <dd>stop the lesson</dd>
+                </dl>
+              </section>
+            </aside>
           ) : null}
-          {options}
-          <PracticeNote native={review.data?.native === true} />
         </div>
       </>
     );
@@ -829,6 +898,7 @@ function LessonCard({
   sub,
   main = false,
   label,
+  words,
   disabled = false,
   onClick,
 }: {
@@ -838,6 +908,8 @@ function LessonCard({
   main?: boolean;
   /** The accessible name, when it should say more than the title. */
   label?: string;
+  /** The lesson's words, shown as chips (the main card on a computer). */
+  words?: string[];
   disabled?: boolean;
   onClick: () => void;
 }) {
@@ -853,6 +925,16 @@ function LessonCard({
       <span className="lesson-text">
         <b>{title}</b>
         <small>{sub}</small>
+        {words?.length ? (
+          <span className="lesson-chips" lang="nl">
+            {words.slice(0, 6).map((k) => (
+              <span key={k} className="lesson-chip">
+                {k}
+              </span>
+            ))}
+            {words.length > 6 ? <span className="lesson-chip">+{words.length - 6}</span> : null}
+          </span>
+        ) : null}
       </span>
       <ChevronRight size={18} className="lesson-go" aria-hidden />
     </button>

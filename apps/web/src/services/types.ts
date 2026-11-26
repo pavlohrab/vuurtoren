@@ -481,4 +481,6 @@ export interface LessonSources {
   mistakes: string[];
   /** The grammar point you missed most this week (two misses or more), as a grammar page id. */
   weak: { topic: string; misses: number } | null;
+  /** Words whose practice comes back by tomorrow evening (and isn't due yet). */
+  tomorrow: string[];
 }

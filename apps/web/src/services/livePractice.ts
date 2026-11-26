@@ -551,10 +551,11 @@ export function createLivePractice(deps: LivePracticeDeps) {
     const lang = await deps.lang();
     const now = clock();
     const week = now - 7 * DAY_MS;
-    const [rows, texts, infos] = await Promise.all([
+    const [rows, texts, infos, items] = await Promise.all([
       repo.practiceAnswers(lang),
       lastText ? repo.listTexts() : Promise.resolve([]),
       repo.words(lang),
+      loadItems(lang),
     ]);
     const ignored = new Set(infos.filter((w) => w.state === "ignored").map((w) => w.key));
     let page: LessonSources["page"] = null;
@@ -573,7 +574,17 @@ export function createLivePractice(deps: LivePracticeDeps) {
       point && misses !== undefined && misses >= 2
         ? { topic: TOPIC_OF_POINT[point], misses }
         : null;
-    return { page, mistakes, weak };
+    const evening = new Date(now);
+    evening.setDate(evening.getDate() + 1);
+    evening.setHours(23, 59, 59, 999);
+    const tomorrow = [
+      ...new Set(
+        items
+          .filter((i) => i.due > now && i.due <= evening.getTime() && !ignored.has(i.key))
+          .map((i) => i.key),
+      ),
+    ];
+    return { page, mistakes, weak, tomorrow };
   }
 
   /** A missed word's second go, from the lesson that is running. */
