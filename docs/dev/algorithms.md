@@ -646,156 +646,162 @@ Most exercises need a sentence with the word in it, so Vuurtoren looks for good 
 
 ### 4.7 Lessons
 
-Practice is short lessons now: about 10 words, 4–6 minutes. The code is
-`packages/core/src/practice/` (`select.ts`, `elo.ts`, `choose.ts`, `lesson.ts`, `known.ts`) and
-`apps/web/src/services/livePractice.ts` with `lessonSignals.ts`. When you pick fewer skills under
-Options, the older session builder of 4.8 is used instead. The research behind each decision is
-in 4.9.
+Practice is short lessons: about 10 words, 4 to 6 minutes. The code is in
+`packages/core/src/practice/` (`select.ts`, `elo.ts`, `choose.ts`, `lesson.ts`, `known.ts`) and in
+`apps/web/src/services/livePractice.ts` with `lessonSignals.ts`. If you pick fewer skills under
+Options, the older session builder in 4.8 is used instead. The studies behind each choice are
+listed in 4.9.
 
-Not there yet: the reading-level check on sentences, the page sentence first, and asking the AI
-for sentences made only of your known words. In Anki mode, words you reviewed in Anki today still
-come in, because the app doesn't read Anki's review dates.
+Your cards (Anki, or the app's own) already bring back each word's meaning on time, so Practice
+doesn't do that again. It trains what a card doesn't, on the same words: the word in a real
+sentence, a different one each time; saying it in Dutch; de or het, forms and word order; and the
+sound. Each word gets the exercise you would get right about 8 times in 10.
 
-**The idea.** Your cards (Anki, or the app's own) already bring each word's meaning back on time.
-Practice doesn't repeat that. It trains what a card doesn't, on the same words: the word in a real
-sentence (a different one each time), saying it in Dutch, de/het, forms and word order, and the
-sound. Each word gets the exercise you'd get right about 8 times in 10.
+Not there yet: in Anki mode, words you reviewed in Anki today can still come up, because the app
+doesn't read Anki's review dates.
 
 #### 4.7.1 What the app knows about each word
 
-| Signal                                                         | Source                                 |
+| What                                                           | Where it comes from                    |
 | -------------------------------------------------------------- | -------------------------------------- |
 | Card state, FSRS stability, last review, recall now (`pKnown`) | the learner model (1.4–1.7)            |
 | Taps on the word, when, and in which text                      | `WordLookedUp` events, `word_lookups`  |
-| Reader clozes right or wrong, hinted or not                    | `ClozeAnswered`, `word_evidence`       |
-| Every practice answer: word, skill, kind, right or wrong       | `ExerciseAnswered`, `practice_answers` |
-| The words of the page you read and of the next pages           | the text's analysed tokens             |
+| Reader blanks right or wrong, with or without a hint           | `ClozeAnswered`, `word_evidence`       |
+| Every practice answer: word, kind, right or wrong              | `ExerciseAnswered`, `practice_answers` |
+| The words on the page you read and on the next pages           | the text's analysed tokens             |
 | Frequency (Zipf), part of speech, gender, forms                | dictionary and language server         |
-| Ignored, dismissed and suggested words                         | word states, `WordSuggestionDismissed` |
+| Ignored and dismissed words                                    | word states, `WordSuggestionDismissed` |
 | Your reading level                                             | the staircase (3.6)                    |
 
 #### 4.7.2 Which words go into a lesson
 
-Practice items that are due (FSRS, 4.1) come first. The other places go to words with the highest
-**need × use**:
+Practice items that are due (FSRS, 4.1) come first. The rest of the places go to the words with
+the highest **need × use**.
 
-- **Need**: recall now between about 0.3 and 0.85; tapped two or more times, or tapped in the last
-  few days (the first retrieval should come soon after meeting a word, then spread out: Karpicke &
-  Roediger 2008, Cepeda et al. 2006); a wrong
-  cloze or practice answer lately; a card that has slipped.
-- **Use**: frequency; on the page you just read; on the next pages of the text you are reading
-  (learning words before a text helps you understand it, Webb 2009).
-- **Left out**: ignored and dismissed words; words reviewed with a card today (the app's own cards;
-  Anki mode once the app reads Anki's review dates); words that are safe on every side, apart from
-  an occasional check.
+- **Need** is high when you recall the word only partly (about 0.3 to 0.85), when you tapped it
+  twice or more, or in the last few days, when you got it wrong lately, or when its card slipped.
+  A word should come back soon after you met it and then more spread out (Karpicke & Roediger
+  2008; Cepeda et al. 2006).
+- **Use** is high for common words, for words on the page you just read, and for words on the next
+  pages, because learning words before a text helps you understand it (Webb 2009).
+- **Left out:** ignored and dismissed words, words you reviewed on their own card today (the app's
+  cards), and words that are safe in every way, except now and then as a check.
 
-A lesson's source narrows the pool first: this page, before the next page, new words, mistakes.
+When you start a lesson from a list (this text, mistakes), only those words are in the pool.
 
 #### 4.7.3 Which exercise: a small Elo model
 
-Every answer is treated as a match between your grip on a word (θ) and how hard an exercise kind is
-for you (d). This is the Elo rating from chess, used in learning apps the way Pelánek (2016)
-describes it. We picked it over bigger models because with one learner's answers they predict no
-better (Pelánek 2017; Khajah, Lindsey & Mozer 2016).
+Each answer counts as a match between how well you hold a word (θ) and how hard a kind of exercise
+is for you (d), like the Elo rating in chess. Learning apps use it this way (Pelánek 2016). We
+chose it over bigger models because with one person's answers they don't predict better (Pelánek
+2017; Khajah, Lindsey & Mozer 2016).
 
-- **Start of θ**: `logit(pKnown)` (clamped to 0.05–0.95), −0.3 for each tap in the last 14 days,
-  +0.3 for each net right reader cloze, clamped.
-- **Start of d**, the ladder from easy to hard: meaning-choice −2.0, word-choice −1.6, cloze-choice
-  −1.2, gender −1.0, adjective-e −0.8, separable −0.6, scramble −0.4, listen-build −0.2, perfect
-  +0.4, cloze-typed +0.6, dictation +0.7, verb-form +0.8. These adapt to you.
-- **Chance of a right answer**: `p = g + (1 − g) · σ(θ − d)`, where `g` = 1 / number of choices for
-  multiple choice (a guess can be right) and 0 for typing and building.
-- **The pick**: among the kinds the word supports, the one with `p` closest to 0.85 (Wilson et al.
-  2019).
-- **Guard rail**: never more than one step above the hardest kind this word was answered right
-  in, so typing only comes after building. A word you marked known (I know it) starts at building.
-  A difficulty only helps when you can still get it right (Bjork & Bjork 2011).
-- **After an answer**: `θ += K(n)(r − p)` and `d −= ½ K(n)(r − p)`, with `r` = 1 or 0 and
-  `K(n) = 0.8 / (1 + 0.1 n)` shrinking as the word or kind collects answers. A peek or a hint
-  counts as half (`r` = 0.5), like a hinted reader cloze.
-- **Replay**: θ and d are not stored; they are worked out from `practice_answers` in time order, so
-  every device gets the same numbers.
+- **θ at the start** is `logit(pKnown)` (kept between 0.05 and 0.95), minus 0.3 for each tap in the
+  last 14 days, plus 0.3 for each reader blank you got right more than wrong.
+- **d at the start** goes from easy to hard: meaning-choice −2.0, word-choice −1.6, cloze-choice
+  −1.2, gender −1.0, adjective-e −0.8, separable −0.6, scramble −0.4, say −0.2, listen-build 0.1,
+  perfect 0.4, cloze-typed 0.6, dictation 0.7, verb-form 0.8. These change with your answers.
+- **The chance you get it right** is `p = g + (1 − g) · σ(θ − d)`. Here `g` is 1 divided by the
+  number of choices for multiple choice, because a guess can be right, and 0 otherwise.
+- **The pick** is the kind your word can do whose `p` is closest to 0.85 (Wilson et al. 2019).
+- **The guard rail:** never more than one step above the hardest kind you got right for this word,
+  so you type only after you have built the sentence. A word you marked known starts at building.
+  A hard exercise only helps when you can still get it right (Bjork & Bjork 2011).
+- **After an answer** θ and d move toward what happened: `θ += K(n)(r − p)` and
+  `d −= ½ K(n)(r − p)`, where `r` is 1 or 0 and `K(n) = 0.8 / (1 + 0.1 n)` gets smaller as a word
+  or kind collects answers. A peek or a hint counts as half (`r` = 0.5), like a hinted blank.
+- **Nothing extra is stored.** θ and d are worked out again from `practice_answers` in time order,
+  so every device gets the same numbers.
 
-**FSRS decides when, Elo decides how hard.** Elo has no forgetting of its own; FSRS models it (the
-card's recall now, each practice item's schedule), and θ starts from that recall.
+FSRS decides when a word comes back, and Elo decides how hard the exercise is. Elo doesn't model
+forgetting; FSRS does, and θ starts from what FSRS says you remember now.
 
-**Weak spots across words.** Misses are also counted per grammar point (gender, adjective -e,
-perfect, separable verbs, verb forms, word order). A point you often miss gets more room in the
-next lessons, and the end of the lesson links its grammar page.
+Misses are also counted per grammar point (gender, the -e ending, the perfect, separable verbs,
+verb forms, word order). A point you often miss gets a bit more room in the next lessons.
 
-#### 4.7.4 Which sentence, and the guard rail on hard ones
+#### 4.7.4 Which sentence
 
-Sentences come from the sources of 4.6. Every sentence passes a check before an exercise uses it:
+Sentences come from the places in 4.6. Before an exercise uses a sentence, it has to pass this:
 
-| Exercise     | Length               | Other words                                                                                              |
-| ------------ | -------------------- | -------------------------------------------------------------------------------------------------------- |
-| build, hear  | 4–7 words            | known to you (recall ≥ 0.8) or a very common function word, aiming at 98% known words (Hu & Nation 2000) |
-| fill the gap | up to about 12 words | the same                                                                                                 |
+| Exercise         | Length         | The other words                                                                    |
+| ---------------- | -------------- | ---------------------------------------------------------------------------------- |
+| build, hear, say | 4 to 7 words   | all known to you (recall 0.8 or more) or very common small words                   |
+| fill the gap     | up to 12 words | at most one you don't know, and only if that stays within your reading level (3.6) |
 
-- Always with its English: sentences from your texts are translated offline (2.6); a sentence
-  without a translation is not used for building or hearing. Beginners learn better with the
-  translation than with Dutch explanations (Nakata 2011).
-- Not harder than your reading level allows (3.6).
-- A different sentence each time after the first, because seeing a word in varied contexts helps
-  (Chen, Miller & Ke 2026, to check in the full paper).
-- The first time, the sentence from the page where you met the word, if it passes. If it doesn't,
-  a simpler one is used and the original shows after the answer as "Where you met it".
-- No simple sentence: your other texts, Tatoeba, then (with AI on) a short sentence made of your
+The aim is about 98% known words, as in Hu & Nation (2000).
+
+- A sentence always comes with its English. Sentences from your texts are translated offline
+  (2.6), and one without English isn't used for building or hearing. Beginners learn better with
+  the translation than with a Dutch explanation (Nakata 2011).
+- The first time you practise a word, the sentence from your own reading comes first. After that
+  it's a different sentence each time, because meeting a word in different sentences helps (Chen,
+  Miller & Ke 2026, to check in the full paper).
+- When the exercise used a simpler sentence than the one you met the word in, that one shows after
+  the answer as "Where you met it".
+- No sentence passes: other texts, then Tatoeba, then (with AI on) new sentences made only of your
   known words, checked by the language server. Still none: only exercises that need no sentence.
-- One extra tile in building (the other article, or another form of a word in the sentence).
-- Unsure: tap a tile to hear it, hold it to see its meaning, or take a Hint (the next tile).
+- Building has one tile too many: the other article, or another form of a word in the sentence.
+- Tap a tile to hear it, hold it to see what it means, or press Hint for the next tile.
 
-#### 4.7.5 Words you said you know, and your cards
+#### 4.7.5 Words you know, and your cards
 
-- **I know it** gives the card a mature schedule, so the word is known with a high recall. It comes
-  up rarely, as a check, starting at building. A miss lowers θ, never the card; after two misses the
-  end of the lesson offers Learn it again.
-- **A word with a card never gets "pick the meaning"**: that is the card's job. Practice trains
-  what the card doesn't: the word in sentences, producing it, its forms and its sound (Webb 2005;
-  Shintani, Li & Ellis 2013).
-- **The app's own cards** (native mode): a practice answer counts as a review of the word's due card
-  only for building and typing, not for the choice exercises.
+- **I know it** gives the card a mature schedule, so the word counts as known. It comes up rarely,
+  as a check, and starts at building. A miss lowers θ but never touches the card.
+- **A word with a card never gets "pick the meaning"**, because that's the card's job. Practice
+  trains the word in sentences, saying it, its forms and its sound instead (Webb 2005; Shintani,
+  Li & Ellis 2013).
+- **With the app's own cards**, a practice answer also counts as a review of the word's due card,
+  but only for building and typing, not for the choice exercises.
 
 #### 4.7.6 Saying a sentence
 
-"Say this sentence" shows a short sentence (up to 7 words, every other word known to you) with its
-English and a speaker, so you can hear it first. You tap the mic, say it, and tap again. The
-recording is turned into a 16 kHz WAV in the browser and sent to the language server, which
-listens with Whisper base (Radford et al. 2023) running offline in sherpa-onnx (`listen.py`,
-the `asr-nl` pack, about 160 MB). It sits at the same step as building, because both make you
-produce the sentence (Webb 2005).
+"Say this sentence" shows a short sentence with its English and a speaker, so you can hear it
+first. You tap the mic (or press M), say it, and tap again.
 
-Whisper base still mishears some fast Dutch, so the check is lenient: the sentence's words are
-lined up with what was heard, a word may be one letter off when it has four letters or more, and
-70% of the words is enough. Under that the strip shows what was heard, with the missing words
-underlined. Silence counts as nothing heard, because Whisper makes words up from silence. The
-exercise only comes into lessons when the language server says it can listen.
+- **On a computer** the recording is turned into a 16 kHz WAV in the browser and the language
+  server listens to it with Whisper base (Radford et al. 2023), offline, in sherpa-onnx
+  (`listen.py`). The model is the `asr-nl` pack, 94 MB. Nobody gets it unasked: Settings offers
+  "Turn on speaking" when the server can't listen yet.
+- **On a phone** Android's own Dutch speech recognition listens, so no server hears anything.
 
-#### 4.7.7 Where lessons start, and what's around them
+It's at the same step as building, because both make you produce the sentence (Webb 2005).
+Whisper base mishears some fast Dutch, so the check is easy-going: the sentence's words are lined
+up with what was heard, a word of four letters or more may be one letter off, and 70% of the
+words is enough. Below that, the strip shows what was heard with the missing words underlined,
+and "I said it right" counts it as right. Silence counts as nothing heard, because Whisper makes
+up words from silence. "I can't talk now" (S) skips speaking for the rest of the lesson. The
+exercise only comes up when something can listen.
 
-Practice opens on a list of lessons. The text you read last, with the words you tapped in it, is
-the first card. Then come your new words (the usual lesson), the words you got wrong this week,
-and the grammar point you missed most this week, which opens that topic's practice. A ring counts
-the lessons you finished today on this device. The goal is one.
+#### 4.7.7 Where a lesson starts, and what's around it
 
-A page in the reader where you tapped two or more words ends with those words and "Practise these
-N words". A word with no card that you never practised is shown first as a "new word" card (its
-sound, meaning and sentence), and three or more such words get a short match-pairs round. Neither
-of those is graded. "Hear it, build it" plays a short sentence (once by itself, again with the
-play button, slowly with the snail) and you build it from tiles. It sits at step 4, after
-building from the English. With the app's own cards, a word reviewed on its card today waits
-until tomorrow.
+Practice opens on a list of lessons:
 
-At the end you see the words, the share you got right and the time, which words come back
+- the text you read last, with the words you tapped in it (Enter starts it on a computer);
+- your new words, the usual lesson;
+- the words you got wrong this week;
+- the grammar point you missed most this week, which opens that topic's practice.
+
+A ring shows the lessons you finished today on this device. The goal is one. On a computer a side
+column shows the words back tomorrow, the options and the keys.
+
+A reader page where you tapped two or more words ends with those words and "Practise these N
+words". A word without a card that you never practised is shown first as a "new word" card (its
+sound, meaning and sentence). When three or more such words start at the first step, a short
+match-pairs round comes before the exercises. Neither of these is graded. "Hear it, build it"
+plays a short sentence once by itself (again with the play button, slowly with the snail) and you
+build it from tiles. Recordings from the audio pack play when there is one, else the voice.
+
+At the end you see how many words, the share you got right and the time, which words come back
 tomorrow, and a link to the grammar point you missed twice or more.
 
 #### 4.7.8 The lesson
 
-About 10 words (Short 5, Normal 10, Long 15), each once at its exercise, because recalling a word
-three times in a row is no better than once (Karpicke & Bauernschmidt 2011). A miss shows the right
-answer with one line on why and a link to the grammar page, since explaining mistakes and teaching
-grammar outright both work (Li 2010; Norris & Ortega 2000; Spada & Tomita 2010). The word comes
-back once at the end, one step easier. Today's count is 1 lesson a day by default; there are no streaks.
+About 10 words (Short 5, Normal 10, Long 15), each once, because recalling a word three times in a
+row is no better than once (Karpicke & Bauernschmidt 2011). A miss shows the right answer with one
+line on why and a link to the grammar page, because explaining mistakes and teaching grammar
+outright both work (Li 2010; Norris & Ortega 2000; Spada & Tomita 2010). The word then comes back
+once at the end, one step easier. On a computer Check and the result sit in one band at the bottom
+of the window. The goal is one lesson a day, and there are no streaks.
 
 ### 4.8 Building a session (when you limit the skills)
 
