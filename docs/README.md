@@ -2,6 +2,9 @@
 
 How to install and use Vuurtoren. The same pages are on the docs website, vuurtoren.app/docs.
 
+Vuurtoren is still in beta, so some things will change. If something doesn't work, tell me through
+the feedback button in the app or on [vuurtoren.app/about](https://vuurtoren.app/about.html).
+
 Start with the [Quick start](guide/quick-start.md), which takes you from installing to your first
 text in five steps. How to install on each computer and on a phone is on [Install](guide/install.md).
 

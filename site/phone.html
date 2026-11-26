@@ -1803,6 +1803,48 @@
           text-align: center;
         }
       }
+      /* "Beta" beside the name: we are still testing everything. */
+      .beta {
+        display: inline-block;
+        margin-left: 7px;
+        padding: 1px 7px;
+        border: 1px solid var(--line-strong);
+        border-radius: 999px;
+        font: 600 11px/1.5 var(--f-ui, Inter, sans-serif);
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: var(--accent);
+        vertical-align: 3px;
+      }
+      @media (max-width: 430px) {
+        .beta {
+          margin-left: 3px;
+          padding: 0;
+          border: 0;
+          font-size: 9.5px;
+          vertical-align: 8px;
+        }
+        .nav .btn.primary {
+          padding-inline: 12px;
+        }
+        .nav .in {
+          gap: 8px;
+        }
+        .nav .brand {
+          font-size: 18px;
+          gap: 6px;
+        }
+        /* No room for the theme button: a phone follows its own light or dark setting. */
+        .nav .in .theme-btn {
+          display: none;
+        }
+      }
+      /* Phones: the header has no room for About; the footer has it. */
+      @media (max-width: 560px) {
+        .nav-links a[href="about.html"] {
+          display: none;
+        }
+      }
     </style>
   </head>
   <body data-page="phone">
@@ -1840,7 +1882,7 @@
               height="3.5"
               rx="1.75"
             /></svg
-          >vuurtoren</a
+          >vuurtoren<span class="beta">Beta</span></a
         >
         <div class="nav-links">
           <details class="prod">
@@ -1857,7 +1899,7 @@
             </div>
           </details>
           <a href="how.html">How it works</a>
-          <a href="docs/index.html">Docs</a>
+          <a href="docs/index.html">Docs</a><a href="about.html">About</a>
         </div>
         <button
           class="theme-btn"
@@ -2240,9 +2282,9 @@
           </svg>
           <h3>Sync seamlessly.</h3>
           <p>
-            Start a story on your computer, finish it on your phone. At home the phone syncs with your
-            computer after one QR code. From anywhere, sync through WebDAV or your own server, locked
-            with your passphrase. Between computers a Syncthing folder works too.
+            Start a story on your computer, finish it on your phone. At home the phone syncs with
+            your computer after one QR code. From anywhere, sync through WebDAV or your own server,
+            locked with your passphrase. Between computers a Syncthing folder works too.
             <span style="opacity: 0.6">Vuurtoren Sync: planned.</span>
           </p>
         </div>
@@ -2302,7 +2344,7 @@
       <div class="in">
         <a href="index.html">vuurtoren.app</a><a href="desktop.html">Desktop</a
         ><a href="phone.html">Phone</a><a href="how.html">How it works</a
-        ><a href="docs/index.html">Docs</a
+        ><a href="docs/index.html">Docs</a><a href="about.html">About</a
         ><a href="https://github.com/pavlohrab/Vuurtoren">GitHub</a
         ><span>MIT · content CC BY-SA</span>
       </div>

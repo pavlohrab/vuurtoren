@@ -15,6 +15,7 @@ const pages = [
   "desktop.html",
   "phone.html",
   "how.html",
+  "about.html",
   "docs/index.html",
   "docs/reading.html",
   "docs/ai.html",

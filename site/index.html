@@ -1285,6 +1285,48 @@
           display: none;
         }
       }
+      /* "Beta" beside the name: we are still testing everything. */
+      .beta {
+        display: inline-block;
+        margin-left: 7px;
+        padding: 1px 7px;
+        border: 1px solid var(--line-strong);
+        border-radius: 999px;
+        font: 600 11px/1.5 var(--f-ui, Inter, sans-serif);
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: var(--accent);
+        vertical-align: 3px;
+      }
+      @media (max-width: 430px) {
+        .beta {
+          margin-left: 3px;
+          padding: 0;
+          border: 0;
+          font-size: 9.5px;
+          vertical-align: 8px;
+        }
+        .nav .btn.primary {
+          padding-inline: 12px;
+        }
+        .nav .in {
+          gap: 8px;
+        }
+        .nav .brand {
+          font-size: 18px;
+          gap: 6px;
+        }
+        /* No room for the theme button: a phone follows its own light or dark setting. */
+        .nav .in .theme-btn {
+          display: none;
+        }
+      }
+      /* Phones: the header has no room for About; the footer has it. */
+      @media (max-width: 560px) {
+        .nav-links a[href="about.html"] {
+          display: none;
+        }
+      }
     </style>
     <style>
       /* Products menu (same as desktop.html and phone.html); on phones it stays. */
@@ -2700,7 +2742,10 @@
     <nav class="nav band" aria-label="Main">
       <div class="in">
         <a class="brand" href="#top"
-          ><svg class="logo" aria-hidden="true"><use href="#mark" /></svg>vuurtoren</a
+          ><svg class="logo" aria-hidden="true"><use href="#mark" /></svg>vuurtoren<span
+            class="beta"
+            >Beta</span
+          ></a
         >
         <div class="nav-links">
           <details class="prod">
@@ -2716,7 +2761,8 @@
               >
             </div>
           </details>
-          <a href="how.html">How it works</a><a href="docs/index.html">Docs</a>
+          <a href="how.html">How it works</a><a href="docs/index.html">Docs</a
+          ><a href="about.html">About</a>
         </div>
         <button
           class="theme-btn"
@@ -3276,6 +3322,10 @@
         <svg class="logo" width="60" height="60" aria-hidden="true"><use href="#mark" /></svg>
         <h2 id="g-h">Start reading.</h2>
         <p class="muted">Free, open source, and yours.</p>
+        <p class="muted">
+          It's still in beta, so some things will change, and your
+          <a href="about.html#contact">feedback</a> helps.
+        </p>
         <div class="cta dl-row">
           <a
             class="btn primary"
@@ -3339,7 +3389,7 @@
         <span class="foot-links"
           ><a href="index.html">vuurtoren.app</a><a href="desktop.html">Desktop</a
           ><a href="phone.html">Phone</a><a href="how.html">How it works</a
-          ><a href="docs/index.html">Docs</a
+          ><a href="docs/index.html">Docs</a><a href="about.html">About</a
           ><a href="https://github.com/pavlohrab/Vuurtoren">GitHub</a></span
         ><span>MIT · content CC BY-SA</span>
       </div>

@@ -11,6 +11,10 @@
 </p>
 
 <p align="center">
+  <b>Beta.</b> It's still in testing, so some things will change.
+</p>
+
+<p align="center">
   <a href="https://github.com/pavlohrab/Vuurtoren/releases/latest"><img alt="Download for Windows" src="https://img.shields.io/badge/Download-Windows-8f5a1f?style=for-the-badge"></a>
   <a href="https://github.com/pavlohrab/Vuurtoren/releases/latest"><img alt="Download for macOS" src="https://img.shields.io/badge/Download-macOS-8f5a1f?style=for-the-badge"></a>
   <a href="https://github.com/pavlohrab/Vuurtoren/releases/latest"><img alt="Download for Linux" src="https://img.shields.io/badge/Download-Linux-8f5a1f?style=for-the-badge"></a>
@@ -21,7 +25,8 @@
   <a href="https://vuurtoren.app">vuurtoren.app</a> ·
   <a href="https://vuurtoren.app/docs/quick-start.html">Quick start</a> ·
   <a href="https://vuurtoren.app/docs/install.html">Install</a> ·
-  <a href="https://vuurtoren.app/docs/">Docs</a>
+  <a href="https://vuurtoren.app/docs/">Docs</a> ·
+  <a href="https://vuurtoren.app/about.html">About and contact</a>
 </p>
 
 ## Why I made it
