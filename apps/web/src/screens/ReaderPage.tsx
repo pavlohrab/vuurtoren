@@ -1,7 +1,7 @@
 import { grammarLevel, levelsLine, roughTextLevel, starterRanks } from "../services/textLevel.js";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "@tanstack/react-router";
-import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowRight, ChevronLeft, ChevronRight, Maximize2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { ModeMenu } from "./reader/ModeMenu.js";
@@ -1228,6 +1228,18 @@ export function ReaderPage({ textId }: { textId: string }) {
                 </span>
                 <ModeMenu modes={MODES} value={mode} onChange={(v) => setMode(v as ReaderMode)} />
                 <span className="rbar-tools">
+                  {/* Focus mode (full screen), easy to find (M6). */}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    icon
+                    className="rbar-focus"
+                    aria-label="Focus mode (F)"
+                    title="Focus mode (F)"
+                    onClick={() => setReadingFocus(true)}
+                  >
+                    <Maximize2 size={16} aria-hidden />
+                  </Button>
                   <ReadingSettings
                     prefs={prefs}
                     onChange={setPrefs}

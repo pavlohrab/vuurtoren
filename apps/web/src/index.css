@@ -2584,3 +2584,41 @@
   align-items: center;
   gap: 10px;
 }
+
+/* The end of a text: a checkmark that draws itself (mock-reader-book-2.html). */
+.text-done-check {
+  width: 72px;
+  height: 72px;
+}
+.text-done-check circle {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 4;
+}
+.text-done-check path {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .text-done-check circle {
+    stroke-dasharray: 252;
+    animation: done-draw 0.6s ease-out both;
+  }
+  .text-done-check path {
+    stroke-dasharray: 60;
+    animation: done-draw-tick 0.35s 0.5s ease-out both;
+  }
+}
+@keyframes done-draw {
+  from {
+    stroke-dashoffset: 252;
+  }
+}
+@keyframes done-draw-tick {
+  from {
+    stroke-dashoffset: 60;
+  }
+}

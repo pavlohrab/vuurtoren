@@ -316,6 +316,8 @@ describe("Reader grammar", () => {
   });
 
   it("passes the sentence's grammar to Explain this sentence", async () => {
+    // Page by page with Next: the scroll reader (book mode is one flow).
+    localStorage.setItem("vuurtoren-reader-prefs", JSON.stringify({ pages: "scroll" }));
     setup("/read/t-utrecht", (s) => ({ ...s, ...createMockAI(() => Promise.resolve()) }));
     await userEvent.click(await screen.findByRole("button", { name: "Next" }));
     await screen.findAllByText("staat");

@@ -113,6 +113,8 @@ describe("AI settings and reader helpers", () => {
   });
 
   it("offers Simplify this page only with a provider, and keeps the original", async () => {
+    // Page by page with Next: the scroll reader (book mode is one flow).
+    localStorage.setItem("vuurtoren-reader-prefs", JSON.stringify({ pages: "scroll" }));
     const off = setup("/read/t-utrecht", false);
     await screen.findByRole("button", { name: "Next" });
     await userEvent.click(screen.getByRole("button", { name: "More reading options" }));

@@ -1,7 +1,7 @@
 import { createMemoryHistory } from "@tanstack/react-router";
 import { act, configure, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeAll, describe, expect, it, vi } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { App, type AppProps } from "./App.js";
 import { createMockServices } from "./services/mock.js";
 import type { AppServices } from "./services/types.js";
@@ -33,6 +33,11 @@ beforeAll(async () => {
 vi.setConfig({ testTimeout: 20_000 });
 
 describe("ReaderPage", () => {
+  // Page by page, with Next and the page counter: the scroll reader. Book mode is one flow,
+  // tested in e2e/book.e2e.ts.
+  beforeEach(() => {
+    localStorage.setItem("vuurtoren-reader-prefs", JSON.stringify({ pages: "scroll" }));
+  });
   it("starts a different text from its own beginning, with no selection", async () => {
     const { history } = setup("/read/t-utrecht");
     await userEvent.click(await screen.findByRole("button", { name: "Next" }));

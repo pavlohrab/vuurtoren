@@ -37,6 +37,7 @@ export function BookScrub({
         value={value}
         aria-label="Where in the text"
         aria-valuetext={label(value - 1)}
+        style={{ "--fill": `${share * 100}%` } as React.CSSProperties}
         onChange={(e) => setDrag(Number(e.target.value))}
         onPointerUp={commit}
         onKeyUp={commit}

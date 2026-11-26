@@ -3,6 +3,8 @@
  * and where to go next — Words from this text, Practise these words, Talk about this text,
  * Next text. No confetti.
  */
+import { useEffect } from "react";
+import { play as playSound } from "../practice/feel.js";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import {
@@ -13,7 +15,7 @@ import {
   MessagesSquare,
   RotateCcw,
 } from "lucide-react";
-import { Button, LogoMark, Skeleton, useNativeMode } from "@app/ui";
+import { Button, Skeleton, useNativeMode } from "@app/ui";
 import { readLastText } from "../lastText.js";
 import { useServices } from "../services/context.js";
 import { pickContinue } from "../textPages.js";
@@ -54,11 +56,17 @@ export function TextComplete({
   const keys = list.map((w) => w.key);
   const talkWords = list.slice(0, 6).map((w) => w.lemma);
 
+  useEffect(() => {
+    playSound("done");
+  }, []);
+
   return (
     <section className="text-done" aria-labelledby="text-done-h">
-      <span className="text-done-mark" aria-hidden>
-        <LogoMark size={40} />
-      </span>
+      {/* A checkmark that draws itself, with the three-note chime (mock-reader-book-2.html). */}
+      <svg className="text-done-check" viewBox="0 0 90 90" aria-hidden>
+        <circle cx="45" cy="45" r="40" />
+        <path d="M27 46 l12 12 l24 -26" />
+      </svg>
       <p className="k-overline">Finished</p>
       <h2 id="text-done-h" className="text-done-title">
         {title}

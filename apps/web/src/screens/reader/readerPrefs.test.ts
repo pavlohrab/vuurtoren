@@ -8,7 +8,7 @@ describe("book settings", () => {
   it("turn pages by default, follow the finger, two pages when wide, justified, no volume keys", () => {
     expect(readPrefs()).toMatchObject({
       pages: "turn",
-      turn: "follow",
+      turn: "paper",
       spread: true,
       justify: true,
       volumeKeys: false,
@@ -36,7 +36,7 @@ describe("book settings", () => {
       volumeKeys: true,
     });
     localStorage.setItem(KEY, JSON.stringify({ pages: "fold", turn: "curl" }));
-    expect(readPrefs()).toMatchObject({ pages: "turn", turn: "follow" });
+    expect(readPrefs()).toMatchObject({ pages: "turn", turn: "paper" });
   });
 
   it("turns the old line width into margins: a wide line is narrow margins", () => {

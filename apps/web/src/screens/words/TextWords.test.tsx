@@ -240,6 +240,8 @@ describe("TextWords page", () => {
 
 describe("routing to the review", () => {
   it("finishing the last segment shows the completion panel, which leads on to the review", async () => {
+    // Page by page with Next: the scroll reader (book mode is one flow).
+    localStorage.setItem("vuurtoren-reader-prefs", JSON.stringify({ pages: "scroll" }));
     const { history } = setup("/read/t-utrecht");
     await userEvent.click(await screen.findByRole("button", { name: "Next" }));
     await userEvent.click(await screen.findByRole("button", { name: "Finish" }));
