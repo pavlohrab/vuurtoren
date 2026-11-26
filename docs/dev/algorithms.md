@@ -674,10 +674,11 @@ Practice items that are due (FSRS, 4.1) come first. The other places go to words
 **need × use**:
 
 - **Need**: recall now between about 0.3 and 0.85; tapped two or more times, or tapped in the last
-  few days (the first retrieval should come soon after meeting a word, then spread out); a wrong
+  few days (the first retrieval should come soon after meeting a word, then spread out: Karpicke &
+  Roediger 2008, Cepeda et al. 2006); a wrong
   cloze or practice answer lately; a card that has slipped.
 - **Use**: frequency; on the page you just read; on the next pages of the text you are reading
-  (learning words before a text helps you understand it).
+  (learning words before a text helps you understand it, Webb 2009).
 - **Left out**: ignored and dismissed words; words reviewed with a card today (the app's own cards;
   Anki mode once the app reads Anki's review dates); words that are safe on every side, apart from
   an occasional check.
@@ -687,7 +688,9 @@ A lesson's source narrows the pool first: this page, before the next page, new w
 #### 4.7.3 Which exercise: a small Elo model
 
 Every answer is treated as a match between your grip on a word (θ) and how hard an exercise kind is
-for you (d) (Pelánek 2016).
+for you (d). This is the Elo rating from chess, used in learning apps the way Pelánek (2016)
+describes it. We picked it over bigger models because with one learner's answers they predict no
+better (Pelánek 2017; Khajah, Lindsey & Mozer 2016).
 
 - **Start of θ**: `logit(pKnown)` (clamped to 0.05–0.95), −0.3 for each tap in the last 14 days,
   +0.3 for each net right reader cloze, clamped.
@@ -700,6 +703,7 @@ for you (d) (Pelánek 2016).
   2019).
 - **Guard rail**: never more than one step above the hardest kind this word was answered right
   in, so typing only comes after building. A word you marked known (I know it) starts at building.
+  A difficulty only helps when you can still get it right (Bjork & Bjork 2011).
 - **After an answer**: `θ += K(n)(r − p)` and `d −= ½ K(n)(r − p)`, with `r` = 1 or 0 and
   `K(n) = 0.8 / (1 + 0.1 n)` shrinking as the word or kind collects answers. A peek or a hint
   counts as half (`r` = 0.5), like a hinted reader cloze.
@@ -717,14 +721,17 @@ next lessons, and the end of the lesson links its grammar page.
 
 Sentences come from the sources of 4.6. Every sentence passes a check before an exercise uses it:
 
-| Exercise     | Length               | Other words                                                |
-| ------------ | -------------------- | ---------------------------------------------------------- |
-| build, hear  | 4–7 words            | known to you (recall ≥ 0.8) or a very common function word |
-| fill the gap | up to about 12 words | the same                                                   |
+| Exercise     | Length               | Other words                                                                                              |
+| ------------ | -------------------- | -------------------------------------------------------------------------------------------------------- |
+| build, hear  | 4–7 words            | known to you (recall ≥ 0.8) or a very common function word, aiming at 98% known words (Hu & Nation 2000) |
+| fill the gap | up to about 12 words | the same                                                                                                 |
 
 - Always with its English: sentences from your texts are translated offline (2.6); a sentence
-  without a translation is not used for building or hearing.
+  without a translation is not used for building or hearing. Beginners learn better with the
+  translation than with Dutch explanations (Nakata 2011).
 - Not harder than your reading level allows (3.6).
+- A different sentence each time after the first, because seeing a word in varied contexts helps
+  (Chen, Miller & Ke 2026, to check in the full paper).
 - The first time, the sentence from the page where you met the word, if it passes. If it doesn't,
   a simpler one is used and the original shows after the answer as "Where you met it".
 - No simple sentence: your other texts, Tatoeba, then (with AI on) a short sentence made of your
@@ -737,15 +744,19 @@ Sentences come from the sources of 4.6. Every sentence passes a check before an 
 - **I know it** gives the card a mature schedule, so the word is known with a high recall. It comes
   up rarely, as a check, starting at building. A miss lowers θ, never the card; after two misses the
   end of the lesson offers Learn it again.
-- **A word with a card never gets "pick the meaning"**: that is the card's job.
+- **A word with a card never gets "pick the meaning"**: that is the card's job. Practice trains
+  what the card doesn't: the word in sentences, producing it, its forms and its sound (Webb 2005;
+  Shintani, Li & Ellis 2013).
 - **The app's own cards** (native mode): a practice answer counts as a review of the word's due card
   only for building and typing, not for the choice exercises.
 
 #### 4.7.6 The lesson
 
-About 10 words (Short 5, Normal 10, Long 15), each once at its exercise. A miss shows the right
-answer with one line on why and a link to the grammar page, and the word comes back once at the
-end, one step easier. Today's count is 1 lesson a day by default; there are no streaks.
+About 10 words (Short 5, Normal 10, Long 15), each once at its exercise, because recalling a word
+three times in a row is no better than once (Karpicke & Bauernschmidt 2011). A miss shows the right
+answer with one line on why and a link to the grammar page, since explaining mistakes and teaching
+grammar outright both work (Li 2010; Norris & Ortega 2000; Spada & Tomita 2010). The word comes
+back once at the end, one step easier. Today's count is 1 lesson a day by default; there are no streaks.
 
 ### 4.8 Building a session (now)
 
