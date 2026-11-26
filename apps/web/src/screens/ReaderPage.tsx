@@ -73,7 +73,6 @@ import {
   CardPos,
   CardRelated,
   CardSenses,
-  FullEntry,
   useWordEntry,
 } from "./reader/WordEntry.js";
 import { DictionaryMissing } from "./reader/DictionaryMissing.js";
@@ -179,7 +178,7 @@ export function ReaderPage({ textId }: { textId: string }) {
    * word of the text is tapped or the card closes.
    */
   const card = useWordCard(back?.card);
-  const { stack, openWord, backWord, setFull: setCardFull, close: closeCard } = card;
+  const { stack, openWord, backWord, close: closeCard } = card;
   /** The restored word's sheet has not opened yet: closing logic must not clear it. */
   const restoring = useRef(back?.selected != null);
   const [revealed, setRevealed] = useState<ReadonlySet<number>>(new Set());
@@ -219,7 +218,7 @@ export function ReaderPage({ textId }: { textId: string }) {
       selected,
       focusTopic: focusTopic?.id ?? null,
       topic,
-      card: { stack, full: card.full },
+      card: { stack },
     });
 
   // The plan of the current segment is frozen when the segment starts: answers are keyed by
@@ -294,7 +293,6 @@ export function ReaderPage({ textId }: { textId: string }) {
     readingFocus,
     size: prefs.size,
     stacked: stack.length,
-    full: card.full,
   });
   useEffect(() => {
     keyState.current = {
@@ -303,7 +301,6 @@ export function ReaderPage({ textId }: { textId: string }) {
       readingFocus,
       size: prefs.size,
       stacked: stack.length,
-      full: card.full,
     };
   });
   /** Turns the page (set below, once the page's navigation is known). */
@@ -329,11 +326,7 @@ export function ReaderPage({ textId }: { textId: string }) {
           backWord();
           return;
         }
-        // Then out of the full entry, then the card closes.
-        if (st.full) {
-          setCardFull(false);
-          return;
-        }
+        // Then the card closes.
         setInspectorOpen(false);
         return;
       }
@@ -377,7 +370,7 @@ export function ReaderPage({ textId }: { textId: string }) {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [setInspectorOpen, setPrefs, backWord, setCardFull]);
+  }, [setInspectorOpen, setPrefs, backWord]);
 
   // Closing the word panel (Esc or its close button) clears the selection and gives the focus
   // back to the word, so reading continues where it was.
@@ -1124,11 +1117,9 @@ export function ReaderPage({ textId }: { textId: string }) {
                   card={
                     shown
                       ? {
-                          // In the full entry its own complete lists take their place.
-                          forms:
-                            dict && !card.full ? (
-                              <CardForms entry={dict} surface={shown.surface} onSay={audio.say} />
-                            ) : null,
+                          forms: dict ? (
+                            <CardForms entry={dict} surface={shown.surface} onSay={audio.say} />
+                          ) : null,
                           note: (
                             <>
                               {dict ? <CardPos entry={dict} /> : null}
@@ -1139,26 +1130,16 @@ export function ReaderPage({ textId }: { textId: string }) {
                               ) : null}
                             </>
                           ),
-                          // The meanings numbered as in a dictionary; in the full entry its own
-                          // list has them, so one line here.
-                          meaning:
-                            dict && !card.full ? (
-                              <CardSenses word={shown} entry={dict} onOpen={openWord} />
-                            ) : (
-                              <CardMeaning word={shown} />
-                            ),
-                          related:
-                            dict && !card.full ? (
-                              <CardRelated entry={dict} onOpen={openWord} withSame={false} />
-                            ) : null,
-                          extra: (
-                            <CardExtra
-                              entry={dict}
-                              zipf={shown.zipf}
-                              full={card.full}
-                              onFull={card.setFull}
-                            />
+                          // The meanings numbered as in a dictionary, all of them (one entry, WC12).
+                          meaning: dict ? (
+                            <CardSenses word={shown} entry={dict} onOpen={openWord} />
+                          ) : (
+                            <CardMeaning word={shown} />
                           ),
+                          related: dict ? (
+                            <CardRelated entry={dict} onOpen={openWord} withSame={false} full />
+                          ) : null,
+                          extra: <CardExtra entry={dict} zipf={shown.zipf} />,
                         }
                       : undefined
                   }
@@ -1172,14 +1153,6 @@ export function ReaderPage({ textId }: { textId: string }) {
                     shown && entry ? (
                       <>
                         <DictionaryMissing />
-                        {card.full && dict ? (
-                          <FullEntry
-                            entry={dict}
-                            word={shown}
-                            onOpen={openWord}
-                            onSay={audio.say}
-                          />
-                        ) : null}
                         {opened ? null : (
                           <WordGrammar
                             tokens={data.tokens}

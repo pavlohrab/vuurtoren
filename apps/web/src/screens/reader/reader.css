@@ -823,52 +823,7 @@ dl.card-meaning dd,
 .sentence-panel-text [lang="en"] {
   color: var(--ink-muted);
   font-size: 14px;
-}
-.full-entry {
-  display: grid;
-  gap: 14px;
-  margin-top: var(--s-3);
-  padding-top: var(--s-3);
-  border-top: 1px solid var(--hairline);
-}
-.full-entry-facts {
-  margin: 0;
-  font-size: 13.5px;
-  color: var(--ink-muted);
-}
-.full-entry-senses {
-  display: grid;
-  gap: 10px;
-  margin: 0;
-  padding-left: 22px;
-  font-size: 15px;
-}
-.full-entry-here,
-.full-entry-mark {
-  margin-left: 8px;
-  padding: 0 6px;
-  border-radius: 6px;
-  font-size: 12px;
-  background: var(--accent-soft);
-  color: var(--accent);
-}
-.full-entry-senses li[data-mark] {
-  color: var(--ink-muted);
-}
-.full-entry-example {
-  display: block;
-  margin-top: 2px;
-  font-size: 14px;
-}
-.full-entry-example [lang="nl"] {
-  display: block;
-  font-family: var(--font-reading);
-}
-.full-entry-en {
-  display: block;
-  color: var(--ink-muted);
-}
-/* The phone's peek: the word, the meaning, two forms and the buttons; the rest when it's pulled
+} /* The phone's peek: the word, the meaning, two forms and the buttons; the rest when it's pulled
    up (the peek's height is measured from what is in it, so these are left out, not faded). */
 @media (max-width: 899px) {
   .inspector-panel[data-sheet="peek"] .k-inspector[data-layout="card"] .k-inspector-tabs,
@@ -1313,10 +1268,6 @@ dl.card-meaning dd,
   font-size: 13.5px;
   color: var(--ink-muted);
 }
-.card-senses-more {
-  margin: 8px 0 0 34px;
-  font-size: 14px;
-}
 .card-word {
   padding: 0;
   border: 0;
@@ -1395,7 +1346,6 @@ dl.card-meaning dd,
 /* The phone's peek: one meaning (this sentence's, else the first); the rest when pulled up. */
 @media (max-width: 899px) {
   .inspector-panel[data-sheet="peek"] .card-senses li:not([data-peek]),
-  .inspector-panel[data-sheet="peek"] .card-senses-more,
   .inspector-panel[data-sheet="peek"] .card-sense-same,
   .inspector-panel[data-sheet="peek"] .card-sense-example,
   .inspector-panel[data-sheet="peek"] .card-ipa {

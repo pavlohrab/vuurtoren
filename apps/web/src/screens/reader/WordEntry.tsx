@@ -269,12 +269,10 @@ export function CardPos({ entry }: { entry: Entry }) {
 }
 
 /** How many meanings the card shows before "N more meanings". */
-const SENSES_SHOWN = 3;
-
 /**
  * The meanings as a dictionary has them (WC11): numbered in circles, the one in this sentence
  * marked, same-meaning words under their own meaning, an example in italics with its English.
- * Three show; the rest open in place. Old and specialist meanings come last.
+ * All of them: the card is the whole entry (WC12). Old and specialist meanings come last.
  */
 export function CardSenses({
   word,
@@ -285,7 +283,6 @@ export function CardSenses({
   entry: Entry;
   onOpen?: ((word: string) => void) | undefined;
 }) {
-  const [all, setAll] = useState(false);
   const senses: EntrySense[] = entry.extras?.senses?.length
     ? [...entry.extras.senses.filter((s) => !s.mark), ...entry.extras.senses.filter((s) => s.mark)]
     : entry.glosses.map((gloss) => ({ gloss }));
@@ -293,10 +290,7 @@ export function CardSenses({
   const here =
     word.sentenceGloss ?? (word.glossNote === "in this sentence" ? word.glosses[0] : null);
   const hereAt = here ? senses.findIndex((s) => !s.mark && sameMeaning(s.gloss, here)) : -1;
-  const shown = all ? senses : senses.slice(0, SENSES_SHOWN);
-  // The sentence's meaning shows even when it's further down the list.
-  const list =
-    !all && hereAt >= SENSES_SHOWN ? [...shown.slice(0, SENSES_SHOWN - 1), senses[hereAt]!] : shown;
+  const list = senses;
   return (
     <div className="card-senses">
       {here && hereAt < 0 ? (
@@ -342,23 +336,17 @@ export function CardSenses({
                   ))}
                 </span>
               ) : null}
-              {s.examples?.[0] ? (
-                <span className="card-sense-example">
-                  <span lang="nl">{s.examples[0].nl}</span>
-                  {s.examples[0].en ? (
-                    <span className="card-sense-en">{s.examples[0].en}</span>
-                  ) : null}
+              {/* Every example (one entry, WC12: nothing the full entry had is cut). */}
+              {s.examples?.map((ex, k) => (
+                <span key={k} className="card-sense-example">
+                  <span lang="nl">{ex.nl}</span>
+                  {ex.en ? <span className="card-sense-en">{ex.en}</span> : null}
                 </span>
-              ) : null}
+              ))}
             </li>
           );
         })}
       </ol>
-      {senses.length > SENSES_SHOWN ? (
-        <button type="button" className="k-link card-senses-more" onClick={() => setAll(!all)}>
-          {all ? "Fewer meanings" : `${senses.length - SENSES_SHOWN} more meanings`}
-        </button>
-      ) : null}
     </div>
   );
 }
@@ -418,107 +406,16 @@ export function CardRelated({
   );
 }
 
-/** What the full entry adds, in a few words: "2 meanings · all forms · 24 family words". */
-function fullSummary(entry: Entry): string {
-  const senses = entry.extras?.senses?.length ?? entry.glosses.length;
-  const forms = formRows(entry);
-  const family = entry.family?.length ?? 0;
-  return [
-    senses > 1 ? `${senses} meanings` : null,
-    forms.all.length > forms.short.length ? "all forms" : null,
-    family > 6 ? `${family} family words` : null,
-  ]
-    .filter(Boolean)
-    .join(" · ");
-}
-
-/** The card's extra actions: Full entry (and what it adds), how common the word is, the level. */
-/** "very common · about A2": how common the word is, then NT2Lex's level; either may be missing. */
 export function levelLine(zipf: number | undefined, level: string | undefined | null): string {
   return [frequencyLabel(zipf), level ? `about ${level}` : null].filter(Boolean).join(" · ");
 }
 
-export function CardExtra({
-  entry,
-  zipf,
-  full,
-  onFull,
-}: {
-  entry: Entry | null;
-  /** How common the word is (the word card's `zipf`). */
-  zipf?: number | undefined;
-  full: boolean;
-  onFull?: ((full: boolean) => void) | undefined;
-}) {
-  const summary = entry && !full ? fullSummary(entry) : "";
-  return (
+/** The card's last line: how common the word is, then its level (WC12: no Full entry). */
+export function CardExtra({ entry, zipf }: { entry: Entry | null; zipf?: number | undefined }) {
+  const line = levelLine(zipf, entry?.level);
+  return line ? (
     <div className="card-extra">
-      {onFull && entry ? (
-        <button type="button" className="k-link" aria-pressed={full} onClick={() => onFull(!full)}>
-          {full ? "Smaller ⤡" : "Full entry ⤢"}
-          {summary ? <span className="card-extra-summary"> {summary}</span> : null}
-        </button>
-      ) : null}
-      {levelLine(zipf, entry?.level) ? (
-        <span className="card-extra-level">{levelLine(zipf, entry?.level)}</span>
-      ) : null}
+      <span className="card-extra-level">{line}</span>
     </div>
-  );
-}
-
-/**
- * The full entry: what the card leaves out. Under the head "verb · separable · about A2 · heeft
- * opengedaan"; the meanings numbered, the one in your sentence first and marked, with examples
- * and their English; old and specialist meanings last, labelled; every form; every related word.
- */
-export function FullEntry({
-  entry,
-  word,
-  onOpen,
-  onSay,
-}: {
-  entry: Entry;
-  word: InspectorEntry;
-  onOpen?: ((word: string) => void) | undefined;
-  onSay?: ((text: string) => void) | undefined;
-}) {
-  const f = entry.forms ?? {};
-  const participle = asString(f["participle"]);
-  const helper = helperOf(f);
-  const facts = [
-    entry.pos === "adj" ? "adjective" : entry.pos,
-    f["separable"] ? "separable" : null,
-    frequencyLabel(word.zipf),
-    entry.level ? `about ${entry.level}` : null,
-    helper && participle ? `${helper} ${participle}` : null,
-  ].filter(Boolean);
-  const here = word.sentenceGloss ?? word.glosses[0] ?? null;
-  const senses: EntrySense[] = entry.extras?.senses ?? entry.glosses.map((gloss) => ({ gloss }));
-  const inSentence = here ? senses.findIndex((s) => !s.mark && sameMeaning(s.gloss, here)) : -1;
-  const ordered =
-    inSentence > 0 ? [senses[inSentence]!, ...senses.filter((_, k) => k !== inSentence)] : senses;
-  return (
-    <section className="full-entry" aria-label="Full entry">
-      <p className="full-entry-facts">{facts.join(" · ")}</p>
-      <ol className="full-entry-senses">
-        {ordered.map((s, k) => (
-          <li key={k} {...(s.mark ? { "data-mark": s.mark } : {})}>
-            <span className="full-entry-gloss">{s.gloss}</span>
-            {k === 0 && inSentence >= 0 ? (
-              <span className="full-entry-here">in your sentence</span>
-            ) : null}
-            {s.mark ? <span className="full-entry-mark">{s.mark}</span> : null}
-            {s.examples?.map((ex, n) => (
-              <span key={n} className="full-entry-example">
-                <span lang="nl">{ex.nl}</span>
-                {ex.en ? <span className="full-entry-en">{ex.en}</span> : null}
-              </span>
-            ))}
-          </li>
-        ))}
-      </ol>
-      <CardForms entry={entry} surface={word.surface} onSay={onSay} all />
-      <CardRelated entry={entry} onOpen={onOpen} full />
-    </section>
-  );
+  ) : null;
 }

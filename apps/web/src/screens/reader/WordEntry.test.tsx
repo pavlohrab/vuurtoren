@@ -13,7 +13,6 @@ import {
   CardMeaning,
   CardRelated,
   CardSenses,
-  FullEntry,
   useWordEntry,
 } from "./WordEntry.js";
 
@@ -45,7 +44,7 @@ function Parts({ lemma, pos, surface }: { lemma: string; pos: string; surface: s
     <>
       <CardForms entry={entry} surface={surface} />
       <CardRelated entry={entry} />
-      <CardExtra entry={entry} full={false} onFull={() => {}} />
+      <CardExtra entry={entry} />
     </>
   );
 }
@@ -133,7 +132,7 @@ describe("WordEntry", () => {
     expect(screen.getByText("perfect")).toBeVisible();
   });
 
-  it("the full entry: what the card leaves out, the sentence's meaning first and marked", () => {
+  it("one entry: every meaning on the card, old ones last and labelled (WC12)", () => {
     const entry = {
       ...OPENDOEN.entries[0]!,
       extras: {
@@ -144,12 +143,12 @@ describe("WordEntry", () => {
         ],
       },
     };
-    render(<FullEntry entry={entry} word={word({ surface: "doet", glosses: ["to open"] })} />);
-    expect(screen.getByText("verb · separable · about A2")).toBeVisible();
+    // One entry (WC12): the card's meanings show them all, old ones last and labelled.
+    render(<CardSenses entry={entry} word={word({ surface: "doet", glosses: ["to open"] })} />);
     const items = screen.getAllByRole("listitem");
-    expect(items[0]).toHaveTextContent("to open");
-    expect(items[0]).toHaveTextContent("in your sentence");
-    expect(items[0]).toHaveTextContent("Open the window.");
+    expect(items).toHaveLength(3);
+    expect(items[1]).toHaveTextContent("to open");
+    expect(items[1]).toHaveTextContent("Open the window.");
     expect(items[2]).toHaveTextContent("old");
   });
 
@@ -167,7 +166,7 @@ describe("WordEntry", () => {
     expect(screen.getByText("equal, even; just")).toBeVisible();
   });
 
-  it("the meanings as a dictionary has them: numbered, this sentence's marked, the rest folded", async () => {
+  it("the meanings as a dictionary has them: numbered, this sentence's marked, all of them", () => {
     const entry = {
       word: "doen",
       pos: "verb",
@@ -191,11 +190,9 @@ describe("WordEntry", () => {
         entry={entry}
       />,
     );
-    expect(screen.getAllByRole("listitem")).toHaveLength(3);
+    expect(screen.getAllByRole("listitem")).toHaveLength(5);
     expect(screen.getByText("in this sentence")).toBeVisible();
     expect(screen.getByText("Doe dat daar maar in.")).toBeVisible();
-    await userEvent.click(screen.getByRole("button", { name: "2 more meanings" }));
-    expect(screen.getAllByRole("listitem")).toHaveLength(5);
     expect(screen.getByText("handelen")).toBeVisible();
   });
 });

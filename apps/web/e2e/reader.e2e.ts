@@ -134,7 +134,7 @@ test("Words on a computer: the Inbox (folders, the words, the chosen word)", asy
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(1440);
 });
 
-test("Full entry: wider, words open inside it, Esc steps back, grammar comes back to it", async ({
+test("one entry (WC12): every meaning on the card, words open inside it, Esc steps back, grammar comes back to it", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
@@ -153,28 +153,20 @@ test("Full entry: wider, words open inside it, Esc steps back, grammar comes bac
     .click();
   const panel = page.locator(".inspector-panel");
   await expect(panel).toHaveCSS("width", "340px");
-  await panel.getByRole("button", { name: "Full entry ⤢" }).click();
-  const wide = async () => (await panel.boundingBox())!.width;
-  await expect.poll(wide).toBeGreaterThan(500);
-  await expect(panel.locator(".full-entry-senses")).toContainText("to stand");
-  // A word clicked in the full entry opens in the full entry (it used to drop back to small).
+  // No second, fuller view: the card has every meaning, and the panel keeps its width.
+  await expect(panel.getByRole("button", { name: /Full entry/ })).toHaveCount(0);
+  await expect(panel.locator(".card-senses")).toContainText("to stand");
+  // A word clicked in the card opens in the card.
   await panel.getByRole("button", { name: "opstaan" }).click();
   await expect(panel.locator(".k-inspector-surface")).toHaveText("opstaan");
-  await expect.poll(wide).toBeGreaterThan(500);
-  // Esc: back one word first, still full; then out of the full entry; the card stays.
+  // Esc: back one word; the card stays.
   await page.keyboard.press("Escape");
   await expect(panel.locator(".k-inspector-surface")).toHaveText("staan");
-  await expect.poll(wide).toBeGreaterThan(500);
-  await page.keyboard.press("Escape");
   await expect(panel).toHaveCSS("width", "340px");
-  await expect(panel.locator(".k-inspector-surface")).toHaveText("staan");
-  // A grammar topic from the full entry, and back: the full entry again.
-  await panel.getByRole("button", { name: "Full entry ⤢" }).click();
-  await expect.poll(wide).toBeGreaterThan(500);
+  // A grammar topic from the card, and back: the same word again.
   await panel.getByRole("link", { name: "The present tense" }).first().click();
   await page.getByRole("link", { name: "Back to the text" }).click();
   await expect(panel.locator(".k-inspector-surface")).toHaveText("staan");
-  await expect.poll(wide).toBeGreaterThan(500);
 });
 
 test("on a phone, a word tapped in the card opens its card in the same sheet", async ({ page }) => {
