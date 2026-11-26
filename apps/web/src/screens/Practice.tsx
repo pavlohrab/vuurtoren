@@ -27,6 +27,11 @@ import {
 } from "@app/ui";
 import { dutchVoiceAvailable, speakDutch, useDutchVoice } from "../practice/speech.js";
 import { toWav16k } from "../practice/wav.js";
+import {
+  androidListen,
+  androidListenAvailable,
+  androidStopListening,
+} from "../platform/androidListen.js";
 import { useServices } from "../services/context.js";
 import type { AnswerResult } from "../services/types.js";
 import { usePageHeader } from "../shell/ShellContext.js";
@@ -549,6 +554,12 @@ function Session({
 }) {
   const services = useServices();
   const navigate = useNavigate();
+  // On the phone, its own recogniser hears "Say this sentence" (no server needed).
+  const phoneListens = useQuery({
+    queryKey: ["android-listen"],
+    queryFn: androidListenAvailable,
+    staleTime: Infinity,
+  }).data;
   // The lesson grows by a missed word's second go at the end (algorithms.md 4.7.6).
   const [exercises, setExercises] = useState(planned);
   const [index, setIndex] = useState(0);
@@ -699,6 +710,9 @@ function Session({
           continueLabel={last ? "Finish" : "Continue"}
           onWord={(form, sentence, el) => inspector.open(form, sentence, el)}
           {...(topic ? { topic } : {})}
+          {...(phoneListens
+            ? { listenLive: { start: androidListen, stop: androidStopListening } }
+            : {})}
           {...(services.listening
             ? {
                 onHear: async (rec: Blob) => services.listening!.hear(await toWav16k(rec)),

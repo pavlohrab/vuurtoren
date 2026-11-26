@@ -1,7 +1,12 @@
 package app.vuurtoren
 
 import android.content.Intent
+import android.Manifest
+import android.content.pm.PackageManager
 import android.os.Bundle
+import android.speech.RecognitionListener
+import android.speech.RecognizerIntent
+import android.speech.SpeechRecognizer
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
 import java.util.Locale
@@ -60,6 +65,7 @@ class MainActivity : TauriActivity() {
     webView.addJavascriptInterface(ShareBridge(), "VuurtorenShare")
     webView.addJavascriptInterface(TtsBridge(), "VuurtorenTts")
     webView.addJavascriptInterface(LinksBridge(), "VuurtorenLinks")
+    webView.addJavascriptInterface(ListenBridge(), "VuurtorenListen")
     this.webView = webView
     startTts()
     ViewCompat.setOnApplyWindowInsetsListener(webView) { view, windowInsets ->
@@ -118,7 +124,122 @@ class MainActivity : TauriActivity() {
     }
   }
 
+  /**
+   * Android's own speech recognition, so "Say this sentence" works on the phone without a
+   * server. One listen at a time. The result goes back to the page by id through
+   * `window.__vuurtorenListenDone(id, text, error)`: text is what was heard ("" when nothing
+   * matched), error is a short code or "". apps/web/src/platform/androidListen.ts uses it.
+   */
+  private var recognizer: SpeechRecognizer? = null
+  private var listenId: String? = null
+
+  /** Tell the page how listen `id` ended, once. */
+  private fun listenDone(id: String, text: String, error: String) {
+    if (listenId == id) listenId = null
+    val q = org.json.JSONObject::quote
+    js("window.__vuurtorenListenDone && window.__vuurtorenListenDone(${q(id)}, ${q(text)}, ${q(error)})")
+  }
+
+  /** Main thread only. Ends any listen still running, then listens once in Dutch. */
+  private fun startListening(id: String) {
+    listenId?.let { listenDone(it, "", "") }
+    recognizer?.destroy()
+    recognizer = null
+    if (!SpeechRecognizer.isRecognitionAvailable(this)) {
+      listenDone(id, "", "unavailable")
+      return
+    }
+    if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+      listenId = id
+      requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO)) { granted ->
+        // Stopped or replaced while the question was open: nothing to do.
+        if (listenId != id) return@requestPermissions
+        if (granted == true) {
+          listenId = null
+          startListening(id)
+        } else {
+          listenDone(id, "", "permission")
+        }
+      }
+      return
+    }
+    val r = SpeechRecognizer.createSpeechRecognizer(this)
+    recognizer = r
+    listenId = id
+    r.setRecognitionListener(object : RecognitionListener {
+      override fun onResults(results: Bundle?) {
+        val best = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.firstOrNull()
+        finish(best?.trim() ?: "", "")
+      }
+      override fun onError(code: Int) = finish("", listenError(code))
+      override fun onReadyForSpeech(params: Bundle?) {}
+      override fun onBeginningOfSpeech() {}
+      override fun onRmsChanged(rmsdB: Float) {}
+      override fun onBufferReceived(buffer: ByteArray?) {}
+      override fun onEndOfSpeech() {}
+      override fun onPartialResults(partialResults: Bundle?) {}
+      override fun onEvent(eventType: Int, params: Bundle?) {}
+
+      /** Report once, and only for the listen this recognizer belongs to. */
+      private fun finish(text: String, error: String) {
+        if (recognizer !== r) return
+        recognizer = null
+        r.destroy()
+        listenDone(id, text, error)
+      }
+    })
+    val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+      putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+      putExtra(RecognizerIntent.EXTRA_LANGUAGE, "nl-NL")
+      putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, "nl-NL")
+      putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, true)
+      putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, false)
+      putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
+      putExtra(RecognizerIntent.EXTRA_CALLING_PACKAGE, packageName)
+    }
+    r.startListening(intent)
+  }
+
+  /** Android's error numbers as the page's short codes. No speech heard is not an error. */
+  private fun listenError(code: Int): String =
+    when (code) {
+      SpeechRecognizer.ERROR_NO_MATCH, SpeechRecognizer.ERROR_SPEECH_TIMEOUT,
+      SpeechRecognizer.ERROR_CLIENT -> ""
+      SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> "permission"
+      SpeechRecognizer.ERROR_NETWORK, SpeechRecognizer.ERROR_NETWORK_TIMEOUT,
+      SpeechRecognizer.ERROR_SERVER, SpeechRecognizer.ERROR_SERVER_DISCONNECTED -> "network"
+      SpeechRecognizer.ERROR_RECOGNIZER_BUSY, SpeechRecognizer.ERROR_TOO_MANY_REQUESTS -> "busy"
+      SpeechRecognizer.ERROR_LANGUAGE_NOT_SUPPORTED, SpeechRecognizer.ERROR_LANGUAGE_UNAVAILABLE -> "language"
+      SpeechRecognizer.ERROR_AUDIO -> "audio"
+      else -> "other"
+    }
+
+  private inner class ListenBridge {
+    /** The phone has a speech recognizer. */
+    @JavascriptInterface
+    fun available(): Boolean = SpeechRecognizer.isRecognitionAvailable(this@MainActivity)
+
+    /** Listen once; the answer comes back by id. Android wants this on the main thread. */
+    @JavascriptInterface
+    fun start(id: String) {
+      runOnUiThread { startListening(id) }
+    }
+
+    /** Stop listening now and give what was heard so far. */
+    @JavascriptInterface
+    fun stop() {
+      runOnUiThread {
+        val r = recognizer
+        if (r != null) r.stopListening()
+        // Still asking for the microphone: end it with nothing heard.
+        else listenId?.let { listenDone(it, "", "") }
+      }
+    }
+  }
+
   override fun onDestroy() {
+    recognizer?.destroy()
+    recognizer = null
     tts?.shutdown()
     tts = null
     super.onDestroy()

@@ -48,6 +48,8 @@ export interface ExerciseCardProps {
   topic?: { title: string; onOpen: () => void };
   /** "Say this sentence": what the language server heard in a recording. */
   onHear?: (recording: Blob) => Promise<string>;
+  /** "Say this sentence" with the device's own recogniser (Android): it listens itself. */
+  listenLive?: { start: () => Promise<string>; stop: () => void };
 }
 
 /** Elements that mean another layer (dialog, command palette) owns the keyboard. */
@@ -110,6 +112,7 @@ export function ExerciseCard({
   onWord,
   topic,
   onHear,
+  listenLive,
 }: ExerciseCardProps) {
   const mode = exerciseMode(e);
   const answered = feedback !== null;
@@ -378,7 +381,7 @@ export function ExerciseCard({
       ) : null}
 
       {mode === "say" && !answered ? (
-        <SayIt onHear={onHear} onHeard={(heard) => submit(heard)} />
+        <SayIt onHear={onHear} live={listenLive} onHeard={(heard) => submit(heard)} />
       ) : null}
 
       {mode === "typed" || mode === "dictation" ? (
@@ -522,25 +525,51 @@ export function ExerciseCard({
 /** The mic for "Say this sentence": tap to talk, tap to stop; then what was heard is sent. */
 function SayIt({
   onHear,
+  live,
   onHeard,
 }: {
   onHear: ((recording: Blob) => Promise<string>) | undefined;
+  live: { start: () => Promise<string>; stop: () => void } | undefined;
   onHeard: (heard: string) => void;
 }) {
   const [state, setState] = useState<"idle" | "on" | "listening">("idle");
   const [why, setWhy] = useState<string | null>(null);
   const rec = useRef<{ stop: () => Promise<Blob>; cancel: () => void } | null>(null);
   const alive = useRef(true);
+  // Only on leaving: a new `live` object on a re-render must not stop the listening.
+  const liveRef = useRef(live);
+  liveRef.current = live;
+  const listeningLive = useRef(false);
   useEffect(
     () => () => {
       alive.current = false;
       rec.current?.cancel();
+      if (listeningLive.current) liveRef.current?.stop();
     },
     [],
   );
-  if (!onHear) return <p className="ex-hint">Speaking needs the language server.</p>;
+  if (!onHear && !live) return <p className="ex-hint">Speaking needs the language server.</p>;
+  /** The phone listens itself and stops after a pause, or on the second tap. */
+  const startLive = async (l: NonNullable<typeof live>) => {
+    setState("on");
+    listeningLive.current = true;
+    try {
+      const heard = await l.start().finally(() => (listeningLive.current = false));
+      if (!alive.current) return;
+      if (heard.trim()) onHeard(heard);
+      else {
+        setWhy("Nothing heard. Try again.");
+        setState("idle");
+      }
+    } catch (err) {
+      if (!alive.current) return;
+      setWhy(err instanceof Error ? err.message : "Speech recognition didn't work. Try again.");
+      setState("idle");
+    }
+  };
   const start = async () => {
     setWhy(null);
+    if (live) return startLive(live);
     let stream: MediaStream | null = null;
     try {
       stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -579,12 +608,17 @@ function SayIt({
     }
   };
   const stop = async () => {
+    if (live) {
+      setState("listening");
+      live.stop();
+      return;
+    }
     const r = rec.current;
     rec.current = null;
     if (!r) return;
     setState("listening");
     try {
-      const heard = await onHear(await r.stop());
+      const heard = await onHear!(await r.stop());
       // Gone meanwhile (the lesson ended): the answer belongs to no exercise now.
       if (alive.current) onHeard(heard);
     } catch {

@@ -7,6 +7,7 @@
  */
 import type { VuurtorenRepository } from "@app/db";
 import { createPracticeData } from "@app/nlp-client";
+import { androidListenAvailable } from "../platform/androidListen.js";
 import { createLiveAI } from "./liveAI.js";
 import { createLiveCourses } from "./liveCourses.js";
 import { composeGlosses, createLiveDictionary } from "./liveDictionary.js";
@@ -173,6 +174,8 @@ export function createLiveServices(
     data: practiceData,
     translate: dictionary.translateSentences,
     canListen: async () => {
+      // A phone with its own recogniser listens without the server.
+      if (await androidListenAvailable()) return true;
       try {
         return (await (await nlp()).health()).data?.["listen"] === true;
       } catch {
