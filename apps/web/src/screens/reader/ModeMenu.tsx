@@ -12,7 +12,7 @@ export interface ModeOption {
 }
 
 const DESCRIPTION: Record<string, string> = {
-  read: "The text, with the words worth learning marked.",
+  read: "The text, with new words marked.",
   cloze: "Fill in the words you are learning.",
   gloss: "English above the words you may not know.",
   side: "Dutch and English, sentence by sentence.",

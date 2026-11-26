@@ -42,7 +42,7 @@ describe("the Sentence tab", () => {
   });
   it("says where to add a key when no provider is configured", async () => {
     renderExplain(false);
-    expect(await screen.findByText(/Add an AI provider and key/)).toBeInTheDocument();
+    expect(await screen.findByText(/Add your AI key/)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Explain this sentence" })).toBeNull();
   });
 });

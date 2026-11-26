@@ -48,7 +48,7 @@ function useNotes(key: string): [string, (v: string) => void] {
  */
 function SourceNote({ item }: { item: ExerciseItem }) {
   if (item.answerSource !== "derived" || item.confidence >= LOW_CONFIDENCE) return null;
-  const text = "This answer was worked out from the book and may be wrong. Fix it if it is.";
+  const text = "This answer comes from the book and may be wrong. Fix it if it is.";
   return (
     <Tooltip content={text}>
       <button type="button" className="cs-info" aria-label={text}>

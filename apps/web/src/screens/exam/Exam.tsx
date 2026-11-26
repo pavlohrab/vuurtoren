@@ -53,8 +53,8 @@ export const checkedDate = (iso: string) =>
 export function NoDutchVoice() {
   return (
     <p className="k-hint" role="note">
-      Listening needs a Dutch voice, and none is installed. Add one in your system&rsquo;s speech
-      settings, then reload Vuurtoren.
+      Listening needs a Dutch voice. Add one in your system&rsquo;s settings and open Vuurtoren
+      again.
     </p>
   );
 }

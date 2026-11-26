@@ -978,7 +978,7 @@ export function ReaderPage({ textId }: { textId: string }) {
         !hardSeen &&
         !data.text.sourceRef?.startsWith("story:") ? (
           <div className="reader-hard" role="note">
-            <span>This text is hard for you: you know about {known}% of its words.</span>
+            <span>You know about {known}% of the words in this text, so it will be hard.</span>
             <Button size="sm" variant="ghost" onClick={closeHard}>
               Not now
             </Button>
@@ -986,7 +986,7 @@ export function ReaderPage({ textId }: { textId: string }) {
         ) : null}
         {mode === "cloze" && plan.clozes.length === 0 ? (
           <p className="reader-cloze-empty" role="status">
-            Cloze uses only words you know well, and there are none on this page yet.
+            Cloze hides only words you know well, and this page has none yet.
           </p>
         ) : null}
         <div

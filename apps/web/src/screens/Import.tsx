@@ -318,7 +318,7 @@ export function ImportScreen() {
       if (mounted.current) {
         // The progress lines ("Analysing the text…") are stale once the import failed.
         setProgress([]);
-        setError(e ?? new Error("The import did not work."));
+        setError(e ?? new Error("This text didn't come in. Try again."));
         setBusy(false);
       } else toast("Could not import the text", errorText(e));
     }
@@ -329,7 +329,7 @@ export function ImportScreen() {
       label="Title (optional)"
       value={title}
       onChange={(e) => setTitle(e.target.value)}
-      placeholder="Taken from the text if left empty"
+      placeholder="From the text"
     />
   );
 
@@ -404,7 +404,6 @@ export function ImportScreen() {
         value={url}
         onChange={(e) => setUrl(e.target.value)}
         placeholder="https://"
-        hint="The article text is extracted from the page."
       />
     ),
     pdf: (
@@ -438,7 +437,7 @@ export function ImportScreen() {
       />
       {noServer ? (
         <div className="k-hint import-needs-server" role="note">
-          On a phone, a new text is prepared by your server or your computer.{" "}
+          Your phone needs a computer or a server to read new texts.{" "}
           <Link to="/settings" search={{ section: "devices" }}>
             Connect your server
           </Link>
@@ -472,8 +471,7 @@ export function ImportScreen() {
           {fields[kind]}
           {!ocr && kind === "pdf" ? (
             <p className="k-hint" role="note" style={{ margin: 0 }}>
-              Scanned pages need text recognition, which this language server does not have. PDFs
-              with a text layer work.
+              This language server can't read scanned pages. A PDF with text in it works.
             </p>
           ) : null}
 
@@ -487,7 +485,7 @@ export function ImportScreen() {
           {error ? (
             <ErrorNotice
               error={error}
-              title="The import did not work."
+              title="This text didn't come in. Try again."
               onRetry={ready ? () => void submit() : undefined}
             />
           ) : null}

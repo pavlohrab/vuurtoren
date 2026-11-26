@@ -143,10 +143,6 @@ function GrammarTab({ unit, topics }: { unit: UnitView; topics: UnitGrammarTopic
         <Skeleton style={{ height: 60, borderRadius: 8 }} />
       ) : topics.length > 0 ? (
         <section aria-label="Grammar in this unit">
-          <p className="cs-note">
-            Grammar this unit&rsquo;s texts use most. Each topic page explains it with examples and
-            has its own practice.
-          </p>
           <ul className="cs-grammar-list">
             {topics.map((t) => (
               <li key={t.topicId}>

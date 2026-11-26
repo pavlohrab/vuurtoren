@@ -49,7 +49,7 @@ export function Progress() {
         <EmptyState
           icon={<TrendingUp size={20} />}
           title="Nothing to measure yet"
-          description="Read a story and add a few words, and Vuurtoren can tell how many Dutch words you know."
+          description="Read a story and add a few words to see how many Dutch words you know."
           action={
             <Link to="/settings" search={{ section: "words" }} className="k-btn k-btn--primary">
               Set up your words
@@ -96,8 +96,7 @@ export function Progress() {
       )}
       {s && s.learning > 0 && s.known < s.learning ? (
         <p className="progress-note">
-          A word counts as known once you still remember it three weeks after learning it, like a
-          mature card in Anki. Until then it is learning.
+          A word is known when you still remember it three weeks later. Until then it's learning.
         </p>
       ) : null}
       <ThisWeek />
@@ -196,7 +195,7 @@ function KnownChart() {
     <ChartSection
       id="progress-known-h"
       title="Known words"
-      note={`The last ${WEEKS} weeks, dated by when each word’s card was made.`}
+      note={`The last ${WEEKS} weeks, by the day each card was made.`}
       table={
         q.data
           ? {

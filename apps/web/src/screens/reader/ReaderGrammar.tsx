@@ -111,7 +111,9 @@ export function GrammarTopics({
       </label>
       <div className="gpick-list" role="listbox" aria-label="Grammar topics">
         {unavailable ? (
-          <p className="gpick-empty">Grammar is unavailable: the language server is unreachable.</p>
+          <p className="gpick-empty">
+            Grammar needs the language server, and it doesn&rsquo;t answer right now.
+          </p>
         ) : null}
         {shownSuggested.length > 0 ? (
           <>

@@ -209,13 +209,11 @@ export function ReadingSettings({
                 labels={ENGLISH_LABEL}
                 onChange={(english) => onChange({ english })}
               />
-              <p className="aa-hint">
-                Hard sentences: the ones where you know less than 85% of the words.
-              </p>
+
               {settings.aiReady ? (
                 <Toggle
                   label="English from AI"
-                  hint="Your provider translates; the offline model pairs the words"
+
                   on={prefs.englishAI}
                   onToggle={() => onChange({ englishAI: !prefs.englishAI })}
                 />
@@ -225,7 +223,7 @@ export function ReadingSettings({
           {settings.mode === "cloze" ? (
             <Toggle
               label="Meaning above blanks"
-              hint="Press ? in a blank for its first letter"
+              hint="Press ? in a blank to see its first letter."
               on={prefs.clozeMeaning}
               onToggle={() => onChange({ clozeMeaning: !prefs.clozeMeaning })}
             />
@@ -240,7 +238,7 @@ export function ReadingSettings({
           </div>
           <Toggle
             label="Grammar marks"
-            hint="Quiet marks beside sentences"
+
             on={settings.marks.on}
             onToggle={settings.marks.onToggle}
           />

@@ -124,9 +124,7 @@ function SentenceChat({
         </section>
       ) : null}
       {!ready ? (
-        <p className="k-hint">
-          Add an AI provider and key in Settings → AI to have sentences explained.
-        </p>
+        <p className="k-hint">Add your AI key to have sentences explained.</p>
       ) : !explain.data ? (
         <Button onClick={() => explain.mutate()} disabled={explain.isPending}>
           {explain.isPending ? <Spinner label="Explaining" /> : <Sparkles size={16} aria-hidden />}

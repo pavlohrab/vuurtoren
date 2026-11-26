@@ -293,7 +293,7 @@ describe("Settings → Sync", { timeout: 20_000 }, () => {
     await user.click(screen.getByRole("radio", { name: /Start new sync data here/ }));
     await user.click(screen.getByRole("button", { name: "Next" }));
     expect(screen.getByLabelText("Sync token")).toBeVisible();
-    await user.click(screen.getByRole("button", { name: "Scan a QR code instead" }));
+    await user.click(screen.getByRole("button", { name: "Scan the QR code instead" }));
     // Scan: then the connected server and the passphrase, nothing about the address again.
     await user.click(await screen.findByRole("button", { name: "Scan the code" }));
     expect(await screen.findByText(/Connected to/)).toHaveTextContent(

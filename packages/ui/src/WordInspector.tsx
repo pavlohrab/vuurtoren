@@ -147,7 +147,7 @@ export function WordInspector({
   if (!entry && error) {
     return (
       <div className="k-inspector" role="alert">
-        <p style={{ margin: 0, color: "var(--danger)" }}>This word could not be loaded. {error}</p>
+        <p style={{ margin: 0, color: "var(--danger)" }}>This word didn't load. {error}</p>
         {onRetry ? <Button onClick={onRetry}>Try again</Button> : null}
       </div>
     );

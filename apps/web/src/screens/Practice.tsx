@@ -368,7 +368,7 @@ function StartView({
       <div className="practice-form">
         {o?.degraded ? (
           <p className="k-hint practice-note">
-            The language server is unreachable — fewer exercise types today
+            The language server doesn&rsquo;t answer, so there are fewer kinds of exercise today.
           </p>
         ) : null}
         {error ? (
@@ -376,8 +376,7 @@ function StartView({
         ) : null}
         {noVoice ? (
           <p className="k-hint practice-note" role="note">
-            Listening and dictation are off: no Dutch voice is installed. Add one in your system's
-            speech settings to practise them.
+            Add a Dutch voice in your system&rsquo;s settings to practise listening and dictation.
           </p>
         ) : null}
 
@@ -433,8 +432,7 @@ function StartView({
                   Fill gaps with AI sentences
                 </label>
                 <p className="k-hint practice-note">
-                  Words with only a few example sentences get new ones, checked and kept for next
-                  time.
+                  Words with few sentences get new ones from your AI.
                 </p>
               </fieldset>
             ) : null}
@@ -740,10 +738,7 @@ function NextSteps({
         className="practice-next-link"
       >
         <MessagesSquare size={18} aria-hidden />
-        <span>
-          Talk about these words
-          <small>A short chat that uses them</small>
-        </span>
+        <span>Talk about these words</span>
         <ArrowRight size={16} aria-hidden />
       </Link>
       {next ? (

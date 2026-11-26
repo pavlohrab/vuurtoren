@@ -388,7 +388,7 @@ function TaskBlock({
             </div>
           ) : (
             <p className="exam-muted">
-              With an AI provider set up you can also get examiner-style feedback here.{" "}
+              With your AI key you also get feedback like an examiner's.{" "}
               <SettingsButton go={SETTINGS_PLACES.ai} />
             </p>
           )}

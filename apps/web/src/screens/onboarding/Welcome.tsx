@@ -389,9 +389,7 @@ export function Welcome() {
                   Welcome to Vuurtoren
                 </h1>
                 <p className="ob-lede">
-                  Vuurtoren helps you read real texts at the edge of what you know. A few choices
-                  first: this takes about two minutes, and you can change everything later in
-                  Settings.
+                  A few questions first. You can change everything later in Settings.
                 </p>
                 <LanguageChoice value={draft.lang} onChange={(lang) => setDraft({ lang })} />
               </>
@@ -436,7 +434,7 @@ export function Welcome() {
                 <h1 ref={heading} tabIndex={-1}>
                   Your Anki cards
                 </h1>
-                <p className="ob-lede">Choose who schedules your reviews from now on.</p>
+
                 <fieldset className="ob-choices">
                   <legend className="k-sr">Who schedules your reviews</legend>
                   <Choice
@@ -444,14 +442,14 @@ export function Welcome() {
                     checked={draft.move}
                     onChange={() => setDraft({ move: true })}
                     title="Import from Anki and use Vuurtoren’s scheduler"
-                    sub="Your chosen decks come into Vuurtoren once, with every card and its review history. Reviews then happen in Vuurtoren; Anki is not changed."
+                    sub="Your decks and their history come in once. Anki doesn’t change."
                   />
                   <Choice
                     name="move"
                     checked={!draft.move}
                     onChange={() => setDraft({ move: false })}
                     title="Keep using Anki"
-                    sub="Anki stays the record of what you know and runs your reviews. Anki must be open for Vuurtoren to send words to it."
+                    sub="You review in Anki. Keep it open to send it new words."
                   />
                 </fieldset>
               </>
@@ -462,10 +460,7 @@ export function Welcome() {
                 <h1 ref={heading} tabIndex={-1}>
                   Importing your decks
                 </h1>
-                <p className="ob-lede">
-                  Vuurtoren reads your chosen decks from Anki: notes, cards and the full review
-                  history. Nothing in Anki changes.
-                </p>
+
                 {move.isPending ? (
                   <p role="status">
                     <Spinner label="Importing" /> {moveMsg ?? "Starting"}
@@ -480,7 +475,7 @@ export function Welcome() {
                     The import did not finish. {errorOf(move.error)}
                   </p>
                 ) : (
-                  <p>This can take a minute for a large collection.</p>
+                  <p>This can take a minute.</p>
                 )}
               </>
             ) : null}
@@ -491,8 +486,7 @@ export function Welcome() {
                   Connect Anki
                 </h1>
                 <p className="ob-lede">
-                  Vuurtoren reads your decks through the AnkiConnect add-on while Anki is open. It
-                  only writes when you click a button such as Add to Anki.
+                  Vuurtoren reads your decks through AnkiConnect while Anki is open.
                 </p>
                 <AnkiStep
                   status={status.data}
@@ -510,10 +504,7 @@ export function Welcome() {
                 <h1 ref={heading} tabIndex={-1}>
                   Decks Vuurtoren reads
                 </h1>
-                <p className="ob-lede">
-                  Words in the decks you tick count as known or learning. Vuurtoren suggests the
-                  decks that look like Dutch vocabulary; you decide.
-                </p>
+                <p className="ob-lede">Tick the decks with your Dutch words.</p>
                 {draft.noAnki || !connected ? (
                   <p className="ob-note">
                     Without Anki, Vuurtoren starts fresh: it creates {root} the first time you add a
@@ -521,8 +512,7 @@ export function Welcome() {
                   </p>
                 ) : decks.isPending ? (
                   <p role="status">
-                    <Spinner label="Looking at your decks" /> Looking at your decks. With large
-                    collections this takes a moment.
+                    <Spinner label="Looking at your decks" /> Looking at your decks…
                   </p>
                 ) : decks.isError ? (
                   <div className="stack" style={{ gap: 8 }}>
@@ -577,15 +567,12 @@ export function Welcome() {
                   Your Anki cards
                 </h1>
                 <p className="ob-lede">
-                  Anki&apos;s connection (AnkiConnect) works only with Anki on a computer. On this
-                  phone, bring your decks in as a file: in Anki, choose File → Export → Anki Deck
-                  Package (.apkg), with scheduling information, then choose that file here. Your
-                  reviews then happen in Vuurtoren.
+                  In Anki, choose File → Export → Anki Deck Package (.apkg), with scheduling
+                  information, and choose that file here.
                 </p>
                 <ImportPackage />
                 <p className="ob-note">
-                  No file at hand? Continue and start with Vuurtoren&apos;s cards; Settings → Your
-                  words imports a deck file any time.
+                  No file at hand? Continue, and import it later in Settings → Your words.
                 </p>
               </>
             ) : null}
@@ -595,11 +582,6 @@ export function Welcome() {
                 <h1 ref={heading} tabIndex={-1}>
                   Where new words go
                 </h1>
-                <p className="ob-lede">
-                  When you add a word, Vuurtoren creates a card in this deck
-                  {native ? "" : " in Anki"}. Every Add button shows the deck and lets you pick
-                  another one.
-                </p>
                 <DestinationFields
                   compact
                   profile={{ ...draft.profile, lang: draft.lang }}
@@ -618,10 +600,7 @@ export function Welcome() {
                 <h1 ref={heading} tabIndex={-1}>
                   Words you already know
                 </h1>
-                <p className="ob-lede">
-                  Tick the words you know, so the first texts are not too easy or too hard. This
-                  only marks them known; no cards are made.
-                </p>
+                <p className="ob-lede">Tick the words you know. No cards are made for them.</p>
                 {bands.data ? (
                   <div className="ob-bands">
                     {bands.data.map((b) => (
@@ -661,10 +640,7 @@ export function Welcome() {
                 <h1 ref={heading} tabIndex={-1}>
                   You start with the 500 most common words
                 </h1>
-                <p className="ob-lede">
-                  Already know some? In Words, use Check your level. Words you know still come back
-                  now and then. If you forgot one, press Again.
-                </p>
+                <p className="ob-lede">Already know some? Use Check your level in Words.</p>
                 {starter.isPending ? (
                   <p role="status">
                     <Spinner label="Adding words" />{" "}

@@ -98,10 +98,7 @@ export function TextComplete({
           className="practice-next-link"
         >
           <Dumbbell size={18} aria-hidden />
-          <span>
-            Practise these words
-            <small>Forms, gender and listening for the words of this text</small>
-          </span>
+          <span>Practise these words</span>
           <ArrowRight size={16} aria-hidden />
         </Link>
         {aiReady ? (
@@ -111,10 +108,7 @@ export function TextComplete({
             className="practice-next-link"
           >
             <MessagesSquare size={18} aria-hidden />
-            <span>
-              Talk about this text
-              <small>A short chat in Dutch about it</small>
-            </span>
+            <span>Talk about this text</span>
             <ArrowRight size={16} aria-hidden />
           </Link>
         ) : null}

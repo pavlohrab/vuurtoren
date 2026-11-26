@@ -239,8 +239,8 @@ function ExamPartScreen({
           ))}
         </ul>
         <p className="exam-muted">
-          Practice gives feedback after each answer. The mock exam is timed and shows your result at
-          the end{part === "luisteren" ? "; each fragment can be played twice" : ""}.
+          Practice shows the answer each time. The mock exam is timed and shows your score at the
+          end.{part === "luisteren" ? "; each fragment can be played twice" : ""}.
         </p>
       </section>
 
@@ -329,10 +329,7 @@ function GenerateItem({ part, onReady }: { part: ExamItemPart; onReady: (g: McGr
       <h2 id="exam-ai-h" className="exam-h2">
         A new practice {part === "lezen" ? "text" : "fragment"}
       </h2>
-      <p className="exam-muted">
-        Written by your AI provider at A2 around the words you know, and checked against your
-        vocabulary.
-      </p>
+      <p className="exam-muted">Written by your AI at A2, with words you know.</p>
       <Button onClick={() => gen.mutate()} disabled={gen.isPending}>
         <Sparkles size={16} aria-hidden />{" "}
         {gen.isPending ? "Writing…" : "Generate a new practice text"}

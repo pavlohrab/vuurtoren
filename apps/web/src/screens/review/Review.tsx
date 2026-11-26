@@ -394,7 +394,7 @@ export function Review() {
           </h1>
           <p className="review-end-lede">
             {done
-              ? `You reviewed ${plural(done, "card")}. They come back when they are due.`
+              ? `You reviewed ${plural(done, "card")}. All done for today.`
               : "Cards come back when they are due. You can go on with more."}
           </p>
           <div className="review-end-actions">

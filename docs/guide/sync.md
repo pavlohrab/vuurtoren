@@ -27,7 +27,7 @@ without setting anything up.
 
 Everything happens in **Settings → Your devices**.
 
-**Just your computer and your phone?** On the computer, choose Connect a phone → Show the code, and
+**Just your computer and your phone?** On the computer, choose Connect a phone → Show the QR code, and
 scan the QR code with the phone. There's no passphrase to make up. Keep the recovery key the computer shows
 you once. More on [Vuurtoren on your phone](../phones.md).
 

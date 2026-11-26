@@ -311,7 +311,7 @@ export function SentenceFrameView({
 
 /** The parse looks unsure (structureDoubtful): said once, quietly. */
 function Doubt() {
-  return <p className="sframe-doubt">This is a low-confidence sentence structure.</p>;
+  return <p className="sframe-doubt">This structure may be wrong.</p>;
 }
 
 function TypesToggle({ types, setTypes }: { types: boolean; setTypes: (on: boolean) => void }) {

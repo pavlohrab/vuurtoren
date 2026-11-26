@@ -718,7 +718,7 @@ export function createLiveSync(deps: LiveSyncDeps) {
         };
         const store = await storeOf(place);
         const vault = await readVault(store);
-        if (!vault) throw new Error("Your computer has no sync data yet. Show the code again.");
+        if (!vault) throw new Error("Your computer has no sync data yet. Show the QR code again.");
         const key = await keyFromRaw(fromBase64(paired.key));
         await checkKey(vault, key);
         await keys.save(key.raw);

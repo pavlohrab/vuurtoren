@@ -89,7 +89,7 @@ describe("Connect a phone", () => {
 
   it("No ends the code: a new one is needed (SY12)", async () => {
     const { lan, ask } = setup();
-    await userEvent.click(await screen.findByRole("button", { name: "Show the code" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Show the QR code" }));
     ask({ id: "w1", name: "Pixel 8" });
     await screen.findByRole("dialog", { name: "A phone wants to connect" });
     await userEvent.click(screen.getByRole("button", { name: "No" }));
@@ -100,7 +100,7 @@ describe("Connect a phone", () => {
 
   it("when firewalld keeps the phone out, it offers to let Vuurtoren through (SY9)", async () => {
     const { lan } = setup({ firewallOpen: false });
-    await userEvent.click(await screen.findByRole("button", { name: "Show the code" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Show the QR code" }));
     expect(await screen.findByText(/firewall keeps your phone out/)).toBeVisible();
     expect(screen.getByText(/firewall-cmd --permanent --add-port=47120/)).toBeVisible();
     await userEvent.click(screen.getByRole("button", { name: "Allow Vuurtoren" }));
@@ -111,14 +111,14 @@ describe("Connect a phone", () => {
 
   it("says nothing about a firewall it can't ask, or one that is open", async () => {
     setup({ firewallOpen: true });
-    await userEvent.click(await screen.findByRole("button", { name: "Show the code" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Show the QR code" }));
     await screen.findByText("ABCDE-FGHJK");
     expect(screen.queryByText(/firewall/i)).toBeNull();
   });
 
   it("shows a QR code with the code; the phone gets the key with it", async () => {
     const { lan, startForPhones } = setup({ recovery: "AAAA-BBBB" });
-    await userEvent.click(await screen.findByRole("button", { name: "Show the code" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Show the QR code" }));
     expect(await screen.findByRole("img", { name: "Code to scan with your phone" })).toBeVisible();
     expect(screen.getByText("ABCDE-FGHJK")).toBeVisible();
     expect(startForPhones).toHaveBeenCalledWith("/data/sync-place", "");
@@ -130,7 +130,7 @@ describe("Connect a phone", () => {
 
   it("a computer on Syncthing serves that folder to its phone", async () => {
     const { lan } = setup({ folder: "/home/me/Sync/vuurtoren" });
-    await userEvent.click(await screen.findByRole("button", { name: "Show the code" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Show the QR code" }));
     expect(await screen.findByText("ABCDE-FGHJK")).toBeVisible();
     expect(lan.start).toHaveBeenLastCalledWith("/home/me/Sync/vuurtoren");
   });

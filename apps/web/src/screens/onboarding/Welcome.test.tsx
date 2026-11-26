@@ -55,7 +55,7 @@ describe("onboarding", () => {
     expect(await screen.findByRole("heading", { name: "Your Anki cards" })).toBeVisible();
     expect(parts()).toHaveLength(3);
     await user.click(screen.getByRole("radio", { name: /Keep using Anki/ }));
-    expect(screen.getByText(/Anki must be open for Vuurtoren to send words to it/)).toBeVisible();
+    expect(screen.getByText(/Keep it open to send it new words/)).toBeVisible();
     await user.click(cont());
 
     expect(await screen.findByRole("heading", { name: "Connect Anki" })).toBeVisible();
@@ -150,7 +150,7 @@ describe("onboarding", () => {
     // No level question and nothing to untick: Check your level in Words does that (m5).
     expect(screen.queryByText("Where should new words start?")).toBeNull();
     expect(screen.queryByRole("checkbox")).toBeNull();
-    expect(screen.getByText(/In Words, use Check your level/)).toBeVisible();
+    expect(screen.getByText(/Use Check your level in Words/)).toBeVisible();
     expect(screen.getByRole("button", { name: "Back" })).toBeVisible();
     expect(screen.queryByRole("button", { name: "Skip this" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Skip setup for now" })).toBeNull();
@@ -215,7 +215,7 @@ describe("onboarding", () => {
       expect(saveLanguageProfile.mock.calls[0]![0].mode).toBe("native");
       await user.click(screen.getByRole("button", { name: "Not now" }));
       expect(await screen.findByRole("heading", { name: "Your Anki cards" })).toBeVisible();
-      expect(screen.getByText(/works only with Anki on a computer/)).toBeVisible();
+      expect(screen.getByText(/Anki Deck Package/)).toBeVisible();
       expect(screen.getByLabelText("Choose a file")).toHaveAttribute("accept", ".apkg,.colpkg");
       expect(screen.queryByRole("heading", { name: "Connect Anki" })).toBeNull();
       await user.click(cont());

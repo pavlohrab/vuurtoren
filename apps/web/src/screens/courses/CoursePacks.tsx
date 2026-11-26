@@ -86,10 +86,7 @@ export function ExportPackDialog({
       </fieldset>
       {mode === "full" ? (
         <div className="banner" role="note">
-          <span>
-            A full pack contains the book&rsquo;s text. It is for your personal use: a backup, or
-            moving the course to your other devices. Don&rsquo;t share it.
-          </span>
+          <span>A full pack has the book&rsquo;s text in it, so keep it for yourself.</span>
         </div>
       ) : null}
       <div className="row" style={{ justifyContent: "flex-end", marginTop: 12 }}>

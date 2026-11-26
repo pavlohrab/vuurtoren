@@ -267,7 +267,7 @@ describe("offline app screens", () => {
     expect(screen.getByRole("tab", { name: "Paste" })).toBeVisible();
     expect(screen.getByRole("tab", { name: "Web" })).toBeVisible();
     await userEvent.click(screen.getByRole("tab", { name: "PDF" }));
-    expect(await screen.findByRole("note")).toHaveTextContent(/text recognition/);
+    expect(await screen.findByRole("note")).toHaveTextContent(/can't read scanned pages/);
   });
 
   it("keeps photo import when the language server can read photos", async () => {

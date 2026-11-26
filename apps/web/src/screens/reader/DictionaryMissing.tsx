@@ -18,7 +18,7 @@ export function DictionaryMissing() {
   return (
     <p className="k-hint word-dict-missing">
       {status.data.downloading
-        ? "The dictionary is still downloading. Meanings get better when it's in."
+        ? "The dictionary is still downloading. Meanings get better once it's here."
         : "No dictionary on this phone yet. "}
       {status.data.downloading ? null : (
         <Link to="/settings" search={{ section: "reading" }} className="k-link">

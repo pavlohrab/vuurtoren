@@ -62,7 +62,7 @@ export function Courses() {
         <EmptyState
           icon={<GraduationCap size={20} />}
           title="No courses yet"
-          description="Upload a scanned book or a PDF. Vuurtoren finds its units, exercises and word lists, and ties them to your words."
+          description="Add your course book as a PDF or photos. Vuurtoren finds its units, words and exercises."
           action={
             <Button variant="primary" onClick={() => void navigate({ to: "/courses/import" })}>
               Add a course

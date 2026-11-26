@@ -183,8 +183,7 @@ export function StoryForm({ preset = {} }: { preset?: StoryPreset }) {
   return (
     <>
       <p className="k-hint import-story-lede">
-        A new text written for your level, from words you know, with your learning words and a few
-        new ones.
+        A new story at your level, with the words you're learning.
       </p>
       <form
         className="stack story-form"

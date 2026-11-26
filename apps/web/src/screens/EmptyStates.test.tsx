@@ -106,7 +106,7 @@ describe("plain errors", () => {
     await user.type(await screen.findByLabelText("Text"), "Ik bel mijn zus op.");
     await user.click(screen.getByRole("button", { name: "Add to my texts" }));
     const alert = await screen.findByRole("alert");
-    expect(alert).toHaveTextContent("The import did not work.");
+    expect(alert).toHaveTextContent("This text didn't come in. Try again.");
     expect(alert).toHaveTextContent(/language server is not reachable/);
     expect(within(alert).getByRole("button", { name: "Retry" })).toBeInTheDocument();
     expect(within(alert).getByText("Technical details")).toBeInTheDocument();

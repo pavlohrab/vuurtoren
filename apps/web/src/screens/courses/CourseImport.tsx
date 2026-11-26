@@ -397,8 +397,7 @@ export function CourseImportScreen({ courseId: existing }: { courseId?: string }
           />
           {source === "file" && ocr ? (
             <p className="cs-note">
-              A scanned book of about 300 pages takes a few minutes to read. You can leave this
-              page: the reading goes on, and you can continue here later.
+              A book of about 300 pages takes a few minutes. You can leave this page and come back.
             </p>
           ) : null}
           <div className="row">
@@ -417,10 +416,7 @@ export function CourseImportScreen({ courseId: existing }: { courseId?: string }
 
       {step === "ocr" ? (
         <>
-          <p className="page-lede">
-            Reading the pages. This happens once per book; you can leave this page and continue
-            later.
-          </p>
+          <p className="page-lede">Reading the pages. You can leave and come back.</p>
           <ProgressBar p={progress} />
         </>
       ) : null}
@@ -430,8 +426,7 @@ export function CourseImportScreen({ courseId: existing }: { courseId?: string }
       {step === "outline" ? (
         <>
           <p className="page-lede">
-            Vuurtoren guessed the units from the table of contents, page footers and headings.
-            Correct titles and boundaries where needed: click the page where a unit starts.
+            Check the units. Click the page where a unit starts to move it.
           </p>
           <OutlineEditor rows={rows} onChange={setRows} pages={pages} />
           {outlineProblem && rows.length > 0 ? (

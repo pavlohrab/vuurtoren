@@ -1,6 +1,6 @@
 /**
  * "Connect a phone" on a computer (SY1, mock A of MK4): the computer is its phone's sync place on
- * the home Wi-Fi. "Show the code" starts listening, starts sync here when there is none (no
+ * the home Wi-Fi. "Show the QR code" starts listening, starts sync here when there is none (no
  * passphrase: a recovery key, shown once) or serves the computer's own sync folder, and shows a QR code with this computer's address, the
  * certificate's fingerprint and a ten-minute code; the phone that scans it gets the sync key and
  * joins at once. The connected phones are listed with Remove. Plain words, nothing more.
@@ -203,7 +203,7 @@ export function ConnectPhone() {
           </p>
           <div className="row">
             <Button onClick={() => show.mutate()} disabled={show.isPending}>
-              Show the code
+              Show the QR code
             </Button>
           </div>
         </>
@@ -211,7 +211,8 @@ export function ConnectPhone() {
       {recovery ? (
         <div role="note" className="stack" style={{ gap: 4 }}>
           <p style={{ margin: 0 }}>
-            Your recovery key. Write it down: it opens your data if this computer is lost.
+            Your recovery key. Keep it somewhere safe, because it opens your data if this computer
+            is lost.
           </p>
           <code style={{ userSelect: "all" }}>{recovery}</code>
         </div>

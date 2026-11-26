@@ -209,7 +209,7 @@ describe("Courses", () => {
     await user.click(await screen.findByRole("button", { name: "Export course pack…" }));
     let dialog = await screen.findByRole("dialog", { name: "Export course pack" });
     await user.click(within(dialog).getByRole("radio", { name: /Full/ }));
-    expect(within(dialog).getByText(/contains the book.s text/)).toBeVisible();
+    expect(within(dialog).getByText(/has the book.s text in it/)).toBeVisible();
     await user.click(within(dialog).getByRole("button", { name: "Download" }));
     expect(exportCoursePack).toHaveBeenCalledWith("demo-course", "full");
     expect(createObjectURL).toHaveBeenCalled();

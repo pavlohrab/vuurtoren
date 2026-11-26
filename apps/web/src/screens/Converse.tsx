@@ -386,7 +386,7 @@ export function Converse() {
                 <Input
                   label="Words to practise"
                   value={targets ?? words.join(", ")}
-                  hint="Comma-separated. The partner works these in."
+
                   onChange={(e) => setTargets(e.target.value)}
                 />
                 <div className="row">
@@ -424,7 +424,7 @@ export function Converse() {
                 ))}
               </ul>
             ) : past.data ? (
-              <p>No conversations yet. Your chats are kept here to come back to.</p>
+              <p>Your chats stay here, so you can come back to them.</p>
             ) : (
               <Skeleton style={{ height: 48 }} />
             )}

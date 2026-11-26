@@ -38,7 +38,7 @@ const HOWS: { how: SetUpHow; title: string; sub: string }[] = [
   {
     how: "join",
     title: "Join my synced data",
-    sub: "Another of your devices already syncs there. Type the passphrase you chose on it.",
+    sub: "Your other device already syncs here. Type the passphrase you chose there.",
   },
   {
     how: "start",
@@ -75,7 +75,7 @@ function choices(status: SyncStatus): { id: Choice; title: string; sub: string }
           {
             id: "server" as const,
             title: here ? "Another Vuurtoren server" : "Your Vuurtoren server",
-            sub: "A Vuurtoren server you run. Make a sync token in its Settings → Your devices.",
+            sub: "A Vuurtoren server you run yourself.",
           },
         ]),
     ...(status.places.includes("folder")
@@ -83,7 +83,7 @@ function choices(status: SyncStatus): { id: Choice; title: string; sub: string }
           {
             id: "folder" as const,
             title: "A folder you already sync",
-            sub: "Syncthing, Dropbox, iCloud Drive, OneDrive. The desktop app writes into it.",
+            sub: "A folder that Syncthing, Dropbox or iCloud Drive keeps in sync.",
           },
         ]
       : []),
@@ -92,7 +92,7 @@ function choices(status: SyncStatus): { id: Choice; title: string; sub: string }
           {
             id: "webdav" as const,
             title: "WebDAV",
-            sub: "Nextcloud, ownCloud, a NAS. Use an app password.",
+            sub: "Nextcloud, ownCloud or a NAS.",
           },
         ]
       : []),
@@ -212,7 +212,7 @@ function NotSyncing({
         <SetUp key="token" status={status} onRecovery={onRecovery} />
         <div className="row">
           <Button variant="ghost" onClick={() => setWithToken(false)}>
-            Scan a QR code instead
+            Scan the QR code instead
           </Button>
         </div>
       </div>
@@ -286,8 +286,8 @@ function RecoveryKey({ value, onDone }: { value: string; onDone: () => void }) {
         Your recovery key
       </h3>
       <p style={{ margin: 0 }}>
-        Write it down or keep it in a password manager now: it is shown only once. If you forget
-        your passphrase, it opens your synced data on a new device.
+        Keep it in a password manager or on paper. You see it only once, and it opens your data if
+        you forget the passphrase.
       </p>
       <CopyBlock label="Recovery key" text={value} />
       <div className="row">
@@ -363,7 +363,7 @@ function Secrets({ onRecovery }: { onRecovery: (key: string) => void }) {
               value={next}
               onChange={(e) => setNext(e.target.value)}
               autoComplete="new-password"
-              hint="At least 8 characters. Nothing is encrypted again; your other devices keep syncing."
+              hint="At least 8 characters. Your other devices keep syncing."
             />
           ) : (
             <p className="k-hint" style={{ margin: 0 }}>
@@ -790,11 +790,6 @@ function SyncOn({ status }: { status: SyncStatus }) {
         </div>
       ))}
       {status.problems.length ? <Problems problems={status.problems} /> : null}
-      <p className="k-hint" style={{ margin: 0 }}>
-        Vuurtoren syncs by itself while it is open: a few seconds after you change something, and
-        every 15 seconds for changes from your other devices. It sends what is left when you close
-        it. On another device choose Join my synced data, the same place and the same passphrase.
-      </p>
       <div className="row">
         <Button variant="primary" onClick={() => now.mutate()} disabled={now.isPending}>
           {now.isPending ? <Spinner label="Syncing" /> : null}
@@ -870,8 +865,7 @@ function ScanComputerAgain() {
   return (
     <div className="stack" style={{ gap: 6 }}>
       <p className="k-hint" style={{ margin: 0 }}>
-        At home and it still doesn't sync? Your computer may have a new address. Show the code on it
-        (Settings → Your devices → Connect a phone) and scan it again.
+        At home and it doesn't sync? Your computer may have a new address. Scan its QR code again.
       </p>
       <div className="row">
         <Button onClick={() => again.mutate()} disabled={again.isPending}>
@@ -912,8 +906,7 @@ function Unlock() {
       }}
     >
       <p role="alert" style={{ margin: 0 }}>
-        This device does not have its sync key. Type your passphrase to unlock sync; nothing else
-        changes.
+        Type your passphrase to sync on this device again.
       </p>
       <Input
         label="Enter passphrase"
@@ -1082,7 +1075,7 @@ function ConnectServer({
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             autoComplete="current-password"
-            hint="The server's sign-in. This device gets its own access; the password is not kept."
+            hint="The sign-in of your server. The password isn't kept."
           />
         </>
       ) : (
@@ -1092,7 +1085,7 @@ function ConnectServer({
           value={code}
           onChange={(e) => setCode(e.target.value)}
           autoComplete="off"
-          hint="From the server's Your devices page. Works once, for 10 minutes."
+          hint="From your server's Your devices page. It works once, for 10 minutes."
         />
       )}
       <div className="row">
@@ -1308,7 +1301,7 @@ function ServerTokens({ authOn }: { authOn: boolean }) {
       {fresh ? (
         <>
           <p role="status" style={{ margin: 0 }}>
-            Copy it now: the token is shown only once. It opens sync and the language server, and
+            Copy it now, because you see it only once. It opens sync and the language server,
             nothing else.
           </p>
           <CopyBlock label="Sync token" text={fresh} />

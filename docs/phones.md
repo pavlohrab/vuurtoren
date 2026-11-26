@@ -36,7 +36,7 @@ on your computer, and after the next sync the text is ready on your phone too.
 
 ## Connect it to your computer
 
-On the computer, open Settings → Your devices → **Connect a phone** and press **Show the code**.
+On the computer, open Settings → Your devices → **Connect a phone** and press **Show the QR code**.
 On the phone, scan the QR code (in Settings → Your devices, or when you first open the app). Both need to be
 on the same Wi-Fi. If the camera doesn't work, type the address and the code the computer shows.
 The computer asks "Is this your phone?" before anything goes over, and you say yes.

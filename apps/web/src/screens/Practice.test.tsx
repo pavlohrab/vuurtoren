@@ -135,7 +135,7 @@ describe("Practice start view", () => {
     const chip = await screen.findByRole("button", { name: "Listening" });
     await waitFor(() => expect(chip).toHaveAttribute("aria-disabled", "true"));
     expect(chip).toHaveAttribute("aria-pressed", "false");
-    expect(screen.getByRole("note")).toHaveTextContent(/no Dutch voice is installed/);
+    expect(screen.getByRole("note")).toHaveTextContent(/Add a Dutch voice/);
     await begin(user);
     await waitFor(() => expect(services.startPractice).toHaveBeenCalled());
     const call = vi.mocked(services.startPractice).mock.calls[0]![0]!;
@@ -153,7 +153,7 @@ describe("Practice start view", () => {
       <App services={services} history={createMemoryHistory({ initialEntries: ["/practice"] })} />,
     );
     expect(
-      await screen.findByText("The language server is unreachable — fewer exercise types today"),
+      await screen.findByText("The language server doesn’t answer, so there are fewer kinds of exercise today."),
     ).toBeInTheDocument();
   });
 
