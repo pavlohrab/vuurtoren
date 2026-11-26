@@ -104,6 +104,7 @@ export function Progress() {
         {/* Known words grow only from three weeks on: the reviews show the work from day one,
             and the known line joins once there are enough known words to draw. */}
         <WeeklyChart kind="reviews" />
+        <WeeklyChart kind="exercises" />
         <WeeklyChart kind="pages" />
         {s && s.known >= KNOWN_CHART_MIN ? <KnownChart /> : null}
       </div>
@@ -278,6 +279,13 @@ const WEEKLY = {
     none: "Nothing read yet",
     error: "Your reading could not be loaded.",
   },
+  exercises: {
+    title: "Practice per week",
+    note: "Exercises you answered, week by week.",
+    unit: ["exercise", "exercises"],
+    none: "No practice yet",
+    error: "Your practice could not be loaded.",
+  },
   reviews: {
     title: "Reviews per week",
     note: "Cards you answered, week by week.",
@@ -362,7 +370,8 @@ function ThisWeek() {
   });
   if (!q.data) return null;
   const week = q.data.slice(-7);
-  const sum = (k: "reviews" | "added" | "pages") => week.reduce((n, d) => n + d[k], 0);
+  const sum = (k: "reviews" | "added" | "pages" | "exercises") =>
+    week.reduce((n, d) => n + d[k], 0);
   const days = streak(q.data);
   return (
     <section className="k-section progress-section" aria-labelledby="progress-week-h">
@@ -371,6 +380,7 @@ function ThisWeek() {
         <Stat value={fmt(sum("reviews"))} label="Cards reviewed" />
         <Stat value={fmt(sum("added"))} label="Words added" />
         <Stat value={fmt(sum("pages"))} label="Pages read" />
+        <Stat value={fmt(sum("exercises"))} label="Exercises done" />
         <Stat value={fmt(days)} label={days === 1 ? "Day in a row" : "Days in a row"} />
       </div>
     </section>
