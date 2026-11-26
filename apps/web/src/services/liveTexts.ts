@@ -348,6 +348,7 @@ export function createLiveTexts({
     | "recordLookup"
     | "recordClozeAnswer"
     | "finishSegment"
+    | "savePlace"
   > = {
     async listTexts(): Promise<TextListItem[]> {
       const texts = await repo.listTexts();
@@ -586,6 +587,15 @@ export function createLiveTexts({
       await quietly(evidence?.().cloze(key, correct, hinted));
       // Like a lookup: update that word in the model, keep the current page's plan stable.
       learner.refreshWord(key);
+    },
+
+    async savePlace(textId, segment, char): Promise<void> {
+      await repo.append({ type: "ReadingPlace", textId, segment, char });
+      // The cached view keeps its text record: give it the new place too.
+      const cached = planCache.get(textId);
+      if (cached) {
+        cached.view = { ...cached.view, text: { ...cached.view.text, place: { segment, char } } };
+      }
     },
 
     async finishSegment(textId, segment, outcome): Promise<StaircaseState> {

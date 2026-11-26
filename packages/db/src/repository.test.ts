@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { AnalyzedToken } from "@app/core";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { contentHash } from "./hash.js";
 import { compareHlc } from "./ids.js";
 import { createNodeDriver } from "./node.js";
@@ -169,6 +169,36 @@ describe("projections", () => {
       lookupsPer100: 0,
     });
     expect(await driver.exec("SELECT count(*) AS c FROM reading_progress")).toEqual([{ c: 0 }]);
+  });
+
+  it("ReadingPlace keeps the first word on the screen while it is newer than the progress", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    try {
+      const { repo, driver } = await newRepo();
+      await repo.append(importText("t1", "abc"));
+      expect((await repo.listTexts())[0]?.place).toBeUndefined();
+      vi.setSystemTime(1000);
+      await repo.append({ type: "ReadingPlace", textId: "t1", segment: 0, char: 40 });
+      vi.setSystemTime(2000);
+      await repo.append({ type: "ReadingPlace", textId: "t1", segment: 1, char: 120 });
+      expect((await repo.listTexts())[0]?.place).toEqual({ segment: 1, char: 120 });
+      // A page finished later than the place: the place is old news.
+      vi.setSystemTime(3000);
+      await repo.append({
+        type: "ReadingProgress",
+        textId: "t1",
+        segment: 1,
+        clozeAccuracy: null,
+        lookupsPer100: 0,
+      });
+      expect((await repo.listTexts())[0]?.place).toBeUndefined();
+      // Compaction keeps only the newest place per text.
+      await repo.compact();
+      const left = await driver.exec("SELECT count(*) AS c FROM events WHERE type = 'ReadingPlace'");
+      expect(left).toEqual([{ c: 1 }]);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("TextGrammarDetected stores hits for the current content only", async () => {

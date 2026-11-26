@@ -369,6 +369,11 @@ export interface AppServices
   recordLookup(textId: string, key: string): Promise<void>;
   /** One answered reader cloze (first answer per blank): feeds the word's app evidence. */
   recordClozeAnswer(key: string, correct: boolean, hinted: boolean): Promise<void>;
+  /**
+   * The reader's place inside a page (book mode): the character offset of the first word on
+   * the screen, so another device opens on the same lines.
+   */
+  savePlace?(textId: string, segment: number, char: number): Promise<void>;
   finishSegment(
     textId: string,
     segment: number,

@@ -366,6 +366,8 @@ export function createMockServices(
 
   const texts = new Map<string, StoredText>();
   const lastSegments = new Map<string, number>();
+  /** The reader's place inside a page (savePlace), until the next finished page. */
+  const places = new Map<string, { segment: number; char: number }>();
   let created = Date.now() - 86_400_000 * SAMPLE_TEXTS.length;
   for (const t of SAMPLE_TEXTS) {
     const tokens = tokenize(t.content, (s) => ensure(s), t.particles);
@@ -669,7 +671,11 @@ export function createMockServices(
       const t = texts.get(textId);
       if (!t) return null;
       return {
-        text: { ...t, lastSegment: lastSegments.get(t.id) ?? 0 },
+        text: {
+          ...t,
+          lastSegment: lastSegments.get(t.id) ?? 0,
+          ...(places.has(t.id) ? { place: places.get(t.id)! } : {}),
+        },
         tokens: t.tokens ?? [],
         plans: buildPlans(t),
         staircase,
@@ -938,8 +944,13 @@ export function createMockServices(
       // The demo keeps no per-word evidence.
     },
 
+    async savePlace(textId, segment, char) {
+      places.set(textId, { segment, char });
+    },
+
     async finishSegment(textId, segment, outcome) {
       await wait();
+      places.delete(textId);
       sessionActivity.push({ kind: "page", at: Date.now() });
       // Same semantic as the database projection: the NEXT segment to read.
       lastSegments.set(textId, segment + 1);

@@ -216,6 +216,16 @@ export type AppEvent =
       clozeAccuracy: number | null;
       lookupsPer100: number;
     }
+  | {
+      /**
+       * Where the reader is inside a page: `char` is the character offset of the first word on
+       * the screen, so another device opens on the same lines. Only the newest per text counts.
+       */
+      type: "ReadingPlace";
+      textId: string;
+      segment: number;
+      char: number;
+    }
   | { type: "StaircaseUpdated"; lang: string; state: StaircaseState }
   | {
       /**
@@ -512,6 +522,7 @@ export const EVENT_VERSIONS = {
   ClozeAnswered: 1,
   NoteAddedToAnki: 1,
   ReadingProgress: 1,
+  ReadingPlace: 1,
   StaircaseUpdated: 1,
   ExerciseAnswered: 1,
   ConversationStarted: 1,
@@ -600,6 +611,11 @@ export interface TextSummary {
   wordCount: number;
   analyzed: boolean;
   lastSegment: number;
+  /**
+   * The place inside a page (ReadingPlace), when it is at least as new as the last finished
+   * page: the page and the character offset of the first word on the screen.
+   */
+  place?: { segment: number; char: number };
   /** The title as imported, when the learner renamed the text (`title` is the edited one). */
   importedTitle?: string;
   author?: string;

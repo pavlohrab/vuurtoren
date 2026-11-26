@@ -205,16 +205,22 @@ function textSummary(r: Row): TextSummary {
     wordCount: Number(r["word_count"]),
     analyzed: r["analyzed"] !== null,
     lastSegment: Number(r["last_segment"] ?? 0),
+    // The place counts only when it is at least as new as the last finished page.
+    ...(r["pl_segment"] != null && Number(r["pl_updated"]) >= Number(r["rp_updated"] ?? 0)
+      ? { place: { segment: Number(r["pl_segment"]), char: Number(r["pl_char"]) } }
+      : {}),
   };
 }
 
 const TEXT_COLS = `t.id, t.title, t.lang, t.source_kind, t.source_ref, t.created_at, t.word_count,
-    tt.text_id AS analyzed, rp.last_segment,
+    tt.text_id AS analyzed, rp.last_segment, rp.updated AS rp_updated,
+    pl.segment AS pl_segment, pl.char AS pl_char, pl.updated AS pl_updated,
     m.title AS m_title, m.author AS m_author, m.note AS m_note, m.level AS m_level, m.cover AS m_cover`;
 const TEXT_FROM = `FROM texts t
   LEFT JOIN text_meta m ON m.text_id = t.id
   LEFT JOIN text_tokens tt ON tt.text_id = t.id
-  LEFT JOIN reading_progress rp ON rp.text_id = t.id`;
+  LEFT JOIN reading_progress rp ON rp.text_id = t.id
+  LEFT JOIN reading_place pl ON pl.text_id = t.id`;
 
 function textExtrasOf(r: Row): TextExtras {
   // `data` is the sentence list (older rows) or { sentences, mtModel }.
@@ -974,6 +980,20 @@ export async function createRepository(
           const keep = new Set(newest.values());
           for (const r of snaps) {
             if (keep.has(String(r["id"]))) continue;
+            await driver.exec("DELETE FROM events WHERE id = ?", [String(r["id"])]);
+            removed++;
+          }
+          // The reader's place: only the newest per text matters.
+          const places = await driver.exec(
+            "SELECT id, json_extract(payload, '$.textId') AS t FROM events WHERE type = 'ReadingPlace' ORDER BY hlc DESC, id DESC",
+          );
+          const placed = new Set<string>();
+          for (const r of places) {
+            const t = String(r["t"]);
+            if (!placed.has(t)) {
+              placed.add(t);
+              continue;
+            }
             await driver.exec("DELETE FROM events WHERE id = ?", [String(r["id"])]);
             removed++;
           }

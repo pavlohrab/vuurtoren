@@ -293,6 +293,7 @@ export async function applyEvent(driver: SqlDriver, ctx: EventContext): Promise<
         "text_grammar",
         "text_extras",
         "reading_progress",
+        "reading_place",
       ]) {
         await driver.exec(`DELETE FROM ${t} WHERE ${t === "texts" ? "id" : "text_id"} = ?`, [
           e.textId,
@@ -389,6 +390,15 @@ export async function applyEvent(driver: SqlDriver, ctx: EventContext): Promise<
       await driver.exec(
         "INSERT OR REPLACE INTO reading_progress (text_id, last_segment, updated) VALUES (?,?,?)",
         [e.textId, e.segment + 1, ctx.createdAt],
+      );
+      return;
+    }
+    case "ReadingPlace": {
+      const rows = await driver.exec("SELECT 1 AS x FROM texts WHERE id = ?", [e.textId]);
+      if (rows.length === 0) return;
+      await driver.exec(
+        "INSERT OR REPLACE INTO reading_place (text_id, segment, char, updated) VALUES (?,?,?,?)",
+        [e.textId, e.segment, e.char, ctx.createdAt],
       );
       return;
     }

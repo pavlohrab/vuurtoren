@@ -302,6 +302,15 @@ export const MIGRATIONS: readonly (readonly string[])[] = [
     // The newest Anki review per word as of the sync (Practice leaves today's out, 4.7.2).
     `ALTER TABLE anki_words ADD COLUMN last_review INTEGER`,
   ],
+  [
+    // The reader's place inside a page: the first word on the screen (ReadingPlace).
+    `CREATE TABLE reading_place (
+       text_id TEXT PRIMARY KEY,
+       segment INTEGER NOT NULL,
+       char INTEGER NOT NULL,
+       updated INTEGER NOT NULL
+     )`,
+  ],
 ];
 
 /** Latest schema version. */
@@ -324,6 +333,7 @@ export const PROJECTION_TABLES = [
   "practice_answers",
   "word_evidence",
   "reading_progress",
+  "reading_place",
   "staircase",
   "settings",
   "language_profiles",
