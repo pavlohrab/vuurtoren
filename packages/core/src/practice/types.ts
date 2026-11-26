@@ -69,6 +69,8 @@ export interface ExampleSentence {
   source: "anki" | "text" | "ai" | "tatoeba";
   /** Other words in it the learner doesn't know (set by lessons; fewer ranks first). */
   unknown?: number;
+  /** Where the learner met the word: tried first the first time (lessons, 4.7.4). */
+  first?: boolean;
 }
 
 /** Morphology for form exercises (from server /forms, Wiktionary-derived). All optional. */

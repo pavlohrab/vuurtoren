@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { UNGRADED, buildLesson, comeBack, extraTile, weakPoints } from "./lesson.js";
 import { STEP_OF } from "./choose.js";
+import { rankSentences } from "./sentences.js";
 import { createRng } from "./rng.js";
 import type { WordSignals } from "./select.js";
 import { itemState, nounPool, sentence, word } from "./testutil.js";
@@ -219,5 +220,51 @@ describe("a lesson (4.7)", () => {
     const pairs = lesson.find((e) => e.kind === "pairs")!;
     expect(pairs.pairs).toHaveLength(3);
     expect(pairs.pairs![0]).toMatchObject({ nl: expect.stringMatching(/^de /) });
+  });
+
+  it("uses your own sentence first, and keeps gap sentences within your reading level", () => {
+    const deur = word("deur", {
+      state: "learning",
+      pKnown: 0.5,
+      article: "de",
+      sentences: [
+        sentence("De deur is open.", "deur", {
+          source: "anki",
+          translation: "The door is open.",
+          unknown: 0,
+        }),
+        sentence("Hij doet de deur dicht.", "deur", {
+          source: "text",
+          translation: "He closes the door.",
+          unknown: 0,
+          first: true,
+        }),
+      ],
+    });
+    expect(rankSentences(deur.sentences)[0]!.text).toBe("Hij doet de deur dicht.");
+
+    // One unknown word in a four-word gap sentence is 25%: above a 95% reading target.
+    const hard = word("trap", {
+      state: "known",
+      pKnown: 0.97,
+      sentences: [
+        sentence("Hij beklimt de trap.", "trap", {
+          translation: "He climbs the stairs.",
+          unknown: 1,
+        }),
+      ],
+    });
+    const kinds = buildLesson(
+      {
+        words: [hard, ...pool],
+        signals: [sig("trap", { state: "known", pKnown: 0.97 })],
+        states: [],
+        answers: [],
+        now: NOW,
+        coverage: 0.95,
+      },
+      createRng(12),
+    ).map((e) => e.prompt.sentence);
+    expect(kinds).not.toContain("Hij beklimt de trap.");
   });
 });

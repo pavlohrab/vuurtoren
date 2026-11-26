@@ -451,12 +451,13 @@ export function createLivePractice(deps: LivePracticeDeps) {
     const rng = createRng(now);
     const midnight = new Date(now);
     midnight.setHours(0, 0, 0, 0);
-    const [infos, items, model, rows, reviewed] = await Promise.all([
+    const [infos, items, model, rows, reviewed, stair] = await Promise.all([
       repo.words(lang),
       loadItems(lang),
       deps.model(),
       repo.practiceAnswers(lang),
       repo.cardReviewedKeys(lang, midnight.getTime()).catch(() => []),
+      repo.staircase(lang).catch(() => null),
     ]);
     const today = new Set(reviewed);
     const answers = toEloAnswers(rows, KNOWN_KINDS);
@@ -487,8 +488,15 @@ export function createLivePractice(deps: LivePracticeDeps) {
     await addTranslations(words);
     // How many other words of each sentence you don't know yet (the sentence guard rail, 4.7.4).
     const known = (form: string) => (model.get(form)?.pKnown ?? 0) >= KNOWN_RECALL;
-    for (const w of words)
+    const practisedKeys = new Set(answers.map((a) => a.key));
+    for (const w of words) {
       for (const x of w.sentences) x.unknown = unknownOthers(x.text, x.target, known);
+      // The first time, the sentence from your own reading comes first (4.7.4).
+      if (!practisedKeys.has(w.key)) {
+        const mine = w.sentences.find((x) => x.source === "text");
+        if (mine) mine.first = true;
+      }
+    }
     const zipf = new Map(words.map((w) => [w.key, w.zipf]));
     const inPool = new Set(pool);
     const signals = lessonSignals(
@@ -510,6 +518,7 @@ export function createLivePractice(deps: LivePracticeDeps) {
         size,
         now,
         speaking,
+        ...(stair ? { coverage: stair.targetCoverage } : {}),
         ...(focus ? { only: focus } : {}),
       },
       rng,
