@@ -556,6 +556,20 @@ export async function createRepository(
         return rows[0] ? json<StaircaseState>(rows[0]["state"]) : null;
       }),
 
+    cardReviewedKeys: (lang, since) =>
+      serial(async () =>
+        (
+          await driver.exec(
+            `SELECT DISTINCT n.key AS key FROM native_reviews r
+             JOIN native_cards c ON c.id = r.card_id
+             JOIN native_notes n ON n.id = c.note_id
+             WHERE r.lang = ? AND r.at >= ? AND n.key IS NOT NULL
+               AND r.source NOT IN ('practice', 'cloze')`,
+            [lang, since],
+          )
+        ).map((r) => String(r["key"])),
+      ),
+
     practiceAnswers: (lang) =>
       serial(async () =>
         (

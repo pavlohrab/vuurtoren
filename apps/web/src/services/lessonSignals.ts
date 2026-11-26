@@ -31,6 +31,8 @@ export function lessonSignals(
   zipfOf: (key: string) => number = () => 4,
   /** Words asked for by name ("Practise these words"): in, whatever their state (not ignored). */
   always: ReadonlySet<string> = new Set(),
+  /** Words reviewed on their own card today: left out until tomorrow (not when named). */
+  reviewedToday: ReadonlySet<string> = new Set(),
 ): WordSignals[] {
   const byKey = new Map<string, EloAnswer[]>();
   for (const a of answers) {
@@ -61,7 +63,7 @@ export function lessonSignals(
         taps: w.lookups,
         recentTaps: recent ? Math.min(w.lookups, 3) : 0,
         netClozes,
-        reviewedToday: false,
+        reviewedToday: reviewedToday.has(w.key) && !always.has(w.key),
         practiceSafe: streak.length === SAFE_STREAK && streak.every((a) => a.result === 1),
         onPage: false,
         onNextPages: false,

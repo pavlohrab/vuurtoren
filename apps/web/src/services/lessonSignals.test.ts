@@ -32,6 +32,17 @@ describe("lesson signals (algorithms.md 4.7.1)", () => {
       new Set(["b", "d"]),
     );
     expect(named.map((s) => s.key)).toEqual(["b"]);
+    // Reviewed on its card today: left out, unless named.
+    const [today, named2] = lessonSignals(
+      [info("x"), info("y")],
+      [],
+      NOW,
+      undefined,
+      new Set(["y"]),
+      new Set(["x", "y"]),
+    );
+    expect(today!.reviewedToday).toBe(true);
+    expect(named2!.reviewedToday).toBe(false);
   });
 
   it("reads taps, the last tap, misses and a safe streak", () => {

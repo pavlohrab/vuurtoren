@@ -869,6 +869,12 @@ export interface Repository {
   ): Promise<WordInfo[]>;
   staircase(lang: string): Promise<StaircaseState | null>;
   /** FSRS state of every practised (key, skill) pair of a language. */
+  /**
+   * Words whose own card (the app's cards) was reviewed since `since` (ms) on the Review screen;
+   * answers that came from practice or a reader blank don't count. Practice leaves these out
+   * until the next day (algorithms.md 4.7.2).
+   */
+  cardReviewedKeys(lang: string, since: number): Promise<string[]>;
   /** Every practice answer, oldest first (the Elo replay, algorithms.md 4.7.3). */
   practiceAnswers(
     lang: string,

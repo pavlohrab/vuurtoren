@@ -449,17 +449,21 @@ export function createLivePractice(deps: LivePracticeDeps) {
   ): Promise<Exercise[]> {
     const size = Math.max(1, opts.size ?? LESSON_WORDS);
     const rng = createRng(now);
-    const [infos, items, model, rows] = await Promise.all([
+    const midnight = new Date(now);
+    midnight.setHours(0, 0, 0, 0);
+    const [infos, items, model, rows, reviewed] = await Promise.all([
       repo.words(lang),
       loadItems(lang),
       deps.model(),
       repo.practiceAnswers(lang),
+      repo.cardReviewedKeys(lang, midnight.getTime()).catch(() => []),
     ]);
+    const today = new Set(reviewed);
     const answers = toEloAnswers(rows, KNOWN_KINDS);
     const focus = opts.keys ? new Set(opts.keys) : null;
     // A first pass with a neutral frequency picks the pool; word data (with the real frequency)
     // is only built for that pool, because it reads texts and asks the language server.
-    const rough = lessonSignals(infos, answers, now, undefined, focus ?? undefined).filter(
+    const rough = lessonSignals(infos, answers, now, undefined, focus ?? undefined, today).filter(
       (s) => !focus || focus.has(s.key),
     );
     const due = new Set(items.filter((i) => i.due <= now).map((i) => i.key));
@@ -493,6 +497,7 @@ export function createLivePractice(deps: LivePracticeDeps) {
       now,
       (k) => zipf.get(k) ?? 0,
       focus ?? undefined,
+      today,
     );
     const speaking = (await deps.canListen?.().catch(() => false)) ?? false;
     lastLesson = { words, signals, states: items, answers, now, speaking };
