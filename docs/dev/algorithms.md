@@ -515,9 +515,12 @@ another, the word that opens it, the middle and its verbs. The code is `sentence
 `apps/web/src/screens/reader/sentenceFrame.ts`. It works from the parse of the sentence, so it is only
 as good as the parser.
 
-On a server the parse comes from SyntaxDot (`server/nlp/src/vuurtoren_nlp/syntax.py`), because it
-makes fewer mistakes than spaCy. SyntaxDot only runs on Linux with an Intel or AMD processor, so the
-desktop app and ARM servers use spaCy's parse instead. Settings › Server status says which one is in
+On a server the parse comes from SyntaxDot (`server/nlp/src/vuurtoren_nlp/syntax.py`; de Kok et al.
+2020, [sticker2](https://publikationen.uni-tuebingen.de/xmlui/handle/10900/119167), and de Kok &
+Pütz 2020, "Self-distillation for German and Dutch dependency parsing", CLIN Journal 10, 91–107),
+because it makes fewer mistakes than spaCy. SyntaxDot only runs on Linux with an Intel or AMD
+processor. The desktop app on Linux can download it; on Windows, macOS and ARM servers the parse
+comes from spaCy. Settings › Server status says which one is in
 use.
 
 How well it works, measured on sentences the rules were not written for:

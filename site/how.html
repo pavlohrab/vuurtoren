@@ -1803,6 +1803,65 @@
           text-align: center;
         }
       }
+      /* Every page: 150 words as dots; the known ones fill in, three stay new (WD10, drawn) */
+      .stage:has(.dots-demo) {
+        height: auto;
+      }
+      .dots-demo {
+        margin: 0;
+        width: 100%;
+        padding: 26px 28px;
+        display: grid;
+        gap: 14px;
+      }
+      .dots-meter {
+        display: flex;
+        align-items: baseline;
+        gap: 10px;
+        color: var(--muted);
+        font-size: 14px;
+      }
+      .dots-meter b {
+        font: 700 42px/1 var(--f-display);
+        color: var(--ink);
+        font-variant-numeric: tabular-nums;
+        min-width: 3ch;
+      }
+      .dots {
+        display: grid;
+        grid-template-columns: repeat(15, 1fr);
+        gap: 6px;
+      }
+      .dots i {
+        aspect-ratio: 1;
+        border-radius: 50%;
+        background: var(--line-strong);
+        transition: background-color 0.25s;
+      }
+      .dots i.k {
+        background: var(--known);
+      }
+      .dots i.n {
+        background: var(--learn);
+        box-shadow: 0 0 0 3px var(--learn-soft);
+      }
+      .dots-legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 14px;
+        font-size: 13px;
+        color: var(--muted);
+      }
+      .dots-legend span::before {
+        content: "";
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        margin-right: 6px;
+        vertical-align: -1px;
+        background: var(--c);
+      }
     </style>
   </head>
   <body data-page="how">
@@ -2006,9 +2065,10 @@
             <p>
               Before you read a page of about 150 words, Vuurtoren plans it. It picks about three
               new words for you to learn, from the most common words you don't know yet, and leaves
-              them untranslated<sup>1</sup>. Every other word you don't know gets its translation
-              next to it, so you don't get stuck<sup>2</sup>. When reading goes well, the next pages
-              get a few more new words; when you look up a lot, fewer.
+              them untranslated<sup>1</sup>. You can tap any other word to see what it means, and in
+              Gloss the words you may not know get their English above them, so you don't get
+              stuck<sup>2</sup>. When reading goes well, the next pages get a few more new words;
+              when you look up a lot, fewer.
             </p>
             <p class="why">
               This follows reading research. You can follow a text when you know about 95% of its
@@ -2046,13 +2106,20 @@
           </div>
           <div class="demo">
             <div class="stage">
-              <div class="page-demo read" lang="nl">
-                <div class="title">De vuurtoren van Texel</div>
-                Op het eiland staat een oude <span class="w new">vuurtoren</span>. Elke avond
-                beklimt Jan de trap en kijkt naar de zee. In de
-                <ruby class="w">verte<rt class="g">distance</rt></ruby> ziet hij een klein
-                <span class="w new">schip</span>. Hij zet het licht <span class="w new">aan</span>.
-              </div>
+              <figure
+                class="dots-demo"
+                aria-label="A page of 150 words as dots: the words you know fill in until 98%, and three stay new"
+              >
+                <div class="dots-meter">
+                  <b data-dots-pct>98%</b><span>of the words on this page you know</span>
+                </div>
+                <div class="dots" data-dots></div>
+                <figcaption class="dots-legend">
+                  <span style="--c: var(--known)">you know it</span
+                  ><span style="--c: var(--learn)">new, to learn</span
+                  ><span style="--c: var(--line-strong)">helped with</span>
+                </figcaption>
+              </figure>
             </div>
           </div>
         </div>
@@ -2063,13 +2130,17 @@
             <h2>It runs on your computer.</h2>
             <p>
               To find the words and the grammar in a text, Vuurtoren uses spaCy, a language analysis
-              tool, and a small translation model, OPUS-MT. The meanings and example sentences come
-              from open dictionaries. All of it is on your computer, so it works offline and your
-              texts stay with you.
+              tool, and a small translation model, OPUS-MT. How each sentence is built comes from
+              SyntaxDot on a server, and on Linux when you download it. The meanings and example
+              sentences come from open dictionaries. All of it is on your computer, so it works
+              offline and your texts stay with you.
             </p>
             <p class="src">
               <a href="https://spacy.io/">spaCy</a> ·
-              <a href="https://github.com/Helsinki-NLP/Opus-MT">OPUS-MT</a> ·
+              <a href="https://github.com/tensordot/syntaxdot">SyntaxDot</a>
+              (<a href="https://publikationen.uni-tuebingen.de/xmlui/handle/10900/119167"
+                >de Kok et al. 2020</a
+              >) · <a href="https://github.com/Helsinki-NLP/Opus-MT">OPUS-MT</a> ·
               <a href="https://kaikki.org/">Wiktionary via Kaikki</a> ·
               <a href="https://tatoeba.org/">Tatoeba</a> ·
               <a href="https://github.com/rspeer/wordfreq">wordfreq</a>
@@ -2240,6 +2311,59 @@
           const d = document.querySelector(".prod");
           if (d && !d.contains(e.target)) d.open = false;
         });
+      })();
+    </script>
+    <script>
+      // Every page: the dots fill in, the share counts up to 98%, three stay new. Still at rest
+      // for reduced motion and before it is seen (the final state is in the page from the start).
+      (() => {
+        const box = document.querySelector("[data-dots]");
+        const pct = document.querySelector("[data-dots-pct]");
+        if (!box || !pct) return;
+        const N = 150,
+          NEW = [23, 81, 126],
+          HELP = [57];
+        const dots = Array.from({ length: N }, () => box.appendChild(document.createElement("i")));
+        const final = () => {
+          dots.forEach(
+            (d, i) => (d.className = NEW.includes(i) ? "n" : HELP.includes(i) ? "" : "k"),
+          );
+          pct.textContent = "98%";
+        };
+        final();
+        if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+        let seed = 7;
+        const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+        const order = dots.map((_, i) => i).filter((i) => !NEW.includes(i) && !HELP.includes(i));
+        for (let i = order.length - 1; i > 0; i--) {
+          const j = Math.floor(rnd() * (i + 1));
+          [order[i], order[j]] = [order[j], order[i]];
+        }
+        const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+        let running = false;
+        async function play() {
+          running = true;
+          dots.forEach((d) => (d.className = ""));
+          pct.textContent = "0%";
+          await wait(600);
+          for (let j = 0; j < order.length; j++) {
+            dots[order[j]].className = "k";
+            pct.textContent = Math.round(((j + 1) / N) * 100) + "%";
+            await wait(j < 20 ? 45 : 12);
+          }
+          await wait(400);
+          for (const i of NEW) {
+            dots[i].className = "n";
+            await wait(380);
+          }
+          running = false;
+        }
+        new IntersectionObserver(
+          (es) => {
+            if (es.some((e) => e.isIntersecting) && !running) play();
+          },
+          { threshold: 0.5 },
+        ).observe(box);
       })();
     </script>
   </body>
