@@ -585,7 +585,6 @@ pixels, so columns don't drift after many turns.
 - **The word card.** On a phone the card covers the bottom; the text lifts so the tapped word sits
   above it, and drops back when the card closes.
 
-
 ## 4. Practice
 
 **In short.** Practice is for the words you are already learning. It gives you short exercises made from sentences, for example choosing the meaning, filling in a blank, de or het, putting words in the right order or writing down what you hear. Every word has its own schedule for every kind of exercise (FSRS), so an exercise comes back just before you would forget it. Practice never touches your Anki cards.
