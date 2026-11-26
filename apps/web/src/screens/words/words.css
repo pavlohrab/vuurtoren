@@ -177,11 +177,12 @@
   .words-tools {
     grid-column: 1 / -1;
   }
+  /* All the states in view: they wrap onto a second line instead of scrolling sideways past the
+     screen's edge (it looked like the page was wider than the phone). */
   .words-states {
+    display: flex;
     width: 100%;
-    overflow-x: auto;
-    flex-wrap: nowrap;
-    scrollbar-width: none;
+    flex-wrap: wrap;
   }
   .words-state {
     flex: none;

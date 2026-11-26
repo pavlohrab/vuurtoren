@@ -7,7 +7,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, Navigate } from "@tanstack/react-router";
 import { BookOpenCheck, ChevronRight, Dumbbell, Gauge, Layers } from "lucide-react";
-import type { ReactNode } from "react";
+import { type ReactNode, useSyncExternalStore } from "react";
 import { Skeleton, useNativeMode } from "@app/ui";
 import { plural } from "../../format.js";
 import { useServices } from "../../services/context.js";
@@ -31,10 +31,25 @@ export function wideDesk(): boolean {
   );
 }
 
+/** wideDesk() that follows the window: a computer window made narrow gets the phone's page. */
+export function useWideDesk(): boolean {
+  return useSyncExternalStore(
+    (changed) => {
+      if (typeof window.matchMedia !== "function") return () => {};
+      const q = window.matchMedia("(min-width: 1100px)");
+      q.addEventListener?.("change", changed);
+      return () => q.removeEventListener?.("change", changed);
+    },
+    wideDesk,
+    () => false,
+  );
+}
+
 export function WordsHome() {
   usePageHeader("Words");
+  const wide = useWideDesk();
   // On a wide computer window Words is one screen: the list with Today beside it (mock A, UI1).
-  if (wideDesk()) return <Navigate to="/words/all" search={{ layout: "list" }} replace />;
+  if (wide) return <Navigate to="/words/all" search={{ layout: "list" }} replace />;
   return (
     <div className="page page--list words-home">
       <PageHeader title="Words" />

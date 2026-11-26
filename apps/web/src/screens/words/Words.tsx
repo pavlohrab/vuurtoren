@@ -62,7 +62,7 @@ import {
   parseLevel,
   progressText,
 } from "./levels.js";
-import { WordsDeskAside, wideDesk } from "./WordsHome.js";
+import { WordsDeskAside, useWideDesk } from "./WordsHome.js";
 import { WordsDesk } from "./WordsDesk.js";
 import { ALL_WORDS, WordsRoom, loadStarterIndex, useLevelProgress } from "./WordsRoom.js";
 import { useWordActions } from "../useWordActions.js";
@@ -316,9 +316,10 @@ function LayoutToggle({ list, onChange }: { list: boolean; onChange: (list: bool
 /** Words: filterable table of lemmas; rows open the inspector; selections go on to Anki, Practice or Talk. */
 export function Words() {
   const params: WordsSearch = useSearch({ from: "/words/all" });
+  const wide = useWideDesk();
   // A computer with room: the Inbox (mock "Words, round 2" A); phones and the cards keep this page.
   // Grouped by level is the list page's own view; the Inbox has levels as folders instead.
-  return wideDesk() && showsList(params) && !params.group ? <WordsDesk /> : <WordsList />;
+  return wide && showsList(params) && !params.group ? <WordsDesk /> : <WordsList />;
 }
 
 function WordsList() {

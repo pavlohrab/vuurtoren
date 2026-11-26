@@ -7,6 +7,17 @@
   --wd-sheet: color-mix(in srgb, var(--surface) 70%, #fffdf8);
   --wd-sel: color-mix(in srgb, var(--accent) 11%, var(--surface));
 }
+/* Dark: the raised surface of the theme, not a mix with near-white (that came out grey). */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .wd-a {
+    --wd-sheet: var(--surface-2);
+    --wd-sel: color-mix(in srgb, var(--accent) 16%, var(--surface-2));
+  }
+}
+:root[data-theme="dark"] .wd-a {
+  --wd-sheet: var(--surface-2);
+  --wd-sel: color-mix(in srgb, var(--accent) 16%, var(--surface-2));
+}
 .wd-over {
   margin: 0;
   font: 600 11.5px/1.2 var(--font-ui, Inter, sans-serif);
@@ -404,7 +415,7 @@
 .wd-pane mark {
   padding: 0 2px;
   border-radius: 3px;
-  background: color-mix(in srgb, #ffd68c 55%, transparent);
+  background: var(--accent-soft);
   color: inherit;
 }
 .wd-dbtns {
