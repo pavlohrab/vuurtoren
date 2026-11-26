@@ -212,7 +212,7 @@ export function comeBack(
   if (!word) return null;
   const s = input.signals.find((x) => x.key === missed.key);
   const start = startOf(s);
-  return chooseExercise({
+  const ex = chooseExercise({
     key: missed.key,
     state: word.state,
     hasCard: s?.hasCard ?? false,
@@ -223,4 +223,5 @@ export function comeBack(
     cap: STEP_OF[missed.kind] - 1,
     avoid: new Set([missed.kind]),
   });
+  return ex ? withTopic(withExtraTile(withMetIn(ex, word))) : null;
 }

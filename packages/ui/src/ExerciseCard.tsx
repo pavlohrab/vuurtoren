@@ -530,17 +530,26 @@ function SayIt({
   const [state, setState] = useState<"idle" | "on" | "listening">("idle");
   const [why, setWhy] = useState<string | null>(null);
   const rec = useRef<{ stop: () => Promise<Blob>; cancel: () => void } | null>(null);
-  useEffect(() => () => rec.current?.cancel(), []);
+  const alive = useRef(true);
+  useEffect(
+    () => () => {
+      alive.current = false;
+      rec.current?.cancel();
+    },
+    [],
+  );
   if (!onHear) return <p className="ex-hint">Speaking needs the language server.</p>;
   const start = async () => {
     setWhy(null);
+    let stream: MediaStream | null = null;
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const mr = new MediaRecorder(stream);
       const parts: Blob[] = [];
       mr.ondataavailable = (ev) => parts.push(ev.data);
       mr.start();
-      const done = () => stream.getTracks().forEach((t) => t.stop());
+      const open = stream;
+      const done = () => open.getTracks().forEach((t) => t.stop());
       rec.current = {
         stop: () =>
           new Promise<Blob>((ok) => {
@@ -557,6 +566,8 @@ function SayIt({
       };
       setState("on");
     } catch (err) {
+      // The mic opened but recording didn't start: close it again.
+      stream?.getTracks().forEach((t) => t.stop());
       const name = err instanceof DOMException ? err.name : "";
       setWhy(
         name === "NotAllowedError"
@@ -573,8 +584,11 @@ function SayIt({
     if (!r) return;
     setState("listening");
     try {
-      onHeard(await onHear(await r.stop()));
+      const heard = await onHear(await r.stop());
+      // Gone meanwhile (the lesson ended): the answer belongs to no exercise now.
+      if (alive.current) onHeard(heard);
     } catch {
+      if (!alive.current) return;
       setWhy("Couldn't hear that. Try again.");
       setState("idle");
     }
