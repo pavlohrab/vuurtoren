@@ -7,7 +7,7 @@
  * continues, Backspace takes the last tile back, ? reveals a letter or places the next tile.
  * Holding a tile (or right-clicking it) shows what the word means; that counts as help.
  */
-import { Check, Volume2, X } from "lucide-react";
+import { Check, Mic, Square, Volume2, X } from "lucide-react";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import type { Exercise } from "@app/core";
 import { Button } from "./Button.js";
@@ -46,6 +46,8 @@ export interface ExerciseCardProps {
   onWord?: (form: string, sentence: string | undefined, el: HTMLElement) => void;
   /** The grammar page behind this exercise, linked after a miss. */
   topic?: { title: string; onOpen: () => void };
+  /** "Say this sentence": what the language server heard in a recording. */
+  onHear?: (recording: Blob) => Promise<string>;
 }
 
 /** Elements that mean another layer (dialog, command palette) owns the keyboard. */
@@ -69,12 +71,13 @@ export function shortcutBlocked(ev: KeyboardEvent, scope?: Element | null): bool
 /** Kinds whose prompt text is English (the rest show Dutch in the reading face). */
 const ENGLISH_PROMPT = new Set(["word-choice", "scramble"]);
 
-type Mode = "choice" | "gender" | "scramble" | "typed" | "dictation";
+type Mode = "choice" | "gender" | "scramble" | "typed" | "dictation" | "say";
 
 /** Which interaction an exercise needs (derived from its data, so new kinds degrade sensibly). */
 function exerciseMode(e: Exercise): Mode {
   if (e.kind === "gender") return "gender";
   if (e.kind === "dictation") return "dictation";
+  if (e.kind === "say") return "say";
   if (e.pieces && e.pieces.length > 0) return "scramble";
   if (e.choices && e.choices.length > 0) return "choice";
   return "typed";
@@ -106,6 +109,7 @@ export function ExerciseCard({
   continueLabel = "Continue",
   onWord,
   topic,
+  onHear,
 }: ExerciseCardProps) {
   const mode = exerciseMode(e);
   const answered = feedback !== null;
@@ -234,7 +238,8 @@ export function ExerciseCard({
   const hintLabel = lastStep ? "Show answer" : "Hint";
   // A Dutch word on its own can be heard before answering; a sentence only after (it would
   // give the answer away).
-  const sayFirst = (e.kind === "meaning-choice" || e.kind === "gender") && onSpeak;
+  const sayFirst =
+    (e.kind === "meaning-choice" || e.kind === "gender" || e.kind === "say") && onSpeak;
   // The Dutch that is shown after answering: the whole sentence when there is one.
   const resultDutch =
     e.kind === "scramble" || e.kind === "dictation"
@@ -371,6 +376,10 @@ export function ExerciseCard({
         </div>
       ) : null}
 
+      {mode === "say" && !answered ? (
+        <SayIt onHear={onHear} onHeard={(heard) => submit(heard)} />
+      ) : null}
+
       {mode === "typed" || mode === "dictation" ? (
         <form className="ex-typed" id={`ex-form-${e.id}`} onSubmit={onTypedSubmit}>
           {hintText ? (
@@ -455,7 +464,7 @@ export function ExerciseCard({
               <SpeakButton onClick={() => onSpeak(resultDutch)} label="Play the sentence" />
             ) : null}
             <span>
-              {!feedback.correct && submitted && (mode === "scramble" || mode === "dictation") ? (
+              {!feedback.correct && submitted && (mode === "scramble" || mode === "dictation" || mode === "say") ? (
                 <MarkedSentence answer={resultDutch} given={submitted} />
               ) : onWord ? (
                 <WordText
@@ -504,6 +513,89 @@ export function ExerciseCard({
         </div>
       ) : null}
     </section>
+  );
+}
+
+/** The mic for "Say this sentence": tap to talk, tap to stop; then what was heard is sent. */
+function SayIt({
+  onHear,
+  onHeard,
+}: {
+  onHear: ((recording: Blob) => Promise<string>) | undefined;
+  onHeard: (heard: string) => void;
+}) {
+  const [state, setState] = useState<"idle" | "on" | "listening">("idle");
+  const [why, setWhy] = useState<string | null>(null);
+  const rec = useRef<{ stop: () => Promise<Blob>; cancel: () => void } | null>(null);
+  useEffect(() => () => rec.current?.cancel(), []);
+  if (!onHear) return <p className="ex-hint">Speaking needs the language server.</p>;
+  const start = async () => {
+    setWhy(null);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mr = new MediaRecorder(stream);
+      const parts: Blob[] = [];
+      mr.ondataavailable = (ev) => parts.push(ev.data);
+      mr.start();
+      const done = () => stream.getTracks().forEach((t) => t.stop());
+      rec.current = {
+        stop: () =>
+          new Promise<Blob>((ok) => {
+            mr.onstop = () => {
+              done();
+              ok(new Blob(parts, { type: mr.mimeType }));
+            };
+            mr.stop();
+          }),
+        cancel: () => {
+          if (mr.state !== "inactive") mr.stop();
+          done();
+        },
+      };
+      setState("on");
+    } catch (err) {
+      const name = err instanceof DOMException ? err.name : "";
+      setWhy(
+        name === "NotAllowedError"
+          ? "The microphone isn't allowed."
+          : name === "NotFoundError"
+            ? "No microphone found."
+            : "The microphone didn't start.",
+      );
+    }
+  };
+  const stop = async () => {
+    const r = rec.current;
+    rec.current = null;
+    if (!r) return;
+    setState("listening");
+    try {
+      onHeard(await onHear(await r.stop()));
+    } catch {
+      setWhy("Couldn't hear that. Try again.");
+      setState("idle");
+    }
+  };
+  return (
+    <div className="ex-say-it">
+      <button
+        type="button"
+        className={cn("ex-mic", state === "on" && "on")}
+        disabled={state === "listening"}
+        onClick={() => void (state === "on" ? stop() : start())}
+        aria-label={state === "on" ? "Stop and check" : "Start talking"}
+      >
+        {state === "on" ? <Square size={22} aria-hidden /> : <Mic size={26} aria-hidden />}
+      </button>
+      <span className="ex-hint" role="status">
+        {why ??
+          (state === "on"
+            ? "Talking… tap to stop."
+            : state === "listening"
+              ? "Listening…"
+              : "Tap and say it.")}
+      </span>
+    </div>
   );
 }
 

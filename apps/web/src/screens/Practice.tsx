@@ -26,6 +26,7 @@ import {
   useNativeMode,
 } from "@app/ui";
 import { dutchVoiceAvailable, speakDutch, useDutchVoice } from "../practice/speech.js";
+import { toWav16k } from "../practice/wav.js";
 import { useServices } from "../services/context.js";
 import type { AnswerResult } from "../services/types.js";
 import { usePageHeader } from "../shell/ShellContext.js";
@@ -610,6 +611,11 @@ function Session({
           continueLabel={last ? "Finish" : "Continue"}
           onWord={(form, sentence, el) => inspector.open(form, sentence, el)}
           {...(topic ? { topic } : {})}
+          {...(services.listening
+            ? {
+                onHear: async (rec: Blob) => services.listening!.hear(await toWav16k(rec)),
+              }
+            : {})}
         />
       </div>
       {error ? (
