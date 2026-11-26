@@ -69,7 +69,9 @@ export function finishBoot(): void {
     quickLeave(boot, still);
     return;
   }
-  const wait = still ? 0 : Math.max(0, DRAWN_MS - performance.now());
+  // The drawing started with the first frame (public/boot.js), not with the page.
+  const started = (window as Window & { __vuurtorenBootAt?: number }).__vuurtorenBootAt ?? 0;
+  const wait = still ? 0 : Math.max(0, DRAWN_MS - (performance.now() - started));
   window.setTimeout(() => leave(boot, still), wait);
 }
 
@@ -118,18 +120,15 @@ function leave(boot: HTMLElement, still: boolean): void {
         fill: "forwards",
       },
     );
-    const fade = boot.animate(
-      [
-        { backgroundColor: getComputedStyle(boot).backgroundColor },
-        { backgroundColor: "transparent" },
-      ],
-      {
-        duration: 800,
-        delay: moves ? 1200 : 200,
-        easing: "ease",
-        fill: "forwards",
-      },
-    );
+    // The background layer's opacity, not its colour: the graphics card does it, so the logo's
+    // move stays smooth while the app renders under it.
+    const bg = boot.querySelector<HTMLElement>(".boot-bg") ?? boot;
+    const fade = bg.animate([{ opacity: 1 }, { opacity: 0 }], {
+      duration: 800,
+      delay: moves ? 1200 : 200,
+      easing: "ease",
+      fill: "forwards",
+    });
     // The app takes taps while the logo travels.
     boot.style.pointerEvents = "none";
     void fade.finished.then(() => {

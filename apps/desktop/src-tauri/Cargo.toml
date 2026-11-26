@@ -50,6 +50,10 @@ tokio-rustls = { version = "0.26", default-features = false, features = ["ring"]
 rcgen = { version = "0.13", default-features = false, features = ["ring", "pem"] }
 
 # Phones only: the QR code of a server's "Add a phone", and vuurtoren:// links.
+# Linux: the webview's microphone (voice notes, the speaking exam) is off unless switched on.
+[target.'cfg(target_os = "linux")'.dependencies]
+webkit2gtk = { version = "=2.0.2", features = ["v2_4"] }
+
 [target.'cfg(any(target_os = "android", target_os = "ios"))'.dependencies]
 tauri-plugin-barcode-scanner = "=2.5.3"
 tauri-plugin-deep-link = "=2.6.2"

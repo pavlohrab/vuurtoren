@@ -22,7 +22,7 @@ import { currentDevice } from "../platform/index.js";
 import { appVersionLabel } from "../version.js";
 import {
   canRecord,
-  cropAround,
+  pictureAround,
   describeElement,
   record,
   screenshot,
@@ -68,7 +68,14 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
     device.kind === "android" ||
     (typeof matchMedia === "function" && matchMedia("(max-width: 700px)").matches);
   const toast = useToast();
-  const [state, setState] = useState<{ shot: Blob | null; error?: string } | null>(null);
+  const [state, setState] = useState<{
+    shot: Blob | null;
+    /** The picture is still being taken (the panel opens at once; it follows). */
+    taking: boolean;
+    /** The picture being taken, so Send can wait for it. */
+    coming: Promise<Blob | null>;
+    error?: string;
+  } | null>(null);
   const [unread, setUnread] = useState(() => savedReplies().filter((r) => !r.read).length);
 
   // Read through a ref, so `open` stays the same while the sheet opens and closes (the
@@ -80,9 +87,17 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
   const open = useCallback(
     (opts: OpenOptions = {}) => {
       if (!on || openNow.current) return;
-      // The picture first, so it shows the screen and not the sheet.
-      void screenshot().then((shot) =>
-        setState({ shot, ...(opts.error ? { error: opts.error } : {}) }),
+      // The panel opens at once; the picture is taken just after it has drawn (the panel and
+      // the sheet are left out of it), and shows up when it's ready.
+      const coming = new Promise<void>((ok) => setTimeout(ok, 150)).then(() => screenshot());
+      setState({
+        shot: null,
+        taking: true,
+        coming,
+        ...(opts.error ? { error: opts.error } : {}),
+      });
+      void coming.then((shot) =>
+        setState((s) => (s && s.coming === coming ? { ...s, shot, taking: false } : s)),
       );
     },
     [on],
@@ -161,6 +176,8 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
         <FeedbackForm
           phone={phone}
           shot={state.shot}
+          taking={state.taking}
+          shotPromise={state.coming}
           {...(state.error ? { error: state.error } : {})}
           unread={unread}
           onClose={() => setState(null)}
@@ -191,6 +208,8 @@ type PictureMode = "point" | "window" | "none";
 function FeedbackForm({
   phone,
   shot,
+  taking,
+  shotPromise,
   error,
   unread,
   onClose,
@@ -200,6 +219,8 @@ function FeedbackForm({
 }: {
   phone: boolean;
   shot: Blob | null;
+  taking: boolean;
+  shotPromise: Promise<Blob | null>;
   error?: string;
   unread: number;
   onClose: () => void;
@@ -210,8 +231,12 @@ function FeedbackForm({
   const screen = useRouterState({ select: (s) => s.location.href });
   const toast = useToast();
   const [text, setText] = useState("");
-  const [picture, setPicture] = useState<Blob | null>(shot);
-  const [mode, setMode] = useState<PictureMode>(shot ? (phone ? "window" : "window") : "none");
+  // The picture: the one drawn on, else the screenshot (which may still be on its way).
+  const [drawn, setDrawn] = useState<Blob | null>(null);
+  const picture = drawn ?? shot;
+  const [chosen, setMode] = useState<PictureMode>("window");
+  // No picture could be taken: none goes.
+  const mode: PictureMode = chosen === "window" && !taking && !picture ? "none" : chosen;
   const [picked, setPicked] = useState<{ name: string; crop: Blob | null } | null>(null);
   const [picking, setPicking] = useState(false);
   const [withErrors, setWithErrors] = useState(true);
@@ -233,12 +258,14 @@ function FeedbackForm({
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
       if (e.key !== "Escape") return;
+      // Esc closes the innermost thing: the drawing, then pointing, then the panel.
+      if (drawing) return; // the drawing handles its own Esc (it keeps what was drawn)
       if (picking) setPicking(false);
       else onClose();
     };
     window.addEventListener("keydown", key);
     return () => window.removeEventListener("keydown", key);
-  }, [picking, onClose]);
+  }, [picking, drawing, onClose]);
 
   const send = () => {
     const report = newReport({
@@ -251,17 +278,20 @@ function FeedbackForm({
       error,
     });
     if (!withErrors) report.errors = [];
-    if (!text.trim() && !voice && mode === "none") {
+    // Words, a voice note or a picture that is there (not still being taken).
+    const hasPicture =
+      mode === "point" ? !!picked?.crop : mode === "window" ? !!(drawn ?? shot) : false;
+    if (!text.trim() && !voice && !hasPicture) {
       setErr("Say what went wrong first.");
       return;
     }
-    const files = {
-      screenshot: mode === "point" ? (picked?.crop ?? null) : mode === "window" ? picture : null,
-      voice,
-    };
+    const pointed = mode === "point" ? (picked?.crop ?? null) : null;
+    const window_ = mode === "window";
     onUndoable(async () => {
       try {
-        onSent(await submit(report, files));
+        // Sent before the picture was ready: it waits for it.
+        const screenshot = window_ ? (drawn ?? (await shotPromise)) : pointed;
+        onSent(await submit(report, { screenshot, voice }));
       } catch (e) {
         toast("Feedback not sent", e instanceof Error ? e.message : String(e));
       }
@@ -288,7 +318,7 @@ function FeedbackForm({
               type="button"
               role="radio"
               aria-checked={mode === m}
-              disabled={m !== "none" && !shot}
+              disabled={m === "window" && !taking && !shot}
               onClick={() => {
                 setMode(m);
                 if (m === "point") setPicking(true);
@@ -311,6 +341,11 @@ function FeedbackForm({
           ) : (
             "Click the thing that's wrong. It gets a red outline and goes with your words."
           )}
+        </p>
+      ) : null}
+      {mode === "window" && taking && !drawn ? (
+        <p className="fb-hint" role="status">
+          Taking a picture of the screen…
         </p>
       ) : null}
       {pictureUrl ? (
@@ -412,12 +447,14 @@ function FeedbackForm({
           {body}
         </aside>
       )}
-      {picking && shot ? (
+      {picking ? (
         <PointAtIt
           onPick={async (el) => {
             setPicking(false);
-            const rect = el.getBoundingClientRect();
-            setPicked({ name: describeElement(el), crop: await cropAround(shot, rect) });
+            // The thing itself, pictured directly (scrolled areas as they stand).
+            setPicked({ name: describeElement(el), crop: null });
+            const crop = await pictureAround(el);
+            setPicked({ name: describeElement(el), crop });
           }}
           onCancel={() => setPicking(false)}
         />
@@ -427,7 +464,7 @@ function FeedbackForm({
           picture={picture}
           onDone={(b) => {
             setDrawing(false);
-            if (b) setPicture(b);
+            if (b) setDrawn(b);
           }}
         />
       ) : null}
@@ -500,8 +537,16 @@ function VoiceNote({ voice, onVoice }: { voice: Blob | null; onVoice: (b: Blob |
       setNow(Date.now());
       setBars([]);
       setOn(true);
-    } catch {
-      setWhy("The microphone isn't allowed. You can type instead.");
+    } catch (e) {
+      // Say what happened: a refusal, no microphone at all, or something else.
+      const name = e instanceof DOMException ? e.name : "";
+      setWhy(
+        name === "NotAllowedError" || name === "SecurityError"
+          ? "The microphone isn't allowed. You can type instead."
+          : name === "NotFoundError"
+            ? "No microphone found. You can type instead."
+            : "The microphone didn't start. You can type instead.",
+      );
     }
   };
   const secs = Math.floor((now - started) / 1000);
@@ -580,10 +625,17 @@ function PointAtIt({ onPick, onCancel }: { onPick: (el: Element) => void; onCanc
   );
 }
 
-/** Draw on the screenshot with a finger or the mouse: red lines, Done or Cancel. */
+/**
+ * Draw on the screenshot with a finger or the mouse: red lines. A bar on top says what this is,
+ * with Cancel and Done; Esc is Done (it keeps what was drawn), and only closes the drawing.
+ */
 function DrawOn({ picture, onDone }: { picture: Blob; onDone: (b: Blob | null) => void }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const last = useRef<{ x: number; y: number } | null>(null);
+  const done = useCallback(
+    () => canvas.current?.toBlob((b) => onDone(b), "image/jpeg", 0.85),
+    [onDone],
+  );
   useEffect(() => {
     void createImageBitmap(picture).then((img) => {
       const c = canvas.current;
@@ -593,6 +645,15 @@ function DrawOn({ picture, onDone }: { picture: Blob; onDone: (b: Blob | null) =
       c.getContext("2d")?.drawImage(img, 0, 0);
     });
   }, [picture]);
+  useEffect(() => {
+    const key = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      e.stopPropagation();
+      done();
+    };
+    window.addEventListener("keydown", key, true);
+    return () => window.removeEventListener("keydown", key, true);
+  }, [done]);
   const at = (e: React.PointerEvent) => {
     const c = canvas.current!;
     const r = c.getBoundingClientRect();
@@ -602,7 +663,16 @@ function DrawOn({ picture, onDone }: { picture: Blob; onDone: (b: Blob | null) =
     };
   };
   return (
-    <div className="fb-draw" data-feedback-skip role="dialog" aria-label="Draw on the picture">
+    <div className="fb-draw" data-feedback-skip role="dialog" aria-labelledby="fb-draw-title">
+      <div className="fb-draw-bar">
+        <span id="fb-draw-title" className="fb-draw-title">
+          Draw on the picture
+        </span>
+        <Button onClick={() => onDone(null)}>Cancel</Button>
+        <Button variant="primary" onClick={done}>
+          Done
+        </Button>
+      </div>
       <canvas
         ref={canvas}
         className="fb-draw-canvas"
@@ -625,15 +695,6 @@ function DrawOn({ picture, onDone }: { picture: Blob; onDone: (b: Blob | null) =
         }}
         onPointerUp={() => (last.current = null)}
       />
-      <div className="fb-draw-bar">
-        <Button onClick={() => onDone(null)}>Cancel</Button>
-        <Button
-          variant="primary"
-          onClick={() => canvas.current?.toBlob((b) => onDone(b), "image/jpeg", 0.85)}
-        >
-          Done
-        </Button>
-      </div>
     </div>
   );
 }

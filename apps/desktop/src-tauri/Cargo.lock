@@ -5264,6 +5264,7 @@ dependencies = [
  "tempfile",
  "tokio",
  "tokio-rustls",
+ "webkit2gtk",
  "webpki-root-certs",
 ]
 

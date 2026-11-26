@@ -844,9 +844,43 @@ fn bridge_script(app: &AppHandle) -> String {
 }
 
 fn open_external(url: &Url) {
-    if matches!(url.scheme(), "http" | "https" | "mailto") {
-        let _ = tauri_plugin_opener::open_url(url.as_str(), None::<&str>);
+    if !matches!(url.scheme(), "http" | "https" | "mailto") {
+        return;
     }
+    // An AppImage runs with its own libraries on the path: a browser started with those can
+    // fail to start (Support did nothing). Start it with the desktop's own environment.
+    #[cfg(target_os = "linux")]
+    if std::env::var_os("APPIMAGE").is_some() {
+        let mut cmd = std::process::Command::new("xdg-open");
+        cmd.arg(url.as_str());
+        for var in [
+            "LD_LIBRARY_PATH",
+            "LD_PRELOAD",
+            "GTK_PATH",
+            "GTK_EXE_PREFIX",
+            "GTK_DATA_PREFIX",
+            "GIO_MODULE_DIR",
+            "GDK_PIXBUF_MODULE_FILE",
+            "GDK_PIXBUF_MODULEDIR",
+            "GST_PLUGIN_PATH",
+            "GST_PLUGIN_SYSTEM_PATH",
+            "GST_PLUGIN_SCANNER",
+            "PYTHONHOME",
+            "PYTHONPATH",
+            "PERLLIB",
+            "QT_PLUGIN_PATH",
+            "APPDIR",
+            "APPIMAGE",
+            "OWD",
+            "ARGV0",
+        ] {
+            cmd.env_remove(var);
+        }
+        if cmd.spawn().is_ok() {
+            return;
+        }
+    }
+    let _ = tauri_plugin_opener::open_url(url.as_str(), None::<&str>);
 }
 
 /// The user agent of the app's own requests.
@@ -1027,7 +1061,9 @@ pub fn run() {
                 });
             #[cfg(desktop)]
             let window = desktop::window(window, app);
-            window.build()?;
+            let _built = window.build()?;
+            #[cfg(target_os = "linux")]
+            allow_microphone(&_built);
 
             #[cfg(desktop)]
             desktop::after_window(handle);
@@ -1046,4 +1082,29 @@ pub fn run() {
                 close_db(&state);
             }
         });
+}
+
+/// Linux: WebKitGTK keeps the microphone off and refuses every request without asking, so the
+/// voice note said "not allowed" without any prompt. The app's own page may use it: the
+/// setting is switched on and its microphone requests are allowed (nothing else is).
+#[cfg(target_os = "linux")]
+fn allow_microphone(window: &tauri::WebviewWindow) {
+    let _ = window.with_webview(|wv| {
+        use webkit2gtk::glib::prelude::ObjectExt;
+        use webkit2gtk::{
+            PermissionRequestExt, SettingsExt, UserMediaPermissionRequest, WebViewExt,
+        };
+        let view = wv.inner();
+        if let Some(settings) = WebViewExt::settings(&view) {
+            settings.set_enable_media_stream(true);
+        }
+        view.connect_permission_request(|_, request| {
+            if request.is::<UserMediaPermissionRequest>() {
+                request.allow();
+                true
+            } else {
+                false
+            }
+        });
+    });
 }

@@ -191,7 +191,14 @@ export async function sendReport(
   const form = new FormData();
   form.set("report", JSON.stringify(report));
   if (files.screenshot) form.set("screenshot", files.screenshot, "screen.jpg");
-  if (files.voice) form.set("voice", files.voice, "voice.webm");
+  if (files.voice) {
+    const ext = files.voice.type.includes("ogg")
+      ? "ogg"
+      : files.voice.type.includes("mp4")
+        ? "m4a"
+        : "webm";
+    form.set("voice", files.voice, `voice.${ext}`);
+  }
   const res = await fetchImpl(`${urlBase()}/v1/report`, {
     method: "POST",
     headers: { "x-vuurtoren-key": key() },

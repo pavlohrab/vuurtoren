@@ -8,17 +8,45 @@ import { domToBlob } from "modern-screenshot";
 const MAX_BYTES = 2.8 * 1024 * 1024;
 
 /**
- * The page as a JPEG, taken before the sheet opens: at most 2000 px wide, and smaller again
- * when it's still too big. Null when it can't be taken (the report goes without it).
+ * The picture is drawn from a copy of the page, and in a copy every scrolled area (the reader,
+ * a word list, the card) starts at its top again. So the scrolled areas are marked with where
+ * they stand, and in the copy their content is moved by as much: the picture shows what the
+ * person saw.
  */
-export async function screenshot(node: HTMLElement = document.body): Promise<Blob | null> {
-  const base = Math.min(2, window.devicePixelRatio || 1, 2000 / Math.max(1, window.innerWidth));
-  for (const [scale, quality] of [
-    [base, 0.85],
-    [Math.min(base, 1), 0.75],
-    [Math.min(base, 0.7), 0.65],
-  ] as const) {
-    try {
+function keepScroll(root: Element): () => void {
+  const marked: Element[] = [];
+  for (const el of [root, ...root.querySelectorAll("*")]) {
+    if (el.scrollTop || el.scrollLeft) {
+      el.setAttribute("data-fb-scroll", `${el.scrollLeft},${el.scrollTop}`);
+      marked.push(el);
+    }
+  }
+  return () => marked.forEach((el) => el.removeAttribute("data-fb-scroll"));
+}
+
+function moveScrolled(cloned: Node): void {
+  if (!(cloned instanceof Element)) return;
+  const areas = [
+    ...(cloned.hasAttribute("data-fb-scroll") ? [cloned] : []),
+    ...cloned.querySelectorAll("[data-fb-scroll]"),
+  ];
+  for (const area of areas) {
+    const [left, top] = (area.getAttribute("data-fb-scroll") ?? "0,0").split(",").map(Number);
+    (area as HTMLElement).style.overflow = "hidden";
+    for (const child of area.children)
+      (child as HTMLElement).style.transform = `translate(${-(left ?? 0)}px, ${-(top ?? 0)}px)`;
+  }
+}
+
+/** One element as a JPEG under the size limit, scrolled areas as they stand. */
+async function picture(node: Element, base: number): Promise<Blob | null> {
+  const unmark = keepScroll(node);
+  try {
+    for (const [scale, quality] of [
+      [base, 0.85],
+      [Math.min(base, 1), 0.75],
+      [Math.min(base, 0.7), 0.65],
+    ] as const) {
       const blob = await domToBlob(node, {
         scale,
         type: "image/jpeg",
@@ -26,43 +54,63 @@ export async function screenshot(node: HTMLElement = document.body): Promise<Blo
         backgroundColor: getComputedStyle(document.body).backgroundColor,
         // The sheet and toasts are not part of what went wrong.
         filter: (n) => !(n instanceof HTMLElement && n.dataset["feedbackSkip"] !== undefined),
+        onCloneNode: moveScrolled,
       });
       if (blob && blob.size <= MAX_BYTES) return blob;
-    } catch {
-      return null;
     }
+    return null;
+  } catch {
+    return null;
+  } finally {
+    unmark();
   }
-  return null;
 }
 
-/** A picture of the window cut around one element, with room to see where it sits. */
-export async function cropAround(whole: Blob, rect: DOMRect, margin = 80): Promise<Blob | null> {
+/** The page as the person sees it: at most 2000 px wide. Null when it can't be taken. */
+export function screenshot(node: HTMLElement = document.body): Promise<Blob | null> {
+  return picture(
+    node,
+    Math.min(2, window.devicePixelRatio || 1, 2000 / Math.max(1, window.innerWidth)),
+  );
+}
+
+/**
+ * "Point at it": a picture of the picked thing with some room around it (its nearest ancestor
+ * of a useful size), taken directly, with the thing in a red outline.
+ */
+export async function pictureAround(el: Element): Promise<Blob | null> {
+  let area: Element = el;
+  const roomy = (e: Element) => {
+    const r = e.getBoundingClientRect();
+    return r.width >= 320 && r.height >= 160;
+  };
+  while (!roomy(area) && area.parentElement && area.parentElement !== document.body)
+    area = area.parentElement;
+  const whole = await picture(area, Math.min(2, window.devicePixelRatio || 1));
+  if (!whole) return null;
   try {
     const img = await createImageBitmap(whole);
-    const scale = img.width / window.innerWidth;
-    const x = Math.max(0, (rect.left - margin) * scale);
-    const y = Math.max(0, (rect.top - margin) * scale);
-    const w = Math.min(img.width - x, (rect.width + margin * 2) * scale);
-    const h = Math.min(img.height - y, (rect.height + margin * 2) * scale);
+    const box = area.getBoundingClientRect();
+    const r = el.getBoundingClientRect();
+    const scale = img.width / Math.max(1, box.width);
     const c = document.createElement("canvas");
-    c.width = Math.round(w);
-    c.height = Math.round(h);
+    c.width = img.width;
+    c.height = img.height;
     const g = c.getContext("2d");
-    if (!g) return null;
-    g.drawImage(img, x, y, w, h, 0, 0, c.width, c.height);
-    // The picked thing in a red outline, as the tester saw it.
+    if (!g) return whole;
+    g.drawImage(img, 0, 0);
     g.strokeStyle = "#b5432e";
     g.lineWidth = 3 * scale;
     g.setLineDash([8 * scale, 6 * scale]);
     g.strokeRect(
-      rect.left * scale - x - 4 * scale,
-      rect.top * scale - y - 4 * scale,
-      rect.width * scale + 8 * scale,
-      rect.height * scale + 8 * scale,
+      (r.left - box.left - 4) * scale,
+      (r.top - box.top - 4) * scale,
+      (r.width + 8) * scale,
+      (r.height + 8) * scale,
     );
-    return await new Promise((r) => c.toBlob((b) => r(b), "image/jpeg", 0.85));
+    return await new Promise((ok) => c.toBlob((b) => ok(b ?? whole), "image/jpeg", 0.85));
   } catch {
-    return null;
+    return whole;
   }
 }
 
@@ -97,9 +145,15 @@ export const canRecord = (): boolean =>
 
 export async function record(onLimit: () => void): Promise<Recorder> {
   const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-  const type = ["audio/webm;codecs=opus", "audio/ogg;codecs=opus", "audio/webm", "audio/mp4"].find(
-    (t) => MediaRecorder.isTypeSupported(t),
-  );
+  // Formats Telegram plays first (OGG/Opus as a voice message, M4A as audio); WebM last, which
+  // reaches Pavlo only as a file.
+  const type = [
+    "audio/ogg;codecs=opus",
+    "audio/mp4;codecs=mp4a.40.2",
+    "audio/mp4",
+    "audio/webm;codecs=opus",
+    "audio/webm",
+  ].find((t) => MediaRecorder.isTypeSupported(t));
   const rec = new MediaRecorder(
     stream,
     type ? { mimeType: type, audioBitsPerSecond: 24_000 } : undefined,

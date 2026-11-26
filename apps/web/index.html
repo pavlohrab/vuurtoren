@@ -33,7 +33,18 @@
         pointer-events: none;
         display: grid;
         place-items: center;
+      }
+      /* The background is its own layer: fading its opacity (not the colour) stays smooth while
+         the app renders under it. */
+      .boot-bg {
+        position: absolute;
+        inset: 0;
         background: #ece5d9;
+        will-change: opacity;
+      }
+      /* The drawing waits for the first frame (public/boot.js adds .boot-go). */
+      html:not(.boot-go) .boot .p {
+        animation-play-state: paused;
       }
       /* The logo is drawn from plain boxes, not SVG shapes: browsers animate the transform and
          opacity of boxes on the GPU, so the drawing stays smooth while the app starts on the
@@ -176,7 +187,7 @@
         :where(html:not([data-theme="light"]), html:not([data-theme="light"]) body) {
           background: #151210;
         }
-        html:not([data-theme="light"]) .boot {
+        html:not([data-theme="light"]) .boot-bg {
           background: #151210;
         }
         html:not([data-theme="light"]) .boot .r {
@@ -195,6 +206,7 @@
   </head>
   <body>
     <div class="boot" id="boot" role="status" aria-label="Vuurtoren is loading">
+      <div class="boot-bg" aria-hidden="true"></div>
       <div class="logo" aria-hidden="true">
         <i class="k p base"></i>
         <i class="k p tower"></i>
@@ -208,6 +220,7 @@
       </div>
     </div>
     <div id="root"></div>
+    <script src="/boot.js"></script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
