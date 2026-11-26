@@ -1,0 +1,298 @@
+/* The feedback button (FB1): the edge tab, the phone sheet, the computer panel, Point at it,
+   Draw on it. Mock: .plan/mocks/mock-feedback.html. */
+
+.fb-edge {
+  position: fixed;
+  right: var(--safe-right);
+  top: 46%;
+  z-index: 60;
+  writing-mode: vertical-rl;
+  border: none;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font: 600 11px/1 var(--font-ui);
+  letter-spacing: 0.04em;
+  padding: 10px 6px;
+  border-radius: 8px 0 0 8px;
+  box-shadow: -2px 2px 8px color-mix(in srgb, var(--ink) 18%, transparent);
+}
+
+.fb-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  background: color-mix(in srgb, var(--ink) 35%, transparent);
+  display: flex;
+  align-items: flex-end;
+}
+.fb-sheet {
+  width: 100%;
+  max-height: 92dvh;
+  overflow-y: auto;
+  background: var(--surface);
+  border-radius: 18px 18px 0 0;
+  padding: 10px 16px calc(16px + var(--safe-bottom));
+  display: grid;
+  gap: 10px;
+  box-shadow: 0 -8px 24px color-mix(in srgb, var(--ink) 16%, transparent);
+}
+.fb-grab {
+  width: 38px;
+  height: 4px;
+  border-radius: 4px;
+  background: var(--line-strong);
+  justify-self: center;
+}
+.fb-title {
+  margin: 0;
+  font: 600 17px/1.25 var(--font-display);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.fb-close {
+  border: none;
+  background: none;
+  color: var(--ink-muted);
+  padding: 4px;
+  border-radius: 6px;
+}
+
+.fb-pane {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 70;
+  width: min(380px, 100vw);
+  overflow-y: auto;
+  background: var(--surface);
+  border-left: 1px solid var(--line);
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: -10px 0 30px color-mix(in srgb, var(--ink) 12%, transparent);
+}
+
+.fb-seg {
+  display: flex;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-control);
+  overflow: hidden;
+}
+.fb-seg button {
+  flex: 1;
+  border: none;
+  background: none;
+  padding: 7px 4px;
+  font: 600 12px var(--font-ui);
+  color: var(--ink-muted);
+}
+.fb-seg button[aria-checked="true"] {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.fb-seg button:disabled {
+  opacity: 0.5;
+}
+
+.fb-hint {
+  margin: 0;
+  font-size: 13px;
+  color: var(--ink-muted);
+}
+.fb-link {
+  border: none;
+  background: none;
+  padding: 0;
+  color: var(--accent);
+  font: 600 13px var(--font-ui);
+  cursor: pointer;
+  text-align: left;
+}
+
+.fb-shot-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.fb-shot {
+  width: 72px;
+  max-height: 128px;
+  object-fit: cover;
+  object-position: top;
+  border-radius: 8px;
+  border: 1px solid var(--line-strong);
+  flex: none;
+}
+.fb-pane .fb-shot {
+  width: 120px;
+  max-height: 110px;
+}
+.fb-shot-note {
+  display: grid;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--ink-muted);
+}
+
+.fb-text {
+  width: 100%;
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  background: var(--bg);
+  color: var(--ink);
+  font: 14px/1.45 var(--font-ui);
+  padding: 9px 10px;
+  resize: vertical;
+}
+
+.fb-rec {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.fb-mic {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: none;
+  background: var(--accent-soft);
+  color: var(--accent);
+  display: grid;
+  place-items: center;
+  flex: none;
+}
+.fb-mic.on {
+  background: var(--danger);
+  color: var(--accent-ink);
+  box-shadow: 0 0 0 6px color-mix(in srgb, var(--danger) 22%, transparent);
+}
+.fb-wave {
+  flex: 1;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  overflow: hidden;
+  min-width: 0;
+}
+.fb-wave i {
+  width: 3px;
+  border-radius: 2px;
+  background: var(--danger);
+  opacity: 0.8;
+}
+.fb-audio {
+  height: 32px;
+  flex: 1;
+  min-width: 0;
+}
+
+.fb-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.fb-chip {
+  font: 500 12px/1 var(--font-ui);
+  padding: 6px 9px;
+  border-radius: var(--radius-chip);
+  border: 1px solid var(--line-strong);
+  background: var(--surface-2);
+  color: var(--ink);
+}
+.fb-chip.on {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+.fb-chip.off {
+  color: var(--ink-muted);
+  text-decoration: line-through;
+}
+button.fb-chip {
+  cursor: pointer;
+}
+
+.fb-send {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-top: auto;
+}
+
+.fb-replies {
+  display: grid;
+  gap: 6px;
+  background: var(--surface-2);
+  border-radius: 10px;
+  padding: 8px 10px;
+}
+.fb-reply {
+  margin: 0;
+  font-size: 13px;
+}
+
+.fb-point {
+  position: fixed;
+  inset: 0;
+  z-index: 69;
+  cursor: crosshair;
+}
+.fb-point-box {
+  position: fixed;
+  pointer-events: none;
+  border: 2px dashed var(--danger);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--danger) 8%, transparent);
+}
+.fb-point-tip {
+  position: fixed;
+  left: 50%;
+  top: 14px;
+  transform: translateX(-50%);
+  background: var(--ink);
+  color: var(--bg);
+  font: 600 12px var(--font-ui);
+  padding: 6px 10px;
+  border-radius: 8px;
+  pointer-events: none;
+}
+
+.fb-draw {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  background: color-mix(in srgb, var(--ink) 80%, transparent);
+  display: grid;
+  grid-template-rows: 1fr auto;
+  padding: calc(12px + var(--safe-top)) 12px calc(12px + var(--safe-bottom));
+  gap: 12px;
+}
+.fb-draw-canvas {
+  max-width: 100%;
+  max-height: 100%;
+  margin: auto;
+  touch-action: none;
+  border-radius: 8px;
+  background: var(--bg);
+}
+.fb-draw-bar {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .fb-mic.on {
+    animation: fb-pulse 1.6s ease-in-out infinite;
+  }
+  @keyframes fb-pulse {
+    50% {
+      box-shadow: 0 0 0 10px color-mix(in srgb, var(--danger) 10%, transparent);
+    }
+  }
+}

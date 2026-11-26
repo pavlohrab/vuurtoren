@@ -1,6 +1,8 @@
 import { Link } from "@tanstack/react-router";
 import { Button } from "@app/ui";
 import { describeError } from "../services/errors.js";
+import { recordError } from "../feedback/feedback.js";
+import { TellPavlo } from "../feedback/FeedbackSheet.js";
 
 interface ErrorNoticeProps {
   error: unknown;
@@ -25,6 +27,7 @@ export function ErrorNotice({
 }: ErrorNoticeProps) {
   const f = describeError(error, fallback);
   const settings = settingsLink && (f.go || f.source === "nlp" || f.source === "anki");
+  recordError(f.message);
   return (
     <div className="error-notice" role="alert">
       <p className="error-notice-message">
@@ -32,7 +35,7 @@ export function ErrorNotice({
         {f.message}
       </p>
       {f.next ? <p className="error-notice-next">{f.next}</p> : null}
-      {onRetry || settings ? (
+      {
         <div className="row">
           {onRetry ? (
             <Button size="sm" onClick={onRetry}>
@@ -48,8 +51,9 @@ export function ErrorNotice({
               {f.go ? `${f.go.label} →` : "Open Settings"}
             </Link>
           ) : null}
+          <TellPavlo error={f.message} />
         </div>
-      ) : null}
+      }
       {f.details ? (
         <details className="error-notice-details">
           <summary>Technical details</summary>

@@ -2,6 +2,7 @@ import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { createHash } from "node:crypto";
+import { execFileSync } from "node:child_process";
 import { readFileSync, readdirSync } from "node:fs";
 import type { Plugin, ProxyOptions } from "vite";
 
@@ -19,11 +20,20 @@ const stripOrigin: ProxyOptions["configure"] = (proxy) => {
 
 const apiTarget = process.env["VUURTOREN_API_TARGET"];
 
-/** The product version (root package.json) and, in image builds, the commit (VUURTOREN_COMMIT). */
+/** The product version (root package.json) and the commit (VUURTOREN_COMMIT, else git). */
 const rootPackage = JSON.parse(
   readFileSync(new URL("../../package.json", import.meta.url), "utf8"),
 ) as { version: string };
-const commit = (process.env["VUURTOREN_COMMIT"] ?? "").slice(0, 7);
+// Local builds too, so a feedback report says which code the tester had (FB1).
+const commit = (process.env["VUURTOREN_COMMIT"] ?? gitCommit()).slice(0, 7);
+
+function gitCommit(): string {
+  try {
+    return execFileSync("git", ["rev-parse", "--short=7", "HEAD"], { encoding: "utf8" }).trim();
+  } catch {
+    return "";
+  }
+}
 
 /**
  * The service worker (installable app): sw/sw.js with the app shell's file list and a

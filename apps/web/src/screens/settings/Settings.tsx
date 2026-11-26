@@ -4,6 +4,7 @@
  * account and the advanced addresses). Old section names in links still open their new home.
  * The theme lives only in the top bar.
  */
+import { FeedbackSettings } from "../../feedback/FeedbackSheet.js";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import {
@@ -202,6 +203,7 @@ function DataSection() {
           <AccountSettings />
         </section>
       ) : null}
+      <FeedbackSettings />
       <details className="k-disclosure">
         <summary>
           <ChevronRight size={16} className="k-disclosure-icon" aria-hidden />
