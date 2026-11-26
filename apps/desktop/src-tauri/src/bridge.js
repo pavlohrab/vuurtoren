@@ -152,6 +152,12 @@
               remove: function (hash) {
                 return invoke("lan_remove", { hash: hash });
               },
+              firewall: function (port) {
+                return invoke("lan_firewall", { port: port });
+              },
+              allowFirewall: function (port) {
+                return invoke("lan_firewall_allow", { port: port });
+              },
             }),
       // vuurtoren:// links that opened the app (phones): taken once; "vuurtoren-link" says a
       // new one arrived.

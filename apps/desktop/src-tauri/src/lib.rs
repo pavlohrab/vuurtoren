@@ -940,6 +940,10 @@ pub fn run() {
             lan_cmd::lan_phones,
             #[cfg(desktop)]
             lan_cmd::lan_remove,
+            #[cfg(desktop)]
+            lan_cmd::lan_firewall,
+            #[cfg(desktop)]
+            lan_cmd::lan_firewall_allow,
             #[cfg(mobile)]
             mobile::app_exit
         ])

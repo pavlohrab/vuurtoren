@@ -92,7 +92,8 @@ passphrase and join it again from your other devices.
 When your phone connects to your computer at home (Settings → Your devices → Connect a phone), the
 computer listens on port 47120. If a firewall on the computer blocks it, the phone can't reach it,
 so allow that port. Windows asks the first time: say yes for private networks. On Linux with
-firewalld it's:
+firewalld, Connect a phone sees when the port is closed and shows **Allow Vuurtoren**, which asks
+for your password and opens it. If you'd rather type it yourself:
 
 ```sh
 sudo firewall-cmd --permanent --add-port=47120/tcp && sudo firewall-cmd --reload

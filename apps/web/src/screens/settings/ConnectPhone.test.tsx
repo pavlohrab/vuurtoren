@@ -12,7 +12,10 @@ vi.mock("../../platform/index.js", async (load) => {
   return { ...real, currentDevice: vi.fn(real.currentDevice) };
 });
 
-function setup(opts: { recovery?: string | null; folder?: string } = {}) {
+function setup(
+  opts: { recovery?: string | null; folder?: string; firewallOpen?: boolean | null } = {},
+) {
+  let open = opts.firewallOpen ?? null;
   const lan = {
     start: vi.fn(async () => ({
       port: 47120,
@@ -23,6 +26,14 @@ function setup(opts: { recovery?: string | null; folder?: string } = {}) {
     code: vi.fn(async () => "ABCDE-FGHJK"),
     phones: vi.fn(async () => [{ hash: "h1", name: "Pixel", device: "p1", vault: false }]),
     remove: vi.fn(async () => undefined),
+    firewall: vi.fn(async () => ({
+      tool: open === null ? null : ("firewalld" as const),
+      open,
+      command: "sudo firewall-cmd --permanent --add-port=47120/tcp && sudo firewall-cmd --reload",
+    })),
+    allowFirewall: vi.fn(async () => {
+      open = true;
+    }),
   };
   const real = currentDevice();
   vi.mocked(currentDevice).mockReturnValue({
@@ -48,6 +59,24 @@ function setup(opts: { recovery?: string | null; folder?: string } = {}) {
 afterEach(() => vi.mocked(currentDevice).mockReset());
 
 describe("Connect a phone", () => {
+  it("when firewalld keeps the phone out, it offers to let Vuurtoren through (SY9)", async () => {
+    const { lan } = setup({ firewallOpen: false });
+    await userEvent.click(await screen.findByRole("button", { name: "Show the code" }));
+    expect(await screen.findByText(/firewall keeps your phone out/)).toBeVisible();
+    expect(screen.getByText(/firewall-cmd --permanent --add-port=47120/)).toBeVisible();
+    await userEvent.click(screen.getByRole("button", { name: "Allow Vuurtoren" }));
+    expect(lan.allowFirewall).toHaveBeenCalledWith(47120);
+    expect(await screen.findByText(/The firewall lets your phone in now/)).toBeVisible();
+    expect(screen.queryByText(/firewall keeps your phone out/)).toBeNull();
+  });
+
+  it("says nothing about a firewall it can't ask, or one that is open", async () => {
+    setup({ firewallOpen: true });
+    await userEvent.click(await screen.findByRole("button", { name: "Show the code" }));
+    await screen.findByText("ABCDE-FGHJK");
+    expect(screen.queryByText(/firewall/i)).toBeNull();
+  });
+
   it("shows a QR code with the code; the phone gets the key with it", async () => {
     const { lan, startForPhones } = setup({ recovery: "AAAA-BBBB" });
     await userEvent.click(await screen.findByRole("button", { name: "Show the code" }));

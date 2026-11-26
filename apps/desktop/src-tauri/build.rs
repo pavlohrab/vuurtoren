@@ -40,6 +40,8 @@ fn main() {
             "lan_code",
             "lan_phones",
             "lan_remove",
+            "lan_firewall",
+            "lan_firewall_allow",
             "app_exit",
         ]),
     ))

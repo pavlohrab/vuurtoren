@@ -34,6 +34,8 @@
     "allow-lan-start",
     "allow-lan-code",
     "allow-lan-phones",
-    "allow-lan-remove"
+    "allow-lan-remove",
+    "allow-lan-firewall",
+    "allow-lan-firewall-allow"
   ]
 }

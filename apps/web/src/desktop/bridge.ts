@@ -213,6 +213,15 @@ interface LanBridge {
   code(handover?: unknown): Promise<string>;
   phones(): Promise<{ hash: string; name: string; device: string | null; vault: boolean }[]>;
   remove(hash: string): Promise<void>;
+  /**
+   * Is the phone port open? Only firewalld (Linux) can say: elsewhere `tool` is null. Optional:
+   * older app builds don't have it.
+   */
+  firewall?(
+    port: number,
+  ): Promise<{ tool: "firewalld" | null; open: boolean | null; command: string | null }>;
+  /** Opens the port in firewalld for good; the system asks for the admin password. */
+  allowFirewall?(port: number): Promise<void>;
 }
 
 declare global {

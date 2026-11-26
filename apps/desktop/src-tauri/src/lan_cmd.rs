@@ -74,11 +74,11 @@ pub struct LanInfo {
     place_dir: String,
 }
 
-/// Start listening for phones (once; later calls say where it listens). `folder`: serve the
-/// computer's own sync folder instead of `sync-place` (kept for the next start).
-
 /// The port phones connect to (lan_server falls back to a free one when it is taken).
 pub const PHONE_PORT: u16 = 47120;
+
+/// Start listening for phones (once; later calls say where it listens). `folder`: serve the
+/// computer's own sync folder instead of `sync-place` (kept for the next start).
 #[tauri::command]
 pub async fn lan_start(app: AppHandle, folder: Option<String>) -> Result<LanInfo, String> {
     let hub = hub(&app)?;
@@ -184,4 +184,83 @@ pub fn lan_remove(app: AppHandle, hash: String) -> Result<(), String> {
         lan.phones_json().to_string(),
     )
     .map_err(|e| e.to_string())
+}
+
+/// What the computer's firewall does to the phone port (SY9). Only firewalld (Fedora, openSUSE)
+/// can be asked without admin rights; elsewhere `tool` is None and the app says nothing.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FirewallInfo {
+    /// "firewalld" when it runs, else None.
+    tool: Option<&'static str>,
+    /// Whether the port is open in the active zone (None: couldn't tell).
+    open: Option<bool>,
+    /// The command that opens it, for people who'd rather type it.
+    command: Option<String>,
+}
+
+fn firewalld_command(port: u16) -> String {
+    format!("sudo firewall-cmd --permanent --add-port={port}/tcp && sudo firewall-cmd --reload")
+}
+
+/// Is the phone port open? Asks firewalld (no admin needed); other systems: unknown.
+#[tauri::command]
+pub fn lan_firewall(port: u16) -> FirewallInfo {
+    #[cfg(target_os = "linux")]
+    {
+        use std::process::Command;
+        let running = Command::new("firewall-cmd")
+            .arg("--state")
+            .output()
+            .map(|o| o.status.success())
+            .unwrap_or(false);
+        if running {
+            let open = Command::new("firewall-cmd")
+                .arg(format!("--query-port={port}/tcp"))
+                .output()
+                .ok()
+                .map(|o| o.status.success());
+            return FirewallInfo {
+                tool: Some("firewalld"),
+                open,
+                command: Some(firewalld_command(port)),
+            };
+        }
+    }
+    let _ = port;
+    FirewallInfo {
+        tool: None,
+        open: None,
+        command: None,
+    }
+}
+
+/// Open the phone port in firewalld for good: the system asks for the admin password (pkexec),
+/// once for both steps.
+#[tauri::command]
+pub fn lan_firewall_allow(port: u16) -> Result<(), String> {
+    #[cfg(target_os = "linux")]
+    {
+        use std::process::Command;
+        // `port` is a number, so the line has nothing in it from outside.
+        let line =
+            format!("firewall-cmd --permanent --add-port={port}/tcp && firewall-cmd --reload");
+        let out = Command::new("pkexec")
+            .args(["sh", "-c", &line])
+            .output()
+            .map_err(|e| format!("Could not ask for the admin password: {e}"))?;
+        if out.status.success() {
+            return Ok(());
+        }
+        // 126: the password dialog was closed; 127: not allowed.
+        return Err(match out.status.code() {
+            Some(126) | Some(127) => "The firewall was not changed.".to_string(),
+            _ => String::from_utf8_lossy(&out.stderr).trim().to_string(),
+        });
+    }
+    #[allow(unreachable_code)]
+    {
+        let _ = port;
+        Err("Only firewalld on Linux can be opened from here.".to_string())
+    }
 }

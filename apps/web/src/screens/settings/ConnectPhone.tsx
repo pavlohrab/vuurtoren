@@ -72,6 +72,17 @@ export function ConnectPhone() {
     },
     onSuccess: (fresh) => setShown((s) => (s ? { ...s, ...fresh } : s)),
   });
+  // Linux with firewalld keeps the phone out unless the port is open (Pavlo's case): ask, and
+  // offer to open it (SY9).
+  const firewall = useQuery({
+    queryKey: ["lan-firewall", shown?.at.port],
+    queryFn: () => lan!.firewall!(shown!.at.port),
+    enabled: !!shown && !!lan?.firewall,
+  });
+  const allow = useMutation({
+    mutationFn: () => lan!.allowFirewall!(shown!.at.port),
+    onSuccess: () => firewall.refetch(),
+  });
   const remove = useMutation({
     mutationFn: (hash: string) => lan!.remove(hash),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["lan-phones"] }),
@@ -121,6 +132,32 @@ export function ConnectPhone() {
           {windows ? (
             <p className="k-hint" style={{ margin: 0 }}>
               Windows may ask to allow Vuurtoren on private networks. Say yes.
+            </p>
+          ) : null}
+          {firewall.data?.tool === "firewalld" && firewall.data.open === false ? (
+            <div role="note" className="stack firewall-note" style={{ gap: 6 }}>
+              <p style={{ margin: 0 }}>
+                This computer&apos;s firewall keeps your phone out. Allow Vuurtoren through it?
+              </p>
+              <div className="row">
+                <Button onClick={() => allow.mutate()} disabled={allow.isPending}>
+                  Allow Vuurtoren
+                </Button>
+              </div>
+              <p className="k-hint" style={{ margin: 0 }}>
+                It asks for your password. Or type it yourself:{" "}
+                <code style={{ userSelect: "all" }}>{firewall.data.command}</code>
+              </p>
+              {allow.isError ? (
+                <p role="alert" className="error-text" style={{ margin: 0 }}>
+                  {errorText(allow.error)}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+          {allow.isSuccess && firewall.data?.open ? (
+            <p className="k-hint" role="status" style={{ margin: 0 }}>
+              ✓ The firewall lets your phone in now.
             </p>
           ) : null}
         </div>
