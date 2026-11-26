@@ -1095,10 +1095,30 @@ function NextSteps({
   const texts = useQuery({ queryKey: ["texts"], queryFn: () => services.listTexts() });
   const next = texts.data ? pickContinue(texts.data, readLastText()) : null;
   const talkWords = (again.length ? again : practised).slice(0, 6);
+  const navigate = useNavigate();
+  // Enter goes on reading (the text you came from), Esc back to Practice.
+  useEffect(() => {
+    const key = (e: KeyboardEvent) => {
+      if (shortcutBlocked(e)) return;
+      if (e.target instanceof HTMLElement && e.target.closest("button,a,input")) return;
+      if (e.key === "Escape") {
+        e.preventDefault();
+        onAgain();
+      } else if (e.key === "Enter" && next) {
+        e.preventDefault();
+        void navigate({ to: "/read/$textId", params: { textId: next.text.id } });
+      }
+    };
+    window.addEventListener("keydown", key);
+    return () => window.removeEventListener("keydown", key);
+  }, [next, navigate, onAgain]);
   return (
     <nav className="practice-next" aria-label="Next steps">
-      <Button variant="primary" onClick={onAgain}>
-        Practise again
+      <Button variant={next ? "secondary" : "primary"} onClick={onAgain}>
+        Practise again{" "}
+        <kbd className="ex-key" aria-hidden>
+          Esc
+        </kbd>
       </Button>
       <Link
         to="/words/all"
@@ -1129,7 +1149,10 @@ function NextSteps({
         <Link to="/read/$textId" params={{ textId: next.text.id }} className="practice-next-link">
           <BookOpen size={18} aria-hidden />
           <span>
-            {next.started ? "Continue reading" : "Next text"}
+            {next.started ? "Continue reading" : "Next text"}{" "}
+            <kbd className="ex-key" aria-hidden>
+              Enter
+            </kbd>
             <small>{next.text.title}</small>
           </span>
           <ArrowRight size={16} aria-hidden />
