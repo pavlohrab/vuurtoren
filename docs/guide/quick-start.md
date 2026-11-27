@@ -24,20 +24,12 @@ From nothing to reading your first Dutch text takes about five minutes.
 
    <figure class="clip-fig"><video class="clip" src="../clips/practise.webm" poster="../clips/practise.png" autoplay muted loop playsinline aria-label="A lesson in Practice: choose, and the band at the bottom says if it was right."></video><figcaption>A lesson in Practice: choose, and the band at the bottom says if it was right.</figcaption></figure>
 
-The first time you open a story, a short tour shows you how to tap a word and what its card tells
-you, and where the reading settings and the reading modes are. You can skip it at any step, and
-start it again from **Settings → Reading** or, on a phone, from **More**.
+The first time you open a story, a short tour shows you around. You can start it again from
+**Settings → Reading**.
 
 When you want your words on more devices, see [Sync your devices](sync.md).
 
 ## Telling Pavlo what you think
 
-Vuurtoren is in beta, and Pavlo reads everything you send. On a computer press **Send feedback** in
-the sidebar (or Ctrl+Shift+F). On a phone use the **Feedback** tab on the side of the screen, or
-shake the phone. You can also find it in **Settings → Data**, and every error message has **Tell
-Pavlo**.
-
-Write what happened, and if it helps, add the screen (you can draw on it to point at something) or
-a short voice note. The app version and your device go with it, and the last errors if you leave
-them on. When Pavlo answers, you see it in the same place, like a chat. On a phone you can hide the
-side tab in **Settings → Data → Feedback**.
+Vuurtoren is in beta. To tell me what you think or what broke, use **Send feedback** in the
+sidebar, or the **Feedback** tab on a phone. My answers come back in the same place.

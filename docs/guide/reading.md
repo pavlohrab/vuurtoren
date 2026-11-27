@@ -33,21 +33,9 @@ it** stops Vuurtoren from translating and teaching it.
 
 ## Turning pages
 
-On a phone you turn the text like a book instead of scrolling. Swipe and the corner of the page
-follows your finger, or tap the left or right side. Going back, the page before comes back over
-it. The whole text runs on from screen to screen without breaks. On a computer, and on a phone or
-tablet turned sideways when there's room, you see two pages side by side. The arrow keys turn too,
-and on Android so can the volume keys if you turn that on. **Side by side** still scrolls, because
-it needs the whole width for the Dutch and the English.
-
-Tap the middle of the page to hide the bars, and tap again to bring them back. The bar along the
-bottom lets you jump through the text, and the line under it says how far you are and about how
-long the rest takes.
-That time comes from your own reading speed, so it gets better as you read. Vuurtoren also keeps
-your place to the word, on your other devices too.
-
-In the reading settings (**Aa**), under **Pages**, you can go back to scrolling or choose how a
-page turns. There you also set the margins and can turn off justified text and the two pages.
+On a phone you turn pages like a book: swipe, or tap the left or right side. On a computer you see
+two pages side by side. Tap the middle of the page to hide the bars. **Side by side** still
+scrolls. Under **Aa → Pages** you can go back to scrolling.
 
 ## Four ways to read
 
@@ -58,7 +46,7 @@ words you know or are learning into blanks to fill in, and a right answer counts
 word. **Side by side** shows each sentence with its English, and the same words have the same colour
 on both sides.
 
-**Focus mode** (the ⤢ button next to **Aa**, or the F key) hides everything except the text and fills the whole screen. To leave it, press Esc or F, tap **Leave focus mode** in the corner, or on a phone go back.
+**Focus mode** (⤢ or F) shows only the text, full screen. Esc leaves it.
 
 ## Grammar and sound
 

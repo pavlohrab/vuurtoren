@@ -68,15 +68,9 @@ speaking isn't ready yet.
 
 ## Sound and movement
 
-Practice says the Dutch for you, so you hear each new word as it comes up and each tile as you tap
-it. After you answer it says the right sentence. A right answer gets a green tick and three quick
-notes. After a miss Practice shows you the right answer in the exercise itself, and the word comes
-back at the end of the lesson.
-
-You can turn each of these off in **Settings → Your words → Practice** or under **Options** in
-Practice, and there you can also make the phone buzz on a miss. When your
-system asks for less motion, nothing moves. The same settings make the word card in the reader and
-in Words say the word when it opens.
+Practice says the Dutch for you and plays a short sound when you answer. After a miss it shows the
+right answer, and the word comes back at the end of the lesson. You can turn the sound and movement
+off in **Settings → Your words → Practice**.
 
 ## Keys on a computer
 

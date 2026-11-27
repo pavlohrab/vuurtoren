@@ -1,8 +1,6 @@
 # Install Vuurtoren
 
-Vuurtoren is in beta. It works, but things still change and sometimes something breaks. If something goes wrong, tell Pavlo with the feedback button (see
-[Quick start](quick-start.md#telling-pavlo-what-you-think)). Who makes it and why is on the
-[About](https://vuurtoren.app/about.html) page.
+Vuurtoren is in beta. If something breaks, use the feedback button.
 
 ## On your computer
 
