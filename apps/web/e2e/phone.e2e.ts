@@ -301,6 +301,8 @@ for (const size of SIZES) {
       await expect(page.locator(".k-reader .k-tok").first()).toBeVisible();
       await page.getByRole("button", { name: /^Reading mode:/ }).click();
       await page.getByRole("radio", { name: /^Side by side/ }).click();
+      // A phone has no mouse: a parked one would hover whatever word scrolls under it.
+      await page.mouse.move(0, 0);
 
       const row = page.locator(".k-sbs-row").first();
       const nl = row.locator(".k-sbs-nl");
