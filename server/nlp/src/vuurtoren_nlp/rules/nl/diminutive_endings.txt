@@ -1,0 +1,11 @@
+# DIMINUTIVE_ENDINGS in vuurtoren_nlp/grammar.py. One entry per line; # starts a comment.
+je
+tje
+pje
+kje
+etje
+jes
+tjes
+pjes
+kjes
+etjes

@@ -1,0 +1,11 @@
+# LOCATIVE_ADVS in vuurtoren_nlp/grammar.py. One entry per line; # starts a comment.
+hier
+daar
+er
+binnen
+buiten
+thuis
+boven
+beneden
+ergens
+overal

@@ -1,0 +1,13 @@
+# POSSESSIVES in vuurtoren_nlp/grammar.py. One entry per line; # starts a comment.
+mijn
+m'n
+jouw
+je
+uw
+zijn
+z'n
+haar
+ons
+onze
+hun
+jullie

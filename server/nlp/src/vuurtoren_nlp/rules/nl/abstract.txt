@@ -1,0 +1,11 @@
+# _ABSTRACT in vuurtoren_nlp/derive.py. One entry per line; # starts a comment.
+ness
+ity
+tion
+sion
+ment
+ship
+ism
+ance
+ence
+ing

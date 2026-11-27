@@ -1,0 +1,20 @@
+# WH_WORDS in vuurtoren_nlp/grammar.py. One entry per line; # starts a comment.
+wie
+wat
+waar
+waarom
+wanneer
+hoe
+welk
+welke
+welks
+hoeveel
+hoelang
+waarheen
+waarvoor
+waarmee
+waarover
+waaraan
+waarvan
+waardoor
+wiens

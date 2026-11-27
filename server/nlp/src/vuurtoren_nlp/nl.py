@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from vuurtoren_nlp.rules import words
+
 # Separable verb particles (scheidbare werkwoorden), longest first for prefix matching.
 SEPARABLE_PARTICLES: tuple[str, ...] = tuple(
     sorted(
@@ -76,10 +78,7 @@ SLASH_FIXED = {"en", "of", "dan", "wel", "maar", "noch"}
 # ("Waar wacht je op?", "Ik denk er niet aan") in which the clause-final preposition is NOT a
 # separable particle.
 R_WORDS = ("er", "daar", "hier", "waar")
-_R_PREPOSITIONS = (
-    "aan", "achter", "af", "bij", "binnen", "door", "in", "mee", "na", "naar", "om", "onder",
-    "op", "over", "tegen", "toe", "tussen", "uit", "van", "voor",
-)  # fmt: skip
+_R_PREPOSITIONS = tuple(words("r_prepositions.txt"))  # fmt: skip
 R_PRONOUNS = frozenset(R_WORDS) | {r + p for r in R_WORDS for p in _R_PREPOSITIONS}
 
 

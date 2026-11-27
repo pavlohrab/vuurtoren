@@ -1,0 +1,17 @@
+# _EXCLUDED in vuurtoren_nlp/wordforms.py. One entry per line; # starts a comment.
+archaic
+subjunctive
+formal
+Flanders
+colloquial
+majestic
+imperative
+dialectal
+obsolete
+rare
+dated
+nonstandard
+alternative
+table-tags
+inflection-template
+class

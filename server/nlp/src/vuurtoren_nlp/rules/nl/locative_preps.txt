@@ -1,0 +1,12 @@
+# LOCATIVE_PREPS in vuurtoren_nlp/grammar.py. One entry per line; # starts a comment.
+in
+op
+onder
+naast
+achter
+voor
+bij
+tussen
+boven
+tegen
+aan

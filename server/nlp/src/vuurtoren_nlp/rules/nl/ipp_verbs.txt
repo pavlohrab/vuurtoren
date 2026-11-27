@@ -1,0 +1,19 @@
+# IPP_VERBS in vuurtoren_nlp/grammar.py. One entry per line; # starts a comment.
+kunnen
+mogen
+moeten
+willen
+laten
+zien
+horen
+helpen
+leren
+blijven
+gaan
+komen
+zitten
+staan
+liggen
+lopen
+durven
+hoeven

@@ -1,0 +1,16 @@
+# IRREGULAR_PLURALS in vuurtoren_nlp/grammar.py. One entry per line; # starts a comment.
+stad
+schip
+blad
+ei
+lid
+glas
+god
+gat
+dag
+weg
+kind
+rad
+lied
+hoofd
+schaap

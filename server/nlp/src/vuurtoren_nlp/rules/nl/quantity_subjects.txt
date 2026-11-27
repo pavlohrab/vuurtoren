@@ -1,0 +1,11 @@
+# QUANTITY_SUBJECTS in vuurtoren_nlp/grammar.py. One entry per line; # starts a comment.
+veel
+meer
+weinig
+minder
+iets
+niets
+alles
+iemand
+niemand
+wat

@@ -38,28 +38,10 @@ from pathlib import Path
 from typing import Any
 
 from vuurtoren_nlp.nl import SEPARABLE_PARTICLES
+from vuurtoren_nlp.rules import words
 
 # Form rows with any of these tags are not the plain textbook form.
-_EXCLUDED = frozenset(
-    {
-        "archaic",
-        "subjunctive",
-        "formal",
-        "Flanders",
-        "colloquial",
-        "majestic",
-        "imperative",
-        "dialectal",
-        "obsolete",
-        "rare",
-        "dated",
-        "nonstandard",
-        "alternative",
-        "table-tags",
-        "inflection-template",
-        "class",
-    }
-)
+_EXCLUDED = frozenset(words("excluded.txt"))
 
 # spaCy UPOS -> Kaikki pos.
 POS_MAP: dict[str, str] = {"VERB": "verb", "AUX": "verb", "NOUN": "noun", "ADJ": "adj"}

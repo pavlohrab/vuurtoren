@@ -16,6 +16,7 @@ from vuurtoren_nlp.errors import ServiceError
 from vuurtoren_nlp.freq import token_zipf, zipf
 from vuurtoren_nlp.lexicon import get_lexicon
 from vuurtoren_nlp.models import MAX_TEXT_CHARS, TermAnalysis, TextAnalysis, Token
+from vuurtoren_nlp.rules import words
 
 if TYPE_CHECKING:
     from spacy.language import Language
@@ -29,25 +30,7 @@ DIMINUTIVE_SUFFIXES = ("je", "tje", "etje", "pje", "kje")
 
 _ENDS = {".", "!", "?", "…", "..."}
 # Words spaCy also lists as abbreviations; before a full stop they are the words (see get_nlp).
-_WORDS_NOT_ABBREVIATIONS = {
-    "al",
-    "app",
-    "art",
-    "bel",
-    "best",
-    "dat",
-    "get",
-    "hand",
-    "kon",
-    "pan",
-    "pas",
-    "pers",
-    "red",
-    "tom",
-    "top",
-    "ver",
-    "vol",
-}
+_WORDS_NOT_ABBREVIATIONS = set(words("words_not_abbreviations.txt"))
 
 
 def _paragraph_breaks(doc: Doc) -> Doc:

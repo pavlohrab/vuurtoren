@@ -1,0 +1,18 @@
+# _WORDS_NOT_ABBREVIATIONS in vuurtoren_nlp/pipeline.py. One entry per line; # starts a comment.
+al
+app
+art
+bel
+best
+dat
+get
+hand
+kon
+pan
+pas
+pers
+red
+tom
+top
+ver
+vol

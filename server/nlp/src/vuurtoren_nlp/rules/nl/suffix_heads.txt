@@ -1,0 +1,11 @@
+# SUFFIX_HEADS in vuurtoren_nlp/compound.py. One entry per line; # starts a comment.
+loos
+lijk
+baar
+heid
+schap
+achtig
+isch
+dom
+aar
+vormig

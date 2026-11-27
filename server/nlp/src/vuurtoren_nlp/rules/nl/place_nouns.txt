@@ -1,0 +1,23 @@
+# PLACE_NOUNS in vuurtoren_nlp/grammar.py. One entry per line; # starts a comment.
+station
+perron
+straat
+plein
+hoek
+school
+werk
+kantoor
+vliegveld
+halte
+stoep
+bank
+markt
+dak
+tafel
+bed
+stoel
+gang
+terras
+balkon
+trap
+strand

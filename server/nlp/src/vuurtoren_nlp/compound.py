@@ -38,6 +38,8 @@ import re
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 
+from vuurtoren_nlp.rules import words
+
 MIN_WORD_LEN = 7
 MIN_PART_LEN = 3
 MAX_PARTS = 3
@@ -75,9 +77,7 @@ _FORM_OF = re.compile(
 )
 
 
-SUFFIX_HEADS = frozenset(
-    {"loos", "lijk", "baar", "heid", "schap", "achtig", "isch", "dom", "aar", "vormig"}
-)
+SUFFIX_HEADS = frozenset(words("suffix_heads.txt"))
 """Derivational suffixes that are also (rare) words: never a compound head."""
 
 _DIM_SUFFIXES = ("etje", "tje", "pje", "kje", "je")

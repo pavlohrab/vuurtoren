@@ -1,0 +1,11 @@
+# NOT_PLACES in vuurtoren_nlp/grammar.py. One entry per line; # starts a comment.
+vlam
+vlammen
+brand
+kant
+club
+baseballclub
+school
+universiteit
+schuld
+probleem

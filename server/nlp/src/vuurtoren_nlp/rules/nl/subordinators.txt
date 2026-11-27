@@ -1,0 +1,25 @@
+# SUBORDINATORS in vuurtoren_nlp/grammar.py. One entry per line; # starts a comment.
+omdat
+dat
+als
+wanneer
+toen
+terwijl
+hoewel
+zodat
+voordat
+nadat
+totdat
+zodra
+sinds
+aangezien
+indien
+doordat
+ofschoon
+tenzij
+naarmate
+nu
+of
+mits
+alsof
+zolang

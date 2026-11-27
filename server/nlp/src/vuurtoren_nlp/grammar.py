@@ -28,168 +28,25 @@ from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 
 from vuurtoren_nlp.models import GrammarHit, TextAnalysis, Token
+from vuurtoren_nlp.rules import words
 
 # --------------------------------------------------------------------------------- vocabulary
 
-WH_WORDS = frozenset(
-    [
-        "wie",
-        "wat",
-        "waar",
-        "waarom",
-        "wanneer",
-        "hoe",
-        "welk",
-        "welke",
-        "welks",
-        "hoeveel",
-        "hoelang",
-        "hoeveel",
-        "waarheen",
-        "waarvoor",
-        "waarmee",
-        "waarover",
-        "waaraan",
-        "waarvan",
-        "waardoor",
-        "wiens",
-    ]
-)
-SUBORDINATORS = frozenset(
-    [
-        "omdat",
-        "dat",
-        "als",
-        "wanneer",
-        "toen",
-        "terwijl",
-        "hoewel",
-        "zodat",
-        "voordat",
-        "nadat",
-        "totdat",
-        "zodra",
-        "sinds",
-        "aangezien",
-        "indien",
-        "doordat",
-        "ofschoon",
-        "tenzij",
-        "naarmate",
-        "nu",
-        "of",
-        "mits",
-        "alsof",
-        "zolang",
-    ]
-)
+WH_WORDS = frozenset(words("wh_words.txt"))
+SUBORDINATORS = frozenset(words("subordinators.txt"))
 MODALS = frozenset({"kunnen", "mogen", "moeten", "willen"})
 # Verbs that form the perfect with zijn (motion towards a goal, change of state).
-ZIJN_VERBS = frozenset(
-    [
-        "gaan",
-        "komen",
-        "worden",
-        "blijven",
-        "vallen",
-        "lopen",
-        "rijden",
-        "vliegen",
-        "fietsen",
-        "zwemmen",
-        "reizen",
-        "vertrekken",
-        "sterven",
-        "groeien",
-        "verdwijnen",
-        "gebeuren",
-        "beginnen",
-        "stijgen",
-        "dalen",
-        "slagen",
-        "mislukken",
-        "verschijnen",
-        "ontstaan",
-        "springen",
-        "rennen",
-        "kruipen",
-        "zinken",
-        "verhuizen",
-        "opstaan",
-        "wakker\xadworden",
-        "vergaan",
-        "verdrinken",
-        "stoppen",
-        "aankomen",
-        "thuiskomen",
-        "terugkomen",
-        "bevriezen",
-        "smelten",
-    ]
-)
-SPEECH_VERBS = frozenset(
-    [
-        "zeggen",
-        "vertellen",
-        "denken",
-        "geloven",
-        "vinden",
-        "hopen",
-        "beweren",
-        "antwoorden",
-        "schrijven",
-        "melden",
-        "vragen",
-        "roepen",
-        "fluisteren",
-        "beloven",
-        "vermoeden",
-    ]
-)
+ZIJN_VERBS = frozenset(words("zijn_verbs.txt"))
+SPEECH_VERBS = frozenset(words("speech_verbs.txt"))
 CONJUNCTIONS = frozenset({"en", "maar", "want", "of"})
 # Words that look like quantities, not adjectives to inflect.
-NOT_ADJECTIVES = frozenset({"veel", "weinig", "genoeg", "meer", "minder", "enkel", "elk", "ieder"})
+NOT_ADJECTIVES = frozenset(words("not_adjectives.txt"))
 # Degree words that are not instructive comparatives / superlatives.
-NOT_COMPARISON = frozenset(
-    [
-        "meer",
-        "meest",
-        "minder",
-        "minst",
-        "laatste",
-        "eerste",
-        "volgende",
-        "meeste",
-        "minste",
-        "laat",
-        "later",
-        "latere",
-        "vroeger",
-        "vroegere",
-    ]
-)
-IRREGULAR_PLURALS = frozenset(
-    [
-        "stad",
-        "schip",
-        "blad",
-        "ei",
-        "lid",
-        "glas",
-        "god",
-        "gat",
-        "dag",
-        "weg",
-        "kind",
-        "rad",
-        "lied",
-        "hoofd",
-        "schaap",
-    ]
-)
+NOT_COMPARISON = frozenset(words("not_comparison.txt"))
+IRREGULAR_PLURALS = frozenset(words("irregular_plurals.txt"))
 IRREGULAR_DEGREE = frozenset({"beter", "beste", "best", "liever", "liefst", "liefste"})
 NOT_DIMINUTIVES = frozenset({"oranje", "kastanje", "pyjama", "mevrouwtje", "wijze", "bonje"})
-DIMINUTIVE_ENDINGS = ("je", "tje", "pje", "kje", "etje", "jes", "tjes", "pjes", "kjes", "etjes")
+DIMINUTIVE_ENDINGS = tuple(words("diminutive_endings.txt"))
 DEMONSTRATIVES = frozenset({"deze", "dit", "die", "dat"})
 QUOTES = frozenset("\"'“”„‘’«»")
 # Subject pronoun lemma -> reflexive pronoun forms it takes (zich for every third person).
@@ -795,28 +652,7 @@ def detect_conjunction(s: Sentence) -> Iterable[Hit]:
 
 # Verbs that take a bare infinitive and then use the infinitive instead of a participle in the
 # perfect ("heeft moeten werken", "heb hem zien vallen").
-IPP_VERBS = frozenset(
-    {
-        "kunnen",
-        "mogen",
-        "moeten",
-        "willen",
-        "laten",
-        "zien",
-        "horen",
-        "helpen",
-        "leren",
-        "blijven",
-        "gaan",
-        "komen",
-        "zitten",
-        "staan",
-        "liggen",
-        "lopen",
-        "durven",
-        "hoeven",
-    }
-)
+IPP_VERBS = frozenset(words("ipp_verbs.txt"))
 
 
 def detect_conditional(s: Sentence) -> Iterable[Hit]:
@@ -957,13 +793,9 @@ def detect_progressive(s: Sentence) -> Iterable[Hit]:
             )
 
 
-QUANTITY_SUBJECTS = frozenset(
-    {"veel", "meer", "weinig", "minder", "iets", "niets", "alles", "iemand", "niemand", "wat"}
-)
+QUANTITY_SUBJECTS = frozenset(words("quantity_subjects.txt"))
 
-POSSESSIVES = frozenset(
-    {"mijn", "m'n", "jouw", "je", "uw", "zijn", "z'n", "haar", "ons", "onze", "hun", "jullie"}
-)
+POSSESSIVES = frozenset(words("possessives.txt"))
 
 
 def detect_possessive(s: Sentence) -> Iterable[Hit]:
@@ -1009,36 +841,10 @@ def detect_conditional_inversion(s: Sentence) -> Iterable[Hit]:
 # only on a curated word list plus a parse that agrees.
 
 # Prepositions that combine with er/daar/hier/waar, by the form they take in the compound.
-PRONOMINAL_PREPS = frozenset(
-    {
-        "aan",
-        "achter",
-        "bij",
-        "boven",
-        "door",
-        "in",
-        "langs",
-        "mee",
-        "naar",
-        "naast",
-        "om",
-        "onder",
-        "op",
-        "over",
-        "tegen",
-        "toe",
-        "tussen",
-        "uit",
-        "van",
-        "voor",
-        "zonder",
-    }
-)
+PRONOMINAL_PREPS = frozenset(words("pronominal_preps.txt"))
 PRONOMINAL_HEADS = ("daar", "hier", "waar", "er")
 # Lexicalised compounds whose meaning is not "preposition + it/that" any more.
-NOT_PRONOMINAL = frozenset(
-    {"daarom", "waarom", "daarna", "hierna", "erna", "daarnaast", "daarvoor", "hiervoor", "ervoor"}
-)
+NOT_PRONOMINAL = frozenset(words("not_pronominal.txt"))
 # Fixed expressions where the compound is not "preposition + it": "De bus komt eraan".
 PRONOMINAL_IDIOMS = frozenset(
     {
@@ -1128,28 +934,11 @@ POSITION_VERBS = {
     "zitten": "inside, attached or sitting",
     "hangen": "hanging",
 }
-LOCATIVE_PREPS = frozenset(
-    {"in", "op", "onder", "naast", "achter", "voor", "bij", "tussen", "boven", "tegen", "aan"}
-)
+LOCATIVE_PREPS = frozenset(words("locative_preps.txt"))
 # Idioms with a position verb that are not about position: "in brand staan", "aan de kant
 # staan van", "op een club zitten".
-NOT_PLACES = frozenset(
-    {
-        "vlam",
-        "vlammen",
-        "brand",
-        "kant",
-        "club",
-        "baseballclub",
-        "school",
-        "universiteit",
-        "schuld",
-        "probleem",
-    }
-)
-LOCATIVE_ADVS = frozenset(
-    {"hier", "daar", "er", "binnen", "buiten", "thuis", "boven", "beneden", "ergens", "overal"}
-)
+NOT_PLACES = frozenset(words("not_places.txt"))
+LOCATIVE_ADVS = frozenset(words("locative_advs.txt"))
 
 
 def detect_position_verb(s: Sentence) -> Iterable[Hit]:
@@ -1289,32 +1078,7 @@ FIXED_PREPOSITIONS: dict[str, frozenset[str]] = {
     }.items()
 }
 # "wachten op het station": op + a place is where, not what you wait for.
-PLACE_NOUNS = frozenset(
-    {
-        "station",
-        "perron",
-        "straat",
-        "plein",
-        "hoek",
-        "school",
-        "werk",
-        "kantoor",
-        "vliegveld",
-        "halte",
-        "stoep",
-        "bank",
-        "markt",
-        "dak",
-        "tafel",
-        "bed",
-        "stoel",
-        "gang",
-        "terras",
-        "balkon",
-        "trap",
-        "strand",
-    }
-)
+PLACE_NOUNS = frozenset(words("place_nouns.txt"))
 
 
 def detect_fixed_preposition(s: Sentence) -> Iterable[Hit]:
@@ -1418,81 +1182,7 @@ def detect_niet_position(s: Sentence) -> Iterable[Hit]:
                 )
 
 
-INSEPARABLE_VERBS = frozenset(
-    [
-        "beantwoorden",
-        "bedanken",
-        "bedoelen",
-        "beginnen",
-        "begrijpen",
-        "behalen",
-        "behandelen",
-        "behoren",
-        "beloven",
-        "bepalen",
-        "bereiken",
-        "beschermen",
-        "beschrijven",
-        "beslissen",
-        "bespreken",
-        "bestaan",
-        "bestellen",
-        "betalen",
-        "betekenen",
-        "bevallen",
-        "bewegen",
-        "beweren",
-        "bewijzen",
-        "bezitten",
-        "bezoeken",
-        "gebeuren",
-        "gebruiken",
-        "gehoorzamen",
-        "genieten",
-        "herhalen",
-        "herinneren",
-        "herkennen",
-        "herstellen",
-        "ontbijten",
-        "ontdekken",
-        "ontmoeten",
-        "ontslaan",
-        "ontstaan",
-        "ontvangen",
-        "ontwikkelen",
-        "erkennen",
-        "ervaren",
-        "verbeteren",
-        "verbieden",
-        "verbinden",
-        "verdedigen",
-        "verdienen",
-        "verdwijnen",
-        "vergelijken",
-        "vergeten",
-        "verhuizen",
-        "verkopen",
-        "verklaren",
-        "verlaten",
-        "verliezen",
-        "vermijden",
-        "veranderen",
-        "veroorzaken",
-        "verrassen",
-        "verschijnen",
-        "verschillen",
-        "verstaan",
-        "versturen",
-        "vertalen",
-        "vertellen",
-        "vertrekken",
-        "vertrouwen",
-        "verwachten",
-        "verwijderen",
-        "verzamelen",
-        "verzorgen",
-    ]
-)
+INSEPARABLE_VERBS = frozenset(words("inseparable_verbs.txt"))
 INSEPARABLE_PREFIXES = ("be", "ge", "her", "ont", "ver", "er")
 
 
@@ -1580,9 +1270,7 @@ def detect_modal_particle(s: Sentence) -> Iterable[Hit]:
             yield Hit("modal-particles", (t.i,), PARTICLE_NOTES[low])
 
 
-OBJECT_FORMS = frozenset(
-    {"mij", "me", "jou", "je", "hem", "haar", "ons", "jullie", "hen", "hun", "ze"}
-)
+OBJECT_FORMS = frozenset(words("object_forms.txt"))
 
 
 def detect_object_pronoun(s: Sentence) -> Iterable[Hit]:

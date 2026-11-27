@@ -1,0 +1,15 @@
+# NOT_COMPARISON in vuurtoren_nlp/grammar.py. One entry per line; # starts a comment.
+meer
+meest
+minder
+minst
+laatste
+eerste
+volgende
+meeste
+minste
+laat
+later
+latere
+vroeger
+vroegere

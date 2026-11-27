@@ -1,0 +1,12 @@
+# OBJECT_FORMS in vuurtoren_nlp/grammar.py. One entry per line; # starts a comment.
+mij
+me
+jou
+je
+hem
+haar
+ons
+jullie
+hen
+hun
+ze

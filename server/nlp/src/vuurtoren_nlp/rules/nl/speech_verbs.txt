@@ -1,0 +1,16 @@
+# SPEECH_VERBS in vuurtoren_nlp/grammar.py. One entry per line; # starts a comment.
+zeggen
+vertellen
+denken
+geloven
+vinden
+hopen
+beweren
+antwoorden
+schrijven
+melden
+vragen
+roepen
+fluisteren
+beloven
+vermoeden

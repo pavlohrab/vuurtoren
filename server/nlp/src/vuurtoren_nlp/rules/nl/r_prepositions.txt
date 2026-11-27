@@ -1,0 +1,21 @@
+# _R_PREPOSITIONS in vuurtoren_nlp/nl.py. One entry per line; # starts a comment.
+aan
+achter
+af
+bij
+binnen
+door
+in
+mee
+na
+naar
+om
+onder
+op
+over
+tegen
+toe
+tussen
+uit
+van
+voor

@@ -1,0 +1,11 @@
+# _PARTICLES in vuurtoren_nlp/derive.py. One entry per line; # starts a comment.
+out
+up
+down
+off
+on
+in
+away
+back
+over
+around

@@ -55,6 +55,7 @@ from dataclasses import dataclass
 
 from vuurtoren_nlp import english as en
 from vuurtoren_nlp.compound import PartEntry, Resolver, real_glosses
+from vuurtoren_nlp.rules import pairs, words
 
 MIN_WORD_LEN = 4
 MAX_DEPTH = 2
@@ -72,40 +73,7 @@ _COST_HAVING = 2
 """Cost of an adjective + noun + ``-ig`` reading; with a number it gets a bonus instead."""
 
 # Dutch number words for "having" adjectives (``driefasig`` "three-phased").
-_NUMBERS = {
-    "een": "one",
-    "twee": "two",
-    "drie": "three",
-    "vier": "four",
-    "vijf": "five",
-    "zes": "six",
-    "zeven": "seven",
-    "acht": "eight",
-    "negen": "nine",
-    "tien": "ten",
-    "elf": "eleven",
-    "twaalf": "twelve",
-    "dertien": "thirteen",
-    "veertien": "fourteen",
-    "vijftien": "fifteen",
-    "zestien": "sixteen",
-    "zeventien": "seventeen",
-    "achttien": "eighteen",
-    "negentien": "nineteen",
-    "twintig": "twenty",
-    "dertig": "thirty",
-    "veertig": "forty",
-    "vijftig": "fifty",
-    "zestig": "sixty",
-    "zeventig": "seventy",
-    "tachtig": "eighty",
-    "negentig": "ninety",
-    "honderd": "hundred",
-    "duizend": "thousand",
-    "veel": "many",
-    "meer": "multi",
-    "half": "half",
-}
+_NUMBERS = pairs("numbers.tsv")
 
 # Words after which an English gloss is cut to its head ("seed inside a fruit" -> "seed").
 _PHRASE_BREAKS = frozenset(
@@ -246,7 +214,7 @@ def _participle(form: str) -> bool:
     )
 
 
-_PARTICLES = frozenset({"out", "up", "down", "off", "on", "in", "away", "back", "over", "around"})
+_PARTICLES = frozenset(words("particles.txt"))
 
 
 def _verb_phrase(english: str) -> str | None:
@@ -510,7 +478,7 @@ def _ness(b: _Base, _: str = "") -> str | None:
     return None if " " in b.english else en.ness(b.english)
 
 
-_ABSTRACT = ("ness", "ity", "tion", "sion", "ment", "ship", "ism", "ance", "ence", "ing")
+_ABSTRACT = tuple(words("abstract.txt"))
 
 
 def _less(b: _Base, _: str = "") -> str:

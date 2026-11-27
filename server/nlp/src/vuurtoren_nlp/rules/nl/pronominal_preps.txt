@@ -1,0 +1,22 @@
+# PRONOMINAL_PREPS in vuurtoren_nlp/grammar.py. One entry per line; # starts a comment.
+aan
+achter
+bij
+boven
+door
+in
+langs
+mee
+naar
+naast
+om
+onder
+op
+over
+tegen
+toe
+tussen
+uit
+van
+voor
+zonder

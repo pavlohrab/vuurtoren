@@ -1249,3 +1249,33 @@ When changes came in, the services drop their caches and every screen refetches,
 **On a Vuurtoren server** a sync token belongs to one device. The first device folder it writes is its own, and it writes only there and the blobs. It may create `vault.json` when there is none. Replacing it needs a session, the server's token, the sync token that made it, or one made with `vault` allowed (**May change the passphrase and recovery key**, which the page's own token has). All sync files share a quota (`VUURTOREN_SYNC_QUOTA_MB`, 2 GB). With sign-in off the server answers this site and `VUURTOREN_ALLOWED_ORIGINS` only.
 
 **A lost device** keeps the data key. Revoking its sync token closes a Vuurtoren server to it. To be safe, start new sync data in a new place with a new passphrase and join it from the other devices (a new vault starts every device's bookkeeping over).
+
+## 11. Where the Dutch rules live
+
+Every rule about Dutch is in one of two places, so a correction is made once.
+
+**On the device** (`packages/core/src/nl/`, exported from `@app/core`), each with its tests next
+to it:
+
+- `contextGloss.ts`: what a word means here, before the dictionary (possessives, names,
+  diminutives, a detached particle that belongs to its verb). Section 3.5.
+- `formLine.ts`: the line about a word's form on its card (plural, past tense, de or het).
+- `sentenceFrame.ts`: how a sentence is built, part by part (the Sentence tab, 3.8), with its
+  test cases (`frames.cases.ts`) and their tokens (`frames.fixture.json`, made by
+  `apps/web/scripts/frames-fixture.mjs` from a running language server).
+
+**On the language server** (`server/nlp/src/vuurtoren_nlp/`): the word lists are data, one file
+per list in `rules/nl/` (`*.txt` one entry per line, `*.tsv` a pair per line; `#` starts a
+comment), read through `rules.words()` and `rules.pairs()`. `tests/test_rules.py` checks that each
+loads, has no entry twice, and is used. The rules that use them are code in these modules:
+
+- `compound.py`: `suffix_heads.txt`
+- `derive.py`: `abstract.txt`, `numbers.tsv`, `particles.txt`
+- `grammar.py`: `diminutive_endings.txt`, `inseparable_verbs.txt`, `ipp_verbs.txt`, `irregular_plurals.txt`, `locative_advs.txt`, `locative_preps.txt`, `not_adjectives.txt`, `not_comparison.txt`, `not_places.txt`, `not_pronominal.txt`, `object_forms.txt`, `place_nouns.txt`, `possessives.txt`, `pronominal_preps.txt`, `quantity_subjects.txt`, `speech_verbs.txt`, `subordinators.txt`, `wh_words.txt`, `zijn_verbs.txt`
+- `nl.py`: `r_prepositions.txt`
+- `pipeline.py`: `words_not_abbreviations.txt`
+- `wordforms.py`: `excluded.txt`
+
+The detectors that find grammar in a sentence are in `grammar.py` (section 5); word forms in
+`wordforms.py`, compounds in `compound.py`, derivations in `derive.py`, and the dictionary's
+choices in `dictionary.py`.
