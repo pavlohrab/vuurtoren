@@ -89,6 +89,7 @@ import { DictionaryMissing } from "./reader/DictionaryMissing.js";
 import { SentenceTab } from "./reader/SentenceTab.js";
 import { contextGloss } from "../services/contextGloss.js";
 import { onFullScreenLeft, setFullScreen } from "../platform/fullScreen.js";
+import { useSoundUnlock } from "../practice/feel.js";
 import { useBackClose } from "../shell/backStack.js";
 
 /**
@@ -312,6 +313,9 @@ export function ReaderPage({ textId }: { textId: string }) {
 
   // Reading comforts (per device) and reading focus mode.
   const [prefs, setPrefs] = useReaderPrefs();
+  // The end of a text plays the chime: wake the sound on the reader's first tap or key, as
+  // Practice does (browsers keep audio asleep until a gesture).
+  useSoundUnlock();
   const [readingFocus, setReadingFocus] = useState(false);
   // Book mode: pages turn instead of scrolling (BookPages.tsx).
   // Side by side is a study view that needs the whole width: it scrolls, as before.
