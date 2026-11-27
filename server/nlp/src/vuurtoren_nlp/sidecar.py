@@ -29,6 +29,11 @@ def _exit_with_parent() -> None:
 
 def main() -> None:
     port = int(os.environ.get("VUURTOREN_PORT", "8000"))
+    if dump := os.environ.get("VUURTOREN_HANG_DUMP"):
+        # Where every thread is after this many seconds (desktop/start_check.py: a hanging start).
+        import faulthandler
+
+        faulthandler.dump_traceback_later(int(dump), repeat=True, file=sys.stderr)
     if os.environ.get("VUURTOREN_EXIT_WITH_STDIN", "1") == "1" and sys.stdin is not None:
         threading.Thread(target=_exit_with_parent, name="vuurtoren-parent", daemon=True).start()
 

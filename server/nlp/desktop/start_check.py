@@ -48,6 +48,7 @@ def main() -> int:
             "VUURTOREN_DATA_DIR": str(Path(tmp) / "data"),
             "VUURTOREN_PACKS": "off",
             "PYTHONUNBUFFERED": "1",
+            "VUURTOREN_HANG_DUMP": "45",
         }
         for k in ("PYTHONHOME", "PYTHONPATH", "VUURTOREN_PACKS_DIR"):
             env.pop(k, None)

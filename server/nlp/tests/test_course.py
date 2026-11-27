@@ -23,11 +23,11 @@ def fake_engine(img, code):
 
 
 def wait_done(client: TestClient, jid: str) -> dict:
-    for _ in range(200):
+    for _ in range(300):  # up to 15 s: a busy CI machine is slow
         body = client.get(f"/course/ocr/{jid}").json()
         if body["status"] != "running":
             return body
-        time.sleep(0.01)
+        time.sleep(0.05)
     raise AssertionError("job did not finish")
 
 
