@@ -847,35 +847,53 @@ fn open_external(url: &Url) {
     if !matches!(url.scheme(), "http" | "https" | "mailto") {
         return;
     }
-    // An AppImage runs with its own libraries on the path: a browser started with those can
-    // fail to start (Support did nothing). Start it with the desktop's own environment.
+    // An AppImage runs with its own libraries, schemas and modules on its paths (its AppRun
+    // hooks set GSETTINGS_SCHEMA_DIR, GIO_MODULE_DIR, GST_*_1_0, XDG_DATA_DIRS, …): xdg-open,
+    // and gio behind it on GNOME, started with those fails quietly (Support did nothing, even
+    // with a list of variables removed). So the browser starts from a clean environment: only
+    // the desktop session's own variables, with the AppImage's folders taken off the paths.
     #[cfg(target_os = "linux")]
-    if std::env::var_os("APPIMAGE").is_some() {
-        let mut cmd = std::process::Command::new("xdg-open");
-        cmd.arg(url.as_str());
-        for var in [
-            "LD_LIBRARY_PATH",
-            "LD_PRELOAD",
-            "GTK_PATH",
-            "GTK_EXE_PREFIX",
-            "GTK_DATA_PREFIX",
-            "GIO_MODULE_DIR",
-            "GDK_PIXBUF_MODULE_FILE",
-            "GDK_PIXBUF_MODULEDIR",
-            "GST_PLUGIN_PATH",
-            "GST_PLUGIN_SYSTEM_PATH",
-            "GST_PLUGIN_SCANNER",
-            "PYTHONHOME",
-            "PYTHONPATH",
-            "PERLLIB",
-            "QT_PLUGIN_PATH",
-            "APPDIR",
-            "APPIMAGE",
-            "OWD",
-            "ARGV0",
-        ] {
-            cmd.env_remove(var);
+    if let Some(appdir) = std::env::var_os("APPDIR").or_else(|| std::env::var_os("APPIMAGE")) {
+        let appdir = appdir.to_string_lossy().into_owned();
+        let mut cmd = std::process::Command::new("/usr/bin/xdg-open");
+        cmd.arg(url.as_str()).env_clear();
+        const KEEP: [&str; 20] = [
+            "HOME",
+            "USER",
+            "LOGNAME",
+            "SHELL",
+            "LANG",
+            "LANGUAGE",
+            "DISPLAY",
+            "WAYLAND_DISPLAY",
+            "XAUTHORITY",
+            "XDG_RUNTIME_DIR",
+            "XDG_CURRENT_DESKTOP",
+            "XDG_SESSION_DESKTOP",
+            "XDG_SESSION_TYPE",
+            "DESKTOP_SESSION",
+            "DBUS_SESSION_BUS_ADDRESS",
+            "XDG_CONFIG_HOME",
+            "XDG_DATA_HOME",
+            "XDG_CONFIG_DIRS",
+            "BROWSER",
+            "KDE_FULL_SESSION",
+        ];
+        for (k, v) in std::env::vars_os() {
+            let key = k.to_string_lossy();
+            if KEEP.contains(&key.as_ref()) || key.starts_with("LC_") {
+                cmd.env(&k, &v);
+            }
         }
+        // The search paths without the AppImage's own folders.
+        let clean = |var: &str, fallback: &str| {
+            let v = std::env::var(var).unwrap_or_default();
+            let kept: Vec<&str> =
+                v.split(':').filter(|p| !p.is_empty() && !p.starts_with(&appdir)).collect();
+            if kept.is_empty() { fallback.to_string() } else { kept.join(":") }
+        };
+        cmd.env("PATH", clean("PATH", "/usr/local/bin:/usr/bin:/bin"));
+        cmd.env("XDG_DATA_DIRS", clean("XDG_DATA_DIRS", "/usr/local/share:/usr/share"));
         if cmd.spawn().is_ok() {
             return;
         }

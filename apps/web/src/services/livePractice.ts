@@ -91,6 +91,8 @@ export interface LivePracticeDeps {
   evidence?: () => { exercise: (key: string, grade: Grade, ms: number) => Promise<unknown> };
 }
 /** Most words per session that get AI sentences. */
+/** How long a lesson waits for the AI's new sentences before it starts without them (ms). */
+const AI_WAIT_MS = 3000;
 export const AI_WORDS_PER_SESSION = 8;
 /** A word with fewer good sentences than this gets AI sentences. */
 const AI_GOOD_SENTENCES = 3;
@@ -675,11 +677,23 @@ export function createLivePractice(deps: LivePracticeDeps) {
       )
       .slice(0, AI_WORDS_PER_SESSION);
     if (needy.length === 0) return report;
-    const fill = await deps.aiSentences.fill(
+    const asked = deps.aiSentences.fill(
       lang,
       needy.map((w) => ({ key: w.key, lemma: w.lemma, existing: w.sentences.map((x) => x.text) })),
       needy.map((w) => w.key),
     );
+    // The lesson waits a few seconds at most (SPEED: it waited 21 s for the AI). Slower, the
+    // lesson starts with the sentences there are; the AI goes on and saves its sentences
+    // (SentencesGenerated), so the next lesson has them.
+    const timedOut = Symbol("late");
+    const fill = await Promise.race([
+      asked,
+      new Promise<typeof timedOut>((done) => setTimeout(() => done(timedOut), AI_WAIT_MS)),
+    ]);
+    if (fill === timedOut) {
+      asked.catch(() => undefined);
+      return { ...report, requested: needy.length };
+    }
     needy.forEach((w, k) => {
       const add = (fill.sentences[k] ?? []).flatMap(aiExample);
       if (!add.length) return;

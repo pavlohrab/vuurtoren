@@ -94,26 +94,13 @@ describe("the sounds", () => {
     vi.useRealTimers();
   });
 
-  it("wait for the audio to wake, then play a little ahead", async () => {
+  it("schedules a sound even while the audio sleeps, and wakes it (it plays when awake)", async () => {
     const { play } = await import("./feel.js");
     play("right");
     const c = FakeAudio.made[0]!;
-    expect(c.starts).toEqual([]);
-    c.wake();
-    await settle();
+    // Scheduled at once (never dropped as "late": Linux can take over a second to wake).
     expect(c.starts).toHaveLength(3);
-    expect(c.starts[0]).toBeGreaterThan(5);
-  });
-
-  it("don't play late when the audio took too long to wake", async () => {
-    vi.useFakeTimers();
-    const { play } = await import("./feel.js");
-    play("wrong");
-    vi.advanceTimersByTime(2000);
-    const c = FakeAudio.made[0]!;
-    c.wake();
-    await settle();
-    expect(c.starts).toEqual([]);
+    expect(c.resumes).toBeGreaterThan(0);
   });
 
   it("wake on the first key while Practice is open", async () => {

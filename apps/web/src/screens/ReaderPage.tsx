@@ -606,11 +606,17 @@ export function ReaderPage({ textId }: { textId: string }) {
       })
       .filter((g) => g.idx.length > 0);
   }, [plan, plans, book, current, help, mode, data, blanks, prefs.clozeMeaning]);
+  // The segment on screen first; the others once it is in (SPEED: the language server takes
+  // seconds per request, and five at once kept the one on screen waiting).
+  const glossHere = glossSets.find((g) => g.seg === current);
+  const glossHereKey = glossHere ? ["glosses", textId, current, glossHere.idx.join(",")] : null;
+  const hereReady = !glossHereKey || qc.getQueryState(glossHereKey)?.status === "success";
   const glossData = useQueries({
     queries: glossSets.map((g) => ({
       queryKey: ["glosses", textId, g.seg, g.idx.join(",")],
       queryFn: () => services.glosses(textId, g.idx),
       placeholderData: keepPreviousData,
+      enabled: g.seg === current || hereReady,
     })),
     // One value that only changes when an answer does.
     combine: (rs) => rs.map((r) => r.data),

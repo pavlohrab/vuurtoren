@@ -86,8 +86,7 @@ const VOLUME = 1;
 const LOUDER = 3;
 /** Sounds start this far ahead (s): a context that just woke up drops its first few ms. */
 const LEAD = 0.03;
-/** A sound that waits longer than this (ms) for the audio to wake is dropped, not played late. */
-const STALE = 400;
+
 
 function audio(): AudioContext | null {
   if (typeof window === "undefined") return null;
@@ -197,17 +196,11 @@ export function play(sound: Sound, feel: PracticeFeel = readFeel()): void {
   try {
     const c = audio();
     if (!c) return;
-    if (c.state === "running") {
-      SOUNDS[sound](c, c.currentTime + LEAD);
-      return;
-    }
-    // Asleep: wake it and play then, unless that took so long the moment has passed.
-    const asked = Date.now();
-    c.resume()
-      .then(() => {
-        if (Date.now() - asked <= STALE) SOUNDS[sound](c, c.currentTime + LEAD);
-      })
-      .catch(() => undefined);
+    // Scheduled now, whether the audio is awake or not: asleep, it plays the moment it wakes.
+    // (Waiting for resume() and dropping a "late" sound left the Linux app silent: there the
+    // audio can take well over a second to wake, through GStreamer.)
+    SOUNDS[sound](c, c.currentTime + LEAD);
+    if (c.state !== "running") void c.resume().catch(() => undefined);
   } catch {
     // No audio here.
   }
