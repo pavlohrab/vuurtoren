@@ -7,8 +7,8 @@ The desktop app (apps/desktop, ``src/sidecar.rs``) starts this as a child proces
 * ``VUURTOREN_DATA_DIR``   the app's data directory (data packs), ``VUURTOREN_PACKS=download``;
 * stdin as a pipe that stays open while the app runs.
 
-When the app goes away, even by a crash, stdin reaches end-of-file and this process exits, so
-no language server is left running in the background.
+When the app goes away, even by a crash, stdin reaches end-of-file (on Windows: the app's process
+ends) and this process exits, so no language server is left running in the background.
 """
 
 from __future__ import annotations
@@ -19,6 +19,18 @@ import threading
 
 
 def _exit_with_parent() -> None:
+    if os.name == "nt":
+        # Windows: a thread blocked reading the stdin pipe hangs the other threads' DLL loads
+        # (numpy never finished importing), so wait for the app's process to end instead.
+        import ctypes
+
+        synchronize, infinite = 0x00100000, 0xFFFFFFFF
+        kernel32 = ctypes.windll.kernel32  # type: ignore[attr-defined]
+        handle = kernel32.OpenProcess(synchronize, False, os.getppid())
+        if not handle:
+            return  # parent already gone or not ours to watch: keep running
+        kernel32.WaitForSingleObject(handle, infinite)
+        os._exit(0)
     try:
         while sys.stdin.buffer.read(1024):
             pass
