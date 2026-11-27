@@ -23,6 +23,8 @@
 #   ANDROID_KEYSTORE_PASSWORD           secret: its store password
 #   ANDROID_KEY_ALIAS                   secret: the key's alias (e.g. vuurtoren)
 #   ANDROID_KEY_PASSWORD                secret: the key's password
+#   VITE_FEEDBACK_KEY                   secret: the feedback Worker's key (Send feedback)
+#   VITE_TEST_BUILD                     variable: 1 adds the phone's Feedback tab
 # Without TAURI_SIGNING_PRIVATE_KEY the installers are still built, just without update files.
 # Without the ANDROID_* secrets the android job builds nothing (see the job).
 name: Desktop
@@ -38,6 +40,12 @@ on:
 
 permissions:
   contents: write
+
+# Built into the web app. VITE_FEEDBACK_KEY turns on Send feedback; VITE_TEST_BUILD=1 adds the
+# phone's Feedback tab (for the testing period).
+env:
+  VITE_FEEDBACK_KEY: ${{ secrets.VITE_FEEDBACK_KEY }}
+  VITE_TEST_BUILD: ${{ vars.VITE_TEST_BUILD }}
 
 concurrency:
   group: desktop-${{ github.ref }}
