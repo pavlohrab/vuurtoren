@@ -5,9 +5,6 @@
  * two parts of a split verb are in the accent colour. Tap a row's label, a part or a word: one
  * line says why it's there. "Word types" puts the kind under every word.
  */
-import type { AnalyzedToken } from "@app/core";
-import { useLayoutEffect, useMemo, useRef, useState } from "react";
-import { readLocal, writeLocal } from "../../storage/local.js";
 import {
   type Clause,
   type ClauseKind,
@@ -17,7 +14,10 @@ import {
   sentenceClauses,
   structureDoubtful,
   wordRole,
-} from "./sentenceFrame.js";
+} from "@app/core";
+import type { AnalyzedToken } from "@app/core";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
+import { readLocal, writeLocal } from "../../storage/local.js";
 import type { PickHandlers } from "./SentenceTab.js";
 
 type Field = ClausePart["field"];

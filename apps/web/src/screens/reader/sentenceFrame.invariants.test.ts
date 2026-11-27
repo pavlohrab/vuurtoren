@@ -3,10 +3,10 @@
  * a clause that sits there, and each clause has its verb. Run on every sentence of the bundled
  * stories, so a word can't get lost again (it did: "meneer Haddad hartelijk").
  */
+import { sentenceClauses } from "@app/core";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import type { AnalyzedToken } from "@app/core";
-import { sentenceClauses } from "./sentenceFrame.js";
 
 interface StoryFile {
   stories: { slug: string; content: string; tokens: unknown[][] }[];

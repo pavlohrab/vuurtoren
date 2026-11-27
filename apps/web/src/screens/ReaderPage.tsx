@@ -16,15 +16,16 @@ import { type BookHandle, BookPages, type BookScreen } from "./reader/BookPages.
 import { BookScrub } from "./reader/BookScrub.js";
 import { DEFAULT_WPM, minutesFor, nextWpm } from "./reader/bookMath.js";
 import { takeVolumeKeys } from "../platform/volumeKeys.js";
-import { formLine } from "./reader/formLine.js";
 import { useWordCard } from "./reader/useWordCard.js";
 import {
-  type HelpLevel,
-  type SegmentPlan,
-  relabelKey,
+  contextGloss,
+  formLine,
   glossTargets,
+  type HelpLevel,
   helpLevel,
   hitsInSentence,
+  relabelKey,
+  type SegmentPlan,
   textDifficulty,
   wordOrderNote,
 } from "@app/core";
@@ -87,7 +88,6 @@ import {
 } from "./reader/WordEntry.js";
 import { DictionaryMissing } from "./reader/DictionaryMissing.js";
 import { SentenceTab } from "./reader/SentenceTab.js";
-import { contextGloss } from "../services/contextGloss.js";
 import { onFullScreenLeft, setFullScreen } from "../platform/fullScreen.js";
 import { useSoundUnlock } from "../practice/feel.js";
 import { useBackClose } from "../shell/backStack.js";

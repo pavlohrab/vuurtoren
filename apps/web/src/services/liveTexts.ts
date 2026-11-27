@@ -5,18 +5,22 @@
  */
 import {
   type AnalyzedToken,
-  DEFAULT_PLANNER,
-  type LearnerModel,
-  type PlannerOptions,
-  type SegmentPlan,
-  type StaircaseState,
   classifyTokens,
+  contextGloss,
+  DEFAULT_PLANNER,
   estimateVocabulary,
-  splitVerbs,
-  tokenKey,
+  hasDetachedParticle,
+  type LearnerModel,
+  meaningInSentence,
   normalizeKey,
+  oneMeaning,
+  type PlannerOptions,
   planText,
+  type SegmentPlan,
+  splitVerbs,
+  type StaircaseState,
   textDifficulty,
+  tokenKey,
   updateStaircase,
 } from "@app/core";
 import {
@@ -34,12 +38,6 @@ import { fetchTexts } from "./textBatch.js";
 import { nlpOutage } from "./liveSettings.js";
 import { ImportCancelledError } from "./ocrReview.js";
 import { grammarLevel, roughTextLevel, starterRanks } from "./textLevel.js";
-import {
-  contextGloss,
-  hasDetachedParticle,
-  meaningInSentence,
-  oneMeaning,
-} from "./contextGloss.js";
 import { pageTitle, pdfTitle } from "./importTitle.js";
 import type {
   AppServices,

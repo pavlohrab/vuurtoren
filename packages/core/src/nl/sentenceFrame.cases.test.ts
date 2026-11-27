@@ -2,11 +2,11 @@
  * The sentence-structure test set (frames.cases.ts): every sentence's clauses, as text, against
  * the answers written by hand. The tokens come from the language server (frames.fixture.json).
  */
+import { type Clause, frameTokens, sentenceClauses } from "./index.js";
 import { describe, expect, it } from "vitest";
-import type { AnalyzedToken } from "@app/core";
+import type { AnalyzedToken } from "../reading/types.js";
 import { FRAME_CASES } from "./frames.cases.js";
 import fixture from "./frames.fixture.json";
-import { type Clause, frameTokens, sentenceClauses } from "./sentenceFrame.js";
 
 /** "main: first|verb|middle|end|rest", words as text, […] for a clause inside. */
 function clauseText(toks: readonly AnalyzedToken[], c: Clause): string {

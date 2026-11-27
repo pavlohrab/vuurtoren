@@ -4,7 +4,7 @@
  * hij/zij/het". A split verb shows both parts ("doet … open"). Worked out from the token's
  * morphology and its subject, no new data.
  */
-import type { AnalyzedToken } from "@app/core";
+import type { AnalyzedToken } from "../reading/types.js";
 
 export interface FormLine {
   /** The word as the page has it: "moet", "doet … open". */

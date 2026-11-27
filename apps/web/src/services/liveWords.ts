@@ -18,14 +18,17 @@ import {
 import {
   type AnalyzedToken,
   type CardHistory,
+  contextGloss,
   DEFAULT_FSRS_PARAMS,
+  hasDetachedParticle,
   type InspectorReview,
-  type WordState,
-  splitVerbs,
-  tokenKey,
+  meaningInSentence,
   normalizeKey,
   profileMode,
   reviewHistory,
+  splitVerbs,
+  tokenKey,
+  type WordState,
 } from "@app/core";
 import type { VuurtorenRepository, WordInfo } from "@app/db";
 import type { NlpClient, NlpLang } from "@app/nlp-client";
@@ -46,7 +49,6 @@ import type { LiveTexts } from "./liveTexts.js";
 import type { AddOptions } from "./profileTypes.js";
 import { suggestionEntry } from "./suggestions.js";
 import { pickTextWords } from "./textWordSet.js";
-import { contextGloss, hasDetachedParticle, meaningInSentence } from "./contextGloss.js";
 import type {
   AppServices,
   InspectorEntry,

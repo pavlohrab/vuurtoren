@@ -1,10 +1,10 @@
-// Tokens for the sentence-structure test set (src/screens/reader/frames.cases.ts), from a running
+// Tokens for the sentence-structure test set (packages/core/src/nl/frames.cases.ts), from a running
 // language server, saved next to it as frames.fixture.json so the test runs without the server.
 // Usage: node scripts/frames-fixture.mjs [http://127.0.0.1:8011]
 import { readFileSync, writeFileSync } from "node:fs";
 
 const server = process.argv[2] ?? "http://127.0.0.1:8011";
-const dir = new URL("../src/screens/reader/", import.meta.url);
+const dir = new URL("../../../packages/core/src/nl/", import.meta.url);
 const cases = readFileSync(new URL("frames.cases.ts", dir), "utf8");
 const sentences = [
   ...cases.matchAll(/sentence:\s*\n?\s*("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')/g),

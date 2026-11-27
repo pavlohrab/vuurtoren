@@ -15,7 +15,7 @@
  * 3. Structure: a name (PROPN) and a diminutive are words of their own, never their lemma's
  *    card ("Kampen" is not "kamp", "bankje" is not "bank").
  */
-import type { AnalyzedToken } from "@app/core";
+import type { AnalyzedToken } from "../reading/types.js";
 
 /** Possessive determiners, by their form: the meaning is fixed by the grammar. */
 const POSSESSIVE: Record<string, string> = {

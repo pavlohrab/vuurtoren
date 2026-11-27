@@ -1,4 +1,4 @@
-import type { AnalyzedToken } from "@app/core";
+import type { AnalyzedToken } from "../reading/types.js";
 import { describe, expect, it } from "vitest";
 import { contextGloss, meaningInSentence, oneMeaning, withoutArticle } from "./contextGloss.js";
 

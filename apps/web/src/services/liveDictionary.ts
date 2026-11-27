@@ -7,12 +7,17 @@
  * translation of its sentence. Order: derivation ("from woord + -loos"), a confident alignment
  * ("in this sentence"), compound, then a less confident alignment.
  */
-import { PARTICLE_GLOSSES, formOfTarget, meaningSenses, shortGloss } from "@app/core";
+import {
+  formOfTarget,
+  meaningSenses,
+  PARTICLE_GLOSSES,
+  shortGloss,
+  withoutArticle,
+} from "@app/core";
 import type { VuurtorenRepository, WordInfo } from "@app/db";
 import type { EntryResult, NlpClient } from "@app/nlp-client";
 import { DEGRADED_MESSAGES, clearDegraded, reportDegraded } from "./degraded.js";
 import { nlpOutage } from "./liveSettings.js";
-import { withoutArticle } from "./contextGloss.js";
 
 export type Dictionary = Awaited<ReturnType<NlpClient["gloss"]>>;
 

@@ -9,3 +9,4 @@ export * from "./profile.js";
 export * from "./inspector.js";
 export * from "./frequency.js";
 export * from "./native/index.js";
+export * from "./nl/index.js";

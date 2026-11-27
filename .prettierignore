@@ -18,4 +18,4 @@ content/stories/stories.json
 content/stories/*/*.md
 # generated (pnpm site:docs) from docs/*.md
 site/docs/
-apps/web/src/screens/reader/frames.fixture.json
+packages/core/src/nl/frames.fixture.json

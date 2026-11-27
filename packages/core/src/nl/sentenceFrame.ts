@@ -9,7 +9,7 @@
  * conjugated verb (a fragment) has none: the tab then shows only the kinds of words. Tested on a
  * set with answers written by hand (frames.cases.ts).
  */
-import type { AnalyzedToken } from "@app/core";
+import type { AnalyzedToken } from "../reading/types.js";
 
 export type ClauseKind = "main" | "question" | "command" | "sub" | "rel" | "phrase";
 
