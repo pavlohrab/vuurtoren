@@ -66,7 +66,8 @@ def dir_size(path: Path) -> int:
 
 
 #: Packs an offline build may leave out (it then works without them).
-OPTIONAL_PACKS = {"audio-nl"}
+#: levels-nl is for phones, and asr-nl is fetched on request (speaking on a computer is off).
+OPTIONAL_PACKS = {"audio-nl", "levels-nl", "asr-nl"}
 
 
 def copy_packs(src: Path, out: Path) -> None:
@@ -78,7 +79,6 @@ def copy_packs(src: Path, out: Path) -> None:
         file = f"{name}-{entry['version']}.tar.gz"
         if not (src / file).is_file():
             if name in OPTIONAL_PACKS:
-                # The audio pack is large and optional: the app downloads it, or plays the voice.
                 print(f"leaving out the optional {name} pack (not in {src})")
                 continue
             sys.exit(f"missing pack archive {src / file}")
