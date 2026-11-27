@@ -13,7 +13,7 @@ if (!/^\d+\.\d+\.\d+$/.test(version ?? "")) {
 }
 const git = (...args) => execFileSync("git", args, { encoding: "utf8" }).trim();
 
-if (git("status", "--porcelain")) {
+if (git("status", "--porcelain", "--untracked-files=no")) {
   console.error("Commit or stash your changes first.");
   process.exit(1);
 }
