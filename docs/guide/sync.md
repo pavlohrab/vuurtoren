@@ -11,7 +11,7 @@ place only ever sees locked files that it can't read. When you set up sync, you 
 
 ## Where your data can sync through
 
-All your devices have to use the same place. There are three options for now.
+All your devices have to use the same place. You can choose one of these.
 
 | Place                     | Devices                | Good for                               |
 | ------------------------- | ---------------------- | -------------------------------------- |
@@ -76,16 +76,13 @@ Phones can't share a folder like this, so on a phone use your server or WebDAV.
 
 ## When two devices change the same thing
 
-Every change is saved with a time, and every device puts all the changes in the same order, so in
-the end they all show the same thing. For settings, word marks and your profile, the latest change
-wins. Reviews and answers are never lost: if you review on two devices, both count. Words and texts
-added on two devices are both kept, and the same word added twice is one word.
+Nothing gets lost. If you review on two devices, both reviews count. If you add the same word on
+two devices, it becomes one word. For a setting changed on two devices, the latest change wins.
 
 ## How fast
 
 While Vuurtoren is open on two devices, a change on one shows up on the other within about 20
-seconds, often sooner. It also syncs when you open it or come back to it, and it sends what's left
-when you close it.
+seconds. It also syncs when you open it and when you close it.
 
 ## Good to know
 

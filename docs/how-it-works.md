@@ -16,7 +16,7 @@ its next review, and a word you had to look up comes back today.
 Before you read a page of about 150 words, Vuurtoren plans it. It picks about three new words for
 you to learn, from the most common words you don't know yet, preferably ones that come back later in
 the text, and leaves them untranslated. You can tap any other word to see what it means, and in
-Gloss mode the words you may not know get their English above them. When reading goes well, the
+Gloss mode the words you may not know get their English next to them. When reading goes well, the
 next pages get a few more new words, and when you look up a lot, they get fewer.
 
 This follows reading research. You can follow a text when you know about 95% of its words, and read
@@ -27,8 +27,7 @@ word needs about ten meetings before it sticks (Webb 2007). The sources, with li
 ## It runs on your computer
 
 To find the words and the grammar of a text, Vuurtoren uses spaCy, a language analysis tool, and a
-small translation model, OPUS-MT. How each sentence is built comes from SyntaxDot on a server, and on
-Linux when you download it, and from spaCy elsewhere. The meanings and example sentences come from open dictionaries
+small translation model, OPUS-MT. The meanings and example sentences come from open dictionaries
 (Wiktionary, Tatoeba and wordfreq). All of it is on your computer, so it works offline and your
 texts stay with you.
 

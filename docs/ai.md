@@ -3,17 +3,14 @@
 Everything in Vuurtoren works without AI. If you add a key from an AI provider, you get a few
 extras on top.
 
-In **Talk** you can have a short chat in Dutch that stays within the words you know. It corrects
-your messages and offers new words to add. In the reader you get **Explain this sentence** and
-**Simplify this page**, and Side by side can take its English from the AI when you turn on
-**English from AI**. The word pairs still come from the offline model then. **Write a story** makes
-a text at your level, from Add text, a grammar topic or a course unit, and saves it to your
-Library. In Practice the AI can make new example sentences for your words, and in a course it can
-make more exercises like the ones in the unit. For the exam it gives feedback on your writing and
-speaking, the way an examiner would.
+- **Talk**: a short chat in Dutch that stays within the words you know and corrects your messages.
+- In the reader: **Explain this sentence**, **Simplify this page**, and English from the AI in
+  Side by side.
+- **Write a story**: a new text at your level about a topic you choose.
+- In Practice: new example sentences for your words.
+- For the exam: feedback on your writing and speaking.
 
-Without a provider these buttons are hidden. Talk stays in the menu, and it opens a short set-up
-screen instead.
+Without a key these buttons are hidden.
 
 ## Providers
 
@@ -57,21 +54,12 @@ them.
 
 ## How generated text is checked
 
-The AI only writes. Vuurtoren's own algorithms check what it wrote, and the AI never grades
-anything.
+The AI only writes. Vuurtoren checks what it wrote and never lets the AI grade anything.
 
-When the AI writes a chat message or a story, the language server analyses it and Vuurtoren works
-out how much of it you know. If there are too many words you don't know, it asks the AI to write it
-again once and tells it which words were too hard. For a story, the new words you asked for don't
-count. The new version is only kept if it's better, and the words you still don't know get a
-translation.
-
-An example sentence is only kept if your word is really in it, the sentence is short, and you know
-almost all of the other words in it. For a grammar topic, Vuurtoren also checks that the sentence
-really uses that grammar. A word that failed is remembered, so it isn't tried again every session.
-
-Exercises for a course unit, like gap fills, sentence building or a text with questions, are
-checked the same way, and then graded by the book's own checkers.
+A story or a chat message is checked against the words you know. If too many words are new to you,
+the AI writes it again once, and the words you still don't know get a translation. An example
+sentence is only kept if it is short, really has your word in it, and you know almost all of its
+other words.
 
 ## Use Vuurtoren from Claude
 

@@ -1,13 +1,11 @@
 # Self-host Vuurtoren
 
-Most people don't need a server. The desktop app does everything by itself: it keeps your words,
-reads your texts and prepares them, all on your computer. Your phone is for reading. It gets the
-texts your computer prepared through sync, by WebDAV (Nextcloud, a NAS) or through your own server
-(see [Sync your devices](sync.md)), and reads them offline.
+Most people don't need a server. The desktop app does everything by itself, and your phone gets
+the texts your computer prepared through sync.
 
-Your own server is for when you want more. Your devices sync through it, with everything locked
-with your passphrase, so the server can't read your data. And it prepares texts for your phone, so
-you can add a text on the phone, or take a photo of a page, without your computer.
+Your own server is for when you want more. Your devices sync through it, locked with your
+passphrase so the server can't read your data. And it prepares texts for your phone, so you can add
+a text on the phone without your computer.
 
 The server doesn't run the app itself. Its address shows one page, **Your devices**, where you sign
 in and add or remove devices. The dictionaries, the translation model and the recordings come from
@@ -30,10 +28,9 @@ You need a computer that stays on, like a NAS, a mini PC or a small cloud server
 it. It also needs HTTPS in front of it, because phones only connect over HTTPS. The simplest way is
 a Cloudflare Tunnel, but any reverse proxy with a certificate works too.
 
-The server image is about 1 GB bigger than the app alone, because it includes SyntaxDot, which
-works out how each sentence is built for the Sentence tab. SyntaxDot only runs on Linux with an
-Intel or AMD processor. On an ARM server, like a Raspberry Pi, the server uses spaCy for this
-instead, which makes more mistakes.
+The server image is about 1 GB, because it includes a better Dutch parser for the Sentence tab. That
+parser only runs on Intel or AMD processors. On an ARM server, like a Raspberry Pi, the Sentence tab
+makes a few more mistakes.
 
 ## Start it
 

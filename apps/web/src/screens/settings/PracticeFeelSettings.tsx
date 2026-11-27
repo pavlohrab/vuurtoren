@@ -19,7 +19,7 @@ const ROWS: { key: keyof PracticeFeel; label: string; hint: string }[] = [
   {
     key: "movement",
     label: "Movement",
-    hint: "Tiles fly and a wrong answer shakes. It stays off when your system asks for less motion.",
+    hint: "Tiles fly and a wrong answer shakes.",
   },
   {
     key: "sayOnCard",

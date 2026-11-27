@@ -1,7 +1,7 @@
 # Anki
 
-You don't have to start over if you already use Anki. Either you bring your decks into Vuurtoren, or
-you keep reviewing in Anki and read in Vuurtoren next to it.
+If you already use Anki, you don't have to start over. You can bring your decks into Vuurtoren, or
+keep reviewing in Anki and read in Vuurtoren next to it.
 
 ## Bring your decks in
 
@@ -17,8 +17,8 @@ the computer and on the phone.
 
 Install the [AnkiConnect](https://ankiweb.net/shared/info/2055492159) add-on (code `2055492159`) and
 keep Anki open. Vuurtoren then reads your decks to know which words you know, and a word you add
-while reading goes straight into your Anki deck. It only writes to Anki when you press a button, and
-every note it adds is tagged, so you can find it in Anki's browser.
+while reading goes straight into your Anki deck. Every note it adds is tagged, so you can find it
+in Anki.
 
 This works on a computer only for now. Working with AnkiDroid on a phone is planned.
 

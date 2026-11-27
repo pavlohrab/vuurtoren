@@ -1,76 +1,56 @@
 # Practice
 
-Practice is short lessons with the words you're learning. A lesson is about ten words and takes a
-few minutes. Your cards already bring back what a word means, so Practice works on the rest: the
-word in a sentence, building and saying the sentence, de or het, the right form, and how it sounds.
+Practice is a short lesson with the words you are learning. A lesson has about ten words and takes
+a few minutes. Your review cards already teach you what a word means. Practice teaches you to use
+it.
 
-## Where a lesson starts
+## Start a lesson
 
-Open **Practice** (on a phone it's in **Words**). You get a few lessons to choose from:
+Open **Practice**. On a phone you find it in **Words**. You can choose a lesson with the words from
+the last text you read, a lesson with your new words, or a lesson with the words you got wrong this
+week. If you tapped two or more words on a page while reading, the end of the page also offers you
+a lesson with those words.
 
-- **The text you read last**, with the words you tapped in it.
-- **Your new words**, the usual lesson.
-- **Mistakes**, the words you got wrong this week.
-- **A grammar point** you missed a few times this week, which opens the practice for that topic.
+One lesson a day is enough. There are no streaks to keep up.
 
-When you tapped two or more words on a page while reading, the end of the page offers **Practise
-these words** too. A ring shows how many lessons you did today. One a day is the goal, and there
-are no streaks to keep up.
+## The exercises
 
-## The kinds of exercise
+The exercises go from easy to hard. When you get a word right, it moves up to a harder exercise.
 
-They go from easy to hard, and a word moves up as you get it right.
-
-1. **Choose the meaning** of a Dutch word, or the Dutch word for a meaning. Only for words that
-   don't have a card yet, because that's what the card is for.
-2. **In a sentence**: choose the word for the gap, de or het, or the right form (_mooi_ or
-   _mooie_, a separable verb in its place).
-3. **Build the sentence** from tiles, with the English above it. There is always one tile too
-   many. **Say this sentence** out loud is on the same step.
-4. **Hear it, build it**: the sentence plays and you build it from tiles. The snail plays it slowly.
+1. **Choose the meaning** of a Dutch word, or the Dutch word for an English one. You only get this
+   for words that don't have a review card yet.
+2. **Fill the gap** in a sentence: choose the right word, **de** or **het**, or the right form.
+3. **Build the sentence** from word tiles, with the English above it. On a phone you can also say
+   the sentence out loud.
+4. **Listen and build**: you hear the sentence and build it from the tiles.
 5. **Type it**: the word in the gap, a verb form, or what you hear.
 
-A new word you haven't practised yet is shown first, with its sound and its sentence. When a
-lesson has three or more new words, it starts with a short round of matching pairs. Neither of
-these counts as an answer.
+The first time a word comes up, Practice shows it to you with its sound and a sentence before it
+asks anything.
 
-## How it picks for you
+## How it chooses
 
-Vuurtoren already knows a lot about each word. It knows what your card says, which words you
-tapped while reading and when, which blanks you filled in, and how you did in Practice before. It
-uses that in two steps.
+Practice chooses the words you are about to forget and the words you only half know. For each word
+it chooses an exercise you will get right about 8 times out of 10, because that is hard enough to
+learn from. A word you already reviewed on its card today waits until tomorrow.
 
-First it picks the words. Words that are due come first, then the ones you only half know, tapped
-a lot lately or got wrong, and common words or words from the page you just read. Words you
-reviewed on their card today wait until tomorrow, so you don't do the same word twice in one day.
-
-Then it picks the exercise for each word. Every word has a score for how well you hold it, and
-every kind of exercise has a score for how hard it is for you, a bit like a rating in chess. It
-picks the exercise you'll get right about 8 times in 10, which is hard enough to learn from. A
-word never jumps more than one step, so you only type a word after you've built it in a sentence.
-
-The sentences are short and made of words you know, and they always come with the English. The
-first time you practise a word you see the sentence from your own reading, and after that a
-different sentence each time.
+The sentences are short, use words you already know, and always come with the English.
 
 ## When you get it wrong
 
-The bottom of the screen turns red and shows the right answer, one line on why ("gracht is a
-de-word"), and a link to that bit of grammar. The word comes back once at the end of the lesson,
-one step easier.
+Practice shows you the right answer and one line about why. The word comes back once at the end of
+the lesson, in an easier exercise.
 
 ## Saying sentences
 
-On a phone you can say the sentence out loud. The phone's own speech recognition listens, so it
-doesn't go to any server. If it heard you wrong, press **I said it right**, or **Try again**. If you
-can't talk right now, **I can't talk now** skips speaking for the rest of the lesson. On a computer
-speaking isn't ready yet.
+On a phone you can say a sentence out loud, and the phone listens. If it heard you wrong, press
+**I said it right**. If you can't talk right now, press **I can't talk now**. On a computer this
+doesn't work yet.
 
-## Sound and movement
+## Sound
 
-Practice says the Dutch for you and plays a short sound when you answer. After a miss it shows the
-right answer, and the word comes back at the end of the lesson. You can turn the sound and movement
-off in **Settings → Your words → Practice**.
+Practice says the Dutch words for you and plays a short sound when you answer. You can turn this off
+in **Settings → Your words → Practice**.
 
 ## Keys on a computer
 
@@ -84,5 +64,4 @@ off in **Settings → Your words → Practice**.
 | M         | start and stop the microphone |
 | Esc       | stop the lesson               |
 
-Under **Options** you can make lessons shorter or longer (5, 10 or 15 words) and choose which kinds
-of exercise you want.
+Under **Options** you can make a lesson shorter or longer, and choose which exercises you want.
