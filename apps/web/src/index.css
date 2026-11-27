@@ -1198,6 +1198,7 @@
 @media (min-width: 1100px) {
   .practice-start {
     grid-template-columns: minmax(0, 1fr) 300px;
+    width: 100%;
     max-width: 1000px;
   }
   .practice-start .lessons {
@@ -1228,6 +1229,15 @@
 }
 .practice-box .practice-more {
   border: 0;
+}
+/* In the side column the options stand open: no summary line to repeat them, no indent, and
+   the switches without their longer notes (Settings has those). */
+.practice-box .practice-more[open] .k-disclosure-hint,
+.practice-box .feel-row small {
+  display: none;
+}
+.practice-box .k-disclosure-body {
+  padding-left: 0;
 }
 .practice-keys {
   display: grid;
@@ -1387,8 +1397,20 @@
   border-radius: 0;
   background: var(--surface);
   box-shadow: 0 0 0 100vmax var(--surface);
-  clip-path: inset(0 -100vmax);
-  border-top: 1px solid var(--line);
+  /* 1 px above the band stays visible: its top line, drawn by ::before. */
+  clip-path: inset(-1px -100vmax 0);
+}
+/* The band's top line runs edge to edge with its colour, not only under the column. */
+.practice-card .ex-foot::before,
+.practice-card .ex-strip::before {
+  content: "";
+  position: absolute;
+  top: -1px;
+  left: -100vmax;
+  right: -100vmax;
+  height: 1px;
+  background: var(--line);
+  pointer-events: none;
 }
 .practice-card .ex-strip--right {
   background: color-mix(in srgb, var(--success) 14%, var(--surface));
@@ -1516,26 +1538,10 @@
     font-size: 19px;
     padding: 8px 14px;
   }
-  /* The band: sticks to the bottom of the window, its colour reaching both edges. */
+  /* The band (above, for every screen) is a little taller here. */
   .practice-card .ex-foot,
   .practice-card .ex-strip {
-    position: sticky;
-    bottom: 0;
-    margin: auto 0 0;
     padding: 18px 0 22px;
-    border-radius: 0;
-    background: var(--surface);
-    box-shadow: 0 0 0 100vmax var(--surface);
-    clip-path: inset(0 -100vmax);
-    border-top: 1px solid var(--line);
-  }
-  .practice-card .ex-strip--right {
-    background: color-mix(in srgb, var(--success) 14%, var(--surface));
-    box-shadow: 0 0 0 100vmax color-mix(in srgb, var(--success) 14%, var(--surface));
-  }
-  .practice-card .ex-strip--wrong {
-    background: color-mix(in srgb, var(--danger) 12%, var(--surface));
-    box-shadow: 0 0 0 100vmax color-mix(in srgb, var(--danger) 12%, var(--surface));
   }
   .practice-card .ex-foot .ex-check,
   .practice-card .ex-strip .ex-continue {
@@ -1546,6 +1552,58 @@
   .practice-card .ex-strip .ex-continue {
     align-self: flex-end;
   }
+  /* What the keys do, beside Hint and after the Dutch (mock-practice-desktop.html). */
+  .practice-card .ex-foot-keys {
+    display: block;
+    flex: 1;
+    margin: 0 0 0 6px;
+    font-size: 13px;
+    color: var(--ink-muted);
+  }
+  .practice-card .ex-space-key {
+    display: inline-block;
+  }
+  /* The × lines up with the column's edge, its key beside it. */
+  .practice-close {
+    width: auto;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0 4px 0 0;
+    margin-left: -5px;
+    border-radius: 8px;
+  }
+  .practice-close .practice-close-key {
+    display: inline-block;
+  }
+  /* The lesson is centred in the room right of the sidebar, and so is its end. */
+  .page.practice:has(.practice-card, .practice-done) {
+    max-width: none;
+    margin-inline: 0;
+  }
+  .practice:has(.practice-card) .practice-session {
+    max-width: none;
+    align-self: stretch;
+  }
+  .practice-done {
+    width: 100%;
+    max-width: 720px;
+    margin-inline: auto;
+  }
+  .practice-done .done-stats,
+  .practice-done .practice-next {
+    max-width: none;
+  }
+}
+.practice-close-key {
+  display: none;
+}
+.practice-done {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+  align-items: flex-start;
+  align-self: stretch;
 }
 .practice-group {
   border: 0;

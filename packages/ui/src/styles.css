@@ -3141,9 +3141,9 @@ svg.lucide {
   opacity: 0.4;
   transition: opacity 0.35s 0.3s;
 }
-.ex-diff {
-  margin: 2px 0;
-  font-size: 22px;
+/* Letter by letter (a typed miss). The words that differ in a sentence keep the line's size. */
+.ex-letter-diff {
+  font-size: 19px;
   letter-spacing: 0.02em;
 }
 .ex-diff .ok {
@@ -3268,4 +3268,18 @@ svg.lucide {
     opacity: 1;
     transform: translateX(100%);
   }
+}
+
+/* Key caps and the line about tiles that only a lesson on a computer shows (the app's Practice
+   styles turn them on there). Hint keeps its own width beside Check. */
+.ex-space-key,
+.ex-foot-keys {
+  display: none;
+}
+.ex-foot .ex-hint-btn {
+  flex: none;
+}
+/* A key cap inside a button sits on the label's middle, not its baseline. */
+.k-btn .ex-key {
+  align-self: center;
 }
