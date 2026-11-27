@@ -516,7 +516,7 @@ another, the word that opens it, the middle and its verbs. The code is `sentence
 as good as the parser.
 
 On a server the parse comes from SyntaxDot (`server/nlp/src/vuurtoren_nlp/syntax.py`; de Kok et al.
-2020, [sticker2](https://publikationen.uni-tuebingen.de/xmlui/handle/10900/119167), and de Kok &
+2020, [sticker2](https://hdl.handle.net/10900/119167), and de Kok &
 Pütz 2020, "Self-distillation for German and Dutch dependency parsing", CLIN Journal 10, 91–107),
 because it makes fewer mistakes than spaCy. SyntaxDot only runs on Linux with an Intel or AMD
 processor. The desktop app on Linux can download it; on Windows, macOS and ARM servers the parse

@@ -13,7 +13,7 @@ From nothing to reading your first Dutch text takes about five minutes.
    marked for you to learn. Tap any word to see what it means, and press **Add to my words** to
    learn it. If you want English above the words you may not know, switch the page to **Gloss**.
 
-   <figure class="clip-fig"><video class="clip" src="clips/tap-a-word.webm" poster="clips/tap-a-word.png" autoplay muted loop playsinline aria-label="Tap a word: what it means in this sentence, and its grammar."></video><figcaption>Tap a word: what it means in this sentence, and its grammar.</figcaption></figure>
+   <figure class="clip-fig"><video class="clip" src="../clips/tap-a-word.webm" poster="../clips/tap-a-word.png" autoplay muted loop playsinline aria-label="Tap a word: what it means in this sentence, and its grammar."></video><figcaption>Tap a word: what it means in this sentence, and its grammar.</figcaption></figure>
 
 4. **Add your own text.** Press **Add text** on **Read** and paste a Dutch text, give a web
    address, or choose a PDF or a photo. On a phone, a new text needs your computer or your own
@@ -22,7 +22,7 @@ From nothing to reading your first Dutch text takes about five minutes.
    or on a phone swipe right if you know it and left if you don't. A few minutes a day is enough.
    **Practice** under **Words** then has short lessons with the same words.
 
-   <figure class="clip-fig"><video class="clip" src="clips/practise.webm" poster="clips/practise.png" autoplay muted loop playsinline aria-label="A lesson in Practice: choose, and the band at the bottom says if it was right."></video><figcaption>A lesson in Practice: choose, and the band at the bottom says if it was right.</figcaption></figure>
+   <figure class="clip-fig"><video class="clip" src="../clips/practise.webm" poster="../clips/practise.png" autoplay muted loop playsinline aria-label="A lesson in Practice: choose, and the band at the bottom says if it was right."></video><figcaption>A lesson in Practice: choose, and the band at the bottom says if it was right.</figcaption></figure>
 
 The first time you open a story, a short tour shows you around: tapping a word, its card, the
 sentence and its grammar, **Aa**, and the ways to read. You can skip it at any step, and start it

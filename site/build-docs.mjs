@@ -117,7 +117,11 @@ function render(file) {
     const text = this.parser.parseInline(tokens);
     return `<a href="${esc(rewrite(href, file))}"${t ? ` title="${esc(t)}"` : ""}>${text}</a>`;
   };
-  const html = marked.parse(md, { renderer, gfm: true });
+  // Clips sit in docs/clips (../clips/ from a guide, so they show on GitHub); the site copies
+  // them next to its pages (site/docs/clips).
+  const html = marked
+    .parse(md, { renderer, gfm: true })
+    .replace(/(src|poster)="\.\.\/clips\//g, '$1="clips/');
   const first = html.match(/<\/h1>\s*<p>([\s\S]*?)<\/p>/);
   if (first) summary = plain(first[1]).replace(/\s+/g, " ").trim();
   return { html, title, summary, heads, text: plain(html).replace(/\s+/g, " ").toLowerCase() };
