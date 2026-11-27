@@ -21,9 +21,13 @@
     },
     "packages/*": {
       "project": ["src/**/*.{ts,tsx}"]
+    },
+    ".": {
+      "entry": ["server/feedback/src/index.ts"],
+      "project": ["server/feedback/src/**/*.ts"]
     }
   },
   "ignoreBinaries": ["uv"],
-  "ignore": ["apps/desktop/src-tauri/src/bridge.js", "deploy/devices/devices.js"],
+  "ignore": ["apps/desktop/src-tauri/src/bridge.js"],
   "ignoreDependencies": ["@playwright/test"]
 }

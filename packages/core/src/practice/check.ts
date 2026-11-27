@@ -62,7 +62,7 @@ export function checkAnswer(
 
 /** Share of the sentence's words that must come through for "say" to count (speech recognition
  * mishears some Dutch, so this is lenient; the learner can still say it was right). */
-export const SAY_ENOUGH = 0.7;
+const SAY_ENOUGH = 0.7;
 
 const sayWords = (s: string) =>
   stripAccents(stripSentencePunctuation(normalizeAnswer(normalizeQuotes(s))))

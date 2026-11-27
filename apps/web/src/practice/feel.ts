@@ -87,7 +87,6 @@ const LOUDER = 3;
 /** Sounds start this far ahead (s): a context that just woke up drops its first few ms. */
 const LEAD = 0.03;
 
-
 function audio(): AudioContext | null {
   if (typeof window === "undefined") return null;
   const AC =
@@ -110,7 +109,7 @@ function audio(): AudioContext | null {
  * Wake the sounds. Call it inside a tap or a key press: that is when browsers let audio start
  * (a suspended context, Safari's "interrupted" one, an Android WebView).
  */
-export function wakeSounds(): void {
+function wakeSounds(): void {
   try {
     const c = audio();
     if (!c) return;

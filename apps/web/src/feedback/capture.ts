@@ -136,7 +136,7 @@ export interface Recorder {
   level(): number;
 }
 
-export const MAX_VOICE_MS = 60_000;
+const MAX_VOICE_MS = 60_000;
 
 export const canRecord = (): boolean =>
   typeof navigator !== "undefined" &&

@@ -327,7 +327,7 @@ interface PackItem {
  * Speaking ("Say this sentence") needs speech recognition, the asr-nl pack (about 94 MB). Nobody
  * gets it unasked: this fetches it on this computer's language server when you turn it on.
  */
-export function SpeakingDownload({ nlp, onDone }: { nlp: string; onDone: () => void }) {
+function SpeakingDownload({ nlp, onDone }: { nlp: string; onDone: () => void }) {
   const qc = useQueryClient();
   const status = useQuery({
     queryKey: ["server-status", "packs", nlp],

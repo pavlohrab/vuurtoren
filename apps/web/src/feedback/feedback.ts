@@ -147,7 +147,7 @@ export function setFeedbackName(name: string): void {
 }
 
 /** What the tester sent, as it shows in the conversation. */
-export interface Mine {
+interface Mine {
   id: string;
   text: string;
   at: number;
@@ -157,7 +157,7 @@ export interface Mine {
   voice: boolean;
 }
 
-export function savedMine(): Mine[] {
+function savedMine(): Mine[] {
   try {
     return JSON.parse(localStorage.getItem(MINE) ?? "[]") as Mine[];
   } catch {

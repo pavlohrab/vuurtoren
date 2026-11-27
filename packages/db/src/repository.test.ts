@@ -194,7 +194,9 @@ describe("projections", () => {
       expect((await repo.listTexts())[0]?.place).toBeUndefined();
       // Compaction keeps only the newest place per text.
       await repo.compact();
-      const left = await driver.exec("SELECT count(*) AS c FROM events WHERE type = 'ReadingPlace'");
+      const left = await driver.exec(
+        "SELECT count(*) AS c FROM events WHERE type = 'ReadingPlace'",
+      );
       expect(left).toEqual([{ c: 1 }]);
     } finally {
       vi.useRealTimers();

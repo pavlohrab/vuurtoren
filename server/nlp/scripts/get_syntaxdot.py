@@ -4,8 +4,9 @@
 
 Downloads the CPU binary (v0.5.0, with its libtorch) and the distilled Dutch model
 (nl-l6-h384-20210728) into ``target`` (default: ``<data dir>/syntaxdot``, see
-vuurtoren_nlp.syntax), as ``bin/`` and ``nl/``. About 250 MB to download, 620 MB unpacked. SyntaxDot is built for
-Linux on x86_64 only (no Windows, macOS or ARM): elsewhere the server keeps spaCy's parse.
+vuurtoren_nlp.syntax), as ``bin/`` and ``nl/``. About 250 MB to download, 620 MB unpacked.
+SyntaxDot is built for Linux on x86_64 only (no Windows, macOS or ARM): elsewhere the server
+keeps spaCy's parse.
 Needs ``zstd`` on the PATH for the binary's archive.
 """
 

@@ -1,3 +1,4 @@
+/* global window, document, performance, requestAnimationFrame, setTimeout, localStorage */
 // The start screen's drawing starts once the first frame is on screen, so its first moments
 // don't drop frames while the app's own script loads (src/bootSplash.ts counts from here).
 (function () {
@@ -7,7 +8,7 @@
   try {
     if (localStorage.getItem("vuurtoren-boot-seen") === "1")
       document.documentElement.classList.add("boot-seen");
-  } catch (e) {
+  } catch {
     // No storage: the drawing plays.
   }
   var started = false;

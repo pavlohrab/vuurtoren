@@ -140,7 +140,10 @@ export function issueBody(report: Report, transcript: string | null): string {
   return parts.join("\n\n");
 }
 
-/** The platform from the device line the app sends ("Android 15, Pixel 8", "Linux, desktop app"). */
+/**
+ * The platform from the device line the app sends ("Android 15, Pixel 8", "Linux, desktop app").
+ * @public Used by the tests.
+ */
 export function platform(device: string): "android" | "windows" | "macos" | "linux" | null {
   if (/android/i.test(device)) return "android";
   if (/windows/i.test(device)) return "windows";

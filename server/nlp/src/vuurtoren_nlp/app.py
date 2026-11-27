@@ -205,8 +205,9 @@ def syntaxdot_status() -> dict[str, object]:
 
 @app.post("/admin/syntaxdot")
 def syntaxdot_install() -> dict[str, object]:
-    """Download SyntaxDot in the background (about 250 MB to download, 620 MB unpacked; poll ``GET``). Settings on
-    a Linux computer uses it (SX4). Behind the sign-in like every /nlp/ route."""
+    """Download SyntaxDot in the background (about 250 MB to download, 620 MB unpacked; poll
+    ``GET``). Settings on a Linux computer uses it (SX4). Behind the sign-in like every /nlp/
+    route."""
     from vuurtoren_nlp import syntaxdot_get
 
     started = syntaxdot_get.start()

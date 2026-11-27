@@ -75,7 +75,7 @@ const FeedbackContext = createContext<FeedbackApi>({
   unread: 0,
 });
 
-export const useFeedback = (): FeedbackApi => useContext(FeedbackContext);
+const useFeedback = (): FeedbackApi => useContext(FeedbackContext);
 
 /** How long Undo stays before the report goes. */
 const UNDO_MS = 4000;

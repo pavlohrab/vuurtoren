@@ -11,9 +11,9 @@ from vuurtoren_nlp import __version__, packs
 from vuurtoren_nlp.analyzer import analyzer_version
 from vuurtoren_nlp.dictionary import default_db_path as dictionary_path
 from vuurtoren_nlp.grammar_examples import default_cache_path as grammar_examples_path
+from vuurtoren_nlp.listen import available as listen_available
 from vuurtoren_nlp.ocr import ocr_engine_name
 from vuurtoren_nlp.sentences import default_db_path as sentences_path
-from vuurtoren_nlp.listen import available as listen_available
 from vuurtoren_nlp.speech import available as speech_available
 from vuurtoren_nlp.syntax import syntaxdot_dir
 from vuurtoren_nlp.translate import model_dir

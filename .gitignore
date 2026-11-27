@@ -41,3 +41,6 @@ apps/desktop/src-tauri/sidecar/
 
 # starter 15000 add-on review (work in progress, not published yet)
 content/starter/addon-review/
+
+# Playwright output when run from the root
+test-results/

@@ -14,7 +14,7 @@ vi.mock("../../platform/index.js", async (load) => {
 });
 
 // The wizard is a lazy route: allow for a slow first import when the whole suite runs at once.
-configure({ asyncUtilTimeout: 4000 });
+configure({ asyncUtilTimeout: 10_000 });
 // A whole wizard per test: more than the default 5 s when the full run is busy.
 vi.setConfig({ testTimeout: 30_000 });
 afterEach(() => localStorage.clear());
@@ -268,9 +268,7 @@ describe("onboarding", () => {
     }));
     const { user, saveLanguageProfile } = setup({ moveFromAnki });
     await user.click(await screen.findByRole("button", { name: "Yes" }));
-    expect(
-      await screen.findByRole("radio", { name: /Bring them into Vuurtoren/ }),
-    ).toBeChecked();
+    expect(await screen.findByRole("radio", { name: /Bring them into Vuurtoren/ })).toBeChecked();
     await user.click(cont());
     expect(await screen.findByText(/Anki is connected/)).toBeVisible();
     await user.click(cont());
