@@ -390,7 +390,7 @@ function SpeedReport() {
     <section className="stack" style={{ gap: 6 }}>
       <span className="k-label">Speed report</span>
       <p className="k-hint" style={{ margin: 0 }}>
-        How long the start took and which steps are slow, on this device. Nothing is sent.
+        How long the app takes to start and which steps are slow. Nothing leaves this device.
       </p>
       <div className="row" style={{ gap: 8 }}>
         <Button size="sm" onClick={() => setText(speedReport())}>

@@ -9,17 +9,17 @@ const ROWS: { key: keyof PracticeFeel; label: string; hint: string }[] = [
   {
     key: "sayDutch",
     label: "Say Dutch words and sentences by themselves",
-    hint: "When an exercise shows a Dutch word, when you tap a Dutch answer or tile, and the right sentence after you answer.",
+    hint: "You hear the Dutch without pressing the speaker.",
   },
   {
     key: "sounds",
     label: "Sounds",
-    hint: "A soft tick, three quick notes for right, two down for not quite, and a short chime at the end.",
+    hint: "Short, quiet sounds when you answer.",
   },
   {
     key: "movement",
     label: "Movement",
-    hint: "Tiles that fly, a shake on a miss. Off by itself when your system asks for less motion.",
+    hint: "Tiles fly and a wrong answer shakes. It stays off when your system asks for less motion.",
   },
   {
     key: "sayOnCard",

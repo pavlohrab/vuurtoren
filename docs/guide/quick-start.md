@@ -24,9 +24,9 @@ From nothing to reading your first Dutch text takes about five minutes.
 
    <figure class="clip-fig"><video class="clip" src="../clips/practise.webm" poster="../clips/practise.png" autoplay muted loop playsinline aria-label="A lesson in Practice: choose, and the band at the bottom says if it was right."></video><figcaption>A lesson in Practice: choose, and the band at the bottom says if it was right.</figcaption></figure>
 
-The first time you open a story, a short tour shows you around: tapping a word, its card, the
-sentence and its grammar, **Aa**, and the ways to read. You can skip it at any step, and start it
-again from **Settings → Reading** or, on a phone, from **More**.
+The first time you open a story, a short tour shows you how to tap a word and what its card tells
+you, and where the reading settings and the reading modes are. You can skip it at any step, and
+start it again from **Settings → Reading** or, on a phone, from **More**.
 
 When you want your words on more devices, see [Sync your devices](sync.md).
 

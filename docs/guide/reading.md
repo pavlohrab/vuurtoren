@@ -33,32 +33,32 @@ it** stops Vuurtoren from translating and teaching it.
 
 ## Turning pages
 
-On a phone the text doesn't scroll, you turn it like a book. Swipe, and the corner of the page
-follows your finger, or tap the left or right side. The whole text runs on from screen to screen,
-with no pages in between. On a computer, and on a phone or tablet turned sideways when there's
-room, you see two pages side by side. The arrow keys turn too, and on Android so can the volume
-keys if you turn that on. **Side by side** still scrolls, because it needs the whole width for the
-Dutch and the English.
+On a phone you turn the text like a book instead of scrolling. Swipe and the corner of the page
+follows your finger, or tap the left or right side. Going back, the page before comes back over
+it. The whole text runs on from screen to screen without breaks. On a computer, and on a phone or
+tablet turned sideways when there's room, you see two pages side by side. The arrow keys turn too,
+and on Android so can the volume keys if you turn that on. **Side by side** still scrolls, because
+it needs the whole width for the Dutch and the English.
 
 Tap the middle of the page to hide the bars, and tap again to bring them back. The bar along the
-bottom lets you jump through the text, and the line under it says about how long the rest takes.
+bottom lets you jump through the text, and the line under it says how far you are and about how
+long the rest takes.
 That time comes from your own reading speed, so it gets better as you read. Vuurtoren also keeps
 your place to the word, on your other devices too.
 
-In the reading settings (**Aa**), under **Pages**, you can go back to scrolling, choose how a page
-turns (paper, slide, fade, or none), set the margins, and turn justified text and
-two pages off.
+In the reading settings (**Aa**), under **Pages**, you can go back to scrolling or choose how a
+page turns. There you also set the margins and can turn off justified text and the two pages.
 
 ## Four ways to read
 
 You switch the reading mode at the top of the page. **Read** is the page as described above.
-**Gloss** puts English above the words you may not know, so you can read on without stopping, and
+**Gloss** puts the English with the words you may not know (under them in the book), so you can read on without stopping, and
 the **Translations** slider in the reading settings sets how many words get it. **Cloze** turns some
 words you know or are learning into blanks to fill in, and a right answer counts as practice for that
 word. **Side by side** shows each sentence with its English, and the same words have the same colour
 on both sides.
 
-**Focus mode**, in the menu above the page (or the F key), hides everything except the text and fills the whole screen. To leave it, press Esc or F, tap **Leave focus mode** in the corner, or on a phone go back.
+**Focus mode** (the ⤢ button next to **Aa**, or the F key) hides everything except the text and fills the whole screen. To leave it, press Esc or F, tap **Leave focus mode** in the corner, or on a phone go back.
 
 ## Grammar and sound
 

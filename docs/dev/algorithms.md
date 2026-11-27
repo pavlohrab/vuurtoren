@@ -563,8 +563,8 @@ so a turn moves the text sideways by one step, the screen width plus the gap. Wi
 pixels, so columns don't drift after many turns.
 
 - **One flow.** The whole text goes into the book, its segments (3.1) one after another, so the
-  reader never sees a seam or a page number. Each segment keeps its own plan: its new words,
-  blanks and help (3.4, 3.5), and the current one is frozen as before. The segment the reader is
+  reader never sees a seam or a page number. Each segment still has its own new words,
+  blanks and help (3.4, 3.5), and the one the reader is in stays frozen as before. The segment the reader is
   in is the one holding the first word on the screen. When that moves into a later segment, the
   ones before it are recorded as read with their own stats, as Next does in the scroll reader, so
   the staircase (3.6), the resume point and the reading speed work the same. Going back only
