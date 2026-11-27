@@ -86,6 +86,35 @@ export function shortcutBlocked(ev: KeyboardEvent, scope?: Element | null): bool
   return document.querySelector(OVERLAY) !== null;
 }
 
+/**
+ * Whether the learner moved focus with Tab since their last click. A button that only kept
+ * focus after a click (a speaker, a tile, an answer) must not take Enter away from Check and
+ * Continue; one reached with Tab keeps it.
+ */
+function useTabbed() {
+  const tabbed = useRef(false);
+  useEffect(() => {
+    const key = (ev: KeyboardEvent) => {
+      if (ev.key === "Tab") tabbed.current = true;
+    };
+    const point = () => {
+      tabbed.current = false;
+    };
+    window.addEventListener("keydown", key, true);
+    window.addEventListener("pointerdown", point, true);
+    return () => {
+      window.removeEventListener("keydown", key, true);
+      window.removeEventListener("pointerdown", point, true);
+    };
+  }, []);
+  /** The focused control handles Enter itself (it was reached with Tab and still works). */
+  return (ev: KeyboardEvent): boolean => {
+    if (!tabbed.current || !(ev.target instanceof Element)) return false;
+    const control = ev.target.closest("button,a,summary,[data-word]");
+    return !!control && !(control instanceof HTMLButtonElement && control.disabled);
+  };
+}
+
 /** Kinds whose prompt text is English (the rest show Dutch in the reading face). */
 const ENGLISH_PROMPT = new Set(["word-choice", "scramble"]);
 
@@ -269,7 +298,11 @@ export function ExerciseCard({
   const revealHint = () => {
     if (answered) return;
     if (lastStep) onSubmit({ answer: "", hintsUsed: hints });
-    else setHints((h) => h + 1);
+    else {
+      setHints((h) => h + 1);
+      // Back to typing, so the next key goes into the answer (and Enter checks it).
+      inputRef.current?.focus();
+    }
   };
 
   // Speak a dictation or a sentence to build once when it appears (the browser may block it;
@@ -288,13 +321,14 @@ export function ExerciseCard({
     if (!answered && (mode === "typed" || mode === "dictation")) inputRef.current?.focus();
   }, [e.id, answered, mode]);
 
+  const ownsEnter = useTabbed();
   // Keyboard: window-level so it works without focusing a control first.
   useEffect(() => {
     const onKey = (ev: KeyboardEvent) => {
       if (ev.metaKey || ev.ctrlKey || ev.altKey || ev.repeat) return;
       if (shortcutBlocked(ev, cardRef.current)) return;
       if (mode === "meet") {
-        if (ev.key === "Enter" && !(ev.target instanceof HTMLButtonElement)) {
+        if (ev.key === "Enter" && !ownsEnter(ev)) {
           ev.preventDefault();
           onContinue();
         }
@@ -324,14 +358,25 @@ export function ExerciseCard({
         return;
       }
       if (answered) {
-        // A focused button or word handles Enter itself (its click would otherwise fire a
-        // second time, or a word would open and the card move on at once).
-        const own =
-          ev.target instanceof HTMLButtonElement ||
-          (ev.target instanceof HTMLElement && ev.target.closest("[data-word]") !== null);
-        if (ev.key === "Enter" && !own) {
+        // A button or word reached with Tab handles Enter itself (its click would otherwise
+        // fire a second time, or a word would open and the card move on at once). One that
+        // only kept focus after a click, or went disabled, leaves Enter to Continue.
+        if (ev.key === "Enter" && !ownsEnter(ev)) {
           ev.preventDefault();
           onContinue();
+        }
+        return;
+      }
+      // Enter checks a typed answer from anywhere, not only from the field (after Hint, say).
+      if (
+        (mode === "typed" || mode === "dictation") &&
+        ev.key === "Enter" &&
+        !(ev.target instanceof HTMLInputElement) &&
+        !ownsEnter(ev)
+      ) {
+        if (text.trim()) {
+          ev.preventDefault();
+          submit(text.trim());
         }
         return;
       }
@@ -358,7 +403,7 @@ export function ExerciseCard({
         } else if (ev.key === "Backspace") {
           ev.preventDefault();
           takeBack("last");
-        } else if (ev.key === "Enter" && picked.length > 0) {
+        } else if (ev.key === "Enter" && picked.length > 0 && !ownsEnter(ev)) {
           ev.preventDefault();
           submit(scrambleAnswer());
         }
@@ -479,6 +524,9 @@ export function ExerciseCard({
           >
             <Snail size={18} aria-hidden />
           </button>
+          <kbd className="ex-key ex-space-key" aria-hidden>
+            Space
+          </kbd>
         </div>
       ) : mode !== "dictation" ? (
         <div className="ex-prompt-row">
@@ -486,6 +534,11 @@ export function ExerciseCard({
             <SpeakButton onClick={() => onSpeak(e.prompt.text)} label="Play the word" />
           ) : null}
           <PromptText text={e.prompt.text} dutch={dutchPrompt} />
+          {sayFirst ? (
+            <kbd className="ex-key ex-space-key" aria-hidden>
+              Space
+            </kbd>
+          ) : null}
         </div>
       ) : null}
       {englishLine ? <p className="ex-en">{englishLine}</p> : null}
@@ -675,12 +728,18 @@ export function ExerciseCard({
       {!answered && (mode === "scramble" || mode === "typed" || mode === "dictation") ? (
         <div className="ex-foot">
           {mode === "scramble" ? (
-            <Button variant="ghost" onClick={nextTile} aria-label="Place the next word">
+            <Button
+              variant="secondary"
+              className="ex-hint-btn"
+              onClick={nextTile}
+              aria-label="Place the next word"
+            >
               Hint <kbd className="ex-key">?</kbd>
             </Button>
           ) : (
             <Button
-              variant="ghost"
+              variant="secondary"
+              className="ex-hint-btn"
               onClick={revealHint}
               aria-label={lastStep ? "Show the answer" : "Reveal a letter"}
             >
@@ -688,13 +747,22 @@ export function ExerciseCard({
             </Button>
           )}
           {mode === "scramble" ? (
+            // On a computer the band says how the tiles work (mock-practice-desktop.html).
+            <p className="ex-foot-keys k-keyhint">
+              Click a tile or press its number. <kbd className="ex-key">⌫</kbd> takes one back.
+            </p>
+          ) : null}
+          {mode === "scramble" ? (
             <Button
               variant="primary"
               className="ex-check"
               disabled={picked.length === 0}
               onClick={() => submit(scrambleAnswer())}
             >
-              Check
+              Check{" "}
+              <kbd className="ex-key" aria-hidden>
+                Enter
+              </kbd>
             </Button>
           ) : (
             <Button
@@ -704,7 +772,10 @@ export function ExerciseCard({
               form={`ex-form-${e.id}`}
               disabled={!text.trim()}
             >
-              Check
+              Check{" "}
+              <kbd className="ex-key" aria-hidden>
+                Enter
+              </kbd>
             </Button>
           )}
         </div>
@@ -736,9 +807,12 @@ export function ExerciseCard({
               <SpeakButton onClick={() => onSpeak(resultDutch)} label="Play the sentence" />
             ) : null}
             <span>
-              {!feedback.correct &&
-              submitted &&
-              (mode === "scramble" || mode === "dictation" || mode === "say") ? (
+              {typedMiss && resultDutch === e.answer ? (
+                // The answer is the whole line: show it once, letter by letter.
+                <LetterDiff answer={e.answer} given={submitted ?? ""} />
+              ) : !feedback.correct &&
+                submitted &&
+                (mode === "scramble" || mode === "dictation" || mode === "say") ? (
                 <MarkedSentence answer={resultDutch} given={submitted} />
               ) : onWord ? (
                 <WordText
@@ -749,21 +823,17 @@ export function ExerciseCard({
                 resultDutch
               )}
             </span>
+            {onSpeak ? (
+              <kbd className="ex-key ex-space-key" aria-hidden>
+                Space
+              </kbd>
+            ) : null}
           </p>
-          {typedMiss ? (
-            // The right word letter by letter: green where it was right, red where it wasn't.
-            <p className="ex-diff ex-dutch" lang="nl" aria-label={`Answer: ${e.answer}`}>
-              {[...e.answer].map((ch, k) => (
-                <span
-                  key={k}
-                  className={(submitted ?? "")[k]?.toLowerCase() === ch.toLowerCase() ? "ok" : "no"}
-                  style={{ animationDelay: `${0.3 + k * 0.05}s` }}
-                >
-                  {ch}
-                </span>
-              ))}
+          {typedMiss && resultDutch !== e.answer ? (
+            <p className="ex-dutch" lang="nl">
+              <LetterDiff answer={e.answer} given={submitted ?? ""} />
             </p>
-          ) : resultDutch !== e.answer && !feedback.correct ? (
+          ) : !typedMiss && resultDutch !== e.answer && !feedback.correct ? (
             <p>
               Answer:{" "}
               <strong className="ex-dutch" lang="nl">
@@ -864,6 +934,19 @@ function Pairs({
   const [missNl, setMissNl] = useState<string | null>(null);
   const all = done.size === pairs.length;
   const boxRef = useRef<HTMLDivElement | null>(null);
+  // Enter goes on once every pair is matched, like Continue anywhere else.
+  const ownsEnter = useTabbed();
+  useEffect(() => {
+    if (!all) return;
+    const key = (ev: KeyboardEvent) => {
+      if (ev.key !== "Enter" || ev.metaKey || ev.ctrlKey || ev.altKey || ev.repeat) return;
+      if (shortcutBlocked(ev) || ownsEnter(ev)) return;
+      ev.preventDefault();
+      onDone();
+    };
+    window.addEventListener("keydown", key, true);
+    return () => window.removeEventListener("keydown", key, true);
+  });
   const linkTimer = useRef<number | undefined>(undefined);
   useEffect(() => () => window.clearTimeout(linkTimer.current), []);
   /** A match being shown: a thin line joins the two, then they pop away. */
@@ -960,7 +1043,10 @@ function Pairs({
       </div>
       <div className="ex-foot">
         <Button variant="primary" className="ex-check" disabled={!all} onClick={onDone}>
-          Continue
+          Continue{" "}
+          <kbd className="ex-key" aria-hidden>
+            Enter
+          </kbd>
         </Button>
       </div>
     </>
@@ -1134,6 +1220,24 @@ function MarkedSentence({ answer, given }: { answer: string; given: string }) {
         );
       })}
     </>
+  );
+}
+
+/** The right word letter by letter: green where it was right, red where it wasn't. */
+function LetterDiff({ answer, given }: { answer: string; given: string }) {
+  return (
+    <span className="ex-diff ex-letter-diff" aria-label={`Answer: ${answer}`}>
+      {[...answer].map((ch, k) => (
+        <span
+          key={k}
+          className={given[k]?.toLowerCase() === ch.toLowerCase() ? "ok" : "no"}
+          style={{ animationDelay: `${0.3 + k * 0.05}s` }}
+        >
+          {/* Each letter is its own box when it moves: a plain space would collapse. */}
+          {ch === " " ? " " : ch}
+        </span>
+      ))}
+    </span>
   );
 }
 

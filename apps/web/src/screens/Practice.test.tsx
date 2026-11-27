@@ -1,5 +1,5 @@
 import { createMemoryHistory } from "@tanstack/react-router";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Exercise } from "@app/core";
@@ -373,7 +373,7 @@ describe("Practice session", () => {
     expect(answers).toHaveLength(0);
   });
 
-  it("says when nothing can listen for \"Say this sentence\"", async () => {
+  it('says when nothing can listen for "Say this sentence"', async () => {
     const say = {
       id: "say-1",
       kind: "say",
@@ -501,6 +501,127 @@ describe("Practice session", () => {
     await user.click(await screen.findByRole("button", { name: "Play audio" }));
     expect(speak).toHaveBeenCalled();
     expect(speak.mock.calls[0]![0]).toMatchObject({ text: "het huis" });
+  });
+
+  describe("Enter", () => {
+    const RIGHT = /^(Nice|Good|Well done|Yes|Right|On a roll)$/;
+    const choices = MOCK_EXERCISES.filter((e) => e.kind === "meaning-choice");
+
+    it("goes on after an answer picked with the mouse (focus is left on that answer)", async () => {
+      const { user } = setup(choices);
+      await begin(user);
+      await screen.findByText("1 of 2");
+      const answers = screen.getByRole("group", { name: "Answers" });
+      const picked = within(answers).getByRole("button", { name: /canal$/ });
+      await user.click(picked);
+      expect(await fed(RIGHT)).toBeInTheDocument();
+      // Firefox and WebKit keep focus on the answer after it is disabled: the key goes there.
+      expect(picked).toBeDisabled();
+      fireEvent.keyDown(picked, { key: "Enter" });
+      expect(await screen.findByText("2 of 2")).toBeInTheDocument();
+    });
+
+    it("goes on after the speaker in the band was clicked, instead of playing again", async () => {
+      const speak = stubSpeech([{ lang: "nl-NL" }]);
+      const { user } = setup(choices);
+      await begin(user);
+      await user.keyboard("1");
+      expect(await fed(RIGHT)).toBeInTheDocument();
+      await user.click(screen.getAllByRole("button", { name: "Play the sentence" })[0]!);
+      await waitFor(() => expect(speak).toHaveBeenCalled());
+      const played = speak.mock.calls.length;
+      await user.keyboard("{Enter}");
+      expect(await screen.findByText("2 of 2")).toBeInTheDocument();
+      expect(speak.mock.calls.length).toBeLessThanOrEqual(played + 1);
+    });
+
+    it("is left to a button reached with Tab", async () => {
+      const speak = stubSpeech([{ lang: "nl-NL" }]);
+      const { user } = setup(choices);
+      await begin(user);
+      await user.keyboard("1");
+      expect(await fed(RIGHT)).toBeInTheDocument();
+      await user.keyboard("{Tab}");
+      screen.getAllByRole("button", { name: "Play the sentence" })[0]!.focus();
+      speak.mockClear();
+      await user.keyboard("{Enter}");
+      await waitFor(() => expect(speak).toHaveBeenCalled());
+      expect(screen.getByText("1 of 2")).toBeInTheDocument();
+    });
+
+    it("checks a typed answer after Hint was clicked", async () => {
+      const typed = MOCK_EXERCISES.find((e) => e.kind === "cloze-typed")!; // answer "brug"
+      const { answers, user } = setup([typed]);
+      await begin(user);
+      await screen.findByLabelText("Your answer");
+      await user.click(screen.getByRole("button", { name: "Reveal a letter" }));
+      expect(screen.getByLabelText("Your answer")).toHaveFocus();
+      await user.keyboard("brug{Enter}");
+      await waitFor(() => expect(answers).toEqual([{ id: typed.id, answer: "brug" }]));
+    });
+
+    it("goes on from a new word after its speaker was clicked, and from matched pairs", async () => {
+      const meet = {
+        id: "meet-gracht",
+        kind: "meet",
+        skill: "recognition",
+        key: "gracht",
+        instruction: "New word",
+        prompt: { text: "de gracht", hint: "canal" },
+        answer: "de gracht",
+      } as Exercise;
+      const pairs = {
+        id: "pairs-1",
+        kind: "pairs",
+        skill: "recognition",
+        key: "brug",
+        instruction: "Tap the pairs",
+        prompt: { text: "" },
+        pairs: [
+          { nl: "de brug", en: "bridge" },
+          { nl: "de sleutel", en: "key" },
+        ],
+        answer: "",
+      } as Exercise;
+      const { user } = setup([meet, pairs, choices[0]!]);
+      await begin(user);
+      await user.click(await screen.findByRole("button", { name: "Play the word" }));
+      await user.keyboard("{Enter}");
+      const dutch = await screen.findByRole("group", { name: "Dutch" });
+      const meanings = screen.getByRole("group", { name: "Meanings" });
+      // Not before every pair is matched.
+      await user.keyboard("{Enter}");
+      expect(screen.getByText("2 of 3")).toBeInTheDocument();
+      await user.click(within(dutch).getByRole("button", { name: "de brug" }));
+      await user.click(within(meanings).getByRole("button", { name: "bridge" }));
+      await user.click(within(dutch).getByRole("button", { name: "de sleutel" }));
+      await user.click(within(meanings).getByRole("button", { name: "key" }));
+      await user.keyboard("{Enter}");
+      expect(await screen.findByText("3 of 3")).toBeInTheDocument();
+    });
+
+    it("moves on once when pressed twice while the exercise slides out", async () => {
+      const { user } = setup([...choices, MOCK_EXERCISES.find((e) => e.kind === "gender")!]);
+      await begin(user);
+      await user.keyboard("1");
+      expect(await fed(RIGHT)).toBeInTheDocument();
+      await user.keyboard("{Enter}{Enter}");
+      expect(await screen.findByText("2 of 3")).toBeInTheDocument();
+      await new Promise((r) => setTimeout(r, 300));
+      expect(screen.getByText("2 of 3")).toBeInTheDocument();
+    });
+
+    it("ends the lesson when it asks whether to end, and does nothing to the exercise", async () => {
+      const { answers, user } = setup(choices);
+      await begin(user);
+      await user.keyboard("1");
+      expect(await fed(RIGHT)).toBeInTheDocument();
+      await user.keyboard("{Escape}");
+      expect(screen.getByRole("group", { name: "End the session?" })).toBeInTheDocument();
+      await user.keyboard("{Enter}");
+      expect(await screen.findByText("1 of 1 correct.")).toBeInTheDocument();
+      expect(answers).toHaveLength(1);
+    });
   });
 
   it("skips dictation without a Dutch voice and says so", async () => {

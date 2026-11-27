@@ -11,7 +11,7 @@ import {
   MessagesSquare,
   X,
 } from "lucide-react";
-import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { Exercise, ExerciseKind, Skill } from "@app/core";
 import { grammarTopic } from "@app/content";
 import {
@@ -166,21 +166,24 @@ function PracticeSession({ focus, autoStart }: { focus: string[] | null; autoSta
           />
         </div>
       ) : (
-        <Summary
-          inspector={inspector}
-          answered={phase.answered}
-          skipped={phase.skipped}
-          empty={phase.empty}
-          {...(phase.ms !== undefined ? { ms: phase.ms } : {})}
-          onAgain={() => setPhase({ name: "start" })}
-          {...(focus
-            ? {
-                emptyTitle: "Nothing to practise for these words",
-                emptyText:
-                  "Vuurtoren has no example sentences for them yet. Read a text that uses them, or practise the words that are due.",
-              }
-            : {})}
-        />
+        // On a computer the end of a lesson stays in the lesson's column.
+        <div className="practice-done">
+          <Summary
+            inspector={inspector}
+            answered={phase.answered}
+            skipped={phase.skipped}
+            empty={phase.empty}
+            {...(phase.ms !== undefined ? { ms: phase.ms } : {})}
+            onAgain={() => setPhase({ name: "start" })}
+            {...(focus
+              ? {
+                  emptyTitle: "Nothing to practise for these words",
+                  emptyText:
+                    "Vuurtoren has no example sentences for them yet. Read a text that uses them, or practise the words that are due.",
+                }
+              : {})}
+          />
+        </div>
       )}
       {inspector.portal}
     </div>
@@ -216,14 +219,19 @@ function OptionChip({
   );
 }
 
-/** What Practice is for, in one quiet line (both modes). */
-function PracticeNote({ native }: { native: boolean }) {
+/** What Practice is for, in one quiet line (both modes). Without `keys` the keys are shown
+ * elsewhere (the side column on a computer). */
+function PracticeNote({ native, keys = true }: { native: boolean; keys?: boolean }) {
   return (
     <p className="k-hint practice-about">
       {native
         ? "Practice trains what flashcards don’t: forms, gender, word order and listening."
         : "Practice trains what Anki doesn’t: forms, gender, word order and listening. Your Anki reviews stay in Anki."}{" "}
-      <span className="k-keyhint">Keys: 1–4 to choose, Enter to check and go on, Esc to end.</span>
+      {keys ? (
+        <span className="k-keyhint">
+          Keys: 1–4 to choose, Enter to check and go on, Esc to end.
+        </span>
+      ) : null}
       <span className="k-touchhint">Tap an answer, then Check.</span>
     </p>
   );
@@ -521,7 +529,7 @@ function StartView({
               </p>
             ) : null}
             {wide ? null : options}
-            <PracticeNote native={review.data?.native === true} />
+            <PracticeNote native={review.data?.native === true} keys={!wide} />
           </div>
           {wide ? (
             <aside className="practice-aside" aria-label="About your practice">
@@ -704,6 +712,8 @@ function Session({
   /** The lesson ended normally (finished, or ended with Esc / End session). */
   const ended = useRef(false);
   const [confirmEnd, setConfirmEnd] = useState(false);
+  const cardRef = useRef<HTMLDivElement>(null);
+  useSteadyExercise(cardRef, feedback !== null);
 
   const advance = useCallback(
     (nextAnswered: Answered[], nextSkipped: number) => {
@@ -757,14 +767,30 @@ function Session({
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (e.defaultPrevented) return;
+      // While it asks, the exercise behind doesn't take keys (data-shortcuts-blocked):
+      // Enter ends, Esc goes back to the lesson.
+      if (confirmEnd) {
+        if (e.key === "Escape") {
+          e.preventDefault();
+          setConfirmEnd(false);
+        } else if (
+          e.key === "Enter" &&
+          !(e.target instanceof Element && e.target.closest(".practice-confirm button"))
+        ) {
+          e.preventDefault();
+          setConfirmEnd(false);
+          void endSession();
+        }
+        return;
+      }
       if (e.key !== "Escape" || shortcutBlocked(e)) return;
       e.preventDefault();
-      if (confirmEnd) setConfirmEnd(false);
-      else requestEnd();
+      requestEnd();
     };
     window.addEventListener("keydown", onKey, true);
     return () => window.removeEventListener("keydown", onKey, true);
-  }, [confirmEnd, requestEnd]);
+  }, [confirmEnd, requestEnd, endSession]);
 
   const submit = async (s: ExerciseSubmit) => {
     if (!current || busy || feedback) return;
@@ -882,6 +908,9 @@ function Session({
           title="End session (Esc)"
         >
           <X size={20} aria-hidden />
+          <kbd className="ex-key practice-close-key" aria-hidden>
+            Esc
+          </kbd>
         </button>
         <ExerciseProgress done={index + (feedback ? 1 : 0)} total={exercises.length} />
         <span className="practice-count">
@@ -889,10 +918,18 @@ function Session({
         </span>
       </div>
       {confirmEnd ? (
-        <p className="practice-confirm" role="group" aria-label="End the session?">
+        <p
+          className="practice-confirm"
+          role="group"
+          aria-label="End the session?"
+          data-shortcuts-blocked
+        >
           End the session? Your answers so far are saved.{" "}
           <Button size="sm" variant="primary" onClick={() => void endSession()}>
-            End session
+            End session{" "}
+            <kbd className="ex-key" aria-hidden>
+              Enter
+            </kbd>
           </Button>{" "}
           <Button size="sm" variant="ghost" onClick={() => setConfirmEnd(false)}>
             Keep going
@@ -900,6 +937,7 @@ function Session({
         </p>
       ) : null}
       <div
+        ref={cardRef}
         className={`practice-card${moving(feel) ? " practice-move" : ""}${leaving ? " practice-leaving" : ""}`}
       >
         <ExerciseCard
@@ -952,6 +990,41 @@ function Session({
       ) : null}
     </>
   );
+}
+
+/** Room kept between the exercise and the result band (px). */
+const BAND_GAP = 16;
+
+/**
+ * The exercise sits in the middle of the room above the band. When the answer is checked the
+ * band grows, which would pull the exercise up by half of that. Instead it stays where it was,
+ * and moves up only as far as it must to stay clear of the band.
+ */
+function useSteadyExercise(ref: React.RefObject<HTMLElement | null>, answered: boolean) {
+  const top = useRef<number | null>(null);
+  useLayoutEffect(() => {
+    // Offsets, not screen positions: the band rises in with a transform, and the page may scroll.
+    const first = ref.current?.querySelector<HTMLElement>(".ex-card > :first-child");
+    if (!first) return;
+    if (!answered) {
+      top.current = first.offsetTop;
+      return;
+    }
+    const was = top.current;
+    top.current = null;
+    if (was === null) return;
+    const shift = was - first.offsetTop;
+    if (shift <= 0) return;
+    const margin = parseFloat(getComputedStyle(first).marginTop) || 0;
+    first.style.marginTop = `${margin + shift}px`;
+    // Give back what the band would now cover.
+    const band = ref.current?.querySelector<HTMLElement>(".ex-strip");
+    const above = band?.previousElementSibling;
+    if (!band || !(above instanceof HTMLElement)) return;
+    const gap = band.offsetTop - (above.offsetTop + above.offsetHeight);
+    if (gap < BAND_GAP)
+      first.style.marginTop = `${Math.max(margin, margin + shift - (BAND_GAP - gap))}px`;
+  });
 }
 
 /**
@@ -1168,15 +1241,16 @@ function Summary({
           <dd>{ms === undefined ? "–" : `${minutes} min`}</dd>
         </div>
       </dl>
+      {answered.length > 0 && soon.length ? (
+        <p className="k-hint practice-note">
+          <span lang="nl">{soon.slice(0, 3).join(", ")}</span>
+          {soon.length > 3 ? ` and ${soon.length - 3} more` : ""}{" "}
+          {soon.length === 1 ? "comes" : "come"} back tomorrow.
+        </p>
+      ) : null}
+      {/* Its own line: the ring doesn't sit well inside a sentence. */}
       {answered.length > 0 ? (
         <p className="k-hint practice-note">
-          {soon.length ? (
-            <>
-              <span lang="nl">{soon.slice(0, 3).join(", ")}</span>
-              {soon.length > 3 ? ` and ${soon.length - 3} more` : ""}{" "}
-              {soon.length === 1 ? "comes" : "come"} back tomorrow.{" "}
-            </>
-          ) : null}
           <TodayCount />
         </p>
       ) : null}
