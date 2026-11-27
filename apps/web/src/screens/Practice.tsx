@@ -28,7 +28,7 @@ import {
 import { dutchVoiceAvailable, speakDutch, useDutchVoice } from "../practice/speech.js";
 import { toWav16k } from "../practice/wav.js";
 import { useSay } from "../audio/useSay.js";
-import { claimSay } from "../audio/play.js";
+import { claimSay, stopSaying } from "../audio/play.js";
 import { buzz, moving, play as playSound, useFeel, useSoundUnlock } from "../practice/feel.js";
 import { PracticeFeelSettings } from "./settings/PracticeFeelSettings.js";
 import { clipId } from "@app/anki";
@@ -692,7 +692,14 @@ function Session({
   // The same in a ref, read synchronously: two Enters in one slide must advance once.
   const leavingRef = useRef(false);
   const leaveTimer = useRef<number | undefined>(undefined);
-  useEffect(() => () => window.clearTimeout(leaveTimer.current), []);
+  // Leaving the lesson: no timer goes on, and nothing keeps talking.
+  useEffect(
+    () => () => {
+      window.clearTimeout(leaveTimer.current);
+      stopSaying();
+    },
+    [],
+  );
   const [submitted, setSubmitted] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -718,9 +725,13 @@ function Session({
   const advance = useCallback(
     (nextAnswered: Answered[], nextSkipped: number) => {
       if (index + 1 >= exercises.length) {
+        stopSaying();
         ended.current = true;
         onFinish(nextAnswered, nextSkipped);
       } else {
+        // Whatever is still being said belongs to this exercise: it stops with it (a long
+        // answer sentence kept talking over the next exercise).
+        stopSaying();
         setIndex(index + 1);
         setFeedback(null);
         setSubmitted(null);

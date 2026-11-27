@@ -156,6 +156,20 @@
       .boot .tower {
         clip-path: polygon(16.667% 0, 83.333% 0, 100% 100%, 0 100%);
       }
+      /* A later start: every part lands on its last frame at once, and the logo fades in. */
+      html.boot-seen .boot .p {
+        animation-duration: 1ms !important;
+        animation-delay: 0s !important;
+      }
+      html.boot-seen .boot .logo {
+        animation: boot-in 220ms ease-out both;
+      }
+      @keyframes boot-in {
+        from {
+          opacity: 0;
+          transform: scale(0.97);
+        }
+      }
       @keyframes boot-draw {
         from {
           transform: var(--from);

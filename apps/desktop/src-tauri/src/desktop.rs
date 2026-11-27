@@ -594,6 +594,9 @@ pub fn window<'a>(
         .title("Vuurtoren")
         .inner_size(1200.0, 820.0)
         .min_inner_size(380.0, 520.0)
+        // The start screen's sand from the first frame: the webview was white until the page
+        // painted (a white flash before the logo).
+        .background_color(tauri::window::Color(0xec, 0xe5, 0xd9, 0xff))
         .visible(!self_test())
         // Drags belong to the page (moving a text to a shelf, a file onto Add text): Tauri's own
         // file-drop handler took every drag, so the page never saw one.

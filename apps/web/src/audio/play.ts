@@ -39,11 +39,18 @@ export async function say(
   deps: PlayerDeps,
   mine: number = claimSay(),
 ): Promise<"clip" | "voice" | "none"> {
+  // A test can switch on a log of what is said (window.__sayLog): what, and when.
+  const log =
+    typeof window !== "undefined" ? (window as { __sayLog?: string[] }).__sayLog : undefined;
+  log?.push(`${Math.round(performance.now())} ask "${what.text ?? ""}" turn ${mine}`);
   if (what.clip) {
     const blob = await deps.clip(what.clip).catch(() => null);
     if (mine !== turn) return "none";
     if (blob) {
       try {
+        log?.push(
+          `${Math.round(performance.now())} clip "${what.text ?? ""}" turn ${mine}/${turn}`,
+        );
         await deps.playBlob(blob, rate);
         return "clip";
       } catch {
@@ -52,6 +59,7 @@ export async function say(
     }
   }
   if (mine !== turn) return "none";
+  log?.push(`${Math.round(performance.now())} voice "${what.text ?? ""}" turn ${mine}/${turn}`);
   if (what.text && (await deps.speak(what.text, rate).catch(() => false))) return "voice";
   return "none";
 }
