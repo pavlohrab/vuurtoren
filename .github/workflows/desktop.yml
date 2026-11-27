@@ -241,6 +241,8 @@ jobs:
           java-version: "17"
       - if: steps.key.outputs.ok == 'true'
         uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools # the default also asks for "tools", gone from new SDKs
       - if: steps.key.outputs.ok == 'true'
         name: Android NDK
         run: |

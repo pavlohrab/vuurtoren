@@ -52,6 +52,8 @@ runs:
         for name, p in packs.items():
             if name == "levels-nl":
                 continue  # for phones only: the server has the file in its package
+            if name == "asr-nl":
+                continue  # speaking on a computer is off for now (SPEAK-DESK)
             file = f"{name}-{p['version']}.tar.gz"
             url = f"https://data.vuurtoren.app/packs-{p['version']}/{file}"
             print("fetch", url, flush=True)
