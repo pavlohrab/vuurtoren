@@ -1,0 +1,17 @@
+# Build the desktop language server on each OS and start it, without building the app.
+# Run by hand (Actions > Sidecar check > Run workflow) to see why it doesn't start somewhere.
+name: Sidecar check
+on:
+  workflow_dispatch:
+
+jobs:
+  check:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-22.04]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/desktop-prep

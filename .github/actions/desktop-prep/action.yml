@@ -70,3 +70,7 @@ runs:
     - name: Language server sidecar (PyInstaller, one directory, RapidOCR included)
       shell: bash
       run: uv run --no-project python server/nlp/desktop/build_sidecar.py $PACKS_ARG
+    # Start it the way the app does: a server that can't start on this OS fails here.
+    - name: The sidecar starts
+      shell: bash
+      run: uv run --no-project python server/nlp/desktop/start_check.py
