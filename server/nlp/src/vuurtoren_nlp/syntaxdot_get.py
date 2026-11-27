@@ -3,8 +3,8 @@
 The same steps as ``scripts/get_syntaxdot.py``, run by the server in the background so a Linux
 computer can get it from Settings (SX4): the CPU binary (v0.5.0, with libtorch) and the distilled
 Dutch model, about 250 MB to download, 620 MB unpacked, into
-:func:`vuurtoren_nlp.syntax.syntaxdot_target` as ``bin/`` and ``nl/``. Linux on x86_64 only. The binary's archive is zstd: it needs the ``zstd``
-command (on most Linux systems already).
+:func:`vuurtoren_nlp.syntax.syntaxdot_target` as ``bin/`` and ``nl/``. Linux on x86_64 only.
+The binary's archive is zstd: it needs the ``zstd`` command (on most Linux systems already).
 """
 
 from __future__ import annotations
