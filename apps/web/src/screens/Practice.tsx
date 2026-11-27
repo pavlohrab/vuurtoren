@@ -28,7 +28,8 @@ import {
 import { dutchVoiceAvailable, speakDutch, useDutchVoice } from "../practice/speech.js";
 import { toWav16k } from "../practice/wav.js";
 import { useSay } from "../audio/useSay.js";
-import { buzz, moving, play as playSound, useFeel } from "../practice/feel.js";
+import { claimSay } from "../audio/play.js";
+import { buzz, moving, play as playSound, useFeel, useSoundUnlock } from "../practice/feel.js";
 import { PracticeFeelSettings } from "./settings/PracticeFeelSettings.js";
 import { clipId } from "@app/anki";
 import {
@@ -100,6 +101,8 @@ function PracticeSession({ focus, autoStart }: { focus: string[] | null; autoSta
   const client = useQueryClient();
   const inspector = useWordInspector("reading");
   const wide = useWideDesk();
+  // The first tap or key here wakes the sounds, so the first right answer is heard.
+  useSoundUnlock();
 
   const startedAt = useRef(0);
   const start = async (size: number, skills: Skill[], aiSentences: boolean) => {
@@ -652,11 +655,15 @@ function Session({
   // else the voice. A rate below 0.9 is the snail: slower than the Settings speed.
   const { play } = useSay();
   const speak = useCallback(
-    (text: string, rate?: number) =>
+    (text: string, rate?: number) => {
+      // The turn is taken now: the clip id takes a moment, and a newer word must win.
+      const turn = claimSay();
       void (async () => {
         const kind = /\s/.test(text.trim()) ? "sentence" : "word";
-        await play("practice", { clip: await clipId(kind, text), text }, rate ? rate / 0.9 : 1);
-      })().catch(() => speakDutch(text, rate)),
+        const clip = await clipId(kind, text);
+        await play("practice", { clip, text }, rate ? rate / 0.9 : 1, turn);
+      })().catch(() => speakDutch(text, rate));
+    },
     [play],
   );
   const feel = useFeel();
@@ -1322,6 +1329,7 @@ export function TopicPractice({ topicId }: { topicId: string }) {
   const [error, setError] = useState<string | null>(null);
   const [run, setRun] = useState(0);
   const inspector = useWordInspector("reading");
+  useSoundUnlock();
   const aiStatus = useQuery({ queryKey: ["ai-status"], queryFn: () => services.aiStatus() });
   const aiKnown = aiStatus.isFetched || aiStatus.isError;
   const aiOn = aiStatus.data?.configured === true;

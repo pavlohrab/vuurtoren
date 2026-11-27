@@ -10,7 +10,7 @@ import { useServices } from "../services/context.js";
 import type { Settings } from "../services/types.js";
 import { dutchVoiceAvailable } from "../practice/speech.js";
 import { useFeel } from "../practice/feel.js";
-import { type PlayerDeps, type Saying, browserPlayer, say, stopSaying } from "./play.js";
+import { type PlayerDeps, type Saying, browserPlayer, claimSay, say, stopSaying } from "./play.js";
 import "./audio.css";
 
 export function useSay(player?: PlayerDeps) {
@@ -31,11 +31,14 @@ export function useSay(player?: PlayerDeps) {
   }, []);
   const rate = settings.data?.audioRate ?? 1;
   const play = useCallback(
-    /** `slower` below 1 plays it slower than the Settings speed (Practice's snail). */
-    async (key: string, what: Saying, slower = 1) => {
+    /**
+     * `slower` below 1 plays it slower than the Settings speed (Practice's snail). `turn` is
+     * from `claimSay()`, taken when the request was made, if that was before this call.
+     */
+    async (key: string, what: Saying, slower = 1, turn?: number) => {
       setPlaying(key);
       try {
-        return await say(what, rate * slower, deps);
+        return await say(what, rate * slower, deps, turn ?? claimSay());
       } finally {
         if (alive.current) setPlaying((p) => (p === key ? null : p));
       }

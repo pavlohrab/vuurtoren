@@ -70,13 +70,24 @@ export function moving(feel: PracticeFeel): boolean {
 }
 
 // --- the sounds: made with Web Audio, no files; quiet, under the Dutch voice ---
+//
+// Browsers start audio only from a tap or a key press. A sound in Practice often comes later:
+// after the answer is saved, or from a timer. So while Practice is open the first tap or key
+// makes and wakes the audio (useSoundUnlock), and a sound that finds it asleep waits for it to
+// wake before it is scheduled, a little ahead, so its start isn't cut off.
 
 let ctx: AudioContext | null = null;
 /** Everything goes through a limiter, so the sounds can be as loud as the voice without crackle. */
 let out: AudioNode | null = null;
+/** A silent sample was played once inside a tap (WebKit starts audio only that way). */
+let primed = false;
 // Louder than the first round (M6: hard to hear on a phone next to the voice).
 const VOLUME = 1;
 const LOUDER = 3;
+/** Sounds start this far ahead (s): a context that just woke up drops its first few ms. */
+const LEAD = 0.03;
+/** A sound that waits longer than this (ms) for the audio to wake is dropped, not played late. */
+const STALE = 400;
 
 function audio(): AudioContext | null {
   if (typeof window === "undefined") return null;
@@ -84,29 +95,70 @@ function audio(): AudioContext | null {
     window.AudioContext ??
     (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
   if (!AC) return null;
-  if (!ctx) {
+  if (!ctx || ctx.state === "closed") {
     ctx = new AC();
+    primed = false;
     const limit = ctx.createDynamicsCompressor();
     limit.threshold.value = -10;
     limit.ratio.value = 12;
     limit.connect(ctx.destination);
     out = limit;
   }
-  if (ctx.state === "suspended") void ctx.resume();
   return ctx;
 }
 
-/** One note: a frequency (or a glide from, to), its length and loudness, starting `at` s later. */
+/**
+ * Wake the sounds. Call it inside a tap or a key press: that is when browsers let audio start
+ * (a suspended context, Safari's "interrupted" one, an Android WebView).
+ */
+export function wakeSounds(): void {
+  try {
+    const c = audio();
+    if (!c) return;
+    if (c.state !== "running") void c.resume().catch(() => undefined);
+    if (!primed) {
+      primed = true;
+      const src = c.createBufferSource();
+      src.buffer = c.createBuffer(1, 1, 22050);
+      src.connect(c.destination);
+      src.start(0);
+    }
+  } catch {
+    // No audio here.
+  }
+}
+
+const WAKE_ON = ["pointerdown", "keydown", "touchend"] as const;
+
+/**
+ * While mounted, a tap or a key anywhere wakes the sounds when they are asleep (the first one
+ * after loading, or after the system paused the audio).
+ */
+export function useSoundUnlock(on = true): void {
+  useEffect(() => {
+    if (!on) return;
+    const wake = () => {
+      if (ctx?.state === "running" && primed) return;
+      if (readFeel().sounds) wakeSounds();
+    };
+    const opts = { capture: true, passive: true } as const;
+    for (const t of WAKE_ON) window.addEventListener(t, wake, opts);
+    return () => {
+      for (const t of WAKE_ON) window.removeEventListener(t, wake, opts);
+    };
+  }, [on]);
+}
+
+/** One note at `t` (s): a frequency (or a glide from, to), its length and loudness. */
 function note(
+  c: AudioContext,
+  t: number,
   f: number | [number, number],
   dur: number,
   gain: number,
-  at = 0,
   type: OscillatorType = "triangle",
 ): void {
-  const c = audio();
-  if (!c || !out) return;
-  const t = c.currentTime + at;
+  if (!out) return;
   const o = c.createOscillator();
   const g = c.createGain();
   // Triangle: a little brighter than a sine, so a phone speaker carries it.
@@ -125,25 +177,37 @@ function note(
 
 export type Sound = "tick" | "right" | "wrong" | "done";
 
-const SOUNDS: Record<Sound, () => void> = {
+const SOUNDS: Record<Sound, (c: AudioContext, t: number) => void> = {
   // Soft pop: a tile placed, a pair matched.
-  tick: () => note([520, 260], 0.06, 0.06, 0, "sine"),
+  tick: (c, t) => note(c, t, [520, 260], 0.06, 0.06, "sine"),
   // Three bright notes, quick and rising (mock-practice-reward.html, B; Pavlo 26 Nov).
-  right: () => [659, 784, 1047].forEach((f, i) => note(f, 0.2, 0.04, i * 0.07)),
+  right: (c, t) => [659, 784, 1047].forEach((f, i) => note(c, t + i * 0.07, f, 0.2, 0.04)),
   // Two notes down, the mirror of "right" (high enough for phone speakers).
-  wrong: () => {
-    note(523, 0.16, 0.06);
-    note(392, 0.3, 0.06, 0.13);
+  wrong: (c, t) => {
+    note(c, t, 523, 0.16, 0.06);
+    note(c, t + 0.13, 392, 0.3, 0.06);
   },
   // Three notes up at the end of a lesson.
-  done: () => [523, 659, 784].forEach((f, i) => note(f, 0.28, 0.04, i * 0.12)),
+  done: (c, t) => [523, 659, 784].forEach((f, i) => note(c, t + i * 0.12, f, 0.28, 0.04)),
 };
 
 /** Play a sound when sounds are on (never throws: no audio just means silence). */
 export function play(sound: Sound, feel: PracticeFeel = readFeel()): void {
   if (!feel.sounds) return;
   try {
-    SOUNDS[sound]();
+    const c = audio();
+    if (!c) return;
+    if (c.state === "running") {
+      SOUNDS[sound](c, c.currentTime + LEAD);
+      return;
+    }
+    // Asleep: wake it and play then, unless that took so long the moment has passed.
+    const asked = Date.now();
+    c.resume()
+      .then(() => {
+        if (Date.now() - asked <= STALE) SOUNDS[sound](c, c.currentTime + LEAD);
+      })
+      .catch(() => undefined);
   } catch {
     // No audio here.
   }

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { type PlayerDeps, say } from "./play.js";
+import { type PlayerDeps, claimSay, say } from "./play.js";
 
 function deps(over: Partial<PlayerDeps> = {}): PlayerDeps {
   return {
@@ -32,5 +32,25 @@ describe("saying a word", () => {
     const d = deps({ clip: vi.fn(async () => null), speak: vi.fn(async () => false) });
     expect(await say({ clip: "word-1", text: "het huis" }, 1, d)).toBe("none");
     expect(await say({}, 1, d)).toBe("none");
+  });
+
+  it("an older request that is ready late stays quiet, so the newer one is heard", async () => {
+    let ready: (b: Blob) => void = () => undefined;
+    const slow = deps({ clip: vi.fn(() => new Promise<Blob | null>((ok) => (ready = ok))) });
+    const old = say({ clip: "sentence-1", text: "Het huis is groot." }, 1, slow);
+    const fast = deps();
+    expect(await say({ clip: "word-2", text: "de gracht" }, 1, fast)).toBe("clip");
+    ready(new Blob(["x"]));
+    expect(await old).toBe("none");
+    expect(slow.playBlob).not.toHaveBeenCalled();
+    expect(slow.speak).not.toHaveBeenCalled();
+  });
+
+  it("a turn taken before the clip id is known still counts from then", async () => {
+    const first = claimSay();
+    const d = deps();
+    const second = say({ clip: "word-2" }, 1, d);
+    expect(await say({ clip: "word-1", text: "huis" }, 1, d, first)).toBe("none");
+    expect(await second).toBe("clip");
   });
 });
