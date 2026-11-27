@@ -126,7 +126,7 @@ jobs:
             type=gha,scope=ci-nlp
             type=gha,scope=nlp
           cache-to: type=gha,mode=max,scope=ci-nlp
-      # Data packs: built natively once and cached (the data change only with packs.json,
+      # Data packs: fetched once and cached (the data change only with packs.json,
       # the build scripts or the locked libraries), then baked into the -full image the smoke
       # test runs, which also exercises the bundled-pack install at startup.
       - uses: astral-sh/setup-uv@v6
@@ -136,10 +136,17 @@ jobs:
         with:
           path: server/nlp/dist/packs
           key: nlp-packs-${{ hashFiles('server/nlp/src/vuurtoren_nlp/packs.json', 'server/nlp/scripts/**', 'server/nlp/uv.lock') }}
-      - name: Build data packs
+      # The published archives (packs.json pins their checksums), not a rebuild from upstream
+      # sources that change. Speech recognition (asr-nl) is fetched on request, so it's left out.
+      - name: Get data packs
         if: steps.packs-cache.outputs.cache-hit != 'true'
         working-directory: server/nlp
-        run: uv sync --locked --no-dev && uv run --no-dev python scripts/build_packs.py --out dist/packs
+        run: >-
+          uv sync --locked --no-dev &&
+          uv run --no-dev python scripts/build_packs.py --out dist/packs
+          --download 'https://data.vuurtoren.app/packs-{version}'
+          --only dictionary-nl sentences-nl mt-nl-en &&
+          uv run --no-dev python scripts/build_packs.py --grammar-from dist/packs
       # The "default" builder (docker driver) sees the image loaded above; the buildx container
       # builder would try to pull it.
       - name: Build vuurtoren-nlp (-full)
