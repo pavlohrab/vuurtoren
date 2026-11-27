@@ -82,6 +82,8 @@ export function SideBySide({
   const rootRef = useRef<HTMLDivElement>(null);
   const [hover, setHover] = useState<PairRef | null>(null);
   const [pinned, setPinned] = useState<PairRef | null>(null);
+  // Focus lights a pair only when the keyboard moved it; after a tap the tapped pair stays lit.
+  const byKeyboard = useRef(false);
   const [shown, setShown] = useState<ReadonlySet<number>>(new Set());
   const [structure, setStructure] = useState<ReadonlySet<number>>(new Set());
   const active = hover ?? pinned;
@@ -193,7 +195,9 @@ export function SideBySide({
           onPointerLeave: (e: PointerEvent) => {
             if (e.pointerType === "mouse") setHover(null);
           },
-          onFocus: () => setHover(ref),
+          onFocus: () => {
+            if (byKeyboard.current) setHover(ref);
+          },
           onBlur: () => setHover(null),
         }
       : {};
@@ -399,6 +403,12 @@ export function SideBySide({
         ref={rootRef}
         className="k-sbs"
         onMouseLeave={() => setHover(null)}
+        onKeyDownCapture={() => {
+          byKeyboard.current = true;
+        }}
+        onPointerDownCapture={() => {
+          byKeyboard.current = false;
+        }}
         aria-describedby="k-sbs-help"
       >
         <p id="k-sbs-help" className="k-sr">
