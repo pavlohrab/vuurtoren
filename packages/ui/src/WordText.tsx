@@ -27,6 +27,8 @@ export function WordText({ text, onWord, selected }: WordTextProps) {
     setStop(Number(all[j]?.dataset["at"] ?? 1));
   };
   const onKeyDown = (e: KeyboardEvent<HTMLElement>, n: number, form: string) => {
+    // A shortcut above already used this key (Enter going on in a lesson).
+    if (e.nativeEvent.defaultPrevented) return;
     if (e.key === "Enter" || e.key === " ") {
       e.preventDefault();
       onWord(form, e.currentTarget);

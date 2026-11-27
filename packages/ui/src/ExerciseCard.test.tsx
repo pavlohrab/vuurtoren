@@ -33,7 +33,9 @@ describe("ExerciseCard feedback", () => {
     fireEvent.click(screen.getByRole("button", { name: "station" }));
     expect(onWord).toHaveBeenCalledWith("station", cloze.prompt.sentence, expect.any(HTMLElement));
 
+    // A word reached with the keyboard opens on Enter, and the lesson stays.
     const lopen = screen.getByRole("button", { name: "lopen" });
+    fireEvent.keyDown(document.body, { key: "Tab" });
     lopen.focus();
     fireEvent.keyDown(lopen, { key: "Enter" });
     expect(onWord).toHaveBeenLastCalledWith("lopen", cloze.prompt.sentence, lopen);
@@ -42,6 +44,28 @@ describe("ExerciseCard feedback", () => {
     // Enter elsewhere continues, as before.
     fireEvent.keyDown(document.body, { key: "Enter" });
     expect(onContinue).toHaveBeenCalledTimes(1);
+  });
+
+  it("goes on with Enter after a word was clicked, without opening it again", () => {
+    const onWord = vi.fn();
+    const onContinue = vi.fn();
+    render(
+      <ExerciseCard
+        exercise={cloze}
+        feedback={{ correct: false }}
+        submitted="brog"
+        onSubmit={() => {}}
+        onContinue={onContinue}
+        onWord={onWord}
+      />,
+    );
+    const station = screen.getByRole("button", { name: "station" });
+    fireEvent.pointerDown(station);
+    fireEvent.click(station);
+    station.focus();
+    fireEvent.keyDown(station, { key: "Enter" });
+    expect(onContinue).toHaveBeenCalledTimes(1);
+    expect(onWord).toHaveBeenCalledTimes(1);
   });
 
   it("keeps plain text without onWord", () => {
