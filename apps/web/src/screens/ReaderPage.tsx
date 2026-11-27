@@ -1092,16 +1092,9 @@ export function ReaderPage({ textId }: { textId: string }) {
   }
 
   /** ‹ › and Next in book mode: the same move to another page, with one slide. */
-  const turnPage = (dir: 1 | -1) => {
-    if (book && bookRef.current && (dir < 0 ? current > 0 : !isLast)) {
-      bookRef.current.leave(dir, () => stepPage(dir), "first");
-    } else stepPage(dir);
-  };
-  const onNext = () => {
-    if (book && bookRef.current && !isLast && !finishing) {
-      bookRef.current.leave(1, () => void finish(), "first");
-    } else void finish();
-  };
+  // The scroll reader's ‹ › (book mode is one flow and turns itself).
+  const turnPage = (dir: 1 | -1) => stepPage(dir);
+  const onNext = () => void finish();
 
   // Where the reader is in the text and the time left, from the first word on the screen and
   // the reader's own speed: one line, the only counter in book mode (M6).
@@ -1470,11 +1463,6 @@ export function ReaderPage({ textId }: { textId: string }) {
                 <ChevronRight size={18} aria-hidden />
               </button>
             </div>
-            {book && bookAt.screens > 1 ? (
-              <span className="book-screens" aria-live="polite">
-                Screen {bookAt.screen + 1} of {bookAt.screens}
-              </span>
-            ) : null}
             <Button variant="primary" disabled={finishing} onClick={onNext}>
               {isLast ? (
                 "Finish"

@@ -1,16 +1,17 @@
 /**
- * Book mode: one reader page flowed into CSS columns, one screen at a time (mock-reader-book).
- * A screen is one column on a phone, or two side by side (a spread) on a wide screen. Turning
- * moves the text sideways by one screen; past the last screen the reader goes on to the next
- * page (`onLeave`). The arithmetic is in bookMath.ts; algorithms.md 3 explains it.
+ * Book mode (mock-reader-book-2.html): the whole text flowed into CSS columns, one screen at a
+ * time, the way web e-book readers paginate (Readium, epub.js). A screen is one column on a
+ * phone, or two side by side (a spread) on a wide screen. Turning moves the text sideways by
+ * one screen; past the last screen the text is done (`onLeave`). The arithmetic is in
+ * bookMath.ts, the paper turn's geometry in paperFold.ts; algorithms.md 3.9 explains both.
  *
  * The page is measured again whenever its room or its content changes (text size, margins,
  * glosses, the English line, a turned phone), and stays on the screen that holds the word
  * the reader was on (`anchor`).
  *
- * Turn styles: the page follows the finger, a 3D page turn, a fade, or none. A turn that
- * needs the old screen on top (page turn, fade, and every move to another page) uses a copy
- * of it, a "leaf", that lives only for the animation.
+ * Turn styles: paper (a fold that follows the finger), a slide, a fade, or none. A turn that
+ * needs the old screen on top (paper, fade, and the move to the end) uses a copy of it, a
+ * "leaf", that lives only for the animation.
  */
 import {
   type CSSProperties,
@@ -221,7 +222,15 @@ export function BookPages(props: Props) {
     stage.style.setProperty("--book-per", String(l.perScreen));
     if (spread) stage.dataset["spread"] = "";
     else delete stage.dataset["spread"];
-    const x = end.getBoundingClientRect().left - flow.getBoundingClientRect().left;
+    // Where the text ends: the end marker, or the last word if it reaches further (in Gloss
+    // the English under a word can leave the marker before it).
+    const f0 = flow.getBoundingClientRect().left;
+    const toks = flow.querySelectorAll(".k-tok");
+    const lastWord = toks[toks.length - 1];
+    const x = Math.max(
+      end.getBoundingClientRect().left - f0,
+      lastWord ? lastWord.getBoundingClientRect().left - f0 : 0,
+    );
     s.screens = screenCount(x, l.step);
     let target = s.screen;
     if (s.pending) {
@@ -259,9 +268,6 @@ export function BookPages(props: Props) {
     if (flow) flow.style.transform = shift(offset(screen));
     const vp = leaf.querySelector<HTMLElement>(".book-vp");
     if (vp) vp.style.transform = "none";
-    const shade = document.createElement("div");
-    shade.className = "book-leaf-shade";
-    leaf.append(shade);
     leaves.append(leaf);
     return leaf;
   };
@@ -437,7 +443,7 @@ export function BookPages(props: Props) {
         const k = Math.min(1, (t - t0) / ms);
         const e = k < 0.5 ? 4 * k * k * k : 1 - (-2 * k + 2) ** 3 / 2;
         // The corner rises a little on its way, as paper does.
-        const arc = Math.sin(Math.PI * e) * r.h * 0.06 * (r.c[1] > 0 ? -1 : 1);
+        const arc = Math.sin(Math.PI * e) * r.ph * 0.06 * (r.c[1] > r.top + r.ph / 2 ? -1 : 1);
         paperFrame(r, [a[0] + (b[0] - a[0]) * e, a[1] + (b[1] - a[1]) * e + arc]);
         if (k < 1) requestAnimationFrame(frame);
         else done();

@@ -1551,26 +1551,12 @@ dl.card-meaning dd,
   inset: 0;
   z-index: 2;
   pointer-events: none;
-  perspective: 1800px;
 }
 .book-leaf {
   background: var(--bg);
-  backface-visibility: hidden;
-  will-change: transform;
 }
 .book[data-spread] .book-leaf .book-paper {
   box-shadow: none;
-}
-.book-leaf-shade {
-  position: absolute;
-  inset: 0;
-  opacity: 0;
-  pointer-events: none;
-  background: linear-gradient(
-    90deg,
-    color-mix(in srgb, #000 4%, transparent),
-    color-mix(in srgb, #000 22%, transparent)
-  );
 }
 
 /* Under the page: the scrub bar, the time left, and the footer with the screen count. */
@@ -1594,21 +1580,6 @@ dl.card-meaning dd,
   transition:
     transform var(--dur) var(--ease-out),
     opacity var(--dur) var(--ease-out);
-}
-.book-chrome .reader-footer {
-  margin: 0;
-  max-width: none;
-}
-.book-screens {
-  flex: 1 1 auto;
-  min-width: 0;
-  text-align: center;
-  font-size: 13px;
-  color: var(--ink-muted);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 .book-left {
   margin: 0;
