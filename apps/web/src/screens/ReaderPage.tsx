@@ -579,13 +579,13 @@ export function ReaderPage({ textId }: { textId: string }) {
   // only the new one (SPEED: the pair used to be fetched again as a new set).
   const glossSets = useMemo(() => {
     if (!plan) return [];
-    const near: [number, SegmentPlan][] =
-      book && plans?.[current + 1]
-        ? [
-            [current, plan],
-            [current + 1, plans[current + 1]!],
-          ]
-        : [[current, plan]];
+    // A spread can show three or four segments: one back and three ahead (M6: the left page
+    // after a turn had no English).
+    const near: [number, SegmentPlan][] = !book
+      ? [[current, plan]]
+      : [current - 1, current, current + 1, current + 2, current + 3]
+          .filter((k) => k >= 0 && !!plans?.[k])
+          .map((k): [number, SegmentPlan] => [k, k === current ? plan : plans![k]!]);
     return near
       .map(([seg, p]) => {
         let idx: number[] = [];
@@ -1232,6 +1232,13 @@ export function ReaderPage({ textId }: { textId: string }) {
         {toolbarEl
           ? createPortal(
               <>
+                {/* Book mode on a phone has no tab bar: the way back to Read (mock). */}
+                {book ? (
+                  <Link to="/" className="rbar-back" aria-label="Back to Read" title="Back to Read">
+                    <ChevronLeft size={20} aria-hidden />
+                  </Link>
+                ) : null}
+                {book ? <span className="rbar-title">{data.text.title}</span> : null}
                 <span className="rbar-known" title={knownTitle}>
                   {known}% known
                 </span>
@@ -1421,7 +1428,13 @@ export function ReaderPage({ textId }: { textId: string }) {
             />
             {timeLeft ? (
               <p className="book-left" aria-live="polite">
-                {timeLeft}
+                {/* "51%" on the left, "1 min left" on the right (the mock), read as one line. */}
+                {timeLeft.split(" · ").map((part, k) => (
+                  <span key={k}>
+                    {k > 0 ? <span className="book-left-dot"> · </span> : null}
+                    {part}
+                  </span>
+                ))}
               </p>
             ) : null}
           </div>

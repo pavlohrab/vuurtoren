@@ -176,11 +176,11 @@ for (const size of SIZES) {
         timeout: 60_000,
       });
       await shot(page, `tour-${size.width}`);
-      // Taps outside the bubble stay with the walkthrough: the Words tab does not open.
-      const words = page.getByRole("navigation", { name: "Main" }).getByRole("link").last();
-      const tab = await words.boundingBox();
+      // Taps outside the bubble stay with the walkthrough: the reader's ‹ (book mode has no tab
+      // bar) does not leave the story.
+      const back = page.getByRole("link", { name: "Back to Read" });
+      const tab = await back.boundingBox();
       await page.touchscreen.tap(tab!.x + tab!.width / 2, tab!.y + tab!.height / 2);
-      await expect(page).not.toHaveURL(/[/]words/);
       await expect(page.getByRole("dialog", { name: "Tap a word" })).toBeVisible();
       await expect(page).toHaveURL(/[/]read[/]/);
       await expect(page.locator(".k-reader .k-tok").first()).toBeVisible();
@@ -212,7 +212,8 @@ for (const size of SIZES) {
       await page.waitForTimeout(400);
       await shot(page, `sheet-full-${size.width}`);
       await page.getByRole("button", { name: "Show less of the word panel" }).click();
-      await page.locator(".topbar").click({ position: { x: 4, y: 4 } });
+      // The bar floats in book mode (rounded, see-through corners): tap its title.
+      await page.locator(".topbar .rbar-title").click();
       await expect(page.locator(".shell")).toHaveAttribute("data-inspector", "closed");
     });
 

@@ -151,6 +151,9 @@
 .rmenu {
   width: min(280px, calc(100vw - 32px));
   padding: var(--s-1);
+  /* A short screen (a phone on its side): the menu fits the room it has and scrolls. */
+  max-height: var(--radix-popover-content-available-height, 80dvh);
+  overflow-y: auto;
 }
 .rmenu--grammar {
   width: min(340px, calc(100vw - 32px));
@@ -1767,20 +1770,187 @@ dl.card-meaning dd,
   will-change: transform;
 }
 
-/* Paper: a fine grain over the page and every turning leaf, faint enough to leave the text
-   alone. The grain is drawn once (an SVG noise tile) and only tinted per theme. */
+/* Paper (M6): a matte grain with a few fibres over the page and every turning leaf. A real
+   texture (paper-grain.png, a seamless 256 px tile), dark specks on light paper and light ones
+   on night paper; no gloss, no highlights. */
 .book,
 .book-leaf,
 .book[data-spread] .book-paper {
-  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .42 0 0 0 0 .34 0 0 0 0 .24 0 0 0 .11 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-  background-image:
-    var(--grain),
-    radial-gradient(ellipse at 50% 40%, transparent 55%, color-mix(in srgb, var(--ink) 5%, transparent));
+  background-image: url("./paper-grain.png");
+  background-size: 256px 256px;
 }
 .book[data-spread] {
   background-image: none;
 }
+[data-reading-theme="night"] .book:not([data-spread]),
+[data-reading-theme="night"] .book-leaf,
+[data-reading-theme="night"] .book[data-spread] .book-paper,
+:root[data-theme="dark"] .book:not([data-spread]):not([data-reading-theme] .book),
+:root[data-theme="dark"] .book-leaf:not([data-reading-theme] .book-leaf),
+:root[data-theme="dark"] .book[data-spread] .book-paper:not([data-reading-theme] .book-paper) {
+  background-image: url("./paper-grain-night.png");
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .book:not([data-spread]):not([data-reading-theme] .book),
+  :root:not([data-theme="light"]) .book-leaf:not([data-reading-theme] .book-leaf),
+  :root:not([data-theme="light"])
+    .book[data-spread]
+    .book-paper:not([data-reading-theme] .book-paper) {
+    background-image: url("./paper-grain-night.png");
+  }
+}
+
 /* On a spread a leaf is only its paper: around it the book's cover underneath shows through. */
 .book[data-spread] .book-leaf {
   background: none;
+}
+
+/* The reader's bars in book mode (mock-reader-book-2.html, M6: "still 2010"): no flat bar with
+   a hard line, but a floating, rounded, blurred bar over the paper; the mode menu as quiet text;
+   on a phone no tab bar (the ‹ goes back to Read). */
+.rbar-back {
+  display: none;
+}
+:root[data-book] .topbar {
+  position: relative;
+  isolation: isolate;
+  margin: 8px 10px 0;
+  height: 46px;
+  padding: 0 8px 0 10px;
+  gap: 8px;
+  border: 0;
+  border-radius: 18px;
+  background: transparent;
+  box-shadow:
+    0 6px 20px color-mix(in srgb, var(--ink) 9%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, var(--ink) 6%, transparent);
+}
+/* The blur sits on a layer behind the bar: a backdrop-filter on the bar itself would make it
+   the box its menus are placed in (the ⋯ menu landed off screen). */
+:root[data-book] .topbar::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: color-mix(in srgb, var(--bg) 78%, transparent);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+:root[data-book] .rbar-mode {
+  border: 0;
+  background: transparent;
+  padding: 0 6px 0 8px;
+  border-radius: 12px;
+}
+:root[data-book] .rbar-mode:hover {
+  background: color-mix(in srgb, var(--ink) 6%, transparent);
+}
+:root[data-book] .topbar .k-tabs-list {
+  background: transparent;
+  box-shadow: none;
+}
+:root[data-book] .rbar-known {
+  display: none;
+}
+@media (max-width: 699px) {
+  :root[data-book] .rbar-back {
+    display: grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    margin-left: -4px;
+    border-radius: 12px;
+    color: var(--ink);
+  }
+  :root[data-book] .sidebar {
+    display: none;
+  }
+  :root[data-book] .main {
+    padding-bottom: 0;
+  }
+  :root[data-book] .book-chrome {
+    margin-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+  }
+}
+/* The line under the scrub bar: how far on the left, the time left on the right. */
+.book-left {
+  display: flex;
+  justify-content: space-between;
+  padding: 0 2px;
+}
+.book-left-dot {
+  display: none;
+}
+/* Bars hidden (a tap in the middle): only that line stays, tiny, on the paper. */
+:root[data-book-bare] .book-chrome {
+  transform: none;
+  opacity: 1;
+  background: none;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  pointer-events: none;
+}
+:root[data-book-bare] .book-chrome .book-scrub {
+  visibility: hidden;
+  height: 0;
+}
+:root[data-book-bare] .book-left {
+  font-size: 11px;
+  opacity: 0.7;
+}
+
+.rbar-title {
+  display: none;
+}
+@media (max-width: 699px) {
+  /* ‹ then the title, as in the mock: the bar shows the title after its back button. */
+  :root[data-book] .topbar-heading {
+    display: none;
+  }
+  /* The bar's content shrinks into the pill: the title gives way (…), the buttons stay. */
+  :root[data-book] .topbar-page,
+  :root[data-book] .topbar-page > div {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  :root[data-book] .rbar-tools,
+  :root[data-book] .rbar-mode,
+  :root[data-book] .rbar-back {
+    flex: none;
+  }
+  :root[data-book] .rbar-title {
+    display: block;
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    font: 600 14px var(--font-ui);
+  }
+}
+
+/* Gloss in book mode: the English sits under its word (interlinear), instead of after it
+   (M6: inline it made a text about twice as long, so twice the turning). The word stays on the
+   line's baseline (it comes first); it is only wider where its English is wider. */
+.book .k-tok:has(> .k-gloss-mark) {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  vertical-align: baseline;
+  line-height: 1.2;
+}
+/* Room under every line for the English, so lines keep one rhythm. */
+.book .k-reader:has(.k-gloss-mark) {
+  line-height: 2.45;
+}
+.book .k-gloss-mark {
+  /* Clear of the word's underline, then out of the line's height. */
+  margin: 0.45em 0 -2.1em;
+  font-size: 0.55em;
+  line-height: 1.2;
+  white-space: nowrap;
+  vertical-align: baseline;
+  text-decoration: none;
 }

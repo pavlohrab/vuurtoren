@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { fold } from "./paperFold.js";
+import { constrain, fold } from "./paperFold.js";
 
 describe("the paper fold", () => {
   it("cuts the corner off and mirrors it over the fold", () => {
@@ -21,5 +21,14 @@ describe("the paper fold", () => {
   it("keeps the whole page before the finger moves, and nothing once it's past the spine", () => {
     expect(fold(100, 200, 0, [100, 200], [99.9, 200]).keep.length).toBeGreaterThan(3);
     expect(fold(100, 200, 0, [100, 200], [-110, 200]).keep.length).toBe(0);
+  });
+
+  it("never lets the corner tear the page off its spine", () => {
+    // A 100 × 200 page bound at x = 0, its bottom-right corner dragged far up and to the right.
+    const [x, y] = constrain([400, -300], [100, 200], 0, 100, 200);
+    expect(Math.hypot(x - 0, y - 200)).toBeLessThanOrEqual(100.001);
+    expect(Math.hypot(x - 0, y - 0)).toBeLessThanOrEqual(Math.hypot(100, 200) + 0.001);
+    // A corner within reach stays where it is.
+    expect(constrain([60, 190], [100, 200], 0, 100, 200)).toEqual([60, 190]);
   });
 });

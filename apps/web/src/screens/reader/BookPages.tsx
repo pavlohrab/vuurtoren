@@ -30,7 +30,9 @@ import {
   screenAt,
   screenCount,
 } from "./bookMath.js";
-import { clipOf, fold, foldShading, type Pt } from "./paperFold.js";
+import { clipOf, constrain, fold, foldShading, type Pt } from "./paperFold.js";
+import grainLight from "./paper-grain.png";
+import grainNight from "./paper-grain-night.png";
 import { MEASURES, type ReaderPrefs, SIDE_MARGINS, SPREAD_PAGES } from "./readerPrefs.js";
 
 /** The fold between the two pages of a spread, in px. */
@@ -281,6 +283,12 @@ export function BookPages(props: Props) {
     dir: 1 | -1;
     w: number;
     h: number;
+    /** The paper that turns: on a spread the book's pages, not the stage around them. */
+    left: number;
+    top: number;
+    pw: number;
+    ph: number;
+    spine: number;
     c: Pt;
     spread: boolean;
     paper: string;
@@ -313,6 +321,23 @@ export function BookPages(props: Props) {
     svg.setAttribute("class", "book-fold");
     leaves.append(svg);
     const paper = backgroundOf(stage);
+    // On a spread the turn stays on the book: its paper's edges and spine (M6: it began out in
+    // the margin). On a phone the page is the whole screen.
+    let left = 0;
+    let top = 0;
+    let right = w;
+    let bottom = h;
+    const sheet = spread ? innerRef.current?.querySelector<HTMLElement>(".book-paper") : null;
+    if (sheet) {
+      const a = stage.getBoundingClientRect();
+      const b = sheet.getBoundingClientRect();
+      left = b.left - a.left;
+      top = b.top - a.top;
+      right = b.right - a.left;
+      bottom = b.bottom - a.top;
+    }
+    const spine = spread ? (left + right) / 2 : dir > 0 ? left : right;
+    const pw = spread ? (right - left) / 2 : right - left;
     return {
       leaf,
       back,
@@ -321,7 +346,12 @@ export function BookPages(props: Props) {
       dir,
       w,
       h,
-      c: [dir > 0 ? w : 0, corner === "bottom" ? h : 0],
+      left,
+      top,
+      pw,
+      ph: bottom - top,
+      spine,
+      c: [dir > 0 ? right : left, corner === "bottom" ? bottom : top],
       spread,
       paper,
       dark: lightness(paper) < 0.4,
@@ -329,38 +359,54 @@ export function BookPages(props: Props) {
   };
   /** Where the corner goes for the page to be gone (at the spine). */
   const paperEnd = (r: PaperRig): Pt => {
-    const far = r.spread ? r.w / 2 + 1 : r.w * 1.04;
+    const far = r.spread ? r.pw + 1 : r.pw * 1.04;
     return [r.dir > 0 ? r.c[0] - 2 * far : r.c[0] + 2 * far, r.c[1]];
   };
   /** The corner just lifted: where a tap's turn starts and a turn back ends. */
   const paperLift = (r: PaperRig): Pt => [r.c[0] - r.dir * 3, r.c[1] + (r.c[1] > 0 ? -3 : 3)];
-  const paperFrame = (r: PaperRig, p: Pt) => {
-    const half = r.w / 2;
-    // On a spread only the page on the turning side folds; the other page stays whole.
-    const [x0, pw] = r.spread ? (r.dir > 0 ? [half, half] : [0, half]) : [0, r.w];
-    const f = fold(pw, r.h, x0, r.c, p);
+  /** How far the turn has come, 0 at the corner to 1 at the spine. */
+  const paperProgress = (r: PaperRig, p: Pt) =>
+    Math.max(0, Math.min(1, Math.abs(r.c[0] - p[0]) / (2 * r.pw)));
+  const paperFrame = (r: PaperRig, raw: Pt) => {
+    // The page that folds: on a spread the one on the turning side; the other stays whole.
+    const x0 = r.spread ? (r.dir > 0 ? r.spine : r.spine - r.pw) : r.left;
+    // The corner stays where a bound page can reach (never torn off the spine).
+    const p = constrain(raw, r.c, r.spine, r.pw, r.ph, r.top);
+    const f = fold(r.pw, r.ph, x0, r.c, p, r.top);
     let keep = f.keep;
-    if (r.spread && keep.length > 2) {
-      if (r.dir > 0) keep = [[0, 0], ...keep, [0, r.h]];
+    if (r.spread) {
+      // The leaf keeps the other page and everything around the book (outside the paper the
+      // leaf is clear anyway, so the cover below shows).
+      const S = r.spine;
+      if (keep.length < 3)
+        keep =
+          r.dir > 0
+            ? [
+                [0, 0],
+                [S, 0],
+                [S, r.h],
+                [0, r.h],
+              ]
+            : [
+                [S, 0],
+                [r.w, 0],
+                [r.w, r.h],
+                [S, r.h],
+              ];
+      else if (r.dir > 0) keep = [[0, 0], [S, 0], ...keep, [S, r.h], [0, r.h]];
       else {
-        const k = keep.findIndex((q) => Math.abs(q[0] - half) < 0.5 && q[1] < 0.5);
-        if (k >= 0) keep = [...keep.slice(0, k + 1), [r.w, 0], [r.w, r.h], ...keep.slice(k + 1)];
+        const k = keep.findIndex((q) => Math.abs(q[0] - S) < 0.5 && Math.abs(q[1] - r.top) < 0.5);
+        if (k >= 0)
+          keep = [
+            ...keep.slice(0, k + 1),
+            [S, 0],
+            [r.w, 0],
+            [r.w, r.h],
+            [S, r.h],
+            ...keep.slice(k + 1),
+          ];
       }
-    } else if (r.spread)
-      keep =
-        r.dir > 0
-          ? [
-              [0, 0],
-              [half, 0],
-              [half, r.h],
-              [0, r.h],
-            ]
-          : [
-              [half, 0],
-              [r.w, 0],
-              [r.w, r.h],
-              [half, r.h],
-            ];
+    }
     r.leaf.style.clipPath = clipOf(keep);
     if (r.back && r.wrap) {
       // The leaf's other face is the next page: mirror it over the spine, then over the fold
@@ -372,9 +418,16 @@ export function BookPages(props: Props) {
       const b = -2 * nx * ny;
       const e = 1 - 2 * ny * ny;
       r.back.style.transformOrigin = "0 0";
-      r.back.style.transform = `matrix(${-a}, ${-b}, ${b}, ${e}, ${2 * half * a + 2 * d * nx}, ${2 * half * b + 2 * d * ny})`;
+      const S = r.spine;
+      r.back.style.transform = `matrix(${-a}, ${-b}, ${b}, ${e}, ${2 * S * a + 2 * d * nx}, ${2 * S * b + 2 * d * ny})`;
     }
-    r.svg.innerHTML = foldShading(f, r.back ? null : r.paper, r.dark);
+    r.svg.innerHTML = foldShading(
+      f,
+      r.back ? null : r.paper,
+      r.dark,
+      Math.sin(Math.PI * paperProgress(r, p)),
+      r.dark ? grainNight : grainLight,
+    );
   };
   /** Move the corner from `a` to `b`: easing in and out, like a hand turning a page. */
   const paperMove = (r: PaperRig, a: Pt, b: Pt, ms: number) =>
@@ -673,8 +726,10 @@ export function BookPages(props: Props) {
           const to = s.screen + dir;
           // Past this page's screens the turn plays on release (the next page isn't laid out).
           if (s.busy || !s.layout || to < 0 || to >= s.screens) return;
-          const corner =
-            start.y - stage.getBoundingClientRect().top > stage.clientHeight / 2 ? "bottom" : "top";
+          // Always the bottom corner, held as a reader holds a book: a swipe anywhere on the
+          // page lifts it, and the corner moves with the finger (M6: a fold from the top
+          // corner, pulled to the finger, looked wrong).
+          const corner = "bottom";
           // A phone going back: the previous page follows the finger in from the spine.
           const back = dir < 0 && (s.layout.perScreen ?? 1) === 1;
           const leaf = leafAt(back ? to : s.screen);
@@ -688,8 +743,17 @@ export function BookPages(props: Props) {
             place();
           }
         }
-        paperDrag.p = local(e);
-        paperFrame(paperDrag.rig, paperDrag.p);
+        const r = paperDrag.rig;
+        const [fx, fy] = local(e);
+        const r0 = stage.getBoundingClientRect();
+        const dxp = fx - (start.x - r0.left);
+        const dyp = fy - (start.y - r0.top);
+        // On: the corner follows the movement a little faster than the finger, so a short swipe
+        // turns well. Back: the previous page unrolls from the spine as the finger crosses.
+        paperDrag.p = paperDrag.back
+          ? [paperEnd(r)[0] + 2 * dxp, r.c[1] + dyp * 0.5]
+          : [r.c[0] + 1.4 * dxp, r.c[1] + dyp * 0.5];
+        paperFrame(r, paperDrag.p);
         return;
       }
       if (st.current.busy || style() !== "follow") return;
@@ -714,7 +778,7 @@ export function BookPages(props: Props) {
         const r = d.rig;
         if (d.back) {
           // The previous page: past the middle (or a flick right) it lies down, else it goes back.
-          const on = d.p[0] > r.w / 2 || (flick && dx > 0);
+          const on = paperProgress(r, d.p) < 0.6 || (flick && dx > 0);
           void paperMove(r, d.p, on ? paperLift(r) : paperEnd(r), on ? 320 : 260).then(() => {
             if (on) {
               st.current.screen = d.to;
@@ -726,7 +790,7 @@ export function BookPages(props: Props) {
           });
           return;
         }
-        const past = r.dir > 0 ? d.p[0] < r.w / 2 : d.p[0] > r.w / 2;
+        const past = paperProgress(r, d.p) > 0.3;
         const on = past || (flick && Math.sign(-dx) === r.dir);
         void paperMove(r, d.p, on ? paperEnd(r) : r.c, on ? 340 : 240).then(() => {
           if (!on) {

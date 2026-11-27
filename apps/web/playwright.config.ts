@@ -4,7 +4,8 @@ import { defineConfig, devices } from "@playwright/test";
  * End-to-end smoke test (`pnpm e2e`) against `vite preview` of the built app (`pnpm build`
  * first). The language server is faked in the test (e2e/fakeNlp.ts), so no Python is needed.
  */
-const PORT = 4174;
+// E2E_PORT: a second checkout (a worktree) running its tests at the same time needs its own.
+const PORT = Number(process.env["E2E_PORT"] ?? 4174);
 
 export default defineConfig({
   testDir: "e2e",

@@ -18,8 +18,8 @@ export interface Fold {
   flap: Pt[];
 }
 
-/** Fold the page `x0 … x0 + w` × `0 … h` with its corner `c` pulled to `p`. */
-export function fold(w: number, h: number, x0: number, c: Pt, p: Pt): Fold {
+/** Fold the page `x0 … x0 + w` × `y0 … y0 + h` with its corner `c` pulled to `p`. */
+export function fold(w: number, h: number, x0: number, c: Pt, p: Pt, y0 = 0): Fold {
   const dx = c[0] - p[0];
   const dy = c[1] - p[1];
   const len = Math.hypot(dx, dy) || 1;
@@ -27,10 +27,10 @@ export function fold(w: number, h: number, x0: number, c: Pt, p: Pt): Fold {
   const m: Pt = [(c[0] + p[0]) / 2, (c[1] + p[1]) / 2];
   const side = (q: Pt) => (q[0] - m[0]) * n[0] + (q[1] - m[1]) * n[1];
   const poly: Pt[] = [
-    [x0, 0],
-    [x0 + w, 0],
-    [x0 + w, h],
-    [x0, h],
+    [x0, y0],
+    [x0 + w, y0],
+    [x0 + w, y0 + h],
+    [x0, y0 + h],
   ];
   const keep: Pt[] = [];
   const cut: Pt[] = [];
@@ -63,16 +63,65 @@ export function clipOf(points: readonly Pt[]): string {
 const pts = (a: readonly Pt[]) => a.map((q) => `${q[0].toFixed(1)},${q[1].toFixed(1)}`).join(" ");
 
 /**
- * The light and shade of a fold, as SVG: a shadow on the page under it, and the flap. `back` is
- * the paper's colour when the flap is drawn here (a single page: plain paper); null when the
- * next page shows through the flap (a spread) and only its shading is drawn.
+ * Keep the corner where a page bound at `spineX` can reach: within the page's width of the
+ * spine's end on the corner's side, and within the page's diagonal of the spine's other end.
+ * Past those the page would tear off the spine (the two-radius rule of page-curl drawing).
  */
-export function foldShading(f: Fold, back: string | null, dark: boolean): string {
+export function constrain(p: Pt, c: Pt, spineX: number, w: number, h: number, y0 = 0): Pt {
+  const near: Pt = [spineX, c[1]];
+  const far: Pt = [spineX, c[1] > y0 + h / 2 ? y0 : y0 + h];
+  const within = (q: Pt, o: Pt, r: number): Pt => {
+    const dx = q[0] - o[0];
+    const dy = q[1] - o[1];
+    const d = Math.hypot(dx, dy);
+    return d <= r || d === 0 ? q : [o[0] + (dx / d) * r, o[1] + (dy / d) * r];
+  };
+  return within(within(p, near, w), far, Math.hypot(w, h));
+}
+
+/**
+ * The light and shade of a fold, matte (no highlight): a soft shadow on the page underneath that
+ * grows as the page lifts, and on the flap an inner shadow along the fold. `back` is the paper's
+ * colour when the flap is drawn here (a single page: plain paper, a little darker than the
+ * face); null when the next page shows through the flap (a spread). `lift` 0…1 is how far
+ * the page has come away (1 at mid-turn).
+ */
+export function foldShading(
+  f: Fold,
+  back: string | null,
+  dark: boolean,
+  lift = 0.5,
+  grain: string | null = null,
+): string {
   if (f.cut.length < 3) return "";
   const [mx, my] = f.m;
   const [nx, ny] = f.n;
-  const sh = dark ? 0.55 : 0.3;
+  const k = Math.max(0, Math.min(1, lift));
+  const outer = 24 + 70 * k;
+  const sh = (dark ? 0.5 : 0.22) * (0.55 + 0.45 * k);
   const line = (id: string, d: number, stops: string) =>
     `<linearGradient id="${id}" gradientUnits="userSpaceOnUse" x1="${mx.toFixed(1)}" y1="${my.toFixed(1)}" x2="${(mx + nx * d).toFixed(1)}" y2="${(my + ny * d).toFixed(1)}">${stops}</linearGradient>`;
-  return `<defs>${line("pf-s", 70, `<stop offset="0" stop-color="#000" stop-opacity="${sh}"/><stop offset="1" stop-color="#000" stop-opacity="0"/>`)}${line("pf-c", -44, `<stop offset="0" stop-color="#000" stop-opacity="${dark ? 0.5 : 0.24}"/><stop offset=".5" stop-color="#fff" stop-opacity="${dark ? 0.03 : 0.14}"/><stop offset="1" stop-color="#000" stop-opacity="0"/>`)}${back ? line("pf-f", -170, `<stop offset="0" stop-color="${back}"/><stop offset=".4" stop-color="${back}"/><stop offset="1" stop-color="#fff" stop-opacity="${dark ? 0.05 : 0.5}"/>`) : ""}</defs><polygon points="${pts(f.cut)}" fill="url(#pf-s)"/>${back ? `<polygon points="${pts(f.flap)}" fill="${back}"/><polygon points="${pts(f.flap)}" fill="url(#pf-f)"/>` : ""}<polygon points="${pts(f.flap)}" fill="url(#pf-c)"/>`;
+  const defs =
+    line(
+      "pf-s",
+      outer,
+      `<stop offset="0" stop-color="#000" stop-opacity="${sh.toFixed(3)}"/><stop offset=".35" stop-color="#000" stop-opacity="${(sh * 0.45).toFixed(3)}"/><stop offset="1" stop-color="#000" stop-opacity="0"/>`,
+    ) +
+    line(
+      "pf-c",
+      -60,
+      `<stop offset="0" stop-color="#000" stop-opacity="${dark ? 0.42 : 0.2}"/><stop offset=".25" stop-color="#000" stop-opacity="${dark ? 0.18 : 0.07}"/><stop offset="1" stop-color="#000" stop-opacity="0"/>`,
+    ) +
+    line(
+      "pf-e",
+      -200,
+      `<stop offset="0" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity="${dark ? 0.12 : 0.06}"/>`,
+    );
+  const flap = pts(f.flap);
+  // The back of the paper has the same grain as its face.
+  const grainDef = grain
+    ? `<pattern id="pf-g" patternUnits="userSpaceOnUse" width="256" height="256"><image href="${grain}" width="256" height="256"/></pattern>`
+    : "";
+  const grainFill = back && grain ? `<polygon points="${flap}" fill="url(#pf-g)"/>` : "";
+  return `<defs>${defs}${grainDef}</defs><polygon points="${pts(f.cut)}" fill="url(#pf-s)"/>${back ? `<polygon points="${flap}" fill="${back}"/>${grainFill}<polygon points="${flap}" fill="url(#pf-e)"/>` : ""}<polygon points="${flap}" fill="url(#pf-c)"/>`;
 }
