@@ -45,7 +45,7 @@ def steps(with_packs: bool) -> list[tuple[str, str, object]]:
     if with_packs:
         out += [
             # Add text from a link: HTTPS with the computer's certificates.
-            ("web page", "/extract/url", {"url": "https://nl.wikipedia.org/wiki/Kampen"}),
+            ("web page", "/extract/url", {"url": "https://example.com/"}),
             ("gloss", "/gloss", {"lang": "nl", "words": ["café", "zee", "ruw"]}),
             ("translate", "/translate", {"source": "nl", "target": "en", "texts": [TEXT]}),
         ]
