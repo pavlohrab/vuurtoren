@@ -495,8 +495,10 @@ export function AppShell() {
                     <div className="shell-notice shell-notice--demo" role="note">
                       <Chip tone="accent">Demo</Chip>
                       <span className="shell-notice-text">
-                        Everything you do stays in this browser.
-                        {FIREFOX ? " It runs slowly in Firefox; Chrome works best." : ""}
+                        Your data stays in your browser.
+                        {FIREFOX
+                          ? " If you run the demo in Firefox, it lags. Try opening it in Chrome."
+                          : ""}
                       </span>
                       <a href="https://vuurtoren.app" className="link-button">
                         Get the app
