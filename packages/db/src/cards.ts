@@ -49,6 +49,7 @@ type NativeEvent = Extract<
       | "NativeNotesAdded"
       | "NativeNotesRemoved"
       | "NativeNotesFilled"
+      | "NativeNotesConverted"
       | "NativeDeckOptionsSet"
       | "CardReviewed"
       | "CardReviewUndone"
@@ -58,6 +59,28 @@ type NativeEvent = Extract<
 >;
 
 type Row = Record<string, SqlValue>;
+
+/**
+ * Note types are added once and then kept; only Vuurtoren's own word type grows (an English →
+ * Dutch template, a Picture field): a copy with more templates or fields replaces the stored one.
+ */
+async function upsertNotetypes(driver: SqlDriver, types: readonly NativeNotetype[]) {
+  await insertMany(
+    driver,
+    "INSERT OR IGNORE INTO native_notetypes (id, data)",
+    2,
+    types.map((t) => [t.id, JSON.stringify(t)]),
+  );
+  for (const t of types) {
+    if (t.id !== "vuurtoren-word") continue;
+    await driver.exec(
+      `UPDATE native_notetypes SET data = ?
+        WHERE id = ? AND (json_array_length(json_extract(data, '$.templates')) < ?
+          OR json_array_length(json_extract(data, '$.fields')) < ?)`,
+      [JSON.stringify(t), t.id, t.templates.length, t.fields.length],
+    );
+  }
+}
 /** The text parts of a note a merge fills when they are empty (aliases are added apart). */
 const FILLABLE = [
   "article",
@@ -146,6 +169,26 @@ export async function applyNativeEvent(
       ]);
       return;
     }
+    case "NativeNotesConverted": {
+      await upsertNotetypes(driver, e.notetypes);
+      await insertMany(
+        driver,
+        "INSERT OR IGNORE INTO native_decks (lang, name, options, updated_hlc)",
+        4,
+        e.decks.map((d) => [e.lang, d.name, JSON.stringify(d.options), null]),
+      );
+      for (const n of e.notes)
+        await driver.exec(
+          "UPDATE native_notes SET notetype_id = ?, data = ?, key = ? WHERE id = ? AND lang = ?",
+          [n.notetypeId, JSON.stringify(n), n.key ?? null, n.id, e.lang],
+        );
+      for (const c of e.cards)
+        await driver.exec(
+          "UPDATE native_cards SET deck = ?, position = ? WHERE id = ? AND lang = ?",
+          [c.deck, c.position, c.id, e.lang],
+        );
+      return;
+    }
     case "NativeNotesFilled": {
       for (const { id, fill } of e.notes) {
         const row = (await driver.exec("SELECT data FROM native_notes WHERE id = ?", [id]))[0];
@@ -168,21 +211,7 @@ export async function applyNativeEvent(
       return;
     }
     case "NativeNotesAdded": {
-      await insertMany(
-        driver,
-        "INSERT OR IGNORE INTO native_notetypes (id, data)",
-        2,
-        (e.notetypes ?? []).map((t) => [t.id, JSON.stringify(t)]),
-      );
-      // Vuurtoren's own word type grows (an English → Dutch template): the fuller one wins.
-      for (const t of e.notetypes ?? []) {
-        if (t.id !== "vuurtoren-word") continue;
-        await driver.exec(
-          `UPDATE native_notetypes SET data = ?
-            WHERE id = ? AND json_array_length(json_extract(data, '$.templates')) < ?`,
-          [JSON.stringify(t), t.id, t.templates.length],
-        );
-      }
+      await upsertNotetypes(driver, e.notetypes ?? []);
       await insertMany(
         driver,
         "INSERT OR IGNORE INTO native_decks (lang, name, options, updated_hlc)",

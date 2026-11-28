@@ -386,6 +386,20 @@ export type AppEvent =
    * aliases are added to the note's own. Its cards and their reviews stay as they are.
    */
   | { type: "NativeNotesFilled"; lang: string; notes: { id: number; fill: NativeNoteFill }[] }
+  /**
+   * Native mode: Anki word notes made Vuurtoren word notes (Settings → Your words). Each note
+   * keeps its id, so its cards and their reviews stay; the note's type and fields are replaced,
+   * and its cards move to `deck` (a level deck, or Rarer words) at `position` in the new queue
+   * (the word's rank, so new words come in order of how common they are).
+   */
+  | {
+      type: "NativeNotesConverted";
+      lang: string;
+      notetypes: NativeNotetype[];
+      decks: NativeDeck[];
+      notes: NativeNote[];
+      cards: { id: number; deck: string; position: number }[];
+    }
   /** Native mode: a deck's scheduling options. Last write wins per deck (HLC). */
   | { type: "NativeDeckOptionsSet"; lang: string; deck: string; options: DeckOptions }
   /**
@@ -559,6 +573,7 @@ export const EVENT_VERSIONS = {
   NativeNotesAdded: 1,
   NativeNotesRemoved: 1,
   NativeNotesFilled: 1,
+  NativeNotesConverted: 1,
   NativeDeckOptionsSet: 1,
   CardReviewed: 1,
   CardReviewUndone: 1,

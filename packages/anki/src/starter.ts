@@ -92,7 +92,7 @@ export const starterKey = (w: Pick<StarterWord, "word">) => normalizeKey(w.word)
 /** A starter deck adds no new cards until it opens (`openStarterLevel`). */
 const CLOSED: DeckOptions = { ...DEFAULT_DECK_OPTIONS, newPerDay: 0 };
 
-async function starterNote(w: StarterWord, tags: string[]): Promise<NativeNote> {
+export async function starterNote(w: StarterWord, tags: string[]): Promise<NativeNote> {
   const single = w.article && !w.article.includes("/") ? w.article : undefined;
   const headword = single ? `${single} ${w.word}` : w.word;
   const sentence =

@@ -96,6 +96,8 @@ export interface NativeNote {
   /** Clip ids (`word-…`, `sentence-…`) of the audio pack, kept from when the note was made. */
   audio?: string;
   sentenceAudio?: string;
+  /** wordfreq Zipf frequency of a word beyond the starter list (Rarer words), when known. */
+  zipf?: number;
 }
 
 export interface NativeCard {

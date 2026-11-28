@@ -356,6 +356,7 @@ export async function writeAnkiPackage(
   }
 
   const typeIds = new Map(input.notetypes.map((t, i) => [t.id, ankiNotetypeId(t, i)]));
+  const fieldCount = new Map(input.notetypes.map((t) => [t.id, t.fields.length]));
   const models: Record<string, unknown> = {};
   for (const t of input.notetypes)
     models[typeIds.get(t.id)!] = modelJson(typeIds.get(t.id)!, t, now);
@@ -403,7 +404,8 @@ export async function writeAnkiPackage(
         mid,
         Math.floor(now / 1000),
         n.tags.length ? ` ${n.tags.join(" ")} ` : "",
-        n.fields.join("\x1f"),
+        // As many fields as its note type has (an older note of a type that grew a field).
+        padFields(n.fields, fieldCount.get(n.notetypeId) ?? n.fields.length).join("\x1f"),
         sfld,
         await checksum(n.fields[0] ?? ""),
       ]);
@@ -489,4 +491,11 @@ export async function writeAnkiPackage(
   } finally {
     await db.close();
   }
+}
+
+/** Fields filled up with empty ones to the note type's count. */
+function padFields(fields: readonly string[], count: number): string[] {
+  return fields.length >= count
+    ? [...fields]
+    : [...fields, ...Array(count - fields.length).fill("")];
 }

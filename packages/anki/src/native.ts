@@ -41,16 +41,20 @@ import {
   addWordToAnki,
 } from "./profile.js";
 
+/** A picture kept from Anki, on the back of the card. */
+const PICTURE_BACK = '{{#Picture}}<div class="picture">{{Picture}}</div>{{/Picture}}';
+
 /** Vuurtoren's own vocabulary note type in native mode (the same fields as in Anki). */
 export const VUURTOREN_NOTETYPE: NativeNotetype = {
   id: "vuurtoren-word",
   name: NOTE_TYPE,
   kind: "standard",
-  fields: [...NOTE_FIELDS],
+  // Picture: kept from an Anki word made a Vuurtoren word (Anki's own note type has no such field).
+  fields: [...NOTE_FIELDS, "Picture"],
   templates: [
-    { name: "Recognition", front: NOTE_FRONT, back: NOTE_BACK },
+    { name: "Recognition", front: NOTE_FRONT, back: NOTE_BACK + PICTURE_BACK },
     // Its cards are made only with English → Dutch on (liveNative `syncReverse`).
-    { name: "Production", front: NOTE_PRODUCTION_FRONT, back: NOTE_PRODUCTION_BACK },
+    { name: "Production", front: NOTE_PRODUCTION_FRONT, back: NOTE_PRODUCTION_BACK + PICTURE_BACK },
   ],
   css: NOTE_CSS,
   vocab: {
