@@ -1,3 +1,4 @@
+import { storyCoverUrl } from "../../services/storyCovers.js";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { useMemo } from "react";
@@ -143,10 +144,12 @@ function StoryRow({
                   <TextCover
                     title={c.title}
                     kind="story"
-                    hue={storyHue(c.slug)}
-                    tone="soft"
                     coverage={c.coverage}
                     showLabel={false}
+                    // A story with a picture looks like a text with your own cover; else its colour.
+                    {...(storyCoverUrl(c.slug)
+                      ? { imageUrl: storyCoverUrl(c.slug) ?? null }
+                      : { hue: storyHue(c.slug), tone: "soft" as const })}
                   />
                 </button>
               </div>

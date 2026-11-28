@@ -3,6 +3,8 @@
  * as one card with the page's primary button, and what is due today in Words as one row. Its
  * heading is for screen readers only. "Finish setting up" sits above it while there is no language profile.
  */
+import { storyCoverUrl } from "../../services/storyCovers.js";
+import { storySlugOf } from "../../services/stories.js";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { ArrowRight, BookOpen, Check, Dumbbell, Layers } from "lucide-react";
@@ -87,6 +89,7 @@ function ContinueSlot() {
             coverage={t.coverage}
             showLabel={false}
             size="sm"
+            imageUrl={storyCoverUrl(storySlugOf(t.sourceRef)) ?? null}
           />
         </Link>
         <div className="today-continue-main">
@@ -126,7 +129,13 @@ function ContinueSlot() {
   return (
     <div className="today-continue">
       <span className="today-cover" aria-hidden>
-        <TextCover title={story.title} kind="paste" showLabel={false} size="sm" />
+        <TextCover
+          title={story.title}
+          kind="paste"
+          showLabel={false}
+          size="sm"
+          imageUrl={storyCoverUrl(story.slug) ?? null}
+        />
       </span>
       <div className="today-continue-main">
         <span className="today-kicker">A story at your level · {story.level}</span>

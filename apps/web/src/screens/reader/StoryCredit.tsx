@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { loadStories, storySlugOf } from "../../services/stories.js";
+import { storyCoverCredit } from "../../services/storyCovers.js";
 
 /**
  * "About this story" under a text that came from a bundled story: the original work and author
@@ -14,6 +15,7 @@ export function StoryCredit({ sourceRef }: { sourceRef?: string | undefined }) {
     staleTime: Infinity,
   });
   const s = story.data;
+  const cover = storyCoverCredit(slug);
   if (!s) return null;
   return (
     <p className="reader-story-credit">
@@ -23,6 +25,20 @@ export function StoryCredit({ sourceRef }: { sourceRef?: string | undefined }) {
         {s.licence}
       </a>
       .
+      {cover ? (
+        <>
+          {" "}
+          Cover: {cover.work}, {cover.author},{" "}
+          {cover.licence_url ? (
+            <a href={cover.licence_url} target="_blank" rel="noreferrer">
+              {cover.licence}
+            </a>
+          ) : (
+            cover.licence
+          )}
+          .
+        </>
+      ) : null}
     </p>
   );
 }

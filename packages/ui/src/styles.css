@@ -2468,10 +2468,14 @@ svg.lucide {
 }
 .k-cover[data-image] .k-cover-title {
   margin: 0;
-  padding: 10px 12px 13px;
+  /* The space under two clamped lines is a border, not padding: padding would show the start
+     of a third line (a long title, "De nieuwe kleren van de koning"). */
+  padding: 10px 12px 0;
+  border-bottom: 13px solid color-mix(in srgb, var(--surface) 90%, transparent);
   font-size: 15px;
   -webkit-line-clamp: 2;
   background: color-mix(in srgb, var(--surface) 90%, transparent);
+  background-clip: padding-box;
   box-shadow: 0 -1px 0 var(--hairline);
 }
 .k-cover[data-image] .k-cover-rule {

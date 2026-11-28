@@ -1,3 +1,5 @@
+import { storyCoverUrl } from "../../services/storyCovers.js";
+import { storySlugOf } from "../../services/stories.js";
 import { Link } from "@tanstack/react-router";
 import { CoverageMeter, TextCover, WordStateChip, coverKind } from "@app/ui";
 import { Check } from "lucide-react";
@@ -55,7 +57,8 @@ export function LibraryItem({
   onLongPress,
 }: LibraryItemProps) {
   const press = useLongPress(onLongPress);
-  const imageUrl = useCoverUrl(t.coverId);
+  // Your own cover first, else a bundled story's (storyCovers.ts).
+  const imageUrl = useCoverUrl(t.coverId) ?? storyCoverUrl(storySlugOf(t.sourceRef)) ?? null;
   const state = readingState(t);
   const canAdd = useCanAddTexts();
   // A phone without a server can't prepare a text: it waits for the computer to send it (SY4).
