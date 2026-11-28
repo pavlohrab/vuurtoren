@@ -41,11 +41,11 @@ def call(port: int, path: str, payload: object | None = None, timeout: float = 1
 def steps(with_packs: bool) -> list[tuple[str, str, object]]:
     out: list[tuple[str, str, object]] = [
         ("analyse", "/analyze/text", {"lang": "nl", "texts": [TEXT]}),
-        # Add text from a link: HTTPS with the computer's certificates.
-        ("web page", "/extract/url", {"url": "https://nl.wikipedia.org/wiki/Kampen"}),
     ]
     if with_packs:
         out += [
+            # Add text from a link: HTTPS with the computer's certificates.
+            ("web page", "/extract/url", {"url": "https://nl.wikipedia.org/wiki/Kampen"}),
             ("gloss", "/gloss", {"lang": "nl", "words": ["café", "zee", "ruw"]}),
             ("translate", "/translate", {"source": "nl", "target": "en", "texts": [TEXT]}),
         ]
