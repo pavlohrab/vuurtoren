@@ -1469,7 +1469,8 @@ dl.card-meaning dd,
   column-count: var(--book-per, 1);
   column-gap: var(--book-gap, 0px);
   column-fill: auto;
-  will-change: transform;
+  /* No will-change: it kept every page side by side as one layer, many screens wide for a
+     long story, and Firefox slowed down on every move (Pavlo, 28 Nov). */
 }
 .book-flow .k-reader,
 .book-flow .k-sbs {
@@ -1924,4 +1925,14 @@ dl.card-meaning dd,
   white-space: nowrap;
   vertical-align: baseline;
   text-decoration: none;
+}
+
+/* Firefox redraws a blur behind the floating bars on every change under them, and lags over a
+   long story: there the bars get a solid background instead (Pavlo, 28 Nov). */
+@supports (-moz-appearance: none) {
+  :root[data-book] .topbar::before,
+  .book-chrome {
+    backdrop-filter: none;
+    background: var(--bg);
+  }
 }
