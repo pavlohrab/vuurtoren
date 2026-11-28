@@ -6,6 +6,7 @@ fn main() {
             "desktop_info",
             "links_take",
             "close_now",
+            "nlp_log",
             "anki_fetch",
             "sync_pick_folder",
             "sync_dir_list",

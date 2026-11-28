@@ -34,6 +34,8 @@ export interface Report {
 export interface Files {
   screenshot?: Blob | null;
   voice?: Blob | null;
+  /** A computer's language-server log. */
+  log?: Blob | null;
 }
 
 // --- the last errors, so a report carries them without the tester copying anything ---
@@ -276,6 +278,7 @@ export async function sendReport(
         : "webm";
     form.set("voice", files.voice, `voice.${ext}`);
   }
+  if (files.log) form.set("log", files.log, "log.txt");
   const res = await fetchImpl(`${urlBase()}/v1/report`, {
     method: "POST",
     headers: { "x-vuurtoren-key": key() },
@@ -322,6 +325,7 @@ interface Queued {
   report: Report;
   screenshot?: Blob | null;
   voice?: Blob | null;
+  log?: Blob | null;
 }
 
 /**
@@ -344,6 +348,7 @@ export async function submit(
           report,
           screenshot: files.screenshot ?? null,
           voice: files.voice ?? null,
+          log: files.log ?? null,
         } satisfies Queued),
       );
       return "kept";
@@ -370,7 +375,7 @@ export async function flushQueue(fetchImpl: typeof fetch = fetch): Promise<numbe
     try {
       await sendReport(
         q.report,
-        { screenshot: q.screenshot ?? null, voice: q.voice ?? null },
+        { screenshot: q.screenshot ?? null, voice: q.voice ?? null, log: q.log ?? null },
         fetchImpl,
       );
     } catch (e) {

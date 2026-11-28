@@ -28,6 +28,7 @@ import {
   X,
 } from "lucide-react";
 import { currentDevice } from "../platform/index.js";
+import { desktopBridge } from "../desktop/bridge.js";
 import { useBackClose } from "../shell/backStack.js";
 import { appVersionLabel } from "../version.js";
 import {
@@ -281,6 +282,9 @@ function FeedbackForm({
   const [picked, setPicked] = useState<{ name: string; crop: Blob | null } | null>(null);
   const [picking, setPicking] = useState(false);
   const [withErrors, setWithErrors] = useState(true);
+  // On a computer: the language server's log goes with it (a file Pavlo reads).
+  const nlpLog = desktopBridge()?.nlpLog;
+  const [withLog, setWithLog] = useState(true);
   const [voice, setVoice] = useState<Blob | null>(null);
   const [drawing, setDrawing] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -337,7 +341,13 @@ function FeedbackForm({
       try {
         // Sent before the picture was ready: it waits for it.
         const screenshot = window_ ? (drawn ?? (await shotPromise)) : pointed;
-        const how = await submit(report, { screenshot, voice });
+        const log =
+          nlpLog && withLog
+            ? await nlpLog()
+                .then((t) => (t ? new Blob([t], { type: "text/plain" }) : null))
+                .catch(() => null)
+            : null;
+        const how = await submit(report, { screenshot, voice, log });
         rememberSent(report, { picture: !!screenshot, voice: !!voice }, screenLabel(screen));
         onTalk();
         onSent(how);
@@ -468,6 +478,16 @@ function FeedbackForm({
             onClick={() => setWithErrors(!withErrors)}
           >
             Last errors
+          </button>
+        ) : null}
+        {nlpLog ? (
+          <button
+            type="button"
+            className={`fb-chip${withLog ? " on" : " off"}`}
+            aria-pressed={withLog}
+            onClick={() => setWithLog(!withLog)}
+          >
+            Language server log
           </button>
         ) : null}
       </div>

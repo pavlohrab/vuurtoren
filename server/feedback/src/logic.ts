@@ -32,6 +32,7 @@ export const LIMITS = {
   errorLength: 300,
   screenshotBytes: 3 * 1024 * 1024,
   voiceBytes: 2 * 1024 * 1024,
+  logBytes: 512 * 1024,
   perHour: 20,
 };
 

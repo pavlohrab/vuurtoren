@@ -988,6 +988,8 @@ pub fn run() {
             #[cfg(desktop)]
             desktop::close_now,
             #[cfg(desktop)]
+            desktop::nlp_log,
+            #[cfg(desktop)]
             desktop::anki_fetch,
             #[cfg(desktop)]
             desktop::sync_pick_folder,

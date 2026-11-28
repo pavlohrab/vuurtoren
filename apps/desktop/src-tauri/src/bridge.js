@@ -47,6 +47,10 @@
       info: function () {
         return invoke("desktop_info");
       },
+      // The end of the language server's log (feedback, Copy the log).
+      nlpLog: function () {
+        return invoke("nlp_log");
+      },
       // Focus mode in the reader: the window fills the screen, and back.
       fullscreen: function (on) {
         return invoke("plugin:window|set_fullscreen", { label: "main", value: !!on });

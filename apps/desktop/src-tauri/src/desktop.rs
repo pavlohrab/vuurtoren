@@ -71,6 +71,18 @@ fn close_window(app: &AppHandle) {
     }
 }
 
+/// The end of the language server's log (the last 200 KB), for feedback and Copy the log.
+#[tauri::command]
+pub fn nlp_log(app: AppHandle) -> String {
+    const MAX: usize = 200 * 1024;
+    let Ok(cache) = app.path().app_cache_dir() else {
+        return String::new();
+    };
+    let bytes = std::fs::read(cache.join("vuurtoren-nlp.log")).unwrap_or_default();
+    let tail = &bytes[bytes.len().saturating_sub(MAX)..];
+    String::from_utf8_lossy(tail).into_owned()
+}
+
 /// The page sent its last changes (or has none): close the window.
 #[tauri::command]
 pub fn close_now(app: AppHandle) {

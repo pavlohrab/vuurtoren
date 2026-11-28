@@ -10,6 +10,7 @@
     "allow-desktop-info",
     "allow-links-take",
     "allow-close-now",
+    "allow-nlp-log",
     "allow-anki-fetch",
     "allow-sync-pick-folder",
     "allow-sync-dir-list",

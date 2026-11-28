@@ -53,8 +53,9 @@ def main() -> None:
 
     from vuurtoren_nlp.app import app
 
-    # Exactly one process (see the Dockerfile); loopback only.
-    uvicorn.run(app, host="127.0.0.1", port=port, workers=1, log_level="warning")
+    # Exactly one process (see the Dockerfile); loopback only. Every request goes to the log, so a
+    # report with it shows what the app asked and what failed.
+    uvicorn.run(app, host="127.0.0.1", port=port, workers=1, log_level="info")
 
 
 if __name__ == "__main__":

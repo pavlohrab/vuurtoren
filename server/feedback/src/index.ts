@@ -132,7 +132,7 @@ export default {
       .bind(before)
       .all<{ id: string }>();
     if (env.FILES)
-      for (const { id } of old.results) await env.FILES.delete([`${id}/screenshot`, `${id}/voice`]);
+      for (const { id } of old.results) await env.FILES.delete([`${id}/screenshot`, `${id}/voice`, `${id}/log`]);
     await env.DB.prepare("DELETE FROM replies WHERE report_id IN (SELECT id FROM reports WHERE created < ?)")
       .bind(before)
       .run();
@@ -150,6 +150,12 @@ async function report(req: Request, env: Env): Promise<Response> {
   const voice = form.get("voice");
   const shot = screenshot instanceof File && screenshot.size > 0 ? screenshot : null;
   const audio = voice instanceof File && voice.size > 0 ? voice : null;
+  // A computer's language-server log: too big is cut to its end, never refused.
+  const logFile = form.get("log");
+  const logBytes =
+    logFile instanceof File && logFile.size > 0
+      ? (await logFile.arrayBuffer()).slice(-LIMITS.logBytes)
+      : null;
   if (shot && shot.size > LIMITS.screenshotBytes) return json(413, { error: "The picture is too big." });
   if (audio && audio.size > LIMITS.voiceBytes) return json(413, { error: "The voice note is too long." });
   if (!hasContent(r, { screenshot: !!shot, voice: !!audio }))
@@ -172,6 +178,8 @@ async function report(req: Request, env: Env): Promise<Response> {
     await env.FILES.put(`${r.id}/screenshot`, shotBytes, { httpMetadata: { contentType: shot!.type } });
   if (audioBytes && env.FILES)
     await env.FILES.put(`${r.id}/voice`, audioBytes, { httpMetadata: { contentType: audio!.type } });
+  if (logBytes && env.FILES)
+    await env.FILES.put(`${r.id}/log`, logBytes, { httpMetadata: { contentType: "text/plain" } });
   const transcript = audioBytes ? await transcribe(env, audioBytes) : null;
 
   await env.DB.prepare(
@@ -181,6 +189,7 @@ async function report(req: Request, env: Env): Promise<Response> {
     .run();
 
   const messageId = await sendToPavlo(env, r, transcript, shotBytes, shot?.type, audioBytes, audio?.type);
+  if (messageId && logBytes) await sendLog(env, r, messageId, logBytes);
   // Telegram said no (an outage, a limit): the report stays "unsent" and the hourly job tries again.
   await env.DB.prepare("UPDATE reports SET tg_message = ?, status = ? WHERE id = ?")
     .bind(messageId, messageId ? "new" : "unsent", r.id)
@@ -317,6 +326,17 @@ async function sendToPavlo(
       });
   }
   return id;
+}
+
+/** The log as a file under the report's message. */
+async function sendLog(env: Env, r: Report, messageId: number, log: ArrayBuffer): Promise<void> {
+  const topic = await topicFor(env, r).catch(() => null);
+  const f = new FormData();
+  f.set("chat_id", env.TG_CHAT_ID);
+  if (topic) f.set("message_thread_id", String(topic));
+  f.set("reply_to_message_id", String(messageId));
+  f.set("document", new Blob([log], { type: "text/plain" }), `${r.id}-log.txt`);
+  await tg(env, "sendDocument", f);
 }
 
 interface TgUpdate {

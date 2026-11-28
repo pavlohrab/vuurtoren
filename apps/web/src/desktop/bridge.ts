@@ -48,6 +48,8 @@ export interface DesktopBridge {
   readonly home: boolean;
   /** The device: "linux", "macos", "windows", "android" (absent in older builds: a computer). */
   readonly os?: string;
+  /** The end of the language server's log (absent in older builds). */
+  nlpLog?(): Promise<string>;
   /** Make the window fill the screen, or not (absent in older builds). */
   fullscreen?(on: boolean): Promise<void>;
   info(): Promise<{
