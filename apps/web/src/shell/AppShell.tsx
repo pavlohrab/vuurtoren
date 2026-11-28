@@ -64,6 +64,9 @@ import { useDebounced } from "../useDebounced.js";
 import { useCanAddTexts } from "../platform/canAddTexts.js";
 import { DEMO_SITE } from "../platform/demoSite.js";
 
+/** The demo is slow in Firefox (its book pages and effects), so its bar says so there. */
+const FIREFOX = typeof navigator !== "undefined" && /Firefox\//.test(navigator.userAgent);
+
 const PAGE_TITLES: Record<string, string> = {
   "/": "Read",
   "/import": "Add text",
@@ -493,6 +496,7 @@ export function AppShell() {
                       <Chip tone="accent">Demo</Chip>
                       <span className="shell-notice-text">
                         Everything you do stays in this browser.
+                        {FIREFOX ? " It runs slowly in Firefox; Chrome works best." : ""}
                       </span>
                       <a href="https://vuurtoren.app" className="link-button">
                         Get the app
