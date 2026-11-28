@@ -29,7 +29,7 @@ function shuffle<T>(xs: readonly T[]): T[] {
 }
 
 /** Three "Choose the meaning" questions with the most common words. */
-export function practiceQuestions(bands: readonly PlacementBand[]): Exercise[] {
+function practiceQuestions(bands: readonly PlacementBand[]): Exercise[] {
   const words = bands[0]?.words ?? [];
   return shuffle(words)
     .slice(0, QUESTIONS)

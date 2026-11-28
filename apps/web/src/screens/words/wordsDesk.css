@@ -249,6 +249,9 @@
   font-size: 13px;
 }
 .wd-wlist {
+  /* Its full height: shrunk to the window (overflow: hidden lets a flex item shrink), it cut the
+     words off and the column had nothing to scroll (Pavlo, 28 Nov). */
+  flex: none;
   margin: 0;
   padding: 0;
   list-style: none;

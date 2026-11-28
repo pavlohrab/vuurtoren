@@ -26,7 +26,7 @@ export interface NearPair {
 }
 
 /** Which note stays: the most answers, then one from Anki or a file, then the oldest. */
-export function better(a: NativeWordNote, b: NativeWordNote): number {
+function better(a: NativeWordNote, b: NativeWordNote): number {
   return (
     b.reviews - a.reviews ||
     Number(a.origin === "vuurtoren") - Number(b.origin === "vuurtoren") ||

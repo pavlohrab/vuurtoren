@@ -1098,6 +1098,8 @@ export function ReaderPage({ textId }: { textId: string }) {
             goTo(0);
           }}
         />
+        {/* In book mode the credit waits for the end: under the book it took the pages' room. */}
+        {book ? <StoryCredit sourceRef={data.text.sourceRef} /> : null}
       </div>
     );
   }
@@ -1188,7 +1190,7 @@ export function ReaderPage({ textId }: { textId: string }) {
           />
         )}
       </div>
-      <StoryCredit sourceRef={data.text.sourceRef} />
+      {book ? null : <StoryCredit sourceRef={data.text.sourceRef} />}
       {simplifyAt === current && !book ? (
         <SimplifyPage
           key={current}
