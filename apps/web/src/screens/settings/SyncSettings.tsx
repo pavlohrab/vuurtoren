@@ -856,7 +856,7 @@ function SyncOn({ status }: { status: SyncStatus }) {
   );
 }
 
-/** A dice button: three easy words for a passphrase, shown, with a reminder to keep them. */
+/** A dice button: five easy words for a passphrase, shown, with a reminder to keep them. */
 function MakeOne({ onMake }: { onMake: (passphrase: string) => void }) {
   const [made, setMade] = useState(false);
   return (
