@@ -1,0 +1,50 @@
+# The public demo, demo.vuurtoren.app: the web app on Cloudflare Pages, with no server behind it.
+# Each visitor's data stays in their own browser. Built on every release tag, or by hand.
+#
+# Secrets (Settings > Secrets and variables > Actions):
+#   CLOUDFLARE_API_TOKEN    a token with "Cloudflare Pages: Edit"
+#   CLOUDFLARE_ACCOUNT_ID   the account's id (on the dashboard's right side)
+name: Demo
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+concurrency:
+  group: demo
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Build the demo
+        run: pnpm --filter @app/web build
+        env:
+          VITE_DEMO_SITE: "1"
+      # The same safety headers as the server's page (deploy/nginx.conf.template).
+      - name: Headers
+        run: |
+          cat > apps/web/dist/_headers <<'EOF'
+          /*
+            Content-Security-Policy: default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; font-src 'self' data:; connect-src * data: blob:; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
+            X-Content-Type-Options: nosniff
+            X-Frame-Options: DENY
+            Referrer-Policy: same-origin
+            Cross-Origin-Opener-Policy: same-origin
+          EOF
+      - name: Upload to Cloudflare Pages
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          npx --yes wrangler@3.114.0 pages project create vuurtoren-demo --production-branch main || true
+          npx --yes wrangler@3.114.0 pages deploy apps/web/dist --project-name vuurtoren-demo --branch main

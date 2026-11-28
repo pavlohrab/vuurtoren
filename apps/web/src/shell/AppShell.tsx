@@ -98,6 +98,9 @@ const THEME_LABEL: Record<ThemeChoice, string> = {
 
 const isMac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
 
+/** The public demo (demo.vuurtoren.app, built with VITE_DEMO_SITE=1): the real app in the browser. */
+const DEMO_SITE = import.meta.env["VITE_DEMO_SITE"] === "1";
+
 /** The two rooms: which one a path belongs to (the nav marks it), or null for the others. */
 function roomOf(pathname: string): "read" | "words" | null {
   if (pathname === "/" || pathname === "/import" || pathname.startsWith("/read/")) return "read";
@@ -485,8 +488,19 @@ export function AppShell() {
             <div className="main">
               {desktop ? <DesktopSetup /> : null}
               <AnkiSyncLine />
-              {notice || demo ? (
+              {notice || demo || DEMO_SITE ? (
                 <div className="shell-notices">
+                  {DEMO_SITE && !demo ? (
+                    <div className="shell-notice shell-notice--demo" role="note">
+                      <Chip tone="accent">Demo</Chip>
+                      <span className="shell-notice-text">
+                        Everything you do stays in this browser.
+                      </span>
+                      <a href="https://vuurtoren.app" className="link-button">
+                        Get the app
+                      </a>
+                    </div>
+                  ) : null}
                   {demo ? (
                     <div className="shell-notice shell-notice--demo" role="note">
                       <Chip tone="accent">Demo data</Chip>
