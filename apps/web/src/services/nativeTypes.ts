@@ -55,6 +55,25 @@ interface ReviewSession {
   nextDue: number | null;
 }
 
+/** One card as it shows, for the before and after of Make my Anki words Vuurtoren words. */
+export interface ConvertExample {
+  before: { word: string; gloss: string; picture: boolean; deck: string; reviews: number };
+  after: { headword: string; gloss: string; sentence: string; picture: boolean; deck: string };
+}
+
+/** What Make my Anki words Vuurtoren words would do (Settings → Your words). */
+export interface AnkiConversion {
+  /** Anki word notes Vuurtoren knows: they convert. */
+  words: number;
+  /** Of those, the words that go into the level decks, and the rarer ones. */
+  levels: number;
+  rarer: number;
+  /** Other Anki notes: sentences, grammar, cloze, and words Vuurtoren doesn't know. */
+  stay: number;
+  /** One of the learner's own words, preferably one with a picture. */
+  example?: ConvertExample;
+}
+
 /** What an import brought. */
 export interface ImportSummary {
   notes: number;
@@ -160,6 +179,17 @@ export interface NativeServices {
   mergePair(pair: NearPair): Promise<void>;
   /** Keep a near match as two words; it is not asked again on this device. */
   keepPairApart(pair: NearPair): void;
+  /** What converting the Anki words would do, with one example. */
+  ankiConversion(): Promise<AnkiConversion>;
+  /**
+   * Make the Anki word notes Vuurtoren words (mock anki-to-vuurtoren.html): Vuurtoren's meaning,
+   * article, sentence and recordings, the pictures kept; the same cards, so reviews and schedule
+   * stay, moved into the level decks (or Rarer words). The starter card of the same word goes.
+   * Returns how many converted.
+   */
+  convertAnkiWords(onProgress?: (done: number, total: number) => void): Promise<number>;
+  /** Words that came from Anki, and the rarer words with their Zipf frequency (Words' levels). */
+  wordSources(): Promise<{ fromAnki: string[]; rarer: { key: string; zipf: number }[] }>;
   /** Import the chosen decks of an opened package. */
   importPackage(
     token: string,

@@ -104,22 +104,39 @@ export interface LevelProgress {
   size: number;
   known: number;
   learning: number;
+  /** Of the known words, the ones that came from Anki (given `fromAnki`). */
+  fromAnki?: number;
 }
 
-/** Known and learning words per level, from the learner's words (other keys are ignored). */
+/**
+ * Known and learning words per level, from the learner's words (other keys are ignored); with
+ * `fromAnki`, the keys of the words that came from Anki, how many known ones did.
+ */
 export function levelProgress(
   index: StarterIndex,
   words: readonly { key: string; state: WordState }[],
+  fromAnki?: ReadonlySet<string>,
 ): LevelProgress[] {
-  const out = new Map(
-    index.levels.map((l) => [l.level, { level: l.level, size: l.size, known: 0, learning: 0 }]),
+  const out = new Map<number, LevelProgress>(
+    index.levels.map((l) => [
+      l.level,
+      {
+        level: l.level,
+        size: l.size,
+        known: 0,
+        learning: 0,
+        ...(fromAnki?.size ? { fromAnki: 0 } : {}),
+      },
+    ]),
   );
   for (const w of words) {
     const l = levelOf(index, w.key);
     const p = l === null ? undefined : out.get(l);
     if (!p) continue;
-    if (w.state === "known") p.known++;
-    else if (w.state === "learning") p.learning++;
+    if (w.state === "known") {
+      p.known++;
+      if (p.fromAnki !== undefined && fromAnki?.has(w.key)) p.fromAnki++;
+    } else if (w.state === "learning") p.learning++;
   }
   return [...out.values()];
 }

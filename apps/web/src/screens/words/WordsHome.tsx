@@ -13,7 +13,7 @@ import { plural } from "../../format.js";
 import { useServices } from "../../services/context.js";
 import { PageHeader } from "../../shell/PageHeader.js";
 import { usePageHeader } from "../../shell/ShellContext.js";
-import { loadStarterIndex, useLevelProgress } from "./WordsRoom.js";
+import { loadStarterIndex, useLevelProgress, useRarerWords } from "./WordsRoom.js";
 import { type LevelFilter, currentLevel, levelLabel } from "./levels.js";
 import { currentDevice } from "../../platform/index.js";
 import "./wordsHome.css";
@@ -222,6 +222,9 @@ export function WordsDeskAside({
     staleTime: Infinity,
   });
   const progress = useLevelProgress();
+  const rarer = useRarerWords();
+  const anki = progress.data?.some((p) => p.fromAnki) ?? false;
+  const most = Math.max(1, ...(rarer.data ?? []).map((g) => g.count));
   const decide = useQuery({
     queryKey: ["words", "to-decide-count"],
     queryFn: async () => (await services.wordsToDecide({ limit: DECIDE_CAP })).length,
@@ -241,7 +244,7 @@ export function WordsDeskAside({
           <h2 id="words-levels-h" className="due-today-label">
             Levels
           </h2>
-          <ul>
+          <ul data-anki={anki || undefined}>
             {progress.data.map((p) => (
               <li key={p.level}>
                 <button
@@ -255,7 +258,17 @@ export function WordsDeskAside({
                     {fmt(p.known)} / {fmt(p.size)}
                   </span>
                   <span className="words-level-bar" aria-hidden>
-                    <span style={{ width: `${(100 * p.known) / Math.max(1, p.size)}%` }} />
+                    {p.fromAnki ? (
+                      <span
+                        className="words-level-bar-anki"
+                        style={{ width: `${(100 * p.fromAnki) / Math.max(1, p.size)}%` }}
+                      />
+                    ) : null}
+                    <span
+                      style={{
+                        width: `${(100 * (p.known - (p.fromAnki ?? 0))) / Math.max(1, p.size)}%`,
+                      }}
+                    />
                     <span
                       className="words-level-bar-learning"
                       style={{ width: `${(100 * p.learning) / Math.max(1, p.size)}%` }}
@@ -265,6 +278,35 @@ export function WordsDeskAside({
               </li>
             ))}
           </ul>
+          {rarer.data?.length ? (
+            <>
+              <h3 className="due-today-label">Rarer words</h3>
+              <ul data-anki>
+                {rarer.data.map((g) => (
+                  <li key={g.label} className="words-level-row words-level-row--static">
+                    <span className="words-level-name">{g.label}</span>
+                    <span className="words-level-count">{fmt(g.count)}</span>
+                    <span className="words-level-bar" aria-hidden>
+                      <span
+                        className="words-level-bar-anki"
+                        style={{ width: `${(100 * g.count) / most}%` }}
+                      />
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </>
+          ) : null}
+          {anki ? (
+            <p className="words-level-legend">
+              <span>
+                <i className="words-level-bar-anki" /> from Anki
+              </span>
+              <span>
+                <i /> learned in Vuurtoren
+              </span>
+            </p>
+          ) : null}
           <Link
             to="/words/all"
             search={

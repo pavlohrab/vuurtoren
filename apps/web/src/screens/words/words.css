@@ -396,3 +396,35 @@
     gap: var(--s-5, 24px);
   }
 }
+
+/* Words that came from Anki in the level bars (mock anki-to-vuurtoren.html): from Anki the full
+   colour, learned in Vuurtoren lighter. */
+.words-levels ul[data-anki] .words-level-bar > span:not(.words-level-bar-learning) {
+  background: color-mix(in srgb, var(--known, #4f7a4f) 50%, var(--surface));
+}
+.words-levels ul[data-anki] .words-level-bar > .words-level-bar-anki,
+.words-level-legend .words-level-bar-anki {
+  background: var(--known, #4f7a4f);
+}
+.words-level-row--static,
+.words-level-row--static:hover {
+  background: none;
+  cursor: default;
+}
+.words-level-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin: 0;
+  font-size: 12px;
+  color: var(--ink-muted);
+}
+.words-level-legend i {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 4px;
+  border-radius: 3px;
+  vertical-align: -1px;
+  background: color-mix(in srgb, var(--known, #4f7a4f) 50%, var(--surface));
+}

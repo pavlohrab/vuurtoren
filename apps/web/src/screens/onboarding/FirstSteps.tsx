@@ -173,23 +173,35 @@ const BARS: [string, number, number][] = [
   ["B1", 2000, 3500],
 ];
 
-export function LevelResult({ estimate }: { estimate: LevelEstimate }) {
+export function LevelResult({
+  estimate,
+  bars = true,
+}: {
+  estimate: LevelEstimate;
+  bars?: boolean;
+}) {
   return (
     <div className="ob-result">
-      <div className="ob-result-bars">
-        {BARS.map(([name, lo, hi]) => (
-          <div key={name} className="ob-result-bar" data-here={name === estimate.band || undefined}>
-            <b>{name}</b>
-            <span>
-              <i
-                style={{
-                  width: `${Math.max(0, Math.min(1, (estimate.words - lo) / (hi - lo))) * 100}%`,
-                }}
-              />
-            </span>
-          </div>
-        ))}
-      </div>
+      {bars ? (
+        <div className="ob-result-bars">
+          {BARS.map(([name, lo, hi]) => (
+            <div
+              key={name}
+              className="ob-result-bar"
+              data-here={name === estimate.band || undefined}
+            >
+              <b>{name}</b>
+              <span>
+                <i
+                  style={{
+                    width: `${Math.max(0, Math.min(1, (estimate.words - lo) / (hi - lo))) * 100}%`,
+                  }}
+                />
+              </span>
+            </div>
+          ))}
+        </div>
+      ) : null}
       <ul className="ob-result-list">
         <li>skip the words you know</li>
         <li>start with {estimate.band} stories</li>

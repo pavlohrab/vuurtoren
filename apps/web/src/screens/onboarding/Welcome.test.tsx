@@ -291,7 +291,13 @@ describe("onboarding", () => {
       media: 0,
       skippedMedia: 0,
     }));
-    const { user, saveLanguageProfile } = setup({ moveFromAnki });
+    const ankiConversion = vi.fn(async () => ({
+      words: 1240,
+      levels: 1130,
+      rarer: 110,
+      stay: 180,
+    }));
+    const { user, saveLanguageProfile } = setup({ moveFromAnki, ankiConversion });
     await user.click(await screen.findByRole("button", { name: "Yes" }));
     expect(await screen.findByRole("radio", { name: /Bring them into Vuurtoren/ })).toBeChecked();
     await user.click(cont());
@@ -306,7 +312,16 @@ describe("onboarding", () => {
     expect(await screen.findByText(/Imported 20 cards from 10 notes/)).toBeVisible();
     expect(moveFromAnki).toHaveBeenCalledTimes(1);
     await user.click(cont());
-    expect(await screen.findByRole("heading", { name: "You are ready" })).toBeVisible();
+    // Then the Anki words become Vuurtoren words, and the reviews say what you know.
+    expect(
+      await screen.findByRole("heading", { name: "Make your Anki words Vuurtoren words?" }),
+    ).toBeVisible();
+    expect(screen.getByText(/1,240 of your notes are Dutch words/)).toBeVisible();
+    await user.click(screen.getByRole("button", { name: "Yes, convert them" }));
+    expect(
+      await screen.findByRole("heading", { name: /You know about|You start at A1/ }),
+    ).toBeVisible();
+    expect(screen.getByRole("button", { name: "Start reading" })).toBeVisible();
   });
 
   it("resumes at the saved step and can't be skipped", async () => {

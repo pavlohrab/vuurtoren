@@ -13,6 +13,7 @@ import { useServices } from "../../services/context.js";
 import { saveFile } from "../../saveFile.js";
 import type { DeckWithLoad, ImportSummary, NativeDeckSummary } from "../../services/nativeTypes.js";
 import { errorText } from "../../services/errors.js";
+import { ConvertAnki } from "./ConvertAnki.js";
 import { MergeWords } from "./MergeWords.js";
 
 /** Queries that change when cards come in or the mode changes. */
@@ -143,6 +144,7 @@ function NativeCards() {
           <Skeleton style={{ height: 80 }} />
         )}
       </section>
+      <ConvertAnki />
       <StarterWords />
       <ImportPackage />
       <MergeWords />

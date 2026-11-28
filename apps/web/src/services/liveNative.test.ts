@@ -329,6 +329,33 @@ describe("native services", () => {
     expect(undone.cards[0]).toMatchObject({ cardId: 11, isNew: true });
   });
 
+  it("makes Anki words Vuurtoren words: same cards and reviews, into the level decks", async () => {
+    const { live } = await setup(defaultProfile("nl", [{ deck: "Dutch" }], "connected"));
+    await live.moveFromAnki();
+    const before = await repo!.nativeCard("nl", 10);
+    expect(await live.ankiConversion()).toMatchObject({
+      words: 2,
+      levels: 2,
+      rarer: 0,
+      stay: 0,
+      example: {
+        before: { word: "het huis", gloss: "house", deck: "Dutch", reviews: 5 },
+        after: { headword: "het huis", deck: "Vuurtoren · Woorden 1–500" },
+      },
+    });
+    expect(await live.convertAnkiWords()).toBe(2);
+    const after = await repo!.nativeCard("nl", 10);
+    expect(after?.note).toMatchObject({ id: 1, notetypeId: "vuurtoren-word", key: "huis" });
+    expect(after?.card).toMatchObject({
+      deck: "Vuurtoren · Woorden 1–500",
+      schedule: before?.card.schedule,
+    });
+    expect((await repo!.nativeStats("nl")).reviews).toBe(5);
+    expect((await live.wordSources()).fromAnki.sort()).toEqual(["fiets", "huis"]);
+    // Done: nothing left to convert.
+    expect(await live.ankiConversion()).toMatchObject({ words: 0 });
+  });
+
   it("moves back to Anki: notes Anki has stay, reviewed cards get their due date, the profile is connected", async () => {
     const { live, anki, profile } = await setup(
       defaultProfile("nl", [{ deck: "Dutch" }], "connected"),

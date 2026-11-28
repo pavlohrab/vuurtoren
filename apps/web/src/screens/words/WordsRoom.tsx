@@ -6,7 +6,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { ChevronLeft } from "lucide-react";
-import { starterBand } from "@app/anki";
+import { RARER_GROUPS, rarerGroupOf, starterBand } from "@app/anki";
 import { Skeleton } from "@app/ui";
 import { useServices } from "../../services/context.js";
 import { loadStarterWords } from "../../services/starterWords.js";
@@ -38,9 +38,36 @@ export function useLevelProgress(enabled = true) {
     queryFn: async () => {
       const idx = await loadStarterIndex();
       const keys = [...idx.rank.keys()];
-      return levelProgress(idx, await services.words({ keys, limit: ALL_WORDS }));
+      const sources = await services.wordSources().catch(() => null);
+      return levelProgress(
+        idx,
+        await services.words({ keys, limit: ALL_WORDS }),
+        new Set(sources?.fromAnki),
+      );
     },
     enabled,
+    staleTime: 60_000,
+    retry: false,
+  });
+}
+
+/**
+ * Rarer words (beyond the starter list, converted from Anki): how many in each group of how
+ * common they are. Empty without any.
+ */
+export function useRarerWords() {
+  const services = useServices();
+  return useQuery({
+    queryKey: ["words", "rarer"],
+    queryFn: async () => {
+      const { rarer } = await services.wordSources();
+      const count = new Map<string, number>();
+      for (const w of rarer)
+        count.set(rarerGroupOf(w.zipf), (count.get(rarerGroupOf(w.zipf)) ?? 0) + 1);
+      return RARER_GROUPS.map((g) => ({ label: g.label, count: count.get(g.label) ?? 0 })).filter(
+        (g) => g.count > 0,
+      );
+    },
     staleTime: 60_000,
     retry: false,
   });

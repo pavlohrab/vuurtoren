@@ -22,7 +22,7 @@ import {
   defaultProfile,
   rootDeck,
 } from "@app/core";
-import { STARTER_LEVELS } from "@app/anki";
+import { STARTER_LEVELS, STARTER_LEVEL_SIZE, starterBand } from "@app/anki";
 import { Button, Spinner, Logo } from "@app/ui";
 import { ChevronLeft } from "lucide-react";
 import { useServices } from "../../services/context.js";
@@ -30,6 +30,8 @@ import type { AnkiStatus } from "../../services/types.js";
 import { AnkiConnectionHelp } from "../settings/AnkiSettings.js";
 import { ConnectYourServer } from "../settings/SyncSettings.js";
 import { ImportPackage } from "../settings/CardsSettings.js";
+import { useAnkiConversion, useConvert } from "../settings/ConvertAnki.js";
+import { useLevelProgress } from "../words/WordsRoom.js";
 import { DictionaryPack } from "../settings/DictionaryPack.js";
 import { RecordingsPack } from "../settings/RecordingsPack.js";
 import "../settings/settings.css";
@@ -65,6 +67,8 @@ type Step =
   | "moving"
   | "placement"
   | "starter"
+  | "convert"
+  | "known"
   | "practise"
   | "level"
   | "ready"
@@ -90,6 +94,9 @@ const PART: Record<Step, number> = {
   placement: 1,
   // The 500 words' screen is the last one (Start reading is on it).
   starter: 2,
+  // An Anki user: convert the Anki words, then what the reviews say you know (no 20 words).
+  convert: 2,
+  known: 2,
   // Then a few practice questions, Check your level and what it means (mock-practice-words).
   practise: 2,
   level: 2,
@@ -110,6 +117,8 @@ const ORDER: Step[] = [
   "moving",
   "placement",
   "starter",
+  "convert",
+  "known",
   "practise",
   "level",
   "ready",
@@ -185,7 +194,7 @@ export function Welcome() {
   // No Anki: the default decks are fine to start with (Settings changes them), so no deck step.
   // With the 500 words, their screen is the last one: Start reading sits on it (mock MK4 A).
   const steps: Step[] = phoneAnki
-    ? [...start, "apkg", "starter"]
+    ? [...start, "apkg", "starter", "convert", "known"]
     : native
       ? [...start, "starter"]
       : draft.usesAnki === null
@@ -196,8 +205,11 @@ export function Welcome() {
             "anki",
             "decks",
             "destinations",
-            ...(moving ? (["moving"] as const) : startFresh ? (["placement"] as const) : []),
-            "first",
+            ...(moving
+              ? (["moving", "convert", "known"] as const)
+              : startFresh
+                ? (["placement", "first"] as const)
+                : (["first"] as const)),
           ];
   const at = Math.max(0, steps.indexOf(draft.step));
   const go = (step: Step) => setDraft({ step });
@@ -326,16 +338,38 @@ export function Welcome() {
       for (const k of ["learner", "review", "words", "home"]) {
         await qc.invalidateQueries({ queryKey: [k] });
       }
-      // Then try Practice once, and Check your level.
-      go("practise");
+      // Then try Practice once, and Check your level; an Anki user's reviews say what they know.
+      if (phoneAnki) await afterAnkiImport();
+      else go("practise");
     },
   });
+
+  // ---- An Anki user: convert the words, then what the reviews say they know.
+  const conversion = useAnkiConversion(draft.step === "convert");
+  const { run: convert, progress: converting } = useConvert(false);
+  // Nothing to convert: straight on to what you know.
+  const afterAnkiImport = async () => {
+    const c = await qc
+      .fetchQuery({ queryKey: ["anki-conversion"], queryFn: () => services.ankiConversion() })
+      .catch(() => null);
+    go(c?.words ? "convert" : "known");
+  };
+  const levels = useLevelProgress(draft.step === "known");
+  const fromReviews = useMemo((): LevelEstimate | null => {
+    if (!levels.data) return null;
+    const known = levels.data.reduce((n, p) => n + p.known, 0);
+    if (known < 50) return null;
+    return {
+      words: Math.round(known / 100) * 100,
+      band: starterBand(Math.max(1, Math.ceil(known / STARTER_LEVEL_SIZE))),
+    };
+  }, [levels.data]);
 
   // ---- Ready: the story at the learner's level opens in the reader (Read when there is none).
   const story = useQuery({
     queryKey: ["onboarding", "story"],
     queryFn: async () => storyToStart(await services.storyShelf()),
-    enabled: ["first", "starter", "level", "ready"].includes(draft.step),
+    enabled: ["first", "starter", "level", "ready", "convert", "known"].includes(draft.step),
   });
   const startReading = useMutation({
     mutationFn: async () => {
@@ -374,12 +408,12 @@ export function Welcome() {
       else if (draft.usesAnki !== null) save.mutate({});
     } else if (draft.step === "destinations") save.mutate({});
     else if (draft.step === "moving") {
-      if (move.isSuccess) next();
+      if (move.isSuccess) void afterAnkiImport();
       else if (!move.isPending) move.mutate();
     } else if (draft.step === "placement") placement.mutate();
     else if (draft.step === "starter") starter.mutate();
-    else if (draft.step === "ready") void finishLevel();
-    else if (!["first", "practise", "level"].includes(draft.step)) next();
+    else if (draft.step === "ready" || draft.step === "known") void finishLevel();
+    else if (!["first", "practise", "level", "convert"].includes(draft.step)) next();
   };
 
   const errorOf = (e: unknown) => (e instanceof Error && e.message ? e.message : "Try again.");
@@ -719,6 +753,73 @@ export function Welcome() {
               </>
             ) : null}
 
+            {draft.step === "convert" ? (
+              <>
+                <h1 ref={heading} tabIndex={-1}>
+                  Make your Anki words Vuurtoren words?
+                </h1>
+                {conversion.data ? (
+                  <>
+                    <p className="ob-lede">
+                      {conversion.data.words.toLocaleString("en")} of your notes are Dutch words
+                      Vuurtoren knows.
+                    </p>
+                    <ul className="ob-result-list">
+                      <li>Your reviews stay.</li>
+                      <li>Vuurtoren&rsquo;s meaning, sentence and recordings.</li>
+                      <li>Pictures stay.</li>
+                    </ul>
+                    <div className="ob-first-actions">
+                      <Button
+                        variant="primary"
+                        disabled={convert.isPending}
+                        onClick={() => convert.mutate(undefined, { onSuccess: () => go("known") })}
+                      >
+                        {convert.isPending ? <Spinner label="Converting" /> : null}
+                        {convert.isPending && converting ? converting : "Yes, convert them"}
+                      </Button>
+                      <button
+                        type="button"
+                        className="ob-skip"
+                        disabled={convert.isPending}
+                        onClick={() => go("known")}
+                      >
+                        Keep my Anki cards
+                      </button>
+                    </div>
+                    {convert.isError ? (
+                      <p role="alert" className="error-text">
+                        {errorOf(convert.error)}
+                      </p>
+                    ) : null}
+                  </>
+                ) : (
+                  <Spinner label="Looking at your words" />
+                )}
+              </>
+            ) : null}
+
+            {draft.step === "known" ? (
+              <>
+                <h1 ref={heading} tabIndex={-1}>
+                  {fromReviews
+                    ? `You know about ${fromReviews.words.toLocaleString("en")} words`
+                    : "You start at A1"}
+                </h1>
+                {fromReviews ? (
+                  <>
+                    <p className="ob-lede">
+                      From your Anki reviews. That&rsquo;s around {fromReviews.band}. Vuurtoren
+                      will:
+                    </p>
+                    <LevelResult estimate={fromReviews} bars={false} />
+                  </>
+                ) : levels.isPending ? (
+                  <Spinner label="Counting" />
+                ) : null}
+              </>
+            ) : null}
+
             {draft.step === "practise" ? (
               <>
                 <h1 ref={heading} tabIndex={-1}>
@@ -869,6 +970,7 @@ export function Welcome() {
               draft.step !== "uses" &&
               draft.step !== "practise" &&
               draft.step !== "level" &&
+              draft.step !== "convert" &&
               !(draft.step === "anki" && !connected) ? (
                 <Button
                   type="submit"
@@ -898,7 +1000,7 @@ export function Welcome() {
                         ? `Continue${known.size ? ` with ${known.size} known` : ""}`
                         : draft.step === "starter"
                           ? "Next"
-                          : draft.step === "ready"
+                          : draft.step === "ready" || draft.step === "known"
                             ? "Start reading"
                             : "Continue"}
                 </Button>

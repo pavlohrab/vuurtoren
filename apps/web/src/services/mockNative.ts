@@ -107,6 +107,9 @@ export function createMockNative(
   // Near matches merged or kept apart in Settings → Your words (mergeWords).
   const merged = new Set<number>();
   const keptApart = new Set<string>();
+  // Make my Anki words Vuurtoren words (mock anki-to-vuurtoren.html): after an import from
+  // Anki, once.
+  let ankiWords = false;
   const undo = new Map<
     string,
     { cardId: number; schedule: CardSchedule | undefined; at: number }
@@ -241,6 +244,44 @@ export function createMockNative(
       await wait();
       merged.add(pair.drop.note.id);
     },
+    async ankiConversion() {
+      await wait();
+      if (!ankiWords) return { words: 0, levels: 0, rarer: 0, stay: 0 };
+      return {
+        words: 1240,
+        levels: 1130,
+        rarer: 110,
+        stay: 180,
+        example: {
+          before: {
+            word: "fiets",
+            gloss: "bike",
+            picture: true,
+            deck: "Dutch::Week 3",
+            reviews: 23,
+          },
+          after: {
+            headword: "de fiets",
+            gloss: "bike, bicycle",
+            sentence: "Ik ga met de fiets naar mijn werk.",
+            picture: true,
+            deck: "Vuurtoren · Woorden 1–500",
+          },
+        },
+      };
+    },
+    async convertAnkiWords(onProgress) {
+      for (const done of [300, 600, 900, 1240]) {
+        await wait();
+        onProgress?.(done, 1240);
+      }
+      ankiWords = false;
+      return 1240;
+    },
+    async wordSources() {
+      await wait();
+      return { fromAnki: [], rarer: [] };
+    },
     keepPairApart(pair) {
       keptApart.add(`${pair.keep.note.id}-${pair.drop.note.id}`);
     },
@@ -248,12 +289,14 @@ export function createMockNative(
       onProgress?.("Reading headwords");
       await wait();
       const notes = decks.length * 50;
+      ankiWords = true;
       return { notes, cards: notes, reviews: 0, vocabNotes: notes, media: 0, skippedMedia: 0 };
     },
     async moveFromAnki(onProgress) {
       onProgress?.("Reading your decks in Anki");
       await wait();
       await profile.save({ ...profile.current(), mode: "native" });
+      ankiWords = true;
       return {
         notes: 2412,
         cards: 4824,

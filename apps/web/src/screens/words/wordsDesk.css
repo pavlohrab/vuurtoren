@@ -174,6 +174,37 @@
 .wd-sb i.l {
   background: var(--learn);
 }
+/* Words from Anki (mock anki-to-vuurtoren.html): the full colour; learned in Vuurtoren lighter. */
+.wd-sb i.a,
+.wd-legend i.a {
+  background: var(--known);
+}
+[data-anki] .wd-sb i.k,
+.wd-legend i.k {
+  background: color-mix(in srgb, var(--known) 45%, var(--surface));
+}
+.wd-lv--static {
+  cursor: default;
+}
+.wd-lv--static:hover {
+  background: none;
+}
+.wd-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin: 4px 10px 0;
+  font-size: 11.5px;
+  color: var(--ink-muted);
+}
+.wd-legend i {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  margin-right: 3px;
+  border-radius: 3px;
+  vertical-align: -1px;
+}
 
 /* Middle */
 .wd-list {

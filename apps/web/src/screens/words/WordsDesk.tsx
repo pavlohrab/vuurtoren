@@ -39,7 +39,7 @@ import {
   parseView,
   readColumns,
 } from "./Words.js";
-import { ALL_WORDS, loadStarterIndex, useLevelProgress } from "./WordsRoom.js";
+import { ALL_WORDS, loadStarterIndex, useLevelProgress, useRarerWords } from "./WordsRoom.js";
 import "./wordsDesk.css";
 
 const DAY_MS = 86_400_000;
@@ -153,6 +153,9 @@ export function WordsDesk() {
     enabled: native,
   });
   const progress = useLevelProgress();
+  const rarer = useRarerWords();
+  const anki = progress.data?.some((p) => p.fromAnki) ?? false;
+  const most = Math.max(1, ...(rarer.data ?? []).map((g) => g.count));
   const next = useQuery({
     queryKey: ["words", "next-reviews"],
     queryFn: () => services.nextReviews(),
@@ -363,7 +366,7 @@ export function WordsDesk() {
         </div>
 
         {index.data && progress.data?.length ? (
-          <div className="wd-grp">
+          <div className="wd-grp" data-anki={anki || undefined}>
             <div className="wd-gh">
               <h2 className="wd-over">Levels</h2>
               <Link to="/words/all" search={{ layout: "cards" }} className="wd-gh-link">
@@ -380,7 +383,18 @@ export function WordsDesk() {
               >
                 <b>{levelLabel(index.data, p.level)}</b>
                 <span className="wd-sb" aria-hidden>
-                  <i className="k" style={{ width: `${(100 * p.known) / Math.max(1, p.size)}%` }} />
+                  {p.fromAnki ? (
+                    <i
+                      className="a"
+                      style={{ width: `${(100 * p.fromAnki) / Math.max(1, p.size)}%` }}
+                    />
+                  ) : null}
+                  <i
+                    className="k"
+                    style={{
+                      width: `${(100 * (p.known - (p.fromAnki ?? 0))) / Math.max(1, p.size)}%`,
+                    }}
+                  />
                   <i
                     className="l"
                     style={{ width: `${(100 * p.learning) / Math.max(1, p.size)}%` }}
@@ -391,6 +405,30 @@ export function WordsDesk() {
                 </span>
               </button>
             ))}
+            {rarer.data?.length ? (
+              <>
+                <h3 className="wd-over wd-gh">Rarer words</h3>
+                {rarer.data.map((g) => (
+                  <div key={g.label} className="wd-lv wd-lv--static">
+                    <b>{g.label}</b>
+                    <span className="wd-sb" aria-hidden>
+                      <i className="a" style={{ width: `${(100 * g.count) / most}%` }} />
+                    </span>
+                    <span className="wd-c">{fmt(g.count)}</span>
+                  </div>
+                ))}
+              </>
+            ) : null}
+            {anki ? (
+              <p className="wd-legend">
+                <span>
+                  <i className="a" /> from Anki
+                </span>
+                <span>
+                  <i className="k" /> learned in Vuurtoren
+                </span>
+              </p>
+            ) : null}
           </div>
         ) : null}
 

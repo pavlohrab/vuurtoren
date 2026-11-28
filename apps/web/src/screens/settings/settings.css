@@ -587,3 +587,91 @@
   font-size: 13px;
   color: var(--ink-muted);
 }
+
+/* Make my Anki words Vuurtoren words (ConvertAnki.tsx, mock anki-to-vuurtoren.html). */
+.convert-counts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  max-width: 560px;
+}
+.convert-counts div {
+  flex: 1 1 120px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+}
+.convert-counts b {
+  display: block;
+  font: 700 20px var(--font-display);
+  font-variant-numeric: tabular-nums;
+}
+.convert-counts span,
+.convert-label,
+.convert-note {
+  font-size: 12px;
+  color: var(--ink-muted);
+}
+.convert-example {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 8px;
+  align-items: center;
+  max-width: 560px;
+}
+.convert-card {
+  display: grid;
+  gap: 4px;
+  justify-items: center;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  text-align: center;
+}
+.convert-after {
+  border-color: var(--accent);
+}
+.convert-word {
+  font-family: var(--font-reading);
+  font-size: 20px;
+}
+.convert-art {
+  font-size: 15px;
+  color: var(--ink-muted);
+}
+.convert-gloss {
+  font-size: 13px;
+}
+.convert-note svg {
+  display: inline;
+  vertical-align: -2px;
+}
+.convert-arrow {
+  font-weight: 600;
+  font-size: 16px;
+  color: var(--accent);
+}
+.convert-list {
+  display: grid;
+  gap: 3px;
+  margin: 0;
+  padding-left: 18px;
+  list-style: disc;
+  font-size: 13px;
+}
+.convert-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.convert-done {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--success) 14%, transparent);
+  color: var(--success);
+  font-weight: 600;
+  font-size: 13.5px;
+}

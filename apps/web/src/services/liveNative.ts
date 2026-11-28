@@ -28,6 +28,11 @@ import {
   readAnkiPackage,
   writeAnkiPackage,
   VUURTOREN_NOTETYPE,
+  type StarterWord,
+  convertWordNote,
+  convertedDeckOptions,
+  convertedPosition,
+  wordsToConvert,
 } from "@app/anki";
 import {
   type CardRating,
@@ -36,6 +41,7 @@ import {
   type Grade,
   type LanguageProfile,
   type NativeCard,
+  type NativeNote,
   NORMAL_WEEK,
   type WeekLoad,
   answerCard,
@@ -51,6 +57,7 @@ import {
   profileMode,
   renderTemplate,
   replayReviews,
+  shortGloss,
   stripHtml,
   studyDayStart,
   trainingSequences,
@@ -70,6 +77,7 @@ import type { RunOptimizer } from "../native/optimizer.js";
 import { MIN_TRAINING_REVIEWS } from "../native/optimize.js";
 import { loadStarterWords } from "./starterWords.js";
 import type {
+  AnkiConversion,
   ImportSummary,
   NativeServices,
   ReviewCard,
@@ -114,6 +122,8 @@ const FIRST_TUNE_REVIEWS = 400;
 /** Near matches the learner kept as two words ("Keep both"), per device. */
 const KEPT_APART = "vuurtoren.merge.keptApart";
 const CHANGES_PER_EVENT = 500;
+/** Anki words converted per event. */
+const CONVERT_PER_EVENT = 300;
 /** Target recalls the deck table offers, with the load each means. */
 const LOAD_RETENTIONS = [0.8, 0.85, 0.87, 0.9, 0.92, 0.95, 0.97];
 /** Texts searched for a sentence with the word (newest first). */
@@ -285,6 +295,46 @@ export function createLiveNative(deps: LiveNativeDeps) {
     const plans = exactMerges(await repo.nativeWordNotes(lang));
     for (const e of mergeEvents(lang, plans)) await repo.append(e);
     return plans.length;
+  }
+
+  /**
+   * The Anki words that can convert, with what Vuurtoren knows of each: the starter word, or
+   * for a rarer word the dictionary's meaning and wordfreq's Zipf (from the language server;
+   * without it only starter words convert).
+   */
+  async function conversionPlan(lang: "nl") {
+    const col = await repo.nativeCollection(lang, []);
+    const words = wordsToConvert(col);
+    const starter = new Map<string, StarterWord>();
+    for (const w of await loadStarterWords())
+      if (!starter.has(starterKey(w))) starter.set(starterKey(w), w);
+    const rare = words.map((w) => w.key).filter((k) => !starter.has(k));
+    const dict = new Map<string, { gloss: string; article?: string; zipf?: number }>();
+    if (rare.length) {
+      try {
+        const nlp = await deps.nlp();
+        const [glosses, analysed] = await Promise.all([
+          nlp.gloss(lang, rare),
+          nlp.analyzeText(lang, rare),
+        ]);
+        rare.forEach((key, i) => {
+          const entry = glosses[key]?.find((e) => e.glosses.length);
+          const gloss = entry ? shortGloss(entry.glosses, 2) : "";
+          if (!gloss) return;
+          const zipf = analysed[i]?.tokens.find((t) => t.is_word)?.zipf;
+          dict.set(key, {
+            gloss,
+            ...(entry?.article ? { article: entry.article } : {}),
+            ...(zipf ? { zipf } : {}),
+          });
+        });
+      } catch {
+        // No language server: the rarer words stay Anki cards for now.
+      }
+    }
+    const known = words.filter((w) => starter.has(w.key) || dict.has(w.key));
+    const ankiNotes = col.notes.filter((n) => n.notetypeId !== VUURTOREN_NOTETYPE.id).length;
+    return { known, starter, dict, ankiNotes };
   }
 
   async function importDeps(lang: "nl", origin: "apkg" | "anki", onProgress?: (m: string) => void) {
@@ -594,6 +644,93 @@ export function createLiveNative(deps: LiveNativeDeps) {
       for (const e of mergeEvents(lang, [plan])) await repo.append(e);
       ownIndex = null;
       deps.changed();
+    },
+
+    async ankiConversion(): Promise<AnkiConversion> {
+      const lang = await deps.lang();
+      const { known, starter, dict, ankiNotes } = await conversionPlan(lang);
+      const levels = known.filter((w) => starter.has(w.key)).length;
+      const out: AnkiConversion = {
+        words: known.length,
+        levels,
+        rarer: known.length - levels,
+        stay: ankiNotes - known.length,
+      };
+      // The example: a level word with a picture and many reviews, if there is one.
+      const reviews = new Map(
+        (await repo.nativeWordNotes(lang)).map((n) => [n.note.id, n.reviews] as const),
+      );
+      const score = (w: (typeof known)[number]) =>
+        (starter.has(w.key) ? 2e6 : 0) + (w.hasPicture ? 1e6 : 0) + (reviews.get(w.note.id) ?? 0);
+      const pick = [...known].sort((a, b) => score(b) - score(a))[0];
+      const made =
+        pick && (await convertWordNote(pick.note, starter.get(pick.key), dict.get(pick.key)));
+      if (pick && made) {
+        out.example = {
+          before: {
+            word: pick.word,
+            gloss: pick.gloss,
+            picture: pick.hasPicture,
+            deck: pick.cards[0]!.deck,
+            reviews: reviews.get(pick.note.id) ?? 0,
+          },
+          after: {
+            headword: stripTags(made.note.fields[0] ?? ""),
+            gloss: made.note.gloss ?? "",
+            sentence: stripTags(made.note.fields[2] ?? ""),
+            picture: pick.hasPicture,
+            deck: made.deck,
+          },
+        };
+      }
+      return out;
+    },
+
+    async convertAnkiWords(onProgress) {
+      const lang = await deps.lang();
+      const { known, starter, dict } = await conversionPlan(lang);
+      let done = 0;
+      for (let i = 0; i < known.length; i += CONVERT_PER_EVENT) {
+        const notes: NativeNote[] = [];
+        const cards: { id: number; deck: string; position: number }[] = [];
+        for (const w of known.slice(i, i + CONVERT_PER_EVENT)) {
+          const made = await convertWordNote(w.note, starter.get(w.key), dict.get(w.key));
+          if (!made) continue;
+          notes.push(made.note);
+          const position = convertedPosition(starter.get(w.key)?.rank, made.note.zipf);
+          for (const c of w.cards) cards.push({ id: c.id, deck: made.deck, position });
+        }
+        await repo.append({
+          type: "NativeNotesConverted",
+          lang,
+          notetypes: [VUURTOREN_NOTETYPE],
+          decks: [...new Set(cards.map((c) => c.deck))].map((name) => ({
+            name,
+            options: convertedDeckOptions(name),
+          })),
+          notes,
+          cards,
+        });
+        done += notes.length;
+        onProgress?.(done, known.length);
+      }
+      // One word, one card: the starter card of a converted word goes.
+      await mergeDuplicates(lang);
+      await openStarter(lang);
+      await syncReverse(lang);
+      ownIndex = null;
+      deps.changed();
+      return done;
+    },
+
+    async wordSources() {
+      const notes = await repo.nativeWordNotes(await deps.lang());
+      return {
+        fromAnki: notes.filter((n) => n.origin !== "vuurtoren").map((n) => n.note.key!),
+        rarer: notes
+          .filter((n) => n.note.zipf !== undefined && n.note.notetypeId === VUURTOREN_NOTETYPE.id)
+          .map((n) => ({ key: n.note.key!, zipf: n.note.zipf! })),
+      };
     },
 
     keepPairApart(pair: NearPair) {
