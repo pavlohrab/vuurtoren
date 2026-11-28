@@ -22,7 +22,7 @@
 </p>
 
 <p align="center">
-  Or <a href="https://demo.vuurtoren.app">try it in your browser</a> first. What you do there stays
+  Or <a href="https://demo.vuurtoren.app">try the demo</a> first. What you do there stays
   in your browser.
 </p>
 
