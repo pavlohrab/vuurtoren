@@ -15,3 +15,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/desktop-prep
+      # The recordings pack (24,000 files) installs the way the app does it.
+      - name: Install the recordings pack
+        if: runner.os == 'Windows'
+        shell: bash
+        working-directory: server/nlp
+        env:
+          VUURTOREN_DATA_DIR: ${{ runner.temp }}/nlp-data
+        run: uv run --no-dev python -c "from vuurtoren_nlp import packs; print(packs.install('audio-nl', False))"
