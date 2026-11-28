@@ -122,10 +122,9 @@ describe("Library screen", () => {
     await user.click(klaas);
     await waitFor(() => expect(history.location.pathname).toMatch(/^\/read\//));
     const first = history.location.pathname;
-    // The reader credits the retelling and gives the licence.
-    expect(await screen.findByText(/The Dutch folk figure Klaas Vaak/)).toHaveTextContent(
-      /About this story:.*CC BY-SA 4\.0/,
-    );
+    // In book mode the credit (the retelling and its licence) waits for the end of the story.
+    expect(await screen.findByRole("heading", { name: /Klaas Vaak/ })).toBeVisible();
+    expect(screen.queryByText(/The Dutch folk figure Klaas Vaak/)).toBeNull();
     // Opening it again finds the same Library text.
     const again = await services.openStory("klaas-vaak");
     expect(`/read/${again}`).toBe(first);
