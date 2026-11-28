@@ -17,6 +17,7 @@ dependencies = [
     "simplemma>=2.0.0",
     "spacy>=3.8.18",
     "trafilatura>=2.3.1",
+    "truststore>=0.10",
     "uvicorn[standard]>=0.54.0",
     "wordfreq>=3.1.1",
 ]

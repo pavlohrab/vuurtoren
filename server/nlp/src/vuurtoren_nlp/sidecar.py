@@ -49,6 +49,15 @@ def main() -> None:
     if os.environ.get("VUURTOREN_EXIT_WITH_STDIN", "1") == "1" and sys.stdin is not None:
         threading.Thread(target=_exit_with_parent, name="vuurtoren-parent", daemon=True).start()
 
+    # HTTPS checks against the computer's own certificate store (Windows, macOS), so the app works
+    # where an antivirus or a company network adds its own certificate.
+    try:
+        import truststore
+
+        truststore.inject_into_ssl()
+    except Exception:  # noqa: BLE001 - keep Python's own certificates
+        pass
+
     import uvicorn
 
     from vuurtoren_nlp.app import app
