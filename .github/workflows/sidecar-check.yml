@@ -23,3 +23,12 @@ jobs:
         env:
           VUURTOREN_DATA_DIR: ${{ runner.temp }}/nlp-data
         run: uv run --no-dev python -c "from vuurtoren_nlp import packs; print(packs.install('audio-nl', False))"
+      # Add text as in the app: the packs installed, then analyse, gloss and translate.
+      - name: Add text with the packs
+        shell: bash
+        working-directory: server/nlp
+        run: |
+          uv run --no-dev python scripts/build_packs.py --out "$RUNNER_TEMP/packs" \
+            --download 'https://data.vuurtoren.app/packs-{version}' \
+            --only dictionary-nl sentences-nl mt-nl-en
+          uv run --no-project python desktop/start_check.py --packs "$RUNNER_TEMP/packs"
