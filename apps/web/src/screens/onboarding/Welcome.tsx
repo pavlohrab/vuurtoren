@@ -750,9 +750,14 @@ export function Welcome() {
                       // Marked like I know it in Words: those cards leave the review.
                       setMarking(
                         Promise.all(
-                          knownWords.map(async (w) =>
-                            services.markKnown(await services.inspectWord(w.key)),
-                          ),
+                          // One word that can't be found (not in the dictionary) is skipped.
+                          knownWords.map(async (w) => {
+                            try {
+                              await services.markKnown(await services.inspectWord(w.key));
+                            } catch {
+                              // Not found (not in the dictionary): this word is skipped.
+                            }
+                          }),
                         ).then(() =>
                           Promise.all(
                             ["learner", "review", "words", "home"].map((k) =>
