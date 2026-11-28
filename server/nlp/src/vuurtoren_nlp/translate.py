@@ -78,7 +78,7 @@ class MtEngine:
         # Models converted with the Marian converter add </s> themselves (config.json); the older
         # Transformers conversion did not, so it is appended by hand for those.
         try:
-            config = json.loads((path / "config.json").read_text())
+            config = json.loads((path / "config.json").read_text("utf-8"))
         except (OSError, ValueError):
             config = {}
         self._eos = [] if config.get("add_source_eos") else ["</s>"]

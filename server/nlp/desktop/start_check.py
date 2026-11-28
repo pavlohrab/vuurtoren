@@ -9,12 +9,14 @@ wrote if it doesn't answer within two minutes.
 
 from __future__ import annotations
 
+import json
 import os
 import socket
 import subprocess
 import sys
 import tempfile
 import time
+import urllib.error
 import urllib.request
 from pathlib import Path
 
@@ -48,6 +50,7 @@ def main() -> int:
             "VUURTOREN_DATA_DIR": str(Path(tmp) / "data"),
             "VUURTOREN_PACKS": "off",
             "PYTHONUNBUFFERED": "1",
+            "PYTHONUTF8": "1",
             "VUURTOREN_HANG_DUMP": "45",
         }
         for k in ("PYTHONHOME", "PYTHONPATH", "VUURTOREN_PACKS_DIR"):
@@ -74,13 +77,32 @@ def main() -> int:
                 except OSError:
                     time.sleep(2)
             took = time.monotonic() - started
+            if ok:
+                # What Add text does first: analyse a Dutch sentence.
+                # Text as pasted from Wikipedia: accents, curly quotes, a dash, a degree sign.
+                text = "Één café in Den Haag – ‘gezellig’, zei ze. Het is 3 °C en de zee is ruw."
+                body = json.dumps({"lang": "nl", "texts": [text]}).encode()
+                req = urllib.request.Request(
+                    f"http://127.0.0.1:{port}/analyze/text",
+                    data=body,
+                    headers={"X-Vuurtoren-Token": "check", "Content-Type": "application/json"},
+                )
+                try:
+                    with urllib.request.urlopen(req, timeout=120) as r:
+                        print("analyse:", r.read()[:200].decode(errors="replace"))
+                except urllib.error.HTTPError as e:
+                    ok = False
+                    print(f"analyse failed: {e.code} {e.read()[:2000].decode(errors='replace')}")
+                except OSError as e:
+                    ok = False
+                    print(f"analyse failed: {e}")
             code = proc.poll()
             if code is None:
                 proc.kill()
                 proc.wait()
         text = log.read_text(errors="replace")
     if ok:
-        print(f"sidecar answered /health after {took:.0f} s")
+        print(f"sidecar answered /health after {took:.0f} s and analysed a sentence")
         return 0
     print(
         f"sidecar did not answer /health ({took:.0f} s, exit code {code}"

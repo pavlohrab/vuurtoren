@@ -111,6 +111,8 @@ pub fn command(l: &Launch<'_>) -> Command {
         .env("VUURTOREN_COURSE_CACHE_DIR", l.cache_dir.join("course"))
         .env("PYTHONPYCACHEPREFIX", l.cache_dir.join("pycache"))
         .env("PYTHONUNBUFFERED", "1")
+        // UTF-8 everywhere; Windows would otherwise read and write files in its local code page.
+        .env("PYTHONUTF8", "1")
         .env_remove("VUURTOREN_CORS_ORIGINS")
         .env_remove("PYTHONHOME")
         .env_remove("PYTHONPATH")

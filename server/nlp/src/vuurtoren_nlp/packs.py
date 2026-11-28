@@ -142,7 +142,7 @@ SPECS: dict[str, PackSpec] = {
 
 def manifest() -> dict[str, dict[str, Any]]:
     """``{name: {version, sha256, size}}`` for the downloadable packs."""
-    return json.loads(MANIFEST_PATH.read_text())["packs"]
+    return json.loads(MANIFEST_PATH.read_text("utf-8"))["packs"]
 
 
 def mode() -> Mode:
@@ -201,7 +201,7 @@ def _keep_archive(name: str, version: str, archive: Path) -> None:
 def installed(name: str) -> dict[str, Any] | None:
     """The marker of an installed pack, or None."""
     try:
-        return json.loads(marker_path(SPECS[name].target()).read_text())
+        return json.loads(marker_path(SPECS[name].target()).read_text("utf-8"))
     except (OSError, ValueError):
         return None
 
@@ -343,7 +343,7 @@ def _write_marker(spec: PackSpec, version: str, sha256: str | None, source: str)
     mark = {"name": spec.name, "version": version, "sha256": sha256, "source": source}
     mark["installed"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
     tmp = marker_path(spec.target()).with_suffix(".tmp")
-    tmp.write_text(json.dumps(mark, indent=1) + "\n")
+    tmp.write_text(json.dumps(mark, indent=1) + "\n", "utf-8")
     os.replace(tmp, marker_path(spec.target()))
 
 
