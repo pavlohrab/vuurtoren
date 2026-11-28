@@ -21,7 +21,7 @@ From nothing to reading your first Dutch text takes about five minutes.
    computer or a server, see [On your phone](../phones.md).
 5. **Do your first review.** Every word you learn becomes a card, and a short review every day
    brings back the cards you are about to forget. Open **Words** and start the review. A few
-   minutes a day is enough. **Practice**, also in **Words**, has short lessons with the same words.
+   minutes a day is enough. **Practice** has short lessons with the same words.
 
    <figure class="clip-fig"><video class="clip" src="../clips/practise.webm" poster="../clips/practise.png" autoplay muted loop playsinline aria-label="A lesson in Practice: choose an answer and see if it was right."></video><figcaption>A lesson in Practice: choose an answer and see if it was right.</figcaption></figure>
 

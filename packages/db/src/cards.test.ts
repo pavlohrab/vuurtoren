@@ -467,6 +467,66 @@ describe("native card store", () => {
     });
   });
 
+  it("English → Dutch: a learned word can get its second card; the word type grows", async () => {
+    const { repo } = await newRepo();
+    const deck = { name: "Vuurtoren::Nederlands", options: DEFAULT_DECK_OPTIONS };
+    const note = {
+      id: 5,
+      notetypeId: WORD.id,
+      fields: ["de kat", "cat", ""],
+      tags: [],
+      key: "kat",
+    };
+    await repo.append({
+      type: "NativeNotesAdded",
+      lang: "nl",
+      origin: "vuurtoren",
+      notetypes: [WORD],
+      decks: [deck],
+      notes: [note],
+      cards: [{ id: 6, noteId: 5, ord: 0, deck: deck.name, position: 0 }],
+    });
+    // Not answered yet: it waits.
+    expect((await repo.nativeReverse("nl")).missing).toEqual([]);
+    await repo.append({
+      type: "CardReviewed",
+      lang: "nl",
+      cardId: 6,
+      rating: 3,
+      at: T0,
+      durationMs: 1,
+      schedule: answerCard(undefined, 3, T0, ctx),
+    });
+    expect((await repo.nativeReverse("nl")).missing).toMatchObject([
+      { cardId: 6, deck: deck.name },
+    ]);
+    const both = {
+      ...WORD,
+      templates: [...WORD.templates, { name: "Production", front: "{{Gloss}}", back: "{{Word}}" }],
+    };
+    await repo.append({
+      type: "NativeNotesAdded",
+      lang: "nl",
+      origin: "vuurtoren",
+      notetypes: [both],
+      notes: [note],
+      cards: [{ id: 61, noteId: 5, ord: 1, deck: deck.name, position: 0.5 }],
+    });
+    const r = await repo.nativeReverse("nl");
+    expect(r).toEqual({ missing: [], cards: [{ id: 61, suspended: false }] });
+    expect((await repo.nativeCard("nl", 61))?.notetype.templates).toHaveLength(2);
+    // An older one-template copy doesn't shrink it again.
+    await repo.append({
+      type: "NativeNotesAdded",
+      lang: "nl",
+      origin: "vuurtoren",
+      notetypes: [WORD],
+      notes: [],
+      cards: [],
+    });
+    expect((await repo.nativeCard("nl", 61))?.notetype.templates).toHaveLength(2);
+  });
+
   it("rebuilds to the same tables", async () => {
     const { repo } = await newRepo();
     await repo.append({ type: "LanguageProfileSet", profile: defaultProfile("nl") });

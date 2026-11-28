@@ -418,7 +418,8 @@ export type AppEvent =
       type: "NativeCardsChanged";
       lang: string;
       /** "undo": an "I know it" taken back (the earlier schedules restored). */
-      reason: "known" | "first" | "memory" | "reading" | "undo";
+      /** "reverse": English → Dutch cards suspended or back (Settings → Your words). */
+      reason: "known" | "first" | "memory" | "reading" | "undo" | "reverse";
       changes: NativeCardChange[];
       /** Reason "memory": the FSRS parameters the memory was replayed with. */
       params?: number[];
@@ -652,6 +653,13 @@ export interface NativeNoteFill {
   audio?: string;
   sentenceAudio?: string;
   aliases?: string[];
+}
+
+/** English → Dutch cards: the words that could get one, and the ones there are. */
+export interface NativeReverse {
+  /** A learned word of Vuurtoren's own type without its English → Dutch card, and its first card. */
+  missing: { note: NativeNote; cardId: number; deck: string; position: number }[];
+  cards: { id: number; suspended: boolean }[];
 }
 
 /** A word's note with how it came in and its answers (nativeWordNotes, for merging). */
@@ -1044,6 +1052,8 @@ export interface Repository {
   nativeCollection(lang: string, decks: string[]): Promise<NativeCollection>;
   /** Native mode: notes, cards and answers held, for Settings. */
   nativeStats(lang: string): Promise<{ notes: number; cards: number; reviews: number }>;
+  /** Native mode: English → Dutch cards there are, and learned words that could get one. */
+  nativeReverse(lang: string): Promise<NativeReverse>;
   /** Native mode: every note of a word (it has a key), with its origin and answers. */
   nativeWordNotes(lang: string): Promise<NativeWordNote[]>;
   /** Native mode: the FSRS parameters in use, or null for the defaults. */

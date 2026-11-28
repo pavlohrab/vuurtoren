@@ -19,6 +19,10 @@ export const NOTE_FRONT = `<div class="word">{{Word}}</div>{{#Sentence}}<div cla
 export const NOTE_BACK = `{{FrontSide}}<hr id="answer"><div class="gloss">{{Gloss}}</div>
 {{#SentenceTranslation}}<div class="sentence">{{SentenceTranslation}}</div>{{/SentenceTranslation}}
 {{#Source}}<div class="source">{{Source}}</div>{{/Source}}`;
+/** The English → Dutch card (Settings → Your words): the meaning first, then the word. */
+export const NOTE_PRODUCTION_FRONT = `<div class="gloss">{{Gloss}}</div>`;
+export const NOTE_PRODUCTION_BACK = `{{FrontSide}}<hr id="answer"><div class="word">{{Word}}</div>
+{{#Sentence}}<div class="sentence">{{Sentence}}</div>{{/Sentence}}`;
 
 export async function ensureNoteType(anki: AnkiConnectClient): Promise<void> {
   const models = await anki.invoke<string[]>("modelNames");

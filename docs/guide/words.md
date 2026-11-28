@@ -45,4 +45,17 @@ reviews went.
 If you already know a word, press **I know it**, here or while reading, and it leaves your review.
 If you pressed it by mistake, press **Undo**, or later **Learn it again** on the word's card.
 
+## Words you have twice
+
+When you bring in an Anki deck, a word can end up twice. **Settings → Your words → Merge your
+words** makes it one card. The card with your reviews stays, and it gets the article, the sentence
+and the recording from the other one. Words that only look alike, like _fiets_ and _fietsen_, you
+decide one by one.
+
+## English → Dutch
+
+Your cards ask the Dutch word and you say what it means. To also review the other way, turn on
+**Also review English → Dutch** in **Settings → Your words**. Each word gets a second card once you
+know it, so you get more reviews a day.
+
 If you use Anki, see [Anki](anki.md).

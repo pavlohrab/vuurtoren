@@ -150,6 +150,7 @@ function NativeCards() {
       {decks.data?.length ? (
         <>
           <NewWordsPerDay />
+          <ReverseCards />
           <ReviewsPerDay />
           <ReviewWeek />
         </>
@@ -381,6 +382,44 @@ function NewWordsPerDay() {
           if (Number.isFinite(n) && n !== settings.data?.newWordsPerDay) save.mutate(n);
         }}
       />
+    </section>
+  );
+}
+
+/** English → Dutch cards for the words you learn (mock merge-and-direction.html), off at first. */
+function ReverseCards() {
+  const services = useServices();
+  const qc = useQueryClient();
+  const settings = useQuery({ queryKey: ["settings"], queryFn: () => services.getSettings() });
+  const save = useMutation({
+    mutationFn: (reverseCards: boolean) => services.saveSettings({ reverseCards }),
+    onSettled: async () => {
+      await qc.invalidateQueries({ queryKey: ["settings"] });
+      await qc.invalidateQueries({ queryKey: ["review"] });
+    },
+  });
+  if (!settings.data) return null;
+  return (
+    <section className="stack" aria-labelledby="reverse-h">
+      <h3 className="settings-h3" id="reverse-h">
+        English → Dutch
+      </h3>
+      <label className="row" style={{ gap: 8, alignItems: "flex-start" }}>
+        <input
+          type="checkbox"
+          checked={settings.data.reverseCards === true}
+          onChange={(e) => save.mutate(e.target.checked)}
+          style={{ marginTop: 4 }}
+        />
+        <span>
+          Also review English → Dutch
+          <br />
+          <small className="k-hint">
+            A second card for each word once you know it, so more reviews a day. Practice already
+            asks you to write the Dutch.
+          </small>
+        </span>
+      </label>
     </section>
   );
 }

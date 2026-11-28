@@ -224,6 +224,7 @@ export function createLiveServices(
     reviewWeek: async () => (await settings()).reviewWeek ?? [],
     newPerDay: async () => (await settings()).newWordsPerDay ?? 10,
     reviewsPerDay: async () => (await settings()).reviewsPerDay ?? 200,
+    reverseCards: async () => (await settings()).reverseCards === true,
     audioClip: (id) => config.services.audioClip(id),
   });
 

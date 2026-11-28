@@ -6,7 +6,7 @@ it.
 
 ## Start a lesson
 
-Open **Practice**. On a phone you find it in **Words**. You can choose a lesson with the words from
+Open **Practice**. You can choose a lesson with the words from
 the last text you read, a lesson with your new words, or a lesson with the words you got wrong this
 week. If you tapped two or more words on a page while reading, the end of the page also offers you
 a lesson with those words.
@@ -23,10 +23,14 @@ The exercises go from easy to hard. When you get a word right, it moves up to a 
 3. **Build the sentence** from word tiles, with the English above it. On a phone you can also say
    the sentence out loud.
 4. **Listen and build**: you hear the sentence and build it from the tiles.
-5. **Type it**: the word in the gap, a verb form, or what you hear.
+5. **Type it**: the word in the gap, the Dutch for an English word with **de** or **het**, a verb
+   form, or what you hear.
+6. **Use it**: make your own sentence with the word. This step is only there if you added your own
+   AI key (see [AI](ai.md)), because the AI checks your sentence.
 
 The first time a word comes up, Practice shows it to you with its sound and a sentence before it
-asks anything.
+asks anything. A word's card shows how far it got, and Practice shows how many of your words reached
+each step.
 
 ## How it chooses
 

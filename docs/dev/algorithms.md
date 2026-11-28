@@ -748,7 +748,9 @@ chose it over bigger models because with one person's answers they don't predict
   last 14 days, plus 0.3 for each reader blank you got right more than wrong.
 - **d at the start** goes from easy to hard: meaning-choice −2.0, word-choice −1.6, cloze-choice
   −1.2, gender −1.0, adjective-e −0.8, separable −0.6, scramble −0.4, say −0.2, listen-build 0.1,
-  perfect 0.4, cloze-typed 0.6, dictation 0.7, verb-form 0.8. These change with your answers.
+  perfect 0.4, cloze-typed 0.6, dictation 0.7, verb-form 0.8, write 0.9 (the English, type the
+  Dutch) and use 1.2 (your own sentence, checked by the AI; only with an AI). These change with your
+  answers.
 - **The chance you get it right** is `p = g + (1 − g) · σ(θ − d)`. Here `g` is 1 divided by the
   number of choices for multiple choice, because a guess can be right, and 0 otherwise.
 - **The pick** is the kind your word can do whose `p` is closest to 0.85 (Wilson et al. 2019).

@@ -27,6 +27,7 @@ import {
   packageDecks,
   readAnkiPackage,
   writeAnkiPackage,
+  VUURTOREN_NOTETYPE,
 } from "@app/anki";
 import {
   type CardRating,
@@ -94,6 +95,8 @@ export interface LiveNativeDeps {
   reviewWeek?: () => Promise<readonly number[]>;
   /** New words a day across all decks (Settings); absent: only the decks' own limits. */
   newPerDay?: () => Promise<number>;
+  /** English → Dutch cards on (Settings → Your words). */
+  reverseCards?: () => Promise<boolean>;
   /** Reviews a day at most, all decks together (Settings). */
   reviewsPerDay?: () => Promise<number>;
   now?: () => number;
@@ -432,6 +435,7 @@ export function createLiveNative(deps: LiveNativeDeps) {
         return { native: false, due: 0, fresh: 0 };
       const lang = await deps.lang();
       await openStarter(lang);
+      await syncReverse(lang);
       const at = now();
       // Counts only: the badge never reads the cards themselves.
       const q = await repo.nativeQueueCounts(
@@ -447,6 +451,7 @@ export function createLiveNative(deps: LiveNativeDeps) {
     async reviewQueue(extra) {
       const lang = await deps.lang();
       await openStarter(lang);
+      await syncReverse(lang);
       const at = now();
       const q = await repo.nativeQueue(
         lang,
@@ -761,6 +766,7 @@ export function createLiveNative(deps: LiveNativeDeps) {
         ...(onProgress ? { onProgress } : {}),
       });
       await openStarter(lang);
+      await syncReverse(lang);
       deps.changed();
       return { added: result.added, skipped: result.skipped };
     },
@@ -776,6 +782,41 @@ export function createLiveNative(deps: LiveNativeDeps) {
   };
 
   /** Starter levels bring new cards one at a time: open the next when one has none left. */
+  /**
+   * English → Dutch cards follow the setting: on, each word of Vuurtoren's own type gets one once
+   * its first card was answered (so it waits until you know the word one way), and suspended ones
+   * come back; off, they are suspended, keeping their history. Ids follow the first card's, so
+   * two devices make the same card.
+   */
+  async function syncReverse(lang: string): Promise<void> {
+    const on = (await deps.reverseCards?.()) ?? false;
+    const r = await repo.nativeReverse(lang);
+    if (on && r.missing.length) {
+      await repo.append({
+        type: "NativeNotesAdded",
+        lang,
+        origin: "vuurtoren",
+        notetypes: [VUURTOREN_NOTETYPE],
+        notes: r.missing.map((m) => m.note),
+        cards: r.missing.map((m) => ({
+          id: m.cardId * 10 + 1,
+          noteId: m.note.id,
+          ord: 1,
+          deck: m.deck,
+          position: m.position + 0.5,
+        })),
+      });
+    }
+    const flip = r.cards.filter((c) => c.suspended === on);
+    if (flip.length)
+      await repo.append({
+        type: "NativeCardsChanged",
+        lang,
+        reason: "reverse",
+        changes: flip.map((c) => ({ cardId: c.id, suspended: !on })),
+      });
+  }
+
   async function openStarter(lang: string): Promise<void> {
     const from = (await deps.profile()).starterFrom ?? 1;
     const next = openStarterLevel(await repo.nativeDecks(lang, now()), from);

@@ -33,6 +33,7 @@ import type {
   NativeDeckSummary,
   NativeKeyCard,
   NativeWordNote,
+  NativeReverse,
   NativeNoteStatus,
   NativeQueue,
   QueueExtra,
@@ -173,6 +174,15 @@ export async function applyNativeEvent(
         2,
         (e.notetypes ?? []).map((t) => [t.id, JSON.stringify(t)]),
       );
+      // Vuurtoren's own word type grows (an English → Dutch template): the fuller one wins.
+      for (const t of e.notetypes ?? []) {
+        if (t.id !== "vuurtoren-word") continue;
+        await driver.exec(
+          `UPDATE native_notetypes SET data = ?
+            WHERE id = ? AND json_array_length(json_extract(data, '$.templates')) < ?`,
+          [JSON.stringify(t), t.id, t.templates.length],
+        );
+      }
       await insertMany(
         driver,
         "INSERT OR IGNORE INTO native_decks (lang, name, options, updated_hlc)",
@@ -906,6 +916,32 @@ export function nativeQueries(driver: SqlDriver) {
         notes: await one("SELECT count(*) AS n FROM native_notes WHERE lang = ?"),
         cards: await one("SELECT count(*) AS n FROM native_cards WHERE lang = ?"),
         reviews: await one("SELECT count(*) AS n FROM native_reviews WHERE lang = ?"),
+      };
+    },
+
+    async nativeReverse(lang: string): Promise<NativeReverse> {
+      // Words of Vuurtoren's own type learned one way (their first card answered) and without
+      // an English → Dutch card yet; and the English → Dutch cards there are.
+      const missing = await driver.exec(
+        `SELECT n.data, c.id AS card, c.deck, c.position
+           FROM native_notes n JOIN native_cards c ON c.note_id = n.id AND c.ord = 0
+          WHERE n.lang = ? AND n.notetype_id = 'vuurtoren-word' AND c.schedule IS NOT NULL
+            AND NOT EXISTS (SELECT 1 FROM native_cards r WHERE r.note_id = n.id AND r.ord = 1)`,
+        [lang],
+      );
+      const cards = await driver.exec(
+        `SELECT c.id, c.suspended FROM native_cards c JOIN native_notes n ON n.id = c.note_id
+          WHERE c.lang = ? AND c.ord = 1 AND n.notetype_id = 'vuurtoren-word'`,
+        [lang],
+      );
+      return {
+        missing: missing.map((r) => ({
+          note: json<NativeNote>(r["data"]),
+          cardId: Number(r["card"]),
+          deck: String(r["deck"]),
+          position: Number(r["position"]),
+        })),
+        cards: cards.map((r) => ({ id: Number(r["id"]), suspended: r["suspended"] === 1 })),
       };
     },
 

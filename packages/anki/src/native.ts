@@ -24,7 +24,16 @@ import {
   markWordKnown,
   studyWordFirst,
 } from "./commands.js";
-import { NOTE_BACK, NOTE_CSS, NOTE_FIELDS, NOTE_FRONT, NOTE_TYPE, onlyBoldTags } from "./note.js";
+import {
+  NOTE_BACK,
+  NOTE_PRODUCTION_BACK,
+  NOTE_PRODUCTION_FRONT,
+  NOTE_CSS,
+  NOTE_FIELDS,
+  NOTE_FRONT,
+  NOTE_TYPE,
+  onlyBoldTags,
+} from "./note.js";
 import {
   type AddWordRequest,
   type AddWordResult,
@@ -38,7 +47,11 @@ export const VUURTOREN_NOTETYPE: NativeNotetype = {
   name: NOTE_TYPE,
   kind: "standard",
   fields: [...NOTE_FIELDS],
-  templates: [{ name: "Recognition", front: NOTE_FRONT, back: NOTE_BACK }],
+  templates: [
+    { name: "Recognition", front: NOTE_FRONT, back: NOTE_BACK },
+    // Its cards are made only with English → Dutch on (liveNative `syncReverse`).
+    { name: "Production", front: NOTE_PRODUCTION_FRONT, back: NOTE_PRODUCTION_BACK },
+  ],
   css: NOTE_CSS,
   vocab: {
     word: "Word",
