@@ -59,8 +59,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/upload-artifact@v4
+      - uses: actions/checkout@v7
+      - uses: actions/upload-artifact@v7
         with:
           name: packs-manifest
           path: server/nlp/src/vuurtoren_nlp/packs.json
@@ -85,8 +85,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 90
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
         with:
           name: packs-manifest
           path: server/nlp/src/vuurtoren_nlp
@@ -145,8 +145,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 90
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
         with:
           name: packs-manifest
           path: server/nlp/src/vuurtoren_nlp
@@ -223,7 +223,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Signing key present?
         id: key
         env:
@@ -236,19 +236,19 @@ jobs:
             echo "ok=true" >> "$GITHUB_OUTPUT"
           fi
       - if: steps.key.outputs.ok == 'true'
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
       - if: steps.key.outputs.ok == 'true'
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: pnpm
       - if: steps.key.outputs.ok == 'true'
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: "17"
       - if: steps.key.outputs.ok == 'true'
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@v4
         with:
           packages: platform-tools # the default also asks for "tools", gone from new SDKs
       - if: steps.key.outputs.ok == 'true'
@@ -335,7 +335,7 @@ jobs:
           gh release upload "$TAG" --repo "$REPO" "$dir"/* --clobber
       # The release page says what changed: the tag's own message (pnpm release, or the notes
       # written into the tag), with the line about the files under it.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Release notes from the tag
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
