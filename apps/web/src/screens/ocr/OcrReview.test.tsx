@@ -51,7 +51,7 @@ describe("OCR review in Import", () => {
     const box = screen.getByLabelText("Correct word");
     await user.clear(box);
     await user.type(box, "huizen{Enter}");
-    expect(screen.getByRole("button", { name: "huizen" })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "huizen" })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Cancel" }));
     expect(await screen.findByRole("heading", { name: "Add text" })).toBeInTheDocument();
     expect(history.location.pathname).toBe("/import");
