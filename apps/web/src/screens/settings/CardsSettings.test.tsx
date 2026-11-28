@@ -30,6 +30,16 @@ describe("Settings → Your words: cards", { timeout: 20_000 }, () => {
     );
   });
 
+  it("merges words held twice: a near match shows what the merged card keeps", async () => {
+    const { user } = setup(true);
+    await user.click(await screen.findByRole("button", { name: "Find words you have twice" }));
+    expect(await screen.findByText(/No word was there twice\. Check this one:/)).toBeVisible();
+    expect(screen.getByText("Same word, another form · 1 left")).toBeVisible();
+    expect(screen.getByText(/23 reviews kept/)).toBeVisible();
+    await user.click(screen.getByRole("button", { name: "Merge" }));
+    await waitFor(() => expect(screen.queryByText(/23 reviews kept/)).toBeNull());
+  });
+
   it("adds the most common words, and sets the level new words start from", async () => {
     const { services, user } = setup(true);
     expect(await screen.findByRole("heading", { name: "Starter words" })).toBeVisible();

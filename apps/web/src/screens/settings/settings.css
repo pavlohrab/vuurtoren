@@ -537,3 +537,53 @@
   overflow-wrap: anywhere;
   white-space: pre-wrap;
 }
+/* Merge your words: one pair at a time, with what the merged card keeps. */
+.merge-done {
+  margin: 0;
+}
+.merge-pair {
+  display: grid;
+  gap: 10px;
+  max-width: 560px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+}
+.merge-why,
+.merge-from {
+  font-size: 12px;
+  color: var(--ink-muted);
+}
+.merge-sides {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+@media (max-width: 480px) {
+  .merge-sides {
+    grid-template-columns: 1fr;
+  }
+}
+.merge-side,
+.merge-result {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--bg);
+}
+.merge-result {
+  border: 1px dashed var(--accent);
+  background: var(--accent-soft);
+}
+.merge-word {
+  font-family: var(--font-reading);
+  font-size: 19px;
+}
+.merge-gloss {
+  font-size: 13px;
+  color: var(--ink-muted);
+}

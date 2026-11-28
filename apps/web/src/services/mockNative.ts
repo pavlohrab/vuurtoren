@@ -104,6 +104,9 @@ export function createMockNative(
   const cards = demoCards(now());
   const starter = new Set<number>();
   let starterFrom = 1;
+  // Near matches merged or kept apart in Settings → Your words (mergeWords).
+  const merged = new Set<number>();
+  const keptApart = new Set<string>();
   const undo = new Map<
     string,
     { cardId: number; schedule: CardSchedule | undefined; at: number }
@@ -200,6 +203,46 @@ export function createMockNative(
           { name: "De Opmaat::Thema 02", notes: 52, cards: 52, reviews: 0 },
         ],
       };
+    },
+    async mergeWords() {
+      await wait();
+      const word = (
+        id: number,
+        key: string,
+        front: string,
+        gloss: string,
+        origin: string,
+        reviews: number,
+      ) => ({
+        note: {
+          id,
+          notetypeId: "mock",
+          fields: [front, gloss],
+          tags: [],
+          key,
+          gloss,
+          ...(front.startsWith("de ") ? { article: "de" } : {}),
+        },
+        origin,
+        reviews,
+      });
+      const pairs = [
+        {
+          keep: word(1, "fiets", "fiets", "bike", "apkg", 23),
+          drop: word(2, "fietsen", "fietsen", "bikes", "vuurtoren", 0),
+          why: "form" as const,
+        },
+      ].filter(
+        (p) => !keptApart.has(`${p.keep.note.id}-${p.drop.note.id}`) && !merged.has(p.drop.note.id),
+      );
+      return { merged: 0, pairs };
+    },
+    async mergePair(pair) {
+      await wait();
+      merged.add(pair.drop.note.id);
+    },
+    keepPairApart(pair) {
+      keptApart.add(`${pair.keep.note.id}-${pair.drop.note.id}`);
     },
     async importPackage(_token, decks, onProgress) {
       onProgress?.("Reading headwords");

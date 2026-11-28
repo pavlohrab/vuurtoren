@@ -374,6 +374,12 @@ export type AppEvent =
    * words (F2). An older app skips it (canApply).
    */
   | { type: "NativeNotesRemoved"; lang: string; noteIds: number[] }
+  /**
+   * Native mode: what a note lacked, taken from a copy of the same word before the copy goes
+   * (merging words held twice). Only empty parts are filled, as the note is when it applies;
+   * aliases are added to the note's own. Its cards and their reviews stay as they are.
+   */
+  | { type: "NativeNotesFilled"; lang: string; notes: { id: number; fill: NativeNoteFill }[] }
   /** Native mode: a deck's scheduling options. Last write wins per deck (HLC). */
   | { type: "NativeDeckOptionsSet"; lang: string; deck: string; options: DeckOptions }
   /**
@@ -545,6 +551,7 @@ export const EVENT_VERSIONS = {
   ExamAttempt: 1,
   NativeNotesAdded: 1,
   NativeNotesRemoved: 1,
+  NativeNotesFilled: 1,
   NativeDeckOptionsSet: 1,
   CardReviewed: 1,
   CardReviewUndone: 1,
@@ -636,11 +643,21 @@ export interface StoredText extends TextSummary {
   analyzedAt?: number;
 }
 
-/** One note of a word held more than once (nativeKeyDuplicates). */
-export interface NativeKeyDuplicate {
-  noteId: number;
-  key: string;
-  /** How it came in: "vuurtoren" (starter words, Add to my words), "apkg" or "anki". */
+/** The parts of a note a merge can fill in (NativeNotesFilled). */
+export interface NativeNoteFill {
+  article?: string;
+  gloss?: string;
+  sentence?: string;
+  sentenceTranslation?: string;
+  audio?: string;
+  sentenceAudio?: string;
+  aliases?: string[];
+}
+
+/** A word's note with how it came in and its answers (nativeWordNotes, for merging). */
+export interface NativeWordNote {
+  note: NativeNote;
+  /** "vuurtoren" (starter words, Add to my words), "apkg" or "anki". */
   origin: string;
   /** Answers on its cards. */
   reviews: number;
@@ -1027,8 +1044,8 @@ export interface Repository {
   nativeCollection(lang: string, decks: string[]): Promise<NativeCollection>;
   /** Native mode: notes, cards and answers held, for Settings. */
   nativeStats(lang: string): Promise<{ notes: number; cards: number; reviews: number }>;
-  /** Native mode: every note of a word held more than once (by key), with its answers. */
-  nativeKeyDuplicates(lang: string): Promise<NativeKeyDuplicate[]>;
+  /** Native mode: every note of a word (it has a key), with its origin and answers. */
+  nativeWordNotes(lang: string): Promise<NativeWordNote[]>;
   /** Native mode: the FSRS parameters in use, or null for the defaults. */
   fsrsParams(lang: string): Promise<FsrsParamsRecord | null>;
   /**

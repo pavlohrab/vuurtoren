@@ -1,4 +1,5 @@
 /** Contract of native mode: reviews, decks, imports and FSRS tuning. */
+import type { NearPair } from "./mergeWords.js";
 import type { CardRating, DeckOptions } from "@app/core";
 import type { PackageDeck } from "@app/anki";
 import type { NativeDeckSummary, QueueExtra } from "@app/db";
@@ -150,6 +151,15 @@ export interface NativeServices {
   setDeckOptions(deck: string, options: DeckOptions): Promise<void>;
   /** Open an .apkg or .colpkg file and list its decks; `token` names it for `importPackage`. */
   openPackage(file: File): Promise<{ token: string; decks: PackageDeck[] }>;
+  /**
+   * One card per word: merge the words held twice by themselves, and list the near matches for
+   * the learner (mock merge-and-direction.html).
+   */
+  mergeWords(): Promise<{ merged: number; pairs: NearPair[] }>;
+  /** Merge one near match: the note with more answers stays and gets what it lacked. */
+  mergePair(pair: NearPair): Promise<void>;
+  /** Keep a near match as two words; it is not asked again on this device. */
+  keepPairApart(pair: NearPair): void;
   /** Import the chosen decks of an opened package. */
   importPackage(
     token: string,

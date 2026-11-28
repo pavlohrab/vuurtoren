@@ -421,32 +421,25 @@ describe("native card store", () => {
     });
   });
 
-  it("finds the notes of a word held twice, with their answers", async () => {
+  it("a merge fills only what the note lacked, and keeps its reviews", async () => {
     const { repo } = await newRepo();
-    const note = (id: number) => ({
-      id,
-      notetypeId: WORD.id,
-      fields: ["de kat", "", ""],
-      tags: [],
-      key: "kat",
-    });
     const deck = { name: "Vuurtoren::Nederlands", options: DEFAULT_DECK_OPTIONS };
-    await repo.append({
-      type: "NativeNotesAdded",
-      lang: "nl",
-      origin: "vuurtoren",
-      notetypes: [WORD],
-      decks: [deck],
-      notes: [note(5)],
-      cards: [{ id: 6, noteId: 5, ord: 0, deck: deck.name, position: 0 }],
-    });
     await repo.append({
       type: "NativeNotesAdded",
       lang: "nl",
       origin: "apkg",
       notetypes: [WORD],
       decks: [deck],
-      notes: [note(20)],
+      notes: [
+        {
+          id: 20,
+          notetypeId: WORD.id,
+          fields: ["fiets", "bike", ""],
+          tags: [],
+          key: "fiets",
+          gloss: "bike",
+        },
+      ],
       cards: [{ id: 21, noteId: 20, ord: 0, deck: deck.name, position: 1 }],
     });
     await repo.append({
@@ -458,12 +451,20 @@ describe("native card store", () => {
       durationMs: 1,
       schedule: answerCard(undefined, 3, T0, ctx),
     });
-    expect(await repo.nativeKeyDuplicates("nl")).toEqual([
-      { noteId: 5, key: "kat", origin: "vuurtoren", reviews: 0 },
-      { noteId: 20, key: "kat", origin: "apkg", reviews: 1 },
-    ]);
-    await repo.append({ type: "NativeNotesRemoved", lang: "nl", noteIds: [5] });
-    expect(await repo.nativeKeyDuplicates("nl")).toEqual([]);
+    await repo.append({
+      type: "NativeNotesFilled",
+      lang: "nl",
+      notes: [{ id: 20, fill: { article: "de", gloss: "bicycle", aliases: ["fietsen", "fiets"] } }],
+    });
+    const [n] = await repo.nativeWordNotes("nl");
+    expect(n).toMatchObject({ origin: "apkg", reviews: 1 });
+    // The gloss it had stays; the article and the other form come in.
+    expect(n!.note).toMatchObject({
+      key: "fiets",
+      gloss: "bike",
+      article: "de",
+      aliases: ["fietsen"],
+    });
   });
 
   it("rebuilds to the same tables", async () => {

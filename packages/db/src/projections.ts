@@ -463,6 +463,7 @@ export async function applyEvent(driver: SqlDriver, ctx: EventContext): Promise<
       return;
     case "NativeNotesAdded":
     case "NativeNotesRemoved":
+    case "NativeNotesFilled":
     case "NativeDeckOptionsSet":
     case "CardReviewed":
     case "CardReviewUndone":

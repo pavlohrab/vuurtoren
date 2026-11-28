@@ -54,13 +54,17 @@ import {
   studyDayStart,
   trainingSequences,
 } from "@app/core";
-import type {
-  VuurtorenRepository,
-  NativeCardChange,
-  NativeCardView,
-  NativeKeyDuplicate,
-} from "@app/db";
+import type { VuurtorenRepository, NativeCardChange, NativeCardView } from "@app/db";
 import type { NlpClient } from "@app/nlp-client";
+import {
+  type NearPair,
+  exactMerges,
+  fillFrom,
+  mergeEvents,
+  nearPairs,
+  pairId,
+} from "./mergeWords.js";
+import { readLocalJSON, writeLocalJSON } from "../storage/local.js";
 import type { RunOptimizer } from "../native/optimizer.js";
 import { MIN_TRAINING_REVIEWS } from "../native/optimize.js";
 import { loadStarterWords } from "./starterWords.js";
@@ -104,6 +108,8 @@ const RETUNE_MS = 30 * DAY_MS;
 const RETUNE_REVIEWS = 500;
 /** First tuning by itself once the history has this many answers. */
 const FIRST_TUNE_REVIEWS = 400;
+/** Near matches the learner kept as two words ("Keep both"), per device. */
+const KEPT_APART = "vuurtoren.merge.keptApart";
 const CHANGES_PER_EVENT = 500;
 /** Target recalls the deck table offers, with the load each means. */
 const LOAD_RETENTIONS = [0.8, 0.85, 0.87, 0.9, 0.92, 0.95, 0.97];
@@ -271,11 +277,11 @@ export function createLiveNative(deps: LiveNativeDeps) {
     };
   }
 
-  /** One card per word after an import (`duplicatesToRemove`); returns the words merged. */
+  /** Words held twice under the same key become one card (mergeWords.ts); returns how many. */
   async function mergeDuplicates(lang: string): Promise<number> {
-    const { remove, merged } = duplicatesToRemove(await repo.nativeKeyDuplicates(lang));
-    if (remove.length) await repo.append({ type: "NativeNotesRemoved", lang, noteIds: remove });
-    return merged;
+    const plans = exactMerges(await repo.nativeWordNotes(lang));
+    for (const e of mergeEvents(lang, plans)) await repo.append(e);
+    return plans.length;
   }
 
   async function importDeps(lang: "nl", origin: "apkg" | "anki", onProgress?: (m: string) => void) {
@@ -562,6 +568,34 @@ export function createLiveNative(deps: LiveNativeDeps) {
       }
     },
 
+    async mergeWords() {
+      const lang = await deps.lang();
+      const merged = await mergeDuplicates(lang);
+      if (merged) {
+        ownIndex = null;
+        deps.changed();
+      }
+      const kept = new Set(readLocalJSON(KEPT_APART) as string[] | undefined);
+      return { merged, pairs: nearPairs(await repo.nativeWordNotes(lang), kept) };
+    },
+
+    async mergePair(pair: NearPair) {
+      const lang = await deps.lang();
+      const plan = {
+        keep: pair.keep.note.id,
+        fill: fillFrom(pair.keep, [pair.drop]),
+        remove: [pair.drop.note.id],
+      };
+      for (const e of mergeEvents(lang, [plan])) await repo.append(e);
+      ownIndex = null;
+      deps.changed();
+    },
+
+    keepPairApart(pair: NearPair) {
+      const kept = (readLocalJSON(KEPT_APART) as string[] | undefined) ?? [];
+      writeLocalJSON(KEPT_APART, [...new Set([...kept, pairId(pair)])]);
+    },
+
     async importPackage(token, decks, onProgress) {
       const col = opened.get(token);
       if (!col) throw new Error("Open the file again.");
@@ -839,33 +873,4 @@ export function createLiveNative(deps: LiveNativeDeps) {
   };
 
   return { services, evidence, invalidate: () => (ownIndex = null) };
-}
-
-/**
- * Where a word is held twice, the note with the most answers stays (on a tie the imported one,
- * then the oldest) and Vuurtoren's own copies of it go (the starter words, Add to my words).
- * Notes from Anki or a file are never removed.
- */
-export function duplicatesToRemove(dups: readonly NativeKeyDuplicate[]): {
-  remove: number[];
-  merged: number;
-} {
-  const byKey = new Map<string, NativeKeyDuplicate[]>();
-  for (const d of dups) byKey.set(d.key, [...(byKey.get(d.key) ?? []), d]);
-  const remove: number[] = [];
-  let merged = 0;
-  for (const notes of byKey.values()) {
-    const keep = [...notes].sort(
-      (a, b) =>
-        b.reviews - a.reviews ||
-        Number(a.origin === "vuurtoren") - Number(b.origin === "vuurtoren") ||
-        a.noteId - b.noteId,
-    )[0]!;
-    const gone = notes.filter((n) => n !== keep && n.origin === "vuurtoren");
-    if (gone.length) {
-      merged++;
-      remove.push(...gone.map((n) => n.noteId));
-    }
-  }
-  return { remove, merged };
 }

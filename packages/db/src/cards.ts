@@ -32,7 +32,7 @@ import type {
   NativeCollection,
   NativeDeckSummary,
   NativeKeyCard,
-  NativeKeyDuplicate,
+  NativeWordNote,
   NativeNoteStatus,
   NativeQueue,
   QueueExtra,
@@ -47,6 +47,7 @@ type NativeEvent = Extract<
     type:
       | "NativeNotesAdded"
       | "NativeNotesRemoved"
+      | "NativeNotesFilled"
       | "NativeDeckOptionsSet"
       | "CardReviewed"
       | "CardReviewUndone"
@@ -56,6 +57,15 @@ type NativeEvent = Extract<
 >;
 
 type Row = Record<string, SqlValue>;
+/** The text parts of a note a merge fills when they are empty (aliases are added apart). */
+const FILLABLE = [
+  "article",
+  "gloss",
+  "sentence",
+  "sentenceTranslation",
+  "audio",
+  "sentenceAudio",
+] as const;
 const json = <T>(v: SqlValue | undefined): T => JSON.parse(String(v)) as T;
 const DAY_MS = 86_400_000;
 
@@ -133,6 +143,27 @@ export async function applyNativeEvent(
       await driver.exec("DELETE FROM native_notes WHERE id IN (SELECT value FROM json_each(?))", [
         ids,
       ]);
+      return;
+    }
+    case "NativeNotesFilled": {
+      for (const { id, fill } of e.notes) {
+        const row = (await driver.exec("SELECT data FROM native_notes WHERE id = ?", [id]))[0];
+        if (!row) continue;
+        const note = json<NativeNote>(row["data"]);
+        const next: NativeNote = { ...note };
+        for (const k of FILLABLE) {
+          const v = fill[k];
+          if (v && !note[k]) next[k] = v;
+        }
+        const aliases = [...new Set([...(note.aliases ?? []), ...(fill.aliases ?? [])])].filter(
+          (a) => a !== note.key,
+        );
+        if (aliases.length) next.aliases = aliases;
+        await driver.exec("UPDATE native_notes SET data = ? WHERE id = ?", [
+          JSON.stringify(next),
+          id,
+        ]);
+      }
       return;
     }
     case "NativeNotesAdded": {
@@ -878,21 +909,18 @@ export function nativeQueries(driver: SqlDriver) {
       };
     },
 
-    async nativeKeyDuplicates(lang: string): Promise<NativeKeyDuplicate[]> {
+    async nativeWordNotes(lang: string): Promise<NativeWordNote[]> {
       const rows = await driver.exec(
-        `SELECT n.id, n.key, n.origin,
+        `SELECT n.id, n.data, n.origin,
                 (SELECT count(*) FROM native_reviews r JOIN native_cards c ON c.id = r.card_id
                   WHERE c.note_id = n.id) AS reviews
            FROM native_notes n
-          WHERE n.lang = ? AND n.key IN (
-            SELECT key FROM native_notes WHERE lang = ? AND key IS NOT NULL
-             GROUP BY key HAVING count(*) > 1)
-          ORDER BY n.key, n.id`,
-        [lang, lang],
+          WHERE n.lang = ? AND n.key IS NOT NULL
+          ORDER BY n.id`,
+        [lang],
       );
       return rows.map((r) => ({
-        noteId: Number(r["id"]),
-        key: String(r["key"]),
+        note: json<NativeNote>(r["data"]),
         origin: String(r["origin"]),
         reviews: Number(r["reviews"]),
       }));

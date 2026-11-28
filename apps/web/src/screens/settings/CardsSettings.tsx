@@ -13,6 +13,7 @@ import { useServices } from "../../services/context.js";
 import { saveFile } from "../../saveFile.js";
 import type { DeckWithLoad, ImportSummary, NativeDeckSummary } from "../../services/nativeTypes.js";
 import { errorText } from "../../services/errors.js";
+import { MergeWords } from "./MergeWords.js";
 
 /** Queries that change when cards come in or the mode changes. */
 const AFFECTED = ["languageProfile", "learner", "review", "words", "texts", "home"];
@@ -144,6 +145,7 @@ function NativeCards() {
       </section>
       <StarterWords />
       <ImportPackage />
+      <MergeWords />
       {decks.data?.length ? <ExportPackage decks={decks.data.map((d) => d.name)} /> : null}
       {decks.data?.length ? (
         <>
