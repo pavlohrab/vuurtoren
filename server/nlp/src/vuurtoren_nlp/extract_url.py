@@ -114,7 +114,9 @@ def _request_pinned(
     target = httpx.URL(url).copy_with(host=str(ip))
     headers = {
         "Host": host if parts.port is None else f"{host}:{port}",
-        "User-Agent": "Mozilla/5.0 (compatible; VuurtorenReader/1.0)",
+        # An honest name with a way to reach us: Wikipedia refuses one that pretends to be a
+        # browser ("Mozilla/5.0 (compatible; …)" got 403 on every system, 28 Nov).
+        "User-Agent": "VuurtorenReader/1.0 (+https://vuurtoren.app)",
         "Accept": "text/html,application/xhtml+xml,text/plain;q=0.8,*/*;q=0.5",
     }
     ext = {"sni_hostname": host} if parts.scheme == "https" else {}
