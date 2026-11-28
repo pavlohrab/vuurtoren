@@ -218,6 +218,10 @@ export function createLiveSync(deps: LiveSyncDeps) {
   /** A connect link that opened the app, until connecting with it succeeds. */
   let pendingLink: string | null = null;
   let running: Promise<unknown> | null = null;
+  /** Counts Stop syncing: a sync that started before a stop writes nothing after it. */
+  let stops = 0;
+  /** Counts setups asked for: a stop clears what ran before it, not a setup asked after it. */
+  let setups = 0;
   let lastAttempt = 0;
   let lastFailed = false;
   /** The log's head after the last finished sync sent it all: unchanged means nothing to send. */
@@ -377,6 +381,11 @@ export function createLiveSync(deps: LiveSyncDeps) {
   /** One sync. Whatever came in drops the caches, also when the sync fails after it. */
   async function run(saved: Saved, key: SyncKey, onProgress?: (m: string) => void) {
     lastAttempt = now();
+    const stopsAtStart = stops;
+    // Stopped while this ran (a phone waiting for an unreachable computer): it saves nothing.
+    const save = (s: Saved) => {
+      if (stops === stopsAtStart) write(s);
+    };
     const before = (await repo.head()).seq;
     let applied = 0;
     // Count what is imported as it happens: a sync can fail after some files came in.
@@ -405,7 +414,7 @@ export function createLiveSync(deps: LiveSyncDeps) {
         devices: r.devices ?? saved.devices,
         problems: mergeProblems(saved.problems, r.problems),
       };
-      write(next);
+      save(next);
       // What came in moved the head too; a change made during the sync may not have gone out.
       const after = (await repo.head()).seq;
       syncedAt = after === before + applied ? after : before;
@@ -413,7 +422,7 @@ export function createLiveSync(deps: LiveSyncDeps) {
       return { status: status(next), applied };
     } catch (e) {
       lastFailed = true;
-      write({ ...saved, error: messageOf(e) });
+      save({ ...saved, error: messageOf(e) });
       throw Object.assign(e instanceof Error ? e : new Error(messageOf(e)), { applied });
     } finally {
       if (applied > 0) deps.changed();
@@ -508,6 +517,7 @@ export function createLiveSync(deps: LiveSyncDeps) {
     },
 
     async setUpSync(place, how, passphrase, deviceName, onProgress) {
+      setups++;
       return exclusive(async () => {
         const name = deviceName.trim().slice(0, 60) || defaultName();
         const kept = await keepSecret(await keptPlace(place, name));
@@ -586,8 +596,12 @@ export function createLiveSync(deps: LiveSyncDeps) {
     },
 
     async stopSync() {
-      // After whatever runs (a setup too): nothing turns sync back on behind it.
-      await exclusive(async () => {
+      // At once, without waiting for a sync that runs (it can hang on an unreachable computer):
+      // that sync saves nothing afterwards (`stops`). What was running (a setup too) is cleared
+      // again when it ends, unless sync was set up again since.
+      const mine = ++stops;
+      const setupsBefore = setups;
+      const forget = async () => {
         await keys.forget();
         const place = read()?.place;
         // Its phones are told it stopped (SY5), not left with a folder nobody updates.
@@ -600,7 +614,15 @@ export function createLiveSync(deps: LiveSyncDeps) {
         syncedAt = null;
         watched = null;
         built = null;
-      });
+      };
+      const before = running;
+      await forget();
+      // Not waited for: Stop is done now, whatever still runs.
+      if (before)
+        void before
+          .catch(() => undefined)
+          .then(() => (stops === mine && setups === setupsBefore ? forget() : undefined))
+          .catch(() => undefined);
     },
 
     async phoneHandover() {

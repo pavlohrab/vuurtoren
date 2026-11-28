@@ -286,6 +286,31 @@ describe("joining or starting", () => {
     expect(await laptop.sync.auto("timer")).toMatchObject({ ran: false });
     await setting;
     await stopping;
+    await vi.waitFor(async () =>
+      expect((await laptop.sync.services.syncStatus()).place).toBeNull(),
+    );
+  });
+
+  it("Stop doesn't wait for a sync that hangs, and that sync can't turn sync back on", async () => {
+    const clock = start();
+    let release: () => void = () => {};
+    const base = fakeServer(new Map(), "ksync_t");
+    let hang = false;
+    const fetch: typeof globalThis.fetch = async (input, init) => {
+      if (hang) await new Promise<void>((r) => (release = r));
+      return base(input, init);
+    };
+    const laptop = await device("aaaaaaaaaaaa", fetch, clock);
+    await laptop.sync.services.setUpSync(place, "start", PASS, "Laptop");
+    hang = true;
+    const syncing = laptop.sync.services.syncNow().catch(() => undefined);
+    await new Promise((r) => setTimeout(r, 0));
+    await laptop.sync.services.stopSync();
+    expect((await laptop.sync.services.syncStatus()).place).toBeNull();
+    hang = false;
+    release();
+    await syncing;
+    await new Promise((r) => setTimeout(r, 0));
     expect((await laptop.sync.services.syncStatus()).place).toBeNull();
   });
 });

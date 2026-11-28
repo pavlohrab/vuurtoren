@@ -5,6 +5,7 @@
  * shows the QR code that connects a phone (Add a phone). Elsewhere, Connect to your server
  * trades such a code (scanned, pasted as a link, or typed) for this device's own token.
  */
+import { makePassphrase } from "../../sync/passphrase.js";
 import { currentDevice } from "../../platform/index.js";
 import { ScanOverlay } from "./ScanOverlay.js";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -304,6 +305,8 @@ function Secrets({ onRecovery }: { onRecovery: (key: string) => void }) {
   const [open, setOpen] = useState<"pass" | "key" | null>(null);
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
+  // A passphrase made for you is shown, so you can write it down.
+  const [made, setMade] = useState(false);
   const change = useMutation({
     mutationFn: () => services.changeSyncPassphrase(current, next),
     onSuccess: () => {
@@ -357,14 +360,22 @@ function Secrets({ onRecovery }: { onRecovery: (key: string) => void }) {
             autoComplete="current-password"
           />
           {open === "pass" ? (
-            <Input
-              label="New passphrase"
-              type="password"
-              value={next}
-              onChange={(e) => setNext(e.target.value)}
-              autoComplete="new-password"
-              hint="At least 8 characters. Your other devices keep syncing."
-            />
+            <>
+              <Input
+                label="New passphrase"
+                type={made ? "text" : "password"}
+                value={next}
+                onChange={(e) => setNext(e.target.value)}
+                autoComplete="new-password"
+                hint="At least 8 characters. Your other devices keep syncing."
+              />
+              <MakeOne
+                onMake={(p) => {
+                  setNext(p);
+                  setMade(true);
+                }}
+              />
+            </>
           ) : (
             <p className="k-hint" style={{ margin: 0 }}>
               The old recovery key stops working.
@@ -673,6 +684,14 @@ function SetUp({ status, onRecovery }: { status: SyncStatus; onRecovery: (key: s
                   : "At least 8 characters; a few words are easy to remember. You type it on each of your devices. Only it or the recovery key opens your synced data, so keep both safe."
               }
             />
+            {how === "join" ? null : (
+              <MakeOne
+                onMake={(p) => {
+                  setPassphrase(p);
+                  setShow(true);
+                }}
+              />
+            )}
             <label className="row k-hint" style={{ gap: 6 }}>
               <input type="checkbox" checked={show} onChange={(e) => setShow(e.target.checked)} />
               Show the passphrase
@@ -811,7 +830,8 @@ function SyncOn({ status }: { status: SyncStatus }) {
         <div className="stack" style={{ gap: 8 }}>
           <p style={{ margin: 0 }}>
             Stop syncing on this device? Your data stays here and in {status.place!.label}; other
-            devices keep syncing.
+            devices keep syncing. Then you can start a new sync here, with another place or a new
+            passphrase.
           </p>
           {phones.data?.length ? (
             <p role="note" style={{ margin: 0 }}>
@@ -822,7 +842,8 @@ function SyncOn({ status }: { status: SyncStatus }) {
           ) : null}
           <div className="row">
             <Button onClick={() => stop.mutate()} disabled={stop.isPending}>
-              Stop syncing
+              {stop.isPending ? <Spinner label="Stopping" /> : null}
+              {stop.isPending ? "Stopping…" : "Stop syncing"}
             </Button>
             <Button variant="ghost" onClick={() => setStopping(false)}>
               Cancel
@@ -831,6 +852,27 @@ function SyncOn({ status }: { status: SyncStatus }) {
         </div>
       ) : null}
     </section>
+  );
+}
+
+/** "Make one for me": five easy words in the field, shown, with a reminder to keep them. */
+function MakeOne({ onMake }: { onMake: (passphrase: string) => void }) {
+  const [made, setMade] = useState(false);
+  return (
+    <div className="row" style={{ gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        onClick={() => {
+          onMake(makePassphrase());
+          setMade(true);
+        }}
+      >
+        {made ? "Another one" : "Make one for me"}
+      </Button>
+      {made ? <span className="k-hint">Write it down somewhere safe.</span> : null}
+    </div>
   );
 }
 
