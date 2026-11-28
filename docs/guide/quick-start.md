@@ -8,8 +8,9 @@ From nothing to reading your first Dutch text takes about five minutes.
    phone. The app isn't signed yet, so your computer may warn you the first time. How to get past
    that is on [Install](install.md).
 2. **Answer a few questions.** Vuurtoren asks if you use Anki, a flashcard app. If you don't,
-   Vuurtoren keeps your words itself and starts with the most common Dutch words. If you do, see
-   [Anki](anki.md).
+   Vuurtoren keeps your words itself and starts with the most common Dutch words. Then you try three
+   practice questions and say which of 20 words you know, so it starts at your level. If you use
+   Anki, see [Anki](anki.md).
 3. **Read a story.** **Read** opens a story at your level. On each page about three new words are
    marked for you to learn. Tap any word to see what it means here, and press **Add to my words**
    to learn it.
