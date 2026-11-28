@@ -7,6 +7,8 @@
  * any other word its reviews and next review. Open word card puts the whole card in the pane.
  * Phones keep the list page (`Words`).
  */
+import { PracticeStepLine } from "../PracticeLadder.js";
+import { LevelRing } from "./WordsHome.js";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { starterBand } from "@app/anki";
@@ -331,6 +333,7 @@ export function WordsDesk() {
             </Link>
           </section>
         )}
+        <LevelRing />
 
         <div className="wd-grp">
           <h2 className="wd-over wd-gh">Words</h2>
@@ -774,6 +777,7 @@ function WordPane({
               {days && entry.state === "learning" ? ` Learning for ${plural(days, "day")}.` : null}
             </p>
           ) : null}
+          <PracticeStepLine wordKey={entry.key} />
           {entry.state !== "known" ? (
             <button
               type="button"

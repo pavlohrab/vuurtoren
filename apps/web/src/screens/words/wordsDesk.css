@@ -498,3 +498,23 @@
   align-items: center;
   gap: 4px;
 }
+/* The level ring in the narrow left column. */
+.wd-rail .level-ring {
+  gap: var(--s-3);
+  padding: var(--s-3);
+}
+.wd-rail .level-ring-dial {
+  width: 52px;
+  height: 52px;
+}
+.wd-rail .level-ring-dial > span {
+  width: 40px;
+  height: 40px;
+  font-size: 13px;
+}
+.wd-rail .level-ring-text {
+  font-size: 12px;
+}
+.wd-rail .level-ring-text b {
+  font-size: 13.5px;
+}

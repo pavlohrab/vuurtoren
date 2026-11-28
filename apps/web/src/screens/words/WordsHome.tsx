@@ -6,18 +6,17 @@
  */
 import { useQuery } from "@tanstack/react-query";
 import { Link, Navigate } from "@tanstack/react-router";
-import { ChevronRight, Gauge } from "lucide-react";
-import { type ReactNode, useState, useSyncExternalStore } from "react";
+import { ChevronRight } from "lucide-react";
+import { type CSSProperties, useState, useSyncExternalStore } from "react";
 import { Skeleton, useNativeMode } from "@app/ui";
 import { plural } from "../../format.js";
 import { useServices } from "../../services/context.js";
 import { PageHeader } from "../../shell/PageHeader.js";
 import { usePageHeader } from "../../shell/ShellContext.js";
-import { loadStarterIndex, useCurrentLevel, useLevelProgress } from "./WordsRoom.js";
+import { loadStarterIndex, useLevelProgress } from "./WordsRoom.js";
 import { type LevelFilter, currentLevel, levelLabel } from "./levels.js";
 import { currentDevice } from "../../platform/index.js";
 import "./wordsHome.css";
-import { progressText } from "./levels.js";
 import { starterBand } from "@app/anki";
 
 const fmt = (n: number) => n.toLocaleString("en");
@@ -67,22 +66,69 @@ export function WordsAside() {
     queryFn: () => services.reviewOverview(),
     enabled: native,
   });
-  const level = useCurrentLevel();
 
   return (
     <>
       {native ? <DueToday due={today.data?.due} fresh={today.data?.fresh} /> : <AnkiNote />}
-      <nav className="words-home-list" aria-label="Your level">
-        <Row
-          to="/words/all"
-          search={level ? { layout: "cards", level: String(level.level) } : { layout: "cards" }}
-          icon={<Gauge size={18} />}
-          title="Your level"
-          detail={level ? `${starterBand(level.level)} · ${progressText(level)}` : null}
-        />
-      </nav>
+      <LevelRing />
       <WordsPeek />
     </>
+  );
+}
+
+/** The bands of the starter levels (starterBand), in order. */
+const BANDS = ["A1", "A2", "B1", "B2"] as const;
+
+/**
+ * Your level, moving (mock progress-words-practice.html A): a ring for the band you're in,
+ * "640 of 1,000", what changed this week and what's left to the next band. Opens Check your level.
+ */
+export function LevelRing() {
+  const services = useServices();
+  const progress = useLevelProgress();
+  const week = useQuery({
+    queryKey: ["progress", "known", 2],
+    queryFn: () => services.knownOverTime(2),
+    staleTime: 60_000,
+  });
+  const levels = progress.data ?? [];
+  const current = currentLevel(levels);
+  if (!current) return null;
+  const band = starterBand(current.level);
+  const inBand = levels.filter((p) => starterBand(p.level) === band);
+  const known = inBand.reduce((n, p) => n + Math.min(p.known, p.size), 0);
+  const size = inBand.reduce((n, p) => n + p.size, 0);
+  const share = size ? known / size : 0;
+  const next = BANDS[BANDS.indexOf(band) + 1];
+  const pts = week.data ?? [];
+  const up = pts.length >= 2 ? pts.at(-1)!.known - pts.at(-2)!.known : 0;
+  return (
+    <Link
+      to="/words/all"
+      search={{ layout: "cards", level: String(current.level) }}
+      className="level-ring"
+      aria-label={`Your level: ${band}, ${fmt(known)} of ${fmt(size)} words. Check your level`}
+    >
+      <span className="level-ring-dial" style={{ "--share": `${share * 100}%` } as CSSProperties}>
+        <span>{band}</span>
+      </span>
+      <span className="level-ring-text">
+        <b>
+          {fmt(known)} of {fmt(size)} words
+        </b>
+        {up > 0 ? (
+          <span>
+            <span className="stages-up">+{fmt(up)}</span> known this week
+          </span>
+        ) : null}
+        {next && size > known ? (
+          <span>
+            {fmt(size - known)} to {next}
+          </span>
+        ) : null}
+      </span>
+      <ChevronRight size={18} aria-hidden className="words-home-chevron" />
+    </Link>
   );
 }
 
@@ -189,6 +235,7 @@ export function WordsDeskAside({
       ) : (
         <AnkiNote />
       )}
+      <LevelRing />
       {index.data && progress.data?.length ? (
         <section className="words-levels" aria-labelledby="words-levels-h">
           <h2 id="words-levels-h" className="due-today-label">
@@ -317,32 +364,5 @@ function AnkiNote() {
         You review your cards in Anki. Words you add go to your Anki deck.
       </p>
     </section>
-  );
-}
-
-function Row({
-  to,
-  search,
-  icon,
-  title,
-  detail,
-}: {
-  to: "/words/all" | "/practice";
-  search?: Record<string, string>;
-  icon: ReactNode;
-  title: string;
-  detail: string | null;
-}) {
-  return (
-    <Link to={to} search={search ?? {}} className="words-home-row">
-      <span className="words-home-icon" aria-hidden>
-        {icon}
-      </span>
-      <span className="words-home-text">
-        <span className="words-home-title">{title}</span>
-        {detail ? <span className="words-home-detail">{detail}</span> : null}
-      </span>
-      <ChevronRight size={18} aria-hidden className="words-home-chevron" />
-    </Link>
   );
 }

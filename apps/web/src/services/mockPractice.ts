@@ -164,7 +164,12 @@ export function createMockPractice(wait: () => Promise<void>) {
 
     async practiceLadder(key?: string) {
       await wait();
-      return { top: 5, reached: [42, 30, 18, 9, 4], ...(key !== undefined ? { step: 3 } : {}) };
+      return {
+        stages: 3,
+        at: [232, 116, 52],
+        newThisWeek: [20, 14, 12],
+        ...(key !== undefined ? { stage: 2 } : {}),
+      };
     },
 
     async answerExercise(exercise: Exercise, attempt: AttemptInput): Promise<AnswerResult> {

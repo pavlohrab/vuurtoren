@@ -172,14 +172,16 @@ export interface PracticeOverview {
   /** The language server was unreachable on the last request (fewer exercise types). */
   degraded?: boolean;
 }
-/** Where your words are on Practice's ladder (STEP_OF). */
+/** Your words by Practice stage: Understand, Build, Write, Use (core `STAGE_NAMES`). */
 export interface PracticeLadder {
-  /** The top step: 6 with an AI to check sentences, else 5. */
-  top: number;
-  /** How many words reached step 1, 2, … (at least that step). */
-  reached: number[];
-  /** The asked word's step (0: not practised yet). */
-  step?: number;
+  /** 4 with Use (an AI, or a word already there), else 3. */
+  stages: number;
+  /** Words whose highest stage is 1, 2, … */
+  at: number[];
+  /** Words that reached stage 1, 2, … in the last 7 days. */
+  newThisWeek: number[];
+  /** The asked word's stage (0: not practised yet). */
+  stage?: number;
 }
 /** The learner's answer; correctness is decided by the engine, not the caller. */
 export type AttemptInput = Omit<Attempt, "correct">;
@@ -430,7 +432,7 @@ export interface AppServices
   knownOverTime(weeks?: number): Promise<KnownPoint[]>;
   /** Counts for the Practice start screen, the sidebar badge and Progress. */
   practiceOverview(): Promise<PracticeOverview>;
-  /** How far your words got on Practice's ladder, and one word's step. */
+  /** Your words by Practice stage, and one word's stage. */
   practiceLadder(key?: string): Promise<PracticeLadder>;
   /**
    * Build a session: due items first, then new ones, from words you are learning or know.

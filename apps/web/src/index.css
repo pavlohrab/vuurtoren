@@ -2729,59 +2729,125 @@
     stroke-dashoffset: 60;
   }
 }
-/* Practice's ladder: one word's step on its card, and your words per step on Practice. */
-.ladder-line {
-  display: grid;
-  gap: 4px;
-  margin-top: 8px;
-  font-size: 13px;
-  color: var(--ink-muted);
+/* What you can do with your words (mock practice-stages.html): four stages, lighter to darker. */
+.stages-block,
+.stages-line {
+  --stage-1: color-mix(in srgb, var(--accent) 30%, var(--surface));
+  --stage-2: color-mix(in srgb, var(--accent) 60%, var(--surface));
+  --stage-3: var(--accent);
+  --stage-4: color-mix(in srgb, var(--accent) 60%, var(--ink));
 }
-.ladder-dots {
-  display: flex;
-  gap: 4px;
-  max-width: 180px;
-}
-.ladder-dots i {
-  flex: 1;
-  height: 6px;
-  border-radius: 3px;
-  background: var(--line);
-}
-.ladder-dots i[data-on] {
-  background: var(--accent);
-}
-.ladder-block {
+.stages-block {
   display: grid;
   gap: 8px;
+  width: 100%;
   max-width: 640px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  background: var(--surface);
 }
-.ladder-block ul {
-  display: grid;
-  gap: 6px;
+.stages-head {
+  margin: 0;
+  font: 600 16px/1.35 var(--font-display);
+}
+.stages-head b {
+  color: var(--accent);
+}
+.stages-up {
+  color: var(--success);
+  font: 600 12.5px var(--font-ui, inherit);
+}
+.stages-bar {
+  display: flex;
+  height: 12px;
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--line);
+}
+.stages-bar i {
+  display: block;
+  height: 100%;
+}
+.stages-bar i[data-stage="1"],
+.stages-legend i[data-stage="1"] {
+  background: var(--stage-1);
+}
+.stages-bar i[data-stage="2"],
+.stages-legend i[data-stage="2"] {
+  background: var(--stage-2);
+}
+.stages-bar i[data-stage="3"],
+.stages-legend i[data-stage="3"] {
+  background: var(--stage-3);
+}
+.stages-bar i[data-stage="4"],
+.stages-legend i[data-stage="4"] {
+  background: var(--stage-4);
+}
+.stages-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
   margin: 0;
   padding: 0;
   list-style: none;
-}
-.ladder-block li {
-  display: grid;
-  grid-template-columns: 110px 1fr 48px;
-  gap: 10px;
-  align-items: center;
   font-size: 13px;
-}
-.ladder-bar {
-  height: 8px;
-  border-radius: 4px;
-  background: var(--line);
-  overflow: hidden;
-}
-.ladder-bar i {
-  display: block;
-  height: 100%;
-  background: var(--accent);
-}
-.ladder-block b {
-  text-align: right;
   font-variant-numeric: tabular-nums;
+}
+.stages-legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.stages-legend i {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+}
+.stages-line {
+  display: grid;
+  gap: 5px;
+  width: 100%;
+  margin-top: 10px;
+  max-width: 360px;
+}
+.stages-k {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+.stages-boxes {
+  display: flex;
+  gap: 4px;
+}
+.stages-boxes span {
+  flex: 1;
+  padding: 4px 2px;
+  border-radius: 6px;
+  background: var(--line);
+  color: var(--ink-muted);
+  font-size: 11px;
+  text-align: center;
+}
+.stages-boxes span[data-on] {
+  background: var(--accent);
+  color: var(--accent-ink, #fff);
+  font-weight: 600;
+}
+.stages-boxes span[data-next] {
+  background: none;
+  outline: 1.5px dashed var(--accent);
+  outline-offset: -1.5px;
+  color: var(--accent);
+}
+.stages-next {
+  font-size: 12.5px;
+  color: var(--ink-muted);
+}
+/* The phone's word card at its peek keeps to the word and its buttons; the stages wait below. */
+.inspector-panel[data-sheet="peek"] .stages-line {
+  display: none;
 }

@@ -28,6 +28,7 @@ import type {
 import type { GlossEntry } from "@app/nlp-client";
 import {
   STEP_OF,
+  stageOf,
   buildLesson,
   missesByPoint,
   comeBack as engineComeBack,
@@ -315,21 +316,40 @@ export function createLivePractice(deps: LivePracticeDeps) {
   }
 
   /**
-   * The ladder (STEP_OF): how many of your words reached each step, and where one word is. Read
-   * from the answers, the same as the lesson's guard rail (hardestRight); nothing is stored.
+   * Your words by stage (Understand, Build, Write, Use: `stageOf` over STEP_OF), how many reached
+   * each stage in the last 7 days, and one word's stage. Read from the answers, as the lesson's
+   * guard rail is (hardestRight); nothing is stored. Use shows with an AI, or once a word got there.
    */
   async function practiceLadder(key?: string): Promise<PracticeLadder> {
     const lang = await deps.lang();
     const answers = toEloAnswers(await repo.practiceAnswers(lang), KNOWN_KINDS);
-    const best = new Map<string, number>();
-    for (const a of answers)
-      if (a.result >= 0.5) best.set(a.key, Math.max(best.get(a.key) ?? 0, STEP_OF[a.kind]));
-    const top = deps.aiUse?.ready() ? 6 : 5;
-    const reached = Array.from(
-      { length: top },
-      (_, i) => [...best.values()].filter((s) => s >= i + 1).length,
+    const weekAgo = clock() - 7 * 24 * 60 * 60 * 1000;
+    const stage = new Map<string, number>();
+    // When each word first reached each stage.
+    const firstAt = new Map<string, number[]>();
+    for (const a of answers) {
+      if (a.result < 0.5) continue;
+      const s = stageOf(STEP_OF[a.kind]);
+      stage.set(a.key, Math.max(stage.get(a.key) ?? 0, s));
+      const times = firstAt.get(a.key) ?? [];
+      for (let i = 1; i <= s; i++) if (times[i] === undefined) times[i] = a.at;
+      firstAt.set(a.key, times);
+    }
+    const stages = deps.aiUse?.ready() || [...stage.values()].some((s) => s >= 4) ? 4 : 3;
+    const at = Array.from(
+      { length: stages },
+      (_, i) => [...stage.values()].filter((s) => s === i + 1).length,
     );
-    return { top, reached, ...(key !== undefined ? { step: best.get(key) ?? 0 } : {}) };
+    const newThisWeek = Array.from(
+      { length: stages },
+      (_, i) => [...firstAt.values()].filter((t) => (t[i + 1] ?? 0) >= weekAgo).length,
+    );
+    return {
+      stages,
+      at,
+      newThisWeek,
+      ...(key !== undefined ? { stage: stage.get(key) ?? 0 } : {}),
+    };
   }
 
   /** Words worth practising now: due first, then new learning words, then known ones. */

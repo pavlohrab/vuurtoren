@@ -35,8 +35,17 @@ export const STEP_OF: Readonly<Record<ExerciseKind, 1 | 2 | 3 | 4 | 5 | 6>> = {
   use: 6,
 };
 
-/** The steps' names, as the word card and Practice show them. */
-export const STEP_NAMES = ["Pick it", "In a sentence", "Build it", "Hear it", "Type it", "Use it"];
+/**
+ * What the learner sees: four stages named by what you can do with a word, each a group of
+ * steps. 1–2 Understand (recognise it), 3–4 Build (put it in a sentence), 5 Write (write it
+ * yourself), 6 Use (your own sentence, only with an AI).
+ */
+export const STAGE_NAMES = ["Understand", "Build", "Write", "Use"] as const;
+
+/** The stage (1–4) of a step (1–6); 0 for none. */
+export function stageOf(step: number): number {
+  return step >= 6 ? 4 : step >= 5 ? 3 : step >= 3 ? 2 : step >= 1 ? 1 : 0;
+}
 
 /** How much closer to the target a weak grammar point's kind counts as. */
 const FAVOUR = 0.05;

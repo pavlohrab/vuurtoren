@@ -46,52 +46,53 @@
   gap: var(--s-2);
   margin-top: var(--s-3);
 }
-.words-home-list {
-  display: grid;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-card);
-  overflow: hidden;
-  background: var(--surface);
-}
-.words-home-row {
+/* Your level, moving (mock progress-words-practice.html A): a ring for your band, a line or
+   three beside it, and the way to Check your level. */
+.level-ring {
   display: flex;
   align-items: center;
-  gap: var(--s-3);
-  min-height: 64px;
+  gap: var(--s-4);
   padding: var(--s-3) var(--s-4);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  background: var(--surface);
   color: var(--ink);
   text-decoration: none;
 }
-.words-home-row + .words-home-row {
-  border-top: 1px solid var(--hairline);
-}
-.words-home-row:hover,
-.words-home-row:focus-visible {
+.level-ring:hover,
+.level-ring:focus-visible {
   background: var(--accent-soft);
 }
-.words-home-icon {
+.level-ring-dial {
   display: grid;
   place-items: center;
   flex: none;
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
-  color: var(--accent);
-  background: var(--accent-soft);
+  width: 62px;
+  height: 62px;
+  border-radius: 50%;
+  background: conic-gradient(var(--accent) 0 var(--share), var(--line) var(--share) 100%);
 }
-.words-home-text {
+.level-ring-dial > span {
   display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--surface);
+  font: 700 15px var(--font-display);
+}
+.level-ring-text {
+  display: grid;
+  gap: 2px;
   flex: 1;
   min-width: 0;
-}
-.words-home-title {
-  font-size: 16px;
-  font-weight: 600;
-}
-.words-home-detail {
-  font-size: 14px;
+  font-size: 13px;
   color: var(--ink-muted);
   font-variant-numeric: tabular-nums;
+}
+.level-ring-text b {
+  color: var(--ink);
+  font: 600 15px var(--font-display);
 }
 .words-home-chevron {
   flex: none;
