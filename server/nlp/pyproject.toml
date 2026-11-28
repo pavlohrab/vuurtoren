@@ -1,6 +1,6 @@
 [project]
 name = "vuurtoren-nlp"
-version = "0.2.3"
+version = "0.2.4"
 description = "Stateless NLP/OCR/MT service for Vuurtoren"
 license = "MIT"
 requires-python = ">=3.12"
