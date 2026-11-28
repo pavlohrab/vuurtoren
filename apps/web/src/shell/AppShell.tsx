@@ -101,7 +101,7 @@ const isMac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigat
 /** The two rooms: which one a path belongs to (the nav marks it), or null for the others. */
 function roomOf(pathname: string): "read" | "words" | null {
   if (pathname === "/" || pathname === "/import" || pathname.startsWith("/read/")) return "read";
-  if (/^\/(words|review|practice|progress)(\/|$)/.test(pathname)) return "words";
+  if (/^\/(words|review|progress)(\/|$)/.test(pathname)) return "words";
   return null;
 }
 

@@ -80,7 +80,11 @@ describe("empty states", () => {
       expect(within(nav).getByRole("link", { name: /^Words/ })).toHaveAttribute("data-active"),
     );
     expect(within(nav).queryByRole("link", { name: "Talk" })).toBeNull();
-    expect(await screen.findByRole("link", { name: "Words" })).toHaveAttribute("href", "/words");
+    // The way back, on the page (the sidebar has a Words link too).
+    const back = (await screen.findAllByRole("link", { name: "Words" })).find(
+      (l) => !nav.contains(l),
+    );
+    expect(back).toHaveAttribute("href", "/words");
   });
 
   it("the demo (synced) shows no Connect Anki banner", async () => {

@@ -50,7 +50,6 @@ import { readLastText } from "../lastText.js";
 import { readLocalJSON, writeLocalJSON } from "../storage/local.js";
 import { type WordInspectorHandle, useWordInspector } from "./useWordInspector.js";
 import { pickContinue } from "../textPages.js";
-import { WordsRoom } from "./words/WordsRoom.js";
 import { useWideDesk } from "./words/WordsHome.js";
 
 export const SKILLS: { skill: Skill; label: string }[] = [
@@ -100,7 +99,6 @@ function PracticeSession({ focus, autoStart }: { focus: string[] | null; autoSta
   const services = useServices();
   const client = useQueryClient();
   const inspector = useWordInspector("reading");
-  const wide = useWideDesk();
   // The first tap or key here wakes the sounds, so the first right answer is heard.
   useSoundUnlock();
 
@@ -146,8 +144,6 @@ function PracticeSession({ focus, autoStart }: { focus: string[] | null; autoSta
 
   return (
     <div className="page page--list practice">
-      {/* On a computer Practice has its own sidebar row; the Words bar is for the phone. */}
-      {(phase.name === "start" || phase.name === "loading") && !wide ? <WordsRoom /> : null}
       {phase.name === "start" || phase.name === "loading" ? (
         <StartView
           loading={phase.name === "loading"}

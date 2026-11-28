@@ -136,18 +136,16 @@ function WordsPeek() {
           {words.data.map((w) => (
             <li key={w.key}>
               <Link to="/words/all" search={{ word: w.key }} className="words-peek-row">
-                <span className="words-peek-word">{w.article ? `${w.article} ${w.key}` : w.key}</span>
+                <span className="words-peek-word">
+                  {w.article ? `${w.article} ${w.key}` : w.key}
+                </span>
                 {w.gloss ? <span className="words-peek-gloss">{w.gloss}</span> : null}
               </Link>
             </li>
           ))}
         </ul>
       )}
-      <Link
-        to="/words/all"
-        search={{ state, layout: "list" }}
-        className="words-aside-link"
-      >
+      <Link to="/words/all" search={{ state, layout: "list" }} className="words-aside-link">
         All words →
       </Link>
     </section>

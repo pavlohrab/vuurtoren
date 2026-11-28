@@ -137,34 +137,56 @@ describe("onboarding", () => {
     expect(p).toMatchObject({ mode: "native", sources: [] });
     expect(ankiStatus).not.toHaveBeenCalled();
     expect(screen.queryByText(/Anki/)).toBeNull();
-    // Start reading is on this screen: the story at the learner's level opens, not Read.
+    // Then Practice once, Check your level and what it means; the story opens, not Read.
+    await user.click(screen.getByRole("button", { name: "Next" }));
+    expect(await screen.findByRole("heading", { name: "Practise what you read" })).toBeVisible();
+    for (let i = 0; i < 3; i++) {
+      await user.click(
+        (await screen.findAllByRole("button", { name: /\w/ })).find((b) =>
+          b.closest(".ex-choices"),
+        )!,
+      );
+      const check = screen.queryByRole("button", { name: "Check" });
+      if (check) await user.click(check);
+      // A miss says "Got it" instead of Continue.
+      await user.click(
+        await screen.findByRole("button", { name: i < 2 ? /^(Continue|Got it)/ : /^Next/ }),
+      );
+    }
+    expect(await screen.findByRole("heading", { name: "Do you know these?" })).toBeVisible();
+    for (let i = 0; i < 20; i++)
+      await user.click(screen.getByRole("button", { name: i < 10 ? "I know it" : "Not yet" }));
+    expect(
+      await screen.findByRole("heading", { name: /^You know about [\d,]+ words$/ }),
+    ).toBeVisible();
     await user.click(screen.getByRole("button", { name: "Start reading" }));
     await waitFor(() => expect(history.location.pathname).toMatch(/^\/read\//));
   });
 
   it("no Anki: adds every level of the most common words, new words from the first 500", async () => {
     const addStarterLevels = vi.fn(async () => ({ added: 4930, skipped: 0 }));
-    const { user, history } = setup({ addStarterLevels });
+    const { user } = setup({ addStarterLevels });
     await user.click(await screen.findByRole("button", { name: "No" }));
     expect(
       await screen.findByRole("heading", { name: "You start with the 500 most common words" }),
     ).toBeVisible();
-    // No level question and nothing to untick: Check your level in Words does that (m5).
+    // No level question and nothing to untick here: Check your level comes after Practice.
     expect(screen.queryByText("Where should new words start?")).toBeNull();
     expect(screen.queryByRole("checkbox")).toBeNull();
-    expect(screen.getByText(/Use Check your level in Words/)).toBeVisible();
     expect(screen.getByRole("button", { name: "Back" })).toBeVisible();
     expect(screen.queryByRole("button", { name: "Skip this" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Skip setup for now" })).toBeNull();
-    await user.click(screen.getByRole("button", { name: "Start reading" }));
+    await user.click(screen.getByRole("button", { name: "Next" }));
     await waitFor(() =>
       expect(addStarterLevels).toHaveBeenCalledWith(
         { levels: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], from: 1 },
         expect.any(Function),
       ),
     );
-    // No "You are ready" screen: the story opens.
-    await waitFor(() => expect(history.location.pathname).toMatch(/^\/read\//));
+    // Then Practice, which can be skipped, and Check your level.
+    await user.click(await screen.findByRole("button", { name: "Skip" }));
+    expect(await screen.findByRole("heading", { name: "Do you know these?" })).toBeVisible();
+    expect(screen.getByText("1 of 20")).toBeInTheDocument();
   });
 
   it("while the words are added, the choices wait and the count shows", async () => {
@@ -176,15 +198,15 @@ describe("onboarding", () => {
           finish = () => resolve({ added: 4930, skipped: 0 });
         }),
     );
-    const { user, history } = setup({ addStarterLevels });
+    const { user } = setup({ addStarterLevels });
     await user.click(await screen.findByRole("button", { name: "No" }));
     await screen.findByRole("heading", { name: "You start with the 500 most common words" });
-    await user.click(screen.getByRole("button", { name: "Start reading" }));
+    await user.click(screen.getByRole("button", { name: "Next" }));
     expect(await screen.findByText("Adding words… 1,500 of 4,930")).toBeVisible();
     expect(screen.getByRole("button", { name: "Back" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Start reading" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Next" })).toBeDisabled();
     act(() => finish());
-    await waitFor(() => expect(history.location.pathname).toMatch(/^\/read\//));
+    expect(await screen.findByRole("heading", { name: "Practise what you read" })).toBeVisible();
   });
 
   it("on a phone: Connect to your server after the Anki question, Not now goes on", async () => {

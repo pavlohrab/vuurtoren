@@ -169,6 +169,23 @@ for (const size of SIZES) {
       ).toBeVisible();
       expect(await overflowing(page, ".ob-card *")).toEqual([]);
       await shot(page, `welcome-words-${size.width}`);
+      await page.getByRole("button", { name: "Next" }).click();
+      // Practice once, Check your level, what it means (mock-practice-words).
+      await expect(page.getByRole("heading", { name: "Practise what you read" })).toBeVisible({
+        timeout: 60_000,
+      });
+      await expect(page.locator(".ex-choices")).toBeVisible();
+      expect(await overflowing(page, ".ob-card *")).toEqual([]);
+      await shot(page, `welcome-practice-${size.width}`);
+      await page.getByRole("button", { name: "Skip" }).click();
+      await expect(page.getByRole("heading", { name: "Do you know these?" })).toBeVisible();
+      expect(await overflowing(page, ".ob-card *")).toEqual([]);
+      await shot(page, `welcome-level-${size.width}`);
+      for (let i = 0; i < 20; i++)
+        await page.getByRole("button", { name: i % 3 === 0 ? "Not yet" : "I know it" }).click();
+      await expect(page.getByRole("heading", { name: /^You know about/ })).toBeVisible();
+      expect(await overflowing(page, ".ob-card *")).toEqual([]);
+      await shot(page, `welcome-ready-${size.width}`);
       await page.getByRole("button", { name: "Start reading" }).click();
       // The words go in first (about 5,000, a few seconds on a slow phone), then the story
       // opens and the walkthrough starts in it (D4): its first word, the help, then Read.
@@ -215,6 +232,27 @@ for (const size of SIZES) {
       // The bar floats in book mode (rounded, see-through corners): tap its title.
       await page.locator(".topbar .rbar-title").click();
       await expect(page.locator(".shell")).toHaveAttribute("data-inspector", "closed");
+    });
+
+    test("Words and Practice are tabs: the review, your level and list; today's lesson", async ({
+      page,
+    }) => {
+      await page.goto("/?demo");
+      await expect(page.getByText("Demo data")).toBeVisible();
+      const nav = page.getByRole("navigation", { name: "Main" });
+      await nav.getByRole("link", { name: /^Words/ }).click();
+      await expect(page.getByRole("heading", { name: "Your words" })).toBeVisible();
+      await expect(page.getByRole("link", { name: "All words →" })).toBeVisible();
+      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+        size.width,
+      );
+      await shot(page, `words-home-${size.width}`);
+      await nav.getByRole("link", { name: /^Practice/ }).click();
+      await expect(page.locator(".lesson-hero, .k-empty").first()).toBeVisible();
+      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+        size.width,
+      );
+      await shot(page, `practice-home-${size.width}`);
     });
 
     test("safe areas from the app keep the bars clear of the system bars", async ({ page }) => {
@@ -347,7 +385,7 @@ for (const size of SIZES) {
         .getByRole("navigation", { name: "Main" })
         .getByRole("link", { name: /^Words/ })
         .click();
-      await page.getByRole("link", { name: /Check your level/ }).click();
+      await page.getByRole("link", { name: /Your level/ }).click();
       const card = page.getByRole("group", { name: /Swipe right/ });
       await expect(card).toBeVisible();
       await expect(card.locator(".word-stack-meaning")).not.toBeEmpty();
@@ -470,10 +508,6 @@ for (const size of SIZES) {
       page,
     }) => {
       await page.goto("/?demo");
-      await page.goto("/practice");
-      const about = page.locator(".practice-about");
-      await expect(about).toContainText("Tap an answer, then Check.");
-      await expect(about.locator(".k-keyhint")).toBeHidden();
       await page.goto("/read/t-regen");
       await page.getByRole("button", { name: "More reading options" }).click();
       await expect(page.getByRole("menuitem", { name: /Focus mode/ })).toBeVisible();

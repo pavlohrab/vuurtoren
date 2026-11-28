@@ -397,3 +397,77 @@
     background: var(--bg);
   }
 }
+/* The end of the welcome: try Practice, Check your level, what it means (mock-practice-words). */
+.ob-practice {
+  display: grid;
+}
+.ob-level {
+  display: grid;
+  gap: 12px;
+}
+.ob-level-card {
+  display: grid;
+  place-items: center;
+  min-height: 180px;
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--surface);
+  font-family: var(--font-reading);
+  font-size: 32px;
+  text-align: center;
+}
+.ob-level-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.ob-level-buttons > * {
+  min-height: 48px;
+}
+.ob-level-count {
+  margin: 0;
+  text-align: center;
+  color: var(--ink-muted);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.ob-result {
+  display: grid;
+  gap: 14px;
+}
+.ob-result-bars {
+  display: grid;
+  gap: 6px;
+}
+.ob-result-bar {
+  display: grid;
+  grid-template-columns: 34px 1fr;
+  gap: 8px;
+  align-items: center;
+  font-size: 13px;
+}
+.ob-result-bar > span {
+  height: 8px;
+  border-radius: 5px;
+  background: var(--line);
+  overflow: hidden;
+}
+.ob-result-bar i {
+  display: block;
+  height: 100%;
+  background: var(--success);
+}
+.ob-result-bar[data-here] b {
+  color: var(--accent);
+}
+.ob-result-bar[data-here] i {
+  background: var(--accent);
+}
+.ob-result-list {
+  margin: 0;
+  padding-left: 20px;
+}
+.ob-practice + .ob-skip {
+  margin-top: 12px;
+}

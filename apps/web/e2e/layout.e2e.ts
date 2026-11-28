@@ -161,16 +161,16 @@ for (const size of [
     await page.setViewportSize(size);
     await page.addInitScript(() => localStorage.setItem("vuurtoren.tour", "pending"));
     await page.goto("/?demo");
-    for (let step = 1; step <= 10; step++) {
+    for (let step = 1; step <= 11; step++) {
       const card = page.locator(".tour-card");
-      await expect(card).toContainText(/\d+ of 10/, { timeout: 10_000 });
+      await expect(card).toContainText(/\d+ of 11/, { timeout: 10_000 });
       await expect(page.getByRole("button", { name: "Skip the tour" })).toBeInViewport({
         ratio: 1,
       });
       const next = card.getByRole("button", { name: /^(Next|Done|Go to Words)$/ });
       await expect(next).toBeInViewport({ ratio: 1 });
       const n = Number((await page.locator(".tour-count").textContent())!.split(" ")[0]);
-      if (n === 10) break;
+      if (n === 11) break;
       // The reader steps bring the story themselves; a tap on the word also goes on.
       await next.click();
     }

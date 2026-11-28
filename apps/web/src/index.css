@@ -1291,6 +1291,7 @@
   display: grid;
   justify-items: start;
   gap: 6px;
+  width: 100%;
   max-width: 640px;
   padding: 18px;
   border: 1px solid var(--accent);

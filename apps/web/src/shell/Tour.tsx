@@ -50,7 +50,7 @@ interface Step {
   /** The step is about the reader: without one on screen, the current story opens. */
   reader?: boolean;
   /** The step is about this page: the walkthrough opens it when the target is not on screen. */
-  route?: "/" | "/words";
+  route?: "/" | "/words" | "/practice";
   /** The Next button's label (it goes where the step points). */
   go?: string;
   /** The title and text with Anki keeping the cards (reviews happen in Anki). */
@@ -148,9 +148,15 @@ const STEPS: Step[] = [
     target: ".due-today",
     route: "/words",
     title: "Words",
-    text: "Review today's cards here. Check your level once, so Vuurtoren knows which words to help you with.",
+    text: "Review today's cards here. Below, your level and your words.",
     ankiTitle: "Words",
-    ankiText: "You review your cards in Anki. Here are your words, Practice, and Check your level.",
+    ankiText: "You review your cards in Anki. Here are your level and your words.",
+  },
+  {
+    target: ".lesson-hero, .practice-start",
+    route: "/practice",
+    title: "Practice",
+    text: "A short lesson with the words you read, every day.",
   },
 ];
 

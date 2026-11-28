@@ -5,7 +5,7 @@
  * answer one practice exercise; in native mode, add a word and review it.
  */
 import { type Page, expect, test } from "@playwright/test";
-import { finishOnboarding } from "./onboarding.js";
+import { checkLevel, finishOnboarding } from "./onboarding.js";
 import { fakeAnki } from "./fakeAnki.js";
 import { SAMPLE_TEXT, fakeNlp } from "./fakeNlp.js";
 
@@ -134,9 +134,10 @@ test("native mode: start with the most common words, offline data in the app", a
   await fakeAnki(page);
   await page.goto("/");
   await page.getByRole("button", { name: "No" }).click();
-  // No level question: the 500 most common words, from the first one (m5). Start reading is
-  // on that screen: the story at the learner's level opens in the reader.
-  await page.getByRole("button", { name: "Start reading" }).click();
+  // The 500 most common words, then Practice once and Check your level; Start reading opens
+  // the story at the learner's level in the reader.
+  await page.getByRole("button", { name: "Next" }).click();
+  await checkLevel(page);
   // The walkthrough follows the welcome once, in the story (D4); it can be skipped.
   await expect(page.getByRole("dialog", { name: "Tap a word" })).toBeVisible();
   await page.getByRole("button", { name: "Skip the tour" }).click();
@@ -154,7 +155,8 @@ test("native mode: add a word while reading, then review it", async ({ page }) =
   await fakeAnki(page);
   await page.goto("/");
   await page.getByRole("button", { name: "No" }).click();
-  await page.getByRole("button", { name: "Start reading" }).click();
+  await page.getByRole("button", { name: "Next" }).click();
+  await checkLevel(page);
   // The walkthrough follows the welcome once, in the story (D4); it can be skipped.
   await expect(page.getByRole("dialog", { name: "Tap a word" })).toBeVisible();
   await page.getByRole("button", { name: "Skip the tour" }).click();

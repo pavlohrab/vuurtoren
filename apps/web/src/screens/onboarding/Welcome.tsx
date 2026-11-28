@@ -14,7 +14,7 @@
  */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
-import { type FormEvent, useCallback, useEffect, useRef, useState } from "react";
+import { type FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   type LanguageProfile,
   PROFILE_LANGUAGES,
@@ -42,6 +42,14 @@ import "./onboarding.css";
 import { readLocalJSON, writeLocalJSON } from "../../storage/local.js";
 import { runAnkiSync } from "../../shell/ankiSync.js";
 import { useCanAddTexts } from "../../platform/canAddTexts.js";
+import {
+  type LevelEstimate,
+  LevelCheck,
+  LevelResult,
+  TryPractice,
+  estimateLevel,
+  levelWords,
+} from "./FirstSteps.js";
 
 const STORAGE = ONBOARDING_DRAFT;
 
@@ -57,6 +65,9 @@ type Step =
   | "moving"
   | "placement"
   | "starter"
+  | "practise"
+  | "level"
+  | "ready"
   | "first";
 /** The language step is shown only when there is more than one language to choose. */
 const PICK_LANGUAGE = PROFILE_LANGUAGES.filter((l) => l.enabled).length > 1;
@@ -79,6 +90,10 @@ const PART: Record<Step, number> = {
   placement: 1,
   // The 500 words' screen is the last one (Start reading is on it).
   starter: 2,
+  // Then a few practice questions, Check your level and what it means (mock-practice-words).
+  practise: 2,
+  level: 2,
+  ready: 2,
   first: 2,
 };
 
@@ -95,6 +110,9 @@ const ORDER: Step[] = [
   "moving",
   "placement",
   "starter",
+  "practise",
+  "level",
+  "ready",
   "first",
 ];
 
@@ -272,7 +290,7 @@ export function Welcome() {
   const bands = useQuery({
     queryKey: ["onboarding", "placement"],
     queryFn: () => services.placementWords(),
-    enabled: draft.step === "placement",
+    enabled: ["placement", "practise", "level"].includes(draft.step),
   });
   const [known, setKnown] = useState<Set<string>>(new Set());
   const placement = useMutation({
@@ -308,8 +326,8 @@ export function Welcome() {
       for (const k of ["learner", "review", "words", "home"]) {
         await qc.invalidateQueries({ queryKey: [k] });
       }
-      // The last screen: the words are in, the story opens.
-      startReading.mutate();
+      // Then try Practice once, and Check your level.
+      go("practise");
     },
   });
 
@@ -317,7 +335,7 @@ export function Welcome() {
   const story = useQuery({
     queryKey: ["onboarding", "story"],
     queryFn: async () => storyToStart(await services.storyShelf()),
-    enabled: draft.step === "first" || draft.step === "starter",
+    enabled: ["first", "starter", "level", "ready"].includes(draft.step),
   });
   const startReading = useMutation({
     mutationFn: async () => {
@@ -338,6 +356,15 @@ export function Welcome() {
     },
   });
 
+  // ---- The end: Check your level marks what you know, then the story opens.
+  const checkWords = useMemo(() => (bands.data ? levelWords(bands.data) : []), [bands.data]);
+  const [estimate, setEstimate] = useState<LevelEstimate | null>(null);
+  const [marking, setMarking] = useState<Promise<unknown> | null>(null);
+  const finishLevel = async () => {
+    await marking?.catch(() => undefined);
+    startReading.mutate();
+  };
+
   const submit = (e: FormEvent) => {
     e.preventDefault();
     if (draft.step === "uses") {
@@ -351,7 +378,8 @@ export function Welcome() {
       else if (!move.isPending) move.mutate();
     } else if (draft.step === "placement") placement.mutate();
     else if (draft.step === "starter") starter.mutate();
-    else if (draft.step !== "first") next();
+    else if (draft.step === "ready") void finishLevel();
+    else if (!["first", "practise", "level"].includes(draft.step)) next();
   };
 
   const errorOf = (e: unknown) => (e instanceof Error && e.message ? e.message : "Try again.");
@@ -672,7 +700,6 @@ export function Welcome() {
                 <h1 ref={heading} tabIndex={-1}>
                   You start with the 500 most common words
                 </h1>
-                <p className="ob-lede">Already know some? Use Check your level in Words.</p>
                 {starter.isPending ? (
                   <p role="status">
                     <Spinner label="Adding words" />{" "}
@@ -689,6 +716,73 @@ export function Welcome() {
                 {/* A phone: the dictionary comes down now, and one yes or no for the recordings. */}
                 <DictionaryPack autoStart />
                 <RecordingsPack ask />
+              </>
+            ) : null}
+
+            {draft.step === "practise" ? (
+              <>
+                <h1 ref={heading} tabIndex={-1}>
+                  Practise what you read
+                </h1>
+                <p className="ob-lede">Three questions with your first words.</p>
+                {bands.data ? (
+                  <TryPractice bands={bands.data} onDone={() => go("level")} />
+                ) : (
+                  <Spinner label="Loading words" />
+                )}
+                <button type="button" className="ob-skip" onClick={() => go("level")}>
+                  Skip
+                </button>
+              </>
+            ) : null}
+
+            {draft.step === "level" ? (
+              <>
+                <h1 ref={heading} tabIndex={-1}>
+                  Do you know these?
+                </h1>
+                <p className="ob-lede">About 20 words.</p>
+                {checkWords.length ? (
+                  <LevelCheck
+                    words={checkWords}
+                    onDone={(knownWords) => {
+                      setEstimate(estimateLevel(checkWords, knownWords));
+                      // Marked like I know it in Words: those cards leave the review.
+                      setMarking(
+                        Promise.all(
+                          knownWords.map(async (w) =>
+                            services.markKnown(await services.inspectWord(w.key)),
+                          ),
+                        ).then(() =>
+                          Promise.all(
+                            ["learner", "review", "words", "home"].map((k) =>
+                              qc.invalidateQueries({ queryKey: [k] }),
+                            ),
+                          ),
+                        ),
+                      );
+                      go("ready");
+                    }}
+                  />
+                ) : (
+                  <Spinner label="Loading words" />
+                )}
+              </>
+            ) : null}
+
+            {draft.step === "ready" ? (
+              <>
+                <h1 ref={heading} tabIndex={-1}>
+                  {estimate
+                    ? `You know about ${estimate.words.toLocaleString("en")} words`
+                    : "You are ready"}
+                </h1>
+                {estimate ? (
+                  <>
+                    <p className="ob-lede">That&rsquo;s around {estimate.band}. Vuurtoren will:</p>
+                    <LevelResult estimate={estimate} />
+                  </>
+                ) : null}
               </>
             ) : null}
 
@@ -757,6 +851,8 @@ export function Welcome() {
               ) : null}
               {draft.step !== "first" &&
               draft.step !== "uses" &&
+              draft.step !== "practise" &&
+              draft.step !== "level" &&
               !(draft.step === "anki" && !connected) ? (
                 <Button
                   type="submit"
@@ -785,8 +881,10 @@ export function Welcome() {
                       : draft.step === "placement"
                         ? `Continue${known.size ? ` with ${known.size} known` : ""}`
                         : draft.step === "starter"
-                          ? "Start reading"
-                          : "Continue"}
+                          ? "Next"
+                          : draft.step === "ready"
+                            ? "Start reading"
+                            : "Continue"}
                 </Button>
               ) : null}
             </div>
