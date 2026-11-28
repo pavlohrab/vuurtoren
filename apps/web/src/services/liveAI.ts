@@ -144,6 +144,9 @@ const DEFAULT_AI: AISettings = (() => {
   return { provider: p.id, baseUrl: p.baseUrl, model: p.defaultModel, budgetNote: "" };
 })();
 
+/** "Use it": the AI's verdict, and the sentence's words (keys) used right and used wrong. */
+export type UseResult = UseCheck & { keys: string[]; wrongKeys: string[] };
+
 const monthOf = (d = new Date()) => d.toISOString().slice(0, 7);
 
 export function createLiveAI(deps: LiveAIDeps): AIServices &
@@ -151,8 +154,8 @@ export function createLiveAI(deps: LiveAIDeps): AIServices &
     /** Generate, validate and store AI example sentences (practice). */
     fillSentences: (lang: string, needs: SentenceNeed[], avoid: string[]) => Promise<SentenceFill>;
     aiReady: () => boolean;
-    /** "Use it" in Practice: is the learner's sentence right? */
-    checkUse: (ask: { word: string; meaning?: string; sentence: string }) => Promise<UseCheck>;
+    /** "Use it" in Practice: is the learner's sentence right, and which of its words were used. */
+    checkUse: (ask: { word: string; meaning?: string; sentence: string }) => Promise<UseResult>;
     /** English translations from the provider, one per sentence ("" when it left one out). */
     translateSentences: (sentences: string[]) => Promise<string[]>;
   } {
@@ -510,8 +513,19 @@ export function createLiveAI(deps: LiveAIDeps): AIServices &
   return {
     fillSentences,
     aiReady: () => status().configured,
-    checkUse: async (ask: { word: string; meaning?: string; sentence: string }) =>
-      checkUse(await provider(), ask),
+    async checkUse(ask: { word: string; meaning?: string; sentence: string }) {
+      const check = await checkUse(await provider(), ask);
+      // Which word is which comes from the language server, not the AI. Without it, none count.
+      const tokens = await analyze(ask.sentence).catch(() => [] as AnalyzedToken[]);
+      const wrong = new Set((check.wrong ?? []).map((w) => w.toLowerCase()));
+      const words = tokens.filter((t) => t.is_word && !t.is_propn);
+      const keyOf = (t: AnalyzedToken) => normalizeKey(t.lemma);
+      return {
+        ...check,
+        keys: words.filter((t) => !wrong.has(t.text.toLowerCase())).map(keyOf),
+        wrongKeys: words.filter((t) => wrong.has(t.text.toLowerCase())).map(keyOf),
+      };
+    },
     translateSentences: async (sentences: string[]) =>
       aiTranslateSentences(await provider(), sentences),
     generateUnitExercises: makeUnitExercises,

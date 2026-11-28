@@ -18,6 +18,7 @@ import type {
   ExerciseItem,
   ExerciseKind,
   GrammarHit,
+  GrammarPoint,
   Grade,
   ItemState,
   LanguageProfile,
@@ -244,6 +245,11 @@ export type AppEvent =
       /** Answer time, ms since epoch. */
       at: number;
       state: ItemState;
+      /** "Use it": the grammar point the AI saw missed in the sentence. */
+      point?: GrammarPoint;
+      /** "Use it": other words of yours the sentence used right, and ones it used wrong. */
+      used?: string[];
+      misused?: string[];
     }
   | {
       /** A conversation with the AI partner began. Never contains API keys. */
@@ -933,7 +939,7 @@ export interface Repository {
   /** Every practice answer, oldest first (the Elo replay, algorithms.md 4.7.3). */
   practiceAnswers(
     lang: string,
-  ): Promise<{ key: string; kind: string; result: number; at: number }[]>;
+  ): Promise<{ key: string; kind: string; result: number; at: number; point?: string }[]>;
   practiceItems(lang: string): Promise<ItemState[]>;
   /** Newest-first answers (ExerciseAnswered events), at most `limit`. */
   practiceLog(lang: string, limit: number): Promise<PracticeLogEntry[]>;

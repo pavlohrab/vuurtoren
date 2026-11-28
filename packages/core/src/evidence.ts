@@ -21,13 +21,15 @@ export interface AppEvidence {
 }
 
 /** Where an answer came from. */
-export type EvidenceSource = "practice" | "cloze" | "book";
+/** "used": a word you wrote right in your own sentence ("Use it"), a little evidence. */
+export type EvidenceSource = "practice" | "cloze" | "book" | "used";
 
 /** Weight of one correct answer; a wrong answer always counts 1 wrong. */
 const EVIDENCE_WEIGHT = {
   practice: 1,
   cloze: 1,
   book: 1,
+  used: 0.5,
   /** A cloze answered after taking a letter hint. */
   hinted: 0.5,
 } as const;

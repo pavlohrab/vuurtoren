@@ -330,9 +330,22 @@ export async function applyEvent(driver: SqlDriver, ctx: EventContext): Promise<
       await addEvidence(driver, e.lang, e.key, answerEvidence("practice", e.correct, e.at));
       // Every answer, for the Elo replay (a hinted right answer counts half).
       await driver.exec(
-        "INSERT OR IGNORE INTO practice_answers (id, lang, key, kind, result, at) VALUES (?,?,?,?,?,?)",
-        [ctx.id, e.lang, e.key, e.kind, e.correct ? (e.grade === "hard" ? 0.5 : 1) : 0, e.at],
+        "INSERT OR IGNORE INTO practice_answers (id, lang, key, kind, result, at, point) VALUES (?,?,?,?,?,?,?)",
+        [
+          ctx.id,
+          e.lang,
+          e.key,
+          e.kind,
+          e.correct ? (e.grade === "hard" ? 0.5 : 1) : 0,
+          e.at,
+          e.point ?? null,
+        ],
       );
+      // "Use it": the other words of the sentence, as a little evidence; no card moves.
+      for (const key of new Set(e.used ?? []))
+        await addEvidence(driver, e.lang, key, answerEvidence("used", true, e.at));
+      for (const key of new Set(e.misused ?? []))
+        await addEvidence(driver, e.lang, key, answerEvidence("used", false, e.at));
       // Keep the newest answer per (key, skill), independent of arrival order.
       const rows = await driver.exec(
         "SELECT at FROM practice_items WHERE lang = ? AND key = ? AND skill = ?",

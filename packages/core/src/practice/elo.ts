@@ -10,6 +10,7 @@
  * every device gets the same numbers. FSRS decides when a word comes back; this decides how hard.
  * Pure: no clock, no randomness.
  */
+import type { GrammarPoint } from "./choose.js";
 import type { ExerciseKind } from "./types.js";
 
 /** Starting difficulty of each kind, easy to hard (the ladder); it adapts to the learner. */
@@ -83,6 +84,8 @@ export interface EloAnswer {
   choices?: number;
   /** ms since epoch; replay sorts by this. */
   at: number;
+  /** "Use it": a grammar point the AI saw missed, though the word itself was right. */
+  point?: GrammarPoint;
 }
 
 /** θ per word and d per kind, with how many answers each has. */

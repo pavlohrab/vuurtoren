@@ -41,6 +41,25 @@ const snapshot = (
 });
 
 describe("learning signals", () => {
+  it("Use it: the sentence's other words count a little, the grammar point is kept", async () => {
+    const clock = { t: T };
+    const repo = await repoAt(clock);
+    await repo.append({
+      ...(practice("fiets", true, T - 1000) as Extract<AppEvent, { type: "ExerciseAnswered" }>),
+      kind: "use",
+      skill: "recall",
+      point: "word-order",
+      used: ["gisteren"],
+      misused: ["werk"],
+    });
+    const answers = await repo.practiceAnswers("nl");
+    expect(answers).toEqual([
+      { key: "fiets", kind: "use", result: 1, at: T - 1000, point: "word-order" },
+    ]);
+    expect(await repo.word("nl", "gisteren")).toMatchObject({ source: "app" });
+    expect(await repo.word("nl", "werk")).toBeTruthy();
+  });
+
   it("practice, cloze and book answers raise a word Anki does not know", async () => {
     const clock = { t: T };
     const repo = await repoAt(clock);

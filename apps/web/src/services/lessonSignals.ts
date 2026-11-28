@@ -3,7 +3,7 @@
  * from the word list (state, recall now, taps and the last tap, app evidence) and the practice
  * answers (recent misses, how safe the word is). Pure, so it is tested without a database.
  */
-import type { EloAnswer, ExerciseKind, WordSignals } from "@app/core";
+import type { EloAnswer, ExerciseKind, GrammarPoint, WordSignals } from "@app/core";
 import type { WordInfo } from "@app/db";
 
 const DAY_MS = 86_400_000;
@@ -20,11 +20,27 @@ export const lessonCandidate = (w: WordInfo): boolean =>
 
 /** The answers as the engine's Elo replay takes them (unknown kinds are dropped). */
 export function toEloAnswers(
-  rows: readonly { key: string; kind: string; result: number; at: number }[],
+  rows: readonly { key: string; kind: string; result: number; at: number; point?: string }[],
   kinds: ReadonlySet<string>,
 ): EloAnswer[] {
-  return rows.filter((r) => kinds.has(r.kind)).map((r) => ({ ...r, kind: r.kind as ExerciseKind }));
+  return rows
+    .filter((r) => kinds.has(r.kind))
+    .map(({ point, ...r }) => ({
+      ...r,
+      kind: r.kind as ExerciseKind,
+      ...(point && point in POINT_NAMES ? { point: point as GrammarPoint } : {}),
+    }));
 }
+
+/** The grammar points an answer can name (choose.ts `GrammarPoint`). */
+const POINT_NAMES = {
+  gender: 1,
+  "adjective-e": 1,
+  perfect: 1,
+  separable: 1,
+  "verb-form": 1,
+  "word-order": 1,
+} satisfies Record<GrammarPoint, 1>;
 
 export function lessonSignals(
   infos: readonly WordInfo[],

@@ -311,6 +311,11 @@ export const MIGRATIONS: readonly (readonly string[])[] = [
        updated INTEGER NOT NULL
      )`,
   ],
+  [
+    // "Use it" (practice step 6): the grammar point the AI saw missed in your sentence. Older
+    // answers have none and count as before.
+    `ALTER TABLE practice_answers ADD COLUMN point TEXT`,
+  ],
 ];
 
 /** Latest schema version. */

@@ -25,7 +25,6 @@ import type {
   VuurtorenRepository,
   WordInfo,
 } from "@app/db";
-import type { UseCheck } from "@app/ai";
 import type { GlossEntry } from "@app/nlp-client";
 import {
   STEP_OF,
@@ -48,7 +47,7 @@ import {
   review,
 } from "../practice/engine.js";
 import type { AISentenceReport } from "./aiTypes.js";
-import type { SentenceFill, SentenceNeed } from "./liveAI.js";
+import type { SentenceFill, SentenceNeed, UseResult } from "./liveAI.js";
 import type { TopicMaterial } from "./liveGrammar.js";
 import type { PracticeData } from "@app/nlp-client";
 import { fetchTexts } from "./textBatch.js";
@@ -86,7 +85,7 @@ export interface LivePracticeDeps {
   /** "Use it": the AI checks the learner's own sentence; absent or not ready = no such step. */
   aiUse?: {
     ready: () => boolean;
-    check: (ask: { word: string; meaning?: string; sentence: string }) => Promise<UseCheck>;
+    check: (ask: { word: string; meaning?: string; sentence: string }) => Promise<UseResult>;
   };
   /** AI example sentences (docs/ai.md); absent or not ready = no generation. */
   aiSentences?: {
@@ -909,6 +908,23 @@ export function createLivePractice(deps: LivePracticeDeps) {
     if (!itemCache.has(lang)) await loadItems(lang);
     const prev = itemCache.get(lang)!.get(itemId(exercise.key, exercise.skill));
     const next = review(prev, exercise.key, exercise.skill, grade, now);
+    // "Use it": your other words in the sentence count a little (those you are learning or
+    // know); the asked word is the answer itself.
+    let extra: { point?: GrammarPoint; used?: string[]; misused?: string[] } = {};
+    if (used) {
+      const model = await deps.model();
+      const mine = (k: string) => {
+        const st = model.get(k)?.state;
+        return k !== exercise.key && (st === "learning" || st === "known");
+      };
+      const right = [...new Set(used.keys.filter(mine))];
+      const wrong = [...new Set(used.wrongKeys.filter(mine))];
+      extra = {
+        ...(used.point ? { point: used.point } : {}),
+        ...(right.length ? { used: right } : {}),
+        ...(wrong.length ? { misused: wrong } : {}),
+      };
+    }
     await repo.append({
       type: "ExerciseAnswered",
       lang,
@@ -920,6 +936,7 @@ export function createLivePractice(deps: LivePracticeDeps) {
       ms: Math.max(0, Math.round(attempt.ms)),
       at: now,
       state: next,
+      ...extra,
     });
     itemCache.get(lang)!.set(itemId(exercise.key, exercise.skill), next);
     // The app's own cards: building and typing also answer the word's due card; the choice

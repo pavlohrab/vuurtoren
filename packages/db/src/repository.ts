@@ -582,7 +582,7 @@ export async function createRepository(
       serial(async () =>
         (
           await driver.exec(
-            "SELECT key, kind, result, at FROM practice_answers WHERE lang = ? ORDER BY at, key, kind",
+            "SELECT key, kind, result, at, point FROM practice_answers WHERE lang = ? ORDER BY at, key, kind",
             [lang],
           )
         ).map((r) => ({
@@ -590,6 +590,7 @@ export async function createRepository(
           kind: String(r["kind"]),
           result: Number(r["result"]),
           at: Number(r["at"]),
+          ...(r["point"] ? { point: String(r["point"]) } : {}),
         })),
       ),
 

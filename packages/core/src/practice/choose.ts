@@ -146,8 +146,11 @@ export function missesByPoint(
 ): Map<GrammarPoint, number> {
   const out = new Map<GrammarPoint, number>();
   for (const a of answers) {
+    if (a.at < since) continue;
+    // A point the AI named in your own sentence is a miss there, even when the word was right.
+    if (a.point) out.set(a.point, (out.get(a.point) ?? 0) + 1);
     const point = POINT_OF[a.kind];
-    if (point && a.at >= since && a.result < 0.5) out.set(point, (out.get(point) ?? 0) + 1);
+    if (point && a.result < 0.5) out.set(point, (out.get(point) ?? 0) + 1);
   }
   return out;
 }

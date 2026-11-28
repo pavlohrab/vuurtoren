@@ -28,6 +28,21 @@ describe("checkUse", () => {
       why: "The verb goes second.",
     });
   });
+  it("keeps the grammar point when it is one of Practice's, and the words used wrong", async () => {
+    const r = await checkUse(
+      answering(
+        '{"verdict":"almost","better":"Het grote huis.","why":"Adjectives take -e.","point":"adjective-e","wrong":["groot"]}',
+      ),
+      { word: "huis", sentence: "Het groot huis." },
+    );
+    expect(r).toMatchObject({ point: "adjective-e", wrong: ["groot"] });
+    const other = await checkUse(answering('{"verdict":"almost","point":"spelling"}'), {
+      word: "huis",
+      sentence: "x",
+    });
+    expect(other.point).toBeUndefined();
+  });
+
   it("says so when the answer can't be read", async () => {
     await expect(checkUse(answering("no json"), { word: "x", sentence: "y" })).rejects.toThrow(
       /could not be read/,

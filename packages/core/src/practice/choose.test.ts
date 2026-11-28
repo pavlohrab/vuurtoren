@@ -131,4 +131,9 @@ describe("choosing a word's exercise (4.7.3)", () => {
     expect(m.get("gender")).toBe(2);
     expect(m.get("word-order")).toBe(1);
   });
+
+  it("a point the AI named in your own sentence counts, even when the word was right", () => {
+    const m = missesByPoint([{ ...a("use", 1, 5), point: "word-order" }], 2);
+    expect(m.get("word-order")).toBe(1);
+  });
 });
