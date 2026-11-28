@@ -62,6 +62,7 @@ import { useConnectLinks } from "./useConnectLinks.js";
 import { ResizeHandle, usePanelWidth } from "./PanelResize.js";
 import { useDebounced } from "../useDebounced.js";
 import { useCanAddTexts } from "../platform/canAddTexts.js";
+import { DEMO_SITE } from "../platform/demoSite.js";
 
 const PAGE_TITLES: Record<string, string> = {
   "/": "Read",
@@ -97,9 +98,6 @@ const THEME_LABEL: Record<ThemeChoice, string> = {
 };
 
 const isMac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
-
-/** The public demo (demo.vuurtoren.app, built with VITE_DEMO_SITE=1): the real app in the browser. */
-const DEMO_SITE = import.meta.env["VITE_DEMO_SITE"] === "1";
 
 /** The two rooms: which one a path belongs to (the nav marks it), or null for the others. */
 function roomOf(pathname: string): "read" | "words" | null {

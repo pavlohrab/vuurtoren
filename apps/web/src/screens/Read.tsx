@@ -55,6 +55,7 @@ import "./library/library.css";
 import { errorText } from "../services/errors.js";
 import { plural } from "../format.js";
 import { useCanAddTexts } from "../platform/canAddTexts.js";
+import { DEMO_SITE } from "../platform/demoSite.js";
 
 type View = "shelves" | "all";
 const VIEW_KEY = "vuurtoren.library.view";
@@ -394,13 +395,19 @@ export function Read() {
         description={
           canAdd
             ? "Start with a story above, or paste an article, add a web page, a PDF or a photo."
-            : "Start with a story above. Your own texts come from your computer, so add them there and they come to the phone when you sync. If you have your own server, you can add them on the phone too."
+            : DEMO_SITE
+              ? "Start with a story above. Your own texts need the app."
+              : "Start with a story above. Your own texts come from your computer, so add them there and they come to the phone when you sync. If you have your own server, you can add them on the phone too."
         }
         action={
           canAdd ? (
             <Link to="/import" className="k-btn k-btn--secondary">
               <Plus size={16} aria-hidden /> Add text
             </Link>
+          ) : DEMO_SITE ? (
+            <a href="https://vuurtoren.app" className="k-btn k-btn--secondary">
+              Get the app
+            </a>
           ) : (
             <Link to="/settings" search={{ section: "devices" }} className="k-btn k-btn--secondary">
               Connect a server
