@@ -167,11 +167,16 @@ async function openBrowser(lock: HeldLock, server: PageServer | null): Promise<B
   addEventListener("pageshow", (e) => {
     if (e.persisted) location.reload();
   });
-  // Ask the browser not to evict the data under storage pressure.
-  const persisted: boolean | null = await Promise.resolve(navigator.storage?.persist?.()).then(
-    (granted) => granted ?? null,
-    () => null,
-  );
+  // Ask the browser not to evict the data under storage pressure. Not waited for long: Firefox
+  // asks the user first (a prompt in the address bar), and the page stayed empty until they
+  // answered (Pavlo, 28 Nov). The answer still comes; the app opens in the meantime.
+  const persisted: boolean | null = await Promise.race([
+    Promise.resolve(navigator.storage?.persist?.()).then(
+      (granted) => granted ?? null,
+      () => null,
+    ),
+    new Promise<null>((done) => setTimeout(() => done(null), 500)),
+  ]);
   const secure = isSecureContext;
   const notice = !secure
     ? INSECURE_NOTICE
