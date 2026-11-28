@@ -1,8 +1,9 @@
 /**
- * A passphrase that is easy to remember: five short common words ("acorn lobby tulip swim
- * crate"). The words are the EFF's short word list 1 (Electronic Frontier Foundation, 2016,
- * CC BY 3.0 US, https://www.eff.org/dice), without "yo-yo": 1,295 words, so five of them give
- * about 52 bits, on top of the slow key derivation the passphrase goes through.
+ * A passphrase that is easy to remember: three short common words with dashes, like a Docker
+ * name ("acorn-tulip-swim"). The words are the EFF's short word list 1 (Electronic Frontier
+ * Foundation, 2016, CC BY 3.0 US, https://www.eff.org/dice), without "yo-yo": 1,295 words, so
+ * three give about 31 bits, on top of the slow key derivation (Argon2id) the passphrase goes
+ * through. Pavlo's choice (28 Nov): easy to type on a phone over the strongest.
  */
 
 const WORDS = [
@@ -1303,9 +1304,9 @@ const WORDS = [
   "zoom",
 ] as const;
 
-/** Five words chosen with the browser's secure random numbers, joined by spaces. */
-export function makePassphrase(count = 5, random: (n: number) => number = secureIndex): string {
-  return Array.from({ length: count }, () => WORDS[random(WORDS.length)]!).join(" ");
+/** Three words chosen with the browser's secure random numbers, joined by dashes. */
+export function makePassphrase(count = 3, random: (n: number) => number = secureIndex): string {
+  return Array.from({ length: count }, () => WORDS[random(WORDS.length)]!).join("-");
 }
 
 /** A uniform index below `n` from crypto.getRandomValues (no modulo bias). */

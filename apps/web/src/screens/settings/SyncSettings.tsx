@@ -5,6 +5,7 @@
  * shows the QR code that connects a phone (Add a phone). Elsewhere, Connect to your server
  * trades such a code (scanned, pasted as a link, or typed) for this device's own token.
  */
+import { Dices } from "lucide-react";
 import { makePassphrase } from "../../sync/passphrase.js";
 import { currentDevice } from "../../platform/index.js";
 import { ScanOverlay } from "./ScanOverlay.js";
@@ -855,21 +856,23 @@ function SyncOn({ status }: { status: SyncStatus }) {
   );
 }
 
-/** "Make one for me": five easy words in the field, shown, with a reminder to keep them. */
+/** A dice button: three easy words for a passphrase, shown, with a reminder to keep them. */
 function MakeOne({ onMake }: { onMake: (passphrase: string) => void }) {
   const [made, setMade] = useState(false);
   return (
-    <div className="row" style={{ gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+    <div className="row" style={{ gap: 8, alignItems: "center" }}>
       <Button
         type="button"
         variant="ghost"
         size="sm"
+        aria-label="Make a passphrase for me"
+        title="Make a passphrase for me"
         onClick={() => {
           onMake(makePassphrase());
           setMade(true);
         }}
       >
-        {made ? "Another one" : "Make one for me"}
+        <Dices size={18} aria-hidden />
       </Button>
       {made ? <span className="k-hint">Write it down somewhere safe.</span> : null}
     </div>

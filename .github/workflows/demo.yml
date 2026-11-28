@@ -1,0 +1,19 @@
+# The demo (demo.vuurtoren.app) follows the releases: on a release tag the `demo` branch moves to
+# that commit, and Cloudflare Pages builds that branch only (production branch `demo`, no
+# preview builds). No Cloudflare key here.
+name: Demo
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  move:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - run: git push --force origin "HEAD:refs/heads/demo"
