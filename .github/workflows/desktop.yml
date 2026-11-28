@@ -333,3 +333,17 @@ jobs:
           pick '_amd64\.deb$' Vuurtoren-linux.deb
           ls -la "$dir"
           gh release upload "$TAG" --repo "$REPO" "$dir"/* --clobber
+      # The release page says what changed: the tag's own message (pnpm release, or the notes
+      # written into the tag), with the line about the files under it.
+      - uses: actions/checkout@v4
+      - name: Release notes from the tag
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          git fetch --force origin "refs/tags/$TAG:refs/tags/$TAG"
+          notes="$RUNNER_TEMP/notes.md"
+          git tag -l --format='%(contents:body)' "$TAG" > "$notes"
+          if [ -s "$notes" ]; then gh release edit "$TAG" --repo "$REPO" --notes-file "$notes"; fi
