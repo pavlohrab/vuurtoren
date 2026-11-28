@@ -25,6 +25,7 @@ import type {
   VuurtorenRepository,
   WordInfo,
 } from "@app/db";
+import type { UseCheck } from "@app/ai";
 import type { GlossEntry } from "@app/nlp-client";
 import {
   STEP_OF,
@@ -56,6 +57,7 @@ import type {
   AttemptInput,
   PracticeOptions,
   LessonSources,
+  PracticeLadder,
   PracticeOverview,
   TopicPracticeOptions,
 } from "./types.js";
@@ -81,6 +83,11 @@ export interface LivePracticeDeps {
   translate?: (sentences: string[]) => Promise<Map<string, string>>;
   /** Hit sentences and words of a grammar topic (topic exercises). */
   topicMaterial?: (detects: string[]) => Promise<TopicMaterial>;
+  /** "Use it": the AI checks the learner's own sentence; absent or not ready = no such step. */
+  aiUse?: {
+    ready: () => boolean;
+    check: (ask: { word: string; meaning?: string; sentence: string }) => Promise<UseCheck>;
+  };
   /** AI example sentences (docs/ai.md); absent or not ready = no generation. */
   aiSentences?: {
     ready: () => boolean;
@@ -308,6 +315,24 @@ export function createLivePractice(deps: LivePracticeDeps) {
     };
   }
 
+  /**
+   * The ladder (STEP_OF): how many of your words reached each step, and where one word is. Read
+   * from the answers, the same as the lesson's guard rail (hardestRight); nothing is stored.
+   */
+  async function practiceLadder(key?: string): Promise<PracticeLadder> {
+    const lang = await deps.lang();
+    const answers = toEloAnswers(await repo.practiceAnswers(lang), KNOWN_KINDS);
+    const best = new Map<string, number>();
+    for (const a of answers)
+      if (a.result >= 0.5) best.set(a.key, Math.max(best.get(a.key) ?? 0, STEP_OF[a.kind]));
+    const top = deps.aiUse?.ready() ? 6 : 5;
+    const reached = Array.from(
+      { length: top },
+      (_, i) => [...best.values()].filter((s) => s >= i + 1).length,
+    );
+    return { top, reached, ...(key !== undefined ? { step: best.get(key) ?? 0 } : {}) };
+  }
+
   /** Words worth practising now: due first, then new learning words, then known ones. */
   function chooseWords(
     infos: WordInfo[],
@@ -514,7 +539,8 @@ export function createLivePractice(deps: LivePracticeDeps) {
       today,
     );
     const speaking = (await deps.canListen?.().catch(() => false)) ?? false;
-    lastLesson = { words, signals, states: items, answers, now, speaking };
+    const writing = deps.aiUse?.ready() ?? false;
+    lastLesson = { words, signals, states: items, answers, now, speaking, writing };
     const exercises = buildLesson(
       {
         words,
@@ -524,6 +550,7 @@ export function createLivePractice(deps: LivePracticeDeps) {
         size,
         now,
         speaking,
+        writing,
         ...(stair ? { coverage: stair.targetCoverage } : {}),
         ...(focus ? { only: focus } : {}),
       },
@@ -864,7 +891,18 @@ export function createLivePractice(deps: LivePracticeDeps) {
 
   async function answerExercise(exercise: Exercise, attempt: AttemptInput): Promise<AnswerResult> {
     const lang = await deps.lang();
-    const checked = checkAnswer(exercise, attempt.answer);
+    // "Use it": the AI judges the sentence. Right or almost: the word was used well.
+    const used =
+      exercise.kind === "use" && deps.aiUse
+        ? await deps.aiUse.check({
+            word: exercise.prompt.text,
+            ...(exercise.prompt.hint ? { meaning: exercise.prompt.hint } : {}),
+            sentence: attempt.answer,
+          })
+        : null;
+    const checked: { correct: boolean; note?: string } = used
+      ? { correct: used.verdict !== "wrong", ...(used.why ? { note: used.why } : {}) }
+      : checkAnswer(exercise, attempt.answer);
     const full = { ...attempt, correct: checked.correct };
     const grade = gradeAttempt(exercise, full);
     const now = clock();
@@ -895,12 +933,14 @@ export function createLivePractice(deps: LivePracticeDeps) {
       grade,
       correct: checked.correct,
       ...(checked.note ? { note: checked.note } : {}),
+      ...(used?.better ? { better: used.better } : {}),
       next,
     };
   }
 
   return {
     practiceOverview,
+    practiceLadder,
     startPractice,
     startTopicPractice,
     answerExercise,

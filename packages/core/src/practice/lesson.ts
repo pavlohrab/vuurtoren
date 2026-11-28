@@ -30,6 +30,8 @@ export interface LessonInput {
   now: number;
   /** The language server can hear speech: "say" exercises may come in. */
   speaking?: boolean;
+  /** An AI is set up to check sentences: "use" exercises may come in. */
+  writing?: boolean;
   /** The reader's target share of known words (the staircase, 3.6); default 0.95. */
   coverage?: number;
   /** Only these words (a lesson's source: this page, mistakes…); default all. */
@@ -73,10 +75,12 @@ function candidates(
   rng: Rng,
   speaking = false,
   coverage?: number,
+  writing = false,
 ): Exercise[] {
   const out: Exercise[] = [];
   for (const kind of KINDS) {
     if (kind === "say" && !speaking) continue;
+    if (kind === "use" && !writing) continue;
     const ex = generate(kind, forKind(word, kind, coverage), pool, rng);
     // Building needs the sentence's English on top (4.7.4); without it, no building.
     if (ex && !((ex.kind === "scramble" || ex.kind === "listen-build") && !ex.prompt.translation))
@@ -247,7 +251,7 @@ export function buildLesson(input: LessonInput, rng: Rng): Exercise[] {
       state: word.state,
       hasCard: s?.hasCard ?? false,
       start: starts.get(key)!,
-      candidates: candidates(word, input.words, rng, input.speaking, input.coverage),
+      candidates: candidates(word, input.words, rng, input.speaking, input.coverage, input.writing),
       elo,
       answers: input.answers,
       favour,
@@ -281,7 +285,7 @@ export function comeBack(
     state: word.state,
     hasCard: s?.hasCard ?? false,
     start,
-    candidates: candidates(word, input.words, rng, input.speaking, input.coverage),
+    candidates: candidates(word, input.words, rng, input.speaking, input.coverage, input.writing),
     elo: replay(input.answers, new Map([[missed.key, start]])),
     answers: input.answers,
     cap: STEP_OF[missed.kind] - 1,

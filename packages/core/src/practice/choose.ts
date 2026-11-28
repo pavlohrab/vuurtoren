@@ -11,8 +11,11 @@ import type { GripStart } from "./elo.js";
 import type { WordState } from "../memory.js";
 import type { Exercise, ExerciseKind } from "./types.js";
 
-/** The ladder: 1 pick it, 2 in a sentence, 3 build it, 4 hear it and build it, 5 type it. */
-export const STEP_OF: Readonly<Record<ExerciseKind, 1 | 2 | 3 | 4 | 5>> = {
+/**
+ * The ladder: 1 pick it, 2 in a sentence, 3 build it, 4 hear it and build it, 5 type it (in a
+ * sentence, or from the English alone), 6 use it in your own sentence (only with an AI).
+ */
+export const STEP_OF: Readonly<Record<ExerciseKind, 1 | 2 | 3 | 4 | 5 | 6>> = {
   "meaning-choice": 1,
   "word-choice": 1,
   "cloze-choice": 2,
@@ -28,7 +31,12 @@ export const STEP_OF: Readonly<Record<ExerciseKind, 1 | 2 | 3 | 4 | 5>> = {
   "listen-build": 4,
   meet: 1,
   pairs: 1,
+  write: 5,
+  use: 6,
 };
+
+/** The steps' names, as the word card and Practice show them. */
+export const STEP_NAMES = ["Pick it", "In a sentence", "Build it", "Hear it", "Type it", "Use it"];
 
 /** How much closer to the target a weak grammar point's kind counts as. */
 const FAVOUR = 0.05;
@@ -59,7 +67,7 @@ export function hardestRight(answers: readonly EloAnswer[], key: string): number
 /** The highest step a word may get now: one above its hardest right answer, with the floors. */
 export function maxStep(info: { hardest: number; hasCard: boolean; state: WordState }): number {
   const floor = info.state === "known" ? 3 : info.hasCard ? 2 : 1;
-  return Math.min(5, Math.max(floor, info.hardest + 1));
+  return Math.min(6, Math.max(floor, info.hardest + 1));
 }
 
 export interface ChooseInput {

@@ -40,7 +40,11 @@ export type ExerciseKind =
   /** A new word shown before any question: its sound, meaning and sentence (not graded). */
   | "meet"
   /** Match Dutch words with their meanings, a short warm-up (not graded). */
-  | "pairs";
+  | "pairs"
+  /** English meaning → type the Dutch word, a noun with de or het (recall, the ladder's step 5). */
+  | "write"
+  /** Make your own sentence with the word; the AI checks it (recall, step 6, only with an AI). */
+  | "use";
 
 export const SKILL_OF: Readonly<Record<ExerciseKind, Skill>> = {
   "meaning-choice": "recognition",
@@ -56,6 +60,8 @@ export const SKILL_OF: Readonly<Record<ExerciseKind, Skill>> = {
   dictation: "listening",
   say: "recall",
   "listen-build": "listening",
+  write: "recall",
+  use: "recall",
   meet: "recognition",
   pairs: "recognition",
 };

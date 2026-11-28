@@ -123,6 +123,27 @@ const clozeTyped: Generator = (word, _pool, rng) => {
   });
 };
 
+/** write: the English meaning → type the Dutch word; a noun with its article. */
+const write: Generator = (word, _pool, rng) => {
+  const gloss = word.glosses[0];
+  if (!gloss) return null;
+  return base("write", word, rng, {
+    instruction: "Write it in Dutch",
+    prompt: { text: gloss },
+    answer: withArticle(word),
+  });
+};
+
+/** use: make your own sentence with the word (the AI checks it, not `checkAnswer`). */
+const use: Generator = (word, _pool, rng) => {
+  if (!word.glosses[0]) return null;
+  return base("use", word, rng, {
+    instruction: "Make a sentence with this word",
+    prompt: { text: withArticle(word), hint: word.glosses[0] },
+    answer: word.lemma,
+  });
+};
+
 /** Gender rules shown after answering; only used when they agree with the real article. */
 function genderExplanation(word: WordData): string {
   const { lemma, article } = word;
@@ -406,6 +427,8 @@ const GENERATORS: Record<ExerciseKind, Generator> = {
   // Lessons make these (lesson.ts); a word alone can't.
   meet: () => null,
   pairs: () => null,
+  write,
+  use,
 };
 
 /**

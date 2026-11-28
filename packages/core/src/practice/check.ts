@@ -46,6 +46,7 @@ export function checkAnswer(
     return { correct: answer.normalize("NFC").trim() === exercise.answer.normalize("NFC") };
   }
   if (exercise.kind === "say") return checkSaid(exercise.answer, answer);
+  if (exercise.kind === "write") return checkWritten(exercise.answer, answer);
   const sentenceLevel = exercise.pieces !== undefined || exercise.kind === "dictation";
   const norm = (s: string) => {
     const n = normalizeAnswer(normalizeQuotes(s));
@@ -57,6 +58,23 @@ export function checkAnswer(
   if (accepted.some((a) => norm(a) === given)) return { correct: true };
   const hit = accepted.find((a) => stripAccents(norm(a)) === stripAccents(given));
   if (hit !== undefined) return { correct: true, note: `Mind the accents: ${hit}` };
+  return { correct: false };
+}
+
+/**
+ * "Write it": the word with its article ("de fiets"). Without the article, or with the other
+ * one, it still counts, with the right one as a note.
+ */
+function checkWritten(expected: string, answer: string): { correct: boolean; note?: string } {
+  const norm = (s: string) => stripEdgePunctuation(normalizeAnswer(normalizeQuotes(s)));
+  const bare = (s: string) => s.replace(/^(de|het)\s+/, "");
+  const [want, given] = [norm(expected), norm(answer)];
+  if (!given) return { correct: false };
+  if (want === given) return { correct: true };
+  const withAccents = stripAccents(want) === stripAccents(given);
+  if (withAccents) return { correct: true, note: `Mind the accents: ${expected}` };
+  if (bare(want) !== want && stripAccents(bare(want)) === stripAccents(bare(given)))
+    return { correct: true, note: `With its article: ${expected}` };
   return { correct: false };
 }
 

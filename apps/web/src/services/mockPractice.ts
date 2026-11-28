@@ -162,6 +162,11 @@ export function createMockPractice(wait: () => Promise<void>) {
       return pool.filter(isDue).slice(0, opts.size ?? 20);
     },
 
+    async practiceLadder(key?: string) {
+      await wait();
+      return { top: 5, reached: [42, 30, 18, 9, 4], ...(key !== undefined ? { step: 3 } : {}) };
+    },
+
     async answerExercise(exercise: Exercise, attempt: AttemptInput): Promise<AnswerResult> {
       await wait();
       const checked = checkAnswer(exercise, attempt.answer);

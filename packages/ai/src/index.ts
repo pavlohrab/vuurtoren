@@ -11,3 +11,4 @@ export * from "./examples.js";
 export * from "./exam.js";
 export * from "./unitExercises.js";
 export * from "./models.js";
+export * from "./useCheck.js";

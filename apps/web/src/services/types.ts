@@ -170,6 +170,15 @@ export interface PracticeOverview {
   /** The language server was unreachable on the last request (fewer exercise types). */
   degraded?: boolean;
 }
+/** Where your words are on Practice's ladder (STEP_OF). */
+export interface PracticeLadder {
+  /** The top step: 6 with an AI to check sentences, else 5. */
+  top: number;
+  /** How many words reached step 1, 2, … (at least that step). */
+  reached: number[];
+  /** The asked word's step (0: not practised yet). */
+  step?: number;
+}
 /** The learner's answer; correctness is decided by the engine, not the caller. */
 export type AttemptInput = Omit<Attempt, "correct">;
 export interface AnswerResult {
@@ -177,6 +186,8 @@ export interface AnswerResult {
   correct: boolean;
   /** Extra line from the checker, e.g. an accent reminder. */
   note?: string;
+  /** "Use it": the sentence put right, when it wasn't. */
+  better?: string;
   /** New scheduling state of the (word, skill) pair. */
   next: ItemState;
 }
@@ -417,6 +428,8 @@ export interface AppServices
   knownOverTime(weeks?: number): Promise<KnownPoint[]>;
   /** Counts for the Practice start screen, the sidebar badge and Progress. */
   practiceOverview(): Promise<PracticeOverview>;
+  /** How far your words got on Practice's ladder, and one word's step. */
+  practiceLadder(key?: string): Promise<PracticeLadder>;
   /**
    * Build a session: due items first, then new ones, from words you are learning or know.
    * Never writes to Anki.

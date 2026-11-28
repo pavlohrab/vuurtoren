@@ -34,6 +34,8 @@ import {
   saveKey,
   selectKnownLemmas,
   simplifyText,
+  checkUse,
+  type UseCheck,
 } from "@app/ai";
 import { DEGRADED_MESSAGES, clearDegraded, reportDegraded } from "./degraded.js";
 import { AnkiConnectClient, addWord, highlightSentence } from "@app/anki";
@@ -149,6 +151,8 @@ export function createLiveAI(deps: LiveAIDeps): AIServices &
     /** Generate, validate and store AI example sentences (practice). */
     fillSentences: (lang: string, needs: SentenceNeed[], avoid: string[]) => Promise<SentenceFill>;
     aiReady: () => boolean;
+    /** "Use it" in Practice: is the learner's sentence right? */
+    checkUse: (ask: { word: string; meaning?: string; sentence: string }) => Promise<UseCheck>;
     /** English translations from the provider, one per sentence ("" when it left one out). */
     translateSentences: (sentences: string[]) => Promise<string[]>;
   } {
@@ -506,6 +510,8 @@ export function createLiveAI(deps: LiveAIDeps): AIServices &
   return {
     fillSentences,
     aiReady: () => status().configured,
+    checkUse: async (ask: { word: string; meaning?: string; sentence: string }) =>
+      checkUse(await provider(), ask),
     translateSentences: async (sentences: string[]) =>
       aiTranslateSentences(await provider(), sentences),
     generateUnitExercises: makeUnitExercises,

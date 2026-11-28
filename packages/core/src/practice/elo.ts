@@ -29,6 +29,8 @@ export const START_DIFFICULTY: Readonly<Record<ExerciseKind, number>> = {
   "listen-build": 0.1,
   meet: -3,
   pairs: -3,
+  write: 0.9,
+  use: 1.2,
 };
 
 /** θ and d stay inside this range, so a long streak can't run away. */

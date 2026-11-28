@@ -1,3 +1,4 @@
+import { PracticeStepLine } from "./PracticeLadder.js";
 import { grammarLevel, levelsLine, roughTextLevel, starterRanks } from "../services/textLevel.js";
 import {
   keepPreviousData,
@@ -1530,7 +1531,12 @@ export function ReaderPage({ textId }: { textId: string }) {
                           related: dict ? (
                             <CardRelated entry={dict} onOpen={openWord} withSame={false} full />
                           ) : null,
-                          extra: <CardExtra entry={dict} zipf={shown.zipf} />,
+                          extra: (
+                            <>
+                              <CardExtra entry={dict} zipf={shown.zipf} />
+                              <PracticeStepLine wordKey={shown.key} />
+                            </>
+                          ),
                         }
                       : undefined
                   }

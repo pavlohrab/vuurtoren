@@ -2726,3 +2726,59 @@
     stroke-dashoffset: 60;
   }
 }
+/* Practice's ladder: one word's step on its card, and your words per step on Practice. */
+.ladder-line {
+  display: grid;
+  gap: 4px;
+  margin-top: 8px;
+  font-size: 13px;
+  color: var(--ink-muted);
+}
+.ladder-dots {
+  display: flex;
+  gap: 4px;
+  max-width: 180px;
+}
+.ladder-dots i {
+  flex: 1;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--line);
+}
+.ladder-dots i[data-on] {
+  background: var(--accent);
+}
+.ladder-block {
+  display: grid;
+  gap: 8px;
+  max-width: 640px;
+}
+.ladder-block ul {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ladder-block li {
+  display: grid;
+  grid-template-columns: 110px 1fr 48px;
+  gap: 10px;
+  align-items: center;
+  font-size: 13px;
+}
+.ladder-bar {
+  height: 8px;
+  border-radius: 4px;
+  background: var(--line);
+  overflow: hidden;
+}
+.ladder-bar i {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+}
+.ladder-block b {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}

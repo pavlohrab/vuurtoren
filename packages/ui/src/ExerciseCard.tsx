@@ -25,6 +25,8 @@ export interface ExerciseFeedback {
   correct: boolean;
   /** Extra line from the checker, e.g. "Mind the accent." */
   note?: string;
+  /** "Use it": the learner's sentence put right, when it wasn't. */
+  better?: string;
 }
 
 export interface ExerciseCardProps {
@@ -116,7 +118,7 @@ function useTabbed() {
 }
 
 /** Kinds whose prompt text is English (the rest show Dutch in the reading face). */
-const ENGLISH_PROMPT = new Set(["word-choice", "scramble"]);
+const ENGLISH_PROMPT = new Set(["word-choice", "scramble", "write"]);
 
 type Mode = "choice" | "gender" | "scramble" | "typed" | "dictation" | "say" | "meet" | "pairs";
 
@@ -190,7 +192,8 @@ export function ExerciseCard({
       : PRAISE[(e.id.length + e.id.charCodeAt(e.id.length - 1)) % PRAISE.length]!;
   const missed = !!feedback && !feedback.correct;
   // A typed answer a letter or two off is "Almost" (mock-practice-miss.html).
-  const typedMiss = missed && (mode === "typed" || mode === "dictation") && !!submitted;
+  const typedMiss =
+    missed && (mode === "typed" || mode === "dictation") && !!submitted && e.kind !== "use";
   const off = typedMiss ? editDistance(norm(submitted), norm(e.answer)) : 99;
   const almost = typedMiss && off > 0 && off <= 2;
   /** The speaker pulses while the card says something. */
@@ -432,7 +435,11 @@ export function ExerciseCard({
       ? e.answer
       : e.kind === "meaning-choice"
         ? e.prompt.text
-        : (e.prompt.sentence ?? e.answer);
+        : e.kind === "use"
+          ? (feedback?.better ?? submitted ?? e.answer)
+          : (e.prompt.sentence ?? e.answer);
+  // "Use it" with something to put right: the word was right, the sentence almost.
+  const betterSentence = e.kind === "use" && !!feedback?.better;
   // After answering, the right Dutch is said (Settings → Practice).
   useEffect(() => {
     if (!(feedback && sayDutch && resultDutch && e.kind !== "pairs")) return;
@@ -800,7 +807,11 @@ export function ExerciseCard({
                 <path d="M10 10 l8 8 M18 10 l-8 8" />
               </svg>
             )}
-            {feedback.correct ? praise : almost ? "Almost" : "Not quite"}
+            {feedback.correct && !betterSentence
+              ? praise
+              : almost || (feedback.correct && betterSentence)
+                ? "Almost"
+                : "Not quite"}
           </p>
           <p className="ex-strip-dutch ex-dutch" lang="nl">
             {onSpeak ? (
@@ -810,9 +821,10 @@ export function ExerciseCard({
               {typedMiss && resultDutch === e.answer ? (
                 // The answer is the whole line: show it once, letter by letter.
                 <LetterDiff answer={e.answer} given={submitted ?? ""} />
-              ) : !feedback.correct &&
-                submitted &&
-                (mode === "scramble" || mode === "dictation" || mode === "say") ? (
+              ) : submitted &&
+                ((!feedback.correct &&
+                  (mode === "scramble" || mode === "dictation" || mode === "say")) ||
+                  betterSentence) ? (
                 <MarkedSentence answer={resultDutch} given={submitted} />
               ) : onWord ? (
                 <WordText
@@ -833,7 +845,7 @@ export function ExerciseCard({
             <p className="ex-dutch" lang="nl">
               <LetterDiff answer={e.answer} given={submitted ?? ""} />
             </p>
-          ) : !typedMiss && resultDutch !== e.answer && !feedback.correct ? (
+          ) : !typedMiss && resultDutch !== e.answer && !feedback.correct && e.kind !== "use" ? (
             <p>
               Answer:{" "}
               <strong className="ex-dutch" lang="nl">

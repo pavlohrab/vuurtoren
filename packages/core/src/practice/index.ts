@@ -24,6 +24,7 @@ export { isSafe, leftOut, need, pickWords, score, use, type WordSignals } from "
 export {
   POINT_OF,
   STEP_OF,
+  STEP_NAMES,
   TARGET,
   chanceFor,
   chooseExercise,

@@ -178,6 +178,7 @@ export function createLiveServices(
     canListen: () => androidListenAvailable(),
     topicMaterial: grammar.topicMaterial,
     aiSentences: { ready: ai.aiReady, fill: ai.fillSentences },
+    aiUse: { ready: ai.aiReady, check: ai.checkUse },
     evidence,
   });
 

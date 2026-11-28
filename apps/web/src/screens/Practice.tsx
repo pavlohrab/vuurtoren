@@ -1,3 +1,4 @@
+import { LadderBlock } from "./PracticeLadder.js";
 import { plural } from "../format.js";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
@@ -537,6 +538,7 @@ function StartView({
                 dictation.
               </p>
             ) : null}
+            <LadderBlock />
             {wide ? null : options}
           </div>
           {wide ? (
@@ -846,7 +848,11 @@ function Session({
         setComesBack(back);
         setStreak((n) => (result.correct ? n + 1 : 0));
         setSubmitted(s.answer);
-        setFeedback({ correct: result.correct, ...(result.note ? { note: result.note } : {}) });
+        setFeedback({
+          correct: result.correct,
+          ...(result.note ? { note: result.note } : {}),
+          ...(result.better ? { better: result.better } : {}),
+        });
         playSound(result.correct ? "right" : "wrong", feel);
         if (!result.correct) buzz(feel);
       } catch (e) {
